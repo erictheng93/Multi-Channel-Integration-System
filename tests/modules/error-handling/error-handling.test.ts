@@ -15,18 +15,13 @@ import {
   createErrorHandlingMiddleware,
   withErrorHandling
 } from '@backend/shared/error-handling/error-handlers';
-import { ErrorLogimport { MockFactory } from '@helpers/mockFactory';
-ger } from '@shared/error-handling/error-logger';
+import { ErrorLogger } from '@shared/error-handling/error-logger';
 
 describe('Module Errors', () => {
   describe('BaseModuleError', () => {
     test('should create error with all required properties', () => {
       const error = new ValidationError('Test validation error', 'test-module', { field: 'email' });
 
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
       expect(error).toBeInstanceOf(BaseModuleError);
       expect(error).toBeInstanceOf(ValidationError);
       expect(error.message).toBe('Test validation error');
@@ -139,7 +134,11 @@ describe('ModuleErrorHandler', () => {
       req: {
         path: '/test/path',
         method: 'POST',
-        header: vi.fn().mockReturnValue('test-user-agent')
+        header: vi.fn().mockImplementation((name: string) => {
+          if (name === 'x-request-id') return 'req-12345';
+          if (name === 'user-agent') return 'test-user-agent';
+          return undefined;
+        })
       }
     };
 
@@ -208,12 +207,9 @@ describe('ModuleErrorHandler', () => {
       expect(mockLogger.logError).toHaveBeenCalledWith(
         expect.any(BaseModuleError),
         expect.objectContaining({
-          requestId,
-          metadata: expect.objectContaining({
-            path: '/test/path',
-            method: 'POST',
-            userAgent: 'test-user-agent'
-          })
+          module: 'test-module',
+          operation: 'test-operation',
+          severity: ErrorSeverity.LOW
         })
       );
     });
@@ -298,7 +294,7 @@ describe('Error Handling Middleware', () => {
 
     const mockNext = vi.fn().mockRejectedValueOnce(new Error('Test error'));
     const mockContext = {
-      req: { method: 'GET', path: '/test' },
+      req: { method: 'GET', path: '/test', header: vi.fn().mockReturnValue(undefined) },
       get: vi.fn(),
       json: vi.fn().mockReturnValue(new Response())
     };

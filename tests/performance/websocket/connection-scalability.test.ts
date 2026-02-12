@@ -18,8 +18,7 @@ import {
   TestAssertions
 } from '../../helpers/websocket/websocket-test-utils';
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
-import { UserConnection } from '@backend/durable-obimport { MockFactory } from '@helpers/mockFactory';
-jects/UserConnection';
+import { UserConnection } from '@backend/durable-objects/UserConnection';
 import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 

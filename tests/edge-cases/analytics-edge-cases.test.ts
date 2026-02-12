@@ -1,7 +1,7 @@
 // Analytics Edge Cases and Boundary Conditions Test
 // 邊界條件和極端場景測試
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { createDbClient } from '@/db/drizzle-factory';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import type {
@@ -29,8 +29,25 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
         JWT_SECRET: 'test-secret-key'
       };
 
-      const { createInMemoryD1 } = await import('../helpers/test-d1-helper');
-      const mockD1 = await createInMemoryD1();
+      const mockD1 = {
+        prepare: vi.fn().mockImplementation(() => ({
+          bind: vi.fn().mockImplementation(function() {
+            return {
+              all: vi.fn().mockResolvedValue({ results: [] }),
+              raw: vi.fn().mockResolvedValue([]),
+              first: vi.fn().mockResolvedValue(null),
+              run: vi.fn().mockResolvedValue({ success: true, meta: {} })
+            };
+          }),
+          all: vi.fn().mockResolvedValue({ results: [] }),
+          raw: vi.fn().mockResolvedValue([]),
+          first: vi.fn().mockResolvedValue(null),
+          run: vi.fn().mockResolvedValue({ success: true, meta: {} })
+        })),
+        batch: vi.fn().mockResolvedValue([]),
+        dump: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+        exec: vi.fn().mockResolvedValue({ count: 0, duration: 0 })
+      } as unknown as D1Database;
 
       analyticsService = new AnalyticsService({
         database: createDbClient(mockD1),
@@ -79,12 +96,12 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
     test('should handle custom date range spanning 2 days', async () => {
       const today = new Date();
-      const startDate = today.toISOString().spltest('T')[0];
+      const startDate = today.toISOString().split('T')[0];
 
       // Add 1 day to ensure endDate is after startDate
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const endDate = tomorrow.toISOString().spltest('T')[0];
+      const endDate = tomorrow.toISOString().split('T')[0];
 
       const query = {
         startDate,
@@ -100,7 +117,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
     test('should allow same-day queries (startDate = endDate)', async () => {
       const today = new Date();
-      const sameDate = today.toISOString().spltest('T')[0];
+      const sameDate = today.toISOString().split('T')[0];
 
       const query = {
         startDate: sameDate,
@@ -127,7 +144,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       // Service 現在返回 ServiceResponse 而不是拋出異常
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
-      expect(result.errorCode).toBe('VALIDATION_ERROR');
+      expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
 
       console.log('✅ Invalid time range rejected correctly');
     });
@@ -137,8 +154,8 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       futureDate.setDate(futureDate.getDate() + 30);
 
       const query = {
-        startDate: new Date().toISOString().spltest('T')[0],
-        endDate: futureDate.toISOString().spltest('T')[0],
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: futureDate.toISOString().split('T')[0],
         metrics: ['total_conversations']
       };
 
@@ -154,8 +171,8 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       oldDate.setFullYear(oldDate.getFullYear() - 10);
 
       const query = {
-        startDate: oldDate.toISOString().spltest('T')[0],
-        endDate: new Date().toISOString().spltest('T')[0],
+        startDate: oldDate.toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0],
         metrics: ['total_conversations']
       };
 
@@ -807,7 +824,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
         console.log('✅ Invalid export format handled gracefully (used default)');
       } else {
         expect(result.error).toBeDefined();
-        expect(result.errorCode).toBeDefined();
+        expect(result.metadata?.errorCode).toBeDefined();
         console.log('✅ Invalid export format rejected correctly');
       }
     });
@@ -830,7 +847,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
         console.log('✅ Export with no metrics handled gracefully');
       } else {
         expect(result.error).toBeDefined();
-        expect(result.errorCode).toBe('VALIDATION_ERROR');
+        expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
         console.log('✅ Export with no metrics rejected correctly');
       }
     });

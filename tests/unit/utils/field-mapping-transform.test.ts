@@ -1,6 +1,5 @@
 // 資料庫欄位映射簡化測試
-// Simplified Database Field Mappimport { MockFactory } from '@helpers/mockFactory';
-ing Tests - 直接測試映射邏輯
+// Simplified Database Field Mapping Tests - 直接測試映射邏輯
 
 import { describe, it, expect } from 'vitest';
 

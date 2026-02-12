@@ -1,8 +1,7 @@
 /**
  * API Endpoint Fixes Verification Test Suite
  *
- * This test suimport { MockFactory } from '@helpers/mockFactory';
-ite verifies the three critical endpoint fixes:
+ * This test suite verifies the three critical endpoint fixes:
  * 1. QR Code Deactivation Endpoint (PUT /api/teams/:id/qr-codes/:qrCodeId/deactivate)
  * 2. Team Member Details Endpoint (GET /api/team/members/:id)
  * 3. Frontend Invitation Feature Toggle (Client-side validation)

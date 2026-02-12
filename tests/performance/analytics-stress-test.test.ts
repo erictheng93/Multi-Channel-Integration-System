@@ -10,7 +10,6 @@ import type {
   UserAnalyticsQuery,
   PerformanceAnalyticsQuery
 } from '../../src/modules/analytics/types/analytics-types';
-import { MockFactory } from '@helpers/mockFactory';
 
 /**
  * 性能壓力測試配置

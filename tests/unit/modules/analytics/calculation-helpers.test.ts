@@ -7,8 +7,7 @@ import {
   formatNumber,
   formatDuration,
   calculateDataPoints
-} from '@modules/analytics/utiimport { MockFactory } from '@helpers/mockFactory';
-ls/calculation-helpers';
+} from '@modules/analytics/utils/calculation-helpers';
 import type { TimeSeriesData } from '@modules/analytics/types/analytics-types';
 
 describe('CalculationHelpers', () => {

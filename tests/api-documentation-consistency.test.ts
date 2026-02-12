@@ -190,7 +190,7 @@ describe('API Documentation Consistency', () => {
       const conversationEndpoints = documentedEndpoints.filter(e => e.includes('/conversations'))
       const teamEndpoints = documentedEndpoints.filter(e => e.includes('/team/'))
       const systemEndpoints = documentedEndpoints.filter(e => e.includes('/system/'))
-      const webhookEndpoints = documentedEndpoints.filter(e => e.includes('/webhook/'))
+      const webhookEndpoints = documentedEndpoints.filter(e => e.includes('/webhook'))
       
       expect(authEndpoints.length).toBeGreaterThanOrEqual(2)
       expect(conversationEndpoints.length).toBeGreaterThanOrEqual(7)

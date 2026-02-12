@@ -15,8 +15,7 @@ import {
 import type {
   ConversationSession,
   SessionBoundaryDetection
-} from '../import { MockFactory } from '@helpers/mockFactory';
-../../../../src/modules/session/types/session-types';
+} from '@modules/session/types/session-types';
 
 // ======================== Mock Setup ========================
 

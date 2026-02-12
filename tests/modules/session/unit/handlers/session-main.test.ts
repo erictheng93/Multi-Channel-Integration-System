@@ -24,8 +24,7 @@ import {
   mockSessionStats,
   mockActivityStats,
   mockBatchOperationResults,
-  moimport { MockFactory } from '@helpers/mockFactory';
-ckApiResponses,
+  mockApiResponses,
   mockJwtPayloads
 } from '../../helpers/mock-data';
 
@@ -377,7 +376,9 @@ describe('Session Main Handler', () => {
         expect(sessionValidation.isValid).toBe(true);
         expect(data.data.id).toBe('session_test_001');
 
-        expect(mockSessionService.get).toHaveBeenCalledWith('session_test_001');
+        // checkSessionAccess is mocked to just call next() without setting jwtPayload,
+        // so userId defaults to '' and role defaults to 'agent'
+        expect(mockSessionService.get).toHaveBeenCalledWith('session_test_001', '', 'agent');
       });
 
       test('should return 404 for non-existent session', async () => {

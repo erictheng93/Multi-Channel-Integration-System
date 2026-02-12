@@ -2,8 +2,7 @@
 // 真實 E2E 測試 - 完整的 HTTP + JWT 認證流程
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { unstable_dev, UnstableDevWorker } from 'import { MockFactory } from '@helpers/mockFactory';
-wrangler';
+import { unstable_dev, UnstableDevWorker } from 'wrangler';
 import { TestJWTHelper, getAuthHeaders } from '../helpers/test-jwt-helper';
 
 /**

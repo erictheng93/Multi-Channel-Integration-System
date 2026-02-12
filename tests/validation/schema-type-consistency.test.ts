@@ -3,8 +3,7 @@
  * 防止生產環境類型不一致問題的測試套件
  *
  * This test suite validates that:
- * 1. Database schema and TypeScript tyimport { MockFactory } from '@helpers/mockFactory';
-pes are consistent
+ * 1. Database schema and TypeScript types are consistent
  * 2. Field naming conventions are followed (snake_case in DB, matching in types)
  * 3. Foreign key references are correctly typed
  */

@@ -3,8 +3,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { signJWT, verifyJWT, hashPassword, verifyPassword, authenticateUser } from '@modules/auth/services/auth';
-iimport { MockFactory } from '@helpers/mockFactory';
-mport type { JWTPayload } from '@shared/types';
+import { MockFactory } from '@helpers/mockFactory';
+import type { JWTPayload } from '@shared/types';
 
 describe('Auth Module - JWT Functions', () => {
   const testSecret = 'test-secret-key';
@@ -23,7 +23,7 @@ describe('Auth Module - JWT Functions', () => {
 
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
-      expect(token.spltest('.')).toHaveLength(3);
+      expect(token.split('.')).toHaveLength(3);
     });
 
 
@@ -145,16 +145,18 @@ describe('Auth Module - Password Functions', () => {
 });
 
 describe('Auth Module - Database Functions', () => {
-  // Mock D1 database
-  const mockDB = MockFactory.createD1()().mockReturnValue({
-      bind: vi.fn().mockReturnValue({
-        first: vi.fn()
-      })
-    })
+  // Mock D1 database - chain will be set up in beforeEach
+  const mockFirst = vi.fn();
+  const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+  const mockDB = {
+    prepare: vi.fn().mockReturnValue({ bind: mockBind })
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Re-establish the mock chain after clearing
+    mockBind.mockReturnValue({ first: mockFirst });
+    mockDB.prepare.mockReturnValue({ bind: mockBind });
   });
 
   describe('authenticateUser', () => {
@@ -173,9 +175,9 @@ describe('Auth Module - Database Functions', () => {
         updated_at: new Date().toISOString()
       };
 
-      mockDb.prepare().bind().first.mockResolvedValueOnce(mockUser);
+      mockFirst.mockResolvedValueOnce(mockUser);
 
-      const result = await authenticateUser(mockDb as any, 'test@example.com', 'correct-password');
+      const result = await authenticateUser(mockDB as any, 'test@example.com', 'correct-password');
 
       expect(result.user).toBeDefined();
       expect(result.user?.email).toBe('test@example.com');
@@ -183,9 +185,9 @@ describe('Auth Module - Database Functions', () => {
     });
 
     test('should return null for non-existent user', async () => {
-      mockDb.prepare().bind().first.mockResolvedValueOnce(null);
+      mockFirst.mockResolvedValueOnce(null);
 
-      const result = await authenticateUser(mockDb as any, 'nonexistent@example.com', 'password');
+      const result = await authenticateUser(mockDB as any, 'nonexistent@example.com', 'password');
 
       expect(result.user).toBeNull();
       expect(result.accountStatus).toBe('not_found');
@@ -203,9 +205,9 @@ describe('Auth Module - Database Functions', () => {
         password_policy: 'changeable'
       };
 
-      mockDb.prepare().bind().first.mockResolvedValueOnce(mockUser);
+      mockFirst.mockResolvedValueOnce(mockUser);
 
-      const result = await authenticateUser(mockDb as any, 'test@example.com', 'password');
+      const result = await authenticateUser(mockDB as any, 'test@example.com', 'password');
 
       expect(result.user).toBeNull();
       expect(result.accountStatus).toBe('disabled');
@@ -224,9 +226,9 @@ describe('Auth Module - Database Functions', () => {
         password_policy: 'changeable'
       };
 
-      mockDb.prepare().bind().first.mockResolvedValueOnce(mockUser);
+      mockFirst.mockResolvedValueOnce(mockUser);
 
-      const result = await authenticateUser(mockDb as any, 'test@example.com', 'wrong-password');
+      const result = await authenticateUser(mockDB as any, 'test@example.com', 'wrong-password');
 
       expect(result.user).toBeNull();
       expect(result.accountStatus).toBe('wrong_password');
@@ -251,7 +253,8 @@ describe('Auth Module - Error Handling', () => {
   });
 
   test('should handle database errors in authentication', async () => {
-    const mockDB = MockFactory.createD1()().mockReturnValue({
+    const mockDb = {
+      prepare: vi.fn().mockReturnValue({
         bind: vi.fn().mockReturnValue({
           first: vi.fn().mockRejectedValueOnce(new Error('Database error'))
         })

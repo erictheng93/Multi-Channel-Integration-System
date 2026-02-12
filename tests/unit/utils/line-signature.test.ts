@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { verifyLineSignature } from '@backend/utils/line';
 
-import { MockFactory } from '@helpers/mockFactory';
+
 describe('LINE Signature Verification - Advanced Tests', () => {
   const mockChannelSecret = 'test-channel-secret-123';
 
@@ -146,23 +146,19 @@ describe('LINE Signature Verification - Advanced Tests', () => {
 
     test('should handle malformed base64 signature', async () => {
       const body = '{"test": "data"}';
-      
+
       mockCrypto.subtle.importKey.mockResolvedValue('mock-key');
       mockCrypto.subtle.sign.mockResolvedValue(new Uint8Array([116, 101, 115, 116]).buffer);
-      
+
       // Mock btoa to throw error (simulating malformed signature)
       (global.btoa as any).mockImplementation(() => {
         throw new Error('Invalid character in base64');
       });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
+      // Source uses structured logger (log.error), not console.error
       const result = await verifyLineSignature(body, 'sha256=malformed', mockChannelSecret);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('Signature verification error:', expect.any(Error));
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle very long channel secret', async () => {
@@ -193,15 +189,11 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       const signature = 'sha256=test-signature';
 
       mockCrypto.subtle.importKey.mockRejectedValue(new Error('Key import failed'));
-      
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
+      // Source uses structured logger (log.error), not console.error
       const result = await verifyLineSignature(body, signature, mockChannelSecret);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('Signature verification error:', expect.any(Error));
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle sign operation failure', async () => {
@@ -210,35 +202,26 @@ describe('LINE Signature Verification - Advanced Tests', () => {
 
       mockCrypto.subtle.importKey.mockResolvedValue('mock-key');
       mockCrypto.subtle.sign.mockRejectedValue(new Error('Sign operation failed'));
-      
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await verifyLineSignature(body, signature, mockChannelSecret);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('Signature verification error:', expect.any(Error));
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle missing crypto API', async () => {
       // Temporarily remove crypto API
       const originalCrypto = global.crypto;
-      delete (global as any).crypto;
+      vi.stubGlobal('crypto', undefined);
 
       const body = '{"test": "data"}';
       const signature = 'sha256=test-signature';
-      
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await verifyLineSignature(body, signature, mockChannelSecret);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('Signature verification error:', expect.any(Error));
-      
+
       // Restore crypto API
-      global.crypto = originalCrypto;
-      consoleSpy.mockRestore();
+      vi.stubGlobal('crypto', originalCrypto);
     });
   });
 
