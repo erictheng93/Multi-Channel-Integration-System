@@ -23,7 +23,7 @@ vi.mock('@/config/runtime', () => ({
   getBackendUrl: vi.fn(() => 'https://test-backend.example.com')
 }))
 
-import { exportMessages, getExportCustomers, getExportAgents } from '@/api/export'
+import { exportMessages, getExportCustomers, getExportAgents, getExportCount } from '@/api/export'
 import { apiClient } from '@/api/base'
 
 describe('Export API Module', () => {
@@ -219,10 +219,10 @@ describe('Export API Module', () => {
       })
 
       it('應該限制 limit 範圍（過大值不傳遞）', async () => {
-        await exportMessages({ limit: 5000 })
+        await exportMessages({ limit: 10000 })
 
         const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
-        expect(url).not.toContain('limit=5000')
+        expect(url).not.toContain('limit=10000')
       })
 
       it('應該接受合法的 limit 值', async () => {
@@ -230,6 +230,13 @@ describe('Export API Module', () => {
 
         const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
         expect(url).toContain('limit=500')
+      })
+
+      it('應該接受 5000 作為最大 limit 值', async () => {
+        await exportMessages({ limit: 5000 })
+
+        const url = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+        expect(url).toContain('limit=5000')
       })
 
       it('應該不傳遞空字串參數', async () => {
@@ -250,18 +257,21 @@ describe('Export API Module', () => {
   // ==================== getExportCustomers ====================
 
   describe('getExportCustomers()', () => {
-    it('應該呼叫正確的端點', async () => {
-      const mockItems = [
+    it('應該呼叫正確的端點並回傳客戶列表', async () => {
+      const mockCustomers = [
         { id: 1, displayName: 'Customer A', platform: 'line', platformUserId: 'U123' },
         { id: 2, displayName: 'Customer B', platform: 'line', platformUserId: 'U456' }
       ]
-      vi.mocked(apiClient.get).mockResolvedValue({ success: true, data: { items: mockItems, total: 2 } })
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { customers: mockCustomers, count: 2 }
+      })
 
       const result = await getExportCustomers()
 
       expect(apiClient.get).toHaveBeenCalledWith('/customers?pageSize=200')
       expect(result.success).toBe(true)
-      expect(result.data).toEqual(mockItems)
+      expect(result.data).toEqual(mockCustomers)
     })
 
     it('應該處理 API 錯誤', async () => {
@@ -274,12 +284,36 @@ describe('Export API Module', () => {
     })
 
     it('應該處理空列表', async () => {
-      vi.mocked(apiClient.get).mockResolvedValue({ success: true, data: { items: [], total: 0 } })
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { customers: [], count: 0 }
+      })
 
       const result = await getExportCustomers()
 
       expect(result.success).toBe(true)
       expect(result.data).toEqual([])
+    })
+
+    it('customers 欄位缺失時應該回傳錯誤', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { count: 0 }  // customers 欄位缺失
+      })
+
+      const result = await getExportCustomers()
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('無法載入用戶列表')
+    })
+
+    it('API 拋出異常時應該回傳錯誤', async () => {
+      vi.mocked(apiClient.get).mockRejectedValue(new Error('Network failure'))
+
+      const result = await getExportCustomers()
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('載入用戶列表失敗')
     })
   })
 
@@ -306,6 +340,97 @@ describe('Export API Module', () => {
       const result = await getExportAgents()
 
       expect(result.success).toBe(false)
+    })
+  })
+
+  // ==================== getExportCount ====================
+
+  describe('getExportCount()', () => {
+    it('應該呼叫正確的端點', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { count: 150, limit: 5000, willBeTruncated: false }
+      })
+
+      const result = await getExportCount()
+
+      expect(apiClient.get).toHaveBeenCalledWith('/messages/export/count')
+      expect(result.success).toBe(true)
+      expect(result.data).toEqual({ count: 150, limit: 5000, willBeTruncated: false })
+    })
+
+    it('應該正確傳遞篩選參數', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { count: 50, limit: 5000, willBeTruncated: false }
+      })
+
+      await getExportCount({
+        conversationId: 'conv-123',
+        dateFrom: '2025-01-01T00:00:00Z',
+        dateTo: '2025-12-31T23:59:59Z',
+        customerId: '42',
+        agentId: 'agent-abc'
+      })
+
+      const url = vi.mocked(apiClient.get).mock.calls[0][0] as string
+      expect(url).toContain('conversationId=conv-123')
+      expect(url).toContain('dateFrom=')
+      expect(url).toContain('dateTo=')
+      expect(url).toContain('customerId=42')
+      expect(url).toContain('agentId=agent-abc')
+    })
+
+    it('應該回傳 willBeTruncated=true 當數量超過限制', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { count: 2500, limit: 5000, willBeTruncated: true }
+      })
+
+      const result = await getExportCount()
+
+      expect(result.success).toBe(true)
+      expect(result.data?.willBeTruncated).toBe(true)
+      expect(result.data?.count).toBe(2500)
+    })
+
+    it('應該處理 API 錯誤', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({ success: false, error: 'Server error' })
+
+      const result = await getExportCount()
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Server error')
+    })
+
+    it('應該過濾不合法的參數', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { count: 0, limit: 5000, willBeTruncated: false }
+      })
+
+      await getExportCount({
+        conversationId: '<script>alert(1)</script>',
+        customerId: 'abc',
+        dateFrom: 'not-a-date'
+      })
+
+      const url = vi.mocked(apiClient.get).mock.calls[0][0] as string
+      // 不合法的參數不應出現在 URL 中
+      expect(url).not.toContain('conversationId')
+      expect(url).not.toContain('customerId')
+      expect(url).not.toContain('dateFrom')
+    })
+
+    it('沒有篩選參數時不應附加查詢字串', async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        success: true,
+        data: { count: 100, limit: 5000, willBeTruncated: false }
+      })
+
+      await getExportCount()
+
+      expect(apiClient.get).toHaveBeenCalledWith('/messages/export/count')
     })
   })
 })
