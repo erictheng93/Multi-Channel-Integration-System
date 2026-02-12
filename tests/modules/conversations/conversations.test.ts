@@ -564,5 +564,224 @@ describe('ConversationService', () => {
       expect(result.closedConversations).toBe(0); // closed status removed from service
       expect(result.teamDistribution).toHaveLength(2);
     });
+
+    it('should return zero metrics when database is empty', async () => {
+      mockDb._queueResults(
+        [{ count: 0 }],   // total
+        [{ count: 0 }],   // active
+        []                 // no teams
+      );
+
+      const result = await service.getConversationMetrics();
+
+      expect(result.totalConversations).toBe(0);
+      expect(result.openConversations).toBe(0);
+      expect(result.teamDistribution).toHaveLength(0);
+    });
+
+    it('should handle null count results gracefully', async () => {
+      mockDb._queueResults(
+        [{ count: null }],
+        [{ count: null }],
+        []
+      );
+
+      const result = await service.getConversationMetrics();
+
+      expect(result.totalConversations).toBe(0);
+      expect(result.openConversations).toBe(0);
+    });
+  });
+
+  // ── Error paths ────────────────────────────────────────────────────────
+
+  describe('error paths', () => {
+    it('createConversation should throw when select returns empty after insert', async () => {
+      // insert succeeds, but select returns empty
+      mockDb._queueResults([]);
+
+      await expect(
+        service.createConversation({ customerId: 'c-1', status: 'open' } as any)
+      ).rejects.toThrow('Failed to create conversation');
+    });
+
+    it('updateConversation should throw when conversation not found after update', async () => {
+      // update succeeds, but select returns empty
+      mockDb._queueResults([]);
+
+      await expect(
+        service.updateConversation('non-existent', { status: 'active' } as any)
+      ).rejects.toThrow('Failed to update conversation');
+    });
+
+    it('addMessage should throw when message not found after insert', async () => {
+      // insert + update succeed, but select returns empty
+      mockDb._queueResults([]);
+
+      await expect(
+        service.addMessage('conv-1', {
+          content: 'test',
+          senderType: 'customer',
+          senderId: 'cust-1'
+        } as any)
+      ).rejects.toThrow('Failed to create message');
+    });
+
+    it('transferConversation should throw when transfer record not created', async () => {
+      // update → void, insert → void, select returns empty
+      mockDb._queueResults([]);
+
+      await expect(
+        service.transferConversation('conv-1', 1, 2, 'reason')
+      ).rejects.toThrow('Failed to create transfer record');
+    });
+
+    it('assignConversation should throw when transfer record creation fails', async () => {
+      // Assignment with reason → insert transfer → select returns empty
+      mockDb._queueResults([]);
+
+      await expect(
+        service.assignConversation('conv-1', {
+          teamId: 789,
+          reason: 'Escalation'
+        })
+      ).rejects.toThrow('Failed to create transfer record');
+    });
+  });
+
+  // ── searchConversations ────────────────────────────────────────────────
+
+  describe('searchConversations', () => {
+    it('should delegate to listConversations with status filter', async () => {
+      mockDb._queueResults([], [{ total: 0 }]);
+
+      const result = await service.searchConversations({
+        query: 'test search',
+        filters: { status: ['active'] },
+        page: 1,
+        limit: 10
+      });
+
+      expect(result).toBeDefined();
+      expect(result.conversations).toEqual([]);
+      expect(result.pagination).toBeDefined();
+    });
+
+    it('should handle search with no filters', async () => {
+      mockDb._queueResults([], [{ total: 0 }]);
+
+      const result = await service.searchConversations({
+        query: 'anything',
+        page: 1,
+        limit: 20
+      });
+
+      expect(result.conversations).toEqual([]);
+      expect(result.pagination.page).toBe(1);
+    });
+  });
+
+  // ── Edge cases ─────────────────────────────────────────────────────────
+
+  describe('edge cases', () => {
+    it('listConversations should work with no filters (no where clause)', async () => {
+      mockDb._queueResults([], [{ total: 0 }]);
+
+      const result = await service.listConversations({ page: 1, limit: 10 });
+
+      expect(result.conversations).toEqual([]);
+      expect(result.pagination.total).toBe(0);
+    });
+
+    it('listConversations should apply customerId filter', async () => {
+      mockDb._queueResults([], [{ total: 0 }]);
+
+      const result = await service.listConversations({
+        page: 1,
+        limit: 10,
+        customerId: '42'
+      });
+
+      expect(mockDb.select).toHaveBeenCalled();
+      expect(result.pagination.total).toBe(0);
+    });
+
+    it('listConversations should use default page and limit', async () => {
+      mockDb._queueResults([], [{ total: 0 }]);
+
+      const result = await service.listConversations({});
+
+      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.limit).toBe(20);
+    });
+
+    it('getMessages should use default parameters', async () => {
+      mockDb._queueResults([]);
+
+      const result = await service.getMessages('conv-1');
+
+      expect(result).toEqual([]);
+      expect(mockDb.select).toHaveBeenCalled();
+    });
+
+    it('getConversation should handle missing latestMessage gracefully', async () => {
+      const mockResult = {
+        conversation: {
+          id: 'conv-1',
+          customerId: 'c-1',
+          status: 'active'
+        },
+        customer: null,
+        messageCount: 0,
+        latestMessageId: null,
+        latestMessageContent: null,
+        latestMessageSenderType: null,
+        latestMessageCreatedAt: null,
+        latestMessageType: null
+      };
+      mockDb._queueResults([mockResult]);
+
+      const result = await service.getConversation('conv-1');
+
+      expect(result).toBeDefined();
+      expect(result?.latestMessage).toBeUndefined();
+      expect(result?.messageCount).toBe(0);
+      expect(result?.customer).toBeUndefined();
+    });
+
+    it('deleteConversation should delete messages, transfers, and conversation', async () => {
+      const result = await service.deleteConversation('conv-1');
+
+      expect(result).toBe(true);
+      // Verify all 3 delete calls: messages, transfers, conversations
+      expect(mockDb.delete).toHaveBeenCalledTimes(3);
+    });
+
+    it('updateStatus should delegate to updateConversation with reason ignored', async () => {
+      const mockUpdated = { id: 'conv-1', status: 'pending' };
+      mockDb._queueResults([mockUpdated]);
+
+      const result = await service.updateStatus('conv-1', 'pending', 'some reason');
+
+      expect(result.status).toBe('pending');
+      expect(mockDb.update).toHaveBeenCalled();
+    });
+
+    it('transferConversation should use default reason when none provided', async () => {
+      const mockTransfer = {
+        conversationId: 'conv-1',
+        fromTeamId: null,
+        toTeamId: 2,
+        transferReason: 'Manual transfer',
+        transferredBy: 'system',
+        transferType: 'manual'
+      };
+      mockDb._queueResults([mockTransfer]);
+
+      const result = await service.transferConversation('conv-1', null, 2);
+
+      expect(result.transferReason).toBe('Manual transfer');
+      expect(result.fromTeamId).toBeNull();
+    });
   });
 });
