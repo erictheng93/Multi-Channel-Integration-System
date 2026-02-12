@@ -31,7 +31,7 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
 
 // Mock Activity Service
 const mockLogActivity = vi.fn().mockResolvedValue(undefined);
-vi.mock('@/services/activity-service', () => ({
+vi.mock('@modules/activities', () => ({
   ActivityService: vi.fn().mockImplementation(() => ({
     logActivity: mockLogActivity
   }))
