@@ -39,16 +39,16 @@ export interface UseQRCodeOperationsReturn {
   qrGenerating: Ref<boolean>
 
   // QR Modal Operations
-  viewQR: (team: Team) => Promise<void>
+  viewQR: (_team: Team) => Promise<void>
   downloadQR: () => void
   closeQRModal: () => void
   onQRImageLoad: () => void
   onQRImageError: () => void
 
   // Preload Operations
-  startBackgroundPreload: (teams: Team[]) => void
+  startBackgroundPreload: (_teams: Team[]) => void
   stopBackgroundPreload: () => void
-  prefetchOnHover: (team: Team) => Promise<void>
+  prefetchOnHover: (_team: Team) => Promise<void>
 }
 
 // ==================== Composable ====================

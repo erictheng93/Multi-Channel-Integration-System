@@ -4,7 +4,7 @@
  * 测试统计数据计算的正确性
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useTeamStats } from '@/composables/team-management/useTeamStats'
 import { useTeamStore } from '@/stores/team'

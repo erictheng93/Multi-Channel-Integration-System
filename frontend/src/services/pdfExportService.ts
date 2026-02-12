@@ -234,10 +234,12 @@ export function buildExportHtml(
   const grouped = new Map<string, PdfExportMessage[]>()
   for (const msg of messages) {
     const convId = msg.conversationId
-    if (!grouped.has(convId)) {
-      grouped.set(convId, [])
+    const existing = grouped.get(convId)
+    if (existing) {
+      existing.push(msg)
+    } else {
+      grouped.set(convId, [msg])
     }
-    grouped.get(convId)!.push(msg)
   }
 
   // 排序每組內訊息（由舊到新）

@@ -379,7 +379,7 @@ export const useTeamStore = defineStore('team', () => {
     members.value = members.value.map(m => {
       if (memberIds.includes(m.id)) {
         const updated = { ...m }
-        if (updates.role !== undefined) updated.role = updates.role
+        if (updates.role !== undefined) {updated.role = updates.role}
         if (updates.isActive !== undefined) {
           updated.status = updates.isActive ? 'active' : 'inactive'
         }
@@ -582,12 +582,12 @@ export const useTeamStore = defineStore('team', () => {
     }
 
     // 更新欄位
-    if (data.name !== undefined) member.name = data.name
-    if (data.displayName !== undefined) member.name = data.displayName
-    if (data.email !== undefined) member.email = data.email
-    if (data.role !== undefined) member.role = data.role
-    if (data.status !== undefined) member.status = data.status
-    if (data.teams !== undefined) member.teams = data.teams
+    if (data.name !== undefined) {member.name = data.name}
+    if (data.displayName !== undefined) {member.name = data.displayName}
+    if (data.email !== undefined) {member.email = data.email}
+    if (data.role !== undefined) {member.role = data.role}
+    if (data.status !== undefined) {member.status = data.status}
+    if (data.teams !== undefined) {member.teams = data.teams}
 
     // 更新 updatedAt
     member.updatedAt = new Date().toISOString()
@@ -617,10 +617,10 @@ export const useTeamStore = defineStore('team', () => {
     }
 
     // 更新欄位
-    if (data.name !== undefined) team.name = data.name
-    if (data.description !== undefined) team.description = data.description
-    if (data.isActive !== undefined) team.isActive = data.isActive
-    if (data.memberCount !== undefined) team.memberCount = data.memberCount
+    if (data.name !== undefined) {team.name = data.name}
+    if (data.description !== undefined) {team.description = data.description}
+    if (data.isActive !== undefined) {team.isActive = data.isActive}
+    if (data.memberCount !== undefined) {team.memberCount = data.memberCount}
 
     // 更新 updatedAt
     team.updatedAt = new Date().toISOString()

@@ -4,7 +4,7 @@
  * Tests member list display, avatars, and remove button
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import MemberGrid from '@/components/team/member-section/MemberGrid.vue'
 import type { TeamMember } from '@/types'

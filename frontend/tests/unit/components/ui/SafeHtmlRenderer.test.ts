@@ -8,7 +8,7 @@
  * @module tests/unit/components/ui/SafeHtmlRenderer
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import type { VueWrapper } from '@vue/test-utils'
 import SafeHtmlRenderer from '@/components/ui/SafeHtmlRenderer.vue'

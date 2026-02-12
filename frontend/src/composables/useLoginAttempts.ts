@@ -23,12 +23,12 @@ export function useLoginAttempts(options: UseLoginAttemptsOptions = {}) {
   )
 
   const remainingSeconds = computed(() => {
-    if (!lockUntil.value) return 0
+    if (!lockUntil.value) {return 0}
     return Math.ceil((lockUntil.value - Date.now()) / 1000)
   })
 
   const lockMessage = computed(() => {
-    if (!isLocked.value) return null
+    if (!isLocked.value) {return null}
     return `帳號已鎖定，請在 ${remainingSeconds.value} 秒後重試`
   })
 

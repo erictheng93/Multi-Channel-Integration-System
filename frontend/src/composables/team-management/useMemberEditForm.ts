@@ -120,10 +120,10 @@ export interface UseMemberEditFormReturn {
   currentTeams: Ref<AgentTeamMembership[]>
   displayTeams: ComputedRef<AgentTeamMembership[]>
   hasTeamChanges: ComputedRef<boolean>
-  addTeamToPending: (teamId: number, teamName: string) => void
-  removeTeamFromPending: (teamId: number) => void
-  setPrimaryTeamPending: (teamId: number) => void
-  initTeams: (teams: AgentTeamMembership[]) => void
+  addTeamToPending: (_teamId: number, _teamName: string) => void
+  removeTeamFromPending: (_teamId: number) => void
+  setPrimaryTeamPending: (_teamId: number) => void
+  initTeams: (_teams: AgentTeamMembership[]) => void
 
   // Methods
   initForm: (_member: TeamMember) => void
@@ -339,7 +339,7 @@ export function useMemberEditForm(
    * Check if the member is the System Administration account
    */
   const isSystemAdmin = computed(() => {
-    if (!member.value) return false
+    if (!member.value) {return false}
     return (
       member.value.loginId === 'System Administration' ||
       member.value.email === 'admin@dacit.net'
@@ -368,15 +368,15 @@ export function useMemberEditForm(
    */
   const isFormValid = computed(() => {
     // Display name is required and 1-100 chars
-    if (!formData.value.displayName.trim()) return false
-    if (formData.value.displayName.length > 100) return false
+    if (!formData.value.displayName.trim()) {return false}
+    if (formData.value.displayName.length > 100) {return false}
 
     // Email is required and must be valid format
-    if (!formData.value.email.trim()) return false
-    if (!EMAIL_REGEX.test(formData.value.email)) return false
+    if (!formData.value.email.trim()) {return false}
+    if (!EMAIL_REGEX.test(formData.value.email)) {return false}
 
     // Role must be valid
-    if (!['admin', 'agent'].includes(formData.value.role)) return false
+    if (!['admin', 'agent'].includes(formData.value.role)) {return false}
 
     return true
   })
@@ -386,10 +386,10 @@ export function useMemberEditForm(
    */
   const isPasswordFormValid = computed(() => {
     // Password must be at least 6 characters
-    if (passwordForm.value.newPassword.length < 6) return false
+    if (passwordForm.value.newPassword.length < 6) {return false}
 
     // Passwords must match
-    if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) return false
+    if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {return false}
 
     return true
   })
@@ -510,7 +510,7 @@ export function useMemberEditForm(
    * Used by optimistic update pattern
    */
   const createSnapshot = (): MemberEditSnapshot | null => {
-    if (!member.value) return null
+    if (!member.value) {return null}
 
     return {
       originalData: { ...originalData.value },
@@ -701,7 +701,7 @@ export function useMemberEditForm(
         console.error('❌ [Background Save] Some operations failed:', errors)
         // Rollback and notify user
         rollbackToSnapshot(snapshot)
-        showError('部分儲存失敗', errors.join('\n') + '\n\n已恢復原狀態')
+        showError('部分儲存失敗', `${errors.join('\n')  }\n\n已恢復原狀態`)
       } else {
         console.log('✅ [Background Save] All operations completed successfully')
       }
@@ -727,7 +727,7 @@ export function useMemberEditForm(
    * 7. On failure: rollback & notify user
    */
   const saveChanges = async (): Promise<boolean> => {
-    if (!member.value) return false
+    if (!member.value) {return false}
 
     // ========== Step 1: Validate form (blocking) ==========
     if (!validateForm()) {
@@ -827,7 +827,7 @@ export function useMemberEditForm(
    * Reset member password
    */
   const resetPassword = async (): Promise<boolean> => {
-    if (!member.value || !canResetPassword.value) return false
+    if (!member.value || !canResetPassword.value) {return false}
 
     // Validate password form first
     if (!validatePasswordForm()) {

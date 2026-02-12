@@ -476,9 +476,9 @@ export function useApiMonitorController() {
    * Get response time classification
    */
   function getResponseTimeClass(time: number): ResponseTimeClass {
-    if (time < 200) return 'excellent'
-    if (time < 500) return 'good'
-    if (time < 1000) return 'fair'
+    if (time < 200) {return 'excellent'}
+    if (time < 500) {return 'good'}
+    if (time < 1000) {return 'fair'}
     return 'poor'
   }
 
@@ -486,9 +486,9 @@ export function useApiMonitorController() {
    * Get success rate classification
    */
   function getSuccessRateClass(rate: number): SuccessRateClass {
-    if (rate >= 98) return 'excellent'
-    if (rate >= 95) return 'good'
-    if (rate >= 90) return 'fair'
+    if (rate >= 98) {return 'excellent'}
+    if (rate >= 95) {return 'good'}
+    if (rate >= 90) {return 'fair'}
     return 'poor'
   }
 
@@ -496,7 +496,7 @@ export function useApiMonitorController() {
    * Format timestamp
    */
   function formatTime(date: Date | undefined): string {
-    if (!date) return '未知'
+    if (!date) {return '未知'}
 
     return new Intl.DateTimeFormat('zh-TW', {
       hour: '2-digit',

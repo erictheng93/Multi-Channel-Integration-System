@@ -60,7 +60,7 @@ vi.mock('@/services/qrPreloadService', () => ({
 
 describe('useQRCodeOperations', () => {
   let operations: ReturnType<typeof useQRCodeOperations>
-  let mockQRCodeStore: any
+  let _mockQRCodeStore: any
   let mockFeatures: any
   let mockQRPreloadService: any
 
@@ -81,7 +81,7 @@ describe('useQRCodeOperations', () => {
     vi.clearAllMocks()
 
     // Get mock references - Use the singleton instance
-    mockQRCodeStore = mockStoreInstance
+    _mockQRCodeStore = mockStoreInstance
 
     const featuresModule = await import('@/config/features')
     mockFeatures = featuresModule as any

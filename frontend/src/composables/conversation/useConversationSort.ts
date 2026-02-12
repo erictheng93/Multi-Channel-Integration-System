@@ -38,11 +38,11 @@ export interface ConversationSortComposable {
   /** 排序字段显示名称 */
   sortFieldLabel: Ref<string>
   /** 更新排序配置 */
-  updateSort: (field: SortField, order?: SortOrder) => void
+  updateSort: (_field: SortField, _order?: SortOrder) => void
   /** 切换排序方向 */
   toggleSortOrder: () => void
   /** 应用排序到对话列表 */
-  applySortToConversations: (conversations: Conversation[]) => Conversation[]
+  applySortToConversations: (_conversations: Conversation[]) => Conversation[]
 }
 
 /**

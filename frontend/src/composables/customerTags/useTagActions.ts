@@ -39,8 +39,8 @@ export function useTagActions(
   formData: Ref<{ name: string; color: string; description: string }>,
   editingTag: Ref<Tag | null>,
   deletingTag: Ref<Tag | null>,
-  showSuccess: (title: string, message?: string, options?: any) => void,
-  showError: (title: string, message?: string, options?: any) => void,
+  showSuccess: (_title: string, _message?: string, _options?: any) => void,
+  showError: (_title: string, _message?: string, _options?: any) => void,
   closeModalsCallback: () => void,
   cancelDeleteCallback: () => void
 ) {
@@ -65,7 +65,7 @@ export function useTagActions(
    */
   const optimisticUpdateTag = (id: number, updates: Partial<Tag>): Tag | null => {
     const index = store.tags.findIndex((t: Tag) => t.id === id)
-    if (index === -1) return null
+    if (index === -1) {return null}
 
     const oldTag: Tag = { ...store.tags[index] }
     store.tags[index] = { ...store.tags[index], ...updates }
@@ -78,7 +78,7 @@ export function useTagActions(
    */
   const optimisticDeleteTag = (id: number): Tag | null => {
     const index = store.tags.findIndex((t: Tag) => t.id === id)
-    if (index === -1) return null
+    if (index === -1) {return null}
 
     const deletedTag: Tag = store.tags[index]
     store.tags.splice(index, 1)
@@ -255,7 +255,7 @@ export function useTagActions(
    * Uses optimistic UI update with rollback on failure
    */
   const executeDelete = async () => {
-    if (!deletingTag.value) return
+    if (!deletingTag.value) {return}
 
     const tagToDelete = deletingTag.value
     const tagName = tagToDelete.name
@@ -292,7 +292,7 @@ export function useTagActions(
    * Deletes multiple tags in parallel with optimistic UI updates
    */
   const executeBulkDelete = async (selectedTagIds: number[], clearSelectionCallback: () => void, closeBulkModalCallback: () => void) => {
-    if (selectedTagIds.length === 0) return
+    if (selectedTagIds.length === 0) {return}
 
     const tagIdsToDelete = [...selectedTagIds]
     const tagCount = tagIdsToDelete.length

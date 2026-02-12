@@ -4,7 +4,7 @@
  * 测试分页控制组件的渲染和交互行为
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PaginationControls from '@/components/reports/dashboard/PaginationControls.vue'
 

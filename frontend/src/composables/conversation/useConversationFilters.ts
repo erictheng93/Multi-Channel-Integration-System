@@ -29,11 +29,11 @@ export interface ConversationFiltersComposable {
   /** 是否有活动的筛选条件 */
   hasActiveFilters: Ref<boolean>
   /** 更新单个筛选条件 */
-  updateFilter: <K extends keyof ConversationFilters>(key: K, value: ConversationFilters[K]) => void
+  updateFilter: <K extends keyof ConversationFilters>(_key: K, _value: ConversationFilters[K]) => void
   /** 更新标签筛选 */
-  updateTagFilter: (tagIds: number[]) => void
+  updateTagFilter: (_tagIds: number[]) => void
   /** 切换标签筛选状态 */
-  toggleTagFilter: (tagId: number) => void
+  toggleTagFilter: (_tagId: number) => void
   /** 清除标签筛选 */
   clearTagFilter: () => void
   /** 清除所有筛选条件 */
@@ -41,7 +41,7 @@ export interface ConversationFiltersComposable {
   /** 重置到默认筛选 */
   resetToDefaults: () => void
   /** 获取 API 查询参数 */
-  getApiFilters: (currentAgentId?: string) => Record<string, unknown>
+  getApiFilters: (_currentAgentId?: string) => Record<string, unknown>
 }
 
 /**

@@ -71,7 +71,7 @@ export interface NewMessageNotificationReturn {
   /** 隐藏通知 */
   hide: () => void
   /** 处理滚动事件 (自动隐藏) */
-  handleScroll: (isAtBottom: boolean) => void
+  handleScroll: (_isAtBottom: boolean) => void
 }
 
 /**

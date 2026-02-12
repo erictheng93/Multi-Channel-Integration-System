@@ -21,7 +21,7 @@ describe('ReportRow.vue', () => {
     getFormatLabel: vi.fn(() => 'JSON'),
     formatRelativeTime: vi.fn(() => '5 分鐘前'),
     formatFileSize: vi.fn(() => '1.2 MB'),
-    truncateText: vi.fn((text, length) => text.length > length ? text.substring(0, length) + '...' : text)
+    truncateText: vi.fn((text, length) => text.length > length ? `${text.substring(0, length)  }...` : text)
   }
 
   const mockReport: ReportBase = {
@@ -84,7 +84,7 @@ describe('ReportRow.vue', () => {
     })
 
     it('应该截断长描述文本', () => {
-      const wrapper = mount(ReportRow, {
+      const _wrapper = mount(ReportRow, {
         props: {
           report: mockReport,
           ...mockHelpers

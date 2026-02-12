@@ -10,7 +10,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { VueWrapper } from '@vue/test-utils'
 import { mount } from '@vue/test-utils'
-import { nextTick } from 'vue'
 import ConversationHeader from '@/components/conversation-list/ConversationHeader.vue'
 
 // Mock sub-components

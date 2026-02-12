@@ -32,8 +32,8 @@ interface MockConnection {
 // ===== Mock Setup =====
 
 // Store for state change callback
-let stateChangeCallback: ((state: ConnectionState) => void) | null = null
-let messageCallback: ((message: unknown) => void) | null = null
+let stateChangeCallback: ((_state: ConnectionState) => void) | null = null
+let _messageCallback: ((_message: unknown) => void) | null = null
 
 // Mock connection object
 const mockConnection: MockConnection = {
@@ -43,7 +43,7 @@ const mockConnection: MockConnection = {
   connect: vi.fn().mockResolvedValue(undefined),
   disconnect: vi.fn(),
   reconnect: vi.fn().mockResolvedValue(undefined),
-  onMessage: vi.fn((cb) => { messageCallback = cb }),
+  onMessage: vi.fn((cb) => { _messageCallback = cb }),
   onStateChange: vi.fn((cb) => { stateChangeCallback = cb }),
   onError: vi.fn()
 }
@@ -94,7 +94,7 @@ describe('useWebSocketIntegration', () => {
 
     // Reset callbacks
     stateChangeCallback = null
-    messageCallback = null
+    _messageCallback = null
 
     // Reset mock connection state
     mockConnection.messages.value = []

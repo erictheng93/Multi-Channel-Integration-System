@@ -62,26 +62,26 @@ export interface UseMemberOperationsReturn {
   passwordResetLoading: Ref<boolean>
   passwordMismatch: ComputedRef<boolean>
   isPasswordFormValid: ComputedRef<boolean>
-  openPasswordResetModal: (member: TeamMember) => void
+  openPasswordResetModal: (_member: TeamMember) => void
   closePasswordResetModal: () => void
   submitPasswordReset: () => Promise<void>
 
   // Member Operations
-  updateMemberRole: (memberId: string, role: string) => Promise<void>
-  toggleMemberStatus: (member: TeamMember) => Promise<void>
-  removeMember: (member: TeamMember) => Promise<void>
+  updateMemberRole: (_memberId: string, _role: string) => Promise<void>
+  toggleMemberStatus: (_member: TeamMember) => Promise<void>
+  removeMember: (_member: TeamMember) => Promise<void>
 
   // 🆕 Selection Mode (批量操作)
   isSelectionMode: Ref<boolean>
   selectedMemberIds: Ref<Set<string>>
   selectedCount: ComputedRef<number>
   toggleSelectionMode: () => void
-  toggleMemberSelection: (memberId: string) => void
-  selectAllMembers: (currentUserId: string) => void
+  toggleMemberSelection: (_memberId: string) => void
+  selectAllMembers: (_currentUserId: string) => void
   deselectAllMembers: () => void
 
   // 🆕 Bulk Operations
-  bulkDeleteMembers: (currentUserId: string) => Promise<void>
+  bulkDeleteMembers: (_currentUserId: string) => Promise<void>
 
   // 🆕 Bulk Edit Modal
   bulkEditModal: Ref<boolean>
@@ -90,7 +90,7 @@ export interface UseMemberOperationsReturn {
   isBulkEditFormValid: ComputedRef<boolean>
   openBulkEditModal: () => void
   closeBulkEditModal: () => void
-  submitBulkEdit: (currentUserId: string) => Promise<void>
+  submitBulkEdit: (_currentUserId: string) => Promise<void>
 }
 
 // ==================== Composable ====================

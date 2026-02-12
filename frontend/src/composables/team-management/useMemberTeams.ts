@@ -39,16 +39,16 @@ export interface UseMemberTeamsReturn {
   teamOperationStatus: Ref<TeamOperationStatus | null>
 
   /** Load member's current team memberships */
-  loadMemberTeams: (memberId: string) => Promise<void>
+  loadMemberTeams: (_memberId: string) => Promise<void>
 
   /** Add member to a team */
-  addToTeam: (memberId: string, teamId: number) => Promise<boolean>
+  addToTeam: (_memberId: string, _teamId: number) => Promise<boolean>
 
   /** Remove member from a team (with confirmation) */
-  removeFromTeam: (memberId: string, teamId: number) => Promise<boolean>
+  removeFromTeam: (_memberId: string, _teamId: number) => Promise<boolean>
 
   /** Set a team as the member's primary team */
-  setPrimaryTeam: (memberId: string, teamId: number) => Promise<boolean>
+  setPrimaryTeam: (_memberId: string, _teamId: number) => Promise<boolean>
 }
 
 export function useMemberTeams(allTeams: Ref<Team[]>): UseMemberTeamsReturn {
@@ -82,7 +82,7 @@ export function useMemberTeams(allTeams: Ref<Team[]>): UseMemberTeamsReturn {
    */
   const availableTeamsToJoin: ComputedRef<Team[]> = computed(() => {
     // Guard: 確保 allTeams.value 存在，避免 undefined.filter() 錯誤
-    if (!allTeams.value) return []
+    if (!allTeams.value) {return []}
     const memberTeamIds = memberTeams.value.map(t => t.teamId)
     return allTeams.value.filter(team => !memberTeamIds.includes(team.id))
   })
@@ -125,7 +125,7 @@ export function useMemberTeams(allTeams: Ref<Team[]>): UseMemberTeamsReturn {
 
     // Optimistic update: add team to local state
     const newTeamMembership: AgentTeamMembership = {
-      teamId: teamId,
+      teamId,
       teamName: teamToAdd.name,
       roleInTeam: 'member',
       isPrimary: memberTeams.value.length === 0 // First team becomes primary

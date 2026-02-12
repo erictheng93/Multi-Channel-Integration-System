@@ -171,7 +171,7 @@ describe('useMemberTeams', () => {
 
   describe('availableTeamsToJoin', () => {
     it('should compute available teams correctly', async () => {
-      const { memberTeams, availableTeamsToJoin, loadMemberTeams } = useMemberTeams(mockAllTeams)
+      const { memberTeams: _memberTeams, availableTeamsToJoin, loadMemberTeams } = useMemberTeams(mockAllTeams)
 
       await loadMemberTeams('member-123')
       await nextTick()

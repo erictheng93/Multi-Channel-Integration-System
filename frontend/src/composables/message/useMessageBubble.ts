@@ -65,9 +65,9 @@ export interface MessageBubbleProps {
 export function useMessageBubble(
   props: Ref<MessageBubbleProps>,
   emit: MessageActionEmitters & {
-    preview: (message: Message) => void
-    'image-load': (message: Message) => void
-    'image-error': (message: Message) => void
+    preview: (_message: Message) => void
+    'image-load': (_message: Message) => void
+    'image-error': (_message: Message) => void
   }
 ) {
   // ==================== Sub-Composables ====================

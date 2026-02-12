@@ -30,7 +30,7 @@ const MockIcon = {
 
 // Mock functions
 const mockGetActivityIcon = vi.fn(() => MockIcon)
-const mockFormatTime = vi.fn((date: Date) => '5分钟前')
+const mockFormatTime = vi.fn((_date: Date) => '5分钟前')
 
 // Mock activities
 const mockActivities: Activity[] = [

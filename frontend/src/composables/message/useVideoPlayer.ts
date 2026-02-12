@@ -15,7 +15,7 @@ import type { FileAttachment } from './useMessageAttachment'
  */
 export interface VideoPlayerProps {
   /** Optional download function for video attachments */
-  downloadAttachment?: (attachment: FileAttachment) => void
+  downloadAttachment?: (_attachment: FileAttachment) => void
 }
 
 /**

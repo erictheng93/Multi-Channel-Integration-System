@@ -4,7 +4,7 @@
  * @module tests/unit/components/dashboard/WelcomeSection.test
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import WelcomeSection from '@/components/dashboard/WelcomeSection.vue'
 

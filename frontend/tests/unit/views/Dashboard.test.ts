@@ -61,10 +61,10 @@ const createMockActivity = (id: string, priority: 'high' | 'medium' | 'low' = 'm
 })
 
 // Mock 依賴
-let mockConversations = ref<Conversation[]>([])
-let mockActivities = ref<Activity[]>([])
-let mockIsActivityStreamConnected = ref(false)
-let mockActivityConnectionState = ref<'connected' | 'connecting' | 'reconnecting' | 'disconnected' | 'error'>('disconnected')
+const mockConversations = ref<Conversation[]>([])
+const mockActivities = ref<Activity[]>([])
+const mockIsActivityStreamConnected = ref(false)
+const mockActivityConnectionState = ref<'connected' | 'connecting' | 'reconnecting' | 'disconnected' | 'error'>('disconnected')
 
 vi.mock('@/composables/useConversations', () => {
   const { ref, computed } = require('vue')
@@ -164,9 +164,9 @@ vi.mock('@/composables/dashboard/useDashboardActivities', () => {
           const now = new Date()
           const diff = now.getTime() - new Date(date).getTime()
           const minutes = Math.floor(diff / 60000)
-          if (minutes < 60) return `${minutes} 分鐘前`
+          if (minutes < 60) {return `${minutes} 分鐘前`}
           const hours = Math.floor(minutes / 60)
-          if (hours < 24) return `${hours} 小時前`
+          if (hours < 24) {return `${hours} 小時前`}
           return `${Math.floor(hours / 24)} 天前`
         },
         connect: vi.fn(),
@@ -570,7 +570,7 @@ describe('Dashboard.vue', () => {
     })
 
     it('應該顯示重要活動（高優先級和中優先級）', async () => {
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
+      const _twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000)
       mockActivities.value = [
         { ...createMockActivity('1', 'high'), createdAt: new Date() },
         { ...createMockActivity('2', 'medium'), createdAt: new Date() },
@@ -804,7 +804,7 @@ describe('Dashboard.vue', () => {
 
       // 驗證組件已掛載
       expect(wrapper.vm).toBeTruthy()
-      const vmBeforeUnmount = wrapper.vm
+      const _vmBeforeUnmount = wrapper.vm
 
       // 卸載組件
       wrapper.unmount()

@@ -332,7 +332,7 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
    */
   const handleAttachmentPreview = (
     attachment: FileAttachment,
-    onPreview?: (message: Message) => void
+    onPreview?: (_message: Message) => void
   ) => {
     console.log('🖼️ [useMessageAttachment] Attachment preview requested:', attachment)
     if (onPreview) {

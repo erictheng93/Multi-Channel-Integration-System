@@ -15,7 +15,7 @@ import type { Ref } from 'vue'
  */
 export interface ConversationController {
   // No close/reopen methods needed
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**

@@ -65,7 +65,7 @@ vi.mock('@/composables/useConfirmDialog', () => ({
 /**
  * Create a router with the nested settings routes for testing
  */
-function createTestRouter(initialRoute = '/settings/general') {
+function createTestRouter(_initialRoute = '/settings/general') {
   return createRouter({
     history: createMemoryHistory(),
     routes: [

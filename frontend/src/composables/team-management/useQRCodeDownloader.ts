@@ -31,7 +31,7 @@ export interface UseQRCodeDownloaderReturn {
    * Download QR Code card with Flex Bubble design
    * @param options - Download configuration
    */
-  downloadQRCodeCard: (options: {
+  downloadQRCodeCard: (_options: {
     qrCodeUrl: string
     teamName: string
     scale?: number

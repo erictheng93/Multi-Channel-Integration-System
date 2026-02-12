@@ -37,15 +37,15 @@ export interface ConversationCacheComposable {
   /** 缓存未命中次数 */
   cacheMisses: Ref<number>
   /** 获取缓存数据 */
-  getCachedData: (key: string) => Promise<Conversation[] | null>
+  getCachedData: (_key: string) => Promise<Conversation[] | null>
   /** 设置缓存数据 */
-  setCachedData: (key: string, data: Conversation[], ttl?: number) => Promise<void>
+  setCachedData: (_key: string, _data: Conversation[], _ttl?: number) => Promise<void>
   /** 使缓存失效 */
-  invalidateCache: (key?: string) => Promise<void>
+  invalidateCache: (_key?: string) => Promise<void>
   /** 清除所有缓存 */
   clearAllCache: () => Promise<void>
   /** 生成缓存键 */
-  generateCacheKey: (filters: ConversationFilters, page: number) => string
+  generateCacheKey: (_filters: ConversationFilters, _page: number) => string
   /** 重置统计数据 */
   resetStats: () => void
 }

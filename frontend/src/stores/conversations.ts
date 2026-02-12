@@ -62,9 +62,9 @@ export const useConversationsStore = defineStore('conversations', () => {
   const syncStatus = computed<SyncStatus>(() => {
     // 映射全局 WebSocket 状态到本地状态（向后兼容）
     const globalState = wsStore.connectionState
-    if (globalState === 'connected') return 'connected'
-    if (globalState === 'connecting' || globalState === 'reconnecting') return 'connecting'
-    if (globalState === 'error') return 'error'
+    if (globalState === 'connected') {return 'connected'}
+    if (globalState === 'connecting' || globalState === 'reconnecting') {return 'connecting'}
+    if (globalState === 'error') {return 'error'}
     return 'disconnected'
   })
 
@@ -1444,7 +1444,7 @@ export const useConversationsStore = defineStore('conversations', () => {
           const assignedTeamName = data?.assignedTeamName as string | undefined
 
           const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam'>> = {}
-          if (status) updates.status = status as Conversation['status']
+          if (status) {updates.status = status as Conversation['status']}
           if (assignedTeamId !== undefined) {
             updates.assignedTeamId = assignedTeamId
             if (assignedTeamId) {
@@ -1633,7 +1633,7 @@ export const useConversationsStore = defineStore('conversations', () => {
               console.log(`🔄 [ConversationsStore] Reconciled pending → real conversation`, {
                 pendingId: (removedPending as any)?.id,
                 realConversationId: conversationId,
-                lineUserId: liffMetadata?.lineUserId?.substring(0, 10) + '...'
+                lineUserId: `${liffMetadata?.lineUserId?.substring(0, 10)  }...`
               })
             }
 
@@ -1649,7 +1649,7 @@ export const useConversationsStore = defineStore('conversations', () => {
                 if (duplicatePendingIndex !== -1) {
                   console.log(`🚫 [ConversationsStore] Ignoring duplicate pending conversation`, {
                     conversationId,
-                    lineUserId: liffMetadata.lineUserId.substring(0, 10) + '...'
+                    lineUserId: `${liffMetadata.lineUserId.substring(0, 10)  }...`
                   })
                   break // 忽略重複的 pending 對話
                 }
@@ -1703,7 +1703,7 @@ export const useConversationsStore = defineStore('conversations', () => {
                   conversationId,
                   teamId: data?.toTeamId,
                   customerName,
-                  lineUserId: liffMetadata.lineUserId?.substring(0, 10) + '...'
+                  lineUserId: `${liffMetadata.lineUserId?.substring(0, 10)  }...`
                 })
               }
 
@@ -1784,7 +1784,7 @@ export const useConversationsStore = defineStore('conversations', () => {
             const assignedTeamName = data?.assignedTeamName as string | undefined
 
             const updates: Partial<Pick<Conversation, 'status' | 'assignedTeamId' | 'assignedTeam'>> = {}
-            if (status) updates.status = status as Conversation['status']
+            if (status) {updates.status = status as Conversation['status']}
             if (assignedTeamId !== undefined) {
               updates.assignedTeamId = assignedTeamId
               if (assignedTeamId) {
@@ -1840,9 +1840,9 @@ export const useConversationsStore = defineStore('conversations', () => {
     try {
       // Build query params respecting activeFilters so polling doesn't overwrite filtered views
       const cleanFilters: Record<string, unknown> = {}
-      if (activeFilters.value.status) cleanFilters.status = activeFilters.value.status
-      if (activeFilters.value.platform) cleanFilters.platform = activeFilters.value.platform
-      if (activeFilters.value.teamId) cleanFilters.teamId = activeFilters.value.teamId
+      if (activeFilters.value.status) {cleanFilters.status = activeFilters.value.status}
+      if (activeFilters.value.platform) {cleanFilters.platform = activeFilters.value.platform}
+      if (activeFilters.value.teamId) {cleanFilters.teamId = activeFilters.value.teamId}
 
       const response = await conversationApi.list({
         page: 1,
@@ -1909,7 +1909,7 @@ export const useConversationsStore = defineStore('conversations', () => {
         conversations.value.splice(index, 1)
         console.log(`🧹 [ConversationsStore] Cleaned up stale pending conversation`, {
           conversationId: (removed as any)?.id,
-          lineUserId: (removed as any)?._liffMetadata?.lineUserId?.substring(0, 10) + '...',
+          lineUserId: `${(removed as any)?._liffMetadata?.lineUserId?.substring(0, 10)  }...`,
           age: `${Math.round((now - ((removed as any)?._liffMetadata?.scannedAt || 0)) / 1000)}s`
         })
       })

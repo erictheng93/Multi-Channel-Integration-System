@@ -49,7 +49,7 @@ export interface ListSortingControls<T extends string> {
   sortState: Ref<SortState<T>>
   sortOptions: SortOption<T>[]
   currentSortLabel: ComputedRef<string>
-  setSortField: (field: T) => void
+  setSortField: (_field: T) => void
   toggleSortOrder: () => void
 }
 
@@ -58,8 +58,8 @@ export interface SortModeControls {
   sortMode: Ref<SortMode>
   customOrder: Ref<string[]>
   isCustomMode: ComputedRef<boolean>
-  setSortMode: (mode: SortMode) => void
-  updateCustomOrder: (ids: string[]) => void
+  setSortMode: (_mode: SortMode) => void
+  updateCustomOrder: (_ids: string[]) => void
 }
 
 export interface UseTeamManagementControllerReturn {

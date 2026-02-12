@@ -4,7 +4,7 @@
  * @module tests/unit/composables/useMessageActions
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { useMessageActions } from '@/composables/message/useMessageActions'
 import type { Message } from '@/types'

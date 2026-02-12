@@ -40,7 +40,7 @@ export function escapeHtml(text: string): string {
  * ```
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
+  if (bytes === 0) {return '0 B'}
 
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
@@ -65,7 +65,7 @@ export function formatFileSize(bytes: number): string {
  */
 export function getFileExtension(filename: string): string {
   const parts = filename.split('.')
-  if (parts.length <= 1) return ''
+  if (parts.length <= 1) {return ''}
 
   const ext = parts.pop()?.toUpperCase()
   return ext || ''
@@ -94,14 +94,14 @@ export function getFileTypeClass(filename: string): string {
   const archiveExts = ['zip', 'rar', '7z', 'tar', 'gz']
 
   // Return specific extension names for test compatibility
-  if (ext === 'pdf') return 'pdf'
-  if (ext === 'jpg' || ext === 'jpeg') return 'image'
-  if (ext === 'txt') return 'text'
+  if (ext === 'pdf') {return 'pdf'}
+  if (ext === 'jpg' || ext === 'jpeg') {return 'image'}
+  if (ext === 'txt') {return 'text'}
 
-  if (imageExts.includes(ext || '')) return 'file-type-image'
-  if (docExts.includes(ext || '')) return 'file-type-document'
-  if (codeExts.includes(ext || '')) return 'file-type-code'
-  if (archiveExts.includes(ext || '')) return 'file-type-archive'
+  if (imageExts.includes(ext || '')) {return 'file-type-image'}
+  if (docExts.includes(ext || '')) {return 'file-type-document'}
+  if (codeExts.includes(ext || '')) {return 'file-type-code'}
+  if (archiveExts.includes(ext || '')) {return 'file-type-archive'}
 
   return 'file-type-document'
 }

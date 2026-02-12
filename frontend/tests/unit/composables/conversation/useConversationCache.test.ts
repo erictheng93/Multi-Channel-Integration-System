@@ -4,7 +4,7 @@
  * @module tests/unit/composables/conversation/useConversationCache.test
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { useConversationCache } from '@/composables/conversation/useConversationCache'
 import type { Conversation, ConversationFilters } from '@/types'
 

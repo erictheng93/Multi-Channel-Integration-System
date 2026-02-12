@@ -134,7 +134,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
    * 报表完成率百分比
    */
   const completionRate = computed(() => {
-    if (stats.totalReports === 0) return 0
+    if (stats.totalReports === 0) {return 0}
     return Math.round((stats.completedReports / stats.totalReports) * 100)
   })
 
@@ -448,7 +448,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
    * 下载报表
    */
   async function downloadReport(report: ReportBase) {
-    if (!canDownload(report)) return
+    if (!canDownload(report)) {return}
 
     try {
       const downloadInfo = await ReportsAPI.downloadReport(report.id)
@@ -481,7 +481,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
       const reportIndex = reports.value.findIndex(r => r.id === reportId)
       if (reportIndex !== -1) {
         const deletedReport = reports.value[reportIndex]
-        if (!deletedReport) return false // 類型守卫：確保 deletedReport 存在
+        if (!deletedReport) {return false} // 類型守卫：確保 deletedReport 存在
 
         reports.value.splice(reportIndex, 1)
 
@@ -717,7 +717,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
    * 截断文本
    */
   function truncateText(text: string, length: number): string {
-    if (text.length <= length) return text
+    if (text.length <= length) {return text}
     return `${text.substring(0, length)}...`
   }
 

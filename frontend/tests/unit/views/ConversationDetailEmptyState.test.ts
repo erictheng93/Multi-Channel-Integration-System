@@ -190,7 +190,7 @@ const EmptyStateTestComponent = {
     </div>
   `,
   setup() {
-    const { ref, watch, onUnmounted, computed } = require('vue')
+    const { ref, watch, onUnmounted, computed: _computed } = require('vue')
 
     const displayedMessages = mockDisplayedMessages
     const hasLoadedInitially = mockHasLoadedInitially

@@ -35,7 +35,7 @@ export type WebSocketConnectionState =
 /**
  * 事件处理器类型
  */
-export type EventHandler = (message: WebSocketMessage) => void
+export type EventHandler = (_message: WebSocketMessage) => void
 
 /**
  * 订阅 ID

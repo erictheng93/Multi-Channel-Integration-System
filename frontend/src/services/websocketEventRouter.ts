@@ -17,7 +17,7 @@ import type { WebSocketMessage } from './websocketClient'
 /**
  * 路由规则函数类型
  */
-export type RoutingRule = (message: WebSocketMessage) => string[]
+export type RoutingRule = (_message: WebSocketMessage) => string[]
 
 /**
  * 路由规则映射表

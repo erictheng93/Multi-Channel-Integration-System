@@ -15,7 +15,8 @@ export default [
       'vite.config.ts',
       'coverage/**/*',
       '.vite/**/*',
-      '**/*.timestamp-*'
+      '**/*.timestamp-*',
+      'scripts/**/*.cjs'
     ]
   },
   
@@ -23,6 +24,7 @@ export default [
   ...vue.configs['flat/recommended'],
   
   {
+    files: ['**/*.ts', '**/*.tsx', '**/*.vue', '**/*.js', '**/*.jsx'],
     languageOptions: {
       parser: vueParser,
       parserOptions: {
@@ -73,7 +75,19 @@ export default [
         HTMLButtonElement: 'readonly',
         HTMLImageElement: 'readonly',
         HTMLTextAreaElement: 'readonly',
+        HTMLVideoElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLSpanElement: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        CanvasRenderingContext2D: 'readonly',
         Element: 'readonly',
+        TextDecoder: 'readonly',
+        HTMLSelectElement: 'readonly',
+        HTMLOptionElement: 'readonly',
+        HTMLAnchorElement: 'readonly',
+        DataTransfer: 'readonly',
+        Storage: 'readonly',
+        IdleDeadline: 'readonly',
         // Storage and utilities
         localStorage: 'readonly',
         sessionStorage: 'readonly',
@@ -170,10 +184,46 @@ export default [
           'conversation_transferred',
           'priority_changed',
           'customer_responded',
-          'task_reminder'
+          'task_reminder',
+          // 允許 ReportType 使用 snake_case (與後端 API 保持一致)
+          'conversation_summary',
+          'agent_performance',
+          'team_analytics',
+          'customer_satisfaction',
+          'platform_usage',
+          'message_statistics',
+          'response_time_analysis',
+          'workload_distribution',
+          'system_health',
+          'cost_analysis',
+          'sla_compliance',
+          'anomaly_detection',
+          'audit_trail',
+          'resource_utilization',
+          'trend_forecast',
+          'customer_insights',
+          'channel_integration',
+          'goal_achievement',
+          'automation_effectiveness',
+          'security_risk',
+          'knowledge_base',
+          'call_quality',
+          'executive_summary',
+          // 允許資料庫欄位名稱使用 snake_case (與後端 schema 保持一致)
+          'file_attachments'
         ]
       }]
     },
+  },
+
+  // Test files overrides - relaxed rules for test code
+  {
+    files: ['tests/**/*', 'src/**/*.test.ts', 'src/**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      'camelcase': 'off'
+    }
   },
   
   // Vue files specific overrides

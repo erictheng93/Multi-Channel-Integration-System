@@ -32,7 +32,7 @@ describe('API Proxy Configuration', () => {
       },
       {
         env: 'production', 
-        expectedURL: '' + getBackendUrl() + '',
+        expectedURL: `${  getBackendUrl()  }`,
         description: '生產環境應使用實際域名'
       }
     ]
@@ -145,7 +145,7 @@ describe('Proxy Configuration Validation', () => {
     // 驗證 Cloudflare Pages 重定向規則格式
     const redirectRules = [
       '/*    /index.html   200',
-      '/api/*  ' + getBackendUrl() + '/api/:splat  200'
+      `/api/*  ${  getBackendUrl()  }/api/:splat  200`
     ]
 
     redirectRules.forEach(rule => {
@@ -156,7 +156,7 @@ describe('Proxy Configuration Validation', () => {
     // 驗證 API 代理規則
     const apiRule = redirectRules[1]
     expect(apiRule).toContain('/api/*')
-    expect(apiRule).toContain('' + getBackendUrl() + '')
+    expect(apiRule).toContain(`${  getBackendUrl()  }`)
     expect(apiRule).toContain(':splat')
   })
 })

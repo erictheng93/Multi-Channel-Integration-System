@@ -11,7 +11,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { nextTick } from 'vue'
 import { useReportDashboard } from '@/composables/useReportDashboard'
 import ReportsAPI from '@/api/reports'
 import type { ReportBase } from '@/types/reports'
@@ -36,8 +35,8 @@ vi.mock('@/api/reports', () => ({
       return map[type] || type
     }),
     formatFileSize: vi.fn((bytes) => {
-      if (bytes < 1024) return `${bytes}B`
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)}KB`
+      if (bytes < 1024) {return `${bytes}B`}
+      if (bytes < 1024 * 1024) {return `${(bytes / 1024).toFixed(2)}KB`}
       return `${(bytes / (1024 * 1024)).toFixed(2)}MB`
     })
   }

@@ -107,7 +107,7 @@ export function useConversationWebSocket(
   // Phase B5: Message handler for conversation-specific channel
   const handleConversationMessage = (message: WebSocketMessage): void => {
     const conversationId = currentConversationId.value
-    if (!conversationId) return
+    if (!conversationId) {return}
 
     console.log(`[useConversationWebSocket] Received message:`, message.type)
 

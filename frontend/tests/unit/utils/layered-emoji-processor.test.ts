@@ -6,7 +6,7 @@
  * @module tests/unit/utils/layered-emoji-processor
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Import the actual functions (not mocked)
 import {

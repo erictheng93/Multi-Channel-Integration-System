@@ -49,9 +49,9 @@ export interface UseSelectMemberToTeamReturn {
   canSubmit: ComputedRef<boolean>
 
   // Methods
-  openModal: (teamId: number, teamName: string, currentMemberIds?: string[]) => Promise<void>
+  openModal: (_teamId: number, _teamName: string, _currentMemberIds?: string[]) => Promise<void>
   closeModal: () => void
-  toggleMemberSelection: (memberId: string) => void
+  toggleMemberSelection: (_memberId: string) => void
   selectAll: () => void
   clearSelection: () => void
   submitAddMembers: () => Promise<boolean>

@@ -20,7 +20,7 @@ describe('RecentActivityWidget.vue', () => {
     return icons[status] || '❓'
   })
 
-  const mockFormatRelativeTime = vi.fn((time) => {
+  const mockFormatRelativeTime = vi.fn((_time) => {
     // 简化的时间格式化
     return '5 分鐘前'
   })
