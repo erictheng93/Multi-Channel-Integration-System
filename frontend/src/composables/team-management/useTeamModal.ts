@@ -33,10 +33,10 @@ export interface UseTeamModalReturn {
   cancelEdit: () => void
 
   /** Register a callback to run when modal opens */
-  onModalOpen: (callback: () => void | Promise<void>) => void
+  onModalOpen: (_callback: () => void | Promise<void>) => void
 
   /** Register a callback to run when modal closes */
-  onModalClose: (callback: () => void | Promise<void>) => void
+  onModalClose: (_callback: () => void | Promise<void>) => void
 }
 
 export function useTeamModal(): UseTeamModalReturn {
@@ -44,8 +44,8 @@ export function useTeamModal(): UseTeamModalReturn {
   const isEditing = ref<boolean>(false) as Ref<boolean>
 
   // Lifecycle callbacks
-  let modalOpenCallbacks: Array<() => void | Promise<void>> = []
-  let modalCloseCallbacks: Array<() => void | Promise<void>> = []
+  const modalOpenCallbacks: Array<() => void | Promise<void>> = []
+  const modalCloseCallbacks: Array<() => void | Promise<void>> = []
 
   /**
    * Open the modal and execute registered callbacks

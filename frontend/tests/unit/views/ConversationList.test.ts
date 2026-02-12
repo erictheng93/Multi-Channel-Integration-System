@@ -16,14 +16,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { nextTick, ref, computed } from 'vue'
+import { nextTick, ref } from 'vue'
 import ConversationList from '@/views/ConversationList.vue'
 import { useConversationsStore } from '@/stores/conversations'
 import { useAuthStore } from '@/stores/auth'
 import type { Conversation } from '@/types'
 
 // 創建測試用的 conversations ref
-let mockConversations = ref<Conversation[]>([])
+const mockConversations = ref<Conversation[]>([])
 let conversationsStore: ReturnType<typeof useConversationsStore>
 
 // Mock 依賴
@@ -43,7 +43,7 @@ vi.mock('@/composables/useConversations', () => {
     useConversations: () => {
       // 使用全局的 mockConversations
       const conversations = computed(() => {
-        if (typeof mockConversations !== 'undefined' && mockConversations.value) {
+        if (typeof mockConversations.value !== 'undefined' && mockConversations.value) {
           return mockConversations.value
         }
         return []
@@ -149,7 +149,7 @@ vi.mock('@/composables/conversation', () => {
       hasNetworkError: ref(false),
       // Computed
       conversations: computed(() => {
-        if (typeof mockConversations !== 'undefined' && mockConversations.value) {
+        if (typeof mockConversations.value !== 'undefined' && mockConversations.value) {
           return mockConversations.value
         }
         return []
@@ -1175,7 +1175,7 @@ describe('ConversationList.vue', () => {
         ]
         mockConversations.value = conversationsStore.conversations
 
-        const wrapper = mount(ConversationList, {
+        const _wrapper = mount(ConversationList, {
           global: {
             plugins: [pinia],
             stubs: commonStubs
@@ -1205,7 +1205,7 @@ describe('ConversationList.vue', () => {
         ]
         mockConversations.value = conversationsStore.conversations
 
-        const wrapper = mount(ConversationList, {
+        const _wrapper = mount(ConversationList, {
           global: {
             plugins: [pinia],
             stubs: commonStubs
@@ -1331,7 +1331,7 @@ describe('ConversationList.vue', () => {
 
         try {
           await conversationsStore.loadWithCache()
-        } catch (e) {
+        } catch (_e) {
           // Error is expected
         }
 
@@ -1352,10 +1352,10 @@ describe('ConversationList.vue', () => {
           configurable: true
         })
 
-        const loadMoreSpy = vi.spyOn(conversationsStore, 'loadMore')
+        const _loadMoreSpy = vi.spyOn(conversationsStore, 'loadMore')
           .mockResolvedValue(undefined)
 
-        const wrapper = mount(ConversationList, {
+        const _wrapper = mount(ConversationList, {
           global: {
             plugins: [pinia],
             stubs: commonStubs

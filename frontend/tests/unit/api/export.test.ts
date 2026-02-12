@@ -35,7 +35,7 @@ describe('Export API Module', () => {
     // Mock localStorage.getItem for auth token (vitest.setup.ts replaces localStorage with a mock)
     if (window.localStorage && typeof window.localStorage.getItem === 'function') {
       (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
-        if (key === 'token') return 'test-token-123'
+        if (key === 'token') {return 'test-token-123'}
         return null
       })
     }

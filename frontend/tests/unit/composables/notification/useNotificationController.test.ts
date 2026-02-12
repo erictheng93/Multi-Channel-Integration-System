@@ -45,14 +45,14 @@ vi.mock('@/api/notifications', () => ({
 }))
 
 describe('useNotificationController', () => {
-  let router: ReturnType<typeof createRouter>
+  let _router: ReturnType<typeof createRouter>
 
   beforeEach(() => {
     // Setup Pinia
     setActivePinia(createPinia())
 
     // Setup Router
-    router = createRouter({
+    _router = createRouter({
       history: createWebHistory(),
       routes: [
         { path: '/', component: { template: '<div>Home</div>' } },
@@ -180,7 +180,7 @@ describe('useNotificationController', () => {
       await controller.initialize()
 
       // Simulate WebSocket notification
-      const mockNotification = {
+      const _mockNotification = {
         id: '123',
         type: 'new_message' as const,
         title: 'Test',

@@ -25,7 +25,7 @@ describe('useDashboardStats', () => {
       const { systemApi } = await import('@/api/system')
 
       // Use a delayed promise to ensure we can check loading state
-      let resolvePromise: (value: any) => void
+      let resolvePromise: (_value: any) => void
       const delayedPromise = new Promise((resolve) => {
         resolvePromise = resolve
       })

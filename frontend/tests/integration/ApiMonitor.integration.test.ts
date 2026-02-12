@@ -91,7 +91,7 @@ describe('ApiMonitor Integration Tests', () => {
   })
 
   it('should load and display API status on mount', async () => {
-    const wrapper = mount(ApiMonitorRefactored, {
+    const _wrapper = mount(ApiMonitorRefactored, {
       global: {
         stubs: {
           AppLayout: {

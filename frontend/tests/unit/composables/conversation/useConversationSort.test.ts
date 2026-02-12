@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useConversationSort, type SortField, type SortOrder } from '@/composables/conversation/useConversationSort'
+import { useConversationSort } from '@/composables/conversation/useConversationSort'
 import type { Conversation } from '@/types'
 
 describe('useConversationSort', () => {

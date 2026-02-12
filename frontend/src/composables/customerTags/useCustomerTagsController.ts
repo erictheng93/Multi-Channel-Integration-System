@@ -170,7 +170,7 @@ export function useCustomerTagsController() {
   }
 
   const openBulkDeleteModal = () => {
-    if (selection.selectedTags.value.length === 0) return
+    if (selection.selectedTags.value.length === 0) {return}
     showBulkMenu.value = false
     showBulkDeleteModal.value = true
   }

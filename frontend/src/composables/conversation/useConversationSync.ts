@@ -55,15 +55,15 @@ export interface ConversationSyncComposable {
   /** 同步错误信息 */
   syncError: Ref<string | null>
   /** 启动同步服务 */
-  startSync: (onData?: (data: Conversation[]) => void) => Promise<void>
+  startSync: (_onData?: (_data: Conversation[]) => void) => Promise<void>
   /** 停止同步服务 */
   stopSync: () => void
   /** 手动刷新 */
   refresh: () => Promise<void>
   /** 设置数据回调 */
-  onDataUpdate: (callback: (data: Conversation[]) => void) => void
+  onDataUpdate: (_callback: (_data: Conversation[]) => void) => void
   /** 设置状态回调 */
-  onStatusChange: (callback: (status: SyncStatus) => void) => void
+  onStatusChange: (_callback: (_status: SyncStatus) => void) => void
 }
 
 /**
@@ -94,7 +94,7 @@ export function useConversationSync(): ConversationSyncComposable {
    *   console.log('Received conversations:', conversations.length)
    * })
    */
-  async function startSync(onData?: (data: Conversation[]) => void): Promise<void> {
+  async function startSync(onData?: (_data: Conversation[]) => void): Promise<void> {
     console.log('🔄 [ConversationSync] Starting sync service')
     isSyncing.value = true
     syncStatus.value = 'connecting'
@@ -190,7 +190,7 @@ export function useConversationSync(): ConversationSyncComposable {
    *   console.log('Updated:', conversations.length)
    * })
    */
-  function onDataUpdate(callback: (data: Conversation[]) => void): void {
+  function onDataUpdate(callback: (_data: Conversation[]) => void): void {
     conversationSync.onData(callback)
   }
 
@@ -204,7 +204,7 @@ export function useConversationSync(): ConversationSyncComposable {
    *   console.log('Status:', status)
    * })
    */
-  function onStatusChange(callback: (status: SyncStatus) => void): void {
+  function onStatusChange(callback: (_status: SyncStatus) => void): void {
     conversationSync.onStatus(callback)
   }
 

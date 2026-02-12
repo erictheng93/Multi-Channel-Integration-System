@@ -55,14 +55,14 @@ export interface QuickRepliesOptions {
    * 选择回复时的回调
    * @param reply - 选中的快速回复
    */
-  onSelect?: (reply: QuickReply) => void
+  onSelect?: (_reply: QuickReply) => void
 
   /**
    * 过滤条件 (可选)
    * @param reply - 快速回复项
    * @returns 是否显示此回复
    */
-  filter?: (reply: QuickReply) => boolean
+  filter?: (_reply: QuickReply) => boolean
 
   /**
    * 是否自动加载 (从 API)
@@ -91,13 +91,13 @@ export interface QuickRepliesReturn {
 
   // Actions
   /** 选择快速回复 */
-  selectReply: (reply: QuickReply) => void
+  selectReply: (_reply: QuickReply) => void
   /** 通过 ID 选择回复 */
-  selectById: (id: string) => void
+  selectById: (_id: string) => void
   /** 添加新回复 */
-  addReply: (reply: QuickReply) => void
+  addReply: (_reply: QuickReply) => void
   /** 删除回复 */
-  removeReply: (id: string) => void
+  removeReply: (_id: string) => void
   /** 刷新回复列表 (从 API) */
   refresh: () => Promise<void>
   /** 清空回复列表 */

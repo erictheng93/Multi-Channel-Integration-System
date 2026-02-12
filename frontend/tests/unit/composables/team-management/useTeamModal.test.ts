@@ -9,8 +9,7 @@
  * - Lifecycle callback registration and execution
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { describe, it, expect, vi } from 'vitest'
 import { useTeamModal } from '@/composables/team-management/useTeamModal'
 
 describe('useTeamModal', () => {

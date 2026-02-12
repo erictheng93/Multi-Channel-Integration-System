@@ -96,7 +96,7 @@ export const usePreloadStore = defineStore('preload', () => {
    * Check if teams cache is valid (not expired)
    */
   const isTeamsCacheValid = computed(() => {
-    if (!teamsCache.value) return false
+    if (!teamsCache.value) {return false}
     const now = Date.now()
     return now - teamsCache.value.timestamp < teamsCache.value.ttl
   })
@@ -128,7 +128,7 @@ export const usePreloadStore = defineStore('preload', () => {
    * Check if a cache entry is valid (internal helper)
    */
   function isCacheValid<T>(entry: CacheEntry<T> | null): boolean {
-    if (!entry) return false
+    if (!entry) {return false}
     const now = Date.now()
     return now - entry.timestamp < entry.ttl
   }

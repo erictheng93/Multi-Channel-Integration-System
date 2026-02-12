@@ -341,7 +341,7 @@ router.beforeEach(async (to, from, next) => {
     // 🔧 FIX Phase 1: Update cache after successful auth check
     authStateCache = {
       isAuthenticated: true,
-      requiresAuth: requiresAuth,
+      requiresAuth,
       timestamp: now
     }
   } catch (error) {
@@ -350,7 +350,7 @@ router.beforeEach(async (to, from, next) => {
     // 🔧 FIX Phase 1: Cache the failed state
     authStateCache = {
       isAuthenticated: false,
-      requiresAuth: requiresAuth,
+      requiresAuth,
       timestamp: now
     }
 

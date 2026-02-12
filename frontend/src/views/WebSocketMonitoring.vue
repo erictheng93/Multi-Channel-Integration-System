@@ -279,7 +279,7 @@ const error = ref<string | null>(null)
 const isRefreshing = ref(false)
 const autoRefresh = ref(true)
 const period = ref('1h')
-// eslint-disable-next-line no-undef
+ 
 const trendCanvas = ref<HTMLCanvasElement | null>(null)
 
 let refreshInterval: ReturnType<typeof setInterval> | null = null

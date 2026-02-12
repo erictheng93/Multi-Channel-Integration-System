@@ -55,15 +55,15 @@ export interface ConversationVirtualScrollComposable {
   /** 是否已到达末尾 */
   reachedEnd: Ref<boolean>
   /** 处理可见范围变化 */
-  handleVisibleRangeChange: (startIndex: number, endIndex: number, onPreload?: () => Promise<void>) => Promise<void>
+  handleVisibleRangeChange: (_startIndex: number, _endIndex: number, _onPreload?: () => Promise<void>) => Promise<void>
   /** 处理到达底部 */
-  handleReachBottom: (onLoadMore?: () => Promise<void>) => Promise<void>
+  handleReachBottom: (_onLoadMore?: () => Promise<void>) => Promise<void>
   /** 处理预测性加载 */
-  handlePredictiveLoad: (direction: 'up' | 'down', estimatedDistance: number, onPreload?: () => Promise<void>) => void
+  handlePredictiveLoad: (_direction: 'up' | 'down', _estimatedDistance: number, _onPreload?: () => Promise<void>) => void
   /** 重置滚动状态 */
   resetScroll: () => void
   /** 设置已到达末尾 */
-  setReachedEnd: (reached: boolean) => void
+  setReachedEnd: (_reached: boolean) => void
 }
 
 /**

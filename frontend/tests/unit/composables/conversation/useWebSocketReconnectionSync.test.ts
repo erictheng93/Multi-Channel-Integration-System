@@ -59,9 +59,9 @@ vi.mock('@/services/customerWebSocketManager', () => ({
     disconnect: mockDisconnect,
     reconnect: mockReconnect,
     onMessage: vi.fn(),
-    onStateChange: vi.fn((callback) => {
+    onStateChange: vi.fn((callback: (_state: string) => void) => {
       // Store callback for testing state changes
-      (global as unknown as { wsStateChangeCallback: (state: string) => void }).wsStateChangeCallback = callback
+      (global as unknown as { wsStateChangeCallback: (_state: string) => void }).wsStateChangeCallback = callback
     }),
     onError: vi.fn()
   }))

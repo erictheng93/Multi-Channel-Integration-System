@@ -61,8 +61,8 @@ export interface ConversationListControllerComposable {
   loadConversations: () => Promise<void>
   refresh: () => Promise<void>
   loadMore: () => Promise<void>
-  selectConversation: (conversation: Conversation) => void
-  changePage: (page: number) => void
+  selectConversation: (_conversation: Conversation) => void
+  changePage: (_page: number) => void
   cleanup: () => void
 }
 

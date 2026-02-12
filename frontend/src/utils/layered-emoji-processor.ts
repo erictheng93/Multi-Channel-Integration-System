@@ -264,7 +264,7 @@ export class LayeredEmojiProcessor {
 
     // URL pattern that matches http/https URLs
     // Handles common URL characters including encoded characters like %E7%B7%9A
-    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+)/gi;
+    const urlPattern = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)/gi;
 
     return text.replace(urlPattern, (url) => {
       // Validate URL for security

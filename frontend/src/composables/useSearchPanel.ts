@@ -41,7 +41,7 @@ export interface SearchPanelOptions {
    * 搜索结果回调
    * @param results - 搜索到的消息列表
    */
-  onSearchResults?: (results: Message[]) => void
+  onSearchResults?: (_results: Message[]) => void
 
   /**
    * 清除搜索回调
@@ -74,7 +74,7 @@ export interface SearchPanelReturn {
 
   // Handlers
   /** 处理搜索结果 */
-  handleSearchResults: (results: Message[]) => void
+  handleSearchResults: (_results: Message[]) => void
   /** 处理清除搜索 */
   handleSearchClear: () => void
 }
@@ -131,7 +131,7 @@ export function useSearchPanel(options: SearchPanelOptions = {}): SearchPanelRet
    * 打开搜索面板
    */
   const open = async (): Promise<void> => {
-    if (isOpen.value) return // 已经打开，不需要重复操作
+    if (isOpen.value) {return} // 已经打开，不需要重复操作
 
     isOpen.value = true
 

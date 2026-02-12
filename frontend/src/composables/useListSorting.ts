@@ -43,13 +43,13 @@ export interface UseListSortingReturn<T extends string = string> {
   /** 當前排序欄位的標籤 */
   currentSortLabel: ComputedRef<string>
   /** 設置排序欄位 */
-  setSortField: (field: T) => void
+  setSortField: (_field: T) => void
   /** 切換排序順序 */
   toggleSortOrder: () => void
   /** 重置為預設排序 */
   resetSort: () => void
   /** 排序函數（用於 Array.sort） */
-  sortFn: <Item>(items: Item[], getFieldValue: (item: Item, field: T) => unknown) => Item[]
+  sortFn: <Item>(_items: Item[], _getFieldValue: (_item: Item, _field: T) => unknown) => Item[]
 }
 
 // ==================== Composable ====================
@@ -151,7 +151,7 @@ export function useListSorting<T extends string = string>(
    */
   function sortFn<Item>(
     items: Item[],
-    getFieldValue: (item: Item, field: T) => unknown
+    getFieldValue: (_item: Item, _field: T) => unknown
   ): Item[] {
     const { field, order } = sortState.value
     const multiplier = order === 'asc' ? 1 : -1
@@ -161,9 +161,11 @@ export function useListSorting<T extends string = string>(
       const bValue = getFieldValue(b, field)
 
       // Handle null/undefined
-      if (aValue == null && bValue == null) return 0
-      if (aValue == null) return multiplier
-      if (bValue == null) return -multiplier
+      if (aValue === null || aValue === undefined) {
+        if (bValue === null || bValue === undefined) {return 0}
+        return multiplier
+      }
+      if (bValue === null || bValue === undefined) {return -multiplier}
 
       // Handle dates (string format)
       if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -285,13 +287,13 @@ export interface UseSortModeReturn {
   /** 切換排序模式 */
   toggleSortMode: () => void
   /** 設置排序模式 */
-  setSortMode: (mode: SortMode) => void
+  setSortMode: (_mode: SortMode) => void
   /** 更新自訂順序 */
-  updateCustomOrder: (newOrder: string[]) => void
+  updateCustomOrder: (_newOrder: string[]) => void
   /** 清除自訂順序 */
   clearCustomOrder: () => void
   /** 根據自訂順序排序項目 */
-  applyCustomOrder: <T extends { id: string | number }>(items: T[]) => T[]
+  applyCustomOrder: <T extends { id: string | number }>(_items: T[]) => T[]
 }
 
 // ==================== Sort Mode Composable ====================
@@ -387,9 +389,9 @@ export function useSortMode(options: UseSortModeOptions): UseSortModeReturn {
         return aIndex - bIndex
       }
       // 如果只有 a 在自訂順序中，a 排前面
-      if (aIndex !== undefined) return -1
+      if (aIndex !== undefined) {return -1}
       // 如果只有 b 在自訂順序中，b 排前面
-      if (bIndex !== undefined) return 1
+      if (bIndex !== undefined) {return 1}
       // 都不在自訂順序中，保持原順序
       return 0
     })

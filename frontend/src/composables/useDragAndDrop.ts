@@ -38,14 +38,14 @@ export interface DragAndDropOptions {
    * 文件拖放回调
    * @param files - 拖放的文件列表
    */
-  onFilesDropped?: (files: File[]) => void
+  onFilesDropped?: (_files: File[]) => void
 
   /**
    * 文件验证回调 (可选)
    * @param files - 待验证的文件列表
    * @returns 验证结果 { valid: boolean, message?: string }
    */
-  validateFiles?: (files: File[]) => { valid: boolean; message?: string }
+  validateFiles?: (_files: File[]) => { valid: boolean; message?: string }
 
   /**
    * 最大文件数量 (默认: 10)
@@ -68,7 +68,7 @@ export interface DragAndDropOptions {
    * 拖拽错误回调
    * @param message - 错误消息
    */
-  onError?: (message: string) => void
+  onError?: (_message: string) => void
 }
 
 /**
@@ -83,13 +83,13 @@ export interface DragAndDropReturn {
 
   // Event Handlers
   /** DragEnter 事件处理器 */
-  onDragEnter: (event: DragEvent) => void
+  onDragEnter: (_event: DragEvent) => void
   /** DragLeave 事件处理器 */
-  onDragLeave: (event: DragEvent) => void
+  onDragLeave: (_event: DragEvent) => void
   /** DragOver 事件处理器 */
-  onDragOver: (event: DragEvent) => void
+  onDragOver: (_event: DragEvent) => void
   /** Drop 事件处理器 */
-  onDrop: (event: DragEvent) => void
+  onDrop: (_event: DragEvent) => void
 
   // Actions
   /** 重置拖拽状态 */

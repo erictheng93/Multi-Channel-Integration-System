@@ -78,7 +78,7 @@ class PreloadService {
    * Uses storeToRefs to get the actual ref for proper Vue reactivity tracking
    */
   private setupAutoSync(): void {
-    if (this._watchStopHandle || !this._store) return
+    if (this._watchStopHandle || !this._store) {return}
 
     // Use storeToRefs to get the actual ShallowRef from the store
     // This is necessary because Pinia auto-unwraps refs when accessed via store.property

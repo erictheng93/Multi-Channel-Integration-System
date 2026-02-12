@@ -5,7 +5,7 @@
  * Tests rendering, props, events, and user interactions
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ApiHeader from '@/components/api-monitor/ApiHeader.vue'
 import ApiFilter from '@/components/api-monitor/ApiFilter.vue'

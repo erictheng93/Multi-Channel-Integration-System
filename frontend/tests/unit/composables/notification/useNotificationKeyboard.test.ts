@@ -4,7 +4,7 @@
  * Tests keyboard navigation and shortcuts for notifications
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { useNotificationKeyboard } from '@/composables/notification/useNotificationKeyboard'
 import { computed, ref } from 'vue'
 import type { Notification } from '@/stores/notifications'

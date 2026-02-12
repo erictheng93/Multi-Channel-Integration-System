@@ -470,7 +470,7 @@ export function useWebSocketIntegration(
    */
   const newMessageCount = computed(() => {
     const conn = unifiedConnection.value
-    if (!conn || !conn.messageCount) return 0
+    if (!conn || !conn.messageCount) {return 0}
     const count = ((conn.messageCount as unknown) as Ref<number>).value
     return count ?? 0  // 双重保护：确保返回值永远是数字
   })

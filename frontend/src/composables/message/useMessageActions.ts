@@ -19,12 +19,12 @@ import type { Message } from '@/types'
  * Defines the callback functions for message actions
  */
 export interface MessageActionEmitters {
-  copy: (message: Message) => void
-  reply: (message: Message) => void
-  forward: (message: Message) => void
-  recall: (message: Message) => void
-  select: (message: Message) => void
-  retry: (messageId: string) => void
+  copy: (_message: Message) => void
+  reply: (_message: Message) => void
+  forward: (_message: Message) => void
+  recall: (_message: Message) => void
+  select: (_message: Message) => void
+  retry: (_messageId: string) => void
 }
 
 /**

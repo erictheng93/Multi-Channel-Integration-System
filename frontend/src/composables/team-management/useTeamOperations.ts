@@ -56,7 +56,7 @@ export interface UseTeamOperationsReturn {
   isAllMembersSelected: Ref<boolean>
   openAddTeamModal: () => void
   closeAddTeamModal: () => void
-  toggleMemberSelection: (memberId: string) => void
+  toggleMemberSelection: (_memberId: string) => void
   toggleSelectAllMembers: () => void
   submitAddTeam: () => Promise<void>
 
@@ -67,21 +67,21 @@ export interface UseTeamOperationsReturn {
   editTeamCurrentMembers: Ref<TeamMember[]>
   editTeamAvailableMembers: Ref<TeamMember[]>
   isAllAvailableMembersSelected: Ref<boolean>
-  openEditTeamModal: (team: Team) => Promise<void>
+  openEditTeamModal: (_team: Team) => Promise<void>
   closeEditTeamModal: () => void
-  toggleAvailableMemberSelection: (memberId: string) => void
+  toggleAvailableMemberSelection: (_memberId: string) => void
   toggleSelectAllAvailableMembers: () => void
-  removeMemberFromTeam: (memberId: string) => void
+  removeMemberFromTeam: (_memberId: string) => void
   submitEditTeam: () => Promise<void>
 
   // Team Operations
-  toggleTeamStatus: (team: Team) => Promise<void>
-  removeTeam: (team: Team) => Promise<void>
+  toggleTeamStatus: (_team: Team) => Promise<void>
+  removeTeam: (_team: Team) => Promise<void>
   handleMemberUpdated: () => Promise<void>
 
   // Utilities
-  getInitials: (name: string) => string
-  getRoleDisplayName: (role: string) => string
+  getInitials: (_name: string) => string
+  getRoleDisplayName: (_role: string) => string
 }
 
 // ==================== Composable ====================
@@ -245,7 +245,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
                   // 添加新的團隊關係
                   member.teams.push({
                     teamId: newTeamId,
-                    teamName: teamName,
+                    teamName,
                     roleInTeam: 'member',
                     isPrimary: member.teams.length === 0, // 第一個團隊設為主要
                     joinedAt: new Date().toISOString()

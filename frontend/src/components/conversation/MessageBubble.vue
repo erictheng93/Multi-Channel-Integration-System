@@ -365,7 +365,10 @@
           {{ formatTime(message.timestamp || message.createdAt) }}
         </time>
         <!-- Agent attribution for internal QA -->
-        <span v-if="isOutgoing && message.senderName" class="agent-attribution">
+        <span
+          v-if="isOutgoing && message.senderName"
+          class="agent-attribution"
+        >
           {{ message.senderName }}
         </span>
 

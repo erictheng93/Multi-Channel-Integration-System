@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useSystemSettingsController } from '@/composables/useSystemSettingsController'
-import type { SystemSettings, Backup, CacheType } from '@/types/system-settings'
+import type { SystemSettings, CacheType } from '@/types/system-settings'
 
 // Mock modules
 vi.mock('@/api/system', () => ({

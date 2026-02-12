@@ -455,7 +455,7 @@ describe('ExportDialog.vue', () => {
 
       // 模擬設定日期篩選
       const dateInputs = document.querySelectorAll('input[type="datetime-local"]')
-      const dateFromInput = dateInputs[0] as HTMLInputElement
+      const _dateFromInput = dateInputs[0] as HTMLInputElement
       // Use Vue's reactivity via the wrapper
       await wrapper.vm.$nextTick()
 

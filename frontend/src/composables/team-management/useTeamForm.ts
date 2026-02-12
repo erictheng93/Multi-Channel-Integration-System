@@ -45,13 +45,13 @@ export interface UseTeamFormReturn {
   loading: Ref<boolean>
 
   /** Initialize form with team data */
-  initForm: (team: Team) => void
+  initForm: (_team: Team) => void
 
   /** Validate form data */
   validateForm: () => boolean
 
   /** Submit form changes */
-  submitForm: (teamId: number) => Promise<boolean>
+  submitForm: (_teamId: number) => Promise<boolean>
 
   /** Reset form to initial state */
   resetForm: () => void
