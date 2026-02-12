@@ -21,8 +21,8 @@ import {
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
 import { UserConnection } from '@backend/durable-objects/UserConnection';
 import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
-import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessagimport { MockFactory } from '@helpers/mockFactory';
-eProcessor';
+import { DelayedMessageProcessor } from '@backend/durable-objects/DelayedMessageProcessor';
+import { MockFactory } from '@helpers/mockFactory';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 import type {
   DelayedMessage,
