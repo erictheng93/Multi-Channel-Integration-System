@@ -1,44 +1,60 @@
 // Conversations Module Unit Tests
 // 對話模組單元測試
 
-import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { drizzle } from 'drizzle-orm/d1';
 import { ConversationService } from '@modules/conversations/services/conversation-service';
 import type {
-  NewConversation,
   ConversationListRequest,
   ConversationAssignRequest,
-  NewMessage
-} from '@backend/moimport { MockFactory } from '@helpers/mockFactory';
-dules/conversations/types/conversation-types';
+} from '@backend/modules/conversations/types/conversation-types';
 
-// Mock Drizzle ORM
+// Mock drizzle-orm/d1 — must use vi.mock at top level
 vi.mock('drizzle-orm/d1', () => ({
   drizzle: vi.fn()
 }));
 
-// Mock database schema
-vi.mock('../../../src/shared/database/schema', () => ({
+// Mock drizzle-orm operators (use plain functions — vi.fn() can interfere with tagged templates)
+vi.mock('drizzle-orm', () => {
+  function sqlMock(..._args: any[]) {
+    return { as: (_name: string) => ({ type: 'sql_alias' }) };
+  }
+  sqlMock.raw = (..._args: any[]) => ({ type: 'sql_raw' });
+
+  return {
+    eq: (...args: any[]) => ({ type: 'eq', args }),
+    desc: (...args: any[]) => ({ type: 'desc', args }),
+    and: (...args: any[]) => ({ type: 'and', args }),
+    count: () => ({ type: 'count' }),
+    sql: sqlMock
+  };
+});
+
+// Mock database schema (must match @/db/schema alias used by the service)
+vi.mock('@/db/schema', () => ({
   conversations: {
     id: { name: 'id' },
     customerId: { name: 'customerId' },
-    assignedUserId: { name: 'assignedUserId' },
-    teamId: { name: 'teamId' },
+    assignedTeamId: { name: 'assignedTeamId' },
     status: { name: 'status' },
-    assignedTo: { name: 'assignedTo' },
     updatedAt: { name: 'updatedAt' },
-    createdAt: { name: 'createdAt' },
-    closedAt: { name: 'closedAt' }
+    createdAt: { name: 'createdAt' }
   },
   messages: {
     id: { name: 'id' },
     conversationId: { name: 'conversationId' },
     createdAt: { name: 'createdAt' }
   },
-  customers: {},
+  customers: {
+    id: { name: 'id' }
+  },
   agents: {
     id: { name: 'id' },
     displayName: { name: 'displayName' },
     email: { name: 'email' }
+  },
+  teams: {
+    id: { name: 'id' }
   },
   conversationTransfers: {
     conversationId: { name: 'conversationId' },
@@ -46,113 +62,146 @@ vi.mock('../../../src/shared/database/schema', () => ({
   }
 }));
 
+// Mock drizzle-factory (imported by service but not actively used)
+vi.mock('@/db/drizzle-factory', () => ({
+  createDbClient: vi.fn()
+}));
+
+/**
+ * Creates a chainable mock database for Drizzle ORM.
+ *
+ * All query-builder methods (from, where, leftJoin, etc.) return `this`
+ * so any chain of method calls works. The mock is thenable — `await`-ing
+ * any chain resolves the next result from a FIFO queue.
+ */
+function createMockDb() {
+  const selectResults: any[][] = [];
+
+  function createSelectChain() {
+    const chain: Record<string, any> = {};
+    const methods = ['from', 'where', 'leftJoin', 'innerJoin', 'orderBy', 'limit', 'offset', 'groupBy', 'having'];
+    for (const m of methods) {
+      chain[m] = vi.fn().mockReturnValue(chain);
+    }
+    // Make thenable — `await chain` pops the next queued result
+    chain.then = (resolve: (v: any) => void, reject?: (e: any) => void) => {
+      const result = selectResults.shift() ?? [];
+      return Promise.resolve(result).then(resolve, reject);
+    };
+    return chain;
+  }
+
+  function createInsertChain() {
+    const chain: Record<string, any> = {};
+    chain.values = vi.fn().mockReturnValue(chain);
+    chain.onConflictDoNothing = vi.fn().mockReturnValue(chain);
+    chain.then = (resolve: (v: any) => void) => Promise.resolve(undefined).then(resolve);
+    return chain;
+  }
+
+  function createUpdateChain() {
+    const chain: Record<string, any> = {};
+    chain.set = vi.fn().mockReturnValue(chain);
+    chain.where = vi.fn().mockReturnValue(chain);
+    chain.then = (resolve: (v: any) => void) => Promise.resolve(undefined).then(resolve);
+    return chain;
+  }
+
+  function createDeleteChain() {
+    const chain: Record<string, any> = {};
+    chain.where = vi.fn().mockReturnValue(chain);
+    chain.then = (resolve: (v: any) => void) => Promise.resolve(undefined).then(resolve);
+    return chain;
+  }
+
+  return {
+    select: vi.fn().mockImplementation(() => createSelectChain()),
+    insert: vi.fn().mockImplementation(() => createInsertChain()),
+    update: vi.fn().mockImplementation(() => createUpdateChain()),
+    delete: vi.fn().mockImplementation(() => createDeleteChain()),
+    /** Queue results for sequential select() calls (FIFO order) */
+    _queueResults(...results: any[][]) {
+      selectResults.length = 0;
+      selectResults.push(...results);
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+
 describe('ConversationService', () => {
   let service: ConversationService;
-  let mockDb: any;
+  let mockDb: ReturnType<typeof createMockDb>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDb = {
-      insert: vi.fn().mockReturnValue({
-        values: vi.fn().mockReturnThis()
-      }),
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue(Promise.resolve([]))
-          }),
-          leftJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockReturnValue(Promise.resolve([]))
-            })
-          }),
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
-              offset: vi.fn().mockReturnValue(Promise.resolve([]))
-            })
-          }),
-          groupBy: vi.fn().mockReturnValue({
-            orderBy: vi.fn().mockReturnValue({
-              limit: vi.fn().mockReturnValue({
-                offset: vi.fn().mockReturnValue(Promise.resolve([]))
-              })
-            })
-          })
-        })
-      }),
-      update: vi.fn().mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue(Promise.resolve())
-        })
-      }),
-      delete: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue(Promise.resolve())
-      })
-    };
-
-    const { drizzle } = require('drizzle-orm/d1');
-    drizzle.mockReturnValue(mockDb);
-
+    mockDb = createMockDb();
+    // Use vi.mocked() to access the mock's .mockReturnValue (fixes the original error)
+    vi.mocked(drizzle).mockReturnValue(mockDb as any);
     service = new ConversationService({} as D1Database);
   });
-
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  // ── createConversation ───────────────────────────────────────────────
+
   describe('createConversation', () => {
-    test('should create a new conversation', async () => {
-      const newConversation: NewConversation = {
+    it('should create a new conversation', async () => {
+      const now = new Date().toISOString();
+      const mockResult = {
+        id: 'conversation-123',
+        customerId: 'customer-123',
+        status: 'open',
+        priority: 'medium',
+        createdAt: now,
+        updatedAt: now
+      };
+
+      // insert → void, then select → [mockResult]
+      mockDb._queueResults([mockResult]);
+
+      const result = await service.createConversation({
         customerId: 'customer-123',
         status: 'open',
         priority: 'medium'
-      };
-
-      const mockResult = {
-        id: 'conversation-123',
-        ...newConversation,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      mockDb.select().from().where().limit.mockResolvedValueOnce([mockResult]);
-
-      const result = await service.createConversation(newConversation);
+      } as any);
 
       expect(result).toBeDefined();
-      expect(result.customerId).toBe(newConversation.customerId);
-      expect(result.status).toBe(newConversation.status);
+      expect(result.customerId).toBe('customer-123');
+      expect(result.status).toBe('open');
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
-    test('should generate UUID for conversation ID if not provided', async () => {
-      const newConversation: NewConversation = {
-        customerId: 'customer-123',
-        status: 'open'
-      };
-
+    it('should generate UUID for conversation ID if not provided', async () => {
       const mockResult = {
-        id: expect.stringMatching(/^[0-9a-f-]+$/),
-        ...newConversation,
+        id: 'auto-generated-uuid',
+        customerId: 'customer-123',
+        status: 'open',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
-      mockDb.select().from().where().limit.mockResolvedValueOnce([mockResult]);
+      mockDb._queueResults([mockResult]);
 
-      const result = await service.createConversation(newConversation);
+      const result = await service.createConversation({
+        customerId: 'customer-123',
+        status: 'open'
+      } as any);
 
       expect(result.id).toBeDefined();
       expect(typeof result.id).toBe('string');
     });
   });
 
+  // ── getConversation ──────────────────────────────────────────────────
+
   describe('getConversation', () => {
-    test('should return conversation with details', async () => {
-      const conversationId = 'conversation-123';
-      const mockConversationData = {
+    it('should return conversation with details', async () => {
+      const mockResult = {
         conversation: {
-          id: conversationId,
+          id: 'conversation-123',
           customerId: 'customer-123',
           status: 'open',
           createdAt: new Date().toISOString()
@@ -162,43 +211,29 @@ describe('ConversationService', () => {
           displayName: 'Test Customer',
           platform: 'line'
         },
-        agent: {
-          id: 'agent-123',
-          displayName: 'Test Agent',
-          email: 'agent@example.com'
-        }
+        messageCount: 5,
+        latestMessageId: 'msg-1',
+        latestMessageContent: 'Hello',
+        latestMessageSenderType: 'customer',
+        latestMessageCreatedAt: new Date().toISOString(),
+        latestMessageType: 'text'
       };
 
-      const mockLatestMessage = {
-        id: 'message-123',
-        content: 'Latest message',
-        createdAt: new Date().toISOString()
-      };
+      // Single optimized query with subqueries
+      mockDb._queueResults([mockResult]);
 
-      const mockMessageCount = { messageCount: 5 };
-
-      mockDb.select().from().leftJoin().leftJoin().where().limit
-        .mockResolvedValueOnce([mockConversationData]);
-
-      mockDb.select().from().where().orderBy().limit
-        .mockResolvedValueOnce([mockLatestMessage]);
-
-      mockDb.select().from().where
-        .mockResolvedValueOnce([mockMessageCount]);
-
-      const result = await service.getConversation(conversationId);
+      const result = await service.getConversation('conversation-123');
 
       expect(result).toBeDefined();
-      expect(result?.id).toBe(conversationId);
-      expect(result?.latestMessage).toBeDefined();
+      expect(result?.id).toBe('conversation-123');
       expect(result?.messageCount).toBe(5);
+      expect(result?.latestMessage).toBeDefined();
+      expect(result?.latestMessage?.content).toBe('Hello');
       expect(result?.customer).toBeDefined();
-      expect(result?.assignedAgent).toBeDefined();
     });
 
-    test('should return null if conversation not found', async () => {
-      mockDb.select().from().leftJoin().leftJoin().where().limit
-        .mockResolvedValueOnce([]);
+    it('should return null if conversation not found', async () => {
+      mockDb._queueResults([]);
 
       const result = await service.getConversation('non-existent');
 
@@ -206,80 +241,90 @@ describe('ConversationService', () => {
     });
   });
 
-  describe('updateConversation', () => {
-    test('should update conversation and return updated data', async () => {
-      const conversationId = 'conversation-123';
-      const updateData = { status: 'closed' as const };
+  // ── updateConversation ───────────────────────────────────────────────
 
-      const mockUpdatedConversation = {
-        id: conversationId,
-        status: 'closed',
+  describe('updateConversation', () => {
+    it('should update conversation and return updated data', async () => {
+      const mockUpdated = {
+        id: 'conversation-123',
+        status: 'assigned',
         updatedAt: new Date().toISOString()
       };
 
-      mockDb.select().from().where().limit
-        .mockResolvedValueOnce([mockUpdatedConversation]);
+      // update → void, then select → [mockUpdated]
+      mockDb._queueResults([mockUpdated]);
 
-      const result = await service.updateConversation(conversationId, updateData);
+      const result = await service.updateConversation('conversation-123', { status: 'assigned' } as any);
 
       expect(result).toBeDefined();
-      expect(result.status).toBe('closed');
+      expect(result.status).toBe('assigned');
       expect(mockDb.update).toHaveBeenCalled();
     });
   });
 
-  describe('deleteConversation', () => {
-    test('should delete conversation and related data', async () => {
-      const conversationId = 'conversation-123';
+  // ── deleteConversation ───────────────────────────────────────────────
 
-      const result = await service.deleteConversation(conversationId);
+  describe('deleteConversation', () => {
+    it('should delete conversation and related data', async () => {
+      const result = await service.deleteConversation('conversation-123');
 
       expect(result).toBe(true);
-      expect(mockDb.delete).toHaveBeenCalledTimes(3); // messages, transfers, conversation
+      // Deletes: messages, conversationTransfers, conversations (3 calls)
+      expect(mockDb.delete).toHaveBeenCalledTimes(3);
     });
 
-    test('should handle delete errors gracefully', async () => {
-      const conversationId = 'conversation-123';
+    it('should handle delete errors gracefully', async () => {
+      // Make the first delete throw
+      mockDb.delete.mockImplementationOnce(() => ({
+        where: vi.fn().mockImplementation(() => {
+          throw new Error('Delete failed');
+        })
+      }));
 
-      mockDb.delete().where.mockRejectedValueOnce(new Error('Delete failed'));
-
-      const result = await service.deleteConversation(conversationId);
+      const result = await service.deleteConversation('conversation-123');
 
       expect(result).toBe(false);
     });
   });
 
-  describe('listConversations', () => {
-    test('should return paginated conversations list', async () => {
-      const query: ConversationListRequest = {
-        page: 1,
-        limit: 20,
-        status: 'open'
-      };
+  // ── listConversations ────────────────────────────────────────────────
 
+  describe('listConversations', () => {
+    it('should return paginated conversations list', async () => {
       const mockConversations = [
         {
-          conversation: { id: 'conv-1', status: 'open' },
+          conversation: { id: 'conv-1', status: 'active' },
           customer: { id: 'cust-1', displayName: 'Customer 1' },
           agent: null,
-          messageCount: 3
+          messageCount: 3,
+          latestMessageId: null,
+          latestMessageContent: null,
+          latestMessageSenderType: null,
+          latestMessageCreatedAt: null,
+          latestMessageType: null
         },
         {
-          conversation: { id: 'conv-2', status: 'open' },
+          conversation: { id: 'conv-2', status: 'active' },
           customer: { id: 'cust-2', displayName: 'Customer 2' },
-          agent: { id: 'agent-1', displayName: 'Agent 1' },
-          messageCount: 5
+          agent: { id: 'agent-1', displayName: 'Agent 1', email: 'a@b.com' },
+          messageCount: 5,
+          latestMessageId: 'msg-1',
+          latestMessageContent: 'Hello',
+          latestMessageSenderType: 'customer',
+          latestMessageCreatedAt: new Date().toISOString(),
+          latestMessageType: 'text'
         }
       ];
+      const mockTotal = [{ total: 25 }];
 
-      const mockTotal = { total: 25 };
+      // First select: conversations, second select: count
+      mockDb._queueResults(mockConversations, mockTotal);
 
-      mockDb.select().from().leftJoin().leftJoin().leftJoin().where()
-        .groupBy().orderBy().limtest().offset.mockResolvedValueOnce(mockConversations);
-
-      mockDb.select().from().where.mockResolvedValueOnce([mockTotal]);
-
-      const result = await service.listConversations(query);
+      const result = await service.listConversations({
+        page: 1,
+        limit: 20,
+        status: 'active'
+      });
 
       expect(result).toBeDefined();
       expect(result.conversations).toHaveLength(2);
@@ -288,297 +333,235 @@ describe('ConversationService', () => {
       expect(result.pagination.total).toBe(25);
     });
 
-    test('should apply filters correctly', async () => {
+    it('should apply filters correctly', async () => {
+      mockDb._queueResults([], [{ total: 0 }]);
+
       const query: ConversationListRequest = {
         page: 1,
         limit: 10,
-        status: 'closed',
-        teamId: 123,
-        agentId: 'agent-456'
+        status: 'active',
+        teamId: 123
       };
 
       await service.listConversations(query);
 
       expect(mockDb.select).toHaveBeenCalled();
-      // Verify that filters are applied (mocks would capture the where conditions)
     });
 
-    test('should limit page size to maximum allowed', async () => {
-      const query: ConversationListRequest = {
+    it('should limit page size to maximum allowed', async () => {
+      mockDb._queueResults([], [{ total: 0 }]);
+
+      const result = await service.listConversations({
         page: 1,
-        limit: 500 // Exceeds max limit
-      };
-
-      const mockConversations: any[] = [];
-      const mockTotal = { total: 0 };
-
-      mockDb.select().from().leftJoin().leftJoin().leftJoin().where()
-        .groupBy().orderBy().limtest().offset.mockResolvedValueOnce(mockConversations);
-
-      mockDb.select().from().where.mockResolvedValueOnce([mockTotal]);
-
-      const result = await service.listConversations(query);
+        limit: 500 // Exceeds max limit of 100
+      });
 
       expect(result.pagination.limit).toBeLessThanOrEqual(100);
     });
   });
 
-  describe('assignConversation', () => {
-    test('should assign conversation to user', async () => {
-      const conversationId = 'conversation-123';
-      const assignRequest: ConversationAssignRequest = {
-        userId: 'agent-456',
-        reason: 'Manual assignment'
-      };
+  // ── assignConversation (team-only) ───────────────────────────────────
 
-      const result = await service.assignConversation(conversationId, assignRequest);
+  describe('assignConversation', () => {
+    it('should assign conversation to team', async () => {
+      // Basic assignment without reason (no transfer record created)
+      const result = await service.assignConversation('conversation-123', {
+        teamId: 789
+      });
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(result.conversationId).toBe(conversationId);
-      expect(result.assignedTo.type).toBe('user');
-      expect(result.assignedTo.id).toBe(assignRequest.userId);
+      expect(result.conversationId).toBe('conversation-123');
+      expect(result.assignedTo.type).toBe('team');
+      expect(result.assignedTo.id).toBe(789);
       expect(mockDb.update).toHaveBeenCalled();
     });
 
-    test('should assign conversation to team', async () => {
-      const conversationId = 'conversation-123';
-      const assignRequest: ConversationAssignRequest = {
-        teamId: 789,
-        reason: 'Team assignment'
-      };
-
-      const result = await service.assignConversation(conversationId, assignRequest);
-
-      expect(result).toBeDefined();
-      expect(result.success).toBe(true);
-      expect(result.assignedTo.type).toBe('team');
-      expect(result.assignedTo.id).toBe(789);
+    it('should throw error when teamId not provided', async () => {
+      await expect(
+        service.assignConversation('conversation-123', {} as ConversationAssignRequest)
+      ).rejects.toThrow('Team ID is required');
     });
 
-    test('should create transfer record when reason provided', async () => {
-      const conversationId = 'conversation-123';
-      const assignRequest: ConversationAssignRequest = {
-        userId: 'agent-456',
-        reason: 'Escalation needed'
-      };
-
+    it('should create transfer record when reason provided', async () => {
       const mockTransfer = {
-        conversationId,
-        transferredTo: 'agent-456',
-        reason: 'Escalation needed',
+        conversationId: 'conversation-123',
+        toTeamId: 789,
+        transferReason: 'Escalation needed',
+        transferredBy: 'system',
+        transferType: 'manual',
         createdAt: new Date().toISOString()
       };
 
-      mockDb.select().from().where().orderBy().limit
-        .mockResolvedValueOnce([mockTransfer]);
+      // select for transfer record lookup
+      mockDb._queueResults([mockTransfer]);
 
-      const result = await service.assignConversation(conversationId, assignRequest);
+      const result = await service.assignConversation('conversation-123', {
+        teamId: 789,
+        reason: 'Escalation needed'
+      });
 
       expect(result.transfer).toBeDefined();
-      expect(mockDb.insert).toHaveBeenCalledTimes(1); // For transfer record
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('transferConversation', () => {
-    test('should transfer conversation between agents', async () => {
-      const conversationId = 'conversation-123';
-      const fromAgentId = 'agent-111';
-      const toAgentId = 'agent-222';
-      const reason = 'Load balancing';
+  // ── transferConversation (team-based) ────────────────────────────────
 
+  describe('transferConversation', () => {
+    it('should transfer conversation between teams', async () => {
       const mockTransfer = {
-        conversationId,
-        transferredFrom: fromAgentId,
-        transferredTo: toAgentId,
-        reason,
+        conversationId: 'conversation-123',
+        fromTeamId: 1,
+        toTeamId: 2,
+        transferReason: 'Load balancing',
+        transferredBy: 'system',
+        transferType: 'manual',
         createdAt: new Date().toISOString()
       };
 
-      mockDb.select().from().where().orderBy().limit
-        .mockResolvedValueOnce([mockTransfer]);
+      // update → void, insert → void, select → [mockTransfer]
+      mockDb._queueResults([mockTransfer]);
 
       const result = await service.transferConversation(
-        conversationId,
-        fromAgentId,
-        toAgentId,
-        reason
+        'conversation-123',
+        1,    // fromTeamId
+        2,    // toTeamId
+        'Load balancing'
       );
 
       expect(result).toBeDefined();
-      expect(result.transferredFrom).toBe(fromAgentId);
-      expect(result.transferredTo).toBe(toAgentId);
-      expect(result.reason).toBe(reason);
-      expect(mockDb.update).toHaveBeenCalled(); // Update conversation assignment
-      expect(mockDb.insert).toHaveBeenCalled(); // Create transfer record
+      expect(result.fromTeamId).toBe(1);
+      expect(result.toTeamId).toBe(2);
+      expect(result.transferReason).toBe('Load balancing');
+      expect(mockDb.update).toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalled();
     });
   });
 
-  describe('addMessage', () => {
-    test('should add message to conversation', async () => {
-      const conversationId = 'conversation-123';
-      const messageData: NewMessage = {
-        content: 'Test message',
-        senderType: 'customer',
-        senderId: 'customer-456'
-      };
+  // ── addMessage ───────────────────────────────────────────────────────
 
+  describe('addMessage', () => {
+    it('should add message to conversation', async () => {
       const mockMessage = {
         id: 'message-789',
-        conversationId,
-        ...messageData,
+        conversationId: 'conversation-123',
+        content: 'Test message',
+        senderType: 'customer',
+        senderId: 'customer-456',
         createdAt: new Date().toISOString()
       };
 
-      mockDb.select().from().where().limit
-        .mockResolvedValueOnce([mockMessage]);
+      // insert → void, update → void, select → [mockMessage]
+      mockDb._queueResults([mockMessage]);
 
-      const result = await service.addMessage(conversationId, messageData);
+      const result = await service.addMessage('conversation-123', {
+        content: 'Test message',
+        senderType: 'customer',
+        senderId: 'customer-456'
+      } as any);
 
       expect(result).toBeDefined();
-      expect(result.conversationId).toBe(conversationId);
-      expect(result.content).toBe(messageData.content);
-      expect(result.senderType).toBe(messageData.senderType);
+      expect(result.conversationId).toBe('conversation-123');
+      expect(result.content).toBe('Test message');
+      expect(result.senderType).toBe('customer');
       expect(mockDb.insert).toHaveBeenCalled();
-      expect(mockDb.update).toHaveBeenCalled(); // Update conversation timestamp
+      expect(mockDb.update).toHaveBeenCalled();
     });
 
-    test('should generate UUID for message ID if not provided', async () => {
-      const conversationId = 'conversation-123';
-      const messageData: NewMessage = {
+    it('should generate UUID for message ID if not provided', async () => {
+      const mockMessage = {
+        id: 'auto-generated-uuid',
+        conversationId: 'conversation-123',
+        content: 'Test message',
+        senderType: 'agent',
+        senderId: 'agent-789',
+        createdAt: new Date().toISOString()
+      };
+
+      mockDb._queueResults([mockMessage]);
+
+      const result = await service.addMessage('conversation-123', {
         content: 'Test message',
         senderType: 'agent',
         senderId: 'agent-789'
-      };
-
-      const result = await service.addMessage(conversationId, messageData);
+      } as any);
 
       expect(result.id).toBeDefined();
       expect(typeof result.id).toBe('string');
     });
   });
 
+  // ── getMessages ──────────────────────────────────────────────────────
+
   describe('getMessages', () => {
-    test('should return messages for conversation', async () => {
-      const conversationId = 'conversation-123';
+    it('should return messages for conversation', async () => {
       const mockMessages = [
-        {
-          id: 'msg-1',
-          content: 'Message 1',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'msg-2',
-          content: 'Message 2',
-          createdAt: new Date().toISOString()
-        }
+        { id: 'msg-1', content: 'Message 1', createdAt: new Date().toISOString() },
+        { id: 'msg-2', content: 'Message 2', createdAt: new Date().toISOString() }
       ];
 
-      mockDb.select().from().where().orderBy().limtest().offset
-        .mockResolvedValueOnce(mockMessages);
+      mockDb._queueResults(mockMessages);
 
-      const result = await service.getMessages(conversationId, 50, 0);
+      const result = await service.getMessages('conversation-123', 50, 0);
 
       expect(result).toHaveLength(2);
       expect(result[0].content).toBe('Message 1');
       expect(result[1].content).toBe('Message 2');
     });
 
-    test('should limit message count to maximum allowed', async () => {
-      const conversationId = 'conversation-123';
+    it('should limit message count to maximum allowed', async () => {
+      mockDb._queueResults([]);
 
-      await service.getMessages(conversationId, 500, 0); // Exceeds max
+      await service.getMessages('conversation-123', 500, 0); // Exceeds max of 100
 
-      expect(mockDb.select().from().where().orderBy().limit).toHaveBeenCalled();
-      // Verify limit is capped at 100 in actual implementation
+      expect(mockDb.select).toHaveBeenCalled();
     });
   });
 
-  describe('updateStatus', () => {
-    test('should update conversation status', async () => {
-      const conversationId = 'conversation-123';
-      const status = 'closed';
+  // ── updateStatus ─────────────────────────────────────────────────────
 
-      const mockUpdatedConversation = {
-        id: conversationId,
-        status,
+  describe('updateStatus', () => {
+    it('should update conversation status', async () => {
+      const mockUpdated = {
+        id: 'conversation-123',
+        status: 'assigned',
         updatedAt: new Date().toISOString()
       };
 
-      mockDb.select().from().where().limit
-        .mockResolvedValueOnce([mockUpdatedConversation]);
+      mockDb._queueResults([mockUpdated]);
 
-      const result = await service.updateStatus(conversationId, status);
+      const result = await service.updateStatus('conversation-123', 'assigned');
 
-      expect(result.status).toBe(status);
+      expect(result.status).toBe('assigned');
       expect(mockDb.update).toHaveBeenCalled();
     });
   });
 
-  describe('closeConversation', () => {
-    test('should close conversation with closedAt timestamp', async () => {
-      const conversationId = 'conversation-123';
-
-      const mockClosedConversation = {
-        id: conversationId,
-        status: 'closed',
-        closedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      mockDb.select().from().where().limit
-        .mockResolvedValueOnce([mockClosedConversation]);
-
-      const result = await service.closeConversation(conversationId);
-
-      expect(result.status).toBe('closed');
-      expect(result.closedAt).toBeDefined();
-    });
-  });
-
-  describe('reopenConversation', () => {
-    test('should reopen closed conversation', async () => {
-      const conversationId = 'conversation-123';
-
-      const mockReopenedConversation = {
-        id: conversationId,
-        status: 'open',
-        closedAt: null,
-        updatedAt: new Date().toISOString()
-      };
-
-      mockDb.select().from().where().limit
-        .mockResolvedValueOnce([mockReopenedConversation]);
-
-      const result = await service.reopenConversation(conversationId);
-
-      expect(result.status).toBe('open');
-      expect(result.closedAt).toBeNull();
-    });
-  });
+  // ── getConversationMetrics ───────────────────────────────────────────
 
   describe('getConversationMetrics', () => {
-    test('should return conversation metrics', async () => {
+    it('should return conversation metrics', async () => {
       const mockTotalCount = { count: 150 };
-      const mockOpenCount = { count: 45 };
-      const mockClosedCount = { count: 105 };
+      const mockActiveCount = { count: 45 };
       const mockTeamDistribution = [
         { teamId: 1, count: 30 },
         { teamId: 2, count: 25 }
       ];
 
-      mockDb.select().from()
-        .mockResolvedValueOnce([mockTotalCount])  // total
-        .mockResolvedValueOnce([mockOpenCount])   // open
-        .mockResolvedValueOnce([mockClosedCount]) // closed
-        .mockResolvedValueOnce(mockTeamDistribution); // team distribution
+      // Three sequential select() calls: total, active, teamDistribution
+      mockDb._queueResults(
+        [mockTotalCount],
+        [mockActiveCount],
+        mockTeamDistribution
+      );
 
       const result = await service.getConversationMetrics();
 
       expect(result).toBeDefined();
       expect(result.totalConversations).toBe(150);
       expect(result.openConversations).toBe(45);
-      expect(result.closedConversations).toBe(105);
+      expect(result.closedConversations).toBe(0); // closed status removed from service
       expect(result.teamDistribution).toHaveLength(2);
     });
   });
