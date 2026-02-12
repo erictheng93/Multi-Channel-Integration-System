@@ -7,8 +7,7 @@ import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
   UserAnalyticsQuery,
-  PerformanceAnalyticsQueimport { MockFactory } from '@helpers/mockFactory';
-ry
+  PerformanceAnalyticsQuery
 } from '../../src/modules/analytics/types/analytics-types';
 
 /**

@@ -10,10 +10,9 @@ import {
 } from '@backend/utils/line';
 import type { LineReplyMessage } from '@backend/types';
 
-import { MockFactory } from '@helpers/mockFactory';
 // Mock global fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+vi.stubGlobal('fetch', mockFetch);
 
 // Mock Web Crypto API
 const mockCrypto = {
@@ -22,7 +21,7 @@ const mockCrypto = {
     sign: vi.fn()
   }
 };
-global.crypto = mockCrypto as any;
+vi.stubGlobal('crypto', mockCrypto);
 
 describe('LINE API Integration Tests', () => {
   const mockAccessToken = 'test-access-token';
@@ -36,7 +35,8 @@ describe('LINE API Integration Tests', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // NOTE: Do NOT use vi.restoreAllMocks() — it strips mockImplementation
+    // from vi.stubGlobal() factories set at module level.
   });
 
   describe('sendLineReply', () => {
@@ -71,35 +71,24 @@ describe('LINE API Integration Tests', () => {
     });
 
     test('should handle API error response', async () => {
-      const mockErrorText = 'Invalid reply token';
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
-        text: vi.fn().mockResolvedValue(mockErrorText)
+        text: vi.fn().mockResolvedValue('Invalid reply token')
       });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
+      // Source uses structured logger (log.error), not console.error
       const result = await sendLineReply(mockAccessToken, mockReplyToken, mockMessages);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('LINE API error:', 400, mockErrorText);
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle network error', async () => {
-      const mockError = new Error('Network error');
-      mockFetch.mockRejectedValueOnce(mockError);
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await sendLineReply(mockAccessToken, mockReplyToken, mockMessages);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to send LINE message:', mockError);
-      
-      consoleSpy.mockRestore();
     });
 
     test('should send multiple messages', async () => {
@@ -162,21 +151,15 @@ describe('LINE API Integration Tests', () => {
     });
 
     test('should handle push API error', async () => {
-      const mockErrorText = 'Invalid user ID';
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        text: vi.fn().mockResolvedValue(mockErrorText)
+        text: vi.fn().mockResolvedValue('Invalid user ID')
       });
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await pushLineMessage(mockAccessToken, mockUserId, mockMessages);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('LINE Push API error:', 404, mockErrorText);
-      
-      consoleSpy.mockRestore();
     });
   });
 
@@ -191,9 +174,9 @@ describe('LINE API Integration Tests', () => {
       mockCrypto.subtle.sign.mockResolvedValue(
         new Uint8Array([116, 101, 115, 116, 45, 115, 105, 103, 110, 97, 116, 117, 114, 101]) // "test-signature" in bytes
       );
-      
+
       // Mock btoa
-      global.btoa = vi.fn().mockReturnValue(mockComputedSignature);
+      vi.stubGlobal('btoa', vi.fn().mockReturnValue(mockComputedSignature));
     });
 
     test('should verify valid signature', async () => {
@@ -215,7 +198,7 @@ describe('LINE API Integration Tests', () => {
     });
 
     test('should reject invalid signature', async () => {
-      global.btoa = vi.fn().mockReturnValue('different-signature');
+      vi.stubGlobal('btoa', vi.fn().mockReturnValue('different-signature'));
 
       const result = await verifyLineSignature(mockBody, mockSignature, mockChannelSecret);
 
@@ -230,7 +213,7 @@ describe('LINE API Integration Tests', () => {
 
     test('should handle signature without sha256 prefix', async () => {
       const signatureWithoutPrefix = 'test-signature';
-      
+
       const result = await verifyLineSignature(mockBody, signatureWithoutPrefix, mockChannelSecret);
 
       expect(result).toBe(true);
@@ -238,15 +221,10 @@ describe('LINE API Integration Tests', () => {
 
     test('should handle crypto error', async () => {
       mockCrypto.subtle.importKey.mockRejectedValueOnce(new Error('Crypto error'));
-      
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await verifyLineSignature(mockBody, mockSignature, mockChannelSecret);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('Signature verification error:', expect.any(Error));
-      
-      consoleSpy.mockRestore();
     });
   });
 
@@ -323,8 +301,6 @@ describe('LINE API Integration Tests', () => {
         json: vi.fn().mockResolvedValue(mockProfile)
       });
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const result = await getLineUserProfile(mockAccessToken, mockUserId);
 
       expect(result).toEqual(mockProfile);
@@ -337,43 +313,26 @@ describe('LINE API Integration Tests', () => {
           },
         }
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `📋 獲取用戶資訊成功 - ${mockProfile.displayName} (${mockUserId})`
-      );
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle profile API error', async () => {
-      const mockErrorText = 'User not found';
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        text: vi.fn().mockResolvedValue(mockErrorText)
+        text: vi.fn().mockResolvedValue('User not found')
       });
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await getLineUserProfile(mockAccessToken, mockUserId);
 
       expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith('LINE Profile API error:', 404, mockErrorText);
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle network error', async () => {
-      const mockError = new Error('Network error');
-      mockFetch.mockRejectedValueOnce(mockError);
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const result = await getLineUserProfile(mockAccessToken, mockUserId);
 
       expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to get LINE user profile:', mockError);
-      
-      consoleSpy.mockRestore();
     });
   });
 
@@ -391,8 +350,6 @@ describe('LINE API Integration Tests', () => {
         json: vi.fn().mockResolvedValue(mockMemberProfile)
       });
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const result = await getLineGroupMemberProfile(mockAccessToken, mockGroupId, mockUserId);
 
       expect(result).toEqual(mockMemberProfile);
@@ -405,29 +362,18 @@ describe('LINE API Integration Tests', () => {
           },
         }
       );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `📋 獲取群組成員資訊成功 - ${mockMemberProfile.displayName} (${mockUserId})`
-      );
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle group member API error', async () => {
-      const mockErrorText = 'Member not found';
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        text: vi.fn().mockResolvedValue(mockErrorText)
+        text: vi.fn().mockResolvedValue('Member not found')
       });
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const result = await getLineGroupMemberProfile(mockAccessToken, mockGroupId, mockUserId);
 
       expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith('LINE Group Member API error:', 404, mockErrorText);
-      
-      consoleSpy.mockRestore();
     });
   });
 
@@ -439,14 +385,9 @@ describe('LINE API Integration Tests', () => {
         text: vi.fn().mockResolvedValue('Rate limit exceeded')
       });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       const result = await sendLineReply(mockAccessToken, mockReplyToken, [createTextMessage('test')]);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('LINE API error:', 429, 'Rate limit exceeded');
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle invalid access token', async () => {
@@ -456,14 +397,9 @@ describe('LINE API Integration Tests', () => {
         text: vi.fn().mockResolvedValue('Invalid access token')
       });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       const result = await pushLineMessage('invalid-token', mockUserId, [createTextMessage('test')]);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('LINE Push API error:', 401, 'Invalid access token');
-      
-      consoleSpy.mockRestore();
     });
 
     test('should handle message size limits', async () => {
@@ -476,14 +412,9 @@ describe('LINE API Integration Tests', () => {
         text: vi.fn().mockResolvedValue('Message too long')
       });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       const result = await sendLineReply(mockAccessToken, mockReplyToken, [message]);
 
       expect(result).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith('LINE API error:', 400, 'Message too long');
-      
-      consoleSpy.mockRestore();
     });
   });
 });

@@ -177,29 +177,42 @@ describe('WebSocketCircuitBreaker', () => {
     });
 
     it('should transition to HALF_OPEN after timeout', async () => {
-      // Wait for timeout
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      // Use fake timers to avoid flaky real-time waits
+      vi.useFakeTimers();
+
+      // Advance time past the 1000ms timeout
+      vi.advanceTimersByTime(1100);
 
       // Next call should trigger transition to HALF_OPEN
+      // (successThreshold=2, so 1 success alone doesn't close it)
       await circuitBreaker.execute(async () => 'test');
 
+      // After first success, still HALF_OPEN (need 2 successes to close)
+      expect(circuitBreaker.getState()).toBe(CircuitState.HALF_OPEN);
+
+      // Second success should close it
+      await circuitBreaker.execute(async () => 'test 2');
       expect(circuitBreaker.getState()).toBe(CircuitState.CLOSED);
+
+      vi.useRealTimers();
     });
 
     it('should close after success threshold in HALF_OPEN', async () => {
-      // Wait for timeout
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.useFakeTimers();
+      vi.advanceTimersByTime(1100);
 
       // Success calls to close circuit
       await circuitBreaker.execute(async () => 'success 1');
       await circuitBreaker.execute(async () => 'success 2');
 
       expect(circuitBreaker.getState()).toBe(CircuitState.CLOSED);
+
+      vi.useRealTimers();
     });
 
     it('should reopen on failure in HALF_OPEN', async () => {
-      // Wait for timeout
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.useFakeTimers();
+      vi.advanceTimersByTime(1100);
 
       // First call transitions to HALF_OPEN
       try {
@@ -211,6 +224,8 @@ describe('WebSocketCircuitBreaker', () => {
       }
 
       expect(circuitBreaker.getState()).toBe(CircuitState.OPEN);
+
+      vi.useRealTimers();
     });
   });
 

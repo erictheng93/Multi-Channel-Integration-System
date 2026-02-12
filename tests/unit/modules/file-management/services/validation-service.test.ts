@@ -7,8 +7,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { FileValidationService } from '@modules/file-management/services/validation-service';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
 import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';
-import type { FileValidationMetadatimport { MockFactory } from '@helpers/mockFactory';
-a } from '@modules/file-management/types/validation-types';
+import type { FileValidationMetadata } from '@modules/file-management/types/validation-types';
 
 describe('FileValidationService', () => {
   let validationService: FileValidationService;
@@ -154,10 +153,10 @@ describe('FileValidationService', () => {
 
         for (const mimeType of mimeTypes) {
           const metadata: FileValidationMetadata = {
-            filename: `test.${mimeType.spltest('/')[1]}`,
+            filename: `test.${mimeType.split('/')[1]}`,
             size: 100000,
             mimeType,
-            extension: mimeType.spltest('/')[1]
+            extension: mimeType.split('/')[1]
           };
 
           const result = await validationService.validateFile(

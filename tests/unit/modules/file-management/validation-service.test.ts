@@ -6,8 +6,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { FileValidationService } from '@modules/file-management/services/validation-service';
 import type { FileValidationMetadata } from '@modules/file-management/types/validation-types';
-import { FILE_SIZE_LIMIimport { MockFactory } from '@helpers/mockFactory';
-TS } from '@modules/file-management/constants/file-config';
+import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';
 
 describe('FileValidationService', () => {
   let validationService: FileValidationService;

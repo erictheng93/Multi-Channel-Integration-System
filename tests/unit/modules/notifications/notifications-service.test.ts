@@ -1,6 +1,5 @@
 // Notifications Service Unit Tests
-// 測試通知系統的核心import { MockFactory } from '@helpers/mockFactory';
-功能
+// 測試通知系統的核心功能
 
 import { describe, it, expect } from 'vitest';
 

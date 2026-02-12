@@ -50,16 +50,32 @@ describe('DurableObjectsMonitor Service', () => {
       MESSAGE_BROADCASTER: {
         idFromName: vi.fn().mockReturnValue({ toString: () => 'mock-broadcaster-id' }),
         get: vi.fn().mockReturnValue({
-          fetch: vi.fn().mockResolvedValue({
-            ok: true,
-            json: vi.fn().mockResolvedValue({
-              activeConnections: 10,
-              totalConnectionsServed: 500,
-              averageLatency: 40,
-              errorRate: 0.02,
-              memoryUsageMB: 50,
-              uptime: 7200000
-            })
+          fetch: vi.fn().mockImplementation((req: Request | string) => {
+            const url = typeof req === 'string' ? req : req.url;
+            if (url.includes('/registered-conversations')) {
+              return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ conversations: ['conv-1'] })
+              });
+            }
+            if (url.includes('/registered-users')) {
+              return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ users: ['user-1'] })
+              });
+            }
+            // Default: health/metrics
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({
+                activeConnections: 10,
+                totalConnectionsServed: 500,
+                averageLatency: 40,
+                errorRate: 0.02,
+                memoryUsageMB: 50,
+                uptime: 7200000
+              })
+            });
           })
         })
       } as any,

@@ -2,8 +2,7 @@
 // 測試 QRCode 生成服務的核心功能
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { QRCodeType, QRCodeOutputFormat, Creatimport { MockFactory } from '@helpers/mockFactory';
-eQRCodeRequest } from '@qrcode/types/qrcode-types';
+import type { QRCodeType, QRCodeOutputFormat, CreateQRCodeRequest } from '@qrcode/types/qrcode-types';
 
 describe('QRCode Service Tests', () => {
   describe('QRCode Type Validation', () => {

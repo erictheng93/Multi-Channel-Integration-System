@@ -18,8 +18,7 @@ import {
   LoadTestHelper
 } from '../../helpers/websocket/websocket-test-utils';
 import { ConversationRoom } from '@backend/durable-objects/ConversationRoom';
-import { MessageBroadcaster } from '@backend/durable-objimport { MockFactory } from '@helpers/mockFactory';
-ects/MessageBroadcaster';
+import { MessageBroadcaster } from '@backend/durable-objects/MessageBroadcaster';
 import { WebSocketBroadcastService } from '@backend/services/websocket-broadcast-service';
 import type { DurableObjectEvent } from '@backend/types/websocket-types';
 

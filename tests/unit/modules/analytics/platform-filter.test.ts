@@ -3,10 +3,36 @@
  * 测试 Analytics 模块的平台过滤功能
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, test } from 'vitest';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
-import type { Cimport { MockFactory } from '@helpers/mockFactory';
-onversationAnalyticsQuery } from '@modules/analytics/types/analytics-types';
+import { createDbClient } from '@/db/drizzle-factory';
+import type { ConversationAnalyticsQuery } from '@modules/analytics/types/analytics-types';
+
+/**
+ * Creates a mock D1Database that supports the full Drizzle ORM D1 driver chain.
+ * Drizzle's D1 session calls: stmt.bind(...).raw() and stmt.bind(...).all()
+ * so we need the bound statement to return raw/all/first/run methods.
+ */
+function createMockD1(): D1Database {
+  const createBoundStatement = () => ({
+    bind: vi.fn().mockReturnThis(),
+    all: vi.fn().mockResolvedValue({ results: [], success: true, meta: {} }),
+    raw: vi.fn().mockResolvedValue([]),
+    first: vi.fn().mockResolvedValue(null),
+    run: vi.fn().mockResolvedValue({ results: [], success: true, meta: {} }),
+  });
+
+  const mockStatement = createBoundStatement();
+  // Make bind return a new object that also has raw/all/first/run
+  mockStatement.bind = vi.fn().mockReturnValue(createBoundStatement());
+
+  return {
+    prepare: vi.fn().mockReturnValue(mockStatement),
+    batch: vi.fn().mockResolvedValue([]),
+    dump: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+    exec: vi.fn().mockResolvedValue({ count: 0, duration: 0 }),
+  } as unknown as D1Database;
+}
 
 describe('Analytics Platform Filter', () => {
   let mockEnv: any;
@@ -14,28 +40,24 @@ describe('Analytics Platform Filter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Mock D1 database
-    const mockDB = MockFactory.createD1()().mockReturnThis(),
-      bind: vi.fn().mockReturnThis(),
-      all: vi.fn().mockResolvedValue({ results: [] }),
-      run: vi.fn().mockResolvedValue({ success: true }),
-      first: vi.fn().mockResolvedValue(null)
-    };
+
+    const mockD1 = createMockD1();
+    const database = createDbClient(mockD1);
 
     mockEnv = {
-      DB: mockDB,
+      DB: mockD1,
       KV: null
     };
 
     analyticsService = new AnalyticsService({
-      database: mockDB as any,
+      database: database,
       kv: undefined,
       env: mockEnv
     });
+  });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
   });
 
   describe('Platform Filter - Basic Functionality', () => {

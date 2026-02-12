@@ -12,7 +12,7 @@ import {
   generateEncryptionKey,
   getEncryptionService,
   resetEncryptionService,
-} from '@shared/services/encryption-service';
+} from '@/services/encryption-service';
 
 describe('EncryptionService', () => {
   let service: EncryptionService;

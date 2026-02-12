@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createTextMessage, createStickerMessage } from '@backend/utils/line';
 import type { LineReplyMessage } from '@backend/types';
 
-import { MockFactory } from '@helpers/mockFactory';
+
 describe('LINE Message Formatting Tests', () => {
   describe('createTextMessage', () => {
     describe('Basic text formatting', () => {

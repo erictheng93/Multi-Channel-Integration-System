@@ -2,8 +2,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AnalyticsService } from '@modules/analytics/services/analytics-core';
-import type { AnalyticsServiceConfig, ConversationAnalyticsQuery } from '@modules/animport { MockFactory } from '@helpers/mockFactory';
-alytics/types/analytics-types';
+import type { AnalyticsServiceConfig, ConversationAnalyticsQuery } from '@modules/analytics/types/analytics-types';
 
 // Mock dependencies with complete Drizzle ORM query builder chain
 const mockDB = {
@@ -46,7 +45,9 @@ const mockDB = {
   run: vi.fn(() => Promise.resolve({ results: [] }))
 };
 
-const mockKV = MockFactory.createKV()(),
+const mockKV = {
+  get: vi.fn(),
+  put: vi.fn(),
   delete: vi.fn()
 };
 
@@ -113,9 +114,9 @@ describe('AnalyticsService', () => {
         metrics: ['total_conversations']
       };
 
-      await expect(
-        analyticsService.getConversationAnalytics(invalidQuery as any)
-      ).rejects.toThrow();
+      const result = await analyticsService.getConversationAnalytics(invalidQuery as any);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
 
     test('應該處理時間範圍', async () => {
@@ -269,9 +270,11 @@ describe('AnalyticsService', () => {
       const result = await analyticsService.exportAnalytics(query);
 
       expect(result).toBeDefined();
-      expect(result.fileUrl).toBeDefined();
-      expect(result.format).toBe('json');
-      expect(result.generatedAt).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+      expect(result.data!.fileUrl).toBeDefined();
+      expect(result.data!.format).toBe('json');
+      expect(result.data!.generatedAt).toBeDefined();
     });
 
     test('應該支持不同的導出格式', async () => {
@@ -294,7 +297,8 @@ describe('AnalyticsService', () => {
         });
 
         const result = await analyticsService.exportAnalytics(query);
-        expect(result.format).toBe(format);
+        expect(result.success).toBe(true);
+        expect(result.data!.format).toBe(format);
       }
     });
   });
@@ -311,9 +315,10 @@ describe('AnalyticsService', () => {
         throw new Error('Database connection failed');
       });
 
-      await expect(
-        analyticsService.getConversationAnalytics(query)
-      ).rejects.toThrow();
+      const result = await analyticsService.getConversationAnalytics(query);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('Database connection failed');
     });
 
     test('應該處理無效的時間範圍', async () => {
@@ -323,9 +328,9 @@ describe('AnalyticsService', () => {
         metrics: ['total_conversations']
       };
 
-      await expect(
-        analyticsService.getConversationAnalytics(query as any)
-      ).rejects.toThrow();
+      const result = await analyticsService.getConversationAnalytics(query as any);
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
     });
   });
 

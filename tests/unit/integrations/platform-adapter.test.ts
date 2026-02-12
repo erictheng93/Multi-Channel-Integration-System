@@ -8,8 +8,7 @@ import {
   LineAdapter,
   FacebookAdapter,
   createPlatformAdapter,
-  type Platfoimport { MockFactory } from '@helpers/mockFactory';
-rmAdapter
+  type PlatformAdapter
 } from '@/integrations/platform-adapter';
 
 describe('Platform Adapter', () => {

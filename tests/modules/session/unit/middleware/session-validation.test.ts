@@ -22,8 +22,7 @@ import {
   createMockCreateSessionData,
   createMockUpdateSessionData,
   createMockBatchOperation
-} from '../../helpers/sessiimport { MockFactory } from '@helpers/mockFactory';
-on-test-helpers';
+} from '../../helpers/session-test-helpers';
 import type { Bindings } from '@shared/types';
 
 // Mock JWT authentication

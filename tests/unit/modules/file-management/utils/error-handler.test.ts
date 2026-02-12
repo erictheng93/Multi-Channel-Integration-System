@@ -9,8 +9,7 @@ import {
   ErrorHandler,
   FileLogger
 } from '@modules/file-management/utils/error-handler';
-import { ERROR_CODES } from 'import { MockFactory } from '@helpers/mockFactory';
-@modules/file-management/constants/error-codes';
+import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
 
 describe('FileManagementError', () => {
   describe('Constructor', () => {
