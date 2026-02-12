@@ -6,8 +6,9 @@
  * - Props 傳遞（conversationId、conversationTitle）
  * - 格式選擇（JSON/CSV/TXT segmented control）
  * - 日期範圍選擇
- * - 客戶篩選下拉選單
+ * - 客戶篩選下拉選單（placeholder + __all__ sentinel）
  * - 匯出流程（成功、失敗、loading 狀態）
+ * - 智慧驗證（count-first approach）
  * - 關閉行為
  * - 條件顯示邏輯
  */
@@ -21,10 +22,12 @@ import ExportDialog from '@/components/conversation/ExportDialog.vue'
 // Mock dependencies
 const mockExportMessages = vi.fn()
 const mockGetExportCustomers = vi.fn()
+const mockGetExportCount = vi.fn()
 
 vi.mock('@/api/export', () => ({
   exportMessages: (...args: unknown[]) => mockExportMessages(...args),
-  getExportCustomers: () => mockGetExportCustomers()
+  getExportCustomers: () => mockGetExportCustomers(),
+  getExportCount: (...args: unknown[]) => mockGetExportCount(...args)
 }))
 
 const mockShowSuccess = vi.fn()
@@ -36,6 +39,18 @@ vi.mock('@/composables/useToast', () => ({
     showError: mockShowError,
     showInfo: vi.fn(),
     showWarning: vi.fn()
+  })
+}))
+
+const mockShowWarning = vi.fn()
+
+vi.mock('@/composables/useConfirmDialog', () => ({
+  useConfirmDialog: () => ({
+    showConfirm: vi.fn(),
+    showWarning: mockShowWarning,
+    showDanger: vi.fn(),
+    showInfo: vi.fn(),
+    clearDialogs: vi.fn()
   })
 }))
 
@@ -57,6 +72,8 @@ describe('ExportDialog.vue', () => {
 
     // Default mock responses
     mockGetExportCustomers.mockResolvedValue({ success: true, data: defaultCustomers })
+    mockGetExportCount.mockResolvedValue({ success: true, data: { count: 50, limit: 5000, willBeTruncated: false } })
+    mockShowWarning.mockResolvedValue(true)
 
     // Mock URL.createObjectURL / revokeObjectURL (not available in JSDOM)
     if (!window.URL.createObjectURL) {
@@ -183,6 +200,41 @@ describe('ExportDialog.vue', () => {
     })
   })
 
+  // ==================== 客戶下拉選單 placeholder ====================
+
+  describe('客戶下拉選單 placeholder', () => {
+    it('預設應顯示「請選擇用戶」placeholder 而非「全部用戶」', async () => {
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const customerSelect = document.querySelector('.apple-select') as HTMLSelectElement
+      expect(customerSelect).toBeTruthy()
+
+      // 選中的值應為空字串（disabled placeholder）
+      expect(customerSelect.value).toBe('')
+
+      // 第一個 option 是 disabled placeholder
+      const firstOption = customerSelect.querySelector('option') as HTMLOptionElement
+      expect(firstOption.textContent).toContain('請選擇用戶')
+      expect(firstOption.disabled).toBe(true)
+    })
+
+    it('應包含「全部用戶」作為可選選項', async () => {
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const customerSelect = document.querySelector('.apple-select')
+      const options = customerSelect?.querySelectorAll('option')
+      // placeholder + "全部用戶" + 2 customers = 4
+      expect(options!.length).toBe(4)
+
+      // 第二個 option 是「全部用戶」，value 為 __all__
+      const allOption = options![1] as HTMLOptionElement
+      expect(allOption.textContent).toContain('全部用戶')
+      expect(allOption.value).toBe('__all__')
+    })
+  })
+
   // ==================== 篩選選項載入 ====================
 
   describe('篩選選項載入', () => {
@@ -208,10 +260,10 @@ describe('ExportDialog.vue', () => {
       wrapper = createWrapper()
       await flushPromises()
 
-      // 找到客戶篩選 select，包含 "全部用戶" + 2 customers
+      // 找到客戶篩選 select：placeholder + "全部用戶" + 2 customers
       const customerSelect = document.querySelector('.apple-select')
       const options = customerSelect?.querySelectorAll('option')
-      expect(options!.length).toBe(3) // "全部用戶" + 2 customers
+      expect(options!.length).toBe(4)
     })
   })
 
@@ -244,10 +296,13 @@ describe('ExportDialog.vue', () => {
       const mockBlob = new Blob(['test data'], { type: 'application/json' })
       mockExportMessages.mockResolvedValue({ success: true, data: mockBlob })
 
-      wrapper = createWrapper()
+      // Use conversationId to skip warning dialog (direct export)
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
       await flushPromises()
 
-      // 點擊匯出按鈕 (primary button is first in footer)
       const footer = document.querySelector('.modal-footer')
       const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
       exportBtn.click()
@@ -260,7 +315,10 @@ describe('ExportDialog.vue', () => {
     it('匯出失敗時應該顯示錯誤通知', async () => {
       mockExportMessages.mockResolvedValue({ success: false, error: '伺服器錯誤' })
 
-      wrapper = createWrapper()
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')
@@ -275,7 +333,10 @@ describe('ExportDialog.vue', () => {
       // 讓匯出永遠 pending
       mockExportMessages.mockImplementation(() => new Promise(() => {}))
 
-      wrapper = createWrapper()
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')
@@ -306,6 +367,235 @@ describe('ExportDialog.vue', () => {
           conversationId: 'conv-abc-123'
         })
       )
+    })
+  })
+
+  // ==================== 智慧驗證（Warning Dialog） ====================
+
+  describe('智慧驗證', () => {
+    it('ConversationDetail 模式：不顯示 warning dialog，直接匯出', async () => {
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      // warning dialog 不應被呼叫
+      expect(mockShowWarning).not.toHaveBeenCalled()
+      // 匯出應直接執行
+      expect(mockExportMessages).toHaveBeenCalledTimes(1)
+    })
+
+    it('列表模式 + 無篩選：應顯示 warning dialog', async () => {
+      mockShowWarning.mockResolvedValue(true)
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      expect(mockShowWarning).toHaveBeenCalledTimes(1)
+      expect(mockShowWarning).toHaveBeenCalledWith(
+        '匯出全部記錄？',
+        expect.any(String),
+        expect.objectContaining({
+          confirmText: '確認匯出全部',
+          cancelText: '返回設定篩選'
+        })
+      )
+    })
+
+    it('列表模式 + 取消 warning：不應執行匯出', async () => {
+      mockShowWarning.mockResolvedValue(false) // 使用者取消
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      expect(mockShowWarning).toHaveBeenCalledTimes(1)
+      expect(mockExportMessages).not.toHaveBeenCalled()
+    })
+
+    it('列表模式 + 確認 warning：應執行匯出', async () => {
+      mockShowWarning.mockResolvedValue(true)
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      expect(mockShowWarning).toHaveBeenCalledTimes(1)
+      expect(mockExportMessages).toHaveBeenCalledTimes(1)
+    })
+
+    it('列表模式 + 設定日期篩選：不顯示 warning dialog', async () => {
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      // 模擬設定日期篩選
+      const dateInputs = document.querySelectorAll('input[type="datetime-local"]')
+      const dateFromInput = dateInputs[0] as HTMLInputElement
+      // Use Vue's reactivity via the wrapper
+      await wrapper.vm.$nextTick()
+
+      // Set date filter through the component's reactive state
+      const vm = wrapper.vm as any
+      vm.filters.dateFrom = '2025-01-01T00:00'
+      await nextTick()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      // 有日期篩選，不需要 warning
+      expect(mockShowWarning).not.toHaveBeenCalled()
+      expect(mockExportMessages).toHaveBeenCalledTimes(1)
+    })
+
+    it('列表模式 + 選擇特定客戶：不顯示 warning dialog', async () => {
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      // 選擇特定客戶
+      const vm = wrapper.vm as any
+      vm.filters.customerId = '1'
+      await nextTick()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      // 有客戶篩選，不需要 warning
+      expect(mockShowWarning).not.toHaveBeenCalled()
+      expect(mockExportMessages).toHaveBeenCalledTimes(1)
+    })
+
+    it('列表模式 + 選擇「全部用戶」（__all__）：仍應顯示 warning dialog', async () => {
+      mockShowWarning.mockResolvedValue(true)
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      // 選擇「全部用戶」
+      const vm = wrapper.vm as any
+      vm.filters.customerId = '__all__'
+      await nextTick()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      // __all__ 不算有篩選，仍然需要 warning
+      expect(mockShowWarning).toHaveBeenCalledTimes(1)
+    })
+
+    it('warning dialog 應顯示記錄數量', async () => {
+      mockGetExportCount.mockResolvedValue({
+        success: true,
+        data: { count: 500, limit: 5000, willBeTruncated: false }
+      })
+      mockShowWarning.mockResolvedValue(true)
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      expect(mockGetExportCount).toHaveBeenCalledTimes(1)
+      // 確認訊息包含數量
+      const warningMessage = mockShowWarning.mock.calls[0][1] as string
+      expect(warningMessage).toContain('500')
+    })
+
+    it('記錄數超過限制時應顯示截斷警告', async () => {
+      mockGetExportCount.mockResolvedValue({
+        success: true,
+        data: { count: 2500, limit: 5000, willBeTruncated: true }
+      })
+      mockShowWarning.mockResolvedValue(true)
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      const warningMessage = mockShowWarning.mock.calls[0][1] as string
+      expect(warningMessage).toContain('2,500')
+      expect(warningMessage).toContain('截斷')
+    })
+
+    it('count API 失敗時應顯示通用警告訊息', async () => {
+      mockGetExportCount.mockResolvedValue({
+        success: false,
+        error: 'Server error'
+      })
+      mockShowWarning.mockResolvedValue(true)
+      mockExportMessages.mockResolvedValue({ success: true, data: new Blob(['data']) })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      // 應顯示通用警告
+      const warningMessage = mockShowWarning.mock.calls[0][1] as string
+      expect(warningMessage).toContain('尚未設定任何篩選條件')
+    })
+
+    it('count API 拋出異常時應顯示錯誤通知', async () => {
+      mockGetExportCount.mockRejectedValue(new Error('Network failure'))
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      // 不應該嘗試 warning dialog 或匯出
+      expect(mockShowWarning).not.toHaveBeenCalled()
+      expect(mockExportMessages).not.toHaveBeenCalled()
+      // 應顯示錯誤通知
+      expect(mockShowError).toHaveBeenCalledWith('匯出失敗', '匯出過程中發生錯誤，請稍後再試')
     })
   })
 
@@ -347,7 +637,10 @@ describe('ExportDialog.vue', () => {
     it('exportMessages 拋出異常時應該顯示錯誤通知', async () => {
       mockExportMessages.mockRejectedValue(new Error('Unexpected error'))
 
-      wrapper = createWrapper()
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')
@@ -361,7 +654,10 @@ describe('ExportDialog.vue', () => {
     it('exportMessages 回傳空 data 時應該顯示錯誤', async () => {
       mockExportMessages.mockResolvedValue({ success: true, data: null })
 
-      wrapper = createWrapper()
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
       await flushPromises()
 
       const footer = document.querySelector('.modal-footer')

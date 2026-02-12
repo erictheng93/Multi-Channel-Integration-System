@@ -264,8 +264,8 @@ export const BULK_OPERATION_LIMITS = {
   /** 消息標籤最大數量 */
   MESSAGE_TAGS_MAX: 10,
 
-  /** 批量導出最大記錄數 */
-  EXPORT_MAX_RECORDS: 1000,
+  /** 批量導出最大記錄數 (Workers Paid Plan 可支撐同步匯出 ~10,000 筆) */
+  EXPORT_MAX_RECORDS: 5000,
 
   /** 批量導出最小記錄數 */
   EXPORT_MIN_RECORDS: 1,

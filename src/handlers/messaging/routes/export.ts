@@ -3,11 +3,14 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import { eq, and, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations, agents, customers } from '@shared/database/schema';
 import { jwtAuth } from '@/middleware/auth';
+import { BULK_OPERATION_LIMITS } from '@/constants/limits';
+
+const EXPORT_LIMIT = BULK_OPERATION_LIMITS.EXPORT_MAX_RECORDS;
 
 const exportRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -80,6 +83,72 @@ exportRoutes.get('/export/agents', jwtAuth, async (c) => {
 });
 
 /**
+ * 匯出記錄計數（輕量查詢）
+ * GET /api/messages/export/count
+ * 回傳符合篩選條件的訊息數量，用於前端匯出前確認
+ */
+exportRoutes.get('/export/count', jwtAuth, async (c) => {
+  try {
+    const db = createDbClient(c.env.DB);
+
+    const conversationId = c.req.query('conversationId');
+    const dateFrom = c.req.query('dateFrom');
+    const dateTo = c.req.query('dateTo');
+    const customerId = c.req.query('customerId');
+    const agentId = c.req.query('agentId');
+
+    const whereConditions: any[] = [
+      eq(messages.isRecalled, false)
+    ];
+
+    if (conversationId) {
+      whereConditions.push(eq(messages.conversationId, conversationId));
+    }
+
+    if (dateFrom) {
+      whereConditions.push(gte(messages.createdAt, dateFrom));
+    }
+    if (dateTo) {
+      whereConditions.push(lte(messages.createdAt, dateTo));
+    }
+
+    if (customerId) {
+      whereConditions.push(eq(conversations.customerId, parseInt(customerId)));
+    }
+
+    if (agentId) {
+      whereConditions.push(eq(messages.agentSenderId, agentId));
+    }
+
+    const result = await db
+      .select({ value: count() })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(...whereConditions));
+
+    const totalCount = result[0]?.value ?? 0;
+    const limit = EXPORT_LIMIT;
+
+    return c.json({
+      success: true,
+      data: {
+        count: totalCount,
+        limit,
+        willBeTruncated: totalCount > limit
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Export count error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get export count',
+      timestamp: new Date().toISOString()
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
  * 匯出訊息 (JSON/CSV/TXT)
  * GET /api/messages/export
  */
@@ -94,7 +163,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
     const dateTo = c.req.query('dateTo');
     const customerId = c.req.query('customerId');
     const agentId = c.req.query('agentId');
-    const limit = Math.min(1000, parseInt(c.req.query('limit') || '100'));
+    const limit = Math.min(EXPORT_LIMIT, parseInt(c.req.query('limit') || '100'));
 
     // 驗證格式
     if (!['json', 'csv', 'txt'].includes(format)) {

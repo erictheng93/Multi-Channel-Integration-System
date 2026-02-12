@@ -93,8 +93,15 @@
             class="apple-select"
             :disabled="loadingOptions"
           >
-            <option value="">
-              {{ loadingOptions ? '載入中...' : '全部用戶' }}
+            <option
+              value=""
+              disabled
+              hidden
+            >
+              {{ loadingOptions ? '載入中...' : '請選擇用戶' }}
+            </option>
+            <option value="__all__">
+              全部用戶
             </option>
             <option
               v-for="customer in customerOptions"
@@ -160,13 +167,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, defineComponent, h, type Component, type VNode } from 'vue'
+import { ref, reactive, computed, watch, defineComponent, h, type Component, type VNode } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
 import { DownloadIcon, ChatIcon } from '@/components/icons'
 import { useToast } from '@/composables/useToast'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import {
   exportMessages,
   getExportCustomers,
+  getExportCount,
   type ExportFormat,
   type ExportCustomerOption
 } from '@/api/export'
@@ -224,6 +233,7 @@ const TxtIcon = createSvgIcon(() => [
 ])
 
 const { showSuccess, showError } = useToast()
+const { showWarning } = useConfirmDialog()
 
 // 狀態
 const exporting = ref(false)
@@ -270,20 +280,88 @@ async function loadFilterOptions() {
   }
 }
 
-// 匯出處理
+// 篩選判斷
+const hasCustomerFilter = computed(() =>
+  filters.customerId !== '' && filters.customerId !== '__all__'
+)
+
+const hasDateFilter = computed(() =>
+  filters.dateFrom !== '' || filters.dateTo !== ''
+)
+
+const hasAnyFilter = computed(() =>
+  hasCustomerFilter.value || hasDateFilter.value
+)
+
+// 構建 API 篩選參數
+function buildExportFilters() {
+  return {
+    format: filters.format,
+    conversationId: props.conversationId || undefined,
+    dateFrom: filters.dateFrom ? new Date(filters.dateFrom).toISOString() : undefined,
+    dateTo: filters.dateTo ? new Date(filters.dateTo).toISOString() : undefined,
+    // __all__ 表示使用者明確選擇全部，傳 undefined 給 API（不篩選）
+    customerId: hasCustomerFilter.value ? filters.customerId : undefined
+  }
+}
+
+// 匯出驗證入口
 async function handleExport() {
+  // 從對話詳情頁進入 → 單一對話，直接匯出
+  if (props.conversationId) {
+    return doExport()
+  }
+
+  // 從列表進入 + 有篩選條件 → 直接匯出
+  if (hasAnyFilter.value) {
+    return doExport()
+  }
+
+  // 從列表進入 + 無篩選 → 查詢數量並顯示確認
+  exporting.value = true
+  try {
+    const countResult = await getExportCount(buildExportFilters())
+
+    let message: string
+    if (countResult.success && countResult.data) {
+      const { count, willBeTruncated } = countResult.data
+      message = `目前共有 ${count.toLocaleString()} 筆記錄。`
+      if (willBeTruncated) {
+        message += `\n系統最多匯出 5,000 筆，超出部分將被截斷。`
+      }
+    } else {
+      // 計數 API 失敗，顯示通用警告
+      message = '您尚未設定任何篩選條件，將匯出全部記錄（最多 5,000 筆）。'
+    }
+
+    const confirmed = await showWarning(
+      '匯出全部記錄？',
+      message,
+      {
+        confirmText: '確認匯出全部',
+        cancelText: '返回設定篩選'
+      }
+    )
+
+    if (!confirmed) {
+      exporting.value = false
+      return
+    }
+
+    await doExport()
+  } catch (error) {
+    console.error('Export validation failed:', error)
+    exporting.value = false
+    showError('匯出失敗', '匯出過程中發生錯誤，請稍後再試')
+  }
+}
+
+// 實際匯出邏輯
+async function doExport() {
   exporting.value = true
 
   try {
-    const exportFilters = {
-      format: filters.format,
-      conversationId: props.conversationId || undefined,
-      dateFrom: filters.dateFrom ? new Date(filters.dateFrom).toISOString() : undefined,
-      dateTo: filters.dateTo ? new Date(filters.dateTo).toISOString() : undefined,
-      customerId: filters.customerId || undefined
-    }
-
-    const result = await exportMessages(exportFilters)
+    const result = await exportMessages(buildExportFilters())
 
     if (!result.success || !result.data) {
       showError('匯出失敗', result.error || '無法匯出對話記錄')

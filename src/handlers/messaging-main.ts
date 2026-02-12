@@ -385,7 +385,7 @@ app.get('/export', jwtAuth, async (c) => {
     const dateTo = c.req.query('dateTo');
     const customerId = c.req.query('customerId');
     const agentId = c.req.query('agentId');
-    const limit = Math.min(1000, parseInt(c.req.query('limit') || '100'));
+    const limit = Math.min(5000, parseInt(c.req.query('limit') || '100'));
 
     // 驗證格式
     if (!['json', 'csv', 'txt'].includes(format)) {

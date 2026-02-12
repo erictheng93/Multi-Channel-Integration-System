@@ -31,6 +31,12 @@ export interface ExportAgentOption {
   role: string | null
 }
 
+export interface ExportCountResult {
+  count: number
+  limit: number
+  willBeTruncated: boolean
+}
+
 // ==================== API 函數 ====================
 
 /**
@@ -66,7 +72,7 @@ export async function exportMessages(filters: ExportFilters = {}): Promise<ApiRe
     params.append('agentId', filters.agentId)
   }
 
-  if (filters.limit && filters.limit > 0 && filters.limit <= 1000) {
+  if (filters.limit && filters.limit > 0 && filters.limit <= 5000) {
     params.append('limit', filters.limit.toString())
   }
 
@@ -100,6 +106,38 @@ export async function exportMessages(filters: ExportFilters = {}): Promise<ApiRe
       error: '匯出請求失敗，請檢查網路連線'
     }
   }
+}
+
+/**
+ * 取得匯出記錄計數（輕量查詢）
+ * 用於匯出前確認記錄數量
+ */
+export async function getExportCount(filters: ExportFilters = {}): Promise<ApiResponse<ExportCountResult>> {
+  const params = new URLSearchParams()
+
+  if (filters.conversationId && /^[a-zA-Z0-9-_]+$/.test(filters.conversationId)) {
+    params.append('conversationId', filters.conversationId)
+  }
+
+  if (filters.dateFrom && !isNaN(Date.parse(filters.dateFrom))) {
+    params.append('dateFrom', filters.dateFrom)
+  }
+
+  if (filters.dateTo && !isNaN(Date.parse(filters.dateTo))) {
+    params.append('dateTo', filters.dateTo)
+  }
+
+  if (filters.customerId && /^\d+$/.test(filters.customerId)) {
+    params.append('customerId', filters.customerId)
+  }
+
+  if (filters.agentId && /^[a-zA-Z0-9-_]+$/.test(filters.agentId)) {
+    params.append('agentId', filters.agentId)
+  }
+
+  const queryString = params.toString()
+
+  return apiClient.get<ExportCountResult>(`/messages/export/count${queryString ? `?${queryString}` : ''}`)
 }
 
 /**
