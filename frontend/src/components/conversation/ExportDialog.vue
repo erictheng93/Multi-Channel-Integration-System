@@ -174,11 +174,13 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import {
   exportMessages,
+  fetchExportData,
   getExportCustomers,
   getExportCount,
   type ExportFormat,
   type ExportCustomerOption
 } from '@/api/export'
+import { generatePdfExport } from '@/services/pdfExportService'
 
 interface Props {
   show: boolean
@@ -232,6 +234,20 @@ const TxtIcon = createSvgIcon(() => [
   h('line', { x1: '8', y1: '17', x2: '12', y2: '17' })
 ])
 
+const PdfIcon = createSvgIcon(() => [
+  h('path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z' }),
+  h('polyline', { points: '14 2 14 8 20 8' }),
+  h('text', {
+    x: '12', y: '17',
+    'text-anchor': 'middle',
+    fill: 'currentColor',
+    stroke: 'none',
+    'font-size': '7',
+    'font-weight': 'bold',
+    'font-family': 'system-ui, sans-serif'
+  }, 'PDF')
+])
+
 const { showSuccess, showError } = useToast()
 const { showWarning } = useConfirmDialog()
 
@@ -251,13 +267,15 @@ const filters = reactive({
 const formatOptions = [
   { value: 'json' as ExportFormat, label: 'JSON', icon: JsonIcon },
   { value: 'csv' as ExportFormat, label: 'CSV', icon: CsvIcon },
-  { value: 'txt' as ExportFormat, label: 'TXT', icon: TxtIcon }
+  { value: 'txt' as ExportFormat, label: 'TXT', icon: TxtIcon },
+  { value: 'pdf' as ExportFormat, label: 'PDF', icon: PdfIcon }
 ]
 
 const formatHints: Record<ExportFormat, string> = {
   json: '適合程式處理和資料分析，包含完整結構化資訊',
   csv: '適合在 Excel 或 Google Sheets 中開啟和分析',
-  txt: '適合直接閱讀的純文字聊天記錄格式'
+  txt: '適合直接閱讀的純文字聊天記錄格式',
+  pdf: '適合列印和分享的可攜式報告格式，完整支援中文'
 }
 
 // 載入篩選選項
@@ -361,15 +379,35 @@ async function doExport() {
   exporting.value = true
 
   try {
-    const result = await exportMessages(buildExportFilters())
+    let blob: Blob
 
-    if (!result.success || !result.data) {
-      showError('匯出失敗', result.error || '無法匯出對話記錄')
-      return
+    if (filters.format === 'pdf') {
+      // PDF 在前端產生：先取得 JSON 資料，再轉為 PDF
+      const dataResult = await fetchExportData(buildExportFilters())
+
+      if (!dataResult.success || !dataResult.data) {
+        showError('匯出失敗', dataResult.error || '無法取得匯出資料')
+        return
+      }
+
+      blob = await generatePdfExport(dataResult.data, {
+        title: props.conversationTitle
+          ? `對話記錄：${props.conversationTitle}`
+          : '對話記錄匯出報告'
+      })
+    } else {
+      // JSON/CSV/TXT 由後端產生
+      const result = await exportMessages(buildExportFilters())
+
+      if (!result.success || !result.data) {
+        showError('匯出失敗', result.error || '無法匯出對話記錄')
+        return
+      }
+
+      blob = result.data
     }
 
     // 下載檔案
-    const blob = result.data
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -379,7 +417,8 @@ async function doExport() {
     const extensions: Record<ExportFormat, string> = {
       json: 'json',
       csv: 'csv',
-      txt: 'txt'
+      txt: 'txt',
+      pdf: 'pdf'
     }
     link.download = `chat_export_${dateStr}.${extensions[filters.format]}`
 

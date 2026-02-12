@@ -123,7 +123,7 @@ import { DownloadIcon } from '@/components/icons'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
 
 const showExportDialog = ref(false)
-const selectedFormat = ref<'json' | 'csv' | 'txt'>('json')
+const selectedFormat = ref<'json' | 'csv' | 'txt' | 'pdf'>('json')
 
 const formats = [
   {
@@ -146,6 +146,13 @@ const formats = [
     icon: '📝',
     description: '人類可讀的純文字格式，按對話分組，每則訊息包含時間和發送者',
     usecases: ['直接閱讀', '品質審查', '存檔歸檔', '列印備份']
+  },
+  {
+    id: 'pdf' as const,
+    name: 'PDF - 可攜式報告',
+    icon: '📄',
+    description: '專業排版的可攜式文件格式，完整支援中文，適合列印、存檔和對外分享',
+    usecases: ['列印報告', '正式存檔', '對外分享', '品質審查']
   }
 ]
 
@@ -154,7 +161,7 @@ function openExportDialog() {
   showExportDialog.value = true
 }
 
-function openExportWithFormat(format: 'json' | 'csv' | 'txt') {
+function openExportWithFormat(format: 'json' | 'csv' | 'txt' | 'pdf') {
   selectedFormat.value = format
   showExportDialog.value = true
 }
@@ -203,7 +210,7 @@ function openExportWithFormat(format: 'json' | 'csv' | 'txt') {
 /* Format Cards */
 .format-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.5rem;
   margin-bottom: 3rem;
 }
@@ -385,6 +392,12 @@ function openExportWithFormat(format: 'json' | 'csv' | 'txt') {
 
 /* Responsive */
 @media (max-width: 1024px) {
+  .format-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
   .format-cards {
     grid-template-columns: 1fr;
   }
