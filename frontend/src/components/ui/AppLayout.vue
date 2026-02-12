@@ -149,11 +149,47 @@
                 >
                   <span>生成報表</span>
                 </router-link>
+              </div>
+            </transition>
+          </div>
 
+          <!-- Expandable Data Management Item -->
+          <div
+            v-else-if="item.path === '/data'"
+            class="nav-item-group"
+          >
+            <div
+              class="nav-item expandable"
+              :class="{ active: $route.path.startsWith('/data') }"
+              @click="toggleDataManagementSubmenu"
+            >
+              <component
+                :is="item.icon"
+                class="nav-icon"
+              />
+              <span
+                v-if="!sidebarCollapsed || isMobile"
+                class="nav-text"
+              >{{ item.label }}</span>
+              <span
+                v-if="!sidebarCollapsed || isMobile"
+                class="expand-icon"
+                :class="{ expanded: isDataManagementExpanded }"
+              >
+                &#9654;
+              </span>
+            </div>
+
+            <!-- Data Management Submenu -->
+            <transition name="submenu">
+              <div
+                v-show="isDataManagementExpanded && (!sidebarCollapsed || isMobile)"
+                class="submenu"
+              >
                 <router-link
-                  to="/reports/export"
+                  to="/data/export"
                   class="submenu-item"
-                  :class="{ active: $route.path === '/reports/export' }"
+                  :class="{ active: $route.path === '/data/export' }"
                 >
                   <span>匯出對話記錄</span>
                 </router-link>
@@ -376,6 +412,7 @@
   import SettingsIcon from '@/components/icons/SettingsIcon.vue'
   import MonitorIcon from '@/components/icons/MonitorIcon.vue'
   import ReportsIcon from '@/components/icons/ReportsIcon.vue'
+  import DataManagementIcon from '@/components/icons/DataManagementIcon.vue'
   import ChannelIcon from '@/components/icons/ChannelIcon.vue'
 
   // Icons are now imported from separate .vue files
@@ -392,6 +429,7 @@
   const showUserMenu = ref(false)
   const isMobile = shallowRef(false)
   const isReportsExpanded = ref(false)
+  const isDataManagementExpanded = ref(false)
   const isSettingsExpanded = ref(false)
 
   const baseNavigationItems = [
@@ -399,6 +437,7 @@
     { path: '/conversations', label: '對話管理', icon: ChatIcon },
     { path: '/customers/tags', label: '標籤管理', icon: TagIcon },
     { path: '/reports', label: '報表系統', icon: ReportsIcon },
+    { path: '/data', label: '資料管理', icon: DataManagementIcon },
   ]
 
   const adminNavigationItems = [
@@ -507,6 +546,10 @@
 
   const toggleReportsSubmenu = () => {
     isReportsExpanded.value = !isReportsExpanded.value
+  }
+
+  const toggleDataManagementSubmenu = () => {
+    isDataManagementExpanded.value = !isDataManagementExpanded.value
   }
 
   const toggleSettingsSubmenu = () => {
@@ -618,6 +661,11 @@
       // Auto-expand reports submenu when on any reports route
       if (newPath.startsWith('/reports')) {
         isReportsExpanded.value = true
+      }
+
+      // Auto-expand data management submenu when on any /data route
+      if (newPath.startsWith('/data')) {
+        isDataManagementExpanded.value = true
       }
 
       // Auto-expand settings submenu when on any settings route
