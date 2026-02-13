@@ -187,14 +187,8 @@ export class PermissionService {
     console.log(`🔍 getUserWithTeam called with userId: ${userId} (type: ${typeof userId}), db: ${db ? 'available' : 'not available'}`);
     
     if (!db) {
-      console.log('⚠️  No database provided, returning mock data');
-      // 暫時返回模擬資料，實際使用時需要傳入 db
-      return {
-        id: typeof userId === 'string' ? parseInt(userId) : userId,
-        role: 'agent',
-        teamId: 1,
-        isActive: true
-      };
+      console.error('❌ [PermissionService] No database provided - denying access (fail-closed)');
+      return null;
     }
 
     try {

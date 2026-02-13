@@ -250,9 +250,14 @@ export async function apiKeyAuth(c: Context<{ Bindings: Bindings }>, next: Next)
       return c.json({ error: 'Missing API key' }, 401);
     }
 
-    // 檢查 API Key（這裡可以從資料庫或環境變數檢查）
-    const validApiKey = (c.env as Bindings & { API_KEY?: string }).API_KEY || 'your-secret-api-key';
-    
+    // 檢查 API Key（從環境變數檢查 - fail-closed if not configured）
+    const validApiKey = (c.env as Bindings & { API_KEY?: string }).API_KEY;
+
+    if (!validApiKey) {
+      console.error('❌ [apiKeyAuth] API_KEY environment variable not configured');
+      return c.json({ error: 'API key authentication not configured' }, 500);
+    }
+
     if (apiKey !== validApiKey) {
       return c.json({ error: 'Invalid API key' }, 401);
     }

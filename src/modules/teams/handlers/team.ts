@@ -108,8 +108,8 @@ app.get('/stats/all', jwtAuth, requireAdmin(), async (c) => {
   }
 });
 
-// Transfer members between teams
-app.post('/transfer', async (c) => {
+// Transfer members between teams - admin only
+app.post('/transfer', jwtAuth, requireAdmin(), async (c) => {
   try {
     const body = await c.req.json() as TeamTransferRequest;
 
@@ -134,8 +134,8 @@ app.post('/transfer', async (c) => {
 });
 
 // ==================== Priority 3: SPECIFIC PARAMETERIZED ====================
-// Search teams
-app.get('/search/:query', async (c) => {
+// Search teams - requires authentication
+app.get('/search/:query', jwtAuth, async (c) => {
   try {
     const query = c.req.param('query');
 
