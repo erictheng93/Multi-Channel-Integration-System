@@ -8,7 +8,16 @@
  */
 
 import { ref, watch } from 'vue'
+import type { Tag } from '@/types/tag'
 import { tagCacheService } from '@/services/tagCacheService'
+
+/**
+ * Store interface for tag search
+ */
+interface TagSearchStoreInterface {
+  tags: Tag[]
+  fetchTags: () => Promise<unknown>
+}
 
 /**
  * Tag search and filtering logic
@@ -24,7 +33,7 @@ import { tagCacheService } from '@/services/tagCacheService'
  * @returns Search state and methods
  */
 export function useTagSearch(
-  store: any,
+  store: TagSearchStoreInterface,
   onLoadStart: () => void,
   onLoadEnd: () => void
 ) {

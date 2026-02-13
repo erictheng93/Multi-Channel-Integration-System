@@ -10,7 +10,7 @@
 import { ref, computed, type Ref } from 'vue'
 import type { Message } from '@/types'
 import { useMessageTime } from './useMessageTime'
-import { useMessageAttachment, type MessageAttachmentProps } from './useMessageAttachment'
+import { useMessageAttachment, type MessageAttachmentProps, type FileAttachment } from './useMessageAttachment'
 import { useMessageActions, type MessageActionEmitters } from './useMessageActions'
 import { useMessageSticker } from './useMessageSticker'
 import { useMessageContent } from './useMessageContent'
@@ -274,7 +274,7 @@ export function useMessageBubble(
   /**
    * Handle attachment preview with emit wrapper
    */
-  const handleAttachmentPreview = (attachment: any) => {
+  const handleAttachmentPreview = (attachment: FileAttachment) => {
     handleAttachmentPreviewBase(attachment, (message) => emit.preview(message))
   }
 

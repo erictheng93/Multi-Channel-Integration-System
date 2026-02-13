@@ -3,6 +3,28 @@
  * 用于检查 WebSocket 连接状态和实时更新是否正常工作
  */
 
+/** Extended window properties for diagnostic runtime globals */
+interface DiagnosticWindowProps {
+  __ws_client?: {
+    state?: string
+    isConnected?: { value: boolean }
+  }
+  __sync_service?: {
+    status?: { value: string }
+    lastUpdate?: { value: string }
+  }
+  __pinia?: {
+    stores?: {
+      conversations?: {
+        conversations?: Array<{ unreadCount?: number; [key: string]: unknown }>
+      }
+    }
+  }
+  diagnoseWebSocket?: typeof diagnoseWebSocket
+}
+
+const diagWindow = window as unknown as DiagnosticWindowProps
+
 export function diagnoseWebSocket() {
   console.log('🔍 ===== WebSocket 诊断开始 =====')
 
@@ -11,7 +33,7 @@ export function diagnoseWebSocket() {
   console.log('1️⃣ Auth Token:', token ? '✅ 存在' : '❌ 缺失')
 
   // 2. 检查全局 WebSocket 连接
-  const ws = (window as any).__ws_client
+  const ws = diagWindow.__ws_client
   console.log('2️⃣ WebSocket Client:', ws ? '✅ 存在' : '❌ 未初始化')
 
   if (ws) {
@@ -20,7 +42,7 @@ export function diagnoseWebSocket() {
   }
 
   // 3. 检查 ConversationSync 服务
-  const syncService = (window as any).__sync_service
+  const syncService = diagWindow.__sync_service
   console.log('3️⃣ Sync Service:', syncService ? '✅ 存在' : '❌ 未初始化')
 
   if (syncService) {
@@ -29,15 +51,15 @@ export function diagnoseWebSocket() {
   }
 
   // 4. 检查 Pinia stores
-  const conversationsStore = (window as any).__pinia?.stores?.conversations
+  const conversationsStore = diagWindow.__pinia?.stores?.conversations
   console.log('4️⃣ Conversations Store:', conversationsStore ? '✅ 存在' : '❌ 未初始化')
 
   if (conversationsStore) {
     const conversations = conversationsStore.conversations || []
-    const totalUnread = conversations.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0)
+    const totalUnread = conversations.reduce((sum: number, c: { unreadCount?: number }) => sum + (c.unreadCount || 0), 0)
     console.log(`   - 对话总数: ${conversations.length}`)
     console.log(`   - 未读消息总数: ${totalUnread}`)
-    console.log(`   - 有未读的对话:`, conversations.filter((c: any) => c.unreadCount > 0))
+    console.log(`   - 有未读的对话:`, conversations.filter((c: { unreadCount?: number }) => (c.unreadCount ?? 0) > 0))
   }
 
   console.log('✅ ===== 诊断完成 =====')
@@ -49,5 +71,5 @@ export function diagnoseWebSocket() {
 
 // 添加到全局，方便在控制台调用
 if (typeof window !== 'undefined') {
-  (window as any).diagnoseWebSocket = diagnoseWebSocket
+  diagWindow.diagnoseWebSocket = diagnoseWebSocket
 }

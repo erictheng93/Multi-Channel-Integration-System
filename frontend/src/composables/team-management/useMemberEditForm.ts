@@ -607,7 +607,10 @@ export function useMemberEditForm(
       if (addChanges.length > 0) {
         if (addChanges.length === 1) {
           // Single addition - use regular API
-          const change = addChanges[0]!
+          const change = addChanges[0]
+          if (!change) {
+            return
+          }
           const changeTeamId = change.teamId
           const changeTeamName = change.teamName
           apiPromises.push(

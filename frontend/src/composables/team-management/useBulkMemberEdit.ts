@@ -552,7 +552,11 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
         return { success: false, updatedCount: 0, errors: [response.error || '未知錯誤'], undoToken: undefined, undoExpiresAt: undefined }
       }
 
-      const data = response.data!
+      const data = response.data
+      if (!data) {
+        showError('批量編輯失敗', '回應資料異常')
+        return { success: false, updatedCount: 0, errors: ['回應資料異常'], undoToken: undefined, undoExpiresAt: undefined }
+      }
       updatedCount = data.successCount
 
       // Collect errors from failed results

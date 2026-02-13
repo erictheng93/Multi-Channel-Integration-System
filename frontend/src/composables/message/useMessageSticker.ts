@@ -59,7 +59,7 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
    * 调试日志辅助函数
    * 仅在开发模式下输出日志，避免污染生产环境控制台
    */
-  const debugLog = (message: string, ...args: any[]) => {
+  const debugLog = (message: string, ...args: unknown[]) => {
     if (import.meta.env.DEV) {
       console.log(message, ...args)
     }

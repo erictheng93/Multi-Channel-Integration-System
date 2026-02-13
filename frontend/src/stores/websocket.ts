@@ -389,7 +389,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (!channelSubscribers.value.has(channel)) {
       channelSubscribers.value.set(channel, new Set())
     }
-    channelSubscribers.value.get(channel)!.add(id)
+    channelSubscribers.value.get(channel)?.add(id)
 
     // 更新统计
     stats.value.subscriptionCount = subscriptions.value.size

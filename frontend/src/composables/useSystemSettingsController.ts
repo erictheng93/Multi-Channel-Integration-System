@@ -712,15 +712,24 @@ export function useSystemSettingsController() {
 
       if (response.success && response.data) {
         // Build HealthCheckResult from API response
-        const apiData = response.data as any
+        const apiData = response.data as {
+          status?: string
+          checks?: {
+            database?: boolean
+            cache?: boolean
+            queue?: boolean
+            integrations?: boolean | Record<string, boolean>
+          }
+          message?: string
+        }
         const result: HealthCheckResult = {
           success: response.success,
-          status: apiData.status || 'unhealthy',
+          status: (apiData.status as HealthCheckResult['status']) || 'unhealthy',
           checks: {
             database: apiData.checks?.database ?? false,
             cache: apiData.checks?.cache ?? false,
             queue: apiData.checks?.queue ?? false,
-            integrations: apiData.checks?.integrations ?? false
+            integrations: apiData.checks?.integrations !== null && apiData.checks?.integrations !== undefined ? Boolean(apiData.checks.integrations) : false
           },
           message: apiData.message
         }
