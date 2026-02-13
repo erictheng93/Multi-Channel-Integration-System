@@ -89,7 +89,7 @@ export function useConversationController(
     () => {
       const conn = websocket.unifiedConnection.value
       if (!conn || !conn.messages) {return 0}
-      return ((conn.messages as any).value?.length ?? 0)
+      return (conn.messages?.length ?? 0)
     },
     (newCount, oldCount) => {
       if (newCount !== undefined && newCount !== oldCount) {

@@ -13,6 +13,14 @@ import { createTag, updateTag, deleteTag } from '@/api/tags'
 import { tagCacheService } from '@/services/tagCacheService'
 
 /**
+ * Store interface for tag actions
+ */
+interface TagActionStoreInterface {
+  tags: Tag[]
+  fetchTags: (_params?: Record<string, unknown>) => Promise<unknown>
+}
+
+/**
  * Tag CRUD actions with optimistic UI updates
  *
  * Features:
@@ -34,13 +42,13 @@ import { tagCacheService } from '@/services/tagCacheService'
  * @returns Action methods
  */
 export function useTagActions(
-  store: any,
+  store: TagActionStoreInterface,
   tags: ComputedRef<Tag[]>,
   formData: Ref<{ name: string; color: string; description: string }>,
   editingTag: Ref<Tag | null>,
   deletingTag: Ref<Tag | null>,
-  showSuccess: (_title: string, _message?: string, _options?: any) => void,
-  showError: (_title: string, _message?: string, _options?: any) => void,
+  showSuccess: (_title: string, _message?: string, _options?: Record<string, unknown>) => void,
+  showError: (_title: string, _message?: string, _options?: Record<string, unknown>) => void,
   closeModalsCallback: () => void,
   cancelDeleteCallback: () => void
 ) {
@@ -67,8 +75,9 @@ export function useTagActions(
     const index = store.tags.findIndex((t: Tag) => t.id === id)
     if (index === -1) {return null}
 
-    const oldTag: Tag = { ...store.tags[index] }
-    store.tags[index] = { ...store.tags[index], ...updates }
+    const existing = store.tags[index] as Tag
+    const oldTag: Tag = { ...existing }
+    store.tags[index] = { ...existing, ...updates } as Tag
     return oldTag
   }
 
@@ -80,7 +89,7 @@ export function useTagActions(
     const index = store.tags.findIndex((t: Tag) => t.id === id)
     if (index === -1) {return null}
 
-    const deletedTag: Tag = store.tags[index]
+    const deletedTag = store.tags[index] as Tag
     store.tags.splice(index, 1)
     return deletedTag
   }

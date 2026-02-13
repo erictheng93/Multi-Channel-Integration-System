@@ -266,14 +266,15 @@ export function useMessageHandlers(
     }
 
     if (correlationId) {
-      pendingByCorrelationId.delete(correlationId)
-      correlationToRealId.set(correlationId, data.realId)
-      console.log(`📝 [MessageHandlers] Correlation: ${correlationId} → ${data.realId}`)
+      const confirmedCorrelationId = correlationId
+      pendingByCorrelationId.delete(confirmedCorrelationId)
+      correlationToRealId.set(confirmedCorrelationId, data.realId)
+      console.log(`📝 [MessageHandlers] Correlation: ${confirmedCorrelationId} → ${data.realId}`)
 
       // 定時清理 correlation 映射
       setTimeout(() => {
-        correlationToRealId.delete(correlationId!)
-        console.log(`🧹 [MessageHandlers] Cleaned up correlationToRealId: ${correlationId}`)
+        correlationToRealId.delete(confirmedCorrelationId)
+        console.log(`🧹 [MessageHandlers] Cleaned up correlationToRealId: ${confirmedCorrelationId}`)
       }, 5 * 60 * 1000)
     }
 
@@ -306,7 +307,7 @@ export function useMessageHandlers(
 
       // 更新 WebSocket 訊息的附件資訊（如果有）
       if (data.file_attachments && data.file_attachments.length > 0) {
-        // eslint-disable-next-line camelcase
+         
         existingRealMessage.file_attachments = data.file_attachments
         console.log(`📎 [MessageHandlers] Updated file_attachments on existing message`)
       }
@@ -328,7 +329,7 @@ export function useMessageHandlers(
 
       // 如果有真實的檔案附件資料，更新它
       if (data.file_attachments && data.file_attachments.length > 0) {
-        // eslint-disable-next-line camelcase
+         
         pendingMessage.file_attachments = data.file_attachments
       }
 
@@ -346,7 +347,7 @@ export function useMessageHandlers(
       existingRealMessage.deliveryStatus = 'sent' as const
 
       if (data.file_attachments && data.file_attachments.length > 0) {
-        // eslint-disable-next-line camelcase
+         
         existingRealMessage.file_attachments = data.file_attachments
       }
     } else {

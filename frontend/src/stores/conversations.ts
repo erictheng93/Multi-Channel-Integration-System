@@ -11,7 +11,14 @@ import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conver
 import { useWebSocketStore, type SubscriptionId } from './websocket'
 import type { WebSocketMessage } from '@/services/websocketClient'
 
-// Interface removed as it's not used
+/** Internal extension of Conversation for LIFF pending tracking */
+interface LiffConversation extends Conversation {
+  _liffMetadata?: {
+    lineUserId?: string
+    isPending?: boolean
+    scannedAt?: number
+  }
+}
 
 // ✅ 方案 B 阶段 3: 使用全局 WebSocket Store
 // 同步状态类型（向后兼容）
@@ -1621,7 +1628,7 @@ export const useConversationsStore = defineStore('conversations', () => {
             // 🆕 LIFF Reconciliation：用 lineUserId 檢查是否有對應的 pending 對話
             const existingPendingIndex = liffMetadata?.lineUserId
               ? conversations.value.findIndex(c =>
-                  (c as any)._liffMetadata?.lineUserId === liffMetadata.lineUserId
+                  (c as LiffConversation)._liffMetadata?.lineUserId === liffMetadata.lineUserId
                 )
               : -1
 
@@ -1631,7 +1638,7 @@ export const useConversationsStore = defineStore('conversations', () => {
               const removedPending = conversations.value[existingPendingIndex]
               conversations.value.splice(existingPendingIndex, 1)
               console.log(`🔄 [ConversationsStore] Reconciled pending → real conversation`, {
-                pendingId: (removedPending as any)?.id,
+                pendingId: removedPending?.id,
                 realConversationId: conversationId,
                 lineUserId: `${liffMetadata?.lineUserId?.substring(0, 10)  }...`
               })
@@ -1643,8 +1650,8 @@ export const useConversationsStore = defineStore('conversations', () => {
               // 🆕 如果是 pending 對話，檢查是否已有相同 lineUserId 的 pending（避免重複掃碼）
               if (liffMetadata?.isPending && liffMetadata?.lineUserId) {
                 const duplicatePendingIndex = conversations.value.findIndex(c =>
-                  (c as any)._liffMetadata?.lineUserId === liffMetadata.lineUserId &&
-                  (c as any)._liffMetadata?.isPending === true
+                  (c as LiffConversation)._liffMetadata?.lineUserId === liffMetadata.lineUserId &&
+                  (c as LiffConversation)._liffMetadata?.isPending === true
                 )
                 if (duplicatePendingIndex !== -1) {
                   console.log(`🚫 [ConversationsStore] Ignoring duplicate pending conversation`, {
@@ -1688,7 +1695,7 @@ export const useConversationsStore = defineStore('conversations', () => {
                 createdAt: (incomingConversation.createdAt as number) || Date.now(),
                 updatedAt: Date.now(),
                 // 🆕 保留 LIFF metadata 用於 UI 顯示和 Reconciliation
-                ...(liffMetadata && { _liffMetadata: liffMetadata } as any)
+                ...(liffMetadata && { _liffMetadata: liffMetadata } as Partial<LiffConversation>)
               }
 
               // 添加到列表頂部
@@ -1894,7 +1901,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     const staleIndices: number[] = []
 
     conversations.value.forEach((conv, index) => {
-      const metadata = (conv as any)?._liffMetadata
+      const metadata = (conv as LiffConversation)._liffMetadata
       if (metadata?.isPending && metadata?.scannedAt) {
         if (now - metadata.scannedAt > PENDING_CONVERSATION_TTL) {
           staleIndices.push(index)
@@ -1908,9 +1915,9 @@ export const useConversationsStore = defineStore('conversations', () => {
         const removed = conversations.value[index]
         conversations.value.splice(index, 1)
         console.log(`🧹 [ConversationsStore] Cleaned up stale pending conversation`, {
-          conversationId: (removed as any)?.id,
-          lineUserId: `${(removed as any)?._liffMetadata?.lineUserId?.substring(0, 10)  }...`,
-          age: `${Math.round((now - ((removed as any)?._liffMetadata?.scannedAt || 0)) / 1000)}s`
+          conversationId: removed?.id,
+          lineUserId: `${(removed as LiffConversation)?._liffMetadata?.lineUserId?.substring(0, 10)  }...`,
+          age: `${Math.round((now - ((removed as LiffConversation)?._liffMetadata?.scannedAt || 0)) / 1000)}s`
         })
       })
       updateStatsFromConversations()

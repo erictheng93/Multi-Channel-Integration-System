@@ -19,5 +19,8 @@ import { inject } from 'vue'
 import { SETTINGS_CONTROLLER_KEY } from '@/types/system-settings'
 import { LineIntegrationForm } from '@/components/system-settings'
 
-const controller = inject(SETTINGS_CONTROLLER_KEY)!
+const controller = inject(SETTINGS_CONTROLLER_KEY)
+if (!controller) {
+  throw new Error('SystemSettingsController not provided')
+}
 </script>
