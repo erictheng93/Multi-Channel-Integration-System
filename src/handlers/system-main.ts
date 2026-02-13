@@ -82,8 +82,8 @@ systemHandler.get('/api', (c) => {
   });
 });
 
-// 系統狀態端點 (詳細狀態)
-systemHandler.get('/system/status', async (c) => {
+// 系統狀態端點 (詳細狀態) - requires authentication
+systemHandler.get('/system/status', jwtAuth, async (c) => {
   try {
     // 檢查資料庫連接 - using Drizzle ORM
     const drizzleDb = createDbClient(c.env.DB);
@@ -133,8 +133,8 @@ systemHandler.get('/system/status', async (c) => {
   }
 });
 
-// 訊息關聯查詢端點
-systemHandler.get('/messages/:messageId/replies', async (c) => {
+// 訊息關聯查詢端點 - requires authentication
+systemHandler.get('/messages/:messageId/replies', jwtAuth, async (c) => {
   try {
     const messageId = c.req.param('messageId');
     const { getMessageReplies } = await import('../utils/database');
@@ -155,8 +155,8 @@ systemHandler.get('/messages/:messageId/replies', async (c) => {
   }
 });
 
-// 對話訊息樹狀結構端點
-systemHandler.get('/conversations/:conversationId/message-tree', async (c) => {
+// 對話訊息樹狀結構端點 - requires authentication
+systemHandler.get('/conversations/:conversationId/message-tree', jwtAuth, async (c) => {
   try {
     const conversationId = c.req.param('conversationId');
     const { getConversationMessageTree } = await import('../utils/database');
@@ -184,8 +184,8 @@ systemHandler.get('/conversations/:conversationId/message-tree', async (c) => {
   }
 });
 
-// 會話統計端點
-systemHandler.get('/conversations/:conversationId/sessions', async (c) => {
+// 會話統計端點 - requires authentication
+systemHandler.get('/conversations/:conversationId/sessions', jwtAuth, async (c) => {
   try {
     const conversationId = c.req.param('conversationId');
     const { AnalyticsService } = await import('../modules/session/services/analytics-service');
@@ -203,8 +203,8 @@ systemHandler.get('/conversations/:conversationId/sessions', async (c) => {
   }
 });
 
-// 系統統計端點
-systemHandler.get('/stats', async (c) => {
+// 系統統計端點 - requires authentication
+systemHandler.get('/stats', jwtAuth, async (c) => {
   try {
     const drizzleDb = createDbClient(c.env.DB);
 

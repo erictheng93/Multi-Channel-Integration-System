@@ -57,7 +57,11 @@ const decrypt = async (encryptedText: string, key: string): Promise<string> => {
 
 // 獲取加密密鑰
 const getEncryptionKey = (env: Bindings): string => {
-  return env.JWT_SECRET || env.ENCRYPTION_KEY || 'default-key-32-chars-long-for-dev'
+  const key = env.JWT_SECRET || env.ENCRYPTION_KEY;
+  if (!key) {
+    throw new Error('ENCRYPTION_KEY or JWT_SECRET environment variable is not configured');
+  }
+  return key;
 }
 
 // 從 KV 獲取憑證的輔助函數

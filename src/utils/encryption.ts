@@ -9,7 +9,10 @@ const algorithm = 'AES-GCM';
  * 從環境變量獲取加密密鑰
  */
 function getEncryptionKey(env: Bindings): ArrayBuffer {
-  const keyString = env.ENCRYPTION_KEY || 'dev-encryption-key-32-char-long';
+  const keyString = env.ENCRYPTION_KEY;
+  if (!keyString) {
+    throw new Error('ENCRYPTION_KEY environment variable is not configured');
+  }
   
   // 確保密鑰長度為32字節 (256位)
   const paddedKey = keyString.padEnd(32, '0').substring(0, 32);

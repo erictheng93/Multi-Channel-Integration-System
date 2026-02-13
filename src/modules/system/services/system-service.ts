@@ -466,7 +466,11 @@ export class SystemService implements SystemServiceInterface {
 
   // 私有方法：獲取加密密鑰
   private getEncryptionKey(): string {
-    return this.env.JWT_SECRET || this.env.ENCRYPTION_KEY || 'default-key-32-chars-long-for-dev';
+    const key = this.env.JWT_SECRET || this.env.ENCRYPTION_KEY;
+    if (!key) {
+      throw new Error('ENCRYPTION_KEY or JWT_SECRET environment variable is not configured');
+    }
+    return key;
   }
 
   // 私有方法：解密
