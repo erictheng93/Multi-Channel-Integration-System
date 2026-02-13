@@ -31,7 +31,12 @@ describe('Session Boundary Detection', () => {
   let sessionService: SessionService;
   let mockDb: any;
 
+  // Freeze time to prevent Date.now() drift between session creation
+  // and boundary detection (causes flaky failures in full suite runs)
+  const frozenNow = Date.now();
+
   beforeEach(() => {
+    vi.useFakeTimers({ now: frozenNow });
     // Setup mock database responses
     mockDb = {
       select: vi.fn().mockReturnThis(),
@@ -58,6 +63,7 @@ describe('Session Boundary Detection', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
