@@ -47,12 +47,18 @@ vi.mock('drizzle-orm/d1', () => ({
 describe('Session Boundary Detection Logic', () => {
   let sessionService: SessionService;
 
+  // Freeze time to prevent Date.now() drift between session creation
+  // and boundary detection (causes flaky failures in full suite runs)
+  const frozenNow = Date.now();
+
   beforeEach(() => {
+    vi.useFakeTimers({ now: frozenNow });
     sessionService = new SessionService(mockDatabase);
     vi.clearAllMocks();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.resetAllMocks();
   });
 

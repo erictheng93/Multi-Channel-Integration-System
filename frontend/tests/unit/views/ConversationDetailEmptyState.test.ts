@@ -416,7 +416,12 @@ describe('ConversationDetail Integration with Empty State', () => {
     vi.clearAllMocks()
   })
 
-  it('should integrate empty state delay with ConversationDetail component structure', async () => {
+  it('should integrate empty state delay with ConversationDetail component structure', { timeout: 30000 }, async () => {
+    // Use real timers for this test - dynamic import + mount + flushPromises
+    // are heavy async operations that get blocked by fake timers under CPU load,
+    // causing 20s timeout in full suite runs (takes ~7s in isolation)
+    vi.useRealTimers()
+
     // Import the actual component
     const ConversationDetail = (await import('@/views/ConversationDetail.vue')).default
 
