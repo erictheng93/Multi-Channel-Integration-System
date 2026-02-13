@@ -400,6 +400,7 @@ export async function getMessageStats(
       senderName: messages.senderName,
       sentAt: messages.sentAt,
       createdAt: messages.createdAt,
+      updatedAt: messages.updatedAt,
       deletedAt: messages.deletedAt,
       customer_name: customers.displayName,
       platform: customers.platform

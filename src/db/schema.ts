@@ -2,6 +2,8 @@ import { sqliteTable, text, integer, real, primaryKey, unique } from 'drizzle-or
 import { sql } from 'drizzle-orm';
 
 // Teams table - 團隊
+// SEMANTIC CONTRACT: isActive=false → temporarily disabled (recoverable)
+//                    deletedAt=set  → soft deleted (logically removed)
 export const teams = sqliteTable('teams', {
   id: integer('id').primaryKey(),
   name: text('name').notNull(),
@@ -112,7 +114,7 @@ export const conversations = sqliteTable('conversations', {
   customerId: integer('customer_id').notNull().references(() => customers.id),
   assignedTeamId: integer('assigned_team_id').references(() => teams.id),
   // Note: assignedUserId removed - only team assignment is supported now
-  status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'in-progress', 'waiting'
+  status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'in-progress', 'waiting', 'closed'
   priority: text('priority').default('normal'), // 'low', 'normal', 'high', 'urgent'
   firstResponseAt: text('first_response_at'),
   closedAt: text('closed_at'),
@@ -148,6 +150,7 @@ export const messages = sqliteTable('messages', {
   metadata: text('metadata'),
   senderName: text('sender_name'), // 發送者名稱快照（持久化保存，不受帳號刪除或更名影響）
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'), // Tracks message modifications (recall, status changes) (Migration 0036)
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
 
@@ -216,7 +219,7 @@ export const conversationTransfers = sqliteTable('conversation_transfers', {
 // Message recall logs table - 訊息撤回日誌
 export const messageRecallLogs = sqliteTable('message_recall_logs', {
   id: integer('id').primaryKey(),
-  messageId: text('message_id').notNull(),
+  messageId: text('message_id').notNull().references(() => messages.id),
   userId: text('user_id').notNull().references(() => agents.id),
   action: text('action').notNull(),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
@@ -237,6 +240,8 @@ export const notifications = sqliteTable('notifications', {
 });
 
 // Tags table - 標籤系統
+// SEMANTIC CONTRACT: isActive=false → temporarily disabled (recoverable)
+//                    deletedAt=set  → soft deleted (logically removed)
 export const tags = sqliteTable('tags', {
   id: integer('id').primaryKey(),
   name: text('name').notNull(),
@@ -458,7 +463,7 @@ export const reports = sqliteTable('reports', {
   status: text('status').notNull().default('pending'), // 'pending', 'generating', 'completed', 'failed'
 
   // Ownership
-  createdBy: text('created_by').notNull(),
+  createdBy: text('created_by').notNull().references(() => agents.id),
   teamId: integer('team_id').references(() => teams.id),
 
   // Metadata
@@ -513,7 +518,7 @@ export const scheduledReports = sqliteTable('scheduled_reports', {
   retryDelayMinutes: integer('retry_delay_minutes').default(30),
 
   // Ownership
-  createdBy: text('created_by').notNull(),
+  createdBy: text('created_by').notNull().references(() => agents.id),
   teamId: integer('team_id').references(() => teams.id),
 
   // Notification
@@ -559,7 +564,7 @@ export const reportDownloadHistory = sqliteTable('report_download_history', {
   reportId: text('report_id').notNull().references(() => reports.id),
 
   // Download details
-  downloadedBy: text('downloaded_by').notNull(),
+  downloadedBy: text('downloaded_by').notNull().references(() => agents.id),
   downloadedAt: text('downloaded_at').default(sql`CURRENT_TIMESTAMP`),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
@@ -590,7 +595,7 @@ export const reportTemplates = sqliteTable('report_templates', {
   // Usage tracking
   isSystemTemplate: integer('is_system_template', { mode: 'boolean' }).default(false),
   isPublic: integer('is_public', { mode: 'boolean' }).default(false),
-  createdBy: text('created_by').notNull(),
+  createdBy: text('created_by').notNull().references(() => agents.id),
   teamId: integer('team_id').references(() => teams.id),
 
   // Popularity
@@ -610,7 +615,7 @@ export const taskReminders = sqliteTable('task_reminders', {
   title: text('title').notNull(),
   content: text('content'),
   remindAt: text('remind_at').notNull(),
-  conversationId: text('conversation_id'),
+  conversationId: text('conversation_id').references(() => conversations.id, { onDelete: 'set null' }),
   repeatType: text('repeat_type').default('none'), // 'none', 'daily', 'weekly', 'monthly'
   repeatInterval: integer('repeat_interval').default(0),
   isCompleted: integer('is_completed', { mode: 'boolean' }).default(false),
@@ -660,7 +665,9 @@ export const customerTeamAssignments = sqliteTable('customer_team_assignments', 
   displayName: text('display_name'),
   assignedAt: text('assigned_at').default(sql`CURRENT_TIMESTAMP`),
   metadata: text('metadata'), // JSON: additional info
-});
+}, (table) => ({
+  platformTeamUnique: unique().on(table.platformUserId, table.teamId), // Prevent duplicate assignments
+}));
 
 // Export types for reports system
 export type Report = typeof reports.$inferSelect;
