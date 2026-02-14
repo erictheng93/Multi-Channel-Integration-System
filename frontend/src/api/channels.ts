@@ -269,7 +269,9 @@ export const channelsApi = {
  * Parse JSON config from channel
  */
 export function parseConfig(channel: ChannelIntegration): ChannelConfig {
-  if (!channel.config) return {}
+  if (!channel.config) {
+    return {}
+  }
   try {
     return JSON.parse(channel.config) as ChannelConfig
   } catch {
@@ -281,7 +283,9 @@ export function parseConfig(channel: ChannelIntegration): ChannelConfig {
  * Parse JSON webhookConfig from channel
  */
 export function parseWebhookConfig(channel: ChannelIntegration): ChannelWebhookConfig {
-  if (!channel.webhookConfig) return {}
+  if (!channel.webhookConfig) {
+    return {}
+  }
   try {
     return JSON.parse(channel.webhookConfig) as ChannelWebhookConfig
   } catch {
@@ -293,7 +297,9 @@ export function parseWebhookConfig(channel: ChannelIntegration): ChannelWebhookC
  * Parse JSON stats from channel
  */
 export function parseStats(channel: ChannelIntegration): ChannelStatsJson {
-  if (!channel.stats) return { totalSent: 0, totalReceived: 0 }
+  if (!channel.stats) {
+    return { totalSent: 0, totalReceived: 0 }
+  }
   try {
     return JSON.parse(channel.stats) as ChannelStatsJson
   } catch {
