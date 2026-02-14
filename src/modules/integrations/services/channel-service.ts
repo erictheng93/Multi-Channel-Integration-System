@@ -21,7 +21,17 @@ import type {
   ChannelStatistics,
   ChannelHealthStatus,
   WebhookUrlOptions,
-  ChannelIntegrationService as IChannelIntegrationService
+  ChannelIntegrationService as IChannelIntegrationService,
+  ChannelConfig,
+  ChannelCredentials,
+  ChannelWebhookConfig,
+  ChannelStats
+} from '../types/channel-types';
+import {
+  parseChannelConfig,
+  parseChannelCredentials,
+  parseChannelWebhookConfig,
+  parseChannelStats
 } from '../types/channel-types';
 
 export class ChannelService implements IChannelIntegrationService {
@@ -58,6 +68,94 @@ export class ChannelService implements IChannelIntegrationService {
       // If JSON parse fails, it's likely plaintext (backward compatibility)
       return encryptedValue;
     }
+  }
+
+  /**
+   * Build JSON column values for channel_integrations
+   * Encrypts the ENTIRE credentials object as one JSON blob
+   */
+  private async buildJsonColumns(
+    platform: ChannelPlatform,
+    config: ChannelConfig,
+    credentials: ChannelCredentials,
+    webhookConfig: ChannelWebhookConfig,
+    stats?: ChannelStats
+  ): Promise<{ config: string; credentials: string; webhookConfig: string; stats: string }> {
+    const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+
+    // Encrypt the entire credentials object as one blob
+    const credentialsPlaintext = JSON.stringify(credentials);
+    const encryptedCredentials = await encryptionService.encrypt(credentialsPlaintext);
+
+    return {
+      config: JSON.stringify(config),
+      credentials: JSON.stringify(encryptedCredentials),
+      webhookConfig: JSON.stringify(webhookConfig),
+      stats: JSON.stringify(stats || { totalSent: 0, totalReceived: 0 })
+    };
+  }
+
+  /**
+   * Decrypt the JSON credentials column value
+   * Handles two formats:
+   *  - New format: EncryptedData envelope → decrypt → JSON.parse → ChannelCredentials
+   *  - Legacy format (from migration 0026): JSON with individually encrypted string fields
+   */
+  private async decryptCredentials(credentialsJson: string | null | undefined): Promise<ChannelCredentials> {
+    if (!credentialsJson) return {};
+
+    try {
+      const parsed = JSON.parse(credentialsJson);
+
+      // New format: EncryptedData envelope with { encrypted, iv, tag }
+      if (parsed.encrypted && parsed.iv && parsed.tag) {
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+        const decrypted = await encryptionService.decrypt(parsed as EncryptedData);
+        return JSON.parse(decrypted) as ChannelCredentials;
+      }
+
+      // Legacy format: JSON object where each value may be an encrypted string
+      const result: ChannelCredentials = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === 'string') {
+          const decrypted = await this.decryptField(value);
+          result[key] = decrypted || undefined;
+        }
+      }
+      return result;
+
+    } catch (error) {
+      console.error('[ChannelService] Failed to decrypt credentials JSON:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Get decrypted credentials for a channel
+   * Tries JSON column first, falls back to individual legacy columns
+   */
+  async getDecryptedCredentials(channel: ChannelIntegration): Promise<ChannelCredentials> {
+    // Try JSON credentials column first
+    if (channel.credentials) {
+      const creds = await this.decryptCredentials(channel.credentials);
+      if (creds.accessToken || creds.secret || creds.appSecret) {
+        return creds;
+      }
+    }
+
+    // Fallback to legacy columns
+    const result: ChannelCredentials = {};
+    if (channel.platform === 'line') {
+      result.accessToken = (await this.decryptField(channel.lineChannelAccessToken)) || undefined;
+      result.secret = (await this.decryptField(channel.lineChannelSecret)) || undefined;
+    } else if (channel.platform === 'facebook') {
+      result.accessToken = (await this.decryptField(channel.facebookAccessToken)) || undefined;
+      result.appSecret = (await this.decryptField(channel.facebookAppSecret)) || undefined;
+    } else if (channel.platform === 'whatsapp') {
+      result.accessToken = (await this.decryptField(channel.whatsappAccessToken)) || undefined;
+    }
+
+    return result;
   }
 
   /**
@@ -103,6 +201,10 @@ export class ChannelService implements IChannelIntegrationService {
       };
 
       // Add platform-specific configuration
+      let jsonConfig: ChannelConfig = {};
+      let jsonCredentials: ChannelCredentials = {};
+      let jsonWebhookConfig: ChannelWebhookConfig = { url: webhookUrl, token: webhookToken };
+
       if (request.platform === 'line' && request.lineConfig) {
         // Get encryption service
         const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
@@ -111,11 +213,16 @@ export class ChannelService implements IChannelIntegrationService {
         const encryptedAccessToken = await encryptionService.encrypt(request.lineConfig.channelAccessToken);
         const encryptedSecret = await encryptionService.encrypt(request.lineConfig.channelSecret);
 
+        // Legacy columns (kept for backward compatibility)
         channelData.lineChannelId = request.lineConfig.channelId;
-        channelData.lineChannelAccessToken = JSON.stringify(encryptedAccessToken); // ✅ Encrypted
-        channelData.lineChannelSecret = JSON.stringify(encryptedSecret); // ✅ Encrypted
+        channelData.lineChannelAccessToken = JSON.stringify(encryptedAccessToken);
+        channelData.lineChannelSecret = JSON.stringify(encryptedSecret);
         channelData.lineWebhookUrl = webhookUrl;
         channelData.lineWebhookToken = webhookToken;
+
+        // JSON column data
+        jsonConfig = { channelId: request.lineConfig.channelId };
+        jsonCredentials = { accessToken: request.lineConfig.channelAccessToken, secret: request.lineConfig.channelSecret };
       } else if (request.platform === 'facebook' && request.facebookConfig) {
         // Get encryption service
         const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
@@ -124,9 +231,14 @@ export class ChannelService implements IChannelIntegrationService {
         const encryptedAccessToken = await encryptionService.encrypt(request.facebookConfig.accessToken);
         const encryptedAppSecret = await encryptionService.encrypt(request.facebookConfig.appSecret);
 
+        // Legacy columns (kept for backward compatibility)
         channelData.facebookPageId = request.facebookConfig.pageId;
-        channelData.facebookAccessToken = JSON.stringify(encryptedAccessToken); // ✅ Encrypted
-        channelData.facebookAppSecret = JSON.stringify(encryptedAppSecret); // ✅ Encrypted
+        channelData.facebookAccessToken = JSON.stringify(encryptedAccessToken);
+        channelData.facebookAppSecret = JSON.stringify(encryptedAppSecret);
+
+        // JSON column data
+        jsonConfig = { pageId: request.facebookConfig.pageId };
+        jsonCredentials = { accessToken: request.facebookConfig.accessToken, appSecret: request.facebookConfig.appSecret };
       } else if (request.platform === 'whatsapp' && request.whatsappConfig) {
         // Get encryption service
         const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
@@ -134,10 +246,27 @@ export class ChannelService implements IChannelIntegrationService {
         // Encrypt sensitive WhatsApp credentials
         const encryptedAccessToken = await encryptionService.encrypt(request.whatsappConfig.accessToken);
 
+        // Legacy columns (kept for backward compatibility)
         channelData.whatsappPhoneNumber = request.whatsappConfig.phoneNumber;
         channelData.whatsappBusinessAccountId = request.whatsappConfig.businessAccountId;
-        channelData.whatsappAccessToken = JSON.stringify(encryptedAccessToken); // ✅ Encrypted
+        channelData.whatsappAccessToken = JSON.stringify(encryptedAccessToken);
+
+        // JSON column data
+        jsonConfig = { phoneNumber: request.whatsappConfig.phoneNumber, businessAccountId: request.whatsappConfig.businessAccountId };
+        jsonCredentials = { accessToken: request.whatsappConfig.accessToken };
       }
+
+      // Build and assign JSON columns (dual-write)
+      const jsonColumns = await this.buildJsonColumns(
+        request.platform,
+        jsonConfig,
+        jsonCredentials,
+        jsonWebhookConfig
+      );
+      channelData.config = jsonColumns.config;
+      channelData.credentials = jsonColumns.credentials;
+      channelData.webhookConfig = jsonColumns.webhookConfig;
+      channelData.stats = jsonColumns.stats;
 
       // Add metadata
       if (request.configMetadata) {
@@ -236,21 +365,15 @@ export class ChannelService implements IChannelIntegrationService {
     testMessage?: string
   ): Promise<ChannelVerificationResponse> {
     try {
-      if (!channel.lineChannelAccessToken) {
-        return {
-          success: false,
-          verified: false,
-          message: 'LINE Channel Access Token is missing'
-        };
-      }
+      // JSON-first: try getDecryptedCredentials (reads JSON column, falls back to legacy)
+      const creds = await this.getDecryptedCredentials(channel);
+      const accessToken = creds.accessToken;
 
-      // Decrypt the access token
-      const accessToken = await this.decryptField(channel.lineChannelAccessToken);
       if (!accessToken) {
         return {
           success: false,
           verified: false,
-          message: 'Failed to decrypt LINE Channel Access Token'
+          message: 'LINE Channel Access Token is missing'
         };
       }
 
@@ -304,7 +427,7 @@ export class ChannelService implements IChannelIntegrationService {
         message: 'LINE channel verified successfully',
         details: {
           channelId: verificationData.client_id,
-          webhookUrl: channel.lineWebhookUrl || undefined,
+          webhookUrl: parseChannelWebhookConfig(channel.webhookConfig).url || channel.lineWebhookUrl || undefined,
           lastVerifiedAt: timestamp
         }
       };
@@ -338,7 +461,11 @@ export class ChannelService implements IChannelIntegrationService {
     testMessage?: string
   ): Promise<ChannelVerificationResponse> {
     try {
-      if (!channel.facebookAccessToken) {
+      // JSON-first: try getDecryptedCredentials
+      const creds = await this.getDecryptedCredentials(channel);
+      const accessToken = creds.accessToken;
+
+      if (!accessToken) {
         return {
           success: false,
           verified: false,
@@ -346,17 +473,10 @@ export class ChannelService implements IChannelIntegrationService {
         };
       }
 
-      // Decrypt the access token
-      const accessToken = await this.decryptField(channel.facebookAccessToken);
-      if (!accessToken) {
-        return {
-          success: false,
-          verified: false,
-          message: 'Failed to decrypt Facebook Access Token'
-        };
-      }
+      const config = parseChannelConfig(channel.config);
+      const pageId = config.pageId || channel.facebookPageId;
 
-      if (!channel.facebookPageId) {
+      if (!pageId) {
         return {
           success: false,
           verified: false,
@@ -367,7 +487,7 @@ export class ChannelService implements IChannelIntegrationService {
       // Test Facebook API by fetching page info
       // Using Graph API v18.0 to verify page access
       const response = await fetch(
-        `https://graph.facebook.com/v18.0/${channel.facebookPageId}?fields=id,name,access_token&access_token=${accessToken}`,
+        `https://graph.facebook.com/v18.0/${pageId}?fields=id,name,access_token&access_token=${accessToken}`,
         {
           method: 'GET',
           headers: {
@@ -662,11 +782,111 @@ export class ChannelService implements IChannelIntegrationService {
         updatedAt: new Date().toISOString()
       };
 
+      // Track whether credentials changed (for any platform)
+      let credentialsChanged = false;
+
+      // Existing JSON column values (for merging)
+      const existingConfig = parseChannelConfig(channel.config);
+      const existingWebhookConfig = parseChannelWebhookConfig(channel.webhookConfig);
+      const existingStats = parseChannelStats(channel.stats);
+      let newConfig = { ...existingConfig };
+      let newCredentials: ChannelCredentials = {};
+      let newWebhookConfig = { ...existingWebhookConfig };
+
+      // Get existing decrypted credentials for merging
+      const existingCreds = await this.getDecryptedCredentials(channel);
+
       // Update platform-specific config
       if (request.lineConfig && channel.platform === 'line') {
-        if (request.lineConfig.channelId) updateData.lineChannelId = request.lineConfig.channelId;
-        if (request.lineConfig.channelAccessToken) updateData.lineChannelAccessToken = request.lineConfig.channelAccessToken;
-        if (request.lineConfig.channelSecret) updateData.lineChannelSecret = request.lineConfig.channelSecret;
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+
+        if (request.lineConfig.channelId) {
+          updateData.lineChannelId = request.lineConfig.channelId;
+          newConfig.channelId = request.lineConfig.channelId;
+        }
+        if (request.lineConfig.channelAccessToken) {
+          const encrypted = await encryptionService.encrypt(request.lineConfig.channelAccessToken);
+          updateData.lineChannelAccessToken = JSON.stringify(encrypted);
+          credentialsChanged = true;
+        }
+        if (request.lineConfig.channelSecret) {
+          const encrypted = await encryptionService.encrypt(request.lineConfig.channelSecret);
+          updateData.lineChannelSecret = JSON.stringify(encrypted);
+          credentialsChanged = true;
+        }
+
+        // Build merged credentials for JSON column
+        newCredentials = {
+          accessToken: request.lineConfig.channelAccessToken || existingCreds.accessToken,
+          secret: request.lineConfig.channelSecret || existingCreds.secret
+        };
+      }
+
+      if (request.facebookConfig && channel.platform === 'facebook') {
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+
+        if (request.facebookConfig.pageId) {
+          updateData.facebookPageId = request.facebookConfig.pageId;
+          newConfig.pageId = request.facebookConfig.pageId;
+        }
+        if (request.facebookConfig.accessToken) {
+          const encrypted = await encryptionService.encrypt(request.facebookConfig.accessToken);
+          updateData.facebookAccessToken = JSON.stringify(encrypted);
+          credentialsChanged = true;
+        }
+        if (request.facebookConfig.appSecret) {
+          const encrypted = await encryptionService.encrypt(request.facebookConfig.appSecret);
+          updateData.facebookAppSecret = JSON.stringify(encrypted);
+          credentialsChanged = true;
+        }
+
+        newCredentials = {
+          accessToken: request.facebookConfig.accessToken || existingCreds.accessToken,
+          appSecret: request.facebookConfig.appSecret || existingCreds.appSecret
+        };
+      }
+
+      if (request.whatsappConfig && channel.platform === 'whatsapp') {
+        const encryptionService = await getEncryptionService(this.bindings.ENCRYPTION_KEY);
+
+        if (request.whatsappConfig.phoneNumber) {
+          updateData.whatsappPhoneNumber = request.whatsappConfig.phoneNumber;
+          newConfig.phoneNumber = request.whatsappConfig.phoneNumber;
+        }
+        if (request.whatsappConfig.businessAccountId) {
+          updateData.whatsappBusinessAccountId = request.whatsappConfig.businessAccountId;
+          newConfig.businessAccountId = request.whatsappConfig.businessAccountId;
+        }
+        if (request.whatsappConfig.accessToken) {
+          const encrypted = await encryptionService.encrypt(request.whatsappConfig.accessToken);
+          updateData.whatsappAccessToken = JSON.stringify(encrypted);
+          credentialsChanged = true;
+        }
+
+        newCredentials = {
+          accessToken: request.whatsappConfig.accessToken || existingCreds.accessToken
+        };
+      }
+
+      // Update JSON columns (dual-write)
+      const hasConfigChange = request.lineConfig || request.facebookConfig || request.whatsappConfig;
+      if (hasConfigChange) {
+        // If no new credentials provided, keep existing
+        if (!newCredentials.accessToken && !newCredentials.secret && !newCredentials.appSecret) {
+          newCredentials = existingCreds;
+        }
+
+        const jsonColumns = await this.buildJsonColumns(
+          channel.platform as ChannelPlatform,
+          newConfig,
+          newCredentials,
+          newWebhookConfig,
+          existingStats
+        );
+        updateData.config = jsonColumns.config;
+        updateData.credentials = jsonColumns.credentials;
+        updateData.webhookConfig = jsonColumns.webhookConfig;
+        updateData.stats = jsonColumns.stats;
       }
 
       if (request.isActive !== undefined) {
@@ -678,7 +898,7 @@ export class ChannelService implements IChannelIntegrationService {
       }
 
       // If credentials changed, mark as unverified
-      if (request.lineConfig?.channelAccessToken || request.lineConfig?.channelSecret) {
+      if (credentialsChanged) {
         updateData.isVerified = false;
         updateData.lastVerifiedAt = null;
       }
