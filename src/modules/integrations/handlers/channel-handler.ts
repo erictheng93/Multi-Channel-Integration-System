@@ -11,6 +11,18 @@ import type {
   ChannelVerificationRequest
 } from '../types/channel-types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import type { ChannelIntegration } from '../types/channel-types';
+
+/**
+ * Sanitize channel data for API responses — strip encrypted credentials JSON
+ */
+function sanitizeChannelForResponse(channel: ChannelIntegration): Omit<ChannelIntegration, 'credentials'> & Record<string, unknown> {
+  const {
+    credentials: _credentials,
+    ...safe
+  } = channel;
+  return safe;
+}
 
 const channelHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -195,7 +207,7 @@ channelHandler.get('/:id', async (c: Context) => {
 
     return c.json({
       success: true,
-      data: channel
+      data: sanitizeChannelForResponse(channel)
     });
 
   } catch (error) {
@@ -261,7 +273,10 @@ channelHandler.put('/:id', async (c: Context) => {
       return c.json(result, 400);
     }
 
-    return c.json(result);
+    return c.json({
+      ...result,
+      data: result.data ? sanitizeChannelForResponse(result.data) : undefined
+    });
 
   } catch (error) {
     console.error('[ChannelHandler] Error updating channel:', error);
@@ -368,7 +383,7 @@ channelHandler.get('/', async (c: Context) => {
 
     return c.json({
       success: true,
-      data: channels,
+      data: channels.map(sanitizeChannelForResponse),
       count: channels.length
     });
 
@@ -470,7 +485,10 @@ channelHandler.post('/', async (c: Context) => {
     // Record activity
     // TODO: Add activity logging
 
-    return c.json(result, HTTP_STATUS.CREATED);
+    return c.json({
+      ...result,
+      data: result.data ? sanitizeChannelForResponse(result.data) : undefined
+    }, HTTP_STATUS.CREATED);
 
   } catch (error) {
     console.error('[ChannelHandler] Error creating channel:', error);

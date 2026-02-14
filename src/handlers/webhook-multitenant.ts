@@ -65,14 +65,17 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
       return errorResponse(c, 'Channel is not active', 403);
     }
 
-    if (!channel.lineChannelSecret) {
+    console.log(`✅ [LINE Webhook] Found active channel ${channel.id} for team ${teamId}`);
+
+    // Decrypt credentials (JSON-first with legacy fallback)
+    const creds = await channelService.getDecryptedCredentials(channel);
+
+    if (!creds.secret) {
       console.error(`❌ [LINE Webhook] Channel ${channel.id} missing LINE Channel Secret`);
       return errorResponse(c, 'Channel configuration incomplete', 500);
     }
 
-    console.log(`✅ [LINE Webhook] Found active channel ${channel.id} for team ${teamId}`);
-
-    // Verify LINE signature using team's channel secret
+    // Verify LINE signature using team's decrypted channel secret
     const signature = c.req.header('X-Line-Signature');
     const body = await c.req.text();
 
@@ -93,12 +96,12 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
       return errorResponse(c, 'Missing signature');
     }
 
-    // Verify signature with team's channel secret
+    // Verify signature with team's decrypted channel secret
     const signatureResult = await verifyWebhookSignature(
       'line',
       body,
       { 'x-line-signature': signature },
-      channel.lineChannelSecret
+      creds.secret
     );
 
     if (!signatureResult.valid) {
@@ -146,8 +149,8 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
       });
 
       if (event.type === 'message' && event.message) {
-        // Pass team-specific env and channel info
-        await processLineMessageMultiTenant(c.env, event, channel);
+        // Pass team-specific env and channel info with decrypted credentials
+        await processLineMessageMultiTenant(c.env, event, channel, creds);
         processedCount++;
 
         // Increment message counter for this channel
@@ -182,13 +185,14 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
 async function processLineMessageMultiTenant(
   env: Bindings,
   event: any,
-  channel: ChannelIntegration
+  channel: ChannelIntegration,
+  decryptedCreds: { accessToken?: string; secret?: string }
 ): Promise<void> {
-  // Create a modified env object with team-specific credentials
+  // Create a modified env object with team-specific decrypted credentials
   const teamEnv = {
     ...env,
-    LINE_CHANNEL_ACCESS_TOKEN: channel.lineChannelAccessToken || env.LINE_CHANNEL_ACCESS_TOKEN,
-    LINE_CHANNEL_SECRET: channel.lineChannelSecret || env.LINE_CHANNEL_SECRET,
+    LINE_CHANNEL_ACCESS_TOKEN: decryptedCreds.accessToken || env.LINE_CHANNEL_ACCESS_TOKEN,
+    LINE_CHANNEL_SECRET: decryptedCreds.secret || env.LINE_CHANNEL_SECRET,
     // Add team context for downstream processing
     _TEAM_ID: channel.teamId,
     _CHANNEL_ID: channel.id

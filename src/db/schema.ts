@@ -342,39 +342,6 @@ export const channelIntegrations = sqliteTable('channel_integrations', {
   // { totalSent: 0, totalReceived: 0, lastMessageAt: "timestamp" }
   stats: text('stats'), // JSON
 
-  // ==================== LEGACY columns (deprecated, to be removed in 0027+) ====================
-  // @deprecated Use config.channelId instead
-  lineChannelId: text('line_channel_id'),
-  // @deprecated Use credentials.accessToken instead
-  lineChannelAccessToken: text('line_channel_access_token'),
-  // @deprecated Use credentials.secret instead
-  lineChannelSecret: text('line_channel_secret'),
-  // @deprecated Use webhookConfig.url instead
-  lineWebhookUrl: text('line_webhook_url'),
-  // @deprecated Use webhookConfig.token instead
-  lineWebhookToken: text('line_webhook_token'),
-
-  // @deprecated Use config.pageId instead
-  facebookPageId: text('facebook_page_id'),
-  // @deprecated Use credentials.accessToken instead
-  facebookAccessToken: text('facebook_access_token'),
-  // @deprecated Use credentials.appSecret instead
-  facebookAppSecret: text('facebook_app_secret'),
-
-  // @deprecated Use config.phoneNumber and config.businessAccountId instead
-  whatsappPhoneNumber: text('whatsapp_phone_number'),
-  whatsappBusinessAccountId: text('whatsapp_business_account_id'),
-  // @deprecated Use credentials.accessToken instead
-  whatsappAccessToken: text('whatsapp_access_token'),
-
-  // @deprecated Use stats.totalSent instead
-  totalMessagesSent: integer('total_messages_sent').default(0),
-  // @deprecated Use stats.totalReceived instead
-  totalMessagesReceived: integer('total_messages_received').default(0),
-  // @deprecated Use stats.lastMessageAt instead
-  lastMessageAt: text('last_message_at'),
-  // ==================== End of LEGACY columns ====================
-
   // Configuration status
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   isVerified: integer('is_verified', { mode: 'boolean' }).default(false),
