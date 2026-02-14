@@ -69,6 +69,9 @@ monitoring/
 archive/
 nul
 test-results/
+test-results.json
+coverage/
+*verbose-output.txt
 
 # 開發工具臨時檔案
 frontend/.gemini-clipboard/
