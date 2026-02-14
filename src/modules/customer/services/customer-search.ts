@@ -246,9 +246,9 @@ export class CustomerSearchService {
     const conditions = [];
 
     // 權限過濾：非admin用戶只能看到自己團隊的客戶
-    if (userPayload?.role !== 'admin' && userPayload?.teamId) {
+    if (userPayload?.role !== 'admin' && userPayload?.primaryTeamId) {
       conditions.push(
-        sql`(${customers.sourceTeamId} = ${userPayload.teamId} OR ${customers.sourceTeamId} IS NULL)`
+        sql`(${customers.sourceTeamId} = ${userPayload.primaryTeamId} OR ${customers.sourceTeamId} IS NULL)`
       );
     }
 

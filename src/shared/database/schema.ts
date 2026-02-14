@@ -269,7 +269,7 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 });
 
 // File attachments table - 檔案附件表
-// NOTE: All columns use consistent snake_case naming (Migration 0025)
+// All columns now use consistent snake_case naming (Migration 0037 applied 2026-02-14)
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
   messageId: text('message_id').references(() => messages.id),

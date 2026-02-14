@@ -25,7 +25,7 @@ export async function fileAuthMiddleware(c: Context<{ Bindings: Bindings }>, nex
     const context: PermissionContext = {
       userId: user.id,
       role: user.role,
-      teamId: user.teamId ?? undefined
+      teamId: user.primaryTeamId ?? undefined
     };
 
     // 使用 PermissionService 檢查權限

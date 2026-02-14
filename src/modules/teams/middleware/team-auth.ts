@@ -33,7 +33,7 @@ export const teamAuthMiddleware = (): MiddlewareHandler<{ Bindings: Bindings }> 
         email: payload.email || '',
         displayName: payload.displayName || payload.username || '',
         role: payload.role,
-        teamId: payload.teamId,
+        primaryTeamId: payload.primaryTeamId,
         teamName: payload.teamName,
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -101,7 +101,7 @@ export const checkTeamAccess = (): MiddlewareHandler<{ Bindings: Bindings }> => 
 
       // 一般代理可以查看自己所屬團隊的資訊
       if (user.role === 'agent') {
-        if (targetTeamId && parseInt(targetTeamId) !== user.teamId) {
+        if (targetTeamId && parseInt(targetTeamId) !== user.primaryTeamId) {
           return c.json({ error: 'Cannot access other teams' }, HTTP_STATUS.FORBIDDEN);
         }
         await next();
@@ -158,10 +158,10 @@ export const checkTeamMembership = (): MiddlewareHandler<{ Bindings: Bindings }>
       }
 
       // 檢查是否為團隊成員
-      if (targetTeamId && parseInt(targetTeamId) !== user.teamId) {
+      if (targetTeamId && parseInt(targetTeamId) !== user.primaryTeamId) {
         return c.json({
           error: 'Not a member of this team',
-          userTeam: user.teamId,
+          userTeam: user.primaryTeamId,
           requestedTeam: targetTeamId
         }, HTTP_STATUS.FORBIDDEN);
       }
@@ -195,7 +195,7 @@ export const createTeamPermissionMiddleware = (
 
       // 檢查成員讀取權限
       if (allowMembersRead && user.role === 'agent') {
-        if (targetTeamId && parseInt(targetTeamId) === user.teamId) {
+        if (targetTeamId && parseInt(targetTeamId) === user.primaryTeamId) {
           await next();
           return;
         }

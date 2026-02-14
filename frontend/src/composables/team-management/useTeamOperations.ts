@@ -504,7 +504,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
       // 移除成员
       membersToRemove.forEach(memberId => {
         memberUpdatePromises.push(
-          teamStore.updateMember(memberId, { teamId: undefined })
+          teamStore.updateMember(memberId, { primaryTeamId: undefined })
             .catch(error => {
               console.error(`移除成員 ${memberId} 失敗:`, error)
               return { success: false, memberId }
@@ -515,7 +515,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
       // 新增成员
       membersToAdd.forEach(memberId => {
         memberUpdatePromises.push(
-          teamStore.updateMember(memberId, { teamId: id })
+          teamStore.updateMember(memberId, { primaryTeamId: id })
             .catch(error => {
               console.error(`新增成員 ${memberId} 到團隊失敗:`, error)
               return { success: false, memberId }

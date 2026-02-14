@@ -737,12 +737,11 @@ export class UserConnection implements DurableObject {
         return false;
       }
 
-      // Get the user's role and team
+      // Get the user's role
       const user = await db
         .select({
           id: schema.agents.id,
           role: schema.agents.role,
-          teamId: schema.agents.teamId,
         })
         .from(schema.agents)
         .where(eq(schema.agents.id, userId))
@@ -763,9 +762,20 @@ export class UserConnection implements DurableObject {
         return action === 'read'; // Read-only for unassigned
       }
 
-      // Check if user is in the assigned team
-      if (conversation.assignedTeamId && user.teamId === conversation.assignedTeamId) {
-        return true;
+      // Check if user is in the assigned team (via agent_teams)
+      if (conversation.assignedTeamId) {
+        const membership = await db
+          .select({ id: schema.agentTeams.id })
+          .from(schema.agentTeams)
+          .where(and(
+            eq(schema.agentTeams.agentId, userId),
+            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
+          ))
+          .limit(1);
+
+        if (membership.length > 0) {
+          return true;
+        }
       }
 
       console.warn(`❌ [UserConnection] User ${userId} denied ${action} access to conversation ${conversationId}`);

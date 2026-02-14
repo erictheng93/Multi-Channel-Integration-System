@@ -197,10 +197,10 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
     }
 
     // 檢查用戶是否屬於該團隊
-    if (user.teamId !== teamId) {
-      return c.json({ 
+    if (user.primaryTeamId !== teamId) {
+      return c.json({
         error: 'Access denied to this team',
-        userTeam: user.teamId,
+        userTeam: user.primaryTeamId,
         requestedTeam: teamId
       }, 403);
     }

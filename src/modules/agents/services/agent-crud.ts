@@ -3,7 +3,7 @@
 
 import { eq, and, like, desc, asc, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { agents, teams } from '@/db/schema';
+import { agents, teams, agentTeams } from '@/db/schema';
 import type {
   Agent,
   NewAgent,
@@ -59,17 +59,17 @@ export class AgentService implements AgentServiceInterface {
       const agentId = generateId();
       const passwordHash = data.passwordHash || await hashPassword(generateId()); // 臨時密碼
 
+      const now = new Date().toISOString();
       const newAgent: NewAgent = {
         id: agentId,
         email: data.email,
         displayName: data.displayName,
         passwordHash,
         role: data.role || 'agent',
-        teamId: data.teamId || null,
         isActive: data.isActive !== false,
         passwordPolicy: 'changeable',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: now,
+        updatedAt: now
       };
 
       const result = await this.db
@@ -77,6 +77,17 @@ export class AgentService implements AgentServiceInterface {
         .values(newAgent)
         .returning()
         .get();
+
+      // If teamId provided, create agent_teams membership (isPrimary=true for first team)
+      if (data.teamId) {
+        await this.db.insert(agentTeams).values({
+          agentId,
+          teamId: data.teamId,
+          roleInTeam: 'member',
+          isPrimary: true,
+          joinedAt: now
+        });
+      }
 
       return result;
     } catch (error) {
@@ -95,7 +106,7 @@ export class AgentService implements AgentServiceInterface {
           email: agents.email,
           displayName: agents.displayName,
           role: agents.role,
-          teamId: agents.teamId,
+          primaryTeamId: agentTeams.teamId,
           isActive: agents.isActive,
           passwordPolicy: agents.passwordPolicy,
           lastActive: agents.lastActive,
@@ -106,7 +117,8 @@ export class AgentService implements AgentServiceInterface {
           teamName: teams.name,
         })
         .from(agents)
-        .leftJoin(teams, eq(agents.teamId, teams.id))
+        .leftJoin(agentTeams, and(eq(agentTeams.agentId, agents.id), eq(agentTeams.isPrimary, true)))
+        .leftJoin(teams, eq(agentTeams.teamId, teams.id))
         .where(eq(agents.id, id))
         .get();
 
@@ -230,7 +242,7 @@ export class AgentService implements AgentServiceInterface {
       }
 
       if (teamId) {
-        conditions.push(eq(agents.teamId, teamId));
+        conditions.push(eq(agentTeams.teamId, teamId));
       }
 
       if (role) {
@@ -246,7 +258,7 @@ export class AgentService implements AgentServiceInterface {
           email: agents.email,
           displayName: agents.displayName,
           role: agents.role,
-          teamId: agents.teamId,
+          primaryTeamId: agentTeams.teamId,
           isActive: agents.isActive,
           passwordPolicy: agents.passwordPolicy,
           lastActive: agents.lastActive,
@@ -257,7 +269,8 @@ export class AgentService implements AgentServiceInterface {
           teamName: teams.name,
         })
         .from(agents)
-        .leftJoin(teams, eq(agents.teamId, teams.id))
+        .leftJoin(agentTeams, and(eq(agentTeams.agentId, agents.id), eq(agentTeams.isPrimary, true)))
+        .leftJoin(teams, eq(agentTeams.teamId, teams.id))
         .where(whereClause)
         .orderBy(desc(agents.createdAt))
         .limit(limit)
@@ -305,7 +318,7 @@ export class AgentService implements AgentServiceInterface {
       }
 
       if (query.teamIds && query.teamIds.length > 0) {
-        conditions.push(sql`${agents.teamId} IN (${query.teamIds.join(',')})`);
+        conditions.push(sql`${agentTeams.teamId} IN (${query.teamIds.join(',')})`);
       }
 
       if (query.roles && query.roles.length > 0) {
@@ -332,7 +345,7 @@ export class AgentService implements AgentServiceInterface {
           email: agents.email,
           displayName: agents.displayName,
           role: agents.role,
-          teamId: agents.teamId,
+          primaryTeamId: agentTeams.teamId,
           isActive: agents.isActive,
           passwordPolicy: agents.passwordPolicy,
           lastActive: agents.lastActive,
@@ -343,7 +356,8 @@ export class AgentService implements AgentServiceInterface {
           teamName: teams.name,
         })
         .from(agents)
-        .leftJoin(teams, eq(agents.teamId, teams.id))
+        .leftJoin(agentTeams, and(eq(agentTeams.agentId, agents.id), eq(agentTeams.isPrimary, true)))
+        .leftJoin(teams, eq(agentTeams.teamId, teams.id))
         .where(whereClause)
         .orderBy(desc(agents.lastActive))
         .limit(query.limit || 50)
@@ -398,10 +412,19 @@ export class AgentService implements AgentServiceInterface {
         throw new InvalidAgentDataError(`Target team not found: ${toTeamId}`);
       }
 
-      // 批次轉移
+      // 批次轉移 (via agent_teams)
+      const now = new Date().toISOString();
       for (const agentId of agentIds) {
         try {
-          await this.updateAgent(agentId, { teamId: toTeamId });
+          // Remove all existing team memberships, then add new one as primary
+          await this.db.delete(agentTeams).where(eq(agentTeams.agentId, agentId));
+          await this.db.insert(agentTeams).values({
+            agentId,
+            teamId: toTeamId,
+            roleInTeam: 'member',
+            isPrimary: true,
+            joinedAt: now
+          });
         } catch (error) {
           errors.push({
             agentId,

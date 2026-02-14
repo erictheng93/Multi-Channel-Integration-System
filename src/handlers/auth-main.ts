@@ -86,7 +86,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
           displayName: user.displayName,
           email: user.email,
           role: user.role,
-          teamId: user.teamId || undefined,
+          primaryTeamId: user.primaryTeamId || undefined,
           type: 'temp_password_change'
         },
         c.env.JWT_SECRET,
@@ -135,7 +135,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
         displayName: user.displayName,
         email: user.email,
         role: user.role,
-        teamId: user.teamId || undefined,
+        primaryTeamId: user.primaryTeamId || undefined,
         type: 'access',
         // Multi-team support (Phase 1 optimization)
         allowedTeamIds: user.allowedTeamIds || [],
@@ -153,7 +153,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
         displayName: user.displayName,
         email: user.email,
         role: user.role,
-        teamId: user.teamId || undefined,
+        primaryTeamId: user.primaryTeamId || undefined,
         type: 'refresh',
         // Multi-team support (Phase 1 optimization)
         allowedTeamIds: user.allowedTeamIds || [],
@@ -171,7 +171,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
         displayName: user.displayName,
         email: user.email,
         role: user.role,
-        teamId: user.teamId || undefined,
+        primaryTeamId: user.primaryTeamId || undefined,
         loginAt: new Date().toISOString()
       }
     );
@@ -273,7 +273,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
           email: newUser.email,
           displayName: newUser.displayName,
           role: newUser.role,
-          teamId: newUser.teamId
+          teamId: newUser.primaryTeamId
         }
       },
       ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
@@ -288,7 +288,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
           email: newUser.email,
           displayName: newUser.displayName,
           role: newUser.role,
-          teamId: newUser.teamId,
+          teamId: newUser.primaryTeamId,
           teamName: newUser.teamName
         }
       },
@@ -362,7 +362,7 @@ authHandler.get('/profile', jwtAuth, async (c) => {
           email: user.email,
           displayName: user.displayName,
           role: user.role,
-          teamId: user.teamId || undefined,
+          primaryTeamId: user.primaryTeamId || undefined,
           teamName: user.teamName,
           isActive: user.isActive,
           createdAt: user.createdAt,
@@ -490,7 +490,7 @@ authHandler.post('/refresh', async (c) => {
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: payload.role,
-        teamId: payload.teamId,
+        primaryTeamId: payload.primaryTeamId,
         type: 'access',
         // Multi-team support (Phase 1 optimization) - carry over from refresh token
         allowedTeamIds: payload.allowedTeamIds || [],
@@ -508,7 +508,7 @@ authHandler.post('/refresh', async (c) => {
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
         role: payload.role,
-        teamId: payload.teamId,
+        primaryTeamId: payload.primaryTeamId,
         type: 'refresh',
         // Multi-team support (Phase 1 optimization) - carry over
         allowedTeamIds: payload.allowedTeamIds || [],

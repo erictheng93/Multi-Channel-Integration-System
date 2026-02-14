@@ -674,10 +674,10 @@ export const messageHandler = {
             const whereConditions = [];
 
             // 權限控制：非管理員只能搜索自己團隊的對話
-            if (payload?.role !== 'admin' && payload?.teamId) {
+            if (payload?.role !== 'admin' && payload?.primaryTeamId) {
                 whereConditions.push(
                     or(
-                        eq(conversations.assignedTeamId, payload.teamId),
+                        eq(conversations.assignedTeamId, payload.primaryTeamId),
                         sql`${conversations.assignedTeamId} IS NULL`
                     )
                 );
@@ -924,10 +924,10 @@ export const messageHandler = {
             const whereConditions = [];
 
             // 權限控制
-            if (payload?.role !== 'admin' && payload?.teamId) {
+            if (payload?.role !== 'admin' && payload?.primaryTeamId) {
                 whereConditions.push(
                     or(
-                        eq(conv.assignedTeamId, payload.teamId),
+                        eq(conv.assignedTeamId, payload.primaryTeamId),
                         sql`${conv.assignedTeamId} IS NULL`
                     )
                 );

@@ -9,6 +9,7 @@ export type NewAgent = typeof agents.$inferInsert;
 
 // Agent 詳細資料介面 (包含統計和擴展資訊)
 export interface AgentWithDetails extends Agent {
+  primaryTeamId?: number | null;  // From agent_teams WHERE isPrimary=true
   teamName?: string | null;
   skills?: AgentSkill[];
   workloadStats?: AgentWorkloadStats;

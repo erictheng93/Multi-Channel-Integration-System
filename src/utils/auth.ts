@@ -237,10 +237,20 @@ export async function createUser(
       passwordHash: hashedPassword,
       displayName: userData.displayName,
       role: userData.role,
-      teamId: userData.teamId || null,
       createdAt: now,
       updatedAt: now
     });
+
+  // If teamId provided, create agent_teams membership (isPrimary=true)
+  if (userData.teamId) {
+    await drizzleDb.insert(agentTeams).values({
+      agentId: userId,
+      teamId: userData.teamId,
+      roleInTeam: 'member',
+      isPrimary: true,
+      joinedAt: now
+    });
+  }
 
   // Fetch the created user
   const createdUser = await drizzleDb
@@ -260,21 +270,22 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
   const drizzleDb = createDbClient(db);
   const userIdStr = userId.toString();
 
-  // Query 1: 檢查 agents 表 (with primary team)
+  // Query 1: 檢查 agents 表 (with primary team via agent_teams)
   const agent = await drizzleDb
     .select({
       id: agents.id,
       email: agents.email,
       display_name: agents.displayName,
       role: agents.role,
-      team_id: agents.teamId,
+      team_id: agentTeams.teamId,
       team_name: teams.name,
       is_active: agents.isActive,
       created_at: agents.createdAt,
       updated_at: agents.updatedAt
     })
     .from(agents)
-    .leftJoin(teams, eq(agents.teamId, teams.id))
+    .leftJoin(agentTeams, and(eq(agentTeams.agentId, agents.id), eq(agentTeams.isPrimary, true)))
+    .leftJoin(teams, eq(agentTeams.teamId, teams.id))
     .where(and(
       eq(agents.id, userIdStr),
       eq(agents.isActive, true)
@@ -285,7 +296,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     throw new Error('User not found');
   }
 
-  // Query 2: 獲取所有團隊成員資格 (Phase 1 optimization)
+  // Query 2: 獲取所有團隊成員資格 (agent_teams is single source of truth)
   const teamMemberships = await drizzleDb
     .select({
       teamId: agentTeams.teamId,
@@ -295,22 +306,12 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     .where(eq(agentTeams.agentId, userIdStr))
     .all();
 
-  // 構建 allowedTeamIds 和 teamRoles (合併主團隊 + agent_teams)
+  // 構建 allowedTeamIds 和 teamRoles (exclusively from agent_teams)
   const allowedTeamIds: number[] = [];
   const teamRoles: Record<number, TeamRoleInTeam> = {};
 
-  // 加入主團隊 (如果存在)
-  if (agent.team_id) {
-    allowedTeamIds.push(agent.team_id);
-    teamRoles[agent.team_id] = 'member'; // 主團隊預設角色
-  }
-
-  // 加入 agent_teams 中的所有團隊
   for (const membership of teamMemberships) {
-    if (!allowedTeamIds.includes(membership.teamId)) {
-      allowedTeamIds.push(membership.teamId);
-    }
-    // 使用 agent_teams 中的角色 (可能覆蓋主團隊的預設角色)
+    allowedTeamIds.push(membership.teamId);
     teamRoles[membership.teamId] = (membership.roleInTeam as TeamRoleInTeam) || 'member';
   }
 
@@ -320,7 +321,6 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     email: agent.email,
     displayName: agent.display_name,
     role: agent.role,
-    teamId: agent.team_id,
     isActive: Boolean(agent.is_active),
     lastActive: null,
     createdAt: agent.created_at,
@@ -329,7 +329,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     passwordHash: '', // Not needed for return
     passwordPolicy: 'changeable',
     lastLoginAt: null
-  }, agent.team_name || undefined);
+  } as any, agent.team_name || undefined, agent.team_id);
 
   // 返回帶有多團隊資料的 DbUser
   return {
@@ -376,42 +376,34 @@ export async function authenticateUser(
     return { user: null, accountStatus: 'wrong_password', passwordPolicy: user.password_policy || 'changeable' };
   }
 
-  // 🔧 FIX: 查詢 agent_teams 以獲取多團隊成員資格
-  // 這解決了 WebSocket 事件不會發送給正確團隊成員的問題
+  // Query agent_teams for multi-team membership (single source of truth)
   const teamMembershipsQuery = `
-    SELECT team_id, role_in_team
+    SELECT team_id, role_in_team, is_primary
     FROM agent_teams
     WHERE agent_id = ?
   `;
   const teamMembershipsResult = await db.prepare(teamMembershipsQuery).bind(user.id).all();
-  const teamMemberships = (teamMembershipsResult.results || []) as Array<{ team_id: number; role_in_team: string }>;
+  const teamMemberships = (teamMembershipsResult.results || []) as Array<{ team_id: number; role_in_team: string; is_primary: number }>;
 
-  // 構建 allowedTeamIds 和 teamRoles (合併主團隊 + agent_teams)
+  // Build allowedTeamIds and teamRoles exclusively from agent_teams
   const allowedTeamIds: number[] = [];
   const teamRoles: Record<number, TeamRoleInTeam> = {};
+  let primaryTeamId: number | null = null;
 
-  // 加入主團隊 (如果存在)
-  if (user.team_id) {
-    allowedTeamIds.push(user.team_id);
-    teamRoles[user.team_id] = 'member'; // 主團隊預設角色
-  }
-
-  // 加入 agent_teams 中的所有團隊
   for (const membership of teamMemberships) {
-    if (!allowedTeamIds.includes(membership.team_id)) {
-      allowedTeamIds.push(membership.team_id);
-    }
-    // 使用 agent_teams 中的角色 (可能覆蓋主團隊的預設角色)
+    allowedTeamIds.push(membership.team_id);
     teamRoles[membership.team_id] = (membership.role_in_team as TeamRoleInTeam) || 'member';
+    if (membership.is_primary) {
+      primaryTeamId = membership.team_id;
+    }
   }
 
-  // 認證成功，返回用戶資訊（現在包含多團隊資料）
+  // 認證成功，返回用戶資訊（agent_teams 為唯一來源）
   const authenticatedUser = convertAgent({
     id: user.id,
     email: user.email,
     displayName: user.display_name,
     role: user.role,
-    teamId: user.team_id,
     isActive: Boolean(user.is_active),
     lastActive: null,
     createdAt: user.created_at,
@@ -420,9 +412,8 @@ export async function authenticateUser(
     passwordHash: '', // Not needed for return
     passwordPolicy: user.password_policy || 'changeable',
     lastLoginAt: null
-  });
+  } as any, undefined, primaryTeamId);
 
-  // 🔧 FIX: 添加多團隊資料到返回的用戶對象
   return {
     user: {
       ...authenticatedUser,
@@ -482,12 +473,7 @@ export async function canAccessTeam(
     return user.allowedTeamIds.includes(teamId);
   }
 
-  // Priority 3: 檢查主團隊 (backward compat for old tokens)
-  if (user.teamId === teamId) {
-    return true;
-  }
-
-  // Priority 4: 回退到 DB 查詢 (僅用於沒有 allowedTeamIds 的舊 token)
+  // Priority 3: 回退到 DB 查詢 (僅用於沒有 allowedTeamIds 的舊 token)
   if (!db) {
     return false;
   }
@@ -631,7 +617,11 @@ export function canAccessTeamSync(user: DbUser, teamId: number): boolean {
   if (user.role === 'admin') {
     return true;
   }
-  return user.teamId === teamId;
+  // Use allowedTeamIds if available, otherwise fall back to teamId
+  if (user.allowedTeamIds && user.allowedTeamIds.length > 0) {
+    return user.allowedTeamIds.includes(teamId);
+  }
+  return user.primaryTeamId === teamId;
 }
 
 // 會話管理
@@ -667,7 +657,7 @@ export async function generateSystemToken(
     username: userId, // Use userId as username for system tokens
     displayName,
     role,
-    teamId
+    primaryTeamId: teamId
   };
 
   return await signJWT(payload, secret, expiresIn);
@@ -683,7 +673,7 @@ export async function generateMonitoringToken(
     username: 'system-monitoring',
     displayName: 'System Monitoring',
     role: 'admin' as const,
-    teamId: 1,
+    primaryTeamId: 1,
     isSystemToken: true
   };
 
@@ -696,7 +686,7 @@ export async function generateTokenBatch(
     userId: string;
     role: 'admin' | 'agent';
     displayName: string;
-    teamId: number;
+    primaryTeamId?: number;
   }>,
   secret: string,
   expiresIn: number = 3600
@@ -708,7 +698,7 @@ export async function generateTokenBatch(
       user.userId,
       user.role,
       user.displayName,
-      user.teamId,
+      user.primaryTeamId || 0,
       secret,
       expiresIn
     );

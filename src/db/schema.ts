@@ -23,7 +23,7 @@ export const agents = sqliteTable('agents', {
   passwordHash: text('password_hash').notNull(), // 🔐 Bcrypt hashed
   displayName: text('display_name').notNull(),
   role: text('role').notNull().default('agent'), // 'admin', 'agent' (simplified from 3-tier to 2-tier system)
-  teamId: integer('team_id').references(() => teams.id), // @deprecated Use agent_teams for multi-team support (kept for backward compatibility as primary team)
+  // teamId REMOVED — use agent_teams table (isPrimary=true) for primary team lookup
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   passwordPolicy: text('password_policy').default('changeable'),
   lastActive: text('last_active'),
@@ -171,19 +171,18 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 });
 
 // File attachments table - 檔案附件表
-// NOTE: Database columns use camelCase (mimeType, fileSize, fileUrl, r2Key, uploadStatus)
-// Schema must match actual database column names for Drizzle ORM to work correctly
+// All columns now use consistent snake_case naming (Migration 0037 applied 2026-02-14)
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
   messageId: text('message_id').references(() => messages.id),
   conversationId: text('conversation_id').references(() => conversations.id),
   filename: text('filename').notNull(),
-  mimeType: text('mimeType').notNull(), // 🔧 FIX: Match actual DB column (camelCase)
-  fileSize: integer('fileSize').notNull(), // 🔧 FIX: Match actual DB column (camelCase)
-  fileUrl: text('fileUrl'), // 🔧 FIX: Match actual DB column (camelCase) - 公開訪問URL
-  r2Key: text('r2Key').notNull(), // 🔧 FIX: Match actual DB column (camelCase)
-  url: text('url'), // Legacy column - exists in DB
-  uploadStatus: text('uploadStatus').default('completed'), // 🔧 FIX: Match actual DB column (camelCase)
+  mimeType: text('mime_type').notNull(),
+  fileSize: integer('file_size').notNull(),
+  fileUrl: text('file_url'),
+  r2Key: text('r2_key').notNull(),
+  url: text('url'),
+  uploadStatus: text('upload_status').default('completed'),
   uploadedBy: text('uploaded_by'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at'),

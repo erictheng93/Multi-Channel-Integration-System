@@ -38,7 +38,7 @@ export interface Agent {
   name: string
   displayName: string
   role: UserRole
-  teamId?: number
+  primaryTeamId?: number
   isActive: boolean
   isOnline?: boolean // 向後兼容字段
   platforms?: Platform[] // 向後兼容字段

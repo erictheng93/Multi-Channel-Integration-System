@@ -203,7 +203,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       email: email,
       displayName: displayName,
       role: role,
-      teamId: payload.teamId || null,
+      teamId: payload.primaryTeamId || null,
       teamName: payload.teamName || null,
       isActive: true,
       createdAt: new Date().toISOString(),

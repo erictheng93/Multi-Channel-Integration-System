@@ -15,7 +15,7 @@ export const createMockAgent = (role: 'admin' | 'agent', options: Partial<TeamMe
   email: `${role}@example.com`,
   role,
   status: 'active',
-  teamId: 1,
+  primaryTeamId: 1,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...options
@@ -128,7 +128,7 @@ export class AssignmentPermissionTests {
     const agent = createMockAgent('agent')
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
     // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
-    const assignedToSelf = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: agent.teamId })
+    const assignedToSelf = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: agent.primaryTeamId })
     const assignedToOther = createMockConversation(CONVERSATION_STATUS.IN_PROGRESS, { assignedTeamId: 999 })
 
     const tests = [

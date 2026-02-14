@@ -2,6 +2,7 @@
 import { eq, and, isNull, or, desc, inArray } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents, conversations, agentTeams } from '../db/schema';
+import { getPrimaryTeamId } from '../modules/teams/services/agent-teams-service';
 import type {
   // PermissionRule,
   PermissionContext,
@@ -113,7 +114,7 @@ export class PermissionService {
     }
 
     // 團隊範圍限制
-    if (conditions.teamScope && context.teamId !== user.teamId) {
+    if (conditions.teamScope && context.teamId !== user.primaryTeamId) {
       return false;
     }
 
@@ -130,7 +131,7 @@ export class PermissionService {
             .where(eq(conversations.id, (context as any).resourceId))
             .get();
 
-          console.log(`🔍 Conversation team assignment check - ConversationId: ${(context as any).resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.teamId}`);
+          console.log(`🔍 Conversation team assignment check - ConversationId: ${(context as any).resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.primaryTeamId}`);
 
           // 如果對話未指派給任何團隊，允許訪問
           if (!conversation || !conversation.assignedTeamId) {
@@ -138,14 +139,14 @@ export class PermissionService {
           }
 
           // 檢查是否指派給用戶的團隊
-          return conversation.assignedTeamId === user.teamId;
+          return conversation.assignedTeamId === user.primaryTeamId;
         } catch (error) {
           console.error('Failed to check conversation team assignment:', error);
           return false;
         }
       } else {
         // 對於非對話資源，檢查 teamId
-        return (context as any).teamId === user.teamId;
+        return (context as any).teamId === user.primaryTeamId;
       }
     }
 
@@ -155,7 +156,7 @@ export class PermissionService {
     }
 
     // 只能管理自己的團隊
-    if (conditions.ownTeam && context.teamId !== user.teamId) {
+    if (conditions.ownTeam && context.teamId !== user.primaryTeamId) {
       return false;
     }
 
@@ -201,7 +202,6 @@ export class PermissionService {
         .select({
           id: agents.id,
           role: agents.role,
-          teamId: agents.teamId,
           isActive: agents.isActive
         })
         .from(agents)
@@ -220,10 +220,13 @@ export class PermissionService {
         return null;
       }
 
+      // Get primary team from agent_teams (single source of truth)
+      const primaryTeamId = await getPrimaryTeamId(drizzleDb, userIdStr);
+
       const userData = {
         id: parseInt(user.id), // 轉換為數字以符合 UserPermissionData 類型
         role: user.role as string,
-        teamId: user.teamId || 0, // Default to 0 if null
+        primaryTeamId: primaryTeamId || 0, // Default to 0 if null
         isActive: Boolean(user.isActive)
       };
       

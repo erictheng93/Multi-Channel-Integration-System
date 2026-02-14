@@ -13,7 +13,7 @@ export interface AuthPayload {
   displayName: string;
   email?: string;
   role: 'admin' | 'agent';
-  teamId?: number;
+  primaryTeamId?: number;  // From agent_teams WHERE isPrimary=true
   iat: number;
   exp: number;
 }

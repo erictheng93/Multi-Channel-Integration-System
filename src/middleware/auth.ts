@@ -107,9 +107,9 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     }
 
     // Fallback: use JWT payload teamId if database teamId is null (for admin users)
-    if (!user.teamId && payload.teamId) {
-      log.debug('Using JWT payload teamId as fallback', { teamId: payload.teamId });
-      user.teamId = payload.teamId;
+    if (!user.primaryTeamId && payload.primaryTeamId) {
+      log.debug('Using JWT payload teamId as fallback', { teamId: payload.primaryTeamId });
+      user.primaryTeamId = payload.primaryTeamId;
     }
 
     // 🚀 Phase 1 Optimization: Fallback to JWT multi-team data if not populated
@@ -146,8 +146,8 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     }
 
     // Default to primary team if no context header provided
-    if (contextTeamId === null && user.teamId) {
-      contextTeamId = user.teamId;
+    if (contextTeamId === null && user.primaryTeamId) {
+      contextTeamId = user.primaryTeamId;
     }
 
     // 將用戶信息和 JWT payload 添加到 context
@@ -333,7 +333,7 @@ export function requireAdmin() {
  *
  * 🔧 v2.0 MULTI-TEAM SUPPORT:
  * - 支援多團隊成員資格檢查
- * - 首先檢查主團隊 (agents.teamId)
+ * - 首先檢查主團隊 (agent_teams WHERE isPrimary=true)
  * - 如果不匹配，查詢 agent_teams 表檢查次要團隊成員資格
  * - Admin 用戶可以訪問所有團隊
  */
@@ -364,12 +364,12 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
     if (!hasAccess) {
       log.debug('Team access denied', {
         userId: user.id,
-        userPrimaryTeam: user.teamId,
+        userPrimaryTeam: user.primaryTeamId,
         requestedTeam: teamId
       });
       return c.json({
         error: 'Access denied to this team',
-        userTeam: user.teamId,
+        userTeam: user.primaryTeamId,
         requestedTeam: teamId
       }, 403);
     }

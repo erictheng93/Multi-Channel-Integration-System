@@ -383,7 +383,7 @@ export function agentMetricsMiddleware() {
         timestamp: endTime,
         tags: {
           agent_id: user.id.toString(),
-          team_id: user.teamId?.toString() || 'unknown',
+          team_id: user.primaryTeamId?.toString() || 'unknown',
           endpoint: c.req.path,
           method: c.req.method
         },

@@ -282,7 +282,7 @@ const agentToTeamMember = (agent: Agent) => {
     role: agent.role,
     status: (agent.isActive ? 'active' : 'inactive') as 'active' | 'inactive' | 'pending',
     group: undefined,
-    teamId: agent.teamId,
+    primaryTeamId: agent.primaryTeamId,
     avatar: undefined,
     createdAt: new Date(agent.createdAt),
     updatedAt: new Date(),

@@ -143,14 +143,11 @@ export class TeamService implements TeamServiceInterface {
   // Delete team (hard delete - permanently removes from database)
   async deleteTeam(id: number): Promise<boolean> {
     try {
-      // Step 1: Remove team association from agents (set teamId to null)
+      // Step 1: Remove team memberships from agent_teams
+      // (agent_teams has ON DELETE CASCADE on teamId, but we do it explicitly for clarity)
       await this.db
-        .update(agents)
-        .set({
-          teamId: null,
-          updatedAt: new Date().toISOString()
-        })
-        .where(eq(agents.teamId, id));
+        .delete(agentTeams)
+        .where(eq(agentTeams.teamId, id));
 
       // Step 2: Delete associated QR codes
       // Note: qr_code_scans has FK to qr_codes, need to handle carefully
@@ -294,15 +291,41 @@ export class TeamService implements TeamServiceInterface {
       .limit(20);
   }
 
-  // Add member to team
+  // Add member to team (via agent_teams junction table)
   async addMember(teamId: number, request: TeamMemberAddRequest): Promise<TeamMember> {
-    await this.db
-      .update(agents)
-      .set({
-        teamId,
-        updatedAt: new Date().toISOString()
-      })
-      .where(eq(agents.id, request.agentId));
+    const now = new Date().toISOString();
+
+    // Check if membership already exists
+    const [existing] = await this.db
+      .select({ id: agentTeams.id })
+      .from(agentTeams)
+      .where(and(
+        eq(agentTeams.agentId, request.agentId),
+        eq(agentTeams.teamId, teamId)
+      ))
+      .limit(1);
+
+    if (!existing) {
+      // Check if agent has any teams — if not, this becomes primary
+      const [existingTeam] = await this.db
+        .select({ id: agentTeams.id })
+        .from(agentTeams)
+        .where(eq(agentTeams.agentId, request.agentId))
+        .limit(1);
+
+      const isPrimary = !existingTeam;
+
+      await this.db
+        .insert(agentTeams)
+        .values({
+          agentId: request.agentId,
+          teamId,
+          roleInTeam: 'member',
+          isPrimary,
+          joinedAt: now,
+          createdAt: now
+        });
+    }
 
     const result = await this.db
       .select()
@@ -317,30 +340,59 @@ export class TeamService implements TeamServiceInterface {
 
     return {
       id: agent.id,
-      name: agent.displayName, // ✅ Map displayName to name
+      name: agent.displayName,
       displayName: agent.displayName,
-      loginId: agent.email || agent.id, // ✅ Add loginId
+      loginId: agent.email || agent.id,
       email: agent.email,
       role: agent.role,
-      status: agent.isActive ? 'active' : 'inactive', // ✅ Add status
+      status: agent.isActive ? 'active' : 'inactive',
       isActive: agent.isActive,
       lastActive: agent.lastActive,
-      joinedAt: agent.updatedAt,
+      joinedAt: now,
       createdAt: agent.createdAt ?? undefined,
       updatedAt: (agent.updatedAt || agent.createdAt) ?? undefined
     };
   }
 
-  // Remove member from team
+  // Remove member from team (via agent_teams junction table)
   async removeMember(teamId: number, agentId: string): Promise<boolean> {
     try {
+      // Check if this is the agent's primary team
+      const [membership] = await this.db
+        .select({ isPrimary: agentTeams.isPrimary })
+        .from(agentTeams)
+        .where(and(
+          eq(agentTeams.agentId, agentId),
+          eq(agentTeams.teamId, teamId)
+        ))
+        .limit(1);
+
+      // Delete the membership
       await this.db
-        .update(agents)
-        .set({
-          teamId: null,
-          updatedAt: new Date().toISOString()
-        })
-        .where(and(eq(agents.id, agentId), eq(agents.teamId, teamId)));
+        .delete(agentTeams)
+        .where(and(
+          eq(agentTeams.agentId, agentId),
+          eq(agentTeams.teamId, teamId)
+        ));
+
+      // If this was the primary team, promote next team as primary
+      if (membership?.isPrimary) {
+        const [nextTeam] = await this.db
+          .select({ teamId: agentTeams.teamId })
+          .from(agentTeams)
+          .where(eq(agentTeams.agentId, agentId))
+          .limit(1);
+
+        if (nextTeam) {
+          await this.db
+            .update(agentTeams)
+            .set({ isPrimary: true })
+            .where(and(
+              eq(agentTeams.agentId, agentId),
+              eq(agentTeams.teamId, nextTeam.teamId)
+            ));
+        }
+      }
 
       return true;
     } catch (error) {
@@ -349,7 +401,7 @@ export class TeamService implements TeamServiceInterface {
     }
   }
 
-  // 🆕 Bulk remove members from team
+  // 🆕 Bulk remove members from team (via agent_teams junction table)
   async bulkRemoveMembers(teamId: number, agentIds: string[]): Promise<{
     removed: string[];
     failed: { agentId: string; error: string }[];
@@ -365,18 +417,18 @@ export class TeamService implements TeamServiceInterface {
     const idsToProcess = agentIds.slice(0, 50);
 
     try {
-      // Verify which agents belong to this team
-      const validAgents = await this.db
-        .select({ id: agents.id })
-        .from(agents)
+      // Verify which agents belong to this team via agent_teams
+      const validMemberships = await this.db
+        .select({ agentId: agentTeams.agentId })
+        .from(agentTeams)
         .where(
           and(
-            inArray(agents.id, idsToProcess),
-            eq(agents.teamId, teamId)
+            inArray(agentTeams.agentId, idsToProcess),
+            eq(agentTeams.teamId, teamId)
           )
         );
 
-      const validAgentIds = validAgents.map(a => a.id);
+      const validAgentIds = validMemberships.map(m => m.agentId);
       const invalidAgentIds = idsToProcess.filter(id => !validAgentIds.includes(id));
 
       // Mark invalid agents as failed
@@ -387,15 +439,14 @@ export class TeamService implements TeamServiceInterface {
         });
       });
 
-      // Batch update valid agents
+      // Batch delete from agent_teams
       if (validAgentIds.length > 0) {
         await this.db
-          .update(agents)
-          .set({
-            teamId: null,
-            updatedAt: new Date().toISOString()
-          })
-          .where(inArray(agents.id, validAgentIds));
+          .delete(agentTeams)
+          .where(and(
+            inArray(agentTeams.agentId, validAgentIds),
+            eq(agentTeams.teamId, teamId)
+          ));
 
         removed.push(...validAgentIds);
         console.log(`📦 [Team Bulk Remove] Removed ${validAgentIds.length} members from team ${teamId}`);
@@ -429,7 +480,7 @@ export class TeamService implements TeamServiceInterface {
     await this.db
       .update(agents)
       .set(updateData)
-      .where(and(eq(agents.id, agentId), eq(agents.teamId, teamId)));
+      .where(eq(agents.id, agentId));
 
     const result = await this.db
       .select()
@@ -565,38 +616,57 @@ export class TeamService implements TeamServiceInterface {
     );
   }
 
-  // Transfer members between teams
-  // ✅ 優化版本：使用 inArray 批量更新（單條 SQL 語句）
+  // Transfer members between teams (via agent_teams junction table)
   async transferMembers(request: TeamTransferRequest): Promise<TeamTransferResponse> {
     try {
-      // 先驗證哪些 agents 屬於來源團隊
-      const validAgents = await this.db
-        .select({ id: agents.id })
-        .from(agents)
+      const now = new Date().toISOString();
+
+      // Verify which agents belong to the source team via agent_teams
+      const validMemberships = await this.db
+        .select({ agentId: agentTeams.agentId, isPrimary: agentTeams.isPrimary })
+        .from(agentTeams)
         .where(
           and(
-            inArray(agents.id, request.agentIds),
-            eq(agents.teamId, request.fromTeamId)
+            inArray(agentTeams.agentId, request.agentIds),
+            eq(agentTeams.teamId, request.fromTeamId)
           )
         );
 
-      const validAgentIds = validAgents.map(a => a.id);
+      const validAgentIds = validMemberships.map(m => m.agentId);
       const invalidAgentIds = request.agentIds.filter(id => !validAgentIds.includes(id));
 
-      // 批量更新有效的 agents
+      // Transfer: delete old memberships, insert new ones
       if (validAgentIds.length > 0) {
-        await this.db
-          .update(agents)
-          .set({
-            teamId: request.toTeamId,
-            updatedAt: new Date().toISOString()
-          })
-          .where(inArray(agents.id, validAgentIds));
+        // Track which were primary in the old team
+        const primaryAgentIds = new Set(
+          validMemberships.filter(m => m.isPrimary).map(m => m.agentId)
+        );
 
-        console.log(`📦 [Team Transfer] Transferred ${validAgentIds.length} agents using batch update`);
+        // Delete old team memberships
+        await this.db
+          .delete(agentTeams)
+          .where(and(
+            inArray(agentTeams.agentId, validAgentIds),
+            eq(agentTeams.teamId, request.fromTeamId)
+          ));
+
+        // Insert new team memberships (preserve isPrimary status)
+        const newMemberships = validAgentIds.map(agentId => ({
+          agentId,
+          teamId: request.toTeamId,
+          roleInTeam: 'member' as const,
+          isPrimary: primaryAgentIds.has(agentId),
+          joinedAt: now,
+          createdAt: now
+        }));
+
+        await this.db
+          .insert(agentTeams)
+          .values(newMemberships);
+
+        console.log(`📦 [Team Transfer] Transferred ${validAgentIds.length} agents via agent_teams`);
       }
 
-      // 構建失敗列表（不屬於來源團隊的 agents）
       const failedTransfers = invalidAgentIds.map(agentId => ({
         agentId,
         reason: `Agent not found in source team (teamId: ${request.fromTeamId})`
@@ -609,7 +679,6 @@ export class TeamService implements TeamServiceInterface {
       };
     } catch (error) {
       console.error('Transfer members error:', error);
-      // 如果批量操作失敗，所有都標記為失敗
       return {
         success: false,
         transferredAgents: [],

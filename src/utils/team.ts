@@ -1,7 +1,7 @@
 import type { Team, DbUser, DatabaseRow } from '../types';
 import { createDbClient } from '../db/drizzle-factory';
-import { teams, agents, conversations, messages, conversationTransfers, customers } from '../db/schema';
-import { eq, and, count, inArray, sql, desc } from 'drizzle-orm';
+import { teams, agents, agentTeams, conversations, messages, conversationTransfers, customers } from '../db/schema';
+import { eq, and, count, inArray, sql, desc, isNull } from 'drizzle-orm';
 import type { NewTeam, NewConversationTransfer } from '../db/schema';
 
 /**
@@ -163,26 +163,27 @@ export async function deleteTeam(db: D1Database, teamId: number): Promise<void> 
   }
 }
 
-// 獲取團隊成員
+// 獲取團隊成員 (via agent_teams junction table)
 export async function getTeamMembers(db: D1Database, teamId: number): Promise<DbUser[]> {
   const drizzleDb = createDbClient(db);
-  
+
   const result = await drizzleDb
     .select({
       id: agents.id,
       email: agents.email,
       displayName: agents.displayName,
       role: agents.role,
-      teamId: agents.teamId,
+      teamId: agentTeams.teamId,
       teamName: teams.name,
       isActive: agents.isActive,
       createdAt: agents.createdAt,
       updatedAt: agents.updatedAt
     })
-    .from(agents)
-    .leftJoin(teams, eq(agents.teamId, teams.id))
+    .from(agentTeams)
+    .innerJoin(agents, eq(agentTeams.agentId, agents.id))
+    .leftJoin(teams, eq(agentTeams.teamId, teams.id))
     .where(and(
-      eq(agents.teamId, teamId),
+      eq(agentTeams.teamId, teamId),
       eq(agents.isActive, true)
     ))
     .orderBy(agents.displayName)
@@ -194,7 +195,7 @@ export async function getTeamMembers(db: D1Database, teamId: number): Promise<Db
     email: user.email,
     displayName: user.displayName,
     role: user.role as 'admin' | 'agent',
-    teamId: user.teamId,
+    primaryTeamId: user.teamId,
     teamName: user.teamName,
     isActive: user.isActive || false,
     createdAt: user.createdAt!,
@@ -202,7 +203,7 @@ export async function getTeamMembers(db: D1Database, teamId: number): Promise<Db
   }));
 }
 
-// 將用戶添加到團隊
+// 將用戶添加到團隊 (via agent_teams junction table)
 export async function addUserToTeam(
   db: D1Database,
   userId: number | string,
@@ -210,40 +211,68 @@ export async function addUserToTeam(
 ): Promise<void> {
   const drizzleDb = createDbClient(db);
   const now = new Date().toISOString();
-  
-  const result = await drizzleDb
-    .update(agents)
-    .set({ 
-      teamId: teamId,
-      updatedAt: now 
-    })
-    .where(eq(agents.id, String(userId)))
-    .returning({ id: agents.id });
+  const agentId = String(userId);
 
-  if (!result || result.length === 0) {
-    throw new Error('Failed to add user to team');
-  }
+  // Check if agent already has any teams — first team becomes primary
+  const existingTeams = await drizzleDb
+    .select({ teamId: agentTeams.teamId })
+    .from(agentTeams)
+    .where(eq(agentTeams.agentId, agentId))
+    .limit(1);
+
+  const isPrimary = existingTeams.length === 0;
+
+  await drizzleDb.insert(agentTeams).values({
+    agentId,
+    teamId,
+    roleInTeam: 'member',
+    isPrimary,
+    joinedAt: now
+  });
 }
 
-// 從團隊移除用戶
+// 從團隊移除用戶 (via agent_teams junction table)
 export async function removeUserFromTeam(
   db: D1Database,
-  userId: number | string
+  userId: number | string,
+  teamId?: number
 ): Promise<void> {
   const drizzleDb = createDbClient(db);
-  const now = new Date().toISOString();
-  
-  const result = await drizzleDb
-    .update(agents)
-    .set({ 
-      teamId: null,
-      updatedAt: now 
-    })
-    .where(eq(agents.id, String(userId)))
-    .returning({ id: agents.id });
+  const agentId = String(userId);
 
-  if (!result || result.length === 0) {
-    throw new Error('Failed to remove user from team');
+  if (teamId !== undefined) {
+    // Remove from specific team
+    // Check if this was the primary team
+    const [membership] = await drizzleDb
+      .select({ isPrimary: agentTeams.isPrimary })
+      .from(agentTeams)
+      .where(and(eq(agentTeams.agentId, agentId), eq(agentTeams.teamId, teamId)))
+      .limit(1);
+
+    await drizzleDb
+      .delete(agentTeams)
+      .where(and(eq(agentTeams.agentId, agentId), eq(agentTeams.teamId, teamId)));
+
+    // If removed team was primary, promote next remaining team
+    if (membership?.isPrimary) {
+      const [nextTeam] = await drizzleDb
+        .select({ teamId: agentTeams.teamId })
+        .from(agentTeams)
+        .where(eq(agentTeams.agentId, agentId))
+        .limit(1);
+
+      if (nextTeam) {
+        await drizzleDb
+          .update(agentTeams)
+          .set({ isPrimary: true })
+          .where(and(eq(agentTeams.agentId, agentId), eq(agentTeams.teamId, nextTeam.teamId)));
+      }
+    }
+  } else {
+    // Remove from ALL teams (legacy behavior — clears all memberships)
+    await drizzleDb
+      .delete(agentTeams)
+      .where(eq(agentTeams.agentId, agentId));
   }
 }
 
@@ -303,12 +332,13 @@ export async function getTeamStats(db: D1Database, teamId: number): Promise<{
 }> {
   const drizzleDb = createDbClient(db);
   
-  // 獲取成員數量
+  // 獲取成員數量 (via agent_teams junction table)
   const memberResult = await drizzleDb
     .select({ count: count() })
-    .from(agents)
+    .from(agentTeams)
+    .innerJoin(agents, eq(agentTeams.agentId, agents.id))
     .where(and(
-      eq(agents.teamId, teamId),
+      eq(agentTeams.teamId, teamId),
       eq(agents.isActive, true)
     ))
     .get();

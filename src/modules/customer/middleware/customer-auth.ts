@@ -87,7 +87,7 @@ export const checkSpecificCustomerAccess = async (c: Context<{ Bindings: Binding
     }
 
     // 檢查客戶是否屬於用戶的團隊或無團隊歸屬
-    if (customer.sourceTeamId && customer.sourceTeamId !== payload.teamId) {
+    if (customer.sourceTeamId && customer.sourceTeamId !== payload.primaryTeamId) {
       return forbiddenResponse(c, 'Access denied to this customer');
     }
 
@@ -206,10 +206,10 @@ export const applyTeamScopeFilter = async (c: Context<{ Bindings: Bindings }>, n
 
     // 添加團隊範圍過濾到查詢參數中
     const existingTeamId = c.req.query('teamId');
-    if (!existingTeamId && payload.teamId) {
+    if (!existingTeamId && payload.primaryTeamId) {
       // 如果查詢中沒有指定團隊ID，則自動添加用戶的團隊ID到上下文
       if (!c.req.query('teamId')) {
-        (c as any).set('teamFilters', { teamId: payload.teamId.toString() });
+        (c as any).set('teamFilters', { teamId: payload.primaryTeamId.toString() });
       }
     }
 
@@ -255,7 +255,7 @@ function getUserPermissions(payload: JWTPayload): CustomerPermissions {
  */
 function getAccessScope(payload: JWTPayload): CustomerAccessScope {
   return {
-    teamIds: payload.role === 'admin' ? undefined : [payload.teamId].filter((id): id is number => id !== undefined && id !== null),
+    teamIds: payload.role === 'admin' ? undefined : [payload.primaryTeamId].filter((id): id is number => id !== undefined && id !== null),
     platforms: undefined, // 暫時不限制平台，未來可擴展
     isGlobalAccess: payload.role === 'admin'
   };
@@ -297,7 +297,7 @@ export async function validateCustomerOwnership(
   }
 
   // 客戶無團隊歸屬或屬於用戶團隊
-  return !customer.sourceTeamId || customer.sourceTeamId === userPayload.teamId;
+  return !customer.sourceTeamId || customer.sourceTeamId === userPayload.primaryTeamId;
 }
 
 /**
@@ -308,9 +308,9 @@ export function buildTeamScopeCondition(userPayload: JWTPayload) {
     return undefined; // 無條件限制
   }
 
-  if (userPayload.teamId) {
+  if (userPayload.primaryTeamId) {
     return or(
-      eq(customers.sourceTeamId, userPayload.teamId),
+      eq(customers.sourceTeamId, userPayload.primaryTeamId),
       sql`${customers.sourceTeamId} IS NULL`
     );
   }

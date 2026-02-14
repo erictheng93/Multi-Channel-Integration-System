@@ -3,6 +3,7 @@
 // Supports unlimited team membership for agents
 
 import { drizzle } from 'drizzle-orm/d1';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { agentTeams, agents, teams } from '@/db/schema';
 import type { D1Database } from '@cloudflare/workers-types';
@@ -161,14 +162,6 @@ export class AgentTeamsService {
         createdAt: now
       })
       .returning();
-
-    // Also update agents.teamId for backward compatibility (set to primary team)
-    if (data.isPrimary) {
-      await this.db
-        .update(agents)
-        .set({ teamId: data.teamId })
-        .where(eq(agents.id, data.agentId));
-    }
 
     return {
       id: membership.id,
@@ -411,14 +404,8 @@ export class AgentTeamsService {
         eq(agentTeams.teamId, teamId)
       ));
 
-    // If this was the primary team, clear agents.teamId
+    // If this was the primary team, promote next remaining team
     if (membership?.isPrimary) {
-      await this.db
-        .update(agents)
-        .set({ teamId: null })
-        .where(eq(agents.id, agentId));
-
-      // Try to set another team as primary
       const [nextTeam] = await this.db
         .select({ teamId: agentTeams.teamId })
         .from(agentTeams)
@@ -433,12 +420,6 @@ export class AgentTeamsService {
             eq(agentTeams.agentId, agentId),
             eq(agentTeams.teamId, nextTeam.teamId)
           ));
-
-        // Update agents.teamId for backward compatibility
-        await this.db
-          .update(agents)
-          .set({ teamId: nextTeam.teamId })
-          .where(eq(agents.id, agentId));
       }
     }
   }
@@ -467,11 +448,6 @@ export class AgentTeamsService {
           .set({ isPrimary: false })
           .where(eq(agentTeams.agentId, agentId));
 
-        // Update agents.teamId for backward compatibility
-        await this.db
-          .update(agents)
-          .set({ teamId })
-          .where(eq(agents.id, agentId));
       }
     }
 
@@ -524,11 +500,6 @@ export class AgentTeamsService {
         eq(agentTeams.teamId, teamId)
       ));
 
-    // Update agents.teamId for backward compatibility
-    await this.db
-      .update(agents)
-      .set({ teamId })
-      .where(eq(agents.id, agentId));
   }
 
   /**
@@ -635,4 +606,42 @@ export class AgentTeamsService {
 
     return Number(count);
   }
+
+  /**
+   * 獲取客服的主要團隊
+   */
+  async getPrimaryTeamForAgent(agentId: string): Promise<{ teamId: number; roleInTeam: string } | null> {
+    const [result] = await this.db
+      .select({
+        teamId: agentTeams.teamId,
+        roleInTeam: agentTeams.roleInTeam
+      })
+      .from(agentTeams)
+      .where(and(
+        eq(agentTeams.agentId, agentId),
+        eq(agentTeams.isPrimary, true)
+      ))
+      .limit(1);
+
+    if (!result) return null;
+    return { teamId: result.teamId, roleInTeam: result.roleInTeam || 'member' };
+  }
+}
+
+/**
+ * Standalone helper for files that don't have an AgentTeamsService instance.
+ * Queries agent_teams for the agent's primary team ID.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getPrimaryTeamId(db: DrizzleD1Database<any>, agentId: string): Promise<number | null> {
+  const [result] = await db
+    .select({ teamId: agentTeams.teamId })
+    .from(agentTeams)
+    .where(and(
+      eq(agentTeams.agentId, agentId),
+      eq(agentTeams.isPrimary, true)
+    ))
+    .limit(1);
+
+  return result?.teamId ?? null;
 }

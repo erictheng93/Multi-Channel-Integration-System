@@ -291,10 +291,10 @@ async function getMessageAccessScope(userPayload: JWTPayload): Promise<MessageAc
   }
 
   // Agent 角色只能存取指派給自己的對話
-  if (userPayload.role === 'agent' && userPayload.teamId) {
+  if (userPayload.role === 'agent' && userPayload.primaryTeamId) {
     // TODO: 從資料庫取得代理人的對話清單
     return {
-      teamIds: [userPayload.teamId],
+      teamIds: [userPayload.primaryTeamId],
       isGlobalAccess: false,
     };
   }

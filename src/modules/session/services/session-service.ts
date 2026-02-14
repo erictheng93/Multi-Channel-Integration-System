@@ -5,7 +5,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, sql, count, avg, like } from 'drizzle-orm';
-import { conversationSessions, messages, conversations, agents } from '@/db/schema';
+import { conversationSessions, messages, conversations, agents, agentTeams } from '@/db/schema';
 import {
   ConversationSession,
   CreateSessionData,
@@ -229,16 +229,20 @@ export class SessionService implements SessionServiceInterface {
       }
 
       // Note: Individual assignment (assignedUserId) removed - only team-based access control
-      // Check if agent is in the same team as the conversation
+      // Check if agent is in the same team as the conversation via agent_teams junction table
       if (conversation.assignedTeamId) {
-        const agent = await this.db
-          .select()
-          .from(agents)
-          .where(eq(agents.id, userId))
+        const membership = await this.db
+          .select({ teamId: agentTeams.teamId })
+          .from(agentTeams)
+          .where(and(
+            eq(agentTeams.agentId, userId),
+            eq(agentTeams.teamId, conversation.assignedTeamId)
+          ))
+          .limit(1)
           .get();
 
-        if (agent && agent.teamId === conversation.assignedTeamId) {
-          console.log(`✅ [SessionService] Agent ${userId} has team access to conversation ${conversation.id} via team ${agent.teamId}`);
+        if (membership) {
+          console.log(`[SessionService] Agent ${userId} has team access to conversation ${conversation.id} via team ${membership.teamId}`);
           return true;
         }
       }

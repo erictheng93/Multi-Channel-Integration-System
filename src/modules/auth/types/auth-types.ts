@@ -39,7 +39,7 @@ export interface JWTPayload {
   displayName: string;
   email?: string;
   role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
-  teamId?: number;
+  primaryTeamId?: number;  // From agent_teams WHERE isPrimary=true
   iat: number;
   exp: number;
   type?: 'access' | 'refresh' | 'temp_password_change';

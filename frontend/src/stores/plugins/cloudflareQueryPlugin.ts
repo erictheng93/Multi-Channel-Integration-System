@@ -355,7 +355,7 @@ export function createCloudflareQueryPlugin(options: CloudflareQueryPluginOption
     store.$cloudflareQuery = async <T = unknown>(config: QueryConfig<T>): Promise<T> => {
       // 獲取當前租戶 ID
       const authStore = useAuthStore()
-      const teamId = authStore.currentAgent?.teamId
+      const teamId = authStore.currentAgent?.primaryTeamId
 
       if (!teamId) {
         throw new Error('[CloudflareQuery] No active team context')

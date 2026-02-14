@@ -70,7 +70,7 @@ export async function checkReportsViewPermission(c: Context<{ Bindings: Bindings
     const context: PermissionContext = {
       userId: payload.userId,
       role: payload.role,
-      teamId: payload.teamId
+      teamId: payload.primaryTeamId
     };
 
     const hasPermission = await PermissionService.checkPermission(
@@ -119,7 +119,7 @@ export async function checkReportsGeneratePermission(c: Context<{ Bindings: Bind
     const context: PermissionContext = {
       userId: payload.userId,
       role: payload.role,
-      teamId: payload.teamId
+      teamId: payload.primaryTeamId
     };
 
     const hasPermission = await PermissionService.checkPermission(
@@ -169,7 +169,7 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
     const context: PermissionContext = {
       userId: payload.userId,
       role: payload.role,
-      teamId: payload.teamId
+      teamId: payload.primaryTeamId
     };
 
     const hasPermission = await PermissionService.checkPermission(
@@ -224,7 +224,7 @@ export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindin
     const context: PermissionContext = {
       userId: payload.userId,
       role: payload.role,
-      teamId: payload.teamId
+      teamId: payload.primaryTeamId
     };
 
     const hasPermission = await PermissionService.checkPermission(
@@ -348,7 +348,7 @@ export async function checkScheduledReportsPermission(c: Context<{ Bindings: Bin
     const context: PermissionContext = {
       userId: payload.userId,
       role: payload.role,
-      teamId: payload.teamId
+      teamId: payload.primaryTeamId
     };
 
     const hasPermission = await PermissionService.checkPermission(

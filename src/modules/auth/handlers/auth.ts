@@ -62,7 +62,7 @@ export const authHandler = {
         updatedAt: agentRow.updatedAt,
         deletedAt: agentRow.deletedAt,
         passwordHash: agentRow.passwordHash,
-        teamId: agentRow.teamId,
+        // teamId removed from agents schema — use agent_teams (isPrimary=true) for primary team lookup
         passwordPolicy: agentRow.passwordPolicy,
         lastActive: agentRow.lastActive,
         lastLoginAt: agentRow.lastLoginAt
@@ -163,7 +163,7 @@ export const authHandler = {
         updatedAt: agentRow.updatedAt,
         deletedAt: agentRow.deletedAt,
         passwordHash: agentRow.passwordHash,
-        teamId: agentRow.teamId,
+        // teamId removed from agents schema — use agent_teams (isPrimary=true) for primary team lookup
         passwordPolicy: agentRow.passwordPolicy,
         lastActive: agentRow.lastActive,
         lastLoginAt: agentRow.lastLoginAt

@@ -170,9 +170,9 @@ class IntegrationMainHandler {
       if (user.role === 'agent') {
         sql += ' AND createdBy = ?';
         params.push(user.id);
-      } else if (user.teamId) {
+      } else if (user.primaryTeamId) {
         sql += ' AND (teamId = ? OR createdBy = ?)';
-        params.push(user.teamId, user.id);
+        params.push(user.primaryTeamId, user.id);
       }
 
       // 加入其他過濾條件
@@ -689,9 +689,9 @@ class IntegrationMainHandler {
     if (user.role === 'agent') {
       sql += ' AND createdBy = ?';
       params.push(user.id);
-    } else if (user.teamId) {
+    } else if (user.primaryTeamId) {
       sql += ' AND (teamId = ? OR createdBy = ?)';
-      params.push(user.teamId, user.id);
+      params.push(user.primaryTeamId, user.id);
     }
 
     const result = await this.db.prepare(sql).bind(...params).first();

@@ -8,7 +8,7 @@ export interface TeamMember {
   name: string;
   displayName: string;
   role: 'admin' | 'agent'; // 2-tier role system
-  teamId: number | null;
+  primaryTeamId: number | null;  // From agent_teams WHERE isPrimary=true
   group: string;
   isActive: boolean;
   status: 'active' | 'inactive';
