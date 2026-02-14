@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, or, desc, sql, ne, isNull, inArray } from 'drizzle-orm';
 import {
   agents,
+  agentTeams,
   messages,
   delayedMessages,
   notifications,
@@ -48,6 +49,7 @@ export class MemberService {
    */
   async addMember(data: AddTeamMemberRequest, createdBy: string): Promise<TeamMember> {
     const memberId = `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date().toISOString();
 
     // Hash password using bcrypt (12 rounds)
     const hashedPassword = await hashPassword(data.password);
@@ -60,14 +62,24 @@ export class MemberService {
         passwordHash: hashedPassword,
         displayName: data.displayName,
         role: data.role || 'agent',
-        teamId: data.teamId || null,
         isActive: data.isActive !== false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: now,
+        updatedAt: now
       })
       .returning();
 
-    return this.formatMember(newMember);
+    // If teamId provided, create agent_teams membership (isPrimary=true)
+    if (data.teamId) {
+      await this.db.insert(agentTeams).values({
+        agentId: memberId,
+        teamId: data.teamId,
+        roleInTeam: 'member',
+        isPrimary: true,
+        joinedAt: now
+      });
+    }
+
+    return this.formatMember(newMember, data.teamId || undefined);
   }
 
   /**
@@ -85,8 +97,11 @@ export class MemberService {
     // 🔑 Filter out soft-deleted members
     conditions.push(isNull(agents.deletedAt));
 
+    // teamId filter is handled via a subquery on agent_teams
     if (query.teamId !== undefined) {
-      conditions.push(eq(agents.teamId, query.teamId));
+      conditions.push(
+        sql`${agents.id} IN (SELECT agent_id FROM agent_teams WHERE team_id = ${query.teamId})`
+      );
     }
 
     if (query.role) {
@@ -227,10 +242,10 @@ export class MemberService {
     };
 
     // Note: loginId doesn't exist in schema, removed from update
+    // Note: teamId is managed via agent_teams, not agents table
     if (data.email) updateData.email = data.email;
     if (data.displayName) updateData.displayName = data.displayName;
     if (data.role) updateData.role = data.role;
-    if (data.teamId !== undefined) updateData.teamId = data.teamId;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     const [updated] = await this.db
@@ -919,7 +934,7 @@ export class MemberService {
   /**
    * 格式化成員數據
    */
-  private formatMember(member: any): TeamMember {
+  private formatMember(member: any, teamIdOverride?: number): TeamMember {
     return {
       id: member.id,
       loginId: member.displayName, // Use displayName as loginId (schema doesn't have loginId field)
@@ -927,7 +942,7 @@ export class MemberService {
       name: member.displayName,
       displayName: member.displayName,
       role: member.role,
-      teamId: member.teamId,
+      primaryTeamId: teamIdOverride ?? null,
       group: '', // Legacy field
       isActive: member.isActive,
       status: member.isActive ? 'active' : 'inactive',

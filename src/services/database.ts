@@ -83,6 +83,16 @@ export class DatabaseService {
     return await this.db.select().from(schema.agents).where(eq(schema.agents.id, id)).get();
   }
 
+  async getAgentPrimaryTeamId(agentId: string): Promise<number | null> {
+    const result = await this.db
+      .select({ teamId: schema.agentTeams.teamId })
+      .from(schema.agentTeams)
+      .where(and(eq(schema.agentTeams.agentId, agentId), eq(schema.agentTeams.isPrimary, true)))
+      .limit(1)
+      .get();
+    return result?.teamId ?? null;
+  }
+
   async getAgentByEmail(email: string) {
     return await this.db.select().from(schema.agents)
       .where(eq(schema.agents.email, email)).get();
@@ -479,20 +489,20 @@ export class DatabaseService {
    * This now counts conversations assigned to the agent's team.
    */
   async getActiveConversationCount(agentId: string) {
-    // Note: Individual assignment (assignedUserId) removed - count by team assignment instead
-    // First get the agent's team
-    const agent = await this.db.select({ teamId: schema.agents.teamId })
-      .from(schema.agents)
-      .where(eq(schema.agents.id, agentId))
-      .get();
+    // Get agent's primary team via agent_teams (single source of truth)
+    const [membership] = await this.db
+      .select({ teamId: schema.agentTeams.teamId })
+      .from(schema.agentTeams)
+      .where(and(eq(schema.agentTeams.agentId, agentId), eq(schema.agentTeams.isPrimary, true)))
+      .limit(1);
 
-    if (!agent?.teamId) {
+    if (!membership?.teamId) {
       return 0;
     }
 
     const conversations = await this.db.select().from(schema.conversations)
       .where(and(
-        eq(schema.conversations.assignedTeamId, agent.teamId),
+        eq(schema.conversations.assignedTeamId, membership.teamId),
         or(
           eq(schema.conversations.status, 'pending'),
           eq(schema.conversations.status, 'in-progress')
@@ -636,11 +646,11 @@ export class DatabaseService {
   }
 
   async deleteTeam(id: number) {
-    // Check if there are agents still assigned to this team
-    const agents = await this.db.select().from(schema.agents)
-      .where(eq(schema.agents.teamId, id));
-    
-    if (agents.length > 0) {
+    // Check if there are agents still assigned to this team (via agent_teams)
+    const memberships = await this.db.select().from(schema.agentTeams)
+      .where(eq(schema.agentTeams.teamId, id));
+
+    if (memberships.length > 0) {
       throw new Error('Cannot delete team with assigned agents');
     }
 
@@ -649,9 +659,12 @@ export class DatabaseService {
   }
 
   async getAgentsByTeamId(teamId: number) {
-    return await this.db.select().from(schema.agents)
-      .where(eq(schema.agents.teamId, teamId))
-      .orderBy(schema.agents.displayName);
+    return await this.db.select({ agent: schema.agents })
+      .from(schema.agentTeams)
+      .innerJoin(schema.agents, eq(schema.agentTeams.agentId, schema.agents.id))
+      .where(eq(schema.agentTeams.teamId, teamId))
+      .orderBy(schema.agents.displayName)
+      .then(rows => rows.map(r => r.agent));
   }
 
   // Permission validation methods

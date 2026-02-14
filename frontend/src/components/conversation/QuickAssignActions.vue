@@ -156,7 +156,7 @@ const agentToTeamMember = (agent: Agent): TeamMember | null => {
     role: agent.role,
     status: agent.isActive ? 'active' : 'inactive',
     group: undefined,
-    teamId: agent.teamId,
+    primaryTeamId: agent.primaryTeamId,
     avatar: undefined,
     createdAt: new Date(agent.createdAt),
     updatedAt: new Date(),
@@ -174,7 +174,7 @@ const canAssignToMe = computed(() => {
   if (!currentAgent.value) {return false}
 
   // Note: Individual assignment removed - now checks if already assigned to agent's team
-  if (props.conversation.assignedTeamId === currentAgent.value.teamId) {
+  if (props.conversation.assignedTeamId === currentAgent.value.primaryTeamId) {
     return false
   }
 
@@ -197,7 +197,7 @@ const handleAssignToMe = async () => {
   if (!currentAgent.value || isAssigning.value) {return}
 
   // 使用當前用戶的團隊進行團隊指派
-  const teamId = currentAgent.value.teamId
+  const teamId = currentAgent.value.primaryTeamId
   if (!teamId) {
     emit('error', '您尚未加入任何團隊，無法指派')
     return
@@ -230,7 +230,7 @@ const handleAssignToMember = async (member: TeamMember) => {
     return
   }
 
-  const teamId = member.teamId
+  const teamId = member.primaryTeamId
   if (!teamId) {
     emit('error', `${member.name || member.loginId} 尚未加入任何團隊`)
     return
@@ -280,14 +280,14 @@ const closeAssignMenu = () => {
 }
 
 const loadTeamMembers = async () => {
-  if (!currentAgent.value?.teamId) {
+  if (!currentAgent.value?.primaryTeamId) {
     console.warn('No team ID found for current agent')
     return
   }
 
   loadingTeamMembers.value = true
   try {
-    const response = await teamApi.getTeamMembers(currentAgent.value.teamId)
+    const response = await teamApi.getTeamMembers(currentAgent.value.primaryTeamId)
     if (response.success && response.data) {
       // 過濾掉當前用戶，並且只顯示可以被指派的成員
       teamMembers.value = response.data.filter(member => 

@@ -104,7 +104,7 @@ export interface UserDbRecord {
   email: string;
   displayName: string;
   role: 'admin' | 'agent';
-  teamId: number | null;
+  primaryTeamId: number | null;  // From agent_teams WHERE isPrimary=true
   teamName: string | null;
   isActive: boolean;
   createdAt: string;

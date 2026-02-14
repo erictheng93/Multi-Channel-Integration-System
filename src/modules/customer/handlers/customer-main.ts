@@ -35,8 +35,8 @@ export class CustomerMainHandler {
       const sanitizedData = sanitizeCustomerData(createData);
 
       // 如果用戶不是admin且沒有指定sourceTeamId，則自動設置為用戶的團隊
-      if (userPayload.role !== 'admin' && !sanitizedData.sourceTeamId && userPayload.teamId) {
-        sanitizedData.sourceTeamId = userPayload.teamId;
+      if (userPayload.role !== 'admin' && !sanitizedData.sourceTeamId && userPayload.primaryTeamId) {
+        sanitizedData.sourceTeamId = userPayload.primaryTeamId;
       }
 
       const customerService = new CustomerCrudService(c.env.DB);
@@ -153,7 +153,7 @@ export class CustomerMainHandler {
       if (userPayload.role !== 'admin') {
         // 非 Admin 需要檢查團隊所有權
         // 客戶有團隊歸屬且不屬於當前用戶的團隊時，拒絕存取
-        if (customer.sourceTeamId && customer.sourceTeamId !== userPayload.teamId) {
+        if (customer.sourceTeamId && customer.sourceTeamId !== userPayload.primaryTeamId) {
           return c.json({
             success: false,
             error: 'Access denied to this customer',
@@ -216,7 +216,7 @@ export class CustomerMainHandler {
         // 客戶已存在，檢查用戶是否有權限存取
         if (userPayload.role !== 'admin') {
           // 非 Admin 需要檢查團隊所有權
-          if (existingCustomer.sourceTeamId && existingCustomer.sourceTeamId !== userPayload.teamId) {
+          if (existingCustomer.sourceTeamId && existingCustomer.sourceTeamId !== userPayload.primaryTeamId) {
             // 客戶屬於其他團隊，拒絕存取
             return c.json({
               success: false,
@@ -235,8 +235,8 @@ export class CustomerMainHandler {
       const sanitizedAdditionalInfo = additionalInfo ? sanitizeCustomerData(additionalInfo) : {};
 
       // 如果用戶不是admin且沒有指定sourceTeamId，則自動設置為用戶的團隊
-      if (userPayload.role !== 'admin' && !sanitizedAdditionalInfo.sourceTeamId && userPayload.teamId) {
-        sanitizedAdditionalInfo.sourceTeamId = userPayload.teamId;
+      if (userPayload.role !== 'admin' && !sanitizedAdditionalInfo.sourceTeamId && userPayload.primaryTeamId) {
+        sanitizedAdditionalInfo.sourceTeamId = userPayload.primaryTeamId;
       }
 
       const newCustomer = await customerService.create({
@@ -354,7 +354,7 @@ export class CustomerMainHandler {
 
       if (userPayload.role !== 'admin') {
         // 非 Admin 需要檢查團隊所有權
-        if (customer.sourceTeamId && customer.sourceTeamId !== userPayload.teamId) {
+        if (customer.sourceTeamId && customer.sourceTeamId !== userPayload.primaryTeamId) {
           // 客戶屬於其他團隊，返回 404 (不透露客戶存在)
           // 使用 404 而非 403 以防止資訊洩漏
           return c.body(null, 404);

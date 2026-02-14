@@ -294,8 +294,8 @@ export const useAuthStore = defineStore('auth', () => {
       parseJwtTeamData(loginData.token);
 
       // 🚀 Phase 1: Set initial team context to agent's primary team
-      if (loginData.agent.teamId) {
-        switchTeam(loginData.agent.teamId);
+      if (loginData.agent.primaryTeamId) {
+        switchTeam(loginData.agent.primaryTeamId);
       }
 
       // Store auth data

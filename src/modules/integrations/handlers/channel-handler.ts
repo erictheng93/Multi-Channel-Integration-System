@@ -41,7 +41,7 @@ channelHandler.get('/:id/stats', async (c: Context) => {
       return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (!user || !user.teamId) {
+    if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -53,7 +53,7 @@ channelHandler.get('/:id/stats', async (c: Context) => {
     }
 
     // Verify user has access to this channel
-    if (channel.teamId !== user.teamId) {
+    if (channel.teamId !== user.primaryTeamId) {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -88,7 +88,7 @@ channelHandler.get('/:id/health', async (c: Context) => {
       return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (!user || !user.teamId) {
+    if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -100,7 +100,7 @@ channelHandler.get('/:id/health', async (c: Context) => {
     }
 
     // Verify user has access to this channel
-    if (channel.teamId !== user.teamId) {
+    if (channel.teamId !== user.primaryTeamId) {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -135,7 +135,7 @@ channelHandler.post('/:id/verify', async (c: Context) => {
       return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (!user || !user.teamId) {
+    if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -147,7 +147,7 @@ channelHandler.post('/:id/verify', async (c: Context) => {
     }
 
     // Verify user has access to this channel
-    if (channel.teamId !== user.teamId) {
+    if (channel.teamId !== user.primaryTeamId) {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -201,7 +201,7 @@ channelHandler.get('/:id', async (c: Context) => {
 
     // Verify user has access to this channel (same team)
     // Admin users without teamId can access any channel
-    if (user.teamId && channel.teamId !== user.teamId && user.role !== 'admin') {
+    if (user.primaryTeamId && channel.teamId !== user.primaryTeamId && user.role !== 'admin') {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -232,7 +232,7 @@ channelHandler.put('/:id', async (c: Context) => {
       return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (!user || !user.teamId) {
+    if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -252,7 +252,7 @@ channelHandler.put('/:id', async (c: Context) => {
     }
 
     // Verify user has access to this channel
-    if (channel.teamId !== user.teamId) {
+    if (channel.teamId !== user.primaryTeamId) {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -300,7 +300,7 @@ channelHandler.delete('/:id', async (c: Context) => {
       return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (!user || !user.teamId) {
+    if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -320,7 +320,7 @@ channelHandler.delete('/:id', async (c: Context) => {
     }
 
     // Verify user has access to this channel
-    if (channel.teamId !== user.teamId) {
+    if (channel.teamId !== user.primaryTeamId) {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -360,7 +360,7 @@ channelHandler.get('/', async (c: Context) => {
     }
 
     // Admin users without teamId can access all channels or filter by teamId query param
-    let teamId: number | undefined = user.teamId ?? undefined;
+    let teamId: number | undefined = user.primaryTeamId ?? undefined;
 
     if (!teamId && user.role === 'admin') {
       const teamIdParam = c.req.query('teamId');
@@ -419,8 +419,8 @@ channelHandler.post('/', async (c: Context) => {
     const body = await c.req.json() as Partial<ChannelConfigRequest>;
 
     // Admin users can create channels for any team
-    // Use user.teamId or require teamId in request body
-    let teamId: number | undefined = user.teamId ?? undefined;
+    // Use user.primaryTeamId or require teamId in request body
+    let teamId: number | undefined = user.primaryTeamId ?? undefined;
 
     if (!teamId) {
       // Admin without teamId must provide teamId in request

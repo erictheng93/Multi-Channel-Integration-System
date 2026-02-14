@@ -144,7 +144,7 @@ export class PermissionService {
     // Note: Individual assignment (assignedAgentId) removed - use team-based access control
     // Agent 只能查看指派給自己團隊的對話
     if (this.hasPermission(user, Permission.VIEW_ASSIGNED_CONVERSATIONS)) {
-      return conversation.assignedTeamId === user.teamId
+      return conversation.assignedTeamId === user.primaryTeamId
     }
 
     return false
@@ -196,7 +196,7 @@ export class PermissionService {
 
     // Note: Individual assignment (assignedAgentId) removed - use team-based access control
     // Agent 可以取消自己團隊的指派
-    if (user.teamId && conversation.assignedTeamId === user.teamId) {
+    if (user.primaryTeamId && conversation.assignedTeamId === user.primaryTeamId) {
       return true
     }
 

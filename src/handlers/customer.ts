@@ -64,8 +64,8 @@ export const customerHandler = {
       const drizzleDb = createDbClient(c.env.DB);
       
       const conditions = [];
-      if (payload?.role !== 'admin' && payload?.teamId) {
-        conditions.push(sql`(${customers.sourceTeamId} = ${payload.teamId} OR ${customers.sourceTeamId} IS NULL)`);
+      if (payload?.role !== 'admin' && payload?.primaryTeamId) {
+        conditions.push(sql`(${customers.sourceTeamId} = ${payload.primaryTeamId} OR ${customers.sourceTeamId} IS NULL)`);
       }
       if (platform) {
         conditions.push(eq(customers.platform, platform));
@@ -464,9 +464,9 @@ export const customerHandler = {
       const drizzleDb = createDbClient(c.env.DB);
       
       const baseConditions = [];
-      if (payload?.role !== 'admin' && payload?.teamId) {
+      if (payload?.role !== 'admin' && payload?.primaryTeamId) {
         baseConditions.push(
-          sql`(${customers.sourceTeamId} = ${payload.teamId} OR ${customers.sourceTeamId} IS NULL)`
+          sql`(${customers.sourceTeamId} = ${payload.primaryTeamId} OR ${customers.sourceTeamId} IS NULL)`
         );
       }
       const baseCondition = baseConditions.length > 0 ? and(...baseConditions) : undefined;

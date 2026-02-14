@@ -1503,7 +1503,7 @@ if (securityConfig.debug.enabled) {
         userId,
         displayName,
         role,
-        teamId: user.teamId || 1,
+        teamId: user.primaryTeamId || 1,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + (30 * 60) // 30 minutes only
       };

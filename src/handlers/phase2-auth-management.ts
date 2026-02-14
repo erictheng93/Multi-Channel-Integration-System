@@ -96,7 +96,7 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
       targetUser.id.toString(),
       targetUser.role,
       targetUser.displayName,
-      targetUser.teamId || 1,
+      targetUser.primaryTeamId || 1,
       c.env.JWT_SECRET,
       expiresIn
     );
@@ -109,7 +109,7 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
         id: targetUser.id,
         displayName: targetUser.displayName,
         role: targetUser.role,
-        teamId: targetUser.teamId
+        primaryTeamId: targetUser.primaryTeamId
       },
       expiresIn,
       expiresAt: new Date((Math.floor(Date.now() / 1000) + expiresIn) * 1000).toISOString(),
@@ -216,7 +216,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
         userId: payload.userId,
         displayName: payload.displayName,
         role: payload.role,
-        teamId: payload.teamId,
+        primaryTeamId: payload.primaryTeamId,
         isSystemToken: payload.isSystemToken || false
       },
       expiresAt: new Date(payload.exp * 1000).toISOString(),
@@ -277,7 +277,7 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
       String(payload.userId),
       payload.role as 'admin' | 'agent',
       payload.displayName,
-      payload.teamId || 0,
+      payload.primaryTeamId || 0,
       c.env.JWT_SECRET
     );
 
@@ -312,7 +312,7 @@ phase2AuthHandler.get('/status', jwtAuth, async (c) => {
         id: user.id,
         displayName: user.displayName,
         role: user.role,
-        teamId: user.teamId,
+        primaryTeamId: user.primaryTeamId,
         teamName: user.teamName
       },
       permissions: {

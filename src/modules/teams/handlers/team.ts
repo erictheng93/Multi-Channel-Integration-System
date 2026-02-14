@@ -1125,9 +1125,9 @@ app.get('/', jwtAuth, async (c) => {
     const includeInactive = c.req.query('includeInactive') === 'true';
 
     // ??admin/team ?�戶?�能?�到?�己?��???
-    if (user.role === 'agent' && user.teamId) {
+    if (user.role === 'agent' && user.primaryTeamId) {
       const teamService = new TeamService(c.env.DB);
-      const team = await teamService.getTeam(user.teamId);
+      const team = await teamService.getTeam(user.primaryTeamId);
       return c.json({
         success: true,
         data: [team],
@@ -1151,7 +1151,7 @@ app.get('/', jwtAuth, async (c) => {
       teamsCount: result.teams?.length || 0,
       teams: result.teams,
       pagination: result.pagination,
-      user: { id: user.id, role: user.role, teamId: user.teamId }
+      user: { id: user.id, role: user.role, teamId: user.primaryTeamId }
     });
 
     return c.json({

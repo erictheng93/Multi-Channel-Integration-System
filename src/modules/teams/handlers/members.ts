@@ -66,8 +66,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
         isActive: agents.isActive,
         status: sql`CASE WHEN ${agents.isActive} = 1 THEN 'active' ELSE 'inactive' END`.as('status'),
         createdAt: agents.createdAt,
-        lastActive: agents.lastLoginAt,
-        teamId: agents.teamId // Legacy: primary team for backward compatibility
+        lastActive: agents.lastLoginAt
       })
       .from(agents)
       .where(isNull(agents.deletedAt))
@@ -94,7 +93,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
           joinedAt: t.joinedAt
         })),
         teamCount: agentTeamList.length,
-        primaryTeamId: primaryTeam?.teamId || member.teamId,
+        primaryTeamId: primaryTeam?.teamId || null,
         primaryTeamName: primaryTeam?.teamName
       };
     });

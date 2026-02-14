@@ -12,7 +12,7 @@ interface AnalyticsUser {
   email: string;
   displayName: string;
   role: 'admin' | 'team' | 'agent';
-  teamId?: string;
+  primaryTeamId?: number;
   teamName: string;
   isActive: boolean;
   createdAt: string;
@@ -62,7 +62,7 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
     }
 
     // 使用 PermissionService 檢查分析數據訪問權限
-    const hasPermission = await checkAnalyticsPermission(userId, userRole, c.req.path, c.req.method, decoded.teamId, c.env.DB);
+    const hasPermission = await checkAnalyticsPermission(userId, userRole, c.req.path, c.req.method, decoded.primaryTeamId, c.env.DB);
 
     if (!hasPermission) {
       throw new HTTPException(403, {
@@ -77,7 +77,7 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
       email: decoded.email || '',
       displayName: decoded.displayName || '',
       role: userRole,
-      teamId: decoded.teamId,
+      primaryTeamId: decoded.primaryTeamId,
       teamName: decoded.teamName || '',
       isActive: true,
       createdAt: new Date().toISOString(),
@@ -237,7 +237,7 @@ export function requireAnalyticsPermission(resource: string, action: string) {
     const context: PermissionContext = {
       userId: user.id,
       role: user.role,
-      teamId: user.teamId ? parseInt(user.teamId) : undefined
+      teamId: user.primaryTeamId
     };
 
     const hasPermission = await PermissionService.checkPermission(
@@ -273,7 +273,7 @@ export function requireTeamDataAccess(c: Context<{ Bindings: Bindings; Variables
 
   // Team 和 Agent 只能訪問自己團隊的數據
   if (requestedTeamId) {
-    return user.teamId?.toString() === requestedTeamId;
+    return user.primaryTeamId?.toString() === requestedTeamId;
   }
 
   return true;
@@ -292,9 +292,9 @@ export function applyDataFilters(c: Context<{ Bindings: Bindings; Variables: { u
   }
 
   // Team 和 Agent 只能查看自己團隊的數據
-  if (user.teamId && !query.filters?.teamId) {
+  if (user.primaryTeamId && !query.filters?.teamId) {
     query.filters = query.filters || {};
-    query.filters.teamId = user.teamId;
+    query.filters.teamId = user.primaryTeamId;
   }
 
   // Agent 只能查看與自己相關的數據

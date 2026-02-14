@@ -298,7 +298,7 @@ websocketTestHandler.post('/test-presence-event', jwtAuth, async (c) => {
     const success = await broadcastService.broadcastPresenceEvent({
       type: eventType as any,
       userId: String(user.id),
-      teamId: teamId || user.teamId,
+      teamId: teamId || user.primaryTeamId,
       data: {
         userName: user.displayName,
         role: user.role,
@@ -580,7 +580,7 @@ websocketTestHandler.post('/run-integration-test', jwtAuth, async (c) => {
       const presenceSuccess = await broadcastService.broadcastPresenceEvent({
         type: 'agent_available',
         userId: String(user.id),
-        ...(user.teamId && { teamId: user.teamId }),
+        ...(user.primaryTeamId && { teamId: user.primaryTeamId }),
         data: {
           userName: user.displayName,
           role: user.role,

@@ -128,13 +128,13 @@ export function convertMessage(drizzleMessage: DrizzleMessage): DbMessage {
 /**
  * 轉換 Drizzle Agent 到業務邏輯 DbUser
  */
-export function convertAgent(drizzleAgent: DrizzleAgent, teamName?: string): DbUser {
+export function convertAgent(drizzleAgent: DrizzleAgent, teamName?: string, primaryTeamId?: number | null): DbUser {
   return {
     id: drizzleAgent.id,
     email: drizzleAgent.email,
     displayName: drizzleAgent.displayName,
     role: drizzleAgent.role as 'admin' | 'agent',
-    teamId: drizzleAgent.teamId,
+    primaryTeamId: primaryTeamId ?? null,
     teamName: teamName || null,
     isActive: Boolean(drizzleAgent.isActive),
     createdAt: drizzleAgent.createdAt || new Date().toISOString(),

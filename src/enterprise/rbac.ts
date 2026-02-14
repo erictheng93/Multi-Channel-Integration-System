@@ -141,11 +141,15 @@ export class EnterpriseRBACManager {
           return { granted: false, reason: 'Conversation not found' };
         }
 
-        // Agent 只能存取同團隊的對話
-        // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
-        if (userRole === ROLES.AGENT && user.teamId &&
-            conversation.assignedTeamId === user.teamId) {
-          return { granted: true };
+        // Agent 只能存取同團隊的對話 (using allowedTeamIds from JWT)
+        if (userRole === ROLES.AGENT && conversation.assignedTeamId) {
+          if (user.allowedTeamIds && user.allowedTeamIds.includes(conversation.assignedTeamId)) {
+            return { granted: true };
+          }
+          // Fallback: check primaryTeamId
+          if (user.primaryTeamId && conversation.assignedTeamId === user.primaryTeamId) {
+            return { granted: true };
+          }
         }
 
         return { granted: false, reason: 'No access to this conversation' };
@@ -183,8 +187,7 @@ export class EnterpriseRBACManager {
       
       const user = await db
         .select({
-          role: agents.role,
-          teamId: agents.teamId
+          role: agents.role
         })
         .from(agents)
         .where(eq(agents.id, userId))

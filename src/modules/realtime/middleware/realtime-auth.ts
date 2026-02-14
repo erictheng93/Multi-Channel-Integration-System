@@ -12,7 +12,7 @@ export interface RealtimeAuthPayload {
   userId: number;
   displayName: string;
   role: string;
-  teamId?: number;
+  primaryTeamId?: number;
   conversationAccess?: number[];
 }
 
@@ -49,7 +49,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
           userId: Number(existingPayload.userId),
           displayName: existingPayload.displayName,
           role: existingPayload.role,
-          teamId: existingPayload.teamId,
+          primaryTeamId: existingPayload.primaryTeamId,
           conversationAccess: (existingPayload as any).conversationAccess || []
         };
       }
@@ -79,7 +79,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
               userId: Number(jwtPayload.userId),
               displayName: jwtPayload.displayName,
               role: jwtPayload.role,
-              teamId: jwtPayload.teamId,
+              primaryTeamId: jwtPayload.primaryTeamId,
               conversationAccess: (jwtPayload as any).conversationAccess || []
             };
 
@@ -118,7 +118,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
             authPayload.userId,
             convId,
             authPayload.role,
-            authPayload.teamId,
+            authPayload.primaryTeamId,
             c.env
           );
 
@@ -135,7 +135,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
       console.log(`✅ [Realtime Auth] 認證成功:`, {
         userId: authPayload.userId,
         role: authPayload.role,
-        teamId: authPayload.teamId,
+        primaryTeamId: authPayload.primaryTeamId,
         timestamp: new Date().toISOString()
       });
 

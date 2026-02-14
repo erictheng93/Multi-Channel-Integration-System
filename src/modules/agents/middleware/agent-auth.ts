@@ -33,7 +33,7 @@ export const agentAuthMiddleware = (): MiddlewareHandler<{ Bindings: Bindings }>
         email: payload.email || '',
         displayName: payload.displayName || payload.username || '',
         role: payload.role,
-        teamId: payload.teamId,
+        primaryTeamId: payload.primaryTeamId,
         teamName: payload.teamName,
         isActive: true,
         createdAt: new Date().toISOString(),

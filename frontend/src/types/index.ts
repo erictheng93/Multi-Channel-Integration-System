@@ -168,7 +168,6 @@ export interface TeamMember {
   role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
   status: 'active' | 'inactive' | 'pending';
   group?: string;
-  teamId?: number; // @deprecated - Use teams array for multi-team support
   avatar?: string;
   createdAt: Date | string;
   updatedAt: Date | string;

@@ -31,11 +31,11 @@ export class ConversationService {
 
       // Update conversation - assign to agent's team
       // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
-      // When assigning an agent, we assign to their team instead
-      const agentData = await this.dbService.getAgentById(agentId);
+      // When assigning an agent, we assign to their primary team via agent_teams junction table
+      const primaryTeamId = await this.dbService.getAgentPrimaryTeamId(agentId);
 
       const conversation = await this.dbService.updateConversation(conversationId, {
-        assignedTeamId: agentData?.teamId || null,
+        assignedTeamId: primaryTeamId,
         status: 'in-progress',
         updatedAt: new Date().toISOString()
       });
@@ -124,9 +124,9 @@ export class ConversationService {
     const lockIds = [];
 
     try {
-      // Get the agent's team for team-based assignment
-      const agentData = await this.dbService.getAgentById(agentId);
-      const teamId = agentData?.teamId || undefined;
+      // Get the agent's primary team for team-based assignment via agent_teams junction table
+      const primaryTeamId = await this.dbService.getAgentPrimaryTeamId(agentId);
+      const teamId = primaryTeamId ?? undefined;
 
       // Acquire locks for all conversations
       for (const convId of conversationIds) {

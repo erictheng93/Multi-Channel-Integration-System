@@ -126,8 +126,8 @@ export class WebSocketAuthService {
         role: payload.role || 'agent'
       };
 
-      if (payload.teamId !== undefined) {
-        result.teamId = payload.teamId;
+      if (payload.primaryTeamId !== undefined) {
+        result.teamId = payload.primaryTeamId;
       }
 
       return result;

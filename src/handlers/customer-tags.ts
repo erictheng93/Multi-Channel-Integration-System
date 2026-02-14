@@ -37,12 +37,12 @@ export const customerTagsHandler = {
       let whereConditions: string[] = ['t.is_active = 1'];
 
       // 團隊篩選
-      if (payload?.teamId && payload?.role !== 'admin') {
+      if (payload?.primaryTeamId && payload?.role !== 'admin') {
         // 非管理員只能看到自己團隊的標籤和全局標籤
         if (includeGlobal === 'true') {
-          whereConditions.push(`(t.team_id = ${payload.teamId} OR t.team_id IS NULL)`);
+          whereConditions.push(`(t.team_id = ${payload.primaryTeamId} OR t.team_id IS NULL)`);
         } else {
-          whereConditions.push(`t.team_id = ${payload.teamId}`);
+          whereConditions.push(`t.team_id = ${payload.primaryTeamId}`);
         }
       } else if (includeGlobal === 'false') {
         whereConditions.push(`t.team_id IS NOT NULL`);
