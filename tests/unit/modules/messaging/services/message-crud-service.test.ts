@@ -2,6 +2,13 @@
 // Tests for src/modules/messaging/services/message-crud.ts
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock replyToMessageId validation — always pass in unit tests
+// (existence validation is tested separately in validate-reply-to.test.ts)
+vi.mock('@/utils/validate-reply-to', () => ({
+  validateReplyToMessageId: vi.fn().mockResolvedValue({ valid: true })
+}));
+
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import {
   MessageNotFoundError,

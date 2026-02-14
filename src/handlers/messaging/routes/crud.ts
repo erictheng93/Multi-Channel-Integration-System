@@ -14,6 +14,7 @@ import {
   notFoundResponse,
   forbiddenResponse
 } from '@/utils/api-response';
+import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -353,6 +354,14 @@ crudRoutes.post('/', jwtAuth, async (c) => {
 
     if (!conversation) {
       return notFoundResponse(c, 'Conversation not found');
+    }
+
+    // Validate replyToMessageId exists (app-level FK enforcement)
+    if (replyToMessageId) {
+      const replyValidation = await validateReplyToMessageId(c.env.DB, replyToMessageId, conversationId);
+      if (!replyValidation.valid) {
+        return badRequestResponse(c, replyValidation.error || 'Invalid replyToMessageId');
+      }
     }
 
     // 生成訊息 ID

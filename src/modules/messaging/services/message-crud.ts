@@ -28,6 +28,7 @@ import {
   MessageReadReceipt
 } from '../types/message-types';
 import type { Bindings } from '@/types';
+import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 
 export class MessageCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -277,6 +278,20 @@ export class MessageCrudService {
     metadata?: MessageMetadata;
   }): Promise<Message> {
     try {
+      // Validate replyToMessageId exists (app-level FK enforcement)
+      if (messageData.replyToMessageId) {
+        const replyValidation = await validateReplyToMessageId(
+          this.db,
+          messageData.replyToMessageId,
+          messageData.conversationId
+        );
+        if (!replyValidation.valid) {
+          throw new InvalidMessageDataError(
+            replyValidation.error || 'Invalid replyToMessageId'
+          );
+        }
+      }
+
       const messageId = crypto.randomUUID();
       const now = new Date().toISOString();
 

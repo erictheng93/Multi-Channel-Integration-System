@@ -16,13 +16,14 @@ import {
   // prepareConversationInsert,
   // prepareMessageInsert
 } from './drizzle-converters';
-import type { 
+import type {
   Customer,
-  DbConversation, 
-  DbMessage, 
-  QueryParams, 
+  DbConversation,
+  DbMessage,
+  QueryParams,
   CustomerMetadata
 } from '../types';
+import { validateReplyToMessageId } from './validate-reply-to';
 
 /**
  * 尋找或建立客戶 (增強版 - 收集更多客戶資訊)
@@ -247,6 +248,18 @@ export async function saveMessage(
     metadata?: Record<string, unknown>;
   }
 ): Promise<DbMessage> {
+  // Validate replyToMessageId exists (app-level FK enforcement)
+  if (messageData.replyToMessageId) {
+    const replyValidation = await validateReplyToMessageId(
+      db,
+      messageData.replyToMessageId,
+      messageData.conversationId
+    );
+    if (!replyValidation.valid) {
+      throw new Error(replyValidation.error || 'Invalid replyToMessageId');
+    }
+  }
+
   const timestamp = new Date().toISOString();
   const drizzleDb = createDbClient(db);
 
