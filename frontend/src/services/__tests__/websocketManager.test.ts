@@ -12,7 +12,7 @@
  * 6. 統計數據
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { WebSocketManager } from '../websocketManager'
