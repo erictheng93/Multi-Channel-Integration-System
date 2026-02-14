@@ -44,6 +44,35 @@ export interface WhatsAppChannelConfig {
 }
 
 /**
+ * JSON-based channel configuration (non-sensitive)
+ */
+export interface ChannelConfig {
+  channelId?: string
+  pageId?: string
+  phoneNumber?: string
+  businessAccountId?: string
+  [key: string]: string | number | boolean | undefined
+}
+
+/**
+ * Webhook configuration
+ */
+export interface ChannelWebhookConfig {
+  url?: string
+  token?: string
+  verifyToken?: string
+}
+
+/**
+ * Channel usage statistics
+ */
+export interface ChannelStatsJson {
+  totalSent: number
+  totalReceived: number
+  lastMessageAt?: string
+}
+
+/**
  * Channel Integration Entity
  */
 export interface ChannelIntegration {
@@ -51,36 +80,16 @@ export interface ChannelIntegration {
   teamId: number
   platform: ChannelPlatform
 
-  // LINE configuration
-  lineChannelId?: string | null
-  lineChannelAccessToken?: string | null
-  lineChannelSecret?: string | null
-  lineWebhookUrl?: string | null
-  lineWebhookToken?: string | null
-
-  // Facebook configuration
-  facebookPageId?: string | null
-  facebookAccessToken?: string | null
-  facebookAppSecret?: string | null
-  facebookWebhookUrl?: string | null
-  facebookWebhookToken?: string | null
-
-  // WhatsApp configuration
-  whatsappPhoneNumber?: string | null
-  whatsappBusinessAccountId?: string | null
-  whatsappAccessToken?: string | null
-  whatsappWebhookUrl?: string | null
-  whatsappWebhookToken?: string | null
+  // JSON-based configuration (primary)
+  config?: string | null
+  webhookConfig?: string | null
+  stats?: string | null
+  // NOTE: credentials field is stripped by the backend — never sent to the frontend
 
   // Status
   isActive: boolean
   isVerified: boolean
   lastVerifiedAt?: string | null
-
-  // Statistics
-  totalMessagesSent: number
-  totalMessagesReceived: number
-  lastMessageAt?: string | null
 
   // Error tracking
   lastError?: string | null
@@ -253,6 +262,42 @@ export const channelsApi = {
    */
   checkHealth: async (channelId: number): Promise<ApiResponse<ChannelHealthStatus>> => {
     return apiClient.get(`/channels/${channelId}/health`)
+  }
+}
+
+/**
+ * Parse JSON config from channel
+ */
+export function parseConfig(channel: ChannelIntegration): ChannelConfig {
+  if (!channel.config) return {}
+  try {
+    return JSON.parse(channel.config) as ChannelConfig
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Parse JSON webhookConfig from channel
+ */
+export function parseWebhookConfig(channel: ChannelIntegration): ChannelWebhookConfig {
+  if (!channel.webhookConfig) return {}
+  try {
+    return JSON.parse(channel.webhookConfig) as ChannelWebhookConfig
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Parse JSON stats from channel
+ */
+export function parseStats(channel: ChannelIntegration): ChannelStatsJson {
+  if (!channel.stats) return { totalSent: 0, totalReceived: 0 }
+  try {
+    return JSON.parse(channel.stats) as ChannelStatsJson
+  } catch {
+    return { totalSent: 0, totalReceived: 0 }
   }
 }
 

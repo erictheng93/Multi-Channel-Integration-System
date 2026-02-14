@@ -195,7 +195,7 @@
                 發送訊息
               </div>
               <div class="stat-value">
-                {{ channel.totalMessagesSent || 0 }}
+                {{ getStats(channel).totalSent }}
               </div>
             </div>
             <div class="stat-divider" />
@@ -204,17 +204,17 @@
                 接收訊息
               </div>
               <div class="stat-value">
-                {{ channel.totalMessagesReceived || 0 }}
+                {{ getStats(channel).totalReceived }}
               </div>
             </div>
           </div>
 
           <!-- Last Activity -->
           <div
-            v-if="channel.lastMessageAt"
+            v-if="getStats(channel).lastMessageAt"
             class="last-activity"
           >
-            最後活動：{{ formatDate(channel.lastMessageAt) }}
+            最後活動：{{ formatDate(getStats(channel).lastMessageAt!) }}
           </div>
         </div>
 
@@ -302,7 +302,7 @@
           <div class="stats-grid">
             <div class="stat-box">
               <div class="stat-number">
-                {{ selectedChannel.totalMessagesSent || 0 }}
+                {{ getStats(selectedChannel).totalSent }}
               </div>
               <div class="stat-text">
                 發送訊息
@@ -310,7 +310,7 @@
             </div>
             <div class="stat-box">
               <div class="stat-number">
-                {{ selectedChannel.totalMessagesReceived || 0 }}
+                {{ getStats(selectedChannel).totalReceived }}
               </div>
               <div class="stat-text">
                 接收訊息
@@ -327,7 +327,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { channelsApi } from '@/api/channels'
+import { channelsApi, parseConfig, parseWebhookConfig, parseStats } from '@/api/channels'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -409,17 +409,20 @@ const getPlatformName = (platform: ChannelPlatform): string => {
 }
 
 const getChannelId = (channel: ChannelIntegration): string => {
-  if (channel.platform === 'line') {return channel.lineChannelId || 'N/A'}
-  if (channel.platform === 'facebook') {return channel.facebookPageId || 'N/A'}
-  if (channel.platform === 'whatsapp') {return channel.whatsappPhoneNumber || 'N/A'}
+  const config = parseConfig(channel)
+  if (channel.platform === 'line') { return config.channelId || 'N/A' }
+  if (channel.platform === 'facebook') { return config.pageId || 'N/A' }
+  if (channel.platform === 'whatsapp') { return config.phoneNumber || 'N/A' }
   return 'N/A'
 }
 
 const getWebhookUrl = (channel: ChannelIntegration): string => {
-  if (channel.platform === 'line') {return channel.lineWebhookUrl || ''}
-  if (channel.platform === 'facebook') {return channel.facebookWebhookUrl || ''}
-  if (channel.platform === 'whatsapp') {return channel.whatsappWebhookUrl || ''}
-  return ''
+  const webhookCfg = parseWebhookConfig(channel)
+  return webhookCfg.url || ''
+}
+
+const getStats = (channel: ChannelIntegration) => {
+  return parseStats(channel)
 }
 
 const formatDate = (dateStr: string): string => {
