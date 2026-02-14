@@ -147,6 +147,12 @@ vi.mock('@/db/drizzle-factory', () => ({
   })
 }));
 
+// Mock replyToMessageId validation — always pass in handler unit tests
+// (existence validation is tested separately in validate-reply-to.test.ts)
+vi.mock('@/utils/validate-reply-to', () => ({
+  validateReplyToMessageId: vi.fn().mockResolvedValue({ valid: true })
+}));
+
 // Import handler AFTER mocks are registered
 import crudRoutes from '@/handlers/messaging/routes/crud';
 

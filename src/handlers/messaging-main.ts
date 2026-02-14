@@ -10,6 +10,7 @@ import { messages, conversations, customers, agents, fileAttachments } from '@sh
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '../middleware/auth';
+import { validateReplyToMessageId } from '../utils/validate-reply-to';
 // 🔔 @提及通知整合
 import { parseMentions, getMentionedUserIds } from '../utils/mention-parser';
 import { triggerMentionNotification } from '../utils/notification-trigger';
@@ -2146,6 +2147,18 @@ app.post('/', jwtAuth, async (c) => {
         error: 'Conversation not found',
         timestamp: new Date().toISOString()
       }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // Validate replyToMessageId exists (app-level FK enforcement)
+    if (replyToMessageId) {
+      const replyValidation = await validateReplyToMessageId(c.env.DB, replyToMessageId, conversationId);
+      if (!replyValidation.valid) {
+        return c.json({
+          success: false,
+          error: replyValidation.error || 'Invalid replyToMessageId',
+          timestamp: new Date().toISOString()
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
     }
 
     // 生成訊息ID

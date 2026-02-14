@@ -13,6 +13,7 @@ import {
 } from '../index';
 import type { MessageType, SenderType, Platform, DelayedSendRequest, RecallRequest, BatchSendRequest } from '@modules/messaging/types/message-types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 
 // ======================== 基礎驗證中間件 ========================
 
@@ -200,11 +201,34 @@ export async function validateCreateMessageData(c: Context<{ Bindings: Bindings 
       errors.push('senderType must be one of: customer, agent, system');
     }
 
-    // 驗證 replyToMessageId
+    // 驗證 replyToMessageId — format check (sync)
     if (messageData.replyToMessageId) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(messageData.replyToMessageId)) {
-        errors.push('replyToMessageId must be a valid UUID');
+      const msgPrefixRegex = /^msg_\d+_[a-z0-9]+$/;
+      if (!uuidRegex.test(messageData.replyToMessageId) && !msgPrefixRegex.test(messageData.replyToMessageId)) {
+        errors.push('replyToMessageId must be a valid message ID format');
+      }
+    }
+
+    // Return format errors before doing async DB checks
+    if (errors.length > 0) {
+      return c.json({
+        success: false,
+        error: 'Message data validation failed',
+        details: errors,
+        timestamp: new Date().toISOString()
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // 驗證 replyToMessageId — existence check (async, requires DB)
+    if (messageData.replyToMessageId && messageData.conversationId) {
+      const replyValidation = await validateReplyToMessageId(
+        c.env.DB,
+        messageData.replyToMessageId,
+        messageData.conversationId
+      );
+      if (!replyValidation.valid) {
+        errors.push(replyValidation.error || 'Referenced message does not exist');
       }
     }
 
