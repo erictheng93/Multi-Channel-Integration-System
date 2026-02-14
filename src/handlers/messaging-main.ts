@@ -371,6 +371,72 @@ app.get('/export/agents', jwtAuth, async (c) => {
 });
 
 /**
+ * 匯出記錄計數（輕量查詢）
+ * GET /api/messages/export/count
+ * 回傳符合篩選條件的訊息數量，用於前端匯出前確認
+ */
+app.get('/export/count', jwtAuth, async (c) => {
+  try {
+    const db = createDbClient(c.env.DB);
+
+    const conversationId = c.req.query('conversationId');
+    const dateFrom = c.req.query('dateFrom');
+    const dateTo = c.req.query('dateTo');
+    const customerId = c.req.query('customerId');
+    const agentId = c.req.query('agentId');
+
+    const whereConditions: (ReturnType<typeof eq>)[] = [
+      eq(messages.isRecalled, false)
+    ];
+
+    if (conversationId) {
+      whereConditions.push(eq(messages.conversationId, conversationId));
+    }
+
+    if (dateFrom) {
+      whereConditions.push(gte(messages.createdAt, dateFrom));
+    }
+    if (dateTo) {
+      whereConditions.push(lte(messages.createdAt, dateTo));
+    }
+
+    if (customerId) {
+      whereConditions.push(eq(conversations.customerId, parseInt(customerId)));
+    }
+
+    if (agentId) {
+      whereConditions.push(eq(messages.agentSenderId, agentId));
+    }
+
+    const result = await db
+      .select({ value: count() })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(and(...whereConditions));
+
+    const totalCount = result[0]?.value ?? 0;
+    const exportLimit = 5000;
+
+    return c.json({
+      success: true,
+      data: {
+        count: totalCount,
+        limit: exportLimit,
+        willBeTruncated: totalCount > exportLimit
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Export count error:', error);
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get export count',
+      timestamp: new Date().toISOString()
+    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+  }
+});
+
+/**
  * 匯出訊息為 JSON/CSV/TXT 格式
  * GET /api/messages/export
  */

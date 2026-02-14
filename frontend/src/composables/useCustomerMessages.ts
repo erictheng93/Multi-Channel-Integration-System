@@ -438,11 +438,11 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       pendingMessage.status = 'sent' as const
 
       // 如果 WebSocket 訊息有附件，也更新
-      /* eslint-disable camelcase -- API response uses snake_case */
+       
       if (message.file_attachments && message.file_attachments.length > 0) {
         pendingMessage.file_attachments = message.file_attachments
       }
-      /* eslint-enable camelcase */
+       
 
       console.log('✅ [useCustomerMessages] Pending message merged successfully with status=sent')
       return

@@ -12,7 +12,7 @@
  * 6. 訊息隊列
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type {

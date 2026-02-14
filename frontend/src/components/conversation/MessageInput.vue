@@ -613,7 +613,7 @@
           tempId,
           correlationId,  // 🔧 Phase 2
           realId: messageData.id || tempId,
-          // eslint-disable-next-line camelcase
+           
           file_attachments: fileAttachmentsData
         })
 
@@ -621,7 +621,7 @@
         emit('message-sent', {
           content: savedContent,
           attachments: savedAttachments,
-          // eslint-disable-next-line camelcase
+           
           file_attachments: fileAttachmentsData
         })
 
