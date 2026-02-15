@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, sql } from 'drizzle-orm';
 import { conversations, messages, customers, agents, teams, conversationTransfers } from '@/db/schema';
+import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import type {
   Conversation,
   NewConversation,
@@ -26,9 +27,11 @@ import type {
 
 export class ConversationService implements ConversationServiceInterface {
   private db: DrizzleD1Database;
+  private rawDb: D1Database;
 
   constructor(database: D1Database) {
     this.db = drizzle(database);
+    this.rawDb = database;
   }
 
   // Create new conversation
@@ -396,6 +399,18 @@ export class ConversationService implements ConversationServiceInterface {
 
   // Add message to conversation
   async addMessage(conversationId: string, messageData: NewMessage): Promise<Message> {
+    // Validate replyToMessageId if provided (prevents orphan FK references)
+    if (messageData.replyToMessageId) {
+      const validation = await validateReplyToMessageId(
+        this.rawDb,
+        messageData.replyToMessageId,
+        conversationId
+      );
+      if (!validation.valid) {
+        throw new Error(validation.error || 'Invalid replyToMessageId');
+      }
+    }
+
     const message = {
       ...messageData,
       id: messageData.id || crypto.randomUUID(),
