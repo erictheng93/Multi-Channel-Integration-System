@@ -112,7 +112,7 @@ export interface CreateAgentRequest {
   email: string;
   displayName: string;
   role?: 'admin' | 'team' | 'agent';
-  teamId?: number;
+  teamId?: number; // Creates agent_teams membership (not stored on agents table)
   passwordHash?: string; // 通常由系統生成
   skills?: Omit<AgentSkill, 'id'>[];
   isActive?: boolean;
@@ -122,7 +122,7 @@ export interface UpdateAgentRequest {
   displayName?: string;
   email?: string;
   role?: 'admin' | 'team' | 'agent';
-  teamId?: number;
+  teamId?: number; // Updates agent_teams membership (not stored on agents table)
   isActive?: boolean;
   passwordPolicy?: string;
 }

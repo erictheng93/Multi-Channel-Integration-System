@@ -165,21 +165,35 @@ export class AgentService implements AgentServiceInterface {
         }
       }
 
+      // Extract teamId — it targets agent_teams, not the agents table
+      const { teamId, ...agentFields } = data;
+
       // 驗證 teamId 是否存在（如果提供）
-      if (data.teamId) {
+      if (teamId) {
         const team = await this.db
           .select()
           .from(teams)
-          .where(eq(teams.id, data.teamId))
+          .where(eq(teams.id, teamId))
           .get();
 
         if (!team) {
-          throw new InvalidAgentDataError(`Team not found: ${data.teamId}`);
+          throw new InvalidAgentDataError(`Team not found: ${teamId}`);
         }
+
+        // Update agent_teams: set new primary team
+        const now = new Date().toISOString();
+        await this.db.delete(agentTeams).where(eq(agentTeams.agentId, id));
+        await this.db.insert(agentTeams).values({
+          agentId: id,
+          teamId,
+          roleInTeam: 'member',
+          isPrimary: true,
+          joinedAt: now
+        });
       }
 
       const updatedData = {
-        ...data,
+        ...agentFields,
         updatedAt: new Date().toISOString()
       };
 

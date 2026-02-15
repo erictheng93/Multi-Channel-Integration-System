@@ -31,7 +31,7 @@ export function safeUserInfo(agent: Agent): {
   email: string;
   displayName: string;
   role: string;
-  teamId: number | null;
+  // teamId REMOVED — use agent_teams table for team membership
   isActive: boolean | null;
   lastActive: string | null;
   createdAt: string | null;
@@ -41,7 +41,6 @@ export function safeUserInfo(agent: Agent): {
     email: agent.email,
     displayName: agent.displayName,
     role: agent.role,
-    teamId: agent.teamId,
     isActive: agent.isActive,
     lastActive: agent.lastActive,
     createdAt: agent.createdAt
