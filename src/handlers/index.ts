@@ -2,27 +2,27 @@
 // 所有處理器都已標準化，使用統一的響應格式和錯誤處理
 
 // Legacy handlers (remaining active ones)
-export { webhookHandler } from './webhook'
+export { webhookHandler } from '../modules/integrations/handlers/webhook'
 export * from './system'
 
 // 新的主要處理器 (Handler-based approach)
-export { default as authMainHandler } from './auth-main'
+export { default as authMainHandler } from '../modules/auth/handlers/auth-main-legacy'
 export { default as teamMainHandler } from '../modules/teams/handlers/index' // Updated to use fully modular team handler (includes members, password)
-export { default as delayedMessageMainHandler } from './delayed-message-modular' // Updated to use modular implementation
+export { default as delayedMessageMainHandler } from '../modules/delayed-message/handlers/delayed-message-modular' // Updated to use modular implementation
 export { conversationsMainHandler as conversationMainHandler } from '../modules/conversations/handlers'
-export { default as messagingMainHandler } from './messaging-main'
-export { default as systemMainHandler } from './system-main'
-export { default as customerMainHandler } from './customer-main'
+export { default as messagingMainHandler } from '../modules/messaging/handlers/messaging-main'
+export { default as systemMainHandler } from '../modules/system/handlers/system-main'
+export { default as customerMainHandler } from '../modules/customer/handlers/customer-main-legacy'
 export { default as tagMainHandler } from '../modules/tags/handlers' // Updated to use modular tags handler
-export { default as qrcodeMainHandler } from './qrcode-main'
+export { default as qrcodeMainHandler } from '../modules/system/handlers/qrcode-main'
 export { default as sessionMainHandler } from '../modules/session/handlers/session' // Updated to use modular session handler
 export { createAgentRouter as agentMainHandler } from '../modules/agents/handlers/agent-main' // Agents module handler
 
 // Notifications 模組處理器 (新的統一通知系統)
-export { default as notificationMainHandler } from './notification-router'
+export { default as notificationMainHandler } from '../modules/notifications/handlers/notification-router'
 
 // 健康檢查模組處理器 (統一的健康檢查系統)
-export { default as healthMainHandler } from './health-router'
+export { default as healthMainHandler } from '../modules/system/handlers/health-router'
 
 // Notification module handler (modern)
 export {

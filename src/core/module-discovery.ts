@@ -249,7 +249,7 @@ export class ModuleDiscovery {
       { path: './handlers/system-main', name: 'system' },
       { path: './handlers/customer-main', name: 'customers' },
       { path: './handlers/notification-main', name: 'notifications' },
-      { path: './handlers/health-main', name: 'health' },
+      { path: './modules/system/handlers/health-main', name: 'health' },
       { path: './modules/qrcode/handlers/qrcode-router-simple', name: 'qr-codes' }
     ];
   }

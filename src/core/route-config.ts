@@ -17,7 +17,7 @@ import {
   healthMainHandler
 } from '../handlers';
 
-import messagingMainHandler from '../handlers/messaging-main';
+import messagingMainHandler from '@modules/messaging/handlers/messaging-main';
 // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
 // import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
 import fileMainHandler from '@modules/file-management/handlers/file-main';
@@ -27,16 +27,16 @@ import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
 import { dashboardHandler } from '@modules/analytics/handlers/dashboard-main';
 import { realtimeDashboardHandler } from '@modules/analytics/handlers/realtime-dashboard-main';
 import reportsHandler from '@modules/reports/handlers/reports-main';
-import { activityHandler } from '../handlers/activity';
+import { activityHandler } from '@modules/activities/handlers/activity';
 import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
-import delayedMessageBufferHandler from '../handlers/delayed-message-buffer';
+import delayedMessageBufferHandler from '@modules/delayed-message/handlers/delayed-message-buffer';
 import websocketAnalyticsHandler from '@modules/websocket/handlers/websocket-analytics-main';
-import userExperienceHandler from '../handlers/user-experience-main';
-import phase2AuthHandler from '../handlers/phase2-auth-management';
-import alertConfigHandler from '../handlers/alert-config-management';
-import dataOptimizationHandler from '../handlers/data-optimization-main';
+import userExperienceHandler from '@modules/system/handlers/user-experience-main';
+import phase2AuthHandler from '@modules/auth/handlers/phase2-auth-management';
+import alertConfigHandler from '@modules/system/handlers/alert-config-management';
+import dataOptimizationHandler from '@modules/system/handlers/data-optimization-main';
 import { realtime } from '@modules/realtime';
-import webhookRouter from '../handlers/webhook';
+import webhookRouter from '@modules/integrations/handlers/webhook';
 import modularSystemRouter from './modular-system-integration';
 import { createMonitoringHandlerMethods } from '@modules/monitoring/handlers/monitoring-dashboard';
 import collaborationMainHandler from '@modules/collaboration/handlers/collaboration-main';

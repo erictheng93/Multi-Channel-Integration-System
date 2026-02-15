@@ -101,7 +101,7 @@ export default {
 
       if (queueName === 'line-message-queue') {
         // Handle LINE async message delivery
-        const { handleLineMessageQueue } = await import('./handlers/line-message-queue');
+        const { handleLineMessageQueue } = await import('@modules/queue/handlers/line-message-queue');
         await handleLineMessageQueue(batch, env);
         console.log('LINE messages processed');
       } else {
