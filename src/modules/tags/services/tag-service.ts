@@ -1,38 +1,36 @@
-// src/handlers/tag.ts
-// 標籤系統管理 - CRUD 操作、標籤關聯管理
+// src/modules/tags/services/tag-service.ts
+// Tag system management - CRUD operations, tag association management
 
 import { Context } from 'hono';
-import type { Bindings } from '../types';
+import type { Bindings } from '@/types';
 import {
   successResponse,
   paginatedResponse,
   errorResponse,
   validationErrorResponse,
-  unauthorizedResponse,
-  forbiddenResponse,
   badRequestResponse,
   notFoundResponse,
   handleApiError
-} from '../utils/api-response';
-import { tags } from '../db/schema';
-import { createDbClient } from '../db/drizzle-factory';
+} from '@/utils/api-response';
+import { tags } from '@/db/schema';
+import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, or, asc, like, count, inArray } from 'drizzle-orm';
 
-// HEX 顏色格式驗證（支援 3 位或 6 位格式）
+// HEX color format validation (supports 3-digit or 6-digit format)
 const isValidHexColor = (color: string): boolean => {
   if (!color || typeof color !== 'string') return false;
-  // 支援 #RGB 或 #RRGGBB 格式
+  // Supports #RGB or #RRGGBB format
   return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(color);
 };
 
-// 標準化顏色格式（將 3 位格式轉為 6 位）
+// Normalize color format (convert 3-digit to 6-digit)
 const normalizeHexColor = (color: string): string => {
-  if (!color) return '#3B82F6'; // 預設顏色
+  if (!color) return '#3B82F6'; // Default color
 
-  // 如果不是有效的 HEX 格式，返回預設顏色
+  // If not a valid HEX format, return default color
   if (!isValidHexColor(color)) return '#3B82F6';
 
-  // 將 3 位格式轉為 6 位格式
+  // Convert 3-digit format to 6-digit format
   if (color.length === 4) {
     const r = color[1];
     const g = color[2];
@@ -44,7 +42,7 @@ const normalizeHexColor = (color: string): string => {
 };
 
 export const tagHandler = {
-  // 獲取標籤列表（簡化模型：所有標籤對所有客服可見）
+  // Get tag list (simplified model: all tags visible to all agents)
   async list(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
@@ -57,7 +55,7 @@ export const tagHandler = {
       const offset = (parseInt(page) - 1) * parseInt(pageSize);
       const limit = parseInt(pageSize);
 
-      // 簡化查詢：返回所有活躍標籤
+      // Simplified query: return all active tags
       let query = drizzleDb
         .select({
           id: tags.id,
@@ -75,7 +73,7 @@ export const tagHandler = {
       // Build where conditions
       const whereConditions: any[] = [eq(tags.isActive, true)];
 
-      // 搜索（簡化：不再區分團隊）
+      // Search (simplified: no team distinction)
       if (search) {
         const searchTerm = `%${search}%`;
         whereConditions.push(or(
@@ -95,15 +93,15 @@ export const tagHandler = {
 
       const result = await query;
 
-      // 計算總數 - use the same where conditions
+      // Count total - use the same where conditions
       let countQuery = drizzleDb
         .select({ total: count() })
         .from(tags);
-      
+
       if (whereConditions.length > 0) {
         countQuery = countQuery.where(and(...whereConditions)) as any;
       }
-      
+
       const countResult = await countQuery;
 
       const tagsResult: any[] = result.map((row: any) => ({
@@ -133,32 +131,32 @@ export const tagHandler = {
     }
   },
 
-  // 創建標籤
+  // Create tag
   async create(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
       const { name, color = '#3B82F6', description, teamId } = await c.req.json();
 
-      // 驗證必填欄位
+      // Validate required fields
       if (!name || !name.trim()) {
         return badRequestResponse(c, 'Tag name is required');
       }
 
-      // 驗證顏色格式
+      // Validate color format
       if (color && !isValidHexColor(color)) {
         return validationErrorResponse(c, [
           { field: 'color', message: 'Invalid color format. Use HEX format (e.g., #FF5733 or #F53)' }
         ]);
       }
 
-      // 標準化顏色格式
+      // Normalize color format
       const normalizedColor = normalizeHexColor(color);
 
-      // 簡化權限模型：所有客服皆可創建標籤（不區分全局/團隊）
-      // 標籤將統一存儲，teamId 保留為 null（全局可見）
+      // Simplified permission model: all agents can create tags (no global/team distinction)
+      // Tags are stored uniformly, teamId kept as null (globally visible)
 
-      // 檢查標籤名稱是否已存在（全局範圍，不區分團隊）
+      // Check if tag name already exists (global scope, no team distinction)
       const existingTag = await drizzleDb
         .select({ id: tags.id })
         .from(tags)
@@ -174,24 +172,24 @@ export const tagHandler = {
         return errorResponse(c, 'Tag name already exists', 409);
       }
 
-      // 創建標籤（簡化模型：所有標籤為全局可見，teamId = null）
+      // Create tag (simplified model: all tags are globally visible, teamId = null)
       const result = await drizzleDb
         .insert(tags)
         .values({
           name: name.trim(),
           color: normalizedColor,
           description: description || null,
-          teamId: null, // 簡化：統一為全局標籤
+          teamId: null, // Simplified: unified as global tags
           createdBy: typeof payload?.userId === 'string' ? payload.userId : payload?.userId?.toString() || 'system'
         })
         .returning();
 
       const insertedTag = result[0];
-      
+
       if (!insertedTag) {
         return errorResponse(c, 'Failed to create tag', 500);
       }
-      
+
       return successResponse(c, {
         id: insertedTag.id,
         name: insertedTag.name,
@@ -215,7 +213,7 @@ export const tagHandler = {
     }
   },
 
-  // 獲取單一標籤詳情
+  // Get single tag details
   async get(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
@@ -268,7 +266,7 @@ export const tagHandler = {
     }
   },
 
-  // 更新標籤
+  // Update tag
   async update(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
@@ -276,7 +274,7 @@ export const tagHandler = {
       const { name, color, description, isActive } = await c.req.json();
       const payload = c.get('jwtPayload');
 
-      // 檢查標籤是否存在
+      // Check if tag exists
       const existingTag = await drizzleDb.get(sql`
         SELECT * FROM tags WHERE id = ${tagId}
       `);
@@ -285,9 +283,9 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // 簡化權限模型：所有客服皆可編輯任何標籤
+      // Simplified permission model: all agents can edit any tag
 
-      // 驗證顏色格式（如果提供了顏色）
+      // Validate color format (if color provided)
       let normalizedColor = color;
       if (color !== undefined && color !== null) {
         if (!isValidHexColor(color)) {
@@ -298,7 +296,7 @@ export const tagHandler = {
         normalizedColor = normalizeHexColor(color);
       }
 
-      // 如果更新名稱，檢查是否重複（全局範圍）
+      // If updating name, check for duplicates (global scope)
       if (name && name !== (existingTag as any).name) {
         const duplicateTag = await drizzleDb
           .select({ id: tags.id })
@@ -319,7 +317,7 @@ export const tagHandler = {
         }
       }
 
-      // 更新標籤
+      // Update tag
       await drizzleDb.run(sql`
         UPDATE tags
         SET name = COALESCE(${name || null}, name),
@@ -330,7 +328,7 @@ export const tagHandler = {
         WHERE id = ${tagId}
       `);
 
-      // 查詢更新後的標籤以返回完整數據
+      // Query updated tag to return complete data
       const updatedTag = await drizzleDb.get(sql`
         SELECT t.*,
                COALESCE(customer_count.count, 0) as customer_count,
@@ -372,14 +370,14 @@ export const tagHandler = {
     }
   },
 
-  // 刪除標籤（軟刪除）
+  // Delete tag (soft delete)
   async delete(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
       const payload = c.get('jwtPayload');
 
-      // 檢查標籤是否存在
+      // Check if tag exists
       const existingTag = await drizzleDb.get(sql`
         SELECT * FROM tags WHERE id = ${tagId}
       `);
@@ -388,11 +386,11 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // 簡化權限模型：所有客服皆可刪除任何標籤
+      // Simplified permission model: all agents can delete any tag
 
-      // 軟刪除標籤
+      // Soft delete tag
       await drizzleDb.run(sql`
-        UPDATE tags 
+        UPDATE tags
         SET is_active = FALSE, updated_at = datetime('now')
         WHERE id = ${tagId}
       `);
@@ -404,13 +402,13 @@ export const tagHandler = {
     }
   },
 
-  // 獲取標籤使用統計
+  // Get tag usage statistics
   async getUsageStats(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
 
-      // 檢查標籤是否存在
+      // Check if tag exists
       const tag = await drizzleDb.get(sql`
         SELECT * FROM tags WHERE id = ${tagId}
       `);
@@ -419,9 +417,9 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // 客戶使用統計
+      // Customer usage statistics
       const customerStats = await drizzleDb.get(sql`
-        SELECT 
+        SELECT
           COUNT(*) as total_customers,
           COUNT(CASE WHEN c.platform = 'line' THEN 1 END) as line_customers,
           COUNT(CASE WHEN c.platform = 'facebook' THEN 1 END) as facebook_customers
@@ -430,9 +428,9 @@ export const tagHandler = {
         WHERE ct.tag_id = ${tagId}
       `);
 
-      // 對話使用統計
+      // Conversation usage statistics
       const conversationStats = await drizzleDb.get(sql`
-        SELECT 
+        SELECT
           COUNT(*) as total_conversations,
           COUNT(CASE WHEN conv.status = 'active' THEN 1 END) as active_conversations,
           COUNT(CASE WHEN conv.status = 'closed' THEN 1 END) as closed_conversations
@@ -441,7 +439,7 @@ export const tagHandler = {
         WHERE ct.tag_id = ${tagId}
       `);
 
-      // 最近使用趨勢（最近30天）
+      // Recent usage trend (last 30 days)
       const usageTrendResults = await drizzleDb.all(sql`
         SELECT
           DATE(ct.assigned_at) as date,
@@ -454,7 +452,7 @@ export const tagHandler = {
         LIMIT 30
       `);
 
-      // 最活躍的使用者 (Fixed: use agents table instead of users)
+      // Most active assigners (Fixed: use agents table instead of users)
       const topAssignersResults = await drizzleDb.all(sql`
         SELECT
           a.display_name,
@@ -501,7 +499,7 @@ export const tagHandler = {
     }
   },
 
-  // 批量操作標籤
+  // Bulk operations on tags
   async bulkOperation(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
@@ -514,7 +512,7 @@ export const tagHandler = {
         ]);
       }
 
-      // ✅ SECURITY FIX: Validate tag IDs are numeric and sanitize
+      // SECURITY FIX: Validate tag IDs are numeric and sanitize
       const validatedIds = tagIds.filter(id => {
         return typeof id === 'number' ||
                (typeof id === 'string' && /^[0-9]+$/.test(id));
@@ -527,7 +525,7 @@ export const tagHandler = {
       // Convert to integers for parameterized queries
       const idArray = validatedIds.map(id => parseInt(id.toString(), 10));
 
-      // ✅ SECURITY FIX: Use parameterized queries with Drizzle ORM
+      // SECURITY FIX: Use parameterized queries with Drizzle ORM
       switch (operation) {
         case 'activate':
           await drizzleDb
@@ -581,7 +579,7 @@ export const tagHandler = {
     }
   },
 
-  // 獲取標籤的客戶列表
+  // Get customers for a tag
   async getTagCustomers(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
@@ -590,7 +588,7 @@ export const tagHandler = {
       const limit = Math.min(parseInt(c.req.query('limit') || '50'), 100);
       const offset = (page - 1) * limit;
 
-      // 檢查標籤是否存在
+      // Check if tag exists
       const tag = await drizzleDb.get(sql`
         SELECT * FROM tags WHERE id = ${tagId}
       `);
@@ -599,7 +597,7 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // 獲取使用該標籤的客戶列表
+      // Get customers using this tag
       // Optimized query: removed LEFT JOIN on agents table since assigned_by_name is not displayed in UI
       const customers = await drizzleDb.all(sql`
         SELECT
@@ -620,7 +618,7 @@ export const tagHandler = {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      // 獲取總數
+      // Get total count
       const countResult = await drizzleDb.get(sql`
         SELECT COUNT(*) as total
         FROM customer_tags
