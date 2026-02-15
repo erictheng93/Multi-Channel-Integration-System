@@ -81,7 +81,7 @@ import {
   restartSystem,
   healthCheck,
   getApiStatus
-} from './handlers/system';
+} from '@modules/system/handlers/system-legacy';
 // ❌ LEGACY TEAM HANDLER IMPORTS REMOVED
 // All team management functions now in modular handlers:
 // - src/modules/teams/handlers/members.ts
