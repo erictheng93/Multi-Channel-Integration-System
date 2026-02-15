@@ -351,7 +351,7 @@ export async function authenticateUser(
 
   // 🚀 使用原始SQL查詢避免Drizzle ORM問題
   const query = `
-    SELECT id, email, password_hash, display_name, role, team_id,
+    SELECT id, email, password_hash, display_name, role,
            is_active, password_policy, created_at, updated_at
     FROM agents
     WHERE email = ?
