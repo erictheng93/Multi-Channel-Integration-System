@@ -158,7 +158,7 @@ corsMonitoringHandler.get('/health', (c: Context<{ Bindings: Bindings }>) => {
  */
 corsMonitoringHandler.get('/config', (c: Context<{ Bindings: Bindings }>) => {
   // 使用動態 CORS 配置
-  const { getAllowedOrigins } = require('../config/cors');
+  const { getAllowedOrigins } = require('@/config/cors');
   const dynamicOrigins = getAllowedOrigins(c.env);
 
   return successResponse(c, {

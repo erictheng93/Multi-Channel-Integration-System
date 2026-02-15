@@ -16,7 +16,7 @@ import { routeGroups, routeConfigStats, validateRouteConfig } from './core/route
 
 // 自動化健康監控系統
 import { automatedHealthMonitoring } from './services/automated-health-monitoring';
-import { createMonitoringHandlerMethods } from './handlers/monitoring-dashboard';
+import { createMonitoringHandlerMethods } from '@modules/monitoring/handlers/monitoring-dashboard';
 
 // Import handlers - consolidated imports
 import {
@@ -57,7 +57,7 @@ log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defi
 
 // Import additional handlers
 import { activityHandler } from './handlers/activity';
-import websocketMainHandler from './handlers/websocket-main';
+import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
 import delayedMessageBufferHandler from './handlers/delayed-message-buffer';
 import { feedbackHandler } from './handlers/feedback-main';
 
@@ -65,7 +65,7 @@ import { feedbackHandler } from './handlers/feedback-main';
 import kvOptimizationMonitoringHandler from './handlers/kv-optimization-monitoring';
 
 // 🆕 Monitoring and Alerting API (2025-01-08)
-import monitoringMainHandler from './handlers/monitoring-main';
+import monitoringMainHandler from '@modules/monitoring/handlers/monitoring-main';
 
 // Import system functions (grouped by functionality)
 import {
@@ -157,8 +157,8 @@ if (!routeValidation.valid) {
 
 // 🔧 Pre-register public WebSocket endpoints BEFORE unified route system
 // This ensures they are NOT covered by any auth middleware from the route system
-import websocketHealthApp from './handlers/websocket-health';
-import websocketDashboardApp from './handlers/websocket-dashboard';
+import websocketHealthApp from '@modules/websocket/handlers/websocket-health';
+import websocketDashboardApp from '@modules/websocket/handlers/websocket-dashboard';
 
 // Register health endpoints
 app.route('/api/websocket', websocketHealthApp);
@@ -344,9 +344,9 @@ log.info('Monitoring & Alerting API registered', {
 //
 // =================================================================================
 
-import corsMonitoringHandler from './handlers/cors-monitoring';
-import securityMonitoringHandler from './handlers/security-monitoring';
-import securityDashboardHandler from './handlers/security-dashboard';
+import corsMonitoringHandler from '@modules/monitoring/handlers/cors-monitoring';
+import securityMonitoringHandler from '@modules/monitoring/handlers/security-monitoring';
+import securityDashboardHandler from '@modules/monitoring/handlers/security-dashboard';
 
 // Register CORS handler BEFORE unified route system
 app.route('/api/cors', corsMonitoringHandler);
@@ -384,7 +384,7 @@ log.info('Security dashboard endpoints registered (P2-7)', {
 });
 
 // 🆕 Register KV Management handler - KV Namespace management and cleanup
-import kvManagementHandler from './handlers/kv-management-main';
+import kvManagementHandler from '@modules/monitoring/handlers/kv-management-main';
 app.route('/api/kv', kvManagementHandler);
 log.info('KV Management endpoints registered', {
   endpoints: [

@@ -14,10 +14,10 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import type { Bindings } from '../types/bindings';
-import { jwtAuth } from '../middleware/auth';
-import { KVManagementService, KV_KEY_PATTERNS, LEGACY_KEY_PATTERNS } from '../services/kv-management-service';
-import { KV_TTL, KV_BATCH_CONFIG, KV_COMPRESSION_CONFIG, KEY_MIGRATION_MAP } from '../config/kv-config';
+import type { Bindings } from '@/types/bindings';
+import { jwtAuth } from '@/middleware/auth';
+import { KVManagementService, KV_KEY_PATTERNS, LEGACY_KEY_PATTERNS } from '@/services/kv-management-service';
+import { KV_TTL, KV_BATCH_CONFIG, KV_COMPRESSION_CONFIG, KEY_MIGRATION_MAP } from '@/config/kv-config';
 
 const kvManagementHandler = new Hono<{ Bindings: Bindings }>();
 

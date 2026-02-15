@@ -1,18 +1,18 @@
 // WebSocket Health Check Handler
-// 提供完整的 WebSocket + Durable Objects 健康檢查端點
+// Provides comprehensive WebSocket + Durable Objects health check endpoints
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import type { Bindings } from '../types';
-import type { MigrationConfig } from '../types/websocket-types';
+import type { Bindings } from '@/types';
+import type { MigrationConfig } from '@/types/websocket-types';
 
 const healthApp = new Hono<{ Bindings: Bindings }>();
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
-// 不再需要 handler 級別的 CORS middleware
+// CORS handling moved to src/index.ts unified management
+// No handler-level CORS middleware needed
 
 /**
- * 完整的健康檢查響應
+ * Complete health check response
  */
 interface HealthCheckResponse {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -43,7 +43,7 @@ interface ComponentHealth {
 
 /**
  * GET /api/websocket/health
- * 完整的健康檢查端點
+ * Complete health check endpoint
  */
 healthApp.get('/health', async (c) => {
   const startTime = Date.now();
@@ -56,10 +56,10 @@ healthApp.get('/health', async (c) => {
       database: await checkDatabase(c.env)
     };
 
-    // 檢查遷移配置
+    // Check migration configuration
     const migrationConfig = await getMigrationConfig(c.env);
 
-    // 計算總體健康狀態
+    // Calculate overall health status
     const componentStatuses = Object.values(components).map(c => c.status);
     let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
 
@@ -87,7 +87,7 @@ healthApp.get('/health', async (c) => {
 
     return c.json(response, statusCode);
   } catch (error) {
-    console.error('❌ [WebSocket Health] Health check failed:', error);
+    console.error('[WebSocket Health] Health check failed:', error);
 
     return c.json({
       status: 'unhealthy',
@@ -99,7 +99,7 @@ healthApp.get('/health', async (c) => {
 
 /**
  * GET /api/websocket/migration-status
- * 快速遷移狀態檢查
+ * Quick migration status check
  */
 healthApp.get('/migration-status', async (c) => {
   try {
@@ -124,7 +124,7 @@ healthApp.get('/migration-status', async (c) => {
 
 /**
  * GET /api/websocket/debug-connections
- * 🔍 DEBUG: Get list of registered connections in MessageBroadcaster
+ * DEBUG: Get list of registered connections in MessageBroadcaster
  */
 healthApp.get('/debug-connections', async (c) => {
   try {
@@ -195,19 +195,19 @@ healthApp.get('/liveness', async (c) => {
 
 /**
  * GET /api/websocket/metrics
- * 詳細的 WebSocket 性能指標（整合實時連接和鎖數據）
+ * Detailed WebSocket performance metrics (integrating real-time connections and lock data)
  */
 healthApp.get('/metrics', async (c) => {
   try {
     const config = await getMigrationConfig(c.env);
 
-    // 收集實時連接指標和鎖指標
+    // Collect real-time connection metrics and lock metrics
     const [realtimeMetrics, lockMetrics] = await Promise.allSettled([
       getRealtimeConnectionMetrics(c.env),
       getDistributedLockMetrics(c.env)
     ]);
 
-    // 收集各項指標
+    // Collect various metrics
     const metrics = {
       timestamp: new Date().toISOString(),
       websocket: {
@@ -219,7 +219,7 @@ healthApp.get('/metrics', async (c) => {
         bindings: await getDurableObjectsMetrics(c.env),
         estimatedInstances: await estimateDOInstanceCount(c.env)
       },
-      // 實時連接指標（來自 MessageBroadcaster）
+      // Real-time connection metrics (from MessageBroadcaster)
       connections: realtimeMetrics.status === 'fulfilled' ? realtimeMetrics.value : {
         totalConnections: 0,
         activeConnections: 0,
@@ -230,7 +230,7 @@ healthApp.get('/metrics', async (c) => {
         errorRate: 0,
         lastUpdated: Date.now()
       },
-      // 分佈式鎖指標（來自 LockCoordinator）
+      // Distributed lock metrics (from LockCoordinator)
       locks: lockMetrics.status === 'fulfilled' ? lockMetrics.value : {
         totalLocks: 0,
         totalAcquisitions: 0,
@@ -268,7 +268,7 @@ healthApp.get('/metrics', async (c) => {
       data: metrics
     });
   } catch (error) {
-    console.error('❌ [WebSocket Metrics] Error collecting metrics:', error);
+    console.error('[WebSocket Metrics] Error collecting metrics:', error);
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -278,7 +278,7 @@ healthApp.get('/metrics', async (c) => {
 
 /**
  * GET /api/websocket/health-detail
- * 深度健康檢查，包含每個 Durable Objects 的詳細狀態
+ * Deep health check, including detailed status of each Durable Object
  */
 healthApp.get('/health-detail', async (c) => {
   try {
@@ -323,7 +323,7 @@ healthApp.get('/health-detail', async (c) => {
       data: detailedHealth
     });
   } catch (error) {
-    console.error('❌ [WebSocket Health Detail] Error:', error);
+    console.error('[WebSocket Health Detail] Error:', error);
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -333,7 +333,7 @@ healthApp.get('/health-detail', async (c) => {
 
 /**
  * GET /api/websocket/comparison
- * WebSocket vs Legacy (Polling/Queue) 性能比較
+ * WebSocket vs Legacy (Polling/Queue) performance comparison
  */
 healthApp.get('/comparison', async (c) => {
   try {
@@ -441,7 +441,7 @@ healthApp.get('/comparison', async (c) => {
       data: comparison
     });
   } catch (error) {
-    console.error('❌ [WebSocket Comparison] Error:', error);
+    console.error('[WebSocket Comparison] Error:', error);
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -452,11 +452,11 @@ healthApp.get('/comparison', async (c) => {
 // =================== Helper Functions ===================
 
 /**
- * 檢查 Durable Objects 可用性
+ * Check Durable Objects availability
  */
 async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
   try {
-    // 檢查所有必需的 Durable Objects bindings
+    // Check all required Durable Objects bindings
     const requiredBindings = [
       'CONVERSATION_ROOM',
       'USER_CONNECTION',
@@ -475,7 +475,7 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
       };
     }
 
-    // 嘗試獲取一個 Durable Object 實例 (輕量級測試)
+    // Try to get a Durable Object instance (lightweight test)
     if (!env.CONVERSATION_ROOM) {
       return {
         status: 'unhealthy',
@@ -486,7 +486,7 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
     const testRoomId = env.CONVERSATION_ROOM.idFromName('health-check-test');
     const testRoom = env.CONVERSATION_ROOM.get(testRoomId);
 
-    // 發送簡單的 HTTP 請求測試連接
+    // Send simple HTTP request to test connection
     const response = await testRoom.fetch(new Request('http://internal/metrics'));
 
     if (response.ok || response.status === 404) {
@@ -513,7 +513,7 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
 }
 
 /**
- * 檢查 WebSocket 可用性
+ * Check WebSocket availability
  */
 async function checkWebSocketAvailability(env: Bindings): Promise<ComponentHealth> {
   try {
@@ -527,7 +527,7 @@ async function checkWebSocketAvailability(env: Bindings): Promise<ComponentHealt
       };
     }
 
-    // WebSocket 依賴 Durable Objects
+    // WebSocket depends on Durable Objects
     const doHealth = await checkDurableObjects(env);
 
     if (doHealth.status === 'healthy') {
@@ -553,7 +553,7 @@ async function checkWebSocketAvailability(env: Bindings): Promise<ComponentHealt
 }
 
 /**
- * 檢查 KV 存儲可用性
+ * Check KV storage availability
  */
 async function checkKVStorage(env: Bindings): Promise<ComponentHealth> {
   try {
@@ -565,7 +565,7 @@ async function checkKVStorage(env: Bindings): Promise<ComponentHealth> {
       };
     }
 
-    // 嘗試讀取測試鍵
+    // Try to read test key
     const testKey = 'health_check_test';
     await env.SESSIONS.get(testKey);
 
@@ -584,7 +584,7 @@ async function checkKVStorage(env: Bindings): Promise<ComponentHealth> {
 }
 
 /**
- * 檢查資料庫可用性
+ * Check database availability
  */
 async function checkDatabase(env: Bindings): Promise<ComponentHealth> {
   try {
@@ -596,7 +596,7 @@ async function checkDatabase(env: Bindings): Promise<ComponentHealth> {
       };
     }
 
-    // 執行簡單的查詢測試
+    // Execute simple query test
     await env.DB.prepare('SELECT 1').first();
 
     return {
@@ -614,7 +614,7 @@ async function checkDatabase(env: Bindings): Promise<ComponentHealth> {
 }
 
 /**
- * 獲取遷移配置
+ * Get migration configuration
  */
 async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
   try {
@@ -623,11 +623,11 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
       return JSON.parse(configStr);
     }
   } catch (error) {
-    console.error('❌ [WebSocket Health] Error loading migration config:', error);
+    console.error('[WebSocket Health] Error loading migration config:', error);
   }
 
-  // 預設配置
-  // ✅ Phase 4 Complete: 100% WebSocket rollout with Durable Objects
+  // Default configuration
+  // Phase 4 Complete: 100% WebSocket rollout with Durable Objects
   return {
     enableWebSocket: true,
     migrationStrategy: 'immediate' as const, // All users get WebSocket immediately
@@ -643,7 +643,7 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
 }
 
 /**
- * 獲取 Durable Objects 指標
+ * Get Durable Objects metrics
  */
 async function getDurableObjectsMetrics(env: Bindings): Promise<Record<string, boolean>> {
   const bindings = {
@@ -658,7 +658,7 @@ async function getDurableObjectsMetrics(env: Bindings): Promise<Record<string, b
 }
 
 /**
- * 估算 Durable Objects 實例數量
+ * Estimate Durable Objects instance count
  */
 async function estimateDOInstanceCount(env: Bindings): Promise<number> {
   // This is an estimate since we can't directly query DO instance count
@@ -667,7 +667,7 @@ async function estimateDOInstanceCount(env: Bindings): Promise<number> {
 }
 
 /**
- * 詳細檢查單個 Durable Object
+ * Detailed check of a single Durable Object
  */
 async function checkDurableObjectDetailed(
   env: Bindings,
@@ -719,7 +719,7 @@ async function checkDurableObjectDetailed(
 }
 
 /**
- * 詳細檢查 KV 存儲
+ * Detailed KV storage check
  */
 async function checkKVStorageDetailed(env: Bindings): Promise<{
   healthy: boolean;
@@ -765,7 +765,7 @@ async function checkKVStorageDetailed(env: Bindings): Promise<{
 }
 
 /**
- * 詳細檢查資料庫
+ * Detailed database check
  */
 async function checkDatabaseDetailed(env: Bindings): Promise<{
   healthy: boolean;
@@ -801,7 +801,7 @@ async function checkDatabaseDetailed(env: Bindings): Promise<{
 }
 
 /**
- * 檢查 R2 存儲
+ * Check R2 storage
  */
 async function checkR2Storage(env: Bindings): Promise<{
   healthy: boolean;
@@ -832,7 +832,7 @@ async function checkR2Storage(env: Bindings): Promise<{
 }
 
 /**
- * 獲取實時連接指標（來自 MessageBroadcaster）
+ * Get real-time connection metrics (from MessageBroadcaster)
  */
 async function getRealtimeConnectionMetrics(env: Bindings): Promise<{
   totalConnections: number;
@@ -882,7 +882,7 @@ async function getRealtimeConnectionMetrics(env: Bindings): Promise<{
 }
 
 /**
- * 獲取分佈式鎖指標（來自 LockCoordinator）
+ * Get distributed lock metrics (from LockCoordinator)
  */
 async function getDistributedLockMetrics(env: Bindings): Promise<{
   totalLocks: number;
@@ -894,7 +894,7 @@ async function getDistributedLockMetrics(env: Bindings): Promise<{
 }> {
   try {
     // Import and use DistributedLockService
-    const { DistributedLockService } = await import('../services/distributed-lock-service');
+    const { DistributedLockService } = await import('@/services/distributed-lock-service');
     const lockService = new DistributedLockService(env);
     const metrics = await lockService.getLockMetrics();
 
@@ -907,8 +907,8 @@ async function getDistributedLockMetrics(env: Bindings): Promise<{
 
 /**
  * GET /api/websocket/debug/connections
- * 調試端點：檢查特定用戶的 WebSocket 連線狀態
- * 用於診斷重複事件問題
+ * Debug endpoint: Check WebSocket connection status for a specific user
+ * Used for diagnosing duplicate event issues
  */
 healthApp.get('/debug/connections', async (c) => {
   try {
@@ -933,7 +933,7 @@ healthApp.get('/debug/connections', async (c) => {
         timestamp: number;
       };
 
-      // 如果指定了 userId，過濾結果
+      // If userId specified, filter results
       if (userId) {
         const userConnections = data.registeredUsers.filter(id => id.includes(userId));
         return c.json({
@@ -967,7 +967,7 @@ healthApp.get('/debug/connections', async (c) => {
 
 /**
  * GET /api/websocket/debug/team-members/:teamId
- * 調試端點：檢查特定團隊的成員列表
+ * Debug endpoint: Check team member list for a specific team
  */
 healthApp.get('/debug/team-members/:teamId', async (c) => {
   try {
@@ -977,7 +977,7 @@ healthApp.get('/debug/team-members/:teamId', async (c) => {
       return c.json({ error: 'Database not available' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
-    // 使用與 MessageBroadcaster.getTeamMembers 相同的查詢
+    // Use same query as MessageBroadcaster.getTeamMembers
     const result = await c.env.DB.prepare(`
       SELECT DISTINCT a.id, a.display_name, a.email, a.team_id as primary_team_id
       FROM agents a
@@ -1003,7 +1003,7 @@ healthApp.get('/debug/team-members/:teamId', async (c) => {
 
 /**
  * GET /api/websocket/debug/trace-team-broadcast
- * 診斷端點：模擬團隊廣播流程，追蹤事件會發送給哪些用戶
+ * Diagnostic endpoint: Simulate team broadcast flow, trace which users would receive events
  */
 healthApp.get('/debug/trace-team-broadcast', async (c) => {
   try {
@@ -1018,7 +1018,7 @@ healthApp.get('/debug/trace-team-broadcast', async (c) => {
       return c.json({ error: 'Database not available' }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
-    // 使用與 MessageBroadcaster.getTeamMembers 完全相同的查詢
+    // Use exactly the same query as MessageBroadcaster.getTeamMembers
     const result = await c.env.DB.prepare(`
       SELECT DISTINCT a.id, a.display_name, a.email, a.team_id as primary_team_id
       FROM agents a
@@ -1031,7 +1031,7 @@ healthApp.get('/debug/trace-team-broadcast', async (c) => {
     const members = result.results || [];
     const memberIds = members.map((m: any) => m.id);
 
-    console.log(`🔍 [DEBUG] Team broadcast trace for team ${teamId}:`, {
+    console.log(`[DEBUG] Team broadcast trace for team ${teamId}:`, {
       teamId,
       action,
       memberCount: members.length,
