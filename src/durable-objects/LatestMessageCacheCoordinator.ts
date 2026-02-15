@@ -1,10 +1,7 @@
 /**
  * Latest Message Cache Coordinator Durable Object
  *
- * Replaces REALTIME_QUEUE for Latest Message Cache updates
- * Uses alarm-based batch processing for efficiency
- *
- * Migration: Phase 1.4b (REALTIME_QUEUE → Durable Objects)
+ * Manages Latest Message Cache updates using alarm-based batch processing
  */
 
 import type { DurableObjectState } from '@cloudflare/workers-types';

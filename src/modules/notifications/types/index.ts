@@ -26,7 +26,6 @@ export type {
   DeliveryResult,
   ChannelMessage,
   DeliveryStatus,
-  SSEMessage,
   WebSocketMessage,
   EmailTemplate,
   PushSubscription,

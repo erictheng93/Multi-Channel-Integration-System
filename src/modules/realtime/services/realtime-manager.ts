@@ -7,24 +7,11 @@ import type {
   EventTargets,
   EventPriority,
   EventSource,
-  SSEConnectionStats,
   EventStats,
   RealtimeServiceConfig
 } from '../types';
 import { EventQueueService } from '@modules/realtime/services/event-queue-service';
-// REMOVED: sseManagerStub (Phase 3 cleanup - SSE removed, WebSocket only)
-// import { sseManagerStub } from '@modules/realtime/handlers/sse-handler';
 import { eventStats } from '@modules/realtime/handlers/event-handler';
-
-// Stub for removed SSE manager
-const sseManagerStub = {
-  setEnv: (_env: any) => {},
-  broadcast: (_data: any) => 0,
-  sendToConversation: (_id: number, _data: any, _exclude?: number[]) => 0,
-  sendToUser: (_userId: number, _data: any) => 0,
-  getDetailedStats: () => ({ totalConnections: 0, connectionsByUser: {} as Record<number, number> }),
-  cleanupStaleConnections: () => 0
-};
 import { RealtimeConfigManager } from '@modules/realtime/handlers/realtime-main';
 
 // 服務狀態枚舉
@@ -42,7 +29,6 @@ export interface ServiceHealth {
   uptime: number;
   lastCheck: string;
   components: {
-    sseManager: 'healthy' | 'degraded' | 'down';
     queueService: 'healthy' | 'degraded' | 'down';
     database: 'healthy' | 'degraded' | 'down';
     kvStore: 'healthy' | 'degraded' | 'down';
@@ -81,9 +67,6 @@ export class RealtimeManager {
       // 初始化隊列服務
       this.queueService = new EventQueueService(env);
 
-      // 設置 SSE 管理器環境
-      sseManagerStub.setEnv(env);
-
       // 更新配置
       if (config) {
         const configManager = RealtimeConfigManager.getInstance();
@@ -120,7 +103,6 @@ export class RealtimeManager {
   ): Promise<{
     eventId: string;
     queueDelivered: boolean;
-    sseDelivered: number;
     processingTime: number;
   }> {
     const startTime = Date.now();
@@ -161,60 +143,17 @@ export class RealtimeManager {
         console.error('❌ [Realtime Manager] 隊列推送失敗:', queueError);
       }
 
-      // 立即推送到活躍的 SSE 連接
-      let sseDelivered = 0;
-      try {
-        if (targets.broadcast) {
-          sseDelivered = sseManagerStub.broadcast({
-            type: 'data',
-            data: {
-              type: eventType,
-              data: eventData
-            },
-            timestamp: new Date().toISOString()
-          });
-        } else if (targets.conversationId) {
-          sseDelivered = sseManagerStub.sendToConversation(
-            targets.conversationId,
-            {
-              type: 'data',
-              data: {
-                type: eventType,
-                data: eventData
-              },
-              timestamp: new Date().toISOString()
-            },
-            targets.excludeUsers
-          );
-        } else if (targets.userIds) {
-          for (const userId of targets.userIds) {
-            sseDelivered += sseManagerStub.sendToUser(userId, {
-              type: 'data',
-              data: {
-                type: eventType,
-                data: eventData
-              },
-              timestamp: new Date().toISOString()
-            });
-          }
-        }
-      } catch (sseError) {
-        console.error('❌ [Realtime Manager] SSE 推送失敗:', sseError);
-      }
-
       const processingTime = Date.now() - startTime;
 
       console.log(`✅ [Realtime Manager] 事件處理完成: ${eventId}`, {
         type: eventType,
         queueDelivered,
-        sseDelivered,
         processingTime
       });
 
       return {
         eventId,
         queueDelivered,
-        sseDelivered,
         processingTime
       };
 
@@ -294,12 +233,10 @@ export class RealtimeManager {
   // 獲取服務健康狀態
   async getServiceHealth(): Promise<ServiceHealth> {
     const uptime = Date.now() - this.startTime;
-    const sseStats = sseManagerStub.getDetailedStats();
     const eventStatsData = eventStats.getStats();
 
-    // 檢查各組件健康狀態
+    // Check component health
     const components = {
-      sseManager: 'healthy' as 'healthy' | 'degraded' | 'down',
       queueService: this.queueService ? 'healthy' as 'healthy' | 'degraded' | 'down' : 'down' as 'healthy' | 'degraded' | 'down',
       database: 'healthy' as 'healthy' | 'degraded' | 'down',
       kvStore: 'healthy' as 'healthy' | 'degraded' | 'down'
@@ -341,7 +278,7 @@ export class RealtimeManager {
       lastCheck: new Date().toISOString(),
       components,
       metrics: {
-        activeConnections: sseStats.totalConnections || 0,
+        activeConnections: 0,
         eventsProcessed: eventStatsData.totalEvents,
         errorRate: eventStatsData.errorRate,
         averageResponseTime: eventStatsData.averageProcessingTime
@@ -352,20 +289,17 @@ export class RealtimeManager {
   // 獲取綜合統計信息
   async getComprehensiveStats(): Promise<{
     service: ServiceHealth;
-    sse: SSEConnectionStats;
     events: EventStats;
     queue?: any;
     config: RealtimeConfig;
   }> {
     const serviceHealth = await this.getServiceHealth();
-    const sseStats = sseManagerStub.getDetailedStats();
     const eventStatsData = eventStats.getStats();
     const queueStats = this.queueService ? await this.queueService.getProcessingStats() : undefined;
     const config = RealtimeConfigManager.getInstance().getConfig();
 
     return {
       service: serviceHealth,
-      sse: sseStats,
       events: eventStatsData,
       queue: queueStats,
       config
@@ -377,7 +311,6 @@ export class RealtimeManager {
     try {
       switch (operation) {
         case 'cleanup':
-          sseManagerStub.cleanupStaleConnections();
           console.log('🧹 [Realtime Manager] 清理操作完成');
           return true;
 

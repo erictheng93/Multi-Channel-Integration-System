@@ -27,7 +27,7 @@ export class NotificationFactory {
         messagePreview: content
       },
       priority,
-      channels: ['sse', 'push'],
+      channels: ['websocket', 'push'],
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24小時後過期
     };
   }
@@ -53,7 +53,7 @@ export class NotificationFactory {
         actionType: 'assignment'
       },
       priority: 'high',
-      channels: ['sse', 'email', 'push'],
+      channels: ['websocket', 'email', 'push'],
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
     };
   }
@@ -86,7 +86,7 @@ export class NotificationFactory {
         actionType: 'transfer'
       },
       priority: 'high',
-      channels: ['sse', 'email', 'push'],
+      channels: ['websocket', 'email', 'push'],
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     };
   }
@@ -112,7 +112,7 @@ export class NotificationFactory {
         actionType: 'mention'
       },
       priority: 'high',
-      channels: ['sse', 'push'],
+      channels: ['websocket', 'push'],
       expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3天後過期
     };
   }
@@ -146,7 +146,7 @@ export class NotificationFactory {
         actionType: 'priority_change'
       },
       priority: newPriority === 'urgent' ? 'high' : 'normal',
-      channels: ['sse'],
+      channels: ['websocket'],
       expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
     };
   }
@@ -172,7 +172,7 @@ export class NotificationFactory {
         actionType: 'customer_response'
       },
       priority: 'normal',
-      channels: ['sse', 'push'],
+      channels: ['websocket', 'push'],
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
     };
   }
@@ -200,7 +200,7 @@ export class NotificationFactory {
         actionType: 'task_reminder'
       },
       priority: dueDate <= new Date(Date.now() + 60 * 60 * 1000) ? 'urgent' : 'normal', // 1小時內到期設為緊急
-      channels: ['sse', 'push'],
+      channels: ['websocket', 'push'],
       expiresAt: new Date(dueDate.getTime() + 24 * 60 * 60 * 1000) // 到期後24小時過期
     };
   }
@@ -224,7 +224,7 @@ export class NotificationFactory {
         actionType: 'system_notification'
       },
       priority,
-      channels: ['sse', 'email'],
+      channels: ['websocket', 'email'],
       expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
     };
   }
@@ -302,7 +302,7 @@ export class NotificationFactory {
         actionType: 'customer_follow'
       },
       priority: 'high',
-      channels: ['sse', 'push', 'websocket'],
+      channels: ['websocket', 'push', 'websocket'],
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
     }));
   }
@@ -333,7 +333,7 @@ export class NotificationFactory {
         actionType: 'new_conversation'
       },
       priority: 'high',
-      channels: ['sse', 'push', 'websocket'],
+      channels: ['websocket', 'push', 'websocket'],
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
     }));
   }

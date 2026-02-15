@@ -41,7 +41,7 @@ export class EventQueueService extends QueueBaseService {
   private readonly batchInterval = 1000; // 1秒
 
   constructor(env: Bindings) {
-    super(env, 'REALTIME_QUEUE', {
+    super(env, 'EVENT_QUEUE', {
       maxRetries: 3,
       baseDelay: 1000,
       maxDelay: 10000,
@@ -224,8 +224,7 @@ export class EventQueueService extends QueueBaseService {
     }
   }
 
-  // 立即處理事件
-  // 🔄 MIGRATED: 從 REALTIME_QUEUE 遷移到 WebSocket/DO 架構
+  // 立即處理事件 (WebSocket/DO 架構)
   private async processImmediate(queueMessage: QueueMessage): Promise<number> {
     try {
       const { event, targets } = queueMessage;
@@ -316,8 +315,7 @@ export class EventQueueService extends QueueBaseService {
     return 1;
   }
 
-  // 延遲處理事件
-  // 🔄 MIGRATED: 從 REALTIME_QUEUE 遷移到 MessageBroadcaster DO
+  // 延遲處理事件 (MessageBroadcaster DO)
   private async processDelayed(queueMessage: QueueMessage, delay: number = 5000): Promise<number> {
     setTimeout(async () => {
       try {
@@ -361,8 +359,7 @@ export class EventQueueService extends QueueBaseService {
     return 1;
   }
 
-  // 處理批量隊列
-  // 🔄 MIGRATED: 從 REALTIME_QUEUE 遷移到 MessageBroadcaster DO 批處理
+  // 處理批量隊列 (MessageBroadcaster DO 批處理)
   private async processBatchQueue(): Promise<void> {
     if (this.batchQueue.length === 0) return;
 

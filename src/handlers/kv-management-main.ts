@@ -283,11 +283,6 @@ kvManagementHandler.get('/naming-convention', async (c) => {
             ttl: '5 minutes',
             example: 'ws:conn:user-123-1234567890',
           },
-          'sse:conn:{connId}': {
-            description: 'SSE connection tracking',
-            ttl: '5 minutes',
-            example: 'sse:conn:conn-abc-123',
-          },
           'msg:recall:{messageId}': {
             description: 'Message recall state',
             ttl: '5 minutes',

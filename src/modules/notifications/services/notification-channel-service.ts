@@ -13,9 +13,7 @@ import {
   NotificationSettings
 } from '../types';
 
-// 導入所有適配器 (Phase 2: SSE removed)
-// REMOVED: SSEAdapter (Phase 2 cleanup - SSE removed)
-// import { SSEAdapter } from '@modules/notifications/adapters/sse-adapter';
+// 導入所有適配器
 import { WebSocketAdapter } from '@modules/notifications/adapters/websocket-adapter';
 import { EmailAdapter } from '@modules/notifications/adapters/email-adapter';
 import { PushAdapter } from '@modules/notifications/adapters/push-adapter';
@@ -31,16 +29,13 @@ export class NotificationChannelService {
   }
 
   private initializeAdapters(): void {
-    // 初始化所有通道適配器 (Phase 2: SSE removed)
-    // REMOVED: SSEAdapter (Phase 2 cleanup - SSE removed)
-    // this.adapters.set('sse', new SSEAdapter());
+    // 初始化所有通道適配器
     this.adapters.set('websocket', new WebSocketAdapter());
     this.adapters.set('email', new EmailAdapter());
     this.adapters.set('push', new PushAdapter());
   }
 
   private initializeRouter(): void {
-    // Phase 2 cleanup: Updated from SSE to WebSocket (100% rollout)
     this.routerConfig = {
       defaultChannels: ['websocket'],
       rules: [],
@@ -324,8 +319,7 @@ export class NotificationChannelService {
       return channelPreferences.filter(channel => this.adapters.get(channel)?.isEnabled());
     }
 
-    // 檢查全域設定 (Phase 2 cleanup: SSE removed)
-    // REMOVED: sseEnabled check (Phase 2 cleanup - 100% WebSocket rollout)
+    // 檢查全域設定
     if (settings.websocketEnabled) channels.push('websocket');
     if (settings.emailEnabled) channels.push('email');
     if (settings.pushEnabled) channels.push('push');

@@ -256,7 +256,6 @@ export class NotificationService {
       },
       channelStats: {
         database: { sent: 0, delivered: 0, failed: 0 },
-        sse: { sent: 0, delivered: 0, failed: 0 },
         websocket: { sent: 0, delivered: 0, failed: 0 },
         email: { sent: 0, delivered: 0, failed: 0 },
         push: { sent: 0, delivered: 0, failed: 0 },

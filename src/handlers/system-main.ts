@@ -107,10 +107,6 @@ systemHandler.get('/system/status', jwtAuth, async (c) => {
           status: 'available',
           bucket: 'multi-channel-platform-attachments'
         },
-        queue: {
-          status: 'available',
-          name: 'REALTIME_QUEUE'
-        },
         durableObjects: {
           status: 'available',
           objects: [

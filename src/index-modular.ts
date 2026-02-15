@@ -92,9 +92,6 @@ app.notFound((c) => {
 
 // ==================== Queue Consumer ====================
 
-// ⚠️ REMOVED: AgentQueueService has been deprecated
-// Delayed messages are now handled by DelayedMessageScheduler Durable Object
-
 export default {
   fetch: app.fetch,
   queue: async (batch: any, env: Bindings) => {
@@ -102,16 +99,11 @@ export default {
       const queueName = batch.queue;
       console.log(`Processing queue: ${queueName}, messages: ${batch.messages.length}`);
 
-      if (queueName === 'realtime-events') {
-        // Handle realtime events
-        const { handleLatestMessageQueue } = await import('./workers/latest-message-worker');
-        await handleLatestMessageQueue(batch, env);
-        console.log('Realtime events processed');
-
-      } else if (queueName === 'agent-queue') {
-        // ⚠️ DEPRECATED: agent-queue is no longer processed
-        // Delayed messages are now handled by DelayedMessageScheduler Durable Object
-        console.warn('⚠️ [DEPRECATED] agent-queue is deprecated. Messages will be ignored.');
+      if (queueName === 'line-message-queue') {
+        // Handle LINE async message delivery
+        const { handleLineMessageQueue } = await import('./handlers/line-message-queue');
+        await handleLineMessageQueue(batch, env);
+        console.log('LINE messages processed');
       } else {
         console.warn(`Unknown queue: ${queueName}`);
       }

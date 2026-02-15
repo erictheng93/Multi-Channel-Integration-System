@@ -32,9 +32,6 @@ export const KV_TTL = {
    * during user idle periods, which caused "暫無訊息" issue after reconnection */
   WEBSOCKET_CONNECTION: 30 * 60, // 1800 seconds
 
-  /** SSE connections - 5 minutes (legacy, being phased out) */
-  SSE_CONNECTION: 5 * 60, // 300 seconds
-
   /** Message recall state - 5 minutes */
   MESSAGE_RECALL: 5 * 60, // 300 seconds
 
@@ -207,8 +204,6 @@ export const KV_KEY_PATTERNS = {
     session: 'session:',
     wsConfig: 'ws:config',
     wsConn: 'ws:conn:',
-    sseConn: 'sse:conn:',
-    sseStats: 'sse:stats',
     msgRecall: 'msg:recall:',
     msgCancel: 'msg:cancel:',
     msgPending: 'msg:pending:',
@@ -262,7 +257,7 @@ export const LEGACY_KEY_PATTERNS = [
   'qr:team:',                   // → cache:qr:
   'recallable:',                // → msg:recall:
   'cancelled:',                 // → msg:cancel:
-  'sse_connection:',            // → sse:conn:
+  'sse_connection:',            // → (removed - SSE eliminated)
   'ws_conn:',                   // → ws:conn:
   'pending_msg:',               // → msg:pending:
   'rate_limit:',                // → rate:
@@ -279,7 +274,7 @@ export const KEY_MIGRATION_MAP: Record<string, string> = {
   'qr:team:': 'cache:qr:',
   'recallable:': 'msg:recall:',
   'cancelled:': 'msg:cancel:',
-  'sse_connection:': 'sse:conn:',
+  // SSE keys removed (SSE infrastructure eliminated)
   'ws_conn:': 'ws:conn:',
   'pending_msg:': 'msg:pending:',
   'rate_limit:': 'rate:',
@@ -297,7 +292,6 @@ export const KV_NAMESPACE_ROUTING = {
   sessions: [
     'session:',
     'ws:',
-    'sse:',
     'msg:',
     'offline_msg:',
     'rate:',

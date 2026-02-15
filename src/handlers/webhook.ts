@@ -666,7 +666,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       // Don't fail webhook processing - message is saved to database
     }
 
-    // 記錄活動以觸發 SSE 更新
+    // 記錄活動
     try {
       const activityService = new ActivityService(env.DB);
       const activity = await activityService.logActivity({
@@ -689,11 +689,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       if (activity) {
         console.log('✅ [LINE Webhook] Activity recorded');
 
-        // REMOVED: SSE broadcast (Phase 4 cleanup - replaced by WebSocket real-time events)
-        // const { broadcastActivity } = await import('./activity-stream');
-        // await broadcastActivity(env, activity);
-
-        // Note: WebSocket real-time events are now handled by websocket-broadcast-service
+        // Note: WebSocket real-time events are handled by websocket-broadcast-service
       } else {
         log.warn('LINE Webhook: Failed to create activity');
       }
@@ -1582,7 +1578,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       // Don't fail the webhook for cache update failures
     }
 
-    // 記錄活動以觸發 SSE 更新
+    // 記錄活動
     try {
       const activityService = new ActivityService(env.DB);
       const activity = await activityService.logActivity({
@@ -1605,11 +1601,7 @@ async function processFacebookMessage(env: Bindings, messaging: FacebookMessagin
       if (activity) {
         console.log('✅ [Facebook Webhook] Activity recorded');
 
-        // REMOVED: SSE broadcast (Phase 4 cleanup - replaced by WebSocket real-time events)
-        // const { broadcastActivity } = await import('./activity-stream');
-        // await broadcastActivity(env, activity);
-
-        // Note: WebSocket real-time events are now handled by websocket-broadcast-service
+        // Note: WebSocket real-time events are handled by websocket-broadcast-service
       } else {
         log.warn('Facebook Webhook: Failed to create activity');
       }

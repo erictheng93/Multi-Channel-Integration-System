@@ -16,8 +16,6 @@ import type {
   CollaborationEvent
 } from '../types';
 
-// REMOVED: SSECollaborationAdapter (Phase 2 cleanup - SSE removed)
-// import { SSECollaborationAdapter } from '@modules/collaboration/adapters/sse-adapter';
 import { WebSocketCollaborationAdapter } from '@modules/collaboration/adapters/websocket-adapter';
 import { defaultCollaborationConfig, AdapterNotInitializedError } from '@modules/collaboration/types';
 import type { Bindings } from '@/types';
@@ -64,8 +62,6 @@ export class CollaborationManager {
       enableWebSocket: this.config.enableWebSocket
     });
 
-    // REMOVED: SSE 適配器初始化 (Phase 2 cleanup - WebSocket only)
-    // WebSocket-only initialization (100% rollout)
     try {
       const wsAdapter = new WebSocketCollaborationAdapter();
       await wsAdapter.initialize(env);
@@ -73,7 +69,7 @@ export class CollaborationManager {
       console.log('[CollaborationManager] WebSocket adapter initialized');
     } catch (error) {
       console.error('[CollaborationManager] Failed to initialize WebSocket adapter:', error);
-      throw new Error('WebSocket initialization failed. No fallback available (SSE removed).');
+      throw new Error('WebSocket initialization failed.');
     }
 
     // 設置預設適配器（WebSocket only）
@@ -244,7 +240,7 @@ export class CollaborationManager {
   // =================== 私有方法 ===================
 
   /**
-   * 獲取適配器（WebSocket-only, SSE fallback removed）
+   * 獲取適配器
    */
   private getAdapter(protocol?: CollaborationProtocol): CollaborationAdapter {
     if (!this.initialized) {
@@ -254,7 +250,6 @@ export class CollaborationManager {
     if (protocol) {
       const adapter = this.adapters.get(protocol);
       if (!adapter) {
-        // REMOVED: SSE fallback (Phase 2 cleanup - WebSocket only)
         throw new AdapterNotInitializedError(protocol);
       }
       return adapter;
@@ -276,7 +271,6 @@ export class CollaborationManager {
       totalTyping: 0,
       totalRooms: 0,
       connectionsByProtocol: {
-        sse: 0,
         websocket: 0,
         http: 0
       },

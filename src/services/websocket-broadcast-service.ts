@@ -347,13 +347,8 @@ export class WebSocketBroadcastService {
         }
       };
 
-      // WebSocket broadcasting (100% rollout, SSE fallback removed in Phase 4)
+      // WebSocket broadcasting via Durable Objects
       const wsSuccess = await this.broadcastToWebSocket(wsEvent);
-
-      // REMOVED: SSE fallback for conversation events (Phase 4 cleanup - 100% WebSocket rollout)
-      // if (!wsSuccess && (event.type.includes('assigned') || event.type.includes('transferred'))) {
-      //   await this.fallbackToSSE(wsEvent);
-      // }
 
       return wsSuccess;
     } catch (error) {
@@ -1563,10 +1558,6 @@ export class WebSocketBroadcastService {
     }
   }
 
-  // REMOVED: SSE Fallback System (Phase 4 cleanup - 100% WebSocket rollout)
-  // The fallbackToSSE method has been removed as we are now at 100% WebSocket rollout
-  // All events are handled exclusively through WebSocket broadcasting via Durable Objects
-
   // =================== Configuration and Health ===================
 
   /**
@@ -1648,7 +1639,6 @@ export class WebSocketBroadcastService {
 
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
 
-      // ⚠️ Phase 4 Note: SSE check removed - WebSocket-only architecture
       if (!config.enableWebSocket) {
         status = 'unhealthy';
       } else if (!durableObjectsAvailable && config.enableWebSocket) {

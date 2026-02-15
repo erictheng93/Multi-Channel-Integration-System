@@ -10,7 +10,7 @@ export interface NotificationChannelConfig {
   config: ChannelConfig;
 }
 
-export type ChannelType = 'database' | 'sse' | 'websocket' | 'email' | 'push' | 'webhook' | 'sms';
+export type ChannelType = 'database' | 'websocket' | 'email' | 'push' | 'webhook' | 'sms';
 
 export interface ChannelConfig {
   retryAttempts: number;
@@ -51,22 +51,6 @@ export interface ChannelAdapter {
   sendBulk?(messages: ChannelMessage[]): Promise<DeliveryResult[]>;
   getStatus?(messageId: string): Promise<DeliveryStatus>;
   cancel?(messageId: string): Promise<boolean>;
-}
-
-// SSE 特定類型
-export interface SSEMessage {
-  type: 'notification' | 'connection' | 'heartbeat' | 'error';
-  data?: any;
-  timestamp: string;
-  userId?: number;
-}
-
-export interface SSEConnection {
-  userId: number;
-  connectionId: string;
-  controller: ReadableStreamDefaultController;
-  lastActivity: Date;
-  metadata?: Record<string, any>;
 }
 
 // WebSocket 特定類型

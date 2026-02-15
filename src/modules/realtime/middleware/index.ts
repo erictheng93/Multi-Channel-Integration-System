@@ -1,19 +1,17 @@
-// Real-time 模組中間件統一導出
+// Real-time module middleware exports (WebSocket only)
 
-// 認證中間件
+// Authentication middleware
 export {
   realtimeAuth,
-  sseAuth,
   eventSendAuth,
   managementAuth,
   getRealtimeAuth,
   hasRealtimePermission
 } from './realtime-auth';
 
-// 連接驗證中間件
+// Connection validation middleware
 export {
   connectionValidation,
-  sseConnectionValidation,
   eventSendValidation,
   managementValidation,
   getConnectionValidation,
@@ -21,36 +19,31 @@ export {
   getRateLimitStats
 } from './connection-validation';
 
-// 中間件組合
+// Middleware combinations
 export async function getRealtimeMiddleware() {
   const {
     realtimeAuth,
-    sseAuth,
     eventSendAuth,
     managementAuth
   } = await import('./realtime-auth');
 
   const {
     connectionValidation,
-    sseConnectionValidation,
     eventSendValidation,
     managementValidation
   } = await import('./connection-validation');
 
   return {
-    // SSE 連接專用中間件鏈
-    sse: [sseAuth, sseConnectionValidation],
-
-    // 事件發送專用中間件鏈
+    // Event send middleware chain
     eventSend: [eventSendAuth, eventSendValidation],
 
-    // 管理端點專用中間件鏈
+    // Management endpoint middleware chain
     management: [managementAuth, managementValidation],
 
-    // 基礎認證中間件
+    // Basic auth middleware
     basicAuth: [realtimeAuth()],
 
-    // 完整驗證中間件鏈
+    // Full validation middleware chain
     full: [realtimeAuth(), connectionValidation()]
   };
 }

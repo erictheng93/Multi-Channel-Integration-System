@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { createNotificationHandlerMethods } from '@modules/notifications/handlers/notification-main';
-// REMOVED: createNotificationSSEHandlerMethods (Phase 2 cleanup - SSE removed)
+
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -27,7 +27,7 @@ app.get('/info', (c) => {
     description: 'Unified multi-channel notification system',
     features: [
       'Multi-channel notification delivery',
-      'Real-time SSE notifications',
+      'Real-time WebSocket notifications',
       'Bulk operations',
       'Advanced caching',
       'Statistics and monitoring'
@@ -155,9 +155,5 @@ app.post('/', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
   return handlers.create(c as any);
 });
-
-// ======================== SSE Routes REMOVED ========================
-// All SSE functionality has been replaced with WebSocket-based real-time communication.
-// SSE routes were removed in Phase 2 cleanup. See WebSocket handlers for real-time features.
 
 export default app;

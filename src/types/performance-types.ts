@@ -2,7 +2,7 @@
 // 專案名稱：Multi-Channel Support MVP - Performance Type Definitions
 
 export interface PerformanceMetrics {
-  connectionType: 'websocket' | 'sse';
+  connectionType: 'websocket';
   timeRange: {
     start: number;
     end: number;
@@ -58,20 +58,8 @@ export interface PerformanceComparison {
     advantages: string[];
     disadvantages: string[];
   };
-  sse: {
-    metrics: PerformanceMetrics;
-    score: {
-      overall: number;
-      latency: number;
-      throughput: number;
-      reliability: number;
-      efficiency: number;
-    };
-    advantages: string[];
-    disadvantages: string[];
-  };
   comparison: {
-    winner: 'websocket' | 'sse' | 'tie';
+    winner: 'websocket' | 'tie';
     winnerScore: number;
     scoreDifference: number;
     keyDifferentiators: string[];
@@ -83,7 +71,7 @@ export interface PerformanceComparison {
 }
 
 export interface ValidationResult {
-  connectionType: 'websocket' | 'sse' | 'both';
+  connectionType: 'websocket';
   timeRange: {
     start: number;
     end: number;
@@ -169,7 +157,7 @@ export interface OptimizationRecommendation {
 export interface LoadTestResult {
   testId: string;
   config: {
-    connectionType: 'websocket' | 'sse' | 'both';
+    connectionType: 'websocket';
     duration: number;
     concurrentUsers: number;
     messagesPerUser: number;
@@ -180,22 +168,6 @@ export interface LoadTestResult {
   endTime: number;
   results: {
     websocket?: {
-      connectionType: string;
-      totalRequests: number;
-      successfulRequests: number;
-      failedRequests: number;
-      averageLatency: number;
-      p95Latency: number;
-      p99Latency: number;
-      throughput: number;
-      peakConcurrentConnections: number;
-      errorRate: number;
-      resourceUtilization: {
-        cpu: number;
-        memory: number;
-      };
-    };
-    sse?: {
       connectionType: string;
       totalRequests: number;
       successfulRequests: number;
@@ -250,7 +222,7 @@ export interface PerformanceTrend {
   dataPoints: Array<{
     timestamp: number;
     value: number;
-    connectionType: 'websocket' | 'sse';
+    connectionType: 'websocket';
   }>;
   trend: {
     direction: 'improving' | 'degrading' | 'stable';
@@ -267,7 +239,7 @@ export interface PerformanceTrend {
 export interface PerformanceAlert {
   id: string;
   metric: string;
-  connectionType: 'websocket' | 'sse' | 'both';
+  connectionType: 'websocket';
   threshold: {
     value: number;
     operator: 'greater_than' | 'less_than' | 'equals';
@@ -331,7 +303,6 @@ export interface PerformanceBaseline {
   validUntil?: number;
   metrics: {
     websocket: PerformanceMetrics;
-    sse: PerformanceMetrics;
   };
   conditions: {
     environment: string;
@@ -357,13 +328,11 @@ export interface PerformanceScore {
 }
 
 /**
- * Detailed analysis of WebSocket vs SSE comparison
+ * Detailed analysis of WebSocket performance
  */
 export interface PerformanceDetailedAnalysis {
   websocketAdvantages: string[];
   websocketDisadvantages: string[];
-  sseAdvantages: string[];
-  sseDisadvantages: string[];
 }
 
 /**
@@ -393,7 +362,7 @@ export interface ConnectionValidationResult {
  * Load test configuration
  */
 export interface LoadTestConfig {
-  connectionType: 'websocket' | 'sse' | 'both';
+  connectionType: 'websocket';
   duration: number;
   concurrentUsers: number;
   messagesPerUser: number;
@@ -441,7 +410,7 @@ export interface LoadTestSummary {
  */
 export interface ValidationHistoryEntry {
   timestamp: number;
-  connectionType: 'websocket' | 'sse' | 'both';
+  connectionType: 'websocket';
   passed: boolean;
   score: number;
   metrics: PerformanceMetrics;

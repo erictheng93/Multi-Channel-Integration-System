@@ -103,10 +103,6 @@ export class MessageRecallService {
         expirationTtl: request.delaySeconds + 60 // 稍長於延遲時間，確保清理
       });
 
-      // ⚠️ REMOVED: AGENT_QUEUE scheduling is deprecated
-      // This entire service is deprecated - use DelayedMessageBuffer Durable Object instead
-      // Queue consumer no longer processes delayed messages
-
       return {
         success: true,
         messageId,

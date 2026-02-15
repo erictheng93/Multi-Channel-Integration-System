@@ -333,20 +333,20 @@ healthApp.get('/health-detail', async (c) => {
 
 /**
  * GET /api/websocket/comparison
- * WebSocket vs Legacy (SSE/Queue) 性能比較
+ * WebSocket vs Legacy (Polling/Queue) 性能比較
  */
 healthApp.get('/comparison', async (c) => {
   try {
     const comparison = {
       timestamp: new Date().toISOString(),
       currentArchitecture: 'WebSocket + Durable Objects',
-      legacyArchitecture: 'SSE + Cloudflare Queues (Deprecated)',
+      legacyArchitecture: 'Polling + Cloudflare Queues (Deprecated)',
       metrics: {
         latency: {
           metric: 'Message Delivery Latency (p95)',
           legacy: {
             value: '150ms',
-            description: 'Queue processing + SSE polling'
+            description: 'Queue processing + polling'
           },
           current: {
             value: '20ms',
@@ -398,7 +398,7 @@ healthApp.get('/comparison', async (c) => {
           metric: 'Monthly Operational Cost',
           legacy: {
             value: '$30/month',
-            description: 'Queue operations + SSE polling'
+            description: 'Queue operations + polling'
           },
           current: {
             value: '$4.50/month',

@@ -33,11 +33,8 @@ export interface Bindings {
   R2_BUCKET_PROD: R2Bucket;
   R2_BUCKET_DEV: R2Bucket;
 
-  // Queues - Partially restored (Phase 3: LINE Async)
-  // AGENT_QUEUE removed - replaced by DelayedMessageBuffer Durable Object
-  // REALTIME_QUEUE removed - replaced by Durable Objects (MessageBroadcaster, ConversationRoom, LatestMessageCacheCoordinator)
-  //
-  // 🆕 LINE_MESSAGE_QUEUE - Restored for async LINE message delivery (Phase 3)
+  // Queues - LINE Async Processing
+  // LINE_MESSAGE_QUEUE - Async LINE message delivery
   // Purpose: Decouple HTTP response from LINE API calls for better UX
   LINE_MESSAGE_QUEUE: Queue<LineMessageQueuePayload>;
   LINE_MESSAGE_DLQ: Queue<LineMessageQueuePayload>; // Dead Letter Queue for failed messages

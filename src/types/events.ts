@@ -79,15 +79,6 @@ export interface QueueMessage {
   maxRetries?: number;
 }
 
-// SSE 推送格式
-export interface SSEPushData {
-  type: RealtimeEvent['type'];
-  data: RealtimeEvent['data'];
-  timestamp: string;
-  conversationId?: number;
-  targetUsers?: number[];
-}
-
 // 事件處理結果
 export interface EventProcessingResult {
   success: boolean;

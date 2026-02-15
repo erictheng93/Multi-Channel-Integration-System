@@ -28,8 +28,6 @@ import { dashboardHandler } from '@modules/analytics/handlers/dashboard-main';
 import { realtimeDashboardHandler } from '@modules/analytics/handlers/realtime-dashboard-main';
 import reportsHandler from '@modules/reports/handlers/reports-main';
 import { activityHandler } from '../handlers/activity';
-// REMOVED: activityStreamHandler (Phase 4 cleanup - SSE-based, replaced by WebSocket)
-// import { activityStreamHandler } from '../handlers/activity-stream';
 import websocketMainHandler from '../handlers/websocket-main';
 import delayedMessageBufferHandler from '../handlers/delayed-message-buffer';
 import websocketAnalyticsHandler from '../handlers/websocket-analytics-main';
@@ -37,10 +35,7 @@ import userExperienceHandler from '../handlers/user-experience-main';
 import phase2AuthHandler from '../handlers/phase2-auth-management';
 import alertConfigHandler from '../handlers/alert-config-management';
 import dataOptimizationHandler from '../handlers/data-optimization-main';
-// REMOVED: sseMonitoringHandler (Phase 5 cleanup - SSE removed, WebSocket monitoring in place)
-// import sseMonitoringHandler from '../handlers/sse-monitoring-main';
 import { realtime } from '@modules/realtime';
-import { queueMonitorHandler } from '../handlers/queue-monitor';
 import webhookRouter from '../handlers/webhook';
 import modularSystemRouter from './modular-system-integration';
 import { createMonitoringHandlerMethods } from '../handlers/monitoring-dashboard';
@@ -259,8 +254,6 @@ const monitoringGroup = createRouteGroup({
       dependencies: ['auth'],
       healthCheck: '/health'
     })
-    // REMOVED: SSE activity stream (Phase 4 cleanup - replaced by WebSocket)
-    // NOTE: /api/activities/stream was removed in Phase 4 (SSE-based, replaced by WebSocket real-time events)
   ]
 });
 
@@ -294,23 +287,13 @@ const realtimeGroup = createRouteGroup({
       name: 'collaboration',
       path: '/collaboration',
       handler: collaborationMainHandler,
-      description: '統一多客服協作模組 (SSE + WebSocket)',
+      description: '統一多客服協作模組 (WebSocket)',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
     }),
     // Note: Realtime routes are registered directly in src/index.ts (lines 1143-1154)
     // for explicit endpoint control. This module is intentionally not included here.
-    // REMOVED: SSE Monitoring route (Phase 5 cleanup - SSE removed, WebSocket monitoring in place)
-    // createRouteModule({
-    //   name: 'sse-monitoring',
-    //   path: '/sse/monitoring',
-    //   handler: sseMonitoringHandler,
-    //   description: 'SSE Performance Monitoring',
-    //   version: '1.0.0',
-    //   dependencies: [], // Health endpoint is public, no auth dependency
-    //   // healthCheck: '/health' // Disabled - handler already provides /health endpoint
-    // })
   ]
 });
 

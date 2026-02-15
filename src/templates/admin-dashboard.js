@@ -82,22 +82,19 @@ function refreshActivity() {
     }, 1000);
 }
 
-// Load queue statistics (Realtime Queue + Delayed Message Buffer)
+// Load queue statistics (LINE Message Queue + Delayed Message Buffer)
 async function loadQueueStats() {
     try {
-        // Load Realtime Queue stats
+        // Load LINE Message Queue stats
         const queueResponse = await fetch(`${API_BASE}/api/queues/stats`);
         const queueData = await queueResponse.json();
 
         if (queueData.success) {
-            // Update realtime queue status
-            const realtimeQueue = queueData.data.queues.realtimeQueue;
-            document.getElementById('realtime-queue-status').innerHTML =
-                `<span class="status-indicator status-${realtimeQueue.status === 'healthy' ? 'online' : 'offline'}"></span>
-                ${realtimeQueue.status === 'healthy' ? '正常運行' : '異常'}`;
-
-            document.getElementById('realtime-queue-metrics').textContent =
-                `SSE連接: ${queueData.data.realtimeConnections.totalConnections}, 平均處理時間: ${realtimeQueue.metrics.avgProcessingTime}ms`;
+            const lineQueue = queueData.data.queues.lineMessageQueue;
+            const statusEl = document.getElementById('line-queue-status');
+            const metricsEl = document.getElementById('line-queue-metrics');
+            if (statusEl) statusEl.textContent = lineQueue.status === 'healthy' ? 'Healthy' : 'Error';
+            if (metricsEl) metricsEl.textContent = 'Avg processing: ' + lineQueue.metrics.avgProcessingTime + 'ms';
         }
 
         // Load Delayed Message Buffer health (Durable Objects)
@@ -105,25 +102,27 @@ async function loadQueueStats() {
         const bufferData = await bufferResponse.json();
 
         if (bufferData.success && bufferData.status === 'healthy') {
-            document.getElementById('delayed-message-buffer-status').innerHTML =
-                `<span class="status-indicator status-online"></span>正常運行`;
-
-            document.getElementById('delayed-message-buffer-metrics').textContent =
-                `✓ 即時撤回 · ✓ 精確延遲 · ✓ Durable Objects`;
+            const bufferStatusEl = document.getElementById('delayed-message-buffer-status');
+            const bufferMetricsEl = document.getElementById('delayed-message-buffer-metrics');
+            if (bufferStatusEl) bufferStatusEl.textContent = 'Healthy';
+            if (bufferMetricsEl) bufferMetricsEl.textContent = 'Instant recall - Precise delay - Durable Objects';
         } else {
-            document.getElementById('delayed-message-buffer-status').innerHTML =
-                `<span class="status-indicator status-offline"></span>異常`;
+            const bufferStatusEl = document.getElementById('delayed-message-buffer-status');
+            if (bufferStatusEl) bufferStatusEl.textContent = 'Error';
         }
     } catch (error) {
-        console.error('載入統計資料失敗:', error);
-        document.getElementById('delayed-message-buffer-status').innerHTML = '<span class="status-indicator status-offline"></span>錯誤';
-        document.getElementById('realtime-queue-status').innerHTML = '<span class="status-indicator status-offline"></span>錯誤';
+        console.error('Failed to load queue stats:', error);
+        const bufferStatusEl = document.getElementById('delayed-message-buffer-status');
+        const queueStatusEl = document.getElementById('line-queue-status');
+        if (bufferStatusEl) bufferStatusEl.textContent = 'Error';
+        if (queueStatusEl) queueStatusEl.textContent = 'Error';
     }
 }
 
-// Refresh queue stats (Realtime Queue only)
+// Refresh queue stats
 function refreshQueueStats() {
-    document.getElementById('realtime-queue-status').innerHTML = '<span class="status-indicator status-online"></span>載入中...';
+    const statusEl = document.getElementById('line-queue-status');
+    if (statusEl) statusEl.textContent = 'Loading...';
     loadQueueStats();
 }
 
@@ -133,23 +132,20 @@ function refreshDelayedMessageStats() {
     loadQueueStats();
 }
 
-// View queue details (Realtime Queue)
+// View queue details (LINE Message Queue)
 function viewQueueDetails() {
     fetch(`${API_BASE}/api/queues/performance`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 const metrics = data.data;
-                alert(`📊 實時隊列性能指標：
-
-⚡ 實時隊列 (REALTIME_QUEUE):
-  • 事件吞吐量: ${metrics.realtimeQueue.throughput.eventsPerSecond}/秒
-  • 成功率: ${metrics.realtimeQueue.reliability.successRate}%
-  • SSE連接: ${metrics.realtimeQueue.sseMetrics.activeConnections}`);
+                alert(`LINE Message Queue Performance:
+  Avg Processing Time: ${metrics.lineMessageQueue.throughput.avgProcessingTime}ms
+  Success Rate: ${metrics.lineMessageQueue.reliability.successRate}%`);
             }
         })
         .catch(error => {
-            alert('❌ 無法載入隊列詳細資訊：' + error.message);
+            alert('Failed to load queue details: ' + error.message);
         });
 }
 

@@ -228,18 +228,17 @@
             </div>
 
             <div class="card">
-                <h3>⚡ 實時隊列監控</h3>
-                <div class="stat-number" id="realtime-queue-status">
-                    <span class="status-indicator status-online"></span>
-                    載入中...
+                <h3>📨 LINE Message Queue</h3>
+                <div class="stat-number" id="line-queue-status">
+                    Loading...
                 </div>
-                <div id="realtime-queue-details">
-                    <p>實時事件推送和SSE管理</p>
-                    <small id="realtime-queue-metrics">載入中...</small>
+                <div id="line-queue-details">
+                    <p>Async LINE message delivery</p>
+                    <small id="line-queue-metrics">Loading...</small>
                 </div>
                 <div class="quick-actions">
-                    <button class="btn" onclick="refreshQueueStats()">重新整理</button>
-                    <button class="btn btn-secondary" onclick="testRealtimeEvent()">測試事件</button>
+                    <button class="btn" onclick="refreshQueueStats()">Refresh</button>
+                    <button class="btn btn-secondary" onclick="viewQueueDetails()">Details</button>
                 </div>
             </div>
         </div>

@@ -80,7 +80,7 @@ export class SystemService implements SystemServiceInterface {
           },
           queue: {
             status: 'available',
-            name: 'REALTIME_QUEUE'
+            name: 'LINE_MESSAGE_QUEUE'
           }
         },
         environment: this.env.ENVIRONMENT || 'development'

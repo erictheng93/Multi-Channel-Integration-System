@@ -75,13 +75,13 @@ export const Collaboration = {
 // 預設導出管理器實例
 export default collaboration;
 
-// 模組資訊 (Phase 2: 100% WebSocket rollout)
+// 模組資訊
 export const CollaborationModuleInfo = {
   name: 'Collaboration Module',
   version: '1.0.0',
-  description: '統一的多客服協作模組，基於 WebSocket 實時通訊', // Updated (Phase 2 cleanup)
+  description: '統一的多客服協作模組，基於 WebSocket 實時通訊',
   features: [
-    'WebSocket 實時協議', // Updated (Phase 2 cleanup)
+    'WebSocket 實時協議',
     '統一的協作 API',
     '適配器模式架構',
     'Typing Indicator 管理',
@@ -91,16 +91,10 @@ export const CollaborationModuleInfo = {
     '完整的統計分析'
   ],
   protocols: {
-    // REMOVED: SSE (Phase 2 cleanup - 100% WebSocket rollout)
-    // sse: {
-    //   name: 'Server-Sent Events',
-    //   status: 'production',
-    //   priority: 'default'
-    // },
     websocket: {
       name: 'WebSocket',
-      status: 'production', // Updated from 'ready' (Phase 2 cleanup)
-      priority: 'default'   // Updated from 'optional' (Phase 2 cleanup)
+      status: 'production',
+      priority: 'default'
     }
   }
 };

@@ -1,14 +1,10 @@
 // API 處理器統一導出
 // 所有處理器都已標準化，使用統一的響應格式和錯誤處理
 
-// 原有處理器
-export { authHandler } from './auth'
-export { conversationHandler } from './conversation'
-export { messageHandler } from './message'
+// Legacy handlers (remaining active ones)
 export { webhookHandler } from './webhook'
 export { attachmentHandler } from './attachment'
 export * from './system'
-// ❌ LEGACY TEAM EXPORTS REMOVED - now using modular team handlers
 
 // 新的主要處理器 (Handler-based approach)
 export { default as authMainHandler } from './auth-main'
@@ -29,17 +25,15 @@ export { default as notificationMainHandler } from './notification-router'
 // 健康檢查模組處理器 (統一的健康檢查系統)
 export { default as healthMainHandler } from './health-router'
 
-// Legacy notification handlers (已棄用，保留以防相容性問題)
+// Notification module handler (modern)
 export {
   createNotificationHandlerMethods as legacyNotificationHandler
-  // REMOVED: createNotificationSSEHandlerMethods (Phase 5 cleanup - SSE removed)
 } from '../modules/notifications'
 
 // Real-time 模組處理器 (統一的即時通訊系統 - WebSocket only)
 export {
   realtimeMainHandler as realtimeHandler,
   realtimeManagementHandler,
-  // REMOVED: sseHandler (Phase 3 cleanup - SSE removed, WebSocket only)
   eventHandler,
   realtime
 } from '../modules/realtime'

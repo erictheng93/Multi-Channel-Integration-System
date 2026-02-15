@@ -37,15 +37,12 @@ export interface DeploymentMetrics {
   status: HealthStatus;
   connections: {
     websocket: ConnectionMetrics;
-    sse: ConnectionMetrics;
   };
   performance: {
     websocket: BasicPerformanceMetrics;
-    sse: BasicPerformanceMetrics;
   };
   errors: {
     websocket: ErrorMetrics;
-    sse: ErrorMetrics;
   };
   resources: {
     cpu: number; // 0-1
@@ -96,11 +93,6 @@ export interface MonitoringAlert {
 
 export interface PerformanceBaseline {
   websocket: {
-    avgLatency: number;
-    errorRate: number;
-    connectionSuccessRate: number;
-  };
-  sse: {
     avgLatency: number;
     errorRate: number;
     connectionSuccessRate: number;
@@ -212,18 +204,6 @@ export interface PerformanceMetrics {
   websocket: {
     connections: number;
     activeConnections: number;
-    latency: number;
-    averageLatency: number;
-    throughput: number;
-    errorRate: number;
-  };
-  /**
-   * @deprecated SSE has been fully replaced by WebSocket architecture (Phase 4 Complete)
-   * This property is kept for backward compatibility but will be removed in future versions.
-   * All connection statistics are now tracked via WebSocket metrics.
-   */
-  sse?: {
-    connections: number;
     latency: number;
     averageLatency: number;
     throughput: number;

@@ -1,5 +1,5 @@
 // Security Dashboard API Handler
-// Real-time security analytics endpoints with SSE support
+// Security analytics endpoints
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
@@ -58,96 +58,7 @@ app.get('/metrics', jwtAuth, async (c) => {
 });
 
 /**
- * Get real-time event stream
- * GET /api/security/dashboard/events/stream
- * Server-Sent Events (SSE) endpoint for real-time updates
- */
-app.get('/events/stream', jwtAuth, async (c) => {
-  const agent = c.get('agent');
-
-  // Only admins can view security events
-  if (agent.role !== 'admin') {
-    return errorResponse(c, 'Unauthorized: Admin access required', 403);
-  }
-
-  // Set up SSE response headers
-  c.header('Content-Type', 'text/event-stream');
-  c.header('Cache-Control', 'no-cache');
-  c.header('Connection', 'keep-alive');
-  c.header('X-Accel-Buffering', 'no'); // Disable nginx buffering
-
-  const analyticsService = new SecurityAnalyticsService(c.env);
-
-  // Create a readable stream for SSE
-  const encoder = new TextEncoder();
-  let intervalId: any;
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      // Send initial connection message
-      const initialMessage = `data: ${JSON.stringify({
-        type: 'connected',
-        message: 'Security dashboard event stream connected',
-        timestamp: new Date().toISOString()
-      })}\n\n`;
-      controller.enqueue(encoder.encode(initialMessage));
-
-      // Send real-time events every 5 seconds
-      intervalId = setInterval(async () => {
-        try {
-          const recentEvents = await analyticsService.getRealtimeEvents(20);
-
-          const eventMessage = `data: ${JSON.stringify({
-            type: 'events',
-            data: recentEvents,
-            timestamp: new Date().toISOString()
-          })}\n\n`;
-
-          controller.enqueue(encoder.encode(eventMessage));
-        } catch (error) {
-          console.error('[SecurityDashboard] SSE error:', error);
-
-          const errorMessage = `data: ${JSON.stringify({
-            type: 'error',
-            message: 'Failed to fetch events',
-            timestamp: new Date().toISOString()
-          })}\n\n`;
-
-          controller.enqueue(encoder.encode(errorMessage));
-        }
-      }, 5000); // Update every 5 seconds
-
-      // Send heartbeat every 30 seconds to keep connection alive
-      setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(': heartbeat\n\n'));
-        } catch (error) {
-          // Connection closed, cleanup handled in cancel()
-        }
-      }, 30000);
-    },
-
-    cancel() {
-      // Cleanup when client disconnects
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      console.log('[SecurityDashboard] SSE connection closed');
-    }
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no'
-    }
-  });
-});
-
-/**
- * Get recent security events (polling alternative to SSE)
+ * Get recent security events
  * GET /api/security/dashboard/events/recent
  * Query params: limit (default: 50, max: 200)
  */

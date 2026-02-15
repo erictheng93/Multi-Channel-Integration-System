@@ -20,24 +20,6 @@ export interface TypingStatus {
   expiresAt: number;
 }
 
-export interface SSEConnectionInfo {
-  connectionId: string;
-  userId: number;
-  conversationId?: number;
-  registeredAt: string;
-  workerId: string;
-  lastActivity?: number;
-}
-
-export interface SSEPushData {
-  type: string;
-  data: any;
-  timestamp: string;
-  conversationId?: number;
-  targetUsers?: number[];
-  source?: string;
-}
-
 export interface QueueMessage {
   event: RealtimeEvent;
   targets: {
@@ -48,14 +30,6 @@ export interface QueueMessage {
   priority: 'low' | 'normal' | 'high' | 'urgent';
   retryCount: number;
   maxRetries: number;
-}
-
-export interface SSEConnectionStats {
-  totalConnections: number;
-  connectionsByUser: Record<number, number>;
-  globalTotalConnections?: number;
-  globalConnectionsByUser?: Record<number, number>;
-  lastGlobalUpdate?: string;
 }
 
 export interface RealtimeConfig {
@@ -89,7 +63,6 @@ export interface ConversationStatus {
     lastMessageAt?: string;
     typingUsers: TypingStatus[];
     onlineAgents?: number;
-    sseConnections?: number;
   };
   timestamps: {
     createdAt: string;
@@ -98,28 +71,15 @@ export interface ConversationStatus {
   };
 }
 
-// 事件驅動處理器類型
+// Event-driven handler type (WebSocket only)
 export interface EventDrivenHandler {
-  // REMOVED: sse is now optional (Phase 3 cleanup - SSE removed, WebSocket only)
-  sse?: (c: any) => Promise<Response>;
   sendTypingStatus: (c: any) => Promise<Response>;
   broadcastToConversation: (c: any) => Promise<Response>;
   getConversationStatus: (c: any) => Promise<Response>;
   updateOnlineStatus: (c: any) => Promise<Response>;
 }
 
-// SSE 連接管理器接口
-export interface SSEManager {
-  setEnv(env: any): void;
-  addConnection(connectionId: string, controller: ReadableStreamDefaultController, userId: number, conversationId?: number): Promise<void>;
-  removeConnection(connectionId: string): Promise<void>;
-  pushToConnection(connectionId: string, data: SSEPushData): boolean;
-  pushToRelevantConnections(event: RealtimeEvent, targets: QueueMessage['targets']): Promise<number>;
-  cleanupStaleConnections(timeoutMs?: number): void;
-  getStats(): Promise<SSEConnectionStats>;
-}
-
-// 隊列處理器接口
+// Queue handler interface
 export interface QueueHandler {
   processEvent(batch: MessageBatch<QueueMessage>, env: any): Promise<void>;
   handleSingleEvent(queueMessage: QueueMessage, env: any): Promise<void>;

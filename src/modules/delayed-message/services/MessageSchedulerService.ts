@@ -63,10 +63,6 @@ export class MessageSchedulerService {
       const recallInfo = this.createRecallInfo(request, timeCalculation.recallDeadline);
       await this.storageService.markAsRecallable(messageEntity.id, recallInfo);
 
-      // ⚠️ REMOVED: AGENT_QUEUE scheduling is deprecated
-      // Delayed messages are now handled by DelayedMessageBuffer Durable Object
-      // await this.scheduleToQueue(messageEntity.id, request.delaySeconds);
-
       console.log(`⏰ [MessageSchedulerService] Message scheduled: ${messageEntity.id} for ${timeCalculation.scheduledSendTime}`);
 
       return {
@@ -208,8 +204,7 @@ export class MessageSchedulerService {
       );
       await this.storageService.markAsRecallable(messageId, recallInfo);
 
-      // 重新排程到 Queue（這可能需要取消原有的排程）
-      await this.scheduleToQueue(messageId, newDelaySeconds);
+      // Rescheduled message will be picked up by DelayedMessageBuffer DO alarm
 
       console.log(`🔄 [MessageSchedulerService] Message rescheduled: ${messageId} for ${timeCalculation.scheduledSendTime}`);
 
@@ -394,16 +389,6 @@ export class MessageSchedulerService {
       senderId: request.senderId,
       platform: request.platform
     };
-  }
-
-  /**
-   * 排程到 Queue
-   * @deprecated AGENT_QUEUE is deprecated. Use DelayedMessageBuffer Durable Object instead.
-   */
-  private async scheduleToQueue(messageId: string, delaySeconds: number): Promise<void> {
-    // ⚠️ DEPRECATED: This method is no longer used
-    // Delayed messages are now handled by DelayedMessageBuffer Durable Object
-    console.warn('⚠️ [DEPRECATED] scheduleToQueue() is deprecated and no longer functional');
   }
 
   /**

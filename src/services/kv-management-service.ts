@@ -729,13 +729,6 @@ export const KVKeyBuilder = {
   wsConn: (connId: string) => `ws:conn:${connId}`,
   wsConnTTL: () => KV_TTL.WEBSOCKET_CONNECTION,
 
-  /** SSE connection (legacy) */
-  sseConn: (connId: string) => `sse:conn:${connId}`,
-  sseConnTTL: () => KV_TTL.SSE_CONNECTION,
-
-  /** SSE stats (legacy) */
-  sseStats: () => 'sse:stats',
-
   /** Message recall state */
   msgRecall: (messageId: string) => `msg:recall:${messageId}`,
   msgRecallTTL: () => KV_TTL.MESSAGE_RECALL,

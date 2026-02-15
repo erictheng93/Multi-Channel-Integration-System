@@ -52,7 +52,7 @@ interface RealtimeMetrics {
 interface ConnectionHistory {
   timestamp: string;
   connections: number;
-  protocol: 'websocket' | 'sse';
+  protocol: 'websocket';
   errors: number;
 }
 

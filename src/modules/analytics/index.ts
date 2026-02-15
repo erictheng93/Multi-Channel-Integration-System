@@ -38,15 +38,14 @@ export { DashboardService } from './services/dashboard-service';
 export { WidgetManager } from './services/widget-manager';
 export { RealtimeDashboardService } from './services/realtime-dashboard-service';
 export { LayoutService, DeviceType, LayoutMode } from './services/layout-service';
-export { ReportsService } from './services/reports-service';
-export { ReportSchedulerService } from './services/report-scheduler-service';
+// Reports consolidated into @modules/reports (Phase 2 cleanup)
 
 // ======================== 處理器導出 ========================
 export { analyticsHandler } from './handlers/analytics-main';
 export { analyticsHandler as analyticsMainHandler } from './handlers/analytics-main';
 export { dashboardHandler, createDashboardHandler } from './handlers/dashboard-main';
 export { realtimeDashboardHandler, createRealtimeDashboardHandler } from './handlers/realtime-dashboard-main';
-export { reportsHandler, createReportsHandler } from './handlers/reports-main';
+// Reports handler consolidated into @modules/reports (Phase 2 cleanup)
 export { comparisonAPI } from './handlers/comparison-api';
 
 // ======================== 中間件導出 ========================
@@ -69,7 +68,7 @@ export interface AnalyticsModuleConfig {
   dashboard?: {
     maxWidgetsPerDashboard?: number;
     enableRealTimeDashboard?: boolean;
-    maxSSEConnections?: number;
+    maxConnections?: number;
     defaultRefreshInterval?: number;
   };
   layout?: {
@@ -97,7 +96,7 @@ export const DEFAULT_ANALYTICS_MODULE_CONFIG: AnalyticsModuleConfig = {
   dashboard: {
     maxWidgetsPerDashboard: 20,
     enableRealTimeDashboard: true,
-    maxSSEConnections: 1000,
+    maxConnections: 1000,
     defaultRefreshInterval: 30000 // 30 seconds
   },
   layout: {
@@ -127,7 +126,7 @@ export const MODULE_INFO = {
     '互動式儀表板與小工具',
     '多格式報表生成與排程',
     '響應式佈局支援',
-    'SSE 實時數據推送',
+    'WebSocket 實時數據推送',
     '多維度數據聚合',
     '權限控制與數據安全',
     'KPI 監控與警報',
@@ -143,7 +142,7 @@ export const MODULE_INFO = {
       analytics: 8,    // metrics, stats, insights
       dashboard: 12,   // widgets, layouts, configs
       reports: 8,      // generate, schedule, export
-      realtime: 4      // SSE streams, monitoring
+      realtime: 4      // WebSocket streams, monitoring
     }
   },
 

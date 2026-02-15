@@ -19,7 +19,6 @@ export enum CircuitState {
  */
 export enum FallbackStrategy {
   POLLING = 'polling',          // 降級到輪詢
-  SSE = 'sse',                  // 降級到 Server-Sent Events
   QUEUE = 'queue',              // 隊列延遲處理
   FAIL_FAST = 'fail_fast',      // 快速失敗（不降級）
   RETRY_LATER = 'retry_later'   // 延遲重試

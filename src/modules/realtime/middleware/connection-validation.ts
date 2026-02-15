@@ -1,4 +1,4 @@
-// 連接驗證中間件 - 驗證 SSE 連接的有效性和參數
+// Connection validation middleware - validates real-time connection parameters
 
 import { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
@@ -196,8 +196,8 @@ async function getCurrentUserConnections(userId: number, env: Bindings): Promise
   }
 
   try {
-    // 從 KV 獲取 SSE 連接統計
-    const statsKey = 'sse_connection_stats';
+    // Get connection stats from KV
+    const statsKey = 'realtime_connection_stats';
     const statsData = await env.SESSIONS.get(statsKey);
 
     if (statsData) {
@@ -212,19 +212,7 @@ async function getCurrentUserConnections(userId: number, env: Bindings): Promise
   }
 }
 
-// SSE 特定的連接驗證
-export const sseConnectionValidation = connectionValidation({
-  maxConnectionsPerUser: 5,
-  validateConversationId: true,
-  validateUserAgent: true,
-  enableRateLimiting: true,
-  rateLimitWindow: 60,
-  rateLimitRequests: 5, // SSE 連接較少，更嚴格的限制
-  requiredHeaders: ['User-Agent'],
-  allowedOrigins: [] // 如果需要可以配置
-});
-
-// 事件發送的連接驗證
+// Event sending connection validation
 export const eventSendValidation = connectionValidation({
   maxConnectionsPerUser: 0, // 不限制事件發送的連接數
   validateConversationId: false,
