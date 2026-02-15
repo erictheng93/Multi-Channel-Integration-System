@@ -33,7 +33,7 @@ export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'expired';
 
-export type NotificationChannel = 'database' | 'sse' | 'email' | 'webhook' | 'push' | 'websocket' | 'sms';
+export type NotificationChannel = 'database' | 'email' | 'webhook' | 'push' | 'websocket' | 'sms';
 
 export interface CreateNotificationRequest {
   userId: string | number;  // 支援字串和數字格式的 userId

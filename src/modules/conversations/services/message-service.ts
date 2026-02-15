@@ -688,7 +688,7 @@ export class MessageService implements MessageServiceInterface {
   }
 
   /**
-   * Get recent messages for SSE streaming
+   * Get recent messages for streaming
    */
   async getRecentMessages(conversationId: string, limit: number): Promise<Message[]> {
     try {
@@ -714,7 +714,7 @@ export class MessageService implements MessageServiceInterface {
   }
 
   /**
-   * Get messages after a specific timestamp for SSE streaming
+   * Get messages after a specific timestamp for streaming
    */
   async getMessagesAfterTimestamp(conversationId: string, afterTimestamp: string): Promise<Message[]> {
     try {

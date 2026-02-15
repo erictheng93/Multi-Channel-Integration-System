@@ -1,6 +1,6 @@
-// Real-time 模組處理器統一導出 (Phase 3: WebSocket only)
+// Real-time module handler exports (WebSocket only)
 
-// 主要處理器
+// Main handlers
 export {
   realtimeMainHandler,
   realtimeManagementHandler,
@@ -8,21 +8,14 @@ export {
   RealtimeConfigManager
 } from './realtime-main';
 
-// REMOVED: SSE 專用處理器 (Phase 3 cleanup - 100% WebSocket rollout)
-// export {
-//   sseHandler,
-//   enhancedSSEManager,
-//   sseConfig
-// } from './sse-handler';
-
-// 事件處理器
+// Event handler
 export {
   eventHandler,
   eventStats,
   EventValidator
 } from './event-handler';
 
-// 便利函數導出 (Phase 3: WebSocket only)
+// Convenience function exports (WebSocket only)
 export async function getRealtimeHandlers() {
   const { realtimeMainHandler, realtimeManagementHandler } = await import('./realtime-main');
   const { eventHandler } = await import('./event-handler');
@@ -30,22 +23,20 @@ export async function getRealtimeHandlers() {
   return {
     main: realtimeMainHandler,
     management: realtimeManagementHandler,
-    // REMOVED: sse handler (Phase 3 cleanup)
     event: eventHandler
   };
 }
 
-// 管理器導出 (Phase 3: WebSocket only)
+// Manager exports (WebSocket only)
 export async function getRealtimeManagers() {
   const { RealtimeConfigManager } = await import('./realtime-main');
 
   return {
     config: RealtimeConfigManager
-    // REMOVED: sse manager (Phase 3 cleanup)
   };
 }
 
-// 實用工具導出
+// Utility exports
 export async function getRealtimeUtils() {
   const { createRealtimeEvent } = await import('./realtime-main');
   const { EventValidator } = await import('./event-handler');

@@ -8,7 +8,7 @@ import type { JWTPayload } from '@/types';
 /**
  * 協作協議類型
  */
-export type CollaborationProtocol = 'sse' | 'websocket' | 'http';
+export type CollaborationProtocol = 'websocket' | 'http';
 
 /**
  * 用戶在線狀態
@@ -301,8 +301,8 @@ export interface CollaborationConfig {
  * 預設配置
  */
 export const defaultCollaborationConfig: CollaborationConfig = {
-  defaultProtocol: 'sse',
-  enableWebSocket: false,
+  defaultProtocol: 'websocket',
+  enableWebSocket: true,
   typingExpirationSeconds: 5,
   presenceExpirationSeconds: 300,
   cleanupIntervalSeconds: 60,

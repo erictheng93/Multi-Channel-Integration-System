@@ -51,37 +51,22 @@ class RealtimeConfigManager {
     return this.config;
   }
 
-  // 動態版本選擇邏輯
-  selectVersion(context: any): 'v1' | 'v2' {
+  // Version selection (WebSocket only - SSE removed)
+  selectVersion(_context: any): 'v1' | 'v2' {
     const config = this.getConfig();
 
     if (config.version !== 'auto') {
       return config.version;
     }
 
-    // 自動選擇邏輯
-    const userAgent = context.req.header('User-Agent') || '';
-    const supportsEventSource = context.req.header('Accept')?.includes('text/event-stream');
-
-    // 如果支援 EventSource 且啟用事件驅動，使用 v2
-    if (supportsEventSource && config.enableEventDriven) {
-      return 'v2';
-    }
-
-    // 否則使用傳統版本
-    return 'v1';
+    // Default to v2 (event-driven) since WebSocket is the standard
+    return 'v2';
   }
 }
 
-// 統一的 Real-time 處理器
+// Unified Real-time handler (WebSocket only)
 export const realtimeMainHandler: EventDrivenHandler = {
-  // REMOVED: SSE 端點 (Phase 3 cleanup - SSE removed, WebSocket only)
-  // sse: async (c: Context<{ Bindings: Bindings }>) => {
-  //   const { sseHandler } = await import('./sse-handler');
-  //   return await sseHandler.connect(c);
-  // },
-
-  // 發送打字狀態 - 優先使用 v2
+  // 發送打字狀態
   sendTypingStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
     try {
       const configManager = RealtimeConfigManager.getInstance();
@@ -109,17 +94,13 @@ export const realtimeMainHandler: EventDrivenHandler = {
     }
   },
 
-  // 獲取對話狀態 - 統一接口
+  // Get conversation status (WebSocket only)
   getConversationStatus: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      // REMOVED: SSE handler (Phase 3 cleanup - WebSocket only)
-      // const { sseHandler } = await import('./sse-handler');
-      // return await sseHandler.getStats(c);
-
       return successResponse(c, {
-        message: 'SSE removed, use WebSocket for real-time status',
+        message: 'Use WebSocket for real-time status',
         timestamp: new Date().toISOString()
-      }, 'Use WebSocket instead');
+      }, 'Use WebSocket for real-time status');
     } catch (error) {
       return handleApiError(error, c);
     }
@@ -182,13 +163,8 @@ export const realtimeManagementHandler = {
         return unauthorizedResponse(c, 'Insufficient permissions');
       }
 
-      // REMOVED: SSE stats (Phase 3 cleanup - WebSocket only)
-      // const { enhancedSSEManager } = await import('./sse-handler');
-      // const sseStats = enhancedSSEManager.getDetailedStats();
-
       const stats = {
         currentConfig: RealtimeConfigManager.getInstance().getConfig(),
-        note: 'SSE removed, use WebSocket monitoring endpoints',
         timestamp: new Date().toISOString()
       };
 
@@ -203,16 +179,11 @@ export const realtimeManagementHandler = {
     try {
       const config = RealtimeConfigManager.getInstance().getConfig();
 
-      // REMOVED: SSE stats (Phase 3 cleanup - WebSocket only)
-      // const { enhancedSSEManager } = await import('./sse-handler');
-      // const sseStats = enhancedSSEManager.getDetailedStats();
-
       const health = {
         status: 'healthy',
         version: config.version,
         eventDriven: config.enableEventDriven,
         queueProcessing: config.enableQueueProcessing,
-        note: 'SSE removed, use WebSocket monitoring',
         timestamp: new Date().toISOString()
       };
 

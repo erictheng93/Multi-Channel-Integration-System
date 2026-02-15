@@ -7,7 +7,7 @@ import type { RealtimeConfig } from '@modules/realtime/types';
 export interface VersionFeatures {
   supportEventDriven: boolean;
   supportQueueProcessing: boolean;
-  supportAdvancedSSE: boolean;
+  supportAdvancedRealtime: boolean;
   supportBatchProcessing: boolean;
   supportAdvancedAuth: boolean;
   supportRealTimeMetrics: boolean;
@@ -35,7 +35,7 @@ const supportedVersions: Record<string, VersionInfo> = {
     features: {
       supportEventDriven: false,
       supportQueueProcessing: false,
-      supportAdvancedSSE: false,
+      supportAdvancedRealtime: false,
       supportBatchProcessing: false,
       supportAdvancedAuth: false,
       supportRealTimeMetrics: false,
@@ -44,7 +44,7 @@ const supportedVersions: Record<string, VersionInfo> = {
     },
     compatibility: ['all-browsers', 'old-clients'],
     recommendedFor: ['legacy-support', 'simple-use-cases'],
-    deprecationWarning: '此版本將在未來版本中移除，建議升級到 v2 或 modular 版本'
+    deprecationWarning: 'This version will be removed in a future release. Please upgrade to v2 or modular.'
   },
 
   v2: {
@@ -54,14 +54,14 @@ const supportedVersions: Record<string, VersionInfo> = {
     features: {
       supportEventDriven: true,
       supportQueueProcessing: true,
-      supportAdvancedSSE: true,
+      supportAdvancedRealtime: true,
       supportBatchProcessing: false,
       supportAdvancedAuth: false,
       supportRealTimeMetrics: true,
       performanceLevel: 'standard',
       stabilityLevel: 'stable'
     },
-    compatibility: ['modern-browsers', 'sse-clients'],
+    compatibility: ['modern-browsers', 'websocket-clients'],
     recommendedFor: ['production-use', 'high-performance']
   },
 
@@ -72,14 +72,14 @@ const supportedVersions: Record<string, VersionInfo> = {
     features: {
       supportEventDriven: true,
       supportQueueProcessing: true,
-      supportAdvancedSSE: true,
+      supportAdvancedRealtime: true,
       supportBatchProcessing: true,
       supportAdvancedAuth: true,
       supportRealTimeMetrics: true,
       performanceLevel: 'advanced',
       stabilityLevel: 'production'
     },
-    compatibility: ['modern-browsers', 'sse-clients', 'websocket-clients'],
+    compatibility: ['modern-browsers', 'websocket-clients'],
     recommendedFor: ['enterprise-use', 'advanced-features', 'scalable-systems']
   }
 };
@@ -93,7 +93,6 @@ interface EnvironmentCapabilities {
   supportsCookies: boolean;
   supportsJWT: boolean;
   clientCapabilities: {
-    supportsEventSource: boolean;
     supportsWebSockets: boolean;
     supportsModernJS: boolean;
     userAgent: string;
@@ -130,24 +129,17 @@ export class RealtimeVersionSelector {
       supportsCookies: true, // 假設支援
       supportsJWT: !!env.JWT_SECRET,
       clientCapabilities: {
-        supportsEventSource: true, // 預設支援
-        supportsWebSockets: false, // 預設不支援
-        supportsModernJS: true,    // 預設支援
+        supportsWebSockets: false,
+        supportsModernJS: true,
         userAgent: context?.req?.header('User-Agent') || 'unknown'
       }
     };
 
-    // 客戶端能力檢測
+    // Client capability detection
     if (context?.req) {
       const userAgent = context.req.header('User-Agent') || '';
-      const accept = context.req.header('Accept') || '';
 
-      // 檢測 EventSource 支援
-      capabilities.clientCapabilities.supportsEventSource =
-        accept.includes('text/event-stream') ||
-        userAgent.includes('EventSource');
-
-      // 檢測 WebSocket 支援
+      // Detect WebSocket support
       capabilities.clientCapabilities.supportsWebSockets =
         context.req.header('Upgrade') === 'websocket' ||
         userAgent.includes('WebSocket');
@@ -166,7 +158,6 @@ export class RealtimeVersionSelector {
       cloudflareQueue: capabilities.hasCloudflareQueue,
       kvStorage: capabilities.hasKVStorage,
       database: capabilities.hasD1Database,
-      eventSource: capabilities.clientCapabilities.supportsEventSource,
       userAgent: capabilities.clientCapabilities.userAgent.substring(0, 50)
     });
 
@@ -198,28 +189,26 @@ export class RealtimeVersionSelector {
     let selectedVersion: 'v1' | 'v2' | 'modular' = 'v1';
     let reason = '預設版本';
 
-    // 檢查是否支援模組化版本的所有功能
+    // Check if modular version is supported
     if (capabilities.hasCloudflareQueue &&
         capabilities.hasKVStorage &&
         capabilities.hasD1Database &&
-        capabilities.clientCapabilities.supportsEventSource &&
         capabilities.clientCapabilities.supportsModernJS) {
 
       selectedVersion = 'modular';
-      reason = '環境支援所有進階功能，選擇模組化版本';
+      reason = 'Environment supports all advanced features, selecting modular version';
     }
-    // 檢查是否支援 v2 版本
+    // Check if v2 is supported
     else if (capabilities.hasCloudflareQueue &&
-             capabilities.hasKVStorage &&
-             capabilities.clientCapabilities.supportsEventSource) {
+             capabilities.hasKVStorage) {
 
       selectedVersion = 'v2';
-      reason = '環境支援事件驅動功能，選擇 v2 版本';
+      reason = 'Environment supports event-driven features, selecting v2';
     }
-    // 使用 v1 版本
+    // Fall back to v1
     else {
       selectedVersion = 'v1';
-      reason = '環境限制，使用相容性最佳的 v1 版本';
+      reason = 'Environment limitations, using v1 for best compatibility';
     }
 
     // 根據配置調整選擇
@@ -239,8 +228,7 @@ export class RealtimeVersionSelector {
       reason,
       capabilities: {
         queue: capabilities.hasCloudflareQueue,
-        kv: capabilities.hasKVStorage,
-        eventSource: capabilities.clientCapabilities.supportsEventSource
+        kv: capabilities.hasKVStorage
       }
     });
 
@@ -268,10 +256,6 @@ export class RealtimeVersionSelector {
     // 檢查關鍵功能相容性
     if (versionInfo.features.supportEventDriven && !capabilities.hasCloudflareQueue) {
       blockers.push('事件驅動功能需要 Cloudflare Queue 支援');
-    }
-
-    if (versionInfo.features.supportAdvancedSSE && !capabilities.clientCapabilities.supportsEventSource) {
-      blockers.push('進階 SSE 功能需要客戶端支援 EventSource');
     }
 
     if (versionInfo.features.supportQueueProcessing && !capabilities.hasKVStorage) {
@@ -334,9 +318,9 @@ export class RealtimeVersionSelector {
         'Cloudflare Queue 整合'
       );
       requirements.push(
-        'Cloudflare Queue 支援',
-        'KV 存儲',
-        '客戶端 EventSource 支援'
+        'Cloudflare Queue support',
+        'KV storage',
+        'WebSocket support'
       );
     }
 

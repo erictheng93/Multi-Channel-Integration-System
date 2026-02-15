@@ -57,8 +57,6 @@ log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defi
 
 // Import additional handlers
 import { activityHandler } from './handlers/activity';
-// REMOVED: activityStreamHandler (Phase 4 cleanup - SSE-based, replaced by WebSocket)
-// import { activityStreamHandler } from './handlers/activity-stream';
 import websocketMainHandler from './handlers/websocket-main';
 import delayedMessageBufferHandler from './handlers/delayed-message-buffer';
 import { feedbackHandler } from './handlers/feedback-main';
@@ -274,37 +272,6 @@ log.info('R2 Public Proxy endpoint registered', {
   ]
 });
 
-// 🔧 Pre-register SSE activity stream endpoint BEFORE unified route system
-// This prevents auth middleware from being applied (SSE uses query token)
-app.options('/api/activities/stream', (c) => {
-  const origin = c.req.header('Origin') || '';
-  // 使用集中式 CORS 配置 (動態從環境變量讀取)
-  const isAllowed = isOriginAllowed(origin, c.env);
-
-  const response = new Response(null, { status: 204 });
-
-  if (isAllowed && origin) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-  }
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  response.headers.set('Access-Control-Max-Age', '86400');
-
-  // Prevent Cloudflare edge caching
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  response.headers.set('Pragma', 'no-cache');
-  response.headers.set('Expires', '0');
-
-  return response;
-});
-// REMOVED: SSE activity stream endpoint (Phase 4 cleanup - replaced by WebSocket)
-// app.get('/api/activities/stream', activityStreamHandler.connect);
-// console.log('✅ SSE activity stream endpoint registered:');
-// console.log('   • OPTIONS /api/activities/stream');
-// console.log('   • GET /api/activities/stream (query token auth)');
-
 // 🔧 Pre-register Analytics Comparison API BEFORE unified route system
 // This prevents the /api/analytics/* catch-all from intercepting these routes
 app.route('/api/analytics/comparison', comparisonAPI);
@@ -410,7 +377,7 @@ log.info('Security dashboard endpoints registered (P2-7)', {
   endpoints: [
     'GET /api/security/dashboard/health (Public)',
     'GET /api/security/dashboard/metrics (Admin only)',
-    'GET /api/security/dashboard/events/stream (SSE)',
+    'GET /api/security/dashboard/events/stream (WebSocket)',
     'GET /api/security/dashboard/events/recent (Admin only)',
     'GET /api/security/dashboard/summary (Admin only)'
   ]
@@ -1118,13 +1085,9 @@ async function initializeCollaboration(env: Bindings) {
 
     const { Collaboration } = await import('@modules/collaboration');
 
-    // 檢測環境：生產環境優先 WebSocket，開發環境使用 SSE
-    const isProduction = env.ENVIRONMENT === 'production';
-    const hasWebSocketSupport = !!(env.CONVERSATION_ROOM && env.USER_CONNECTION);
-
     const config = {
-      defaultProtocol: (isProduction && hasWebSocketSupport) ? 'websocket' : 'sse',
-      enableWebSocket: hasWebSocketSupport, // 如果 Durable Objects 可用則啟用
+      defaultProtocol: 'websocket' as const,
+      enableWebSocket: true,
       typingExpirationSeconds: 5,
       presenceExpirationSeconds: 300,
       cleanupIntervalSeconds: 60,
@@ -1136,32 +1099,10 @@ async function initializeCollaboration(env: Bindings) {
 
     collaborationInitialized = true;
 
-    const protocolStatus = hasWebSocketSupport
-      ? `WebSocket (primary) + SSE (fallback)`
-      : `SSE only`;
-
-    log.info('Collaboration Module initialized', { protocol: protocolStatus, environment: env.ENVIRONMENT || 'unknown' });
+    log.info('Collaboration Module initialized', { protocol: 'WebSocket', environment: env.ENVIRONMENT || 'unknown' });
   } catch (error) {
     log.error('Failed to initialize Collaboration Module', { error: error instanceof Error ? error.message : String(error) });
-    // 降級到僅 SSE 模式
-    try {
-      log.warn('Attempting fallback to SSE-only mode');
-      const { Collaboration } = await import('@modules/collaboration');
-      await Collaboration.initialize(env, {
-        defaultProtocol: 'sse',
-        enableWebSocket: false,
-        typingExpirationSeconds: 5,
-        presenceExpirationSeconds: 300,
-        cleanupIntervalSeconds: 60,
-        maxViewersPerConversation: 50,
-        persistEvents: false
-      });
-      collaborationInitialized = true;
-      log.info('Collaboration Module initialized in SSE fallback mode');
-    } catch (fallbackError) {
-      log.error('Fallback initialization also failed', { error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError) });
-      throw fallbackError;
-    }
+    throw error;
   }
 }
 
@@ -1433,14 +1374,12 @@ log.info('WebSocket routes managed by Unified Route Registry');
 // ==================== 以下路由已遷移到統一路由系統 (src/core/route-config.ts) ====================
 // ✅ Sessions, Notifications, Health, Analytics, Reports, Activities
 // ✅ WebSocket, User Experience, Phase2 Auth, Alert Config, Data Optimization
-// ✅ SSE Monitoring, Realtime, Queue Monitor
+// ✅ Realtime, Queue Monitor
 // 這些模組現在通過 RouteRegistry 自動註冊
 
 // 細粒度 Real-time 路由 - 保留以支援特定端點
 // Note: These routes are kept separate for explicit endpoint control
 import { realtime } from '@modules/realtime';
-// REMOVED: SSE routes (Phase 3 cleanup - SSE removed, WebSocket only)
-// app.get('/api/realtime/sse', realtime.handlers.sse.connect);
 app.post('/api/realtime/typing', jwtAuth, realtime.handlers.main.sendTypingStatus);
 app.post('/api/realtime/broadcast', jwtAuth, realtime.handlers.main.broadcastToConversation);
 app.get('/api/realtime/conversation/:id/status', jwtAuth, realtime.handlers.main.getConversationStatus);
@@ -1449,9 +1388,6 @@ app.get('/api/realtime/config', jwtAuth, realtime.handlers.management.getConfig)
 app.put('/api/realtime/config', jwtAuth, realtime.handlers.management.updateConfig);
 app.get('/api/realtime/stats', jwtAuth, realtime.handlers.management.getStats);
 app.get('/api/realtime/health', realtime.handlers.management.healthCheck);
-// REMOVED: SSE stats/cleanup routes (Phase 3 cleanup)
-// app.get('/api/realtime/sse/stats', jwtAuth, realtime.handlers.sse.getStats);
-// app.post('/api/realtime/sse/cleanup', jwtAuth, realtime.handlers.sse.cleanup);
 app.get('/api/realtime/monitoring/dashboard', jwtAuth, realtime.monitoring.dashboard as any);
 app.get('/api/realtime/monitoring/metrics', jwtAuth, realtime.monitoring.metricsHistory);
 app.get('/api/realtime/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);
@@ -1460,7 +1396,7 @@ app.get('/api/realtime/monitoring/health', realtime.monitoring.health);
 app.get('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
 app.post('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
 
-// 活動記錄路由 - SSE stream 已在前面註冊 (lines 129-160)
+// 活動記錄路由
 // Only register the main activities handler here
 app.route('/api/activities', activityHandler);
 
@@ -1616,12 +1552,7 @@ export { DelayedMessageScheduler as DelayedMessageBuffer };
 export { DelayedMessageScheduler as DelayedMessageProcessor };
 
 // ==================== 導出 Worker 處理器 ====================
-// Phase 2.1: Queue Consumer 部分恢復 (Phase 3: LINE Async)
-// - REALTIME_QUEUE 由 LatestMessageCacheCoordinator Durable Object 替代 (保持)
-// - AGENT_QUEUE 由 DelayedMessageScheduler DO 替代 (保持)
-// - 🆕 LINE_MESSAGE_QUEUE 新增用於 LINE 非同步訊息發送 (Phase 3)
-
-// ✅ LINE Message Queue Consumer (Phase 3 - 2025-01)
+// ✅ LINE Message Queue Consumer
 // Purpose: Async LINE message delivery for better UX
 // Benefits:
 //   - Immediate response to agents (~10ms vs ~100-500ms)

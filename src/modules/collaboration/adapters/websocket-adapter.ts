@@ -299,7 +299,6 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
       totalTyping: 0,
       totalRooms: 0,
       connectionsByProtocol: {
-        sse: 0,
         websocket: 0,
         http: 0
       },

@@ -19,7 +19,7 @@ const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
 // 全局 CORS middleware 在 src/index.ts (Line 106) 提供：
 // - 自動 origin 驗證和 credentials 支援
 // - 統一的 OPTIONS preflight 處理（Line 139）
-// - SSE 端點使用 getSSECorsHeaders() 提供專門的 CORS 配置
+// - Real-time updates delivered via WebSocket (Durable Objects)
 
 // 健康檢查端點（不需要認證）
 conversationsMainHandler.get('/health', (c) => {
@@ -47,9 +47,7 @@ conversationsMainHandler.get('/info', (c) => {
         'POST /:id/assign - Assign conversation',
         'POST /:id/transfer - Transfer conversation',
         'POST /:id/messages - Send message',
-        'GET /:id/messages - Get messages with pagination',
-        'GET /stream - SSE conversation updates',
-        'GET /:conversationId/messages/stream - SSE message stream'
+        'GET /:id/messages - Get messages with pagination'
       ]
     },
     timestamp: new Date().toISOString()

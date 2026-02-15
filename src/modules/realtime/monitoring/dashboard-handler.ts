@@ -73,7 +73,7 @@ export const dashboardHandler = {
           hasQueue: capabilities.hasCloudflareQueue,
           hasKV: capabilities.hasKVStorage,
           hasDB: capabilities.hasD1Database,
-          supportsEventSource: capabilities.clientCapabilities.supportsEventSource
+          supportsWebSockets: capabilities.clientCapabilities.supportsWebSockets
         } : null,
         timestamp: new Date().toISOString()
       };

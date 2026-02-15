@@ -26,12 +26,8 @@ export { RealtimeVersionSelector } from './config/version-selector';
 
 // === 主要功能快速訪問 ===
 import { realtimeMainHandler, realtimeManagementHandler } from '@modules/realtime/handlers/realtime-main';
-// REMOVED: sseHandler (Phase 3 cleanup - SSE removed, WebSocket only)
-// import { sseHandler } from '@modules/realtime/handlers/sse-handler';
 import { eventHandler } from '@modules/realtime/handlers/event-handler';
 import { RealtimeManager } from '@modules/realtime/services/realtime-manager';
-// REMOVED: SSEConnectionPool (Phase 3 cleanup - SSE removed, WebSocket only)
-// import { SSEConnectionPool } from '@modules/realtime/services/sse-connection-service';
 import { EventQueueService } from '@modules/realtime/services/event-queue-service';
 import { getRealtimeMiddleware } from '@modules/realtime/middleware';
 import { RealtimePerformanceMonitor } from '@modules/realtime/monitoring/performance-monitor';
@@ -50,14 +46,12 @@ export const realtime = {
   handlers: {
     main: realtimeMainHandler,
     management: realtimeManagementHandler,
-    // REMOVED: sse: sseHandler (Phase 3 cleanup - SSE removed, WebSocket only)
     event: eventHandler
   },
 
   // 服務實例
   services: {
     manager: RealtimeManager.getInstance(),
-    // REMOVED: createPool (Phase 3 cleanup - SSEConnectionPool removed)
     createQueue: (env: any) => new EventQueueService(env)
   },
 
@@ -104,7 +98,6 @@ export const realtime = {
 // === 主要類別導出（方便直接使用）===
 export {
   RealtimeManager,
-  // REMOVED: SSEConnectionPool (Phase 3 cleanup - SSE removed, WebSocket only)
   EventQueueService
 };
 
@@ -121,11 +114,6 @@ export const defaultRealtimeConfig = {
   connectionTimeout: 300000,
   maxRetries: 3,
   eventStorageTtl: 300,
-  sseConfig: {
-    maxConnectionsPerUser: 5,
-    enableCompression: false,
-    retryInterval: 3000
-  },
   authConfig: {
     allowQueryToken: true,
     requireConversationAccess: true,

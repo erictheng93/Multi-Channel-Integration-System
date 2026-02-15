@@ -1,5 +1,6 @@
 // Real-time Dashboard API Handler - 實時儀表板 API 處理器
-// 提供 SSE 和 WebSocket 支持的實時數據推送 API 端點
+// Provides dashboard data access and widget update trigger endpoints
+// Real-time push is handled by WebSocket via Durable Objects
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
@@ -8,7 +9,7 @@ import { RealtimeDashboardService } from '@modules/analytics/services/realtime-d
 import { DashboardService } from '@modules/analytics/services/dashboard-service';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
-import { getSSECorsHeaders } from '@/config/cors';
+
 import { HTTP_STATUS } from '@/constants/http-status';
 
 // Analytics User interface based on middleware
@@ -26,12 +27,6 @@ interface AnalyticsUser {
 import { AnalyticsError } from '@modules/analytics/types/analytics-types';
 
 // 驗證 schema
-const subscriptionSchema = z.object({
-  dashboardId: z.string(),
-  widgets: z.array(z.string()).optional().default([]),
-  updateInterval: z.number().min(1000).max(300000).optional().default(5000)
-});
-
 const broadcastSchema = z.object({
   dashboardId: z.string(),
   widgetId: z.string().optional(),
@@ -45,110 +40,8 @@ const createRealtimeDashboardApp = (
 ) => {
   const app = new Hono<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>();
 
-  // ✅ CORS 處理已移至 src/index.ts 統一管理
-  // 不再需要模組級別的 CORS middleware
-  // SSE 端點會自動繼承全局 CORS 設置（包含生產環境域名）
-
-  // 驗證中間件（對部分端點除外）
-  app.use('/sse/*', analyticsAuthMiddleware);
+  // Authentication middleware
   app.use('/broadcast/*', analyticsAuthMiddleware);
-  app.use('/subscription/*', analyticsAuthMiddleware);
-
-  /**
-   * 創建 SSE 連接
-   * GET /sse/:dashboardId?widgets=widget1,widget2
-   */
-  app.get('/sse/:dashboardId', async (c) => {
-    try {
-      const user = c.get('user') as AnalyticsUser;
-      const dashboardId = c.req.param('dashboardId');
-      const widgetsParam = c.req.query('widgets');
-
-      let widgets: string[] = [];
-      if (widgetsParam) {
-        widgets = widgetsParam.split(',').map(w => w.trim()).filter(w => w);
-      }
-
-      // 創建 SSE 連接
-      const response = await realtimeService.createSSEConnection(
-        user.id.toString(),
-        dashboardId,
-        widgets
-      );
-
-      return response;
-
-    } catch (error) {
-      console.error('Failed to create SSE connection:', error);
-
-      // 返回錯誤的 SSE 響應
-      const errorStream = new ReadableStream({
-        start(controller) {
-          const errorMessage = `data: ${JSON.stringify({
-            type: 'error',
-            data: { message: error instanceof AnalyticsError ? error.message : 'Connection failed' },
-            timestamp: new Date().toISOString()
-          })}\n\n`;
-
-          controller.enqueue(new TextEncoder().encode(errorMessage));
-          controller.close();
-        }
-      });
-
-      return new Response(errorStream, {
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache'
-        }
-      });
-    }
-  });
-
-  /**
-   * WebSocket 連接（預留）
-   * GET /websocket/:dashboardId
-   */
-  app.get('/websocket/:dashboardId', async (c) => {
-    // WebSocket 升級邏輯
-    // 這裡可以實現 WebSocket 連接升級
-    // 目前返回不支持的錯誤
-
-    return c.json({
-      success: false,
-      error: 'WebSocket connections not yet implemented. Please use SSE endpoint.',
-      alternativeEndpoint: `/api/analytics/realtime/sse/${c.req.param('dashboardId')}`
-    }, HTTP_STATUS.NOT_IMPLEMENTED);
-  });
-
-  /**
-   * 更新訂閱配置
-   * PUT /subscription/:connectionId
-   */
-  app.put('/subscription/:connectionId', zValidator('json', subscriptionSchema.partial()), async (c) => {
-    try {
-      const user = c.get('user') as AnalyticsUser;
-      const connectionId = c.req.param('connectionId');
-      const updates = c.req.valid('json');
-
-      // 驗證連接所有權（簡化版本）
-      // 實際實現中需要驗證 connectionId 是否屬於當前用戶
-
-      await realtimeService.updateSubscription(connectionId, updates);
-
-      return c.json({
-        success: true,
-        message: 'Subscription updated successfully'
-      });
-
-    } catch (error) {
-      console.error('Failed to update subscription:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to update subscription'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-    }
-  });
 
   /**
    * 廣播更新到所有連接
@@ -307,53 +200,6 @@ const createRealtimeDashboardApp = (
         error: 'Failed to get connection status'
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
-  });
-
-  /**
-   * 測試 SSE 連接
-   * GET /test-sse
-   */
-  app.get('/test-sse', async (c) => {
-    const stream = new ReadableStream({
-      start(controller) {
-        let counter = 0;
-
-        const interval = setInterval(() => {
-          const message = `data: ${JSON.stringify({
-            type: 'test',
-            data: {
-              counter: ++counter,
-              message: `Test message ${counter}`,
-              timestamp: new Date().toISOString()
-            },
-            timestamp: new Date().toISOString()
-          })}\n\n`;
-
-          try {
-            controller.enqueue(new TextEncoder().encode(message));
-
-            // 發送10條消息後停止
-            if (counter >= 10) {
-              clearInterval(interval);
-              controller.close();
-            }
-          } catch (error) {
-            clearInterval(interval);
-            controller.close();
-          }
-        }, 1000);
-
-        // 5分鐘後自動關閉
-        setTimeout(() => {
-          clearInterval(interval);
-          controller.close();
-        }, 300000);
-      }
-    });
-
-    // ✅ 使用統一的 SSE CORS 配置
-    const sseCorsHeaders = getSSECorsHeaders(c.req.header('Origin'));
-    return new Response(stream, { headers: sseCorsHeaders });
   });
 
   /**

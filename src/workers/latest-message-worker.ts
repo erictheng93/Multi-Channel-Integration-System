@@ -1,8 +1,6 @@
 /**
  * Latest Message Background Worker
  * Processes queue jobs to update latest message cache
- *
- * Migration: Phase 1.4b (REALTIME_QUEUE → LatestMessageCacheCoordinator DO)
  */
 
 import type { Bindings } from '../types';
@@ -254,8 +252,6 @@ export async function handleLatestMessageQueue(
 
 /**
  * Utility functions for scheduling cache updates via Durable Object
- *
- * Migration: Phase 1.4b (REALTIME_QUEUE → LatestMessageCacheCoordinator DO)
  */
 export class LatestMessageJobQueue {
   private readonly coordinator: any; // DurableObjectStub type causes recursion issues

@@ -66,7 +66,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
           }
         }
 
-        // 從查詢參數獲取 token（主要用於 SSE）
+        // From query parameter (for WebSocket upgrade requests)
         if (!token && authConfig.allowQueryToken) {
           token = c.req.query('token') ?? null;
         }
@@ -228,15 +228,6 @@ async function checkConversationAccess(
     return false; // 安全考慮，檢查失敗時拒絕訪問
   }
 }
-
-// SECURITY: SSE auth - 2-tier role system
-export const sseAuth = realtimeAuth({
-  allowQueryToken: true,
-  allowHeaderToken: true,
-  requireConversationAccess: true,
-  enableRoleValidation: true,
-  validRoles: ['admin', 'agent']
-});
 
 // SECURITY: Event send auth - 2-tier role system
 export const eventSendAuth = realtimeAuth({

@@ -1003,8 +1003,7 @@ export class ConversationRoom implements DurableObject {
   // =================== Full Mode: External Queue Integration ===================
 
   private async sendToMessageQueue(_event: DurableObjectEvent): Promise<void> {
-    // Integration point with existing Cloudflare Queue
-    // This would send the event to REALTIME_QUEUE for persistence
+    // Integration point for external event persistence
   }
 
   // =================== Utility Methods ===================

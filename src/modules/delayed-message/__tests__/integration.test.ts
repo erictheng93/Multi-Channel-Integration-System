@@ -34,7 +34,6 @@ const mockEnv = {
     put: vi.fn(() => Promise.resolve()),
     delete: vi.fn(() => Promise.resolve())
   },
-  // REMOVED: AGENT_QUEUE (replaced by DelayedMessageBuffer Durable Object)
   JWT_SECRET: 'test-secret',
   LINE_CHANNEL_ACCESS_TOKEN: 'test-line-token',
   FB_PAGE_ACCESS_TOKEN: 'test-fb-token'

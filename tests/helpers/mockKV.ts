@@ -1,3 +1,7 @@
+/**
+ * @deprecated Use DatabaseTestEnvironment instead. This legacy KV mock will be removed in a future cleanup.
+ * @see tests/helpers/DatabaseTestEnvironment.ts
+ */
 import { vi } from 'vitest'
 
 export class MockKVNamespace {

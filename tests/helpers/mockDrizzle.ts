@@ -1,5 +1,7 @@
-// Mock Drizzle ORM for testing
-// Provides a simplified mock of Drizzle's query builder API
+/**
+ * @deprecated Use DatabaseTestEnvironment instead. This legacy Drizzle mock will be removed in a future cleanup.
+ * @see tests/helpers/DatabaseTestEnvironment.ts
+ */
 
 import { vi } from 'vitest'
 

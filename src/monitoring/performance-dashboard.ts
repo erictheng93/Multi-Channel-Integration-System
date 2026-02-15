@@ -666,8 +666,8 @@ function calculateHistoricalAggregations(metrics: PerformanceMetrics[]) {
     };
   }
 
-  const latencies = metrics.map(m => (m.websocket?.latency || 0) + (m.sse?.latency || 0) / 2);
-  const throughputs = metrics.map(m => (m.websocket?.throughput || 0) + (m.sse?.throughput || 0));
+  const latencies = metrics.map(m => m.websocket?.latency || 0);
+  const throughputs = metrics.map(m => m.websocket?.throughput || 0);
 
   return {
     averageLatency: latencies.reduce((sum, l) => sum + l, 0) / latencies.length,
@@ -715,9 +715,9 @@ function generatePerformanceReport(metrics: PerformanceMetrics[], hours: number)
     duration: hours * 60 * 60 * 1000
   };
 
-  const latencies = metrics.map(m => (m.websocket?.latency || 0) + (m.sse?.latency || 0) / 2).sort((a, b) => a - b);
-  const throughputs = metrics.map(m => (m.websocket?.throughput || 0) + (m.sse?.throughput || 0));
-  const errorRates = metrics.map(m => (m.websocket?.errorRate || 0) + (m.sse?.errorRate || 0) / 2);
+  const latencies = metrics.map(m => m.websocket?.latency || 0).sort((a, b) => a - b);
+  const throughputs = metrics.map(m => m.websocket?.throughput || 0);
+  const errorRates = metrics.map(m => m.websocket?.errorRate || 0);
   const connections = metrics.map(m => (m.websocket?.connections || 0));
 
   return {

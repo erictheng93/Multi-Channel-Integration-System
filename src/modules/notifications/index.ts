@@ -13,8 +13,6 @@ export { NotificationRepository } from './repositories/notification-repository';
 export { NotificationCache } from './repositories/notification-cache';
 
 // 通道適配器匯出
-// REMOVED: SSEAdapter (Phase 2 cleanup - 100% WebSocket rollout)
-// export { SSEAdapter } from './adapters/sse-adapter';
 export { WebSocketAdapter } from './adapters/websocket-adapter';
 export { EmailAdapter } from './adapters/email-adapter';
 export { PushAdapter } from './adapters/push-adapter';
@@ -26,13 +24,6 @@ export {
   createNotificationHandlerMethods
 } from './handlers/notification-main';
 
-// REMOVED: NotificationSSEHandler (Phase 2 cleanup - 100% WebSocket rollout)
-// export {
-//   NotificationSSEHandler,
-//   createNotificationSSEHandler,
-//   createNotificationSSEHandlerMethods
-// } from './handlers/notification-sse';
-
 // 工具類匯出
 export {
   NotificationValidator,
@@ -42,59 +33,11 @@ export {
 
 export { NotificationFactory } from './utils/notification-factory';
 
-// 便利的工廠函數 (暫時註釋以修復類型錯誤)
-// export function createNotificationModule(database: D1Database, kvNamespace: KVNamespace) {
-//   // 創建核心服務實例
-//   const channelService = new NotificationChannelService();
-//   const notificationService = new NotificationService(database, kvNamespace, channelService);
-//   const repository = new NotificationRepository(database);
-//   const cache = new NotificationCache(kvNamespace);
-//   const validator = new NotificationValidator();
-
-//   return {
-//     // 主要處理器
-//     mainHandler: createNotificationHandler(database, kvNamespace),
-//     mainHandlerMethods: createNotificationHandlerMethods(database, kvNamespace),
-
-//     // SSE 處理器
-//     sseHandler: createNotificationSSEHandler(),
-//     sseHandlerMethods: createNotificationSSEHandlerMethods(),
-
-//     // 核心服務
-//     channelService,
-//     notificationService,
-
-//     // 資料層
-//     repository,
-//     cache,
-
-//     // 工具類
-//     validator,
-//     factory: NotificationFactory,
-
-//     // 適配器 (可選，通常通過 ChannelService 管理)
-//     adapters: {
-//       sse: new SSEAdapter(),
-//       websocket: new WebSocketAdapter(),
-//       email: new EmailAdapter(),
-//       push: new PushAdapter()
-//     }
-//   };
-// }
-
-// 默認配置 (Phase 2: 100% WebSocket rollout)
+// 默認配置 (WebSocket-based)
 export const DEFAULT_NOTIFICATION_CONFIG = {
   channels: {
-    // REMOVED: SSE configuration (Phase 2 cleanup)
-    // sse: {
-    //   enabled: true,
-    //   retryAttempts: 3,
-    //   retryDelay: 1000,
-    //   timeout: 30000,
-    //   batchSize: 50
-    // },
     websocket: {
-      enabled: true, // ✅ 100% WebSocket rollout complete
+      enabled: true,
       retryAttempts: 3,
       retryDelay: 1000,
       timeout: 30000,
@@ -116,9 +59,9 @@ export const DEFAULT_NOTIFICATION_CONFIG = {
     }
   },
   routing: {
-    defaultChannels: ['websocket'], // Updated to WebSocket (Phase 2 cleanup)
+    defaultChannels: ['websocket'],
     fallbackEnabled: true,
-    fallbackChannels: ['websocket'] // Updated to WebSocket (Phase 2 cleanup)
+    fallbackChannels: ['websocket']
   },
   cache: {
     defaultTTL: 300, // 5 minutes
@@ -138,7 +81,7 @@ export const NOTIFICATIONS_MODULE_INFO = {
   description: 'Unified multi-channel notification system with WebSocket, Email, and Push support',
   features: [
     'Multi-channel notification delivery',
-    'Real-time WebSocket notifications', // Updated (Phase 2 cleanup)
+    'Real-time WebSocket notifications',
     'Email notifications (prepared)',
     'Push notifications (prepared)',
     'Advanced caching with KV',
@@ -149,9 +92,7 @@ export const NOTIFICATIONS_MODULE_INFO = {
     'Statistics and monitoring'
   ],
   channels: {
-    // REMOVED: SSE (Phase 2 cleanup)
-    // sse: 'Server-Sent Events (Active)',
-    websocket: 'WebSocket (Active - 100% rollout)', // Updated (Phase 2 cleanup)
+    websocket: 'WebSocket (Active)',
     email: 'Email (Prepared)',
     push: 'Push Notifications (Prepared)'
   }

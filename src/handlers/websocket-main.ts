@@ -21,8 +21,7 @@ import { createMessagePersistenceService } from '../services/message-persistence
  *
  * WebSocket Handler manages:
  * 1. WebSocket connection lifecycle (upgrade, maintenance, cleanup)
- * 2. Progressive migration from SSE to WebSocket
- * 3. Connection fallback and health monitoring
+ * 2. Connection health monitoring
  * 4. Integration with Durable Objects system
  * 5. Connection routing and load balancing
  *
@@ -70,8 +69,8 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
     // Check if WebSocket is enabled via feature flags
     const migrationConfig = await getMigrationConfig(c.env);
     if (!migrationConfig.enableWebSocket) {
-      console.log(`❌ [WebSocket] WebSocket disabled, redirecting to SSE`);
-      return c.redirect('/api/conversations/stream');
+      console.log(`❌ [WebSocket] WebSocket disabled`);
+      return c.json({ error: 'WebSocket connections are disabled' }, 503);
     }
 
     // Validate WebSocket upgrade request

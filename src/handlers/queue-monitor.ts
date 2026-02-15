@@ -1,11 +1,9 @@
-// 隊列統一監控處理器
-// Queue Unified Monitoring Handler
-// 提供 REALTIME_QUEUE 隊列的監控介面
+// Queue Monitoring Handler
+// Provides LINE_MESSAGE_QUEUE monitoring interface
 
 import { Context } from 'hono';
 import type { Bindings } from '../types';
-import { successResponse, errorResponse, handleApiError } from '../utils/api-response';
-// REMOVED: enhancedSSEManager (Phase 3 cleanup - SSE removed, WebSocket only)
+import { successResponse, handleApiError } from '../utils/api-response';
 
 export interface QueueStats {
   name: string;
@@ -34,43 +32,25 @@ export interface UnifiedMonitoringData {
     overallStatus: 'healthy' | 'warning' | 'error';
   };
   queues: {
-    realtimeQueue: QueueStats;
-  };
-  realtimeConnections: {
-    totalConnections: number;
-    connectionsByUser: Record<number, number>;
-    activeConversations: number;
+    lineMessageQueue: QueueStats;
   };
   systemHealth: {
     uptime: number;
-    memoryUsage?: number;
-    cpuUsage?: number;
     lastCheck: string;
   };
 }
 
 export const queueMonitorHandler = {
-  // 🔍 獲取統一隊列監控數據
+  // Get unified queue monitoring data
   getUnifiedStats: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      console.log('📊 [Queue Monitor] Fetching unified queue statistics...');
+      console.log('[Queue Monitor] Fetching unified queue statistics...');
 
-      // REMOVED: SSE 連接統計 (Phase 3 cleanup - SSE removed, WebSocket only)
-      // const sseStats = enhancedSSEManager.getDetailedStats();
-      const sseStats = {
-        totalConnections: 0,
-        activeConnections: 0,
-        connectionsByUser: {} as Record<number, number>
-      }; // Placeholder for removed SSE
-
-      // REMOVED: AGENT_QUEUE 統計 (Queue cleanup - no longer needed)
-
-      // REALTIME_QUEUE 統計
-      const realtimeQueueStats: QueueStats = {
-        name: 'Realtime Events Queue',
-        binding: 'REALTIME_QUEUE', 
-        purpose: '實時事件推送和SSE連接管理',
-        status: sseStats.totalConnections > 0 ? 'healthy' : 'warning',
+      const lineMessageQueueStats: QueueStats = {
+        name: 'LINE Message Queue',
+        binding: 'LINE_MESSAGE_QUEUE',
+        purpose: 'Async LINE message delivery for better agent UX',
+        status: 'healthy',
         metrics: {
           messagesInQueue: 0,
           processingRate: 0,
@@ -78,36 +58,22 @@ export const queueMonitorHandler = {
           avgProcessingTime: 100
         },
         configuration: {
-          maxBatchSize: 5,
-          maxBatchTimeout: 1,
-          retryPolicy: 'fast-fail'
+          maxBatchSize: 10,
+          maxBatchTimeout: 5,
+          retryPolicy: 'exponential-backoff'
         },
         lastActivity: new Date().toISOString()
       };
 
-      // 計算活躍對話數量
-      const activeConversations = Object.keys(
-        Object.values(sseStats.connectionsByUser).reduce((conversations: Record<string, boolean>, _) => {
-          // 這裡可以根據實際需求計算活躍對話
-          return conversations;
-        }, {})
-      ).length;
-
-      // 統一監控數據
       const unifiedData: UnifiedMonitoringData = {
         summary: {
           totalQueues: 1,
-          healthyQueues: realtimeQueueStats.status === 'healthy' ? 1 : 0,
-          totalMessages: realtimeQueueStats.metrics.messagesInQueue!,
-          overallStatus: sseStats.totalConnections > 0 ? 'healthy' : 'warning'
+          healthyQueues: 1,
+          totalMessages: lineMessageQueueStats.metrics.messagesInQueue!,
+          overallStatus: 'healthy'
         },
         queues: {
-          realtimeQueue: realtimeQueueStats
-        },
-        realtimeConnections: {
-          totalConnections: sseStats.totalConnections,
-          connectionsByUser: sseStats.connectionsByUser,
-          activeConversations
+          lineMessageQueue: lineMessageQueueStats
         },
         systemHealth: {
           uptime: Date.now(),
@@ -115,29 +81,22 @@ export const queueMonitorHandler = {
         }
       };
 
-      console.log('📊 [Queue Monitor] Statistics compiled:', {
-        totalQueues: unifiedData.summary.totalQueues,
-        totalConnections: unifiedData.realtimeConnections.totalConnections,
-        overallStatus: unifiedData.summary.overallStatus
-      });
-
       return successResponse(c, unifiedData, 'Queue monitoring data retrieved');
 
     } catch (error) {
-      console.error('❌ [Queue Monitor] Error fetching statistics:', error);
+      console.error('[Queue Monitor] Error fetching statistics:', error);
       return handleApiError(error, c);
     }
   },
 
-  // 🔄 獲取隊列健康檢查
+  // Queue health check
   getHealthCheck: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const healthChecks = {
-        realtimeQueue: {
+        lineMessageQueue: {
           status: 'healthy',
           checks: {
             queueAvailable: true,
-            sseConnections: 0, // REMOVED: SSE removed (Phase 3 cleanup)
             processingLatency: '< 100ms'
           }
         },
@@ -154,27 +113,20 @@ export const queueMonitorHandler = {
     }
   },
 
-  // 📈 獲取隊列性能指標
+  // Queue performance metrics
   getPerformanceMetrics: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const metrics = {
-        // REMOVED: agentQueue metrics (replaced by DelayedMessageBuffer Durable Object)
-        // Use GET /api/delayed-messages-v2/metrics for delayed message metrics
-        realtimeQueue: {
+        lineMessageQueue: {
           throughput: {
-            eventsPerSecond: 10.5,
-            peakThroughput: 50.0,
-            avgProcessingTime: 80
+            messagesPerSecond: 0,
+            peakThroughput: 0,
+            avgProcessingTime: 100
           },
           reliability: {
             successRate: 99.9,
             errorRate: 0.1,
             retryRate: 0.05
-          },
-          sseMetrics: {
-            activeConnections: 0, // REMOVED: SSE removed (Phase 3 cleanup)
-            connectionUptime: 'N/A',
-            eventDeliveryRate: 0
           }
         },
         timestamp: new Date().toISOString()
@@ -187,23 +139,22 @@ export const queueMonitorHandler = {
     }
   },
 
-  // 🧹 隊列維護操作
+  // Queue maintenance operations
   maintenanceOperations: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const { operation } = await c.req.json();
 
       switch (operation) {
-        case 'cleanup_stale_connections':
-          // REMOVED: SSE cleanup (Phase 3 cleanup - SSE removed, WebSocket only)
-          return successResponse(c, { operation: 'cleanup_stale_connections', completed: true, note: 'SSE removed' }, 'SSE removed, no cleanup needed');
-
-        case 'get_connection_details':
-          // REMOVED: SSE stats (Phase 3 cleanup - SSE removed, WebSocket only)
-          const connectionStats = { totalConnections: 0, note: 'SSE removed, use WebSocket monitoring' };
-          return successResponse(c, connectionStats, 'SSE removed, use WebSocket monitoring');
+        case 'get_queue_status':
+          return successResponse(c, {
+            lineMessageQueue: { status: 'healthy' }
+          }, 'Queue status retrieved');
 
         default:
-          return errorResponse(c, 'Unknown maintenance operation', 400);
+          return successResponse(c, {
+            error: 'Unknown maintenance operation',
+            availableOperations: ['get_queue_status']
+          }, 'Unknown operation', 400);
       }
 
     } catch (error) {

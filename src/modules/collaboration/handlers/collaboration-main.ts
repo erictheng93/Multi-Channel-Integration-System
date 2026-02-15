@@ -20,7 +20,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.get('/conversations/:id/state', async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const conversationId = parseInt(c.req.param('id'));
-    const protocol = c.req.query('protocol') as 'sse' | 'websocket' | undefined;
+    const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
 
     if (isNaN(conversationId)) {
       return errorResponse(c, 'Invalid conversation ID', 400);
@@ -41,7 +41,7 @@ app.get('/conversations/:id/state', async (c: Context<{ Bindings: Bindings }>) =
 app.get('/conversations/:id/viewers', async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const conversationId = parseInt(c.req.param('id'));
-    const protocol = c.req.query('protocol') as 'sse' | 'websocket' | undefined;
+    const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
 
     if (isNaN(conversationId)) {
       return errorResponse(c, 'Invalid conversation ID', 400);
@@ -69,7 +69,7 @@ app.post('/conversations/:id/join', async (c: Context<{ Bindings: Bindings }>) =
     }
 
     const body = await c.req.json().catch(() => ({}));
-    const protocol = body.protocol as 'sse' | 'websocket' | undefined;
+    const protocol = body.protocol as 'websocket' | 'http' | undefined;
 
     await collaboration.joinConversation({
       conversationId,
@@ -182,7 +182,7 @@ app.post('/presence', async (c: Context<{ Bindings: Bindings }>) => {
  */
 app.get('/stats', async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const protocol = c.req.query('protocol') as 'sse' | 'websocket' | undefined;
+    const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
     const stats = await collaboration.getStats(protocol);
 
     return successResponse(c, stats, 'Statistics retrieved successfully');
