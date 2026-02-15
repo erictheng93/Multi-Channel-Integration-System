@@ -1,42 +1,42 @@
 // 系統管理處理器
 import { Context } from 'hono'
-import type { 
+import type {
   Bindings,
   // AuthPayload,
   // LineWebhookInfo,
   // LineBotInfo,
   // LineTokenInfo,
   // FacebookPageInfo
-} from '../types'
-import { 
+} from '@/types'
+import {
   isLineWebhookInfo,
   isLineBotInfo,
   isFacebookPageInfo,
   // hasApiError
-} from '../types'
-import { 
-  successResponse, 
-  // errorResponse, 
-  // validationErrorResponse, 
-  handleApiError 
-} from '../utils/api-response'
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '../modules/activities'
-import { createDbClient } from '../db/drizzle-factory'
+} from '@/types'
+import {
+  successResponse,
+  // errorResponse,
+  // validationErrorResponse,
+  handleApiError
+} from '@/utils/api-response'
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities'
+import { createDbClient } from '@/db/drizzle-factory'
 import { sql, gte, count } from 'drizzle-orm'
-import { systemSettings, agents, conversations, messages } from '../db/schema'
+import { systemSettings, agents, conversations, messages } from '@/db/schema'
 
 // 簡化的加密工具 (與 credentials.ts 相同)
 const decrypt = async (encryptedText: string, key: string): Promise<string> => {
   const encoder = new TextEncoder()
   const decoder = new TextDecoder()
-  
+
   const combined = new Uint8Array(
     atob(encryptedText).split('').map(char => char.charCodeAt(0))
   )
-  
+
   const iv = combined.slice(0, 12)
   const encrypted = combined.slice(12)
-  
+
   const keyData = encoder.encode(key.padEnd(32, '0').slice(0, 32))
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
@@ -45,13 +45,13 @@ const decrypt = async (encryptedText: string, key: string): Promise<string> => {
     false,
     ['decrypt']
   )
-  
+
   const decrypted = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     cryptoKey,
     encrypted
   )
-  
+
   return decoder.decode(decrypted)
 }
 
@@ -70,17 +70,17 @@ const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'facebook'
     console.log(`Getting ${platform} credentials from KV...`)
     const encryptionKey = getEncryptionKey(env)
     console.log('Encryption key available:', !!encryptionKey)
-    
-    const credentialTypes = platform === 'line' 
+
+    const credentialTypes = platform === 'line'
       ? ['channelId', 'channelSecret', 'accessToken']
       : ['appId', 'appSecret', 'pageId', 'pageToken']
-    
+
     const credentials: any = {}
-    
+
     for (const type of credentialTypes) {
       const key = `credentials:${platform}:${type}`
       console.log(`Retrieving KV key: ${key}`)
-      
+
       const encryptedValue = await env.CACHE?.get(key)
       if (encryptedValue) {
         console.log(`Found encrypted value for ${key}, length:`, encryptedValue.length)
@@ -95,7 +95,7 @@ const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'facebook'
         console.log(`No value found for KV key: ${key}`)
       }
     }
-    
+
     console.log('Final credentials object keys:', Object.keys(credentials))
     return Object.keys(credentials).length > 0 ? credentials : null
   } catch (error) {
@@ -202,7 +202,7 @@ interface SystemSettingsResponse {
 export const getSystemInfo = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     // const drizzleDb = createDbClient(c.env.DB)
-    
+
     // 獲取基本系統資訊
     const systemInfo = {
       version: '1.0.0',
@@ -223,7 +223,7 @@ export const getSystemInfo = async (c: Context<{ Bindings: Bindings }>) => {
 export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const drizzleDb = createDbClient(c.env.DB)
-    
+
     // 從資料庫獲取設定
     const settingsResult = await drizzleDb
       .select({
@@ -231,7 +231,7 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
         value: systemSettings.value
       })
       .from(systemSettings)
-    
+
     const settings: SystemSettingsResponse = {
       general: {
         systemName: 'Multi-Channel Support',
@@ -264,13 +264,13 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
     settingsResult.forEach(row => {
       const keys = row.key.split('.')
       let current: any = settings
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
         if (key && !current[key]) current[key] = {}
         if (key) current = current[key]
       }
-      
+
       const lastKey = keys[keys.length - 1]
       if (lastKey) {
         try {
@@ -292,14 +292,14 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const drizzleDb = createDbClient(c.env.DB)
     const settings = await c.req.json<SystemSettingsUpdate>()
-    
+
     // 將設定扁平化並儲存到資料庫
     const flattenSettings = (obj: any, prefix = ''): Array<{ key: string; value: string }> => {
       const result: Array<{ key: string; value: string }> = []
-      
+
       for (const [key, value] of Object.entries(obj)) {
         const fullKey = prefix ? `${prefix}.${key}` : key
-        
+
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
           result.push(...flattenSettings(value, fullKey))
         } else {
@@ -309,16 +309,16 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
           })
         }
       }
-      
+
       return result
     }
 
     const flatSettings = flattenSettings(settings)
-    
+
     if (flatSettings.length === 0) {
       return successResponse(c, null, 'No settings to update')
     }
-    
+
     // 使用事務更新設定
     for (const { key, value } of flatSettings) {
       await drizzleDb
@@ -370,9 +370,9 @@ export const testIntegration = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const platform = c.req.param('platform')
     const config = await c.req.json()
-    
+
     let testResult = { status: 'error', message: '測試失敗' }
-    
+
     if (platform === 'line') {
       testResult = await testLineIntegration(config, c.env)
     } else if (platform === 'facebook') {
@@ -420,7 +420,7 @@ async function testLineIntegration(config: any, env: Bindings) {
     if (!botInfoResponse.ok) {
       const errorText = await botInfoResponse.text().catch(() => 'Unable to read error response')
       console.error('Bot info failed:', errorText)
-      
+
       // 提供更具體的錯誤訊息
       let errorMessage = 'LINE Access Token 無效或已過期'
       if (botInfoResponse.status === 401) {
@@ -432,9 +432,9 @@ async function testLineIntegration(config: any, env: Bindings) {
       } else if (botInfoResponse.status >= 500) {
         errorMessage = 'LINE API 服務暫時不可用'
       }
-      
-      return { 
-        status: 'error', 
+
+      return {
+        status: 'error',
         message: errorMessage,
         details: `HTTP ${botInfoResponse.status}: ${errorText}`
       }
@@ -462,7 +462,7 @@ async function testLineIntegration(config: any, env: Bindings) {
           'Authorization': `Bearer ${testConfig.accessToken}`
         }
       })
-      
+
       if (webhookResponse.ok) {
         const webhookInfo = await webhookResponse.json()
         console.log('Webhook info retrieved successfully')
@@ -490,8 +490,8 @@ async function testLineIntegration(config: any, env: Bindings) {
     }
   } catch (error) {
     console.error('LINE integration test error:', error)
-    return { 
-      status: 'error', 
+    return {
+      status: 'error',
       message: 'LINE 測試過程中發生錯誤',
       details: error instanceof Error ? error.message : 'Unknown error'
     }
@@ -526,8 +526,8 @@ async function testFacebookIntegration(config: any, env: Bindings) {
     )
 
     if (!tokenResponse.ok) {
-      return { 
-        status: 'error', 
+      return {
+        status: 'error',
         message: 'Facebook Page Access Token 無效',
         details: `Token validation failed: ${tokenResponse.status}`
       }
@@ -538,9 +538,9 @@ async function testFacebookIntegration(config: any, env: Bindings) {
     // 測試 2: 驗證 App Secret
     console.log('Testing Facebook App Secret...')
     try {
-      // const { FacebookAdapter } = await import('../integrations/platform-adapter')
+      // const { FacebookAdapter } = await import('@/integrations/platform-adapter')
       // const facebookAdapter = new FacebookAdapter(testConfig.appSecret, testConfig.pageToken)
-      
+
       // 簡單的 signature 測試
       // const testSignature = await facebookAdapter.verifyWebhook('sha1=test', 'test-body')
       // 這個測試會失敗，但能驗證 App Secret 格式是否正確
@@ -563,11 +563,11 @@ async function testFacebookIntegration(config: any, env: Bindings) {
     let messagingStatus = 'not_tested'
     if (testConfig.testUserId) {
       try {
-        const { FacebookAdapter } = await import('../integrations/platform-adapter')
+        const { FacebookAdapter } = await import('@/integrations/platform-adapter')
         const facebookAdapter = new FacebookAdapter(testConfig.appSecret, testConfig.pageToken)
-        
+
         const testMessage = await facebookAdapter.sendTextMessage(
-          testConfig.testUserId, 
+          testConfig.testUserId,
           '🤖 Facebook Messenger 整合測試成功！'
         )
         messagingStatus = testMessage ? 'success' : 'failed'
@@ -590,8 +590,8 @@ async function testFacebookIntegration(config: any, env: Bindings) {
     }
   } catch (error) {
     console.error('Facebook integration test error:', error)
-    return { 
-      status: 'error', 
+    return {
+      status: 'error',
       message: 'Facebook 測試過程中發生錯誤',
       details: error instanceof Error ? error.message : 'Unknown error'
     }
@@ -602,11 +602,11 @@ async function testFacebookIntegration(config: any, env: Bindings) {
 export const getMetrics = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const drizzleDb = createDbClient(c.env.DB)
-    
+
     // 獲取統計數據
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     // const todayStart = new Date().toISOString().split('T')[0]; // Unused
-    
+
     const [activeUsers, totalConversations, messagesToday] = await Promise.all([
       drizzleDb.select({ count: count() }).from(agents).where(gte(agents.lastLoginAt, oneHourAgo)),
       drizzleDb.select({ count: count() }).from(conversations),
@@ -633,10 +633,10 @@ export const backupDatabase = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     // 在實際環境中，這裡會執行資料庫備份
     // Cloudflare D1 目前不支援直接備份，需要通過其他方式實現
-    
+
     const backupId = `backup_${Date.now()}`
     const filename = `database_backup_${new Date().toISOString().split('T')[0]}.sql`
-    
+
     return successResponse(c, {
       backupId,
       filename,
@@ -677,10 +677,10 @@ export const getBackups = async (c: Context<{ Bindings: Bindings }>) => {
 export const restoreDatabase = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const backupId = c.req.param('backupId')
-    
+
     // 在實際環境中，這裡會執行資料庫恢復
     console.log(`Restoring database from backup: ${backupId}`)
-    
+
     return successResponse(c, null, 'Database restored successfully')
   } catch (error) {
     return handleApiError(error, c)
@@ -691,11 +691,11 @@ export const restoreDatabase = async (c: Context<{ Bindings: Bindings }>) => {
 export const clearCache = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const { type } = await c.req.json<{ type: string }>()
-    
+
     // 在實際環境中，這裡會清除相應的快取
     const cleared = []
     let totalSize = 0
-    
+
     switch (type) {
       case 'all':
         cleared.push('conversations', 'messages', 'sessions')
@@ -727,7 +727,7 @@ export const restartSystem = async (c: Context<{ Bindings: Bindings }>) => {
     // 在 Cloudflare Workers 環境中，無法直接重啟系統
     // 這裡只是記錄重啟請求
     console.log('System restart requested')
-    
+
     return successResponse(c, null, 'System restart command sent')
   } catch (error) {
     return handleApiError(error, c)
@@ -739,7 +739,7 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const drizzleDb = createDbClient(c.env.DB)
     const startTime = Date.now()
-    
+
     // 檢查資料庫連線
     let dbCheck = true
     let dbResponseTime = 0
@@ -751,7 +751,7 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
       dbCheck = false
       dbResponseTime = Date.now() - startTime
     }
-    
+
     // 檢查KV存儲 - 使用 CACHE 而不是 SESSIONS 進行健康檢查
     let kvCheck = false
     let kvResponseTime = 0
@@ -784,11 +784,11 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     kvResponseTime = Date.now() - kvStart
-    
+
     // 檢查平台整合狀態
     const lineCheck = await checkLineIntegration(c.env)
     const facebookCheck = await checkFacebookIntegration(c.env)
-    
+
     // 計算總響應時間
     const totalResponseTime = Date.now() - startTime
 
@@ -920,7 +920,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
       endpoints.map(async (endpoint) => {
         const responseTime = Math.floor(Math.random() * 500) + 50 // 50-550ms
         const successRate = Math.floor(Math.random() * 10) + 90 // 90-100%
-        
+
         return {
           ...endpoint,
           responseTime,
@@ -929,7 +929,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
           requestCount: Math.floor(Math.random() * 1000) + 100,
           errorCount: Math.floor(Math.random() * 10),
           lastCheck: new Date(),
-          status: successRate > 95 && responseTime < 200 ? 'healthy' as const : 
+          status: successRate > 95 && responseTime < 200 ? 'healthy' as const :
                  successRate > 90 && responseTime < 500 ? 'warning' as const : 'error' as const
         }
       })
@@ -962,11 +962,11 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
 async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; message: string }> {
   try {
     console.log('Starting LINE integration check...')
-    
+
     // 嘗試從 KV 獲取憑證
     const credentials = await getCredentialsFromKV(env, 'line')
     console.log('LINE credentials from KV:', credentials ? 'Found credentials' : 'No credentials')
-    
+
     const accessToken = credentials?.accessToken || env.LINE_CHANNEL_ACCESS_TOKEN
 
     if (!accessToken) {
@@ -994,26 +994,26 @@ async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; m
     } else {
       const errorText = await response.text().catch(() => 'Unable to read error')
       console.error('LINE API error response:', errorText)
-      
+
       let errorMessage = `LINE API error: ${response.status}`
       if (response.status === 401) {
         errorMessage += ' (Invalid or expired access token)'
       } else if (response.status === 403) {
         errorMessage += ' (Insufficient permissions)'
       }
-      
+
       return { status: false, message: errorMessage }
     }
   } catch (error) {
     console.error('LINE integration check error:', error)
-    return { 
-      status: false, 
-      message: `LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    return {
+      status: false,
+      message: `LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
 }
 
-// 檢查 Facebook 整合狀態  
+// 檢查 Facebook 整合狀態
 async function checkFacebookIntegration(env: Bindings): Promise<{ status: boolean; message: string }> {
   try {
     // 嘗試從 KV 獲取憑證
@@ -1040,9 +1040,9 @@ async function checkFacebookIntegration(env: Bindings): Promise<{ status: boolea
       return { status: false, message: `Facebook API error: ${response.status}` }
     }
   } catch (error) {
-    return { 
-      status: false, 
-      message: `Facebook check failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+    return {
+      status: false,
+      message: `Facebook check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
 }

@@ -3,7 +3,7 @@
 
 // Legacy handlers (remaining active ones)
 export { webhookHandler } from '../modules/integrations/handlers/webhook'
-export * from './system'
+export * from '../modules/system/handlers/system-legacy'
 
 // 新的主要處理器 (Handler-based approach)
 export { default as authMainHandler } from '../modules/auth/handlers/auth-main-legacy'
