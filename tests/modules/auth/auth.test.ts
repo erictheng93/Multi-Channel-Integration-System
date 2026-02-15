@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { signJWT, verifyJWT, hashPassword, verifyPassword, authenticateUser } from '@modules/auth/services/auth';
-import { MockFactory } from '@helpers/mockFactory';
+
 import type { JWTPayload } from '@shared/types';
 
 describe('Auth Module - JWT Functions', () => {

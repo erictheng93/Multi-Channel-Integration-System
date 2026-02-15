@@ -1,162 +1,96 @@
+# Backend Tests
 
+## Mock Standard
+
+This project uses **`vi.fn()` with manual chainable mocks**. See `tests/helpers/README.md` for the standard pattern and available helpers.
+
+> **Do NOT** use frameworks from `tests/archive/deprecated-helpers/` (MockFactory, DatabaseTestEnvironment, etc.)
+
+## Structure
 
 ```
 tests/
- unit/ #
- utils/ #
- auth.test.ts #
- handlers/ # API
- services/ #
- integration/ #
- activity-log.test.ts #
- e2e/ #
- helpers/ #
- mockDatabase.ts #
- mockKV.ts # KV
- testData.ts #
- test-activity-logging.ts #
- test-permissions.ts #
- run-all-tests.ts #
- setup.ts #
- vitest.config.ts # Vitest
- package.json #
+  unit/              # Unit tests
+  modules/           # Module-specific tests
+  integration/       # Integration tests
+  e2e/               # End-to-end tests
+  edge-cases/        # Boundary condition tests
+  helpers/           # Active test helpers (see helpers/README.md)
+    mockDrizzle.ts   # Drizzle ORM mocking
+    mockKV.ts        # Cloudflare KV mocking
+    testUtils.ts     # General utilities
+    websocket/       # WebSocket test infrastructure
+  archive/           # Historical reference only (do not use)
 ```
 
+## Running Tests
 
 ```bash
-cd tests
-npm install
-```
+# Run all handler tests
+npm run test:handlers
 
+# Run API integration tests
+npm run test:api
 
-```bash
-# npm
-npm test
+# Run specific test file
+npm test tests/unit/handlers/messaging-handler.test.ts
 
-
-npx tsx run-all-tests.ts
-```
-
-
-```bash
-
-npx tsx integration/activity-log.test.ts
-
-
-npx tsx test-activity-logging.ts
-
-
-npx tsx test-permissions.ts
-
-
-npm test auth.test.ts
-```
-
-
-```bash
+# Run with coverage
 npm run test:coverage
 ```
 
+## Active Helpers
 
-```bash
-npm run test:watch
-```
-
-### UI
-```bash
-npm run test:ui
-```
-
-
-1. **** (`unit/utils/auth.test.ts`)
- - JWT
- -
- -
- -
- -
-
-
-2. **** (`unit/utils/database.test.ts`)
-3. **LINE ** (`unit/utils/line.test.ts`)
-4. **API ** (`unit/handlers/`)
-
-
-5. **** (`unit/frontend/`)
-6. **** (`integration/`)
-
-
-### MockD1Database
- Cloudflare D1
-```typescript
-import { createMockDatabase } from './helpers/mockDatabase'
-
-const mockDB = createMockDatabase()
-mockDB.mockQuery('SELECT * FROM users WHERE id = ?', mockUser)
-```
-
-### MockKVNamespace
- Cloudflare KV
-```typescript
-import { createMockKV } from './helpers/mockKV'
-
-const mockKV = createMockKV()
-mockKV.setMockValue('session:123', JSON.stringify(sessionData))
-```
-
+### mockKV
 
 ```typescript
-import { mockUsers, testPasswords } from './helpers/testData'
+import { createMockKV } from './helpers/mockKV';
 
-//
-const adminUser = mockUsers.admin
-const validPassword = testPasswords.valid
+const mockKV = createMockKV();
+mockKV.setMockValue('session:123', JSON.stringify(sessionData));
 ```
 
+### mockDrizzle
 
 ```typescript
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { functionToTest } from '../../../src/path/to/module'
-import { createMockDatabase } from '../../helpers/mockDatabase'
+import { createMockDrizzle } from './helpers/mockDrizzle';
 
-describe('Module Name', () => {
- const mockDB = createMockDatabase()
-
- beforeEach(() => {
- mockDB.reset()
- })
-
- describe('functionToTest', () => {
- it('should do something when given valid input', async () => {
- // Arrange
- const input = 'test-input'
- mockDB.mockQuery('SELECT * FROM table', { id: 1 })
-
- // Act
- const result = await functionToTest(mockDB, input)
-
- // Assert
- expect(result).toBeDefined()
- expect(result.id).toBe(1)
- })
- })
-})
+const { db, mocks } = createMockDrizzle();
 ```
 
+## Writing New Tests
 
-1. **AAA **: ArrangeActAssert
-2. ****:
-3. ****:
-4. ****: mock
-5. ****:
-6. ****: `beforeEach` mock
+```typescript
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+describe('MyService', () => {
+  // Create mocks tailored to this test file
+  const mockDb = {
+    select: vi.fn(),
+    insert: vi.fn(),
+  };
 
--
-- Pull Request
--
+  beforeEach(() => {
+    vi.clearAllMocks(); // NOT vi.restoreAllMocks()
+  });
 
+  it('should do something', async () => {
+    // Arrange
+    mockDb.select.mockResolvedValue([{ id: 1 }]);
 
-- : 90%+
-- API : 80%+
-- : 85%+
-- : 75%+
+    // Act
+    const result = await myFunction(mockDb);
+
+    // Assert
+    expect(result).toBeDefined();
+  });
+});
+```
+
+## Best Practices
+
+1. **AAA Pattern**: Arrange, Act, Assert
+2. **Self-contained mocks**: Each test file creates its own mocks
+3. **Use `vi.clearAllMocks()` in `beforeEach`**: Clears call history without breaking `vi.mock()` factories
+4. **Use `vi.hoisted()`** for mock functions inside `vi.mock()` factory callbacks
+5. **Mock external dependencies**: Always mock D1, KV, R2, and Durable Objects

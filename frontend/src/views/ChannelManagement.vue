@@ -1,326 +1,328 @@
 <template>
-  <div class="channel-management">
-    <!-- Page Header -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">
-          頻道管理
-        </h1>
-        <p class="page-description">
-          管理所有通訊平台的頻道配置
-        </p>
-      </div>
-      <button
-        class="btn btn-primary"
-        @click="openAddChannelDialog"
-      >
-        <span class="btn-icon">+</span>
-        新增頻道
-      </button>
-    </div>
-
-    <!-- Platform Filter -->
-    <div class="filter-section">
-      <div class="filter-buttons">
+  <AppLayout>
+    <div class="channel-management">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="header-content">
+          <h1 class="page-title">
+            頻道管理
+          </h1>
+          <p class="page-description">
+            管理所有通訊平台的頻道配置
+          </p>
+        </div>
         <button
-          class="filter-btn"
-          :class="{ active: selectedPlatform === null }"
-          @click="filterByPlatform(null)"
+          class="btn btn-primary"
+          @click="openAddChannelDialog"
         >
-          全部
-          <span class="count-badge">{{ channels.length }}</span>
-        </button>
-        <button
-          class="filter-btn"
-          :class="{ active: selectedPlatform === 'line' }"
-          @click="filterByPlatform('line')"
-        >
-          💬 LINE
-          <span class="count-badge">{{ getChannelCount('line') }}</span>
-        </button>
-        <button
-          class="filter-btn"
-          :class="{ active: selectedPlatform === 'facebook' }"
-          @click="filterByPlatform('facebook')"
-        >
-          👍 Facebook
-          <span class="count-badge">{{ getChannelCount('facebook') }}</span>
-        </button>
-        <button
-          class="filter-btn"
-          :class="{ active: selectedPlatform === 'whatsapp' }"
-          @click="filterByPlatform('whatsapp')"
-        >
-          📱 WhatsApp
-          <span class="count-badge">{{ getChannelCount('whatsapp') }}</span>
+          <span class="btn-icon">+</span>
+          新增頻道
         </button>
       </div>
 
-      <button
-        class="btn btn-secondary btn-sm"
-        @click="refreshChannels"
-      >
-        <span>🔄</span>
-        重新整理
-      </button>
-    </div>
-
-    <!-- Loading State -->
-    <div
-      v-if="isLoading"
-      class="loading-state"
-    >
-      <div class="spinner" />
-      <p>載入頻道資料中...</p>
-    </div>
-
-    <!-- Empty State -->
-    <div
-      v-else-if="filteredChannels.length === 0"
-      class="empty-state"
-    >
-      <div class="empty-icon">
-        📭
-      </div>
-      <h3>尚未設定任何頻道</h3>
-      <p>點擊「新增頻道」按鈕開始設定您的第一個通訊平台</p>
-      <button
-        class="btn btn-primary"
-        @click="openAddChannelDialog"
-      >
-        新增頻道
-      </button>
-    </div>
-
-    <!-- Channel List -->
-    <div
-      v-else
-      class="channel-grid"
-    >
-      <div
-        v-for="channel in filteredChannels"
-        :key="channel.id"
-        class="channel-card"
-        :class="{ inactive: !channel.isActive }"
-      >
-        <!-- Card Header -->
-        <div class="card-header">
-          <div
-            class="platform-badge"
-            :class="`platform-${channel.platform}`"
+      <!-- Platform Filter -->
+      <div class="filter-section">
+        <div class="filter-buttons">
+          <button
+            class="filter-btn"
+            :class="{ active: selectedPlatform === null }"
+            @click="filterByPlatform(null)"
           >
-            <span class="platform-icon">{{ getPlatformIcon(channel.platform) }}</span>
-            <span class="platform-name">{{ getPlatformName(channel.platform) }}</span>
-          </div>
+            全部
+            <span class="count-badge">{{ channels.length }}</span>
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: selectedPlatform === 'line' }"
+            @click="filterByPlatform('line')"
+          >
+            💬 LINE
+            <span class="count-badge">{{ getChannelCount('line') }}</span>
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: selectedPlatform === 'facebook' }"
+            @click="filterByPlatform('facebook')"
+          >
+            👍 Facebook
+            <span class="count-badge">{{ getChannelCount('facebook') }}</span>
+          </button>
+          <button
+            class="filter-btn"
+            :class="{ active: selectedPlatform === 'whatsapp' }"
+            @click="filterByPlatform('whatsapp')"
+          >
+            📱 WhatsApp
+            <span class="count-badge">{{ getChannelCount('whatsapp') }}</span>
+          </button>
+        </div>
 
-          <div class="card-actions">
-            <button
-              class="action-btn"
-              :title="channel.isActive ? '停用' : '啟用'"
-              @click="toggleChannelStatus(channel)"
-            >
-              {{ channel.isActive ? '●' : '○' }}
-            </button>
-            <button
-              class="action-btn"
-              title="更多選項"
-              @click="toggleDropdown(channel.id)"
-            >
-              ⋮
-            </button>
+        <button
+          class="btn btn-secondary btn-sm"
+          @click="refreshChannels"
+        >
+          <span>🔄</span>
+          重新整理
+        </button>
+      </div>
 
-            <!-- Dropdown Menu -->
+      <!-- Loading State -->
+      <div
+        v-if="isLoading"
+        class="loading-state"
+      >
+        <div class="spinner" />
+        <p>載入頻道資料中...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-else-if="filteredChannels.length === 0"
+        class="empty-state"
+      >
+        <div class="empty-icon">
+          📭
+        </div>
+        <h3>尚未設定任何頻道</h3>
+        <p>點擊「新增頻道」按鈕開始設定您的第一個通訊平台</p>
+        <button
+          class="btn btn-primary"
+          @click="openAddChannelDialog"
+        >
+          新增頻道
+        </button>
+      </div>
+
+      <!-- Channel List -->
+      <div
+        v-else
+        class="channel-grid"
+      >
+        <div
+          v-for="channel in filteredChannels"
+          :key="channel.id"
+          class="channel-card"
+          :class="{ inactive: !channel.isActive }"
+        >
+          <!-- Card Header -->
+          <div class="card-header">
             <div
-              v-if="activeDropdown === channel.id"
-              class="dropdown-menu"
+              class="platform-badge"
+              :class="`platform-${channel.platform}`"
             >
-              <button @click="viewChannelDetails(channel)">
-                查看詳情
-              </button>
-              <button @click="verifyChannel(channel)">
-                驗證配置
-              </button>
-              <button @click="viewStats(channel)">
-                查看統計
-              </button>
-              <button @click="editChannel(channel)">
-                編輯配置
+              <span class="platform-icon">{{ getPlatformIcon(channel.platform) }}</span>
+              <span class="platform-name">{{ getPlatformName(channel.platform) }}</span>
+            </div>
+
+            <div class="card-actions">
+              <button
+                class="action-btn"
+                :title="channel.isActive ? '停用' : '啟用'"
+                @click="toggleChannelStatus(channel)"
+              >
+                {{ channel.isActive ? '●' : '○' }}
               </button>
               <button
-                class="danger"
-                @click="deleteChannel(channel)"
+                class="action-btn"
+                title="更多選項"
+                @click="toggleDropdown(channel.id)"
               >
-                刪除頻道
+                ⋮
               </button>
+
+              <!-- Dropdown Menu -->
+              <div
+                v-if="activeDropdown === channel.id"
+                class="dropdown-menu"
+              >
+                <button @click="viewChannelDetails(channel)">
+                  查看詳情
+                </button>
+                <button @click="verifyChannel(channel)">
+                  驗證配置
+                </button>
+                <button @click="viewStats(channel)">
+                  查看統計
+                </button>
+                <button @click="editChannel(channel)">
+                  編輯配置
+                </button>
+                <button
+                  class="danger"
+                  @click="deleteChannel(channel)"
+                >
+                  刪除頻道
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Card Body -->
-        <div class="card-body">
-          <div class="channel-info">
-            <div class="info-item">
-              <span class="label">Channel ID：</span>
-              <span class="value">{{ getChannelId(channel) }}</span>
+          <!-- Card Body -->
+          <div class="card-body">
+            <div class="channel-info">
+              <div class="info-item">
+                <span class="label">Channel ID：</span>
+                <span class="value">{{ getChannelId(channel) }}</span>
+              </div>
+              <div
+                v-if="channel.configMetadata?.description"
+                class="info-item"
+              >
+                <span class="label">說明：</span>
+                <span class="value">{{ channel.configMetadata.description }}</span>
+              </div>
             </div>
+
+            <!-- Status Badges -->
+            <div class="status-badges">
+              <div
+                class="status-badge"
+                :class="channel.isActive ? 'success' : 'inactive'"
+              >
+                {{ channel.isActive ? '啟用中' : '已停用' }}
+              </div>
+              <div
+                class="status-badge"
+                :class="channel.isVerified ? 'success' : 'warning'"
+              >
+                {{ channel.isVerified ? '已驗證' : '未驗證' }}
+              </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="stats">
+              <div class="stat-item">
+                <div class="stat-label">
+                  發送訊息
+                </div>
+                <div class="stat-value">
+                  {{ getStats(channel).totalSent }}
+                </div>
+              </div>
+              <div class="stat-divider" />
+              <div class="stat-item">
+                <div class="stat-label">
+                  接收訊息
+                </div>
+                <div class="stat-value">
+                  {{ getStats(channel).totalReceived }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Last Activity -->
             <div
-              v-if="channel.configMetadata?.description"
-              class="info-item"
+              v-if="getStats(channel).lastMessageAt"
+              class="last-activity"
             >
-              <span class="label">說明：</span>
-              <span class="value">{{ channel.configMetadata.description }}</span>
+              最後活動：{{ formatDate(getStats(channel).lastMessageAt!) }}
             </div>
           </div>
 
-          <!-- Status Badges -->
-          <div class="status-badges">
-            <div
-              class="status-badge"
-              :class="channel.isActive ? 'success' : 'inactive'"
+          <!-- Card Footer -->
+          <div class="card-footer">
+            <button
+              class="btn btn-sm btn-secondary"
+              @click="copyWebhookUrl(channel)"
             >
-              {{ channel.isActive ? '啟用中' : '已停用' }}
-            </div>
-            <div
-              class="status-badge"
-              :class="channel.isVerified ? 'success' : 'warning'"
-            >
-              {{ channel.isVerified ? '已驗證' : '未驗證' }}
-            </div>
-          </div>
-
-          <!-- Statistics -->
-          <div class="stats">
-            <div class="stat-item">
-              <div class="stat-label">
-                發送訊息
-              </div>
-              <div class="stat-value">
-                {{ getStats(channel).totalSent }}
-              </div>
-            </div>
-            <div class="stat-divider" />
-            <div class="stat-item">
-              <div class="stat-label">
-                接收訊息
-              </div>
-              <div class="stat-value">
-                {{ getStats(channel).totalReceived }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Last Activity -->
-          <div
-            v-if="getStats(channel).lastMessageAt"
-            class="last-activity"
-          >
-            最後活動：{{ formatDate(getStats(channel).lastMessageAt!) }}
-          </div>
-        </div>
-
-        <!-- Card Footer -->
-        <div class="card-footer">
-          <button
-            class="btn btn-sm btn-secondary"
-            @click="copyWebhookUrl(channel)"
-          >
-            📋 複製 Webhook URL
-          </button>
-          <button
-            class="btn btn-sm btn-primary"
-            @click="verifyChannel(channel)"
-          >
-            ✓ 驗證
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Channel Config Dialog -->
-    <ChannelConfigDialog
-      :show="showConfigDialog"
-      :channel="selectedChannel"
-      @update:show="showConfigDialog = $event"
-      @close="closeConfigDialog"
-      @success="handleChannelCreated"
-    />
-
-    <!-- Details Modal -->
-    <Modal
-      :show="showDetailsModal"
-      title="頻道詳情"
-      size="lg"
-      @close="showDetailsModal = false"
-      @update:show="showDetailsModal = $event"
-    >
-      <div
-        v-if="selectedChannel"
-        class="details-content"
-      >
-        <div class="detail-section">
-          <h4>基本資訊</h4>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-label">平台：</span>
-              <span class="detail-value">{{ getPlatformName(selectedChannel.platform) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">狀態：</span>
-              <span class="detail-value">{{ selectedChannel.isActive ? '啟用中' : '已停用' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">驗證狀態：</span>
-              <span class="detail-value">{{ selectedChannel.isVerified ? '已驗證' : '未驗證' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">建立時間：</span>
-              <span class="detail-value">{{ formatDate(selectedChannel.createdAt) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <h4>Webhook 設定</h4>
-          <div class="webhook-url-container">
-            <input
-              :value="getWebhookUrl(selectedChannel)"
-              type="text"
-              class="webhook-url-display"
-              readonly
-            >
+              📋 複製 Webhook URL
+            </button>
             <button
               class="btn btn-sm btn-primary"
-              @click="copyWebhookUrl(selectedChannel)"
+              @click="verifyChannel(channel)"
             >
-              複製
+              ✓ 驗證
             </button>
           </div>
         </div>
+      </div>
 
-        <div class="detail-section">
-          <h4>使用統計</h4>
-          <div class="stats-grid">
-            <div class="stat-box">
-              <div class="stat-number">
-                {{ getStats(selectedChannel).totalSent }}
+      <!-- Channel Config Dialog -->
+      <ChannelConfigDialog
+        :show="showConfigDialog"
+        :channel="selectedChannel"
+        @update:show="showConfigDialog = $event"
+        @close="closeConfigDialog"
+        @success="handleChannelCreated"
+      />
+
+      <!-- Details Modal -->
+      <Modal
+        :show="showDetailsModal"
+        title="頻道詳情"
+        size="lg"
+        @close="showDetailsModal = false"
+        @update:show="showDetailsModal = $event"
+      >
+        <div
+          v-if="selectedChannel"
+          class="details-content"
+        >
+          <div class="detail-section">
+            <h4>基本資訊</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">平台：</span>
+                <span class="detail-value">{{ getPlatformName(selectedChannel.platform) }}</span>
               </div>
-              <div class="stat-text">
-                發送訊息
+              <div class="detail-item">
+                <span class="detail-label">狀態：</span>
+                <span class="detail-value">{{ selectedChannel.isActive ? '啟用中' : '已停用' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">驗證狀態：</span>
+                <span class="detail-value">{{ selectedChannel.isVerified ? '已驗證' : '未驗證' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">建立時間：</span>
+                <span class="detail-value">{{ formatDate(selectedChannel.createdAt) }}</span>
               </div>
             </div>
-            <div class="stat-box">
-              <div class="stat-number">
-                {{ getStats(selectedChannel).totalReceived }}
+          </div>
+
+          <div class="detail-section">
+            <h4>Webhook 設定</h4>
+            <div class="webhook-url-container">
+              <input
+                :value="getWebhookUrl(selectedChannel)"
+                type="text"
+                class="webhook-url-display"
+                readonly
+              >
+              <button
+                class="btn btn-sm btn-primary"
+                @click="copyWebhookUrl(selectedChannel)"
+              >
+                複製
+              </button>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>使用統計</h4>
+            <div class="stats-grid">
+              <div class="stat-box">
+                <div class="stat-number">
+                  {{ getStats(selectedChannel).totalSent }}
+                </div>
+                <div class="stat-text">
+                  發送訊息
+                </div>
               </div>
-              <div class="stat-text">
-                接收訊息
+              <div class="stat-box">
+                <div class="stat-number">
+                  {{ getStats(selectedChannel).totalReceived }}
+                </div>
+                <div class="stat-text">
+                  接收訊息
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </Modal>
-  </div>
+      </Modal>
+    </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -329,6 +331,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { channelsApi, parseConfig, parseWebhookConfig, parseStats } from '@/api/channels'
 import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
+import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { ROLES } from '@/constants/roles'

@@ -10,7 +10,7 @@ import type {
   UserAnalyticsQuery,
   PerformanceAnalyticsQuery
 } from '../../src/modules/analytics/types/analytics-types';
-import { MockFactory } from '@helpers/mockFactory';
+
 
 /**
  * 邊界條件測試配置

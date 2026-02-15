@@ -132,7 +132,7 @@ bun test
 - Store testing with proper setup
 
 **⚠️ Known Issues:**
-- `better-sqlite3` requires `bun:sqlite` adapter (automatically handled via vitest.config.ts alias)
+- `better-sqlite3` requires `bun:sqlite` adapter (see `tests/archive/deprecated-helpers/bun-sqlite-adapter.ts`)
 - Some tests may show `ReferenceError: document is not defined` (environment config issue, not critical)
 
 ### Bun Test Environment
@@ -173,10 +173,58 @@ cd frontend && npm run test
 
 **Rollback Time:** < 3 minutes for full environment switch
 
+## Mock Standard (IMPORTANT)
+
+**This project uses `vi.fn()` with manual chainable mocks as the standard pattern.**
+
+Do NOT use MockFactory, DatabaseTestEnvironment, or any framework from `tests/archive/deprecated-helpers/`. Those were abandoned migration attempts and are kept only for historical reference.
+
+### Standard Pattern
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Each test file creates its own mocks
+function createMockDb() {
+  const chain = {
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+  };
+  return {
+    select: vi.fn(() => chain),
+    insert: vi.fn(() => ({ values: vi.fn().mockReturnThis(), returning: vi.fn() })),
+    update: vi.fn(() => ({ set: vi.fn().mockReturnThis(), where: vi.fn() })),
+    delete: vi.fn(() => ({ where: vi.fn() })),
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks(); // NEVER use vi.restoreAllMocks() — it breaks vi.mock() factories
+});
+```
+
+### Key Rules
+
+1. **Each test creates its own mocks** — tailored to what it needs
+2. **Use `vi.clearAllMocks()` in `beforeEach`** — NOT `vi.restoreAllMocks()`
+3. **Use `vi.hoisted()`** for mock functions inside `vi.mock()` factories
+4. **Active helpers** are in `tests/helpers/` — see `tests/helpers/README.md` for what's available
+
+### Active Test Helpers
+
+| Helper | Purpose |
+|--------|---------|
+| `tests/helpers/mockDrizzle.ts` | Drizzle ORM mock utilities |
+| `tests/helpers/mockKV.ts` | Cloudflare KV mock |
+| `tests/helpers/testUtils.ts` | General test utilities |
+| `tests/helpers/websocket/` | WebSocket test client and helpers |
+
 ## Test Best Practices
 
 1. **Mock External Dependencies**: Always mock D1, KV, R2, and Durable Objects
-2. **Use Test Helpers**: Leverage existing helpers for WebSocket and database testing
+2. **Use Active Helpers Only**: See `tests/helpers/README.md` for current helpers
 3. **Test Real-time Features**: Ensure WebSocket events are properly tested
 4. **Coverage Goals**: Maintain >80% coverage for critical paths
 5. **Performance Testing**: Include load testing for scalability validation
@@ -185,6 +233,7 @@ cd frontend && npm run test
 ## Related Documentation
 
 - `frontend/vitest.config.ts` - Frontend test configuration
+- `tests/helpers/README.md` - Active test helpers and mock standard
 - `tests/helpers/` - Test utility functions and mocking helpers
 - `docs/history/reports/modules/MESSAGING_MODULE_ENHANCEMENT_REPORT.md` - Messaging handler test results
 - `docs/BUN_MIGRATION_GUIDE.md` - Complete Bun migration guide with testing instructions
