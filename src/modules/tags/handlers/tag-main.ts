@@ -1,17 +1,19 @@
-// 標籤管理處理器 - 主要實現
+// src/modules/tags/handlers/tag-main.ts
+// Tag management handler - main router
+
 import { Hono } from 'hono';
-import type { Bindings } from '../types';
-import { tagHandler } from './tag';
-import { jwtAuth } from '../middleware/auth';
+import type { Bindings } from '@/types';
+import { tagHandler } from '../services/tag-service';
+import { jwtAuth } from '@/middleware/auth';
 
 const tagMainHandler = new Hono<{ Bindings: Bindings }>();
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
-// 不再需要 handler 級別的 CORS middleware
+// CORS handling moved to src/index.ts unified management
+// No handler-level CORS middleware needed
 
-// 🔒 應用 JWT 認證中間件到所有端點（除了健康檢查）
+// Apply JWT auth middleware to all endpoints (except health check)
 tagMainHandler.use('/*', async (c, next) => {
-  // 健康檢查端點不需要認證
+  // Health check endpoint does not require authentication
   if (c.req.path.endsWith('/health')) {
     return next();
   }
@@ -19,12 +21,12 @@ tagMainHandler.use('/*', async (c, next) => {
 });
 
 // ========================================
-// 標籤管理端點
-// Route registration order: STATIC → SPECIFIC → PARAMETERIZED → WILDCARD
+// Tag management endpoints
+// Route registration order: STATIC -> SPECIFIC -> PARAMETERIZED -> WILDCARD
 // ========================================
 
 // ========================================
-// 健康檢查端點
+// Health check endpoint
 // Route Order: Registered first to prevent any potential interception
 // ========================================
 tagMainHandler.get('/health', (c) => {
@@ -40,31 +42,31 @@ tagMainHandler.get('/health', (c) => {
 });
 
 // ==================== Priority 1: SPECIFIC multi-segment routes ====================
-// 批量操作標籤 (must be before /:id routes)
+// Bulk tag operations (must be before /:id routes)
 tagMainHandler.post('/bulk', tagHandler.bulkOperation);
 
 // ==================== Priority 2: PARAMETERIZED multi-segment routes ====================
-// 獲取標籤使用統計
+// Get tag usage statistics
 tagMainHandler.get('/:id/stats', tagHandler.getUsageStats);
 
-// 獲取標籤的客戶列表
+// Get tag's customer list
 tagMainHandler.get('/:id/customers', tagHandler.getTagCustomers);
 
 // ==================== Priority 3: PARAMETERIZED single-segment routes ====================
-// 獲取單一標籤詳情
+// Get single tag details
 tagMainHandler.get('/:id', tagHandler.get);
 
-// 更新標籤
+// Update tag
 tagMainHandler.put('/:id', tagHandler.update);
 
-// 刪除標籤（軟刪除）
+// Delete tag (soft delete)
 tagMainHandler.delete('/:id', tagHandler.delete);
 
 // ==================== Priority 4: WILDCARD routes ====================
-// 獲取標籤列表
+// Get tag list
 tagMainHandler.get('/', tagHandler.list);
 
-// 創建標籤
+// Create tag
 tagMainHandler.post('/', tagHandler.create);
 
 export default tagMainHandler;

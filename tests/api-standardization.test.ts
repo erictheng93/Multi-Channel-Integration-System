@@ -190,17 +190,7 @@ describe('API 標準化測試', () => {
       expect(data).toHaveProperty('requestId')
     })
 
-    test('附件處理器應該使用標準響應', async () => {
-      const { attachmentHandler } = await import('../src/handlers/attachment')
-      const mockContext = createMockContext('GET', '/conversations/test-id/attachments/test-attachment-id')
-      
-      const response = await attachmentHandler.get(mockContext)
-      const data = await response.json()
-      
-      expect(data).toHaveProperty('success')
-      expect(data).toHaveProperty('timestamp')
-      expect(data).toHaveProperty('requestId')
-    })
+    // Legacy attachment handler test removed - file management handled by src/modules/file-management/
 
     test('系統處理器應該使用標準響應', async () => {
       const { getSystemInfo } = await import('../src/handlers/system')

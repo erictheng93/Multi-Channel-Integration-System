@@ -32,9 +32,6 @@ export * from './utils/mime-type-utils';
 export * from './constants/file-config';
 export * from './constants/error-codes';
 
-// Refactored handlers for backward compatibility
-export * from '../../handlers/attachment-refactored';
-
 // Re-export commonly used items
 export { FileService } from './services/file-service';
 export { FileValidationService } from './services/validation-service';
