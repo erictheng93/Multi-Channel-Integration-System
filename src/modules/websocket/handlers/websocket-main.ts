@@ -42,7 +42,6 @@ interface WebSocketConfig {
   heartbeatInterval: number;
   connectionTimeout: number;
   upgradeTimeout: number;
-  fallbackToSSE: boolean;
 }
 
 const DEFAULT_CONFIG: WebSocketConfig = {
@@ -50,8 +49,7 @@ const DEFAULT_CONFIG: WebSocketConfig = {
   maxGlobalConnections: 10000,
   heartbeatInterval: 30000, // 30 seconds
   connectionTimeout: 300000, // 5 minutes
-  upgradeTimeout: 10000, // 10 seconds
-  fallbackToSSE: true
+  upgradeTimeout: 10000 // 10 seconds
 };
 
 // =================== WebSocket Upgrade Handler ===================
