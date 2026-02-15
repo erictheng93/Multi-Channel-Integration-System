@@ -1,10 +1,10 @@
 // 監控儀表板API處理器
 import type { Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import type { Bindings } from '../types';
-import { automatedHealthMonitoring } from '../services/automated-health-monitoring';
-import { healthCheckService } from '../services/health-check-service';
-import { successResponse, internalErrorResponse } from '../utils/api-response';
+import type { Bindings } from '@/types';
+import { automatedHealthMonitoring } from '@/services/automated-health-monitoring';
+import { healthCheckService } from '@/services/health-check-service';
+import { successResponse, internalErrorResponse } from '@/utils/api-response';
 
 /**
  * 獲取監控儀表板數據

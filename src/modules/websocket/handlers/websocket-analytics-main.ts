@@ -1,19 +1,19 @@
 // WebSocket Analytics API Handler
-// Phase 2: 長期優化 - 錯誤趨勢分析儀表板 API
-// 專案：Multi-Channel Support MVP - WebSocket 監控系統
+// Phase 2: Long-term optimization - Error trend analysis dashboard API
+// Multi-Channel Support MVP - WebSocket Monitoring System
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import type { Bindings } from '../types';
-import { jwtAuth } from '../middleware/auth';
-import { createAnalyticsService, AlertLevel } from '../monitoring/websocket-analytics-service';
-import type { WebSocketErrorStats, ConnectionQualityMetrics } from '../monitoring/websocket-analytics-service';
+import type { Bindings } from '@/types';
+import { jwtAuth } from '@/middleware/auth';
+import { createAnalyticsService, AlertLevel } from '@/monitoring/websocket-analytics-service';
+import type { WebSocketErrorStats, ConnectionQualityMetrics } from '@/monitoring/websocket-analytics-service';
 
 const analyticsHandler = new Hono<{ Bindings: Bindings }>();
 
-// =================== 儀表板 API ===================
+// =================== Dashboard API ===================
 
-// 獲取完整儀表板數據
+// Get complete dashboard data
 analyticsHandler.get('/dashboard', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -37,7 +37,7 @@ analyticsHandler.get('/dashboard', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Dashboard error:', error);
+    console.error('[Analytics API] Dashboard error:', error);
     return c.json({
       error: 'Failed to fetch dashboard data',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -45,7 +45,7 @@ analyticsHandler.get('/dashboard', jwtAuth, async (c) => {
   }
 });
 
-// 獲取趨勢分析數據
+// Get trend analysis data
 analyticsHandler.get('/trends', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -58,8 +58,8 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
     const timeRangeParam = c.req.query('timeRange');
     const timeRangeHours = timeRangeParam ? parseInt(timeRangeParam) : 24;
 
-    // 驗證時間範圍
-    if (timeRangeHours < 1 || timeRangeHours > 168) { // 最多 7 天
+    // Validate time range
+    if (timeRangeHours < 1 || timeRangeHours > 168) { // Max 7 days
       return c.json({
         error: 'Invalid time range',
         message: 'Time range must be between 1 and 168 hours'
@@ -77,7 +77,7 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Trends error:', error);
+    console.error('[Analytics API] Trends error:', error);
     return c.json({
       error: 'Failed to fetch trend data',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -85,17 +85,17 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
   }
 });
 
-// =================== 錯誤記錄 API ===================
+// =================== Error Recording API ===================
 
-// 記錄 WebSocket 錯誤 (供內部系統使用)
+// Record WebSocket error (for internal system use)
 analyticsHandler.post('/errors', async (c) => {
   try {
-    // 這個端點主要供內部系統調用，所以不需要 JWT 認證
-    // 但需要驗證來源 (例如檢查 IP 或內部令牌)
+    // This endpoint is mainly called by internal systems, so JWT auth is not required
+    // But source verification is needed (e.g., checking IP or internal token)
 
     const errorData = await c.req.json() as WebSocketErrorStats;
 
-    // 基本驗證
+    // Basic validation
     if (!errorData.timestamp || !errorData.errorCode || !errorData.errorType) {
       return c.json({
         error: 'Invalid error data',
@@ -114,7 +114,7 @@ analyticsHandler.post('/errors', async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Record error failed:', error);
+    console.error('[Analytics API] Record error failed:', error);
     return c.json({
       error: 'Failed to record error',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -122,12 +122,12 @@ analyticsHandler.post('/errors', async (c) => {
   }
 });
 
-// 記錄連接質量數據
+// Record connection quality data
 analyticsHandler.post('/quality', async (c) => {
   try {
     const qualityData = await c.req.json() as ConnectionQualityMetrics;
 
-    // 基本驗證
+    // Basic validation
     if (!qualityData.timestamp || !qualityData.userId || !qualityData.connectionId) {
       return c.json({
         error: 'Invalid quality data',
@@ -145,7 +145,7 @@ analyticsHandler.post('/quality', async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Record quality error:', error);
+    console.error('[Analytics API] Record quality error:', error);
     return c.json({
       error: 'Failed to record connection quality',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -153,14 +153,14 @@ analyticsHandler.post('/quality', async (c) => {
   }
 });
 
-// =================== 告警管理 API ===================
+// =================== Alert Management API ===================
 
-// 手動觸發告警 (測試用)
+// Manually trigger alert (for testing)
 analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    // 只有管理員可以手動觸發告警
+    // Only admins can manually trigger alerts
     if (user.role !== 'admin') {
       return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
@@ -174,7 +174,7 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 驗證告警級別
+    // Validate alert level
     const validLevels = ['info', 'warning', 'critical', 'emergency'];
     if (!validLevels.includes(level)) {
       return c.json({
@@ -195,7 +195,7 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Trigger alert error:', error);
+    console.error('[Analytics API] Trigger alert error:', error);
     return c.json({
       error: 'Failed to trigger alert',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -203,9 +203,9 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
   }
 });
 
-// =================== 系統健康檢查 ===================
+// =================== System Health Check ===================
 
-// 分析系統健康狀態
+// Analyze system health status
 analyticsHandler.get('/health', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -215,7 +215,7 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
       return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
-    // 檢查分析服務組件狀態
+    // Check analytics service component status
     const healthChecks = {
       analyticsService: true,
       kvStorage: false,
@@ -224,22 +224,22 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
     };
 
     try {
-      // 測試 KV 存儲
+      // Test KV storage
       await c.env.CACHE?.put('health_check', Date.now().toString(), { expirationTtl: 60 });
       const testValue = await c.env.CACHE?.get('health_check');
       healthChecks.kvStorage = testValue !== null;
 
-      // 測試趨勢生成
+      // Test trend generation
       const analyticsService = createAnalyticsService(c.env);
       await analyticsService.generateTrendAnalysis(1);
       healthChecks.trendGeneration = true;
 
-      // 測試告警系統
+      // Test alert system
       await analyticsService.triggerAlert(AlertLevel.INFO, 'Health Check', 'System health verification');
       healthChecks.alertSystem = true;
 
     } catch (error) {
-      console.warn('⚠️ [Analytics API] Health check component failed:', error);
+      console.warn('[Analytics API] Health check component failed:', error);
     }
 
     const healthScore = Object.values(healthChecks).filter(Boolean).length / Object.keys(healthChecks).length;
@@ -254,7 +254,7 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Health check error:', error);
+    console.error('[Analytics API] Health check error:', error);
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -263,9 +263,9 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
   }
 });
 
-// =================== 配置管理 API ===================
+// =================== Configuration Management API ===================
 
-// 獲取告警配置
+// Get alert configuration
 analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -275,7 +275,7 @@ analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
       return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
     }
 
-    // 獲取當前告警配置
+    // Get current alert configuration
     const configKey = 'ws_alert_config';
     const config = await c.env.CACHE?.get(configKey);
 
@@ -295,7 +295,7 @@ analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Get alert config error:', error);
+    console.error('[Analytics API] Get alert config error:', error);
     return c.json({
       error: 'Failed to get alert configuration',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -303,19 +303,19 @@ analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
   }
 });
 
-// 更新告警配置
+// Update alert configuration
 analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    // 只有管理員可以修改告警配置
+    // Only admins can modify alert configuration
     if (user.role !== 'admin') {
       return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
     const newConfig = await c.req.json();
 
-    // 驗證配置值
+    // Validate configuration values
     const requiredFields = ['errorRateThreshold', 'latencyThreshold', 'connectionFailureThreshold', 'userSatisfactionThreshold', 'timeWindowMinutes'];
     const missingFields = requiredFields.filter(field => !(field in newConfig));
 
@@ -326,7 +326,7 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 驗證數值範圍
+    // Validate numeric ranges
     if (newConfig.errorRateThreshold < 0 || newConfig.errorRateThreshold > 1) {
       return c.json({ error: 'errorRateThreshold must be between 0 and 1' }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -335,13 +335,13 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
       return c.json({ error: 'latencyThreshold must be between 0 and 30000ms' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    // 保存配置
+    // Save configuration
     const configKey = 'ws_alert_config';
     await c.env.CACHE?.put(configKey, JSON.stringify(newConfig), {
-      expirationTtl: 365 * 24 * 60 * 60 // 保存 1 年
+      expirationTtl: 365 * 24 * 60 * 60 // Save for 1 year
     });
 
-    console.log(`⚙️ [Analytics API] Alert config updated by ${user.displayName}:`, newConfig);
+    console.log(`[Analytics API] Alert config updated by ${user.displayName}:`, newConfig);
 
     return c.json({
       success: true,
@@ -352,7 +352,7 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Update alert config error:', error);
+    console.error('[Analytics API] Update alert config error:', error);
     return c.json({
       error: 'Failed to update alert configuration',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -360,9 +360,9 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
   }
 });
 
-// =================== 數據導出 API ===================
+// =================== Data Export API ===================
 
-// 導出趨勢數據 (CSV 格式)
+// Export trend data (CSV format)
 analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -379,7 +379,7 @@ analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
     const trendData = await analyticsService.generateTrendAnalysis(timeRange);
 
     if (format === 'csv') {
-      // 生成 CSV 格式
+      // Generate CSV format
       const csvData = [
         'Time Range,Total Connections,Successful Connections,Failed Connections,Average Latency,Peak Latency,User Satisfaction Score',
         `${trendData.timeRange},${trendData.totalConnections},${trendData.successfulConnections},${trendData.failedConnections},${trendData.averageLatency},${trendData.peakLatency},${trendData.userSatisfactionScore}`
@@ -401,7 +401,7 @@ analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [Analytics API] Export trends error:', error);
+    console.error('[Analytics API] Export trends error:', error);
     return c.json({
       error: 'Failed to export trend data',
       message: error instanceof Error ? error.message : 'Unknown error'

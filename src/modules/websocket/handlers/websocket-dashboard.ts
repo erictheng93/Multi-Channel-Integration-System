@@ -1,15 +1,15 @@
 // WebSocket Monitoring Dashboard Handler
-// 實時連接池監控與性能分析儀表板
+// Real-time connection pool monitoring and performance analysis dashboard
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import type { Bindings } from '../types';
-import type { JWTPayload } from '../types';
+import type { Bindings } from '@/types';
+import type { JWTPayload } from '@/types';
 
 const dashboardApp = new Hono<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>();
 
 /**
- * 實時指標數據結構
+ * Real-time metrics data structure
  */
 interface RealtimeMetrics {
   timestamp: string;
@@ -47,7 +47,7 @@ interface RealtimeMetrics {
 }
 
 /**
- * 連接歷史數據
+ * Connection history data
  */
 interface ConnectionHistory {
   timestamp: string;
@@ -57,7 +57,7 @@ interface ConnectionHistory {
 }
 
 /**
- * 性能趨勢數據
+ * Performance trend data
  */
 interface PerformanceTrend {
   period: string; // '1h', '6h', '24h', '7d'
@@ -77,7 +77,7 @@ interface PerformanceTrend {
 
 /**
  * GET /api/websocket/dashboard/metrics
- * 獲取實時監控指標
+ * Get real-time monitoring metrics
  */
 dashboardApp.get('/metrics', async (c) => {
   try {
@@ -96,7 +96,7 @@ dashboardApp.get('/metrics', async (c) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Failed to collect metrics:', error);
+    console.error('[Dashboard] Failed to collect metrics:', error);
     return c.json({
       error: 'Failed to collect metrics',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -106,7 +106,7 @@ dashboardApp.get('/metrics', async (c) => {
 
 /**
  * GET /api/websocket/dashboard/connections
- * 獲取當前連接詳情
+ * Get current connection details
  */
 dashboardApp.get('/connections', async (c) => {
   try {
@@ -125,7 +125,7 @@ dashboardApp.get('/connections', async (c) => {
       count: connections.length
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Failed to get connections:', error);
+    console.error('[Dashboard] Failed to get connections:', error);
     return c.json({
       error: 'Failed to get connections',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -135,7 +135,7 @@ dashboardApp.get('/connections', async (c) => {
 
 /**
  * GET /api/websocket/dashboard/history
- * 獲取連接歷史趨勢 (24小時)
+ * Get connection history trends (24 hours)
  */
 dashboardApp.get('/history', async (c) => {
   try {
@@ -155,7 +155,7 @@ dashboardApp.get('/history', async (c) => {
       period
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Failed to get history:', error);
+    console.error('[Dashboard] Failed to get history:', error);
     return c.json({
       error: 'Failed to get history',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -165,7 +165,7 @@ dashboardApp.get('/history', async (c) => {
 
 /**
  * GET /api/websocket/dashboard/trends
- * 獲取性能趨勢分析
+ * Get performance trend analysis
  */
 dashboardApp.get('/trends', async (c) => {
   try {
@@ -184,7 +184,7 @@ dashboardApp.get('/trends', async (c) => {
       data: trends
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Failed to analyze trends:', error);
+    console.error('[Dashboard] Failed to analyze trends:', error);
     return c.json({
       error: 'Failed to analyze trends',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -194,7 +194,7 @@ dashboardApp.get('/trends', async (c) => {
 
 /**
  * GET /api/websocket/dashboard/durable-objects
- * 獲取 Durable Objects 健康狀態
+ * Get Durable Objects health status
  */
 dashboardApp.get('/durable-objects', async (c) => {
   try {
@@ -211,7 +211,7 @@ dashboardApp.get('/durable-objects', async (c) => {
       data: doHealth
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Failed to get DO health:', error);
+    console.error('[Dashboard] Failed to get DO health:', error);
     return c.json({
       error: 'Failed to get Durable Objects health',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -221,7 +221,7 @@ dashboardApp.get('/durable-objects', async (c) => {
 
 /**
  * GET /api/websocket/dashboard/alerts
- * 獲取當前警報
+ * Get current alerts
  */
 dashboardApp.get('/alerts', async (c) => {
   try {
@@ -240,7 +240,7 @@ dashboardApp.get('/alerts', async (c) => {
       count: alerts.length
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Failed to get alerts:', error);
+    console.error('[Dashboard] Failed to get alerts:', error);
     return c.json({
       error: 'Failed to get alerts',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -248,27 +248,27 @@ dashboardApp.get('/alerts', async (c) => {
   }
 });
 
-// =================== 數據收集與分析函數 ===================
+// =================== Data Collection and Analysis Functions ===================
 
 /**
- * 收集實時監控指標
+ * Collect real-time monitoring metrics
  */
 async function collectRealtimeMetrics(env: Bindings): Promise<RealtimeMetrics> {
   try {
-    // 從 KV 讀取最新統計數據
+    // Read latest statistics from KV
     const statsKey = 'websocket:realtime_stats';
     const statsData = await env.SESSIONS.get(statsKey);
 
     if (statsData) {
       const cachedStats = JSON.parse(statsData) as RealtimeMetrics;
 
-      // 如果數據在 10 秒內,直接返回
+      // If data is within 10 seconds, return directly
       if (Date.now() - new Date(cachedStats.timestamp).getTime() < 10000) {
         return cachedStats;
       }
     }
 
-    // 收集新數據
+    // Collect new data
     const metrics: RealtimeMetrics = {
       timestamp: new Date().toISOString(),
       activeConnections: await collectConnectionMetrics(env),
@@ -278,18 +278,18 @@ async function collectRealtimeMetrics(env: Bindings): Promise<RealtimeMetrics> {
       resourceUsage: await collectResourceMetrics(env)
     };
 
-    // 緩存到 KV (60 秒過期，KV 最小TTL要求)
+    // Cache to KV (60 second expiration, KV minimum TTL requirement)
     await env.SESSIONS.put(statsKey, JSON.stringify(metrics), { expirationTtl: 60 });
 
     return metrics;
   } catch (error) {
-    console.error('❌ [Dashboard] Error collecting metrics:', error);
+    console.error('[Dashboard] Error collecting metrics:', error);
     throw error;
   }
 }
 
 /**
- * 收集連接數據
+ * Collect connection data
  */
 async function collectConnectionMetrics(env: Bindings) {
   const byConversation: Record<number, number> = {};
@@ -298,7 +298,7 @@ async function collectConnectionMetrics(env: Bindings) {
   let sseCount = 0;
 
   try {
-    // 從 KV 讀取連接追蹤數據
+    // Read connection tracking data from KV
     const connectionKeys = await env.SESSIONS.list({ prefix: 'ws_conn:' });
 
     for (const key of connectionKeys.keys) {
@@ -306,19 +306,19 @@ async function collectConnectionMetrics(env: Bindings) {
       if (connData) {
         const conn = JSON.parse(connData);
 
-        // 按對話統計
+        // Count by conversation
         byConversation[conn.conversationId] = (byConversation[conn.conversationId] || 0) + 1;
 
-        // 按用戶統計
+        // Count by user
         byUser[conn.userId] = (byUser[conn.userId] || 0) + 1;
 
-        // 按協議統計
+        // Count by protocol
         if (conn.protocol === 'websocket') websocketCount++;
         else sseCount++;
       }
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error collecting connection metrics:', error);
+    console.error('[Dashboard] Error collecting connection metrics:', error);
   }
 
   return {
@@ -330,7 +330,7 @@ async function collectConnectionMetrics(env: Bindings) {
 }
 
 /**
- * 收集吞吐量數據
+ * Collect throughput data
  */
 async function collectThroughputMetrics(env: Bindings) {
   try {
@@ -341,14 +341,14 @@ async function collectThroughputMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error collecting throughput:', error);
+    console.error('[Dashboard] Error collecting throughput:', error);
   }
 
   return { perSecond: 0, perMinute: 0, total: 0 };
 }
 
 /**
- * 收集 Durable Objects 健康指標
+ * Collect Durable Objects health metrics
  */
 async function collectDOHealthMetrics(env: Bindings) {
   try {
@@ -359,7 +359,7 @@ async function collectDOHealthMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error collecting DO health:', error);
+    console.error('[Dashboard] Error collecting DO health:', error);
   }
 
   return {
@@ -371,7 +371,7 @@ async function collectDOHealthMetrics(env: Bindings) {
 }
 
 /**
- * 收集延遲指標
+ * Collect latency metrics
  */
 async function collectLatencyMetrics(env: Bindings) {
   try {
@@ -382,14 +382,14 @@ async function collectLatencyMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error collecting latency:', error);
+    console.error('[Dashboard] Error collecting latency:', error);
   }
 
   return { p50: 0, p95: 0, p99: 0, max: 0 };
 }
 
 /**
- * 收集資源使用數據
+ * Collect resource usage data
  */
 async function collectResourceMetrics(env: Bindings) {
   try {
@@ -400,7 +400,7 @@ async function collectResourceMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error collecting resource usage:', error);
+    console.error('[Dashboard] Error collecting resource usage:', error);
   }
 
   return {
@@ -411,7 +411,7 @@ async function collectResourceMetrics(env: Bindings) {
 }
 
 /**
- * 獲取活躍連接列表
+ * Get active connections list
  */
 async function getActiveConnections(env: Bindings) {
   const connections: any[] = [];
@@ -426,14 +426,14 @@ async function getActiveConnections(env: Bindings) {
       }
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error getting active connections:', error);
+    console.error('[Dashboard] Error getting active connections:', error);
   }
 
   return connections;
 }
 
 /**
- * 獲取連接歷史
+ * Get connection history
  */
 async function getConnectionHistory(env: Bindings, period: string): Promise<ConnectionHistory[]> {
   const history: ConnectionHistory[] = [];
@@ -446,14 +446,14 @@ async function getConnectionHistory(env: Bindings, period: string): Promise<Conn
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error getting connection history:', error);
+    console.error('[Dashboard] Error getting connection history:', error);
   }
 
   return history;
 }
 
 /**
- * 分析性能趨勢
+ * Analyze performance trends
  */
 async function analyzePerformanceTrends(env: Bindings, period: string): Promise<PerformanceTrend> {
   try {
@@ -464,7 +464,7 @@ async function analyzePerformanceTrends(env: Bindings, period: string): Promise<
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error analyzing trends:', error);
+    console.error('[Dashboard] Error analyzing trends:', error);
   }
 
   return {
@@ -479,7 +479,7 @@ async function analyzePerformanceTrends(env: Bindings, period: string): Promise<
 }
 
 /**
- * 獲取 Durable Objects 健康狀態
+ * Get Durable Objects health status
  */
 async function getDurableObjectsHealth(env: Bindings) {
   const health: any = {
@@ -500,7 +500,7 @@ async function getDurableObjectsHealth(env: Bindings) {
         health.bindings.push({
           name: binding,
           status: 'available',
-          instances: 'N/A' // Cloudflare 不提供實例計數 API
+          instances: 'N/A' // Cloudflare doesn't provide instance count API
         });
       } else {
         health.bindings.push({
@@ -510,14 +510,14 @@ async function getDurableObjectsHealth(env: Bindings) {
       }
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error checking DO health:', error);
+    console.error('[Dashboard] Error checking DO health:', error);
   }
 
   return health;
 }
 
 /**
- * 獲取當前警報
+ * Get current alerts
  */
 async function getActiveAlerts(env: Bindings) {
   const alerts: any[] = [];
@@ -530,7 +530,7 @@ async function getActiveAlerts(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('❌ [Dashboard] Error getting alerts:', error);
+    console.error('[Dashboard] Error getting alerts:', error);
   }
 
   return alerts;
