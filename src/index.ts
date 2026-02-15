@@ -45,10 +45,10 @@ import reportsHandler from '@modules/reports/handlers/reports-main';
 // import { qrCodeRouter } from '@modules/qrcode/handlers/index';
 
 // Direct import for messaging handler (troubleshooting)
-import messagingMainHandler from './handlers/messaging-main';
+import messagingMainHandler from '@modules/messaging/handlers/messaging-main';
 
 // 🆕 Phase 3: LINE Message Queue Consumer
-import { handleLineMessageQueue } from './handlers/line-message-queue';
+import { handleLineMessageQueue } from '@modules/queue/handlers/line-message-queue';
 import type { LineMessageQueuePayload } from './types/bindings';
 
 // Debug: Log messaging handler
@@ -56,13 +56,13 @@ log.debug('messagingMainHandler imported', { type: typeof messagingMainHandler }
 log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defined' : 'undefined' });
 
 // Import additional handlers
-import { activityHandler } from './handlers/activity';
+import { activityHandler } from '@modules/activities/handlers/activity';
 import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
-import delayedMessageBufferHandler from './handlers/delayed-message-buffer';
-import { feedbackHandler } from './handlers/feedback-main';
+import delayedMessageBufferHandler from '@modules/delayed-message/handlers/delayed-message-buffer';
+import { feedbackHandler } from '@modules/system/handlers/feedback-main';
 
 // 🆕 KV Optimization Monitoring (P0 - 2025-01-08)
-import kvOptimizationMonitoringHandler from './handlers/kv-optimization-monitoring';
+import kvOptimizationMonitoringHandler from '@modules/system/handlers/kv-optimization-monitoring';
 
 // 🆕 Monitoring and Alerting API (2025-01-08)
 import monitoringMainHandler from '@modules/monitoring/handlers/monitoring-main';
@@ -95,7 +95,7 @@ import {
   getAllCredentials,
   clearPlatformCredentials,
   backupCredentials
-} from './handlers/credentials';
+} from '@modules/auth/handlers/credentials';
 // Import middleware and utilities
 import { jwtAuth } from './middleware/auth';
 import { signJWT, verifyJWT } from './utils/auth';
@@ -203,7 +203,7 @@ log.info('DelayedMessageScheduler public endpoint registered', {
 // 🆕 Pre-register Configuration Check endpoint BEFORE unified route system
 // This is a PUBLIC endpoint for debugging CORS and environment variable issues
 // It should be accessible without authentication to help diagnose configuration problems
-import { getConfigCheck } from './handlers/health-main';
+import { getConfigCheck } from '@modules/system/handlers/health-main';
 app.get('/api/system/config-check', getConfigCheck);
 log.info('Configuration check endpoint registered (public)', {
   endpoint: 'GET /api/system/config-check (public, no auth)'
@@ -402,7 +402,7 @@ log.info('KV Management endpoints registered', {
 // 客服和 LINE 消費者都可以通過此端點下載文件
 // =================================================================================
 
-import fileProxyHandler from './handlers/file-proxy';
+import fileProxyHandler from '@modules/file-management/handlers/file-proxy';
 
 app.route('/api/files', fileProxyHandler);
 log.info('File proxy endpoints PRE-REGISTERED (public access)', {
@@ -428,8 +428,8 @@ log.info('File proxy endpoints PRE-REGISTERED (public access)', {
 // Reference: Same fix applied to CORS endpoints (see lines 218-260)
 // =================================================================================
 
-import { webhookHandler } from './handlers/webhook';
-import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from './handlers/webhook-multitenant';
+import { webhookHandler } from '@modules/integrations/handlers/webhook';
+import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from '@modules/integrations/handlers/webhook-multitenant';
 
 // ==================== Multi-Tenant LINE Webhook (New) ====================
 // Route: POST /api/webhooks/line/:teamId/:token
@@ -920,7 +920,7 @@ app.use('/api/channels/*', jwtAuth);
 app.route('/api/channels', channelHandler);
 
 // ==================== LIFF Handler (QR Code Team Binding) ====================
-import liffHandler from './handlers/liff';
+import liffHandler from '@modules/liff/handlers/liff';
 
 // Test endpoint for debugging LIFF routes
 app.get('/api/liff-test', (c) => {
@@ -941,7 +941,7 @@ log.info('LIFF endpoints registered (public)', {
 });
 
 // ==================== Admin LIFF QR Batch Generation ====================
-import adminLiffQRBatchHandler from './handlers/admin-liff-qr-batch';
+import adminLiffQRBatchHandler from '@modules/liff/handlers/admin-liff-qr-batch';
 app.route('/api/admin/liff-qr', adminLiffQRBatchHandler);
 
 log.info('Admin LIFF QR batch generation endpoints registered (admin only)', {
@@ -952,7 +952,7 @@ log.info('Admin LIFF QR batch generation endpoints registered (admin only)', {
 });
 
 // ==================== Task Reminder System (Phase 4: Notification Integration) ====================
-import taskReminderHandler, { handleScheduledEvent } from './handlers/task-reminder-main';
+import taskReminderHandler, { handleScheduledEvent } from '@modules/system/handlers/task-reminder-main';
 app.route('/api/reminders', taskReminderHandler);
 
 log.info('Task Reminder System registered', {
@@ -1404,7 +1404,7 @@ app.route('/api/activities', activityHandler);
 app.route('/api/feedback', feedbackHandler);
 
 // 隊列監控細粒度路由 - 保留 (queueMonitorHandler 需要特定方法映射)
-import { queueMonitorHandler } from './handlers/queue-monitor';
+import { queueMonitorHandler } from '@modules/queue/handlers/queue-monitor';
 app.get('/api/queues/stats', jwtAuth, queueMonitorHandler.getUnifiedStats);
 app.get('/api/queues/health', jwtAuth, queueMonitorHandler.getHealthCheck);
 app.get('/api/queues/performance', jwtAuth, queueMonitorHandler.getPerformanceMetrics);

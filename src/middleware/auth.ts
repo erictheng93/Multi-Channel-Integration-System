@@ -5,7 +5,7 @@ import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAcc
 import type { TeamRoleInTeam } from '../types';
 import { ROLES, type Role } from '../constants/roles';
 import { createContextLogger } from '../utils/logger';
-import { incrementRequestCounter, trackTheoreticalKVSavings } from '../handlers/kv-optimization-monitoring';
+import { incrementRequestCounter, trackTheoreticalKVSavings } from '@modules/system/handlers/kv-optimization-monitoring';
 import type { SystemPermissions, SystemAccessScope } from '@modules/system/middleware/system-auth';
 import type { CustomerPermissions, CustomerAccessScope, CreateCustomerData, UpdateCustomerData, CustomerFilters, CustomerTagOperation, CustomerSearchQuery } from '@modules/customer/types/customer-types';
 import type { CreateSessionData, UpdateSessionData, SessionListQuery, SessionSearchQuery } from '@modules/session/types/session-types';
