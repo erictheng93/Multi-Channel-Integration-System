@@ -11,7 +11,7 @@ export { ConversationService } from './services/conversation-service';
 
 // ======================== 處理器導出 ========================
 export { conversationsMainHandler } from './handlers/index';
-export { conversationHandler } from './handlers/conversation';
+// Note: conversationHandler from './handlers/conversation' removed (dead code)
 export { default as conversationsHandler } from './handlers/index';
 
 // ======================== 中間件導出 ========================

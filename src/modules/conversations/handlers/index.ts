@@ -3,7 +3,11 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
-import conversationMainHandler from '@modules/conversations/handlers/conversation-main';
+import conversationBulkHandler from './conversation-bulk';
+import conversationAssignmentHandler from './conversation-assignment';
+import conversationTagsHandler from './conversation-tags';
+import conversationMessagesHandler from './conversation-messages';
+import conversationQueriesHandler from './conversation-queries';
 
 // 創建對話主路由器
 const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
@@ -41,23 +45,43 @@ conversationsMainHandler.get('/info', (c) => {
       endpoints: [
         'GET /health - Health check',
         'GET /info - Module information',
-        'GET / - List conversations',
-        'GET /:id - Get conversation details',
         'POST /bulk - Bulk operations (assign, close, reopen, set_priority, add_tags, remove_tags)',
-        'POST /:id/assign - Assign conversation',
-        'POST /:id/transfer - Transfer conversation',
+        'POST /:id/assign - Assign conversation to team',
+        'POST /:id/unassign - Unassign conversation',
+        'POST /:id/transfer - Transfer conversation between teams',
+        'GET /:id/tags - Get conversation tags',
+        'POST /:id/tags - Add tags to conversation',
+        'DELETE /:id/tags - Remove tags from conversation',
+        'POST /:id/attachments - Upload attachment',
         'POST /:id/messages - Send message',
-        'GET /:id/messages - Get messages with pagination'
+        'GET /:id/messages - Get messages with pagination',
+        'GET /:id - Get conversation details',
+        'GET / - List conversations'
       ]
     },
     timestamp: new Date().toISOString()
   });
 });
 
-// 將所有對話路由掛載到主路由器
-conversationsMainHandler.route('/', conversationMainHandler);
+// ⚠️ CRITICAL: Route registration order = matching priority
+// More specific routes MUST be registered BEFORE generic /:id patterns.
+// Hono uses first-registered, first-matched routing.
+
+// Priority 1: /bulk (literal path before /:id patterns)
+conversationsMainHandler.route('/', conversationBulkHandler);
+
+// Priority 2: /:id/assign, /:id/unassign, /:id/transfer
+conversationsMainHandler.route('/', conversationAssignmentHandler);
+
+// Priority 3: /:id/tags (GET/POST/DELETE)
+conversationsMainHandler.route('/', conversationTagsHandler);
+
+// Priority 4: /:id/messages, /:id/attachments (before GET /:id)
+conversationsMainHandler.route('/', conversationMessagesHandler);
+
+// Priority 5 (LAST): GET /:id and GET / (catch-all patterns)
+conversationsMainHandler.route('/', conversationQueriesHandler);
 
 // 導出路由
 export { conversationsMainHandler };
 export default conversationsMainHandler;
-export * from './conversation-main';
