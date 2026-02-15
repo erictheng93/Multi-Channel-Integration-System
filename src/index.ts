@@ -1,10 +1,9 @@
 // 主要入口點 - Handler-based 架構 + 統一路由管理
 import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { getAllowedOrigins, isOriginAllowed, createCorsPreflightResponse, createCorsBlockedResponse } from '@/config/cors';
+import { isOriginAllowed, createCorsPreflightResponse, createCorsBlockedResponse } from '@/config/cors';
 import { logger as honoLogger } from 'hono/logger';
 import type { Bindings } from './types';
-import { logger, createContextLogger, configureLogger } from './utils/logger';
+import { createContextLogger } from './utils/logger';
 import { templateService } from './services/template-service';
 
 // Context logger for main entry point
@@ -12,10 +11,9 @@ const log = createContextLogger('Main');
 
 // 統一路由管理系統
 import { RouteRegistry } from './core/route-registry';
-import { routeGroups, routeConfigStats, validateRouteConfig } from './core/route-config';
+import { routeGroups, validateRouteConfig } from './core/route-config';
 
-// 自動化健康監控系統
-import { automatedHealthMonitoring } from './services/automated-health-monitoring';
+// Monitoring dashboard
 import { createMonitoringHandlerMethods } from '@modules/monitoring/handlers/monitoring-dashboard';
 
 // Import handlers - consolidated imports
@@ -67,38 +65,11 @@ import kvOptimizationMonitoringHandler from '@modules/system/handlers/kv-optimiz
 // 🆕 Monitoring and Alerting API (2025-01-08)
 import monitoringMainHandler from '@modules/monitoring/handlers/monitoring-main';
 
-// Import system functions (grouped by functionality)
-import {
-  getSystemInfo,
-  getSettings,
-  updateSettings,
-  testIntegration,
-  getMetrics,
-  backupDatabase,
-  getBackups,
-  restoreDatabase,
-  clearCache,
-  restartSystem,
-  healthCheck,
-  getApiStatus
-} from '@modules/system/handlers/system-legacy';
-// ❌ LEGACY TEAM HANDLER IMPORTS REMOVED
-// All team management functions now in modular handlers:
-// - src/modules/teams/handlers/members.ts
-// - src/modules/teams/handlers/password.ts
-// - src/modules/teams/handlers/invitations.ts
-
-// Import credential functions
-import {
-  storeCredential,
-  getCredential,
-  getAllCredentials,
-  clearPlatformCredentials,
-  backupCredentials
-} from '@modules/auth/handlers/credentials';
+// System-legacy and credential functions now in extracted routers:
+//   src/handlers/system-settings-router.ts
+//   src/handlers/credentials-router.ts
 // Import middleware and utilities
 import { jwtAuth } from './middleware/auth';
-import { signJWT, verifyJWT } from './utils/auth';
 import { getSecurityConfig, getSecurityHeaders } from './config/security';
 import { globalErrorHandler } from './middleware/error-handler';
 
@@ -309,40 +280,9 @@ log.info('Monitoring & Alerting API registered', {
   ]
 });
 
-// ==================== 🔧 CRITICAL: PRE-REGISTER CORS 監控端點 ====================
-//
-// ⚠️  ROUTE REGISTRATION ORDER IS CRITICAL IN HONO FRAMEWORK
-//
-// WHY THIS MUST BE REGISTERED *BEFORE* UNIFIED ROUTE SYSTEM:
-//
-// 1. Route Priority in Hono:
-//    - Routes registered first have higher priority
-//    - Later routes CANNOT override earlier catch-all routes
-//    - Unified route system (Line ~252) may create catch-all routes
-//
-// 2. The Problem (Fixed in Version d51fc6c8):
-//    - Previously registered AFTER unified system (Line 425+)
-//    - Resulted in 401 "Missing or invalid authorization header" errors
-//    - Public endpoints (/health, /config) were incorrectly blocked
-//
-// 3. The Solution:
-//    - Register BEFORE unified route system (current location: Line 221)
-//    - Establishes route priority before any catch-all routes
-//    - Allows public endpoints to work without authentication
-//
-// 4. Verification:
-//    - ✅ All 12 E2E CORS tests passing (100% success rate)
-//    - ✅ curl /api/cors/health returns 200 OK (not 401)
-//    - ✅ curl /api/cors/config returns configuration (not 401)
-//
-// 📚 For detailed explanation, see:
-//    - CLAUDE.md: "Route Registration Order (⚠️ Critical)" section
-//    - docs/architecture/ROUTE_REGISTRATION_ORDER.md
-//
-// ⚠️  DO NOT MOVE THIS REGISTRATION TO AFTER UNIFIED ROUTE SYSTEM
-//     OR YOU WILL REINTRODUCE THE 401 ERROR BUG!
-//
-// =================================================================================
+// ⚠️ CRITICAL: CORS/Security endpoints BEFORE unified route system
+// Route priority in Hono: first-registered wins. Moving these after RouteRegistry
+// will cause 401 errors on public endpoints. See docs/architecture/ROUTE_REGISTRATION_ORDER.md
 
 import corsMonitoringHandler from '@modules/monitoring/handlers/cors-monitoring';
 import securityMonitoringHandler from '@modules/monitoring/handlers/security-monitoring';
@@ -501,393 +441,12 @@ log.info('WebSocket Dashboard endpoints registered', {
   ]
 });
 
-// ==================== 🔧 CUSTOMER CONVERSATION SYSTEM (Chat-Style) ====================
-//
-// NEW: Simplified conversation system inspired by Chat Project architecture
-// Routes for customer conversations with WebSocket real-time communication
-//
-// Architecture:
-// - CustomerConversationDO: WebSocket connection management
-// - CustomerMessageDO: Message CRUD operations and R2 file uploads
-//
+// ==================== Customer Conversation System (Chat-Style) ====================
+// WebSocket + Message CRUD + File Upload — extracted to @modules/customer-conversations
 // ⚠️  Registered BEFORE unified route system to prevent route conflicts
-// =================================================================================
-
-// WebSocket upgrade endpoint for customer conversations
-app.get('/api/customer-ws', async (c) => {
-  const conversationId = c.req.query('conversationId');
-  const sessionId = c.req.query('sessionId');
-
-  if (!conversationId || !sessionId) {
-    return c.json({
-      success: false,
-      error: 'Missing required parameters: conversationId and sessionId'
-    }, 400);
-  }
-
-  // SECURITY: Validate the session token
-  if (!c.env.JWT_SECRET) {
-    log.error('Customer WebSocket: JWT_SECRET not configured');
-    return c.json({ success: false, error: 'Server configuration error' }, 500);
-  }
-
-  try {
-    // Verify the session token is a valid JWT
-    const payload = await verifyJWT(sessionId, c.env.JWT_SECRET);
-
-    // Validate user has access to this conversation
-    const { drizzle } = await import('drizzle-orm/d1');
-    const { eq } = await import('drizzle-orm');
-    const schema = await import('./db/schema');
-    const db = drizzle(c.env.DB, { schema });
-
-    const { and } = await import('drizzle-orm');
-
-    // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
-    const conversation = await db.select({
-      id: schema.conversations.id,
-      customerId: schema.conversations.customerId,
-      assignedTeamId: schema.conversations.assignedTeamId,
-    }).from(schema.conversations)
-      .where(eq(schema.conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
-      return c.json({ success: false, error: 'Conversation not found' }, 404);
-    }
-
-    // Permission check - team-based access control
-    const isAdmin = payload.role === 'admin';
-    const isCustomer = String(conversation.customerId) === String(payload.userId);
-
-    // Check if conversation is unassigned (public pool - everyone can access)
-    const isUnassigned = !conversation.assignedTeamId;
-
-    // Check if user belongs to the assigned team
-    let isTeamMember = false;
-    if (conversation.assignedTeamId && !isAdmin && !isCustomer) {
-      const membership = await db.select({ id: schema.agentTeams.id })
-        .from(schema.agentTeams)
-        .where(
-          and(
-            eq(schema.agentTeams.agentId, String(payload.userId)),
-            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
-          )
-        )
-        .limit(1);
-      isTeamMember = membership.length > 0;
-    }
-
-    if (!isAdmin && !isCustomer && !isUnassigned && !isTeamMember) {
-      log.warn('Customer WebSocket: Access denied', { userId: payload.userId, conversationId, assignedTeamId: conversation.assignedTeamId });
-      return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
-    }
-
-    log.info('Customer WebSocket authenticated connection', {
-      conversationId,
-      userId: payload.userId,
-      role: payload.role
-    });
-
-    // Forward to Durable Object with validated user info
-    // This eliminates redundant KV session validation in the DO
-    try {
-      const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
-      const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
-
-      // Build URL with validated user info (DO will trust this since index.ts validated)
-      const url = new URL(c.req.url);
-      url.pathname = '/ws';
-      // Pass validated user info to DO - this skips redundant KV validation
-      url.searchParams.set('validatedUserId', String(payload.userId));
-      url.searchParams.set('validatedRole', payload.role || 'agent');
-      url.searchParams.set('validatedDisplayName', payload.displayName || 'User');
-      url.searchParams.set('validated', 'true');
-
-      const modifiedRequest = new Request(url.toString(), c.req.raw);
-
-      return doStub.fetch(modifiedRequest);
-    } catch (error) {
-      log.error('Customer WebSocket: Connection error', { error: error instanceof Error ? error.message : String(error) });
-      return c.json({
-        success: false,
-        error: 'Failed to establish WebSocket connection'
-      }, 500);
-    }
-  } catch (authError) {
-    log.error('Customer WebSocket: Authentication failed', { error: authError instanceof Error ? authError.message : String(authError) });
-    return c.json({ success: false, error: 'Invalid or expired session' }, 401);
-  }
-});
-
-// Message operations endpoint (GET messages, POST new message)
-app.all('/api/customer-conversations/:id/messages', async (c) => {
-  // CRITICAL: Read body FIRST before any other c.req operations that might consume it
-  // This prevents "body already consumed" errors when forwarding to Durable Object
-  const requestMethod = c.req.method;
-  const bodyText = requestMethod === 'POST' ? await c.req.text() : undefined;
-
-  const conversationId = c.req.param('id');
-
-  if (!conversationId) {
-    return c.json({
-      success: false,
-      error: 'Missing conversation ID'
-    }, 400);
-  }
-
-  // SECURITY: Validate the session token from header
-  const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id') || c.req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!sessionId) {
-    return c.json({ success: false, error: 'Authentication required' }, 401);
-  }
-
-  if (!c.env.JWT_SECRET) {
-    log.error('Customer Messages: JWT_SECRET not configured');
-    return c.json({ success: false, error: 'Server configuration error' }, 500);
-  }
-
-  try {
-    // Verify the session token is a valid JWT
-    const payload = await verifyJWT(sessionId, c.env.JWT_SECRET);
-
-    // Validate user has access to this conversation
-    const { drizzle } = await import('drizzle-orm/d1');
-    const { eq } = await import('drizzle-orm');
-    const schema = await import('./db/schema');
-    const db = drizzle(c.env.DB, { schema });
-
-    const { and } = await import('drizzle-orm');
-
-    // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
-    const conversation = await db.select({
-      id: schema.conversations.id,
-      customerId: schema.conversations.customerId,
-      assignedTeamId: schema.conversations.assignedTeamId,
-    }).from(schema.conversations)
-      .where(eq(schema.conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
-      return c.json({ success: false, error: 'Conversation not found' }, 404);
-    }
-
-    // Permission check - team-based access control
-    const isAdmin = payload.role === 'admin';
-    const isCustomer = String(conversation.customerId) === String(payload.userId);
-
-    // Check if conversation is unassigned (public pool - everyone can access)
-    const isUnassigned = !conversation.assignedTeamId;
-
-    // Check if user belongs to the assigned team
-    let isTeamMember = false;
-    if (conversation.assignedTeamId && !isAdmin && !isCustomer) {
-      const membership = await db.select({ id: schema.agentTeams.id })
-        .from(schema.agentTeams)
-        .where(
-          and(
-            eq(schema.agentTeams.agentId, String(payload.userId)),
-            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
-          )
-        )
-        .limit(1);
-      isTeamMember = membership.length > 0;
-    }
-
-    if (!isAdmin && !isCustomer && !isUnassigned && !isTeamMember) {
-      log.warn('Customer Messages: Access denied', { userId: payload.userId, conversationId, assignedTeamId: conversation.assignedTeamId });
-      return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
-    }
-
-    log.debug('Customer Messages: Authenticated request', { method: requestMethod, conversationId, userId: payload.userId });
-  } catch (authError) {
-    log.error('Customer Messages: Authentication failed', { error: authError instanceof Error ? authError.message : String(authError) });
-    return c.json({ success: false, error: 'Invalid or expired session' }, 401);
-  }
-
-  try {
-    // Get CustomerMessageDO instance by conversationId
-    const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
-    const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
-
-    // Create a new request with conversation ID and session ID in headers
-    const headers = new Headers(c.req.raw.headers);
-    headers.set('X-Conversation-Id', conversationId);
-
-    // Pass through session ID (already validated)
-    if (sessionId) {
-      headers.set('X-Session-Id', sessionId);
-    }
-
-    // Create the target URL for CustomerMessageDO
-    const url = new URL(c.req.url);
-    url.pathname = '/messages';
-
-    // Create request with buffered body text
-    const doRequest = new Request(url.toString(), {
-      method: requestMethod,
-      headers: headers,
-      body: bodyText
-    });
-
-    log.debug('Proxy: Forwarding to CustomerMessageDO', { method: requestMethod, conversationId });
-    return doStub.fetch(doRequest);
-  } catch (error) {
-    log.error('Customer Messages: Operation error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: 'Failed to process message operation'
-    }, 500);
-  }
-});
-
-// File upload endpoint
-app.post('/api/customer-conversations/:id/upload', async (c) => {
-  const conversationId = c.req.param('id');
-
-  if (!conversationId) {
-    return c.json({
-      success: false,
-      error: 'Missing conversation ID'
-    }, 400);
-  }
-
-  // SECURITY: Validate the session token from header
-  const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id') || c.req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!sessionId) {
-    return c.json({ success: false, error: 'Authentication required' }, 401);
-  }
-
-  if (!c.env.JWT_SECRET) {
-    log.error('Customer Upload: JWT_SECRET not configured');
-    return c.json({ success: false, error: 'Server configuration error' }, 500);
-  }
-
-  try {
-    // Verify the session token is a valid JWT
-    const payload = await verifyJWT(sessionId, c.env.JWT_SECRET);
-
-    // Validate user has access to this conversation
-    // Note: Individual assignment (assignedUserId) removed - only team-based access control is supported now
-    const { drizzle } = await import('drizzle-orm/d1');
-    const { eq, and } = await import('drizzle-orm');
-    const schema = await import('./db/schema');
-    const db = drizzle(c.env.DB, { schema });
-
-    const conversation = await db.select({
-      id: schema.conversations.id,
-      customerId: schema.conversations.customerId,
-      assignedTeamId: schema.conversations.assignedTeamId,
-    }).from(schema.conversations)
-      .where(eq(schema.conversations.id, conversationId))
-      .get();
-
-    if (!conversation) {
-      return c.json({ success: false, error: 'Conversation not found' }, 404);
-    }
-
-    // Permission check - team-based access control
-    const isAdmin = payload.role === 'admin';
-    const isCustomer = String(conversation.customerId) === String(payload.userId);
-    const isUnassigned = !conversation.assignedTeamId;
-
-    // Check if user belongs to the assigned team
-    let isTeamMember = false;
-    if (conversation.assignedTeamId && !isAdmin && !isCustomer) {
-      const membership = await db.select({ id: schema.agentTeams.id })
-        .from(schema.agentTeams)
-        .where(
-          and(
-            eq(schema.agentTeams.agentId, String(payload.userId)),
-            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
-          )
-        )
-        .limit(1);
-      isTeamMember = membership.length > 0;
-    }
-
-    if (!isAdmin && !isCustomer && !isUnassigned && !isTeamMember) {
-      log.warn('Customer Upload: Access denied', { userId: payload.userId, conversationId, assignedTeamId: conversation.assignedTeamId });
-      return c.json({ success: false, error: 'Access denied to this conversation' }, 403);
-    }
-
-    log.debug('Customer Upload: Authenticated', { conversationId, userId: payload.userId });
-  } catch (authError) {
-    log.error('Customer Upload: Authentication failed', { error: authError instanceof Error ? authError.message : String(authError) });
-    return c.json({ success: false, error: 'Invalid or expired session' }, 401);
-  }
-
-  try {
-    // Get CustomerMessageDO instance by conversationId
-    const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
-    const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
-
-    // Create a new request with conversation ID and session ID in headers
-    const headers = new Headers(c.req.raw.headers);
-    headers.set('X-Conversation-Id', conversationId);
-
-    // Pass through session ID (already validated)
-    if (sessionId) {
-      headers.set('X-Session-Id', sessionId);
-    }
-
-    // Clone the request to avoid body consumption issues
-    const clonedRequest = c.req.raw.clone();
-
-    const modifiedRequest = new Request(clonedRequest.url, {
-      method: 'POST',
-      headers: headers,
-      body: clonedRequest.body
-    });
-
-    // Modify URL to use DO internal path
-    const url = new URL(modifiedRequest.url);
-    url.pathname = '/upload';
-
-    return doStub.fetch(new Request(url.toString(), modifiedRequest));
-  } catch (error) {
-    log.error('Customer Upload: Upload error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: 'Failed to upload file'
-    }, 500);
-  }
-});
-
-// 🔧 DEBUG: Endpoint to check CustomerConversationDO connection status
-app.get('/api/customer-conversations/:id/debug/connections', async (c) => {
-  const conversationId = c.req.param('id');
-
-  if (!conversationId) {
-    return c.json({ success: false, error: 'Conversation ID is required' }, 400);
-  }
-
-  try {
-    // Get the same DO instance that handles WebSocket connections
-    const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
-    const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
-
-    // Forward request to DO's debug endpoint
-    const debugRequest = new Request('https://fake-host/debug/connections', {
-      method: 'GET'
-    });
-
-    const response = await doStub.fetch(debugRequest);
-    const data = await response.json() as Record<string, unknown>;
-
-    return c.json({
-      success: true,
-      requestedConversationId: conversationId,
-      doIdString: doId.toString(),
-      ...data
-    });
-  } catch (error) {
-    log.error('Debug connections error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: 'Failed to get connection info' }, 500);
-  }
-});
+import { customerWsHandler, customerMessagesHandler } from '@modules/customer-conversations/handlers';
+app.route('/api/customer-ws', customerWsHandler);
+app.route('/api/customer-conversations', customerMessagesHandler);
 
 log.info('Customer Conversation System (Chat-Style) endpoints registered', {
   endpoints: [
@@ -1009,102 +568,12 @@ log.info(`Route system initialized successfully:
 // ==================== 模組化架構系統初始化 ====================
 log.info('Initializing Modular Architecture System');
 
-// 導入模組化系統組件
-import { globalModularSystemManager, modularSystemApiHandler } from './core/modular-system-integration';
-import { globalErrorHandler as modularSystemErrorHandler, errorHandlingMiddleware } from './core/error-handler';
+// Lazy init for modular system, P1 optimizations, and collaboration
+import { createLazyInitMiddleware, errorHandlingMiddleware } from './core/module-initializer';
 
-// 模組化系統初始化狀態追蹤
-let modularSystemInitialized = false;
-let modularSystemInitPromise: Promise<void> | null = null;
-
-// Collaboration 模組初始化狀態追蹤
-let collaborationInitialized = false;
-
-// 延遲初始化模組化系統（在第一個請求時執行）
-async function initializeModularSystem() {
-  if (modularSystemInitialized) {
-    return;
-  }
-
-  if (modularSystemInitPromise) {
-    return modularSystemInitPromise;
-  }
-
-  modularSystemInitPromise = (async () => {
-    try {
-      const initResult = await globalModularSystemManager.initialize();
-      log.info(`Modular Architecture System initialized successfully:
-  📦 Modules: ${initResult.modules.discovered} discovered, ${initResult.modules.registered} registered
-  🚀 Routes: ${initResult.routes.groups} groups, ${initResult.routes.modules} modules
-  🏥 Health: ${initResult.health.status} (monitoring: ${initResult.health.monitoring})
-  ⚡ System: ${initResult.success ? 'Ready' : 'Partial'}`);
-
-      if (initResult.warnings.length > 0) {
-        log.warn('Modular system warnings', { warnings: initResult.warnings });
-      }
-      if (initResult.errors.length > 0) {
-        log.error('Modular system errors', { errors: initResult.errors });
-      }
-
-      modularSystemInitialized = true;
-    } catch (error) {
-      log.error('Failed to initialize modular architecture system', { error: error instanceof Error ? error.message : String(error) });
-      // 重置 promise 以允許重試
-      modularSystemInitPromise = null;
-      throw error;
-    }
-  })();
-
-  return modularSystemInitPromise;
-}
-
-// 延遲初始化 P1 Optimizations（在第一個請求時執行）
-async function initializeP1Optimizations(env: Bindings) {
-  try {
-    log.debug('Initializing P1 Optimizations');
-    const { initializeP1Optimizations: init } = await import('./services/p1-optimizations');
-    await init(env);
-    log.debug('P1 Optimizations initialized successfully');
-  } catch (error) {
-    log.error('Failed to initialize P1 Optimizations', { error: error instanceof Error ? error.message : String(error) });
-    // P1 優化失敗不應阻塞系統啟動
-  }
-}
-
-// 延遲初始化 Collaboration 模組（在第一個請求時執行）
-async function initializeCollaboration(env: Bindings) {
-  if (collaborationInitialized) {
-    return;
-  }
-
-  try {
-    log.debug('Initializing Collaboration Module');
-
-    // 先初始化 P1 優化
-    await initializeP1Optimizations(env);
-
-    const { Collaboration } = await import('@modules/collaboration');
-
-    const config = {
-      defaultProtocol: 'websocket' as const,
-      enableWebSocket: true,
-      typingExpirationSeconds: 5,
-      presenceExpirationSeconds: 300,
-      cleanupIntervalSeconds: 60,
-      maxViewersPerConversation: 50,
-      persistEvents: false
-    };
-
-    await Collaboration.initialize(env, config);
-
-    collaborationInitialized = true;
-
-    log.info('Collaboration Module initialized', { protocol: 'WebSocket', environment: env.ENVIRONMENT || 'unknown' });
-  } catch (error) {
-    log.error('Failed to initialize Collaboration Module', { error: error instanceof Error ? error.message : String(error) });
-    throw error;
-  }
-}
+// Modular system API handler (still needed for /api/modular/* routes)
+import { modularSystemApiHandler } from './core/modular-system-integration';
+import { globalErrorHandler as modularSystemErrorHandler } from './core/error-handler';
 
 // 註冊模組化系統管理API端點
 app.get('/api/modular/status', modularSystemApiHandler.getSystemStatus.bind(modularSystemApiHandler));
@@ -1129,17 +598,7 @@ app.post('/api/monitoring/health/check', monitoringHandlers.triggerHealthCheck);
 app.get('/api/monitoring/metrics', monitoringHandlers.getMetrics);
 app.get('/api/monitoring/stats', monitoringHandlers.getStats);
 
-// NOTE: CORS monitoring endpoints已經在統一路由系統之前註冊 (見 line 221-238)
-// 這裡不再重複註冊
-
-// 啟動自動化監控（延遲3秒以確保所有系統已初始化）
-// setTimeout(() => {
-//   console.log('⚡ Starting automated health monitoring...');
-//   automatedHealthMonitoring.start();
-//   console.log('✅ Automated health monitoring started successfully');
-// }, 3000);
-
-// ==================== 原有配置繼續 ====================
+// ==================== Middleware + Config ====================
 
 // 獲取安全配置
 // Note: In Cloudflare Workers, env is passed to handler, not available globally
@@ -1150,27 +609,8 @@ const securityConfig = getSecurityConfig(environment);
 // 添加中間件
 app.use('*', honoLogger());
 
-// 🏗️ 延遲初始化模組化系統（在第一個請求時執行）
-app.use('*', async (c, next) => {
-  if (!modularSystemInitialized) {
-    try {
-      await initializeModularSystem();
-    } catch (error) {
-      log.error('Modular system initialization failed (continuing anyway)', { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  // 🤝 初始化 Collaboration 模組
-  if (!collaborationInitialized) {
-    try {
-      await initializeCollaboration(c.env);
-    } catch (error) {
-      log.error('Collaboration module initialization failed (continuing anyway)', { error: error instanceof Error ? error.message : String(error) });
-    }
-  }
-
-  await next();
-});
+// 🏗️ Lazy init: modular system + collaboration (on first request)
+app.use('*', createLazyInitMiddleware());
 
 // 🔥 Initialize latest message cache on startup
 app.use('*', async (c, next) => {
@@ -1224,27 +664,12 @@ app.get('/', (c) => {
 // 注意：大部分路由已遷移到統一路由管理系統 (src/core/route-config.ts)
 // 此處僅保留特殊的細粒度路由和需要直接註冊的端點
 
-// 系統設定路由 - 細粒度控制 (保留，因為 systemMainHandler 可能不包含所有端點)
-app.get('/api/system/info', jwtAuth, getSystemInfo);
-app.get('/api/system/settings', jwtAuth, getSettings);
-app.put('/api/system/settings', jwtAuth, updateSettings);
-app.post('/api/system/integrations/:platform/test', jwtAuth, testIntegration);
-app.get('/api/system/metrics', jwtAuth, getMetrics);
-app.post('/api/system/database/backup', jwtAuth, backupDatabase);
-app.get('/api/system/database/backups', jwtAuth, getBackups);
-app.post('/api/system/database/restore/:backupId', jwtAuth, restoreDatabase);
-app.post('/api/system/cache/clear', jwtAuth, clearCache);
-app.post('/api/system/restart', jwtAuth, restartSystem);
-app.get('/api/system/health', healthCheck);
-app.get('/api/system/api-status', getApiStatus);
+// System settings + credentials — fine-grained routers
+import systemSettingsRouter from './handlers/system-settings-router';
+import credentialsRouter from './handlers/credentials-router';
+app.route('/api/system', systemSettingsRouter);
 // Note: /api/system/config-check is registered as a PUBLIC endpoint at the top of this file
-
-// 憑證管理路由 - 細粒度控制 (保留)
-app.post('/api/credentials', jwtAuth, storeCredential);
-app.get('/api/credentials/:platform/:type', jwtAuth, getCredential);
-app.get('/api/credentials', jwtAuth, getAllCredentials);
-app.delete('/api/credentials/:platform', jwtAuth, clearPlatformCredentials);
-app.get('/api/credentials/backup', jwtAuth, backupCredentials);
+app.route('/api/credentials', credentialsRouter);
 
 // ========================================================================
 // 🚀 TEAM MANAGEMENT API ROUTES - FULLY MIGRATED TO MODULAR ARCHITECTURE
@@ -1377,24 +802,10 @@ log.info('WebSocket routes managed by Unified Route Registry');
 // ✅ Realtime, Queue Monitor
 // 這些模組現在通過 RouteRegistry 自動註冊
 
-// 細粒度 Real-time 路由 - 保留以支援特定端點
-// Note: These routes are kept separate for explicit endpoint control
-import { realtime } from '@modules/realtime';
-app.post('/api/realtime/typing', jwtAuth, realtime.handlers.main.sendTypingStatus);
-app.post('/api/realtime/broadcast', jwtAuth, realtime.handlers.main.broadcastToConversation);
-app.get('/api/realtime/conversation/:id/status', jwtAuth, realtime.handlers.main.getConversationStatus);
-app.post('/api/realtime/online-status', jwtAuth, realtime.handlers.main.updateOnlineStatus);
-app.get('/api/realtime/config', jwtAuth, realtime.handlers.management.getConfig);
-app.put('/api/realtime/config', jwtAuth, realtime.handlers.management.updateConfig);
-app.get('/api/realtime/stats', jwtAuth, realtime.handlers.management.getStats);
-app.get('/api/realtime/health', realtime.handlers.management.healthCheck);
-app.get('/api/realtime/monitoring/dashboard', jwtAuth, realtime.monitoring.dashboard as any);
-app.get('/api/realtime/monitoring/metrics', jwtAuth, realtime.monitoring.metricsHistory);
-app.get('/api/realtime/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);
-app.post('/api/realtime/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);
-app.get('/api/realtime/monitoring/health', realtime.monitoring.health);
-app.get('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
-app.post('/api/realtime/monitoring/config', jwtAuth, realtime.monitoring.config);
+// Realtime + Queue monitor — fine-grained routers
+import realtimeRouter from './handlers/realtime-router';
+import queueMonitorRouter from './handlers/queue-monitor-router';
+app.route('/api/realtime', realtimeRouter);
 
 // 活動記錄路由
 // Only register the main activities handler here
@@ -1403,67 +814,12 @@ app.route('/api/activities', activityHandler);
 // 客户满意度反馈路由 - Customer Feedback (Migration 0032)
 app.route('/api/feedback', feedbackHandler);
 
-// 隊列監控細粒度路由 - 保留 (queueMonitorHandler 需要特定方法映射)
-import { queueMonitorHandler } from '@modules/queue/handlers/queue-monitor';
-app.get('/api/queues/stats', jwtAuth, queueMonitorHandler.getUnifiedStats);
-app.get('/api/queues/health', jwtAuth, queueMonitorHandler.getHealthCheck);
-app.get('/api/queues/performance', jwtAuth, queueMonitorHandler.getPerformanceMetrics);
-app.post('/api/queues/maintenance', jwtAuth, queueMonitorHandler.maintenanceOperations);
+app.route('/api/queues', queueMonitorRouter);
 
-// 🔑 開發環境限定的測試token生成端點
+// Debug token endpoint (dev only)
+import debugTokenRouter from './handlers/debug-token';
 if (securityConfig.debug.enabled) {
-  app.post('/api/debug/generate-token', jwtAuth, async (c) => {
-    try {
-      const user = c.get('user');
-
-      // 只允許管理員使用此端點
-      if (user.role !== 'admin') {
-        return c.json({
-          success: false,
-          error: 'Only administrators can generate debug tokens'
-        }, 403);
-      }
-
-      // 限制可生成的角色
-      const { userId = "debug-user", displayName = "Debug User", role = "agent" } = await c.req.json();
-
-      // 防止生成超過當前用戶權限的token
-      if (role === 'admin' && user.role !== 'admin') {
-        return c.json({
-          success: false,
-          error: 'Cannot generate admin tokens'
-        }, 403);
-      }
-
-      const payload = {
-        userId,
-        displayName,
-        role,
-        teamId: user.primaryTeamId || 1,
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (30 * 60) // 30 minutes only
-      };
-
-      const token = await signJWT(payload, c.env.JWT_SECRET);
-
-      // 記錄調試token生成（不包含敏感信息）
-      // Token generated successfully
-
-      return c.json({
-        success: true,
-        token,
-        expiresAt: new Date((payload.exp * 1000)).toISOString(),
-        note: 'Debug token - limited to 30 minutes'
-      });
-
-    } catch (error) {
-      logger.error('Token generation failed', 'DEBUG', { error: error instanceof Error ? error.message : String(error) });
-      return c.json({
-        success: false,
-        error: 'Token generation failed'
-      }, 500);
-    }
-  });
+  app.route('/api/debug', debugTokenRouter);
 }
 
 // ==================== Webhook 處理 ====================
