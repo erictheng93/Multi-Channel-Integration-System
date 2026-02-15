@@ -44,8 +44,8 @@ import reportsHandler from '@modules/reports/handlers/reports-main';
 // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
 // import { qrCodeRouter } from '@modules/qrcode/handlers/index';
 
-// Direct import for messaging handler (troubleshooting)
-import messagingMainHandler from '@modules/messaging/handlers/messaging-main';
+// Direct import for messaging handler (modular version)
+import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 
 // 🆕 Phase 3: LINE Message Queue Consumer
 import { handleLineMessageQueue } from '@modules/queue/handlers/line-message-queue';

@@ -10,7 +10,7 @@ export { default as authMainHandler } from '../modules/auth/handlers/auth-main-l
 export { default as teamMainHandler } from '../modules/teams/handlers/index' // Updated to use fully modular team handler (includes members, password)
 export { default as delayedMessageMainHandler } from '../modules/delayed-message/handlers/delayed-message-modular' // Updated to use modular implementation
 export { conversationsMainHandler as conversationMainHandler } from '../modules/conversations/handlers'
-export { default as messagingMainHandler } from '../modules/messaging/handlers/messaging-main'
+export { default as messagingMainHandler } from '../modules/messaging/handlers/messaging/index'
 export { default as systemMainHandler } from '../modules/system/handlers/system-main'
 export { default as customerMainHandler } from '../modules/customer/handlers/customer-main-legacy'
 export { default as tagMainHandler } from '../modules/tags/handlers' // Updated to use modular tags handler

@@ -15,6 +15,8 @@ import {
   forbiddenResponse
 } from '@/utils/api-response';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
+import { getMentionedUserIds } from '@/utils/mention-parser';
+import { triggerMentionNotification } from '@/utils/notification-trigger';
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -421,6 +423,28 @@ crudRoutes.post('/', jwtAuth, async (c) => {
         .all();
     }
 
+    // 🔔 @提及通知檢測與觸發
+    const mentionedUserIds = getMentionedUserIds(content);
+    if (mentionedUserIds.length > 0) {
+      // 獲取發送者的顯示名稱
+      const senderName = userPayload.displayName || userPayload.username || 'Agent';
+
+      // 為每個被提及的用戶發送通知 (排除自己)
+      for (const mentionedUserId of mentionedUserIds) {
+        if (mentionedUserId !== userPayload.userId.toString()) {
+          triggerMentionNotification(c.env, {
+            mentionedUserId,
+            mentionerName: senderName,
+            mentionerId: userPayload.userId,
+            conversationId,
+            messagePreview: content.substring(0, 100)
+          }).catch(err => {
+            console.warn('Failed to trigger mention notification:', err);
+          });
+        }
+      }
+    }
+
     return successResponse(c, {
       id: messageId,
       conversationId,
@@ -430,7 +454,8 @@ crudRoutes.post('/', jwtAuth, async (c) => {
       agentSenderId: userPayload.userId.toString(),
       sentAt: messageData.sentAt,
       createdAt: messageData.createdAt,
-      file_attachments: attachments
+      file_attachments: attachments,
+      mentionedUserIds: mentionedUserIds.length > 0 ? mentionedUserIds : undefined
     }, 'Message created successfully', 201);
 
   } catch (error) {
