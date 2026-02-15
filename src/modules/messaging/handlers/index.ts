@@ -392,20 +392,20 @@ messageRouter.get(
 
 // ======================== 批量操作路由 ========================
 // NOTE: Batch operations implementation exists in:
-// - src/handlers/messaging-main.ts (bulk create/delete endpoints)
+// - src/modules/messaging/handlers/messaging/ (modular routes) (bulk create/delete endpoints)
 // These stubs are for modular routing integration
 
 /**
  * 批量發送訊息
  * POST /api/messages/batch/send
- * @see src/handlers/messaging-main.ts for bulk create implementation
+ * @see modular routes in messaging/routes/ for bulk create implementation
  */
 messageRouter.post(
   '/batch/send',
   ...batchOperationAccess,
   validateMessageSender,
   async (c) => {
-    // STUB: Modular routing placeholder - actual implementation in messaging-main.ts
+    // STUB: Modular routing placeholder - actual implementation in modular routes
     return c.json({
       success: false,
       error: 'Use /api/messaging/bulk-create endpoint for batch operations',
@@ -457,14 +457,14 @@ messageRouter.delete(
 
 // ======================== 附件路由 ========================
 // NOTE: Attachment operations implementation exists in:
-// - src/handlers/messaging-main.ts (attachment endpoints)
+// - src/modules/messaging/handlers/messaging/ (modular routes) (attachment endpoints)
 // - src/modules/file-management/ (R2 storage service)
 // These stubs are for modular routing integration
 
 /**
  * 添加訊息附件
  * POST /api/messages/:id/attachments
- * @see src/handlers/messaging-main.ts for full implementation
+ * @see modular routes in messaging/routes/ for full implementation
  */
 messageRouter.post(
   '/:id/attachments',
@@ -473,7 +473,7 @@ messageRouter.post(
   checkSpecificMessageAccess,
   checkMessageSendPermission,
   async (c) => {
-    // STUB: Modular routing placeholder - actual implementation in messaging-main.ts
+    // STUB: Modular routing placeholder - actual implementation in modular routes
     return c.json({
       success: false,
       error: 'Use /api/messaging/:conversationId/messages/:id/attachments endpoint',
@@ -486,7 +486,7 @@ messageRouter.post(
 /**
  * 獲取訊息附件
  * GET /api/messages/:id/attachments
- * @see src/handlers/messaging-main.ts for full implementation
+ * @see modular routes in messaging/routes/ for full implementation
  */
 messageRouter.get(
   '/:id/attachments',
@@ -626,11 +626,11 @@ export const MESSAGE_ROUTER_INFO = {
     },
     batch: {
       endpoints: ['POST /batch/send'],
-      actualImplementation: '/api/messaging/bulk-create (see src/handlers/messaging-main.ts)'
+      actualImplementation: '/api/messaging/bulk-create (see modular routes in messaging/routes/)'
     },
     attachments: {
       endpoints: ['POST /:id/attachments', 'GET /:id/attachments', 'DELETE /:id/attachments/:attachmentId'],
-      actualImplementation: '/api/messaging/* (see src/handlers/messaging-main.ts)'
+      actualImplementation: '/api/messaging/* (see modular routes in messaging/routes/)'
     },
     // Planned features
     interactions: {

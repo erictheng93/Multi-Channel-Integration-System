@@ -3,7 +3,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, count, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations, agents, customers } from '@shared/database/schema';
@@ -30,6 +30,7 @@ exportRoutes.get('/export/customers', jwtAuth, async (c) => {
         platformUserId: customers.platformUserId
       })
       .from(customers)
+      .where(isNull(customers.deletedAt))
       .orderBy(customers.displayName)
       .limit(200);
 

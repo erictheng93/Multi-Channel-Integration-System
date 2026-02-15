@@ -17,7 +17,7 @@ import {
   healthMainHandler
 } from '../handlers';
 
-import messagingMainHandler from '@modules/messaging/handlers/messaging-main';
+import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
 // import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
 import fileMainHandler from '@modules/file-management/handlers/file-main';
