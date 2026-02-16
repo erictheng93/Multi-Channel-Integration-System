@@ -133,20 +133,16 @@
 </template>
 
 <script setup lang="ts">
-/* global ResizeObserver, ResizeObserverEntry */
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useVirtualizer } from '@tanstack/vue-virtual'
+import { ref } from 'vue'
 import type { Message } from '@/types'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 import DateSeparator from '@/components/conversation/DateSeparator.vue'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
-
-interface VirtualItem {
-  type: 'message' | 'date' | 'typing'
-  data: Message | Date
-  id: string
-}
-
+import { useVirtualList } from '@/composables/message/useVirtualList'
+import { useVirtualScroll } from '@/composables/message/useVirtualScroll'
+import { useScrollEventHandlers } from '@/composables/message/useScrollEventHandlers'
+import { useResizeObserver } from '@/composables/message/useResizeObserver'
+import { useScrollWatchers } from '@/composables/message/useScrollWatchers'
 
 interface Props {
   messages: Message[]
@@ -164,8 +160,8 @@ interface Props {
   scrollBehavior?: 'auto' | 'smooth'
   animationClasses?: Record<string, string>
   websocketEnabled?: boolean  // WebSocket connection status
-  isHistoryPrepending?: boolean  // 🔧 FIX: 歷史消息正在前插
-  historyPrependCount?: number   // 🔧 FIX: 前插的消息數量
+  isHistoryPrepending?: boolean
+  historyPrependCount?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -183,8 +179,8 @@ const props = withDefaults(defineProps<Props>(), {
   scrollBehavior: 'smooth',
   animationClasses: () => ({}),
   websocketEnabled: false,
-  isHistoryPrepending: false,  // 🔧 FIX: 默認不是歷史前插
-  historyPrependCount: 0       // 🔧 FIX: 默認前插數量為 0
+  isHistoryPrepending: false,
+  historyPrependCount: 0
 })
 
 const emit = defineEmits<{
@@ -199,488 +195,106 @@ const emit = defineEmits<{
   scrollToTop: []
   scrollToBottom: []
   newMessageWhileScrolled: []
-  retry: [messageId: string]  // Retry failed message
-  initialScrollComplete: []  // 🔧 FIX: 初始滾動完成事件，用於解決 Race Condition
+  retry: [messageId: string]
+  initialScrollComplete: []
 }>()
 
-// Refs
+// Template refs
 const scrollContainer = ref<HTMLElement>()
 const listContainer = ref<HTMLElement>()
-const newMessageIds = ref(new Set<string>())
-const isUserAtBottom = ref(true)
-const lastScrollTop = ref(0)
-const lastLoadMoreTime = ref(0)
-const lastScrollDebugTime = ref(0)
-const LOAD_MORE_THROTTLE_MS = 1000 // Prevent too frequent load requests
-const isProgrammaticScrolling = ref(false) // Guard to prevent scroll events during programmatic scroll
-const showLoadMoreTrigger = ref(false) // Only show load-more trigger when scrolling up
-const isInitialScrollDone = ref(false) // 🔧 FIX: Prevent race condition between onMounted and watch
 
-// 🔧 FIX: Grace period flag - prevents scroll events from resetting isUserAtBottom
-// after scrollToBottom completes. This handles the race condition where:
-// 1. scrollToBottom completes and sets isUserAtBottom = true
-// 2. Virtualizer adjusts heights, triggering scroll events
-// 3. These events would incorrectly set isUserAtBottom = false
-// 4. New messages arrive but auto-scroll doesn't happen
-const recentlyScrolledToBottom = ref(false)
-let recentlyScrolledToBottomTimeout: ReturnType<typeof setTimeout> | null = null
-const GRACE_PERIOD_MS = 1000 // Time to keep isUserAtBottom protected after scrollToBottom
+// Emit wrapper that matches the composable's expected signature
+const emitWrapper = (event: string, ...args: unknown[]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (emit as any)(event, ...args)
+}
 
-// 🔧 FIX: 滾動位置保持相關的狀態
-const scrollPositionBeforePrepend = ref<{
-  scrollTop: number
-  scrollHeight: number
-  clientHeight: number
-  wasAtBottom: boolean // 🔧 FIX: 記錄用戶在前插前是否在底部
-  firstVisibleMessageId: string | null
-} | null>(null)
-const pendingScrollPreservation = ref(false) // 標記是否需要在下一次 DOM 更新後保持滾動位置
-
-// 🔧 FIX: Debounce timers for load-more trigger visibility
-let hideLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
-let showLoadMoreTimeout: ReturnType<typeof setTimeout> | null = null
-
-// 🔧 FIX Phase 2: ResizeObserver 滾動補償
-// 用於監控虛擬列表內容高度變化，當圖片/影片載入完成導致高度增加時補償滾動位置
-let contentResizeObserver: ResizeObserver | null = null
-let previousContentHeight = 0
-let resizeCompensationPending = false
-
-// 🔧 FIX: Constants for scroll detection
-const SCROLL_DIRECTION_THRESHOLD = 10 // Minimum pixels to detect scroll direction change
-const SHOW_LOAD_MORE_NEAR_TOP_THRESHOLD = 500 // Only show "load more" when within 500px of top
-const SHOW_LOAD_MORE_DELAY_MS = 200 // Delay before showing load more trigger
-const HIDE_LOAD_MORE_DELAY_MS = 400 // Delay before hiding load more trigger
-
-// Computed
-const displayedMessages = computed(() => {
-  // Use provided displayedMessages if available, otherwise use messages
-  if (props.displayedMessages) {
-    return props.displayedMessages
-  }
-
-  if (props.isSearchActive && props.searchTerm) {
-    return props.messages.filter(msg =>
-      msg.content.toLowerCase().includes(props.searchTerm.toLowerCase())
-    )
-  }
-  return props.messages
+// 1. Virtual List (virtualizer, displayedMessages, virtualItems)
+const {
+  displayedMessages,
+  virtualItems,
+  virtualizer,
+} = useVirtualList({
+  props,
+  scrollContainer,
 })
 
-const virtualItems = computed<VirtualItem[]>(() => {
-  const items: VirtualItem[] = []
-
-  if (props.showDateSeparators) {
-    let currentDate = ''
-
-    displayedMessages.value.forEach((message) => {
-      const messageDate = new Date(message.createdAt).toDateString()
-
-      if (messageDate !== currentDate) {
-        currentDate = messageDate
-        items.push({
-          type: 'date',
-          data: new Date(message.createdAt),
-          id: `date-${messageDate}`
-        })
-      }
-
-      items.push({
-        type: 'message',
-        data: message,
-        id: `message-${message.id}`
-      })
-    })
-  } else {
-    displayedMessages.value.forEach((message) => {
-      items.push({
-        type: 'message',
-        data: message,
-        id: `message-${message.id}`
-      })
-    })
-  }
-
-  return items
+// 2. Virtual Scroll (scroll-to operations, position checks, grace period)
+const {
+  isUserAtBottom,
+  isProgrammaticScrolling,
+  isInitialScrollDone,
+  recentlyScrolledToBottom,
+  scrollToMessageByIndex,
+  scrollToTop,
+  scrollToBottom,
+  checkIfUserAtBottom,
+  checkIfUserAtTop,
+  waitForStableScrollHeight,
+  cleanupGracePeriod,
+} = useVirtualScroll({
+  scrollContainer,
+  virtualizer,
+  virtualItemsLength: () => virtualItems.value.length,
 })
 
-// Virtualizer setup
-const virtualizer = useVirtualizer({
-  get count() { return virtualItems.value.length },
-  getScrollElement: () => scrollContainer.value || null,
-  estimateSize: () => 100, // 🔧 FIX: Increased from 80 to 100 for file messages
-  overscan: 5,
-  measureElement: (element) => element?.getBoundingClientRect().height || 100,
+// 3. Scroll Event Handlers (handleScroll, handleManualLoadMore)
+const {
+  showLoadMoreTrigger,
+  handleScroll,
+  handleManualLoadMore,
+  cleanupTimeouts,
+} = useScrollEventHandlers({
+  props,
+  scrollContainer,
+  isProgrammaticScrolling,
+  isUserAtBottom,
+  recentlyScrolledToBottom,
+  checkIfUserAtBottom,
+  checkIfUserAtTop,
+  emit: emitWrapper,
 })
 
-// Methods
+// 4. Resize Observer (content height change compensation)
+const {
+  setupContentResizeObserver,
+  cleanupContentResizeObserver,
+} = useResizeObserver({
+  scrollContainer,
+  listContainer,
+  isUserAtBottom,
+  recentlyScrolledToBottom,
+})
+
+// 5. Scroll Watchers (lifecycle, watch handlers, animations)
+const {
+  isNewMessage,
+} = useScrollWatchers({
+  props,
+  scrollContainer,
+  displayedMessages,
+  virtualItemsLength: () => virtualItems.value.length,
+  isProgrammaticScrolling,
+  isUserAtBottom,
+  isInitialScrollDone,
+  scrollToBottom,
+  waitForStableScrollHeight,
+  checkIfUserAtBottom,
+  handleScroll,
+  setupContentResizeObserver,
+  cleanupContentResizeObserver,
+  cleanupGracePeriod,
+  cleanupTimeouts,
+  emit: emitWrapper,
+})
+
+// Wire up scrollToMessage with virtualItems index lookup
 const scrollToMessage = async (messageId: string, retries = 3, delay = 100) => {
   const index = virtualItems.value.findIndex(item =>
     item.type === 'message' && (item.data as Message).id === messageId
   )
-
-  if (index < 0 || !virtualizer.value) {
-    return
-  }
-
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      // Wait for virtualizer to be ready
-      await nextTick()
-
-      const container = virtualizer.value.scrollElement
-      if (container && virtualizer.value.options.count === virtualItems.value.length) {
-        virtualizer.value.scrollToIndex(index, {
-          align: 'center'
-        })
-        return // Success
-      }
-    } catch (error) {
-      console.warn(`Scroll to message attempt ${attempt + 1} failed:`, error)
-    }
-
-    // Wait before retry
-    if (attempt < retries - 1) {
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-  }
-}
-
-const scrollToTop = async (retries = 5, delay = 150) => {
-  if (!virtualizer.value || virtualItems.value.length === 0) {
-    return
-  }
-
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      // Wait a tick for the virtualizer to process any pending updates
-      await nextTick()
-
-      // Check if virtualizer has the correct count and container element
-      const container = virtualizer.value.scrollElement
-      if (container && virtualizer.value.options.count === virtualItems.value.length) {
-        // Use direct scroll for more reliable scrolling
-        container.scrollTop = 0
-        return // Success
-      }
-    } catch (error) {
-      console.warn(`Scroll to top attempt ${attempt + 1} failed:`, error)
-    }
-
-    // Wait before retry with exponential backoff
-    if (attempt < retries - 1) {
-      await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)))
-    }
-  }
-
-  // Final fallback: try scrollToIndex with a longer timeout
-  try {
-    await new Promise(resolve => setTimeout(resolve, 300))
-    if (virtualizer.value) {
-      virtualizer.value.scrollToIndex(0, { align: 'start' })
-    }
-  } catch (error) {
-    console.warn('Final scroll to top attempt failed:', error)
-  }
-}
-
-const scrollToBottom = async (retries = 10, delay = 100) => {
-  const lastIndex = virtualItems.value.length - 1
-  if (lastIndex < 0 || !virtualizer.value) {
-    console.log('🔽 [ScrollToBottom] Skipped - no items or virtualizer')
-    return
-  }
-
-  console.log(`🔽 [ScrollToBottom] Starting scroll to bottom, items: ${virtualItems.value.length}, lastIndex: ${lastIndex}`)
-
-  // Set guard to prevent scroll events from triggering during programmatic scroll
-  isProgrammaticScrolling.value = true
-
-  // Helper: Wait for next animation frame for better DOM sync
-  const waitForFrame = () => new Promise(resolve => window.requestAnimationFrame(resolve))
-
-  // Helper: Check if virtualizer is ready (relaxed conditions)
-  const isVirtualizerReady = (): boolean => {
-    if (!virtualizer.value) {return false}
-    const container = virtualizer.value.scrollElement
-    if (!container) {return false}
-
-    const totalSize = virtualizer.value.getTotalSize()
-    // Relaxed condition: just need totalSize > 0 and container exists
-    return totalSize > 0
-  }
-
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      // Phase 1: Wait for DOM using RAF instead of fixed timeout
-      await waitForFrame()
-      await nextTick()
-
-      // Phase 2: Check if virtualizer is ready
-      if (isVirtualizerReady() && virtualizer.value) {
-        // 🔧 FIX: 使用 scrollToIndex 作為主要滾動方法
-        // 原本使用 container.scrollTop = scrollHeight，但這對虛擬列表無效
-        // 因為 scrollHeight 只反映已渲染內容的高度，未渲染的項目使用估算值 (100px)
-        // 當底部有圖片/影片時，估算值遠小於實際高度，導致滾動不到真正的底部
-        //
-        // scrollToIndex 會：
-        // 1. 先渲染目標項目
-        // 2. 測量實際高度
-        // 3. 計算正確的滾動位置
-        // 4. 執行滾動
-        virtualizer.value.scrollToIndex(lastIndex, { align: 'end' })
-
-        // 等待滾動完成
-        await waitForFrame()
-        await nextTick()
-
-        // 額外驗證：使用 scrollTop = scrollHeight 確保完全到底
-        const container = virtualizer.value.scrollElement
-        if (container) {
-          const beforeScrollTop = container.scrollTop
-          container.scrollTop = container.scrollHeight
-
-          console.log(`✅ [ScrollToBottom] Scrolled on attempt ${attempt + 1}, ` +
-            `scrollToIndex(${lastIndex}), scrollTop: ${beforeScrollTop} → ${container.scrollTop}, ` +
-            `scrollHeight: ${container.scrollHeight}`)
-        }
-
-        // Clear guard after successful scroll
-        setTimeout(() => {
-          isProgrammaticScrolling.value = false
-          isUserAtBottom.value = true // We just scrolled to bottom
-
-          // 🔧 FIX: Start grace period to protect isUserAtBottom from race conditions
-          startGracePeriod()
-          console.log('🔽 [ScrollToBottom] Success - guard cleared, grace period started')
-        }, 100)
-
-        return // Success
-      }
-    } catch (error) {
-      console.warn(`⚠️ [ScrollToBottom] Attempt ${attempt + 1} failed:`, error)
-    }
-
-    // Wait before retry with exponential backoff (capped at 500ms)
-    if (attempt < retries - 1) {
-      const waitTime = Math.min(delay * Math.pow(1.5, attempt), 500)
-      await new Promise(resolve => setTimeout(resolve, waitTime))
-    }
-  }
-
-  // Final fallback: force scroll using multiple methods
-  console.log('🔄 [ScrollToBottom] Using final fallback methods...')
-  try {
-    await new Promise(resolve => setTimeout(resolve, 200))
-
-    if (virtualizer.value) {
-      // Method 1: scrollToIndex (primary - handles virtual list correctly)
-      virtualizer.value.scrollToIndex(virtualItems.value.length - 1, { align: 'end' })
-
-      // Method 2: Direct scrollTop as backup
-      await new Promise(resolve => setTimeout(resolve, 50))
-      const container = virtualizer.value.scrollElement
-      if (container) {
-        container.scrollTop = container.scrollHeight
-      }
-    }
-  } catch (error) {
-    console.warn('❌ [ScrollToBottom] Final fallback failed:', error)
-  } finally {
-    // Clear guard after final fallback completes
-    setTimeout(() => {
-      isProgrammaticScrolling.value = false
-      isUserAtBottom.value = true // We just scrolled to bottom, so user is at bottom
-
-      // 🔧 FIX: Start grace period to protect isUserAtBottom from race conditions
-      startGracePeriod()
-      console.log('🔽 [ScrollToBottom] Guard cleared, isUserAtBottom set to true, grace period started')
-    }, 100)
-  }
-}
-
-/**
- * 🔧 FIX: Start grace period after scrollToBottom
- * During this period, scroll events cannot set isUserAtBottom to false
- * This prevents race conditions with virtualizer height adjustments
- */
-function startGracePeriod() {
-  // Clear any existing timeout
-  if (recentlyScrolledToBottomTimeout) {
-    clearTimeout(recentlyScrolledToBottomTimeout)
-  }
-
-  // Start grace period
-  recentlyScrolledToBottom.value = true
-  console.log(`🛡️ [GracePeriod] Started (${GRACE_PERIOD_MS}ms)`)
-
-  // End grace period after timeout
-  recentlyScrolledToBottomTimeout = setTimeout(() => {
-    recentlyScrolledToBottom.value = false
-    recentlyScrolledToBottomTimeout = null
-    console.log('🛡️ [GracePeriod] Ended')
-  }, GRACE_PERIOD_MS)
-}
-
-// Animation handling with smooth entrance
-const isNewMessage = (messageId: string) => {
-  return newMessageIds.value.has(messageId)
-}
-
-const addMessageAnimation = () => {
-  // Mark new messages for animation
-  const existingIds = new Set(props.messages.map(m => m.id))
-  displayedMessages.value.forEach(msg => {
-    if (!existingIds.has(msg.id)) {
-      newMessageIds.value.add(msg.id)
-      // Auto-remove after animation completes
-      setTimeout(() => {
-        newMessageIds.value.delete(msg.id)
-      }, 500)
-    }
-  })
-}
-
-// Smart scroll management
-const checkIfUserAtBottom = () => {
-  if (!scrollContainer.value) {return true}
-  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
-  const threshold = 100 // pixels from bottom
-  return scrollHeight - scrollTop - clientHeight < threshold
-}
-
-const checkIfUserAtTop = () => {
-  if (!scrollContainer.value) {return false}
-  const { scrollTop } = scrollContainer.value
-  const threshold = 2500 // Increased threshold for virtual scrolling compatibility
-  return scrollTop < threshold
-}
-
-const handleScroll = () => {
-  if (!scrollContainer.value) {return}
-
-  // Skip scroll handling during programmatic scrolling to prevent race conditions
-  if (isProgrammaticScrolling.value) {
-    console.log('🔒 [handleScroll] Skipped - programmatic scrolling in progress')
-    return
-  }
-
-  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value
-
-  // Update user position
-  const isAtBottom = checkIfUserAtBottom()
-  const isAtTop = checkIfUserAtTop()
-
-  // 🔧 FIX: Don't reset isUserAtBottom to false during grace period
-  // This prevents race conditions where virtualizer height adjustments
-  // trigger scroll events that incorrectly mark user as not at bottom
-  if (isAtBottom) {
-    isUserAtBottom.value = true
-  } else if (!recentlyScrolledToBottom.value) {
-    // Only set to false if NOT in grace period
-    isUserAtBottom.value = false
-  } else {
-    console.log('🛡️ [handleScroll] Grace period active - preserving isUserAtBottom = true')
-  }
-
-  // 🔧 FIX: Check scroll direction with threshold to avoid flickering from micro-movements
-  const scrollDelta = lastScrollTop.value - scrollTop
-  const isScrollingUp = scrollDelta > SCROLL_DIRECTION_THRESHOLD
-  const isScrollingDown = scrollDelta < -SCROLL_DIRECTION_THRESHOLD
-  const isNearTop = scrollTop < SHOW_LOAD_MORE_NEAR_TOP_THRESHOLD
-
-  // 🔧 FIX: Only show load-more trigger when:
-  // 1. Scrolling up significantly (not micro-movements)
-  // 2. Near the top of the list
-  // 3. Has more messages to load
-  // 4. Not currently loading
-  const shouldShowLoadMore = isScrollingUp && isNearTop && props.hasMore && !props.loading
-
-  if (shouldShowLoadMore) {
-    // Clear any pending hide timeout
-    if (hideLoadMoreTimeout) {
-      clearTimeout(hideLoadMoreTimeout)
-      hideLoadMoreTimeout = null
-    }
-    // Show with debounce to prevent rapid flickering
-    if (!showLoadMoreTimeout && !showLoadMoreTrigger.value) {
-      showLoadMoreTimeout = setTimeout(() => {
-        showLoadMoreTrigger.value = true
-        showLoadMoreTimeout = null
-      }, SHOW_LOAD_MORE_DELAY_MS)
-    }
-  } else if (isScrollingDown || !isNearTop) {
-    // Clear any pending show timeout
-    if (showLoadMoreTimeout) {
-      clearTimeout(showLoadMoreTimeout)
-      showLoadMoreTimeout = null
-    }
-    // Hide with debounce when scrolling down or moved away from top
-    if (!hideLoadMoreTimeout && showLoadMoreTrigger.value) {
-      hideLoadMoreTimeout = setTimeout(() => {
-        showLoadMoreTrigger.value = false
-        hideLoadMoreTimeout = null
-      }, HIDE_LOAD_MORE_DELAY_MS)
-    }
-  }
-
-  // Debug scroll state every few scrolls
-  if (Date.now() - lastScrollDebugTime.value > 2000) { // Debug every 2 seconds
-    console.log(`🔍 [VirtualMessageList] Scroll State:`, {
-      scrollTop: Math.round(scrollTop),
-      scrollHeight: Math.round(scrollHeight),
-      clientHeight: Math.round(clientHeight),
-      isAtTop,
-      isScrollingUp,
-      loadingHistory: props.loadingHistory,
-      loading: props.loading,
-      hasMore: props.hasMore,
-      threshold: 100,
-      topDistance: Math.round(scrollTop)
-    })
-    lastScrollDebugTime.value = Date.now()
-  }
-
-  // Load more historical messages when scrolling near top AND scrolling up
-  if (isAtTop && !props.loadingHistory && !props.loading && props.hasMore && isScrollingUp) {
-    // Throttle load-more requests to prevent spam
-    const now = Date.now()
-    if (now - lastLoadMoreTime.value > LOAD_MORE_THROTTLE_MS) {
-      console.log('📜 User scrolled up to top, loading more history...')
-      lastLoadMoreTime.value = now
-      emit('loadMore')
-    }
-  }
-
-  // Emit scroll event
-  emit('scroll', { scrollTop, scrollHeight, clientHeight })
-
-  // Update lastScrollTop AFTER direction detection
-  lastScrollTop.value = scrollTop
-}
-
-// Manual load more (click on button)
-const handleManualLoadMore = () => {
-  if (props.loading || !props.hasMore) {
-    console.log('⚠️ [VirtualMessageList] Cannot load more:', { loading: props.loading, hasMore: props.hasMore })
-    return
-  }
-  console.log('🔼 [VirtualMessageList] Manual load more triggered')
-
-  // 🔧 FIX: Immediately hide the button after clicking to prevent repeated clicks
-  showLoadMoreTrigger.value = false
-
-  // Clear any pending timeouts
-  if (showLoadMoreTimeout) {
-    clearTimeout(showLoadMoreTimeout)
-    showLoadMoreTimeout = null
-  }
-  if (hideLoadMoreTimeout) {
-    clearTimeout(hideLoadMoreTimeout)
-    hideLoadMoreTimeout = null
-  }
-
-  emit('loadMore')
+  if (index < 0) { return }
+  await scrollToMessageByIndex(index, retries, delay)
 }
 
 // Handle retry event from MessageBubble
@@ -688,386 +302,6 @@ const handleRetry = (messageId: string) => {
   console.log('🔄 [VirtualMessageList] Retry event received for message:', messageId)
   emit('retry', messageId)
 }
-
-// 🔧 FIX: Watch for history prepending to capture scroll position BEFORE DOM updates
-watch(() => props.isHistoryPrepending, (isPrepending, wasPrepending) => {
-  if (isPrepending && !wasPrepending && scrollContainer.value) {
-    // 歷史前插開始 - 保存當前滾動位置
-    const container = scrollContainer.value
-    const { scrollTop, scrollHeight, clientHeight } = container
-
-    // 🔧 FIX: 檢查用戶是否 "接近底部"（容差 200px，因為文件附件可能導致高度變化）
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-    const wasAtBottom = distanceFromBottom < 200
-
-    scrollPositionBeforePrepend.value = {
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-      wasAtBottom, // 🔧 FIX: 記錄用戶是否在底部
-      firstVisibleMessageId: null
-    }
-    pendingScrollPreservation.value = true
-    console.log(`📌 [ScrollPreservation] Captured position before prepend: scrollTop=${scrollTop}, scrollHeight=${scrollHeight}, distanceFromBottom=${distanceFromBottom}, wasAtBottom=${wasAtBottom}`)
-  }
-})
-
-// Watchers with smart scroll behavior - FIXED race condition
-// Watch displayedMessages (not messages) because displayedMessages is what virtualItems uses
-// This ensures we scroll AFTER the UI has actually updated
-watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
-  console.log(`📨 [DisplayedMessageWatch] Displayed count changed: ${oldCount} → ${newCount}, virtualItems: ${virtualItems.value.length}`)
-
-  // 🔧 FIX: 修正條件邏輯 - oldCount 必須大於 0 才視為「新訊息」
-  // 原本 bug：當 oldCount=0, newCount>0 時，0 !== undefined 為 true，
-  // 導致誤入「新訊息」路徑，跳過「初始載入」路徑，
-  // 使得 initialScrollComplete 事件從未發送
-  if (oldCount !== undefined && oldCount > 0 && newCount > oldCount) {
-    // 🔧 FIX: Check if this is a history prepend operation
-    const isHistoryPrepend = pendingScrollPreservation.value && scrollPositionBeforePrepend.value
-
-    if (isHistoryPrepend) {
-      // 🔧 FIX: 歷史前插 - 根據用戶之前的位置決定滾動行為
-      const savedPosition = scrollPositionBeforePrepend.value
-      const wasAtBottomBeforePrepend = savedPosition?.wasAtBottom ?? false
-
-      console.log(`📌 [ScrollPreservation] History prepend detected, wasAtBottom: ${wasAtBottomBeforePrepend}`)
-
-      // Set programmatic scrolling guard
-      isProgrammaticScrolling.value = true
-
-      await nextTick()
-      await new Promise(resolve => window.requestAnimationFrame(resolve))
-
-      if (scrollContainer.value && savedPosition) {
-        const container = scrollContainer.value
-
-        if (wasAtBottomBeforePrepend) {
-          // 🔧 FIX: 用戶之前在底部 - 前插後滾動到底部
-          console.log(`📌 [ScrollPreservation] User was at bottom, scrolling to bottom after prepend...`)
-
-          // Clear the saved position first
-          scrollPositionBeforePrepend.value = null
-          pendingScrollPreservation.value = false
-
-          // Clear guard temporarily to allow scrollToBottom to work
-          isProgrammaticScrolling.value = false
-
-          // 🔧 FIX: Wait for stable scroll height before scrolling
-          await waitForStableScrollHeight()
-          await scrollToBottom()
-
-          // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
-          await new Promise(resolve => setTimeout(resolve, 200))
-          if (!checkIfUserAtBottom()) {
-            console.log('📌 [ScrollPreservation] Post-scroll verification: not at bottom, scrolling again...')
-            await scrollToBottom()
-          }
-
-          console.log(`📌 [ScrollPreservation] Scrolled to bottom after history prepend`)
-          return // Don't proceed with normal scroll behavior
-        } else {
-          // 🔧 用戶在中間位置 - 保持相對滾動位置
-          const newScrollHeight = container.scrollHeight
-          const heightDifference = newScrollHeight - savedPosition.scrollHeight
-
-          // Adjust scrollTop to maintain visual position
-          const newScrollTop = savedPosition.scrollTop + heightDifference
-          container.scrollTop = newScrollTop
-
-          console.log(`📌 [ScrollPreservation] Adjusted scroll position (user was NOT at bottom):`)
-          console.log(`   - Old scrollHeight: ${savedPosition.scrollHeight}, New scrollHeight: ${newScrollHeight}`)
-          console.log(`   - Height difference: ${heightDifference}`)
-          console.log(`   - Old scrollTop: ${savedPosition.scrollTop}, New scrollTop: ${newScrollTop}`)
-
-          // Clear the saved position
-          scrollPositionBeforePrepend.value = null
-          pendingScrollPreservation.value = false
-
-          // Clear guard after a short delay
-          setTimeout(() => {
-            isProgrammaticScrolling.value = false
-            console.log(`📌 [ScrollPreservation] Guard cleared`)
-          }, 100)
-        }
-      }
-
-      return // Don't proceed with normal scroll behavior
-    }
-
-    // Check if user was at bottom before new messages
-    const wasAtBottom = isUserAtBottom.value
-    console.log(`📨 [DisplayedMessageWatch] New messages detected, wasAtBottom: ${wasAtBottom}`)
-
-    await nextTick()
-    addMessageAnimation()
-
-    // Wait for RAF + multiple ticks to ensure virtualizer has FULLY updated
-    await new Promise(resolve => window.requestAnimationFrame(resolve))
-    await nextTick()
-    await new Promise(resolve => window.requestAnimationFrame(resolve))
-
-    // Extra wait to ensure virtualItems computed has recalculated
-    await new Promise(resolve => setTimeout(resolve, 20))
-
-    console.log(`📨 [DisplayedMessageWatch] After wait - virtualItems: ${virtualItems.value.length}`)
-
-    // Only auto-scroll if user was already at bottom
-    if (!props.isSearchActive && wasAtBottom) {
-      console.log('📨 [DisplayedMessageWatch] Auto-scrolling to bottom...')
-      // 🔧 FIX: Wait for stable scroll height before scrolling
-      // Without this, virtual list items may not be fully measured yet
-      await waitForStableScrollHeight()
-      await scrollToBottom()
-
-      // 🔧 FIX: Post-scroll verification - ensure we're actually at bottom
-      // Virtual list may continue rendering after initial scroll
-      await new Promise(resolve => setTimeout(resolve, 200))
-      if (!checkIfUserAtBottom()) {
-        console.log('📨 [DisplayedMessageWatch] Post-scroll verification: not at bottom, scrolling again...')
-        await scrollToBottom()
-      }
-    } else if (!wasAtBottom) {
-      // Show new message notification to parent
-      console.log('📨 [DisplayedMessageWatch] User not at bottom, showing notification')
-      emit('newMessageWhileScrolled')
-    }
-  } else if ((oldCount === undefined || oldCount === 0) && newCount > 0) {
-    // Initial load - scroll to bottom ONLY if onMounted hasn't already done it
-    // 🔧 FIX: Prevents race condition where both onMounted and watch scroll to bottom
-    // 🔧 FIX: Also handle oldCount === 0 case (Vue provides 0 as initial old value, not undefined)
-    if (isInitialScrollDone.value) {
-      console.log('📨 [DisplayedMessageWatch] Initial load detected, but onMounted already handled scroll - skipping')
-      return
-    }
-
-    console.log('📨 [DisplayedMessageWatch] Initial load detected, scrolling to bottom...')
-    await nextTick()
-    await new Promise(resolve => window.requestAnimationFrame(resolve))
-    // 🔧 FIX: Wait for stable scroll height before scrolling
-    await waitForStableScrollHeight()
-    await scrollToBottom()
-
-    // 🚀 Phase 2 優化：移除 200ms 固定延遲，改用 RAF
-    // 原本：setTimeout(200) 等待 DOM 穩定
-    // 現在：nextTick + RAF (~16ms) 已足夠，因為 waitForStableScrollHeight 已確保穩定
-    await nextTick()
-    await new Promise(resolve => window.requestAnimationFrame(resolve))
-
-    // 快速驗證，如果不在底部則再滾動一次
-    if (!checkIfUserAtBottom()) {
-      console.log('📨 [DisplayedMessageWatch] Quick verification: not at bottom, scrolling again...')
-      await scrollToBottom()
-    }
-
-    // Mark as done so future watches don't repeat
-    isInitialScrollDone.value = true
-
-    // 🔧 FIX: 發送初始滾動完成事件，通知父組件可以顯示列表
-    emit('initialScrollComplete')
-    console.log('📨 [DisplayedMessageWatch] Emitted initialScrollComplete event')
-  }
-})
-
-// Lifecycle with scroll listener - OPTIMIZED: Single smart scroll
-onMounted(async () => {
-  console.log('🚀 [VirtualMessageList] Component mounted')
-  await nextTick()
-
-  // Wait for multiple animation frames to ensure DOM and virtualizer are ready
-  await new Promise(resolve => window.requestAnimationFrame(resolve))
-  await nextTick()
-  await new Promise(resolve => window.requestAnimationFrame(resolve))
-
-  // Add scroll listener for smart scroll management (do this first)
-  if (scrollContainer.value) {
-    scrollContainer.value.addEventListener('scroll', handleScroll, { passive: true })
-  }
-
-  // 🔧 FIX Phase 2: 設置 ResizeObserver 監控內容高度變化
-  // 這會在圖片/影片載入完成導致高度變化時自動補償滾動位置
-  setupContentResizeObserver()
-
-  // Now scroll to bottom if we have messages
-  if (!props.isSearchActive && displayedMessages.value.length > 0) {
-    console.log(`🚀 [VirtualMessageList] Initial scroll to bottom with ${displayedMessages.value.length} messages`)
-
-    // 🔧 OPTIMIZED: Wait for scrollHeight to stabilize before scrolling (single scroll)
-    // This replaces the previous two-scroll approach
-    await waitForStableScrollHeight()
-    await scrollToBottom()
-
-    // 🚀 Phase 2 優化：移除 200ms 固定延遲，改用 RAF
-    await nextTick()
-    await new Promise(resolve => window.requestAnimationFrame(resolve))
-
-    // 快速驗證，如果不在底部則再滾動一次
-    if (!checkIfUserAtBottom()) {
-      console.log('🚀 [VirtualMessageList] Quick verification: not at bottom, scrolling again...')
-      await scrollToBottom()
-    }
-
-    // 🔧 FIX: Mark initial scroll as done to prevent race condition with watch
-    isInitialScrollDone.value = true
-    console.log('🚀 [VirtualMessageList] Single optimized scroll complete, isInitialScrollDone=true')
-
-    // 🔧 FIX: 發送初始滾動完成事件，通知父組件可以顯示列表
-    emit('initialScrollComplete')
-    console.log('🚀 [VirtualMessageList] Emitted initialScrollComplete event')
-  }
-  // 🔧 FIX: Do NOT set isInitialScrollDone=true if no messages
-  // The watch will handle scrolling when messages arrive later
-})
-
-/**
- * 🔧 FIX Phase 2: ResizeObserver 滾動補償處理函數
- * 當虛擬列表內容區域高度變化時（例如圖片載入完成），自動補償滾動位置
- *
- * 工作原理：
- * 1. 監控 listContainer 的高度變化
- * 2. 當高度增加且用戶在底部時，調整 scrollTop 保持底部位置
- * 3. 使用 RAF 確保補償在下一幀執行，避免閃爍
- *
- * @param entries - ResizeObserver 回調的條目
- */
-const handleContentResize = (entries: ResizeObserverEntry[]) => {
-  if (!scrollContainer.value || resizeCompensationPending) {
-    return
-  }
-
-  const entry = entries[0]
-  if (!entry) {return}
-
-  const newHeight = entry.contentRect.height
-  const heightDelta = newHeight - previousContentHeight
-
-  // 只在高度增加時處理（圖片/影片載入完成）
-  // 忽略微小變化（< 5px）以避免過度補償
-  if (heightDelta > 5 && previousContentHeight > 0) {
-    const container = scrollContainer.value
-    const { scrollTop, scrollHeight, clientHeight } = container
-
-    // 計算用戶是否接近底部（容差 150px）
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-    const wasNearBottom = distanceFromBottom < 150
-
-    // 在 grace period 期間或用戶已在底部時進行補償
-    const shouldCompensate = wasNearBottom || recentlyScrolledToBottom.value || isUserAtBottom.value
-
-    if (shouldCompensate) {
-      resizeCompensationPending = true
-
-      // 使用 RAF 確保在下一幀執行補償
-      window.requestAnimationFrame(() => {
-        if (scrollContainer.value) {
-          const targetScroll = scrollContainer.value.scrollHeight - clientHeight
-          scrollContainer.value.scrollTop = targetScroll
-
-          console.log(`🔄 [ResizeObserver] Compensated scroll for height change: ` +
-            `+${Math.round(heightDelta)}px, scrollTop: ${Math.round(scrollTop)} → ${Math.round(targetScroll)}`)
-        }
-        resizeCompensationPending = false
-      })
-    } else {
-      console.log(`📏 [ResizeObserver] Height changed +${Math.round(heightDelta)}px but user not at bottom (distance: ${Math.round(distanceFromBottom)}px)`)
-    }
-  }
-
-  previousContentHeight = newHeight
-}
-
-/**
- * 🔧 FIX Phase 2: 設置 ResizeObserver
- * 在組件掛載時調用，監控虛擬列表內容區域
- */
-const setupContentResizeObserver = () => {
-  if (!listContainer.value || contentResizeObserver) {
-    return
-  }
-
-  contentResizeObserver = new ResizeObserver(handleContentResize)
-  contentResizeObserver.observe(listContainer.value)
-
-  // 初始化 previousContentHeight
-  previousContentHeight = listContainer.value.getBoundingClientRect().height
-  console.log(`📐 [ResizeObserver] Initialized with height: ${Math.round(previousContentHeight)}px`)
-}
-
-/**
- * 🔧 FIX Phase 2: 清理 ResizeObserver
- * 在組件卸載時調用
- */
-const cleanupContentResizeObserver = () => {
-  if (contentResizeObserver) {
-    contentResizeObserver.disconnect()
-    contentResizeObserver = null
-    console.log('📐 [ResizeObserver] Disconnected')
-  }
-}
-
-/**
- * 🔧 OPTIMIZED: Wait for scrollHeight to stabilize before scrolling
- * This ensures virtual list has fully rendered before we scroll
- * Replaces the old approach of scrolling twice
- *
- * 🚀 Phase 2 優化：減少等待時間
- * - maxWaitMs: 500 → 250 (visibility:hidden 修復後，scrollHeight 計算更快)
- * - checkIntervalMs: 50 → 25 (更快速的輪詢)
- * - 實際效果：虛擬列表通常在 50-100ms 內穩定
- */
-const waitForStableScrollHeight = async (maxWaitMs = 250, checkIntervalMs = 25): Promise<void> => {
-  if (!scrollContainer.value) {return}
-
-  let lastScrollHeight = scrollContainer.value.scrollHeight
-  let stableCount = 0
-  const requiredStableChecks = 2 // Need 2 consecutive stable readings
-  const startTime = Date.now()
-
-  while (Date.now() - startTime < maxWaitMs) {
-    await new Promise(resolve => setTimeout(resolve, checkIntervalMs))
-    await new Promise(resolve => window.requestAnimationFrame(resolve))
-
-    if (!scrollContainer.value) {return}
-
-    const currentScrollHeight = scrollContainer.value.scrollHeight
-
-    if (currentScrollHeight === lastScrollHeight) {
-      stableCount++
-      if (stableCount >= requiredStableChecks) {
-        console.log(`📏 [ScrollHeight] Stabilized at ${currentScrollHeight}px after ${Date.now() - startTime}ms`)
-        return
-      }
-    } else {
-      stableCount = 0
-      console.log(`📏 [ScrollHeight] Changed: ${lastScrollHeight} → ${currentScrollHeight}`)
-      lastScrollHeight = currentScrollHeight
-    }
-  }
-
-  console.log(`📏 [ScrollHeight] Timeout after ${maxWaitMs}ms, proceeding with current height: ${lastScrollHeight}`)
-}
-
-onUnmounted(() => {
-  if (scrollContainer.value) {
-    scrollContainer.value.removeEventListener('scroll', handleScroll)
-  }
-  // 🔧 FIX: Clean up all timeouts
-  if (hideLoadMoreTimeout) {
-    clearTimeout(hideLoadMoreTimeout)
-    hideLoadMoreTimeout = null
-  }
-  if (showLoadMoreTimeout) {
-    clearTimeout(showLoadMoreTimeout)
-    showLoadMoreTimeout = null
-  }
-  // 🔧 FIX: Clean up grace period timeout
-  if (recentlyScrolledToBottomTimeout) {
-    clearTimeout(recentlyScrolledToBottomTimeout)
-    recentlyScrolledToBottomTimeout = null
-  }
-  // 🔧 FIX Phase 2: 清理 ResizeObserver
-  cleanupContentResizeObserver()
-})
 
 // Expose methods and template refs
 defineExpose({

@@ -18,3 +18,29 @@ export {
   type InlineVideoState,
   type VideoPreviewState,
 } from './useVideoPlayer'
+
+// VirtualMessageList composables
+export {
+  useVirtualScroll,
+  type UseVirtualScrollOptions,
+} from './useVirtualScroll'
+export {
+  useVirtualList,
+  type VirtualItem,
+  type UseVirtualListProps,
+  type UseVirtualListOptions,
+} from './useVirtualList'
+export {
+  useScrollEventHandlers,
+  type UseScrollEventHandlersProps,
+  type UseScrollEventHandlersOptions,
+} from './useScrollEventHandlers'
+export {
+  useResizeObserver,
+  type UseResizeObserverOptions,
+} from './useResizeObserver'
+export {
+  useScrollWatchers,
+  type UseScrollWatchersProps,
+  type UseScrollWatchersOptions,
+} from './useScrollWatchers'
