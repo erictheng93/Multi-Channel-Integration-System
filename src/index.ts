@@ -69,7 +69,7 @@ import monitoringMainHandler from '@modules/monitoring/handlers/monitoring-main'
 //   src/handlers/system-settings-router.ts
 //   src/handlers/credentials-router.ts
 // Import middleware and utilities
-import { jwtAuth } from './middleware/auth';
+import { jwtAuth, requireAdmin } from './middleware/auth';
 import { getSecurityConfig, getSecurityHeaders } from './config/security';
 import { globalErrorHandler } from './middleware/error-handler';
 
@@ -171,13 +171,12 @@ log.info('DelayedMessageScheduler public endpoint registered', {
   endpoint: 'GET /api/delayed-messages-v2/health (public, no auth)'
 });
 
-// 🆕 Pre-register Configuration Check endpoint BEFORE unified route system
-// This is a PUBLIC endpoint for debugging CORS and environment variable issues
-// It should be accessible without authentication to help diagnose configuration problems
+// 🆕 Pre-register Configuration Check endpoint (admin-only)
+// Exposes environment config — requires authentication
 import { getConfigCheck } from '@modules/system/handlers/health-main';
-app.get('/api/system/config-check', getConfigCheck);
-log.info('Configuration check endpoint registered (public)', {
-  endpoint: 'GET /api/system/config-check (public, no auth)'
+app.get('/api/system/config-check', jwtAuth, requireAdmin(), getConfigCheck);
+log.info('Configuration check endpoint registered (admin only)', {
+  endpoint: 'GET /api/system/config-check (admin auth required)'
 });
 
 // 🔧 Pre-register R2 Public Proxy Endpoint (QR Code Fix)
@@ -481,11 +480,6 @@ app.route('/api/channels', channelHandler);
 // ==================== LIFF Handler (QR Code Team Binding) ====================
 import liffHandler from '@modules/liff/handlers/liff';
 
-// Test endpoint for debugging LIFF routes
-app.get('/api/liff-test', (c) => {
-  return c.json({ status: 'ok', message: 'LIFF test endpoint working' });
-});
-
 // LIFF endpoints are PUBLIC (no auth required) - used by LINE users
 app.route('/api/liff', liffHandler);
 
@@ -575,7 +569,8 @@ import { createLazyInitMiddleware, errorHandlingMiddleware } from './core/module
 import { modularSystemApiHandler } from './core/modular-system-integration';
 import { globalErrorHandler as modularSystemErrorHandler } from './core/error-handler';
 
-// 註冊模組化系統管理API端點
+// 註冊模組化系統管理API端點 (admin-only)
+app.use('/api/modular/*', jwtAuth, requireAdmin());
 app.get('/api/modular/status', modularSystemApiHandler.getSystemStatus.bind(modularSystemApiHandler));
 app.get('/api/modular/modules', modularSystemApiHandler.getModules.bind(modularSystemApiHandler));
 app.post('/api/modular/modules', modularSystemApiHandler.createModule.bind(modularSystemApiHandler));
@@ -589,14 +584,14 @@ log.info('Initializing Automated Health Monitoring');
 // 創建監控處理器
 const monitoringHandlers = createMonitoringHandlerMethods();
 
-// 註冊監控API端點
-app.get('/api/monitoring/dashboard', monitoringHandlers.getDashboard);
-app.get('/api/monitoring/health/history', monitoringHandlers.getHealthHistory);
-app.get('/api/monitoring/alerts', monitoringHandlers.getAlertHistory);
-app.put('/api/monitoring/config', monitoringHandlers.updateConfig);
-app.post('/api/monitoring/health/check', monitoringHandlers.triggerHealthCheck);
-app.get('/api/monitoring/metrics', monitoringHandlers.getMetrics);
-app.get('/api/monitoring/stats', monitoringHandlers.getStats);
+// 註冊監控API端點 (admin-only — dashboard, config, alerts, metrics)
+app.get('/api/monitoring/dashboard', jwtAuth, requireAdmin(), monitoringHandlers.getDashboard);
+app.get('/api/monitoring/health/history', jwtAuth, requireAdmin(), monitoringHandlers.getHealthHistory);
+app.get('/api/monitoring/alerts', jwtAuth, requireAdmin(), monitoringHandlers.getAlertHistory);
+app.put('/api/monitoring/config', jwtAuth, requireAdmin(), monitoringHandlers.updateConfig);
+app.post('/api/monitoring/health/check', jwtAuth, requireAdmin(), monitoringHandlers.triggerHealthCheck);
+app.get('/api/monitoring/metrics', jwtAuth, requireAdmin(), monitoringHandlers.getMetrics);
+app.get('/api/monitoring/stats', jwtAuth, requireAdmin(), monitoringHandlers.getStats);
 
 // ==================== Middleware + Config ====================
 
@@ -703,15 +698,6 @@ app.route('/api/auth', passwordHandler);
 // All other legacy team routes have been removed
 // They are now handled by the unified route system + modular handlers
 // ========================================================================
-
-// 臨時測試路由 - 調試用 (保留，可在生產環境移除)
-app.get('/api/messages-test', (c) => {
-  return c.json({
-    success: true,
-    message: 'Direct test route works!',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // QR Code join page (special route) - need to add this to modular router if needed
 app.get('/join', async (c) => {
