@@ -13,6 +13,13 @@ export { default as Dropdown } from './Dropdown.vue'
 export { default as DropdownItem } from './DropdownItem.vue'
 export { default as Tooltip } from './Tooltip.vue'
 
+// Sidebar & Layout Sub-Components
+export { default as SidebarHeader } from './SidebarHeader.vue'
+export { default as SidebarNav } from './SidebarNav.vue'
+export { default as SidebarUserProfile } from './SidebarUserProfile.vue'
+export { default as ExpandableNavGroup } from './ExpandableNavGroup.vue'
+export { default as AppTopBar } from './AppTopBar.vue'
+
 // Notification Components
 export { default as NotificationBadge } from './NotificationBadge.vue'
 export { default as NotificationCenter } from './NotificationCenter.vue'
