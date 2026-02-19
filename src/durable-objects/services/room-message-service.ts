@@ -10,6 +10,7 @@ import type { RealtimeEvent } from '../../types';
 import type { RoomContext, RoomHelpers } from './room-helpers';
 import type { RoomStorageService } from './room-storage-service';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Handles all message broadcasting and ordering for ConversationRoom:
@@ -61,7 +62,7 @@ export class RoomMessageService {
       id: this.helpers.generateEventId(),
       type: 'message_sent',
       source: 'websocket',
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       userId,
       conversationId: this.ctx.conversationId,
       data: {
@@ -209,10 +210,10 @@ export class RoomMessageService {
         conversationId: this.ctx.conversationId,
         missedMessages,
         missedCount: missedMessages.length,
-        syncedAt: new Date().toISOString(),
+        syncedAt: nowISO(),
         serverLastMessageAt: this.getLastMessageTimestamp()
       },
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
     testSafeLog(`${getEmojiPrefix('CHECK')}[ConversationRoom] Sync response sent: ${missedMessages.length} missed messages`);
@@ -256,7 +257,7 @@ export class RoomMessageService {
         event,
         excludeShardIndex: sourceShardIndex,
         priority: 'normal' as const,
-        timestamp: Date.now()
+        timestamp: nowMs()
       };
 
       // Broadcast to potential peer shards (0-4, excluding self)

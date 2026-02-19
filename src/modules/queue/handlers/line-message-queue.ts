@@ -20,6 +20,7 @@ import { WebSocketBroadcastService } from '@/services/websocket-broadcast-servic
 import { createDbClient } from '@/db/drizzle-factory';
 import { messages } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * LINE Message Queue Consumer
@@ -78,7 +79,7 @@ export class LineMessageQueueConsumer {
    * Process a single message
    */
   private async processMessage(payload: LineMessageQueuePayload): Promise<LineMessageQueueResult> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // Build LINE messages array
@@ -138,7 +139,7 @@ export class LineMessageQueueConsumer {
           messageId: payload.messageId,
           conversationId: payload.conversationId,
           success: true,
-          deliveredAt: Date.now()
+          deliveredAt: nowMs()
         });
 
         const duration = Date.now() - startTime;
@@ -148,7 +149,7 @@ export class LineMessageQueueConsumer {
           messageId: payload.messageId,
           conversationId: payload.conversationId,
           success: true,
-          deliveredAt: Date.now()
+          deliveredAt: nowMs()
         };
       } else {
         // LINE API returned failure
@@ -343,7 +344,7 @@ export function createLineMessagePayload(params: {
     metadata: {
       agentId: params.agentId,
       agentName: params.agentName,
-      enqueuedAt: Date.now(),
+      enqueuedAt: nowMs(),
       retryCount: 0,
       originalRequestId: params.requestId
     }

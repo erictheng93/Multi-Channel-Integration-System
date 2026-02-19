@@ -3,8 +3,10 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import type { MigrationConfig } from '@/types/websocket-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const healthApp = new Hono<{ Bindings: Bindings }>();
 
@@ -46,7 +48,7 @@ interface ComponentHealth {
  * Complete health check endpoint
  */
 healthApp.get('/health', async (c) => {
-  const startTime = Date.now();
+  const startTime = nowMs();
 
   try {
     const components: HealthCheckResponse['components'] = {
@@ -71,7 +73,7 @@ healthApp.get('/health', async (c) => {
 
     const response: HealthCheckResponse = {
       status: overallStatus,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       environment: c.env.ENVIRONMENT || 'unknown',
       components,
       configuration: {
@@ -91,7 +93,7 @@ healthApp.get('/health', async (c) => {
 
     return c.json({
       status: 'unhealthy',
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       error: error instanceof Error ? error.message : 'Unknown error'
     }, HTTP_STATUS.SERVICE_UNAVAILABLE);
   }
@@ -112,13 +114,10 @@ healthApp.get('/migration-status', async (c) => {
       rolloutPercentage: config.rolloutPercentage,
       durableObjectsAvailable: durableObjectsHealth.status === 'healthy',
       featureFlags: config.featureFlags,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -156,7 +155,7 @@ healthApp.get('/readiness', async (c) => {
  */
 healthApp.get('/liveness', async (c) => {
   // Simple liveness check - just verify the worker is responding
-  return c.json({ alive: true, timestamp: new Date().toISOString() }, HTTP_STATUS.OK);
+  return c.json({ alive: true, timestamp: nowISO() }, HTTP_STATUS.OK);
 });
 
 /**
@@ -175,7 +174,7 @@ healthApp.get('/metrics', async (c) => {
 
     // Collect various metrics
     const metrics = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       websocket: {
         enabled: config.enableWebSocket,
         rolloutPercentage: config.rolloutPercentage,
@@ -194,7 +193,7 @@ healthApp.get('/metrics', async (c) => {
         averageLatency: 0,
         messagesThroughput: { inbound: 0, outbound: 0 },
         errorRate: 0,
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       },
       // Distributed lock metrics (from LockCoordinator)
       locks: lockMetrics.status === 'fulfilled' ? lockMetrics.value : {
@@ -205,7 +204,7 @@ healthApp.get('/metrics', async (c) => {
         totalContention: 0,
         averageLockDuration: 0,
         lockAcquisitionRate: 0,
-        lastCleanup: Date.now(),
+        lastCleanup: nowMs(),
         activeLocks: 0,
         expiredLocks: 0
       },
@@ -234,11 +233,7 @@ healthApp.get('/metrics', async (c) => {
       data: metrics
     });
   } catch (error) {
-    console.error('[WebSocket Metrics] Error collecting metrics:', error);
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -249,7 +244,7 @@ healthApp.get('/metrics', async (c) => {
 healthApp.get('/health-detail', async (c) => {
   try {
     const detailedHealth = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       overall: {
         status: 'healthy',
         score: 100
@@ -289,11 +284,7 @@ healthApp.get('/health-detail', async (c) => {
       data: detailedHealth
     });
   } catch (error) {
-    console.error('[WebSocket Health Detail] Error:', error);
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -304,7 +295,7 @@ healthApp.get('/health-detail', async (c) => {
 healthApp.get('/comparison', async (c) => {
   try {
     const comparison = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       currentArchitecture: 'WebSocket + Durable Objects',
       legacyArchitecture: 'Polling + Cloudflare Queues (Deprecated)',
       metrics: {
@@ -407,11 +398,7 @@ healthApp.get('/comparison', async (c) => {
       data: comparison
     });
   } catch (error) {
-    console.error('[WebSocket Comparison] Error:', error);
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -437,7 +424,7 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
       return {
         status: 'unhealthy',
         message: `Missing Durable Objects bindings: ${missingBindings.join(', ')}`,
-        lastCheck: new Date().toISOString()
+        lastCheck: nowISO()
       };
     }
 
@@ -446,7 +433,7 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
       return {
         status: 'unhealthy',
         message: 'CONVERSATION_ROOM binding not available',
-        lastCheck: new Date().toISOString()
+        lastCheck: nowISO()
       };
     }
     const testRoomId = env.CONVERSATION_ROOM.idFromName('health-check-test');
@@ -460,20 +447,20 @@ async function checkDurableObjects(env: Bindings): Promise<ComponentHealth> {
       return {
         status: 'healthy',
         message: 'All Durable Objects bindings available',
-        lastCheck: new Date().toISOString()
+        lastCheck: nowISO()
       };
     }
 
     return {
       status: 'degraded',
       message: 'Durable Objects responding but with errors',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   } catch (error) {
     return {
       status: 'unhealthy',
       message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   }
 }
@@ -489,7 +476,7 @@ async function checkWebSocketAvailability(env: Bindings): Promise<ComponentHealt
       return {
         status: 'healthy',
         message: 'WebSocket disabled by configuration',
-        lastCheck: new Date().toISOString()
+        lastCheck: nowISO()
       };
     }
 
@@ -500,20 +487,20 @@ async function checkWebSocketAvailability(env: Bindings): Promise<ComponentHealt
       return {
         status: 'healthy',
         message: 'WebSocket available',
-        lastCheck: new Date().toISOString()
+        lastCheck: nowISO()
       };
     }
 
     return {
       status: 'unhealthy',
       message: 'WebSocket unavailable (Durable Objects issue)',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   } catch (error) {
     return {
       status: 'unhealthy',
       message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   }
 }
@@ -527,7 +514,7 @@ async function checkKVStorage(env: Bindings): Promise<ComponentHealth> {
       return {
         status: 'unhealthy',
         message: 'SESSIONS KV namespace not available',
-        lastCheck: new Date().toISOString()
+        lastCheck: nowISO()
       };
     }
 
@@ -538,13 +525,13 @@ async function checkKVStorage(env: Bindings): Promise<ComponentHealth> {
     return {
       status: 'healthy',
       message: 'KV storage operational',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   } catch (error) {
     return {
       status: 'unhealthy',
       message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   }
 }
@@ -558,7 +545,7 @@ async function checkDatabase(env: Bindings): Promise<ComponentHealth> {
       return {
         status: 'unhealthy',
         message: 'Database binding not available',
-        lastCheck: new Date().toISOString()
+        lastCheck: nowISO()
       };
     }
 
@@ -568,13 +555,13 @@ async function checkDatabase(env: Bindings): Promise<ComponentHealth> {
     return {
       status: 'healthy',
       message: 'Database operational',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   } catch (error) {
     return {
       status: 'unhealthy',
       message: error instanceof Error ? error.message : 'Unknown error',
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   }
 }
@@ -646,7 +633,7 @@ async function checkDurableObjectDetailed(
   lastCheck: string;
   error?: string;
 }> {
-  const startTime = Date.now();
+  const startTime = nowMs();
 
   try {
     const binding = (env as unknown as Record<string, unknown>)[bindingName];
@@ -654,7 +641,7 @@ async function checkDurableObjectDetailed(
       return {
         healthy: false,
         available: false,
-        lastCheck: new Date().toISOString(),
+        lastCheck: nowISO(),
         error: `Binding ${bindingName} not found`
       };
     }
@@ -671,14 +658,14 @@ async function checkDurableObjectDetailed(
       healthy: response.ok || response.status === 404, // 404 is ok for health check
       available: true,
       responseTime,
-      lastCheck: new Date().toISOString()
+      lastCheck: nowISO()
     };
   } catch (error) {
     return {
       healthy: false,
       available: false,
       responseTime: Date.now() - startTime,
-      lastCheck: new Date().toISOString(),
+      lastCheck: nowISO(),
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
@@ -706,13 +693,13 @@ async function checkKVStorageDetailed(env: Bindings): Promise<{
     }
 
     // Test read
-    const readStart = Date.now();
+    const readStart = nowMs();
     await env.SESSIONS.get(testKey);
     const readLatency = Date.now() - readStart;
 
     // Test write
-    const writeStart = Date.now();
-    await env.SESSIONS.put(testKey, JSON.stringify({ timestamp: Date.now() }), { expirationTtl: 60 });
+    const writeStart = nowMs();
+    await env.SESSIONS.put(testKey, JSON.stringify({ timestamp: nowMs() }), { expirationTtl: 60 });
     const writeLatency = Date.now() - writeStart;
 
     return {
@@ -748,7 +735,7 @@ async function checkDatabaseDetailed(env: Bindings): Promise<{
       };
     }
 
-    const queryStart = Date.now();
+    const queryStart = nowMs();
     await env.DB.prepare('SELECT 1 as health_check').first();
     const queryLatency = Date.now() - queryStart;
 
@@ -836,7 +823,7 @@ async function getRealtimeConnectionMetrics(env: Bindings): Promise<{
           outbound: data.eventsPerSecond || 0
         },
         errorRate: (data.failedDeliveries || 0) / Math.max(1, data.totalEvents || 1),
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       };
     }
 

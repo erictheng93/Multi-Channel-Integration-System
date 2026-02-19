@@ -33,6 +33,7 @@ import {
   parseChannelWebhookConfig,
   parseChannelStats
 } from '../types/channel-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class ChannelService implements IChannelIntegrationService {
   private db: DrizzleD1Database;
@@ -179,8 +180,8 @@ export class ChannelService implements IChannelIntegrationService {
         configuredBy: undefined, // Will be set by handler from JWT
         isActive: true,
         isVerified: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: nowISO(),
+        updatedAt: nowISO()
       };
 
       // Add platform-specific configuration
@@ -334,7 +335,7 @@ export class ChannelService implements IChannelIntegrationService {
 
         // Update error tracking
         await this.updateChannelError(channel.id, {
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           errorType: 'verification_failed',
           errorMessage: `LINE API returned ${response.status}: ${errorText}`,
           retryAttempt: (channel.errorCount || 0) + 1
@@ -350,7 +351,7 @@ export class ChannelService implements IChannelIntegrationService {
       const verificationData = await response.json() as { client_id: string; expires_in: number };
 
       // Update channel as verified
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
       await this.db
         .update(channelIntegrations)
         .set({
@@ -380,7 +381,7 @@ export class ChannelService implements IChannelIntegrationService {
 
       // Update error tracking
       await this.updateChannelError(channel.id, {
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         errorType: 'verification_error',
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         retryAttempt: (channel.errorCount || 0) + 1,
@@ -445,7 +446,7 @@ export class ChannelService implements IChannelIntegrationService {
 
         // Update error tracking
         await this.updateChannelError(channel.id, {
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           errorType: 'verification_failed',
           errorMessage: `Facebook API returned ${response.status}: ${errorText}`,
           retryAttempt: (channel.errorCount || 0) + 1
@@ -461,7 +462,7 @@ export class ChannelService implements IChannelIntegrationService {
       const verificationData = await response.json() as { id: string; name: string };
 
       // Update channel as verified
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
       await this.db
         .update(channelIntegrations)
         .set({
@@ -491,7 +492,7 @@ export class ChannelService implements IChannelIntegrationService {
 
       // Update error tracking
       await this.updateChannelError(channel.id, {
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         errorType: 'verification_error',
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         retryAttempt: (channel.errorCount || 0) + 1,
@@ -565,7 +566,7 @@ export class ChannelService implements IChannelIntegrationService {
 
         // Update error tracking
         await this.updateChannelError(channel.id, {
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           errorType: 'verification_failed',
           errorMessage: `WhatsApp API returned ${response.status}: ${errorText}`,
           retryAttempt: (channel.errorCount || 0) + 1
@@ -585,7 +586,7 @@ export class ChannelService implements IChannelIntegrationService {
       };
 
       // Update channel as verified
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
       await this.db
         .update(channelIntegrations)
         .set({
@@ -616,7 +617,7 @@ export class ChannelService implements IChannelIntegrationService {
 
       // Update error tracking
       await this.updateChannelError(channel.id, {
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         errorType: 'verification_error',
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         retryAttempt: (channel.errorCount || 0) + 1,
@@ -648,7 +649,7 @@ export class ChannelService implements IChannelIntegrationService {
         .set({
           lastError: JSON.stringify(error),
           errorCount: error.retryAttempt,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(channelIntegrations.id, channelId));
     } catch (updateError) {
@@ -720,7 +721,7 @@ export class ChannelService implements IChannelIntegrationService {
       }
 
       const updateData: Partial<NewChannelIntegration> = {
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       };
 
       // Track whether credentials changed (for any platform)
@@ -857,7 +858,7 @@ export class ChannelService implements IChannelIntegrationService {
         .update(channelIntegrations)
         .set({
           isActive: false,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(channelIntegrations.id, channelId));
 
@@ -897,7 +898,7 @@ export class ChannelService implements IChannelIntegrationService {
       throw new Error('Channel not found');
     }
 
-    const createdAt = new Date(channel.createdAt || Date.now());
+    const createdAt = new Date(channel.createdAt || nowMs());
     const now = new Date();
     const uptimeDays = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -966,7 +967,7 @@ export class ChannelService implements IChannelIntegrationService {
       const channel = await this.getChannel(channelId);
       if (!channel) return;
 
-      const now = new Date().toISOString();
+      const now = nowISO();
       const updateData: Partial<NewChannelIntegration> = {
         updatedAt: now
       };
@@ -1007,7 +1008,7 @@ export class ChannelService implements IChannelIntegrationService {
       channelId: channel.id,
       platform: channel.platform as ChannelPlatform,
       status,
-      lastCheckAt: new Date().toISOString(),
+      lastCheckAt: nowISO(),
       consecutiveErrors: errorCount,
       lastError: channel.lastError ? JSON.parse(channel.lastError) : null,
       recommendations: []

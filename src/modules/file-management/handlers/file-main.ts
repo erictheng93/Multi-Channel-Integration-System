@@ -18,6 +18,7 @@ import type {
   PlatformType,
   FileDownloadOptions
 } from '@modules/file-management/types/file-types';
+import { nowISO } from '@/utils/timestamp'
 
 const fileMainHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -27,7 +28,7 @@ fileMainHandler.get('/health', async (c) => {
     return successResponse(c, {
       status: 'healthy',
       module: 'file-management',
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       r2Available: !!c.env.R2_BUCKET,
       dbAvailable: !!c.env.DB
     });

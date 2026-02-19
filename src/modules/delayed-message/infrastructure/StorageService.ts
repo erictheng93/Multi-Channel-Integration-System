@@ -13,6 +13,7 @@ import type {
   PendingMessagesResult
 } from '../types';
 import { StorageError } from '@modules/delayed-message/types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * StorageService - 統一資料存取服務
@@ -352,7 +353,7 @@ export class StorageService implements DelayedMessageStorage {
     averageDelaySeconds: number;
   }> {
     try {
-      const now = new Date().toISOString();
+      const now = nowISO();
       const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
       // ✅ 查詢待處理消息數量

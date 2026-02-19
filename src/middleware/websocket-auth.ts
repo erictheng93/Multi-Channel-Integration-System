@@ -6,6 +6,7 @@ import type { Context, Next } from 'hono';
 import type { Bindings, JWTPayload } from '../types';
 import { verifyJWT } from '../utils/auth';
 import { WebSocketAuthService } from '../services/websocket-auth-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export interface WebSocketUser {
   id: number | string;
@@ -20,7 +21,7 @@ export interface WebSocketUser {
 }
 
 export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> => {
-  const startTime = Date.now();
+  const startTime = nowMs();
   const clientIP = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
   const userAgent = c.req.header('User-Agent') || 'unknown';
 
@@ -40,7 +41,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         error: 'Authentication token required',
         code: 4401, // 自定義 WebSocket 關閉代碼
         message: 'WebSocket connections require a valid JWT token as query parameter',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         suggestedAction: 'provide_token'
       }), {
         status: 401,
@@ -60,7 +61,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         error: 'Invalid token format',
         code: 4402,
         message: 'JWT token must have 3 parts separated by dots',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         suggestedAction: 'refresh_token'
       }), {
         status: 401,
@@ -82,7 +83,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         error: 'Invalid token',
         code: 4403,
         message: 'The provided JWT token is invalid or expired',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         suggestedAction: 'refresh_token'
       }), {
         status: 401,
@@ -102,14 +103,14 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     const expiryBuffer = 30; // 30 seconds - only block if token expires very soon
 
     if (payload.exp && payload.exp <= currentTime) {
-      console.log(`❌ [WebSocket Auth] Token already expired from ${clientIP}. Expired at: ${new Date(payload.exp * 1000).toISOString()}, Current: ${new Date().toISOString()}`);
+      console.log(`❌ [WebSocket Auth] Token already expired from ${clientIP}. Expired at: ${new Date(payload.exp * 1000).toISOString()}, Current: ${nowISO()}`);
       return new Response(JSON.stringify({
         error: 'Token expired',
         code: 4404,
         message: 'The JWT token has expired',
         expiresAt: payload.exp,
         currentTime: currentTime,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         suggestedAction: 'refresh_token'
       }), {
         status: 401,
@@ -133,7 +134,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         expiresAt: payload.exp,
         currentTime: currentTime,
         timeRemaining: payload.exp - currentTime,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         suggestedAction: 'refresh_token'
       }), {
         status: 401,
@@ -165,7 +166,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         error: 'Invalid user data',
         code: 4406,
         message: 'Token contains invalid user identification',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         suggestedAction: 'refresh_token'
       }), {
         status: 401,
@@ -186,7 +187,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         message: 'Token contains invalid user role',
         providedRole: role,
         validRoles: ['admin', 'agent'],
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         suggestedAction: 'refresh_token'
       }), {
         status: 401,
@@ -206,8 +207,8 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       teamId: payload.primaryTeamId || null,
       teamName: payload.teamName || null,
       isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: nowISO(),
+      updatedAt: nowISO()
     };
 
     // Store user in context for handler access
@@ -230,7 +231,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
           code: 4403,
           message: 'You do not have permission to access this conversation',
           conversationId,
-          timestamp: Date.now(),
+          timestamp: nowMs(),
           suggestedAction: 'contact_admin'
         }), {
           status: 403,
@@ -254,9 +255,9 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       const analyticsService = createAnalyticsService(c.env);
 
       await analyticsService.recordConnectionQuality({
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         userId: user.id.toString(),
-        connectionId: `auth_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        connectionId: `auth_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`,
         latency: authDuration,
         connectionTime: authDuration,
         messagesPerSecond: 0,
@@ -279,7 +280,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       duration: `${authDuration}ms`,
       userAgent,
       stack: errorStack,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
     // 🆕 Phase 2: 記錄認證錯誤到分析服務
@@ -288,7 +289,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       const analyticsService = createAnalyticsService(c.env);
 
       await analyticsService.recordError({
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         errorCode: 4500,
         errorType: 'AUTH_SYSTEM_ERROR',
         message: errorMessage,
@@ -304,7 +305,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       error: 'Authentication failed',
       code: 4500,
       message: errorMessage,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       duration: authDuration,
       suggestedAction: 'retry_with_new_token'
     }), {

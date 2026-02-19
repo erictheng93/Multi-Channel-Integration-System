@@ -8,6 +8,7 @@ import type {
   DelayedMessageEntity,
   ProcessResult
 } from '../types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * EventService - 統一事件處理服務
@@ -54,7 +55,7 @@ export class EventService {
           remainingSeconds: schedulerInfo.delaySeconds,
           canRecall: true,
           scheduledBy: schedulerInfo.scheduledBy,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'normal'
       };
@@ -85,12 +86,12 @@ export class EventService {
         agentId: recalledBy.id,
         data: {
           recalledBy,
-          recalledAt: new Date().toISOString(),
+          recalledAt: nowISO(),
           originalContent: originalContent ? this.truncateContent(originalContent) : 'Content recalled',
           originalMessageType: 'text',
           wasSuccessful: true,
           reason: 'manual_recall',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'high'
       };
@@ -127,7 +128,7 @@ export class EventService {
           originalScheduledTime: message.scheduledAt,
           actualSentTime: sentResult.actualSentTime,
           queueProcessingId: sentResult.queueProcessingId,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'normal'
       };
@@ -160,9 +161,9 @@ export class EventService {
         data: {
           failureReason: error,
           operation,
-          failedAt: new Date().toISOString(),
+          failedAt: nowISO(),
           deliveryStatus: 'failed',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'high'
       };
@@ -192,10 +193,10 @@ export class EventService {
         agentId: 'system',
         data: {
           skippedReason: reason,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           wasSkipped: true,
-          originalScheduledTime: new Date().toISOString(),
-          timestamp: new Date().toISOString()
+          originalScheduledTime: nowISO(),
+          timestamp: nowISO()
         },
         priority: 'low'
       };
@@ -226,9 +227,9 @@ export class EventService {
         data: {
           failureReason: error,
           attemptedBy,
-          failedAt: new Date().toISOString(),
+          failedAt: nowISO(),
           operation: 'recall',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'high'
       };
@@ -255,7 +256,7 @@ export class EventService {
         return await this.broadcastMessageSent(
           { id: messageId, conversationId } as DelayedMessageEntity,
           {
-            actualSentTime: new Date().toISOString(),
+            actualSentTime: nowISO(),
             queueProcessingId: crypto.randomUUID()
           }
         );
@@ -299,7 +300,7 @@ export class EventService {
           countdownUpdate: true,
           remainingSeconds,
           canRecall: remainingSeconds > 0,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'low'
       };
@@ -336,7 +337,7 @@ export class EventService {
         agentId: 'system',
         data: {
           healthCheck: true,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'low'
       };
@@ -378,9 +379,9 @@ export class EventService {
       failureReason: error.message,
       operation,
       errorType: error.constructor.name,
-      failedAt: new Date().toISOString(),
+      failedAt: nowISO(),
       context,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
   }
 }

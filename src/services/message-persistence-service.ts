@@ -3,6 +3,7 @@
 
 import type { Bindings } from '../types';
 import type { WebSocketMessage } from '../types/websocket-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 持久化訊息結構
@@ -58,14 +59,14 @@ export class MessagePersistenceService {
     message: WebSocketMessage
   ): Promise<void> {
     try {
-      const messageId = (message as any).messageId || `msg-${Date.now()}-${Math.random().toString(36).substring(2)}`;
+      const messageId = (message as any).messageId || `msg-${nowMs()}-${Math.random().toString(36).substring(2)}`;
 
       const persistedMessage: PersistedMessage = {
         id: messageId,
         userId,
         conversationId,
         message,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         delivered: false,
         retryCount: 0,
         expiresAt: new Date(Date.now() + this.defaultTTL * 1000).toISOString()

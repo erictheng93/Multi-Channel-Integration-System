@@ -3,6 +3,8 @@
  * 記錄和分析搜索性能指標
  */
 
+import { nowISO } from '@/utils/timestamp'
+
 export interface SearchMetric {
   query: string
   searchType: 'basic' | 'advanced' | 'fuzzy'
@@ -199,7 +201,7 @@ export class SearchPerformanceMonitor {
       {
         metrics: this.metrics,
         stats: this.getStats(),
-        exportedAt: new Date().toISOString()
+        exportedAt: nowISO()
       },
       null,
       2

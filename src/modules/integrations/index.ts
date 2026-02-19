@@ -2,7 +2,7 @@
 // Main export file for Integration module
 
 // ======================== 處理器導出 ========================
-export { default as integrationMainHandler } from './handlers/integration-main';
+// Active handlers: webhook.ts, webhook-multitenant.ts, channel-handler.ts (registered via src/index.ts)
 
 // ======================== 服務導出 ========================
 export { LineIntegrationService } from './services/line-integration-service';
@@ -69,208 +69,17 @@ export type {
   IntegrationContext
 } from './types/integration-types';
 
-// ======================== 路由系統導出 ========================
-import { Hono } from 'hono';
-import type { Bindings } from '../../types';
-import integrationMainHandler from '@modules/integrations/handlers/integration-main';
+// ======================== 路由系統 ========================
+// Active routes are registered directly in src/index.ts via:
+//   - webhook.ts (Facebook webhook + webhook router)
+//   - webhook-multitenant.ts (LINE webhook)
+//   - channel-handler.ts (channel management)
 import { WebhookRouterService } from '@modules/integrations/services/webhook-router-service';
 import { CredentialManagementService } from '@modules/integrations/services/credential-management-service';
-import { HTTP_STATUS } from '@/constants/http-status';
 
 // Import types for local use
-import type { IntegrationPlatform, PlatformFeatures } from '@modules/integrations/types/integration-types';
-
-/**
- * 創建 Integration 路由
- */
-export function createIntegrationRouter(
-  db: D1Database,
-  cache: KVNamespace,
-  env: Bindings
-): Hono<{ Bindings: Bindings }> {
-  const router = new Hono<{ Bindings: Bindings }>();
-
-  // 注入依賴到處理器
-  const handler = Object.create(integrationMainHandler);
-  handler.db = db;
-  handler.cache = cache;
-  handler.env = env;
-
-  // ======================== 基本 CRUD 端點 ========================
-  router.post('/', handler.create.bind(handler));
-  router.get('/', handler.list.bind(handler));
-  router.get('/:id', handler.getById.bind(handler));
-  router.put('/:id', handler.update.bind(handler));
-  router.delete('/:id', handler.delete.bind(handler));
-
-  // ======================== 狀態管理端點 ========================
-  router.post('/:id/activate', handler.activate.bind(handler));
-  router.post('/:id/deactivate', handler.deactivate.bind(handler));
-  router.post('/:id/test', handler.test.bind(handler));
-
-  // ======================== 統計和監控端點 ========================
-  router.get('/:id/stats', async (c) => {
-    try {
-      const integrationId = c.req.param('id');
-      const user = c.get('user');
-
-      if (!user) {
-        return c.json({
-          success: false,
-          error: 'Authentication required',
-          timestamp: new Date().toISOString()
-        }, HTTP_STATUS.UNAUTHORIZED);
-      }
-
-      // TODO: 實作統計數據獲取
-      const stats = {
-        messages: { sent: 0, received: 0, failed: 0, pending: 0 },
-        apiCalls: { successful: 0, failed: 0, rateLimited: 0, total: 0 },
-        webhooks: { received: 0, processed: 0, failed: 0, invalid: 0 },
-        timing: { averageResponseTimeMs: 0, maxResponseTimeMs: 0, minResponseTimeMs: 0, last24h: 0 },
-        lastUpdated: new Date().toISOString(),
-        periodStart: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        periodEnd: new Date().toISOString()
-      };
-
-      return c.json({
-        success: true,
-        data: stats,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get statistics',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-    }
-  });
-
-  router.get('/:id/health', async (c) => {
-    try {
-      const integrationId = c.req.param('id');
-      const user = c.get('user');
-
-      if (!user) {
-        return c.json({
-          success: false,
-          error: 'Authentication required',
-          timestamp: new Date().toISOString()
-        }, HTTP_STATUS.UNAUTHORIZED);
-      }
-
-      // TODO: 實作健康狀態檢查
-      const health = {
-        overall: 'healthy',
-        checks: {
-          connectivity: { status: 'pass', message: 'API connection successful', checkedAt: new Date().toISOString() },
-          authentication: { status: 'pass', message: 'Credentials valid', checkedAt: new Date().toISOString() },
-          webhook: { status: 'pass', message: 'Webhook endpoint accessible', checkedAt: new Date().toISOString() },
-          rateLimit: { status: 'pass', message: 'Within rate limits', checkedAt: new Date().toISOString() },
-          storage: { status: 'pass', message: 'Storage accessible', checkedAt: new Date().toISOString() }
-        },
-        lastChecked: new Date().toISOString(),
-        nextCheck: new Date(Date.now() + 5 * 60 * 1000).toISOString()
-      };
-
-      return c.json({
-        success: true,
-        data: health,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get health status',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-    }
-  });
-
-  // ======================== Webhook 端點 ========================
-  router.post('/webhooks/:platform/:integrationId', async (c) => {
-    try {
-      const platform = c.req.param('platform');
-      const integrationId = c.req.param('integrationId');
-      const headers: Record<string, string> = {};
-      c.req.raw.headers.forEach((value, key) => {
-        headers[key] = value;
-      });
-      const body = await c.req.json();
-
-      const webhookRouter = new WebhookRouterService(env, db, cache);
-      const result = await webhookRouter.routeWebhook(
-        c.req.path,
-        c.req.method,
-        headers,
-        body
-      );
-
-      if (result.success) {
-        return c.json({
-          success: true,
-          data: {
-            eventsProcessed: result.events.length,
-            processedAt: result.processedAt
-          },
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        return c.json({
-          success: false,
-          errors: result.errors,
-          warnings: result.warnings,
-          timestamp: result.processedAt
-        }, HTTP_STATUS.BAD_REQUEST);
-      }
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Webhook processing failed',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-    }
-  });
-
-  // ======================== 批量操作端點 ========================
-  router.post('/batch', async (c) => {
-    try {
-      const user = c.get('user');
-      if (!user || user.role === 'agent') {
-        return c.json({
-          success: false,
-          error: 'Insufficient permissions for batch operations',
-          timestamp: new Date().toISOString()
-        }, HTTP_STATUS.FORBIDDEN);
-      }
-
-      // TODO: 實作批量操作
-      const body = await c.req.json();
-
-      return c.json({
-        success: true,
-        data: {
-          total: 0,
-          results: { successful: 0, failed: 0, skipped: 0 },
-          details: [],
-          summary: 'Batch operation completed',
-          duration: 0
-        },
-        message: 'Batch operation completed',
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Batch operation failed',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-    }
-  });
-
-  return router;
-}
+import type { Bindings } from '../../types';
+import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
 
 // ======================== 模組資訊 ========================
 export const INTEGRATION_MODULE_INFO = {
@@ -364,19 +173,17 @@ export const INTEGRATION_MODULE_INFO = {
 
 // ======================== 工廠函數 ========================
 /**
- * 創建完整的 Integration 模組實例
+ * 創建 Integration 服務實例
  */
 export function createIntegrationModule(
   db: D1Database,
   cache: KVNamespace,
   env: Bindings
 ) {
-  const router = createIntegrationRouter(db, cache, env);
   const webhookRouter = new WebhookRouterService(env, db, cache);
   const credentialManager = new CredentialManagementService(cache, env);
 
   return {
-    router,
     services: {
       webhookRouter,
       credentialManager
@@ -522,4 +329,4 @@ export function validateIntegrationConfig(config: any): { isValid: boolean; erro
 }
 
 // ======================== 預設導出 ========================
-export { createIntegrationRouter as default };
+export { createIntegrationModule as default };

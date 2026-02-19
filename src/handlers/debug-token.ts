@@ -6,6 +6,7 @@ import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { signJWT } from '../utils/auth';
 import { logger } from '../utils/logger';
+import { globalErrorHandler } from '@/core/error-handler';
 
 const router = new Hono<{ Bindings: Bindings }>();
 
@@ -50,11 +51,7 @@ router.post('/generate-token', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    logger.error('Token generation failed', 'DEBUG', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: 'Token generation failed'
-    }, 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

@@ -5,6 +5,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 // Context logger for module auth middleware
 const log = createContextLogger('ModuleAuth');
@@ -45,7 +46,7 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
         // agents 表使用字符串 ID - migrated to Drizzle ORM
         const db = createDbClient(c.env.DB);
         await db.update(agents)
-          .set({ lastActive: new Date().toISOString() })
+          .set({ lastActive: nowISO() })
           .where(eq(agents.id, user.id))
           .run();
       }

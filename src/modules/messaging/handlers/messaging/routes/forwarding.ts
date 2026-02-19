@@ -13,6 +13,7 @@ import {
   badRequestResponse,
   notFoundResponse
 } from '@/utils/api-response';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const forwardingRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -99,7 +100,7 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
         }
 
         // 生成新訊息 ID
-        const newMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newMessageId = `msg_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
 
         // 準備轉發的訊息內容
         let forwardedContent = `[Forwarded Message]\n${originalMessage.content}`;
@@ -116,7 +117,7 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
           },
           comment: comment || null,
           forwardedBy: userPayload.userId.toString(),
-          forwardedAt: new Date().toISOString()
+          forwardedAt: nowISO()
         };
 
         // 創建轉發的訊息
@@ -131,8 +132,8 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
           isSent: true,
           deliveryStatus: 'sent',
           senderName: userPayload.displayName || null,
-          sentAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          sentAt: nowISO(),
+          createdAt: nowISO()
         };
 
         // 插入轉發的訊息
@@ -142,8 +143,8 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
         await db
           .update(conversations)
           .set({
-            lastMessageAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            lastMessageAt: nowISO(),
+            updatedAt: nowISO()
           })
           .where(eq(conversations.id, targetConversationId));
 

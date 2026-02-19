@@ -16,6 +16,7 @@ import type {
 } from '../types';
 
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * WebSocket 協作適配器
@@ -67,10 +68,10 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         username: p.username || `User ${p.userId}`,
         displayName: p.displayName || p.username || `User ${p.userId}`,
         role: p.role || 'agent',
-        joinedAt: p.joinedAt || new Date().toISOString(),
+        joinedAt: p.joinedAt || nowISO(),
         protocol: 'websocket',
         isTyping: p.isTyping || false,
-        lastActivity: p.lastActivity || new Date().toISOString()
+        lastActivity: p.lastActivity || nowISO()
       }));
     } catch (error) {
       console.error('[WebSocketAdapter] Error getting viewers:', error);
@@ -99,7 +100,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
           typing: [],
           totalConnections: viewers.length,
           protocol: 'websocket',
-          lastActivity: new Date().toISOString()
+          lastActivity: nowISO()
         };
       }
 
@@ -121,7 +122,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         typing,
         totalConnections: state.connectionCount || viewers.length,
         protocol: 'websocket',
-        lastActivity: state.lastActivity || new Date().toISOString(),
+        lastActivity: state.lastActivity || nowISO(),
         metadata: {
           messageHistory: state.messageHistory?.length || 0,
           isActive: state.isActive
@@ -136,7 +137,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         typing: [],
         totalConnections: viewers.length,
         protocol: 'websocket',
-        lastActivity: new Date().toISOString()
+        lastActivity: nowISO()
       };
     }
   }

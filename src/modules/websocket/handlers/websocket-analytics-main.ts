@@ -5,9 +5,11 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
+import { globalErrorHandler } from '@/core/error-handler';
 import { jwtAuth } from '@/middleware/auth';
 import { createAnalyticsService, AlertLevel } from '@/monitoring/websocket-analytics-service';
 import type { WebSocketErrorStats, ConnectionQualityMetrics } from '@/monitoring/websocket-analytics-service';
+import { nowMs } from '@/utils/timestamp'
 
 const analyticsHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -32,16 +34,12 @@ analyticsHandler.get('/dashboard', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: dashboardData,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       generatedBy: user.id
     });
 
   } catch (error) {
-    console.error('[Analytics API] Dashboard error:', error);
-    return c.json({
-      error: 'Failed to fetch dashboard data',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -73,15 +71,11 @@ analyticsHandler.get('/trends', jwtAuth, async (c) => {
       success: true,
       data: trendData,
       timeRange: `${timeRangeHours}h`,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[Analytics API] Trends error:', error);
-    return c.json({
-      error: 'Failed to fetch trend data',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -110,15 +104,11 @@ analyticsHandler.post('/errors', async (c) => {
       success: true,
       message: 'Error recorded successfully',
       errorId: `${errorData.timestamp}-${errorData.errorCode}`,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[Analytics API] Record error failed:', error);
-    return c.json({
-      error: 'Failed to record error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -141,15 +131,11 @@ analyticsHandler.post('/quality', async (c) => {
     return c.json({
       success: true,
       message: 'Connection quality recorded successfully',
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[Analytics API] Record quality error:', error);
-    return c.json({
-      error: 'Failed to record connection quality',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -191,15 +177,11 @@ analyticsHandler.post('/alerts/trigger', jwtAuth, async (c) => {
       message: 'Alert triggered successfully',
       alert: { level, title, description },
       triggeredBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[Analytics API] Trigger alert error:', error);
-    return c.json({
-      error: 'Failed to trigger alert',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -249,17 +231,12 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
       status: overallHealth,
       score: Math.round(healthScore * 100),
       components: healthChecks,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       checkedBy: user.id
     });
 
   } catch (error) {
-    console.error('[Analytics API] Health check error:', error);
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: Date.now()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -291,15 +268,11 @@ analyticsHandler.get('/config/alerts', jwtAuth, async (c) => {
       success: true,
       config: config ? JSON.parse(config) : defaultConfig,
       isDefault: !config,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[Analytics API] Get alert config error:', error);
-    return c.json({
-      error: 'Failed to get alert configuration',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -348,15 +321,11 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
       message: 'Alert configuration updated successfully',
       config: newConfig,
       updatedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[Analytics API] Update alert config error:', error);
-    return c.json({
-      error: 'Failed to update alert configuration',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -388,7 +357,7 @@ analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
       return new Response(csvData, {
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="websocket-trends-${timeRange}h-${Date.now()}.csv"`
+          'Content-Disposition': `attachment; filename="websocket-trends-${timeRange}h-${nowMs()}.csv"`
         }
       });
     }
@@ -397,15 +366,11 @@ analyticsHandler.get('/export/trends', jwtAuth, async (c) => {
       success: true,
       data: trendData,
       exportedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[Analytics API] Export trends error:', error);
-    return c.json({
-      error: 'Failed to export trend data',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

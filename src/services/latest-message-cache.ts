@@ -8,6 +8,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { createDbClient } from '../db/drizzle-factory';
 import type { Bindings } from '../types';
 import * as schema from '../db/schema';
+import { nowISO } from '@/utils/timestamp'
 
 export interface CachedLatestMessage {
   conversationId: string;
@@ -118,7 +119,7 @@ export class LatestMessageCache {
     const cacheKey = `latest_msg:${conversationId}`;
     const cached: CachedLatestMessage = {
       ...message,
-      cachedAt: new Date().toISOString()
+      cachedAt: nowISO()
     };
 
     // Phase 1.4b: Use DO-based batching if enabled and available
@@ -219,7 +220,7 @@ export class LatestMessageCache {
           agentSenderId: row.agentSenderId,
           customerSenderId: row.customerSenderId,
           messageType: row.messageType,
-          cachedAt: new Date().toISOString()
+          cachedAt: nowISO()
         };
       }
 

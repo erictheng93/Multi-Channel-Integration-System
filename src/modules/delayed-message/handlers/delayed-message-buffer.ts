@@ -15,6 +15,7 @@ import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { PermissionService } from '@/services/permission-service';
 import { handleApiError } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 const delayedMessageBufferHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -107,7 +108,7 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
         delaySeconds,
         metadata: {
           agentName: user.displayName,
-          createdAt: new Date().toISOString()
+          createdAt: nowISO()
         }
       })
     });
@@ -139,7 +140,7 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
         delaySeconds: result.delaySeconds,
         conversationId
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -223,7 +224,7 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
         cancelledAt: result.cancelledAt,
         cancelledBy: user.displayName
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -276,7 +277,7 @@ delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: result,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -335,7 +336,7 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
         count: result.count,
         messages: result.messages
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -359,7 +360,7 @@ delayedMessageBufferHandler.get('/health', async (c) => {
       preciseScheduling: true,
       durableObjects: true
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 

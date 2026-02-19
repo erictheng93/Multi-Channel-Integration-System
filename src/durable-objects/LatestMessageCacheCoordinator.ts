@@ -7,6 +7,7 @@
 import type { DurableObjectState } from '@cloudflare/workers-types';
 import type { Bindings } from '../types';
 import { LatestMessageCache } from '../services/latest-message-cache';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Update request stored in queue
@@ -165,7 +166,7 @@ export class LatestMessageCacheCoordinator {
     const existingRequest = this.updateQueue.get(conversationId);
     this.updateQueue.set(conversationId, {
       conversationId,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       priority,
       retryCount: existingRequest?.retryCount || 0
     });
@@ -355,7 +356,7 @@ export class LatestMessageCacheCoordinator {
    * Alarm handler - process batched updates
    */
   async alarm(): Promise<void> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     console.log(`🔔 [LatestMessageCacheCoordinator] Alarm triggered - processing ${this.updateQueue.size} updates`);
 
     this.alarmScheduled = false;
@@ -407,7 +408,7 @@ export class LatestMessageCacheCoordinator {
     this.stats.totalProcessed += updates.length;
     this.stats.successfulUpdates += successCount;
     this.stats.failedUpdates += failureCount;
-    this.stats.lastProcessedAt = Date.now();
+    this.stats.lastProcessedAt = nowMs();
     this.stats.averageProcessingTime =
       (this.stats.averageProcessingTime * (this.stats.totalProcessed - updates.length) + processingTime) /
       this.stats.totalProcessed;
@@ -464,7 +465,7 @@ export class LatestMessageCacheCoordinator {
           createdAt: latestMessage.createdAt,
           senderType: latestMessage.senderType
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       // Get the MessageBroadcaster Durable Object

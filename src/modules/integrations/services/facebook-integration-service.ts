@@ -14,6 +14,7 @@ import type {
 } from '../types/integration-types';
 
 import type { Bindings } from '@/types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Facebook 訊息類型
@@ -216,10 +217,10 @@ export class FacebookIntegrationService implements IPlatformAdapter {
 
         return {
           success: true,
-          messageId: (result as any).message_id || `facebook_${Date.now()}`,
+          messageId: (result as any).message_id || `facebook_${nowMs()}`,
           platform: 'facebook',
           recipient,
-          sentAt: new Date().toISOString()
+          sentAt: nowISO()
         };
       }
 
@@ -309,7 +310,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
           success: true,
           action,
           recipient,
-          sentAt: new Date().toISOString()
+          sentAt: nowISO()
         };
       }
 
@@ -348,7 +349,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
           locale: (profile as any).locale,
           timezone: (profile as any).timezone,
           gender: (profile as any).gender,
-          retrievedAt: new Date().toISOString()
+          retrievedAt: nowISO()
         };
       }
 
@@ -451,7 +452,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
    * 執行健康檢查
    */
   async healthCheck(): Promise<HealthCheck> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 測試基本連接
@@ -465,7 +466,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
           status: 'pass',
           message: 'Facebook integration is healthy',
           duration,
-          checkedAt: new Date().toISOString(),
+          checkedAt: nowISO(),
 
           details: {
             latency: duration,
@@ -483,7 +484,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
         status: 'fail',
         message: `Facebook API not accessible: ${response.status}`,
         duration,
-        checkedAt: new Date().toISOString(),
+        checkedAt: nowISO(),
 
         details: {
           latency: duration,
@@ -497,7 +498,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
         status: 'fail',
         message: `Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         duration,
-        checkedAt: new Date().toISOString(),
+        checkedAt: nowISO(),
 
         details: {
           latency: duration,
@@ -514,7 +515,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
    * 獲取統計數據
    */
   getStats(): Promise<Partial<IntegrationStats>> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     return Promise.resolve({
       ...this.stats,

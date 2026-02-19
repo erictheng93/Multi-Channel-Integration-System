@@ -4,6 +4,7 @@
 
 import type { Bindings } from '../types';
 import type { WebSocketErrorStats } from '../monitoring/websocket-analytics-service';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * 記錄 WebSocket 錯誤的輔助函數
@@ -29,7 +30,7 @@ export async function recordWebSocketError(
     const analyticsService = createAnalyticsService(env);
 
     const errorStats: WebSocketErrorStats = {
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       errorCode,
       errorType,
       message,
@@ -114,7 +115,7 @@ export async function createAuthErrorResponse(
     error: getErrorTitle(errorCode),
     code: errorCode,
     message,
-    timestamp: Date.now(),
+    timestamp: nowMs(),
     suggestedAction,
     ...additionalData
   };

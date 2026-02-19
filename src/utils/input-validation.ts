@@ -2,6 +2,7 @@
 // Provides comprehensive validation for API endpoints and WebSocket messages
 
 import { z } from 'zod';
+import { nowMs } from '@/utils/timestamp'
 
 // Maximum length constraints
 export const LIMITS = {
@@ -343,7 +344,7 @@ export class InputValidator {
     resetTime: number;
   } {
     const key = `${identifier}:${action}`;
-    const now = Date.now();
+    const now = nowMs();
     const record = storage.get(key);
 
     if (!record || now > record.resetTime) {

@@ -24,6 +24,7 @@ import type {
   CustomerMetadata
 } from '../types';
 import { validateReplyToMessageId } from './validate-reply-to';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 尋找或建立客戶 (增強版 - 收集更多客戶資訊)
@@ -41,7 +42,7 @@ export async function findOrCreateCustomer(
     metadata?: CustomerMetadata;
   }
 ): Promise<Customer> {
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   const drizzleDb = createDbClient(db);
   
   // 先嘗試找到現有客戶
@@ -171,7 +172,7 @@ export async function findOrCreateConversation(
   db: D1Database, 
   customerId: number
 ): Promise<DbConversation> {
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   const drizzleDb = createDbClient(db);
 
   // 先嘗試找到現有的活躍對話
@@ -198,7 +199,7 @@ export async function findOrCreateConversation(
   }
 
   // 如果沒有活躍對話，建立新對話
-  const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const conversationId = `conv_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
   
   await drizzleDb
     .insert(conversations)
@@ -260,7 +261,7 @@ export async function saveMessage(
     }
   }
 
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   const drizzleDb = createDbClient(db);
 
   const messageInsertData = {
@@ -598,7 +599,7 @@ export async function updateCustomer(
   const drizzleDb = createDbClient(db);
   
   const updateData: Partial<typeof customers.$inferInsert> = {
-    updatedAt: new Date().toISOString()
+    updatedAt: nowISO()
   };
   
   let hasUpdates = false;

@@ -8,6 +8,8 @@ import { PeriodComparisonService } from '@modules/analytics/services/period-comp
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import type { Period } from '@modules/analytics/services/period-comparison-service';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO } from '@/utils/timestamp'
 
 const comparisonAPI = new Hono<{ Bindings: Bindings }>();
 
@@ -81,16 +83,12 @@ comparisonAPI.get('/metric', async (c) => {
         metric,
         currentPeriod,
         previousPeriod: comparison.period.previous,
-        processedAt: new Date().toISOString()
+        processedAt: nowISO()
       }
     });
 
   } catch (error) {
-    console.error('Comparison metric API error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -171,16 +169,12 @@ comparisonAPI.get('/metrics', async (c) => {
         metricsCount: metrics.length,
         currentPeriod,
         previousPeriod: Object.values(comparison.metrics)[0]?.period.previous,
-        processedAt: new Date().toISOString()
+        processedAt: nowISO()
       }
     });
 
   } catch (error) {
-    console.error('Comparison metrics API error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -219,16 +213,12 @@ comparisonAPI.get('/preset/conversation', async (c) => {
       data: comparison,
       metadata: {
         preset: 'conversation',
-        processedAt: new Date().toISOString()
+        processedAt: nowISO()
       }
     });
 
   } catch (error) {
-    console.error('Conversation preset comparison error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -267,16 +257,12 @@ comparisonAPI.get('/preset/message', async (c) => {
       data: comparison,
       metadata: {
         preset: 'message',
-        processedAt: new Date().toISOString()
+        processedAt: nowISO()
       }
     });
 
   } catch (error) {
-    console.error('Message preset comparison error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -315,16 +301,12 @@ comparisonAPI.get('/preset/user-activity', async (c) => {
       data: comparison,
       metadata: {
         preset: 'user-activity',
-        processedAt: new Date().toISOString()
+        processedAt: nowISO()
       }
     });
 
   } catch (error) {
-    console.error('User activity preset comparison error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -343,16 +325,12 @@ comparisonAPI.get('/cache/stats', async (c) => {
       success: true,
       data: stats,
       metadata: {
-        processedAt: new Date().toISOString()
+        processedAt: nowISO()
       }
     });
 
   } catch (error) {
-    console.error('Cache stats error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

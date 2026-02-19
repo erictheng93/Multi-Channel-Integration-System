@@ -9,6 +9,7 @@ import { WidgetManager } from '@modules/analytics/services/widget-manager';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -30,6 +31,7 @@ import type {
 } from '../types/dashboard-types';
 import type { TimeRange as AnalyticsTimeRange } from '@modules/analytics/types/analytics-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
+import { nowISO } from '@/utils/timestamp'
 
 // 驗證 schema
 const timeRangeSchema = z.object({
@@ -123,7 +125,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       // 簡單的健康檢查
       const status = {
         status: 'healthy',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         services: {
           dashboardService: 'ok',
           widgetManager: 'ok'
@@ -132,11 +134,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
       return c.json(status);
     } catch (error) {
-      return c.json({
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -155,11 +153,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         data: widgetTypes
       });
     } catch (error) {
-      console.error('Failed to get widget types:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to get widget types'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -177,11 +171,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         data: templates
       });
     } catch (error) {
-      console.error('Failed to get dashboard templates:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to get dashboard templates'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -201,11 +191,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         data: templates
       });
     } catch (error) {
-      console.error('Failed to get widget templates:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to get widget templates'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -238,7 +224,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         const updatedConfig: DashboardConfig = {
           ...config,
           widgets: optimizedWidgets,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         };
 
         await dashboardService.saveDashboardConfig(user.id.toString(), updatedConfig, dashboardId);
@@ -249,11 +235,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           message: 'Layout optimized successfully'
         });
       } catch (error) {
-        console.error('Failed to optimize layout:', error);
-        return c.json({
-          success: false,
-          error: error instanceof AnalyticsError ? error.message : 'Failed to optimize layout'
-        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        return globalErrorHandler.handleError(c, error);
       }
     }
   );
@@ -276,11 +258,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         data: config
       });
     } catch (error) {
-      console.error('Failed to get dashboard config:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to get dashboard configuration'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -303,8 +281,8 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           editors: []
         },
         createdBy: user?.id?.toString() || 'system',
-        createdAt: (configData as any).createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: (configData as any).createdAt || nowISO(),
+        updatedAt: nowISO(),
         refreshInterval: configData.refreshInterval || 30000, // 30 seconds default
         autoRefresh: configData.autoRefresh ?? true
       };
@@ -317,11 +295,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         message: 'Dashboard configuration saved successfully'
       });
     } catch (error) {
-      console.error('Failed to save dashboard config:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to save dashboard configuration'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -340,8 +314,8 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           editors: []
         },
         createdBy: user?.id?.toString() || 'system',
-        createdAt: (configData as any).createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: (configData as any).createdAt || nowISO(),
+        updatedAt: nowISO(),
         refreshInterval: configData.refreshInterval || 30000, // 30 seconds default
         autoRefresh: configData.autoRefresh ?? true
       };
@@ -354,11 +328,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         message: 'Dashboard configuration updated successfully'
       });
     } catch (error) {
-      console.error('Failed to update dashboard config:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to update dashboard configuration'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -393,14 +363,10 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: true,
         data,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Failed to get dashboard data:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to get dashboard data'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -445,14 +411,10 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       return c.json({
         success: true,
         data,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Failed to get widget data:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to get widget data'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -498,11 +460,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           message: 'Widget cloned successfully'
         });
       } catch (error) {
-        console.error('Failed to clone widget:', error);
-        return c.json({
-          success: false,
-          error: error instanceof AnalyticsError ? error.message : 'Failed to clone widget'
-        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        return globalErrorHandler.handleError(c, error);
       }
     }
   );
@@ -536,11 +494,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           message: 'Dashboard created from template successfully'
         });
       } catch (error) {
-        console.error('Failed to create dashboard from template:', error);
-        return c.json({
-          success: false,
-          error: error instanceof AnalyticsError ? error.message : 'Failed to create dashboard from template'
-        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        return globalErrorHandler.handleError(c, error);
       }
     }
   );
@@ -589,11 +543,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           message: 'Widget created from template successfully'
         });
       } catch (error) {
-        console.error('Failed to create widget from template:', error);
-        return c.json({
-          success: false,
-          error: error instanceof AnalyticsError ? error.message : 'Failed to create widget from template'
-        }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        return globalErrorHandler.handleError(c, error);
       }
     }
   );
@@ -625,11 +575,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         message: 'Widget created successfully'
       });
     } catch (error) {
-      console.error('Failed to create widget:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to create widget'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -661,11 +607,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         message: 'Widget updated successfully'
       });
     } catch (error) {
-      console.error('Failed to update widget:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to update widget'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 

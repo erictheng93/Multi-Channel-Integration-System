@@ -9,6 +9,7 @@ import { jwtAuth } from '@/middleware/auth';
 import { createDOMonitor, type DurableObjectsMonitor } from '@/services/durable-objects-monitor';
 import { getCircuitBreaker } from '@/services/websocket-circuit-breaker';
 import { createLogger } from '@/services/logger-service';
+import { nowMs } from '@/utils/timestamp'
 
 const monitoringHandler = new Hono<{ Bindings: Bindings }>();
 const logger = createLogger({ service: 'Monitoring-API' });
@@ -29,7 +30,7 @@ monitoringHandler.get('/health', async (c) => {
 
     const health = {
       status: stats.healthyInstances >= stats.totalInstances * 0.7 ? 'healthy' : 'degraded',
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       components: {
         durableObjects: {
           status: stats.unhealthyInstances === 0 ? 'healthy' : 'degraded',
@@ -70,7 +71,7 @@ monitoringHandler.get('/health', async (c) => {
     return c.json({
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: Date.now()
+      timestamp: nowMs()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
@@ -97,7 +98,7 @@ monitoringHandler.get('/metrics', jwtAuth, async (c) => {
     circuitBreaker.setEnv(c.env);
 
     const metrics = {
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       durableObjects: {
         instances: instanceMetrics.map(m => ({
           type: m.objectType,
@@ -167,7 +168,7 @@ monitoringHandler.get('/alerts', jwtAuth, async (c) => {
         age: Date.now() - alert.timestamp,
         metadata: alert.metadata
       })),
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
 
     logger.info('Alerts retrieved', {
@@ -209,7 +210,7 @@ monitoringHandler.get('/alerts/history', jwtAuth, async (c) => {
       count: history.length,
       limit,
       alerts: history,
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
 
     logger.info('Alert history retrieved', {
@@ -245,7 +246,7 @@ monitoringHandler.get('/circuit-breaker/status', jwtAuth, async (c) => {
     const status = {
       state: circuitBreaker.getState(),
       stats: circuitBreaker.getStats(),
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
 
     return c.json(status);
@@ -285,7 +286,7 @@ monitoringHandler.post('/circuit-breaker/reset', jwtAuth, async (c) => {
       success: true,
       message: 'Circuit breaker reset successfully',
       newState: circuitBreaker.getState(),
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -323,7 +324,7 @@ monitoringHandler.post('/circuit-breaker/open', jwtAuth, async (c) => {
       success: true,
       message: 'Circuit breaker opened (emergency stop)',
       newState: circuitBreaker.getState(),
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -371,7 +372,7 @@ monitoringHandler.get('/instances/:type', jwtAuth, async (c) => {
         lastActivity: i.lastActivity,
         alerts: i.alerts
       })),
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -409,7 +410,7 @@ monitoringHandler.post('/health-check', jwtAuth, async (c) => {
     return c.json({
       success: true,
       stats,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {

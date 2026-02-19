@@ -16,6 +16,7 @@ import {
   CustomerNotFoundError
 } from '../types/customer-types';
 import type { JWTPayload } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 export class CustomerTagService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -142,7 +143,7 @@ export class CustomerTagService {
 
       // 只添加新的標籤關聯
       if (newTagIds.length > 0) {
-        const timestamp = new Date().toISOString();
+        const timestamp = nowISO();
         const assignedBy = userPayload?.userId ? String(userPayload.userId) : 'system';
         const insertData = newTagIds.map(tagId => ({
           customerId,
@@ -354,7 +355,7 @@ export class CustomerTagService {
         customerId: record.customerId,
         tagId: record.tagId,
         assignedBy: record.assignedBy,
-        assignedAt: record.assignedAt || new Date().toISOString()
+        assignedAt: record.assignedAt || nowISO()
       }));
     } catch (error) {
       console.error('Error getting customer tag history:', error);

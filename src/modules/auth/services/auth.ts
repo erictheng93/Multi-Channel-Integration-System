@@ -5,6 +5,7 @@ import type { TeamRoleInTeam } from '@/types';
 import { convertAgent } from '@/utils/drizzle-converters';
 import type { JWTPayload } from '@/types';
 import type { DbUser } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * JWT 認證工具函數
@@ -218,7 +219,7 @@ export async function createUser(
   }
 ): Promise<DbUser> {
   const hashedPassword = await hashPassword(userData.password);
-  const now = new Date().toISOString();
+  const now = nowISO();
   const userId = crypto.randomUUID();
   const drizzleDb = createDbClient(db);
 
@@ -516,7 +517,7 @@ export async function createSession(
   await kv.put(sessionKey, JSON.stringify({
     userId,
     ...sessionData,
-    createdAt: new Date().toISOString()
+    createdAt: nowISO()
   }), { expirationTtl });
 
   return sessionId;

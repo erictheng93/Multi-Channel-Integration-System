@@ -8,6 +8,7 @@
 import type { KVNamespace } from '@cloudflare/workers-types';
 import type { AnalyticsResult } from '@modules/analytics/types/analytics-types';
 import { HybridCacheService, CACHE_TTL, shouldUseCacheAPI } from '@/services/cache-api-service';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 快取鍵策略配置
@@ -212,7 +213,7 @@ export class AnalyticsCacheService {
         metadata: {
           ...data.metadata,
           cacheHit: false,
-          cachedAt: new Date().toISOString(),
+          cachedAt: nowISO(),
           cacheExpiry: new Date(Date.now() + expirationTtl * 1000).toISOString(),
           cacheSource: this.shouldUseCacheAPI(cacheKey) ? 'cache-api' : 'kv'
         }

@@ -16,6 +16,7 @@ import type {
   MetricTrends
 } from '../types/monitoring-types';
 import { PerformanceMonitor } from './performance-monitor';
+import { nowMs } from '@/utils/timestamp'
 
 // =================== Dashboard API ===================
 
@@ -50,7 +51,7 @@ dashboardHandler.get('/api/dashboard/metrics/realtime', async (c) => {
     const systemHealth = await performanceMonitor.getSystemHealth();
 
     return c.json({
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       metrics: systemHealth.metrics,
       health: {
         status: systemHealth.status,
@@ -183,7 +184,7 @@ dashboardHandler.get('/api/dashboard/stream', async (c) => {
           try {
             const systemHealth = await performanceMonitor.getSystemHealth();
             const data = {
-              timestamp: Date.now(),
+              timestamp: nowMs(),
               health: {
                 status: systemHealth.status,
                 score: systemHealth.score
@@ -568,7 +569,7 @@ async function generateDashboardData(
   };
 
   const dashboardData: DashboardData = {
-    timestamp: Date.now(),
+    timestamp: nowMs(),
     summary: {
       health: systemHealth.status || 'unknown',
       score: systemHealth.score,
@@ -606,14 +607,14 @@ async function getComponentStatuses(env: Bindings): Promise<ComponentStatus[]> {
       name: 'WebSocket Handler',
       status: wsResponse.ok ? 'healthy' : 'critical',
       metrics: { latency: wsResponse.ok ? 50 : 0 },
-      lastCheck: Date.now()
+      lastCheck: nowMs()
     });
   } catch (error) {
     components.push({
       name: 'WebSocket Handler',
       status: 'unknown',
       metrics: {},
-      lastCheck: Date.now()
+      lastCheck: nowMs()
     });
   }
 
@@ -624,14 +625,14 @@ async function getComponentStatuses(env: Bindings): Promise<ComponentStatus[]> {
       name: 'Message Broadcaster',
       status: mbResponse.ok ? 'healthy' : 'critical',
       metrics: {},
-      lastCheck: Date.now()
+      lastCheck: nowMs()
     });
   } catch (error) {
     components.push({
       name: 'Message Broadcaster',
       status: 'unknown',
       metrics: {},
-      lastCheck: Date.now()
+      lastCheck: nowMs()
     });
   }
 
@@ -642,14 +643,14 @@ async function getComponentStatuses(env: Bindings): Promise<ComponentStatus[]> {
       name: 'Delayed Message Processor',
       status: dmpResponse.ok ? 'healthy' : 'critical',
       metrics: {},
-      lastCheck: Date.now()
+      lastCheck: nowMs()
     });
   } catch (error) {
     components.push({
       name: 'Delayed Message Processor',
       status: 'unknown',
       metrics: {},
-      lastCheck: Date.now()
+      lastCheck: nowMs()
     });
   }
 
@@ -711,7 +712,7 @@ function calculateMetricTrends(metrics: PerformanceMetrics[]): MetricTrends {
 function generatePerformanceReport(metrics: PerformanceMetrics[], hours: number) {
   const period = {
     start: Date.now() - (hours * 60 * 60 * 1000),
-    end: Date.now(),
+    end: nowMs(),
     duration: hours * 60 * 60 * 1000
   };
 
@@ -754,7 +755,7 @@ function generatePerformanceReport(metrics: PerformanceMetrics[], hours: number)
         total: connections.reduce((sum, c) => sum + c, 0)
       }
     },
-    generatedAt: Date.now()
+    generatedAt: nowMs()
   };
 }
 

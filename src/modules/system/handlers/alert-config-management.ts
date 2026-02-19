@@ -8,6 +8,7 @@ import { jwtAuth } from '@/middleware/auth';
 import { AlertNotificationService, NotificationChannel as _NotificationChannel } from '@/services/alert-notification-service';
 import { AlertLevel } from '@/monitoring/websocket-analytics-service';
 import { handleApiError } from '@/utils/api-response';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const alertConfigHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -51,12 +52,12 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
     // 記錄配置變更
     const configRecord = {
       configuredBy: user.id,
-      configuredAt: Date.now(),
+      configuredAt: nowMs(),
       channel: 'slack',
       action: 'set_webhook_url'
     };
     await c.env.CACHE?.put(
-      `alert_config_log:slack:${Date.now()}`,
+      `alert_config_log:slack:${nowMs()}`,
       JSON.stringify(configRecord),
       { expirationTtl: 30 * 24 * 60 * 60 } // 30 天
     );
@@ -74,7 +75,7 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
           {
             configTest: true,
             configuredBy: user.id,
-            timestamp: new Date().toISOString()
+            timestamp: nowISO()
           }
         );
 
@@ -97,7 +98,7 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
       message: 'Slack webhook configured successfully',
       configuredBy: user.id,
       testResult,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -175,7 +176,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
       fromEmail,
       fromName,
       recipients,
-      configuredAt: Date.now(),
+      configuredAt: nowMs(),
       configuredBy: user.id
     };
 
@@ -188,13 +189,13 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
     // 記錄配置變更
     const configRecord = {
       configuredBy: user.id,
-      configuredAt: Date.now(),
+      configuredAt: nowMs(),
       channel: 'email',
       action: 'set_email_config',
       recipientCount: recipients.length
     };
     await c.env.CACHE?.put(
-      `alert_config_log:email:${Date.now()}`,
+      `alert_config_log:email:${nowMs()}`,
       JSON.stringify(configRecord),
       { expirationTtl: 30 * 24 * 60 * 60 }
     );
@@ -212,7 +213,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
           {
             configTest: true,
             configuredBy: user.id,
-            timestamp: new Date().toISOString()
+            timestamp: nowISO()
           }
         );
 
@@ -242,7 +243,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
       },
       configuredBy: user.id,
       testResult,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -324,7 +325,7 @@ alertConfigHandler.post('/channels/webhook', jwtAuth, async (c) => {
       webhookUrl,
       testResult,
       configuredBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -376,7 +377,7 @@ alertConfigHandler.get('/channels/status', jwtAuth, async (c) => {
       success: true,
       channels: channelStatus,
       checkedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -400,7 +401,7 @@ alertConfigHandler.get('/logs', jwtAuth, async (c) => {
     const logs = [
       // 實際實現中會從 KV 中查詢配置日誌
       {
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         message: '配置日誌功能已就緒，等待配置操作記錄',
         type: 'info'
       }
@@ -410,7 +411,7 @@ alertConfigHandler.get('/logs', jwtAuth, async (c) => {
       success: true,
       logs,
       count: logs.length,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -448,7 +449,7 @@ alertConfigHandler.post('/test-alert', jwtAuth, async (c) => {
     const testAlert = await alertService.sendAlert(
       level as AlertLevel,
       title || `🧪 測試告警 - ${level.toUpperCase()}`,
-      description || `這是一個 ${level} 級別的測試告警。\n\n發送者：${user.displayName}\n時間：${new Date().toISOString()}`,
+      description || `這是一個 ${level} 級別的測試告警。\n\n發送者：${user.displayName}\n時間：${nowISO()}`,
       {
         testAlert: true,
         triggeredBy: user.id,
@@ -466,7 +467,7 @@ alertConfigHandler.post('/test-alert', jwtAuth, async (c) => {
       },
       notificationResults: testAlert.notificationsSent,
       triggeredBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {

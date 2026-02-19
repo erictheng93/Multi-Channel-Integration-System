@@ -5,6 +5,7 @@
 // - KV operations only performed when cache miss occurs
 
 import { HealthLevel, type HealthChecker, type HealthCheckResult, type HealthCheckConfig } from '../types/health-check';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // In-memory cache for health check results to reduce KV operations
 interface CachedHealthResult {
@@ -24,7 +25,7 @@ export class CacheHealthChecker implements HealthChecker {
   constructor(private kv: any) {}
 
   async check(): Promise<HealthCheckResult> {
-    const now = Date.now();
+    const now = nowMs();
 
     // Optimization: Return cached result if still valid (1 minute TTL)
     // This prevents unnecessary KV operations when health is checked frequently
@@ -34,7 +35,7 @@ export class CacheHealthChecker implements HealthChecker {
         const cachedResult = CacheHealthChecker.healthCache.result;
         return {
           ...cachedResult,
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           details: {
             ...cachedResult.details,
             fromCache: true,
@@ -45,7 +46,7 @@ export class CacheHealthChecker implements HealthChecker {
     }
 
     // Perform actual KV health check
-    const startTime = Date.now();
+    const startTime = nowMs();
     const testKey = `health_check_${now}`;
     const testValue = 'health_check_value';
 
@@ -65,7 +66,7 @@ export class CacheHealthChecker implements HealthChecker {
         const result: HealthCheckResult = {
           status: 'critical',
           message: 'Cache read/write test failed',
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           responseTime,
           details: {
             expected: testValue,
@@ -83,7 +84,7 @@ export class CacheHealthChecker implements HealthChecker {
         const result: HealthCheckResult = {
           status: 'warning',
           message: `Cache response time is slow: ${responseTime}ms`,
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           responseTime,
           details: {
             operations: ['put', 'get', 'delete'],
@@ -99,7 +100,7 @@ export class CacheHealthChecker implements HealthChecker {
       const result: HealthCheckResult = {
         status: 'healthy',
         message: 'Cache is accessible and responsive',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         responseTime,
         details: {
           operations: ['put', 'get', 'delete'],
@@ -115,7 +116,7 @@ export class CacheHealthChecker implements HealthChecker {
       const result: HealthCheckResult = {
         status: 'critical',
         message: `Cache operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         responseTime: Date.now() - startTime,
         details: {
           error: error instanceof Error ? error.message : 'Unknown error',

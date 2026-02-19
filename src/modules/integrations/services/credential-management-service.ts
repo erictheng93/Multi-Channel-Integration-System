@@ -10,6 +10,7 @@ import type {
 import { CredentialError } from '@modules/integrations/types/integration-types';
 
 import type { Bindings } from '@/types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 憑證資料結構
@@ -71,7 +72,7 @@ export class CredentialManagementService {
         ...credentials,
         platform,
         userId,
-        encryptedAt: new Date().toISOString()
+        encryptedAt: nowISO()
       };
 
       // 執行加密
@@ -446,9 +447,9 @@ export class CredentialManagementService {
    * 生成加密金鑰
    */
   private async generateEncryptionKey(): Promise<EncryptionKeyInfo> {
-    const keyId = `key_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const keyId = `key_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
     const algorithm = this.defaultAlgorithm;
-    const createdAt = new Date().toISOString();
+    const createdAt = nowISO();
     const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1年後過期
 
     // 生成實際的加密金鑰
@@ -525,7 +526,7 @@ export class CredentialManagementService {
   private async storeEncryptionKey(keyInfo: EncryptionKeyInfo): Promise<void> {
     const keyData = {
       ...keyInfo,
-      storedAt: new Date().toISOString()
+      storedAt: nowISO()
     };
 
     await this.kv.put(
@@ -589,7 +590,7 @@ export class CredentialManagementService {
       type: types,
       scopes: scopes.length > 0 ? scopes : undefined,
       permissions: permissions.length > 0 ? permissions : undefined,
-      lastValidated: new Date().toISOString()
+      lastValidated: nowISO()
     };
   }
 
@@ -634,13 +635,13 @@ export class CredentialManagementService {
       userId,
       success,
       error,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       userAgent: 'Integration-Module', // 可以從請求上下文獲取
       ipAddress: 'N/A' // 可以從請求上下文獲取
     };
 
     // 儲存審計日誌
-    const logId = `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const logId = `audit_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
     await this.kv.put(
       `audit_log_${logId}`,
       JSON.stringify(logEntry),

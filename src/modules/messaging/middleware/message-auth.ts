@@ -10,6 +10,7 @@ import {
 } from '@shared/utils/api-response';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import type { MessageAccessScope, MessagePermissions, SenderType } from '@modules/messaging/types/message-types';
+import { nowISO } from '@/utils/timestamp'
 
 /** Extended Hono context variables for message auth middleware */
 interface MessageAuthVariables {
@@ -56,7 +57,7 @@ export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, nex
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -74,7 +75,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
       return c.json({
         success: false,
         error: 'Message ID is required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 400);
     }
 
@@ -103,7 +104,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
     return c.json({
       success: false,
       error: 'Message permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -127,7 +128,7 @@ export async function checkMessageSendPermission(c: Context<{ Bindings: Bindings
     return c.json({
       success: false,
       error: 'Send permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -149,7 +150,7 @@ export async function checkMessageRecallPermission(c: Context<{ Bindings: Bindin
     return c.json({
       success: false,
       error: 'Recall permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -171,7 +172,7 @@ export async function checkDelayedSendPermission(c: Context<{ Bindings: Bindings
     return c.json({
       success: false,
       error: 'Delayed send permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -193,7 +194,7 @@ export async function checkBatchOperationPermission(c: Context<{ Bindings: Bindi
     return c.json({
       success: false,
       error: 'Batch operation permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -215,7 +216,7 @@ export async function checkStatsViewPermission(c: Context<{ Bindings: Bindings }
     return c.json({
       success: false,
       error: 'Stats view permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -248,7 +249,7 @@ export async function applyMessageScopeFilter(c: Context<{ Bindings: Bindings }>
     return c.json({
       success: false,
       error: 'Scope filter application failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }
@@ -355,7 +356,7 @@ export async function validateMessageSender(c: Context<{ Bindings: Bindings }>, 
     return c.json({
       success: false,
       error: 'Sender validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 500);
   }
 }

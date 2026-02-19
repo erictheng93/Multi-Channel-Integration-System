@@ -4,6 +4,7 @@
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import { createDb } from '@/db';
 import { AgentService } from '@modules/agents/services/agent-crud';
 import { AgentSkillsService } from '@modules/agents/services/agent-skills';
@@ -42,10 +43,7 @@ export class AgentHandler {
         message: 'Agent created successfully'
       }, HTTP_STATUS.CREATED);
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -71,10 +69,7 @@ export class AgentHandler {
         message: 'Agents retrieved successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -97,10 +92,7 @@ export class AgentHandler {
         message: 'Agent retrieved successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -135,10 +127,7 @@ export class AgentHandler {
         message: 'Agent details retrieved successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -159,10 +148,7 @@ export class AgentHandler {
         message: 'Agent updated successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -184,10 +170,7 @@ export class AgentHandler {
         message: 'Agent deleted successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -203,10 +186,7 @@ export class AgentHandler {
         message: 'Search results retrieved successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -226,10 +206,7 @@ export class AgentHandler {
         message: 'Skills retrieved successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -250,10 +227,7 @@ export class AgentHandler {
         message: 'Skill added successfully'
       }, HTTP_STATUS.CREATED);
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -273,10 +247,7 @@ export class AgentHandler {
         message: 'Status retrieved successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 
@@ -297,10 +268,7 @@ export class AgentHandler {
         message: 'Status updated successfully'
       });
     } catch (error) {
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 }

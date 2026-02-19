@@ -1,6 +1,7 @@
 // 統一路由註冊系統 - 減少維護負擔的核心架構
 import type { Hono } from 'hono';
 import type { Bindings } from '../types';
+import { nowISO } from '@/utils/timestamp'
 
 // 路由模組定義
 export interface RouteModule {
@@ -82,7 +83,7 @@ export class RouteRegistry {
             module: module.name,
             status: 'healthy',
             version: module.version,
-            timestamp: new Date().toISOString()
+            timestamp: nowISO()
           });
         });
       }
@@ -112,7 +113,7 @@ export class RouteRegistry {
    */
   generateRouteDocs(): any {
     const docs = {
-      generated: new Date().toISOString(),
+      generated: nowISO(),
       totalGroups: this.groups.size,
       totalRoutes: this.registeredRoutes.size,
       groups: Array.from(this.groups.values()).map(group => ({
@@ -216,7 +217,7 @@ export class RouteRegistry {
             disabledRoutes: Array.from(this.registeredRoutes.values()).filter(r => !r.enabled).length
           }
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     });
 

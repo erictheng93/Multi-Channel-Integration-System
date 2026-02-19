@@ -9,6 +9,7 @@ import { webhookSecurityEvents } from '@/db/schema';
 import { eq, gte, desc, and } from 'drizzle-orm';
 import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES, type IPRange } from '@/utils/ip-validator';
 import { AlertService, getDefaultAlertChannels } from '@/services/alert-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 安全驗證結果
@@ -148,7 +149,7 @@ export class WebhookSecurityService {
       metadata: {
         platform,
         sourceIP,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }
     };
 
@@ -483,7 +484,7 @@ export class WebhookSecurityService {
         return { valid: true };
       }
 
-      const now = Date.now();
+      const now = nowMs();
       const timeDiff = Math.abs(now - timestamp);
 
       if (timeDiff > this.TIMESTAMP_TOLERANCE_MS) {
@@ -535,7 +536,7 @@ export class WebhookSecurityService {
 
       // 首次見到此請求，記錄
       await this.cache.put(key, JSON.stringify({
-        firstSeen: new Date().toISOString(),
+        firstSeen: nowISO(),
         occurrences: 1
       }), {
         expirationTtl: this.REQUEST_ID_TTL_SECONDS
@@ -601,7 +602,7 @@ export class WebhookSecurityService {
     platform: IntegrationPlatform
   ): Promise<RateLimitResult> {
     try {
-      const now = Date.now();
+      const now = nowMs();
       const windowStart = Math.floor(now / this.RATE_LIMIT_WINDOW_MS) * this.RATE_LIMIT_WINDOW_MS;
 
       // 整合級別速率限制
@@ -645,7 +646,7 @@ export class WebhookSecurityService {
         allowed: true,
         current: 0,
         limit: this.RATE_LIMIT_PER_INTEGRATION,
-        resetAt: new Date().toISOString()
+        resetAt: nowISO()
       };
     }
   }
@@ -774,8 +775,8 @@ export class WebhookSecurityService {
   private async logSecurityEvent(event: Omit<SecurityEvent, 'id' | 'timestamp'>): Promise<void> {
     try {
       const securityEvent: SecurityEvent = {
-        id: `sec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        timestamp: new Date().toISOString(),
+        id: `sec_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: nowISO(),
         ...event
       };
 

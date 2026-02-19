@@ -27,6 +27,7 @@ import {
 // REMOVED: enhancedSSEManager (Phase 3 cleanup - SSE removed, WebSocket only)
 // import { enhancedSSEManager } from '@modules/realtime/handlers/sse-handler';
 import { createRealtimeEvent } from '@modules/realtime/handlers/realtime-main';
+import { nowMs } from '@/utils/timestamp'
 
 // 事件處理統計
 class EventProcessingStats {
@@ -218,7 +219,7 @@ class EventValidator {
 export const eventHandler = {
   // 發送消息事件
   sendMessageEvent: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const payload = c.get('jwtPayload');
       if (!payload) {
@@ -264,7 +265,7 @@ export const eventHandler = {
 
   // 發送打字事件
   sendTypingEvent: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const payload = c.get('jwtPayload');
       if (!payload) {
@@ -311,7 +312,7 @@ export const eventHandler = {
 
   // 發送狀態變更事件
   sendStatusEvent: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const payload = c.get('jwtPayload');
       if (!payload) {
@@ -357,7 +358,7 @@ export const eventHandler = {
 
   // 發送分配事件
   sendAssignmentEvent: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const payload = c.get('jwtPayload');
       if (!payload || !['admin', 'team'].includes(payload.role)) {
@@ -412,7 +413,7 @@ export const eventHandler = {
 
   // 發送通知事件
   sendNotificationEvent: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const payload = c.get('jwtPayload');
       if (!payload || !['admin', 'team'].includes(payload.role)) {
@@ -460,7 +461,7 @@ export const eventHandler = {
 
   // 發送系統廣播事件
   sendSystemEvent: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const payload = c.get('jwtPayload');
       if (!payload || payload.role !== 'admin') {

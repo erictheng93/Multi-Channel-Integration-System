@@ -13,6 +13,7 @@ import type {
 } from '../types/conversation-types';
 import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export interface MessageServiceInterface {
   sendMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
@@ -41,7 +42,7 @@ export class MessageService implements MessageServiceInterface {
    */
   async createPendingMessage(request: MessageSendRequest): Promise<MessageSendResponse> {
     const messageId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     try {
       // Step 1: Get conversation with customer details
@@ -301,13 +302,13 @@ export class MessageService implements MessageServiceInterface {
             }
 
             if (allBatchesSuccessful) {
-              platformMessageId = `line_${Date.now()}`;
+              platformMessageId = `line_${nowMs()}`;
               isSent = true;
               deliveryStatus = 'sent';
               console.log(`[MessageService] ✅ All ${batches} batch(es) sent successfully (${totalMessages} messages total)`);
             } else if (successfulBatches > 0) {
               // 部分成功
-              platformMessageId = `line_${Date.now()}_partial`;
+              platformMessageId = `line_${nowMs()}_partial`;
               isSent = true;
               deliveryStatus = 'partial';
               errorMessage = `部分發送成功: ${successfulBatches}/${batches} 批次成功`;
@@ -354,7 +355,7 @@ export class MessageService implements MessageServiceInterface {
           deliveryStatus,
           isSent,
           platformMessageId,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'normal'
       });
@@ -374,7 +375,7 @@ export class MessageService implements MessageServiceInterface {
    */
   async sendMessage(request: MessageSendRequest): Promise<MessageSendResponse> {
     const messageId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     try {
       // Step 1: Get conversation with customer details to get platformUserId
@@ -484,11 +485,11 @@ export class MessageService implements MessageServiceInterface {
             }
 
             if (allBatchesSuccessful) {
-              platformMessageId = `line_${Date.now()}`;
+              platformMessageId = `line_${nowMs()}`;
               isSent = true;
               deliveryStatus = 'sent';
             } else if (successfulBatches > 0) {
-              platformMessageId = `line_${Date.now()}_partial`;
+              platformMessageId = `line_${nowMs()}_partial`;
               isSent = true;
               deliveryStatus = 'partial';
               errorMessage = `部分發送成功: ${successfulBatches}/${batches} 批次`;
@@ -634,7 +635,7 @@ export class MessageService implements MessageServiceInterface {
    */
   async recallMessage(messageId: string, userId: string): Promise<boolean> {
     try {
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
 
       await this.db
         .update(messages)
@@ -661,7 +662,7 @@ export class MessageService implements MessageServiceInterface {
     try {
       const updateData = {
         ...updates,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       };
 
       await this.db

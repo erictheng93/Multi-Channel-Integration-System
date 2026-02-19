@@ -2,9 +2,7 @@
 // 統一導出系統模組的所有功能和類型
 
 // ======================== Handlers 導出 ========================
-export { systemRouter, SYSTEM_ROUTER_INFO } from './handlers/index';
-import systemMainHandler from '@modules/system/handlers/system';
-export { systemMainHandler };
+// Active handler: system-main.ts (registered via src/handlers/index.ts)
 
 // ======================== Services 導出 ========================
 export { SystemService } from './services/system-service';
@@ -134,6 +132,7 @@ export const SYSTEM_MODULE_INFO = {
 
 // ======================== 服務工廠函數 ========================
 import type { Bindings } from '../../types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 創建完整的 System 服務實例
@@ -145,7 +144,6 @@ export async function createSystemModule(db: D1Database, cache: KVNamespace, env
 
   return {
     service: systemService,
-    router: systemMainHandler,
     moduleInfo: SYSTEM_MODULE_INFO
   };
 }
@@ -178,7 +176,7 @@ export function isSystemHealthy(status: any): boolean {
  */
 export function formatSystemMetrics(metrics: any) {
   return {
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     cpu: metrics.cpu || 'N/A',
     memory: metrics.memory || 'N/A',
     disk: metrics.disk || 'N/A',

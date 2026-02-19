@@ -21,6 +21,7 @@ import {
 } from '../types/report-types';
 
 import type { ReportUtils } from './report-utils';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Handles all report generation, data querying, and formatting
@@ -42,7 +43,7 @@ export class ReportGeneratorService {
     userId: string,
     utils: ReportUtils
   ): Promise<ReportBase> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // Validate params via utils
@@ -55,7 +56,7 @@ export class ReportGeneratorService {
       await utils.checkConcurrentGenerations(userId);
 
       const reportId = `report_${crypto.randomUUID()}`;
-      const now = new Date().toISOString();
+      const now = nowISO();
       const expiresAt = new Date(Date.now() + DEFAULT_REPORT_CONFIG.reportExpiryDays * 24 * 60 * 60 * 1000).toISOString();
 
       const report: ReportBase = {
@@ -90,7 +91,7 @@ export class ReportGeneratorService {
 
         await this.updateReportCompletion(reportId, {
           status: 'completed',
-          completedAt: new Date().toISOString(),
+          completedAt: nowISO(),
           fileSize,
           executionTime,
           downloadUrl: `/api/reports/${reportId}/download`
@@ -99,7 +100,7 @@ export class ReportGeneratorService {
         return (await this.getReportStatus(reportId))!;
       } catch (genError) {
         const errorMessage = genError instanceof Error ? genError.message : 'Unknown error';
-        await this.updateReportStatus(reportId, 'failed', new Date().toISOString(), errorMessage);
+        await this.updateReportStatus(reportId, 'failed', nowISO(), errorMessage);
         throw genError;
       }
     } catch (error) {
@@ -139,7 +140,7 @@ export class ReportGeneratorService {
         format: report.format as 'json' | 'csv' | 'excel' | 'pdf',
         status: report.status as 'pending' | 'generating' | 'completed' | 'failed',
         createdBy: report.createdBy,
-        createdAt: report.createdAt || new Date().toISOString(),
+        createdAt: report.createdAt || nowISO(),
         updatedAt: report.updatedAt || undefined,
         startedAt: report.generationStartedAt || undefined,
         completedAt: report.completedAt || undefined,
@@ -270,7 +271,7 @@ export class ReportGeneratorService {
 
       const db = drizzle(this.db);
       const downloadId = generateId('download');
-      const now = new Date().toISOString();
+      const now = nowISO();
 
       await db.insert(reportDownloadHistory).values({
         id: downloadId,
@@ -483,7 +484,7 @@ export class ReportGeneratorService {
       reportInfo: {
         title: params.title,
         type: params.type,
-        generatedAt: new Date().toISOString(),
+        generatedAt: nowISO(),
         parameters: { timeRange: params.timeRange, filters: params.filters }
       },
       data

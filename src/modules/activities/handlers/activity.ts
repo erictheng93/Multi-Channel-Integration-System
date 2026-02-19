@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import type { Bindings } from '@/types'
 import { activityHandler as moduleActivityHandler } from '@modules/activities'
 import { jwtAuth } from '@/middleware/auth'
+import { requireIntId } from '@/middleware/param-validator'
 
 // Create Hono router for activities
 const router = new Hono<{ Bindings: Bindings }>()
@@ -23,7 +24,7 @@ router.get('/heatmap', jwtAuth, moduleActivityHandler.getHeatmap)
 router.get('/metrics', jwtAuth, moduleActivityHandler.getMetrics)
 
 // ==================== Priority 2: PARAMETERIZED routes ====================
-router.get('/:id', jwtAuth, moduleActivityHandler.getById)
+router.get('/:id', jwtAuth, requireIntId(), moduleActivityHandler.getById)
 
 // ==================== Priority 3: WILDCARD routes (must be last) ====================
 router.get('/', jwtAuth, moduleActivityHandler.list)

@@ -8,6 +8,7 @@ import { LatestMessageCache } from '../services/latest-message-cache';
 import type { DurableObjectStub } from '@cloudflare/workers-types';
 import { MESSAGE_BROADCASTER_ROUTES, CACHE_COORDINATOR_ROUTES } from '../constants/durable-objects';
 import { QUEUE_LIMITS, calculateExponentialBackoff } from '../constants/limits';
+import { nowISO } from '@/utils/timestamp'
 
 export interface LatestMessageJobPayload {
   type: 'update_latest_message' | 'invalidate_cache' | 'warmup_cache';
@@ -182,7 +183,7 @@ export class LatestMessageWorker {
     console.error(`💀 [LatestMessageWorker] PERMANENT FAILURE:`, {
       messageId: message.id,
       payload: message.body,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
     // Could send alert to monitoring system here
@@ -207,7 +208,7 @@ export class LatestMessageWorker {
           createdAt: latestMessage.createdAt,
           senderType: latestMessage.senderType
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       // Get the MessageBroadcaster Durable Object

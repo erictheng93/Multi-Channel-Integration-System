@@ -51,7 +51,7 @@ export { processLineMessage, processLineFollowEvent, processLineUnfollowEvent };
 export const webhookHandler = {
   // 處理 Line Webhook
   async line(c: Context<{ Bindings: Bindings }>) {
-    console.log('🔔 [LINE Webhook] Request received at:', new Date().toISOString());
+    console.log('🔔 [LINE Webhook] Request received at:', nowISO());
 
     try {
       // 驗證簽名
@@ -191,6 +191,7 @@ export const webhookHandler = {
 
 // ==================== Hono Router Wrapper ====================
 import { Hono } from 'hono';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Webhook Router - Hono wrapper for webhook handlers
@@ -204,7 +205,7 @@ webhookRouter.get('/health', (c) => {
     status: 'healthy',
     module: 'webhook',
     version: '1.0.0',
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 

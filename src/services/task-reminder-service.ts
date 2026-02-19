@@ -6,6 +6,7 @@ import { taskReminders, type TaskReminder, type NewTaskReminder } from '../db/sc
 import { eq, and, lte, isNull } from 'drizzle-orm';
 import { triggerTaskReminderNotification } from '../utils/notification-trigger';
 import type { Bindings } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 創建任務提醒的請求參數
@@ -47,7 +48,7 @@ export class TaskReminderService {
    * 創建新的任務提醒
    */
   async create(request: CreateTaskReminderRequest): Promise<string> {
-    const reminderId = `reminder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const reminderId = `reminder_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
 
     const remindAt = request.remindAt instanceof Date
       ? request.remindAt.toISOString()
@@ -64,7 +65,7 @@ export class TaskReminderService {
       repeatInterval: request.repeatInterval || 0,
       isCompleted: false,
       isSent: false,
-      createdAt: new Date().toISOString()
+      createdAt: nowISO()
     });
 
     console.log('✅ [TaskReminder] Created:', {
@@ -149,7 +150,7 @@ export class TaskReminderService {
       .update(taskReminders)
       .set({
         isCompleted: true,
-        completedAt: new Date().toISOString()
+        completedAt: nowISO()
       })
       .where(and(
         eq(taskReminders.id, id),
@@ -178,7 +179,7 @@ export class TaskReminderService {
    * 返回處理的提醒數量
    */
   async processDueReminders(): Promise<number> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     // 查詢所有到期但未發送的提醒
     const dueReminders = await this.db
@@ -215,7 +216,7 @@ export class TaskReminderService {
           .update(taskReminders)
           .set({
             isSent: true,
-            sentAt: new Date().toISOString()
+            sentAt: nowISO()
           })
           .where(eq(taskReminders.id, reminder.id));
 
@@ -300,7 +301,7 @@ export class TaskReminderService {
     completed: number;
     overdue: number;
   }> {
-    const now = new Date().toISOString();
+    const now = nowISO();
     const allReminders = await this.getByUserId(userId, true);
 
     const stats = {

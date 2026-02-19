@@ -8,10 +8,13 @@ import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import { jwtAuth, requireManagerOrAdmin, requireTeamRole } from '@/middleware/auth';
+import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
 import { triggerAgentRemovedFromTeamNotification, triggerTeamMemberChangeEvent } from '@/utils/notification-trigger';
 import { teams, conversations, agents } from '@/db/schema';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO } from '@/utils/timestamp'
 
 const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -26,31 +29,19 @@ const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
  * GET /api/teams/agent-teams/team/:teamId/members
  * NOTE: This route MUST be registered before /:agentId to prevent interception
  */
-agentTeamsHandler.get('/team/:teamId/members', jwtAuth, async (c) => {
+agentTeamsHandler.get('/team/:teamId/members', jwtAuth, requireIntId('teamId'), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('teamId'), 10);
-
-    if (isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid teamId'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'teamId');
     const service = new AgentTeamsService(c.env.DB);
     const members = await service.getTeamMembers(teamId);
 
     return c.json({
       success: true,
       data: members,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get team members error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get team members'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -77,14 +68,10 @@ agentTeamsHandler.get('/:agentId', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: teams,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get agent teams error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get agent teams'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -186,14 +173,10 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       success: true,
       data: membership,
       message: 'Agent added to team successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.CREATED);
   } catch (error) {
-    console.error('Add agent to team error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to add agent to team'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -304,14 +287,10 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
       success: true,
       data: results,
       message: `Agent added to ${results.added.length} teams`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Add agent to multiple teams error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to add agent to teams'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -325,19 +304,11 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
  * 3. 如果客服正在查看該團隊的對話，前端會強制關閉
  */
 // 🚀 Phase 2 RBAC: requires 'lead' role in the target team
-agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), async (c) => {
+agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
     const user = c.get('user');
     const agentId = c.req.param('agentId');
-    const teamId = parseInt(c.req.param('teamId'), 10);
-
-    if (isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid teamId'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'teamId');
     const db = drizzle(c.env.DB);
 
     // 🆕 Step 1: Get team name for notification
@@ -428,14 +399,10 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
         teamName,
         affectedConversationCount: affectedConversationIds.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Remove agent from team error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to remove agent from team'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -444,20 +411,12 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
  * PUT /api/teams/agent-teams/:agentId/role/:teamId
  * 🚀 Phase 2 RBAC: requires 'lead' role in the target team
  */
-agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), async (c) => {
+agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
     const user = c.get('user');
     const agentId = c.req.param('agentId');
-    const teamId = parseInt(c.req.param('teamId'), 10);
+    const teamId = getValidatedParam<number>(c, 'teamId');
     const { roleInTeam, isPrimary } = await c.req.json();
-
-    if (isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid teamId'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
     const service = new AgentTeamsService(c.env.DB);
     const updated = await service.updateAgentTeamRole(agentId, teamId, { roleInTeam, isPrimary });
 
@@ -481,14 +440,10 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
       success: true,
       data: updated,
       message: 'Agent team role updated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Update agent team role error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update agent team role'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -497,19 +452,11 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
  * PUT /api/teams/agent-teams/:agentId/primary/:teamId
  * 🚀 Phase 2 RBAC: requires 'lead' role in the target team
  */
-agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), async (c) => {
+agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
     const user = c.get('user');
     const agentId = c.req.param('agentId');
-    const teamId = parseInt(c.req.param('teamId'), 10);
-
-    if (isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid teamId'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'teamId');
     const service = new AgentTeamsService(c.env.DB);
     await service.setPrimaryTeam(agentId, teamId);
 
@@ -530,14 +477,10 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lea
     return c.json({
       success: true,
       message: 'Primary team set successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Set primary team error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to set primary team'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

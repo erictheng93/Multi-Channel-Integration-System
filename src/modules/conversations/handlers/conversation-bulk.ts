@@ -11,6 +11,7 @@ import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { successResponse, errorResponse, validationErrorResponse } from '@shared/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('ConversationBulkHandler');
 
@@ -197,7 +198,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
                 name: user.displayName,
                 role: user.role
               },
-              timestamp: new Date().toISOString()
+              timestamp: nowISO()
             },
             priority: 'normal'
           })

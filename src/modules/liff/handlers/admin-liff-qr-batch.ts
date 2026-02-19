@@ -7,12 +7,14 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import { createDbClient } from '@/db/drizzle-factory';
 import { teams, teamLiffQrCodes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { generateTeamQRCode } from '@/services/liff-qrcode-service';
 import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -66,7 +68,7 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
           message: '所有团队都已有 LIFF QR Code',
           errors: []
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     }
 
@@ -117,15 +119,10 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
     return c.json({
       success: true,
       data: results,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('❌ [Batch LIFF QR] 批量生成失败:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : '批量生成失败',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -171,15 +168,10 @@ app.get('/status', jwtAuth, requireAdmin(), async (c) => {
     return c.json({
       success: true,
       data: status,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('❌ [Batch LIFF QR] 状态查询失败:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : '状态查询失败',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

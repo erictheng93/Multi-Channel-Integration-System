@@ -17,6 +17,7 @@ import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte } from 'drizzle-orm';
 import { metrics } from '@/db/schema';
 import type { Bindings } from '@/types';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * 統一指標收集服務
@@ -115,7 +116,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
    * 查詢指標
    */
   async query(query: MetricQuery): Promise<MetricQueryResult> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       this.validateQuery(query);
@@ -209,7 +210,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
    */
   async cleanup(retentionPolicy: RetentionPolicy): Promise<void> {
     try {
-      const now = Date.now();
+      const now = nowMs();
 
       // 刪除超過保留期限的原始數據
       const rawCutoff = now - (retentionPolicy.raw * 24 * 60 * 60 * 1000);

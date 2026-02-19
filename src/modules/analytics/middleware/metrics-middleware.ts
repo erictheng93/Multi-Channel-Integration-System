@@ -6,6 +6,7 @@ import { MetricsCollector } from '@modules/analytics/services/metrics-collector'
 import { METRIC_NAMES } from '@modules/analytics/constants/metrics-definitions';
 import type { Bindings } from '@/types';
 import type { Metric } from '@modules/analytics/types/metrics-types';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * 指標收集中間件選項
@@ -47,7 +48,7 @@ export function metricsMiddleware(options: MetricsMiddlewareOptions = {}) {
       return;
     }
 
-    const startTime = Date.now();
+    const startTime = nowMs();
     const requestId = crypto.randomUUID();
 
     // 收集請求開始指標
@@ -73,7 +74,7 @@ export function metricsMiddleware(options: MetricsMiddlewareOptions = {}) {
       throw err;
 
     } finally {
-      const endTime = Date.now();
+      const endTime = nowMs();
       const duration = endTime - startTime;
 
       // 收集請求完成指標
@@ -244,7 +245,7 @@ async function collectSystemMetrics(
 ): Promise<void> {
   try {
     const metricsCollector = new MetricsCollector(c.env.DB, c.env.KV);
-    const now = Date.now();
+    const now = nowMs();
 
     const systemMetrics: Metric[] = [
       // 系統響應時間
@@ -310,7 +311,7 @@ async function collectSystemMetrics(
  */
 export function conversationMetricsMiddleware() {
   return async (c: Context<{ Bindings: Bindings }>, next: Next) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     let conversationId: string | null = null;
     let userId: string | null = null;
 
@@ -331,7 +332,7 @@ export function conversationMetricsMiddleware() {
     if (conversationId) {
       try {
         const metricsCollector = new MetricsCollector(c.env.DB, c.env.KV);
-        const endTime = Date.now();
+        const endTime = nowMs();
         const duration = endTime - startTime;
 
         const conversationMetric: Metric = {
@@ -368,9 +369,9 @@ export function agentMetricsMiddleware() {
       return;
     }
 
-    const startTime = Date.now();
+    const startTime = nowMs();
     await next();
-    const endTime = Date.now();
+    const endTime = nowMs();
     const duration = endTime - startTime;
 
     try {
@@ -419,10 +420,10 @@ export function createCustomMetricsCollector(c: Context<{ Bindings: Bindings }>)
         const metricsCollector = new MetricsCollector(c.env.DB, c.env.KV);
 
         const metric: Metric = {
-          id: `custom_${Date.now()}_${Math.random()}`,
+          id: `custom_${nowMs()}_${Math.random()}`,
           name: metricName,
           value,
-          timestamp: Date.now(),
+          timestamp: nowMs(),
           tags: {
             ...tags,
             type: 'custom',

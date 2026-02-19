@@ -1,3 +1,4 @@
+import { nowMs } from '@/utils/timestamp'
 /**
  * RateLimiterDO - Durable Object for Rate Limiting
  *
@@ -78,8 +79,8 @@ export class RateLimiterDO implements DurableObject {
   private stats = {
     totalRequests: 0,
     blockedRequests: 0,
-    lastPersist: Date.now(),
-    startTime: Date.now()
+    lastPersist: nowMs(),
+    startTime: nowMs()
   };
 
   // Configuration
@@ -152,7 +153,7 @@ export class RateLimiterDO implements DurableObject {
   private handleCheckRateLimit(request: CheckRateLimitRequest): Response {
     const { clientId, config } = request;
     const { maxRequests, windowMs } = config;
-    const now = Date.now();
+    const now = nowMs();
 
     this.stats.totalRequests++;
 
@@ -313,7 +314,7 @@ export class RateLimiterDO implements DurableObject {
       // Load stats
       const storedStats = await this.state.storage.get<typeof this.stats>('stats');
       if (storedStats) {
-        this.stats = { ...this.stats, ...storedStats, startTime: Date.now() };
+        this.stats = { ...this.stats, ...storedStats, startTime: nowMs() };
       }
     } catch (error) {
       console.error('[RateLimiterDO] Error loading from storage:', error);
@@ -328,7 +329,7 @@ export class RateLimiterDO implements DurableObject {
       }
       await this.state.storage.put('stats', this.stats);
 
-      this.stats.lastPersist = Date.now();
+      this.stats.lastPersist = nowMs();
       console.log(`[RateLimiterDO] Persisted ${this.rateLimits.size} entries to storage`);
     } catch (error) {
       console.error('[RateLimiterDO] Error persisting to storage:', error);
@@ -336,7 +337,7 @@ export class RateLimiterDO implements DurableObject {
   }
 
   private cleanupExpiredEntries(): void {
-    const now = Date.now();
+    const now = nowMs();
     let removed = 0;
 
     for (const [clientId, entry] of this.rateLimits.entries()) {

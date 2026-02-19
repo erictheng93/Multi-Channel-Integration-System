@@ -1,5 +1,6 @@
 // 資料庫健康檢查器
 import { HealthLevel, type HealthChecker, type HealthCheckResult, type HealthCheckConfig } from '../types/health-check';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class DatabaseHealthChecker implements HealthChecker {
   name = 'database';
@@ -9,7 +10,7 @@ export class DatabaseHealthChecker implements HealthChecker {
   constructor(private db: any) {}
 
   async check(): Promise<HealthCheckResult> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 執行簡單的查詢測試連線
@@ -22,7 +23,7 @@ export class DatabaseHealthChecker implements HealthChecker {
         return {
           status: 'critical',
           message: 'Database query returned unexpected result',
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           responseTime
         };
       }
@@ -32,7 +33,7 @@ export class DatabaseHealthChecker implements HealthChecker {
         return {
           status: 'warning',
           message: `Database response time is slow: ${responseTime}ms`,
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           responseTime,
           details: {
             queryType: 'simple_select',
@@ -44,7 +45,7 @@ export class DatabaseHealthChecker implements HealthChecker {
       return {
         status: 'healthy',
         message: 'Database is accessible and responsive',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         responseTime,
         details: {
           queryType: 'simple_select',
@@ -56,7 +57,7 @@ export class DatabaseHealthChecker implements HealthChecker {
       return {
         status: 'critical',
         message: `Database connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         responseTime: Date.now() - startTime,
         details: {
           error: error instanceof Error ? error.message : 'Unknown error'

@@ -10,6 +10,7 @@
 import { createMiddleware } from 'hono/factory';
 import type { Bindings } from '@/types';
 import { configureLogger, createContextLogger, type LogLevel } from '@/utils/logger';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Logger configuration middleware
@@ -55,7 +56,7 @@ export const loggerMiddleware = createMiddleware<{ Bindings: Bindings }>(
 export const requestLoggerMiddleware = createMiddleware<{ Bindings: Bindings }>(
   async (c, next) => {
     const log = createContextLogger('HTTP');
-    const startTime = Date.now();
+    const startTime = nowMs();
     const requestId = crypto.randomUUID().slice(0, 8);
 
     // Log incoming request (debug level to avoid noise in production)
@@ -116,7 +117,7 @@ export const loggingMiddleware = createMiddleware<{ Bindings: Bindings }>(
     });
 
     const log = createContextLogger('HTTP');
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     await next();
 

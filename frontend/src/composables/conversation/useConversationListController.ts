@@ -31,6 +31,7 @@ import type { Conversation } from '@/types'
 import { translateError } from '@/utils/error-handler'
 import { conversationCache as storeLevelCache } from '@/services/cacheManager'
 import toast from '@/composables/useToast'
+import { nowISO } from '@/utils/timestamp'
 
 export interface ConversationListControllerComposable {
   // 子 Composables
@@ -228,7 +229,7 @@ export function useConversationListController(): ConversationListControllerCompo
         error,
         filters: filters.filters.value,
         page: currentPage.value,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       })
     }
   }

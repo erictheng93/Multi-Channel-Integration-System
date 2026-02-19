@@ -24,6 +24,7 @@ import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/acti
 import { createDbClient } from '@/db/drizzle-factory'
 import { sql, gte, count } from 'drizzle-orm'
 import { systemSettings, agents, conversations, messages } from '@/db/schema'
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 簡化的加密工具 (與 credentials.ts 相同)
 const decrypt = async (encryptedText: string, key: string): Promise<string> => {
@@ -207,7 +208,7 @@ export const getSystemInfo = async (c: Context<{ Bindings: Bindings }>) => {
     const systemInfo = {
       version: '1.0.0',
       environment: c.env.ENVIRONMENT || 'development',
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       dbStatus: 'online' as const,
       cacheStatus: 'online' as const,
       uptime: Date.now() - (Date.now() - 86400000) // 模擬 24 小時運行時間
@@ -326,13 +327,13 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
         .values({
           key,
           value,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .onConflictDoUpdate({
           target: systemSettings.key,
           set: {
             value,
-            updatedAt: new Date().toISOString()
+            updatedAt: nowISO()
           }
         })
     }
@@ -485,7 +486,7 @@ async function testLineIntegration(config: any, env: Bindings) {
         botId: isLineBotInfo(botInfo) ? botInfo.userId : 'Unknown',
         channelId: testConfig.channelId,
         webhookStatus,
-        testTime: new Date().toISOString()
+        testTime: nowISO()
       }
     }
   } catch (error) {
@@ -605,7 +606,7 @@ export const getMetrics = async (c: Context<{ Bindings: Bindings }>) => {
 
     // 獲取統計數據
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    // const todayStart = new Date().toISOString().split('T')[0]; // Unused
+    // const todayStart = nowISO().split('T')[0]; // Unused
 
     const [activeUsers, totalConversations, messagesToday] = await Promise.all([
       drizzleDb.select({ count: count() }).from(agents).where(gte(agents.lastLoginAt, oneHourAgo)),
@@ -634,14 +635,14 @@ export const backupDatabase = async (c: Context<{ Bindings: Bindings }>) => {
     // 在實際環境中，這裡會執行資料庫備份
     // Cloudflare D1 目前不支援直接備份，需要通過其他方式實現
 
-    const backupId = `backup_${Date.now()}`
-    const filename = `database_backup_${new Date().toISOString().split('T')[0]}.sql`
+    const backupId = `backup_${nowMs()}`
+    const filename = `database_backup_${nowISO().split('T')[0]}.sql`
 
     return successResponse(c, {
       backupId,
       filename,
       size: 1024 * 1024, // 模擬 1MB
-      createdAt: new Date().toISOString()
+      createdAt: nowISO()
     }, 'Database backup created successfully')
   } catch (error) {
     return handleApiError(error, c)
@@ -663,7 +664,7 @@ export const getBackups = async (c: Context<{ Bindings: Bindings }>) => {
         id: 'backup_2',
         filename: 'database_backup_2024-01-02.sql',
         size: 1024 * 1024 * 1.2,
-        createdAt: new Date().toISOString()
+        createdAt: nowISO()
       }
     ]
 
@@ -738,13 +739,13 @@ export const restartSystem = async (c: Context<{ Bindings: Bindings }>) => {
 export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const drizzleDb = createDbClient(c.env.DB)
-    const startTime = Date.now()
+    const startTime = nowMs()
 
     // 檢查資料庫連線
     let dbCheck = true
     let dbResponseTime = 0
     try {
-      const dbStart = Date.now()
+      const dbStart = nowMs()
       await drizzleDb.get(sql`SELECT 1 as test`)
       dbResponseTime = Date.now() - dbStart
     } catch {
@@ -755,7 +756,7 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
     // 檢查KV存儲 - 使用 CACHE 而不是 SESSIONS 進行健康檢查
     let kvCheck = false
     let kvResponseTime = 0
-    const kvStart = Date.now()
+    const kvStart = nowMs()
 
     if (c.env.CACHE) {
       try {
@@ -819,7 +820,7 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
         uptime: Math.floor(Date.now() / 1000), // 簡化的運行時間
         version: '2.0.0'
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }
 
     return successResponse(c, health, 'Health check completed')
@@ -951,7 +952,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
     return successResponse(c, {
       endpoints: checkedEndpoints,
       stats,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, 'API status retrieved successfully')
   } catch (error) {
     return handleApiError(error, c)

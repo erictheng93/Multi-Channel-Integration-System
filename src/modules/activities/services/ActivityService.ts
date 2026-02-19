@@ -14,6 +14,7 @@ import {
 import { ActivityValidator } from '@modules/activities/utils/validators'
 import { ACTIVITY_ACTIONS } from '@modules/activities/constants/actions'
 import { RESOURCE_TYPES } from '@modules/activities/constants/resources'
+import { nowISO } from '@/utils/timestamp'
 
 export class ActivityService {
   constructor(private db: D1Database) {}
@@ -31,7 +32,7 @@ export class ActivityService {
       }
 
       const drizzleDb = createDbClient(this.db)
-      const timestamp = new Date().toISOString()
+      const timestamp = nowISO()
 
       const result = await drizzleDb
         .insert(activities)
@@ -147,7 +148,7 @@ export class ActivityService {
       details: row.details ? JSON.parse(row.details) : undefined,
       ipAddress: row.ipAddress ?? undefined,
       userAgent: row.userAgent ?? undefined,
-      createdAt: row.createdAt || new Date().toISOString()
+      createdAt: row.createdAt || nowISO()
     }))
 
     return {
@@ -302,7 +303,7 @@ export class ActivityService {
       details: row.details ? JSON.parse(row.details) : undefined,
       ipAddress: row.ipAddress ?? undefined,
       userAgent: row.userAgent ?? undefined,
-      createdAt: row.createdAt || new Date().toISOString()
+      createdAt: row.createdAt || nowISO()
     }
   }
 

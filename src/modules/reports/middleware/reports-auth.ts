@@ -7,6 +7,7 @@ import { verifyJWT } from '@/utils/auth';
 import { PermissionService } from '@shared/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // ======================== 基礎權限檢查 ========================
 
@@ -21,7 +22,7 @@ export async function checkReportsAccess(c: Context<{ Bindings: Bindings }>, nex
       return c.json({
         success: false,
         error: 'Missing or invalid authorization header',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -32,7 +33,7 @@ export async function checkReportsAccess(c: Context<{ Bindings: Bindings }>, nex
       return c.json({
         success: false,
         error: 'Invalid or expired token',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -44,7 +45,7 @@ export async function checkReportsAccess(c: Context<{ Bindings: Bindings }>, nex
     return c.json({
       success: false,
       error: 'Authentication failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.UNAUTHORIZED);
   }
 }
@@ -62,7 +63,7 @@ export async function checkReportsViewPermission(c: Context<{ Bindings: Bindings
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -85,7 +86,7 @@ export async function checkReportsViewPermission(c: Context<{ Bindings: Bindings
       return c.json({
         success: false,
         error: 'Insufficient permissions to view reports',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -95,7 +96,7 @@ export async function checkReportsViewPermission(c: Context<{ Bindings: Bindings
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -111,7 +112,7 @@ export async function checkReportsGeneratePermission(c: Context<{ Bindings: Bind
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -134,7 +135,7 @@ export async function checkReportsGeneratePermission(c: Context<{ Bindings: Bind
       return c.json({
         success: false,
         error: 'Insufficient permissions to generate reports',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -144,7 +145,7 @@ export async function checkReportsGeneratePermission(c: Context<{ Bindings: Bind
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -160,7 +161,7 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -184,7 +185,7 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
       return c.json({
         success: false,
         error: 'Insufficient permissions to download reports',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -194,7 +195,7 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -211,7 +212,7 @@ export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindin
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -239,7 +240,7 @@ export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindin
       return c.json({
         success: false,
         error: 'Insufficient permissions to delete reports',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -254,7 +255,7 @@ export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindin
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -270,7 +271,7 @@ export async function checkReportsStatsPermission(c: Context<{ Bindings: Binding
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -279,7 +280,7 @@ export async function checkReportsStatsPermission(c: Context<{ Bindings: Binding
       return c.json({
         success: false,
         error: 'Insufficient permissions to view report statistics',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -289,7 +290,7 @@ export async function checkReportsStatsPermission(c: Context<{ Bindings: Binding
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -305,7 +306,7 @@ export async function checkReportsBatchPermission(c: Context<{ Bindings: Binding
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -314,7 +315,7 @@ export async function checkReportsBatchPermission(c: Context<{ Bindings: Binding
       return c.json({
         success: false,
         error: 'Insufficient permissions for batch operations',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -324,7 +325,7 @@ export async function checkReportsBatchPermission(c: Context<{ Bindings: Binding
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -340,7 +341,7 @@ export async function checkScheduledReportsPermission(c: Context<{ Bindings: Bin
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -363,7 +364,7 @@ export async function checkScheduledReportsPermission(c: Context<{ Bindings: Bin
       return c.json({
         success: false,
         error: 'Insufficient permissions to manage scheduled reports',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -373,7 +374,7 @@ export async function checkScheduledReportsPermission(c: Context<{ Bindings: Bin
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -389,7 +390,7 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
       return c.json({
         success: false,
         error: 'Authentication required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -405,7 +406,7 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
         return c.json({
           success: false,
           error: `Insufficient permissions for report type: ${reportType}`,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.FORBIDDEN);
       }
     }
@@ -416,7 +417,7 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -427,7 +428,7 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
  * 記錄報告操作日誌
  */
 export async function logReportsOperation(c: Context<{ Bindings: Bindings }>, next: Next) {
-  const startTime = Date.now();
+  const startTime = nowMs();
 
   try {
     const payload = c.get('jwtPayload');

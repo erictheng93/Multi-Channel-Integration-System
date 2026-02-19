@@ -7,6 +7,8 @@ import { jwtAuth } from '@/middleware/auth';
 import { createDataOptimizationService } from '@/services/data-optimization-service';
 import type { DataOptimizationConfig } from '@/services/data-optimization-service';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowMs } from '@/utils/timestamp'
 
 const dataOptimizationHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -32,15 +34,11 @@ dataOptimizationHandler.get('/config', jwtAuth, async (c) => {
       success: true,
       config,
       retrievedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Config retrieval failed:', error);
-    return c.json({
-      error: 'Failed to retrieve configuration',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -74,15 +72,11 @@ dataOptimizationHandler.put('/config', jwtAuth, async (c) => {
       success: true,
       message: 'Configuration updated successfully',
       updatedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Config update failed:', error);
-    return c.json({
-      error: 'Failed to update configuration',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -122,15 +116,11 @@ dataOptimizationHandler.get('/stats', jwtAuth, async (c) => {
       success: true,
       stats: enhancedStats,
       retrievedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Stats retrieval failed:', error);
-    return c.json({
-      error: 'Failed to retrieve statistics',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -165,15 +155,11 @@ dataOptimizationHandler.post('/test-cache', jwtAuth, async (c) => {
       testResults,
       testSize,
       testedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Cache test failed:', error);
-    return c.json({
-      error: 'Cache test failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -208,15 +194,11 @@ dataOptimizationHandler.post('/cleanup', jwtAuth, async (c) => {
       results: cleanupResults,
       forced: force,
       cleanedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Cleanup failed:', error);
-    return c.json({
-      error: 'Cleanup operation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -256,15 +238,11 @@ dataOptimizationHandler.post('/test-batch', jwtAuth, async (c) => {
       operationCount,
       operationType,
       testedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Batch test failed:', error);
-    return c.json({
-      error: 'Batch test failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -308,15 +286,11 @@ dataOptimizationHandler.post('/indexes', jwtAuth, async (c) => {
       field,
       recordCount: sampleData.length,
       createdBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Index creation failed:', error);
-    return c.json({
-      error: 'Index creation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -354,15 +328,11 @@ dataOptimizationHandler.get('/indexes/:indexName/:field', jwtAuth, async (c) => 
       value,
       resultCount: results.length,
       queriedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Index query failed:', error);
-    return c.json({
-      error: 'Index query failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -452,16 +422,11 @@ dataOptimizationHandler.get('/health', async (c) => {
         '2. 執行 /api/data-optimization/test-batch 進行批量測試',
         '3. 重新檢查健康狀態以獲得準確評分'
       ] : [],
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Health check failed:', error);
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: Date.now()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -504,15 +469,11 @@ dataOptimizationHandler.post('/initialize-baseline', jwtAuth, async (c) => {
       message: 'Baseline statistics initialized successfully',
       statistics: newStats,
       initializedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Data Optimization] Baseline initialization failed:', error);
-    return c.json({
-      error: 'Failed to initialize baseline',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -582,7 +543,7 @@ function generateOptimizationRecommendations(stats: any): string[] {
 }
 
 async function performCacheTest(service: any, testSize: number, testData?: any[]): Promise<any> {
-  const startTime = Date.now();
+  const startTime = nowMs();
   const testKeys: string[] = [];
 
   try {
@@ -603,7 +564,7 @@ async function performCacheTest(service: any, testSize: number, testData?: any[]
     const writeTime = Date.now() - startTime;
 
     // 測試讀取性能
-    const readStartTime = Date.now();
+    const readStartTime = nowMs();
     let hits = 0;
 
     for (const key of testKeys) {
@@ -630,7 +591,7 @@ async function performCacheTest(service: any, testSize: number, testData?: any[]
 }
 
 async function performBatchTest(service: any, operationCount: number, operationType: string): Promise<any> {
-  const startTime = Date.now();
+  const startTime = nowMs();
 
   try {
     const operations = [];

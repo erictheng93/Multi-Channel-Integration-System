@@ -7,6 +7,7 @@
  */
 
 import { logger } from './logger';
+import { nowISO } from '@/utils/timestamp'
 
 // Detect if we're in a test environment
 const isTestEnvironment = (): boolean => {
@@ -124,7 +125,7 @@ export const testSafeDebug = (message: string, ...args: any[]): void => {
  * Enhanced version that uses centralized logger
  */
 export function logWithTimestamp(message: string, ...args: any[]): void {
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   testSafeLog(`[${timestamp}] ${message}`, ...args);
 }
 
@@ -133,7 +134,7 @@ export function logWithTimestamp(message: string, ...args: any[]): void {
  * Enhanced version that uses centralized logger
  */
 export function logErrorWithTimestamp(message: string, ...args: any[]): void {
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   testSafeError(`[${timestamp}] ${message}`, undefined, ...args);
 }
 
@@ -143,7 +144,7 @@ export function logErrorWithTimestamp(message: string, ...args: any[]): void {
  */
 export function logWithEmoji(type: string, message: string, ...args: any[]): void {
   const emoji = getEmojiPrefix(type);
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   testSafeLog(`${emoji} [${timestamp}] ${message}`, ...args);
 }
 

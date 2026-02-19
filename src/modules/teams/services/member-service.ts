@@ -36,6 +36,7 @@ import type {
   BatchEditMembersResponse
 } from '../types/member-types';
 import { AgentTeamsService } from './agent-teams-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class MemberService {
   private db: ReturnType<typeof drizzle>;
@@ -48,8 +49,8 @@ export class MemberService {
    * 添加團隊成員
    */
   async addMember(data: AddTeamMemberRequest, createdBy: string): Promise<TeamMember> {
-    const memberId = `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    const memberId = `agent-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = nowISO();
 
     // Hash password using bcrypt (12 rounds)
     const hashedPassword = await hashPassword(data.password);
@@ -193,7 +194,7 @@ export class MemberService {
       .update(agents)
       .set({
         isActive: data.isActive,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       })
       .where(eq(agents.id, memberId))
       .returning();
@@ -217,7 +218,7 @@ export class MemberService {
       .update(agents)
       .set({
         role: data.role,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       })
       .where(eq(agents.id, memberId))
       .returning();
@@ -238,7 +239,7 @@ export class MemberService {
     updatedBy: string
   ): Promise<TeamMember> {
     const updateData: any = {
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     };
 
     // Note: loginId doesn't exist in schema, removed from update
@@ -272,7 +273,7 @@ export class MemberService {
    * @returns Promise<boolean> - 刪除是否成功
    */
   async deleteMember(memberId: string, deletedBy: string): Promise<boolean> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     const [updated] = await this.db
       .update(agents)
@@ -355,7 +356,7 @@ export class MemberService {
       }
 
       // 🚀 Step 2: 批量軟刪除 (N 更新 → 1 更新)
-      const now = new Date().toISOString();
+      const now = nowISO();
       await this.db
         .update(agents)
         .set({
@@ -396,7 +397,7 @@ export class MemberService {
    * @returns Promise<TeamMember | null> - 恢復的成員，如果失敗則為 null
    */
   async restoreMember(memberId: string): Promise<TeamMember | null> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     const [restored] = await this.db
       .update(agents)
@@ -461,7 +462,7 @@ export class MemberService {
       }
 
       // 🚀 Step 2: 批量恢復 (N 更新 → 1 更新)
-      const now = new Date().toISOString();
+      const now = nowISO();
       await this.db
         .update(agents)
         .set({
@@ -587,7 +588,7 @@ export class MemberService {
       }
 
       // 🚀 Step 2: 批量更新 (N 更新 → 1 更新)
-      const now = new Date().toISOString();
+      const now = nowISO();
       const updateData: any = { updatedAt: now };
       if (updates.role !== undefined) updateData.role = updates.role;
       if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
@@ -755,7 +756,7 @@ export class MemberService {
             }
 
             if (Object.keys(updateData).length > 0) {
-              updateData.updatedAt = new Date().toISOString();
+              updateData.updatedAt = nowISO();
 
               await this.db
                 .update(agents)

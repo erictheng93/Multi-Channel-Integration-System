@@ -16,6 +16,8 @@ import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { getActivityCacheStats } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const kvMonitoringHandler = new Hono<{ Bindings: Bindings }>();
 const logger = createContextLogger('KVOptimizationMonitoring');
@@ -39,7 +41,7 @@ const kvOperationStats = {
   // Theoretical savings (based on old implementation)
   savedReads: 0,
   savedWrites: 0,
-  startTime: Date.now(),
+  startTime: nowMs(),
   // Actual operations (should be minimal after optimization)
   actualReads: 0,
   actualWrites: 0,
@@ -50,7 +52,7 @@ const kvOperationStats = {
  * Called from auth middleware
  */
 function incrementRequestCounter(userId: string): void {
-  const now = Date.now();
+  const now = nowMs();
   const counter = requestCounters.get(userId) || {
     count: 0,
     lastReset: now,
@@ -129,14 +131,10 @@ kvMonitoringHandler.get('/activity-cache', jwtAuth, requireAdmin(), async (c) =>
           recommendation: stats.size > 10000 ? 'Consider cache cleanup if Worker memory is constrained' : 'Operating normally'
         }
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    logger.error('Failed to get activity cache stats', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get stats'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -146,7 +144,7 @@ kvMonitoringHandler.get('/activity-cache', jwtAuth, requireAdmin(), async (c) =>
  */
 kvMonitoringHandler.get('/request-frequency', jwtAuth, requireAdmin(), async (c) => {
   try {
-    const now = Date.now();
+    const now = nowMs();
     const stats = Array.from(requestCounters.entries()).map(([userId, data]) => ({
       userId,
       currentHourRequests: data.count,
@@ -179,14 +177,10 @@ kvMonitoringHandler.get('/request-frequency', jwtAuth, requireAdmin(), async (c)
           } : null
         }
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    logger.error('Failed to get request frequency stats', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get stats'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -196,7 +190,7 @@ kvMonitoringHandler.get('/request-frequency', jwtAuth, requireAdmin(), async (c)
  */
 kvMonitoringHandler.get('/savings', jwtAuth, requireAdmin(), async (c) => {
   try {
-    const now = Date.now();
+    const now = nowMs();
     const uptimeHours = (now - kvOperationStats.startTime) / (60 * 60 * 1000);
 
     // Calculate theoretical daily savings
@@ -261,14 +255,10 @@ kvMonitoringHandler.get('/savings', jwtAuth, requireAdmin(), async (c) => {
           }
         }
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    logger.error('Failed to get KV savings stats', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get stats'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -279,7 +269,7 @@ kvMonitoringHandler.get('/savings', jwtAuth, requireAdmin(), async (c) => {
 kvMonitoringHandler.get('/health', jwtAuth, requireAdmin(), async (c) => {
   try {
     const cacheStats = getActivityCacheStats();
-    const now = Date.now();
+    const now = nowMs();
     const uptimeHours = (now - kvOperationStats.startTime) / (60 * 60 * 1000);
 
     // Calculate health metrics
@@ -330,14 +320,10 @@ kvMonitoringHandler.get('/health', jwtAuth, requireAdmin(), async (c) => {
           issues.length > 0 ? 'Critical issues detected - immediate attention required' : null
         ].filter(Boolean)
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    logger.error('Failed to get KV optimization health', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get health status'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -352,21 +338,17 @@ kvMonitoringHandler.post('/reset', jwtAuth, requireAdmin(), async (c) => {
     kvOperationStats.savedWrites = 0;
     kvOperationStats.actualReads = 0;
     kvOperationStats.actualWrites = 0;
-    kvOperationStats.startTime = Date.now();
+    kvOperationStats.startTime = nowMs();
 
     logger.info('KV optimization monitoring counters reset');
 
     return c.json({
       success: true,
       message: 'All monitoring counters reset',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    logger.error('Failed to reset monitoring counters', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to reset counters'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

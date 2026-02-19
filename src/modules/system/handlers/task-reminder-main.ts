@@ -6,6 +6,8 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings, JWTPayload } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { TaskReminderService } from '@/services/task-reminder-service';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO } from '@/utils/timestamp'
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -15,7 +17,7 @@ app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
     module: 'task-reminders',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     version: '1.0.0'
   });
 });
@@ -40,15 +42,10 @@ app.get('/upcoming', jwtAuth, async (c) => {
       data: reminders,
       count: reminders.length,
       minutesAhead: minutes,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get upcoming reminders error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get upcoming reminders',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -66,15 +63,10 @@ app.get('/stats', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: stats,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get reminder stats error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get reminder stats',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -91,7 +83,7 @@ app.post('/process', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Admin access required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -102,15 +94,10 @@ app.post('/process', jwtAuth, async (c) => {
       success: true,
       data: { processedCount },
       message: `Processed ${processedCount} due reminders`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Process reminders error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to process reminders',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -130,22 +117,17 @@ app.put('/:id/complete', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Reminder not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: true,
       message: 'Reminder marked as complete',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Complete reminder error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to complete reminder',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -165,22 +147,17 @@ app.get('/:id', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Reminder not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: true,
       data: reminder,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get reminder error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get reminder',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -201,7 +178,7 @@ app.put('/:id', jwtAuth, async (c) => {
         return c.json({
           success: false,
           error: 'Invalid remindAt date format',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
       body.remindAt = remindAt;
@@ -214,22 +191,17 @@ app.put('/:id', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Reminder not found or update failed',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: true,
       message: 'Reminder updated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Update reminder error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update reminder',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -249,22 +221,17 @@ app.delete('/:id', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Reminder not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
     return c.json({
       success: true,
       message: 'Reminder deleted successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Delete reminder error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete reminder',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -284,15 +251,10 @@ app.get('/', jwtAuth, async (c) => {
       success: true,
       data: reminders,
       count: reminders.length,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get reminders error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get reminders',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -310,7 +272,7 @@ app.post('/', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Title and remindAt are required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -320,7 +282,7 @@ app.post('/', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Invalid remindAt date format',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -329,7 +291,7 @@ app.post('/', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'remindAt must be in the future',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -348,15 +310,10 @@ app.post('/', jwtAuth, async (c) => {
       success: true,
       data: { id: reminderId },
       message: 'Reminder created successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.CREATED);
   } catch (error) {
-    console.error('Create reminder error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to create reminder',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

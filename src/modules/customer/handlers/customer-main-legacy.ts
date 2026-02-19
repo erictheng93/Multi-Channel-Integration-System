@@ -5,6 +5,8 @@ import type { Bindings } from '@/types';
 import { handleApiError } from '@/utils/api-response';
 import { customerTagsHandler } from './customer-tags';
 import { jwtAuth } from '@/middleware/auth';
+import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
+import { nowISO } from '@/utils/timestamp'
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -39,7 +41,7 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
       return c.json({
         success: false,
         error: 'Customer not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
@@ -52,7 +54,7 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
         conversations,
         conversationCount: conversations.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Operation failed:', error);
@@ -62,13 +64,13 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
 
 // ==================== Priority 2: PARAMETERIZED multi-segment routes ====================
 // 獲取客戶的所有標籤 (moved from line 117 - more specific, 2 segments)
-customerHandler.get('/:customerId/tags', customerTagsHandler.getCustomerTags);
+customerHandler.get('/:customerId/tags', requireIntId('customerId'), customerTagsHandler.getCustomerTags);
 
 // ==================== Priority 3: PARAMETERIZED single-segment routes ====================
 // 特定客戶資訊查詢端點 (moved from line 77 to before /)
-customerHandler.get('/:customerId', async (c) => {
+customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
   try {
-    const customerId = parseInt(c.req.param('customerId'));
+    const customerId = getValidatedParam<number>(c, 'customerId');
     const { getCustomerById, getCustomerConversations } = await import('@/utils/database');
 
     const customer = await getCustomerById(c.env.DB, customerId);
@@ -76,7 +78,7 @@ customerHandler.get('/:customerId', async (c) => {
       return c.json({
         success: false,
         error: 'Customer not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
@@ -89,7 +91,7 @@ customerHandler.get('/:customerId', async (c) => {
         conversations,
         conversationCount: conversations.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Operation failed:', error);
@@ -110,7 +112,7 @@ customerHandler.get('/', async (c) => {
         customers,
         count: customers.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Operation failed:', error);
@@ -123,12 +125,12 @@ customerHandler.get('/', async (c) => {
 // ========================================
 
 // 為客戶添加標籤
-customerHandler.post('/:customerId/tags', customerTagsHandler.addTagsToCustomer);
+customerHandler.post('/:customerId/tags', requireIntId('customerId'), customerTagsHandler.addTagsToCustomer);
 
 // 從客戶移除標籤
-customerHandler.delete('/:customerId/tags', customerTagsHandler.removeTagsFromCustomer);
+customerHandler.delete('/:customerId/tags', requireIntId('customerId'), customerTagsHandler.removeTagsFromCustomer);
 
 // 設置客戶標籤（替換所有現有標籤）
-customerHandler.put('/:customerId/tags', customerTagsHandler.setCustomerTags);
+customerHandler.put('/:customerId/tags', requireIntId('customerId'), customerTagsHandler.setCustomerTags);
 
 export default customerHandler;

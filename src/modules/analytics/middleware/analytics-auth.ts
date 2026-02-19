@@ -5,6 +5,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@shared/services/permission-service';
 import type { PermissionContext } from '@/types/services';
+import { nowISO } from '@/utils/timestamp'
 
 // Analytics User interface
 interface AnalyticsUser {
@@ -80,8 +81,8 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
       primaryTeamId: decoded.primaryTeamId,
       teamName: decoded.teamName || '',
       isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: nowISO(),
+      updatedAt: nowISO()
     } as AnalyticsUser);
 
     await next();

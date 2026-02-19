@@ -13,6 +13,7 @@ import { Logger, createLogger, PerformanceTimer } from '@/services/logger-servic
 import { getCircuitBreaker, type WebSocketCircuitBreaker, CircuitState } from '@/services/websocket-circuit-breaker';
 import type { BroadcastConfig } from './broadcast-config';
 import type { BatchQueueManager } from './batch-queue-manager';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * DurableObjectClient
@@ -273,7 +274,7 @@ export class DurableObjectClient {
           conversationId: event.conversationId,
           fromTeamId: (event.data as Record<string, unknown>)?.fromTeamId,
           toTeamId: (event.data as Record<string, unknown>)?.toTeamId,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         });
 
         const endpoint = includeAdmins

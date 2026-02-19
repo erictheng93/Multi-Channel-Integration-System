@@ -1,6 +1,7 @@
 // 統一錯誤處理系統 - 改善使用者體驗
 import type { Context } from 'hono';
 import type { Bindings } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 錯誤類型定義
 export enum ErrorType {
@@ -80,7 +81,7 @@ export class ErrorHandler {
    * 處理並標準化錯誤
    */
   handleError(
-    c: Context<{ Bindings: Bindings }>,
+    c: Context<any, any, any>,
     error: any,
     errorType?: ErrorType,
     userMessage?: string
@@ -131,7 +132,7 @@ export class ErrorHandler {
         code: 'GENERIC_ERROR',
         message: error,
         userMessage: userMessage || '操作失敗，請稍後再試',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         retryable: true,
         suggestions: ['請稍後再試', '如果問題持續存在，請聯繫技術支援']
       };
@@ -142,7 +143,7 @@ export class ErrorHandler {
         code: 'UNKNOWN_ERROR',
         message: 'Unknown error occurred',
         userMessage: userMessage || '發生未知錯誤，請聯繫技術支援',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         retryable: false,
         suggestions: ['請聯繫技術支援團隊']
       };
@@ -234,7 +235,7 @@ export class ErrorHandler {
       code,
       message,
       userMessage: userMsg || '操作失敗，請稍後再試',
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       stack: error.stack,
       retryable,
       suggestions
@@ -245,7 +246,7 @@ export class ErrorHandler {
    * 創建錯誤響應
    */
   private createErrorResponse(
-    c: Context<{ Bindings: Bindings }>,
+    c: Context<any>,
     error: StandardizedError
   ): Response {
     const httpStatus = this.getHttpStatus(error.type);
@@ -375,14 +376,14 @@ export class ErrorHandler {
    * 生成請求ID
    */
   private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `req_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
    * 獲取錯誤統計
    */
   getErrorStats(): ErrorStats {
-    const now = Date.now();
+    const now = nowMs();
     const oneHourAgo = now - (60 * 60 * 1000);
 
     const recentErrors = this.errorHistory.filter(error =>
@@ -431,7 +432,7 @@ export class ErrorHandler {
       message,
       userMessage: userMessage || message,
       details,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       retryable: false,
       suggestions: ['請檢查操作是否符合業務規則', '如有疑問請聯繫管理員']
     };
@@ -452,7 +453,7 @@ export class ErrorHandler {
       message: `Validation failed for field '${field}': ${message}`,
       userMessage: `${field} 欄位驗證失敗：${message}`,
       details: { field, value },
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       retryable: false,
       suggestions: ['請檢查輸入格式', '確保所有必填欄位都已正確填寫']
     };
@@ -464,7 +465,7 @@ export const globalErrorHandler = new ErrorHandler();
 
 // 中間件：全域錯誤捕獲
 export function errorHandlingMiddleware() {
-  return async (c: Context<{ Bindings: Bindings }>, next: () => Promise<void>) => {
+  return async (c: Context<any, any, any>, next: () => Promise<void>) => {
     try {
       await next();
     } catch (error) {
@@ -482,7 +483,7 @@ export function withErrorHandling<T extends any[], R>(
     try {
       return await handler(...args);
     } catch (error) {
-      const context = args[0] as Context<{ Bindings: Bindings }>;
+      const context = args[0] as Context<any, any, any>;
       return globalErrorHandler.handleError(context, error);
     }
   };

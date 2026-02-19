@@ -5,9 +5,11 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
+import { globalErrorHandler } from '@/core/error-handler';
 import { jwtAuth } from '@/middleware/auth';
 import { createUserExperienceMonitoringService } from '@/services/user-experience-monitoring';
 import type { UserExperienceMetrics, UserExperienceSurvey, UserBehaviorAnalytics, ABTestConfig } from '@/services/user-experience-monitoring';
+import { nowMs } from '@/utils/timestamp'
 
 const userExperienceHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -39,15 +41,11 @@ userExperienceHandler.post('/metrics', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'User experience metrics recorded successfully',
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Record metrics error:', error);
-    return c.json({
-      error: 'Failed to record metrics',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -77,15 +75,11 @@ userExperienceHandler.post('/behavior', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'User behavior recorded successfully',
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Record behavior error:', error);
-    return c.json({
-      error: 'Failed to record behavior',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -109,15 +103,11 @@ userExperienceHandler.get('/survey/invitation', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: invitation,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Survey invitation error:', error);
-    return c.json({
-      error: 'Failed to generate survey invitation',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -166,15 +156,11 @@ userExperienceHandler.post('/survey', jwtAuth, async (c) => {
       success: true,
       message: 'Survey submitted successfully',
       thankYouMessage: 'Thank you for your feedback! Your input helps us improve the service.',
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Survey submission error:', error);
-    return c.json({
-      error: 'Failed to submit survey',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -212,15 +198,11 @@ userExperienceHandler.get('/report', jwtAuth, async (c) => {
       data: report,
       timeRange: `${timeRangeHours}h`,
       generatedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Report generation error:', error);
-    return c.json({
-      error: 'Failed to generate experience report',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -243,15 +225,11 @@ userExperienceHandler.get('/ab-tests/:testId/assignment', jwtAuth, async (c) => 
       data: assignment,
       userId: user.id,
       testId,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] A/B test assignment error:', error);
-    return c.json({
-      error: 'Failed to get A/B test assignment',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -275,15 +253,11 @@ userExperienceHandler.post('/ab-tests/:testId/metrics', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'A/B test metric recorded successfully',
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] A/B test metric error:', error);
-    return c.json({
-      error: 'Failed to record A/B test metric',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -310,15 +284,11 @@ userExperienceHandler.post('/ab-tests', jwtAuth, async (c) => {
       message: 'A/B test created successfully',
       testId: testConfig.testId,
       createdBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Create A/B test error:', error);
-    return c.json({
-      error: 'Failed to create A/B test',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -347,15 +317,11 @@ userExperienceHandler.get('/personal-dashboard', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: personalDashboard,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Personal dashboard error:', error);
-    return c.json({
-      error: 'Failed to get personal dashboard',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -405,17 +371,12 @@ userExperienceHandler.get('/health', jwtAuth, async (c) => {
       status: overallHealth,
       score: Math.round(healthScore * 100),
       components: healthChecks,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       checkedBy: user.id
     });
 
   } catch (error) {
-    console.error('❌ [UX API] Health check error:', error);
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: Date.now()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

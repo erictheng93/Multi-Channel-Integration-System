@@ -7,6 +7,7 @@ import { createDbClient } from '../db/drizzle-factory';
 import { sql } from 'drizzle-orm';
 import { KV_TTL } from '../config/kv-config';
 import { KVKeyBuilder } from '../services/kv-management-service';
+import { nowMs } from '@/utils/timestamp'
 
 // 快取管理器
 export class CacheManager {
@@ -56,7 +57,7 @@ export class CacheManager {
       const key = this.generateKey(prefix, identifier, params);
       const data = {
         value,
-        createdAt: Date.now(),
+        createdAt: nowMs(),
       };
 
       await this.env.SESSIONS.put(key, JSON.stringify(data), { expirationTtl: ttl });
@@ -326,7 +327,7 @@ export function performanceMiddleware() {
   const monitor = new PerformanceMonitor();
   
   return async (c: Context, next: () => Promise<void>) => {
-    const start = Date.now();
+    const start = nowMs();
     const path = c.req.path;
     
     await next();

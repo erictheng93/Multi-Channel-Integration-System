@@ -27,6 +27,7 @@ import {
   DEFAULT_SESSION_CONFIG,
   DEFAULT_PAGINATION
 } from '../types/session-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Session Service 主要實現
@@ -47,8 +48,8 @@ export class SessionService implements SessionServiceInterface {
    * 創建新會話
    */
   async create(data: CreateSessionData): Promise<ConversationSession> {
-    const sessionId = `session_${data.conversationId}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const now = new Date().toISOString();
+    const sessionId = `session_${data.conversationId}_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
+    const now = nowISO();
 
     // 智能提取主題
     const topic = data.topic || (data.messageContent ? await this.extractTopic(data.messageContent) : null);
@@ -127,7 +128,7 @@ export class SessionService implements SessionServiceInterface {
     }
 
     const updateData: any = {
-      // updatedAt: new Date().toISOString() // 不存在於 schema 中
+      // updatedAt: nowISO() // 不存在於 schema 中
     };
 
     if (data.topic !== undefined) updateData.topic = data.topic;
@@ -412,7 +413,7 @@ export class SessionService implements SessionServiceInterface {
    * 關閉會話
    */
   async closeSession(sessionId: string): Promise<boolean> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     try {
       await this.db
@@ -436,7 +437,7 @@ export class SessionService implements SessionServiceInterface {
    * 重新開啟會話
    */
   async reopenSession(sessionId: string): Promise<boolean> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     try {
       await this.db
@@ -501,7 +502,7 @@ export class SessionService implements SessionServiceInterface {
         messageType: msg.messageType as any,
         sessionSequence: msg.sessionSequence || 0,
         ...(msg.platformMessageId && { platformMessageId: msg.platformMessageId }),
-        createdAt: msg.createdAt || new Date().toISOString(),
+        createdAt: msg.createdAt || nowISO(),
         ...(msg.metadata ? { metadata: JSON.parse(msg.metadata) } : {})
       }));
 
@@ -543,7 +544,7 @@ export class SessionService implements SessionServiceInterface {
       .get();
 
     const sessionSequence = sequenceResult?.nextSequence || 1;
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     const messageRecord = {
       conversationId: parseInt(messageData.conversationId),
@@ -936,7 +937,7 @@ export class SessionService implements SessionServiceInterface {
    */
   private async updateSessionActivity(sessionId: string, incrementMessageCount = false): Promise<void> {
     const updateData: any = {
-      lastActivity: new Date().toISOString()
+      lastActivity: nowISO()
     };
 
     if (incrementMessageCount) {

@@ -242,15 +242,13 @@ export class ModuleDiscovery {
    */
   private getKnownModules(): Array<{ path: string; name: string }> {
     return [
-      { path: './handlers/auth-main', name: 'auth' },
-      { path: './handlers/team-main', name: 'teams' },
-      { path: './handlers/conversation-main', name: 'conversations' },
-      { path: './handlers/delayed-message-main', name: 'delayed-messages' },
-      { path: './handlers/system-main', name: 'system' },
-      { path: './handlers/customer-main', name: 'customers' },
-      { path: './handlers/notification-main', name: 'notifications' },
-      { path: './modules/system/handlers/health-main', name: 'health' },
-      { path: './modules/qrcode/handlers/qrcode-router-simple', name: 'qr-codes' }
+      { path: './modules/teams/handlers/index', name: 'teams' },
+      { path: './modules/conversations/handlers/conversation-main', name: 'conversations' },
+      { path: './modules/system/handlers/system-main', name: 'system' },
+      { path: './modules/customer/handlers/customer-main-legacy', name: 'customers' },
+      { path: './modules/notifications/handlers/notification-router', name: 'notifications' },
+      { path: './modules/messaging/handlers/messaging/index', name: 'messaging' },
+      { path: './modules/delayed-message/handlers/delayed-message-buffer', name: 'delayed-messages' }
     ];
   }
 

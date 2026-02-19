@@ -65,7 +65,7 @@ export class ModularSystemManager {
    */
   async initialize(): Promise<SystemInitializationResult> {
     console.log('🏗️ Initializing Modular Architecture System...');
-    const startTime = Date.now();
+    const startTime = nowMs();
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -114,7 +114,7 @@ export class ModularSystemManager {
 
       this.initializationResult = {
         success: errors.length === 0,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         modules: {
           discovered: moduleResult.discovered,
           registered: moduleResult.registered,
@@ -141,7 +141,7 @@ export class ModularSystemManager {
     } catch (error) {
       const failureResult: SystemInitializationResult = {
         success: false,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         modules: { discovered: 0, registered: 0, failed: 0, running: 0 },
         routes: { groups: 0, modules: 0, endpoints: 0 },
         health: { status: 'critical', monitoring: false, errorHandling: false },
@@ -228,7 +228,7 @@ export class ModularSystemManager {
     performance: any;
   } {
     const startTime = this.initializationResult?.timestamp ?
-      new Date(this.initializationResult.timestamp).getTime() : Date.now();
+      new Date(this.initializationResult.timestamp).getTime() : nowMs();
 
     return {
       initialized: this.isInitialized,
@@ -390,7 +390,7 @@ export class ModularSystemApiHandler {
       return c.json({
         success: true,
         data: status,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
@@ -416,7 +416,7 @@ export class ModularSystemApiHandler {
         success: true,
         data: modules,
         total: modules.length,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
@@ -434,7 +434,7 @@ export class ModularSystemApiHandler {
         return c.json({
           success: false,
           error: 'Missing required fields: type, name',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -443,7 +443,7 @@ export class ModularSystemApiHandler {
         success: result.success,
         data: result.success ? { files: result.files, metadata: result.metadata } : undefined,
         error: result.error,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
@@ -459,7 +459,7 @@ export class ModularSystemApiHandler {
       return c.json({
         success: true,
         data: health,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
@@ -480,6 +480,7 @@ export const globalModularSystemManager = new ModularSystemManager({
 export const modularSystemApiHandler = new ModularSystemApiHandler(globalModularSystemManager);
 // ==================== Hono Router Wrapper ====================
 import { Hono } from 'hono';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Modular System Router - Hono wrapper for modular system API handlers
@@ -493,7 +494,7 @@ modularSystemRouter.get('/health', (c) => {
     status: 'healthy',
     module: 'modular-system',
     version: '1.0.0',
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 

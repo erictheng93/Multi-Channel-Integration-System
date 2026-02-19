@@ -37,6 +37,7 @@ import {
 } from '../middleware/index';
 
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 // 創建會話路由實例
 const sessionRouter = new Hono<{ Bindings: Bindings }>();
@@ -74,7 +75,7 @@ sessionRouter.get('/status', (c) => {
         'total-sessions-today': 0
       }
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -123,14 +124,14 @@ sessionRouter.get(
       return c.json({
         success: true,
         data: config,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       console.error('Get session config error:', error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session configuration',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
@@ -160,7 +161,7 @@ sessionRouter.post(
         return c.json({
           success: false,
           error: 'conversationId, messageContent, and senderType are required',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -196,14 +197,14 @@ sessionRouter.post(
         success: true,
         data: detectionResult,
         message: 'Boundary detection test completed',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       console.error('Boundary detection test error:', error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to test boundary detection',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
@@ -237,7 +238,7 @@ sessionRouter.post(
         return c.json({
           success: false,
           error: 'Cannot cleanup sessions newer than 7 days',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -263,14 +264,14 @@ sessionRouter.post(
         success: true,
         data: cleanupResult,
         message: `Session cleanup ${dryRun ? 'simulation' : 'operation'} completed`,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       console.error('Session cleanup error:', error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to cleanup sessions',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }
@@ -303,7 +304,7 @@ sessionRouter.post(
         return c.json({
           success: false,
           error: 'format must be json or csv',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -319,7 +320,7 @@ sessionRouter.post(
         stats: {
           totalSessions: 0,
           totalMessages: includeMessages ? 0 : undefined,
-          exportedAt: new Date().toISOString()
+          exportedAt: nowISO()
         },
         downloadUrl: null as string | null, // TODO: Generate actual download URL
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
@@ -329,14 +330,14 @@ sessionRouter.post(
         success: true,
         data: exportResult,
         message: 'Export request processed',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       console.error('Session export error:', error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to export sessions',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
   }

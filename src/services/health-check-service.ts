@@ -7,6 +7,7 @@ import type {
   HealthLevel,
   HealthCheckConfig
 } from '../types/health-check';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class HealthCheckService {
   private checkers: Map<string, HealthChecker> = new Map();
@@ -34,7 +35,7 @@ export class HealthCheckService {
       throw new Error(`Health checker '${checkerName}' not found`);
     }
 
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const result = await this.executeWithTimeout(
         checker.check(),
@@ -42,7 +43,7 @@ export class HealthCheckService {
       );
 
       result.responseTime = Date.now() - startTime;
-      result.timestamp = new Date().toISOString();
+      result.timestamp = nowISO();
 
       this.results.set(checkerName, result);
       return result;
@@ -50,7 +51,7 @@ export class HealthCheckService {
       const errorResult: HealthCheckResult = {
         status: 'critical',
         message: `Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         responseTime: Date.now() - startTime
       };
 
@@ -164,7 +165,7 @@ export class HealthCheckService {
       overall: {
         status: overallStatus,
         message: this.getOverallMessage(overallStatus),
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       },
       components,
       infrastructure: this.buildInfrastructureHealth(),
@@ -185,7 +186,7 @@ export class HealthCheckService {
       overall: {
         status: overallStatus,
         message: this.getOverallMessage(overallStatus),
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       },
       components: this.buildComponentsHealth(),
       infrastructure: this.buildInfrastructureHealth(),
@@ -240,7 +241,7 @@ export class HealthCheckService {
       const result = this.results.get(name) || {
         status: 'unknown' as const,
         message: 'Not checked yet',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       return {
@@ -320,7 +321,7 @@ export class HealthCheckService {
     return {
       status: 'unknown',
       message,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
   }
 

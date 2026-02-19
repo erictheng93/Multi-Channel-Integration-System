@@ -6,6 +6,7 @@ import type { Bindings } from '@/types';
 import { ReportsService } from '@modules/reports/services/reports-service';
 import { REPORT_TYPE_CONFIG, ReportGenerationParams, BatchReportOperation, ReportType } from '@modules/reports/types/report-types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 
 // 中間件導入
 import {
@@ -29,6 +30,7 @@ import {
   validateReportPreviewRequest,
   logReportsOperation
 } from '../middleware/index';
+import { nowISO } from '@/utils/timestamp'
 
 // 創建報告路由實例
 const reportsHandler = new Hono<{ Bindings: Bindings }>();
@@ -43,7 +45,7 @@ reportsHandler.get('/health', (c) => {
   return c.json({
     status: 'healthy',
     module: 'reports',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     version: '1.0.0'
   });
 });
@@ -106,7 +108,7 @@ reportsHandler.get('/info', (c) => {
         agent: 'Basic report access for assigned conversations and personal performance'
       }
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -138,15 +140,10 @@ reportsHandler.post(
         data: report,
         message: 'Report generation started successfully',
         estimatedTime: `${(reportParams as unknown as ReportGenerationParams).type ? REPORT_TYPE_CONFIG[(reportParams as unknown as ReportGenerationParams).type]?.estimatedGenerationTime || 60 : 60} seconds`,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.CREATED);
     } catch (error) {
-      console.error('Generate report error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate report',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -170,15 +167,10 @@ reportsHandler.get(
       return c.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('List reports error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to list reports',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -203,22 +195,17 @@ reportsHandler.get(
         return c.json({
           success: false,
           error: 'Report not found',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
         success: true,
         data: report,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get report details error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get report details',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -246,7 +233,7 @@ reportsHandler.get(
         return c.json({
           success: false,
           error: 'Report not found or not ready for download',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
@@ -257,15 +244,10 @@ reportsHandler.get(
           filename: downloadInfo.filename,
           message: 'Report ready for download'
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Download report error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to download report',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -293,22 +275,17 @@ reportsHandler.delete(
         return c.json({
           success: false,
           error: 'Report not found or could not be deleted',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
         success: true,
         message: 'Report deleted successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Delete report error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete report',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -333,15 +310,10 @@ reportsHandler.get(
       return c.json({
         success: true,
         data: stats,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get report stats error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get report statistics',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -372,15 +344,10 @@ reportsHandler.post(
         success: true,
         data: result,
         message: `Batch operation ${batchOperation.action} completed`,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Batch operation error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to execute batch operation',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -406,7 +373,7 @@ reportsHandler.get(
         return c.json({
           success: false,
           error: 'Invalid report type',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -416,15 +383,10 @@ reportsHandler.get(
         success: true,
         data: templates,
         reportType,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get report templates error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get report templates',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -450,15 +412,10 @@ reportsHandler.post(
         success: true,
         data: previewData,
         message: 'Report preview generated successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Preview report error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to generate report preview',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -492,15 +449,10 @@ reportsHandler.post(
         success: true,
         data: scheduledReport,
         message: 'Scheduled report created successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.CREATED);
     } catch (error) {
-      console.error('Create scheduled report error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create scheduled report',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -526,15 +478,10 @@ reportsHandler.get(
         success: true,
         data: scheduledReports,
         count: scheduledReports.length,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('List scheduled reports error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to list scheduled reports',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -569,15 +516,10 @@ reportsHandler.put(
         success: true,
         data: updatedReport,
         message: 'Scheduled report updated successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Update scheduled report error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to update scheduled report',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -605,22 +547,17 @@ reportsHandler.delete(
         return c.json({
           success: false,
           error: 'Scheduled report not found or could not be deleted',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
         success: true,
         message: 'Scheduled report deleted successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Delete scheduled report error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete scheduled report',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -633,7 +570,7 @@ reportsHandler.onError((err, c) => {
   return c.json({
     success: false,
     error: 'Internal server error in reports module',
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
 });
 
@@ -659,7 +596,7 @@ reportsHandler.notFound((c) => {
       'PUT /scheduled/:id',
       'DELETE /scheduled/:id'
     ],
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   }, HTTP_STATUS.NOT_FOUND);
 });
 

@@ -17,6 +17,7 @@ import {
   agentErrorHandler
 } from '../middleware/agent-auth';
 import { agentValidationMiddleware } from '@modules/agents/middleware/agent-validation';
+import { nowISO } from '@/utils/timestamp'
 
 // 建立 Agent 路由
 export function createAgentRouter() {
@@ -347,7 +348,7 @@ export function createAgentRouter() {
           return c.json({
             success: false,
             error: 'Cannot assign a role higher than your own',
-            timestamp: new Date().toISOString()
+            timestamp: nowISO()
           }, HTTP_STATUS.FORBIDDEN);
         }
       }

@@ -9,6 +9,7 @@ import { agents, customers, conversations, messages, teams, customerFeedback } f
 // REMOVED: qrCodes - Old QR Code module migrated to new LIFF QR Code system
 import { count, sql, eq, and, desc } from 'drizzle-orm';
 import { handleApiError } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 const systemHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -24,14 +25,14 @@ systemHandler.get('/health', async (c) => {
 
     return c.json({
       status: 'healthy',
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       database: dbCheck ? 'connected' : 'disconnected',
       version: '1.0.0'
     });
   } catch (error) {
     return c.json({
       status: 'unhealthy',
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       error: error instanceof Error ? error.message : 'Unknown error',
       version: '1.0.0'
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
@@ -78,7 +79,7 @@ systemHandler.get('/api', (c) => {
       listPendingMessages: 'GET /api/delayed-messages/pending',
       processQueueMessage: 'POST /api/delayed-messages/process'
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -92,7 +93,7 @@ systemHandler.get('/system/status', jwtAuth, async (c) => {
     // 檢查各個資源
     const status = {
       overall: 'healthy',
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       version: '1.0.0',
       services: {
         database: {
@@ -143,7 +144,7 @@ systemHandler.get('/messages/:messageId/replies', jwtAuth, async (c) => {
         replies,
         count: replies.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Operation failed:', error);
@@ -172,7 +173,7 @@ systemHandler.get('/conversations/:conversationId/message-tree', jwtAuth, async 
         replyMap: replyMapObj,
         totalMessages: tree.messages.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Operation failed:', error);
@@ -191,7 +192,7 @@ systemHandler.get('/conversations/:conversationId/sessions', jwtAuth, async (c) 
     return c.json({
       success: true,
       data: stats,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Operation failed:', error);
@@ -337,9 +338,9 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
         responseTime,
         satisfactionRate,
         resolvedToday,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Operation failed:', error);
@@ -361,7 +362,7 @@ systemHandler.get('/messages/recall-stats', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: stats,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {

@@ -5,6 +5,7 @@ import type {
   EventType,
   EventPriority
 } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 性能指標定義
 export interface PerformanceMetrics {
@@ -149,7 +150,7 @@ export class RealtimePerformanceMonitor {
 
   // 收集性能指標
   private async collectMetrics(): Promise<void> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // =================== WebSocket-based Connection Statistics ===================
@@ -260,7 +261,7 @@ export class RealtimePerformanceMonitor {
         sse: websocketMetrics, // Renamed from sseMetrics but kept property name for backward compatibility
         queue: queueMetrics,
         resources: resourceMetrics,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         collectionPeriod: 30 // 預設收集期間
       };
 
@@ -360,13 +361,13 @@ export class RealtimePerformanceMonitor {
     message: string
   ): PerformanceAlert {
     return {
-      id: `alert-${Date.now()}-${Math.random().toString(36).substring(2)}`,
+      id: `alert-${nowMs()}-${Math.random().toString(36).substring(2)}`,
       level,
       metric,
       threshold,
       currentValue,
       message,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
   }
 
@@ -415,7 +416,7 @@ export class RealtimePerformanceMonitor {
     const alert = this.alerts.find(a => a.id === alertId);
     if (alert && !alert.resolved) {
       alert.resolved = true;
-      alert.resolvedAt = new Date().toISOString();
+      alert.resolvedAt = nowISO();
       console.log(`✅ [Performance Monitor] 警報已解決: ${alertId}`);
       return true;
     }

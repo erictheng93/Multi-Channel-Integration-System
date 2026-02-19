@@ -10,6 +10,7 @@ import type { RealtimeEvent } from '../../types';
 import type { WebSocketAuthChallenge } from '../../services/websocket-auth-service';
 import type { ConversationRoomConfig } from '../ConversationRoom';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
+import { nowMs } from '@/utils/timestamp'
 
 // =================== Shared Types ===================
 
@@ -81,11 +82,11 @@ export class RoomHelpers {
   }
 
   generateConnectionId(): string {
-    return `conn_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+    return `conn_${nowMs()}_${crypto.randomUUID().substring(0, 8)}`;
   }
 
   generateEventId(): string {
-    return `event_${Date.now()}_${crypto.randomUUID().substring(0, 8)}`;
+    return `event_${nowMs()}_${crypto.randomUUID().substring(0, 8)}`;
   }
 
   sendMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
@@ -93,7 +94,7 @@ export class RoomHelpers {
       try {
         if (connection.websocket.readyState === 1) { // WebSocket.OPEN = 1
           connection.websocket.send(JSON.stringify(message));
-          connection.lastActivity = Date.now();
+          connection.lastActivity = nowMs();
         }
         resolve();
       } catch (error) {
@@ -107,7 +108,7 @@ export class RoomHelpers {
     this.sendMessage(connection, {
       type: 'error',
       error,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
   }
 }

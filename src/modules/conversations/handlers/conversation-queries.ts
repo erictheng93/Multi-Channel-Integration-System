@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import { eq, inArray, desc, and } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams, conversationTags, tags } from '@/db/schema';
@@ -11,6 +12,7 @@ import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { createContextLogger } from '@/utils/logger';
 import { getDisplayContent } from '../utils/message-helpers';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('ConversationQueriesHandler');
 
@@ -56,7 +58,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Conversation not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
@@ -123,16 +125,11 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: conversationData,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    log.error('Get conversation error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get conversation',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -160,7 +157,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       return c.json({
         success: true,
         data: [],
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     }
 
@@ -193,7 +190,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         return c.json({
           success: true,
           data: [],
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         });
       }
     }
@@ -381,16 +378,11 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: combinedData,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    log.error('Get conversations error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get conversations',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

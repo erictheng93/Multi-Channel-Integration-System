@@ -8,6 +8,7 @@ import { MetricsCollector } from '@modules/analytics/services/metrics-collector'
 import { analyticsAuth } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
@@ -21,6 +22,7 @@ import type {
   UserMetric,
   PerformanceMetric
 } from '../types/analytics-types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Analytics API 路由處理器
@@ -139,12 +141,7 @@ analyticsHandler.get('/users', async (c) => {
     });
 
   } catch (error) {
-    console.error('Failed to get user analytics:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: 'USER_ANALYTICS_ERROR'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -181,12 +178,7 @@ analyticsHandler.get('/performance', async (c) => {
     });
 
   } catch (error) {
-    console.error('Failed to get performance analytics:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: 'PERFORMANCE_ANALYTICS_ERROR'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -224,12 +216,7 @@ analyticsHandler.post('/custom', async (c) => {
     });
 
   } catch (error) {
-    console.error('Failed to execute custom analytics:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: 'CUSTOM_ANALYTICS_ERROR'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -268,12 +255,7 @@ analyticsHandler.post('/export', async (c) => {
     });
 
   } catch (error) {
-    console.error('Failed to export analytics:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: 'EXPORT_ANALYTICS_ERROR'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -306,16 +288,11 @@ analyticsHandler.get('/health', async (c) => {
         database: dbTest ? 'healthy' : 'unhealthy',
         kv: kvHealthy ? 'healthy' : 'unhealthy'
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    return c.json({
-      success: false,
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -347,12 +324,7 @@ analyticsHandler.post('/metrics', async (c) => {
     });
 
   } catch (error) {
-    console.error('Failed to collect metrics:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: 'METRICS_COLLECTION_ERROR'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -386,11 +358,6 @@ analyticsHandler.get('/metrics/:name', async (c) => {
     });
 
   } catch (error) {
-    console.error('Failed to query metrics:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: 'METRICS_QUERY_ERROR'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });

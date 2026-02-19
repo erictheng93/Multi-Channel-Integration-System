@@ -1,3 +1,4 @@
+import { nowISO, nowMs } from '@/utils/timestamp'
 // Structured Logging Service
 // 專案名稱：Multi-Channel Support MVP - WebSocket Real-time System
 // 提供統一的結構化日誌系統，支持性能追蹤、上下文管理和告警
@@ -231,7 +232,7 @@ export class Logger {
     metadata?: Record<string, unknown>
   ): LogEntry {
     const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       level,
       message,
       context: {
@@ -417,7 +418,7 @@ export class PerformanceTimer {
     this.logger = logger;
     this.operation = operation;
     this.context = context;
-    this.startTime = Date.now();
+    this.startTime = nowMs();
   }
 
   /**

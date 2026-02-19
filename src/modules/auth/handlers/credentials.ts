@@ -4,6 +4,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types'
 import { successResponse, handleApiError } from '@/utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities'
+import { nowISO } from '@/utils/timestamp'
 
 // 簡化的加密工具
 const encrypt = async (text: string, key: string): Promise<string> => {
@@ -330,7 +331,7 @@ export const backupCredentials = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     const backupData = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       credentials: backup,
       version: '1.0'
     }

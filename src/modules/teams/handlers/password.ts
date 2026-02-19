@@ -9,10 +9,12 @@ import { eq } from 'drizzle-orm';
 import { agents } from '@/db/schema';
 import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type {
   ResetPasswordRequest,
   ChangePasswordRequest
 } from '../types/password-types';
+import { nowISO } from '@/utils/timestamp'
 
 const passwordHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -53,7 +55,7 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
       updatedAt: string;
     } = {
       passwordHash: hashedPassword,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     };
 
     // Add password policy if provided
@@ -81,15 +83,11 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
       data: {
         passwordPolicy: updated.passwordPolicy
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Reset password error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to reset password'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -142,22 +140,18 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
       .update(agents)
       .set({
         passwordHash: hashedNewPassword,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       })
       .where(eq(agents.id, String(user.id)));
 
     return c.json({
       success: true,
       message: 'Password changed successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Change password error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to change password'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

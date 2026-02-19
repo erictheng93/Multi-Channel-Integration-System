@@ -18,6 +18,7 @@ import type { Bindings } from '@/types/bindings';
 import { jwtAuth } from '@/middleware/auth';
 import { KVManagementService, KV_KEY_PATTERNS, LEGACY_KEY_PATTERNS } from '@/services/kv-management-service';
 import { KV_TTL, KV_BATCH_CONFIG, KV_COMPRESSION_CONFIG, KEY_MIGRATION_MAP } from '@/config/kv-config';
+import { nowISO } from '@/utils/timestamp'
 
 const kvManagementHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -40,7 +41,7 @@ kvManagementHandler.get('/stats', jwtAuth, async (c) => {
 
     return c.json({
       success: true,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       statistics: stats,
       keyPatterns: {
         current: KV_KEY_PATTERNS,
@@ -71,7 +72,7 @@ kvManagementHandler.get('/health', jwtAuth, async (c) => {
 
     return c.json({
       success: true,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       status: allHealthy ? 'healthy' : 'degraded',
       namespaces: {
         sessions: {
@@ -121,7 +122,7 @@ kvManagementHandler.post('/cleanup', jwtAuth, async (c) => {
 
     return c.json({
       success: true,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       mode: dryRun ? 'dry-run' : 'execute',
       summary: {
         totalKeysFound: totalDeleted,
@@ -175,7 +176,7 @@ kvManagementHandler.get('/config', jwtAuth, async (c) => {
 
     return c.json({
       success: true,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       config: {
         ttl: KV_TTL,
         batch: KV_BATCH_CONFIG,
@@ -235,7 +236,7 @@ kvManagementHandler.post('/migrate', jwtAuth, async (c) => {
 
     return c.json({
       success: true,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       migration: {
         oldPattern,
         newPattern,

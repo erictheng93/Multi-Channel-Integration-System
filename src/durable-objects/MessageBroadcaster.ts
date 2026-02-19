@@ -17,6 +17,7 @@ import { BroadcasterLockService } from './services/broadcaster-lock-service';
 import { BroadcasterDeliveryService } from './services/broadcaster-delivery-service';
 import { BroadcasterConnectionRegistry } from './services/broadcaster-connection-registry';
 import { BroadcasterHttpHandlers } from './handlers/broadcaster-http-handlers';
+import { nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('MessageBroadcaster');
 
@@ -45,7 +46,7 @@ export class MessageBroadcaster implements DurableObject {
     totalEvents: 0,
     successfulDeliveries: 0,
     failedDeliveries: 0,
-    lastProcessed: Date.now(),
+    lastProcessed: nowMs(),
     eventsPerSecond: 0,
     averageLatency: 0,
     queueDepth: 0,
@@ -159,7 +160,7 @@ export class MessageBroadcaster implements DurableObject {
             registeredUsers: Array.from(this.userConnections.keys()),
             registeredConversations: Array.from(this.conversationRooms.keys()),
             activeConnections: this.distributionStats.activeConnections,
-            timestamp: Date.now()
+            timestamp: nowMs()
           }), {
             headers: { 'Content-Type': 'application/json' }
           });

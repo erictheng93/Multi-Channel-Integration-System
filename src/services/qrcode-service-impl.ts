@@ -8,6 +8,7 @@ import type {
   QRFollowEvent
 } from '../types/services';
 import QRCode from 'qrcode';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 自定義類型
 type D1Database = any;
@@ -163,7 +164,7 @@ export class QRCodeServiceImpl {
     const qrGenTime = performance.now() - startTime;
 
     // 準備 QR Code 資料
-    const now = new Date().toISOString();
+    const now = nowISO();
     const qrCodeId = crypto.randomUUID();
     const qrCodeData = {
       id: qrCodeId,
@@ -199,7 +200,7 @@ export class QRCodeServiceImpl {
         qrCodeImageUrl,
         lineUrl,
         token,
-        cachedAt: Date.now()
+        cachedAt: nowMs()
       })
     ]);
     const dbTime = performance.now() - dbStartTime;
@@ -259,7 +260,7 @@ export class QRCodeServiceImpl {
       qrCodeImageUrl: latestQR.qrCodeImageUrl,
       lineUrl: latestQR.lineUrl,
       token: latestQR.token,
-      cachedAt: Date.now()
+      cachedAt: nowMs()
     });
 
     const duration = performance.now() - startTime;
@@ -314,8 +315,8 @@ export class QRCodeServiceImpl {
       qrCodeId: qrCodeResult.id,
       platform: 'line',
       platformUserId: followEvent.source.userId,
-      scanMetadata: JSON.stringify({ timestamp: new Date().toISOString() }),
-      scannedAt: new Date().toISOString()
+      scanMetadata: JSON.stringify({ timestamp: nowISO() }),
+      scannedAt: nowISO()
     }).run();
 
     // 自動指派給對應團隊
@@ -358,7 +359,7 @@ export class QRCodeServiceImpl {
     await db.update(qrCodes)
       .set({
         isActive: false,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       })
       .where(eq(qrCodes.token, token))
       .run();
@@ -472,7 +473,7 @@ export class QRCodeServiceImpl {
     await db.update(qrCodes)
       .set({ 
         usageCount: sql`usage_count + 1`,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       })
       .where(eq(qrCodes.token, token))
       .run();
@@ -502,8 +503,8 @@ export class QRCodeServiceImpl {
         displayName: 'LINE User',
         sourceTeamId: teamId,
         metadata: JSON.stringify({ qrCodeSource: source }),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: nowISO(),
+        updatedAt: nowISO()
       }).returning({ id: customers.id }).get();
       
       customer = { id: customerId.id };
@@ -512,7 +513,7 @@ export class QRCodeServiceImpl {
       await db.update(customers)
         .set({ 
           sourceTeamId: teamId,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(customers.id, customer.id))
         .run();
@@ -538,15 +539,15 @@ export class QRCodeServiceImpl {
           autoAssigned: true, 
           qrCodeSource: source 
         }),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: nowISO(),
+        updatedAt: nowISO()
       }).run();
     } else if (!activeConversation.assignedTeamId) {
       // 指派現有對話給團隊
       await db.update(conversations)
         .set({ 
           assignedTeamId: teamId,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(conversations.id, activeConversation.id))
         .run();

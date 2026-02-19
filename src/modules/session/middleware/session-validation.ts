@@ -12,6 +12,7 @@ import type {
   ConversationSession
 } from '../types/session-types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { nowISO } from '@/utils/timestamp'
 
 // ======================== 基礎驗證函數 ========================
 
@@ -73,7 +74,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
       return c.json({
         success: false,
         error: 'Request size too large (max 1MB)',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.PAYLOAD_TOO_LARGE);
     }
 
@@ -83,7 +84,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
     return c.json({
       success: false,
       error: 'Request validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }
@@ -101,7 +102,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
     return c.json({
       success: false,
       error: 'Rate limit check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -119,7 +120,7 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
       return c.json({
         success: false,
         error: 'Session ID is required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -127,7 +128,7 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
       return c.json({
         success: false,
         error: 'Invalid session ID format',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -138,7 +139,7 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
     return c.json({
       success: false,
       error: 'Session ID validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }
@@ -154,7 +155,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
       return c.json({
         success: false,
         error: 'Conversation ID is required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -162,7 +163,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
       return c.json({
         success: false,
         error: 'Invalid conversation ID format',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -172,7 +173,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
     return c.json({
       success: false,
       error: 'Conversation ID validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }
@@ -191,7 +192,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'conversationId is required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -199,7 +200,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'Invalid conversationId format',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -207,7 +208,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'senderType must be one of: customer, agent, system',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -216,7 +217,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -224,7 +225,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'priority must be one of: low, medium, high, urgent',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -235,7 +236,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         return c.json({
           success: false,
           error: 'topic cannot exceed 200 characters',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
     }
@@ -246,7 +247,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         return c.json({
           success: false,
           error: 'messageContent cannot exceed 2000 characters',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
     }
@@ -257,7 +258,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
         return c.json({
           success: false,
           error: 'tags must be an array with maximum 10 items',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -271,7 +272,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }
@@ -288,7 +289,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'At least one field is required for update',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -297,7 +298,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -305,7 +306,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'priority must be one of: low, medium, high, urgent',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -313,7 +314,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'sentiment must be one of: positive, negative, neutral',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -321,7 +322,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
       return c.json({
         success: false,
         error: 'isActive must be a boolean',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -333,7 +334,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
           return c.json({
             success: false,
             error: 'topic cannot exceed 200 characters',
-            timestamp: new Date().toISOString()
+            timestamp: nowISO()
           }, HTTP_STATUS.BAD_REQUEST);
         }
       }
@@ -345,7 +346,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
         return c.json({
           success: false,
           error: 'endTime must be a valid ISO date string',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
     }
@@ -356,7 +357,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
         return c.json({
           success: false,
           error: 'tags must be an array with maximum 10 items',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -370,7 +371,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }
@@ -391,7 +392,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         return c.json({
           success: false,
           error: 'Invalid conversationId format',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
       query.conversationId = conversationId;
@@ -403,7 +404,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         return c.json({
           success: false,
           error: 'isActive must be true or false',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
       query.isActive = isActive === 'true';
@@ -414,7 +415,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
       return c.json({
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
     if (sessionType) query.sessionType = sessionType;
@@ -424,7 +425,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
       return c.json({
         success: false,
         error: 'priority must be one of: low, medium, high, urgent',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
     if (priority) query.priority = priority;
@@ -434,7 +435,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
       return c.json({
         success: false,
         error: 'sentiment must be one of: positive, negative, neutral',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
     if (sentiment) query.sentiment = sentiment;
@@ -446,7 +447,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         return c.json({
           success: false,
           error: 'startDate must be a valid ISO date string',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
       query.startDate = startDate;
@@ -458,7 +459,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
         return c.json({
           success: false,
           error: 'endDate must be a valid ISO date string',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
       query.endDate = endDate;
@@ -483,7 +484,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
       return c.json({
         success: false,
         error: 'page must be between 1 and 1000',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -491,7 +492,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
       return c.json({
         success: false,
         error: 'pageSize must be between 1 and 100',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -505,7 +506,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
     return c.json({
       success: false,
       error: 'Query validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }
@@ -524,7 +525,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
       return c.json({
         success: false,
         error: 'query parameter is required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -533,7 +534,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
       return c.json({
         success: false,
         error: 'query must be at least 2 characters',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -543,7 +544,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
         return c.json({
           success: false,
           error: 'Invalid conversationId format',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
       query.conversationId = conversationId;
@@ -554,7 +555,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
       return c.json({
         success: false,
         error: 'sessionType must be one of: continuous, scheduled, support, marketing',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
     if (sessionType) query.sessionType = sessionType;
@@ -564,7 +565,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
       return c.json({
         success: false,
         error: 'limit must be between 1 and 100',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
     query.limit = limit;
@@ -576,7 +577,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
     return c.json({
       success: false,
       error: 'Search query validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }
@@ -594,7 +595,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
       return c.json({
         success: false,
         error: 'sessionIds must be a non-empty array',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -602,7 +603,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
       return c.json({
         success: false,
         error: 'Cannot process more than 100 sessions at once',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -612,7 +613,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
         return c.json({
           success: false,
           error: `Invalid session ID format: ${sessionId}`,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
     }
@@ -621,7 +622,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
       return c.json({
         success: false,
         error: 'action must be one of: close, reopen, update_priority, add_tags, remove_tags, delete',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -631,7 +632,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
         return c.json({
           success: false,
           error: `data is required for action: ${body.action}`,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -639,7 +640,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
         return c.json({
           success: false,
           error: 'priority is required in data for update_priority action',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -647,7 +648,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
         return c.json({
           success: false,
           error: 'tags are required in data for tag operations',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
     }
@@ -659,7 +660,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.BAD_REQUEST);
   }
 }

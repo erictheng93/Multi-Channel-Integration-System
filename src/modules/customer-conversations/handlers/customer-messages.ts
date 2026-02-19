@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
+import { globalErrorHandler } from '@/core/error-handler';
 import { verifyConversationAccess } from '../utils/conversation-auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -69,11 +70,7 @@ router.all('/:id/messages', async (c) => {
     log.debug('Proxy: Forwarding to CustomerMessageDO', { method: requestMethod, conversationId });
     return doStub.fetch(doRequest);
   } catch (error) {
-    log.error('Customer Messages: Operation error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: 'Failed to process message operation'
-    }, 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -132,44 +129,7 @@ router.post('/:id/upload', async (c) => {
 
     return doStub.fetch(new Request(url.toString(), modifiedRequest));
   } catch (error) {
-    log.error('Customer Upload: Upload error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: 'Failed to upload file'
-    }, 500);
-  }
-});
-
-// DEBUG: Endpoint to check CustomerConversationDO connection status
-router.get('/:id/debug/connections', async (c) => {
-  const conversationId = c.req.param('id');
-
-  if (!conversationId) {
-    return c.json({ success: false, error: 'Conversation ID is required' }, 400);
-  }
-
-  try {
-    // Get the same DO instance that handles WebSocket connections
-    const doId = c.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
-    const doStub = c.env.CUSTOMER_CONVERSATION_DO.get(doId);
-
-    // Forward request to DO's debug endpoint
-    const debugRequest = new Request('https://fake-host/debug/connections', {
-      method: 'GET'
-    });
-
-    const response = await doStub.fetch(debugRequest);
-    const data = await response.json() as Record<string, unknown>;
-
-    return c.json({
-      success: true,
-      requestedConversationId: conversationId,
-      doIdString: doId.toString(),
-      ...data
-    });
-  } catch (error) {
-    log.error('Debug connections error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: 'Failed to get connection info' }, 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

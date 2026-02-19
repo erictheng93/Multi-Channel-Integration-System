@@ -9,6 +9,7 @@ import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations, agents, customers } from '@shared/database/schema';
 import { jwtAuth } from '@/middleware/auth';
 import { BULK_OPERATION_LIMITS } from '@/constants/limits';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const EXPORT_LIMIT = BULK_OPERATION_LIMITS.EXPORT_MAX_RECORDS;
 
@@ -37,14 +38,14 @@ exportRoutes.get('/export/customers', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: customerList,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Get export customers error:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get customers',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
@@ -71,14 +72,14 @@ exportRoutes.get('/export/agents', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: agentList,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Get export agents error:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get agents',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
@@ -137,14 +138,14 @@ exportRoutes.get('/export/count', jwtAuth, async (c) => {
         limit,
         willBeTruncated: totalCount > limit
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
     console.error('Export count error:', error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get export count',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
@@ -171,7 +172,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Invalid format. Must be "json", "csv", or "txt"',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -253,7 +254,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
           exportInfo: {
             format: 'json',
             totalRecords: messageList.length,
-            exportedAt: new Date().toISOString(),
+            exportedAt: nowISO(),
             exportedBy: userPayload.userId.toString(),
             filters: {
               conversationId,
@@ -265,7 +266,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
             }
           }
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
     } else if (format === 'csv') {
@@ -301,7 +302,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
         status: 200,
         headers: {
           'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': `attachment; filename="messages_export_${Date.now()}.csv"`
+          'Content-Disposition': `attachment; filename="messages_export_${nowMs()}.csv"`
         }
       });
 
@@ -312,7 +313,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
       lines.push('========================================');
       lines.push('  對話記錄匯出');
       lines.push('========================================');
-      lines.push(`匯出時間: ${new Date().toISOString()}`);
+      lines.push(`匯出時間: ${nowISO()}`);
       lines.push(`總筆數: ${messageList.length}`);
       if (conversationId) lines.push(`對話 ID: ${conversationId}`);
       if (dateFrom) lines.push(`起始日期: ${dateFrom}`);
@@ -360,7 +361,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
         status: 200,
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
-          'Content-Disposition': `attachment; filename="chat_export_${Date.now()}.txt"`
+          'Content-Disposition': `attachment; filename="chat_export_${nowMs()}.txt"`
         }
       });
     }
@@ -370,7 +371,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to export messages',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });

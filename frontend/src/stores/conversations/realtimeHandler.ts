@@ -9,6 +9,7 @@ import { useAuthStore } from '../auth'
 import { computeStatsFromConversations } from './helpers'
 import type { LiffConversation, ConversationStats, TransferredConversationState } from './types'
 import type { Platform } from '@/types'
+import { nowISO } from '@/utils/timestamp'
 
 export interface RealtimeHandlerDeps {
   conversations: Ref<Conversation[]>
@@ -286,7 +287,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               transferredConversation.value = {
                 conversationId,
                 toTeamName,
-                transferredAt: new Date().toISOString()
+                transferredAt: nowISO()
               }
               console.log(`🔄 [ConversationsStore] Also updated currentConversation for ${conversationId} - marked as transferred`, {
                 toTeamName,

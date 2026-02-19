@@ -2,6 +2,7 @@
 // 客戶標籤關聯管理 - 處理客戶與標籤的關聯操作
 
 import { Context } from 'hono';
+import { getValidatedParam } from '@/middleware/param-validator';
 import type { Bindings } from '@/types';
 import {
   successResponse,
@@ -120,7 +121,7 @@ export const customerTagsHandler = {
   async getCustomerTags(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
-      const customerId = parseInt(c.req.param('customerId'));
+      const customerId = getValidatedParam<number>(c, 'customerId');
 
       // 檢查客戶是否存在
       const customer = await drizzleDb
@@ -167,7 +168,7 @@ export const customerTagsHandler = {
   async addTagsToCustomer(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
-      const customerId = parseInt(c.req.param('customerId'));
+      const customerId = getValidatedParam<number>(c, 'customerId');
       const { tagIds } = await c.req.json();
       const payload = c.get('jwtPayload');
 
@@ -267,7 +268,7 @@ export const customerTagsHandler = {
   async removeTagsFromCustomer(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
-      const customerId = parseInt(c.req.param('customerId'));
+      const customerId = getValidatedParam<number>(c, 'customerId');
       const { tagIds } = await c.req.json();
 
       // 驗證輸入
@@ -312,7 +313,7 @@ export const customerTagsHandler = {
   async setCustomerTags(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
     try {
-      const customerId = parseInt(c.req.param('customerId'));
+      const customerId = getValidatedParam<number>(c, 'customerId');
       const { tagIds } = await c.req.json();
       const payload = c.get('jwtPayload');
 

@@ -3,6 +3,7 @@ import { createDbClient } from '../db/drizzle-factory';
 import { teams, agents, agentTeams, conversations, messages, conversationTransfers, customers } from '../db/schema';
 import { eq, and, count, inArray, sql, desc, isNull } from 'drizzle-orm';
 import type { NewTeam, NewConversationTransfer } from '../db/schema';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 團隊管理工具函數
@@ -19,7 +20,7 @@ export async function createTeam(
   }
 ): Promise<Team> {
   const drizzleDb = createDbClient(db);
-  const now = new Date().toISOString();
+  const now = nowISO();
   
   const newTeam: NewTeam = {
     name: teamData.name,
@@ -108,7 +109,7 @@ export async function updateTeam(
   }
 ): Promise<Team> {
   const drizzleDb = createDbClient(db);
-  const now = new Date().toISOString();
+  const now = nowISO();
 
   if (Object.keys(updates).length === 0) {
     throw new Error('No updates provided');
@@ -147,7 +148,7 @@ export async function updateTeam(
 // 刪除團隊（軟刪除）
 export async function deleteTeam(db: D1Database, teamId: number): Promise<void> {
   const drizzleDb = createDbClient(db);
-  const now = new Date().toISOString();
+  const now = nowISO();
   
   const result = await drizzleDb
     .update(teams)
@@ -210,7 +211,7 @@ export async function addUserToTeam(
   teamId: number
 ): Promise<void> {
   const drizzleDb = createDbClient(db);
-  const now = new Date().toISOString();
+  const now = nowISO();
   const agentId = String(userId);
 
   // Check if agent already has any teams — first team becomes primary
@@ -284,7 +285,7 @@ export async function generateTeamQRCode(
   baseUrl: string
 ): Promise<string> {
   // 生成唯一的 QR Code 標識符
-  const qrCodeId = `team_${teamId}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+  const qrCodeId = `team_${teamId}_${nowMs()}_${Math.random().toString(36).substring(2, 11)}`;
   
   // 構建 QR Code URL（用戶掃描後會被導向這個 URL）
   const qrCodeUrl = `${baseUrl}/join?team=${qrCodeId}`;
@@ -457,7 +458,7 @@ export async function transferConversationToTeam(
   reason?: string
 ): Promise<void> {
   const drizzleDb = createDbClient(db);
-  const now = new Date().toISOString();
+  const now = nowISO();
   
   // 更新對話分配 (只更新團隊)
   const updateResult = await drizzleDb

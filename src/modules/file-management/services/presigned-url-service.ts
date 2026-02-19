@@ -15,6 +15,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -114,7 +115,7 @@ export class PresignedUrlService {
     this.validateRequest(request);
 
     const fileId = this.generateFileId();
-    const timestamp = Date.now();
+    const timestamp = nowMs();
     const sanitizedFilename = this.sanitizeFilename(request.filename);
     const extension = this.getExtension(request.filename);
 
@@ -158,7 +159,7 @@ export class PresignedUrlService {
       messageId: request.messageId || null,
       uploadStatus: 'pending',
       uploadedBy: request.uploadedBy || null,
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
     });
 
     console.log(`[PresignedUrlService] Generated presigned URL for ${fileId}, key: ${r2Key}, expires: ${expiresAt}`);
@@ -227,7 +228,7 @@ export class PresignedUrlService {
           .update(fileAttachments)
           .set({
             uploadStatus: 'failed',
-            updatedAt: new Date().toISOString(),
+            updatedAt: nowISO(),
           })
           .where(eq(fileAttachments.id, fileId));
 
@@ -236,7 +237,7 @@ export class PresignedUrlService {
     }
 
     // 3. 更新資料庫記錄
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
     await this.db
       .update(fileAttachments)
       .set({

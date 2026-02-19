@@ -11,6 +11,8 @@ import type {
   ChannelVerificationRequest
 } from '../types/channel-types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
+import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import type { ChannelIntegration } from '../types/channel-types';
 
 /**
@@ -32,15 +34,10 @@ const channelHandler = new Hono<{ Bindings: Bindings }>();
  *
  * Route Order: Registered before /:id to prevent route interception
  */
-channelHandler.get('/:id/stats', async (c: Context) => {
+channelHandler.get('/:id/stats', requireIntId(), async (c: Context) => {
   try {
     const user = c.get('user');
-    const channelId = parseInt(c.req.param('id'));
-
-    if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const channelId = getValidatedParam<number>(c, 'id');
     if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -65,11 +62,7 @@ channelHandler.get('/:id/stats', async (c: Context) => {
     });
 
   } catch (error) {
-    console.error('[ChannelHandler] Error getting channel stats:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get statistics'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -79,15 +72,10 @@ channelHandler.get('/:id/stats', async (c: Context) => {
  *
  * Route Order: Registered before /:id to prevent route interception
  */
-channelHandler.get('/:id/health', async (c: Context) => {
+channelHandler.get('/:id/health', requireIntId(), async (c: Context) => {
   try {
     const user = c.get('user');
-    const channelId = parseInt(c.req.param('id'));
-
-    if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const channelId = getValidatedParam<number>(c, 'id');
     if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -112,11 +100,7 @@ channelHandler.get('/:id/health', async (c: Context) => {
     });
 
   } catch (error) {
-    console.error('[ChannelHandler] Error checking channel health:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to check health'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -126,15 +110,10 @@ channelHandler.get('/:id/health', async (c: Context) => {
  *
  * Route Order: Registered before /:id to prevent route interception
  */
-channelHandler.post('/:id/verify', async (c: Context) => {
+channelHandler.post('/:id/verify', requireIntId(), async (c: Context) => {
   try {
     const user = c.get('user');
-    const channelId = parseInt(c.req.param('id'));
-
-    if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const channelId = getValidatedParam<number>(c, 'id');
     if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -164,12 +143,7 @@ channelHandler.post('/:id/verify', async (c: Context) => {
     return c.json(result, statusCode);
 
   } catch (error) {
-    console.error('[ChannelHandler] Error verifying channel:', error);
-    return c.json({
-      success: false,
-      verified: false,
-      message: error instanceof Error ? error.message : 'Verification failed'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -179,15 +153,10 @@ channelHandler.post('/:id/verify', async (c: Context) => {
  *
  * Route Order: Registered after specific /:id/* routes to prevent interception
  */
-channelHandler.get('/:id', async (c: Context) => {
+channelHandler.get('/:id', requireIntId(), async (c: Context) => {
   try {
     const user = c.get('user');
-    const channelId = parseInt(c.req.param('id'));
-
-    if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const channelId = getValidatedParam<number>(c, 'id');
     if (!user) {
       return c.json({ error: 'Authentication required' }, HTTP_STATUS.UNAUTHORIZED);
     }
@@ -211,11 +180,7 @@ channelHandler.get('/:id', async (c: Context) => {
     });
 
   } catch (error) {
-    console.error('[ChannelHandler] Error getting channel:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get channel'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -223,15 +188,10 @@ channelHandler.get('/:id', async (c: Context) => {
  * PUT /api/channels/:id
  * Update channel configuration
  */
-channelHandler.put('/:id', async (c: Context) => {
+channelHandler.put('/:id', requireIntId(), async (c: Context) => {
   try {
     const user = c.get('user');
-    const channelId = parseInt(c.req.param('id'));
-
-    if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const channelId = getValidatedParam<number>(c, 'id');
     if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -279,11 +239,7 @@ channelHandler.put('/:id', async (c: Context) => {
     });
 
   } catch (error) {
-    console.error('[ChannelHandler] Error updating channel:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update channel'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -291,15 +247,10 @@ channelHandler.put('/:id', async (c: Context) => {
  * DELETE /api/channels/:id
  * Deactivate channel (soft delete)
  */
-channelHandler.delete('/:id', async (c: Context) => {
+channelHandler.delete('/:id', requireIntId(), async (c: Context) => {
   try {
     const user = c.get('user');
-    const channelId = parseInt(c.req.param('id'));
-
-    if (isNaN(channelId)) {
-      return c.json({ error: 'Invalid channel ID' }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const channelId = getValidatedParam<number>(c, 'id');
     if (!user || !user.primaryTeamId) {
       return c.json({ error: 'Team ID not found in user context' }, HTTP_STATUS.BAD_REQUEST);
     }
@@ -339,11 +290,7 @@ channelHandler.delete('/:id', async (c: Context) => {
     });
 
   } catch (error) {
-    console.error('[ChannelHandler] Error deactivating channel:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to deactivate channel'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -388,11 +335,7 @@ channelHandler.get('/', async (c: Context) => {
     });
 
   } catch (error) {
-    console.error('[ChannelHandler] Error listing channels:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to list channels'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -491,11 +434,7 @@ channelHandler.post('/', async (c: Context) => {
     }, HTTP_STATUS.CREATED);
 
   } catch (error) {
-    console.error('[ChannelHandler] Error creating channel:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to create channel'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

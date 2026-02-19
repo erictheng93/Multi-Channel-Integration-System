@@ -23,6 +23,7 @@ import {
   getNamespaceForKey,
   validateKVKey,
 } from '../config/kv-config';
+import { nowMs } from '@/utils/timestamp'
 
 // Re-export for backward compatibility
 export { KV_KEY_PATTERNS, LEGACY_KEY_PATTERNS };
@@ -223,7 +224,7 @@ export class KVBatchOperations {
     keys: string[],
     options?: { type?: 'text' | 'json' | 'arrayBuffer' }
   ): Promise<BatchOperationResult<{ key: string; value: T | null }>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const results: { key: string; value: T | null }[] = [];
     const errors: string[] = [];
 
@@ -282,7 +283,7 @@ export class KVBatchOperations {
     }>,
     options?: { compress?: boolean }
   ): Promise<BatchOperationResult<{ key: string; success: boolean }>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const results: { key: string; success: boolean }[] = [];
     const errors: string[] = [];
 
@@ -335,7 +336,7 @@ export class KVBatchOperations {
    * Batch delete multiple keys
    */
   async batchDelete(keys: string[]): Promise<BatchOperationResult<{ key: string; deleted: boolean }>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const results: { key: string; deleted: boolean }[] = [];
     const errors: string[] = [];
 
@@ -445,7 +446,7 @@ export class KVManagementService {
     dryRun: boolean,
     migrate: boolean
   ): Promise<KVCleanupResult> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const result: KVCleanupResult = {
       namespace,
       deletedCount: 0,
@@ -662,11 +663,11 @@ export class KVManagementService {
     sessions: { healthy: boolean; latency: number };
     cache: { healthy: boolean; latency: number };
   }> {
-    const testKey = `health:test:${Date.now()}`;
+    const testKey = `health:test:${nowMs()}`;
     const testValue = 'health_check';
 
     const checkNamespace = async (kv: KVNamespace): Promise<{ healthy: boolean; latency: number }> => {
-      const start = Date.now();
+      const start = nowMs();
       try {
         await kv.put(testKey, testValue, { expirationTtl: KV_TTL.TEST });
         const retrieved = await kv.get(testKey);

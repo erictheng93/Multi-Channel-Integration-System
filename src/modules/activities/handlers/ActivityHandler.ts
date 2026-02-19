@@ -12,6 +12,7 @@ import {
   validationErrorResponse
 } from '@/utils/api-response'
 import { HTTP_STATUS } from '@/constants/http-status'
+import { getValidatedParam } from '@/middleware/param-validator'
 
 export class ActivityHandler {
   private activityService: ActivityService
@@ -270,13 +271,7 @@ export class ActivityHandler {
         return errorResponse(c, 'Unauthorized', HTTP_STATUS.UNAUTHORIZED)
       }
 
-      const id = parseInt(c.req.param('id'))
-      if (isNaN(id)) {
-        return validationErrorResponse(c, [
-          { field: 'id', message: 'Invalid activity ID', value: c.req.param('id') }
-        ])
-      }
-
+      const id = getValidatedParam<number>(c, 'id')
       const activity = await this.activityService.getActivityById(id)
       if (!activity) {
         return errorResponse(c, 'Activity not found', HTTP_STATUS.NOT_FOUND)

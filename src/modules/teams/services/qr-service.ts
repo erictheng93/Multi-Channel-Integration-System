@@ -9,6 +9,7 @@ import { eq } from 'drizzle-orm';
 import { teams } from '@/db/schema';
 import { QRCodeServiceImpl } from '@/services/qrcode-service-impl';
 import type { QRCodeMetadata } from '@/types/services';
+import { nowISO } from '@/utils/timestamp'
 
 export class TeamQRService {
   private db: DrizzleD1Database;
@@ -61,7 +62,7 @@ export class TeamQRService {
         .update(teams)
         .set({
           qrCode: qrCodeInfo.qrCodeImageUrl,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(teams.id, params.teamId));
 
@@ -143,7 +144,7 @@ export class TeamQRService {
           .update(teams)
           .set({
             qrCode: latestQR.qrCodeImageUrl,
-            updatedAt: new Date().toISOString()
+            updatedAt: nowISO()
           })
           .where(eq(teams.id, teamId));
 
@@ -154,7 +155,7 @@ export class TeamQRService {
           .update(teams)
           .set({
             qrCode: null,
-            updatedAt: new Date().toISOString()
+            updatedAt: nowISO()
           })
           .where(eq(teams.id, teamId));
 

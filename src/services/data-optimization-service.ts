@@ -3,6 +3,7 @@
 // 專案：Multi-Channel Support MVP - 數據管理優化
 
 import type { Bindings } from '../types';
+import { nowMs } from '@/utils/timestamp'
 // import { AlertLevel } from '../monitoring/websocket-analytics-service';
 
 export interface DataOptimizationConfig {
@@ -111,7 +112,7 @@ export class DataOptimizationService {
 
       // 緩存未命中，使用回調函數獲取數據
       if (fallbackFn) {
-        const startTime = Date.now();
+        const startTime = nowMs();
         const value = await fallbackFn();
 
         if (value) {
@@ -332,7 +333,7 @@ export class DataOptimizationService {
   // =================== 數據壓縮 ===================
 
   private async compress(data: string): Promise<DataCompressionResult & { data: string }> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 簡化版壓縮實現 - 在實際環境中可使用 gzip 或 brotli
@@ -525,9 +526,9 @@ export class DataOptimizationService {
     ];
 
     // 執行批量基準測試
-    const startTime = Date.now();
+    const startTime = nowMs();
     await this.batchOperation(testOperations);
-    const endTime = Date.now();
+    const endTime = nowMs();
 
     // 建立基準統計
     const baselineStats = {
@@ -599,7 +600,7 @@ export class DataOptimizationService {
       // 這裡需要實現具體的清理邏輯
       // 由於 KV 存儲的限制，我們只能標記需要清理的項目
       const cleanupMarker = {
-        lastCleanup: Date.now(),
+        lastCleanup: nowMs(),
         cutoffTime,
         deletedEntries,
         freedSpace

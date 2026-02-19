@@ -21,6 +21,7 @@ import type {
 } from '../types/team-types';
 import type { Bindings } from '@/types';
 import { ERROR_MESSAGES } from '@shared/utils/error-messages';
+import { globalErrorHandler } from '@/core/error-handler';
 import {
   jwtAuth,
   requireTeamAccess,
@@ -29,9 +30,11 @@ import {
   requireManagerOrAdmin,
   requireAdmin
 } from '@/middleware/auth';
+import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { createDbClient } from '@/db/drizzle-factory';
 import { teams, qrCodes, teamLiffQrCodes, agents } from '@/db/schema';
 import { eq, and, desc, inArray } from 'drizzle-orm';
+import { nowISO } from '@/utils/timestamp'
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -42,7 +45,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     module: 'teams',
     version: '1.0.0'
   });
@@ -69,7 +72,7 @@ app.get('/info', (c) => {
         'GET /:id/stats - Get team statistics'
       ]
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -100,11 +103,7 @@ app.get('/stats/all', jwtAuth, requireAdmin(), async (c) => {
 
     return c.json({ success: true, data: stats });
   } catch (error) {
-    console.error('Get all teams stats error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -125,11 +124,7 @@ app.post('/transfer', jwtAuth, requireAdmin(), async (c) => {
 
     return c.json({ success: true, data: result });
   } catch (error) {
-    console.error('Transfer members error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -151,11 +146,7 @@ app.get('/search/:query', jwtAuth, async (c) => {
 
     return c.json({ success: true, data: teams });
   } catch (error) {
-    console.error('Search teams error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -165,17 +156,10 @@ app.get('/search/:query', jwtAuth, async (c) => {
 // Order: bulk-remove, batch → :agentId
 
 // 🆕 Bulk remove members from team (requires 'lead' role in team)
-app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), async (c) => {
+app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const body = await c.req.json() as { agentIds: string[] };
-
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
 
     if (!body.agentIds || !Array.isArray(body.agentIds) || body.agentIds.length === 0) {
       return c.json({
@@ -202,35 +186,23 @@ app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), async (c)
         failed: result.failed,
         removedCount: result.removed.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Bulk remove team members error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to bulk remove team members'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // 🚀 Phase 2: Batch add members to team (requires 'lead' role in team)
 // 優化：1 API 請求 + 2-3 DB 查詢 (vs 原本 N API 請求 + 6*N DB 查詢)
-app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), async (c) => {
+app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(), async (c) => {
   try {
     const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const body = await c.req.json() as {
       agentIds: string[];
       roleInTeam?: 'member' | 'lead' | 'supervisor';
     };
-
-    // Validation
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
 
     if (!body.agentIds || !Array.isArray(body.agentIds) || body.agentIds.length === 0) {
       return c.json({
@@ -324,29 +296,25 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), async (c) => {
         errors: result.errors,
         addedCount: result.added.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, result.added.length > 0 ? HTTP_STATUS.CREATED : HTTP_STATUS.OK);
   } catch (error) {
-    console.error('Batch add members error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to batch add members'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Update team member (🚀 Phase 2: requires 'lead' role in team)
-app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) => {
+app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireIntId(), async (c) => {
   try {
     const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const agentId = c.req.param('agentId');
     const body = await c.req.json() as TeamMemberUpdateRequest;
 
-    if (!teamId || !agentId?.trim()) {
+    if (!agentId?.trim()) {
       return c.json({
         success: false,
-        error: 'Invalid team ID or agent ID'
+        error: 'Invalid agent ID'
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -355,25 +323,21 @@ app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) => 
 
     return c.json({ success: true, data: member });
   } catch (error) {
-    console.error('Update team member error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to update team member'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Remove member from team (🚀 Phase 2: requires 'lead' role in team)
-app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) => {
+app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireIntId(), async (c) => {
   try {
     const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const agentId = c.req.param('agentId');
 
-    if (!teamId || !agentId?.trim()) {
+    if (!agentId?.trim()) {
       return c.json({
         success: false,
-        error: 'Invalid team ID or agent ID'
+        error: 'Invalid agent ID'
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -389,26 +353,22 @@ app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), async (c) 
 
     return c.json({ success: true });
   } catch (error) {
-    console.error('Remove team member error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to remove team member'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Deactivate QR code
 // Phase 1 ?��?：�??��???KV 快�?
 // 🚀 Phase 2 RBAC: requires 'supervisor' role in team
-app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamRole('supervisor'), async (c) => {
+app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamRole('supervisor'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const qrCodeId = c.req.param('qrCodeId');
 
-    if (!teamId || !qrCodeId?.trim()) {
+    if (!qrCodeId?.trim()) {
       return c.json({
         success: false,
-        error: 'Invalid team ID or QR code ID'
+        error: 'Invalid QR code ID'
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -418,57 +378,34 @@ app.put('/:id/qr-codes/:qrCodeId/deactivate', jwtAuth, requireTeamRole('supervis
     return c.json({
       success: true,
       message: 'QR code deactivated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Deactivate QR code error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to deactivate QR code',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // 2-segment routes
 // Get team members (specific team)
-app.get('/:id/members', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id/members', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID - must be a number'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
+    const teamId = getValidatedParam<number>(c, 'id');
 
     const teamService = new TeamService(c.env.DB);
     const members = await teamService.getMembers(teamId);
 
     return c.json({ success: true, data: members });
   } catch (error) {
-    console.error('Get team members error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_MEMBERS
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Add member to team (🚀 Phase 2: requires 'lead' role in team)
-app.post('/:id/members', jwtAuth, requireTeamRole('lead'), async (c) => {
+app.post('/:id/members', jwtAuth, requireTeamRole('lead'), requireIntId(), async (c) => {
   try {
     const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const body = await c.req.json() as TeamMemberAddRequest;
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
 
     if (!body.agentId?.trim()) {
       return c.json({
@@ -485,11 +422,7 @@ app.post('/:id/members', jwtAuth, requireTeamRole('lead'), async (c) => {
       data: member
     }, HTTP_STATUS.CREATED);
   } catch (error) {
-    console.error('Add team member error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to add team member'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -497,17 +430,10 @@ app.post('/:id/members', jwtAuth, requireTeamRole('lead'), async (c) => {
 // Phase 1 ?��?：傳??KV ?��?空�??�於快�?
 // Phase 2 修正：傳??LINE_BOT_ID ?��?變數
 // 🚀 Phase 2 RBAC: requires 'supervisor' role in team
-app.post('/:id/qr-code', jwtAuth, requireTeamRole('supervisor'), async (c) => {
+app.post('/:id/qr-code', jwtAuth, requireTeamRole('supervisor'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const { campaignName, description, expiresAt, maxUses } = await c.req.json().catch(() => ({}));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
 
     // ?��? CACHE KV ?��?空�??�LINE_BOT_ID ??FRONTEND_URL（用??LIFF ?��?�?
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
@@ -531,29 +457,17 @@ app.post('/:id/qr-code', jwtAuth, requireTeamRole('supervisor'), async (c) => {
     return c.json({
       success: true,
       data: qrCode,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.CREATED);
   } catch (error) {
-    console.error('Generate QR code error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GENERATE_QR_CODE,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Get team QR codes
-app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
+    const teamId = getValidatedParam<number>(c, 'id');
 
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const qrCodes = await qrService.getTeamQRCodes(teamId);
@@ -561,30 +475,18 @@ app.get('/:id/qr-codes', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: true,
       data: qrCodes,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get QR codes error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_QR_CODES,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // ?? Phase 1: 快速獲?��???QR �?(?�於?��??��?)
 // ?? Phase 3 ?��?: ?��?�?teams.qrCode 讀?��?實現?��??�步機制
-app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
+    const teamId = getValidatedParam<number>(c, 'id');
 
     const drizzleDb = createDbClient(c.env.DB);
 
@@ -609,7 +511,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
           lineUrl: lineUrl,
           fromCache: false // �?DB 讀?��?不是 KV 快�?
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     }
 
@@ -632,7 +534,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
         .update(teams)
         .set({
           qrCode: result.qrCodeImageUrl,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(teams.id, teamId))
         .then(() => {
@@ -650,30 +552,17 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), async (c) => {
         lineUrl: result.lineUrl,
         fromCache: result.fromCache
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get latest QR code error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to get QR code',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // ?? Phase 3: 極速查詢端�?- ?��?�?teams.qrCode 讀??(?��??�步?��?)
-app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'id');
     const drizzleDb = createDbClient(c.env.DB);
 
     // Step 1: ?��?�?teams 表直?��???(?��?)
@@ -692,7 +581,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
           source: 'teams_table',  // 資�?來�?標�?
           performance: 'optimal'   // ?�能標�?
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     }
 
@@ -719,7 +608,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
           .update(teams)
           .set({
             qrCode: latestQR.qrCodeImageUrl,
-            updatedAt: new Date().toISOString()
+            updatedAt: nowISO()
           })
           .where(eq(teams.id, teamId))
           .then(() => {
@@ -738,7 +627,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
           source: 'qr_codes_table',  // 資�?來�?標�?
           performance: 'fallback'     // ?�能標�?
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     }
 
@@ -746,16 +635,11 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), async (c) => {
     return c.json({
       success: false,
       error: 'No QR code found for this team',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.NOT_FOUND);
 
   } catch (error) {
-    console.error('Fast QR code query error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to get QR code',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -780,17 +664,9 @@ app.post('/:id/qr-code-test', async (c) => {
 // ==================== LIFF QR Code API Endpoints ====================
 
 // Get team LIFF QR Code
-app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'id');
     const db = createDbClient(c.env.DB);
 
     const liffQrCode = await db
@@ -819,26 +695,14 @@ app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), async (c) => {
       }
     });
   } catch (error) {
-    console.error('Get LIFF QR code error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to get LIFF QR code'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Generate or regenerate team LIFF QR Code
-app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), async (c) => {
+app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'id');
     // Get team name
     const db = createDbClient(c.env.DB);
     const team = await db
@@ -875,26 +739,14 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), async (c) => {
       }
     });
   } catch (error) {
-    console.error('Generate LIFF QR code error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to generate LIFF QR code'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Get LIFF QR Code statistics
-app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId || isNaN(teamId)) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'id');
     const db = createDbClient(c.env.DB);
 
     const liffQrCode = await db
@@ -929,28 +781,16 @@ app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), async (c) =
       }
     });
   } catch (error) {
-    console.error('Get LIFF QR code stats error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to get LIFF QR code statistics'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // ==================== End of LIFF QR Code API Endpoints ====================
 
 // Get team statistics
-app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'id');
     const dateFromParam = c.req.query('dateFrom');
     const dateToParam = c.req.query('dateTo');
     const params: TeamStatsRequest = {
@@ -964,26 +804,15 @@ app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), async (c) => {
 
     return c.json({ success: true, data: stats });
   } catch (error) {
-    console.error('Get team stats error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM_STATS
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // ==================== Priority 5: SINGLE PARAMETERIZED (:id only) ====================
 // Get single team by ID
-app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
+app.get('/:id', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'id');
     const teamService = new TeamService(c.env.DB);
     const team = await teamService.getTeam(teamId);
 
@@ -996,28 +825,16 @@ app.get('/:id', jwtAuth, requireTeamAccess('id'), async (c) => {
 
     return c.json({ success: true, data: team });
   } catch (error) {
-    console.error('Get team error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAM
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Update team (🚀 Phase 2 RBAC: requires 'supervisor' role in team)
-app.put('/:id', jwtAuth, requireTeamRole('supervisor'), async (c) => {
+app.put('/:id', jwtAuth, requireTeamRole('supervisor'), requireIntId(), async (c) => {
   try {
     const user = c.get('user');
-    const teamId = parseInt(c.req.param('id'));
+    const teamId = getValidatedParam<number>(c, 'id');
     const body = await c.req.json() as TeamUpdateRequest;
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
     const teamService = new TeamService(c.env.DB);
     const team = await teamService.updateTeam(teamId, body);
 
@@ -1035,40 +852,26 @@ app.put('/:id', jwtAuth, requireTeamRole('supervisor'), async (c) => {
     return c.json({
       success: true,
       data: team,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Update team error:', error);
-
     // Handle team not found
     if (error instanceof Error && error.message === 'Team not found after update') {
       return c.json({
         success: false,
         error: 'Team not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_UPDATE_TEAM,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // Delete team (hard delete - permanently removes from database)
-app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
+app.delete('/:id', jwtAuth, requireAdmin(), requireIntId(), async (c) => {
   try {
-    const teamId = parseInt(c.req.param('id'));
-
-    if (!teamId) {
-      return c.json({
-        success: false,
-        error: 'Invalid team ID'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
+    const teamId = getValidatedParam<number>(c, 'id');
     const teamService = new TeamService(c.env.DB);
 
     // ?�獲?��??�信?�以便�???
@@ -1077,7 +880,7 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Team not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
@@ -1087,7 +890,7 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
       return c.json({
         success: false,
         error: ERROR_MESSAGES.FAILED_TO_DELETE_TEAM,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
@@ -1105,15 +908,10 @@ app.delete('/:id', jwtAuth, requireAdmin(), async (c) => {
     return c.json({
       success: true,
       message: 'Team deleted successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Delete team error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_DELETE_TEAM,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -1131,7 +929,7 @@ app.get('/', jwtAuth, async (c) => {
       return c.json({
         success: true,
         data: [team],
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     }
 
@@ -1158,15 +956,10 @@ app.get('/', jwtAuth, async (c) => {
       success: true,
       data: result.teams,  // ??修復：使??data 字段?��???teams
       pagination: result.pagination,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('List teams error:', error);
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_GET_TEAMS,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -1242,17 +1035,15 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     return c.json({
       success: true,
       data: teamWithQR,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.CREATED);
   } catch (error) {
-    console.error('Create team error:', error);
-
     // Handle specific errors
     if (error instanceof Error && error.message === 'DUPLICATE_QR_CODE') {
       return c.json({
         success: false,
         error: 'QR code already exists',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.CONFLICT);
     }
 
@@ -1261,15 +1052,11 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       return c.json({
         success: false,
         error: 'Invalid JSON',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    return c.json({
-      success: false,
-      error: ERROR_MESSAGES.FAILED_TO_CREATE_TEAM,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

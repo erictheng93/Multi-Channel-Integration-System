@@ -1,5 +1,6 @@
 // 團隊管理 API 客戶端
 import { apiClient } from './base'
+import { nowISO } from '@/utils/timestamp'
 import type {
   TeamMember,
   ApiResponse,
@@ -433,8 +434,8 @@ export const teamApi = {
             role: 'agent',
             status: 'active',
             teamId,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            createdAt: nowISO(),
+            updatedAt: nowISO()
           } as TeamMember
         }
       }

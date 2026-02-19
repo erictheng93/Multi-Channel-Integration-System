@@ -57,7 +57,7 @@ export const customers = sqliteTable('customers', {
   avatarUrl: text('avatar_url'),
   email: text('email'), // 📋 Consider encryption for PII
   phone: text('phone'), // 📋 Consider encryption for PII
-  sourceTeamId: integer('source_team_id').references(() => teams.id),
+  sourceTeamId: integer('source_team_id').references(() => teams.id, { onDelete: 'set null' }),
   metadata: text('metadata'), // JSON string for platform-specific data (📋 may contain PII)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
@@ -69,7 +69,7 @@ export const customers = sqliteTable('customers', {
 // QR Codes table - QR碼管理
 export const qrCodes = sqliteTable('qr_codes', {
   id: text('id').primaryKey(),
-  teamId: integer('team_id').notNull().references(() => teams.id),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
   lineUrl: text('line_url').notNull(),
   qrCodeImageUrl: text('qr_code_image_url').notNull(),
@@ -86,8 +86,8 @@ export const qrCodes = sqliteTable('qr_codes', {
 // QR Code Scans table - 掃描記錄
 export const qrCodeScans = sqliteTable('qr_code_scans', {
   id: text('id').primaryKey(),
-  qrCodeId: text('qr_code_id').notNull().references(() => qrCodes.id),
-  customerId: integer('customer_id').references(() => customers.id),
+  qrCodeId: text('qr_code_id').notNull().references(() => qrCodes.id, { onDelete: 'cascade' }),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
   platform: text('platform').notNull(),
   platformUserId: text('platform_user_id'),
   scanMetadata: text('scan_metadata'),
@@ -97,7 +97,7 @@ export const qrCodeScans = sqliteTable('qr_code_scans', {
 // QR Code Analytics table - 分析統計
 export const qrCodeAnalytics = sqliteTable('qr_code_analytics', {
   id: integer('id').primaryKey(),
-  qrCodeId: text('qr_code_id').notNull().references(() => qrCodes.id),
+  qrCodeId: text('qr_code_id').notNull().references(() => qrCodes.id, { onDelete: 'cascade' }),
   date: text('date').notNull(),
   totalScans: integer('total_scans').default(0),
   uniqueScans: integer('unique_scans').default(0),
@@ -112,7 +112,7 @@ export const qrCodeAnalytics = sqliteTable('qr_code_analytics', {
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),
   customerId: integer('customer_id').notNull().references(() => customers.id),
-  assignedTeamId: integer('assigned_team_id').references(() => teams.id),
+  assignedTeamId: integer('assigned_team_id').references(() => teams.id, { onDelete: 'set null' }),
   // Note: assignedUserId removed - only team assignment is supported now
   status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'in-progress', 'waiting', 'closed'
   priority: text('priority').default('normal'), // 'low', 'normal', 'high', 'urgent'
@@ -130,10 +130,10 @@ export const conversations = sqliteTable('conversations', {
 // Foreign key constraint is enforced at application layer (see message-crud.ts)
 export const messages = sqliteTable('messages', {
   id: text('id').primaryKey(),
-  conversationId: text('conversation_id').notNull().references(() => conversations.id),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
   senderType: text('sender_type').notNull(), // 'customer', 'agent', 'system'
-  customerSenderId: integer('customer_sender_id').references(() => customers.id),
-  agentSenderId: text('agent_sender_id').references(() => agents.id),
+  customerSenderId: integer('customer_sender_id').references(() => customers.id, { onDelete: 'set null' }),
+  agentSenderId: text('agent_sender_id').references(() => agents.id, { onDelete: 'set null' }),
   content: text('content').notNull(),
   messageType: text('message_type').notNull().default('text'),
   platformMessageId: text('platform_message_id'),
@@ -157,8 +157,8 @@ export const messages = sqliteTable('messages', {
 // Delayed messages table - 延遲訊息
 export const delayedMessages = sqliteTable('delayed_messages', {
   id: text('id').primaryKey(),
-  conversationId: text('conversation_id').notNull().references(() => conversations.id),
-  agentId: text('agent_id').notNull().references(() => agents.id),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  agentId: text('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
   messageType: text('message_type').notNull().default('text'),
   scheduledAt: text('scheduled_at').notNull(),
@@ -174,8 +174,8 @@ export const delayedMessages = sqliteTable('delayed_messages', {
 // All columns now use consistent snake_case naming (Migration 0037 applied 2026-02-14)
 export const fileAttachments = sqliteTable('file_attachments', {
   id: text('id').primaryKey(),
-  messageId: text('message_id').references(() => messages.id),
-  conversationId: text('conversation_id').references(() => conversations.id),
+  messageId: text('message_id').references(() => messages.id, { onDelete: 'set null' }),
+  conversationId: text('conversation_id').references(() => conversations.id, { onDelete: 'set null' }),
   filename: text('filename').notNull(),
   mimeType: text('mime_type').notNull(),
   fileSize: integer('file_size').notNull(),
@@ -191,7 +191,7 @@ export const fileAttachments = sqliteTable('file_attachments', {
 // Conversation sessions table - 對話會話管理
 export const conversationSessions = sqliteTable('conversation_sessions', {
   id: text('id').primaryKey(),
-  conversationId: text('conversation_id').notNull().references(() => conversations.id),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
   sessionType: text('session_type').notNull().default('continuous'),
   topic: text('topic'),
   startTime: text('start_time').notNull(),
@@ -206,9 +206,9 @@ export const conversationSessions = sqliteTable('conversation_sessions', {
 // Note: fromUserId/toUserId removed - only team-based transfers are supported now
 export const conversationTransfers = sqliteTable('conversation_transfers', {
   id: integer('id').primaryKey(),
-  conversationId: text('conversation_id').notNull().references(() => conversations.id),
-  fromTeamId: integer('from_team_id').references(() => teams.id),
-  toTeamId: integer('to_team_id').references(() => teams.id),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  fromTeamId: integer('from_team_id').references(() => teams.id, { onDelete: 'set null' }),
+  toTeamId: integer('to_team_id').references(() => teams.id, { onDelete: 'set null' }),
   transferReason: text('transfer_reason'),
   transferredBy: text('transferred_by').notNull().references(() => agents.id),
   transferType: text('transfer_type').default('manual'),
@@ -218,7 +218,7 @@ export const conversationTransfers = sqliteTable('conversation_transfers', {
 // Message recall logs table - 訊息撤回日誌
 export const messageRecallLogs = sqliteTable('message_recall_logs', {
   id: integer('id').primaryKey(),
-  messageId: text('message_id').notNull().references(() => messages.id),
+  messageId: text('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => agents.id),
   action: text('action').notNull(),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
@@ -227,7 +227,7 @@ export const messageRecallLogs = sqliteTable('message_recall_logs', {
 // Notifications table - 通知系統
 export const notifications = sqliteTable('notifications', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => agents.id),
+  userId: text('user_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
   type: text('type').notNull(),
   title: text('title').notNull(),
   content: text('content').notNull(),
@@ -246,7 +246,7 @@ export const tags = sqliteTable('tags', {
   name: text('name').notNull(),
   color: text('color').notNull().default('#3B82F6'),
   description: text('description'),
-  teamId: integer('team_id').references(() => teams.id),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
   createdBy: text('created_by').notNull().references(() => agents.id),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
@@ -258,8 +258,8 @@ export const tags = sqliteTable('tags', {
 
 // Customer tags junction table - 客戶標籤關聯
 export const customerTags = sqliteTable('customer_tags', {
-  customerId: integer('customer_id').notNull().references(() => customers.id),
-  tagId: integer('tag_id').notNull().references(() => tags.id),
+  customerId: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
   assignedBy: text('assigned_by').notNull().references(() => agents.id),
   assignedAt: text('assigned_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
@@ -268,8 +268,8 @@ export const customerTags = sqliteTable('customer_tags', {
 
 // Conversation tags junction table - 對話標籤關聯
 export const conversationTags = sqliteTable('conversation_tags', {
-  conversationId: text('conversation_id').notNull().references(() => conversations.id),
-  tagId: integer('tag_id').notNull().references(() => tags.id),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
   assignedBy: text('assigned_by').notNull().references(() => agents.id),
   assignedAt: text('assigned_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
@@ -315,7 +315,7 @@ export const metrics = sqliteTable('metrics', {
 // Legacy platform-specific columns are preserved for backward compatibility
 export const channelIntegrations = sqliteTable('channel_integrations', {
   id: integer('id').primaryKey(),
-  teamId: integer('team_id').notNull().references(() => teams.id),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
 
   // Channel type
   platform: text('platform').notNull(), // 'line', 'facebook', 'whatsapp', 'telegram', etc.
@@ -347,7 +347,7 @@ export const channelIntegrations = sqliteTable('channel_integrations', {
   lastVerifiedAt: text('last_verified_at'),
 
   // Configuration metadata
-  configuredBy: text('configured_by').references(() => agents.id),
+  configuredBy: text('configured_by').references(() => agents.id, { onDelete: 'set null' }),
   configMetadata: text('config_metadata'), // JSON
 
   // Error tracking
@@ -430,7 +430,7 @@ export const reports = sqliteTable('reports', {
 
   // Ownership
   createdBy: text('created_by').notNull().references(() => agents.id),
-  teamId: integer('team_id').references(() => teams.id),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
 
   // Metadata
   timeRange: text('time_range'),
@@ -485,7 +485,7 @@ export const scheduledReports = sqliteTable('scheduled_reports', {
 
   // Ownership
   createdBy: text('created_by').notNull().references(() => agents.id),
-  teamId: integer('team_id').references(() => teams.id),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
 
   // Notification
   notifyOnCompletion: integer('notify_on_completion', { mode: 'boolean' }).default(true),
@@ -507,7 +507,7 @@ export const scheduledReports = sqliteTable('scheduled_reports', {
 // Scheduled report executions table - 排程執行歷史表
 export const scheduledReportExecutions = sqliteTable('scheduled_report_executions', {
   id: text('id').primaryKey(),
-  scheduledReportId: text('scheduled_report_id').notNull().references(() => scheduledReports.id),
+  scheduledReportId: text('scheduled_report_id').notNull().references(() => scheduledReports.id, { onDelete: 'cascade' }),
 
   // Execution details
   executionStartedAt: text('execution_started_at').notNull(),
@@ -516,7 +516,7 @@ export const scheduledReportExecutions = sqliteTable('scheduled_report_execution
   executionDuration: integer('execution_duration'), // seconds
 
   // Result
-  generatedReportId: text('generated_report_id').references(() => reports.id),
+  generatedReportId: text('generated_report_id').references(() => reports.id, { onDelete: 'set null' }),
   errorMessage: text('error_message'),
   retryCount: integer('retry_count').default(0),
 
@@ -527,7 +527,7 @@ export const scheduledReportExecutions = sqliteTable('scheduled_report_execution
 // Report download history table - 報告下載歷史表
 export const reportDownloadHistory = sqliteTable('report_download_history', {
   id: text('id').primaryKey(),
-  reportId: text('report_id').notNull().references(() => reports.id),
+  reportId: text('report_id').notNull().references(() => reports.id, { onDelete: 'cascade' }),
 
   // Download details
   downloadedBy: text('downloaded_by').notNull().references(() => agents.id),
@@ -562,7 +562,7 @@ export const reportTemplates = sqliteTable('report_templates', {
   isSystemTemplate: integer('is_system_template', { mode: 'boolean' }).default(false),
   isPublic: integer('is_public', { mode: 'boolean' }).default(false),
   createdBy: text('created_by').notNull().references(() => agents.id),
-  teamId: integer('team_id').references(() => teams.id),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
 
   // Popularity
   usageCount: integer('usage_count').default(0),

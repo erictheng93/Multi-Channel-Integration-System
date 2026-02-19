@@ -5,6 +5,8 @@ import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
 import type { JWTPayload } from '@/types';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO } from '@/utils/timestamp'
 
 const dashboardApp = new Hono<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>();
 
@@ -93,14 +95,10 @@ dashboardApp.get('/metrics', async (c) => {
     return c.json({
       success: true,
       data: metrics,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('[Dashboard] Failed to collect metrics:', error);
-    return c.json({
-      error: 'Failed to collect metrics',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -125,11 +123,7 @@ dashboardApp.get('/connections', async (c) => {
       count: connections.length
     });
   } catch (error) {
-    console.error('[Dashboard] Failed to get connections:', error);
-    return c.json({
-      error: 'Failed to get connections',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -155,11 +149,7 @@ dashboardApp.get('/history', async (c) => {
       period
     });
   } catch (error) {
-    console.error('[Dashboard] Failed to get history:', error);
-    return c.json({
-      error: 'Failed to get history',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -184,11 +174,7 @@ dashboardApp.get('/trends', async (c) => {
       data: trends
     });
   } catch (error) {
-    console.error('[Dashboard] Failed to analyze trends:', error);
-    return c.json({
-      error: 'Failed to analyze trends',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -211,11 +197,7 @@ dashboardApp.get('/durable-objects', async (c) => {
       data: doHealth
     });
   } catch (error) {
-    console.error('[Dashboard] Failed to get DO health:', error);
-    return c.json({
-      error: 'Failed to get Durable Objects health',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -240,11 +222,7 @@ dashboardApp.get('/alerts', async (c) => {
       count: alerts.length
     });
   } catch (error) {
-    console.error('[Dashboard] Failed to get alerts:', error);
-    return c.json({
-      error: 'Failed to get alerts',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -270,7 +248,7 @@ async function collectRealtimeMetrics(env: Bindings): Promise<RealtimeMetrics> {
 
     // Collect new data
     const metrics: RealtimeMetrics = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       activeConnections: await collectConnectionMetrics(env),
       messagesThroughput: await collectThroughputMetrics(env),
       durableObjectsHealth: await collectDOHealthMetrics(env),
@@ -471,7 +449,7 @@ async function analyzePerformanceTrends(env: Bindings, period: string): Promise<
     period,
     dataPoints: [],
     summary: {
-      peak: { timestamp: new Date().toISOString(), connections: 0 },
+      peak: { timestamp: nowISO(), connections: 0 },
       average: { connections: 0, throughput: 0 },
       incidents: 0
     }
@@ -483,7 +461,7 @@ async function analyzePerformanceTrends(env: Bindings, period: string): Promise<
  */
 async function getDurableObjectsHealth(env: Bindings) {
   const health: any = {
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     bindings: []
   };
 

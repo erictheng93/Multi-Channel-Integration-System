@@ -3,6 +3,7 @@
 // Optimized: 2025-01-09 - Extended TTLs for KV operation reduction
 
 import { NotificationBase, NotificationStats } from '@modules/notifications/types';
+import { nowMs } from '@/utils/timestamp'
 
 // Centralized TTL configuration for notification cache
 // Optimized values reduce KV operations by ~70%
@@ -94,7 +95,7 @@ export class NotificationCache {
     ttl?: number
   ): Promise<void> {
     const key = this.getNotificationListKey(userId, queryHash);
-    const data = { notifications, total, cachedAt: Date.now() };
+    const data = { notifications, total, cachedAt: nowMs() };
 
     await this.kv.put(key, JSON.stringify(data), {
       expirationTtl: ttl || this.defaultTTL

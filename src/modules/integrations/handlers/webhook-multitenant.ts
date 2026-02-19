@@ -19,6 +19,7 @@ import { verifyWebhookSignature } from '@/services/webhook-signature-service';
 
 // Import existing message processing (will be modified)
 import { processLineMessage, processLineFollowEvent } from './webhook';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Multi-tenant LINE Webhook Handler
@@ -31,7 +32,7 @@ import { processLineMessage, processLineFollowEvent } from './webhook';
  * - Message counter tracking
  */
 export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindings }>) {
-  console.log('🔔 [LINE Webhook Multi-Tenant] Request received at:', new Date().toISOString());
+  console.log('🔔 [LINE Webhook Multi-Tenant] Request received at:', nowISO());
 
   try {
     // Extract route parameters
@@ -209,7 +210,7 @@ async function processLineMessageMultiTenant(
  */
 export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>) {
   console.log('⚠️ [LINE Webhook Legacy] Using single-tenant mode (deprecated)');
-  console.log('🔔 [LINE Webhook] Request received at:', new Date().toISOString());
+  console.log('🔔 [LINE Webhook] Request received at:', nowISO());
 
   try {
     // Verify signature

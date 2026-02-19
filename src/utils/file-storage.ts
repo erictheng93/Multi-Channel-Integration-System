@@ -6,6 +6,7 @@ import type {
 import { createContextLogger } from './logger';
 import { PLATFORMS } from '../constants/platforms';
 import { getBackendUrl } from '../config/runtime';
+import { nowISO } from '@/utils/timestamp'
 
 // Legacy interface for backward compatibility
 export interface MediaFile {
@@ -110,7 +111,7 @@ export class FileStorageService {
           originalUrl,
           platform,
           messageId: messageId || '',
-          uploadedAt: new Date().toISOString()
+          uploadedAt: nowISO()
         }
       });
       console.log(`✅ [FileStorage] Successfully uploaded to R2: ${storageKey}`);
@@ -220,8 +221,8 @@ export class FileStorageService {
           extension: storageKey.split('.').pop() || ''
         },
         processingStatus: 'completed' as const,
-        createdAt: object.uploaded?.toISOString() || new Date().toISOString(),
-        updatedAt: object.uploaded?.toISOString() || new Date().toISOString()
+        createdAt: object.uploaded?.toISOString() || nowISO(),
+        updatedAt: object.uploaded?.toISOString() || nowISO()
       };
     } catch (error) {
       const storageLogger = createContextLogger('FileStorage');

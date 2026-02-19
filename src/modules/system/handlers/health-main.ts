@@ -8,6 +8,7 @@ import { CacheHealthChecker } from '@/health-checkers/cache-checker';
 import { APIHealthChecker } from '@/health-checkers/api-checker';
 import { successResponse, internalErrorResponse } from '@/utils/api-response';
 import { getConfigurationStatus } from '@/middleware/configuration-guard';
+import { nowISO } from '@/utils/timestamp'
 
 let initialized = false;
 
@@ -46,7 +47,7 @@ export async function getSystemHealth(c: Context<{ Bindings: Bindings }>) {
         success: false,
         data: health,
         message: health.overall.message,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, httpStatus);
     }
 
@@ -96,7 +97,7 @@ export async function getServicesHealth(c: Context<{ Bindings: Bindings }>) {
         overall: overallStatus,
         services: health,
         metadata: {
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           servicesChecked: health.length
         }
       }, `Services status: ${overallStatus}`);
@@ -107,12 +108,12 @@ export async function getServicesHealth(c: Context<{ Bindings: Bindings }>) {
           overall: overallStatus,
           services: health,
           metadata: {
-            timestamp: new Date().toISOString(),
+            timestamp: nowISO(),
             servicesChecked: health.length
           }
         },
         message: `Services status: ${overallStatus}`,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, overallStatus === 'critical' ? 503 : 200);
     }
 
@@ -134,7 +135,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
         success: false,
         error: 'Component parameter is required',
         message: 'Please specify a component to check',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -167,7 +168,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
           }
         },
         message: result.message,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, httpStatus);
     }
 
@@ -229,7 +230,7 @@ export async function getHealthStats(c: Context<{ Bindings: Bindings }>) {
     return successResponse(c, {
       ...stats,
       metadata: {
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         dataPoints: totalComponents
       }
     }, 'Health statistics retrieved successfully');

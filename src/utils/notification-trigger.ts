@@ -6,6 +6,7 @@ import { NotificationService, NotificationChannelService } from '@modules/notifi
 import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
 import type { NotificationPriority } from '@modules/notifications/types';
 import type { Bindings } from '../types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 通知觸發器配置 - 需要完整的 Worker 環境綁定
@@ -61,7 +62,7 @@ async function broadcastNotificationViaWebSocket(
         content: notification.content,
         priority: notification.priority,
         data: notification.data,
-        createdAt: new Date().toISOString()
+        createdAt: nowISO()
       }
     });
 

@@ -6,6 +6,8 @@ import type { Bindings } from '@/types';
 import type { SystemHealth, ComponentHealth } from '@/types/health-check';
 import { jwtAuth } from '@/middleware/auth';
 import { createHealthCheckHandlerMethods } from './health-main';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO } from '@/utils/timestamp'
 
 /** Hono context type used across all health check routes */
 type HealthRouteContext = Context<{ Bindings: Bindings }>;
@@ -27,7 +29,7 @@ app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
     service: 'multi-channel-support-system',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     version: '1.0.0',
     environment: c.env.ENVIRONMENT || 'development'
   });
@@ -111,7 +113,7 @@ app.get('/config', jwtAuth, async (c) => {
       }
     },
     message: 'Health check configuration retrieved successfully',
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -180,20 +182,20 @@ app.get('/ready', async (c) => {
     if (healthData.overall?.status === 'healthy' || healthData.overall?.status === 'warning') {
       return c.json({
         status: 'ready',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } else {
       return c.json({
         status: 'not_ready',
         reason: healthData.overall?.message,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
   } catch (error) {
     return c.json({
       status: 'not_ready',
       reason: 'Health check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.SERVICE_UNAVAILABLE);
   }
 });
@@ -202,7 +204,7 @@ app.get('/ready', async (c) => {
 app.get('/live', (c) => {
   return c.json({
     status: 'alive',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     uptime: process.uptime ? Math.floor(process.uptime()) : 0
   });
 });
@@ -219,15 +221,10 @@ app.post('/check/all', jwtAuth, async (c) => {
       success: true,
       data: health,
       message: 'Full health check completed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Manual health check failed:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Health check failed',
-      message: 'Manual health check failed'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -238,15 +235,10 @@ app.post('/reset', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'Health check service reset successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Health check reset failed:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Reset failed',
-      message: 'Failed to reset health check service'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
