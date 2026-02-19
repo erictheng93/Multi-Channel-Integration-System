@@ -53,12 +53,13 @@ vi.mock('vue-i18n', () => ({
   }))
 }))
 
-// Mock confirm dialog with all confirmation types
+// Mock confirm dialog with all confirmation types (new API: showDanger/showWarning)
 vi.mock('@/composables/useConfirmDialog', () => ({
-  useConfirm: () => ({
-    confirm: vi.fn().mockResolvedValue(true),
-    confirmDanger: vi.fn().mockResolvedValue(true),
-    confirmWarning: vi.fn().mockResolvedValue(true)
+  useConfirmDialog: () => ({
+    showConfirm: vi.fn().mockResolvedValue(true),
+    showDanger: vi.fn().mockResolvedValue(true),
+    showWarning: vi.fn().mockResolvedValue(true),
+    showInfo: vi.fn().mockResolvedValue(true)
   })
 }))
 

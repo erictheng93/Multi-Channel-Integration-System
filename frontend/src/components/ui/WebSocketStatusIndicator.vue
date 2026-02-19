@@ -28,7 +28,7 @@
           {{ status.statusIndicator.value.label }}
         </div>
         <div
-          v-if="migration.currentProtocol.value === 'websocket'"
+          v-if="currentProtocol === 'websocket'"
           class="connection-quality"
         >
           {{ status.qualityBadge.value.label }}
@@ -44,7 +44,7 @@
           class="protocol-badge"
           :class="protocolBadgeClasses"
         >
-          {{ migration.currentProtocol.value === 'websocket' ? 'WS' : 'SSE' }}
+          {{ currentProtocol === 'websocket' ? 'WS' : 'SSE' }}
         </span>
       </div>
     </div>
@@ -57,7 +57,7 @@
       <div class="tooltip-content">
         <div class="tooltip-header">
           <span class="tooltip-title">連接狀態</span>
-          <span class="tooltip-protocol">{{ migration.currentProtocol.value.toUpperCase() }}</span>
+          <span class="tooltip-protocol">{{ currentProtocol.toUpperCase() }}</span>
         </div>
         <div class="tooltip-body">
           <div class="tooltip-row">
@@ -65,14 +65,14 @@
             <span class="tooltip-value">{{ status.statusIndicator.value.label }}</span>
           </div>
           <div
-            v-if="migration.currentProtocol.value === 'websocket'"
+            v-if="currentProtocol === 'websocket'"
             class="tooltip-row"
           >
             <span class="tooltip-label">品質:</span>
             <span class="tooltip-value">{{ status.qualityBadge.value.label }}</span>
           </div>
           <div
-            v-if="migration.currentProtocol.value === 'websocket'"
+            v-if="currentProtocol === 'websocket'"
             class="tooltip-row"
           >
             <span class="tooltip-label">延遲:</span>
@@ -91,11 +91,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { useWebSocketStatus } from '@/composables/useWebSocketStatus'
-import type { useWebSocketMigration } from '@/composables/useWebSocketMigration'
 
 interface Props {
   status: ReturnType<typeof useWebSocketStatus>
-  migration: ReturnType<typeof useWebSocketMigration>
   showDetails?: boolean
   showIcon?: boolean
   compact?: boolean
@@ -107,12 +105,15 @@ const props = withDefaults(defineProps<Props>(), {
   compact: false
 })
 
+// NOTE: System is 100% WebSocket — migration shim removed
+const currentProtocol = 'websocket' as const
+
 // Computed classes and states
 const indicatorClasses = computed(() => ({
   'indicator-compact': props.compact,
   'indicator-detailed': props.showDetails,
-  'indicator-websocket': props.migration.currentProtocol.value === 'websocket',
-  'indicator-sse': props.migration.currentProtocol.value === 'sse'
+  'indicator-websocket': true,
+  'indicator-sse': false
 }))
 
 const iconClasses = computed(() => ({
@@ -132,13 +133,11 @@ const dotClasses = computed(() => ({
 }))
 
 const protocolBadgeClasses = computed(() => ({
-  'protocol-websocket': props.migration.currentProtocol.value === 'websocket',
-  'protocol-sse': props.migration.currentProtocol.value === 'sse'
+  'protocol-websocket': true,
+  'protocol-sse': false
 }))
 
-const protocolIcon = computed(() => {
-  return props.migration.currentProtocol.value === 'websocket' ? '⚡' : '📡'
-})
+const protocolIcon = computed(() => '⚡')
 </script>
 
 <style scoped>

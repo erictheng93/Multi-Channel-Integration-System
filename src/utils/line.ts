@@ -1,4 +1,4 @@
-import type { LineReplyRequest, LineReplyMessage, LineFlexBubble } from '../types';
+import type { LineReplyRequest, LineReplyMessage, LineFlexBubble, LineFlexComponent } from '../types';
 import { createContextLogger } from './logger';
 import { LINE_API, buildLineApiUrl } from '../config/external-apis';
 
@@ -761,7 +761,7 @@ export function createFileFlexMessage(
           text: fileInfo.icon,
           size: 'xl',
           color: '#ffffff'
-        } as any,
+        },
         {
           type: 'text',
           text: fileInfo.label,
@@ -769,12 +769,12 @@ export function createFileFlexMessage(
           weight: 'bold',
           color: '#ffffff',
           margin: 'sm'
-        } as any
+        }
       ],
       paddingAll: '14px',
       justifyContent: 'center',
       alignItems: 'center'
-    } as any,
+    },
     body: {
       type: 'box',
       layout: 'vertical',
@@ -786,7 +786,7 @@ export function createFileFlexMessage(
           size: 'md',
           wrap: true,
           color: '#333333'
-        } as any,
+        },
         {
           type: 'box',
           layout: 'horizontal',
@@ -797,22 +797,22 @@ export function createFileFlexMessage(
               size: 'sm',
               color: '#888888',
               flex: 1
-            } as any,
+            } satisfies LineFlexComponent,
             ...(formattedSize ? [{
-              type: 'text',
+              type: 'text' as const,
               text: formattedSize,
               size: 'sm',
               color: '#888888',
               align: 'end'
-            } as any] : [])
+            }] : [])
           ],
           margin: 'md'
-        } as any,
+        },
         {
           type: 'separator',
           margin: 'lg',
           color: '#eeeeee'
-        } as any,
+        },
         {
           type: 'text',
           text: '點擊下方按鈕下載或開啟檔案',
@@ -820,10 +820,10 @@ export function createFileFlexMessage(
           color: '#aaaaaa',
           align: 'center',
           margin: 'md'
-        } as any
+        }
       ],
       paddingAll: '14px'
-    } as any,
+    },
     footer: {
       type: 'box',
       layout: 'vertical',
@@ -838,10 +838,10 @@ export function createFileFlexMessage(
           style: 'primary',
           color: fileInfo.buttonColor,
           height: 'sm'
-        } as any
+        }
       ],
       paddingAll: '10px'
-    } as any
+    }
   };
 
   return {
@@ -895,7 +895,7 @@ export function createImageFlexMessage(
           text: '🖼️',
           size: 'xl',
           color: '#ffffff'
-        } as any,
+        },
         {
           type: 'text',
           text: '圖片',
@@ -903,12 +903,12 @@ export function createImageFlexMessage(
           weight: 'bold',
           color: '#ffffff',
           margin: 'sm'
-        } as any
+        }
       ],
       paddingAll: '14px',
       justifyContent: 'center',
       alignItems: 'center'
-    } as any,
+    },
     hero: {
       type: 'image',
       url: imageUrl,
@@ -919,7 +919,7 @@ export function createImageFlexMessage(
         type: 'uri',
         uri: imageUrl
       }
-    } as any,
+    },
     body: {
       type: 'box',
       layout: 'vertical',
@@ -931,7 +931,7 @@ export function createImageFlexMessage(
           size: 'md',
           wrap: true,
           color: '#333333'
-        } as any,
+        },
         {
           type: 'box',
           layout: 'horizontal',
@@ -942,22 +942,22 @@ export function createImageFlexMessage(
               size: 'sm',
               color: '#888888',
               flex: 1
-            } as any,
+            } satisfies LineFlexComponent,
             ...(formattedSize ? [{
-              type: 'text',
+              type: 'text' as const,
               text: formattedSize,
               size: 'sm',
               color: '#888888',
               align: 'end'
-            } as any] : [])
+            }] : [])
           ],
           margin: 'md'
-        } as any,
+        },
         {
           type: 'separator',
           margin: 'lg',
           color: '#eeeeee'
-        } as any,
+        },
         {
           type: 'text',
           text: '點擊下方按鈕下載或開啟圖片',
@@ -965,10 +965,10 @@ export function createImageFlexMessage(
           color: '#aaaaaa',
           align: 'center',
           margin: 'md'
-        } as any
+        }
       ],
       paddingAll: '14px'
-    } as any,
+    },
     footer: {
       type: 'box',
       layout: 'vertical',
@@ -983,10 +983,10 @@ export function createImageFlexMessage(
           style: 'primary',
           color: '#00BCD4',
           height: 'sm'
-        } as any
+        }
       ],
       paddingAll: '10px'
-    } as any
+    }
   };
 
   return {

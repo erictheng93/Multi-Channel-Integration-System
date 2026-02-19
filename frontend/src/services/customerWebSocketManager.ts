@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import type { Message } from '@/types'
 import { getBackendUrl } from '@/config/runtime'
 import { WS_EVENTS, normalizeEventType } from '@/constants/websocket-events'
+import { createLogger } from '@/utils/logger'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
 
@@ -40,6 +41,7 @@ export function createCustomerWebSocketConnection(
   config: CustomerWebSocketConfig
 ): CustomerRealtimeConnection {
   const authStore = useAuthStore()
+  const log = createLogger('CustomerWebSocket')
 
   // 狀態
   const ws = ref<globalThis.WebSocket | null>(null)
@@ -82,7 +84,7 @@ export function createCustomerWebSocketConnection(
   const updateConnectionState = (newState: ConnectionState) => {
     connectionState.value = newState
     stateChangeCallback?.(newState)
-    console.log(`🔌 [CustomerWebSocket] State changed: ${newState}`)
+    log.debug(`State changed: ${newState}`)
   }
 
   /**
@@ -90,7 +92,7 @@ export function createCustomerWebSocketConnection(
    */
   const connect = async (): Promise<void> => {
     if (ws.value && (ws.value.readyState === globalThis.WebSocket.CONNECTING || ws.value.readyState === globalThis.WebSocket.OPEN)) {
-      console.log('🔌 [CustomerWebSocket] Already connected or connecting')
+      log.debug('Already connected or connecting')
       return
     }
 
@@ -98,13 +100,13 @@ export function createCustomerWebSocketConnection(
       updateConnectionState('connecting')
 
       const wsUrl = buildWebSocketUrl()
-      console.log('🔌 [CustomerWebSocket] Connecting to:', wsUrl)
+      log.debug('Connecting to:', wsUrl)
 
       ws.value = new globalThis.WebSocket(wsUrl)
 
       // 連接成功
       ws.value.onopen = () => {
-        console.log('✅ [CustomerWebSocket] Connected successfully')
+        log.info('Connected successfully')
         updateConnectionState('connected')
         reconnectAttempts.value = 0
       }
@@ -119,12 +121,12 @@ export function createCustomerWebSocketConnection(
           // 這樣無論後端發送 'new_message', 'NEW_MESSAGE', 或 'New_Message' 都能正確處理
           const eventType = normalizeEventType(data.type)
 
-          console.log('📨 [CustomerWebSocket] Received:', eventType, data)
+          log.debug('Received:', eventType, data)
 
           // 🔧 重連同步: 處理 event 類型訊息 (connection_established, sync_response)
           if (eventType === 'event' && data.data) {
             const innerType = data.data.type
-            console.log('📬 [CustomerWebSocket] Processing event:', innerType)
+            log.debug('Processing event:', innerType)
 
             // 直接傳遞給回調，由 useWebSocketIntegration 處理
             messageCallback?.(data)
@@ -137,7 +139,7 @@ export function createCustomerWebSocketConnection(
             // 這樣可以支援同一用戶多瀏覽器標籤的即時同步：
             // - 發送者標籤：handleMessageConfirmed 已更新 message.id 為 realId，addMessage 會跳過
             // - 其他標籤：沒有 realId，addMessage 會添加訊息
-            console.log('📬 [CustomerWebSocket] Processing new_message:', data.message.id)
+            log.debug('Processing new_message:', data.message.id)
 
             // 更新計數器
             messageCount.value++
@@ -149,19 +151,19 @@ export function createCustomerWebSocketConnection(
             messageCallback?.(normalizedData)
           } else if (eventType === WS_EVENTS.USER_CONNECTED || eventType === WS_EVENTS.USER_DISCONNECTED) {
             // 用戶在線狀態變化
-            console.log(`👤 [CustomerWebSocket] User ${eventType}: ${data.userId}`)
+            log.debug(`User ${eventType}: ${data.userId}`)
             const normalizedData = { ...data, type: eventType }
             messageCallback?.(normalizedData)
           }
         } catch (_error) {
-          console.error('❌ [CustomerWebSocket] Error parsing message:', _error)
+          log.error('Error parsing message:', _error)
           errorCallback?.(_error instanceof Error ? _error : new Error(String(_error)))
         }
       }
 
       // 連接錯誤
       ws.value.onerror = (event) => {
-        console.error('❌ [CustomerWebSocket] Connection error:', event)
+        log.error('Connection error:', event)
         updateConnectionState('error')
         const error = new Error('WebSocket connection error')
         errorCallback?.(error)
@@ -169,7 +171,7 @@ export function createCustomerWebSocketConnection(
 
       // 連接關閉
       ws.value.onclose = (event) => {
-        console.log('🔌 [CustomerWebSocket] Connection closed:', event.code, event.reason)
+        log.debug('Connection closed:', event.code, event.reason)
         updateConnectionState('disconnected')
 
         // 自動重連
@@ -177,7 +179,7 @@ export function createCustomerWebSocketConnection(
           reconnectAttempts.value++
           const delay = Math.min(reconnectInterval * Math.pow(2, reconnectAttempts.value), 10000)
 
-          console.log(`🔄 [CustomerWebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value}/${maxReconnectAttempts})`)
+          log.info(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value}/${maxReconnectAttempts})`)
 
           updateConnectionState('reconnecting')
 
@@ -185,13 +187,13 @@ export function createCustomerWebSocketConnection(
             connect()
           }, delay)
         } else if (reconnectAttempts.value >= maxReconnectAttempts) {
-          console.error('❌ [CustomerWebSocket] Max reconnect attempts reached')
+          log.error('Max reconnect attempts reached')
           updateConnectionState('error')
         }
       }
 
     } catch (_error) {
-      console.error('❌ [CustomerWebSocket] Failed to create WebSocket:', _error)
+      log.error('Failed to create WebSocket:', _error)
       updateConnectionState('error')
       errorCallback?.(_error instanceof Error ? _error : new Error(String(_error)))
       throw _error
@@ -206,7 +208,7 @@ export function createCustomerWebSocketConnection(
       ws.value.close(1000, 'Client disconnect')
       ws.value = null
       updateConnectionState('disconnected')
-      console.log('🔌 [CustomerWebSocket] Disconnected')
+      log.debug('Disconnected')
     }
   }
 
@@ -214,7 +216,7 @@ export function createCustomerWebSocketConnection(
    * 手動重連
    */
   const reconnect = () => {
-    console.log('🔄 [CustomerWebSocket] Manual reconnect requested')
+    log.info('Manual reconnect requested')
     reconnectAttempts.value = 0
     disconnect()
     connect()
@@ -231,16 +233,16 @@ export function createCustomerWebSocketConnection(
    */
   const send = (message: unknown) => {
     if (!ws.value || ws.value.readyState !== globalThis.WebSocket.OPEN) {
-      console.warn('⚠️ [CustomerWebSocket] Cannot send - WebSocket not connected')
+      log.warn('Cannot send - WebSocket not connected')
       return
     }
 
     try {
       const messageStr = typeof message === 'string' ? message : JSON.stringify(message)
       ws.value.send(messageStr)
-      console.log('📤 [CustomerWebSocket] Sent:', message)
+      log.debug('Sent:', message)
     } catch (error) {
-      console.error('❌ [CustomerWebSocket] Send error:', error)
+      log.error('Send error:', error)
       errorCallback?.(error instanceof Error ? error : new Error(String(error)))
     }
   }
@@ -299,7 +301,8 @@ export function createCustomerWebSocketConnection(
 export async function createCustomerRealtimeConnection(
   conversationId: string
 ): Promise<CustomerRealtimeConnection> {
-  console.log(`[CustomerWebSocketManager] Creating Customer WebSocket for conversation: ${conversationId}`)
+  const log = createLogger('CustomerWebSocket')
+  log.info(`Creating Customer WebSocket for conversation: ${conversationId}`)
 
   const connection = createCustomerWebSocketConnection({
     conversationId,

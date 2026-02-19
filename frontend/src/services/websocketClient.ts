@@ -5,6 +5,9 @@
 import { ref, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getWebSocketUrl, getBackendUrl } from '@/config/runtime'
+import { createLogger } from '@/utils/logger'
+
+const log = createLogger('WebSocketClient')
 
 // WebSocket connection states
 export type WebSocketConnectionState =
@@ -745,7 +748,7 @@ export class WebSocketClient {
 
   private log(message: string): void {
     if (this.config.enableLogging) {
-      console.log(`[WebSocketClient] ${message}`)
+      log.debug(message)
     }
   }
 

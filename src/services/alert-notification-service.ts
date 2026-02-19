@@ -345,7 +345,7 @@ export class AlertNotificationService {
       console.log(`   From: ${fromName} <${fromEmail}>`);
 
       // 模擬發送成功 - 實際環境中替換為真實的 SMTP 調用
-      // TODO: 整合實際的 SMTP 服務 (如 SendGrid, AWS SES, 或 Cloudflare Email)
+      // Stub: Email alerting — integrate SMTP (SendGrid/AWS SES) when needed
       return true;
 
     } catch (error) {

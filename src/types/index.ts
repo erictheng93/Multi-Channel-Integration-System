@@ -379,6 +379,19 @@ export interface LineFlexComponent {
   spacing?: string;
   flex?: number;
   action?: LineAction;
+  // Box-specific properties
+  paddingAll?: string;
+  justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly';
+  alignItems?: 'flex-start' | 'center' | 'flex-end';
+  // Text-specific properties
+  wrap?: boolean;
+  // Button-specific properties
+  style?: 'primary' | 'secondary' | 'link';
+  height?: 'sm' | 'md';
+  // Image-specific properties
+  url?: string;
+  aspectRatio?: string;
+  aspectMode?: 'cover' | 'contain' | 'fit';
 }
 
 export interface LineFlexComponentStyle {

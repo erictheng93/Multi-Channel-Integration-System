@@ -541,7 +541,7 @@ export class DashboardService {
       throw new AnalyticsError('No real-time widgets found in dashboard', 'NO_REALTIME_WIDGETS', 400);
     }
 
-    // TODO: 實現 WebSocket/SSE 訂閱邏輯
+    // Phase 2: Real-time analytics via existing WebSocket infrastructure
     // 這裡先返回一個模擬的取消函數
     const intervalId = setInterval(async () => {
       try {

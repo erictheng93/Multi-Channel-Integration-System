@@ -20,9 +20,9 @@ import {
   type CustomerRealtimeConnection,
   type ConnectionState
 } from '@/services/customerWebSocketManager'
-import { useWebSocketMigration } from '@/composables/useWebSocketMigration'
 import { useConnectionState } from '@/composables/useConnectionState'
 import { WS_EVENTS, normalizeEventType } from '@/constants/websocket-events'
+import { createLogger } from '@/utils/logger'
 import type { Message } from '@/types'
 import type { ConversationState } from './useConversationState'
 import type { MessageHandlers } from './useMessageHandlers'
@@ -36,14 +36,10 @@ export function useWebSocketIntegration(
   state: ConversationState,
   handlers: MessageHandlers
 ) {
-  // ===== WebSocket Migration Strategy =====
-  const migration = useWebSocketMigration({
-    strategy: 'websocket_only', // 100% WebSocket (后端完全支持)
-    fallbackToSSE: false,
-    rolloutPercentage: 100
-  })
+  const log = createLogger('WebSocketIntegration')
 
   // ===== Unified Connection State =====
+  // NOTE: Migration shim removed — system is 100% WebSocket
   const unifiedConnection = ref<CustomerRealtimeConnection | null>(null)
   const unifiedConnectionType = ref<ConnectionType>('websocket')
   const unifiedConnectionState = ref<ConnectionState>('disconnected')
@@ -73,8 +69,8 @@ export function useWebSocketIntegration(
    */
   async function initialize() {
     try {
-      console.log(
-        `✅ [WebSocketIntegration] Initializing Customer WebSocket for conversation: ${conversationId}`
+      log.info(
+        `Initializing Customer WebSocket for conversation: ${conversationId}`
       )
 
       // 創建 Customer WebSocket 連接
@@ -97,11 +93,11 @@ export function useWebSocketIntegration(
         state.setUnifiedMessages((conn.messages as unknown) as Ref<Message[]>)
       }
 
-      console.log(
-        `✅ [WebSocketIntegration] Customer WebSocket connection established: ${unifiedConnectionType.value}`
+      log.info(
+        `Customer WebSocket connection established: ${unifiedConnectionType.value}`
       )
     } catch (error) {
-      console.error('❌ [WebSocketIntegration] Failed to initialize Customer WebSocket:', error)
+      log.error('Failed to initialize Customer WebSocket:', error)
       unifiedConnectionState.value = 'error'
     }
   }
@@ -115,7 +111,7 @@ export function useWebSocketIntegration(
    * 處理統一連接狀態變化
    */
   function handleUnifiedStateChange(newState: ConnectionState) {
-    console.log(`[WebSocketIntegration] Unified connection state changed: ${previousConnectionState} → ${newState}`)
+    log.debug(`Unified connection state changed: ${previousConnectionState} → ${newState}`)
 
     const wasReconnecting = previousConnectionState === 'reconnecting'
     const wasConnecting = previousConnectionState === 'connecting'
@@ -130,7 +126,7 @@ export function useWebSocketIntegration(
     // 🔧 FIX: 重連成功後檢查並同步訊息
     // 當從 reconnecting 狀態變為 connected 時，觸發訊息同步
     if (newState === 'connected' && wasReconnecting) {
-      console.log('🔄 [WebSocketIntegration] Reconnected, checking message sync...')
+      log.info('Reconnected, checking message sync...')
       triggerMessageSyncAfterReconnection()
     }
 
@@ -138,7 +134,7 @@ export function useWebSocketIntegration(
     // 解決問題：初始 HTTP 請求因權限失敗 (403) 後，WebSocket 連接成功但訊息未重新載入
     if (newState === 'connected' && wasConnecting && !hasConnectedOnce) {
       hasConnectedOnce = true
-      console.log('🔄 [WebSocketIntegration] First connection successful, checking if HTTP messages need refresh...')
+      log.info('First connection successful, checking if HTTP messages need refresh...')
       triggerMessageSyncOnFirstConnection()
     }
   }
@@ -153,14 +149,14 @@ export function useWebSocketIntegration(
       const httpMsgCount = state.messages.value?.length ?? 0
 
       if (httpMsgCount === 0) {
-        console.log('📥 [WebSocketIntegration] HTTP messages empty on first connection, refreshing via HTTP...')
+        log.info('HTTP messages empty on first connection, refreshing via HTTP...')
         await state.refreshMessagesAfterReconnection()
-        console.log('✅ [WebSocketIntegration] First connection message refresh completed')
+        log.info('First connection message refresh completed')
       } else {
-        console.log(`✅ [WebSocketIntegration] First connection: ${httpMsgCount} messages already loaded, no refresh needed`)
+        log.debug(`First connection: ${httpMsgCount} messages already loaded, no refresh needed`)
       }
     } catch (error) {
-      console.error('❌ [WebSocketIntegration] First connection message refresh failed:', error)
+      log.error('First connection message refresh failed:', error)
     }
   }
 
@@ -174,13 +170,13 @@ export function useWebSocketIntegration(
    */
   async function triggerMessageSyncAfterReconnection() {
     try {
-      console.log('🔄 [WebSocketIntegration] Triggering reconnection sync check...')
+      log.debug('Triggering reconnection sync check...')
 
       // 🔧 新邏輯：基於時間戳的同步由 connection_established 事件處理
       // 這裡作為 fallback，當 connection_established 未觸發時使用
       const conn = unifiedConnection.value
       if (!conn) {
-        console.log('⚠️ [WebSocketIntegration] No connection for sync check')
+        log.warn('No connection for sync check')
         return
       }
 
@@ -191,17 +187,17 @@ export function useWebSocketIntegration(
 
       if (unifiedMsgCount === 0) {
         // Fallback: 如果 unifiedMessages 為空，使用 HTTP 刷新
-        console.log('📥 [WebSocketIntegration] Fallback: refreshing via HTTP (unifiedMessages is empty)')
+        log.info('Fallback: refreshing via HTTP (unifiedMessages is empty)')
         await state.refreshMessagesAfterReconnection()
-        console.log('✅ [WebSocketIntegration] Fallback message sync completed')
+        log.info('Fallback message sync completed')
       } else {
         // 主要同步邏輯：等待 connection_established 事件中的 serverLastMessageAt
         // 這裡只記錄狀態，實際同步由 handleConnectionEstablished 處理
-        console.log(`✅ [WebSocketIntegration] Reconnection sync check passed (${unifiedMsgCount} messages in buffer)`)
-        console.log('💡 [WebSocketIntegration] Note: Timestamp-based sync is handled by connection_established event')
+        log.debug(`Reconnection sync check passed (${unifiedMsgCount} messages in buffer)`)
+        log.debug('Note: Timestamp-based sync is handled by connection_established event')
       }
     } catch (error) {
-      console.error('❌ [WebSocketIntegration] Reconnection sync check failed:', error)
+      log.error('Reconnection sync check failed:', error)
     }
   }
 
@@ -226,7 +222,7 @@ export function useWebSocketIntegration(
 
     // 🛡️ 防禦性編程：再次正規化以防萬一（defense-in-depth）
     const eventType = normalizeEventType(msg.type || '')
-    console.log('✅ [WebSocketIntegration] Received message:', eventType, message)
+    log.debug('Received message:', eventType, message)
 
     // 🔧 重連同步: 處理連接建立事件（含 serverLastMessageAt）
     if (msg.data?.type === 'connection_established') {
@@ -250,15 +246,15 @@ export function useWebSocketIntegration(
       // 檢查是否是本標籤發送的訊息（避免重複）
       // 🔧 Phase 2: 優先使用 correlationId 進行匹配（更可靠）
       if (handlers.isSentMessage(messageId, correlationId)) {
-        console.log(
-          `⏭️ [WebSocketIntegration] Skipping own message: id=${messageId}, correlationId=${correlationId || 'N/A'}`
+        log.debug(
+          `Skipping own message: id=${messageId}, correlationId=${correlationId || 'N/A'}`
         )
         return
       }
 
       // Add message to state
       state.addMessage(msg.message)
-      console.log('📨 [WebSocketIntegration] New message added to conversation')
+      log.debug('New message added to conversation')
     }
 
     // Handle TYPING events (Phase 2)
@@ -273,7 +269,7 @@ export function useWebSocketIntegration(
    * 比較 serverLastMessageAt 和 clientLastTs，決定是否需要同步
    */
   function handleConnectionEstablished(serverLastMessageAt?: string | null) {
-    console.log('🔌 [WebSocketIntegration] Connection established', { serverLastMessageAt })
+    log.info('Connection established', { serverLastMessageAt })
 
     const clientLastTs = state.lastMessageTimestamp.value
 
@@ -283,21 +279,21 @@ export function useWebSocketIntegration(
       const clientTime = new Date(clientLastTs).getTime()
 
       if (serverTime > clientTime) {
-        console.log('📥 [WebSocketIntegration] Server has newer messages, requesting sync...', {
+        log.info('Server has newer messages, requesting sync...', {
           serverTime: new Date(serverTime).toISOString(),
           clientTime: new Date(clientTime).toISOString(),
           diff: `${(serverTime - clientTime) / 1000}s`
         })
         requestMessageSync(clientLastTs)
       } else {
-        console.log('✅ [WebSocketIntegration] Client is up to date')
+        log.debug('Client is up to date')
       }
     } else if (serverLastMessageAt && !clientLastTs) {
       // 客戶端沒有訊息但伺服器有，請求同步所有訊息
-      console.log('📥 [WebSocketIntegration] Client has no messages, requesting full sync...')
+      log.info('Client has no messages, requesting full sync...')
       requestMessageSync(null)
     } else {
-      console.log('✅ [WebSocketIntegration] No sync needed (server has no messages)')
+      log.debug('No sync needed (server has no messages)')
     }
   }
 
@@ -308,11 +304,11 @@ export function useWebSocketIntegration(
   function requestMessageSync(since: string | null) {
     const conn = unifiedConnection.value
     if (!conn) {
-      console.warn('⚠️ [WebSocketIntegration] Cannot request sync - no connection')
+      log.warn('Cannot request sync - no connection')
       return
     }
 
-    console.log('📤 [WebSocketIntegration] Sending sync_request...', { since, conversationId })
+    log.debug('Sending sync_request...', { since, conversationId })
 
     conn.send({
       type: 'sync_request',
@@ -328,10 +324,10 @@ export function useWebSocketIntegration(
    * 將遺漏的訊息加入狀態
    */
   function handleSyncResponse(missedMessages: Message[]) {
-    console.log(`📨 [WebSocketIntegration] Received sync_response with ${missedMessages.length} missed messages`)
+    log.info(`Received sync_response with ${missedMessages.length} missed messages`)
 
     if (missedMessages.length === 0) {
-      console.log('✅ [WebSocketIntegration] No missed messages')
+      log.debug('No missed messages')
       return
     }
 
@@ -348,14 +344,14 @@ export function useWebSocketIntegration(
       }
     })
 
-    console.log(`✅ [WebSocketIntegration] Sync complete: added ${addedCount}/${missedMessages.length} messages`)
+    log.info(`Sync complete: added ${addedCount}/${missedMessages.length} messages`)
   }
 
   /**
    * 處理統一連接錯誤
    */
   function handleUnifiedError(error: Error) {
-    console.error('[WebSocketIntegration] Unified connection error:', error)
+    log.error('Unified connection error:', error)
     unifiedConnectionState.value = 'error'
   }
 
@@ -364,13 +360,13 @@ export function useWebSocketIntegration(
    */
   async function reconnect() {
     try {
-      console.log('🔄 [WebSocketIntegration] Manual reconnection requested...')
+      log.info('Manual reconnection requested...')
       if (unifiedConnection.value) {
         await unifiedConnection.value.reconnect()
-        console.log('✅ [WebSocketIntegration] Reconnection successful')
+        log.info('Reconnection successful')
       }
     } catch (error) {
-      console.error('❌ [WebSocketIntegration] Reconnection failed:', error)
+      log.error('Reconnection failed:', error)
       throw error
     }
   }
@@ -380,7 +376,7 @@ export function useWebSocketIntegration(
    */
   function disconnect() {
     if (unifiedConnection.value) {
-      console.log('[WebSocketIntegration] Disconnecting unified connection...')
+      log.debug('Disconnecting unified connection...')
       unifiedConnection.value.disconnect()
       unifiedConnection.value = null
       unifiedConnectionState.value = 'disconnected'
@@ -395,8 +391,8 @@ export function useWebSocketIntegration(
    */
   function startTyping() {
     isTyping.value = true
-    // TODO: Send WebSocket typing start event
-    console.debug('[WebSocketIntegration] Typing start requested (not yet implemented)')
+    // Phase 2: WebSocket typing indicators (requires DO broadcast support)
+    log.debug('Typing start requested')
   }
 
   /**
@@ -404,8 +400,8 @@ export function useWebSocketIntegration(
    */
   function stopTyping() {
     isTyping.value = false
-    // TODO: Send WebSocket typing stop event
-    console.debug('[WebSocketIntegration] Typing stop requested (not yet implemented)')
+    // Phase 2: WebSocket typing indicators (requires DO broadcast support)
+    log.debug('Typing stop requested')
   }
 
   // ===== Computed Properties =====
@@ -462,7 +458,7 @@ export function useWebSocketIntegration(
   /**
    * 是否啟用 WebSocket
    */
-  const isWebSocketEnabled = computed(() => migration.shouldUseWebSocket.value)
+  const isWebSocketEnabled = computed(() => true) // 100% WebSocket — migration shim removed
 
   /**
    * 新消息數量
@@ -503,8 +499,7 @@ export function useWebSocketIntegration(
     // Message Count
     newMessageCount,
 
-    // Migration Strategy
-    migration
+    // Migration Strategy (removed — 100% WebSocket)
   }
 }
 

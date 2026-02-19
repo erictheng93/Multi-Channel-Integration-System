@@ -11,7 +11,7 @@ import { ref, reactive, computed, onUnmounted, getCurrentInstance } from 'vue'
 import { systemApi, credentialsApi } from '@/api/system'
 import { SettingsIcon, IntegrationIcon, AdvancedIcon, SystemIcon } from '@/components/icons'
 import { useI18n } from '@/composables/useI18n'
-import { useConfirm } from '@/composables/useConfirm'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type {
   SystemSettings,
   SettingsTab,
@@ -34,7 +34,7 @@ export function useSystemSettingsController() {
   // ============================================================================
 
   const { t } = useI18n()
-  const { confirmDanger, confirmWarning } = useConfirm()
+  const { showDanger, showWarning } = useConfirmDialog()
 
   // ============================================================================
   // State Management
@@ -220,7 +220,7 @@ export function useSystemSettingsController() {
    */
   async function loadBackups(): Promise<void> {
     try {
-      // TODO: Implement backend API for backup list
+      // Stub: No backend /api/system/backups endpoint yet (D1 snapshot-based)
       // const response = await systemApi.getBackups()
       // if (response.success && response.data) {
       //   backups.value = response.data.map(backup => ({
@@ -488,9 +488,7 @@ export function useSystemSettingsController() {
    */
   async function clearLineCredentials(): Promise<void> {
     try {
-      const confirmed = await confirmDanger({
-        title: '清除 LINE 憑證',
-        message: '確定要清除 LINE 憑證嗎？此操作無法復原。',
+      const confirmed = await showDanger('清除 LINE 憑證', '確定要清除 LINE 憑證嗎？此操作無法復原。', {
         confirmText: '確定清除',
         cancelText: '取消'
       })
@@ -530,9 +528,7 @@ export function useSystemSettingsController() {
    */
   async function clearFacebookCredentials(): Promise<void> {
     try {
-      const confirmed = await confirmDanger({
-        title: '清除 Facebook 憑證',
-        message: '確定要清除 Facebook 憑證嗎？此操作無法復原。',
+      const confirmed = await showDanger('清除 Facebook 憑證', '確定要清除 Facebook 憑證嗎？此操作無法復原。', {
         confirmText: '確定清除',
         cancelText: '取消'
       })
@@ -627,9 +623,7 @@ export function useSystemSettingsController() {
    */
   async function restoreDatabase(backupId: string): Promise<void> {
     try {
-      const confirmed = await confirmDanger({
-        title: '還原資料庫',
-        message: '確定要還原資料庫嗎？當前資料將被覆蓋，此操作無法復原。',
+      const confirmed = await showDanger('還原資料庫', '確定要還原資料庫嗎？當前資料將被覆蓋，此操作無法復原。', {
         confirmText: '確定還原',
         cancelText: '取消'
       })
@@ -671,9 +665,7 @@ export function useSystemSettingsController() {
         sessions: '會話快取'
       }
 
-      const confirmed = await confirmWarning({
-        title: '清除快取',
-        message: `確定要清除${typeNames[type]}嗎？`,
+      const confirmed = await showWarning('清除快取', `確定要清除${typeNames[type]}嗎？`, {
         confirmText: '確定清除',
         cancelText: '取消'
       })
@@ -756,9 +748,7 @@ export function useSystemSettingsController() {
    */
   async function restartSystem(): Promise<void> {
     try {
-      const confirmed = await confirmDanger({
-        title: '重啟系統',
-        message: '確定要重啟系統嗎？系統將暫時無法使用。',
+      const confirmed = await showDanger('重啟系統', '確定要重啟系統嗎？系統將暫時無法使用。', {
         confirmText: '確定重啟',
         cancelText: '取消'
       })

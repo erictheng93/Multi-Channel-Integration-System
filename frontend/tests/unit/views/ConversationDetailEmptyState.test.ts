@@ -48,9 +48,12 @@ vi.mock('@/composables/useToast', () => ({
   }))
 }))
 
-vi.mock('@/composables/useConfirm', () => ({
-  useConfirm: vi.fn(() => ({
-    showConfirm: vi.fn().mockResolvedValue(false)
+vi.mock('@/composables/useConfirmDialog', () => ({
+  useConfirmDialog: vi.fn(() => ({
+    showConfirm: vi.fn().mockResolvedValue(false),
+    showDanger: vi.fn().mockResolvedValue(false),
+    showWarning: vi.fn().mockResolvedValue(false),
+    showInfo: vi.fn().mockResolvedValue(false)
   }))
 }))
 

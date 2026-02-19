@@ -39,10 +39,9 @@ export function useConversationActions(
   async function recallMessage(messageId: string): Promise<boolean> {
     try {
       console.log('🔄 [ConversationActions] Recalling message:', messageId)
-      // TODO: Implement message recall API call
-      // const success = await messageApi.recall(conversationId, messageId)
-
-      // For now, just refresh messages to reflect server state
+      // Recall API exists in backend (CustomerMessageDO) — frontend handler
+      // uses ConversationDetail.vue's handleMessageRecall instead of this stub.
+      // Refresh messages to reflect server state
       await state.refreshMessages()
 
       console.log('✅ [ConversationActions] Message recalled (placeholder)')

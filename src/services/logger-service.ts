@@ -353,7 +353,7 @@ export class Logger {
    * 處理關鍵錯誤 - 可以集成告警系統
    */
   private handleCriticalError(entry: LogEntry): void {
-    // TODO: 集成告警系統 (如 PagerDuty, Slack, Email)
+    // Phase 2: Integrate alerting (PagerDuty/Slack) for critical errors
     console.error('🚨🚨🚨 CRITICAL ERROR DETECTED 🚨🚨🚨');
     console.error(JSON.stringify(entry, null, 2));
 

@@ -75,12 +75,12 @@ function handleAutoRefreshToggle(enabled: boolean) {
 }
 
 function handleViewLogs(api: ApiEndpoint) {
-  // TODO: Implement log viewing functionality
+  // Stub: Log viewer — requires backend /api/system/logs endpoint
   console.info('API logs requested for:', api.endpoint)
 }
 
 function handleViewDocs(api: ApiEndpoint) {
-  // TODO: Implement API documentation viewing
+  // Stub: API docs viewer — render OpenAPI spec when available
   console.info('API documentation requested for:', api.endpoint)
 }
 </script>

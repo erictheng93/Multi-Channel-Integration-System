@@ -1,9 +1,22 @@
 // 健康檢查路由器 - 統一健康檢查路由處理器
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
+import type { SystemHealth, ComponentHealth } from '@/types/health-check';
 import { jwtAuth } from '@/middleware/auth';
 import { createHealthCheckHandlerMethods } from './health-main';
+
+/** Hono context type used across all health check routes */
+type HealthRouteContext = Context<{ Bindings: Bindings }>;
+
+/** Shape of the JSON body returned by health check handler responses */
+interface HealthResponseBody {
+  success: boolean;
+  data: SystemHealth;
+  message: string;
+  timestamp: string;
+}
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -23,7 +36,7 @@ app.get('/health', (c) => {
 // 系統整體健康狀態 (無需認證 - 用於負載平衡器檢查)
 app.get('/status', async (c) => {
   const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.getSystemHealth(c as any);
+  return handlers.getSystemHealth(c as HealthRouteContext);
 });
 
 // ======================== 詳細健康檢查端點 (需要認證) ========================
@@ -31,31 +44,31 @@ app.get('/status', async (c) => {
 // 系統完整健康檢查
 app.get('/system', jwtAuth, async (c) => {
   const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.getSystemHealth(c as any);
+  return handlers.getSystemHealth(c as HealthRouteContext);
 });
 
 // 基礎設施健康檢查
 app.get('/infrastructure', jwtAuth, async (c) => {
   const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.getInfrastructureHealth(c as any);
+  return handlers.getInfrastructureHealth(c as HealthRouteContext);
 });
 
 // 服務層健康檢查
 app.get('/services', jwtAuth, async (c) => {
   const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.getServicesHealth(c as any);
+  return handlers.getServicesHealth(c as HealthRouteContext);
 });
 
 // 健康檢查統計
 app.get('/stats', jwtAuth, async (c) => {
   const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.getHealthStats(c as any);
+  return handlers.getHealthStats(c as HealthRouteContext);
 });
 
 // 特定組件健康檢查
 app.get('/component/:component', jwtAuth, async (c) => {
   const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-  return handlers.runComponentCheck(c as any);
+  return handlers.runComponentCheck(c as HealthRouteContext);
 });
 
 // ======================== 健康檢查配置端點 ========================
@@ -108,15 +121,13 @@ app.get('/config', jwtAuth, async (c) => {
 app.get('/metrics', jwtAuth, async (c) => {
   try {
     const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-    const healthResponse = await handlers.getSystemHealth(c as any);
+    const healthResponse = await handlers.getSystemHealth(c as HealthRouteContext);
 
     // 解析回應以取得實際的健康資料
-    let healthData: any;
+    let healthData: Partial<SystemHealth> = {};
     if ('json' in healthResponse && typeof healthResponse.json === 'function') {
-      const responseData = await healthResponse.json() as any;
+      const responseData = await healthResponse.json() as HealthResponseBody;
       healthData = responseData.data;
-    } else {
-      healthData = {};
     }
 
     // 轉換為 Prometheus 格式的指標 (簡化版)
@@ -127,7 +138,7 @@ system_health_status{service="multi-channel-support"} ${healthData.overall?.stat
 
 # HELP component_health_status Component health status
 # TYPE component_health_status gauge
-${healthData.components?.map((component: any) =>
+${healthData.components?.map((component: ComponentHealth) =>
   `component_health_status{component="${component.component}"} ${component.status.status === 'healthy' ? 1 : component.status.status === 'warning' ? 0.5 : 0}`
 ).join('\n') || ''}
 
@@ -156,15 +167,13 @@ cache_hit_rate{service="multi-channel-support"} ${healthData.performance?.cacheH
 app.get('/ready', async (c) => {
   try {
     const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-    const healthResponse = await handlers.getSystemHealth(c as any);
+    const healthResponse = await handlers.getSystemHealth(c as HealthRouteContext);
 
     // 解析回應以取得實際的健康資料
-    let healthData: any;
+    let healthData: Partial<SystemHealth> = {};
     if ('json' in healthResponse && typeof healthResponse.json === 'function') {
-      const responseData = await healthResponse.json() as any;
+      const responseData = await healthResponse.json() as HealthResponseBody;
       healthData = responseData.data;
-    } else {
-      healthData = {};
     }
 
     // 如果系統準備就緒，返回 200
@@ -204,7 +213,7 @@ app.get('/live', (c) => {
 app.post('/check/all', jwtAuth, async (c) => {
   try {
     const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
-    const health = await handlers.getSystemHealth(c as any);
+    const health = await handlers.getSystemHealth(c as HealthRouteContext);
 
     return c.json({
       success: true,

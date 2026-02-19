@@ -71,7 +71,7 @@
   import { useRoute } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useToast } from '@/composables/useToast'
-  import { useConfirm } from '@/composables/useConfirm'
+  import { useConfirmDialog } from '@/composables/useConfirmDialog'
   import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
   import UserIcon from '@/components/icons/UserIcon.vue'
   import KeyIcon from '@/components/icons/KeyIcon.vue'
@@ -85,7 +85,7 @@
   const route = useRoute()
   const authStore = useAuthStore()
   const { showError } = useToast()
-  const { confirmInfo } = useConfirm()
+  const { showInfo } = useConfirmDialog()
 
   const showUserMenu = ref(false)
 
@@ -134,10 +134,10 @@
 
   const handleLogout = async () => {
     showUserMenu.value = false
-    const confirmed = await confirmInfo(
+    const confirmed = await showInfo(
       '登出確認',
       '確定要登出嗎？登出後需要重新輸入帳號密碼。',
-      '登出',
+      { confirmText: '登出' },
     )
     if (confirmed) {
       try {

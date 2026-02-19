@@ -212,7 +212,7 @@ import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } fr
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
-import { useConfirm } from '@/composables/useConfirm'
+import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type { Message } from '@/types'
 
 
@@ -265,7 +265,7 @@ const KeyboardShortcuts = defineAsyncComponent(() => import('@/components/ui/Key
 const route = useRoute()
 const router = useRouter()
 const { showSuccess, showError } = useToast()
-const { showConfirm } = useConfirm()
+const { showConfirm } = useConfirmDialog()
 const conversationId = computed(() => route.params.id as string)
 
 // Export dialog state
