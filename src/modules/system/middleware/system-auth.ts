@@ -8,6 +8,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse
 } from '@shared/utils/api-response';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // ======================== 系統權限類型 ========================
 
@@ -61,7 +62,7 @@ export async function checkSystemAccess(c: Context<{ Bindings: Bindings }>, next
     return c.json({
       success: false,
       error: 'Permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -86,7 +87,7 @@ export async function checkHealthViewPermission(c: Context<{ Bindings: Bindings 
     return c.json({
       success: false,
       error: 'Health permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -108,7 +109,7 @@ export async function checkStatusViewPermission(c: Context<{ Bindings: Bindings 
     return c.json({
       success: false,
       error: 'Status permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -130,7 +131,7 @@ export async function checkInfoViewPermission(c: Context<{ Bindings: Bindings }>
     return c.json({
       success: false,
       error: 'Info permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -152,7 +153,7 @@ export async function checkStatsViewPermission(c: Context<{ Bindings: Bindings }
     return c.json({
       success: false,
       error: 'Stats permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -174,7 +175,7 @@ export async function checkSettingsViewPermission(c: Context<{ Bindings: Binding
     return c.json({
       success: false,
       error: 'Settings view permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -196,7 +197,7 @@ export async function checkSettingsUpdatePermission(c: Context<{ Bindings: Bindi
     return c.json({
       success: false,
       error: 'Settings update permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -218,7 +219,7 @@ export async function checkIntegrationsManagePermission(c: Context<{ Bindings: B
     return c.json({
       success: false,
       error: 'Integrations permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -240,7 +241,7 @@ export async function checkMetricsViewPermission(c: Context<{ Bindings: Bindings
     return c.json({
       success: false,
       error: 'Metrics permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -262,7 +263,7 @@ export async function checkBackupCreatePermission(c: Context<{ Bindings: Binding
     return c.json({
       success: false,
       error: 'Backup create permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -284,7 +285,7 @@ export async function checkBackupRestorePermission(c: Context<{ Bindings: Bindin
     return c.json({
       success: false,
       error: 'Backup restore permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -306,7 +307,7 @@ export async function checkCacheManagePermission(c: Context<{ Bindings: Bindings
     return c.json({
       success: false,
       error: 'Cache manage permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -330,7 +331,7 @@ export async function checkSystemRestartPermission(c: Context<{ Bindings: Bindin
     return c.json({
       success: false,
       error: 'System restart permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -352,7 +353,7 @@ export async function checkAdvancedAccessPermission(c: Context<{ Bindings: Bindi
     return c.json({
       success: false,
       error: 'Advanced access permission check failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -433,7 +434,7 @@ export async function validatePlatformParam(c: Context<{ Bindings: Bindings }>, 
       return c.json({
         success: false,
         error: 'Platform parameter is required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -442,7 +443,7 @@ export async function validatePlatformParam(c: Context<{ Bindings: Bindings }>, 
       return c.json({
         success: false,
         error: `Invalid platform. Must be one of: ${supportedPlatforms.join(', ')}`,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -452,7 +453,7 @@ export async function validatePlatformParam(c: Context<{ Bindings: Bindings }>, 
     return c.json({
       success: false,
       error: 'Platform parameter validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -473,7 +474,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
         return c.json({
           success: false,
           error: 'Request size too large',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.PAYLOAD_TOO_LARGE);
       }
     }
@@ -484,7 +485,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
     return c.json({
       success: false,
       error: 'Request validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -511,7 +512,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
     return c.json({
       success: false,
       error: 'Rate limit validation failed',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 }
@@ -526,7 +527,7 @@ export async function logSystemOperation(c: Context<{ Bindings: Bindings }>, nex
     const userPayload = c.get('jwtPayload') as JWTPayload;
     const method = c.req.method;
     const path = new URL(c.req.url).pathname;
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     // 執行操作
     await next();

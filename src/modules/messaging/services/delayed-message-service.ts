@@ -21,6 +21,7 @@ import {
   QueueProcessingResult
 } from '../types/message-types';
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 export class DelayedMessageService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -212,7 +213,7 @@ export class DelayedMessageService {
       if (!delayedMessage) {
         return {
           success: false,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           error: 'Delayed message not found'
         };
       }
@@ -220,7 +221,7 @@ export class DelayedMessageService {
       if (delayedMessage.status !== 'pending') {
         return {
           success: false,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           error: `Message status is ${delayedMessage.status}, cannot process`
         };
       }
@@ -310,7 +311,7 @@ export class DelayedMessageService {
 
       return {
         success: false,
-        processedAt: new Date().toISOString(),
+        processedAt: nowISO(),
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -438,7 +439,7 @@ export class DelayedMessageService {
           .update(delayedMessages)
           .set({
             status: 'archived',
-            updatedAt: new Date().toISOString(),
+            updatedAt: nowISO(),
           })
           .where(
             and(
@@ -477,7 +478,7 @@ export class DelayedMessageService {
         .set({
           status: 'failed',
           metadata: JSON.stringify(updatedMetadata),
-          updatedAt: new Date().toISOString(),
+          updatedAt: nowISO(),
         })
         .where(eq(delayedMessages.id, messageId));
     } catch (error) {

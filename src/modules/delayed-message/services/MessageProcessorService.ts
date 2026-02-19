@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import { ProcessingError } from '@modules/delayed-message/types';
 import { StorageService } from '@modules/delayed-message/infrastructure/StorageService';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * MessageProcessorService - 訊息處理專家
@@ -158,7 +159,7 @@ export class MessageProcessorService {
 
       // 更新重試次數
       message.metadata.retryCount = retryCount;
-      message.metadata.lastRetryAt = new Date().toISOString();
+      message.metadata.lastRetryAt = nowISO();
 
       // 重新設定為待處理狀態
       await this.storageService.updateMessageStatus(messageId, 'pending', new Date());

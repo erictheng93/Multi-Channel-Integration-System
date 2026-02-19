@@ -64,6 +64,7 @@ import {
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import type { Period, ComparisonData as PeriodComparisonData } from '@modules/analytics/services/period-comparison-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 統一分析服務核心實現
@@ -103,7 +104,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
    * 整合原有的 SessionAnalyticsService.getSessionStats 功能
    */
   async getConversationAnalytics(query: ConversationAnalyticsQuery): Promise<ServiceResponse<ConversationAnalytics>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 驗證查詢參數
@@ -167,7 +168,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         data: result,
         metadata: {
           totalRecords: summary.totalConversations,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           queryTime: Date.now() - startTime,
           cacheHit: false,
           aggregationLevel: this.getAggregationLevel(query.timeRange)
@@ -188,7 +189,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
           data: serviceResponse.data!,
           metadata: {
             totalRecords: typeof meta?.totalRecords === 'number' ? meta.totalRecords : 0,
-            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : new Date().toISOString(),
+            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : nowISO(),
             queryTime: typeof meta?.queryTime === 'number' ? meta.queryTime : 0,
             cacheHit: typeof meta?.cacheHit === 'boolean' ? meta.cacheHit : undefined,
             aggregationLevel: meta?.aggregationLevel as AnalyticsResult<ConversationAnalytics>['metadata']['aggregationLevel']
@@ -212,7 +213,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
           errorCode: error instanceof QueryValidationError ? 'VALIDATION_ERROR' :
                      error instanceof DataProcessingError ? 'PROCESSING_ERROR' :
                      'ANALYTICS_ERROR',
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           queryTime: Date.now() - startTime
         }
       };
@@ -224,7 +225,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
    * 整合原有的消息統計功能
    */
   async getMessageAnalytics(query: MessageAnalyticsQuery): Promise<ServiceResponse<MessageAnalytics>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       this.validateQuery(query);
@@ -285,7 +286,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         data: result,
         metadata: {
           totalRecords: summary.totalMessages,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           queryTime: Date.now() - startTime,
           cacheHit: false,
           aggregationLevel: this.getAggregationLevel(query.timeRange)
@@ -306,7 +307,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
           data: serviceResponse.data!,
           metadata: {
             totalRecords: typeof meta?.totalRecords === 'number' ? meta.totalRecords : 0,
-            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : new Date().toISOString(),
+            processedAt: typeof meta?.processedAt === 'string' ? meta.processedAt : nowISO(),
             queryTime: typeof meta?.queryTime === 'number' ? meta.queryTime : 0,
             cacheHit: typeof meta?.cacheHit === 'boolean' ? meta.cacheHit : undefined,
             aggregationLevel: meta?.aggregationLevel as AnalyticsResult<MessageAnalytics>['metadata']['aggregationLevel']
@@ -330,7 +331,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
           errorCode: error instanceof QueryValidationError ? 'VALIDATION_ERROR' :
                      error instanceof DataProcessingError ? 'PROCESSING_ERROR' :
                      'ANALYTICS_ERROR',
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           queryTime: Date.now() - startTime
         }
       };
@@ -342,7 +343,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
    * 整合原有的 ActivityStatsService 功能
    */
   async getUserAnalytics(query: UserAnalyticsQuery): Promise<AnalyticsResult<UserAnalytics>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       this.validateQuery(query);
@@ -394,7 +395,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         data: result,
         metadata: {
           totalRecords: summary.totalUsers,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           queryTime: Date.now() - startTime,
           cacheHit: false,
           aggregationLevel: this.getAggregationLevel(query.timeRange)
@@ -431,7 +432,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
    * 整合原有的 EnterpriseAnalyticsEngine 功能
    */
   async getPerformanceAnalytics(query: PerformanceAnalyticsQuery): Promise<AnalyticsResult<PerformanceAnalytics>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       this.validateQuery(query);
@@ -475,7 +476,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         data: result,
         metadata: {
           totalRecords: trends.length,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           queryTime: Date.now() - startTime,
           cacheHit: false,
           aggregationLevel: this.getAggregationLevel(query.timeRange)
@@ -508,7 +509,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
    * 執行自定義分析查詢
    */
   async getCustomAnalytics(query: CustomAnalyticsQuery): Promise<AnalyticsResult<any>> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       this.validateQuery(query);
@@ -521,7 +522,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         data: result,
         metadata: {
           totalRecords: Array.isArray(result) ? result.length : 1,
-          processedAt: new Date().toISOString(),
+          processedAt: nowISO(),
           queryTime: Date.now() - startTime,
           cacheHit: false
         }
@@ -576,10 +577,10 @@ export class AnalyticsService implements AnalyticsServiceInterface {
 
       const exportResult: ExportResult = {
         fileUrl,
-        fileName: query.fileName || `analytics_export_${Date.now()}.${query.format}`,
+        fileName: query.fileName || `analytics_export_${nowMs()}.${query.format}`,
         fileSize: 0, // TODO: 計算實際文件大小
         format: query.format,
-        generatedAt: new Date().toISOString(),
+        generatedAt: nowISO(),
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24小時後過期
         downloadCount: 0
       };
@@ -734,8 +735,8 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       averageResolutionTime: 0,
       customerSatisfactionScore: 0,
       period: {
-        start: new Date().toISOString(),
-        end: new Date().toISOString()
+        start: nowISO(),
+        end: nowISO()
       }
     };
   }
@@ -1364,7 +1365,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
    * 通用查詢方法 - 用於 dashboard widget 查詢
    */
   async query(query: any): Promise<any> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 根據查詢類型分發到對應的方法

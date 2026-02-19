@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { SessionService } from '@modules/session/services/session-service';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 
 // 中間件導入
 import {
@@ -26,6 +27,7 @@ import {
   validateBatchSessionOperation,
   logSessionOperation
 } from '../middleware/index';
+import { nowISO } from '@/utils/timestamp'
 
 // 創建會話路由實例
 const sessionHandler = new Hono<{ Bindings: Bindings }>();
@@ -44,7 +46,7 @@ sessionHandler.get('/health', (c) => {
       module: 'session',
       version: '2.0.0'
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -95,7 +97,7 @@ sessionHandler.get('/info', (c) => {
         agent: 'Access to assigned conversations sessions'
       }
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -133,15 +135,10 @@ sessionHandler.post(
         success: true,
         data: result,
         message: `Batch operation ${batchOperation.action} completed`,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Batch operation error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to execute batch operation',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -166,15 +163,10 @@ sessionHandler.get(
         success: true,
         data: sessions,
         count: sessions.length,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Search sessions error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to search sessions',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -197,15 +189,10 @@ sessionHandler.get(
       return c.json({
         success: true,
         data: stats,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get session stats error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get session statistics',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -227,7 +214,7 @@ sessionHandler.get(
         return c.json({
           success: false,
           error: 'timeRange must be one of: day, week, month, year',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
@@ -240,15 +227,10 @@ sessionHandler.get(
       return c.json({
         success: true,
         data: activityStats,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get activity stats error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get activity statistics',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -275,15 +257,10 @@ sessionHandler.get(
         success: true,
         data: stats,
         conversation_id,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get conversation session stats error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get conversation session statistics',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -312,7 +289,7 @@ sessionHandler.post(
         return c.json({
           success: false,
           error: 'Session not found or could not be closed',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
@@ -320,15 +297,10 @@ sessionHandler.post(
         success: true,
         data: { closed: true, sessionId },
         message: 'Session closed successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Close session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to close session',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -355,7 +327,7 @@ sessionHandler.post(
         return c.json({
           success: false,
           error: 'Session not found or could not be reopened',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
@@ -363,15 +335,10 @@ sessionHandler.post(
         success: true,
         data: { reopened: true, sessionId },
         message: 'Session reopened successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Reopen session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to reopen session',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -397,15 +364,10 @@ sessionHandler.get(
       return c.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get session messages error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get session messages',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -429,15 +391,10 @@ sessionHandler.get(
       return c.json({
         success: true,
         data: healthReport,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Session health check error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to analyze session health',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -470,22 +427,17 @@ sessionHandler.get(
         return c.json({
           success: false,
           error: 'Session not found or access denied',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
       return c.json({
         success: true,
         data: session,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get session',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -515,15 +467,10 @@ sessionHandler.put(
         success: true,
         data: session,
         message: 'Session updated successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Update session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to update session',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -550,7 +497,7 @@ sessionHandler.delete(
         return c.json({
           success: false,
           error: 'Session not found or could not be deleted',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
@@ -558,15 +505,10 @@ sessionHandler.delete(
         success: true,
         data: { deleted: true, sessionId },
         message: 'Session deleted successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Delete session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete session',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -596,15 +538,10 @@ sessionHandler.post(
         success: true,
         data: session,
         message: 'Session created successfully',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.CREATED);
     } catch (error) {
-      console.error('Create session error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create session',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -628,15 +565,10 @@ sessionHandler.get(
       return c.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
-      console.error('List sessions error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to list sessions',
-        timestamp: new Date().toISOString()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   }
 );
@@ -649,7 +581,7 @@ sessionHandler.onError((err, c) => {
   return c.json({
     success: false,
     error: 'Internal server error in session module',
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
 });
 
@@ -676,7 +608,7 @@ sessionHandler.notFound((c) => {
       'POST /batch',
       'GET /:sessionId/health'
     ],
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   }, HTTP_STATUS.NOT_FOUND);
 });
 

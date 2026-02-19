@@ -10,11 +10,13 @@ import type {
   ConnectionMetrics
 } from '@/types/websocket-types';
 import { websocketAuth } from '@/middleware/websocket-auth';
+import { globalErrorHandler } from '@/core/error-handler';
 import { DistributedLockService } from '@/services/distributed-lock-service';
 
 // P1 Optimizations
 import { getCircuitBreaker } from '@/services/websocket-circuit-breaker';
 import { createMessagePersistenceService } from '@/services/message-persistence-service';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Architecture Overview:
@@ -148,12 +150,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
     }
 
   } catch (error) {
-    console.error('[WebSocket] Connection error:', error);
-
-    return c.json({
-      error: 'Connection failed',
-      reason: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -177,15 +174,11 @@ websocketHandler.post('/disconnect', websocketAuth, async (c) => {
     return c.json({
       success: true,
       connectionId,
-      disconnectedAt: Date.now()
+      disconnectedAt: nowMs()
     });
 
   } catch (error) {
-    console.error('[WebSocket] Disconnect error:', error);
-    return c.json({
-      error: 'Disconnect failed',
-      reason: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -268,7 +261,7 @@ websocketHandler.get('/health', async (c) => {
       connectionsByType: metrics.connectionsByType,
       averageLatency: metrics.averageLatency,
       errorRate: metrics.errorRate,
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
 
     // Determine health status
@@ -285,12 +278,7 @@ websocketHandler.get('/health', async (c) => {
     return c.json(health, statusCode);
 
   } catch (error) {
-    console.error('[WebSocket] Health check error:', error);
-    return c.json({
-      status: 'error',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: Date.now()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -330,7 +318,7 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
             outbound: data.eventsPerSecond || 0
           },
           errorRate: (data.failedDeliveries || 0) / Math.max(1, data.totalEvents || 1),
-          lastUpdated: Date.now()
+          lastUpdated: nowMs()
         };
       }
     }
@@ -344,7 +332,7 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
       averageLatency: 0,
       messagesThroughput: { inbound: 0, outbound: 0 },
       errorRate: 0,
-      lastUpdated: Date.now()
+      lastUpdated: nowMs()
     };
 
   } catch (error) {
@@ -366,7 +354,7 @@ async function getDetailedMetrics(env: Bindings): Promise<any> {
     return {
       connections: connectionMetrics.status === 'fulfilled' ? connectionMetrics.value : null,
       locks: lockMetrics.status === 'fulfilled' ? lockMetrics.value : null,
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
 
   } catch (error) {
@@ -382,11 +370,7 @@ websocketHandler.get('/migration-status', async (c) => {
     const config = await getMigrationConfig(c.env);
     return c.json(config);
   } catch (error) {
-    console.error('[WebSocket] Migration status error:', error);
-    return c.json({
-      error: 'Failed to get migration status',
-      reason: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -408,15 +392,11 @@ websocketHandler.post('/migration-config', websocketAuth, async (c) => {
       success: true,
       config: await getMigrationConfig(c.env),
       updatedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[WebSocket] Migration config update error:', error);
-    return c.json({
-      error: 'Failed to update migration config',
-      reason: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -572,16 +552,11 @@ websocketHandler.get('/test-connection', async (c) => {
       conversationRoom: conversationRoomStatus,
       messageBroadcaster: broadcasterStatus,
       migrationConfig: await getMigrationConfig(c.env),
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('[WebSocket] Connection test error:', error);
-    return c.json({
-      error: 'Connection test failed',
-      reason: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: Date.now()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

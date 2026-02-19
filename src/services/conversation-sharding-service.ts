@@ -15,6 +15,7 @@ import type {
 import { SHARD_CONFIG } from '../types/sharding-types';
 import type { DurableObjectStub, DurableObjectNamespace } from '@cloudflare/workers-types';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../utils/test-logger';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Environment bindings required by ConversationShardingService
@@ -152,7 +153,7 @@ export class ConversationShardingService {
         type: 'all_shards_full',
         conversationId,
         message: `All shards full for conversation ${conversationId} (${SHARD_CONFIG.MAX_SHARDS_PER_CONVERSATION * SHARD_CONFIG.CONNECTIONS_PER_SHARD} connections limit reached)`,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         retryable: false
       };
 
@@ -258,7 +259,7 @@ export class ConversationShardingService {
       const payload: ShardInitializationPayload = {
         conversationId,
         shardIndex,
-        createdAt: Date.now(),
+        createdAt: nowMs(),
         maxConnections: SHARD_CONFIG.CONNECTIONS_PER_SHARD
       };
 
@@ -341,7 +342,7 @@ export class ConversationShardingService {
     if (existingShard) {
       // Update existing shard metadata
       existingShard.connectionCount = capacity.connectionCount;
-      existingShard.lastChecked = Date.now();
+      existingShard.lastChecked = nowMs();
       existingShard.utilizationPercent = capacity.utilizationPercent;
       existingShard.status = capacity.hasCapacity ? 'active' : 'full';
     } else {
@@ -352,7 +353,7 @@ export class ConversationShardingService {
         conversationId,
         connectionCount: capacity.connectionCount,
         maxConnections: capacity.maxConnections,
-        lastChecked: Date.now(),
+        lastChecked: nowMs(),
         utilizationPercent: capacity.utilizationPercent,
         status: capacity.hasCapacity ? 'active' : 'full'
       });
@@ -361,7 +362,7 @@ export class ConversationShardingService {
     // Update cache with new timestamp
     this.shardCache.set(conversationId, {
       shards,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
     testSafeLog(`${getEmojiPrefix('PACKAGE')}[ShardingService] Cache updated for ${conversationId}: ${shards.length} shards`);
@@ -435,7 +436,7 @@ export class ConversationShardingService {
     totalDeliveries: number;
     latencyMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const failedShards: number[] = [];
     let shardsNotified = 0;
     let totalDeliveries = 0;
@@ -455,7 +456,7 @@ export class ConversationShardingService {
         event,
         excludeShardIndex: sourceShardIndex,
         priority,
-        timestamp: Date.now()
+        timestamp: nowMs()
       };
 
       // Broadcast to all shards in parallel (excluding source)

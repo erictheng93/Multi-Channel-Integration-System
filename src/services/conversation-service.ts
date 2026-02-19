@@ -4,6 +4,7 @@ import { SENDER_TYPES } from '../constants/sender-types';
 import type {
   // AgentStatus
 } from '../types/services';
+import { nowISO } from '@/utils/timestamp'
 
 export class ConversationService {
   constructor(
@@ -37,7 +38,7 @@ export class ConversationService {
       const conversation = await this.dbService.updateConversation(conversationId, {
         assignedTeamId: primaryTeamId,
         status: 'in-progress',
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       });
 
       // Update agent status
@@ -47,7 +48,7 @@ export class ConversationService {
       await this.kv.publishEvent('conversation_assigned', {
         conversationId,
         agentId,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
       return conversation;
@@ -105,14 +106,14 @@ export class ConversationService {
 
     // Update conversation last activity
     await this.dbService.updateConversation(conversationId, {
-      lastMessageAt: new Date().toISOString()
+      lastMessageAt: nowISO()
     });
 
     // Publish real-time event
     await this.kv.publishEvent(`conversation:${conversationId}`, {
       type: 'new_message',
       message,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
     return message;
@@ -150,7 +151,7 @@ export class ConversationService {
         agentId,
         teamId,
         count: result,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
       return result;
@@ -191,7 +192,7 @@ export class ConversationService {
     const analytics = {
       ...stats,
       timeRange,
-      generatedAt: new Date().toISOString(),
+      generatedAt: nowISO(),
       // Add more metrics as needed
     };
 

@@ -17,6 +17,7 @@ import {
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { getMentionedUserIds } from '@/utils/mention-parser';
 import { triggerMentionNotification } from '@/utils/notification-trigger';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -180,7 +181,7 @@ crudRoutes.put('/:id', jwtAuth, async (c) => {
 
     // 準備更新數據
     const updateValues: any = {
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     };
 
     if (updateData.content !== undefined) {
@@ -285,7 +286,7 @@ crudRoutes.delete('/:id', jwtAuth, async (c) => {
       }
     }
 
-    const recalledAt = new Date().toISOString();
+    const recalledAt = nowISO();
 
     // 撤回訊息 (軟刪除，保留記錄)
     await db
@@ -367,7 +368,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
     }
 
     // 生成訊息 ID
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const messageId = `msg_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // 準備訊息數據
     const messageData = {
@@ -382,8 +383,8 @@ crudRoutes.post('/', jwtAuth, async (c) => {
       isSent: true,
       deliveryStatus: 'sent',
       senderName: userPayload.displayName || null,
-      sentAt: new Date().toISOString(),
-      createdAt: new Date().toISOString()
+      sentAt: nowISO(),
+      createdAt: nowISO()
     };
 
     // 插入訊息
@@ -393,8 +394,8 @@ crudRoutes.post('/', jwtAuth, async (c) => {
     await db
       .update(conversations)
       .set({
-        lastMessageAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        lastMessageAt: nowISO(),
+        updatedAt: nowISO()
       })
       .where(eq(conversations.id, conversationId));
 

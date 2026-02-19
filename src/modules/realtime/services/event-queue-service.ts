@@ -11,6 +11,7 @@ import type {
   QueueMessage
 } from '../types';
 import { QueueBaseService, QueueProcessingResult } from '@/services/queue-base-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 事件路由規則
 interface EventRoutingRule {
@@ -133,7 +134,7 @@ export class EventQueueService extends QueueBaseService {
     priority?: EventPriority,
     source: EventSource = 'system'
   ): Promise<EventProcessingResult> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 獲取路由規則
@@ -144,7 +145,7 @@ export class EventQueueService extends QueueBaseService {
       const event: RealtimeEvent = {
         id: this.generateEventId(),
         type: eventType,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         source,
         data: eventData
       };
@@ -202,7 +203,7 @@ export class EventQueueService extends QueueBaseService {
       return {
         success: true,
         eventId: event.id,
-        processedAt: new Date().toISOString(),
+        processedAt: nowISO(),
         targetReached,
         totalTargets: this.calculateTotalTargets(finalTargets),
         processingTime
@@ -215,7 +216,7 @@ export class EventQueueService extends QueueBaseService {
       return {
         success: false,
         eventId: this.generateEventId(),
-        processedAt: new Date().toISOString(),
+        processedAt: nowISO(),
         targetReached: 0,
         totalTargets: 0,
         errors: [error instanceof Error ? error.message : 'Unknown error'],
@@ -528,7 +529,7 @@ export class EventQueueService extends QueueBaseService {
 
   // 私有工具方法
   private generateEventId(): string {
-    return `evt-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    return `evt-${nowMs()}-${Math.random().toString(36).substring(2, 8)}`;
   }
 
   private calculateTotalTargets(targets: EventTargets): number {

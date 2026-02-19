@@ -14,6 +14,7 @@ import type {
 } from '../types/integration-types';
 
 import type { Bindings } from '@/types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * LINE Bot API 訊息類型
@@ -176,10 +177,10 @@ export class LineIntegrationService implements IPlatformAdapter {
 
         return {
           success: true,
-          messageId: `line_${Date.now()}`,
+          messageId: `line_${nowMs()}`,
           platform: 'line',
           recipient,
-          sentAt: new Date().toISOString()
+          sentAt: nowISO()
         };
       }
 
@@ -265,7 +266,7 @@ export class LineIntegrationService implements IPlatformAdapter {
           success: true,
           messageCount: messages.length,
           platform: 'line',
-          sentAt: new Date().toISOString()
+          sentAt: nowISO()
         };
       }
 
@@ -303,7 +304,7 @@ export class LineIntegrationService implements IPlatformAdapter {
           pictureUrl: (profile as any).pictureUrl,
           statusMessage: (profile as any).statusMessage,
           language: (profile as any).language,
-          retrievedAt: new Date().toISOString()
+          retrievedAt: nowISO()
         };
       }
 
@@ -415,7 +416,7 @@ export class LineIntegrationService implements IPlatformAdapter {
           messageCount: messages.length,
           platform: 'line',
           type: 'broadcast',
-          sentAt: new Date().toISOString()
+          sentAt: nowISO()
         };
       }
 
@@ -435,7 +436,7 @@ export class LineIntegrationService implements IPlatformAdapter {
    * 執行健康檢查
    */
   async healthCheck(): Promise<HealthCheck> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 測試基本連接
@@ -449,7 +450,7 @@ export class LineIntegrationService implements IPlatformAdapter {
           status: 'pass',
           message: 'LINE integration is healthy',
           duration,
-          checkedAt: new Date().toISOString(),
+          checkedAt: nowISO(),
 
           details: {
             latency: duration,
@@ -468,7 +469,7 @@ export class LineIntegrationService implements IPlatformAdapter {
         status: 'fail',
         message: `LINE API not accessible: ${response.status}`,
         duration,
-        checkedAt: new Date().toISOString(),
+        checkedAt: nowISO(),
 
         details: {
           latency: duration,
@@ -482,7 +483,7 @@ export class LineIntegrationService implements IPlatformAdapter {
         status: 'fail',
         message: `Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         duration,
-        checkedAt: new Date().toISOString(),
+        checkedAt: nowISO(),
 
         details: {
           latency: duration,
@@ -499,7 +500,7 @@ export class LineIntegrationService implements IPlatformAdapter {
    * 獲取統計數據
    */
   getStats(): Promise<Partial<IntegrationStats>> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     return Promise.resolve({
       ...this.stats,

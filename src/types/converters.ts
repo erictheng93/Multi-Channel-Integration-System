@@ -12,6 +12,7 @@ import type {
   DbUser,
   Platform 
 } from './index';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 將資料庫客戶記錄轉換為新的 User 型別
 export function customerToUser(customer: Customer): User {
@@ -41,7 +42,7 @@ export function dbConversationToConversation(
       platformUserId: '',
       name: 'Unknown User',
       avatarUrl: '',
-      createdAt: Date.now()
+      createdAt: nowMs()
     },
     // Team-based assignment
     assignedTeamId: dbConv.assignedTeamId ?? undefined,
@@ -90,6 +91,6 @@ export function userToCustomer(user: User): Partial<Customer> {
     displayName: user.name,
     avatarUrl: user.avatarUrl || '',
     createdAt: new Date(user.createdAt).toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: nowISO()
   };
 }

@@ -6,6 +6,7 @@ import type { BroadcasterContext } from '../services/broadcaster-helpers';
 import type { BroadcasterHelpers } from '../services/broadcaster-helpers';
 import type { BroadcasterDeliveryService } from '../services/broadcaster-delivery-service';
 import { createContextLogger } from '../../utils/logger';
+import { nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('MessageBroadcaster');
 
@@ -37,7 +38,7 @@ export class BroadcasterHttpHandlers {
       return new Response(JSON.stringify({
         success: true,
         eventId: event.id,
-        queuedAt: Date.now(),
+        queuedAt: nowMs(),
         queueDepth: this.ctx.eventQueue.length
       }));
     } catch (error) {
@@ -48,7 +49,7 @@ export class BroadcasterHttpHandlers {
 
   async handleBroadcastToConversations(request: Request): Promise<Response> {
     try {
-      const startTime = Date.now();
+      const startTime = nowMs();
       const { event, targets } = await request.json() as { event: DurableObjectEvent; targets: string[] };
 
       if (!event || !targets || !Array.isArray(targets)) {
@@ -82,7 +83,7 @@ export class BroadcasterHttpHandlers {
 
   async handleBroadcastToUsers(request: Request): Promise<Response> {
     try {
-      const startTime = Date.now();
+      const startTime = nowMs();
       const { event, userIds } = await request.json() as { event: DurableObjectEvent; userIds: string[] };
 
       if (!event || !userIds || !Array.isArray(userIds)) {
@@ -116,7 +117,7 @@ export class BroadcasterHttpHandlers {
 
   async handleBroadcastToTeams(request: Request): Promise<Response> {
     try {
-      const startTime = Date.now();
+      const startTime = nowMs();
       const { event, teamIds } = await request.json() as { event: DurableObjectEvent; teamIds: number[] };
 
       if (!event || !teamIds || !Array.isArray(teamIds)) {
@@ -154,7 +155,7 @@ export class BroadcasterHttpHandlers {
    */
   async handleBroadcastToTeamsAndAdmins(request: Request): Promise<Response> {
     try {
-      const startTime = Date.now();
+      const startTime = nowMs();
       const { event, teamIds, includeAdmins = true } = await request.json() as {
         event: DurableObjectEvent;
         teamIds: number[];
@@ -268,7 +269,7 @@ export class BroadcasterHttpHandlers {
 
   async handleBatchBroadcast(request: Request): Promise<Response> {
     try {
-      const startTime = Date.now();
+      const startTime = nowMs();
       const { events, targets } = await request.json() as { events: DurableObjectEvent[]; targets: BroadcastTarget[] };
 
       if (!events || !Array.isArray(events) || !targets || !Array.isArray(targets)) {
@@ -397,7 +398,7 @@ export class BroadcasterHttpHandlers {
       id: this.helpers.generateEventId(),
       type: 'system_notification',
       source: 'system',
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       data: message,
       priority,
       deliveryOptions: {
@@ -456,7 +457,7 @@ export class BroadcasterHttpHandlers {
       errorRate: errorRate,
       averageLatency: this.ctx.stats.averageLatency,
       memoryUsage: (process as any).memoryUsage?.() || { heapUsed: 0, heapTotal: 0 },
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
 
     return new Response(JSON.stringify(status));

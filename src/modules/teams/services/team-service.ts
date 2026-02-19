@@ -24,6 +24,7 @@ import type {
   TeamTransferRequest,
   TeamTransferResponse
 } from '../types/team-types';
+import { nowISO } from '@/utils/timestamp'
 
 export class TeamService implements TeamServiceInterface {
   private db: DrizzleD1Database;
@@ -52,8 +53,8 @@ export class TeamService implements TeamServiceInterface {
       description: data.description || null,
       qrCode: data.qrCode || null,
       isActive: data.isActive ?? true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: nowISO(),
+      updatedAt: nowISO()
     };
 
     await this.db.insert(teams).values(teamData);
@@ -119,7 +120,7 @@ export class TeamService implements TeamServiceInterface {
   async updateTeam(id: number, data: TeamUpdateRequest): Promise<Team> {
     const updateData = {
       ...data,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     };
 
     await this.db
@@ -173,7 +174,7 @@ export class TeamService implements TeamServiceInterface {
         .update(conversations)
         .set({
           assignedTeamId: null,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(conversations.assignedTeamId, id));
 
@@ -182,7 +183,7 @@ export class TeamService implements TeamServiceInterface {
         .update(customers)
         .set({
           sourceTeamId: null,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(customers.sourceTeamId, id));
 
@@ -293,7 +294,7 @@ export class TeamService implements TeamServiceInterface {
 
   // Add member to team (via agent_teams junction table)
   async addMember(teamId: number, request: TeamMemberAddRequest): Promise<TeamMember> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     // Check if membership already exists
     const [existing] = await this.db
@@ -471,7 +472,7 @@ export class TeamService implements TeamServiceInterface {
   // Update team member
   async updateMember(teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember> {
     const updateData: any = {
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     };
 
     if (request.role) updateData.role = request.role;
@@ -548,14 +549,14 @@ export class TeamService implements TeamServiceInterface {
       .update(teams)
       .set({
         qrCode,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       })
       .where(eq(teams.id, teamId));
 
     return {
       teamId,
       qrCode,
-      generatedAt: new Date().toISOString(),
+      generatedAt: nowISO(),
       scanCount: 0
     };
   }
@@ -573,7 +574,7 @@ export class TeamService implements TeamServiceInterface {
     return {
       teamId,
       qrCode: team.qrCode,
-      generatedAt: team.updatedAt || new Date().toISOString(),
+      generatedAt: team.updatedAt || nowISO(),
       scanCount: 0
     };
   }
@@ -602,7 +603,7 @@ export class TeamService implements TeamServiceInterface {
       qrCodeScans: 0,
       period: {
         from: params?.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        to: params?.dateTo || new Date().toISOString()
+        to: params?.dateTo || nowISO()
       }
     };
   }
@@ -619,7 +620,7 @@ export class TeamService implements TeamServiceInterface {
   // Transfer members between teams (via agent_teams junction table)
   async transferMembers(request: TeamTransferRequest): Promise<TeamTransferResponse> {
     try {
-      const now = new Date().toISOString();
+      const now = nowISO();
 
       // Verify which agents belong to the source team via agent_teams
       const validMemberships = await this.db

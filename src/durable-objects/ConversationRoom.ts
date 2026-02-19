@@ -26,6 +26,7 @@ import { RoomStorageService } from './services/room-storage-service';
 import { RoomMessageService } from './services/room-message-service';
 import { RoomConnectionManager } from './services/room-connection-manager';
 import { RoomShardingHandler } from './handlers/room-sharding-handler';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Configuration for ConversationRoom behavior
@@ -98,7 +99,7 @@ export class ConversationRoom implements DurableObject {
       participants: new Set<string>(),
       conversationId: 'unknown', // Will be set from request URL
       messageCounter: 0,
-      lastActivity: Date.now(),
+      lastActivity: nowMs(),
       isActive: true,
 
       // Sharding metadata (Week 2: Sharding Implementation)
@@ -243,7 +244,7 @@ export class ConversationRoom implements DurableObject {
         conversationId: this.roomContext.conversationId,
         role: role as 'admin' | 'agent',
         connectionId,
-        lastActivity: Date.now(),
+        lastActivity: nowMs(),
         isActive: true,
         metadata: this.helpers.isFullMode() ? {
           userAgent: request.headers.get('User-Agent'),

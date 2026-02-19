@@ -3,6 +3,8 @@
  * 用於存儲對話的元數據，優化骨架屏顯示
  */
 
+import { nowISO } from '@/utils/timestamp'
+
 interface ConversationMetadata {
   messageCount: number
   lastMessageTime: string
@@ -60,14 +62,14 @@ class ConversationCache {
   set(conversationId: string, metadata: Partial<ConversationMetadata>): void {
     const existing = this.cache.get(conversationId) || {
       messageCount: 0,
-      lastMessageTime: new Date().toISOString(),
-      lastVisited: new Date().toISOString()
+      lastMessageTime: nowISO(),
+      lastVisited: nowISO()
     }
 
     const updated = {
       ...existing,
       ...metadata,
-      lastVisited: new Date().toISOString()
+      lastVisited: nowISO()
     }
 
     this.cache.set(conversationId, updated)

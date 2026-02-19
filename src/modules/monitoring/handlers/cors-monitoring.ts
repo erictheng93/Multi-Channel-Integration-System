@@ -6,6 +6,7 @@ import type { Context } from 'hono';
 import type { Bindings } from '@/types';
 import { CORSMonitor } from '@/monitoring/cors-monitor';
 import { successResponse, errorResponse, unauthorizedResponse } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 const corsMonitoringHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -145,7 +146,7 @@ corsMonitoringHandler.post('/cleanup', async (c: Context<{ Bindings: Bindings }>
 corsMonitoringHandler.get('/health', (c: Context<{ Bindings: Bindings }>) => {
   return c.json({
     status: 'healthy',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     service: 'cors-monitoring'
   });
 });

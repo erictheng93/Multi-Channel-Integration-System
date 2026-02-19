@@ -13,6 +13,7 @@ import type {
 import { EventQueueService } from '@modules/realtime/services/event-queue-service';
 import { eventStats } from '@modules/realtime/handlers/event-handler';
 import { RealtimeConfigManager } from '@modules/realtime/handlers/realtime-main';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 服務狀態枚舉
 export enum ServiceStatus {
@@ -47,7 +48,7 @@ export class RealtimeManager {
   private env?: Bindings;
   private queueService?: EventQueueService;
   private status: ServiceStatus = ServiceStatus.INITIALIZING;
-  private startTime: number = Date.now();
+  private startTime: number = nowMs();
   private healthCheckInterval?: NodeJS.Timeout;
 
   // 單例模式
@@ -105,7 +106,7 @@ export class RealtimeManager {
     queueDelivered: boolean;
     processingTime: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     if (!this.env || !this.queueService) {
       throw new Error('Service not initialized');
@@ -113,13 +114,13 @@ export class RealtimeManager {
 
     try {
       // 生成事件 ID
-      const eventId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+      const eventId = `${nowMs()}-${Math.random().toString(36).substring(2)}`;
 
       // 創建事件對象
       const event: RealtimeEvent = {
         id: eventId,
         type: eventType,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         source,
         data: eventData
       };
@@ -183,7 +184,7 @@ export class RealtimeManager {
     }>;
     totalProcessingTime: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const results: Array<{ eventId?: string; success: boolean; error?: string }> = [];
     let successCount = 0;
     let failureCount = 0;
@@ -275,7 +276,7 @@ export class RealtimeManager {
     return {
       status: serviceStatus,
       uptime,
-      lastCheck: new Date().toISOString(),
+      lastCheck: nowISO(),
       components,
       metrics: {
         activeConnections: 0,

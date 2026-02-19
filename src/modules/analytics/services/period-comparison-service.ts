@@ -5,6 +5,7 @@ import type { Database } from '@/db/drizzle-factory';
 import { and, gte, lte, count, sql } from 'drizzle-orm';
 import { conversations, messages, activities } from '@/db/schema';
 import type { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 期間定義
@@ -168,7 +169,7 @@ export class PeriodComparisonService {
       const ttl = this.getDurationBasedTTL(currentPeriod);
       await this.cacheService.set(
         cacheKey,
-        { data: comparison, metadata: { processedAt: new Date().toISOString(), cacheHit: false } } as any,
+        { data: comparison, metadata: { processedAt: nowISO(), cacheHit: false } } as any,
         ttl
       );
       console.log(`💾 Cached comparison: ${metric} (TTL: ${ttl}s)`);

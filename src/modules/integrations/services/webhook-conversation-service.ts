@@ -8,6 +8,7 @@ import { convertConversation } from '@/utils/drizzle-converters';
 import type { Bindings } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('WebhookConversation');
 
@@ -46,7 +47,7 @@ export async function findOrCreateConversation(
   if (!conversation) {
     // 建立新對話（使用 UUID）
     const conversationId = uuidv4();
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     if (platform === 'line') {
       console.log(`🔄 [${platformLabel} Webhook] Creating new conversation...`, {
@@ -155,7 +156,7 @@ export async function findOrCreateConversation(
     }
   } else {
     // 更新對話
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
     if (platform === 'line') {
       console.log(`🔄 [${platformLabel} Webhook] Updating existing conversation:`, {
         conversationId: conversation.id,
@@ -226,7 +227,7 @@ export async function saveMessage(
   const drizzleDb = createDbClient(env.DB);
   const platformLabel = platform.toUpperCase();
   const messageId = uuidv4();
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
 
   if (platform === 'line') {
     console.log(`💾 [${platformLabel} Webhook] Creating message...`, {

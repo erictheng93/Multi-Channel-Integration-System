@@ -17,6 +17,7 @@ import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { teamApi } from '@/api/team'
 import type { TeamMember } from '@/types'
+import { nowISO } from '@/utils/timestamp'
 
 // ==================== Types ====================
 
@@ -248,7 +249,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
                     teamName,
                     roleInTeam: 'member',
                     isPrimary: member.teams.length === 0, // 第一個團隊設為主要
-                    joinedAt: new Date().toISOString()
+                    joinedAt: nowISO()
                   })
                 }
               })

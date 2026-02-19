@@ -4,6 +4,7 @@
 import { Context } from 'hono';
 import type { Bindings } from '@/types';
 import { successResponse, handleApiError } from '@/utils/api-response';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export interface QueueStats {
   name: string;
@@ -62,7 +63,7 @@ export const queueMonitorHandler = {
           maxBatchTimeout: 5,
           retryPolicy: 'exponential-backoff'
         },
-        lastActivity: new Date().toISOString()
+        lastActivity: nowISO()
       };
 
       const unifiedData: UnifiedMonitoringData = {
@@ -76,8 +77,8 @@ export const queueMonitorHandler = {
           lineMessageQueue: lineMessageQueueStats
         },
         systemHealth: {
-          uptime: Date.now(),
-          lastCheck: new Date().toISOString()
+          uptime: nowMs(),
+          lastCheck: nowISO()
         }
       };
 
@@ -102,7 +103,7 @@ export const queueMonitorHandler = {
         },
         overall: {
           status: 'healthy',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }
       };
 
@@ -129,7 +130,7 @@ export const queueMonitorHandler = {
             retryRate: 0.05
           }
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       return successResponse(c, metrics, 'Performance metrics retrieved');

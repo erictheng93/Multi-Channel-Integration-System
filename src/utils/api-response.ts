@@ -5,10 +5,11 @@ import type {
   ApiError
 } from '../types/api-standard'
 import { HTTP_STATUS, API_ERROR_CODES } from '../types/api-standard'
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 生成請求 ID
 function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+  return `req_${nowMs()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 // 成功響應
@@ -22,7 +23,7 @@ export function successResponse<T>(
     success: true,
     data,
     message: message || '',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     requestId: generateRequestId()
   }
   
@@ -55,7 +56,7 @@ export function paginatedResponse<T>(
       hasPrev: pagination.page > 1
     },
     message,
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     requestId: generateRequestId()
   }
   
@@ -75,7 +76,7 @@ export function errorResponse(
   const response: StandardApiResponse = {
     success: false,
     error: apiError.message,
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     requestId: generateRequestId()
   }
   
@@ -94,7 +95,7 @@ export function validationErrorResponse(
       code: API_ERROR_CODES.VALIDATION_ERROR,
       errors
     },
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     requestId: generateRequestId()
   }
   

@@ -4,6 +4,7 @@
 
 import type { Bindings } from '../types';
 import { AlertLevel } from '../monitoring/websocket-analytics-service';
+import { nowMs } from '@/utils/timestamp'
 
 // 通知渠道類型
 export enum NotificationChannel {
@@ -103,7 +104,7 @@ export class AlertNotificationService {
       level,
       title,
       description,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       acknowledged: false,
       resolved: false,
       notificationsSent: []
@@ -133,13 +134,13 @@ export class AlertNotificationService {
           const success = await this.sendToChannel(channel, alert, metadata);
           alert.notificationsSent.push({
             channel,
-            timestamp: Date.now(),
+            timestamp: nowMs(),
             success
           });
         } catch (error) {
           alert.notificationsSent.push({
             channel,
-            timestamp: Date.now(),
+            timestamp: nowMs(),
             success: false,
             error: error instanceof Error ? error.message : String(error)
           });
@@ -375,7 +376,7 @@ export class AlertNotificationService {
       const alert: AlertRecord = JSON.parse(alertData);
       alert.acknowledged = true;
       alert.acknowledgedBy = acknowledgedBy;
-      alert.acknowledgedAt = Date.now();
+      alert.acknowledgedAt = nowMs();
 
       await this.env.CACHE?.put(alertKey, JSON.stringify(alert), {
         expirationTtl: 30 * 24 * 60 * 60 // 30 days
@@ -402,7 +403,7 @@ export class AlertNotificationService {
 
       const alert: AlertRecord = JSON.parse(alertData);
       alert.resolved = true;
-      alert.resolvedAt = Date.now();
+      alert.resolvedAt = nowMs();
 
       await this.env.CACHE?.put(alertKey, JSON.stringify(alert), {
         expirationTtl: 30 * 24 * 60 * 60 // 30 days
@@ -523,7 +524,7 @@ export class AlertNotificationService {
   }
 
   private generateAlertId(): string {
-    return `alert_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return `alert_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
   }
 
   private getAlertIcon(level: AlertLevel): string {

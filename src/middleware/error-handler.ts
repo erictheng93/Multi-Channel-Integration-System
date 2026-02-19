@@ -12,6 +12,7 @@ import {
   badRequestResponse,
   internalErrorResponse
 } from '../utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 // ==================== Custom Error Classes ====================
 
@@ -154,7 +155,7 @@ export function globalErrorHandler(error: Error, c: Context): Response {
         success: false,
         error: error.message,
         code: error.code,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 409);
     }
 
@@ -164,7 +165,7 @@ export function globalErrorHandler(error: Error, c: Context): Response {
         error: error.message,
         code: error.code,
         retryAfter: error.retryAfter,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 429);
 
       if (error.retryAfter) {
@@ -180,7 +181,7 @@ export function globalErrorHandler(error: Error, c: Context): Response {
       success: false,
       error: error.message,
       code: error.code,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, error.statusCode as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503);
   }
 

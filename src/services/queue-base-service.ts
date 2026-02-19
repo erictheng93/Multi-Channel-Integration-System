@@ -3,6 +3,7 @@
 // 專案名稱：Multi-Channel Support MVP - Queue Management System
 
 import type { Bindings } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 統一的隊列處理結果接口
 export interface QueueProcessingResult {
@@ -75,7 +76,7 @@ export abstract class QueueBaseService {
       errorCount: 0,
       retryCount: 0,
       averageProcessingTime: 0,
-      lastProcessedAt: new Date().toISOString()
+      lastProcessedAt: nowISO()
     };
   }
 
@@ -84,7 +85,7 @@ export abstract class QueueBaseService {
 
   // 統一的隊列消息處理入口
   async handleQueueMessage(message: MessageBatch<any>['messages'][0]): Promise<void> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     let result: QueueProcessingResult;
 
     try {
@@ -196,7 +197,7 @@ export abstract class QueueBaseService {
   // 更新處理統計
   private updateStats(success: boolean, processingTime: number): void {
     this.stats.totalProcessed++;
-    this.stats.lastProcessedAt = new Date().toISOString();
+    this.stats.lastProcessedAt = nowISO();
 
     if (success) {
       this.stats.successCount++;
@@ -244,7 +245,7 @@ export abstract class QueueBaseService {
       errorCount: 0,
       retryCount: 0,
       averageProcessingTime: 0,
-      lastProcessedAt: new Date().toISOString()
+      lastProcessedAt: nowISO()
     };
   }
 
@@ -253,7 +254,7 @@ export abstract class QueueBaseService {
     operation: () => Promise<T>, 
     operationName: string
   ): Promise<T> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     try {
       const result = await operation();
       const duration = Date.now() - startTime;

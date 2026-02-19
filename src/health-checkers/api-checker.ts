@@ -1,5 +1,6 @@
 // API服務健康檢查器
 import { HealthLevel, type HealthChecker, type HealthCheckResult, type HealthCheckConfig } from '../types/health-check';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class APIHealthChecker implements HealthChecker {
   name = 'api-services';
@@ -9,7 +10,7 @@ export class APIHealthChecker implements HealthChecker {
   constructor(private baseUrl: string = '') {}
 
   async check(): Promise<HealthCheckResult> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const checks = [];
 
     try {
@@ -73,7 +74,7 @@ export class APIHealthChecker implements HealthChecker {
       return {
         status: overallStatus,
         message,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         responseTime: totalResponseTime,
         details: {
           endpoints: results,
@@ -90,7 +91,7 @@ export class APIHealthChecker implements HealthChecker {
       return {
         status: 'critical',
         message: `API health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         responseTime: Date.now() - startTime,
         details: {
           error: error instanceof Error ? error.message : 'Unknown error'

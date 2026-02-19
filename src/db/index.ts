@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // Database connection helper with unified casing configuration
 // ✅ ENHANCED: Now includes camelCase casing for consistent query behavior
@@ -87,7 +88,7 @@ export class KVService {
 
   // Advanced KV operations
   async setWithTags(key: string, value: any, ttl: number, tags: string[] = []) {
-    const metadata = { tags, createdAt: new Date().toISOString() };
+    const metadata = { tags, createdAt: nowISO() };
     await this.cache.put(key, JSON.stringify({ value, metadata }), { 
       expirationTtl: ttl,
       metadata: JSON.stringify(metadata)
@@ -109,7 +110,7 @@ export class KVService {
 
   // Rate limiting
   async checkRateLimit(key: string, limit: number, windowSeconds: number): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
-    const now = Date.now();
+    const now = nowMs();
     const windowStart = now - (windowSeconds * 1000);
     const rateLimitKey = `rate_limit:${key}`;
     
@@ -136,8 +137,8 @@ export class KVService {
 
   // Distributed locks
   async acquireLock(lockKey: string, ttl: number = 30): Promise<string | null> {
-    const lockId = `${Date.now()}-${Math.random()}`;
-    const lockData = { lockId, acquiredAt: new Date().toISOString() };
+    const lockId = `${nowMs()}-${Math.random()}`;
+    const lockData = { lockId, acquiredAt: nowISO() };
     
     // Try to acquire lock
     const existing = await this.getCache(`lock:${lockKey}`);
@@ -165,7 +166,7 @@ export class KVService {
 
   // Pub/Sub simulation using KV
   async publishEvent(channel: string, event: any) {
-    const eventKey = `event:${channel}:${Date.now()}`;
+    const eventKey = `event:${channel}:${nowMs()}`;
     await this.setCache(eventKey, event, 300); // 5 minutes TTL
     
     // Update channel index

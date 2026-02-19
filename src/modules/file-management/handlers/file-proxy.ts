@@ -4,6 +4,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { fileAttachments } from '@/db/schema';
@@ -65,11 +66,7 @@ fileProxyHandler.get('/public/*', async (c) => {
     });
 
   } catch (error) {
-    console.error('[File Proxy] Error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Internal server error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -142,11 +139,7 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
     });
 
   } catch (error) {
-    console.error('[File Proxy] Error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Internal server error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

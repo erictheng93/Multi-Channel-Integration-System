@@ -19,6 +19,7 @@ import type {
   DbMessage,
   DbUser
 } from '../types';
+import { nowISO } from '@/utils/timestamp'
 
 // Infer types from schema
 type DrizzleCustomer = typeof customers.$inferSelect;
@@ -40,8 +41,8 @@ export function convertCustomer(drizzleCustomer: DrizzleCustomer): Customer {
     email: drizzleCustomer.email || '',
     sourceTeamId: drizzleCustomer.sourceTeamId || 0,
     metadata: drizzleCustomer.metadata || '',
-    createdAt: drizzleCustomer.createdAt || new Date().toISOString(),
-    updatedAt: drizzleCustomer.updatedAt || new Date().toISOString()
+    createdAt: drizzleCustomer.createdAt || nowISO(),
+    updatedAt: drizzleCustomer.updatedAt || nowISO()
   };
 }
 
@@ -56,8 +57,8 @@ export function convertConversation(drizzleConversation: DrizzleConversation): D
     assignedTeamId: drizzleConversation.assignedTeamId ?? 0,
     status: (drizzleConversation.status || 'active') as DbConversation['status'],
     lastMessageAt: drizzleConversation.lastMessageAt ?? '',
-    createdAt: drizzleConversation.createdAt || new Date().toISOString(),
-    updatedAt: drizzleConversation.updatedAt || new Date().toISOString()
+    createdAt: drizzleConversation.createdAt || nowISO(),
+    updatedAt: drizzleConversation.updatedAt || nowISO()
   };
 }
 
@@ -74,7 +75,7 @@ export function convertMessage(drizzleMessage: DrizzleMessage): DbMessage {
     isRecalled: Boolean(drizzleMessage.isRecalled),
     isSent: Boolean(drizzleMessage.isSent),
     deliveryStatus: (drizzleMessage.deliveryStatus as 'pending' | 'sent' | 'delivered' | 'failed') || MESSAGE_STATUS.PENDING,
-    createdAt: drizzleMessage.createdAt || new Date().toISOString()
+    createdAt: drizzleMessage.createdAt || nowISO()
   };
 
   // Handle optional fields with proper undefined assignment for exactOptionalPropertyTypes
@@ -137,8 +138,8 @@ export function convertAgent(drizzleAgent: DrizzleAgent, teamName?: string, prim
     primaryTeamId: primaryTeamId ?? null,
     teamName: teamName || null,
     isActive: Boolean(drizzleAgent.isActive),
-    createdAt: drizzleAgent.createdAt || new Date().toISOString(),
-    updatedAt: drizzleAgent.updatedAt || new Date().toISOString()
+    createdAt: drizzleAgent.createdAt || nowISO(),
+    updatedAt: drizzleAgent.updatedAt || nowISO()
   };
 }
 
@@ -170,7 +171,7 @@ export function prepareCustomerInsert(customerData: {
   sourceTeamId?: number;
   metadata?: string;
 }): Omit<any, 'id'> {
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   return {
     platform: customerData.platform,
     platformUserId: customerData.platformUserId,
@@ -192,7 +193,7 @@ export function prepareConversationInsert(conversationData: {
   assignedTeamId?: number;
   // Note: assignedUserId removed - only team assignment is supported now
 }): any {
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   return {
     id: conversationData.id,
     customerId: conversationData.customerId,
@@ -216,7 +217,7 @@ export function prepareMessageInsert(messageData: {
   isSent?: boolean;
   metadata?: string;
 }): any {
-  const timestamp = new Date().toISOString();
+  const timestamp = nowISO();
   return {
     id: messageData.id,
     conversationId: messageData.conversationId,

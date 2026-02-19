@@ -7,6 +7,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { agentTeams, agents, teams } from '@/db/schema';
 import type { D1Database } from '@cloudflare/workers-types';
+import { nowISO } from '@/utils/timestamp'
 
 export interface AgentTeamMembership {
   id: number;
@@ -141,7 +142,7 @@ export class AgentTeamsService {
    * 將客服加入團隊
    */
   async addAgentToTeam(data: AddToTeamRequest): Promise<AgentTeamMembership> {
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     // If this is set as primary, first unset any existing primary team
     if (data.isPrimary) {
@@ -195,7 +196,7 @@ export class AgentTeamsService {
       return result;
     }
 
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     try {
       // 🚀 Phase 3.1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)
@@ -285,7 +286,7 @@ export class AgentTeamsService {
       return result;
     }
 
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     try {
       // 🚀 Step 1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)

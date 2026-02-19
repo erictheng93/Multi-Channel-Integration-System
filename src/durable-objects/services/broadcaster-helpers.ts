@@ -7,6 +7,7 @@ import type {
   DistributedLock
 } from '../../types/websocket-types';
 import { createContextLogger } from '../../utils/logger';
+import { nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('MessageBroadcaster');
 
@@ -219,7 +220,7 @@ export class BroadcasterHelpers {
   }
 
   async updateMetrics(): Promise<void> {
-    const now = Date.now();
+    const now = nowMs();
     const timeSinceLastUpdate = now - this.ctx.stats.lastProcessed;
 
     if (timeSinceLastUpdate > 0) {
@@ -234,7 +235,7 @@ export class BroadcasterHelpers {
   }
 
   generateEventId(): string {
-    return `broadcast_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return `broadcast_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
   }
 
   sleep(ms: number): Promise<void> {

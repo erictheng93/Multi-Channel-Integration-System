@@ -10,6 +10,7 @@ import type { RoomContext, RoomHelpers } from './room-helpers';
 import type { RoomMessageService } from './room-message-service';
 import type { RoomStorageService } from './room-storage-service';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Manages WebSocket connections for ConversationRoom:
@@ -62,7 +63,7 @@ export class RoomConnectionManager {
         mode: this.ctx.config.mode, // Inform client of room mode
         serverLastMessageAt: this.messageService.getLastMessageTimestamp() // 🔧 重連同步：伺服器最後訊息時間戳
       },
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
   }
 
@@ -70,14 +71,14 @@ export class RoomConnectionManager {
     const { connectionId } = connection;
 
     // Update last activity
-    connection.lastActivity = Date.now();
-    this.ctx.lastActivity = Date.now();
+    connection.lastActivity = nowMs();
+    this.ctx.lastActivity = nowMs();
 
     testSafeLog(`[ConversationRoom] Message from ${connectionId}:`, message.type);
 
     switch (message.type) {
       case 'ping':
-        this.helpers.sendMessage(connection, { type: 'pong', timestamp: Date.now() });
+        this.helpers.sendMessage(connection, { type: 'pong', timestamp: nowMs() });
         break;
 
       case 'subscribe':
@@ -128,7 +129,7 @@ export class RoomConnectionManager {
       userId,
       conversationId: this.ctx.conversationId,
       role: connection.role,
-      connectedAt: Date.now(),
+      connectedAt: nowMs(),
       lastActivity: connection.lastActivity
     });
 
@@ -140,7 +141,7 @@ export class RoomConnectionManager {
       id: this.helpers.generateEventId(),
       type: 'user_joined',
       source: 'websocket',
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       userId,
       conversationId: this.ctx.conversationId,
       data: {
@@ -182,7 +183,7 @@ export class RoomConnectionManager {
         id: this.helpers.generateEventId(),
         type: 'user_left',
         source: 'websocket',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         userId,
         conversationId: this.ctx.conversationId,
         data: {
@@ -216,7 +217,7 @@ export class RoomConnectionManager {
   }
 
   async cleanupInactiveConnections(): Promise<void> {
-    const now = Date.now();
+    const now = nowMs();
     const inactiveConnections = Array.from(this.ctx.connections.entries())
       .filter(([_, connection]) => now - connection.lastActivity > this.ctx.INACTIVITY_TIMEOUT);
 
@@ -244,7 +245,7 @@ export class RoomConnectionManager {
       const broadcastMessage: WebSocketMessage = {
         type: 'event',
         data: event,
-        timestamp: Date.now()
+        timestamp: nowMs()
       };
 
       const otherConnections = Array.from(this.ctx.connections.values())

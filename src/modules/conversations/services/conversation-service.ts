@@ -24,6 +24,7 @@ import type {
   NewConversationTransfer,
   LatestMessageSummary
 } from '../types/conversation-types';
+import { nowISO } from '@/utils/timestamp'
 
 export class ConversationService implements ConversationServiceInterface {
   private db: DrizzleD1Database;
@@ -39,8 +40,8 @@ export class ConversationService implements ConversationServiceInterface {
     const conversationData = {
       ...data,
       id: data.id || crypto.randomUUID(),
-      createdAt: data.createdAt || new Date().toISOString(),
-      updatedAt: data.updatedAt || new Date().toISOString()
+      createdAt: data.createdAt || nowISO(),
+      updatedAt: data.updatedAt || nowISO()
     };
 
     await this.db.insert(conversations).values(conversationData);
@@ -137,7 +138,7 @@ export class ConversationService implements ConversationServiceInterface {
   async updateConversation(id: string, data: Partial<Conversation>): Promise<Conversation> {
     const updateData = {
       ...data,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     };
 
     await this.db
@@ -310,7 +311,7 @@ export class ConversationService implements ConversationServiceInterface {
 
     const updateData: any = {
       assignedTeamId: params.teamId,
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     };
 
     await this.db
@@ -327,7 +328,7 @@ export class ConversationService implements ConversationServiceInterface {
         transferReason: params.reason,
         transferredBy: 'system', // 應該從 context 獲取
         transferType: 'manual',
-        createdAt: new Date().toISOString()
+        createdAt: nowISO()
       };
 
       await this.db.insert(conversationTransfers).values(transferData);
@@ -366,7 +367,7 @@ export class ConversationService implements ConversationServiceInterface {
       .update(conversations)
       .set({
         assignedTeamId: toTeamId,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       })
       .where(eq(conversations.id, id));
 
@@ -378,7 +379,7 @@ export class ConversationService implements ConversationServiceInterface {
       transferReason: reason || 'Manual transfer',
       transferredBy: 'system',
       transferType: 'manual',
-      createdAt: new Date().toISOString()
+      createdAt: nowISO()
     };
 
     await this.db.insert(conversationTransfers).values(transferData);
@@ -415,7 +416,7 @@ export class ConversationService implements ConversationServiceInterface {
       ...messageData,
       id: messageData.id || crypto.randomUUID(),
       conversationId,
-      createdAt: messageData.createdAt || new Date().toISOString()
+      createdAt: messageData.createdAt || nowISO()
     };
 
     await this.db.insert(messages).values(message);
@@ -423,7 +424,7 @@ export class ConversationService implements ConversationServiceInterface {
     // Update conversation updated time
     await this.db
       .update(conversations)
-      .set({ updatedAt: new Date().toISOString() })
+      .set({ updatedAt: nowISO() })
       .where(eq(conversations.id, conversationId));
 
     const [createdMessage] = await this.db

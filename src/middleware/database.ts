@@ -3,6 +3,7 @@ import { createDb, KVService } from '../db';
 import { DatabaseService } from '../services/database';
 import { ConversationService } from '../services/conversation-service';
 import type { HonoContext } from '../types/bindings';
+import { nowMs } from '@/utils/timestamp'
 
 // Database and KV initialization middleware
 export const databaseMiddleware = createMiddleware<HonoContext>(async (c, next) => {
@@ -29,7 +30,7 @@ export const databaseMiddleware = createMiddleware<HonoContext>(async (c, next) 
 
 // Performance monitoring middleware
 export const performanceMiddleware = createMiddleware<HonoContext>(async (c, next) => {
-  const start = Date.now();
+  const start = nowMs();
   const path = c.req.path;
   
   await next();

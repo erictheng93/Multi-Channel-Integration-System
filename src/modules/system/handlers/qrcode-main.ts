@@ -6,6 +6,7 @@ import { QRCodeServiceImpl as QRCodeService } from '@/services/qrcode-service-im
 import { getTeamByQRCode } from '@/utils/team';
 import { jwtAuth } from '@/middleware/auth';
 import { handleApiError } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 const qrcodeHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -18,7 +19,7 @@ qrcodeHandler.delete('/:token', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'QR Code deactivated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {

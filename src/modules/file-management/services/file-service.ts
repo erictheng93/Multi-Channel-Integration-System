@@ -32,6 +32,7 @@ import {
   formatFileSize
 } from '../utils/file-helpers';
 import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class FileService {
   private readonly db: Database;
@@ -143,8 +144,8 @@ export class FileService {
         uploadedBy: request.uploadedBy,
         metadata,
         processingStatus: 'completed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: nowISO(),
+        updatedAt: nowISO()
       };
 
       // 儲存到資料庫
@@ -515,7 +516,7 @@ export class FileService {
    * 批量操作檔案
    */
   async batchOperation(operation: BatchFileOperation): Promise<BatchFileResult> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const successful: string[] = [];
     const failed: Array<{ fileId: string; error: string }> = [];
 
@@ -584,8 +585,8 @@ export class FileService {
         extension: record.filename.split('.').pop() || ''
       },
       processingStatus: 'completed',
-      createdAt: record.createdAt || new Date().toISOString(),
-      updatedAt: record.updatedAt || new Date().toISOString()
+      createdAt: record.createdAt || nowISO(),
+      updatedAt: record.updatedAt || nowISO()
     };
   }
 }

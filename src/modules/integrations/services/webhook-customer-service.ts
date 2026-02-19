@@ -6,6 +6,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { customers } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('WebhookCustomer');
 
@@ -58,7 +59,7 @@ export async function findOrCreateCustomer(
     }
 
     // 建立新使用者
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
     await drizzleDb
       .insert(customers)
       .values({

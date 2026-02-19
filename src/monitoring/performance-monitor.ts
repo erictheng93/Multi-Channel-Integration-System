@@ -14,6 +14,7 @@ import type {
   AlertNotification,
   MonitoringAlert
 } from '../types/monitoring-types';
+import { nowMs } from '@/utils/timestamp'
 
 // =================== Configuration ===================
 
@@ -73,7 +74,7 @@ export class PerformanceMonitor {
 
   // Performance tracking
   private lastMetricsCollection: number = 0;
-  private systemStartTime: number = Date.now();
+  private systemStartTime: number = nowMs();
 
   constructor(env: Bindings, config: Partial<PerformanceMonitorConfig> = {}) {
     this.env = env;
@@ -90,7 +91,7 @@ export class PerformanceMonitor {
 
     console.log('🚀 [PerformanceMonitor] Starting performance monitoring');
     this.isRunning = true;
-    this.lastMetricsCollection = Date.now();
+    this.lastMetricsCollection = nowMs();
 
     // Start monitoring loop
     this.monitoringInterval = setInterval(async () => {
@@ -130,7 +131,7 @@ export class PerformanceMonitor {
       metrics: currentMetrics,
       alerts: this.convertAlertsToMonitoringAlerts(Array.from(this.activeAlerts.values())),
       uptime: Date.now() - this.systemStartTime,
-      lastUpdated: Date.now()
+      lastUpdated: nowMs()
     };
   }
 
@@ -143,7 +144,7 @@ export class PerformanceMonitor {
     const alert = this.activeAlerts.get(alertId);
     if (alert) {
       alert.acknowledged = true;
-      alert.acknowledgedAt = Date.now();
+      alert.acknowledgedAt = nowMs();
       console.log(`✅ [PerformanceMonitor] Alert acknowledged: ${alertId}`);
     }
   }
@@ -175,7 +176,7 @@ export class PerformanceMonitor {
   }
 
   private async getCurrentMetrics(): Promise<PerformanceMetrics> {
-    const timestamp = Date.now();
+    const timestamp = nowMs();
 
     // Collect WebSocket metrics
     const websocketMetrics = await this.collectWebSocketMetrics();
@@ -234,7 +235,7 @@ export class PerformanceMonitor {
         throughput: data.connections?.messagesThroughput?.outbound || 0,
         errorRate: data.connections?.errorRate || 0,
         connectionsByRole: data.connections?.connectionsByRole || {},
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       };
     } catch (error) {
       console.error('❌ [PerformanceMonitor] WebSocket metrics collection failed:', error);
@@ -272,7 +273,7 @@ export class PerformanceMonitor {
           totalRoomsActive: roomMetrics.filter(m => m.isActive).length
         },
         overallHealth: this.calculateDurableObjectHealth(roomMetrics),
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       };
     } catch (error) {
       console.error('❌ [PerformanceMonitor] Durable Objects metrics collection failed:', error);
@@ -312,7 +313,7 @@ export class PerformanceMonitor {
         requestsPerSecond: this.calculateRequestsPerSecond(),
         workerInvocations: this.getWorkerInvocations(),
         edgeLocations: this.getActiveEdgeLocations(),
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       };
     } catch (error) {
       console.error('❌ [PerformanceMonitor] System metrics collection failed:', error);
@@ -340,7 +341,7 @@ export class PerformanceMonitor {
         successRate: delayedMetrics.successRate || 1,
         throughput: delayedMetrics.processingRate || 0,
         errorRate: 1 - (delayedMetrics.successRate || 1),
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       };
     } catch (error) {
       console.error('❌ [PerformanceMonitor] Message metrics collection failed:', error);
@@ -525,7 +526,7 @@ export class PerformanceMonitor {
       // Update existing alert
       const existingAlert = this.activeAlerts.get(alertId)!;
       existingAlert.count = (existingAlert.count || 0) + 1;
-      existingAlert.lastTriggered = Date.now();
+      existingAlert.lastTriggered = nowMs();
       existingAlert.data = alertData;
       return;
     }
@@ -543,12 +544,12 @@ export class PerformanceMonitor {
       metric: alertData.metric,
       value: alertData.value,
       threshold: alertData.threshold,
-      triggeredAt: Date.now(),
-      lastTriggered: Date.now(),
+      triggeredAt: nowMs(),
+      lastTriggered: nowMs(),
       count: 1,
       acknowledged: false,
       data: alertData,
-      createdAt: Date.now(),
+      createdAt: nowMs(),
       // Required notification properties
       alert: {
         id: alertId,
@@ -561,10 +562,10 @@ export class PerformanceMonitor {
         metric: alertData.metric,
         threshold: alertData.threshold,
         currentValue: alertData.value,
-        createdAt: Date.now()
+        createdAt: nowMs()
       },
       channels: (this.config.alerting as any).channels || ['default'],
-      sentAt: Date.now(),
+      sentAt: nowMs(),
       status: 'pending'
     };
 
@@ -595,7 +596,7 @@ export class PerformanceMonitor {
     try {
       const payload = {
         alert,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         system: 'WebSocket Performance Monitor',
         environment: this.env.ENVIRONMENT || 'production'
       };
@@ -624,7 +625,7 @@ export class PerformanceMonitor {
       const payload = {
         type: 'resolution',
         alert,
-        resolvedAt: Date.now(),
+        resolvedAt: nowMs(),
         system: 'WebSocket Performance Monitor'
       };
 
@@ -738,7 +739,7 @@ export class PerformanceMonitor {
         status: alert.acknowledged ? 'acknowledged' : 'active',
         category: alert.category || 'performance',
         source: alert.source || 'performance-monitor',
-        createdAt: alert.createdAt || alert.triggeredAt || Date.now()
+        createdAt: alert.createdAt || alert.triggeredAt || nowMs()
       };
 
       // Add optional properties only if they exist
@@ -769,7 +770,7 @@ export class PerformanceMonitor {
   }
 
   private calculateRequestsPerSecond(): number {
-    const now = Date.now();
+    const now = nowMs();
     const timeSpan = now - this.lastMetricsCollection;
     return (1000 / Math.max(timeSpan, 1)) * 10; // Rough estimate
   }
@@ -795,7 +796,7 @@ export class PerformanceMonitor {
       throughput: 0,
       errorRate: 0,
       connectionsByRole: {},
-      lastUpdated: Date.now()
+      lastUpdated: nowMs()
     };
   }
 
@@ -815,7 +816,7 @@ export class PerformanceMonitor {
         totalRoomsActive: 0
       },
       overallHealth: 100,
-      lastUpdated: Date.now()
+      lastUpdated: nowMs()
     };
   }
 
@@ -826,7 +827,7 @@ export class PerformanceMonitor {
       requestsPerSecond: 0,
       workerInvocations: 0,
       edgeLocations: 0,
-      lastUpdated: Date.now()
+      lastUpdated: nowMs()
     };
   }
 
@@ -839,7 +840,7 @@ export class PerformanceMonitor {
       successRate: 1,
       throughput: 0,
       errorRate: 0,
-      lastUpdated: Date.now()
+      lastUpdated: nowMs()
     };
   }
 }

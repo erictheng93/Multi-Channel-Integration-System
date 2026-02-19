@@ -11,6 +11,7 @@ import { type Ref, type ComputedRef } from 'vue'
 import type { Tag } from '@/types/tag'
 import { createTag, updateTag, deleteTag } from '@/api/tags'
 import { tagCacheService } from '@/services/tagCacheService'
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Store interface for tag actions
@@ -173,7 +174,7 @@ export function useTagActions(
           name: updateData.name,
           color: updateData.color,
           description: updateData.description || null,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
 
         // Immediate success feedback
@@ -217,8 +218,8 @@ export function useTagActions(
           createdBy: 'current-user',
           customerCount: 0,
           conversationCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          createdAt: nowISO(),
+          updatedAt: nowISO()
         }
 
         const tempId = optimisticAddTag(newTag)

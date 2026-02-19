@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 const healthRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -10,7 +11,7 @@ healthRoutes.get('/health', (c) => {
   return c.json({
     status: 'healthy',
     module: 'messaging',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     version: '2.0.0'
   });
 });
@@ -54,7 +55,7 @@ healthRoutes.get('/info', (c) => {
         'GET /export - Export messages (JSON/CSV)'
       ]
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 

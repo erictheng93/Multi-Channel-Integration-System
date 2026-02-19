@@ -10,6 +10,7 @@ import { eq, lt, desc, and, inArray } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { messages, fileAttachments, conversations, customers } from '../db/schema';
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '../utils/line';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Session data structure for validation
@@ -75,7 +76,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       const session: SessionData = JSON.parse(sessionData);
 
       // Check expiration
-      if (session.expiresAt < Date.now()) {
+      if (session.expiresAt < nowMs()) {
         return { valid: false, error: 'Session expired' };
       }
 
@@ -271,7 +272,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         });
 
         const messageId = crypto.randomUUID();
-        const createdAt = new Date().toISOString();
+        const createdAt = nowISO();
 
         // Store assets and attachmentIds in metadata field as JSON
         // 🔧 Phase 3: Include correlationId for deduplication
@@ -513,7 +514,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
               id: crypto.randomUUID(),
               type: 'new_message',
               source: 'api',
-              timestamp: Date.now(),
+              timestamp: nowMs(),
               conversationId,
               data: {
                 conversationId,

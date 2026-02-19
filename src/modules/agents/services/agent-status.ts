@@ -6,6 +6,7 @@ import type {
   AgentStatusType,
   UpdateStatusRequest
 } from '../types/agent-types';
+import { nowISO } from '@/utils/timestamp'
 
 export class AgentStatusService {
   constructor(private kv: KVNamespace) {}
@@ -15,7 +16,7 @@ export class AgentStatusService {
     try {
       const newStatus: AgentStatus = {
         status: statusRequest.status,
-        since: new Date().toISOString(),
+        since: nowISO(),
         availableUntil: statusRequest.availableUntil || null,
         note: statusRequest.note || null
       };
@@ -41,7 +42,7 @@ export class AgentStatusService {
         // 預設狀態
         return {
           status: 'offline',
-          since: new Date().toISOString(),
+          since: nowISO(),
           availableUntil: null,
           note: null
         };
@@ -188,7 +189,7 @@ export class AgentStatusService {
       // 加入新紀錄
       history.unshift({
         ...status,
-        recordedAt: new Date().toISOString()
+        recordedAt: nowISO()
       });
 
       // 保留最近 100 筆記錄

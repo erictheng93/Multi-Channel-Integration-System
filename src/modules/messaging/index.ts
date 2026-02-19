@@ -2,7 +2,7 @@
 // 統一導出訊息模組的所有功能和類型
 
 // ======================== Handlers 導出 ========================
-export { MessageMainHandler, messageRouter } from './handlers/index';
+// Active handler: handlers/messaging/index.ts (modular orchestrator, registered via src/handlers/index.ts)
 
 // ======================== Services 導出 ========================
 export { MessageCrudService } from './services/message-crud';
@@ -119,7 +119,6 @@ export const MESSAGING_MODULE_INFO = {
 import type { Bindings } from '../../types';
 import type { D1Database } from '@cloudflare/workers-types';
 import { createMessagingServices } from '@modules/messaging/services';
-import { MessageMainHandler } from '@modules/messaging/handlers/message-main';
 
 /**
  * 創建完整的 Messaging 服務集合
@@ -130,9 +129,6 @@ export function createMessagingModule(db: D1Database, env: Bindings) {
 
   return {
     services,
-    handlers: {
-      main: MessageMainHandler
-    },
     moduleInfo: MESSAGING_MODULE_INFO
   };
 }

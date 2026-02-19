@@ -14,6 +14,7 @@ import {
   notFoundResponse,
   forbiddenResponse
 } from '@/utils/api-response';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const attachmentRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -141,7 +142,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
     }
 
     // 生成 R2 key
-    const timestamp = Date.now();
+    const timestamp = nowMs();
     const randomStr = Math.random().toString(36).substr(2, 9);
     const fileExtension = file.name.split('.').pop() || 'bin';
     const r2Key = `attachments/${message.conversationId}/${messageId}/${timestamp}_${randomStr}.${fileExtension}`;
@@ -175,7 +176,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       fileSize: file.size,
       fileUrl,
       r2Key,
-      createdAt: new Date().toISOString()
+      createdAt: nowISO()
     });
 
     return successResponse(c, {
@@ -185,7 +186,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       mimeType: file.type,
       fileSize: file.size,
       url: fileUrl,
-      createdAt: new Date().toISOString()
+      createdAt: nowISO()
     }, 'Attachment uploaded successfully', 201);
 
   } catch (error) {

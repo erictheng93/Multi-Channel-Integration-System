@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { teamApi } from '@/api/team'
 import type { TeamMember } from '@/types'
+import { nowISO } from '@/utils/timestamp'
 import { getWebSocketManager, type TeamMemberEventData, type TeamUpdateEventData } from '@/services/websocketManager'
 
 // 團隊類型定義
@@ -590,7 +591,7 @@ export const useTeamStore = defineStore('team', () => {
     if (data.teams !== undefined) {member.teams = data.teams}
 
     // 更新 updatedAt
-    member.updatedAt = new Date().toISOString()
+    member.updatedAt = nowISO()
 
     console.log(`✅ [TeamStore] updateMemberLocal: Member ${memberId} updated locally`, data)
     return true
@@ -623,7 +624,7 @@ export const useTeamStore = defineStore('team', () => {
     if (data.memberCount !== undefined) {team.memberCount = data.memberCount}
 
     // 更新 updatedAt
-    team.updatedAt = new Date().toISOString()
+    team.updatedAt = nowISO()
 
     console.log(`✅ [TeamStore] updateTeamLocal: Team ${teamId} updated locally`, data)
     return true

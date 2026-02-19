@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import {
@@ -11,6 +12,7 @@ import {
   generateTokenBatch,
   getUserById
 } from '@/utils/auth';
+import { nowMs } from '@/utils/timestamp'
 
 const phase2AuthHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -48,15 +50,11 @@ phase2AuthHandler.post('/monitoring-token', jwtAuth, async (c) => {
       expiresIn,
       expiresAt: new Date((Math.floor(Date.now() / 1000) + expiresIn) * 1000).toISOString(),
       generatedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Auth] Monitoring token generation failed:', error);
-    return c.json({
-      error: 'Token generation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -114,15 +112,11 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
       expiresIn,
       expiresAt: new Date((Math.floor(Date.now() / 1000) + expiresIn) * 1000).toISOString(),
       generatedBy: user.id,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Auth] User token generation failed:', error);
-    return c.json({
-      error: 'Token generation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -173,16 +167,12 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
       count: tokens.length,
       expiresIn,
       generatedBy: user.id,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       warning: 'These are development tokens - do not use in production'
     });
 
   } catch (error) {
-    console.error('❌ [Auth] Batch token generation failed:', error);
-    return c.json({
-      error: 'Batch token generation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -222,7 +212,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
       expiresAt: new Date(payload.exp * 1000).toISOString(),
       timeRemaining,
       isExpiringSoon,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
@@ -230,7 +220,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
       success: true,
       valid: false,
       error: error instanceof Error ? error.message : 'Token validation failed',
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
   }
 });
@@ -268,7 +258,7 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
         newToken,
         type: 'monitoring',
         message: 'Monitoring token refreshed',
-        timestamp: Date.now()
+        timestamp: nowMs()
       });
     }
 
@@ -286,15 +276,11 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
       newToken,
       type: 'user',
       message: 'User token refreshed',
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Auth] Token refresh failed:', error);
-    return c.json({
-      error: 'Token refresh failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -321,15 +307,11 @@ phase2AuthHandler.get('/status', jwtAuth, async (c) => {
         canAccessAnalytics: user.role === 'admin',
         canTriggerAlerts: user.role === 'admin'
       },
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
   } catch (error) {
-    console.error('❌ [Auth] Status check failed:', error);
-    return c.json({
-      error: 'Status check failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

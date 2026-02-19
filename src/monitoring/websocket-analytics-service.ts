@@ -3,6 +3,7 @@
 // 專案：Multi-Channel Support MVP - WebSocket 監控系統
 
 import type { Bindings } from '../types';
+import { nowMs } from '@/utils/timestamp'
 
 // 錯誤統計數據結構
 export interface WebSocketErrorStats {
@@ -85,7 +86,7 @@ export class WebSocketAnalyticsService {
   async recordError(error: WebSocketErrorStats): Promise<void> {
     try {
       // 記錄到 KV 存儲，使用時間戳作為 key
-      const errorKey = `${this.STATS_KEY_PREFIX}error:${Date.now()}:${Math.random().toString(36).substring(2, 8)}`;
+      const errorKey = `${this.STATS_KEY_PREFIX}error:${nowMs()}:${Math.random().toString(36).substring(2, 8)}`;
 
       await this.env.CACHE?.put(errorKey, JSON.stringify(error), {
         expirationTtl: 7 * 24 * 60 * 60 // 保存 7 天
@@ -105,7 +106,7 @@ export class WebSocketAnalyticsService {
 
   async recordConnectionQuality(metrics: ConnectionQualityMetrics): Promise<void> {
     try {
-      const metricsKey = `${this.STATS_KEY_PREFIX}quality:${Date.now()}:${metrics.userId}`;
+      const metricsKey = `${this.STATS_KEY_PREFIX}quality:${nowMs()}:${metrics.userId}`;
 
       await this.env.CACHE?.put(metricsKey, JSON.stringify(metrics), {
         expirationTtl: 24 * 60 * 60 // 保存 1 天
@@ -124,7 +125,7 @@ export class WebSocketAnalyticsService {
 
   async generateTrendAnalysis(timeRangeHours: number = 24): Promise<TrendAnalysisData> {
     try {
-      const endTime = Date.now();
+      const endTime = nowMs();
       const startTime = endTime - (timeRangeHours * 60 * 60 * 1000);
 
       // 獲取時間範圍內的所有錯誤記錄
@@ -172,7 +173,7 @@ export class WebSocketAnalyticsService {
       };
 
       // 保存趨勢分析結果
-      const trendKey = `${this.TRENDS_KEY_PREFIX}${timeRangeHours}h:${Date.now()}`;
+      const trendKey = `${this.TRENDS_KEY_PREFIX}${timeRangeHours}h:${nowMs()}`;
       await this.env.CACHE?.put(trendKey, JSON.stringify(trendData), {
         expirationTtl: 7 * 24 * 60 * 60 // 保存 7 天
       });
@@ -189,7 +190,7 @@ export class WebSocketAnalyticsService {
   async checkAlertConditions(_error: WebSocketErrorStats): Promise<void> {
     try {
       const config = await this.getAlertConfig();
-      const now = Date.now();
+      const now = nowMs();
       const windowStart = now - (config.timeWindowMinutes * 60 * 1000);
 
       // 檢查錯誤率
@@ -297,7 +298,7 @@ export class WebSocketAnalyticsService {
   }
 
   private async getCurrentStats(): Promise<any> {
-    const now = Date.now();
+    const now = nowMs();
     const oneHourAgo = now - (60 * 60 * 1000);
 
     const recentErrors = await this.getErrorsInTimeRange(oneHourAgo, now);
@@ -317,7 +318,7 @@ export class WebSocketAnalyticsService {
   private async getTopErrors(limit: number): Promise<Array<{errorCode: number; count: number; percentage: number}>> {
     try {
       const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
-      const errors = await this.getErrorsInTimeRange(twentyFourHoursAgo, Date.now());
+      const errors = await this.getErrorsInTimeRange(twentyFourHoursAgo, nowMs());
 
       const errorCounts: Record<number, number> = {};
       errors.forEach(error => {
@@ -402,7 +403,7 @@ export class WebSocketAnalyticsService {
       const stats = existing ? JSON.parse(existing) : {
         totalConnections: 0,
         averageLatency: 0,
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       };
 
       // 計算移動平均
@@ -411,7 +412,7 @@ export class WebSocketAnalyticsService {
 
       stats.totalConnections = newTotal;
       stats.averageLatency = newAverage;
-      stats.lastUpdated = Date.now();
+      stats.lastUpdated = nowMs();
       stats.lastConnectionQuality = metrics.isStable ? 'good' : 'poor';
 
       await this.env.CACHE?.put(userKey, JSON.stringify(stats), {

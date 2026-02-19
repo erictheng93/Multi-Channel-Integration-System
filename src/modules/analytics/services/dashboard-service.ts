@@ -20,6 +20,7 @@ import type {
   TimeRange
 } from '../types/analytics-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 儀表板服務配置選項
@@ -115,7 +116,7 @@ export class DashboardService {
       const configKey = dashboardId ? `dashboard:${userId}:${dashboardId}` : `dashboard:${userId}:default`;
 
       // 更新時間戳
-      config.updatedAt = new Date().toISOString();
+      config.updatedAt = nowISO();
 
       // 保存到 KV
       await this.kv.put(configKey, JSON.stringify(config), {
@@ -228,7 +229,7 @@ export class DashboardService {
       data.metadata = {
         ...data.metadata,
         widgetId: widget.id,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: nowISO(),
         refreshInterval: widget.refreshInterval || this.options.refreshInterval
       };
 
@@ -255,7 +256,7 @@ export class DashboardService {
       type: widget.dataSource.type || 'analytics',
       timeRange: timeRange || widget.defaultTimeRange || '24h',
       startDate: timeRange === 'custom' ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() : undefined,
-      endDate: timeRange === 'custom' ? new Date().toISOString() : undefined,
+      endDate: timeRange === 'custom' ? nowISO() : undefined,
       metrics: [widget.metric!],
       filters: widget.filters || {}
     };
@@ -268,13 +269,13 @@ export class DashboardService {
       type: 'metric',
       data: result.data,
       loading: false,
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       metadata: {
         queryTime: 0,
         recordCount: result.data.length,
         cacheHit: false,
         dataSource: widget.dataSource.type || 'analytics',
-        refreshedAt: new Date().toISOString()
+        refreshedAt: nowISO()
       },
       value: result.data.length > 0 ? result.data[0][widget.metric!] : 0,
       previousValue: undefined, // TODO: 實現上期對比
@@ -295,7 +296,7 @@ export class DashboardService {
       type: widget.dataSource.type || 'analytics',
       timeRange: timeRange || widget.defaultTimeRange || '7d',
       startDate: timeRange === 'custom' ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-      endDate: timeRange === 'custom' ? new Date().toISOString() : undefined,
+      endDate: timeRange === 'custom' ? nowISO() : undefined,
       metrics: widget.metrics || [],
       groupBy: widget.chartConfig?.groupBy,
       filters: widget.filters || {}
@@ -309,13 +310,13 @@ export class DashboardService {
       type: 'chart',
       data: result.data,
       loading: false,
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       metadata: {
         queryTime: 0,
         recordCount: result.data.length,
         cacheHit: false,
         dataSource: widget.dataSource.type || 'analytics',
-        refreshedAt: new Date().toISOString()
+        refreshedAt: nowISO()
       },
       chartType: widget.chartConfig?.type || 'line',
       labels: this.extractLabels(result.data, widget.chartConfig?.groupBy?.[0]),
@@ -335,7 +336,7 @@ export class DashboardService {
       type: widget.dataSource.type || 'analytics',
       timeRange: timeRange || widget.defaultTimeRange || '24h',
       startDate: timeRange === 'custom' ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() : undefined,
-      endDate: timeRange === 'custom' ? new Date().toISOString() : undefined,
+      endDate: timeRange === 'custom' ? nowISO() : undefined,
       metrics: widget.metrics || [],
       filters: widget.filters || {},
       limit: widget.tableConfig?.pageSize || 10,
@@ -350,13 +351,13 @@ export class DashboardService {
       type: 'table',
       data: result.data,
       loading: false,
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       metadata: {
         queryTime: 0,
         recordCount: result.data.length,
         cacheHit: false,
         dataSource: widget.dataSource.type || 'analytics',
-        refreshedAt: new Date().toISOString()
+        refreshedAt: nowISO()
       },
       columns: widget.tableConfig?.columns || this.inferColumns(result.data),
       rows: result.data,
@@ -382,7 +383,7 @@ export class DashboardService {
       type: 'gauge',
       data: metricData.data,
       loading: false,
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       metadata: metricData.metadata,
       value: metricData.value as number,
       min: widget.gaugeConfig?.min || 0,
@@ -408,7 +409,7 @@ export class DashboardService {
       type: 'progress',
       data: metricData.data,
       loading: false,
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       metadata: metricData.metadata,
       current: currentValue,
       target: targetValue,
@@ -432,7 +433,7 @@ export class DashboardService {
       type: 'status',
       data: metricData.data,
       loading: false,
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       metadata: metricData.metadata,
       status: this.determineStatus(value, widget.statusConfig?.thresholds),
       value: value,
@@ -450,7 +451,7 @@ export class DashboardService {
         metadata: {
           type: 'dashboard_template',
           category: template.category,
-          createdAt: new Date().toISOString()
+          createdAt: nowISO()
         }
       });
     } catch (error) {
@@ -496,7 +497,7 @@ export class DashboardService {
       }
 
       const config: DashboardConfig = {
-        id: `${templateId}_${Date.now()}`,
+        id: `${templateId}_${nowMs()}`,
         name: customConfig?.name || template.name,
         description: template.description,
         layout: template.defaultLayout,
@@ -509,8 +510,8 @@ export class DashboardService {
         theme: customConfig?.theme || 'light',
         autoRefresh: customConfig?.autoRefresh ?? true,
         refreshInterval: customConfig?.refreshInterval || this.options.refreshInterval!,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
         ...customConfig
       };
 
@@ -645,8 +646,8 @@ export class DashboardService {
       theme: 'light',
       autoRefresh: true,
       refreshInterval: 30000,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: nowISO(),
+      updatedAt: nowISO()
     };
   }
 
@@ -694,7 +695,7 @@ export class DashboardService {
   private setCachedData(key: string, data: any): void {
     this.cache.set(key, {
       data,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
   }
 

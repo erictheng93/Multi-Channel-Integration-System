@@ -1,3 +1,4 @@
+import { nowMs } from '@/utils/timestamp'
 /**
  * URL Validation Service
  *
@@ -205,7 +206,7 @@ export async function checkUrlReachability(
     };
   }
 
-  const startTime = Date.now();
+  const startTime = nowMs();
 
   try {
     const controller = new AbortController();

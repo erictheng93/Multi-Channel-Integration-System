@@ -6,6 +6,7 @@ import type { Bindings } from '@/types';
 import { verifyJWT } from '@/utils/auth';
 import { TeamPermissionError } from '@modules/teams/types/team-types';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { nowISO } from '@/utils/timestamp'
 
 // 基本認證中介層
 export const teamAuthMiddleware = (): MiddlewareHandler<{ Bindings: Bindings }> => {
@@ -36,8 +37,8 @@ export const teamAuthMiddleware = (): MiddlewareHandler<{ Bindings: Bindings }> 
         primaryTeamId: payload.primaryTeamId,
         teamName: payload.teamName,
         isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: nowISO(),
+        updatedAt: nowISO()
       });
 
       return await next();

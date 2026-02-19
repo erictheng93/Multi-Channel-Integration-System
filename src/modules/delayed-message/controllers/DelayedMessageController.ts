@@ -7,6 +7,7 @@ import type { Bindings } from '@/types';
 import type { DelayedMessageRequest } from '@modules/delayed-message/types';
 import { DelayedMessageManager } from '@modules/delayed-message/services/DelayedMessageManager';
 import { jwtAuth } from '@/middleware/auth';
+import { nowISO } from '@/utils/timestamp'
 
 // 擴展 Context 類型以包含用戶信息
 type AuthenticatedContext = Context<{ Bindings: Bindings }> & {
@@ -75,7 +76,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: `Invalid request: ${validationResult.errors.join(', ')}`,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -101,7 +102,7 @@ export class DelayedMessageController {
           recallDeadline: result.recallDeadline
         } : null,
         error: result.error,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, statusCode);
 
     } catch (error) {
@@ -109,7 +110,7 @@ export class DelayedMessageController {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to send delayed message',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }
@@ -126,7 +127,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: 'Message ID is required',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -137,7 +138,7 @@ export class DelayedMessageController {
         success: result.success,
         data: result.success ? { messageId: result.messageId } : null,
         error: result.error,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, statusCode);
 
     } catch (error) {
@@ -145,7 +146,7 @@ export class DelayedMessageController {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to recall message',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }
@@ -164,7 +165,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: 'Invalid pagination parameters',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -173,7 +174,7 @@ export class DelayedMessageController {
       return c.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
     } catch (error) {
@@ -181,7 +182,7 @@ export class DelayedMessageController {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get pending messages',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }
@@ -199,7 +200,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: 'Message ID is required',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -208,7 +209,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: 'Invalid delay seconds (must be between 1 and 120)',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -222,7 +223,7 @@ export class DelayedMessageController {
           newScheduledSendTime: result.scheduledSendTime
         } : null,
         error: result.error,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, statusCode);
 
     } catch (error) {
@@ -230,7 +231,7 @@ export class DelayedMessageController {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to reschedule message',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }
@@ -247,7 +248,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: 'Message ID is required',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -264,7 +265,7 @@ export class DelayedMessageController {
           skipped: result.skipped || false
         },
         error: result.error,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
     } catch (error) {
@@ -272,7 +273,7 @@ export class DelayedMessageController {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to process queue message',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }
@@ -289,7 +290,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: 'Message IDs array is required',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -297,7 +298,7 @@ export class DelayedMessageController {
         return c.json({
           success: false,
           error: 'Batch size cannot exceed 50 messages',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }, 400);
       }
 
@@ -315,7 +316,7 @@ export class DelayedMessageController {
             failed: messageIds.length - successCount
           }
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
     } catch (error) {
@@ -323,7 +324,7 @@ export class DelayedMessageController {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to process batch',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }
@@ -352,7 +353,7 @@ export class DelayedMessageController {
         data: {
           status: 'unhealthy',
           error: error instanceof Error ? error.message : 'Health check failed',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }
       }, 503);
     }
@@ -376,7 +377,7 @@ export class DelayedMessageController {
             // 可以添加更多統計指標
             uptime: process.uptime?.() || 0
           },
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         }
       });
 
@@ -385,7 +386,7 @@ export class DelayedMessageController {
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get stats',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }

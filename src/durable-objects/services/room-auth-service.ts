@@ -4,6 +4,7 @@
 import type { WebSocketAuthChallenge } from '../../services/websocket-auth-service';
 import type { RoomContext, RoomHelpers } from './room-helpers';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Handles all authentication logic for ConversationRoom:
@@ -203,7 +204,7 @@ export class RoomAuthService {
       }
 
       // Check if challenge is expired
-      if (Date.now() > challengeData.expiresAt) {
+      if (nowMs() > challengeData.expiresAt) {
         testSafeLog(`[ConversationRoom] Expired challenge: ${challengeId}`);
         await this.ctx.state.storage.delete(`challenge:${challengeId}`);
         this.ctx.challenges.delete(challengeId);
@@ -261,7 +262,7 @@ export class RoomAuthService {
    * Clean up expired challenges (Full Mode Only)
    */
   cleanupExpiredChallenges(): void {
-    const now = Date.now();
+    const now = nowMs();
     for (const [challengeId, challenge] of this.ctx.challenges.entries()) {
       if (now > challenge.expiresAt) {
         this.ctx.challenges.delete(challengeId);

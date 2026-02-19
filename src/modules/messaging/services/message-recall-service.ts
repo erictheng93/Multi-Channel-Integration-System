@@ -19,6 +19,7 @@ import {
   InvalidMessageDataError
 } from '../types/message-types';
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 export class MessageRecallService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -121,7 +122,7 @@ export class MessageRecallService {
           messageId,
           userId: requestedBy, // Map requestedBy to userId
           action: 'failed', // Map status to action
-          createdAt: new Date().toISOString(),
+          createdAt: nowISO(),
         });
       } catch (logError) {
         console.error('Error logging failed recall attempt:', logError);
@@ -237,7 +238,7 @@ export class MessageRecallService {
           messageId: delayedMessageId,
           userId: requestedBy, // Map requestedBy to userId
           action: 'failed', // Map status to action
-          createdAt: new Date().toISOString(),
+          createdAt: nowISO(),
         });
       } catch (logError) {
         console.error('Error logging failed delayed recall attempt:', logError);
@@ -436,7 +437,7 @@ export class MessageRecallService {
         status: result.action as 'successful' | 'failed',
         failureReason: undefined as string | undefined, // Not available in current schema
         recalledAt: undefined as string | undefined, // Not available in current schema
-        createdAt: result.createdAt || new Date().toISOString(),
+        createdAt: result.createdAt || nowISO(),
       }));
 
       return { recalls, total };

@@ -27,6 +27,7 @@
  */
 
 import type { Bindings } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 待發送訊息
@@ -146,7 +147,7 @@ export class DelayedMessageScheduler implements DurableObject {
   private logger = {
     info: (action: string, context?: Record<string, any>) => {
       console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         level: 'info',
         service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
@@ -157,7 +158,7 @@ export class DelayedMessageScheduler implements DurableObject {
 
     success: (action: string, context?: Record<string, any>) => {
       console.log(JSON.stringify({
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         level: 'success',
         service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
@@ -168,7 +169,7 @@ export class DelayedMessageScheduler implements DurableObject {
 
     warn: (action: string, context?: Record<string, any>) => {
       console.warn(JSON.stringify({
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         level: 'warn',
         service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
@@ -179,7 +180,7 @@ export class DelayedMessageScheduler implements DurableObject {
 
     error: (action: string, error: any, context?: Record<string, any>) => {
       console.error(JSON.stringify({
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         level: 'error',
         service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
@@ -195,7 +196,7 @@ export class DelayedMessageScheduler implements DurableObject {
 
     critical: (action: string, error: any, context?: Record<string, any>) => {
       console.error(JSON.stringify({
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         level: 'CRITICAL',
         service: 'DelayedMessageScheduler',
         doId: this.state.id.toString(),
@@ -286,7 +287,7 @@ export class DelayedMessageScheduler implements DurableObject {
       return this.badRequestResponse('Delay must be between 1-120 seconds');
     }
 
-    const now = Date.now();
+    const now = nowMs();
     const scheduledAt = now + (delaySeconds * 1000);
 
     // 創建待發送訊息
@@ -379,7 +380,7 @@ export class DelayedMessageScheduler implements DurableObject {
     }
 
     // 3. 檢查是否還在可撤銷時間內
-    const now = Date.now();
+    const now = nowMs();
     if (now >= message.scheduledAt) {
       // 已經到時間了，可能正在發送或已發送
       return {
@@ -403,7 +404,7 @@ export class DelayedMessageScheduler implements DurableObject {
     // 7. 更新 Alarm (如果沒有其他待發訊息，取消 Alarm)
     await this.updateAlarm();
 
-    const cancelledAt = Date.now();
+    const cancelledAt = nowMs();
 
     // 🔧 Metrics: 訊息撤銷成功
     this.metrics.messagesCancelledTotal++;
@@ -443,7 +444,7 @@ export class DelayedMessageScheduler implements DurableObject {
       } as StatusResult);
     }
 
-    const now = Date.now();
+    const now = nowMs();
     const timeRemaining = Math.max(0, message.scheduledAt - now);
     const canCancel = message.status === 'pending' && timeRemaining > 0;
 
@@ -508,7 +509,7 @@ export class DelayedMessageScheduler implements DurableObject {
         success: true,
         count: failedMessages.length,
         messages: failedMessages,
-        timestamp: Date.now()
+        timestamp: nowMs()
       });
     } catch (error) {
       this.logger.error('DLQ query error', error);
@@ -615,8 +616,8 @@ export class DelayedMessageScheduler implements DurableObject {
         // === Metadata ===
         metadata: {
           durableObjectId: this.state.id.toString(),
-          timestamp: new Date().toISOString(),
-          uptimeSeconds: Math.floor((Date.now() - (this.metrics as any).startTime || Date.now()) / 1000)
+          timestamp: nowISO(),
+          uptimeSeconds: Math.floor((Date.now() - (this.metrics as any).startTime || nowMs()) / 1000)
         }
       };
 
@@ -717,7 +718,7 @@ export class DelayedMessageScheduler implements DurableObject {
    * @returns 所有已到發送時間的訊息
    */
   private collectReadyMessages(): PendingMessage[] {
-    const now = Date.now();
+    const now = nowMs();
 
     // 創建不可變快照避免 Race Condition
     const allPendingMessages = Array.from(this.pendingMessages.values());
@@ -840,14 +841,14 @@ export class DelayedMessageScheduler implements DurableObject {
         const dlqKey = `dlq:${message.id}`;
         const dlqEntry = {
           ...message,
-          failedAt: Date.now(),
+          failedAt: nowMs(),
           failureReason: reason instanceof Error ? reason.message : String(reason),
           failureStack: reason instanceof Error ? reason.stack : undefined,
           retryCount: message.retryCount || 0,
           dlqWriteAttempt: attempt + 1,
           environmentInfo: {
             durableObjectId: this.state.id.toString(),
-            timestamp: new Date().toISOString()
+            timestamp: nowISO()
           }
         };
 
@@ -1000,7 +1001,7 @@ export class DelayedMessageScheduler implements DurableObject {
     }
 
     let lastError: any = null;
-    const sendStartTime = Date.now();
+    const sendStartTime = nowMs();
 
     // 指數退避重試機制
     for (let attempt = 0; attempt <= this.MAX_RETRY_ATTEMPTS; attempt++) {
@@ -1156,7 +1157,7 @@ export class DelayedMessageScheduler implements DurableObject {
 
     // 持久化重試狀態
     message.retryCount = attempt + 1;
-    message.lastRetryAt = Date.now();
+    message.lastRetryAt = nowMs();
     await this.state.storage.put(`msg:${message.id}`, message);
 
     await this.sleep(delay);
@@ -1260,7 +1261,7 @@ export class DelayedMessageScheduler implements DurableObject {
       const { eq } = await import('drizzle-orm');
 
       const db = drizzle(this.env.DB);
-      const now = new Date().toISOString();
+      const now = nowISO();
 
       // 查詢發送者名稱快照
       let senderName: string | null = null;

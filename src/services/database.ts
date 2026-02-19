@@ -3,6 +3,7 @@ import { Database, KVService } from '../db';
 import * as schema from '../db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { MESSAGE_STATUS } from '../constants/message-status';
+import { nowISO } from '@/utils/timestamp'
 
 export class DatabaseService {
   constructor(
@@ -58,7 +59,7 @@ export class DatabaseService {
 
   async updateCustomer(id: number, updates: Partial<schema.NewCustomer>) {
     const customer = await this.db.update(schema.customers)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .set({ ...updates, updatedAt: nowISO() })
       .where(eq(schema.customers.id, id))
       .returning();
 
@@ -100,7 +101,7 @@ export class DatabaseService {
 
   async updateAgentLastLogin(id: string) {
     return await this.db.update(schema.agents)
-      .set({ lastLoginAt: new Date().toISOString() })
+      .set({ lastLoginAt: nowISO() })
       .where(eq(schema.agents.id, id))
       .returning();
   }
@@ -358,12 +359,12 @@ export class DatabaseService {
     console.log('🔧 [DatabaseService] updateConversation called:', {
       id,
       updates,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
     try {
       const conversation = await this.db.update(schema.conversations)
-        .set({ ...updates, updatedAt: new Date().toISOString() })
+        .set({ ...updates, updatedAt: nowISO() })
         .where(eq(schema.conversations.id, id))
         .returning();
 
@@ -392,7 +393,7 @@ export class DatabaseService {
   // Message operations - 並行化優化
   async createMessage(messageData: any) {
     const id = uuidv4();
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
     
     // 並行執行：訊息插入 & 對話更新
     const [message] = await Promise.all([
@@ -461,7 +462,7 @@ export class DatabaseService {
 
   async updateDelayedMessageStatus(id: string, status: string) {
     return await this.db.update(schema.delayedMessages)
-      .set({ status, updatedAt: new Date().toISOString() })
+      .set({ status, updatedAt: nowISO() })
       .where(eq(schema.delayedMessages.id, id))
       .returning();
   }
@@ -471,7 +472,7 @@ export class DatabaseService {
     const key = `agent:${agentId}:status`;
     const statusData = {
       isOnline,
-      lastSeen: new Date().toISOString(),
+      lastSeen: nowISO(),
       activeConversations: isOnline ? await this.getActiveConversationCount(agentId) : 0
     };
     
@@ -520,7 +521,7 @@ export class DatabaseService {
         .set({
           status,
           assignedTeamId: assignedTeamId || null,
-          updatedAt: new Date().toISOString()
+          updatedAt: nowISO()
         })
         .where(eq(schema.conversations.id, id))
     );
@@ -640,7 +641,7 @@ export class DatabaseService {
 
   async updateTeam(id: number, updates: Partial<schema.NewTeam>) {
     return await this.db.update(schema.teams)
-      .set({ ...updates, updatedAt: new Date().toISOString() })
+      .set({ ...updates, updatedAt: nowISO() })
       .where(eq(schema.teams.id, id))
       .returning();
   }

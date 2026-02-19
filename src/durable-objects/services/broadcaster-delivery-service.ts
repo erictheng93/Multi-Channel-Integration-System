@@ -6,6 +6,7 @@ import type { BroadcasterContext } from './broadcaster-helpers';
 import type { BroadcasterHelpers } from './broadcaster-helpers';
 import type { BroadcasterLockService } from './broadcaster-lock-service';
 import { createContextLogger } from '../../utils/logger';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('MessageBroadcaster');
 
@@ -30,7 +31,7 @@ export class BroadcasterDeliveryService {
       ...event,
       targets,
       options,
-      queuedAt: Date.now(),
+      queuedAt: nowMs(),
       retryCount: 0
     };
 
@@ -112,7 +113,7 @@ export class BroadcasterDeliveryService {
   }
 
   private async processBatch(events: any[], batchType: string): Promise<void> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     let successCount = 0;
     let failureCount = 0;
 
@@ -136,7 +137,7 @@ export class BroadcasterDeliveryService {
     const processingTime = Date.now() - startTime;
     this.ctx.stats.successfulDeliveries += successCount;
     this.ctx.stats.failedDeliveries += failureCount;
-    this.ctx.stats.lastProcessed = Date.now();
+    this.ctx.stats.lastProcessed = nowMs();
     this.ctx.stats.averageLatency =
       (this.ctx.stats.averageLatency + processingTime) / 2;
 
@@ -292,7 +293,7 @@ export class BroadcasterDeliveryService {
         eventAction,
         eventType: events[0]?.type,
         conversationId,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
       const deliveryPromises = teamMembers.map(async (userId: string) => {
@@ -418,7 +419,7 @@ export class BroadcasterDeliveryService {
     event: DurableObjectEvent,
     conversationIds: string[]
   ): Promise<{ successful: number; failed: number }> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     let successful = 0;
     let failed = 0;
 
@@ -460,7 +461,7 @@ export class BroadcasterDeliveryService {
     event: DurableObjectEvent,
     userIds: string[]
   ): Promise<{ successful: number; failed: number }> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     let successful = 0;
     let failed = 0;
 
@@ -502,7 +503,7 @@ export class BroadcasterDeliveryService {
     event: DurableObjectEvent,
     teamIds: number[]
   ): Promise<{ successful: number; failed: number }> {
-    const startTime = Date.now();
+    const startTime = nowMs();
     let successful = 0;
     let failed = 0;
 

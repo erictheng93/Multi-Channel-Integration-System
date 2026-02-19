@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import { eq, and, inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, conversationTags, tags } from '@/db/schema';
@@ -11,6 +12,7 @@ import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { validationErrorResponse } from '@shared/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('ConversationTagsHandler');
 
@@ -68,11 +70,7 @@ conversationTagsHandler.get('/:id/tags', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    log.error('Get conversation tags error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get conversation tags'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -133,7 +131,7 @@ conversationTagsHandler.post('/:id/tags', jwtAuth, async (c) => {
             id: user.id,
             name: user.displayName
           },
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'normal'
       });
@@ -147,11 +145,7 @@ conversationTagsHandler.post('/:id/tags', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    log.error('Add conversation tags error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to add tags to conversation'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -208,7 +202,7 @@ conversationTagsHandler.delete('/:id/tags', jwtAuth, async (c) => {
             id: user.id,
             name: user.displayName
           },
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'normal'
       });
@@ -222,11 +216,7 @@ conversationTagsHandler.delete('/:id/tags', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    log.error('Remove conversation tags error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to remove tags from conversation'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

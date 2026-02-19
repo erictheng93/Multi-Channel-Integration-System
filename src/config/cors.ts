@@ -13,6 +13,7 @@
  */
 
 import { getCurrentEnvironment, type WorkerEnv } from './runtime';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 開發環境專用 origins 列表
@@ -265,7 +266,7 @@ export function createCorsErrorDetails(
           ],
           documentation: 'https://developers.cloudflare.com/workers/configuration/environment-variables/',
         },
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
   };
 
   return baseError;

@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { createNotificationHandlerMethods } from '@modules/notifications/handlers/notification-main';
+import { nowISO } from '@/utils/timestamp'
 
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -14,7 +15,7 @@ app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
     module: 'notifications',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     version: '1.0.0'
   });
 });
@@ -32,7 +33,7 @@ app.get('/info', (c) => {
       'Advanced caching',
       'Statistics and monitoring'
     ],
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 

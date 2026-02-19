@@ -14,6 +14,7 @@ import { RealtimeManager } from '@modules/realtime/services/realtime-manager';
 // SSE Manager removed, all connections now via WebSocket (ConversationRoom DO)
 import { eventStats } from '@modules/realtime/handlers/event-handler';
 import { RealtimeVersionSelector } from '@modules/realtime/config/version-selector';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 儀表板處理器
 export const dashboardHandler = {
@@ -75,7 +76,7 @@ export const dashboardHandler = {
           hasDB: capabilities.hasD1Database,
           supportsWebSockets: capabilities.clientCapabilities.supportsWebSockets
         } : null,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       return successResponse(c, overview, 'Dashboard overview retrieved');
@@ -135,7 +136,7 @@ export const dashboardHandler = {
         }, {} as Record<string, number>),
         recent: alerts.filter(alert => {
           const alertTime = new Date(alert.timestamp).getTime();
-          const now = Date.now();
+          const now = nowMs();
           return now - alertTime < 24 * 60 * 60 * 1000; // 24小時內
         }).length
       };
@@ -197,7 +198,7 @@ export const dashboardHandler = {
           byUser: {},
           byConversation: {}
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       return successResponse(c, connectionDetails, 'SSE endpoint deprecated - use WebSocket metrics');
@@ -343,7 +344,7 @@ export const dashboardHandler = {
         operation,
         target,
         result,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 'Maintenance operation completed');
 
     } catch (error) {
@@ -356,7 +357,7 @@ export const dashboardHandler = {
     if (!env?.DB) return { status: 'down' };
 
     try {
-      const start = Date.now();
+      const start = nowMs();
       await env.DB.prepare('SELECT 1').first();
       const responseTime = Date.now() - start;
 
@@ -373,7 +374,7 @@ export const dashboardHandler = {
     if (!env?.SESSIONS) return { status: 'down' };
 
     try {
-      const start = Date.now();
+      const start = nowMs();
       await env.SESSIONS.get('health_check');
       const responseTime = Date.now() - start;
 

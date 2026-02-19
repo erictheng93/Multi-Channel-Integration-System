@@ -9,6 +9,7 @@ import type {
 import { SchedulingError } from '@modules/delayed-message/types';
 import { StorageService } from '@modules/delayed-message/infrastructure/StorageService';
 import { ValidationService } from '@modules/delayed-message/infrastructure/ValidationService';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * MessageSchedulerService - 訊息排程專家
@@ -111,7 +112,7 @@ export class MessageSchedulerService {
       // 在 KV 中標記為已取消（立即生效）
       const cancelInfo = {
         cancelled: true,
-        cancelledAt: new Date().toISOString(),
+        cancelledAt: nowISO(),
         cancelledBy: userId
       };
 
@@ -185,11 +186,11 @@ export class MessageSchedulerService {
 
       // 更新訊息的排程時間
       message.scheduledAt = timeCalculation.scheduledSendTime;
-      message.updatedAt = new Date().toISOString();
+      message.updatedAt = nowISO();
       message.metadata = {
         ...message.metadata,
         originalScheduledAt: message.scheduledAt,
-        rescheduledAt: new Date().toISOString(),
+        rescheduledAt: nowISO(),
         rescheduledBy: userId,
         newDelaySeconds
       };

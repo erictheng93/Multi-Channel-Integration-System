@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, messages, customers, agents, fileAttachments } from '@/db/schema';
@@ -13,6 +14,7 @@ import { WebSocketBroadcastService } from '@/services/websocket-broadcast-servic
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { successResponse, errorResponse } from '@shared/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('ConversationMessagesHandler');
 
@@ -70,7 +72,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
     }
 
     // 生成 R2 key
-    const timestamp = Date.now();
+    const timestamp = nowMs();
     const randomStr = Math.random().toString(36).substr(2, 9);
     const fileExtension = file.name.split('.').pop() || 'bin';
     const r2Key = `attachments/${conversationId}/pending/${timestamp}_${randomStr}.${fileExtension}`;
@@ -110,7 +112,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
       fileUrl,
       r2Key,
       uploadStatus: 'completed', // Direct upload completed
-      createdAt: new Date().toISOString()
+      createdAt: nowISO()
     });
 
     return c.json({
@@ -124,11 +126,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
       }
     });
   } catch (error) {
-    log.error('Upload attachment error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Internal server error'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -136,7 +134,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
 conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
   // 🔵 Phase 1 Emergency Debug Logging
   log.debug('MESSAGE HANDLER entry', {
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     conversationId: c.req.param('id'),
     method: c.req.method,
     path: c.req.path
@@ -206,7 +204,7 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
             role: user.role
           },
           deliveryStatus: 'pending',
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         },
         priority: 'normal'
       });
@@ -243,7 +241,7 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
           senderId: String(user.id),
           senderName: user.displayName,
           platform: 'line',
-          timestamp: Date.now(),
+          timestamp: nowMs(),
           deliveryStatus: 'pending'
         },
         source: 'api',
@@ -292,8 +290,8 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
       mediaUrl: '',
       mediaType: result.message.messageType as 'text' | 'image' | 'video' | 'file',
       platform: 'line' as const,
-      createdAt: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
-      timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : Date.now(),
+      createdAt: result.message.createdAt ? new Date(result.message.createdAt).getTime() : nowMs(),
+      timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : nowMs(),
       deliveryStatus: 'pending',
       isSent: false,
       platformMessageId: null as string | null,
@@ -303,11 +301,7 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
     return successResponse(c, formattedMessage, 'Message queued for delivery');
 
   } catch (error) {
-    log.error('Message handler exception', {
-      errorType: error instanceof Error ? error.constructor.name : typeof error,
-      errorMessage: error instanceof Error ? error.message : String(error)
-    });
-    return errorResponse(c, error instanceof Error ? error.message : 'Failed to send message', 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -341,7 +335,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Permission denied',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.FORBIDDEN);
     }
 
@@ -357,7 +351,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       return c.json({
         success: false,
         error: 'Conversation not found',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.NOT_FOUND);
     }
 
@@ -429,7 +423,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       mediaUrl: '', // 需要從 metadata 或其他表獲取
       mediaType: row.messageType as 'text' | 'image' | 'video' | 'file',
       platform: 'line' as const, // 需要從 conversation->customer 獲取
-      createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
+      createdAt: row.createdAt ? new Date(row.createdAt).getTime() : nowMs(),
       // 額外的數據庫字段
       platformMessageId: row.platformMessageId,
       isSent: row.isSent,
@@ -457,16 +451,11 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: paginatedResponse,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    log.error('Get messages error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get messages',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

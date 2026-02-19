@@ -20,6 +20,8 @@ import {
 } from '../types/session-types';
 import { createContextLogger } from '@/utils/logger';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO } from '@/utils/timestamp'
 
 const sessionHandler = new Hono<{ Bindings: Bindings }>();
 const logger = createContextLogger('SessionHandler');
@@ -62,15 +64,11 @@ sessionHandler.get('/search', jwtAuth, async (c) => {
       success: true,
       data: sessions,
       count: sessions.length,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to search sessions', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to search sessions'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -87,15 +85,11 @@ sessionHandler.get('/stats', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: stats,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to get session stats', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get session stats'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -117,15 +111,11 @@ sessionHandler.get('/activity-stats', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: activityStats,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to get activity stats', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get activity stats'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -142,15 +132,11 @@ sessionHandler.get('/topics/stats', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: topicStats,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to get topic stats', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get topic stats'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -175,15 +161,11 @@ sessionHandler.post('/topics/analyze', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: topicResult,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to analyze topic', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to analyze topic'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -209,15 +191,11 @@ sessionHandler.post('/topics/suggest', jwtAuth, async (c) => {
       success: true,
       data: suggestions,
       count: suggestions.length,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to suggest topics', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to suggest topics'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -242,15 +220,11 @@ sessionHandler.post('/get-or-create', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: session,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to get or create session', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get or create session'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -281,15 +255,11 @@ sessionHandler.post('/batch', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: result,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to execute batch operation', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to execute batch operation'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -315,15 +285,11 @@ sessionHandler.post('/detect-boundary', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: boundaryDetection,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to detect session boundary', { error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to detect session boundary'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -351,15 +317,11 @@ sessionHandler.post('/:sessionId/close', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'Session closed successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to close session', { sessionId: c.req.param('sessionId'), error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to close session'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -385,15 +347,11 @@ sessionHandler.post('/:sessionId/reopen', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'Session reopened successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to reopen session', { sessionId: c.req.param('sessionId'), error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to reopen session'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -413,15 +371,11 @@ sessionHandler.get('/:sessionId/messages', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: result,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to get session messages', { sessionId: c.req.param('sessionId'), error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get session messages'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -438,12 +392,10 @@ sessionHandler.get('/:sessionId/health', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: healthAnalysis,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to analyze session health', { sessionId: c.req.param('sessionId'), error });
-
     if (error instanceof SessionNotFoundError) {
       return c.json({
         success: false,
@@ -451,10 +403,7 @@ sessionHandler.get('/:sessionId/health', jwtAuth, async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to analyze session health'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -482,15 +431,11 @@ sessionHandler.put('/:sessionId/topic', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'Session topic updated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to update session topic', { sessionId: c.req.param('sessionId'), error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update session topic'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -517,15 +462,11 @@ sessionHandler.get('/:sessionId', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: session,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to get session', { sessionId: c.req.param('sessionId'), error });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get session'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -546,12 +487,10 @@ sessionHandler.put('/:sessionId', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: session,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    logger.error('Failed to update session', { sessionId: c.req.param('sessionId'), error });
-
     if (error instanceof SessionNotFoundError) {
       return c.json({
         success: false,
@@ -567,10 +506,7 @@ sessionHandler.put('/:sessionId', jwtAuth, async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update session'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -596,7 +532,7 @@ sessionHandler.delete('/:sessionId', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'Session deleted successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -636,7 +572,7 @@ sessionHandler.get('/', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: result,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -672,7 +608,7 @@ sessionHandler.post('/', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: session,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {

@@ -17,6 +17,7 @@ import {
 import { WebSocketAdapter } from '@modules/notifications/adapters/websocket-adapter';
 import { EmailAdapter } from '@modules/notifications/adapters/email-adapter';
 import { PushAdapter } from '@modules/notifications/adapters/push-adapter';
+import { nowISO } from '@/utils/timestamp'
 
 export class NotificationChannelService {
   private adapters = new Map<ChannelType, ChannelAdapter>();
@@ -481,7 +482,7 @@ export class NotificationChannelService {
       content: testMessage || `This is a test notification for ${channelType} channel`,
       priority: 'normal',
       isRead: false,
-      createdAt: new Date().toISOString()
+      createdAt: nowISO()
     };
 
     const channelMessage: ChannelMessage = {

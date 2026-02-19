@@ -4,6 +4,7 @@
 
 import type { Bindings } from '@/types';
 import type { MigrationConfig } from '@/types/websocket-types';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Health status for the broadcasting service
@@ -106,7 +107,7 @@ export class BroadcastConfig {
         status,
         websocketEnabled: config.enableWebSocket,
         durableObjectsAvailable,
-        timestamp: Date.now()
+        timestamp: nowMs()
       };
     } catch (error) {
       return {
@@ -114,7 +115,7 @@ export class BroadcastConfig {
         websocketEnabled: false,
         durableObjectsAvailable: false,
         lastError: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: Date.now()
+        timestamp: nowMs()
       };
     }
   }

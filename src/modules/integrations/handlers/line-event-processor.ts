@@ -13,6 +13,7 @@ import { createContextLogger } from '@/utils/logger';
 import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processLineMedia } from '../services/webhook-media-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('Webhook');
 
@@ -153,7 +154,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       }
 
       // 建立新使用者
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
       await drizzleDb
         .insert(customers)
         .values({
@@ -258,7 +259,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           senderType: 'customer',
           senderId: String(user.id),
           platform: 'line',
-          timestamp: Date.now(),
+          timestamp: nowMs(),
           deliveryStatus: 'delivered',
           // 🆕 Include file_attachments for immediate Flex Card display
           file_attachments: fileAttachmentData.length > 0 ? fileAttachmentData : undefined
@@ -451,7 +452,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     });
 
     // 🔧 優化：並行執行 Step 4, 5, 6 的團隊查找（從串行改為並行，減少 40-100ms 延遲）
-    const teamFindStartTime = Date.now();
+    const teamFindStartTime = nowMs();
 
     // 定義並行查找任務
     const teamFindTasks = await Promise.all([
@@ -528,7 +529,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       source: assignmentResult ? 'assignment' : qrTokenResult ? 'qr_token' : 'none'
     });
 
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     // Step 7: 創建或更新客戶記錄
     if (!existingCustomer) {
@@ -703,7 +704,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
               status: 'active',
               lastMessage: {
                 content: '已加入',
-                timestamp: Date.now()
+                timestamp: nowMs()
               },
               unreadCount: 0,
               assignedTeamId: assignedTeamId,
@@ -869,7 +870,7 @@ export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) 
 
   try {
     const drizzleDb = createDbClient(env.DB);
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     // 查找現有客戶
     const existingCustomer = await drizzleDb

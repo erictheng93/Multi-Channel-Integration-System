@@ -7,6 +7,7 @@ import { createDbClient, type Database } from '@/db/drizzle-factory';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { corsEvents } from '@/db/schema';
 import { eq, desc, and, gte, sql } from 'drizzle-orm';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * CORS 監控事件類型
@@ -66,7 +67,7 @@ export class CORSMonitor {
   async logEvent(event: Omit<CORSEvent, 'timestamp'>): Promise<void> {
     const fullEvent: CORSEvent = {
       ...event,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
 
     // 添加到記憶體（用於即時查詢）
@@ -78,7 +79,7 @@ export class CORSMonitor {
     // 🆕 P2-6: 記錄到 D1（用於持久化和統計）
     try {
       const db = createDbClient(this.env.DB);
-      const eventId = `cors_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const eventId = `cors_${nowMs()}_${Math.random().toString(36).substring(2, 9)}`;
 
       await db.insert(corsEvents).values({
         id: eventId,
@@ -101,7 +102,7 @@ export class CORSMonitor {
 
       // Fallback to KV for backward compatibility (temporary)
       try {
-        const key = `cors:event:${Date.now()}:${Math.random().toString(36).substring(7)}`;
+        const key = `cors:event:${nowMs()}:${Math.random().toString(36).substring(7)}`;
         await this.env.SESSIONS.put(
           key,
           JSON.stringify(fullEvent),
@@ -358,7 +359,7 @@ export class CORSMonitor {
             if (eventData) {
               const event: CORSEvent = JSON.parse(eventData);
               const eventTime = new Date(event.timestamp).getTime();
-              const now = Date.now();
+              const now = nowMs();
 
               if (now - eventTime > hours * 60 * 60 * 1000) {
                 await this.env.SESSIONS.delete(key.name);

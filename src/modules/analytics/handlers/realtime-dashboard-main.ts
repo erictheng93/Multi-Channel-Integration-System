@@ -11,6 +11,7 @@ import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics
 import type { Bindings } from '@/types';
 
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -25,6 +26,7 @@ interface AnalyticsUser {
   updatedAt: string;
 }
 import { AnalyticsError } from '@modules/analytics/types/analytics-types';
+import { nowISO } from '@/utils/timestamp'
 
 // 驗證 schema
 const broadcastSchema = z.object({
@@ -82,11 +84,7 @@ const createRealtimeDashboardApp = (
       });
 
     } catch (error) {
-      console.error('Failed to broadcast update:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to broadcast update'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -124,11 +122,7 @@ const createRealtimeDashboardApp = (
       });
 
     } catch (error) {
-      console.error('Failed to trigger widget update:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to trigger widget update'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -161,11 +155,7 @@ const createRealtimeDashboardApp = (
       });
 
     } catch (error) {
-      console.error('Failed to trigger dashboard update:', error);
-      return c.json({
-        success: false,
-        error: error instanceof AnalyticsError ? error.message : 'Failed to trigger dashboard update'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -190,15 +180,11 @@ const createRealtimeDashboardApp = (
       return c.json({
         success: true,
         data: status,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
     } catch (error) {
-      console.error('Failed to get connection status:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to get connection status'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -212,7 +198,7 @@ const createRealtimeDashboardApp = (
 
       return c.json({
         status: 'healthy',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         service: 'realtime-dashboard',
         connections: status.totalConnections,
         metrics: {
@@ -222,12 +208,7 @@ const createRealtimeDashboardApp = (
         }
       });
     } catch (error) {
-      return c.json({
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        service: 'realtime-dashboard',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 
@@ -255,11 +236,7 @@ const createRealtimeDashboardApp = (
       });
 
     } catch (error) {
-      console.error('Failed to cleanup connections:', error);
-      return c.json({
-        success: false,
-        error: 'Failed to cleanup connections'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return globalErrorHandler.handleError(c, error);
     }
   });
 

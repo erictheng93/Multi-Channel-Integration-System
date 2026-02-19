@@ -12,6 +12,7 @@ import type {
   WidgetPosition
 } from '../types/dashboard-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 小工具類型定義和驗證規則
@@ -286,7 +287,7 @@ export class WidgetManager {
       const updatedWidget = {
         ...updates,
         id: widgetId,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       } as DashboardWidget;
 
       if (this.options.enableValidation) {
@@ -395,7 +396,7 @@ export class WidgetManager {
           type: 'widget_template',
           category: template.category,
           widgetType: template.config.type,
-          createdAt: new Date().toISOString()
+          createdAt: nowISO()
         }
       });
 
@@ -523,7 +524,7 @@ export class WidgetManager {
    * 生成小工具 ID
    */
   private generateWidgetId(type: string): string {
-    return `${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `${type}_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**

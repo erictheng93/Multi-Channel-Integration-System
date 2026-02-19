@@ -13,6 +13,7 @@ import type {
   BatchingStrategy,
   OptimizationMetrics
 } from '../types/websocket-types';
+import { nowMs } from '@/utils/timestamp'
 
 // =================== Configuration ===================
 
@@ -56,7 +57,7 @@ abstract class BaseBatchingStrategy {
       compressionRatio: 0,
       memoryUsageMB: 0,
       errorRate: 0,
-      lastUpdated: Date.now(),
+      lastUpdated: nowMs(),
       // Additional properties
       totalMessages: 0,
       batchedMessages: 0,
@@ -94,10 +95,10 @@ class TimeBasedBatchingStrategy extends BaseBatchingStrategy implements Batching
 
   createBatch(messages: DurableObjectEvent[]): MessageBatch {
     return {
-      id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `batch_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`,
       messages,
       priority: 'normal',
-      createdAt: Date.now(),
+      createdAt: nowMs(),
       targetUsers: [],
       estimatedSize: messages.length
     };
@@ -112,7 +113,7 @@ class TimeBasedBatchingStrategy extends BaseBatchingStrategy implements Batching
   }
 
   shouldFlushBatch(batch: MessageBatch): boolean {
-    const now = Date.now();
+    const now = nowMs();
 
     // Initialize batch start time if needed
     if (this.batchStartTime === 0 && batch.messages.length > 0) {
@@ -216,7 +217,7 @@ class TimeBasedBatchingStrategy extends BaseBatchingStrategy implements Batching
       return `${message.type}:${message.id || 'unknown'}`;
     }
 
-    return `${message.type}:${message.id || 'unknown'}:${message.timestamp || Date.now()}`;
+    return `${message.type}:${message.id || 'unknown'}:${message.timestamp || nowMs()}`;
   }
 
   private updateOptimizationMetrics(original: DurableObjectEvent[], optimized: DurableObjectEvent[]): void {
@@ -309,7 +310,7 @@ export class MessageBatchOptimizer {
       compressionRatio: 1,
       memoryUsageMB: 0,
       errorRate: 0,
-      lastUpdated: Date.now(),
+      lastUpdated: nowMs(),
       totalMessages: 0,
       batchedMessages: 0,
       deduplicationSavings: 0,
@@ -387,10 +388,10 @@ export class MessageBatchOptimizer {
     let batch = this.activeBatches.get(targetKey);
     if (!batch) {
       batch = {
-        id: `batch_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        id: `batch_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`,
         target,
         messages: [],
-        createdAt: Date.now(),
+        createdAt: nowMs(),
         priority: message.priority || 'normal',
         estimatedSize: 0,
         targetUsers: [] // Required property
@@ -462,7 +463,7 @@ export class MessageBatchOptimizer {
     const finalBatch: MessageBatch = {
       ...batch,
       messages: compressedData,
-      optimizedAt: Date.now(),
+      optimizedAt: nowMs(),
       compressionRatio: optimizedMessages.length / batch.messages.length,
       // originalMessageCount removed - not in MessageBatch interface
     };
@@ -497,10 +498,10 @@ export class MessageBatchOptimizer {
       } else {
         // Create a compressed batch message
         const batchMessage: DurableObjectEvent = {
-          id: `batch_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          id: `batch_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`,
           type: 'batch_message',
           source: 'batch_optimizer',
-          timestamp: Date.now(),
+          timestamp: nowMs(),
           data: {
             messageType: groupMessages[0]?.type,
             batchSize: groupMessages.length,

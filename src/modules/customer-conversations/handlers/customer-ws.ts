@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
+import { globalErrorHandler } from '@/core/error-handler';
 import { verifyConversationAccess } from '../utils/conversation-auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -50,11 +51,7 @@ router.get('/', async (c) => {
 
       return doStub.fetch(modifiedRequest);
     } catch (error) {
-      log.error('Customer WebSocket: Connection error', { error: error instanceof Error ? error.message : String(error) });
-      return c.json({
-        success: false,
-        error: 'Failed to establish WebSocket connection'
-      }, 500);
+      return globalErrorHandler.handleError(c, error);
     }
   } catch (authError: any) {
     const status = authError.status || 401;

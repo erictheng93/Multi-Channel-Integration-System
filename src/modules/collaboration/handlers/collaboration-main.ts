@@ -10,6 +10,8 @@ import {
   errorResponse,
   handleApiError
 } from '@shared/utils/api-response';
+import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
+import { nowISO } from '@/utils/timestamp'
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -17,15 +19,10 @@ const app = new Hono<{ Bindings: Bindings }>();
  * 獲取對話的協作狀態
  * GET /api/collaboration/conversations/:id/state
  */
-app.get('/conversations/:id/state', async (c: Context<{ Bindings: Bindings }>) => {
+app.get('/conversations/:id/state', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = parseInt(c.req.param('id'));
+    const conversationId = getValidatedParam<number>(c, 'id');
     const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
-
-    if (isNaN(conversationId)) {
-      return errorResponse(c, 'Invalid conversation ID', 400);
-    }
-
     const state = await collaboration.getConversationState(conversationId, protocol);
 
     return successResponse(c, state, 'Conversation state retrieved successfully');
@@ -38,15 +35,10 @@ app.get('/conversations/:id/state', async (c: Context<{ Bindings: Bindings }>) =
  * 獲取對話的查看者列表
  * GET /api/collaboration/conversations/:id/viewers
  */
-app.get('/conversations/:id/viewers', async (c: Context<{ Bindings: Bindings }>) => {
+app.get('/conversations/:id/viewers', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = parseInt(c.req.param('id'));
+    const conversationId = getValidatedParam<number>(c, 'id');
     const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
-
-    if (isNaN(conversationId)) {
-      return errorResponse(c, 'Invalid conversation ID', 400);
-    }
-
     const viewers = await collaboration.getConversationViewers(conversationId, protocol);
 
     return successResponse(c, { viewers }, 'Viewers retrieved successfully');
@@ -59,15 +51,10 @@ app.get('/conversations/:id/viewers', async (c: Context<{ Bindings: Bindings }>)
  * 加入對話
  * POST /api/collaboration/conversations/:id/join
  */
-app.post('/conversations/:id/join', async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/conversations/:id/join', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = parseInt(c.req.param('id'));
+    const conversationId = getValidatedParam<number>(c, 'id');
     const payload = c.get('jwtPayload') as JWTPayload;
-
-    if (isNaN(conversationId)) {
-      return errorResponse(c, 'Invalid conversation ID', 400);
-    }
-
     const body = await c.req.json().catch(() => ({}));
     const protocol = body.protocol as 'websocket' | 'http' | undefined;
 
@@ -92,15 +79,10 @@ app.post('/conversations/:id/join', async (c: Context<{ Bindings: Bindings }>) =
  * 離開對話
  * POST /api/collaboration/conversations/:id/leave
  */
-app.post('/conversations/:id/leave', async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/conversations/:id/leave', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = parseInt(c.req.param('id'));
+    const conversationId = getValidatedParam<number>(c, 'id');
     const payload = c.get('jwtPayload') as JWTPayload;
-
-    if (isNaN(conversationId)) {
-      return errorResponse(c, 'Invalid conversation ID', 400);
-    }
-
     await collaboration.leaveConversation({
       conversationId,
       userId: Number(payload.userId)
@@ -232,7 +214,7 @@ app.get('/health', async (c: Context<{ Bindings: Bindings }>) => {
         enableWebSocket: config.enableWebSocket
       },
       availableProtocols: protocols,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       note: isInitialized ? undefined : 'Module will initialize on first business request. Try accessing any conversation endpoint or refresh this page after a few seconds.'
     }, 'Health check completed');
   } catch (error) {

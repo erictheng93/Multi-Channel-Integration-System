@@ -4,12 +4,14 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { eq, and, ne, sql } from 'drizzle-orm';
 import { customers, conversations, teams, customerTeamAssignments } from '@/db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('LIFF');
 
@@ -29,7 +31,7 @@ liffHandler.get('/health', (c) => {
     status: 'healthy',
     module: 'liff',
     version: '2.0.0',
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 
@@ -69,13 +71,7 @@ liffHandler.get('/config', async (c) => {
     });
 
   } catch (error) {
-    log.error('Get LIFF config error', {
-      error: error instanceof Error ? error.message : String(error)
-    });
-    return c.json({
-      success: false,
-      error: '伺服器錯誤'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -114,8 +110,7 @@ liffHandler.get('/teams/:teamId', async (c) => {
     });
 
   } catch (error) {
-    log.error('Get team error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -178,10 +173,10 @@ liffHandler.post('/assign-team', async (c) => {
         teamId: teamId,
         source: 'liff_qr',
         displayName: displayName || null,
-        assignedAt: assignTimestamp || new Date().toISOString(),
+        assignedAt: assignTimestamp || nowISO(),
         metadata: JSON.stringify({
           userAgent: c.req.header('user-agent'),
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
         }),
       });
 
@@ -210,7 +205,7 @@ liffHandler.post('/assign-team', async (c) => {
       const broadcastService = new WebSocketBroadcastService(c.env);
 
       const pendingConversationId = `pending-${assignmentId}`;
-      const scannedAt = Date.now();
+      const scannedAt = nowMs();
 
       await broadcastService.broadcastConversationTransferred({
         conversationId: pendingConversationId,
@@ -272,8 +267,7 @@ liffHandler.post('/assign-team', async (c) => {
     });
 
   } catch (error) {
-    log.error('Assign team error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -328,7 +322,7 @@ liffHandler.post('/welcome', async (c) => {
           ))
           .get();
 
-        const timestamp = new Date().toISOString();
+        const timestamp = nowISO();
 
         if (existingConversation) {
           // 更新現有對話的團隊指派 (如果團隊不同)
@@ -476,8 +470,7 @@ liffHandler.post('/welcome', async (c) => {
     });
 
   } catch (error) {
-    log.error('Send welcome error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({ success: false, error: '伺服器錯誤' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

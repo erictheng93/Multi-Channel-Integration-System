@@ -1,3 +1,4 @@
+import { nowMs } from '@/utils/timestamp'
 // Webhook Validation Service
 // 統一的 webhook 驗證服務 - 從多個 handler 提取重複代碼
 
@@ -262,7 +263,7 @@ export function validateTimestamp(
   timestamp: number,
   toleranceMs: number = 5 * 60 * 1000 // 5 minutes default
 ): { valid: boolean; error?: string; drift: number } {
-  const now = Date.now();
+  const now = nowMs();
   const drift = Math.abs(now - timestamp);
 
   if (drift > toleranceMs) {

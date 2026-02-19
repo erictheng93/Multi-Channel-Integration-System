@@ -5,6 +5,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('WebhookMedia');
 
@@ -46,7 +47,7 @@ export async function processLineMedia(
         fileSize: mediaFile.size,
         fileUrl: mediaFile.url,
         r2Key: r2Key,
-        createdAt: new Date().toISOString()
+        createdAt: nowISO()
       };
 
       // Store to database
@@ -99,7 +100,7 @@ export async function processFacebookMedia(
         fileSize: mediaFile.size,
         r2Key: mediaFile.url, // Using url as r2Key for now
         url: mediaFile.originalUrl,
-        createdAt: new Date().toISOString()
+        createdAt: nowISO()
       };
 
       await drizzleDb.insert(fileAttachments).values(newFileAttachment);

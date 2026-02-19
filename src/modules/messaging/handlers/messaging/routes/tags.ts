@@ -13,6 +13,7 @@ import {
   badRequestResponse,
   notFoundResponse
 } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 const tagsRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -92,7 +93,7 @@ tagsRoutes.put('/:id/tags', jwtAuth, async (c) => {
 
     // 更新標籤
     existingMetadata.tags = validTags.map(tag => tag.trim());
-    existingMetadata.tagsUpdatedAt = new Date().toISOString();
+    existingMetadata.tagsUpdatedAt = nowISO();
     existingMetadata.tagsUpdatedBy = userPayload.userId.toString();
 
     // 更新訊息
@@ -163,7 +164,7 @@ tagsRoutes.delete('/:id/tags', jwtAuth, async (c) => {
 
     // 移除標籤
     delete existingMetadata.tags;
-    existingMetadata.tagsRemovedAt = new Date().toISOString();
+    existingMetadata.tagsRemovedAt = nowISO();
     existingMetadata.tagsRemovedBy = userPayload.userId.toString();
 
     // 更新訊息

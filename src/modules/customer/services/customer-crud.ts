@@ -22,6 +22,7 @@ import {
   CustomerMetadata
 } from '../types/customer-types';
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 export class CustomerCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -185,7 +186,7 @@ export class CustomerCrudService {
    */
   async create(customerData: CreateCustomerData): Promise<Customer> {
     try {
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
 
       // 檢查是否已存在相同的平台用戶
       const existingCustomer = await this.findByPlatformId(
@@ -310,7 +311,7 @@ export class CustomerCrudService {
         throw new CustomerNotFoundError(customerId);
       }
 
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
 
       // 準備更新數據
       const updateFields: Partial<typeof customers.$inferInsert> = {
@@ -373,7 +374,7 @@ export class CustomerCrudService {
       // 這裡我們可以在metadata中添加deleted標記
       const currentMetadata = existingCustomer.metadata ? JSON.parse(existingCustomer.metadata) : {};
       currentMetadata._deleted = true;
-      currentMetadata._deletedAt = new Date().toISOString();
+      currentMetadata._deletedAt = nowISO();
 
       await this.update(customerId, {
         metadata: currentMetadata

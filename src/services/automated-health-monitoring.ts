@@ -1,6 +1,7 @@
 // 自動化健康監控系統 - 提高系統可靠性
 import { healthCheckService } from './health-check-service';
 import type { SystemHealth, HealthCheckResult } from '../types/health-check';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 監控配置
 interface MonitoringConfig {
@@ -118,7 +119,7 @@ export class AutomatedHealthMonitoring {
   private async runMonitoringCycle(): Promise<void> {
     try {
       console.log('🔍 Running health check cycle...');
-      const startTime = Date.now();
+      const startTime = nowMs();
 
       // 執行系統健康檢查
       const health = await healthCheckService.getSystemHealth();
@@ -126,7 +127,7 @@ export class AutomatedHealthMonitoring {
 
       // 記錄健康狀態
       const record: HealthRecord = {
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         overallStatus: health.overall.status,
         details: health,
         responseTime,
@@ -276,8 +277,8 @@ export class AutomatedHealthMonitoring {
     details?: any;
   }): Promise<void> {
     const alert: AlertRecord = {
-      id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
+      id: `alert_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: nowISO(),
       level: alertData.level,
       message: alertData.message,
       component: alertData.component,

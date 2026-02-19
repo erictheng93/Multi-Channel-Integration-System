@@ -15,6 +15,7 @@ import {
 import { tags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, or, asc, like, count, inArray } from 'drizzle-orm';
+import { nowISO } from '@/utils/timestamp'
 
 // ── Raw SQL result type interfaces ──────────────────────────────────────────
 
@@ -621,7 +622,7 @@ export const tagHandler = {
             .update(tags)
             .set({
               isActive: true,
-              updatedAt: new Date().toISOString()
+              updatedAt: nowISO()
             })
             .where(inArray(tags.id, idArray));
           break;
@@ -631,7 +632,7 @@ export const tagHandler = {
             .update(tags)
             .set({
               isActive: false,
-              updatedAt: new Date().toISOString()
+              updatedAt: nowISO()
             })
             .where(inArray(tags.id, idArray));
           break;
@@ -646,7 +647,7 @@ export const tagHandler = {
             .update(tags)
             .set({
               color: data.color,
-              updatedAt: new Date().toISOString()
+              updatedAt: nowISO()
             })
             .where(inArray(tags.id, idArray));
           break;

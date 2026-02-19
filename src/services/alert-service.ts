@@ -2,6 +2,7 @@
 // Multi-channel alert notification system for security events
 
 import type { Bindings } from '@/types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Alert channel configuration types
@@ -191,7 +192,7 @@ Details:
 - Event Type: ${metadata.eventType || 'N/A'}
 - Source IP: ${metadata.sourceIP || 'N/A'}
 - Integration ID: ${metadata.integrationId || 'N/A'}
-- Timestamp: ${metadata.timestamp || new Date().toISOString()}
+- Timestamp: ${metadata.timestamp || nowISO()}
 ` : ''}
 
 ---
@@ -262,7 +263,7 @@ This is an automated security alert from Multi-Channel Customer Support System.
             },
             {
               type: 'mrkdwn',
-              text: `*Time:*\n${metadata?.timestamp || new Date().toISOString()}`
+              text: `*Time:*\n${metadata?.timestamp || nowISO()}`
             }
           ]
         },
@@ -336,7 +337,7 @@ This is an automated security alert from Multi-Channel Customer Support System.
       message,
       severity,
       metadata: metadata || {},
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
 
     const response = await fetch(config.url, {

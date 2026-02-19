@@ -20,6 +20,7 @@ import type {
   CallQualityReportData,
   ExecutiveSummaryReportData
 } from '../types/report-types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Sample Data Generators for Report Preview
@@ -654,7 +655,7 @@ export class SampleDataGenerators {
         forecastPeriod: 30,
         confidence: 87.5,
         accuracy: 92.3,
-        lastUpdate: new Date().toISOString()
+        lastUpdate: nowISO()
       },
       conversationTrends: {
         historical: Array.from({ length: 30 }, (_, i) => ({
@@ -1753,7 +1754,7 @@ export class SampleDataGenerators {
     return {
       executiveOverview: {
         reportPeriod: '2025 Q3',
-        generatedAt: new Date().toISOString(),
+        generatedAt: nowISO(),
         keyHighlights: [
           '客戶滿意度連續三個月提升，達到4.2分歷史新高',
           '自動化客服覆蓋率提升至68.5%，節省成本42.8%',

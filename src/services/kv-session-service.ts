@@ -1,3 +1,4 @@
+import { nowMs } from '@/utils/timestamp'
 /**
  * KV Session Service
  *
@@ -113,7 +114,7 @@ export class KVSessionService {
     sessionId: string,
     options: CreateSessionOptions
   ): Promise<SessionData> {
-    const now = Date.now();
+    const now = nowMs();
     const ttl = options.ttl || this.DEFAULT_TTL;
 
     const sessionData: SessionData = {
@@ -159,7 +160,7 @@ export class KVSessionService {
       return { valid: false, error: 'invalid_format' };
     }
 
-    const now = Date.now();
+    const now = nowMs();
 
     try {
       // ===== Step 1: Check in-memory cache first =====
@@ -244,7 +245,7 @@ export class KVSessionService {
     }
 
     const session = validation.session;
-    const now = Date.now();
+    const now = nowMs();
     const updatedSession: SessionData = {
       ...session,
       ...updates,
@@ -302,7 +303,7 @@ export class KVSessionService {
       return null;
     }
 
-    const now = Date.now();
+    const now = nowMs();
     const session = validation.session;
     // ❌ Removed: expiresAt and lastActivity updates
 
@@ -380,7 +381,7 @@ export class KVSessionService {
     }
   ): Promise<{ sessionId: string; session: SessionData }> {
     // Generate session ID: `customer_{platform}_{platformUserId}_{timestamp}`
-    const sessionId = `customer_${platform}_${platformUserId}_${Date.now()}`;
+    const sessionId = `customer_${platform}_${platformUserId}_${nowMs()}`;
 
     const session = await this.createSession(sessionId, {
       userId: `customer-${customerId}`,

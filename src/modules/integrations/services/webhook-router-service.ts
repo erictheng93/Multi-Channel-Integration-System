@@ -13,6 +13,7 @@ import type {
 import type { Bindings } from '@/types';
 import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
 import { FacebookIntegrationService } from '@modules/integrations/services/facebook-integration-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Webhook 路由結果
@@ -91,7 +92,7 @@ export class WebhookRouterService {
       events: [],
       errors: [],
       warnings: [],
-      processedAt: new Date().toISOString()
+      processedAt: nowISO()
     };
 
     try {
@@ -183,7 +184,7 @@ export class WebhookRouterService {
             events: [],
             errors: [`Batch processing error: ${promiseResult.reason}`],
             warnings: [],
-            processedAt: new Date().toISOString()
+            processedAt: nowISO()
           });
         }
       }
@@ -618,7 +619,7 @@ export class WebhookRouterService {
 
     try {
       const platformEvent: PlatformEvent = {
-        id: `generic_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `generic_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`,
         integrationId: integration.id,
         platform: integration.platform,
         type: 'message',
@@ -628,17 +629,17 @@ export class WebhookRouterService {
           type: 'user'
         },
 
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         processed: false
       };
 
       // 嘗試提取訊息內容
       if (webhookBody.message || webhookBody.text) {
         platformEvent.message = {
-          id: webhookBody.messageId || `msg_${Date.now()}`,
+          id: webhookBody.messageId || `msg_${nowMs()}`,
           type: 'text',
           content: webhookBody.message || webhookBody.text,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         };
       }
 
@@ -712,7 +713,7 @@ export class WebhookRouterService {
         received: 0,
         processed: 0,
         failed: 0,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: nowISO()
       };
 
       (stats as any).received += eventCount;
@@ -721,7 +722,7 @@ export class WebhookRouterService {
       } else {
         (stats as any).failed += eventCount;
       }
-      (stats as any).lastUpdated = new Date().toISOString();
+      (stats as any).lastUpdated = nowISO();
 
       await this.cache.put(statsKey, JSON.stringify(stats), { expirationTtl: 86400 });
     } catch (error) {

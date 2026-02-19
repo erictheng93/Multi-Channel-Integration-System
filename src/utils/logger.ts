@@ -1,3 +1,4 @@
+import { nowISO, nowMs } from '@/utils/timestamp'
 /**
  * Centralized Logging System for Cloudflare Workers
  * Replaces all console.log statements with structured logging
@@ -124,7 +125,7 @@ class Logger {
     if (!this.shouldLog(level)) return;
 
     const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       level,
       message,
       ...(context && { context }),
@@ -156,7 +157,7 @@ class Logger {
 
   error(message: string, context?: string, metadata?: Record<string, unknown>, error?: Error | string): void {
     const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       level: 'error',
       message,
       ...(context && { context }),
@@ -175,7 +176,7 @@ class Logger {
 
   fatal(message: string, context?: string, metadata?: Record<string, unknown>, error?: Error | string): void {
     const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       level: 'fatal',
       message,
       ...(context && { context }),
@@ -196,7 +197,7 @@ class Logger {
   startTimer(context: string): () => void {
     if (!this.config.enablePerformanceTracking) return () => {};
 
-    const startTime = Date.now();
+    const startTime = nowMs();
     return () => {
       const duration = Date.now() - startTime;
       this.info(`Operation completed`, context, { duration_ms: duration });

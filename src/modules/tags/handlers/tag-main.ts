@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { tagHandler } from '../services/tag-service';
 import { jwtAuth } from '@/middleware/auth';
+import { nowISO } from '@/utils/timestamp'
 
 const tagMainHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -35,7 +36,7 @@ tagMainHandler.get('/health', (c) => {
     data: {
       status: 'healthy',
       handler: 'tag-main',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     },
     message: 'Tag handler is operational'
   });

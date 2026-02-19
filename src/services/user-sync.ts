@@ -10,6 +10,7 @@ import {
   isFacebookProfile
 } from '../types';
 import { getLineUserProfile, getLineGroupMemberProfile } from '../utils/line';
+import { nowISO } from '@/utils/timestamp'
 
 export interface UserProfile {
   platformUserId: string;
@@ -204,7 +205,7 @@ export class UserSyncService {
   private async updateUserInDatabase(userProfile: UserProfile): Promise<void> {
     try {
       const drizzleDb = createDbClient(this.env.DB);
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
       
       await drizzleDb
         .update(customers)

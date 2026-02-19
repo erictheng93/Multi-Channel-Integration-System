@@ -11,6 +11,7 @@ import { createContextLogger } from '@/utils/logger';
 import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processFacebookMedia } from '../services/webhook-media-service';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('Webhook');
 
@@ -128,7 +129,7 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       }
 
       // 建立新使用者
-      const timestamp = new Date().toISOString();
+      const timestamp = nowISO();
       await drizzleDb
         .insert(customers)
         .values({

@@ -17,6 +17,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { teamApi } from '@/api/team'
 import type { LiffQRCode, LiffQRCodeStats } from '@/types'
+import { nowISO } from '@/utils/timestamp'
 
 // 快取條目結構
 interface LiffQRCacheEntry {
@@ -201,8 +202,8 @@ export const useQRCodeStore = defineStore('qrcode', () => {
           qrCodeUrl: response.data.qrCodeUrl,
           scanCount: response.data.scanCount || 0,
           isActive: response.data.isActive,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: nowISO(),
+          updatedAt: nowISO(),
           type: 'liff'
         }
 

@@ -4,6 +4,7 @@
 import type { DistributedLock, LockAcquisitionOptions } from '../../types/websocket-types';
 import type { BroadcasterContext } from './broadcaster-helpers';
 import { createContextLogger } from '../../utils/logger';
+import { nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('MessageBroadcaster');
 
@@ -29,12 +30,12 @@ export class BroadcasterLockService {
       try {
         const existingLock = await this.ctx.state.storage.get(`lock:${resource}`);
 
-        if (!existingLock || (existingLock as DistributedLock).expiresAt < Date.now()) {
+        if (!existingLock || (existingLock as DistributedLock).expiresAt < nowMs()) {
           const lock: DistributedLock = {
             lockId,
             resource,
             ownerId: 'MessageBroadcaster',
-            acquiredAt: Date.now(),
+            acquiredAt: nowMs(),
             expiresAt,
             isActive: true
           };
@@ -68,7 +69,7 @@ export class BroadcasterLockService {
   }
 
   async cleanupExpiredLocks(): Promise<void> {
-    const now = Date.now();
+    const now = nowMs();
     const expiredLocks = Array.from(this.ctx.locks.entries())
       .filter(([_, lock]) => lock.expiresAt < now);
 
@@ -83,7 +84,7 @@ export class BroadcasterLockService {
   }
 
   private generateLockId(): string {
-    return `lock_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return `lock_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
   }
 
   private sleep(ms: number): Promise<void> {

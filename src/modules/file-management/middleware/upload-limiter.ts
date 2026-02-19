@@ -11,6 +11,7 @@ import {
 } from '@/utils/api-response';
 import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { UPLOAD_CONFIG } from '@modules/file-management/constants/file-config';
+import { nowMs } from '@/utils/timestamp'
 
 interface UploadLimitOptions {
   maxConcurrentUploads?: number;
@@ -55,7 +56,7 @@ export function uploadLimiterMiddleware(options: UploadLimitOptions = {}) {
     try {
       const payload = c.get('jwtPayload');
       const userId = payload?.userId?.toString() || 'anonymous';
-      const now = Date.now();
+      const now = nowMs();
       const currentMinute = Math.floor(now / 60000);
       const currentHour = Math.floor(now / 3600000);
 
@@ -261,7 +262,7 @@ export function uploadTimeoutMiddleware(timeoutMs: number = UPLOAD_CONFIG.TIMEOU
  * 清理過期的上傳狀態
  */
 export function cleanupUploadStates() {
-  const now = Date.now();
+  const now = nowMs();
   const oneHourAgo = Math.floor((now - 3600000) / 3600000);
 
   for (const [userId, state] of uploadStates.entries()) {
@@ -285,7 +286,7 @@ export function getUserUploadStats(userId: string): UserUploadState | null {
 export function resetUserUploadLimits(userId: string): boolean {
   const state = uploadStates.get(userId);
   if (state) {
-    const now = Date.now();
+    const now = nowMs();
     state.concurrentUploads = 0;
     state.uploadsThisMinute = 0;
     state.uploadsThisHour = 0;

@@ -20,6 +20,7 @@ import {
   supportsThumbnail
 } from '../utils/mime-type-utils';
 import { PROCESSING_OPTIONS } from '@modules/file-management/constants/file-config';
+import { nowISO } from '@/utils/timestamp'
 
 export class MetadataService {
   /**
@@ -293,7 +294,7 @@ export class MetadataService {
     return {
       ...file,
       processingStatus: status,
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowISO(),
       ...(error && { error })
     };
   }

@@ -4,6 +4,7 @@
 
 import type { Bindings } from '../types';
 import { Logger, LogLevel, createLogger, type LogContext } from './logger-service';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * DO 實例健康狀態
@@ -162,7 +163,7 @@ export class DurableObjectsMonitor {
    * 執行全面的健康檢查
    */
   async performHealthCheck(): Promise<MonitorStats> {
-    const timer = Date.now();
+    const timer = nowMs();
     this.logger.info('Starting comprehensive health check');
 
     try {
@@ -418,9 +419,9 @@ export class DurableObjectsMonitor {
       errorRate: healthData.errorRate || 0,
       memoryUsageMB: healthData.memoryUsageMB || 0,
       cpuUsagePercent: healthData.cpuUsagePercent || 0,
-      lastHealthCheck: Date.now(),
+      lastHealthCheck: nowMs(),
       uptime: healthData.uptime || 0,
-      lastActivity: healthData.lastActivity || Date.now(),
+      lastActivity: healthData.lastActivity || nowMs(),
       alerts: []
     };
 
@@ -474,7 +475,7 @@ export class DurableObjectsMonitor {
         type: DOAlertType.HIGH_ERROR_RATE,
         severity: metrics.errorRate > this.config.thresholds.errorRate * 2 ? 'critical' : 'warning',
         message: `High error rate detected: ${(metrics.errorRate * 100).toFixed(2)}%`,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         metadata: { errorRate: metrics.errorRate, threshold: this.config.thresholds.errorRate }
       });
     }
@@ -485,7 +486,7 @@ export class DurableObjectsMonitor {
         type: DOAlertType.HIGH_LATENCY,
         severity: metrics.averageLatency > this.config.thresholds.latency * 2 ? 'critical' : 'warning',
         message: `High latency detected: ${metrics.averageLatency}ms`,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         metadata: { latency: metrics.averageLatency, threshold: this.config.thresholds.latency }
       });
     }
@@ -496,7 +497,7 @@ export class DurableObjectsMonitor {
         type: DOAlertType.HIGH_MEMORY,
         severity: 'warning',
         message: `High memory usage: ${metrics.memoryUsageMB}MB`,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         metadata: { memoryUsage: metrics.memoryUsageMB, threshold: this.config.thresholds.memoryUsage }
       });
     }
@@ -508,7 +509,7 @@ export class DurableObjectsMonitor {
         type: DOAlertType.CONNECTION_LIMIT,
         severity: connectionUtilization > 0.95 ? 'critical' : 'warning',
         message: `High connection utilization: ${(connectionUtilization * 100).toFixed(1)}%`,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         metadata: { utilization: connectionUtilization, activeConnections: metrics.activeConnections, limit: metrics.connectionLimit }
       });
     }
@@ -530,7 +531,7 @@ export class DurableObjectsMonitor {
 
     // 檢查冷卻期
     const lastAlertTime = this.lastAlertTime.get(key) || 0;
-    const now = Date.now();
+    const now = nowMs();
 
     if (now - lastAlertTime < this.config.alerts.cooldownPeriod) {
       return; // 在冷卻期內，不發送新告警
@@ -579,7 +580,7 @@ export class DurableObjectsMonitor {
       type: DOAlertType.INSTANCE_UNRESPONSIVE,
       severity: 'critical',
       message: `DO instance unresponsive: ${objectType}/${instanceId}`,
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       metadata: { reason }
     };
 
@@ -598,7 +599,7 @@ export class DurableObjectsMonitor {
       unhealthyInstances: 0,
       totalAlerts: this.alertHistory.length,
       activeAlerts: 0,
-      lastUpdate: Date.now()
+      lastUpdate: nowMs()
     };
 
     // 統計各類型實例數量和健康狀態
@@ -678,7 +679,7 @@ export class DurableObjectsMonitor {
    * 清理過期數據
    */
   cleanup(): void {
-    const now = Date.now();
+    const now = nowMs();
     const staleThreshold = 5 * 60 * 1000; // 5 minutes
 
     // 清理過期的實例指標

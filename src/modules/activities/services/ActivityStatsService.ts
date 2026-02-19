@@ -6,6 +6,7 @@ import { sql, gte, count, desc } from 'drizzle-orm'
 import { activities } from '@/db/schema'
 import { ActivityOverview } from '@modules/activities/types/interfaces'
 import { ActivityFormatter } from '@modules/activities/utils/formatters'
+import { nowISO } from '@/utils/timestamp'
 
 export class ActivityStatsService {
   constructor(private db: D1Database) {}
@@ -79,7 +80,7 @@ export class ActivityStatsService {
       period: {
         days,
         startDate: startDateStr,
-        endDate: new Date().toISOString()
+        endDate: nowISO()
       }
     }
   }

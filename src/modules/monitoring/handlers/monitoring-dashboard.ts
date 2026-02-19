@@ -5,6 +5,7 @@ import type { Bindings } from '@/types';
 import { automatedHealthMonitoring } from '@/services/automated-health-monitoring';
 import { healthCheckService } from '@/services/health-check-service';
 import { successResponse, internalErrorResponse } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 獲取監控儀表板數據
@@ -15,7 +16,7 @@ export async function getMonitoringDashboard(c: Context<{ Bindings: Bindings }>)
     const currentHealth = await healthCheckService.getSystemHealth();
 
     const dashboardData = {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       system: {
         status: currentHealth.overall.status,
         message: currentHealth.overall.message,
@@ -122,7 +123,7 @@ export async function updateMonitoringConfig(c: Context<{ Bindings: Bindings }>)
       return c.json({
         success: false,
         error: 'Check interval must be between 10 seconds and 5 minutes',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 

@@ -6,6 +6,7 @@ import { teamLiffQrCodes } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { createContextLogger } from '../utils/logger';
 import type { Bindings } from '../types';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('QRCodeService');
 
@@ -53,7 +54,7 @@ export async function generateTeamQRCode(
       customMetadata: {
         teamId: teamId.toString(),
         teamName: teamName,
-        generatedAt: new Date().toISOString(),
+        generatedAt: nowISO(),
       }
     });
 
@@ -80,7 +81,7 @@ export async function generateTeamQRCode(
         .set({
           liffUrl,
           qrCodeUrl,
-          updatedAt: new Date().toISOString(),
+          updatedAt: nowISO(),
         })
         .where(eq(teamLiffQrCodes.id, existingQrCode.id));
 
@@ -98,8 +99,8 @@ export async function generateTeamQRCode(
         qrCodeUrl,
         scanCount: 0,
         isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
       });
 
       return {
@@ -140,7 +141,7 @@ export async function deactivateTeamQRCode(teamId: number, env: Bindings): Promi
       .update(teamLiffQrCodes)
       .set({
         isActive: false,
-        updatedAt: new Date().toISOString(),
+        updatedAt: nowISO(),
       })
       .where(eq(teamLiffQrCodes.teamId, teamId));
     return true;

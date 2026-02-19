@@ -1,6 +1,7 @@
 // 企業級操作日誌系統實現
 import type { Context } from 'hono';
 import type { Bindings, DbUser } from '../types';
+import { nowMs } from '@/utils/timestamp'
 
 // 日誌級別
 export enum LogLevel {
@@ -70,7 +71,7 @@ export class EnterpriseAuditLogger {
   async log(entry: Partial<AuditLogEntry>): Promise<void> {
     const logEntry: AuditLogEntry = {
       id: crypto.randomUUID(),
-      timestamp: Date.now(),
+      timestamp: nowMs(),
       result: OperationResult.SUCCESS,
       level: LogLevel.INFO,
       category: LogCategory.BUSINESS,
@@ -234,7 +235,7 @@ export class EnterpriseAuditLogger {
 // 審計日誌中間件
 export function auditLogMiddleware() {
   return async (c: Context<{ Bindings: Bindings }>, next: () => Promise<void>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const auditLogger = new EnterpriseAuditLogger(c.env.DB, c.env.KV);
     
     try {

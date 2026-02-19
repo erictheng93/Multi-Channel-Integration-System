@@ -10,6 +10,7 @@ import {
   PushSubscription,
   ChannelConfig
 } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class PushAdapter implements ChannelAdapter {
   readonly type: ChannelType = 'push';
@@ -55,7 +56,7 @@ export class PushAdapter implements ChannelAdapter {
       };
     }
 
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       const userSubscriptions = this.subscriptions.get(parseInt(message.recipientId));
@@ -166,7 +167,7 @@ export class PushAdapter implements ChannelAdapter {
       actions: this.getNotificationActions(notification),
       requireInteraction: notification.priority === 'urgent',
       silent: false,
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
   }
 
@@ -335,7 +336,7 @@ export class PushAdapter implements ChannelAdapter {
         content: 'This is a test push notification',
         priority: 'normal',
         isRead: false,
-        createdAt: new Date().toISOString()
+        createdAt: nowISO()
       },
       channel: 'push',
       recipientId: userId.toString(),

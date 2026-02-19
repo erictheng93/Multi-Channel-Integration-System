@@ -6,6 +6,7 @@ import type { Bindings } from '@/types';
 // import type { SSEAuthPayload } from '@modules/realtime/types';
 import { verifyJWT } from '@/utils/auth';
 import { unauthorizedResponse } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 // Real-time 認證 Payload (替代 SSEAuthPayload)
 export interface RealtimeAuthPayload {
@@ -136,7 +137,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
         userId: authPayload.userId,
         role: authPayload.role,
         primaryTeamId: authPayload.primaryTeamId,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
 
       await next();

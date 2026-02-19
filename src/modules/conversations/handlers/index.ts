@@ -8,6 +8,7 @@ import conversationAssignmentHandler from './conversation-assignment';
 import conversationTagsHandler from './conversation-tags';
 import conversationMessagesHandler from './conversation-messages';
 import conversationQueriesHandler from './conversation-queries';
+import { nowISO } from '@/utils/timestamp'
 
 // 創建對話主路由器
 const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
@@ -29,7 +30,7 @@ const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
 conversationsMainHandler.get('/health', (c) => {
   return c.json({
     status: 'healthy',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     module: 'conversations',
     version: '1.0.0'
   });
@@ -59,7 +60,7 @@ conversationsMainHandler.get('/info', (c) => {
         'GET / - List conversations'
       ]
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 

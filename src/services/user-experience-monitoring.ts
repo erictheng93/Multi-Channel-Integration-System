@@ -5,6 +5,7 @@
 import type { Bindings } from '../types';
 import { createAnalyticsService, AlertLevel } from '../monitoring/websocket-analytics-service';
 import { calculateUserExperienceScore as _calculateUserExperienceScore } from '../utils/analytics-helpers';
+import { nowMs } from '@/utils/timestamp'
 
 // 用戶體驗指標
 export interface UserExperienceMetrics {
@@ -100,7 +101,7 @@ export class UserExperienceMonitoringService {
       metrics.userSatisfactionScore = calculatedScore;
 
       // 保存指標
-      const metricsKey = `${this.UX_METRICS_KEY_PREFIX}${metrics.userId}:${metrics.sessionId}:${Date.now()}`;
+      const metricsKey = `${this.UX_METRICS_KEY_PREFIX}${metrics.userId}:${metrics.sessionId}:${nowMs()}`;
       await this.env.CACHE?.put(metricsKey, JSON.stringify(metrics), {
         expirationTtl: 30 * 24 * 60 * 60 // 30 天
       });
@@ -122,7 +123,7 @@ export class UserExperienceMonitoringService {
 
   async recordUserBehavior(behavior: UserBehaviorAnalytics): Promise<void> {
     try {
-      const behaviorKey = `${this.UX_BEHAVIOR_KEY_PREFIX}${behavior.userId}:${Date.now()}`;
+      const behaviorKey = `${this.UX_BEHAVIOR_KEY_PREFIX}${behavior.userId}:${nowMs()}`;
       await this.env.CACHE?.put(behaviorKey, JSON.stringify(behavior), {
         expirationTtl: 7 * 24 * 60 * 60 // 7 天
       });
@@ -273,13 +274,13 @@ export class UserExperienceMonitoringService {
 
   async recordABTestMetric(userId: string, testId: string, metricName: string, value: number): Promise<void> {
     try {
-      const metricKey = `ab_metric:${testId}:${userId}:${metricName}:${Date.now()}`;
+      const metricKey = `ab_metric:${testId}:${userId}:${metricName}:${nowMs()}`;
       const metricData = {
         userId,
         testId,
         metricName,
         value,
-        timestamp: Date.now()
+        timestamp: nowMs()
       };
 
       await this.env.CACHE?.put(metricKey, JSON.stringify(metricData), {
@@ -305,7 +306,7 @@ export class UserExperienceMonitoringService {
     improvements: string[];
   }> {
     try {
-      // const endTime = Date.now();
+      // const endTime = nowMs();
       // const _startTime = endTime - (timeRangeHours * 60 * 60 * 1000);
 
       // 這裡應該實現實際的數據查詢和分析
@@ -398,7 +399,7 @@ export class UserExperienceMonitoringService {
         averageScore: 0,
         lastSurveyDate: null as string | null,
         errorRate: 0,
-        lastUpdated: Date.now()
+        lastUpdated: nowMs()
       };
 
       if (existing) {
@@ -418,7 +419,7 @@ export class UserExperienceMonitoringService {
 
       // 計算錯誤率
       stats.errorRate = stats.totalMessages > 0 ? stats.totalErrors / stats.totalMessages : 0;
-      stats.lastUpdated = Date.now();
+      stats.lastUpdated = nowMs();
 
       await this.env.CACHE?.put(statsKey, JSON.stringify(stats), {
         expirationTtl: 365 * 24 * 60 * 60 // 1 年
@@ -495,7 +496,7 @@ export class UserExperienceMonitoringService {
         userId,
         testId,
         variantId,
-        assignedAt: Date.now()
+        assignedAt: nowMs()
       };
 
       await this.env.CACHE?.put(assignmentKey, JSON.stringify(assignment), {

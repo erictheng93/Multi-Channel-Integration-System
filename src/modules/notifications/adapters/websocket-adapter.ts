@@ -9,6 +9,7 @@ import {
   WebSocketMessage,
   ChannelConfig
 } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class WebSocketAdapter implements ChannelAdapter {
   readonly type: ChannelType = 'websocket';
@@ -50,7 +51,7 @@ export class WebSocketAdapter implements ChannelAdapter {
       };
     }
 
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       const userConnections = this.connections.get(parseInt(message.recipientId));
@@ -74,7 +75,7 @@ export class WebSocketAdapter implements ChannelAdapter {
           data: message.notification.data,
           createdAt: message.notification.createdAt
         },
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         userId: message.notification.userId,
         messageId: crypto.randomUUID()
       };
@@ -203,7 +204,7 @@ export class WebSocketAdapter implements ChannelAdapter {
 
     const pingMessage: WebSocketMessage = {
       type: 'ping',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
 
     for (const [userId, connections] of this.connections.entries()) {

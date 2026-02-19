@@ -1,6 +1,7 @@
 // 認證處理器 - 主要實現
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import {
   signJWT,
@@ -28,6 +29,7 @@ import {
   badRequestResponse,
   validationErrorResponse
 } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp'
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
@@ -109,7 +111,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
           }
         },
         message: 'Password must be changed before login',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     }
 
@@ -119,7 +121,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       await drizzleDb
         .update(agents)
         .set({
-          lastLoginAt: new Date().toISOString()
+          lastLoginAt: nowISO()
         })
         .where(eq(agents.id, String(user.id)));
     } catch (error) {
@@ -172,7 +174,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
         email: user.email,
         role: user.role,
         primaryTeamId: user.primaryTeamId || undefined,
-        loginAt: new Date().toISOString()
+        loginAt: nowISO()
       }
     );
 
@@ -210,16 +212,11 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
         sessionId,
         expiresIn: 2 * 60 * 60 // 2 小時
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    authLogger.error('User login failed', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Login failed',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -292,16 +289,11 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
           teamName: newUser.teamName
         }
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    authLogger.error('User registration failed', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Registration failed',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -336,16 +328,11 @@ authHandler.post('/logout', sessionAuth, async (c) => {
     return c.json({
       success: true,
       message: 'Logged out successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    authLogger.error('User logout failed', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Logout failed',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -369,16 +356,11 @@ authHandler.get('/profile', jwtAuth, async (c) => {
           updatedAt: user.updatedAt
         }
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    authLogger.error('Profile update failed', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get profile',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -398,16 +380,11 @@ authHandler.get('/me', jwtAuth, async (c) => {
         isActive: user.isActive,
         createdAt: new Date(user.createdAt).getTime()
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    authLogger.error('Current user information retrieval failed', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get user info',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -420,7 +397,7 @@ authHandler.post('/refresh', async (c) => {
       return c.json({
         success: false,
         error: 'Refresh token is required',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
@@ -434,7 +411,7 @@ authHandler.post('/refresh', async (c) => {
       return c.json({
         success: false,
         error: 'Invalid refresh token',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -443,7 +420,7 @@ authHandler.post('/refresh', async (c) => {
       return c.json({
         success: false,
         error: 'Invalid token type',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -478,7 +455,7 @@ authHandler.post('/refresh', async (c) => {
       return c.json({
         success: false,
         error: 'User not found or inactive',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
@@ -524,16 +501,11 @@ authHandler.post('/refresh', async (c) => {
         token: newToken,
         refreshToken: newRefreshToken
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    authLogger.error('Token refresh failed', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Token refresh failed',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

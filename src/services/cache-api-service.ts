@@ -1,3 +1,4 @@
+import { nowMs } from '@/utils/timestamp'
 /**
  * Cache API Service
  *
@@ -76,7 +77,7 @@ const stats: CacheStats = {
   misses: 0,
   writes: 0,
   deletes: 0,
-  lastReset: Date.now()
+  lastReset: nowMs()
 };
 
 // =================== Helper Functions ===================
@@ -309,7 +310,7 @@ export class CacheAPIService {
     stats.misses = 0;
     stats.writes = 0;
     stats.deletes = 0;
-    stats.lastReset = Date.now();
+    stats.lastReset = nowMs();
   }
 }
 

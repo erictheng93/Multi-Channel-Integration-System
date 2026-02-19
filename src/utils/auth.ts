@@ -3,6 +3,7 @@ import { createDbClient } from '../db/drizzle-factory';
 import { agents, teams, agentTeams } from '../db/schema';
 import { convertAgent } from './drizzle-converters';
 import type { DbUser, JWTPayload, TeamRoleInTeam } from '../types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * JWT 認證工具函數
@@ -225,7 +226,7 @@ export async function createUser(
   }
 ): Promise<DbUser> {
   const hashedPassword = await hashPassword(userData.password);
-  const now = new Date().toISOString();
+  const now = nowISO();
   const userId = crypto.randomUUID();
   const drizzleDb = createDbClient(db);
 
@@ -637,7 +638,7 @@ export async function createSession(
   await kv.put(sessionKey, JSON.stringify({
     userId,
     ...sessionData,
-    createdAt: new Date().toISOString()
+    createdAt: nowISO()
   }), { expirationTtl });
 
   return sessionId;
@@ -779,7 +780,7 @@ export async function updateUserActivityDebounced(
   minInterval: number = 15 * 60 * 1000 // 15 minutes
 ): Promise<boolean> {
   try {
-    const now = Date.now();
+    const now = nowMs();
 
     // ✅ Check in-memory cache (zero KV operations)
     const lastUpdate = lastActivityCache.get(userId);
@@ -797,7 +798,7 @@ export async function updateUserActivityDebounced(
     const drizzleDb = createDbClient(db);
     await drizzleDb
       .update(agents)
-      .set({ lastActive: new Date().toISOString() })
+      .set({ lastActive: nowISO() })
       .where(eq(agents.id, userId))
       .run();
 
@@ -821,7 +822,7 @@ export function getActivityCacheStats(): {
   estimatedMemoryKB: number;
   entries: Array<{ userId: string; lastUpdate: number; ageMinutes: number }>;
 } {
-  const now = Date.now();
+  const now = nowMs();
   const entries = Array.from(lastActivityCache.entries()).map(([userId, timestamp]) => ({
     userId,
     lastUpdate: timestamp,

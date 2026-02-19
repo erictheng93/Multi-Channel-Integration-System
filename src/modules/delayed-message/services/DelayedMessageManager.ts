@@ -17,6 +17,7 @@ import { EventService } from '@modules/delayed-message/infrastructure/EventServi
 import { MessageSchedulerService } from '@modules/delayed-message/services/MessageSchedulerService';
 import { MessageProcessorService } from '@modules/delayed-message/services/MessageProcessorService';
 import { PermissionService } from '@/services/permission-service';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * DelayedMessageManager - 延遲訊息核心管理器
@@ -358,7 +359,7 @@ export class DelayedMessageManager {
       return {
         healthy,
         services,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
     } catch (error) {
       console.error('❌ [DelayedMessageManager] Health check failed:', error);
@@ -370,7 +371,7 @@ export class DelayedMessageManager {
           processor: false,
           event: false
         },
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
     }
   }

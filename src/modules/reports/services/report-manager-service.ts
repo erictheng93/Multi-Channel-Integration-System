@@ -22,6 +22,7 @@ import {
 
 import type { ReportGeneratorService } from './report-generator-service';
 import type { ReportUtils } from './report-utils';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Handles report listing, details, deletion, statistics and batch operations
@@ -84,7 +85,7 @@ export class ReportManagerService {
         format: report.format as 'json' | 'csv' | 'excel' | 'pdf',
         status: report.status as 'pending' | 'generating' | 'completed' | 'failed',
         createdBy: report.createdBy,
-        createdAt: report.createdAt || new Date().toISOString(),
+        createdAt: report.createdAt || nowISO(),
         updatedAt: report.updatedAt || undefined,
         startedAt: report.generationStartedAt || undefined,
         completedAt: report.completedAt || undefined,

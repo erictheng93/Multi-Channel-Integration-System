@@ -3,6 +3,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams, conversationTransfers } from '@/db/schema';
@@ -13,6 +14,7 @@ import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
@@ -46,7 +48,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
 
     // 更新對話指派
     const drizzleDb = createDbClient(c.env.DB);
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     log.info('Assign API updating conversation', {
       conversationId,
@@ -176,16 +178,11 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       success: true,
       message: 'Conversation assigned successfully',
       data: conversationData,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    log.error('Assign conversation error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : ERROR_MESSAGES.ASSIGN_CONVERSATION_FAILED,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -242,7 +239,7 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
     });
 
     // 取消指派：清除 teamId 和 userId，將狀態改回 'open'
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     try {
       // 使用原始 SQL 执行 UPDATE（避免 Drizzle ORM 的 NULL 处理问题）
@@ -333,16 +330,11 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
       success: true,
       message: 'Conversation unassigned successfully',
       data: conversationData,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    log.error('Unassign conversation error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to unassign conversation',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -382,7 +374,7 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
 
     // 更新對話指派
     const drizzleDb = createDbClient(c.env.DB);
-    const timestamp = new Date().toISOString();
+    const timestamp = nowISO();
 
     await drizzleDb
       .update(conversations)
@@ -490,16 +482,11 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
     return c.json({
       success: true,
       message: 'Conversation transferred successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    log.error('Transfer conversation error', { error: error instanceof Error ? error.message : String(error) });
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : ERROR_MESSAGES.FAILED_TO_TRANSFER_CONVERSATION,
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

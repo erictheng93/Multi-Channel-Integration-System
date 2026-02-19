@@ -29,6 +29,7 @@ import {
 } from '../types/message-types';
 import type { Bindings } from '@/types';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
+import { nowISO } from '@/utils/timestamp'
 
 export class MessageCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -293,7 +294,7 @@ export class MessageCrudService {
       }
 
       const messageId = crypto.randomUUID();
-      const now = new Date().toISOString();
+      const now = nowISO();
 
       // 計算召回截止時間 (發送後30分鐘內可召回)
       const recallDeadline = new Date(Date.now() + 30 * 60 * 1000).toISOString();
@@ -388,7 +389,7 @@ export class MessageCrudService {
         throw new MessageNotFoundError(messageId);
       }
 
-      const now = new Date().toISOString();
+      const now = nowISO();
 
       await this.drizzleDb
         .update(messages)

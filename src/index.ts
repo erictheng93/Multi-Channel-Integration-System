@@ -131,6 +131,10 @@ if (!routeValidation.valid) {
 import websocketHealthApp from '@modules/websocket/handlers/websocket-health';
 import websocketDashboardApp from '@modules/websocket/handlers/websocket-dashboard';
 
+// Protect sensitive WebSocket endpoints (leave /health, /readiness, /liveness, /migration-status public)
+app.use('/api/websocket/metrics', jwtAuth);
+app.use('/api/websocket/health-detail', jwtAuth);
+
 // Register health endpoints
 app.route('/api/websocket', websocketHealthApp);
 log.info('Public WebSocket health endpoints registered', {
@@ -164,7 +168,7 @@ app.get('/api/delayed-messages-v2/health', async (c) => {
       preciseScheduling: true,
       durableObjects: true
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 log.info('DelayedMessageScheduler public endpoint registered', {
@@ -244,6 +248,7 @@ log.info('R2 Public Proxy endpoint registered', {
 
 // 🔧 Pre-register Analytics Comparison API BEFORE unified route system
 // This prevents the /api/analytics/* catch-all from intercepting these routes
+app.use('/api/analytics/comparison/*', jwtAuth);
 app.route('/api/analytics/comparison', comparisonAPI);
 log.info('Analytics Comparison API registered', {
   endpoints: ['/api/analytics/comparison/* (with internal OPTIONS handler)']
@@ -286,6 +291,12 @@ log.info('Monitoring & Alerting API registered', {
 import corsMonitoringHandler from '@modules/monitoring/handlers/cors-monitoring';
 import securityMonitoringHandler from '@modules/monitoring/handlers/security-monitoring';
 import securityDashboardHandler from '@modules/monitoring/handlers/security-dashboard';
+
+// Apply JWT auth to protected CORS monitoring endpoints (leave /health and /config public)
+app.use('/api/cors/stats', jwtAuth);
+app.use('/api/cors/events', jwtAuth);
+app.use('/api/cors/rejected-origins', jwtAuth);
+app.use('/api/cors/cleanup', jwtAuth);
 
 // Register CORS handler BEFORE unified route system
 app.route('/api/cors', corsMonitoringHandler);
@@ -390,7 +401,7 @@ app.get('/api/webhook', (c) => {
   return c.json({
     success: true,
     message: 'LINE Webhook endpoint is ready',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     endpoint: '/api/webhook',
     method: 'POST'
   });
@@ -400,7 +411,7 @@ app.get('/api/webhooks/line', (c) => {
   return c.json({
     success: true,
     message: 'LINE Webhook endpoint is ready',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     endpoint: '/api/webhooks/line',
     method: 'POST'
   });
@@ -452,8 +463,7 @@ log.info('Customer Conversation System (Chat-Style) endpoints registered', {
     'GET /api/customer-ws (WebSocket upgrade)',
     'GET /api/customer-conversations/:id/messages',
     'POST /api/customer-conversations/:id/messages',
-    'POST /api/customer-conversations/:id/upload',
-    'GET /api/customer-conversations/:id/debug/connections (DEBUG)'
+    'POST /api/customer-conversations/:id/upload'
   ]
 });
 
@@ -649,7 +659,7 @@ app.use('*', async (c, next) => {
 app.get('/', (c) => {
   return c.json({
     message: 'Hello! My LINE Bot Worker is running!',
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
     version: '1.0.0'
   });
 });
@@ -844,7 +854,7 @@ app.notFound((c) => {
   return c.json({
     error: 'Not Found',
     message: 'The requested endpoint was not found',
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   }, 404);
 });
 
@@ -874,6 +884,7 @@ import { CustomerMessageDO } from './durable-objects/CustomerMessageDO';
 
 // Import RateLimiterDO for KV optimization (Phase 1: Rate Limiting Migration)
 import { RateLimiterDO } from './durable-objects/RateLimiterDO';
+import { nowISO } from '@/utils/timestamp'
 
 // Export Durable Objects (must match wrangler.toml class_name exactly)
 export {

@@ -7,6 +7,7 @@ import { createDbClient, type Database } from '../db/drizzle-factory';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { conversations } from '../db/schema';
 import { eq, and, isNull, or } from 'drizzle-orm';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * UTF-8 安全的 Base64 編碼
@@ -95,7 +96,7 @@ export class WebSocketAuthService {
         return { isValid: false };
       }
 
-      if (Date.now() > challenge.expiresAt) {
+      if (nowMs() > challenge.expiresAt) {
         console.log(`❌ [WebSocketAuth] Expired challenge: ${challengeId}`);
         this.challenges.delete(challengeId);
         return { isValid: false };
@@ -163,7 +164,7 @@ export class WebSocketAuthService {
    * Clean up expired challenges
    */
   private cleanupExpiredChallenges(): void {
-    const now = Date.now();
+    const now = nowMs();
     for (const [challengeId, challenge] of this.challenges.entries()) {
       if (now > challenge.expiresAt) {
         this.challenges.delete(challengeId);

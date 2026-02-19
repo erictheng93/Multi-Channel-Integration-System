@@ -5,6 +5,7 @@
 import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { useWebSocket } from './useWebSocket'
 import type { WebSocketConnectionState } from '@/services/websocketClient'
+import { nowISO } from '@/utils/timestamp'
 
 export interface ConnectionHealth {
   quality: 'excellent' | 'good' | 'fair' | 'poor' | 'offline'
@@ -256,7 +257,7 @@ export function useWebSocketStatus() {
 
   const exportDiagnostics = () => {
     return {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       connection: detailedStatus.value,
       health: connectionHealth.value,
       warnings: performanceWarnings.value,

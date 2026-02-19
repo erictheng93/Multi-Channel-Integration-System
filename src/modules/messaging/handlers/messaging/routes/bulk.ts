@@ -12,6 +12,7 @@ import {
   errorResponse,
   badRequestResponse
 } from '@/utils/api-response';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const bulkRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -86,7 +87,7 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
         }
 
         // 生成訊息ID
-        const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const messageId = `msg_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
 
         // 準備訊息數據
         const messageData = {
@@ -100,8 +101,8 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
           isSent: true,
           deliveryStatus: 'sent',
           senderName: userPayload.displayName || null,
-          sentAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          sentAt: nowISO(),
+          createdAt: nowISO()
         };
 
         // 插入訊息
@@ -111,8 +112,8 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
         await db
           .update(conversations)
           .set({
-            lastMessageAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            lastMessageAt: nowISO(),
+            updatedAt: nowISO()
           })
           .where(eq(conversations.id, msgData.conversationId));
 
@@ -223,7 +224,7 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
           }
         }
 
-        const recalledAt = new Date().toISOString();
+        const recalledAt = nowISO();
 
         // 撤回訊息 (軟刪除)
         await db

@@ -6,6 +6,7 @@ import type {
 import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, gte, lte, asc, desc, count, avg, sum } from 'drizzle-orm';
 import { metrics, conversations, messages } from '../db/schema';
+import { nowMs } from '@/utils/timestamp'
 
 // Legacy 分析指標接口 (保持向後相容)
 export interface AnalyticsMetric {
@@ -183,7 +184,7 @@ export class EnterpriseAnalyticsEngine {
     }>;
     trends: Record<string, Array<{ timestamp: number; value: number }>>;
   }> {
-    const now = Date.now();
+    const now = nowMs();
     const oneHourAgo = now - 60 * 60 * 1000;
     
     // 獲取實時指標
@@ -537,7 +538,7 @@ export class EnterpriseAnalyticsEngine {
 
   // 私有方法：獲取實時指標
   private async getRealTimeMetrics() {
-    const now = Date.now();
+    const now = nowMs();
     const oneHourAgo = now - 60 * 60 * 1000;
 
     const db = createDbClient(this.db);
@@ -564,7 +565,7 @@ export class EnterpriseAnalyticsEngine {
   // 私有方法：檢查警報
   private async checkAlerts() {
     const alerts = [];
-    const now = Date.now();
+    const now = nowMs();
     const oneHourAgo = now - 60 * 60 * 1000;
 
     // 檢查 API 錯誤率
@@ -915,7 +916,7 @@ export class EnterpriseAnalyticsEngine {
 // 指標收集中間件
 export function metricsMiddleware() {
   return async (c: { req: any; res: any; env: any }, next: () => Promise<void>) => {
-    const startTime = Date.now();
+    const startTime = nowMs();
     const path = c.req.path;
     const method = c.req.method;
     
@@ -929,7 +930,7 @@ export function metricsMiddleware() {
       await analytics.recordMetric({
         name: 'api_request_duration',
         value: duration,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         tags: {
           method,
           path,
@@ -941,7 +942,7 @@ export function metricsMiddleware() {
       await analytics.recordMetric({
         name: 'api_request_count',
         value: 1,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         tags: {
           method,
           path,
@@ -956,7 +957,7 @@ export function metricsMiddleware() {
       await analytics.recordMetric({
         name: 'api_request_error',
         value: 1,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         tags: {
           method,
           path,

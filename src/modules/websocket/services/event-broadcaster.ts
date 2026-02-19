@@ -9,6 +9,7 @@ import { Logger, createLogger } from '@/services/logger-service';
 import type { DurableObjectClient } from './durable-object-client';
 import type { BatchQueueManager } from './batch-queue-manager';
 import type { BroadcastConfig } from './broadcast-config';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * EventBroadcaster
@@ -62,7 +63,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: event.type,
         source: 'api',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         userId: event.userId || event.agentId,
         conversationId: event.conversationId,
         data: {
@@ -113,7 +114,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: event.type,
         source: 'websocket',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         userId: event.userId,
         conversationId: event.conversationId,
         data: {
@@ -159,7 +160,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: event.type,
         source: 'api' as const,
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         conversationId: event.conversationId,
         data: event.data,
         priority: event.priority || 'normal' as const,
@@ -241,7 +242,7 @@ export class EventBroadcaster {
       reason
     } = event;
 
-    const timestamp = Date.now();
+    const timestamp = nowMs();
     const results = {
       oldTeamNotified: false,
       newTeamNotified: false,
@@ -461,7 +462,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: event.type,
         source: 'queue',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         userId: event.agentId,
         conversationId: event.conversationId,
         data: {
@@ -514,7 +515,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: 'notification',
         source: 'api',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         userId: event.userId,
         data: {
           notification: event.notification
@@ -566,7 +567,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: event.type,
         source: 'websocket',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         userId: event.userId,
         data: {
           teamId: event.teamId,
@@ -619,7 +620,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: event.type,
         source: 'api',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         data: {
           teamId: event.teamId,
           teamName: event.teamName,
@@ -682,7 +683,7 @@ export class EventBroadcaster {
         id: crypto.randomUUID(),
         type: 'team_updated',
         source: 'api',
-        timestamp: Date.now(),
+        timestamp: nowMs(),
         data: {
           teamId: event.teamId,
           teamName: event.teamName,
@@ -753,7 +754,7 @@ export class EventBroadcaster {
     teamId?: number;
   }): Promise<{ conversationBroadcast: boolean; globalBroadcast: boolean }> {
     const { conversationId, message, source, teamId } = params;
-    const timestamp = message.timestamp || Date.now();
+    const timestamp = message.timestamp || nowMs();
 
     this.logger.info('Broadcasting new message', undefined, {
       conversationId,

@@ -6,6 +6,7 @@ import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { successResponse, errorResponse } from '@/utils/api-response';
 import { SecurityAnalyticsService, type TimeRange } from '@/services/security-analytics-service';
+import { nowISO } from '@/utils/timestamp'
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -21,7 +22,7 @@ app.get('/health', (c) => {
       module: 'security-dashboard',
       version: '1.0.0'
     },
-    timestamp: new Date().toISOString()
+    timestamp: nowISO()
   });
 });
 

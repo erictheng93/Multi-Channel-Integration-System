@@ -4,6 +4,7 @@
 
 import type { Bindings } from '../types';
 import { Logger, LogLevel, createLogger, type LogContext } from './logger-service';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * 斷路器狀態
@@ -84,7 +85,7 @@ export class WebSocketCircuitBreaker {
   private failureCount = 0;
   private successCount = 0;
   private lastFailureTime?: number;
-  private lastStateChange: number = Date.now();
+  private lastStateChange: number = nowMs();
   private halfOpenCalls = 0;
 
   // 🆕 結構化日誌
@@ -95,7 +96,7 @@ export class WebSocketCircuitBreaker {
     state: CircuitState.CLOSED,
     failureCount: 0,
     successCount: 0,
-    lastStateChange: Date.now(),
+    lastStateChange: nowMs(),
     totalCalls: 0,
     failedCalls: 0,
     successfulCalls: 0,
@@ -202,7 +203,7 @@ export class WebSocketCircuitBreaker {
     }
 
     try {
-      const startTime = Date.now();
+      const startTime = nowMs();
       const result = await operation();
       const duration = Date.now() - startTime;
 
@@ -271,7 +272,7 @@ export class WebSocketCircuitBreaker {
   private onFailure(error: any, context?: LogContext): void {
     this.stats.failedCalls++;
     this.failureCount++;
-    this.lastFailureTime = Date.now();
+    this.lastFailureTime = nowMs();
     this.successCount = 0; // 重置成功計數
 
     // 🆕 記錄錯誤到緩衝區
@@ -360,7 +361,7 @@ export class WebSocketCircuitBreaker {
     const oldState = this.state;
     this.state = newState;
     this.stats.state = newState;
-    this.lastStateChange = Date.now();
+    this.lastStateChange = nowMs();
 
     this.recordEvent('state_change', {
       from: oldState,
@@ -492,7 +493,7 @@ export class WebSocketCircuitBreaker {
   ): void {
     const event: CircuitBreakerEvent = {
       type,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       state: this.state,
       details
     };
@@ -560,10 +561,10 @@ export class WebSocketCircuitBreaker {
       if (newState === CircuitState.OPEN ||
           (oldState === CircuitState.OPEN && newState === CircuitState.CLOSED)) {
 
-        const alertKey = `circuit_breaker:alert:${Date.now()}`;
+        const alertKey = `circuit_breaker:alert:${nowMs()}`;
         const alert = {
           type: newState === CircuitState.OPEN ? 'circuit_opened' : 'circuit_closed',
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           oldState,
           newState,
           stats: this.getStats()

@@ -5,6 +5,7 @@
 
 import type { ErrorCode } from '@modules/file-management/constants/error-codes';
 import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 錯誤嚴重性等級
@@ -79,7 +80,7 @@ export class FileManagementError extends Error {
       stack: options.originalError?.stack || new Error().stack
     };
     this.severity = options.severity || this.determineSeverity(code);
-    this.timestamp = new Date().toISOString();
+    this.timestamp = nowISO();
     this.recoverable = options.recoverable ?? this.isRecoverable(code);
     this.retryable = options.retryable ?? this.isRetryable(code);
     this.originalError = options.originalError;
@@ -377,7 +378,7 @@ export class FileLogger {
     const logEntry = {
       level,
       message,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       context: this.context,
       ...data
     };

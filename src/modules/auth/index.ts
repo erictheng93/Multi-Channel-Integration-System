@@ -10,8 +10,7 @@ export type * from './types/auth-types';
 export * from './services/auth';
 
 // ======================== 處理器導出 ========================
-export { authHandler } from './handlers/auth';
-export { authMainHandler } from './handlers/index';
+// Active handler: auth-main-legacy.ts (registered via src/handlers/index.ts)
 
 // ======================== 中間件導出 ========================
 export * from './middleware/auth';
@@ -113,8 +112,6 @@ export function initializeAuthModule(config: Partial<AuthModuleConfig> = {}) {
 }
 
 // ======================== 向後兼容 ========================
-export { authMainHandler as default } from './handlers/index';
-
 // Legacy exports for backward compatibility
 export const AUTH_MODULE_CONFIG = {
   name: 'authentication',

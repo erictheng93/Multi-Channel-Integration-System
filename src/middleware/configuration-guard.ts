@@ -17,6 +17,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings } from '../types/bindings';
 import { createContextLogger } from '../utils/logger';
+import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('ConfigGuard');
 
@@ -108,7 +109,7 @@ export function generateConfigurationErrorResponse(
       documentation: 'https://developers.cloudflare.com/workers/configuration/environment-variables/',
     },
     requestedOrigin: requestOrigin,
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
   };
 
   return {
@@ -232,7 +233,7 @@ export function getConfigurationStatus(env: Bindings): object {
         'Save and Deploy',
       ],
     } : null,
-    timestamp: new Date().toISOString(),
+    timestamp: nowISO(),
   };
 }
 

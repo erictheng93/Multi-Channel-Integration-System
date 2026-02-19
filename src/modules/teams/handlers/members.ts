@@ -15,6 +15,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { desc, sql, isNull } from 'drizzle-orm';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { globalErrorHandler } from '@/core/error-handler';
 import type {
   AddTeamMemberRequest,
   UpdateMemberStatusRequest,
@@ -32,6 +33,7 @@ import type {
   BatchEditMembersResponse,
   BatchEditUndoTokenData
 } from '../types/member-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -101,15 +103,10 @@ membersHandler.get('/', jwtAuth, async (c) => {
     return c.json({
       success: true,
       data: formattedMembers,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get all members error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to get team members',
-      timestamp: new Date().toISOString()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -163,15 +160,11 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       success: true,
       data: member,
       message: 'Team member added successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.CREATED);
 
   } catch (error) {
-    console.error('Add team member error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to add team member'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -223,12 +216,10 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       success: true,
       data: member,
       message: `Member ${data.isActive ? 'activated' : 'deactivated'} successfully`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Update member status error:', error);
-
     if (error instanceof Error && error.message === 'Member not found') {
       return c.json({
         success: false,
@@ -236,10 +227,7 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update member status'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -291,12 +279,10 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       success: true,
       data: member,
       message: 'Member role updated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Update member role error:', error);
-
     if (error instanceof Error && error.message === 'Member not found') {
       return c.json({
         success: false,
@@ -304,10 +290,7 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update member role'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -342,12 +325,10 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
       success: true,
       data: member,
       message: 'Member updated successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Update member error:', error);
-
     if (error instanceof Error && error.message === 'Member not found') {
       return c.json({
         success: false,
@@ -355,10 +336,7 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to update member'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -411,15 +389,11 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
     return c.json({
       success: true,
       message: 'Member deleted successfully',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Delete member error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete member'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -474,7 +448,7 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
     let undoExpiresAt = '';
 
     if (result.deleted.length > 0) {
-      undoToken = `undo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      undoToken = `undo-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
       const expiresAt = new Date(Date.now() + 30 * 1000); // 30 seconds TTL
       undoExpiresAt = expiresAt.toISOString();
 
@@ -482,7 +456,7 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
       const undoData: UndoTokenData = {
         memberIds: result.deleted,
         deletedBy: String(user.id),
-        deletedAt: new Date().toISOString(),
+        deletedAt: nowISO(),
         reason: data.reason
       };
 
@@ -523,15 +497,11 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
       success: true,
       data: response,
       message: `Successfully deleted ${result.deleted.length} member(s)`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Bulk delete members error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to bulk delete members'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -611,15 +581,11 @@ membersHandler.post('/restore', jwtAuth, requireManagerOrAdmin(), async (c) => {
       success: true,
       data: response,
       message: `Successfully restored ${result.restored.length} member(s)`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Restore members error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to restore members'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -708,15 +674,11 @@ membersHandler.post('/bulk-update', jwtAuth, requireManagerOrAdmin(), async (c) 
       success: true,
       data: response,
       message: `Successfully updated ${result.updated.length} member(s)`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Bulk update members error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to bulk update members'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -795,7 +757,7 @@ membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) =
     let undoExpiresAt: string | undefined;
 
     if (successCount > 0 && result.originalData.length > 0) {
-      undoToken = `batch-edit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      undoToken = `batch-edit-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
       const expiresAt = new Date(Date.now() + 10 * 1000); // 10 seconds
       undoExpiresAt = expiresAt.toISOString();
 
@@ -803,7 +765,7 @@ membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) =
       const undoData: BatchEditUndoTokenData = {
         originalMembers: result.originalData,
         editedBy: String(user.id),
-        editedAt: new Date().toISOString(),
+        editedAt: nowISO(),
         reason: data.reason
       };
 
@@ -846,15 +808,11 @@ membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) =
       success: true,
       data: response,
       message: `Successfully edited ${successCount} member(s)`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Batch edit members error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to batch edit members'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -931,15 +889,11 @@ membersHandler.post('/batch-edit/undo', jwtAuth, requireManagerOrAdmin(), async 
         results: result.results
       },
       message: `Successfully restored ${successCount} member(s)`,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
-    console.error('Undo batch edit error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to undo batch edit'
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 

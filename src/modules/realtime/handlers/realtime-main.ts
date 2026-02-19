@@ -17,6 +17,7 @@ import {
   handleApiError
 } from '@/utils/api-response';
 import { verifyJWT } from '@/utils/auth';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 統一架構不再依賴外部處理器，使用內建實現
 
@@ -99,7 +100,7 @@ export const realtimeMainHandler: EventDrivenHandler = {
     try {
       return successResponse(c, {
         message: 'Use WebSocket for real-time status',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 'Use WebSocket for real-time status');
     } catch (error) {
       return handleApiError(error, c);
@@ -165,7 +166,7 @@ export const realtimeManagementHandler = {
 
       const stats = {
         currentConfig: RealtimeConfigManager.getInstance().getConfig(),
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       return successResponse(c, stats, 'Statistics retrieved');
@@ -184,7 +185,7 @@ export const realtimeManagementHandler = {
         version: config.version,
         eventDriven: config.enableEventDriven,
         queueProcessing: config.enableQueueProcessing,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
 
       return successResponse(c, health, 'Health check completed');
@@ -220,13 +221,13 @@ export const createRealtimeEvent = async (
     return result.eventId;
   } else {
     // 如果未啟用隊列處理，直接存儲到 KV
-    const eventId = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
+    const eventId = `${nowMs()}-${Math.random().toString(36).substring(2)}`;
     const eventKey = `event:${targets.conversationId || 'global'}:${eventId}`;
 
     const eventPayload = {
       id: eventId,
       type: eventType,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       source,
       data: eventData,
       targets

@@ -20,6 +20,7 @@ import type {
   SystemMetrics,
   BackupInfo
 } from '../types/system-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class SystemService implements SystemServiceInterface {
   private db: DrizzleD1Database;
@@ -40,14 +41,14 @@ export class SystemService implements SystemServiceInterface {
 
       return {
         status: 'healthy',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         database: dbCheck ? 'connected' : 'disconnected',
         version: '1.0.0'
       };
     } catch (error) {
       return {
         status: 'unhealthy',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         database: 'disconnected',
         version: '1.0.0',
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -63,7 +64,7 @@ export class SystemService implements SystemServiceInterface {
 
       const status: SystemStatus = {
         overall: 'healthy',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         version: '2.0.0-modular',
         services: {
           database: {
@@ -96,7 +97,7 @@ export class SystemService implements SystemServiceInterface {
       console.error('Error getting system status:', error);
       return {
         overall: 'unhealthy',
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         version: '2.0.0-modular',
         services: {
           database: { status: 'disconnected', type: 'D1' },
@@ -114,7 +115,7 @@ export class SystemService implements SystemServiceInterface {
     const info: SystemInfo = {
       version: '2.0.0-modular',
       environment: this.env.ENVIRONMENT || 'development',
-      lastUpdate: new Date().toISOString(),
+      lastUpdate: nowISO(),
       dbStatus: 'online',
       cacheStatus: 'online',
       uptime: Date.now() - (Date.now() - 86400000) // 模擬 24 小時運行時間
@@ -179,7 +180,7 @@ export class SystemService implements SystemServiceInterface {
         clearCache: 'POST /api/system/cache/clear',
         restart: 'POST /api/system/restart'
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
   }
 
@@ -351,7 +352,7 @@ export class SystemService implements SystemServiceInterface {
           platform,
           status: 'error',
           message: `No ${platform} credentials found`,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         };
       }
 
@@ -360,7 +361,7 @@ export class SystemService implements SystemServiceInterface {
         platform,
         status: 'success',
         message: `${platform} integration test successful`,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         details: { credentialsFound: true }
       };
     } catch (error) {
@@ -368,7 +369,7 @@ export class SystemService implements SystemServiceInterface {
         platform,
         status: 'error',
         message: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       };
     }
   }
@@ -388,17 +389,17 @@ export class SystemService implements SystemServiceInterface {
         successful: Math.floor(Math.random() * 9000),
         failed: Math.floor(Math.random() * 1000)
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     };
   }
 
   // 創建備份
   async createBackup(): Promise<BackupInfo> {
     const backup: BackupInfo = {
-      id: `backup_${Date.now()}`,
+      id: `backup_${nowMs()}`,
       name: `System Backup ${new Date().toLocaleString()}`,
       size: Math.floor(Math.random() * 1000000), // 模擬大小
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
       type: 'full',
       status: 'completed'
     };

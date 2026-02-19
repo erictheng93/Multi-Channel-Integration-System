@@ -10,6 +10,7 @@ import { messages } from '@shared/database/schema';
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '@/middleware/auth';
+import { nowISO } from '@/utils/timestamp'
 
 const searchRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -65,7 +66,7 @@ searchRoutes.get('/search', jwtAuth, async (c) => {
       success: true,
       data: searchResult,
       query: searchQuery,
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -74,7 +75,7 @@ searchRoutes.get('/search', jwtAuth, async (c) => {
       success: false,
       error: 'Failed to search messages',
       details: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
@@ -113,9 +114,9 @@ searchRoutes.get('/stats', jwtAuth, async (c) => {
         },
         scope: 'global',
         note: 'Simplified version. Basic message count only.',
-        generatedAt: new Date().toISOString()
+        generatedAt: nowISO()
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -124,7 +125,7 @@ searchRoutes.get('/stats', jwtAuth, async (c) => {
       success: false,
       error: 'Failed to get message statistics',
       details: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });
@@ -174,7 +175,7 @@ searchRoutes.get('/tags', jwtAuth, async (c) => {
         tags: tagList,
         total: tagList.length
       },
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     });
 
   } catch (error) {
@@ -182,7 +183,7 @@ searchRoutes.get('/tags', jwtAuth, async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get message tags',
-      timestamp: new Date().toISOString()
+      timestamp: nowISO()
     }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
   }
 });

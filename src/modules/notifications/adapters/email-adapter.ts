@@ -10,6 +10,7 @@ import {
   EmailConfig,
   ChannelConfig
 } from '../types';
+import { nowMs } from '@/utils/timestamp'
 
 export class EmailAdapter implements ChannelAdapter {
   readonly type: ChannelType = 'email';
@@ -56,7 +57,7 @@ export class EmailAdapter implements ChannelAdapter {
       };
     }
 
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     try {
       // 在實際實作中，這裡會呼叫真正的 email 服務
@@ -177,7 +178,7 @@ export class EmailAdapter implements ChannelAdapter {
       if (success) {
         return {
           success: true,
-          messageId: `email_${Date.now()}_${Math.random().toString(36).substring(2)}`
+          messageId: `email_${nowMs()}_${Math.random().toString(36).substring(2)}`
         };
       } else {
         return {

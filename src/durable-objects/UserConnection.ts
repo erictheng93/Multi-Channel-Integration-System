@@ -8,6 +8,7 @@ import type {
   WebSocketSubscription,
   DurableObjectEvent
 } from '../types/websocket-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
  * Architecture Overview:
@@ -30,7 +31,7 @@ export class UserConnection implements DurableObject {
   private connections = new Map<string, WebSocketConnection>();
   private subscriptions = new Set<string>(); // conversation IDs
   private isOnline = false;
-  private lastSeen = Date.now();
+  private lastSeen = nowMs();
   private preferences = {
     notificationSettings: {
       newMessage: true,
@@ -46,7 +47,7 @@ export class UserConnection implements DurableObject {
     messagesSent: 0,
     messagesReceived: 0,
     conversationsJoined: 0,
-    lastActivity: Date.now()
+    lastActivity: nowMs()
   };
 
   // Configuration
@@ -167,13 +168,13 @@ export class UserConnection implements DurableObject {
         userId: this.userId,
         role,
         connectionId,
-        lastActivity: Date.now(),
+        lastActivity: nowMs(),
         isActive: true,
         metadata: {
           deviceId,
           userAgent: request.headers.get('User-Agent'),
           ip: request.headers.get('CF-Connecting-IP'),
-          connectedAt: Date.now()
+          connectedAt: nowMs()
         }
       };
 
@@ -229,7 +230,7 @@ export class UserConnection implements DurableObject {
         preferences: this.preferences,
         stats: this.stats
       },
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
   }
 
@@ -252,15 +253,15 @@ export class UserConnection implements DurableObject {
     }
 
     // Update activity
-    connection.lastActivity = Date.now();
-    this.lastSeen = Date.now();
-    this.stats.lastActivity = Date.now();
+    connection.lastActivity = nowMs();
+    this.lastSeen = nowMs();
+    this.stats.lastActivity = nowMs();
 
     console.log(`📨 [UserConnection] Message from ${connectionId}:`, message.type);
 
     switch (message.type) {
       case 'ping':
-        this.sendMessage(connection, { type: 'pong', timestamp: Date.now() });
+        this.sendMessage(connection, { type: 'pong', timestamp: nowMs() });
         break;
 
       case 'subscribe':
@@ -308,7 +309,7 @@ export class UserConnection implements DurableObject {
     // Persist connection info
     await this.state.storage.put(`connection:${connectionId}`, {
       userId: this.userId,
-      connectedAt: Date.now(),
+      connectedAt: nowMs(),
       deviceId: connection.metadata?.deviceId,
       lastActivity: connection.lastActivity
     });
@@ -376,7 +377,7 @@ export class UserConnection implements DurableObject {
     // Update online status
     this.isOnline = this.connections.size > 0;
     if (!this.isOnline) {
-      this.lastSeen = Date.now();
+      this.lastSeen = nowMs();
 
       // 🚀 Phase B4: Unregister from MessageBroadcaster when all connections are closed
       if (this.userId !== 'unknown') {
@@ -449,7 +450,7 @@ export class UserConnection implements DurableObject {
           conversationId,
           subscriptionCount: this.subscriptions.size
         },
-        timestamp: Date.now()
+        timestamp: nowMs()
       });
 
       console.log(`🔔 [UserConnection] User ${this.userId} subscribed to conversation ${conversationId}`);
@@ -484,7 +485,7 @@ export class UserConnection implements DurableObject {
           conversationId,
           subscriptionCount: this.subscriptions.size
         },
-        timestamp: Date.now()
+        timestamp: nowMs()
       });
 
       console.log(`🔕 [UserConnection] User ${this.userId} unsubscribed from conversation ${conversationId}`);
@@ -526,7 +527,7 @@ export class UserConnection implements DurableObject {
         conversationId,
         userId: this.userId
       },
-      timestamp: Date.now()
+      timestamp: nowMs()
     };
 
     this.sendMessage(connection, responseMessage);
@@ -548,7 +549,7 @@ export class UserConnection implements DurableObject {
       try {
         if (connection.websocket.readyState === 1) { // WebSocket.OPEN = 1
           connection.websocket.send(JSON.stringify(message));
-          connection.lastActivity = Date.now();
+          connection.lastActivity = nowMs();
         }
         resolve();
       } catch (error) {
@@ -562,7 +563,7 @@ export class UserConnection implements DurableObject {
     this.sendMessage(connection, {
       type: 'error',
       error,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
   }
 
@@ -594,7 +595,7 @@ export class UserConnection implements DurableObject {
             subscription,
             subscriptionCount: this.subscriptions.size
           },
-          timestamp: Date.now()
+          timestamp: nowMs()
         });
       } else {
         this.sendError(connection, 'Maximum subscriptions reached');
@@ -620,7 +621,7 @@ export class UserConnection implements DurableObject {
           subscription,
           subscriptionCount: this.subscriptions.size
         },
-        timestamp: Date.now()
+        timestamp: nowMs()
       });
     }
   }
@@ -651,7 +652,7 @@ export class UserConnection implements DurableObject {
       const userState = await this.state.storage.get('userState') as any;
       if (userState) {
         this.isOnline = userState.isOnline || false;
-        this.lastSeen = userState.lastSeen || Date.now();
+        this.lastSeen = userState.lastSeen || nowMs();
         this.preferences = { ...this.preferences, ...userState.preferences };
         this.stats = { ...this.stats, ...userState.stats };
       }
@@ -676,7 +677,7 @@ export class UserConnection implements DurableObject {
   }
 
   private async cleanupInactiveConnections(): Promise<void> {
-    const now = Date.now();
+    const now = nowMs();
     const inactiveThreshold = 600000; // 10 minutes
 
     const inactiveConnections = Array.from(this.connections.entries())
@@ -791,7 +792,7 @@ export class UserConnection implements DurableObject {
    * Uses a sliding window approach with per-connection tracking
    */
   private checkRateLimit(connectionId: string): boolean {
-    const now = Date.now();
+    const now = nowMs();
     const state = this.rateLimitState.get(connectionId);
 
     if (!state) {
@@ -824,7 +825,7 @@ export class UserConnection implements DurableObject {
   }
 
   private generateConnectionId(): string {
-    return `user_conn_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return `user_conn_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
   }
 
   // =================== HTTP API Handlers ===================
@@ -843,7 +844,7 @@ export class UserConnection implements DurableObject {
     const { status: _status } = await request.json() as { status?: string };
 
     // Update user presence
-    this.lastSeen = Date.now();
+    this.lastSeen = nowMs();
     this.isOnline = true;
 
     await this.updateUserState();
@@ -905,7 +906,7 @@ export class UserConnection implements DurableObject {
           conversationId: event.conversationId,
           fromTeamId: event.data?.fromTeamId,
           toTeamId: event.data?.toTeamId,
-          timestamp: new Date().toISOString()
+          timestamp: nowISO()
         });
       }
 
@@ -921,7 +922,7 @@ export class UserConnection implements DurableObject {
           type: event.type || 'event',
           data: event.data,
           conversationId: event.conversationId,
-          timestamp: event.timestamp || Date.now()
+          timestamp: event.timestamp || nowMs()
         };
 
         // 🔍 DEBUG: Log message being broadcast
@@ -974,7 +975,7 @@ export class UserConnection implements DurableObject {
         await this.broadcastToUserConnections({
           type: 'event',
           data: event,
-          timestamp: Date.now()
+          timestamp: nowMs()
         });
         break;
 

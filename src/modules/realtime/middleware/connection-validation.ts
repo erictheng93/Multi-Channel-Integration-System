@@ -4,6 +4,7 @@ import { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 import { errorResponse, badRequestResponse } from '@/utils/api-response';
 import { getRealtimeAuth } from '@modules/realtime/middleware/realtime-auth';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 連接驗證配置
 interface ConnectionValidationConfig {
@@ -116,7 +117,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
       // 5. 速率限制檢查
       if (validationConfig.enableRateLimiting) {
         const clientKey = `${auth.userId}-${c.req.header('CF-Connecting-IP') || 'unknown'}`;
-        const now = Date.now();
+        const now = nowMs();
         const windowStart = now - (validationConfig.rateLimitWindow * 1000);
 
         let rateLimit = rateLimitStore.get(clientKey);
@@ -169,7 +170,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
         userAgent: c.req.header('User-Agent'),
         origin: c.req.header('Origin'),
         ip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         conversationId: c.req.query('conversationId')
       });
 
@@ -241,7 +242,7 @@ export function getConnectionValidation(c: Context): any {
 
 // 清理速率限制記錄的工具函數
 export function cleanupRateLimitStore(): number {
-  const now = Date.now();
+  const now = nowMs();
   let cleanedCount = 0;
 
   for (const [key, value] of rateLimitStore) {
@@ -260,7 +261,7 @@ export function getRateLimitStats(): {
   activeEntries: number;
   topUsers: Array<{ key: string; count: number; resetTime: number }>;
 } {
-  const now = Date.now();
+  const now = nowMs();
   const activeEntries: Array<{ key: string; count: number; resetTime: number }> = [];
 
   for (const [key, value] of rateLimitStore) {

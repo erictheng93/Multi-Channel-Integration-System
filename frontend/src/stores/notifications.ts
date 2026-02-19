@@ -13,6 +13,7 @@ import {
   type CreateNotificationRequest
 } from '@/api/notifications'
 import { translateError } from '@/utils/error-handler'
+import { nowISO } from '@/utils/timestamp'
 
 export const useNotificationsStore = defineStore('notifications', () => {
   // ==================== State ====================
@@ -210,7 +211,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const notification = notifications.value.find(n => n.id === id)
     if (notification && !notification.isRead) {
       notification.isRead = true
-      notification.readAt = new Date().toISOString()
+      notification.readAt = nowISO()
       unreadCount.value = Math.max(0, unreadCount.value - 1)
     }
 
@@ -250,7 +251,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       if (!type || n.type === type) {
         if (!n.isRead) {
           n.isRead = true
-          n.readAt = new Date().toISOString()
+          n.readAt = nowISO()
         }
       }
     })

@@ -5,6 +5,7 @@ import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
 import { WebhookSecurityService, type SecurityValidationResult } from '@modules/integrations/services/webhook-security-service';
 import { WebhookRouterService, type WebhookRouteResult } from '@modules/integrations/services/webhook-router-service';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 完整的 Webhook 驗證結果
@@ -173,7 +174,7 @@ export class WebhookValidator {
       allowed: true,
       current: 0,
       limit: 100,
-      resetAt: new Date().toISOString()
+      resetAt: nowISO()
     };
   }
 

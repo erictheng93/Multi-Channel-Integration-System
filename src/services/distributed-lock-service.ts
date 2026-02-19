@@ -6,6 +6,7 @@ import type {
   DistributedLock,
   LockAcquisitionOptions
 } from '../types/websocket-types';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Architecture Overview:
@@ -60,7 +61,7 @@ export class DistributedLockService {
   async acquireLock(resource: string, options: LockAcquisitionOptions = {}): Promise<string> {
     // 如果服務不可用，返回模擬的成功回應 (測試環境)
     if (!this.isAvailable()) {
-      return `mock-lock-${Date.now()}`;
+      return `mock-lock-${nowMs()}`;
     }
     const {
       ttl = this.DEFAULT_TTL,
@@ -70,7 +71,7 @@ export class DistributedLockService {
     } = options;
 
     const lockId = this.generateLockId();
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     // Validate inputs
     this.validateLockRequest(resource, ttl, timeout);
@@ -89,7 +90,7 @@ export class DistributedLockService {
           retryInterval,
           maxRetries,
           requesterId: this.getRequesterId(),
-          timestamp: Date.now()
+          timestamp: nowMs()
         }),
         headers: { 'Content-Type': 'application/json' }
       }));
@@ -136,7 +137,7 @@ export class DistributedLockService {
         body: JSON.stringify({
           lockId,
           requesterId: this.getRequesterId(),
-          timestamp: Date.now()
+          timestamp: nowMs()
         }),
         headers: { 'Content-Type': 'application/json' }
       }));
@@ -173,7 +174,7 @@ export class DistributedLockService {
           resource,
           ttl,
           requesterId: this.getRequesterId(),
-          timestamp: Date.now()
+          timestamp: nowMs()
         }),
         headers: { 'Content-Type': 'application/json' }
       }));
@@ -264,7 +265,7 @@ export class DistributedLockService {
           lockId,
           additionalTtl,
           requesterId: this.getRequesterId(),
-          timestamp: Date.now()
+          timestamp: nowMs()
         }),
         headers: { 'Content-Type': 'application/json' }
       }));
@@ -382,7 +383,7 @@ export class DistributedLockService {
         method: 'POST',
         body: JSON.stringify({
           requesterId: this.getRequesterId(),
-          timestamp: Date.now()
+          timestamp: nowMs()
         }),
         headers: { 'Content-Type': 'application/json' }
       }));
@@ -460,13 +461,13 @@ export class DistributedLockService {
   }
 
   private generateLockId(): string {
-    return `lock_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return `lock_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
   }
 
   private getRequesterId(): string {
     // In a real implementation, this would identify the requesting Durable Object or Worker
     // For now, use a combination of timestamp and random string
-    return `requester_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    return `requester_${nowMs()}_${Math.random().toString(36).substring(2, 6)}`;
   }
 }
 
@@ -493,7 +494,7 @@ export class LockCoordinator implements DurableObject {
     totalContention: 0,
     averageLockDuration: 0,
     lockAcquisitionRate: 0,
-    lastCleanup: Date.now()
+    lastCleanup: nowMs()
   };
 
   constructor(state: DurableObjectState, _env: any) {
@@ -617,14 +618,14 @@ export class LockCoordinator implements DurableObject {
     retryInterval: number,
     maxRetries: number
   ): Promise<DistributedLock> {
-    const startTime = Date.now();
+    const startTime = nowMs();
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       // Check if we can acquire the lock
       const existingLockId = this.resourceLocks.get(resource);
       const existingLock = existingLockId ? this.activeLocks.get(existingLockId) : null;
 
-      if (!existingLock || existingLock.expiresAt < Date.now()) {
+      if (!existingLock || existingLock.expiresAt < nowMs()) {
         // Lock is available or expired
         if (existingLock) {
           await this.releaseLockInternal(existingLock.lockId, existingLock.ownerId);
@@ -634,7 +635,7 @@ export class LockCoordinator implements DurableObject {
           lockId,
           resource,
           ownerId: requesterId,
-          acquiredAt: Date.now(),
+          acquiredAt: nowMs(),
           expiresAt: Date.now() + ttl,
           isActive: true,
           metadata: { attempts: attempt + 1, acquisitionTime: Date.now() - startTime }
@@ -676,7 +677,7 @@ export class LockCoordinator implements DurableObject {
     const existingLockId = this.resourceLocks.get(resource);
     const existingLock = existingLockId ? this.activeLocks.get(existingLockId) : null;
 
-    if (existingLock && existingLock.expiresAt > Date.now()) {
+    if (existingLock && existingLock.expiresAt > nowMs()) {
       return null; // Lock is held
     }
 
@@ -689,7 +690,7 @@ export class LockCoordinator implements DurableObject {
       lockId,
       resource,
       ownerId: requesterId,
-      acquiredAt: Date.now(),
+      acquiredAt: nowMs(),
       expiresAt: Date.now() + ttl,
       isActive: true
     };
@@ -759,7 +760,7 @@ export class LockCoordinator implements DurableObject {
 
     const lockId = this.resourceLocks.get(resource);
     const lock = lockId ? this.activeLocks.get(lockId) : null;
-    const isLocked = !!(lock && lock.expiresAt > Date.now());
+    const isLocked = !!(lock && lock.expiresAt > nowMs());
 
     return new Response(JSON.stringify({ isLocked, resource }));
   }
@@ -782,7 +783,7 @@ export class LockCoordinator implements DurableObject {
   }
 
   private async handleGetMetrics(_request: Request): Promise<Response> {
-    const currentTime = Date.now();
+    const currentTime = nowMs();
 
     this.metrics.lockAcquisitionRate = this.metrics.totalAcquisitions / ((currentTime - this.metrics.lastCleanup) / 1000);
 
@@ -799,7 +800,7 @@ export class LockCoordinator implements DurableObject {
   }
 
   private async cleanupExpiredLocks(): Promise<number> {
-    const now = Date.now();
+    const now = nowMs();
     let cleanedCount = 0;
 
     for (const [lockId, lock] of this.activeLocks) {

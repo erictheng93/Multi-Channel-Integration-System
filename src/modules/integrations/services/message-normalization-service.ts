@@ -9,6 +9,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
+import { nowISO, nowMs } from '@/utils/timestamp'
 
 // ===== Type Definitions =====
 
@@ -450,7 +451,7 @@ export class MessageNormalizationService {
       }
 
       // Create new conversation
-      const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      const conversationId = `conv_${nowMs()}_${Math.random().toString(36).substring(7)}`;
       await db
         .prepare(
           `INSERT INTO conversations (id, customer_id, assigned_team_id, status, priority, created_at, updated_at, last_message_at)
@@ -477,8 +478,8 @@ export class MessageNormalizationService {
     customerId: number,
     customerDisplayName: string
   ): Promise<NormalizedMessage> {
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    const timestamp = new Date().toISOString();
+    const messageId = `msg_${nowMs()}_${Math.random().toString(36).substring(7)}`;
+    const timestamp = nowISO();
 
     return {
       id: messageId,

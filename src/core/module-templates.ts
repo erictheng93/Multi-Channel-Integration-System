@@ -296,7 +296,7 @@ export class {{MODULE_NAME}}Module extends BaseApiModule {
       return c.json({
         status: 'healthy',
         module: '{{MODULE_NAME}}',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     });
 
@@ -321,13 +321,13 @@ export class {{MODULE_NAME}}Module extends BaseApiModule {
       return c.json({
         success: true,
         data: [],
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       });
     } catch (error) {
       return c.json({
         success: false,
         error: 'Failed to get items',
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, 500);
     }
   }
@@ -459,6 +459,7 @@ import { {{MODULE_NAME}}ModuleInstance } from './modules/{{MODULE_NAME}}';
           content: `// {{MODULE_NAME}} 服務模組
 import { BaseServiceModule } from '../../core/module-templates';
 import type { ModuleMetadata } from '../../core/module-architecture';
+import { nowISO } from '@/utils/timestamp'
 
 export class {{MODULE_NAME}}Service {
   private isRunning = false;

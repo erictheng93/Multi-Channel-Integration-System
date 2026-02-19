@@ -25,6 +25,7 @@ import {
 } from '../types/agent-types';
 import { generateId } from '@/utils/id-generator';
 import { hashPassword } from '@/utils/auth';
+import { nowISO } from '@/utils/timestamp'
 
 export class AgentService implements AgentServiceInterface {
   constructor(private db: DrizzleD1Database<any>) {}
@@ -59,7 +60,7 @@ export class AgentService implements AgentServiceInterface {
       const agentId = generateId();
       const passwordHash = data.passwordHash || await hashPassword(generateId()); // 臨時密碼
 
-      const now = new Date().toISOString();
+      const now = nowISO();
       const newAgent: NewAgent = {
         id: agentId,
         email: data.email,
@@ -181,7 +182,7 @@ export class AgentService implements AgentServiceInterface {
         }
 
         // Update agent_teams: set new primary team
-        const now = new Date().toISOString();
+        const now = nowISO();
         await this.db.delete(agentTeams).where(eq(agentTeams.agentId, id));
         await this.db.insert(agentTeams).values({
           agentId: id,
@@ -194,7 +195,7 @@ export class AgentService implements AgentServiceInterface {
 
       const updatedData = {
         ...agentFields,
-        updatedAt: new Date().toISOString()
+        updatedAt: nowISO()
       };
 
       const result = await this.db
@@ -427,7 +428,7 @@ export class AgentService implements AgentServiceInterface {
       }
 
       // 批次轉移 (via agent_teams)
-      const now = new Date().toISOString();
+      const now = nowISO();
       for (const agentId of agentIds) {
         try {
           // Remove all existing team memberships, then add new one as primary

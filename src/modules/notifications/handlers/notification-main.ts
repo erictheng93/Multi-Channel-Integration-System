@@ -29,6 +29,7 @@ import { triggerSystemNotification } from '@/utils/notification-trigger';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { isNull } from 'drizzle-orm';
+import { nowISO } from '@/utils/timestamp'
 
 export class NotificationHandler {
   private notificationService: NotificationService;
@@ -533,7 +534,7 @@ export class NotificationHandler {
         ids: notificationIds,
         recipientCount: targetUserIds.length,
         broadcastedBy: payload.userId,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }, `System announcement broadcasted to ${targetUserIds.length} users`);
 
     } catch (error) {

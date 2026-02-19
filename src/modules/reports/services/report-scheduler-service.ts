@@ -4,6 +4,7 @@
 import type { Bindings } from '@/types';
 import type { ScheduledReport } from '../types/report-types';
 import { ReportGenerationError } from '../types/report-types';
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * Handles scheduled report CRUD and next-run calculations
@@ -26,7 +27,7 @@ export class ReportSchedulerService {
   ): Promise<ScheduledReport> {
     try {
       const id = crypto.randomUUID();
-      const now = new Date().toISOString();
+      const now = nowISO();
       const nextRun = this.calculateNextRun(config.schedule);
 
       const scheduledReport: ScheduledReport = {
@@ -69,7 +70,7 @@ export class ReportSchedulerService {
         recipients: updates.recipients || [],
         isActive: updates.isActive !== undefined ? updates.isActive : true,
         createdBy: userId,
-        createdAt: new Date().toISOString(),
+        createdAt: nowISO(),
         nextRun: this.calculateNextRun(updates.schedule || { frequency: 'daily', time: '09:00' })
       };
 

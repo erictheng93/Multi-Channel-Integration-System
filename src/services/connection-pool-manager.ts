@@ -10,6 +10,7 @@ import type {
   WebSocketConnection,
   ConnectionMetrics
 } from '../types/websocket-types';
+import { nowMs } from '@/utils/timestamp'
 
 // =================== Configuration ===================
 
@@ -72,7 +73,7 @@ export class ConnectionPoolManager {
       idleConnections: 0,
       failedConnections: 0,
       connectionsPerSecond: 0,
-      lastCleanup: Date.now(),
+      lastCleanup: nowMs(),
       poolUtilization: 0
     };
 
@@ -115,9 +116,9 @@ export class ConnectionPoolManager {
       averageLatency: 0,
       messagesThroughput: { inbound: 0, outbound: 0 },
       errorRate: 0,
-      lastUpdated: Date.now(),
-      connectedAt: Date.now(),
-      lastActivity: Date.now(),
+      lastUpdated: nowMs(),
+      connectedAt: nowMs(),
+      lastActivity: nowMs(),
       messagesSent: 0,
       messagesReceived: 0,
       bytesTransferred: 0,
@@ -275,7 +276,7 @@ export class ConnectionPoolManager {
       if (websocket.readyState === WebSocket.OPEN) {
         const pingMessage = {
           type: 'ping',
-          timestamp: Date.now(),
+          timestamp: nowMs(),
           connectionId
         };
 
@@ -306,7 +307,7 @@ export class ConnectionPoolManager {
     const metrics = this.connectionMetrics.get(connectionId);
     if (!metrics) return;
 
-    metrics.lastActivity = Date.now();
+    metrics.lastActivity = nowMs();
 
     switch (activityType) {
       case 'message_sent':
@@ -364,7 +365,7 @@ export class ConnectionPoolManager {
 
     if (!connection || !metrics) return;
 
-    const now = Date.now();
+    const now = nowMs();
     const inactiveTime = metrics.lastActivity ? now - metrics.lastActivity : 0;
 
     if (connection.websocket.readyState === WebSocket.CLOSED) {
@@ -401,7 +402,7 @@ export class ConnectionPoolManager {
       if (connection.websocket.readyState === WebSocket.OPEN) {
         const pingMessage = {
           type: 'ping',
-          timestamp: Date.now(),
+          timestamp: nowMs(),
           recovery: true
         };
 
@@ -455,7 +456,7 @@ export class ConnectionPoolManager {
   }
 
   private async performConnectionCleanup(): Promise<void> {
-    const now = Date.now();
+    const now = nowMs();
     const staleConnections: string[] = [];
 
     console.log(`🧹 [ConnectionPool] Starting cleanup (${this.connectionPool.size} connections)`);
@@ -521,7 +522,7 @@ export class ConnectionPoolManager {
   }
 
   private updatePoolStats(): void {
-    const now = Date.now();
+    const now = nowMs();
     const timeSinceLastUpdate = now - (this.poolStats.lastCleanup || now);
 
     this.poolStats.totalConnections = this.connectionPool.size;

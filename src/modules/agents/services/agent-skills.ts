@@ -9,6 +9,7 @@ import type {
   SkillLevel
 } from '../types/agent-types';
 import { generateId } from '@/utils/id-generator';
+import { nowISO } from '@/utils/timestamp'
 
 export class AgentSkillsService {
   constructor(private kv: KVNamespace) {}
@@ -23,7 +24,7 @@ export class AgentSkillsService {
         category: skill.category,
         level: skill.level,
         certified: skill.certified || false,
-        certifiedAt: skill.certified ? new Date().toISOString() : null,
+        certifiedAt: skill.certified ? nowISO() : null,
         description: skill.description || ''
       };
 
@@ -65,7 +66,7 @@ export class AgentSkillsService {
         ...existingSkill,
         ...updates,
         certifiedAt: updates.certified !== undefined
-          ? (updates.certified ? new Date().toISOString() : null)
+          ? (updates.certified ? nowISO() : null)
           : existingSkill.certifiedAt
       };
 
@@ -150,7 +151,7 @@ export class AgentSkillsService {
               ...existingSkill,
               ...updates,
               certifiedAt: updates.certified !== undefined
-                ? (updates.certified ? new Date().toISOString() : null)
+                ? (updates.certified ? nowISO() : null)
                 : existingSkill.certifiedAt
             };
           }
