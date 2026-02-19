@@ -121,7 +121,19 @@ function checkConflict(route1: RouteInfo, route2: RouteInfo): boolean {
   const segments1 = path1.split('/').filter(s => s.length > 0);
   const segments2 = path2.split('/').filter(s => s.length > 0);
 
-  // 檢查參數化路由是否會攔截具體路由
+  // In Hono, exact HTTP method routes (get/post/put/delete/patch) only match
+  // paths with the exact same number of segments. A shorter route CANNOT
+  // intercept a longer path. Only .route() (prefix mounting) and wildcards (*)
+  // can match across different segment counts.
+  if (segments1.length !== segments2.length) {
+    const hasWildcard = segments1.some(s => s === '*') || segments2.some(s => s === '*');
+    const isRoute = route1.method === 'ROUTE' || route2.method === 'ROUTE';
+    if (!hasWildcard && !isRoute) {
+      return false; // Different segment counts = no conflict in Hono exact matching
+    }
+  }
+
+  // 檢查參數化路由是否會攔截具體路由 (same segment count or wildcard/route prefix)
   if (segments1.length <= segments2.length) {
     let matches = true;
     for (let i = 0; i < segments1.length; i++) {
@@ -141,7 +153,7 @@ function checkConflict(route1: RouteInfo, route2: RouteInfo): boolean {
     }
 
     if (matches && segments1.length < segments2.length) {
-      // route1 更短且匹配，可能攔截 route2
+      // route1 更短且匹配，可能攔截 route2 (only reachable for .route() or wildcards)
       return true;
     }
   }
