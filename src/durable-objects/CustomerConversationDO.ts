@@ -4,6 +4,7 @@
 
 import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Session data structure for validation
@@ -91,7 +92,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       const session: SessionData = JSON.parse(sessionData);
 
       // Check expiration
-      if (session.expiresAt < Date.now()) {
+      if (session.expiresAt < nowMs()) {
         return { valid: false, error: 'Session expired' };
       }
 
@@ -179,19 +180,6 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       }
     }
 
-    // 🔧 DEBUG: Endpoint to check connection status
-    if (url.pathname === '/debug/connections') {
-      return new Response(JSON.stringify({
-        success: true,
-        conversationId: this.conversationId,
-        totalConnections: this.connections.size,
-        connectedUsers: this.getConnectedUsers(),
-        connectionDetails: this.getConnectionDetails()
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     return new Response('Not Found', { status: 404 });
   }
 
@@ -242,7 +230,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       userId,
       displayName,
       role,
-      connectedAt: Date.now()
+      connectedAt: nowMs()
     });
 
     console.log(`✅ [CustomerConversationDO] Client connected. Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
@@ -314,7 +302,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       userId,
       displayName,
       role,
-      connectedAt: Date.now()
+      connectedAt: nowMs()
     });
 
     console.log(`✅ [CustomerConversationDO] Client connected (pre-validated). Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
@@ -396,7 +384,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     const notification = JSON.stringify({
       type: isOnline ? 'USER_CONNECTED' : 'USER_DISCONNECTED',
       userId,
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
     console.log(`📡 [CustomerConversationDO] Broadcasting presence:`, {
@@ -446,10 +434,10 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         senderType: message.senderType,
         senderId: message.senderId,
         platform: message.platform || 'line',
-        timestamp: Date.now()
+        timestamp: nowMs()
       },
       message, // Keep original message for backward compatibility
-      timestamp: Date.now()
+      timestamp: nowMs()
     });
 
     // Get unique user IDs for logging

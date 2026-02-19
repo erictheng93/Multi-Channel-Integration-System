@@ -7,11 +7,13 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { customerFeedback, conversations, customers, agents } from '@/db/schema';
 import { eq, desc, sql, and, gte } from 'drizzle-orm';
 import { jwtAuth } from '@/middleware/auth';
+import { globalErrorHandler } from '@/core/error-handler';
+import { nowISO } from '@/utils/timestamp'
 
 const feedbackHandler = new Hono<{ Bindings: Bindings }>();
 
 // 提交客户反馈
-feedbackHandler.post('/', async (c) => {
+feedbackHandler.post('/', jwtAuth, async (c) => {
   try {
     const db = createDbClient(c.env.DB);
     const body = await c.req.json();
@@ -48,7 +50,7 @@ feedbackHandler.post('/', async (c) => {
 
     // 创建反馈记录
     const feedbackId = crypto.randomUUID();
-    const now = new Date().toISOString();
+    const now = nowISO();
 
     // Note: Individual assignment (assignedUserId) removed - agentId must be provided explicitly
     await db.insert(customerFeedback).values({
@@ -77,16 +79,12 @@ feedbackHandler.post('/', async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [FeedbackHandler] Failed to create feedback:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to create feedback'
-    }, 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // 获取满意度统计
-feedbackHandler.get('/stats', async (c) => {
+feedbackHandler.get('/stats', jwtAuth, async (c) => {
   try {
     const db = createDbClient(c.env.DB);
     const timeRange = c.req.query('timeRange') || '30d'; // '24h', '7d', '30d', 'all'
@@ -164,21 +162,17 @@ feedbackHandler.get('/stats', async (c) => {
           5: stats.rating5Count || 0
         },
         timeRange,
-        timestamp: new Date().toISOString()
+        timestamp: nowISO()
       }
     });
 
   } catch (error) {
-    console.error('❌ [FeedbackHandler] Failed to get feedback stats:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get feedback stats'
-    }, 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
 // 获取特定对话的反馈
-feedbackHandler.get('/conversation/:conversationId', async (c) => {
+feedbackHandler.get('/conversation/:conversationId', jwtAuth, async (c) => {
   try {
     const db = createDbClient(c.env.DB);
     const conversationId = c.req.param('conversationId');
@@ -213,11 +207,7 @@ feedbackHandler.get('/conversation/:conversationId', async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [FeedbackHandler] Failed to get conversation feedback:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get conversation feedback'
-    }, 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
@@ -272,11 +262,7 @@ feedbackHandler.get('/', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('❌ [FeedbackHandler] Failed to get feedback list:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get feedback list'
-    }, 500);
+    return globalErrorHandler.handleError(c, error);
   }
 });
 
