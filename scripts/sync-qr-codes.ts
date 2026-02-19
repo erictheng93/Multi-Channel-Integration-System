@@ -46,7 +46,7 @@ async function syncQRCodes(dryRun: boolean = false) {
   // 注意：這裡需要根據您的實際環境配置來調整
   // 以下是示例代碼，實際使用時需要提供正確的 D1 Database 實例
 
-  // TODO: 替換為實際的資料庫連接
+  // Stub: Replace with D1 binding when running in Worker context
   // const db = drizzle(env.DB);
 
   console.log('❌ 錯誤：此腳本需要在 Cloudflare Workers 環境中執行');
@@ -202,7 +202,7 @@ async function syncQRCodes(dryRun: boolean = false) {
 async function validateSync() {
   console.log('\n🔍 驗證同步結果...\n');
 
-  // TODO: 實作驗證邏輯
+  // Stub: Add QR code validation (URL format + team existence check)
   console.log('驗證邏輯需要在 Worker 環境中實作');
 }
 

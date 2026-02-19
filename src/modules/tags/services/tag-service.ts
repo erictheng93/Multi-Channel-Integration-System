@@ -16,6 +16,86 @@ import { tags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, or, asc, like, count, inArray } from 'drizzle-orm';
 
+// ── Raw SQL result type interfaces ──────────────────────────────────────────
+
+/** Shape returned by the tag detail query with JOINs (get endpoint) */
+interface TagDetailRow {
+  id: number;
+  name: string;
+  color: string | null;
+  description: string | null;
+  team_id: number | null;
+  team_name: string | null;
+  is_active: number;
+  created_by: string | null;
+  created_by_name: string | null;
+  customer_count: number;
+  conversation_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Shape returned by the tag row query (SELECT * FROM tags) */
+interface TagRow {
+  id: number;
+  name: string;
+  color: string | null;
+  description: string | null;
+  team_id: number | null;
+  is_active: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Shape returned by the updated tag query with counts (update endpoint) */
+interface TagWithCountsRow {
+  id: number;
+  name: string;
+  color: string | null;
+  description: string | null;
+  team_id: number | null;
+  is_active: number;
+  created_by: string | null;
+  customer_count: number;
+  conversation_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Shape returned by the customer stats query */
+interface CustomerStatsRow {
+  total_customers: number;
+  line_customers: number;
+  facebook_customers: number;
+}
+
+/** Shape returned by the conversation stats query */
+interface ConversationStatsRow {
+  total_conversations: number;
+  active_conversations: number;
+  closed_conversations: number;
+}
+
+/** Shape returned by the usage trend query */
+interface UsageTrendRow {
+  date: string;
+  assignments: number;
+}
+
+/** Shape returned by the top assigners query */
+interface TopAssignerRow {
+  display_name: string;
+  assignments: number;
+}
+
+/** Shape returned by COUNT(*) queries */
+interface CountRow {
+  total: number;
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
 // HEX color format validation (supports 3-digit or 6-digit format)
 const isValidHexColor = (color: string): boolean => {
   if (!color || typeof color !== 'string') return false;
@@ -245,20 +325,21 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
+      const row = tag as TagDetailRow;
       return successResponse(c, {
-        id: (tag as any).id,
-        name: (tag as any).name,
-        color: (tag as any).color,
-        description: (tag as any).description,
-        teamId: (tag as any).team_id,
-        teamName: (tag as any).team_name,
-        isActive: Boolean((tag as any).is_active),
-        createdBy: (tag as any).created_by,
-        createdByName: (tag as any).created_by_name,
-        customerCount: (tag as any).customer_count,
-        conversationCount: (tag as any).conversation_count,
-        createdAt: (tag as any).created_at,
-        updatedAt: (tag as any).updated_at
+        id: row.id,
+        name: row.name,
+        color: row.color,
+        description: row.description,
+        teamId: row.team_id,
+        teamName: row.team_name,
+        isActive: Boolean(row.is_active),
+        createdBy: row.created_by,
+        createdByName: row.created_by_name,
+        customerCount: row.customer_count,
+        conversationCount: row.conversation_count,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
       }, 'Tag retrieved successfully');
 
     } catch (error) {
@@ -297,7 +378,8 @@ export const tagHandler = {
       }
 
       // If updating name, check for duplicates (global scope)
-      if (name && name !== (existingTag as any).name) {
+      const existingRow = existingTag as TagRow;
+      if (name && name !== existingRow.name) {
         const duplicateTag = await drizzleDb
           .select({ id: tags.id })
           .from(tags)
@@ -351,18 +433,19 @@ export const tagHandler = {
         return errorResponse(c, 'Failed to retrieve updated tag', 500);
       }
 
+      const updatedRow = updatedTag as TagWithCountsRow;
       return successResponse(c, {
-        id: (updatedTag as any).id,
-        name: (updatedTag as any).name,
-        color: (updatedTag as any).color,
-        description: (updatedTag as any).description,
-        teamId: (updatedTag as any).team_id,
-        isActive: Boolean((updatedTag as any).is_active),
-        createdBy: (updatedTag as any).created_by,
-        customerCount: (updatedTag as any).customer_count,
-        conversationCount: (updatedTag as any).conversation_count,
-        createdAt: (updatedTag as any).created_at,
-        updatedAt: (updatedTag as any).updated_at
+        id: updatedRow.id,
+        name: updatedRow.name,
+        color: updatedRow.color,
+        description: updatedRow.description,
+        teamId: updatedRow.team_id,
+        isActive: Boolean(updatedRow.is_active),
+        createdBy: updatedRow.created_by,
+        customerCount: updatedRow.customer_count,
+        conversationCount: updatedRow.conversation_count,
+        createdAt: updatedRow.created_at,
+        updatedAt: updatedRow.updated_at
       }, 'Tag updated successfully');
 
     } catch (error) {
@@ -466,29 +549,35 @@ export const tagHandler = {
         LIMIT 10
       `);
 
+      const tagRow = tag as TagRow;
+      const custStats = customerStats as CustomerStatsRow | null;
+      const convStats = conversationStats as ConversationStatsRow | null;
+      const trendRows = (usageTrendResults || []) as UsageTrendRow[];
+      const assignerRows = (topAssignersResults || []) as TopAssignerRow[];
+
       return successResponse(c, {
         tagInfo: {
-          id: (tag as any).id,
-          name: (tag as any).name,
-          color: (tag as any).color
+          id: tagRow.id,
+          name: tagRow.name,
+          color: tagRow.color
         },
         customers: {
-          total: (customerStats as any)?.total_customers || 0,
+          total: custStats?.total_customers || 0,
           byPlatform: {
-            line: (customerStats as any)?.line_customers || 0,
-            facebook: (customerStats as any)?.facebook_customers || 0
+            line: custStats?.line_customers || 0,
+            facebook: custStats?.facebook_customers || 0
           }
         },
         conversations: {
-          total: (conversationStats as any)?.total_conversations || 0,
-          active: (conversationStats as any)?.active_conversations || 0,
-          closed: (conversationStats as any)?.closed_conversations || 0
+          total: convStats?.total_conversations || 0,
+          active: convStats?.active_conversations || 0,
+          closed: convStats?.closed_conversations || 0
         },
-        usageTrend: (usageTrendResults || []).map((row: any) => ({
+        usageTrend: trendRows.map((row) => ({
           date: row.date,
           assignments: row.assignments
         })),
-        topAssigners: (topAssignersResults || []).map((row: any) => ({
+        topAssigners: assignerRows.map((row) => ({
           name: row.display_name,
           assignments: row.assignments
         }))
@@ -625,7 +714,7 @@ export const tagHandler = {
         WHERE tag_id = ${tagId}
       `);
 
-      const total = (countResult as any)?.total || 0;
+      const total = (countResult as CountRow | null)?.total || 0;
       const totalPages = Math.ceil(total / limit);
 
       return successResponse(c, {

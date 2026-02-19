@@ -45,15 +45,17 @@ vi.mock('vue-i18n', () => ({
   }))
 }))
 
-// Create mock confirm functions that we can reference
+// Create mock confirm functions that we can reference (new API: showDanger/showWarning)
 const confirmMock = {
-  confirmDanger: vi.fn().mockResolvedValue(true),
-  confirmWarning: vi.fn().mockResolvedValue(true)
+  showDanger: vi.fn().mockResolvedValue(true),
+  showWarning: vi.fn().mockResolvedValue(true),
+  showConfirm: vi.fn().mockResolvedValue(true),
+  showInfo: vi.fn().mockResolvedValue(true)
 }
 
 // Mock confirm dialog with all confirmation types
-vi.mock('@/composables/useConfirm', () => ({
-  useConfirm: () => confirmMock
+vi.mock('@/composables/useConfirmDialog', () => ({
+  useConfirmDialog: () => confirmMock
 }))
 
 describe('System Settings Controller', () => {
@@ -573,8 +575,8 @@ describe('System Settings Controller', () => {
     it('should not clear credentials if user cancels confirmation', async () => {
       const { credentialsApi } = await import('@/api/system')
 
-      // Override confirmDanger to return false for this test
-      confirmMock.confirmDanger.mockResolvedValueOnce(false)
+      // Override showDanger to return false for this test
+      confirmMock.showDanger.mockResolvedValueOnce(false)
 
       await controller.clearLineCredentials()
 

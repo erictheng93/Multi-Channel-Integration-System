@@ -99,7 +99,7 @@ systemRouter.get(
   checkAdvancedAccessPermission,
   async (c) => {
     try {
-      // TODO: 實現安全性稽核功能
+      // Stub: Security audit — requires backend implementation
       const auditReport = {
         timestamp: new Date().toISOString(),
         security_checks: {
@@ -150,7 +150,7 @@ systemRouter.get(
   checkStatsViewPermission,
   async (c) => {
     try {
-      // TODO: 實現效能報告功能
+      // Stub: Performance report — requires backend implementation
       const performanceReport = {
         timestamp: new Date().toISOString(),
         response_times: {
@@ -223,7 +223,7 @@ systemRouter.post(
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
-      // TODO: 實現維護模式功能
+      // Stub: Maintenance mode — requires backend implementation
       const maintenanceStatus = {
         enabled: body.enabled,
         message: body.message || (body.enabled ? 'System maintenance in progress' : 'System operational'),
@@ -280,7 +280,7 @@ systemRouter.get(
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
-      // TODO: 實現系統日誌查詢功能
+      // Stub: System log query — requires backend implementation
       const logs = {
         level,
         total: 0,
@@ -322,7 +322,7 @@ systemRouter.post(
     try {
       const config = await c.req.json();
 
-      // TODO: 實現配置驗證功能
+      // Stub: Config validation — requires backend implementation
       console.log('Validating config:', config);  // 暫時使用
       const validation = {
         valid: true,
@@ -359,7 +359,7 @@ systemRouter.get(
   checkStatusViewPermission,
   async (c) => {
     try {
-      // TODO: 實現系統診斷功能
+      // Stub: System diagnostics — requires backend implementation
       const diagnostics = {
         timestamp: new Date().toISOString(),
         system_health: 'healthy',

@@ -11,6 +11,22 @@ import {
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import type { MessageAccessScope, MessagePermissions, SenderType } from '@modules/messaging/types/message-types';
 
+/** Extended Hono context variables for message auth middleware */
+interface MessageAuthVariables {
+  messagePermissions: MessagePermissions
+  messageAccessScope: MessageAccessScope
+  conversationFilter: string[]
+  platformFilter: string[]
+  user: JWTPayload
+}
+
+type MessageAuthContext = Context<{ Bindings: Bindings; Variables: MessageAuthVariables }>
+
+/** Safely cast a base Hono context to our extended context (middleware enriches variables at runtime) */
+function authCtx(c: Context<{ Bindings: Bindings }>): MessageAuthContext {
+  return c as unknown as MessageAuthContext;
+}
+
 // ======================== 基礎權限檢查 ========================
 
 /**
@@ -31,8 +47,8 @@ export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, nex
     }
 
     // 將用戶權限資訊存入 context
-    (c as any).set('messagePermissions', await getMessagePermissions(userPayload));
-    (c as any).set('messageAccessScope', await getMessageAccessScope(userPayload));
+    authCtx(c).set('messagePermissions', await getMessagePermissions(userPayload));
+    authCtx(c).set('messageAccessScope', await getMessageAccessScope(userPayload));
 
     await next();
   } catch (error) {
@@ -52,7 +68,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
   try {
     const messageId = c.req.param('id');
     const userPayload = c.get('user') as unknown as JWTPayload;
-    const accessScope = (c as any).get('messageAccessScope') as MessageAccessScope;
+    const accessScope = authCtx(c).get('messageAccessScope');
 
     if (!messageId) {
       return c.json({
@@ -99,7 +115,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
  */
 export async function checkMessageSendPermission(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const permissions = (c as any).get('messagePermissions') as MessagePermissions;
+    const permissions = authCtx(c).get('messagePermissions');
 
     if (!permissions.canSend) {
       return forbiddenResponse(c, 'No permission to send messages');
@@ -121,7 +137,7 @@ export async function checkMessageSendPermission(c: Context<{ Bindings: Bindings
  */
 export async function checkMessageRecallPermission(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const permissions = (c as any).get('messagePermissions') as MessagePermissions;
+    const permissions = authCtx(c).get('messagePermissions');
 
     if (!permissions.canRecall) {
       return forbiddenResponse(c, 'No permission to recall messages');
@@ -143,7 +159,7 @@ export async function checkMessageRecallPermission(c: Context<{ Bindings: Bindin
  */
 export async function checkDelayedSendPermission(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const permissions = (c as any).get('messagePermissions') as MessagePermissions;
+    const permissions = authCtx(c).get('messagePermissions');
 
     if (!permissions.canSendDelayed) {
       return forbiddenResponse(c, 'No permission to send delayed messages');
@@ -165,7 +181,7 @@ export async function checkDelayedSendPermission(c: Context<{ Bindings: Bindings
  */
 export async function checkBatchOperationPermission(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const permissions = (c as any).get('messagePermissions') as MessagePermissions;
+    const permissions = authCtx(c).get('messagePermissions');
 
     if (!permissions.canBatchOperation) {
       return forbiddenResponse(c, 'No permission for batch operations');
@@ -187,7 +203,7 @@ export async function checkBatchOperationPermission(c: Context<{ Bindings: Bindi
  */
 export async function checkStatsViewPermission(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const permissions = (c as any).get('messagePermissions') as MessagePermissions;
+    const permissions = authCtx(c).get('messagePermissions');
 
     if (!permissions.canAccessStats) {
       return forbiddenResponse(c, 'No permission to view message statistics');
@@ -211,18 +227,18 @@ export async function checkStatsViewPermission(c: Context<{ Bindings: Bindings }
  */
 export async function applyMessageScopeFilter(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const accessScope = (c as any).get('messageAccessScope') as MessageAccessScope;
+    const accessScope = authCtx(c).get('messageAccessScope');
 
     // 如果沒有全域權限，設定範圍限制
     if (!accessScope.isGlobalAccess) {
       // 設定對話ID限制
       if (accessScope.conversationIds && accessScope.conversationIds.length > 0) {
-        (c as any).set('conversationFilter', accessScope.conversationIds);
+        authCtx(c).set('conversationFilter', accessScope.conversationIds);
       }
 
       // 設定平台限制
       if (accessScope.platforms && accessScope.platforms.length > 0) {
-        (c as any).set('platformFilter', accessScope.platforms);
+        authCtx(c).set('platformFilter', accessScope.platforms);
       }
     }
 
