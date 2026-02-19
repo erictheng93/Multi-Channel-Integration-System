@@ -18,14 +18,14 @@ router.post('/online-status', jwtAuth, realtime.handlers.main.updateOnlineStatus
 router.get('/config', jwtAuth, realtime.handlers.management.getConfig);
 router.put('/config', jwtAuth, realtime.handlers.management.updateConfig);
 router.get('/stats', jwtAuth, realtime.handlers.management.getStats);
-router.get('/health', realtime.handlers.management.healthCheck);
+router.get('/health', jwtAuth, realtime.handlers.management.healthCheck);
 
 // Monitoring endpoints
 router.get('/monitoring/dashboard', jwtAuth, realtime.monitoring.dashboard as any);
 router.get('/monitoring/metrics', jwtAuth, realtime.monitoring.metricsHistory);
 router.get('/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);
 router.post('/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);
-router.get('/monitoring/health', realtime.monitoring.health);
+router.get('/monitoring/health', jwtAuth, realtime.monitoring.health);
 router.get('/monitoring/config', jwtAuth, realtime.monitoring.config);
 router.post('/monitoring/config', jwtAuth, realtime.monitoring.config);
 
