@@ -1,7 +1,7 @@
 // Calculation Helpers - 分析計算輔助函數
 // 整合原有的統計計算邏輯
 
-import type { TimeSeriesData, DistributionData, ComparisonData } from '@modules/analytics/types/analytics-types';
+import type { TimeSeriesData } from '@modules/analytics/types/analytics-types';
 
 /**
  * 統計計算輔助函數集合
@@ -205,8 +205,6 @@ export class CalculationHelpers {
     const sumY = points.reduce((sum, p) => sum + p.y, 0);
     const sumXY = points.reduce((sum, p) => sum + p.x * p.y, 0);
     const sumXX = points.reduce((sum, p) => sum + p.x * p.x, 0);
-    const sumYY = points.reduce((sum, p) => sum + p.y * p.y, 0);
-
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 

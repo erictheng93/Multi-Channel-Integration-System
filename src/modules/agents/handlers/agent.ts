@@ -10,7 +10,6 @@ import { AgentService } from '@modules/agents/services/agent-crud';
 import { AgentSkillsService } from '@modules/agents/services/agent-skills';
 import { AgentStatusService } from '@modules/agents/services/agent-status';
 import type {
-  Agent,
   AgentWithDetails,
   CreateAgentRequest,
   UpdateAgentRequest,
@@ -24,7 +23,7 @@ export class AgentHandler {
   private skillsService: AgentSkillsService;
   private statusService: AgentStatusService;
 
-  constructor(private env: Bindings) {
+  constructor(env: Bindings) {
     this.db = createDb(env.DB);
     this.agentService = new AgentService(this.db);
     this.skillsService = new AgentSkillsService(env.KV);

@@ -260,7 +260,7 @@ export class LatestMessageCacheCoordinator {
   /**
    * Get coordinator status
    */
-  private async handleGetStatus(request: Request): Promise<Response> {
+  private async handleGetStatus(_request: Request): Promise<Response> {
     const currentAlarm = await this.state.storage.getAlarm();
 
     return new Response(JSON.stringify({
@@ -278,7 +278,7 @@ export class LatestMessageCacheCoordinator {
   /**
    * Get processing statistics
    */
-  private async handleGetStats(request: Request): Promise<Response> {
+  private async handleGetStats(_request: Request): Promise<Response> {
     return new Response(JSON.stringify({
       success: true,
       stats: {
@@ -296,7 +296,7 @@ export class LatestMessageCacheCoordinator {
   /**
    * Get current queue contents
    */
-  private async handleGetQueue(request: Request): Promise<Response> {
+  private async handleGetQueue(_request: Request): Promise<Response> {
     const queueContents = Array.from(this.updateQueue.values()).map(req => ({
       conversationId: req.conversationId,
       priority: req.priority,
@@ -316,7 +316,7 @@ export class LatestMessageCacheCoordinator {
   /**
    * Manual alarm trigger for testing
    */
-  private async handleManualAlarmTrigger(request: Request): Promise<Response> {
+  private async handleManualAlarmTrigger(_request: Request): Promise<Response> {
     console.log('🔔 [LatestMessageCacheCoordinator] Manual alarm trigger requested');
     await this.alarm();
 
@@ -430,7 +430,7 @@ export class LatestMessageCacheCoordinator {
   /**
    * Process a single cache update
    */
-  private async processUpdate(conversationId: string, request: UpdateRequest): Promise<void> {
+  private async processUpdate(conversationId: string, _request: UpdateRequest): Promise<void> {
     try {
       // Invalidate existing cache
       await this.cache.invalidateLatestMessage(conversationId);

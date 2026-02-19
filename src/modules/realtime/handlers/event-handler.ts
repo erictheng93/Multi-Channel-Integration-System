@@ -14,8 +14,6 @@ import type {
   NotificationEventData,
   ConnectionEventData,
   SystemEventData,
-  EventProcessingResult,
-  EventFilter,
   EventStats
 } from '../types';
 import {
@@ -543,8 +541,8 @@ export const eventHandler = {
   // 發送打字狀態
   sendTypingStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
     try {
-      const payload = c.get('jwtPayload');
-      const { conversationId, isTyping } = await c.req.json();
+      c.get('jwtPayload');
+      const { conversationId } = await c.req.json();
 
       if (!conversationId) {
         return errorResponse(c, 'Conversation ID is required', 400);
@@ -582,8 +580,8 @@ export const eventHandler = {
   // 更新在線狀態
   updateOnlineStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
     try {
-      const payload = c.get('jwtPayload');
-      const { conversationId, isOnline } = await c.req.json();
+      c.get('jwtPayload');
+      const { isOnline } = await c.req.json();
 
       // REMOVED: SSE handler import and delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
       // const { enhancedSSEManager } = await import('./sse-handler');

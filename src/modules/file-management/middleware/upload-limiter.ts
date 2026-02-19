@@ -173,7 +173,7 @@ export function uploadLimiterMiddleware(options: UploadLimitOptions = {}) {
           }
         };
 
-        await wrappedNext();
+        return await wrappedNext();
 
       } catch (error) {
         // 如果解析失敗，仍然更新基本計數器
@@ -229,7 +229,7 @@ export function fileSizeTotalMiddleware(maxTotalSize: number) {
         }]);
       }
 
-      await next();
+      return await next();
     } catch (error) {
       console.error('File size total middleware error:', error);
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
@@ -247,7 +247,7 @@ export function uploadTimeoutMiddleware(timeoutMs: number = UPLOAD_CONFIG.TIMEOU
         setTimeout(() => reject(new Error('Upload timeout')), timeoutMs);
       });
 
-      await Promise.race([next(), timeout]);
+      return await Promise.race([next(), timeout]);
     } catch (error) {
       if (error instanceof Error && error.message === 'Upload timeout') {
         return errorResponse(c, 'Upload timeout', 408);

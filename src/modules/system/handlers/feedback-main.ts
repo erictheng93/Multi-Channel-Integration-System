@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { customerFeedback, conversations, customers, agents } from '@/db/schema';
-import { eq, desc, sql, and, gte } from 'drizzle-orm';
+import { eq, desc, sql, gte } from 'drizzle-orm';
 import { jwtAuth } from '@/middleware/auth';
 import { globalErrorHandler } from '@/core/error-handler';
 import { nowISO } from '@/utils/timestamp'

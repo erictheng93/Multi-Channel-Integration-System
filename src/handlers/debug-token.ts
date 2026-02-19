@@ -5,7 +5,6 @@ import { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { jwtAuth } from '../middleware/auth';
 import { signJWT } from '../utils/auth';
-import { logger } from '../utils/logger';
 import { globalErrorHandler } from '@/core/error-handler';
 
 const router = new Hono<{ Bindings: Bindings }>();

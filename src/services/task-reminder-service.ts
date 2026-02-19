@@ -2,8 +2,8 @@
 // 任務提醒服務 - CRUD 操作與排程處理
 
 import { createDbClient } from '../db/drizzle-factory';
-import { taskReminders, type TaskReminder, type NewTaskReminder } from '../db/schema';
-import { eq, and, lte, isNull } from 'drizzle-orm';
+import { taskReminders, type TaskReminder } from '../db/schema';
+import { eq, and, lte } from 'drizzle-orm';
 import { triggerTaskReminderNotification } from '../utils/notification-trigger';
 import type { Bindings } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'

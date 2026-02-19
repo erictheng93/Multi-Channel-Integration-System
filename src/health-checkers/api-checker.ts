@@ -11,8 +11,6 @@ export class APIHealthChecker implements HealthChecker {
 
   async check(): Promise<HealthCheckResult> {
     const startTime = nowMs();
-    const checks = [];
-
     try {
       // 檢查核心API端點
       const endpoints = [

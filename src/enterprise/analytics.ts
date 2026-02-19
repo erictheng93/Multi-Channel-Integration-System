@@ -304,7 +304,7 @@ export class EnterpriseAnalyticsEngine {
   
   // 私有方法：獲取對話指標
   private async getConversationMetrics(
-    agentId: number,
+    _agentId: number,
     period: { start: number; end: number }
   ) {
     const db = createDbClient(this.db);
@@ -346,7 +346,7 @@ export class EnterpriseAnalyticsEngine {
   
   // 私有方法：獲取訊息指標
   private async getMessageMetrics(
-    agentId: number,
+    _agentId: number,
     period: { start: number; end: number }
   ) {
     const db = createDbClient(this.db);

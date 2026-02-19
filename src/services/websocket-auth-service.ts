@@ -3,10 +3,9 @@
 
 import type { Bindings } from '../types';
 import { verifyJWT } from '../utils/auth';
-import { createDbClient, type Database } from '../db/drizzle-factory';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import { createDbClient } from '../db/drizzle-factory';
 import { conversations } from '../db/schema';
-import { eq, and, isNull, or } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { nowMs } from '@/utils/timestamp'
 
 /**

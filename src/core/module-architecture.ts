@@ -1,6 +1,4 @@
 // 模組化架構系統 - 支持未來擴展的核心框架
-import type { Context } from 'hono';
-import type { Bindings } from '../types';
 
 // ======================== 通用類型定義 ========================
 
@@ -566,7 +564,7 @@ export class ModuleLoader {
    * 執行健康檢查
    */
   private async performHealthChecks(): Promise<void> {
-    for (const [name, instance] of this.modules) {
+    for (const [_name, instance] of this.modules) {
       if (instance.state === ModuleState.RUNNING && instance.lifecycle.onHealthCheck) {
         try {
           instance.health = await instance.lifecycle.onHealthCheck(instance.context);

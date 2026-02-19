@@ -146,7 +146,7 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
 /**
  * CORS 預檢請求處理
  */
-fileProxyHandler.options('/public/*', (c) => {
+fileProxyHandler.options('/public/*', (_c) => {
   return new Response(null, {
     status: 204,
     headers: {
@@ -158,7 +158,7 @@ fileProxyHandler.options('/public/*', (c) => {
   });
 });
 
-fileProxyHandler.options('/download/:attachmentId', (c) => {
+fileProxyHandler.options('/download/:attachmentId', (_c) => {
   return new Response(null, {
     status: 204,
     headers: {

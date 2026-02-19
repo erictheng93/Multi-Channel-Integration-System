@@ -18,7 +18,7 @@ import type {
 import type { StorageService } from '@modules/file-management/types/storage-types';
 import type { Bindings } from '@/types';
 import { createDbClient, type Database } from '@/db/drizzle-factory';
-import { eq, and, desc, sql, inArray, like, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, sql, like, gte, lte } from 'drizzle-orm';
 import { fileAttachments } from '@shared/database/schema';
 
 import { FileValidationService } from '@modules/file-management/services/validation-service';
@@ -28,10 +28,9 @@ import {
   generateFileId,
   generateStorageKey,
   getFileType,
-  getFileExtension,
-  formatFileSize
+  getFileExtension
 } from '../utils/file-helpers';
-import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
+import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class FileService {
@@ -40,7 +39,7 @@ export class FileService {
   private readonly metadataService: MetadataService;
   private readonly storageService: StorageService;
 
-  constructor(private readonly env: Bindings) {
+  constructor(env: Bindings) {
     this.db = createDbClient(env.DB);
     this.validationService = new FileValidationService();
     this.metadataService = new MetadataService();
@@ -271,7 +270,7 @@ export class FileService {
   /**
    * 刪除檔案
    */
-  async deleteFile(fileId: string, userId?: string): Promise<{ success: boolean; error?: string }> {
+  async deleteFile(fileId: string, _userId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       // 獲取檔案記錄
       const fileRecord = await this.db
@@ -344,15 +343,11 @@ export class FileService {
       const {
         page = 1,
         pageSize = 20,
-        platform,
         type,
         conversationId,
         messageId,
-        uploadedBy,
         dateFrom,
         dateTo,
-        sortBy = 'createdAt',
-        sortOrder = 'desc'
       } = options;
 
       const offset = (page - 1) * pageSize;
@@ -558,7 +553,7 @@ export class FileService {
   /**
    * 產生縮圖
    */
-  private async generateThumbnail(file: ManagedFile, originalKey: string): Promise<string | undefined> {
+  private async generateThumbnail(_file: ManagedFile, _originalKey: string): Promise<string | undefined> {
     // 縮圖產生邏輯
     // 這裡需要實作實際的縮圖產生功能
     console.log('Thumbnail generation not implemented yet');

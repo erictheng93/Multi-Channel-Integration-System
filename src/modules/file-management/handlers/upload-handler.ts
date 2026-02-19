@@ -15,8 +15,8 @@ import {
   errorResponse,
   handleApiError
 } from '@/utils/api-response';
-import { getFileExtension, getFileType } from '@modules/file-management/utils/file-helpers';
-import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
+import { getFileExtension } from '@modules/file-management/utils/file-helpers';
+import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';
 
 export class UploadHandler {
@@ -308,7 +308,7 @@ export class UploadHandler {
   completeChunkedUpload = async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const uploadId = c.req.param('uploadId');
-      const body = await c.req.json();
+      await c.req.json(); // consume body for side effects
 
       if (!uploadId) {
         return validationErrorResponse(c, [

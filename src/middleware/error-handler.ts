@@ -10,7 +10,6 @@ import {
   notFoundResponse,
   validationErrorResponse,
   badRequestResponse,
-  internalErrorResponse
 } from '../utils/api-response';
 import { nowISO } from '@/utils/timestamp'
 
@@ -194,7 +193,7 @@ export function globalErrorHandler(error: Error, c: Context): Response {
  * Use as: app.use('*', errorWrapper())
  */
 export function errorWrapper(): MiddlewareHandler {
-  return async (c, next) => {
+  return async (_c, next) => {
     try {
       await next();
     } catch (error) {

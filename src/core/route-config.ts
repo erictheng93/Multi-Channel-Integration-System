@@ -27,18 +27,14 @@ import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
 import { dashboardHandler } from '@modules/analytics/handlers/dashboard-main';
 import { realtimeDashboardHandler } from '@modules/analytics/handlers/realtime-dashboard-main';
 import reportsHandler from '@modules/reports/handlers/reports-main';
-import { activityHandler } from '@modules/activities/handlers/activity';
-import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
 import delayedMessageBufferHandler from '@modules/delayed-message/handlers/delayed-message-buffer';
 import websocketAnalyticsHandler from '@modules/websocket/handlers/websocket-analytics-main';
 import userExperienceHandler from '@modules/system/handlers/user-experience-main';
 import phase2AuthHandler from '@modules/auth/handlers/phase2-auth-management';
 import alertConfigHandler from '@modules/system/handlers/alert-config-management';
 import dataOptimizationHandler from '@modules/system/handlers/data-optimization-main';
-import { realtime } from '@modules/realtime';
 import webhookRouter from '@modules/integrations/handlers/webhook';
 import modularSystemRouter from './modular-system-integration';
-import { createMonitoringHandlerMethods } from '@modules/monitoring/handlers/monitoring-dashboard';
 import collaborationMainHandler from '@modules/collaboration/handlers/collaboration-main';
 
 /**

@@ -280,7 +280,7 @@ export const dashboardHandler = {
         current: versionSelection,
         available: allVersions,
         capabilities,
-        recommendations: Object.entries(allVersions).map(([key, version]) => {
+        recommendations: Object.entries(allVersions).map(([key, _version]) => {
           const upgrade = versionSelector.getUpgradeRecommendation(key as any);
           return {
             version: key,

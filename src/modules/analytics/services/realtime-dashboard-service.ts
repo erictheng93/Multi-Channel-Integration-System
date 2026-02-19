@@ -3,13 +3,11 @@
 // Real-time push is handled by WebSocket via Durable Objects
 
 import { DashboardService } from '@modules/analytics/services/dashboard-service';
-import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Bindings } from '@/types';
 import type {
   DashboardWidget,
   WidgetData,
-  TimeRange,
   DashboardConfig
 } from '../types/dashboard-types';
 import { AnalyticsError } from '@modules/analytics/types/analytics-types';
@@ -21,15 +19,13 @@ import { AnalyticsError } from '@modules/analytics/types/analytics-types';
  */
 export class RealtimeDashboardService {
   private dashboardService: DashboardService;
-  private metricsCollector: MetricsCollector;
 
   constructor(
-    private db: D1Database,
-    private kv: Bindings['KV'],
-    options: Record<string, any> = {}
+    db: D1Database,
+    kv: Bindings['KV'],
+    _options: Record<string, any> = {}
   ) {
     this.dashboardService = new DashboardService(db, kv);
-    this.metricsCollector = new MetricsCollector(db, kv);
   }
 
   /**
@@ -53,7 +49,7 @@ export class RealtimeDashboardService {
   /**
    * Broadcast widget update (placeholder for WebSocket integration)
    */
-  async broadcastWidgetUpdate(dashboardId: string, widgetId: string, data: WidgetData): Promise<void> {
+  async broadcastWidgetUpdate(dashboardId: string, widgetId: string, _data: WidgetData): Promise<void> {
     // In the WebSocket architecture, broadcasting is handled by Durable Objects.
     // This method is kept as a service-level abstraction for triggering updates.
     console.log(`[RealtimeDashboard] Widget update: ${dashboardId}/${widgetId}`);
@@ -62,14 +58,14 @@ export class RealtimeDashboardService {
   /**
    * Broadcast config change (placeholder for WebSocket integration)
    */
-  async broadcastConfigChange(dashboardId: string, config: DashboardConfig): Promise<void> {
+  async broadcastConfigChange(dashboardId: string, _config: DashboardConfig): Promise<void> {
     console.log(`[RealtimeDashboard] Config change: ${dashboardId}`);
   }
 
   /**
    * Update subscription (no-op, kept for API compatibility)
    */
-  async updateSubscription(connectionId: string, updates: any): Promise<void> {
+  async updateSubscription(connectionId: string, _updates: any): Promise<void> {
     // Subscriptions are managed by WebSocket Durable Objects
     console.log(`[RealtimeDashboard] Subscription update requested for ${connectionId}`);
   }

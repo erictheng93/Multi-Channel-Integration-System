@@ -51,7 +51,7 @@ export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, nex
     authCtx(c).set('messagePermissions', await getMessagePermissions(userPayload));
     authCtx(c).set('messageAccessScope', await getMessageAccessScope(userPayload));
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error in message access check:', error);
     return c.json({
@@ -68,7 +68,6 @@ export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, nex
 export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
     const messageId = c.req.param('id');
-    const userPayload = c.get('user') as unknown as JWTPayload;
     const accessScope = authCtx(c).get('messageAccessScope');
 
     if (!messageId) {
@@ -81,8 +80,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
 
     // 如果有全域存取權限，直接通過
     if (accessScope.isGlobalAccess) {
-      await next();
-      return;
+      return await next();
     }
 
     // 檢查訊息是否存在以及用戶是否有權限存取
@@ -98,7 +96,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
       return forbiddenResponse(c, 'No permission to access this message');
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error in specific message access check:', error);
     return c.json({
@@ -122,7 +120,7 @@ export async function checkMessageSendPermission(c: Context<{ Bindings: Bindings
       return forbiddenResponse(c, 'No permission to send messages');
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error in message send permission check:', error);
     return c.json({
@@ -144,7 +142,7 @@ export async function checkMessageRecallPermission(c: Context<{ Bindings: Bindin
       return forbiddenResponse(c, 'No permission to recall messages');
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error in message recall permission check:', error);
     return c.json({
@@ -166,7 +164,7 @@ export async function checkDelayedSendPermission(c: Context<{ Bindings: Bindings
       return forbiddenResponse(c, 'No permission to send delayed messages');
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error in delayed send permission check:', error);
     return c.json({
@@ -188,7 +186,7 @@ export async function checkBatchOperationPermission(c: Context<{ Bindings: Bindi
       return forbiddenResponse(c, 'No permission for batch operations');
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error in batch operation permission check:', error);
     return c.json({
@@ -210,7 +208,7 @@ export async function checkStatsViewPermission(c: Context<{ Bindings: Bindings }
       return forbiddenResponse(c, 'No permission to view message statistics');
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error in stats view permission check:', error);
     return c.json({
@@ -243,7 +241,7 @@ export async function applyMessageScopeFilter(c: Context<{ Bindings: Bindings }>
       }
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error applying message scope filter:', error);
     return c.json({
@@ -350,7 +348,7 @@ export async function validateMessageSender(c: Context<{ Bindings: Bindings }>, 
       body: JSON.stringify(body)
     });
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating message sender:', error);
     return c.json({

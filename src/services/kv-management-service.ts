@@ -19,7 +19,6 @@ import {
   KV_COMPRESSION_CONFIG,
   KV_KEY_PATTERNS,
   LEGACY_KEY_PATTERNS,
-  KEY_MIGRATION_MAP,
   getNamespaceForKey,
   validateKVKey,
 } from '../config/kv-config';

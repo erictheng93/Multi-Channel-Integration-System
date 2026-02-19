@@ -5,7 +5,6 @@
 
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
-import { createDbClient } from '../db/drizzle-factory';
 import type { Bindings } from '../types';
 import * as schema from '../db/schema';
 import { nowISO } from '@/utils/timestamp'

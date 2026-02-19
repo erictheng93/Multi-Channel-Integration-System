@@ -1,7 +1,8 @@
 // Channel Integration Service
 // Business logic for multi-tenant channel management
 
-import { createDbClient } from '@/db/drizzle-factory';
+// createDbClient not needed - using drizzle directly
+
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc } from 'drizzle-orm';
@@ -17,7 +18,6 @@ import type {
   ChannelVerificationRequest,
   ChannelVerificationResponse,
   ChannelUpdateRequest,
-  ChannelListQuery,
   ChannelStatistics,
   ChannelHealthStatus,
   WebhookUrlOptions,
@@ -29,7 +29,6 @@ import type {
 } from '../types/channel-types';
 import {
   parseChannelConfig,
-  parseChannelCredentials,
   parseChannelWebhookConfig,
   parseChannelStats
 } from '../types/channel-types';
@@ -76,7 +75,7 @@ export class ChannelService implements IChannelIntegrationService {
    * Encrypts the ENTIRE credentials object as one JSON blob
    */
   private async buildJsonColumns(
-    platform: ChannelPlatform,
+    _platform: ChannelPlatform,
     config: ChannelConfig,
     credentials: ChannelCredentials,
     webhookConfig: ChannelWebhookConfig,
@@ -306,7 +305,7 @@ export class ChannelService implements IChannelIntegrationService {
    */
   private async verifyLineChannel(
     channel: ChannelIntegration,
-    testMessage?: string
+    _testMessage?: string
   ): Promise<ChannelVerificationResponse> {
     try {
       // JSON-first: try getDecryptedCredentials (reads JSON column, falls back to legacy)
@@ -402,7 +401,7 @@ export class ChannelService implements IChannelIntegrationService {
    */
   private async verifyFacebookChannel(
     channel: ChannelIntegration,
-    testMessage?: string
+    _testMessage?: string
   ): Promise<ChannelVerificationResponse> {
     try {
       // JSON-first: try getDecryptedCredentials
@@ -513,7 +512,7 @@ export class ChannelService implements IChannelIntegrationService {
    */
   private async verifyWhatsAppChannel(
     channel: ChannelIntegration,
-    testMessage?: string
+    _testMessage?: string
   ): Promise<ChannelVerificationResponse> {
     try {
       // JSON-first: try getDecryptedCredentials

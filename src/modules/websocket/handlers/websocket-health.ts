@@ -613,7 +613,7 @@ async function getDurableObjectsMetrics(env: Bindings): Promise<Record<string, b
 /**
  * Estimate Durable Objects instance count
  */
-async function estimateDOInstanceCount(env: Bindings): Promise<number> {
+async function estimateDOInstanceCount(_env: Bindings): Promise<number> {
   // This is an estimate since we can't directly query DO instance count
   // In production, this would be tracked via metrics/logging
   return 0; // Placeholder - would need actual implementation

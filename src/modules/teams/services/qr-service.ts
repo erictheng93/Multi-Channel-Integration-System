@@ -2,7 +2,6 @@
 // 團隊 QR Code 服務
 // Phase 2 優化：雙向同步機制 - teams.qrCode 欄位同步
 
-import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';

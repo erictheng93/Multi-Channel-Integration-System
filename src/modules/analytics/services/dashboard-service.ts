@@ -1,22 +1,15 @@
 // Dashboard Service - 儀表板服務
 // 提供儀表板配置管理、數據聚合和實時更新功能
 
-import { eq, and, gte, lte, desc, asc } from 'drizzle-orm';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { Bindings } from '@/types';
-import { AnalyticsCore } from '@modules/analytics/services/analytics-core';
-import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import type {
   DashboardConfig,
   DashboardWidget,
   WidgetData,
-  ChartConfig,
-  DashboardPermissions,
   DashboardTemplate
 } from '../types/dashboard-types';
 import type {
-  AnalyticsQuery,
-  AnalyticsResult,
   TimeRange
 } from '../types/analytics-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
@@ -47,19 +40,14 @@ const DEFAULT_OPTIONS: DashboardServiceOptions = {
  * 儀表板服務類
  */
 export class DashboardService {
-  private analyticsCore: AnalyticsCore;
-  private metricsCollector: MetricsCollector;
   private options: DashboardServiceOptions;
   private cache = new Map<string, { data: any; timestamp: number }>();
 
   constructor(
-    private db: D1Database,
+    _db: D1Database,
     private kv: Bindings['KV'],
     options: DashboardServiceOptions = {}
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Database type compatibility
-    this.analyticsCore = new AnalyticsCore({ database: db as any, kv });
-    this.metricsCollector = new MetricsCollector(db, kv);
     this.options = { ...DEFAULT_OPTIONS, ...options };
   }
 
@@ -250,17 +238,9 @@ export class DashboardService {
    */
   private async getMetricWidgetData(
     widget: DashboardWidget,
-    timeRange?: TimeRange
+    _timeRange?: TimeRange
   ): Promise<WidgetData> {
-    const query: AnalyticsQuery = {
-      type: widget.dataSource.type || 'analytics',
-      timeRange: timeRange || widget.defaultTimeRange || '24h',
-      startDate: timeRange === 'custom' ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() : undefined,
-      endDate: timeRange === 'custom' ? nowISO() : undefined,
-      metrics: [widget.metric!],
-      filters: widget.filters || {}
-    };
-
+    // TODO: Use AnalyticsCore to execute actual query
     // For now, return mock data since the query method doesn't exist
     const result = { data: [{ [widget.metric!]: 0 }] } as any;
 
@@ -290,18 +270,9 @@ export class DashboardService {
    */
   private async getChartWidgetData(
     widget: DashboardWidget,
-    timeRange?: TimeRange
+    _timeRange?: TimeRange
   ): Promise<WidgetData> {
-    const query: AnalyticsQuery = {
-      type: widget.dataSource.type || 'analytics',
-      timeRange: timeRange || widget.defaultTimeRange || '7d',
-      startDate: timeRange === 'custom' ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
-      endDate: timeRange === 'custom' ? nowISO() : undefined,
-      metrics: widget.metrics || [],
-      groupBy: widget.chartConfig?.groupBy,
-      filters: widget.filters || {}
-    };
-
+    // TODO: Use AnalyticsCore to execute actual query
     // For now, return mock data since the query method doesn't exist
     const result = { data: [{ [widget.metric!]: 0 }] } as any;
 
@@ -330,19 +301,9 @@ export class DashboardService {
    */
   private async getTableWidgetData(
     widget: DashboardWidget,
-    timeRange?: TimeRange
+    _timeRange?: TimeRange
   ): Promise<WidgetData> {
-    const query: AnalyticsQuery = {
-      type: widget.dataSource.type || 'analytics',
-      timeRange: timeRange || widget.defaultTimeRange || '24h',
-      startDate: timeRange === 'custom' ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() : undefined,
-      endDate: timeRange === 'custom' ? nowISO() : undefined,
-      metrics: widget.metrics || [],
-      filters: widget.filters || {},
-      limit: widget.tableConfig?.pageSize || 10,
-      orderBy: widget.tableConfig?.sortBy ? [{ field: widget.tableConfig.sortBy, direction: 'desc' as const }] : undefined
-    };
-
+    // TODO: Use AnalyticsCore to execute actual query
     // For now, return mock data since the query method doesn't exist
     const result = { data: [{ [widget.metric!]: 0 }] } as any;
 

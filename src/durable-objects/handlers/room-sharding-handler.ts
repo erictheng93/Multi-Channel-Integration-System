@@ -19,7 +19,7 @@ import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-log
 export class RoomShardingHandler {
   constructor(
     private ctx: RoomContext,
-    private helpers: RoomHelpers,
+    _helpers: RoomHelpers,
     private messageService: RoomMessageService
   ) {}
 

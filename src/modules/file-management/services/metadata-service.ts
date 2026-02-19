@@ -10,7 +10,6 @@ import type {
 } from '../types/file-types';
 import {
   getFileExtension,
-  getFileType,
   formatFileSize,
   calculateFileHash
 } from '../utils/file-helpers';
@@ -238,7 +237,7 @@ export class MetadataService {
   /**
    * 提取影片元數據
    */
-  private async extractVideoMetadata(data: ArrayBuffer, metadata: FileMetadata): Promise<void> {
+  private async extractVideoMetadata(_data: ArrayBuffer, _metadata: FileMetadata): Promise<void> {
     // 影片元數據提取比較複雜，通常需要專門的程式庫
     // 這裡只做基本的檔案大小記錄
     console.log('Video metadata extraction not fully implemented');
@@ -247,7 +246,7 @@ export class MetadataService {
   /**
    * 提取音訊元數據
    */
-  private async extractAudioMetadata(data: ArrayBuffer, metadata: FileMetadata): Promise<void> {
+  private async extractAudioMetadata(_data: ArrayBuffer, _metadata: FileMetadata): Promise<void> {
     // 音訊元數據提取，可以解析 ID3 標籤等
     console.log('Audio metadata extraction not fully implemented');
   }

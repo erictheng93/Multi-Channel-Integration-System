@@ -135,7 +135,7 @@ export function fileValidationMiddleware(options: FileValidationOptions = {}) {
         }
       }
 
-      await next();
+      return await next();
 
     } catch (error) {
       console.error('File validation middleware error:', error);
@@ -188,7 +188,7 @@ export async function fileUploadValidation(c: Context<{ Bindings: Bindings }>, n
       }
     }
 
-    await next();
+    return await next();
 
   } catch (error) {
     console.error('File upload validation error:', error);
@@ -215,7 +215,7 @@ export async function fileIdValidation(c: Context<{ Bindings: Bindings }>, next:
       return badRequestResponse(c, 'Invalid file ID format');
     }
 
-    await next();
+    return await next();
 
   } catch (error) {
     console.error('File ID validation error:', error);
@@ -239,7 +239,7 @@ export function fileTypeMiddleware(allowedTypes: string[]) {
         }]);
       }
 
-      await next();
+      return await next();
     } catch (error) {
       console.error('File type middleware error:', error);
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
@@ -263,7 +263,7 @@ export function fileSizeMiddleware(maxSize: number) {
         }]);
       }
 
-      await next();
+      return await next();
     } catch (error) {
       console.error('File size middleware error:', error);
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
@@ -303,7 +303,7 @@ export function fileContentMiddleware() {
         }
       }
 
-      await next();
+      return await next();
     } catch (error) {
       console.error('File content middleware error:', error);
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);

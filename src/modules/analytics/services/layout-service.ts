@@ -4,11 +4,11 @@
 import type {
   DashboardWidget,
   WidgetPosition,
-  DashboardLayout,
   ResponsiveBreakpoints,
   LayoutConfig
 } from '../types/dashboard-types';
-import { DataProcessingError } from '@modules/analytics/types/analytics-types';
+// DataProcessingError imported for future use
+// import { DataProcessingError } from '@modules/analytics/types/analytics-types';
 
 /**
  * 設備類型枚舉
@@ -131,7 +131,7 @@ export class LayoutService {
   adaptLayoutForDevice(
     widgets: DashboardWidget[],
     deviceType: DeviceType,
-    containerWidth?: number
+    _containerWidth?: number
   ): DashboardWidget[] {
     const columns = this.config.columns[deviceType];
     const minSize = this.config.minWidgetSizes[deviceType];
@@ -169,7 +169,7 @@ export class LayoutService {
    */
   private adaptWidgetPosition(
     position: WidgetPosition,
-    deviceType: DeviceType,
+    _deviceType: DeviceType,
     columns: number,
     minSize: { width: number; height: number }
   ): WidgetPosition {

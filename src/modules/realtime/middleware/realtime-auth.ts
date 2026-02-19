@@ -140,7 +140,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
         timestamp: nowISO()
       });
 
-      await next();
+      return await next();
 
     } catch (error) {
       console.error('❌ [Realtime Auth] 認證中間件錯誤:', error);

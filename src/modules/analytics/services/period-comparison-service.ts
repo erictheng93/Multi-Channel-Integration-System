@@ -420,12 +420,12 @@ export class PeriodComparisonService {
     return result[0]?.count || 0;
   }
 
-  private async getAverageResolutionTime(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+  private async getAverageResolutionTime(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
     // TODO: 需要 resolution_time 欄位或計算邏輯
     return 0;
   }
 
-  private async getCustomerSatisfactionScore(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+  private async getCustomerSatisfactionScore(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
     // TODO: 需要評分系統支援
     return 0;
   }
@@ -471,7 +471,7 @@ export class PeriodComparisonService {
     return result[0]?.count || 0;
   }
 
-  private async getAverageResponseTime(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+  private async getAverageResponseTime(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
     // TODO: 需要計算消息間的時間差
     return 0;
   }
@@ -509,12 +509,12 @@ export class PeriodComparisonService {
     return result[0]?.count || 0;
   }
 
-  private async getAverageSessionDuration(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+  private async getAverageSessionDuration(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
     // TODO: 需要 session 持續時間計算
     return 0;
   }
 
-  private async getUserEngagementRate(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+  private async getUserEngagementRate(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
     // TODO: 需要定義 engagement 計算邏輯
     return 0;
   }

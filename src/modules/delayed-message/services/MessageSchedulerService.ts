@@ -24,7 +24,7 @@ export class MessageSchedulerService {
   private storageService: StorageService;
   private validationService: ValidationService;
 
-  constructor(private env: Bindings) {
+  constructor(env: Bindings) {
     this.storageService = new StorageService(env);
     this.validationService = new ValidationService();
   }

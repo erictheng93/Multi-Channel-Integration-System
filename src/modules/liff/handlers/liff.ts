@@ -7,8 +7,8 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
-import { eq, and, ne, sql } from 'drizzle-orm';
-import { customers, conversations, teams, customerTeamAssignments } from '@/db/schema';
+import { eq, and, ne } from 'drizzle-orm';
+import { customers, conversations, teams } from '@/db/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp'

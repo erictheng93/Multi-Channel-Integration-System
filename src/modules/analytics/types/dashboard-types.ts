@@ -1,7 +1,7 @@
 // Dashboard Types - 儀表板相關類型定義
 
 import type { TimeSeriesData, DistributionData, ComparisonData } from '@modules/analytics/types/analytics-types';
-import type { Metric, AggregatedMetric } from '@modules/analytics/types/metrics-types';
+
 
 // ======================== 基礎數據類型 ========================
 

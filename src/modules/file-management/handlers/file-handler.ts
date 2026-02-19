@@ -21,8 +21,8 @@ import {
   errorResponse,
   handleApiError
 } from '@/utils/api-response';
-import { getFileExtension, getFileType } from '@modules/file-management/utils/file-helpers';
-import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
+
+import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 
 export class FileHandler {
   private fileService: FileService;
@@ -129,7 +129,6 @@ export class FileHandler {
     try {
       const fileId = c.req.param('fileId');
       const inline = c.req.query('inline') === 'true';
-      const thumbnail = c.req.query('thumbnail') === 'true';
 
       if (!fileId) {
         return validationErrorResponse(c, [

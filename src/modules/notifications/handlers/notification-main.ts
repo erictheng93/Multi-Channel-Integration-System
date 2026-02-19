@@ -17,7 +17,6 @@ import {
 import { NotificationService } from '@modules/notifications/services/notification-service';
 import { NotificationChannelService } from '@modules/notifications/services/notification-channel-service';
 import { NotificationValidator, NotificationValidationError } from '@modules/notifications/utils/notification-validator';
-import { NotificationFactory } from '@modules/notifications/utils/notification-factory';
 import {
   CreateNotificationRequest,
   BulkCreateNotificationRequest,

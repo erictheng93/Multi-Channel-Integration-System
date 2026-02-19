@@ -8,7 +8,7 @@ export class ActivityFormatter {
    * 格式化活動詳情為可讀文字
    */
   static formatActivityDescription(activity: ActivityLog): string {
-    const { action, resourceType, details, userName } = activity
+    const { action, details, userName } = activity
 
     switch (action) {
       case 'team_create':

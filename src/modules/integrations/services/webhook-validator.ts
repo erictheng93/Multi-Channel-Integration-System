@@ -29,9 +29,9 @@ export class WebhookValidator {
   private readonly routerService: WebhookRouterService;
 
   constructor(
-    private env: Bindings,
-    private db: D1Database,
-    private cache: KVNamespace
+    env: Bindings,
+    db: D1Database,
+    cache: KVNamespace
   ) {
     this.securityService = new WebhookSecurityService(env, db, cache);
     this.routerService = new WebhookRouterService(env, db, cache);
@@ -162,7 +162,7 @@ export class WebhookValidator {
   /**
    * 檢查速率限制
    */
-  async checkRateLimit(integrationId: string, platform: IntegrationPlatform): Promise<{
+  async checkRateLimit(_integrationId: string, _platform: IntegrationPlatform): Promise<{
     allowed: boolean;
     current: number;
     limit: number;

@@ -4,12 +4,11 @@
 import type {
   WebSocketConnection,
   WebSocketMessage,
-  DurableObjectEvent
 } from '../../types/websocket-types';
 import type { RealtimeEvent } from '../../types';
 import type { WebSocketAuthChallenge } from '../../services/websocket-auth-service';
 import type { ConversationRoomConfig } from '../ConversationRoom';
-import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
+import { testSafeError, getEmojiPrefix } from '../../utils/test-logger';
 import { nowMs } from '@/utils/timestamp'
 
 // =================== Shared Types ===================

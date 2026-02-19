@@ -10,7 +10,7 @@ import type {
 } from '@/types/websocket-types';
 import type { LogContext } from '@/services/logger-service';
 import { Logger, createLogger, PerformanceTimer } from '@/services/logger-service';
-import { getCircuitBreaker, type WebSocketCircuitBreaker, CircuitState } from '@/services/websocket-circuit-breaker';
+import { getCircuitBreaker, type WebSocketCircuitBreaker } from '@/services/websocket-circuit-breaker';
 import type { BroadcastConfig } from './broadcast-config';
 import type { BatchQueueManager } from './batch-queue-manager';
 import { nowISO } from '@/utils/timestamp'

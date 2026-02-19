@@ -1,6 +1,6 @@
 // 自動化健康監控系統 - 提高系統可靠性
 import { healthCheckService } from './health-check-service';
-import type { SystemHealth, HealthCheckResult } from '../types/health-check';
+import type { SystemHealth } from '../types/health-check';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 監控配置

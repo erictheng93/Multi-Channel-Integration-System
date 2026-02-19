@@ -3,25 +3,22 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, sql, count, gte } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers,
   customerTags,
-  tags,
   teams,
   conversations,
   messages
 } from '@/db/schema';
 import {
-  CustomerStats,
-  CustomerStatsResponse
+  CustomerStats
 } from '../types/customer-types';
 import type { JWTPayload } from '@/types';
 
 export class CustomerStatsService {
   private drizzleDb: ReturnType<typeof drizzle>;
 
-  constructor(private db: D1Database) {
+  constructor(db: D1Database) {
     this.drizzleDb = drizzle(db);
   }
 

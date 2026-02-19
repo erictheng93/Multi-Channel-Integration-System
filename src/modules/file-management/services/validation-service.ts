@@ -8,8 +8,6 @@ import type {
   FileValidationResult,
   FileValidationError,
   FileValidationMetadata,
-  SecurityValidationOptions,
-  ContentValidationOptions,
   ValidationRuleSetType
 } from '../types/validation-types';
 import type { PlatformType } from '@modules/file-management/types/file-types';
@@ -23,9 +21,7 @@ import { ERROR_CODES, ERROR_MESSAGES } from '@modules/file-management/constants/
 import {
   isAllowedMimeType,
   normalizeMimeType,
-  validateFileSignature,
-  isImageMimeType,
-  isVideoMimeType
+  validateFileSignature
 } from '../utils/mime-type-utils';
 import { isValidFilename } from '@modules/file-management/utils/file-helpers';
 
@@ -162,7 +158,7 @@ export class FileValidationService {
    */
   private validateBasicProperties(
     metadata: FileValidationMetadata,
-    rules: FileValidationRules,
+    _rules: FileValidationRules,
     errors: FileValidationError[]
   ): void {
     if (!metadata.filename) {
@@ -316,7 +312,7 @@ export class FileValidationService {
   private async validateFileContent(
     data: ArrayBuffer,
     metadata: FileValidationMetadata,
-    rules: FileValidationRules,
+    _rules: FileValidationRules,
     errors: FileValidationError[],
     warnings: FileValidationError[]
   ): Promise<void> {

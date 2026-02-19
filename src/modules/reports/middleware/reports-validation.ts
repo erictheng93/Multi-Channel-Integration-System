@@ -9,7 +9,6 @@ import type {
   BatchReportOperation,
   ReportType,
   ReportFormat,
-  ReportTimeRange,
   ScheduledReport
 } from '../types/report-types';
 import { REPORT_TYPE_CONFIG } from '@modules/reports/types/report-types';
@@ -95,7 +94,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
       }, HTTP_STATUS.PAYLOAD_TOO_LARGE);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Request size validation error:', error);
     return c.json({
@@ -113,7 +112,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
   try {
     // TODO: 實現速率限制邏輯
     // 報告生成需要更嚴格的速率限制，可以使用 Cloudflare KV 存儲請求計數
-    await next();
+    return await next();
   } catch (error) {
     console.error('Rate limit validation error:', error);
     return c.json({
@@ -150,7 +149,7 @@ export async function validateReportId(c: Context<{ Bindings: Bindings }>, next:
     }
 
     (c as any).set('reportId', reportId);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Report ID validation error:', error);
     return c.json({
@@ -185,7 +184,7 @@ export async function validateScheduledReportId(c: Context<{ Bindings: Bindings 
     }
 
     (c as any).set('scheduledReportId', scheduledReportId);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Scheduled report ID validation error:', error);
     return c.json({
@@ -395,7 +394,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
     }
 
     (c as any).set('reportParams', body);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Report generation params validation error:', error);
     return c.json({
@@ -540,7 +539,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
     if (sortOrder) query.sortOrder = sortOrder as 'asc' | 'desc';
 
     (c as any).set('reportQuery', query);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Report list query validation error:', error);
     return c.json({
@@ -618,7 +617,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
     }
 
     (c as any).set('batchOperation', body);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Batch operation validation error:', error);
     return c.json({
@@ -762,7 +761,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
     }
 
     (c as any).set('scheduledReportData', body);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Scheduled report data validation error:', error);
     return c.json({
@@ -800,7 +799,7 @@ export async function validateReportPreviewRequest(c: Context<{ Bindings: Bindin
     }
 
     (c as any).set('previewParams', body);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Report preview validation error:', error);
     return c.json({

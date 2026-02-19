@@ -20,14 +20,10 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
-import { isOriginAllowed, createCorsPreflightResponse } from '@/config/cors';
 // 🆕 P2-5: Import standard response utilities
 import {
-  successResponse,
-  errorResponse,
   unauthorizedResponse,
-  badRequestResponse,
-  validationErrorResponse
+  badRequestResponse
 } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
 

@@ -6,7 +6,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { eq, inArray, desc, and } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, customers, teams, conversationTags, tags } from '@/db/schema';
+import { conversations, customers, teams, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';

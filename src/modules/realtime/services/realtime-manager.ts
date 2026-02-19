@@ -117,14 +117,6 @@ export class RealtimeManager {
       const eventId = `${nowMs()}-${Math.random().toString(36).substring(2)}`;
 
       // 創建事件對象
-      const event: RealtimeEvent = {
-        id: eventId,
-        type: eventType,
-        timestamp: nowISO(),
-        source,
-        data: eventData
-      };
-
       // 推送到隊列
       let queueDelivered = false;
       try {
@@ -264,8 +256,6 @@ export class RealtimeManager {
     // 計算服務狀態
     let serviceStatus = this.status;
     const downComponents = Object.values(components).filter(status => status === 'down').length;
-    const degradedComponents = Object.values(components).filter(status => status === 'degraded').length;
-
     if (downComponents > 0) {
       serviceStatus = ServiceStatus.DEGRADED;
     }

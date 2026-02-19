@@ -312,7 +312,7 @@ export class CollaborationManager {
    * 銷毀管理器
    */
   destroy(): void {
-    for (const [protocol, adapter] of this.adapters) {
+    for (const [_protocol, adapter] of this.adapters) {
       if ('destroy' in adapter && typeof adapter.destroy === 'function') {
         (adapter as any).destroy();
       }

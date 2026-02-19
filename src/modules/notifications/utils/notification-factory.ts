@@ -3,7 +3,6 @@
 
 import {
   CreateNotificationRequest,
-  NotificationType,
   NotificationPriority
 } from '../types';
 
@@ -338,20 +337,4 @@ export class NotificationFactory {
     }));
   }
 
-  // 驗證和清理工廠參數
-  private static validateUserId(userId: number): void {
-    if (!userId || userId <= 0) {
-      throw new Error('Invalid userId: must be a positive number');
-    }
-  }
-
-  private static validateConversationId(conversationId: number): void {
-    if (!conversationId || conversationId <= 0) {
-      throw new Error('Invalid conversationId: must be a positive number');
-    }
-  }
-
-  private static sanitizeString(str: string): string {
-    return str?.trim().replace(/\s+/g, ' ') || '';
-  }
 }

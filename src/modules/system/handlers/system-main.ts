@@ -2,12 +2,11 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
-import { ERROR_MESSAGES } from '@/utils/error-messages';
 import { jwtAuth } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
-import { agents, customers, conversations, messages, teams, customerFeedback } from '@/db/schema';
+import { agents, customers, conversations, messages, customerFeedback } from '@/db/schema';
 // REMOVED: qrCodes - Old QR Code module migrated to new LIFF QR Code system
-import { count, sql, eq, and, desc } from 'drizzle-orm';
+import { count, sql, eq, and } from 'drizzle-orm';
 import { handleApiError } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
 

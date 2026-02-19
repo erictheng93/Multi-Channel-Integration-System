@@ -1,8 +1,8 @@
 // Analytics Core Service - 統一分析服務核心實現
 // 整合來自 session、activities、enterprise 模組的分析功能
 
-import { createDbClient, type Database } from '@/db/drizzle-factory';
-import { eq, and, desc, asc, sql, count, avg, sum, min, max, gte, lte, type SQL } from 'drizzle-orm';
+import { type Database } from '@/db/drizzle-factory';
+import { eq, and, asc, sql, count, gte, lte, type SQL } from 'drizzle-orm';
 import type { Bindings } from '@/types';
 import type { ServiceResponse } from '@/types/services';
 
@@ -38,12 +38,10 @@ import type {
   DistributionData,
   ComparisonData,
   WhereConditionContext,
-  TrendDataRow,
   DistributionRow,
   TeamDistributionRow,
   ConversationTrendRow,
-  MessageVolumeTrendRow,
-  UserActivityTrendRow
+  MessageVolumeTrendRow
 } from '../types/analytics-types';
 
 import {
@@ -53,10 +51,8 @@ import {
 } from '../types/analytics-types';
 
 import {
-  conversationSessions,
   messages,
   activities,
-  agents,
   customers,
   conversations
 } from '@/db/schema';
@@ -73,16 +69,12 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 export class AnalyticsService implements AnalyticsServiceInterface {
   private db: Database;
   private kv?: Bindings['KV'];
-  private env?: Bindings;
-  private config: AnalyticsServiceConfig;
   private cacheService?: AnalyticsCacheService;
   private comparisonService: PeriodComparisonService;
 
   constructor(config: AnalyticsServiceConfig) {
     this.db = config.database;
     this.kv = config.kv;
-    this.env = config.env;
-    this.config = config;
 
     // 初始化快取服務（如果有 KV）
     if (this.kv) {
@@ -715,7 +707,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     return conditions;
   }
 
-  private async getConversationSummary(whereConditions: SQLConditions, metrics: string[]): Promise<ConversationAnalytics['summary']> {
+  private async getConversationSummary(whereConditions: SQLConditions, _metrics: string[]): Promise<ConversationAnalytics['summary']> {
     // 實現對話摘要統計
     const results = await this.db
       .select({
@@ -745,7 +737,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     try {
       // 根據時間範圍決定聚合級別
       const aggregation = this.getAggregationInterval(timeRange);
-      const { startDate, endDate } = this.buildTimeRange(timeRange);
+      const { startDate: _startDate, endDate: _endDate } = this.buildTimeRange(timeRange);
 
       // 使用 SQL 進行時間聚合
       let timeGroupSQL: SQLTimeGroup;
@@ -957,7 +949,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     return colors[teamId % colors.length];
   }
 
-  private async getConversationComparisons(whereConditions: SQLConditions, timeRange: string): Promise<ComparisonData[]> {
+  private async getConversationComparisons(_whereConditions: SQLConditions, timeRange: string): Promise<ComparisonData[]> {
     try {
       // 使用 Period Comparison Service 進行比較
       const { currentPeriod, previousPeriod } = this.calculatePreviousPeriod(timeRange);
@@ -1015,33 +1007,6 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private buildComparisonData(
-    metric: string,
-    current: number,
-    previous: number,
-    currentPeriod: { start: string; end: string },
-    previousPeriod: { start: string; end: string }
-  ): ComparisonData {
-    const change = current - previous;
-    const changePercentage = previous === 0 ? (current > 0 ? 100 : 0) : (change / previous) * 100;
-
-    let trend: 'up' | 'down' | 'stable' = 'stable';
-    if (changePercentage > 5) trend = 'up';
-    else if (changePercentage < -5) trend = 'down';
-
-    return {
-      current,
-      previous,
-      change,
-      changePercentage: Math.round(changePercentage * 100) / 100,
-      trend,
-      period: {
-        current: currentPeriod,
-        previous: previousPeriod
-      }
-    };
-  }
-
   private calculatePreviousPeriod(timeRange: string): {
     currentPeriod: { start: string; end: string };
     previousPeriod: { start: string; end: string };
@@ -1095,7 +1060,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private async getMessageSummary(whereConditions: SQLConditions, metrics: string[]): Promise<MessageAnalytics['summary']> {
+  private async getMessageSummary(_whereConditions: SQLConditions, _metrics: string[]): Promise<MessageAnalytics['summary']> {
     // 實現消息摘要統計
     return {
       totalMessages: 0,
@@ -1161,19 +1126,19 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     }
   }
 
-  private async getMessageTypeDistribution(whereConditions: SQLConditions): Promise<DistributionData[]> {
+  private async getMessageTypeDistribution(_whereConditions: SQLConditions): Promise<DistributionData[]> {
     return [];
   }
 
-  private async getMessageChannelDistribution(whereConditions: SQLConditions): Promise<DistributionData[]> {
+  private async getMessageChannelDistribution(_whereConditions: SQLConditions): Promise<DistributionData[]> {
     return [];
   }
 
-  private async getMessageSentimentDistribution(whereConditions: SQLConditions): Promise<DistributionData[]> {
+  private async getMessageSentimentDistribution(_whereConditions: SQLConditions): Promise<DistributionData[]> {
     return [];
   }
 
-  private async getUserSummary(whereConditions: SQLConditions, metrics: string[], userType?: string): Promise<UserAnalytics['summary']> {
+  private async getUserSummary(_whereConditions: SQLConditions, _metrics: string[], _userType?: string): Promise<UserAnalytics['summary']> {
     return {
       totalUsers: 0,
       activeUsers: 0,
@@ -1239,15 +1204,15 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     }
   }
 
-  private async getUserPerformanceData(whereConditions: SQLConditions, userType?: string): Promise<UserAnalytics['performance']> {
+  private async getUserPerformanceData(_whereConditions: SQLConditions, _userType?: string): Promise<UserAnalytics['performance']> {
     return [];
   }
 
-  private async getUserWorkloadData(whereConditions: SQLConditions, userType?: string): Promise<UserAnalytics['workload']> {
+  private async getUserWorkloadData(_whereConditions: SQLConditions, _userType?: string): Promise<UserAnalytics['workload']> {
     return [];
   }
 
-  private async getPerformanceSummary(startDate: string, endDate: string, metrics: string[]): Promise<PerformanceAnalytics['summary']> {
+  private async getPerformanceSummary(_startDate: string, _endDate: string, _metrics: string[]): Promise<PerformanceAnalytics['summary']> {
     return {
       averageResponseTime: 0,
       throughput: 0,
@@ -1257,24 +1222,24 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     };
   }
 
-  private async getPerformanceTrends(startDate: string, endDate: string, timeRange: string): Promise<TimeSeriesData[]> {
+  private async getPerformanceTrends(_startDate: string, _endDate: string, _timeRange: string): Promise<TimeSeriesData[]> {
     return [];
   }
 
-  private async identifyBottlenecks(startDate: string, endDate: string): Promise<PerformanceAnalytics['bottlenecks']> {
+  private async identifyBottlenecks(_startDate: string, _endDate: string): Promise<PerformanceAnalytics['bottlenecks']> {
     return [];
   }
 
-  private async generateRecommendations(summary: PerformanceAnalytics['summary'], bottlenecks: PerformanceAnalytics['bottlenecks']): Promise<PerformanceAnalytics['recommendations']> {
+  private async generateRecommendations(_summary: PerformanceAnalytics['summary'], _bottlenecks: PerformanceAnalytics['bottlenecks']): Promise<PerformanceAnalytics['recommendations']> {
     return [];
   }
 
-  private async executeCustomQuery(query: CustomAnalyticsQuery): Promise<any> {
+  private async executeCustomQuery(_query: CustomAnalyticsQuery): Promise<any> {
     // 實現自定義查詢執行
     return {};
   }
 
-  private async generateExportFile(data: any, query: ExportQuery): Promise<string> {
+  private async generateExportFile(_data: any, _query: ExportQuery): Promise<string> {
     // 實現文件生成和上傳
     return 'https://example.com/export/file.csv';
   }

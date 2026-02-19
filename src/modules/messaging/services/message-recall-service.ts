@@ -3,20 +3,14 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, count, sql } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
 import {
   messages,
   messageRecallLogs,
-  delayedMessages,
-  conversations
+  delayedMessages
 } from '@/db/schema';
 import {
   MessageRecall,
-  RecallRequest,
-  RecallResponse,
-  MessageNotFoundError,
-  RecallDeadlineExceededError,
-  InvalidMessageDataError
+  RecallResponse
 } from '../types/message-types';
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
@@ -25,7 +19,7 @@ export class MessageRecallService {
   private drizzleDb: ReturnType<typeof drizzle>;
 
   constructor(
-    private db: D1Database,
+    db: D1Database,
     private env: Bindings
   ) {
     this.drizzleDb = drizzle(db);
@@ -39,7 +33,7 @@ export class MessageRecallService {
   async recallMessage(
     messageId: string,
     requestedBy: string,
-    reason?: string
+    _reason?: string
   ): Promise<RecallResponse> {
     try {
       // 檢查訊息是否存在
@@ -83,8 +77,6 @@ export class MessageRecallService {
 
       // 執行召回
       const recalledAt = now.toISOString();
-      const recallLogId = crypto.randomUUID();
-
       // 更新訊息狀態
       await this.drizzleDb
         .update(messages)

@@ -24,7 +24,6 @@ const conversationMessagesHandler = new Hono<{ Bindings: Bindings }>();
 conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
   try {
     const conversationId = c.req.param('id');
-    const user = c.get('user');
 
     if (!conversationId) {
       return c.json({
@@ -52,7 +51,6 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
     // 解析 FormData
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
-    const messageType = formData.get('messageType') as string;
 
     // 驗證文件
     if (!file || file.size === 0) {

@@ -4,7 +4,7 @@
 import type { Bindings } from '@/types';
 import { createDbClient } from '../db/drizzle-factory';
 import { webhookSecurityEvents, corsEvents } from '@/db/schema';
-import { gte, desc, eq, and, count, sql } from 'drizzle-orm';
+import { gte, desc } from 'drizzle-orm';
 
 /**
  * Real-time security dashboard metrics

@@ -1,7 +1,7 @@
 // src/modules/notifications/types/channel-types.ts
 // 通知通道系統類型定義
 
-import { NotificationBase, NotificationType } from '@modules/notifications/types/notification-types';
+import { NotificationBase } from '@modules/notifications/types/notification-types';
 
 export interface NotificationChannelConfig {
   type: ChannelType;

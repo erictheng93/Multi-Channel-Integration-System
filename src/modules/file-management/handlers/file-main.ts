@@ -6,7 +6,6 @@ import { jwtAuth } from '@/middleware/auth';
 import type { Bindings } from '@/types';
 import {
   successResponse,
-  errorResponse,
   unauthorizedResponse,
   badRequestResponse,
   handleApiError

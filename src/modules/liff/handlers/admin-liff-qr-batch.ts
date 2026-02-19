@@ -6,7 +6,6 @@
  */
 
 import { Hono } from 'hono';
-import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { createDbClient } from '@/db/drizzle-factory';
 import { teams, teamLiffQrCodes } from '@/db/schema';

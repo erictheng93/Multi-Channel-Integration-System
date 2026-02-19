@@ -15,12 +15,6 @@ import type { Bindings } from '../types/bindings';
 
 // =================== Types ===================
 
-interface RateLimitData {
-  count: number;
-  windowStart: number;
-  prevCount: number;
-}
-
 interface RateLimitConfig {
   maxRequests: number;
   windowMs: number;
