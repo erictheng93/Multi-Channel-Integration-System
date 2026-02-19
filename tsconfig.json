@@ -18,10 +18,10 @@
     "alwaysStrict": true,
 
     // Additional Checks (P2-6: Enabled safe checks)
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "exactOptionalPropertyTypes": false,
-    "noImplicitReturns": false,
+    "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": false,
     "noImplicitOverride": true,

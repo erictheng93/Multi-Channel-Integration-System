@@ -1,8 +1,6 @@
 // Collaboration Module - Core Types
 // 協作模組核心類型定義
 
-import type { JWTPayload } from '@/types';
-
 // =================== 基礎類型 ===================
 
 /**

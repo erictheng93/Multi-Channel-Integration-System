@@ -3,7 +3,6 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers,
   customerTags,
@@ -18,16 +17,14 @@ import {
   CreateCustomerData,
   UpdateCustomerData,
   CustomerNotFoundError,
-  CustomerAlreadyExistsError,
-  CustomerMetadata
+  CustomerAlreadyExistsError
 } from '../types/customer-types';
-import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
 
 export class CustomerCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;
 
-  constructor(private db: D1Database) {
+  constructor(db: D1Database) {
     this.drizzleDb = drizzle(db);
   }
 

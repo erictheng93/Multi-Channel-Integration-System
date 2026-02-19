@@ -139,7 +139,8 @@ const createRealtimeDashboardApp = (
       const dashboardData = await dashboardService.getDashboardData(user.id.toString(), dashboardId);
 
       // 逐個廣播小工具更新
-      const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
+      // Validate dashboard exists (side effect)
+      await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
 
       const updatePromises = Object.entries(dashboardData).map(([widgetId, data]) => {
         return realtimeService.broadcastWidgetUpdate(dashboardId, widgetId, data);
@@ -253,7 +254,7 @@ export const createRealtimeDashboardHandler = (
 
 // 為了向後兼容，也導出一個默認的處理器創建函數
 export const realtimeDashboardHandler = new Hono<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>()
-  .use('*', async (c, next) => {
+  .use('*', async (c, _next) => {
     const realtimeService = new RealtimeDashboardService(c.env.DB, c.env.KV as any);
     const dashboardService = new DashboardService(c.env.DB, c.env.KV as any);
     const handler = createRealtimeDashboardHandler(realtimeService, dashboardService);

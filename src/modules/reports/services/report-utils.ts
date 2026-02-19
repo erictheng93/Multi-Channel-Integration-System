@@ -108,7 +108,7 @@ export class ReportUtils {
    */
   async checkReportPermission(_type: ReportType, _userId: string, _action: string): Promise<void> {
     // TODO: Implement permission checks
-    const _requiredPermissions = REPORT_TYPE_CONFIG[_type]?.requiredPermissions || [];
+    // REPORT_TYPE_CONFIG[_type]?.requiredPermissions contains the required permissions
     // Currently allows all operations
   }
 

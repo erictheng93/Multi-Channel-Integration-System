@@ -8,7 +8,7 @@ import { customers } from '@/db/schema';
 import type { Bindings, FacebookMessaging, FacebookMediaData } from '@/types';
 import { ActivityService } from '@modules/activities';
 import { createContextLogger } from '@/utils/logger';
-import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
+
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processFacebookMedia } from '../services/webhook-media-service';
 import { nowISO } from '@/utils/timestamp'

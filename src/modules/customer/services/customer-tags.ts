@@ -3,7 +3,6 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, inArray, desc, sql } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
 import {
   customers,
   customerTags,
@@ -12,7 +11,6 @@ import {
 import {
   CustomerTag,
   CustomerTagAssignment,
-  CustomerTagOperation,
   CustomerNotFoundError
 } from '../types/customer-types';
 import type { JWTPayload } from '@/types';
@@ -21,7 +19,7 @@ import { nowISO } from '@/utils/timestamp'
 export class CustomerTagService {
   private drizzleDb: ReturnType<typeof drizzle>;
 
-  constructor(private db: D1Database) {
+  constructor(db: D1Database) {
     this.drizzleDb = drizzle(db);
   }
 

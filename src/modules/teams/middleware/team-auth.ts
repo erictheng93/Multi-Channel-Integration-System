@@ -121,8 +121,6 @@ export const checkTeamManagementAccess = (): MiddlewareHandler<{ Bindings: Bindi
   return async (c, next) => {
     try {
       const user = c.get('user');
-      const targetTeamId = c.req.param('teamId') || c.req.query('teamId');
-
       if (!user) {
         return c.json({ error: 'Authentication required' }, HTTP_STATUS.UNAUTHORIZED);
       }

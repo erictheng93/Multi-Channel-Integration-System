@@ -2,8 +2,7 @@
 // 延遲訊息處理服務
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, desc, count, sql, lte } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
+import { eq, and, desc, count, lte } from 'drizzle-orm';
 import {
   delayedMessages,
   messages,
@@ -17,7 +16,6 @@ import {
   InvalidMessageDataError,
   Platform,
   MessageType,
-  QueueMessagePayload,
   QueueProcessingResult
 } from '../types/message-types';
 import type { Bindings } from '@/types';
@@ -27,7 +25,7 @@ export class DelayedMessageService {
   private drizzleDb: ReturnType<typeof drizzle>;
 
   constructor(
-    private db: D1Database,
+    db: D1Database,
     private env: Bindings
   ) {
     this.drizzleDb = drizzle(db);

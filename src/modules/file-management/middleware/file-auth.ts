@@ -41,7 +41,7 @@ export async function fileAuthMiddleware(c: Context<{ Bindings: Bindings }>, nex
       return forbiddenResponse(c, `Insufficient permissions for file ${action} operation`);
     }
 
-    await next();
+    return await next();
 
   } catch (error) {
     console.error('File auth middleware error:', error);

@@ -1,11 +1,10 @@
 // Session Service Implementation
 // 對話會話管理服務的完整實現
 
-import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, sql, count, avg, like } from 'drizzle-orm';
-import { conversationSessions, messages, conversations, agents, agentTeams } from '@/db/schema';
+import { conversationSessions, messages, conversations, agentTeams } from '@/db/schema';
 import {
   ConversationSession,
   CreateSessionData,
@@ -22,7 +21,6 @@ import {
   SessionBoundaryDetection,
   SessionServiceInterface,
   SessionNotFoundError,
-  SessionValidationError,
   SessionOperationError,
   DEFAULT_SESSION_CONFIG,
   DEFAULT_PAGINATION
@@ -635,11 +633,9 @@ export class SessionService implements SessionServiceInterface {
 
       // 按優先級統計 (通過 metadata 實現)
       // TODO: 實現通過 metadata 欄位的優先級統計
-      const priorityStats: Array<{ priority: string; count: number }> = [];
+      // TODO: 實現通過 metadata 欄位的優先級統計 (priorityStats)
 
-      // 按情感統計 (通過 metadata 實現)
-      // TODO: 實現通過 metadata 欄位的情感統計
-      const sentimentStats: Array<{ sentiment: string; count: number }> = [];
+      // TODO: 實現通過 metadata 欄位的情感統計 (sentimentStats)
 
       const total = basicStats?.totalSessions || 0;
       const active = basicStats?.activeSessions || 0;

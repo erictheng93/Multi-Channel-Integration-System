@@ -11,7 +11,6 @@ import {
   DEFAULT_PAGINATION,
   SessionNotFoundError,
   SessionValidationError,
-  SessionOperationError,
   type SessionListQuery,
   type SessionSearchQuery,
   type CreateSessionData,

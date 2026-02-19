@@ -13,7 +13,6 @@ import {
   requireAdminRole,
   requireTeamLeaderOrAdmin,
   checkAgentAccess,
-  createAgentPermissionMiddleware,
   agentErrorHandler
 } from '../middleware/agent-auth';
 import { agentValidationMiddleware } from '@modules/agents/middleware/agent-validation';

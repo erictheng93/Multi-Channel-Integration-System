@@ -229,13 +229,6 @@ This is an automated security alert from Multi-Channel Customer Support System.
     severity: AlertSeverity,
     metadata?: AlertMetadata
   ): Promise<void> {
-    const severityColor = {
-      low: '#36a64f',      // Green
-      medium: '#ff9900',   // Orange
-      high: '#ff0000',     // Red
-      critical: '#8B0000'  // Dark Red
-    };
-
     const severityEmoji = {
       low: ':information_source:',
       medium: ':warning:',

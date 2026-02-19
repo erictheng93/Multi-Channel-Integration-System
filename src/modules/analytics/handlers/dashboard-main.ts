@@ -25,20 +25,13 @@ interface AnalyticsUser {
 }
 import type {
   DashboardConfig,
-  DashboardWidget,
-  WidgetData,
   TimeRange as DashboardTimeRange
 } from '../types/dashboard-types';
 import type { TimeRange as AnalyticsTimeRange } from '@modules/analytics/types/analytics-types';
-import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
+
 import { nowISO } from '@/utils/timestamp'
 
 // 驗證 schema
-const timeRangeSchema = z.object({
-  start: z.string(),
-  end: z.string()
-});
-
 const dashboardConfigSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1),

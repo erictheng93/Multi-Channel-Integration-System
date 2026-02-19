@@ -5,7 +5,6 @@
 
 import type { Bindings } from '../types';
 import { LatestMessageCache } from '../services/latest-message-cache';
-import type { DurableObjectStub } from '@cloudflare/workers-types';
 import { MESSAGE_BROADCASTER_ROUTES, CACHE_COORDINATOR_ROUTES } from '../constants/durable-objects';
 import { QUEUE_LIMITS, calculateExponentialBackoff } from '../constants/limits';
 import { nowISO } from '@/utils/timestamp'
@@ -276,7 +275,7 @@ export class LatestMessageJobQueue {
    */
   async updateLatestMessage(
     conversationId: string,
-    messageId?: string,
+    _messageId?: string,
     priority: 'low' | 'normal' | 'high' = 'normal'
   ): Promise<void> {
     try {

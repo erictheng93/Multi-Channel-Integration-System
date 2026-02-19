@@ -2,15 +2,13 @@
 // 提供客戶的搜索、篩選、分頁等功能
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, desc, like, sql, or, inArray, count } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
+import { eq, and, desc, like, sql, or } from 'drizzle-orm';
 import {
   customers,
   customerTags,
   tags,
   teams,
-  conversations,
-  messages
+  conversations
 } from '@/db/schema';
 import {
   CustomerListItem,
@@ -25,7 +23,7 @@ import type { JWTPayload } from '@/types';
 export class CustomerSearchService {
   private drizzleDb: ReturnType<typeof drizzle>;
 
-  constructor(private db: D1Database) {
+  constructor(db: D1Database) {
     this.drizzleDb = drizzle(db);
   }
 

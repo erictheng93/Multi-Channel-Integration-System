@@ -1,7 +1,6 @@
 // QR Code 處理器 - 主要實現
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
-import { ERROR_MESSAGES } from '@/utils/error-messages';
 import { QRCodeServiceImpl as QRCodeService } from '@/services/qrcode-service-impl';
 import { getTeamByQRCode } from '@/utils/team';
 import { jwtAuth } from '@/middleware/auth';

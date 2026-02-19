@@ -16,13 +16,13 @@ import { nowMs } from '@/utils/timestamp'
 export class RoomAuthService {
   constructor(
     private ctx: RoomContext,
-    private helpers: RoomHelpers
+    _helpers: RoomHelpers
   ) {}
 
   /**
    * Full mode authentication: Token-based or Challenge-Response
    */
-  async authenticateFullMode(url: URL, request: Request): Promise<{
+  async authenticateFullMode(url: URL, _request: Request): Promise<{
     success: boolean;
     userId?: string;
     role?: string;

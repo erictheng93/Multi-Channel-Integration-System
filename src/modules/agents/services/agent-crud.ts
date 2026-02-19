@@ -1,7 +1,7 @@
 // Agent CRUD Service - 客服代理 CRUD 操作服務
 // Agent CRUD Operations Service
 
-import { eq, and, like, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { agents, teams, agentTeams } from '@/db/schema';
 import type {
@@ -15,8 +15,7 @@ import type {
   AgentListResponse,
   AgentSearchQuery,
   BatchUpdateAgentsRequest,
-  BatchTransferAgentsRequest,
-  AgentPermissionError
+  BatchTransferAgentsRequest
 } from '../types/agent-types';
 import {
   AgentNotFoundError,
@@ -238,7 +237,7 @@ export class AgentService implements AgentServiceInterface {
         search,
         teamId,
         role,
-        status
+        status: _status
       } = params;
 
       const offset = (page - 1) * limit;
@@ -413,7 +412,7 @@ export class AgentService implements AgentServiceInterface {
 
   async batchTransferAgents(request: BatchTransferAgentsRequest): Promise<{ success: boolean; errors: any[] }> {
     try {
-      const { agentIds, toTeamId, reason } = request;
+      const { agentIds, toTeamId, reason: _reason } = request;
       const errors: any[] = [];
 
       // 驗證目標團隊是否存在

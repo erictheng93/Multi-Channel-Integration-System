@@ -11,7 +11,6 @@ import type {
   MessageSendRequest,
   MessageSendResponse,
 } from '../types/conversation-types';
-import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
@@ -124,7 +123,7 @@ export class MessageService implements MessageServiceInterface {
    * Process background sending (Step 2 of Async Sending)
    * Sends to LINE and updates DB status.
    */
-  async processBackgroundSending(messageId: string, request: MessageSendRequest, user: any): Promise<void> {
+  async processBackgroundSending(messageId: string, request: MessageSendRequest, _user: any): Promise<void> {
     try {
       console.log(`[MessageService] 🚀 Starting background sending for message ${messageId}`);
       
@@ -717,7 +716,7 @@ export class MessageService implements MessageServiceInterface {
   /**
    * Get messages after a specific timestamp for streaming
    */
-  async getMessagesAfterTimestamp(conversationId: string, afterTimestamp: string): Promise<Message[]> {
+  async getMessagesAfterTimestamp(conversationId: string, _afterTimestamp: string): Promise<Message[]> {
     try {
       return await this.db
         .select()

@@ -8,21 +8,18 @@ import {
   NotificationQuery,
   NotificationListResponse,
   NotificationStats,
-  NotificationType,
-  NotificationSettings
+  NotificationType
 } from '../types';
 import { NotificationRepository } from '@modules/notifications/repositories/notification-repository';
 import { NotificationCache } from '@modules/notifications/repositories/notification-cache';
 import { NotificationChannelService } from '@modules/notifications/services/notification-channel-service';
 import { NotificationValidator } from '@modules/notifications/utils/notification-validator';
-import { NotificationFactory } from '@modules/notifications/utils/notification-factory';
 
 export class NotificationService {
   private repository: NotificationRepository;
   private cache: NotificationCache;
   private channelService: NotificationChannelService;
   private validator: NotificationValidator;
-  private factory: NotificationFactory;
 
   constructor(
     database: D1Database,
@@ -33,7 +30,6 @@ export class NotificationService {
     this.cache = new NotificationCache(kvNamespace);
     this.channelService = channelService;
     this.validator = new NotificationValidator();
-    this.factory = new NotificationFactory();
   }
 
   async create(request: CreateNotificationRequest): Promise<string> {

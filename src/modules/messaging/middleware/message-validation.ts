@@ -11,7 +11,7 @@ import {
   isValidMessageContent,
   DEFAULT_MESSAGE_VALIDATION
 } from '../index';
-import type { MessageType, SenderType, Platform, DelayedSendRequest, RecallRequest, BatchSendRequest } from '@modules/messaging/types/message-types';
+import type { DelayedSendRequest, RecallRequest, BatchSendRequest } from '@modules/messaging/types/message-types';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { nowISO } from '@/utils/timestamp'
@@ -43,7 +43,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating message ID:', error);
     return c.json({
@@ -79,7 +79,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating conversation ID:', error);
     return c.json({
@@ -135,7 +135,7 @@ export async function validatePaginationParams(c: Context<{ Bindings: Bindings }
       }
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating pagination params:', error);
     return c.json({
@@ -242,7 +242,7 @@ export async function validateCreateMessageData(c: Context<{ Bindings: Bindings 
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating create message data:', error);
     return c.json({
@@ -297,7 +297,7 @@ export async function validateUpdateMessageData(c: Context<{ Bindings: Bindings 
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating update message data:', error);
     return c.json({
@@ -369,7 +369,7 @@ export async function validateDelayedSendData(c: Context<{ Bindings: Bindings }>
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating delayed send data:', error);
     return c.json({
@@ -422,7 +422,7 @@ export async function validateRecallRequest(c: Context<{ Bindings: Bindings }>, 
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating recall request:', error);
     return c.json({
@@ -497,7 +497,7 @@ export async function validateBatchSendData(c: Context<{ Bindings: Bindings }>, 
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating batch send data:', error);
     return c.json({
@@ -571,7 +571,7 @@ export async function validateSearchQuery(c: Context<{ Bindings: Bindings }>, ne
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating search query:', error);
     return c.json({

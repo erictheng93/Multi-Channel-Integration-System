@@ -70,7 +70,6 @@ interface RateLimitStats {
 
 export class RateLimiterDO implements DurableObject {
   private state: DurableObjectState;
-  private env: any;
 
   // In-memory rate limit state (fast access)
   private rateLimits = new Map<string, RateLimitEntry>();
@@ -89,12 +88,9 @@ export class RateLimiterDO implements DurableObject {
   private readonly MAX_ENTRIES = 10000; // Maximum entries before forced cleanup
   private readonly ENTRY_TTL_MS = 600000; // 10 minutes TTL for inactive entries
 
-  private persistTimer: ReturnType<typeof setTimeout> | null = null;
-  private cleanupTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, _env: any) {
     this.state = state;
-    this.env = env;
 
     // Initialize from storage on first request
     this.state.blockConcurrencyWhile(async () => {
@@ -369,12 +365,12 @@ export class RateLimiterDO implements DurableObject {
 
   private setupTimers(): void {
     // Periodic persist
-    this.persistTimer = setInterval(() => {
+    setInterval(() => {
       this.persistToStorage();
     }, this.PERSIST_INTERVAL_MS);
 
     // Periodic cleanup
-    this.cleanupTimer = setInterval(() => {
+    setInterval(() => {
       this.cleanupExpiredEntries();
     }, this.CLEANUP_INTERVAL_MS);
   }

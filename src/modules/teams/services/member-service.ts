@@ -1,9 +1,8 @@
 // Team Member Service
 // 團隊成員業務邏輯服務
 
-import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, or, desc, sql, ne, isNull, inArray } from 'drizzle-orm';
+import { eq, and, or, desc, sql, isNull, inArray } from 'drizzle-orm';
 import {
   agents,
   agentTeams,
@@ -19,7 +18,7 @@ import {
   activities
 } from '@/db/schema';
 import { hashPassword } from '@/utils/auth';
-import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import type { D1Database } from '@cloudflare/workers-types';
 import type {
   TeamMember,
   AddTeamMemberRequest,
@@ -32,8 +31,7 @@ import type {
   RestoreResult,
   BulkUpdateResult,
   MemberEditData,
-  MemberEditResult,
-  BatchEditMembersResponse
+  MemberEditResult
 } from '../types/member-types';
 import { AgentTeamsService } from './agent-teams-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -48,7 +46,7 @@ export class MemberService {
   /**
    * 添加團隊成員
    */
-  async addMember(data: AddTeamMemberRequest, createdBy: string): Promise<TeamMember> {
+  async addMember(data: AddTeamMemberRequest, _createdBy: string): Promise<TeamMember> {
     const memberId = `agent-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = nowISO();
 
@@ -188,7 +186,7 @@ export class MemberService {
   async updateMemberStatus(
     memberId: string,
     data: UpdateMemberStatusRequest,
-    updatedBy: string
+    _updatedBy: string
   ): Promise<TeamMember> {
     const [updated] = await this.db
       .update(agents)
@@ -212,7 +210,7 @@ export class MemberService {
   async updateMemberRole(
     memberId: string,
     data: UpdateMemberRoleRequest,
-    updatedBy: string
+    _updatedBy: string
   ): Promise<TeamMember> {
     const [updated] = await this.db
       .update(agents)
@@ -236,7 +234,7 @@ export class MemberService {
   async updateMember(
     memberId: string,
     data: UpdateMemberRequest,
-    updatedBy: string
+    _updatedBy: string
   ): Promise<TeamMember> {
     const updateData: any = {
       updatedAt: nowISO()
@@ -272,7 +270,7 @@ export class MemberService {
    * @param deletedBy - 執行刪除的用戶 ID
    * @returns Promise<boolean> - 刪除是否成功
    */
-  async deleteMember(memberId: string, deletedBy: string): Promise<boolean> {
+  async deleteMember(memberId: string, _deletedBy: string): Promise<boolean> {
     const now = nowISO();
 
     const [updated] = await this.db
@@ -304,7 +302,7 @@ export class MemberService {
    */
   async bulkSoftDeleteMembers(
     memberIds: string[],
-    deletedBy: string
+    _deletedBy: string
   ): Promise<BulkDeleteResult> {
     const deleted: string[] = [];
     const failed: { memberId: string; error: string }[] = [];
@@ -850,7 +848,7 @@ export class MemberService {
    * 12. task_reminders 會自動級聯刪除（onDelete: cascade）
    * 13. 最後刪除成員帳號
    */
-  async hardDeleteMember(memberId: string, deletedBy: string): Promise<boolean> {
+  async hardDeleteMember(memberId: string, _deletedBy: string): Promise<boolean> {
     // Step 1: 刪除該成員的通知（用戶刪除後通知無意義）
     await this.db
       .delete(notifications)

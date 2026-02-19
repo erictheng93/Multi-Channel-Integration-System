@@ -118,8 +118,6 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
       if (validationConfig.enableRateLimiting) {
         const clientKey = `${auth.userId}-${c.req.header('CF-Connecting-IP') || 'unknown'}`;
         const now = nowMs();
-        const windowStart = now - (validationConfig.rateLimitWindow * 1000);
-
         let rateLimit = rateLimitStore.get(clientKey);
         if (!rateLimit || rateLimit.resetTime < now) {
           // 重置或創建新的速率限制記錄
@@ -181,7 +179,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
         ip: c.req.header('CF-Connecting-IP')
       });
 
-      await next();
+      return await next();
 
     } catch (error) {
       console.error('❌ [Connection Validation] 驗證中間件錯誤:', error);

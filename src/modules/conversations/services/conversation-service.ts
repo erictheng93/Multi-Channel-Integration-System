@@ -1,7 +1,6 @@
 // Conversation Service
 // 對話服務層
 
-import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, sql } from 'drizzle-orm';
@@ -186,7 +185,7 @@ export class ConversationService implements ConversationServiceInterface {
       limit = 20,
       status,
       teamId,
-      agentId,
+      agentId: _agentId,
       customerId
     } = params;
 
@@ -452,7 +451,7 @@ export class ConversationService implements ConversationServiceInterface {
   }
 
   // Update conversation status
-  async updateStatus(id: string, status: string, reason?: string): Promise<Conversation> {
+  async updateStatus(id: string, status: string, _reason?: string): Promise<Conversation> {
     return this.updateConversation(id, { status });
   }
 
@@ -460,7 +459,7 @@ export class ConversationService implements ConversationServiceInterface {
   // Closed/resolved statuses are no longer part of the conversation lifecycle
 
   // Get conversation metrics
-  async getConversationMetrics(filters?: any): Promise<ConversationMetrics> {
+  async getConversationMetrics(_filters?: any): Promise<ConversationMetrics> {
     // Get basic counts
     const [totalCount] = await this.db
       .select({ count: count() })

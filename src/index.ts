@@ -17,27 +17,10 @@ import { routeGroups, validateRouteConfig } from './core/route-config';
 import { createMonitoringHandlerMethods } from '@modules/monitoring/handlers/monitoring-dashboard';
 
 // Import handlers - consolidated imports
-import {
-  authMainHandler,
-  teamMainHandler,
-  delayedMessageMainHandler,
-  conversationMainHandler,
-  systemMainHandler,
-  customerMainHandler,
-  sessionMainHandler,
-  agentMainHandler,
-  notificationMainHandler,
-  healthMainHandler
-} from './handlers';
+
 
 // Import Analytics Module
-import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
-import { dashboardHandler } from '@modules/analytics/handlers/dashboard-main';
-import { realtimeDashboardHandler } from '@modules/analytics/handlers/realtime-dashboard-main';
 import { comparisonAPI } from '@modules/analytics/handlers/comparison-api';
-
-// Import Reports Module (separate from analytics for clarity)
-import reportsHandler from '@modules/reports/handlers/reports-main';
 
 // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
 // import { qrCodeRouter } from '@modules/qrcode/handlers/index';
@@ -56,7 +39,6 @@ log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defi
 // Import additional handlers
 import { activityHandler } from '@modules/activities/handlers/activity';
 import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
-import delayedMessageBufferHandler from '@modules/delayed-message/handlers/delayed-message-buffer';
 import { feedbackHandler } from '@modules/system/handlers/feedback-main';
 
 // 🆕 KV Optimization Monitoring (P0 - 2025-01-08)
@@ -112,6 +94,7 @@ app.use('*', async (c, next) => {
   } else if (origin) {
     log.warn('CORS: Blocked origin', { origin });
   }
+  return;
 });
 
 log.info('Global CORS middleware registered successfully');
@@ -577,8 +560,6 @@ import { createLazyInitMiddleware, errorHandlingMiddleware } from './core/module
 
 // Modular system API handler (still needed for /api/modular/* routes)
 import { modularSystemApiHandler } from './core/modular-system-integration';
-import { globalErrorHandler as modularSystemErrorHandler } from './core/error-handler';
-
 // 註冊模組化系統管理API端點 (admin-only)
 app.use('/api/modular/*', jwtAuth, requireAdmin());
 app.get('/api/modular/status', modularSystemApiHandler.getSystemStatus.bind(modularSystemApiHandler));

@@ -4,15 +4,15 @@
 import type {
   IntegrationPlatform,
   WebhookEventType,
-  WebhookConfiguration,
   PlatformEvent,
   IntegrationRecord,
   MessageType
 } from '../types/integration-types';
 
 import type { Bindings } from '@/types';
-import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
-import { FacebookIntegrationService } from '@modules/integrations/services/facebook-integration-service';
+// LineIntegrationService and FacebookIntegrationService reserved for future platform routing
+// import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
+// import { FacebookIntegrationService } from '@modules/integrations/services/facebook-integration-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
@@ -65,10 +65,9 @@ interface RoutingRule {
  */
 export class WebhookRouterService {
   private readonly routingRules: RoutingRule[];
-  private readonly defaultTimeout = 30000; // 30秒
 
   constructor(
-    private env: Bindings,
+    _env: Bindings,
     private db: D1Database,
     private cache: KVNamespace
   ) {
@@ -356,7 +355,7 @@ export class WebhookRouterService {
    */
   private async validateGenericWebhook(
     path: string,
-    headers: Record<string, string>,
+    _headers: Record<string, string>,
     body: any,
     result: WebhookValidationResult
   ): Promise<void> {

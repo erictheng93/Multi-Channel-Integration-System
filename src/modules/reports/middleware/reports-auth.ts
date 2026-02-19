@@ -39,7 +39,7 @@ export async function checkReportsAccess(c: Context<{ Bindings: Bindings }>, nex
 
     // 將 JWT payload 存储到 context 中
     c.set('jwtPayload', payload);
-    await next();
+    return await next();
   } catch (error) {
     console.error('Reports access check error:', error);
     return c.json({
@@ -90,7 +90,7 @@ export async function checkReportsViewPermission(c: Context<{ Bindings: Bindings
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Reports view permission check error:', error);
     return c.json({
@@ -139,7 +139,7 @@ export async function checkReportsGeneratePermission(c: Context<{ Bindings: Bind
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Reports generate permission check error:', error);
     return c.json({
@@ -189,7 +189,7 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Reports download permission check error:', error);
     return c.json({
@@ -249,7 +249,7 @@ export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindin
       c.set('reportId', reportId);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Reports delete permission check error:', error);
     return c.json({
@@ -284,7 +284,7 @@ export async function checkReportsStatsPermission(c: Context<{ Bindings: Binding
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Reports stats permission check error:', error);
     return c.json({
@@ -319,7 +319,7 @@ export async function checkReportsBatchPermission(c: Context<{ Bindings: Binding
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Reports batch permission check error:', error);
     return c.json({
@@ -368,7 +368,7 @@ export async function checkScheduledReportsPermission(c: Context<{ Bindings: Bin
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Scheduled reports permission check error:', error);
     return c.json({
@@ -411,7 +411,7 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
       }
     }
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Special report type permission check error:', error);
     return c.json({

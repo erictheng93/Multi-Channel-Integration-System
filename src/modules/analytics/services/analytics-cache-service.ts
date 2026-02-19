@@ -7,7 +7,7 @@
 
 import type { KVNamespace } from '@cloudflare/workers-types';
 import type { AnalyticsResult } from '@modules/analytics/types/analytics-types';
-import { HybridCacheService, CACHE_TTL, shouldUseCacheAPI } from '@/services/cache-api-service';
+import { HybridCacheService, shouldUseCacheAPI } from '@/services/cache-api-service';
 import { nowISO } from '@/utils/timestamp'
 
 /**
@@ -65,7 +65,6 @@ export class AnalyticsCacheService {
 
   // 快取鍵前綴常量 - Updated to use Cache API-compatible prefix
   private static readonly CACHE_PREFIX = 'cache:analytics';  // Changed from 'analytics:cache'
-  private static readonly LEGACY_PREFIX = 'analytics:cache'; // Old prefix for migration
   private static readonly STATS_PREFIX = 'analytics:stats';
   private static readonly VERSION = 'v1';
 
@@ -401,7 +400,7 @@ export class AnalyticsCacheService {
    */
   async getExpiration(cacheKey: string): Promise<number | null> {
     try {
-      const result = await this.kv.getWithMetadata(cacheKey);
+      await this.kv.getWithMetadata(cacheKey);
       // KV metadata doesn't typically include expiration, return null
       return null;
     } catch (error) {
@@ -479,8 +478,8 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(
   ttl?: number
 ) {
   return function (
-    target: any,
-    propertyKey: string,
+    _target: any,
+    _propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
     const originalMethod = descriptor.value;
@@ -513,7 +512,7 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(
  */
 export class CacheWarmer {
   constructor(
-    private cacheService: AnalyticsCacheService,
+    _cacheService: AnalyticsCacheService,
     private analyticsService: any // AnalyticsService 實例
   ) {}
 

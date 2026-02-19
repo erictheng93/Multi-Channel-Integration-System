@@ -2,15 +2,12 @@
 // Facebook Messenger Integration Service
 
 import type {
-  IntegrationRecord,
-  CreateIntegrationRequest,
   IPlatformAdapter,
   HealthCheck,
   IntegrationStats,
   FacebookIntegrationConfig,
   MessageType,
-  PlatformEvent,
-  TestResult
+  PlatformEvent
 } from '../types/integration-types';
 
 import type { Bindings } from '@/types';
@@ -112,9 +109,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   public readonly platform = 'facebook' as const;
 
   private readonly pageAccessToken: string;
-  private readonly appSecret: string;
   private readonly pageId: string;
-  private readonly config: FacebookIntegrationConfig;
 
   // API 端點
   private readonly apiBaseUrl = 'https://graph.facebook.com/v18.0';
@@ -128,15 +123,13 @@ export class FacebookIntegrationService implements IPlatformAdapter {
 
   constructor(
     pageAccessToken: string,
-    appSecret: string,
+    _appSecret: string,
     pageId: string,
-    config: FacebookIntegrationConfig,
-    private env: Bindings
+    _config: FacebookIntegrationConfig,
+    _env: Bindings
   ) {
     this.pageAccessToken = pageAccessToken;
-    this.appSecret = appSecret;
     this.pageId = pageId;
-    this.config = config;
   }
 
   // ======================== 連接管理 ========================
@@ -144,7 +137,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 建立 Facebook API 連接
    */
-  async connect(credentials: Record<string, any>, config: FacebookIntegrationConfig): Promise<boolean> {
+  async connect(credentials: Record<string, any>, _config: FacebookIntegrationConfig): Promise<boolean> {
     try {
       // 驗證必要憑證
       if (!credentials.pageAccessToken || !credentials.appSecret || !credentials.pageId) {
@@ -582,7 +575,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 處理 Facebook 事件
    */
-  private async processFacebookEvent(entry: any, messaging: any): Promise<PlatformEvent | null> {
+  private async processFacebookEvent(_entry: any, messaging: any): Promise<PlatformEvent | null> {
     try {
       const platformEvent: PlatformEvent = {
         id: `facebook_${messaging.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
@@ -641,7 +634,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
    * @see src/modules/integrations/handlers/webhook-handler.ts:105-167
    * @deprecated Use WebhookSecurityService.validateWebhookSecurity() instead
    */
-  private verifyWebhookSignature(webhookData: any): boolean {
+  private verifyWebhookSignature(_webhookData: any): boolean {
     // ⚠️ WARNING: This method bypasses full security checks
     // For production use, webhooks should be processed through webhook-handler.ts
     // which provides complete HMAC-SHA256 signature verification.

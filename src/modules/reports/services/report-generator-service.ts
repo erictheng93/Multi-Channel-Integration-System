@@ -28,11 +28,9 @@ import { nowISO, nowMs } from '@/utils/timestamp'
  */
 export class ReportGeneratorService {
   private db: D1Database;
-  private env: Bindings;
 
   constructor(env: Bindings) {
     this.db = env.DB;
-    this.env = env;
   }
 
   /**
@@ -349,7 +347,7 @@ export class ReportGeneratorService {
   }
 
   private async queryConversationSummary(db: any, startDate: string, endDate: string, _filters: any): Promise<ConversationSummaryReportData> {
-    const { conversations, messages } = await import('../../../db/schema');
+    const { conversations } = await import('../../../db/schema');
     const { gte, lte, count, and } = await import('drizzle-orm');
 
     const baseConditions = [
@@ -367,10 +365,8 @@ export class ReportGeneratorService {
     const activeConversations = conversationStats.find((s: any) => s.status === 'active')?.total || 0;
     const closedConversations = conversationStats.find((s: any) => s.status === 'closed')?.total || 0;
 
-    const messageStats = await db
-      .select({ total: count() })
-      .from(messages)
-      .where(and(gte(messages.createdAt, startDate), lte(messages.createdAt, endDate)));
+    // Message stats query available if needed:
+    // await db.select({ total: count() }).from(messages).where(and(gte(messages.createdAt, startDate), lte(messages.createdAt, endDate)));
 
     return {
       period: { startDate, endDate },
@@ -389,7 +385,7 @@ export class ReportGeneratorService {
   }
 
   private async queryAgentPerformance(db: any, startDate: string, endDate: string, _filters: any): Promise<AgentPerformanceReportData> {
-    const { conversations, messages, agents } = await import('../../../db/schema');
+    const { messages, agents } = await import('../../../db/schema');
     const { gte, lte, count, eq, and, isNotNull } = await import('drizzle-orm');
 
     const agentStats = await db

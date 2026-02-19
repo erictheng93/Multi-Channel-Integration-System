@@ -187,40 +187,6 @@ async function checkAnalyticsPermission(
 }
 
 /**
- * 獲取用戶角色對應的分析權限
- */
-function getAnalyticsPermissions(userRole: string): string[] {
-  const rolePermissions: Record<string, string[]> = {
-    admin: [
-      'view_conversation_analytics',
-      'view_message_analytics',
-      'view_user_analytics',
-      'view_performance_analytics',
-      'custom_analytics',
-      'export_analytics',
-      'collect_metrics',
-      'view_metrics',
-      'manage_analytics'
-    ],
-    team: [
-      'view_conversation_analytics',
-      'view_message_analytics',
-      'view_user_analytics',
-      'view_performance_analytics',
-      'export_analytics',
-      'view_metrics'
-    ],
-    agent: [
-      'view_conversation_analytics',
-      'view_message_analytics',
-      'view_metrics'
-    ]
-  };
-
-  return rolePermissions[userRole] || [];
-}
-
-/**
  * 檢查特定分析權限
  * 使用 PermissionService 進行細緻權限檢查
  */

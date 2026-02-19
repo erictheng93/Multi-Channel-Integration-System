@@ -9,7 +9,7 @@ export { MessageRecallService } from './message-recall-service';
 import type { Bindings } from '@/types';
 import type { D1Database } from '@cloudflare/workers-types';
 
-export function createMessagingServices(db: D1Database, env: Bindings) {
+export function createMessagingServices(_db: D1Database, _env: Bindings) {
   // Note: Services are exported above and can be instantiated directly
   // Using null as placeholders - instantiate services when module initialization is needed
   // Services available: MessageCrudService, DelayedMessageService, MessageRecallService

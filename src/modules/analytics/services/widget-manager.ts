@@ -7,8 +7,6 @@ import type {
   DashboardWidget,
   WidgetTemplate,
   WidgetValidation,
-  ChartConfig,
-  WidgetData,
   WidgetPosition
 } from '../types/dashboard-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
@@ -52,7 +50,7 @@ export class WidgetManager {
   private options: WidgetManagerOptions;
 
   constructor(
-    private db: D1Database,
+    _db: D1Database,
     private kv: Bindings['KV'],
     options: WidgetManagerOptions = {}
   ) {

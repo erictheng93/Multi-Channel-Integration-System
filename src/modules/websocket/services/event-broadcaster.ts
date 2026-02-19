@@ -26,19 +26,17 @@ export class EventBroadcaster {
   private env: Bindings;
   private doClient: DurableObjectClient;
   private batchManager: BatchQueueManager;
-  private config: BroadcastConfig;
   private logger: Logger;
 
   constructor(
     env: Bindings,
     doClient: DurableObjectClient,
     batchManager: BatchQueueManager,
-    config: BroadcastConfig
+    _config: BroadcastConfig
   ) {
     this.env = env;
     this.doClient = doClient;
     this.batchManager = batchManager;
-    this.config = config;
 
     this.logger = createLogger({ service: 'EventBroadcaster' }, {
       serviceName: 'event-broadcaster'

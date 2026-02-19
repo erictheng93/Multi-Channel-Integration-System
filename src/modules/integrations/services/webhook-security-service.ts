@@ -4,10 +4,9 @@
 import type { Bindings } from '@/types';
 import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
 import { createDbClient } from '@/db/drizzle-factory';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { webhookSecurityEvents } from '@/db/schema';
-import { eq, gte, desc, and } from 'drizzle-orm';
-import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES, type IPRange } from '@/utils/ip-validator';
+import { eq, gte, desc } from 'drizzle-orm';
+import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES } from '@/utils/ip-validator';
 import { AlertService, getDefaultAlertChannels } from '@/services/alert-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 

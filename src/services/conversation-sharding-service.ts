@@ -8,9 +8,7 @@ import type {
   ShardCapacityResponse,
   ShardInitializationPayload,
   ShardInitializationResponse,
-  ShardSelectionResult,
   ShardError,
-  SHARD_CONFIG as ShardConfigType
 } from '../types/sharding-types';
 import { SHARD_CONFIG } from '../types/sharding-types';
 import type { DurableObjectStub, DurableObjectNamespace } from '@cloudflare/workers-types';

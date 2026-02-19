@@ -7,9 +7,7 @@ import type {
 import {
   ReportCategory,
   SectionType,
-  VariableType,
-  ScheduleFrequency,
-  ChannelType
+  VariableType
 } from '../types/reports-types';
 
 /**

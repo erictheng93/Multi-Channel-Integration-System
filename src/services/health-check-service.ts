@@ -5,7 +5,6 @@ import type {
   ComponentHealth,
   HealthChecker,
   HealthLevel,
-  HealthCheckConfig
 } from '../types/health-check';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
@@ -350,7 +349,7 @@ export class HealthCheckService {
    */
   destroy(): void {
     // 停止所有週期性檢查
-    this.intervals.forEach((intervalId, checkerName) => {
+    this.intervals.forEach((_intervalId, checkerName) => {
       this.stopPeriodicCheck(checkerName);
     });
 

@@ -16,7 +16,6 @@
  */
 
 import { HybridCacheService, CacheAPIService, getCacheAPIService, CACHE_TTL } from './cache-api-service';
-import type { CacheOptions } from './cache-api-service';
 import type { Bindings } from '../types/bindings';
 
 // =================== Types ===================

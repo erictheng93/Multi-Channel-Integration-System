@@ -742,7 +742,7 @@ async function getNotificationTargetUsers(
   try {
     const { createDbClient } = await import('../db/drizzle-factory');
     const { agents } = await import('../db/schema');
-    const { eq, and, or, inArray } = await import('drizzle-orm');
+    const { eq, and } = await import('drizzle-orm');
 
     const db = createDbClient(env.DB);
 

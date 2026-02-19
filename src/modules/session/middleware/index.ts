@@ -193,10 +193,8 @@ export function createSessionMiddleware(config: Partial<SessionMiddlewareConfig>
  */
 export function createSessionOperationMiddleware(
   operation: 'view' | 'create' | 'update' | 'delete' | 'stats' | 'batch' | 'list' | 'search',
-  config: Partial<SessionMiddlewareConfig> = {}
+  _config: Partial<SessionMiddlewareConfig> = {}
 ): MiddlewareFunction[] {
-  const finalConfig = { ...DEFAULT_SESSION_MIDDLEWARE_CONFIG, ...config };
-
   switch (operation) {
     case 'view':
       return []; // return sessionViewAccess when enabled

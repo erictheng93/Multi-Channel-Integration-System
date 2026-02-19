@@ -2,11 +2,9 @@
 // 基礎訊息增刪改查服務
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, desc, asc, count, like, sql, or } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
+import { eq, and, desc, asc, count, like, sql } from 'drizzle-orm';
 import {
   messages,
-  conversations,
   customers,
   agents,
   messageRecallLogs
@@ -27,7 +25,6 @@ import {
   MessageReaction,
   MessageReadReceipt
 } from '../types/message-types';
-import type { Bindings } from '@/types';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { nowISO } from '@/utils/timestamp'
 

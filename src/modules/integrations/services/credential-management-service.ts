@@ -45,12 +45,11 @@ interface CredentialValidationResult {
  */
 export class CredentialManagementService {
   private readonly keyPrefix = 'cred_key_';
-  private readonly dataPrefix = 'cred_data_';
   private readonly defaultAlgorithm = 'AES-256-GCM';
 
   constructor(
     private kv: KVNamespace,
-    private env: Bindings
+    _env: Bindings
   ) {}
 
   // ======================== 加密操作 ========================
@@ -460,7 +459,8 @@ export class CredentialManagementService {
     );
 
     // 導出金鑰以便儲存
-    const exportedKey = await crypto.subtle.exportKey('jwk', cryptoKey);
+    // Export key for storage (used in production key management)
+    await crypto.subtle.exportKey('jwk', cryptoKey);
 
     const keyInfo: EncryptionKeyInfo = {
       keyId,
@@ -475,7 +475,7 @@ export class CredentialManagementService {
   /**
    * 執行加密
    */
-  private async performEncryption(data: string, keyId: string): Promise<string> {
+  private async performEncryption(data: string, _keyId: string): Promise<string> {
     // 這裡應該實作真正的加密邏輯
     // 為了演示，使用簡單的 Base64 編碼
     // 生產環境應該使用 Web Crypto API 進行真正的 AES-GCM 加密
@@ -498,7 +498,7 @@ export class CredentialManagementService {
   /**
    * 執行解密
    */
-  private async performDecryption(encryptedData: string, keyId: string): Promise<string> {
+  private async performDecryption(encryptedData: string, _keyId: string): Promise<string> {
     try {
       // 這裡應該實作真正的解密邏輯
       // 為了演示，使用簡單的 Base64 解碼
@@ -508,8 +508,7 @@ export class CredentialManagementService {
         atob(encryptedData).split('').map(char => char.charCodeAt(0))
       );
 
-      // 提取 IV（前12字節）
-      const iv = encrypted.slice(0, 12);
+      // Skip IV（前12字節）and extract data
       const data = encrypted.slice(12);
 
       // 解碼數據

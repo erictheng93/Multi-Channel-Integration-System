@@ -524,7 +524,7 @@ export class RealtimePerformanceMonitor {
   }
 
   // 工具方法
-  private calculateAverageConnectionDuration(stats: any): number {
+  private calculateAverageConnectionDuration(_stats: any): number {
     // 這裡需要額外的連接持續時間追蹤
     // WebSocket 架構下可以從 Durable Objects 獲取連接持續時間
     return 0;

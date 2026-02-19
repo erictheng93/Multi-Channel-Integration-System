@@ -60,7 +60,7 @@ export abstract class BaseModule implements ModuleLifecycle {
     await this.destroyModule();
   }
 
-  async onHealthCheck(context: ModuleContext): Promise<HealthStatus> {
+  async onHealthCheck(_context: ModuleContext): Promise<HealthStatus> {
     try {
       const isHealthy = await this.performHealthCheck();
       return {

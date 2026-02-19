@@ -2,9 +2,9 @@
 // Handles: POST /bulk (assign, close, reopen, set_priority, add_tags, remove_tags)
 
 import { Hono } from 'hono';
-import { eq, inArray, and, sql } from 'drizzle-orm';
+import { inArray, and, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, conversationTags, tags } from '@/db/schema';
+import { conversations, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';

@@ -1,6 +1,5 @@
 // 統一錯誤處理系統 - 改善使用者體驗
 import type { Context } from 'hono';
-import type { Bindings } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 錯誤類型定義
@@ -308,7 +307,6 @@ export class ErrorHandler {
    * 記錄錯誤
    */
   private logError(error: StandardizedError): void {
-    const logLevel = this.getLogLevel(error.level);
     const logMessage = `[${error.type}] ${error.code}: ${error.message}`;
 
     // 根據錯誤級別使用不同的日誌方法
@@ -339,24 +337,6 @@ export class ErrorHandler {
           stack: error.stack
         });
         break;
-    }
-  }
-
-  /**
-   * 獲取日誌級別
-   */
-  private getLogLevel(errorLevel: ErrorLevel): string {
-    switch (errorLevel) {
-      case ErrorLevel.INFO:
-        return 'info';
-      case ErrorLevel.WARNING:
-        return 'warn';
-      case ErrorLevel.ERROR:
-        return 'error';
-      case ErrorLevel.CRITICAL:
-        return 'error';
-      default:
-        return 'error';
     }
   }
 
@@ -467,7 +447,7 @@ export const globalErrorHandler = new ErrorHandler();
 export function errorHandlingMiddleware() {
   return async (c: Context<any, any, any>, next: () => Promise<void>) => {
     try {
-      await next();
+      return await next();
     } catch (error) {
       console.error('Unhandled error caught by middleware:', error);
       return globalErrorHandler.handleError(c, error);

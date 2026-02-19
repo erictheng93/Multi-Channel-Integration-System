@@ -172,8 +172,8 @@ export class PushAdapter implements ChannelAdapter {
   }
 
   private async sendToPushService(
-    subscription: PushSubscription,
-    payload: any
+    _subscription: PushSubscription,
+    _payload: any
   ): Promise<{ success: boolean; error?: string }> {
     // 這裡是模擬實作，實際使用時需要整合真正的 push 服務
     // 例如 Web Push, FCM, APNs 等

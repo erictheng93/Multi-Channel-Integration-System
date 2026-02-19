@@ -126,7 +126,7 @@ export class MessageNormalizationService {
   async processInboundMessage(
     options: ProcessInboundMessageOptions
   ): Promise<ProcessInboundMessageResult> {
-    const { platform, rawEvent, channelConfig, db, teamId } = options;
+    const { platform, rawEvent, channelConfig: _channelConfig, db, teamId } = options;
 
     try {
       // Step 1: Extract platform-specific data
@@ -233,7 +233,7 @@ export class MessageNormalizationService {
    * Extract LINE message data
    */
   private async extractLineData(event: any): Promise<any> {
-    const { message, source, replyToken, timestamp } = event;
+    const { message, source, replyToken, timestamp: _timestamp } = event;
 
     let content = '';
     let messageType: MessageType = 'text';
@@ -318,7 +318,7 @@ export class MessageNormalizationService {
    * Extract Facebook message data
    */
   private async extractFacebookData(event: any): Promise<any> {
-    const { sender, message, timestamp } = event;
+    const { sender, message, timestamp: _timestamp } = event;
 
     let content = '';
     let messageType: MessageType = 'text';
@@ -381,7 +381,7 @@ export class MessageNormalizationService {
   /**
    * Extract WhatsApp message data (placeholder for future implementation)
    */
-  private async extractWhatsAppData(event: any): Promise<any> {
+  private async extractWhatsAppData(_event: any): Promise<any> {
     // TODO: Implement WhatsApp message extraction
     throw new Error('WhatsApp integration not yet implemented');
   }

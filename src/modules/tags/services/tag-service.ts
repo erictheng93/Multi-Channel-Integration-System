@@ -217,7 +217,7 @@ export const tagHandler = {
     const drizzleDb = createDbClient(c.env.DB);
     try {
       const payload = c.get('jwtPayload');
-      const { name, color = '#3B82F6', description, teamId } = await c.req.json();
+      const { name, color = '#3B82F6', description, teamId: _teamId } = await c.req.json();
 
       // Validate required fields
       if (!name || !name.trim()) {
@@ -354,7 +354,6 @@ export const tagHandler = {
     try {
       const tagId = c.req.param('id');
       const { name, color, description, isActive } = await c.req.json();
-      const payload = c.get('jwtPayload');
 
       // Check if tag exists
       const existingTag = await drizzleDb.get(sql`
@@ -459,7 +458,6 @@ export const tagHandler = {
     const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
-      const payload = c.get('jwtPayload');
 
       // Check if tag exists
       const existingTag = await drizzleDb.get(sql`

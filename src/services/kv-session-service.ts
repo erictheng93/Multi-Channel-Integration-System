@@ -437,7 +437,7 @@ export class KVSessionService {
     return `${this.SESSION_PREFIX}${sessionId}`;
   }
 
-  private extractSessionId(session: SessionData): string | null {
+  private extractSessionId(_session: SessionData): string | null {
     // This requires storing sessionId in session data (optional enhancement)
     // For now, we rely on getUserSessions to extract from key name
     return null;

@@ -1,16 +1,14 @@
 // src/modules/notifications/repositories/notification-repository.ts
 // 通知資料存取層
 
-import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
-import { sql, eq, and, or, desc, count, gte, lte, inArray } from 'drizzle-orm';
+import { sql, eq, and, or, desc, count, gte, lte } from 'drizzle-orm';
 import { notifications } from '@/db/schema';
 import {
   NotificationBase,
   NotificationQuery,
   CreateNotificationRequest,
-  NotificationType,
-  NotificationPriority
+  NotificationType
 } from '../types';
 
 export class NotificationRepository {

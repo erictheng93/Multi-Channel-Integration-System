@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ActivityService } from '@modules/activities';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
-import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
+
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processLineMedia } from '../services/webhook-media-service';
 import { nowISO, nowMs } from '@/utils/timestamp'

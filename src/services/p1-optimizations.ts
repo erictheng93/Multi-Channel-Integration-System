@@ -50,7 +50,7 @@ export async function initializeP1Optimizations(env: Bindings): Promise<void> {
     console.log('✅ [P1 Optimizations] Circuit Breaker initialized');
 
     // 初始化 Message Persistence Service
-    const persistenceService = createMPS(env);
+    createMPS(env);
 
     console.log('✅ [P1 Optimizations] Message Persistence Service initialized');
 
@@ -106,7 +106,7 @@ export async function checkP1OptimizationsHealth(env: Bindings): Promise<{
     }
 
     // Check Message Persistence
-    const persistenceService = createMPS(env);
+    createMPS(env);
     health.messagePersistence.available = true;
     health.messagePersistence.status = 'healthy';
 

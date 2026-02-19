@@ -1,7 +1,6 @@
 // Team Service
 // 團隊服務層
 
-import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, or, like, sql, inArray } from 'drizzle-orm';
@@ -470,7 +469,7 @@ export class TeamService implements TeamServiceInterface {
   }
 
   // Update team member
-  async updateMember(teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember> {
+  async updateMember(_teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember> {
     const updateData: any = {
       updatedAt: nowISO()
     };

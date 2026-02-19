@@ -3,10 +3,9 @@
 
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
-import { createDbClient, type Database } from '@/db/drizzle-factory';
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
+import { createDbClient } from '@/db/drizzle-factory';
 import { corsEvents } from '@/db/schema';
-import { eq, desc, and, gte, sql } from 'drizzle-orm';
+import { desc, gte, sql } from 'drizzle-orm';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
@@ -340,7 +339,7 @@ export class CORSMonitor {
       const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
       // 🆕 P2-6: Delete expired events from D1
-      const result = await db
+      await db
         .delete(corsEvents)
         .where(sql`${corsEvents.timestamp} < ${cutoffTime}`);
 

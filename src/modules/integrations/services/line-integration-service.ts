@@ -2,15 +2,12 @@
 // LINE Official Account Integration Service
 
 import type {
-  IntegrationRecord,
-  CreateIntegrationRequest,
   IPlatformAdapter,
   HealthCheck,
   IntegrationStats,
   LineIntegrationConfig,
   MessageType,
-  PlatformEvent,
-  TestResult
+  PlatformEvent
 } from '../types/integration-types';
 
 import type { Bindings } from '@/types';
@@ -70,12 +67,9 @@ export class LineIntegrationService implements IPlatformAdapter {
   public readonly platform = 'line' as const;
 
   private readonly channelAccessToken: string;
-  private readonly channelSecret: string;
-  private readonly config: LineIntegrationConfig;
 
   // API 端點
   private readonly apiBaseUrl = 'https://api.line.me/v2/bot';
-  private readonly dataApiUrl = 'https://api-data.line.me/v2/bot';
 
   // 統計數據
   private stats: Partial<IntegrationStats> = {
@@ -86,13 +80,11 @@ export class LineIntegrationService implements IPlatformAdapter {
 
   constructor(
     channelAccessToken: string,
-    channelSecret: string,
-    config: LineIntegrationConfig,
-    private env: Bindings
+    _channelSecret: string,
+    _config: LineIntegrationConfig,
+    _env: Bindings
   ) {
     this.channelAccessToken = channelAccessToken;
-    this.channelSecret = channelSecret;
-    this.config = config;
   }
 
   // ======================== 連接管理 ========================
@@ -100,7 +92,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 建立 LINE API 連接
    */
-  async connect(credentials: Record<string, any>, config: LineIntegrationConfig): Promise<boolean> {
+  async connect(credentials: Record<string, any>, _config: LineIntegrationConfig): Promise<boolean> {
     try {
       // 驗證必要憑證
       if (!credentials.channelAccessToken || !credentials.channelSecret) {
@@ -613,7 +605,7 @@ export class LineIntegrationService implements IPlatformAdapter {
    * @see src/modules/integrations/handlers/webhook-handler.ts:41-100
    * @deprecated Use WebhookSecurityService.validateWebhookSecurity() instead
    */
-  private verifyWebhookSignature(webhookData: any): boolean {
+  private verifyWebhookSignature(_webhookData: any): boolean {
     // ⚠️ WARNING: This method bypasses full security checks
     // For production use, webhooks should be processed through webhook-handler.ts
     // which provides complete HMAC-SHA256 signature verification.

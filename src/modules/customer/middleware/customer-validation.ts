@@ -12,8 +12,7 @@ import {
   CustomerTagOperation,
   CustomerSearchQuery,
   CustomerFilters,
-  DEFAULT_CUSTOMER_VALIDATION,
-  InvalidCustomerDataError
+  DEFAULT_CUSTOMER_VALIDATION
 } from '../types/customer-types';
 import type { Bindings } from '@/types';
 
@@ -46,7 +45,7 @@ export const validatePaginationParams = async (c: Context<{ Bindings: Bindings }
     // 將驗證後的參數設置到上下文中
     c.set('paginationParams', { page: pageNum, pageSize: pageSizeNum });
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating pagination params:', error);
     return errorResponse(c, 'Invalid pagination parameters');
@@ -76,7 +75,7 @@ export const validateCustomerId = async (c: Context<{ Bindings: Bindings }>, nex
 
     c.set('customerId', customerIdNum.toString());
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating customer ID:', error);
     return errorResponse(c, 'Invalid customer ID');
@@ -119,7 +118,7 @@ export const validateCreateCustomerData = async (c: Context<{ Bindings: Bindings
 
     c.set('createCustomerData', data);
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating create customer data:', error);
     return errorResponse(c, 'Invalid customer data');
@@ -153,7 +152,7 @@ export const validateUpdateCustomerData = async (c: Context<{ Bindings: Bindings
 
     c.set('updateCustomerData', data);
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating update customer data:', error);
     return errorResponse(c, 'Invalid customer data');
@@ -194,7 +193,7 @@ export const validateTagOperation = async (c: Context<{ Bindings: Bindings }>, n
 
     c.set('tagOperation', data);
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating tag operation:', error);
     return errorResponse(c, 'Invalid tag operation data');
@@ -239,7 +238,7 @@ export const validateSearchQuery = async (c: Context<{ Bindings: Bindings }>, ne
 
     c.set('searchQuery', searchQuery);
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating search query:', error);
     return errorResponse(c, 'Invalid search parameters');
@@ -346,7 +345,7 @@ export const validateFilterParams = async (c: Context<{ Bindings: Bindings }>, n
 
     c.set('customerFilters', filters);
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating filter params:', error);
     return errorResponse(c, 'Invalid filter parameters');
@@ -491,7 +490,7 @@ export const validateBatchOperation = async (c: Context<{ Bindings: Bindings }>,
 
     c.set('batchOperation', data);
 
-    await next();
+    return await next();
   } catch (error) {
     console.error('Error validating batch operation:', error);
     return errorResponse(c, 'Invalid batch operation data');

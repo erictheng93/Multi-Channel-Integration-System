@@ -16,7 +16,6 @@ import {
   unauthorizedResponse,
   handleApiError
 } from '@/utils/api-response';
-import { verifyJWT } from '@/utils/auth';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 統一架構不再依賴外部處理器，使用內建實現
@@ -70,9 +69,6 @@ export const realtimeMainHandler: EventDrivenHandler = {
   // 發送打字狀態
   sendTypingStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
     try {
-      const configManager = RealtimeConfigManager.getInstance();
-      const config = configManager.getConfig();
-
       // 使用統一的事件處理器發送打字狀態
       const { eventHandler } = await import('./event-handler');
       return await eventHandler.sendTypingStatus(c);
@@ -84,8 +80,6 @@ export const realtimeMainHandler: EventDrivenHandler = {
   // 廣播事件 - 智能路由
   broadcastToConversation: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      const configManager = RealtimeConfigManager.getInstance();
-      const config = configManager.getConfig();
 
       // 使用統一的事件處理器廣播事件
       const { eventHandler } = await import('./event-handler');
@@ -110,9 +104,6 @@ export const realtimeMainHandler: EventDrivenHandler = {
   // 更新在線狀態 - 統一接口
   updateOnlineStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
     try {
-      const configManager = RealtimeConfigManager.getInstance();
-      const selectedVersion = configManager.selectVersion(c);
-
       // 使用統一的事件處理器更新在線狀態
       const { eventHandler } = await import('./event-handler');
       return await eventHandler.updateOnlineStatus(c);

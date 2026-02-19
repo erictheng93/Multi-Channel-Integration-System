@@ -1,7 +1,6 @@
 // System Service
 // 系統服務層
 
-import { createDbClient } from '@/db/drizzle-factory';
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, count, sql } from 'drizzle-orm';

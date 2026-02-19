@@ -41,7 +41,7 @@ export function requireIntId(name = 'id') {
     const existing = (c.get('validatedParams') as Record<string, unknown>) || {}
     c.set('validatedParams', { ...existing, [name]: parsed })
 
-    await next()
+    return await next()
   }
 }
 
@@ -82,7 +82,7 @@ export function requireStringParam(
     const existing = (c.get('validatedParams') as Record<string, unknown>) || {}
     c.set('validatedParams', { ...existing, [name]: raw })
 
-    await next()
+    return await next()
   }
 }
 

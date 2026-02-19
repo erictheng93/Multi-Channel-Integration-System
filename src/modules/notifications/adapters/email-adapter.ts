@@ -159,7 +159,7 @@ export class EmailAdapter implements ChannelAdapter {
     };
   }
 
-  private async sendEmail(emailData: {
+  private async sendEmail(_emailData: {
     to: string;
     subject: string;
     htmlContent: string;

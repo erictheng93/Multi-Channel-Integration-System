@@ -269,7 +269,7 @@ export class WebSocketAdapter implements ChannelAdapter {
     this.enabled = false;
 
     // 關閉所有連線
-    for (const [userId, connections] of this.connections.entries()) {
+    for (const [_userId, connections] of this.connections.entries()) {
       for (const ws of connections) {
         if (ws.readyState === WebSocket.OPEN) {
           ws.close(1001, 'Service disabled');

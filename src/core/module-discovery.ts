@@ -1,6 +1,6 @@
 // 模組自動發現和註冊系統 - 與現有路由系統整合
 import { globalModuleLoader } from './module-architecture';
-import type { ModuleMetadata, ModuleLifecycle, ModuleInstance } from './module-architecture';
+import type { ModuleMetadata, ModuleLifecycle } from './module-architecture';
 import type { RouteGroup } from './route-registry';
 import { routeGroups } from './route-config';
 
@@ -216,7 +216,7 @@ export class ModuleDiscovery {
   /**
    * 掃描指定路徑的模組
    */
-  private async scanPath(basePath: string): Promise<DiscoveredModule[]> {
+  private async scanPath(_basePath: string): Promise<DiscoveredModule[]> {
     const modules: DiscoveredModule[] = [];
 
     // 由於我們在 Cloudflare Workers 環境中，這裡使用模擬的文件掃描

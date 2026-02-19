@@ -439,7 +439,7 @@ export class EventQueueService extends QueueBaseService {
 
   // 實現基類的抽象方法
   protected async processMessage(queueMessage: QueueMessage): Promise<QueueProcessingResult> {
-    const { event, targets, priority } = queueMessage;
+    const { event, priority } = queueMessage;
 
     this.logInfo('處理隊列消息', {
       eventId: event.id,

@@ -2,7 +2,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings, DbUser } from '../types';
 import type { RBACContext } from '../types/enterprise';
-import { ROLES, type Role as RoleType } from '../constants/roles';
+import { ROLES } from '../constants/roles';
 
 // 權限定義
 export interface Permission {

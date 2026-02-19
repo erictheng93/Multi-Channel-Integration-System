@@ -15,7 +15,6 @@ import type { Bindings } from '@/types';
 import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import { getActivityCacheStats } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
-import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { nowISO, nowMs } from '@/utils/timestamp'
 

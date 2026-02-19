@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
-import { createDOMonitor, type DurableObjectsMonitor } from '@/services/durable-objects-monitor';
+import { createDOMonitor } from '@/services/durable-objects-monitor';
 import { getCircuitBreaker } from '@/services/websocket-circuit-breaker';
 import { createLogger } from '@/services/logger-service';
 import { nowMs } from '@/utils/timestamp'

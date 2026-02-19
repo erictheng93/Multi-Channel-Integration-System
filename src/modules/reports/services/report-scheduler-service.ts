@@ -10,12 +10,8 @@ import { nowISO } from '@/utils/timestamp'
  * Handles scheduled report CRUD and next-run calculations
  */
 export class ReportSchedulerService {
-  private db: D1Database;
-  private env: Bindings;
-
-  constructor(env: Bindings) {
-    this.db = env.DB;
-    this.env = env;
+  constructor(_env: Bindings) {
+    // env stored for future use when report scheduling is implemented
   }
 
   /**

@@ -127,8 +127,6 @@ export const checkAgentAccess = (): MiddlewareHandler<{ Bindings: Bindings }> =>
 export const checkTeamAccess = (): MiddlewareHandler<{ Bindings: Bindings }> => {
   return async (c, next) => {
     const user = c.get('user');
-    const targetTeamId = c.req.param('teamId') || c.req.query('teamId');
-
     if (!user) {
       throw new AgentPermissionError('Authentication required');
     }

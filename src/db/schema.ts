@@ -111,7 +111,7 @@ export const qrCodeAnalytics = sqliteTable('qr_code_analytics', {
 // Conversations table - 對話
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),
-  customerId: integer('customer_id').notNull().references(() => customers.id),
+  customerId: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'restrict' }),
   assignedTeamId: integer('assigned_team_id').references(() => teams.id, { onDelete: 'set null' }),
   // Note: assignedUserId removed - only team assignment is supported now
   status: text('status').notNull().default('active'), // 'active', 'assigned', 'pending', 'in-progress', 'waiting', 'closed'
@@ -210,7 +210,7 @@ export const conversationTransfers = sqliteTable('conversation_transfers', {
   fromTeamId: integer('from_team_id').references(() => teams.id, { onDelete: 'set null' }),
   toTeamId: integer('to_team_id').references(() => teams.id, { onDelete: 'set null' }),
   transferReason: text('transfer_reason'),
-  transferredBy: text('transferred_by').notNull().references(() => agents.id),
+  transferredBy: text('transferred_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   transferType: text('transfer_type').default('manual'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
@@ -219,7 +219,7 @@ export const conversationTransfers = sqliteTable('conversation_transfers', {
 export const messageRecallLogs = sqliteTable('message_recall_logs', {
   id: integer('id').primaryKey(),
   messageId: text('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => agents.id),
+  userId: text('user_id').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   action: text('action').notNull(),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
@@ -248,7 +248,7 @@ export const tags = sqliteTable('tags', {
   description: text('description'),
   teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  createdBy: text('created_by').notNull().references(() => agents.id),
+  createdBy: text('created_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
@@ -260,7 +260,7 @@ export const tags = sqliteTable('tags', {
 export const customerTags = sqliteTable('customer_tags', {
   customerId: integer('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
   tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
-  assignedBy: text('assigned_by').notNull().references(() => agents.id),
+  assignedBy: text('assigned_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   assignedAt: text('assigned_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   pk: primaryKey({ columns: [table.customerId, table.tagId] }),
@@ -270,7 +270,7 @@ export const customerTags = sqliteTable('customer_tags', {
 export const conversationTags = sqliteTable('conversation_tags', {
   conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
   tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
-  assignedBy: text('assigned_by').notNull().references(() => agents.id),
+  assignedBy: text('assigned_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   assignedAt: text('assigned_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   pk: primaryKey({ columns: [table.conversationId, table.tagId] }),
@@ -279,7 +279,7 @@ export const conversationTags = sqliteTable('conversation_tags', {
 // Activities table - 活動記錄表（審計追蹤）
 export const activities = sqliteTable('activities', {
   id: integer('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => agents.id),
+  userId: text('user_id').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   userName: text('user_name').notNull(),
   userRole: text('user_role').notNull(),
   action: text('action').notNull(),
@@ -429,7 +429,7 @@ export const reports = sqliteTable('reports', {
   status: text('status').notNull().default('pending'), // 'pending', 'generating', 'completed', 'failed'
 
   // Ownership
-  createdBy: text('created_by').notNull().references(() => agents.id),
+  createdBy: text('created_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
 
   // Metadata
@@ -484,7 +484,7 @@ export const scheduledReports = sqliteTable('scheduled_reports', {
   retryDelayMinutes: integer('retry_delay_minutes').default(30),
 
   // Ownership
-  createdBy: text('created_by').notNull().references(() => agents.id),
+  createdBy: text('created_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
 
   // Notification
@@ -530,7 +530,7 @@ export const reportDownloadHistory = sqliteTable('report_download_history', {
   reportId: text('report_id').notNull().references(() => reports.id, { onDelete: 'cascade' }),
 
   // Download details
-  downloadedBy: text('downloaded_by').notNull().references(() => agents.id),
+  downloadedBy: text('downloaded_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   downloadedAt: text('downloaded_at').default(sql`CURRENT_TIMESTAMP`),
   ipAddress: text('ip_address'),
   userAgent: text('user_agent'),
@@ -561,7 +561,7 @@ export const reportTemplates = sqliteTable('report_templates', {
   // Usage tracking
   isSystemTemplate: integer('is_system_template', { mode: 'boolean' }).default(false),
   isPublic: integer('is_public', { mode: 'boolean' }).default(false),
-  createdBy: text('created_by').notNull().references(() => agents.id),
+  createdBy: text('created_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
   teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
 
   // Popularity

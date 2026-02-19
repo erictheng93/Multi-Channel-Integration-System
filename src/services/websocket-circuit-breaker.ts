@@ -399,33 +399,6 @@ export class WebSocketCircuitBreaker {
     this.sendAlert(oldState, newState);
   }
 
-  /**
-   * 🆕 Logger.log 的包裝方法（處理日誌級別）
-   */
-  private logWithLevel(
-    level: LogLevel,
-    message: string,
-    context?: LogContext,
-    metadata?: Record<string, unknown>
-  ): void {
-    switch (level) {
-      case LogLevel.DEBUG:
-        this.logger.debug(message, context, metadata);
-        break;
-      case LogLevel.INFO:
-        this.logger.info(message, context, metadata);
-        break;
-      case LogLevel.WARN:
-        this.logger.warn(message, context, metadata);
-        break;
-      case LogLevel.ERROR:
-        this.logger.error(message, undefined, context, metadata);
-        break;
-      case LogLevel.CRITICAL:
-        this.logger.critical(message, undefined, context, metadata);
-        break;
-    }
-  }
 
   /**
    * 檢查是否應該嘗試重置

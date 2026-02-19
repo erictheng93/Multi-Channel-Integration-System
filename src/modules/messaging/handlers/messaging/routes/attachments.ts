@@ -2,7 +2,7 @@
 // 附件管理端點
 
 import { Hono } from 'hono';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, fileAttachments } from '@shared/database/schema';

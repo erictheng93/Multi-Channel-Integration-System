@@ -9,7 +9,6 @@ import {
   DeliveryResult,
   ChannelRoutingRule,
   ChannelRouterConfig,
-  BulkDeliveryJob,
   NotificationSettings
 } from '../types';
 

@@ -14,8 +14,6 @@ import { globalErrorHandler } from '@/core/error-handler';
 import { DistributedLockService } from '@/services/distributed-lock-service';
 
 // P1 Optimizations
-import { getCircuitBreaker } from '@/services/websocket-circuit-breaker';
-import { createMessagePersistenceService } from '@/services/message-persistence-service';
 import { nowMs } from '@/utils/timestamp'
 
 /**
@@ -337,28 +335,6 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
 
   } catch (error) {
     console.error('[WebSocket] Error getting connection metrics:', error);
-    throw error;
-  }
-}
-
-async function getDetailedMetrics(env: Bindings): Promise<any> {
-  const lockService = new DistributedLockService(env);
-
-  try {
-    // Get metrics from all systems
-    const [connectionMetrics, lockMetrics] = await Promise.allSettled([
-      getConnectionMetrics(env),
-      lockService.getLockMetrics()
-    ]);
-
-    return {
-      connections: connectionMetrics.status === 'fulfilled' ? connectionMetrics.value : null,
-      locks: lockMetrics.status === 'fulfilled' ? lockMetrics.value : null,
-      timestamp: nowMs()
-    };
-
-  } catch (error) {
-    console.error('[WebSocket] Error getting detailed metrics:', error);
     throw error;
   }
 }

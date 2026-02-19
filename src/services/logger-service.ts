@@ -280,7 +280,6 @@ export class Logger {
    */
   private outputConsole(entry: LogEntry): void {
     const emoji = this.getLevelEmoji(entry.level);
-    const color = this.getLevelColor(entry.level);
 
     // 構建簡潔的控制台消息
     const contextStr = this.formatContextForConsole(entry.context);
@@ -333,20 +332,6 @@ export class Logger {
       case LogLevel.ERROR: return '❌';
       case LogLevel.CRITICAL: return '🚨';
       default: return '📝';
-    }
-  }
-
-  /**
-   * 獲取日誌級別顏色（用於終端輸出）
-   */
-  private getLevelColor(level: LogLevel): string {
-    switch (level) {
-      case LogLevel.DEBUG: return '\x1b[36m'; // Cyan
-      case LogLevel.INFO: return '\x1b[32m';  // Green
-      case LogLevel.WARN: return '\x1b[33m';  // Yellow
-      case LogLevel.ERROR: return '\x1b[31m'; // Red
-      case LogLevel.CRITICAL: return '\x1b[35m'; // Magenta
-      default: return '\x1b[0m';
     }
   }
 

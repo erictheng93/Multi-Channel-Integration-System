@@ -7,7 +7,6 @@ import { MemberService } from '@modules/teams/services/member-service';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import {
   jwtAuth,
-  requireAdmin,
   requireManagerOrAdmin
 } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
@@ -21,7 +20,6 @@ import type {
   UpdateMemberStatusRequest,
   UpdateMemberRoleRequest,
   UpdateMemberRequest,
-  DeleteMemberRequest,
   BulkDeleteMembersRequest,
   BulkDeleteMembersResponse,
   RestoreMembersRequest,
