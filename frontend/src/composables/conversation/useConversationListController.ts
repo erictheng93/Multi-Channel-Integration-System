@@ -138,8 +138,8 @@ export function useConversationListController(): ConversationListControllerCompo
       // 准备 API 筛选参数
       const apiFilters = filters.getApiFilters(currentAgent.value?.id)
 
-      // 生成缓存键
-      const cacheKey = cache.generateCacheKey(filters.filters.value, currentPage.value)
+      // 生成缓存键（包含 userId 防止跨用户数据污染）
+      const cacheKey = cache.generateCacheKey(filters.filters.value, currentPage.value, currentAgent.value?.id)
 
       // 先尝试从缓存获取
       const cachedData = await cache.getCachedData(cacheKey)
@@ -255,8 +255,8 @@ export function useConversationListController(): ConversationListControllerCompo
       // 更新分頁資訊
       total.value = conversationsStore.pagination.total
 
-      // 更新 Controller 快取（存入已排序的資料）
-      const cacheKey = cache.generateCacheKey(filters.filters.value, currentPage.value)
+      // 更新 Controller 快取（存入已排序的資料，包含 userId）
+      const cacheKey = cache.generateCacheKey(filters.filters.value, currentPage.value, currentAgent.value?.id)
       await cache.setCachedData(cacheKey, conversations.value)
 
       // 清除错误状态

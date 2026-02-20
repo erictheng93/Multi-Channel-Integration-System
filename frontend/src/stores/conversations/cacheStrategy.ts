@@ -18,6 +18,8 @@ export interface CacheStrategyDeps {
   }>
   handleError: (_err: unknown, _defaultMessage: string) => void
   updateConversationsIncrementally: (_newConversations: Conversation[], _logChanges?: boolean) => void
+  /** 获取当前用户 ID（用于缓存键隔离，防止跨用户数据污染） */
+  getCurrentUserId: () => string | undefined
 }
 
 export function createCacheStrategy(deps: CacheStrategyDeps) {
@@ -28,7 +30,8 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
     filters,
     pagination,
     handleError,
-    updateConversationsIncrementally
+    updateConversationsIncrementally,
+    getCurrentUserId
   } = deps
 
   // Optimistic update - immediate UI update, background API sync
@@ -84,8 +87,8 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
   const loadWithCache = async (cacheFilters: ConversationFilters = {}, page = 1) => {
     console.log(`🧠 [ConversationsStore] Smart cache loading with filters:`, cacheFilters)
 
-    // 1. Load from cache immediately
-    const cached = conversationCache.getConversationList(cacheFilters)
+    // 1. Load from cache immediately (包含 userId 防止跨用戶數據污染)
+    const cached = conversationCache.getConversationList(cacheFilters, getCurrentUserId())
     if (cached.data) {
       console.log(`⚡ [ConversationsStore] Cache hit, showing ${cached.data.length} cached conversations`)
       conversations.value = cached.data
@@ -148,8 +151,8 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
           conversations.value = conversationList
         }
 
-        // 4. Update cache
-        conversationCache.setConversationList(conversationList, cacheFilters)
+        // 4. Update cache (包含 userId 防止跨用戶數據污染)
+        conversationCache.setConversationList(conversationList, cacheFilters, getCurrentUserId())
         pagination.value = paginationData
 
         console.log(`✅ [ConversationsStore] ${wasFromCache ? 'Background update' : 'Initial load'} completed`)

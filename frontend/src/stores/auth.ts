@@ -334,12 +334,22 @@ export const useAuthStore = defineStore('auth', () => {
     currentAgent.value = null;
     sessionExpiry.value = null;
     
-    // Clear localStorage
+    // Clear localStorage (auth + conversation caches to prevent cross-user contamination)
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('sessionExpiry');
       localStorage.removeItem('currentAgent');
+
+      // Clear conversation caches (Layer 1 + Layer 2) to prevent cross-user data leakage
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('conversation-list') || key.startsWith('cache_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
     }
     
     // Remove auth headers

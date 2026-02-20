@@ -135,7 +135,7 @@ const router = createRouter({
       ]
     },
     {
-      path: '/api-monitor',
+      path: '/monitoring/api',
       name: 'ApiMonitor',
       component: () => import('@/views/ApiMonitor.vue'),
       meta: {

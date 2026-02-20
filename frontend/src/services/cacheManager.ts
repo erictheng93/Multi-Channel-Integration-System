@@ -376,14 +376,20 @@ export const cacheManager = new CacheManager()
 
 // 專門用於對話的快取工具
 export const conversationCache = {
-  // 對話列表快取
-  getConversationList: (filters: ConversationFilters = {}) => {
-    const key = cacheManager['generateKey']('conversations', filters as Record<string, unknown>)
+  // 對話列表快取（包含 userId 防止跨用戶數據污染）
+  getConversationList: (filters: ConversationFilters = {}, userId?: string) => {
+    const keyParams = userId
+      ? { ...filters, _userId: userId } as Record<string, unknown>
+      : filters as Record<string, unknown>
+    const key = cacheManager['generateKey']('conversations', keyParams)
     return cacheManager.get<Conversation[]>(key)
   },
 
-  setConversationList: (conversations: Conversation[], filters: ConversationFilters = {}) => {
-    const key = cacheManager['generateKey']('conversations', filters as Record<string, unknown>)
+  setConversationList: (conversations: Conversation[], filters: ConversationFilters = {}, userId?: string) => {
+    const keyParams = userId
+      ? { ...filters, _userId: userId } as Record<string, unknown>
+      : filters as Record<string, unknown>
+    const key = cacheManager['generateKey']('conversations', keyParams)
     cacheManager.set(key, conversations, { filters })
   },
 

@@ -111,7 +111,7 @@ class ApiMonitorService {
     // 團隊相關
     {
       id: 'team-members',
-      endpoint: '/api/team/members',
+      endpoint: '/api/teams/members',
       method: 'GET',
       category: 'team',
       description: '獲取團隊成員',

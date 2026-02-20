@@ -95,7 +95,7 @@ const DEFAULT_APIS: Omit<ApiEndpoint, 'lastCheck'>[] = [
   },
   {
     id: 'team-members',
-    endpoint: '/api/team/members',
+    endpoint: '/api/teams/members',
     method: 'GET',
     category: 'team',
     description: '獲取團隊成員',

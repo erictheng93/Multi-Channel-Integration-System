@@ -371,7 +371,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     filters,
     pagination,
     handleError,
-    updateConversationsIncrementally
+    updateConversationsIncrementally,
+    getCurrentUserId: () => useAuthStore().currentAgent?.id
   })
 
   // ═══════════════════════════════════════════════════════════════════
