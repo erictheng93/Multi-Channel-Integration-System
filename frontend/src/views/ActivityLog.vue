@@ -414,7 +414,7 @@ const loadUsers = async () => {
   if (!isAdmin.value) { return }
 
   try {
-    const response = await fetch('/api/team/members', {
+    const response = await fetch('/api/teams/members', {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }

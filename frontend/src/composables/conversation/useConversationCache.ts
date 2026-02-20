@@ -44,8 +44,8 @@ export interface ConversationCacheComposable {
   invalidateCache: (_key?: string) => Promise<void>
   /** 清除所有缓存 */
   clearAllCache: () => Promise<void>
-  /** 生成缓存键 */
-  generateCacheKey: (_filters: ConversationFilters, _page: number) => string
+  /** 生成缓存键（包含 userId 防止跨用户污染） */
+  generateCacheKey: (_filters: ConversationFilters, _page: number, _userId?: string) => string
   /** 重置统计数据 */
   resetStats: () => void
 }
@@ -78,19 +78,22 @@ export function useConversationCache(): ConversationCacheComposable {
   })
 
   /**
-   * 生成缓存键
+   * 生成缓存键（包含 userId 防止跨用户数据污染）
    *
    * @param {ConversationFilters} filters - 筛选条件
    * @param {number} page - 页码
+   * @param {string} userId - 当前用户 ID（安全隔离）
    * @returns {string} 缓存键
    *
    * @example
-   * const key = generateCacheKey({ status: 'open' }, 1)
-   * // 'conversation-list:status=open:page=1'
+   * const key = generateCacheKey({ status: 'open' }, 1, 'agent-123')
+   * // 'conversation-list:user=agent-123:status=open:page=1'
    */
-  function generateCacheKey(filters: ConversationFilters, page: number): string {
+  function generateCacheKey(filters: ConversationFilters, page: number, userId?: string): string {
     const filterParts: string[] = []
 
+    // userId MUST be first to ensure cache isolation between users
+    if (userId) {filterParts.push(`user=${userId}`)}
     if (filters.status) {filterParts.push(`status=${filters.status}`)}
     if (filters.platform) {filterParts.push(`platform=${filters.platform}`)}
     // Note: Individual assignment (assignedTo) removed - use teamId instead

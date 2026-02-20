@@ -116,7 +116,7 @@
     { path: '/team', label: '\u5718\u968A\u7BA1\u7406', icon: UsersIcon },
     { path: '/channels', label: '\u983B\u9053\u7BA1\u7406', icon: ChannelIcon },
     { path: '/activities', label: '\u6D3B\u52D5\u8A18\u9304', icon: ActivityIcon },
-    { path: '/api-monitor', label: 'API\u76E3\u63A7', icon: MonitorIcon },
+    { path: '/monitoring/api', label: 'API\u76E3\u63A7', icon: MonitorIcon },
     {
       path: '/settings',
       label: '\u7CFB\u7D71\u8A2D\u5B9A',
