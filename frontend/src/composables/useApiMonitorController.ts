@@ -214,8 +214,8 @@ export function useApiMonitorController() {
    */
   async function loadApiStatusFromBackend(): Promise<void> {
     try {
-      // ✅ 使用統一的配置層獲取後端 URL
-      const baseUrl = getBackendUrl()
+      // ✅ Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
+      const baseUrl = import.meta.env.DEV ? '' : getBackendUrl()
       const response = await fetch(`${baseUrl}/api/system/api-status`)
 
       if (!response.ok) {
@@ -254,8 +254,8 @@ export function useApiMonitorController() {
    */
   async function fetchMigrationStatus(): Promise<void> {
     try {
-      // ✅ 使用統一的配置層獲取後端 URL
-      const baseUrl = getBackendUrl()
+      // ✅ Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
+      const baseUrl = import.meta.env.DEV ? '' : getBackendUrl()
       const response = await fetch(`${baseUrl}/api/websocket/migration-status`)
 
       if (response.ok) {
