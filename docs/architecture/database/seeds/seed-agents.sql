@@ -1,3 +1,4 @@
-INSERT INTO agents (id, username, email, password_hash, display_name, role, is_active, password_policy, created_at, updated_at) VALUES ('admin-001', 'admin', 'admin@dacit.net', '$2a$10$VgGSihGA7rYwroi9eu6zp..W7Y3r2tjOJN47Q/Ymj0D6B9XD1CDoi', 'System Administrator', 'admin', 1, 'changeable', datetime('now'), datetime('now'));
+-- Seed agents (matches schema after migration 0039 - no username column)
+INSERT INTO agents (id, email, password_hash, display_name, role, is_active, password_policy, created_at, updated_at) VALUES ('admin-001', 'admin@dacit.net', '$2a$10$VgGSihGA7rYwroi9eu6zp..W7Y3r2tjOJN47Q/Ymj0D6B9XD1CDoi', 'System Administrator', 'admin', 1, 'changeable', datetime('now'), datetime('now'));
 
-INSERT INTO agents (id, username, email, password_hash, display_name, role, is_active, password_policy, created_at, updated_at) VALUES ('test-agent-001', 'test', 'test@dacit.net', '$2a$10$fr.nzY8.ImZ1LLp/2iw3Du9p0fgYEm6/I1ucFI6aTpEsKQlJYYEpG', 'Test User', 'agent', 1, 'must_change', datetime('now'), datetime('now'));
+INSERT INTO agents (id, email, password_hash, display_name, role, is_active, password_policy, created_at, updated_at) VALUES ('test-agent-001', 'test@dacit.net', '$2a$10$fr.nzY8.ImZ1LLp/2iw3Du9p0fgYEm6/I1ucFI6aTpEsKQlJYYEpG', 'Test User', 'agent', 1, 'must_change', datetime('now'), datetime('now'));

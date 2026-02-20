@@ -341,11 +341,16 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.removeItem('sessionExpiry');
       localStorage.removeItem('currentAgent');
 
-      // Clear conversation caches (Layer 1 + Layer 2) to prevent cross-user data leakage
+      // Clear all caches to prevent cross-user data leakage
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (key.startsWith('conversation-list') || key.startsWith('cache_'))) {
+        if (key && (
+          key.startsWith('conversation-list') ||
+          key.startsWith('cache_') ||
+          key === 'analytics_comparison_cache' ||
+          key === 'conversation_metadata_cache'
+        )) {
           keysToRemove.push(key);
         }
       }
