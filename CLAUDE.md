@@ -113,7 +113,7 @@ npm run profile:memory   # Memory usage profiling
 ### Frontend (frontend/ directory)
 ```bash
 # Development
-npm run dev              # Start Vite dev server (port 3000)
+npm run dev              # Start Vite dev server (port 5173)
 npm run build            # Build for production
 npm run type-check       # Vue TypeScript checking
 
@@ -495,7 +495,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
    npm run dev               # Wrangler dev with REMOTE D1, KV, R2
 
    # Terminal 2 - Frontend
-   cd frontend && npm run dev # Vite dev server on localhost:3000
+   cd frontend && npm run dev # Vite dev server on localhost:5173
    ```
 6. **Verify Setup**: `npm run test:api` and `cd frontend && npm run test`
 
