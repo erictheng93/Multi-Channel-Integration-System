@@ -2,7 +2,7 @@
 // 統一導出客戶模組的所有功能和類型
 
 // ======================== Handlers 導出 ========================
-// Active handler: customer-main-legacy.ts (registered via src/handlers/index.ts)
+// Active handler: customer-main.ts (registered via src/handlers/index.ts)
 
 // ======================== Services 導出 ========================
 export { CustomerCrudService } from './services/customer-crud';

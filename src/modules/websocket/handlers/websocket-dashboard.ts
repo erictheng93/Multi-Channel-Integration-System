@@ -2,10 +2,10 @@
 // Real-time connection pool monitoring and performance analysis dashboard
 
 import { Hono } from 'hono';
-import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
 import type { JWTPayload } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
+import { successResponse, forbiddenResponse } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
 
 const dashboardApp = new Hono<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>();
@@ -87,14 +87,13 @@ dashboardApp.get('/metrics', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Insufficient permissions');
     }
 
     const metrics = await collectRealtimeMetrics(c.env);
 
-    return c.json({
-      success: true,
-      data: metrics,
+    return successResponse(c, {
+      ...metrics,
       timestamp: nowISO()
     });
   } catch (error) {
@@ -112,14 +111,13 @@ dashboardApp.get('/connections', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Insufficient permissions');
     }
 
     const connections = await getActiveConnections(c.env);
 
-    return c.json({
-      success: true,
-      data: connections,
+    return successResponse(c, {
+      connections,
       count: connections.length
     });
   } catch (error) {
@@ -137,7 +135,7 @@ dashboardApp.get('/history', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Insufficient permissions');
     }
 
     const period = c.req.query('period') || '24h';
@@ -163,7 +161,7 @@ dashboardApp.get('/trends', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Insufficient permissions');
     }
 
     const period = c.req.query('period') || '24h';
@@ -187,7 +185,7 @@ dashboardApp.get('/durable-objects', async (c) => {
     const payload = c.get('jwtPayload');
 
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Admin access required');
     }
 
     const doHealth = await getDurableObjectsHealth(c.env);
@@ -211,7 +209,7 @@ dashboardApp.get('/alerts', async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (payload.role !== 'admin') {
-      return c.json({ error: 'Insufficient permissions' }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Insufficient permissions');
     }
 
     const alerts = await getActiveAlerts(c.env);

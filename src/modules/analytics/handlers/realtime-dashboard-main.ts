@@ -10,8 +10,9 @@ import { DashboardService } from '@modules/analytics/services/dashboard-service'
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
 
-import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
+import { forbiddenResponse } from '@/utils/api-response';
+import { nowISO } from '@/utils/timestamp';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -26,7 +27,6 @@ interface AnalyticsUser {
   updatedAt: string;
 }
 import { AnalyticsError } from '@modules/analytics/types/analytics-types';
-import { nowISO } from '@/utils/timestamp'
 
 // 驗證 schema
 const broadcastSchema = z.object({
@@ -56,10 +56,7 @@ const createRealtimeDashboardApp = (
 
       // 檢查權限（只有 admin 和 team 角色可以廣播）
       if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-        return c.json({
-          success: false,
-          error: 'Insufficient permissions to broadcast updates'
-        }, HTTP_STATUS.FORBIDDEN);
+        return forbiddenResponse(c, 'Insufficient permissions to broadcast updates');
       }
 
       switch (type) {
@@ -106,7 +103,7 @@ const createRealtimeDashboardApp = (
         return c.json({
           success: false,
           error: 'Widget not found'
-        }, HTTP_STATUS.NOT_FOUND);
+        }, 404);
       }
 
       // 獲取最新數據
@@ -173,7 +170,7 @@ const createRealtimeDashboardApp = (
         return c.json({
           success: false,
           error: 'Insufficient permissions to view connection status'
-        }, HTTP_STATUS.FORBIDDEN);
+        }, 403);
       }
 
       const status = realtimeService.getConnectionStatus();
@@ -226,7 +223,7 @@ const createRealtimeDashboardApp = (
         return c.json({
           success: false,
           error: 'Insufficient permissions to perform cleanup'
-        }, HTTP_STATUS.FORBIDDEN);
+        }, 403);
       }
 
       realtimeService.cleanupExpiredConnections();

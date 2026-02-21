@@ -9,6 +9,10 @@ import { Hono } from 'hono';
 import type { Bindings } from '../../types';
 import { jwtAuth } from '../../middleware/auth';
 import { DelayedMessageManager } from '@modules/delayed-message/services/DelayedMessageManager';
+import { successResponse, badRequestResponse } from '@/utils/api-response';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('DelayedMessageRouter');
 
 // 創建標準路由器實例
 export const delayedMessageRouter = new Hono<{ Bindings: Bindings }>();
@@ -21,9 +25,10 @@ delayedMessageRouter.post('/send', jwtAuth, async (c) => {
     const user = c.get('user');
     const userInfo = { id: user.id.toString(), displayName: user.displayName, role: user.role };
     const result = await manager.sendDelayedMessage(data, userInfo);
-    return c.json({ success: true, data: result });
+    return successResponse(c, result);
   } catch (error) {
-    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 400);
+    log.error('Send error', { error: error instanceof Error ? error.message : String(error) });
+    return badRequestResponse(c, error instanceof Error ? error.message : 'Unknown error');
   }
 });
 
@@ -34,9 +39,10 @@ delayedMessageRouter.post('/recall/:messageId', jwtAuth, async (c) => {
     const user = c.get('user');
     const userInfo = { id: user.id.toString(), displayName: user.displayName, role: user.role };
     const result = await manager.recallDelayedMessage(messageId, userInfo);
-    return c.json({ success: true, data: result });
+    return successResponse(c, result);
   } catch (error) {
-    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 400);
+    log.error('Recall error', { error: error instanceof Error ? error.message : String(error) });
+    return badRequestResponse(c, error instanceof Error ? error.message : 'Unknown error');
   }
 });
 
@@ -47,9 +53,10 @@ delayedMessageRouter.get('/pending', jwtAuth, async (c) => {
     const page = parseInt(c.req.query('page') || '1');
     const pageSize = parseInt(c.req.query('pageSize') || '20');
     const result = await manager.getPendingMessages(user.id.toString(), page, pageSize);
-    return c.json({ success: true, data: result });
+    return successResponse(c, result);
   } catch (error) {
-    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 400);
+    log.error('Pending list error', { error: error instanceof Error ? error.message : String(error) });
+    return badRequestResponse(c, error instanceof Error ? error.message : 'Unknown error');
   }
 });
 
@@ -61,9 +68,10 @@ delayedMessageRouter.post('/reschedule/:messageId', jwtAuth, async (c) => {
     const user = c.get('user');
     const userInfo = { id: user.id.toString(), displayName: user.displayName, role: user.role };
     const result = await manager.rescheduleMessage(messageId, data.newDelaySeconds, userInfo);
-    return c.json({ success: true, data: result });
+    return successResponse(c, result);
   } catch (error) {
-    return c.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, 400);
+    log.error('Reschedule error', { error: error instanceof Error ? error.message : String(error) });
+    return badRequestResponse(c, error instanceof Error ? error.message : 'Unknown error');
   }
 });
 

@@ -6,6 +6,14 @@
 import { MIME_TO_EXTENSION, FILE_EXTENSIONS, ALLOWED_MIME_TYPES } from '@modules/file-management/constants/file-config';
 import type { FileType } from '@modules/file-management/types/file-types';
 import type { KeyGenerationOptions } from '@modules/file-management/types/storage-types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('FileHelpers');
+
+/** Type-safe includes check for readonly arrays */
+function includesValue(arr: readonly string[], value: string): boolean {
+  return arr.includes(value);
+}
 
 /**
  * 從檔名或 MIME 類型獲取副檔名
@@ -34,38 +42,38 @@ export function getFileExtension(filename: string, mimeType?: string): string {
  */
 export function getFileType(mimeType: string, extension?: string): FileType {
   // 根據 MIME 類型判斷
-  if (ALLOWED_MIME_TYPES.IMAGE.includes(mimeType as any)) {
+  if (includesValue(ALLOWED_MIME_TYPES.IMAGE, mimeType)) {
     return 'image';
   }
-  if (ALLOWED_MIME_TYPES.VIDEO.includes(mimeType as any)) {
+  if (includesValue(ALLOWED_MIME_TYPES.VIDEO, mimeType)) {
     return 'video';
   }
-  if (ALLOWED_MIME_TYPES.AUDIO.includes(mimeType as any)) {
+  if (includesValue(ALLOWED_MIME_TYPES.AUDIO, mimeType)) {
     return 'audio';
   }
-  if (ALLOWED_MIME_TYPES.DOCUMENT.includes(mimeType as any)) {
+  if (includesValue(ALLOWED_MIME_TYPES.DOCUMENT, mimeType)) {
     return 'document';
   }
-  if (ALLOWED_MIME_TYPES.ARCHIVE.includes(mimeType as any)) {
+  if (includesValue(ALLOWED_MIME_TYPES.ARCHIVE, mimeType)) {
     return 'archive';
   }
 
   // 根據副檔名判斷
   if (extension) {
     const ext = extension.toLowerCase();
-    if (FILE_EXTENSIONS.IMAGE.includes(ext as any)) {
+    if (includesValue(FILE_EXTENSIONS.IMAGE, ext)) {
       return 'image';
     }
-    if (FILE_EXTENSIONS.VIDEO.includes(ext as any)) {
+    if (includesValue(FILE_EXTENSIONS.VIDEO, ext)) {
       return 'video';
     }
-    if (FILE_EXTENSIONS.AUDIO.includes(ext as any)) {
+    if (includesValue(FILE_EXTENSIONS.AUDIO, ext)) {
       return 'audio';
     }
-    if (FILE_EXTENSIONS.DOCUMENT.includes(ext as any)) {
+    if (includesValue(FILE_EXTENSIONS.DOCUMENT, ext)) {
       return 'document';
     }
-    if (FILE_EXTENSIONS.ARCHIVE.includes(ext as any)) {
+    if (includesValue(FILE_EXTENSIONS.ARCHIVE, ext)) {
       return 'archive';
     }
   }
@@ -268,7 +276,7 @@ export async function calculateFileHash(data: ArrayBuffer): Promise<string | nul
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
   } catch (error) {
-    console.warn('Failed to calculate file hash:', error);
+    log.warn('Failed to calculate file hash', { error });
   }
   return null;
 }
@@ -282,7 +290,7 @@ export async function compareFiles(data1: ArrayBuffer, data2: ArrayBuffer): Prom
     const hash2 = await calculateFileHash(data2);
     return hash1 !== null && hash2 !== null && hash1 === hash2;
   } catch (error) {
-    console.warn('Failed to compare files:', error);
+    log.warn('Failed to compare files', { error });
     return false;
   }
 }

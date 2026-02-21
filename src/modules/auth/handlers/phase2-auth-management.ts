@@ -2,7 +2,6 @@
 // 專門處理 Phase 2 監控系統的認證令牌管理
 
 import { Hono } from 'hono';
-import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
@@ -12,7 +11,10 @@ import {
   generateTokenBatch,
   getUserById
 } from '@/utils/auth';
-import { nowMs } from '@/utils/timestamp'
+import { successResponse, forbiddenResponse, badRequestResponse } from '@/utils/api-response';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('Phase2AuthManagement');
 
 const phase2AuthHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -25,32 +27,24 @@ phase2AuthHandler.post('/monitoring-token', jwtAuth, async (c) => {
 
     // 只有管理員可以生成監控令牌
     if (user.role !== 'admin') {
-      return c.json({
-        error: 'Admin access required',
-        message: 'Only administrators can generate monitoring tokens'
-      }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Only administrators can generate monitoring tokens');
     }
 
     const expiresIn = parseInt(c.req.query('expiresIn') || '604800'); // 默認7天
 
     // 驗證過期時間範圍 (1小時 - 30天)
     if (expiresIn < 3600 || expiresIn > 30 * 24 * 60 * 60) {
-      return c.json({
-        error: 'Invalid expiration time',
-        message: 'Expiration time must be between 1 hour and 30 days'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Expiration time must be between 1 hour and 30 days');
     }
 
     const token = await generateMonitoringToken(c.env.JWT_SECRET, expiresIn);
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       token,
       type: 'monitoring',
       expiresIn,
       expiresAt: new Date((Math.floor(Date.now() / 1000) + expiresIn) * 1000).toISOString(),
-      generatedBy: user.id,
-      timestamp: nowMs()
+      generatedBy: user.id
     });
 
   } catch (error) {
@@ -66,25 +60,16 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
 
     // SECURITY: Admin-only access (2-tier role system)
     if (user.role !== 'admin') {
-      return c.json({
-        error: 'Insufficient permissions',
-        message: 'Only administrators can generate user tokens'
-      }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Only administrators can generate user tokens');
     }
 
     if (!targetUserId) {
-      return c.json({
-        error: 'Missing target user ID',
-        message: 'targetUserId is required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'targetUserId is required');
     }
 
     // 驗證過期時間範圍 (5分鐘 - 24小時)
     if (expiresIn < 300 || expiresIn > 24 * 60 * 60) {
-      return c.json({
-        error: 'Invalid expiration time',
-        message: 'Expiration time must be between 5 minutes and 24 hours'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Expiration time must be between 5 minutes and 24 hours');
     }
 
     // 獲取目標用戶信息
@@ -99,8 +84,7 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
       expiresIn
     );
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       token,
       type: 'user',
       targetUser: {
@@ -111,8 +95,7 @@ phase2AuthHandler.post('/user-token', jwtAuth, async (c) => {
       },
       expiresIn,
       expiresAt: new Date((Math.floor(Date.now() / 1000) + expiresIn) * 1000).toISOString(),
-      generatedBy: user.id,
-      timestamp: nowMs()
+      generatedBy: user.id
     });
 
   } catch (error) {
@@ -127,47 +110,33 @@ phase2AuthHandler.post('/batch-tokens', jwtAuth, async (c) => {
 
     // 只有管理員可以批量生成令牌
     if (user.role !== 'admin') {
-      return c.json({
-        error: 'Admin access required',
-        message: 'Only administrators can generate batch tokens'
-      }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Only administrators can generate batch tokens');
     }
 
     // 開發環境限制
     const environment = c.env.ENVIRONMENT || 'production';
     if (environment === 'production') {
-      return c.json({
-        error: 'Not available in production',
-        message: 'Batch token generation is only available in development'
-      }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Batch token generation is only available in development');
     }
 
     const { users, expiresIn = 3600 } = await c.req.json();
 
     if (!Array.isArray(users) || users.length === 0) {
-      return c.json({
-        error: 'Invalid user list',
-        message: 'Users array is required and must not be empty'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Users array is required and must not be empty');
     }
 
     // 限制批量生成數量
     if (users.length > 10) {
-      return c.json({
-        error: 'Too many users',
-        message: 'Maximum 10 users per batch'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Maximum 10 users per batch');
     }
 
     const tokens = await generateTokenBatch(users, c.env.JWT_SECRET, expiresIn);
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       tokens,
       count: tokens.length,
       expiresIn,
       generatedBy: user.id,
-      timestamp: nowMs(),
       warning: 'These are development tokens - do not use in production'
     });
 
@@ -184,10 +153,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
     const { token } = await c.req.json();
 
     if (!token) {
-      return c.json({
-        error: 'Missing token',
-        message: 'Token is required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Token is required');
     }
 
     // 動態導入以避免循環依賴
@@ -199,8 +165,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
     const timeRemaining = payload.exp - now;
     const isExpiringSoon = timeRemaining < 3600;
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       valid: true,
       payload: {
         userId: payload.userId,
@@ -211,16 +176,14 @@ phase2AuthHandler.post('/verify-token', async (c) => {
       },
       expiresAt: new Date(payload.exp * 1000).toISOString(),
       timeRemaining,
-      isExpiringSoon,
-      timestamp: nowMs()
+      isExpiringSoon
     });
 
   } catch (error) {
-    return c.json({
-      success: true,
+    log.warn('Token verification failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+    return successResponse(c, {
       valid: false,
-      error: error instanceof Error ? error.message : 'Token validation failed',
-      timestamp: nowMs()
+      error: error instanceof Error ? error.message : 'Token validation failed'
     });
   }
 });
@@ -231,10 +194,7 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
     const { token } = await c.req.json();
 
     if (!token) {
-      return c.json({
-        error: 'Missing token',
-        message: 'Token is required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Token is required');
     }
 
     // 動態導入以避免循環依賴
@@ -243,23 +203,17 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
     let payload;
     try {
       payload = await verifyJWT(token, c.env.JWT_SECRET);
-    } catch (error) {
-      return c.json({
-        error: 'Invalid token',
-        message: 'Cannot refresh invalid or expired token'
-      }, HTTP_STATUS.BAD_REQUEST);
+    } catch (_error) {
+      return badRequestResponse(c, 'Cannot refresh invalid or expired token');
     }
 
     // 檢查是否為系統令牌
     if (payload.isSystemToken) {
       const newToken = await generateMonitoringToken(c.env.JWT_SECRET);
-      return c.json({
-        success: true,
+      return successResponse(c, {
         newToken,
-        type: 'monitoring',
-        message: 'Monitoring token refreshed',
-        timestamp: nowMs()
-      });
+        type: 'monitoring'
+      }, 'Monitoring token refreshed');
     }
 
     // 刷新用戶令牌
@@ -271,13 +225,10 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
       c.env.JWT_SECRET
     );
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       newToken,
-      type: 'user',
-      message: 'User token refreshed',
-      timestamp: nowMs()
-    });
+      type: 'user'
+    }, 'User token refreshed');
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -291,8 +242,7 @@ phase2AuthHandler.get('/status', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       authenticated: true,
       user: {
         id: user.id,
@@ -306,8 +256,7 @@ phase2AuthHandler.get('/status', jwtAuth, async (c) => {
         canGenerateUserToken: user.role === 'admin',
         canAccessAnalytics: user.role === 'admin',
         canTriggerAlerts: user.role === 'admin'
-      },
-      timestamp: nowMs()
+      }
     });
 
   } catch (error) {

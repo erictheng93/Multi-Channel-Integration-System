@@ -8,8 +8,8 @@ import { DashboardService } from '@modules/analytics/services/dashboard-service'
 import { WidgetManager } from '@modules/analytics/services/widget-manager';
 import { analyticsAuthMiddleware } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
-import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
+import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from '@/utils/api-response';
 
 // Analytics User interface based on middleware
 interface AnalyticsUser {
@@ -125,7 +125,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         }
       };
 
-      return c.json(status);
+      return successResponse(c, status);
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -141,10 +141,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
     try {
       const widgetTypes = widgetManager.getAvailableWidgetTypes();
 
-      return c.json({
-        success: true,
-        data: widgetTypes
-      });
+      return successResponse(c, widgetTypes);
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -159,10 +156,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       const category = c.req.query('category');
       const templates = await dashboardService.getDashboardTemplates(category);
 
-      return c.json({
-        success: true,
-        data: templates
-      });
+      return successResponse(c, templates);
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -179,10 +173,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
       const templates = await widgetManager.getWidgetTemplates(category, widgetType);
 
-      return c.json({
-        success: true,
-        data: templates
-      });
+      return successResponse(c, templates);
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -204,10 +195,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
         // 檢查權限
         if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-          return c.json({
-            success: false,
-            error: 'Insufficient permissions to optimize layout'
-          }, HTTP_STATUS.FORBIDDEN);
+          return forbiddenResponse(c, 'Insufficient permissions to optimize layout');
         }
 
         const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
@@ -222,11 +210,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
         await dashboardService.saveDashboardConfig(user.id.toString(), updatedConfig, dashboardId);
 
-        return c.json({
-          success: true,
-          data: updatedConfig,
-          message: 'Layout optimized successfully'
-        });
+        return successResponse(c, updatedConfig, 'Layout optimized successfully');
       } catch (error) {
         return globalErrorHandler.handleError(c, error);
       }
@@ -246,10 +230,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
       const config = await dashboardService.getDashboardConfig(user.id.toString(), dashboardId);
 
-      return c.json({
-        success: true,
-        data: config
-      });
+      return successResponse(c, config);
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -282,11 +263,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
       await dashboardService.saveDashboardConfig(user.id.toString(), config, dashboardId);
 
-      return c.json({
-        success: true,
-        data: config,
-        message: 'Dashboard configuration saved successfully'
-      });
+      return successResponse(c, config, 'Dashboard configuration saved successfully');
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -315,11 +292,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
       await dashboardService.saveDashboardConfig(user.id.toString(), config, dashboardId);
 
-      return c.json({
-        success: true,
-        data: config,
-        message: 'Dashboard configuration updated successfully'
-      });
+      return successResponse(c, config, 'Dashboard configuration updated successfully');
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -340,10 +313,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         try {
           timeRange = JSON.parse(timeRangeParam);
         } catch {
-          return c.json({
-            success: false,
-            error: 'Invalid timeRange parameter'
-          }, HTTP_STATUS.BAD_REQUEST);
+          return badRequestResponse(c, 'Invalid timeRange parameter');
         }
       }
 
@@ -353,11 +323,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         timeRange as unknown as AnalyticsTimeRange
       );
 
-      return c.json({
-        success: true,
-        data,
-        timestamp: nowISO()
-      });
+      return successResponse(c, data);
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -381,10 +347,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         try {
           timeRange = JSON.parse(timeRangeParam);
         } catch {
-          return c.json({
-            success: false,
-            error: 'Invalid timeRange parameter'
-          }, HTTP_STATUS.BAD_REQUEST);
+          return badRequestResponse(c, 'Invalid timeRange parameter');
         }
       }
 
@@ -393,19 +356,12 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
       const widget = config.widgets.find(w => w.id === widgetId);
 
       if (!widget) {
-        return c.json({
-          success: false,
-          error: 'Widget not found'
-        }, HTTP_STATUS.NOT_FOUND);
+        return notFoundResponse(c, 'Widget');
       }
 
       const data = await dashboardService.getWidgetData(widget, timeRange as unknown as AnalyticsTimeRange);
 
-      return c.json({
-        success: true,
-        data,
-        timestamp: nowISO()
-      });
+      return successResponse(c, data);
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -428,10 +384,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
         // 檢查權限
         if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-          return c.json({
-            success: false,
-            error: 'Insufficient permissions to clone widgets'
-          }, HTTP_STATUS.FORBIDDEN);
+          return forbiddenResponse(c, 'Insufficient permissions to clone widgets');
         }
 
         // 獲取原小工具
@@ -439,19 +392,12 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
         const originalWidget = config.widgets.find(w => w.id === widgetId);
 
         if (!originalWidget) {
-          return c.json({
-            success: false,
-            error: 'Widget not found'
-          }, HTTP_STATUS.NOT_FOUND);
+          return notFoundResponse(c, 'Widget');
         }
 
         const clonedWidget = await widgetManager.cloneWidget(originalWidget, newId);
 
-        return c.json({
-          success: true,
-          data: clonedWidget,
-          message: 'Widget cloned successfully'
-        });
+        return successResponse(c, clonedWidget, 'Widget cloned successfully');
       } catch (error) {
         return globalErrorHandler.handleError(c, error);
       }
@@ -481,11 +427,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           customConfig
         );
 
-        return c.json({
-          success: true,
-          data: config,
-          message: 'Dashboard created from template successfully'
-        });
+        return successResponse(c, config, 'Dashboard created from template successfully');
       } catch (error) {
         return globalErrorHandler.handleError(c, error);
       }
@@ -522,19 +464,12 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
         // 檢查權限
         if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-          return c.json({
-            success: false,
-            error: 'Insufficient permissions to create widgets'
-          }, HTTP_STATUS.FORBIDDEN);
+          return forbiddenResponse(c, 'Insufficient permissions to create widgets');
         }
 
         const widget = await widgetManager.createWidgetFromTemplate(templateId, customConfig);
 
-        return c.json({
-          success: true,
-          data: widget,
-          message: 'Widget created from template successfully'
-        });
+        return successResponse(c, widget, 'Widget created from template successfully');
       } catch (error) {
         return globalErrorHandler.handleError(c, error);
       }
@@ -554,19 +489,12 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
       // 檢查用戶權限（簡化版本）
       if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-        return c.json({
-          success: false,
-          error: 'Insufficient permissions to create widgets'
-        }, HTTP_STATUS.FORBIDDEN);
+        return forbiddenResponse(c, 'Insufficient permissions to create widgets');
       }
 
       const widget = await widgetManager.createWidget(widgetConfig);
 
-      return c.json({
-        success: true,
-        data: widget,
-        message: 'Widget created successfully'
-      });
+      return successResponse(c, widget, 'Widget created successfully');
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -586,19 +514,12 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
 
       // 檢查用戶權限
       if (!user || (user.role !== 'admin' && user.role !== 'team')) {
-        return c.json({
-          success: false,
-          error: 'Insufficient permissions to update widgets'
-        }, HTTP_STATUS.FORBIDDEN);
+        return forbiddenResponse(c, 'Insufficient permissions to update widgets');
       }
 
       const widget = await widgetManager.updateWidget(widgetId, updates);
 
-      return c.json({
-        success: true,
-        data: widget,
-        message: 'Widget updated successfully'
-      });
+      return successResponse(c, widget, 'Widget updated successfully');
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }

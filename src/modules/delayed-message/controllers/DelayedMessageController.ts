@@ -7,7 +7,11 @@ import type { Bindings } from '@/types';
 import type { DelayedMessageRequest } from '@modules/delayed-message/types';
 import { DelayedMessageManager } from '@modules/delayed-message/services/DelayedMessageManager';
 import { jwtAuth } from '@/middleware/auth';
-import { nowISO } from '@/utils/timestamp'
+import { successResponse, badRequestResponse, internalErrorResponse } from '@/utils/api-response';
+import { errorResponse } from '@/utils/api-response';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('DelayedMessageController');
 
 // 擴展 Context 類型以包含用戶信息
 type AuthenticatedContext = Context<{ Bindings: Bindings }> & {
@@ -73,11 +77,7 @@ export class DelayedMessageController {
       // 驗證必填欄位
       const validationResult = this.validateSendRequest(requestBody);
       if (!validationResult.isValid) {
-        return c.json({
-          success: false,
-          error: `Invalid request: ${validationResult.errors.join(', ')}`,
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, `Invalid request: ${validationResult.errors.join(', ')}`);
       }
 
       const request: DelayedMessageRequest = {
@@ -93,25 +93,19 @@ export class DelayedMessageController {
 
       const result = await this.manager.sendDelayedMessage(request, user);
 
-      const statusCode = result.success ? 200 : 400;
-      return c.json({
-        success: result.success,
-        data: result.success ? {
-          messageId: result.messageId,
-          scheduledSendTime: result.scheduledSendTime,
-          recallDeadline: result.recallDeadline
-        } : null,
-        error: result.error,
-        timestamp: nowISO()
-      }, statusCode);
+      if (!result.success) {
+        return badRequestResponse(c, result.error || 'Failed to send delayed message');
+      }
+
+      return successResponse(c, {
+        messageId: result.messageId,
+        scheduledSendTime: result.scheduledSendTime,
+        recallDeadline: result.recallDeadline
+      });
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Send delayed message error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to send delayed message',
-        timestamp: nowISO()
-      }, 500);
+      log.error('Send delayed message error', { error: error instanceof Error ? error.message : String(error) });
+      return internalErrorResponse(c, error instanceof Error ? error.message : 'Failed to send delayed message');
     }
   }
 
@@ -124,30 +118,20 @@ export class DelayedMessageController {
       const messageId = c.req.param('messageId');
 
       if (!messageId?.trim()) {
-        return c.json({
-          success: false,
-          error: 'Message ID is required',
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, 'Message ID is required');
       }
 
       const result = await this.manager.recallDelayedMessage(messageId, user);
 
-      const statusCode = result.success ? 200 : 400;
-      return c.json({
-        success: result.success,
-        data: result.success ? { messageId: result.messageId } : null,
-        error: result.error,
-        timestamp: nowISO()
-      }, statusCode);
+      if (!result.success) {
+        return badRequestResponse(c, result.error || 'Failed to recall message');
+      }
+
+      return successResponse(c, { messageId: result.messageId });
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Recall delayed message error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to recall message',
-        timestamp: nowISO()
-      }, 500);
+      log.error('Recall delayed message error', { error: error instanceof Error ? error.message : String(error) });
+      return internalErrorResponse(c, error instanceof Error ? error.message : 'Failed to recall message');
     }
   }
 
@@ -162,28 +146,16 @@ export class DelayedMessageController {
 
       // 驗證分頁參數
       if (page < 1 || pageSize < 1 || pageSize > 100) {
-        return c.json({
-          success: false,
-          error: 'Invalid pagination parameters',
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, 'Invalid pagination parameters');
       }
 
       const result = await this.manager.getPendingMessages(user.id, page, pageSize);
 
-      return c.json({
-        success: true,
-        data: result,
-        timestamp: nowISO()
-      });
+      return successResponse(c, result);
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Get pending messages error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get pending messages',
-        timestamp: nowISO()
-      }, 500);
+      log.error('Get pending messages error', { error: error instanceof Error ? error.message : String(error) });
+      return internalErrorResponse(c, error instanceof Error ? error.message : 'Failed to get pending messages');
     }
   }
 
@@ -197,42 +169,28 @@ export class DelayedMessageController {
       const requestBody = await c.req.json();
 
       if (!messageId?.trim()) {
-        return c.json({
-          success: false,
-          error: 'Message ID is required',
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, 'Message ID is required');
       }
 
       const newDelaySeconds = requestBody.newDelaySeconds;
       if (typeof newDelaySeconds !== 'number' || newDelaySeconds < 1 || newDelaySeconds > 120) {
-        return c.json({
-          success: false,
-          error: 'Invalid delay seconds (must be between 1 and 120)',
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, 'Invalid delay seconds (must be between 1 and 120)');
       }
 
       const result = await this.manager.rescheduleMessage(messageId, newDelaySeconds, user);
 
-      const statusCode = result.success ? 200 : 400;
-      return c.json({
-        success: result.success,
-        data: result.success ? {
-          messageId: result.messageId,
-          newScheduledSendTime: result.scheduledSendTime
-        } : null,
-        error: result.error,
-        timestamp: nowISO()
-      }, statusCode);
+      if (!result.success) {
+        return badRequestResponse(c, result.error || 'Failed to reschedule message');
+      }
+
+      return successResponse(c, {
+        messageId: result.messageId,
+        newScheduledSendTime: result.scheduledSendTime
+      });
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Reschedule message error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to reschedule message',
-        timestamp: nowISO()
-      }, 500);
+      log.error('Reschedule message error', { error: error instanceof Error ? error.message : String(error) });
+      return internalErrorResponse(c, error instanceof Error ? error.message : 'Failed to reschedule message');
     }
   }
 
@@ -245,11 +203,7 @@ export class DelayedMessageController {
       const { messageId } = requestBody;
 
       if (!messageId?.trim()) {
-        return c.json({
-          success: false,
-          error: 'Message ID is required',
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, 'Message ID is required');
       }
 
       // 從查詢參數獲取對話ID（可選）
@@ -257,24 +211,15 @@ export class DelayedMessageController {
 
       const result = await this.manager.processQueueMessage(messageId, conversationId || undefined);
 
-      return c.json({
-        success: result.success,
-        data: {
-          messageId,
-          processed: result.success,
-          skipped: result.skipped || false
-        },
-        error: result.error,
-        timestamp: nowISO()
+      return successResponse(c, {
+        messageId,
+        processed: result.success,
+        skipped: result.skipped || false
       });
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Process queue message error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to process queue message',
-        timestamp: nowISO()
-      }, 500);
+      log.error('Process queue message error', { error: error instanceof Error ? error.message : String(error) });
+      return internalErrorResponse(c, error instanceof Error ? error.message : 'Failed to process queue message');
     }
   }
 
@@ -287,45 +232,29 @@ export class DelayedMessageController {
       const { messageIds } = requestBody;
 
       if (!Array.isArray(messageIds) || messageIds.length === 0) {
-        return c.json({
-          success: false,
-          error: 'Message IDs array is required',
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, 'Message IDs array is required');
       }
 
       if (messageIds.length > 50) {
-        return c.json({
-          success: false,
-          error: 'Batch size cannot exceed 50 messages',
-          timestamp: nowISO()
-        }, 400);
+        return badRequestResponse(c, 'Batch size cannot exceed 50 messages');
       }
 
       const results = await this.manager.processBatch(messageIds);
 
       const successCount = results.filter(r => r.result.success).length;
 
-      return c.json({
-        success: true,
-        data: {
-          results,
-          summary: {
-            total: messageIds.length,
-            successful: successCount,
-            failed: messageIds.length - successCount
-          }
-        },
-        timestamp: nowISO()
+      return successResponse(c, {
+        results,
+        summary: {
+          total: messageIds.length,
+          successful: successCount,
+          failed: messageIds.length - successCount
+        }
       });
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Process batch error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to process batch',
-        timestamp: nowISO()
-      }, 500);
+      log.error('Process batch error', { error: error instanceof Error ? error.message : String(error) });
+      return internalErrorResponse(c, error instanceof Error ? error.message : 'Failed to process batch');
     }
   }
 
@@ -337,25 +266,19 @@ export class DelayedMessageController {
       const health = await this.manager.healthCheck();
 
       const statusCode = health.healthy ? 200 : 503;
-      return c.json({
-        success: health.healthy,
-        data: {
-          status: health.healthy ? 'healthy' : 'unhealthy',
-          services: health.services,
-          timestamp: health.timestamp
-        }
-      }, statusCode);
+      if (!health.healthy) {
+        return errorResponse(c, 'Service unhealthy', statusCode);
+      }
+
+      return successResponse(c, {
+        status: 'healthy',
+        services: health.services,
+        timestamp: health.timestamp
+      });
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Health check error:', error);
-      return c.json({
-        success: false,
-        data: {
-          status: 'unhealthy',
-          error: error instanceof Error ? error.message : 'Health check failed',
-          timestamp: nowISO()
-        }
-      }, 503);
+      log.error('Health check error', { error: error instanceof Error ? error.message : String(error) });
+      return errorResponse(c, error instanceof Error ? error.message : 'Health check failed', 503);
     }
   }
 
@@ -368,26 +291,18 @@ export class DelayedMessageController {
       // 目前返回基本健康狀態
       const health = await this.manager.healthCheck();
 
-      return c.json({
-        success: true,
-        data: {
-          health: health.healthy,
-          services: health.services,
-          metrics: {
-            // 可以添加更多統計指標
-            uptime: process.uptime?.() || 0
-          },
-          timestamp: nowISO()
+      return successResponse(c, {
+        health: health.healthy,
+        services: health.services,
+        metrics: {
+          // 可以添加更多統計指標
+          uptime: process.uptime?.() || 0
         }
       });
 
     } catch (error) {
-      console.error('❌ [DelayedMessageController] Get stats error:', error);
-      return c.json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get stats',
-        timestamp: nowISO()
-      }, 500);
+      log.error('Get stats error', { error: error instanceof Error ? error.message : String(error) });
+      return internalErrorResponse(c, error instanceof Error ? error.message : 'Failed to get stats');
     }
   }
 

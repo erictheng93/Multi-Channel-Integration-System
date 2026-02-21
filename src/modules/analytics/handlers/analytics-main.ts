@@ -7,8 +7,8 @@ import { AnalyticsService } from '@modules/analytics/services/analytics-core';
 import { MetricsCollector } from '@modules/analytics/services/metrics-collector';
 import { analyticsAuth } from '@modules/analytics/middleware/analytics-auth';
 import type { Bindings } from '@/types';
-import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
+import { successResponse, badRequestResponse, internalErrorResponse } from '@/utils/api-response';
 import type {
   ConversationAnalyticsQuery,
   MessageAnalyticsQuery,
@@ -22,7 +22,6 @@ import type {
   UserMetric,
   PerformanceMetric
 } from '../types/analytics-types';
-import { nowISO } from '@/utils/timestamp'
 
 /**
  * Analytics API 路由處理器
@@ -69,10 +68,16 @@ analyticsHandler.get('/conversations', async (c) => {
 
   const result = await analyticsService.getConversationAnalytics(query);
 
-  // Service 現在返回標準化的 ServiceResponse，直接返回即可
-  const errorCode = result.metadata?.errorCode;
-  const statusCode = result.success ? HTTP_STATUS.OK : (errorCode === 'VALIDATION_ERROR' ? HTTP_STATUS.BAD_REQUEST : HTTP_STATUS.INTERNAL_SERVER_ERROR);
-  return c.json(result, statusCode);
+  if (!result.success) {
+    const errorCode = result.metadata?.errorCode;
+    const errorMsg = String(result.metadata?.message || 'Conversation analytics error');
+    if (errorCode === 'VALIDATION_ERROR') {
+      return badRequestResponse(c, errorMsg);
+    }
+    return internalErrorResponse(c, errorMsg);
+  }
+
+  return successResponse(c, { data: result.data, metadata: result.metadata });
 });
 
 /**
@@ -101,9 +106,16 @@ analyticsHandler.get('/messages', async (c) => {
 
   const result = await analyticsService.getMessageAnalytics(query);
 
-  const errorCode = result.metadata?.errorCode;
-  const statusCode = result.success ? HTTP_STATUS.OK : (errorCode === 'VALIDATION_ERROR' ? HTTP_STATUS.BAD_REQUEST : HTTP_STATUS.INTERNAL_SERVER_ERROR);
-  return c.json(result, statusCode);
+  if (!result.success) {
+    const errorCode = result.metadata?.errorCode;
+    const errorMsg = String(result.metadata?.message || 'Message analytics error');
+    if (errorCode === 'VALIDATION_ERROR') {
+      return badRequestResponse(c, errorMsg);
+    }
+    return internalErrorResponse(c, errorMsg);
+  }
+
+  return successResponse(c, { data: result.data, metadata: result.metadata });
 });
 
 /**
@@ -134,11 +146,7 @@ analyticsHandler.get('/users', async (c) => {
 
     const result = await analyticsService.getUserAnalytics(query);
 
-    return c.json({
-      success: true,
-      data: result.data,
-      metadata: result.metadata
-    });
+    return successResponse(c, { data: result.data, metadata: result.metadata });
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -171,11 +179,7 @@ analyticsHandler.get('/performance', async (c) => {
 
     const result = await analyticsService.getPerformanceAnalytics(query);
 
-    return c.json({
-      success: true,
-      data: result.data,
-      metadata: result.metadata
-    });
+    return successResponse(c, { data: result.data, metadata: result.metadata });
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -209,11 +213,7 @@ analyticsHandler.post('/custom', async (c) => {
 
     const result = await analyticsService.getCustomAnalytics(query);
 
-    return c.json({
-      success: true,
-      data: result.data,
-      metadata: result.metadata
-    });
+    return successResponse(c, { data: result.data, metadata: result.metadata });
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -249,10 +249,7 @@ analyticsHandler.post('/export', async (c) => {
 
     const result = await analyticsService.exportAnalytics(query);
 
-    return c.json({
-      success: true,
-      data: result
-    });
+    return successResponse(c, result);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -281,14 +278,12 @@ analyticsHandler.get('/health', async (c) => {
       }
     }
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       status: 'healthy',
       services: {
         database: dbTest ? 'healthy' : 'unhealthy',
         kv: kvHealthy ? 'healthy' : 'unhealthy'
-      },
-      timestamp: nowISO()
+      }
     });
 
   } catch (error) {
@@ -311,17 +306,10 @@ analyticsHandler.post('/metrics', async (c) => {
     } else if (body.metric) {
       await metricsCollector.collect(body.metric);
     } else {
-      return c.json({
-        success: false,
-        error: 'Missing metrics data',
-        code: 'INVALID_METRICS_DATA'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Missing metrics data');
     }
 
-    return c.json({
-      success: true,
-      message: 'Metrics collected successfully'
-    });
+    return successResponse(c, null, 'Metrics collected successfully');
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -351,11 +339,7 @@ analyticsHandler.get('/metrics/:name', async (c) => {
 
     const result = await metricsCollector.query(query);
 
-    return c.json({
-      success: true,
-      data: result.metrics,
-      metadata: result.metadata
-    });
+    return successResponse(c, { metrics: result.metrics, metadata: result.metadata });
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
