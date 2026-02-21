@@ -10,7 +10,7 @@ export type * from './types/auth-types';
 export * from './services/auth';
 
 // ======================== 處理器導出 ========================
-// Active handler: auth-main-legacy.ts (registered via src/handlers/index.ts)
+// Active handler: auth-main.ts (registered via src/handlers/index.ts)
 
 // ======================== 中間件導出 ========================
 export * from './middleware/auth';

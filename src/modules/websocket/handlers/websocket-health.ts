@@ -7,6 +7,9 @@ import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import type { MigrationConfig } from '@/types/websocket-types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('WebSocketHealth');
 
 const healthApp = new Hono<{ Bindings: Bindings }>();
 
@@ -89,7 +92,7 @@ healthApp.get('/health', async (c) => {
 
     return c.json(response, statusCode);
   } catch (error) {
-    console.error('[WebSocket Health] Health check failed:', error);
+    log.error('Health check failed', {}, error instanceof Error ? error : String(error));
 
     return c.json({
       status: 'unhealthy',
@@ -576,7 +579,7 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
       return JSON.parse(configStr);
     }
   } catch (error) {
-    console.error('[WebSocket Health] Error loading migration config:', error);
+    log.error('Error loading migration config', {}, error instanceof Error ? error : String(error));
   }
 
   // Default configuration
@@ -800,7 +803,7 @@ async function getRealtimeConnectionMetrics(env: Bindings): Promise<{
   try {
     // Get metrics from MessageBroadcaster
     if (!env.MESSAGE_BROADCASTER) {
-      console.warn('[WebSocket Health] MESSAGE_BROADCASTER binding not available for metrics');
+      log.warn('MESSAGE_BROADCASTER binding not available for metrics');
       throw new Error('MESSAGE_BROADCASTER not available');
     }
 
@@ -829,7 +832,7 @@ async function getRealtimeConnectionMetrics(env: Bindings): Promise<{
 
     throw new Error('Failed to fetch metrics from MessageBroadcaster');
   } catch (error) {
-    console.error('[WebSocket Health] Error getting realtime connection metrics:', error);
+    log.error('Error getting realtime connection metrics', {}, error instanceof Error ? error : String(error));
     throw error;
   }
 }
@@ -853,7 +856,7 @@ async function getDistributedLockMetrics(env: Bindings): Promise<{
 
     return metrics;
   } catch (error) {
-    console.error('[WebSocket Health] Error getting distributed lock metrics:', error);
+    log.error('Error getting distributed lock metrics', {}, error instanceof Error ? error : String(error));
     throw error;
   }
 }

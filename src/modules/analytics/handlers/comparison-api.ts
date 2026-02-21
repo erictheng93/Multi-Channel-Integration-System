@@ -7,9 +7,8 @@ import type { Bindings } from '@/types';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import type { Period } from '@modules/analytics/services/period-comparison-service';
-import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { nowISO } from '@/utils/timestamp'
+import { successResponse, badRequestResponse } from '@/utils/api-response';
 
 const comparisonAPI = new Hono<{ Bindings: Bindings }>();
 
@@ -46,10 +45,7 @@ comparisonAPI.get('/metric', async (c) => {
 
     // 驗證必要參數
     if (!metric || !currentStart || !currentEnd) {
-      return c.json({
-        success: false,
-        error: 'Missing required parameters: metric, currentStart, currentEnd'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Missing required parameters: metric, currentStart, currentEnd');
     }
 
     // 構建查詢
@@ -76,14 +72,12 @@ comparisonAPI.get('/metric', async (c) => {
       filters
     });
 
-    return c.json({
-      success: true,
-      data: comparison,
+    return successResponse(c, {
+      comparison,
       metadata: {
         metric,
         currentPeriod,
-        previousPeriod: comparison.period.previous,
-        processedAt: nowISO()
+        previousPeriod: comparison.period.previous
       }
     });
 
@@ -122,20 +116,14 @@ comparisonAPI.get('/metrics', async (c) => {
 
     // 驗證必要參數
     if (!metricsParam || !currentStart || !currentEnd) {
-      return c.json({
-        success: false,
-        error: 'Missing required parameters: metrics, currentStart, currentEnd'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Missing required parameters: metrics, currentStart, currentEnd');
     }
 
     // 解析指標列表
     const metrics = metricsParam.split(',').map(m => m.trim());
 
     if (metrics.length === 0) {
-      return c.json({
-        success: false,
-        error: 'At least one metric must be specified'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'At least one metric must be specified');
     }
 
     // 構建查詢
@@ -162,14 +150,12 @@ comparisonAPI.get('/metrics', async (c) => {
       filters
     );
 
-    return c.json({
-      success: true,
-      data: comparison,
+    return successResponse(c, {
+      comparison,
       metadata: {
         metricsCount: metrics.length,
         currentPeriod,
-        previousPeriod: Object.values(comparison.metrics)[0]?.period.previous,
-        processedAt: nowISO()
+        previousPeriod: Object.values(comparison.metrics)[0]?.period.previous
       }
     });
 
@@ -193,10 +179,7 @@ comparisonAPI.get('/preset/conversation', async (c) => {
     const teamId = c.req.query('teamId') ? parseInt(c.req.query('teamId')!) : undefined;
 
     if (!currentStart || !currentEnd) {
-      return c.json({
-        success: false,
-        error: 'Missing required parameters: currentStart, currentEnd'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Missing required parameters: currentStart, currentEnd');
     }
 
     const currentPeriod: Period = { start: currentStart, end: currentEnd };
@@ -208,13 +191,9 @@ comparisonAPI.get('/preset/conversation', async (c) => {
       filters
     );
 
-    return c.json({
-      success: true,
-      data: comparison,
-      metadata: {
-        preset: 'conversation',
-        processedAt: nowISO()
-      }
+    return successResponse(c, {
+      comparison,
+      metadata: { preset: 'conversation' }
     });
 
   } catch (error) {
@@ -237,10 +216,7 @@ comparisonAPI.get('/preset/message', async (c) => {
     const teamId = c.req.query('teamId') ? parseInt(c.req.query('teamId')!) : undefined;
 
     if (!currentStart || !currentEnd) {
-      return c.json({
-        success: false,
-        error: 'Missing required parameters: currentStart, currentEnd'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Missing required parameters: currentStart, currentEnd');
     }
 
     const currentPeriod: Period = { start: currentStart, end: currentEnd };
@@ -252,13 +228,9 @@ comparisonAPI.get('/preset/message', async (c) => {
       filters
     );
 
-    return c.json({
-      success: true,
-      data: comparison,
-      metadata: {
-        preset: 'message',
-        processedAt: nowISO()
-      }
+    return successResponse(c, {
+      comparison,
+      metadata: { preset: 'message' }
     });
 
   } catch (error) {
@@ -281,10 +253,7 @@ comparisonAPI.get('/preset/user-activity', async (c) => {
     const teamId = c.req.query('teamId') ? parseInt(c.req.query('teamId')!) : undefined;
 
     if (!currentStart || !currentEnd) {
-      return c.json({
-        success: false,
-        error: 'Missing required parameters: currentStart, currentEnd'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Missing required parameters: currentStart, currentEnd');
     }
 
     const currentPeriod: Period = { start: currentStart, end: currentEnd };
@@ -296,13 +265,9 @@ comparisonAPI.get('/preset/user-activity', async (c) => {
       filters
     );
 
-    return c.json({
-      success: true,
-      data: comparison,
-      metadata: {
-        preset: 'user-activity',
-        processedAt: nowISO()
-      }
+    return successResponse(c, {
+      comparison,
+      metadata: { preset: 'user-activity' }
     });
 
   } catch (error) {
@@ -321,13 +286,7 @@ comparisonAPI.get('/cache/stats', async (c) => {
 
     const stats = await cacheService.getStats();
 
-    return c.json({
-      success: true,
-      data: stats,
-      metadata: {
-        processedAt: nowISO()
-      }
-    });
+    return successResponse(c, stats);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);

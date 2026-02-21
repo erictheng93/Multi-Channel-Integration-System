@@ -6,16 +6,16 @@ export { webhookHandler } from '../modules/integrations/handlers/webhook'
 export * from '../modules/system/handlers/system-legacy'
 
 // 新的主要處理器 (Handler-based approach)
-export { default as authMainHandler } from '../modules/auth/handlers/auth-main-legacy'
+export { default as authMainHandler } from '../modules/auth/handlers/auth-main'
 export { default as teamMainHandler } from '../modules/teams/handlers/index' // Updated to use fully modular team handler (includes members, password)
 export { default as delayedMessageMainHandler } from '../modules/delayed-message/handlers/delayed-message-modular' // Updated to use modular implementation
 export { conversationsMainHandler as conversationMainHandler } from '../modules/conversations/handlers'
 export { default as messagingMainHandler } from '../modules/messaging/handlers/messaging/index'
 export { default as systemMainHandler } from '../modules/system/handlers/system-main'
-export { default as customerMainHandler } from '../modules/customer/handlers/customer-main-legacy'
+export { default as customerMainHandler } from '../modules/customer/handlers/customer-main'
 export { default as tagMainHandler } from '../modules/tags/handlers' // Updated to use modular tags handler
 export { default as qrcodeMainHandler } from '../modules/system/handlers/qrcode-main'
-export { default as sessionMainHandler } from '../modules/session/handlers/session' // Updated to use modular session handler
+export { default as sessionMainHandler } from '../modules/session/handlers/session-main' // Fixed: point to enterprise handler with comprehensive middleware
 export { createAgentRouter as agentMainHandler } from '../modules/agents/handlers/agent-main' // Agents module handler
 
 // Notifications 模組處理器 (新的統一通知系統)

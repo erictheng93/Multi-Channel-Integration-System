@@ -25,6 +25,9 @@ import {
 import { generateId } from '@/utils/id-generator';
 import { hashPassword } from '@/utils/auth';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AgentCrudService');
 
 export class AgentService implements AgentServiceInterface {
   constructor(private db: DrizzleD1Database<any>) {}
@@ -400,7 +403,7 @@ export class AgentService implements AgentServiceInterface {
           updatedAgents.push(updatedAgent);
         } catch (error) {
           // 記錄錯誤但繼續處理其他 agents
-          console.error(`Failed to update agent ${agentId}:`, error);
+          log.error(`Failed to update agent ${agentId}`, { error: error instanceof Error ? error.message : 'Unknown error' });
         }
       }
 

@@ -14,8 +14,12 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { PermissionService } from '@/services/permission-service';
-import { handleApiError } from '@/utils/api-response';
+import { successResponse, badRequestResponse, forbiddenResponse, internalErrorResponse, handleApiError } from '@/utils/api-response';
+import { errorResponse } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('DelayedMessageBuffer');
 
 const delayedMessageBufferHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -44,18 +48,12 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
 
     // 驗證必填欄位
     if (!conversationId || !content || !platform || !recipientPlatformId) {
-      return c.json({
-        success: false,
-        error: 'Missing required fields: conversationId, content, platform, recipientPlatformId'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Missing required fields: conversationId, content, platform, recipientPlatformId');
     }
 
     // 驗證延遲時間範圍
     if (delaySeconds < 1 || delaySeconds > 120) {
-      return c.json({
-        success: false,
-        error: 'Delay seconds must be between 1 and 120'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Delay seconds must be between 1 and 120');
     }
 
     // 檢查權限
@@ -71,18 +69,12 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
     );
 
     if (!hasPermission) {
-      return c.json({
-        success: false,
-        error: 'Permission denied'
-      }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Permission denied');
     }
 
     // 檢查 Durable Object 綁定
     if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
-      return c.json({
-        success: false,
-        error: 'Delayed message service is not configured'
-      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+      return errorResponse(c, 'Delayed message service is not configured', HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // 獲取 DelayedMessageBuffer DO 實例
@@ -123,28 +115,21 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
     };
 
     if (!result.success) {
-      return c.json({
-        success: false,
-        error: result.error || 'Failed to schedule message'
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+      return internalErrorResponse(c, result.error || 'Failed to schedule message');
     }
 
-    console.log(`✅ [DelayedMessageBuffer] Message ${messageId} scheduled for ${delaySeconds}s delay`);
+    log.info(`Message ${messageId} scheduled for ${delaySeconds}s delay`, { messageId, delaySeconds, conversationId });
 
-    return c.json({
-      success: true,
-      data: {
-        messageId: result.messageId,
-        scheduledAt: result.scheduledAt,
-        canCancelUntil: result.canCancelUntil,
-        delaySeconds: result.delaySeconds,
-        conversationId
-      },
-      timestamp: nowISO()
+    return successResponse(c, {
+      messageId: result.messageId,
+      scheduledAt: result.scheduledAt,
+      canCancelUntil: result.canCancelUntil,
+      delaySeconds: result.delaySeconds,
+      conversationId
     });
 
   } catch (error) {
-    console.error('❌ [DelayedMessageBuffer] Schedule error:', error);
+    log.error('Schedule error', { error: error instanceof Error ? error.message : String(error) });
     return handleApiError(error, c);
   }
 });
@@ -167,25 +152,16 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
     const { conversationId, reason } = body;
 
     if (!messageId) {
-      return c.json({
-        success: false,
-        error: 'Message ID is required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Message ID is required');
     }
 
     if (!conversationId) {
-      return c.json({
-        success: false,
-        error: 'Conversation ID is required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Conversation ID is required');
     }
 
     // 檢查 Durable Object 綁定
     if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
-      return c.json({
-        success: false,
-        error: 'Delayed message service is not configured'
-      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+      return errorResponse(c, 'Delayed message service is not configured', HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // 獲取對應的 DO 實例
@@ -209,26 +185,19 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
     };
 
     if (!result.success) {
-      return c.json({
-        success: false,
-        error: result.reason || 'Failed to cancel message'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, result.reason || 'Failed to cancel message');
     }
 
-    console.log(`✅ [DelayedMessageBuffer] Message ${messageId} cancelled by ${user.displayName}`);
+    log.info(`Message ${messageId} cancelled by ${user.displayName}`, { messageId, cancelledBy: user.displayName });
 
-    return c.json({
-      success: true,
-      data: {
-        messageId,
-        cancelledAt: result.cancelledAt,
-        cancelledBy: user.displayName
-      },
-      timestamp: nowISO()
+    return successResponse(c, {
+      messageId,
+      cancelledAt: result.cancelledAt,
+      cancelledBy: user.displayName
     });
 
   } catch (error) {
-    console.error('❌ [DelayedMessageBuffer] Cancel error:', error);
+    log.error('Cancel error', { error: error instanceof Error ? error.message : String(error) });
     return handleApiError(error, c);
   }
 });
@@ -246,18 +215,12 @@ delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
     const conversationId = c.req.query('conversationId');
 
     if (!messageId || !conversationId) {
-      return c.json({
-        success: false,
-        error: 'Message ID and Conversation ID are required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Message ID and Conversation ID are required');
     }
 
     // 檢查 Durable Object 綁定
     if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
-      return c.json({
-        success: false,
-        error: 'Delayed message service is not configured'
-      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+      return errorResponse(c, 'Delayed message service is not configured', HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // 獲取對應的 DO 實例
@@ -274,14 +237,10 @@ delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
       scheduledAt?: number;
     };
 
-    return c.json({
-      success: true,
-      data: result,
-      timestamp: nowISO()
-    });
+    return successResponse(c, result);
 
   } catch (error) {
-    console.error('❌ [DelayedMessageBuffer] Status query error:', error);
+    log.error('Status query error', { error: error instanceof Error ? error.message : String(error) });
     return handleApiError(error, c);
   }
 });
@@ -298,18 +257,12 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
     const conversationId = c.req.query('conversationId');
 
     if (!conversationId) {
-      return c.json({
-        success: false,
-        error: 'Conversation ID is required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'Conversation ID is required');
     }
 
     // 檢查 Durable Object 綁定
     if (!c.env.DELAYED_MESSAGE_SCHEDULER) {
-      return c.json({
-        success: false,
-        error: 'Delayed message service is not configured'
-      }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+      return errorResponse(c, 'Delayed message service is not configured', HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // 獲取對應的 DO 實例
@@ -329,18 +282,14 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
       }>;
     };
 
-    return c.json({
-      success: true,
-      data: {
-        conversationId,
-        count: result.count,
-        messages: result.messages
-      },
-      timestamp: nowISO()
+    return successResponse(c, {
+      conversationId,
+      count: result.count,
+      messages: result.messages
     });
 
   } catch (error) {
-    console.error('❌ [DelayedMessageBuffer] Pending list error:', error);
+    log.error('Pending list error', { error: error instanceof Error ? error.message : String(error) });
     return handleApiError(error, c);
   }
 });
@@ -351,16 +300,14 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
  * GET /api/delayed-messages-v2/health
  */
 delayedMessageBufferHandler.get('/health', async (c) => {
-  return c.json({
-    success: true,
+  return successResponse(c, {
     service: 'delayed-message-buffer',
     status: 'healthy',
     features: {
       instantCancel: true,
       preciseScheduling: true,
       durableObjects: true
-    },
-    timestamp: nowISO()
+    }
   });
 });
 

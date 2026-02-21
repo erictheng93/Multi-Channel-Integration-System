@@ -14,6 +14,8 @@ import {
 } from '../types/message-types';
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+const log = createContextLogger('MessageRecallService');
 
 export class MessageRecallService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -105,7 +107,7 @@ export class MessageRecallService {
         canRecall: true
       };
     } catch (error) {
-      console.error('Error recalling message:', error);
+      log.error('Error recalling message', { messageId }, error instanceof Error ? error : String(error));
 
       // 記錄失敗的召回嘗試
       try {
@@ -117,7 +119,7 @@ export class MessageRecallService {
           createdAt: nowISO(),
         });
       } catch (logError) {
-        console.error('Error logging failed recall attempt:', logError);
+        log.error('Error logging failed recall attempt', { messageId }, logError instanceof Error ? logError : String(logError));
       }
 
       return {
@@ -221,7 +223,7 @@ export class MessageRecallService {
         canRecall: true
       };
     } catch (error) {
-      console.error('Error recalling delayed message:', error);
+      log.error('Error recalling delayed message', { delayedMessageId }, error instanceof Error ? error : String(error));
 
       // 記錄失敗的召回嘗試
       try {
@@ -233,7 +235,7 @@ export class MessageRecallService {
           createdAt: nowISO(),
         });
       } catch (logError) {
-        console.error('Error logging failed delayed recall attempt:', logError);
+        log.error('Error logging failed delayed recall attempt', { delayedMessageId }, logError instanceof Error ? logError : String(logError));
       }
 
       return {
@@ -357,7 +359,7 @@ export class MessageRecallService {
         recallDeadline: message.recallDeadline || undefined
       };
     } catch (error) {
-      console.error('Error checking recall eligibility:', error);
+      log.error('Error checking recall eligibility', undefined, error instanceof Error ? error : String(error));
       return { canRecall: false, reason: 'Error checking recall eligibility' };
     }
   }

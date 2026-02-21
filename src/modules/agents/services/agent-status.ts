@@ -7,6 +7,9 @@ import type {
   UpdateStatusRequest
 } from '../types/agent-types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AgentStatusService');
 
 export class AgentStatusService {
   constructor(private kv: KVNamespace) {}
@@ -200,7 +203,7 @@ export class AgentStatusService {
       await this.kv.put(historyKey, JSON.stringify(history));
     } catch (error) {
       // 記錄失敗不影響主要功能
-      console.error(`Failed to record status change for agent ${agentId}:`, error);
+      log.error(`Failed to record status change for agent ${agentId}`, { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
 

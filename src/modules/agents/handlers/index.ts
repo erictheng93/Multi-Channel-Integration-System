@@ -2,7 +2,6 @@
 // Agent Handlers Export
 
 export { createAgentRouter } from './agent-main';
-export { agentHandler } from './agent';
 
 // 重新匯出常用類型
 export type {

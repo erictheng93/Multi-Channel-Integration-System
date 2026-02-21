@@ -156,8 +156,15 @@ corsMonitoringHandler.get('/health', (c: Context<{ Bindings: Bindings }>) => {
  * GET /api/cors/config
  *
  * 返回當前的 CORS 配置（不包含敏感信息）
+ * 需要 admin 權限
  */
-corsMonitoringHandler.get('/config', (c: Context<{ Bindings: Bindings }>) => {
+corsMonitoringHandler.get('/config', async (c: Context<{ Bindings: Bindings }>) => {
+  // 檢查權限
+  const payload = c.get('jwtPayload');
+  if (!payload || payload.role !== 'admin') {
+    return unauthorizedResponse(c, 'Admin access required');
+  }
+
   // 使用動態 CORS 配置
   const { getAllowedOrigins } = require('@/config/cors');
   const dynamicOrigins = getAllowedOrigins(c.env);

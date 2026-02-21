@@ -4,6 +4,7 @@
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { SessionService } from '@modules/session/services/session-service';
+import { TopicService } from '@modules/session/services/topic-service';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 
@@ -235,6 +236,175 @@ sessionHandler.get(
   }
 );
 
+/**
+ * 獲取主題統計
+ * GET /api/sessions/topics/stats
+ */
+sessionHandler.get(
+  '/topics/stats',
+  checkSessionAccess,
+  checkSessionViewPermission,
+  async (c) => {
+    try {
+      const conversation_id = c.req.query('conversation_id');
+      const topicService = new TopicService(c.env.DB);
+      const topicStats = await topicService.getTopicStatistics(conversation_id);
+
+      return c.json({
+        success: true,
+        data: topicStats,
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  }
+);
+
+/**
+ * 分析訊息主題
+ * POST /api/sessions/topics/analyze
+ */
+sessionHandler.post(
+  '/topics/analyze',
+  validateRequestSize,
+  checkSessionAccess,
+  checkSessionViewPermission,
+  async (c) => {
+    try {
+      const { messageContent } = await c.req.json();
+
+      if (!messageContent) {
+        return c.json({
+          success: false,
+          error: 'Message content is required',
+          timestamp: nowISO()
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      const topicService = new TopicService(c.env.DB);
+      const topicResult = await topicService.extractTopic(messageContent);
+
+      return c.json({
+        success: true,
+        data: topicResult,
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  }
+);
+
+/**
+ * 獲取主題建議
+ * POST /api/sessions/topics/suggest
+ */
+sessionHandler.post(
+  '/topics/suggest',
+  validateRequestSize,
+  checkSessionAccess,
+  checkSessionViewPermission,
+  async (c) => {
+    try {
+      const { messageContent, limit } = await c.req.json();
+
+      if (!messageContent) {
+        return c.json({
+          success: false,
+          error: 'Message content is required',
+          timestamp: nowISO()
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      const topicService = new TopicService(c.env.DB);
+      const suggestions = await topicService.suggestTopics(messageContent, limit || 3);
+
+      return c.json({
+        success: true,
+        data: suggestions,
+        count: suggestions.length,
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  }
+);
+
+/**
+ * 獲取或創建會話 (智能會話邊界檢測)
+ * POST /api/sessions/get-or-create
+ */
+sessionHandler.post(
+  '/get-or-create',
+  validateRequestSize,
+  validateRateLimit,
+  checkSessionAccess,
+  checkSessionCreatePermission,
+  logSessionOperation,
+  async (c) => {
+    try {
+      const { conversation_id, messageContent, senderType } = await c.req.json();
+
+      if (!conversation_id || !messageContent || !senderType) {
+        return c.json({
+          success: false,
+          error: 'Missing required fields: conversation_id, messageContent, senderType',
+          timestamp: nowISO()
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      const sessionService = new SessionService(c.env.DB);
+      const session = await sessionService.getOrCreate(conversation_id, messageContent, senderType);
+
+      return c.json({
+        success: true,
+        data: session,
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  }
+);
+
+/**
+ * 檢測會話邊界
+ * POST /api/sessions/detect-boundary
+ */
+sessionHandler.post(
+  '/detect-boundary',
+  validateRequestSize,
+  checkSessionAccess,
+  checkSessionViewPermission,
+  async (c) => {
+    try {
+      const { currentSessionId, messageContent, senderType } = await c.req.json();
+
+      if (!messageContent || !senderType) {
+        return c.json({
+          success: false,
+          error: 'Message content and sender type are required',
+          timestamp: nowISO()
+        }, HTTP_STATUS.BAD_REQUEST);
+      }
+
+      const sessionService = new SessionService(c.env.DB);
+      const currentSession = currentSessionId ? await sessionService.get(currentSessionId) : null;
+      const boundaryDetection = await sessionService.detectSessionBoundary(currentSession, messageContent, senderType);
+
+      return c.json({
+        success: true,
+        data: boundaryDetection,
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  }
+);
+
 // ==================== Priority 3: SPECIFIC PARAMETERIZED routes ====================
 
 /**
@@ -391,6 +561,44 @@ sessionHandler.get(
       return c.json({
         success: true,
         data: healthReport,
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  }
+);
+
+/**
+ * 更新會話主題
+ * PUT /api/sessions/:sessionId/topic
+ */
+sessionHandler.put(
+  '/:sessionId/topic',
+  validateSessionId,
+  validateRequestSize,
+  checkSessionAccess,
+  checkSessionUpdatePermission,
+  logSessionOperation,
+  async (c) => {
+    try {
+      const sessionId = c.get('sessionId');
+      const { topic } = await c.req.json();
+
+      const topicService = new TopicService(c.env.DB);
+      const updated = await topicService.updateSessionTopic(sessionId, topic);
+
+      if (!updated) {
+        return c.json({
+          success: false,
+          error: 'Session not found',
+          timestamp: nowISO()
+        }, HTTP_STATUS.NOT_FOUND);
+      }
+
+      return c.json({
+        success: true,
+        message: 'Session topic updated successfully',
         timestamp: nowISO()
       });
     } catch (error) {

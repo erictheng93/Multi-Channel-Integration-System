@@ -20,7 +20,6 @@ export type {
 
 // 主要處理器匯出
 export { createAgentRouter } from './handlers/agent-main';
-export { agentHandler } from './handlers/agent';
 
 // 服務類別匯出
 export { AgentService } from './services/agent-crud';

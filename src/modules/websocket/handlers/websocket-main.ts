@@ -12,9 +12,13 @@ import type {
 import { websocketAuth } from '@/middleware/websocket-auth';
 import { globalErrorHandler } from '@/core/error-handler';
 import { DistributedLockService } from '@/services/distributed-lock-service';
+import { successResponse, badRequestResponse, forbiddenResponse, errorResponse } from '@/utils/api-response';
+import { createContextLogger } from '@/utils/logger';
 
 // P1 Optimizations
 import { nowMs } from '@/utils/timestamp'
+
+const log = createContextLogger('WebSocketHandler');
 
 /**
  * Architecture Overview:
@@ -62,30 +66,25 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
     // Extract connection parameters
     const conversationId = url.searchParams.get('conversationId');
 
-    console.log(`[WebSocket] Connection request from user ${user.id} for conversation ${conversationId}`);
+    log.info('Connection request', { userId: user.id, conversationId });
 
     // Check if WebSocket is enabled via feature flags
     const migrationConfig = await getMigrationConfig(c.env);
     if (!migrationConfig.enableWebSocket) {
-      console.log(`[WebSocket] WebSocket disabled`);
-      return c.json({ error: 'WebSocket connections are disabled' }, 503);
+      log.info('WebSocket disabled');
+      return errorResponse(c, 'WebSocket connections are disabled', HTTP_STATUS.SERVICE_UNAVAILABLE);
     }
 
     // Validate WebSocket upgrade request
     if (c.req.header('Upgrade') !== 'websocket') {
-      return c.json({
-        error: 'WebSocket upgrade required'
-      }, HTTP_STATUS.BAD_REQUEST);
+      return badRequestResponse(c, 'WebSocket upgrade required');
     }
 
     // Check connection limits
     const canConnect = await checkConnectionLimits(String(user.id), c.env);
     if (!canConnect) {
-      console.log(`[WebSocket] Connection limit reached for user ${user.id}`);
-      return c.json({
-        error: 'Connection limit reached',
-        retryAfter: 60
-      }, HTTP_STATUS.TOO_MANY_REQUESTS);
+      log.warn('Connection limit reached', { userId: user.id });
+      return errorResponse(c, 'Connection limit reached', HTTP_STATUS.TOO_MANY_REQUESTS);
     }
 
     // Forward WebSocket upgrade request to Durable Object
@@ -93,7 +92,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
 
     if (conversationId) {
       // Route to ConversationRoom Durable Object
-      console.log(`[WebSocket] Routing to ConversationRoom: ${conversationId}`);
+      log.info('Routing to ConversationRoom', { conversationId });
 
       if (!c.env.CONVERSATION_ROOM) {
         throw new Error('CONVERSATION_ROOM binding not available');
@@ -120,7 +119,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
       }));
     } else {
       // If no conversationId specified, route to UserConnection
-      console.log(`[WebSocket] Routing to UserConnection: ${user.id}`);
+      log.info('Routing to UserConnection', { userId: user.id });
 
       if (!c.env.USER_CONNECTION) {
         throw new Error('USER_CONNECTION binding not available');
@@ -164,13 +163,12 @@ websocketHandler.post('/disconnect', websocketAuth, async (c) => {
     const user = c.get('user');
     const { connectionId, reason } = await c.req.json();
 
-    console.log(`[WebSocket] Disconnect request for connection ${connectionId} by user ${user.id}${reason ? ` (reason: ${reason})` : ''}`);
+    log.info('Disconnect request', { connectionId, userId: user.id, reason });
 
     // Clean up connection from all Durable Objects
     await cleanupConnection(connectionId, String(user.id), c.env);
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       connectionId,
       disconnectedAt: nowMs()
     });
@@ -196,7 +194,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 
   try {
     if (!env.USER_CONNECTION) {
-      console.warn('USER_CONNECTION binding not available, skipping user cleanup');
+      log.warn('USER_CONNECTION binding not available, skipping user cleanup');
       return;
     }
 
@@ -218,7 +216,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
     await Promise.race([cleanupPromise, timeoutPromise]);
 
   } catch (error) {
-    console.error(`[WebSocket] User cleanup error for ${userId}:`, error);
+    log.error('User cleanup error', { userId }, error instanceof Error ? error : String(error));
     // Error should not prevent lock release
   } finally {
     await lockService.releaseLock(userLockId);
@@ -226,7 +224,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 
   // Unregister from MessageBroadcaster
   if (!env.MESSAGE_BROADCASTER) {
-    console.warn('MESSAGE_BROADCASTER binding not available, skipping broadcaster cleanup');
+    log.warn('MESSAGE_BROADCASTER binding not available, skipping broadcaster cleanup');
     return;
   }
 
@@ -241,7 +239,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
     headers: { 'Content-Type': 'application/json' }
   }));
 
-  console.log(`[WebSocket] Connection cleanup completed for ${connectionId}`);
+  log.info('Connection cleanup completed', { connectionId });
 }
 
 // =================== Connection Health and Monitoring ===================
@@ -296,7 +294,7 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
   try {
     // Get metrics from MessageBroadcaster
     if (!env.MESSAGE_BROADCASTER) {
-      console.warn('MESSAGE_BROADCASTER binding not available for metrics');
+      log.warn('MESSAGE_BROADCASTER binding not available for metrics');
     } else {
       const broadcasterId = env.MESSAGE_BROADCASTER.idFromName('global');
       const broadcasterStub = env.MESSAGE_BROADCASTER.get(broadcasterId);
@@ -334,7 +332,7 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
     };
 
   } catch (error) {
-    console.error('[WebSocket] Error getting connection metrics:', error);
+    log.error('Error getting connection metrics', {}, error instanceof Error ? error : String(error));
     throw error;
   }
 }
@@ -356,16 +354,15 @@ websocketHandler.post('/migration-config', websocketAuth, async (c) => {
 
     // Only admins can modify migration config
     if (user.role !== 'admin') {
-      return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
+      return forbiddenResponse(c, 'Admin access required');
     }
 
     const newConfig = await c.req.json() as Partial<MigrationConfig>;
     await updateMigrationConfig(newConfig, c.env);
 
-    console.log(`[WebSocket] Migration config updated by ${user.id}:`, newConfig);
+    log.info('Migration config updated', { updatedBy: user.id, newConfig });
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       config: await getMigrationConfig(c.env),
       updatedBy: user.id,
       timestamp: nowMs()
@@ -404,7 +401,7 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
     return defaultConfig;
 
   } catch (error) {
-    console.error('[WebSocket] Error getting migration config:', error);
+    log.error('Error getting migration config', {}, error instanceof Error ? error : String(error));
     // Return safe defaults on error
     return {
       enableWebSocket: true,
@@ -431,7 +428,7 @@ async function updateMigrationConfig(newConfig: Partial<MigrationConfig>, env: B
   }
 
   await env.SESSIONS.put('websocket_migration_config', JSON.stringify(updatedConfig));
-  console.log(`[WebSocket] Migration config updated:`, updatedConfig);
+  log.info('Migration config updated', { config: updatedConfig });
 }
 
 // =================== Helper Functions ===================
@@ -440,7 +437,7 @@ async function checkConnectionLimits(userId: string, env: Bindings): Promise<boo
   try {
     // Check user-specific connection limit
     if (!env.USER_CONNECTION) {
-      console.warn('USER_CONNECTION binding not available for connection limit check');
+      log.warn('USER_CONNECTION binding not available for connection limit check');
       return true; // Allow connection if binding unavailable
     }
 
@@ -463,7 +460,7 @@ async function checkConnectionLimits(userId: string, env: Bindings): Promise<boo
     return true;
 
   } catch (error) {
-    console.error('[WebSocket] Error checking connection limits:', error);
+    log.error('Error checking connection limits', {}, error instanceof Error ? error : String(error));
     return false; // Fail closed
   }
 }
@@ -477,7 +474,7 @@ websocketHandler.get('/test-connection', async (c) => {
   const conversationId = url.searchParams.get('conversationId');
 
   if (!userId) {
-    return c.json({ error: 'userId parameter required' }, HTTP_STATUS.BAD_REQUEST);
+    return badRequestResponse(c, 'userId parameter required');
   }
 
   try {
@@ -522,8 +519,7 @@ websocketHandler.get('/test-connection', async (c) => {
       }
     }
 
-    return c.json({
-      success: true,
+    return successResponse(c, {
       userConnection: userConnectionStatus,
       conversationRoom: conversationRoomStatus,
       messageBroadcaster: broadcasterStatus,

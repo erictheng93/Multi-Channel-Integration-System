@@ -245,7 +245,7 @@ export class ModuleDiscovery {
       { path: './modules/teams/handlers/index', name: 'teams' },
       { path: './modules/conversations/handlers/conversation-main', name: 'conversations' },
       { path: './modules/system/handlers/system-main', name: 'system' },
-      { path: './modules/customer/handlers/customer-main-legacy', name: 'customers' },
+      { path: './modules/customer/handlers/customer-main', name: 'customers' },
       { path: './modules/notifications/handlers/notification-router', name: 'notifications' },
       { path: './modules/messaging/handlers/messaging/index', name: 'messaging' },
       { path: './modules/delayed-message/handlers/delayed-message-buffer', name: 'delayed-messages' }
