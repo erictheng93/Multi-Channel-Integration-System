@@ -43,12 +43,14 @@ export function useCustomerTagsController() {
   const showDeleteModal = ref(false)
   const showBulkDeleteModal = ref(false)
   const showStatsModal = ref(false)
+  const showConversationsModal = ref(false)
   const showBulkMenu = ref(false)
 
   // Modal data state
   const editingTag = ref<Tag | null>(null)
   const deletingTag = ref<Tag | null>(null)
   const statsTag = ref<Tag | null>(null)
+  const conversationsTag = ref<Tag | null>(null)
 
   // Form state
   const formData = ref({
@@ -169,6 +171,11 @@ export function useCustomerTagsController() {
     showStatsModal.value = true
   }
 
+  const openConversationsModal = (tag: Tag) => {
+    conversationsTag.value = tag
+    showConversationsModal.value = true
+  }
+
   const openBulkDeleteModal = () => {
     if (selection.selectedTags.value.length === 0) {return}
     showBulkMenu.value = false
@@ -181,10 +188,12 @@ export function useCustomerTagsController() {
     showDeleteModal.value = false
     showBulkDeleteModal.value = false
     showStatsModal.value = false
+    showConversationsModal.value = false
     showBulkMenu.value = false
     editingTag.value = null
     deletingTag.value = null
     statsTag.value = null
+    conversationsTag.value = null
     formData.value = {
       name: '',
       color: '#3B82F6',
@@ -235,12 +244,14 @@ export function useCustomerTagsController() {
     showDeleteModal,
     showBulkDeleteModal,
     showStatsModal,
+    showConversationsModal,
     showBulkMenu,
 
     // Modal data
     editingTag,
     deletingTag,
     statsTag,
+    conversationsTag,
 
     // Form
     formData,
@@ -257,6 +268,7 @@ export function useCustomerTagsController() {
     openEditModal,
     openDeleteModal,
     openStatsModal,
+    openConversationsModal,
     openBulkDeleteModal,
     closeModals,
 

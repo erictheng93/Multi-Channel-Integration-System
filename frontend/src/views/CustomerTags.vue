@@ -55,6 +55,7 @@
           @edit-tag="openEditModal"
           @delete-tag="openDeleteModal"
           @view-stats="openStatsModal"
+          @view-conversations="openConversationsModal"
         />
       </section>
 
@@ -84,6 +85,12 @@
 
       <!-- Tag Stats Modal (if needed) -->
       <!-- Can reuse existing TagStatsModal from original component -->
+
+      <!-- Tag Conversations Modal -->
+      <TagConversationsModal
+        v-model:visible="showConversationsModal"
+        :tag="conversationsTag"
+      />
     </div>
   </AppLayout>
 </template>
@@ -99,7 +106,8 @@ import {
   TagsList,
   TagFormModal,
   DeleteConfirmModal,
-  BulkDeleteModal
+  BulkDeleteModal,
+  TagConversationsModal
 } from '@/components/customerTags'
 
 // ==================== Controller & State ====================
@@ -116,7 +124,9 @@ const {
   showEditModal,
   showDeleteModal,
   showBulkDeleteModal,
+  showConversationsModal,
   deletingTag,
+  conversationsTag,
   formData,
   predefinedColors,
   search,
@@ -126,6 +136,7 @@ const {
   openEditModal,
   openDeleteModal,
   openStatsModal,
+  openConversationsModal,
   openBulkDeleteModal,
   initialize,
   cleanup
