@@ -304,7 +304,7 @@ export interface TagConversation {
   customer_avatar: string | null
   customer_platform: string
   assigned_at: string
-  assigned_by: string
+  assigned_by: string | null
 }
 
 export interface TagConversationsResponse {
