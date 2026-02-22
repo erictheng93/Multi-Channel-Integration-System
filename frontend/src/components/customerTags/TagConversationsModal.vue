@@ -5,7 +5,7 @@
       class="modal-overlay"
       role="dialog"
       aria-modal="true"
-      :aria-label="`標籤「${tag?.name}」的對話列表`"
+      aria-labelledby="tag-conversations-modal-title"
       @click.self="$emit('update:visible', false)"
     >
       <div class="modal-container">
@@ -16,7 +16,10 @@
               class="tag-color-dot"
               :style="{ background: tag?.color }"
             />
-            <h2 class="modal-title">
+            <h2
+              id="tag-conversations-modal-title"
+              class="modal-title"
+            >
               {{ tag?.name }}
             </h2>
             <span class="conversation-count-badge">
@@ -139,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { LoadingSpinner } from '@/components/ui'
 import { XIcon, MessageCircleIcon, ExternalLinkIcon } from '@/components/icons'
 import { getTagConversations } from '@/api/tags'
@@ -153,7 +156,7 @@ const props = defineProps<{
   tag: Tag | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:visible': [value: boolean]
 }>()
 
@@ -189,6 +192,31 @@ watch(
     }
   }
 )
+
+// Handle Escape key and body scroll lock
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) {
+      document.body.style.overflow = 'hidden'
+      document.addEventListener('keydown', handleKeydown)
+    } else {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', handleKeydown)
+    }
+  }
+)
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    emit('update:visible', false)
+  }
+}
+
+onUnmounted(() => {
+  document.body.style.overflow = ''
+  document.removeEventListener('keydown', handleKeydown)
+})
 
 // ==================== Helpers ====================
 
