@@ -294,6 +294,33 @@ export interface TagCustomersResponse {
   message: string
 }
 
+export interface TagConversation {
+  id: string
+  status: string
+  channel: string
+  created_at: string
+  updated_at: string
+  customer_name: string
+  customer_avatar: string | null
+  customer_platform: string
+  assigned_at: string
+  assigned_by: string
+}
+
+export interface TagConversationsResponse {
+  success: boolean
+  data: {
+    conversations: TagConversation[]
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+    }
+  }
+  message: string
+}
+
 export const getTagCustomers = async (
   tagId: number,
   params?: {
@@ -324,5 +351,33 @@ export const getTagCustomers = async (
     success: response.success,
     data: response.data,
     message: response.message || 'Tag customers retrieved successfully'
+  }
+}
+
+/**
+ * 獲取標籤的對話列表
+ */
+export const getTagConversations = async (
+  tagId: number,
+  params?: { page?: number; limit?: number }
+): Promise<TagConversationsResponse> => {
+  const queryString = params
+    ? `?${new URLSearchParams(
+        Object.entries(params)
+          .filter(([, value]) => value !== undefined)
+          .map(([key, value]) => [key, String(value)])
+      ).toString()}`
+    : ''
+  const response = await apiClient.get<{
+    conversations: TagConversation[]
+    pagination: { page: number; limit: number; total: number; totalPages: number }
+  }>(`/tags/${tagId}/conversations${queryString}`)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || 'Failed to fetch tag conversations')
+  }
+  return {
+    success: response.success,
+    data: response.data,
+    message: response.message || 'Tag conversations retrieved successfully'
   }
 }
