@@ -42,10 +42,15 @@
           <UsersIcon />
           <span>{{ tag.customerCount || 0 }} 客戶</span>
         </div>
-        <div class="stat-item">
+        <button
+          class="stat-item stat-item-clickable"
+          :title="`查看 ${tag.conversationCount || 0} 個對話`"
+          :disabled="!tag.conversationCount"
+          @click.stop="tag.conversationCount ? $emit('view-conversations') : undefined"
+        >
           <MessageCircleIcon />
           <span>{{ tag.conversationCount || 0 }} 對話</span>
-        </div>
+        </button>
       </div>
     </div>
 
@@ -96,6 +101,7 @@ defineEmits<{
   edit: []
   delete: []
   'view-stats': []
+  'view-conversations': []
 }>()
 </script>
 
@@ -220,6 +226,28 @@ defineEmits<{
   width: 14px;
   height: 14px;
   color: var(--gray-400);
+}
+
+.stat-item-clickable {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted var(--gray-400);
+  transition: color var(--transition-fast);
+}
+
+.stat-item-clickable:hover:not(:disabled) {
+  color: var(--primary-600);
+}
+
+.stat-item-clickable:hover:not(:disabled) svg {
+  color: var(--primary-500);
+}
+
+.stat-item-clickable:disabled {
+  cursor: default;
+  text-decoration: none;
 }
 
 .tag-actions {

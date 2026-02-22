@@ -30,6 +30,7 @@
         @edit="$emit('edit-tag', tag)"
         @delete="$emit('delete-tag', tag)"
         @view-stats="$emit('view-stats', tag)"
+        @view-conversations="$emit('view-conversations', tag)"
       />
     </div>
   </div>
@@ -51,6 +52,7 @@ defineEmits<{
   'edit-tag': [tag: Tag]
   'delete-tag': [tag: Tag]
   'view-stats': [tag: Tag]
+  'view-conversations': [tag: Tag]
 }>()
 </script>
 

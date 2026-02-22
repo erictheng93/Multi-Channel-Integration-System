@@ -13,5 +13,7 @@ export type {
   TagResponse,
   TagStatsResponse,
   TagCustomer,
-  TagCustomersResponse
+  TagCustomersResponse,
+  TagConversation,
+  TagConversationsResponse
 } from '@/api/tags'

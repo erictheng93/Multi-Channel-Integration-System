@@ -993,3 +993,28 @@ export const TagIcon = defineComponent<IconProps>({
     ])
   }
 })
+
+export const ExternalLinkIcon = defineComponent<IconProps>({
+  name: 'ExternalLinkIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4' }),
+      h('path', { d: 'M14 4h6m0 0v6m0-6L10 14' })
+    ])
+  }
+})
