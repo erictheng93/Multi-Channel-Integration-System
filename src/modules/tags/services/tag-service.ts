@@ -169,8 +169,12 @@ export const tagHandler = {
           t.created_by,
           t.created_at,
           t.updated_at,
-          (SELECT COUNT(*) FROM customer_tags WHERE tag_id = t.id) as customer_count,
-          (SELECT COUNT(*) FROM conversation_tags WHERE tag_id = t.id) as conversation_count
+          (SELECT COUNT(*) FROM customer_tags ct2
+            JOIN customers c2 ON ct2.customer_id = c2.id
+            WHERE ct2.tag_id = t.id AND c2.deleted_at IS NULL) as customer_count,
+          (SELECT COUNT(*) FROM conversation_tags ct3
+            JOIN conversations cv2 ON ct3.conversation_id = cv2.id
+            WHERE ct3.tag_id = t.id AND cv2.deleted_at IS NULL) as conversation_count
         FROM tags t
         WHERE t.is_active = 1
         AND t.deleted_at IS NULL
