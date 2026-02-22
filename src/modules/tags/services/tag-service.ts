@@ -14,7 +14,7 @@ import {
 } from '@/utils/api-response';
 import { tags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
-import { sql, eq, and, or, asc, like, count, inArray } from 'drizzle-orm';
+import { sql, eq, and, inArray } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
 
 // ── Raw SQL result type interfaces ──────────────────────────────────────────
@@ -136,75 +136,60 @@ export const tagHandler = {
       const offset = (parseInt(page) - 1) * parseInt(pageSize);
       const limit = parseInt(pageSize);
 
-      // Simplified query: return all active tags
-      let query = drizzleDb
-        .select({
-          id: tags.id,
-          name: tags.name,
-          color: tags.color,
-          description: tags.description,
-          teamId: tags.teamId,
-          isActive: tags.isActive,
-          createdBy: tags.createdBy,
-          createdAt: tags.createdAt,
-          updatedAt: tags.updatedAt,
-        })
-        .from(tags);
+      // Build WHERE clause for search
+      const searchCondition = search
+        ? sql`AND (t.name LIKE ${'%' + search + '%'} OR t.description LIKE ${'%' + search + '%'})`
+        : sql``;
 
-      // Build where conditions
-      const whereConditions: any[] = [eq(tags.isActive, true)];
+      // Main query with counts via subqueries
+      const result = await drizzleDb.all(sql`
+        SELECT
+          t.id,
+          t.name,
+          t.color,
+          t.description,
+          t.team_id,
+          t.is_active,
+          t.created_by,
+          t.created_at,
+          t.updated_at,
+          (SELECT COUNT(*) FROM customer_tags WHERE tag_id = t.id) as customer_count,
+          (SELECT COUNT(*) FROM conversation_tags WHERE tag_id = t.id) as conversation_count
+        FROM tags t
+        WHERE t.is_active = TRUE
+        ${searchCondition}
+        ORDER BY t.name ASC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
 
-      // Search (simplified: no team distinction)
-      if (search) {
-        const searchTerm = `%${search}%`;
-        whereConditions.push(or(
-          like(tags.name, searchTerm),
-          like(tags.description, searchTerm)
-        ));
-      }
+      // Count total
+      const countResult = await drizzleDb.get(sql`
+        SELECT COUNT(*) as total
+        FROM tags t
+        WHERE t.is_active = TRUE
+        ${searchCondition}
+      `);
 
-      if (whereConditions.length > 0) {
-        query = query.where(and(...whereConditions)) as any;
-      }
-
-      query = (query as any)
-        .orderBy(asc(tags.name))
-        .limit(limit)
-        .offset(offset);
-
-      const result = await query;
-
-      // Count total - use the same where conditions
-      let countQuery = drizzleDb
-        .select({ total: count() })
-        .from(tags);
-
-      if (whereConditions.length > 0) {
-        countQuery = countQuery.where(and(...whereConditions)) as any;
-      }
-
-      const countResult = await countQuery;
-
-      const tagsResult: any[] = result.map((row: any) => ({
+      const tagsResult: any[] = (result as any[]).map((row: any) => ({
         id: row.id,
         name: row.name,
         color: row.color,
         description: row.description,
-        teamId: row.teamId,
-        teamName: null as string | null, // Simplified without join
-        isActive: Boolean(row.isActive),
-        createdBy: row.createdBy,
-        createdByName: null as string | null, // Simplified without join
-        customerCount: 0, // Simplified without subquery
-        conversationCount: 0, // Simplified without subquery
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt
+        teamId: row.team_id,
+        teamName: null as string | null,
+        isActive: Boolean(row.is_active),
+        createdBy: row.created_by,
+        createdByName: null as string | null,
+        customerCount: row.customer_count || 0,
+        conversationCount: row.conversation_count || 0,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
       }));
 
       return paginatedResponse(c, tagsResult, {
         page: parseInt(page),
         limit,
-        total: countResult[0]?.total || 0
+        total: (countResult as any)?.total || 0
       }, 'Tags retrieved successfully');
 
     } catch (error) {
