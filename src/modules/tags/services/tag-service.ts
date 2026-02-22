@@ -675,7 +675,7 @@ export const tagHandler = {
     const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
-      const page = parseInt(c.req.query('page') || '1');
+      const page = Math.max(1, parseInt(c.req.query('page') || '1') || 1);
       const limit = Math.min(parseInt(c.req.query('limit') || '50'), 100);
       const offset = (page - 1) * limit;
 
@@ -710,11 +710,13 @@ export const tagHandler = {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      // Get total count
+      // Get total count (join customers to exclude soft-deleted records)
       const countResult = await drizzleDb.get(sql`
         SELECT COUNT(*) as total
-        FROM customer_tags
-        WHERE tag_id = ${tagId}
+        FROM customer_tags ct
+        JOIN customers c ON ct.customer_id = c.id
+        WHERE ct.tag_id = ${tagId}
+          AND c.deleted_at IS NULL
       `);
 
       const total = (countResult as CountRow | null)?.total || 0;
