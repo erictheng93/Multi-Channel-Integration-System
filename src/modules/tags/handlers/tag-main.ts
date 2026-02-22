@@ -53,6 +53,9 @@ tagMainHandler.get('/:id/stats', tagHandler.getUsageStats);
 // Get tag's customer list
 tagMainHandler.get('/:id/customers', tagHandler.getTagCustomers);
 
+// Get tag's conversation list
+tagMainHandler.get('/:id/conversations', tagHandler.getTagConversations);
+
 // ==================== Priority 3: PARAMETERIZED single-segment routes ====================
 // Get single tag details
 tagMainHandler.get('/:id', tagHandler.get);

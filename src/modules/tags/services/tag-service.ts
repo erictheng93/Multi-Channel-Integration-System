@@ -732,5 +732,72 @@ export const tagHandler = {
     } catch (error) {
       return handleApiError(error, c);
     }
+  },
+
+  // Get conversations for a tag
+  async getTagConversations(c: Context<{ Bindings: Bindings }>) {
+    const drizzleDb = createDbClient(c.env.DB);
+    try {
+      const tagId = c.req.param('id');
+      const page = Math.max(1, parseInt(c.req.query('page') || '1') || 1);
+      const limit = Math.min(parseInt(c.req.query('limit') || '20') || 20, 100);
+      const offset = (page - 1) * limit;
+
+      // Check if tag exists
+      const tag = await drizzleDb.get(sql`
+        SELECT * FROM tags WHERE id = ${tagId} AND deleted_at IS NULL
+      `);
+
+      if (!tag) {
+        return notFoundResponse(c, 'Tag');
+      }
+
+      // Get conversations using this tag
+      const conversations = await drizzleDb.all(sql`
+        SELECT
+          conv.id,
+          conv.status,
+          conv.channel,
+          conv.created_at,
+          conv.updated_at,
+          cust.display_name as customer_name,
+          cust.avatar_url as customer_avatar,
+          cust.platform as customer_platform,
+          ct.assigned_at,
+          ct.assigned_by
+        FROM conversation_tags ct
+        JOIN conversations conv ON ct.conversation_id = conv.id
+        JOIN customers cust ON conv.customer_id = cust.id
+        WHERE ct.tag_id = ${tagId}
+          AND conv.deleted_at IS NULL
+        ORDER BY ct.assigned_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+
+      // Get total count
+      const countResult = await drizzleDb.get(sql`
+        SELECT COUNT(*) as total
+        FROM conversation_tags ct
+        JOIN conversations conv ON ct.conversation_id = conv.id
+        WHERE ct.tag_id = ${tagId}
+          AND conv.deleted_at IS NULL
+      `);
+
+      const total = (countResult as CountRow | null)?.total || 0;
+      const totalPages = Math.ceil(total / limit);
+
+      return successResponse(c, {
+        conversations: conversations || [],
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages
+        }
+      }, 'Tag conversations retrieved successfully');
+
+    } catch (error) {
+      return handleApiError(error, c);
+    }
   }
 };
