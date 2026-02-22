@@ -232,6 +232,7 @@ defineEmits<{
   background: none;
   border: none;
   padding: 0;
+  font: inherit;
   cursor: pointer;
   text-decoration: underline dotted var(--gray-400);
   transition: color var(--transition-fast);
