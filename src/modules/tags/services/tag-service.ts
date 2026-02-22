@@ -476,7 +476,7 @@ export const tagHandler = {
       // Soft delete tag
       await drizzleDb.run(sql`
         UPDATE tags
-        SET is_active = FALSE, updated_at = datetime('now')
+        SET is_active = 0, deleted_at = datetime('now'), updated_at = datetime('now')
         WHERE id = ${tagId}
       `);
 
