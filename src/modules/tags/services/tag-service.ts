@@ -49,6 +49,21 @@ interface TagRow {
   updated_at: string;
 }
 
+/** Shape returned by the tag list query with usage counts */
+interface TagListRow {
+  id: number;
+  name: string;
+  color: string | null;
+  description: string | null;
+  team_id: number | null;
+  is_active: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  customer_count: number;
+  conversation_count: number;
+}
+
 /** Shape returned by the updated tag query with counts (update endpoint) */
 interface TagWithCountsRow {
   id: number;
@@ -133,8 +148,9 @@ export const tagHandler = {
         search
       } = c.req.query();
 
-      const offset = (parseInt(page) - 1) * parseInt(pageSize);
-      const limit = parseInt(pageSize);
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limit = Math.min(parseInt(pageSize) || 50, 100);
+      const offset = (pageNum - 1) * limit;
 
       // Build WHERE clause for search
       const searchCondition = search
@@ -156,7 +172,8 @@ export const tagHandler = {
           (SELECT COUNT(*) FROM customer_tags WHERE tag_id = t.id) as customer_count,
           (SELECT COUNT(*) FROM conversation_tags WHERE tag_id = t.id) as conversation_count
         FROM tags t
-        WHERE t.is_active = TRUE
+        WHERE t.is_active = 1
+        AND t.deleted_at IS NULL
         ${searchCondition}
         ORDER BY t.name ASC
         LIMIT ${limit} OFFSET ${offset}
@@ -166,11 +183,12 @@ export const tagHandler = {
       const countResult = await drizzleDb.get(sql`
         SELECT COUNT(*) as total
         FROM tags t
-        WHERE t.is_active = TRUE
+        WHERE t.is_active = 1
+        AND t.deleted_at IS NULL
         ${searchCondition}
       `);
 
-      const tagsResult: any[] = (result as any[]).map((row: any) => ({
+      const tagsResult = (result as TagListRow[]).map((row: TagListRow) => ({
         id: row.id,
         name: row.name,
         color: row.color,
@@ -187,9 +205,9 @@ export const tagHandler = {
       }));
 
       return paginatedResponse(c, tagsResult, {
-        page: parseInt(page),
+        page: pageNum,
         limit,
-        total: (countResult as any)?.total || 0
+        total: (countResult as CountRow | undefined)?.total || 0
       }, 'Tags retrieved successfully');
 
     } catch (error) {
