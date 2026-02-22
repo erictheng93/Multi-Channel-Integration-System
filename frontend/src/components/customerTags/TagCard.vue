@@ -46,7 +46,7 @@
           class="stat-item stat-item-clickable"
           :title="`查看 ${tag.conversationCount || 0} 個對話`"
           :disabled="!tag.conversationCount"
-          @click.stop="tag.conversationCount ? $emit('view-conversations') : undefined"
+          @click.stop="$emit('view-conversations')"
         >
           <MessageCircleIcon />
           <span>{{ tag.conversationCount || 0 }} 對話</span>
