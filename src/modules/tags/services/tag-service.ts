@@ -681,7 +681,7 @@ export const tagHandler = {
 
       // Check if tag exists
       const tag = await drizzleDb.get(sql`
-        SELECT * FROM tags WHERE id = ${tagId}
+        SELECT * FROM tags WHERE id = ${tagId} AND deleted_at IS NULL
       `);
 
       if (!tag) {
@@ -705,6 +705,7 @@ export const tagHandler = {
         FROM customer_tags ct
         JOIN customers c ON ct.customer_id = c.id
         WHERE ct.tag_id = ${tagId}
+          AND c.deleted_at IS NULL
         ORDER BY ct.assigned_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
@@ -770,6 +771,7 @@ export const tagHandler = {
         JOIN customers cust ON conv.customer_id = cust.id
         WHERE ct.tag_id = ${tagId}
           AND conv.deleted_at IS NULL
+          AND cust.deleted_at IS NULL
         ORDER BY ct.assigned_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
@@ -779,8 +781,10 @@ export const tagHandler = {
         SELECT COUNT(*) as total
         FROM conversation_tags ct
         JOIN conversations conv ON ct.conversation_id = conv.id
+        JOIN customers cust ON conv.customer_id = cust.id
         WHERE ct.tag_id = ${tagId}
           AND conv.deleted_at IS NULL
+          AND cust.deleted_at IS NULL
       `);
 
       const total = (countResult as CountRow | null)?.total || 0;
