@@ -71,10 +71,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 2: generateConversationData Tests
   // =============================================================================
   describe('generateConversationData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateConversationData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateConversationData();
+      data = SampleDataGenerators.getSampleData('conversation_summary') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -150,10 +150,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 3: generateAgentData Tests
   // =============================================================================
   describe('generateAgentData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateAgentData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateAgentData();
+      data = SampleDataGenerators.getSampleData('agent_performance') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -212,10 +212,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 4: generateCostAnalysisData Tests
   // =============================================================================
   describe('generateCostAnalysisData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateCostAnalysisData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateCostAnalysisData();
+      data = SampleDataGenerators.getSampleData('cost_analysis') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -282,10 +282,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 5: generateSLAComplianceData Tests
   // =============================================================================
   describe('generateSLAComplianceData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateSLAComplianceData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateSLAComplianceData();
+      data = SampleDataGenerators.getSampleData('sla_compliance') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -340,10 +340,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 6: generateAnomalyDetectionData Tests
   // =============================================================================
   describe('generateAnomalyDetectionData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateAnomalyDetectionData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateAnomalyDetectionData();
+      data = SampleDataGenerators.getSampleData('anomaly_detection') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -413,10 +413,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 7: generateAuditTrailData Tests
   // =============================================================================
   describe('generateAuditTrailData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateAuditTrailData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateAuditTrailData();
+      data = SampleDataGenerators.getSampleData('audit_trail') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -479,10 +479,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 8: generateResourceUtilizationData Tests
   // =============================================================================
   describe('generateResourceUtilizationData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateResourceUtilizationData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateResourceUtilizationData();
+      data = SampleDataGenerators.getSampleData('resource_utilization') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -549,10 +549,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 9: generateTrendForecastData Tests
   // =============================================================================
   describe('generateTrendForecastData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateTrendForecastData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateTrendForecastData();
+      data = SampleDataGenerators.getSampleData('trend_forecast') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -619,10 +619,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 10: generateCustomerInsightsData Tests
   // =============================================================================
   describe('generateCustomerInsightsData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateCustomerInsightsData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateCustomerInsightsData();
+      data = SampleDataGenerators.getSampleData('customer_insights') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -696,10 +696,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 11: generateChannelIntegrationData Tests
   // =============================================================================
   describe('generateChannelIntegrationData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateChannelIntegrationData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateChannelIntegrationData();
+      data = SampleDataGenerators.getSampleData('channel_integration') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -762,10 +762,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 12: generateGoalAchievementData Tests
   // =============================================================================
   describe('generateGoalAchievementData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateGoalAchievementData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateGoalAchievementData();
+      data = SampleDataGenerators.getSampleData('goal_achievement') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -824,10 +824,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 13: generateAutomationEffectivenessData Tests
   // =============================================================================
   describe('generateAutomationEffectivenessData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateAutomationEffectivenessData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateAutomationEffectivenessData();
+      data = SampleDataGenerators.getSampleData('automation_effectiveness') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -883,10 +883,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 14: generateSecurityRiskData Tests
   // =============================================================================
   describe('generateSecurityRiskData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateSecurityRiskData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateSecurityRiskData();
+      data = SampleDataGenerators.getSampleData('security_risk') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -947,10 +947,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 15: generateKnowledgeBaseData Tests
   // =============================================================================
   describe('generateKnowledgeBaseData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateKnowledgeBaseData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateKnowledgeBaseData();
+      data = SampleDataGenerators.getSampleData('knowledge_base') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -1016,10 +1016,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 16: generateCallQualityData Tests
   // =============================================================================
   describe('generateCallQualityData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateCallQualityData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateCallQualityData();
+      data = SampleDataGenerators.getSampleData('call_quality') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -1091,10 +1091,10 @@ describe('SampleDataGenerators', () => {
   // SECTION 17: generateExecutiveSummaryData Tests
   // =============================================================================
   describe('generateExecutiveSummaryData', () => {
-    let data: ReturnType<typeof SampleDataGenerators.generateExecutiveSummaryData>;
+    let data: any;
 
     beforeEach(() => {
-      data = SampleDataGenerators.generateExecutiveSummaryData();
+      data = SampleDataGenerators.getSampleData('executive_summary') as any;
     });
 
     it('should have required top-level properties', () => {
@@ -1209,8 +1209,8 @@ describe('SampleDataGenerators', () => {
   // =============================================================================
   describe('Edge Cases and Robustness', () => {
     it('should generate consistent data structure across multiple calls', () => {
-      const data1 = SampleDataGenerators.generateConversationData();
-      const data2 = SampleDataGenerators.generateConversationData();
+      const data1 = SampleDataGenerators.getSampleData('conversation_summary') as any;
+      const data2 = SampleDataGenerators.getSampleData('conversation_summary') as any;
 
       // Structure should be identical
       expect(Object.keys(data1)).toEqual(Object.keys(data2));
@@ -1233,7 +1233,7 @@ describe('SampleDataGenerators', () => {
     });
 
     it('should generate valid date strings', () => {
-      const data = SampleDataGenerators.generateConversationData();
+      const data = SampleDataGenerators.getSampleData('conversation_summary') as any;
 
       // Check period dates
       expect(() => new Date(data.period.startDate)).not.toThrow();
@@ -1246,7 +1246,7 @@ describe('SampleDataGenerators', () => {
     });
 
     it('should generate numeric values within reasonable ranges', () => {
-      const agentData = SampleDataGenerators.generateAgentData();
+      const agentData = SampleDataGenerators.getSampleData('agent_performance') as any;
 
       // Satisfaction scores should be 0-5
       agentData.agentMetrics.forEach(agent => {

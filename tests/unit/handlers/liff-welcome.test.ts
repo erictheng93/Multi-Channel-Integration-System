@@ -78,7 +78,7 @@ vi.mock('@/db/drizzle-factory', () => ({
 }));
 
 // Import handler after mocks
-import liffHandler from '@backend/handlers/liff';
+import liffHandler from '@modules/liff/handlers/liff';
 
 // ============================================================================
 // Test Utilities

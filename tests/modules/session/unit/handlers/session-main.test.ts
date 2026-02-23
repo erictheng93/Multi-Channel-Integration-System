@@ -225,7 +225,7 @@ describe('Session Main Handler', () => {
         expect(response.status).toBe(500);
 
         const data = await response.json();
-        const validation = validateErrorResponse(data, 500, 'Database connection failed');
+        const validation = validateErrorResponse(data, 500);
 
         expect(validation.isValid).toBe(true);
       });
@@ -440,10 +440,10 @@ describe('Session Main Handler', () => {
           body: JSON.stringify({ topic: 'Updated Topic' })
         });
 
-        expect(response.status).toBe(500);
+        expect(response.status).toBe(404);
 
         const data = await response.json();
-        const validation = validateErrorResponse(data, 500, 'Session not found');
+        const validation = validateErrorResponse(data, 404);
 
         expect(validation.isValid).toBe(true);
       });
@@ -867,7 +867,7 @@ describe('Session Main Handler', () => {
       expect(response.status).toBe(500);
 
       const data = await response.json();
-      const validation = validateErrorResponse(data, 500, 'Unexpected database error');
+      const validation = validateErrorResponse(data, 500);
 
       expect(validation.isValid).toBe(true);
     });

@@ -147,7 +147,8 @@ describe('Auth Module - Password Functions', () => {
 describe('Auth Module - Database Functions', () => {
   // Mock D1 database - chain will be set up in beforeEach
   const mockFirst = vi.fn();
-  const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+  const mockAll = vi.fn().mockResolvedValue({ results: [] });
+  const mockBind = vi.fn().mockReturnValue({ first: mockFirst, all: mockAll });
   const mockDB = {
     prepare: vi.fn().mockReturnValue({ bind: mockBind })
   };
@@ -155,7 +156,8 @@ describe('Auth Module - Database Functions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Re-establish the mock chain after clearing
-    mockBind.mockReturnValue({ first: mockFirst });
+    mockAll.mockResolvedValue({ results: [] });
+    mockBind.mockReturnValue({ first: mockFirst, all: mockAll });
     mockDB.prepare.mockReturnValue({ bind: mockBind });
   });
 

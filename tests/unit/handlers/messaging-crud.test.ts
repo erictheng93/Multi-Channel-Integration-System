@@ -154,7 +154,7 @@ vi.mock('@/utils/validate-reply-to', () => ({
 }));
 
 // Import handler AFTER mocks are registered
-import crudRoutes from '@/handlers/messaging/routes/crud';
+import crudRoutes from '@modules/messaging/handlers/messaging/routes/crud';
 
 // ============================================================================
 // Test Utilities

@@ -69,7 +69,10 @@ export const customerTagsHandler = {
           t.created_by as createdBy,
           t.created_at as createdAt,
           t.updated_at as updatedAt,
-          COALESCE(customer_count.count, 0) as customerCount
+          COALESCE(customer_count.count, 0) as customerCount,
+          (SELECT COUNT(*) FROM conversation_tags ct3
+            JOIN conversations cv2 ON ct3.conversation_id = cv2.id
+            WHERE ct3.tag_id = t.id AND cv2.deleted_at IS NULL) as conversationCount
         FROM tags t
         LEFT JOIN (
           SELECT tag_id, COUNT(DISTINCT customer_id) as count

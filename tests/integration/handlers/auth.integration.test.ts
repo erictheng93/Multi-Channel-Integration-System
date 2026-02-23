@@ -39,7 +39,7 @@ vi.mock('@/middleware/auth', () => ({
   rateLimit: vi.fn(() => (c: any, next: any) => next())
 }));
 
-import authHandler from '@backend/handlers/auth-main';
+import authHandler from '@modules/auth/handlers/auth-main';
 import type { Bindings } from '@backend/types';
 
 // ============================================================================
