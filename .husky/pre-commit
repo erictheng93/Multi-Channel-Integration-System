@@ -1,8 +1,11 @@
+# Ensure bun is in PATH
+export PATH="$HOME/.bun/bin:$PATH"
+
 echo "🔍 Running pre-commit checks..."
 
 # Check import paths (prevent deep relative paths)
 echo "Checking import paths..."
-npx tsx scripts/check-import-paths.ts
+bunx tsx scripts/check-import-paths.ts
 if [ $? -ne 0 ]; then
   echo "⚠️  Import path check failed (use --no-verify to bypass)"
   exit 1
@@ -10,16 +13,16 @@ fi
 
 # Check route conflicts (prevent route ordering issues)
 echo "🛤️  Checking route conflicts..."
-npm run check:routes:ci
+bun run check:routes:ci
 if [ $? -ne 0 ]; then
   echo "❌ Route conflict detected! Please fix before committing."
-  echo "💡 Run 'npm run check:routes' for detailed report"
+  echo "💡 Run 'bun run check:routes' for detailed report"
   exit 1
 fi
 
 # Backend TypeScript check
 echo "Checking backend TypeScript..."
-npx tsc --noEmit
+bunx tsc --noEmit
 if [ $? -ne 0 ]; then
   echo "❌ Backend TypeScript compilation failed!"
   exit 1
@@ -30,14 +33,14 @@ echo "Checking frontend TypeScript and ESLint..."
 cd frontend
 
 # Frontend TypeScript check
-npx vue-tsc --noEmit
+bunx vue-tsc --noEmit
 if [ $? -ne 0 ]; then
   echo "❌ Frontend TypeScript compilation failed!"
   exit 1
 fi
 
 # ESLint check
-npm run lint:check
+bun run lint:check
 if [ $? -ne 0 ]; then
   echo "❌ ESLint check failed!"
   exit 1
