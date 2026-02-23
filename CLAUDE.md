@@ -78,153 +78,69 @@ The backend uses a modular handler-based approach:
 ### Backend (Root Directory)
 ```bash
 # Development (connects to REMOTE resources)
-npm run dev              # Start Wrangler dev server with REMOTE bindings
-npm run build            # TypeScript compilation check
-npm run lint:check       # TypeScript + Vue type checking with linting
+bun run dev              # Start Wrangler dev server with REMOTE bindings
+bun run build            # TypeScript compilation check
+bun run lint:check       # TypeScript + Vue type checking with linting
 
 # Database Operations (all operate on REMOTE D1)
-npm run db:migrate       # Apply migrations to REMOTE D1
-npm run db:generate      # Generate Drizzle migrations
-npm run db:push          # Push schema changes to REMOTE
-npm run db:studio        # Open Drizzle Studio for REMOTE DB
-npm run db:query         # Execute queries on REMOTE D1
+bun run db:migrate       # Apply migrations to REMOTE D1
+bun run db:generate      # Generate Drizzle migrations
+bun run db:push          # Push schema changes to REMOTE
+bun run db:studio        # Open Drizzle Studio for REMOTE DB
+bun run db:query         # Execute queries on REMOTE D1
 
 # Deployment & Production
-npm run deploy           # Deploy to production
+bun run deploy           # Deploy to production
 
 # Health Checks & Monitoring
-npm run health:check     # Check system health (formatted JSON)
-npm run health:check:ws  # Check WebSocket health (formatted JSON)
-npm run health:check:all # Check both system and WebSocket health
-npm run health:check:detail # Detailed WebSocket health info
-npm run monitor:deployment # Continuous health monitoring (every 30s)
-npm run perf:baseline    # View WebSocket performance metrics
+bun run health:check     # Check system health (formatted JSON)
+bun run health:check:ws  # Check WebSocket health (formatted JSON)
+bun run health:check:all # Check both system and WebSocket health
+bun run health:check:detail # Detailed WebSocket health info
+bun run monitor:deployment # Continuous health monitoring (every 30s)
+bun run perf:baseline    # View WebSocket performance metrics
 
 # Testing & Validation
-npm run test:handlers    # Test all handlers
-npm run test:api         # API integration tests
-npm run test:upload      # File upload end-to-end tests
+bun run test:handlers    # Test all handlers
+bun run test:api         # API integration tests
+bun run test:upload      # File upload end-to-end tests
 
 # Performance & Monitoring
-npm run benchmark        # Run performance benchmark suite
-npm run profile:memory   # Memory usage profiling
+bun run benchmark        # Run performance benchmark suite
+bun run profile:memory   # Memory usage profiling
 ```
 
 ### Frontend (frontend/ directory)
 ```bash
 # Development
-npm run dev              # Start Vite dev server (port 5173)
-npm run build            # Build for production
-npm run type-check       # Vue TypeScript checking
+bun run dev              # Start Vite dev server (port 5173)
+bun run build            # Build for production
+bun run type-check       # Vue TypeScript checking
 
 # Testing (132+ tests)
-npm run test             # Run all tests with Vitest
-npm run test:run         # Single test run
-npm run test:coverage    # Generate coverage report
-npm run test:ui          # Interactive test UI
+bun run test             # Run all tests with Vitest
+bun run test:run         # Single test run
+bun run test:coverage    # Generate coverage report
+bun run test:ui          # Interactive test UI
 
 # Linting & Code Quality
-npm run lint             # ESLint with auto-fix
-npm run lint:check       # ESLint check only
+bun run lint             # ESLint with auto-fix
+bun run lint:check       # ESLint check only
 
 # Deployment
-npm run build:pages      # Build and copy Cloudflare Pages config
-npm run deploy:pages     # Deploy to Cloudflare Pages
-npm run verify:deployment # Verify production deployment
+bun run build:pages      # Build and copy Cloudflare Pages config
+bun run deploy:pages     # Deploy to Cloudflare Pages
+bun run verify:deployment # Verify production deployment
 ```
 
-## Bun Support (Optional - Faster Development)
+## Package Manager
 
-> 🚀 **NEW**: This project now supports **Bun** as an alternative to npm for faster local development. All npm commands remain fully functional.
+This project uses **Bun** as the sole package manager for all environments (local development, CI/CD, and production).
 
-### Why Bun?
-- **3x faster dependency installation** (10 min → 3 min)
-- **2x faster test execution** (20s → 10s)
-- **50% faster script startup times**
-- **Native TypeScript execution** without transpilation
-
-### Quick Start with Bun
-
-**Installation:**
-```bash
-# Windows
-powershell -c "irm bun.sh/install.ps1|iex"
-
-# Verify installation
-bun --version  # Should show 1.2.20 or higher
-```
-
-**Environment Switching:**
-```bash
-# Switch to Bun (< 3 minutes)
-.\scripts\switch-to-bun.ps1
-
-# Switch back to npm (< 3 minutes)
-.\scripts\switch-to-npm.ps1
-```
-
-### Bun Command Reference
-
-**Backend (Root Directory):**
-```bash
-# Development
-bun run dev              # Wrangler dev server (via bunx)
-bun run bun:build        # TypeScript compilation
-
-# Build Scripts (Faster)
-bun run build:worker-bundle:bun      # Worker bundle (2.99s vs ~4s)
-bun run build:frontend-bundle:bun    # Frontend bundle (1.42s vs ~2s)
-bun run build:installer-bundles:bun  # Both bundles
-```
-
-**Frontend (frontend/ directory):**
-```bash
-# Development (Faster startup)
-bun run bun:dev          # Vite dev server with Bun
-bun run bun:build        # Production build with Bun
-bun run bun:test         # Vitest with Bun runtime
-```
-
-**Web Installer:**
-```bash
-# Backend
-cd web-installer/backend
-bun run dev:bun          # Wrangler dev with Bun
-
-# Frontend
-cd web-installer/frontend
-bun run dev:bun          # Vite dev with Bun
-bun run build:bun        # Production build (hybrid: npx + bun)
-```
-
-### Compatibility Notes
-
-**✅ Fully Compatible:**
-- Vite development and builds
-- Wrangler CLI (via `bunx wrangler`)
-- TypeScript compilation
-- Most npm scripts
-- Build bundle scripts (migrated in Phase 4)
-
-**⚠️ Known Limitations:**
-- `vue-tsc` requires npx (hybrid approach used)
-- `better-sqlite3` uses `bun:sqlite` adapter for tests
-- Husky hooks remain on npx (stability)
-
-**📖 Complete Guide:** See [`docs/guides/BUN_MIGRATION_GUIDE.md`](docs/guides/BUN_MIGRATION_GUIDE.md) for:
-- Complete API migration patterns
-- Rollback procedures (< 5 minutes)
-- Troubleshooting guide
-- Performance benchmarks
-
-### CI/CD Policy
-
-> ⚠️ **IMPORTANT**: All CI/CD pipelines use **npm + Node.js 20** for production stability. Bun is **optional for local development only**.
-
-**Files that remain npm-only:**
-- `.github/workflows/` - All GitHub Actions
-- `.husky/pre-commit` - Git hooks for stability
-- Production deployments via `wrangler deploy`
+- **Install dependencies**: `bun install`
+- **Run scripts**: `bun run <script>`
+- **Execute packages**: `bunx <package>`
+- **Lock file**: `bun.lock` (do not use `package-lock.json`)
 
 ## Key Technologies & Integrations
 
@@ -477,27 +393,27 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 
 > ⚠️ **IMPORTANT**: This project connects to **REMOTE PRODUCTION RESOURCES**. All database and storage operations affect production data.
 
-1. **Prerequisites**: Node.js 18+, npm, and Cloudflare account with Wrangler CLI
+1. **Prerequisites**: Node.js 18+, Bun 1.2+, and Cloudflare account with Wrangler CLI
 2. **Install Dependencies**:
    ```bash
-   npm install
-   cd frontend && npm install
+   bun install
+   cd frontend && bun install
    ```
 3. **Environment Setup**: Configure `.env` from `.env.example` template with Cloudflare credentials
 4. **Verify Remote Connection**:
    ```bash
-   npm run health:check:all  # Verify connection to production
-   npm run db:studio         # Open Drizzle Studio for REMOTE DB
+   bun run health:check:all  # Verify connection to production
+   bun run db:studio         # Open Drizzle Studio for REMOTE DB
    ```
 5. **Start Development**:
    ```bash
    # Terminal 1 - Backend (connects to REMOTE resources)
-   npm run dev               # Wrangler dev with REMOTE D1, KV, R2
+   bun run dev               # Wrangler dev with REMOTE D1, KV, R2
 
    # Terminal 2 - Frontend
-   cd frontend && npm run dev # Vite dev server on localhost:5173
+   cd frontend && bun run dev # Vite dev server on localhost:5173
    ```
-6. **Verify Setup**: `npm run test:api` and `cd frontend && npm run test`
+6. **Verify Setup**: `bun run test:api` and `cd frontend && bun run test`
 
 ## Production Deployment
 
@@ -506,8 +422,8 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 **THIS PROJECT USES REMOTE PRODUCTION RESOURCES ONLY**
 
 - **No Local Resources**: This project does NOT use local D1, KV, or R2 resources
-- **Development**: Use `npm run dev` which connects to REMOTE production resources
-- **Production Deployment**: Use `wrangler deploy` or `npm run deploy` to deploy to production
+- **Development**: Use `bun run dev` which connects to REMOTE production resources
+- **Production Deployment**: Use `wrangler deploy` or `bun run deploy` to deploy to production
 - **No Staging Environment**: All testing uses production resources, deploys directly to production
 - **Environment Configuration**: See `wrangler.toml` - all config is for production only
 
@@ -527,10 +443,10 @@ The system is production-ready and deployed on Cloudflare infrastructure:
 ## Troubleshooting
 
 ### Common Issues
-- **TypeScript errors**: Run `npm run type-check` in both root and frontend
+- **TypeScript errors**: Run `bun run type-check` in both root and frontend
 - **Test failures**: Check test environment setup in `frontend/vitest.setup.ts`
-- **Database issues**: Use `npm run db:studio` to inspect REMOTE data
-- **API connectivity**: Verify Cloudflare credentials and run `npm run health:check:all`
+- **Database issues**: Use `bun run db:studio` to inspect REMOTE data
+- **API connectivity**: Verify Cloudflare credentials and run `bun run health:check:all`
 - **Connection errors**: Ensure `wrangler` is authenticated with `wrangler login`
 
 ### Performance Optimization

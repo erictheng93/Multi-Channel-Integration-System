@@ -78,153 +78,69 @@
 ### 後端 (根目錄)
 ```bash
 # 開發 (連接至遠程資源)
-npm run dev              # 啟動 Wrangler 開發伺服器 (使用 REMOTE 綁定)
-npm run build            # TypeScript 編譯檢查
-npm run lint:check       # TypeScript + Vue 類型檢查與 linting
+bun run dev              # 啟動 Wrangler 開發伺服器 (使用 REMOTE 綁定)
+bun run build            # TypeScript 編譯檢查
+bun run lint:check       # TypeScript + Vue 類型檢查與 linting
 
 # 資料庫操作 (全部在遠程 D1 上操作)
-npm run db:migrate       # 應用遷移至遠程 D1
-npm run db:generate      # 生成 Drizzle 遷移
-npm run db:push          # 推送架構變更至遠程
-npm run db:studio        # 開啟遠程 DB 的 Drizzle Studio
-npm run db:query         # 在遠程 D1 上執行查詢
+bun run db:migrate       # 應用遷移至遠程 D1
+bun run db:generate      # 生成 Drizzle 遷移
+bun run db:push          # 推送架構變更至遠程
+bun run db:studio        # 開啟遠程 DB 的 Drizzle Studio
+bun run db:query         # 在遠程 D1 上執行查詢
 
 # 部署與生產
-npm run deploy           # 部署至生產環境
+bun run deploy           # 部署至生產環境
 
 # 健康檢查與監控
-npm run health:check     # 檢查系統健康 (格式化 JSON)
-npm run health:check:ws  # 檢查 WebSocket 健康 (格式化 JSON)
-npm run health:check:all # 檢查系統與 WebSocket 健康
-npm run health:check:detail # 詳細 WebSocket 健康資訊
-npm run monitor:deployment # 持續健康監控 (每 30 秒)
-npm run perf:baseline    # 查看 WebSocket 性能指標
+bun run health:check     # 檢查系統健康 (格式化 JSON)
+bun run health:check:ws  # 檢查 WebSocket 健康 (格式化 JSON)
+bun run health:check:all # 檢查系統與 WebSocket 健康
+bun run health:check:detail # 詳細 WebSocket 健康資訊
+bun run monitor:deployment # 持續健康監控 (每 30 秒)
+bun run perf:baseline    # 查看 WebSocket 性能指標
 
 # 測試與驗證
-npm run test:handlers    # 測試所有處理器
-npm run test:api         # API 整合測試
-npm run test:upload      # 文件上傳端到端測試
+bun run test:handlers    # 測試所有處理器
+bun run test:api         # API 整合測試
+bun run test:upload      # 文件上傳端到端測試
 
 # 性能與監控
-npm run benchmark        # 運行性能基準測試套件
-npm run profile:memory   # 記憶體使用分析
+bun run benchmark        # 運行性能基準測試套件
+bun run profile:memory   # 記憶體使用分析
 ```
 
 ### 前端 (frontend/ 目錄)
 ```bash
 # 開發
-npm run dev              # 啟動 Vite 開發伺服器 (端口 3000)
-npm run build            # 為生產環境構建
-npm run type-check       # Vue TypeScript 檢查
+bun run dev              # 啟動 Vite 開發伺服器 (端口 3000)
+bun run build            # 為生產環境構建
+bun run type-check       # Vue TypeScript 檢查
 
 # 測試 (132+ 個測試)
-npm run test             # 使用 Vitest 運行所有測試
-npm run test:run         # 單次測試運行
-npm run test:coverage    # 生成覆蓋率報告
-npm run test:ui          # 互動式測試 UI
+bun run test             # 使用 Vitest 運行所有測試
+bun run test:run         # 單次測試運行
+bun run test:coverage    # 生成覆蓋率報告
+bun run test:ui          # 互動式測試 UI
 
 # Linting 與代碼品質
-npm run lint             # ESLint 自動修復
-npm run lint:check       # 僅 ESLint 檢查
+bun run lint             # ESLint 自動修復
+bun run lint:check       # 僅 ESLint 檢查
 
 # 部署
-npm run build:pages      # 構建並複製 Cloudflare Pages 配置
-npm run deploy:pages     # 部署至 Cloudflare Pages
-npm run verify:deployment # 驗證生產部署
+bun run build:pages      # 構建並複製 Cloudflare Pages 配置
+bun run deploy:pages     # 部署至 Cloudflare Pages
+bun run verify:deployment # 驗證生產部署
 ```
 
-## Bun 支援 (可選 - 更快的開發)
+## 套件管理器
 
-> 🚀 **新功能**：此專案現在支援 **Bun** 作為 npm 的替代方案，以實現更快的本地開發。所有 npm 指令仍完全可用。
+本專案使用 **Bun** 作為所有環境（本地開發、CI/CD 和生產）的唯一套件管理器。
 
-### 為什麼選擇 Bun？
-- **3 倍快的依賴安裝** (10 分鐘 → 3 分鐘)
-- **2 倍快的測試執行** (20 秒 → 10 秒)
-- **快 50% 的腳本啟動時間**
-- **原生 TypeScript 執行** 無需轉譯
-
-### 使用 Bun 快速開始
-
-**安裝：**
-```bash
-# Windows
-powershell -c "irm bun.sh/install.ps1|iex"
-
-# 驗證安裝
-bun --version  # 應顯示 1.2.20 或更高版本
-```
-
-**環境切換：**
-```bash
-# 切換至 Bun (< 3 分鐘)
-.\scripts\switch-to-bun.ps1
-
-# 切換回 npm (< 3 分鐘)
-.\scripts\switch-to-npm.ps1
-```
-
-### Bun 指令參考
-
-**後端 (根目錄)：**
-```bash
-# 開發
-bun run dev              # Wrangler 開發伺服器 (透過 bunx)
-bun run bun:build        # TypeScript 編譯
-
-# 構建腳本 (更快)
-bun run build:worker-bundle:bun      # Worker bundle (2.99秒 vs ~4秒)
-bun run build:frontend-bundle:bun    # Frontend bundle (1.42秒 vs ~2秒)
-bun run build:installer-bundles:bun  # 兩者 bundles
-```
-
-**前端 (frontend/ 目錄)：**
-```bash
-# 開發 (啟動更快)
-bun run bun:dev          # 使用 Bun 的 Vite 開發伺服器
-bun run bun:build        # 使用 Bun 的生產構建
-bun run bun:test         # 使用 Bun 運行時的 Vitest
-```
-
-**Web 安裝程式：**
-```bash
-# 後端
-cd web-installer/backend
-bun run dev:bun          # 使用 Bun 的 Wrangler 開發
-
-# 前端
-cd web-installer/frontend
-bun run dev:bun          # 使用 Bun 的 Vite 開發
-bun run build:bun        # 生產構建 (混合模式：npx + bun)
-```
-
-### 相容性說明
-
-**✅ 完全相容：**
-- Vite 開發與構建
-- Wrangler CLI (透過 `bunx wrangler`)
-- TypeScript 編譯
-- 大多數 npm 腳本
-- 構建 bundle 腳本 (於第 4 階段遷移)
-
-**⚠️ 已知限制：**
-- `vue-tsc` 需要 npx (使用混合方法)
-- `better-sqlite3` 在測試中使用 `bun:sqlite` 適配器
-- Husky hooks 保持使用 npx (穩定性考量)
-
-**📖 完整指南：** 請參閱 [`docs/BUN_MIGRATION_GUIDE.md`](docs/BUN_MIGRATION_GUIDE.md) 以獲取：
-- 完整的 API 遷移模式
-- 回滾程序 (< 5 分鐘)
-- 故障排除指南
-- 性能基準測試
-
-### CI/CD 政策
-
-> ⚠️ **重要**：所有 CI/CD 流水線使用 **npm + Node.js 20** 以確保生產穩定性。Bun **僅供本地開發可選使用**。
-
-**保持僅使用 npm 的文件：**
-- `.github/workflows/` - 所有 GitHub Actions
-- `.husky/pre-commit` - Git hooks 以確保穩定性
-- 透過 `wrangler deploy` 的生產部署
+- **安裝依賴**: `bun install`
+- **執行腳本**: `bun run <script>`
+- **執行套件**: `bunx <package>`
+- **鎖定文件**: `bun.lock`（請勿使用 `package-lock.json`）
 
 ## 關鍵技術與整合
 
@@ -475,27 +391,27 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 
 > ⚠️ **重要**：此專案連接至 **遠程生產資源 (REMOTE PRODUCTION RESOURCES)**。所有資料庫和存儲操作都會影響生產數據。
 
-1. **先決條件**：Node.js 18+、npm 和具有 Wrangler CLI 的 Cloudflare 帳戶
+1. **先決條件**：Node.js 18+、Bun 1.2+ 和具有 Wrangler CLI 的 Cloudflare 帳戶
 2. **安裝依賴**：
    ```bash
-   npm install
-   cd frontend && npm install
+   bun install
+   cd frontend && bun install
    ```
 3. **環境設置**：從 `.env.example` 模板配置 `.env`，填入 Cloudflare 憑證
 4. **驗證遠程連接**：
    ```bash
-   npm run health:check:all  # 驗證連接至生產環境
-   npm run db:studio         # 開啟遠程 DB 的 Drizzle Studio
+   bun run health:check:all  # 驗證連接至生產環境
+   bun run db:studio         # 開啟遠程 DB 的 Drizzle Studio
    ```
 5. **開始開發**：
    ```bash
    # 終端 1 - 後端 (連接至遠程資源)
-   npm run dev               # 使用遠程 D1, KV, R2 的 Wrangler 開發
+   bun run dev               # 使用遠程 D1, KV, R2 的 Wrangler 開發
 
    # 終端 2 - 前端
-   cd frontend && npm run dev # localhost:3000 上的 Vite 開發伺服器
+   cd frontend && bun run dev # localhost:3000 上的 Vite 開發伺服器
    ```
-6. **驗證設置**：`npm run test:api` 和 `cd frontend && npm run test`
+6. **驗證設置**：`bun run test:api` 和 `cd frontend && bun run test`
 
 ## 生產部署
 
@@ -504,8 +420,8 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 **此專案僅使用遠程生產資源**
 
 - **無本地資源**：此專案不使用本地 D1, KV, 或 R2 資源
-- **開發**：使用 `npm run dev`，它連接到遠程生產資源
-- **生產部署**：使用 `wrangler deploy` 或 `npm run deploy` 部署到生產環境
+- **開發**：使用 `bun run dev`，它連接到遠程生產資源
+- **生產部署**：使用 `wrangler deploy` 或 `bun run deploy` 部署到生產環境
 - **無預演環境**：所有測試使用生產資源，直接部署到生產環境
 - **環境配置**：參見 `wrangler.toml` - 所有配置僅用於生產環境
 
@@ -525,10 +441,10 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 ## 故障排除
 
 ### 常見問題
-- **TypeScript 錯誤**：在根目錄和前端目錄中運行 `npm run type-check`
+- **TypeScript 錯誤**：在根目錄和前端目錄中運行 `bun run type-check`
 - **測試失敗**：檢查 `frontend/vitest.setup.ts` 中的測試環境設置
-- **資料庫問題**：使用 `npm run db:studio` 檢查遠程數據
-- **API 連接性**：驗證 Cloudflare 憑證並運行 `npm run health:check:all`
+- **資料庫問題**：使用 `bun run db:studio` 檢查遠程數據
+- **API 連接性**：驗證 Cloudflare 憑證並運行 `bun run health:check:all`
 - **連接錯誤**：確保 `wrangler` 已透過 `wrangler login` 認證
 
 ### 性能優化

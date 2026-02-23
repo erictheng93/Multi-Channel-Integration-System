@@ -31,51 +31,36 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      - name: 3. Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            frontend/node_modules
-            node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: 4. Install root dependencies
-        run: npm ci
+      - name: 3. Install root dependencies
+        run: bun install --frozen-lockfile
 
-      - name: 5. Install frontend dependencies
-        run: npm ci --prefix frontend
+      - name: 4. Install frontend dependencies
+        run: cd frontend && bun install --frozen-lockfile
 
-      - name: 6. Run Linting and Type Checking
-        run: npm run lint:check
+      - name: 5. Run Linting and Type Checking
+        run: bun run lint:check
 
-      - name: 7. Run Security Audit
-        if: matrix.test-type == 'security'
-        run: |
-          npm audit --audit-level=moderate
-          npm audit --prefix frontend --audit-level=moderate
-
-      - name: 8. Run Frontend Tests with Coverage
+      - name: 6. Run Frontend Tests with Coverage
         if: matrix.test-type == 'frontend'
         run: |
-          npm test --prefix frontend -- --run --coverage
-          
-      - name: 9. Run Backend Test Suite
+          bun run test --prefix frontend -- --run --coverage
+
+      - name: 7. Run Backend Test Suite
         if: matrix.test-type == 'backend'
         run: |
           # Run unit tests for services, utils, and modules
           # Note: Some tests may fail due to environment-specific issues (console.spy, crypto mocking)
           # These are tracked and will be fixed in future iterations
-          npx vitest run tests/unit/services tests/unit/modules tests/modules --reporter=verbose --passWithNoTests || echo "⚠️ Some backend tests failed - see output above"
+          bunx vitest run tests/unit/services tests/unit/modules tests/modules --reporter=verbose --passWithNoTests || echo "⚠️ Some backend tests failed - see output above"
 
-      - name: 10. Build Frontend for Verification
-        run: npm run build --prefix frontend
+      - name: 8. Build Frontend for Verification
+        run: bun run build --prefix frontend
 
-      - name: 11. Upload test coverage
+      - name: 9. Upload test coverage
         if: matrix.test-type == 'frontend'
         uses: codecov/codecov-action@v4
         with:
@@ -98,33 +83,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      - name: 3. Restore dependencies cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            frontend/node_modules
-            node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: 4. Install dependencies
+      - name: 3. Install dependencies
         run: |
-          npm ci
-          npm ci --prefix frontend
+          bun install --frozen-lockfile
+          cd frontend && bun install --frozen-lockfile
 
-      - name: 5. Build Frontend
-        run: npm run build --prefix frontend
+      - name: 4. Build Frontend
+        run: bun run build --prefix frontend
 
-      - name: 6. Deploy to Cloudflare Staging
+      - name: 5. Deploy to Cloudflare Staging
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --env staging --minify
 
-      - name: 7. Deploy Frontend to Staging Pages
+      - name: 6. Deploy Frontend to Staging Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -148,68 +126,58 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      - name: 3. Restore dependencies cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.npm
-            frontend/node_modules
-            node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: 4. Install dependencies
+      - name: 3. Install dependencies
         run: |
-          npm ci
-          npm ci --prefix frontend
+          bun install --frozen-lockfile
+          cd frontend && bun install --frozen-lockfile
 
-      - name: 5. Build Frontend
-        run: npm run build --prefix frontend
+      - name: 4. Build Frontend
+        run: bun run build --prefix frontend
 
-      - name: 6. Install Wrangler CLI
-        run: npm install -g wrangler
-
-      - name: 7. Record current deployment for rollback
+      - name: 5. Record current deployment for rollback
         run: |
           echo "PREVIOUS_DEPLOYMENT=$(wrangler deployments list --name multi-channel-platform --limit 1 --json | jq -r '.[0].id' || echo 'none')" >> $GITHUB_ENV
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: 8. Deploy to Cloudflare Production
+      - name: 6. Deploy to Cloudflare Production
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --minify
 
-      - name: 9. Deploy Frontend to Pages
+      - name: 7. Deploy Frontend to Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy frontend/dist --project-name multi-channel-platform-frontend
 
-      - name: 10. Run Database Migrations
-        run: npm run db:migrate
+      - name: 8. Run Database Migrations
+        run: bun run db:migrate
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: 11. Verify deployment health
+      - name: 9. Verify deployment health
         run: |
           # Wait for deployment to be ready
           sleep 30
           # Health check
           curl -f https://multi-channel.imfinethankyouandyou.com/api/system/health || exit 1
 
-      - name: 12. Notify deployment success
+      - name: 10. Notify deployment success
         if: success()
         run: |
           echo "??Deployment successful! Previous version: ${{ env.PREVIOUS_DEPLOYMENT }}"
 
-      - name: 13. Rollback on failure
+      - name: 11. Rollback on failure
         if: failure()
         run: |
           if [ "${{ env.PREVIOUS_DEPLOYMENT }}" != "none" ]; then
