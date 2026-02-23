@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a **Multi-Channel Customer Support System** built with Cloudflare Workers and Vue 3. It's a comprehensive platform that integrates LINE OA and supports Facebook Messenger for unified customer service management, featuring **enterprise-grade architecture** with **100% WebSocket-based real-time communication** powered by Durable Objects.
 
 ### Key Characteristics
-- **Modern Vue 3 + TypeScript** frontend with comprehensive testing (132+ tests)
+- **Modern Vue 3 + TypeScript** frontend with comprehensive testing (137 test files, 2500+ test cases)
 - **Cloudflare Worker backend** with Hono framework and Drizzle ORM
 - **Dual role architecture**: System roles (Admin/Agent) + Team roles (Member/Lead/Supervisor)
 - **Multi-team support** with JWT-cached permissions and team-scoped data access
@@ -32,7 +32,7 @@ This is a **Multi-Channel Customer Support System** built with Cloudflare Worker
 - **Storage**: Cloudflare R2 for file attachments and media
 - **Queue**: Cloudflare Queues for delayed messaging and async processing
 - **Real-time Communication**: **100% WebSocket** with Durable Objects architecture for stateful connections
-- **Durable Objects**: Five production-ready classes (ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageProcessor, DelayedMessageBuffer)
+- **Durable Objects**: Nine production classes (ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageBuffer, LockCoordinator, LatestMessageCacheCoordinator, CustomerConversationDO, CustomerMessageDO, RateLimiterDO)
 - **Entry Point**: `src/index.ts` - handler-based modular architecture
 
 ### Frontend (Vue 3 Application)
@@ -40,7 +40,7 @@ This is a **Multi-Channel Customer Support System** built with Cloudflare Worker
 - **State Management**: Pinia stores for reactive state management
 - **Router**: Vue Router 4 with authentication guards
 - **Build Tool**: Vite with production optimization
-- **Testing**: Vitest with 166+ comprehensive tests
+- **Testing**: Vitest with 129 test files + 8 Playwright E2E specs (2500+ test cases)
 - **UI Features**:
   - Responsive design with modern CSS
   - Virtual scrolling for large datasets (@tanstack/vue-virtual)
@@ -50,26 +50,25 @@ This is a **Multi-Channel Customer Support System** built with Cloudflare Worker
 - **Entry Point**: `frontend/src/main.ts`
 
 ### Core Handlers Architecture
-The backend uses a modular handler-based approach:
-- `handlers/auth-main.ts` - Authentication and JWT management
-- `handlers/conversation-main.ts` - Conversation CRUD operations
-- `handlers/messaging-main.ts` - **Complete messaging system** with 17 endpoints (bulk ops, attachments, forwarding, tagging, export)
-- `handlers/delayed-message-main.ts` - Delayed messaging with Cloudflare Queues
-- `handlers/team-main.ts` - Team and member management
-- `handlers/system-main.ts` - System settings and health monitoring
-- `handlers/customer-main.ts` - Customer data management
-- `handlers/tag-main.ts` - **Tag management system** with CRUD operations, bulk operations, and usage statistics
-- `handlers/websocket-main.ts` - WebSocket connection management and routing
-- `handlers/websocket-health.ts` - WebSocket health checks and monitoring
-- `handlers/websocket-integration-test.ts` - WebSocket testing endpoints
+The backend uses a modular handler-based approach organized under `src/modules/`:
+- `modules/auth/handlers/auth-main.ts` - Authentication and JWT management
+- `modules/conversations/handlers/` - Conversation CRUD (queries, assignment, bulk, messages, tags)
+- `modules/messaging/handlers/messaging/` - **Complete messaging system** with 17 endpoints (bulk ops, attachments, forwarding, tagging, export)
+- `modules/delayed-message/handlers/` - Delayed messaging with Cloudflare Queues
+- `modules/teams/handlers/` - Team and member management (CRUD, members, QR codes, passwords)
+- `modules/system/handlers/system-main.ts` - System settings and health monitoring
+- `modules/customer/handlers/customer-main.ts` - Customer data management
+- `modules/tags/handlers/tag-main.ts` - **Tag management system** with CRUD operations, bulk operations, and usage statistics
+- `modules/websocket/handlers/websocket-main.ts` - WebSocket connection management and routing
+- `modules/websocket/handlers/websocket-health.ts` - WebSocket health checks and monitoring
 
 ### Services and Infrastructure
-- `services/websocket-broadcast-service.ts` - **Production WebSocket broadcasting** with team-scoped security
-- `services/websocket-auth-service.ts` - WebSocket authentication and authorization
-- `modules/teams/services/member-service.ts` - **Team member service** with comprehensive foreign key cleanup on deletion
-- `durable-objects/` - **Five production-ready Durable Objects** for WebSocket state management
-- `middleware/auth.ts` - JWT authentication middleware with **team role enforcement** (requireTeamRole, requireTeamPermission)
-- `types/` - Comprehensive TypeScript definitions including WebSocket types
+- `src/services/websocket-broadcast-service.ts` - **Production WebSocket broadcasting** with team-scoped security
+- `src/services/websocket-auth-service.ts` - WebSocket authentication and authorization
+- `src/modules/teams/services/member-service.ts` - **Team member service** with comprehensive foreign key cleanup on deletion
+- `src/durable-objects/` - **Nine production Durable Objects** for WebSocket state management, distributed locking, caching, and rate limiting
+- `src/middleware/auth.ts` - JWT authentication middleware with **team role enforcement** (requireTeamRole, requireTeamPermission)
+- `src/types/` - Comprehensive TypeScript definitions including WebSocket types
 
 ## Development Commands
 
@@ -117,7 +116,7 @@ bun run dev              # Start Vite dev server (port 5173)
 bun run build            # Build for production
 bun run type-check       # Vue TypeScript checking
 
-# Testing (132+ tests)
+# Testing (137 test files, 2500+ test cases)
 bun run test             # Run all tests with Vitest
 bun run test:run         # Single test run
 bun run test:coverage    # Generate coverage report
@@ -187,8 +186,7 @@ This project uses **Bun** as the sole package manager for all environments (loca
 ## Important File Locations
 
 ### Configuration
-- `wrangler.toml` - Cloudflare Worker configuration with Durable Objects bindings
-- `wrangler-websocket.toml` - WebSocket + Durable Objects production configuration
+- `wrangler.toml` - Cloudflare Worker configuration with Durable Objects bindings (unified config, includes WebSocket)
 - `drizzle.config.ts` - Database configuration
 - `frontend/vite.config.ts` - Frontend build configuration
 - `frontend/vitest.config.ts` - Test configuration with WebSocket test environment
@@ -204,14 +202,12 @@ This project uses **Bun** as the sole package manager for all environments (loca
 - `src/index.ts` - Main Worker entry point with WebSocket routing
 - `src/db/schema.ts` - Database schema definitions (includes teams table and role hierarchy)
 - `src/services/permission-service.ts` - Enterprise role permission system
-- `src/types/` - TypeScript type definitions (updated for 3-role system + WebSocket types)
+- `src/types/` - TypeScript type definitions (WebSocket, API, database, monitoring, etc.)
   - `src/types/websocket-types.ts` - WebSocket and Durable Objects type definitions
-  - `src/types/rollback-types.ts` - Emergency rollback system types
-  - `src/types/deployment-types.ts` - Feature flags and deployment types
-- `src/handlers/` - Request handlers by feature with WebSocket broadcasting integration
-- `src/durable-objects/` - Durable Objects for stateful WebSocket management
-- `src/services/websocket-broadcast-service.ts` - Unified WebSocket broadcasting
-- `src/services/emergency-rollback-service.ts` - Emergency rollback and migration controls
+  - `src/types/bindings.ts` - Cloudflare Worker bindings (D1, KV, R2, DO, Queue)
+- `src/modules/` - Domain-organized handlers, services, and types (auth, conversations, messaging, teams, tags, websocket, etc.)
+- `src/durable-objects/` - Nine Durable Objects for stateful WebSocket management, locking, caching, and rate limiting
+- `src/services/` - Shared services (WebSocket broadcasting, auth, distributed locks)
 - `src/monitoring/` - Performance monitoring and deployment tracking
 - `src/middleware/auth.ts` - Authentication middleware with role hierarchy
 - `src/utils/` - Utility functions
@@ -241,9 +237,9 @@ This project uses **Bun** as the sole package manager for all environments (loca
 **Configuration Files:**
 - `frontend/.env.development` / `.env.production` - Frontend environment variables
 - `.dev.vars` - Backend development environment variables
-- `frontend/src/config/runtime.ts` (428 lines) - Frontend runtime configuration layer
-- `src/config/runtime.ts` (300+ lines) - Backend runtime configuration layer
-- `frontend/src/vite-env.d.ts` (150+ lines) - TypeScript environment variable definitions
+- `frontend/src/config/runtime.ts` (~490 lines) - Frontend runtime configuration layer
+- `src/config/runtime.ts` (~450 lines) - Backend runtime configuration layer
+- `frontend/src/vite-env.d.ts` (~135 lines) - TypeScript environment variable definitions
 
 **Quick Example:**
 ```typescript
@@ -258,19 +254,20 @@ const wsUrl = getWebSocketUrl(); // Auto protocol conversion
 
 ## Testing Strategy
 
-**Frontend:** 166+ tests with 100% pass rate (components, stores, services, WebSocket, real-time features)
+**Frontend:** 137 test files with 2500+ test cases (components, stores, services, WebSocket, real-time features, Playwright E2E)
 
 **Backend:** Handler tests, API integration tests, WebSocket infrastructure tests, load testing (1000+ connections)
 
 **WebSocket Testing:**
 - Unit tests (`tests/unit/durable-objects/`)
-- Integration tests (`tests/integration/websocket/`)
-- Performance tests (`tests/performance/websocket/`)
-- E2E tests (`tests/e2e/websocket/`)
+- WebSocket tests (`tests/websocket/`)
+- Performance tests (`tests/performance/`)
 
 **Key Test Helpers:**
-- `tests/helpers/websocket/WebSocketTestClient.ts` - Simulates real WebSocket connections
-- `frontend/tests/helpers/directStoreCreation.ts` - Reliable store testing
+- `tests/helpers/websocket/websocket-test-utils.ts` - WebSocket test utilities
+- `tests/helpers/websocket/durable-objects-test-env.ts` - Durable Objects test environment
+- `tests/helpers/websocket/websocket-test-setup.ts` - WebSocket test setup
+- `frontend/src/stores/conversations/helpers.ts` - Conversation store helpers
 
 📖 **Detailed Guide:** See [`docs/claude/TESTING.md`](docs/claude/TESTING.md) for complete testing infrastructure, running tests, and best practices.
 
@@ -339,7 +336,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 - **Real-time Communication**: **100% WebSocket** for live message updates with Durable Objects architecture
 - **Simplified Role Architecture**: 2-tier role system (Admin/Agent) for streamlined permission management
 - **Type-safe Development**: Full TypeScript implementation with strict mode and comprehensive testing
-- **Scalable Infrastructure**: Production WebSocket infrastructure with five Durable Objects classes
+- **Scalable Infrastructure**: Production WebSocket infrastructure with nine Durable Objects classes
 
 ### **Advanced Messaging Features**
 - **Complete Messaging System**: 17 production-ready endpoints with 100% functional coverage
@@ -383,7 +380,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 - **Integration Ready**: Webhook handlers prepared for multiple messaging platforms
 
 ### **Technical Excellence**
-- **Modern Vue 3 Frontend**: Composition API, Pinia stores, and comprehensive testing (166+ tests)
+- **Modern Vue 3 Frontend**: Composition API, Pinia stores, and comprehensive testing (137 test files, 2500+ cases)
 - **Cloudflare Workers Backend**: Edge computing with Hono framework and Drizzle ORM
 - **Production Ready**: Complete CI/CD pipeline with health monitoring and deployment verification
 - **Performance Optimized**: Virtual scrolling, lazy loading, and efficient data management
@@ -493,7 +490,7 @@ The system is production-ready and deployed on Cloudflare infrastructure:
   - Troubleshooting guide
   - Best practices for cross-origin requests
 - `src/config/cors.ts` - Single source of truth for all CORS configuration
-- `src/handlers/cors-monitoring.ts` - CORS monitoring API endpoints (admin-only)
+- `src/modules/monitoring/handlers/cors-monitoring.ts` - CORS monitoring API endpoints (admin-only)
 
 **Key Features:**
 - **Unified Configuration**: All CORS settings in one file (`src/config/cors.ts`)
@@ -508,7 +505,7 @@ This is a comprehensive, production-ready system with **enterprise-grade archite
 
 ### **Production-Ready Implementation**
 - **Full TypeScript** implementation with strict mode and comprehensive type coverage
-- **132+ comprehensive tests** with Vitest ensuring code quality and reliability
+- **137 test files with 2500+ test cases** across Vitest and Playwright ensuring code quality and reliability
 - **100% WebSocket real-time communication** with Durable Objects architecture for production-scale stateful connections
 - **Enterprise deployment** on Cloudflare Workers and Pages with global distribution
 - **Database optimization** with Drizzle ORM and D1 for scalable data management
@@ -531,7 +528,7 @@ This is a comprehensive, production-ready system with **enterprise-grade archite
 
 ### **Scalable Architecture**
 - **Edge computing** with Cloudflare Workers for global performance
-- **Production-scale WebSocket infrastructure** with five Durable Objects classes handling stateful connections
+- **Production-scale WebSocket infrastructure** with nine Durable Objects classes handling stateful connections
 - **Performance optimized** with virtual scrolling, lazy loading, and efficient data patterns
 - **Monitoring ready** with health checks, WebSocket performance metrics, and deployment verification
 
@@ -551,7 +548,7 @@ This is a comprehensive, production-ready system with **enterprise-grade archite
 - **OAuth Authentication** with Cloudflare
 - **Automated Provisioning** of all resources (D1, KV, R2, Queue, Worker, Pages)
 - **15-Step Pipeline** with real-time progress updates
-- **Production-Ready** with 28 passing tests (90.6% coverage)
+- **Production-Ready** with 190 tests (169 passing, 21 pending fixes; ~64% coverage)
 - **Cost Transparent**: Starts at $0/month on Cloudflare Free tier
 
 **Key Resources Created:**
