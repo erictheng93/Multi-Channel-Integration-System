@@ -175,7 +175,7 @@ vi.mock('@/db/drizzle-factory', () => ({
 // Import handler after mocks
 // ---------------------------------------------------------------------------
 
-import customerHandler from '@/handlers/customer-main';
+import customerHandler from '@/modules/customer/handlers/customer-main';
 import type { Bindings } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -307,6 +307,38 @@ describe('Customer Tags Handler — Integration Tests', () => {
 
       const res = await app.request('/api/customers/tags/available?includeGlobal=false');
       expect(res.status).toBe(200);
+    });
+
+    test('should include conversationCount in each tag', async () => {
+      const sampleTags = [
+        { id: 1, name: 'VIP', color: '#ff0000', customerCount: 5, conversationCount: 3 },
+        { id: 2, name: 'New', color: '#00ff00', customerCount: 10, conversationCount: 0 },
+      ];
+      resetMockState({
+        rawQueryResults: [sampleTags, [{ total: 2 }]],
+      });
+
+      const res = await app.request('/api/customers/tags/available');
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any;
+      expect(body.data[0].conversationCount).toBe(3);
+      expect(body.data[1].conversationCount).toBe(0);
+    });
+
+    test('should return conversationCount as 0 when tag has no conversations', async () => {
+      const sampleTags = [
+        { id: 1, name: 'Empty', color: '#aaaaaa', customerCount: 0, conversationCount: 0 },
+      ];
+      resetMockState({
+        rawQueryResults: [sampleTags, [{ total: 1 }]],
+      });
+
+      const res = await app.request('/api/customers/tags/available');
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any;
+      expect(body.data[0].conversationCount).toBe(0);
     });
 
     test('should return 500 on database error', async () => {

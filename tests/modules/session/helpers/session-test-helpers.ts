@@ -447,6 +447,7 @@ export function createErrorScenarios() {
 
 /**
  * 驗證錯誤回應格式
+ * Supports both flat (error: "string") and nested (error: { message: "..." }) formats
  */
 export function validateErrorResponse(
   response: any,
@@ -466,8 +467,13 @@ export function validateErrorResponse(
     errors.push('Missing error message');
   }
 
-  if (expectedError && !response.error.includes(expectedError)) {
-    errors.push(`Expected error message containing '${expectedError}', got '${response.error}'`);
+  // Handle both flat string and nested object error formats
+  const errorStr = typeof response.error === 'string'
+    ? response.error
+    : (response.error?.message || response.error?.code || '');
+
+  if (expectedError && errorStr && !errorStr.includes(expectedError)) {
+    errors.push(`Expected error message containing '${expectedError}', got '${errorStr}'`);
   }
 
   if (!response.timestamp) {

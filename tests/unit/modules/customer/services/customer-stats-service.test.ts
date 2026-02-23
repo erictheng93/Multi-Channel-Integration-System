@@ -17,7 +17,7 @@ const adminPayload: JWTPayload = {
 const agentPayload: JWTPayload = {
   userId: 'agent-1',
   role: 'agent',
-  teamId: 2
+  primaryTeamId: 2
 } as any;
 
 // ======================== Mock Factory ========================

@@ -63,7 +63,7 @@ vi.mock('@/db/drizzle-factory', () => ({
 // Import handler after mocks
 // ---------------------------------------------------------------------------
 
-import customerHandler from '@/handlers/customer-main';
+import customerHandler from '@modules/customer/handlers/customer-main';
 import type { Bindings } from '@/types';
 
 // ---------------------------------------------------------------------------

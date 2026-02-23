@@ -71,9 +71,13 @@ vi.mock('@/db/drizzle-factory', () => ({
         if (hasLeftJoin) return Promise.resolve(mockQueryResults.messages);
         // count: innerJoin without leftJoin
         if (hasInnerJoin) return Promise.resolve(mockQueryResults.count);
-        // agents: where without innerJoin
-        if (hasWhere) return Promise.resolve(mockQueryResults.agents);
-        // customers: no joins, no where
+        // agents vs customers: both now use .where() (customers has soft-delete filter),
+        // so discriminate by which result set is populated for the current test.
+        if (hasWhere && !hasInnerJoin && !hasLeftJoin) {
+          if (mockQueryResults.agents.length > 0) return Promise.resolve(mockQueryResults.agents);
+          return Promise.resolve(mockQueryResults.customers);
+        }
+        // customers: no joins, no where (fallback)
         return Promise.resolve(mockQueryResults.customers);
       };
 
@@ -106,7 +110,7 @@ vi.mock('@/db/drizzle-factory', () => ({
 }));
 
 // Import handler AFTER mocks are registered
-import exportRoutes from '@/handlers/messaging/routes/export';
+import exportRoutes from '@modules/messaging/handlers/messaging/routes/export';
 
 // ============================================================================
 // Test Utilities

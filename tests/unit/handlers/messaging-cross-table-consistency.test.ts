@@ -148,7 +148,7 @@ vi.mock('@/db/drizzle-factory', () => ({
 }));
 
 // Import handler AFTER mocks
-import crudRoutes from '@/handlers/messaging/routes/crud';
+import crudRoutes from '@modules/messaging/handlers/messaging/routes/crud';
 
 // ============================================================================
 // Test Utilities

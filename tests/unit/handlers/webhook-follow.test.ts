@@ -179,7 +179,7 @@ vi.mock('@/db/schema', () => ({
 }));
 
 // Import function after mocks
-import { processLineFollowEvent } from '@backend/handlers/webhook';
+import { processLineFollowEvent } from '@modules/integrations/handlers/webhook';
 
 // ============================================================================
 // Test Utilities

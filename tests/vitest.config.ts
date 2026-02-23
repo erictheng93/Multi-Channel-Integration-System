@@ -33,6 +33,7 @@ export default defineConfig({
     ],
     exclude: [
       'node_modules/**',
+      '**/node_modules/**',
       'dist/**',
       'coverage/**',
       '**/*.d.ts',

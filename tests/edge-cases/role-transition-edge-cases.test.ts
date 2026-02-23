@@ -87,8 +87,7 @@ describe('Role Transition and Permission Edge Cases', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 2,
         role: 'agent',
-        teamId: 1,
-        team_id: 1,
+        primaryTeamId: 1,
         isActive: true
       });
 
@@ -115,8 +114,7 @@ describe('Role Transition and Permission Edge Cases', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 2,
         role: 'agent',
-        teamId: 1,
-        team_id: 1,
+        primaryTeamId: 1,
         isActive: true
       });
 
@@ -155,8 +153,7 @@ describe('Role Transition and Permission Edge Cases', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 2,
         role: 'agent',
-        teamId: 1,
-        team_id: 1,
+        primaryTeamId: 1,
         isActive: true
       });
 
@@ -397,8 +394,7 @@ describe('Role Transition and Permission Edge Cases', () => {
         (userId: number) => Promise.resolve({
           id: userId,
           role: userId === 1 ? 'admin' : 'agent',
-          teamId: userId > 1 ? 1 : null,
-          team_id: userId > 1 ? 1 : null,
+          primaryTeamId: userId > 1 ? 1 : undefined,
           isActive: true
         })
       );
