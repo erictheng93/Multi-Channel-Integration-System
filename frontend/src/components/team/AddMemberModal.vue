@@ -3,6 +3,7 @@
     :show="visible"
     title="新增系統人員"
     size="md"
+    :close-on-overlay="false"
     @close="handleClose"
   >
     <!-- Form Content -->

@@ -57,6 +57,7 @@ interface Props {
   size?: 'sm' | 'md' | 'lg' | 'xl'
   fullscreen?: boolean
   closeOnOverlay?: boolean
+  closeOnEscape?: boolean
   showHeader?: boolean
   showCloseButton?: boolean
   noPadding?: boolean
@@ -75,6 +76,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   fullscreen: false,
   closeOnOverlay: true,
+  closeOnEscape: true,
   showHeader: true,
   showCloseButton: true,
   noPadding: false,
@@ -112,7 +114,7 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape') {
+  if (event.key === 'Escape' && props.closeOnEscape) {
     event.preventDefault()
     handleClose()
   }
