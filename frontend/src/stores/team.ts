@@ -235,7 +235,8 @@ export const useTeamStore = defineStore('team', () => {
         error.value = '移除成員失敗'
         throw new Error('移除成員失敗')
       }
-      // 成功：無需操作，UI 已更新
+      // 成功：返回 undoToken 供呼叫端使用
+      return response.data
     } catch (err: unknown) {
       // ⑤ 發生錯誤，恢復原列表
       members.value = originalMembers
