@@ -1,7 +1,14 @@
 {
   "name": "multi-channel-platform",
   "type": "module",
+  "packageManager": "bun@1.3.9",
+  "engines": {
+    "npm": "use bun instead - see CLAUDE.md",
+    "yarn": "use bun instead - see CLAUDE.md",
+    "pnpm": "use bun instead - see CLAUDE.md"
+  },
   "scripts": {
+    "preinstall": "npx only-allow bun",
     "prepare": "husky",
     "dev": "wrangler dev --remote",
     "dev:remote": "wrangler dev --remote",
@@ -135,7 +142,7 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
-    "wrangler": "^4.63.0",
+    "wrangler": "^4.67.0",
     "ws": "^8.18.3"
   }
 }

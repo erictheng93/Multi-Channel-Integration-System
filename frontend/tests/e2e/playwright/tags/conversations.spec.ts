@@ -4,11 +4,10 @@
  * Tests the full browser flow for the tag conversation count feature:
  *   1. Navigate to /customers/tags
  *   2. Page renders tag cards with conversation counts
- *   3. Disabled button when count = 0
- *   4. Clicking an enabled button opens TagConversationsModal
- *   5. Modal shows tag name and conversations list (or empty state)
- *   6. Pagination controls appear when there are multiple pages
- *   7. Modal closes via X button, overlay click, and Escape key
+ *   3. Clicking any tag card or conversation button opens TagConversationsModal
+ *   4. Modal shows tag name and conversations list (or empty state)
+ *   5. Pagination controls appear when there are multiple pages
+ *   6. Modal closes via X button, overlay click, and Escape key
  *
  * Data resilience: tests that depend on tags with conversations gracefully
  * skip when the production DB has no such tags, rather than failing.
@@ -28,9 +27,9 @@ async function goToTagsPage(page: Page) {
   await page.waitForTimeout(2500)
 }
 
-/** Find the first conversation-count button that is NOT disabled */
-function enabledConversationBtn(page: Page) {
-  return page.locator('button.stat-item-clickable:not([disabled])').first()
+/** Find the first conversation-count button (always clickable now) */
+function conversationBtn(page: Page) {
+  return page.locator('button.stat-item-clickable').first()
 }
 
 // ===========================================================================
@@ -92,31 +91,44 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
     await expect(btn).toBeVisible()
   })
 
-  test('conversation count button is disabled when count is zero', async ({ page }) => {
+  test('conversation count button is always clickable (even when count is zero)', async ({ page }) => {
     await goToTagsPage(page)
 
-    // Find all disabled conversation buttons and verify the attribute
-    const disabledBtns = page.locator('button.stat-item-clickable[disabled]')
-    const count = await disabledBtns.count()
-    if (count === 0) { return } // All tags have conversations — still a valid state
+    // All conversation buttons should be enabled regardless of count
+    const allBtns = page.locator('button.stat-item-clickable')
+    const count = await allBtns.count()
+    if (count === 0) { return } // No tags at all — valid state
 
-    const firstDisabled = disabledBtns.first()
-    await expect(firstDisabled).toBeDisabled()
+    for (let i = 0; i < count; i++) {
+      await expect(allBtns.nth(i)).toBeEnabled()
+    }
+  })
+
+  test('clicking a tag card opens the conversations modal', async ({ page }) => {
+    await goToTagsPage(page)
+
+    const cards = page.locator('.tag-card')
+    if (await cards.count() === 0) { return }
+
+    // Click the card content area (not the actions)
+    await cards.first().locator('.tag-name').click()
+
+    await expect(page.locator('.modal-overlay')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.modal-title')).toBeVisible()
   })
 
   // =========================================================================
   // Modal open
   // =========================================================================
 
-  test('clicking an enabled conversation button opens the modal', async ({ page }) => {
+  test('clicking a conversation count button opens the modal', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     const isVisible = await btn.isVisible()
 
     if (!isVisible) {
-      // No tags with conversations in this environment — skip gracefully
-      test.skip(true, 'No tags with conversations found in this environment')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -129,9 +141,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('modal title matches the tag name that was clicked', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -154,9 +166,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('modal shows conversation list or empty state', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -175,9 +187,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('conversation items show customer name and status badge', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -195,9 +207,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('conversation-count badge in modal header shows a number', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -217,9 +229,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('modal closes when the X button is clicked', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -237,9 +249,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('modal closes when Escape is pressed', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -257,9 +269,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('modal closes when the backdrop overlay is clicked', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 
@@ -278,9 +290,9 @@ test.describe('Tags — Conversation Drilldown (P1)', () => {
   test('pagination controls appear when there are multiple pages', async ({ page }) => {
     await goToTagsPage(page)
 
-    const btn = enabledConversationBtn(page)
+    const btn = conversationBtn(page)
     if (!(await btn.isVisible())) {
-      test.skip(true, 'No tags with conversations found')
+      test.skip(true, 'No tags found in this environment')
       return
     }
 

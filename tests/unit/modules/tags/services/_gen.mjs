@@ -1,0 +1,1 @@
+import{writeFileSync}from"fs";const t="tests/unit/modules/tags/services/tag-service.test.ts";const c=[];process.stdin.setEncoding("utf8");process.stdin.on("data",d=>c.push(d));process.stdin.on("end",()=>{writeFileSync(t,c.join(""),"utf8");console.log("Written",c.join("").length);});

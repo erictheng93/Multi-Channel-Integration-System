@@ -2,7 +2,14 @@
   "name": "multi-channel-platform-frontend",
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "bun@1.3.9",
+  "engines": {
+    "npm": "use bun instead - see CLAUDE.md",
+    "yarn": "use bun instead - see CLAUDE.md",
+    "pnpm": "use bun instead - see CLAUDE.md"
+  },
   "scripts": {
+    "preinstall": "npx only-allow bun",
     "dev": "vite --mode development --host --port 5173",
     "dev:local": "vite --mode local --host --port 5173",
     "dev:remote": "vite --mode development --host --port 5173",

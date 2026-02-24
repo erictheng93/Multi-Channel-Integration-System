@@ -64,50 +64,50 @@
             <li
               v-for="conversation in conversations"
               :key="conversation.id"
-              class="conversation-item"
               role="listitem"
             >
-              <!-- Avatar -->
-              <div class="avatar">
-                <img
-                  v-if="conversation.customer_avatar"
-                  :src="conversation.customer_avatar"
-                  :alt="conversation.customer_name"
-                  class="avatar-img"
-                >
-                <span
-                  v-else
-                  class="avatar-fallback"
-                >
-                  {{ conversation.customer_name?.charAt(0) || '?' }}
-                </span>
-              </div>
-
-              <!-- Conversation Info -->
-              <div class="conversation-info">
-                <div class="conversation-top">
-                  <span class="customer-name">{{ conversation.customer_name }}</span>
-                  <span
-                    class="status-badge"
-                    :class="`status-${conversation.status}`"
-                  >
-                    {{ statusLabel(conversation.status) }}
-                  </span>
-                </div>
-                <div class="conversation-meta">
-                  <span class="platform-badge">{{ platformLabel(conversation.customer_platform) }}</span>
-                  <span class="assigned-at">標記於 {{ formatDate(conversation.assigned_at) }}</span>
-                </div>
-              </div>
-
-              <!-- Action -->
               <router-link
                 :to="`/conversations/${conversation.id}`"
-                class="view-link"
-                title="前往對話"
+                class="conversation-item"
                 @click="$emit('update:visible', false)"
               >
-                <ExternalLinkIcon />
+                <!-- Avatar -->
+                <div class="avatar">
+                  <img
+                    v-if="conversation.customer_avatar"
+                    :src="conversation.customer_avatar"
+                    :alt="conversation.customer_name"
+                    class="avatar-img"
+                  >
+                  <span
+                    v-else
+                    class="avatar-fallback"
+                  >
+                    {{ conversation.customer_name?.charAt(0) || '?' }}
+                  </span>
+                </div>
+
+                <!-- Conversation Info -->
+                <div class="conversation-info">
+                  <div class="conversation-top">
+                    <span class="customer-name">{{ conversation.customer_name }}</span>
+                    <span
+                      class="status-badge"
+                      :class="`status-${conversation.status}`"
+                    >
+                      {{ statusLabel(conversation.status) }}
+                    </span>
+                  </div>
+                  <div class="conversation-meta">
+                    <span class="platform-badge">{{ platformLabel(conversation.customer_platform) }}</span>
+                    <span class="assigned-at">標記於 {{ formatDate(conversation.assigned_at) }}</span>
+                  </div>
+                </div>
+
+                <!-- Arrow Icon -->
+                <span class="view-arrow">
+                  <ExternalLinkIcon />
+                </span>
               </router-link>
             </li>
           </ul>
@@ -363,11 +363,15 @@ function formatDate(dateStr: string): string {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-xl);
   border: 1px solid var(--gray-100);
-  transition: background var(--transition-fast);
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .conversation-item:hover {
   background: var(--gray-50);
+  border-color: var(--primary-200);
 }
 
 .avatar {
@@ -450,24 +454,24 @@ function formatDate(dateStr: string): string {
   font-size: 0.6875rem;
 }
 
-.view-link {
+.view-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
   border-radius: var(--radius-md);
-  color: var(--gray-400);
+  color: var(--gray-300);
   transition: all var(--transition-fast);
   flex-shrink: 0;
+  margin-left: auto;
 }
 
-.view-link:hover {
-  background: var(--primary-50);
-  color: var(--primary-600);
+.conversation-item:hover .view-arrow {
+  color: var(--primary-500);
 }
 
-.view-link svg {
+.view-arrow svg {
   width: 16px;
   height: 16px;
 }
