@@ -112,6 +112,7 @@
   import { useConfirmDialog } from '@/composables/useConfirmDialog'
   import { useToast } from '@/composables/useToast'
   import { useAuthStore } from '@/stores/auth'
+  import { useTeamStore } from '@/stores/team'
   import { useQRCodeStore } from '@/stores/qrcode'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
 
@@ -136,6 +137,7 @@
   const { showConfirm } = useConfirmDialog()
   const { showSuccess, showError } = useToast()
   const authStore = useAuthStore()
+  const teamStore = useTeamStore()
   const qrCodeStore = useQRCodeStore()
   const teamModal = useTeamModal()
 
@@ -165,10 +167,8 @@
 
   // Register lifecycle callbacks for modal
   teamModal.onModalOpen(async () => {
-    // 如果還沒載入成員，則載入成員資料
-    if (members.value.length === 0) {
-      await loadTeamMembers()
-    }
+    // 每次打開 modal 都重新載入成員資料，確保 memberCount 與真實數據同步
+    await loadTeamMembers()
 
     // 🆕 修正：每次打開 modal 都重新載入 QR Code，確保與其他元件同步
     // 移除 if (!currentQRCode.value) 檢查，總是載入最新資料
@@ -209,6 +209,8 @@
               updatedAt: new Date().toISOString(),
             }) as TeamMember
         )
+        // 即時同步 memberCount 到 store，確保 TeamCard 和 TeamDetailModal 顯示正確數量
+        teamStore.updateTeamLocal(props.team.id, { memberCount: members.value.length })
       } else {
         console.error('載入團隊成員失敗:', response.error)
         members.value = []

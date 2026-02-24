@@ -40,8 +40,12 @@ export const teamApi = {
     return apiClient.post('/teams/members', backendRequest)
   },
 
-  // 移除團隊成員 (軟刪除)
-  removeMember: async (memberId: string): Promise<ApiResponse<void>> => {
+  // 移除團隊成員 (軟刪除，返回 undoToken 供復原)
+  removeMember: async (memberId: string): Promise<ApiResponse<{
+    undoToken: string;
+    undoExpiresAt: string;
+    deletedMemberId: string;
+  }>> => {
     return apiClient.delete(`/teams/members/${memberId}`)
   },
 

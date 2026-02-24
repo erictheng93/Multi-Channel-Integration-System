@@ -344,11 +344,34 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     }
 
     try {
-      await teamStore.removeMember(member.id)
-      showSuccess(
-        '移除成員成功',
-        `已成功移除成員 ${memberName}`
-      )
+      const result = await teamStore.removeMember(member.id)
+
+      // 顯示 Undo Toast (10 秒持續時間)，與批量刪除 UX 一致
+      if (result?.undoToken) {
+        showSuccess(
+          '移除成員成功',
+          `已成功移除成員 ${memberName}`,
+          {
+            duration: 10000,
+            showProgress: true,
+            actionText: '復原',
+            onAction: async () => {
+              try {
+                await teamStore.restoreMembers({ undoToken: result.undoToken })
+                showSuccess('已復原', `已成功恢復成員 ${memberName}`)
+              } catch (err) {
+                console.error('復原失敗:', err)
+                showError('復原失敗', '無法恢復成員，可能已超過時限')
+              }
+            }
+          }
+        )
+      } else {
+        showSuccess(
+          '移除成員成功',
+          `已成功移除成員 ${memberName}`
+        )
+      }
     } catch (error) {
       console.error('移除成員失敗:', error)
       const errorMessage = error instanceof Error

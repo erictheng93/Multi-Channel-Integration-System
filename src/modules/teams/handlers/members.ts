@@ -369,24 +369,58 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
     // Soft delete member
     await memberService.deleteMember(memberId, String(user.id));
 
-    // Log activity
-    const activityService = new ActivityService(c.env.DB);
-    await activityService.logActivity({
-      userId: String(user.id),
-      userName: user.displayName || String(user.id),
-      userRole: user.role,
-      action: ACTIVITY_ACTIONS.USER_DELETE,
-      resourceType: RESOURCE_TYPES.USER,
-      resourceId: memberId,
-      details: {
-        memberEmail: member.email,
-        memberRole: member.role
-      }
-    });
+    // Generate undo token for single delete (consistent with bulk delete)
+    const undoToken = `undo-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
+    const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds TTL (KV minimum)
+    const undoExpiresAt = expiresAt.toISOString();
+
+    // Store undo data in KV (non-blocking, don't let failure prevent delete response)
+    let kvStored = false;
+    try {
+      const undoData: UndoTokenData = {
+        memberIds: [memberId],
+        deletedBy: String(user.id),
+        deletedAt: nowISO(),
+        reason: undefined
+      };
+
+      await c.env.SESSIONS.put(
+        `undo:members:${undoToken}`,
+        JSON.stringify(undoData),
+        { expirationTtl: 60 } // 60 seconds TTL (KV minimum)
+      );
+      kvStored = true;
+    } catch (kvError: any) {
+      console.error('Failed to store undo token in KV:', kvError?.message || kvError);
+    }
+
+    // Log activity (non-blocking)
+    try {
+      const activityService = new ActivityService(c.env.DB);
+      await activityService.logActivity({
+        userId: String(user.id),
+        userName: user.displayName || String(user.id),
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.USER_DELETE,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: memberId,
+        details: {
+          memberEmail: member.email,
+          memberRole: member.role
+        }
+      });
+    } catch (activityError) {
+      console.error('Failed to log delete activity:', activityError);
+    }
 
     return c.json({
       success: true,
       message: 'Member deleted successfully',
+      data: {
+        undoToken: kvStored ? undoToken : undefined,
+        undoExpiresAt: kvStored ? undoExpiresAt : undefined,
+        deletedMemberId: memberId
+      },
       timestamp: nowISO()
     });
 
@@ -447,7 +481,7 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
 
     if (result.deleted.length > 0) {
       undoToken = `undo-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
-      const expiresAt = new Date(Date.now() + 30 * 1000); // 30 seconds TTL
+      const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds TTL (KV minimum)
       undoExpiresAt = expiresAt.toISOString();
 
       // Store undo data in KV
@@ -458,10 +492,10 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
         reason: data.reason
       };
 
-      await c.env.KV.put(
+      await c.env.SESSIONS.put(
         `undo:members:${undoToken}`,
         JSON.stringify(undoData),
-        { expirationTtl: 30 } // 30 seconds TTL
+        { expirationTtl: 60 } // 60 seconds TTL (KV minimum)
       );
     }
 
@@ -520,7 +554,7 @@ membersHandler.post('/restore', jwtAuth, requireManagerOrAdmin(), async (c) => {
 
     // Mode 1: Use undo token
     if (data.undoToken) {
-      const undoDataStr = await c.env.KV.get(`undo:members:${data.undoToken}`);
+      const undoDataStr = await c.env.SESSIONS.get(`undo:members:${data.undoToken}`);
 
       if (!undoDataStr) {
         return c.json({
@@ -533,7 +567,7 @@ membersHandler.post('/restore', jwtAuth, requireManagerOrAdmin(), async (c) => {
       memberIdsToRestore = undoData.memberIds;
 
       // Delete the token after use
-      await c.env.KV.delete(`undo:members:${data.undoToken}`);
+      await c.env.SESSIONS.delete(`undo:members:${data.undoToken}`);
     }
     // Mode 2: Direct member IDs
     else if (data.memberIds && Array.isArray(data.memberIds) && data.memberIds.length > 0) {
@@ -767,7 +801,7 @@ membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) =
         reason: data.reason
       };
 
-      await c.env.KV.put(
+      await c.env.SESSIONS.put(
         `undo:batch-edit:${undoToken}`,
         JSON.stringify(undoData),
         { expirationTtl: 60 } // 60 seconds TTL
@@ -831,7 +865,7 @@ membersHandler.post('/batch-edit/undo', jwtAuth, requireManagerOrAdmin(), async 
     }
 
     // Get undo data from KV
-    const undoDataStr = await c.env.KV.get(`undo:batch-edit:${undoToken}`);
+    const undoDataStr = await c.env.SESSIONS.get(`undo:batch-edit:${undoToken}`);
     if (!undoDataStr) {
       return c.json({
         success: false,
@@ -859,7 +893,7 @@ membersHandler.post('/batch-edit/undo', jwtAuth, requireManagerOrAdmin(), async 
     );
 
     // Delete the undo token
-    await c.env.KV.delete(`undo:batch-edit:${undoToken}`);
+    await c.env.SESSIONS.delete(`undo:batch-edit:${undoToken}`);
 
     const successCount = result.results.filter(r => r.success).length;
 

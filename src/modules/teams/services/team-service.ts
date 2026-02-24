@@ -85,18 +85,21 @@ export class TeamService implements TeamServiceInterface {
     if (!team) return null;
 
     // 🔧 Fix: Get member count from agent_teams table (supports multi-team architecture)
+    // Exclude soft-deleted agents (deletedAt IS NULL)
     const memberCountResult = await this.db
       .select({ memberCount: count() })
       .from(agentTeams)
-      .where(eq(agentTeams.teamId, id));
+      .innerJoin(agents, eq(agentTeams.agentId, agents.id))
+      .where(and(eq(agentTeams.teamId, id), sql`${agents.deletedAt} IS NULL`));
     const memberCount = memberCountResult[0]?.memberCount || 0;
 
     // 🔧 Fix: Get active members count via agent_teams join
+    // Exclude soft-deleted agents (deletedAt IS NULL)
     const activeMembersResult = await this.db
       .select({ activeMembers: count() })
       .from(agentTeams)
       .innerJoin(agents, eq(agentTeams.agentId, agents.id))
-      .where(and(eq(agentTeams.teamId, id), eq(agents.isActive, true)));
+      .where(and(eq(agentTeams.teamId, id), eq(agents.isActive, true), sql`${agents.deletedAt} IS NULL`));
     const activeMembers = activeMembersResult[0]?.activeMembers || 0;
 
     // Get conversation count
@@ -233,8 +236,8 @@ export class TeamService implements TeamServiceInterface {
     const teamList = await this.db
       .select({
         team: teams,
-        memberCount: sql<number>`COALESCE(COUNT(DISTINCT ${agentTeams.agentId}), 0)`,
-        activeMembers: sql<number>`COALESCE(SUM(CASE WHEN ${agents.isActive} = 1 THEN 1 ELSE 0 END), 0)`,
+        memberCount: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${agents.deletedAt} IS NULL THEN ${agentTeams.agentId} END), 0)`,
+        activeMembers: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${agents.isActive} = 1 AND ${agents.deletedAt} IS NULL THEN ${agentTeams.agentId} END), 0)`,
         conversationCount: sql<number>`COALESCE(COUNT(DISTINCT ${conversations.id}), 0)`
       })
       .from(teams)
