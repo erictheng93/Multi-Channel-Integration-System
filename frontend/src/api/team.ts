@@ -24,13 +24,18 @@ export const teamApi = {
     isActive: boolean;
   }): Promise<ApiResponse<TeamMember>> => {
     // 轉換前端數據格式為後端期望的格式
-    const backendRequest = {
+    const backendRequest: Record<string, unknown> = {
       email: request.email || request.loginId, // email 是必填，如果沒有則使用 loginId
       password: request.password,
       displayName: request.name || request.loginId, // displayName 是必填，如果沒有則使用 loginId
       role: request.role,
       isActive: request.isActive
     };
+
+    // 如果有指派團隊，將 group (team ID) 轉換為 teamId (number)
+    if (request.group) {
+      backendRequest.teamId = Number(request.group);
+    }
 
     return apiClient.post('/teams/members', backendRequest)
   },
