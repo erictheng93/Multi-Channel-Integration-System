@@ -172,9 +172,10 @@ export const tagHandler = {
           (SELECT COUNT(*) FROM customer_tags ct2
             JOIN customers c2 ON ct2.customer_id = c2.id
             WHERE ct2.tag_id = t.id AND c2.deleted_at IS NULL) as customer_count,
-          (SELECT COUNT(*) FROM conversation_tags ct3
-            JOIN conversations cv2 ON ct3.conversation_id = cv2.id
-            WHERE ct3.tag_id = t.id AND cv2.deleted_at IS NULL) as conversation_count
+          (SELECT COUNT(DISTINCT cv2.id) FROM customer_tags ct3
+            JOIN customers c3 ON ct3.customer_id = c3.id
+            JOIN conversations cv2 ON cv2.customer_id = c3.id
+            WHERE ct3.tag_id = t.id AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL) as conversation_count
         FROM tags t
         WHERE t.is_active = 1
         AND t.deleted_at IS NULL
@@ -322,9 +323,11 @@ export const tagHandler = {
           WHERE tag_id = ${tagId}
         ) customer_count ON t.id = customer_count.tag_id
         LEFT JOIN (
-          SELECT tag_id, COUNT(DISTINCT conversation_id) as count
-          FROM conversation_tags
-          WHERE tag_id = ${tagId}
+          SELECT ct3.tag_id, COUNT(DISTINCT cv2.id) as count
+          FROM customer_tags ct3
+          JOIN customers c3 ON ct3.customer_id = c3.id
+          JOIN conversations cv2 ON cv2.customer_id = c3.id
+          WHERE ct3.tag_id = ${tagId} AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL
         ) conversation_count ON t.id = conversation_count.tag_id
         WHERE t.id = ${tagId}
       `);
@@ -429,9 +432,11 @@ export const tagHandler = {
           WHERE tag_id = ${tagId}
         ) customer_count ON t.id = customer_count.tag_id
         LEFT JOIN (
-          SELECT tag_id, COUNT(DISTINCT conversation_id) as count
-          FROM conversation_tags
-          WHERE tag_id = ${tagId}
+          SELECT ct3.tag_id, COUNT(DISTINCT cv2.id) as count
+          FROM customer_tags ct3
+          JOIN customers c3 ON ct3.customer_id = c3.id
+          JOIN conversations cv2 ON cv2.customer_id = c3.id
+          WHERE ct3.tag_id = ${tagId} AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL
         ) conversation_count ON t.id = conversation_count.tag_id
         WHERE t.id = ${tagId}
       `);
@@ -517,15 +522,18 @@ export const tagHandler = {
         WHERE ct.tag_id = ${tagId}
       `);
 
-      // Conversation usage statistics
+      // Conversation usage statistics (via customer_tags → customers → conversations)
       const conversationStats = await drizzleDb.get(sql`
         SELECT
-          COUNT(*) as total_conversations,
-          COUNT(CASE WHEN conv.status = 'active' THEN 1 END) as active_conversations,
-          COUNT(CASE WHEN conv.status = 'closed' THEN 1 END) as closed_conversations
-        FROM conversation_tags ct
-        JOIN conversations conv ON ct.conversation_id = conv.id
+          COUNT(DISTINCT conv.id) as total_conversations,
+          COUNT(DISTINCT CASE WHEN conv.status = 'active' THEN conv.id END) as active_conversations,
+          COUNT(DISTINCT CASE WHEN conv.status = 'closed' THEN conv.id END) as closed_conversations
+        FROM customer_tags ct
+        JOIN customers c ON ct.customer_id = c.id
+        JOIN conversations conv ON conv.customer_id = c.id
         WHERE ct.tag_id = ${tagId}
+          AND c.deleted_at IS NULL
+          AND conv.deleted_at IS NULL
       `);
 
       // Recent usage trend (last 30 days)
@@ -759,12 +767,13 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // Get conversations using this tag
+      // Get conversations for this tag (via customer_tags → customers → conversations)
+      // Tags are applied to customers, so we find conversations belonging to tagged customers
       const conversations = await drizzleDb.all(sql`
-        SELECT
+        SELECT DISTINCT
           conv.id,
           conv.status,
-          conv.channel,
+          cust.platform as channel,
           conv.created_at,
           conv.updated_at,
           cust.display_name as customer_name,
@@ -772,9 +781,9 @@ export const tagHandler = {
           cust.platform as customer_platform,
           ct.assigned_at,
           ct.assigned_by
-        FROM conversation_tags ct
-        JOIN conversations conv ON ct.conversation_id = conv.id
-        JOIN customers cust ON conv.customer_id = cust.id
+        FROM customer_tags ct
+        JOIN customers cust ON ct.customer_id = cust.id
+        JOIN conversations conv ON conv.customer_id = cust.id
         WHERE ct.tag_id = ${tagId}
           AND conv.deleted_at IS NULL
           AND cust.deleted_at IS NULL
@@ -782,12 +791,12 @@ export const tagHandler = {
         LIMIT ${limit} OFFSET ${offset}
       `);
 
-      // Get total count
+      // Get total count (via customer_tags → customers → conversations)
       const countResult = await drizzleDb.get(sql`
-        SELECT COUNT(*) as total
-        FROM conversation_tags ct
-        JOIN conversations conv ON ct.conversation_id = conv.id
-        JOIN customers cust ON conv.customer_id = cust.id
+        SELECT COUNT(DISTINCT conv.id) as total
+        FROM customer_tags ct
+        JOIN customers cust ON ct.customer_id = cust.id
+        JOIN conversations conv ON conv.customer_id = cust.id
         WHERE ct.tag_id = ${tagId}
           AND conv.deleted_at IS NULL
           AND cust.deleted_at IS NULL
