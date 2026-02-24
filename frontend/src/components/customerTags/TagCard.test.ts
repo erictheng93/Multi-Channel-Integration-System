@@ -104,26 +104,26 @@ describe('TagCard — rendering', () => {
 })
 
 // ===========================================================================
-// Conversation count button — disabled state
+// Conversation count button — always clickable (shows empty state modal)
 // ===========================================================================
 
-describe('TagCard — conversation count button disabled state', () => {
+describe('TagCard — conversation count button', () => {
   it('is enabled when conversationCount > 0', () => {
     const wrapper = mountTagCard(makeTag({ conversationCount: 3 }))
     const btn = wrapper.find('button.stat-item-clickable')
     expect((btn.element as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('is disabled when conversationCount is 0', () => {
+  it('is enabled even when conversationCount is 0 (opens modal with empty state)', () => {
     const wrapper = mountTagCard(makeTag({ conversationCount: 0 }))
     const btn = wrapper.find('button.stat-item-clickable')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+    expect((btn.element as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('is disabled when conversationCount is undefined', () => {
+  it('is enabled even when conversationCount is undefined', () => {
     const wrapper = mountTagCard(makeTag({ conversationCount: undefined }))
     const btn = wrapper.find('button.stat-item-clickable')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+    expect((btn.element as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('button title includes the conversation count', () => {
@@ -145,14 +145,18 @@ describe('TagCard — emitted events', () => {
     expect(wrapper.emitted('view-conversations')).toHaveLength(1)
   })
 
-  it('does not emit view-conversations when button is disabled (count = 0)', async () => {
+  it('emits view-conversations even when count is 0 (opens modal with empty state)', async () => {
     const wrapper = mountTagCard(makeTag({ conversationCount: 0 }))
     const btn = wrapper.find('button.stat-item-clickable')
-    // Native disabled button does not fire click events in JSDOM
     await btn.trigger('click')
-    // Even if click fires, the :disabled attribute semantically prevents interaction
-    // We verify the button IS disabled rather than checking emission
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+    expect(wrapper.emitted('view-conversations')).toBeTruthy()
+    expect(wrapper.emitted('view-conversations')).toHaveLength(1)
+  })
+
+  it('emits view-conversations when the card itself is clicked', async () => {
+    const wrapper = mountTagCard(makeTag())
+    await wrapper.find('.tag-card').trigger('click')
+    expect(wrapper.emitted('view-conversations')).toBeTruthy()
   })
 
   it('emits select when checkbox is changed', async () => {
@@ -177,5 +181,46 @@ describe('TagCard — emitted events', () => {
     const wrapper = mountTagCard(makeTag())
     await wrapper.find('.action-btn-info').trigger('click')
     expect(wrapper.emitted('view-stats')).toBeTruthy()
+  })
+})
+
+// ===========================================================================
+// Event isolation — @click.stop prevents card click from firing
+// ===========================================================================
+
+describe('TagCard — @click.stop event isolation', () => {
+  it('clicking edit button does not emit view-conversations', async () => {
+    const wrapper = mountTagCard(makeTag())
+    await wrapper.find('.action-btn-primary').trigger('click')
+    // Edit should emit 'edit' only, NOT 'view-conversations'
+    expect(wrapper.emitted('edit')).toBeTruthy()
+    expect(wrapper.emitted('view-conversations')).toBeFalsy()
+  })
+
+  it('clicking delete button does not emit view-conversations', async () => {
+    const wrapper = mountTagCard(makeTag())
+    await wrapper.find('.action-btn-danger').trigger('click')
+    expect(wrapper.emitted('delete')).toBeTruthy()
+    expect(wrapper.emitted('view-conversations')).toBeFalsy()
+  })
+
+  it('clicking stats button does not emit view-conversations', async () => {
+    const wrapper = mountTagCard(makeTag())
+    await wrapper.find('.action-btn-info').trigger('click')
+    expect(wrapper.emitted('view-stats')).toBeTruthy()
+    expect(wrapper.emitted('view-conversations')).toBeFalsy()
+  })
+
+  it('clicking conversation count button emits view-conversations only once (no card double-fire)', async () => {
+    const wrapper = mountTagCard(makeTag({ conversationCount: 5 }))
+    await wrapper.find('button.stat-item-clickable').trigger('click')
+    // The button uses @click.stop so only the button handler fires, not both button + card
+    expect(wrapper.emitted('view-conversations')).toHaveLength(1)
+  })
+
+  it('clicking checkbox area does not emit view-conversations', async () => {
+    const wrapper = mountTagCard(makeTag())
+    await wrapper.find('.tag-checkbox').trigger('click')
+    expect(wrapper.emitted('view-conversations')).toBeFalsy()
   })
 })

@@ -2,9 +2,13 @@
   <div
     class="tag-card"
     :class="{ 'tag-selected': isSelected }"
+    @click="$emit('view-conversations')"
   >
     <!-- Selection Checkbox -->
-    <div class="tag-checkbox">
+    <div
+      class="tag-checkbox"
+      @click.stop
+    >
       <input
         :id="`tag-${tag.id}`"
         type="checkbox"
@@ -45,7 +49,6 @@
         <button
           class="stat-item stat-item-clickable"
           :title="`查看 ${tag.conversationCount || 0} 個對話`"
-          :disabled="!tag.conversationCount"
           @click.stop="$emit('view-conversations')"
         >
           <MessageCircleIcon />
@@ -115,6 +118,7 @@ defineEmits<{
   border: 2px solid var(--gray-100);
   transition: all var(--transition-fast);
   overflow: hidden;
+  cursor: pointer;
 }
 
 .tag-card:hover {
@@ -247,8 +251,8 @@ defineEmits<{
 }
 
 .stat-item-clickable:disabled {
-  cursor: default;
-  text-decoration: none;
+  cursor: pointer;
+  text-decoration: underline dotted var(--gray-400);
 }
 
 .tag-actions {

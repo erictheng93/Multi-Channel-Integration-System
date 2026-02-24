@@ -2,7 +2,14 @@
   "name": "multi-channel-platform-tests",
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "bun@1.3.9",
+  "engines": {
+    "npm": "use bun instead - see CLAUDE.md",
+    "yarn": "use bun instead - see CLAUDE.md",
+    "pnpm": "use bun instead - see CLAUDE.md"
+  },
   "scripts": {
+    "preinstall": "npx only-allow bun",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",

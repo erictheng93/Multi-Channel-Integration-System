@@ -87,7 +87,7 @@ function mountModal(props: { visible: boolean; tag: Tag | null }) {
       stubs: {
         // Stub Teleport to render inline — allows wrapper.find() to work
         Teleport: true,
-        RouterLink: { template: '<a class="view-link"><slot /></a>', props: ['to'] },
+        RouterLink: { template: '<a class="conversation-item" :data-to="to"><slot /></a>', props: ['to'] },
       },
     },
   })
@@ -444,6 +444,38 @@ describe('TagConversationsModal', () => {
       await flushPromises()
       expect(wrapper.find('.loading-spinner').exists()).toBe(false)
       expect(wrapper.text()).toContain('此標籤尚未被應用到任何對話')
+    })
+  })
+
+  // =========================================================================
+  // Router-link navigation
+  // =========================================================================
+
+  describe('router-link navigation', () => {
+    it('renders a clickable row for each conversation pointing to /conversations/:id', async () => {
+      mockGetTagConversations.mockResolvedValue(makeApiResponse([
+        makeConversation({ id: 'conv-abc' }),
+        makeConversation({ id: 'conv-xyz', customer_name: 'Bob' }),
+      ]))
+      const wrapper = await openModal()
+      await flushPromises()
+
+      const links = wrapper.findAll('.conversation-item')
+      expect(links).toHaveLength(2)
+      expect(links[0]!.attributes('data-to')).toBe('/conversations/conv-abc')
+      expect(links[1]!.attributes('data-to')).toBe('/conversations/conv-xyz')
+    })
+
+    it('emits update:visible false when a conversation row is clicked (closes modal)', async () => {
+      mockGetTagConversations.mockResolvedValue(makeApiResponse([
+        makeConversation({ id: 'conv-001' }),
+      ]))
+      const wrapper = await openModal()
+      await flushPromises()
+
+      await wrapper.find('.conversation-item').trigger('click')
+      expect(wrapper.emitted('update:visible')).toBeTruthy()
+      expect(wrapper.emitted('update:visible')![0]).toEqual([false])
     })
   })
 
