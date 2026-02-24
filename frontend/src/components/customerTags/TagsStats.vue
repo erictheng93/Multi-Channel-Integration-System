@@ -16,21 +16,6 @@
         </div>
       </div>
 
-      <!-- Total Customers -->
-      <div class="stat-card customers">
-        <div class="stat-content">
-          <div class="stat-number">
-            {{ stats.totalCustomers }}
-          </div>
-          <div class="stat-label">
-            標記客戶數
-          </div>
-        </div>
-        <div class="stat-icon">
-          <UsersIcon />
-        </div>
-      </div>
-
       <!-- Total Conversations -->
       <div class="stat-card conversations">
         <div class="stat-content">
@@ -65,12 +50,11 @@
 </template>
 
 <script setup lang="ts">
-import { TagIcon, UsersIcon, MessageCircleIcon, CheckCircleIcon } from '@/components/icons'
+import { TagIcon, MessageCircleIcon, CheckCircleIcon } from '@/components/icons'
 
 defineProps<{
   stats: {
     totalTags: number
-    totalCustomers: number
     totalConversations: number
     activeTags: number
   }
@@ -116,10 +100,6 @@ defineProps<{
 
 .stat-card.tags::before {
   background: linear-gradient(180deg, #3b82f6, #2563eb);
-}
-
-.stat-card.customers::before {
-  background: linear-gradient(180deg, #10b981, #059669);
 }
 
 .stat-card.conversations::before {
@@ -171,11 +151,6 @@ defineProps<{
 .stat-card.tags .stat-icon {
   background: rgba(59, 130, 246, 0.1);
   color: var(--blue-600);
-}
-
-.stat-card.customers .stat-icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--green-600);
 }
 
 .stat-card.conversations .stat-icon {

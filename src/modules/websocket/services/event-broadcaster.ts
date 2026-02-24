@@ -722,6 +722,58 @@ export class EventBroadcaster {
   }
 
   /**
+   * Broadcast customer tag events (add/remove/set tags on customers)
+   * Broadcasts globally to all admin/team roles so tag management pages auto-refresh
+   */
+  async broadcastCustomerTagEvent(event: {
+    customerId: number;
+    operation: 'add' | 'remove' | 'set';
+    tagIds: number[];
+    changedBy: string;
+  }): Promise<boolean> {
+    try {
+      const wsEvent: DurableObjectEvent = {
+        id: crypto.randomUUID(),
+        type: 'customer_tags_updated',
+        source: 'api',
+        timestamp: nowMs(),
+        data: {
+          customerId: event.customerId,
+          operation: event.operation,
+          tagIds: event.tagIds,
+          changedBy: event.changedBy
+        },
+        priority: 'normal',
+        deliveryOptions: {
+          broadcast: true,
+          targets: [
+            {
+              type: 'global' as const,
+              targets: ['admin', 'team'] as (string | number)[],
+              filters: {
+                roles: ['admin', 'agent']
+              }
+            }
+          ],
+          persistent: false,
+          ttl: 60000 // 1 minute
+        }
+      };
+
+      console.log('🏷️ [EventBroadcaster] Customer tag event:', {
+        customerId: event.customerId,
+        operation: event.operation,
+        tagCount: event.tagIds.length
+      });
+
+      return await this.doClient.broadcast(wsEvent);
+    } catch (error) {
+      console.error('❌ [EventBroadcaster] Customer tag event error:', error);
+      return false;
+    }
+  }
+
+  /**
    * Unified New Message Broadcast (Phase B4)
    *
    * Broadcasts new messages to BOTH:

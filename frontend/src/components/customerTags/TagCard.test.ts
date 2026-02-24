@@ -7,7 +7,6 @@ import type { Tag } from '@/types/tag'
 // Stub icon components — they render SVGs which aren't relevant to logic
 // ---------------------------------------------------------------------------
 vi.mock('@/components/icons', () => ({
-  UsersIcon: { template: '<span class="icon-users" />' },
   MessageCircleIcon: { template: '<span class="icon-message" />' },
   BarChartIcon: { template: '<span class="icon-bar-chart" />' },
   EditIcon: { template: '<span class="icon-edit" />' },
@@ -76,11 +75,6 @@ describe('TagCard — rendering', () => {
     const wrapper = mountTagCard(makeTag({ conversationCount: undefined }))
     const button = wrapper.find('button.stat-item-clickable')
     expect(button.text()).toContain('0')
-  })
-
-  it('shows the correct customer count', () => {
-    const wrapper = mountTagCard(makeTag({ customerCount: 12 }))
-    expect(wrapper.find('.stat-item').text()).toContain('12')
   })
 
   it('applies tag-selected class when isSelected is true', () => {

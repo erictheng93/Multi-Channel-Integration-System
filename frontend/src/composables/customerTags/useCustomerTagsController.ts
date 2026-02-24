@@ -9,6 +9,7 @@
 
 import { ref, computed } from 'vue'
 import { useTagsStore } from '@/stores/tags'
+import { useWebSocketStore, type SubscriptionId } from '@/stores/websocket'
 import { useToast } from '@/composables/useToast'
 import { useTagSearch } from './useTagSearch'
 import { useTagActions } from './useTagActions'
@@ -70,7 +71,6 @@ export function useCustomerTagsController() {
 
   const stats = computed(() => ({
     totalTags: tags.value.length,
-    totalCustomers: tags.value.reduce((sum: number, tag: Tag) => sum + (tag.customerCount || 0), 0),
     totalConversations: tags.value.reduce((sum: number, tag: Tag) => sum + (tag.conversationCount || 0), 0),
     activeTags: tags.value.filter((tag: Tag) => tag.isActive).length
   }))
@@ -201,17 +201,60 @@ export function useCustomerTagsController() {
     }
   }
 
+  // ==================== WebSocket Real-time Updates ====================
+
+  const wsStore = useWebSocketStore()
+  let wsSubscriptionId: SubscriptionId | null = null
+  let lastRefetchTime = 0
+  const REFETCH_DEBOUNCE_MS = 2000 // Debounce rapid tag changes
+
+  /**
+   * Subscribe to WebSocket 'tags' channel for real-time tag updates.
+   * When another agent adds/removes tags on a customer, this auto-refetches.
+   */
+  const subscribeToTagUpdates = () => {
+    if (wsSubscriptionId) { return } // Already subscribed
+
+    wsSubscriptionId = wsStore.subscribe('tags', (message) => {
+      if (message.type === 'customer_tags_updated') {
+        const now = Date.now()
+        if (now - lastRefetchTime < REFETCH_DEBOUNCE_MS) {
+          console.log('⏳ [CustomerTagsController] Debouncing tag refetch')
+          return
+        }
+        lastRefetchTime = now
+
+        console.log('🔄 [CustomerTagsController] Real-time tag update received, refetching...', message.data)
+        search.loadTags().catch((err: unknown) => {
+          console.error('❌ [CustomerTagsController] Real-time refetch failed:', err)
+        })
+      }
+    })
+
+    console.log('📡 [CustomerTagsController] Subscribed to tag WebSocket updates')
+  }
+
+  const unsubscribeFromTagUpdates = () => {
+    if (wsSubscriptionId) {
+      wsStore.unsubscribe(wsSubscriptionId)
+      wsSubscriptionId = null
+      console.log('🔌 [CustomerTagsController] Unsubscribed from tag WebSocket updates')
+    }
+  }
+
   // ==================== Lifecycle ====================
 
   /**
    * Initialize controller
    * - Load tags from store
    * - Setup keyboard shortcuts
+   * - Subscribe to WebSocket for real-time updates
    */
   const initialize = async () => {
     loading.value = true
     try {
       await search.loadTags()
+      subscribeToTagUpdates()
       console.log('✅ [CustomerTagsController] Initialized successfully')
     } catch (error) {
       console.error('❌ [CustomerTagsController] Initialization failed:', error)
@@ -224,8 +267,10 @@ export function useCustomerTagsController() {
   /**
    * Cleanup controller
    * - Remove event listeners
+   * - Unsubscribe from WebSocket
    */
   const cleanup = () => {
+    unsubscribeFromTagUpdates()
     keyboard.cleanup()
     console.log('🧹 [CustomerTagsController] Cleaned up')
   }

@@ -86,6 +86,10 @@ export class WebSocketBroadcastService {
     return this.broadcaster.broadcastTeamUpdateEvent(event);
   }
 
+  async broadcastCustomerTagEvent(event: Parameters<EventBroadcaster['broadcastCustomerTagEvent']>[0]) {
+    return this.broadcaster.broadcastCustomerTagEvent(event);
+  }
+
   async broadcastNewMessage(params: Parameters<EventBroadcaster['broadcastNewMessage']>[0]) {
     return this.broadcaster.broadcastNewMessage(params);
   }

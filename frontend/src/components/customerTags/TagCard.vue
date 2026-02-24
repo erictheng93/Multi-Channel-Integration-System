@@ -42,10 +42,6 @@
 
       <!-- Stats -->
       <div class="tag-stats">
-        <div class="stat-item">
-          <UsersIcon />
-          <span>{{ tag.customerCount || 0 }} 客戶</span>
-        </div>
         <button
           class="stat-item stat-item-clickable"
           :title="`查看 ${tag.conversationCount || 0} 個對話`"
@@ -86,7 +82,6 @@
 
 <script setup lang="ts">
 import {
-  UsersIcon,
   MessageCircleIcon,
   BarChartIcon,
   EditIcon,
