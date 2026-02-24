@@ -47,10 +47,22 @@ export function useTagSearch(
   /**
    * Load tags from API
    * Uses cache service for optimal performance
+   *
+   * @param forceRefresh - When true, bypasses cache and fetches fresh data from API.
+   *                       Used by WebSocket real-time updates to ensure stale cache
+   *                       doesn't prevent updated counts from appearing.
    */
-  const loadTags = async () => {
+  const loadTags = async (forceRefresh = false) => {
     try {
-      console.log('📦 [TagSearch] Loading tags...')
+      console.log(`📦 [TagSearch] Loading tags...${forceRefresh ? ' (force refresh)' : ''}`)
+
+      if (forceRefresh) {
+        // Invalidate cache and fetch fresh data from API
+        const freshTags = await tagCacheService.refreshTags()
+        store.tags = freshTags
+        console.log(`✅ [TagSearch] Force-refreshed ${freshTags.length} tags from API`)
+        return
+      }
 
       // Check cache first
       const cachedTags = tagCacheService.getAllTags()

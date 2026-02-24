@@ -225,7 +225,7 @@ export function useCustomerTagsController() {
         lastRefetchTime = now
 
         console.log('🔄 [CustomerTagsController] Real-time tag update received, refetching...', message.data)
-        search.loadTags().catch((err: unknown) => {
+        search.loadTags(true).catch((err: unknown) => {
           console.error('❌ [CustomerTagsController] Real-time refetch failed:', err)
         })
       }
