@@ -161,7 +161,12 @@ export const ROUTING_RULES: Record<string, RoutingRule> = {
       channels.push(`conversation:${message.conversationId}`)
     }
     return channels
-  }
+  },
+
+  /**
+   * 客户标签更新 → tags channel（标签管理页面自动刷新）
+   */
+  'customer_tags_updated': () => ['tags']
 }
 
 /**

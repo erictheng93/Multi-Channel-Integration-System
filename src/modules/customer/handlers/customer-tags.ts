@@ -14,6 +14,7 @@ import {
 import { customers, tags, customerTags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 
 export const customerTagsHandler = {
   /**
@@ -251,6 +252,21 @@ export const customerTagsHandler = {
         console.log(`📦 [Customer Tags] Added ${newTagIds.length} tags using batch insert`);
       }
 
+      // 🆕 Broadcast tag change event for real-time updates
+      if (newTagIds.length > 0) {
+        try {
+          const broadcastService = new WebSocketBroadcastService(c.env);
+          await broadcastService.broadcastCustomerTagEvent({
+            customerId,
+            operation: 'add',
+            tagIds: newTagIds,
+            changedBy: String(payload?.userId || 'unknown')
+          });
+        } catch (broadcastError) {
+          console.warn('⚠️ [Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+        }
+      }
+
       return successResponse(
         c,
         {
@@ -302,6 +318,20 @@ export const customerTagsHandler = {
             inArray(customerTags.tagId, tagIds)
           )
         );
+
+      // 🆕 Broadcast tag change event for real-time updates
+      try {
+        const payload = c.get('jwtPayload');
+        const broadcastService = new WebSocketBroadcastService(c.env);
+        await broadcastService.broadcastCustomerTagEvent({
+          customerId,
+          operation: 'remove',
+          tagIds,
+          changedBy: String(payload?.userId || 'unknown')
+        });
+      } catch (broadcastError) {
+        console.warn('⚠️ [Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+      }
 
       return successResponse(c, null, `Successfully removed ${tagIds.length} tags from customer`);
 
@@ -384,6 +414,19 @@ export const customerTagsHandler = {
           .values(tagInsertValues);
 
         console.log(`📦 [Customer Tags] Set ${tagIds.length} tags using batch insert`);
+      }
+
+      // 🆕 Broadcast tag change event for real-time updates
+      try {
+        const broadcastService = new WebSocketBroadcastService(c.env);
+        await broadcastService.broadcastCustomerTagEvent({
+          customerId,
+          operation: 'set',
+          tagIds,
+          changedBy: String(payload?.userId || 'unknown')
+        });
+      } catch (broadcastError) {
+        console.warn('⚠️ [Customer Tags] Broadcast failed (non-blocking):', broadcastError);
       }
 
       return successResponse(
