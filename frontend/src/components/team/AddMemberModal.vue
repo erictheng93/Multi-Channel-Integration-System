@@ -92,7 +92,7 @@
           <option
             v-for="team in activeTeams"
             :key="team.id"
-            :value="team.name"
+            :value="team.id"
           >
             {{ team.name }}
             <template v-if="team.memberCount !== undefined">
