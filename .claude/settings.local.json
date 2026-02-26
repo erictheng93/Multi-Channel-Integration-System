@@ -169,5 +169,20 @@
     "playwright",
     "context7"
   ],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/health-check.sh\"",
+            "timeout": 60,
+            "statusMessage": "Running health check (tsc + eslint)..."
+          }
+        ]
+      }
+    ]
+  },
   "outputStyle": "visual-explanation"
 }
