@@ -15,11 +15,6 @@ export type {
   DeploymentResult,
   CloudflareResources,
   AdminCredentials,
-  SSEEvent,
-  SSEProgressData,
-  SSELogData,
-  SSECompleteData,
-  SSEErrorData,
   StepConfig
 } from './deployment';
 
@@ -59,11 +54,9 @@ export interface Env {
   // Secrets (set via wrangler secret put)
   CF_CLIENT_ID: string;
   CF_CLIENT_SECRET: string;
-  RESEND_API_KEY: string;
 
   // Variables
   ENVIRONMENT?: string;
-  FROM_EMAIL?: string;
   SUPPORT_EMAIL?: string;
 
   // Durable Object bindings
@@ -99,6 +92,7 @@ export interface CloudflareUserInfo {
 export interface StartDeploymentRequest {
   projectName: string;
   adminEmail: string;
+  adminPassword?: string;
   customDomain?: string;
   accountId: string;
   oauthToken: string;

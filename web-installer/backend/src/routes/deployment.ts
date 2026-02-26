@@ -77,6 +77,7 @@ deployment.post(
       const config: DeploymentConfig = {
         projectName: body.projectName,
         adminEmail: body.adminEmail,
+        adminPassword: body.adminPassword,
         customDomain: body.customDomain,
         oauthToken: body.oauthToken,
         accountId: body.accountId
@@ -129,41 +130,6 @@ deployment.get('/deployment/:projectName/status', async (c) => {
     console.error('Get status error:', error);
     return c.json({
       error: error instanceof Error ? error.message : 'Failed to get status'
-    }, 500);
-  }
-});
-
-/**
- * Stream deployment events via SSE
- * GET /deployment/:projectName/events
- */
-deployment.get('/deployment/:projectName/events', async (c) => {
-  try {
-    const projectName = c.req.param('projectName');
-
-    // Get Durable Object instance
-    const doId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName(projectName);
-    const doStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(doId);
-
-    // Forward SSE stream from Durable Object
-    const response = await doStub.fetch('http://do/events', {
-      method: 'GET'
-    });
-
-    // Return the SSE stream
-    return new Response(response.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-
-  } catch (error) {
-    console.error('SSE stream error:', error);
-    return c.json({
-      error: error instanceof Error ? error.message : 'Failed to stream events'
     }, 500);
   }
 });

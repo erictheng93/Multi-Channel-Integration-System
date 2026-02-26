@@ -20,7 +20,6 @@ export type DeploymentStep =
   | 'deploy_pages'
   | 'configure_domain'
   | 'create_admin'
-  | 'send_email'
   | 'verify_health'
   | 'complete';
 
@@ -141,6 +140,7 @@ export interface CloudflareAccount {
 export interface StartDeploymentRequest {
   projectName: string;
   adminEmail: string;
+  adminPassword?: string;
   customDomain?: string;
   accountId: string;
   oauthToken: string;
@@ -179,58 +179,14 @@ export interface DeploymentStatusResponse {
 }
 
 // ========================================
-// SSE EVENT TYPES
-// ========================================
-
-export type SSEEventType = 'progress' | 'log' | 'error' | 'complete' | 'cancelled';
-
-export interface SSEEvent {
-  type: SSEEventType;
-  data: SSEEventData;
-}
-
-export type SSEEventData =
-  | ProgressEventData
-  | LogEventData
-  | ErrorEventData
-  | CompleteEventData
-  | CancelledEventData;
-
-export interface ProgressEventData {
-  step: DeploymentStep;
-  stepProgress: number;
-  totalProgress: number;
-}
-
-export interface LogEventData {
-  level: LogLevel;
-  message: string;
-  step?: DeploymentStep;
-}
-
-export interface ErrorEventData {
-  error: string;
-  step?: DeploymentStep;
-}
-
-export interface CompleteEventData {
-  deploymentId: string;
-  resources: CloudflareResources;
-  credentials: AdminCredentials;
-  duration: number;
-}
-
-export interface CancelledEventData {
-  reason: string;
-}
-
-// ========================================
 // UI STATE TYPES
 // ========================================
 
 export interface FormErrors {
   projectName?: string;
   adminEmail?: string;
+  adminPassword?: string;
+  adminPasswordConfirm?: string;
   customDomain?: string;
   accountId?: string;
   // Phase 1 Enhancement: URL Configuration errors

@@ -11,9 +11,13 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3000,
+    port: 5173,
     proxy: {
       // Proxy API requests to backend during development
+      '/auth': {
+        target: 'http://localhost:8787',
+        changeOrigin: true
+      },
       '/oauth': {
         target: 'http://localhost:8787',
         changeOrigin: true

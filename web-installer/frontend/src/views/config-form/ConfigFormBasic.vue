@@ -19,14 +19,11 @@
             <strong>Admin Email:</strong> Your email for receiving deployment credentials and notifications
           </li>
           <li>
-            <strong>Custom Domain (Optional):</strong> Only if you have a domain configured in Cloudflare DNS
-          </li>
-          <li>
-            <strong>R2 Public URL (Optional):</strong> Custom domain for file storage access (recommended for branding)
+            <strong>Admin Password:</strong> Choose a strong password (at least 8 characters) for your admin account
           </li>
         </ul>
         <div class="reference-tip">
-          &#x1F4A1; <strong>Tip:</strong> If you enter a custom domain, we'll automatically suggest URLs for frontend, backend, and R2!
+          &#x1F4A1; <strong>Tip:</strong> Custom domain and R2 storage URL can be configured later in Cloudflare Dashboard.
         </div>
       </div>
     </div>
@@ -93,72 +90,52 @@
       </div>
     </div>
 
-    <!-- Custom Domain (Optional) -->
+    <!-- Admin Password -->
     <div class="form-group">
-      <label for="customDomain" class="form-label">
-        Custom Domain
-        <span class="badge badge-optional">Optional</span>
-        <span class="form-hint">Leave empty to use default .workers.dev domain</span>
+      <label for="adminPassword" class="form-label">
+        Admin Password
+        <span class="badge badge-required">Required</span>
+        <span class="form-hint">At least 8 characters</span>
       </label>
       <input
-        id="customDomain"
-        :value="formData.customDomain"
-        type="text"
+        id="adminPassword"
+        :value="formData.adminPassword"
+        type="password"
         class="form-input"
         :class="{
-          error: errors.customDomain,
-          'is-valid': formData.customDomain && !formData.customDomain.includes('://') && /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i.test(formData.customDomain)
+          error: errors.adminPassword,
+          'is-valid': formData.adminPassword && formData.adminPassword.length >= 8
         }"
-        placeholder="crm.example.com"
-        @input="onFieldInput('customDomain', ($event.target as HTMLInputElement).value)"
+        placeholder="Enter admin password"
+        required
+        @input="onFieldInput('adminPassword', ($event.target as HTMLInputElement).value)"
       />
-      <div v-if="errors.customDomain" class="form-error">
-        {{ errors.customDomain }}
-      </div>
-      <div class="form-hint">
-        Make sure this domain is added to your Cloudflare account
+      <div v-if="errors.adminPassword" class="form-error">
+        {{ errors.adminPassword }}
       </div>
     </div>
 
-    <!-- R2 Custom Domain -->
+    <!-- Confirm Password -->
     <div class="form-group">
-      <label for="r2PublicUrl" class="form-label">
-        R2 Public URL
-        <span class="badge badge-optional">Optional</span>
-        <span class="form-hint">Custom domain for file access</span>
+      <label for="adminPasswordConfirm" class="form-label">
+        Confirm Password
+        <span class="badge badge-required">Required</span>
       </label>
       <input
-        id="r2PublicUrl"
-        :value="formData.r2PublicUrl"
-        type="text"
+        id="adminPasswordConfirm"
+        :value="formData.adminPasswordConfirm"
+        type="password"
         class="form-input"
         :class="{
-          error: errors.r2PublicUrl,
-          'is-valid': formData.r2PublicUrl && /^https?:\/\/.+/i.test(formData.r2PublicUrl)
+          error: errors.adminPasswordConfirm,
+          'is-valid': formData.adminPasswordConfirm && formData.adminPasswordConfirm === formData.adminPassword && formData.adminPasswordConfirm.length >= 8
         }"
-        placeholder="https://files.yourdomain.com"
-        @input="onFieldInput('r2PublicUrl', ($event.target as HTMLInputElement).value)"
+        placeholder="Confirm admin password"
+        required
+        @input="onFieldInput('adminPasswordConfirm', ($event.target as HTMLInputElement).value)"
       />
-      <div v-if="errors.r2PublicUrl" class="form-error">
-        {{ errors.r2PublicUrl }}
-      </div>
-      <!-- Phase 2: Smart Suggestion -->
-      <div v-if="suggestedR2Url" class="suggestion-box">
-        <div class="suggestion-content">
-          <span class="suggestion-icon">&#x1F4A1;</span>
-          <span class="suggestion-text">Suggested: <strong>{{ suggestedR2Url }}</strong></span>
-        </div>
-        <div class="suggestion-actions">
-          <button type="button" @click="$emit('applySuggestion', 'r2PublicUrl')" class="btn-suggestion-apply">
-            Use Suggestion
-          </button>
-          <button type="button" @click="$emit('dismissSuggestion', 'r2PublicUrl')" class="btn-suggestion-dismiss">
-            &#x2715;
-          </button>
-        </div>
-      </div>
-      <div class="form-hint">
-        &#x1F4A1; Leave empty to use Cloudflare's default R2 public URL. Recommended to set up for better branding.
+      <div v-if="errors.adminPasswordConfirm" class="form-error">
+        {{ errors.adminPasswordConfirm }}
       </div>
     </div>
 
@@ -197,14 +174,11 @@ import type { FormErrors } from '@/types';
 const props = defineProps<{
   formData: ConfigFormData;
   errors: FormErrors;
-  suggestedR2Url: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:field', field: keyof ConfigFormData, value: string): void;
   (e: 'clearError', field: keyof FormErrors): void;
-  (e: 'applySuggestion', field: string): void;
-  (e: 'dismissSuggestion', field: string): void;
 }>();
 
 // ========================================
@@ -340,73 +314,6 @@ function onFieldInput(field: keyof ConfigFormData, value: string): void {
 
 .char-counter.danger {
   color: #dc2626;
-}
-
-/* Suggestion Box */
-.suggestion-box {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
-  border-left: 3px solid var(--color-primary);
-  border-radius: var(--radius-md);
-  animation: slideIn 0.3s ease-out;
-}
-
-.suggestion-content {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  flex: 1;
-}
-
-.suggestion-icon {
-  font-size: 1.25rem;
-}
-
-.suggestion-text {
-  font-size: 0.875rem;
-  color: var(--color-gray-700);
-}
-
-.suggestion-actions {
-  display: flex;
-  gap: var(--spacing-xs);
-}
-
-.btn-suggestion-apply {
-  padding: 0.375rem 0.75rem;
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--transition-base);
-}
-
-.btn-suggestion-apply:hover {
-  background: var(--color-primary-dark);
-}
-
-.btn-suggestion-dismiss {
-  padding: 0.375rem 0.5rem;
-  background: transparent;
-  color: var(--color-gray-500);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all var(--transition-base);
-}
-
-.btn-suggestion-dismiss:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--color-gray-700);
 }
 
 /* Resource Preview */
@@ -589,15 +496,6 @@ function onFieldInput(field: keyof ConfigFormData, value: string): void {
 }
 
 @media (max-width: 768px) {
-  .suggestion-box {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .suggestion-actions {
-    justify-content: flex-end;
-  }
-
   .resource-list {
     font-size: 0.8125rem;
   }

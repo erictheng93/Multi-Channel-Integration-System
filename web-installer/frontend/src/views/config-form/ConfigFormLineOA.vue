@@ -71,74 +71,6 @@
       </div>
     </div>
 
-    <!-- LINE LIFF ID -->
-    <div class="form-group">
-      <label for="lineLiffId" class="form-label">
-        LINE LIFF ID
-        <span class="badge badge-optional">Optional</span>
-        <span class="form-hint">Required for team binding feature</span>
-      </label>
-      <input
-        id="lineLiffId"
-        :value="formData.lineLiffId"
-        type="text"
-        class="form-input"
-        :class="{
-          error: errors.lineLiffId,
-          'is-valid': formData.lineLiffId && formData.lineLiffId.length >= 10
-        }"
-        placeholder="2008756115-vWtFyDMA"
-        @input="onFieldInput('lineLiffId', ($event.target as HTMLInputElement).value)"
-      />
-      <div v-if="errors.lineLiffId" class="form-error">
-        {{ errors.lineLiffId }}
-      </div>
-      <!-- Phase 2: Character Counter -->
-      <div v-if="formData.lineLiffId" class="char-counter" :class="{
-        danger: formData.lineLiffId.length < 10
-      }">
-        {{ formData.lineLiffId.length }} characters (min 10)
-      </div>
-      <div class="form-hint">
-        &#x1F4A1; Create a LIFF app in <strong>LINE Developers Console &#x2192; LIFF tab</strong>
-      </div>
-
-      <!-- Phase 2: Inline Help -->
-      <div class="help-section">
-        <button type="button" @click="toggleHelp('lineLiffId')" class="help-toggle">
-          <span class="help-icon">&#x2139;&#xFE0F;</span>
-          <span>How to create and find LINE LIFF ID?</span>
-          <span class="help-arrow">{{ showHelp.lineLiffId ? '\u25BC' : '\u25B6' }}</span>
-        </button>
-        <div v-show="showHelp.lineLiffId" class="help-content">
-          <h4>Creating and Finding Your LINE LIFF ID</h4>
-          <ol class="help-steps">
-            <li>Go to <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer">LINE Developers Console</a></li>
-            <li>Select your Messaging API Channel</li>
-            <li>Click on the <strong>LIFF</strong> tab in the top navigation</li>
-            <li>Click <strong>Add</strong> button to create a new LIFF app</li>
-            <li>Configure LIFF app settings:
-              <ul>
-                <li><strong>Size:</strong> Choose "Full" for best experience</li>
-                <li><strong>Endpoint URL:</strong> Enter your frontend URL (will be provided after deployment)</li>
-                <li><strong>Scope:</strong> Select "profile" and "openid"</li>
-              </ul>
-            </li>
-            <li>After creation, copy the <strong>LIFF ID</strong> (format: xxxxxxxxxx-xxxxxxxx)</li>
-          </ol>
-          <div class="help-example">
-            <strong>Example:</strong> <code>2008756115-vWtFyDMA</code>
-          </div>
-          <div class="help-note">
-            &#x1F4DD; <strong>Note:</strong> You can create the LIFF app later and update the configuration. It's only needed for the team member binding feature.
-          </div>
-          <div class="help-link">
-            &#x1F4DA; <a href="https://developers.line.biz/en/docs/liff/overview/" target="_blank" rel="noopener noreferrer">Learn more about LINE LIFF</a>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- LINE Channel Access Token -->
     <div class="form-group">
       <label for="lineChannelAccessToken" class="form-label">
@@ -204,6 +136,72 @@
       </div>
       <div v-if="errors.lineChannelSecret" class="form-error">
         {{ errors.lineChannelSecret }}
+      </div>
+    </div>
+
+    <!-- LINE LIFF ID -->
+    <div class="form-group">
+      <label for="lineLiffId" class="form-label">
+        LINE LIFF ID
+        <span class="badge badge-optional">Optional</span>
+        <span class="form-hint">Required for team binding feature</span>
+      </label>
+      <input
+        id="lineLiffId"
+        :value="formData.lineLiffId"
+        type="text"
+        class="form-input"
+        :class="{
+          error: errors.lineLiffId,
+          'is-valid': formData.lineLiffId && formData.lineLiffId.length >= 10
+        }"
+        placeholder="2008756115-vWtFyDMA"
+        @input="onFieldInput('lineLiffId', ($event.target as HTMLInputElement).value)"
+      />
+      <div v-if="errors.lineLiffId" class="form-error">
+        {{ errors.lineLiffId }}
+      </div>
+      <div v-if="formData.lineLiffId" class="char-counter" :class="{
+        danger: formData.lineLiffId.length < 10
+      }">
+        {{ formData.lineLiffId.length }} characters (min 10)
+      </div>
+      <div class="form-hint">
+        &#x1F4A1; Create a LIFF app in <strong>LINE Developers Console &#x2192; LIFF tab</strong>
+      </div>
+
+      <div class="help-section">
+        <button type="button" @click="toggleHelp('lineLiffId')" class="help-toggle">
+          <span class="help-icon">&#x2139;&#xFE0F;</span>
+          <span>How to create and find LINE LIFF ID?</span>
+          <span class="help-arrow">{{ showHelp.lineLiffId ? '\u25BC' : '\u25B6' }}</span>
+        </button>
+        <div v-show="showHelp.lineLiffId" class="help-content">
+          <h4>Creating and Finding Your LINE LIFF ID</h4>
+          <ol class="help-steps">
+            <li>Go to <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer">LINE Developers Console</a></li>
+            <li>Select your Messaging API Channel</li>
+            <li>Click on the <strong>LIFF</strong> tab in the top navigation</li>
+            <li>Click <strong>Add</strong> button to create a new LIFF app</li>
+            <li>Configure LIFF app settings:
+              <ul>
+                <li><strong>Size:</strong> Choose "Full" for best experience</li>
+                <li><strong>Endpoint URL:</strong> Enter your frontend URL (will be provided after deployment)</li>
+                <li><strong>Scope:</strong> Select "profile" and "openid"</li>
+              </ul>
+            </li>
+            <li>After creation, copy the <strong>LIFF ID</strong> (format: xxxxxxxxxx-xxxxxxxx)</li>
+          </ol>
+          <div class="help-example">
+            <strong>Example:</strong> <code>2008756115-vWtFyDMA</code>
+          </div>
+          <div class="help-note">
+            &#x1F4DD; <strong>Note:</strong> You can create the LIFF app later and update the configuration. It's only needed for the team member binding feature.
+          </div>
+          <div class="help-link">
+            &#x1F4DA; <a href="https://developers.line.biz/en/docs/liff/overview/" target="_blank" rel="noopener noreferrer">Learn more about LINE LIFF</a>
+          </div>
+        </div>
       </div>
     </div>
 

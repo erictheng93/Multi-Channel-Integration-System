@@ -8,6 +8,7 @@ export interface DeploymentConfig {
   // ===== Basic Configuration =====
   projectName: string;
   adminEmail: string;
+  adminPassword?: string;
   customDomain?: string;
   oauthToken: string;
   accountId: string;
@@ -67,7 +68,6 @@ export type DeploymentStep =
   | 'deploy_pages'
   | 'configure_domain'
   | 'create_admin'
-  | 'send_email'
   | 'verify_health'
   | 'complete';
 
@@ -120,41 +120,6 @@ export interface DeploymentResult {
     backend: string;
   };
   message: string;
-}
-
-// SSE Event Types
-export interface SSEEvent {
-  type: 'progress' | 'log' | 'complete' | 'error';
-  data: SSEProgressData | SSELogData | SSECompleteData | SSEErrorData;
-}
-
-export interface SSEProgressData {
-  step: DeploymentStep;
-  stepProgress: number;
-  totalProgress: number;
-  message: string;
-}
-
-export interface SSELogData {
-  timestamp: number;
-  level: DeploymentLog['level'];
-  message: string;
-  step: DeploymentStep;
-}
-
-export interface SSECompleteData {
-  deploymentId: string;
-  resources: CloudflareResources;
-  credentials: AdminCredentials;
-  urls: {
-    frontend: string;
-    backend: string;
-  };
-}
-
-export interface SSEErrorData {
-  error: DeploymentError;
-  rollbackInitiated: boolean;
 }
 
 // Step Configuration
@@ -268,14 +233,6 @@ export const DEPLOYMENT_STEPS: Record<DeploymentStep, StepConfig> = {
     description: 'Creating admin user',
     weight: 5,
     timeout: 20000,
-    retryable: true,
-    maxRetries: 3
-  },
-  send_email: {
-    name: 'send_email',
-    description: 'Sending credentials email',
-    weight: 3,
-    timeout: 15000,
     retryable: true,
     maxRetries: 3
   },

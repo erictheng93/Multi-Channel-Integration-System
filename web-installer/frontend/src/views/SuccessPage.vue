@@ -1,6 +1,31 @@
 <template>
   <div class="success-page">
     <div class="container container-lg">
+      <!-- Loading State -->
+      <div v-if="isLoading" class="loading-state">
+        <div class="spinner-lg"></div>
+        <p>Loading deployment results...</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="loadError" class="error-state">
+        <div class="error-card">
+          <div class="error-icon">⚠️</div>
+          <h2>Unable to Load Deployment Data</h2>
+          <p class="error-message">{{ loadError }}</p>
+          <div class="error-actions">
+            <button @click="retryLoad" class="btn btn-primary">
+              🔄 Retry
+            </button>
+            <button @click="goToLanding" class="btn btn-secondary">
+              ← Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success Content -->
+      <template v-else>
       <!-- Success Animation -->
       <div class="success-animation">
         <div class="success-checkmark">
@@ -173,6 +198,7 @@
           🚀 Launch CRM Dashboard
         </a>
       </div>
+      </template>
     </div>
   </div>
 </template>
@@ -199,6 +225,8 @@ const deploymentStore = useDeploymentStore();
 const projectName = ref<string>('');
 const credentials = ref<AdminCredentials | null>(null);
 const resources = ref<CloudflareResources>({});
+const loadError = ref<string | null>(null);
+const isLoading = ref(true);
 
 // ========================================
 // LIFECYCLE
@@ -206,6 +234,8 @@ const resources = ref<CloudflareResources>({});
 
 onMounted(async () => {
   projectName.value = route.params.projectName as string;
+  isLoading.value = true;
+  loadError.value = null;
 
   // If we don't have credentials in store, fetch deployment status
   if (!deploymentStore.credentials) {
@@ -213,7 +243,8 @@ onMounted(async () => {
       await deploymentStore.fetchDeploymentStatus(projectName.value);
     } catch (error) {
       console.error('Failed to fetch deployment status:', error);
-      router.push({ name: 'landing' });
+      loadError.value = 'Failed to connect to the deployment server. Please check your network connection and try again.';
+      isLoading.value = false;
       return;
     }
   }
@@ -222,11 +253,12 @@ onMounted(async () => {
   credentials.value = deploymentStore.credentials;
   resources.value = deploymentStore.resources;
 
-  // Validate we have the required data
+  // Validate we have the required data — show inline error instead of alert
   if (!credentials.value || !resources.value.pagesUrl) {
-    alert('Deployment data not found. Please check your deployment status.');
-    router.push({ name: 'landing' });
+    loadError.value = 'Deployment data could not be loaded. The deployment session may have expired. You can try refreshing or return to the home page.';
   }
+
+  isLoading.value = false;
 });
 
 // ========================================
@@ -242,6 +274,26 @@ function formatDuration(seconds: number): string {
   return `${secs}s`;
 }
 
+async function retryLoad(): Promise<void> {
+  isLoading.value = true;
+  loadError.value = null;
+
+  try {
+    await deploymentStore.fetchDeploymentStatus(projectName.value);
+    credentials.value = deploymentStore.credentials;
+    resources.value = deploymentStore.resources;
+
+    if (!credentials.value || !resources.value.pagesUrl) {
+      loadError.value = 'Deployment data could not be loaded. The deployment session may have expired. You can try refreshing or return to the home page.';
+    }
+  } catch (error) {
+    console.error('Retry failed:', error);
+    loadError.value = 'Failed to connect to the deployment server. Please check your network connection and try again.';
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 function goToLanding(): void {
   // Reset deployment store
   deploymentStore.resetState();
@@ -254,6 +306,71 @@ function goToLanding(): void {
   min-height: 100vh;
   padding: var(--spacing-2xl) 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: white;
+  gap: var(--spacing-lg);
+  font-size: var(--font-size-lg);
+}
+
+.spinner-lg {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  justify-content: center;
+  min-height: 400px;
+  align-items: center;
+}
+
+.error-card {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-3xl);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: var(--shadow-xl);
+}
+
+.error-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-lg);
+}
+
+.error-card h2 {
+  color: var(--color-gray-900);
+  margin-bottom: var(--spacing-md);
+}
+
+.error-message {
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-xl);
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
 }
 
 /* Success Animation */

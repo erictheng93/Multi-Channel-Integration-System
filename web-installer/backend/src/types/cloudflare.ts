@@ -80,18 +80,28 @@ export interface Worker {
   etag: string;
 }
 
+export interface DurableObjectMigration {
+  tag: string;
+  new_classes?: string[];
+  new_sqlite_classes?: string[];
+  renamed_classes?: Array<{ from: string; to: string }>;
+  deleted_classes?: string[];
+}
+
 export interface DeployWorkerRequest {
   name: string;
   script: string;
   bindings: WorkerBinding[];
   compatibility_date: string;
   compatibility_flags?: string[];
+  migrations?: { steps: DurableObjectMigration[] };
 }
 
 export interface WorkerBinding {
   type: 'kv_namespace' | 'd1' | 'r2_bucket' | 'queue' | 'durable_object_namespace';
   name: string;
   id?: string;
+  namespace_id?: string;  // KV namespace bindings require namespace_id
   bucket_name?: string;
   queue_name?: string;
   class_name?: string;
