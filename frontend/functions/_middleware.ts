@@ -7,6 +7,19 @@
 // - STORAGE_URL: 存儲域名 (例如: https://storage.customer.com)
 // - CUSTOM_DOMAINS: 額外允許的域名，逗號分隔 (可選)
 
+/* eslint-disable no-undef */
+/** Cloudflare Pages Functions EventContext (local definition to avoid DOM type conflicts) */
+interface EventContext<Env, _P extends string, Data> {
+  request: Request
+  functionPath: string
+  waitUntil: (_promise: Promise<unknown>) => void
+  passThroughOnException: () => void
+  next: (_input?: Request | string, _init?: RequestInit) => Promise<Response>
+  env: Env
+  params: Record<string, string | string[]>
+  data: Data
+}
+
 interface CloudflareEnv {
   BACKEND_URL?: string
   STORAGE_URL?: string
