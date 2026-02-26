@@ -11,12 +11,70 @@
           One-click deployment to your Cloudflare account. No technical knowledge required.
           Start managing customer conversations across LINE and Facebook Messenger today.
         </p>
-        <button @click="startDeployment" class="btn btn-primary btn-lg">
+        <button @click="showTokenForm = true" class="btn btn-primary btn-lg" v-if="!showTokenForm">
           <span>🚀 Deploy to Cloudflare</span>
         </button>
-        <p class="hero-note">
+        <p class="hero-note" v-if="!showTokenForm">
           Free tier available • No credit card required • 2-3 minutes setup
         </p>
+
+        <!-- API Token Auth Form -->
+        <div v-if="showTokenForm" class="token-form-card">
+          <h3 class="token-form-title">Connect Your Cloudflare Account</h3>
+          <p class="token-form-desc">Enter your Cloudflare API Token and Account ID to get started.</p>
+
+          <div class="token-form">
+            <div class="form-group">
+              <label for="apiToken">API Token</label>
+              <input
+                id="apiToken"
+                v-model="apiToken"
+                type="password"
+                placeholder="Paste your Cloudflare API Token"
+                class="form-input"
+                :disabled="isVerifying"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="accountId">Account ID</label>
+              <input
+                id="accountId"
+                v-model="accountId"
+                type="text"
+                placeholder="e.g. c24c7b91fc0baef367dfc70083e11f4d"
+                class="form-input"
+                :disabled="isVerifying"
+              />
+              <span class="form-hint">Found in your Cloudflare Dashboard URL or sidebar</span>
+            </div>
+
+            <div class="form-group">
+              <label for="userEmail">Admin Email</label>
+              <input
+                id="userEmail"
+                v-model="userEmail"
+                type="email"
+                placeholder="admin@example.com"
+                class="form-input"
+                :disabled="isVerifying"
+              />
+              <span class="form-hint">For receiving deployment credentials</span>
+            </div>
+
+            <div v-if="tokenError" class="token-error">{{ tokenError }}</div>
+
+            <div class="token-form-actions">
+              <button @click="showTokenForm = false" class="btn btn-secondary" :disabled="isVerifying">
+                Cancel
+              </button>
+              <button @click="verifyAndConnect" class="btn btn-primary" :disabled="isVerifying || !apiToken || !accountId || !userEmail">
+                <span v-if="!isVerifying">Connect</span>
+                <span v-else class="btn-loading"><span class="spinner"></span> Verifying...</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Features Section -->
@@ -130,7 +188,7 @@
         <p class="cta-description">
           Deploy your own Multi-Channel CRM in less than 3 minutes
         </p>
-        <button @click="startDeployment" class="btn btn-primary btn-lg">
+        <button @click="showTokenForm = true; window.scrollTo({ top: 0, behavior: 'smooth' })" class="btn btn-primary btn-lg">
           <span>🚀 Start Free Deployment</span>
         </button>
       </section>
@@ -139,8 +197,9 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { oauthAPI } from '@/api/installer';
+import { authAPI } from '@/api/installer';
 import FeatureCard from '@/components/FeatureCard.vue';
 
 // ========================================
@@ -150,27 +209,43 @@ import FeatureCard from '@/components/FeatureCard.vue';
 const router = useRouter();
 
 // ========================================
+// STATE
+// ========================================
+
+const showTokenForm = ref(false);
+const apiToken = ref('');
+const accountId = ref('');
+const userEmail = ref('');
+const tokenError = ref('');
+const isVerifying = ref(false);
+
+// ========================================
 // METHODS
 // ========================================
 
-async function startDeployment(): Promise<void> {
+async function verifyAndConnect(): Promise<void> {
+  tokenError.value = '';
+  isVerifying.value = true;
+
   try {
-    // Build redirect URI for OAuth callback
-    const redirectUri = `${window.location.origin}/oauth/callback`;
+    const response = await authAPI.verifyToken({
+      apiToken: apiToken.value,
+      accountId: accountId.value,
+    });
 
-    // Initiate OAuth flow
-    const response = await oauthAPI.authorize(redirectUri);
+    // Store auth data in sessionStorage (same keys as OAuth flow)
+    sessionStorage.setItem('oauth_token', apiToken.value);
+    sessionStorage.setItem('account_id', response.accountId);
+    sessionStorage.setItem('account_name', response.accountName);
+    sessionStorage.setItem('user_email', userEmail.value);
 
-    // Store state and code verifier in session storage
-    sessionStorage.setItem('oauth_state', response.state);
-    sessionStorage.setItem('oauth_code_verifier', response.codeVerifier);
-    sessionStorage.setItem('oauth_redirect_uri', redirectUri);
-
-    // Redirect to Cloudflare OAuth page
-    window.location.href = response.authorizationUrl;
+    // Navigate to configuration page
+    router.push({ name: 'configure' });
   } catch (error) {
-    console.error('Failed to start OAuth flow:', error);
-    alert('Failed to connect to Cloudflare. Please try again.');
+    console.error('Token verification failed:', error);
+    tokenError.value = error instanceof Error ? error.message : 'Verification failed. Check your token and account ID.';
+  } finally {
+    isVerifying.value = false;
   }
 }
 </script>
@@ -374,6 +449,113 @@ async function startDeployment(): Promise<void> {
   margin: 0 auto var(--spacing-xl);
   font-size: var(--font-size-lg);
   color: rgba(255, 255, 255, 0.9);
+}
+
+/* Token Form */
+.token-form-card {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--spacing-2xl);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-xl);
+  text-align: left;
+}
+
+.token-form-title {
+  text-align: center;
+  color: white;
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-xl);
+}
+
+.token-form-desc {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: var(--spacing-xl);
+  font-size: var(--font-size-sm);
+}
+
+.form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-weight: var(--font-weight-medium);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--font-size-sm);
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: var(--font-size-base);
+  font-family: 'Courier New', monospace;
+  transition: border-color var(--transition-base);
+  box-sizing: border-box;
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+.form-input:disabled {
+  opacity: 0.5;
+}
+
+.form-hint {
+  display: block;
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.token-error {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-md);
+  color: #fca5a5;
+  font-size: var(--font-size-sm);
+}
+
+.token-form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+}
+
+.btn-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Responsive Design */

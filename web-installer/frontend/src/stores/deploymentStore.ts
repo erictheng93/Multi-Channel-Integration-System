@@ -1,7 +1,8 @@
 /**
  * Deployment Store - Pinia State Management
  *
- * Manages deployment state, SSE connection, and real-time updates
+ * Manages deployment state via polling GET /status every 3 seconds.
+ * Simple, reliable, works in all environments.
  */
 
 import { defineStore } from 'pinia';
@@ -9,16 +10,10 @@ import { ref, computed } from 'vue';
 import { deploymentAPI } from '@/api/installer';
 import type {
   DeploymentConfig,
-  DeploymentState,
   DeploymentStatus,
   CloudflareResources,
   LogEntry,
-  AdminCredentials,
-  SSEEvent,
-  ProgressEventData,
-  LogEventData,
-  ErrorEventData,
-  CompleteEventData
+  AdminCredentials
 } from '@/types';
 
 export const useDeploymentStore = defineStore('deployment', () => {
@@ -39,8 +34,7 @@ export const useDeploymentStore = defineStore('deployment', () => {
   const startedAt = ref<number>(0);
   const completedAt = ref<number | null>(null);
 
-  // SSE connection
-  const eventSource = ref<EventSource | null>(null);
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   // ========================================
   // COMPUTED
@@ -54,7 +48,7 @@ export const useDeploymentStore = defineStore('deployment', () => {
   const duration = computed(() => {
     if (!startedAt.value) return 0;
     const endTime = completedAt.value || Date.now();
-    return Math.floor((endTime - startedAt.value) / 1000); // seconds
+    return Math.floor((endTime - startedAt.value) / 1000);
   });
 
   const hasResources = computed(() => Object.keys(resources.value).length > 0);
@@ -63,25 +57,20 @@ export const useDeploymentStore = defineStore('deployment', () => {
   // ACTIONS
   // ========================================
 
-  /**
-   * Start a new deployment
-   */
   async function startDeployment(config: DeploymentConfig): Promise<void> {
     try {
-      // Reset state
       resetState();
       projectName.value = config.projectName;
       status.value = 'in_progress';
       startedAt.value = Date.now();
 
-      // Call API to start deployment
       const response = await deploymentAPI.startDeployment(config);
       deploymentId.value = response.deploymentId;
 
-      // Connect to SSE stream for real-time updates
-      connectToEventStream(config.projectName);
-
       addLog('info', 'Deployment started successfully');
+
+      // Start polling for progress updates
+      startPolling(config.projectName);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start deployment';
       error.value = errorMessage;
@@ -91,9 +80,6 @@ export const useDeploymentStore = defineStore('deployment', () => {
     }
   }
 
-  /**
-   * Cancel ongoing deployment
-   */
   async function cancelDeployment(): Promise<void> {
     if (!projectName.value) {
       throw new Error('No active deployment to cancel');
@@ -102,7 +88,7 @@ export const useDeploymentStore = defineStore('deployment', () => {
     try {
       await deploymentAPI.cancelDeployment(projectName.value);
       status.value = 'cancelled';
-      disconnectEventStream();
+      stopPolling();
       addLog('warning', 'Deployment cancelled by user');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to cancel deployment';
@@ -112,9 +98,32 @@ export const useDeploymentStore = defineStore('deployment', () => {
     }
   }
 
-  /**
-   * Fetch current deployment status
-   */
+  // ========================================
+  // POLLING
+  // ========================================
+
+  function startPolling(name: string): void {
+    stopPolling();
+
+    // Immediate first poll
+    fetchDeploymentStatus(name);
+
+    pollTimer = setInterval(() => {
+      if (status.value === 'in_progress') {
+        fetchDeploymentStatus(name);
+      } else {
+        stopPolling();
+      }
+    }, 3000);
+  }
+
+  function stopPolling(): void {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
   async function fetchDeploymentStatus(name: string): Promise<void> {
     try {
       const response = await deploymentAPI.getDeploymentStatus(name);
@@ -126,7 +135,11 @@ export const useDeploymentStore = defineStore('deployment', () => {
       currentStepProgress.value = response.currentStepProgress;
       totalProgress.value = response.totalProgress;
       resources.value = response.resources;
-      logs.value = response.logs;
+
+      // Merge backend logs (dedup by message)
+      if (response.logs && response.logs.length > 0) {
+        mergeLogs(response.logs);
+      }
 
       if (response.error) {
         error.value = response.error;
@@ -135,131 +148,54 @@ export const useDeploymentStore = defineStore('deployment', () => {
       if (response.credentials) {
         credentials.value = response.credentials;
       }
+
+      // Terminal state — stop polling
+      if (response.status === 'completed' || response.status === 'failed' || response.status === 'cancelled') {
+        completedAt.value = completedAt.value || Date.now();
+        stopPolling();
+
+        if (response.status === 'completed') {
+          addLog('success', 'Deployment completed successfully!');
+        }
+      }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch deployment status';
-      error.value = errorMessage;
-      throw err;
+      console.warn('Poll failed:', err);
     }
   }
 
-  /**
-   * Connect to SSE event stream for real-time updates
-   */
-  function connectToEventStream(name: string): void {
-    // Close existing connection if any
-    disconnectEventStream();
+  // ========================================
+  // UTILITIES
+  // ========================================
 
-    const url = deploymentAPI.getEventStreamUrl(name);
-    eventSource.value = new EventSource(url);
-
-    eventSource.value.onmessage = (event) => {
-      try {
-        const sseEvent: SSEEvent = JSON.parse(event.data);
-        handleSSEEvent(sseEvent);
-      } catch (err) {
-        console.error('Failed to parse SSE event:', err);
-      }
-    };
-
-    eventSource.value.onerror = (err) => {
-      console.error('SSE connection error:', err);
-      addLog('error', 'Lost connection to deployment server');
-
-      // Auto-reconnect if deployment is still in progress
-      if (status.value === 'in_progress') {
-        setTimeout(() => {
-          if (status.value === 'in_progress') {
-            connectToEventStream(name);
-          }
-        }, 5000);
-      }
-    };
-
-    addLog('info', 'Connected to deployment stream');
-  }
-
-  /**
-   * Disconnect from SSE event stream
-   */
-  function disconnectEventStream(): void {
-    if (eventSource.value) {
-      eventSource.value.close();
-      eventSource.value = null;
-    }
-  }
-
-  /**
-   * Handle incoming SSE events
-   */
-  function handleSSEEvent(event: SSEEvent): void {
-    switch (event.type) {
-      case 'progress':
-        handleProgressEvent(event.data as ProgressEventData);
-        break;
-      case 'log':
-        handleLogEvent(event.data as LogEventData);
-        break;
-      case 'error':
-        handleErrorEvent(event.data as ErrorEventData);
-        break;
-      case 'complete':
-        handleCompleteEvent(event.data as CompleteEventData);
-        break;
-      case 'cancelled':
-        status.value = 'cancelled';
-        disconnectEventStream();
-        addLog('warning', 'Deployment was cancelled');
-        break;
-    }
-  }
-
-  function handleProgressEvent(data: ProgressEventData): void {
-    currentStep.value = data.step;
-    currentStepProgress.value = data.stepProgress;
-    totalProgress.value = data.totalProgress;
-  }
-
-  function handleLogEvent(data: LogEventData): void {
-    addLog(data.level, data.message, data.step);
-  }
-
-  function handleErrorEvent(data: ErrorEventData): void {
-    error.value = data.error;
-    status.value = 'failed';
-    completedAt.value = Date.now();
-    disconnectEventStream();
-    addLog('error', data.error, data.step);
-  }
-
-  function handleCompleteEvent(data: CompleteEventData): void {
-    status.value = 'completed';
-    completedAt.value = Date.now();
-    resources.value = data.resources;
-    credentials.value = data.credentials;
-    disconnectEventStream();
-    addLog('success', `Deployment completed successfully in ${data.duration}s`);
-  }
-
-  /**
-   * Add log entry
-   */
   function addLog(level: LogEntry['level'], message: string, step?: string): void {
     logs.value.push({
       timestamp: Date.now(),
       level,
       message,
-      step: step as any
+      step: step as LogEntry['step']
     });
 
-    // Keep only last 500 log entries to prevent memory issues
     if (logs.value.length > 500) {
       logs.value = logs.value.slice(-500);
     }
   }
 
-  /**
-   * Reset deployment state
-   */
+  function mergeLogs(backendLogs: LogEntry[]): void {
+    const existingMessages = new Set(logs.value.map(l => l.message));
+
+    for (const log of backendLogs) {
+      if (!existingMessages.has(log.message)) {
+        logs.value.push(log);
+        existingMessages.add(log.message);
+      }
+    }
+
+    logs.value.sort((a, b) => a.timestamp - b.timestamp);
+    if (logs.value.length > 500) {
+      logs.value = logs.value.slice(-500);
+    }
+  }
+
   function resetState(): void {
     projectName.value = '';
     deploymentId.value = '';
@@ -273,49 +209,24 @@ export const useDeploymentStore = defineStore('deployment', () => {
     credentials.value = null;
     startedAt.value = 0;
     completedAt.value = null;
-    disconnectEventStream();
+    stopPolling();
   }
 
-  // ========================================
-  // LIFECYCLE
-  // ========================================
-
-  // Auto-cleanup on store disposal
   function $dispose(): void {
-    disconnectEventStream();
+    stopPolling();
   }
 
   return {
     // State
-    projectName,
-    deploymentId,
-    status,
-    currentStep,
-    currentStepProgress,
-    totalProgress,
-    error,
-    resources,
-    logs,
-    credentials,
-    startedAt,
-    completedAt,
+    projectName, deploymentId, status, currentStep,
+    currentStepProgress, totalProgress, error,
+    resources, logs, credentials, startedAt, completedAt,
 
     // Computed
-    isDeploying,
-    isCompleted,
-    isFailed,
-    isCancelled,
-    duration,
-    hasResources,
+    isDeploying, isCompleted, isFailed, isCancelled, duration, hasResources,
 
     // Actions
-    startDeployment,
-    cancelDeployment,
-    fetchDeploymentStatus,
-    connectToEventStream,
-    disconnectEventStream,
-    addLog,
-    resetState,
-    $dispose
+    startDeployment, cancelDeployment, fetchDeploymentStatus,
+    addLog, resetState, $dispose
   };
 });

@@ -93,13 +93,15 @@ export class CloudflareAPI {
   }
 
   async executeD1Query(databaseId: string, sql: string): Promise<D1QueryResult> {
-    const response = await this.request<D1QueryResult>({
+    const response = await this.request<D1QueryResult[]>({
       method: 'POST',
       path: `/accounts/${this.accountId}/d1/database/${databaseId}/query`,
       body: { sql }
     });
 
-    return response.result;
+    // D1 query API returns result as an array — extract first element
+    const result = Array.isArray(response.result) ? response.result[0] : response.result;
+    return result;
   }
 
   /**
@@ -110,7 +112,7 @@ export class CloudflareAPI {
     sql: string,
     params: (string | number | boolean | null)[]
   ): Promise<D1QueryResult> {
-    const response = await this.request<D1QueryResult>({
+    const response = await this.request<D1QueryResult[]>({
       method: 'POST',
       path: `/accounts/${this.accountId}/d1/database/${databaseId}/query`,
       body: {
@@ -119,6 +121,16 @@ export class CloudflareAPI {
       }
     });
 
+    // D1 query API returns result as an array — extract first element
+    const result = Array.isArray(response.result) ? response.result[0] : response.result;
+    return result;
+  }
+
+  async listD1Databases(): Promise<D1Database[]> {
+    const response = await this.request<D1Database[]>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/d1/database`
+    });
     return response.result;
   }
 
@@ -147,6 +159,14 @@ export class CloudflareAPI {
     return response.result;
   }
 
+  async listKVNamespaces(): Promise<KVNamespace[]> {
+    const response = await this.request<KVNamespace[]>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/storage/kv/namespaces`
+    });
+    return response.result;
+  }
+
   async deleteKVNamespace(namespaceId: string): Promise<void> {
     await this.request({
       method: 'DELETE',
@@ -170,6 +190,16 @@ export class CloudflareAPI {
     }
 
     return response.result;
+  }
+
+  async listR2Buckets(): Promise<R2Bucket[]> {
+    const response = await this.request<{ buckets: R2Bucket[] }>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/r2/buckets`
+    });
+    // R2 list API wraps result in { buckets: [...] }
+    const result = response.result as unknown as { buckets: R2Bucket[] };
+    return Array.isArray(result) ? result : (result.buckets || []);
   }
 
   async deleteR2Bucket(name: string): Promise<void> {
@@ -197,6 +227,14 @@ export class CloudflareAPI {
     return response.result;
   }
 
+  async listQueues(): Promise<Queue[]> {
+    const response = await this.request<Queue[]>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/queues`
+    });
+    return response.result;
+  }
+
   async deleteQueue(queueId: string): Promise<void> {
     await this.request({
       method: 'DELETE',
@@ -207,15 +245,44 @@ export class CloudflareAPI {
   /**
    * Worker Operations
    */
+
+  /**
+   * Check if a Worker script already exists
+   * Returns true if the worker exists, false otherwise
+   */
+  async workerExists(name: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/accounts/${this.accountId}/workers/scripts/${name}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.apiToken}`
+          }
+        }
+      );
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
   async deployWorker(config: DeployWorkerRequest): Promise<Worker> {
     // Workers API uses a different format (multipart/form-data)
-    const formData = new FormData();
-    formData.append('metadata', JSON.stringify({
+    const metadata: Record<string, unknown> = {
       main_module: 'index.js',
       bindings: config.bindings,
       compatibility_date: config.compatibility_date,
       compatibility_flags: config.compatibility_flags
-    }));
+    };
+
+    // Include DO migrations if present
+    if (config.migrations) {
+      metadata.migrations = config.migrations;
+    }
+
+    const formData = new FormData();
+    formData.append('metadata', JSON.stringify(metadata));
 
     const blob = new Blob([config.script], { type: 'application/javascript+module' });
     formData.append('index.js', blob);
@@ -305,6 +372,22 @@ export class CloudflareAPI {
     return result.result;
   }
 
+  /**
+   * Get an existing Pages project by name
+   * Returns the project if it exists, null otherwise
+   */
+  async getPagesProject(projectName: string): Promise<PagesProject | null> {
+    try {
+      const response = await this.request<PagesProject>({
+        method: 'GET',
+        path: `/accounts/${this.accountId}/pages/projects/${projectName}`
+      });
+      return response.result;
+    } catch {
+      return null;
+    }
+  }
+
   async deletePagesProject(projectName: string): Promise<void> {
     await this.request({
       method: 'DELETE',
@@ -388,11 +471,34 @@ export class CloudflareAPI {
   }
 
   /**
+   * Get Workers subdomain for this account
+   */
+  async getWorkersSubdomain(): Promise<string> {
+    const response = await this.request<{ subdomain: string }>({
+      method: 'GET',
+      path: `/accounts/${this.accountId}/workers/subdomain`
+    });
+    return response.result.subdomain;
+  }
+
+  /**
+   * Enable workers.dev route for a Worker script
+   * Required for the worker to be accessible via <name>.<subdomain>.workers.dev
+   */
+  async enableWorkersDevRoute(scriptName: string): Promise<void> {
+    await this.request({
+      method: 'POST',
+      path: `/accounts/${this.accountId}/workers/scripts/${scriptName}/subdomain`,
+      body: { enabled: true }
+    });
+  }
+
+  /**
    * Health Check
    */
   async healthCheck(url: string): Promise<boolean> {
     try {
-      const response = await fetch(`${url}/health`, {
+      const response = await fetch(`${url}/api/system/health`, {
         method: 'GET',
         headers: {
           'User-Agent': 'CRM-Installer-HealthCheck/1.0'

@@ -34,6 +34,29 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 // ========================================
+// AUTH API (API Token)
+// ========================================
+
+export const authAPI = {
+  /**
+   * Verify an API Token and get account info
+   * POST /auth/token
+   */
+  async verifyToken(request: { apiToken: string; accountId: string }): Promise<{
+    success: boolean;
+    accountId: string;
+    accountName: string;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/auth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request)
+    });
+    return handleResponse(response);
+  }
+};
+
+// ========================================
 // OAUTH API
 // ========================================
 
@@ -124,13 +147,6 @@ export const deploymentAPI = {
     return handleResponse<{ success: boolean; message: string }>(response);
   },
 
-  /**
-   * Get SSE event stream URL for real-time updates
-   * GET /deployment/:projectName/events
-   */
-  getEventStreamUrl(projectName: string): string {
-    return `${API_BASE_URL}/deployment/${projectName}/events`;
-  }
 };
 
 // ========================================

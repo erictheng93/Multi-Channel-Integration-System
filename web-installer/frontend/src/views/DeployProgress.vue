@@ -187,9 +187,8 @@ const deploymentSteps = [
   { key: 'deploy_pages', number: 11, name: 'Pages', description: 'Deploying frontend' },
   { key: 'configure_domain', number: 12, name: 'Domain', description: 'Configuring custom domain' },
   { key: 'create_admin', number: 13, name: 'Admin User', description: 'Creating admin account' },
-  { key: 'send_email', number: 14, name: 'Email', description: 'Sending credentials' },
-  { key: 'verify_health', number: 15, name: 'Health Check', description: 'Verifying deployment' },
-  { key: 'complete', number: 16, name: 'Complete', description: 'Finishing up' }
+  { key: 'verify_health', number: 14, name: 'Health Check', description: 'Verifying deployment' },
+  { key: 'complete', number: 15, name: 'Complete', description: 'Finishing up' }
 ];
 
 // ========================================
@@ -219,8 +218,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  // Keep SSE connection alive, don't disconnect
-  // User might navigate away and come back
+  // Polling continues in store until deployment completes
 });
 
 // ========================================

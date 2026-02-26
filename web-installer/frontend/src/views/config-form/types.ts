@@ -6,6 +6,8 @@ export interface ConfigFormData {
   // Basic Configuration
   projectName: string;
   adminEmail: string;
+  adminPassword: string;
+  adminPasswordConfirm: string;
   customDomain: string;
   // Phase 1 Enhancement: URL Configuration
   backendUrl: string;
@@ -39,6 +41,8 @@ export function createDefaultFormData(): ConfigFormData {
   return {
     projectName: '',
     adminEmail: '',
+    adminPassword: '',
+    adminPasswordConfirm: '',
     customDomain: '',
     backendUrl: '',
     frontendUrl: '',

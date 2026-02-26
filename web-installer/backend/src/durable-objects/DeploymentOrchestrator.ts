@@ -8,7 +8,6 @@
 import { CloudflareAPI } from '../services/CloudflareAPI';
 import { MigrationRunner } from '../services/MigrationRunner';
 import { ConfigGenerator } from '../services/ConfigGenerator';
-import { EmailService } from '../services/EmailService';
 import { RollbackService } from '../services/RollbackService';
 import { WorkerBundleService } from '../services/WorkerBundleService';
 import { FrontendBundleService } from '../services/FrontendBundleService';
@@ -21,27 +20,23 @@ import {
   type DeploymentLog,
   type DeploymentError,
   type CloudflareResources,
-  type AdminCredentials,
-  type SSEEvent
+  type AdminCredentials
 } from '../types/deployment';
 
 // Cloudflare Worker environment type
 interface Env {
-  RESEND_API_KEY?: string;
-  FROM_EMAIL?: string;
   DEPLOYMENT_ORCHESTRATOR: DurableObjectNamespace;
 }
 
 export class DeploymentOrchestrator implements DurableObject {
   private state: DurableObjectState;
+  private env: Env;
   private deploymentState: DeploymentState | null = null;
-  private sseClients: Set<ReadableStreamDefaultController> = new Set();
 
   // Services
   private api!: CloudflareAPI;
   private migrationRunner!: MigrationRunner;
   private configGenerator!: ConfigGenerator;
-  private emailService!: EmailService;
   private rollbackService!: RollbackService;
   private workerBundleService!: WorkerBundleService;
   private frontendBundleService!: FrontendBundleService;
@@ -54,6 +49,7 @@ export class DeploymentOrchestrator implements DurableObject {
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
+    this.env = env;
     this.initializeServices(env);
   }
 
@@ -84,11 +80,6 @@ export class DeploymentOrchestrator implements DurableObject {
         return await this.getStatus();
       }
 
-      // SSE stream for real-time updates
-      if (path === '/events' && request.method === 'GET') {
-        return await this.handleSSE();
-      }
-
       // Cancel deployment
       if (path === '/cancel' && request.method === 'POST') {
         return await this.cancelDeployment();
@@ -115,10 +106,6 @@ export class DeploymentOrchestrator implements DurableObject {
 
     this.migrationRunner = new MigrationRunner(this.api);
     this.configGenerator = new ConfigGenerator();
-    this.emailService = new EmailService({
-      apiKey: process.env.RESEND_API_KEY || '',
-      fromEmail: process.env.FROM_EMAIL || 'installer@crm.com'
-    });
     this.rollbackService = new RollbackService(this.api);
     this.workerBundleService = new WorkerBundleService();
     this.frontendBundleService = new FrontendBundleService();
@@ -188,31 +175,31 @@ export class DeploymentOrchestrator implements DurableObject {
       }
 
       await this.runStep('create_admin', () => this.stepCreateAdmin());
-      await this.runStep('send_email', () => this.stepSendEmail());
-      await this.runStep('verify_health', () => this.stepVerifyHealth());
-      await this.runStep('complete', () => this.stepComplete());
-
-      // Deployment successful
-      this.deploymentState.status = 'completed';
-      this.deploymentState.completedAt = Date.now();
-      await this.updateState();
-
-      this.broadcastSSE({
-        type: 'complete',
-        data: {
-          deploymentId: this.deploymentState.deploymentId,
-          resources: this.deploymentState.resources,
-          credentials: (this.deploymentState as any).adminCredentials,
-          urls: {
-            frontend: this.deploymentState.resources.pagesUrl || '',
-            backend: this.deploymentState.resources.workerUrl || ''
-          }
-        }
-      });
 
     } catch (error) {
+      // Provisioning failed — rollback all created resources
       await this.handleDeploymentError(error);
+      return;
     }
+
+    // === VERIFICATION PHASE (no rollback — resources are fully deployed) ===
+    try {
+      await this.runStep('verify_health', () => this.stepVerifyHealth());
+    } catch {
+      // Health check failure is non-fatal — worker may still be propagating
+      this.log('warning', 'Health check did not pass — worker may still be propagating globally.');
+    }
+
+    try {
+      await this.runStep('complete', () => this.stepComplete());
+    } catch {
+      // Complete step is non-fatal
+    }
+
+    // Deployment successful regardless of health check
+    this.deploymentState.status = 'completed';
+    this.deploymentState.completedAt = Date.now();
+    await this.updateState();
   }
 
   /**
@@ -245,16 +232,6 @@ export class DeploymentOrchestrator implements DurableObject {
         await this.updateState();
 
         this.log('success', `Completed step: ${stepConfig.description}`);
-
-        this.broadcastSSE({
-          type: 'progress',
-          data: {
-            step: stepName,
-            stepProgress: 100,
-            totalProgress: this.deploymentState.totalProgress,
-            message: `Completed: ${stepConfig.description}`
-          }
-        });
 
         return; // Success - exit function
 
@@ -313,14 +290,6 @@ export class DeploymentOrchestrator implements DurableObject {
 
     this.log('error', `Deployment failed: ${errorMessage}`);
 
-    this.broadcastSSE({
-      type: 'error',
-      data: {
-        error: deploymentError,
-        rollbackInitiated: true
-      }
-    });
-
     // Execute rollback
     try {
       await this.rollbackService.rollback(this.deploymentState.resources);
@@ -329,16 +298,6 @@ export class DeploymentOrchestrator implements DurableObject {
       this.log('error', `Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : 'Unknown'}`);
     }
 
-    // Send failure email
-    try {
-      await this.emailService.sendDeploymentFailureEmail(
-        this.deploymentState.config.adminEmail,
-        this.deploymentState.config.projectName,
-        errorMessage
-      );
-    } catch (emailError) {
-      this.log('warning', `Failed to send error email: ${emailError instanceof Error ? emailError.message : 'Unknown'}`);
-    }
 
     this.deploymentState.status = 'failed';
     await this.updateState();
@@ -346,6 +305,9 @@ export class DeploymentOrchestrator implements DurableObject {
 
   /**
    * Get deployment status
+   *
+   * Maps internal state to the API response contract expected by the frontend.
+   * Notably, adminCredentials → credentials (frontend DeploymentStatusResponse type).
    */
   private async getStatus(): Promise<Response> {
     const state = this.deploymentState || await this.state.storage.get<DeploymentState>('deploymentState');
@@ -357,57 +319,17 @@ export class DeploymentOrchestrator implements DurableObject {
       );
     }
 
+    // Build response matching frontend DeploymentStatusResponse contract
+    const response = {
+      ...state,
+      // Map internal adminCredentials → credentials (frontend expects this key)
+      credentials: (state as Record<string, unknown>).adminCredentials ?? undefined
+    };
+
     return new Response(
-      JSON.stringify(state),
+      JSON.stringify(response),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
-  }
-
-  /**
-   * Handle Server-Sent Events connection
-   */
-  private async handleSSE(): Promise<Response> {
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const encoder = new TextEncoder();
-
-    // Add client to broadcast list
-    const controller = readable.getReader() as any;
-    this.sseClients.add(controller);
-
-    // Send initial state
-    if (this.deploymentState) {
-      await writer.write(
-        encoder.encode(`data: ${JSON.stringify({
-          type: 'status',
-          data: this.deploymentState
-        })}\n\n`)
-      );
-    }
-
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-      }
-    });
-  }
-
-  /**
-   * Broadcast SSE event to all connected clients
-   */
-  private broadcastSSE(event: SSEEvent): void {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
-
-    this.sseClients.forEach((controller) => {
-      try {
-        (controller as any).enqueue(data);
-      } catch {
-        this.sseClients.delete(controller);
-      }
-    });
   }
 
   /**
@@ -451,17 +373,6 @@ export class DeploymentOrchestrator implements DurableObject {
     };
 
     this.deploymentState.logs.push(logEntry);
-
-    // Broadcast log to SSE clients
-    this.broadcastSSE({
-      type: 'log',
-      data: {
-        timestamp: logEntry.timestamp,
-        level,
-        message,
-        step: this.deploymentState.currentStep
-      }
-    });
   }
 
   /**
@@ -506,42 +417,109 @@ export class DeploymentOrchestrator implements DurableObject {
   private async stepCreateD1(): Promise<void> {
     if (!this.deploymentState) return;
     const dbName = `${this.deploymentState.config.projectName}-db`;
-    const db = await this.api.createD1Database(dbName);
-    this.deploymentState.resources.d1DatabaseId = db.uuid;
-    this.log('success', `Created D1 database: ${db.uuid}`);
+    try {
+      const db = await this.api.createD1Database(dbName);
+      this.deploymentState.resources.d1DatabaseId = db.uuid;
+      this.log('success', `Created D1 database: ${db.uuid}`);
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+        this.log('info', `D1 database '${dbName}' already exists, reusing...`);
+        const databases = await this.api.listD1Databases();
+        const existing = databases.find((d: { name: string }) => d.name === dbName);
+        if (existing) {
+          this.deploymentState.resources.d1DatabaseId = existing.uuid;
+          this.log('success', `Reusing existing D1 database: ${existing.uuid}`);
+          return;
+        }
+      }
+      throw error;
+    }
   }
 
   private async stepCreateKVSession(): Promise<void> {
     if (!this.deploymentState) return;
     const kvName = `${this.deploymentState.config.projectName}-session-kv`;
-    const kv = await this.api.createKVNamespace(kvName);
-    this.deploymentState.resources.kvSessionNamespaceId = kv.id;
-    this.log('success', `Created KV namespace (session): ${kv.id}`);
+    try {
+      const kv = await this.api.createKVNamespace(kvName);
+      this.deploymentState.resources.kvSessionNamespaceId = kv.id;
+      this.log('success', `Created KV namespace (session): ${kv.id}`);
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+        this.log('info', `KV namespace '${kvName}' already exists, reusing...`);
+        const namespaces = await this.api.listKVNamespaces();
+        const existing = namespaces.find((n: { title: string }) => n.title === kvName);
+        if (existing) {
+          this.deploymentState.resources.kvSessionNamespaceId = existing.id;
+          this.log('success', `Reusing existing KV namespace (session): ${existing.id}`);
+          return;
+        }
+      }
+      throw error;
+    }
   }
 
   private async stepCreateKVCache(): Promise<void> {
     if (!this.deploymentState) return;
     const kvName = `${this.deploymentState.config.projectName}-cache-kv`;
-    const kv = await this.api.createKVNamespace(kvName);
-    this.deploymentState.resources.kvCacheNamespaceId = kv.id;
-    this.log('success', `Created KV namespace (cache): ${kv.id}`);
+    try {
+      const kv = await this.api.createKVNamespace(kvName);
+      this.deploymentState.resources.kvCacheNamespaceId = kv.id;
+      this.log('success', `Created KV namespace (cache): ${kv.id}`);
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+        this.log('info', `KV namespace '${kvName}' already exists, reusing...`);
+        const namespaces = await this.api.listKVNamespaces();
+        const existing = namespaces.find((n: { title: string }) => n.title === kvName);
+        if (existing) {
+          this.deploymentState.resources.kvCacheNamespaceId = existing.id;
+          this.log('success', `Reusing existing KV namespace (cache): ${existing.id}`);
+          return;
+        }
+      }
+      throw error;
+    }
   }
 
   private async stepCreateR2(): Promise<void> {
     if (!this.deploymentState) return;
     const bucketName = `${this.deploymentState.config.projectName}-files`;
-    const bucket = await this.api.createR2Bucket(bucketName);
-    this.deploymentState.resources.r2BucketName = bucket.name;
-    this.log('success', `Created R2 bucket: ${bucket.name}`);
+    try {
+      const bucket = await this.api.createR2Bucket(bucketName);
+      this.deploymentState.resources.r2BucketName = bucket.name;
+      this.log('success', `Created R2 bucket: ${bucket.name}`);
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+        this.log('info', `R2 bucket '${bucketName}' already exists, reusing...`);
+        this.deploymentState.resources.r2BucketName = bucketName;
+        this.log('success', `Reusing existing R2 bucket: ${bucketName}`);
+        return;
+      }
+      throw error;
+    }
   }
 
   private async stepCreateQueue(): Promise<void> {
     if (!this.deploymentState) return;
     const queueName = `${this.deploymentState.config.projectName}-queue`;
-    const queue = await this.api.createQueue(queueName);
-    this.deploymentState.resources.queueId = queue.queue_id;
-    this.deploymentState.resources.queueName = queue.queue_name;
-    this.log('success', `Created queue: ${queue.queue_name} (ID: ${queue.queue_id})`);
+    try {
+      const queue = await this.api.createQueue(queueName);
+      this.deploymentState.resources.queueId = queue.queue_id;
+      this.deploymentState.resources.queueName = queue.queue_name;
+      this.log('success', `Created queue: ${queue.queue_name} (ID: ${queue.queue_id})`);
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+        this.log('info', `Queue '${queueName}' already exists, reusing...`);
+        const queues = await this.api.listQueues();
+        const existing = queues.find((q: { queue_name: string }) => q.queue_name === queueName);
+        if (existing) {
+          this.deploymentState.resources.queueId = existing.queue_id;
+          this.deploymentState.resources.queueName = existing.queue_name;
+          this.log('success', `Reusing existing queue: ${existing.queue_name} (ID: ${existing.queue_id})`);
+          return;
+        }
+      }
+      throw error;
+    }
   }
 
   private async stepRunMigrations(): Promise<void> {
@@ -581,17 +559,56 @@ export class DeploymentOrchestrator implements DurableObject {
 
     this.log('info', `Deploying Worker with ${bindings.length} bindings...`);
 
+    // Check if Worker already exists to determine if we need migrations
+    const existingWorker = await this.api.workerExists(workerName);
+
+    // Durable Object migrations — only include on FRESH deployment
+    // Re-deployments must omit migrations to avoid "Cannot apply migration" conflict
+    let migrations: { steps: { tag: string; new_sqlite_classes: string[] }[] } | undefined;
+
+    if (!existingWorker) {
+      this.log('info', 'Fresh deployment detected — including DO migrations...');
+      migrations = {
+        steps: [
+          {
+            tag: 'v1',
+            new_sqlite_classes: [
+              'ConversationRoom', 'UserConnection', 'MessageBroadcaster',
+              'DelayedMessageProcessor', 'LockCoordinator', 'DelayedMessageBuffer',
+              'LatestMessageCacheCoordinator', 'CustomerConversationDO',
+              'CustomerMessageDO', 'RateLimiterDO'
+            ]
+          }
+        ]
+      };
+    } else {
+      this.log('info', 'Existing Worker detected — skipping DO migrations to avoid conflict...');
+    }
+
     // Deploy the Worker using Cloudflare API
     const worker = await this.api.deployWorker({
       name: workerName,
       script: workerScript,
       bindings,
       compatibility_date: '2024-01-01',
-      compatibility_flags: ['nodejs_compat']
+      compatibility_flags: ['nodejs_compat'],
+      migrations
     });
 
     this.deploymentState.resources.workerId = workerName;
-    this.deploymentState.resources.workerUrl = `https://${workerName}.${this.deploymentState.config.accountId}.workers.dev`;
+
+    // Fetch actual workers subdomain (not accountId) for correct URL
+    try {
+      const subdomain = await this.api.getWorkersSubdomain();
+      this.deploymentState.resources.workerUrl = `https://${workerName}.${subdomain}.workers.dev`;
+    } catch {
+      // Fallback: URL without subdomain (may not resolve but deployment continues)
+      this.deploymentState.resources.workerUrl = `https://${workerName}.workers.dev`;
+    }
+
+    // Enable workers.dev route so the worker is publicly accessible
+    this.log('info', 'Enabling workers.dev subdomain route...');
+    await this.api.enableWorkersDevRoute(workerName);
 
     this.log('success', `Deployed Worker: ${workerName} (etag: ${worker.etag})`);
   }
@@ -633,15 +650,34 @@ export class DeploymentOrchestrator implements DurableObject {
     const projectName = this.deploymentState.config.projectName;
     const config = this.deploymentState.config;
 
-    // Create Pages project
+    // Create or reuse Pages project
     this.log('info', 'Creating Pages project...');
-    const pages = await this.api.createPagesProject(projectName);
+    let pages: { id: string; name: string; subdomain: string };
+    try {
+      pages = await this.api.createPagesProject(projectName);
+      this.log('info', `Pages project created: ${pages.name}`);
+    } catch (error) {
+      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+        this.log('info', `Pages project '${projectName}' already exists, reusing...`);
+        const existing = await this.api.getPagesProject(projectName);
+        if (existing) {
+          pages = existing;
+          this.log('success', `Reusing existing Pages project: ${existing.name}`);
+        } else {
+          throw new Error(`Pages project '${projectName}' reported as existing but could not be fetched`);
+        }
+      } else {
+        throw error;
+      }
+    }
 
     this.deploymentState.resources.pagesProjectId = pages.id;
     this.deploymentState.resources.pagesProjectName = pages.name;
-    this.deploymentState.resources.pagesUrl = `https://${pages.subdomain}.pages.dev`;
-
-    this.log('info', `Pages project created: ${pages.name}`);
+    // pages.subdomain from CF API already includes ".pages.dev" (e.g. "mcis-ey7.pages.dev")
+    const pagesHost = pages.subdomain.endsWith('.pages.dev')
+      ? pages.subdomain
+      : `${pages.subdomain}.pages.dev`;
+    this.deploymentState.resources.pagesUrl = `https://${pagesHost}`;
 
     // Deploy frontend assets
     if (this.frontendAssets && this.frontendAssets.size > 0) {
@@ -725,39 +761,44 @@ export class DeploymentOrchestrator implements DurableObject {
       throw new Error('D1 database not available');
     }
 
-    const password = this.configGenerator.generateAdminPassword();
+    const password = this.deploymentState.config.adminPassword || this.configGenerator.generateAdminPassword();
     const adminEmail = this.deploymentState.config.adminEmail;
 
-    // Create admin user using MigrationRunner (handles password hashing internally)
-    const result = await this.migrationRunner.createAdminUser(
-      this.deploymentState.resources.d1DatabaseId,
-      adminEmail,
-      password,
-      'System Administrator'
-    );
+    try {
+      // Create admin user using MigrationRunner (handles password hashing internally)
+      const result = await this.migrationRunner.createAdminUser(
+        this.deploymentState.resources.d1DatabaseId,
+        adminEmail,
+        password,
+        'System Administrator'
+      );
 
-    const credentials: AdminCredentials = {
-      username: result.username,
-      password,
-      email: adminEmail
-    };
+      const credentials: AdminCredentials = {
+        username: result.username,
+        password,
+        email: adminEmail
+      };
 
-    (this.deploymentState as any).adminCredentials = credentials;
-    this.log('success', `Created admin user: ${result.username} (ID: ${result.userId})`);
-  }
+      (this.deploymentState as Record<string, unknown>).adminCredentials = credentials;
+      this.log('success', `Created admin user: ${result.username} (ID: ${result.userId})`);
+    } catch (error) {
+      // Handle duplicate admin user on re-deployment (UNIQUE constraint on email)
+      if (error instanceof Error && (error.message.includes('UNIQUE constraint') || error.message.includes('already exists'))) {
+        this.log('info', `Admin user '${adminEmail}' already exists, reusing credentials...`);
 
-  private async stepSendEmail(): Promise<void> {
-    if (!this.deploymentState) return;
-    const credentials = (this.deploymentState as any).adminCredentials as AdminCredentials;
+        // Return credentials with the provided password — user chose this password
+        const credentials: AdminCredentials = {
+          username: 'admin',
+          password,
+          email: adminEmail
+        };
 
-    await this.emailService.sendDeploymentSuccessEmail(
-      this.deploymentState.config.adminEmail,
-      this.deploymentState.config.projectName,
-      credentials,
-      this.deploymentState.resources
-    );
-
-    this.log('success', 'Sent deployment success email');
+        (this.deploymentState as Record<string, unknown>).adminCredentials = credentials;
+        this.log('success', `Reusing existing admin user: ${adminEmail}`);
+        return;
+      }
+      throw error;
+    }
   }
 
   private async stepVerifyHealth(): Promise<void> {
@@ -766,12 +807,25 @@ export class DeploymentOrchestrator implements DurableObject {
       throw new Error('Worker URL not available');
     }
 
-    const isHealthy = await this.api.healthCheck(this.deploymentState.resources.workerUrl);
-    if (!isHealthy) {
-      throw new Error('Health check failed');
+    // Retry health check with delay — newly deployed workers need time to propagate globally
+    const maxRetries = 5;
+    const delayMs = 5000;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      this.log('info', `Health check attempt ${attempt}/${maxRetries}...`);
+      const isHealthy = await this.api.healthCheck(this.deploymentState.resources.workerUrl);
+      if (isHealthy) {
+        this.log('success', 'Health check passed');
+        return;
+      }
+      if (attempt < maxRetries) {
+        this.log('info', `Worker not ready yet, retrying in ${delayMs / 1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
     }
 
-    this.log('success', 'Health check passed');
+    // If all retries fail, log warning but don't block deployment
+    this.log('warning', 'Health check did not pass after retries — worker may still be propagating. Deployment will continue.');
   }
 
   private async stepComplete(): Promise<void> {

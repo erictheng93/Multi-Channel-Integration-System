@@ -38,11 +38,8 @@
             v-show="currentStep === 0"
             :form-data="formData"
             :errors="errors"
-            :suggested-r2-url="suggestedR2Url"
             @update:field="updateField"
             @clear-error="clearError"
-            @apply-suggestion="applySuggestion"
-            @dismiss-suggestion="dismissSuggestion"
           />
 
           <!-- Step 2: LINE OA Configuration -->
@@ -105,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeploymentStore } from '@/stores/deploymentStore';
 import type { FormErrors } from '@/types';
@@ -145,34 +142,6 @@ const userEmail = ref<string>('');
 const oauthToken = ref<string>('');
 
 // ========================================
-// SMART DEFAULTS
-// ========================================
-
-// Track dismissed suggestions
-const dismissedSuggestions = ref<Record<string, boolean>>({});
-
-const suggestedFrontendUrl = computed(() => {
-  if (!formData.value.customDomain || formData.value.frontendUrl || dismissedSuggestions.value.frontendUrl) {
-    return '';
-  }
-  return `https://${formData.value.customDomain}`;
-});
-
-const suggestedBackendUrl = computed(() => {
-  if (!formData.value.customDomain || formData.value.backendUrl || dismissedSuggestions.value.backendUrl) {
-    return '';
-  }
-  return `https://api.${formData.value.customDomain}`;
-});
-
-const suggestedR2Url = computed(() => {
-  if (!formData.value.customDomain || formData.value.r2PublicUrl || dismissedSuggestions.value.r2PublicUrl) {
-    return '';
-  }
-  return `https://files.${formData.value.customDomain}`;
-});
-
-// ========================================
 // LIFECYCLE
 // ========================================
 
@@ -205,21 +174,6 @@ function clearError(field: keyof FormErrors): void {
   if (errors.value[field]) {
     delete errors.value[field];
   }
-}
-
-function applySuggestion(field: 'frontendUrl' | 'backendUrl' | 'r2PublicUrl'): void {
-  if (field === 'frontendUrl' && suggestedFrontendUrl.value) {
-    formData.value.frontendUrl = suggestedFrontendUrl.value;
-  } else if (field === 'backendUrl' && suggestedBackendUrl.value) {
-    formData.value.backendUrl = suggestedBackendUrl.value;
-  } else if (field === 'r2PublicUrl' && suggestedR2Url.value) {
-    formData.value.r2PublicUrl = suggestedR2Url.value;
-  }
-  clearError(field);
-}
-
-function dismissSuggestion(field: string): void {
-  dismissedSuggestions.value[field] = true;
 }
 
 function handleSkipLineChange(newValue: boolean): void {
@@ -266,26 +220,19 @@ function validateStep(step: number): boolean {
       isValid = false;
     }
 
-    if (formData.value.customDomain) {
-      if (formData.value.customDomain.includes('://')) {
-        errors.value.customDomain = 'Domain should not include protocol (https://). Just enter the domain (e.g., crm.example.com)';
-        isValid = false;
-      } else {
-        const domainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/i;
-        if (!domainRegex.test(formData.value.customDomain)) {
-          errors.value.customDomain = 'Please enter a valid domain name (e.g., crm.example.com)';
-          isValid = false;
-        }
-      }
+    if (!formData.value.adminPassword) {
+      errors.value.adminPassword = 'Admin password is required';
+      isValid = false;
+    } else if (formData.value.adminPassword.length < 8) {
+      errors.value.adminPassword = 'Password must be at least 8 characters';
+      isValid = false;
     }
 
-    if (formData.value.r2PublicUrl) {
-      const urlRegex = /^https?:\/\/.+/i;
-      if (!urlRegex.test(formData.value.r2PublicUrl)) {
-        errors.value.r2PublicUrl = 'Please enter a valid URL starting with https:// (e.g., https://files.example.com)';
-        isValid = false;
-      }
+    if (formData.value.adminPassword !== formData.value.adminPasswordConfirm) {
+      errors.value.adminPasswordConfirm = 'Passwords do not match';
+      isValid = false;
     }
+
   }
 
   if (step === 1 && !skipLineConfig.value) {
@@ -346,6 +293,7 @@ async function handleSubmit(): Promise<void> {
     await deploymentStore.startDeployment({
       projectName: formData.value.projectName,
       adminEmail: formData.value.adminEmail,
+      adminPassword: formData.value.adminPassword || undefined,
       customDomain: formData.value.customDomain || undefined,
       accountId: accountId.value,
       oauthToken: oauthToken.value,

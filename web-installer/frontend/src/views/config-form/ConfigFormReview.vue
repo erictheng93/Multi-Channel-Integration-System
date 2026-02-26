@@ -17,8 +17,8 @@
           <span class="summary-value">{{ formData.adminEmail }}</span>
         </div>
         <div class="summary-item">
-          <span class="summary-label">Custom Domain:</span>
-          <span class="summary-value">{{ formData.customDomain || 'Not configured' }}</span>
+          <span class="summary-label">Admin Password:</span>
+          <span class="summary-value">{{ '\u2022'.repeat(formData.adminPassword?.length || 0) }}</span>
         </div>
       </div>
 

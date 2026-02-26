@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import oauthRoutes from './routes/oauth';
+import authRoutes from './routes/auth';
 import deploymentRoutes from './routes/deployment';
 import { DeploymentOrchestrator } from './durable-objects/DeploymentOrchestrator';
 import type { Env } from './types';
@@ -61,6 +62,9 @@ app.get('/', (c) => {
     status: 'operational',
     endpoints: {
       health: '/health',
+      auth: {
+        token: '/auth/token'
+      },
       oauth: {
         authorize: '/oauth/authorize',
         callback: '/oauth/callback'
@@ -68,7 +72,6 @@ app.get('/', (c) => {
       deployment: {
         start: '/deployment/start',
         status: '/deployment/:projectName/status',
-        events: '/deployment/:projectName/events',
         cancel: '/deployment/:projectName/cancel'
       }
     },
@@ -79,6 +82,9 @@ app.get('/', (c) => {
 
 // Mount OAuth routes
 app.route('/oauth', oauthRoutes);
+
+// Mount API Token auth routes
+app.route('/auth', authRoutes);
 
 // Mount deployment routes (health + deployment endpoints)
 app.route('/', deploymentRoutes);

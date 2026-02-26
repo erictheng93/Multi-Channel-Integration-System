@@ -55,7 +55,7 @@ export class WorkerBundleService {
       bindings.push({
         type: 'kv_namespace',
         name: 'SESSION_KV',
-        id: resources.kvSessionNamespaceId
+        namespace_id: resources.kvSessionNamespaceId
       });
     }
 
@@ -64,7 +64,7 @@ export class WorkerBundleService {
       bindings.push({
         type: 'kv_namespace',
         name: 'CACHE_KV',
-        id: resources.kvCacheNamespaceId
+        namespace_id: resources.kvCacheNamespaceId
       });
     }
 
@@ -86,23 +86,25 @@ export class WorkerBundleService {
       });
     }
 
-    // Durable Object bindings
-    const durableObjects = [
-      'ConversationRoom',
-      'UserConnection',
-      'MessageBroadcaster',
-      'DelayedMessageProcessor',
-      'DelayedMessageBuffer',
-      'CustomerConversationDO',
-      'CustomerMessageDO'
+    // Durable Object bindings (names must match wrangler.toml)
+    const durableObjects: Array<{ name: string; class_name: string }> = [
+      { name: 'CONVERSATION_ROOM', class_name: 'ConversationRoom' },
+      { name: 'USER_CONNECTION', class_name: 'UserConnection' },
+      { name: 'MESSAGE_BROADCASTER', class_name: 'MessageBroadcaster' },
+      { name: 'DELAYED_MESSAGE_SCHEDULER', class_name: 'DelayedMessageBuffer' },
+      { name: 'DISTRIBUTED_LOCK', class_name: 'LockCoordinator' },
+      { name: 'LATEST_MESSAGE_COORDINATOR', class_name: 'LatestMessageCacheCoordinator' },
+      { name: 'CUSTOMER_CONVERSATION_DO', class_name: 'CustomerConversationDO' },
+      { name: 'CUSTOMER_MESSAGE_DO', class_name: 'CustomerMessageDO' },
+      { name: 'RATE_LIMITER', class_name: 'RateLimiterDO' }
     ];
 
-    durableObjects.forEach(className => {
+    durableObjects.forEach(({ name, class_name }) => {
       bindings.push({
         type: 'durable_object_namespace',
-        name: className.replace(/([A-Z])/g, '_$1').toUpperCase().slice(1),
-        class_name: className,
-        script_name: `${projectName}-worker`
+        name,
+        class_name
+        // No script_name — CF uses current script for self-referencing DO bindings
       });
     });
 
