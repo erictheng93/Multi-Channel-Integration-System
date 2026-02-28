@@ -70,7 +70,7 @@
               </button>
               <button @click="verifyAndConnect" class="btn btn-primary" :disabled="isVerifying || !apiToken || !accountId || !userEmail">
                 <span v-if="!isVerifying">Connect</span>
-                <span v-else class="btn-loading"><span class="spinner"></span> Verifying...</span>
+                <span v-else class="btn-loading"><span class="spinner-sm"></span> Verifying...</span>
               </button>
             </div>
           </div>
@@ -537,25 +537,6 @@ async function verifyAndConnect(): Promise<void> {
   display: flex;
   gap: var(--spacing-md);
   justify-content: flex-end;
-}
-
-.btn-loading {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Responsive Design */

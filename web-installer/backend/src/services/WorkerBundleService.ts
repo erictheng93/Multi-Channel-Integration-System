@@ -10,6 +10,7 @@
 
 import type { WorkerBinding } from '../types/cloudflare';
 import type { CloudflareResources, DeploymentConfig } from '../types/deployment';
+import { DURABLE_OBJECT_BINDINGS } from '../constants/durable-objects';
 
 // Import the generated bundle (will be created by build:worker-bundle script)
 // If the generated file doesn't exist, fallback to placeholder
@@ -86,27 +87,15 @@ export class WorkerBundleService {
       });
     }
 
-    // Durable Object bindings (names must match wrangler.toml)
-    const durableObjects: Array<{ name: string; class_name: string }> = [
-      { name: 'CONVERSATION_ROOM', class_name: 'ConversationRoom' },
-      { name: 'USER_CONNECTION', class_name: 'UserConnection' },
-      { name: 'MESSAGE_BROADCASTER', class_name: 'MessageBroadcaster' },
-      { name: 'DELAYED_MESSAGE_SCHEDULER', class_name: 'DelayedMessageBuffer' },
-      { name: 'DISTRIBUTED_LOCK', class_name: 'LockCoordinator' },
-      { name: 'LATEST_MESSAGE_COORDINATOR', class_name: 'LatestMessageCacheCoordinator' },
-      { name: 'CUSTOMER_CONVERSATION_DO', class_name: 'CustomerConversationDO' },
-      { name: 'CUSTOMER_MESSAGE_DO', class_name: 'CustomerMessageDO' },
-      { name: 'RATE_LIMITER', class_name: 'RateLimiterDO' }
-    ];
-
-    durableObjects.forEach(({ name, class_name }) => {
+    // Durable Object bindings — derived from shared constant (names must match wrangler.toml)
+    for (const { name, class_name } of DURABLE_OBJECT_BINDINGS) {
       bindings.push({
         type: 'durable_object_namespace',
         name,
         class_name
         // No script_name — CF uses current script for self-referencing DO bindings
       });
-    });
+    }
 
     return bindings;
   }

@@ -11,6 +11,7 @@ import { ConfigGenerator } from '../services/ConfigGenerator';
 import { RollbackService } from '../services/RollbackService';
 import { WorkerBundleService } from '../services/WorkerBundleService';
 import { FrontendBundleService } from '../services/FrontendBundleService';
+import { DURABLE_OBJECT_CLASS_NAMES } from '../constants/durable-objects';
 import {
   DEPLOYMENT_STEPS,
   type DeploymentConfig,
@@ -26,6 +27,15 @@ import {
 // Cloudflare Worker environment type
 interface Env {
   DEPLOYMENT_ORCHESTRATOR: DurableObjectNamespace;
+}
+
+/**
+ * Check if a Cloudflare API error indicates the resource already exists.
+ * Centralizes fragile string matching so it's maintained in one place.
+ */
+function isAlreadyExistsError(error: unknown): boolean {
+  return error instanceof Error &&
+    (error.message.includes('already exists') || error.message.includes('already taken'));
 }
 
 export class DeploymentOrchestrator implements DurableObject {
@@ -319,11 +329,16 @@ export class DeploymentOrchestrator implements DurableObject {
       );
     }
 
-    // Build response matching frontend DeploymentStatusResponse contract
+    // Build response matching frontend DeploymentStatusResponse contract.
+    // Omit sensitive fields to avoid credential leakage on every 3s poll.
+    // - config: contains oauthToken, adminPassword
+    // - adminCredentials: contains admin password (mapped to 'credentials' key below)
+    const { config: _config, adminCredentials: _creds, ...safeState } = state;
     const response = {
-      ...state,
+      ...safeState,
       // Map internal adminCredentials → credentials (frontend expects this key)
-      credentials: (state as Record<string, unknown>).adminCredentials ?? undefined
+      // Only include credentials when deployment is completed
+      credentials: state.status === 'completed' ? state.adminCredentials ?? undefined : undefined
     };
 
     return new Response(
@@ -422,7 +437,7 @@ export class DeploymentOrchestrator implements DurableObject {
       this.deploymentState.resources.d1DatabaseId = db.uuid;
       this.log('success', `Created D1 database: ${db.uuid}`);
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+      if (isAlreadyExistsError(error)) {
         this.log('info', `D1 database '${dbName}' already exists, reusing...`);
         const databases = await this.api.listD1Databases();
         const existing = databases.find((d: { name: string }) => d.name === dbName);
@@ -444,7 +459,7 @@ export class DeploymentOrchestrator implements DurableObject {
       this.deploymentState.resources.kvSessionNamespaceId = kv.id;
       this.log('success', `Created KV namespace (session): ${kv.id}`);
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+      if (isAlreadyExistsError(error)) {
         this.log('info', `KV namespace '${kvName}' already exists, reusing...`);
         const namespaces = await this.api.listKVNamespaces();
         const existing = namespaces.find((n: { title: string }) => n.title === kvName);
@@ -466,7 +481,7 @@ export class DeploymentOrchestrator implements DurableObject {
       this.deploymentState.resources.kvCacheNamespaceId = kv.id;
       this.log('success', `Created KV namespace (cache): ${kv.id}`);
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+      if (isAlreadyExistsError(error)) {
         this.log('info', `KV namespace '${kvName}' already exists, reusing...`);
         const namespaces = await this.api.listKVNamespaces();
         const existing = namespaces.find((n: { title: string }) => n.title === kvName);
@@ -488,7 +503,7 @@ export class DeploymentOrchestrator implements DurableObject {
       this.deploymentState.resources.r2BucketName = bucket.name;
       this.log('success', `Created R2 bucket: ${bucket.name}`);
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+      if (isAlreadyExistsError(error)) {
         this.log('info', `R2 bucket '${bucketName}' already exists, reusing...`);
         this.deploymentState.resources.r2BucketName = bucketName;
         this.log('success', `Reusing existing R2 bucket: ${bucketName}`);
@@ -507,7 +522,7 @@ export class DeploymentOrchestrator implements DurableObject {
       this.deploymentState.resources.queueName = queue.queue_name;
       this.log('success', `Created queue: ${queue.queue_name} (ID: ${queue.queue_id})`);
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+      if (isAlreadyExistsError(error)) {
         this.log('info', `Queue '${queueName}' already exists, reusing...`);
         const queues = await this.api.listQueues();
         const existing = queues.find((q: { queue_name: string }) => q.queue_name === queueName);
@@ -572,12 +587,7 @@ export class DeploymentOrchestrator implements DurableObject {
         steps: [
           {
             tag: 'v1',
-            new_sqlite_classes: [
-              'ConversationRoom', 'UserConnection', 'MessageBroadcaster',
-              'DelayedMessageProcessor', 'LockCoordinator', 'DelayedMessageBuffer',
-              'LatestMessageCacheCoordinator', 'CustomerConversationDO',
-              'CustomerMessageDO', 'RateLimiterDO'
-            ]
+            new_sqlite_classes: DURABLE_OBJECT_CLASS_NAMES
           }
         ]
       };
@@ -657,7 +667,7 @@ export class DeploymentOrchestrator implements DurableObject {
       pages = await this.api.createPagesProject(projectName);
       this.log('info', `Pages project created: ${pages.name}`);
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('already exists') || error.message.includes('already taken'))) {
+      if (isAlreadyExistsError(error)) {
         this.log('info', `Pages project '${projectName}' already exists, reusing...`);
         const existing = await this.api.getPagesProject(projectName);
         if (existing) {
@@ -779,11 +789,11 @@ export class DeploymentOrchestrator implements DurableObject {
         email: adminEmail
       };
 
-      (this.deploymentState as Record<string, unknown>).adminCredentials = credentials;
+      this.deploymentState.adminCredentials = credentials;
       this.log('success', `Created admin user: ${result.username} (ID: ${result.userId})`);
     } catch (error) {
       // Handle duplicate admin user on re-deployment (UNIQUE constraint on email)
-      if (error instanceof Error && (error.message.includes('UNIQUE constraint') || error.message.includes('already exists'))) {
+      if (isAlreadyExistsError(error) || (error instanceof Error && error.message.includes('UNIQUE constraint'))) {
         this.log('info', `Admin user '${adminEmail}' already exists, reusing credentials...`);
 
         // Return credentials with the provided password — user chose this password
@@ -793,7 +803,7 @@ export class DeploymentOrchestrator implements DurableObject {
           email: adminEmail
         };
 
-        (this.deploymentState as Record<string, unknown>).adminCredentials = credentials;
+        this.deploymentState.adminCredentials = credentials;
         this.log('success', `Reusing existing admin user: ${adminEmail}`);
         return;
       }

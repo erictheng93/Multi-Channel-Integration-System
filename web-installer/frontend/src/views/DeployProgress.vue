@@ -156,6 +156,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useDeploymentStore } from '@/stores/deploymentStore';
 import ProgressBar from '@/components/ProgressBar.vue';
 import LogConsole from '@/components/LogConsole.vue';
+import { formatDuration } from '@/utils/format';
 
 // ========================================
 // COMPOSABLES
@@ -255,12 +256,6 @@ async function handleCancel(): Promise<void> {
     alert('Failed to cancel deployment. Please try again.');
     isCancelling.value = false;
   }
-}
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 }
 
 function goToSuccess(): void {

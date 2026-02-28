@@ -118,6 +118,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeploymentStore } from '@/stores/deploymentStore';
 import LogConsole from '@/components/LogConsole.vue';
+import { formatDuration } from '@/utils/format';
 
 // ========================================
 // COMPOSABLES
@@ -144,12 +145,6 @@ function formatStepName(step: string): string {
     .split('_')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
-}
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 }
 
 function tryAgain(): void {

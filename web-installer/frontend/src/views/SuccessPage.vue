@@ -204,11 +204,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDeploymentStore } from '@/stores/deploymentStore';
 import CredentialsBox from '@/components/CredentialsBox.vue';
-import type { AdminCredentials, CloudflareResources } from '@/types';
+import { formatDuration } from '@/utils/format';
 
 // ========================================
 // COMPOSABLES
@@ -223,10 +223,12 @@ const deploymentStore = useDeploymentStore();
 // ========================================
 
 const projectName = ref<string>('');
-const credentials = ref<AdminCredentials | null>(null);
-const resources = ref<CloudflareResources>({});
 const loadError = ref<string | null>(null);
 const isLoading = ref(true);
+
+// Read directly from store — no redundant local copies
+const credentials = computed(() => deploymentStore.credentials);
+const resources = computed(() => deploymentStore.resources);
 
 // ========================================
 // LIFECYCLE
@@ -234,68 +236,45 @@ const isLoading = ref(true);
 
 onMounted(async () => {
   projectName.value = route.params.projectName as string;
-  isLoading.value = true;
-  loadError.value = null;
-
-  // If we don't have credentials in store, fetch deployment status
-  if (!deploymentStore.credentials) {
-    try {
-      await deploymentStore.fetchDeploymentStatus(projectName.value);
-    } catch (error) {
-      console.error('Failed to fetch deployment status:', error);
-      loadError.value = 'Failed to connect to the deployment server. Please check your network connection and try again.';
-      isLoading.value = false;
-      return;
-    }
-  }
-
-  // Load credentials and resources from store
-  credentials.value = deploymentStore.credentials;
-  resources.value = deploymentStore.resources;
-
-  // Validate we have the required data — show inline error instead of alert
-  if (!credentials.value || !resources.value.pagesUrl) {
-    loadError.value = 'Deployment data could not be loaded. The deployment session may have expired. You can try refreshing or return to the home page.';
-  }
-
-  isLoading.value = false;
+  await loadDeploymentData();
 });
 
 // ========================================
 // METHODS
 // ========================================
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  if (mins > 0) {
-    return `${mins}m ${secs}s`;
-  }
-  return `${secs}s`;
-}
-
-async function retryLoad(): Promise<void> {
+/**
+ * Fetch deployment data from the backend and validate required fields.
+ * Shared by onMounted and retryLoad.
+ */
+async function loadDeploymentData(): Promise<void> {
   isLoading.value = true;
   loadError.value = null;
 
   try {
-    await deploymentStore.fetchDeploymentStatus(projectName.value);
-    credentials.value = deploymentStore.credentials;
-    resources.value = deploymentStore.resources;
+    if (!deploymentStore.credentials) {
+      await deploymentStore.fetchDeploymentStatus(projectName.value);
+    }
 
+    // Validate required data
     if (!credentials.value || !resources.value.pagesUrl) {
       loadError.value = 'Deployment data could not be loaded. The deployment session may have expired. You can try refreshing or return to the home page.';
     }
   } catch (error) {
-    console.error('Retry failed:', error);
+    console.error('Failed to load deployment data:', error);
     loadError.value = 'Failed to connect to the deployment server. Please check your network connection and try again.';
   } finally {
     isLoading.value = false;
   }
 }
 
+async function retryLoad(): Promise<void> {
+  // Force re-fetch on retry
+  await deploymentStore.fetchDeploymentStatus(projectName.value).catch(() => {});
+  await loadDeploymentData();
+}
+
 function goToLanding(): void {
-  // Reset deployment store
   deploymentStore.resetState();
   router.push({ name: 'landing' });
 }
@@ -318,19 +297,6 @@ function goToLanding(): void {
   color: white;
   gap: var(--spacing-lg);
   font-size: var(--font-size-lg);
-}
-
-.spinner-lg {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Error State */

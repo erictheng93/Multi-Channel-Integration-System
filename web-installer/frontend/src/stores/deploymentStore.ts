@@ -167,6 +167,17 @@ export const useDeploymentStore = defineStore('deployment', () => {
   // UTILITIES
   // ========================================
 
+  const MAX_LOG_ENTRIES = 500;
+
+  /** Persistent set for O(1) dedup — rebuilt only on resetState() */
+  const knownMessages = new Set<string>();
+
+  function trimLogs(): void {
+    if (logs.value.length > MAX_LOG_ENTRIES) {
+      logs.value = logs.value.slice(-MAX_LOG_ENTRIES);
+    }
+  }
+
   function addLog(level: LogEntry['level'], message: string, step?: string): void {
     logs.value.push({
       timestamp: Date.now(),
@@ -174,25 +185,24 @@ export const useDeploymentStore = defineStore('deployment', () => {
       message,
       step: step as LogEntry['step']
     });
-
-    if (logs.value.length > 500) {
-      logs.value = logs.value.slice(-500);
-    }
+    knownMessages.add(message);
+    trimLogs();
   }
 
   function mergeLogs(backendLogs: LogEntry[]): void {
-    const existingMessages = new Set(logs.value.map(l => l.message));
-
+    let added = 0;
     for (const log of backendLogs) {
-      if (!existingMessages.has(log.message)) {
+      if (!knownMessages.has(log.message)) {
         logs.value.push(log);
-        existingMessages.add(log.message);
+        knownMessages.add(log.message);
+        added++;
       }
     }
 
-    logs.value.sort((a, b) => a.timestamp - b.timestamp);
-    if (logs.value.length > 500) {
-      logs.value = logs.value.slice(-500);
+    // Only sort if new entries were added
+    if (added > 0) {
+      logs.value.sort((a, b) => a.timestamp - b.timestamp);
+      trimLogs();
     }
   }
 
@@ -206,6 +216,7 @@ export const useDeploymentStore = defineStore('deployment', () => {
     error.value = null;
     resources.value = {};
     logs.value = [];
+    knownMessages.clear();
     credentials.value = null;
     startedAt.value = 0;
     completedAt.value = null;
