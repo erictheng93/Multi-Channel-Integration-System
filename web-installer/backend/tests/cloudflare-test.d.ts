@@ -68,7 +68,7 @@ declare module 'cloudflare:test' {
     disableNetConnect(): void;
     enableNetConnect(pattern?: string | RegExp): void;
     get(origin: string): {
-      intercept(options: { path: string; method?: string }): {
+      intercept(options: { path: string | RegExp; method?: string }): {
         reply(
           statusCode: number,
           body?: unknown,

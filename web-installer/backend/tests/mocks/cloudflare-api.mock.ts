@@ -28,7 +28,7 @@ export class MockCloudflareAPI {
       uuid: `db-${Date.now()}`,
       name,
       version: '1.0.0',
-      created_on: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       num_tables: 0,
       file_size: 0
     };
@@ -69,7 +69,8 @@ export class MockCloudflareAPI {
 
     const bucket: R2Bucket = {
       name,
-      creation_date: new Date().toISOString()
+      creation_date: new Date().toISOString(),
+      location: 'wnam'
     };
 
     this.resources.set(`r2-${name}`, bucket);
@@ -90,10 +91,8 @@ export class MockCloudflareAPI {
       queue_id: `queue-${Date.now()}`,
       queue_name: name,
       created_on: new Date().toISOString(),
-      producers: [],
-      consumers: [],
-      producers_total_count: 0,
-      consumers_total_count: 0,
+      producers: 0,
+      consumers: 0,
       modified_on: new Date().toISOString()
     };
 
