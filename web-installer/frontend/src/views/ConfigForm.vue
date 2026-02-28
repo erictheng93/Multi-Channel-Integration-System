@@ -90,7 +90,7 @@
             >
               <span v-if="!isSubmitting">&#x1F680; Start Deployment</span>
               <span v-else class="btn-loading">
-                <span class="spinner"></span>
+                <span class="spinner-sm"></span>
                 Starting...
               </span>
             </button>
@@ -474,28 +474,6 @@ async function handleSubmit(): Promise<void> {
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-}
-
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (max-width: 768px) {

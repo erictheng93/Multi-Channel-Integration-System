@@ -83,6 +83,7 @@ export interface DeploymentState {
   resources: CloudflareResources;
   logs: DeploymentLog[];
   error?: DeploymentError;
+  adminCredentials?: AdminCredentials;
   createdAt: number;
   updatedAt: number;
   completedAt?: number;

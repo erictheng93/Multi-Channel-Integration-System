@@ -93,15 +93,7 @@ export class CloudflareAPI {
   }
 
   async executeD1Query(databaseId: string, sql: string): Promise<D1QueryResult> {
-    const response = await this.request<D1QueryResult[]>({
-      method: 'POST',
-      path: `/accounts/${this.accountId}/d1/database/${databaseId}/query`,
-      body: { sql }
-    });
-
-    // D1 query API returns result as an array — extract first element
-    const result = Array.isArray(response.result) ? response.result[0] : response.result;
-    return result;
+    return this.executeD1QueryInternal(databaseId, { sql });
   }
 
   /**
@@ -112,18 +104,24 @@ export class CloudflareAPI {
     sql: string,
     params: (string | number | boolean | null)[]
   ): Promise<D1QueryResult> {
+    return this.executeD1QueryInternal(databaseId, { sql, params });
+  }
+
+  /**
+   * Internal D1 query execution — shared by executeD1Query and executeD1QueryWithParams
+   */
+  private async executeD1QueryInternal(
+    databaseId: string,
+    body: { sql: string; params?: (string | number | boolean | null)[] }
+  ): Promise<D1QueryResult> {
     const response = await this.request<D1QueryResult[]>({
       method: 'POST',
       path: `/accounts/${this.accountId}/d1/database/${databaseId}/query`,
-      body: {
-        sql,
-        params
-      }
+      body
     });
 
     // D1 query API returns result as an array — extract first element
-    const result = Array.isArray(response.result) ? response.result[0] : response.result;
-    return result;
+    return Array.isArray(response.result) ? response.result[0] : response.result;
   }
 
   async listD1Databases(): Promise<D1Database[]> {
@@ -252,16 +250,11 @@ export class CloudflareAPI {
    */
   async workerExists(name: string): Promise<boolean> {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/accounts/${this.accountId}/workers/scripts/${name}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.apiToken}`
-          }
-        }
-      );
-      return response.ok;
+      await this.request({
+        method: 'GET',
+        path: `/accounts/${this.accountId}/workers/scripts/${name}`
+      });
+      return true;
     } catch {
       return false;
     }
