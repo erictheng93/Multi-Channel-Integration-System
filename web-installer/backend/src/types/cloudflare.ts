@@ -25,12 +25,12 @@ export interface CreateD1Request {
 }
 
 export interface D1QueryResult {
-  success: boolean;
+  success?: boolean;
   results?: unknown[];
   meta?: {
-    duration: number;
-    rows_read: number;
-    rows_written: number;
+    duration?: number;
+    rows_read?: number;
+    rows_written?: number;
   };
   errors?: CloudflareAPIError[];
 }
@@ -213,7 +213,7 @@ export interface CloudflareAPIResponse<T = unknown> {
 }
 
 export interface CloudflareAPIError {
-  code: number;
+  code?: number;
   message: string;
 }
 
