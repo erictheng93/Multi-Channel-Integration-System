@@ -15,7 +15,13 @@ import {
   messageRecallLogs,
   conversationTransfers,
   fileAttachments,
-  activities
+  activities,
+  reports,
+  scheduledReports,
+  reportDownloadHistory,
+  reportTemplates,
+  channelIntegrations,
+  customerFeedback
 } from '@/db/schema';
 import { hashPassword } from '@/utils/auth';
 import type { D1Database } from '@cloudflare/workers-types';
@@ -28,7 +34,6 @@ import type {
   MemberListQuery,
   MemberListResponse,
   BulkDeleteResult,
-  RestoreResult,
   BulkUpdateResult,
   MemberEditData,
   MemberEditResult
@@ -261,48 +266,31 @@ export class MemberService {
   }
 
   /**
-   * 軟刪除成員 (Soft Delete)
+   * 永久刪除成員 (Hard Delete)
    *
-   * 只設定 deletedAt 時間戳，不清理外鍵關聯。
-   * 這樣可以在 undo 時間窗口內 (10-30 秒) 恢復成員。
+   * 清理所有外鍵關聯後永久刪除成員帳號。
+   * 此操作不可撤銷。
    *
    * @param memberId - 要刪除的成員 ID
    * @param deletedBy - 執行刪除的用戶 ID
    * @returns Promise<boolean> - 刪除是否成功
    */
-  async deleteMember(memberId: string, _deletedBy: string): Promise<boolean> {
-    const now = nowISO();
-
-    const [updated] = await this.db
-      .update(agents)
-      .set({
-        deletedAt: now,
-        updatedAt: now
-      })
-      .where(and(
-        eq(agents.id, memberId),
-        isNull(agents.deletedAt) // 確保只刪除未被刪除的成員
-      ))
-      .returning();
-
-    return !!updated;
+  async deleteMember(memberId: string, deletedBy: string): Promise<boolean> {
+    return this.hardDeleteMember(memberId, deletedBy);
   }
 
   /**
-   * 批量軟刪除成員
+   * 批量永久刪除成員 (Hard Delete)
    *
-   * 🚀 Phase 2 優化: 使用批量 DB 操作
-   * - 1 次批量查詢 (vs 原本 N 次)
-   * - 1 次批量更新 (vs 原本 N 次)
-   * - 總共 2 次 DB 查詢 (vs 原本 2*N 次)
+   * 逐一調用 hardDeleteMember 以確保每位成員的 FK 關聯都被正確清理。
    *
    * @param memberIds - 要刪除的成員 ID 列表 (最多 50 個)
    * @param deletedBy - 執行刪除的用戶 ID
    * @returns Promise<BulkDeleteResult> - 刪除結果，包含成功和失敗的成員
    */
-  async bulkSoftDeleteMembers(
+  async bulkHardDeleteMembers(
     memberIds: string[],
-    _deletedBy: string
+    deletedBy: string
   ): Promise<BulkDeleteResult> {
     const deleted: string[] = [];
     const failed: { memberId: string; error: string }[] = [];
@@ -326,16 +314,13 @@ export class MemberService {
     }
 
     try {
-      // 🚀 Step 1: 批量查詢現有成員 (N 查詢 → 1 查詢)
+      // Step 1: 批量查詢現有成員
       const existingMembers = await this.db
         .select()
         .from(agents)
-        .where(and(
-          inArray(agents.id, memberIds),
-          isNull(agents.deletedAt)  // 只查詢未被刪除的成員
-        ));
+        .where(inArray(agents.id, memberIds));
 
-      // 建立已存在成員的 Map (用於快速查找)
+      // 建立已存在成員的 Map
       const existingMemberMap = new Map(
         existingMembers.map(m => [m.id, m])
       );
@@ -349,149 +334,39 @@ export class MemberService {
       // 取得要刪除的成員 ID 列表
       const idsToDelete = memberIds.filter(id => existingMemberMap.has(id));
 
-      if (idsToDelete.length === 0) {
-        return { deleted, failed, deletedMembers };
+      // Step 2: 逐一硬刪除每位成員（確保 FK 清理完整）
+      for (const memberId of idsToDelete) {
+        try {
+          const member = existingMemberMap.get(memberId);
+          if (member) {
+            deletedMembers.push(this.formatMember(member));
+          }
+          await this.hardDeleteMember(memberId, deletedBy);
+          deleted.push(memberId);
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : '刪除失敗';
+          failed.push({ memberId, error: errorMsg });
+        }
       }
 
-      // 🚀 Step 2: 批量軟刪除 (N 更新 → 1 更新)
-      const now = nowISO();
-      await this.db
-        .update(agents)
-        .set({
-          deletedAt: now,
-          updatedAt: now
-        })
-        .where(inArray(agents.id, idsToDelete));
-
-      // 記錄成功刪除的成員
-      idsToDelete.forEach(memberId => {
-        deleted.push(memberId);
-        const member = existingMemberMap.get(memberId);
-        if (member) {
-          deletedMembers.push(this.formatMember(member));
-        }
-      });
-
-      console.log(`📦 [Member Bulk Delete] 批量軟刪除 ${deleted.length} 位成員 (2 DB 查詢)`);
+      console.log(`📦 [Member Bulk Delete] 批量永久刪除 ${deleted.length} 位成員`);
 
     } catch (err) {
       // 如果批量操作失敗，將所有成員標記為失敗
       const errorMsg = err instanceof Error ? err.message : '批量刪除失敗';
       memberIds.forEach(memberId => {
-        if (!failed.some(f => f.memberId === memberId)) {
+        if (!failed.some(f => f.memberId === memberId) && !deleted.includes(memberId)) {
           failed.push({ memberId, error: errorMsg });
         }
       });
-      console.error('批量軟刪除成員錯誤:', err);
+      console.error('批量永久刪除成員錯誤:', err);
     }
 
     return { deleted, failed, deletedMembers };
   }
 
-  /**
-   * 恢復已軟刪除的成員
-   *
-   * @param memberId - 要恢復的成員 ID
-   * @returns Promise<TeamMember | null> - 恢復的成員，如果失敗則為 null
-   */
-  async restoreMember(memberId: string): Promise<TeamMember | null> {
-    const now = nowISO();
-
-    const [restored] = await this.db
-      .update(agents)
-      .set({
-        deletedAt: null,
-        updatedAt: now
-      })
-      .where(and(
-        eq(agents.id, memberId),
-        sql`${agents.deletedAt} IS NOT NULL` // 只恢復已刪除的成員
-      ))
-      .returning();
-
-    return restored ? this.formatMember(restored) : null;
-  }
-
-  /**
-   * 批量恢復已軟刪除的成員
-   *
-   * 🚀 Phase 2 優化: 使用批量 DB 操作
-   * - 1 次批量查詢 (驗證已刪除的成員)
-   * - 1 次批量更新 (恢復成員)
-   * - 總共 2 次 DB 查詢 (vs 原本 N 次)
-   *
-   * @param memberIds - 要恢復的成員 ID 列表
-   * @returns Promise<RestoreResult> - 恢復結果
-   */
-  async bulkRestoreMembers(memberIds: string[]): Promise<RestoreResult> {
-    const restored: TeamMember[] = [];
-    const failed: { memberId: string; error: string }[] = [];
-
-    if (memberIds.length === 0) {
-      return { restored, failed };
-    }
-
-    try {
-      // 🚀 Step 1: 批量查詢已刪除的成員 (N 查詢 → 1 查詢)
-      const deletedMembers = await this.db
-        .select()
-        .from(agents)
-        .where(and(
-          inArray(agents.id, memberIds),
-          sql`${agents.deletedAt} IS NOT NULL`  // 只查詢已刪除的成員
-        ));
-
-      // 建立已刪除成員的 Map
-      const deletedMemberMap = new Map(
-        deletedMembers.map(m => [m.id, m])
-      );
-
-      // 找出不存在或未被刪除的成員 ID
-      const notFoundIds = memberIds.filter(id => !deletedMemberMap.has(id));
-      notFoundIds.forEach(memberId => {
-        failed.push({ memberId, error: '成員不存在或未被刪除' });
-      });
-
-      // 取得要恢復的成員 ID 列表
-      const idsToRestore = memberIds.filter(id => deletedMemberMap.has(id));
-
-      if (idsToRestore.length === 0) {
-        return { restored, failed };
-      }
-
-      // 🚀 Step 2: 批量恢復 (N 更新 → 1 更新)
-      const now = nowISO();
-      await this.db
-        .update(agents)
-        .set({
-          deletedAt: null,
-          updatedAt: now
-        })
-        .where(inArray(agents.id, idsToRestore));
-
-      // 記錄成功恢復的成員
-      idsToRestore.forEach(memberId => {
-        const member = deletedMemberMap.get(memberId);
-        if (member) {
-          restored.push(this.formatMember(member));
-        }
-      });
-
-      console.log(`📦 [Member Bulk Restore] 批量恢復 ${restored.length} 位成員 (2 DB 查詢)`);
-
-    } catch (err) {
-      // 如果批量操作失敗，將所有成員標記為失敗
-      const errorMsg = err instanceof Error ? err.message : '批量恢復失敗';
-      memberIds.forEach(memberId => {
-        if (!failed.some(f => f.memberId === memberId)) {
-          failed.push({ memberId, error: errorMsg });
-        }
-      });
-      console.error('批量恢復成員錯誤:', err);
-    }
-
-    return { restored, failed };
-  }
+  // NOTE: restoreMember and bulkRestoreMembers removed — hard delete is permanent
+  // NOTE: restoreMember and bulkRestoreMembers removed — hard delete is permanent
 
   /**
    * 批量更新成員
@@ -831,22 +706,27 @@ export class MemberService {
    * 硬刪除成員 (Hard Delete)
    *
    * ⚠️ 永久刪除，無法恢復！
-   * 僅用於 Undo 時間窗口過期後的清理作業。
    *
    * 處理外鍵約束（依順序處理所有引用 agents 表的外鍵）：
    * 1. 刪除 notifications（用戶刪除後通知無意義）
    * 2. 將 messages.agentSenderId 設為 null（保留訊息歷史）
    * 3. 刪除 delayedMessages 中的待發訊息
-   * 4. 將 messageRecallLogs.userId 設為 null（保留撤回記錄）
+   * 4. 將 messageRecallLogs.userId 設為 'deleted-user'（保留撤回記錄）
    * 5. 將 fileAttachments.uploadedBy 設為 null（保留附件記錄）
-   * 6. 將 tags.createdBy 設為 null（保留標籤）
-   * 7. 將 customerTags.assignedBy 設為 null（保留標籤關聯）
-   * 8. 將 conversationTags.assignedBy 設為 null（保留標籤關聯）
-   * 9. 將 conversationTransfers 相關欄位設為 null（保留轉移記錄）
-   * 10. 將 activities.userId 設為 null（保留審計記錄）
-   * 11. agent_teams 會自動級聯刪除（onDelete: cascade）
-   * 12. task_reminders 會自動級聯刪除（onDelete: cascade）
-   * 13. 最後刪除成員帳號
+   * 6. 將 tags.createdBy 設為 'deleted-user'（保留標籤）
+   * 7. 將 customerTags.assignedBy 設為 'deleted-user'（保留標籤關聯）
+   * 8. 將 conversationTags.assignedBy 設為 'deleted-user'（保留標籤關聯）
+   * 9. 將 conversationTransfers.transferredBy 設為 'deleted-user'（保留轉移記錄）
+   * 10. 將 activities.userId 設為 'deleted-user'（保留審計記錄）
+   * 11. 將 reports.createdBy 設為 'deleted-user'（保留報告記錄）
+   * 12. 將 scheduledReports.createdBy 設為 'deleted-user'（保留排程報告）
+   * 13. 將 reportDownloadHistory.downloadedBy 設為 'deleted-user'（保留下載記錄）
+   * 14. 將 reportTemplates.createdBy 設為 'deleted-user'（保留報告模板）
+   * 15. 將 channelIntegrations.configuredBy 設為 null（保留整合設定）
+   * 16. 將 customerFeedback.agentId 設為 null（保留客戶回饋）
+   * 17. agent_teams 會自動級聯刪除（onDelete: cascade）
+   * 18. task_reminders 會自動級聯刪除（onDelete: cascade）
+   * 19. 最後刪除成員帳號
    */
   async hardDeleteMember(memberId: string, _deletedBy: string): Promise<boolean> {
     // Step 1: 刪除該成員的通知（用戶刪除後通知無意義）
@@ -896,7 +776,6 @@ export class MemberService {
       .where(eq(conversationTags.assignedBy, memberId));
 
     // Step 9: 將對話轉移記錄相關欄位設為 'deleted-user'（保留轉移記錄）
-    // Note: fromUserId and toUserId removed - only team-based transfers are supported now
     await this.db
       .update(conversationTransfers)
       .set({ transferredBy: 'deleted-user' })
@@ -908,8 +787,44 @@ export class MemberService {
       .set({ userId: 'deleted-user' })
       .where(eq(activities.userId, memberId));
 
-    // Step 11: 刪除成員帳號
-    // (agent_teams 和 task_reminders 會自動級聯刪除)
+    // Step 11: 將報告建立者設為 'deleted-user'（保留報告記錄）
+    await this.db
+      .update(reports)
+      .set({ createdBy: 'deleted-user' })
+      .where(eq(reports.createdBy, memberId));
+
+    // Step 12: 將排程報告建立者設為 'deleted-user'（保留排程報告）
+    await this.db
+      .update(scheduledReports)
+      .set({ createdBy: 'deleted-user' })
+      .where(eq(scheduledReports.createdBy, memberId));
+
+    // Step 13: 將報告下載記錄的下載者設為 'deleted-user'（保留下載記錄）
+    await this.db
+      .update(reportDownloadHistory)
+      .set({ downloadedBy: 'deleted-user' })
+      .where(eq(reportDownloadHistory.downloadedBy, memberId));
+
+    // Step 14: 將報告模板建立者設為 'deleted-user'（保留報告模板）
+    await this.db
+      .update(reportTemplates)
+      .set({ createdBy: 'deleted-user' })
+      .where(eq(reportTemplates.createdBy, memberId));
+
+    // Step 15: 將頻道整合設定者設為 null（保留整合設定）
+    await this.db
+      .update(channelIntegrations)
+      .set({ configuredBy: null })
+      .where(eq(channelIntegrations.configuredBy, memberId));
+
+    // Step 16: 將客戶回饋的 agentId 設為 null（保留客戶回饋）
+    await this.db
+      .update(customerFeedback)
+      .set({ agentId: null })
+      .where(eq(customerFeedback.agentId, memberId));
+
+    // Step 17: 刪除成員帳號
+    // (agent_teams, task_reminders, delayed_messages 會自動級聯刪除)
     await this.db
       .delete(agents)
       .where(eq(agents.id, memberId));

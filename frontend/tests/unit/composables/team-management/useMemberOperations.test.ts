@@ -478,7 +478,7 @@ describe('useMemberOperations', () => {
 
       expect(mockTeamStore.removeMember).toHaveBeenCalledWith('member-1')
       expect(mockToast.showSuccess).toHaveBeenCalledWith(
-        '移除成員成功',
+        '刪除成員成功',
         expect.stringContaining('Test Member')
       )
     })
@@ -490,7 +490,7 @@ describe('useMemberOperations', () => {
       await operations.removeMember(memberWithoutName)
 
       expect(mockToast.showSuccess).toHaveBeenCalledWith(
-        '移除成員成功',
+        '刪除成員成功',
         expect.stringContaining('test@example.com')
       )
     })
@@ -502,7 +502,7 @@ describe('useMemberOperations', () => {
       await operations.removeMember(mockMember)
 
       expect(mockToast.showError).toHaveBeenCalledWith(
-        '移除成員失敗',
+        '刪除成員失敗',
         'Remove failed'
       )
     })
@@ -513,8 +513,8 @@ describe('useMemberOperations', () => {
       await operations.removeMember(mockMember)
 
       expect(mockToast.showError).toHaveBeenCalledWith(
-        '移除成員失敗',
-        '移除成員失敗，請稍後重試'
+        '刪除成員失敗',
+        '刪除成員失敗，請稍後重試'
       )
     })
   })
