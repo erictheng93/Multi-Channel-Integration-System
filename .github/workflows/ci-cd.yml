@@ -46,8 +46,7 @@ jobs:
 
       - name: 6. Run Frontend Tests with Coverage
         if: matrix.test-type == 'frontend'
-        run: |
-          bun run test --prefix frontend -- --run --coverage
+        run: cd frontend && bun run test -- --run --coverage
 
       - name: 7. Run Backend Test Suite
         if: matrix.test-type == 'backend'
@@ -58,7 +57,7 @@ jobs:
           bunx vitest run tests/unit/services tests/unit/modules tests/modules --reporter=verbose --passWithNoTests || echo "⚠️ Some backend tests failed - see output above"
 
       - name: 8. Build Frontend for Verification
-        run: bun run build --prefix frontend
+        run: cd frontend && bun run build
 
       - name: 9. Upload test coverage
         if: matrix.test-type == 'frontend'
@@ -93,7 +92,7 @@ jobs:
           cd frontend && bun install --frozen-lockfile
 
       - name: 4. Build Frontend
-        run: bun run build --prefix frontend
+        run: cd frontend && bun run build
 
       - name: 5. Deploy to Cloudflare Staging
         uses: cloudflare/wrangler-action@v3
@@ -136,7 +135,7 @@ jobs:
           cd frontend && bun install --frozen-lockfile
 
       - name: 4. Build Frontend
-        run: bun run build --prefix frontend
+        run: cd frontend && bun run build
 
       - name: 5. Record current deployment for rollback
         run: |
