@@ -22,9 +22,6 @@ import type {
   UpdateMemberRequest,
   BulkDeleteMembersRequest,
   BulkDeleteMembersResponse,
-  RestoreMembersRequest,
-  RestoreMembersResponse,
-  UndoTokenData,
   BulkUpdateMembersRequest,
   BulkUpdateMembersResponse,
   BatchEditMembersRequest,
@@ -339,8 +336,10 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
 });
 
 /**
- * 刪除成員 (軟刪除)
+ * 永久刪除成員 (Hard Delete)
  * DELETE /api/teams/members/:memberId
+ *
+ * 此操作不可撤銷。確認對話框由前端處理。
  */
 membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
@@ -366,33 +365,8 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // Soft delete member
+    // Hard delete member (permanent, cleans up all FK references)
     await memberService.deleteMember(memberId, String(user.id));
-
-    // Generate undo token for single delete (consistent with bulk delete)
-    const undoToken = `undo-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
-    const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds TTL (KV minimum)
-    const undoExpiresAt = expiresAt.toISOString();
-
-    // Store undo data in KV (non-blocking, don't let failure prevent delete response)
-    let kvStored = false;
-    try {
-      const undoData: UndoTokenData = {
-        memberIds: [memberId],
-        deletedBy: String(user.id),
-        deletedAt: nowISO(),
-        reason: undefined
-      };
-
-      await c.env.SESSIONS.put(
-        `undo:members:${undoToken}`,
-        JSON.stringify(undoData),
-        { expirationTtl: 60 } // 60 seconds TTL (KV minimum)
-      );
-      kvStored = true;
-    } catch (kvError: any) {
-      console.error('Failed to store undo token in KV:', kvError?.message || kvError);
-    }
 
     // Log activity (non-blocking)
     try {
@@ -415,10 +389,8 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
 
     return c.json({
       success: true,
-      message: 'Member deleted successfully',
+      message: 'Member permanently deleted',
       data: {
-        undoToken: kvStored ? undoToken : undefined,
-        undoExpiresAt: kvStored ? undoExpiresAt : undefined,
         deletedMemberId: memberId
       },
       timestamp: nowISO()
@@ -430,12 +402,10 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
 });
 
 /**
- * 批量刪除成員 (軟刪除)
+ * 批量永久刪除成員 (Hard Delete)
  * POST /api/teams/members/bulk-delete
  *
- * 支持 Undo 功能：
- * - 生成 undoToken，存儲在 KV 中 (30 秒 TTL)
- * - 前端可使用此 token 在 10 秒內調用 restore 端點恢復
+ * 此操作不可撤銷。確認對話框由前端處理。
  */
 membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
@@ -469,35 +439,11 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
 
     const memberService = new MemberService(c.env.DB);
 
-    // Execute bulk soft delete
-    const result = await memberService.bulkSoftDeleteMembers(
+    // Execute bulk hard delete
+    const result = await memberService.bulkHardDeleteMembers(
       data.memberIds,
       String(user.id)
     );
-
-    // Generate undo token if any members were deleted
-    let undoToken = '';
-    let undoExpiresAt = '';
-
-    if (result.deleted.length > 0) {
-      undoToken = `undo-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
-      const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds TTL (KV minimum)
-      undoExpiresAt = expiresAt.toISOString();
-
-      // Store undo data in KV
-      const undoData: UndoTokenData = {
-        memberIds: result.deleted,
-        deletedBy: String(user.id),
-        deletedAt: nowISO(),
-        reason: data.reason
-      };
-
-      await c.env.SESSIONS.put(
-        `undo:members:${undoToken}`,
-        JSON.stringify(undoData),
-        { expirationTtl: 60 } // 60 seconds TTL (KV minimum)
-      );
-    }
 
     // Log activity
     if (result.deleted.length > 0) {
@@ -520,15 +466,13 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
     const response: BulkDeleteMembersResponse = {
       deleted: result.deleted,
       failed: result.failed,
-      undoToken,
-      undoExpiresAt,
       deletedCount: result.deleted.length
     };
 
     return c.json({
       success: true,
       data: response,
-      message: `Successfully deleted ${result.deleted.length} member(s)`,
+      message: `Successfully deleted ${result.deleted.length} member(s) permanently`,
       timestamp: nowISO()
     });
 
@@ -537,89 +481,7 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
   }
 });
 
-/**
- * 恢復已刪除的成員
- * POST /api/teams/members/restore
- *
- * 支持兩種模式：
- * 1. undoToken: 使用 KV 中存儲的 token 獲取成員 ID
- * 2. memberIds: 直接指定要恢復的成員 ID
- */
-membersHandler.post('/restore', jwtAuth, requireManagerOrAdmin(), async (c) => {
-  try {
-    const user = c.get('user');
-    const data: RestoreMembersRequest = await c.req.json();
-
-    let memberIdsToRestore: string[] = [];
-
-    // Mode 1: Use undo token
-    if (data.undoToken) {
-      const undoDataStr = await c.env.SESSIONS.get(`undo:members:${data.undoToken}`);
-
-      if (!undoDataStr) {
-        return c.json({
-          success: false,
-          error: 'Undo token expired or invalid'
-        }, HTTP_STATUS.BAD_REQUEST);
-      }
-
-      const undoData: UndoTokenData = JSON.parse(undoDataStr);
-      memberIdsToRestore = undoData.memberIds;
-
-      // Delete the token after use
-      await c.env.SESSIONS.delete(`undo:members:${data.undoToken}`);
-    }
-    // Mode 2: Direct member IDs
-    else if (data.memberIds && Array.isArray(data.memberIds) && data.memberIds.length > 0) {
-      memberIdsToRestore = data.memberIds;
-    }
-    else {
-      return c.json({
-        success: false,
-        error: 'Either undoToken or memberIds is required'
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
-    const memberService = new MemberService(c.env.DB);
-
-    // Execute bulk restore
-    const result = await memberService.bulkRestoreMembers(memberIdsToRestore);
-
-    // Log activity
-    if (result.restored.length > 0) {
-      const activityService = new ActivityService(c.env.DB);
-      await activityService.logActivity({
-        userId: String(user.id),
-        userName: user.displayName || String(user.id),
-        userRole: user.role,
-        action: ACTIVITY_ACTIONS.USER_RESTORE,
-        resourceType: RESOURCE_TYPES.USER,
-        resourceId: result.restored.map(m => m.id).join(','),
-        details: {
-          restoredCount: result.restored.length,
-          restoredMemberIds: result.restored.map(m => m.id),
-          restoredMemberEmails: result.restored.map(m => m.email)
-        }
-      });
-    }
-
-    const response: RestoreMembersResponse = {
-      restored: result.restored,
-      failed: result.failed,
-      restoredCount: result.restored.length
-    };
-
-    return c.json({
-      success: true,
-      data: response,
-      message: `Successfully restored ${result.restored.length} member(s)`,
-      timestamp: nowISO()
-    });
-
-  } catch (error) {
-    return globalErrorHandler.handleError(c, error);
-  }
-});
+// NOTE: POST /restore endpoint removed — hard delete is permanent
 
 /**
  * 批量更新成員 (角色和狀態)

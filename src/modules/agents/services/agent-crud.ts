@@ -3,7 +3,27 @@
 
 import { eq, and, desc, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { agents, teams, agentTeams } from '@/db/schema';
+import {
+  agents,
+  teams,
+  agentTeams,
+  messages,
+  delayedMessages,
+  notifications,
+  tags,
+  customerTags,
+  conversationTags,
+  messageRecallLogs,
+  conversationTransfers,
+  fileAttachments,
+  activities,
+  reports,
+  scheduledReports,
+  reportDownloadHistory,
+  reportTemplates,
+  channelIntegrations,
+  customerFeedback
+} from '@/db/schema';
 import type {
   Agent,
   NewAgent,
@@ -218,6 +238,41 @@ export class AgentService implements AgentServiceInterface {
 
   async deleteAgent(id: string): Promise<boolean> {
     try {
+      // Clean up all FK references before deleting (RESTRICT constraints)
+      // Step 1: Delete notifications
+      await this.db.delete(notifications).where(eq(notifications.userId, id));
+      // Step 2: Nullify message sender
+      await this.db.update(messages).set({ agentSenderId: null }).where(eq(messages.agentSenderId, id));
+      // Step 3: Delete delayed messages
+      await this.db.delete(delayedMessages).where(eq(delayedMessages.agentId, id));
+      // Step 4: Update message recall logs
+      await this.db.update(messageRecallLogs).set({ userId: 'deleted-user' }).where(eq(messageRecallLogs.userId, id));
+      // Step 5: Nullify file attachment uploader
+      await this.db.update(fileAttachments).set({ uploadedBy: null }).where(eq(fileAttachments.uploadedBy, id));
+      // Step 6: Update tag creator
+      await this.db.update(tags).set({ createdBy: 'deleted-user' }).where(eq(tags.createdBy, id));
+      // Step 7: Update customer tag assigner
+      await this.db.update(customerTags).set({ assignedBy: 'deleted-user' }).where(eq(customerTags.assignedBy, id));
+      // Step 8: Update conversation tag assigner
+      await this.db.update(conversationTags).set({ assignedBy: 'deleted-user' }).where(eq(conversationTags.assignedBy, id));
+      // Step 9: Update conversation transfer
+      await this.db.update(conversationTransfers).set({ transferredBy: 'deleted-user' }).where(eq(conversationTransfers.transferredBy, id));
+      // Step 10: Update activity logs
+      await this.db.update(activities).set({ userId: 'deleted-user' }).where(eq(activities.userId, id));
+      // Step 11: Update reports creator
+      await this.db.update(reports).set({ createdBy: 'deleted-user' }).where(eq(reports.createdBy, id));
+      // Step 12: Update scheduled reports creator
+      await this.db.update(scheduledReports).set({ createdBy: 'deleted-user' }).where(eq(scheduledReports.createdBy, id));
+      // Step 13: Update report download history
+      await this.db.update(reportDownloadHistory).set({ downloadedBy: 'deleted-user' }).where(eq(reportDownloadHistory.downloadedBy, id));
+      // Step 14: Update report templates creator
+      await this.db.update(reportTemplates).set({ createdBy: 'deleted-user' }).where(eq(reportTemplates.createdBy, id));
+      // Step 15: Nullify channel integration configured_by
+      await this.db.update(channelIntegrations).set({ configuredBy: null }).where(eq(channelIntegrations.configuredBy, id));
+      // Step 16: Nullify customer feedback agent
+      await this.db.update(customerFeedback).set({ agentId: null }).where(eq(customerFeedback.agentId, id));
+
+      // Step 17: Delete agent (agent_teams, task_reminders cascade automatically)
       const result = await this.db
         .delete(agents)
         .where(eq(agents.id, id))

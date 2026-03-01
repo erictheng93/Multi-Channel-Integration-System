@@ -324,17 +324,17 @@ export function useMemberOperations(): UseMemberOperationsReturn {
   }
 
   /**
-   * 移除成员（带确认弹窗）
+   * 永久移除成员（带确认弹窗，不可撤銷）
    */
   async function removeMember(member: TeamMember) {
     const memberName = member.name || member.loginId
 
     // 顯示確認彈窗
     const confirmed = await showDanger(
-      '確認移除成員',
-      `您確定要移除成員「${memberName}」嗎？\n\n此操作將會：\n• 將該成員從團隊中移除\n• 該成員將無法處理此團隊的客戶對話`,
+      '確認永久刪除成員',
+      `您確定要永久刪除成員「${memberName}」嗎？\n\n此操作將會：\n• 永久刪除該成員帳號\n• 清理所有相關資料\n• 此操作不可撤銷`,
       {
-        confirmText: '確認移除',
+        confirmText: '確認刪除',
         cancelText: '取消'
       }
     )
@@ -344,40 +344,18 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     }
 
     try {
-      const result = await teamStore.removeMember(member.id)
+      await teamStore.removeMember(member.id)
 
-      // 顯示 Undo Toast (10 秒持續時間)，與批量刪除 UX 一致
-      if (result?.undoToken) {
-        showSuccess(
-          '移除成員成功',
-          `已成功移除成員 ${memberName}`,
-          {
-            duration: 10000,
-            showProgress: true,
-            actionText: '復原',
-            onAction: async () => {
-              try {
-                await teamStore.restoreMembers({ undoToken: result.undoToken })
-                showSuccess('已復原', `已成功恢復成員 ${memberName}`)
-              } catch (err) {
-                console.error('復原失敗:', err)
-                showError('復原失敗', '無法恢復成員，可能已超過時限')
-              }
-            }
-          }
-        )
-      } else {
-        showSuccess(
-          '移除成員成功',
-          `已成功移除成員 ${memberName}`
-        )
-      }
+      showSuccess(
+        '刪除成員成功',
+        `已永久刪除成員 ${memberName}`
+      )
     } catch (error) {
-      console.error('移除成員失敗:', error)
+      console.error('刪除成員失敗:', error)
       const errorMessage = error instanceof Error
         ? error.message
-        : '移除成員失敗，請稍後重試'
-      showError('移除成員失敗', errorMessage)
+        : '刪除成員失敗，請稍後重試'
+      showError('刪除成員失敗', errorMessage)
     }
   }
 
@@ -417,7 +395,7 @@ export function useMemberOperations(): UseMemberOperationsReturn {
   // ==================== Bulk Operations ====================
 
   /**
-   * 批量刪除成員（帶確認彈窗和 Undo）
+   * 批量永久刪除成員（帶確認彈窗，不可撤銷）
    */
   async function bulkDeleteMembers(currentUserId: string) {
     const selectedIds = Array.from(selectedMemberIds.value)
@@ -436,10 +414,10 @@ export function useMemberOperations(): UseMemberOperationsReturn {
 
     // 顯示確認彈窗
     const confirmed = await showDanger(
-      '確認批量移除成員',
-      `您確定要移除以下 ${idsToDelete.length} 位成員嗎？\n\n${memberNames}\n\n此操作可在 10 秒內撤銷。`,
+      '確認批量永久刪除成員',
+      `您確定要永久刪除以下 ${idsToDelete.length} 位成員嗎？\n\n${memberNames}\n\n此操作不可撤銷。`,
       {
-        confirmText: `確認移除 ${idsToDelete.length} 位成員`,
+        confirmText: `確認刪除 ${idsToDelete.length} 位成員`,
         cancelText: '取消'
       }
     )
@@ -452,25 +430,9 @@ export function useMemberOperations(): UseMemberOperationsReturn {
       // 執行批量刪除
       const result = await teamStore.bulkDeleteMembers(idsToDelete)
 
-      // 顯示 Undo Toast (10 秒持續時間)
       showSuccess(
-        '成功移除成員',
-        `已移除 ${result.deletedCount} 位成員`,
-        {
-          duration: 10000,
-          showProgress: true,
-          actionText: '復原',
-          onAction: async () => {
-            try {
-              // 使用 undoToken 恢復成員
-              await teamStore.restoreMembers({ undoToken: result.undoToken })
-              showSuccess('已復原', `已成功恢復 ${result.deletedCount} 位成員`)
-            } catch (err) {
-              console.error('復原失敗:', err)
-              showError('復原失敗', '無法恢復成員，可能已超過時限')
-            }
-          }
-        }
+        '成功刪除成員',
+        `已永久刪除 ${result.deletedCount} 位成員`
       )
     } catch (error) {
       console.error('批量刪除失敗:', error)

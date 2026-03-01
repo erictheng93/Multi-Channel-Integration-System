@@ -331,31 +331,7 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  /**
-   * 恢復已刪除的成員
-   * @param options 恢復選項（undoToken 或 memberIds）
-   */
-  const restoreMembers = async (options: { undoToken?: string; memberIds?: string[] }) => {
-    error.value = null
-
-    try {
-      const response = await teamApi.restoreMembers(options)
-
-      if (!response.success || !response.data) {
-        error.value = response.error || '恢復成員失敗'
-        throw new Error(response.error || '恢復成員失敗')
-      }
-
-      // 重新載入成員列表以獲取最新狀態
-      await loadMembers()
-
-      return response.data
-    } catch (err: unknown) {
-      error.value = (err as Error)?.message || '恢復成員失敗'
-      console.error('恢復成員失敗:', err)
-      throw err
-    }
-  }
+  // NOTE: restoreMembers removed — hard delete is permanent
 
   /**
    * 批量更新成員（樂觀更新）
@@ -665,7 +641,6 @@ export const useTeamStore = defineStore('team', () => {
     deselectAllMembers,
     bulkDeleteMembers,
     bulkUpdateMembers,
-    restoreMembers,
 
     // 🆕 WebSocket setup (exposed for manual re-setup if needed)
     setupWebSocketListeners,

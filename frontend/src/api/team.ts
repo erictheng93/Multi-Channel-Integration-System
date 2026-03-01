@@ -40,10 +40,8 @@ export const teamApi = {
     return apiClient.post('/teams/members', backendRequest)
   },
 
-  // 移除團隊成員 (軟刪除，返回 undoToken 供復原)
+  // 永久刪除團隊成員 (Hard Delete，不可撤銷)
   removeMember: async (memberId: string): Promise<ApiResponse<{
-    undoToken: string;
-    undoExpiresAt: string;
     deletedMemberId: string;
   }>> => {
     return apiClient.delete(`/teams/members/${memberId}`)
@@ -52,16 +50,13 @@ export const teamApi = {
   // ==================== Bulk Operations ====================
 
   /**
-   * 批量刪除成員 (軟刪除)
+   * 批量永久刪除成員 (Hard Delete，不可撤銷)
    * @param memberIds 要刪除的成員 ID 列表 (最多 50 個)
    * @param reason 刪除原因 (可選)
-   * @returns 包含 undoToken 的響應，可用於 10 秒內恢復
    */
   bulkDeleteMembers: async (memberIds: string[], reason?: string): Promise<ApiResponse<{
     deleted: string[];
     failed: { memberId: string; error: string }[];
-    undoToken: string;
-    undoExpiresAt: string;
     deletedCount: number;
   }>> => {
     return apiClient.post('/teams/members/bulk-delete', {
@@ -147,28 +142,7 @@ export const teamApi = {
     return apiClient.post('/teams/members/batch-edit/undo', { undoToken })
   },
 
-  /**
-   * 恢復已刪除的成員
-   * 支持兩種模式：
-   * 1. undoToken: 使用 KV 中存儲的 token 獲取成員 ID
-   * 2. memberIds: 直接指定要恢復的成員 ID
-   */
-  restoreMembers: async (options: {
-    undoToken?: string;
-    memberIds?: string[];
-  }): Promise<ApiResponse<{
-    restored: Array<{
-      id: string;
-      email: string;
-      name: string;
-      displayName: string;
-      role: string;
-    }>;
-    failed: { memberId: string; error: string }[];
-    restoredCount: number;
-  }>> => {
-    return apiClient.post('/teams/members/restore', options)
-  },
+  // NOTE: restoreMembers removed — hard delete is permanent
 
   // 更新成員角色
   updateMemberRole: async (memberId: string, role: 'admin' | 'agent'): Promise<ApiResponse<void>> => { // Simplified from 3-tier to 2-tier
