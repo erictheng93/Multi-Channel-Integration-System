@@ -5,11 +5,11 @@
       "description": "本地開發環境"
     },
     "dev": {
-      "baseUrl": "https://multi-channel.imfinethankyouandyou.com",
+      "baseUrl": "https://mcis-backend.daiwandist.com",
       "description": "開發環境 (使用生產 API)"
     },
     "prod": {
-      "baseUrl": "https://multi-channel.imfinethankyouandyou.com",
+      "baseUrl": "https://mcis-backend.daiwandist.com",
       "description": "生產環境"
     }
   },

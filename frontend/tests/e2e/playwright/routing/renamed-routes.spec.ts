@@ -90,10 +90,10 @@ test.describe('API Monitor CORS Fix (P1)', () => {
     await page.waitForTimeout(2000)
 
     // All api-status requests should go through the Vite proxy (localhost)
-    // NOT to the direct backend URL (multi-channel.imfinethankyouandyou.com)
+    // NOT to the direct backend URL (mcis-backend.daiwandist.com)
     for (const url of requestUrls) {
       expect(url).toContain('localhost')
-      expect(url).not.toContain('multi-channel.imfinethankyouandyou.com')
+      expect(url).not.toContain('mcis-backend.daiwandist.com')
     }
   })
 

@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   // Default to remote backend for this project (remote-only strategy)
-  const apiBaseUrl = env.VITE_API_BASE_URL || env.VITE_BACKEND_URL || 'https://multi-channel.imfinethankyouandyou.com'
+  const apiBaseUrl = env.VITE_API_BASE_URL || env.VITE_BACKEND_URL || 'https://mcis-backend.daiwandist.com'
 
   console.log(`[vite.config] Proxy target: ${apiBaseUrl}`)
 

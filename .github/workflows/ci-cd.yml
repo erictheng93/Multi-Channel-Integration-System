@@ -139,7 +139,7 @@ jobs:
 
       - name: 5. Record current deployment for rollback
         run: |
-          echo "PREVIOUS_DEPLOYMENT=$(bunx wrangler deployments list --name multi-channel-platform --limit 1 --json | jq -r '.[0].id' || echo 'none')" >> $GITHUB_ENV
+          echo "PREVIOUS_DEPLOYMENT=$(bunx wrangler deployments list --name mcis-worker --json | jq -r '.[0].id' || echo 'none')" >> $GITHUB_ENV
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -156,7 +156,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/dist --project-name multi-channel-platform-frontend
+          command: pages deploy frontend/dist --project-name mcis
 
       - name: 8. Run Database Migrations
         continue-on-error: true
@@ -170,7 +170,7 @@ jobs:
           # Wait for deployment to be ready
           sleep 30
           # Health check
-          curl -f https://multi-channel.imfinethankyouandyou.com/api/system/health || exit 1
+          curl -f https://mcis-backend.daiwandist.com/api/system/health || exit 1
 
       - name: 10. Notify deployment success
         if: success()
@@ -182,7 +182,7 @@ jobs:
         run: |
           if [ "${{ env.PREVIOUS_DEPLOYMENT }}" != "none" ]; then
             echo "Rolling back to previous deployment: ${{ env.PREVIOUS_DEPLOYMENT }}"
-            bunx wrangler rollback --name multi-channel-platform --version-id ${{ env.PREVIOUS_DEPLOYMENT }}
+            bunx wrangler rollback --name mcis-worker --version-id ${{ env.PREVIOUS_DEPLOYMENT }}
           fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

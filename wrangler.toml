@@ -1,6 +1,6 @@
 # Multi-Channel Customer Support System - Unified Configuration
-# Consolidates both main and WebSocket functionality
-name = "multi-channel-platform"
+# Account: service@dacit.net (account_id via CLOUDFLARE_ACCOUNT_ID env var)
+name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2025-10-27"
 compatibility_flags = ["nodejs_compat"]
@@ -18,11 +18,11 @@ LINE_LIFF_ID = "2008756115-vWtFyDMA"
 # CORS Configuration (Required for cross-origin requests)
 # ============================================================================
 # Frontend URL - Your main frontend domain
-FRONTEND_URL = "https://mcp.imfinethankyouandyou.com"
+FRONTEND_URL = "https://mcis.daiwandist.com"
 # Backend URL - Your API/Worker domain
-BACKEND_URL = "https://multi-channel.imfinethankyouandyou.com"
+BACKEND_URL = "https://mcis-backend.daiwandist.com"
 # R2 Storage Public URL - For file access
-STORAGE_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+STORAGE_PUBLIC_URL = "https://s3.daiwandist.com"
 # Logging Configuration (P2-6)
 # Options: "debug" | "info" | "warn" | "error" | "fatal" | "silent"
 # - debug: All logs (development only)
@@ -38,8 +38,8 @@ LOG_LEVEL = "info"
 # Production routes
 # ⚠️ Configure these routes based on your domain setup
 # [[routes]]
-# pattern = "your-api-domain.example.com/*"
-# zone_name = "example.com"
+# pattern = "mcis-backend.daiwandist.com/*"
+# zone_name = "daiwandist.com"
 
 # Observability
 [observability]
@@ -54,26 +54,26 @@ crons = ["*/5 * * * *"]
 # 生產環境 D1 資料庫
 [[d1_databases]]
 binding = "DB"
-database_name = "multi-channel-platform"
-database_id = "08ae6790-2494-40a8-a07a-df3920783159"
+database_name = "mcis-db"
+database_id = "731f3a11-7dd1-451f-a92f-7f531bc4638c"
 migrations_dir = "migrations"
 
 # 生產環境 KV Namespaces
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "ace3f7202e6a4dd8b98c50e9b91b2431"
-preview_id = "ace3f7202e6a4dd8b98c50e9b91b2431"
+id = "dfdab0c00ac047bca4682982bc2dfd49"
+preview_id = "dfdab0c00ac047bca4682982bc2dfd49"
 
 [[kv_namespaces]]
 binding = "CACHE"
-id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
-preview_id = "f3bc7a55c8a14f4fb28b8321fa01dc73"
+id = "deefc809148b433ba2092a8e51c7f2d3"
+preview_id = "deefc809148b433ba2092a8e51c7f2d3"
 
 # 生產環境 R2 存儲
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments"
-preview_bucket_name = "multi-channel-platform-attachments"
+bucket_name = "mcis-files"
+preview_bucket_name = "mcis-files"
 
 # ⚠️ REMOVED: AGENT_QUEUE has been fully deprecated and removed (2025-10-07)
 # Delayed messages are now handled by DelayedMessageBuffer Durable Object
@@ -205,27 +205,26 @@ new_sqlite_classes = ["RateLimiterDO"]
 # All development and deployment connects to REMOTE production resources.
 #
 # Development:
-#   - Use `npm run dev` or `wrangler dev --remote`
+#   - Use `bun run dev` or `wrangler dev --remote`
 #   - Connects to REMOTE D1, KV, R2, and Durable Objects
 #   - All changes affect production data - use with caution
 #
 # Production Deployment:
-#   - Use `wrangler deploy` or `npm run deploy`
+#   - Use `wrangler deploy` or `bun run deploy`
 #   - Deploys to production resources defined above
-#   - Domain: Configure your own domain in the [[routes]] section above
+#   - Domain: mcis-backend.daiwandist.com (Worker), mcis.daiwandist.com (Pages)
 #
 # Database Operations:
-#   - `npm run db:migrate` - Apply migrations to REMOTE D1
-#   - `npm run db:query` - Query REMOTE D1 database
-#   - `npm run db:studio` - Open Drizzle Studio for REMOTE DB
+#   - `bun run db:migrate` - Apply migrations to REMOTE D1
+#   - `bun run db:query` - Query REMOTE D1 database
+#   - `bun run db:studio` - Open Drizzle Studio for REMOTE DB
 #
 # Health Checks:
-#   - `npm run health:check:all` - Check system and WebSocket health
-#   - `npm run health:check:detail` - Detailed WebSocket health
-#   - `npm run monitor:deployment` - Continuous health monitoring
+#   - `bun run health:check:all` - Check system and WebSocket health
+#   - `bun run health:check:detail` - Detailed WebSocket health
+#   - `bun run monitor:deployment` - Continuous health monitoring
 #
 # DO NOT add [env.development] or [env.staging] sections.
 # This project operates directly on production resources.
 #
 # ======================================================================
-
