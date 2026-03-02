@@ -160,6 +160,56 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     }
   }
 
+  // 處理 PBKDF2 哈希 (Web Installer MigrationRunner 產生的格式)
+  if (hash.startsWith('pbkdf2:')) {
+    try {
+      const base64Data = hash.substring(7); // 移除 'pbkdf2:' 前綴
+      // 解碼 base64 → Uint8Array (salt 16 bytes + hash 32 bytes)
+      const binaryString = atob(base64Data);
+      const combined = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        combined[i] = binaryString.charCodeAt(i);
+      }
+
+      // 提取 salt (前16字節) 和 storedHash (後32字節)
+      const salt = combined.slice(0, 16);
+      const storedHash = combined.slice(16);
+
+      // 使用相同參數重新派生: PBKDF2-SHA256, 100000 iterations, 256 bits
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(password),
+        'PBKDF2',
+        false,
+        ['deriveBits']
+      );
+
+      const derivedBits = await crypto.subtle.deriveBits(
+        {
+          name: 'PBKDF2',
+          salt: salt,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        256
+      );
+
+      // 逐字節比較派生的哈希與存儲的哈希
+      const derivedHash = new Uint8Array(derivedBits);
+      if (derivedHash.length !== storedHash.length) return false;
+      let match = true;
+      for (let i = 0; i < derivedHash.length; i++) {
+        if (derivedHash[i] !== storedHash[i]) match = false; // constant-time-ish comparison
+      }
+      return match;
+    } catch (error) {
+      console.error('PBKDF2 verification error:', error);
+      return false;
+    }
+  }
+
   // 處理舊格式的hash (如SHA256) - 先檢查是否為SHA256格式
   if (hash.startsWith('sha256$')) {
     const actualHash = hash.substring(7); // 移除 'sha256$' 前綴
