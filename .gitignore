@@ -28,6 +28,7 @@ bun.lock   # Bun lockfile variant
 .env.terraform
 .dev.vars
 tests/.env
+tests/.env.test
 
 # logs
 logs/
