@@ -1,5 +1,5 @@
 # Multi-Channel Customer Support System - Unified Configuration
-# Account: service@dacit.net (account_id via CLOUDFLARE_ACCOUNT_ID env var)
+# Account: admin@dacit.net (account_id via CLOUDFLARE_ACCOUNT_ID env var)
 name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2025-10-27"
@@ -10,9 +10,9 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 # LINE OA Basic ID for QR Code generation
-LINE_BOT_ID = "@110xsqef"
+LINE_BOT_ID = "@063wetsd"
 # LIFF ID for team QR Code onboarding
-LINE_LIFF_ID = "2008756115-vWtFyDMA"
+LINE_LIFF_ID = "2009283930-nLgZMrUN"
 
 # ============================================================================
 # CORS Configuration (Required for cross-origin requests)
@@ -55,19 +55,19 @@ crons = ["*/5 * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "mcis-db"
-database_id = "731f3a11-7dd1-451f-a92f-7f531bc4638c"
+database_id = "1ea20f0e-a053-41a2-b53b-bafa014203b7"
 migrations_dir = "migrations"
 
 # 生產環境 KV Namespaces
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "dfdab0c00ac047bca4682982bc2dfd49"
-preview_id = "dfdab0c00ac047bca4682982bc2dfd49"
+id = "d9398c4c82184d20833b48cd26db1b38"
+preview_id = "d9398c4c82184d20833b48cd26db1b38"
 
 [[kv_namespaces]]
 binding = "CACHE"
-id = "deefc809148b433ba2092a8e51c7f2d3"
-preview_id = "deefc809148b433ba2092a8e51c7f2d3"
+id = "a8e949aee74a423bbbf4db713be54b67"
+preview_id = "a8e949aee74a423bbbf4db713be54b67"
 
 # 生產環境 R2 存儲
 [[r2_buckets]]

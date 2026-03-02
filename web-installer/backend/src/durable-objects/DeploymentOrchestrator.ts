@@ -596,14 +596,34 @@ export class DeploymentOrchestrator implements DurableObject {
     }
 
     // Deploy the Worker using Cloudflare API
-    const worker = await this.api.deployWorker({
-      name: workerName,
-      script: workerScript,
-      bindings,
-      compatibility_date: '2024-01-01',
-      compatibility_flags: ['nodejs_compat'],
-      migrations
-    });
+    // If migration tag precondition fails (stale DO state from previous deploy),
+    // retry without migrations since they're already applied at the account level
+    let worker;
+    try {
+      worker = await this.api.deployWorker({
+        name: workerName,
+        script: workerScript,
+        bindings,
+        compatibility_date: '2024-01-01',
+        compatibility_flags: ['nodejs_compat'],
+        migrations
+      });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (migrations && errMsg.includes('migration tag precondition failed')) {
+        this.log('warning', 'DO migrations already exist at account level — retrying without migrations...');
+        worker = await this.api.deployWorker({
+          name: workerName,
+          script: workerScript,
+          bindings,
+          compatibility_date: '2024-01-01',
+          compatibility_flags: ['nodejs_compat'],
+          migrations: undefined
+        });
+      } else {
+        throw err;
+      }
+    }
 
     this.deploymentState.resources.workerId = workerName;
 
