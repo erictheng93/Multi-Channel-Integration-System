@@ -1,5 +1,5 @@
 # Cloudflare Pages 配置
-name = "multi-channel-platform-frontend"
+name = "mcis"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "dist"
 
@@ -13,10 +13,10 @@ compatibility_date = "2024-01-01"
 # ============================================================================
 [env.production.vars]
 # 核心 URL 配置
-VITE_BACKEND_URL = "https://multi-channel.imfinethankyouandyou.com"
-VITE_FRONTEND_URL = "https://mcp.imfinethankyouandyou.com"
-VITE_WEBSOCKET_URL = "wss://multi-channel.imfinethankyouandyou.com"
-VITE_STORAGE_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+VITE_BACKEND_URL = "https://mcis-backend.daiwandist.com"
+VITE_FRONTEND_URL = "https://mcis.daiwandist.com"
+VITE_WEBSOCKET_URL = "wss://mcis-backend.daiwandist.com"
+VITE_STORAGE_PUBLIC_URL = "https://s3.daiwandist.com"
 
 # 環境標識
 VITE_ENV = "production"
@@ -41,10 +41,10 @@ VITE_ENABLE_EXPERIMENTAL_FEATURES = "false"
 # ============================================================================
 [env.preview.vars]
 # Preview 環境使用相同的後端
-VITE_BACKEND_URL = "https://multi-channel.imfinethankyouandyou.com"
-VITE_FRONTEND_URL = "https://mcp.imfinethankyouandyou.com"
-VITE_WEBSOCKET_URL = "wss://multi-channel.imfinethankyouandyou.com"
-VITE_STORAGE_PUBLIC_URL = "https://s3.imfinethankyouandyou.com"
+VITE_BACKEND_URL = "https://mcis-backend.daiwandist.com"
+VITE_FRONTEND_URL = "https://mcis.daiwandist.com"
+VITE_WEBSOCKET_URL = "wss://mcis-backend.daiwandist.com"
+VITE_STORAGE_PUBLIC_URL = "https://s3.daiwandist.com"
 
 VITE_ENV = "preview"
 VITE_DEV_MODE = "true"

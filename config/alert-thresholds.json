@@ -493,9 +493,9 @@
   },
 
   "monitoringDashboards": {
-    "primary": "https://multi-channel.imfinethankyouandyou.com/websocket-monitoring",
-    "analytics": "https://multi-channel.imfinethankyouandyou.com/websocket-analytics",
-    "health": "https://multi-channel.imfinethankyouandyou.com/api/system/health"
+    "primary": "https://mcis-backend.daiwandist.com/websocket-monitoring",
+    "analytics": "https://mcis-backend.daiwandist.com/websocket-analytics",
+    "health": "https://mcis-backend.daiwandist.com/api/system/health"
   },
 
   "notes": [

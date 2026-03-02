@@ -11,8 +11,8 @@ const http = require('http');
 // Configuration
 const CONFIG = {
   production: {
-    frontend: 'https://multi-channel-platform-frontend.pages.dev',
-    backend: 'https://multi-channel.imfinethankyouandyou.com',
+    frontend: 'https://mcis-ey7.pages.dev',
+    backend: 'https://mcis-backend.daiwandist.com',
     healthEndpoint: '/api/system/health',
     wsHealthEndpoint: '/api/websocket/health'
   },

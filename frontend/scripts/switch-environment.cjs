@@ -33,14 +33,14 @@ const ENVIRONMENTS = {
   },
   prod: {
     name: 'Production',
-    VITE_API_BASE_URL: 'https://multi-channel.imfinethankyouandyou.com',
-    VITE_WS_URL: 'wss://multi-channel.imfinethankyouandyou.com',
+    VITE_API_BASE_URL: 'https://mcis-backend.daiwandist.com',
+    VITE_WS_URL: 'wss://mcis-backend.daiwandist.com',
     VITE_ENVIRONMENT: 'production'
   },
   remote: {
     name: 'Remote Development',
-    VITE_API_BASE_URL: 'https://multi-channel.imfinethankyouandyou.com',
-    VITE_WS_URL: 'wss://multi-channel.imfinethankyouandyou.com',
+    VITE_API_BASE_URL: 'https://mcis-backend.daiwandist.com',
+    VITE_WS_URL: 'wss://mcis-backend.daiwandist.com',
     VITE_ENVIRONMENT: 'development'
   }
 };
