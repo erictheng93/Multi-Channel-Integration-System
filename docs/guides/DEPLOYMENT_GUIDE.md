@@ -49,7 +49,7 @@ wrangler login
 
 
 git clone <your-repo>
-cd multi-channel-platform
+cd Multi_Channel_Integration_System
 
 
 npm install
@@ -86,7 +86,7 @@ wrangler kv:namespace create "CACHE" --preview
 #### 2.3 R2
 ```bash
 # R2
-wrangler r2 bucket create multi-channel-platform-files
+wrangler r2 bucket create mcis-files
 ```
 
 #### 2.4 Queues
@@ -124,7 +124,7 @@ ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif,image/webp,application/pdf
 
 
 ENVIRONMENT=production
-APP_URL=https://multi-channel-platform.workers.dev
+APP_URL=https://mcis-backend.daiwandist.com
 FRONTEND_URL=https://your-frontend.pages.dev
 ```
 
@@ -133,7 +133,7 @@ FRONTEND_URL=https://your-frontend.pages.dev
  `wrangler.toml` Drizzle
 
 ```toml
-name = "multi-channel-platform"
+name = "mcis-worker"
 main = "src/index-drizzle.ts" # Drizzle ORM
 compatibility_date = "2025-07-31"
 compatibility_flags = ["nodejs_compat"]
@@ -231,14 +231,14 @@ wrangler pages deploy dist --project-name=mcis-ey7
 
 ****:
 ```
-VITE_API_BASE_URL=https://multi-channel-platform.workers.dev
+VITE_API_BASE_URL=https://mcis-backend.daiwandist.com
 VITE_DEV_MODE=false
 VITE_ENABLE_DEBUG_LOGS=false
 ```
 
 ****:
 ```
-VITE_API_BASE_URL=https://multi-channel-platform.workers.dev
+VITE_API_BASE_URL=https://mcis-backend.daiwandist.com
 VITE_DEV_MODE=true
 VITE_ENABLE_DEBUG_LOGS=true
 ```
@@ -247,12 +247,12 @@ VITE_ENABLE_DEBUG_LOGS=true
 
 #### 6.1 Line Bot Webhook
  Line Developers Console
-- Webhook URL: `https://multi-channel-platform.workers.dev/api/webhook`
+- Webhook URL: `https://mcis-backend.daiwandist.com/api/webhook`
 - Webhook
 
 #### 6.2 Facebook Messenger Webhook
  Facebook Developers Console
-- Webhook URL: `https://multi-channel-platform.workers.dev/api/webhook` (Facebook )
+- Webhook URL: `https://mcis-backend.daiwandist.com/api/webhook` (Facebook )
 - Verify Token: `.dev.vars` `FB_VERIFY_TOKEN`
 - : messages, messaging_postbacks
 
@@ -261,7 +261,7 @@ VITE_ENABLE_DEBUG_LOGS=true
 #### 7.1
 ```bash
 # Wrangler SQL
-wrangler d1 execute multi-channel-platform --command="
+wrangler d1 execute mcis-db --command="
 INSERT INTO users (username, email, password_hash, role, is_active)
 VALUES ('admin', 'admin@example.com', 'hashed_password', 'admin', TRUE)
 "
@@ -269,7 +269,7 @@ VALUES ('admin', 'admin@example.com', 'hashed_password', 'admin', TRUE)
 
 #### 7.2
 ```bash
-wrangler d1 execute multi-channel-platform --command="
+wrangler d1 execute mcis-db --command="
 INSERT INTO teams (name, description, is_active)
 VALUES ('', '', TRUE)
 "
@@ -277,7 +277,7 @@ VALUES ('', '', TRUE)
 
 
 ### 1.
- `https://multi-channel-platform.workers.dev/admin-dashboard.html`
+ `https://mcis-backend.daiwandist.com/admin-dashboard.html`
 
 ### 2. API
 
@@ -319,10 +319,10 @@ wrangler tail --env production
 ### 2.
 ```bash
 
-wrangler d1 execute multi-channel-platform --command="SELECT COUNT(*) FROM messages"
+wrangler d1 execute mcis-db --command="SELECT COUNT(*) FROM messages"
 
 
-wrangler d1 export multi-channel-platform --output backup.sql
+wrangler d1 export mcis-db --output backup.sql
 ```
 
 ### 3.
@@ -367,7 +367,7 @@ wrangler d1 export multi-channel-platform --output backup.sql
 1. ****
 ```bash
 
-wrangler d1 execute multi-channel-platform --local --file=./schema.sql
+wrangler d1 execute mcis-db --local --file=./schema.sql
 
 
 wrangler dev --local

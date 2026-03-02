@@ -6,7 +6,7 @@ Write-Host "🚀 設置延遲發送訊息功能..." -ForegroundColor Green
 # 1. 執行資料庫遷移
 Write-Host "📊 執行資料庫遷移..." -ForegroundColor Yellow
 try {
-    npx wrangler d1 execute multi-channel-platform --file=database/migrations/001_add_delayed_messages.sql
+    npx wrangler d1 execute mcis-db --file=database/migrations/001_add_delayed_messages.sql
     Write-Host "✅ 資料庫遷移完成" -ForegroundColor Green
 } catch {
     Write-Host "❌ 資料庫遷移失敗: $_" -ForegroundColor Red
@@ -17,12 +17,12 @@ try {
 Write-Host "🗄️ 檢查 KV 命名空間..." -ForegroundColor Yellow
 try {
     $kvList = npx wrangler kv:namespace list | ConvertFrom-Json
-    $kvExists = $kvList | Where-Object { $_.title -eq "multi-channel-platform-kv" }
+    $kvExists = $kvList | Where-Object { $_.title -eq "mcis-kv" }
     
     if (-not $kvExists) {
         Write-Host "創建 KV 命名空間..." -ForegroundColor Yellow
-        npx wrangler kv:namespace create "multi-channel-platform-kv"
-        npx wrangler kv:namespace create "multi-channel-platform-kv" --preview
+        npx wrangler kv:namespace create "mcis-kv"
+        npx wrangler kv:namespace create "mcis-kv" --preview
     } else {
         Write-Host "✅ KV 命名空間已存在" -ForegroundColor Green
     }
@@ -62,7 +62,7 @@ ENVIRONMENT = "development"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "multi-channel-platform"
+database_name = "mcis-db"
 database_id = "your-database-id"
 
 [[kv_namespaces]]

@@ -1,13 +1,13 @@
 # Worker
 
 
- Cloudflare Worker "multi-channel-platform"
+ Cloudflare Worker "mcis-worker"
 
 
 ### 1. Worker
-- ** Worker**: `multi-channel-platform`
-- ** Worker**: `multi-channel-platform-delayed`
-- ** Worker**: `multi-channel-platform-delayed-prod`
+- ** Worker**: `mcis-worker`
+- ** Worker**: `mcis-worker-delayed`
+- ** Worker**: `mcis-worker-delayed-prod`
 
 ### 2. (31 )
 - `wrangler.toml` -
@@ -19,7 +19,7 @@
 
 ### 3. URL
 - `https://line-bot.example.com`
-- `https://multi-channel-platform.example.com`
+- `https://mcis-backend.daiwandist.com`
 
 ### 4.
 
@@ -74,11 +74,11 @@
 
 2. ** LINE Webhook URL**
  - URL: `https://line-bot.example.com/api/webhook`
- - URL: `https://multi-channel-platform.example.com/api/webhook`
+ - URL: `https://mcis-backend.daiwandist.com/api/webhook`
 
 3. ****
  ```bash
- curl https://multi-channel-platform.example.com/api/health
+ curl https://mcis-backend.daiwandist.com/api/health
  ```
 
 
@@ -87,7 +87,7 @@
 3. ** Durable Objects** ()
 
 
-- Worker : `multi-channel-platform`
+- Worker : `mcis-worker`
 - D1 : `omni-channel-platform`
 - KV : SESSIONS + CACHE
 - R2 : +
@@ -140,7 +140,7 @@
 
 ****: ****
 
-Cloudflare Worker worker "multi-channel-platform"
+Cloudflare Worker worker "mcis-worker"
 
 ****: 34
 ****: 3

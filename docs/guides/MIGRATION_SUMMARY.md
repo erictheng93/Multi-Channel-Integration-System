@@ -1,7 +1,7 @@
-# multi-channel-platform MVP
+# MCIS MVP
 
 
-multi-channel-platform 8 MVP
+MCIS 8 MVP
 
 ### MVP
 
@@ -57,7 +57,7 @@ multi-channel-platform 8 MVP
 - **Cron Triggers**:
 
 
-| myOmni | multi-channel-platform | |
+| myOmni | MCIS | |
 |-------------|------------------|------|
 | Go + Gin | TypeScript + Hono | TS |
 | PostgreSQL | Cloudflare D1 | SQLite |
@@ -119,7 +119,7 @@ npm install -g wrangler
 wrangler login
 
 # 2. Cloudflare
-cd multi-channel-platform
+cd Multi_Channel_Integration_System
 wrangler d1 create omni-channel-platform
 
 # 3.
@@ -195,7 +195,7 @@ npm run dev
 -
 
 
- multi-channel-platform MVP
+ MCIS MVP
 
 1. **** TypeScript + Cloudflare
 2. **** MVP

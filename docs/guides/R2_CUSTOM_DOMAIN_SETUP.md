@@ -4,12 +4,12 @@
  Cloudflare R2
 
 
-- **Bucket**: `multi-channel-platform-attachments-develop`
+- **Bucket**: `mcis-files-develop`
 - ****: `s3dev.example.com`
 - ****:
 
 
-- **Bucket**: `multi-channel-platform-attachments-production`
+- **Bucket**: `mcis-files-production`
 - ****: `your-storage-domain.example.com`
 - ****:
 
@@ -43,12 +43,12 @@ vars = {
 # R2 -
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments-develop"
+bucket_name = "mcis-files-develop"
 
 # R2
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments-production"
+bucket_name = "mcis-files-production"
 ```
 
 
@@ -90,14 +90,14 @@ bucket_name = "multi-channel-platform-attachments-production"
 wrangler r2 bucket list
 
 
-wrangler r2 object list multi-channel-platform-attachments-develop
-wrangler r2 object list multi-channel-platform-attachments-production
+wrangler r2 object list mcis-files-develop
+wrangler r2 object list mcis-files-production
 ```
 
 
 ```bash
 # ()
-wrangler r2 object delete multi-channel-platform-attachments-develop/test/test-file.txt
+wrangler r2 object delete mcis-files-develop/test/test-file.txt
 ```
 
 

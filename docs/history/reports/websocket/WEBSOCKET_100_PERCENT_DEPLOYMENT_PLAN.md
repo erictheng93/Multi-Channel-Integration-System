@@ -337,7 +337,7 @@ curl -s https://your-api-domain.example.com/api/websocket/health
 curl -s https://your-api-domain.example.com/api/websocket/migration-status
 
 
-wrangler tail multi-channel-platform --format=pretty
+wrangler tail mcis-worker --format=pretty
 
 
 ./scripts/emergency-rollback.sh 50

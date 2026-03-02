@@ -23,7 +23,7 @@
 - localproductionall
 - Worker http://localhost:8787/api/health
 - http://localhost:3000/api/health
-- https://multi-channel-platform.example.com/api/health
+- https://mcis-backend.daiwandist.com/api/health
 -
 
 ### 3.

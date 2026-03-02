@@ -115,7 +115,7 @@ $createUsersSQL | Out-File -FilePath "create-test-users.sql" -Encoding UTF8
 # 執行 SQL
 Write-Host "👥 創建測試用戶..." -ForegroundColor Yellow
 try {
-    wrangler d1 execute multi-channel-platform --file=create-test-users.sql --local
+    wrangler d1 execute mcis-db --file=create-test-users.sql --local
     Write-Host "✅ 本地測試用戶創建完成" -ForegroundColor Green
     
     # 也在生產環境創建（如果需要）
@@ -123,7 +123,7 @@ try {
     $createProd = Read-Host
     
     if ($createProd -eq "y" -or $createProd -eq "Y") {
-        wrangler d1 execute multi-channel-platform --file=create-test-users.sql
+        wrangler d1 execute mcis-db --file=create-test-users.sql
         Write-Host "✅ 生產環境測試用戶創建完成" -ForegroundColor Green
     }
     

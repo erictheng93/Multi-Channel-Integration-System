@@ -346,12 +346,12 @@ Terraform URL
 ```bash
 Outputs:
 
-api_url = "https://multi-channel-platform.your-account.workers.dev"
+api_url = "https://mcis-backend.daiwandist.com"
 frontend_url = "https://mcis-ey7.pages.dev"
-admin_dashboard_url = "https://multi-channel-platform.your-account.workers.dev/admin-dashboard.html"
-line_webhook_url = "https://multi-channel-platform.your-account.workers.dev/api/webhooks/line"
-facebook_webhook_url = "https://multi-channel-platform.your-account.workers.dev/api/webhooks/facebook"
-database_name = "multi-channel-platform"
+admin_dashboard_url = "https://mcis-backend.daiwandist.com/admin-dashboard.html"
+line_webhook_url = "https://mcis-backend.daiwandist.com/api/webhooks/line"
+facebook_webhook_url = "https://mcis-backend.daiwandist.com/api/webhooks/facebook"
+database_name = "mcis-db"
 facebook_verify_token = <sensitive>
 ```
 
@@ -362,7 +362,7 @@ facebook_verify_token = <sensitive>
 1. ** Webhook URL**
  ```bash
  # Terraform line_webhook_url
- # : https://multi-channel-platform.your-account.workers.dev/api/webhooks/line
+ # : https://mcis-backend.daiwandist.com/api/webhooks/line
  ```
 
 2. ** LINE Developers Console **

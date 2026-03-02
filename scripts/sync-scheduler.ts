@@ -181,7 +181,7 @@ class DatabaseSyncScheduler {
 
     try {
       // 檢查本地數據庫
-      execSync('wrangler d1 execute multi-channel-platform --command "SELECT 1;"', { stdio: 'pipe' });
+      execSync('wrangler d1 execute mcis-db --command "SELECT 1;"', { stdio: 'pipe' });
       results.localDbOk = true;
     } catch (error) {
       this.log('❌ 本地數據庫健康檢查失敗');
@@ -189,7 +189,7 @@ class DatabaseSyncScheduler {
 
     try {
       // 檢查生產數據庫
-      execSync('wrangler d1 execute multi-channel-platform --remote --command "SELECT 1;"', { stdio: 'pipe' });
+      execSync('wrangler d1 execute mcis-db --remote --command "SELECT 1;"', { stdio: 'pipe' });
       results.prodDbOk = true;
     } catch (error) {
       this.log('❌ 生產數據庫健康檢查失敗');
@@ -197,7 +197,7 @@ class DatabaseSyncScheduler {
 
     // 檢查遷移狀態
     try {
-      const migrationOutput = execSync('wrangler d1 migrations list multi-channel-platform', { encoding: 'utf8' });
+      const migrationOutput = execSync('wrangler d1 migrations list mcis-db', { encoding: 'utf8' });
       results.migrationStatus = migrationOutput.includes('No migrations to apply') ? 'up-to-date' : 'pending';
     } catch (error) {
       results.migrationStatus = 'error';

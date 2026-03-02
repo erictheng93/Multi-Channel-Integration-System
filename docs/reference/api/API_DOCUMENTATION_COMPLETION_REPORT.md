@@ -412,7 +412,7 @@ Overall Quality Score           85%     █████████████�
 ### Immediate Actions (Week 1)
 
 1. **Deploy Documentation to Production**
-   - Host on docs.multi-channel.com
+   - Host on mcis-backend.daiwandist.com/docs
    - Setup search functionality
    - Add version selector
 

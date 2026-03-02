@@ -7,14 +7,14 @@
 
 
 ### 1.
-- **D1 **: `multi-channel-platform-db`
+- **D1 **: `mcis-db`
  - ID: `af267959-762b-4915-907f-ca08a6feb699`
  - :
  - : (2 )
 
 - **R2 **:
- - : `multi-channel-platform-attachments-develop`
- - : `multi-channel-platform-attachments-production`
+ - : `mcis-files-develop`
+ - : `mcis-files-production`
  - :
 
 ### 2.
@@ -26,7 +26,7 @@
 - ****:
  - Worker
  -
- - URL: https://multi-channel-platform.omfg.workers.dev
+ - URL: https://mcis-worker.omfg.workers.dev
 
 ### 3.
 - ** D1 **: `omni-channel-platform` -
@@ -43,13 +43,13 @@
 
 | | | | |
 |---------|--------|--------|------|
-| D1 | `omni-channel-platform` | `multi-channel-platform-db` | |
-| R2 () | `omni-channel-attachments-develop` | `multi-channel-platform-attachments-develop` | |
-| R2 () | `omni-channel-attachments-production` | `multi-channel-platform-attachments-production` | |
+| D1 | `omni-channel-platform` | `mcis-db` | |
+| R2 () | `omni-channel-attachments-develop` | `mcis-files-develop` | |
+| R2 () | `omni-channel-attachments-production` | `mcis-files-production` | |
 
 
 ```bash
-wrangler d1 execute multi-channel-platform-db --command="SELECT COUNT(*) FROM agents"
+wrangler d1 execute mcis-db --command="SELECT COUNT(*) FROM agents"
 # : 2
 ```
 
@@ -99,7 +99,7 @@ wrangler r2 bucket list
 - ****:
 
 
- Cloudflare `multi-channel-platform`
+ Cloudflare `mcis-worker`
 
 ---
 

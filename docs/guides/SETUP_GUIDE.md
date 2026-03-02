@@ -1,4 +1,4 @@
-# multi-channel-platform
+# MCIS
 
 
 ### 1. Cloudflare
@@ -73,7 +73,7 @@ wrangler queues create delayed-messages
 ```jsonc
 {
  "$schema": "node_modules/wrangler/config-schema.json",
- "name": "multi-channel-platform",
+ "name": "mcis-worker",
  "main": "src/index.ts",
  "compatibility_date": "2024-01-01",
  "observability": {
@@ -83,7 +83,7 @@ wrangler queues create delayed-messages
  },
  "routes": [
  {
- "pattern": "multi-channel-platform.example.com/*",
+ "pattern": "mcis-backend.daiwandist.com/*",
  "zone_name": "example.com"
  }
  ],
@@ -346,4 +346,4 @@ npx tsc --noEmit
 5. ****
 
 
- multi-channel-platform MVP 
+ MCIS MVP 

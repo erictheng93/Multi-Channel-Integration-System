@@ -228,7 +228,7 @@ export function getConfigurationStatus(env: Bindings): object {
       message: 'Please set the missing environment variables in Cloudflare Dashboard',
       steps: [
         'Go to Cloudflare Dashboard',
-        'Navigate to Workers & Pages -> multi-channel-platform -> Settings -> Variables',
+        'Navigate to Workers & Pages -> mcis-worker -> Settings -> Variables',
         'Add the missing variables listed above',
         'Save and Deploy',
       ],

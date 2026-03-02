@@ -66,7 +66,7 @@ curl http://localhost:3000/api/health
 
 #### 3.
 ```bash
-curl https://multi-channel-platform.example.com/api/health
+curl https://mcis-backend.daiwandist.com/api/health
 ```
 
 

@@ -105,7 +105,7 @@ systemHandler.get('/system/status', jwtAuth, async (c) => {
         },
         r2: {
           status: 'available',
-          bucket: 'multi-channel-platform-attachments'
+          bucket: 'mcis-files'
         },
         durableObjects: {
           status: 'available',

@@ -245,7 +245,7 @@
 
 - [ ] ** Workers Analytics**
  1. [ ] Cloudflare Dashboard
- 2. [ ] Workers & Pages multi-channel-platform
+ 2. [ ] Workers & Pages mcis-worker
  3. [ ] Analytics Enable Workers Analytics
  4. [ ] : Request Count, CPU Time, Errors
 

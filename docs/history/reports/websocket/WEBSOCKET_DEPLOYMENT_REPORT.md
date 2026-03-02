@@ -245,7 +245,7 @@ curl https://your-api-domain.example.com/api/websocket/migration-status
 | Public Endpoints | PASS | - | , |
 | Durable Objects Bindings | PASS | - | 6 DO |
 | KV Namespaces | PASS | - | SESSIONS, CACHE |
-| D1 Database | PASS | - | multi-channel-platform |
+| D1 Database | PASS | - | mcis-db |
 | R2 Bucket | PASS | - | attachments |
 | Queues | PASS | - | agent-queue, realtime-events |
 
@@ -278,12 +278,12 @@ curl https://your-api-domain.example.com/api/websocket/migration-status
 
 #### D1 Database
 ```
- DB multi-channel-platform
+ DB mcis-db
 ```
 
 #### R2 Bucket
 ```
- R2_BUCKET multi-channel-platform-attachments
+ R2_BUCKET mcis-files
  R2_PUBLIC_URL https://your-storage-domain.example.com
 ```
 

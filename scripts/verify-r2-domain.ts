@@ -1,6 +1,6 @@
 /**
- * R2 ?ªå?ç¾©å??é?è­‰è…³??
- * é©—è? R2 bucket ?„è‡ªå®šç¾©?Ÿå??ç½®?¯å¦æ­?¸¸å·¥ä?
+ * R2 ?ï¿½ï¿½?ç¾©ï¿½??ï¿½ï¿½?è­‰è…³??
+ * é©—ï¿½? R2 bucket ?ï¿½è‡ªå®šç¾©?ï¿½ï¿½??ï¿½ç½®?ï¿½å¦ï¿½?ï¿½ï¿½å·¥ï¿½?
  */
 
 import { execSync } from 'child_process';
@@ -15,19 +15,19 @@ interface R2DomainConfig {
 const R2_CONFIGS: R2DomainConfig[] = [
   {
     environment: 'development',
-    bucketName: 'multi-channel-platform-attachments-dev',
+    bucketName: 'mcis-files',
     customDomain: 's3-dev.example.com',
     expectedUrl: 'https://s3-dev.example.com'
   },
   {
     environment: 'production',
-    bucketName: 'multi-channel-platform-attachments',
+    bucketName: 'mcis-files',
     customDomain: 'your-storage-domain.example.com',
     expectedUrl: 'https://your-storage-domain.example.com'
   }
 ];
 
-// é¡è‰²è¼¸å‡º?½æ•¸
+// é¡è‰²è¼¸å‡º?ï¿½æ•¸
 const colors = {
   green: (text: string) => `\x1b[32m${text}\x1b[0m`,
   red: (text: string) => `\x1b[31m${text}\x1b[0m`,
@@ -41,19 +41,19 @@ function log(message: string, color: keyof typeof colors = 'cyan'): void {
   console.log(colors[color](message));
 }
 
-// æª¢æŸ¥ Cloudflare CLI èªè?
+// æª¢æŸ¥ Cloudflare CLI èªï¿½?
 function checkCloudflareAuth(): boolean {
   try {
     execSync('wrangler whoami', { stdio: 'pipe' });
-    log('??Cloudflare èªè?å·²è¨­å®?, 'green');
+    log('??Cloudflare èªï¿½?å·²è¨­ï¿½?, 'green');
     return true;
   } catch (error) {
-    log('??Cloudflare èªè??ªè¨­å®šï?è«‹å??·è?: wrangler login', 'red');
+    log('??Cloudflare èªï¿½??ï¿½è¨­å®šï¿½?è«‹ï¿½??ï¿½ï¿½?: wrangler login', 'red');
     return false;
   }
 }
 
-// æª¢æŸ¥ R2 bucket ?¯å¦å­˜åœ¨
+// æª¢æŸ¥ R2 bucket ?ï¿½å¦å­˜åœ¨
 function checkR2Bucket(bucketName: string): boolean {
   try {
     const output = execSync(`wrangler r2 bucket list`, { encoding: 'utf8' });
@@ -63,53 +63,53 @@ function checkR2Bucket(bucketName: string): boolean {
       log(`??R2 Bucket ${bucketName} å­˜åœ¨`, 'green');
       return true;
     } else {
-      log(`??R2 Bucket ${bucketName} ä¸å??¨`, 'red');
+      log(`??R2 Bucket ${bucketName} ä¸ï¿½??ï¿½`, 'red');
       return false;
     }
   } catch (error) {
-    log(`??æª¢æŸ¥ R2 Bucket å¤±æ?: ${error}`, 'red');
+    log(`??æª¢æŸ¥ R2 Bucket å¤±ï¿½?: ${error}`, 'red');
     return false;
   }
 }
 
-// æ¸¬è©¦?ªå?ç¾©å??è§£??
+// æ¸¬è©¦?ï¿½ï¿½?ç¾©ï¿½??ï¿½è§£??
 async function testDomainResolution(domain: string): Promise<boolean> {
   try {
-    log(`?? æ¸¬è©¦?Ÿå?è§??: ${domain}`, 'blue');
+    log(`?? æ¸¬è©¦?ï¿½ï¿½?ï¿½??: ${domain}`, 'blue');
 
-    // ä½¿ç”¨ fetch æ¸¬è©¦?Ÿå??¯å¦?¯é?
+    // ä½¿ç”¨ fetch æ¸¬è©¦?ï¿½ï¿½??ï¿½å¦?ï¿½ï¿½?
     const testUrl = `https://${domain}`;
     const response = await fetch(testUrl, {
       method: 'HEAD',
-      signal: AbortSignal.timeout(10000) // 10ç§’è???
+      signal: AbortSignal.timeout(10000) // 10ç§’ï¿½???
     });
 
     if (response.ok || response.status === 404) {
-      // 404 ?¯æ­£å¸¸ç?ï¼Œå??ºæ??‘åª?¯æ¸¬è©¦å??è§£??
-      log(`???Ÿå? ${domain} è§??æ­?¸¸`, 'green');
+      // 404 ?ï¿½æ­£å¸¸ï¿½?ï¼Œï¿½??ï¿½ï¿½??ï¿½åª?ï¿½æ¸¬è©¦ï¿½??ï¿½è§£??
+      log(`???ï¿½ï¿½? ${domain} ï¿½??ï¿½?ï¿½ï¿½`, 'green');
       return true;
     } else {
-      log(`? ï?  ?Ÿå? ${domain} ?æ??€?? ${response.status}`, 'yellow');
-      return true; // ??404 ?€?‹ä??¯èƒ½?¯æ­£å¸¸ç?
+      log(`?ï¿½ï¿½?  ?ï¿½ï¿½? ${domain} ?ï¿½ï¿½??ï¿½?? ${response.status}`, 'yellow');
+      return true; // ??404 ?ï¿½?ï¿½ï¿½??ï¿½èƒ½?ï¿½æ­£å¸¸ï¿½?
     }
   } catch (error: any) {
     if (error.name === 'TimeoutError') {
-      log(`???Ÿå? ${domain} è§??è¶…æ?`, 'red');
+      log(`???ï¿½ï¿½? ${domain} ï¿½??è¶…ï¿½?`, 'red');
     } else {
-      log(`???Ÿå? ${domain} è§??å¤±æ?: ${error.message}`, 'red');
+      log(`???ï¿½ï¿½? ${domain} ï¿½??å¤±ï¿½?: ${error.message}`, 'red');
     }
     return false;
   }
 }
 
-// ä¸Šå‚³æ¸¬è©¦æª”æ?
+// ä¸Šå‚³æ¸¬è©¦æª”ï¿½?
 function uploadTestFile(bucketName: string): string | null {
   try {
-    const testContent = `R2 ?Ÿå?æ¸¬è©¦æª”æ? - ${new Date().toISOString()}`;
+    const testContent = `R2 ?ï¿½ï¿½?æ¸¬è©¦æª”ï¿½? - ${new Date().toISOString()}`;
     const testFileName = `test-${Date.now()}.txt`;
     const testFilePath = `/tmp/${testFileName}`;
 
-    // ?µå»ºæ¸¬è©¦æª”æ?
+    // ?ï¿½å»ºæ¸¬è©¦æª”ï¿½?
     require('fs').writeFileSync(testFilePath, testContent);
 
     // ä¸Šå‚³??R2
@@ -117,22 +117,22 @@ function uploadTestFile(bucketName: string): string | null {
       stdio: 'pipe'
     });
 
-    // æ¸…ç??¬åœ°æª”æ?
+    // æ¸…ï¿½??ï¿½åœ°æª”ï¿½?
     require('fs').unlinkSync(testFilePath);
 
-    log(`??æ¸¬è©¦æª”æ?ä¸Šå‚³?å?: test/${testFileName}`, 'green');
+    log(`??æ¸¬è©¦æª”ï¿½?ä¸Šå‚³?ï¿½ï¿½?: test/${testFileName}`, 'green');
     return `test/${testFileName}`;
   } catch (error) {
-    log(`??æ¸¬è©¦æª”æ?ä¸Šå‚³å¤±æ?: ${error}`, 'red');
+    log(`??æ¸¬è©¦æª”ï¿½?ä¸Šå‚³å¤±ï¿½?: ${error}`, 'red');
     return null;
   }
 }
 
-// æ¸¬è©¦æª”æ?å­˜å?
+// æ¸¬è©¦æª”ï¿½?å­˜ï¿½?
 async function testFileAccess(customDomain: string, filePath: string): Promise<boolean> {
   try {
     const fileUrl = `https://${customDomain}/${filePath}`;
-    log(`?? æ¸¬è©¦æª”æ?å­˜å?: ${fileUrl}`, 'blue');
+    log(`?? æ¸¬è©¦æª”ï¿½?å­˜ï¿½?: ${fileUrl}`, 'blue');
 
     const response = await fetch(fileUrl, {
       signal: AbortSignal.timeout(10000)
@@ -140,36 +140,36 @@ async function testFileAccess(customDomain: string, filePath: string): Promise<b
 
     if (response.ok) {
       const content = await response.text();
-      if (content.includes('R2 ?Ÿå?æ¸¬è©¦æª”æ?')) {
-        log(`??æª”æ?å­˜å??å?`, 'green');
+      if (content.includes('R2 ?ï¿½ï¿½?æ¸¬è©¦æª”ï¿½?')) {
+        log(`??æª”ï¿½?å­˜ï¿½??ï¿½ï¿½?`, 'green');
         return true;
       } else {
-        log(`??æª”æ??§å®¹ä¸æ­£ç¢º`, 'red');
+        log(`??æª”ï¿½??ï¿½å®¹ä¸æ­£ç¢º`, 'red');
         return false;
       }
     } else {
-      log(`??æª”æ?å­˜å?å¤±æ?: ${response.status} ${response.statusText}`, 'red');
+      log(`??æª”ï¿½?å­˜ï¿½?å¤±ï¿½?: ${response.status} ${response.statusText}`, 'red');
       return false;
     }
   } catch (error: any) {
-    log(`??æª”æ?å­˜å?æ¸¬è©¦å¤±æ?: ${error.message}`, 'red');
+    log(`??æª”ï¿½?å­˜ï¿½?æ¸¬è©¦å¤±ï¿½?: ${error.message}`, 'red');
     return false;
   }
 }
 
-// æ¸…ç?æ¸¬è©¦æª”æ?
+// æ¸…ï¿½?æ¸¬è©¦æª”ï¿½?
 function cleanupTestFile(bucketName: string, filePath: string): void {
   try {
     execSync(`wrangler r2 object delete ${bucketName}/${filePath}`, { stdio: 'pipe' });
-    log(`??æ¸¬è©¦æª”æ?å·²æ??? ${filePath}`, 'green');
+    log(`??æ¸¬è©¦æª”ï¿½?å·²ï¿½??? ${filePath}`, 'green');
   } catch (error) {
-    log(`? ï?  æ¸…ç?æ¸¬è©¦æª”æ?å¤±æ?: ${error}`, 'yellow');
+    log(`?ï¿½ï¿½?  æ¸…ï¿½?æ¸¬è©¦æª”ï¿½?å¤±ï¿½?: ${error}`, 'yellow');
   }
 }
 
-// é©—è??®å€?R2 ?ç½®
+// é©—ï¿½??ï¿½ï¿½?R2 ?ï¿½ç½®
 async function verifyR2Config(config: R2DomainConfig): Promise<boolean> {
-  log(`\n?”§ é©—è? ${config.environment} ?°å??ç½®`, 'magenta');
+  log(`\n?ï¿½ï¿½ é©—ï¿½? ${config.environment} ?ï¿½ï¿½??ï¿½ç½®`, 'magenta');
   log(`   Bucket: ${config.bucketName}`, 'cyan');
   log(`   Domain: ${config.customDomain}`, 'cyan');
 
@@ -180,46 +180,46 @@ async function verifyR2Config(config: R2DomainConfig): Promise<boolean> {
     success = false;
   }
 
-  // 2. æ¸¬è©¦?Ÿå?è§??
+  // 2. æ¸¬è©¦?ï¿½ï¿½?ï¿½??
   if (!await testDomainResolution(config.customDomain)) {
     success = false;
   }
 
-  // 3. ä¸Šå‚³æ¸¬è©¦æª”æ?
+  // 3. ä¸Šå‚³æ¸¬è©¦æª”ï¿½?
   const testFilePath = uploadTestFile(config.bucketName);
   if (!testFilePath) {
     success = false;
   } else {
-    // 4. æ¸¬è©¦æª”æ?å­˜å?
+    // 4. æ¸¬è©¦æª”ï¿½?å­˜ï¿½?
     if (!await testFileAccess(config.customDomain, testFilePath)) {
       success = false;
     }
 
-    // 5. æ¸…ç?æ¸¬è©¦æª”æ?
+    // 5. æ¸…ï¿½?æ¸¬è©¦æª”ï¿½?
     cleanupTestFile(config.bucketName, testFilePath);
   }
 
   if (success) {
-    log(`??${config.environment} ?°å??ç½®é©—è??šé?`, 'green');
+    log(`??${config.environment} ?ï¿½ï¿½??ï¿½ç½®é©—ï¿½??ï¿½ï¿½?`, 'green');
   } else {
-    log(`??${config.environment} ?°å??ç½®é©—è?å¤±æ?`, 'red');
+    log(`??${config.environment} ?ï¿½ï¿½??ï¿½ç½®é©—ï¿½?å¤±ï¿½?`, 'red');
   }
 
   return success;
 }
 
-// ä¸»é?è­‰å‡½??
+// ä¸»ï¿½?è­‰å‡½??
 async function main(): Promise<void> {
-  log('?? ?‹å?é©—è? R2 ?ªå?ç¾©å??é?ç½?, 'cyan');
+  log('?? ?ï¿½ï¿½?é©—ï¿½? R2 ?ï¿½ï¿½?ç¾©ï¿½??ï¿½ï¿½?ï¿½?, 'cyan');
 
-  // æª¢æŸ¥ Cloudflare èªè?
+  // æª¢æŸ¥ Cloudflare èªï¿½?
   if (!checkCloudflareAuth()) {
     process.exit(1);
   }
 
   let allSuccess = true;
 
-  // é©—è??€?‰é?ç½?
+  // é©—ï¿½??ï¿½?ï¿½ï¿½?ï¿½?
   for (const config of R2_CONFIGS) {
     const success = await verifyR2Config(config);
     if (!success) {
@@ -227,22 +227,22 @@ async function main(): Promise<void> {
     }
   }
 
-  // ç¸½ç?
-  log('\n?? é©—è?çµæ?ç¸½ç?', 'magenta');
+  // ç¸½ï¿½?
+  log('\n?? é©—ï¿½?çµï¿½?ç¸½ï¿½?', 'magenta');
   if (allSuccess) {
-    log('???€??R2 ?ªå?ç¾©å??é?ç½®é?è­‰é€šé?', 'green');
-    log('\n?? ?¨ç? R2 å­˜å„²å·²æ??™å°±ç·’ï?', 'green');
+    log('???ï¿½??R2 ?ï¿½ï¿½?ç¾©ï¿½??ï¿½ï¿½?ç½®ï¿½?è­‰é€šï¿½?', 'green');
+    log('\n?? ?ï¿½ï¿½? R2 å­˜å„²å·²ï¿½??ï¿½å°±ç·’ï¿½?', 'green');
   } else {
-    log('???¨å? R2 ?ç½®é©—è?å¤±æ?', 'red');
-    log('\n?”§ è«‹æª¢?¥ä»¥ä¸‹é???', 'yellow');
-    log('   1. Cloudflare R2 bucket ?¯å¦å·²å‰µå»?, 'yellow');
-    log('   2. ?ªå?ç¾©å???DNS è¨­å??¯å¦æ­?¢º', 'yellow');
-    log('   3. ?Ÿå??¯å¦å·²ç?å®šåˆ°å°æ???R2 bucket', 'yellow');
+    log('???ï¿½ï¿½? R2 ?ï¿½ç½®é©—ï¿½?å¤±ï¿½?', 'red');
+    log('\n?ï¿½ï¿½ è«‹æª¢?ï¿½ä»¥ä¸‹ï¿½???', 'yellow');
+    log('   1. Cloudflare R2 bucket ?ï¿½å¦å·²å‰µï¿½?, 'yellow');
+    log('   2. ?ï¿½ï¿½?ç¾©ï¿½???DNS è¨­ï¿½??ï¿½å¦ï¿½?ï¿½ï¿½', 'yellow');
+    log('   3. ?ï¿½ï¿½??ï¿½å¦å·²ï¿½?å®šåˆ°å°ï¿½???R2 bucket', 'yellow');
     process.exit(1);
   }
 }
 
-// ?·è??³æœ¬
+// ?ï¿½ï¿½??ï¿½æœ¬
 if (require.main === module) {
   main().catch(console.error);
 }

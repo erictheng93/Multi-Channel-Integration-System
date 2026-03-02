@@ -49,7 +49,7 @@
 
 ```bash
 # 1. Worker
-wrangler deployments list --name multi-channel-platform
+wrangler deployments list --name mcis-worker
 
 # 2. D1
 wrangler d1 list

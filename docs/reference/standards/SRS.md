@@ -151,7 +151,7 @@ src/
 
 **Configuration**: `wrangler.toml`
 ```toml
-name = "multi-channel-platform"
+name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2025-07-31"
 compatibility_flags = ["nodejs_compat"]
@@ -159,8 +159,8 @@ compatibility_flags = ["nodejs_compat"]
 
 #### 3.1.2 Cloudflare D1 Database
 **Database Requirements**:
-- **Development Database**: `multi-channel-platform-dev`
-- **Production Database**: `multi-channel-platform`
+- **Development Database**: `mcis-db`
+- **Production Database**: `mcis-db`
 - **Storage Limit**: 500MB (Free) / 10GB+ (Paid)
 - **Query Limit**: 100,000/day (Free) / Unlimited (Paid)
 
@@ -168,7 +168,7 @@ compatibility_flags = ["nodejs_compat"]
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "multi-channel-platform-dev"
+database_name = "mcis-db"
 database_id = "3b7339f0-80de-49dc-b079-312df4a4c316"
 ```
 
@@ -194,8 +194,8 @@ preview_id = "bafc060a634943b19409b7ecbb1b4f5b"
 
 #### 3.1.4 Cloudflare R2 Storage
 **Bucket Requirements**:
-- **Development**: `multi-channel-platform-attachments-dev`
-- **Production**: `multi-channel-platform-attachments-production`
+- **Development**: `mcis-files`
+- **Production**: `mcis-files`
 - **Storage Limit**: 10GB (Free) / Unlimited (Paid)
 - **Request Limit**: 1,000,000/month (Free)
 
@@ -203,7 +203,7 @@ preview_id = "bafc060a634943b19409b7ecbb1b4f5b"
 ```toml
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments-dev"
+bucket_name = "mcis-files"
 ```
 
 #### 3.1.5 Cloudflare Queues
@@ -368,7 +368,7 @@ export default {
  strict: true,
  verbose: true,
  dbCredentials: {
- databaseName: "multi-channel-platform"
+ databaseName: "mcis-db"
  }
 } satisfies Config;
 ```
@@ -869,7 +869,7 @@ export default {
  driver: 'wrangler',
  out: "./drizzle",
  dbCredentials: {
- databaseName: "multi-channel-platform"
+ databaseName: "mcis-db"
  }
 } satisfies Config;
 ```
@@ -1106,7 +1106,7 @@ cd frontend && npm run type-check # Frontend TypeScript check
 # Development database and services
 [[d1_databases]]
 binding = "DB"
-database_name = "multi-channel-platform-dev"
+database_name = "mcis-db"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
@@ -1369,13 +1369,13 @@ const logger = {
 **Backup Procedures**:
 ```bash
 # Manual database backup
-wrangler d1 backup create multi-channel-platform
+wrangler d1 backup create mcis-db
 
 # Backup verification
-wrangler d1 backup list multi-channel-platform
+wrangler d1 backup list mcis-db
 
 # Backup restoration (if needed)
-wrangler d1 backup restore multi-channel-platform <backup-id>
+wrangler d1 backup restore mcis-db <backup-id>
 ```
 
 **Recovery Testing**:
@@ -1703,7 +1703,7 @@ class GDPRDataHandler {
 #### 11.2.1 Environment Configuration Template
 ```toml
 # wrangler.toml template
-name = "multi-channel-platform"
+name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2025-07-31"
 compatibility_flags = ["nodejs_compat"]

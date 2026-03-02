@@ -7,18 +7,18 @@
 
 
 ### 1. Workers
-- ** Worker**: `multi-channel-platform`
+- ** Worker**: `mcis-worker`
 - ** Frontend**: `mcis-ey7`
-- ~~ Worker~~: `multi-channel-platform-dev` ()
+- ~~ Worker~~: `mcis-worker-dev` ()
 - ~~ Frontend~~: `mcis-ey7-dev` ()
 
 ### 2. D1
-- ****: `multi-channel-platform` (08ae6790-2494-40a8-a07a-df3920783159)
-- ~~~~: `multi-channel-platform-dev` (3b7339f0-80de-49dc-b079-312df4a4c316) ()
+- ****: `mcis-worker` (08ae6790-2494-40a8-a07a-df3920783159)
+- ~~~~: `mcis-worker-dev` (3b7339f0-80de-49dc-b079-312df4a4c316) ()
 
 ### 3. R2
-- ****: `multi-channel-platform-attachments`
-- ~~~~: `multi-channel-platform-attachments-dev` ()
+- ****: `mcis-files`
+- ~~~~: `mcis-files-dev` ()
 - ** URL**: https://your-storage-domain.example.com
 
 ### 4. KV Namespaces
@@ -58,10 +58,10 @@
 
 
 ```
- Worker: multi-channel-platform
+ Worker: mcis-worker
  Frontend: mcis-ey7
  D1 Database: 08ae6790-2494-40a8-a07a-df3920783159
- R2 Bucket: multi-channel-platform-attachments
+ R2 Bucket: mcis-files
  KV SESSIONS: ace3f7202e6a4dd8b98c50e9b91b2431
  KV CACHE: f3bc7a55c8a14f4fb28b8321fa01dc73
  Queue: message-queue

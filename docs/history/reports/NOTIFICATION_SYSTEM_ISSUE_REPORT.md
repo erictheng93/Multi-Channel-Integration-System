@@ -20,7 +20,7 @@
 
 ```bash
 # 檢查現有表
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --command="SELECT name FROM sqlite_master WHERE type='table'"
 
 # 結果: agent_teams 表不存在
@@ -71,12 +71,12 @@ done
 
 ```bash
 # 應用 Migration 0027 (添加 deleted_at 列)
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --file=migrations/0027_schema_optimizations.sql --local
 # ✅ 21 commands executed successfully
 
 # 應用 Migration 0028 (創建 agent_teams 表)
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --file=migrations/0028_add_agent_teams_table.sql --local
 # ✅ 6 commands executed successfully
 ```
@@ -85,12 +85,12 @@ wrangler d1 execute multi-channel-platform \
 
 ```bash
 # 確認 agent_teams 表已創建
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --command="SELECT name FROM sqlite_master WHERE type='table' AND name='agent_teams'"
 # ✅ 結果: { "name": "agent_teams" }
 
 # 檢查表結構
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --command="PRAGMA table_info(agent_teams)"
 ```
 
@@ -162,7 +162,7 @@ export const agentTeams = sqliteTable('agent_teams', {
 
 ```bash
 # 管理員帳號
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --command="SELECT id, email, display_name, role FROM agents WHERE role='admin'"
 
 # 結果:
@@ -302,15 +302,15 @@ chmod +x scripts/sync-migrations.sh
 **解決方案**:
 ```bash
 # 檢查遠程數據庫狀態
-wrangler d1 migrations list multi-channel-platform --remote
+wrangler d1 migrations list mcis-db --remote
 
 # 同步本地與遠程
-wrangler d1 migrations apply multi-channel-platform --local
+wrangler d1 migrations apply mcis-db --local
 
 # 驗證兩邊一致
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --command="SELECT MAX(id) FROM d1_migrations" --remote
-wrangler d1 execute multi-channel-platform \
+wrangler d1 execute mcis-db \
   --command="SELECT MAX(id) FROM d1_migrations" --local
 ```
 

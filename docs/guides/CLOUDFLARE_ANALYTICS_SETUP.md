@@ -367,7 +367,7 @@ curl -X POST "https://api.cloudflare.com/client/v4/graphql" \
 ### Option A: Cloudflare Dashboard (Built-in)
 
 1. Go to Cloudflare Dashboard → Workers & Pages → Analytics
-2. Select your worker (`multi-channel-platform`)
+2. Select your worker (`mcis-worker`)
 3. View built-in metrics:
    - Requests per second
    - CPU time
@@ -476,7 +476,7 @@ wrangler tail --search "circuit_breaker"
 1. Go to Cloudflare Dashboard → Notifications
 2. Create new notification:
    - **Type**: Workers Health Alert
-   - **Worker**: multi-channel-platform
+   - **Worker**: mcis-worker
    - **Trigger**: Error rate > 5%
    - **Delivery**: Email/Slack/Webhook
 

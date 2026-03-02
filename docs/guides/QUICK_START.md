@@ -1,4 +1,4 @@
-# multi-channel-platform (Drizzle ORM + KV)
+# MCIS (Drizzle ORM + KV)
 
 
 ### - ( Drizzle ORM + KV)
@@ -20,8 +20,8 @@
 
 ```bash
 
-git clone https://github.com/your-username/multi-channel-platform.git
-cd multi-channel-platform
+git clone https://github.com/your-username/MCIS.git
+cd Multi_Channel_Integration_System
 
 
 .\quick-deploy.ps1
@@ -49,8 +49,8 @@ cd multi-channel-platform
 
 ```bash
 
-git clone https://github.com/your-username/multi-channel-platform.git
-cd multi-channel-platform
+git clone https://github.com/your-username/MCIS.git
+cd Multi_Channel_Integration_System
 
 
 .\setup-env.ps1
@@ -107,7 +107,7 @@ wrangler login
 ### Cloudflare
 ```bash
 
-cd multi-channel-platform
+cd Multi_Channel_Integration_System
 
 # D1 ()
 wrangler d1 create omni-channel-platform
@@ -263,12 +263,12 @@ cd frontend
 npm run build
 
 # Cloudflare Pages ()
-wrangler pages publish dist --project-name multi-channel-platform-ui
+wrangler pages publish dist --project-name mcis-ey7
 ```
 
 ### 4. LINE Webhook URL
  Webhook URL
-`https://multi-channel-platform.example.com/api/webhook`
+`https://mcis-backend.daiwandist.com/api/webhook`
 
 
 - [ ] Cloudflare (Workers + D1 + R2)
@@ -292,7 +292,7 @@ wrangler pages publish dist --project-name multi-channel-platform-ui
 - [ ] TypeScript (0 )
 
 
- multi-channel-platform
+ MCIS
 
 
 1. ****`USER_MANUAL.md` -

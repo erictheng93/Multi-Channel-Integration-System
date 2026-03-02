@@ -68,7 +68,7 @@ const REMOTE_URL = 'https://your-api-domain.example.com'; //
 
 
 ```
- [ERROR] service core:user:multi-channel-platform: Uncaught Error:
+ [ERROR] service core:user:mcis-worker: Uncaught Error:
 Disallowed operation called within global scope. Asynchronous I/O
 (ex: fetch() or connect()), setting a timeout, and generating random
 values are not allowed within global scope.

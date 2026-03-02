@@ -1,10 +1,10 @@
 
 
- **multi-channel-platform.example.com**
+ **mcis-backend.daiwandist.com**
 
 
 ### 1.
-**URL**: `https://multi-channel-platform.example.com/`
+**URL**: `https://mcis-backend.daiwandist.com/`
 ****: (HTTP 200)
 ****:
 ```json
@@ -16,7 +16,7 @@
 ```
 
 ### 2.
-**URL**: `https://multi-channel-platform.example.com/health`
+**URL**: `https://mcis-backend.daiwandist.com/health`
 ****: (HTTP 200)
 ****:
 ```json
@@ -29,7 +29,7 @@
 ```
 
 ### 3. API
-**URL**: `https://multi-channel-platform.example.com/api/health`
+**URL**: `https://mcis-backend.daiwandist.com/api/health`
 ****: 404 Not Found
 ****:
 ```json
@@ -83,28 +83,28 @@
 
 ### 1.
  URL
-- `https://multi-channel-platform.example.com/`
-- `https://multi-channel-platform.example.com/health`
+- `https://mcis-backend.daiwandist.com/`
+- `https://mcis-backend.daiwandist.com/health`
 
 ### 2.
 ```bash
 
-curl https://multi-channel-platform.example.com/health
+curl https://mcis-backend.daiwandist.com/health
 
 
-curl https://multi-channel-platform.example.com/
+curl https://mcis-backend.daiwandist.com/
 
 
-curl -I https://multi-channel-platform.example.com/
+curl -I https://mcis-backend.daiwandist.com/
 ```
 
 ### 3.
 ```bash
 # ()
-curl https://multi-channel-platform.example.com/admin-dashboard.html
+curl https://mcis-backend.daiwandist.com/admin-dashboard.html
 
 
-curl https://multi-channel-platform.example.com/system/status
+curl https://mcis-backend.daiwandist.com/system/status
 ```
 
 ## API
@@ -131,10 +131,10 @@ curl https://multi-channel-platform.example.com/system/status
 
 ****: ****
 
- `multi-channel-platform.example.com` Worker
+ `mcis-backend.daiwandist.com` Worker
 
 ****:
-1. `https://multi-channel-platform.example.com/health`
+1. `https://mcis-backend.daiwandist.com/health`
 2. `curl` HTTP 200
 3. JSON
 

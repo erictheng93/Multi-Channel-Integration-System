@@ -148,7 +148,7 @@ src/
 
 ****`wrangler.toml`
 ```toml
-name = "multi-channel-platform"
+name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2025-07-31"
 compatibility_flags = ["nodejs_compat"]
@@ -156,8 +156,8 @@ compatibility_flags = ["nodejs_compat"]
 
 #### 3.1.2 Cloudflare D1
 ****
-- ****`multi-channel-platform-dev`
-- ****`multi-channel-platform`
+- ****`mcis-db`
+- ****`mcis-db`
 - ****500MB () / 10GB+ ()
 - ****100,000/ () / ()
 
@@ -165,7 +165,7 @@ compatibility_flags = ["nodejs_compat"]
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "multi-channel-platform-dev"
+database_name = "mcis-db"
 database_id = "3b7339f0-80de-49dc-b079-312df4a4c316"
 ```
 
@@ -191,8 +191,8 @@ preview_id = "bafc060a634943b19409b7ecbb1b4f5b"
 
 #### 3.1.4 Cloudflare R2
 ****
-- ****`multi-channel-platform-attachments-dev`
-- ****`multi-channel-platform-attachments-production`
+- ****`mcis-files`
+- ****`mcis-files`
 - ****10GB () / ()
 - ****1,000,000/ ()
 
@@ -200,7 +200,7 @@ preview_id = "bafc060a634943b19409b7ecbb1b4f5b"
 ```toml
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "multi-channel-platform-attachments-dev"
+bucket_name = "mcis-files"
 ```
 
 #### 3.1.5 Cloudflare Queues
@@ -365,7 +365,7 @@ export default {
  strict: true,
  verbose: true,
  dbCredentials: {
- databaseName: "multi-channel-platform"
+ databaseName: "mcis-db"
  }
 } satisfies Config;
 ```
@@ -907,7 +907,7 @@ export default {
  driver: 'wrangler',
  out: "./drizzle",
  dbCredentials: {
- databaseName: "multi-channel-platform"
+ databaseName: "mcis-db"
  }
 } satisfies Config;
 ```
@@ -1144,7 +1144,7 @@ cd frontend && npm run type-check # TypeScript
 
 [[d1_databases]]
 binding = "DB"
-database_name = "multi-channel-platform-dev"
+database_name = "mcis-db"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
@@ -1407,13 +1407,13 @@ const logger = {
 ****
 ```bash
 
-wrangler d1 backup create multi-channel-platform
+wrangler d1 backup create mcis-db
 
 
-wrangler d1 backup list multi-channel-platform
+wrangler d1 backup list mcis-db
 
 # ()
-wrangler d1 backup restore multi-channel-platform <backup-id>
+wrangler d1 backup restore mcis-db <backup-id>
 ```
 
 ****
@@ -1741,7 +1741,7 @@ class GDPRDataHandler {
 #### 11.2.1
 ```toml
 # wrangler.toml
-name = "multi-channel-platform"
+name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2025-07-31"
 compatibility_flags = ["nodejs_compat"]

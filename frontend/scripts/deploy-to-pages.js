@@ -117,7 +117,7 @@ function copyConfigFiles() {
 function deployToPages() {
   section('🚀 Deploying to Cloudflare Pages');
 
-  const projectName = 'multi-channel-platform-frontend';
+  const projectName = 'mcis';
 
   log(`\n📋 Deployment Configuration:`, 'cyan');
   log(`   Project: ${projectName}`, 'blue');

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Cloudflare R2 å­˜å„²è¨­å??³æœ¬
- * å°ˆæ??ç¨±ï¼šMulti-Channel Support MVP
- * æª”æ?è·¯å?ï¼?scripts/setup-r2-storage.ts
+ * Cloudflare R2 å­˜å„²è¨­ï¿½??ï¿½æœ¬
+ * å°ˆï¿½??ï¿½ç¨±ï¼šMulti-Channel Support MVP
+ * æª”ï¿½?è·¯ï¿½?ï¿½?scripts/setup-r2-storage.ts
  */
 
 import { execSync } from 'child_process';
@@ -31,10 +31,10 @@ interface R2ConfigType {
   production: R2Environment;
 }
 
-// R2 Bucket ?ç½®
+// R2 Bucket ?ï¿½ç½®
 const R2_CONFIG: R2ConfigType = {
   development: {
-    bucketName: 'multi-channel-platform-attachments',
+    bucketName: 'mcis-files',
     corsPolicy: {
       AllowedOrigins: ['http://localhost:5173', 'http://localhost:8787', 'https://your-storage-domain.example.com'],
       AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -43,9 +43,9 @@ const R2_CONFIG: R2ConfigType = {
     }
   },
   production: {
-    bucketName: 'multi-channel-platform-attachments',
+    bucketName: 'mcis-files',
     corsPolicy: {
-      AllowedOrigins: ['https://your-api-domain.example.com', 'https://your-storage-domain.example.com'], // å¯¦é??Ÿå?
+      AllowedOrigins: ['https://your-api-domain.example.com', 'https://your-storage-domain.example.com'], // å¯¦ï¿½??ï¿½ï¿½?
       AllowedMethods: ['GET', 'POST', 'PUT', 'DELETE'],
       AllowedHeaders: ['*'],
       MaxAgeSeconds: 3600
@@ -53,49 +53,49 @@ const R2_CONFIG: R2ConfigType = {
   }
 };
 
-// æª¢æŸ¥ Cloudflare CLI ?¯å¦å·²å?è£?
+// æª¢æŸ¥ Cloudflare CLI ?ï¿½å¦å·²ï¿½?ï¿½?
 function checkCloudflareAuth(): boolean {
   try {
     execSync('wrangler whoami', { stdio: 'pipe' });
-    console.log('??Cloudflare èªè?å·²è¨­å®?);
+    console.log('??Cloudflare èªï¿½?å·²è¨­ï¿½?);
     return true;
   } catch (error) {
-    console.error('??Cloudflare èªè??ªè¨­å®šï?è«‹å??·è?: wrangler login');
+    console.error('??Cloudflare èªï¿½??ï¿½è¨­å®šï¿½?è«‹ï¿½??ï¿½ï¿½?: wrangler login');
     return false;
   }
 }
 
-// ?µå»º R2 Bucket
+// ?ï¿½å»º R2 Bucket
 function createR2Bucket(bucketName: string, environment: string = 'development'): boolean {
   try {
-    console.log(`?ª£ ?µå»º R2 Bucket: ${bucketName}`);
+    console.log(`?ï¿½ï¿½ ?ï¿½å»º R2 Bucket: ${bucketName}`);
     
-    // æª¢æŸ¥ bucket ?¯å¦å·²å???
+    // æª¢æŸ¥ bucket ?ï¿½å¦å·²ï¿½???
     try {
       execSync(`wrangler r2 bucket list | grep ${bucketName}`, { stdio: 'pipe' });
-      console.log(`?¹ï?  Bucket ${bucketName} å·²å??¨`);
+      console.log(`?ï¿½ï¿½?  Bucket ${bucketName} å·²ï¿½??ï¿½`);
       return true;
     } catch (error) {
-      // Bucket ä¸å??¨ï??µå»º?°ç?
+      // Bucket ä¸ï¿½??ï¿½ï¿½??ï¿½å»º?ï¿½ï¿½?
     }
     
-    // ?µå»º bucket
+    // ?ï¿½å»º bucket
     execSync(`wrangler r2 bucket create ${bucketName}`, { stdio: 'inherit' });
-    console.log(`??Bucket ${bucketName} ?µå»º?å?`);
+    console.log(`??Bucket ${bucketName} ?ï¿½å»º?ï¿½ï¿½?`);
     
     return true;
   } catch (error: any) {
-    console.error(`???µå»º Bucket å¤±æ?: ${error.message}`);
+    console.error(`???ï¿½å»º Bucket å¤±ï¿½?: ${error.message}`);
     return false;
   }
 }
 
-// è¨­å? CORS ?¿ç?
+// è¨­ï¿½? CORS ?ï¿½ï¿½?
 function setupCORS(bucketName: string, corsPolicy: CorsPolicy): boolean {
   try {
-    console.log(`?”§ è¨­å? ${bucketName} ??CORS ?¿ç?...`);
+    console.log(`?ï¿½ï¿½ è¨­ï¿½? ${bucketName} ??CORS ?ï¿½ï¿½?...`);
     
-    // ?µå»º?¨æ? CORS ?ç½®æª”æ?
+    // ?ï¿½å»º?ï¿½ï¿½? CORS ?ï¿½ç½®æª”ï¿½?
     const corsConfigPath = path.join(__dirname, 'temp-cors.json');
     const corsConfig = {
       CORSRules: [{
@@ -109,13 +109,13 @@ function setupCORS(bucketName: string, corsPolicy: CorsPolicy): boolean {
     fs.writeFileSync(corsConfigPath, JSON.stringify(corsConfig, null, 2));
     
     try {
-      // è¨­å? CORS
+      // è¨­ï¿½? CORS
       execSync(`wrangler r2 bucket cors put ${bucketName} --file ${corsConfigPath}`, {
         stdio: 'inherit'
       });
-      console.log(`??${bucketName} CORS è¨­å?å®Œæ?`);
+      console.log(`??${bucketName} CORS è¨­ï¿½?å®Œï¿½?`);
     } finally {
-      // æ¸…ç??¨æ?æª”æ?
+      // æ¸…ï¿½??ï¿½ï¿½?æª”ï¿½?
       if (fs.existsSync(corsConfigPath)) {
         fs.unlinkSync(corsConfigPath);
       }
@@ -123,114 +123,114 @@ function setupCORS(bucketName: string, corsPolicy: CorsPolicy): boolean {
     
     return true;
   } catch (error: any) {
-    console.error(`??CORS è¨­å?å¤±æ?: ${error.message}`);
+    console.error(`??CORS è¨­ï¿½?å¤±ï¿½?: ${error.message}`);
     return false;
   }
 }
 
-// æ¸¬è©¦ R2 å­˜å?
+// æ¸¬è©¦ R2 å­˜ï¿½?
 function testR2Access(bucketName: string): boolean {
   try {
-    console.log(`?§ª æ¸¬è©¦ ${bucketName} å­˜å?æ¬Šé?...`);
+    console.log(`?ï¿½ï¿½ æ¸¬è©¦ ${bucketName} å­˜ï¿½?æ¬Šï¿½?...`);
     
-    // ?µå»ºæ¸¬è©¦æª”æ?
+    // ?ï¿½å»ºæ¸¬è©¦æª”ï¿½?
     const testFilePath = path.join(__dirname, 'test-file.txt');
-    fs.writeFileSync(testFilePath, 'R2 å­˜å?æ¸¬è©¦æª”æ?');
+    fs.writeFileSync(testFilePath, 'R2 å­˜ï¿½?æ¸¬è©¦æª”ï¿½?');
     
     try {
-      // ä¸Šå‚³æ¸¬è©¦æª”æ?
+      // ä¸Šå‚³æ¸¬è©¦æª”ï¿½?
       execSync(`wrangler r2 object put ${bucketName}/test/test-file.txt --file ${testFilePath}`, {
         stdio: 'pipe'
       });
       
-      // ?—å‡ºæª”æ?
+      // ?ï¿½å‡ºæª”ï¿½?
       execSync(`wrangler r2 object list ${bucketName} --prefix test/`, {
         stdio: 'inherit'
       });
       
-      // ?ªé™¤æ¸¬è©¦æª”æ?
+      // ?ï¿½é™¤æ¸¬è©¦æª”ï¿½?
       execSync(`wrangler r2 object delete ${bucketName}/test/test-file.txt`, {
         stdio: 'pipe'
       });
       
-      console.log(`??${bucketName} å­˜å?æ¸¬è©¦?šé?`);
+      console.log(`??${bucketName} å­˜ï¿½?æ¸¬è©¦?ï¿½ï¿½?`);
       return true;
     } finally {
-      // æ¸…ç??¬åœ°æ¸¬è©¦æª”æ?
+      // æ¸…ï¿½??ï¿½åœ°æ¸¬è©¦æª”ï¿½?
       if (fs.existsSync(testFilePath)) {
         fs.unlinkSync(testFilePath);
       }
     }
   } catch (error: any) {
-    console.error(`??R2 å­˜å?æ¸¬è©¦å¤±æ?: ${error.message}`);
+    console.error(`??R2 å­˜ï¿½?æ¸¬è©¦å¤±ï¿½?: ${error.message}`);
     return false;
   }
 }
 
-// ?Ÿæ??°å?è®Šæ•¸?ç½®
+// ?ï¿½ï¿½??ï¿½ï¿½?è®Šæ•¸?ï¿½ç½®
 function generateEnvConfig(): void {
-  console.log('?? ?Ÿæ??°å?è®Šæ•¸?ç½®...');
+  console.log('?? ?ï¿½ï¿½??ï¿½ï¿½?è®Šæ•¸?ï¿½ç½®...');
   
   const envConfig = `
-# Cloudflare R2 ?ç½®
-# ?‹ç™¼?°å?: https://s3dev.example.com
-# ?Ÿç”¢?°å?: https://your-storage-domain.example.com
+# Cloudflare R2 ?ï¿½ç½®
+# ?ï¿½ç™¼?ï¿½ï¿½?: https://s3dev.example.com
+# ?ï¿½ç”¢?ï¿½ï¿½?: https://your-storage-domain.example.com
 R2_PUBLIC_URL=https://s3dev.example.com
 R2_ACCOUNT_ID=your-cloudflare-account-id
 
-# æª”æ?ä¸Šå‚³?ç½®
+# æª”ï¿½?ä¸Šå‚³?ï¿½ç½®
 MAX_FILE_SIZE=10485760
 ALLOWED_FILE_TYPES=image/jpeg,image/png,image/gif,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document
 `;
 
-  console.log('è«‹å?ä»¥ä??ç½®æ·»å??°æ‚¨??.env æª”æ?ä¸?');
+  console.log('è«‹ï¿½?ä»¥ï¿½??ï¿½ç½®æ·»ï¿½??ï¿½æ‚¨??.env æª”ï¿½?ï¿½?');
   console.log(envConfig);
   
-  // å¦‚æ? .env æª”æ?ä¸å??¨ï??µå»ºå®?
+  // å¦‚ï¿½? .env æª”ï¿½?ä¸ï¿½??ï¿½ï¿½??ï¿½å»ºï¿½?
   const envPath = path.join(__dirname, '..', '.env');
   if (!fs.existsSync(envPath)) {
     const envExamplePath = path.join(__dirname, '..', '.env.example');
     if (fs.existsSync(envExamplePath)) {
       fs.copyFileSync(envExamplePath, envPath);
-      console.log('??å·²å‰µå»?.env æª”æ?ï¼Œè?å¡«å…¥å¯¦é??ç½®??);
+      console.log('??å·²å‰µï¿½?.env æª”ï¿½?ï¼Œï¿½?å¡«å…¥å¯¦ï¿½??ï¿½ç½®??);
     }
   }
 }
 
 // ä¸»è¨­å®šå‡½??
 async function setupR2Storage(environment: keyof R2ConfigType = 'development'): Promise<boolean> {
-  console.log(`?? ?‹å?è¨­å? Cloudflare R2 å­˜å„² (${environment})...`);
+  console.log(`?? ?ï¿½ï¿½?è¨­ï¿½? Cloudflare R2 å­˜å„² (${environment})...`);
   
-  // æª¢æŸ¥èªè?
+  // æª¢æŸ¥èªï¿½?
   if (!checkCloudflareAuth()) {
     return false;
   }
   
   const config = R2_CONFIG[environment];
   if (!config) {
-    console.error(`??ä¸æ”¯?´ç??°å?: ${environment}`);
+    console.error(`??ä¸æ”¯?ï¿½ï¿½??ï¿½ï¿½?: ${environment}`);
     return false;
   }
   
-  // ?µå»º R2 Bucket
+  // ?ï¿½å»º R2 Bucket
   if (!createR2Bucket(config.bucketName, environment)) {
     return false;
   }
   
-  // è¨­å? CORS
+  // è¨­ï¿½? CORS
   if (!setupCORS(config.bucketName, config.corsPolicy)) {
     return false;
   }
   
-  // æ¸¬è©¦å­˜å?
+  // æ¸¬è©¦å­˜ï¿½?
   if (!testR2Access(config.bucketName)) {
     return false;
   }
   
-  // ?Ÿæ??°å?è®Šæ•¸?ç½®
+  // ?ï¿½ï¿½??ï¿½ï¿½?è®Šæ•¸?ï¿½ç½®
   generateEnvConfig();
   
-  console.log(`??Cloudflare R2 å­˜å„²è¨­å?å®Œæ? (${environment})`);
+  console.log(`??Cloudflare R2 å­˜å„²è¨­ï¿½?å®Œï¿½? (${environment})`);
   return true;
 }
 
@@ -241,16 +241,16 @@ async function main(): Promise<void> {
   
   if (args.includes('--help')) {
     console.log(`
-ä½¿ç”¨?¹æ?:
-  node setup-r2-storage.ts [?¸é?]
+ä½¿ç”¨?ï¿½ï¿½?:
+  node setup-r2-storage.ts [?ï¿½ï¿½?]
 
-?¸é?:
-  --prod     è¨­å??Ÿç”¢?°å? R2 å­˜å„²
-  --help     é¡¯ç¤ºæ­¤å¹«?©è???
+?ï¿½ï¿½?:
+  --prod     è¨­ï¿½??ï¿½ç”¢?ï¿½ï¿½? R2 å­˜å„²
+  --help     é¡¯ç¤ºæ­¤å¹«?ï¿½ï¿½???
 
-ç¯„ä?:
-  node setup-r2-storage.ts          # è¨­å??‹ç™¼?°å?
-  node setup-r2-storage.ts --prod   # è¨­å??Ÿç”¢?°å?
+ç¯„ï¿½?:
+  node setup-r2-storage.ts          # è¨­ï¿½??ï¿½ç™¼?ï¿½ï¿½?
+  node setup-r2-storage.ts --prod   # è¨­ï¿½??ï¿½ç”¢?ï¿½ï¿½?
     `);
     return;
   }
@@ -258,7 +258,7 @@ async function main(): Promise<void> {
   await setupR2Storage(environment);
 }
 
-// ?·è??³æœ¬
+// ?ï¿½ï¿½??ï¿½æœ¬
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }

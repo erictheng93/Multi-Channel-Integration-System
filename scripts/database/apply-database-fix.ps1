@@ -5,23 +5,23 @@ Write-Host "🔧 正在應用數據庫修復..." -ForegroundColor Yellow
 
 # 1. 為 customers 表添加 profile_updated_at 字段
 Write-Host "📝 添加 profile_updated_at 字段到 customers 表..."
-npx wrangler d1 execute multi-channel-platform --command="ALTER TABLE customers ADD COLUMN profile_updated_at TEXT DEFAULT (datetime('now'));"
+npx wrangler d1 execute mcis-db --command="ALTER TABLE customers ADD COLUMN profile_updated_at TEXT DEFAULT (datetime('now'));"
 
 # 2. 檢查 conversations 表狀態
 Write-Host "🔍 檢查 conversations 表結構..."
-npx wrangler d1 execute multi-channel-platform --command="PRAGMA table_info(conversations);"
+npx wrangler d1 execute mcis-db --command="PRAGMA table_info(conversations);"
 
 # 3. 如果需要，重新創建 conversations 表（使用 TEXT id）
 Write-Host "🗃️ 重新創建 conversations 表..."
 
 # 備份現有 conversations 數據（如果存在）
-npx wrangler d1 execute multi-channel-platform --command="CREATE TABLE IF NOT EXISTS conversations_backup AS SELECT * FROM conversations;"
+npx wrangler d1 execute mcis-db --command="CREATE TABLE IF NOT EXISTS conversations_backup AS SELECT * FROM conversations;"
 
 # 刪除舊表
-npx wrangler d1 execute multi-channel-platform --command="DROP TABLE IF EXISTS conversations;"
+npx wrangler d1 execute mcis-db --command="DROP TABLE IF EXISTS conversations;"
 
 # 創建新表
-npx wrangler d1 execute multi-channel-platform --command="CREATE TABLE conversations (
+npx wrangler d1 execute mcis-db --command="CREATE TABLE conversations (
     id TEXT PRIMARY KEY,
     customer_id INTEGER NOT NULL,
     assigned_team_id INTEGER,
@@ -34,10 +34,10 @@ npx wrangler d1 execute multi-channel-platform --command="CREATE TABLE conversat
 );"
 
 # 重新創建索引
-npx wrangler d1 execute multi-channel-platform --command="CREATE INDEX IF NOT EXISTS idx_conversations_customer ON conversations(customer_id);"
-npx wrangler d1 execute multi-channel-platform --command="CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);"
-npx wrangler d1 execute multi-channel-platform --command="CREATE INDEX IF NOT EXISTS idx_conversations_assigned_user ON conversations(assigned_user_id);"
-npx wrangler d1 execute multi-channel-platform --command="CREATE INDEX IF NOT EXISTS idx_conversations_assigned_team ON conversations(assigned_team_id);"
+npx wrangler d1 execute mcis-db --command="CREATE INDEX IF NOT EXISTS idx_conversations_customer ON conversations(customer_id);"
+npx wrangler d1 execute mcis-db --command="CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);"
+npx wrangler d1 execute mcis-db --command="CREATE INDEX IF NOT EXISTS idx_conversations_assigned_user ON conversations(assigned_user_id);"
+npx wrangler d1 execute mcis-db --command="CREATE INDEX IF NOT EXISTS idx_conversations_assigned_team ON conversations(assigned_team_id);"
 
 # 4. 部署修復後的代碼
 Write-Host "🚀 部署修復後的代碼..."

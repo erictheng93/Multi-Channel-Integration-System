@@ -294,7 +294,7 @@ export function isDebugEnabled(): boolean {
  * // => '/api/conversations' (透過 Vite Proxy 代理到後端)
  *
  * // 生產環境:
- * // => 'https://multi-channel.example.com/api/conversations'
+ * // => 'https://mcis-backend.daiwandist.com/api/conversations'
  * ```
  */
 export function getApiUrl(endpoint: string): string {
