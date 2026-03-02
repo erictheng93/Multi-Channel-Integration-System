@@ -3,6 +3,7 @@
     :show="visible"
     title="設定密碼"
     size="sm"
+    :close-on-overlay="false"
     @close="handleClose"
   >
     <!-- Form Content -->
