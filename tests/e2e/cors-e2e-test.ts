@@ -1,20 +1,20 @@
 // CORS E2E æ¸¬è©¦
-// æ¸¬è©¦çµ±ä? CORS ?ç½®?„å??´å???
+// æ¸¬è©¦çµ±ï¿½? CORS ?ï¿½ç½®?ï¿½ï¿½??ï¿½ï¿½???
 
 import { describe, it, expect, beforeAll } from 'vitest';
 
-// æ¸¬è©¦?ç½®
+// æ¸¬è©¦?ï¿½ç½®
 const BASE_URL = process.env.TEST_BASE_URL || 'https://your-api-domain.example.com';
 const ADMIN_TOKEN = process.env.TEST_ADMIN_TOKEN || '';
 
-// ?è¨±?„æ¸¬è©?origins
+// ?ï¿½è¨±?ï¿½æ¸¬ï¿½?origins
 const ALLOWED_ORIGINS = [
   'https://your-api-domain.example.com',
-  'https://multi-channel-platform-frontend.pages.dev',
+  'https://mcis-ey7.pages.dev',
   'https://your-frontend-domain.example.com',
 ];
 
-// ä¸å?è¨±ç?æ¸¬è©¦ origins
+// ä¸ï¿½?è¨±ï¿½?æ¸¬è©¦ origins
 const BLOCKED_ORIGINS = [
   'https://malicious-site.com',
   'http://suspicious-origin.example',
@@ -24,11 +24,11 @@ const BLOCKED_ORIGINS = [
 describe('CORS E2E Testing', () => {
   beforeAll(() => {
     if (!ADMIN_TOKEN) {
-      console.warn('? ï? TEST_ADMIN_TOKEN not set. Some tests will be skipped.');
+      console.warn('?ï¿½ï¿½? TEST_ADMIN_TOKEN not set. Some tests will be skipped.');
     }
   });
 
-  describe('1. ?è¨±??Origin æ¸¬è©¦', () => {
+  describe('1. ?ï¿½è¨±??Origin æ¸¬è©¦', () => {
     it('should allow requests from whitelisted origins', async () => {
       for (const origin of ALLOWED_ORIGINS) {
         const response = await fetch(`${BASE_URL}/api/system/health`, {
@@ -52,7 +52,7 @@ describe('CORS E2E Testing', () => {
     });
 
     it('should handle Cloudflare Pages preview domains', async () => {
-      const previewOrigin = 'https://abc123.multi-channel-platform-frontend.pages.dev';
+      const previewOrigin = 'https://abc123.mcis-ey7.pages.dev';
 
       const response = await fetch(`${BASE_URL}/api/system/health`, {
         method: 'GET',
@@ -73,7 +73,7 @@ describe('CORS E2E Testing', () => {
     });
   });
 
-  describe('2. è¢«æ?çµ•ç? Origin æ¸¬è©¦', () => {
+  describe('2. è¢«ï¿½?çµ•ï¿½? Origin æ¸¬è©¦', () => {
     it('should reject requests from non-whitelisted origins', async () => {
       for (const origin of BLOCKED_ORIGINS) {
         const response = await fetch(`${BASE_URL}/api/system/health`, {
@@ -83,12 +83,12 @@ describe('CORS E2E Testing', () => {
           },
         });
 
-        // è«‹æ??¬èº«?‰è©²?å?ï¼ˆHTTP ?€?‹ç¢¼ï¼‰ï?ä½†ä??‰æ? CORS headers
-        // æ³¨æ?ï¼šç€è¦½?¨æ??»æ­¢è«‹æ?ï¼Œä??¨ä¼º?å™¨ç«¯æ¸¬è©¦ä¸­è«‹æ??ƒåˆ°??
+        // è«‹ï¿½??ï¿½èº«?ï¿½è©²?ï¿½ï¿½?ï¼ˆHTTP ?ï¿½?ï¿½ç¢¼ï¼‰ï¿½?ä½†ï¿½??ï¿½ï¿½? CORS headers
+        // æ³¨ï¿½?ï¼šç€è¦½?ï¿½ï¿½??ï¿½æ­¢è«‹ï¿½?ï¼Œï¿½??ï¿½ä¼º?ï¿½å™¨ç«¯æ¸¬è©¦ä¸­è«‹ï¿½??ï¿½åˆ°??
 
         const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
 
-        // è¢«æ?çµ•ç? origin ä¸æ?è©²è??žè©² origin
+        // è¢«ï¿½?çµ•ï¿½? origin ä¸ï¿½?è©²ï¿½??ï¿½è©² origin
         expect(corsOrigin).not.toBe(origin);
 
         console.log(`??[CORS Test] Rejected origin: ${origin}`);
@@ -137,7 +137,7 @@ describe('CORS E2E Testing', () => {
         },
       });
 
-      // Blocked origin ??OPTIONS è«‹æ??‰è©²è¿”å? 403 ?–ä??…å« CORS headers
+      // Blocked origin ??OPTIONS è«‹ï¿½??ï¿½è©²è¿”ï¿½? 403 ?ï¿½ï¿½??ï¿½å« CORS headers
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
       expect(corsOrigin).not.toBe(origin);
 
@@ -145,10 +145,10 @@ describe('CORS E2E Testing', () => {
     });
   });
 
-  describe('4. Credentials ?¯æ´æ¸¬è©¦', () => {
+  describe('4. Credentials ?ï¿½æ´æ¸¬è©¦', () => {
     it('should support credentials for allowed origins', async () => {
       if (!ADMIN_TOKEN) {
-        console.log('?­ï? Skipping credentials test (no token)');
+        console.log('?ï¿½ï¿½? Skipping credentials test (no token)');
         return;
       }
 
@@ -175,11 +175,11 @@ describe('CORS E2E Testing', () => {
     });
   });
 
-  describe('5. SSE ç«¯é? CORS æ¸¬è©¦', () => {
+  describe('5. SSE ç«¯ï¿½? CORS æ¸¬è©¦', () => {
     it('should handle SSE endpoints with proper CORS', async () => {
       const origin = ALLOWED_ORIGINS[0];
 
-      // æ¸¬è©¦ SSE ç«¯é???CORS headers
+      // æ¸¬è©¦ SSE ç«¯ï¿½???CORS headers
       const response = await fetch(`${BASE_URL}/api/cors/health`, {
         method: 'GET',
         headers: {
@@ -192,7 +192,7 @@ describe('CORS E2E Testing', () => {
 
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
 
-      // SSE ç«¯é??‰è©²è¿”å??è¨±??origin ??wildcard
+      // SSE ç«¯ï¿½??ï¿½è©²è¿”ï¿½??ï¿½è¨±??origin ??wildcard
       expect(corsOrigin).toBeTruthy();
 
       console.log(`??[CORS Test] SSE endpoint CORS verified`);
@@ -211,15 +211,15 @@ describe('CORS E2E Testing', () => {
 
       expect(response.ok).toBe(true);
 
-      // SSE ?‰è©²?è¨±??Ž¥ï¼ˆå¯?½ä½¿??wildcardï¼‰ï?ä½†ä??¯æ´ credentials
+      // SSE ?ï¿½è©²?ï¿½è¨±??ï¿½ï¿½ï¼ˆå¯?ï¿½ä½¿??wildcardï¼‰ï¿½?ä½†ï¿½??ï¿½æ´ credentials
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
-      expect(corsOrigin).toBeTruthy(); // ?¯èƒ½??'*' ?–è©² origin
+      expect(corsOrigin).toBeTruthy(); // ?ï¿½èƒ½??'*' ?ï¿½è©² origin
 
       console.log(`??[CORS Test] SSE wildcard fallback verified`);
     });
   });
 
-  describe('6. CORS ??Ž§ç«¯é?æ¸¬è©¦', () => {
+  describe('6. CORS ??ï¿½ï¿½ç«¯ï¿½?æ¸¬è©¦', () => {
     it('should access CORS config endpoint without auth', async () => {
       const response = await fetch(`${BASE_URL}/api/cors/config`, {
         method: 'GET',
@@ -240,7 +240,7 @@ describe('CORS E2E Testing', () => {
 
     it('should require admin for stats endpoint', async () => {
       if (!ADMIN_TOKEN) {
-        console.log('?­ï? Skipping admin test (no token)');
+        console.log('?ï¿½ï¿½? Skipping admin test (no token)');
         return;
       }
 
@@ -266,7 +266,7 @@ describe('CORS E2E Testing', () => {
 
     it('should return rejected origins list for admin', async () => {
       if (!ADMIN_TOKEN) {
-        console.log('?­ï? Skipping admin test (no token)');
+        console.log('?ï¿½ï¿½? Skipping admin test (no token)');
         return;
       }
 
@@ -290,7 +290,7 @@ describe('CORS E2E Testing', () => {
     });
   });
 
-  describe('7. å¤šç«¯é»žä??´æ€§æ¸¬è©?, () => {
+  describe('7. å¤šç«¯é»žï¿½??ï¿½æ€§æ¸¬ï¿½?, () => {
     const endpoints = [
       '/api/system/health',
       '/api/cors/health',
@@ -318,7 +318,7 @@ describe('CORS E2E Testing', () => {
     });
   });
 
-  describe('8. ?Šç??…æ?æ¸¬è©¦', () => {
+  describe('8. ?ï¿½ï¿½??ï¿½ï¿½?æ¸¬è©¦', () => {
     it('should handle missing Origin header gracefully', async () => {
       const response = await fetch(`${BASE_URL}/api/system/health`, {
         method: 'GET',
@@ -327,7 +327,7 @@ describe('CORS E2E Testing', () => {
 
       expect(response.ok).toBe(true);
 
-      // æ²’æ? Origin header ?‚ï?ä¸æ?è©²è¨­ç½?CORS headers
+      // æ²’ï¿½? Origin header ?ï¿½ï¿½?ä¸ï¿½?è©²è¨­ï¿½?CORS headers
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
       expect(corsOrigin).toBeNull();
 
@@ -344,7 +344,7 @@ describe('CORS E2E Testing', () => {
 
       expect(response.ok).toBe(true);
 
-      // Empty Origin ?‰è©²è¢«æ?çµ?
+      // Empty Origin ?ï¿½è©²è¢«ï¿½?ï¿½?
       const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
       expect(corsOrigin).not.toBe('');
 
@@ -366,7 +366,7 @@ describe('CORS E2E Testing', () => {
           },
         });
 
-        // è«‹æ??‰è©²è¢«è??†ï?ä½?CORS ?‰è©²?’ç?
+        // è«‹ï¿½??ï¿½è©²è¢«ï¿½??ï¿½ï¿½?ï¿½?CORS ?ï¿½è©²?ï¿½ï¿½?
         expect(response.ok).toBe(true);
 
         const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
@@ -378,9 +378,9 @@ describe('CORS E2E Testing', () => {
   });
 });
 
-// ?‹è?æ¸¬è©¦?„ä¸»?½æ•¸
+// ?ï¿½ï¿½?æ¸¬è©¦?ï¿½ä¸»?ï¿½æ•¸
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log('?§ª Running CORS E2E Tests...\n');
+  console.log('?ï¿½ï¿½ Running CORS E2E Tests...\n');
   console.log(`Base URL: ${BASE_URL}`);
   console.log(`Admin Token: ${ADMIN_TOKEN ? '??Set' : '??Not set'}\n`);
 }

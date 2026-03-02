@@ -374,7 +374,7 @@ terraform output
 
 ```
 api_url = "https://multi-channel-platform.your-account-id.workers.dev"
-frontend_url = "https://multi-channel-platform-frontend.pages.dev"
+frontend_url = "https://mcis-ey7.pages.dev"
 line_webhook_url = "https://multi-channel-platform.your-account-id.workers.dev/api/webhooks/line"
 admin_email = "admin@yourcompany.com"
 database_id = "08ae6790-2494-40a8-a07a-df3920783159"

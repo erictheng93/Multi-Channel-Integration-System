@@ -8,9 +8,9 @@
 
 ### 1. Workers
 - ** Worker**: `multi-channel-platform`
-- ** Frontend**: `multi-channel-platform-frontend`
+- ** Frontend**: `mcis-ey7`
 - ~~ Worker~~: `multi-channel-platform-dev` ()
-- ~~ Frontend~~: `multi-channel-platform-frontend-dev` ()
+- ~~ Frontend~~: `mcis-ey7-dev` ()
 
 ### 2. D1
 - ****: `multi-channel-platform` (08ae6790-2494-40a8-a07a-df3920783159)
@@ -59,7 +59,7 @@
 
 ```
  Worker: multi-channel-platform
- Frontend: multi-channel-platform-frontend
+ Frontend: mcis-ey7
  D1 Database: 08ae6790-2494-40a8-a07a-df3920783159
  R2 Bucket: multi-channel-platform-attachments
  KV SESSIONS: ace3f7202e6a4dd8b98c50e9b91b2431

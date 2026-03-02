@@ -68,7 +68,7 @@
 export const ALLOWED_ORIGINS = [
  //
  'https://your-api-domain.example.com', // Backend API
- 'https://multi-channel-platform-frontend.pages.dev', // Frontend Cloudflare Pages
+ 'https://mcis-ey7.pages.dev', // Frontend Cloudflare Pages
  'https://your-frontend-domain.example.com', // MCP Frontend Domain
 
  //
@@ -91,8 +91,8 @@ export function isOriginAllowed(origin: string | undefined): boolean {
  }
 
  // Cloudflare Pages preview
- // abc123.multi-channel-platform-frontend.pages.dev
- if (origin.endsWith('.multi-channel-platform-frontend.pages.dev')) {
+ // abc123.mcis-ey7.pages.dev
+ if (origin.endsWith('.mcis-ey7.pages.dev')) {
  return true;
  }
 
@@ -320,7 +320,7 @@ Response to preflight request doesn't pass access control check
 ### 4Cloudflare Pages Preview
 
 ****
-Preview URL `abc123.multi-channel-platform-frontend.pages.dev` CORS
+Preview URL `abc123.mcis-ey7.pages.dev` CORS
 
 ****
 
@@ -328,7 +328,7 @@ Preview URL `abc123.multi-channel-platform-frontend.pages.dev` CORS
 
 ```typescript
 //
-if (origin.endsWith('.multi-channel-platform-frontend.pages.dev')) {
+if (origin.endsWith('.mcis-ey7.pages.dev')) {
  return true;
 }
 ```
@@ -427,7 +427,7 @@ if (stats.rejected / stats.total > 0.05) {
  ** pattern matching **
 ```typescript
 // Cloudflare Pages preview
-if (origin.endsWith('.multi-channel-platform-frontend.pages.dev')) {
+if (origin.endsWith('.mcis-ey7.pages.dev')) {
  return true;
 }
 ```

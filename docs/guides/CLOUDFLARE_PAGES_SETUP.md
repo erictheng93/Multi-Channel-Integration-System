@@ -22,7 +22,7 @@
 
 ```yaml
 
-Project name: multi-channel-platform-frontend
+Project name: mcis-ey7
 
 
 Production branch: main ( master)
@@ -87,7 +87,7 @@ git push origin main
 
 
 - PR URL
-- `https://abc123.multi-channel-platform-frontend.pages.dev`
+- `https://abc123.mcis-ey7.pages.dev`
 -
 
 

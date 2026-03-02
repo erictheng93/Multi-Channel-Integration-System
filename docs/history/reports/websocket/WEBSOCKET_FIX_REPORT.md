@@ -82,7 +82,7 @@ connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://
 ---
 
 
-- **URL**: https://multi-channel-platform-frontend.pages.dev
+- **URL**: https://mcis-ey7.pages.dev
 - ****: Conversation ID 3
 - ****: 2025-10-14 17:35
 
@@ -144,8 +144,8 @@ connect-src 'self' https://*.workers.dev https://cloudflareinsights.com https://
 
 - **Build Version**: Latest (2025-10-14)
 - **Deployment ID**: f800d3ee
-- **Deployment URL**: https://f800d3ee.multi-channel-platform-frontend.pages.dev
-- **Production URL**: https://multi-channel-platform-frontend.pages.dev
+- **Deployment URL**: https://f800d3ee.mcis-ey7.pages.dev
+- **Production URL**: https://mcis-ey7.pages.dev
 
 
 1. `frontend/src/services/websocketClient.ts` - WebSocket

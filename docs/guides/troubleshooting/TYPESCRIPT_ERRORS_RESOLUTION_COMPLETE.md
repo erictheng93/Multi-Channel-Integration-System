@@ -213,13 +213,13 @@ $ npm run build
 $ npx wrangler pages deploy dist
 
 
-URL: https://4982ccf5.multi-channel-platform-frontend.pages.dev
+URL: https://4982ccf5.mcis-ey7.pages.dev
 : 36
 ```
 
 
 ```bash
-$ curl -s https://4982ccf5.multi-channel-platform-frontend.pages.dev
+$ curl -s https://4982ccf5.mcis-ey7.pages.dev
 
 
 - Vue

@@ -196,7 +196,7 @@ npm run build:pages
 
 ```bash
 # Wrangler Pages
-wrangler pages deploy frontend/dist --project-name=multi-channel-platform-frontend
+wrangler pages deploy frontend/dist --project-name=mcis-ey7
 
 # PowerShell
 .\deploy-frontend.ps1 production
@@ -222,7 +222,7 @@ cd frontend && npm run dev
 
 
 cd frontend && npm run build:pages
-wrangler pages deploy dist --project-name=multi-channel-platform-frontend
+wrangler pages deploy dist --project-name=mcis-ey7
 ```
 
 #### 6.3

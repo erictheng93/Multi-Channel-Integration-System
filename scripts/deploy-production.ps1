@@ -174,7 +174,7 @@ Write-Host ""
 Write-Host "Step 4: Deploying frontend to Cloudflare Pages" -ForegroundColor Cyan
 Write-Host "=" * 50
 
-$projectName = "multi-channel-platform-frontend"
+$projectName = "mcis-ey7"
 
 # Check if build files exist
 if (-not (Test-Path "frontend/dist")) {

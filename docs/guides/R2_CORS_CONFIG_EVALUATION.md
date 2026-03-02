@@ -141,7 +141,7 @@ Access-Control-Max-Age: 3600 ??
     "AllowedOrigins": [
       "https://your-frontend-domain.example.com",
       "https://your-api-domain.example.com",
-      "https://multi-channel-platform-frontend.pages.dev",
+      "https://mcis-ey7.pages.dev",
       "http://localhost:3000",
       "http://localhost:3001",
       "http://127.0.0.1:3000"
