@@ -153,7 +153,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 ****
 ```bash
 
-wrangler tail multi-channel-platform --format=pretty
+wrangler tail mcis-worker --format=pretty
 
 # Durable Objects
 curl -H "Authorization: Bearer $TOKEN" \
@@ -261,7 +261,7 @@ const CONFIG = {
 3. ****
  ```bash
  #
- wrangler tail multi-channel-platform
+ wrangler tail mcis-worker
 
  #
  curl https://your-api-domain.example.com/api/websocket/health

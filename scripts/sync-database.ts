@@ -38,7 +38,7 @@ const DEFAULT_CONFIG: SyncConfig = {
 
 class DatabaseSyncTool {
   private config: SyncConfig;
-  private dbName = 'multi-channel-platform';
+  private dbName = 'mcis-db';
 
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };

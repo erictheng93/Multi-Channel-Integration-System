@@ -318,7 +318,7 @@ Response:
         ↓
 Workers & Pages
         ↓
-選擇 Worker: multi-channel-platform
+選擇 Worker: mcis-worker
         ↓
 點擊 "Logs" 標籤
         ↓

@@ -76,7 +76,7 @@ export class SystemService implements SystemServiceInterface {
           },
           r2: {
             status: 'available',
-            bucket: 'multi-channel-platform-attachments'
+            bucket: 'mcis-files'
           },
           queue: {
             status: 'available',

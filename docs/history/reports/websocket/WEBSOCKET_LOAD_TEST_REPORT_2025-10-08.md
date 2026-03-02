@@ -186,8 +186,8 @@
 ### Cloudflare
 - **Durable Objects**: 6 bindings
 - **KV Namespaces**: SESSIONS, CACHE
-- **D1 Database**: multi-channel-platform
-- **R2 Bucket**: multi-channel-platform-attachments
+- **D1 Database**: mcis-db
+- **R2 Bucket**: mcis-files
 - **Queue**: realtime-events
 
 ---

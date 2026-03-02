@@ -97,12 +97,12 @@ wrangler --version
 ```bash
 # 解壓交付包
 cd /path/to/deployment/location
-unzip multi-channel-platform.zip
-cd multi-channel-platform
+unzip MCIS.zip
+cd Multi_Channel_Integration_System
 
 # 或從 Git repository clone
 git clone <repository-url>
-cd multi-channel-platform
+cd Multi_Channel_Integration_System
 ```
 
 ---
@@ -171,7 +171,7 @@ cp terraform.tfvars.example terraform.tfvars
 cloudflare_account_id = "your-account-id-here"
 
 # 專案名稱（建議保持預設值）
-project_name = "multi-channel-platform"
+project_name = "mcis-worker"
 
 # 部署環境
 environment = "production"
@@ -373,9 +373,9 @@ terraform output
 您會看到類似以下的輸出：
 
 ```
-api_url = "https://multi-channel-platform.your-account-id.workers.dev"
+api_url = "https://mcis-backend.daiwandist.com"
 frontend_url = "https://mcis-ey7.pages.dev"
-line_webhook_url = "https://multi-channel-platform.your-account-id.workers.dev/api/webhooks/line"
+line_webhook_url = "https://mcis-backend.daiwandist.com/api/webhooks/line"
 admin_email = "admin@yourcompany.com"
 database_id = "08ae6790-2494-40a8-a07a-df3920783159"
 ```

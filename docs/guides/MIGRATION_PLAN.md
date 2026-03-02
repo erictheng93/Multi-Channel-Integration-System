@@ -1,7 +1,7 @@
-# multi-channel-platform MVP
+# MCIS MVP
 
 
- myOmni MVP multi-channel-platform Cloudflare MVP
+ myOmni MVP MCIS Cloudflare MVP
 
 ## MVP
 
@@ -47,7 +47,7 @@
 -
 
 
-| | myOmni | multi-channel-platform | Cloudflare |
+| | myOmni | MCIS | Cloudflare |
 |------|--------|-------------|----------------|
 | | Go | TypeScript | Workers |
 | | Docker/K8s | Serverless | Workers |
@@ -222,7 +222,7 @@
 ### Workers
 ```javascript
 // wrangler.toml
-name = "multi-channel-platform"
+name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 

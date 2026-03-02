@@ -76,7 +76,7 @@ export class PresignedUrlService {
 
   constructor(private env: Bindings) {
     this.db = drizzle(env.DB);
-    this.bucketName = env.R2_BUCKET_NAME || 'multi-channel-platform-attachments';
+    this.bucketName = env.R2_BUCKET_NAME || 'mcis-files';
     this.publicUrl = env.R2_PUBLIC_URL || '';
 
     // 檢查是否配置了 S3 API credentials

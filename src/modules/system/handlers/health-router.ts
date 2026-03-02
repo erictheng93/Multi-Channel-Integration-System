@@ -28,7 +28,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
-    service: 'multi-channel-support-system',
+    service: 'mcis',
     timestamp: nowISO(),
     version: '1.0.0',
     environment: c.env.ENVIRONMENT || 'development'
@@ -136,7 +136,7 @@ app.get('/metrics', jwtAuth, async (c) => {
     const metrics = `
 # HELP system_health_status Overall system health status (1=healthy, 0.5=warning, 0=critical)
 # TYPE system_health_status gauge
-system_health_status{service="multi-channel-support"} ${healthData.overall?.status === 'healthy' ? 1 : healthData.overall?.status === 'warning' ? 0.5 : 0}
+system_health_status{service="mcis"} ${healthData.overall?.status === 'healthy' ? 1 : healthData.overall?.status === 'warning' ? 0.5 : 0}
 
 # HELP component_health_status Component health status
 # TYPE component_health_status gauge
@@ -146,11 +146,11 @@ ${healthData.components?.map((component: ComponentHealth) =>
 
 # HELP api_response_time_ms API response time in milliseconds
 # TYPE api_response_time_ms gauge
-api_response_time_ms{service="multi-channel-support"} ${healthData.performance?.apiResponseTime || 0}
+api_response_time_ms{service="mcis"} ${healthData.performance?.apiResponseTime || 0}
 
 # HELP cache_hit_rate Cache hit rate percentage
 # TYPE cache_hit_rate gauge
-cache_hit_rate{service="multi-channel-support"} ${healthData.performance?.cacheHitRate || 0}
+cache_hit_rate{service="mcis"} ${healthData.performance?.cacheHitRate || 0}
     `.trim();
 
     return c.text(metrics, 200, {

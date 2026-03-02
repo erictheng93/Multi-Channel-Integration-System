@@ -1,55 +1,55 @@
-# R2 Bucket CORS ?ç½®å®Œæ•´?‡å?
+# R2 Bucket CORS ?ï¿½ç½®å®Œæ•´?ï¿½ï¿½?
 
-## ?? ?®é?
-1. [?é?è¨ºæ–·](#?é?è¨ºæ–·)
-2. [è§?±º?¹æ?ç¸½è¦½](#è§?±º?¹æ?ç¸½è¦½)
-3. [?¹æ? 1: Cloudflare Dashboard ?ç½®ï¼ˆæ¨?¦ï?](#?¹æ?-1-cloudflare-dashboard-?ç½®?¨è–¦)
-4. [?¹æ? 2: ä½¿ç”¨ Wrangler CLI](#?¹æ?-2-ä½¿ç”¨-wrangler-cli)
-5. [?¹æ? 3: ?é? Worker è¨­ç½® CORS Headers](#?¹æ?-3-?é?-worker-è¨­ç½®-cors-headers)
-6. [é©—è??‡æ¸¬è©¦](#é©—è??‡æ¸¬è©?
-7. [?…é??’é™¤](#?…é??’é™¤)
+## ?? ?ï¿½ï¿½?
+1. [?ï¿½ï¿½?è¨ºæ–·](#?ï¿½ï¿½?è¨ºæ–·)
+2. [ï¿½?ï¿½ï¿½?ï¿½ï¿½?ç¸½è¦½](#ï¿½?ï¿½ï¿½?ï¿½ï¿½?ç¸½è¦½)
+3. [?ï¿½ï¿½? 1: Cloudflare Dashboard ?ï¿½ç½®ï¼ˆæ¨?ï¿½ï¿½?](#?ï¿½ï¿½?-1-cloudflare-dashboard-?ï¿½ç½®?ï¿½è–¦)
+4. [?ï¿½ï¿½? 2: ä½¿ç”¨ Wrangler CLI](#?ï¿½ï¿½?-2-ä½¿ç”¨-wrangler-cli)
+5. [?ï¿½ï¿½? 3: ?ï¿½ï¿½? Worker è¨­ç½® CORS Headers](#?ï¿½ï¿½?-3-?ï¿½ï¿½?-worker-è¨­ç½®-cors-headers)
+6. [é©—ï¿½??ï¿½æ¸¬è©¦](#é©—ï¿½??ï¿½æ¸¬ï¿½?
+7. [?ï¿½ï¿½??ï¿½é™¤](#?ï¿½ï¿½??ï¿½é™¤)
 
 ---
 
-## ?é?è¨ºæ–·
+## ?ï¿½ï¿½?è¨ºæ–·
 
-### ?¶å??€æ³?
-- **Bucket Name:** `multi-channel-platform-attachments`
+### ?ï¿½ï¿½??ï¿½ï¿½?
+- **Bucket Name:** `mcis-files`
 - **Public URL:** `https://your-storage-domain.example.com`
-- **?¯èª¤:** `net::ERR_FAILED` - ?¡æ?è¼‰å…¥ QR Code ?–ç?
-- **å½±éŸ¿:** QR Code ä¸‹è??Ÿèƒ½?¡æ?ä½¿ç”¨
+- **?ï¿½èª¤:** `net::ERR_FAILED` - ?ï¿½ï¿½?è¼‰å…¥ QR Code ?ï¿½ï¿½?
+- **å½±éŸ¿:** QR Code ä¸‹ï¿½??ï¿½èƒ½?ï¿½ï¿½?ä½¿ç”¨
 
-### ?¹æœ¬?Ÿå?
-R2 bucket ç¼ºå?ä»¥ä??ç½®ï¼?
-1. ??**CORS Headers** - ?è¦½?¨è·¨?Ÿè?æ±‚è¢«?»æ­¢
-2. ??**Public Access** - ?–ç? URL ?¡æ??¬é?è¨ªå?
-3. ? ï? **Custom Domain** - ?¯èƒ½?ªæ­£ç¢ºç?å®?
-
----
-
-## è§?±º?¹æ?ç¸½è¦½
-
-```
-?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-?? ä¿®å¾©æµç?ï¼? ?‹æ­¥é©Ÿï?                                      ??
-?œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??                                                        ??
-?? Step 1: ?ç½® CORS Policy                               ??
-??   ??                                                   ??
-?? Step 2: ?Ÿç”¨ Public Access                             ??
-??   ??                                                   ??
-?? Step 3: é©—è? Custom Domain                             ??
-??                                                        ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-```
+### ?ï¿½æœ¬?ï¿½ï¿½?
+R2 bucket ç¼ºï¿½?ä»¥ï¿½??ï¿½ç½®ï¿½?
+1. ??**CORS Headers** - ?ï¿½è¦½?ï¿½è·¨?ï¿½ï¿½?æ±‚è¢«?ï¿½æ­¢
+2. ??**Public Access** - ?ï¿½ï¿½? URL ?ï¿½ï¿½??ï¿½ï¿½?è¨ªï¿½?
+3. ?ï¿½ï¿½? **Custom Domain** - ?ï¿½èƒ½?ï¿½æ­£ç¢ºï¿½?ï¿½?
 
 ---
 
-## ?¹æ? 1: Cloudflare Dashboard ?ç½®ï¼ˆæ¨?¦ï?
+## ï¿½?ï¿½ï¿½?ï¿½ï¿½?ç¸½è¦½
 
-### Step 1: ?ç½® CORS Policy
+```
+?ï¿½ï¿½??ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½??
+?? ä¿®å¾©æµï¿½?ï¿½? ?ï¿½æ­¥é©Ÿï¿½?                                      ??
+?ï¿½ï¿½??ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½??
+??                                                        ??
+?? Step 1: ?ï¿½ç½® CORS Policy                               ??
+??   ??                                                   ??
+?? Step 2: ?ï¿½ç”¨ Public Access                             ??
+??   ??                                                   ??
+?? Step 3: é©—ï¿½? Custom Domain                             ??
+??                                                        ??
+?ï¿½ï¿½??ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½?ï¿½??
+```
 
-1. **?»å…¥ Cloudflare Dashboard**
+---
+
+## ?ï¿½ï¿½? 1: Cloudflare Dashboard ?ï¿½ç½®ï¼ˆæ¨?ï¿½ï¿½?
+
+### Step 1: ?ï¿½ç½® CORS Policy
+
+1. **?ï¿½å…¥ Cloudflare Dashboard**
    ```
    https://dash.cloudflare.com/
    ```
@@ -59,17 +59,17 @@ R2 bucket ç¼ºå?ä»¥ä??ç½®ï¼?
    Home ??R2 Object Storage ??Buckets
    ```
 
-3. **?¸æ?ä½ ç? Bucket**
+3. **?ï¿½ï¿½?ä½ ï¿½? Bucket**
    ```
-   multi-channel-platform-attachments
+   mcis-files
    ```
 
-4. **?ç½® CORS**
-   - é»æ? **Settings** æ¨™ç±¤
-   - ?¾åˆ° **CORS Policy** ?¨å?
-   - é»æ? **Add CORS Policy** ??**Edit**
+4. **?ï¿½ç½® CORS**
+   - é»ï¿½? **Settings** æ¨™ç±¤
+   - ?ï¿½åˆ° **CORS Policy** ?ï¿½ï¿½?
+   - é»ï¿½? **Add CORS Policy** ??**Edit**
 
-5. **æ·»å?ä»¥ä? CORS è¦å?**
+5. **æ·»ï¿½?ä»¥ï¿½? CORS è¦ï¿½?**
 
    ```json
    [
@@ -96,60 +96,60 @@ R2 bucket ç¼ºå?ä»¥ä??ç½®ï¼?
    ]
    ```
 
-   **èªªæ?:**
-   - `AllowedOrigins`: ?è¨±?„ä?æºå???
-   - `AllowedMethods`: ?è¨± GET ??HEAD è«‹æ?
-   - `AllowedHeaders`: ?è¨±?€?‰è?æ±‚é ­
-   - `ExposeHeaders`: ?´éœ²?„éŸ¿?‰é ­
-   - `MaxAgeSeconds`: CORS ?æª¢çµæ?å¿«å??‚é?ï¼?å°æ?ï¼?
+   **èªªï¿½?:**
+   - `AllowedOrigins`: ?ï¿½è¨±?ï¿½ï¿½?æºï¿½???
+   - `AllowedMethods`: ?ï¿½è¨± GET ??HEAD è«‹ï¿½?
+   - `AllowedHeaders`: ?ï¿½è¨±?ï¿½?ï¿½ï¿½?æ±‚é ­
+   - `ExposeHeaders`: ?ï¿½éœ²?ï¿½éŸ¿?ï¿½é ­
+   - `MaxAgeSeconds`: CORS ?ï¿½æª¢çµï¿½?å¿«ï¿½??ï¿½ï¿½?ï¿½?å°ï¿½?ï¿½?
 
-6. **ä¿å??ç½®**
+6. **ä¿ï¿½??ï¿½ç½®**
 
 ---
 
-### Step 2: ?Ÿç”¨ Public Access
+### Step 2: ?ï¿½ç”¨ Public Access
 
-1. **?¨å?ä¸€??Bucket Settings ?é¢**
-   - ?¾åˆ° **Public Access** ?¨å?
+1. **?ï¿½ï¿½?ä¸€??Bucket Settings ?ï¿½é¢**
+   - ?ï¿½åˆ° **Public Access** ?ï¿½ï¿½?
 
-2. **?¸æ? Public Access ?¸é?**
+2. **?ï¿½ï¿½? Public Access ?ï¿½ï¿½?**
 
-   **?¸é? A: å®Œå…¨?¬é? Bucketï¼ˆæ?ç°¡å–®ï¼?*
+   **?ï¿½ï¿½? A: å®Œå…¨?ï¿½ï¿½? Bucketï¼ˆï¿½?ç°¡å–®ï¿½?*
    ```
-   ?‘ï? Allow public access to all objects
+   ?ï¿½ï¿½? Allow public access to all objects
    ```
 
-   **?¸é? B: ä½¿ç”¨ Custom Domainï¼ˆæ¨?¦ï?**
+   **?ï¿½ï¿½? B: ä½¿ç”¨ Custom Domainï¼ˆæ¨?ï¿½ï¿½?**
    ```
-   1. é»æ? "Connect Custom Domain"
+   1. é»ï¿½? "Connect Custom Domain"
    2. è¼¸å…¥: your-storage-domain.example.com
-   3. Cloudflare ?ƒè‡ª?•é?ç½?DNS è¨˜é?
-   4. ç­‰å? DNS ?³æ’­ï¼ˆé€šå¸¸ 1-5 ?†é?ï¼?
+   3. Cloudflare ?ï¿½è‡ª?ï¿½ï¿½?ï¿½?DNS è¨˜ï¿½?
+   4. ç­‰ï¿½? DNS ?ï¿½æ’­ï¼ˆé€šå¸¸ 1-5 ?ï¿½ï¿½?ï¿½?
    ```
 
-3. **ä¿å??ç½®**
+3. **ä¿ï¿½??ï¿½ç½®**
 
 ---
 
-### Step 3: é©—è? Custom Domain
+### Step 3: é©—ï¿½? Custom Domain
 
-1. **æª¢æŸ¥ DNS è¨˜é?**
+1. **æª¢æŸ¥ DNS è¨˜ï¿½?**
    ```bash
    nslookup your-storage-domain.example.com
    ```
 
-   **?æ?è¼¸å‡º:**
+   **?ï¿½ï¿½?è¼¸å‡º:**
    ```
    Name:    your-storage-domain.example.com
    Address: <Cloudflare R2 IP>
    ```
 
-2. **æ¸¬è©¦?Ÿå?è§??**
+2. **æ¸¬è©¦?ï¿½ï¿½?ï¿½??**
    ```bash
    curl -I https://your-storage-domain.example.com
    ```
 
-   **?æ?è¼¸å‡º:**
+   **?ï¿½ï¿½?è¼¸å‡º:**
    ```
    HTTP/2 200
    access-control-allow-origin: *
@@ -158,11 +158,11 @@ R2 bucket ç¼ºå?ä»¥ä??ç½®ï¼?
 
 ---
 
-## ?¹æ? 2: ä½¿ç”¨ Wrangler CLI
+## ?ï¿½ï¿½? 2: ä½¿ç”¨ Wrangler CLI
 
-### Step 1: ?µå»º CORS ?ç½®?‡ä»¶
+### Step 1: ?ï¿½å»º CORS ?ï¿½ç½®?ï¿½ä»¶
 
-?µå»º?‡ä»¶: `r2-cors-config.json`
+?ï¿½å»º?ï¿½ä»¶: `r2-cors-config.json`
 
 ```json
 {
@@ -193,44 +193,44 @@ R2 bucket ç¼ºå?ä»¥ä??ç½®ï¼?
 
 ### Step 2: ä½¿ç”¨ Wrangler è¨­ç½® CORS
 
-**? ï? æ³¨æ?:** Wrangler CLI ?®å?**ä¸ç›´?¥æ”¯??* CORS ?ç½®?½ä»¤??
-ä½ é?è¦ä½¿??**Cloudflare API** ??**Dashboard**??
+**?ï¿½ï¿½? æ³¨ï¿½?:** Wrangler CLI ?ï¿½ï¿½?**ä¸ç›´?ï¿½æ”¯??* CORS ?ï¿½ç½®?ï¿½ä»¤??
+ä½ ï¿½?è¦ä½¿??**Cloudflare API** ??**Dashboard**??
 
-å¦‚æ?è¦ä½¿??APIï¼Œè??ƒè€ƒä?ä¸€æ­¥ã€?
+å¦‚ï¿½?è¦ä½¿??APIï¼Œï¿½??ï¿½è€ƒï¿½?ä¸€æ­¥ï¿½?
 
 ---
 
 ### Step 3: ä½¿ç”¨ Cloudflare API è¨­ç½® CORS
 
 ```bash
-# ?²å? Cloudflare Account ID
+# ?ï¿½ï¿½? Cloudflare Account ID
 wrangler whoami
 
-# ä½¿ç”¨ API è¨­ç½® CORSï¼ˆé?è¦?API Tokenï¼?
+# ä½¿ç”¨ API è¨­ç½® CORSï¼ˆï¿½?ï¿½?API Tokenï¿½?
 curl -X PUT \
-  "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/r2/buckets/multi-channel-platform-attachments/cors" \
+  "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/r2/buckets/mcis-files/cors" \
   -H "Authorization: Bearer {API_TOKEN}" \
   -H "Content-Type: application/json" \
   --data @r2-cors-config.json
 ```
 
-**?²å? API Token:**
-1. ?å?: https://dash.cloudflare.com/profile/api-tokens
-2. ?µå»º Token with **R2 Edit** æ¬Šé?
+**?ï¿½ï¿½? API Token:**
+1. ?ï¿½ï¿½?: https://dash.cloudflare.com/profile/api-tokens
+2. ?ï¿½å»º Token with **R2 Edit** æ¬Šï¿½?
 3. è¤‡è£½ Token
 
 ---
 
-## ?¹æ? 3: ?é? Worker è¨­ç½® CORS Headers
+## ?ï¿½ï¿½? 3: ?ï¿½ï¿½? Worker è¨­ç½® CORS Headers
 
-**å¦‚æ? R2 ?Ÿç? CORS ?¡æ?ä½¿ç”¨**ï¼Œå¯ä»¥åœ¨ Worker ä¸­æ·»??CORS headers??
+**å¦‚ï¿½? R2 ?ï¿½ï¿½? CORS ?ï¿½ï¿½?ä½¿ç”¨**ï¼Œå¯ä»¥åœ¨ Worker ä¸­æ·»??CORS headers??
 
-### Step 1: ä¿®æ”¹ Worker ä»?¢¼
+### Step 1: ä¿®æ”¹ Worker ï¿½?ï¿½ï¿½
 
-??`src/index.ts` ä¸­æ·»??R2 ä»??è·¯ç”±:
+??`src/index.ts` ä¸­æ·»??R2 ï¿½??è·¯ç”±:
 
 ```typescript
-// æ·»å? R2 ?¬å…±è¨ªå?è·¯ç”±ï¼ˆå¸¶ CORSï¼?
+// æ·»ï¿½? R2 ?ï¿½å…±è¨ªï¿½?è·¯ç”±ï¼ˆå¸¶ CORSï¿½?
 app.get('/r2-public/:folder/:filename', async (c) => {
   const { folder, filename } = c.req.param()
   const objectKey = `${folder}/${filename}`
@@ -260,7 +260,7 @@ app.get('/r2-public/:folder/:filename', async (c) => {
   }
 })
 
-// ?•ç? CORS ?æª¢è«‹æ?
+// ?ï¿½ï¿½? CORS ?ï¿½æª¢è«‹ï¿½?
 app.options('/r2-public/:folder/:filename', async (c) => {
   const headers = new Headers()
   headers.set('Access-Control-Allow-Origin', '*')
@@ -272,19 +272,19 @@ app.options('/r2-public/:folder/:filename', async (c) => {
 })
 ```
 
-### Step 2: ?´æ–° QR Code URL
+### Step 2: ?ï¿½æ–° QR Code URL
 
-ä¿®æ”¹ QR Code ?Ÿæ?ä»?¢¼ï¼Œä½¿??Worker è·¯ç”±?Œé??´æ¥ R2 URL:
+ä¿®æ”¹ QR Code ?ï¿½ï¿½?ï¿½?ï¿½ï¿½ï¼Œä½¿??Worker è·¯ç”±?ï¿½ï¿½??ï¿½æ¥ R2 URL:
 
 ```typescript
-// ?Šç? URL (?´æ¥ R2)
+// ?ï¿½ï¿½? URL (?ï¿½æ¥ R2)
 const oldUrl = `https://your-storage-domain.example.com/qr-codes/${filename}`
 
-// ?°ç? URL (?é? Worker)
+// ?ï¿½ï¿½? URL (?ï¿½ï¿½? Worker)
 const newUrl = `https://your-api-domain.example.com/r2-public/qr-codes/${filename}`
 ```
 
-### Step 3: ?¨ç½²?´æ–°
+### Step 3: ?ï¿½ç½²?ï¿½æ–°
 
 ```bash
 npm run deploy
@@ -292,7 +292,7 @@ npm run deploy
 
 ---
 
-## é©—è??‡æ¸¬è©?
+## é©—ï¿½??ï¿½æ¸¬ï¿½?
 
 ### Test 1: CORS Headers æª¢æŸ¥
 
@@ -301,7 +301,7 @@ curl -I -H "Origin: http://localhost:3000" \
   https://your-storage-domain.example.com/qr-codes/team-14-1767146927377.svg
 ```
 
-**?æ?è¼¸å‡º:**
+**?ï¿½ï¿½?è¼¸å‡º:**
 ```
 HTTP/2 200
 access-control-allow-origin: *
@@ -310,28 +310,28 @@ access-control-expose-headers: ETag, Content-Length, Content-Type
 ...
 ```
 
-### Test 2: ?è¦½?¨è¨ª?æ¸¬è©?
+### Test 2: ?ï¿½è¦½?ï¿½è¨ª?ï¿½æ¸¬ï¿½?
 
-?´æ¥?¨ç€è¦½?¨æ???
+?ï¿½æ¥?ï¿½ç€è¦½?ï¿½ï¿½???
 ```
 https://your-storage-domain.example.com/qr-codes/team-14-1767146927377.svg
 ```
 
-**?æ?:** ?‰è©²?½ç???SVG QR Code ?–ç?
+**?ï¿½ï¿½?:** ?ï¿½è©²?ï¿½ï¿½???SVG QR Code ?ï¿½ï¿½?
 
-### Test 3: E2E ä¸‹è?æ¸¬è©¦
+### Test 3: E2E ä¸‹ï¿½?æ¸¬è©¦
 
-1. ?å??˜é?ç®¡ç??é¢
-2. é»æ?ä»»ä??˜é???"QR ç¢? ?‰é?
-3. é»æ? "ä¸‹è? QR Code" ?‰é?
-4. **?æ?:** ?å?ä¸‹è? PNG ?‡ä»¶
+1. ?ï¿½ï¿½??ï¿½ï¿½?ç®¡ï¿½??ï¿½é¢
+2. é»ï¿½?ä»»ï¿½??ï¿½ï¿½???"QR ï¿½? ?ï¿½ï¿½?
+3. é»ï¿½? "ä¸‹ï¿½? QR Code" ?ï¿½ï¿½?
+4. **?ï¿½ï¿½?:** ?ï¿½ï¿½?ä¸‹ï¿½? PNG ?ï¿½ä»¶
 
 ### Test 4: JavaScript Console æ¸¬è©¦
 
-?¨ç€è¦½??Console ?·è?:
+?ï¿½ç€è¦½??Console ?ï¿½ï¿½?:
 
 ```javascript
-// æ¸¬è©¦ CORS ?–ç?è¼‰å…¥
+// æ¸¬è©¦ CORS ?ï¿½ï¿½?è¼‰å…¥
 const img = new Image()
 img.crossOrigin = 'anonymous'
 img.onload = () => console.log('??Image loaded successfully')
@@ -339,39 +339,39 @@ img.onerror = (e) => console.error('??Image load failed:', e)
 img.src = 'https://your-storage-domain.example.com/qr-codes/team-14-1767146927377.svg'
 ```
 
-**?æ?è¼¸å‡º:** `??Image loaded successfully`
+**?ï¿½ï¿½?è¼¸å‡º:** `??Image loaded successfully`
 
 ---
 
-## ?…é??’é™¤
+## ?ï¿½ï¿½??ï¿½é™¤
 
-### ?é? 1: CORS ?¯èª¤ä»ç„¶å­˜åœ¨
+### ?ï¿½ï¿½? 1: CORS ?ï¿½èª¤ä»ç„¶å­˜åœ¨
 
-**?‡ç?:**
+**?ï¿½ï¿½?:**
 ```
 Access to image at '...' from origin '...' has been blocked by CORS policy
 ```
 
-**è§?±º?¹æ?:**
-1. æ¸…é™¤?è¦½?¨å¿«??
-2. ç­‰å? CDN å¿«å??æ?ï¼ˆæ?å¤?1 å°æ?ï¼?
-3. æª¢æŸ¥ CORS ?ç½®ä¸­ç? `AllowedOrigins` ?¯å¦?…å«ä½ ç??Ÿå?
-4. ä½¿ç”¨ `curl` ?½ä»¤é©—è? CORS headers
+**ï¿½?ï¿½ï¿½?ï¿½ï¿½?:**
+1. æ¸…é™¤?ï¿½è¦½?ï¿½å¿«??
+2. ç­‰ï¿½? CDN å¿«ï¿½??ï¿½ï¿½?ï¼ˆï¿½?ï¿½?1 å°ï¿½?ï¿½?
+3. æª¢æŸ¥ CORS ?ï¿½ç½®ä¸­ï¿½? `AllowedOrigins` ?ï¿½å¦?ï¿½å«ä½ ï¿½??ï¿½ï¿½?
+4. ä½¿ç”¨ `curl` ?ï¿½ä»¤é©—ï¿½? CORS headers
 
-### ?é? 2: ?–ç??¡æ?è¼‰å…¥
+### ?ï¿½ï¿½? 2: ?ï¿½ï¿½??ï¿½ï¿½?è¼‰å…¥
 
-**?‡ç?:**
+**?ï¿½ï¿½?:**
 ```
 Failed to load resource: net::ERR_FAILED
 ```
 
 **æª¢æŸ¥æ¸…å–®:**
-- [ ] R2 Bucket ?¯å¦å­˜åœ¨
-- [ ] ?‡ä»¶?¯å¦å·²ä??³åˆ° R2
-- [ ] Custom Domain DNS ?¯å¦æ­?¢º?ç½®
-- [ ] Public Access ?¯å¦å·²å???
+- [ ] R2 Bucket ?ï¿½å¦å­˜åœ¨
+- [ ] ?ï¿½ä»¶?ï¿½å¦å·²ï¿½??ï¿½åˆ° R2
+- [ ] Custom Domain DNS ?ï¿½å¦ï¿½?ï¿½ï¿½?ï¿½ç½®
+- [ ] Public Access ?ï¿½å¦å·²ï¿½???
 
-**è¨ºæ–·?½ä»¤:**
+**è¨ºæ–·?ï¿½ä»¤:**
 ```bash
 # æª¢æŸ¥ bucket
 wrangler r2 bucket list
@@ -379,31 +379,31 @@ wrangler r2 bucket list
 # æª¢æŸ¥ DNS
 nslookup your-storage-domain.example.com
 
-# æ¸¬è©¦?´æ¥è¨ªå?
+# æ¸¬è©¦?ï¿½æ¥è¨ªï¿½?
 curl -I https://your-storage-domain.example.com
 ```
 
-### ?é? 3: Custom Domain ?¡æ?è¨ªå?
+### ?ï¿½ï¿½? 3: Custom Domain ?ï¿½ï¿½?è¨ªï¿½?
 
-**?‡ç?:**
-DNS è§??å¤±æ??–é€?¥è¶…æ?
+**?ï¿½ï¿½?:**
+DNS ï¿½??å¤±ï¿½??ï¿½ï¿½?ï¿½ï¿½è¶…ï¿½?
 
-**è§?±º?¹æ?:**
-1. **æª¢æŸ¥ DNS è¨˜é?**
+**ï¿½?ï¿½ï¿½?ï¿½ï¿½?:**
+1. **æª¢æŸ¥ DNS è¨˜ï¿½?**
    ```bash
    nslookup your-storage-domain.example.com
    ```
 
-2. **??Cloudflare Dashboard ?æ–°ç¶å? Custom Domain**
+2. **??Cloudflare Dashboard ?ï¿½æ–°ç¶ï¿½? Custom Domain**
    - R2 ??Bucket Settings ??Public Access
    - Remove existing custom domain
    - Add custom domain again: `your-storage-domain.example.com`
 
-3. **ç­‰å? DNS ?³æ’­**
-   - ?šå¸¸?€è¦?1-5 ?†é?
-   - ?€å¤šå¯?½é?è¦?24 å°æ?
+3. **ç­‰ï¿½? DNS ?ï¿½æ’­**
+   - ?ï¿½å¸¸?ï¿½ï¿½?1-5 ?ï¿½ï¿½?
+   - ?ï¿½å¤šå¯?ï¿½ï¿½?ï¿½?24 å°ï¿½?
 
-4. **æ¸…é™¤ DNS å¿«å?**
+4. **æ¸…é™¤ DNS å¿«ï¿½?**
    ```bash
    # Windows
    ipconfig /flushdns
@@ -412,27 +412,27 @@ DNS è§??å¤±æ??–é€?¥è¶…æ?
    sudo dscacheutil -flushcache
    ```
 
-### ?é? 4: ?¨å??‡ä»¶?¯è¨ª?ï??¨å?ä¸å¯è¨ªå?
+### ?ï¿½ï¿½? 4: ?ï¿½ï¿½??ï¿½ä»¶?ï¿½è¨ª?ï¿½ï¿½??ï¿½ï¿½?ä¸å¯è¨ªï¿½?
 
-**?‡ç?:**
-?ä? QR Code ?¯ä»¥ä¸‹è?ï¼Œæ?äº›ä?è¡?
+**?ï¿½ï¿½?:**
+?ï¿½ï¿½? QR Code ?ï¿½ä»¥ä¸‹ï¿½?ï¼Œï¿½?äº›ï¿½?ï¿½?
 
-**è§?±º?¹æ?:**
-1. **æª¢æŸ¥?‡ä»¶æ¬Šé?**
-   - ç¢ºä??€?‰æ?ä»¶éƒ½ä½¿ç”¨?¸å??„ä??³æ–¹å¼?
-   - é©—è??‡ä»¶ç¢ºå¯¦å­˜åœ¨??R2
+**ï¿½?ï¿½ï¿½?ï¿½ï¿½?:**
+1. **æª¢æŸ¥?ï¿½ä»¶æ¬Šï¿½?**
+   - ç¢ºï¿½??ï¿½?ï¿½ï¿½?ä»¶éƒ½ä½¿ç”¨?ï¿½ï¿½??ï¿½ï¿½??ï¿½æ–¹ï¿½?
+   - é©—ï¿½??ï¿½ä»¶ç¢ºå¯¦å­˜åœ¨??R2
 
-2. **æª¢æŸ¥?‡ä»¶?½å?**
-   - ?¿å??¹æ?å­—ç¬¦
-   - ä½¿ç”¨ä¸€?´ç??½å?è¦ç?
+2. **æª¢æŸ¥?ï¿½ä»¶?ï¿½ï¿½?**
+   - ?ï¿½ï¿½??ï¿½ï¿½?å­—ç¬¦
+   - ä½¿ç”¨ä¸€?ï¿½ï¿½??ï¿½ï¿½?è¦ï¿½?
 
-3. **?æ–°ä¸Šå‚³?é??‡ä»¶**
+3. **?ï¿½æ–°ä¸Šå‚³?ï¿½ï¿½??ï¿½ä»¶**
 
 ---
 
-## ?¨è–¦?ç½®ç¸½ç?
+## ?ï¿½è–¦?ï¿½ç½®ç¸½ï¿½?
 
-### ?€ä½³å¯¦è¸é?ç½?
+### ?ï¿½ä½³å¯¦è¸ï¿½?ï¿½?
 
 ```json
 {
@@ -455,32 +455,32 @@ DNS è§??å¤±æ??–é€?¥è¶…æ?
 
 ### å®‰å…¨å»ºè­°
 
-1. **?åˆ¶ AllowedOrigins**
-   - ä¸è?ä½¿ç”¨ `*`ï¼ˆå…¨?¨å?è¨±ï?
-   - ?ªå??ºé?è¦è¨ª?ç??Ÿå?
+1. **?ï¿½åˆ¶ AllowedOrigins**
+   - ä¸ï¿½?ä½¿ç”¨ `*`ï¼ˆå…¨?ï¿½ï¿½?è¨±ï¿½?
+   - ?ï¿½ï¿½??ï¿½ï¿½?è¦è¨ª?ï¿½ï¿½??ï¿½ï¿½?
 
-2. **?åˆ¶ AllowedMethods**
-   - ?ªå?è¨?`GET` ??`HEAD`
-   - ä¸è??è¨± `PUT`?`DELETE` ç­‰ä¿®?¹æ?ä½?
+2. **?ï¿½åˆ¶ AllowedMethods**
+   - ?ï¿½ï¿½?ï¿½?`GET` ??`HEAD`
+   - ä¸ï¿½??ï¿½è¨± `PUT`?ï¿½`DELETE` ç­‰ä¿®?ï¿½ï¿½?ï¿½?
 
-3. **è¨­ç½®?©ç•¶??Cache-Control**
-   - QR Code ?¯é??‹è?æºï??¯ä»¥?·æ?å¿«å?
-   - å»ºè­°: `public, max-age=31536000` (1å¹?
-
----
-
-## ä¸‹ä?æ­?
-
-å®Œæ? R2 CORS ?ç½®å¾Œï?
-
-1. ??**æ¸¬è©¦ QR Code ä¸‹è??Ÿèƒ½**
-2. ??**é©—è??€?‰å??Šç? QR Code ?½èƒ½ä¸‹è?**
-3. ??**æª¢æŸ¥?è¦½??Console ??CORS ?¯èª¤**
-4. ??**?´æ–°?‡æ?è¨˜é??ç½®**
+3. **è¨­ç½®?ï¿½ç•¶??Cache-Control**
+   - QR Code ?ï¿½ï¿½??ï¿½ï¿½?æºï¿½??ï¿½ä»¥?ï¿½ï¿½?å¿«ï¿½?
+   - å»ºè­°: `public, max-age=31536000` (1ï¿½?
 
 ---
 
-## ?ƒè€ƒè?æº?
+## ä¸‹ï¿½?ï¿½?
+
+å®Œï¿½? R2 CORS ?ï¿½ç½®å¾Œï¿½?
+
+1. ??**æ¸¬è©¦ QR Code ä¸‹ï¿½??ï¿½èƒ½**
+2. ??**é©—ï¿½??ï¿½?ï¿½ï¿½??ï¿½ï¿½? QR Code ?ï¿½èƒ½ä¸‹ï¿½?**
+3. ??**æª¢æŸ¥?ï¿½è¦½??Console ??CORS ?ï¿½èª¤**
+4. ??**?ï¿½æ–°?ï¿½ï¿½?è¨˜ï¿½??ï¿½ç½®**
+
+---
+
+## ?ï¿½è€ƒï¿½?ï¿½?
 
 - [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
 - [CORS è©³è§£](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
@@ -488,6 +488,6 @@ DNS è§??å¤±æ??–é€?¥è¶…æ?
 
 ---
 
-**?€å¾Œæ›´??** 2025-12-31
-**ä½œè€?** Claude Code Assistant
-**?ˆæœ¬:** 1.0
+**?ï¿½å¾Œæ›´??** 2025-12-31
+**ä½œï¿½?** Claude Code Assistant
+**?ï¿½æœ¬:** 1.0

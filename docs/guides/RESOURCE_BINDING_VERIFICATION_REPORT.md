@@ -1,10 +1,10 @@
 # Cloudflare
 
 
- worker "multi-channel-platform" Cloudflare
+ worker "mcis-worker" Cloudflare
 
 
-### Worker: `multi-channel-platform`
+### Worker: `mcis-worker`
 
 #### D1
 - ****: `omni-channel-platform`
@@ -52,11 +52,11 @@
  - ****: 0
  - ****: 0
 
-### Worker: `multi-channel-platform-delayed`
+### Worker: `mcis-worker-delayed`
 
 
-- **Worker **: `multi-channel-platform-delayed`
-- ****: `multi-channel-platform-delayed-prod`
+- **Worker **: `mcis-worker-delayed`
+- ****: `mcis-worker-delayed-prod`
 - **D1 **: `omni-channel-platform`
 - **KV **: SESSIONS CACHE
 - **Queues**: message-queue
@@ -118,7 +118,7 @@
 
 3. ****
  ```bash
- curl https://multi-channel-platform.example.com/api/health
+ curl https://mcis-backend.daiwandist.com/api/health
  ```
 
 
@@ -127,7 +127,7 @@
 3. ****
 
 
-- Worker : `multi-channel-platform`
+- Worker : `mcis-worker`
 - D1
 - KV ()
 - R2
@@ -138,6 +138,6 @@
 -
 
 
- Cloudflare worker "multi-channel-platform" ID ID
+ Cloudflare worker "mcis-worker" ID ID
 
 ****: - 

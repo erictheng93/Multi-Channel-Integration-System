@@ -43,7 +43,7 @@ NODE_VERSION: 18
 
 #### Production
 ```
-VITE_API_BASE_URL=https://multi-channel-platform.example.com
+VITE_API_BASE_URL=https://mcis-backend.daiwandist.com
 VITE_DEV_MODE=false
 VITE_ENABLE_DEBUG_LOGS=false
 VITE_ENABLE_PERFORMANCE_MONITORING=true
@@ -52,7 +52,7 @@ NODE_VERSION=18
 
 #### Preview
 ```
-VITE_API_BASE_URL=https://multi-channel-platform.example.com
+VITE_API_BASE_URL=https://mcis-backend.daiwandist.com
 VITE_DEV_MODE=true
 VITE_ENABLE_DEBUG_LOGS=true
 VITE_ENABLE_PERFORMANCE_MONITORING=false

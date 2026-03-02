@@ -1,8 +1,8 @@
 # 驗證 Cloudflare 資源綁定腳本
-# 檢查所有資源是否正確綁定到 multi-channel-platform worker
+# 檢查所有資源是否正確綁定到 mcis-worker
 
 Write-Host "🔍 驗證 Cloudflare 資源綁定狀況..." -ForegroundColor Cyan
-Write-Host "Worker 名稱: multi-channel-platform" -ForegroundColor Yellow
+Write-Host "Worker 名稱: mcis-worker" -ForegroundColor Yellow
 Write-Host ""
 
 # 檢查函數
@@ -50,7 +50,7 @@ Test-CloudflareResource "wrangler queues list" "Queues" "message-queue"
 
 # 5. 檢查 Workers
 Write-Host "=== Workers 檢查 ===" -ForegroundColor Magenta
-Test-CloudflareResource "wrangler list" "Workers" "multi-channel-platform"
+Test-CloudflareResource "wrangler list" "Workers" "mcis-worker"
 
 # 6. 檢查 wrangler.toml 配置
 Write-Host "=== 配置檔案檢查 ===" -ForegroundColor Magenta
@@ -60,8 +60,8 @@ if (Test-Path "wrangler.toml") {
     $config = Get-Content "wrangler.toml" -Raw
     
     # 檢查 worker 名稱
-    if ($config -match 'name\s*=\s*"multi-channel-platform"') {
-        Write-Host "✅ Worker 名稱正確: multi-channel-platform" -ForegroundColor Green
+    if ($config -match 'name\s*=\s*"mcis-worker"') {
+        Write-Host "✅ Worker 名稱正確: mcis-worker" -ForegroundColor Green
     } else {
         Write-Host "❌ Worker 名稱不正確" -ForegroundColor Red
     }
@@ -105,8 +105,8 @@ Write-Host "=== 延遲訊息 Worker 配置檢查 ===" -ForegroundColor Magenta
 if (Test-Path "wrangler-delayed-message.toml") {
     $delayedConfig = Get-Content "wrangler-delayed-message.toml" -Raw
     
-    if ($delayedConfig -match 'name\s*=\s*"multi-channel-platform-delayed"') {
-        Write-Host "✅ 延遲訊息 Worker 名稱正確: multi-channel-platform-delayed" -ForegroundColor Green
+    if ($delayedConfig -match 'name\s*=\s*"mcis-worker-delayed"') {
+        Write-Host "✅ 延遲訊息 Worker 名稱正確: mcis-worker-delayed" -ForegroundColor Green
     } else {
         Write-Host "❌ 延遲訊息 Worker 名稱不正確" -ForegroundColor Red
     }

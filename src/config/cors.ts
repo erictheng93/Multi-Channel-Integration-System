@@ -249,7 +249,7 @@ export function createCorsErrorDetails(
       ? {
           steps: [
             '1. Go to Cloudflare Dashboard (https://dash.cloudflare.com)',
-            '2. Navigate to: Workers & Pages -> multi-channel-platform -> Settings -> Variables',
+            '2. Navigate to: Workers & Pages -> mcis-worker -> Settings -> Variables',
             '3. Add environment variable: FRONTEND_URL = ' + (origin || 'https://your-frontend-domain.com'),
             '4. Add environment variable: BACKEND_URL = https://your-backend-domain.com',
             '5. Click "Save and Deploy"',

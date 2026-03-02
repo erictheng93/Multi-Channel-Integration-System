@@ -55,7 +55,7 @@ npm install -g wrangler
 
 ```bash
 git clone <your-repository-url>
-cd multi-channel-platform
+cd Multi_Channel_Integration_System
 ```
 
 ### 2:

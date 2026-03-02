@@ -161,7 +161,7 @@ Token
 
 ```bash
 # wrangler SQL
-wrangler d1 execute multi-channel-platform --remote \
+wrangler d1 execute mcis-db --remote \
  --command "INSERT INTO agents (id, email, password_hash, display_name, role, team_id)
  VALUES (
  'test-admin-001',
@@ -379,7 +379,7 @@ echo "YOUR_TOKEN" | cut -d. -f2 | base64 -d | jq
 node -e "console.log(require('bcryptjs').hashSync('new_password', 10))"
 
 # 2.
-wrangler d1 execute multi-channel-platform --remote \
+wrangler d1 execute mcis-db --remote \
  --command "UPDATE agents SET password_hash = 'YOUR_NEW_HASH' WHERE email = 'admin@dacit.net'"
 ```
 

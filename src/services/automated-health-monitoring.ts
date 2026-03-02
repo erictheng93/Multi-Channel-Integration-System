@@ -312,7 +312,7 @@ export class AutomatedHealthMonitoring {
           body: JSON.stringify({
             alert,
             details,
-            system: 'multi-channel-support'
+            system: 'mcis'
           })
         });
       }

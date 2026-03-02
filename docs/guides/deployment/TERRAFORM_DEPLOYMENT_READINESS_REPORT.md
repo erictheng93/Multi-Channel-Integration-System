@@ -363,7 +363,7 @@ resource "null_resource" "database_init" {
 ### 客戶收到的檔案
 
 ```
-multi-channel-platform/
+Multi_Channel_Integration_System/
 ├── 📂 terraform/
 │   ├── 📂 modules/
 │   │   ├── cloudflare-worker/
@@ -574,7 +574,7 @@ terraform output # 記錄部署資訊
 1. **打包交付**：
    ```bash
    # 建議排除 node_modules 和 .git
-   zip -r multi-channel-platform.zip . \
+   zip -r MCIS.zip . \
      -x "node_modules/*" \
      -x ".git/*" \
      -x "dist/*" \

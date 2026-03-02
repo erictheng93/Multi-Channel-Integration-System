@@ -13,7 +13,7 @@
 
 #### Migration 应用状态
 ```bash
-$ wrangler d1 migrations apply multi-channel-platform
+$ wrangler d1 migrations apply mcis-db
 
 ✅ 0018_add_customer_tags_indexes.sql
 ✅ 0019_add_customers_platform_indexes.sql

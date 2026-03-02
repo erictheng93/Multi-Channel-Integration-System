@@ -172,7 +172,7 @@ async function testDatabaseIndexes(): Promise<ValidationResult> {
   try {
     const { execSync } = require('child_process');
     const output = execSync(
-      'wrangler d1 execute multi-channel-platform --command "SELECT name FROM sqlite_master WHERE type=\'index\' AND name LIKE \'idx_customers_%\';"',
+      'wrangler d1 execute mcis-db --command "SELECT name FROM sqlite_master WHERE type=\'index\' AND name LIKE \'idx_customers_%\';"',
       { encoding: 'utf-8' }
     );
 

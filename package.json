@@ -1,5 +1,5 @@
 {
-  "name": "multi-channel-platform",
+  "name": "mcis-worker",
   "type": "module",
   "packageManager": "bun@1.3.9",
   "engines": {
@@ -59,7 +59,7 @@
     "sync:scheduler:test": "bunx tsx scripts/sync-scheduler.ts test-sync",
     "test:backend:ci": "bunx vitest run tests/unit/services tests/unit/utils tests/unit/modules tests/unit/integrations tests/modules --reporter=verbose --passWithNoTests",
     "db:view": "bunx tsx scripts/db-viewer.ts",
-    "db:query": "wrangler d1 execute multi-channel-platform --remote",
+    "db:query": "wrangler d1 execute mcis-db --remote",
     "db:test-config": "bunx tsx scripts/test-drizzle-config.ts",
     "test:api": "cd tests && bunx tsx run-api-tests.ts",
     "test:api:endpoints": "cd tests && bunx tsx api-endpoints-test.ts",

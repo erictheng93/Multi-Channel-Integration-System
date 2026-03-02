@@ -54,7 +54,7 @@
 - [ ] 專案檔案已解壓或 clone
 - [ ] 進入專案根目錄
   ```bash
-  cd multi-channel-platform
+  cd Multi_Channel_Integration_System
   ```
 
 ### 配置檔案

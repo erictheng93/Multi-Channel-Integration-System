@@ -32,7 +32,7 @@
 
 
 ```bash
-wrangler d1 execute multi-channel-platform --remote --file=./update-passwords-simple.sql
+wrangler d1 execute mcis-db --remote --file=./update-passwords-simple.sql
 ```
 4 7
 
@@ -66,7 +66,7 @@ wrangler d1 execute multi-channel-platform --remote --file=./update-passwords-si
 
 2. ****
  ```bash
- wrangler d1 execute multi-channel-platform --remote --file=./update-passwords-simple.sql
+ wrangler d1 execute mcis-db --remote --file=./update-passwords-simple.sql
  ```
  4
 

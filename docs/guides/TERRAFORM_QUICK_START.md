@@ -26,7 +26,7 @@
 ### 1.
 ```bash
 git clone <repository-url>
-cd multi-channel-platform
+cd Multi_Channel_Integration_System
 npm install
 ```
 

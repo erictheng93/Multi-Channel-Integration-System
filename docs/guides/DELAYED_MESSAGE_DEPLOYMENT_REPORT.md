@@ -29,7 +29,7 @@
 -
 
 ### 4. Worker
-- ****: `multi-channel-platform`
+- ****: `mcis-worker`
 - ****: 374.50 KiB / gzip: 76.03 KiB
 - ****: 22 ms
 - ****: 2025-08-12T08:36:45.898Z
@@ -102,7 +102,7 @@ preview_id = "1e78b2edf95446c38a76799cb8cf85f4"
 - ****:
 
 
-- **URL**: https://multi-channel-platform.example.com
+- **URL**: https://mcis-backend.daiwandist.com
 - ****:
 - ****:
 

@@ -1,6 +1,6 @@
 
 
- ** (Day 4-7)** multi-channel-platform MVP
+ ** (Day 4-7)** MCIS MVP
 
 
 ### 1. JWT
@@ -213,7 +213,7 @@ wrangler secret put API_KEY
 -
 
 
-** multi-channel-platform MVP **
+** MCIS MVP **
 
 
 -

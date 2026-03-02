@@ -15,11 +15,11 @@
 2. **检查数据库状态**
    ```bash
    # 确认 agent_teams 表存在
-   npx wrangler d1 execute multi-channel-platform \
+   npx wrangler d1 execute mcis-db \
      --command="SELECT name FROM sqlite_master WHERE type='table' AND name='agent_teams'"
 
    # 查看团队和成员
-   npx wrangler d1 execute multi-channel-platform \
+   npx wrangler d1 execute mcis-db \
      --command="SELECT t.id, t.name, COUNT(at.agent_id) as member_count FROM teams t LEFT JOIN agent_teams at ON t.id = at.team_id GROUP BY t.id"
    ```
 

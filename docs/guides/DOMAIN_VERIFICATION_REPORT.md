@@ -10,7 +10,7 @@
 - ****: `GET /api/system/status` - 200
  - : (D1)
  - KV: (SESSIONS, CACHE)
- - R2: (multi-channel-platform-attachments)
+ - R2: (mcis-files)
  - : (MESSAGE_QUEUE)
  - : development
 
