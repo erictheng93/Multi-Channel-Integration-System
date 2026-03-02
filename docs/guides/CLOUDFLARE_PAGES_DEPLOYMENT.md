@@ -46,7 +46,7 @@ npm install -g wrangler
 wrangler login
 
 # Pages
-wrangler pages deploy dist --project-name=multi-channel-platform-frontend
+wrangler pages deploy dist --project-name=mcis-ey7
 ```
 
 ### 3.
@@ -119,7 +119,7 @@ powershell -ExecutionPolicy Bypass -File scripts/verify-deployment-simple.ps1 -E
  Wrangler Pages Functions
 
 ```bash
-wrangler pages deployment tail --project-name=multi-channel-platform-frontend
+wrangler pages deployment tail --project-name=mcis-ey7
 ```
 
 
@@ -170,7 +170,7 @@ jobs:
  with:
  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
- projectName: multi-channel-platform-frontend
+ projectName: mcis-ey7
  directory: frontend/dist
 ```
 

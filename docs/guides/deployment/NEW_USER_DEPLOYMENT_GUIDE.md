@@ -347,7 +347,7 @@ Terraform URL
 Outputs:
 
 api_url = "https://multi-channel-platform.your-account.workers.dev"
-frontend_url = "https://multi-channel-platform-frontend.pages.dev"
+frontend_url = "https://mcis-ey7.pages.dev"
 admin_dashboard_url = "https://multi-channel-platform.your-account.workers.dev/admin-dashboard.html"
 line_webhook_url = "https://multi-channel-platform.your-account.workers.dev/api/webhooks/line"
 facebook_webhook_url = "https://multi-channel-platform.your-account.workers.dev/api/webhooks/facebook"

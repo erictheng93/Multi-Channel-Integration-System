@@ -387,7 +387,7 @@ $env:TF_VAR_admin_password = "secure-password"
 
 ### 3.
 - ** API**: https://your-api-domain.example.com
-- ****: https://multi-channel-platform-frontend.pages.dev
+- ****: https://mcis-ey7.pages.dev
 - **API **: API
 
 

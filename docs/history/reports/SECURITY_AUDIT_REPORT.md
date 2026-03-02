@@ -525,7 +525,7 @@ Good architecture with:
 ```typescript
 export const ALLOWED_ORIGINS = [
   'https://your-api-domain.example.com',
-  'https://multi-channel-platform-frontend.pages.dev',
+  'https://mcis-ey7.pages.dev',
   'https://your-frontend-domain.example.com',
   'http://localhost:3000',
   // ...
@@ -582,7 +582,7 @@ export const ALLOWED_ORIGINS =
 **File:** `src/config/cors.ts:40-42`
 
 ```typescript
-if (origin.endsWith('.multi-channel-platform-frontend.pages.dev')) {
+if (origin.endsWith('.mcis-ey7.pages.dev')) {
   return true;  // ??Allows all subdomains
 }
 ```

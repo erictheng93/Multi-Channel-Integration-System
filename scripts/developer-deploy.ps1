@@ -13,7 +13,7 @@ param(
 
 if ($Help) {
     Write-Host @"
-?”§ Developer One-Click Deployment Script
+?ï¿½ï¿½ Developer One-Click Deployment Script
 
 Usage:
   .\developer-deploy.ps1 [options]
@@ -36,7 +36,7 @@ Examples:
     exit 0
 }
 
-Write-Host "?”§ Developer Deployment Starting..." -ForegroundColor Green
+Write-Host "?ï¿½ï¿½ Developer Deployment Starting..." -ForegroundColor Green
 Write-Host "Time: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Gray
 
 # Check Cloudflare login
@@ -60,7 +60,7 @@ if (-not $Force -and -not $BackendOnly -and -not $FrontendOnly) {
 
 # Backend deployment
 if (-not $FrontendOnly) {
-    Write-Host "`n?“¦ Deploying Backend Worker..." -ForegroundColor Cyan
+    Write-Host "`n?ï¿½ï¿½ Deploying Backend Worker..." -ForegroundColor Cyan
     
     Write-Host "Deploying Worker..." -ForegroundColor Yellow
     wrangler deploy --env production
@@ -115,7 +115,7 @@ if (-not $BackendOnly) {
     
     # Deploy to Pages
     Write-Host "Deploying to Pages..." -ForegroundColor Yellow
-    wrangler pages deploy frontend/dist --project-name=multi-channel-platform-frontend
+    wrangler pages deploy frontend/dist --project-name=mcis-ey7
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Frontend deployed successfully" -ForegroundColor Green
     } else {
@@ -130,11 +130,11 @@ Write-Host "=" * 40
 
 if (-not $BackendOnly -and -not $FrontendOnly) {
     Write-Host "Backend:  https://your-api-domain.example.com" -ForegroundColor Cyan
-    Write-Host "Frontend: https://multi-channel-platform-frontend.pages.dev" -ForegroundColor Cyan
+    Write-Host "Frontend: https://mcis-ey7.pages.dev" -ForegroundColor Cyan
 } elseif ($BackendOnly) {
     Write-Host "Backend:  https://your-api-domain.example.com" -ForegroundColor Cyan
 } elseif ($FrontendOnly) {
-    Write-Host "Frontend: https://multi-channel-platform-frontend.pages.dev" -ForegroundColor Cyan
+    Write-Host "Frontend: https://mcis-ey7.pages.dev" -ForegroundColor Cyan
 }
 
 Write-Host "`n?? Deployment completed in $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Green

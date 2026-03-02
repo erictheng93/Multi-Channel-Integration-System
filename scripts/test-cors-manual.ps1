@@ -1,10 +1,10 @@
-# CORS ?ãÂ?Ê∏¨Ë©¶?≥Êú¨ (PowerShell)
-# Ê∏¨Ë©¶Áµ±‰? CORS ?çÁΩÆ?ÑÂ??¥Â???
+# CORS ?ÔøΩÔøΩ?Ê∏¨Ë©¶?ÔøΩÊú¨ (PowerShell)
+# Ê∏¨Ë©¶Áµ±ÔøΩ? CORS ?ÔøΩÁΩÆ?ÔøΩÔøΩ??ÔøΩÔøΩ???
 
 $BASE_URL = if ($env:TEST_BASE_URL) { $env:TEST_BASE_URL } else { "https://your-api-domain.example.com" }
 $TOKEN = if ($env:TEST_ADMIN_TOKEN) { $env:TEST_ADMIN_TOKEN } else { "" }
 
-Write-Host "?ß™ CORS E2E Manual Testing" -ForegroundColor Cyan
+Write-Host "?ÔøΩÔøΩ CORS E2E Manual Testing" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host "Base URL: $BASE_URL"
 Write-Host ""
@@ -53,15 +53,15 @@ Run-Test "Allowed origin (main domain)" {
 
 # Test 2: Cloudflare Pages domain
 Run-Test "Allowed origin (Cloudflare Pages)" {
-    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://multi-channel-platform-frontend.pages.dev"} -UseBasicParsing
+    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://mcis-ey7.pages.dev"} -UseBasicParsing
     $response.Headers["Access-Control-Allow-Origin"]
-} "https://multi-channel-platform-frontend.pages.dev"
+} "https://mcis-ey7.pages.dev"
 
 # Test 3: Preview domain
 Run-Test "Preview domain (*.pages.dev)" {
-    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://abc123.multi-channel-platform-frontend.pages.dev"} -UseBasicParsing
+    $response = Invoke-WebRequest -Uri "$BASE_URL/api/system/health" -Headers @{"Origin" = "https://abc123.mcis-ey7.pages.dev"} -UseBasicParsing
     $response.Headers["Access-Control-Allow-Origin"]
-} "https://abc123.multi-channel-platform-frontend.pages.dev"
+} "https://abc123.mcis-ey7.pages.dev"
 
 Write-Host ""
 Write-Host "2Ô∏è‚É£  Testing Blocked Origins" -ForegroundColor Cyan
@@ -157,7 +157,7 @@ if ($TOKEN) {
         $response.success
     } "True"
 } else {
-    Write-Host "?≠Ô?  Skipping admin tests (no token)" -ForegroundColor Yellow
+    Write-Host "?ÔøΩÔøΩ?  Skipping admin tests (no token)" -ForegroundColor Yellow
 }
 
 Write-Host ""

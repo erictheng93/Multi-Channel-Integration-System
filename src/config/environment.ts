@@ -150,7 +150,7 @@ export const PRODUCTION_CONFIG: EnvironmentConfig = {
  * ⚠️ Note: Use getAllowedOrigins(env) for dynamic CORS configuration instead
  */
 export const ALTERNATIVE_PRODUCTION_URLS = [
-  'https://multi-channel-platform-frontend.pages.dev',
+  'https://mcis-ey7.pages.dev',
   // Additional URLs should be configured via ADDITIONAL_ALLOWED_ORIGINS env var
 ] as const;
 

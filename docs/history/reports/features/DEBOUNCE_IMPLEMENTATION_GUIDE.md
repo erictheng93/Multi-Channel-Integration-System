@@ -269,20 +269,20 @@ npm run deploy:pages
 ✔ Success! Uploaded 45 files (2.34s)
 ✔ Deployment complete!
 
-https://multi-channel-platform-frontend.pages.dev
+https://mcis-ey7.pages.dev
 ```
 
 #### Step 3: 验证部署
 
 ```bash
 # 访问部署的 URL
-curl -I https://multi-channel-platform-frontend.pages.dev
+curl -I https://mcis-ey7.pages.dev
 
 # 应该返回 200 OK
 ```
 
 **手动验证:**
-1. 访问生产 URL: https://multi-channel-platform-frontend.pages.dev
+1. 访问生产 URL: https://mcis-ey7.pages.dev
 2. 登录系统
 3. 打开对话详情页面
 4. 执行上述测试步骤
