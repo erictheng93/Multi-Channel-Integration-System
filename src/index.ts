@@ -166,6 +166,7 @@ log.info('Configuration check endpoint registered (admin only)', {
   endpoint: 'GET /api/system/config-check (admin auth required)'
 });
 
+
 // 🔧 Pre-register R2 Public Proxy Endpoint (QR Code Fix)
 // This endpoint proxies R2 requests and adds CORS headers
 // WHY: R2 Custom Domains don't apply CORS settings, causing download failures
