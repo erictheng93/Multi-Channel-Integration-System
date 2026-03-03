@@ -1,9 +1,9 @@
 // src/modules/integrations/services/webhook-customer-service.ts
 // Shared customer lookup/creation logic extracted from webhook.ts (Phase 4 refactoring)
 
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { customers } from '@/db/schema';
+import { customers, customerTeamAssignments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp'
@@ -56,6 +56,27 @@ export async function findOrCreateCustomer(
       }
     } catch (profileError) {
       log.warn(`Failed to sync ${platform} user profile`, { error: profileError instanceof Error ? profileError.message : String(profileError) });
+    }
+
+    // Fallback: check customer_team_assignments for LIFF-captured name
+    if (platform === 'line' && displayName === 'LINE User') {
+      try {
+        const assignment = await drizzleDb
+          .select({ displayName: customerTeamAssignments.displayName })
+          .from(customerTeamAssignments)
+          .where(eq(customerTeamAssignments.platformUserId, platformUserId))
+          .orderBy(desc(customerTeamAssignments.assignedAt))
+          .limit(1)
+          .get();
+        if (assignment?.displayName) {
+          displayName = assignment.displayName;
+          log.info('Using LIFF-captured displayName as fallback', { platformUserId, displayName });
+        }
+      } catch (fallbackError) {
+        log.warn('Failed to query LIFF assignment for displayName fallback', {
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+        });
+      }
     }
 
     // 建立新使用者

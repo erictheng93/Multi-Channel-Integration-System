@@ -5,7 +5,7 @@
 
 import type { Bindings } from '../types';
 import { LatestMessageCache } from '../services/latest-message-cache';
-import { MESSAGE_BROADCASTER_ROUTES, CACHE_COORDINATOR_ROUTES } from '../constants/durable-objects';
+import { MESSAGE_BROADCASTER_ROUTES, CACHE_COORDINATOR_ROUTES, buildDOFetchUrl } from '../constants/durable-objects';
 import { QUEUE_LIMITS, calculateExponentialBackoff } from '../constants/limits';
 import { nowISO } from '@/utils/timestamp'
 
@@ -215,8 +215,7 @@ export class LatestMessageWorker {
       const broadcaster = broadcasterId ? this.env.MESSAGE_BROADCASTER?.get(broadcasterId) : null;
 
       if (broadcaster) {
-        // Durable Object internal communication uses relative paths
-        await broadcaster.fetch(MESSAGE_BROADCASTER_ROUTES.BROADCAST, {
+        await broadcaster.fetch(buildDOFetchUrl(MESSAGE_BROADCASTER_ROUTES.BROADCAST), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -279,8 +278,7 @@ export class LatestMessageJobQueue {
     priority: 'low' | 'normal' | 'high' = 'normal'
   ): Promise<void> {
     try {
-      // Durable Object internal communication uses relative paths
-      const response = await this.coordinator.fetch(CACHE_COORDINATOR_ROUTES.SCHEDULE, {
+      const response = await this.coordinator.fetch(buildDOFetchUrl(CACHE_COORDINATOR_ROUTES.SCHEDULE), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -306,8 +304,7 @@ export class LatestMessageJobQueue {
    */
   async invalidateCache(conversationId: string): Promise<void> {
     try {
-      // Durable Object internal communication uses relative paths
-      const response = await this.coordinator.fetch(CACHE_COORDINATOR_ROUTES.INVALIDATE, {
+      const response = await this.coordinator.fetch(buildDOFetchUrl(CACHE_COORDINATOR_ROUTES.INVALIDATE), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId })
@@ -329,8 +326,7 @@ export class LatestMessageJobQueue {
    */
   async warmupCache(limit: number = QUEUE_LIMITS.WARMUP_CONVERSATIONS): Promise<void> {
     try {
-      // Durable Object internal communication uses relative paths
-      const response = await this.coordinator.fetch(CACHE_COORDINATOR_ROUTES.WARMUP, {
+      const response = await this.coordinator.fetch(buildDOFetchUrl(CACHE_COORDINATOR_ROUTES.WARMUP), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ limit })

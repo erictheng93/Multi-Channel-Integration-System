@@ -478,7 +478,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       })(),
 
       // Task 2 (原 Step 5): customer_team_assignments 表查找（優先級最高）
-      (async (): Promise<{ source: 'assignment'; teamId: number; assignmentId: string; assignmentSource: string; assignedAt: string } | null> => {
+      (async (): Promise<{ source: 'assignment'; teamId: number; assignmentId: string; assignmentSource: string; assignedAt: string; displayName: string | null } | null> => {
         try {
           const { customerTeamAssignments } = await import('@/db/schema');
           const assignment = await drizzleDb
@@ -494,7 +494,8 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
               teamId: assignment.teamId,
               assignmentId: assignment.id,
               assignmentSource: assignment.source || 'unknown',
-              assignedAt: assignment.assignedAt || ''
+              assignedAt: assignment.assignedAt || '',
+              displayName: assignment.displayName ?? null
             };
           }
         } catch (assignmentError) {
@@ -507,6 +508,12 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     ]);
 
     const [qrTokenResult, assignmentResult] = teamFindTasks;
+
+    // Fallback: use LIFF-captured name if LINE API failed
+    if (displayName === 'LINE User' && assignmentResult?.displayName) {
+      displayName = assignmentResult.displayName;
+      log.info('LINE Follow: Using LIFF-captured displayName as fallback', { displayName });
+    }
 
     // 按優先級選擇結果：assignment > qr_token
     // 注意：已移除舊的 recent_qr fallback (qrCodes 表)，統一使用新 LIFF 系統
