@@ -70,7 +70,6 @@ export async function findOrCreateConversation(
           priority: 'normal',
           firstResponseAt: null,
           closedAt: null,
-          internalNotes: null,
           lastMessageAt: timestamp,
           createdAt: timestamp,
           updatedAt: timestamp

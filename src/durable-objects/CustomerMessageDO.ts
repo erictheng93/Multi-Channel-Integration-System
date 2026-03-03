@@ -400,8 +400,8 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
                 for (const attachment of linkedAttachments) {
                   // 🔧 FIX: Use correct field names from database schema
                   // Schema uses: fileUrl (not url), fileSize (not size)
-                  const attachmentUrl = attachment.fileUrl || attachment.url; // Fallback for legacy
-                  const attachmentSize = attachment.fileSize || attachment.size || 0;
+                  const attachmentUrl = attachment.fileUrl;
+                  const attachmentSize = attachment.fileSize || 0;
 
                   if (!attachmentUrl) {
                     console.warn(`⚠️ [CustomerMessageDO] Attachment ${attachment.id} has no URL, skipping`);

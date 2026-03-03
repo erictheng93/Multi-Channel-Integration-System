@@ -94,20 +94,6 @@ export const qrCodeScans = sqliteTable('qr_code_scans', {
   scannedAt: text('scanned_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
-// QR Code Analytics table - 分析統計
-export const qrCodeAnalytics = sqliteTable('qr_code_analytics', {
-  id: integer('id').primaryKey(),
-  qrCodeId: text('qr_code_id').notNull().references(() => qrCodes.id, { onDelete: 'cascade' }),
-  date: text('date').notNull(),
-  totalScans: integer('total_scans').default(0),
-  uniqueScans: integer('unique_scans').default(0),
-  newCustomers: integer('new_customers').default(0),
-  returningCustomers: integer('returning_customers').default(0),
-  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
-}, (table) => ({
-  qrCodeDateUnique: unique().on(table.qrCodeId, table.date),
-}));
-
 // Conversations table - 對話
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),
@@ -118,7 +104,6 @@ export const conversations = sqliteTable('conversations', {
   priority: text('priority').default('normal'), // 'low', 'normal', 'high', 'urgent'
   firstResponseAt: text('first_response_at'),
   closedAt: text('closed_at'),
-  internalNotes: text('internal_notes'),
   lastMessageAt: text('last_message_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
@@ -181,7 +166,6 @@ export const fileAttachments = sqliteTable('file_attachments', {
   fileSize: integer('file_size').notNull(),
   fileUrl: text('file_url'),
   r2Key: text('r2_key').notNull(),
-  url: text('url'),
   uploadStatus: text('upload_status').default('completed'),
   uploadedBy: text('uploaded_by'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
@@ -449,7 +433,6 @@ export const reports = sqliteTable('reports', {
   // File information
   downloadUrl: text('download_url'),
   fileSize: integer('file_size'), // bytes
-  fileHash: text('file_hash'),
 
   // Lifecycle
   downloadedCount: integer('downloaded_count').default(0),
