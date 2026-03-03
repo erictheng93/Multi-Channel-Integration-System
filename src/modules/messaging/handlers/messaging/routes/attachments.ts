@@ -66,7 +66,6 @@ attachmentRoutes.get('/:id/attachments', jwtAuth, async (c) => {
         fileSize: fileAttachments.fileSize,
         fileUrl: fileAttachments.fileUrl,
         r2Key: fileAttachments.r2Key,
-        url: fileAttachments.url,
         createdAt: fileAttachments.createdAt
       })
       .from(fileAttachments)

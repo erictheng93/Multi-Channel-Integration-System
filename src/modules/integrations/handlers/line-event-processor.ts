@@ -611,11 +611,6 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             // Note: assignedUserId removed - only team assignment is supported now
             status: 'active',
             priority: 'normal',
-            internalNotes: JSON.stringify({
-              autoAssigned: true,
-              source: 'qr_code_follow',
-              followedAt: timestamp
-            }),
             lastMessageAt: timestamp,
             createdAt: timestamp,
             updatedAt: timestamp

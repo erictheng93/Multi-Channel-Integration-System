@@ -155,8 +155,7 @@ export class FileService {
         mimeType: request.mimeType,
         fileSize: metadata.size,
         fileUrl: uploadResult.url,
-        r2Key: storageKey,
-        url: uploadResult.url
+        r2Key: storageKey
       });
 
       // 檢查是否需要產生縮圖
@@ -217,7 +216,7 @@ export class FileService {
               'read',
               options.urlExpiresIn
             )
-          : fileRecord.fileUrl || fileRecord.url;
+          : fileRecord.fileUrl;
 
         return {
           success: true,
@@ -571,7 +570,7 @@ export class FileService {
       size: record.fileSize,
       extension: record.filename.split('.').pop() || '',
       type: getFileType(record.mimeType),
-      url: record.fileUrl || record.url,
+      url: record.fileUrl,
       platform: 'system', // 需要從記錄中獲取
       metadata: {
         filename: record.filename,
