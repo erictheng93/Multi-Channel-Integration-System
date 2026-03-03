@@ -3,6 +3,7 @@
     :show="visible"
     title="新增團隊"
     size="lg"
+    :close-on-overlay="false"
     @close="handleClose"
   >
     <!-- Form Content -->
