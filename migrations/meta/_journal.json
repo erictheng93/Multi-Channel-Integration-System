@@ -4,16 +4,240 @@
   "entries": [
     {
       "idx": 0,
-      "version": "6",
+      "version": "7",
       "when": 1756276091196,
       "tag": "0000_charming_chimera",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "6",
+      "version": "7",
       "when": 1756282463943,
       "tag": "0001_perfect_klaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1756300000000,
+      "tag": "0005_change_conversation_id_to_string",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1756310000000,
+      "tag": "0006_sync_local_to_remote",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1756320000000,
+      "tag": "0008_final_schema_optimization",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1756330000000,
+      "tag": "0009_timezone_unification_asia_taipei",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1756340000000,
+      "tag": "0011_add_unique_constraint_platform_message_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1756350000000,
+      "tag": "0012_add_conversation_sessions_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1756360000000,
+      "tag": "0013_add_metrics_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1756370000000,
+      "tag": "0014_fix_conversation_session_references",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1756380000000,
+      "tag": "0015_add_reports_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1756390000000,
+      "tag": "0018_add_customer_tags_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1756400000000,
+      "tag": "0019_add_customers_platform_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1756410000000,
+      "tag": "0020_add_presigned_upload_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1756420000000,
+      "tag": "0021_create_webhook_security_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1756430000000,
+      "tag": "0022_create_cors_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1756440000000,
+      "tag": "0023_enhance_file_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1756450000000,
+      "tag": "0024_add_agents_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1756460000000,
+      "tag": "0025_fix_file_attachments_naming",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1756470000000,
+      "tag": "0026_refactor_channel_integrations_json",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1756480000000,
+      "tag": "0027_schema_optimizations",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1756490000000,
+      "tag": "0028_add_agent_teams_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1756500000000,
+      "tag": "0029_add_task_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1756510000000,
+      "tag": "0030_add_team_liff_qr_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1756520000000,
+      "tag": "0031_add_customer_team_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1756530000000,
+      "tag": "0032_add_customer_feedback",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1756540000000,
+      "tag": "0033_remove_individual_assignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1756550000000,
+      "tag": "0034_add_message_sender_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1756560000000,
+      "tag": "0035_schema_integrity_fixes",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1756570000000,
+      "tag": "0036_schema_phase2_improvements",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1756580000000,
+      "tag": "0037_fix_file_attachments_column_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1756590000000,
+      "tag": "0038_drop_agents_team_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1756600000000,
+      "tag": "0039_recreate_tables_with_fk_policies",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1756610000000,
+      "tag": "0040_repair_schema_gap",
       "breakpoints": true
     }
   ]
