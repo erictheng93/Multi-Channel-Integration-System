@@ -4,7 +4,7 @@
 
 import { eq, and, ne, desc } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { customers, conversations, teams } from '@/db/schema';
+import { customers, conversations, teams, customerTeamAssignments } from '@/db/schema';
 import type { Bindings, LineEvent, LineMediaData } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { ActivityService } from '@modules/activities';
@@ -151,6 +151,27 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         }
       } catch (profileError) {
         log.warn('Failed to sync LINE user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
+      }
+
+      // Fallback: check customer_team_assignments for LIFF-captured name
+      if (displayName === 'LINE User') {
+        try {
+          const assignment = await drizzleDb
+            .select({ displayName: customerTeamAssignments.displayName })
+            .from(customerTeamAssignments)
+            .where(eq(customerTeamAssignments.platformUserId, userId))
+            .orderBy(desc(customerTeamAssignments.assignedAt))
+            .limit(1)
+            .get();
+          if (assignment?.displayName) {
+            displayName = assignment.displayName;
+            log.info('LINE Message: Using LIFF-captured displayName as fallback', { displayName });
+          }
+        } catch (fallbackError) {
+          log.warn('Failed to query LIFF assignment for displayName fallback', {
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+          });
+        }
       }
 
       // 建立新使用者
