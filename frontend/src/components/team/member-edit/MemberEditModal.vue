@@ -2,6 +2,7 @@
   <Modal
     :show="show"
     size="lg"
+    :close-on-overlay="false"
     @close="handleClose"
   >
     <template #header>
