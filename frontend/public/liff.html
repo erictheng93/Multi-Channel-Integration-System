@@ -193,10 +193,10 @@
     </div>
   </div>
 
-  <!-- LIFF SDK -->
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <!-- LIFF SDK — data-cfasync="false" prevents Cloudflare Rocket Loader from deferring -->
+  <script data-cfasync="false" charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
-  <script>
+  <script data-cfasync="false">
     // 配置 - 从后端 API 获取
     let LIFF_ID = '';
     let API_BASE_URL = window.location.origin;

@@ -7,8 +7,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>加入團隊</title>
 
-  <!-- LIFF SDK v2 -->
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <!-- LIFF SDK v2 — data-cfasync="false" prevents Cloudflare Rocket Loader from deferring -->
+  <script data-cfasync="false" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
   <style>
     /* ========================================
@@ -514,7 +514,7 @@
     </div>
   </div>
 
-  <script>
+  <script data-cfasync="false">
     // ========================================
     // Configuration - Dynamic Loading with Fallbacks
     // ========================================
@@ -806,12 +806,21 @@
     // ========================================
     // Application Entry Point
     // ========================================
-    window.addEventListener('DOMContentLoaded', async () => {
-      console.log('DOM loaded, loading config...');
+    // Defensive pattern: handle both normal and deferred execution
+    // (Cloudflare Rocket Loader may defer scripts past DOMContentLoaded)
+    async function bootstrap() {
+      console.log('Bootstrap started, loading config...');
       await loadConfig();
       console.log('Config ready, initializing LIFF...');
       initializeLIFF();
-    });
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+      // DOMContentLoaded already fired — run immediately
+      bootstrap();
+    }
 
     // Handle LIFF errors
     window.addEventListener('error', (event) => {
