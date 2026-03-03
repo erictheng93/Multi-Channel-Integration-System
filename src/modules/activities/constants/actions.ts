@@ -45,6 +45,11 @@ export const ACTIVITY_ACTIONS = {
   CUSTOMER_UPDATE: 'customer_update',
   CUSTOMER_DELETE: 'customer_delete',
 
+  // 客戶互動 (Customer Interactions - Webhook)
+  CUSTOMER_FOLLOWED: 'customer_followed',
+  CUSTOMER_UNFOLLOWED: 'customer_unfollowed',
+  MESSAGE_RECEIVED: 'message_received',
+
   // 檔案管理 (File Management)
   FILE_UPLOAD: 'file_upload',
   FILE_DELETE: 'file_delete',
