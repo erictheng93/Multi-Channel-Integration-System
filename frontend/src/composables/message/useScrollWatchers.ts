@@ -252,6 +252,13 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
 
       emit('initialScrollComplete')
       console.log('📨 [DisplayedMessageWatch] Emitted initialScrollComplete event')
+    } else if ((oldCount === undefined || oldCount === 0) && newCount === 0) {
+      // 🔧 FIX: Zero-message initial load — emit initialScrollComplete so skeleton can hide
+      if (!isInitialScrollDone.value) {
+        console.log('📨 [DisplayedMessageWatch] Initial load with zero messages, emitting initialScrollComplete')
+        isInitialScrollDone.value = true
+        emit('initialScrollComplete')
+      }
     }
   })
 

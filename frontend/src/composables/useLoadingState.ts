@@ -57,7 +57,8 @@ export function useLoadingState(options: LoadingStateOptions): LoadingState {
       () => sseIsConnected.value,
       () => httpMessagesCount.value,
       () => shouldUseWebSocket.value && wsIsJoined.value,
-      () => isLoading.value
+      () => isLoading.value,
+      () => messagesConfirmed.value
     ],
     ([_sseConnected, messagesCount, _wsConnected, loading]) => {
       // 🔧 追蹤加載過程：當 loading = true 時，標記已經開始加載
