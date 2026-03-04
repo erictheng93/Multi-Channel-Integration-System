@@ -41,6 +41,9 @@ export interface RealtimeHandlerDeps {
   updateStatsFromConversations: () => void
 }
 
+// Delay before follow-up poll to reconcile pending conversations
+const PENDING_RECONCILIATION_DELAY = 5000
+
 export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
   const {
     conversations,
@@ -55,6 +58,34 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     updateConversationsIncrementally,
     updateStatsFromConversations
   } = deps
+
+  // Pending reconciliation timer (debounced)
+  let pendingReconciliationTimer: ReturnType<typeof setTimeout> | null = null
+
+  /**
+   * Schedule a follow-up API poll to reconcile pending conversations.
+   * Debounced: multiple calls within the delay window result in a single poll.
+   *
+   * Why this works: pollConversations() → updateConversationsIncrementally()
+   * replaces the entire conversation list with API data. Since pending conversations
+   * don't exist in the DB, they are naturally removed during the list replacement.
+   */
+  const schedulePendingReconciliation = () => {
+    if (pendingReconciliationTimer) {
+      clearTimeout(pendingReconciliationTimer)
+    }
+    pendingReconciliationTimer = setTimeout(async () => {
+      pendingReconciliationTimer = null
+      const hasPending = conversations.value.some(c =>
+        (c as LiffConversation)._liffMetadata?.isPending
+      )
+      if (hasPending) {
+        console.log('🔄 [ConversationsStore] Pending reconciliation: triggering follow-up poll (5s)')
+        await pollConversations()
+      }
+    }, PENDING_RECONCILIATION_DELAY)
+    console.log('⏱️ [ConversationsStore] Scheduled pending reconciliation in 5s')
+  }
 
   /**
    * 轮询对话数据（HTTP 备份机制）
@@ -416,6 +447,10 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                   customerName,
                   lineUserId: `${liffMetadata.lineUserId?.substring(0, 10)  }...`
                 })
+                // Schedule a follow-up API poll to reconcile this pending conversation.
+                // updateConversationsIncrementally replaces the list with API data,
+                // naturally removing pending conversations that don't exist in the DB.
+                schedulePendingReconciliation()
               }
 
               // 🆕 FIX: 同步更新 currentConversation（如果用戶正在查看這個對話）
