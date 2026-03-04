@@ -218,6 +218,9 @@ const showAssignPanel = ref(false)
 const assignPanelRef = ref<HTMLElement | null>(null)
 const assignPanelStyle = ref<Record<string, string>>({})
 
+// 🔧 防止 stale 請求覆蓋新數據的 request ID
+let tagLoadRequestId = 0
+
 // Toast notifications
 const { showSuccess, showError } = useToast()
 
@@ -235,13 +238,17 @@ const customerIdNumber = computed(() => {
   return isNaN(num) ? null : num
 })
 
-// 載入客戶標籤
+// 載入客戶標籤（帶 stale request 防護）
 const loadCustomerTags = async () => {
   if (!customerIdNumber.value) {return}
 
+  // 遞增 request ID，記錄本次請求的 ID
+  const currentRequestId = ++tagLoadRequestId
+
   try {
     const response = await getCustomerTags(customerIdNumber.value)
-    if (response.success) {
+    // 🔧 只有當這是最新的請求時才更新數據，防止 stale 回應覆蓋
+    if (response.success && currentRequestId === tagLoadRequestId) {
       customerTags.value = response.data
       selectedTagIds.value = response.data.map(t => t.id)
     }
@@ -397,16 +404,17 @@ onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-// 監聽客戶變化
-watch(() => props.conversation?.customer?.id, (newId) => {
+// 監聽客戶變化 — 切換時立即清空舊標籤，防止殘留顯示
+watch(() => props.conversation?.customer?.id, (newId, oldId) => {
+  if (newId !== oldId) {
+    // 🔧 立即清空，避免切換對話時短暫顯示上一個客戶的標籤
+    customerTags.value = []
+    selectedTagIds.value = []
+  }
   if (newId) {
     loadCustomerTags()
   }
 }, { immediate: true })
-
-onMounted(() => {
-  loadCustomerTags()
-})
 
 // Template refs (exposed to satisfy TypeScript noUnusedLocals)
 defineExpose({
