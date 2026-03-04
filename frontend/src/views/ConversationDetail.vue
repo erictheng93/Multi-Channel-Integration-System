@@ -383,14 +383,14 @@ const isEmptyStateConfirmed = ref(false)
 let emptyStateTimer: ReturnType<typeof setTimeout> | null = null
 
 watch(
-  () => displayedMessages.value.length,
-  (length) => {
+  () => ({ length: displayedMessages.value.length, loaded: hasLoadedInitially.value }),
+  ({ length, loaded }) => {
     if (emptyStateTimer) {
       clearTimeout(emptyStateTimer)
       emptyStateTimer = null
     }
 
-    if (length === 0 && hasLoadedInitially.value) {
+    if (length === 0 && loaded) {
       // 延遲 200ms 確認空狀態，給訊息同步時間
       emptyStateTimer = setTimeout(() => {
         isEmptyStateConfirmed.value = true
