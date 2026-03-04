@@ -227,10 +227,33 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       }
     }
 
+    // 🔧 Fix: 查詢 customer_team_assignments 取得 QR Code 團隊指派
+    // 解決 processLineMessage 建立對話時 assignedTeamId 永遠為 null 的 bug
+    let assignedTeamId: number | null = null;
+    try {
+      const drizzleDb = createDbClient(env.DB);
+      const assignment = await drizzleDb
+        .select({ teamId: customerTeamAssignments.teamId })
+        .from(customerTeamAssignments)
+        .where(eq(customerTeamAssignments.platformUserId, userId))
+        .orderBy(desc(customerTeamAssignments.assignedAt))
+        .limit(1)
+        .get();
+      if (assignment) {
+        assignedTeamId = assignment.teamId;
+        console.log(`🎯 [LINE Message] Found team assignment from QR code: teamId=${assignedTeamId}`);
+      }
+    } catch (assignmentError) {
+      log.warn('LINE Message: Failed to query customer_team_assignments', {
+        error: assignmentError instanceof Error ? assignmentError.message : String(assignmentError)
+      });
+    }
+
     // 查詢或建立對話
     const conversation = await findOrCreateConversation(env, user.id, 'line', {
       messageContent,
-      customerDisplayName: user.displayName || 'LINE User'
+      customerDisplayName: user.displayName || 'LINE User',
+      assignedTeamId
     });
 
     // 🚨 冪等性檢查：檢查是否已存在相同的 platformMessageId

@@ -164,13 +164,29 @@ export async function findOrCreateConversation(
       });
     }
 
+    // 🔧 Fix: 如果現有對話沒有團隊指派，但呼叫方提供了 teamId，補上指派
+    const updateFields: Record<string, any> = {
+      lastMessageAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    if (!conversation.assignedTeamId && opts?.assignedTeamId) {
+      updateFields.assignedTeamId = opts.assignedTeamId;
+      console.log(`🎯 [${platformLabel} Webhook] Backfilling team assignment on existing conversation:`, {
+        conversationId: conversation.id,
+        assignedTeamId: opts.assignedTeamId
+      });
+    }
+
     await drizzleDb
       .update(conversations)
-      .set({
-        lastMessageAt: timestamp,
-        updatedAt: timestamp
-      })
+      .set(updateFields)
       .where(eq(conversations.id, conversation.id));
+
+    // 更新本地 conversation 物件以反映最新狀態
+    if (!conversation.assignedTeamId && opts?.assignedTeamId) {
+      conversation.assignedTeamId = opts.assignedTeamId;
+    }
 
     if (platform === 'line') {
       console.log(`✅ [${platformLabel} Webhook] Existing conversation updated successfully`);
