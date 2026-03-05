@@ -1,5 +1,5 @@
 // Health check and monitoring handlers
-// healthCheck, getApiStatus, clearCache, restartSystem
+// healthCheck, getApiStatus
 
 import { Context } from 'hono'
 import type { Bindings } from '@/types'
@@ -235,52 +235,6 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
       stats,
       timestamp: nowISO()
     }, 'API status retrieved successfully')
-  } catch (error) {
-    return handleApiError(error, c)
-  }
-}
-
-// Clear cache
-export const clearCache = async (c: Context<{ Bindings: Bindings }>) => {
-  try {
-    const { type } = await c.req.json<{ type: string }>()
-
-    const cleared = []
-    let totalSize = 0
-
-    switch (type) {
-      case 'all':
-        cleared.push('conversations', 'messages', 'sessions')
-        totalSize = 1024 * 1024 * 5 // 5MB
-        break
-      case 'conversations':
-        cleared.push('conversations')
-        totalSize = 1024 * 1024 * 2 // 2MB
-        break
-      case 'messages':
-        cleared.push('messages')
-        totalSize = 1024 * 1024 * 2 // 2MB
-        break
-      case 'sessions':
-        cleared.push('sessions')
-        totalSize = 1024 * 1024 // 1MB
-        break
-    }
-
-    return successResponse(c, { cleared, totalSize }, 'Cache cleared successfully')
-  } catch (error) {
-    return handleApiError(error, c)
-  }
-}
-
-// Restart system
-export const restartSystem = async (c: Context<{ Bindings: Bindings }>) => {
-  try {
-    // In Cloudflare Workers, the system cannot be directly restarted
-    // This only logs the restart request
-    console.log('System restart requested')
-
-    return successResponse(c, null, 'System restart command sent')
   } catch (error) {
     return handleApiError(error, c)
   }

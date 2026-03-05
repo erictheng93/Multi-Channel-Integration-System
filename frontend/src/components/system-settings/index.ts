@@ -13,7 +13,6 @@ export { default as LineIntegrationForm } from './LineIntegrationForm.vue'
 export { default as FacebookIntegrationForm } from './FacebookIntegrationForm.vue'
 export { default as AdvancedSettingsForm } from './AdvancedSettingsForm.vue'
 export { default as BackupManager } from './BackupManager.vue'
-export { default as CacheManager } from './CacheManager.vue'
 
 // Sidebar navigation
 export { default as SettingsSidebar } from './SettingsSidebar.vue'
@@ -25,5 +24,5 @@ export {
   FacebookIntegrationPage,
   AdvancedSettingsPage,
   BackupPage,
-  CacheMaintenancePage
+  SystemHealthPage
 } from './pages'

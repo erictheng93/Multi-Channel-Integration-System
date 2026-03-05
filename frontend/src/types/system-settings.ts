@@ -88,11 +88,6 @@ export type IntegrationStatus = 'connected' | 'disconnected' | 'error'
 export type SettingsTab = 'general' | 'integrations' | 'advanced' | 'system'
 
 /**
- * Cache types for clearing
- */
-export type CacheType = 'all' | 'conversations' | 'messages' | 'sessions'
-
-/**
  * Message types for user feedback
  */
 export type MessageType = 'success' | 'error' | 'info'
@@ -174,15 +169,6 @@ export interface HealthCheckResult {
     queue: boolean
     integrations: boolean
   }
-  message?: string
-}
-
-/**
- * Cache clear result
- */
-export interface CacheClearResult {
-  success: boolean
-  clearedItems: number
   message?: string
 }
 
@@ -291,13 +277,6 @@ export interface SaveSettingsPayload {
  */
 export interface TestIntegrationPayload {
   platform: 'line' | 'facebook'
-}
-
-/**
- * Clear cache event payload
- */
-export interface ClearCachePayload {
-  type: CacheType
 }
 
 /**

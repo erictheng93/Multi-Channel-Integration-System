@@ -16,7 +16,6 @@ import LineIntegrationForm from '@/components/system-settings/LineIntegrationFor
 import FacebookIntegrationForm from '@/components/system-settings/FacebookIntegrationForm.vue'
 import AdvancedSettingsForm from '@/components/system-settings/AdvancedSettingsForm.vue'
 import BackupManager from '@/components/system-settings/BackupManager.vue'
-import CacheManager from '@/components/system-settings/CacheManager.vue'
 
 // Mock i18n
 vi.mock('vue-i18n', () => ({
@@ -343,51 +342,4 @@ describe('System Settings Components', () => {
     })
   })
 
-  describe('CacheManager', () => {
-    it('should render cache clear buttons', () => {
-      const wrapper = mount(CacheManager, {
-        props: {
-          processing: false
-        }
-      })
-
-      expect(wrapper.findAll('.cache-button').length).toBeGreaterThan(0)
-    })
-
-    it('should emit clear-cache event with correct type', async () => {
-      const wrapper = mount(CacheManager, {
-        props: {
-          processing: false
-        }
-      })
-
-      await wrapper.findAll('.cache-button')[0].trigger('click')
-
-      expect(wrapper.emitted('clear-cache')).toBeTruthy()
-    })
-
-    it('should emit health-check event', async () => {
-      const wrapper = mount(CacheManager, {
-        props: {
-          processing: false
-        }
-      })
-
-      await wrapper.find('.health-button').trigger('click')
-
-      expect(wrapper.emitted('health-check')).toBeTruthy()
-    })
-
-    it('should emit restart event', async () => {
-      const wrapper = mount(CacheManager, {
-        props: {
-          processing: false
-        }
-      })
-
-      await wrapper.find('.restart-button').trigger('click')
-
-      expect(wrapper.emitted('restart')).toBeTruthy()
-    })
-  })
 })

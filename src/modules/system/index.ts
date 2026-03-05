@@ -47,8 +47,6 @@ export const SYSTEM_MODULE_INFO = {
       'POST /restore/:backupId',            // 恢復備份
 
       // 維護操作
-      'POST /cache/clear',                  // 清除快取
-      'POST /restart',                      // 重啟系統
       'POST /maintenance/mode',             // 維護模式
 
       // 安全性和日誌

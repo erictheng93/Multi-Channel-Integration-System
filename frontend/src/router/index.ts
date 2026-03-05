@@ -127,10 +127,10 @@ const router = createRouter({
           meta: { requiresAuth: true, requiresAdmin: true, title: '備份管理' }
         },
         {
-          path: 'maintenance/cache',
-          name: 'SettingsMaintenanceCache',
-          component: () => import('@/components/system-settings/pages/CacheMaintenancePage.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true, title: '快取管理' }
+          path: 'maintenance/health',
+          name: 'SettingsMaintenanceHealth',
+          component: () => import('@/components/system-settings/pages/SystemHealthPage.vue'),
+          meta: { requiresAuth: true, requiresAdmin: true, title: '系統健康檢查' }
         }
       ]
     },

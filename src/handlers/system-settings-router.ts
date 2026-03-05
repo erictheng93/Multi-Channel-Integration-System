@@ -13,8 +13,6 @@ import {
   backupDatabase,
   getBackups,
   restoreDatabase,
-  clearCache,
-  restartSystem,
   healthCheck,
   getApiStatus
 } from '@modules/system/handlers/system-legacy';
@@ -30,8 +28,6 @@ router.get('/metrics', jwtAuth, getMetrics);
 router.post('/database/backup', jwtAuth, backupDatabase);
 router.get('/database/backups', jwtAuth, getBackups);
 router.post('/database/restore/:backupId', jwtAuth, restoreDatabase);
-router.post('/cache/clear', jwtAuth, clearCache);
-router.post('/restart', jwtAuth, restartSystem);
 
 // Public system endpoints (no auth)
 router.get('/health', healthCheck);
