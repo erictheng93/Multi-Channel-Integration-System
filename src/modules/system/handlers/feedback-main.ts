@@ -175,7 +175,7 @@ feedbackHandler.get('/stats', jwtAuth, async (c) => {
 feedbackHandler.get('/conversation/:conversationId', jwtAuth, async (c) => {
   try {
     const db = createDbClient(c.env.DB);
-    const conversationId = c.req.param('conversationId');
+    const conversationId = c.req.param('conversationId')!;
 
     const feedback = await db
       .select({

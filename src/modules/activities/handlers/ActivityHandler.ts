@@ -94,7 +94,7 @@ export class ActivityHandler {
         return errorResponse(c, 'Unauthorized', HTTP_STATUS.UNAUTHORIZED)
       }
 
-      const targetUserId = c.req.param('userId')
+      const targetUserId = c.req.param('userId')!
       const days = parseInt(c.req.query('days') || '30')
 
       // 權限檢查：只有 admin 可以查看其他用戶的統計，其他用戶只能查看自己的

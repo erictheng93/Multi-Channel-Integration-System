@@ -24,7 +24,7 @@ const conversationQueriesHandler = new Hono<{ Bindings: Bindings }>();
 conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
 
     // 檢查權限
     const hasPermission = await PermissionService.checkPermission(

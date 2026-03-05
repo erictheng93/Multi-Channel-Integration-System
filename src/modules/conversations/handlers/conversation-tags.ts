@@ -21,7 +21,7 @@ const conversationTagsHandler = new Hono<{ Bindings: Bindings }>();
 // 獲取對話標籤
 conversationTagsHandler.get('/:id/tags', jwtAuth, async (c) => {
   try {
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
     const drizzleDb = createDbClient(c.env.DB);
 
     // 檢查對話是否存在
@@ -77,7 +77,7 @@ conversationTagsHandler.get('/:id/tags', jwtAuth, async (c) => {
 // 添加對話標籤
 conversationTagsHandler.post('/:id/tags', jwtAuth, async (c) => {
   try {
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
     const user = c.get('user');
     const payload = c.get('jwtPayload');
     const { tagIds } = await c.req.json();
@@ -152,7 +152,7 @@ conversationTagsHandler.post('/:id/tags', jwtAuth, async (c) => {
 // 移除對話標籤
 conversationTagsHandler.delete('/:id/tags', jwtAuth, async (c) => {
   try {
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
     const user = c.get('user');
     const { tagIds } = await c.req.json();
 

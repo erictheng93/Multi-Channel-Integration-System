@@ -23,7 +23,7 @@ const conversationMessagesHandler = new Hono<{ Bindings: Bindings }>();
 // 上傳附件（在消息發送之前）
 conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
   try {
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
 
     if (!conversationId) {
       return c.json({
@@ -307,7 +307,7 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
 conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
 
     // 獲取分頁參數
     const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));

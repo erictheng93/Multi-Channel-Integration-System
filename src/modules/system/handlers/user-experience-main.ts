@@ -215,7 +215,7 @@ userExperienceHandler.get('/report', jwtAuth, async (c) => {
 userExperienceHandler.get('/ab-tests/:testId/assignment', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const testId = c.req.param('testId');
+    const testId = c.req.param('testId')!;
 
     const uxService = createUserExperienceMonitoringService(c.env);
     const assignment = await uxService.assignUserToABTest(user.id.toString(), testId);
@@ -237,7 +237,7 @@ userExperienceHandler.get('/ab-tests/:testId/assignment', jwtAuth, async (c) => 
 userExperienceHandler.post('/ab-tests/:testId/metrics', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const testId = c.req.param('testId');
+    const testId = c.req.param('testId')!;
     const { metricName, value } = await c.req.json();
 
     if (!metricName || typeof value !== 'number') {

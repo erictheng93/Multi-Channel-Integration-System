@@ -25,7 +25,7 @@ const passwordHandler = new Hono<{ Bindings: Bindings }>();
 passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
     const user = c.get('user');
-    const memberId = c.req.param('memberId');
+    const memberId = c.req.param('memberId')!;
     const data: ResetPasswordRequest & { policy?: 'changeable' | 'unchangeable' | 'must_change' } = await c.req.json();
 
     if (!data.newPassword) {

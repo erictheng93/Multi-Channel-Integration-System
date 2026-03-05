@@ -132,7 +132,7 @@ systemHandler.get('/system/status', jwtAuth, async (c) => {
 // 訊息關聯查詢端點 - requires authentication
 systemHandler.get('/messages/:messageId/replies', jwtAuth, async (c) => {
   try {
-    const messageId = c.req.param('messageId');
+    const messageId = c.req.param('messageId')!;
     const { getMessageReplies } = await import('@/utils/database');
     const replies = await getMessageReplies(c.env.DB, messageId);
 
@@ -154,7 +154,7 @@ systemHandler.get('/messages/:messageId/replies', jwtAuth, async (c) => {
 // 對話訊息樹狀結構端點 - requires authentication
 systemHandler.get('/conversations/:conversationId/message-tree', jwtAuth, async (c) => {
   try {
-    const conversationId = c.req.param('conversationId');
+    const conversationId = c.req.param('conversationId')!;
     const { getConversationMessageTree } = await import('@/utils/database');
     const tree = await getConversationMessageTree(c.env.DB, conversationId);
 
@@ -183,7 +183,7 @@ systemHandler.get('/conversations/:conversationId/message-tree', jwtAuth, async 
 // 會話統計端點 - requires authentication
 systemHandler.get('/conversations/:conversationId/sessions', jwtAuth, async (c) => {
   try {
-    const conversationId = c.req.param('conversationId');
+    const conversationId = c.req.param('conversationId')!;
     const { AnalyticsService } = await import('@modules/session/services/analytics-service');
     const analyticsService = new AnalyticsService(c.env.DB);
     const stats = await analyticsService.getSessionStats(conversationId);

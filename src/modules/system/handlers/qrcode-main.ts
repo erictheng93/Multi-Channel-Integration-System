@@ -12,7 +12,7 @@ const qrcodeHandler = new Hono<{ Bindings: Bindings }>();
 // 停用 QR Code
 qrcodeHandler.delete('/:token', jwtAuth, async (c) => {
   try {
-    const token = c.req.param('token');
+    const token = c.req.param('token')!;
     await QRCodeService.deactivateQRCode(c.env.DB, token);
 
     return c.json({
