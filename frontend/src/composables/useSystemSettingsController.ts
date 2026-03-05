@@ -15,7 +15,6 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import type {
   SystemSettings,
   SettingsTab,
-  CacheType,
   MessageType,
   Backup,
   TabConfig,
@@ -34,7 +33,7 @@ export function useSystemSettingsController() {
   // ============================================================================
 
   const { t } = useI18n()
-  const { showDanger, showWarning } = useConfirmDialog()
+  const { showDanger } = useConfirmDialog()
 
   // ============================================================================
   // State Management
@@ -658,46 +657,6 @@ export function useSystemSettingsController() {
   }
 
   /**
-   * Clear cache
-   */
-  async function clearCache(type: CacheType): Promise<void> {
-    try {
-      const typeNames: Record<CacheType, string> = {
-        all: '所有快取',
-        conversations: '對話快取',
-        messages: '訊息快取',
-        sessions: '會話快取'
-      }
-
-      const confirmed = await showWarning('清除快取', `確定要清除${typeNames[type]}嗎？`, {
-        confirmText: '確定清除',
-        cancelText: '取消'
-      })
-
-      if (!confirmed) {
-        return
-      }
-
-      processing.value = true
-
-      const response = await systemApi.clearCache(type)
-
-      if (response.success) {
-        showMessage(`${typeNames[type]}已清除`, 'success')
-      } else {
-        const errorMessage = response.message || `清除${typeNames[type]}失敗`
-        showMessage(errorMessage, 'error')
-      }
-    } catch (error) {
-      console.error('Failed to clear cache:', error)
-      const errorMessage = error instanceof Error ? error.message : '清除快取失敗'
-      showMessage(`清除快取失敗: ${errorMessage}`, 'error')
-    } finally {
-      processing.value = false
-    }
-  }
-
-  /**
    * Perform health check
    */
   async function healthCheck(): Promise<void> {
@@ -742,39 +701,6 @@ export function useSystemSettingsController() {
       console.error('Health check failed:', error)
       const errorMessage = error instanceof Error ? error.message : '健康檢查失敗'
       showMessage(`健康檢查失敗: ${errorMessage}`, 'error')
-    } finally {
-      processing.value = false
-    }
-  }
-
-  /**
-   * Restart system
-   */
-  async function restartSystem(): Promise<void> {
-    try {
-      const confirmed = await showDanger('重啟系統', '確定要重啟系統嗎？系統將暫時無法使用。', {
-        confirmText: '確定重啟',
-        cancelText: '取消'
-      })
-
-      if (!confirmed) {
-        return
-      }
-
-      processing.value = true
-
-      const response = await systemApi.restartSystem()
-
-      if (response.success) {
-        showMessage('系統正在重啟...', 'info')
-      } else {
-        const errorMessage = response.message || '重啟系統失敗'
-        showMessage(errorMessage, 'error')
-      }
-    } catch (error) {
-      console.error('Failed to restart system:', error)
-      const errorMessage = error instanceof Error ? error.message : '重啟系統失敗'
-      showMessage(`重啟系統失敗: ${errorMessage}`, 'error')
     } finally {
       processing.value = false
     }
@@ -894,9 +820,7 @@ export function useSystemSettingsController() {
     // System Maintenance
     backupDatabase,
     restoreDatabase,
-    clearCache,
     healthCheck,
-    restartSystem,
 
     // Utilities
     showMessage,

@@ -183,19 +183,6 @@ export const systemApi = {
     return apiClient.post(`/system/database/restore/${backupId}`)
   },
 
-  // 清除快取
-  clearCache: async (type?: 'all' | 'conversations' | 'messages' | 'sessions'): Promise<ApiResponse<{
-    cleared: string[];
-    totalSize: number;
-  }>> => {
-    return apiClient.post('/system/cache/clear', { type: type || 'all' })
-  },
-
-  // 重啟系統
-  restartSystem: async (): Promise<ApiResponse<void>> => {
-    return apiClient.post('/system/restart')
-  },
-
   // 健康檢查
   healthCheck: async (): Promise<ApiResponse<{
     status: 'healthy' | 'unhealthy';

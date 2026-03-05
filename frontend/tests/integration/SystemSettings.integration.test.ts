@@ -29,9 +29,7 @@ vi.mock('@/api/system', () => ({
     getBackups: vi.fn(),
     backupDatabase: vi.fn(),
     restoreDatabase: vi.fn(),
-    clearCache: vi.fn(),
     healthCheck: vi.fn(),
-    restartSystem: vi.fn(),
     testIntegration: vi.fn()
   },
   credentialsApi: {
@@ -103,9 +101,9 @@ function createTestRouter(_initialRoute = '/settings/general') {
             component: () => import('@/components/system-settings/pages/BackupPage.vue')
           },
           {
-            path: 'maintenance/cache',
-            name: 'SettingsMaintenanceCache',
-            component: () => import('@/components/system-settings/pages/CacheMaintenancePage.vue')
+            path: 'maintenance/health',
+            name: 'SettingsMaintenanceHealth',
+            component: () => import('@/components/system-settings/pages/SystemHealthPage.vue')
           }
         ]
       }
@@ -295,9 +293,9 @@ describe('SystemSettings Integration Tests', () => {
     expect(systemApi.backupDatabase).toHaveBeenCalled()
   })
 
-  it('should clear cache', async () => {
+  it('should navigate to health check page', async () => {
     const router = createTestRouter()
-    await router.push('/settings/maintenance/cache')
+    await router.push('/settings/maintenance/health')
     await router.isReady()
 
     const wrapper = mount(SystemSettings, {
@@ -305,38 +303,7 @@ describe('SystemSettings Integration Tests', () => {
     })
     await flushPromises()
 
-    const cacheManager = wrapper.findComponent({ name: 'CacheManager' })
-    expect(cacheManager.exists()).toBe(true)
-  })
-
-  it('should perform system health check', async () => {
-    const { systemApi } = await import('@/api/system')
-    vi.mocked(systemApi.healthCheck).mockResolvedValue({
-      success: true,
-      data: {
-        status: 'healthy',
-        checks: {
-          database: true,
-          cache: true,
-          queue: true,
-          integrations: true
-        }
-      }
-    })
-
-    const router = createTestRouter()
-    await router.push('/settings/maintenance/cache')
-    await router.isReady()
-
-    const wrapper = mount(SystemSettings, {
-      global: { plugins: [router] }
-    })
-    await flushPromises()
-
-    const cacheManager = wrapper.findComponent({ name: 'CacheManager' })
-    await cacheManager.vm.$emit('health-check')
-    await flushPromises()
-
-    expect(systemApi.healthCheck).toHaveBeenCalled()
+    const healthPage = wrapper.findComponent({ name: 'SystemHealthPage' })
+    expect(healthPage.exists()).toBe(true)
   })
 })

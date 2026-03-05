@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useSystemSettingsController } from '@/composables/useSystemSettingsController'
-import type { SystemSettings, CacheType } from '@/types/system-settings'
+import type { SystemSettings } from '@/types/system-settings'
 
 // Mock modules
 vi.mock('@/api/system', () => ({
@@ -19,9 +19,7 @@ vi.mock('@/api/system', () => ({
     getBackups: vi.fn(),
     backupDatabase: vi.fn(),
     restoreDatabase: vi.fn(),
-    clearCache: vi.fn(),
     healthCheck: vi.fn(),
-    restartSystem: vi.fn(),
     testIntegration: vi.fn()
   },
   credentialsApi: {
@@ -110,9 +108,7 @@ describe('System Settings Controller', () => {
     })
     vi.mocked(systemApi.backupDatabase).mockResolvedValue({ success: true })
     vi.mocked(systemApi.restoreDatabase).mockResolvedValue({ success: true })
-    vi.mocked(systemApi.clearCache).mockResolvedValue({ success: true, data: { clearedItems: 0 } })
     vi.mocked(systemApi.healthCheck).mockResolvedValue({ success: true })
-    vi.mocked(systemApi.restartSystem).mockResolvedValue({ success: true })
     vi.mocked(credentialsApi.clearPlatformCredentials).mockResolvedValue({ success: true })
     vi.mocked(credentialsApi.backupCredentials).mockResolvedValue({ success: true })
 
@@ -615,21 +611,6 @@ describe('System Settings Controller', () => {
       expect(systemApi.restoreDatabase).toHaveBeenCalledWith('backup-123')
     })
 
-    it('should clear cache successfully', async () => {
-      const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.clearCache).mockResolvedValue({
-        success: true,
-        data: {
-          cleared: ['all'],
-          totalSize: 100
-        }
-      })
-
-      await controller.clearCache('all' as CacheType)
-
-      expect(systemApi.clearCache).toHaveBeenCalledWith('all')
-    })
-
     it('should perform health check successfully', async () => {
       const { systemApi } = await import('@/api/system')
       vi.mocked(systemApi.healthCheck).mockResolvedValue({
@@ -652,15 +633,6 @@ describe('System Settings Controller', () => {
 
       expect(systemApi.healthCheck).toHaveBeenCalled()
       expect(controller.messageType.value).toBe('success')
-    })
-
-    it('should restart system with confirmation', async () => {
-      const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.restartSystem).mockResolvedValue({ success: true })
-
-      await controller.restartSystem()
-
-      expect(systemApi.restartSystem).toHaveBeenCalled()
     })
 
     it('should reload backups after creating backup', async () => {

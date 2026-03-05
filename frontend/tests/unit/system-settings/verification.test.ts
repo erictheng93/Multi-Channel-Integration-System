@@ -78,11 +78,11 @@ describe('System Settings - Verification Tests', () => {
       expect(components.BackupManager).toHaveProperty('__name')
     })
 
-    it('should export CacheManager component', async () => {
+    it('should export SystemHealthPage component', async () => {
       const components = await import('@/components/system-settings')
 
-      expect(components.CacheManager).toBeDefined()
-      expect(components.CacheManager).toHaveProperty('__name')
+      expect(components.SystemHealthPage).toBeDefined()
+      expect(components.SystemHealthPage).toHaveProperty('__name')
     })
   })
 
