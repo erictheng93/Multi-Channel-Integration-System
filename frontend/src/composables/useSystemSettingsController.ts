@@ -290,23 +290,25 @@ export function useSystemSettingsController() {
         return
       }
 
-      const response = await systemApi.updateSettings({
-        integrations: {
-          line: {
-            channelId,
-            channelSecret,
-            accessToken
-          }
-        }
-      })
+      // Store credentials encrypted in KV via credentials API
+      const [r1, r2, r3] = await Promise.all([
+        credentialsApi.storeCredential('line', 'channelId', channelId),
+        credentialsApi.storeCredential('line', 'channelSecret', channelSecret),
+        credentialsApi.storeCredential('line', 'accessToken', accessToken)
+      ])
 
-      if (response.success) {
-        showMessage('LINE 設定已儲存', 'success')
-      } else {
-        const errorMessage = response.message || '儲存 LINE 設定失敗'
-        showMessage(errorMessage, 'error')
-        console.error('LINE settings save failed:', response)
+      if (!r1.success || !r2.success || !r3.success) {
+        showMessage('部分 LINE 憑證儲存失敗', 'error')
+        return
       }
+
+      // Update integration status in system settings (no credentials)
+      await systemApi.updateSettings({
+        integrations: { line: { status: 'connected' } }
+      })
+      settings.integrations.line.status = 'connected'
+
+      showMessage('LINE 設定已儲存', 'success')
     } catch (error) {
       console.error('Failed to save LINE settings:', error)
       const errorMessage = error instanceof Error ? error.message : '儲存 LINE 設定失敗'
@@ -336,24 +338,26 @@ export function useSystemSettingsController() {
         return
       }
 
-      const response = await systemApi.updateSettings({
-        integrations: {
-          facebook: {
-            appId,
-            appSecret,
-            pageId,
-            pageToken
-          }
-        }
-      })
+      // Store credentials encrypted in KV via credentials API
+      const [r1, r2, r3, r4] = await Promise.all([
+        credentialsApi.storeCredential('facebook', 'appId', appId),
+        credentialsApi.storeCredential('facebook', 'appSecret', appSecret),
+        credentialsApi.storeCredential('facebook', 'pageId', pageId),
+        credentialsApi.storeCredential('facebook', 'pageToken', pageToken)
+      ])
 
-      if (response.success) {
-        showMessage('Facebook 設定已儲存', 'success')
-      } else {
-        const errorMessage = response.message || '儲存 Facebook 設定失敗'
-        showMessage(errorMessage, 'error')
-        console.error('Facebook settings save failed:', response)
+      if (!r1.success || !r2.success || !r3.success || !r4.success) {
+        showMessage('部分 Facebook 憑證儲存失敗', 'error')
+        return
       }
+
+      // Update integration status in system settings (no credentials)
+      await systemApi.updateSettings({
+        integrations: { facebook: { status: 'connected' } }
+      })
+      settings.integrations.facebook.status = 'connected'
+
+      showMessage('Facebook 設定已儲存', 'success')
     } catch (error) {
       console.error('Failed to save Facebook settings:', error)
       const errorMessage = error instanceof Error ? error.message : '儲存 Facebook 設定失敗'
