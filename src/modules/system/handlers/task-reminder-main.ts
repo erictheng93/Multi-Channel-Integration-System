@@ -108,7 +108,7 @@ app.post('/process', jwtAuth, async (c) => {
 app.put('/:id/complete', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
-    const id = c.req.param('id');
+    const id = c.req.param('id')!;
 
     const service = new TaskReminderService(c.env.DB, c.env);
     const success = await service.markComplete(id, payload.userId.toString());
@@ -138,7 +138,7 @@ app.put('/:id/complete', jwtAuth, async (c) => {
 app.get('/:id', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
-    const id = c.req.param('id');
+    const id = c.req.param('id')!;
 
     const service = new TaskReminderService(c.env.DB, c.env);
     const reminder = await service.getById(id, payload.userId.toString());
@@ -168,7 +168,7 @@ app.get('/:id', jwtAuth, async (c) => {
 app.put('/:id', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
-    const id = c.req.param('id');
+    const id = c.req.param('id')!;
     const body = await c.req.json();
 
     // 驗證提醒時間
@@ -212,7 +212,7 @@ app.put('/:id', jwtAuth, async (c) => {
 app.delete('/:id', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
-    const id = c.req.param('id');
+    const id = c.req.param('id')!;
 
     const service = new TaskReminderService(c.env.DB, c.env);
     const success = await service.delete(id, payload.userId.toString());

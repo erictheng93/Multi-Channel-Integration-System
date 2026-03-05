@@ -35,7 +35,7 @@ delayedMessageRouter.post('/send', jwtAuth, async (c) => {
 delayedMessageRouter.post('/recall/:messageId', jwtAuth, async (c) => {
   try {
     const manager = new DelayedMessageManager(c.env);
-    const messageId = c.req.param('messageId');
+    const messageId = c.req.param('messageId')!;
     const user = c.get('user');
     const userInfo = { id: user.id.toString(), displayName: user.displayName, role: user.role };
     const result = await manager.recallDelayedMessage(messageId, userInfo);
@@ -63,7 +63,7 @@ delayedMessageRouter.get('/pending', jwtAuth, async (c) => {
 delayedMessageRouter.post('/reschedule/:messageId', jwtAuth, async (c) => {
   try {
     const manager = new DelayedMessageManager(c.env);
-    const messageId = c.req.param('messageId');
+    const messageId = c.req.param('messageId')!;
     const data = await c.req.json();
     const user = c.get('user');
     const userInfo = { id: user.id.toString(), displayName: user.displayName, role: user.role };

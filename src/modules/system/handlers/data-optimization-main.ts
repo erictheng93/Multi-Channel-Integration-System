@@ -306,8 +306,8 @@ dataOptimizationHandler.get('/indexes/:indexName/:field', jwtAuth, async (c) => 
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const indexName = c.req.param('indexName');
-    const field = c.req.param('field');
+    const indexName = c.req.param('indexName')!;
+    const field = c.req.param('field')!;
     const value = c.req.query('value');
 
     if (!value) {

@@ -353,7 +353,7 @@ monitoringHandler.get('/instances/:type', jwtAuth, async (c) => {
       return c.json({ error: 'Admin access required' }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const type = c.req.param('type');
+    const type = c.req.param('type')!;
     const monitor = createDOMonitor(c.env);
     await monitor.performHealthCheck();
 

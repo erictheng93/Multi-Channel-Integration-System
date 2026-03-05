@@ -177,7 +177,7 @@ export class NotificationHandler {
         return unauthorizedResponse(c, 'Authentication required');
       }
 
-      const notificationId = c.req.param('id');
+      const notificationId = c.req.param('id')!;
       const notification = await this.notificationService.getById(notificationId, payload.userId);
 
       if (!notification) {
@@ -200,7 +200,7 @@ export class NotificationHandler {
         return unauthorizedResponse(c, 'Authentication required');
       }
 
-      const notificationId = c.req.param('id');
+      const notificationId = c.req.param('id')!;
       const success = await this.notificationService.markAsRead(notificationId, payload.userId);
 
       if (!success) {
@@ -244,7 +244,7 @@ export class NotificationHandler {
         return unauthorizedResponse(c, 'Authentication required');
       }
 
-      const notificationId = c.req.param('id');
+      const notificationId = c.req.param('id')!;
       const success = await this.notificationService.delete(notificationId, payload.userId);
 
       if (!success) {

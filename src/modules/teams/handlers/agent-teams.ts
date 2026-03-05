@@ -52,7 +52,7 @@ agentTeamsHandler.get('/team/:teamId/members', jwtAuth, requireIntId('teamId'), 
 agentTeamsHandler.get('/:agentId', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const agentId = c.req.param('agentId');
+    const agentId = c.req.param('agentId')!;
 
     // Agents can view their own teams, admins can view anyone's teams
     if (user.role !== 'admin' && user.id !== agentId) {
@@ -82,7 +82,7 @@ agentTeamsHandler.get('/:agentId', jwtAuth, async (c) => {
 agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
     const user = c.get('user');
-    const agentId = c.req.param('agentId');
+    const agentId = c.req.param('agentId')!;
     const { teamId, roleInTeam, isPrimary } = await c.req.json();
 
     if (!teamId) {
@@ -192,7 +192,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
 agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
     const user = c.get('user');
-    const agentId = c.req.param('agentId');
+    const agentId = c.req.param('agentId')!;
     const { teamIds, roleInTeam } = await c.req.json();
 
     if (!teamIds || !Array.isArray(teamIds) || teamIds.length === 0) {
@@ -307,7 +307,7 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
 agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
     const user = c.get('user');
-    const agentId = c.req.param('agentId');
+    const agentId = c.req.param('agentId')!;
     const teamId = getValidatedParam<number>(c, 'teamId');
     const db = drizzle(c.env.DB);
 
@@ -414,7 +414,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
 agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
     const user = c.get('user');
-    const agentId = c.req.param('agentId');
+    const agentId = c.req.param('agentId')!;
     const teamId = getValidatedParam<number>(c, 'teamId');
     const { roleInTeam, isPrimary } = await c.req.json();
     const service = new AgentTeamsService(c.env.DB);
@@ -455,7 +455,7 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
 agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
     const user = c.get('user');
-    const agentId = c.req.param('agentId');
+    const agentId = c.req.param('agentId')!;
     const teamId = getValidatedParam<number>(c, 'teamId');
     const service = new AgentTeamsService(c.env.DB);
     await service.setPrimaryTeam(agentId, teamId);

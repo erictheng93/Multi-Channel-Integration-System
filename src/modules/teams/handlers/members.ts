@@ -170,7 +170,7 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
 membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
     const user = c.get('user');
-    const memberId = c.req.param('memberId');
+    const memberId = c.req.param('memberId')!;
     const data: UpdateMemberStatusRequest = await c.req.json();
 
     if (data.isActive === undefined) {
@@ -233,7 +233,7 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
 membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
     const user = c.get('user');
-    const memberId = c.req.param('memberId');
+    const memberId = c.req.param('memberId')!;
     const data: UpdateMemberRoleRequest = await c.req.json();
 
     if (!data.role) {
@@ -296,7 +296,7 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
 membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
     const user = c.get('user');
-    const memberId = c.req.param('memberId');
+    const memberId = c.req.param('memberId')!;
     const data: UpdateMemberRequest = await c.req.json();
 
     const memberService = new MemberService(c.env.DB);
@@ -344,7 +344,7 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
 membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => {
   try {
     const user = c.get('user');
-    const memberId = c.req.param('memberId');
+    const memberId = c.req.param('memberId')!;
 
     // Cannot delete yourself
     if (memberId === user.id) {

@@ -191,8 +191,8 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
       return;
     }
 
-    const teamId = parseInt(c.req.param(teamIdParam));
-    
+    const teamId = parseInt(c.req.param(teamIdParam)!);
+
     if (isNaN(teamId)) {
       return c.json({ error: 'Invalid team ID' }, 400);
     }

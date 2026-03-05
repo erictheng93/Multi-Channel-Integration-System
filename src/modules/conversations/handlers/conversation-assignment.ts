@@ -23,7 +23,7 @@ const conversationAssignmentHandler = new Hono<{ Bindings: Bindings }>();
 conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
     const { teamId, reason } = await c.req.json();
     // Note: userId removed - only team assignment is supported now
 
@@ -189,7 +189,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
 conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
     const { reason } = await c.req.json().catch(() => ({}));
 
     // 檢查權限（需要 assign 權限才能取消指派）
@@ -341,7 +341,7 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
 conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const conversationId = c.req.param('id');
+    const conversationId = c.req.param('id')!;
     const { fromTeamId, toTeamId, reason } = await c.req.json();
     // Note: fromUserId and toUserId removed - only team-based transfer is supported now
 
