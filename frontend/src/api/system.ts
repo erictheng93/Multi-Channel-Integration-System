@@ -158,31 +158,6 @@ export const systemApi = {
     return apiClient.post('/system/config/import', config)
   },
 
-  // 備份資料庫
-  backupDatabase: async (): Promise<ApiResponse<{
-    backupId: string;
-    filename: string;
-    size: number;
-    createdAt: Date | string;
-  }>> => {
-    return apiClient.post('/system/database/backup')
-  },
-
-  // 獲取備份列表
-  getBackups: async (): Promise<ApiResponse<Array<{
-    id: string;
-    filename: string;
-    size: number;
-    createdAt: Date | string;
-  }>>> => {
-    return apiClient.get('/system/database/backups')
-  },
-
-  // 恢復資料庫
-  restoreDatabase: async (backupId: string): Promise<ApiResponse<void>> => {
-    return apiClient.post(`/system/database/restore/${backupId}`)
-  },
-
   // 健康檢查
   healthCheck: async (): Promise<ApiResponse<{
     status: 'healthy' | 'unhealthy';
@@ -348,14 +323,6 @@ export const credentialsApi = {
     return apiClient.delete(`/credentials/${platform}`)
   },
 
-  // 備份憑證
-  backupCredentials: async (): Promise<ApiResponse<{
-    timestamp: string;
-    credentials: Record<string, string>;
-    version: string;
-  }>> => {
-    return apiClient.get('/credentials/backup')
-  }
 }
 
 // 客户满意度反馈 API

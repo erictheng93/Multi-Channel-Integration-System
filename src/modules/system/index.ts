@@ -41,11 +41,6 @@ export const SYSTEM_MODULE_INFO = {
       // 平台整合
       'POST /integrations/:platform/test',  // 測試整合
 
-      // 備份和恢復
-      'POST /backup',                       // 創建備份
-      'GET /backups',                       // 備份列表
-      'POST /restore/:backupId',            // 恢復備份
-
       // 維護操作
       'POST /maintenance/mode',             // 維護模式
 

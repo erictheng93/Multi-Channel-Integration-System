@@ -126,8 +126,7 @@
         { path: '/settings/integrations/line', label: 'LINE OA' },
         { path: '/settings/integrations/facebook', label: 'Facebook' },
         { path: '/settings/advanced', label: '\u9032\u968E\u8A2D\u5B9A' },
-        { path: '/settings/maintenance/backup', label: '\u5099\u4EFD\u7BA1\u7406' },
-        { path: '/settings/maintenance/cache', label: '\u5FEB\u53D6\u7BA1\u7406' },
+        { path: '/settings/maintenance/health', label: '\u5065\u5EB7\u6AA2\u67E5' },
       ],
     },
   ]

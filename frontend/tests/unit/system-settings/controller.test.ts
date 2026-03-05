@@ -16,16 +16,13 @@ vi.mock('@/api/system', () => ({
   systemApi: {
     getSettings: vi.fn(),
     updateSettings: vi.fn(),
-    getBackups: vi.fn(),
-    backupDatabase: vi.fn(),
-    restoreDatabase: vi.fn(),
     healthCheck: vi.fn(),
     testIntegration: vi.fn()
   },
   credentialsApi: {
     getAllCredentials: vi.fn(),
     clearPlatformCredentials: vi.fn(),
-    backupCredentials: vi.fn()
+    storeCredential: vi.fn()
   }
 }))
 
@@ -96,21 +93,14 @@ describe('System Settings Controller', () => {
       }
     })
 
-    vi.mocked(systemApi.getBackups).mockResolvedValue({
-      success: true,
-      data: []
-    })
-
     vi.mocked(systemApi.updateSettings).mockResolvedValue({ success: true })
     vi.mocked(systemApi.testIntegration).mockResolvedValue({
       success: true,
       data: { status: 'connected', message: 'OK' }
     })
-    vi.mocked(systemApi.backupDatabase).mockResolvedValue({ success: true })
-    vi.mocked(systemApi.restoreDatabase).mockResolvedValue({ success: true })
     vi.mocked(systemApi.healthCheck).mockResolvedValue({ success: true })
     vi.mocked(credentialsApi.clearPlatformCredentials).mockResolvedValue({ success: true })
-    vi.mocked(credentialsApi.backupCredentials).mockResolvedValue({ success: true })
+    vi.mocked(credentialsApi.storeCredential).mockResolvedValue({ success: true })
 
     controller = useSystemSettingsController()
   })
@@ -126,7 +116,6 @@ describe('System Settings Controller', () => {
       expect(controller.testing.value).toBe(false)
       expect(controller.processing.value).toBe(false)
       expect(controller.activeTab.value).toBe('general')
-      expect(controller.backups.value).toEqual([])
     })
 
     it('should have valid tabs configuration', () => {
@@ -155,14 +144,6 @@ describe('System Settings Controller', () => {
       await controller.initialize()
 
       expect(systemApi.getSettings).toHaveBeenCalled()
-    })
-
-    it('should call loadBackups on initialize', async () => {
-      // loadBackups is called but getBackups API is not yet implemented (TODO in code)
-      // This test verifies initialize completes without error
-      await controller.initialize()
-
-      expect(controller.loading.value).toBe(false)
     })
 
     it('should handle initialization errors gracefully', async () => {
@@ -212,17 +193,6 @@ describe('System Settings Controller', () => {
       expect(controller.testing.value).toBe(false)
     })
 
-    it('should update processing state correctly', async () => {
-      const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.backupDatabase).mockImplementation(() => {
-        expect(controller.processing.value).toBe(true)
-        return Promise.resolve({ success: true, data: { filename: 'test.db', size: 1024, createdAt: new Date() } })
-      })
-
-      await controller.backupDatabase()
-
-      expect(controller.processing.value).toBe(false)
-    })
   })
 
   describe('Data Loading', () => {
@@ -281,22 +251,6 @@ describe('System Settings Controller', () => {
       expect(controller.messageType.value).toBe('error')
     })
 
-    it('should load backups successfully', async () => {
-      // Note: loadBackups API call is not yet implemented (TODO in code)
-      // This test verifies the function completes without error
-      await controller.loadBackups()
-
-      // Backups remain empty since API is not implemented
-      expect(controller.backups.value).toEqual([])
-    })
-
-    it('should handle loadBackups error', async () => {
-      // Note: loadBackups API call is not yet implemented (TODO in code)
-      // This test verifies the function completes without error
-      await controller.loadBackups()
-
-      expect(controller.backups.value).toEqual([])
-    })
   })
 
   describe('Save Settings', () => {
@@ -524,28 +478,6 @@ describe('System Settings Controller', () => {
       expect(credentialsApi.clearPlatformCredentials).toHaveBeenCalledWith('facebook')
     })
 
-    it('should backup credentials successfully', async () => {
-      const { credentialsApi } = await import('@/api/system')
-      vi.mocked(credentialsApi.backupCredentials).mockResolvedValue({
-        success: true,
-        filename: 'credentials-backup.json'
-      })
-
-      await controller.backupCredentials()
-
-      expect(credentialsApi.backupCredentials).toHaveBeenCalled()
-      expect(controller.messageType.value).toBe('success')
-    })
-
-    it('should handle backup credentials error', async () => {
-      const { credentialsApi } = await import('@/api/system')
-      vi.mocked(credentialsApi.backupCredentials).mockRejectedValue(new Error('Backup failed'))
-
-      await controller.backupCredentials()
-
-      expect(controller.messageType.value).toBe('error')
-    })
-
     it('should clear local state after clearing credentials', async () => {
       const { credentialsApi } = await import('@/api/system')
 
@@ -582,35 +514,6 @@ describe('System Settings Controller', () => {
   })
 
   describe('System Maintenance', () => {
-    it('should create backup successfully', async () => {
-      const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.backupDatabase).mockResolvedValue({
-        success: true,
-        data: {
-          backupId: 'backup-123',
-          filename: 'backup-123.db',
-          size: 1024,
-          createdAt: new Date()
-        }
-      })
-
-      await controller.backupDatabase()
-
-      expect(systemApi.backupDatabase).toHaveBeenCalled()
-      expect(controller.messageType.value).toBe('success')
-    })
-
-    it('should restore backup with confirmation', async () => {
-      const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.restoreDatabase).mockResolvedValue({
-        success: true
-      })
-
-      await controller.restoreDatabase('backup-123')
-
-      expect(systemApi.restoreDatabase).toHaveBeenCalledWith('backup-123')
-    })
-
     it('should perform health check successfully', async () => {
       const { systemApi } = await import('@/api/system')
       vi.mocked(systemApi.healthCheck).mockResolvedValue({
@@ -633,38 +536,6 @@ describe('System Settings Controller', () => {
 
       expect(systemApi.healthCheck).toHaveBeenCalled()
       expect(controller.messageType.value).toBe('success')
-    })
-
-    it('should reload backups after creating backup', async () => {
-      const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.backupDatabase).mockResolvedValue({
-        success: true,
-        data: {
-          backupId: 'backup-123',
-          filename: 'backup-123.db',
-          size: 1024,
-          createdAt: new Date()
-        }
-      })
-
-      await controller.backupDatabase()
-
-      // Note: loadBackups is called but getBackups API is not implemented (TODO in code)
-      // This test verifies backup creation was successful
-      expect(systemApi.backupDatabase).toHaveBeenCalled()
-    })
-
-    it('should reload backups after restoring backup', async () => {
-      const { systemApi } = await import('@/api/system')
-      vi.mocked(systemApi.restoreDatabase).mockResolvedValue({
-        success: true
-      })
-
-      await controller.restoreDatabase('backup-123')
-
-      // Note: loadBackups is called but getBackups API is not implemented (TODO in code)
-      // This test verifies restore was called
-      expect(systemApi.restoreDatabase).toHaveBeenCalledWith('backup-123')
     })
 
     it('should handle health check with degraded status', async () => {

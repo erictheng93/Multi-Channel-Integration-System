@@ -118,13 +118,7 @@ const router = createRouter({
         },
         {
           path: 'maintenance',
-          redirect: '/settings/maintenance/backup'
-        },
-        {
-          path: 'maintenance/backup',
-          name: 'SettingsMaintenanceBackup',
-          component: () => import('@/components/system-settings/pages/BackupPage.vue'),
-          meta: { requiresAuth: true, requiresAdmin: true, title: '備份管理' }
+          redirect: '/settings/maintenance/health'
         },
         {
           path: 'maintenance/health',

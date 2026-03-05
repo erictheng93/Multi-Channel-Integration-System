@@ -8,5 +8,4 @@
 
 export { getSystemInfo, getSettings, updateSettings, getMetrics } from './system-settings';
 export { testIntegration } from './system-integrations';
-export { backupDatabase, getBackups, restoreDatabase } from './system-database';
 export { healthCheck, getApiStatus } from './system-health';

@@ -15,7 +15,6 @@ import GeneralSettingsForm from '@/components/system-settings/GeneralSettingsFor
 import LineIntegrationForm from '@/components/system-settings/LineIntegrationForm.vue'
 import FacebookIntegrationForm from '@/components/system-settings/FacebookIntegrationForm.vue'
 import AdvancedSettingsForm from '@/components/system-settings/AdvancedSettingsForm.vue'
-import BackupManager from '@/components/system-settings/BackupManager.vue'
 
 // Mock i18n
 vi.mock('vue-i18n', () => ({
@@ -292,53 +291,6 @@ describe('System Settings Components', () => {
       await wrapper.find('form').trigger('submit.prevent')
 
       expect(wrapper.emitted('save')).toBeTruthy()
-    })
-  })
-
-  describe('BackupManager', () => {
-    const mockBackups = [
-      {
-        id: '1',
-        filename: 'backup-1.db',
-        createdAt: new Date(),
-        size: 1024
-      }
-    ]
-
-    it('should render create backup button', () => {
-      const wrapper = mount(BackupManager, {
-        props: {
-          backups: [],
-          processing: false
-        }
-      })
-
-      expect(wrapper.find('.btn-primary').exists()).toBe(true)
-    })
-
-    it('should emit backup event when create button clicked', async () => {
-      const wrapper = mount(BackupManager, {
-        props: {
-          backups: [],
-          processing: false
-        }
-      })
-
-      await wrapper.find('.btn-primary').trigger('click')
-
-      expect(wrapper.emitted('backup')).toBeTruthy()
-    })
-
-    it('should render backup list when backups exist', () => {
-      const wrapper = mount(BackupManager, {
-        props: {
-          backups: mockBackups,
-          processing: false
-        }
-      })
-
-      expect(wrapper.find('.backup-items').exists()).toBe(true)
-      expect(wrapper.findAll('.backup-item')).toHaveLength(1)
     })
   })
 

@@ -71,13 +71,6 @@ describe('System Settings - Verification Tests', () => {
       expect(components.AdvancedSettingsForm).toHaveProperty('__name')
     })
 
-    it('should export BackupManager component', async () => {
-      const components = await import('@/components/system-settings')
-
-      expect(components.BackupManager).toBeDefined()
-      expect(components.BackupManager).toHaveProperty('__name')
-    })
-
     it('should export SystemHealthPage component', async () => {
       const components = await import('@/components/system-settings')
 
