@@ -129,13 +129,9 @@ const navItems: NavItem[] = [
     icon: '\uD83D\uDD27'
   },
   {
-    path: '/settings/maintenance',
+    path: '/settings/maintenance/health',
     label: '\u7CFB\u7D71\u7DAD\u8B77',
-    icon: '\uD83D\uDEE0',
-    children: [
-      { path: '/settings/maintenance/backup', label: '\u5099\u4EFD\u7BA1\u7406', icon: '\uD83D\uDCBE' },
-      { path: '/settings/maintenance/health', label: '\u5065\u5EB7\u6AA2\u67E5', icon: '\uD83C\uDFE5' }
-    ]
+    icon: '\uD83D\uDEE0'
   }
 ]
 

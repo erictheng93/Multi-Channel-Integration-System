@@ -12,7 +12,6 @@ export { default as GeneralSettingsForm } from './GeneralSettingsForm.vue'
 export { default as LineIntegrationForm } from './LineIntegrationForm.vue'
 export { default as FacebookIntegrationForm } from './FacebookIntegrationForm.vue'
 export { default as AdvancedSettingsForm } from './AdvancedSettingsForm.vue'
-export { default as BackupManager } from './BackupManager.vue'
 
 // Sidebar navigation
 export { default as SettingsSidebar } from './SettingsSidebar.vue'
@@ -23,6 +22,5 @@ export {
   LineIntegrationPage,
   FacebookIntegrationPage,
   AdvancedSettingsPage,
-  BackupPage,
   SystemHealthPage
 } from './pages'

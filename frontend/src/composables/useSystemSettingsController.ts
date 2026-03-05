@@ -16,7 +16,6 @@ import type {
   SystemSettings,
   SettingsTab,
   MessageType,
-  Backup,
   TabConfig,
   StatusClasses,
   HealthCheckResult
@@ -53,9 +52,6 @@ export function useSystemSettingsController() {
 
   /** Active settings tab */
   const activeTab = ref<SettingsTab>('general')
-
-  /** Show backup list flag */
-  const showBackupList = ref(false)
 
   /** Message for user feedback */
   const message = ref('')
@@ -96,9 +92,6 @@ export function useSystemSettingsController() {
       enableMetrics: true
     }
   })
-
-  /** Backup list */
-  const backups = ref<Backup[]>([])
 
   // ============================================================================
   // Computed Properties
@@ -211,26 +204,6 @@ export function useSystemSettingsController() {
       showMessage(t('systemSettings.messages.loadFailed'), 'error')
     } finally {
       loading.value = false
-    }
-  }
-
-  /**
-   * Load backup list
-   */
-  async function loadBackups(): Promise<void> {
-    try {
-      // Stub: No backend /api/system/backups endpoint yet (D1 snapshot-based)
-      // const response = await systemApi.getBackups()
-      // if (response.success && response.data) {
-      //   backups.value = response.data.map(backup => ({
-      //     ...backup,
-      //     createdAt: new Date(backup.createdAt)
-      //   }))
-      // }
-      console.log('Load backups - not yet implemented')
-    } catch (error) {
-      console.error('Failed to load backups:', error)
-      showMessage('載入備份列表失敗', 'error')
     }
   }
 
@@ -568,95 +541,6 @@ export function useSystemSettingsController() {
   }
 
   /**
-   * Backup all credentials
-   */
-  async function backupCredentials(): Promise<void> {
-    try {
-      processing.value = true
-
-      const response = await credentialsApi.backupCredentials()
-
-      if (response.success) {
-        showMessage('憑證已備份', 'success')
-      } else {
-        const errorMessage = response.message || '備份憑證失敗'
-        showMessage(errorMessage, 'error')
-      }
-    } catch (error) {
-      console.error('Failed to backup credentials:', error)
-      const errorMessage = error instanceof Error ? error.message : '備份憑證失敗'
-      showMessage(`備份憑證失敗: ${errorMessage}`, 'error')
-    } finally {
-      processing.value = false
-    }
-  }
-
-  // ============================================================================
-  // System Maintenance Methods
-  // ============================================================================
-
-  /**
-   * Create database backup
-   */
-  async function backupDatabase(): Promise<void> {
-    try {
-      processing.value = true
-
-      const response = await systemApi.backupDatabase()
-
-      if (response.success) {
-        showMessage('資料庫備份已建立', 'success')
-        // Reload backup list
-        await loadBackups()
-      } else {
-        const errorMessage = response.message || '建立資料庫備份失敗'
-        showMessage(errorMessage, 'error')
-      }
-    } catch (error) {
-      console.error('Failed to backup database:', error)
-      const errorMessage = error instanceof Error ? error.message : '建立資料庫備份失敗'
-      showMessage(`建立資料庫備份失敗: ${errorMessage}`, 'error')
-    } finally {
-      processing.value = false
-    }
-  }
-
-  /**
-   * Restore database from backup
-   */
-  async function restoreDatabase(backupId: string): Promise<void> {
-    try {
-      const confirmed = await showDanger('還原資料庫', '確定要還原資料庫嗎？當前資料將被覆蓋，此操作無法復原。', {
-        confirmText: '確定還原',
-        cancelText: '取消'
-      })
-
-      if (!confirmed) {
-        return
-      }
-
-      processing.value = true
-
-      const response = await systemApi.restoreDatabase(backupId)
-
-      if (response.success) {
-        showMessage('資料庫已還原', 'success')
-        // Reload settings after restore
-        await loadSettings()
-      } else {
-        const errorMessage = response.message || '還原資料庫失敗'
-        showMessage(errorMessage, 'error')
-      }
-    } catch (error) {
-      console.error('Failed to restore database:', error)
-      const errorMessage = error instanceof Error ? error.message : '還原資料庫失敗'
-      showMessage(`還原資料庫失敗: ${errorMessage}`, 'error')
-    } finally {
-      processing.value = false
-    }
-  }
-
-  /**
    * Perform health check
    */
   async function healthCheck(): Promise<void> {
@@ -759,7 +643,6 @@ export function useSystemSettingsController() {
    */
   async function initialize(): Promise<void> {
     await loadSettings()
-    await loadBackups()
   }
 
   /**
@@ -786,11 +669,9 @@ export function useSystemSettingsController() {
     testing,
     processing,
     activeTab,
-    showBackupList,
     message,
     messageType,
     settings,
-    backups,
 
     // Computed
     tabs,
@@ -800,7 +681,6 @@ export function useSystemSettingsController() {
 
     // Data Loading
     loadSettings,
-    loadBackups,
 
     // Save Settings
     saveGeneralSettings,
@@ -815,11 +695,8 @@ export function useSystemSettingsController() {
     // Credentials Management
     clearLineCredentials,
     clearFacebookCredentials,
-    backupCredentials,
 
     // System Maintenance
-    backupDatabase,
-    restoreDatabase,
     healthCheck,
 
     // Utilities

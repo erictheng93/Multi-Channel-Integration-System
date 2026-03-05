@@ -10,9 +10,6 @@ import {
   updateSettings,
   testIntegration,
   getMetrics,
-  backupDatabase,
-  getBackups,
-  restoreDatabase,
   healthCheck,
   getApiStatus
 } from '@modules/system/handlers/system-legacy';
@@ -25,9 +22,6 @@ router.get('/settings', jwtAuth, getSettings);
 router.put('/settings', jwtAuth, updateSettings);
 router.post('/integrations/:platform/test', jwtAuth, testIntegration);
 router.get('/metrics', jwtAuth, getMetrics);
-router.post('/database/backup', jwtAuth, backupDatabase);
-router.get('/database/backups', jwtAuth, getBackups);
-router.post('/database/restore/:backupId', jwtAuth, restoreDatabase);
 
 // Public system endpoints (no auth)
 router.get('/health', healthCheck);

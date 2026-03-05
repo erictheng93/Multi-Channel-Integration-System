@@ -93,37 +93,6 @@ export type SettingsTab = 'general' | 'integrations' | 'advanced' | 'system'
 export type MessageType = 'success' | 'error' | 'info'
 
 // ============================================================================
-// Backup Types
-// ============================================================================
-
-/**
- * Database backup information
- */
-export interface Backup {
-  id: string
-  filename: string
-  createdAt: Date
-  size: number
-}
-
-/**
- * Backup operation result
- */
-export interface BackupResult {
-  success: boolean
-  filename?: string
-  message?: string
-}
-
-/**
- * Restore operation result
- */
-export interface RestoreResult {
-  success: boolean
-  message?: string
-}
-
-// ============================================================================
 // API Response Types
 // ============================================================================
 
@@ -253,11 +222,9 @@ export interface SystemSettingsState {
   testing: boolean
   processing: boolean
   activeTab: SettingsTab
-  showBackupList: boolean
   message: string
   messageType: MessageType
   settings: SystemSettings
-  backups: Backup[]
 }
 
 // ============================================================================
@@ -277,13 +244,6 @@ export interface SaveSettingsPayload {
  */
 export interface TestIntegrationPayload {
   platform: 'line' | 'facebook'
-}
-
-/**
- * Restore backup event payload
- */
-export interface RestoreBackupPayload {
-  backupId: string
 }
 
 // ============================================================================

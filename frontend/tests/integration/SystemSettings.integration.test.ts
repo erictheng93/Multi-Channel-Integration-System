@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import SystemSettings from '@/views/SystemSettings.vue'
-import type { SystemSettings as SystemSettingsType, Backup } from '@/types/system-settings'
+import type { SystemSettings as SystemSettingsType } from '@/types/system-settings'
 
 // Mock AppLayout
 vi.mock('@/components/ui/AppLayout.vue', () => ({
@@ -26,16 +26,12 @@ vi.mock('@/api/system', () => ({
   systemApi: {
     getSettings: vi.fn(),
     updateSettings: vi.fn(),
-    getBackups: vi.fn(),
-    backupDatabase: vi.fn(),
-    restoreDatabase: vi.fn(),
     healthCheck: vi.fn(),
     testIntegration: vi.fn()
   },
   credentialsApi: {
     getAllCredentials: vi.fn(),
-    clearPlatformCredentials: vi.fn(),
-    backupCredentials: vi.fn()
+    clearPlatformCredentials: vi.fn()
   }
 }))
 
@@ -94,12 +90,7 @@ function createTestRouter(_initialRoute = '/settings/general') {
             name: 'SettingsAdvanced',
             component: () => import('@/components/system-settings/pages/AdvancedSettingsPage.vue')
           },
-          { path: 'maintenance', redirect: '/settings/maintenance/backup' },
-          {
-            path: 'maintenance/backup',
-            name: 'SettingsMaintenanceBackup',
-            component: () => import('@/components/system-settings/pages/BackupPage.vue')
-          },
+          { path: 'maintenance', redirect: '/settings/maintenance/health' },
           {
             path: 'maintenance/health',
             name: 'SettingsMaintenanceHealth',
@@ -145,15 +136,6 @@ describe('SystemSettings Integration Tests', () => {
     }
   }
 
-  const mockBackups: Backup[] = [
-    {
-      id: '1',
-      filename: 'backup-1.db',
-      createdAt: new Date(),
-      size: 1024
-    }
-  ]
-
   beforeEach(async () => {
     const { systemApi, credentialsApi } = await import('@/api/system')
 
@@ -165,11 +147,6 @@ describe('SystemSettings Integration Tests', () => {
     vi.mocked(credentialsApi.getAllCredentials).mockResolvedValue({
       success: true,
       data: {}
-    })
-
-    vi.mocked(systemApi.getBackups).mockResolvedValue({
-      success: true,
-      data: mockBackups
     })
 
     vi.mocked(systemApi.updateSettings).mockResolvedValue({ success: true })
@@ -264,33 +241,6 @@ describe('SystemSettings Integration Tests', () => {
     await flushPromises()
 
     expect(systemApi.updateSettings).toHaveBeenCalled()
-  })
-
-  it('should create database backup', async () => {
-    const { systemApi } = await import('@/api/system')
-    vi.mocked(systemApi.backupDatabase).mockResolvedValue({
-      success: true,
-      data: {
-        filename: 'new-backup.db',
-        size: 2048,
-        createdAt: new Date()
-      }
-    })
-
-    const router = createTestRouter()
-    await router.push('/settings/maintenance/backup')
-    await router.isReady()
-
-    const wrapper = mount(SystemSettings, {
-      global: { plugins: [router] }
-    })
-    await flushPromises()
-
-    const backupManager = wrapper.findComponent({ name: 'BackupManager' })
-    await backupManager.vm.$emit('backup')
-    await flushPromises()
-
-    expect(systemApi.backupDatabase).toHaveBeenCalled()
   })
 
   it('should navigate to health check page', async () => {
