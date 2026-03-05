@@ -20,7 +20,11 @@ export default {
     next: '下一步',
     previous: '上一步',
     close: '關閉',
-    refresh: '重新整理'
+    refresh: '重新整理',
+    saving: '儲存中...',
+    testing: '測試中...',
+    testConnection: '測試連線',
+    clearCredentials: '清除憑證'
   },
 
   // 登入頁面
@@ -108,6 +112,7 @@ export default {
       title: '平台整合',
       line: {
         title: 'LINE Official Account',
+        description: '設定 LINE 官方帳號的 Messaging API 憑證，用於接收和回覆客戶訊息',
         channelId: 'Channel ID',
         channelSecret: 'Channel Secret',
         accessToken: 'Access Token',
@@ -117,6 +122,7 @@ export default {
       },
       facebook: {
         title: 'Facebook Messenger',
+        description: '設定 Facebook Messenger 平台憑證，用於接收和回覆客戶訊息',
         appId: 'App ID',
         appSecret: 'App Secret',
         pageId: 'Page ID',

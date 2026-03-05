@@ -20,7 +20,11 @@ export default {
     next: '下一步',
     previous: '上一步',
     close: '关闭',
-    refresh: '刷新'
+    refresh: '刷新',
+    saving: '保存中...',
+    testing: '测试中...',
+    testConnection: '测试连接',
+    clearCredentials: '清除凭证'
   },
 
   // 登录页面
@@ -108,6 +112,7 @@ export default {
       title: '平台集成',
       line: {
         title: 'LINE Official Account',
+        description: '设置 LINE 官方帐号的 Messaging API 凭证，用于接收和回复客户消息',
         channelId: 'Channel ID',
         channelSecret: 'Channel Secret',
         accessToken: 'Access Token',
@@ -117,6 +122,7 @@ export default {
       },
       facebook: {
         title: 'Facebook Messenger',
+        description: '设置 Facebook Messenger 平台凭证，用于接收和回复客户消息',
         appId: 'App ID',
         appSecret: 'App Secret',
         pageId: 'Page ID',
