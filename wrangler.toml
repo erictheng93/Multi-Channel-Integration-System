@@ -10,9 +10,9 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 # LINE OA Basic ID for QR Code generation
-LINE_BOT_ID = "@063wetsd"
+LINE_BOT_ID = "@212kjcbd"
 # LIFF ID for team QR Code onboarding
-LINE_LIFF_ID = "2009283930-nLgZMrUN"
+LINE_LIFF_ID = "2007743547-EnXG6puw"
 
 # ============================================================================
 # CORS Configuration (Required for cross-origin requests)

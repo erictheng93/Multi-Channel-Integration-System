@@ -20,7 +20,11 @@ export default {
     next: 'Next',
     previous: 'Previous',
     close: 'Close',
-    refresh: 'Refresh'
+    refresh: 'Refresh',
+    saving: 'Saving...',
+    testing: 'Testing...',
+    testConnection: 'Test Connection',
+    clearCredentials: 'Clear Credentials'
   },
 
   // Login page
@@ -108,6 +112,7 @@ export default {
       title: 'Platform Integrations',
       line: {
         title: 'LINE Official Account',
+        description: 'Configure LINE Messaging API credentials to receive and reply to customer messages',
         channelId: 'Channel ID',
         channelSecret: 'Channel Secret',
         accessToken: 'Access Token',
@@ -117,6 +122,7 @@ export default {
       },
       facebook: {
         title: 'Facebook Messenger',
+        description: 'Configure Facebook Messenger platform credentials to receive and reply to customer messages',
         appId: 'App ID',
         appSecret: 'App Secret',
         pageId: 'Page ID',

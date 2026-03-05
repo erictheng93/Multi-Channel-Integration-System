@@ -56,7 +56,7 @@
         <input
           id="facebookAppSecret"
           v-model="localSettings.appSecret"
-          type="password"
+          type="text"
           class="form-input"
           :placeholder="t('systemSettings.integrations.facebook.appSecretPlaceholder')"
           required
@@ -155,6 +155,7 @@ const emit = defineEmits<{
   save: []
   test: []
   clear: []
+  'update:settings': [value: FacebookIntegration]
 }>()
 
 // Composables
@@ -169,13 +170,22 @@ const localSettings = reactive<FacebookIntegration>({
   status: 'disconnected'
 })
 
-// Watch for prop changes
+// Watch for prop changes (parent → child)
 watch(
   () => props.settings,
   (newSettings) => {
     Object.assign(localSettings, newSettings)
   },
   { immediate: true, deep: true }
+)
+
+// Sync local changes back to parent (child → parent)
+watch(
+  localSettings,
+  (newVal) => {
+    emit('update:settings', { ...newVal })
+  },
+  { deep: true }
 )
 
 // Computed

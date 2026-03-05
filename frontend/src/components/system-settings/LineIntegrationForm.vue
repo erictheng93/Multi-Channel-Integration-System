@@ -56,7 +56,7 @@
         <input
           id="lineChannelSecret"
           v-model="localSettings.channelSecret"
-          type="password"
+          type="text"
           class="form-input"
           :placeholder="t('systemSettings.integrations.line.channelSecretPlaceholder')"
           required
@@ -138,6 +138,7 @@ const emit = defineEmits<{
   save: []
   test: []
   clear: []
+  'update:settings': [value: LineIntegration]
 }>()
 
 // Composables
@@ -151,13 +152,22 @@ const localSettings = reactive<LineIntegration>({
   status: 'disconnected'
 })
 
-// Watch for prop changes
+// Watch for prop changes (parent → child)
 watch(
   () => props.settings,
   (newSettings) => {
     Object.assign(localSettings, newSettings)
   },
   { immediate: true, deep: true }
+)
+
+// Sync local changes back to parent (child → parent)
+watch(
+  localSettings,
+  (newVal) => {
+    emit('update:settings', { ...newVal })
+  },
+  { deep: true }
 )
 
 // Computed

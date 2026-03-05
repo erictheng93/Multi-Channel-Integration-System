@@ -11,6 +11,7 @@
     @save="controller.saveFacebookSettings"
     @test="controller.testFacebookIntegration"
     @clear="controller.clearFacebookCredentials"
+    @update:settings="(data) => Object.assign(controller.settings.integrations.facebook, data)"
   />
 </template>
 

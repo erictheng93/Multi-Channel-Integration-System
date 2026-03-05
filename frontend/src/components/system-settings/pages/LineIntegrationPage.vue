@@ -11,6 +11,7 @@
     @save="controller.saveLineSettings"
     @test="controller.testLineIntegration"
     @clear="controller.clearLineCredentials"
+    @update:settings="(data) => Object.assign(controller.settings.integrations.line, data)"
   />
 </template>
 
