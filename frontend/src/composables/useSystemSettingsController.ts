@@ -572,8 +572,7 @@ export function useSystemSettingsController() {
         // Map components to display list
         const componentNameMap: Record<string, string> = {
           'database': '資料庫 (D1)',
-          'cache': '快取 (KV)',
-          'api-services': 'API 服務'
+          'cache': '快取 (KV)'
         }
 
         healthCheckResults.value = (data.components ?? []).map(c => ({

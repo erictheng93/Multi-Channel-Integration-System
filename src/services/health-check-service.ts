@@ -168,8 +168,6 @@ export class HealthCheckService {
       },
       components,
       infrastructure: this.buildInfrastructureHealth(),
-      services: this.buildServicesHealth(),
-      frontend: this.buildFrontendHealth(),
       performance: this.buildPerformanceMetrics()
     };
   }
@@ -189,8 +187,6 @@ export class HealthCheckService {
       },
       components: this.buildComponentsHealth(),
       infrastructure: this.buildInfrastructureHealth(),
-      services: this.buildServicesHealth(),
-      frontend: this.buildFrontendHealth(),
       performance: this.buildPerformanceMetrics()
     };
   }
@@ -259,32 +255,7 @@ export class HealthCheckService {
   private buildInfrastructureHealth() {
     return {
       database: this.getResultByChecker('database') || this.getUnknownResult('Database not checked'),
-      cache: this.getResultByChecker('cache') || this.getUnknownResult('Cache not checked'),
-      storage: this.getResultByChecker('storage') || this.getUnknownResult('Storage not checked'),
-      queue: this.getResultByChecker('queue') || this.getUnknownResult('Queue not checked')
-    };
-  }
-
-  /**
-   * 建構服務健康狀態
-   */
-  private buildServicesHealth() {
-    return {
-      auth: this.getResultByChecker('auth') || this.getUnknownResult('Auth service not checked'),
-      messaging: this.getResultByChecker('messaging') || this.getUnknownResult('Messaging service not checked'),
-      notifications: this.getResultByChecker('notifications') || this.getUnknownResult('Notifications service not checked'),
-      reports: this.getResultByChecker('reports') || this.getUnknownResult('Reports service not checked')
-    };
-  }
-
-  /**
-   * 建構前端健康狀態
-   */
-  private buildFrontendHealth() {
-    return {
-      components: this.getResultByChecker('frontend-components') || this.getUnknownResult('Frontend components not checked'),
-      routing: this.getResultByChecker('frontend-routing') || this.getUnknownResult('Frontend routing not checked'),
-      api: this.getResultByChecker('frontend-api') || this.getUnknownResult('Frontend API not checked')
+      cache: this.getResultByChecker('cache') || this.getUnknownResult('Cache not checked')
     };
   }
 
@@ -300,7 +271,6 @@ export class HealthCheckService {
     return {
       apiResponseTime: responseTimes.length > 0 ?
         Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : 0,
-      frontendLoadTime: 0, // 需要從前端獲取
       databaseQueryTime: 0, // 需要從資料庫檢查器獲取
       cacheHitRate: 0 // 需要從快取檢查器獲取
     };

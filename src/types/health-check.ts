@@ -32,23 +32,9 @@ export interface SystemHealth {
   infrastructure: {
     database: HealthCheckResult;
     cache: HealthCheckResult;
-    storage: HealthCheckResult;
-    queue: HealthCheckResult;
-  };
-  services: {
-    auth: HealthCheckResult;
-    messaging: HealthCheckResult;
-    notifications: HealthCheckResult;
-    reports: HealthCheckResult;
-  };
-  frontend: {
-    components: HealthCheckResult;
-    routing: HealthCheckResult;
-    api: HealthCheckResult;
   };
   performance: {
     apiResponseTime: number;
-    frontendLoadTime: number;
     databaseQueryTime: number;
     cacheHitRate: number;
   };

@@ -173,7 +173,7 @@ export const systemApi = {
         checkInterval: number;
       }>;
       infrastructure: Record<string, { status: string; message: string; timestamp: string; responseTime?: number }>;
-      performance: { apiResponseTime: number; frontendLoadTime: number; databaseQueryTime: number; cacheHitRate: number };
+      performance: { apiResponseTime: number; databaseQueryTime: number; cacheHitRate: number };
     };
     message?: string;
   }> => {
