@@ -92,8 +92,17 @@ const router = useRouter()
 const conversationsStore = useConversationsStore()
 const filterComposable = useConversationFilters()
 
-// Available tags for tag filter dropdown
-const availableTags = computed(() => tagCacheService.getAllTags())
+// Available tags for tag filter dropdown (reactive)
+const availableTags = ref<{ id: number; name: string; color: string }[]>([])
+
+async function loadAvailableTags() {
+  try {
+    const tags = await tagCacheService.ensureTagsLoaded()
+    availableTags.value = tags.map(t => ({ id: t.id, name: t.name, color: t.color }))
+  } catch (err) {
+    console.warn('Failed to load tags for filter:', err)
+  }
+}
 
 // Debounced API filters — triggers store fetch on change
 const apiFilters = computed(() => filterComposable.getApiFilters())
@@ -194,8 +203,8 @@ function handleFilterUpdate(key: keyof ConversationFiltersType, value: string | 
 onMounted(async () => {
   console.log('🚀 ConversationsTable mounted')
 
-  // Ensure tag cache is initialized for the filter dropdown
-  tagCacheService.init().catch(err => console.warn('Tag cache init failed:', err))
+  // Load tags for filter dropdown (async, reactive)
+  loadAvailableTags()
 
   // FIX: 每次 mount 都刷新數據，確保返回列表時顯示最新狀態
   // 使用 loadWithCache 提供最佳 UX：
