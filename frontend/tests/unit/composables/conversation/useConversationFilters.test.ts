@@ -20,8 +20,9 @@ describe('useConversationFilters', () => {
 
       expect(filters.value.status).toBe('')
       expect(filters.value.platform).toBe('')
-      expect(filters.value.assignedTo).toBeUndefined()
+      expect(filters.value.teamId).toBeUndefined()
       expect(filters.value.tagIds).toEqual([])
+      expect(filters.value.search).toBe('')
       expect(selectedTagIds.value).toEqual([])
       expect(hasActiveFilters.value).toBe(false)
     })
@@ -36,6 +37,13 @@ describe('useConversationFilters', () => {
 
       updateFilter('platform', 'line')
       expect(filters.value.platform).toBe('line')
+    })
+
+    it('应该正确更新搜索筛选条件', () => {
+      const { filters, updateFilter } = filtersComposable
+
+      updateFilter('search', 'test query')
+      expect(filters.value.search).toBe('test query')
     })
 
     it('更新筛选条件后 hasActiveFilters 应该为 true', () => {
@@ -96,6 +104,7 @@ describe('useConversationFilters', () => {
       // Note: Individual assignment (assignedTo) removed - only team-based filtering is supported now
       updateFilter('status', 'open')
       updateFilter('platform', 'line')
+      updateFilter('search', 'test query')
       updateTagFilter([1, 2])
 
       expect(hasActiveFilters.value).toBe(true)
@@ -105,6 +114,7 @@ describe('useConversationFilters', () => {
 
       expect(filters.value.status).toBe('')
       expect(filters.value.platform).toBe('')
+      expect(filters.value.search).toBe('')
       expect(filters.value.tagIds).toEqual([])
       expect(hasActiveFilters.value).toBe(false)
     })
@@ -130,12 +140,22 @@ describe('useConversationFilters', () => {
 
       updateFilter('status', 'open')
       updateFilter('platform', 'line')
+      updateFilter('search', 'customer name')
       updateTagFilter([1, 2])
       const apiFilters = getApiFilters()
 
       expect(apiFilters.status).toBe('open')
       expect(apiFilters.platform).toBe('line')
+      expect(apiFilters.search).toBe('customer name')
       expect(apiFilters.tagIds).toEqual([1, 2])
+    })
+
+    it('应该移除空搜索字段', () => {
+      const { getApiFilters } = filtersComposable
+      const apiFilters = getApiFilters()
+
+      // search defaults to '' which should be removed
+      expect(apiFilters.search).toBeUndefined()
     })
   })
 
@@ -162,10 +182,31 @@ describe('useConversationFilters', () => {
 
     // Note: Individual assignment (assignedTo) test removed - only team-based filtering is supported now
 
+    it('当有搜索筛选时应该为 true', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+
+      updateFilter('search', 'test')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('当搜索为空白字符时应该为 false', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+
+      updateFilter('search', '   ')
+      expect(hasActiveFilters.value).toBe(false)
+    })
+
     it('当有标签筛选时应该为 true', () => {
       const { hasActiveFilters, updateTagFilter } = filtersComposable
 
       updateTagFilter([1])
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('当有 teamId 筛选时应该为 true', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+
+      updateFilter('teamId', 1)
       expect(hasActiveFilters.value).toBe(true)
     })
   })

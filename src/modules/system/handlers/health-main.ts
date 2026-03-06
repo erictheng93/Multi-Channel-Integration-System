@@ -15,13 +15,13 @@ let initialized = false;
 /**
  * 初始化健康檢查器
  */
-function initializeHealthCheckers(db: any, cache: any) {
+function initializeHealthCheckers(db: any, cache: any, backendUrl?: string) {
   if (initialized) return;
 
   // 註冊基礎設施檢查器
   healthCheckService.registerChecker(new DatabaseHealthChecker(db));
   healthCheckService.registerChecker(new CacheHealthChecker(cache));
-  healthCheckService.registerChecker(new APIHealthChecker());
+  healthCheckService.registerChecker(new APIHealthChecker(backendUrl || ''));
 
   initialized = true;
 }
@@ -284,9 +284,9 @@ export async function getConfigCheck(c: Context<{ Bindings: Bindings }>) {
 /**
  * 創建健康檢查方法集合
  */
-export function createHealthCheckHandlerMethods(db: any, cache: any) {
+export function createHealthCheckHandlerMethods(db: any, cache: any, backendUrl?: string) {
   // 初始化檢查器
-  initializeHealthCheckers(db, cache);
+  initializeHealthCheckers(db, cache, backendUrl);
 
   return {
     getSystemHealth,

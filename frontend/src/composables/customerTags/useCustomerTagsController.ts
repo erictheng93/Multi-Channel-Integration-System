@@ -36,7 +36,7 @@ export function useCustomerTagsController() {
   // ==================== State ====================
 
   const loading = ref(true)
-  const tags = computed(() => store.tags)
+  const allTags = computed(() => store.tags)
 
   // Modal visibility state
   const showCreateModal = ref(false)
@@ -67,18 +67,22 @@ export function useCustomerTagsController() {
     '#6366F1', '#84CC16', '#06B6D4', '#F43F5E'
   ]
 
-  // ==================== Statistics ====================
-
-  const stats = computed(() => ({
-    totalTags: tags.value.length,
-    totalConversations: tags.value.reduce((sum: number, tag: Tag) => sum + (tag.conversationCount || 0), 0),
-    activeTags: tags.value.filter((tag: Tag) => tag.isActive).length
-  }))
-
   // ==================== Sub-Composables ====================
 
   // Search and filtering
-  const search = useTagSearch(store, () => { loading.value = true }, () => { loading.value = false })
+  const search = useTagSearch(store)
+
+  // Filtered tags for display (derived from store.tags via computed)
+  const tags = search.filteredTags
+
+  // ==================== Statistics ====================
+
+  // Stats always use ALL tags (not filtered) for accurate totals
+  const stats = computed(() => ({
+    totalTags: allTags.value.length,
+    totalConversations: allTags.value.reduce((sum: number, tag: Tag) => sum + (tag.conversationCount || 0), 0),
+    activeTags: allTags.value.filter((tag: Tag) => tag.isActive).length
+  }))
 
   // CRUD actions (create, update, delete, bulk delete)
   const actions = useTagActions(
