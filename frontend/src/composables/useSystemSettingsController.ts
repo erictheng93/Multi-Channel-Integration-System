@@ -17,8 +17,7 @@ import type {
   SettingsTab,
   MessageType,
   TabConfig,
-  StatusClasses,
-  HealthCheckResult
+  StatusClasses
 } from '@/types/system-settings'
 
 /**
@@ -49,6 +48,17 @@ export function useSystemSettingsController() {
 
   /** Processing state for system operations */
   const processing = ref(false)
+
+  /** Health check results for each component */
+  const healthCheckResults = ref<Array<{
+    name: string
+    status: 'healthy' | 'warning' | 'critical' | 'unknown'
+    message: string
+    responseTime?: number
+  }>>([])
+
+  /** Overall health status */
+  const healthOverall = ref<{ status: string; message: string } | null>(null)
 
   /** Active settings tab */
   const activeTab = ref<SettingsTab>('general')
@@ -541,45 +551,46 @@ export function useSystemSettingsController() {
   }
 
   /**
-   * Perform health check
+   * Perform health check using the full /health/system endpoint
    */
   async function healthCheck(): Promise<void> {
     try {
       processing.value = true
+      healthCheckResults.value = []
+      healthOverall.value = null
 
       const response = await systemApi.healthCheck()
+      const data = response.data
 
-      if (response.success && response.data) {
-        // Build HealthCheckResult from API response
-        const apiData = response.data as {
-          status?: string
-          checks?: {
-            database?: boolean
-            cache?: boolean
-            queue?: boolean
-            integrations?: boolean | Record<string, boolean>
-          }
-          message?: string
-        }
-        const result: HealthCheckResult = {
-          success: response.success,
-          status: (apiData.status as HealthCheckResult['status']) || 'unhealthy',
-          checks: {
-            database: apiData.checks?.database ?? false,
-            cache: apiData.checks?.cache ?? false,
-            queue: apiData.checks?.queue ?? false,
-            integrations: apiData.checks?.integrations !== null && apiData.checks?.integrations !== undefined ? Boolean(apiData.checks.integrations) : false
-          },
-          message: apiData.message
+      if (data?.overall) {
+        // Map overall status
+        healthOverall.value = {
+          status: data.overall.status,
+          message: data.overall.message
         }
 
-        const statusText = result.status === 'healthy' ? '正常' :
-          result.status === 'degraded' ? '降級' : '異常'
+        // Map components to display list
+        const componentNameMap: Record<string, string> = {
+          'database': '資料庫 (D1)',
+          'cache': '快取 (KV)',
+          'api-services': 'API 服務'
+        }
 
-        showMessage(`系統狀態: ${statusText}`, result.status === 'healthy' ? 'success' : 'error')
+        healthCheckResults.value = (data.components ?? []).map(c => ({
+          name: componentNameMap[c.component] ?? c.component,
+          status: c.status.status as 'healthy' | 'warning' | 'critical' | 'unknown',
+          message: c.status.message,
+          responseTime: c.status.responseTime
+        }))
+
+        const overallStatus = data.overall.status
+        const statusText = overallStatus === 'healthy' ? '正常'
+          : overallStatus === 'warning' ? '降級' : '異常'
+        const msgType = overallStatus === 'healthy' ? 'success' : 'error'
+
+        showMessage(`系統狀態: ${statusText}`, msgType as MessageType)
       } else {
-        const errorMessage = response.message || '健康檢查失敗'
-        showMessage(errorMessage, 'error')
+        showMessage(response.message || '健康檢查失敗', 'error')
       }
     } catch (error) {
       console.error('Health check failed:', error)
@@ -698,6 +709,8 @@ export function useSystemSettingsController() {
 
     // System Maintenance
     healthCheck,
+    healthCheckResults,
+    healthOverall,
 
     // Utilities
     showMessage,

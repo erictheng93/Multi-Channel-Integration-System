@@ -171,6 +171,7 @@ export default {
       },
       system: {
         title: '系统控制',
+        description: '检查数据库、缓存、队列及集成服务的运行状态',
         healthCheck: '健康检查',
         restart: '重启系统'
       }

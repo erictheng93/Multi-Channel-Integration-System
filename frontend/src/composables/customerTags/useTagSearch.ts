@@ -1,14 +1,15 @@
 /**
  * Tag Search Composable
  *
- * Manages tag search and filtering with debounced input.
- * Integrates with tag cache service for optimal performance.
+ * Manages tag search and filtering using Vue reactive computed derivation.
+ * Filters tags client-side from store data — never overwrites store.tags.
  *
  * @module composables/customerTags/useTagSearch
  */
 
-import { ref, watch } from 'vue'
+import { ref, computed } from 'vue'
 import type { Tag } from '@/types/tag'
+import { useDebounce } from '@/composables/useDebounce'
 import { tagCacheService } from '@/services/tagCacheService'
 
 /**
@@ -20,32 +21,44 @@ interface TagSearchStoreInterface {
 }
 
 /**
- * Tag search and filtering logic
+ * Tag search and filtering logic (computed derivation pattern)
  *
  * Features:
- * - Debounced search (300ms delay)
- * - Cache integration for performance
- * - Filtered results computation
+ * - Debounced search (300ms) via useDebounce composable
+ * - Computed filteredTags derived from store.tags (no mutation)
+ * - Clear search restores full list automatically (zero-cost)
  *
  * @param store - Tags Pinia store
- * @param onLoadStart - Callback when loading starts
- * @param onLoadEnd - Callback when loading ends
  * @returns Search state and methods
  */
-export function useTagSearch(
-  store: TagSearchStoreInterface,
-  onLoadStart: () => void,
-  onLoadEnd: () => void
-) {
-  // ==================== State ====================
+export function useTagSearch(store: TagSearchStoreInterface) {
+  // ==================== Search State ====================
 
   const searchQuery = ref('')
-  let debounceTimer: number | null = null
+  const debouncedSearch = useDebounce(searchQuery, 300)
+  const isSearching = computed(() => debouncedSearch.value.trim().length > 0)
 
-  // ==================== Methods ====================
+  // ==================== Computed Filtering ====================
 
   /**
-   * Load tags from API
+   * Filtered tags derived from store.tags
+   * Reactively updates when store.tags or search query changes
+   * Never mutates the original store data
+   */
+  const filteredTags = computed(() => {
+    const query = debouncedSearch.value.trim().toLowerCase()
+    if (!query) {return store.tags}
+    return store.tags.filter(tag => {
+      const nameMatch = tag.name.toLowerCase().includes(query)
+      const descMatch = tag.description?.toLowerCase().includes(query)
+      return nameMatch || descMatch
+    })
+  })
+
+  // ==================== Data Loading ====================
+
+  /**
+   * Load tags from API into store
    * Uses cache service for optimal performance
    *
    * @param forceRefresh - When true, bypasses cache and fetches fresh data from API.
@@ -81,97 +94,24 @@ export function useTagSearch(
     }
   }
 
-  /**
-   * Debounced search handler
-   * Delays search execution to avoid excessive API calls
-   *
-   * @param query - Search query string
-   */
-  const debouncedSearch = (query: string) => {
-    // Clear existing timer
-    if (debounceTimer !== null) {
-      window.clearTimeout(debounceTimer)
-    }
-
-    // Set new timer
-    debounceTimer = window.setTimeout(() => {
-      performSearch(query)
-    }, 300) as unknown as number
-  }
+  // ==================== Actions ====================
 
   /**
-   * Execute search
-   * Filters tags based on search query
-   *
-   * @param query - Search query string
+   * Clear search query — filteredTags automatically restores to full list
    */
-  const performSearch = async (query: string) => {
-    const trimmedQuery = query.trim().toLowerCase()
-
-    console.log(`🔍 [TagSearch] Searching for: "${trimmedQuery}"`)
-
-    if (!trimmedQuery) {
-      // Empty query - show all tags
-      await loadTags()
-      return
-    }
-
-    onLoadStart()
-
-    try {
-      // Filter tags by name or description
-      const allTags = tagCacheService.getAllTags()
-      const filtered = allTags.filter(tag => {
-        const nameMatch = tag.name.toLowerCase().includes(trimmedQuery)
-        const descMatch = tag.description?.toLowerCase().includes(trimmedQuery)
-        return nameMatch || descMatch
-      })
-
-      store.tags = filtered
-      console.log(`✅ [TagSearch] Found ${filtered.length} matching tags`)
-    } catch (error) {
-      console.error('❌ [TagSearch] Search failed:', error)
-    } finally {
-      onLoadEnd()
-    }
-  }
-
-  /**
-   * Clear search and reload all tags
-   */
-  const clearSearch = async () => {
+  const clearSearch = () => {
     searchQuery.value = ''
-    await loadTags()
-    console.log('🧹 [TagSearch] Search cleared')
-  }
-
-  // ==================== Watchers ====================
-
-  /**
-   * Watch search query and trigger debounced search
-   */
-  watch(searchQuery, (newQuery) => {
-    debouncedSearch(newQuery)
-  })
-
-  // ==================== Cleanup ====================
-
-  /**
-   * Cleanup debounce timer
-   */
-  const cleanup = () => {
-    if (debounceTimer !== null) {
-      window.clearTimeout(debounceTimer)
-      debounceTimer = null
-    }
   }
 
   // ==================== Return Interface ====================
 
   return {
     searchQuery,
+    debouncedSearch,
+    isSearching,
+    filteredTags,
     loadTags,
     clearSearch,
-    cleanup
+    cleanup: () => { /* No manual timer to clean up — useDebounce handles it */ }
   }
 }

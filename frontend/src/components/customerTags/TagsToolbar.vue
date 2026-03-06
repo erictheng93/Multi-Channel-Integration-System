@@ -9,7 +9,21 @@
         class="search-input"
         placeholder="搜尋標籤名稱或描述..."
         @input="$emit('update:search-query', localSearchQuery)"
+        @keydown.escape="handleClear"
       >
+      <button
+        v-if="localSearchQuery"
+        class="search-clear"
+        @click="handleClear"
+      >
+        ✕
+      </button>
+      <span
+        v-if="isSearching"
+        class="search-stats"
+      >
+        找到 {{ filteredCount }} / {{ totalCount }}
+      </span>
     </div>
 
     <!-- Toolbar Actions -->
@@ -47,9 +61,12 @@ const props = defineProps<{
   searchQuery: string
   hasSelection: boolean
   selectionCount: number
+  isSearching: boolean
+  filteredCount: number
+  totalCount: number
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:search-query': [value: string]
   'bulk-delete': []
   'clear-selection': []
@@ -60,6 +77,11 @@ const localSearchQuery = ref(props.searchQuery)
 watch(() => props.searchQuery, (newValue) => {
   localSearchQuery.value = newValue
 })
+
+function handleClear() {
+  localSearchQuery.value = ''
+  emit('update:search-query', '')
+}
 </script>
 
 <style scoped>
@@ -113,6 +135,35 @@ watch(() => props.searchQuery, (newValue) => {
 
 .search-input::placeholder {
   color: var(--gray-400);
+}
+
+.search-clear {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.search-clear:hover {
+  color: var(--gray-600);
+  background: var(--gray-200);
+}
+
+.search-stats {
+  font-size: 0.75rem;
+  color: var(--primary-600);
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  background: var(--primary-50);
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .toolbar-actions {

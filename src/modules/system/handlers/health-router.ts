@@ -37,7 +37,7 @@ app.get('/health', (c) => {
 
 // 系統整體健康狀態 (無需認證 - 用於負載平衡器檢查)
 app.get('/status', async (c) => {
-  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
   return handlers.getSystemHealth(c as HealthRouteContext);
 });
 
@@ -45,31 +45,31 @@ app.get('/status', async (c) => {
 
 // 系統完整健康檢查
 app.get('/system', jwtAuth, async (c) => {
-  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
   return handlers.getSystemHealth(c as HealthRouteContext);
 });
 
 // 基礎設施健康檢查
 app.get('/infrastructure', jwtAuth, async (c) => {
-  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
   return handlers.getInfrastructureHealth(c as HealthRouteContext);
 });
 
 // 服務層健康檢查
 app.get('/services', jwtAuth, async (c) => {
-  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
   return handlers.getServicesHealth(c as HealthRouteContext);
 });
 
 // 健康檢查統計
 app.get('/stats', jwtAuth, async (c) => {
-  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
   return handlers.getHealthStats(c as HealthRouteContext);
 });
 
 // 特定組件健康檢查
 app.get('/component/:component', jwtAuth, async (c) => {
-  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+  const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
   return handlers.runComponentCheck(c as HealthRouteContext);
 });
 
@@ -122,7 +122,7 @@ app.get('/config', jwtAuth, async (c) => {
 // 系統指標
 app.get('/metrics', jwtAuth, async (c) => {
   try {
-    const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+    const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
     const healthResponse = await handlers.getSystemHealth(c as HealthRouteContext);
 
     // 解析回應以取得實際的健康資料
@@ -168,7 +168,7 @@ cache_hit_rate{service="mcis"} ${healthData.performance?.cacheHitRate || 0}
 // Readiness probe (用於 Kubernetes 等容器平台)
 app.get('/ready', async (c) => {
   try {
-    const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+    const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
     const healthResponse = await handlers.getSystemHealth(c as HealthRouteContext);
 
     // 解析回應以取得實際的健康資料
@@ -214,7 +214,7 @@ app.get('/live', (c) => {
 // 手動觸發完整健康檢查
 app.post('/check/all', jwtAuth, async (c) => {
   try {
-    const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE);
+    const handlers = createHealthCheckHandlerMethods(c.env.DB, c.env.CACHE, c.env.BACKEND_URL);
     const health = await handlers.getSystemHealth(c as HealthRouteContext);
 
     return c.json({

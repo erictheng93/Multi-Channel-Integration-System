@@ -16,32 +16,41 @@
       </p>
     </div>
 
-    <!-- Tags Grid -->
-    <div
-      v-else
-      class="tags-grid"
-    >
-      <TagCard
-        v-for="tag in tags"
-        :key="tag.id"
-        :tag="tag"
-        :is-selected="isSelected(tag.id)"
-        @select="$emit('select-tag', tag.id)"
-        @edit="$emit('edit-tag', tag)"
-        @delete="$emit('delete-tag', tag)"
-        @view-stats="$emit('view-stats', tag)"
-        @view-conversations="$emit('view-conversations', tag)"
+    <!-- Tags Grid (paginated) -->
+    <template v-else>
+      <div class="tags-grid">
+        <TagCard
+          v-for="tag in paginatedTags"
+          :key="tag.id"
+          :tag="tag"
+          :is-selected="isSelected(tag.id)"
+          @select="$emit('select-tag', tag.id)"
+          @edit="$emit('edit-tag', tag)"
+          @delete="$emit('delete-tag', tag)"
+          @view-stats="$emit('view-stats', tag)"
+          @view-conversations="$emit('view-conversations', tag)"
+        />
+      </div>
+
+      <!-- Pagination Controls -->
+      <PaginationControls
+        :pagination="paginationInfo"
+        :visible-pages="pagination.pageRange.value"
+        @change-page="pagination.setPage"
       />
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, watch } from 'vue'
 import { TagIcon } from '@/components/icons'
 import TagCard from './TagCard.vue'
+import PaginationControls from '@/components/ui/PaginationControls.vue'
+import { usePagination } from '@/composables/usePagination'
 import type { Tag } from '@/types/tag'
 
-defineProps<{
+const props = defineProps<{
   tags: Tag[]
   loading: boolean
   isSelected: (_id: number) => boolean
@@ -54,6 +63,33 @@ defineEmits<{
   'view-stats': [tag: Tag]
   'view-conversations': [tag: Tag]
 }>()
+
+const PAGE_SIZE = 24
+
+// Pagination
+const pagination = usePagination({ limit: PAGE_SIZE, total: props.tags.length })
+
+const paginatedTags = computed(() => {
+  return pagination.paginateData(props.tags)
+})
+
+const paginationInfo = computed(() => ({
+  page: pagination.currentPage.value,
+  pageSize: pagination.pageSize.value,
+  total: pagination.total.value,
+  totalPages: pagination.totalPages.value,
+  hasNext: pagination.hasNext.value,
+  hasPrev: pagination.hasPrev.value,
+}))
+
+// Sync total + reset page when tags change (e.g. search filter, data refresh)
+watch(
+  () => props.tags.length,
+  (newLength) => {
+    pagination.setTotal(newLength)
+    pagination.setPage(1)
+  }
+)
 </script>
 
 <style scoped>

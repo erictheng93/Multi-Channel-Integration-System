@@ -56,11 +56,11 @@ describe('Conversations Store', () => {
     it('should initialize with default filters and pagination', async () => {
       const { useConversationsStore } = await import('./conversations')
       const store = useConversationsStore()
-      
+
       expect(store.filters).toEqual({
         status: undefined,
         platform: undefined,
-        assignedTo: undefined
+        teamId: undefined
       })
       expect(store.pagination).toEqual({
         page: 1,
@@ -111,6 +111,79 @@ describe('Conversations Store', () => {
       expect(store.pagination.total).toBe(2)
       expect(store.loading).toBe(false)
       expect(store.error).toBe(null)
+    })
+
+    it('should pass search parameter to API when set', async () => {
+      const mockResponse = {
+        success: true,
+        data: []
+      }
+      mockConversationApi.list.mockResolvedValue(mockResponse)
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      // Set search filter
+      store.filters.search = 'test customer'
+      await store.loadConversations()
+
+      // Verify API was called with search param
+      const callArgs = mockConversationApi.list.mock.calls[0]?.[0] || {}
+      expect(callArgs.search).toBe('test customer')
+    })
+
+    it('should pass tagIds parameter to API when set', async () => {
+      const mockResponse = {
+        success: true,
+        data: []
+      }
+      mockConversationApi.list.mockResolvedValue(mockResponse)
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      // Set tagIds filter
+      store.filters.tagIds = [1, 2, 3]
+      await store.loadConversations()
+
+      // Verify API was called with tagIds param
+      const callArgs = mockConversationApi.list.mock.calls[0]?.[0] || {}
+      expect(callArgs.tagIds).toEqual([1, 2, 3])
+    })
+
+    it('should not pass empty tagIds to API', async () => {
+      const mockResponse = {
+        success: true,
+        data: []
+      }
+      mockConversationApi.list.mockResolvedValue(mockResponse)
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      // Set empty tagIds
+      store.filters.tagIds = []
+      await store.loadConversations()
+
+      const callArgs = mockConversationApi.list.mock.calls[0]?.[0] || {}
+      expect(callArgs.tagIds).toBeUndefined()
+    })
+
+    it('should not pass empty search to API', async () => {
+      const mockResponse = {
+        success: true,
+        data: []
+      }
+      mockConversationApi.list.mockResolvedValue(mockResponse)
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      // search is not set (undefined)
+      await store.loadConversations()
+
+      const callArgs = mockConversationApi.list.mock.calls[0]?.[0] || {}
+      expect(callArgs.search).toBeUndefined()
     })
 
     it('should handle load conversations failure', async () => {

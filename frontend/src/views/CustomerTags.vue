@@ -25,6 +25,9 @@
         v-model:search-query="search.searchQuery.value"
         :has-selection="selection.hasSelection.value"
         :selection-count="selection.selectionCount.value"
+        :is-searching="search.isSearching.value"
+        :filtered-count="search.filteredTags.value.length"
+        :total-count="stats.totalTags"
         @bulk-delete="openBulkDeleteModal"
         @clear-selection="selection.clearSelection"
       />

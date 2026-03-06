@@ -1,4 +1,6 @@
 // API服務健康檢查器
+// Performs HTTP health checks against the worker's own public endpoints
+// to verify routing, middleware, and service layer are functioning.
 import { HealthLevel, type HealthChecker, type HealthCheckResult, type HealthCheckConfig } from '../types/health-check';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
@@ -11,38 +13,55 @@ export class APIHealthChecker implements HealthChecker {
 
   async check(): Promise<HealthCheckResult> {
     const startTime = nowMs();
+
+    // Without a valid base URL, we can't self-fetch — report as unknown
+    if (!this.baseUrl) {
+      return {
+        status: 'unknown',
+        message: 'API health check skipped: BACKEND_URL not configured',
+        timestamp: nowISO(),
+        responseTime: 0,
+        details: { reason: 'no_base_url' }
+      };
+    }
+
     try {
-      // 檢查核心API端點
+      // Check public health endpoints (no auth required) to verify routing works
       const endpoints = [
         '/api/system/health',
-        '/api/auth/validate',
+        '/api/health/health',
         '/api/conversations/health',
         '/api/notifications/health',
         '/api/reports/health'
       ];
 
-      // 並行檢查所有端點
+      // 並行檢查所有端點 (with individual timeout)
       const endpointChecks = endpoints.map(async (endpoint) => {
+        const epStart = Date.now();
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const response = await fetch(`${this.baseUrl}${endpoint}`, {
             method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           return {
             endpoint,
-            status: response.ok ? 'healthy' : 'warning',
+            status: response.ok ? 'healthy' as const : 'warning' as const,
             statusCode: response.status,
-            responseTime: Date.now() - startTime
+            responseTime: Date.now() - epStart
           };
         } catch (error) {
           return {
             endpoint,
-            status: 'critical',
+            status: 'critical' as const,
             error: error instanceof Error ? error.message : 'Unknown error',
-            responseTime: Date.now() - startTime
+            responseTime: Date.now() - epStart
           };
         }
       });
@@ -108,9 +127,7 @@ export class APIHealthChecker implements HealthChecker {
         warning: 2000, // 2秒
         critical: 5000 // 5秒
       },
-      notifications: {
-        webhook: process.env.HEALTH_WEBHOOK_URL
-      }
+      notifications: {}
     };
   }
 }

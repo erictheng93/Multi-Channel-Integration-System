@@ -48,21 +48,65 @@ describe('Conversations API', () => {
 
     it('should list conversations with pagination params', async () => {
       const params = { page: 1, pageSize: 20, status: 'assigned' as const }
-      const mockResponse = { 
-        success: true, 
-        data: { 
-          items: [], 
-          total: 0, 
-          page: 1, 
-          pageSize: 20 
-        } 
+      const mockResponse = {
+        success: true,
+        data: {
+          items: [],
+          total: 0,
+          page: 1,
+          pageSize: 20
+        }
       }
       mockGet.mockResolvedValue(mockResponse)
-      
+
       const result = await conversationApi.list(params)
-      
+
       expect(mockGet).toHaveBeenCalledWith('/conversations?page=1&pageSize=20&status=assigned')
       expect(result).toEqual(mockResponse)
+    })
+
+    it('should include search parameter in list query', async () => {
+      const params = { search: 'customer name' }
+      const mockResponse = { success: true, data: [] }
+      mockGet.mockResolvedValue(mockResponse)
+
+      await conversationApi.list(params)
+
+      expect(mockGet).toHaveBeenCalledWith('/conversations?search=customer+name')
+    })
+
+    it('should include tagIds as comma-separated values in list query', async () => {
+      const params = { tagIds: [1, 2, 3] }
+      const mockResponse = { success: true, data: [] }
+      mockGet.mockResolvedValue(mockResponse)
+
+      await conversationApi.list(params)
+
+      expect(mockGet).toHaveBeenCalledWith('/conversations?tagIds=1%2C2%2C3')
+    })
+
+    it('should not include tagIds when array is empty', async () => {
+      const params = { tagIds: [] as number[] }
+      const mockResponse = { success: true, data: [] }
+      mockGet.mockResolvedValue(mockResponse)
+
+      await conversationApi.list(params)
+
+      expect(mockGet).toHaveBeenCalledWith('/conversations')
+    })
+
+    it('should include search with other filters in list query', async () => {
+      const params = { status: 'active' as const, platform: 'line' as const, search: 'vip', tagIds: [5] }
+      const mockResponse = { success: true, data: [] }
+      mockGet.mockResolvedValue(mockResponse)
+
+      await conversationApi.list(params)
+
+      const calledUrl = mockGet.mock.calls[0]![0] as string
+      expect(calledUrl).toContain('status=active')
+      expect(calledUrl).toContain('platform=line')
+      expect(calledUrl).toContain('search=vip')
+      expect(calledUrl).toContain('tagIds=5')
     })
 
     it('should get conversation stats', async () => {

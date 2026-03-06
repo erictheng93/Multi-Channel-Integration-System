@@ -158,20 +158,40 @@ export const systemApi = {
     return apiClient.post('/system/config/import', config)
   },
 
-  // 健康檢查
-  healthCheck: async (): Promise<ApiResponse<{
-    status: 'healthy' | 'unhealthy';
-    checks: {
-      database: boolean;
-      cache: boolean;
-      integrations: {
-        line: boolean;
-        facebook: boolean;
-      };
+  // 完整健康檢查 (使用統一健康檢查系統)
+  // Uses raw fetch: backend returns 503 when components are critical, but the response body
+  // still contains valid health data. apiClient would retry on 5xx and discard the data.
+  healthCheck: async (): Promise<{
+    success: boolean;
+    data?: {
+      overall: { status: string; message: string; timestamp: string };
+      components: Array<{
+        component: string;
+        version: string;
+        status: { status: string; message: string; timestamp: string; responseTime?: number; details?: Record<string, unknown> };
+        lastCheck: string;
+        checkInterval: number;
+      }>;
+      infrastructure: Record<string, { status: string; message: string; timestamp: string; responseTime?: number }>;
+      performance: { apiResponseTime: number; frontendLoadTime: number; databaseQueryTime: number; cacheHitRate: number };
     };
-    timestamp: Date | string;
-  }>> => {
-    return apiClient.get('/system/health')
+    message?: string;
+  }> => {
+    try {
+      const { getBackendUrl } = await import('@/config/runtime')
+      const baseUrl = import.meta.env.DEV ? '/api' : `${getBackendUrl()}/api`
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${baseUrl}/health/system`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      const json = await response.json()
+      return { success: true, data: json.data, message: json.message }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : '健康檢查失敗' }
+    }
   },
 
   // 系統統計

@@ -171,6 +171,7 @@ export default {
       },
       system: {
         title: '系統控制',
+        description: '檢查資料庫、快取、佇列及整合服務的運行狀態',
         healthCheck: '健康檢查',
         restart: '重啟系統'
       }

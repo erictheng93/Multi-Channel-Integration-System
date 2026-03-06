@@ -171,6 +171,7 @@ export default {
       },
       system: {
         title: 'System Control',
+        description: 'Check the status of database, cache, queue, and integration services',
         healthCheck: 'Health Check',
         restart: 'Restart System'
       }

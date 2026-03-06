@@ -489,14 +489,15 @@ const formatSuccessRate = (rate: number): string => {
 const loadPlatformStatus = async () => {
   try {
     const response = await systemApi.healthCheck()
-    if (response.success && response.data) {
-      const { checks } = response.data
-      lineStatus.value = checks.integrations.line ? 'connected' : 'disconnected'
-      facebookStatus.value = checks.integrations.facebook ? 'connected' : 'disconnected'
-      
+    if (response.data) {
+      const { overall } = response.data
+      const isHealthy = overall?.status === 'healthy' || overall?.status === 'warning'
+      lineStatus.value = isHealthy ? 'connected' : 'disconnected'
+      facebookStatus.value = isHealthy ? 'connected' : 'disconnected'
+
       // Update webhook status
-      lineWebhookStatus.value.isActive = checks.integrations.line
-      facebookWebhookStatus.value.isActive = checks.integrations.facebook
+      lineWebhookStatus.value.isActive = isHealthy
+      facebookWebhookStatus.value.isActive = isHealthy
     }
   } catch (error) {
     console.error('載入平台狀態失敗:', error)

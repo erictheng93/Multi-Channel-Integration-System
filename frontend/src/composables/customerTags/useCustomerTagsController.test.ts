@@ -12,6 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { computed } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import type { Tag } from '@/types/tag'
 
@@ -51,6 +52,9 @@ vi.mock('@/composables/useToast', () => ({
 vi.mock('./useTagSearch', () => ({
   useTagSearch: vi.fn(() => ({
     searchQuery: { value: '' },
+    debouncedSearch: { value: '' },
+    isSearching: { value: false },
+    filteredTags: computed(() => mockStoreTags),
     loadTags: mockLoadTags,
     clearSearch: vi.fn(),
     cleanup: vi.fn(),
