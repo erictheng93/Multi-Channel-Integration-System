@@ -34,7 +34,10 @@ vi.mock('@/composables/message', () => {
         return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
       },
     }),
-    useMessageAttachment: (props: { value: { message: Message } }) => ({
+    useMessageAttachment: (props: { value: { message: Message; attachmentUrl?: string; attachmentName?: string; attachmentSize?: number } }) => ({
+      attachmentUrl: computed(() => props.value?.attachmentUrl || null),
+      attachmentName: computed(() => props.value?.attachmentName || '附件'),
+      attachmentSize: computed(() => props.value?.attachmentSize || 0),
       fileAttachments: computed(() => []),
       imageAttachments: computed(() => []),
       videoAttachments: computed(() => []),
