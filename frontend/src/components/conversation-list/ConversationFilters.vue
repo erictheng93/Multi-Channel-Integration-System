@@ -1,266 +1,394 @@
 <!--
-  Conversation Filters Component - v2 Two-Row Layout
+  Conversation Filters Component - Collapsible Command Bar
 
-  對話列表篩選器組件 — 雙排佈局版
-
-  Row 1: 客戶搜尋、平台、狀態、負責人、標籤
-  Row 2: 最後訊息搜尋、更新時間（快捷+自訂）、統計數據
+  Collapsed: compact search-style bar with active filter pills + stats
+  Expanded: full filter panel with smooth reveal animation
 -->
 <template>
-  <div class="conversation-filters">
-    <!-- Row 1: Primary filters -->
-    <div class="filter-row">
-      <div class="filter-group flex-1">
-        <!-- Customer Name Search -->
-        <div class="filter-item filter-search">
-          <label class="filter-label">客戶搜尋</label>
-          <input
-            v-model="localCustomerName"
-            type="text"
-            class="filter-input"
-            placeholder="輸入客戶名稱..."
+  <div
+    class="conversation-filters"
+    :class="{ 'is-expanded': isExpanded }"
+  >
+    <!-- Collapsed Trigger Bar -->
+    <div
+      class="filter-trigger"
+      @click="toggleExpand"
+    >
+      <div class="trigger-left">
+        <!-- Search Icon -->
+        <svg
+          class="trigger-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle
+            cx="11"
+            cy="11"
+            r="8"
+          />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+
+        <!-- Prompt text or active filter pills -->
+        <div
+          v-if="!hasActiveFilters"
+          class="trigger-placeholder"
+        >
+          搜尋與篩選對話...
+        </div>
+        <div
+          v-else
+          class="filter-pills"
+        >
+          <span
+            v-if="filters.customerName?.trim()"
+            class="filter-pill"
           >
+            <span class="pill-label">客戶</span>
+            <span class="pill-value">{{ filters.customerName }}</span>
+          </span>
+          <span
+            v-if="filters.platform"
+            class="filter-pill"
+          >
+            <span class="pill-label">平台</span>
+            <span class="pill-value">{{ platformLabels[filters.platform] || filters.platform }}</span>
+          </span>
+          <span
+            v-if="filters.status"
+            class="filter-pill"
+          >
+            <span class="pill-label">狀態</span>
+            <span class="pill-value">{{ statusLabels[filters.status] || filters.status }}</span>
+          </span>
+          <span
+            v-if="filters.teamId !== undefined"
+            class="filter-pill"
+          >
+            <span class="pill-label">負責人</span>
+            <span class="pill-value">{{ filters.teamId === 0 ? '未指派' : '已指派' }}</span>
+          </span>
+          <span
+            v-if="selectedTagIds.length > 0"
+            class="filter-pill"
+          >
+            <span class="pill-label">標籤</span>
+            <span class="pill-value">{{ selectedTagIds.length }} 個</span>
+          </span>
+          <span
+            v-if="filters.updatedAfter || filters.updatedBefore"
+            class="filter-pill"
+          >
+            <span class="pill-label">時間</span>
+            <span class="pill-value">{{ activeTimePreset || '自訂' }}</span>
+          </span>
+          <span
+            v-if="filters.lastMessageSearch?.trim()"
+            class="filter-pill"
+          >
+            <span class="pill-label">訊息</span>
+            <span class="pill-value">{{ filters.lastMessageSearch }}</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="trigger-right">
+        <!-- Active filter badge -->
+        <span
+          v-if="activeFilterCount > 0"
+          class="filter-badge"
+          title="清除所有篩選"
+          @click.stop="clearAll"
+        >
+          {{ activeFilterCount }}
+          <svg
+            class="badge-clear"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </span>
+
+        <!-- Stats -->
+        <div class="trigger-stats">
+          <span class="stat-num">{{ totalConversations }}</span>
+          <span class="stat-label">對話</span>
+        </div>
+        <div
+          v-if="unreadCount > 0"
+          class="trigger-stats unread"
+        >
+          <span class="stat-num">{{ unreadCount }}</span>
+          <span class="stat-label">未讀</span>
         </div>
 
-        <!-- Platform Filter -->
-        <div class="filter-item">
-          <label class="filter-label">平台篩選</label>
-          <select
-            :value="filters.platform"
-            class="form-select"
-            @change="onFilterChange('platform', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">
-              所有平台
-            </option>
-            <option value="line">
-              LINE
-            </option>
-            <option value="facebook">
-              Facebook
-            </option>
-            <option value="instagram">
-              Instagram
-            </option>
-            <option value="whatsapp">
-              WhatsApp
-            </option>
-          </select>
-        </div>
+        <!-- Expand chevron -->
+        <svg
+          class="trigger-chevron"
+          :class="{ rotated: isExpanded }"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </div>
+    </div>
 
-        <!-- Status Filter -->
-        <div class="filter-item">
-          <label class="filter-label">狀態篩選</label>
-          <select
-            :value="filters.status"
-            class="form-select"
-            @change="onFilterChange('status', ($event.target as HTMLSelectElement).value)"
-          >
-            <option value="">
-              所有狀態
-            </option>
-            <option value="active">
-              進行中
-            </option>
-            <option value="assigned">
-              已指派
-            </option>
-            <option value="pending">
-              待處理
-            </option>
-          </select>
-        </div>
-
-        <!-- Team Filter (renamed to 負責人) -->
-        <div class="filter-item">
-          <label class="filter-label">負責人</label>
-          <select
-            :value="filters.teamId || ''"
-            class="form-select"
-            @change="onFilterChange('teamId', ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : undefined)"
-          >
-            <option value="">
-              全部
-            </option>
-            <option value="0">
-              未指派
-            </option>
-          </select>
-        </div>
-
-        <!-- Tag Filter -->
-        <div class="filter-item relative">
-          <label class="filter-label">標籤篩選</label>
-          <div class="relative">
-            <button
-              class="tag-filter-btn"
-              :class="{ 'has-selection': selectedTagIds.length > 0 }"
-              @click="showTagDropdown = !showTagDropdown"
+    <!-- Expandable Filter Panel -->
+    <Transition name="filter-panel">
+      <div
+        v-show="isExpanded"
+        class="filter-panel"
+      >
+        <!-- Row 1: Search + Dropdowns -->
+        <div class="panel-row">
+          <div class="panel-field panel-field--grow">
+            <label class="field-label">客戶搜尋</label>
+            <input
+              ref="customerSearchInput"
+              v-model="localCustomerName"
+              type="text"
+              class="field-input"
+              placeholder="輸入客戶名稱..."
             >
-              <span v-if="selectedTagIds.length === 0">選擇標籤</span>
-              <span v-else>已選 {{ selectedTagIds.length }} 個</span>
-              <svg
-                class="w-4 h-4 ml-auto transition-transform duration-200"
-                :class="{ 'rotate-180': showTagDropdown }"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
+          </div>
 
-            <!-- Tag dropdown -->
-            <div
-              v-if="showTagDropdown"
-              class="tag-filter-dropdown"
+          <div class="panel-field">
+            <label class="field-label">平台</label>
+            <select
+              :value="filters.platform"
+              class="field-select"
+              @change="onFilterChange('platform', ($event.target as HTMLSelectElement).value)"
             >
-              <div
-                v-if="availableTags.length === 0"
-                class="p-4 text-center text-gray-500 text-sm"
+              <option value="">
+                全部
+              </option>
+              <option value="line">
+                LINE
+              </option>
+              <option value="facebook">
+                Facebook
+              </option>
+              <option value="instagram">
+                Instagram
+              </option>
+              <option value="whatsapp">
+                WhatsApp
+              </option>
+            </select>
+          </div>
+
+          <div class="panel-field">
+            <label class="field-label">狀態</label>
+            <select
+              :value="filters.status"
+              class="field-select"
+              @change="onFilterChange('status', ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">
+                全部
+              </option>
+              <option value="active">
+                進行中
+              </option>
+              <option value="assigned">
+                已指派
+              </option>
+              <option value="pending">
+                待處理
+              </option>
+            </select>
+          </div>
+
+          <div class="panel-field">
+            <label class="field-label">負責人</label>
+            <select
+              :value="filters.teamId ?? ''"
+              class="field-select"
+              @change="onFilterChange('teamId', ($event.target as HTMLSelectElement).value ? Number(($event.target as HTMLSelectElement).value) : undefined)"
+            >
+              <option value="">
+                全部
+              </option>
+              <option value="0">
+                未指派
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Tags + Last Message + Time Range -->
+        <div class="panel-row">
+          <!-- Tag Filter -->
+          <div class="panel-field relative">
+            <label class="field-label">標籤</label>
+            <div class="relative">
+              <button
+                class="field-tag-btn"
+                :class="{ active: selectedTagIds.length > 0 }"
+                @click="showTagDropdown = !showTagDropdown"
               >
-                暫無可用標籤
-              </div>
-              <div
-                v-for="tag in availableTags"
-                v-else
-                :key="tag.id"
-                class="flex items-center gap-3 py-3 px-4 cursor-pointer transition-colors hover:bg-gray-50"
-                :class="{ 'bg-primary-50': selectedTagIds.includes(tag.id) }"
-                @click="toggleTag(tag.id)"
-              >
-                <div
-                  class="w-3 h-3 rounded-full flex-shrink-0"
-                  :style="{ backgroundColor: tag.color }"
-                />
-                <span class="flex-1 text-sm text-gray-800">{{ tag.name }}</span>
+                <span v-if="selectedTagIds.length === 0">選擇標籤</span>
+                <span v-else>已選 {{ selectedTagIds.length }} 個</span>
                 <svg
-                  v-if="selectedTagIds.includes(tag.id)"
-                  class="w-4 h-4 text-primary-600"
+                  class="w-3.5 h-3.5 ml-auto transition-transform duration-200"
+                  :class="{ 'rotate-180': showTagDropdown }"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
                 >
-                  <polyline points="20 6 9 17 4 12" />
+                  <path d="m6 9 6 6 6-6" />
                 </svg>
-              </div>
+              </button>
+
               <div
-                v-if="selectedTagIds.length > 0"
-                class="py-3 px-4 text-center text-red-600 text-sm cursor-pointer border-t border-gray-200 hover:bg-red-50 transition-colors"
-                @click="clearTags"
+                v-if="showTagDropdown"
+                class="tag-dropdown"
               >
-                清除篩選
+                <div
+                  v-if="availableTags.length === 0"
+                  class="tag-dropdown-empty"
+                >
+                  暫無可用標籤
+                </div>
+                <div
+                  v-for="tag in availableTags"
+                  v-else
+                  :key="tag.id"
+                  class="tag-dropdown-item"
+                  :class="{ selected: selectedTagIds.includes(tag.id) }"
+                  @click="toggleTag(tag.id)"
+                >
+                  <div
+                    class="tag-dot"
+                    :style="{ backgroundColor: tag.color }"
+                  />
+                  <span class="tag-name">{{ tag.name }}</span>
+                  <svg
+                    v-if="selectedTagIds.includes(tag.id)"
+                    class="tag-check"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <div
+                  v-if="selectedTagIds.length > 0"
+                  class="tag-dropdown-clear"
+                  @click="clearTags"
+                >
+                  清除標籤篩選
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Row 2: Advanced filters -->
-    <div class="filter-row mt-3">
-      <div class="filter-group flex-1">
-        <!-- Last Message Search -->
-        <div class="filter-item filter-search">
-          <label class="filter-label">最後訊息</label>
-          <input
-            v-model="localLastMessageSearch"
-            type="text"
-            class="filter-input"
-            placeholder="搜尋最後訊息內容..."
-          >
-        </div>
+          <div class="panel-field panel-field--grow">
+            <label class="field-label">最後訊息</label>
+            <input
+              v-model="localLastMessageSearch"
+              type="text"
+              class="field-input"
+              placeholder="搜尋最後訊息內容..."
+            >
+          </div>
 
-        <!-- Update Time Range -->
-        <div class="filter-item">
-          <label class="filter-label">更新時間</label>
-          <div class="flex items-center gap-2 flex-wrap">
-            <button
-              v-for="preset in timePresets"
-              :key="preset.label"
-              class="time-preset-btn"
-              :class="{ active: activeTimePreset === preset.label }"
-              @click="applyTimePreset(preset)"
-            >
-              {{ preset.label }}
-            </button>
-            <button
-              class="time-preset-btn"
-              :class="{ active: activeTimePreset === 'custom' }"
-              @click="showCustomDateRange = !showCustomDateRange"
-            >
-              自訂
-            </button>
+          <div class="panel-field panel-field--time">
+            <label class="field-label">更新時間</label>
+            <div class="time-presets">
+              <button
+                v-for="preset in timePresets"
+                :key="preset.label"
+                class="time-btn"
+                :class="{ active: activeTimePreset === preset.label }"
+                @click="applyTimePreset(preset)"
+              >
+                {{ preset.label }}
+              </button>
+              <button
+                class="time-btn"
+                :class="{ active: activeTimePreset === 'custom' }"
+                @click="showCustomDateRange = !showCustomDateRange"
+              >
+                自訂
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Stats -->
-      <div class="flex gap-6 items-center flex-shrink-0 lg:justify-center sm:flex-col sm:gap-3">
-        <div class="flex flex-col items-center text-center">
-          <span class="text-2xl font-bold text-primary-600 leading-none">{{ totalConversations }}</span>
-          <span class="text-xs text-gray-600 font-medium mt-1">總對話</span>
-        </div>
-        <div class="flex flex-col items-center text-center">
-          <span class="text-2xl font-bold text-primary-600 leading-none">{{ unreadCount }}</span>
-          <span class="text-xs text-gray-600 font-medium mt-1">未讀</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Custom Date Range Picker (collapsible) -->
-    <div
-      v-if="showCustomDateRange"
-      class="filter-row mt-3"
-    >
-      <div class="filter-group">
-        <div class="filter-item">
-          <label class="filter-label">開始日期</label>
-          <input
-            :value="filters.updatedAfter ? filters.updatedAfter.substring(0, 10) : ''"
-            type="date"
-            class="form-select"
-            @change="onDateChange('updatedAfter', ($event.target as HTMLInputElement).value)"
-          >
-        </div>
-        <div class="filter-item">
-          <label class="filter-label">結束日期</label>
-          <input
-            :value="filters.updatedBefore ? filters.updatedBefore.substring(0, 10) : ''"
-            type="date"
-            class="form-select"
-            @change="onDateChange('updatedBefore', ($event.target as HTMLInputElement).value)"
-          >
-        </div>
-        <button
-          class="text-sm text-red-500 hover:text-red-700 self-end pb-2"
-          @click="clearDateRange"
+        <!-- Custom Date Range (conditional) -->
+        <div
+          v-if="showCustomDateRange"
+          class="panel-row panel-row--dates"
         >
-          清除日期
-        </button>
-      </div>
-    </div>
+          <div class="panel-field">
+            <label class="field-label">開始日期</label>
+            <input
+              :value="filters.updatedAfter ? filters.updatedAfter.substring(0, 10) : ''"
+              type="date"
+              class="field-input"
+              @change="onDateChange('updatedAfter', ($event.target as HTMLInputElement).value)"
+            >
+          </div>
+          <div class="panel-field">
+            <label class="field-label">結束日期</label>
+            <input
+              :value="filters.updatedBefore ? filters.updatedBefore.substring(0, 10) : ''"
+              type="date"
+              class="field-input"
+              @change="onDateChange('updatedBefore', ($event.target as HTMLInputElement).value)"
+            >
+          </div>
+          <button
+            class="date-clear-btn"
+            @click="clearDateRange"
+          >
+            清除日期
+          </button>
+        </div>
 
-    <!-- Active Filters Summary + Clear All -->
-    <div
-      v-if="hasActiveFilters"
-      class="mt-3 flex items-center gap-2"
-    >
-      <span class="text-xs text-gray-500">{{ activeFilterCount }} 個篩選條件</span>
-      <button
-        class="text-xs text-red-500 hover:text-red-700 hover:underline"
-        @click="clearAll"
-      >
-        清除所有篩選
-      </button>
-    </div>
+        <!-- Footer: Clear all -->
+        <div
+          v-if="hasActiveFilters"
+          class="panel-footer"
+        >
+          <span class="footer-count">{{ activeFilterCount }} 個篩選條件啟用中</span>
+          <button
+            class="footer-clear"
+            @click="clearAll"
+          >
+            <svg
+              class="w-3.5 h-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+            清除所有
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import type { ConversationFilters } from '@/types'
 
 export interface Tag {
@@ -270,13 +398,13 @@ export interface Tag {
 }
 
 export interface ConversationFiltersProps {
-  /** 篩選條件 */
+  /** Current filter state */
   filters: ConversationFilters
-  /** 可用標籤列表 */
+  /** Available tags for dropdown */
   availableTags?: Tag[]
-  /** 總對話數 */
+  /** Total conversation count */
   totalConversations?: number
-  /** 未讀數 */
+  /** Unread count */
   unreadCount?: number
 }
 
@@ -294,14 +422,30 @@ const emit = defineEmits<{
   'clear:all': []
 }>()
 
-// State
+// UI State
+const isExpanded = ref(false)
 const showTagDropdown = ref(false)
 const showCustomDateRange = ref(false)
 const activeTimePreset = ref<string | null>(null)
+const customerSearchInput = ref<HTMLInputElement | null>(null)
 
 // Debounced local state for text inputs
 const localCustomerName = ref(props.filters.customerName || '')
 const localLastMessageSearch = ref(props.filters.lastMessageSearch || '')
+
+// Label maps for pills
+const platformLabels: Record<string, string> = {
+  line: 'LINE',
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  whatsapp: 'WhatsApp'
+}
+
+const statusLabels: Record<string, string> = {
+  active: '進行中',
+  assigned: '已指派',
+  pending: '待處理'
+}
 
 // Time presets
 const timePresets = [
@@ -337,6 +481,16 @@ const activeFilterCount = computed(() => {
   if (props.filters.updatedAfter || props.filters.updatedBefore) {count++}
   return count
 })
+
+// Toggle expand/collapse
+function toggleExpand() {
+  isExpanded.value = !isExpanded.value
+  if (isExpanded.value) {
+    nextTick(() => {
+      customerSearchInput.value?.focus()
+    })
+  }
+}
 
 // Debounce timers
 let customerNameTimer: ReturnType<typeof setTimeout> | null = null
@@ -376,16 +530,10 @@ onUnmounted(() => {
   if (lastMessageTimer) {clearTimeout(lastMessageTimer)}
 })
 
-/**
- * 處理篩選變化 (non-text inputs)
- */
 function onFilterChange(key: keyof ConversationFilters, value: string | number | undefined) {
   emit('update:filter', key, value || undefined)
 }
 
-/**
- * 套用時間快捷選項
- */
 function applyTimePreset(preset: { label: string; daysAgo: number }) {
   activeTimePreset.value = preset.label
   showCustomDateRange.value = false
@@ -401,9 +549,6 @@ function applyTimePreset(preset: { label: string; daysAgo: number }) {
   emit('update:filter', 'updatedBefore', undefined)
 }
 
-/**
- * 處理自訂日期變化
- */
 function onDateChange(key: 'updatedAfter' | 'updatedBefore', value: string) {
   activeTimePreset.value = 'custom'
   if (!value) {
@@ -411,15 +556,12 @@ function onDateChange(key: 'updatedAfter' | 'updatedBefore', value: string) {
     return
   }
   if (key === 'updatedAfter') {
-    emit('update:filter', key, new Date(`${value  }T00:00:00`).toISOString())
+    emit('update:filter', key, new Date(`${value}T00:00:00`).toISOString())
   } else {
-    emit('update:filter', key, new Date(`${value  }T23:59:59`).toISOString())
+    emit('update:filter', key, new Date(`${value}T23:59:59`).toISOString())
   }
 }
 
-/**
- * 清除日期範圍
- */
 function clearDateRange() {
   activeTimePreset.value = null
   showCustomDateRange.value = false
@@ -427,27 +569,19 @@ function clearDateRange() {
   emit('update:filter', 'updatedBefore', undefined)
 }
 
-/**
- * 切換標籤
- */
 function toggleTag(tagId: number) {
   emit('toggle:tag', tagId)
 }
 
-/**
- * 清除標籤篩選
- */
 function clearTags() {
   emit('clear:tags')
   showTagDropdown.value = false
 }
 
-/**
- * 清除所有篩選
- */
 function clearAll() {
   activeTimePreset.value = null
   showCustomDateRange.value = false
+  showTagDropdown.value = false
   localCustomerName.value = ''
   localLastMessageSearch.value = ''
   emit('clear:all')
@@ -455,88 +589,343 @@ function clearAll() {
 </script>
 
 <style scoped>
+/* ─── Container ─── */
 .conversation-filters {
-  @apply px-6 py-4 bg-white;
+  @apply bg-white border-b border-gray-100;
 }
 
-.filter-row {
-  @apply flex items-end gap-6 lg:flex-col lg:items-stretch lg:gap-4;
+/* ─── Collapsed Trigger Bar ─── */
+.filter-trigger {
+  @apply flex items-center gap-3 px-5 py-3 cursor-pointer select-none;
+  @apply transition-colors duration-200;
 }
 
-.filter-group {
-  @apply flex gap-4 md:flex-col md:gap-3 flex-wrap items-end;
+.filter-trigger:hover {
+  @apply bg-gray-50/70;
 }
 
-.filter-item {
-  @apply flex flex-col gap-1 md:w-full;
+.is-expanded .filter-trigger {
+  @apply bg-gray-50/50 border-b border-gray-100;
 }
 
-.filter-label {
-  @apply text-xs font-medium text-gray-700 uppercase tracking-wider;
+.trigger-left {
+  @apply flex items-center gap-3 flex-1 min-w-0;
 }
 
-.filter-search {
-  @apply min-w-[160px];
+.trigger-icon {
+  @apply text-gray-400 flex-shrink-0;
+  width: 18px;
+  height: 18px;
 }
 
-.filter-input {
-  @apply py-2 px-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-800;
-  @apply transition-all outline-none;
+.is-expanded .trigger-icon {
+  @apply text-primary-500;
 }
 
-.filter-input:focus {
-  @apply border-primary-600 ring-2 ring-primary-100;
+.trigger-placeholder {
+  @apply text-sm text-gray-400 truncate;
 }
 
-.filter-input::placeholder {
-  @apply text-gray-400;
+/* ─── Filter Pills (collapsed summary) ─── */
+.filter-pills {
+  @apply flex items-center gap-1.5 flex-wrap min-w-0;
 }
 
-/* Time preset buttons */
-.time-preset-btn {
-  @apply px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200;
-  @apply bg-white text-gray-600 cursor-pointer transition-all;
+.filter-pill {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs;
+  @apply bg-primary-50 text-primary-700 border border-primary-100;
+  max-width: 160px;
 }
 
-.time-preset-btn:hover {
-  @apply border-primary-400 text-primary-600;
+.pill-label {
+  @apply text-primary-400 font-medium flex-shrink-0;
 }
 
-.time-preset-btn.active {
-  @apply bg-primary-50 border-primary-600 text-primary-600;
+.pill-value {
+  @apply truncate font-medium;
 }
 
-/* Tag Filter Button */
-.tag-filter-btn {
-  @apply flex items-center gap-2 py-2 px-3 bg-white border border-gray-200;
-  @apply rounded-lg text-sm text-gray-600 cursor-pointer transition-all min-w-[120px];
+/* ─── Trigger Right Side ─── */
+.trigger-right {
+  @apply flex items-center gap-3 flex-shrink-0;
 }
 
-.tag-filter-btn:hover {
-  @apply border-primary-600 text-primary-600;
+.filter-badge {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold;
+  @apply bg-primary-600 text-white cursor-pointer;
+  @apply transition-all duration-200;
 }
 
-.tag-filter-btn.has-selection {
-  @apply bg-primary-50 border-primary-600 text-primary-600;
+.filter-badge:hover {
+  @apply bg-danger-500;
 }
 
-/* Tag Filter Dropdown */
-.tag-filter-dropdown {
-  @apply absolute z-50 min-w-[200px] max-h-[300px] overflow-y-auto;
-  @apply bg-white border border-gray-200 rounded-xl shadow-xl;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  animation: dropdown-appear 0.2s ease-out;
+.badge-clear {
+  @apply w-3 h-3 opacity-0;
+  @apply transition-opacity duration-150;
 }
 
-@keyframes dropdown-appear {
+.filter-badge:hover .badge-clear {
+  @apply opacity-100;
+}
+
+.trigger-stats {
+  @apply flex items-baseline gap-1;
+}
+
+.stat-num {
+  @apply text-sm font-bold text-gray-700 tabular-nums;
+}
+
+.stat-label {
+  @apply text-xs text-gray-400;
+}
+
+.trigger-stats.unread .stat-num {
+  @apply text-primary-600;
+}
+
+.trigger-chevron {
+  @apply w-4 h-4 text-gray-400 flex-shrink-0;
+  @apply transition-transform duration-300 ease-out;
+}
+
+.trigger-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* ─── Expandable Panel ─── */
+.filter-panel {
+  @apply px-5 pt-4 pb-3;
+  @apply bg-gradient-to-b from-gray-50/80 to-white;
+}
+
+/* Panel transition */
+.filter-panel-enter-active {
+  animation: panel-slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.filter-panel-leave-active {
+  animation: panel-slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1) reverse;
+}
+
+@keyframes panel-slide-down {
   from {
     opacity: 0;
     transform: translateY(-8px);
+    max-height: 0;
   }
   to {
     opacity: 1;
     transform: translateY(0);
+    max-height: 500px;
+  }
+}
+
+/* ─── Panel Rows ─── */
+.panel-row {
+  @apply flex flex-col items-stretch gap-3 mb-3;
+  @apply md:flex-row md:items-end;
+}
+
+.panel-row--dates {
+  @apply md:items-end;
+}
+
+/* ─── Panel Fields ─── */
+.panel-field {
+  @apply flex flex-col gap-1 min-w-0 w-full;
+  @apply md:w-auto;
+}
+
+.panel-field--grow {
+  @apply flex-1;
+}
+
+.panel-field--time {
+  @apply flex-shrink-0;
+}
+
+.field-label {
+  @apply text-[11px] font-semibold text-gray-500 uppercase tracking-widest;
+}
+
+.field-input {
+  @apply h-9 px-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-800;
+  @apply transition-all duration-200 outline-none;
+}
+
+.field-input:focus {
+  @apply border-primary-400 ring-2 ring-primary-100 bg-white;
+}
+
+.field-input::placeholder {
+  @apply text-gray-400;
+}
+
+.field-select {
+  @apply h-9 px-3 pr-8 bg-white border border-gray-200 rounded-lg text-sm text-gray-700;
+  @apply transition-all duration-200 outline-none cursor-pointer appearance-none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25em 1.25em;
+}
+
+.field-select:focus {
+  @apply border-primary-400 ring-2 ring-primary-100;
+}
+
+/* ─── Tag Filter ─── */
+.field-tag-btn {
+  @apply flex items-center gap-2 h-9 px-3 bg-white border border-gray-200;
+  @apply rounded-lg text-sm text-gray-600 cursor-pointer transition-all duration-200;
+  min-width: 120px;
+}
+
+.field-tag-btn:hover {
+  @apply border-primary-400 text-primary-600;
+}
+
+.field-tag-btn.active {
+  @apply bg-primary-50 border-primary-400 text-primary-600;
+}
+
+.tag-dropdown {
+  @apply absolute z-50 min-w-[220px] max-h-[280px] overflow-y-auto;
+  @apply bg-white border border-gray-200 rounded-xl shadow-lg;
+  top: calc(100% + 6px);
+  left: 0;
+  animation: dropdown-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdown-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tag-dropdown-empty {
+  @apply py-6 text-center text-gray-400 text-sm;
+}
+
+.tag-dropdown-item {
+  @apply flex items-center gap-3 py-2.5 px-4 cursor-pointer;
+  @apply transition-colors duration-150;
+}
+
+.tag-dropdown-item:hover {
+  @apply bg-gray-50;
+}
+
+.tag-dropdown-item.selected {
+  @apply bg-primary-50;
+}
+
+.tag-dot {
+  @apply w-2.5 h-2.5 rounded-full flex-shrink-0;
+}
+
+.tag-name {
+  @apply flex-1 text-sm text-gray-700;
+}
+
+.tag-check {
+  @apply w-4 h-4 text-primary-600 flex-shrink-0;
+}
+
+.tag-dropdown-clear {
+  @apply py-2.5 px-4 text-center text-danger-500 text-xs font-medium cursor-pointer;
+  @apply border-t border-gray-100 transition-colors duration-150;
+}
+
+.tag-dropdown-clear:hover {
+  @apply bg-danger-50;
+}
+
+/* ─── Time Presets ─── */
+.time-presets {
+  @apply flex items-center gap-1.5;
+}
+
+.time-btn {
+  @apply h-9 px-3 text-xs font-medium rounded-lg border border-gray-200;
+  @apply bg-white text-gray-600 cursor-pointer transition-all duration-200;
+}
+
+.time-btn:hover {
+  @apply border-primary-400 text-primary-600;
+}
+
+.time-btn.active {
+  @apply bg-primary-50 border-primary-500 text-primary-600;
+}
+
+/* ─── Date Clear ─── */
+.date-clear-btn {
+  @apply self-end h-9 px-3 text-xs text-danger-500 font-medium;
+  @apply rounded-lg border border-transparent cursor-pointer;
+  @apply transition-colors duration-200;
+}
+
+.date-clear-btn:hover {
+  @apply text-danger-600 bg-danger-50 border-danger-100;
+}
+
+/* ─── Panel Footer ─── */
+.panel-footer {
+  @apply flex items-center justify-between pt-3 mt-1 border-t border-gray-100;
+}
+
+.footer-count {
+  @apply text-xs text-gray-400;
+}
+
+.footer-clear {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium;
+  @apply text-danger-500 rounded-lg cursor-pointer;
+  @apply transition-all duration-200;
+}
+
+.footer-clear:hover {
+  @apply bg-danger-50 text-danger-600;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .filter-trigger {
+    @apply px-4 py-2.5;
+  }
+
+  .filter-panel {
+    @apply px-4;
+  }
+
+  .filter-pills {
+    @apply hidden;
+  }
+
+  .time-presets {
+    @apply flex-wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .trigger-stats {
+    @apply hidden;
+  }
+
+  .panel-row--dates {
+    @apply flex-col items-stretch;
+  }
+
+  .date-clear-btn {
+    @apply self-start;
   }
 }
 </style>
