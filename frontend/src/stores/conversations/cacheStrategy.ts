@@ -114,6 +114,9 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
       if (cacheFilters.status) { cleanFilters.status = cacheFilters.status }
       if (cacheFilters.platform) { cleanFilters.platform = cacheFilters.platform }
       if (cacheFilters.teamId) { cleanFilters.teamId = cacheFilters.teamId }
+      if (cacheFilters.customerName) { cleanFilters.customerName = cacheFilters.customerName }
+      if (cacheFilters.updatedAfter) { cleanFilters.updatedAfter = cacheFilters.updatedAfter }
+      if (cacheFilters.updatedBefore) { cleanFilters.updatedBefore = cacheFilters.updatedBefore }
 
       const response = await conversationApi.list({
         page,

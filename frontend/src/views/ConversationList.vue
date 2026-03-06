@@ -13,6 +13,33 @@
         />
       </div>
 
+      <!-- Search Bar -->
+      <div class="search-section">
+        <div class="search-bar">
+          <SearchIcon class="search-icon" />
+          <input
+            v-model="searchQuery"
+            class="search-input"
+            type="text"
+            placeholder="搜尋對話 (客戶名稱、訊息內容)..."
+            @keydown.escape="clearSearch"
+          >
+          <button
+            v-if="searchQuery"
+            class="search-clear"
+            @click="clearSearch"
+          >
+            ✕
+          </button>
+          <span
+            v-if="isSearching"
+            class="search-stats"
+          >
+            找到 {{ controller.totalConversations.value }} 個
+          </span>
+        </div>
+      </div>
+
       <!-- Filters Section -->
       <div class="filters filters-section">
         <ConversationFilters
@@ -23,6 +50,7 @@
           @update:filter="handleFilterUpdate"
           @toggle:tag="controller.filters.toggleTagFilter"
           @clear:tags="controller.filters.clearTagFilter"
+          @clear:all="controller.filters.clearAllFilters"
         />
       </div>
 
@@ -158,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useConversationsStore } from '@/stores/conversations'
 import {
   useConversationListController,
@@ -177,7 +205,8 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import ConversationCard from '@/components/conversation/ConversationCard.vue'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
 import { ConversationHeader, ConversationFilters } from '@/components/conversation-list'
-import { ChatIcon } from '@/components/icons'
+import { ChatIcon, SearchIcon } from '@/components/icons'
+import { useDebounce } from '@/composables/useDebounce'
 
 // Chevron icons
 const ChevronLeftIcon = {
@@ -197,6 +226,20 @@ const controller = useConversationListController()
 // ⚠️ useConversationSync 已廢棄，改用 store 的 initializeRealtime (Phase B4)
 // const syncComposable = useConversationSync() // DEPRECATED
 const virtualScroll = useConversationVirtualScroll()
+
+// Search
+const searchQuery = ref('')
+const debouncedSearch = useDebounce(searchQuery, 300)
+const isSearching = computed(() => debouncedSearch.value.trim().length > 0)
+
+function clearSearch() {
+  searchQuery.value = ''
+}
+
+// Sync debounced search to controller filters → triggers API reload
+watch(debouncedSearch, (newVal) => {
+  controller.filters.updateFilter('search', newVal.trim())
+})
 
 // Computed properties
 const showSkeleton = computed(() => conversationsStore.showSkeleton)
@@ -270,6 +313,79 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* ============================================
+   Search Bar
+   ============================================ */
+
+.search-section {
+  @apply px-6 pt-4;
+  background: white;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.search-bar:focus-within {
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-icon {
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.9375rem;
+  color: #1f2937;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-clear {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.search-clear:hover {
+  color: #4b5563;
+  background: #e5e7eb;
+}
+
+.search-stats {
+  font-size: 0.75rem;
+  color: #3b82f6;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  background: #eff6ff;
+  border-radius: 4px;
+}
+
 /* ============================================
    Complex CSS (Cannot use Tailwind)
    ============================================ */

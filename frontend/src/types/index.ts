@@ -79,6 +79,11 @@ export interface ConversationFilters {
   teamId?: number | undefined; // 團隊篩選
   platform?: Platform | '' | undefined;
   tagIds?: number[];  // 標籤篩選
+  search?: string; // 搜尋關鍵字 (客戶名稱、訊息內容)
+  customerName?: string;       // 客戶名稱搜尋 (backend)
+  lastMessageSearch?: string;  // 最後訊息內容篩選 (frontend)
+  updatedAfter?: string;       // 更新時間起始 ISO string (backend)
+  updatedBefore?: string;      // 更新時間結束 ISO string (backend)
 }
 
 // Extended interface for API calls that allows undefined

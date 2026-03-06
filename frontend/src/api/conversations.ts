@@ -169,6 +169,9 @@ interface ConversationListParams {
   teamId?: number;
   search?: string;
   tagIds?: number[];  // 標籤篩選
+  customerName?: string;    // 客戶名稱搜尋
+  updatedAfter?: string;    // 更新時間起始
+  updatedBefore?: string;   // 更新時間結束
 }
 
 interface SendMessageRequest {
@@ -220,7 +223,10 @@ export const conversationApi = {
     if (params.teamId) {queryParams.append('teamId', params.teamId.toString());}
     if (params.search) {queryParams.append('search', params.search);}
     if (params.tagIds && params.tagIds.length > 0) {queryParams.append('tagIds', params.tagIds.join(','));}
-    
+    if (params.customerName) {queryParams.append('customerName', params.customerName);}
+    if (params.updatedAfter) {queryParams.append('updatedAfter', params.updatedAfter);}
+    if (params.updatedBefore) {queryParams.append('updatedBefore', params.updatedBefore);}
+
     const queryString = queryParams.toString();
     const response = await apiClient.get<RawConversationData[] | PaginatedResponse<RawConversationData>>(`/conversations${queryString ? `?${queryString}` : ''}`);
     
