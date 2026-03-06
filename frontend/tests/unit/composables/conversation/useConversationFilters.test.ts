@@ -210,4 +210,165 @@ describe('useConversationFilters', () => {
       expect(hasActiveFilters.value).toBe(true)
     })
   })
+
+  describe('new filter fields - customerName', () => {
+    it('should initialize customerName to empty string', () => {
+      const { filters } = filtersComposable
+      expect(filters.value.customerName).toBe('')
+    })
+
+    it('should update customerName filter', () => {
+      const { filters, updateFilter } = filtersComposable
+      updateFilter('customerName', '王小明')
+      expect(filters.value.customerName).toBe('王小明')
+    })
+
+    it('hasActiveFilters should be true when customerName is set', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+      updateFilter('customerName', '王')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('hasActiveFilters should be false when customerName is whitespace', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+      updateFilter('customerName', '   ')
+      expect(hasActiveFilters.value).toBe(false)
+    })
+
+    it('getApiFilters should include customerName when set', () => {
+      const { updateFilter, getApiFilters } = filtersComposable
+      updateFilter('customerName', '王小明')
+      const apiFilters = getApiFilters()
+      expect(apiFilters.customerName).toBe('王小明')
+    })
+
+    it('clearAllFilters should reset customerName', () => {
+      const { filters, updateFilter, clearAllFilters } = filtersComposable
+      updateFilter('customerName', '王小明')
+      clearAllFilters()
+      expect(filters.value.customerName).toBe('')
+    })
+  })
+
+  describe('new filter fields - lastMessageSearch', () => {
+    it('should initialize lastMessageSearch to empty string', () => {
+      const { filters } = filtersComposable
+      expect(filters.value.lastMessageSearch).toBe('')
+    })
+
+    it('should update lastMessageSearch filter', () => {
+      const { filters, updateFilter } = filtersComposable
+      updateFilter('lastMessageSearch', '退款')
+      expect(filters.value.lastMessageSearch).toBe('退款')
+    })
+
+    it('hasActiveFilters should be true when lastMessageSearch is set', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+      updateFilter('lastMessageSearch', '退款')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('getApiFilters should NOT include lastMessageSearch (client-side only)', () => {
+      const { updateFilter, getApiFilters } = filtersComposable
+      updateFilter('lastMessageSearch', '退款')
+      const apiFilters = getApiFilters()
+      expect(apiFilters.lastMessageSearch).toBeUndefined()
+    })
+
+    it('clearAllFilters should reset lastMessageSearch', () => {
+      const { filters, updateFilter, clearAllFilters } = filtersComposable
+      updateFilter('lastMessageSearch', '退款')
+      clearAllFilters()
+      expect(filters.value.lastMessageSearch).toBe('')
+    })
+  })
+
+  describe('new filter fields - updatedAfter/updatedBefore', () => {
+    it('should initialize updatedAfter and updatedBefore to empty string', () => {
+      const { filters } = filtersComposable
+      expect(filters.value.updatedAfter).toBe('')
+      expect(filters.value.updatedBefore).toBe('')
+    })
+
+    it('should update updatedAfter filter', () => {
+      const { filters, updateFilter } = filtersComposable
+      const date = '2026-03-01T00:00:00.000Z'
+      updateFilter('updatedAfter', date)
+      expect(filters.value.updatedAfter).toBe(date)
+    })
+
+    it('should update updatedBefore filter', () => {
+      const { filters, updateFilter } = filtersComposable
+      const date = '2026-03-07T23:59:59.000Z'
+      updateFilter('updatedBefore', date)
+      expect(filters.value.updatedBefore).toBe(date)
+    })
+
+    it('hasActiveFilters should be true when updatedAfter is set', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+      updateFilter('updatedAfter', '2026-03-01T00:00:00.000Z')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('hasActiveFilters should be true when updatedBefore is set', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+      updateFilter('updatedBefore', '2026-03-07T23:59:59.000Z')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('getApiFilters should include updatedAfter and updatedBefore when set', () => {
+      const { updateFilter, getApiFilters } = filtersComposable
+      updateFilter('updatedAfter', '2026-03-01T00:00:00.000Z')
+      updateFilter('updatedBefore', '2026-03-07T23:59:59.000Z')
+      const apiFilters = getApiFilters()
+      expect(apiFilters.updatedAfter).toBe('2026-03-01T00:00:00.000Z')
+      expect(apiFilters.updatedBefore).toBe('2026-03-07T23:59:59.000Z')
+    })
+
+    it('clearAllFilters should reset date range', () => {
+      const { filters, updateFilter, clearAllFilters } = filtersComposable
+      updateFilter('updatedAfter', '2026-03-01T00:00:00.000Z')
+      updateFilter('updatedBefore', '2026-03-07T23:59:59.000Z')
+      clearAllFilters()
+      expect(filters.value.updatedAfter).toBe('')
+      expect(filters.value.updatedBefore).toBe('')
+    })
+  })
+
+  describe('combined new filters', () => {
+    it('hasActiveFilters with multiple new filters set', () => {
+      const { hasActiveFilters, updateFilter } = filtersComposable
+      updateFilter('customerName', '王')
+      updateFilter('updatedAfter', '2026-03-01T00:00:00.000Z')
+      expect(hasActiveFilters.value).toBe(true)
+    })
+
+    it('clearAllFilters should reset all new fields at once', () => {
+      const { filters, updateFilter, clearAllFilters, hasActiveFilters } = filtersComposable
+      updateFilter('customerName', '王小明')
+      updateFilter('lastMessageSearch', '退款')
+      updateFilter('updatedAfter', '2026-03-01T00:00:00.000Z')
+      updateFilter('updatedBefore', '2026-03-07T23:59:59.000Z')
+      expect(hasActiveFilters.value).toBe(true)
+
+      clearAllFilters()
+      expect(filters.value.customerName).toBe('')
+      expect(filters.value.lastMessageSearch).toBe('')
+      expect(filters.value.updatedAfter).toBe('')
+      expect(filters.value.updatedBefore).toBe('')
+      expect(hasActiveFilters.value).toBe(false)
+    })
+
+    it('getApiFilters should include backend filters but exclude lastMessageSearch', () => {
+      const { updateFilter, getApiFilters } = filtersComposable
+      updateFilter('customerName', '王小明')
+      updateFilter('lastMessageSearch', '退款')
+      updateFilter('updatedAfter', '2026-03-01T00:00:00.000Z')
+      const apiFilters = getApiFilters()
+
+      expect(apiFilters.customerName).toBe('王小明')
+      expect(apiFilters.updatedAfter).toBe('2026-03-01T00:00:00.000Z')
+      expect(apiFilters.lastMessageSearch).toBeUndefined()
+    })
+  })
 })
