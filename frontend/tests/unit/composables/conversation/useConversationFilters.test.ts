@@ -32,8 +32,8 @@ describe('useConversationFilters', () => {
     it('应该正确更新单个筛选条件', () => {
       const { filters, updateFilter } = filtersComposable
 
-      updateFilter('status', 'open')
-      expect(filters.value.status).toBe('open')
+      updateFilter('status', 'active')
+      expect(filters.value.status).toBe('active')
 
       updateFilter('platform', 'line')
       expect(filters.value.platform).toBe('line')
@@ -49,7 +49,7 @@ describe('useConversationFilters', () => {
     it('更新筛选条件后 hasActiveFilters 应该为 true', () => {
       const { hasActiveFilters, updateFilter } = filtersComposable
 
-      updateFilter('status', 'open')
+      updateFilter('status', 'active')
       expect(hasActiveFilters.value).toBe(true)
     })
   })
@@ -102,7 +102,7 @@ describe('useConversationFilters', () => {
 
       // 设置多个筛选条件
       // Note: Individual assignment (assignedTo) removed - only team-based filtering is supported now
-      updateFilter('status', 'open')
+      updateFilter('status', 'active')
       updateFilter('platform', 'line')
       updateFilter('search', 'test query')
       updateTagFilter([1, 2])
@@ -138,13 +138,13 @@ describe('useConversationFilters', () => {
     it('应该包含所有非空筛选条件', () => {
       const { updateFilter, updateTagFilter, getApiFilters } = filtersComposable
 
-      updateFilter('status', 'open')
+      updateFilter('status', 'active')
       updateFilter('platform', 'line')
       updateFilter('search', 'customer name')
       updateTagFilter([1, 2])
       const apiFilters = getApiFilters()
 
-      expect(apiFilters.status).toBe('open')
+      expect(apiFilters.status).toBe('active')
       expect(apiFilters.platform).toBe('line')
       expect(apiFilters.search).toBe('customer name')
       expect(apiFilters.tagIds).toEqual([1, 2])
@@ -169,7 +169,7 @@ describe('useConversationFilters', () => {
     it('当 status 筛选有值时应该为 true', () => {
       const { hasActiveFilters, updateFilter } = filtersComposable
 
-      updateFilter('status', 'open')
+      updateFilter('status', 'active')
       expect(hasActiveFilters.value).toBe(true)
     })
 

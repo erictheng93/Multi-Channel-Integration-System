@@ -37,16 +37,37 @@ vi.mock('@/db/schema', () => ({
     customerId: { name: 'customerId' },
     assignedTeamId: { name: 'assignedTeamId' },
     status: { name: 'status' },
+    priority: { name: 'priority' },
+    firstResponseAt: { name: 'firstResponseAt' },
+    closedAt: { name: 'closedAt' },
+    lastMessageAt: { name: 'lastMessageAt' },
+    createdAt: { name: 'createdAt' },
     updatedAt: { name: 'updatedAt' },
-    createdAt: { name: 'createdAt' }
+    deletedAt: { name: 'deletedAt' }
   },
   messages: {
     id: { name: 'id' },
     conversationId: { name: 'conversationId' },
-    createdAt: { name: 'createdAt' }
+    senderType: { name: 'senderType' },
+    customerSenderId: { name: 'customerSenderId' },
+    agentSenderId: { name: 'agentSenderId' },
+    content: { name: 'content' },
+    messageType: { name: 'messageType' },
+    platformMessageId: { name: 'platformMessageId' },
+    isRecalled: { name: 'isRecalled' },
+    isSent: { name: 'isSent' },
+    deliveryStatus: { name: 'deliveryStatus' },
+    senderName: { name: 'senderName' },
+    metadata: { name: 'metadata' },
+    createdAt: { name: 'createdAt' },
+    updatedAt: { name: 'updatedAt' },
+    deletedAt: { name: 'deletedAt' }
   },
   customers: {
-    id: { name: 'id' }
+    id: { name: 'id' },
+    platform: { name: 'platform' },
+    platformUserId: { name: 'platformUserId' },
+    displayName: { name: 'displayName' }
   },
   agents: {
     id: { name: 'id' },
@@ -57,7 +78,13 @@ vi.mock('@/db/schema', () => ({
     id: { name: 'id' }
   },
   conversationTransfers: {
+    id: { name: 'id' },
     conversationId: { name: 'conversationId' },
+    fromTeamId: { name: 'fromTeamId' },
+    toTeamId: { name: 'toTeamId' },
+    transferReason: { name: 'transferReason' },
+    transferredBy: { name: 'transferredBy' },
+    transferType: { name: 'transferType' },
     createdAt: { name: 'createdAt' }
   }
 }));
@@ -153,7 +180,7 @@ describe('ConversationService', () => {
       const mockResult = {
         id: 'conversation-123',
         customerId: 'customer-123',
-        status: 'open',
+        status: 'active',
         priority: 'medium',
         createdAt: now,
         updatedAt: now
@@ -164,13 +191,13 @@ describe('ConversationService', () => {
 
       const result = await service.createConversation({
         customerId: 'customer-123',
-        status: 'open',
+        status: 'active',
         priority: 'medium'
       } as any);
 
       expect(result).toBeDefined();
       expect(result.customerId).toBe('customer-123');
-      expect(result.status).toBe('open');
+      expect(result.status).toBe('active');
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -178,7 +205,7 @@ describe('ConversationService', () => {
       const mockResult = {
         id: 'auto-generated-uuid',
         customerId: 'customer-123',
-        status: 'open',
+        status: 'active',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -187,7 +214,7 @@ describe('ConversationService', () => {
 
       const result = await service.createConversation({
         customerId: 'customer-123',
-        status: 'open'
+        status: 'active'
       } as any);
 
       expect(result.id).toBeDefined();
@@ -203,7 +230,7 @@ describe('ConversationService', () => {
         conversation: {
           id: 'conversation-123',
           customerId: 'customer-123',
-          status: 'open',
+          status: 'active',
           createdAt: new Date().toISOString()
         },
         customer: {
@@ -601,7 +628,7 @@ describe('ConversationService', () => {
       mockDb._queueResults([]);
 
       await expect(
-        service.createConversation({ customerId: 'c-1', status: 'open' } as any)
+        service.createConversation({ customerId: 'c-1', status: 'active' } as any)
       ).rejects.toThrow('Failed to create conversation');
     });
 

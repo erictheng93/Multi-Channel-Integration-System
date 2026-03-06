@@ -85,9 +85,29 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
       return props.value.attachmentUrl
     }
 
-    // Check metadata
+    // Check metadata - standard attachment format
     if (props.value.message.metadata?.attachment?.url) {
       return props.value.message.metadata.attachment.url
+    }
+
+    // Check metadata - LINE image format (originalContentUrl / previewImageUrl)
+    // These are LINE API URLs that require auth, so we proxy them through our backend
+    const metadata = props.value.message.metadata
+    if (metadata) {
+      const meta = typeof metadata === 'string' ? (() => { try { return JSON.parse(metadata) } catch { return null } })() : metadata
+      if (meta?.originalContentUrl || meta?.previewImageUrl) {
+        // Use proxy endpoint to download from LINE API with auth
+        const lineMessageId = meta.originalContentUrl?.match(/\/message\/(\d+)\/content/)?.[1]
+        if (lineMessageId) {
+          return `/api/files/line-proxy/${lineMessageId}`
+        }
+        // Fallback to direct URL (won't work without auth, but keeps the data available)
+        return meta.originalContentUrl || meta.previewImageUrl
+      }
+      // Check generic image metadata keys
+      if (meta?.imageUrl || meta?.previewUrl) {
+        return meta.imageUrl || meta.previewUrl
+      }
     }
 
     // Fallback: extract URL from content

@@ -6,7 +6,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { eq, inArray, desc, and, like, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, customers, teams, conversationTags } from '@/db/schema';
+import { conversations, customers, teams, conversationTags, customerTags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
@@ -171,9 +171,11 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
 
     // 如果有標籤篩選，先獲取有這些標籤的對話 ID
+    // 同時檢查 conversation_tags（對話標籤）和 customer_tags（客戶標籤）
     let filteredConversationIds = visibleConversationIds;
     if (tagIds.length > 0) {
-      const taggedConversations = await drizzleDb
+      // 1. 直接在 conversation_tags 上有標籤的對話
+      const directTagged = await drizzleDb
         .selectDistinct({ conversationId: conversationTags.conversationId })
         .from(conversationTags)
         .where(
@@ -182,10 +184,30 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
             inArray(conversationTags.tagId, tagIds)
           )
         );
-      filteredConversationIds = taggedConversations.map(tc => tc.conversationId);
+
+      // 2. 透過客戶標籤關聯的對話（客戶被打標籤 → 該客戶的對話也應匹配）
+      const customerTagged = await drizzleDb
+        .selectDistinct({ conversationId: conversations.id })
+        .from(conversations)
+        .innerJoin(customerTags, eq(conversations.customerId, customerTags.customerId))
+        .where(
+          and(
+            inArray(conversations.id, visibleConversationIds),
+            inArray(customerTags.tagId, tagIds)
+          )
+        );
+
+      // 合併兩者（去重）
+      const allMatchedIds = new Set([
+        ...directTagged.map(tc => tc.conversationId),
+        ...customerTagged.map(tc => tc.conversationId)
+      ]);
+      filteredConversationIds = [...allMatchedIds];
 
       log.debug('Conversation Handler filtered by tags', {
         originalCount: visibleConversationIds.length,
+        directTaggedCount: directTagged.length,
+        customerTaggedCount: customerTagged.length,
         filteredCount: filteredConversationIds.length,
         tagIds
       });

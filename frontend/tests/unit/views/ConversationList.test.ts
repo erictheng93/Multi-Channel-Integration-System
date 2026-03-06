@@ -327,7 +327,7 @@ const createMockConversation = (id: string, overrides = {}): Conversation => ({
   id,
   customerId: `customer-${id}`,
   platform: 'line',
-  status: 'open',
+  status: 'active',
   unreadCount: 0,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -1171,7 +1171,7 @@ describe('ConversationList.vue', () => {
       it('應該支持"已指派"狀態篩選', async () => {
         conversationsStore.conversations = [
           { ...createMockConversation('1'), status: 'assigned' },
-          { ...createMockConversation('2'), status: 'open' }
+          { ...createMockConversation('2'), status: 'active' }
         ]
         mockConversations.value = conversationsStore.conversations
 
@@ -1199,9 +1199,9 @@ describe('ConversationList.vue', () => {
 
       it('應該支持多條件組合篩選', async () => {
         conversationsStore.conversations = [
-          { ...createMockConversation('1'), status: 'open', platform: 'line' },
+          { ...createMockConversation('1'), status: 'active', platform: 'line' },
           { ...createMockConversation('2'), status: 'assigned', platform: 'facebook' },
-          { ...createMockConversation('3'), status: 'closed', platform: 'line' }
+          { ...createMockConversation('3'), status: 'pending', platform: 'line' }
         ]
         mockConversations.value = conversationsStore.conversations
 
@@ -1216,7 +1216,7 @@ describe('ConversationList.vue', () => {
 
         // Apply multiple filters simultaneously
         conversationsStore.filters = {
-          status: 'open',
+          status: 'active',
           platform: 'line',
           assignedTo: undefined
         }
@@ -1224,7 +1224,7 @@ describe('ConversationList.vue', () => {
         await nextTick()
 
         // Verify multiple filters are set
-        expect(conversationsStore.filters.status).toBe('open')
+        expect(conversationsStore.filters.status).toBe('active')
         expect(conversationsStore.filters.platform).toBe('line')
       })
     })
