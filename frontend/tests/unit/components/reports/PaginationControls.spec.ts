@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import PaginationControls from '@/components/reports/dashboard/PaginationControls.vue'
+import PaginationControls from '@/components/ui/PaginationControls.vue'
 
 describe('PaginationControls.vue', () => {
   const defaultPagination = {
@@ -59,7 +59,7 @@ describe('PaginationControls.vue', () => {
       expect(wrapper.text()).toContain('顯示 81 - 95 共 95 項')
     })
 
-    it('总页数小于等于1时不应该渲染', () => {
+    it('总页数小于等于1时仍应渲染', () => {
       const wrapper = mount(PaginationControls, {
         props: {
           pagination: {
@@ -74,7 +74,7 @@ describe('PaginationControls.vue', () => {
         }
       })
 
-      expect(wrapper.find('.pagination-section').exists()).toBe(false)
+      expect(wrapper.find('.pagination-section').exists()).toBe(true)
     })
 
     it('应该渲染所有可见页码按钮', () => {
@@ -250,7 +250,7 @@ describe('PaginationControls.vue', () => {
         }
       })
 
-      expect(wrapper.find('.pagination-section').exists()).toBe(false)
+      expect(wrapper.find('.pagination-section').exists()).toBe(true)
     })
 
     it('应该处理单页数据 (totalPages = 1)', () => {
@@ -268,7 +268,7 @@ describe('PaginationControls.vue', () => {
         }
       })
 
-      expect(wrapper.find('.pagination-section').exists()).toBe(false)
+      expect(wrapper.find('.pagination-section').exists()).toBe(true)
     })
 
     it('应该处理大量页数 (100+ 页)', () => {

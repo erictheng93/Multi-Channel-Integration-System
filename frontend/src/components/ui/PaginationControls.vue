@@ -1,8 +1,5 @@
 <template>
-  <div
-    v-if="pagination.totalPages > 1"
-    class="pagination-section"
-  >
+  <div class="pagination-section">
     <div class="pagination-info">
       顯示 {{ startItem }} - {{ endItem }} 共 {{ pagination.total }} 項
     </div>
@@ -40,16 +37,16 @@
 /**
  * PaginationControls Component
  *
- * 分页控制组件
+ * Shared pagination UI component
  *
- * @emits change-page - 切换页码
+ * @emits change-page - Page number change
  */
 
 import { computed } from 'vue'
 
 export interface PaginationControlsProps {
   /**
-   * 分页信息
+   * Pagination state
    */
   pagination: {
     page: number
@@ -61,7 +58,7 @@ export interface PaginationControlsProps {
   }
 
   /**
-   * 可见的页码列表
+   * Visible page numbers
    */
   visiblePages: number[]
 }
@@ -73,14 +70,14 @@ defineEmits<{
 }>()
 
 /**
- * 起始项编号
+ * Start item number
  */
 const startItem = computed(() => {
   return (props.pagination.page - 1) * props.pagination.pageSize + 1
 })
 
 /**
- * 结束项编号
+ * End item number
  */
 const endItem = computed(() => {
   return Math.min(props.pagination.page * props.pagination.pageSize, props.pagination.total)
@@ -95,6 +92,7 @@ const endItem = computed(() => {
   padding: 1.5rem;
   border-top: 1px solid #e5e7eb;
   background: #f8fafc;
+  border-radius: 0 0 12px 12px;
 }
 
 .pagination-info {

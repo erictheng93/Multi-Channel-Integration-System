@@ -49,6 +49,7 @@
         @toggle-selection-mode="controller.member.toggleSelectionMode"
         @toggle-member-selection="controller.member.toggleMemberSelection"
         @select-all="() => controller.member.selectAllMembers(currentUserId || '')"
+        @select-page="handleSelectPage"
         @bulk-edit="controller.member.openBulkEditModal"
         @bulk-delete="() => controller.member.bulkDeleteMembers(currentUserId || '')"
       />
@@ -173,6 +174,15 @@ const currentUserId = computed(() => authStore.currentAgent?.id)
 
 // Extract state from controller
 const { loading, teams, members, stats, memberSorting, teamSorting, memberSortMode, teamSortMode } = controller
+
+// Handle select-page: add page member IDs to selection
+function handleSelectPage(memberIds: string[]) {
+  for (const id of memberIds) {
+    if (id !== currentUserId.value && !controller.member.selectedMemberIds.value.has(id)) {
+      controller.member.toggleMemberSelection(id)
+    }
+  }
+}
 
 // Computed: Get selected members for bulk edit
 const selectedMembersForBulkEdit = computed(() => {

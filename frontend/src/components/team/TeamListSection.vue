@@ -27,6 +27,34 @@
       </div>
     </div>
 
+    <!-- Search Bar -->
+    <div
+      v-if="!loading && teams.length > 0"
+      class="search-bar"
+    >
+      <SearchIcon class="search-icon" />
+      <input
+        v-model="searchQuery"
+        class="search-input"
+        type="text"
+        placeholder="搜尋團隊 (名稱、描述)..."
+        @keydown.escape="clearSearch"
+      >
+      <button
+        v-if="searchQuery"
+        class="search-clear"
+        @click="clearSearch"
+      >
+        ✕
+      </button>
+      <span
+        v-if="isSearching"
+        class="search-stats"
+      >
+        找到 {{ filteredTeams.length }} / {{ teams.length }}
+      </span>
+    </div>
+
     <!-- Content Body -->
     <div class="content-body">
       <!-- Loading State -->
@@ -55,29 +83,54 @@
       </EmptyState>
 
       <!-- Teams List - Always Draggable -->
-      <VueDraggable
-        v-else
-        v-model="localTeams"
-        class="teams-list"
-        :animation="200"
-        ghost-class="drag-ghost"
-        chosen-class="drag-chosen"
-        drag-class="drag-active"
-        @start="onDragStart"
-        @end="onDragEnd"
-      >
-        <TeamCard
-          v-for="team in localTeams"
-          :key="team.id"
-          :team="team"
-          :loading="loading"
-          class="draggable-card"
-          @toggle-status="(t) => emit('toggle-status', t)"
-          @remove-team="(t) => emit('remove-team', t)"
-          @member-updated="emit('member-updated')"
-          @team-updated="emit('team-updated')"
+      <template v-else>
+        <!-- Drag hint for multi-page custom sort -->
+        <div
+          v-if="isCustomMode && pagination.totalPages.value > 1 && !isSearching"
+          class="drag-hint"
+        >
+          拖曳排序僅在本頁內生效
+        </div>
+
+        <!-- Search active hint -->
+        <div
+          v-if="isSearching && isCustomMode"
+          class="drag-hint"
+        >
+          搜尋模式下無法拖曳排序
+        </div>
+
+        <VueDraggable
+          v-model="localTeams"
+          class="teams-list"
+          :animation="200"
+          ghost-class="drag-ghost"
+          chosen-class="drag-chosen"
+          drag-class="drag-active"
+          :disabled="isSearching"
+          @start="onDragStart"
+          @end="onDragEnd"
+        >
+          <TeamCard
+            v-for="team in localTeams"
+            :key="team.id"
+            :team="team"
+            :loading="loading"
+            class="draggable-card"
+            @toggle-status="(t) => emit('toggle-status', t)"
+            @remove-team="(t) => emit('remove-team', t)"
+            @member-updated="emit('member-updated')"
+            @team-updated="emit('team-updated')"
+          />
+        </VueDraggable>
+
+        <!-- Pagination Controls -->
+        <PaginationControls
+          :pagination="paginationInfo"
+          :visible-pages="pagination.pageRange.value"
+          @change-page="pagination.setPage"
         />
-      </VueDraggable>
+      </template>
     </div>
   </div>
 </template>
@@ -87,13 +140,17 @@ import { ref, watch, computed } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { Team } from '@/composables/team-management'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
+import { usePagination } from '@/composables/usePagination'
+import { useDebounce } from '@/composables/useDebounce'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import PaginationControls from '@/components/ui/PaginationControls.vue'
 import TeamCard from '@/components/team/TeamCard.vue'
 import PrimaryActionButton from '@/components/ui/PrimaryActionButton.vue'
 import SortDropdown from '@/components/ui/SortDropdown.vue'
 import TeamsIcon from '@/components/icons/TeamsIcon.vue'
 import PlusIcon from '@/components/icons/PlusIcon.vue'
+import { SearchIcon } from '@/components/icons'
 
 interface Props {
   teams: Team[]
@@ -121,15 +178,65 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+// Search
+const searchQuery = ref('')
+const debouncedSearch = useDebounce(searchQuery, 300)
+const isSearching = computed(() => debouncedSearch.value.trim().length > 0)
+
+const filteredTeams = computed(() => {
+  const query = debouncedSearch.value.trim().toLowerCase()
+  if (!query) {return props.teams}
+  return props.teams.filter(t =>
+    t.name.toLowerCase().includes(query) ||
+    (t.description?.toLowerCase().includes(query))
+  )
+})
+
+function clearSearch() {
+  searchQuery.value = ''
+}
+
+// Pagination
+const PAGE_SIZE = 10
+const pagination = usePagination({ limit: PAGE_SIZE, total: filteredTeams.value.length })
+
 // Computed
 const isCustomMode = computed(() => props.sortMode === 'custom')
 
-// Local copy for drag operations
-const localTeams = ref<Team[]>([...props.teams])
+// Paginated teams from full sorted list
+const paginatedTeams = computed(() => {
+  return pagination.paginateData(filteredTeams.value)
+})
 
-// Sync local teams with props when teams change
+// Pagination info for PaginationControls component
+const paginationInfo = computed(() => ({
+  page: pagination.currentPage.value,
+  pageSize: pagination.pageSize.value,
+  total: pagination.total.value,
+  totalPages: pagination.totalPages.value,
+  hasNext: pagination.hasNext.value,
+  hasPrev: pagination.hasPrev.value,
+}))
+
+// Local copy for drag operations — synced from paginated view
+const localTeams = ref<Team[]>([...paginatedTeams.value])
+
+// Sync total when filtered teams change
 watch(
-  () => props.teams,
+  () => filteredTeams.value.length,
+  (newLength) => {
+    pagination.setTotal(newLength)
+  }
+)
+
+// Reset to page 1 when search query changes
+watch(debouncedSearch, () => {
+  pagination.setPage(1)
+})
+
+// Sync local teams with paginated view when teams or page changes
+watch(
+  paginatedTeams,
   (newTeams) => {
     localTeams.value = [...newTeams]
   },
@@ -141,29 +248,42 @@ function onDragStart() {
   // Optional: Add visual feedback
 }
 
-// Handle drag end - switch to custom mode and save order
+// Handle drag end - reconstruct full order with page slice replaced
 function onDragEnd() {
+  // Ignore drag in search mode
+  if (isSearching.value) {return}
+
   // Switch to custom mode if not already
   if (props.sortMode !== 'custom') {
     emit('sort-mode-change', 'custom')
   }
-  // Save custom order
-  const newOrder = localTeams.value.map(t => String(t.id))
+
+  // Reconstruct full order: replace current page's slice with dragged order
+  const fullOrder = [...props.teams]
+  const startIdx = pagination.startIndex.value
+  const pageLength = localTeams.value.length
+
+  // Replace the current page slice in the full array
+  fullOrder.splice(startIdx, pageLength, ...localTeams.value)
+
+  const newOrder = fullOrder.map(t => String(t.id))
   emit('custom-order-change', newOrder)
 }
 
-// Handle sort field selection
+// Handle sort field selection - reset to page 1
 function handleSortSelect(field: string) {
   // If in custom mode, switch back to auto first
   if (props.sortMode === 'custom') {
     emit('sort-mode-change', 'auto')
   }
   emit('sort-change', field)
+  pagination.setPage(1)
 }
 
-// Reset to auto sort
+// Reset to auto sort - reset to page 1
 function handleResetToAuto() {
   emit('sort-mode-change', 'auto')
+  pagination.setPage(1)
 }
 </script>
 
@@ -208,6 +328,71 @@ function handleResetToAuto() {
   flex-wrap: wrap;
 }
 
+/* Search Bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: border-color 0.2s;
+}
+
+.search-bar:focus-within {
+  border-color: #10b981;
+  background: white;
+}
+
+.search-icon {
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: #1f2937;
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-clear {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.search-clear:hover {
+  color: #4b5563;
+  background: #e5e7eb;
+}
+
+.search-stats {
+  font-size: 0.75rem;
+  color: #10b981;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0.25rem 0.5rem;
+  background: #ecfdf5;
+  border-radius: 4px;
+}
+
 .content-body {
   min-height: 200px;
 }
@@ -215,6 +400,17 @@ function handleResetToAuto() {
 .teams-list {
   display: grid;
   gap: 1rem;
+}
+
+/* Drag hint */
+.drag-hint {
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  text-align: center;
 }
 
 /* Draggable card styles */
