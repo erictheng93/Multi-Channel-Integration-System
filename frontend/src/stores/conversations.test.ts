@@ -87,7 +87,7 @@ describe('Conversations Store', () => {
   describe('Load Conversations', () => {
     it('should load conversations successfully', async () => {
       const mockConversations = [
-        { id: 'conv-1', status: 'open', platform: 'line', lastMessage: { content: 'Hello' } },
+        { id: 'conv-1', status: 'active', platform: 'line', lastMessage: { content: 'Hello' } },
         { id: 'conv-2', status: 'assigned', platform: 'line', lastMessage: { content: 'Hi' } }
       ]
       const mockResponse = {

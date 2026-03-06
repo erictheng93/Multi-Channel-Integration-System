@@ -45,7 +45,7 @@ describe('useConversationCache', () => {
       customerId: 'customer-1',
       customerName: 'Test Customer',
       platform: 'line',
-      status: 'open',
+      status: 'active',
       lastMessageAt: '2024-01-01T10:00:00Z',
       createdAt: '2024-01-01T10:00:00Z',
       updatedAt: '2024-01-01T10:00:00Z'
@@ -100,13 +100,13 @@ describe('useConversationCache', () => {
       const { generateCacheKey } = cacheComposable
 
       const filters: ConversationFilters = {
-        status: 'open',
+        status: 'active',
         platform: '',
         assignedTo: undefined
       }
 
       const key = generateCacheKey(filters, 1)
-      expect(key).toBe('conversation-list:status=open:page=1')
+      expect(key).toBe('conversation-list:status=active:page=1')
     })
 
     it('应该包含 platform 筛选', () => {
@@ -127,13 +127,13 @@ describe('useConversationCache', () => {
 
       // Note: Individual assignment (assignedTo) removed - only team-based filtering is supported now
       const filters: ConversationFilters = {
-        status: 'open',
+        status: 'active',
         platform: 'line',
         tagIds: [1, 2, 3]
       }
 
       const key = generateCacheKey(filters, 2)
-      expect(key).toBe('conversation-list:status=open:platform=line:tags=1,2,3:page=2')
+      expect(key).toBe('conversation-list:status=active:platform=line:tags=1,2,3:page=2')
     })
   })
 

@@ -57,23 +57,49 @@ vi.mock('@/db/schema', () => ({
     customerId: { name: 'customerId' },
     assignedTeamId: { name: 'assignedTeamId' },
     status: { name: 'status' },
+    priority: { name: 'priority' },
+    firstResponseAt: { name: 'firstResponseAt' },
+    closedAt: { name: 'closedAt' },
+    lastMessageAt: { name: 'lastMessageAt' },
+    createdAt: { name: 'createdAt' },
     updatedAt: { name: 'updatedAt' },
-    lastMessageAt: { name: 'lastMessageAt' }
+    deletedAt: { name: 'deletedAt' }
   },
   messages: {
     id: { name: 'id' },
     conversationId: { name: 'conversationId' },
+    senderType: { name: 'senderType' },
+    customerSenderId: { name: 'customerSenderId' },
+    agentSenderId: { name: 'agentSenderId' },
+    content: { name: 'content' },
+    messageType: { name: 'messageType' },
+    platformMessageId: { name: 'platformMessageId' },
+    isRecalled: { name: 'isRecalled' },
+    isSent: { name: 'isSent' },
+    deliveryStatus: { name: 'deliveryStatus' },
+    senderName: { name: 'senderName' },
+    metadata: { name: 'metadata' },
     createdAt: { name: 'createdAt' },
-    isRecalled: { name: 'isRecalled' }
+    updatedAt: { name: 'updatedAt' },
+    deletedAt: { name: 'deletedAt' }
   },
   customers: {
     id: { name: 'id' },
     platform: { name: 'platform' },
-    platformUserId: { name: 'platformUserId' }
+    platformUserId: { name: 'platformUserId' },
+    displayName: { name: 'displayName' }
   },
   fileAttachments: {
     id: { name: 'id' },
-    messageId: { name: 'messageId' }
+    messageId: { name: 'messageId' },
+    conversationId: { name: 'conversationId' },
+    filename: { name: 'filename' },
+    mimeType: { name: 'mimeType' },
+    fileSize: { name: 'fileSize' },
+    fileUrl: { name: 'fileUrl' },
+    r2Key: { name: 'r2Key' },
+    uploadStatus: { name: 'uploadStatus' },
+    createdAt: { name: 'createdAt' }
   }
 }));
 

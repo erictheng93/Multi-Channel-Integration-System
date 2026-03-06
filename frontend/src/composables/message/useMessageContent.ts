@@ -104,7 +104,9 @@ export function useMessageContent(props: Ref<MessageContentProps>) {
         }
 
         // If metadata contains image info, it's an image message
-        if (metadata.imageUrl || metadata.previewUrl) {
+        // Backend stores: originalContentUrl, previewImageUrl (LINE format)
+        // Also check: imageUrl, previewUrl (generic format)
+        if (metadata.imageUrl || metadata.previewUrl || metadata.originalContentUrl || metadata.previewImageUrl) {
           return 'image'
         }
       } catch (error) {

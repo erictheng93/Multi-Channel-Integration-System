@@ -26,12 +26,27 @@ export async function processLineMedia(
   console.log(`📥 [LINE Webhook] Processing media BEFORE broadcast for ${lineMessageType} message...`);
   try {
     const { processLineMediaMessage } = await import('@/utils/file-storage');
-    const mediaFile = await processLineMediaMessage(
-      env,
-      lineMessageId,
-      lineMessageType,
-      fileName
-    );
+
+    // Retry up to 3 times with exponential backoff for transient LINE API / R2 failures
+    let mediaFile: Awaited<ReturnType<typeof processLineMediaMessage>> = null;
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      mediaFile = await processLineMediaMessage(
+        env,
+        lineMessageId,
+        lineMessageType,
+        fileName
+      );
+      if (mediaFile) break;
+
+      if (attempt < MAX_RETRIES) {
+        const delay = attempt * 500; // 500ms, 1000ms
+        log.warn(`LINE Webhook: Media download attempt ${attempt}/${MAX_RETRIES} failed, retrying in ${delay}ms`, { lineMessageId, lineMessageType });
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        log.error(`LINE Webhook: Media download failed after ${MAX_RETRIES} attempts`, { lineMessageId, lineMessageType });
+      }
+    }
 
     if (mediaFile) {
       // Extract R2 key from the proxy URL

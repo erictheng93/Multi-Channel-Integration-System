@@ -144,6 +144,131 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
 });
 
 /**
+ * LINE Content Proxy - Fallback for when R2 upload failed during webhook
+ * Downloads image from LINE API with auth, serves to frontend, and self-heals by storing to R2.
+ *
+ * Route: GET /api/files/line-proxy/:lineMessageId
+ */
+fileProxyHandler.get('/line-proxy/:lineMessageId', async (c) => {
+  try {
+    const lineMessageId = c.req.param('lineMessageId');
+
+    if (!lineMessageId || !/^\d+$/.test(lineMessageId)) {
+      return c.json({ success: false, error: 'Invalid LINE message ID' }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    console.log(`[LINE Proxy] Proxying LINE content for message: ${lineMessageId}`);
+
+    // Determine the correct LINE channel access token
+    // Check if a per-channel token is available via query param (set by frontend with conversation context)
+    const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
+    if (!token) {
+      console.error('[LINE Proxy] LINE_CHANNEL_ACCESS_TOKEN not configured');
+      return c.json({ success: false, error: 'LINE token not configured' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    }
+
+    // Download from LINE Content API
+    const lineUrl = `https://api-data.line.me/v2/bot/message/${lineMessageId}/content`;
+    const lineResp = await fetch(lineUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Multi-Channel-Platform-Bot/1.0'
+      }
+    });
+
+    if (!lineResp.ok) {
+      console.error(`[LINE Proxy] LINE API error: ${lineResp.status} ${lineResp.statusText}`);
+      return c.json({
+        success: false,
+        error: `LINE content unavailable (${lineResp.status})`
+      }, lineResp.status === 404 ? HTTP_STATUS.NOT_FOUND : HTTP_STATUS.BAD_GATEWAY);
+    }
+
+    const contentType = lineResp.headers.get('content-type') || 'image/jpeg';
+    const body = await lineResp.arrayBuffer();
+
+    console.log(`[LINE Proxy] Downloaded ${body.byteLength} bytes from LINE API`);
+
+    // Self-heal: store to R2 in the background so future requests use the fast R2 path
+    if (c.env.R2_BUCKET) {
+      c.executionCtx.waitUntil((async () => {
+        try {
+          const { processLineMediaMessage } = await import('@/utils/file-storage');
+
+          // Find the DB message that references this LINE message ID
+          const db = createDbClient(c.env.DB);
+          const { messages: messagesTable } = await import('@/db/schema');
+          const msg = await db.select({ id: messagesTable.id })
+            .from(messagesTable)
+            .where(eq(messagesTable.platformMessageId, lineMessageId))
+            .get();
+
+          if (msg) {
+            // Check if file_attachment already exists
+            const existingAttachment = await db.select({ id: fileAttachments.id })
+              .from(fileAttachments)
+              .where(eq(fileAttachments.messageId, msg.id))
+              .get();
+
+            if (!existingAttachment) {
+              // Re-attempt the full download+store pipeline
+              const mediaFile = await processLineMediaMessage(c.env, lineMessageId, 'image');
+              if (mediaFile) {
+                const { nowISO } = await import('@/utils/timestamp');
+                const r2Key = mediaFile.url.includes('/api/files/public/')
+                  ? mediaFile.url.split('/api/files/public/')[1]
+                  : `media/line/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${mediaFile.id}`;
+
+                await db.insert(fileAttachments).values({
+                  id: mediaFile.id,
+                  messageId: msg.id,
+                  filename: mediaFile.filename,
+                  mimeType: mediaFile.mimeType,
+                  fileSize: mediaFile.size,
+                  fileUrl: mediaFile.url,
+                  r2Key: r2Key,
+                  createdAt: nowISO()
+                });
+                console.log(`[LINE Proxy] Self-healed: created file_attachment for message ${msg.id}`);
+              }
+            }
+          }
+        } catch (healError) {
+          console.error('[LINE Proxy] Self-heal failed (non-critical):', healError instanceof Error ? healError.message : String(healError));
+        }
+      })());
+    }
+
+    // Return the image to the frontend
+    return new Response(body, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': body.byteLength.toString(),
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+});
+
+fileProxyHandler.options('/line-proxy/:lineMessageId', (_c) => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400'
+    }
+  });
+});
+
+/**
  * CORS 預檢請求處理
  */
 fileProxyHandler.options('/public/*', (_c) => {

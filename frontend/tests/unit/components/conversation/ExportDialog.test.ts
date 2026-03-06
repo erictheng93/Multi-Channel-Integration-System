@@ -21,13 +21,21 @@ import ExportDialog from '@/components/conversation/ExportDialog.vue'
 
 // Mock dependencies
 const mockExportMessages = vi.fn()
+const mockFetchExportData = vi.fn()
 const mockGetExportCustomers = vi.fn()
 const mockGetExportCount = vi.fn()
 
 vi.mock('@/api/export', () => ({
   exportMessages: (...args: unknown[]) => mockExportMessages(...args),
+  fetchExportData: (...args: unknown[]) => mockFetchExportData(...args),
   getExportCustomers: () => mockGetExportCustomers(),
   getExportCount: (...args: unknown[]) => mockGetExportCount(...args)
+}))
+
+const mockGeneratePdfExport = vi.fn()
+
+vi.mock('@/services/pdfExportService', () => ({
+  generatePdfExport: (...args: unknown[]) => mockGeneratePdfExport(...args)
 }))
 
 const mockShowSuccess = vi.fn()
@@ -666,6 +674,200 @@ describe('ExportDialog.vue', () => {
       await flushPromises()
 
       expect(mockShowError).toHaveBeenCalled()
+    })
+  })
+
+  // ==================== PDF 匯出流程 ====================
+
+  describe('PDF 匯出流程', () => {
+    it('選擇 PDF 格式時應使用 fetchExportData + generatePdfExport', async () => {
+      const mockPdfBlob = new Blob(['%PDF-1.4'], { type: 'application/pdf' })
+      mockFetchExportData.mockResolvedValue({
+        success: true,
+        data: { conversations: [], messages: [] }
+      })
+      mockGeneratePdfExport.mockResolvedValue(mockPdfBlob)
+
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test PDF'
+      })
+      await flushPromises()
+
+      // Click PDF segment
+      const segments = document.querySelectorAll('.segment')
+      const pdfSegment = segments[3] as HTMLButtonElement // JSON, CSV, TXT, PDF
+      pdfSegment.click()
+      await nextTick()
+
+      // Export
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      // Should use fetchExportData, NOT exportMessages
+      expect(mockFetchExportData).toHaveBeenCalledTimes(1)
+      expect(mockExportMessages).not.toHaveBeenCalled()
+      expect(mockGeneratePdfExport).toHaveBeenCalledTimes(1)
+      expect(mockShowSuccess).toHaveBeenCalledWith('匯出成功', '對話記錄已開始下載')
+    })
+
+    it('PDF 匯出資料取得失敗時應顯示錯誤', async () => {
+      mockFetchExportData.mockResolvedValue({
+        success: false,
+        error: '資料取得失敗'
+      })
+
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
+      await flushPromises()
+
+      // Select PDF
+      const segments = document.querySelectorAll('.segment')
+      const pdfSegment = segments[3] as HTMLButtonElement
+      pdfSegment.click()
+      await nextTick()
+
+      // Export
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      expect(mockShowError).toHaveBeenCalledWith('匯出失敗', '資料取得失敗')
+      expect(mockGeneratePdfExport).not.toHaveBeenCalled()
+    })
+
+    it('PDF generatePdfExport 拋出異常時應顯示錯誤', async () => {
+      mockFetchExportData.mockResolvedValue({
+        success: true,
+        data: { conversations: [], messages: [] }
+      })
+      mockGeneratePdfExport.mockRejectedValue(new Error('PDF generation failed'))
+
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'Test'
+      })
+      await flushPromises()
+
+      // Select PDF
+      const segments = document.querySelectorAll('.segment')
+      const pdfSegment = segments[3] as HTMLButtonElement
+      pdfSegment.click()
+      await nextTick()
+
+      // Export
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      expect(mockShowError).toHaveBeenCalledWith('匯出失敗', '匯出過程中發生錯誤，請稍後再試')
+    })
+
+    it('PDF 匯出時 title 應包含對話標題', async () => {
+      const mockPdfBlob = new Blob(['%PDF-1.4'], { type: 'application/pdf' })
+      mockFetchExportData.mockResolvedValue({
+        success: true,
+        data: { conversations: [], messages: [] }
+      })
+      mockGeneratePdfExport.mockResolvedValue(mockPdfBlob)
+
+      wrapper = createWrapper({
+        conversationId: 'conv-123',
+        conversationTitle: 'My Conversation'
+      })
+      await flushPromises()
+
+      // Select PDF
+      const segments = document.querySelectorAll('.segment')
+      const pdfSegment = segments[3] as HTMLButtonElement
+      pdfSegment.click()
+      await nextTick()
+
+      // Export
+      const footer = document.querySelector('.modal-footer')
+      const exportBtn = footer!.querySelector('.btn-apple-primary') as HTMLButtonElement
+      exportBtn.click()
+      await flushPromises()
+
+      expect(mockGeneratePdfExport).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          title: expect.stringContaining('My Conversation')
+        })
+      )
+    })
+  })
+
+  // ==================== initialFormat prop ====================
+
+  describe('initialFormat prop', () => {
+    it('指定 initialFormat 時應使用該格式作為預設', async () => {
+      wrapper = createWrapper({ initialFormat: 'csv' })
+      await nextTick()
+
+      const activeSegment = document.querySelector('.segment.active')
+      expect(activeSegment).toBeTruthy()
+      expect(activeSegment!.textContent).toContain('CSV')
+    })
+
+    it('重新打開時應重置為 initialFormat', async () => {
+      wrapper = mount(ExportDialog, {
+        props: { show: false, initialFormat: 'txt' as const },
+        attachTo: document.body
+      })
+
+      await wrapper.setProps({ show: true })
+      await flushPromises()
+
+      const activeSegment = document.querySelector('.segment.active')
+      expect(activeSegment!.textContent).toContain('TXT')
+    })
+  })
+
+  // ==================== 客戶載入錯誤顯示 ====================
+
+  describe('客戶載入錯誤', () => {
+    it('載入客戶列表失敗時應顯示錯誤訊息', async () => {
+      mockGetExportCustomers.mockResolvedValue({
+        success: false,
+        error: '伺服器錯誤'
+      })
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const errorMsg = document.querySelector('.section-error')
+      expect(errorMsg).toBeTruthy()
+      expect(errorMsg!.textContent).toContain('伺服器錯誤')
+    })
+
+    it('載入客戶列表拋出異常時應顯示通用錯誤', async () => {
+      mockGetExportCustomers.mockRejectedValue(new Error('Network error'))
+
+      wrapper = createWrapper()
+      await flushPromises()
+
+      const errorMsg = document.querySelector('.section-error')
+      expect(errorMsg).toBeTruthy()
+      expect(errorMsg!.textContent).toContain('載入用戶列表失敗')
+    })
+
+    it('載入中時 select 應被禁用', async () => {
+      // Make the promise never resolve to keep loading state
+      mockGetExportCustomers.mockImplementation(() => new Promise(() => {}))
+
+      wrapper = createWrapper()
+      await nextTick()
+
+      const customerSelect = document.querySelector('.apple-select') as HTMLSelectElement
+      expect(customerSelect).toBeTruthy()
+      expect(customerSelect.disabled).toBe(true)
     })
   })
 })

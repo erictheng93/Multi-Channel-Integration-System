@@ -16,7 +16,7 @@
     <div class="message-content">
       <!-- Image Message -->
       <div
-        v-if="actualMessageType === 'image' && attachmentUrl"
+        v-if="actualMessageType === 'image' && resolvedAttachmentUrl"
         class="message-media"
       >
         <div
@@ -28,7 +28,7 @@
             style="width: 300px; max-height: 400px"
           >
             <img
-              :src="attachmentUrl"
+              :src="resolvedAttachmentUrl"
               :alt="attachmentName"
               class="message-image-content"
               width="300"
@@ -72,7 +72,7 @@
 
       <!-- File Message (Single Attachment - Legacy) -->
       <div
-        v-else-if="actualMessageType === 'file' && attachmentUrl && !hasMultipleAttachments"
+        v-else-if="actualMessageType === 'file' && resolvedAttachmentUrl && !hasMultipleAttachments"
         class="message-file-content"
       >
         <div class="file-container">
@@ -502,7 +502,7 @@
     <!-- Image Preview Modal Component -->
     <ImagePreviewModal
       :show="showImagePreview"
-      :image-url="previewImageAttachment?.fileUrl || attachmentUrl || ''"
+      :image-url="previewImageAttachment?.fileUrl || resolvedAttachmentUrl || ''"
       :image-name="previewImageAttachment?.filename || attachmentName"
       :image-size="previewImageAttachment?.fileSize || attachmentSize || 0"
       @close="closeImagePreview"
@@ -597,6 +597,7 @@
   }))
 
   const {
+    attachmentUrl: resolvedAttachmentUrl, // Computed: extracts URL from props > metadata > content
     fileAttachments, // Used internally by imageAttachments, videoAttachments, and documentAttachments
     imageAttachments,
     videoAttachments,
