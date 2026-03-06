@@ -409,6 +409,11 @@ export const useConversationsStore = defineStore('conversations', () => {
       if (filters.value.status) { cleanFilters.status = filters.value.status }
       if (filters.value.platform) { cleanFilters.platform = filters.value.platform }
       if (filters.value.teamId) { cleanFilters.teamId = filters.value.teamId }
+      if (filters.value.search) { cleanFilters.search = filters.value.search }
+      if (filters.value.tagIds && filters.value.tagIds.length > 0) { cleanFilters.tagIds = filters.value.tagIds }
+      if (filters.value.customerName) { cleanFilters.customerName = filters.value.customerName }
+      if (filters.value.updatedAfter) { cleanFilters.updatedAfter = filters.value.updatedAfter }
+      if (filters.value.updatedBefore) { cleanFilters.updatedBefore = filters.value.updatedBefore }
 
       const response = await conversationApi.list({
         page,

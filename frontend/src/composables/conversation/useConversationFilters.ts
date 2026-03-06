@@ -52,7 +52,12 @@ const DEFAULT_FILTERS: ConversationFilters = {
   status: '',
   platform: '',
   teamId: undefined,
-  tagIds: []
+  tagIds: [],
+  search: '',
+  customerName: '',
+  lastMessageSearch: '',
+  updatedAfter: '',
+  updatedBefore: ''
 }
 
 /**
@@ -72,7 +77,12 @@ export function useConversationFilters(): ConversationFiltersComposable {
       filters.value.status !== '' ||
       filters.value.platform !== '' ||
       filters.value.teamId !== undefined ||
-      (filters.value.tagIds !== undefined && filters.value.tagIds.length > 0)
+      (filters.value.tagIds !== undefined && filters.value.tagIds.length > 0) ||
+      (filters.value.search !== undefined && filters.value.search.trim() !== '') ||
+      (filters.value.customerName !== undefined && filters.value.customerName.trim() !== '') ||
+      (filters.value.lastMessageSearch !== undefined && filters.value.lastMessageSearch.trim() !== '') ||
+      (filters.value.updatedAfter !== undefined && filters.value.updatedAfter !== '') ||
+      (filters.value.updatedBefore !== undefined && filters.value.updatedBefore !== '')
     )
   })
 
@@ -175,6 +185,9 @@ export function useConversationFilters(): ConversationFiltersComposable {
         delete apiFilters[key]
       }
     })
+
+    // lastMessageSearch is client-side only, never send to API
+    delete apiFilters.lastMessageSearch
 
     return apiFilters
   }

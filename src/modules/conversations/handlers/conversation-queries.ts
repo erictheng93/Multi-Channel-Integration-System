@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, inArray, desc, and } from 'drizzle-orm';
+import { eq, inArray, desc, and, like, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -144,8 +144,13 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // 獲取篩選參數
     const tagIdsParam = c.req.query('tagIds'); // e.g., "1,2,3"
     const tagIds = tagIdsParam ? tagIdsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+    const searchQuery = c.req.query('search')?.trim() || '';
 
-    log.debug('Conversation Handler filter params', { tagIds });
+    const customerNameQuery = c.req.query('customerName')?.trim() || '';
+    const updatedAfter = c.req.query('updatedAfter')?.trim() || '';
+    const updatedBefore = c.req.query('updatedBefore')?.trim() || '';
+
+    log.debug('Conversation Handler filter params', { tagIds, searchQuery });
 
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
 
@@ -195,12 +200,46 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       }
     }
 
+    // 如果有搜尋關鍵字，篩選匹配客戶名稱的對話
+    if (searchQuery) {
+      const searchPattern = `%${searchQuery}%`;
+      const matchedConversations = await drizzleDb
+        .select({ id: conversations.id })
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .where(
+          and(
+            inArray(conversations.id, filteredConversationIds),
+            like(customers.displayName, searchPattern)
+          )
+        );
+      filteredConversationIds = matchedConversations.map(c => c.id);
+
+      log.debug('Conversation Handler filtered by search', {
+        searchQuery,
+        filteredCount: filteredConversationIds.length
+      });
+
+      if (filteredConversationIds.length === 0) {
+        return c.json({
+          success: true,
+          data: [],
+          timestamp: nowISO()
+        });
+      }
+    }
+
     const conversationResults = await drizzleDb
       .select()
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
-      .where(inArray(conversations.id, filteredConversationIds))
+      .where(and(
+        inArray(conversations.id, filteredConversationIds),
+        ...(customerNameQuery ? [sql`${customers.displayName} LIKE ${'%' + customerNameQuery + '%'}`] : []),
+        ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
+        ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : [])
+      ))
       .orderBy(desc(conversations.updatedAt));
 
     // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象

@@ -103,7 +103,16 @@ export function useConversationListController(): ConversationListControllerCompo
   // 原本透過 useConversations() → useAsyncData({ immediate: false }) 鏈路，
   // 因為 execute() 從未被呼叫，data 永遠是 null，導致排序無法套用
   const conversations = computed(() => {
-    const storeData = conversationsStore.conversations
+    let storeData = conversationsStore.conversations
+
+    // Client-side filter: lastMessageSearch
+    const lastMsgSearch = filters.filters.value.lastMessageSearch?.trim().toLowerCase()
+    if (lastMsgSearch && storeData && storeData.length > 0) {
+      storeData = storeData.filter((c: Conversation) => {
+        const content = c.lastMessage?.content?.toLowerCase() || ''
+        return content.includes(lastMsgSearch)
+      })
+    }
 
     // 应用客户端排序（updatedAt DESC - 最新處理的對話排在最上面）
     if (storeData && storeData.length > 0) {
