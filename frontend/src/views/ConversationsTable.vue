@@ -3,50 +3,25 @@
     <ErrorBoundary>
       <div class="conversations">
         <header class="conversations-header">
-          <h1>對話管理</h1>
-          <div class="filters">
-            <select
-              v-model="filters.status"
-              @change="applyFilters"
-            >
-              <option value="">
-                所有狀態
-              </option>
-              <option value="active">
-                進行中
-              </option>
-              <option value="assigned">
-                已指派
-              </option>
-              <option value="pending">
-                待處理
-              </option>
-            </select>
-            <select
-              v-model="filters.platform"
-              @change="applyFilters"
-            >
-              <option value="">
-                所有平台
-              </option>
-              <option value="line">
-                LINE
-              </option>
-              <option value="facebook">
-                Facebook
-              </option>
-              <option value="instagram">
-                Instagram
-              </option>
-              <option value="whatsapp">
-                WhatsApp
-              </option>
-            </select>
-            <RefreshButton
-              :loading="loading || isUpdating"
-              @refresh="refreshConversations"
-            />
+          <div class="header-top">
+            <h1>對話管理</h1>
+            <div class="header-actions">
+              <RefreshButton
+                :loading="loading || isUpdating"
+                @refresh="refreshConversations"
+              />
+            </div>
           </div>
+          <ConversationFilters
+            :filters="filterComposable.filters.value"
+            :available-tags="availableTags"
+            :total-conversations="conversations.length"
+            :unread-count="0"
+            @update:filter="handleFilterUpdate"
+            @toggle:tag="filterComposable.toggleTagFilter"
+            @clear:tags="filterComposable.clearTagFilter"
+            @clear:all="filterComposable.clearAllFilters"
+          />
         </header>
 
         <!-- SSE 更新指示器 -->
@@ -99,9 +74,11 @@
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
-// REMOVED: useActivityStream (SSE-based, replaced by WebSocket in Phase 1 cleanup)
-// import { useActivityStream } from '@/composables/useActivityStream'
-import type { ConversationFilters } from '@/types'
+import { useConversationFilters } from '@/composables/conversation/useConversationFilters'
+import { useDebounce } from '@/composables/useDebounce'
+import { tagCacheService } from '@/services/tagCacheService'
+import type { ConversationFilters as ConversationFiltersType } from '@/types'
+
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import ErrorBoundary from '@/components/ErrorBoundary.vue'
@@ -109,14 +86,18 @@ import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import ConversationSyncIndicator from '@/components/conversations/ConversationSyncIndicator.vue'
 import ConversationDesktopTable from '@/components/conversations/ConversationDesktopTable.vue'
 import ConversationMobileCards from '@/components/conversations/ConversationMobileCards.vue'
+import { ConversationFilters } from '@/components/conversation-list'
 
 const router = useRouter()
 const conversationsStore = useConversationsStore()
+const filterComposable = useConversationFilters()
 
-const filters = ref<ConversationFilters>({
-  status: '', // 預設為空字串以顯示「所有狀態」
-  platform: '' // 預設為空字串以顯示「所有平台」
-})
+// Available tags for tag filter dropdown
+const availableTags = computed(() => tagCacheService.getAllTags())
+
+// Debounced API filters — triggers store fetch on change
+const apiFilters = computed(() => filterComposable.getApiFilters())
+const debouncedApiFilters = useDebounce(apiFilters, 300)
 
 // 平滑載入動畫系統
 const isUpdating = ref(false)
@@ -127,16 +108,23 @@ const animationDelay = ref(0)
 const loading = computed(() => conversationsStore.loading)
 const conversations = computed(() => conversationsStore.conversations)
 
-// 平滑載入系統：顯示的對話列表（含前端篩選防護）
+// 平滑載入系統：顯示的對話列表（僅 lastMessageSearch 為 client-side 篩選）
 const displayedConversations = computed(() => {
   let result = conversations.value
-  if (filters.value.status) {
-    result = result.filter(c => c.status === filters.value.status)
-  }
-  if (filters.value.platform) {
-    result = result.filter(c => c.platform === filters.value.platform)
+  const lastMsgSearch = filterComposable.filters.value.lastMessageSearch?.trim().toLowerCase()
+  if (lastMsgSearch) {
+    result = result.filter(c => {
+      const content = (c.lastMessage?.content || '').toLowerCase()
+      return content.includes(lastMsgSearch)
+    })
   }
   return result
+})
+
+// Watch debounced API filters and fetch from API
+watch(debouncedApiFilters, (newFilters) => {
+  console.log('🔍 [ConversationsTable] API filters changed:', newFilters)
+  conversationsStore.fetchConversations(newFilters as ConversationFiltersType)
 })
 
 // 監聽對話變化並處理動畫邏輯
@@ -173,7 +161,7 @@ const performSmoothUpdate = async () => {
   console.log('📢 [ConversationsTable] Starting smooth update...')
 
   try {
-    await conversationsStore.fetchConversations()
+    await conversationsStore.fetchConversations(filterComposable.getApiFilters() as ConversationFiltersType)
 
     // 短暫的視覺反饋
     await nextTick()
@@ -198,25 +186,23 @@ const goToConversation = (id: string) => {
   router.push(`/conversations/${id}`)
 }
 
-const applyFilters = () => {
-  const activeFilters: ConversationFilters = {}
-  if (filters.value.status) {activeFilters.status = filters.value.status}
-  if (filters.value.platform) {activeFilters.platform = filters.value.platform}
-
-  console.log('🔍 [ConversationsTable] Applying filters:', activeFilters)
-  // 直接使用 store 的 fetchConversations 方法重新載入數據
-  conversationsStore.fetchConversations(activeFilters)
+// Event handlers for ConversationFilters component
+function handleFilterUpdate(key: keyof ConversationFiltersType, value: string | number | undefined) {
+  filterComposable.updateFilter(key, value as ConversationFiltersType[typeof key])
 }
 
 onMounted(async () => {
   console.log('🚀 ConversationsTable mounted')
+
+  // Ensure tag cache is initialized for the filter dropdown
+  tagCacheService.init().catch(err => console.warn('Tag cache init failed:', err))
 
   // FIX: 每次 mount 都刷新數據，確保返回列表時顯示最新狀態
   // 使用 loadWithCache 提供最佳 UX：
   // - 如果有緩存數據：立即顯示，背景靜默更新（只顯示更新指示器，非全屏載入）
   // - 如果無緩存數據：顯示載入狀態
   try {
-    await conversationsStore.loadWithCache(filters.value)
+    await conversationsStore.loadWithCache(filterComposable.getApiFilters() as ConversationFiltersType)
   } catch (error) {
     console.error('載入對話失敗:', error)
     // 即使載入失敗，也不要讓頁面白屏
@@ -245,35 +231,28 @@ onUnmounted(() => {
 
 .conversations-header {
   background: white;
-  padding: 1rem 2rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.conversations-header h1 {
+.header-top h1 {
   margin: 0;
   color: #333;
 }
 
-.filters {
+.header-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: center;
-}
-
-.filters select {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-.filters select:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 .conversations-content {
@@ -414,15 +393,8 @@ onUnmounted(() => {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .conversations-header {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
-  }
-
-  .filters {
-    justify-content: center;
-    flex-wrap: wrap;
+  .header-top {
+    padding: 0.75rem 1rem;
   }
 
   .conversations-content {
@@ -444,18 +416,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
-  .conversations-header {
-    padding: 1rem;
-  }
-
-  .filters {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .filters select {
-    width: 100%;
-    max-width: 200px;
+  .header-top {
+    padding: 0.75rem;
   }
 }
 </style>
