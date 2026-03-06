@@ -41,14 +41,6 @@ export async function getMonitoringDashboard(c: Context<{ Bindings: Bindings }>)
         cache: {
           status: currentHealth.infrastructure.cache.status,
           message: currentHealth.infrastructure.cache.message
-        },
-        storage: {
-          status: currentHealth.infrastructure.storage.status,
-          message: currentHealth.infrastructure.storage.message
-        },
-        queue: {
-          status: currentHealth.infrastructure.queue.status,
-          message: currentHealth.infrastructure.queue.message
         }
       },
       performance: currentHealth.performance

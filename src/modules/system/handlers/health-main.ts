@@ -5,7 +5,7 @@ import type { Bindings } from '@/types';
 import { healthCheckService } from '@/services/health-check-service';
 import { DatabaseHealthChecker } from '@/health-checkers/database-checker';
 import { CacheHealthChecker } from '@/health-checkers/cache-checker';
-import { APIHealthChecker } from '@/health-checkers/api-checker';
+
 import { successResponse, internalErrorResponse } from '@/utils/api-response';
 import { getConfigurationStatus } from '@/middleware/configuration-guard';
 import { nowISO } from '@/utils/timestamp'
@@ -15,13 +15,12 @@ let initialized = false;
 /**
  * 初始化健康檢查器
  */
-function initializeHealthCheckers(db: any, cache: any, backendUrl?: string) {
+function initializeHealthCheckers(db: any, cache: any) {
   if (initialized) return;
 
   // 註冊基礎設施檢查器
   healthCheckService.registerChecker(new DatabaseHealthChecker(db));
   healthCheckService.registerChecker(new CacheHealthChecker(cache));
-  healthCheckService.registerChecker(new APIHealthChecker(backendUrl || ''));
 
   initialized = true;
 }
@@ -284,16 +283,15 @@ export async function getConfigCheck(c: Context<{ Bindings: Bindings }>) {
 /**
  * 創建健康檢查方法集合
  */
-export function createHealthCheckHandlerMethods(db: any, cache: any, backendUrl?: string) {
+export function createHealthCheckHandlerMethods(db: any, cache: any) {
   // 初始化檢查器
-  initializeHealthCheckers(db, cache, backendUrl);
+  initializeHealthCheckers(db, cache);
 
   return {
     getSystemHealth,
     getInfrastructureHealth,
     getServicesHealth,
     runComponentCheck,
-    getHealthStats,
-    getConfigCheck
+    getHealthStats
   };
 }
