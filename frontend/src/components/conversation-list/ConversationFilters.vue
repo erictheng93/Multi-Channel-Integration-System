@@ -144,11 +144,11 @@
     </div>
 
     <!-- Expandable Filter Panel -->
-    <Transition name="filter-panel">
-      <div
-        v-show="isExpanded"
-        class="filter-panel"
-      >
+    <div
+      class="filter-panel-wrapper"
+      :class="{ expanded: isExpanded }"
+    >
+      <div class="filter-panel">
         <!-- Row 1: Search + Dropdowns -->
         <div class="panel-row">
           <div class="panel-field panel-field--grow">
@@ -383,12 +383,12 @@
           </button>
         </div>
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { ConversationFilters } from '@/types'
 
 export interface Tag {
@@ -524,10 +524,25 @@ watch(() => props.filters.lastMessageSearch, (val) => {
   }
 })
 
-// Cleanup timers
+// Close tag dropdown on click outside
+function handleClickOutside(e: MouseEvent) {
+  if (showTagDropdown.value) {
+    const target = e.target as HTMLElement
+    if (!target.closest('.panel-field.relative')) {
+      showTagDropdown.value = false
+    }
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+// Cleanup timers and listeners
 onUnmounted(() => {
   if (customerNameTimer) {clearTimeout(customerNameTimer)}
   if (lastMessageTimer) {clearTimeout(lastMessageTimer)}
+  document.removeEventListener('click', handleClickOutside)
 })
 
 function onFilterChange(key: keyof ConversationFilters, value: string | number | undefined) {
@@ -694,32 +709,29 @@ function clearAll() {
   transform: rotate(180deg);
 }
 
-/* ─── Expandable Panel ─── */
+/* ─── Expandable Panel (CSS grid collapse) ─── */
+.filter-panel-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.25s ease;
+  opacity: 0;
+}
+
+.filter-panel-wrapper.expanded {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
 .filter-panel {
+  overflow: hidden;
   @apply px-5 pt-4 pb-3;
   @apply bg-gradient-to-b from-gray-50/80 to-white;
 }
 
-/* Panel transition */
-.filter-panel-enter-active {
-  animation: panel-slide-down 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.filter-panel-leave-active {
-  animation: panel-slide-down 0.2s cubic-bezier(0.16, 1, 0.3, 1) reverse;
-}
-
-@keyframes panel-slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-    max-height: 0;
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    max-height: 500px;
-  }
+/* Allow dropdowns to overflow once the panel is fully expanded */
+.filter-panel-wrapper.expanded .filter-panel {
+  overflow: visible;
 }
 
 /* ─── Panel Rows ─── */
