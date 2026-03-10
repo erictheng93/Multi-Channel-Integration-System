@@ -519,16 +519,13 @@ describe('System Settings Controller', () => {
       vi.mocked(systemApi.healthCheck).mockResolvedValue({
         success: true,
         data: {
-          status: 'healthy',
-          checks: {
-            database: true,
-            cache: true,
-            integrations: {
-              line: true,
-              facebook: true
-            }
-          },
-          timestamp: new Date()
+          overall: { status: 'healthy', message: 'All systems operational', timestamp: new Date().toISOString() },
+          components: [
+            { component: 'database', version: '1.0', status: { status: 'healthy', message: 'OK', timestamp: new Date().toISOString(), responseTime: 5 }, lastCheck: new Date().toISOString(), checkInterval: 30 },
+            { component: 'cache', version: '1.0', status: { status: 'healthy', message: 'OK', timestamp: new Date().toISOString(), responseTime: 2 }, lastCheck: new Date().toISOString(), checkInterval: 30 }
+          ],
+          infrastructure: {},
+          performance: { apiResponseTime: 10, databaseQueryTime: 5, cacheHitRate: 0.95 }
         }
       })
 
@@ -538,46 +535,53 @@ describe('System Settings Controller', () => {
       expect(controller.messageType.value).toBe('success')
     })
 
-    it('should handle health check with degraded status', async () => {
+    it('should handle health check with warning status', async () => {
       const { systemApi } = await import('@/api/system')
       vi.mocked(systemApi.healthCheck).mockResolvedValue({
         success: true,
         data: {
-          status: 'degraded',
-          checks: {
-            database: true,
-            cache: false,
-            integrations: {
-              line: true,
-              facebook: true
-            }
-          },
-          timestamp: new Date()
+          overall: { status: 'warning', message: 'Some components degraded', timestamp: new Date().toISOString() },
+          components: [
+            { component: 'database', version: '1.0', status: { status: 'healthy', message: 'OK', timestamp: new Date().toISOString(), responseTime: 5 }, lastCheck: new Date().toISOString(), checkInterval: 30 },
+            { component: 'cache', version: '1.0', status: { status: 'warning', message: 'High latency', timestamp: new Date().toISOString(), responseTime: 200 }, lastCheck: new Date().toISOString(), checkInterval: 30 }
+          ],
+          infrastructure: {},
+          performance: { apiResponseTime: 50, databaseQueryTime: 5, cacheHitRate: 0.5 }
         }
       })
 
       await controller.healthCheck()
 
-      // Degraded status is treated as 'error' type in the implementation
+      // Non-healthy status is treated as 'error' type in the implementation
       expect(controller.messageType.value).toBe('error')
     })
 
-    it('should handle health check with unhealthy status', async () => {
+    it('should handle health check with critical status', async () => {
       const { systemApi } = await import('@/api/system')
       vi.mocked(systemApi.healthCheck).mockResolvedValue({
         success: true,
         data: {
-          status: 'unhealthy',
-          checks: {
-            database: false,
-            cache: false,
-            integrations: {
-              line: false,
-              facebook: false
-            }
-          },
-          timestamp: new Date()
+          overall: { status: 'critical', message: 'System unhealthy', timestamp: new Date().toISOString() },
+          components: [
+            { component: 'database', version: '1.0', status: { status: 'critical', message: 'Connection failed', timestamp: new Date().toISOString() }, lastCheck: new Date().toISOString(), checkInterval: 30 },
+            { component: 'cache', version: '1.0', status: { status: 'critical', message: 'Unavailable', timestamp: new Date().toISOString() }, lastCheck: new Date().toISOString(), checkInterval: 30 }
+          ],
+          infrastructure: {},
+          performance: { apiResponseTime: 0, databaseQueryTime: 0, cacheHitRate: 0 }
         }
+      })
+
+      await controller.healthCheck()
+
+      expect(controller.messageType.value).toBe('error')
+    })
+
+    it('should handle health check with missing overall data', async () => {
+      const { systemApi } = await import('@/api/system')
+      vi.mocked(systemApi.healthCheck).mockResolvedValue({
+        success: true,
+        data: undefined,
+        message: '健康檢查失敗'
       })
 
       await controller.healthCheck()

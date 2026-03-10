@@ -1,0 +1,463 @@
+// webhook-conversation-service.ts Unit Tests
+// Tests for findOrCreateConversation, isDuplicateMessage, saveMessage
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock drizzle-orm operators
+vi.mock('drizzle-orm', () => ({
+  eq: (...args: any[]) => ({ type: 'eq', args }),
+  and: (...args: any[]) => ({ type: 'and', args }),
+  ne: (...args: any[]) => ({ type: 'ne', args }),
+}));
+
+// Mock drizzle-factory
+const mockGet = vi.fn();
+const mockAll = vi.fn();
+const mockInsertValues = vi.fn();
+const mockUpdateSet = vi.fn();
+const mockUpdateWhere = vi.fn();
+
+function createSelectChain() {
+  const chain: Record<string, any> = {};
+  chain.from = vi.fn().mockReturnValue(chain);
+  chain.where = vi.fn().mockReturnValue(chain);
+  chain.get = mockGet;
+  chain.all = mockAll;
+  return chain;
+}
+
+function createInsertChain() {
+  const chain: Record<string, any> = {};
+  chain.values = mockInsertValues.mockReturnValue(chain);
+  chain.then = (resolve: (v: any) => void) => Promise.resolve(undefined).then(resolve);
+  return chain;
+}
+
+function createUpdateChain() {
+  const chain: Record<string, any> = {};
+  chain.set = mockUpdateSet.mockReturnValue(chain);
+  chain.where = mockUpdateWhere.mockReturnValue(chain);
+  chain.then = (resolve: (v: any) => void) => Promise.resolve(undefined).then(resolve);
+  return chain;
+}
+
+const mockDb = {
+  select: vi.fn().mockImplementation(() => createSelectChain()),
+  insert: vi.fn().mockImplementation(() => createInsertChain()),
+  update: vi.fn().mockImplementation(() => createUpdateChain()),
+};
+
+vi.mock('@/db/drizzle-factory', () => ({
+  createDbClient: vi.fn(() => mockDb),
+}));
+
+vi.mock('@/db/schema', () => ({
+  conversations: {
+    id: { name: 'id' },
+    customerId: { name: 'customerId' },
+    assignedTeamId: { name: 'assignedTeamId' },
+    status: { name: 'status' },
+    priority: { name: 'priority' },
+    firstResponseAt: { name: 'firstResponseAt' },
+    closedAt: { name: 'closedAt' },
+    lastMessageAt: { name: 'lastMessageAt' },
+    createdAt: { name: 'createdAt' },
+    updatedAt: { name: 'updatedAt' },
+  },
+  messages: {
+    id: { name: 'id' },
+    conversationId: { name: 'conversationId' },
+    senderType: { name: 'senderType' },
+    customerSenderId: { name: 'customerSenderId' },
+    agentSenderId: { name: 'agentSenderId' },
+    content: { name: 'content' },
+    messageType: { name: 'messageType' },
+    platformMessageId: { name: 'platformMessageId' },
+    isSent: { name: 'isSent' },
+    deliveryStatus: { name: 'deliveryStatus' },
+    metadata: { name: 'metadata' },
+    senderName: { name: 'senderName' },
+    createdAt: { name: 'createdAt' },
+  },
+  customers: {
+    id: { name: 'id' },
+  },
+}));
+
+vi.mock('uuid', () => ({
+  v4: vi.fn(() => 'mock-uuid-1234'),
+}));
+
+vi.mock('@/utils/logger', () => ({
+  createContextLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
+vi.mock('@/utils/timestamp', () => ({
+  nowISO: vi.fn(() => '2026-03-09T12:00:00.000Z'),
+}));
+
+vi.mock('@/utils/drizzle-converters', () => ({
+  convertConversation: vi.fn((c: any) => ({ ...c, converted: true })),
+}));
+
+vi.mock('@/utils/notification-trigger', () => ({
+  triggerNewConversationNotification: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/workers/latest-message-worker', () => ({
+  LatestMessageJobQueue: vi.fn().mockImplementation(() => ({
+    updateLatestMessage: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+import {
+  findOrCreateConversation,
+  isDuplicateMessage,
+  saveMessage,
+} from '@modules/integrations/services/webhook-conversation-service';
+
+const mockEnv = { DB: {} } as any;
+
+describe('webhook-conversation-service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // =========================================================================
+  // findOrCreateConversation
+  // =========================================================================
+  describe('findOrCreateConversation', () => {
+    it('should return existing conversation if found', async () => {
+      const existingConversation = {
+        id: 'conv-123',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: null,
+        lastMessageAt: '2026-03-08T12:00:00Z',
+      };
+
+      // First select: find existing conversation
+      mockGet.mockResolvedValueOnce(existingConversation);
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line');
+
+      expect(result).toEqual(existingConversation);
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('should update lastMessageAt on existing conversation', async () => {
+      const existingConversation = {
+        id: 'conv-123',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: 5,
+      };
+
+      mockGet.mockResolvedValueOnce(existingConversation);
+
+      await findOrCreateConversation(mockEnv, 1, 'line');
+
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lastMessageAt: '2026-03-09T12:00:00.000Z',
+          updatedAt: '2026-03-09T12:00:00.000Z',
+        })
+      );
+    });
+
+    it('should backfill team assignment on existing conversation without team', async () => {
+      const existingConversation = {
+        id: 'conv-123',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: null,
+      };
+
+      mockGet.mockResolvedValueOnce(existingConversation);
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line', {
+        assignedTeamId: 7,
+      });
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({ assignedTeamId: 7 })
+      );
+      expect(result.assignedTeamId).toBe(7);
+    });
+
+    it('should NOT overwrite existing team assignment', async () => {
+      const existingConversation = {
+        id: 'conv-123',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: 3,
+      };
+
+      mockGet.mockResolvedValueOnce(existingConversation);
+
+      await findOrCreateConversation(mockEnv, 1, 'line', {
+        assignedTeamId: 7,
+      });
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.not.objectContaining({ assignedTeamId: expect.anything() })
+      );
+    });
+
+    it('should create new conversation when none exists', async () => {
+      // First select: no existing conversation
+      mockGet.mockResolvedValueOnce(undefined);
+      // Re-query after insert: return the new conversation
+      const newConversation = {
+        id: 'mock-uuid-1234',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: null,
+      };
+      mockGet.mockResolvedValueOnce(newConversation);
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line');
+
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'mock-uuid-1234',
+          customerId: 1,
+          status: 'active',
+          priority: 'normal',
+        })
+      );
+      expect(result).toEqual(expect.objectContaining({ converted: true }));
+    });
+
+    it('should trigger notification for new LINE conversation', async () => {
+      mockGet.mockResolvedValueOnce(undefined); // no existing
+      mockGet.mockResolvedValueOnce({
+        id: 'mock-uuid-1234',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: 5,
+      });
+
+      await findOrCreateConversation(mockEnv, 1, 'line', {
+        customerDisplayName: 'Test User',
+        messageContent: 'Hello',
+        assignedTeamId: 5,
+      });
+
+      const { triggerNewConversationNotification } = await import(
+        '@/utils/notification-trigger'
+      );
+      expect(triggerNewConversationNotification).toHaveBeenCalledWith(
+        mockEnv,
+        expect.objectContaining({
+          conversationId: 'mock-uuid-1234',
+          customerName: 'Test User',
+          platform: 'LINE',
+          messagePreview: 'Hello',
+          teamId: 5,
+        })
+      );
+    });
+
+    it('should throw when re-query after insert fails', async () => {
+      mockGet.mockResolvedValueOnce(undefined); // no existing
+      mockGet.mockResolvedValueOnce(undefined); // re-query returns null
+      mockAll.mockResolvedValueOnce([]); // diagnostic query
+      mockGet.mockResolvedValueOnce(null); // db connection test
+
+      await expect(
+        findOrCreateConversation(mockEnv, 1, 'line')
+      ).rejects.toThrow('Failed to create conversation');
+    });
+
+    it('should use assignedTeamId when creating new conversation', async () => {
+      mockGet.mockResolvedValueOnce(undefined); // no existing
+      mockGet.mockResolvedValueOnce({
+        id: 'mock-uuid-1234',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: 10,
+      });
+
+      await findOrCreateConversation(mockEnv, 1, 'facebook', {
+        assignedTeamId: 10,
+      });
+
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ assignedTeamId: 10 })
+      );
+    });
+  });
+
+  // =========================================================================
+  // isDuplicateMessage
+  // =========================================================================
+  describe('isDuplicateMessage', () => {
+    it('should return true when message exists', async () => {
+      mockGet.mockResolvedValueOnce({ id: 'msg-1' });
+
+      const result = await isDuplicateMessage(mockEnv, 'platform-msg-1', 'line');
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when no duplicate found', async () => {
+      mockGet.mockResolvedValueOnce(undefined);
+
+      const result = await isDuplicateMessage(mockEnv, 'platform-msg-1', 'line');
+
+      expect(result).toBe(false);
+    });
+
+    it('should work for facebook platform', async () => {
+      mockGet.mockResolvedValueOnce(undefined);
+
+      const result = await isDuplicateMessage(mockEnv, 'fb-msg-1', 'facebook');
+
+      expect(result).toBe(false);
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // =========================================================================
+  // saveMessage
+  // =========================================================================
+  describe('saveMessage', () => {
+    it('should insert message with correct fields', async () => {
+      const result = await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        'Hello world',
+        'text',
+        'platform-msg-1',
+        'Test User',
+        null,
+        'line'
+      );
+
+      expect(result).toBe('mock-uuid-1234');
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'mock-uuid-1234',
+          conversationId: 'conv-1',
+          senderType: 'customer',
+          customerSenderId: 1,
+          content: 'Hello world',
+          messageType: 'text',
+          platformMessageId: 'platform-msg-1',
+          isSent: true,
+          deliveryStatus: 'delivered',
+          metadata: null,
+          senderName: 'Test User',
+        })
+      );
+    });
+
+    it('should JSON.stringify mediaData when provided', async () => {
+      const mediaData = { url: 'https://example.com/image.jpg', type: 'image' };
+
+      await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        '[Image]',
+        'image',
+        'platform-msg-2',
+        'Test User',
+        mediaData,
+        'line'
+      );
+
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: JSON.stringify(mediaData),
+        })
+      );
+    });
+
+    it('should set senderName to null when displayName is null', async () => {
+      await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        'Hello',
+        'text',
+        null,
+        null,
+        null,
+        'facebook'
+      );
+
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          senderName: null,
+          platformMessageId: null,
+        })
+      );
+    });
+
+    it('should trigger cache update after successful save', async () => {
+      await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        'Hello',
+        'text',
+        'msg-1',
+        null,
+        null,
+        'line'
+      );
+
+      const { LatestMessageJobQueue } = await import(
+        '@/workers/latest-message-worker'
+      );
+      expect(LatestMessageJobQueue).toHaveBeenCalledWith(mockEnv);
+    });
+
+    it('should not fail when cache update throws', async () => {
+      const { LatestMessageJobQueue } = await import(
+        '@/workers/latest-message-worker'
+      );
+      vi.mocked(LatestMessageJobQueue).mockImplementationOnce(() => ({
+        updateLatestMessage: vi.fn().mockRejectedValue(new Error('cache fail')),
+      }));
+
+      // Should NOT throw
+      const result = await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        'Hello',
+        'text',
+        'msg-1',
+        null,
+        null,
+        'line'
+      );
+
+      expect(result).toBe('mock-uuid-1234');
+    });
+
+    it('should throw when DB insert fails', async () => {
+      mockInsertValues.mockReturnValueOnce({
+        then: (_resolve: any, reject: any) =>
+          Promise.reject(new Error('DB insert failed')).catch(reject),
+      });
+
+      await expect(
+        saveMessage(mockEnv, 'conv-1', 1, 'Hello', 'text', 'msg-1', null, null, 'line')
+      ).rejects.toThrow('Failed to create message');
+    });
+  });
+});
