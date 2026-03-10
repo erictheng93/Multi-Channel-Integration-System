@@ -141,6 +141,67 @@ describe('Auth Module - Password Functions', () => {
       const isValid = await verifyPassword(testPassword, prefixedHash);
       expect(isValid).toBe(true);
     });
+
+    test('should verify PBKDF2 hash (web-installer format)', async () => {
+      // Generate a PBKDF2 hash the same way web-installer's MigrationRunner does
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(testPassword),
+        'PBKDF2',
+        false,
+        ['deriveBits']
+      );
+      const derivedBits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        256
+      );
+      const derivedHash = new Uint8Array(derivedBits);
+
+      // Combine salt + hash → base64 → prefix with 'pbkdf2:'
+      const combined = new Uint8Array(salt.length + derivedHash.length);
+      combined.set(salt, 0);
+      combined.set(derivedHash, salt.length);
+      const base64 = btoa(String.fromCharCode(...combined));
+      const pbkdf2Hash = `pbkdf2:${base64}`;
+
+      const isValid = await verifyPassword(testPassword, pbkdf2Hash);
+      expect(isValid).toBe(true);
+    });
+
+    test('should reject wrong password with PBKDF2 hash', async () => {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(testPassword),
+        'PBKDF2',
+        false,
+        ['deriveBits']
+      );
+      const derivedBits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        256
+      );
+      const derivedHash = new Uint8Array(derivedBits);
+
+      const combined = new Uint8Array(salt.length + derivedHash.length);
+      combined.set(salt, 0);
+      combined.set(derivedHash, salt.length);
+      const base64 = btoa(String.fromCharCode(...combined));
+      const pbkdf2Hash = `pbkdf2:${base64}`;
+
+      const isValid = await verifyPassword('wrong-password', pbkdf2Hash);
+      expect(isValid).toBe(false);
+    });
+
+    test('should handle malformed PBKDF2 hash gracefully', async () => {
+      const isValid = await verifyPassword(testPassword, 'pbkdf2:invalid-base64!!!');
+      expect(isValid).toBe(false);
+    });
   });
 });
 
