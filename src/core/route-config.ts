@@ -21,6 +21,7 @@ import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
 // import qrCodeRouterSimple from '@modules/qrcode/handlers/qrcode-router-simple';
 import fileMainHandler from '@modules/file-management/handlers/file-main';
+import { autoReplyRulesHandler, autoReplySchedulesHandler, autoReplyLogsHandler } from '../modules/auto-reply/handlers';
 
 // 導入額�??��???
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
@@ -131,6 +132,33 @@ const businessLogicGroup = createRouteGroup({
       path: '/files',
       handler: fileMainHandler,
       description: 'File Management and Storage (R2)',
+      version: '1.0.0',
+      dependencies: ['auth'],
+      healthCheck: '/health'
+    }),
+    createRouteModule({
+      name: 'auto-reply-rules',
+      path: '/auto-reply/rules',
+      handler: autoReplyRulesHandler,
+      description: 'Auto-Reply Rules Management',
+      version: '1.0.0',
+      dependencies: ['auth'],
+      healthCheck: '/health'
+    }),
+    createRouteModule({
+      name: 'auto-reply-schedules',
+      path: '/auto-reply/schedules',
+      handler: autoReplySchedulesHandler,
+      description: 'Auto-Reply Business Hours Schedules',
+      version: '1.0.0',
+      dependencies: ['auth'],
+      healthCheck: '/health'
+    }),
+    createRouteModule({
+      name: 'auto-reply-logs',
+      path: '/auto-reply/logs',
+      handler: autoReplyLogsHandler,
+      description: 'Auto-Reply Audit Logs (Read-only)',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'

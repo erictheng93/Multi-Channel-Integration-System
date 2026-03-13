@@ -618,6 +618,74 @@ export const customerTeamAssignments = sqliteTable('customer_team_assignments', 
   platformTeamUnique: unique().on(table.platformUserId, table.teamId), // Prevent duplicate assignments
 }));
 
+// ============================================================
+// Auto-Reply System tables (auto-reply engine for LINE OA)
+// ============================================================
+
+// Auto-Reply Rules table - 自動回覆規則
+export const autoReplyRules = sqliteTable('auto_reply_rules', {
+  id: integer('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  triggerType: text('trigger_type').notNull(), // 'welcome' | 'keyword' | 'off_hours' | 'fallback'
+  priority: integer('priority').notNull().default(100), // Lower = higher priority
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdBy: text('created_by').references(() => agents.id, { onDelete: 'set null' }),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'), // Soft delete
+});
+
+// Auto-Reply Conditions table - 自動回覆匹配條件 (1:N to rules)
+export const autoReplyConditions = sqliteTable('auto_reply_conditions', {
+  id: integer('id').primaryKey(),
+  ruleId: integer('rule_id').notNull().references(() => autoReplyRules.id, { onDelete: 'cascade' }),
+  conditionType: text('condition_type').notNull(), // 'exact' | 'contains' | 'regex' | 'message_type'
+  value: text('value').notNull(),
+  caseSensitive: integer('case_sensitive', { mode: 'boolean' }).default(false),
+  matchMode: text('match_mode').default('any'), // 'any' (OR) | 'all' (AND)
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Auto-Reply Actions table - 自動回覆動作 (1:N to rules)
+export const autoReplyActions = sqliteTable('auto_reply_actions', {
+  id: integer('id').primaryKey(),
+  ruleId: integer('rule_id').notNull().references(() => autoReplyRules.id, { onDelete: 'cascade' }),
+  actionType: text('action_type').notNull(), // 'reply_text' | 'reply_image' | 'reply_flex'
+  content: text('content').notNull(), // JSON string for structured content
+  sortOrder: integer('sort_order').default(0),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Auto-Reply Schedules table - 營業時間設定 (per team, per day of week)
+export const autoReplySchedules = sqliteTable('auto_reply_schedules', {
+  id: integer('id').primaryKey(),
+  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  dayOfWeek: integer('day_of_week').notNull(), // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime: text('start_time').notNull(), // 'HH:mm' format (e.g., '09:00')
+  endTime: text('end_time').notNull(), // 'HH:mm' format (e.g., '18:00')
+  timezone: text('timezone').default('Asia/Taipei'),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  teamDayUnique: unique().on(table.teamId, table.dayOfWeek), // One schedule per team per day
+}));
+
+// Auto-Reply Logs table - 自動回覆審計日誌 (append-only, no soft delete)
+export const autoReplyLogs = sqliteTable('auto_reply_logs', {
+  id: integer('id').primaryKey(),
+  ruleId: integer('rule_id').references(() => autoReplyRules.id, { onDelete: 'set null' }),
+  conversationId: text('conversation_id').references(() => conversations.id, { onDelete: 'set null' }),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  triggerContent: text('trigger_content'), // The incoming message that triggered the rule
+  responseContent: text('response_content'), // The auto-reply content sent
+  matchedCondition: text('matched_condition'), // JSON: which condition(s) matched
+  platform: text('platform').notNull().default('line'), // 'line' | 'facebook'
+  replyMethod: text('reply_method').notNull().default('reply_api'), // 'reply_api' | 'push_api'
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Export types for reports system
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
@@ -643,3 +711,15 @@ export type TeamLiffQrCode = typeof teamLiffQrCodes.$inferSelect;
 export type NewTeamLiffQrCode = typeof teamLiffQrCodes.$inferInsert;
 export type CustomerTeamAssignment = typeof customerTeamAssignments.$inferSelect;
 export type NewCustomerTeamAssignment = typeof customerTeamAssignments.$inferInsert;
+
+// Export types for auto-reply system
+export type AutoReplyRule = typeof autoReplyRules.$inferSelect;
+export type NewAutoReplyRule = typeof autoReplyRules.$inferInsert;
+export type AutoReplyCondition = typeof autoReplyConditions.$inferSelect;
+export type NewAutoReplyCondition = typeof autoReplyConditions.$inferInsert;
+export type AutoReplyAction = typeof autoReplyActions.$inferSelect;
+export type NewAutoReplyAction = typeof autoReplyActions.$inferInsert;
+export type AutoReplySchedule = typeof autoReplySchedules.$inferSelect;
+export type NewAutoReplySchedule = typeof autoReplySchedules.$inferInsert;
+export type AutoReplyLog = typeof autoReplyLogs.$inferSelect;
+export type NewAutoReplyLog = typeof autoReplyLogs.$inferInsert;
