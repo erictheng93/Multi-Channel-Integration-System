@@ -411,6 +411,37 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
     // ✅ 媒體已在廣播前處理完成 (Lines 622-666)
     // 不需要第二次處理，避免重複插入 file_attachments
 
+    // 🤖 Auto-Reply Engine: evaluate incoming message against rules
+    if (conversation?.assignedTeamId) {
+      try {
+        const { evaluate } = await import('@modules/auto-reply/services/auto-reply-engine');
+        const autoReplyResult = await evaluate(
+          {
+            message: { content: messageContent, messageType, platform: 'line' },
+            conversationId: conversation.id,
+            teamId: conversation.assignedTeamId,
+            replyToken: event.replyToken || null,
+            customerId: user.id,
+            platformUserId: userId,
+          },
+          env
+        );
+
+        if (autoReplyResult.matched) {
+          console.log('🤖 [LINE Webhook] Auto-reply triggered', {
+            ruleId: autoReplyResult.ruleId,
+            ruleName: autoReplyResult.ruleName,
+            replyMethod: autoReplyResult.replyMethod,
+          });
+        }
+      } catch (autoReplyError) {
+        log.warn('LINE Webhook: Auto-reply evaluation failed (non-critical)', {
+          error: autoReplyError instanceof Error ? autoReplyError.message : String(autoReplyError),
+        });
+        // Auto-reply failure should not break webhook processing
+      }
+    }
+
     logSecurely('LINE', userId, messageContent.length);
   } catch (error) {
     log.error('Error processing LINE message', {
@@ -844,40 +875,52 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       // 不要讓通知失敗影響主流程
     }
 
-    // 🆕 Step 11: 發送歡迎訊息（使用已查詢的 teamInfo，避免重複查詢）
-    if (event.replyToken && assignedTeamId) {
+    // 🤖 Step 11: Auto-Reply Welcome Message (replaces hardcoded welcome)
+    if (event.replyToken && assignedTeamId && existingCustomer) {
       try {
-        // 🔧 優化：直接使用已查詢的 teamInfo，不再重複查詢 teams 表
-        const teamName = teamInfo?.name || '我們的團隊';
-        const welcomeMessage = `🎉 歡迎加入 ${teamName}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
+        const { evaluateWelcome } = await import('@modules/auto-reply/services/auto-reply-engine');
 
-        // 使用 LINE Messaging API 發送歡迎訊息
-        const response = await fetch('https://api.line.me/v2/bot/message/reply', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`
-          },
-          body: JSON.stringify({
-            replyToken: event.replyToken,
-            messages: [{
-              type: 'text',
-              text: welcomeMessage
-            }]
-          })
-        });
+        // Determine conversation ID for logging
+        let welcomeConversationId = existingConversation?.id;
+        if (!welcomeConversationId) {
+          const newConv = await drizzleDb
+            .select({ id: conversations.id })
+            .from(conversations)
+            .where(and(
+              eq(conversations.customerId, existingCustomer.id),
+              ne(conversations.status, 'closed')
+            ))
+            .limit(1)
+            .get();
+          welcomeConversationId = newConv?.id || '';
+        }
 
-        if (response.ok) {
-          console.log('✅ [LINE Follow] Welcome message sent successfully', {
-            userId: userId.substring(0, 10) + '...',
-            teamId: assignedTeamId,
-            teamName
+        const welcomeResult = await evaluateWelcome(
+          assignedTeamId,
+          event.replyToken,
+          welcomeConversationId,
+          existingCustomer.id,
+          userId,
+          env
+        );
+
+        if (welcomeResult.matched) {
+          console.log('🤖 [LINE Follow] Auto-reply welcome rule triggered', {
+            ruleId: welcomeResult.ruleId,
+            ruleName: welcomeResult.ruleName,
+            replyMethod: welcomeResult.replyMethod,
           });
         } else {
-          const errorText = await response.text();
-          log.warn('LINE Follow: Failed to send welcome message', {
-            status: response.status,
-            error: errorText
+          // Fallback: send default hardcoded welcome if no welcome rule configured
+          const teamName = teamInfo?.name || '我們的團隊';
+          const welcomeMessage = `歡迎加入 ${teamName}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
+
+          const { sendLineReply, createTextMessage } = await import('@/utils/line');
+          await sendLineReply(env.LINE_CHANNEL_ACCESS_TOKEN, event.replyToken, [createTextMessage(welcomeMessage)]);
+
+          console.log('✅ [LINE Follow] Default welcome message sent (no auto-reply rule)', {
+            userId: userId.substring(0, 10) + '...',
+            teamId: assignedTeamId,
           });
         }
       } catch (welcomeError) {

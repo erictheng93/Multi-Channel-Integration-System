@@ -1,0 +1,438 @@
+// src/modules/auto-reply/services/auto-reply-engine.ts
+// Core auto-reply evaluation engine: loads rules, matches conditions, executes actions
+
+import type { Bindings } from '@/types';
+import type { AutoReplyEvaluateInput, AutoReplyEvaluateResult, AutoReplyRuleWithRelations, TriggerType } from '../types';
+import { matchConditions } from './condition-matcher';
+import { isWithinBusinessHours } from './schedule-service';
+import { executeActions } from './action-executor';
+import { createDbClient } from '@/db/drizzle-factory';
+import { autoReplyRules, autoReplyConditions, autoReplyActions, autoReplyLogs, messages } from '@/db/schema';
+import { eq, and, isNull } from 'drizzle-orm';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { v4 as uuidv4 } from 'uuid';
+import { createContextLogger } from '@/utils/logger';
+import { nowISO, nowMs } from '@/utils/timestamp';
+
+const log = createContextLogger('AutoReplyEngine');
+
+const KV_RULES_PREFIX = 'auto-reply:rules:';
+const KV_RULES_TTL = 300; // 5 minutes
+
+/**
+ * Main evaluation function: check incoming message against auto-reply rules.
+ * First matching rule (by priority) wins — its actions are executed and logged.
+ */
+export async function evaluate(
+  input: AutoReplyEvaluateInput,
+  env: Bindings
+): Promise<AutoReplyEvaluateResult> {
+  const { message, teamId, replyToken, conversationId, customerId, platformUserId } = input;
+
+  try {
+    // 1. Load active rules for team (KV cached)
+    const rules = await getTeamRules(teamId, env);
+
+    if (rules.length === 0) {
+      return { matched: false };
+    }
+
+    // 2. Rules are pre-sorted by priority ASC (lower = higher priority)
+    for (const rule of rules) {
+      // 3a. Check triggerType eligibility
+      const eligible = await isTriggerEligible(rule.triggerType, message, teamId, env);
+      if (!eligible) {
+        continue;
+      }
+
+      // 3b. For keyword rules, check conditions
+      if (rule.triggerType === 'keyword') {
+        if (rule.conditions.length === 0) {
+          continue; // keyword rule with no conditions can't match
+        }
+        const matched = matchConditions(message.content, message.messageType, rule.conditions);
+        if (!matched) {
+          continue;
+        }
+      }
+
+      // 3c. Match found! Execute actions
+      log.info('Auto-reply rule matched', {
+        ruleId: rule.id,
+        ruleName: rule.name,
+        triggerType: rule.triggerType,
+        conversationId,
+      });
+
+      const execResult = await executeActions(rule.actions, replyToken, platformUserId, env);
+
+      if (execResult.success) {
+        // Save auto-reply as system message in messages table
+        const responseContentSummary = buildResponseSummary(rule.actions);
+        await saveAutoReplyMessage(env, conversationId, responseContentSummary);
+
+        // Insert audit log
+        await insertAutoReplyLog(env, {
+          ruleId: rule.id,
+          conversationId,
+          customerId,
+          triggerContent: message.content,
+          responseContent: responseContentSummary,
+          matchedCondition: rule.triggerType === 'keyword'
+            ? JSON.stringify(rule.conditions.map((c) => ({ type: c.conditionType, value: c.value })))
+            : JSON.stringify({ triggerType: rule.triggerType }),
+          platform: message.platform,
+          replyMethod: execResult.replyMethod,
+        });
+
+        // Broadcast via WebSocket so agents see the auto-reply
+        await broadcastAutoReply(env, conversationId, responseContentSummary, teamId);
+      }
+
+      return {
+        matched: true,
+        ruleId: rule.id,
+        ruleName: rule.name,
+        replyMethod: execResult.replyMethod,
+        error: execResult.success ? undefined : execResult.error,
+      };
+    }
+
+    // 4. No match
+    return { matched: false };
+  } catch (error) {
+    log.error('Auto-reply evaluation error', {
+      teamId,
+      conversationId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { matched: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Evaluate for follow events (welcome trigger type).
+ */
+export async function evaluateWelcome(
+  teamId: number,
+  replyToken: string | null,
+  conversationId: string,
+  customerId: number,
+  platformUserId: string,
+  env: Bindings
+): Promise<AutoReplyEvaluateResult> {
+  try {
+    const rules = await getTeamRules(teamId, env);
+    const welcomeRules = rules.filter((r) => r.triggerType === 'welcome');
+
+    if (welcomeRules.length === 0) {
+      return { matched: false };
+    }
+
+    // Use highest priority welcome rule
+    const rule = welcomeRules[0];
+
+    const execResult = await executeActions(rule.actions, replyToken, platformUserId, env);
+
+    if (execResult.success) {
+      const responseContentSummary = buildResponseSummary(rule.actions);
+      await saveAutoReplyMessage(env, conversationId, responseContentSummary);
+
+      await insertAutoReplyLog(env, {
+        ruleId: rule.id,
+        conversationId,
+        customerId,
+        triggerContent: '[follow_event]',
+        responseContent: responseContentSummary,
+        matchedCondition: JSON.stringify({ triggerType: 'welcome' }),
+        platform: 'line',
+        replyMethod: execResult.replyMethod,
+      });
+
+      await broadcastAutoReply(env, conversationId, responseContentSummary, teamId);
+    }
+
+    return {
+      matched: true,
+      ruleId: rule.id,
+      ruleName: rule.name,
+      replyMethod: execResult.replyMethod,
+    };
+  } catch (error) {
+    log.error('Auto-reply welcome evaluation error', {
+      teamId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { matched: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// ==================== Internal Helpers ====================
+
+/**
+ * Check if a trigger type is eligible based on the current context.
+ */
+async function isTriggerEligible(
+  triggerType: TriggerType,
+  message: AutoReplyEvaluateInput['message'],
+  teamId: number,
+  env: Bindings
+): Promise<boolean> {
+  switch (triggerType) {
+    case 'welcome':
+      // Welcome rules are handled separately via evaluateWelcome()
+      return false;
+
+    case 'keyword':
+      // Only for text messages
+      return message.messageType === 'text' && message.content.length > 0;
+
+    case 'off_hours':
+      // Only when outside business hours
+      return !(await isWithinBusinessHours(teamId, env));
+
+    case 'fallback':
+      // Always eligible (catch-all)
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * Load active rules (with conditions + actions) for a team from KV or D1.
+ */
+async function getTeamRules(
+  teamId: number,
+  env: Bindings
+): Promise<AutoReplyRuleWithRelations[]> {
+  const kvKey = `${KV_RULES_PREFIX}${teamId}`;
+
+  // Try KV cache
+  try {
+    const cached = await env.CACHE.get(kvKey, 'json');
+    if (cached) {
+      return cached as AutoReplyRuleWithRelations[];
+    }
+  } catch {
+    // KV miss
+  }
+
+  // Query D1
+  const drizzleDb = createDbClient(env.DB);
+
+  const ruleRows = await drizzleDb
+    .select()
+    .from(autoReplyRules)
+    .where(
+      and(
+        eq(autoReplyRules.teamId, teamId),
+        eq(autoReplyRules.isActive, true),
+        isNull(autoReplyRules.deletedAt)
+      )
+    )
+    .orderBy(autoReplyRules.priority);
+
+  if (ruleRows.length === 0) {
+    // Cache empty result too
+    try {
+      await env.CACHE.put(kvKey, JSON.stringify([]), { expirationTtl: KV_RULES_TTL });
+    } catch { /* non-fatal */ }
+    return [];
+  }
+
+  // Load conditions and actions for all rules in bulk
+  const ruleIds = ruleRows.map((r) => r.id);
+
+  const [conditionRows, actionRows] = await Promise.all([
+    drizzleDb.select().from(autoReplyConditions),
+    drizzleDb.select().from(autoReplyActions),
+  ]);
+
+  // Filter to relevant rules and group
+  const conditionsByRule = new Map<number, typeof conditionRows>();
+  for (const c of conditionRows) {
+    if (ruleIds.includes(c.ruleId)) {
+      const list = conditionsByRule.get(c.ruleId) || [];
+      list.push(c);
+      conditionsByRule.set(c.ruleId, list);
+    }
+  }
+
+  const actionsByRule = new Map<number, typeof actionRows>();
+  for (const a of actionRows) {
+    if (ruleIds.includes(a.ruleId)) {
+      const list = actionsByRule.get(a.ruleId) || [];
+      list.push(a);
+      actionsByRule.set(a.ruleId, list);
+    }
+  }
+
+  const rules: AutoReplyRuleWithRelations[] = ruleRows.map((rule) => ({
+    id: rule.id,
+    teamId: rule.teamId,
+    name: rule.name,
+    triggerType: rule.triggerType as TriggerType,
+    priority: rule.priority,
+    isActive: rule.isActive ?? true,
+    createdBy: rule.createdBy,
+    createdAt: rule.createdAt,
+    updatedAt: rule.updatedAt,
+    deletedAt: rule.deletedAt,
+    conditions: (conditionsByRule.get(rule.id) || []).map((c) => ({
+      id: c.id,
+      ruleId: c.ruleId,
+      conditionType: c.conditionType as 'exact' | 'contains' | 'regex' | 'message_type',
+      value: c.value,
+      caseSensitive: c.caseSensitive ?? false,
+      matchMode: (c.matchMode || 'any') as 'any' | 'all',
+    })),
+    actions: (actionsByRule.get(rule.id) || []).map((a) => ({
+      id: a.id,
+      ruleId: a.ruleId,
+      actionType: a.actionType as 'reply_text' | 'reply_image' | 'reply_flex',
+      content: a.content,
+      sortOrder: a.sortOrder ?? 0,
+    })),
+  }));
+
+  // Cache result
+  try {
+    await env.CACHE.put(kvKey, JSON.stringify(rules), { expirationTtl: KV_RULES_TTL });
+  } catch { /* non-fatal */ }
+
+  return rules;
+}
+
+/**
+ * Invalidate KV cache for a team's rules.
+ */
+export async function invalidateRulesCache(
+  teamId: number,
+  env: Bindings
+): Promise<void> {
+  try {
+    await env.CACHE.delete(`${KV_RULES_PREFIX}${teamId}`);
+  } catch { /* non-fatal */ }
+}
+
+/**
+ * Save auto-reply as a system message in the messages table.
+ */
+async function saveAutoReplyMessage(
+  env: Bindings,
+  conversationId: string,
+  content: string
+): Promise<void> {
+  const drizzleDb = createDbClient(env.DB);
+  const messageId = uuidv4();
+
+  await drizzleDb.insert(messages).values({
+    id: messageId,
+    conversationId,
+    senderType: 'system',
+    content,
+    messageType: 'text',
+    isSent: true,
+    deliveryStatus: 'delivered',
+    senderName: 'Auto-Reply',
+    createdAt: nowISO(),
+  });
+}
+
+/**
+ * Insert an audit log entry.
+ */
+async function insertAutoReplyLog(
+  env: Bindings,
+  logData: {
+    ruleId: number;
+    conversationId: string;
+    customerId: number;
+    triggerContent: string;
+    responseContent: string;
+    matchedCondition: string;
+    platform: string;
+    replyMethod: string;
+  }
+): Promise<void> {
+  try {
+    const drizzleDb = createDbClient(env.DB);
+    await drizzleDb.insert(autoReplyLogs).values({
+      ruleId: logData.ruleId,
+      conversationId: logData.conversationId,
+      customerId: logData.customerId,
+      triggerContent: logData.triggerContent,
+      responseContent: logData.responseContent,
+      matchedCondition: logData.matchedCondition,
+      platform: logData.platform,
+      replyMethod: logData.replyMethod,
+      createdAt: nowISO(),
+    });
+  } catch (error) {
+    // Non-fatal: logging should not break the auto-reply flow
+    log.error('Failed to insert auto-reply log', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/**
+ * Broadcast auto-reply message via WebSocket.
+ */
+async function broadcastAutoReply(
+  env: Bindings,
+  conversationId: string,
+  content: string,
+  teamId: number
+): Promise<void> {
+  try {
+    const broadcastService = new WebSocketBroadcastService(env);
+    await broadcastService.broadcastNewMessage({
+      conversationId,
+      message: {
+        id: uuidv4(),
+        content,
+        messageType: 'text',
+        senderType: 'agent', // System messages broadcast as 'agent' (closest available type)
+        senderId: 'auto-reply',
+        senderName: 'Auto-Reply',
+        platform: 'line',
+        timestamp: nowMs(),
+        deliveryStatus: 'delivered',
+      },
+      source: 'api',
+      teamId,
+    });
+  } catch (error) {
+    // Non-fatal: broadcast failure should not break auto-reply
+    log.warn('Failed to broadcast auto-reply', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/**
+ * Build a human-readable summary of the response content for logging/display.
+ */
+function buildResponseSummary(actions: AutoReplyRuleWithRelations['actions']): string {
+  if (actions.length === 0) return '';
+
+  const firstAction = actions[0];
+  try {
+    if (firstAction.actionType === 'reply_text') {
+      const parsed = JSON.parse(firstAction.content) as { text: string };
+      return parsed.text;
+    }
+    if (firstAction.actionType === 'reply_image') {
+      return '[Auto-Reply Image]';
+    }
+    if (firstAction.actionType === 'reply_flex') {
+      return '[Auto-Reply Flex Message]';
+    }
+  } catch {
+    // fallback
+  }
+  return '[Auto-Reply]';
+}

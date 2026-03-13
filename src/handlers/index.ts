@@ -18,6 +18,9 @@ export { default as qrcodeMainHandler } from '../modules/system/handlers/qrcode-
 export { default as sessionMainHandler } from '../modules/session/handlers/session-main' // Fixed: point to enterprise handler with comprehensive middleware
 export { createAgentRouter as agentMainHandler } from '../modules/agents/handlers/agent-main' // Agents module handler
 
+// Auto-Reply 模組處理器
+export { autoReplyRulesHandler, autoReplySchedulesHandler, autoReplyLogsHandler } from '../modules/auto-reply/handlers'
+
 // Notifications 模組處理器 (新的統一通知系統)
 export { default as notificationMainHandler } from '../modules/notifications/handlers/notification-router'
 
