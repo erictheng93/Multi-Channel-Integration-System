@@ -12,21 +12,21 @@ This module provides internal event routing and queue processing for the real-ti
 ```
 src/modules/realtime/
   handlers/
-    realtime-main.ts        # Health check, status, event dispatching
+    realtime-main.ts # Health check, status, event dispatching
   services/
-    realtime-manager.ts     # Lifecycle management
+    realtime-manager.ts # Lifecycle management
     event-queue-service.ts  # KV-based event queue (NOT Cloudflare Queue)
   middleware/
-    realtime-auth.ts        # Real-time auth validation
+    realtime-auth.ts # Real-time auth validation
     connection-validation.ts
   monitoring/
     performance-monitor.ts  # Metrics collection
-    dashboard-handler.ts    # Monitoring dashboard API
+    dashboard-handler.ts # Monitoring dashboard API
   config/
-    version-selector.ts     # Version selection (v2 default)
+    version-selector.ts # Version selection (v2 default)
   types/
-    realtime-types.ts       # Config and event type definitions
-    event-types.ts          # Event source/target types
+    realtime-types.ts # Config and event type definitions
+    event-types.ts # Event source/target types
 ```
 
 ## Key Concepts
@@ -39,13 +39,13 @@ src/modules/realtime/
 
 ```typescript
 interface RealtimeConfig {
-  version: 'v1' | 'v2' | 'auto';     // v2 = WebSocket (default)
-  enableEventDriven: boolean;          // Enable event-driven processing
-  enableQueueProcessing: boolean;      // Enable KV-based event queue
-  heartbeatInterval: number;           // Heartbeat interval (ms)
-  connectionTimeout: number;           // Connection timeout (ms)
-  maxRetries: number;                  // Max retry attempts
-  eventStorageTtl: number;             // Event TTL in KV (seconds)
+  version: 'v1' | 'v2' | 'auto'; // v2 = WebSocket (default)
+  enableEventDriven: boolean; // Enable event-driven processing
+  enableQueueProcessing: boolean; // Enable KV-based event queue
+  heartbeatInterval: number; // Heartbeat interval (ms)
+  connectionTimeout: number; // Connection timeout (ms)
+  maxRetries: number; // Max retry attempts
+  eventStorageTtl: number; // Event TTL in KV (seconds)
 }
 ```
 

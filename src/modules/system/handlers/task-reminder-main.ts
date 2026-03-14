@@ -324,14 +324,14 @@ export default app;
  * 由 wrangler.toml 中的 cron trigger 調用
  */
 export async function handleScheduledEvent(env: Bindings): Promise<void> {
-  console.log('⏰ [Cron] Processing due task reminders...');
+  console.log('[Cron] Processing due task reminders...');
 
   try {
     const service = new TaskReminderService(env.DB, env);
     const processedCount = await service.processDueReminders();
 
-    console.log(`✅ [Cron] Processed ${processedCount} due reminders`);
+    console.log(`[Cron] Processed ${processedCount} due reminders`);
   } catch (error) {
-    console.error('❌ [Cron] Failed to process reminders:', error);
+    console.error('[Cron] Failed to process reminders:', error);
   }
 }

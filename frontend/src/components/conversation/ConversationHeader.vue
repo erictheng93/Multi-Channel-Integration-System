@@ -29,7 +29,7 @@
                 v-if="conversation"
                 :status="conversation.status"
               />
-              <!-- 🆕 指派資訊徽章 -->
+              <!--  指派資訊徽章 -->
               <!-- Note: Individual assignment removed - only team-based assignment is supported now -->
               <AssignmentBadge
                 v-if="conversation"
@@ -37,7 +37,7 @@
                 :team-name="conversation.assignedTeam?.name"
               />
 
-              <!-- 🆕 New Customer Badge - Shows for customers who joined within 7 days -->
+              <!--  New Customer Badge - Shows for customers who joined within 7 days -->
               <NewCustomerBadge
                 v-if="conversation?.customer?.createdAt"
                 :created-at="conversation.customer.createdAt"
@@ -186,7 +186,7 @@ import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, 
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
-// 🆕 New Customer Badge Component
+// New Customer Badge Component
 import NewCustomerBadge from '../ui/NewCustomerBadge.vue'
 import TagSelector from '@/components/customer/TagSelector.vue'
 import AdvancedAssignActions from './AdvancedAssignActions.vue'
@@ -218,7 +218,7 @@ const showAssignPanel = ref(false)
 const assignPanelRef = ref<HTMLElement | null>(null)
 const assignPanelStyle = ref<Record<string, string>>({})
 
-// 🔧 防止 stale 請求覆蓋新數據的 request ID
+// 防止 stale 請求覆蓋新數據的 request ID
 let tagLoadRequestId = 0
 
 // Toast notifications
@@ -247,7 +247,7 @@ const loadCustomerTags = async () => {
 
   try {
     const response = await getCustomerTags(customerIdNumber.value)
-    // 🔧 只有當這是最新的請求時才更新數據，防止 stale 回應覆蓋
+    // 只有當這是最新的請求時才更新數據，防止 stale 回應覆蓋
     if (response.success && currentRequestId === tagLoadRequestId) {
       customerTags.value = response.data
       selectedTagIds.value = response.data.map(t => t.id)
@@ -299,7 +299,7 @@ const toggleAssignPanel = () => {
   showAssignPanel.value = !showAssignPanel.value
   const after = showAssignPanel.value
 
-  // 🔧 計算下拉選單位置（使用 Teleport 時需要）
+  // 計算下拉選單位置（使用 Teleport 時需要）
   if (after) {
     nextTick(() => {
       const assignButton = document.querySelector('.assign-action-btn') as HTMLElement
@@ -316,8 +316,8 @@ const toggleAssignPanel = () => {
     })
   }
 
-  // 🔧 DEBUG: 添加调试日志
-  console.log('🔍 [AssignPanel] Toggle clicked', {
+  // DEBUG: 添加调试日志
+  console.log('[AssignPanel] Toggle clicked', {
     before,
     after,
     conversation: {
@@ -332,12 +332,12 @@ const toggleAssignPanel = () => {
   // 验证 DOM 渲染
   setTimeout(() => {
     const dropdown = document.querySelector('.assign-panel-dropdown')
-    console.log('🔍 [AssignPanel] Dropdown element:', dropdown)
+    console.log('[AssignPanel] Dropdown element:', dropdown)
 
     if (dropdown) {
       const rect = dropdown.getBoundingClientRect()
       const styles = window.getComputedStyle(dropdown)
-      console.log('🔍 [AssignPanel] Dropdown styles:', {
+      console.log('[AssignPanel] Dropdown styles:', {
         display: styles.display,
         visibility: styles.visibility,
         opacity: styles.opacity,
@@ -353,12 +353,12 @@ const toggleAssignPanel = () => {
 
       // 检查 AdvancedAssignActions 内容
       const content = dropdown.innerHTML
-      console.log('🔍 [AssignPanel] Dropdown content length:', content.length)
+      console.log('[AssignPanel] Dropdown content length:', content.length)
       if (content.length < 100) {
-        console.warn('⚠️ [AssignPanel] Dropdown content seems empty or very small!')
+        console.warn('[AssignPanel] Dropdown content seems empty or very small!')
       }
     } else {
-      console.error('❌ [AssignPanel] Dropdown element NOT found in DOM!')
+      console.error('[AssignPanel] Dropdown element NOT found in DOM!')
     }
   }, 100)
 }
@@ -407,7 +407,7 @@ onBeforeUnmount(() => {
 // 監聽客戶變化 — 切換時立即清空舊標籤，防止殘留顯示
 watch(() => props.conversation?.customer?.id, (newId, oldId) => {
   if (newId !== oldId) {
-    // 🔧 立即清空，避免切換對話時短暫顯示上一個客戶的標籤
+    // 立即清空，避免切換對話時短暫顯示上一個客戶的標籤
     customerTags.value = []
     selectedTagIds.value = []
   }
@@ -608,7 +608,7 @@ defineExpose({
 }
 
 /* ============================================
-   🎨 REFINED ASSIGNMENT BUTTON - REDESIGNED
+    REFINED ASSIGNMENT BUTTON - REDESIGNED
    ============================================ */
 
 .assign-action-wrapper {

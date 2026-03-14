@@ -19,17 +19,17 @@
  *
  * // 初始化
  * onMounted(async () => {
- *   await controller.initialize()
+ * await controller.initialize()
  * })
  *
  * // 清理
  * onUnmounted(() => {
- *   controller.cleanup()
+ * controller.cleanup()
  * })
  *
  * // 使用
  * <template>
- *   <MessageInput @message-pending="controller.onMessagePending" />
+ * <MessageInput @message-pending="controller.onMessagePending" />
  * </template>
  * ```
  */
@@ -53,7 +53,7 @@ export function useConversationController(
   conversationId: string,
   options: ConversationControllerOptions = {}
 ) {
-  // ===== 1️⃣ 初始化子模塊（按依賴順序） =====
+  // ===== 1️ 初始化子模塊（按依賴順序） =====
 
   // 狀態管理（最底層，無依賴）
   const state = useConversationState(conversationId, options)
@@ -67,7 +67,7 @@ export function useConversationController(
   // 對話操作（依賴 state 和 websocket）
   const actions = useConversationActions(conversationId, state, websocket)
 
-  // ===== 2️⃣ 設置響應式監聽（協調事件流） =====
+  // ===== 2️ 設置響應式監聽（協調事件流） =====
 
   /**
    * 監聽 messages 變化，自動更新平滑加載
@@ -94,20 +94,20 @@ export function useConversationController(
     (newCount, oldCount) => {
       if (newCount !== undefined && newCount !== oldCount) {
         console.log(
-          `📊 [ConversationController] Unified messages count changed: ${oldCount} → ${newCount}`
+          `[ConversationController] Unified messages count changed: ${oldCount} → ${newCount}`
         )
       }
     }
   )
 
-  // ===== 3️⃣ 生命週期管理 =====
+  // ===== 3️ 生命週期管理 =====
 
   /**
    * 初始化對話（在 onMounted 中調用）
    */
   async function initialize() {
     try {
-      console.log('🚀 [ConversationController] Initializing conversation:', conversationId)
+      console.log('[ConversationController] Initializing conversation:', conversationId)
 
       // 1. 初始化 WebSocket 連接
       await websocket.initialize()
@@ -115,9 +115,9 @@ export function useConversationController(
       // 2. 加載對話和消息
       await state.loadConversation()
 
-      console.log('✅ [ConversationController] Conversation initialized successfully')
+      console.log('[ConversationController] Conversation initialized successfully')
     } catch (error) {
-      console.error('❌ [ConversationController] Failed to initialize conversation:', error)
+      console.error('[ConversationController] Failed to initialize conversation:', error)
       throw error
     }
   }
@@ -126,7 +126,7 @@ export function useConversationController(
    * 清理資源（在 onUnmounted 中調用）
    */
   function cleanup() {
-    console.log('🧹 [ConversationController] Cleaning up conversation resources')
+    console.log('[ConversationController] Cleaning up conversation resources')
 
     // 1. 斷開 WebSocket 連接
     websocket.disconnect()
@@ -134,10 +134,10 @@ export function useConversationController(
     // 2. 清理其他資源（如果需要）
     // state, handlers, actions 都是純函數，會自動被垃圾回收
 
-    console.log('✅ [ConversationController] Cleanup completed')
+    console.log('[ConversationController] Cleanup completed')
   }
 
-  // ===== 4️⃣ 對外暴露的統一接口 =====
+  // ===== 4️ 對外暴露的統一接口 =====
 
   return {
     // ===== 生命週期 =====

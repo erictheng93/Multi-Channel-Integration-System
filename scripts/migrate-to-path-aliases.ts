@@ -108,7 +108,7 @@ function convertImportStatement(
       const converted = `${prefix}${newPath}${suffix}`;
 
       stats.convertedImports++;
-      console.log(`  ✅ ${importPath} → ${newPath}`);
+      console.log(` ${importPath} → ${newPath}`);
 
       return { converted, changed: true };
     }
@@ -141,10 +141,10 @@ async function migrateFile(filePath: string, dryRun: boolean = false): Promise<b
 
     if (modified && !dryRun) {
       fs.writeFileSync(filePath, newLines.join('\n'), 'utf-8');
-      console.log(`✅ Modified: ${filePath}`);
+      console.log(` Modified: ${filePath}`);
       stats.modifiedFiles++;
     } else if (modified && dryRun) {
-      console.log(`🔍 Would modify: ${filePath}`);
+      console.log(` Would modify: ${filePath}`);
       stats.modifiedFiles++;
     }
 
@@ -163,7 +163,7 @@ async function main() {
   const dryRun = args.includes('--dry-run');
   const targetDir = args.find(arg => !arg.startsWith('--')) || 'src';
 
-  console.log('🚀 路徑別名遷移腳本');
+  console.log(' 路徑別名遷移腳本');
   console.log('='.repeat(50));
   console.log(`目標目錄: ${targetDir}`);
   console.log(`模式: ${dryRun ? '預覽模式 (不修改文件)' : '實際遷移'}`);
@@ -176,7 +176,7 @@ async function main() {
   });
 
   stats.totalFiles = files.length;
-  console.log(`📂 找到 ${files.length} 個 TypeScript 文件\n`);
+  console.log(` 找到 ${files.length} 個 TypeScript 文件\n`);
 
   // 處理每個文件
   for (const file of files) {
@@ -185,7 +185,7 @@ async function main() {
 
   // 輸出統計
   console.log('\n' + '='.repeat(50));
-  console.log('📊 遷移統計');
+  console.log(' 遷移統計');
   console.log('='.repeat(50));
   console.log(`總文件數: ${stats.totalFiles}`);
   console.log(`修改文件數: ${stats.modifiedFiles}`);
@@ -194,21 +194,21 @@ async function main() {
   console.log(`轉換率: ${stats.totalImports > 0 ? ((stats.convertedImports / stats.totalImports) * 100).toFixed(2) : 0}%`);
 
   if (stats.errors.length > 0) {
-    console.log('\n⚠️ 錯誤:');
+    console.log('\n 錯誤:');
     stats.errors.forEach(err => console.log(`  - ${err}`));
   }
 
   if (dryRun) {
-    console.log('\n💡 這是預覽模式，沒有修改任何文件');
-    console.log('   移除 --dry-run 參數以執行實際遷移');
+    console.log('\n 這是預覽模式，沒有修改任何文件');
+    console.log(' 移除 --dry-run 參數以執行實際遷移');
   } else {
-    console.log('\n✅ 遷移完成！');
-    console.log('   建議執行: npm run build 檢查是否有錯誤');
+    console.log('\n 遷移完成！');
+    console.log(' 建議執行: npm run build 檢查是否有錯誤');
   }
 }
 
 // 執行
 main().catch(error => {
-  console.error('❌ 腳本執行失敗:', error);
+  console.error(' 腳本執行失敗:', error);
   process.exit(1);
 });

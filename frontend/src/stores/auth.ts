@@ -8,7 +8,7 @@ import type { Agent, LoginRequest, LoginResponse } from '@/types';
 import { authApi } from '@/api/auth';
 import { apiClient } from '@/api/base';
 
-// 🚀 Phase 1 Optimization: Team role type (matches backend TeamRoleInTeam)
+// Phase 1 Optimization: Team role type (matches backend TeamRoleInTeam)
 type TeamRoleInTeam = 'member' | 'lead' | 'supervisor';
 
 // 會話時間常量 - 統一管理
@@ -93,10 +93,10 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false);
   const error = ref<string | null>(null);
   const sessionExpiry = ref<number | null>(null);
-  // 🔧 新增：會話恢復狀態 - 解決競爭條件問題
+  // 新增：會話恢復狀態 - 解決競爭條件問題
   const sessionStatus = ref<SessionStatus>('pending');
 
-  // 🚀 Phase 1 Optimization: Multi-team support state
+  // Phase 1 Optimization: Multi-team support state
   const allowedTeamIds = ref<number[]>([]);
   const teamRoles = ref<Record<number, TeamRoleInTeam>>({});
   const contextTeamId = ref<number | null>(null);
@@ -107,14 +107,14 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = null;
     currentAgent.value = null;
     sessionExpiry.value = null;
-    // 🚀 Phase 1: Clear multi-team state
+    // Phase 1: Clear multi-team state
     allowedTeamIds.value = [];
     teamRoles.value = {};
     contextTeamId.value = null;
     apiClient.setContextTeam(null);
   }
 
-  // 🚀 Phase 1 Optimization: Parse multi-team data from JWT token
+  // Phase 1 Optimization: Parse multi-team data from JWT token
   function parseJwtTeamData(tokenStr: string): void {
     try {
       const parts = tokenStr.split('.');
@@ -139,7 +139,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 🚀 Phase 1 Optimization: Switch team context
+  // Phase 1 Optimization: Switch team context
   function switchTeam(teamId: number): boolean {
     // Validate: admin can switch to any team, agents must have access
     if (currentAgent.value?.role !== 'admin' && !allowedTeamIds.value.includes(teamId)) {
@@ -162,12 +162,12 @@ export const useAuthStore = defineStore('auth', () => {
     return true;
   }
 
-  // 🚀 Phase 1 Optimization: Get user's role in a specific team
+  // Phase 1 Optimization: Get user's role in a specific team
   function getTeamRole(teamId: number): TeamRoleInTeam | undefined {
     return teamRoles.value[teamId];
   }
 
-  // 🚀 Phase 1 Optimization: Check if user can access a team
+  // Phase 1 Optimization: Check if user can access a team
   function canAccessTeam(teamId: number): boolean {
     if (currentAgent.value?.role === 'admin') {
       return true;
@@ -176,7 +176,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Initialize from localStorage with JWT validation
-  // 🔧 修復無限刷新問題：檢查 JWT token 的有效性
+  // 修復無限刷新問題：檢查 JWT token 的有效性
   if (typeof window !== 'undefined' && window.localStorage) {
     const storedToken = localStorage.getItem('token');
     const expiry = localStorage.getItem('sessionExpiry');
@@ -185,7 +185,7 @@ export const useAuthStore = defineStore('auth', () => {
     const isSessionValid = expiry && Date.now() <= parseInt(expiry, 10);
 
     if (isSessionValid && storedToken) {
-      // ✅ 驗證 JWT token 是否有效（檢查格式和過期時間）
+      // 驗證 JWT token 是否有效（檢查格式和過期時間）
       let isJwtValid = false;
       try {
         const parts = storedToken.split('.');
@@ -211,16 +211,16 @@ export const useAuthStore = defineStore('auth', () => {
         isJwtValid = false;
       }
 
-      // ✅ 只有 JWT 有效時才恢復 token
+      // 只有 JWT 有效時才恢復 token
       if (isJwtValid) {
         token.value = storedToken;
         refreshToken.value = localStorage.getItem('refreshToken');
         sessionExpiry.value = parseInt(expiry || '0', 10);
 
-        // 🚀 Phase 1: Parse multi-team data from stored token
+        // Phase 1: Parse multi-team data from stored token
         parseJwtTeamData(storedToken);
 
-        // 🚀 Phase 1: Restore team context from localStorage
+        // Phase 1: Restore team context from localStorage
         const storedContextTeamId = localStorage.getItem('contextTeamId');
         if (storedContextTeamId) {
           const parsed = parseInt(storedContextTeamId, 10);
@@ -290,10 +290,10 @@ export const useAuthStore = defineStore('auth', () => {
       const expiry = Date.now() + SESSION_DURATION;
       sessionExpiry.value = expiry;
 
-      // 🚀 Phase 1: Parse multi-team data from new token
+      // Phase 1: Parse multi-team data from new token
       parseJwtTeamData(loginData.token);
 
-      // 🚀 Phase 1: Set initial team context to agent's primary team
+      // Phase 1: Set initial team context to agent's primary team
       if (loginData.agent.primaryTeamId) {
         switchTeam(loginData.agent.primaryTeamId);
       }
@@ -310,7 +310,7 @@ export const useAuthStore = defineStore('auth', () => {
       clearAuthStorage();
       error.value = handleLoginError(err);
       
-      // 🔧 設定會話狀態為未認證
+      // 設定會話狀態為未認證
       setSessionStatus('unauthenticated');
       return false;
     } finally {
@@ -360,7 +360,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Remove auth headers
     authApi.removeAuthHeader();
     
-    // 🔧 設定會話狀態為未認證
+    // 設定會話狀態為未認證
     setSessionStatus('unauthenticated');
     
     // Navigate to login (only if not already on login page)
@@ -373,17 +373,17 @@ export const useAuthStore = defineStore('auth', () => {
   async function fetchCurrentAgent(forceRefresh = false) {
     if (!token.value) {return;}
 
-    // ✅ 優化：如果已有有效資料且非強制刷新，直接返回
+    // 優化：如果已有有效資料且非強制刷新，直接返回
     if (!forceRefresh && currentAgent.value && isValidAgent(currentAgent.value)) {
       if (import.meta.env.DEV) {
-        console.log('✅ Agent data already cached, skipping API request');
+        console.log(' Agent data already cached, skipping API request');
       }
       return;
     }
 
     try {
       if (import.meta.env.DEV) {
-        console.log('🔄 Fetching agent data from server...');
+        console.log(' Fetching agent data from server...');
       }
       
       const response = await authApi.me();
@@ -405,10 +405,10 @@ export const useAuthStore = defineStore('auth', () => {
   function validateSession(): boolean {
     if (!token.value) {return false;}
 
-    // 🔧 增強：檢查 Token 格式和內容有效性
+    // 增強：檢查 Token 格式和內容有效性
     if (!isTokenValid()) {
       console.warn('[Auth] Invalid token detected during session validation');
-      // ⚠️  Do NOT call logout here - validation functions must be pure
+      // Do NOT call logout here - validation functions must be pure
       // Caller should handle logout based on validation result
       return false;
     }
@@ -444,7 +444,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 🔧 新增：檢查 Token 是否已完全過期
+  // 新增：檢查 Token 是否已完全過期
   function isTokenExpired(): boolean {
     if (!token.value) {return true;}
     if (!sessionExpiry.value) {return false;} // 如果沒有過期時間，假設有效
@@ -452,7 +452,7 @@ export const useAuthStore = defineStore('auth', () => {
     return Date.now() >= sessionExpiry.value;
   }
 
-  // 🔧 新增：驗證 Token 格式和內容
+  // 新增：驗證 Token 格式和內容
   function isTokenValid(): boolean {
     if (!token.value) {return false;}
 
@@ -461,7 +461,7 @@ export const useAuthStore = defineStore('auth', () => {
       const parts = token.value.split('.');
       if (parts.length !== 3 || !parts[1]) {return false;}
 
-      // ✅ 使用 UTF-8 安全的解碼函數解析 payload
+      // 使用 UTF-8 安全的解碼函數解析 payload
       const payload = JSON.parse(base64UrlDecode(parts[1]));
       if (!payload.userId || !payload.role) {return false;}
 
@@ -485,10 +485,10 @@ export const useAuthStore = defineStore('auth', () => {
   function shouldRefreshToken(): boolean {
     if (!token.value || !sessionExpiry.value) {return false;}
 
-    // 🔧 增強：先檢查 Token 是否已經完全過期
+    // 增強：先檢查 Token 是否已經完全過期
     if (isTokenExpired()) {
       console.warn('[Auth] Token has expired, cannot refresh');
-      // ⚠️  Do NOT call logout here - validation functions must be pure
+      // Do NOT call logout here - validation functions must be pure
       // Caller should handle logout based on expiration check
       return false;
     }
@@ -537,18 +537,18 @@ export const useAuthStore = defineStore('auth', () => {
         return;
       }
       
-      // ✅ 優化：如果已有有效的 currentAgent，直接使用快取
+      // 優化：如果已有有效的 currentAgent，直接使用快取
       if (currentAgent.value && isValidAgent(currentAgent.value)) {
         setSessionStatus('authenticated');
         if (import.meta.env.DEV) {
-          console.log('✅ Using cached agent data, skipping /auth/me request');
+          console.log(' Using cached agent data, skipping /auth/me request');
         }
         return;
       }
       
       // 只有在沒有有效 currentAgent 時才發送 API 請求
       if (import.meta.env.DEV) {
-        console.log('🔄 No cached agent data, fetching from server...');
+        console.log(' No cached agent data, fetching from server...');
       }
       
       const response = await authApi.me();
@@ -606,7 +606,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         authApi.setAuthHeader(response.data.token, response.data.refreshToken);
 
-        // 🔌 Phase B4: Reconnect WebSocket with new token
+        // Phase B4: Reconnect WebSocket with new token
         // The WebSocket connection uses the token from the URL, so we need to reconnect
         // after token refresh to ensure the new token is used
         try {
@@ -633,7 +633,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 🔧 新的初始化邏輯 - 設定認證標頭但不立即恢復會話
+  // 新的初始化邏輯 - 設定認證標頭但不立即恢復會話
   // 會話恢復將由 main.ts 調用 initializeSession() 來處理
   if (typeof window !== 'undefined' && token.value) {
     authApi.setAuthHeader(token.value, refreshToken.value || undefined);
@@ -648,13 +648,13 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     sessionExpiry,
     sessionStatus,
-    // 🚀 Phase 1: Multi-team state
+    // Phase 1: Multi-team state
     allowedTeamIds,
     teamRoles,
     contextTeamId,
     // 計算屬性 (PURE COMPUTED - No side effects)
     isAuthenticated: computed(() => {
-      // ✅ Pure computation without any state mutations
+      // Pure computation without any state mutations
       // Error clearing should be handled explicitly by caller, not automatically
       return !!token.value && validateSession() && !!currentAgent.value;
     }),
@@ -673,13 +673,13 @@ export const useAuthStore = defineStore('auth', () => {
     proactiveTokenRefresh,
     logSessionStatus,
     clearError,
-    // 🔧 新增：會話恢復相關方法
+    // 新增：會話恢復相關方法
     setSessionStatus,
     initializeSession,
-    // 🔧 新增：Token 有效性檢查方法
+    // 新增：Token 有效性檢查方法
     isTokenExpired,
     isTokenValid,
-    // 🚀 Phase 1: Multi-team methods
+    // Phase 1: Multi-team methods
     switchTeam,
     getTeamRole,
     canAccessTeam

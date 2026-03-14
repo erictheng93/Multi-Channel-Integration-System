@@ -10,23 +10,23 @@
 
 | Line | Method | Path | Priority | Status |
 |------|--------|------|----------|--------|
-| 31 | POST | `/agents` | BASE | ❌ TOO EARLY (should be last!) |
-| 64 | GET | `/agents` | BASE | ❌ TOO EARLY (should be last!) |
-| 93 | GET | `/agents/:agentId` | PARAM | ❌ TOO EARLY (before multi-segment) |
-| 131 | PUT | `/agents/:agentId` | PARAM | ❌ TOO EARLY (before multi-segment) |
-| 175 | DELETE | `/agents/:agentId` | PARAM | ❌ TOO EARLY (before multi-segment) |
-| 199 | POST | `/agents/:agentId/skills` | MULTI-SEG | ❌ Should be BEFORE /:agentId |
-| 220 | GET | `/agents/:agentId/skills` | MULTI-SEG | ❌ Should be BEFORE /:agentId |
-| 238 | PUT | `/agents/:agentId/skills/:skillId` | 3-SEG | ❌ Should be near top |
-| 259 | DELETE | `/agents/:agentId/skills/:skillId` | 3-SEG | ❌ Should be near top |
-| 284 | GET | `/agents/:agentId/status` | MULTI-SEG | ❌ Should be BEFORE /:agentId |
-| 302 | PUT | `/agents/:agentId/status` | MULTI-SEG | ❌ Should be BEFORE /:agentId |
-| 323 | GET | `/agents/:agentId/status/history` | 3-SEG | ❌ Should be near top |
-| 345 | POST | `/agents/search` | SPECIFIC | ❌ Should be near top |
-| 365 | PUT | `/agents/batch` | SPECIFIC | ❌ Should be near top |
-| 384 | PUT | `/agents/batch/transfer` | SPECIFIC | ❌ Should be FIRST! |
-| 407 | GET | `/agents/:agentId/skills/statistics` | 3-SEG | ❌ Should be near top |
-| 425 | GET | `/agents/status/statistics` | SPECIFIC | ❌ Should be near top |
+| 31 | POST | `/agents` | BASE |  TOO EARLY (should be last!) |
+| 64 | GET | `/agents` | BASE |  TOO EARLY (should be last!) |
+| 93 | GET | `/agents/:agentId` | PARAM |  TOO EARLY (before multi-segment) |
+| 131 | PUT | `/agents/:agentId` | PARAM |  TOO EARLY (before multi-segment) |
+| 175 | DELETE | `/agents/:agentId` | PARAM |  TOO EARLY (before multi-segment) |
+| 199 | POST | `/agents/:agentId/skills` | MULTI-SEG |  Should be BEFORE /:agentId |
+| 220 | GET | `/agents/:agentId/skills` | MULTI-SEG |  Should be BEFORE /:agentId |
+| 238 | PUT | `/agents/:agentId/skills/:skillId` | 3-SEG |  Should be near top |
+| 259 | DELETE | `/agents/:agentId/skills/:skillId` | 3-SEG |  Should be near top |
+| 284 | GET | `/agents/:agentId/status` | MULTI-SEG |  Should be BEFORE /:agentId |
+| 302 | PUT | `/agents/:agentId/status` | MULTI-SEG |  Should be BEFORE /:agentId |
+| 323 | GET | `/agents/:agentId/status/history` | 3-SEG |  Should be near top |
+| 345 | POST | `/agents/search` | SPECIFIC |  Should be near top |
+| 365 | PUT | `/agents/batch` | SPECIFIC |  Should be near top |
+| 384 | PUT | `/agents/batch/transfer` | SPECIFIC |  Should be FIRST! |
+| 407 | GET | `/agents/:agentId/skills/statistics` | 3-SEG |  Should be near top |
+| 425 | GET | `/agents/status/statistics` | SPECIFIC |  Should be near top |
 
 ---
 
@@ -34,43 +34,43 @@
 
 ### Priority 1: SPECIFIC multi-segment routes
 ```typescript
-router.put('/agents/batch/transfer', ...)         // MOVE UP from line 384
-router.get('/agents/status/statistics', ...)      // MOVE UP from line 425
+router.put('/agents/batch/transfer', ...) // MOVE UP from line 384
+router.get('/agents/status/statistics', ...) // MOVE UP from line 425
 ```
 
 ### Priority 2: SPECIFIC routes
 ```typescript
-router.put('/agents/batch', ...)                  // MOVE UP from line 365
-router.post('/agents/search', ...)                // MOVE UP from line 345
+router.put('/agents/batch', ...) // MOVE UP from line 365
+router.post('/agents/search', ...) // MOVE UP from line 345
 ```
 
 ### Priority 3: MULTI-SEGMENT 3-segment routes
 ```typescript
-router.put('/agents/:agentId/skills/:skillId', ...)      // MOVE UP from line 238
-router.delete('/agents/:agentId/skills/:skillId', ...)   // MOVE UP from line 259
-router.get('/agents/:agentId/skills/statistics', ...)    // MOVE UP from line 407
-router.get('/agents/:agentId/status/history', ...)       // MOVE UP from line 323
+router.put('/agents/:agentId/skills/:skillId', ...) // MOVE UP from line 238
+router.delete('/agents/:agentId/skills/:skillId', ...) // MOVE UP from line 259
+router.get('/agents/:agentId/skills/statistics', ...) // MOVE UP from line 407
+router.get('/agents/:agentId/status/history', ...) // MOVE UP from line 323
 ```
 
 ### Priority 4: MULTI-SEGMENT 2-segment routes
 ```typescript
-router.post('/agents/:agentId/skills', ...)       // MOVE UP from line 199
-router.get('/agents/:agentId/skills', ...)        // MOVE UP from line 220
-router.get('/agents/:agentId/status', ...)        // MOVE UP from line 284
-router.put('/agents/:agentId/status', ...)        // MOVE UP from line 302
+router.post('/agents/:agentId/skills', ...) // MOVE UP from line 199
+router.get('/agents/:agentId/skills', ...) // MOVE UP from line 220
+router.get('/agents/:agentId/status', ...) // MOVE UP from line 284
+router.put('/agents/:agentId/status', ...) // MOVE UP from line 302
 ```
 
 ### Priority 5: SINGLE PARAMETERIZED routes
 ```typescript
-router.get('/agents/:agentId', ...)               // KEEP HERE (after multi-segment)
-router.put('/agents/:agentId', ...)               // KEEP HERE
-router.delete('/agents/:agentId', ...)            // KEEP HERE
+router.get('/agents/:agentId', ...) // KEEP HERE (after multi-segment)
+router.put('/agents/:agentId', ...) // KEEP HERE
+router.delete('/agents/:agentId', ...) // KEEP HERE
 ```
 
 ### Priority 6: BASE routes (last!)
 ```typescript
-router.get('/agents', ...)                        // MOVE TO END from line 64
-router.post('/agents', ...)                       // MOVE TO END from line 31
+router.get('/agents', ...) // MOVE TO END from line 64
+router.post('/agents', ...) // MOVE TO END from line 31
 ```
 
 ---

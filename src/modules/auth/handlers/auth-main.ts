@@ -20,7 +20,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
-// 🆕 P2-5: Import standard response utilities
+// P2-5: Import standard response utilities
 import {
   unauthorizedResponse,
   badRequestResponse
@@ -30,7 +30,7 @@ import { nowISO } from '@/utils/timestamp'
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
+// CORS 處理已移至 src/index.ts 統一管理
 // 不再需要 handler 級別的 CORS middleware
 
 // 用戶登入
@@ -46,7 +46,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       return badRequestResponse(c, 'Email and password are required');
     }
 
-    // ✅ 優化：使用單次查詢進行完整認證
+    // 優化：使用單次查詢進行完整認證
     const authResult = await authenticateUser(c.env.DB, cleanEmail, cleanPassword);
     const { user, passwordPolicy, accountStatus } = authResult;
 
@@ -73,7 +73,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
       return unauthorizedResponse(c, 'Authentication failed');
     }
 
-    // ✅ 優化：使用統一獲取的密碼政策
+    // 優化：使用統一獲取的密碼政策
     if (passwordPolicy === 'must_change') {
       // Password change required
 
@@ -126,7 +126,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     }
 
     // 生成 Access Token (短期，2小時)
-    // 🚀 Phase 1 Optimization: Include multi-team data in JWT
+    // Phase 1 Optimization: Include multi-team data in JWT
     const token = await signJWT(
       {
         userId: user.id, // 保持原始 ID 格式
@@ -144,7 +144,7 @@ authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
     );
 
     // 生成 Refresh Token (長期，7天)
-    // 🚀 Phase 1 Optimization: Include multi-team data in JWT
+    // Phase 1 Optimization: Include multi-team data in JWT
     const refreshToken = await signJWT(
       {
         userId: user.id, // 保持原始 ID 格式
@@ -456,7 +456,7 @@ authHandler.post('/refresh', async (c) => {
     }
 
     // 生成新的 access token
-    // 🚀 Phase 1 Optimization: Carry over multi-team data from refresh token
+    // Phase 1 Optimization: Carry over multi-team data from refresh token
     const newToken = await signJWT(
       {
         userId: payload.userId,
@@ -474,7 +474,7 @@ authHandler.post('/refresh', async (c) => {
     );
 
     // 生成新的 refresh token (滾動刷新)
-    // 🚀 Phase 1 Optimization: Carry over multi-team data
+    // Phase 1 Optimization: Carry over multi-team data
     const newRefreshToken = await signJWT(
       {
         userId: payload.userId,

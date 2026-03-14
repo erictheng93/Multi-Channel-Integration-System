@@ -9,7 +9,7 @@ import { getApiUrl } from '@/config/runtime'
 export interface CustomerMessagesOptions {
   enablePagination?: boolean
   pageSize?: number
-  enableProgressiveLoading?: boolean // 🚀 啟用漸進式加載
+  enableProgressiveLoading?: boolean //  啟用漸進式加載
 }
 
 export function useCustomerMessages(conversationId: string, options?: CustomerMessagesOptions) {
@@ -17,7 +17,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
   // 配置
   const pageSize = options?.pageSize ?? 30
-  // 🔧 FIX: Disabled progressive loading by default to prevent flicker/shaking
+  // FIX: Disabled progressive loading by default to prevent flicker/shaking
   // Progressive loading causes two-phase render which leads to layout shifts
   // Set to true only if you want faster initial display at the cost of visual stability
   const enableProgressiveLoading = options?.enableProgressiveLoading ?? false
@@ -29,17 +29,17 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   const loading = ref(false)
   const hasMore = ref(true)
   const loadingHistory = ref(false)
-  const isLoadingInitial = ref(false) // 🚀 初始加載狀態
-  const initialLoadComplete = ref(false) // 🚀 初始加載是否完成
-  const isHistoryPrepending = ref(false) // 🔧 FIX: 標記歷史消息正在前插（用於滾動位置保持）
-  const historyPrependCount = ref(0) // 🔧 FIX: 前插的歷史消息數量
+  const isLoadingInitial = ref(false) //  初始加載狀態
+  const initialLoadComplete = ref(false) //  初始加載是否完成
+  const isHistoryPrepending = ref(false) //  FIX: 標記歷史消息正在前插（用於滾動位置保持）
+  const historyPrependCount = ref(0) //  FIX: 前插的歷史消息數量
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🔧 FIX: 使用統一的 getApiUrl (from @/config/runtime)
+  // FIX: 使用統一的 getApiUrl (from @/config/runtime)
   // 開發環境使用相對路徑 (通過 Vite Proxy)，生產環境使用絕對路徑
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // 獲取認證 token - 🔧 FIX: 同時支援兩種認證方式
+  // 獲取認證 token -  FIX: 同時支援兩種認證方式
   const getAuthHeaders = () => {
     const token = authStore.token || localStorage.getItem('token') || localStorage.getItem('authToken')
     return {
@@ -50,7 +50,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   }
 
   /**
-   * 🚀 漸進式加載：先加載最近消息，然後加載歷史
+   * 漸進式加載：先加載最近消息，然後加載歷史
    */
   const fetchMessages = async () => {
     if (enableProgressiveLoading) {
@@ -61,7 +61,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   }
 
   /**
-   * 🚀 漸進式加載實現
+   * 漸進式加載實現
    */
   const fetchProgressively = async () => {
     loading.value = true
@@ -69,7 +69,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
     try {
       // ========== 階段 1: 快速加載最近 10 條消息 ==========
-      console.log('🚀 [Progressive] Phase 1: Loading recent messages...')
+      console.log('[Progressive] Phase 1: Loading recent messages...')
       const initialLimit = 10
 
       const initialResponse = await fetch(
@@ -90,7 +90,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         hasMore.value = initialData.hasMore || false
         initialLoadComplete.value = true
 
-        console.log(`✅ [Progressive] Phase 1 complete: ${messages.value.length} recent messages`)
+        console.log(`[Progressive] Phase 1 complete: ${messages.value.length} recent messages`)
 
         // 更新緩存
         const lastMessage = messages.value[messages.value.length - 1]
@@ -111,14 +111,14 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         }, 300) // 300ms 後開始背景加載
       }
     } catch (error) {
-      console.error('❌ [Progressive] Error in progressive loading:', error)
+      console.error('[Progressive] Error in progressive loading:', error)
       isLoadingInitial.value = false
       loading.value = false
     }
   }
 
   /**
-   * 🚀 背景加載歷史消息
+   * 背景加載歷史消息
    */
   const loadMoreHistoryInBackground = async () => {
     if (!messages.value.length || loadingHistory.value) {
@@ -126,7 +126,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     }
 
     loadingHistory.value = true
-    console.log('🔄 [Progressive] Phase 2: Loading history in background...')
+    console.log('[Progressive] Phase 2: Loading history in background...')
 
     try {
       const oldestMessage = messages.value[0]
@@ -157,30 +157,30 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         )
 
-        // 🔧 FIX: 標記歷史前插開始，讓 VirtualMessageList 可以保持滾動位置
+        // FIX: 標記歷史前插開始，讓 VirtualMessageList 可以保持滾動位置
         isHistoryPrepending.value = true
         historyPrependCount.value = olderMessages.length
-        console.log(`📌 [Progressive] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
+        console.log(`[Progressive] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
 
         messages.value = [...olderMessages, ...messages.value]
         hasMore.value = data.hasMore || false
 
-        console.log(`✅ [Progressive] Phase 2 complete: ${olderMessages.length} history messages loaded`)
+        console.log(`[Progressive] Phase 2 complete: ${olderMessages.length} history messages loaded`)
 
         // 更新緩存
         conversationCache.set(conversationId, {
           messageCount: messages.value.length
         })
 
-        // 🔧 FIX: 在下一個 tick 重置標記（讓 VirtualMessageList 有時間處理）
+        // FIX: 在下一個 tick 重置標記（讓 VirtualMessageList 有時間處理）
         setTimeout(() => {
           isHistoryPrepending.value = false
           historyPrependCount.value = 0
-          console.log(`📌 [Progressive] Reset isHistoryPrepending=false`)
+          console.log(`[Progressive] Reset isHistoryPrepending=false`)
         }, 100)
       }
     } catch (error) {
-      console.error('❌ [Progressive] Error loading history:', error)
+      console.error('[Progressive] Error loading history:', error)
     } finally {
       loadingHistory.value = false
     }
@@ -208,7 +208,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         )
         hasMore.value = data.hasMore || false
 
-        console.log(`✅ [useCustomerMessages] Loaded ${messages.value.length} messages`)
+        console.log(`[useCustomerMessages] Loaded ${messages.value.length} messages`)
 
         // 更新緩存
         const lastMessage = messages.value[messages.value.length - 1]
@@ -218,10 +218,10 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
           lastMessageTime: typeof lastTime === 'string' ? lastTime : new Date(lastTime || Date.now()).toISOString()
         })
       } else {
-        console.error('❌ [useCustomerMessages] Failed to load messages:', data.error)
+        console.error('[useCustomerMessages] Failed to load messages:', data.error)
       }
     } catch (error) {
-      console.error('❌ [useCustomerMessages] Error fetching messages:', error)
+      console.error('[useCustomerMessages] Error fetching messages:', error)
     } finally {
       loading.value = false
     }
@@ -265,24 +265,24 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         )
 
-        // 🔧 FIX: 標記歷史前插開始
+        // FIX: 標記歷史前插開始
         isHistoryPrepending.value = true
         historyPrependCount.value = olderMessages.length
-        console.log(`📌 [loadMoreMessages] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
+        console.log(`[loadMoreMessages] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
 
         messages.value = [...olderMessages, ...messages.value]
         hasMore.value = data.hasMore || false
 
-        console.log(`✅ [useCustomerMessages] Loaded ${olderMessages.length} more messages`)
+        console.log(`[useCustomerMessages] Loaded ${olderMessages.length} more messages`)
 
-        // 🔧 FIX: 重置標記
+        // FIX: 重置標記
         setTimeout(() => {
           isHistoryPrepending.value = false
           historyPrependCount.value = 0
         }, 100)
       }
     } catch (error) {
-      console.error('❌ [useCustomerMessages] Error loading more messages:', error)
+      console.error('[useCustomerMessages] Error loading more messages:', error)
     } finally {
       loadingHistory.value = false
     }
@@ -315,23 +315,23 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       const data = await response.json()
 
       if (data.success) {
-        console.log('✅ [useCustomerMessages] Message sent successfully')
+        console.log('[useCustomerMessages] Message sent successfully')
         // 注意：新消息會通過 WebSocket 實時推送，不需要手動添加
         return true
       } else {
-        console.error('❌ [useCustomerMessages] Failed to send message:', data.error)
+        console.error('[useCustomerMessages] Failed to send message:', data.error)
         return false
       }
     } catch (error) {
-      console.error('❌ [useCustomerMessages] Error sending message:', error)
+      console.error('[useCustomerMessages] Error sending message:', error)
       return false
     }
   }
 
   /**
    * 發送帶附件的消息（使用正確的 customer-conversations 端點以支持 WebSocket 廣播）
-   * 🔧 FIX: 確保帶附件的訊息也使用 CustomerMessageDO，觸發 WebSocket 廣播
-   * 🔧 Phase 3: 支援 correlationId 用於 WebSocket 去重
+   * FIX: 確保帶附件的訊息也使用 CustomerMessageDO，觸發 WebSocket 廣播
+   * Phase 3: 支援 correlationId 用於 WebSocket 去重
    */
   const sendMessageWithAttachments = async (
     content: string,
@@ -339,7 +339,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     options?: {
       messageType?: 'text' | 'file'
       platform?: string
-      correlationId?: string  // 🔧 Phase 3: For WebSocket deduplication
+      correlationId?: string  //  Phase 3: For WebSocket deduplication
     }
   ): Promise<{ success: boolean; message?: unknown; error?: string }> => {
     // 允許純附件訊息（沒有文字內容）
@@ -361,7 +361,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
             attachmentIds,
             messageType: options?.messageType || (attachmentIds.length > 0 ? 'file' : 'text'),
             platform: options?.platform || 'system',
-            correlationId: options?.correlationId || null  // 🔧 Phase 3: For WebSocket deduplication
+            correlationId: options?.correlationId || null  //  Phase 3: For WebSocket deduplication
           })
         }
       )
@@ -369,22 +369,22 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       const data = await response.json()
 
       if (data.success) {
-        console.log('✅ [useCustomerMessages] Message with attachments sent successfully')
+        console.log('[useCustomerMessages] Message with attachments sent successfully')
         // 注意：新消息會通過 WebSocket 實時推送給所有連接的客服
         return { success: true, message: data.message }
       } else {
-        console.error('❌ [useCustomerMessages] Failed to send message with attachments:', data.error)
+        console.error('[useCustomerMessages] Failed to send message with attachments:', data.error)
         return { success: false, error: data.error }
       }
     } catch (error) {
-      console.error('❌ [useCustomerMessages] Error sending message with attachments:', error)
+      console.error('[useCustomerMessages] Error sending message with attachments:', error)
       return { success: false, error: error instanceof Error ? error.message : '發送失敗' }
     }
   }
 
   /**
    * 添加新消息到列表（用於 WebSocket 實時推送）
-   * 🔧 FIX: 合併式去重機制 - 解決競態條件導致的重複問題
+   * FIX: 合併式去重機制 - 解決競態條件導致的重複問題
    *
    * 競態條件場景：
    * 1. 用戶發送訊息 → 創建 temp-xxx 臨時訊息
@@ -400,11 +400,11 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     // 1. 基本 ID 去重：防止完全相同的訊息被添加多次
     const existsById = messages.value.some(m => m.id === message.id)
     if (existsById) {
-      console.log('⚠️ [useCustomerMessages] Message already exists by ID, skipping:', message.id)
+      console.log('[useCustomerMessages] Message already exists by ID, skipping:', message.id)
       return
     }
 
-    // 2. 🔧 FIX: 合併式去重 - 檢查是否有 pending (temp-xxx) 訊息可以合併
+    // 2.  FIX: 合併式去重 - 檢查是否有 pending (temp-xxx) 訊息可以合併
     // 這解決了 WebSocket 比 HTTP 響應先到達的競態條件
     const pendingMessage = messages.value.find(m => {
       // 只檢查 temp- 開頭的訊息（pending 訊息）
@@ -427,12 +427,12 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
     if (pendingMessage) {
       // 找到匹配的 pending 訊息 → 合併（更新 ID 而非添加）
-      console.log(`🔀 [useCustomerMessages] Merging WebSocket message with pending: ${pendingMessage.id} → ${message.id}`)
+      console.log(`[useCustomerMessages] Merging WebSocket message with pending: ${pendingMessage.id} → ${message.id}`)
 
       // 更新 pending 訊息的關鍵字段
       pendingMessage.id = message.id
       pendingMessage.deliveryStatus = message.deliveryStatus || 'delivered'
-      // 🔧 FIX: 同時更新 status 為 'sent'，解決旋轉圖標不消失的問題
+      // FIX: 同時更新 status 為 'sent'，解決旋轉圖標不消失的問題
       // 當 WebSocket 比 HTTP 響應先到達時，handleMessageConfirmed 無法找到訊息
       // 因為 ID 已從 temp-xxx 變為 realId，所以需要在這裡設置 status
       pendingMessage.status = 'sent' as const
@@ -444,7 +444,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       }
        
 
-      console.log('✅ [useCustomerMessages] Pending message merged successfully with status=sent')
+      console.log('[useCustomerMessages] Pending message merged successfully with status=sent')
       return
     }
 
@@ -459,7 +459,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     })
 
     messages.value = newMessages
-    console.log('✅ [useCustomerMessages] Added new message via WebSocket:', message.id)
+    console.log('[useCustomerMessages] Added new message via WebSocket:', message.id)
   }
 
   return {
@@ -467,18 +467,18 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     messages: computed(() => messages.value),
     loading: computed(() => loading.value),
     hasMore,
-    isLoadingInitial: computed(() => isLoadingInitial.value), // 🚀 初始加載狀態
-    initialLoadComplete: computed(() => initialLoadComplete.value), // 🚀 初始加載完成
-    loadingHistory: computed(() => loadingHistory.value), // 🚀 歷史加載狀態
-    isHistoryPrepending: computed(() => isHistoryPrepending.value), // 🔧 FIX: 歷史消息正在前插
-    historyPrependCount: computed(() => historyPrependCount.value), // 🔧 FIX: 前插的消息數量
+    isLoadingInitial: computed(() => isLoadingInitial.value), //  初始加載狀態
+    initialLoadComplete: computed(() => initialLoadComplete.value), //  初始加載完成
+    loadingHistory: computed(() => loadingHistory.value), //  歷史加載狀態
+    isHistoryPrepending: computed(() => isHistoryPrepending.value), //  FIX: 歷史消息正在前插
+    historyPrependCount: computed(() => historyPrependCount.value), //  FIX: 前插的消息數量
 
     // 方法
     fetchMessages,
     refreshMessages,
     loadMoreMessages,
     sendMessage,
-    sendMessageWithAttachments, // 🔧 FIX: 新增帶附件訊息發送方法（支持 WebSocket 廣播）
+    sendMessageWithAttachments, //  FIX: 新增帶附件訊息發送方法（支持 WebSocket 廣播）
     addMessage
   }
 }

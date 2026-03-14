@@ -41,7 +41,7 @@
       class="error-state"
     >
       <div class="error-icon">
-        ⚠️
+        
       </div>
       <p class="error-message">
         {{ error }}
@@ -128,7 +128,7 @@
         @click="showCacheStats = !showCacheStats"
       >
         <span>快取統計</span>
-        <span class="toggle-icon">{{ showCacheStats ? '▼' : '▶' }}</span>
+        <span class="toggle-icon">{{ showCacheStats ? '▼' : '' }}</span>
       </button>
       <transition name="slide-down">
         <div
@@ -240,7 +240,7 @@ const customPeriod = ref({
   end: ''
 });
 
-// ⚡ LCP 優化：本地快取機制
+// LCP 優化：本地快取機制
 interface LocalCache {
   data: MultiMetricComparison;
   timestamp: number;
@@ -342,10 +342,10 @@ const currentPeriod = computed(() => {
 
 // 載入數據
 async function loadData() {
-  // ⚡ LCP 優化：先嘗試從本地快取獲取數據
+  // LCP 優化：先嘗試從本地快取獲取數據
   const cachedData = getLocalCache();
   if (cachedData) {
-    console.log('⚡ [Analytics] 使用本地快取數據');
+    console.log('[Analytics] 使用本地快取數據');
     comparisonData.value = cachedData.data;
     // 在背景更新數據
     loadDataFromAPI(true);
@@ -397,9 +397,9 @@ async function loadDataFromAPI(isBackground: boolean) {
 
     comparisonData.value = result.data;
 
-    // ⚡ LCP 優化：儲存到本地快取
+    // LCP 優化：儲存到本地快取
     setLocalCache(result.data);
-    console.log('⚡ [Analytics] 數據已更新並快取');
+    console.log('[Analytics] 數據已更新並快取');
 
     // 載入快取統計（非阻塞）
     loadCacheStats().catch(err => console.warn('快取統計載入失敗:', err));
@@ -486,11 +486,11 @@ function getValueFormatter(metricKey: string): (_value: number) => string {
   return (_value: number) => _value.toLocaleString();
 }
 
-// ⚡ LCP 優化：延遲加載數據
+// LCP 優化：延遲加載數據
 let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
-  // ⚡ LCP 優化：使用 requestIdleCallback 延遲加載，避免阻塞首次渲染
+  // LCP 優化：使用 requestIdleCallback 延遲加載，避免阻塞首次渲染
   // 這確保 Dashboard 主要內容先顯示，Analytics 數據在瀏覽器空閒時加載
   const scheduleDataLoad = () => {
     loadData();

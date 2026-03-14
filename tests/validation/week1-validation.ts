@@ -33,14 +33,14 @@ async function testFileManagementHealth(): Promise<ValidationResult> {
     return {
       test: 'File Management Health Check',
       passed,
-      message: passed ? '✅ 健康检查通过' : '❌ 健康检查失败',
+      message: passed ? ' 健康检查通过' : ' 健康检查失败',
       details: data
     };
   } catch (error) {
     return {
       test: 'File Management Health Check',
       passed: false,
-      message: `❌ 请求失败: ${error}`,
+      message: ` 请求失败: ${error}`,
       details: error
     };
   }
@@ -54,7 +54,7 @@ async function testFileManagementInfo(): Promise<ValidationResult> {
     return {
       test: 'File Management Info',
       passed: false,
-      message: '⚠️  跳过：需要 TEST_TOKEN 环境变量'
+      message: '  跳过：需要 TEST_TOKEN 环境变量'
     };
   }
 
@@ -72,14 +72,14 @@ async function testFileManagementInfo(): Promise<ValidationResult> {
     return {
       test: 'File Management Info',
       passed,
-      message: passed ? '✅ Info 端点正常' : '❌ Info 端点异常',
+      message: passed ? ' Info 端点正常' : ' Info 端点异常',
       details: data
     };
   } catch (error) {
     return {
       test: 'File Management Info',
       passed: false,
-      message: `❌ 请求失败: ${error}`,
+      message: ` 请求失败: ${error}`,
       details: error
     };
   }
@@ -98,14 +98,14 @@ async function testAnalyticsHealth(): Promise<ValidationResult> {
     return {
       test: 'Analytics Health Check',
       passed,
-      message: passed ? '✅ Analytics 健康检查通过' : '❌ Analytics 健康检查失败',
+      message: passed ? ' Analytics 健康检查通过' : ' Analytics 健康检查失败',
       details: data
     };
   } catch (error) {
     return {
       test: 'Analytics Health Check',
       passed: false,
-      message: `❌ 请求失败: ${error}`,
+      message: ` 请求失败: ${error}`,
       details: error
     };
   }
@@ -137,7 +137,7 @@ async function testRouteRegistration(): Promise<ValidationResult> {
   return {
     test: 'Route Registration',
     passed: allPassed,
-    message: allPassed ? '✅ 所有路由注册成功' : '❌ 部分路由注册失败',
+    message: allPassed ? ' 所有路由注册成功' : ' 部分路由注册失败',
     details: results
   };
 }
@@ -153,13 +153,13 @@ async function testTypeScriptCompilation(): Promise<ValidationResult> {
     return {
       test: 'TypeScript Compilation',
       passed: true,
-      message: '✅ TypeScript 编译成功'
+      message: ' TypeScript 编译成功'
     };
   } catch (error: any) {
     return {
       test: 'TypeScript Compilation',
       passed: false,
-      message: '❌ TypeScript 编译失败',
+      message: ' TypeScript 编译失败',
       details: error.stdout || error.message
     };
   }
@@ -183,14 +183,14 @@ async function testDatabaseIndexes(): Promise<ValidationResult> {
     return {
       test: 'Database Indexes',
       passed: hasRequiredIndexes,
-      message: hasRequiredIndexes ? '✅ 所需索引已创建' : '❌ 缺少必需索引',
+      message: hasRequiredIndexes ? ' 所需索引已创建' : ' 缺少必需索引',
       details: output
     };
   } catch (error: any) {
     return {
       test: 'Database Indexes',
       passed: false,
-      message: '❌ 索引检查失败',
+      message: ' 索引检查失败',
       details: error.message
     };
   }
@@ -200,7 +200,7 @@ async function testDatabaseIndexes(): Promise<ValidationResult> {
  * 运行所有验证测试
  */
 async function runAllValidations() {
-  console.log('🚀 开始 Week 1 实施验证...\n');
+  console.log(' 开始 Week 1 实施验证...\n');
 
   // 运行所有测试
   const tests = [
@@ -215,11 +215,11 @@ async function runAllValidations() {
   const results = await Promise.all(tests);
 
   // 打印结果
-  console.log('📊 验证结果:\n');
+  console.log(' 验证结果:\n');
   results.forEach((result, index) => {
     console.log(`${index + 1}. ${result.test}: ${result.message}`);
     if (result.details && !result.passed) {
-      console.log(`   详情: ${JSON.stringify(result.details, null, 2)}`);
+      console.log(` 详情: ${JSON.stringify(result.details, null, 2)}`);
     }
   });
 
@@ -229,7 +229,7 @@ async function runAllValidations() {
   const percentage = Math.round((passed / total) * 100);
 
   console.log('\n' + '='.repeat(60));
-  console.log(`✅ 通过: ${passed}/${total} (${percentage}%)`);
+  console.log(` 通过: ${passed}/${total} (${percentage}%)`);
   console.log('='.repeat(60));
 
   // 生成报告
@@ -249,7 +249,7 @@ async function runAllValidations() {
   const reportPath = './test-results/week1-validation-report.json';
   fs.mkdirSync('./test-results', { recursive: true });
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
-  console.log(`\n📄 详细报告已保存到: ${reportPath}`);
+  console.log(`\n 详细报告已保存到: ${reportPath}`);
 
   // 如果所有测试都通过，返回 0，否则返回 1
   process.exit(passed === total ? 0 : 1);
@@ -257,6 +257,6 @@ async function runAllValidations() {
 
 // 运行验证
 runAllValidations().catch((error) => {
-  console.error('❌ 验证过程出错:', error);
+  console.error(' 验证过程出错:', error);
   process.exit(1);
 });

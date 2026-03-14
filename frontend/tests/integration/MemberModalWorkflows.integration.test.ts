@@ -336,7 +336,7 @@ describe('Member Modal Workflows - Integration Tests', () => {
       await nextTick()
       await nextTick()
 
-      // Find set-primary button (usually marked with star ☆)
+      // Find set-primary button (usually marked with star )
       const setPrimaryBtn = wrapper.find('[class*="chip-star"], [class*="set-primary"]')
 
       if (setPrimaryBtn.exists()) {

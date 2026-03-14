@@ -92,7 +92,7 @@ const widgetConfigSchema = z.object({
 const createDashboardApp = (dashboardService: DashboardService, widgetManager: WidgetManager) => {
   const app = new Hono<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>();
 
-  // ✅ CORS 處理已移至 src/index.ts 統一管理
+  // CORS 處理已移至 src/index.ts 統一管理
   // 不再需要模組級別的 CORS middleware
 
   // 驗證中間件

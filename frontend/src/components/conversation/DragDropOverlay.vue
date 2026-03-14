@@ -38,9 +38,9 @@
  * @example
  * ```vue
  * <DragDropOverlay
- *   :is-visible="isDragging"
- *   title="放開以上傳檔案"
- *   hint="支援圖片、PDF、Word 等格式（單檔最大 10MB）"
+ * :is-visible="isDragging"
+ * title="放開以上傳檔案"
+ * hint="支援圖片、PDF、Word 等格式（單檔最大 10MB）"
  * />
  * ```
  */

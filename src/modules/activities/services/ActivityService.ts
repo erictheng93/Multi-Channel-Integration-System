@@ -27,7 +27,7 @@ export class ActivityService {
       // 驗證請求數據
       const validationErrors = ActivityValidator.validateCreateRequest(request)
       if (validationErrors.length > 0) {
-        console.warn('❌ [Activity Service] Validation failed:', validationErrors)
+        console.warn('[Activity Service] Validation failed:', validationErrors)
         return null
       }
 
@@ -64,10 +64,10 @@ export class ActivityService {
         createdAt: timestamp
       }
 
-      console.log('✅ [Activity Service] Activity logged with ID:', createdActivity.id)
+      console.log('[Activity Service] Activity logged with ID:', createdActivity.id)
       return createdActivity
     } catch (error) {
-      console.error('❌ [Activity Service] Failed to log activity:', error)
+      console.error('[Activity Service] Failed to log activity:', error)
       // 不拋出錯誤，避免影響主要業務流程
       return null
     }
@@ -238,7 +238,7 @@ export class ActivityService {
       .where(lt(activities.createdAt, cutoffDateStr))
 
     const deletedCount = toDeleteCount[0]?.count || 0
-    console.log(`✅ [Activity Service] Cleaned up ${deletedCount} old activities`)
+    console.log(`[Activity Service] Cleaned up ${deletedCount} old activities`)
 
     return deletedCount
   }

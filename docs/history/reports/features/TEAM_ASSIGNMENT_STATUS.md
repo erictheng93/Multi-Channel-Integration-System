@@ -1,22 +1,22 @@
-# 🎯 團隊指派功能實現狀態報告
+#  團隊指派功能實現狀態報告
 
-## 📊 (Current Status Overview)
+##  (Current Status Overview)
 
 ### 實現狀態總結
 
 ```
-後端支持度: ✅ 80% (API 完成, 權限需加強)
-前端支持度: ❌ 0% (尚未實現 UI)
-整體可用性: ⚠️  部分完成 (需前端開發)
+後端支持度:  80% (API 完成, 權限需加強)
+前端支持度:  0% (尚未實現 UI)
+整體可用性: 部分完成 (需前端開發)
 ```
 
 ---
 
 ## / (Detailed Analysis)
 
-### 1️⃣ **後端實現 - 已完成 80%**
+### 1️ **後端實現 - 已完成 80%**
 
-#### ✅ 數據庫層面 - 100% 完成
+####  數據庫層面 - 100% 完成
 
 **位置**: `src/db/schema.ts:94`
 
@@ -24,22 +24,22 @@
 export const conversations = sqliteTable('conversations', {
   id: text('id').primaryKey(),
   customerId: integer('customer_id').notNull(),
-  assignedTeamId: integer('assigned_team_id').references(() => teams.id), // ✅ 支持團隊指派
-  assignedUserId: text('assigned_user_id').references(() => agents.id),    // ✅ 支持個人指派
+  assignedTeamId: integer('assigned_team_id').references(() => teams.id), //  支持團隊指派
+  assignedUserId: text('assigned_user_id').references(() => agents.id), //  支持個人指派
   status: text('status').notNull().default('active'),
   // ...
 });
 ```
 
 **支持功能**:
-- ✅ 可以指派給團隊 (`assignedTeamId`)
-- ✅ 可以指派給個人 (`assignedUserId`)
-- ✅ 可以同時指派 (團隊 + 個人)
-- ✅ 可以單獨指派團隊或個人
+-  可以指派給團隊 (`assignedTeamId`)
+-  可以指派給個人 (`assignedUserId`)
+-  可以同時指派 (團隊 + 個人)
+-  可以單獨指派團隊或個人
 
 ---
 
-#### ⚠️ API 層面 - 完成但權限需加強
+####  API 層面 - 完成但權限需加強
 
 **位置**: `src/handlers/conversation.ts:263-299`
 
@@ -47,7 +47,7 @@ export const conversations = sqliteTable('conversations', {
 conversations.post('/:id/assign', async (c) => {
   const { teamId, userId, reason } = await c.req.json();
 
-  // ⚠️ 權限檢查 - 需要加強
+  // 權限檢查 - 需要加強
   const hasPermission = await PermissionService.checkPermission(
     agent!.id,
     'conversation',
@@ -58,11 +58,11 @@ conversations.post('/:id/assign', async (c) => {
     return c.json({ success: false, error: 'Permission denied' }, 403);
   }
 
-  // ✅ 支持團隊和個人指派
+  // 支持團隊和個人指派
   await drizzleDb.update(conversationTable)
     .set({
-      assignedTeamId: teamId || null,  // ✅ 接受 teamId 參數
-      assignedUserId: userId || null,   // ✅ 接受 userId 參數
+      assignedTeamId: teamId || null,  //  接受 teamId 參數
+      assignedUserId: userId || null, //  接受 userId 參數
       status: 'assigned',
       updatedAt: sql`datetime('now')`
     })
@@ -77,7 +77,7 @@ conversations.post('/:id/assign', async (c) => {
 
 ---
 
-#### ⚠️ 權限控制 - 需要加強
+####  權限控制 - 需要加強
 
 **位置**: `src/services/permission-service.ts:30-52`
 
@@ -86,14 +86,14 @@ conversations.post('/:id/assign', async (c) => {
 ```typescript
 admin: {
   permissions: [
-    { resource: '*', action: '*' }  // ✅ Admin 有完整權限
+    { resource: '*', action: '*' }  //  Admin 有完整權限
   ]
 },
 agent: {
   permissions: [
     { resource: 'conversation', action: 'view' },
     { resource: 'conversation', action: 'reply', conditions: { assigned: true } },
-    // ❌ 沒有定義 'assign' 動作
+    // 沒有定義 'assign' 動作
   ]
 }
 ```
@@ -102,8 +102,8 @@ agent: {
 
 | 角色 | 現狀 | 預期行為 | 問題 |
 |------|------|---------|------|
-| **Admin** | ✅ 有權限 | ✅ 應該有權限 | 無問題 |
-| **Agent** | ⚠️ 未定義 | ❌ 不應該有權限 | 權限定義缺失 |
+| **Admin** |  有權限 |  應該有權限 | 無問題 |
+| **Agent** |  未定義 |  不應該有權限 | 權限定義缺失 |
 
 **建議修正**:
 
@@ -121,16 +121,16 @@ conversations.post('/:id/assign', jwtAuth, requireAdmin(), async (c) => {
 
 ---
 
-### 2️⃣ **前端實現 - 0% 完成**
+### 2️ **前端實現 - 0% 完成**
 
-#### ❌ API 層面 - 不支持團隊指派
+####  API 層面 - 不支持團隊指派
 
 **位置**: `frontend/src/api/conversations.ts:237-241`
 
 ```typescript
 // 現有的 API 函數 - 僅支持個人指派
 assignConversation: async (conversationId: string, agentId: string): Promise<ApiResponse<void>> => {
-  // ❌ 只傳送 agentId，沒有 teamId 參數
+  // 只傳送 agentId，沒有 teamId 參數
   return apiClient.put(`/conversations/${conversationId}/assign`, { agentId });
 }
 ```
@@ -142,9 +142,9 @@ assignConversation: async (conversationId: string, agentId: string): Promise<Api
 assignConversation: async (
   conversationId: string,
   options: {
-    teamId?: number;    // ✅ 新增團隊 ID
-    userId?: string;    // ✅ 個人 ID (可選)
-    reason?: string;    // ✅ 指派原因
+    teamId?: number; //  新增團隊 ID
+    userId?: string; //  個人 ID (可選)
+    reason?: string; //  指派原因
   }
 ): Promise<ApiResponse<void>> => {
   return apiClient.post(`/conversations/${conversationId}/assign`, options);
@@ -153,27 +153,27 @@ assignConversation: async (
 
 ---
 
-#### ❌ UI 層面 - 沒有團隊指派選項
+####  UI 層面 - 沒有團隊指派選項
 
 **位置**: `frontend/src/components/conversation/AdvancedAssignActions.vue`
 
 **現有功能**:
-- ✅ 指派給個人成員
-- ✅ 成員搜尋和篩選
-- ✅ 角色篩選 (全部/管理員/客服)
-- ❌ **沒有團隊指派選項**
+-  指派給個人成員
+-  成員搜尋和篩選
+-  角色篩選 (全部/管理員/客服)
+-  **沒有團隊指派選項**
 
 **缺少的 UI 元素**:
 
 ```
 需要新增:
 ┌────────────────────────────────────┐
-│  指派對話                          │
+│  指派對話 │
 ├────────────────────────────────────┤
-│  ⚪ 指派給個人                     │
-│  ⚪ 指派給團隊  ← 🆕 需要新增     │
+│ 指派給個人 │
+│ 指派給團隊  ←  需要新增 │
 ├────────────────────────────────────┤
-│  [選擇成員/團隊的下拉選單]        │
+│  [選擇成員/團隊的下拉選單] │
 └────────────────────────────────────┘
 ```
 
@@ -185,17 +185,17 @@ assignConversation: async (
 
 | 功能 | 後端支持 | 前端支持 | 狀態 |
 |------|---------|---------|------|
-| **數據庫欄位** | ✅ `assignedTeamId` | N/A | 完成 |
-| **API 接受參數** | ✅ `teamId`, `userId` | ❌ 僅 `agentId` | 後端完成 |
-| **權限控制** | ⚠️ 需加強 | N/A | 需改進 |
-| **UI 介面** | N/A | ❌ 無團隊選項 | 未實現 |
-| **下拉選單** | N/A | ❌ 僅成員列表 | 未實現 |
+| **數據庫欄位** |  `assignedTeamId` | N/A | 完成 |
+| **API 接受參數** |  `teamId`, `userId` |  僅 `agentId` | 後端完成 |
+| **權限控制** |  需加強 | N/A | 需改進 |
+| **UI 介面** | N/A |  無團隊選項 | 未實現 |
+| **下拉選單** | N/A |  僅成員列表 | 未實現 |
 
 ---
 
 ## (What Works & What Doesn't)
 
-### ✅ 目前可以做到的
+###  目前可以做到的
 
 #### 透過 API 直接調用 (繞過前端)
 
@@ -209,13 +209,13 @@ curl -X POST https://your-domain.com/conversations/conv-123/assign \
     "reason": "指派給業務團隊處理"
   }'
 
-# 結果: ✅ 成功指派給團隊
+# 結果:  成功指派給團隊
 ```
 
 #### 數據庫層面
 
 ```sql
--- ✅ 數據庫可以正確儲存團隊指派
+--  數據庫可以正確儲存團隊指派
 UPDATE conversations
 SET assigned_team_id = 1,
     assigned_user_id = NULL,
@@ -225,7 +225,7 @@ WHERE id = 'conv-123';
 
 ---
 
-### ❌ 目前不能做到的
+###  目前不能做到的
 
 #### 1. 前端 UI 操作
 
@@ -236,7 +236,7 @@ Admin 登入前端系統
   ↓
 點擊「重新指派」按鈕
   ↓
-❌ 只看到成員列表，沒有團隊選項
+ 只看到成員列表，沒有團隊選項
   ↓
 無法透過 UI 指派給團隊
 ```
@@ -248,22 +248,22 @@ Agent 調用 API:
 POST /conversations/123/assign
 { "teamId": 1 }
 
-結果: ⚠️ 可能成功 (因為權限檢查不夠嚴格)
-預期: ❌ 應該返回 403 Forbidden
+結果:  可能成功 (因為權限檢查不夠嚴格)
+預期:  應該返回 403 Forbidden
 ```
 
 ---
 
-## 🔧 (Implementation Roadmap)
+##  (Implementation Roadmap)
 
 ### 需要完成的工作
 
 #### Phase 1: 權限加強 (1-2 小時)
 
 ```typescript
-// 📁 src/handlers/conversation.ts
+// src/handlers/conversation.ts
 
-// ✅ 方案 A: 加入 requireAdmin 中間件 (推薦)
+// 方案 A: 加入 requireAdmin 中間件 (推薦)
 conversations.post('/:id/assign', jwtAuth, requireAdmin(), async (c) => {
   const { teamId, userId, reason } = await c.req.json();
 
@@ -278,7 +278,7 @@ conversations.post('/:id/assign', jwtAuth, requireAdmin(), async (c) => {
     .where(eq(conversationTable.id, conversationId));
 });
 
-// ⚠️ 方案 B: 在權限服務中明確定義 (備選)
+// 方案 B: 在權限服務中明確定義 (備選)
 // src/services/permission-service.ts
 admin: {
   permissions: [
@@ -292,16 +292,16 @@ admin: {
 #### Phase 2: 前端 API 層 (30分鐘)
 
 ```typescript
-// 📁 frontend/src/api/conversations.ts
+// frontend/src/api/conversations.ts
 
 export interface AssignOptions {
-  teamId?: number;   // 團隊 ID
-  userId?: string;   // 個人 ID
-  reason?: string;   // 指派原因
+  teamId?: number; // 團隊 ID
+  userId?: string; // 個人 ID
+  reason?: string; // 指派原因
 }
 
 export const conversationApi = {
-  // ✅ 更新 API 函數支持團隊指派
+  // 更新 API 函數支持團隊指派
   assignConversation: async (
     conversationId: string,
     options: AssignOptions
@@ -309,7 +309,7 @@ export const conversationApi = {
     return apiClient.post(`/conversations/${conversationId}/assign`, options);
   },
 
-  // ✅ 新增:取得所有團隊列表
+  // 新增:取得所有團隊列表
   getTeams: async (): Promise<ApiResponse<Team[]>> => {
     return apiClient.get('/teams');
   }
@@ -325,7 +325,7 @@ export const conversationApi = {
 ```vue
 <template>
   <div class="advanced-assign-actions">
-    <!-- 🆕 新增:指派類型選擇 -->
+    <!--  新增:指派類型選擇 -->
     <div class="assign-type-selector">
       <label>
         <input type="radio" v-model="assignType" value="user" />
@@ -337,7 +337,7 @@ export const conversationApi = {
       </label>
     </div>
 
-    <!-- 🆕 新增:團隊選擇器 (當選擇「指派給團隊」時顯示) -->
+    <!--  新增:團隊選擇器 (當選擇「指派給團隊」時顯示) -->
     <div v-if="assignType === 'team'" class="team-selector">
       <select v-model="selectedTeamId">
         <option value="">請選擇團隊</option>
@@ -347,12 +347,12 @@ export const conversationApi = {
       </select>
     </div>
 
-    <!-- ✅ 現有:成員選擇器 (當選擇「指派給個人」時顯示) -->
+    <!--  現有:成員選擇器 (當選擇「指派給個人」時顯示) -->
     <div v-else class="members-section">
       <!-- 現有的成員列表 -->
     </div>
 
-    <!-- 🆕 更新:確認按鈕 -->
+    <!--  更新:確認按鈕 -->
     <button @click="confirmAssign">
       {{ assignType === 'team' ? '指派給團隊' : '指派給成員' }}
     </button>
@@ -368,7 +368,7 @@ const assignType = ref<'user' | 'team'>('user');
 const selectedTeamId = ref<number | null>(null);
 const teams = ref<Team[]>([]);
 
-// 🆕 載入團隊列表
+// 載入團隊列表
 onMounted(async () => {
   const response = await teamApi.getTeams();
   if (response.success) {
@@ -376,7 +376,7 @@ onMounted(async () => {
   }
 });
 
-// 🆕 確認指派
+// 確認指派
 const confirmAssign = async () => {
   if (assignType.value === 'team' && selectedTeamId.value) {
     // 指派給團隊
@@ -396,7 +396,7 @@ const confirmAssign = async () => {
 **3.2 新增團隊選擇組件 (可選)**
 
 ```vue
-<!-- 📁 frontend/src/components/conversation/TeamSelector.vue -->
+<!--  frontend/src/components/conversation/TeamSelector.vue -->
 <template>
   <div class="team-selector">
     <div class="team-search">
@@ -436,14 +436,14 @@ const confirmAssign = async () => {
 **4.1 權限測試**
 
 ```bash
-# ✅ Admin 應該可以指派給團隊
+#  Admin 應該可以指派給團隊
 curl -X POST /conversations/123/assign \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -d '{"teamId": 1}'
 
 # Expected: 200 OK
 
-# ❌ Agent 不應該可以指派
+#  Agent 不應該可以指派
 curl -X POST /conversations/123/assign \
   -H "Authorization: Bearer $AGENT_TOKEN" \
   -d '{"teamId": 1}'
@@ -461,15 +461,15 @@ curl -X POST /conversations/123/assign \
 
 ---
 
-## 📋 總結
+##  總結
 
 ### 回答您的問題
 
 > **我需要 Admin 可以指派某一個對話給某一個團隊 Team, Agent 沒有這個權限，目前已經辦到了嗎？**
 
-**答案**: ⚠️ **部分完成**
+**答案**:  **部分完成**
 
-#### ✅ 已完成的部分:
+####  已完成的部分:
 
 1. **數據庫層面** - 100% 支持
    - `conversations` 表有 `assignedTeamId` 欄位
@@ -478,9 +478,9 @@ curl -X POST /conversations/123/assign \
 2. **後端 API** - 80% 支持
    - `POST /conversations/:id/assign` 接受 `teamId` 參數
    - 可以成功指派對話給團隊
-   - ⚠️ 但權限控制需要加強
+   -  但權限控制需要加強
 
-#### ❌ 未完成的部分:
+####  未完成的部分:
 
 1. **權限控制不夠嚴格** - 需改進
    - Agent 的 `assign` 權限未明確定義為禁止
@@ -495,7 +495,7 @@ curl -X POST /conversations/123/assign \
 
 ### 建議行動方案
 
-#### 🚀 快速修復 (30分鐘)
+####  快速修復 (30分鐘)
 
 如果您只需要 Admin 能用,且可以接受透過 API 直接調用:
 
@@ -507,9 +507,9 @@ conversations.post('/:id/assign', jwtAuth, requireAdmin(), async (c) => {
 });
 ```
 
-✅ 這樣就能確保只有 Admin 可以指派,Agent 會收到 403 錯誤。
+ 這樣就能確保只有 Admin 可以指派,Agent 會收到 403 錯誤。
 
-#### 🎨 完整實現 (4-6 小時)
+####  完整實現 (4-6 小時)
 
 如果需要完整的 UI 功能:
 
@@ -520,6 +520,6 @@ conversations.post('/:id/assign', jwtAuth, requireAdmin(), async (c) => {
 
 ---
 
-📅 報告日期: 2025-10-23
-✅ 狀態: 後端已完成 80%, 前端待開發
-⚠️ 優先級: 建議先加強權限控制,再開發前端 UI
+ 報告日期: 2025-10-23
+ 狀態: 後端已完成 80%, 前端待開發
+ 優先級: 建議先加強權限控制,再開發前端 UI

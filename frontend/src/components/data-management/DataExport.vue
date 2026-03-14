@@ -71,7 +71,7 @@
       <div class="features-grid">
         <div class="feature-item">
           <div class="feature-icon">
-            📅
+            
           </div>
           <div class="feature-content">
             <h4>日期範圍篩選</h4>
@@ -80,7 +80,7 @@
         </div>
         <div class="feature-item">
           <div class="feature-icon">
-            👤
+            
           </div>
           <div class="feature-content">
             <h4>用戶篩選</h4>
@@ -89,7 +89,7 @@
         </div>
         <div class="feature-item">
           <div class="feature-icon">
-            🎧
+            
           </div>
           <div class="feature-content">
             <h4>客服篩選</h4>
@@ -98,7 +98,7 @@
         </div>
         <div class="feature-item">
           <div class="feature-icon">
-            📊
+            
           </div>
           <div class="feature-content">
             <h4>筆數控制</h4>
@@ -136,21 +136,21 @@ const formats = [
   {
     id: 'csv' as const,
     name: 'CSV - 試算表格式',
-    icon: '📑',
+    icon: '',
     description: '以逗號分隔的表格格式，可直接在 Excel 或 Google Sheets 中開啟和分析',
     usecases: ['Excel 報表', '資料視覺化', '統計分析', '團隊共享']
   },
   {
     id: 'txt' as const,
     name: 'TXT - 純文字聊天記錄',
-    icon: '📝',
+    icon: '',
     description: '人類可讀的純文字格式，按對話分組，每則訊息包含時間和發送者',
     usecases: ['直接閱讀', '品質審查', '存檔歸檔', '列印備份']
   },
   {
     id: 'pdf' as const,
     name: 'PDF - 可攜式報告',
-    icon: '📄',
+    icon: '',
     description: '專業排版的可攜式文件格式，完整支援中文，適合列印、存檔和對外分享',
     usecases: ['列印報告', '正式存檔', '對外分享', '品質審查']
   }

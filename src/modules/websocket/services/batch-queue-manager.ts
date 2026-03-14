@@ -10,10 +10,10 @@ import { Logger, createLogger } from '@/services/logger-service';
  * Controls the batching behavior for optimizing Durable Objects calls
  */
 export interface BatchConfig {
-  enabled: boolean;           // Enable/disable batching
-  maxBatchSize: number;       // Maximum events per batch
-  batchWindowMs: number;      // Time window for collecting events (ms)
-  urgentBypass: boolean;      // Urgent events bypass batching
+  enabled: boolean; // Enable/disable batching
+  maxBatchSize: number; // Maximum events per batch
+  batchWindowMs: number; // Time window for collecting events (ms)
+  urgentBypass: boolean; // Urgent events bypass batching
 }
 
 /**

@@ -14,9 +14,9 @@ import type {
  * 設備類型枚舉
  */
 export enum DeviceType {
-  Mobile = 'mobile',      // < 768px
-  Tablet = 'tablet',      // 768px - 1024px
-  Desktop = 'desktop',    // 1024px - 1440px
+  Mobile = 'mobile', // < 768px
+  Tablet = 'tablet', // 768px - 1024px
+  Desktop = 'desktop', // 1024px - 1440px
   LargeDesktop = 'large'  // > 1440px
 }
 

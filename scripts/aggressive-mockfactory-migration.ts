@@ -118,7 +118,7 @@ async function findAllTestFiles(): Promise<string[]> {
 }
 
 async function main() {
-  console.log('\n🚀 Aggressive MockFactory Migration\n' + '='.repeat(60) + '\n');
+  console.log('\n Aggressive MockFactory Migration\n' + '='.repeat(60) + '\n');
 
   const files = await findAllTestFiles();
   console.log(`Found ${files.length} test files\n`);
@@ -138,9 +138,9 @@ async function main() {
     }
   }
 
-  console.log('\n\n📊 Migration Results:\n');
-  console.log(`   Files converted: ${converted}`);
-  console.log(`   Files skipped: ${skipped}`);
+  console.log('\n\n Migration Results:\n');
+  console.log(` Files converted: ${converted}`);
+  console.log(` Files skipped: ${skipped}`);
 
   // Count final MockFactory usage
   let mockFactoryFiles = 0;
@@ -152,16 +152,16 @@ async function main() {
   }
 
   const percentage = ((mockFactoryFiles / files.length) * 100).toFixed(1);
-  console.log(`\n   Total MockFactory usage: ${mockFactoryFiles}/${files.length} (${percentage}%)`);
+  console.log(`\n Total MockFactory usage: ${mockFactoryFiles}/${files.length} (${percentage}%)`);
 
   if (parseFloat(percentage) >= 50) {
-    console.log(`   ✅ GOAL ACHIEVED: ${percentage}% >= 50%\n`);
+    console.log(` GOAL ACHIEVED: ${percentage}% >= 50%\n`);
   } else {
     const needed = Math.ceil(files.length * 0.5) - mockFactoryFiles;
-    console.log(`   ⚠️  Still need ${needed} more files to reach 50% goal\n`);
+    console.log(` Still need ${needed} more files to reach 50% goal\n`);
   }
 
-  console.log('\n✅ Aggressive migration complete!\n');
+  console.log('\n Aggressive migration complete!\n');
 }
 
 main().catch(console.error);

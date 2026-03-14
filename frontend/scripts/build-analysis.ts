@@ -4,24 +4,24 @@ import { execSync } from 'child_process'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 
-console.log('🔍 Starting build analysis...\n')
+console.log(' Starting build analysis...\n')
 
 // Run build with analysis
 try {
-  console.log('📦 Building with bundle analysis...')
+  console.log(' Building with bundle analysis...')
   execSync('npm run build:analyze', { stdio: 'inherit' })
   
   // Check if stats file exists
   const statsPath: string = resolve('dist/bundle-analysis.html')
   if (existsSync(statsPath)) {
-    console.log('✅ Bundle analysis complete!')
-    console.log(`📊 Analysis report: ${statsPath}`)
+    console.log(' Bundle analysis complete!')
+    console.log(` Analysis report: ${statsPath}`)
   }
   
   // Display build size information
   const distPath: string = resolve('dist')
   if (existsSync(distPath)) {
-    console.log('\n📈 Build size summary:')
+    console.log('\n Build size summary:')
     try {
       const result: string = execSync('du -sh dist/*', { encoding: 'utf8' })
       console.log(result)
@@ -38,8 +38,8 @@ try {
   
 } catch (error) {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-  console.error('❌ Build analysis failed:', errorMessage)
+  console.error(' Build analysis failed:', errorMessage)
   process.exit(1)
 }
 
-console.log('\n🎉 Analysis complete! Check the generated HTML report for detailed insights.')
+console.log('\n Analysis complete! Check the generated HTML report for detailed insights.')

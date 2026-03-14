@@ -98,7 +98,7 @@ const getLastMessageText = (conversation: Conversation) => {
 
 const getAssignedTo = (conversation: Conversation) => {
   if (conversation.assignedTeam?.name) {
-    return `👥 ${conversation.assignedTeam.name}`
+    return ` ${conversation.assignedTeam.name}`
   }
   return '未指派'
 }

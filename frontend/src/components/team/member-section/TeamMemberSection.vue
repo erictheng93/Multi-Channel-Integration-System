@@ -6,7 +6,7 @@
         <h3>團隊成員</h3>
       </div>
       <div class="header-actions">
-        <!-- 🆕 Bulk Selection Mode Toggle -->
+        <!--  Bulk Selection Mode Toggle -->
         <button
           v-if="members.length > 0"
           class="btn btn-sm"
@@ -18,7 +18,7 @@
           {{ isSelectionMode ? '取消選擇' : '批量選擇' }}
         </button>
 
-        <!-- 🆕 Bulk Actions (shown when in selection mode with selections) -->
+        <!--  Bulk Actions (shown when in selection mode with selections) -->
         <template v-if="isSelectionMode && selectedMemberIds.size > 0">
           <span class="selection-count">
             已選擇 {{ selectedMemberIds.size }} 位
@@ -33,7 +33,7 @@
           </button>
         </template>
 
-        <!-- 🆕 Select All (shown when in selection mode) -->
+        <!--  Select All (shown when in selection mode) -->
         <button
           v-if="isSelectionMode && members.length > 0"
           class="btn btn-sm btn-outline"
@@ -95,8 +95,8 @@
  * - Member list display with loading/empty states
  * - Add member action
  * - Remove member with optimistic updates
- * - 🆕 Bulk selection mode
- * - 🆕 Bulk remove with confirmation
+ * -  Bulk selection mode
+ * -  Bulk remove with confirmation
  * - Confirmation dialog integration
  * - Toast notifications
  *
@@ -151,7 +151,7 @@ const { showSuccess, showError } = useToast()
 const removingMemberId = ref<string | null>(null)
 const localMembers = ref<TeamMember[]>([...props.members])
 
-// 🆕 Selection Mode State
+// Selection Mode State
 const isSelectionMode = ref(false)
 const selectedMemberIds = ref<Set<string>>(new Set())
 const bulkRemoveLoading = ref(false)
@@ -188,7 +188,7 @@ const EmptyIcon = {
   </svg>`
 }
 
-// 🆕 Toggle selection mode
+// Toggle selection mode
 const toggleSelectionMode = () => {
   isSelectionMode.value = !isSelectionMode.value
   if (!isSelectionMode.value) {
@@ -197,7 +197,7 @@ const toggleSelectionMode = () => {
   }
 }
 
-// 🆕 Toggle individual member selection
+// Toggle individual member selection
 const toggleMemberSelection = (memberId: string) => {
   const newSet = new Set(selectedMemberIds.value)
   if (newSet.has(memberId)) {
@@ -208,7 +208,7 @@ const toggleMemberSelection = (memberId: string) => {
   selectedMemberIds.value = newSet
 }
 
-// 🆕 Select all members
+// Select all members
 const selectAllMembers = () => {
   const newSet = new Set<string>()
   props.members.forEach(member => {
@@ -217,7 +217,7 @@ const selectAllMembers = () => {
   selectedMemberIds.value = newSet
 }
 
-// 🆕 Handle bulk remove with confirmation
+// Handle bulk remove with confirmation
 const handleBulkRemove = async () => {
   const selectedIds = Array.from(selectedMemberIds.value)
 
@@ -346,7 +346,7 @@ const handleRemoveMember = async (member: TeamMember) => {
   margin: 0;
 }
 
-/* 🆕 Header Actions */
+/* Header Actions */
 .header-actions {
   display: flex;
   gap: 8px;
@@ -413,7 +413,7 @@ const handleRemoveMember = async (member: TeamMember) => {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-/* 🆕 Secondary Button */
+/* Secondary Button */
 .btn-secondary {
   background: #e0e7ff;
   color: #4f46e5;
@@ -425,7 +425,7 @@ const handleRemoveMember = async (member: TeamMember) => {
   border-color: #4f46e5;
 }
 
-/* 🆕 Outline Button */
+/* Outline Button */
 .btn-outline {
   background: white;
   color: #4b5563;
@@ -437,7 +437,7 @@ const handleRemoveMember = async (member: TeamMember) => {
   border-color: #9ca3af;
 }
 
-/* 🆕 Danger Button */
+/* Danger Button */
 .btn-danger {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   color: white;
@@ -452,7 +452,7 @@ const handleRemoveMember = async (member: TeamMember) => {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-/* 🆕 Selection Count Badge */
+/* Selection Count Badge */
 .selection-count {
   padding: 8px 12px;
   background: #eef2ff;

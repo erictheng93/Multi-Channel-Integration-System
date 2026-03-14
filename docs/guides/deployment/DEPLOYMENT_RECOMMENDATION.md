@@ -1,27 +1,27 @@
 # Cloudflare Pages UTF-8 修復 - 部署建議
 
-## 當前狀態總結 ✅
+## 當前狀態總結 
 
 ### 已完成的修復措施
 
-✅ **Git 編碼配置**
+ **Git 編碼配置**
 ```bash
 i18n.commitEncoding = utf-8
 i18n.logOutputEncoding = utf-8
 ```
 
-✅ **commit-msg Hook 已啟用**
+ **commit-msg Hook 已啟用**
 - 位置: `.git/hooks/commit-msg`
 - 權限: 可執行 (rwxr-xr-x)
 - 功能: 自動檢測並拒絕含 UTF-8 特殊字符的 commit
 
-✅ **最新 Commit 狀態**
+ **最新 Commit 狀態**
 ```
 16bc664 | refactor: optimize test infrastructure and add comprehensive documentation
 ```
-✓ 完全使用 ASCII 字符,Cloudflare Pages 兼容
+ 完全使用 ASCII 字符,Cloudflare Pages 兼容
 
-⚠️ **歷史 Commit 發現**
+ **歷史 Commit 發現**
 ```
 a8c43cd | fix: resolve route ordering conflicts in Conversations module (6 conflicts → 0)
                                                                                  ↑
@@ -32,9 +32,9 @@ a8c43cd | fix: resolve route ordering conflicts in Conversations module (6 confl
 
 ---
 
-## 📋 推薦執行方案
+##  推薦執行方案
 
-### 方案 1: 立即部署 (推薦,最快) ⭐⭐⭐⭐⭐
+### 方案 1: 立即部署 (推薦,最快) 
 
 由於最新 commit 已經是 clean 狀態,只需觸發 Cloudflare Pages 重新部署:
 
@@ -69,9 +69,9 @@ git push origin main
 ```
 
 **預期結果:**
-- ✅ Cloudflare Pages 立即開始新部署
-- ✅ 無 UTF-8 警告或錯誤
-- ✅ 部署成功完成
+-  Cloudflare Pages 立即開始新部署
+-  無 UTF-8 警告或錯誤
+-  部署成功完成
 
 **時間:** ~5 分鐘
 
@@ -81,7 +81,7 @@ git push origin main
 
 如果你希望徹底清除歷史中的 UTF-8 字符:
 
-⚠️ **警告:** 此操作會改變 Git 歷史,需要 force push!
+ **警告:** 此操作會改變 Git 歷史,需要 force push!
 
 ```bash
 # 步驟 1: Interactive Rebase
@@ -109,7 +109,7 @@ git push origin main --force-with-lease
 
 ---
 
-## 🔍 驗證檢查清單
+##  驗證檢查清單
 
 執行以下命令驗證所有配置:
 
@@ -136,36 +136,36 @@ git log -1 --pretty=format:"%s" | cat -A
 
 ---
 
-## 📊 部署流程圖
+##  部署流程圖
 
 ```
-當前狀態                    執行方案 1                 Cloudflare Pages
-    │                          │                           │
-    │  最新 commit             │  創建觸發 commit          │
-    │  16bc664 (clean)  ──────>│  (空 commit)       ──────>│  開始構建
-    │                          │                           │
-    │  歷史 commit             │  推送到 main             │  讀取最新 commit
-    │  a8c43cd (UTF-8)         │                           │  ✅ ASCII only
-    │  (不影響)                │                           │
-    │                          │                           │  構建成功
-    │                          │                           │  ✅ 無警告
-    │                          │                           │
-    ▼                          ▼                           ▼
- 預防機制已啟用           部署完成                    線上環境更新
- (commit-msg hook)        (5 分鐘)                   (自動)
+當前狀態 執行方案 1 Cloudflare Pages
+    │ │                           │
+    │  最新 commit │  創建觸發 commit │
+    │  16bc664 (clean)  ──────>│  (空 commit) ──────>│  開始構建
+    │ │                           │
+    │  歷史 commit │  推送到 main │  讀取最新 commit
+    │  a8c43cd (UTF-8) │                           │ ASCII only
+    │  (不影響) │                           │
+    │ │                           │  構建成功
+    │ │                           │ 無警告
+    │ │                           │
+    ▼ ▼                           ▼
+ 預防機制已啟用 部署完成 線上環境更新
+ (commit-msg hook) (5 分鐘) (自動)
 ```
 
 ---
 
-## 🚀 立即執行步驟
+##  立即執行步驟
 
 ### 第一步: 選擇方案
 
 **建議選擇方案 1** (快速部署),因為:
-- ✅ 最新 commit 已經是 clean 狀態
-- ✅ 所有預防措施已配置
-- ✅ 不改變 Git 歷史,安全
-- ✅ 5 分鐘內完成
+-  最新 commit 已經是 clean 狀態
+-  所有預防措施已配置
+-  不改變 Git 歷史,安全
+-  5 分鐘內完成
 
 ### 第二步: 執行命令
 
@@ -184,11 +184,11 @@ git push origin main
 
 ---
 
-## 📝 後續維護
+##  後續維護
 
 ### 自動化預防
 
-✅ **已啟用:** commit-msg hook 會自動檢查所有新 commit
+ **已啟用:** commit-msg hook 會自動檢查所有新 commit
 
 **測試 hook:**
 ```bash
@@ -202,13 +202,13 @@ git commit --allow-empty -m "test -> arrow"
 ### 團隊協作
 
 如果有其他開發者,請分享以下資源:
-- 📄 完整文檔: `docs/troubleshooting/CLOUDFLARE_UTF8_FIX.md`
-- 🔧 修復腳本: `scripts/fix-cloudflare-utf8-issue.ps1` (Windows)
-- 🔧 修復腳本: `scripts/fix-cloudflare-utf8-issue.sh` (Linux/Mac)
+-  完整文檔: `docs/troubleshooting/CLOUDFLARE_UTF8_FIX.md`
+-  修復腳本: `scripts/fix-cloudflare-utf8-issue.ps1` (Windows)
+-  修復腳本: `scripts/fix-cloudflare-utf8-issue.sh` (Linux/Mac)
 
 ---
 
-## ❓ 常見問題
+##  常見問題
 
 ### Q1: 為什麼歷史中還有 UTF-8 commit?
 
@@ -228,7 +228,7 @@ git commit --allow-empty -m "test -> arrow"
 
 ---
 
-## 📞 支持資源
+##  支持資源
 
 - **完整文檔:** `docs/troubleshooting/CLOUDFLARE_UTF8_FIX.md`
 - **修復腳本:** `scripts/fix-cloudflare-utf8-issue.ps1`
@@ -237,7 +237,7 @@ git commit --allow-empty -m "test -> arrow"
 
 ---
 
-## ✅ 最終建議
+##  最終建議
 
 **立即執行:**
 ```bash
@@ -248,4 +248,4 @@ git push origin main
 **預期時間:** 5 分鐘
 **預期結果:** Cloudflare Pages 部署成功,無警告
 
-**長期維護:** commit-msg hook 已啟用,未來自動預防 ✅
+**長期維護:** commit-msg hook 已啟用,未來自動預防 

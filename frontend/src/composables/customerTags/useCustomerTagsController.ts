@@ -223,26 +223,26 @@ export function useCustomerTagsController() {
       if (message.type === 'customer_tags_updated') {
         const now = Date.now()
         if (now - lastRefetchTime < REFETCH_DEBOUNCE_MS) {
-          console.log('⏳ [CustomerTagsController] Debouncing tag refetch')
+          console.log('[CustomerTagsController] Debouncing tag refetch')
           return
         }
         lastRefetchTime = now
 
-        console.log('🔄 [CustomerTagsController] Real-time tag update received, refetching...', message.data)
+        console.log('[CustomerTagsController] Real-time tag update received, refetching...', message.data)
         search.loadTags(true).catch((err: unknown) => {
-          console.error('❌ [CustomerTagsController] Real-time refetch failed:', err)
+          console.error('[CustomerTagsController] Real-time refetch failed:', err)
         })
       }
     })
 
-    console.log('📡 [CustomerTagsController] Subscribed to tag WebSocket updates')
+    console.log('[CustomerTagsController] Subscribed to tag WebSocket updates')
   }
 
   const unsubscribeFromTagUpdates = () => {
     if (wsSubscriptionId) {
       wsStore.unsubscribe(wsSubscriptionId)
       wsSubscriptionId = null
-      console.log('🔌 [CustomerTagsController] Unsubscribed from tag WebSocket updates')
+      console.log('[CustomerTagsController] Unsubscribed from tag WebSocket updates')
     }
   }
 
@@ -259,9 +259,9 @@ export function useCustomerTagsController() {
     try {
       await search.loadTags()
       subscribeToTagUpdates()
-      console.log('✅ [CustomerTagsController] Initialized successfully')
+      console.log('[CustomerTagsController] Initialized successfully')
     } catch (error) {
-      console.error('❌ [CustomerTagsController] Initialization failed:', error)
+      console.error('[CustomerTagsController] Initialization failed:', error)
       showError('載入標籤失敗', '請檢查網路連線或稍後重試')
     } finally {
       loading.value = false
@@ -276,7 +276,7 @@ export function useCustomerTagsController() {
   const cleanup = () => {
     unsubscribeFromTagUpdates()
     keyboard.cleanup()
-    console.log('🧹 [CustomerTagsController] Cleaned up')
+    console.log('[CustomerTagsController] Cleaned up')
   }
 
   // ==================== Return Controller Interface ====================

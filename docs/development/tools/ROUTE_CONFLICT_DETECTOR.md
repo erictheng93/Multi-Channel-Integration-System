@@ -1,12 +1,12 @@
 # Route Conflict Auto-Detection Tool
 
 **Version**: 1.0.0
-**Status**: ✅ Production Ready
+**Status**:  Production Ready
 **Purpose**: Automatically scan handler files for potential route conflicts and prevent routing bugs
 
 ---
 
-## 📖 Table of Contents
+##  Table of Contents
 
 1. [Overview](#overview)
 2. [Installation & Usage](#installation--usage)
@@ -24,16 +24,16 @@ The Route Conflict Auto-Detection Tool scans all handler files in your codebase 
 
 ### What It Detects
 
-- ✅ **Static vs Dynamic Route Conflicts**: Routes like `/search` vs `/:id`
-- ✅ **Duplicate Route Registrations**: Same route registered multiple times
-- ✅ **Cross-Module Conflicts**: Routes from different modules that could interfere
-- ✅ **Registration Order Issues**: Routes that depend on registration sequence
+-  **Static vs Dynamic Route Conflicts**: Routes like `/search` vs `/:id`
+-  **Duplicate Route Registrations**: Same route registered multiple times
+-  **Cross-Module Conflicts**: Routes from different modules that could interfere
+-  **Registration Order Issues**: Routes that depend on registration sequence
 
 ### What It Doesn't Detect
 
-- ❌ Routes registered in different middleware chains (intentional separation)
-- ❌ Routes within the same handler file (Hono handles these correctly)
-- ❌ Conditional routes (depends on runtime logic)
+-  Routes registered in different middleware chains (intentional separation)
+-  Routes within the same handler file (Hono handles these correctly)
+-  Conditional routes (depends on runtime logic)
 
 ---
 
@@ -79,7 +79,7 @@ node scripts/route-conflict-detector.cjs --json > report.json
 
 ### Severity Levels
 
-#### 🔴 CRITICAL - Likely to cause routing failures
+####  CRITICAL - Likely to cause routing failures
 **What it means**: These conflicts will almost certainly cause routing bugs in production.
 
 **Example**:
@@ -89,7 +89,7 @@ Static route "/search" could be intercepted by dynamic route "/:id"
 
 **Action Required**: **IMMEDIATE FIX**
 
-#### 🟡 MEDIUM - May cause unexpected behavior
+####  MEDIUM - May cause unexpected behavior
 **What it means**: These conflicts might cause issues depending on registration order.
 
 **Example**:
@@ -99,7 +99,7 @@ Duplicate route registration in different modules
 
 **Action Required**: **REVIEW NEEDED**
 
-#### 🟢 LOW - Potential maintenance issue
+####  LOW - Potential maintenance issue
 **What it means**: No immediate routing failure, but could complicate future changes.
 
 **Example**:
@@ -113,11 +113,11 @@ Routes have overlapping patterns in different base paths
 
 ## Real vs False Positives
 
-### ✅ Real Conflicts (Action Required)
+###  Real Conflicts (Action Required)
 
 #### Example 1: Static vs Dynamic in Same Module
 ```typescript
-// ❌ CONFLICT: This is a real problem!
+// CONFLICT: This is a real problem!
 // File: src/modules/session/handlers/session.ts
 
 sessionHandler.get('/search', async (c) => {  // Static route
@@ -136,7 +136,7 @@ sessionHandler.get('/:sessionId', async (c) => {  // Dynamic route
 sessionHandler.get('/:sessionId', async (c) => {
   const sessionId = c.req.param('sessionId');
 
-  // ✅ FIX: Reject reserved paths
+  // FIX: Reject reserved paths
   const RESERVED_PATHS = ['search', 'stats', 'batch'];
   if (RESERVED_PATHS.includes(sessionId.toLowerCase())) {
     return c.json({ error: 'Invalid sessionId' }, 400);
@@ -148,7 +148,7 @@ sessionHandler.get('/:sessionId', async (c) => {
 
 #### Example 2: Cross-Module Conflicts in index.ts
 ```typescript
-// ❌ CONFLICT: Registration order matters!
+// CONFLICT: Registration order matters!
 // File: src/index.ts
 
 // If unified route system registers this dynamic route first...
@@ -157,16 +157,16 @@ app.route('/api/teams', teamHandlers);  // Contains /:id/members
 // ...this static route will never be reached
 app.get('/api/teams/members', getTeamMembers);  // Static route
 
-// ✅ FIX: Pre-register static routes BEFORE unified system
+// FIX: Pre-register static routes BEFORE unified system
 app.get('/api/teams/members', getTeamMembers);  // Register FIRST
 app.route('/api/teams', teamHandlers);  // Register AFTER
 ```
 
-###  ❌ False Positives (Can Ignore)
+### False Positives (Can Ignore)
 
 #### Example 1: Different Modules with Same Base Path
 ```typescript
-// ✅ NOT A CONFLICT: Different modules, properly separated
+// NOT A CONFLICT: Different modules, properly separated
 // File: src/modules/analytics/handlers/analytics-main.ts
 app.get('/conversations', getConversationAnalytics);
 
@@ -180,11 +180,11 @@ app.get('/conversations/:id', getConversation);
 
 #### Example 2: Same File Routes (Hono Handles This)
 ```typescript
-// ✅ NOT A CONFLICT: Same handler file, Hono registers correctly
+// NOT A CONFLICT: Same handler file, Hono registers correctly
 // File: src/modules/qrcode/handlers/qrcode-main.ts
 
-app.get('/search', searchQRCodes);    // Hono registers this first
-app.get('/:id', getQRCodeById);       // Then this
+app.get('/search', searchQRCodes); // Hono registers this first
+app.get('/:id', getQRCodeById); // Then this
 
 // Hono automatically handles registration order within the same handler
 ```
@@ -198,7 +198,7 @@ app.get('/:id', getQRCodeById);       // Then this
 Always register static routes BEFORE the unified route system in `src/index.ts`:
 
 ```typescript
-// ✅ GOOD: Pre-register static routes
+// GOOD: Pre-register static routes
 app.get('/api/teams/members', getTeamMembers);  // Static route first
 
 // Then register unified system
@@ -211,7 +211,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 For dynamic routes that could intercept static routes, add validation:
 
 ```typescript
-// ✅ GOOD: Validate dynamic parameters
+// GOOD: Validate dynamic parameters
 app.get('/:id', async (c) => {
   const id = c.req.param('id');
 
@@ -231,7 +231,7 @@ app.get('/:id', async (c) => {
 Add comments in `src/index.ts` explaining why routes are registered in a specific order:
 
 ```typescript
-// ✅ GOOD: Clear documentation
+// GOOD: Clear documentation
 // Priority 1: Public endpoints without auth (registered first)
 app.route('/api/websocket/health', websocketHealthHandler);
 
@@ -248,10 +248,10 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 Prefer specific patterns over generic ones:
 
 ```typescript
-// ❌ BAD: Too generic, could conflict
+// BAD: Too generic, could conflict
 app.get('/:type/:id', handler);
 
-// ✅ GOOD: Specific base path
+// GOOD: Specific base path
 app.get('/users/:id', handler);
 app.get('/teams/:id', handler);
 ```
@@ -264,7 +264,7 @@ app.get('/teams/:id', handler);
 
 **Detected Conflict:**
 ```
-🔴 CRITICAL - Likely to cause routing failures
+ CRITICAL - Likely to cause routing failures
 
 Route 1: GET /api/qrcode/search
   File: src/modules/qrcode/handlers/qrcode-main.ts:45
@@ -285,7 +285,7 @@ Add reserved path validation in the dynamic route handler
 static async getById(c: Context<{ Bindings: Bindings }>) {
   const id = c.req.param('id');
 
-  // 🔒 ROUTE CONFLICT PREVENTION
+  // ROUTE CONFLICT PREVENTION
   const RESERVED_PATHS = [
     'health', 'stats', 'search', 'advanced-search',
     'type', 'tags', 'batch', 'templates', 'export',
@@ -304,13 +304,13 @@ static async getById(c: Context<{ Bindings: Bindings }>) {
 }
 ```
 
-**Result**: ✅ Conflict resolved, routes work correctly
+**Result**:  Conflict resolved, routes work correctly
 
 ### Example 2: Pre-Registering Static Routes
 
 **Detected Conflict:**
 ```
-🔴 CRITICAL
+ CRITICAL
 
 Route 1: GET /api/teams/members
   File: src/handlers/team.ts:50
@@ -325,7 +325,7 @@ Reason: Dynamic route could intercept static route if registered first
 ```typescript
 // src/index.ts
 
-// 🔒 ROUTE CONFLICT PREVENTION
+// ROUTE CONFLICT PREVENTION
 // Pre-register /api/teams/members BEFORE unified route system
 // to prevent interception by /:id/members dynamic route
 app.get('/api/teams/members', getTeamMembers);
@@ -335,7 +335,7 @@ const routeRegistry = new RouteRegistry(app);
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
 ```
 
-**Result**: ✅ Static route always reached, no interception
+**Result**:  Static route always reached, no interception
 
 ---
 
@@ -376,10 +376,10 @@ jobs:
         run: |
           CRITICAL_COUNT=$(jq '.statistics.bySeverity.critical' route-report.json)
           if [ "$CRITICAL_COUNT" -gt 0 ]; then
-            echo "❌ Found $CRITICAL_COUNT critical route conflicts!"
+            echo " Found $CRITICAL_COUNT critical route conflicts!"
             exit 1
           fi
-          echo "✅ No critical route conflicts detected"
+          echo " No critical route conflicts detected"
 ```
 
 ### Pre-Commit Hook
@@ -388,24 +388,24 @@ jobs:
 #!/bin/bash
 # .husky/pre-commit
 
-echo "🔍 Checking for route conflicts..."
+echo " Checking for route conflicts..."
 
 node scripts/route-conflict-detector.cjs --json > /tmp/route-report.json
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 2 ]; then
-  echo "❌ Critical route conflicts detected!"
+  echo " Critical route conflicts detected!"
   echo "Run: node scripts/route-conflict-detector.cjs --verbose"
   echo "to see details"
   exit 1
 fi
 
 if [ $EXIT_CODE -eq 1 ]; then
-  echo "⚠️  Route conflicts detected (non-critical)"
+  echo "  Route conflicts detected (non-critical)"
   echo "Consider reviewing before committing"
 fi
 
-echo "✅ Route conflict check passed"
+echo " Route conflict check passed"
 exit 0
 ```
 
@@ -443,9 +443,9 @@ For each pair of routes:
 ### Filtering False Positives
 
 The tool filters out:
-- ✅ Routes within the same file
-- ✅ Different HTTP methods
-- ✅ Completely different base paths
+-  Routes within the same file
+-  Different HTTP methods
+-  Completely different base paths
 
 ---
 
@@ -509,11 +509,11 @@ Key areas for contribution:
 The Route Conflict Auto-Detection Tool is a powerful static analysis tool that helps prevent routing bugs by detecting potential conflicts before they reach production.
 
 **Key Takeaways**:
-- ✅ Focus on **CRITICAL** conflicts first
-- ✅ Pre-register static routes in `src/index.ts`
-- ✅ Add reserved path validation in dynamic routes
-- ✅ Document route registration order
-- ✅ Integrate with CI/CD for continuous monitoring
+-  Focus on **CRITICAL** conflicts first
+-  Pre-register static routes in `src/index.ts`
+-  Add reserved path validation in dynamic routes
+-  Document route registration order
+-  Integrate with CI/CD for continuous monitoring
 
 **For more information**, see:
 - `docs/architecture/ROUTE_REGISTRATION_ORDER.md`

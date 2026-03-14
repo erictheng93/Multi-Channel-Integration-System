@@ -99,10 +99,10 @@
    - `total_messages_sent`, `total_messages_received`, `last_message_at`
 
 **Benefits:**
-- ✅ Adding new platforms requires NO schema changes
-- ✅ Eliminates ~70% NULL value waste
-- ✅ Separates sensitive credentials for independent encryption
-- ✅ Type definitions in `src/modules/integrations/types/channel-types.ts`
+-  Adding new platforms requires NO schema changes
+-  Eliminates ~70% NULL value waste
+-  Separates sensitive credentials for independent encryption
+-  Type definitions in `src/modules/integrations/types/channel-types.ts`
 
 **Impact:** Non-breaking. Legacy columns preserved.
 

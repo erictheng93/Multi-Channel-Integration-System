@@ -194,24 +194,24 @@ export class ReportsAPI {
       { value: 'custom', label: '自定義報告', description: '用戶自定義報表' },
 
       // Phase 1 Enterprise: 企業級報表
-      { value: 'cost_analysis', label: '💰 成本分析報告', description: '營運成本分析' },
-      { value: 'sla_compliance', label: '⚖️ SLA合規報告', description: '服務等級協議合規性' },
-      { value: 'anomaly_detection', label: '🚨 異常檢測報告', description: '系統異常檢測' },
-      { value: 'audit_trail', label: '📋 審計追蹤報告', description: '操作審計記錄' },
-      { value: 'resource_utilization', label: '⚡ 資源使用報告', description: '資源使用效率' },
+      { value: 'cost_analysis', label: ' 成本分析報告', description: '營運成本分析' },
+      { value: 'sla_compliance', label: ' SLA合規報告', description: '服務等級協議合規性' },
+      { value: 'anomaly_detection', label: ' 異常檢測報告', description: '系統異常檢測' },
+      { value: 'audit_trail', label: ' 審計追蹤報告', description: '操作審計記錄' },
+      { value: 'resource_utilization', label: ' 資源使用報告', description: '資源使用效率' },
 
       // Phase 2: 商業智能增強
-      { value: 'trend_forecast', label: '📈 趨勢預測報告', description: '30天趨勢和需求預測' },
-      { value: 'customer_insights', label: '💡 客戶洞察報告', description: '客戶區段和行為分析' },
-      { value: 'channel_integration', label: '🌐 通道整合報告', description: '多通道整合效果分析' },
-      { value: 'goal_achievement', label: '🎯 目標達成報告', description: 'KPI目標追蹤分析' },
-      { value: 'automation_effectiveness', label: '🤖 自動化成效報告', description: '自動化ROI分析' },
+      { value: 'trend_forecast', label: ' 趨勢預測報告', description: '30天趨勢和需求預測' },
+      { value: 'customer_insights', label: ' 客戶洞察報告', description: '客戶區段和行為分析' },
+      { value: 'channel_integration', label: ' 通道整合報告', description: '多通道整合效果分析' },
+      { value: 'goal_achievement', label: ' 目標達成報告', description: 'KPI目標追蹤分析' },
+      { value: 'automation_effectiveness', label: ' 自動化成效報告', description: '自動化ROI分析' },
 
       // Phase 3: 高級分析功能
-      { value: 'security_risk', label: '🔒 資安風險報告', description: '安全風險評估' },
-      { value: 'knowledge_base', label: '📚 知識庫效能報告', description: '知識庫使用分析' },
-      { value: 'call_quality', label: '📞 通話品質報告', description: '語音品質分析' },
-      { value: 'executive_summary', label: '💼 高管摘要報告', description: '戰略決策支援' }
+      { value: 'security_risk', label: ' 資安風險報告', description: '安全風險評估' },
+      { value: 'knowledge_base', label: ' 知識庫效能報告', description: '知識庫使用分析' },
+      { value: 'call_quality', label: ' 通話品質報告', description: '語音品質分析' },
+      { value: 'executive_summary', label: ' 高管摘要報告', description: '戰略決策支援' }
     ];
   }
 
@@ -220,11 +220,11 @@ export class ReportsAPI {
    */
   static getAvailableFormats(): Array<{ value: ReportFormat; label: string; icon: string }> {
     return [
-      { value: 'json', label: 'JSON 資料', icon: '📄' },
-      { value: 'csv', label: 'CSV 試算表', icon: '📊' },
-      { value: 'excel', label: 'Excel 檔案', icon: '📗' },
-      { value: 'pdf', label: 'PDF 文件', icon: '📕' },
-      { value: 'html', label: 'HTML 網頁', icon: '🌐' }
+      { value: 'json', label: 'JSON 資料', icon: '' },
+      { value: 'csv', label: 'CSV 試算表', icon: '' },
+      { value: 'excel', label: 'Excel 檔案', icon: '' },
+      { value: 'pdf', label: 'PDF 文件', icon: '' },
+      { value: 'html', label: 'HTML 網頁', icon: '' }
     ];
   }
 
@@ -252,13 +252,13 @@ export class ReportsAPI {
    */
   static formatReportStatus(status: string): { label: string; color: string; icon: string } {
     const statusMap = {
-      'pending': { label: '待處理', color: 'orange', icon: '⏳' },
-      'generating': { label: '生成中', color: 'blue', icon: '⚙️' },
-      'completed': { label: '已完成', color: 'green', icon: '✅' },
-      'failed': { label: '失敗', color: 'red', icon: '❌' },
-      'expired': { label: '已過期', color: 'gray', icon: '⏰' }
+      'pending': { label: '待處理', color: 'orange', icon: '' },
+      'generating': { label: '生成中', color: 'blue', icon: '' },
+      'completed': { label: '已完成', color: 'green', icon: '' },
+      'failed': { label: '失敗', color: 'red', icon: '' },
+      'expired': { label: '已過期', color: 'gray', icon: '' }
     };
-    return statusMap[status as keyof typeof statusMap] || { label: status, color: 'gray', icon: '❓' };
+    return statusMap[status as keyof typeof statusMap] || { label: status, color: 'gray', icon: '' };
   }
 
   /**

@@ -625,7 +625,7 @@ sessionHandler.get(
       const jwtPayload = c.get('jwtPayload');
       const sessionService = new SessionService(c.env.DB);
 
-      // 🆕 P2-2: Pass user context for permission checking at service level
+      // P2-2: Pass user context for permission checking at service level
       const userId = jwtPayload?.userId?.toString() || '';
       const userRole = (jwtPayload?.role as 'admin' | 'agent') || 'agent';
 

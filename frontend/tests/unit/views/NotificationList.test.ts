@@ -143,7 +143,7 @@ describe('NotificationList.vue', () => {
       const statValues = wrapper.findAll('.stat-value')
       expect(statValues[0].text()).toBe('150') // 全部通知
       expect(statValues[1].text()).toBe('23')  // 未读通知
-      expect(statValues[2].text()).toBe('8')   // 今日新增
+      expect(statValues[2].text()).toBe('8') // 今日新增
       expect(statValues[3].text()).toBe('45')  // 本周通知
     })
 

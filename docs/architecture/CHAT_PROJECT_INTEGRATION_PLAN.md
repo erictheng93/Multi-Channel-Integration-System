@@ -1,68 +1,68 @@
-# 🔥 Chat Project Integration Plan
+#  Chat Project Integration Plan
 ## Conversation System Reconstruction
 
 **Branch**: `feat/chat-style-conversation`
 **Rollback Point**: `pre-conversation-refactor`
 **Target**: Single conversation view at `/conversations/{id}`
-**Status**: ⚡ **ACTIVE IMPLEMENTATION**
+**Status**:  **ACTIVE IMPLEMENTATION**
 
 ---
 
-## 📋 **Executive Summary**
+##  **Executive Summary**
 
 We are integrating the **Chat Project's** conversation architecture into the Multi-Channel Customer Support System's conversation detail view (`/conversations/{id}`). This integration will adopt the simpler, more direct WebSocket communication pattern from the Chat Project while maintaining all existing features and other modules untouched.
 
 ### **Why This Integration?**
 
-1. ✅ **Simpler WebSocket Architecture**: Chat Project uses 2 Durable Objects vs Current System's 7 (more direct)
-2. ✅ **Direct Communication Pattern**: AuthorizationDO → ConversationDO (fewer hops, lower latency)
-3. ✅ **Proven UI/UX**: Clean, responsive conversation interface that user specifically requested
-4. ✅ **R2 File Upload**: Direct integration with Cloudflare R2 storage
-5. ✅ **User Presence**: Built-in online/offline status tracking
+1.  **Simpler WebSocket Architecture**: Chat Project uses 2 Durable Objects vs Current System's 7 (more direct)
+2.  **Direct Communication Pattern**: AuthorizationDO → ConversationDO (fewer hops, lower latency)
+3.  **Proven UI/UX**: Clean, responsive conversation interface that user specifically requested
+4.  **R2 File Upload**: Direct integration with Cloudflare R2 storage
+5.  **User Presence**: Built-in online/offline status tracking
 
 ---
 
-## 📊 **Architecture Comparison**
+##  **Architecture Comparison**
 
 ### **Chat Project Architecture** (Reference)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          CHAT PROJECT ARCHITECTURE                           │
+│ CHAT PROJECT ARCHITECTURE │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  2 Durable Objects (Monolithic but Effective):                              │
+│ │
+│  2 Durable Objects (Monolithic but Effective): │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ 1. AuthorizationDurableObject                                          │  │
-│  │    ├─ User Authentication (login/register)                             │  │
-│  │    ├─ Session Management (30-day sessions)                             │  │
-│  │    ├─ Channel CRUD operations                                          │  │
-│  │    ├─ WebSocket Connection Management (Map<userId, WebSocket>)         │  │
-│  │    ├─ User Presence Broadcasting (USER_CONNECTED/DISCONNECTED)         │  │
-│  │    └─ notifyChannelUpdate() - Broadcasts to channel members           │  │
-│  │                                                                         │  │
-│  │ 2. ConversationDurableObject                                           │  │
-│  │    ├─ Message Storage (DO SQL Storage)                                 │  │
-│  │    ├─ Message Retrieval with Pagination                                │  │
-│  │    ├─ File Upload to R2                                                │  │
-│  │    └─ Message Creation (calls AuthorizationDO.notify())               │  │
+│  │ 1. AuthorizationDurableObject │  │
+│  │ ├─ User Authentication (login/register) │  │
+│  │ ├─ Session Management (30-day sessions) │  │
+│  │ ├─ Channel CRUD operations │  │
+│  │ ├─ WebSocket Connection Management (Map<userId, WebSocket>) │  │
+│  │ ├─ User Presence Broadcasting (USER_CONNECTED/DISCONNECTED) │  │
+│  │ └─ notifyChannelUpdate() - Broadcasts to channel members │  │
+│  │ │  │
+│  │ 2. ConversationDurableObject │  │
+│  │ ├─ Message Storage (DO SQL Storage) │  │
+│  │ ├─ Message Retrieval with Pagination │  │
+│  │ ├─ File Upload to R2 │  │
+│  │ └─ Message Creation (calls AuthorizationDO.notify()) │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                               │
-│  Communication Flow:                                                          │
+│ │
+│  Communication Flow: │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ User sends message → ConversationDO.POST /messages                     │  │
-│  │                   → Store in DO SQL                                    │  │
-│  │                   → AuthorizationDO.notify(channelId, message)         │  │
-│  │                   → AuthorizationDO broadcasts to all channel members  │  │
-│  │                   → WebSocket delivers to connected clients            │  │
+│  │ User sends message → ConversationDO.POST /messages │  │
+│  │ → Store in DO SQL │  │
+│  │ → AuthorizationDO.notify(channelId, message) │  │
+│  │ → AuthorizationDO broadcasts to all channel members  │  │
+│  │ → WebSocket delivers to connected clients │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                               │
-│  Frontend (React 19):                                                         │
+│ │
+│  Frontend (React 19): │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ WebSocketProvider → Manages WS connection & listeners                  │  │
-│  │ ChatProvider → Manages channels, users, messages                       │  │
-│  │ channel.tsx → Main conversation interface                              │  │
-│  │ ChatInput.tsx → Message input with file upload                         │  │
+│  │ WebSocketProvider → Manages WS connection & listeners │  │
+│  │ ChatProvider → Manages channels, users, messages │  │
+│  │ channel.tsx → Main conversation interface │  │
+│  │ ChatInput.tsx → Message input with file upload │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -71,97 +71,97 @@ We are integrating the **Chat Project's** conversation architecture into the Mul
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    MULTI-CHANNEL CURRENT ARCHITECTURE                        │
+│ MULTI-CHANNEL CURRENT ARCHITECTURE │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  7 Specialized Durable Objects:                                              │
+│ │
+│  7 Specialized Durable Objects: │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ 1. ConversationRoom - WebSocket hub per conversation                   │  │
-│  │ 2. UserConnection - User presence & subscriptions                      │  │
-│  │ 3. MessageBroadcaster - Event distribution coordinator                 │  │
-│  │ 4. DelayedMessageProcessor - Scheduled messages                        │  │
-│  │ 5. DelayedMessageBuffer - Undo buffer                                  │  │
-│  │ 6. LockCoordinator - Distributed locking                               │  │
-│  │ 7. LatestMessageCacheCoordinator - Cache updates                       │  │
+│  │ 1. ConversationRoom - WebSocket hub per conversation │  │
+│  │ 2. UserConnection - User presence & subscriptions │  │
+│  │ 3. MessageBroadcaster - Event distribution coordinator │  │
+│  │ 4. DelayedMessageProcessor - Scheduled messages │  │
+│  │ 5. DelayedMessageBuffer - Undo buffer │  │
+│  │ 6. LockCoordinator - Distributed locking │  │
+│  │ 7. LatestMessageCacheCoordinator - Cache updates │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                               │
-│  Communication Flow:                                                          │
+│ │
+│  Communication Flow: │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ User sends message → HTTP API                                          │  │
-│  │                   → Store in D1 Database                               │  │
-│  │                   → MessageBroadcaster.broadcast()                     │  │
-│  │                   → ConversationRoom DO                                │  │
-│  │                   → WebSocket delivers to clients                      │  │
+│  │ User sends message → HTTP API │  │
+│  │ → Store in D1 Database │  │
+│  │ → MessageBroadcaster.broadcast() │  │
+│  │ → ConversationRoom DO │  │
+│  │ → WebSocket delivers to clients │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                               │
-│  Frontend (Vue 3):                                                            │
+│ │
+│  Frontend (Vue 3): │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ ConversationDetail.vue - Main conversation interface (200+ lines)      │  │
-│  │ VirtualMessageList.vue - Virtual scrolling message list                │  │
-│  │ MessageInput.vue - Complex input with many features                    │  │
-│  │ websocketClient.ts - Advanced WebSocket client                         │  │
-│  │ conversationSync.ts - Sync service                                     │  │
+│  │ ConversationDetail.vue - Main conversation interface (200+ lines) │  │
+│  │ VirtualMessageList.vue - Virtual scrolling message list │  │
+│  │ MessageInput.vue - Complex input with many features │  │
+│  │ websocketClient.ts - Advanced WebSocket client │  │
+│  │ conversationSync.ts - Sync service │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🎯 **Integration Strategy: Hybrid Approach**
+##  **Integration Strategy: Hybrid Approach**
 
 We will create a **simplified conversation system** inspired by Chat Project while keeping other modules intact:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       HYBRID INTEGRATION ARCHITECTURE                        │
+│ HYBRID INTEGRATION ARCHITECTURE │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                               │
-│  Backend: Simplified 2-DO Pattern (Customer Conversations Only)             │
+│ │
+│  Backend: Simplified 2-DO Pattern (Customer Conversations Only) │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ CustomerConversationDO (New - Inspired by AuthorizationDO)             │  │
-│  │    ├─ WebSocket Connection Management                                  │  │
-│  │    ├─ User Presence (agents only)                                      │  │
-│  │    ├─ Real-time Message Broadcasting                                   │  │
-│  │    └─ Map<userId, WebSocket>                                           │  │
-│  │                                                                         │  │
-│  │ CustomerMessageDO (New - Inspired by ConversationDO)                   │  │
-│  │    ├─ Message Storage (D1 Database - NOT DO SQL)                       │  │
-│  │    ├─ Message Retrieval with Pagination                                │  │
-│  │    ├─ File Upload to R2                                                │  │
-│  │    └─ Calls CustomerConversationDO.notify() after message creation    │  │
+│  │ CustomerConversationDO (New - Inspired by AuthorizationDO) │  │
+│  │ ├─ WebSocket Connection Management │  │
+│  │ ├─ User Presence (agents only) │  │
+│  │ ├─ Real-time Message Broadcasting │  │
+│  │ └─ Map<userId, WebSocket> │  │
+│  │ │  │
+│  │ CustomerMessageDO (New - Inspired by ConversationDO) │  │
+│  │ ├─ Message Storage (D1 Database - NOT DO SQL) │  │
+│  │ ├─ Message Retrieval with Pagination │  │
+│  │ ├─ File Upload to R2 │  │
+│  │ └─ Calls CustomerConversationDO.notify() after message creation │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                               │
-│  Frontend: Recreate Chat UI in Vue 3                                         │
+│ │
+│  Frontend: Recreate Chat UI in Vue 3 │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ ConversationDetail.vue (COMPLETE REWRITE)                              │  │
-│  │    ├─ Simpler Structure (like channel.tsx)                             │  │
-│  │    ├─ Header (customer info, status, online indicator)                 │  │
-│  │    ├─ Message List (simple scroll, no virtual)                         │  │
-│  │    ├─ Direct WebSocket Connection                                      │  │
-│  │    └─ Simple Message Input with R2 Upload                              │  │
-│  │                                                                         │  │
-│  │ customerWebSocketClient.ts (New composable)                            │  │
-│  │    ├─ WebSocket lifecycle (connect, disconnect, reconnect)             │  │
-│  │    ├─ Message listeners (channel-specific)                             │  │
-│  │    ├─ Presence tracking                                                │  │
-│  │    └─ Auto-reconnect on focus                                          │  │
+│  │ ConversationDetail.vue (COMPLETE REWRITE) │  │
+│  │ ├─ Simpler Structure (like channel.tsx) │  │
+│  │ ├─ Header (customer info, status, online indicator) │  │
+│  │ ├─ Message List (simple scroll, no virtual) │  │
+│  │ ├─ Direct WebSocket Connection │  │
+│  │ └─ Simple Message Input with R2 Upload │  │
+│  │ │  │
+│  │ customerWebSocketClient.ts (New composable) │  │
+│  │ ├─ WebSocket lifecycle (connect, disconnect, reconnect) │  │
+│  │ ├─ Message listeners (channel-specific) │  │
+│  │ ├─ Presence tracking │  │
+│  │ └─ Auto-reconnect on focus │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                               │
-│  ⚠️ IMPORTANT: Other modules remain UNTOUCHED                                │
+│ │
+│ IMPORTANT: Other modules remain UNTOUCHED │
 │  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ ✅ Team Management                                                      │  │
-│  │ ✅ Analytics & Reports                                                  │  │
-│  │ ✅ QR Code Management                                                   │  │
-│  │ ✅ Tag System                                                           │  │
-│  │ ✅ Authentication & Authorization                                       │  │
-│  │ ✅ All other backend handlers                                           │  │
+│  │  Team Management │  │
+│  │  Analytics & Reports │  │
+│  │  QR Code Management │  │
+│  │  Tag System │  │
+│  │  Authentication & Authorization │  │
+│  │  All other backend handlers │  │
 │  └───────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📝 **Detailed Implementation Plan**
+##  **Detailed Implementation Plan**
 
 ### **Phase 1: Backend - Durable Objects** (Day 1-2)
 
@@ -211,9 +211,9 @@ class CustomerConversationDO {
 ```typescript
 class CustomerMessageDO {
   // HTTP endpoints
-  GET /customer/messages?before=&limit=     // Pagination
-  POST /customer/messages                    // Create + notify
-  POST /customer/upload                      // R2 upload
+  GET /customer/messages?before=&limit= // Pagination
+  POST /customer/messages // Create + notify
+  POST /customer/upload // R2 upload
 
   // Database operations (D1)
   private async storeMessage(message: Message): Promise<void>
@@ -421,7 +421,7 @@ export function useCustomerWebSocket(conversationId: string) {
       ></textarea>
 
       <!-- File upload button -->
-      <button @click="triggerFileUpload">📎</button>
+      <button @click="triggerFileUpload"></button>
       <input
         type="file"
         ref="fileInput"
@@ -862,7 +862,7 @@ CREATE TABLE messages (
 
 ---
 
-## 🎨 **UI/UX Adaptation: React → Vue 3**
+##  **UI/UX Adaptation: React → Vue 3**
 
 ### **Chat Project UI Elements to Recreate**
 
@@ -910,42 +910,42 @@ $dark-border: #374151;
 
 ---
 
-## ⚠️ **Critical Considerations**
+##  **Critical Considerations**
 
 ### **1. Database Architecture**
-- ❗ Chat Project uses **DO SQL Storage** (SQLite per DO)
-- ❗ Multi-Channel uses **D1 Database** (centralized SQLite)
-- ✅ **Solution**: Use D1 in CustomerMessageDO, NOT DO SQL Storage
+-  Chat Project uses **DO SQL Storage** (SQLite per DO)
+-  Multi-Channel uses **D1 Database** (centralized SQLite)
+-  **Solution**: Use D1 in CustomerMessageDO, NOT DO SQL Storage
 
 ### **2. Authentication**
-- ❗ Chat Project uses custom session system
-- ✅ **Solution**: Use existing JWT + KV session system
+-  Chat Project uses custom session system
+-  **Solution**: Use existing JWT + KV session system
 
 ### **3. Channel vs Conversation**
-- ❗ Chat Project: "channels" (group chat)
-- ❗ Multi-Channel: "conversations" (1-to-1 customer support)
-- ✅ **Solution**: Map conversation_id → channel_id in DO naming
+-  Chat Project: "channels" (group chat)
+-  Multi-Channel: "conversations" (1-to-1 customer support)
+-  **Solution**: Map conversation_id → channel_id in DO naming
 
 ### **4. User Model**
-- ❗ Chat Project: `{ id, email, first_name, last_name, avatar }`
-- ❗ Multi-Channel: Different user structure
-- ✅ **Solution**: Adapter layer in frontend to map user data
+-  Chat Project: `{ id, email, first_name, last_name, avatar }`
+-  Multi-Channel: Different user structure
+-  **Solution**: Adapter layer in frontend to map user data
 
 ### **5. R2 Upload URLs**
-- ❗ Chat Project: Hardcoded public URL
-- ✅ **Solution**: Use existing R2_PUBLIC_URL environment variable
+-  Chat Project: Hardcoded public URL
+-  **Solution**: Use existing R2_PUBLIC_URL environment variable
 
 ---
 
-## 🚀 **Deployment Strategy**
+##  **Deployment Strategy**
 
 ### **Step 1: Feature Branch Development**
 ```bash
 # Already on feat/chat-style-conversation branch
 git branch
 # * feat/chat-style-conversation
-#   main
-#   pre-conversation-refactor
+# main
+# pre-conversation-refactor
 ```
 
 ### **Step 2: Incremental Commits**
@@ -975,7 +975,7 @@ git push origin main
 
 ---
 
-## 📚 **Reference Files**
+##  **Reference Files**
 
 ### **Chat Project (Reference)**
 Backend:
@@ -1002,20 +1002,20 @@ Frontend:
 
 ---
 
-## ✅ **Success Criteria**
+##  **Success Criteria**
 
-1. ✅ Single conversation view works with Chat Project UI/UX
-2. ✅ Real-time messaging via simplified WebSocket architecture
-3. ✅ File upload to R2 works seamlessly
-4. ✅ Agent presence indicators show online/offline status
-5. ✅ Other modules (Team, Analytics, etc.) remain untouched and functional
-6. ✅ No breaking changes to existing API contracts
-7. ✅ Performance: Message delivery < 100ms latency
-8. ✅ Reliability: Auto-reconnect works on connection loss
+1.  Single conversation view works with Chat Project UI/UX
+2.  Real-time messaging via simplified WebSocket architecture
+3.  File upload to R2 works seamlessly
+4.  Agent presence indicators show online/offline status
+5.  Other modules (Team, Analytics, etc.) remain untouched and functional
+6.  No breaking changes to existing API contracts
+7.  Performance: Message delivery < 100ms latency
+8.  Reliability: Auto-reconnect works on connection loss
 
 ---
 
-## 📊 **Progress Tracking**
+##  **Progress Tracking**
 
 - [ ] Phase 1: Backend - Durable Objects
   - [ ] CustomerConversationDO implemented
@@ -1038,7 +1038,7 @@ Frontend:
 
 ---
 
-## 🎯 **Next Steps**
+##  **Next Steps**
 
 1. **Review this plan** - Confirm approach is correct
 2. **Start Phase 1** - Implement CustomerConversationDO
@@ -1049,4 +1049,4 @@ Frontend:
 
 **Created**: 2025-01-XX
 **Last Updated**: 2025-01-XX
-**Status**: 🔥 ACTIVE IMPLEMENTATION
+**Status**:  ACTIVE IMPLEMENTATION

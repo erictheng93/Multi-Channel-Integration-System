@@ -359,18 +359,18 @@ describe('useLoadingState - confirmNoMessages mechanism', () => {
 /**
  * 測試總結：
  *
- * ✅ 已測試：
+ * 已測試：
  * - messages computed 的 HTTP fallback 邏輯
  * - refreshMessagesAfterReconnection 訊息同步
  * - loadConversation 的 confirmNoMessages 調用
  * - useLoadingState 的 confirmNoMessages 機制
  *
- * 🎯 覆蓋的修復場景：
+ * 覆蓋的修復場景：
  * - 長時間閒置後 WebSocket 重連
  * - 重連時 unifiedMessages 為空的 fallback
  * - 載入完成但無訊息時的正確空狀態顯示
  *
- * 📝 注意事項：
+ * 注意事項：
  * - useWebSocketIntegration 的 handleUnifiedStateChange 需要集成測試
  * - ConversationDetail.vue 的 isEmptyStateConfirmed 需要組件測試
  */

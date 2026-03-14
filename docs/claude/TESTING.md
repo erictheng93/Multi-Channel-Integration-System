@@ -79,7 +79,7 @@ npm test tests/unit/handlers/messaging-handler.test.ts
 
 ## Running Tests with Bun (Optional - Faster)
 
-> 🚀 **NEW**: Tests can now run with Bun for 2x faster execution. All npm test commands remain fully functional.
+>  **NEW**: Tests can now run with Bun for 2x faster execution. All npm test commands remain fully functional.
 
 ### Prerequisites
 
@@ -111,7 +111,7 @@ bun vitest --ui
 
 **Performance Comparison:**
 - **npm run test**: ~20 seconds
-- **bun run bun:test**: ~10 seconds (2x faster ⚡)
+- **bun run bun:test**: ~10 seconds (2x faster )
 
 ### Backend Tests with Bun
 
@@ -126,12 +126,12 @@ bun test
 
 ### Known Limitations with Bun
 
-**✅ Works Great:**
+** Works Great:**
 - Vitest test execution (2x faster)
 - Unit tests and component tests
 - Store testing with proper setup
 
-**⚠️ Known Issues:**
+** Known Issues:**
 - `better-sqlite3` requires `bun:sqlite` adapter (see `tests/archive/deprecated-helpers/bun-sqlite-adapter.ts`)
 - Some tests may show `ReferenceError: document is not defined` (environment config issue, not critical)
 

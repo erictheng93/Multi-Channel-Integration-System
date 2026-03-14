@@ -6,7 +6,7 @@
 
 ---
 
-## 🎯 核心原則
+##  核心原則
 
 ### 1. **選擇正確的數據存儲**
 
@@ -33,29 +33,29 @@
 
 ### 2. **最小化 KV 寫入操作**
 
-#### ❌ 反模式：每次驗證都寫入
+####  反模式：每次驗證都寫入
 
 ```typescript
-// ❌ BAD: 每個請求都寫入 KV
+// BAD: 每個請求都寫入 KV
 export async function validateSession(sessionId: string) {
   const session = await kv.get(`session:${sessionId}`)
 
   // 更新最後活動時間 - 每次都寫入！
   session.lastActivity = Date.now()
-  await kv.put(`session:${sessionId}`, JSON.stringify(session))  // ⚠️ 高頻寫入
+  await kv.put(`session:${sessionId}`, JSON.stringify(session))  //  高頻寫入
 
   return session
 }
 ```
 
 **問題**：
-- 10 用戶 × 10 請求/小時 × 24 小時 = **2,400 KV writes/day** ⚠️
+- 10 用戶 × 10 請求/小時 × 24 小時 = **2,400 KV writes/day** 
 - 超過 Free Tier 限制（1,000 writes/day）
 
-#### ✅ 最佳實踐：純讀取驗證 + 記憶體 Debounce
+####  最佳實踐：純讀取驗證 + 記憶體 Debounce
 
 ```typescript
-// ✅ GOOD: 純讀取驗證，配合記憶體去重
+// GOOD: 純讀取驗證，配合記憶體去重
 const lastActivityCache = new Map<string, number>()
 
 export async function validateSession(sessionId: string) {
@@ -81,7 +81,7 @@ export async function validateSession(sessionId: string) {
 ```
 
 **效果**：
-- KV 寫入：**0 writes/day** ✅
+- KV 寫入：**0 writes/day** 
 - D1 寫入：960 writes/day（保持不變）
 - 性能提升：無網路調用延遲
 
@@ -89,10 +89,10 @@ export async function validateSession(sessionId: string) {
 
 ### 3. **利用 KV 的自動過期機制**
 
-#### ❌ 反模式：手動管理過期
+####  反模式：手動管理過期
 
 ```typescript
-// ❌ BAD: 手動儲存過期時間並檢查
+// BAD: 手動儲存過期時間並檢查
 await kv.put(key, JSON.stringify({
   data: value,
   expiresAt: Date.now() + 86400000  // 手動計算過期時間
@@ -111,10 +111,10 @@ if (cached && JSON.parse(cached).expiresAt < Date.now()) {
 - 需要手動處理過期邏輯
 - 可能產生過期但未刪除的"幽靈"數據
 
-#### ✅ 最佳實踐：使用 expirationTtl
+####  最佳實踐：使用 expirationTtl
 
 ```typescript
-// ✅ GOOD: 依賴 KV 自動過期
+// GOOD: 依賴 KV 自動過期
 await kv.put(key, JSON.stringify(value), {
   expirationTtl: 86400  // Cloudflare 會自動刪除
 })
@@ -133,10 +133,10 @@ return cached ? JSON.parse(cached) : null
 
 ### 4. **使用記憶體快取減少 KV 讀取**
 
-#### ✅ 兩層快取架構
+####  兩層快取架構
 
 ```typescript
-// ✅ GOOD: Memory → KV → Database
+// GOOD: Memory → KV → Database
 class TwoTierCache {
   private memoryCache = new Map<string, { data: any; cachedAt: number }>()
   private readonly MEMORY_TTL = 5 * 60 * 1000  // 5 分鐘
@@ -145,7 +145,7 @@ class TwoTierCache {
     // Layer 1: Memory Cache（最快）
     const memoryCached = this.memoryCache.get(key)
     if (memoryCached && (Date.now() - memoryCached.cachedAt) < this.MEMORY_TTL) {
-      return memoryCached.data  // ⚡ 即時返回
+      return memoryCached.data  //  即時返回
     }
 
     // Layer 2: KV Cache
@@ -169,7 +169,7 @@ class TwoTierCache {
 ```
 
 **性能提升**：
-- Memory hit: ~1ms ⚡
+- Memory hit: ~1ms 
 - KV hit: ~10-50ms
 - DB hit: ~50-200ms
 
@@ -177,20 +177,20 @@ class TwoTierCache {
 
 ### 5. **批量操作優化**
 
-#### ❌ 反模式：循環中的 KV 操作
+####  反模式：循環中的 KV 操作
 
 ```typescript
-// ❌ BAD: N 次 KV 操作
+// BAD: N 次 KV 操作
 for (const userId of userIds) {
   const data = await kv.get(`user:${userId}`)  // 串行執行
   results.push(data)
 }
 ```
 
-#### ✅ 最佳實踐：並行批量操作
+####  最佳實踐：並行批量操作
 
 ```typescript
-// ✅ GOOD: 並行執行
+// GOOD: 並行執行
 const promises = userIds.map(userId =>
   kv.get(`user:${userId}`)
 )
@@ -219,12 +219,12 @@ const results = await Promise.all(promises)  // 並行執行
 ```typescript
 // src/config/kv-config.ts
 export const KV_TTL = {
-  SESSION: 30 * 24 * 60 * 60,        // 30 天
-  WEBSOCKET_CONNECTION: 5 * 60,       // 5 分鐘
-  CACHE_MESSAGE: 24 * 60 * 60,        // 24 小時
-  CACHE_ANALYTICS: 60 * 60,           // 1 小時
-  CACHE_HTTP: 5 * 60,                 // 5 分鐘
-  PERMANENT: 365 * 24 * 60 * 60,      // 1 年
+  SESSION: 30 * 24 * 60 * 60, // 30 天
+  WEBSOCKET_CONNECTION: 5 * 60, // 5 分鐘
+  CACHE_MESSAGE: 24 * 60 * 60, // 24 小時
+  CACHE_ANALYTICS: 60 * 60, // 1 小時
+  CACHE_HTTP: 5 * 60, // 5 分鐘
+  PERMANENT: 365 * 24 * 60 * 60, // 1 年
 } as const
 ```
 
@@ -232,22 +232,22 @@ export const KV_TTL = {
 
 ### 7. **避免 KV 作為數據庫使用**
 
-#### ❌ 反模式：頻繁更新的計數器
+####  反模式：頻繁更新的計數器
 
 ```typescript
-// ❌ BAD: 使用 KV 做計數器
+// BAD: 使用 KV 做計數器
 async function incrementCounter(userId: string) {
   const count = await kv.get(`counter:${userId}`)
   await kv.put(`counter:${userId}`, String(count + 1))  // 每次都寫入
 }
 
-// 10,000 次調用 = 10,000 KV writes ⚠️
+// 10,000 次調用 = 10,000 KV writes 
 ```
 
-#### ✅ 最佳實踐：使用 Durable Objects
+####  最佳實踐：使用 Durable Objects
 
 ```typescript
-// ✅ GOOD: 使用 Durable Objects 做計數器
+// GOOD: 使用 Durable Objects 做計數器
 class CounterDO {
   private state: DurableObjectState
   private counter = 0
@@ -262,7 +262,7 @@ class CounterDO {
   }
 }
 
-// 10,000 次調用 = 100 次存儲寫入 ✅
+// 10,000 次調用 = 100 次存儲寫入 
 ```
 
 ---
@@ -276,7 +276,7 @@ class CounterDO {
 async function checkKVQuota() {
   // Cloudflare Dashboard API 或自定義監控
   const stats = {
-    dailyReads: await getKVReads(),    // 從監控獲取
+    dailyReads: await getKVReads(), // 從監控獲取
     dailyWrites: await getKVWrites(),
     dailyReadLimit: 100000,
     dailyWriteLimit: 1000
@@ -285,14 +285,14 @@ async function checkKVQuota() {
   const writeUsage = (stats.dailyWrites / stats.dailyWriteLimit) * 100
 
   if (writeUsage > 80) {
-    // 🔴 告警：接近限制
+    // 告警：接近限制
     await sendAlert({
       level: 'critical',
       message: `KV write usage at ${writeUsage.toFixed(1)}%`,
       data: stats
     })
   } else if (writeUsage > 50) {
-    // 🟡 警告：超過一半
+    // 警告：超過一半
     await sendAlert({
       level: 'warning',
       message: `KV write usage at ${writeUsage.toFixed(1)}%`,
@@ -307,7 +307,7 @@ setInterval(checkKVQuota, 60 * 60 * 1000)
 
 ---
 
-## 📋 開發檢查清單
+##  開發檢查清單
 
 在添加新 KV 操作前，請檢查：
 
@@ -322,7 +322,7 @@ setInterval(checkKVQuota, 60 * 60 * 1000)
 
 ---
 
-## 🔧 常見問題
+##  常見問題
 
 ### Q1: Worker Memory 快取會在何時清除？
 
@@ -355,7 +355,7 @@ setInterval(checkKVQuota, 60 * 60 * 1000)
 示例：
 - 每小時 100 請求
 - 每 4 次請求寫入 1 次（Debounce）
-- 每日寫入 = 100 ÷ 4 × 24 = 600 writes/day ✅
+- 每日寫入 = 100 ÷ 4 × 24 = 600 writes/day 
 ```
 
 **檢查方法**：
@@ -383,21 +383,21 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## ✅ 總結
+##  總結
 
 **黃金法則**：
 
-1. ✅ **Prefer Memory over KV** - 能用記憶體就不用 KV
-2. ✅ **Read >> Write** - 最小化寫入操作
-3. ✅ **Let KV handle TTL** - 信任自動過期機制
-4. ✅ **Monitor Usage** - 持續追蹤 quota 使用率
-5. ✅ **Choose Right Tool** - KV, DO, Memory 各有所長
+1.  **Prefer Memory over KV** - 能用記憶體就不用 KV
+2.  **Read >> Write** - 最小化寫入操作
+3.  **Let KV handle TTL** - 信任自動過期機制
+4.  **Monitor Usage** - 持續追蹤 quota 使用率
+5.  **Choose Right Tool** - KV, DO, Memory 各有所長
 
 **這樣做的結果**：
-- ✅ 穩定在 Free Tier 限制內
-- ✅ 更快的響應時間
-- ✅ 更低的成本
-- ✅ 更好的可擴展性
+-  穩定在 Free Tier 限制內
+-  更快的響應時間
+-  更低的成本
+-  更好的可擴展性
 
 ---
 

@@ -3,13 +3,13 @@
 ## 日期：2025-11-10
 ## 版本：Phase 4 - WebSocket 架構完成後的測試基礎設施升級
 
-## 📋 概述
+##  概述
 
 本次更新修復了測試基礎設施中的關鍵問題，並確保所有測試與 WebSocket 架構保持一致。
 
 ---
 
-## 🎯 主要修復
+##  主要修復
 
 ### 1. 資料庫 Mock 修復 (`tests/vitest.setup.ts`)
 
@@ -66,9 +66,9 @@ function createMockStatement(): any {
 3. **Proxy 包裝**: 使用 Proxy 攔截對 db 屬性的訪問
 
 #### 測試結果
-- ✅ webhook-security: 15/15 通過
-- ✅ session-service: 46/46 通過
-- ✅ 總體改善: 從 421 失敗減少到 273 失敗 (35% 改善)
+-  webhook-security: 15/15 通過
+-  session-service: 46/46 通過
+-  總體改善: 從 421 失敗減少到 273 失敗 (35% 改善)
 
 ---
 
@@ -145,7 +145,7 @@ Monitoring Dashboard
 
 ---
 
-## 📊 測試結果對比
+##  測試結果對比
 
 ### 修復前
 ```
@@ -159,20 +159,20 @@ Tests: 421 failed | 1296 passed (1717)
 Test Files: 103 failed | 45 passed (148)
 Tests: 273 failed | 1401 passed | 43 skipped (1717)
 主要改善:
-  ✅ 148 個測試修復 (35% 改善)
-  ✅ 數據庫相關測試全部通過
-  ✅ WebSocket 整合測試通過
+   148 個測試修復 (35% 改善)
+   數據庫相關測試全部通過
+   WebSocket 整合測試通過
 ```
 
 ### 通過的關鍵測試
-- ✅ `webhook-security.test.ts`: 15/15 (100%)
-- ✅ `session-service.test.ts`: 46/46 (100%)
-- ✅ `performance-monitor.test.ts`: 23/26 (88%)
-- ✅ 大部分數據庫查詢測試
+-  `webhook-security.test.ts`: 15/15 (100%)
+-  `session-service.test.ts`: 46/46 (100%)
+-  `performance-monitor.test.ts`: 23/26 (88%)
+-  大部分數據庫查詢測試
 
 ---
 
-## 🔧 剩餘測試失敗分析
+##  剩餘測試失敗分析
 
 ### 1. Performance Monitor 測試 (3 失敗)
 **原因**: 測試還在 mock 舊的 SSE manager
@@ -213,7 +213,7 @@ global.fetch = vi.fn((url) => {
 
 ---
 
-## 📝 最佳實踐
+##  最佳實踐
 
 ### 1. 數據庫測試 Mock
 
@@ -235,7 +235,7 @@ factory.setupSelectQuery({
 
 **避免**:
 ```typescript
-// ❌ 不完整的 mock
+// 不完整的 mock
 const mockDb = {
   prepare: vi.fn(() => ({
     bind: vi.fn(),
@@ -277,12 +277,12 @@ global.fetch = vi.fn((url) => {
 
 ---
 
-## 🚀 後續行動
+##  後續行動
 
 ### 短期 (已完成)
-- ✅ 修復數據庫 mock 設置
-- ✅ 更新 performance monitor 使用 WebSocket
-- ✅ 驗證關鍵測試通過
+-  修復數據庫 mock 設置
+-  更新 performance monitor 使用 WebSocket
+-  驗證關鍵測試通過
 
 ### 中期 (建議)
 - [ ] 更新 performance-monitor 測試以 mock WebSocket endpoint
@@ -296,7 +296,7 @@ global.fetch = vi.fn((url) => {
 
 ---
 
-## 📚 相關文檔
+##  相關文檔
 
 - [SSE Cleanup Final Fixes](./SSE_CLEANUP_FINAL_FIXES.md)
 - [WebSocket Architecture](../architecture/WEBSOCKET_ARCHITECTURE.md)
@@ -305,7 +305,7 @@ global.fetch = vi.fn((url) => {
 
 ---
 
-## ✅ 驗證清單
+##  驗證清單
 
 修復後應驗證以下項目：
 
@@ -319,7 +319,7 @@ global.fetch = vi.fn((url) => {
 
 ---
 
-## 📞 聯繫方式
+##  聯繫方式
 
 如有問題或需要支持，請：
 - 查看 [測試故障排除指南](../../tests/TROUBLESHOOTING.md)

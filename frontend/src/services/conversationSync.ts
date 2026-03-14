@@ -1,9 +1,9 @@
-// ⚠️ DEPRECATED: 此文件已废弃，逻辑已整合到 conversationsStore.ts
+// DEPRECATED: 此文件已废弃，逻辑已整合到 conversationsStore.ts
 // 對話數據混合同步服務 - WebSocket + 智能輪詢備份
 // Phase 3 Migration: SSE → WebSocket (2025-10-17)
 // 專案名稱：Multi-Channel Support MVP
 //
-// 📌 迁移说明：
+// 迁移说明：
 // - 新实现：frontend/src/stores/conversations.ts (方案 B 阶段 2)
 // - 使用方式：conversationsStore.initializeRealtime() / conversationsStore.cleanup()
 // - 此文件仍然保留以支持旧组件，但建议迁移到新 API
@@ -22,17 +22,17 @@ type SyncStatus = 'disconnected' | 'connecting' | 'connected' | 'polling' | 'err
 // 混合同步配置
 interface SyncConfig {
   pollbackupInterval: number;  // 備份輪詢間隔
-  heartbeatTimeout: number;    // 心跳超時
-  reconnectDelay: number;      // 重連延遲
+  heartbeatTimeout: number; // 心跳超時
+  reconnectDelay: number; // 重連延遲
   maxReconnectAttempts: number; // 最大重連次數
 }
 
 // 默認配置
 const DEFAULT_CONFIG: SyncConfig = {
-  pollbackupInterval: 300000,   // 5分鐘備份輪詢（減少頻率）
-  heartbeatTimeout: 30000,      // 30秒心跳超時（配合15秒心跳間隔）
-  reconnectDelay: 5000,         // 5秒重連延遲
-  maxReconnectAttempts: 3       // 最多重連3次
+  pollbackupInterval: 300000, // 5分鐘備份輪詢（減少頻率）
+  heartbeatTimeout: 30000, // 30秒心跳超時（配合15秒心跳間隔）
+  reconnectDelay: 5000, // 5秒重連延遲
+  maxReconnectAttempts: 3 // 最多重連3次
 }
 
 export class ConversationSyncService {
@@ -75,7 +75,7 @@ export class ConversationSyncService {
 
   // 開始同步
   async start() {
-    console.log('🚀 [Sync Service] Starting WebSocket-based hybrid sync...')
+    console.log('[Sync Service] Starting WebSocket-based hybrid sync...')
 
     // 清理現有連接
     this.stop()
@@ -92,7 +92,7 @@ export class ConversationSyncService {
 
   // 停止同步
   stop() {
-    console.log('🛑 [Sync Service] Stopping sync service...')
+    console.log('[Sync Service] Stopping sync service...')
 
     this.closeWebSocket()
     this.stopPollbackup()
@@ -113,7 +113,7 @@ export class ConversationSyncService {
 
   // 手動刷新
   async refresh() {
-    console.log('🔄 [Sync Service] Manual refresh requested')
+    console.log('[Sync Service] Manual refresh requested')
     return this.pollConversations()
   }
 
@@ -121,13 +121,13 @@ export class ConversationSyncService {
   private startWebSocket() {
     const authStore = useAuthStore()
     if (!authStore.token) {
-      console.warn('⚠️ [Sync Service] No auth token, falling back to polling')
+      console.warn('[Sync Service] No auth token, falling back to polling')
       this.setStatus('polling')
       return
     }
 
     try {
-      console.log('📡 [Sync Service] Initializing WebSocket connection...')
+      console.log('[Sync Service] Initializing WebSocket connection...')
 
       // 創建 WebSocket 客戶端（用於 conversations 列表同步）
       this.wsClient = createWebSocketClient({
@@ -150,7 +150,7 @@ export class ConversationSyncService {
         onConnectionChange: (state) => {
           switch (state) {
             case 'connected':
-              console.log('✅ [Sync Service] WebSocket connected')
+              console.log('[Sync Service] WebSocket connected')
               this.setStatus('connected')
               this.reconnectAttempts = 0
               this.errorMessage.value = null
@@ -169,7 +169,7 @@ export class ConversationSyncService {
           }
         },
         onError: (error) => {
-          console.error('❌ [Sync Service] WebSocket error:', error)
+          console.error('[Sync Service] WebSocket error:', error)
           this.errorMessage.value = error.message
         },
         onHeartbeat: () => {
@@ -181,19 +181,19 @@ export class ConversationSyncService {
       // 連接到 WebSocket
       this.wsClient.connect()
         .catch((error) => {
-          console.error('❌ [Sync Service] WebSocket connection failed:', error)
+          console.error('[Sync Service] WebSocket connection failed:', error)
           this.handleWebSocketError()
         })
 
     } catch (error) {
-      console.error('❌ [Sync Service] Failed to initialize WebSocket:', error)
+      console.error('[Sync Service] Failed to initialize WebSocket:', error)
       this.handleWebSocketError()
     }
   }
 
   // 處理 WebSocket 消息
   private handleWebSocketMessage(message: WebSocketMessage) {
-    console.log('📥 [Sync Service] WebSocket message:', message.type)
+    console.log('[Sync Service] WebSocket message:', message.type)
 
     switch (message.type) {
       case 'heartbeat':
@@ -215,7 +215,7 @@ export class ConversationSyncService {
         break
 
       case 'connection_ack':
-        console.log('✅ [Sync Service] Connection acknowledged')
+        console.log('[Sync Service] Connection acknowledged')
         // 訂閱全局 conversations 更新
         if (this.wsClient) {
           this.wsClient.send({
@@ -226,7 +226,7 @@ export class ConversationSyncService {
         break
 
       default:
-        console.warn('⚠️ [Sync Service] Unknown WebSocket message type:', message.type)
+        console.warn('[Sync Service] Unknown WebSocket message type:', message.type)
     }
   }
 
@@ -236,7 +236,7 @@ export class ConversationSyncService {
 
     if (this.reconnectAttempts < this.config.maxReconnectAttempts) {
       this.reconnectAttempts++
-      console.log(`🔄 [Sync Service] Reconnecting WebSocket (${this.reconnectAttempts}/${this.config.maxReconnectAttempts})...`)
+      console.log(`[Sync Service] Reconnecting WebSocket (${this.reconnectAttempts}/${this.config.maxReconnectAttempts})...`)
 
       this.setStatus('connecting')
       this.reconnectTimer = setTimeout(() => {
@@ -244,7 +244,7 @@ export class ConversationSyncService {
       }, this.config.reconnectDelay * this.reconnectAttempts)
 
     } else {
-      console.warn('⚠️ [Sync Service] Max reconnect attempts reached, falling back to polling')
+      console.warn('[Sync Service] Max reconnect attempts reached, falling back to polling')
       this.setStatus('polling')
       this.errorMessage.value = 'WebSocket 連接失敗，使用輪詢模式'
     }
@@ -272,11 +272,11 @@ export class ConversationSyncService {
       const isConversationDetailPage = currentPath.startsWith('/conversations/')
 
       if (shouldPoll && isConversationListPage && !isConversationDetailPage) {
-        console.log('🔄 [Sync Service] Backup polling triggered for conversation list')
+        console.log('[Sync Service] Backup polling triggered for conversation list')
         this.pollConversations()
       } else if (shouldPoll && isConversationDetailPage) {
         // 對話詳情頁面也提供備份輪詢，但頻率較低避免與頁面內 WebSocket 衝突
-        console.log('🔄 [Sync Service] Backup polling triggered for conversation detail page')
+        console.log('[Sync Service] Backup polling triggered for conversation detail page')
         this.pollConversations()
       }
     }, this.config.pollbackupInterval)
@@ -304,13 +304,13 @@ export class ConversationSyncService {
 
         // 如果輪詢成功且 WebSocket 斷開，嘗試重新連接
         if (this.status.value === 'polling' && this.reconnectAttempts === 0) {
-          console.log('🔄 [Sync Service] Attempting to restore WebSocket connection...')
+          console.log('[Sync Service] Attempting to restore WebSocket connection...')
           this.startWebSocket()
         }
       }
 
     } catch (error) {
-      console.error('❌ [Sync Service] Polling failed:', error)
+      console.error('[Sync Service] Polling failed:', error)
       this.errorMessage.value = '數據同步失敗'
     }
   }
@@ -330,7 +330,7 @@ export class ConversationSyncService {
       if (this.onStatusChange) {
         this.onStatusChange(status)
       }
-      console.log(`📊 [Sync Service] Status: ${status}`)
+      console.log(`[Sync Service] Status: ${status}`)
     }
   }
 
@@ -342,9 +342,9 @@ export class ConversationSyncService {
     // Create and store the handler for later cleanup
     this.visibilityChangeHandler = () => {
       if (document.hidden) {
-        console.log('👁️ [Sync Service] Page hidden, maintaining connection')
+        console.log('[Sync Service] Page hidden, maintaining connection')
       } else {
-        console.log('👁️ [Sync Service] Page visible, refreshing data')
+        console.log('[Sync Service] Page visible, refreshing data')
         this.refresh()
       }
     }

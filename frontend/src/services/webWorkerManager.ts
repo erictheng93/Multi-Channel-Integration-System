@@ -90,10 +90,10 @@ export class WebWorkerManager {
       this.activeWorkers.value = this.workers.length
       this.isReady.value = true
       
-      console.log(`🏭 [WebWorkerManager] Initialized ${this.workers.length} workers`)
+      console.log(`[WebWorkerManager] Initialized ${this.workers.length} workers`)
       
     } catch (error) {
-      console.error('❌ [WebWorkerManager] Failed to initialize worker pool:', error)
+      console.error('[WebWorkerManager] Failed to initialize worker pool:', error)
     }
   }
 
@@ -117,7 +117,7 @@ export class WebWorkerManager {
       }
       
       worker.onerror = (error) => {
-        console.error(`❌ [WebWorkerManager] Worker ${index} error:`, error)
+        console.error(`[WebWorkerManager] Worker ${index} error:`, error)
         clearTimeout(timeout)
         reject(error)
       }
@@ -320,7 +320,7 @@ export class WebWorkerManager {
     this.activeTasks.clear()
     this.queueSize.value = 0
     
-    console.log('🚫 [WebWorkerManager] All tasks cancelled')
+    console.log('[WebWorkerManager] All tasks cancelled')
   }
 
   // 擴展 Worker 池
@@ -340,9 +340,9 @@ export class WebWorkerManager {
       this.workers.push(worker)
       this.activeWorkers.value = this.workers.length
       
-      console.log(`📈 [WebWorkerManager] Scaled up to ${this.workers.length} workers`)
+      console.log(`[WebWorkerManager] Scaled up to ${this.workers.length} workers`)
     } catch (error) {
-      console.error('❌ [WebWorkerManager] Failed to scale up:', error)
+      console.error('[WebWorkerManager] Failed to scale up:', error)
     }
   }
 
@@ -358,7 +358,7 @@ export class WebWorkerManager {
       worker.terminate()
       this.activeWorkers.value = this.workers.length
       
-      console.log(`📉 [WebWorkerManager] Scaled down to ${this.workers.length} workers`)
+      console.log(`[WebWorkerManager] Scaled down to ${this.workers.length} workers`)
     }
   }
 
@@ -385,7 +385,7 @@ export class WebWorkerManager {
     this.activeWorkers.value = 0
     this.isReady.value = false
     
-    console.log('🔴 [WebWorkerManager] Worker pool destroyed')
+    console.log('[WebWorkerManager] Worker pool destroyed')
   }
 }
 

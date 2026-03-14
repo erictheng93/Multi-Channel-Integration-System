@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 
 // Teams table - 團隊
 // SEMANTIC CONTRACT: isActive=false → temporarily disabled (recoverable)
-//                    deletedAt=set  → soft deleted (logically removed)
+// deletedAt=set  → soft deleted (logically removed)
 export const teams = sqliteTable('teams', {
   id: integer('id').primaryKey(),
   name: text('name').notNull(),
@@ -20,7 +20,7 @@ export const teams = sqliteTable('teams', {
 export const agents = sqliteTable('agents', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(), // 🔐 Bcrypt hashed
+  passwordHash: text('password_hash').notNull(), //  Bcrypt hashed
   displayName: text('display_name').notNull(),
   role: text('role').notNull().default('agent'), // 'admin', 'agent' (simplified from 3-tier to 2-tier system)
   // teamId REMOVED — use agent_teams table (isPrimary=true) for primary team lookup
@@ -55,10 +55,10 @@ export const customers = sqliteTable('customers', {
   platformUserId: text('platform_user_id').notNull(),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
-  email: text('email'), // 📋 Consider encryption for PII
-  phone: text('phone'), // 📋 Consider encryption for PII
+  email: text('email'), //  Consider encryption for PII
+  phone: text('phone'), //  Consider encryption for PII
   sourceTeamId: integer('source_team_id').references(() => teams.id, { onDelete: 'set null' }),
-  metadata: text('metadata'), // JSON string for platform-specific data (📋 may contain PII)
+  metadata: text('metadata'), // JSON string for platform-specific data ( may contain PII)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
@@ -224,7 +224,7 @@ export const notifications = sqliteTable('notifications', {
 
 // Tags table - 標籤系統
 // SEMANTIC CONTRACT: isActive=false → temporarily disabled (recoverable)
-//                    deletedAt=set  → soft deleted (logically removed)
+// deletedAt=set  → soft deleted (logically removed)
 export const tags = sqliteTable('tags', {
   id: integer('id').primaryKey(),
   name: text('name').notNull(),

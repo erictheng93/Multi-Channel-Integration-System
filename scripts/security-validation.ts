@@ -252,7 +252,7 @@ class SecurityValidator {
   }
 
   public async validate(): Promise<ValidationResult> {
-    console.log('🔒 Running Security Validation...\n');
+    console.log(' Running Security Validation...\n');
 
     const checks = this.getSecurityChecks();
 
@@ -264,32 +264,32 @@ class SecurityValidator {
   }
 
   public printResults(): void {
-    console.log('📊 Security Validation Results\n');
+    console.log(' Security Validation Results\n');
     console.log('=' .repeat(50));
 
     // Summary
     const total = this.results.passed + this.results.failed + this.results.skipped;
     console.log(`Total checks: ${total}`);
-    console.log(`✅ Passed: ${this.results.passed}`);
-    console.log(`❌ Failed: ${this.results.failed}`);
-    console.log(`⏭️  Skipped: ${this.results.skipped}\n`);
+    console.log(` Passed: ${this.results.passed}`);
+    console.log(` Failed: ${this.results.failed}`);
+    console.log(`  Skipped: ${this.results.skipped}\n`);
 
     // Detailed results
     const highSeverityFailures = this.results.results.filter(r => r.status === 'fail' && r.severity === 'high');
     const mediumSeverityFailures = this.results.results.filter(r => r.status === 'fail' && r.severity === 'medium');
 
     if (highSeverityFailures.length > 0) {
-      console.log('🚨 HIGH SEVERITY FAILURES:');
+      console.log(' HIGH SEVERITY FAILURES:');
       highSeverityFailures.forEach(result => {
-        console.log(`  ❌ ${result.name}: ${result.message}`);
+        console.log(` ${result.name}: ${result.message}`);
       });
       console.log();
     }
 
     if (mediumSeverityFailures.length > 0) {
-      console.log('⚠️  MEDIUM SEVERITY FAILURES:');
+      console.log('  MEDIUM SEVERITY FAILURES:');
       mediumSeverityFailures.forEach(result => {
-        console.log(`  ⚠️  ${result.name}: ${result.message}`);
+        console.log(` ${result.name}: ${result.message}`);
       });
       console.log();
     }
@@ -297,5 +297,5 @@ class SecurityValidator {
     // All results
     console.log('DETAILED RESULTS:');
     this.results.results.forEach(result => {
-      const icon = result.status === 'pass' ? '✅' : result.status === 'fail' ? '❌' : '⏭️';
-      console.log(`  ${icon} ${result.name}: ${result.message}`);\n    });\n    \n    // Final verdict\n    const criticalFailures = highSeverityFailures.length;\n    if (criticalFailures === 0) {\n      console.log('\\n🎉 Security validation PASSED! No critical vulnerabilities found.');\n    } else {\n      console.log(`\\n⛔ Security validation FAILED! ${criticalFailures} critical vulnerabilities found.`);\n      process.exit(1);\n    }\n  }\n}\n\n// Main execution\nasync function main() {\n  const validator = new SecurityValidator();\n  await validator.validate();\n  validator.printResults();\n}\n\nif (require.main === module) {\n  main().catch(console.error);\n}\n\nexport { SecurityValidator };
+      const icon = result.status === 'pass' ? '' : result.status === 'fail' ? '' : '';
+      console.log(`  ${icon} ${result.name}: ${result.message}`);\n });\n \n // Final verdict\n const criticalFailures = highSeverityFailures.length;\n if (criticalFailures === 0) {\n console.log('\\n Security validation PASSED! No critical vulnerabilities found.');\n } else {\n console.log(`\\n Security validation FAILED! ${criticalFailures} critical vulnerabilities found.`);\n process.exit(1);\n }\n  }\n}\n\n// Main execution\nasync function main() {\n  const validator = new SecurityValidator();\n  await validator.validate();\n  validator.printResults();\n}\n\nif (require.main === module) {\n  main().catch(console.error);\n}\n\nexport { SecurityValidator };

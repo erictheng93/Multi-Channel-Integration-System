@@ -31,12 +31,12 @@
  *
  * 使用示例：
  * <ConversationStatusBanner
- *   :is-closed="conversation.status === 'closed'"
- *   :is-dragging="isDraggingFiles"
- *   :new-message-count="5"
- *   @reopen-conversation="handleReopenConversation"
- *   @file-drop="handleFileUpload"
- *   @scroll-to-bottom="scrollToBottom"
+ * :is-closed="conversation.status === 'closed'"
+ * :is-dragging="isDraggingFiles"
+ * :new-message-count="5"
+ * @reopen-conversation="handleReopenConversation"
+ * @file-drop="handleFileUpload"
+ * @scroll-to-bottom="scrollToBottom"
  * />
  */
 

@@ -120,7 +120,7 @@ describe('useQRCodeDownloader', () => {
     // Default scale is 3, cardWidth = 260 * 3 = 780
     expect(mockCanvas.width).toBe(780)
     // Height calculation: bodyPadding(105) + qr(420) + titleMargin(72) + titleHeight(74)
-    //                    + subtitleMargin(24) + subtitleHeight(51) + btnMargin(75) + btnHeight(120) + footerPadding(60)
+    // + subtitleMargin(24) + subtitleHeight(51) + btnMargin(75) + btnHeight(120) + footerPadding(60)
     expect(mockCanvas.height).toBeGreaterThan(0)
   })
 

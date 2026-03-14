@@ -148,26 +148,26 @@ $ curl https://your-api-domain.example.com/api/system/health
 ### Before Migration (Legacy Structure)
 ```
 src/handlers/team.ts (1500+ lines)
-?œâ? Direct route handlers in main index.ts
-?œâ? No service layer separation
-?œâ? Business logic mixed with routing
-?”â? Hard to test and maintain
+?ï¿½ï¿½? Direct route handlers in main index.ts
+?ï¿½ï¿½? No service layer separation
+?ï¿½ï¿½? Business logic mixed with routing
+?ï¿½ï¿½? Hard to test and maintain
 ```
 
 ### After Migration (Modular Structure)
 ```
 src/modules/teams/
-?œâ? types/
-?? ?œâ? member-types.ts       # Clean type definitions
-?? ?œâ? password-types.ts     # Separated concerns
-?? ?”â? invitation-types.ts   # Type safety
-?œâ? services/
-?? ?”â? member-service.ts     # Business logic layer
-?”â? handlers/
-   ?œâ? index.ts              # Route mounting
-   ?œâ? members.ts            # Member management routes
-   ?œâ? password.ts           # Password management routes
-   ?”â? invitations.ts        # Invitation system routes
+?ï¿½ï¿½? types/
+?? ?ï¿½ï¿½? member-types.ts # Clean type definitions
+?? ?ï¿½ï¿½? password-types.ts # Separated concerns
+?? ?ï¿½ï¿½? invitation-types.ts # Type safety
+?ï¿½ï¿½? services/
+?? ?ï¿½ï¿½? member-service.ts # Business logic layer
+?ï¿½ï¿½? handlers/
+   ?ï¿½ï¿½? index.ts # Route mounting
+   ?ï¿½ï¿½? members.ts # Member management routes
+   ?ï¿½ï¿½? password.ts # Password management routes
+   ?ï¿½ï¿½? invitations.ts # Invitation system routes
 ```
 
 **Benefits**:
@@ -181,13 +181,13 @@ src/modules/teams/
 
 ## Known Limitations & Future Work
 
-### ?Ÿ¡ Invitation System Storage
+### ?ï¿½ï¿½ Invitation System Storage
 - **Current**: In-memory Map (will be lost on Worker restart)
 - **Required**: Database migration to persist invitations
 - **Priority**: Medium
 - **Effort**: 2-3 hours
 
-### ?Ÿ¡ Password Hashing
+### ?ï¿½ï¿½ Password Hashing
 - **Current**: Plain text storage (marked with TODO comments)
 - **Required**: Implement bcrypt or Argon2 hashing
 - **Priority**: **HIGH** (Security vulnerability)
@@ -196,7 +196,7 @@ src/modules/teams/
   - `src/modules/teams/services/member-service.ts:32`
   - `src/modules/teams/handlers/password.ts:48, 109, 120`
 
-### ?Ÿ¡ loginId Field Removal
+### ?ï¿½ï¿½ loginId Field Removal
 - **Current**: Frontend may still expect `loginId` field
 - **Status**: Using `displayName` as fallback in `formatMember()`
 - **Required**: Verify frontend compatibility
@@ -233,7 +233,7 @@ src/modules/teams/
 - Users cannot modify their own status/role
 - Activity logging for audit trail
 
-### ? ï? Pending
+### ?ï¿½ï¿½? Pending
 - **PASSWORD HASHING** - Currently storing plain text passwords
   - **CRITICAL SECURITY ISSUE**
   - Must implement before production use with real data

@@ -445,7 +445,7 @@ function analyzeRoutePriority(routes: RouteTest[]): string[] {
 
           if (matches) {
             warnings.push(
-              `⚠️ ${method} ${staticRoute} 可能被 ${paramRoute} 攔截，確保靜態路由註冊在前`
+              ` ${method} ${staticRoute} 可能被 ${paramRoute} 攔截，確保靜態路由註冊在前`
             );
           }
         }
@@ -509,14 +509,14 @@ async function testRoute(baseUrl: string, route: RouteTest, authToken?: string):
       success: isExpected,
       status: response.status,
       message: isExpected
-        ? `✅ ${route.description}: ${response.status}`
-        : `❌ ${route.description}: 期望 ${route.expectedStatus.join('/')}, 得到 ${response.status}`
+        ? ` ${route.description}: ${response.status}`
+        : ` ${route.description}: 期望 ${route.expectedStatus.join('/')}, 得到 ${response.status}`
     };
   } catch (error) {
     return {
       success: false,
       status: 0,
-      message: `❌ ${route.description}: ${error instanceof Error ? error.message : '未知錯誤'}`
+      message: ` ${route.description}: ${error instanceof Error ? error.message : '未知錯誤'}`
     };
   }
 }
@@ -524,8 +524,8 @@ async function testRoute(baseUrl: string, route: RouteTest, authToken?: string):
 // 主測試函數
 async function runTests(environment: 'local' | 'remote', authToken?: string) {
   const baseUrl = environment === 'local' ? BASE_URL_LOCAL : BASE_URL_REMOTE;
-  console.log(`\n🧪 測試環境: ${environment.toUpperCase()}`);
-  console.log(`📍 Base URL: ${baseUrl}\n`);
+  console.log(`\n 測試環境: ${environment.toUpperCase()}`);
+  console.log(` Base URL: ${baseUrl}\n`);
 
   const results = {
     total: 0,
@@ -556,52 +556,52 @@ function generateReport(
   warnings: string[]
 ) {
   console.log('\n' + '='.repeat(80));
-  console.log('📊 QR CODE 路由健康檢查報告');
+  console.log(' QR CODE 路由健康檢查報告');
   console.log('='.repeat(80) + '\n');
 
   // 本地測試結果
-  console.log('🏠 本地環境測試結果:');
-  console.log(`   總測試: ${localResults.total}`);
-  console.log(`   通過: ${localResults.passed} (${((localResults.passed/localResults.total)*100).toFixed(1)}%)`);
-  console.log(`   失敗: ${localResults.failed}`);
+  console.log(' 本地環境測試結果:');
+  console.log(` 總測試: ${localResults.total}`);
+  console.log(` 通過: ${localResults.passed} (${((localResults.passed/localResults.total)*100).toFixed(1)}%)`);
+  console.log(` 失敗: ${localResults.failed}`);
   console.log();
 
   // 遠端測試結果
-  console.log('☁️  遠端環境測試結果:');
-  console.log(`   總測試: ${remoteResults.total}`);
-  console.log(`   通過: ${remoteResults.passed} (${((remoteResults.passed/remoteResults.total)*100).toFixed(1)}%)`);
-  console.log(`   失敗: ${remoteResults.failed}`);
+  console.log('  遠端環境測試結果:');
+  console.log(` 總測試: ${remoteResults.total}`);
+  console.log(` 通過: ${remoteResults.passed} (${((remoteResults.passed/remoteResults.total)*100).toFixed(1)}%)`);
+  console.log(` 失敗: ${remoteResults.failed}`);
   console.log();
 
   // 路由衝突分析
-  console.log('🔍 路由衝突分析:');
+  console.log(' 路由衝突分析:');
   if (conflicts.length === 0) {
-    console.log('   ✅ 未發現路由衝突');
+    console.log(' 未發現路由衝突');
   } else {
     conflicts.forEach(conflict => {
-      const icon = conflict.severity === 'high' ? '🔴' : conflict.severity === 'medium' ? '🟡' : '🟢';
-      console.log(`   ${icon} ${conflict.reason}`);
-      console.log(`      路由1: ${conflict.route1}`);
-      console.log(`      路由2: ${conflict.route2}`);
+      const icon = conflict.severity === 'high' ? '' : conflict.severity === 'medium' ? '' : '';
+      console.log(` ${icon} ${conflict.reason}`);
+      console.log(` 路由1: ${conflict.route1}`);
+      console.log(` 路由2: ${conflict.route2}`);
     });
   }
   console.log();
 
   // 路由優先級警告
-  console.log('⚡ 路由優先級警告:');
+  console.log(' 路由優先級警告:');
   if (warnings.length === 0) {
-    console.log('   ✅ 未發現優先級問題');
+    console.log(' 未發現優先級問題');
   } else {
-    warnings.forEach(warning => console.log(`   ${warning}`));
+    warnings.forEach(warning => console.log(` ${warning}`));
   }
   console.log();
 
   // 端點覆蓋統計
-  console.log('📈 端點覆蓋統計:');
-  console.log(`   總端點數: ${QRCODE_ROUTES.length}`);
-  console.log(`   需要認證: ${QRCODE_ROUTES.filter(r => r.requiresAuth).length}`);
-  console.log(`   公開端點: ${QRCODE_ROUTES.filter(r => !r.requiresAuth).length}`);
-  console.log(`   需要請求體: ${QRCODE_ROUTES.filter(r => r.requiresBody).length}`);
+  console.log(' 端點覆蓋統計:');
+  console.log(` 總端點數: ${QRCODE_ROUTES.length}`);
+  console.log(` 需要認證: ${QRCODE_ROUTES.filter(r => r.requiresAuth).length}`);
+  console.log(` 公開端點: ${QRCODE_ROUTES.filter(r => !r.requiresAuth).length}`);
+  console.log(` 需要請求體: ${QRCODE_ROUTES.filter(r => r.requiresBody).length}`);
   console.log();
 
   console.log('='.repeat(80));
@@ -625,30 +625,30 @@ async function main() {
   const conflicts = analyzeRouteConflicts(QRCODE_ROUTES);
   const warnings = analyzeRoutePriority(QRCODE_ROUTES);
 
-  console.log('🔍 路由配置分析結果:\n');
+  console.log(' 路由配置分析結果:\n');
 
   if (conflicts.length === 0) {
-    console.log('✅ 未發現路由衝突');
+    console.log(' 未發現路由衝突');
   } else {
-    console.log(`⚠️ 發現 ${conflicts.length} 個潛在衝突:`);
+    console.log(` 發現 ${conflicts.length} 個潛在衝突:`);
     conflicts.forEach((c, i) => {
       console.log(`\n${i + 1}. ${c.reason} [${c.severity.toUpperCase()}]`);
-      console.log(`   路由1: ${c.route1}`);
-      console.log(`   路由2: ${c.route2}`);
+      console.log(` 路由1: ${c.route1}`);
+      console.log(` 路由2: ${c.route2}`);
     });
   }
 
-  console.log('\n⚡ 路由優先級分析:');
+  console.log('\n 路由優先級分析:');
   if (warnings.length === 0) {
-    console.log('✅ 未發現優先級問題');
+    console.log(' 未發現優先級問題');
   } else {
     warnings.forEach(w => console.log(w));
   }
 
-  console.log(`\n📊 配置了 ${QRCODE_ROUTES.length} 個路由端點`);
-  console.log(`   - 需要認證: ${QRCODE_ROUTES.filter(r => r.requiresAuth).length} 個`);
-  console.log(`   - 公開端點: ${QRCODE_ROUTES.filter(r => !r.requiresAuth).length} 個`);
-  console.log(`   - 需要請求體: ${QRCODE_ROUTES.filter(r => r.requiresBody).length} 個\n`);
+  console.log(`\n 配置了 ${QRCODE_ROUTES.length} 個路由端點`);
+  console.log(` - 需要認證: ${QRCODE_ROUTES.filter(r => r.requiresAuth).length} 個`);
+  console.log(` - 公開端點: ${QRCODE_ROUTES.filter(r => !r.requiresAuth).length} 個`);
+  console.log(` - 需要請求體: ${QRCODE_ROUTES.filter(r => r.requiresBody).length} 個\n`);
 }
 
 // 運行主函數

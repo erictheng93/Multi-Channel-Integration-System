@@ -1,7 +1,7 @@
 // Cloudflare Pages Functions 中間件
 // 處理 CORS 和安全標頭
 //
-// 🔧 動態 CSP 配置：
+// 動態 CSP 配置：
 // 新客戶部署時，只需在 Cloudflare Pages 設定以下環境變量：
 // - BACKEND_URL: 後端 API 域名 (例如: https://api.customer.com)
 // - STORAGE_URL: 存儲域名 (例如: https://storage.customer.com)
@@ -126,7 +126,7 @@ export async function onRequest(context: EventContext<CloudflareEnv, string, Clo
   newResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   newResponse.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-  // 🆕 動態 CSP 標頭 - 基於環境變量自動配置
+  // 動態 CSP 標頭 - 基於環境變量自動配置
   // 如果環境變量有設定，使用動態 CSP；否則讓 _headers 文件處理
   if (env.BACKEND_URL) {
     const csp = buildCSP(env);

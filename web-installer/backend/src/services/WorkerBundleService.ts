@@ -137,7 +137,7 @@ export class WorkerBundleService {
    * basic health check functionality.
    *
    * To generate the production bundle:
-   *   npm run build:worker-bundle
+   * npm run build:worker-bundle
    */
   getBundledWorkerScript(): string {
     // Use generated bundle if available, otherwise fallback to placeholder
@@ -193,7 +193,7 @@ export class WorkerBundleService {
  * - CORS headers
  *
  * To generate the real bundle with full CRM functionality:
- *   npm run build:worker-bundle
+ * npm run build:worker-bundle
  *
  * The generated bundle will be automatically used when available.
  */

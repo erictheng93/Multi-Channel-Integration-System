@@ -2,7 +2,7 @@
  * Unit Tests for conversations/cacheStrategy.ts
  *
  * Tests: createCacheStrategy (optimisticUpdateConversation, loadWithCache,
- *        preloadNextPage, preloadAdjacentConversationMessages)
+ * preloadNextPage, preloadAdjacentConversationMessages)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'

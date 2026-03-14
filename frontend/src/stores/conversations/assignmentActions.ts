@@ -41,7 +41,7 @@ async function withOptimisticAssignment(
         ...current,
         ...optimisticUpdates
       } as Conversation
-      console.log(`⚡ [ConversationsStore] Optimistic update applied to list`)
+      console.log(`[ConversationsStore] Optimistic update applied to list`)
     }
   }
 
@@ -51,7 +51,7 @@ async function withOptimisticAssignment(
       ...currentConversation.value,
       ...optimisticUpdates
     }
-    console.log(`⚡ [ConversationsStore] Optimistic update applied to currentConversation`)
+    console.log(`[ConversationsStore] Optimistic update applied to currentConversation`)
   }
 
   error.value = null
@@ -60,12 +60,12 @@ async function withOptimisticAssignment(
     // 3. API call
     const response = await apiCall()
     if (response.success) {
-      console.log(`✅ [ConversationsStore] Assignment API call succeeded`)
+      console.log(`[ConversationsStore] Assignment API call succeeded`)
 
       // 4. Merge API response
       let updatedConv = response.data
       if (!updatedConv && fallbackFetch) {
-        console.warn(`⚠️ [ConversationsStore] API didn't return data, fetching conversation`)
+        console.warn(`[ConversationsStore] API didn't return data, fetching conversation`)
         const detailResponse = await fallbackFetch()
         if (detailResponse.success && detailResponse.data) {
           updatedConv = detailResponse.data
@@ -75,17 +75,17 @@ async function withOptimisticAssignment(
       if (updatedConv) {
         if (conversationIndex !== -1) {
           conversations.value[conversationIndex] = updatedConv
-          console.log(`✨ [ConversationsStore] Updated conversation in list`)
+          console.log(`[ConversationsStore] Updated conversation in list`)
         }
         if (currentConversation.value && currentConversation.value.id === conversationId) {
           currentConversation.value = updatedConv
-          console.log(`✨ [ConversationsStore] Updated currentConversation`)
+          console.log(`[ConversationsStore] Updated currentConversation`)
         }
       }
 
       return true
     } else {
-      console.error(`❌ [ConversationsStore] Assignment API call failed:`, response.error)
+      console.error(`[ConversationsStore] Assignment API call failed:`, response.error)
       // 5. Rollback
       if (originalConversation && conversationIndex !== -1) {
         conversations.value[conversationIndex] = originalConversation
@@ -97,7 +97,7 @@ async function withOptimisticAssignment(
       return false
     }
   } catch (err) {
-    console.error(`❌ [ConversationsStore] Assignment failed with exception:`, err)
+    console.error(`[ConversationsStore] Assignment failed with exception:`, err)
     // 5. Rollback
     if (originalConversation && conversationIndex !== -1) {
       conversations.value[conversationIndex] = originalConversation
@@ -117,16 +117,16 @@ export function createAssignmentActions(deps: AssignmentActionsDeps) {
    * @deprecated Individual assignment is no longer supported. Use assignConversationToTeam instead.
    */
   const assignConversation = async (_conversationId: string, _agentId: string) => {
-    console.error('❌ [ConversationsStore] Individual assignment (assignConversation) is deprecated. Use assignConversationToTeam instead.')
+    console.error('[ConversationsStore] Individual assignment (assignConversation) is deprecated. Use assignConversationToTeam instead.')
     handleError(new Error('Individual assignment is no longer supported'), '請使用團隊指派功能')
     return false
   }
 
-  // 🆕 指派對話給團隊（僅管理員）
+  // 指派對話給團隊（僅管理員）
   const assignConversationToTeam = async (conversationId: string, teamId: number, teamName?: string) => {
     if (!conversationId || !teamId) { return false }
 
-    console.log(`📝 [ConversationsStore] Assigning conversation ${conversationId} to team ${teamId} (${teamName || 'Unknown'})`)
+    console.log(`[ConversationsStore] Assigning conversation ${conversationId} to team ${teamId} (${teamName || 'Unknown'})`)
 
     return withOptimisticAssignment(
       deps,
@@ -142,11 +142,11 @@ export function createAssignmentActions(deps: AssignmentActionsDeps) {
     )
   }
 
-  // 🆕 取消指派對話（僅管理員）
+  // 取消指派對話（僅管理員）
   const unassignConversation = async (conversationId: string, reason?: string) => {
     if (!conversationId) { return false }
 
-    console.log(`📝 [ConversationsStore] Unassigning conversation ${conversationId}`, reason ? `(reason: ${reason})` : '')
+    console.log(`[ConversationsStore] Unassigning conversation ${conversationId}`, reason ? `(reason: ${reason})` : '')
 
     return withOptimisticAssignment(
       deps,
@@ -162,7 +162,7 @@ export function createAssignmentActions(deps: AssignmentActionsDeps) {
     )
   }
 
-  // 🆕 轉移對話到另一個團隊
+  // 轉移對話到另一個團隊
   const transferConversationToTeam = async (
     conversationId: string,
     fromTeamId: number | undefined,
@@ -172,7 +172,7 @@ export function createAssignmentActions(deps: AssignmentActionsDeps) {
   ) => {
     if (!conversationId || !toTeamId) { return false }
 
-    console.log(`📝 [ConversationsStore] Transferring conversation ${conversationId} from team ${fromTeamId} to team ${toTeamId} (${toTeamName || 'Unknown'})`)
+    console.log(`[ConversationsStore] Transferring conversation ${conversationId} from team ${fromTeamId} to team ${toTeamId} (${toTeamName || 'Unknown'})`)
 
     return withOptimisticAssignment(
       deps,

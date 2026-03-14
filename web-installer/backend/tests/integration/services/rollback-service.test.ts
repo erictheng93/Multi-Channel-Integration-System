@@ -33,7 +33,7 @@ describe('RollbackService - Integration Tests', () => {
       kvSessionNamespaceId: 'kv-session-456',
       kvCacheNamespaceId: 'kv-cache-789',
       r2BucketName: 'test-uploads',
-      queueId: 'queue-345',      // Must have queueId for deleteQueue to be called
+      queueId: 'queue-345', // Must have queueId for deleteQueue to be called
       queueName: 'delayed-messages',
       workerId: 'worker-012',
       workerUrl: 'https://test-crm.workers.dev',

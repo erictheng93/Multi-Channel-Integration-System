@@ -1,6 +1,6 @@
 // Team CRUD Operations, Stats, Transfer, Search, and Health
 // Handles: GET/POST /, GET/PUT/DELETE /:id, GET /:id/stats, GET /stats/all,
-//          POST /transfer, GET /search/:query, GET /health, GET /info
+// POST /transfer, GET /search/:query, GET /health, GET /info
 
 import { Hono } from 'hono';
 import { TeamService } from '@modules/teams/services/team-service';

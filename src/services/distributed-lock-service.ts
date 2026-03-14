@@ -76,7 +76,7 @@ export class DistributedLockService {
     // Validate inputs
     this.validateLockRequest(resource, ttl, timeout);
 
-    console.log(`🔒 [DistributedLockService] Attempting to acquire lock for resource: ${resource}`);
+    console.log(`[DistributedLockService] Attempting to acquire lock for resource: ${resource}`);
 
     try {
       // Try to acquire lock through coordinator
@@ -103,13 +103,13 @@ export class DistributedLockService {
       const result = await response.json() as any;
       const acquisitionTime = Date.now() - startTime;
 
-      console.log(`✅ [DistributedLockService] Lock acquired: ${lockId} for ${resource} (${acquisitionTime}ms)`);
+      console.log(`[DistributedLockService] Lock acquired: ${lockId} for ${resource} (${acquisitionTime}ms)`);
 
       return result.lockId;
 
     } catch (error) {
       const acquisitionTime = Date.now() - startTime;
-      console.error(`❌ [DistributedLockService] Lock acquisition failed for ${resource} after ${acquisitionTime}ms:`, error);
+      console.error(`[DistributedLockService] Lock acquisition failed for ${resource} after ${acquisitionTime}ms:`, error);
       throw error;
     }
   }
@@ -120,7 +120,7 @@ export class DistributedLockService {
    */
   async releaseLock(lockId: string): Promise<void> {
     if (!lockId) {
-      console.warn('⚠️ [DistributedLockService] Attempted to release undefined lock ID');
+      console.warn('[DistributedLockService] Attempted to release undefined lock ID');
       return;
     }
 
@@ -129,7 +129,7 @@ export class DistributedLockService {
       return;
     }
 
-    console.log(`🔓 [DistributedLockService] Releasing lock: ${lockId}`);
+    console.log(`[DistributedLockService] Releasing lock: ${lockId}`);
 
     try {
       const response = await this.lockStub!.fetch(new Request('https://lock-coordinator/release', {
@@ -144,13 +144,13 @@ export class DistributedLockService {
 
       if (!response.ok) {
         const error = await response.json() as any;
-        console.warn(`⚠️ [DistributedLockService] Lock release warning: ${error.message}`);
+        console.warn(`[DistributedLockService] Lock release warning: ${error.message}`);
       } else {
-        console.log(`✅ [DistributedLockService] Lock released: ${lockId}`);
+        console.log(`[DistributedLockService] Lock released: ${lockId}`);
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Lock release error for ${lockId}:`, error);
+      console.error(`[DistributedLockService] Lock release error for ${lockId}:`, error);
       // Don't throw - release failures should not crash the application
     }
   }
@@ -164,7 +164,7 @@ export class DistributedLockService {
   async tryLock(resource: string, ttl: number = this.DEFAULT_TTL): Promise<string | null> {
     const lockId = this.generateLockId();
 
-    console.log(`🔒 [DistributedLockService] Trying to acquire lock for resource: ${resource}`);
+    console.log(`[DistributedLockService] Trying to acquire lock for resource: ${resource}`);
 
     try {
       const response = await this.lockStub!.fetch(new Request('https://lock-coordinator/try-acquire', {
@@ -181,10 +181,10 @@ export class DistributedLockService {
 
       if (response.ok) {
         const result = await response.json() as any;
-        console.log(`✅ [DistributedLockService] Lock acquired immediately: ${result.lockId}`);
+        console.log(`[DistributedLockService] Lock acquired immediately: ${result.lockId}`);
         return result.lockId;
       } else if (response.status === 423) { // Locked
-        console.log(`🔒 [DistributedLockService] Resource ${resource} is already locked`);
+        console.log(`[DistributedLockService] Resource ${resource} is already locked`);
         return null;
       } else {
         const error = await response.json() as any;
@@ -192,7 +192,7 @@ export class DistributedLockService {
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Try lock error for ${resource}:`, error);
+      console.error(`[DistributedLockService] Try lock error for ${resource}:`, error);
       throw error;
     }
   }
@@ -212,12 +212,12 @@ export class DistributedLockService {
         const result = await response.json() as any;
         return result.isLocked;
       } else {
-        console.warn(`⚠️ [DistributedLockService] Error checking lock status for ${resource}`);
+        console.warn(`[DistributedLockService] Error checking lock status for ${resource}`);
         return false;
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Error checking if ${resource} is locked:`, error);
+      console.error(`[DistributedLockService] Error checking if ${resource} is locked:`, error);
       return false;
     }
   }
@@ -244,7 +244,7 @@ export class DistributedLockService {
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Error getting lock info for ${lockId}:`, error);
+      console.error(`[DistributedLockService] Error getting lock info for ${lockId}:`, error);
       return null;
     }
   }
@@ -256,7 +256,7 @@ export class DistributedLockService {
    * @returns New expiration time
    */
   async extendLock(lockId: string, additionalTtl: number): Promise<number> {
-    console.log(`⏰ [DistributedLockService] Extending lock ${lockId} by ${additionalTtl}ms`);
+    console.log(`[DistributedLockService] Extending lock ${lockId} by ${additionalTtl}ms`);
 
     try {
       const response = await this.lockStub!.fetch(new Request('https://lock-coordinator/extend', {
@@ -272,7 +272,7 @@ export class DistributedLockService {
 
       if (response.ok) {
         const result = await response.json() as any;
-        console.log(`✅ [DistributedLockService] Lock extended: ${lockId}, new expiry: ${result.expiresAt}`);
+        console.log(`[DistributedLockService] Lock extended: ${lockId}, new expiry: ${result.expiresAt}`);
         return result.expiresAt;
       } else {
         const error = await response.json() as any;
@@ -280,7 +280,7 @@ export class DistributedLockService {
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Error extending lock ${lockId}:`, error);
+      console.error(`[DistributedLockService] Error extending lock ${lockId}:`, error);
       throw error;
     }
   }
@@ -302,9 +302,9 @@ export class DistributedLockService {
     const lockId = await this.acquireLock(resource, options);
 
     try {
-      console.log(`🔄 [DistributedLockService] Executing function with lock: ${lockId}`);
+      console.log(`[DistributedLockService] Executing function with lock: ${lockId}`);
       const result = await fn();
-      console.log(`✅ [DistributedLockService] Function completed with lock: ${lockId}`);
+      console.log(`[DistributedLockService] Function completed with lock: ${lockId}`);
       return result;
     } finally {
       await this.releaseLock(lockId);
@@ -328,7 +328,7 @@ export class DistributedLockService {
     const lockId = await this.acquireLock(resource, options);
 
     try {
-      console.log(`🔄 [DistributedLockService] Executing function with lock and timeout: ${lockId}`);
+      console.log(`[DistributedLockService] Executing function with lock and timeout: ${lockId}`);
 
       // Create a timeout promise
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -340,7 +340,7 @@ export class DistributedLockService {
       // Race between function execution and timeout
       const result = await Promise.race([fn(), timeoutPromise]);
 
-      console.log(`✅ [DistributedLockService] Function completed with lock: ${lockId}`);
+      console.log(`[DistributedLockService] Function completed with lock: ${lockId}`);
       return result;
     } finally {
       await this.releaseLock(lockId);
@@ -368,7 +368,7 @@ export class DistributedLockService {
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Error getting active locks:`, error);
+      console.error(`[DistributedLockService] Error getting active locks:`, error);
       return [];
     }
   }
@@ -390,7 +390,7 @@ export class DistributedLockService {
 
       if (response.ok) {
         const result = await response.json() as any;
-        console.log(`🧹 [DistributedLockService] Cleaned up ${result.cleanedCount} expired locks`);
+        console.log(`[DistributedLockService] Cleaned up ${result.cleanedCount} expired locks`);
         return result.cleanedCount;
       } else {
         const error = await response.json() as any;
@@ -398,7 +398,7 @@ export class DistributedLockService {
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Error during cleanup:`, error);
+      console.error(`[DistributedLockService] Error during cleanup:`, error);
       return 0;
     }
   }
@@ -428,7 +428,7 @@ export class DistributedLockService {
       }
 
     } catch (error) {
-      console.error(`❌ [DistributedLockService] Error getting lock metrics:`, error);
+      console.error(`[DistributedLockService] Error getting lock metrics:`, error);
       return {
         totalLocks: 0,
         activeLocks: 0,
@@ -456,7 +456,7 @@ export class DistributedLockService {
     }
 
     if (ttl < timeout) {
-      console.warn(`⚠️ [DistributedLockService] TTL (${ttl}ms) is less than timeout (${timeout}ms)`);
+      console.warn(`[DistributedLockService] TTL (${ttl}ms) is less than timeout (${timeout}ms)`);
     }
   }
 
@@ -536,7 +536,7 @@ export class LockCoordinator implements DurableObject {
           return new Response('Not Found', { status: 404 });
       }
     } catch (error) {
-      console.error('❌ [LockCoordinator] Request handling error:', error);
+      console.error('[LockCoordinator] Request handling error:', error);
       return new Response('Internal Server Error', { status: 500 });
     }
   }
@@ -716,7 +716,7 @@ export class LockCoordinator implements DurableObject {
     }
 
     if (lock.ownerId !== requesterId) {
-      console.warn(`⚠️ [LockCoordinator] Lock release attempted by non-owner: ${requesterId} vs ${lock.ownerId}`);
+      console.warn(`[LockCoordinator] Lock release attempted by non-owner: ${requesterId} vs ${lock.ownerId}`);
       return false;
     }
 
@@ -813,7 +813,7 @@ export class LockCoordinator implements DurableObject {
 
     if (cleanedCount > 0) {
       await this.persistLockState();
-      console.log(`🧹 [LockCoordinator] Cleaned up ${cleanedCount} expired locks`);
+      console.log(`[LockCoordinator] Cleaned up ${cleanedCount} expired locks`);
     }
 
     this.metrics.lastCleanup = now;
@@ -835,7 +835,7 @@ export class LockCoordinator implements DurableObject {
         this.state.storage.put('metrics', this.metrics)
       ]);
     } catch (error) {
-      console.error('❌ [LockCoordinator] Error persisting lock state:', error);
+      console.error('[LockCoordinator] Error persisting lock state:', error);
     }
   }
 
@@ -856,9 +856,9 @@ export class LockCoordinator implements DurableObject {
         this.metrics = { ...this.metrics, ...metrics };
       }
 
-      console.log(`📂 [LockCoordinator] State restored: ${this.activeLocks.size} active locks`);
+      console.log(`[LockCoordinator] State restored: ${this.activeLocks.size} active locks`);
     } catch (error) {
-      console.error('❌ [LockCoordinator] State restoration error:', error);
+      console.error('[LockCoordinator] State restoration error:', error);
     }
   }
 

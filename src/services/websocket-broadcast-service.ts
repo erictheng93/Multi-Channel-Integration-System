@@ -3,10 +3,10 @@
 // All 12+ callers continue using this import path unchanged.
 //
 // Internal modules:
-//   - BatchQueueManager:   Batch queue + timers + metrics
-//   - BroadcastConfig:     KV config + health checks
-//   - DurableObjectClient: DO communication + circuit breaker
-//   - EventBroadcaster:    10 public broadcast methods
+// - BatchQueueManager: Batch queue + timers + metrics
+// - BroadcastConfig: KV config + health checks
+// - DurableObjectClient: DO communication + circuit breaker
+// - EventBroadcaster: 10 public broadcast methods
 
 import type { Bindings } from '../types';
 import {

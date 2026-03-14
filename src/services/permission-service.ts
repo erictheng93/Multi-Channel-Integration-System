@@ -53,13 +53,13 @@ export class PermissionService {
   };
 
   static async checkPermission(
-    userId: string | number, // ✅ 支持字符串和數字ID
+    userId: string | number, //  支持字符串和數字ID
     resource: string,
     action: string,
     context?: PermissionContext,
     db?: D1Database
   ): Promise<boolean> {
-    // ✅ 修正輸入驗證邏輯
+    // 修正輸入驗證邏輯
     if (!userId || !resource || !action) {
       return false;
     }
@@ -131,7 +131,7 @@ export class PermissionService {
             .where(eq(conversations.id, (context as any).resourceId))
             .get();
 
-          console.log(`🔍 Conversation team assignment check - ConversationId: ${(context as any).resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.primaryTeamId}`);
+          console.log(` Conversation team assignment check - ConversationId: ${(context as any).resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.primaryTeamId}`);
 
           // 如果對話未指派給任何團隊，允許訪問
           if (!conversation || !conversation.assignedTeamId) {
@@ -185,10 +185,10 @@ export class PermissionService {
   }
 
   private static async getUserWithTeam(userId: string | number, db?: D1Database): Promise<UserPermissionData | null> {
-    console.log(`🔍 getUserWithTeam called with userId: ${userId} (type: ${typeof userId}), db: ${db ? 'available' : 'not available'}`);
+    console.log(` getUserWithTeam called with userId: ${userId} (type: ${typeof userId}), db: ${db ? 'available' : 'not available'}`);
     
     if (!db) {
-      console.error('❌ [PermissionService] No database provided - denying access (fail-closed)');
+      console.error('[PermissionService] No database provided - denying access (fail-closed)');
       return null;
     }
 
@@ -196,7 +196,7 @@ export class PermissionService {
       const drizzleDb = createDbClient(db);
       const userIdStr = typeof userId === 'string' ? userId : userId.toString();
       
-      console.log(`📋 Querying agents table for id: "${userIdStr}"`);
+      console.log(` Querying agents table for id: "${userIdStr}"`);
       
       const user = await drizzleDb
         .select({
@@ -213,10 +213,10 @@ export class PermissionService {
         )
         .get();
 
-      console.log(`👤 Database query result:`, user);
+      console.log(` Database query result:`, user);
 
       if (!user) {
-        console.log('❌ No user found in database');
+        console.log(' No user found in database');
         return null;
       }
 
@@ -230,7 +230,7 @@ export class PermissionService {
         isActive: Boolean(user.isActive)
       };
       
-      console.log(`✅ Returning user data:`, userData);
+      console.log(` Returning user data:`, userData);
       return userData;
     } catch (error) {
       console.error('Failed to get user:', error);
@@ -240,11 +240,11 @@ export class PermissionService {
 
   // 獲取用戶可見的對話列表
   static async getVisibleConversations(userId: string | number, db?: D1Database): Promise<string[]> {
-    console.log(`🔍 getVisibleConversations called with userId: ${userId} (type: ${typeof userId})`);
+    console.log(` getVisibleConversations called with userId: ${userId} (type: ${typeof userId})`);
     const user = await this.getUserWithTeam(userId, db);
-    console.log(`👤 getUserWithTeam returned:`, user);
+    console.log(` getUserWithTeam returned:`, user);
     if (!user) {
-      console.log('❌ No user found, returning empty array');
+      console.log(' No user found, returning empty array');
       return [];
     }
 
@@ -272,14 +272,14 @@ export class PermissionService {
         const userIdStr = typeof userId === 'string' ? userId : userId.toString();
         const drizzleDb = createDbClient(database);
 
-        // 🆕 從 agent_teams 表獲取用戶所屬的所有團隊 ID
+        // 從 agent_teams 表獲取用戶所屬的所有團隊 ID
         const teamMemberships = await drizzleDb
           .select({ teamId: agentTeams.teamId })
           .from(agentTeams)
           .where(eq(agentTeams.agentId, userIdStr));
 
         const userTeamIds = teamMemberships.map(m => m.teamId);
-        console.log(`🔍 Agent ${userIdStr} belongs to teams: [${userTeamIds.join(', ')}]`);
+        console.log(` Agent ${userIdStr} belongs to teams: [${userTeamIds.join(', ')}]`);
 
         // 建立查詢條件
         // Note: Individual assignment (assignedUserId) removed - only team-based access control
@@ -301,7 +301,7 @@ export class PermissionService {
           .where(or(...conditions))
           .orderBy(desc(conversations.updatedAt));
 
-        console.log(`📋 Found ${result.length} conversations for agent ${userIdStr}`);
+        console.log(` Found ${result.length} conversations for agent ${userIdStr}`);
         return result.map(row => row.id);
       }
 

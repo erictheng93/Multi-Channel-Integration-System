@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-console.log('🔍 檢查路徑和路由配置...\n');
+console.log(' 檢查路徑和路由配置...\n');
 
 interface CheckResult {
   name: string;
@@ -159,10 +159,10 @@ try {
         status: 'warning',
         message: '部分模組未正確整合',
         details: [
-          hasAuthImport ? '✅ Auth 導入' : '❌ Auth 導入缺失',
-          hasConvImport ? '✅ Conversations 導入' : '❌ Conversations 導入缺失',
-          hasAuthRoute ? '✅ Auth 路由' : '❌ Auth 路由缺失',
-          hasConvRoute ? '✅ Conversations 路由' : '❌ Conversations 路由缺失'
+          hasAuthImport ? ' Auth 導入' : ' Auth 導入缺失',
+          hasConvImport ? ' Conversations 導入' : ' Conversations 導入缺失',
+          hasAuthRoute ? ' Auth 路由' : ' Auth 路由缺失',
+          hasConvRoute ? ' Conversations 路由' : ' Conversations 路由缺失'
         ]
       });
     }
@@ -182,40 +182,40 @@ try {
 }
 
 // 輸出結果
-console.log('\n📊 檢查結果摘要:');
+console.log('\n 檢查結果摘要:');
 console.log('='.repeat(60));
 
 const passCount = results.filter(r => r.status === 'pass').length;
 const warnCount = results.filter(r => r.status === 'warning').length;
 const failCount = results.filter(r => r.status === 'fail').length;
 
-console.log(`✅ 通過: ${passCount} 項`);
-console.log(`⚠️  警告: ${warnCount} 項`);
-console.log(`❌ 失敗: ${failCount} 項`);
+console.log(` 通過: ${passCount} 項`);
+console.log(`  警告: ${warnCount} 項`);
+console.log(` 失敗: ${failCount} 項`);
 
-console.log('\n📋 詳細結果:');
+console.log('\n 詳細結果:');
 results.forEach(result => {
-  const icon = result.status === 'pass' ? '✅' : result.status === 'warning' ? '⚠️' : '❌';
+  const icon = result.status === 'pass' ? '' : result.status === 'warning' ? '' : '';
   console.log(`${icon} ${result.name}: ${result.message}`);
 
   if (result.details) {
     result.details.forEach(detail => {
-      console.log(`   - ${detail}`);
+      console.log(` - ${detail}`);
     });
   }
 });
 
-console.log('\n🔧 需要修復的項目:');
+console.log('\n 需要修復的項目:');
 const needsFixing = results.filter(r => r.status === 'fail' || r.status === 'warning');
 if (needsFixing.length > 0) {
   needsFixing.forEach((item, index) => {
     console.log(`${index + 1}. ${item.name}: ${item.message}`);
   });
 } else {
-  console.log('🎉 所有配置都正確！');
+  console.log(' 所有配置都正確！');
 }
 
 console.log('\n' + '='.repeat(60));
-console.log(`整體狀態: ${failCount === 0 ? (warnCount === 0 ? '🟢 優秀' : '🟡 良好') : '🔴 需要修復'}`);
+console.log(`整體狀態: ${failCount === 0 ? (warnCount === 0 ? ' 優秀' : ' 良好') : ' 需要修復'}`);
 
 export { results };

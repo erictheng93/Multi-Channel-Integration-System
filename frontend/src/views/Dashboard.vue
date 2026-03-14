@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <!-- ⚡ LCP 優化：全頁面骨架屏 (初始載入時顯示) -->
+    <!--  LCP 優化：全頁面骨架屏 (初始載入時顯示) -->
     <DashboardSkeleton v-if="isInitialLoading" />
 
     <div
@@ -75,7 +75,7 @@
         :resolved-today="stats?.resolvedToday || 0"
       />
 
-      <!-- Analytics Comparison Section - ⚡ LCP 優化：延遲加載 -->
+      <!-- Analytics Comparison Section -  LCP 優化：延遲加載 -->
       <div
         v-if="showAnalytics"
         class="analytics-section content-ready"
@@ -154,18 +154,18 @@ import { ChatIcon, UserIcon, MessageCircleIcon } from '@/components/icons'
 const router = useRouter()
 const { currentAgent } = useAuth()
 
-// ⚡ LCP 優化：初始載入狀態 - 用於顯示骨架屏
+// LCP 優化：初始載入狀態 - 用於顯示骨架屏
 const isInitialLoading = ref(true)
 
-// ⚡ LCP 優化：延遲加載 Analytics 組件
+// LCP 優化：延遲加載 Analytics 組件
 const showAnalytics = ref(false)
 
 // Debug auth data in development
 if (import.meta.env.DEV) {
   import('@/utils/debug-auth').then(({ debugAuthData }) => {
-    console.log('🎯 Dashboard mounted - debugging auth data:')
+    console.log(' Dashboard mounted - debugging auth data:')
     debugAuthData()
-    console.log('🎯 currentAgent from useAuth:', currentAgent.value)
+    console.log(' currentAgent from useAuth:', currentAgent.value)
   })
 }
 
@@ -220,7 +220,7 @@ const refreshData = async () => {
 
 // 監聽 currentAgent 變化 - 啟用調試
 watch(() => currentAgent.value, (newAgent, oldAgent) => {
-  console.log('👤 Dashboard: currentAgent changed', {
+  console.log(' Dashboard: currentAgent changed', {
     old: oldAgent,
     new: newAgent,
     displayName: newAgent?.displayName,
@@ -230,34 +230,34 @@ watch(() => currentAgent.value, (newAgent, oldAgent) => {
 
 // 監聽路由變化，確保Dashboard正確重新渲染
 watch(() => router.currentRoute.value.path, (newPath, oldPath) => {
-  console.log('🔄 Dashboard: Route changed from', oldPath, 'to', newPath)
+  console.log(' Dashboard: Route changed from', oldPath, 'to', newPath)
 
   // 如果路由到達Dashboard頁面，確保數據刷新
   if (newPath === '/dashboard') {
-    console.log('🔄 Dashboard: Refreshing data due to route change')
+    console.log(' Dashboard: Refreshing data due to route change')
     refreshData()
   }
 }, { immediate: false })
 
 onMounted(async () => {
   // 數據會自動載入，因為 composables 都設置了 immediate: true
-  console.log('🚀 Dashboard mounted')
+  console.log(' Dashboard mounted')
 
-  // ⚡ LCP 優化：快速切換到實際內容
+  // LCP 優化：快速切換到實際內容
   // 使用 requestAnimationFrame 確保骨架屏至少渲染一幀後再切換
   window.requestAnimationFrame(() => {
     // 延遲一小段時間讓數據有機會載入
     setTimeout(() => {
       isInitialLoading.value = false
-      console.log('⚡ [Dashboard] Initial skeleton hidden, showing content')
+      console.log('[Dashboard] Initial skeleton hidden, showing content')
     }, 150) // 短暫延遲確保數據開始載入
   })
 
-  // ⚡ LCP 優化：延遲加載 Analytics 組件
+  // LCP 優化：延遲加載 Analytics 組件
   // 等待主要內容渲染完成後，再加載 Analytics
   const scheduleAnalyticsLoad = () => {
     showAnalytics.value = true
-    console.log('⚡ [Dashboard] Analytics component loaded (deferred)')
+    console.log('[Dashboard] Analytics component loaded (deferred)')
   }
 
   if ('requestIdleCallback' in window) {
@@ -274,7 +274,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   // 清理 token 刷新檢查和活動追蹤
-  console.log('🛑 Stopping token refresh and activity tracking')
+  console.log(' Stopping token refresh and activity tracking')
   stopTokenRefreshCheck()
   stopTracking()
 })
@@ -302,7 +302,7 @@ onBeforeUnmount(() => {
   margin-top: var(--space-12);
 }
 
-/* ⚡ LCP 優化：Analytics 骨架屏樣式 */
+/* LCP 優化：Analytics 骨架屏樣式 */
 .analytics-placeholder {
   opacity: 0.7;
 }

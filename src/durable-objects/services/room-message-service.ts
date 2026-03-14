@@ -153,7 +153,7 @@ export class RoomMessageService {
   // =================== Reconnection Sync Helpers ===================
 
   /**
-   * 🔧 重連同步：獲取最後訊息時間戳
+   * 重連同步：獲取最後訊息時間戳
    * 用於 connection_established 事件，讓客戶端判斷是否需要同步
    */
   getLastMessageTimestamp(): string | null {
@@ -172,7 +172,7 @@ export class RoomMessageService {
   }
 
   /**
-   * 🔧 重連同步：獲取指定時間後的遺漏訊息
+   * 重連同步：獲取指定時間後的遺漏訊息
    * @param since - ISO 8601 時間戳，返回此時間之後的訊息
    */
   getMissedMessages(since?: string): RealtimeEvent[] {
@@ -190,7 +190,7 @@ export class RoomMessageService {
   }
 
   /**
-   * 🔧 重連同步：處理客戶端的 sync_request 請求
+   * 重連同步：處理客戶端的 sync_request 請求
    * 返回客戶端斷線期間遺漏的訊息
    */
   async handleSyncRequest(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {

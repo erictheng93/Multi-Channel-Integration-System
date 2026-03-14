@@ -72,7 +72,7 @@ if (!fs.existsSync(METRICS_DIR)) {
 }
 
 function runTests(): string {
-  console.log('🧪 Running tests...\n');
+  console.log(' Running tests...\n');
 
   try {
     // Run vitest with JSON reporter
@@ -166,7 +166,7 @@ function parseTestOutput(output: string): TestMetrics {
       metrics.totals.tests.total = metrics.totals.tests.passed + metrics.totals.tests.failed + metrics.totals.tests.skipped;
     }
   } catch (error) {
-    console.error('⚠️  Error parsing JSON output, using fallback parsing');
+    console.error('  Error parsing JSON output, using fallback parsing');
 
     // Fallback: parse text output
     const filesMatch = output.match(/Test Files\s+(\d+) failed.*\|?\s*(\d+) passed/);
@@ -203,7 +203,7 @@ function parseTestOutput(output: string): TestMetrics {
 function saveMetrics(metrics: TestMetrics): void {
   // Save latest metrics
   fs.writeFileSync(LATEST_FILE, JSON.stringify(metrics, null, 2), 'utf-8');
-  console.log(`✅ Saved latest metrics to ${LATEST_FILE}`);
+  console.log(` Saved latest metrics to ${LATEST_FILE}`);
 
   // Append to history
   let history: MetricsHistory = { metrics: [], trends: { passRateChange: 0, durationChange: 0, coverageChange: 0 } };
@@ -234,12 +234,12 @@ function saveMetrics(metrics: TestMetrics): void {
   }
 
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2), 'utf-8');
-  console.log(`✅ Updated metrics history (${history.metrics.length} runs tracked)`);
+  console.log(` Updated metrics history (${history.metrics.length} runs tracked)`);
 }
 
 function displayMetrics(metrics: TestMetrics): void {
   console.log('\n' + '='.repeat(70));
-  console.log('📊 TEST METRICS SUMMARY');
+  console.log(' TEST METRICS SUMMARY');
   console.log('='.repeat(70));
   console.log(`Timestamp: ${metrics.timestamp}`);
   console.log(`Commit: ${metrics.commit || 'N/A'}`);
@@ -249,7 +249,7 @@ function displayMetrics(metrics: TestMetrics): void {
   const passRate = metrics.totals.tests.total > 0 ?
     ((metrics.totals.tests.passed / metrics.totals.tests.total) * 100).toFixed(2) : '0.00';
 
-  console.log('📈 OVERALL METRICS');
+  console.log(' OVERALL METRICS');
   console.log(`  Test Files: ${metrics.totals.files.passed} passed | ${metrics.totals.files.failed} failed | ${metrics.totals.files.total} total`);
   console.log(`  Tests: ${metrics.totals.tests.passed} passed | ${metrics.totals.tests.failed} failed | ${metrics.totals.tests.total} total`);
   console.log(`  Pass Rate: ${passRate}%`);
@@ -258,15 +258,15 @@ function displayMetrics(metrics: TestMetrics): void {
 
   // By category
   if (Object.keys(metrics.byCategory).length > 0) {
-    console.log('📂 BY CATEGORY');
+    console.log(' BY CATEGORY');
     Object.entries(metrics.byCategory).forEach(([category, stats]) => {
       const catPassRate = stats.tests.passed + stats.tests.failed > 0 ?
         ((stats.tests.passed / (stats.tests.passed + stats.tests.failed)) * 100).toFixed(2) : '0.00';
 
       console.log(`  ${category.toUpperCase()}:`);
-      console.log(`    Files: ${stats.files.passed} passed | ${stats.files.failed} failed`);
-      console.log(`    Tests: ${stats.tests.passed} passed | ${stats.tests.failed} failed (${catPassRate}%)`);
-      console.log(`    Duration: ${(stats.duration / 1000).toFixed(2)}s`);
+      console.log(` Files: ${stats.files.passed} passed | ${stats.files.failed} failed`);
+      console.log(` Tests: ${stats.tests.passed} passed | ${stats.tests.failed} failed (${catPassRate}%)`);
+      console.log(` Duration: ${(stats.duration / 1000).toFixed(2)}s`);
     });
     console.log('');
   }
@@ -276,7 +276,7 @@ function displayMetrics(metrics: TestMetrics): void {
     const history: MetricsHistory = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
 
     if (history.trends) {
-      console.log('📉 TRENDS (vs. previous run)');
+      console.log(' TRENDS (vs. previous run)');
       const passRateSymbol = history.trends.passRateChange >= 0 ? '↑' : '↓';
       const durationSymbol = history.trends.durationChange <= 0 ? '↓' : '↑';
 
@@ -293,7 +293,7 @@ function displayMetrics(metrics: TestMetrics): void {
     .slice(0, 10);
 
   if (failingFiles.length > 0) {
-    console.log('❌ TOP 10 FAILING FILES');
+    console.log(' TOP 10 FAILING FILES');
     failingFiles.forEach(([file, stats]) => {
       console.log(`  ${file}: ${stats.failed} failed tests`);
     });
@@ -334,7 +334,7 @@ function generateMarkdownReport(metrics: TestMetrics): string {
 const args = process.argv.slice(2);
 const isBaseline = args.includes('--baseline');
 
-console.log('📊 Test Metrics Tracking System\n');
+console.log(' Test Metrics Tracking System\n');
 
 const testOutput = runTests();
 const metrics = parseTestOutput(testOutput);
@@ -346,12 +346,12 @@ displayMetrics(metrics);
 const reportPath = path.join(METRICS_DIR, `report-${Date.now()}.md`);
 const markdownReport = generateMarkdownReport(metrics);
 fs.writeFileSync(reportPath, markdownReport, 'utf-8');
-console.log(`\n📄 Markdown report saved to ${reportPath}`);
+console.log(`\n Markdown report saved to ${reportPath}`);
 
 if (isBaseline) {
   const baselinePath = path.join(METRICS_DIR, 'baseline.json');
   fs.writeFileSync(baselinePath, JSON.stringify(metrics, null, 2), 'utf-8');
-  console.log(`\n✅ Saved baseline metrics to ${baselinePath}`);
+  console.log(`\n Saved baseline metrics to ${baselinePath}`);
 }
 
-console.log('\n✅ Metrics tracking complete!\n');
+console.log('\n Metrics tracking complete!\n');

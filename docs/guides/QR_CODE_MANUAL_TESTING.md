@@ -4,7 +4,7 @@
 
 ---
 
-## 📋 測試前準備
+##  測試前準備
 
 ### 1. 獲取管理員 Token
 
@@ -19,8 +19,8 @@ curl -X POST https://your-worker.workers.dev/api/auth/login \
 
 # 響應範例:
 # {
-#   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-#   "user": { "id": 1, "role": "admin", ... }
+# "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+# "user": { "id": 1, "role": "admin", ... }
 # }
 ```
 
@@ -38,7 +38,7 @@ export API_URL="https://your-worker.workers.dev"
 
 ---
 
-## 🧪 測試案例
+##  測試案例
 
 ### 測試 1: 驗證當前同步狀態
 
@@ -89,9 +89,9 @@ curl -X GET "$API_URL/api/system/sync-qr-codes/validate" \
 ```
 
 **評估標準**:
-- ✅ `syncRate >= 80%` → 健康
-- ⚠️  `50% <= syncRate < 80%` → 需要同步
-- ❌ `syncRate < 50%` → 需要立即同步
+-  `syncRate >= 80%` → 健康
+- `50% <= syncRate < 80%` → 需要同步
+-  `syncRate < 50%` → 需要立即同步
 
 ---
 
@@ -143,7 +143,7 @@ curl -X POST "$API_URL/api/system/sync-qr-codes?dryRun=true" \
 
 **目的**: 將所有 qr_codes 表的資料同步到 teams.qrCode
 
-**⚠️ 警告**: 這會修改資料庫，建議先執行 Dry Run
+** 警告**: 這會修改資料庫，建議先執行 Dry Run
 
 **命令**:
 ```bash
@@ -179,9 +179,9 @@ curl -X POST "$API_URL/api/system/sync-qr-codes" \
 ```
 
 **成功標準**:
-- ✅ `failedSyncs = 0`
-- ✅ `successfulSyncs > 0` (如果有需要同步的團隊)
-- ✅ 響應時間 < 3 秒 (10 個團隊)
+-  `failedSyncs = 0`
+-  `successfulSyncs > 0` (如果有需要同步的團隊)
+-  響應時間 < 3 秒 (10 個團隊)
 
 ---
 
@@ -227,9 +227,9 @@ curl -X GET "$API_URL/api/teams/1/qr-code/fast" \
 ```
 
 **評估標準**:
-- ✅ `source = "teams_table"` → 最佳性能 (直接從 teams 表讀取)
-- ⚠️  `source = "qr_codes_table"` → Fallback 路徑 (會自動同步回 teams 表)
-- ❌ `success = false` → 團隊沒有 QR Code 或權限不足
+-  `source = "teams_table"` → 最佳性能 (直接從 teams 表讀取)
+- `source = "qr_codes_table"` → Fallback 路徑 (會自動同步回 teams 表)
+-  `success = false` → 團隊沒有 QR Code 或權限不足
 
 ---
 
@@ -266,13 +266,13 @@ done
 ```
 
 **性能目標**:
-- ✅ Optimal Path (teams_table): < 50ms
-- ⚠️  Fallback Path (qr_codes_table): 50-200ms
-- ❌ > 200ms: 需要優化
+-  Optimal Path (teams_table): < 50ms
+- Fallback Path (qr_codes_table): 50-200ms
+-  > 200ms: 需要優化
 
 ---
 
-## 🔄 完整測試流程
+##  完整測試流程
 
 ### 情境 1: 首次部署後驗證
 
@@ -350,7 +350,7 @@ curl -X GET "$API_URL/api/teams/5/qr-code/fast" \
 
 ---
 
-## 📊 測試結果評估
+##  測試結果評估
 
 ### 健康檢查清單
 
@@ -420,20 +420,20 @@ done
 
 ---
 
-## 🎯 成功標準總結
+##  成功標準總結
 
 當以下所有條件滿足時，QR Code 雙向同步機制即正確運行:
 
-1. ✅ **驗證端點** 返回 `syncRate >= 80%`
-2. ✅ **快速查詢** 主要使用 `source = "teams_table"`
-3. ✅ **新生成 QR Code** 自動同步到 `teams.qrCode`
-4. ✅ **停用 QR Code** 正確更新 `teams.qrCode`
-5. ✅ **響應時間** < 50ms (optimal path)
-6. ✅ **同步失敗率** = 0%
+1.  **驗證端點** 返回 `syncRate >= 80%`
+2.  **快速查詢** 主要使用 `source = "teams_table"`
+3.  **新生成 QR Code** 自動同步到 `teams.qrCode`
+4.  **停用 QR Code** 正確更新 `teams.qrCode`
+5.  **響應時間** < 50ms (optimal path)
+6.  **同步失敗率** = 0%
 
 ---
 
-## 📝 測試報告範例
+##  測試報告範例
 
 完成測試後，可使用以下範本記錄結果:
 
@@ -452,35 +452,35 @@ QR Code 雙向同步機制測試報告
    - 總團隊數: 10
    - 同步率: 95.00%
    - 健康狀態: healthy
-   ✅ 通過
+    通過
 
 2. Dry Run 預覽
    - 將同步: 2 個團隊
    - 已同步: 8 個團隊
-   ✅ 通過
+    通過
 
 3. 實際同步執行
    - 成功同步: 2 個團隊
    - 失敗: 0 個團隊
-   ✅ 通過
+    通過
 
 4. 快速查詢測試
    - 數據來源: teams_table
    - 性能模式: optimal
    - 響應時間: 12ms
-   ✅ 通過
+    通過
 
 5. 性能基準測試
    - 平均響應時間: 15ms
    - 最快: 8ms
    - 最慢: 32ms
-   ✅ 通過
+    通過
 
 --- 總結 ---
-✅ 所有測試通過
-✅ teams.qrCode 欄位正確使用
-✅ 性能達標 (50x 提升)
-✅ 雙向同步機制運行正常
+ 所有測試通過
+ teams.qrCode 欄位正確使用
+ 性能達標 (50x 提升)
+ 雙向同步機制運行正常
 
 ==============================================
 ```

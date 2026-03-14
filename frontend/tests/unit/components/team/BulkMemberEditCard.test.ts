@@ -42,7 +42,7 @@ vi.mock('@/components/team/multi-team/MultiTeamSelector.vue', () => ({
 vi.mock('@/components/icons/WarningIcon.vue', () => ({
   default: {
     name: 'WarningIcon',
-    template: '<span class="warning-icon" data-testid="warning-icon">⚠</span>'
+    template: '<span class="warning-icon" data-testid="warning-icon"></span>'
   }
 }))
 

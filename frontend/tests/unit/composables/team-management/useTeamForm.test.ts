@@ -182,7 +182,7 @@ describe('useTeamForm', () => {
       it('should reject whitespace-only name', () => {
         const { formData, validateForm, errors } = useTeamForm()
 
-        formData.name = '   '
+        formData.name = ' '
         const isValid = validateForm()
 
         expect(isValid).toBe(false)

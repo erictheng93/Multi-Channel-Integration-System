@@ -255,7 +255,7 @@ export async function apiKeyAuth(c: Context<{ Bindings: Bindings }>, next: Next)
     const validApiKey = (c.env as Bindings & { API_KEY?: string }).API_KEY;
 
     if (!validApiKey) {
-      console.error('❌ [apiKeyAuth] API_KEY environment variable not configured');
+      console.error('[apiKeyAuth] API_KEY environment variable not configured');
       return c.json({ error: 'API key authentication not configured' }, 500);
     }
 

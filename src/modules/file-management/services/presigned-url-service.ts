@@ -316,8 +316,8 @@ export class PresignedUrlService {
     // 移除路徑分隔符和危險字符，保留基本的檔名
     return filename
       .replace(/[/\\:*?"<>|]/g, '')  // 移除 Windows/Unix 路徑特殊字符
-      .replace(/\s+/g, '_')           // 空格轉底線
-      .slice(0, 200);                 // 限制長度
+      .replace(/\s+/g, '_') // 空格轉底線
+      .slice(0, 200); // 限制長度
   }
 
   private getExtension(filename: string): string {

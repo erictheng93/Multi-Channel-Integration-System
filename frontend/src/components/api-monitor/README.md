@@ -6,15 +6,15 @@ This directory contains all components related to the API monitoring dashboard.
 
 ```
 ApiMonitor.vue (Parent Container)
-├── ApiHeader.vue                 # Page header with title and refresh button
-├── MigrationStatus.vue           # WebSocket migration status card
-├── ApiStatsGrid.vue              # Statistics overview (4 stat cards)
-│   └── StatCard (internal)       # Individual stat card
-├── ApiFilter.vue                 # Filter controls (status, category, search)
-├── ApiCardList.vue               # API endpoint cards container
-│   └── ApiCard.vue               # Individual API endpoint card
-├── ApiModal.vue                  # Statistics detail modal
-└── ApiEmptyState.vue             # Empty state component
+├── ApiHeader.vue # Page header with title and refresh button
+├── MigrationStatus.vue # WebSocket migration status card
+├── ApiStatsGrid.vue # Statistics overview (4 stat cards)
+│ └── StatCard (internal) # Individual stat card
+├── ApiFilter.vue # Filter controls (status, category, search)
+├── ApiCardList.vue # API endpoint cards container
+│ └── ApiCard.vue # Individual API endpoint card
+├── ApiModal.vue # Statistics detail modal
+└── ApiEmptyState.vue # Empty state component
 ```
 
 ## Component Responsibilities

@@ -210,7 +210,7 @@ export class DurableObjectClient {
       const results = await Promise.allSettled(promises);
       return results.some(r => r.status === 'fulfilled' && r.value);
     } catch (error) {
-      console.error('❌ [DurableObjectClient] ConversationRoom broadcast error:', error);
+      console.error('[DurableObjectClient] ConversationRoom broadcast error:', error);
       return false;
     }
   }
@@ -244,7 +244,7 @@ export class DurableObjectClient {
       const results = await Promise.allSettled(promises);
       return results.some(r => r.status === 'fulfilled' && r.value);
     } catch (error) {
-      console.error('❌ [DurableObjectClient] UserConnection broadcast error:', error);
+      console.error('[DurableObjectClient] UserConnection broadcast error:', error);
       return false;
     }
   }
@@ -264,8 +264,8 @@ export class DurableObjectClient {
       const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
       if (broadcasterStub) {
-        console.log('📤 [DurableObjectClient] ===== TEAM BROADCAST INITIATED =====');
-        console.log('📤 [DurableObjectClient] Broadcasting to teams', {
+        console.log('[DurableObjectClient] ===== TEAM BROADCAST INITIATED =====');
+        console.log('[DurableObjectClient] Broadcasting to teams', {
           eventId: event.id,
           eventType: event.type,
           eventAction: (event.data as Record<string, unknown>)?.action,
@@ -293,7 +293,7 @@ export class DurableObjectClient {
 
         if (response.ok) {
           const result = await response.json() as { successful?: number; failed?: number };
-          console.log('✅ [DurableObjectClient] Team broadcast completed', {
+          console.log('[DurableObjectClient] Team broadcast completed', {
             eventId: event.id,
             eventAction: (event.data as Record<string, unknown>)?.action,
             targetTeamIds: teamIds,
@@ -307,7 +307,7 @@ export class DurableObjectClient {
       }
       return false;
     } catch (error) {
-      console.error('❌ [DurableObjectClient] Team broadcast error:', error);
+      console.error('[DurableObjectClient] Team broadcast error:', error);
       return false;
     }
   }
@@ -339,7 +339,7 @@ export class DurableObjectClient {
       }
       return false;
     } catch (error) {
-      console.error('❌ [DurableObjectClient] Global broadcast error:', error);
+      console.error('[DurableObjectClient] Global broadcast error:', error);
       return false;
     }
   }

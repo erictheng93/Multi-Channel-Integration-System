@@ -155,7 +155,7 @@ export function useQRCodeOperations(): UseQRCodeOperationsReturn {
       link.click()
       document.body.removeChild(link)
 
-      console.log(`✅ QR 碼已下載: ${currentTeam.value.name}`)
+      console.log(` QR 碼已下載: ${currentTeam.value.name}`)
     } catch (error) {
       console.error('下載 QR 碼失敗:', error)
     }
@@ -186,19 +186,19 @@ export function useQRCodeOperations(): UseQRCodeOperationsReturn {
   function startBackgroundPreload(teams: Team[]) {
     // 检查 Feature Flag
     if (!isFeatureEnabled('QR_BACKGROUND_PRELOAD')) {
-      console.log('🚫 Background QR preload is disabled (Feature Flag)')
+      console.log(' Background QR preload is disabled (Feature Flag)')
       return
     }
 
     // 检查网路条件
     if (!checkNetworkConditions()) {
-      console.log('🚫 Background QR preload is disabled (Network Conditions)')
+      console.log(' Background QR preload is disabled (Network Conditions)')
       return
     }
 
     // 检查是否有团队
     if (teams.length === 0) {
-      console.log('📭 No teams to preload')
+      console.log(' No teams to preload')
       return
     }
 
@@ -208,7 +208,7 @@ export function useQRCodeOperations(): UseQRCodeOperationsReturn {
     // 延迟启动，确保页面可互动
     const idleTimeout = config?.idleTimeout || 2000
     setTimeout(() => {
-      console.log(`🚀 Starting background QR preload for ${teams.length} teams`)
+      console.log(` Starting background QR preload for ${teams.length} teams`)
       qrPreloadService.start(teams)
     }, idleTimeout)
   }
@@ -218,7 +218,7 @@ export function useQRCodeOperations(): UseQRCodeOperationsReturn {
    */
   function stopBackgroundPreload() {
     qrPreloadService.stop()
-    console.log('🛑 Stopped background QR preload')
+    console.log(' Stopped background QR preload')
   }
 
   /**
@@ -228,7 +228,7 @@ export function useQRCodeOperations(): UseQRCodeOperationsReturn {
   async function prefetchOnHover(team: Team) {
     // 如果背景预载已启用且快取有效，跳过
     if (isFeatureEnabled('QR_BACKGROUND_PRELOAD') && qrCodeStore.isCacheValid(team.id)) {
-      console.log(`⚡ QR already preloaded for team ${team.id}, skipping hover prefetch`)
+      console.log(` QR already preloaded for team ${team.id}, skipping hover prefetch`)
       return
     }
 

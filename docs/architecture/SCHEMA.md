@@ -9,40 +9,40 @@
 
 ---
 
-## 📊 数据库概览
+##  数据库概览
 
 这是一个**企业级多渠道客服系统**的完整数据库架构，支持 LINE、Facebook、WhatsApp 等多个平台的客户服务管理。
 
 ### 核心特性
 
-- ✅ **多租户架构** - 每个团队独立配置渠道
-- ✅ **实时通讯** - WebSocket + Durable Objects
-- ✅ **企业级功能** - 报告系统、QR 码追踪、标签管理
-- ✅ **性能优化** - 完整的索引策略，查询速度提升 70%
-- ✅ **数据安全** - 级联删除、外键约束、事务支持
+-  **多租户架构** - 每个团队独立配置渠道
+-  **实时通讯** - WebSocket + Durable Objects
+-  **企业级功能** - 报告系统、QR 码追踪、标签管理
+-  **性能优化** - 完整的索引策略，查询速度提升 70%
+-  **数据安全** - 级联删除、外键约束、事务支持
 
 ### 表分类统计
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  数据库表分类 (30 张表)                 │
+│ 数据库表分类 (30 张表) │
 ├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  📱 核心业务模块        7 张表                           │
-│  📁 文件管理模块        1 张表                           │
-│  🎯 QR 码管理模块       3 张表                           │
-│  🏷️  标签系统模块        3 张表                           │
-│  📊 报告系统模块        6 张表                           │
-│  🔌 渠道集成模块        1 张表                           │
-│  ⚙️  系统管理模块        6 张表                           │
-│  🗄️  系统内置表          3 张表                           │
-│                                                           │
+│ │
+│ 核心业务模块 7 张表 │
+│ 文件管理模块 1 张表 │
+│ QR 码管理模块 3 张表 │
+│ 标签系统模块 3 张表 │
+│ 报告系统模块 6 张表 │
+│ 渠道集成模块 1 张表 │
+│ 系统管理模块 6 张表 │
+│ 系统内置表 3 张表 │
+│ │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📑 表目录
+##  表目录
 
 ### 核心业务模块 (7 张表)
 
@@ -99,7 +99,7 @@
 
 ---
 
-## 📋 表结构详细定义
+##  表结构详细定义
 
 ### 核心业务模块
 
@@ -220,7 +220,7 @@
 **状态流转**:
 ```
 active → assigned → pending → closed
-  ↑         ↓
+  ↑ ↓
   └─────────┘ (可重新打开)
 ```
 
@@ -332,12 +332,12 @@ active → assigned → pending → closed
 | message_id | TEXT | FOREIGN KEY | - | 消息 ID |
 | conversation_id | TEXT | FOREIGN KEY | - | 对话 ID |
 | filename | TEXT | NOT NULL | - | 原始文件名 |
-| mime_type | TEXT | NOT NULL | - | MIME 类型 (✅ 已统一命名) |
-| file_size | INTEGER | NOT NULL | - | 文件大小 (bytes) (✅ 已统一命名) |
-| file_url | TEXT | - | - | 临时文件 URL (✅ 已统一命名) |
-| r2_key | TEXT | NOT NULL | - | R2 存储键 (✅ 已统一命名) |
+| mime_type | TEXT | NOT NULL | - | MIME 类型 ( 已统一命名) |
+| file_size | INTEGER | NOT NULL | - | 文件大小 (bytes) ( 已统一命名) |
+| file_url | TEXT | - | - | 临时文件 URL ( 已统一命名) |
+| r2_key | TEXT | NOT NULL | - | R2 存储键 ( 已统一命名) |
 | url | TEXT | - | - | CDN 访问 URL |
-| upload_status | TEXT | - | 'completed' | 上传状态 (✅ 已统一命名) |
+| upload_status | TEXT | - | 'completed' | 上传状态 ( 已统一命名) |
 | uploaded_by | TEXT | - | - | 上传者 ID |
 | created_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TEXT | - | - | 更新时间 |
@@ -709,24 +709,24 @@ active → assigned → pending → closed
 | id | INTEGER | PRIMARY KEY | - | 集成 ID |
 | team_id | INTEGER | NOT NULL FOREIGN KEY | - | 团队 ID |
 | platform | TEXT | NOT NULL | - | 平台 ('line', 'facebook', 'whatsapp', 'telegram'...) |
-| **config** | TEXT | - | - | **🆕 平台配置 (JSON)** - 非敏感信息 |
-| **credentials** | TEXT | - | - | **🆕 加密凭证 (JSON)** - 使用 AES-256-GCM |
-| **webhook_config** | TEXT | - | - | **🆕 Webhook 配置 (JSON)** |
-| **stats** | TEXT | - | - | **🆕 使用统计 (JSON)** |
-| ~~line_channel_id~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.channelId` |
-| ~~line_channel_access_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.accessToken` |
-| ~~line_channel_secret~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.secret` |
-| ~~line_webhook_url~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `webhook_config.url` |
-| ~~line_webhook_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `webhook_config.token` |
-| ~~facebook_page_id~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.pageId` |
-| ~~facebook_access_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.accessToken` |
-| ~~facebook_app_secret~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.appSecret` |
-| ~~whatsapp_phone_number~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.phoneNumber` |
-| ~~whatsapp_business_account_id~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `config.businessAccountId` |
-| ~~whatsapp_access_token~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `credentials.accessToken` |
-| ~~total_messages_sent~~ | INTEGER | - | 0 | ⚠️ 已废弃 → 使用 `stats.totalSent` |
-| ~~total_messages_received~~ | INTEGER | - | 0 | ⚠️ 已废弃 → 使用 `stats.totalReceived` |
-| ~~last_message_at~~ | TEXT | - | - | ⚠️ 已废弃 → 使用 `stats.lastMessageAt` |
+| **config** | TEXT | - | - | ** 平台配置 (JSON)** - 非敏感信息 |
+| **credentials** | TEXT | - | - | ** 加密凭证 (JSON)** - 使用 AES-256-GCM |
+| **webhook_config** | TEXT | - | - | ** Webhook 配置 (JSON)** |
+| **stats** | TEXT | - | - | ** 使用统计 (JSON)** |
+| ~~line_channel_id~~ | TEXT | - | - |  已废弃 → 使用 `config.channelId` |
+| ~~line_channel_access_token~~ | TEXT | - | - |  已废弃 → 使用 `credentials.accessToken` |
+| ~~line_channel_secret~~ | TEXT | - | - |  已废弃 → 使用 `credentials.secret` |
+| ~~line_webhook_url~~ | TEXT | - | - |  已废弃 → 使用 `webhook_config.url` |
+| ~~line_webhook_token~~ | TEXT | - | - |  已废弃 → 使用 `webhook_config.token` |
+| ~~facebook_page_id~~ | TEXT | - | - |  已废弃 → 使用 `config.pageId` |
+| ~~facebook_access_token~~ | TEXT | - | - |  已废弃 → 使用 `credentials.accessToken` |
+| ~~facebook_app_secret~~ | TEXT | - | - |  已废弃 → 使用 `credentials.appSecret` |
+| ~~whatsapp_phone_number~~ | TEXT | - | - |  已废弃 → 使用 `config.phoneNumber` |
+| ~~whatsapp_business_account_id~~ | TEXT | - | - |  已废弃 → 使用 `config.businessAccountId` |
+| ~~whatsapp_access_token~~ | TEXT | - | - |  已废弃 → 使用 `credentials.accessToken` |
+| ~~total_messages_sent~~ | INTEGER | - | 0 |  已废弃 → 使用 `stats.totalSent` |
+| ~~total_messages_received~~ | INTEGER | - | 0 |  已废弃 → 使用 `stats.totalReceived` |
+| ~~last_message_at~~ | TEXT | - | - |  已废弃 → 使用 `stats.lastMessageAt` |
 | is_active | BOOLEAN | - | TRUE | 是否启用 |
 | is_verified | BOOLEAN | - | FALSE | 是否已验证 |
 | last_verified_at | TEXT | - | - | 最后验证时间 |
@@ -737,23 +737,23 @@ active → assigned → pending → closed
 | created_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 更新时间 |
 
-**🆕 JSON 配置结构 (Migration 0026)**:
+** JSON 配置结构 (Migration 0026)**:
 
 ```typescript
 // config - 平台配置 (非敏感)
 interface ChannelConfig {
-  channelId?: string;     // LINE
-  pageId?: string;        // Facebook
-  phoneNumber?: string;   // WhatsApp
+  channelId?: string; // LINE
+  pageId?: string; // Facebook
+  phoneNumber?: string; // WhatsApp
   businessAccountId?: string; // WhatsApp
-  botUsername?: string;   // Telegram
+  botUsername?: string; // Telegram
 }
 
 // credentials - 加密凭证 (使用 AES-256-GCM)
 interface ChannelCredentials {
-  accessToken?: string;   // 所有平台
-  secret?: string;        // LINE
-  appSecret?: string;     // Facebook
+  accessToken?: string; // 所有平台
+  secret?: string; // LINE
+  appSecret?: string; // Facebook
 }
 
 // webhook_config - Webhook 配置
@@ -993,36 +993,36 @@ integrations.facebook.status = "disconnected"
 
 ---
 
-## 🔗 表关系图
+##  表关系图
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        核心业务流程                                  │
+│ 核心业务流程 │
 └─────────────────────────────────────────────────────────────────────┘
 
 teams (团队)
   │
   ├─→ agents (客服人员)
-  │     │
-  │     └─→ conversations (对话)
-  │           │
-  │           ├─→ messages (消息)
-  │           │     │
-  │           │     └─→ file_attachments (附件)
-  │           │
-  │           ├─→ delayed_messages (延迟消息)
-  │           ├─→ conversation_sessions (会话)
-  │           ├─→ conversation_transfers (转移记录)
-  │           └─→ conversation_tags (对话标签)
+  │ │
+  │ └─→ conversations (对话)
+  │ │
+  │ ├─→ messages (消息)
+  │ │     │
+  │ │     └─→ file_attachments (附件)
+  │ │
+  │ ├─→ delayed_messages (延迟消息)
+  │ ├─→ conversation_sessions (会话)
+  │ ├─→ conversation_transfers (转移记录)
+  │ └─→ conversation_tags (对话标签)
   │
   ├─→ customers (客户)
-  │     │
-  │     └─→ customer_tags (客户标签)
+  │ │
+  │ └─→ customer_tags (客户标签)
   │
   ├─→ qr_codes (QR 码)
-  │     │
-  │     ├─→ qr_code_scans (扫描记录)
-  │     └─→ qr_code_analytics (分析统计)
+  │ │
+  │ ├─→ qr_code_scans (扫描记录)
+  │ └─→ qr_code_analytics (分析统计)
   │
   ├─→ channel_integrations (渠道配置)
   │
@@ -1030,7 +1030,7 @@ teams (团队)
 
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        报告系统流程                                  │
+│ 报告系统流程 │
 └─────────────────────────────────────────────────────────────────────┘
 
 teams (团队)
@@ -1038,16 +1038,16 @@ teams (团队)
   ├─→ report_templates (报告模板)
   │
   ├─→ scheduled_reports (排程报告)
-  │     │
-  │     └─→ scheduled_report_executions (执行历史)
-  │           │
-  │           └─→ reports (报告)
-  │                 │
-  │                 └─→ report_download_history (下载历史)
+  │ │
+  │ └─→ scheduled_report_executions (执行历史)
+  │ │
+  │ └─→ reports (报告)
+  │ │
+  │ └─→ report_download_history (下载历史)
 
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        系统管理流程                                  │
+│ 系统管理流程 │
 └─────────────────────────────────────────────────────────────────────┘
 
 agents (客服)
@@ -1062,7 +1062,7 @@ metrics (企业指标) - 独立表
 
 ---
 
-## 🔍 性能优化索引
+##  性能优化索引
 
 ### 高性能查询索引 (Migration 0016)
 
@@ -1123,18 +1123,18 @@ CREATE INDEX idx_activities_created ON activities(created_at);
 
 ---
 
-## 📜 迁移历史
+##  迁移历史
 
 ### v2.6 (2025-01-29) - 当前版本
 
 **Phase 1 - 索引优化** (Migration 0024):
-- ✅ `idx_agents_team_id` - 团队成员查询优化
-- ✅ `idx_agents_role` - 角色筛选优化
-- ✅ `idx_agents_team_id_active` - 活跃团队成员查询
-- ✅ `idx_agents_role_active` - 活跃角色查询
+-  `idx_agents_team_id` - 团队成员查询优化
+-  `idx_agents_role` - 角色筛选优化
+-  `idx_agents_team_id_active` - 活跃团队成员查询
+-  `idx_agents_role_active` - 活跃角色查询
 
 **Phase 2 - 命名规范化** (Migration 0025):
-- ✅ `file_attachments` 表列名统一为 snake_case:
+-  `file_attachments` 表列名统一为 snake_case:
   - `mimeType` → `mime_type`
   - `fileSize` → `file_size`
   - `fileUrl` → `file_url`
@@ -1142,65 +1142,65 @@ CREATE INDEX idx_activities_created ON activities(created_at);
   - `uploadStatus` → `upload_status`
 
 **Phase 3 - 渠道配置重构** (Migration 0026):
-- ✅ 新增 JSON 配置列:
+-  新增 JSON 配置列:
   - `config` - 平台配置 (非敏感)
   - `credentials` - 加密凭证
   - `webhook_config` - Webhook 配置
   - `stats` - 使用统计
-- ✅ 支持新增平台零 Schema 变更
-- ✅ 旧列保留兼容 (标记废弃)
+-  支持新增平台零 Schema 变更
+-  旧列保留兼容 (标记废弃)
 
 **Schema 优化** (Migration 0027):
-- ✅ **软删除支持**: 6 个核心表新增 `deleted_at` 列
+-  **软删除支持**: 6 个核心表新增 `deleted_at` 列
   - `teams`, `agents`, `customers`, `conversations`, `messages`, `tags`
-- ✅ **10+ 新复合索引**: 优化常见查询模式
-- ✅ **加密策略文档**: 敏感字段标记和最佳实践
+-  **10+ 新复合索引**: 优化常见查询模式
+-  **加密策略文档**: 敏感字段标记和最佳实践
 
 ---
 
 ### v2.5 (2025-11-05)
 
 **新增功能**:
-- ✅ **渠道集成** (Migration 0018): 多租户渠道配置，支持每个团队独立配置 LINE/Facebook/WhatsApp
-- ✅ **对话状态** (Migration 0020): 添加 'assigned' 状态，完善对话流转
-- ✅ **报告系统**: 6 张表支持完整的企业级报告功能
-- ✅ **标签系统**: 3 张表支持客户和对话标签管理
-- ✅ **通知系统**: 实时通知推送
+-  **渠道集成** (Migration 0018): 多租户渠道配置，支持每个团队独立配置 LINE/Facebook/WhatsApp
+-  **对话状态** (Migration 0020): 添加 'assigned' 状态，完善对话流转
+-  **报告系统**: 6 张表支持完整的企业级报告功能
+-  **标签系统**: 3 张表支持客户和对话标签管理
+-  **通知系统**: 实时通知推送
 
 **性能优化**:
-- ✅ **关键索引** (Migration 0016): 5 个高性能索引，查询速度提升 70%
+-  **关键索引** (Migration 0016): 5 个高性能索引，查询速度提升 70%
 
 **架构变更**:
-- ✅ **简化角色** (Migration 0017): 从 3 层角色简化为 2 层 (Admin/Agent)
-- ✅ **字段重命名**: `agents.name` → `agents.display_name`
-- ✅ **时间戳格式**: INTEGER (Unix) → TEXT (ISO 8601)
+-  **简化角色** (Migration 0017): 从 3 层角色简化为 2 层 (Admin/Agent)
+-  **字段重命名**: `agents.name` → `agents.display_name`
+-  **时间戳格式**: INTEGER (Unix) → TEXT (ISO 8601)
 
 ### v2.0 (2025-09-04)
 
 **新增功能**:
-- ✅ **QR 码系统** (Migration 0005): 3 张表支持 QR 码生成和追踪
+-  **QR 码系统** (Migration 0005): 3 张表支持 QR 码生成和追踪
 
 ### v1.2 (2025-08-08)
 
 **新增功能**:
-- ✅ 消息方向字段
-- ✅ 会话管理增强
+-  消息方向字段
+-  会话管理增强
 
 ### v1.1 (2025-01-08)
 
 **新增功能**:
-- ✅ 对话会话表
-- ✅ 消息扩展字段
+-  对话会话表
+-  消息扩展字段
 
 ### v1.0 (2025-01-08)
 
 **初始版本**:
-- ✅ 核心业务表结构
-- ✅ 基础索引和约束
+-  核心业务表结构
+-  基础索引和约束
 
 ---
 
-## ⚠️ Breaking Changes (破坏性变更)
+##  Breaking Changes (破坏性变更)
 
 ### v2.5 变更
 
@@ -1214,11 +1214,11 @@ CREATE INDEX idx_activities_created ON activities(created_at);
    ```
 
 2. **废弃表**
-   - ❌ `users` - 已合并到 `customers`
-   - ❌ `app_users` - 已合并到 `agents`
-   - ❌ `file_metadata` - 功能合并到 `file_attachments`
-   - ❌ `file_access_logs` - 功能未实现
-   - ❌ `pending_messages` - 改名为 `delayed_messages`
+   -  `users` - 已合并到 `customers`
+   -  `app_users` - 已合并到 `agents`
+   -  `file_metadata` - 功能合并到 `file_attachments`
+   -  `file_access_logs` - 功能未实现
+   -  `pending_messages` - 改名为 `delayed_messages`
 
 3. **角色系统简化**
    ```sql
@@ -1235,7 +1235,7 @@ CREATE INDEX idx_activities_created ON activities(created_at);
    created_at INTEGER  -- Unix timestamp
 
    -- 新版本
-   created_at TEXT     -- ISO 8601 (YYYY-MM-DD HH:MM:SS)
+   created_at TEXT -- ISO 8601 (YYYY-MM-DD HH:MM:SS)
    ```
 
 5. **对话状态新增**
@@ -1249,7 +1249,7 @@ CREATE INDEX idx_activities_created ON activities(created_at);
 
 ---
 
-## 💾 数据库操作指南
+##  数据库操作指南
 
 ### 本地开发
 
@@ -1327,7 +1327,7 @@ GROUP BY a.id;
 
 ---
 
-## 🔒 数据约束和规则
+##  数据约束和规则
 
 ### 外键约束
 
@@ -1355,7 +1355,7 @@ GROUP BY a.id;
 
 ---
 
-## 📐 设计原则
+##  设计原则
 
 ### 1. **时间戳统一使用 TEXT (ISO 8601)**
 
@@ -1366,10 +1366,10 @@ YYYY-MM-DD HH:MM:SS
 ```
 
 优点:
-- ✅ 人类可读
-- ✅ 跨时区兼容
-- ✅ SQLite datetime 函数支持
-- ✅ 前端无需转换
+-  人类可读
+-  跨时区兼容
+-  SQLite datetime 函数支持
+-  前端无需转换
 
 ### 2. **JSON 字段用于扩展数据**
 
@@ -1413,25 +1413,25 @@ UPDATE table SET deleted_at = NULL WHERE id = ?
 
 ### 5. **性能优先**
 
-- ✅ 所有高频查询字段建立索引
-- ✅ 复合索引支持排序和过滤
-- ✅ 级联删除自动清理关联数据
-- ✅ 唯一约束防止重复数据
+-  所有高频查询字段建立索引
+-  复合索引支持排序和过滤
+-  级联删除自动清理关联数据
+-  唯一约束防止重复数据
 
 ---
 
-## 🚀 最佳实践
+##  最佳实践
 
 ### 查询优化
 
 1. **使用索引覆盖查询**
    ```sql
-   -- ✅ 好 - 使用索引
+   --  好 - 使用索引
    SELECT * FROM conversations
    WHERE status = 'active' AND team_id = 1
    ORDER BY updated_at DESC;
 
-   -- ❌ 差 - 全表扫描
+   --  差 - 全表扫描
    SELECT * FROM conversations
    WHERE LOWER(internal_notes) LIKE '%urgent%';
    ```
@@ -1472,13 +1472,13 @@ AND is_read = 1;
 
 2. **参数化查询**
    ```typescript
-   // ✅ 好 - 使用 Drizzle ORM
+   // 好 - 使用 Drizzle ORM
    const conversations = await db
      .select()
      .from(conversationsTable)
      .where(eq(conversationsTable.status, 'active'));
 
-   // ❌ 差 - SQL 注入风险
+   // 差 - SQL 注入风险
    const query = `SELECT * FROM conversations WHERE status = '${status}'`;
    ```
 
@@ -1489,7 +1489,7 @@ AND is_read = 1;
 
 ---
 
-## 📚 相关文档
+##  相关文档
 
 - **代码实现**: `src/db/schema.ts`
 - **迁移文件**: `drizzle/*.sql`
@@ -1499,7 +1499,7 @@ AND is_read = 1;
 
 ---
 
-## 📞 支持和反馈
+##  支持和反馈
 
 如有数据库相关问题，请:
 1. 查看迁移历史 (`drizzle/*.sql`)
@@ -1512,4 +1512,4 @@ AND is_read = 1;
 **最后更新**: 2025-11-05
 **维护者**: Development Team
 **版本**: v2.5
-**状态**: ✅ Production-Ready
+**状态**:  Production-Ready

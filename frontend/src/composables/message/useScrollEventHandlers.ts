@@ -83,7 +83,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
 
     // Skip during programmatic scrolling to prevent race conditions
     if (isProgrammaticScrolling.value) {
-      console.log('🔒 [handleScroll] Skipped - programmatic scrolling in progress')
+      console.log('[handleScroll] Skipped - programmatic scrolling in progress')
       return
     }
 
@@ -99,7 +99,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
     } else if (!recentlyScrolledToBottom.value) {
       isUserAtBottom.value = false
     } else {
-      console.log('🛡️ [handleScroll] Grace period active - preserving isUserAtBottom = true')
+      console.log('[handleScroll] Grace period active - preserving isUserAtBottom = true')
     }
 
     // Check scroll direction with threshold to avoid flickering
@@ -137,7 +137,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
 
     // Debug scroll state every 2 seconds
     if (Date.now() - lastScrollDebugTime.value > 2000) {
-      console.log(`🔍 [VirtualMessageList] Scroll State:`, {
+      console.log(`[VirtualMessageList] Scroll State:`, {
         scrollTop: Math.round(scrollTop),
         scrollHeight: Math.round(scrollHeight),
         clientHeight: Math.round(clientHeight),
@@ -156,7 +156,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
     if (isAtTop && !props.loadingHistory && !props.loading && props.hasMore && isScrollingUp) {
       const now = Date.now()
       if (now - lastLoadMoreTime.value > LOAD_MORE_THROTTLE_MS) {
-        console.log('📜 User scrolled up to top, loading more history...')
+        console.log(' User scrolled up to top, loading more history...')
         lastLoadMoreTime.value = now
         emit('loadMore')
       }
@@ -175,10 +175,10 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
    */
   const handleManualLoadMore = () => {
     if (props.loading || !props.hasMore) {
-      console.log('⚠️ [VirtualMessageList] Cannot load more:', { loading: props.loading, hasMore: props.hasMore })
+      console.log('[VirtualMessageList] Cannot load more:', { loading: props.loading, hasMore: props.hasMore })
       return
     }
-    console.log('🔼 [VirtualMessageList] Manual load more triggered')
+    console.log('[VirtualMessageList] Manual load more triggered')
 
     showLoadMoreTrigger.value = false
 

@@ -56,10 +56,10 @@ export class QRCodeServiceImpl {
       const duration = performance.now() - startTime;
 
       if (cached) {
-        console.log(`✅ KV 快取命中: ${cacheKey} (${duration.toFixed(0)}ms)`);
+        console.log(` KV 快取命中: ${cacheKey} (${duration.toFixed(0)}ms)`);
         return cached;
       }
-      console.log(`❌ KV 快取未命中: ${cacheKey} (${duration.toFixed(0)}ms)`);
+      console.log(` KV 快取未命中: ${cacheKey} (${duration.toFixed(0)}ms)`);
       return null;
     } catch (error) {
       console.error('KV 快取讀取錯誤:', error);
@@ -89,7 +89,7 @@ export class QRCodeServiceImpl {
         kv.put(cacheKeyLatest, JSON.stringify(data), { expirationTtl: QR_CACHE_TTL })
       ]);
       const duration = performance.now() - startTime;
-      console.log(`💾 KV 快取寫入成功: ${cacheKeySpecific} (${duration.toFixed(0)}ms)`);
+      console.log(` KV 快取寫入成功: ${cacheKeySpecific} (${duration.toFixed(0)}ms)`);
     } catch (error) {
       console.error('KV 快取寫入錯誤:', error);
     }
@@ -111,7 +111,7 @@ export class QRCodeServiceImpl {
       }
       // 同時清除 latest 快取
       await kv.delete(`${QR_CACHE_PREFIX}${teamId}:latest`);
-      console.log(`🗑️ KV 快取已清除: team ${teamId}`);
+      console.log(` KV 快取已清除: team ${teamId}`);
     } catch (error) {
       console.error('KV 快取刪除錯誤:', error);
     }
@@ -139,7 +139,7 @@ export class QRCodeServiceImpl {
     // 使用傳入的 LINE Bot ID 或預設值
     const botId = lineBotId || this.DEFAULT_LINE_BOT_ID;
     if (botId === this.DEFAULT_LINE_BOT_ID) {
-      console.warn('⚠️ 使用預設 LINE Bot ID，請在 wrangler.toml 設定 LINE_BOT_ID');
+      console.warn(' 使用預設 LINE Bot ID，請在 wrangler.toml 設定 LINE_BOT_ID');
     }
 
     // 生成唯一的追蹤 token
@@ -152,11 +152,11 @@ export class QRCodeServiceImpl {
     if (frontendUrl) {
       // 使用 LIFF 頁面作為中間層，確保 100% 團隊綁定成功率
       lineUrl = `${frontendUrl}/liff?token=${token}`;
-      console.log(`🔗 [QR Code] 使用 LIFF 方案: ${lineUrl}`);
+      console.log(`[QR Code] 使用 LIFF 方案: ${lineUrl}`);
     } else {
       // 回退到直接 LINE 連結（不推薦，團隊綁定不可靠）
       lineUrl = `https://line.me/R/ti/p/${botId}?ref=${token}`;
-      console.warn('⚠️ [QR Code] 使用直接 LINE 連結，團隊綁定可能不可靠');
+      console.warn('[QR Code] 使用直接 LINE 連結，團隊綁定可能不可靠');
     }
 
     // 生成 QR Code 圖片 (本地生成，約 10-50ms)
@@ -206,7 +206,7 @@ export class QRCodeServiceImpl {
     const dbTime = performance.now() - dbStartTime;
 
     const totalTime = performance.now() - startTime;
-    console.log(`📊 QR Code 生成統計: QR生成=${qrGenTime.toFixed(0)}ms, DB+快取=${dbTime.toFixed(0)}ms, 總計=${totalTime.toFixed(0)}ms`);
+    console.log(` QR Code 生成統計: QR生成=${qrGenTime.toFixed(0)}ms, DB+快取=${dbTime.toFixed(0)}ms, 總計=${totalTime.toFixed(0)}ms`);
 
     return {
       ...qrCodeData,
@@ -232,7 +232,7 @@ export class QRCodeServiceImpl {
     const cached = await this.getFromCache(kv, teamId);
     if (cached) {
       const duration = performance.now() - startTime;
-      console.log(`⚡ 快速獲取 QR 碼 (快取): team ${teamId} (${duration.toFixed(0)}ms)`);
+      console.log(` 快速獲取 QR 碼 (快取): team ${teamId} (${duration.toFixed(0)}ms)`);
       return {
         qrCodeImageUrl: cached.qrCodeImageUrl,
         lineUrl: cached.lineUrl,
@@ -264,7 +264,7 @@ export class QRCodeServiceImpl {
     });
 
     const duration = performance.now() - startTime;
-    console.log(`📦 快速獲取 QR 碼 (資料庫): team ${teamId} (${duration.toFixed(0)}ms)`);
+    console.log(` 快速獲取 QR 碼 (資料庫): team ${teamId} (${duration.toFixed(0)}ms)`);
 
     return {
       qrCodeImageUrl: latestQR.qrCodeImageUrl,
@@ -445,11 +445,11 @@ export class QRCodeServiceImpl {
       const dataUrl = `data:image/svg+xml;base64,${base64Svg}`;
 
       const duration = performance.now() - startTime;
-      console.log(`✅ QR Code 本地生成成功 (${duration.toFixed(0)}ms)`);
+      console.log(` QR Code 本地生成成功 (${duration.toFixed(0)}ms)`);
 
       return dataUrl;
     } catch (error) {
-      console.error('❌ QR Code 本地生成失敗，回退到第三方 API:', error);
+      console.error(' QR Code 本地生成失敗，回退到第三方 API:', error);
 
       // 回退到第三方 API
       const qrParams = new URLSearchParams({

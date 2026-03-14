@@ -43,32 +43,32 @@
 
 ```
 docs/
-├── analytics/              # 分析功能文檔
-├── api/                    # API 參考文檔
-├── architecture/           # 系統架構文檔
-├── components/             # 前端元件文檔
-├── database/               # 資料庫文檔
-├── deployment/             # 部署相關文檔
-├── enterprise/             # 企業功能文檔
-├── features/               # 功能特性文檔
-├── guides/                 # 操作指南
-├── implementation/         # 實作報告
-├── migration/              # 遷移指南
-├── monitoring/             # 監控文檔
-├── optimization/           # 效能優化
-├── performance/            # 效能測試
-├── reports/                # 各類報告
-│   ├── analytics/         # 分析報告
-│   ├── deployment/        # 部署報告
-│   ├── enhancement/       # 功能增強報告
-│   ├── migration/         # 遷移報告
-│   ├── modules/           # 模組報告
-│   ├── monitoring/        # 監控報告
-│   ├── verification/      # 驗證報告
-│   └── websocket/         # WebSocket 報告
-├── standards/              # 編碼標準
-├── testing/                # 測試文檔
-└── troubleshooting/        # 故障排除
+├── analytics/ # 分析功能文檔
+├── api/ # API 參考文檔
+├── architecture/ # 系統架構文檔
+├── components/ # 前端元件文檔
+├── database/ # 資料庫文檔
+├── deployment/ # 部署相關文檔
+├── enterprise/ # 企業功能文檔
+├── features/ # 功能特性文檔
+├── guides/ # 操作指南
+├── implementation/ # 實作報告
+├── migration/ # 遷移指南
+├── monitoring/ # 監控文檔
+├── optimization/ # 效能優化
+├── performance/ # 效能測試
+├── reports/ # 各類報告
+│ ├── analytics/ # 分析報告
+│ ├── deployment/ # 部署報告
+│ ├── enhancement/ # 功能增強報告
+│ ├── migration/ # 遷移報告
+│ ├── modules/ # 模組報告
+│ ├── monitoring/ # 監控報告
+│ ├── verification/ # 驗證報告
+│ └── websocket/ # WebSocket 報告
+├── standards/ # 編碼標準
+├── testing/ # 測試文檔
+└── troubleshooting/ # 故障排除
 ```
 
 ### 如何選擇正確的文件夾？

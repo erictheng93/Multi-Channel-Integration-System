@@ -2,40 +2,40 @@
 
 **优化日期**: 2025-01-05 (Phase 1-3), 2025-01-26 (Plan C)
 **优化范围**: 团队选择器加载性能优化 + Vue 响应式重构
-**实施状态**: ✅ Phase 1-3 完成，✅ Plan C Pinia Store 重构完成
+**实施状态**:  Phase 1-3 完成， Plan C Pinia Store 重构完成
 
 ---
 
-## 📊 优化成果概览
+##  优化成果概览
 
 ### 性能提升对比
 
 | 指标 | 优化前 | 优化后 | 提升幅度 |
 |------|--------|--------|----------|
-| **首次打开延迟** | 500-2000ms | < 10ms | **200倍 ⚡** |
-| **缓存命中率** | 20% | 95% | **375% 📈** |
-| **API 调用频率/小时** | 12 次 | 2 次 | **-83% 📉** |
-| **用户感知延迟** | 高 | 无 | **100% 消除 ✨** |
-| **"假性空状态"出现率** | 80% | 0% | **-100% 🎯** |
-| **后端负载** | 基准 | -83% | **显著降低 🔋** |
+| **首次打开延迟** | 500-2000ms | < 10ms | **200倍 ** |
+| **缓存命中率** | 20% | 95% | **375% ** |
+| **API 调用频率/小时** | 12 次 | 2 次 | **-83% ** |
+| **用户感知延迟** | 高 | 无 | **100% 消除 ** |
+| **"假性空状态"出现率** | 80% | 0% | **-100% ** |
+| **后端负载** | 基准 | -83% | **显著降低 ** |
 
 ### 用户体验改善
 
 ```
-优化前（❌ 差体验）:
+优化前（ 差体验）:
 用户点击按钮 → 显示 "没有找到可用的团队" → 等待 2 秒 → 团队列表突然出现
 
-优化后（✅ 好体验）:
-用户点击按钮 → 团队列表立即显示（< 10ms）→ 无需等待 ⚡
+优化后（ 好体验）:
+用户点击按钮 → 团队列表立即显示（< 10ms）→ 无需等待 
 ```
 
 ---
 
-## 🎯 已完成的优化
+##  已完成的优化
 
 ### Phase 1: 快速修复（短期）
 
-#### ✅ 1.1 延长缓存 TTL (5分钟 → 30分钟)
+####  1.1 延长缓存 TTL (5分钟 → 30分钟)
 
 **文件**: `frontend/src/services/preloadService.ts:99`
 
@@ -54,7 +54,7 @@ ttl: 30 * 60 * 1000  // 30分钟 TTL (减少 API 调用频率)
 
 ---
 
-#### ✅ 1.2 添加 LoadingSkeleton 组件
+####  1.2 添加 LoadingSkeleton 组件
 
 **新增文件**: `frontend/src/components/ui/TeamListSkeleton.vue`
 
@@ -71,7 +71,7 @@ ttl: 30 * 60 * 1000  // 30分钟 TTL (减少 API 调用频率)
 
 ---
 
-#### ✅ 1.3 为 AdvancedAssignActions 添加加载状态
+####  1.3 为 AdvancedAssignActions 添加加载状态
 
 **修改文件**: `frontend/src/components/conversation/AdvancedAssignActions.vue`
 
@@ -107,7 +107,7 @@ ttl: 30 * 60 * 1000  // 30分钟 TTL (减少 API 调用频率)
 
 ---
 
-#### ✅ 1.4 实现 Stale-While-Revalidate 缓存策略
+####  1.4 实现 Stale-While-Revalidate 缓存策略
 
 **修改文件**: `frontend/src/services/preloadService.ts:121-147`
 
@@ -116,19 +116,19 @@ ttl: 30 * 60 * 1000  // 30分钟 TTL (减少 API 调用频率)
 getTeams(): Team[] {
   const cached = this.cache.get('teams')
 
-  // 情况1: 缓存有效，直接返回 ⚡
+  // 情况1: 缓存有效，直接返回 
   if (cached && this.isCacheValid(cached)) {
     return cached.data
   }
 
-  // 情况2: 缓存过期但存在 - Stale-While-Revalidate 🔄
+  // 情况2: 缓存过期但存在 - Stale-While-Revalidate 
   if (cached && !this.isCacheValid(cached)) {
     // 立即返回过期数据，用户无感知
     this.preloadTeams() // 后台刷新
     return cached.data
   }
 
-  // 情况3: 缓存不存在，触发加载 🚀
+  // 情况3: 缓存不存在，触发加载 
   this.preloadTeams()
   return []
 }
@@ -143,7 +143,7 @@ getTeams(): Team[] {
 
 ### Phase 2: 深度优化（中期）
 
-#### ✅ 2.1 应用启动时预加载团队数据
+####  2.1 应用启动时预加载团队数据
 
 **修改文件**: `frontend/src/main.ts:48-56`
 
@@ -152,12 +152,12 @@ getTeams(): Team[] {
 // 会话初始化后，立即预加载数据
 await authStore.initializeSession()
 
-// 🚀 仅对已登录的管理员用户预加载团队数据
+// 仅对已登录的管理员用户预加载团队数据
 if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
-  console.log('🔥 App startup: Preloading data for admin user...')
+  console.log(' App startup: Preloading data for admin user...')
   // 非阻塞预加载，不影响应用启动速度
   preloadService.warmup().catch(err => {
-    console.warn('⚠️ Preload warmup failed (non-critical):', err)
+    console.warn(' Preload warmup failed (non-critical):', err)
   })
 }
 ```
@@ -169,28 +169,28 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 
 ---
 
-#### ✅ 2.2 测试和验证优化效果
+####  2.2 测试和验证优化效果
 
 **测试结果**:
 ```bash
-✅ TypeScript 类型检查：通过
-✅ 前端构建测试：成功（2.54秒）
-✅ 无类型错误
-✅ 无运行时错误
+ TypeScript 类型检查：通过
+ 前端构建测试：成功（2.54秒）
+ 无类型错误
+ 无运行时错误
 ```
 
 **性能验证**:
-- ✅ 缓存 TTL 已延长至 30 分钟
-- ✅ 骨架屏组件正常显示
-- ✅ 加载状态正确切换
-- ✅ Stale-While-Revalidate 策略生效
-- ✅ 应用启动预加载正常工作
+-  缓存 TTL 已延长至 30 分钟
+-  骨架屏组件正常显示
+-  加载状态正确切换
+-  Stale-While-Revalidate 策略生效
+-  应用启动预加载正常工作
 
 ---
 
 ### Phase 3: 高级特性（长期）
 
-#### ✅ 3.1 添加手动刷新按钮
+####  3.1 添加手动刷新按钮
 
 **修改文件**: `frontend/src/components/conversation/AdvancedAssignActions.vue`
 
@@ -203,11 +203,11 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 **UI 示例**:
 ```
 ┌───────────────────────────────────────┐
-│ 選擇指派團隊          🔄  ✕          │
+│ 選擇指派團隊 │
 │ ─────────────────────────────────────│
-│ [搜索团队...]                         │
+│ [搜索团队...] │
 │ ─────────────────────────────────────│
-│ 团队列表...                           │
+│ 团队列表... │
 └───────────────────────────────────────┘
          ↑ 刷新按钮
 ```
@@ -219,7 +219,7 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 
 ---
 
-#### 📋 3.2 WebSocket 实时更新规划
+####  3.2 WebSocket 实时更新规划
 
 **规划文档**: `docs/optimization/TEAM_SELECTOR_WEBSOCKET_PLAN.md`
 
@@ -240,7 +240,7 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 
 ---
 
-## ✅ Plan C: Pinia Store 完整重構（2025-01-26）
+##  Plan C: Pinia Store 完整重構（2025-01-26）
 
 ### 背景：間歇性 Bug 發現
 
@@ -255,19 +255,19 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    舊架構問題                                │
+│ 舊架構問題 │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   Vue Computed                 PreloadService               │
-│   ┌─────────────┐             ┌─────────────────┐          │
-│   │ computed:   │  ───────>   │ cache: Map()    │          │
-│   │   teams     │             │ (非響應式!)      │          │
-│   └─────────────┘             └─────────────────┘          │
-│                                                             │
-│   ❌ Vue computed 無法追蹤 Map 內部變化                      │
-│   ❌ 快取更新時，computed 不會重新計算                       │
-│   ❌ 導致 UI 顯示過時的空陣列                                │
-│                                                             │
+│ │
+│ Vue Computed PreloadService │
+│ ┌─────────────┐ ┌─────────────────┐ │
+│ │ computed: │  ───────> │ cache: Map() │          │
+│ │   teams │             │ (非響應式!) │          │
+│ └─────────────┘ └─────────────────┘ │
+│ │
+│ Vue computed 無法追蹤 Map 內部變化 │
+│ 快取更新時，computed 不會重新計算 │
+│ 導致 UI 顯示過時的空陣列 │
+│ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -275,28 +275,28 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    新架構（Plan C）                          │
+│ 新架構（Plan C） │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   Vue Component              PreloadService (Facade)        │
-│   ┌─────────────┐           ┌─────────────────────────┐    │
-│   │ computed:   │           │ teamsRef: ShallowRef    │    │
-│   │   teams     │   <───    │     ↑ auto-sync         │    │
-│   └─────────────┘           └───────────┬─────────────┘    │
-│                                         │ delegates to     │
-│                             ┌───────────▼─────────────┐    │
-│                             │   usePreloadStore       │    │
-│                             │   (Pinia Store)         │    │
-│                             │ ┌─────────────────────┐ │    │
-│                             │ │ teams: shallowRef   │ │    │
-│                             │ │ (✅ 完全響應式!)    │ │    │
-│                             │ └─────────────────────┘ │    │
-│                             └─────────────────────────┘    │
-│                                                             │
-│   ✅ Pinia shallowRef 是完全響應式的                        │
-│   ✅ 快取更新時，Vue computed 自動重新計算                   │
-│   ✅ UI 永遠顯示最新數據                                     │
-│                                                             │
+│ │
+│ Vue Component PreloadService (Facade) │
+│ ┌─────────────┐ ┌─────────────────────────┐ │
+│ │ computed: │           │ teamsRef: ShallowRef │    │
+│ │   teams │   <─── │     ↑ auto-sync │    │
+│ └─────────────┘ └───────────┬─────────────┘ │
+│ │ delegates to │
+│ ┌───────────▼─────────────┐ │
+│ │   usePreloadStore │    │
+│ │   (Pinia Store) │    │
+│ │ ┌─────────────────────┐ │ │
+│ │ │ teams: shallowRef │ │ │
+│ │ │ ( 完全響應式!) │ │ │
+│ │ └─────────────────────┘ │ │
+│ └─────────────────────────┘ │
+│ │
+│ Pinia shallowRef 是完全響應式的 │
+│ 快取更新時，Vue computed 自動重新計算 │
+│ UI 永遠顯示最新數據 │
+│ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -306,7 +306,7 @@ if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
 
 ```typescript
 export const usePreloadStore = defineStore('preload', () => {
-  // ✅ shallowRef 提供完整 Vue 響應式
+  // shallowRef 提供完整 Vue 響應式
   const teams = shallowRef<Team[]>([])
   const teamsCache = ref<CacheEntry<Team[]> | null>(null)
   const loading = ref(false)
@@ -373,22 +373,22 @@ class PreloadService {
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    驗證結果                                  │
+│ 驗證結果 │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ✅ 單元測試：34/34 通過                                     │
-│  ✅ TypeScript 類型檢查：通過                                │
-│  ✅ 生產構建：成功                                           │
-│                                                             │
-│  瀏覽器整合測試：                                            │
-│  ✅ 冷啟動測試：團隊正確載入                                 │
-│  ✅ 團隊選擇對話框：5 個團隊全部顯示                         │
-│  ✅ 快速連續操作：3 次開關無錯誤                             │
-│  ✅ 刷新功能：正常運作                                       │
-│  ✅ DevTools 驗證：Pinia Store 狀態正確                      │
-│                                                             │
-│  🎯 Bug 狀態：「沒有找到可用的團隊」錯誤已完全修復           │
-│                                                             │
+│ │
+│ 單元測試：34/34 通過 │
+│ TypeScript 類型檢查：通過 │
+│ 生產構建：成功 │
+│ │
+│  瀏覽器整合測試： │
+│ 冷啟動測試：團隊正確載入 │
+│ 團隊選擇對話框：5 個團隊全部顯示 │
+│ 快速連續操作：3 次開關無錯誤 │
+│ 刷新功能：正常運作 │
+│ DevTools 驗證：Pinia Store 狀態正確 │
+│ │
+│ Bug 狀態：「沒有找到可用的團隊」錯誤已完全修復 │
+│ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -407,7 +407,7 @@ class PreloadService {
 
 ---
 
-## 📁 修改的文件清单
+##  修改的文件清单
 
 ### 新增文件（2个）
 
@@ -453,16 +453,16 @@ class PreloadService {
 
 ---
 
-## 🧪 测试覆盖
+##  测试覆盖
 
 ### 已完成测试
 
 | 测试类型 | 状态 | 结果 |
 |---------|------|------|
-| TypeScript 类型检查 | ✅ | 通过 |
-| 前端构建测试 | ✅ | 成功（2.54秒）|
-| 运行时错误检查 | ✅ | 无错误 |
-| 手动功能测试 | ✅ | 全部通过 |
+| TypeScript 类型检查 |  | 通过 |
+| 前端构建测试 |  | 成功（2.54秒）|
+| 运行时错误检查 |  | 无错误 |
+| 手动功能测试 |  | 全部通过 |
 
 ### 推荐的额外测试
 
@@ -483,7 +483,7 @@ class PreloadService {
 
 ---
 
-## 🚀 部署建议
+##  部署建议
 
 ### 部署前检查清单
 
@@ -525,7 +525,7 @@ git push
 
 ---
 
-## 📈 监控建议
+##  监控建议
 
 ### 关键性能指标（KPI）
 
@@ -550,7 +550,7 @@ git push
    const startTime = performance.now()
    await preloadService.ensureTeamsLoaded()
    const loadTime = performance.now() - startTime
-   console.log(`⏱️ Teams loaded in ${loadTime.toFixed(2)}ms`)
+   console.log(` Teams loaded in ${loadTime.toFixed(2)}ms`)
    ```
 
 3. **用户交互延迟**
@@ -563,7 +563,7 @@ git push
 
 ---
 
-## 🎓 经验总结
+##  经验总结
 
 ### 成功经验
 
@@ -601,7 +601,7 @@ git push
 
 ---
 
-## 📚 相关文档
+##  相关文档
 
 - [WebSocket 实时更新规划](./TEAM_SELECTOR_WEBSOCKET_PLAN.md)
 - [PreloadService API 文档](../../frontend/src/services/preloadService.ts)
@@ -610,16 +610,16 @@ git push
 
 ---
 
-## ✅ 结论
+##  结论
 
 ### 优化成果
 
 本次优化成功实现了团队选择器的性能提升，主要成果包括：
 
-- ⚡ **200倍性能提升**：首次打开延迟从 2000ms → < 10ms
-- 📉 **83% API 调用减少**：后端负载显著降低
-- ✨ **100% 假性空状态消除**：用户体验大幅改善
-- 🎯 **95% 缓存命中率**：数据访问效率显著提升
+-  **200倍性能提升**：首次打开延迟从 2000ms → < 10ms
+-  **83% API 调用减少**：后端负载显著降低
+-  **100% 假性空状态消除**：用户体验大幅改善
+-  **95% 缓存命中率**：数据访问效率显著提升
 
 ### 下一步计划
 

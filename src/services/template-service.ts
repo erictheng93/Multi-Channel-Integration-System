@@ -65,11 +65,11 @@ export class TemplateService {
 </head>
 <body>
     <div class="header">
-        <h1>🚀 多渠道客服管理系統</h1>
+        <h1> 多渠道客服管理系統</h1>
     </div>
     <div class="container">
         <div class="card">
-            <h3>📊 系統狀態</h3>
+            <h3> 系統狀態</h3>
             <div class="stat-number">
                 <span class="status-indicator status-online"></span>
                 運行中
@@ -78,12 +78,12 @@ export class TemplateService {
             <button class="btn" onclick="window.location.href='/api/system/health'">檢查健康狀態</button>
         </div>
         <div class="card">
-            <h3>💬 對話統計</h3>
+            <h3> 對話統計</h3>
             <div class="stat-number" id="conversation-count">載入中...</div>
             <p>總對話數量</p>
         </div>
         <div class="card">
-            <h3>👥 客戶統計</h3>
+            <h3> 客戶統計</h3>
             <div class="stat-number" id="customer-count">載入中...</div>
             <p>總客戶數量</p>
         </div>

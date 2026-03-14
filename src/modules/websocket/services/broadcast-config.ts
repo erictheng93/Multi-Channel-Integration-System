@@ -48,7 +48,7 @@ export class BroadcastConfig {
         return this.migrationConfig!;
       }
     } catch (error) {
-      console.error('❌ [BroadcastConfig] Config error:', error);
+      console.error('[BroadcastConfig] Config error:', error);
     }
 
     // Default: 100% WebSocket rollout with all features enabled
@@ -92,7 +92,7 @@ export class BroadcastConfig {
           durableObjectsAvailable = response.ok;
         }
       } catch (error) {
-        console.error('❌ [BroadcastConfig] Durable Objects health check failed:', error);
+        console.error('[BroadcastConfig] Durable Objects health check failed:', error);
       }
 
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';

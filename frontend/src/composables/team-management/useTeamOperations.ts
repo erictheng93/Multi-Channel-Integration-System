@@ -190,7 +190,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
   async function submitAddTeam() {
     // ① 立即关闭模态框和显示成功提示（乐观更新）
     const teamName = addTeamForm.name
-    const teamDescription = addTeamForm.description  // 🔧 修復：在重置前保存 description
+    const teamDescription = addTeamForm.description  //  修復：在重置前保存 description
     const memberCount = addTeamForm.selectedMembers.length
     const selectedMemberIds = [...addTeamForm.selectedMembers]
 
@@ -204,7 +204,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
       // 建立团队
       const response = await teamApi.createTeam({
         name: teamName,
-        description: teamDescription  // 🔧 修復：使用保存的 description
+        description: teamDescription  //  修復：使用保存的 description
       })
 
       if (response.success && response.data) {
@@ -213,19 +213,19 @@ export function useTeamOperations(): UseTeamOperationsReturn {
         // ③ 乐观更新：直接将新团队添加到列表（預設成員數量避免閃爍）
         teamStore.teams = [...teamStore.teams, {
           ...response.data,
-          memberCount: selectedMemberIds.length  // 🔧 預設成員數量，避免顯示 0 後再更新
+          memberCount: selectedMemberIds.length  //  預設成員數量，避免顯示 0 後再更新
         }]
 
-        // 🆕 团队创建时已预生成 QR 码，触发 Store 预载
+        // 团队创建时已预生成 QR 码，触发 Store 预载
         if (response.data.qrCode) {
           await qrCodeStore.loadQRCode(newTeamId, true)
-          console.log(`🚀 QR 碼已存入 Store: team ${newTeamId}`)
+          console.log(` QR 碼已存入 Store: team ${newTeamId}`)
         }
 
         // ④ 如果有选择成员，使用批量 API 将他们加入团队
         if (selectedMemberIds.length > 0) {
           try {
-            // 🔧 修復：使用正確的批量添加 API（寫入 agent_teams 表）
+            // 修復：使用正確的批量添加 API（寫入 agent_teams 表）
             const batchResult = await teamApi.batchAddMembersToTeam(
               newTeamId,
               selectedMemberIds,
@@ -254,7 +254,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
                 }
               })
 
-              // 🔧 修正 memberCount（以實際成功數量為準）
+              // 修正 memberCount（以實際成功數量為準）
               const team = teamStore.teams.find(t => t.id === newTeamId)
               if (team) {
                 // 直接設定為實際成功數量（不是累加）
@@ -263,13 +263,13 @@ export function useTeamOperations(): UseTeamOperationsReturn {
 
               // 記錄結果
               if (added.length > 0) {
-                console.log(`✅ 成功添加 ${added.length} 位成員到團隊`)
+                console.log(` 成功添加 ${added.length} 位成員到團隊`)
               }
               if (skipped.length > 0) {
-                console.warn(`⚠️ ${skipped.length} 位成員已在團隊中，跳過`)
+                console.warn(` ${skipped.length} 位成員已在團隊中，跳過`)
               }
               if (errors.length > 0) {
-                console.error(`❌ ${errors.length} 位成員添加失敗:`, errors)
+                console.error(` ${errors.length} 位成員添加失敗:`, errors)
                 // 如果有部分失敗，顯示提示
                 showError('部分成員添加失敗', `${errors.length} 位成員無法加入團隊`)
               }
@@ -291,7 +291,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
           }
         }
 
-        console.log('✅ 團隊創建完成，成員已正確寫入 agent_teams 表')
+        console.log(' 團隊創建完成，成員已正確寫入 agent_teams 表')
       } else {
         showError('新增團隊失敗', '團隊創建失敗，請重試')
       }
@@ -526,7 +526,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
 
       if (memberUpdatePromises.length > 0) {
         await Promise.all(memberUpdatePromises)
-        console.log('✅ 團隊成員更新完成')
+        console.log(' 團隊成員更新完成')
       }
     } catch (error) {
       console.error('更新團隊失敗:', error)
@@ -588,7 +588,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
     // 顯示確認彈窗
     const confirmed = await showDanger(
       '確認刪除團隊',
-      `您確定要刪除團隊「${team.name}」嗎？\n\n此操作將會：\n• 永久刪除此團隊\n• 團隊中的成員將變為未分配狀態\n\n⚠️ 此操作無法復原`,
+      `您確定要刪除團隊「${team.name}」嗎？\n\n此操作將會：\n• 永久刪除此團隊\n• 團隊中的成員將變為未分配狀態\n\n 此操作無法復原`,
       {
         confirmText: '確認刪除',
         cancelText: '取消'
@@ -617,12 +617,12 @@ export function useTeamOperations(): UseTeamOperationsReturn {
    * 处理成员更新事件
    */
   async function handleMemberUpdated() {
-    console.log('🔄 團隊成員已更新，重新載入團隊數據...')
+    console.log(' 團隊成員已更新，重新載入團隊數據...')
     try {
       await teamStore.loadTeams()
-      console.log('✅ 團隊數據重新載入完成')
+      console.log(' 團隊數據重新載入完成')
     } catch (error) {
-      console.error('❌ 重新載入團隊數據失敗:', error)
+      console.error(' 重新載入團隊數據失敗:', error)
     }
   }
 

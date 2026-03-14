@@ -3,7 +3,7 @@
     <div class="stats-grid">
       <!-- 總報表數 -->
       <StatCard
-        icon="📊"
+        icon=""
         :number="stats.totalReports"
         label="總報表數"
         type="total"
@@ -13,7 +13,7 @@
             v-if="stats.thisMonthGenerated > 0"
             class="stat-trend"
           >
-            <span class="trend-indicator up">↗</span>
+            <span class="trend-indicator up"></span>
             <span class="trend-text">本月 +{{ stats.thisMonthGenerated }}</span>
           </div>
         </template>
@@ -21,7 +21,7 @@
 
       <!-- 已完成 -->
       <StatCard
-        icon="✅"
+        icon=""
         :number="stats.completedReports"
         label="已完成"
         type="completed"
@@ -41,7 +41,7 @@
 
       <!-- 處理中 -->
       <StatCard
-        icon="⚙️"
+        icon=""
         :number="stats.pendingReports"
         label="處理中"
         type="generating"
@@ -59,7 +59,7 @@
 
       <!-- 失敗 -->
       <StatCard
-        icon="❌"
+        icon=""
         :number="stats.failedReports"
         label="失敗"
         type="failed"

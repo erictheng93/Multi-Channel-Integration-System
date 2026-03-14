@@ -1,6 +1,6 @@
 # 多渠道客服整合系統 (Multi-Channel Customer Support System)
 
-🔗 Cloudflare Workers 🖥️ Vue 3 **🗄️ Drizzle ORM****☁️ Cloudflare KV** **📡 API 監控**
+ Cloudflare Workers  Vue 3 ** Drizzle ORM**** Cloudflare KV** ** API 監控**
 
 ![Vue](https://img.shields.io/badge/Vue-3.5-brightgreen.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)
@@ -12,19 +12,19 @@
 ![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)
 ![Production Ready](https://img.shields.io/badge/Production-Ready-success.svg)
 
-🔧 **開發者入口**
+ **開發者入口**
 - **快速部署** `bun run deploy`（後端）/ `bun run deploy:pages`（前端）
 - **本文件** (README.md) - 完整技術文件與架構說明
-- **API 文件** [📋 API 參考](docs/reference/api/API_REFERENCE.md) - 完整 API 端點文件
+- **API 文件** [ API 參考](docs/reference/api/API_REFERENCE.md) - 完整 API 端點文件
 - **自動部署** Web Installer 自助部署工具（`web-installer/`）
 
-👤 **使用者入口**
-- **使用指南** [📖 使用者指南](docs/guides/USER_GUIDE.md) - 完整使用與操作指南
-- **快速開始** [🚀 快速開始](docs/guides/QUICK_START.md) - 5 分鐘快速上手
+ **使用者入口**
+- **使用指南** [ 使用者指南](docs/guides/USER_GUIDE.md) - 完整使用與操作指南
+- **快速開始** [ 快速開始](docs/guides/QUICK_START.md) - 5 分鐘快速上手
 
-## 📋 目錄
+##  目錄
 
-- [📋 多渠道客服整合系統 - 功能特色](#-功能特色)
+- [ 多渠道客服整合系統 - 功能特色](#-功能特色)
 - [架構設計](#架構設計)
 - [先決條件](#先決條件)
 - [環境配置系統](#環境配置系統-environment-configuration)
@@ -37,9 +37,9 @@
 - [環境變數](#環境變數)
 - [常見問題](#常見問題)
 
-## ✨ 功能特色
+##  功能特色
 
-### 🔥 WebSocket + Durable Objects 即時通訊 (v4.0.0)
+###  WebSocket + Durable Objects 即時通訊 (v4.0.0)
 - **即時雙向通訊** - SSE + WebSocket + Durable Objects 三層架構
 - **高併發支援** - 1000+ 同時連線零延遲
 - **分散式狀態管理** - Cloudflare Durable Objects 全球一致性
@@ -48,25 +48,25 @@
 - **自動故障恢復** - 連線斷開自動重連
 - **全新 UI 體驗** - 即時狀態顯示與通知
 
-### 🛡️ API 標準化 (v3.0.0)
+###  API 標準化 (v3.0.0)
 - **統一回應格式** - 所有 API 端點標準化回應
 - **完整錯誤處理** - 分層 API 錯誤處理機制
 - **自動化監控** - 內建健康檢查與狀態監控
 - **版本管理** - 完善的版本控制機制
 
-### 📊 效能優化 (v3.0.0)
+###  效能優化 (v3.0.0)
 - **前端優化** - 代碼分割 + 懶載入
 - **後端優化** - 查詢優化與快取策略
 - **全局快取** - 多層級快取架構
 - **壓縮傳輸** - 智慧資源壓縮
 
-### 🎨 Dashboard 全新設計 (v2.1.0)
+###  Dashboard 全新設計 (v2.1.0)
 - **全新介面** - 現代化設計語言與互動體驗
 - **TypeScript 0 錯誤** - 完整類型安全
 - **4,200+ 測試** - 後端 1,700+ 前端 2,700+ 全通過
 - **優質 UI/UX** - 響應式設計與無障礙支援
 
-### ⚡ 即時通訊系統 (WebSocket + Durable Objects)
+###  即時通訊系統 (WebSocket + Durable Objects)
 - **雙向通訊**: WebSocket + Durable Objects 即時通訊
 - **超低延遲**: P95 < 500ms 支援 1000+ 併發
 - **分散式鎖**: Durable Objects 分散式協調
@@ -76,9 +76,9 @@
 - **即時廣播**: 多用戶即時同步
 - **狀態同步**: 全域一致性保證
 
-## 🏗️ 核心功能
+##  核心功能
 
-### 💬 WebSocket 即時通訊 (NEW! v4.0.0)
+###  WebSocket 即時通訊 (NEW! v4.0.0)
 - **即時訊息推送** - 新訊息即時送達
 - **打字狀態顯示** - 對方正在輸入提示
 - **線上狀態追蹤** - 在線/離線/忙碌狀態
@@ -88,7 +88,7 @@
 - **安全認證** - JWT + WebSocket 身份驗證
 - **高可用** - Durable Objects 確保可靠性
 
-### 📡 API 監控
+###  API 監控
 - **健康檢查** - 15+ API 端點即時監控
 - **自動化測試** - 完整 API 測試套件
 - **效能追蹤** - 回應時間與錯誤率監控
@@ -96,12 +96,12 @@
 - **告警通知** - 異常自動告警
 - **視覺化面板** - 即時數據儀表板
 
-### 🚀 部署系統
+###  部署系統
 - **後端部署** - `bun run deploy`（Cloudflare Workers）
 - **前端部署** - `bun run deploy:pages`（Cloudflare Pages）
 - **自助部署** - Web Installer 視覺化部署工具（`web-installer/`）
 
-## 📌 系統概述
+##  系統概述
 
 - **多渠道整合** - 統一管理 LINE OA 與 Facebook Messenger
 - **即時客服** - 完整的客服對話管理系統
@@ -142,24 +142,24 @@
 ## 架構設計
 
 ```
-┌─────────────────┐    ┌──────────────────────┐    ┌─────────────┐
-│   Vue 3 前端     │◄──►│  Cloudflare Workers   │◄──►│  外部 API    │
-│  (TypeScript)    │    │  (Hono + 23 模組)     │    │  (LINE/FB)  │
-└────────┬────────┘    └──────────┬───────────┘    └─────────────┘
-         │                        │
-         │              ┌─────────┴──────────┐
-         │              │   Cloudflare 平台    │
-         │              ├────────────────────┤
-         │              │  D1    KV     R2   │
-         │              │ (資料庫)(快取)(儲存) │
-         │              ├────────────────────┤
-         │              │ Durable Objects ×8  │
-         │              │ (即時通訊/狀態管理)   │
-         │              └────────────────────┘
+┌─────────────────┐ ┌──────────────────────┐ ┌─────────────┐
+│ Vue 3 前端 │◄──►│  Cloudflare Workers │◄──►│  外部 API │
+│  (TypeScript) │    │  (Hono + 23 模組) │    │  (LINE/FB)  │
+└────────┬────────┘ └──────────┬───────────┘ └─────────────┘
+         │ │
+         │ ┌─────────┴──────────┐
+         │ │   Cloudflare 平台 │
+         │ ├────────────────────┤
+         │ │  D1 KV R2 │
+         │ │ (資料庫)(快取)(儲存) │
+         │ ├────────────────────┤
+         │ │ Durable Objects ×8  │
+         │ │ (即時通訊/狀態管理) │
+         │ └────────────────────┘
          │
     ┌────┴─────────────┐
-    │  Web Installer    │
-    │  (自助部署工具)    │
+    │  Web Installer │
+    │  (自助部署工具) │
     └──────────────────┘
 ```
 
@@ -267,10 +267,10 @@ export default {
 2. 執行 `bun run build` 後部署
 
 ### 優勢
-✅ **快速切換** - 5-10 秒完成環境切換（相較傳統 4-6 小時）
-✅ **類別安全** - 完整的 TypeScript 類型定義
-✅ **無硬編碼** - 所有 URL 統一管理
-✅ **自動驗證** - 啟動時配置驗證與錯誤提示
+ **快速切換** - 5-10 秒完成環境切換（相較傳統 4-6 小時）
+ **類別安全** - 完整的 TypeScript 類型定義
+ **無硬編碼** - 所有 URL 統一管理
+ **自動驗證** - 啟動時配置驗證與錯誤提示
 
 ---
 
@@ -300,7 +300,7 @@ cd frontend
 bun run dev
 ```
 
-> ⚠️ **注意**：所有開發環境均連接遠端 Cloudflare 資源（D1、KV、R2、Durable Objects），無本地模擬環境。
+>  **注意**：所有開發環境均連接遠端 Cloudflare 資源（D1、KV、R2、Durable Objects），無本地模擬環境。
 
 ## 部署方式
 
@@ -366,26 +366,26 @@ API 監控系統提供全面的服務監控能力：
 ### 當前版本: v4.0.0 (Enterprise-Ready WebSocket System)
 
 #### 已完成功能 (100% Ready)
-- ✅ **WebSocket + Durable Objects 即時通訊** - 支援 1000+ 併發
-- ✅ **超低延遲通訊** - P95 < 500ms
-- ✅ **分散式鎖定** - Durable Objects 協調
-- ✅ **全局狀態管理** - Durable Objects 持久化
-- ✅ **自動故障恢復** - 斷線自動重連
-- ✅ **延遲訊息排程** - 30 秒精準排程
-- ✅ **即時狀態廣播** - WebSocket 多用戶同步
-- ✅ **完整監控系統** - 健康檢查與效能指標
-- ✅ **多渠道整合** - LINE OA + WebSocket（Facebook Messenger 支援中）
-- ✅ **認證系統** - 雙重角色 RBAC + WebSocket 安全認證
-- ✅ **標籤系統** - 分類管理與對話統計
-- ✅ **延遲訊息** - 1-120 秒精準排程 + WebSocket 通知
-- ✅ **前端應用** - Vue 3 + TypeScript + WebSocket 4,200+ 測試通過
-- ✅ **API 標準化** - 統一回應格式
-- ✅ **活動紀錄** - 完整操作追蹤 + WebSocket 即時推送
+-  **WebSocket + Durable Objects 即時通訊** - 支援 1000+ 併發
+-  **超低延遲通訊** - P95 < 500ms
+-  **分散式鎖定** - Durable Objects 協調
+-  **全局狀態管理** - Durable Objects 持久化
+-  **自動故障恢復** - 斷線自動重連
+-  **延遲訊息排程** - 30 秒精準排程
+-  **即時狀態廣播** - WebSocket 多用戶同步
+-  **完整監控系統** - 健康檢查與效能指標
+-  **多渠道整合** - LINE OA + WebSocket（Facebook Messenger 支援中）
+-  **認證系統** - 雙重角色 RBAC + WebSocket 安全認證
+-  **標籤系統** - 分類管理與對話統計
+-  **延遲訊息** - 1-120 秒精準排程 + WebSocket 通知
+-  **前端應用** - Vue 3 + TypeScript + WebSocket 4,200+ 測試通過
+-  **API 標準化** - 統一回應格式
+-  **活動紀錄** - 完整操作追蹤 + WebSocket 即時推送
 
 #### 計劃中功能
-- 🔄 **AI 客服助手** - Chat 智慧輔助（規劃中）
-- 🔄 **進階分析** - 數據分析儀表板（開發中）
-- 🔄 **多語言支援** - 國際化（規劃中）
+-  **AI 客服助手** - Chat 智慧輔助（規劃中）
+-  **進階分析** - 數據分析儀表板（開發中）
+-  **多語言支援** - 國際化（規劃中）
 
 ### 程式碼品質
 - **測試覆蓋**: 4,200+ 測試（後端 1,700+ 跨 71 檔案，前端 2,700+ 跨 149 檔案）
@@ -408,60 +408,60 @@ API 監控系統提供全面的服務監控能力：
 
 ```
 Multi_Channel_Integration_System/
-├── src/                          # 後端 (Cloudflare Workers)
-│   ├── index.ts                  # Worker 進入點
-│   ├── modules/                  # 23 個領域模組
-│   │   ├── auth/handlers/        # 認證系統
-│   │   ├── conversations/handlers/  # 對話管理
-│   │   ├── messaging/handlers/   # 訊息處理
-│   │   ├── teams/handlers/       # 團隊管理
-│   │   ├── customer/handlers/    # 客戶管理
-│   │   ├── system/handlers/      # 系統設定
-│   │   ├── tags/handlers/        # 標籤系統
-│   │   ├── websocket/handlers/   # WebSocket 管理
-│   │   ├── delayed-message/      # 延遲訊息
-│   │   ├── integrations/         # 渠道整合
-│   │   ├── reports/              # 報表系統
-│   │   ├── analytics/            # 數據分析
-│   │   ├── notifications/        # 通知系統
-│   │   ├── session/              # 會話管理
-│   │   ├── agents/               # 客服代理
-│   │   ├── collaboration/        # 協作功能
-│   │   ├── file-management/      # 檔案管理
-│   │   ├── monitoring/           # 監控系統
-│   │   ├── realtime/             # 即時功能
-│   │   ├── queue/                # 佇列處理
-│   │   ├── activities/           # 活動紀錄
-│   │   ├── customer-conversations/  # 客戶對話
-│   │   └── liff/                 # LINE LIFF
-│   ├── durable-objects/          # 8 個 Durable Objects
-│   │   ├── ConversationRoom.ts
-│   │   ├── UserConnection.ts
-│   │   ├── MessageBroadcaster.ts
-│   │   ├── DelayedMessageScheduler.ts
-│   │   ├── LatestMessageCacheCoordinator.ts
-│   │   ├── CustomerConversationDO.ts
-│   │   ├── CustomerMessageDO.ts
-│   │   └── RateLimiterDO.ts
-│   ├── services/                 # 40+ 共用服務
-│   ├── middleware/               # Auth, CORS 等中介層
-│   ├── db/schema.ts              # Drizzle ORM 資料庫綱要
-│   ├── config/                   # 執行時配置
-│   └── constants/                # 常數定義
-├── frontend/                     # Vue 3 前端應用
-│   └── src/
-│       ├── views/                # 21 個頁面元件
-│       ├── components/           # 可重用 UI 元件
-│       ├── stores/               # 10 個 Pinia stores
-│       ├── services/             # WebSocket 客戶端、同步
-│       ├── api/                  # API 客戶端函數
-│       └── config/runtime.ts     # 前端執行時配置
-├── tests/                        # 後端測試 (62 檔案, 1,700+ 測試)
-├── frontend/tests/               # 前端測試 (120 檔案, 2,700+ 測試)
-├── web-installer/                # 自助部署工具
-├── scripts/                      # 120+ 自動化腳本
-├── docs/                         # 技術文件
-└── wrangler.toml                 # Cloudflare Workers 配置
+├── src/ # 後端 (Cloudflare Workers)
+│ ├── index.ts # Worker 進入點
+│ ├── modules/ # 23 個領域模組
+│ │   ├── auth/handlers/ # 認證系統
+│ │   ├── conversations/handlers/  # 對話管理
+│ │   ├── messaging/handlers/ # 訊息處理
+│ │   ├── teams/handlers/ # 團隊管理
+│ │   ├── customer/handlers/ # 客戶管理
+│ │   ├── system/handlers/ # 系統設定
+│ │   ├── tags/handlers/ # 標籤系統
+│ │   ├── websocket/handlers/ # WebSocket 管理
+│ │   ├── delayed-message/ # 延遲訊息
+│ │   ├── integrations/ # 渠道整合
+│ │   ├── reports/ # 報表系統
+│ │   ├── analytics/ # 數據分析
+│ │   ├── notifications/ # 通知系統
+│ │   ├── session/ # 會話管理
+│ │   ├── agents/ # 客服代理
+│ │   ├── collaboration/ # 協作功能
+│ │   ├── file-management/ # 檔案管理
+│ │   ├── monitoring/ # 監控系統
+│ │   ├── realtime/ # 即時功能
+│ │   ├── queue/ # 佇列處理
+│ │   ├── activities/ # 活動紀錄
+│ │   ├── customer-conversations/  # 客戶對話
+│ │   └── liff/ # LINE LIFF
+│ ├── durable-objects/ # 8 個 Durable Objects
+│ │   ├── ConversationRoom.ts
+│ │   ├── UserConnection.ts
+│ │   ├── MessageBroadcaster.ts
+│ │   ├── DelayedMessageScheduler.ts
+│ │   ├── LatestMessageCacheCoordinator.ts
+│ │   ├── CustomerConversationDO.ts
+│ │   ├── CustomerMessageDO.ts
+│ │   └── RateLimiterDO.ts
+│ ├── services/ # 40+ 共用服務
+│ ├── middleware/ # Auth, CORS 等中介層
+│ ├── db/schema.ts # Drizzle ORM 資料庫綱要
+│ ├── config/ # 執行時配置
+│ └── constants/ # 常數定義
+├── frontend/ # Vue 3 前端應用
+│ └── src/
+│ ├── views/ # 21 個頁面元件
+│ ├── components/ # 可重用 UI 元件
+│ ├── stores/ # 10 個 Pinia stores
+│ ├── services/ # WebSocket 客戶端、同步
+│ ├── api/ # API 客戶端函數
+│ └── config/runtime.ts # 前端執行時配置
+├── tests/ # 後端測試 (62 檔案, 1,700+ 測試)
+├── frontend/tests/ # 前端測試 (120 檔案, 2,700+ 測試)
+├── web-installer/ # 自助部署工具
+├── scripts/ # 120+ 自動化腳本
+├── docs/ # 技術文件
+└── wrangler.toml # Cloudflare Workers 配置
 ```
 
 ## API 端點
@@ -562,15 +562,15 @@ A:
 ```bash
 # 前端測試
 cd frontend
-bun run test              # 互動式測試
-bun run test:run          # 單次執行
-bun run test:coverage     # 覆蓋率報告
+bun run test # 互動式測試
+bun run test:run # 單次執行
+bun run test:coverage # 覆蓋率報告
 
 # 後端型別檢查
-bun run build             # TypeScript 編譯檢查
+bun run build # TypeScript 編譯檢查
 
 # 完整檢查
-bash scripts/check.sh     # 後端 + 前端
+bash scripts/check.sh # 後端 + 前端
 ```
 
 **Q: 如何查看系統日誌？**
@@ -607,4 +607,4 @@ A:
 - [效能優化指南](docs/guides/PERFORMANCE_OPTIMIZATION_GUIDE.md) - 系統效能優化指南
 - [負載測試](docs/architecture/performance/LOAD_TESTING_GUIDE.md) - 負載測試指南
 
-**感謝使用本系統！如果覺得有幫助，請給個 ⭐ Star**
+**感謝使用本系統！如果覺得有幫助，請給個  Star**

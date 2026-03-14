@@ -116,7 +116,7 @@ export function createFileRoutes() {
     return await uploadHandler.cancelChunkedUpload(c);
   });
 
-  // === 🆕 Presigned URL 路由 (直接上傳到 R2) ===
+  // ===  Presigned URL 路由 (直接上傳到 R2) ===
 
   // 檢查 Presigned URL 服務狀態
   fileRoutes.get('/presigned-url/status', jwtAuth, checkPresignedUrlStatus);

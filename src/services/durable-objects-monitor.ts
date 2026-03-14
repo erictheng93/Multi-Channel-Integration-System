@@ -80,22 +80,22 @@ export interface MonitorConfig {
 
   // 告警閾值
   thresholds: {
-    errorRate: number;          // 錯誤率閾值（0-1）
-    latency: number;             // 延遲閾值（毫秒）
-    memoryUsage: number;         // 內存使用閾值（MB）
+    errorRate: number; // 錯誤率閾值（0-1）
+    latency: number; // 延遲閾值（毫秒）
+    memoryUsage: number; // 內存使用閾值（MB）
     connectionUtilization: number; // 連接使用率閾值（0-1）
   };
 
   // 實例限制
   limits: {
     maxInstancesPerType: number;  // 每種類型最大實例數
-    maxTotalInstances: number;    // 總實例數上限
+    maxTotalInstances: number; // 總實例數上限
   };
 
   // 告警設置
   alerts: {
     enabled: boolean;
-    cooldownPeriod: number;      // 告警冷卻期（毫秒）
+    cooldownPeriod: number; // 告警冷卻期（毫秒）
     maxAlertsPerHour: number;
   };
 }
@@ -141,9 +141,9 @@ export class DurableObjectsMonitor {
     this.config = {
       healthCheckInterval: 30000, // 30 seconds
       thresholds: {
-        errorRate: 0.1,           // 10% error rate
-        latency: 1000,            // 1 second
-        memoryUsage: 100,         // 100 MB
+        errorRate: 0.1, // 10% error rate
+        latency: 1000, // 1 second
+        memoryUsage: 100, // 100 MB
         connectionUtilization: 0.8 // 80% connection utilization
       },
       limits: {
@@ -152,7 +152,7 @@ export class DurableObjectsMonitor {
       },
       alerts: {
         enabled: true,
-        cooldownPeriod: 300000,   // 5 minutes
+        cooldownPeriod: 300000, // 5 minutes
         maxAlertsPerHour: 10
       },
       ...config

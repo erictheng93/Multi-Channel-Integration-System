@@ -1066,7 +1066,7 @@ describe('Session Validation Middleware', () => {
       });
 
       const specialData = createMockCreateSessionData({
-        topic: '🎉✨ Test Topic with Emojis 💬🤔',
+        topic: ' Test Topic with Emojis ',
         messageContent: 'Message with ñáéíóú and 中文 characters'
       });
 

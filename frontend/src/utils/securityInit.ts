@@ -10,7 +10,7 @@ import { validateSecurityEnvironment, getCurrentSecurityConfig } from '@/config/
  */
 export const initializeSecurity = async (): Promise<void> => {
   try {
-    console.log('🔒 Initializing security configuration...')
+    console.log(' Initializing security configuration...')
     
     // 驗證環境變數
     validateSecurityEnvironment()
@@ -22,8 +22,8 @@ export const initializeSecurity = async (): Promise<void> => {
     const browserSecurity = securityConfig.checks.checkBrowserSecurity()
     
     // 記錄安全狀態
-    console.log('✅ Security validation passed')
-    console.log('🌐 Browser security features:', {
+    console.log(' Security validation passed')
+    console.log(' Browser security features:', {
       localStorage: browserSecurity.localStorage,
       crypto: browserSecurity.crypto,
       secureContext: securityConfig.checks.isSecureContext(),
@@ -31,7 +31,7 @@ export const initializeSecurity = async (): Promise<void> => {
     
     // 在開發環境中顯示額外信息
     if (import.meta.env.DEV) {
-      console.log('🔧 Development mode security settings:', {
+      console.log(' Development mode security settings:', {
         httpsRequired: securityConfig.environment.HTTPS_REQUIRED,
         secureCookies: securityConfig.environment.SECURE_COOKIES,
         strictCSP: securityConfig.environment.STRICT_CSP,
@@ -42,7 +42,7 @@ export const initializeSecurity = async (): Promise<void> => {
     setupGlobalErrorHandling(securityConfig)
     
   } catch (error) {
-    console.error('❌ Security initialization failed:', error)
+    console.error(' Security initialization failed:', error)
     
     // 在生產環境中，安全驗證失敗應該阻止應用程式啟動
     if (import.meta.env.PROD) {
@@ -50,7 +50,7 @@ export const initializeSecurity = async (): Promise<void> => {
     }
     
     // 在開發環境中，顯示警告但允許繼續
-    console.warn('⚠️ Continuing in development mode with security warnings')
+    console.warn(' Continuing in development mode with security warnings')
   }
 }
 

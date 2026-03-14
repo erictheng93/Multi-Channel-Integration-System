@@ -257,7 +257,7 @@ const triggerBtnRef = ref<HTMLElement | null>(null)
 const panelRef = ref<HTMLElement | null>(null)
 const panelStyle = ref<Record<string, string>>({})
 
-// 🚀 优化：使用缓存服务获取标签数据
+// 优化：使用缓存服务获取标签数据
 const availableTags = computed(() => tagCacheService.getAllTags())
 
 // 過濾標籤
@@ -352,7 +352,7 @@ const toggleTag = (tag: Tag) => {
   }
 }
 
-// 🚀 优化：快速创建标籤并更新缓存
+// 优化：快速创建标籤并更新缓存
 const quickCreateTag = async () => {
   try {
     const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
@@ -364,25 +364,25 @@ const quickCreateTag = async () => {
     })
 
     if (response.success && response.data) {
-      // 🚀 乐观更新：立即添加到缓存
+      // 乐观更新：立即添加到缓存
       tagCacheService.optimisticAddTag(response.data)
 
       selectedTags.value.push(response.data.id)
       searchQuery.value = ''
 
-      console.log('✅ [TagSelector] Tag created and cached:', response.data.name)
+      console.log('[TagSelector] Tag created and cached:', response.data.name)
     }
   } catch (error) {
-    console.error('❌ [TagSelector] Failed to create tag:', error)
+    console.error('[TagSelector] Failed to create tag:', error)
   }
 }
 
-// 🚀 优化：防抖的确认操作（500ms延迟）
+// 优化：防抖的确认操作（500ms延迟）
 const debouncedConfirm = debounce(() => {
   emit('update:modelValue', selectedTags.value)
   const selected = availableTags.value.filter(t => selectedTags.value.includes(t.id))
   emit('change', selected)
-  console.log('✅ [TagSelector] Tags updated (debounced):', selected.map(t => t.name))
+  console.log('[TagSelector] Tags updated (debounced):', selected.map(t => t.name))
 }, 500)
 
 const handleConfirm = () => {
@@ -406,10 +406,10 @@ watch(() => props.modelValue, (newVal) => {
   selectedTags.value = [...newVal]
 })
 
-// 🚀 优化：组件挂载时确保标签已加载
+// 优化：组件挂载时确保标签已加载
 onMounted(async () => {
   await tagCacheService.ensureTagsLoaded()
-  console.log('✅ [TagSelector] Tags loaded from cache')
+  console.log('[TagSelector] Tags loaded from cache')
 
   // 監聽全局點擊事件（參考指派管理）
   document.addEventListener('click', handleClickOutside)

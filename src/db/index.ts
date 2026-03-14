@@ -3,11 +3,11 @@ import * as schema from './schema';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 // Database connection helper with unified casing configuration
-// ✅ ENHANCED: Now includes camelCase casing for consistent query behavior
+// ENHANCED: Now includes camelCase casing for consistent query behavior
 export function createDb(d1: D1Database) {
   return drizzle(d1, {
     schema,
-    casing: 'camelCase', // ✅ CRITICAL: Enforce camelCase for all queries
+    casing: 'camelCase', //  CRITICAL: Enforce camelCase for all queries
   });
 }
 

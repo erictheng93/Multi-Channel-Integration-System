@@ -12,7 +12,7 @@
           Start managing customer conversations across LINE and Facebook Messenger today.
         </p>
         <button @click="showTokenForm = true" class="btn btn-primary btn-lg" v-if="!showTokenForm">
-          <span>🚀 Deploy to Cloudflare</span>
+          <span> Deploy to Cloudflare</span>
         </button>
         <p class="hero-note" v-if="!showTokenForm">
           Free tier available • No credit card required • 2-3 minutes setup
@@ -82,32 +82,32 @@
         <h2 class="section-title">Why Choose Our CRM?</h2>
         <div class="features-grid">
           <FeatureCard
-            icon="💬"
+            icon=""
             title="Multi-Channel Support"
             description="Unified inbox for LINE OA and Facebook Messenger. Manage all customer conversations in one place."
           />
           <FeatureCard
-            icon="⚡"
+            icon=""
             title="Blazing Fast"
             description="Built on Cloudflare Workers. Global edge network ensures millisecond response times worldwide."
           />
           <FeatureCard
-            icon="🔒"
+            icon=""
             title="Secure & Private"
             description="Your data stays in your Cloudflare account. Complete control and privacy with enterprise-grade security."
           />
           <FeatureCard
-            icon="💰"
+            icon=""
             title="Cost Effective"
             description="Starts at $0/month on Cloudflare's free tier. Only pay for what you use as you grow."
           />
           <FeatureCard
-            icon="🎯"
+            icon=""
             title="Team Collaboration"
             description="Assign conversations to team members. Role-based access control with admin and agent roles."
           />
           <FeatureCard
-            icon="📊"
+            icon=""
             title="Real-Time Updates"
             description="WebSocket-powered live updates. See new messages and status changes instantly without refresh."
           />
@@ -157,11 +157,11 @@
             <h3 class="pricing-tier">Free Tier</h3>
             <div class="pricing-price">$0<span>/month</span></div>
             <ul class="pricing-features">
-              <li>✓ 100,000 requests/day</li>
-              <li>✓ 5GB D1 database</li>
-              <li>✓ 10GB R2 storage</li>
-              <li>✓ Unlimited Pages hosting</li>
-              <li>✓ Perfect for small businesses</li>
+              <li> 100,000 requests/day</li>
+              <li> 5GB D1 database</li>
+              <li> 10GB R2 storage</li>
+              <li> Unlimited Pages hosting</li>
+              <li> Perfect for small businesses</li>
             </ul>
           </div>
           <div class="pricing-card pricing-card-featured">
@@ -169,11 +169,11 @@
             <h3 class="pricing-tier">Growing Business</h3>
             <div class="pricing-price">$10-30<span>/month</span></div>
             <ul class="pricing-features">
-              <li>✓ 10M requests/month</li>
-              <li>✓ 25GB+ database storage</li>
-              <li>✓ 100GB+ file storage</li>
-              <li>✓ Custom domain included</li>
-              <li>✓ Pay only for what you use</li>
+              <li> 10M requests/month</li>
+              <li> 25GB+ database storage</li>
+              <li> 100GB+ file storage</li>
+              <li> Custom domain included</li>
+              <li> Pay only for what you use</li>
             </ul>
           </div>
         </div>
@@ -189,7 +189,7 @@
           Deploy your own Multi-Channel CRM in less than 3 minutes
         </p>
         <button @click="showTokenForm = true; window.scrollTo({ top: 0, behavior: 'smooth' })" class="btn btn-primary btn-lg">
-          <span>🚀 Start Free Deployment</span>
+          <span> Start Free Deployment</span>
         </button>
       </section>
     </div>

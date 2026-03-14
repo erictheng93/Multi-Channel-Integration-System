@@ -1,6 +1,6 @@
 # ConversationList.vue 邊緣情況處理文檔
 
-## 📋 文檔概述
+##  文檔概述
 
 本文檔詳細記錄 `ConversationList.vue` 組件中所有已識別的邊緣情況以及相應的處理策略。
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 🎯 邊緣情況分類
+##  邊緣情況分類
 
 ### 1. 數據邊界情況
 
@@ -28,9 +28,9 @@
 ```
 
 **處理策略**:
-- ✅ 顯示友好的空狀態組件
-- ✅ 提供清除篩選和重新整理的操作按鈕
-- ✅ 避免顯示錯誤信息（這是正常狀態）
+-  顯示友好的空狀態組件
+-  提供清除篩選和重新整理的操作按鈕
+-  避免顯示錯誤信息（這是正常狀態）
 
 **測試覆蓋**: `ConversationList.test.ts:172-187`
 
@@ -49,10 +49,10 @@
 ```
 
 **處理策略**:
-- ✅ 使用虛擬滾動只渲染可見項目
-- ✅ 動態載入更多數據（分頁）
-- ✅ 限制 DOM 節點數量（<200）
-- ✅ 保持 60 FPS 滾動性能
+-  使用虛擬滾動只渲染可見項目
+-  動態載入更多數據（分頁）
+-  限制 DOM 節點數量（<200）
+-  保持 60 FPS 滾動性能
 
 **性能指標**:
 - 初始渲染: ~50 項（基於 containerHeight 和 itemHeight）
@@ -71,9 +71,9 @@ conversations.value.length === 1
 ```
 
 **處理策略**:
-- ✅ 正常顯示，無需特殊處理
-- ✅ 禁用虛擬滾動的複雜邏輯
-- ✅ 分頁控件自動隱藏（totalPages === 1）
+-  正常顯示，無需特殊處理
+-  禁用虛擬滾動的複雜邏輯
+-  分頁控件自動隱藏（totalPages === 1）
 
 ---
 
@@ -93,9 +93,9 @@ function changePage(page: number) {
 ```
 
 **處理策略**:
-- ✅ 驗證頁碼範圍（1 到 totalPages）
-- ✅ 無效頁碼直接忽略
-- ✅ 不顯示錯誤提示（靜默失敗）
+-  驗證頁碼範圍（1 到 totalPages）
+-  無效頁碼直接忽略
+-  不顯示錯誤提示（靜默失敗）
 
 **邊界值**:
 - 最小頁碼: 1
@@ -115,9 +115,9 @@ function changePage(page: number) {
 ```
 
 **處理策略**:
-- ✅ 完全隱藏分頁控件
-- ✅ 顯示空狀態組件
-- ✅ 避免除以零錯誤
+-  完全隱藏分頁控件
+-  顯示空狀態組件
+-  避免除以零錯誤
 
 #### 2.3 最後一頁數據不足
 
@@ -129,9 +129,9 @@ function changePage(page: number) {
 ```
 
 **處理策略**:
-- ✅ 虛擬滾動自動調整高度
-- ✅ 下一頁按鈕自動禁用
-- ✅ 顯示正確的數據統計
+-  虛擬滾動自動調整高度
+-  下一頁按鈕自動禁用
+-  顯示正確的數據統計
 
 ---
 
@@ -150,9 +150,9 @@ async function handleLoadMore() {
 ```
 
 **處理策略**:
-- ✅ 使用 `loadingMore` 標記防止重複請求
-- ✅ 刷新按鈕在載入時禁用
-- ✅ 保持載入指示器顯示
+-  使用 `loadingMore` 標記防止重複請求
+-  刷新按鈕在載入時禁用
+-  保持載入指示器顯示
 
 **防護機制**:
 ```typescript
@@ -175,9 +175,9 @@ if (loadingMore || reachedEnd.value) {return}
 ```
 
 **處理策略**:
-- ✅ 捕獲並記錄錯誤
-- ⚠️ **需改進**: 未向用戶顯示錯誤提示
-- ⚠️ **需改進**: 未提供重試機制
+-  捕獲並記錄錯誤
+-  **需改進**: 未向用戶顯示錯誤提示
+-  **需改進**: 未提供重試機制
 
 **改進建議**:
 ```typescript
@@ -197,14 +197,14 @@ if (loadingMore || reachedEnd.value) {return}
 // 處理位置: ConversationList.vue:724-726
 if (conversations.value.length === currentLength) {
   reachedEnd.value = true
-  console.log('🏁 [ConversationList] No more conversations to load')
+  console.log('[ConversationList] No more conversations to load')
 }
 ```
 
 **處理策略**:
-- ✅ 設置 `reachedEnd` 標記
-- ✅ 顯示結束指示器
-- ✅ 防止進一步的載入請求
+-  設置 `reachedEnd` 標記
+-  顯示結束指示器
+-  防止進一步的載入請求
 
 ---
 
@@ -230,9 +230,9 @@ function clearFilters() {
 ```
 
 **處理策略**:
-- ✅ 重置所有篩選條件
-- ✅ 重置到第一頁
-- ✅ 重新載入數據
+-  重置所有篩選條件
+-  重置到第一頁
+-  重新載入數據
 
 #### 4.2 篩選結果為空
 
@@ -244,9 +244,9 @@ conversations.length === 0 && !isLoading
 ```
 
 **處理策略**:
-- ✅ 顯示"沒有找到對話"訊息
-- ✅ 提供清除篩選按鈕
-- ✅ 保持篩選器可見和可用
+-  顯示"沒有找到對話"訊息
+-  提供清除篩選按鈕
+-  保持篩選器可見和可用
 
 #### 4.3 無可用標籤
 
@@ -263,9 +263,9 @@ conversations.length === 0 && !isLoading
 ```
 
 **處理策略**:
-- ✅ 顯示友好的提示訊息
-- ✅ 標籤篩選功能保持可用（為未來準備）
-- ✅ 不阻止其他功能使用
+-  顯示友好的提示訊息
+-  標籤篩選功能保持可用（為未來準備）
+-  不阻止其他功能使用
 
 ---
 
@@ -289,9 +289,9 @@ function handleVisibleRangeChange(startIndex: number, endIndex: number) {
 ```
 
 **處理策略**:
-- ✅ 使用 `isPreloading` 防護標記
-- ✅ 自動錯誤處理和狀態重置
-- ✅ 獨立的滾動事件處理
+-  使用 `isPreloading` 防護標記
+-  自動錯誤處理和狀態重置
+-  獨立的滾動事件處理
 
 #### 5.2 動態高度項目
 
@@ -303,9 +303,9 @@ function handleVisibleRangeChange(startIndex: number, endIndex: number) {
 ```
 
 **處理策略**:
-- ⚠️ **當前**: 使用固定高度 120px
-- ⚠️ **限制**: 無法處理動態高度
-- 💡 **建議**: 考慮使用 `estimatedItemHeight` + `dynamicHeight`
+-  **當前**: 使用固定高度 120px
+-  **限制**: 無法處理動態高度
+-  **建議**: 考慮使用 `estimatedItemHeight` + `dynamicHeight`
 
 **改進方案**:
 ```typescript
@@ -326,9 +326,9 @@ const loadThreshold = Math.max(10, Math.floor(conversations.value.length * 0.8))
 ```
 
 **處理策略**:
-- ✅ 使用 `Math.max` 確保最小閾值
-- ✅ 百分比計算（80%）適應不同數據量
-- ✅ 開發模式下輸出調試信息
+-  使用 `Math.max` 確保最小閾值
+-  百分比計算（80%）適應不同數據量
+-  開發模式下輸出調試信息
 
 ---
 
@@ -344,9 +344,9 @@ const loadThreshold = Math.max(10, Math.floor(conversations.value.length * 0.8))
 ```
 
 **處理策略**:
-- ✅ 自動降級到智能輪詢備份
-- ✅ 顯示"輪詢模式"狀態指示器
-- ✅ 嘗試定期重連 WebSocket
+-  自動降級到智能輪詢備份
+-  顯示"輪詢模式"狀態指示器
+-  嘗試定期重連 WebSocket
 
 **狀態指示器**:
 ```typescript
@@ -364,9 +364,9 @@ maxReconnectAttempts: 3 // 最多重連3次
 ```
 
 **處理策略**:
-- ✅ 限制重連次數（避免無限重連）
-- ✅ 重連延遲機制（5秒）
-- ✅ 失敗後降級到輪詢模式
+-  限制重連次數（避免無限重連）
+-  重連延遲機制（5秒）
+-  失敗後降級到輪詢模式
 
 #### 6.3 數據同步衝突
 
@@ -382,9 +382,9 @@ conversationSync.onData((data: Conversation[]) => {
 ```
 
 **處理策略**:
-- ✅ 伺服器數據優先（覆蓋本地）
-- ✅ 使用增量更新動畫平滑過渡
-- ⚠️ **限制**: 不支持樂觀更新衝突解決
+-  伺服器數據優先（覆蓋本地）
+-  使用增量更新動畫平滑過渡
+-  **限制**: 不支持樂觀更新衝突解決
 
 ---
 
@@ -402,9 +402,9 @@ if (apiFilters.assignedTo === 'me') {
 ```
 
 **處理策略**:
-- ✅ 使用可選鏈操作符（`?.`）
-- ✅ 未登入用戶會被路由守衛攔截
-- ⚠️ **限制**: 組件內無額外權限檢查
+-  使用可選鏈操作符（`?.`）
+-  未登入用戶會被路由守衛攔截
+-  **限制**: 組件內無額外權限檢查
 
 **改進建議**:
 ```typescript
@@ -427,9 +427,9 @@ watch(filters, () => {
 ```
 
 **處理策略**:
-- ✅ Vue 的響應式系統自動批處理
-- ✅ 每次篩選變更重置到第一頁
-- 💡 **優化**: 可考慮添加防抖（debounce）
+-  Vue 的響應式系統自動批處理
+-  每次篩選變更重置到第一頁
+-  **優化**: 可考慮添加防抖（debounce）
 
 **優化方案**:
 ```typescript
@@ -450,21 +450,21 @@ watch(filters, () => {
 ```typescript
 // 處理位置: ConversationList.vue:810-819
 onUnmounted(() => {
-  console.log('🛑 [ConversationList] Component unmounted, cleaning up services')
+  console.log('[ConversationList] Component unmounted, cleaning up services')
 
   conversationSync.stop()
   predictiveLoader.setEnabled(false)
   idleTimeProcessor.cancelAllTasks()
 
-  console.log('✨ [ConversationList] All services cleaned up')
+  console.log('[ConversationList] All services cleaned up')
 })
 ```
 
 **處理策略**:
-- ✅ 停止所有背景服務
-- ✅ 移除事件監聽器
-- ✅ 取消進行中的請求
-- ✅ 完整的資源清理
+-  停止所有背景服務
+-  移除事件監聽器
+-  取消進行中的請求
+-  完整的資源清理
 
 ---
 
@@ -480,9 +480,9 @@ maxAge: 5 * 60 * 1000 // 5分鐘
 ```
 
 **處理策略**:
-- ✅ 自動後台重新驗證
-- ✅ 先顯示舊數據（Stale-While-Revalidate）
-- ✅ 平滑更新到新數據
+-  自動後台重新驗證
+-  先顯示舊數據（Stale-While-Revalidate）
+-  平滑更新到新數據
 
 #### 8.2 快取未命中
 
@@ -501,9 +501,9 @@ if (preloadedData && preloadedData.length > 0) {
 ```
 
 **處理策略**:
-- ✅ 降級到 API 請求
-- ✅ 顯示載入指示器
-- ✅ 數據載入後自動快取
+-  降級到 API 請求
+-  顯示載入指示器
+-  數據載入後自動快取
 
 #### 8.3 快取大小超限
 
@@ -515,9 +515,9 @@ maxSize: 50 // 最多50個快取項目
 ```
 
 **處理策略**:
-- ✅ LRU（最近最少使用）淘汰策略
-- ✅ 自動清理最舊的快取
-- ✅ 保持快取大小在限制內
+-  LRU（最近最少使用）淘汰策略
+-  自動清理最舊的快取
+-  保持快取大小在限制內
 
 ---
 
@@ -535,9 +535,9 @@ maxSize: 50 // 最多50個快取項目
 ```
 
 **處理策略**:
-- ✅ 虛擬滾動限制 DOM 節點
-- ✅ 使用 `requestIdleCallback` 延遲非關鍵任務
-- ✅ CSS `will-change` 和 `transform: translateZ(0)`
+-  虛擬滾動限制 DOM 節點
+-  使用 `requestIdleCallback` 延遲非關鍵任務
+-  CSS `will-change` 和 `transform: translateZ(0)`
 
 **性能優化**:
 ```css
@@ -560,9 +560,9 @@ maxSize: 50 // 最多50個快取項目
 ```
 
 **處理策略**:
-- ✅ 快取優先（零等待體驗）
-- ✅ 後台重新驗證
-- ✅ 壓縮數據傳輸（服務端）
+-  快取優先（零等待體驗）
+-  後台重新驗證
+-  壓縮數據傳輸（服務端）
 
 #### 9.3 內存不足
 
@@ -576,13 +576,13 @@ maxSize: 50 // 最多50個快取項目
 ```
 
 **處理策略**:
-- ✅ 虛擬滾動只保留可見項目
-- ✅ 快取大小限制（50項）
-- ✅ 組件卸載時完整清理
+-  虛擬滾動只保留可見項目
+-  快取大小限制（50項）
+-  組件卸載時完整清理
 
 ---
 
-## 🚨 已知限制
+##  已知限制
 
 ### 1. 動態高度支持
 
@@ -638,7 +638,7 @@ catch (error) {
 
 ---
 
-## ✅ 測試覆蓋檢查清單
+##  測試覆蓋檢查清單
 
 - [x] 空數據列表
 - [x] 超大數據集（>1000項）
@@ -656,7 +656,7 @@ catch (error) {
 
 ---
 
-## 📝 維護注意事項
+##  維護注意事項
 
 ### 添加新功能時
 
@@ -679,7 +679,7 @@ catch (error) {
 
 ---
 
-## 🔗 相關資源
+##  相關資源
 
 - **組件源碼**: `frontend/src/views/ConversationList.vue`
 - **單元測試**: `frontend/tests/unit/views/ConversationList.test.ts`
@@ -690,4 +690,4 @@ catch (error) {
 
 **文檔版本**: 1.0.0
 **最後更新**: 2026-01-03
-**狀態**: ✅ 完整
+**狀態**:  完整

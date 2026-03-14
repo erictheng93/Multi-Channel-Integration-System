@@ -47,17 +47,17 @@ export interface MessageActionsProps {
  * ```typescript
  * const props = ref({ message })
  * const emit = {
- *   copy: (msg) => console.log('Copied:', msg),
- *   reply: (msg) => console.log('Replying to:', msg),
- *   // ... other emitters
+ * copy: (msg) => console.log('Copied:', msg),
+ * reply: (msg) => console.log('Replying to:', msg),
+ * // ... other emitters
  * }
  *
  * const {
- *   showActions,
- *   showActionsMenu,
- *   handleRightClick,
- *   copyMessage,
- *   replyToMessage
+ * showActions,
+ * showActionsMenu,
+ * handleRightClick,
+ * copyMessage,
+ * replyToMessage
  * } = useMessageActions(props, emit)
  * ```
  */
@@ -174,7 +174,7 @@ export function useMessageActions(
    * Emits retry event with message ID
    */
   const handleRetry = () => {
-    console.log('🔄 [useMessageActions] Retry button clicked for message:', props.value.message.id)
+    console.log('[useMessageActions] Retry button clicked for message:', props.value.message.id)
     emit.retry(props.value.message.id)
   }
 

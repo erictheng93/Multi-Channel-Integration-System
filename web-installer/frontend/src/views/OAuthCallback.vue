@@ -9,7 +9,7 @@
         </div>
 
         <div v-else-if="error" class="callback-error">
-          <div class="error-icon">❌</div>
+          <div class="error-icon"></div>
           <h2>Authorization Failed</h2>
           <p class="error-message">{{ error }}</p>
           <button @click="goBack" class="btn btn-primary">
@@ -18,7 +18,7 @@
         </div>
 
         <div v-else-if="success" class="callback-success">
-          <div class="success-icon">✓</div>
+          <div class="success-icon"></div>
           <h2>Successfully Connected!</h2>
           <p>Redirecting to configuration...</p>
         </div>

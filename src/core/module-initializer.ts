@@ -30,10 +30,10 @@ async function initializeModularSystem(): Promise<void> {
     try {
       const initResult = await globalModularSystemManager.initialize();
       log.info(`Modular Architecture System initialized successfully:
-  📦 Modules: ${initResult.modules.discovered} discovered, ${initResult.modules.registered} registered
-  🚀 Routes: ${initResult.routes.groups} groups, ${initResult.routes.modules} modules
-  🏥 Health: ${initResult.health.status} (monitoring: ${initResult.health.monitoring})
-  ⚡ System: ${initResult.success ? 'Ready' : 'Partial'}`);
+   Modules: ${initResult.modules.discovered} discovered, ${initResult.modules.registered} registered
+   Routes: ${initResult.routes.groups} groups, ${initResult.routes.modules} modules
+   Health: ${initResult.health.status} (monitoring: ${initResult.health.monitoring})
+   System: ${initResult.success ? 'Ready' : 'Partial'}`);
 
       if (initResult.warnings.length > 0) {
         log.warn('Modular system warnings', { warnings: initResult.warnings });

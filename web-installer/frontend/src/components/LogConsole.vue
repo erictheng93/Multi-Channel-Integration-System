@@ -2,7 +2,7 @@
   <div class="log-console">
     <div class="log-header">
       <h3 class="log-title">
-        <span class="log-icon">📋</span>
+        <span class="log-icon"></span>
         Deployment Logs
       </h3>
       <button v-if="logs.length > 0" @click="clearLogs" class="btn btn-sm">

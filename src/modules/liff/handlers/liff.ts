@@ -197,7 +197,7 @@ liffHandler.post('/assign-team', async (c) => {
 
     log.info('Team assignment created', { assignmentId, lineUserId, teamId });
 
-    // === 🆕 LIFF 預通知 WebSocket 廣播 ===
+    // ===  LIFF 預通知 WebSocket 廣播 ===
     // 在用戶加好友之前，通過 WebSocket 通知前端創建 "pending" 對話
     // 這將用戶感知延遲從 2-8 秒縮短到 < 500ms
     try {
@@ -227,7 +227,7 @@ liffHandler.post('/assign-team', async (c) => {
             id: teamId,
             name: team.name
           },
-          // 🆕 LIFF Metadata 用於前端識別和 Reconciliation
+          // LIFF Metadata 用於前端識別和 Reconciliation
           _liffMetadata: {
             isPending: true,
             lineUserId: lineUserId,
@@ -297,7 +297,7 @@ liffHandler.post('/welcome', async (c) => {
       return c.json({ success: false, error: '團隊不存在' }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // === 🆕 同步對話團隊指派 (修復舊用戶掃 QR Code 無法指派問題) ===
+    // ===  同步對話團隊指派 (修復舊用戶掃 QR Code 無法指派問題) ===
     // 當用戶已是 LINE OA 好友時，掃描 QR Code 不會觸發 follow webhook
     // 因此需要在 welcome API 中同步處理對話指派
     try {
@@ -437,7 +437,7 @@ liffHandler.post('/welcome', async (c) => {
       return c.json({ success: false, error: 'LINE 整合未配置' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    const welcomeMessage = `🎉 歡迎加入 ${team.name}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
+    const welcomeMessage = ` 歡迎加入 ${team.name}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
 
     const response = await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST',

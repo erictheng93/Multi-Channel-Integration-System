@@ -341,7 +341,7 @@ onUnmounted(() => {
 watch(() => store.unreadCount, (newCount, oldCount) => {
   if (newCount > oldCount && !isOpen.value) {
     // 可以在這裡觸發桌面通知或音效
-    console.log(`🔔 New notifications: ${newCount - oldCount}`)
+    console.log(` New notifications: ${newCount - oldCount}`)
 
     // 觸發搖鈴動畫
     shouldRing.value = true

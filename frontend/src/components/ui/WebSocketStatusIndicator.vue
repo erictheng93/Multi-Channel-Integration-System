@@ -137,7 +137,7 @@ const protocolBadgeClasses = computed(() => ({
   'protocol-sse': false
 }))
 
-const protocolIcon = computed(() => '⚡')
+const protocolIcon = computed(() => '')
 </script>
 
 <style scoped>

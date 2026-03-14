@@ -23,21 +23,21 @@ const PERF_CONFIG = {
   // Latency thresholds (in milliseconds)
   // Note: These are for simulated mock timing, real thresholds would be tighter
   thresholds: {
-    parallelQueryMax: 100,       // Parallel team finding should be < 100ms
-    broadcastMax: 100,           // WebSocket broadcast P95 should be < 100ms (simulated)
+    parallelQueryMax: 100, // Parallel team finding should be < 100ms
+    broadcastMax: 100, // WebSocket broadcast P95 should be < 100ms (simulated)
     totalFollowProcessingMax: 500, // Total follow event processing < 500ms
-    preNotificationMax: 200      // Pre-notification latency < 200ms
+    preNotificationMax: 200 // Pre-notification latency < 200ms
   },
   // Test parameters
   concurrency: {
-    light: 10,                   // Light load: 10 concurrent requests
-    medium: 50,                  // Medium load: 50 concurrent requests
-    heavy: 100                   // Heavy load: 100 concurrent requests
+    light: 10, // Light load: 10 concurrent requests
+    medium: 50, // Medium load: 50 concurrent requests
+    heavy: 100 // Heavy load: 100 concurrent requests
   },
   // Iteration counts
   iterations: {
-    warmup: 3,                   // Warmup iterations
-    benchmark: 10                // Benchmark iterations
+    warmup: 3, // Warmup iterations
+    benchmark: 10 // Benchmark iterations
   }
 };
 
@@ -103,14 +103,14 @@ class PerformanceCollector {
 ┌────────────────────────────────────────────────────────────────────┐
 │ Performance Report: ${operation.padEnd(45)} │
 ├────────────────────────────────────────────────────────────────────┤
-│ Samples:    ${String(metrics.samples.length).padStart(8)}                                        │
-│ Min:        ${String(metrics.min.toFixed(2)).padStart(8)}ms                                      │
-│ Max:        ${String(metrics.max.toFixed(2)).padStart(8)}ms                                      │
-│ Avg:        ${String(metrics.avg.toFixed(2)).padStart(8)}ms                                      │
-│ P50:        ${String(metrics.p50.toFixed(2)).padStart(8)}ms                                      │
-│ P95:        ${String(metrics.p95.toFixed(2)).padStart(8)}ms                                      │
-│ P99:        ${String(metrics.p99.toFixed(2)).padStart(8)}ms                                      │
-│ Std Dev:    ${String(metrics.stdDev.toFixed(2)).padStart(8)}ms                                      │
+│ Samples: ${String(metrics.samples.length).padStart(8)} │
+│ Min: ${String(metrics.min.toFixed(2)).padStart(8)}ms │
+│ Max: ${String(metrics.max.toFixed(2)).padStart(8)}ms │
+│ Avg: ${String(metrics.avg.toFixed(2)).padStart(8)}ms │
+│ P50: ${String(metrics.p50.toFixed(2)).padStart(8)}ms │
+│ P95: ${String(metrics.p95.toFixed(2)).padStart(8)}ms │
+│ P99: ${String(metrics.p99.toFixed(2)).padStart(8)}ms │
+│ Std Dev: ${String(metrics.stdDev.toFixed(2)).padStart(8)}ms │
 └────────────────────────────────────────────────────────────────────┘
     `);
   }
@@ -126,12 +126,12 @@ class PerformanceCollector {
 
 // Simulate database query delays
 const SIMULATED_DELAYS = {
-  customerQuery: { min: 5, max: 20 },       // 5-20ms
-  assignmentQuery: { min: 5, max: 15 },     // 5-15ms
-  qrTokenQuery: { min: 10, max: 30 },       // 10-30ms
-  teamQuery: { min: 3, max: 10 },           // 3-10ms
-  conversationQuery: { min: 5, max: 15 },   // 5-15ms
-  broadcast: { min: 10, max: 50 }           // 10-50ms
+  customerQuery: { min: 5, max: 20 }, // 5-20ms
+  assignmentQuery: { min: 5, max: 15 }, // 5-15ms
+  qrTokenQuery: { min: 10, max: 30 }, // 10-30ms
+  teamQuery: { min: 3, max: 10 }, // 3-10ms
+  conversationQuery: { min: 5, max: 15 }, // 5-15ms
+  broadcast: { min: 10, max: 50 } // 10-50ms
 };
 
 function simulateDelay(config: { min: number; max: number }): Promise<void> {
@@ -254,7 +254,7 @@ describe('QR Code Parallel Query Performance', () => {
     it('should demonstrate parallel query performance improvement', async () => {
       const iterations = PERF_CONFIG.iterations.benchmark;
 
-      console.log('\n📊 Running parallel vs sequential comparison...\n');
+      console.log('\n Running parallel vs sequential comparison...\n');
 
       // Warmup
       for (let i = 0; i < PERF_CONFIG.iterations.warmup; i++) {
@@ -281,13 +281,13 @@ describe('QR Code Parallel Query Performance', () => {
 
       console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
-║                    Performance Comparison                          ║
+║ Performance Comparison ║
 ╠════════════════════════════════════════════════════════════════════╣
-║   Sequential Avg:     ${String(sequentialMetrics.avg.toFixed(2)).padStart(8)}ms                              ║
-║   Parallel Avg:       ${String(parallelMetrics.avg.toFixed(2)).padStart(8)}ms                              ║
-║   Improvement:        ${String(improvement.toFixed(1)).padStart(8)}%                              ║
-║   Threshold:          ${String(PERF_CONFIG.thresholds.parallelQueryMax).padStart(8)}ms                              ║
-║   Status:             ${parallelMetrics.avg < PERF_CONFIG.thresholds.parallelQueryMax ? '✅ PASS' : '❌ FAIL'}                                     ║
+║ Sequential Avg: ${String(sequentialMetrics.avg.toFixed(2)).padStart(8)}ms ║
+║ Parallel Avg: ${String(parallelMetrics.avg.toFixed(2)).padStart(8)}ms ║
+║ Improvement: ${String(improvement.toFixed(1)).padStart(8)}% ║
+║ Threshold: ${String(PERF_CONFIG.thresholds.parallelQueryMax).padStart(8)}ms ║
+║ Status: ${parallelMetrics.avg < PERF_CONFIG.thresholds.parallelQueryMax ? ' PASS' : ' FAIL'} ║
 ╚════════════════════════════════════════════════════════════════════╝
       `);
 
@@ -306,7 +306,7 @@ describe('QR Code Parallel Query Performance', () => {
     it('should maintain low broadcast latency', async () => {
       const iterations = PERF_CONFIG.iterations.benchmark;
 
-      console.log('\n📊 Running broadcast latency benchmark...\n');
+      console.log('\n Running broadcast latency benchmark...\n');
 
       // Warmup
       for (let i = 0; i < PERF_CONFIG.iterations.warmup; i++) {
@@ -325,7 +325,7 @@ describe('QR Code Parallel Query Performance', () => {
 
       console.log(`
    Threshold: ${PERF_CONFIG.thresholds.broadcastMax}ms
-   Status:    ${metrics.p95 < PERF_CONFIG.thresholds.broadcastMax ? '✅ PASS' : '❌ FAIL'}
+   Status: ${metrics.p95 < PERF_CONFIG.thresholds.broadcastMax ? ' PASS' : ' FAIL'}
       `);
 
       expect(metrics.p95).toBeLessThan(PERF_CONFIG.thresholds.broadcastMax);
@@ -339,7 +339,7 @@ describe('QR Code Parallel Query Performance', () => {
     it('should process follow event within performance budget', async () => {
       const iterations = PERF_CONFIG.iterations.benchmark;
 
-      console.log('\n📊 Running follow event processing benchmark...\n');
+      console.log('\n Running follow event processing benchmark...\n');
 
       // Warmup
       for (let i = 0; i < PERF_CONFIG.iterations.warmup; i++) {
@@ -356,7 +356,7 @@ describe('QR Code Parallel Query Performance', () => {
         collector.record('total_processing', times.totalTime);
       }
 
-      console.log('\n📈 Component Breakdown:\n');
+      console.log('\n Component Breakdown:\n');
       collector.printReport('customer_query');
       collector.printReport('team_finding');
       collector.printReport('conversation_query');
@@ -367,12 +367,12 @@ describe('QR Code Parallel Query Performance', () => {
 
       console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
-║                    Follow Event Processing Summary                 ║
+║ Follow Event Processing Summary ║
 ╠════════════════════════════════════════════════════════════════════╣
-║   Total Processing Time (Avg):  ${String(totalMetrics.avg.toFixed(2)).padStart(8)}ms                       ║
-║   Total Processing Time (P95):  ${String(totalMetrics.p95.toFixed(2)).padStart(8)}ms                       ║
-║   Threshold:                    ${String(PERF_CONFIG.thresholds.totalFollowProcessingMax).padStart(8)}ms                       ║
-║   Status:                       ${totalMetrics.p95 < PERF_CONFIG.thresholds.totalFollowProcessingMax ? '✅ PASS' : '❌ FAIL'}                              ║
+║ Total Processing Time (Avg):  ${String(totalMetrics.avg.toFixed(2)).padStart(8)}ms ║
+║ Total Processing Time (P95):  ${String(totalMetrics.p95.toFixed(2)).padStart(8)}ms ║
+║ Threshold: ${String(PERF_CONFIG.thresholds.totalFollowProcessingMax).padStart(8)}ms ║
+║ Status: ${totalMetrics.p95 < PERF_CONFIG.thresholds.totalFollowProcessingMax ? ' PASS' : ' FAIL'} ║
 ╚════════════════════════════════════════════════════════════════════╝
       `);
 
@@ -387,7 +387,7 @@ describe('QR Code Parallel Query Performance', () => {
     it('should handle light concurrent load', async () => {
       const concurrency = PERF_CONFIG.concurrency.light;
 
-      console.log(`\n📊 Running concurrent load test (${concurrency} requests)...\n`);
+      console.log(`\n Running concurrent load test (${concurrency} requests)...\n`);
 
       const startTime = Date.now();
 
@@ -409,13 +409,13 @@ describe('QR Code Parallel Query Performance', () => {
 
       console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
-║                    Concurrent Load Test Results                    ║
+║ Concurrent Load Test Results ║
 ╠════════════════════════════════════════════════════════════════════╣
-║   Concurrent Requests:    ${String(concurrency).padStart(8)}                               ║
-║   Total Wall Time:        ${String(totalTime).padStart(8)}ms                               ║
-║   Avg Per Request:        ${String(metrics.avg.toFixed(2)).padStart(8)}ms                               ║
-║   P95 Per Request:        ${String(metrics.p95.toFixed(2)).padStart(8)}ms                               ║
-║   Throughput:             ${String((concurrency / (totalTime / 1000)).toFixed(2)).padStart(8)} req/s                          ║
+║ Concurrent Requests: ${String(concurrency).padStart(8)} ║
+║ Total Wall Time: ${String(totalTime).padStart(8)}ms ║
+║ Avg Per Request: ${String(metrics.avg.toFixed(2)).padStart(8)}ms ║
+║ P95 Per Request: ${String(metrics.p95.toFixed(2)).padStart(8)}ms ║
+║ Throughput: ${String((concurrency / (totalTime / 1000)).toFixed(2)).padStart(8)} req/s ║
 ╚════════════════════════════════════════════════════════════════════╝
       `);
 
@@ -426,7 +426,7 @@ describe('QR Code Parallel Query Performance', () => {
     it('should handle medium concurrent load', async () => {
       const concurrency = PERF_CONFIG.concurrency.medium;
 
-      console.log(`\n📊 Running concurrent load test (${concurrency} requests)...\n`);
+      console.log(`\n Running concurrent load test (${concurrency} requests)...\n`);
 
       const startTime = Date.now();
 
@@ -448,9 +448,9 @@ describe('QR Code Parallel Query Performance', () => {
 
       console.log(`
    Concurrent Requests: ${concurrency}
-   Total Wall Time:     ${totalTime}ms
-   Avg Per Request:     ${metrics.avg.toFixed(2)}ms
-   Throughput:          ${(concurrency / (totalTime / 1000)).toFixed(2)} req/s
+   Total Wall Time: ${totalTime}ms
+   Avg Per Request: ${metrics.avg.toFixed(2)}ms
+   Throughput: ${(concurrency / (totalTime / 1000)).toFixed(2)} req/s
       `);
 
       // Under medium load, we allow some degradation but should still complete
@@ -466,7 +466,7 @@ describe('QR Code Parallel Query Performance', () => {
       const iterations = 50;
       const memorySnapshots: number[] = [];
 
-      console.log('\n📊 Simulating memory usage tracking...\n');
+      console.log('\n Simulating memory usage tracking...\n');
 
       // Simulate memory growth tracking
       let simulatedMemory = 50; // Start at 50MB
@@ -492,14 +492,14 @@ describe('QR Code Parallel Query Performance', () => {
 
       console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
-║                    Memory Usage Simulation                         ║
+║ Memory Usage Simulation ║
 ╠════════════════════════════════════════════════════════════════════╣
-║   Iterations:         ${String(iterations).padStart(8)}                                    ║
-║   Initial Memory:     ${String(initialMemory.toFixed(2)).padStart(8)}MB                                  ║
-║   Final Memory:       ${String(finalMemory.toFixed(2)).padStart(8)}MB                                  ║
-║   Max Memory:         ${String(maxMemory.toFixed(2)).padStart(8)}MB                                  ║
-║   Memory Growth:      ${String(memoryGrowth.toFixed(2)).padStart(8)}MB                                  ║
-║   Growth per Request: ${String((memoryGrowth / iterations).toFixed(4)).padStart(8)}MB                                  ║
+║ Iterations: ${String(iterations).padStart(8)} ║
+║ Initial Memory: ${String(initialMemory.toFixed(2)).padStart(8)}MB ║
+║ Final Memory: ${String(finalMemory.toFixed(2)).padStart(8)}MB ║
+║ Max Memory: ${String(maxMemory.toFixed(2)).padStart(8)}MB ║
+║ Memory Growth: ${String(memoryGrowth.toFixed(2)).padStart(8)}MB ║
+║ Growth per Request: ${String((memoryGrowth / iterations).toFixed(4)).padStart(8)}MB ║
 ╚════════════════════════════════════════════════════════════════════╝
       `);
 
@@ -517,20 +517,20 @@ describe('Performance Regression Tests', () => {
   it('should provide baseline performance metrics', () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════════════╗
-║                    Performance Baseline Thresholds                 ║
+║ Performance Baseline Thresholds ║
 ╠════════════════════════════════════════════════════════════════════╣
-║                                                                    ║
-║   Operation                          │ Threshold                   ║
-║   ───────────────────────────────────┼───────────────────────────  ║
-║   Parallel Team Query                │ < ${String(PERF_CONFIG.thresholds.parallelQueryMax).padStart(5)}ms                    ║
-║   WebSocket Broadcast                │ < ${String(PERF_CONFIG.thresholds.broadcastMax).padStart(5)}ms                    ║
-║   Total Follow Processing            │ < ${String(PERF_CONFIG.thresholds.totalFollowProcessingMax).padStart(5)}ms                    ║
-║   LIFF Pre-notification              │ < ${String(PERF_CONFIG.thresholds.preNotificationMax).padStart(5)}ms                    ║
-║                                                                    ║
-║   These thresholds are used to detect performance regressions.     ║
-║   If any test fails, investigate recent changes that may have      ║
-║   impacted performance.                                            ║
-║                                                                    ║
+║ ║
+║ Operation │ Threshold ║
+║ ───────────────────────────────────┼───────────────────────────  ║
+║ Parallel Team Query │ < ${String(PERF_CONFIG.thresholds.parallelQueryMax).padStart(5)}ms ║
+║ WebSocket Broadcast │ < ${String(PERF_CONFIG.thresholds.broadcastMax).padStart(5)}ms ║
+║ Total Follow Processing │ < ${String(PERF_CONFIG.thresholds.totalFollowProcessingMax).padStart(5)}ms ║
+║ LIFF Pre-notification │ < ${String(PERF_CONFIG.thresholds.preNotificationMax).padStart(5)}ms ║
+║ ║
+║ These thresholds are used to detect performance regressions. ║
+║ If any test fails, investigate recent changes that may have ║
+║ impacted performance. ║
+║ ║
 ╚════════════════════════════════════════════════════════════════════╝
     `);
 

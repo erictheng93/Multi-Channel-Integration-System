@@ -6,11 +6,11 @@
  * with consistent configuration across the entire application.
  *
  * Key Features:
- * - ✅ Unified casing configuration (camelCase for all queries)
- * - ✅ Centralized schema management
- * - ✅ Optional query logging
- * - ✅ Type-safe database client
- * - ✅ Single source of truth for DB configuration
+ * -  Unified casing configuration (camelCase for all queries)
+ * -  Centralized schema management
+ * -  Optional query logging
+ * -  Type-safe database client
+ * -  Single source of truth for DB configuration
  *
  * Usage:
  * ```typescript
@@ -52,7 +52,7 @@ export type Database = DrizzleD1Database<typeof schema>;
  */
 const DEFAULT_CONFIG: Required<DrizzleFactoryOptions> = {
   logger: false, // Disable in production by default
-  casing: 'camelCase', // ✅ CRITICAL: Enforce camelCase for all queries
+  casing: 'camelCase', //  CRITICAL: Enforce camelCase for all queries
 };
 
 /**

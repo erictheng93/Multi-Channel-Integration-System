@@ -128,7 +128,7 @@ export class NotificationRepository {
 
     // 優先級篩選 (priority field not available in current schema)
     // if (query.priority) {
-    //   whereConditions.push(eq(notifications.priority, query.priority));
+    // whereConditions.push(eq(notifications.priority, query.priority));
     // }
 
     // 日期範圍篩選

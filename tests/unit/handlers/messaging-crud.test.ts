@@ -2,9 +2,9 @@
  * Messaging CRUD Handler Unit Tests
  *
  * Tests all 4 endpoints in src/handlers/messaging/routes/crud.ts:
- * 1. GET /api/messages/:id    - Get single message with joined data
- * 2. POST /api/messages       - Create message with attachment linking
- * 3. PUT /api/messages/:id    - Update message with permission checks
+ * 1. GET /api/messages/:id - Get single message with joined data
+ * 2. POST /api/messages - Create message with attachment linking
+ * 3. PUT /api/messages/:id - Update message with permission checks
  * 4. DELETE /api/messages/:id - Recall message with deadline validation
  *
  * Mock Strategy:
@@ -598,7 +598,7 @@ describe('Messaging CRUD Handler', () => {
       const res = await app.request('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId: 'conv-001', content: '   ' })
+        body: JSON.stringify({ conversationId: 'conv-001', content: ' ' })
       });
       expect(res.status).toBe(400);
 
@@ -767,7 +767,7 @@ describe('Messaging CRUD Handler', () => {
       const res = await app.request('/api/messages/msg-001', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: '   ' })
+        body: JSON.stringify({ content: ' ' })
       });
       expect(res.status).toBe(400);
 

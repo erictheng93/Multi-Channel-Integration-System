@@ -47,15 +47,15 @@ export interface MessageBubbleProps {
  * @example
  * ```typescript
  * const props = ref({
- *   message: myMessage,
- *   delivered: true,
- *   showSender: true
+ * message: myMessage,
+ * delivered: true,
+ * showSender: true
  * })
  *
  * const emit = {
- *   copy: (msg) => console.log('Copy', msg),
- *   reply: (msg) => console.log('Reply', msg),
- *   // ... other emitters
+ * copy: (msg) => console.log('Copy', msg),
+ * reply: (msg) => console.log('Reply', msg),
+ * // ... other emitters
  * }
  *
  * const messageBubble = useMessageBubble(props, emit)

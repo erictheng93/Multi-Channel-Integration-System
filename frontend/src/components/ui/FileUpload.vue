@@ -101,7 +101,7 @@
               <span
                 v-if="file.uploaded"
                 class="file-success"
-              >✓ 已上傳</span>
+              > 已上傳</span>
             </div>
           </div>
           <div class="file-actions">

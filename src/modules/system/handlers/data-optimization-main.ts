@@ -376,26 +376,26 @@ dataOptimizationHandler.get('/health', async (c) => {
 
       if (stats.totalQueries === 0) {
         recommendations.push(
-          '💡 系統剛初始化，建議執行性能基準測試',
-          '📊 運行快取測試以建立統計基準',
-          '⚡ 啟動批量操作測試來優化性能'
+          ' 系統剛初始化，建議執行性能基準測試',
+          ' 運行快取測試以建立統計基準',
+          ' 啟動批量操作測試來優化性能'
         );
       } else {
         const hitRate = stats.totalQueries > 0 ? stats.cacheHits / stats.totalQueries : 0;
         const batchRate = stats.totalQueries > 0 ? stats.batchedOperations / stats.totalQueries : 0;
 
         if (hitRate < 0.7) {
-          recommendations.push('🎯 快取命中率偏低，建議調整TTL設置');
+          recommendations.push(' 快取命中率偏低，建議調整TTL設置');
         }
         if (batchRate < 0.5) {
-          recommendations.push('📦 批量操作使用率較低，建議啟用更多批量處理');
+          recommendations.push(' 批量操作使用率較低，建議啟用更多批量處理');
         }
         if (stats.averageLatency > 500) {
-          recommendations.push('⚡ 平均延遲較高，建議優化查詢效率');
+          recommendations.push(' 平均延遲較高，建議優化查詢效率');
         }
 
         if (recommendations.length === 0) {
-          recommendations.push('✨ 系統運行優秀，持續監控性能指標');
+          recommendations.push(' 系統運行優秀，持續監控性能指標');
         }
       }
 

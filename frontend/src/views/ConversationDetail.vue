@@ -7,7 +7,7 @@
       @dragover="dragDrop.onDragOver"
       @drop="dragDrop.onDrop"
     >
-      <!-- 📎 Drag-and-Drop Overlay Component -->
+      <!--  Drag-and-Drop Overlay Component -->
       <DragDropOverlay
         :is-visible="dragDrop.isDragging.value"
       />
@@ -22,7 +22,7 @@
         @export="showExportDialog = true"
       />
 
-      <!-- 🆕 Transferred Conversation Banner Component -->
+      <!--  Transferred Conversation Banner Component -->
       <TransferredConversationBanner
         :is-visible="isCurrentConversationTransferred"
         :team-name="transferredConversation?.toTeamName"
@@ -50,8 +50,8 @@
 
       <!-- High Performance Virtual Message List with WebSocket -->
       <div class="messages-container-wrapper">
-        <!-- 🎨 優化的加載狀態：動態骨架屏 with Progressive Loading -->
-        <!-- 🔧 FIX: 骨架屏保持顯示直到滾動完成，確保平滑過渡 -->
+        <!--  優化的加載狀態：動態骨架屏 with Progressive Loading -->
+        <!--  FIX: 骨架屏保持顯示直到滾動完成，確保平滑過渡 -->
         <MessageListSkeleton
           v-show="!isScrollReady"
           :count="skeletonCount"
@@ -60,7 +60,7 @@
         />
 
         <!-- Empty State -->
-        <!-- 🔧 FIX: 增加 isEmptyStateConfirmed 條件，避免訊息同步期間閃爍 -->
+        <!--  FIX: 增加 isEmptyStateConfirmed 條件，避免訊息同步期間閃爍 -->
         <div
           v-show="hasLoadedInitially && displayedMessages.length === 0 && !isInitialLoading && isEmptyStateConfirmed"
           class="empty-state-wrapper empty-layer"
@@ -76,7 +76,7 @@
         </div>
 
         <!-- Virtual Message List -->
-        <!-- 🔧 FIX Phase 2: 使用 CSS visibility 而非 v-show -->
+        <!--  FIX Phase 2: 使用 CSS visibility 而非 v-show -->
         <!-- v-show 會導致 display:none，使 scrollHeight=0，滾動失敗 -->
         <!-- visibility:hidden 保留佈局，scrollHeight 正常，滾動可以正確執行 -->
         <VirtualMessageList
@@ -121,7 +121,7 @@
       />
 
       <!-- Enhanced Message Input with WebSocket features -->
-      <!-- 🆕 UX: Hide input when conversation is transferred to non-member team -->
+      <!--  UX: Hide input when conversation is transferred to non-member team -->
       <div
         v-if="!isCurrentConversationTransferred"
         class="input-section"
@@ -148,7 +148,7 @@
           @select="handleQuickReplySelect"
         />
 
-        <!-- 🌐 Connection Status Bar Component - 僅在調試模式下顯示 -->
+        <!--  Connection Status Bar Component - 僅在調試模式下顯示 -->
         <ConnectionStatusBar
           :is-visible="isDevDebugMode && (unifiedIsConnected || unifiedConnectionState === 'error' || isWebSocketEnabled)"
           :status-text="connectionStatusText"
@@ -161,7 +161,7 @@
       <!-- Transferred State - Show when conversation is transferred -->
 
 
-      <!-- 🆕 Transferred State - Input disabled with informative message -->
+      <!--  Transferred State - Input disabled with informative message -->
       <div
         v-else-if="isCurrentConversationTransferred"
         class="transferred-state"
@@ -228,7 +228,7 @@ interface MessageInputInstance {
   focus?: () => void
 }
 
-// 🚀 Refactored Composables
+// Refactored Composables
 import { useConversationController } from '@/composables/conversation'
 import { useSearchPanel } from '@/composables/useSearchPanel'
 
@@ -271,14 +271,14 @@ const conversationId = computed(() => route.params.id as string)
 // Export dialog state
 const showExportDialog = ref(false)
 
-// 🆕 Transferred conversation state from store
-// 🔧 FIX: 使用 storeToRefs 保持 ref 的響應性，避免解構後失去追蹤
+// Transferred conversation state from store
+// FIX: 使用 storeToRefs 保持 ref 的響應性，避免解構後失去追蹤
 const conversationsStore = useConversationsStore()
 const { transferredConversation } = storeToRefs(conversationsStore)
 const { clearTransferredState, initializeRealtime } = conversationsStore
 
 // Check if current conversation is transferred
-// 🔧 FIX: 現在 transferredConversation 是響應式的 ref，需要使用 .value
+// FIX: 現在 transferredConversation 是響應式的 ref，需要使用 .value
 const isCurrentConversationTransferred = computed(() => {
   return transferredConversation.value?.conversationId === conversationId.value
 })
@@ -324,11 +324,11 @@ const messageInputRef = ref<MessageInputInstance | null>(null)
 const keyboardShortcutsRef = ref(null)
 const animationClasses = computed(() => ({}))
 
-// 🔧 FIX: 滾動就緒狀態 - 解決 Race Condition 導致的畫面跳動問題
+// FIX: 滾動就緒狀態 - 解決 Race Condition 導致的畫面跳動問題
 // 只有在初始滾動完成後才顯示訊息列表，避免用戶看到從頂部跳到底部的過程
 const isScrollReady = ref(false)
 
-// 🎯 Composable integrations
+// Composable integrations
 const searchPanel = useSearchPanel({
   onSearchResults: (results: Message[]) => setSearchResults(results),
   onSearchClear: () => {
@@ -376,7 +376,7 @@ const connectionStatusText = connectionText
 const skeletonLoadingText = loadingText
 const presence = computed(() => ({ typingUsers: typingUsers.value }))
 
-// 🔧 FIX: 延遲確認空狀態，避免閃爍
+// FIX: 延遲確認空狀態，避免閃爍
 // 問題：訊息同步期間，displayedMessages 暫時為空會導致閃爍顯示「暫無訊息」
 // 解決：延遲 200ms 確認空狀態，給訊息同步時間
 const isEmptyStateConfirmed = ref(false)
@@ -394,9 +394,9 @@ watch(
       // 延遲 200ms 確認空狀態，給訊息同步時間
       emptyStateTimer = setTimeout(() => {
         isEmptyStateConfirmed.value = true
-        // 🔧 FIX: 空狀態確認後也需要設置 isScrollReady，讓空狀態顯示出來
+        // FIX: 空狀態確認後也需要設置 isScrollReady，讓空狀態顯示出來
         isScrollReady.value = true
-        console.log('✅ [ConversationDetail] Empty state confirmed, setting isScrollReady=true')
+        console.log('[ConversationDetail] Empty state confirmed, setting isScrollReady=true')
       }, 200)
     } else {
       isEmptyStateConfirmed.value = false
@@ -417,7 +417,7 @@ const statusBarClass = computed((): 'connected' | 'connecting' | 'disconnected' 
 // Lifecycle
 onMounted(async () => {
   try {
-    // 🆕 FIX: 初始化 ConversationsStore 的實時同步
+    // FIX: 初始化 ConversationsStore 的實時同步
     // 確保在對話詳情頁也能接收到轉移事件並更新 currentConversation
     await initializeRealtime()
 
@@ -435,20 +435,20 @@ onMounted(async () => {
 
 onUnmounted(() => {
   controller.cleanup()
-  // 🔧 FIX: 清理空狀態計時器
+  // FIX: 清理空狀態計時器
   if (emptyStateTimer) {
     clearTimeout(emptyStateTimer)
     emptyStateTimer = null
   }
-  // 🔧 FIX: 重置滾動就緒狀態
+  // FIX: 重置滾動就緒狀態
   isScrollReady.value = false
-  // 🆕 清理轉移狀態
+  // 清理轉移狀態
   clearTransferredState()
 })
 
 function goBack() { router.push('/conversations') }
 
-// 🆕 Handler for transferred conversation - clear state and navigate back
+// Handler for transferred conversation - clear state and navigate back
 function handleTransferredBack() {
   clearTransferredState()
   goBack()
@@ -524,12 +524,12 @@ function handleMessageSelect(message: Message) {
 }
 
 /**
- * 🔧 FIX: 處理初始滾動完成事件
+ * FIX: 處理初始滾動完成事件
  * 當 VirtualMessageList 完成初始滾動到底部後，設置 isScrollReady = true
  * 這確保用戶看到的是已經滾動到底部的訊息列表，而不是從頂部跳到底部
  */
 function handleInitialScrollComplete() {
-  console.log('✅ [ConversationDetail] Initial scroll complete, showing message list')
+  console.log('[ConversationDetail] Initial scroll complete, showing message list')
   isScrollReady.value = true
 }
 
@@ -554,7 +554,7 @@ defineExpose({
   margin: -24px;
 }
 
-/* 🆕 Closed Conversation Banner Styles */
+/* Closed Conversation Banner Styles */
 .top-bar-stats-container {
   display: flex;
   align-items: center;
@@ -591,7 +591,7 @@ defineExpose({
   transform: translateY(0);
 }
 
-/* 🎨 Multi-Layer Messages Container with Progressive Loading */
+/* Multi-Layer Messages Container with Progressive Loading */
 .messages-container-wrapper {
   position: relative;
   flex: 1;
@@ -626,7 +626,7 @@ defineExpose({
   transition: opacity 280ms ease-in 100ms;
 }
 
-/* 🔧 FIX Phase 2: 使用 visibility:hidden 而非 v-show 的 display:none */
+/* FIX Phase 2: 使用 visibility:hidden 而非 v-show 的 display:none */
 /* visibility:hidden 保留元素佈局，scrollHeight 可正確計算 */
 /* 這解決了 v-show 導致 scrollHeight=0 的問題 */
 .invisible-until-ready {
@@ -648,7 +648,7 @@ defineExpose({
   background: white;
   border-top: 1px solid #e5e7eb;
   padding: 12px;
-  /* 🔧 Fix: Ensure input section creates a stacking context above messages */
+  /* Fix: Ensure input section creates a stacking context above messages */
   position: relative;
   z-index: 50;
 }
@@ -677,7 +677,7 @@ defineExpose({
   width: 20px;
 }
 
-/* 🆕 Transferred State Styles */
+/* Transferred State Styles */
 .transferred-state {
   flex-shrink: 0;
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);

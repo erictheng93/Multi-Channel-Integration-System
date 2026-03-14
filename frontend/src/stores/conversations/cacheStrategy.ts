@@ -40,7 +40,7 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
     updates: Partial<Conversation>,
     apiCall?: () => Promise<{ data?: Conversation }>
   ) => {
-    console.log(`⚡ [ConversationsStore] Optimistic update for conversation ${id}:`, updates)
+    console.log(`[ConversationsStore] Optimistic update for conversation ${id}:`, updates)
 
     // 1. Immediate local state update
     const index = conversations.value.findIndex(c => c.id === id)
@@ -55,7 +55,7 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
       if (apiCall) {
         try {
           const result = await apiCall()
-          console.log(`✅ [ConversationsStore] API sync completed for ${id}`)
+          console.log(`[ConversationsStore] API sync completed for ${id}`)
 
           // 4. Update with API result if different
           if (result?.data && hasConversationChanged(conversations.value[index], result.data)) {
@@ -65,7 +65,7 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
 
           return { success: true, data: conversations.value[index] }
         } catch (err) {
-          console.error(`❌ [ConversationsStore] API sync failed for ${id}, rolling back:`, err)
+          console.error(`[ConversationsStore] API sync failed for ${id}, rolling back:`, err)
 
           // 5. Rollback on error
           conversations.value[index] = originalConversation as Conversation
@@ -79,22 +79,22 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
       return { success: true, data: conversations.value[index] }
     }
 
-    console.warn(`⚠️ [ConversationsStore] Conversation ${id} not found for optimistic update`)
+    console.warn(`[ConversationsStore] Conversation ${id} not found for optimistic update`)
     return { success: false, error: 'Conversation not found', rollback: false }
   }
 
   // Smart cache loading - load from cache first, background update
   const loadWithCache = async (cacheFilters: ConversationFilters = {}, page = 1) => {
-    console.log(`🧠 [ConversationsStore] Smart cache loading with filters:`, cacheFilters)
+    console.log(`[ConversationsStore] Smart cache loading with filters:`, cacheFilters)
 
     // 1. Load from cache immediately (包含 userId 防止跨用戶數據污染)
     const cached = conversationCache.getConversationList(cacheFilters, getCurrentUserId())
     if (cached.data) {
-      console.log(`⚡ [ConversationsStore] Cache hit, showing ${cached.data.length} cached conversations`)
+      console.log(`[ConversationsStore] Cache hit, showing ${cached.data.length} cached conversations`)
       conversations.value = cached.data
 
       if (!cached.needsUpdate) {
-        console.log(`✨ [ConversationsStore] Cache is fresh, no API call needed`)
+        console.log(`[ConversationsStore] Cache is fresh, no API call needed`)
         return { fromCache: true, fresh: true }
       }
     }
@@ -108,7 +108,7 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
     }
 
     try {
-      console.log(`🌐 [ConversationsStore] ${wasFromCache ? 'Background' : 'Initial'} API call`)
+      console.log(`[ConversationsStore] ${wasFromCache ? 'Background' : 'Initial'} API call`)
 
       const cleanFilters: Record<string, unknown> = {}
       if (cacheFilters.status) { cleanFilters.status = cacheFilters.status }
@@ -158,12 +158,12 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
         conversationCache.setConversationList(conversationList, cacheFilters, getCurrentUserId())
         pagination.value = paginationData
 
-        console.log(`✅ [ConversationsStore] ${wasFromCache ? 'Background update' : 'Initial load'} completed`)
+        console.log(`[ConversationsStore] ${wasFromCache ? 'Background update' : 'Initial load'} completed`)
         return { fromCache: wasFromCache, fresh: true, count: conversationList.length }
       }
 
     } catch (err) {
-      console.error(`❌ [ConversationsStore] Smart cache loading failed:`, err)
+      console.error(`[ConversationsStore] Smart cache loading failed:`, err)
       if (!wasFromCache) {
         handleError(err, '載入對話失敗')
       }
@@ -181,7 +181,7 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
     const nextPage = pagination.value.page + 1
     if (nextPage > pagination.value.totalPages) { return }
 
-    console.log(`🔮 [ConversationsStore] Preloading page ${nextPage}`)
+    console.log(`[ConversationsStore] Preloading page ${nextPage}`)
 
     try {
       await cacheManager.prefetch(`conversations:page:${nextPage}`, async () => {
@@ -197,17 +197,17 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
         return response.data
       })
     } catch (err) {
-      console.warn(`⚠️ [ConversationsStore] Preload failed for page ${nextPage}:`, err)
+      console.warn(`[ConversationsStore] Preload failed for page ${nextPage}:`, err)
     }
   }
 
   // Intelligent preload of adjacent conversation messages
   const preloadAdjacentConversationMessages = async (currentConversationId: string) => {
-    console.log(`🔮 [ConversationsStore] Starting intelligent preload for adjacent conversations`)
+    console.log(`[ConversationsStore] Starting intelligent preload for adjacent conversations`)
 
     const currentIndex = conversations.value.findIndex(c => c.id === currentConversationId)
     if (currentIndex === -1) {
-      console.warn(`⚠️ [ConversationsStore] Current conversation not found in list`)
+      console.warn(`[ConversationsStore] Current conversation not found in list`)
       return
     }
 
@@ -227,7 +227,7 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
       }
     }
 
-    console.log(`🔮 [ConversationsStore] Preloading ${adjacentConversations.length} adjacent conversations`)
+    console.log(`[ConversationsStore] Preloading ${adjacentConversations.length} adjacent conversations`)
 
     const doPreload = () => {
       adjacentConversations.forEach(async (convId) => {
@@ -241,9 +241,9 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
             })
             return response.data
           })
-          console.log(`✅ [ConversationsStore] Preloaded messages for conversation ${convId}`)
+          console.log(`[ConversationsStore] Preloaded messages for conversation ${convId}`)
         } catch (err) {
-          console.warn(`⚠️ [ConversationsStore] Failed to preload ${convId}:`, err)
+          console.warn(`[ConversationsStore] Failed to preload ${convId}:`, err)
         }
       })
     }

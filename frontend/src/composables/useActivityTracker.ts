@@ -42,7 +42,7 @@ export function useActivityTracker() {
     lastActivityTime.value = now
     
     if (import.meta.env.DEV) {
-      console.log('👆 User activity detected - extending session (debounced)')
+      console.log(' User activity detected - extending session (debounced)')
     }
     
     // 清除之前的會話延長計時器
@@ -71,7 +71,7 @@ export function useActivityTracker() {
     })
     
     if (import.meta.env.DEV) {
-      console.log('👀 Activity tracking started - monitoring user interactions')
+      console.log(' Activity tracking started - monitoring user interactions')
     }
     resetActivityTimer()
   }

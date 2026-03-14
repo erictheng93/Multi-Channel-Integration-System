@@ -118,7 +118,7 @@ class DurableObjectsStressTester {
   }
 
   async runStressTest(): Promise<StressTestResults> {
-    console.log('🔥 Starting Durable Objects Stress Test');
+    console.log(' Starting Durable Objects Stress Test');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
     this.testStartTime = performance.now();
@@ -135,7 +135,7 @@ class DurableObjectsStressTester {
       ]);
 
     } catch (error) {
-      console.error('❌ Stress test error:', error);
+      console.error(' Stress test error:', error);
     } finally {
       this.testEndTime = performance.now();
     }
@@ -144,7 +144,7 @@ class DurableObjectsStressTester {
   }
 
   private async stressTestConversationRooms(): Promise<void> {
-    console.log('🏠 Stress testing ConversationRooms');
+    console.log(' Stress testing ConversationRooms');
 
     const promises = [];
     for (let roomIndex = 0; roomIndex < this.config.conversationRooms; roomIndex++) {
@@ -343,7 +343,7 @@ class DurableObjectsStressTester {
   }
 
   private async stressTestUserConnections(): Promise<void> {
-    console.log('👥 Stress testing UserConnections');
+    console.log(' Stress testing UserConnections');
 
     const promises = [];
     for (let userIndex = 0; userIndex < this.config.userConnections; userIndex++) {
@@ -441,7 +441,7 @@ class DurableObjectsStressTester {
   }
 
   private async stressTestMessageBroadcaster(): Promise<void> {
-    console.log('📡 Stress testing MessageBroadcaster');
+    console.log(' Stress testing MessageBroadcaster');
 
     const metrics: DurableObjectMetrics = {
       objectType: 'MessageBroadcaster',
@@ -577,7 +577,7 @@ class DurableObjectsStressTester {
   }
 
   private async stressTestDelayedMessageProcessor(): Promise<void> {
-    console.log('⏰ Stress testing DelayedMessageProcessor');
+    console.log(' Stress testing DelayedMessageProcessor');
 
     const metrics: DurableObjectMetrics = {
       objectType: 'DelayedMessageProcessor',
@@ -652,7 +652,7 @@ class DurableObjectsStressTester {
   private async stressTestDistributedLocks(): Promise<void> {
     if (!this.config.enableDistributedLocks) return;
 
-    console.log('🔒 Stress testing Distributed Locks');
+    console.log(' Stress testing Distributed Locks');
 
     // Test lock contention scenarios
     const lockResources = ['resource_a', 'resource_b', 'resource_c'];
@@ -698,7 +698,7 @@ class DurableObjectsStressTester {
   private async stressTestCrossRoomEvents(): Promise<void> {
     if (!this.config.enableCrossRoomEvents) return;
 
-    console.log('🌐 Stress testing Cross-Room Events');
+    console.log(' Stress testing Cross-Room Events');
 
     const crossRoomPromises = [];
     for (let i = 0; i < 100; i++) {
@@ -798,7 +798,7 @@ class DurableObjectsStressTester {
         return;
       } catch (error) {
         if (attempt === maxRetries - 1) {
-          console.error(`❌ Scenario failed after ${maxRetries} attempts:`, error);
+          console.error(` Scenario failed after ${maxRetries} attempts:`, error);
         }
         await this.sleep(1000 * (attempt + 1)); // Exponential backoff
       }
@@ -919,11 +919,11 @@ async function runStressTest() {
   try {
     const results = await tester.runStressTest();
 
-    console.log('\n🔥 Stress Test Results:');
+    console.log('\n Stress Test Results:');
     console.log('='.repeat(60));
     console.log('Summary:', JSON.stringify(results.summary, null, 2));
-    console.log('\n📊 Performance:', JSON.stringify(results.performance, null, 2));
-    console.log('\n❌ Errors:', JSON.stringify(results.errors, null, 2));
+    console.log('\n Performance:', JSON.stringify(results.performance, null, 2));
+    console.log('\n Errors:', JSON.stringify(results.errors, null, 2));
 
     // Save detailed results
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -931,10 +931,10 @@ async function runStressTest() {
 
     const fs = require('fs');
     fs.writeFileSync(resultsFile, JSON.stringify(results, null, 2));
-    console.log(`\n📁 Detailed results saved to: ${resultsFile}`);
+    console.log(`\n Detailed results saved to: ${resultsFile}`);
 
   } catch (error) {
-    console.error('❌ Stress test failed:', error);
+    console.error(' Stress test failed:', error);
     process.exit(1);
   }
 }

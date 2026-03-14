@@ -29,18 +29,18 @@ export interface AgentSkill {
 }
 
 export type SkillCategory =
-  | 'communication'     // 溝通技巧
-  | 'technical'         // 技術能力
-  | 'product'           // 產品知識
-  | 'language'          // 語言能力
-  | 'platform'          // 平台專精
-  | 'soft_skill';       // 軟技能
+  | 'communication' // 溝通技巧
+  | 'technical' // 技術能力
+  | 'product' // 產品知識
+  | 'language' // 語言能力
+  | 'platform' // 平台專精
+  | 'soft_skill'; // 軟技能
 
 export type SkillLevel =
-  | 'beginner'          // 初級
-  | 'intermediate'      // 中級
-  | 'advanced'          // 高級
-  | 'expert';           // 專家
+  | 'beginner' // 初級
+  | 'intermediate' // 中級
+  | 'advanced' // 高級
+  | 'expert'; // 專家
 
 // Agent 工作狀態
 export interface AgentStatus {
@@ -51,12 +51,12 @@ export interface AgentStatus {
 }
 
 export type AgentStatusType =
-  | 'online'            // 線上
-  | 'busy'              // 忙碌
-  | 'away'              // 暫離
-  | 'offline'           // 離線
-  | 'break'             // 休息中
-  | 'meeting';          // 開會中
+  | 'online' // 線上
+  | 'busy' // 忙碌
+  | 'away' // 暫離
+  | 'offline' // 離線
+  | 'break' // 休息中
+  | 'meeting'; // 開會中
 
 // Agent 工作負載統計
 export interface AgentWorkloadStats {

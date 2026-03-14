@@ -122,8 +122,8 @@ export const useSystemStore = defineStore('system', () => {
 
       // API integration ready for future implementation
       // if (false) {
-      //   handleError(response.error, '保存系統設定失敗')
-      //   return false
+      // handleError(response.error, '保存系統設定失敗')
+      // return false
       // }
 
       return true

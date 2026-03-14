@@ -25,7 +25,7 @@ interface ScheduleConfig {
   // 同步時間窗口 (避免高峰期)
   timeWindow: {
     start: string; // HH:MM
-    end: string;   // HH:MM
+    end: string; // HH:MM
   };
 
   // 工作日同步
@@ -48,13 +48,13 @@ interface ScheduleConfig {
 
 // 預設調度配置
 const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
-  syncInterval: 60,          // 每小時同步一次
-  healthCheckInterval: 10,   // 每10分鐘健康檢查
+  syncInterval: 60, // 每小時同步一次
+  healthCheckInterval: 10, // 每10分鐘健康檢查
   timeWindow: {
-    start: '02:00',          // 凌晨2點開始
-    end: '06:00'             // 凌晨6點結束
+    start: '02:00', // 凌晨2點開始
+    end: '06:00' // 凌晨6點結束
   },
-  workdaysOnly: false,       // 週末也同步
+  workdaysOnly: false, // 週末也同步
   syncConfig: {
     mode: 'incremental',
     excludeSensitive: true,
@@ -85,13 +85,13 @@ class DatabaseSyncScheduler {
    */
   start(): void {
     if (this.isRunning) {
-      this.log('⚠️ 調度器已在運行中');
+      this.log(' 調度器已在運行中');
       return;
     }
 
     this.isRunning = true;
-    this.log('🚀 啟動數據庫同步調度器');
-    this.log(`📊 配置: ${JSON.stringify(this.config, null, 2)}`);
+    this.log(' 啟動數據庫同步調度器');
+    this.log(` 配置: ${JSON.stringify(this.config, null, 2)}`);
 
     // 啟動同步定時器
     this.syncTimer = setInterval(() => {
@@ -106,7 +106,7 @@ class DatabaseSyncScheduler {
     // 立即執行一次健康檢查
     this.healthCheck();
 
-    this.log('✅ 調度器啟動完成');
+    this.log(' 調度器啟動完成');
   }
 
   /**
@@ -114,7 +114,7 @@ class DatabaseSyncScheduler {
    */
   stop(): void {
     if (!this.isRunning) {
-      this.log('⚠️ 調度器未運行');
+      this.log(' 調度器未運行');
       return;
     }
 
@@ -130,7 +130,7 @@ class DatabaseSyncScheduler {
       this.healthTimer = undefined;
     }
 
-    this.log('⏹️ 調度器已停止');
+    this.log(' 調度器已停止');
   }
 
   /**
@@ -138,11 +138,11 @@ class DatabaseSyncScheduler {
    */
   private async executeSync(): Promise<void> {
     if (!this.shouldSyncNow()) {
-      this.log('⏰ 不在同步時間窗口內，跳過同步');
+      this.log(' 不在同步時間窗口內，跳過同步');
       return;
     }
 
-    this.log('🔄 開始執行定期同步...');
+    this.log(' 開始執行定期同步...');
 
     try {
       const syncTool = new DatabaseSyncTool({
@@ -156,11 +156,11 @@ class DatabaseSyncScheduler {
 
       await syncTool.sync();
 
-      this.log('✅ 定期同步完成');
+      this.log(' 定期同步完成');
       this.sendNotification('success', '數據庫定期同步成功完成');
 
     } catch (error) {
-      this.log(`❌ 定期同步失敗: ${error}`);
+      this.log(` 定期同步失敗: ${error}`);
       this.sendNotification('error', `數據庫同步失敗: ${error}`);
     }
   }
@@ -169,7 +169,7 @@ class DatabaseSyncScheduler {
    * 健康檢查
    */
   private async healthCheck(): Promise<void> {
-    this.log('🔍 執行健康檢查...');
+    this.log(' 執行健康檢查...');
 
     const results = {
       localDbOk: false,
@@ -184,7 +184,7 @@ class DatabaseSyncScheduler {
       execSync('wrangler d1 execute mcis-db --command "SELECT 1;"', { stdio: 'pipe' });
       results.localDbOk = true;
     } catch (error) {
-      this.log('❌ 本地數據庫健康檢查失敗');
+      this.log(' 本地數據庫健康檢查失敗');
     }
 
     try {
@@ -192,7 +192,7 @@ class DatabaseSyncScheduler {
       execSync('wrangler d1 execute mcis-db --remote --command "SELECT 1;"', { stdio: 'pipe' });
       results.prodDbOk = true;
     } catch (error) {
-      this.log('❌ 生產數據庫健康檢查失敗');
+      this.log(' 生產數據庫健康檢查失敗');
     }
 
     // 檢查遷移狀態
@@ -204,7 +204,7 @@ class DatabaseSyncScheduler {
     }
 
     // 記錄健康檢查結果
-    this.log(`📊 健康檢查結果: ${JSON.stringify(results, null, 2)}`);
+    this.log(` 健康檢查結果: ${JSON.stringify(results, null, 2)}`);
 
     // 發送警報 (如果需要)
     if (!results.localDbOk || !results.prodDbOk) {
@@ -302,7 +302,7 @@ class DatabaseSyncScheduler {
       source: 'Database Sync Scheduler'
     };
 
-    this.log(`📢 通知 (${type}): ${message}`);
+    this.log(` 通知 (${type}): ${message}`);
 
     // 實現各種通知方式
     if (this.config.notifications.email) {
@@ -322,7 +322,7 @@ class DatabaseSyncScheduler {
    * 發送郵件通知 (模擬實現)
    */
   private sendEmailNotification(notification: any): void {
-    this.log(`📧 郵件通知: ${JSON.stringify(notification)}`);
+    this.log(` 郵件通知: ${JSON.stringify(notification)}`);
     // 實際實現將整合郵件服務
   }
 
@@ -330,7 +330,7 @@ class DatabaseSyncScheduler {
    * 發送 Webhook 通知 (模擬實現)
    */
   private sendWebhookNotification(notification: any): void {
-    this.log(`🔗 Webhook 通知: ${JSON.stringify(notification)}`);
+    this.log(` Webhook 通知: ${JSON.stringify(notification)}`);
     // 實際實現將調用 HTTP endpoint
   }
 
@@ -338,7 +338,7 @@ class DatabaseSyncScheduler {
    * 發送 Slack 通知 (模擬實現)
    */
   private sendSlackNotification(notification: any): void {
-    this.log(`💬 Slack 通知: ${JSON.stringify(notification)}`);
+    this.log(` Slack 通知: ${JSON.stringify(notification)}`);
     // 實際實現將調用 Slack API
   }
 
@@ -413,11 +413,11 @@ if (isMainModule) {
       break;
 
     case 'status':
-      console.log('📊 調度器狀態:', JSON.stringify(scheduler.getStatus(), null, 2));
+      console.log(' 調度器狀態:', JSON.stringify(scheduler.getStatus(), null, 2));
       break;
 
     case 'test-sync':
-      console.log('🧪 測試同步...');
+      console.log(' 測試同步...');
       // 創建測試同步工具並執行
       const testSync = new DatabaseSyncTool({
         source: 'production',
@@ -427,20 +427,20 @@ if (isMainModule) {
       });
 
       testSync.sync().then(() => {
-        console.log('✅ 測試同步完成');
+        console.log(' 測試同步完成');
       }).catch((error) => {
-        console.error('❌ 測試同步失敗:', error);
+        console.error(' 測試同步失敗:', error);
       });
       break;
 
     default:
       console.log(`
-📋 數據庫同步調度器使用說明:
+ 數據庫同步調度器使用說明:
 
 命令:
-  start       - 啟動調度器
-  status      - 查看調度器狀態
-  test-sync   - 測試同步功能
+  start - 啟動調度器
+  status - 查看調度器狀態
+  test-sync - 測試同步功能
 
 範例:
   npm run sync:scheduler start

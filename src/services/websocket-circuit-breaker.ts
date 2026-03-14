@@ -1,6 +1,6 @@
 // WebSocket Circuit Breaker Service
 // 自動化容錯機制 - 故障隔離與自動恢復
-// 🆕 Enhanced with structured logging, advanced degradation, and monitoring
+// Enhanced with structured logging, advanced degradation, and monitoring
 
 import type { Bindings } from '../types';
 import { Logger, LogLevel, createLogger, type LogContext } from './logger-service';
@@ -10,8 +10,8 @@ import { nowISO, nowMs } from '@/utils/timestamp'
  * 斷路器狀態
  */
 export enum CircuitState {
-  CLOSED = 'CLOSED',     // 正常運行
-  OPEN = 'OPEN',         // 斷路 (故障隔離)
+  CLOSED = 'CLOSED', // 正常運行
+  OPEN = 'OPEN', // 斷路 (故障隔離)
   HALF_OPEN = 'HALF_OPEN' // 半開 (嘗試恢復)
 }
 
@@ -19,30 +19,30 @@ export enum CircuitState {
  * 降級策略類型
  */
 export enum FallbackStrategy {
-  POLLING = 'polling',          // 降級到輪詢
-  QUEUE = 'queue',              // 隊列延遲處理
-  FAIL_FAST = 'fail_fast',      // 快速失敗（不降級）
-  RETRY_LATER = 'retry_later'   // 延遲重試
+  POLLING = 'polling', // 降級到輪詢
+  QUEUE = 'queue', // 隊列延遲處理
+  FAIL_FAST = 'fail_fast', // 快速失敗（不降級）
+  RETRY_LATER = 'retry_later' // 延遲重試
 }
 
 /**
- * 🆕 增強的斷路器配置
+ * 增強的斷路器配置
  */
 export interface CircuitBreakerConfig {
-  failureThreshold: number;           // 失敗閾值 (連續失敗次數)
-  successThreshold: number;           // 成功閾值 (恢復需要的成功次數)
-  timeout: number;                    // 開路超時 (ms)
-  halfOpenMaxCalls: number;           // 半開狀態最大測試調用數
-  monitoringWindow: number;           // 監控時間窗口 (ms)
+  failureThreshold: number; // 失敗閾值 (連續失敗次數)
+  successThreshold: number; // 成功閾值 (恢復需要的成功次數)
+  timeout: number; // 開路超時 (ms)
+  halfOpenMaxCalls: number; // 半開狀態最大測試調用數
+  monitoringWindow: number; // 監控時間窗口 (ms)
 
-  // 🆕 降級策略
+  // 降級策略
   fallbackStrategy: FallbackStrategy; // 默認降級策略
-  enableAutoRecovery: boolean;        // 啟用自動恢復
+  enableAutoRecovery: boolean; // 啟用自動恢復
 
-  // 🆕 高級監控
-  errorRateThreshold: number;         // 錯誤率閾值（0-1）
-  latencyThreshold: number;           // 延遲閾值（ms）
-  volumeThreshold: number;            // 最小請求量閾值（避免低流量誤判）
+  // 高級監控
+  errorRateThreshold: number; // 錯誤率閾值（0-1）
+  latencyThreshold: number; // 延遲閾值（ms）
+  volumeThreshold: number; // 最小請求量閾值（避免低流量誤判）
 }
 
 /**
@@ -71,7 +71,7 @@ interface CircuitBreakerEvent {
 }
 
 /**
- * 🆕 增強的 WebSocket Circuit Breaker
+ * 增強的 WebSocket Circuit Breaker
  * 實現自動故障隔離、智能降級和恢復機制
  *
  * 新功能：
@@ -88,7 +88,7 @@ export class WebSocketCircuitBreaker {
   private lastStateChange: number = nowMs();
   private halfOpenCalls = 0;
 
-  // 🆕 結構化日誌
+  // 結構化日誌
   private logger: Logger;
 
   // 統計數據
@@ -107,29 +107,29 @@ export class WebSocketCircuitBreaker {
   private env?: Bindings;
   private events: CircuitBreakerEvent[] = [];
 
-  // 🆕 性能監控
+  // 性能監控
   private latencyBuffer: number[] = [];
   private errorBuffer: boolean[] = [];
 
   constructor(config?: Partial<CircuitBreakerConfig>) {
     this.config = {
-      failureThreshold: config?.failureThreshold || 5,      // 連續 5 次失敗
-      successThreshold: config?.successThreshold || 2,      // 2 次成功後恢復
-      timeout: config?.timeout || 60000,                    // 1 分鐘
-      halfOpenMaxCalls: config?.halfOpenMaxCalls || 3,      // 半開狀態允許 3 次測試
+      failureThreshold: config?.failureThreshold || 5, // 連續 5 次失敗
+      successThreshold: config?.successThreshold || 2, // 2 次成功後恢復
+      timeout: config?.timeout || 60000, // 1 分鐘
+      halfOpenMaxCalls: config?.halfOpenMaxCalls || 3, // 半開狀態允許 3 次測試
       monitoringWindow: config?.monitoringWindow || 300000, // 5 分鐘監控窗口
 
-      // 🆕 降級策略配置
+      // 降級策略配置
       fallbackStrategy: config?.fallbackStrategy || FallbackStrategy.QUEUE,
       enableAutoRecovery: config?.enableAutoRecovery !== false,
 
-      // 🆕 高級監控配置
+      // 高級監控配置
       errorRateThreshold: config?.errorRateThreshold || 0.25,  // 25% error rate
-      latencyThreshold: config?.latencyThreshold || 3000,      // 3 seconds
-      volumeThreshold: config?.volumeThreshold || 10           // 最少 10 個請求
+      latencyThreshold: config?.latencyThreshold || 3000, // 3 seconds
+      volumeThreshold: config?.volumeThreshold || 10 // 最少 10 個請求
     };
 
-    // 🆕 初始化結構化日誌
+    // 初始化結構化日誌
     this.logger = createLogger({ service: 'Circuit-Breaker' }, {
       minLevel: LogLevel.INFO,
       serviceName: 'circuit-breaker'
@@ -148,7 +148,7 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 增強的執行操作 (帶斷路器保護和降級)
+   * 增強的執行操作 (帶斷路器保護和降級)
    */
   async execute<T>(
     operation: () => Promise<T>,
@@ -228,21 +228,21 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 成功處理（帶性能監控）
+   * 成功處理（帶性能監控）
    */
   private onSuccess(duration: number, context?: LogContext): void {
     this.stats.successfulCalls++;
     this.failureCount = 0; // 重置失敗計數
     this.successCount++;
 
-    // 🆕 記錄延遲到緩衝區
+    // 記錄延遲到緩衝區
     this.latencyBuffer.push(duration);
     this.errorBuffer.push(false);
     this.trimBuffers();
 
     this.recordEvent('success', { duration });
 
-    // 🆕 檢查延遲是否超標
+    // 檢查延遲是否超標
     if (duration > this.config.latencyThreshold) {
       this.logger.warn('High latency detected', context, {
         latency: duration,
@@ -267,7 +267,7 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 失敗處理（帶錯誤率監控）
+   * 失敗處理（帶錯誤率監控）
    */
   private onFailure(error: any, context?: LogContext): void {
     this.stats.failedCalls++;
@@ -275,7 +275,7 @@ export class WebSocketCircuitBreaker {
     this.lastFailureTime = nowMs();
     this.successCount = 0; // 重置成功計數
 
-    // 🆕 記錄錯誤到緩衝區
+    // 記錄錯誤到緩衝區
     this.errorBuffer.push(true);
     this.trimBuffers();
 
@@ -289,7 +289,7 @@ export class WebSocketCircuitBreaker {
       currentErrorRate: this.calculateErrorRate()
     });
 
-    // 🆕 高級判斷：同時考慮失敗次數和錯誤率
+    // 高級判斷：同時考慮失敗次數和錯誤率
     const shouldOpen = this.shouldOpenCircuit();
 
     if (shouldOpen && (this.state === CircuitState.CLOSED || this.state === CircuitState.HALF_OPEN)) {
@@ -305,7 +305,7 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 判斷是否應該開啟斷路器（綜合考慮失敗次數和錯誤率）
+   * 判斷是否應該開啟斷路器（綜合考慮失敗次數和錯誤率）
    */
   private shouldOpenCircuit(): boolean {
     // 條件1：連續失敗達到閾值
@@ -320,7 +320,7 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 計算當前錯誤率
+   * 計算當前錯誤率
    */
   private calculateErrorRate(): number {
     if (this.errorBuffer.length === 0) return 0;
@@ -330,7 +330,7 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 計算平均延遲
+   * 計算平均延遲
    */
   private calculateAverageLatency(): number {
     if (this.latencyBuffer.length === 0) return 0;
@@ -340,7 +340,7 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 修剪緩衝區（保留最近100個記錄）
+   * 修剪緩衝區（保留最近100個記錄）
    */
   private trimBuffers(): void {
     const maxSize = 100;
@@ -355,7 +355,7 @@ export class WebSocketCircuitBreaker {
   }
 
   /**
-   * 🆕 狀態轉換（帶結構化日誌）
+   * 狀態轉換（帶結構化日誌）
    */
   private transitionTo(newState: CircuitState): void {
     const oldState = this.state;
@@ -368,7 +368,7 @@ export class WebSocketCircuitBreaker {
       to: newState
     });
 
-    // 🆕 使用適當的日誌級別
+    // 使用適當的日誌級別
     const logLevel = newState === CircuitState.OPEN ? LogLevel.CRITICAL : LogLevel.INFO;
     this.logger.log(
       logLevel,
@@ -414,7 +414,7 @@ export class WebSocketCircuitBreaker {
    * 手動重置斷路器
    */
   reset(): void {
-    console.log('🔄 [Circuit Breaker] Manual reset');
+    console.log('[Circuit Breaker] Manual reset');
     this.failureCount = 0;
     this.successCount = 0;
     this.halfOpenCalls = 0;
@@ -425,7 +425,7 @@ export class WebSocketCircuitBreaker {
    * 手動開啟斷路器
    */
   open(): void {
-    console.log('🚨 [Circuit Breaker] Manual open');
+    console.log('[Circuit Breaker] Manual open');
     this.transitionTo(CircuitState.OPEN);
   }
 
@@ -493,7 +493,7 @@ export class WebSocketCircuitBreaker {
         { expirationTtl: this.config.monitoringWindow / 1000 }
       );
     } catch (error) {
-      console.error('❌ [Circuit Breaker] Failed to persist stats:', error);
+      console.error('[Circuit Breaker] Failed to persist stats:', error);
     }
   }
 
@@ -516,10 +516,10 @@ export class WebSocketCircuitBreaker {
         this.lastStateChange = savedStats.lastStateChange;
         this.stats = savedStats;
 
-        console.log('📊 [Circuit Breaker] Stats loaded from KV');
+        console.log('[Circuit Breaker] Stats loaded from KV');
       }
     } catch (error) {
-      console.error('❌ [Circuit Breaker] Failed to load stats:', error);
+      console.error('[Circuit Breaker] Failed to load stats:', error);
     }
   }
 
@@ -573,10 +573,10 @@ export class WebSocketCircuitBreaker {
           { expirationTtl: 86400 }
         );
 
-        console.log(`🚨 [Circuit Breaker] Alert sent: ${alert.type}`);
+        console.log(`[Circuit Breaker] Alert sent: ${alert.type}`);
       }
     } catch (error) {
-      console.error('❌ [Circuit Breaker] Failed to send alert:', error);
+      console.error('[Circuit Breaker] Failed to send alert:', error);
     }
   }
 }

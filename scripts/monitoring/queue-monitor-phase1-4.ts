@@ -7,9 +7,9 @@
  * Purpose: Confirm WebSocket/DO architecture has fully replaced Queue
  *
  * Usage:
- *   npm run monitor:phase1.4
- *   or
- *   npx tsx scripts/monitoring/queue-monitor-phase1-4.ts
+ * npm run monitor:phase1.4
+ * or
+ * npx tsx scripts/monitoring/queue-monitor-phase1-4.ts
  */
 
 import { exec } from 'child_process';
@@ -93,7 +93,7 @@ class QueueMonitor {
       );
 
       if (stderr) {
-        console.error(`⚠️ Wrangler error: ${stderr}`);
+        console.error(` Wrangler error: ${stderr}`);
       }
 
       // Parse wrangler output
@@ -126,7 +126,7 @@ class QueueMonitor {
         status
       };
     } catch (error) {
-      console.error(`❌ Failed to get queue stats:`, error);
+      console.error(` Failed to get queue stats:`, error);
       throw error;
     }
   }
@@ -204,37 +204,37 @@ class QueueMonitor {
 
 \`\`\`
 ┌─────────────────────────────────────────────────────────────┐
-│  Phase 1.4: 24-Hour Queue Monitoring Results                │
+│  Phase 1.4: 24-Hour Queue Monitoring Results │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Verdict: ${this.report.verdict === 'pass' ? '✅ PASS' : this.report.verdict === 'fail' ? '❌ FAIL' : '⏳ MONITORING'}                                        │
-│                                                             │
+│ │
+│  Verdict: ${this.report.verdict === 'pass' ? ' PASS' : this.report.verdict === 'fail' ? ' FAIL' : ' MONITORING'} │
+│ │
 │  Total Samples: ${this.report.summary.totalSamples.toString().padEnd(44)} │
 │  Empty Samples: ${this.report.summary.emptyCount.toString().padEnd(44)} │
 │  Idle Samples:  ${this.report.summary.idleCount.toString().padEnd(44)} │
 │  Active Samples: ${this.report.summary.activeCount.toString().padEnd(43)} │
-│                                                             │
+│ │
 │  Max Message Count: ${this.report.summary.maxMessageCount.toString().padEnd(40)} │
 │  Avg Message Count: ${this.report.summary.avgMessageCount.toFixed(2).padEnd(40)} │
 │  Alerts Triggered:  ${this.report.summary.alertsTriggered.toString().padEnd(40)} │
-│                                                             │
+│ │
 └─────────────────────────────────────────────────────────────┘
 \`\`\`
 
 ### Verdict Criteria
 
 ${this.report.verdict === 'pass' ? `
-✅ **PASS**: Queue has been idle for 24+ hours
+ **PASS**: Queue has been idle for 24+ hours
 - No messages sent to queue
 - Processing rate consistently 0 msg/s
 - Migration successfully completed
 ` : this.report.verdict === 'fail' ? `
-❌ **FAIL**: Queue received messages during monitoring
+ **FAIL**: Queue received messages during monitoring
 - Messages detected: ${this.report.summary.maxMessageCount}
 - Active samples: ${this.report.summary.activeCount}
 - **Action Required**: Investigate why REALTIME_QUEUE still receiving messages
 ` : `
-⏳ **MONITORING**: Observation in progress
+ **MONITORING**: Observation in progress
 - Duration: ${duration.toFixed(2)} / 24.00 hours
 - Samples collected: ${this.report.summary.totalSamples} / 288
 `}
@@ -245,7 +245,7 @@ ${this.report.verdict === 'pass' ? `
 
 ${this.report.alerts.length > 0 ?
   this.report.alerts.map(alert => `
-### ${alert.level === 'error' ? '❌' : '⚠️'} ${alert.level.toUpperCase()}: ${alert.timestamp}
+### ${alert.level === 'error' ? '' : ''} ${alert.level.toUpperCase()}: ${alert.timestamp}
 
 **Message**: ${alert.message}
 
@@ -255,7 +255,7 @@ ${this.report.alerts.length > 0 ?
 - Status: ${alert.stats.status}
 - Last Activity: ${alert.stats.lastActivity || 'Never'}
 `).join('\n---\n') :
-  '✅ No alerts triggered during monitoring period'}
+  ' No alerts triggered during monitoring period'}
 
 ---
 
@@ -292,7 +292,7 @@ ${this.report.samples.slice(-10).map(sample => `
 ## Next Steps
 
 ${this.report.verdict === 'pass' ? `
-### ✅ Proceed to Phase 2
+###  Proceed to Phase 2
 
 Since Queue monitoring passed, you can safely proceed to Phase 2:
 
@@ -309,7 +309,7 @@ cat REALTIME_QUEUE_PHASE2_PLAN.md
 # User: "開始執行 Phase 2"
 \`\`\`
 ` : this.report.verdict === 'fail' ? `
-### ❌ Investigation Required
+###  Investigation Required
 
 Queue is still receiving messages. Investigate:
 
@@ -329,7 +329,7 @@ Queue is still receiving messages. Investigate:
 
 4. **Consider rollback** if critical issues found
 ` : `
-### ⏳ Continue Monitoring
+###  Continue Monitoring
 
 Monitoring is still in progress. Wait for 24 hours to complete.
 
@@ -357,7 +357,7 @@ tail -f ${path.basename(this.reportPath)}
   private async saveReport(): Promise<void> {
     const reportContent = this.generateReport();
     await fs.writeFile(this.reportPath, reportContent, 'utf-8');
-    console.log(`📄 Report saved to: ${this.reportPath}`);
+    console.log(` Report saved to: ${this.reportPath}`);
   }
 
   /**
@@ -370,25 +370,25 @@ tail -f ${path.basename(this.reportPath)}
     console.clear();
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
-║  REALTIME_QUEUE Phase 1.4 Monitoring                      ║
+║  REALTIME_QUEUE Phase 1.4 Monitoring ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Start Time: ${this.report.startTime.padEnd(41)}║
-║  Duration:   ${elapsed.toFixed(2)} / 24.00 hours                      ║
-║  Progress:   ${progress.toFixed(1)}% ${'█'.repeat(Math.floor(progress / 2))}${' '.repeat(50 - Math.floor(progress / 2))}║
+║  Duration: ${elapsed.toFixed(2)} / 24.00 hours ║
+║  Progress: ${progress.toFixed(1)}% ${'█'.repeat(Math.floor(progress / 2))}${' '.repeat(50 - Math.floor(progress / 2))}║
 ╠════════════════════════════════════════════════════════════╣
-║  Current Status (${stats.timestamp})                       ║
-║  - Message Count:    ${stats.messageCount.toString().padEnd(32)}║
+║  Current Status (${stats.timestamp}) ║
+║  - Message Count: ${stats.messageCount.toString().padEnd(32)}║
 ║  - Processing Rate:  ${stats.processingRate.toString().padEnd(32)}msg/s ║
-║  - Status:           ${stats.status.padEnd(32)}║
-║  - Last Activity:    ${(stats.lastActivity || 'Never').padEnd(32)}║
+║  - Status: ${stats.status.padEnd(32)}║
+║  - Last Activity: ${(stats.lastActivity || 'Never').padEnd(32)}║
 ╠════════════════════════════════════════════════════════════╣
-║  Summary                                                   ║
-║  - Total Samples:    ${this.report.summary.totalSamples.toString().padEnd(32)}║
-║  - Empty Samples:    ${this.report.summary.emptyCount.toString().padEnd(32)}║
-║  - Alerts:           ${this.report.summary.alertsTriggered.toString().padEnd(32)}║
-║  - Max Messages:     ${this.report.summary.maxMessageCount.toString().padEnd(32)}║
+║  Summary ║
+║  - Total Samples: ${this.report.summary.totalSamples.toString().padEnd(32)}║
+║  - Empty Samples: ${this.report.summary.emptyCount.toString().padEnd(32)}║
+║  - Alerts: ${this.report.summary.alertsTriggered.toString().padEnd(32)}║
+║  - Max Messages: ${this.report.summary.maxMessageCount.toString().padEnd(32)}║
 ╠════════════════════════════════════════════════════════════╣
-║  ${this.report.alerts.length > 0 ? '⚠️  ALERTS TRIGGERED - Check report for details' : '✅  No alerts - Queue is idle'.padEnd(58)}║
+║  ${this.report.alerts.length > 0 ? '  ALERTS TRIGGERED - Check report for details' : '  No alerts - Queue is idle'.padEnd(58)}║
 ╚════════════════════════════════════════════════════════════╝
     `);
   }
@@ -397,9 +397,9 @@ tail -f ${path.basename(this.reportPath)}
    * Start monitoring
    */
   async start(): Promise<void> {
-    console.log('🚀 Starting Phase 1.4 Queue Monitoring...');
-    console.log(`📊 Will monitor for 24 hours`);
-    console.log(`📁 Report: ${this.reportPath}\n`);
+    console.log(' Starting Phase 1.4 Queue Monitoring...');
+    console.log(` Will monitor for 24 hours`);
+    console.log(` Report: ${this.reportPath}\n`);
 
     this.isRunning = true;
     const startTime = Date.now();
@@ -408,7 +408,7 @@ tail -f ${path.basename(this.reportPath)}
       // Check if 24 hours have passed
       const elapsed = Date.now() - startTime;
       if (elapsed >= this.totalDuration) {
-        console.log('\n✅ 24-hour monitoring period completed!');
+        console.log('\n 24-hour monitoring period completed!');
         break;
       }
 
@@ -435,8 +435,8 @@ tail -f ${path.basename(this.reportPath)}
         await new Promise(resolve => setTimeout(resolve, this.checkInterval));
 
       } catch (error) {
-        console.error(`\n❌ Error during monitoring:`, error);
-        console.log(`⏸️  Will retry in 1 minute...\n`);
+        console.error(`\n Error during monitoring:`, error);
+        console.log(`  Will retry in 1 minute...\n`);
         await new Promise(resolve => setTimeout(resolve, 60 * 1000));
       }
     }
@@ -449,15 +449,15 @@ tail -f ${path.basename(this.reportPath)}
     this.updateSummary();
     await this.saveReport();
 
-    console.log(`\n📄 Final report generated: ${this.reportPath}`);
-    console.log(`\n${this.report.verdict === 'pass' ? '✅ PASS' : '❌ FAIL'}: ${this.report.verdict === 'pass' ? 'Ready for Phase 2' : 'Investigation required'}\n`);
+    console.log(`\n Final report generated: ${this.reportPath}`);
+    console.log(`\n${this.report.verdict === 'pass' ? ' PASS' : ' FAIL'}: ${this.report.verdict === 'pass' ? 'Ready for Phase 2' : 'Investigation required'}\n`);
   }
 
   /**
    * Stop monitoring
    */
   stop(): void {
-    console.log('\n🛑 Stopping monitoring...');
+    console.log('\n Stopping monitoring...');
     this.isRunning = false;
   }
 }
@@ -477,6 +477,6 @@ process.on('SIGTERM', async () => {
 
 // Start monitoring
 monitor.start().catch(error => {
-  console.error('❌ Fatal error:', error);
+  console.error(' Fatal error:', error);
   process.exit(1);
 });

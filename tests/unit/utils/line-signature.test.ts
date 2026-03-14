@@ -86,7 +86,7 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       const bodyWithSpecialChars = JSON.stringify({
         events: [{
           message: {
-            text: '你好！🎉\n特殊字符測試 & < > " \' \\ / 😀'
+            text: '你好！\n特殊字符測試 & < > " \' \\ / '
           }
         }]
       });

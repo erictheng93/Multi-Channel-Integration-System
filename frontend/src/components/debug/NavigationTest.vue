@@ -61,12 +61,12 @@ const testNavigation = async (path: string) => {
     
     testResults.value.push({
       id: currentTestId,
-      message: `✅ 成功導航到 ${path} (耗時: ${endTime - startTime}ms)`
+      message: ` 成功導航到 ${path} (耗時: ${endTime - startTime}ms)`
     })
   } catch (error) {
     testResults.value.push({
       id: currentTestId,
-      message: `❌ 導航失敗: ${error}`
+      message: ` 導航失敗: ${error}`
     })
   }
 }

@@ -1,31 +1,31 @@
 # Channel Management System - Complete Guide
 
-## 📋 Core Concept Overview
+##  Core Concept Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│          MULTI-CHANNEL CUSTOMER SUPPORT SYSTEM                  │
-│                                                                 │
-│   Customers configure their own messaging platform credentials  │
-│   Platform manages webhooks and message routing automatically   │
+│ MULTI-CHANNEL CUSTOMER SUPPORT SYSTEM │
+│ │
+│ Customers configure their own messaging platform credentials  │
+│ Platform manages webhooks and message routing automatically │
 └─────────────────────────────────────────────────────────────────┘
 
                             ▼
 
         ┌────────────────────────────────────┐
-        │    CHANNEL INTEGRATION SYSTEM      │
-        │                                    │
-        │  • LINE Official Account           │
-        │  • Facebook Messenger (planned)    │
-        │  • WhatsApp Business (planned)     │
+        │ CHANNEL INTEGRATION SYSTEM │
+        │ │
+        │  • LINE Official Account │
+        │  • Facebook Messenger (planned) │
+        │  • WhatsApp Business (planned) │
         └────────────────────────────────────┘
 
                             ▼
 
-    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-    │   Platform   │───▶│   Webhook    │───▶│   Customer   │
-    │  Credentials │    │   Endpoint   │    │   Messages   │
-    └──────────────┘    └──────────────┘    └──────────────┘
+    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+    │ Platform │───│ Webhook │───│ Customer │
+    │  Credentials │ │   Endpoint │    │ Messages │
+    └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
 ### Key Principles
@@ -38,35 +38,35 @@
 
 ---
 
-## 🏗️ Current Situation Analysis
+##  Current Situation Analysis
 
 ### Problem Statement
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ TRADITIONAL APPROACH (❌ What We're Solving)                   │
+│ TRADITIONAL APPROACH ( What We're Solving) │
 ├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  1. Platform team manually configures each customer           │
-│  2. Customers must share sensitive credentials                │
-│  3. Limited scalability with manual setup                     │
-│  4. Difficult to update or rotate credentials                 │
-│  5. No self-service capability for customers                  │
-│                                                                │
+│ │
+│  1. Platform team manually configures each customer │
+│  2. Customers must share sensitive credentials │
+│  3. Limited scalability with manual setup │
+│  4. Difficult to update or rotate credentials │
+│  5. No self-service capability for customers │
+│ │
 └────────────────────────────────────────────────────────────────┘
 
                         VERSUS
 
 ┌────────────────────────────────────────────────────────────────┐
-│ OUR CHANNEL MANAGEMENT SYSTEM (✅ Solution)                    │
+│ OUR CHANNEL MANAGEMENT SYSTEM ( Solution) │
 ├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  1. Customers self-configure through intuitive UI             │
-│  2. Credentials never leave customer's control                │
-│  3. Instant setup with automated verification                 │
-│  4. Easy credential rotation and updates                      │
-│  5. Multi-platform support in single interface                │
-│                                                                │
+│ │
+│  1. Customers self-configure through intuitive UI │
+│  2. Credentials never leave customer's control │
+│  3. Instant setup with automated verification │
+│  4. Easy credential rotation and updates │
+│  5. Multi-platform support in single interface │
+│ │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,59 +85,59 @@
 
 ---
 
-## 💡 Solution/Concept Details
+##  Solution/Concept Details
 
 ### System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (Vue 3)                            │
+│ FRONTEND (Vue 3) │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │  Channel Management Page (/channels)                          │ │
-│  │                                                                │ │
-│  │  • 3-Step Configuration Wizard                                │ │
-│  │  • Platform Credential Form                                   │ │
-│  │  • Webhook URL Display & Copy                                 │ │
-│  │  • Channel List & Management                                  │ │
+│  │  Channel Management Page (/channels) │ │
+│  │ │ │
+│  │  • 3-Step Configuration Wizard │ │
+│  │  • Platform Credential Form │ │
+│  │  • Webhook URL Display & Copy │ │
+│  │  • Channel List & Management │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
                               ▼ HTTP/REST API
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    BACKEND (Cloudflare Workers)                     │
+│ BACKEND (Cloudflare Workers) │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │  Channel Handler (/api/channels)                              │ │
-│  │                                                                │ │
-│  │  • Authentication Middleware (JWT)                            │ │
-│  │  • Authorization (Admin-only for create/update/delete)        │ │
-│  │  • Channel CRUD Operations                                    │ │
-│  │  • Webhook URL Generation                                     │ │
-│  │  • Platform Verification                                      │ │
+│  │  Channel Handler (/api/channels) │ │
+│  │ │ │
+│  │  • Authentication Middleware (JWT) │ │
+│  │  • Authorization (Admin-only for create/update/delete) │ │
+│  │  • Channel CRUD Operations │ │
+│  │  • Webhook URL Generation │ │
+│  │  • Platform Verification │ │
 │  └───────────────────────────────────────────────────────────────┘ │
-│                              ▼                                      │
+│ ▼                                      │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │  Channel Service                                              │ │
-│  │                                                                │ │
-│  │  • Business Logic Layer                                       │ │
-│  │  • Credential Encryption/Decryption                           │ │
-│  │  • Webhook Token Generation                                   │ │
-│  │  • Platform-Specific Validation                               │ │
-│  │  • Team-Scoped Data Access                                    │ │
+│  │  Channel Service │ │
+│  │ │ │
+│  │  • Business Logic Layer │ │
+│  │  • Credential Encryption/Decryption │ │
+│  │  • Webhook Token Generation │ │
+│  │  • Platform-Specific Validation │ │
+│  │  • Team-Scoped Data Access │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
                               ▼ SQL
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    DATABASE (Cloudflare D1)                         │
+│ DATABASE (Cloudflare D1) │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │  channel_integrations Table                                   │ │
-│  │                                                                │ │
-│  │  • id (Primary Key)                                           │ │
-│  │  • teamId (Foreign Key)                                       │ │
-│  │  • platform (line/facebook/whatsapp)                          │ │
-│  │  • Platform-Specific Credentials (Encrypted)                  │ │
-│  │  • Webhook URLs & Tokens                                      │ │
-│  │  • Status & Verification Info                                 │ │
-│  │  • Statistics & Error Tracking                                │ │
-│  │  • Audit Timestamps                                           │ │
+│  │  channel_integrations Table │ │
+│  │ │ │
+│  │  • id (Primary Key) │ │
+│  │  • teamId (Foreign Key) │ │
+│  │  • platform (line/facebook/whatsapp) │ │
+│  │  • Platform-Specific Credentials (Encrypted) │ │
+│  │  • Webhook URLs & Tokens │ │
+│  │  • Status & Verification Info │ │
+│  │  • Statistics & Error Tracking │ │
+│  │  • Audit Timestamps │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -149,22 +149,22 @@
 ```
 frontend/src/
 ├── views/
-│   └── ChannelManagement.vue        [Main page component]
-│       • Channel list display
-│       • Add/Edit channel dialogs
-│       • 3-step configuration wizard
-│       • Webhook URL copy functionality
-│       • Channel statistics & health
+│ └── ChannelManagement.vue [Main page component]
+│ • Channel list display
+│ • Add/Edit channel dialogs
+│ • 3-step configuration wizard
+│ • Webhook URL copy functionality
+│ • Channel statistics & health
 │
 ├── api/
-│   └── channels.ts                  [API client]
-│       • Type-safe API calls
-│       • Request/Response types
-│       • Error handling
+│ └── channels.ts [API client]
+│ • Type-safe API calls
+│ • Request/Response types
+│ • Error handling
 │
 └── components/
     └── icons/
-        └── ChannelIcon.vue         [Broadcast icon]
+        └── ChannelIcon.vue [Broadcast icon]
 ```
 
 #### 2. Backend Components
@@ -172,26 +172,26 @@ frontend/src/
 ```
 src/modules/integrations/
 ├── handlers/
-│   └── channel-handler.ts           [REST API endpoints]
-│       • GET    /api/channels                (List channels)
-│       • POST   /api/channels                (Create channel)
-│       • GET    /api/channels/:id            (Get details)
-│       • PUT    /api/channels/:id            (Update channel)
-│       • DELETE /api/channels/:id            (Deactivate)
-│       • POST   /api/channels/:id/verify     (Verify config)
-│       • GET    /api/channels/:id/stats      (Statistics)
-│       • GET    /api/channels/:id/health     (Health check)
+│ └── channel-handler.ts [REST API endpoints]
+│ • GET /api/channels (List channels)
+│ • POST /api/channels (Create channel)
+│ • GET /api/channels/:id (Get details)
+│ • PUT /api/channels/:id (Update channel)
+│ • DELETE /api/channels/:id (Deactivate)
+│ • POST /api/channels/:id/verify (Verify config)
+│ • GET /api/channels/:id/stats (Statistics)
+│ • GET /api/channels/:id/health (Health check)
 │
 ├── services/
-│   └── channel-service.ts           [Business logic]
-│       • Channel CRUD operations
-│       • Credential management
-│       • Webhook generation
-│       • Platform verification
-│       • Team-scoped access
+│ └── channel-service.ts [Business logic]
+│ • Channel CRUD operations
+│ • Credential management
+│ • Webhook generation
+│ • Platform verification
+│ • Team-scoped access
 │
 └── types/
-    └── channel-types.ts             [TypeScript types]
+    └── channel-types.ts [TypeScript types]
         • ChannelIntegration
         • Platform configurations
         • Request/Response types
@@ -202,50 +202,50 @@ src/modules/integrations/
 ```sql
 CREATE TABLE channel_integrations (
   -- Primary identifiers
-  id                            INTEGER PRIMARY KEY,
-  teamId                        INTEGER NOT NULL,
-  platform                      TEXT NOT NULL,  -- 'line', 'facebook', 'whatsapp'
+  id INTEGER PRIMARY KEY,
+  teamId INTEGER NOT NULL,
+  platform TEXT NOT NULL,  -- 'line', 'facebook', 'whatsapp'
 
   -- LINE OA Configuration
-  lineChannelId                 TEXT,
-  lineChannelAccessToken        TEXT,
-  lineChannelSecret             TEXT,
-  lineWebhookUrl                TEXT,
-  lineWebhookToken              TEXT,
+  lineChannelId TEXT,
+  lineChannelAccessToken TEXT,
+  lineChannelSecret TEXT,
+  lineWebhookUrl TEXT,
+  lineWebhookToken TEXT,
 
   -- Facebook Messenger Configuration
-  facebookPageId                TEXT,
-  facebookAccessToken           TEXT,
-  facebookAppSecret             TEXT,
-  facebookWebhookUrl            TEXT,
-  facebookWebhookToken          TEXT,
+  facebookPageId TEXT,
+  facebookAccessToken TEXT,
+  facebookAppSecret TEXT,
+  facebookWebhookUrl TEXT,
+  facebookWebhookToken TEXT,
 
   -- WhatsApp Business Configuration
-  whatsappPhoneNumber           TEXT,
-  whatsappBusinessAccountId     TEXT,
-  whatsappAccessToken           TEXT,
-  whatsappWebhookUrl            TEXT,
-  whatsappWebhookToken          TEXT,
+  whatsappPhoneNumber TEXT,
+  whatsappBusinessAccountId TEXT,
+  whatsappAccessToken TEXT,
+  whatsappWebhookUrl TEXT,
+  whatsappWebhookToken TEXT,
 
   -- Status & Verification
-  isActive                      BOOLEAN DEFAULT 1,
-  isVerified                    BOOLEAN DEFAULT 0,
-  lastVerifiedAt                TIMESTAMP,
+  isActive BOOLEAN DEFAULT 1,
+  isVerified BOOLEAN DEFAULT 0,
+  lastVerifiedAt TIMESTAMP,
 
   -- Statistics
-  totalMessagesSent             INTEGER DEFAULT 0,
-  totalMessagesReceived         INTEGER DEFAULT 0,
-  lastMessageAt                 TIMESTAMP,
+  totalMessagesSent INTEGER DEFAULT 0,
+  totalMessagesReceived INTEGER DEFAULT 0,
+  lastMessageAt TIMESTAMP,
 
   -- Error Tracking
-  lastError                     TEXT,
-  errorCount                    INTEGER DEFAULT 0,
+  lastError TEXT,
+  errorCount INTEGER DEFAULT 0,
 
   -- Metadata & Audit
-  configuredBy                  TEXT,
-  configMetadata                TEXT,  -- JSON
-  createdAt                     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updatedAt                     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  configuredBy TEXT,
+  configMetadata TEXT,  -- JSON
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
   FOREIGN KEY (teamId) REFERENCES teams(id)
 );
@@ -253,7 +253,7 @@ CREATE TABLE channel_integrations (
 
 ---
 
-## 🔧 Specific Examples
+##  Specific Examples
 
 ### Example 1: LINE Official Account Setup
 
@@ -264,60 +264,60 @@ CREATE TABLE channel_integrations (
 ```
 STEP 1: Platform Selection
 ┌────────────────────────────────────┐
-│  Select Messaging Platform         │
-│                                    │
-│  ○ LINE Official Account    [✓]    │
-│  ○ Facebook Messenger              │
-│  ○ WhatsApp Business               │
-│                                    │
-│  [Next →]                          │
+│  Select Messaging Platform │
+│ │
+│  ○ LINE Official Account [] │
+│  ○ Facebook Messenger │
+│  ○ WhatsApp Business │
+│ │
+│  [Next →] │
 └────────────────────────────────────┘
 
 STEP 2: Credential Configuration
 ┌────────────────────────────────────┐
-│  LINE Official Account Setup       │
-│                                    │
-│  Channel ID:                       │
-│  ┌────────────────────────────┐   │
-│  │ 1234567890                 │   │
-│  └────────────────────────────┘   │
-│                                    │
-│  Channel Secret:                   │
-│  ┌────────────────────────────┐   │
-│  │ ••••••••••••••••••         │   │
-│  └────────────────────────────┘   │
-│                                    │
-│  Channel Access Token:             │
-│  ┌────────────────────────────┐   │
-│  │ ••••••••••••••••••         │   │
-│  └────────────────────────────┘   │
-│                                    │
-│  [← Back]  [Next →]                │
+│  LINE Official Account Setup │
+│ │
+│  Channel ID: │
+│  ┌────────────────────────────┐ │
+│  │ 1234567890 │   │
+│  └────────────────────────────┘ │
+│ │
+│  Channel Secret: │
+│  ┌────────────────────────────┐ │
+│  │ •••••••••••••••••• │   │
+│  └────────────────────────────┘ │
+│ │
+│  Channel Access Token: │
+│  ┌────────────────────────────┐ │
+│  │ •••••••••••••••••• │   │
+│  └────────────────────────────┘ │
+│ │
+│  [← Back]  [Next →] │
 └────────────────────────────────────┘
 
 STEP 3: Webhook Configuration
 ┌────────────────────────────────────┐
-│  Configure Webhook in LINE         │
-│                                    │
-│  Webhook URL:                      │
-│  ┌────────────────────────────┐   │
-│  │ https://multi-channel...   │📋 │
-│  └────────────────────────────┘   │
-│  Click to copy                     │
-│                                    │
-│  Webhook Token (Optional):         │
-│  ┌────────────────────────────┐   │
-│  │ abc123xyz789               │📋 │
-│  └────────────────────────────┘   │
-│                                    │
-│  Instructions:                     │
-│  1. Copy the webhook URL above     │
+│  Configure Webhook in LINE │
+│ │
+│  Webhook URL: │
+│  ┌────────────────────────────┐ │
+│  │ https://multi-channel... │ │
+│  └────────────────────────────┘ │
+│  Click to copy │
+│ │
+│  Webhook Token (Optional): │
+│  ┌────────────────────────────┐ │
+│  │ abc123xyz789 │ │
+│  └────────────────────────────┘ │
+│ │
+│  Instructions: │
+│  1. Copy the webhook URL above │
 │  2. Go to LINE Developers Console  │
 │  3. Paste URL in Webhook settings  │
-│  4. Enable webhook                 │
-│  5. Verify connection              │
-│                                    │
-│  [← Back]  [Complete ✓]            │
+│  4. Enable webhook │
+│  5. Verify connection │
+│ │
+│  [← Back]  [Complete ] │
 └────────────────────────────────────┘
 ```
 
@@ -327,82 +327,82 @@ STEP 3: Webhook Configuration
 Customer Submits Configuration
            ↓
 ┌─────────────────────────────────┐
-│ 1. Authentication Check         │
-│    • Verify JWT token           │
-│    • Check user permissions     │
-│    • Validate team context      │
+│ 1. Authentication Check │
+│ • Verify JWT token │
+│ • Check user permissions │
+│ • Validate team context │
 └─────────────────────────────────┘
            ↓
 ┌─────────────────────────────────┐
-│ 2. Credential Validation        │
-│    • Validate format            │
-│    • Check required fields      │
-│    • Platform-specific rules    │
+│ 2. Credential Validation │
+│ • Validate format │
+│ • Check required fields │
+│ • Platform-specific rules │
 └─────────────────────────────────┘
            ↓
 ┌─────────────────────────────────┐
-│ 3. Webhook URL Generation       │
-│    • Generate unique endpoint   │
-│    • Format: /webhook/line/:id  │
-│    • Create secure token        │
+│ 3. Webhook URL Generation │
+│ • Generate unique endpoint │
+│ • Format: /webhook/line/:id  │
+│ • Create secure token │
 └─────────────────────────────────┘
            ↓
 ┌─────────────────────────────────┐
-│ 4. Encrypt & Store              │
-│    • Encrypt sensitive data     │
-│    • Store in D1 database       │
-│    • Link to team               │
+│ 4. Encrypt & Store │
+│ • Encrypt sensitive data │
+│ • Store in D1 database │
+│ • Link to team │
 └─────────────────────────────────┘
            ↓
 ┌─────────────────────────────────┐
-│ 5. Return Webhook Info          │
-│    • Webhook URL                │
-│    • Webhook token              │
-│    • Setup instructions         │
+│ 5. Return Webhook Info │
+│ • Webhook URL │
+│ • Webhook token │
+│ • Setup instructions │
 └─────────────────────────────────┘
 ```
 
 ### Example 2: Message Flow After Setup
 
 ```
-     LINE Platform                    Our System                  Customer Team
-┌──────────────────────┐      ┌──────────────────────┐      ┌──────────────────────┐
-│  Customer sends      │      │                      │      │                      │
-│  message to LINE OA  │      │                      │      │                      │
-└──────────────────────┘      │                      │      │                      │
-           │                  │                      │      │                      │
-           │ POST /webhook    │                      │      │                      │
-           │ ───────────────▶ │                      │      │                      │
-           │                  │                      │      │                      │
-           │                  │  1. Verify webhook   │      │                      │
-           │                  │     token            │      │                      │
-           │                  │                      │      │                      │
-           │                  │  2. Lookup channel   │      │                      │
-           │                  │     by webhook ID    │      │                      │
-           │                  │                      │      │                      │
-           │                  │  3. Parse LINE       │      │                      │
-           │                  │     message format   │      │                      │
-           │                  │                      │      │                      │
-           │                  │  4. Create           │      │                      │
-           │                  │     conversation     │      │                      │
-           │                  │                      │      │                      │
-           │                  │  5. Store message    │      │                      │
-           │                  │     in database      │      │                      │
-           │                  │                      │      │                      │
-           │                  │  6. Broadcast via    │      │                      │
-           │                  │     WebSocket        │──────▶│  Agent receives     │
-           │                  │                      │      │  real-time           │
-           │                  │                      │      │  notification        │
-           │  200 OK          │                      │      │                      │
-           │ ◀─────────────── │                      │      │                      │
-           │                  │                      │      │                      │
+     LINE Platform Our System Customer Team
+┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
+│  Customer sends │      │ │      │ │
+│  message to LINE OA  │ │                      │ │                      │
+└──────────────────────┘ │                      │ │                      │
+           │ │                      │ │                      │
+           │ POST /webhook │                      │ │                      │
+           │ ─────────────── │ │      │ │
+           │ │                      │ │                      │
+           │ │  1. Verify webhook │      │ │
+           │ │     token │      │ │
+           │ │                      │ │                      │
+           │ │  2. Lookup channel │      │ │
+           │ │     by webhook ID │      │ │
+           │ │                      │ │                      │
+           │ │  3. Parse LINE │      │ │
+           │ │     message format │      │ │
+           │ │                      │ │                      │
+           │ │  4. Create │      │ │
+           │ │     conversation │      │ │
+           │ │                      │ │                      │
+           │ │  5. Store message │      │ │
+           │ │     in database │      │ │
+           │ │                      │ │                      │
+           │ │  6. Broadcast via │      │ │
+           │ │     WebSocket │──────│  Agent receives │
+           │ │                      │ │  real-time │
+           │ │                      │ │  notification │
+           │  200 OK │                      │ │                      │
+           │ ─────────────── │ │      │ │
+           │ │                      │ │                      │
 ```
 
 ---
 
-## ⚖️ Pros/Cons Comparison
+##  Pros/Cons Comparison
 
-### Advantages ✅
+### Advantages 
 
 | Feature | Benefit | Impact |
 |---------|---------|--------|
@@ -415,86 +415,86 @@ Customer Submits Configuration
 | **Flexibility** | Easy credential rotation | Improved security posture |
 | **Audit Trail** | Complete activity logging | Compliance & troubleshooting |
 
-### Limitations ⚠️
+### Limitations 
 
 | Limitation | Workaround | Roadmap |
 |------------|-----------|---------|
-| **Initial Setup** | Requires platform account | Provide setup guides | ✓ Planned |
-| **Platform Knowledge** | Users need basic understanding | Video tutorials | ✓ Phase 4 |
-| **Credential Management** | Users responsible for rotation | Automated reminders | 🔄 Future |
-| **Verification** | Manual webhook testing | Auto-verification | 🔄 In Progress |
-| **Multi-Channel** | Only LINE fully implemented | FB & WhatsApp coming | ✓ Phase 4-5 |
+| **Initial Setup** | Requires platform account | Provide setup guides |  Planned |
+| **Platform Knowledge** | Users need basic understanding | Video tutorials |  Phase 4 |
+| **Credential Management** | Users responsible for rotation | Automated reminders |  Future |
+| **Verification** | Manual webhook testing | Auto-verification |  In Progress |
+| **Multi-Channel** | Only LINE fully implemented | FB & WhatsApp coming |  Phase 4-5 |
 
 ### Decision Matrix
 
 ```
                           ┌────────────────┬────────────────┐
-                          │   Traditional  │  Channel Mgmt  │
-                          │     Setup      │     System     │
+                          │ Traditional  │  Channel Mgmt  │
+                          │ Setup │     System │
 ┌─────────────────────────┼────────────────┼────────────────┤
-│ Setup Time              │      ⭐        │    ⭐⭐⭐⭐⭐   │
-│ Security                │     ⭐⭐       │    ⭐⭐⭐⭐⭐   │
-│ Scalability             │      ⭐        │    ⭐⭐⭐⭐⭐   │
-│ Ease of Use             │     ⭐⭐       │    ⭐⭐⭐⭐     │
-│ Cost                    │     ⭐⭐⭐     │    ⭐⭐⭐⭐⭐   │
-│ Maintenance             │     ⭐⭐       │    ⭐⭐⭐⭐⭐   │
-│ Multi-Platform Support  │      ⭐        │    ⭐⭐⭐⭐     │
+│ Setup Time │              │ │
+│ Security │            │ │
+│ Scalability │              │ │
+│ Ease of Use │            │ │
+│ Cost │          │ │
+│ Maintenance │            │ │
+│ Multi-Platform Support  │ │         │
 └─────────────────────────┴────────────────┴────────────────┘
 
-Legend: ⭐ = Poor  ⭐⭐⭐ = Good  ⭐⭐⭐⭐⭐ = Excellent
+Legend:  = Poor = Good = Excellent
 ```
 
 ---
 
-## 🚀 Implementation Suggestions
+##  Implementation Suggestions
 
 ### Roadmap & Timeline
 
 ```
 ┌────────────┬────────────────────────────────────────────────┐
-│ Phase      │ Deliverables                                   │
+│ Phase │ Deliverables │
 ├────────────┼────────────────────────────────────────────────┤
-│ Phase 1    │ ✅ Backend API Implementation                  │
-│ [COMPLETE] │    • Channel CRUD endpoints                    │
-│            │    • Database schema                           │
-│            │    • Webhook generation                        │
-│            │    • LINE platform support                     │
-│            │                                                │
+│ Phase 1 │  Backend API Implementation │
+│ [COMPLETE] │ • Channel CRUD endpoints │
+│ │    • Database schema │
+│ │    • Webhook generation │
+│ │    • LINE platform support │
+│ │                                                │
 ├────────────┼────────────────────────────────────────────────┤
-│ Phase 2    │ ✅ Frontend UI Development                     │
-│ [COMPLETE] │    • Channel Management page                   │
-│            │    • 3-step configuration wizard              │
-│            │    • Webhook URL display & copy                │
-│            │    • Channel list & management                 │
-│            │                                                │
+│ Phase 2 │  Frontend UI Development │
+│ [COMPLETE] │ • Channel Management page │
+│ │    • 3-step configuration wizard │
+│ │    • Webhook URL display & copy │
+│ │    • Channel list & management │
+│ │                                                │
 ├────────────┼────────────────────────────────────────────────┤
-│ Phase 3    │ ✅ Deployment & Integration                    │
-│ [COMPLETE] │    • Production deployment                     │
-│            │    • Frontend build & Pages deployment         │
-│            │    • API endpoint registration                 │
-│            │    • TypeScript compilation fixes              │
-│            │                                                │
+│ Phase 3 │  Deployment & Integration │
+│ [COMPLETE] │ • Production deployment │
+│ │    • Frontend build & Pages deployment │
+│ │    • API endpoint registration │
+│ │    • TypeScript compilation fixes │
+│ │                                                │
 ├────────────┼────────────────────────────────────────────────┤
-│ Phase 4    │ 🔄 Testing & Verification (CURRENT)            │
-│ [CURRENT]  │    • E2E testing with real LINE account        │
-│            │    • Authentication flow verification          │
-│            │    • Webhook endpoint testing                  │
-│            │    • User acceptance testing                   │
-│            │                                                │
+│ Phase 4 │  Testing & Verification (CURRENT) │
+│ [CURRENT]  │ • E2E testing with real LINE account │
+│ │    • Authentication flow verification │
+│ │    • Webhook endpoint testing │
+│ │    • User acceptance testing │
+│ │                                                │
 ├────────────┼────────────────────────────────────────────────┤
-│ Phase 5    │ 📋 Facebook & WhatsApp Integration             │
-│ [PLANNED]  │    • Facebook Messenger handler                │
-│            │    • WhatsApp Business handler                 │
-│            │    • Multi-platform webhook routing            │
-│            │    • Platform-specific verification            │
-│            │                                                │
+│ Phase 5 │  Facebook & WhatsApp Integration │
+│ [PLANNED]  │ • Facebook Messenger handler │
+│ │    • WhatsApp Business handler │
+│ │    • Multi-platform webhook routing │
+│ │    • Platform-specific verification │
+│ │                                                │
 ├────────────┼────────────────────────────────────────────────┤
-│ Phase 6    │ 📋 Enhanced Features                           │
-│ [PLANNED]  │    • Automated verification                    │
-│            │    • Credential rotation reminders             │
-│            │    • Advanced statistics & analytics           │
-│            │    • Setup video tutorials                     │
-│            │    • Troubleshooting wizard                    │
+│ Phase 6 │  Enhanced Features │
+│ [PLANNED]  │ • Automated verification │
+│ │    • Credential rotation reminders │
+│ │    • Advanced statistics & analytics │
+│ │    • Setup video tutorials │
+│ │    • Troubleshooting wizard │
 └────────────┴────────────────────────────────────────────────┘
 
 Timeline Estimate:
@@ -510,19 +510,19 @@ Phase 6: 2-3 weeks
                          ▲
                          │
         ┌────────────────┼────────────────┐
-        │                │                │
-        │   [Phase 4]    │   [Phase 5]    │
-        │   Testing &    │   Multi-       │
-High    │   Bug Fixes    │   Platform     │
-Effort  │                │                │
-        │                │                │
+        │ │                │
+        │ [Phase 4] │   [Phase 5] │
+        │ Testing & │   Multi- │
+High │   Bug Fixes │   Platform │
+Effort  │ │                │
+        │ │                │
         ├────────────────┼────────────────┤
-        │                │                │
-        │   [Phase 6]    │   [Current]    │
-        │   Enhanced     │   Document &   │
-Low     │   Features     │   Deploy       │
-Effort  │                │                │
-        │                │                │
+        │ │                │
+        │ [Phase 6] │   [Current] │
+        │ Enhanced │   Document & │
+Low │   Features │   Deploy │
+Effort  │ │                │
+        │ │                │
         └────────────────┼────────────────┘
                          │
                     Low Impact
@@ -575,9 +575,9 @@ Effort  │                │                │
 
 ---
 
-## 📊 System Status
+##  System Status
 
-### ✅ Completed Features
+###  Completed Features
 
 - **Backend API** (100% Complete)
   - 8 REST endpoints fully implemented
@@ -605,7 +605,7 @@ Effort  │                │                │
   - TypeScript compilation passing
   - Build optimization complete
 
-### 🔄 In Progress
+###  In Progress
 
 - **Testing & Verification**
   - Authentication flow testing
@@ -613,7 +613,7 @@ Effort  │                │                │
   - Real LINE account integration
   - User acceptance testing
 
-### 📋 Planned
+###  Planned
 
 - Facebook Messenger integration
 - WhatsApp Business integration
@@ -623,58 +623,58 @@ Effort  │                │                │
 
 ---
 
-## 🔐 Security Considerations
+##  Security Considerations
 
 ### Credential Protection
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│ SECURITY LAYERS                                           │
+│ SECURITY LAYERS │
 ├───────────────────────────────────────────────────────────┤
-│                                                           │
-│ 1. Transport Security                                     │
-│    • HTTPS/TLS for all communications                    │
-│    • Cloudflare edge network protection                  │
-│                                                           │
-│ 2. Authentication & Authorization                         │
-│    • JWT token-based authentication                      │
-│    • Role-based access control (Admin only)              │
-│    • Team-scoped data isolation                          │
-│                                                           │
-│ 3. Credential Encryption                                  │
-│    • At-rest encryption in D1 database                   │
-│    • Secure token generation                             │
-│    • No plaintext credential storage                     │
-│                                                           │
-│ 4. Webhook Security                                       │
-│    • Unique webhook tokens per channel                   │
-│    • Token verification on all requests                  │
-│    • Rate limiting & DDoS protection                     │
-│                                                           │
-│ 5. Audit & Monitoring                                     │
-│    • Complete activity logging                           │
-│    • Error tracking & alerting                           │
-│    • Regular security audits                             │
-│                                                           │
+│ │
+│ 1. Transport Security │
+│ • HTTPS/TLS for all communications │
+│ • Cloudflare edge network protection │
+│ │
+│ 2. Authentication & Authorization │
+│ • JWT token-based authentication │
+│ • Role-based access control (Admin only) │
+│ • Team-scoped data isolation │
+│ │
+│ 3. Credential Encryption │
+│ • At-rest encryption in D1 database │
+│ • Secure token generation │
+│ • No plaintext credential storage │
+│ │
+│ 4. Webhook Security │
+│ • Unique webhook tokens per channel │
+│ • Token verification on all requests │
+│ • Rate limiting & DDoS protection │
+│ │
+│ 5. Audit & Monitoring │
+│ • Complete activity logging │
+│ • Error tracking & alerting │
+│ • Regular security audits │
+│ │
 └───────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📚 API Reference
+##  API Reference
 
 ### Endpoint Summary
 
 | Method | Endpoint | Description | Auth | Admin Only |
 |--------|----------|-------------|------|------------|
-| GET | `/api/channels` | List all channels for team | ✓ | ✗ |
-| POST | `/api/channels` | Create new channel | ✓ | ✓ |
-| GET | `/api/channels/:id` | Get channel details | ✓ | ✗ |
-| PUT | `/api/channels/:id` | Update channel | ✓ | ✓ |
-| DELETE | `/api/channels/:id` | Deactivate channel | ✓ | ✓ |
-| POST | `/api/channels/:id/verify` | Verify configuration | ✓ | ✗ |
-| GET | `/api/channels/:id/stats` | Get statistics | ✓ | ✗ |
-| GET | `/api/channels/:id/health` | Check health | ✓ | ✗ |
+| GET | `/api/channels` | List all channels for team |  |  |
+| POST | `/api/channels` | Create new channel |  |  |
+| GET | `/api/channels/:id` | Get channel details |  |  |
+| PUT | `/api/channels/:id` | Update channel |  |  |
+| DELETE | `/api/channels/:id` | Deactivate channel |  |  |
+| POST | `/api/channels/:id/verify` | Verify configuration |  |  |
+| GET | `/api/channels/:id/stats` | Get statistics |  |  |
+| GET | `/api/channels/:id/health` | Check health |  |  |
 
 ### Example Requests
 
@@ -712,7 +712,7 @@ Response:
 
 ---
 
-## 🎯 Key Takeaways
+##  Key Takeaways
 
 ### For Developers
 
@@ -740,7 +740,7 @@ Response:
 
 ---
 
-## 🐛 Known Issues & Workarounds
+##  Known Issues & Workarounds
 
 ### Issue #1: Authentication Middleware
 
@@ -768,7 +768,7 @@ Response:
 
 ---
 
-## 📖 Additional Resources
+##  Additional Resources
 
 ### Documentation
 
@@ -788,4 +788,4 @@ Response:
 
 **Document Version**: 1.0
 **Last Updated**: 2025-10-27
-**Status**: ✅ Complete - Ready for Phase 4 Testing
+**Status**:  Complete - Ready for Phase 4 Testing

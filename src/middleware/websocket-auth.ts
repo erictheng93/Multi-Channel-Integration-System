@@ -32,11 +32,11 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     const deviceId = url.searchParams.get('deviceId');
 
     // 詳細日誌記錄 - 連接嘗試
-    console.log(`🔐 [WebSocket Auth] Connection attempt from IP: ${clientIP}, ConversationID: ${conversationId || 'none'}, DeviceID: ${deviceId || 'none'}, Token: ${token ? 'present' : 'missing'}`);
+    console.log(`[WebSocket Auth] Connection attempt from IP: ${clientIP}, ConversationID: ${conversationId || 'none'}, DeviceID: ${deviceId || 'none'}, Token: ${token ? 'present' : 'missing'}`);
 
     // 檢查 1: 令牌是否存在
     if (!token) {
-      console.log(`❌ [WebSocket Auth] No token provided from ${clientIP}`);
+      console.log(`[WebSocket Auth] No token provided from ${clientIP}`);
       return new Response(JSON.stringify({
         error: 'Authentication token required',
         code: 4401, // 自定義 WebSocket 關閉代碼
@@ -56,7 +56,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     // 檢查 2: 令牌格式驗證
     const tokenParts = token.split('.');
     if (tokenParts.length !== 3) {
-      console.log(`❌ [WebSocket Auth] Invalid token format from ${clientIP}: expected 3 parts, got ${tokenParts.length}`);
+      console.log(`[WebSocket Auth] Invalid token format from ${clientIP}: expected 3 parts, got ${tokenParts.length}`);
       return new Response(JSON.stringify({
         error: 'Invalid token format',
         code: 4402,
@@ -74,11 +74,11 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     }
 
     // 檢查 3: JWT 驗證
-    console.log(`🔍 [WebSocket Auth] Verifying JWT token for ${clientIP}...`);
+    console.log(`[WebSocket Auth] Verifying JWT token for ${clientIP}...`);
     const payload = await verifyJWT(token, c.env.JWT_SECRET) as JWTPayload | null;
 
     if (!payload) {
-      console.log(`❌ [WebSocket Auth] Invalid or expired token from ${clientIP}`);
+      console.log(`[WebSocket Auth] Invalid or expired token from ${clientIP}`);
       return new Response(JSON.stringify({
         error: 'Invalid token',
         code: 4403,
@@ -96,14 +96,14 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     }
 
     // 檢查 4: 令牌過期檢查
-    // 🔧 FIX: Reduced expiry buffer from 5 minutes to 30 seconds
+    // FIX: Reduced expiry buffer from 5 minutes to 30 seconds
     // Rationale: 5-minute buffer was too aggressive and blocked valid connections
     // The client has auto-reconnection and token refresh logic to handle expiring tokens
     const currentTime = Math.floor(Date.now() / 1000);
     const expiryBuffer = 30; // 30 seconds - only block if token expires very soon
 
     if (payload.exp && payload.exp <= currentTime) {
-      console.log(`❌ [WebSocket Auth] Token already expired from ${clientIP}. Expired at: ${new Date(payload.exp * 1000).toISOString()}, Current: ${nowISO()}`);
+      console.log(`[WebSocket Auth] Token already expired from ${clientIP}. Expired at: ${new Date(payload.exp * 1000).toISOString()}, Current: ${nowISO()}`);
       return new Response(JSON.stringify({
         error: 'Token expired',
         code: 4404,
@@ -122,11 +122,11 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       });
     }
 
-    // 🔧 FIX: Changed from blocking to warning for tokens expiring soon
+    // FIX: Changed from blocking to warning for tokens expiring soon
     // Only block if token expires in less than 30 seconds (to prevent immediate disconnection)
     // Log warning for tokens expiring in 1-5 minutes but allow connection
     if (payload.exp && payload.exp <= (currentTime + expiryBuffer)) {
-      console.log(`❌ [WebSocket Auth] Token expires too soon from ${clientIP}. Expires at: ${new Date(payload.exp * 1000).toISOString()}, Time remaining: ${payload.exp - currentTime} seconds`);
+      console.log(`[WebSocket Auth] Token expires too soon from ${clientIP}. Expires at: ${new Date(payload.exp * 1000).toISOString()}, Time remaining: ${payload.exp - currentTime} seconds`);
       return new Response(JSON.stringify({
         error: 'Token expiring too soon',
         code: 4405,
@@ -150,7 +150,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     const warningBuffer = 300; // 5 minutes
     if (payload.exp && payload.exp <= (currentTime + warningBuffer)) {
       const timeRemaining = payload.exp - currentTime;
-      console.log(`⚠️ [WebSocket Auth] Token will expire in ${timeRemaining} seconds from ${clientIP}. Connection allowed but client should refresh token soon.`);
+      console.log(`[WebSocket Auth] Token will expire in ${timeRemaining} seconds from ${clientIP}. Connection allowed but client should refresh token soon.`);
     }
 
     // 檢查 5: 使用者資料提取和驗證
@@ -161,7 +161,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
     // 驗證關鍵欄位
     if (!userId || userId === '0') {
-      console.log(`❌ [WebSocket Auth] Invalid userId in token from ${clientIP}: ${userId}`);
+      console.log(`[WebSocket Auth] Invalid userId in token from ${clientIP}: ${userId}`);
       return new Response(JSON.stringify({
         error: 'Invalid user data',
         code: 4406,
@@ -180,7 +180,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
     // 檢查角色有效性
     if (!['admin', 'agent'].includes(role)) {
-      console.log(`❌ [WebSocket Auth] Invalid role in token from ${clientIP}: ${role}`);
+      console.log(`[WebSocket Auth] Invalid role in token from ${clientIP}: ${role}`);
       return new Response(JSON.stringify({
         error: 'Invalid role',
         code: 4407,
@@ -214,7 +214,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     // Store user in context for handler access
     c.set('user', user);
 
-    // 🆕 P2-3: Check conversation access permissions for agents
+    // P2-3: Check conversation access permissions for agents
     if (conversationId && role === 'agent') {
       const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
       const hasAccess = await authService.authorizeConversationAccess(
@@ -225,7 +225,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       );
 
       if (!hasAccess) {
-        console.log(`❌ [WebSocket Auth] Agent ${userId} denied access to conversation ${conversationId}`);
+        console.log(`[WebSocket Auth] Agent ${userId} denied access to conversation ${conversationId}`);
         return new Response(JSON.stringify({
           error: 'Access denied',
           code: 4403,
@@ -243,13 +243,13 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         });
       }
 
-      console.log(`✅ [WebSocket Auth] Agent ${userId} authorized for conversation ${conversationId}`);
+      console.log(`[WebSocket Auth] Agent ${userId} authorized for conversation ${conversationId}`);
     }
 
     const authDuration = Date.now() - startTime;
-    console.log(`✅ [WebSocket Auth] User authenticated successfully: ${user.id} (${user.role}) from ${clientIP}, Duration: ${authDuration}ms, TeamID: ${user.teamId || 'none'}`);
+    console.log(`[WebSocket Auth] User authenticated successfully: ${user.id} (${user.role}) from ${clientIP}, Duration: ${authDuration}ms, TeamID: ${user.teamId || 'none'}`);
 
-    // 🆕 Phase 2: 記錄成功的認證事件到分析服務
+    // Phase 2: 記錄成功的認證事件到分析服務
     try {
       const { createAnalyticsService } = await import('../monitoring/websocket-analytics-service');
       const analyticsService = createAnalyticsService(c.env);
@@ -266,7 +266,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       });
     } catch (analyticsError) {
       // 分析記錄失敗不影響主要功能
-      console.warn('⚠️ [WebSocket Auth] Failed to record analytics:', analyticsError);
+      console.warn('[WebSocket Auth] Failed to record analytics:', analyticsError);
     }
 
     return await next();
@@ -275,7 +275,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     const errorMessage = error instanceof Error ? error.message : 'Unknown authentication error';
     const errorStack = error instanceof Error ? error.stack : undefined;
 
-    console.error(`❌ [WebSocket Auth] Authentication failed from ${clientIP}:`, {
+    console.error(`[WebSocket Auth] Authentication failed from ${clientIP}:`, {
       error: errorMessage,
       duration: `${authDuration}ms`,
       userAgent,
@@ -283,7 +283,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       timestamp: nowISO()
     });
 
-    // 🆕 Phase 2: 記錄認證錯誤到分析服務
+    // Phase 2: 記錄認證錯誤到分析服務
     try {
       const { createAnalyticsService } = await import('../monitoring/websocket-analytics-service');
       const analyticsService = createAnalyticsService(c.env);
@@ -298,7 +298,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         duration: authDuration
       });
     } catch (analyticsError) {
-      console.warn('⚠️ [WebSocket Auth] Failed to record error analytics:', analyticsError);
+      console.warn('[WebSocket Auth] Failed to record error analytics:', analyticsError);
     }
 
     return new Response(JSON.stringify({

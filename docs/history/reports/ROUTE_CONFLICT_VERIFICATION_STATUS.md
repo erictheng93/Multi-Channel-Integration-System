@@ -7,73 +7,73 @@
 
 ---
 
-## ❌ 重要結論：衝突尚未修復
+##  重要結論：衝突尚未修復
 
 ### 當前狀態
 ```
-✅ 跨模組誤報已消除: 4,192 → 297 個真實衝突 (93% 減少)
-❌ 實際路由衝突尚未修復: 32 個高嚴重度衝突待處理
-❌ Pre-commit hook 會阻止提交: 需要先修復高嚴重度衝突
+ 跨模組誤報已消除: 4,192 → 297 個真實衝突 (93% 減少)
+ 實際路由衝突尚未修復: 32 個高嚴重度衝突待處理
+ Pre-commit hook 會阻止提交: 需要先修復高嚴重度衝突
 ```
 
 ### 我們完成了什麼？
-1. ✅ 修復了檢測工具的跨模組誤報問題
-2. ✅ 生成了詳細的衝突分析報告
-3. ✅ 配置了 Pre-commit Hook 自動檢測
-4. ✅ 建立了智能路由註冊器
-5. ✅ 創建了完整的文檔體系
+1.  修復了檢測工具的跨模組誤報問題
+2.  生成了詳細的衝突分析報告
+3.  配置了 Pre-commit Hook 自動檢測
+4.  建立了智能路由註冊器
+5.  創建了完整的文檔體系
 
 ### 我們尚未完成什麼？
-1. ❌ **修復實際的路由衝突代碼** ← 這是當前任務
-2. ❌ 將模組遷移到智能路由註冊器
-3. ❌ 建立 E2E 測試覆蓋
+1.  **修復實際的路由衝突代碼** ← 這是當前任務
+2.  將模組遷移到智能路由註冊器
+3.  建立 E2E 測試覆蓋
 
 ---
 
-## 📊 當前衝突詳情
+##  當前衝突詳情
 
-### 🔴 高嚴重度：32 個重複路由
+###  高嚴重度：32 個重複路由
 
 #### 1. modules/teams (12 個衝突) - 最高優先級
 ```
-❌ GET /  (4 次重複註冊)
-   📍 src/modules/teams/handlers/team.ts:67
-   📍 src/modules/teams/handlers/members.ts:27
-   📍 src/modules/teams/handlers/invitations.ts:78
-   📍 src/modules/teams/handlers/index.ts:28
+ GET /  (4 次重複註冊)
+    src/modules/teams/handlers/team.ts:67
+    src/modules/teams/handlers/members.ts:27
+    src/modules/teams/handlers/invitations.ts:78
+    src/modules/teams/handlers/index.ts:28
 
-❌ POST / (4 次重複註冊)
-   📍 src/modules/teams/handlers/team.ts:140
-   📍 src/modules/teams/handlers/members.ts:87
-   📍 src/modules/teams/handlers/invitations.ts:22
-   📍 src/modules/teams/handlers/index.ts:28
+ POST / (4 次重複註冊)
+    src/modules/teams/handlers/team.ts:140
+    src/modules/teams/handlers/members.ts:87
+    src/modules/teams/handlers/invitations.ts:22
+    src/modules/teams/handlers/index.ts:28
 
-❌ ROUTE /members (2 次重複註冊)
-   📍 src/modules/teams/handlers/index.ts:18
-   📍 src/modules/teams/handlers/index.ts:25
+ ROUTE /members (2 次重複註冊)
+    src/modules/teams/handlers/index.ts:18
+    src/modules/teams/handlers/index.ts:25
 ```
 
 **影響**:
-- ⚠️ **CRITICAL**: 只有最後註冊的路由會生效
+-  **CRITICAL**: 只有最後註冊的路由會生效
 - 團隊成員管理功能可能無法訪問
 - 邀請管理功能可能失效
 - API 行為不可預測
 
 #### 2. modules/qrcode (7 個衝突)
 ```
-❌ GET /health (重複註冊)
-   📍 src/modules/qrcode/handlers/qrcode-router-simple.ts:10
-   📍 src/modules/qrcode/handlers/index.ts:19
+ GET /health (重複註冊)
+    src/modules/qrcode/handlers/qrcode-router-simple.ts:10
+    src/modules/qrcode/handlers/index.ts:19
 
-❌ GET / (重複註冊)
-   📍 src/modules/qrcode/handlers/qrcode-router-simple.ts:13
-   📍 src/modules/qrcode/handlers/index.ts:24
+ GET / (重複註冊)
+    src/modules/qrcode/handlers/qrcode-router-simple.ts:13
+    src/modules/qrcode/handlers/index.ts:24
 
-❌ POST / (重複註冊)
-❌ GET /:id/exists (重複註冊)
-❌ GET /:id (重複註冊)
-❌ PUT /:id (重複註冊)
-❌ DELETE /:id (重複註冊)
+ POST / (重複註冊)
+ GET /:id/exists (重複註冊)
+ GET /:id (重複註冊)
+ PUT /:id (重複註冊)
+ DELETE /:id (重複註冊)
 ```
 
 **影響**:
@@ -82,15 +82,15 @@
 
 #### 3. modules/analytics (6 個 /health 衝突)
 ```
-❌ GET /health (5 次重複註冊)
-   📍 src/modules/analytics/handlers/reports-main.ts:585
-   📍 src/modules/analytics/handlers/realtime-dashboard-main.ts:362
-   📍 src/modules/analytics/handlers/dashboard-main.ts:628
-   📍 src/modules/analytics/handlers/analytics-main.ts:283
+ GET /health (5 次重複註冊)
+    src/modules/analytics/handlers/reports-main.ts:585
+    src/modules/analytics/handlers/realtime-dashboard-main.ts:362
+    src/modules/analytics/handlers/dashboard-main.ts:628
+    src/modules/analytics/handlers/analytics-main.ts:283
 
-❌ GET /templates (重複註冊)
-   📍 src/modules/analytics/handlers/reports-main.ts:486
-   📍 src/modules/analytics/handlers/dashboard-main.ts:391
+ GET /templates (重複註冊)
+    src/modules/analytics/handlers/reports-main.ts:486
+    src/modules/analytics/handlers/dashboard-main.ts:391
 ```
 
 **影響**:
@@ -99,44 +99,44 @@
 
 #### 4. modules/session (2 個衝突)
 ```
-❌ POST /
-   📍 src/modules/session/handlers/session.ts:32
-   📍 src/modules/session/handlers/index.ts:345
+ POST /
+    src/modules/session/handlers/session.ts:32
+    src/modules/session/handlers/index.ts:345
 
-❌ GET /
-   📍 src/modules/session/handlers/session.ts:230
-   📍 src/modules/session/handlers/index.ts:345
+ GET /
+    src/modules/session/handlers/session.ts:230
+    src/modules/session/handlers/index.ts:345
 ```
 
 #### 5. modules/auth (2 個衝突)
 ```
-❌ POST /login
-   📍 src/modules/auth/handlers/index.ts:42
-   📍 src/modules/auth/handlers/auth-main.ts:26
+ POST /login
+    src/modules/auth/handlers/index.ts:42
+    src/modules/auth/handlers/auth-main.ts:26
 
-❌ POST /logout
-   📍 src/modules/auth/handlers/index.ts:45
-   📍 src/modules/auth/handlers/auth-main.ts:290
+ POST /logout
+    src/modules/auth/handlers/index.ts:45
+    src/modules/auth/handlers/auth-main.ts:290
 ```
 
 #### 6. modules/conversations (1 個衝突)
 ```
-❌ ROUTE /
-   📍 src/modules/conversations/handlers/index.ts:60
-   📍 src/modules/conversations/handlers/conversation-main.ts:201
+ ROUTE /
+    src/modules/conversations/handlers/index.ts:60
+    src/modules/conversations/handlers/conversation-main.ts:201
 ```
 
-### 🟡 中嚴重度：125 個參數化路由順序問題
+###  中嚴重度：125 個參數化路由順序問題
 
 檢測到但尚未統計詳情，需要逐個模組分析。
 
-### 🟢 低嚴重度：140 個潛在問題
+###  低嚴重度：140 個潛在問題
 
 可以在修復高嚴重度後再處理。
 
 ---
 
-## 🚨 當前阻塞問題
+##  當前阻塞問題
 
 ### Pre-commit Hook 會阻止提交
 
@@ -144,11 +144,11 @@
 
 ```bash
 $ git commit -m "任何提交"
-🛤️  Checking route conflicts...
-⚠️  Found 297 potential conflicts:
-🔴 HIGH SEVERITY (Duplicate routes):
-❌ Route conflict detected! Please fix before committing.
-💡 Run 'npm run check:routes' for detailed report
+  Checking route conflicts...
+  Found 297 potential conflicts:
+ HIGH SEVERITY (Duplicate routes):
+ Route conflict detected! Please fix before committing.
+ Run 'npm run check:routes' for detailed report
 ```
 
 **解決方案**:
@@ -157,9 +157,9 @@ $ git commit -m "任何提交"
 
 ---
 
-## 🎯 立即行動計劃
+##  立即行動計劃
 
-### Phase 1: 修復高嚴重度衝突（本日完成）⏰
+### Phase 1: 修復高嚴重度衝突（本日完成）
 
 #### 任務 1: 修復 modules/teams (預計 2 小時)
 **優先級**: P0 - CRITICAL
@@ -169,14 +169,14 @@ $ git commit -m "任何提交"
 // 修復方案
 // members.ts, invitations.ts, team.ts - 轉換為子應用
 const membersApp = new Hono();
-membersApp.get('/', listMembers);      // 內部使用 /
+membersApp.get('/', listMembers); // 內部使用 /
 membersApp.post('/', addMember);
 export default membersApp;
 
 // index.ts - 統一掛載
-app.route('/members', membersHandler);      // 掛載到 /members
+app.route('/members', membersHandler); // 掛載到 /members
 app.route('/invitations', invitationsHandler); // 掛載到 /invitations
-app.route('/', teamHandler);                // 根路由處理團隊
+app.route('/', teamHandler); // 根路由處理團隊
 ```
 
 #### 任務 2: 修復 modules/qrcode (預計 1 小時)
@@ -222,14 +222,14 @@ app.route('/', teamHandler);                // 根路由處理團隊
 npm run check:routes
 
 # 預期結果:
-# 🔴 HIGH SEVERITY: 0 個
-# 🟡 MEDIUM SEVERITY: 125 個 (待處理)
-# ✅ Pre-commit hook 不再阻塞
+#  HIGH SEVERITY: 0 個
+#  MEDIUM SEVERITY: 125 個 (待處理)
+#  Pre-commit hook 不再阻塞
 ```
 
 ---
 
-## 📋 修復檢查清單
+##  修復檢查清單
 
 ### 立即修復（今天）
 - [ ] modules/teams - 12 個根路由衝突
@@ -252,7 +252,7 @@ npm run check:routes
 
 ---
 
-## 🔍 如何開始修復
+##  如何開始修復
 
 ### 步驟 1: 選擇一個模組開始
 推薦從 `modules/teams` 開始，因為：
@@ -301,7 +301,7 @@ Test: npm run check:routes (HIGH: 12 → 0)"
 
 ---
 
-## ✅ 成功標準
+##  成功標準
 
 ### 短期（今天）
 - [ ] 高嚴重度衝突清零: 32 → 0
@@ -320,7 +320,7 @@ Test: npm run check:routes (HIGH: 12 → 0)"
 
 ---
 
-## 💡 需要幫助？
+##  需要幫助？
 
 ### 修復資源
 - `docs/ROUTE_MANAGEMENT_GUIDE.md` - 完整修復指南
@@ -336,6 +336,6 @@ Test: npm run check:routes (HIGH: 12 → 0)"
 
 ---
 
-**報告結束** | 當前狀態：**待修復** ⏳
+**報告結束** | 當前狀態：**待修復** 
 
-Generated by Claude Code 🤖
+Generated by Claude Code 

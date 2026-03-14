@@ -7,10 +7,10 @@ import type { Hono } from 'hono';
  * 路由優先級枚舉
  */
 export enum RoutePriority {
-  STATIC = 1,      // 靜態路由（最高優先級）: /health, /info
-  SPECIFIC = 2,    // 具體路由: /members, /invitations
+  STATIC = 1, // 靜態路由（最高優先級）: /health, /info
+  SPECIFIC = 2, // 具體路由: /members, /invitations
   PARAMETERIZED = 3, // 參數化路由: /:id
-  WILDCARD = 4     // 通配符路由（最低優先級）: /*
+  WILDCARD = 4 // 通配符路由（最低優先級）: /*
 }
 
 /**
@@ -65,7 +65,7 @@ export class SmartRouteRegistry {
     const key = `${routeDef.path}`;
 
     if (this.routes.has(key)) {
-      console.warn(`⚠️ Route already defined: ${routeDef.path}`);
+      console.warn(` Route already defined: ${routeDef.path}`);
     }
 
     this.routes.set(key, routeDef);
@@ -88,7 +88,7 @@ export class SmartRouteRegistry {
     conflicts: string[];
     report: string;
   } {
-    console.log('\n🚀 Smart Route Registry - Starting registration...\n');
+    console.log('\n Smart Route Registry - Starting registration...\n');
 
     // 1. 轉換為數組並分析
     const routesWithAnalysis = Array.from(this.routes.values()).map(route => ({
@@ -111,12 +111,12 @@ export class SmartRouteRegistry {
         registered++;
 
         console.log(
-          `  ✅ [P${route.priority}] ${route.path.padEnd(30)} ` +
+          ` [P${route.priority}] ${route.path.padEnd(30)} ` +
           `(specificity: ${analysis.specificity})` +
           (route.description ? ` - ${route.description}` : '')
         );
       } catch (error) {
-        console.error(`  ❌ Failed to register: ${route.path}`, error);
+        console.error(` Failed to register: ${route.path}`, error);
       }
     });
 
@@ -235,7 +235,7 @@ export class SmartRouteRegistry {
 
         // 檢查是否可能衝突
         if (this.mayConflict(path1, path2)) {
-          conflicts.push(`⚠️ Potential conflict: "${path1}" may intercept "${path2}"`);
+          conflicts.push(` Potential conflict: "${path1}" may intercept "${path2}"`);
         }
       }
     }
@@ -286,7 +286,7 @@ export class SmartRouteRegistry {
   ): string {
     const lines: string[] = [];
 
-    lines.push('📊 Smart Route Registry Report');
+    lines.push(' Smart Route Registry Report');
     lines.push('═'.repeat(80));
     lines.push('');
 
@@ -316,7 +316,7 @@ export class SmartRouteRegistry {
 
     // 衝突警告
     if (conflicts.length > 0) {
-      lines.push('⚠️  WARNINGS - Potential Conflicts:');
+      lines.push('  WARNINGS - Potential Conflicts:');
       lines.push('─'.repeat(80));
       conflicts.forEach(conflict => lines.push(`  ${conflict}`));
       lines.push('');

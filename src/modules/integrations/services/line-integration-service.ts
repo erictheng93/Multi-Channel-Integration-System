@@ -499,7 +499,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       timing: {
         averageResponseTimeMs: this.calculateAverageResponseTime(),
         maxResponseTimeMs: 5000, // 假設最大回應時間
-        minResponseTimeMs: 100,   // 假設最小回應時間
+        minResponseTimeMs: 100, // 假設最小回應時間
         last24h: this.stats.apiCalls?.total || 0
       },
       lastUpdated: now,
@@ -586,12 +586,12 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 驗證 Webhook 簽章
    *
-   * ✅ IMPLEMENTATION NOTE: Full webhook security verification is handled by
+   * IMPLEMENTATION NOTE: Full webhook security verification is handled by
    * WebhookSecurityService in the webhook-handler layer. This method is kept
    * for backward compatibility and direct integration service calls.
    *
    * For production webhooks, use:
-   *   webhook-handler.ts → WebhookValidator → WebhookSecurityService
+   * webhook-handler.ts → WebhookValidator → WebhookSecurityService
    *
    * The WebhookSecurityService provides:
    * - HMAC-SHA256 signature verification (X-Line-Signature header)
@@ -606,7 +606,7 @@ export class LineIntegrationService implements IPlatformAdapter {
    * @deprecated Use WebhookSecurityService.validateWebhookSecurity() instead
    */
   private verifyWebhookSignature(_webhookData: any): boolean {
-    // ⚠️ WARNING: This method bypasses full security checks
+    // WARNING: This method bypasses full security checks
     // For production use, webhooks should be processed through webhook-handler.ts
     // which provides complete HMAC-SHA256 signature verification.
     //

@@ -115,7 +115,7 @@ export class RealtimeVersionSelector {
   // 設置版本
   setVersion(version: 'v1' | 'v2' | 'modular' | 'auto'): void {
     this.currentVersion = version;
-    console.log(`🔧 [Version Selector] 版本設置為: ${version}`);
+    console.log(`[Version Selector] 版本設置為: ${version}`);
   }
 
   // 檢測環境能力
@@ -154,7 +154,7 @@ export class RealtimeVersionSelector {
 
     this.capabilities = capabilities;
 
-    console.log(`🔍 [Version Selector] 環境能力檢測完成:`, {
+    console.log(`[Version Selector] 環境能力檢測完成:`, {
       cloudflareQueue: capabilities.hasCloudflareQueue,
       kvStorage: capabilities.hasKVStorage,
       database: capabilities.hasD1Database,
@@ -224,7 +224,7 @@ export class RealtimeVersionSelector {
       }
     }
 
-    console.log(`🎯 [Version Selector] 選擇版本: ${selectedVersion}`, {
+    console.log(`[Version Selector] 選擇版本: ${selectedVersion}`, {
       reason,
       capabilities: {
         queue: capabilities.hasCloudflareQueue,
@@ -272,7 +272,7 @@ export class RealtimeVersionSelector {
 
     const compatible = blockers.length === 0;
 
-    console.log(`✅ [Version Selector] 版本相容性檢查 ${version}:`, {
+    console.log(`[Version Selector] 版本相容性檢查 ${version}:`, {
       compatible,
       warnings: warnings.length,
       blockers: blockers.length

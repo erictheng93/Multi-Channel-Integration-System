@@ -104,7 +104,7 @@ const variantClass = computed(() => `spinner-${props.variant}`)
   }
   
   .spinner::after {
-    content: '⏳';
+    content: '';
     display: flex;
     align-items: center;
     justify-content: center;

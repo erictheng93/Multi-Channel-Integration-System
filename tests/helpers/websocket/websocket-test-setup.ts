@@ -25,8 +25,8 @@ const globalPerformanceMetrics = {
 
 // Global test setup
 beforeAll(async () => {
-  console.log('🚀 Starting WebSocket test suite...');
-  console.log('📊 Test configuration:', TEST_CONFIG);
+  console.log(' Starting WebSocket test suite...');
+  console.log(' Test configuration:', TEST_CONFIG);
 
   globalPerformanceMetrics.testStartTime = Date.now();
 
@@ -41,13 +41,13 @@ beforeAll(async () => {
     // Suppress debug logs during tests
     const originalConsoleLog = console.log;
     console.log = (...args: any[]) => {
-      if (!args[0]?.toString().includes('🔍') && !args[0]?.toString().includes('📊')) {
+      if (!args[0]?.toString().includes('') && !args[0]?.toString().includes('')) {
         originalConsoleLog(...args);
       }
     };
   }
 
-  console.log('✅ WebSocket test environment initialized');
+  console.log(' WebSocket test environment initialized');
 });
 
 // Global test cleanup
@@ -55,26 +55,26 @@ afterAll(async () => {
   const totalDuration = Date.now() - globalPerformanceMetrics.testStartTime;
   globalPerformanceMetrics.totalTestTime = totalDuration;
 
-  console.log('🏁 WebSocket test suite completed');
-  console.log('📊 Performance summary:');
-  console.log(`   Total tests: ${globalPerformanceMetrics.testCount}`);
-  console.log(`   Total time: ${totalDuration}ms`);
-  console.log(`   Average per test: ${(totalDuration / Math.max(globalPerformanceMetrics.testCount, 1)).toFixed(2)}ms`);
+  console.log(' WebSocket test suite completed');
+  console.log(' Performance summary:');
+  console.log(` Total tests: ${globalPerformanceMetrics.testCount}`);
+  console.log(` Total time: ${totalDuration}ms`);
+  console.log(` Average per test: ${(totalDuration / Math.max(globalPerformanceMetrics.testCount, 1)).toFixed(2)}ms`);
 
   if (globalPerformanceMetrics.slowTests.length > 0) {
-    console.log('⚠️ Slow tests (>10s):');
+    console.log(' Slow tests (>10s):');
     globalPerformanceMetrics.slowTests
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 5)
       .forEach(test => {
-        console.log(`   ${test.name}: ${test.duration}ms`);
+        console.log(` ${test.name}: ${test.duration}ms`);
       });
   }
 
   if (globalPerformanceMetrics.memoryLeaks.length > 0) {
-    console.log('💾 Potential memory leaks detected:');
+    console.log(' Potential memory leaks detected:');
     globalPerformanceMetrics.memoryLeaks.forEach(leak => {
-      console.log(`   ${leak.test}: +${(leak.leak / 1024 / 1024).toFixed(2)}MB`);
+      console.log(` ${leak.test}: +${(leak.leak / 1024 / 1024).toFixed(2)}MB`);
     });
   }
 
@@ -288,4 +288,4 @@ export const testUtils = {
   }
 };
 
-console.log('📋 WebSocket test setup loaded');
+console.log(' WebSocket test setup loaded');

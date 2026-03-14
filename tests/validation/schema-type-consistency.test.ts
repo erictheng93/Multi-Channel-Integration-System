@@ -85,7 +85,7 @@ describe('Schema Type Consistency Validation', () => {
       // instead of conversation_id, preventing the production issue
 
       const createSessionData = {
-        conversation_id: 'conv_123', // ✅ Correct snake_case
+        conversation_id: 'conv_123', //  Correct snake_case
         sessionType: 'continuous' as const,
         messageContent: 'Test',
         senderType: 'customer' as const
@@ -94,7 +94,7 @@ describe('Schema Type Consistency Validation', () => {
       expect(createSessionData.conversation_id).toBe('conv_123');
 
       // TypeScript compilation will fail if someone accidentally uses:
-      // conversationId: 'conv_123' // ❌ This should cause a type error
+      // conversationId: 'conv_123' //  This should cause a type error
     });
 
     test('should validate all session-related interfaces use consistent field naming', () => {
@@ -145,9 +145,9 @@ describe('Schema Type Consistency Validation', () => {
 
       // Validate TypeScript types match schema expectations
       const typeValidation: ConversationSession = {
-        id: 'test_id',                    // matches TEXT PRIMARY KEY
+        id: 'test_id', // matches TEXT PRIMARY KEY
         conversation_id: 'test_conv_id',  // matches TEXT NOT NULL REFERENCES conversations(id)
-        sessionType: 'continuous',        // matches session_type with CHECK constraint
+        sessionType: 'continuous', // matches session_type with CHECK constraint
         startTime: '2025-01-01T00:00:00Z',
         lastActivity: '2025-01-01T01:00:00Z',
         messageCount: 0,

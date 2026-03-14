@@ -2,14 +2,14 @@
 **Batch Fix Action Plan - 系統性修復所有 MEDIUM 衝突**
 
 **生成時間**: 2025-10-20
-**狀態**: ✅ Ready to Execute
+**狀態**:  Ready to Execute
 **目標**: 修復 173 個 MEDIUM 嚴重度衝突
 
 ---
 
-## 📊 執行摘要
+##  執行摘要
 
-### 階段 1: 分析分類 ✅ 已完成
+### 階段 1: 分析分類  已完成
 
 **分析結果**:
 ```
@@ -17,9 +17,9 @@
 模組總數: 14 個
 
 分類結果:
-✅ 智能註冊器 (Option B): 13 modules (99 conflicts, 85%)
-🔄 混合策略 (Hybrid):     1 module  (17 conflicts, 15%)
-⚠️  純手動分析 (Option C): 0 modules (0 conflicts, 0%)
+ 智能註冊器 (Option B): 13 modules (99 conflicts, 85%)
+ 混合策略 (Hybrid): 1 module  (17 conflicts, 15%)
+  純手動分析 (Option C): 0 modules (0 conflicts, 0%)
 ```
 
 **預計時間**: 4 小時
@@ -28,11 +28,11 @@
 
 ---
 
-## 🎯 階段 2: 批量修復執行計劃
+##  階段 2: 批量修復執行計劃
 
 ### 優先級排序
 
-#### 🔴 P0 - 高優先級（高衝突數量）
+####  P0 - 高優先級（高衝突數量）
 
 **1. modules/qrcode (41 conflicts)**
 - **文件**: `src/modules/qrcode/handlers/index.ts`
@@ -46,7 +46,7 @@
 - **預計時間**: 20 分鐘
 - **重要性**: 核心業務模組
 
-#### 🟡 P1 - 中優先級（中等衝突）
+####  P1 - 中優先級（中等衝突）
 
 **3. modules/agents/sub:agent-main (17 conflicts)**
 - **文件**: `src/modules/agents/handlers/agent-main.ts`
@@ -69,7 +69,7 @@
 - **策略**: 智能註冊器
 - **預計時間**: 15 分鐘
 
-#### 🟢 P2 - 低優先級（低衝突）
+####  P2 - 低優先級（低衝突）
 
 **7-13. handlers/* (各 1-5 conflicts)**
 - handlers/notification-router (5)
@@ -84,9 +84,9 @@
 
 ---
 
-## 🛠️ 可用工具
+##  可用工具
 
-### 工具 1: 批量修復腳本 ✅
+### 工具 1: 批量修復腳本 
 **文件**: `scripts/batch-fix-routes.ts`
 
 **功能**:
@@ -106,7 +106,7 @@ npx tsx scripts/batch-fix-routes.ts
 # 結果: 生成 <filename>-smart.ts 文件
 ```
 
-### 工具 2: 智能路由註冊器 ✅
+### 工具 2: 智能路由註冊器 
 **文件**: `src/core/smart-route-registry.ts`
 
 **功能**:
@@ -139,16 +139,16 @@ registry.addMany([
 const { registered, conflicts } = registry.register();
 ```
 
-### 工具 3: 路由衝突檢測器 ✅
+### 工具 3: 路由衝突檢測器 
 **命令**: `npm run check:routes`
 
 **用途**: 驗證修復效果
 
 ---
 
-## 📋 執行步驟
+##  執行步驟
 
-### Step 1: 選擇修復策略（已完成 ✅）
+### Step 1: 選擇修復策略（已完成 ）
 
 根據分析結果，我們選擇：
 - **90% 模組**: 使用智能註冊器（快速自動化）
@@ -156,7 +156,7 @@ const { registered, conflicts } = registry.register();
 
 ### Step 2: 批量修復高優先級模組
 
-#### 方式 A: 使用批量腳本（推薦）⭐
+#### 方式 A: 使用批量腳本（推薦）
 
 ```bash
 # 1. 先 dry-run 查看效果
@@ -260,8 +260,8 @@ done
 npm run check:routes
 
 # 預期結果:
-# 🔴 HIGH: 0 個 ✅
-# 🟡 MEDIUM: 0-10 個 (大幅減少)
+#  HIGH: 0 個 
+#  MEDIUM: 0-10 個 (大幅減少)
 
 # 2. 運行測試套件
 npm run test
@@ -310,10 +310,10 @@ Modules fixed:
 
 Test results:
 - Route conflicts: 173 → ~10 (94% reduction)
-- All tests passing: ✅
-- API endpoints verified: ✅
+- All tests passing: 
+- API endpoints verified: 
 
-🤖 Generated with Claude Code
+ Generated with Claude Code
 Co-Authored-By: Claude <noreply@anthropic.com>"
 
 # 4. 推送
@@ -322,22 +322,22 @@ git push origin main
 
 ---
 
-## 📊 成功指標
+##  成功指標
 
 ### 衝突數量
 
 | 階段 | MEDIUM 衝突 | 目標 | 狀態 |
 |------|------------|------|------|
-| **修復前** | 173 個 | - | ⏳ 當前 |
-| **修復後** | < 10 個 | 94% 減少 | 🎯 目標 |
+| **修復前** | 173 個 | - |  當前 |
+| **修復後** | < 10 個 | 94% 減少 |  目標 |
 
 ### 時間成本
 
 | 方法 | 預計時間 | 實際時間 | 節省 |
 |------|---------|---------|------|
 | **純手動 (Option C)** | 12 小時 | - | - |
-| **智能註冊器 (Option B)** | 3 小時 | ⏱️ TBD | 9 小時 (75%) |
-| **混合策略** | 4 小時 | ⏱️ TBD | 8 小時 (67%) |
+| **智能註冊器 (Option B)** | 3 小時 |  TBD | 9 小時 (75%) |
+| **混合策略** | 4 小時 |  TBD | 8 小時 (67%) |
 
 ### 測試覆蓋
 
@@ -349,11 +349,11 @@ git push origin main
 
 ---
 
-## 🎯 立即行動
+##  立即行動
 
 ### 選擇你的執行方式
 
-#### 🚀 快速自動化（推薦）
+####  快速自動化（推薦）
 
 ```bash
 # 1 分鐘快速開始
@@ -366,7 +366,7 @@ npx tsx scripts/batch-fix-routes.ts
 # 預計 3 小時完成所有修復
 ```
 
-#### 🎯 逐步審慎
+####  逐步審慎
 
 ```bash
 # 從最高優先級開始
@@ -380,7 +380,7 @@ cat src/modules/qrcode/handlers/index.ts
 # ...
 ```
 
-#### 🔍 先試點再推廣
+####  先試點再推廣
 
 ```bash
 # 先修復 1 個簡單模組測試效果
@@ -391,26 +391,26 @@ cat src/modules/qrcode/handlers/index.ts
 
 ---
 
-## 📚 參考資源
+##  參考資源
 
 ### 文檔
-- ✅ `docs/SMART_REGISTRY_ALGORITHM_EXPLAINED.md` - 算法原理
-- ✅ `docs/SMART_REGISTRY_ADOPTION_ROADMAP.md` - 遷移指南
-- ✅ `docs/reports/OPTION_B_VS_C_COMPARISON.md` - 策略對比
-- ✅ `docs/reports/QUICK_COMPARISON.md` - 快速參考
+-  `docs/SMART_REGISTRY_ALGORITHM_EXPLAINED.md` - 算法原理
+-  `docs/SMART_REGISTRY_ADOPTION_ROADMAP.md` - 遷移指南
+-  `docs/reports/OPTION_B_VS_C_COMPARISON.md` - 策略對比
+-  `docs/reports/QUICK_COMPARISON.md` - 快速參考
 
 ### 範例代碼
-- ✅ `src/modules/teams/handlers/index-smart.ts` - 完整範例
-- ✅ `src/core/smart-route-registry.ts` - 工具實現
+-  `src/modules/teams/handlers/index-smart.ts` - 完整範例
+-  `src/core/smart-route-registry.ts` - 工具實現
 
 ### 工具腳本
-- ✅ `scripts/batch-fix-routes.ts` - 批量修復腳本
-- ✅ `scripts/analyze-conflicts.ts` - 衝突分析腳本
-- ✅ `scripts/detect-route-conflicts.ts` - 衝突檢測工具
+-  `scripts/batch-fix-routes.ts` - 批量修復腳本
+-  `scripts/analyze-conflicts.ts` - 衝突分析腳本
+-  `scripts/detect-route-conflicts.ts` - 衝突檢測工具
 
 ---
 
-## ❓ 常見問題
+##  常見問題
 
 ### Q1: 批量腳本安全嗎？
 **A**: 是的！腳本會：
@@ -448,7 +448,7 @@ cat src/modules/qrcode/handlers/index.ts
 
 ---
 
-## ✅ 準備就緒檢查清單
+##  準備就緒檢查清單
 
 開始執行前，確認：
 
@@ -459,16 +459,16 @@ cat src/modules/qrcode/handlers/index.ts
 - [x] 範例代碼可參考
 - [x] 測試工具已就緒
 - [x] 文檔已完整
-- [ ] **你準備好開始了嗎？** 🚀
+- [ ] **你準備好開始了嗎？** 
 
 ---
 
 **下一步**: 告訴我你想如何開始：
-1. 🚀 **立即批量執行** - 我運行批量腳本
-2. 🎯 **先修復一個模組** - 我幫你修復 qrcode (41 conflicts)
-3. 🔍 **先 dry-run 預覽** - 我展示批量腳本預覽
-4. 📚 **我需要更多說明** - 我提供更詳細的指導
+1.  **立即批量執行** - 我運行批量腳本
+2.  **先修復一個模組** - 我幫你修復 qrcode (41 conflicts)
+3.  **先 dry-run 預覽** - 我展示批量腳本預覽
+4.  **我需要更多說明** - 我提供更詳細的指導
 
-**當前狀態**: ✅ Everything Ready - Waiting for your decision!
+**當前狀態**:  Everything Ready - Waiting for your decision!
 
-Generated by Claude Code 🤖
+Generated by Claude Code 

@@ -83,7 +83,7 @@ const messages = computed((): Message[] => {
  (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
  )
 
- console.log(` [Unified] Merged: ${httpHistoryMessages.length} HTTP + ${realtimeMessages.length} ${connectionType.value.toUpperCase()} = ${mergedMessages.length} total`)
+ console.log(`[Unified] Merged: ${httpHistoryMessages.length} HTTP + ${realtimeMessages.length} ${connectionType.value.toUpperCase()} = ${mergedMessages.length} total`)
 
  return mergedMessages
  }
@@ -278,7 +278,7 @@ const connectionStatusClass = computed(() => {
 ****:
 ```typescript
 const handleMessageSent = async (data: { content: string; attachments: unknown[] }) => {
- console.log(' [Message] Sending via:', currentProtocol.value)
+ console.log('[Message] Sending via:', currentProtocol.value)
  trackUserActivity()
  stopTyping()
 
@@ -300,7 +300,7 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
  })
 
  if (success) {
- console.log(' [Message] Sent via WebSocket')
+ console.log('[Message] Sent via WebSocket')
  scrollToNewest()
  return
  }
@@ -309,7 +309,7 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
  // SSE WebSocket HTTP API
  const success = await httpMessages.sendMessage(data.content)
  if (success) {
- console.log(' [Message] Sent via HTTP API')
+ console.log('[Message] Sent via HTTP API')
  scrollToNewest()
  // SSE ,
  return
@@ -340,27 +340,27 @@ const handleMessageSent = async (data: { content: string; attachments: unknown[]
 ****:
 ```typescript
 const handleRefreshMessages = async () => {
- console.log(' [Refresh] Manual refresh triggered via:', currentProtocol.value)
+ console.log('[Refresh] Manual refresh triggered via:', currentProtocol.value)
  trackUserActivity()
 
  try {
  // ,
  if (connection.value && connectionState.value === 'error') {
- console.log(' [Refresh] Reconnecting...')
+ console.log('[Refresh] Reconnecting...')
  connection.value.reconnect()
  }
 
  // , HTTP
  if (!connection.value || !isConnected.value) {
- console.log(' [Refresh] Using HTTP API refresh...')
+ console.log('[Refresh] Using HTTP API refresh...')
  await httpMessages.refreshMessages()
  }
 
  resetPollingDelay()
- console.log(' [Refresh] Manual refresh completed')
+ console.log('[Refresh] Manual refresh completed')
 
  } catch (error) {
- console.error(' [Refresh] Failed to refresh messages:', error)
+ console.error('[Refresh] Failed to refresh messages:', error)
  }
 }
 ```
@@ -473,7 +473,7 @@ async function initializeConnection() {
 
  //
  connectionType.value = connection.value.type
- console.log(` [ConversationDetail] Using ${connectionType.value.toUpperCase()} connection`)
+ console.log(`[ConversationDetail] Using ${connectionType.value.toUpperCase()} connection`)
 
  //
  connection.value.onMessage(handleIncomingMessage)
@@ -483,7 +483,7 @@ async function initializeConnection() {
  //
  await connection.value.connect()
 
- console.log(` [ConversationDetail] Connected via ${connectionType.value}`)
+ console.log(`[ConversationDetail] Connected via ${connectionType.value}`)
 
  } catch (error) {
  console.error('[ConversationDetail] Failed to initialize connection:', error)
@@ -502,7 +502,7 @@ function handleIncomingMessage(message: any) {
 
  switch (message.type) {
  case 'connection_established':
- console.log(' [ConversationDetail] Connection established:', message.data)
+ console.log('[ConversationDetail] Connection established:', message.data)
  break
 
  case 'event':
@@ -588,7 +588,7 @@ onMounted(async () => {
 
  const cacheStats = performanceOptimizer.getCacheStats()
  if (cacheStats.totalHits + cacheStats.totalMisses > 0) {
- console.log(' [Cache Performance]', {
+ console.log('[Cache Performance]', {
  hitRate: `${(cacheStats.hitRate * 100).toFixed(1)}%`,
  size: cacheStats.size,
  totalOperations: cacheStats.totalHits + cacheStats.totalMisses
@@ -597,7 +597,7 @@ onMounted(async () => {
 
  const errorStats = errorHandler.getErrorStats()
  if (errorStats.total > 0) {
- console.log(' [Error Statistics]', errorStats)
+ console.log('[Error Statistics]', errorStats)
  }
  }, 10000)
  }

@@ -38,10 +38,10 @@ export async function recordWebSocketError(
     };
 
     await analyticsService.recordError(errorStats);
-    console.log(`📊 [Analytics Helper] Error recorded: ${errorCode} - ${errorType}`);
+    console.log(`[Analytics Helper] Error recorded: ${errorCode} - ${errorType}`);
   } catch (error) {
     // 分析記錄失敗不應影響主要功能
-    console.warn('⚠️ [Analytics Helper] Failed to record error:', error);
+    console.warn('[Analytics Helper] Failed to record error:', error);
   }
 }
 
@@ -222,7 +222,7 @@ export function generateAnalyticsSummary(data: {
 }): string {
   const { totalConnections, successfulConnections, failedConnections: _failedConnections, errorRate, averageLatency, userSatisfactionScore } = data;
 
-  let summary = `📊 WebSocket Analytics Summary:\n`;
+  let summary = ` WebSocket Analytics Summary:\n`;
   summary += `• Total Connections: ${totalConnections}\n`;
   summary += `• Success Rate: ${totalConnections > 0 ? ((successfulConnections / totalConnections) * 100).toFixed(1) : 0}%\n`;
   summary += `• Error Rate: ${(errorRate * 100).toFixed(1)}%\n`;
@@ -231,13 +231,13 @@ export function generateAnalyticsSummary(data: {
 
   // 添加狀態指示
   if (userSatisfactionScore >= 0.9) {
-    summary += `🟢 System Status: Excellent`;
+    summary += ` System Status: Excellent`;
   } else if (userSatisfactionScore >= 0.8) {
-    summary += `🟡 System Status: Good`;
+    summary += ` System Status: Good`;
   } else if (userSatisfactionScore >= 0.6) {
-    summary += `🟠 System Status: Needs Attention`;
+    summary += ` System Status: Needs Attention`;
   } else {
-    summary += `🔴 System Status: Critical`;
+    summary += ` System Status: Critical`;
   }
 
   return summary;

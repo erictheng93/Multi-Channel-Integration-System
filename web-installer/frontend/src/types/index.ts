@@ -80,8 +80,8 @@ export interface CloudflareResources {
   kvSessionNamespaceId?: string;
   kvCacheNamespaceId?: string;
   r2BucketName?: string;
-  queueId?: string;        // Queue ID for deletion
-  queueName?: string;      // Queue name for reference
+  queueId?: string; // Queue ID for deletion
+  queueName?: string; // Queue name for reference
   workerId?: string;
   workerUrl?: string;
   pagesProjectId?: string;

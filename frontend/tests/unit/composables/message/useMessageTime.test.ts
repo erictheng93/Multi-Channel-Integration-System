@@ -162,7 +162,7 @@ describe('useMessageTime Composable', () => {
 
     it('should handle different dates correctly', () => {
       const dates = [
-        new Date(2025, 0, 1, 0, 0, 0),   // New Year
+        new Date(2025, 0, 1, 0, 0, 0), // New Year
         new Date(2025, 5, 15, 12, 30, 0), // Mid-year
         new Date(2025, 11, 31, 23, 59, 0) // Year end
       ]

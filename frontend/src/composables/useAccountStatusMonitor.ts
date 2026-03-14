@@ -10,7 +10,7 @@ export function useAccountStatusMonitor() {
     
     // 檢查是否是當前用戶被停權
     if (currentAgent.value && currentAgent.value.id === memberId) {
-      console.log('🚫 Current user account has been disabled')
+      console.log(' Current user account has been disabled')
       showDisabledModal.value = true
     }
   }

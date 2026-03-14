@@ -115,24 +115,24 @@ async function migrateTestFile(filePath: string): Promise<MigrationResult> {
 }
 
 async function migrateBatch(batchNumber: number, files: string[]): Promise<void> {
-  console.log(`\n🚀 Migrating Batch ${batchNumber} (${files.length} files)\n${'='.repeat(60)}\n`);
+  console.log(`\n Migrating Batch ${batchNumber} (${files.length} files)\n${'='.repeat(60)}\n`);
 
   const results: MigrationResult[] = [];
 
   for (const file of files) {
-    console.log(`\n📝 Migrating: ${file}...`);
+    console.log(`\n Migrating: ${file}...`);
     const result = await migrateTestFile(file);
     results.push(result);
 
     if (result.success) {
-      console.log(`   ✅ Success`);
+      console.log(` Success`);
       result.changes.forEach(change => {
-        console.log(`      - ${change}`);
+        console.log(` - ${change}`);
       });
     } else {
-      console.log(`   ❌ Failed`);
+      console.log(` Failed`);
       result.errors.forEach(error => {
-        console.log(`      - ${error}`);
+        console.log(` - ${error}`);
       });
     }
   }
@@ -141,16 +141,16 @@ async function migrateBatch(batchNumber: number, files: string[]): Promise<void>
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
 
-  console.log(`\n\n📊 Batch ${batchNumber} Summary:\n`);
-  console.log(`   ✅ Successful: ${successful}/${files.length}`);
-  console.log(`   ❌ Failed: ${failed}/${files.length}`);
-  console.log(`   📈 Success rate: ${((successful / files.length) * 100).toFixed(1)}%\n`);
+  console.log(`\n\n Batch ${batchNumber} Summary:\n`);
+  console.log(` Successful: ${successful}/${files.length}`);
+  console.log(` Failed: ${failed}/${files.length}`);
+  console.log(` Success rate: ${((successful / files.length) * 100).toFixed(1)}%\n`);
 
   if (failed > 0) {
-    console.log(`\n⚠️  Files needing manual review:\n`);
+    console.log(`\n  Files needing manual review:\n`);
     results.filter(r => !r.success).forEach(r => {
-      console.log(`   - ${r.file}`);
-      r.errors.forEach(err => console.log(`     ${err}`));
+      console.log(` - ${r.file}`);
+      r.errors.forEach(err => console.log(` ${err}`));
     });
   }
 }

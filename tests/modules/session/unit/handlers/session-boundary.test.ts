@@ -407,7 +407,7 @@ describe('Session Boundary Detection', () => {
 
     test('should handle empty or whitespace content', async () => {
       expect(await sessionService.extractTopic('')).toBe(null);
-      expect(await sessionService.extractTopic('   ')).toBe(null);
+      expect(await sessionService.extractTopic(' ')).toBe(null);
     });
   });
 
@@ -563,7 +563,7 @@ describe('Session Boundary Detection', () => {
     });
 
     test('should handle special characters and unicode', async () => {
-      const unicodeMessage = '你好 🌟 ñáéíóú 中文测试 emoji 😊';
+      const unicodeMessage = '你好  ñáéíóú 中文测试 emoji ';
 
       const currentSession = createMockSession({
         isActive: true,

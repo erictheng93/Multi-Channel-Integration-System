@@ -13,7 +13,7 @@
  * const toTeamId = normalizeTeamId(data?.toTeamId)
  *
  * // Now all downstream code works with correct types:
- * userTeamIds.includes(toTeamId) // ✅ Works correctly
+ * userTeamIds.includes(toTeamId) //  Works correctly
  */
 
 /**
@@ -24,11 +24,11 @@
  * @returns number | undefined - Normalized team ID or undefined if invalid
  *
  * @example
- * normalizeTeamId("42")     // → 42
- * normalizeTeamId(42)       // → 42
- * normalizeTeamId(null)     // → undefined
+ * normalizeTeamId("42") // → 42
+ * normalizeTeamId(42) // → 42
+ * normalizeTeamId(null) // → undefined
  * normalizeTeamId(undefined)// → undefined
- * normalizeTeamId("abc")    // → undefined (NaN case)
+ * normalizeTeamId("abc") // → undefined (NaN case)
  */
 export function normalizeTeamId(id: unknown): number | undefined {
   if (id === undefined || id === null) {
@@ -60,7 +60,7 @@ export function normalizeTeamId(id: unknown): number | undefined {
  * @example
  * normalizeTeamIds(["1", 2, "3"])  // → [1, 2, 3]
  * normalizeTeamIds([1, "abc", 3])  // → [1, 3]
- * normalizeTeamIds(null)           // → []
+ * normalizeTeamIds(null) // → []
  */
 export function normalizeTeamIds(ids: unknown): number[] {
   if (!Array.isArray(ids)) {

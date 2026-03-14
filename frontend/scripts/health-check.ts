@@ -60,52 +60,52 @@ function checkFileSize(filePath: string, maxSize: number = 1024 * 1024): FileChe
 }
 
 function runHealthCheck(): void {
-  log(`${colors.cyan}${colors.bright}🏥 Frontend Health Check${colors.reset}\n`);
+  log(`${colors.cyan}${colors.bright} Frontend Health Check${colors.reset}\n`);
 
   // 1. Check Node.js and npm versions
-  log(`${colors.blue}📋 Environment Check${colors.reset}`);
+  log(`${colors.blue} Environment Check${colors.reset}`);
   try {
     const nodeVersion = execSync('node --version', { encoding: 'utf8' }).trim();
     const npmVersion = execSync('npm --version', { encoding: 'utf8' }).trim();
-    log(`  ✅ Node.js: ${nodeVersion}`);
-    log(`  ✅ npm: ${npmVersion}`);
+    log(` Node.js: ${nodeVersion}`);
+    log(` npm: ${npmVersion}`);
   } catch {
-    log(`  ❌ Failed to check Node.js/npm versions`);
+    log(` Failed to check Node.js/npm versions`);
   }
 
   // 2. Check package.json integrity
-  log(`\n${colors.blue}📦 Package Configuration${colors.reset}`);
+  log(`\n${colors.blue} Package Configuration${colors.reset}`);
   try {
     const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
     const depCount = Object.keys(packageJson.dependencies || {}).length;
     const devDepCount = Object.keys(packageJson.devDependencies || {}).length;
-    log(`  ✅ Dependencies: ${depCount} production, ${devDepCount} development`);
+    log(` Dependencies: ${depCount} production, ${devDepCount} development`);
     
     // Check for security vulnerabilities
     try {
       execSync('npm audit --audit-level=high', { stdio: 'pipe' });
-      log(`  ✅ No high-severity security vulnerabilities`);
+      log(` No high-severity security vulnerabilities`);
     } catch {
-      log(`  ⚠️  Security vulnerabilities detected - run 'npm audit' for details`);
+      log(` Security vulnerabilities detected - run 'npm audit' for details`);
     }
   } catch {
-    log(`  ❌ Failed to read package.json`);
+    log(` Failed to read package.json`);
   }
 
   // 3. Check build artifacts
-  log(`\n${colors.blue}🏗️  Build Artifacts${colors.reset}`);
+  log(`\n${colors.blue}  Build Artifacts${colors.reset}`);
   const distCheck = checkFileSize('dist', 10 * 1024 * 1024); // 10MB
   if (distCheck.exists) {
-    log(`  ✅ Build directory exists`);
+    log(` Build directory exists`);
     if (distCheck.isLarge && distCheck.warning) {
-      log(`  ⚠️  ${distCheck.warning}`);
+      log(` ${distCheck.warning}`);
     }
   } else {
-    log(`  ℹ️  No build artifacts found (run 'npm run build')`);
+    log(` No build artifacts found (run 'npm run build')`);
   }
 
   // 4. Check configuration files
-  log(`\n${colors.blue}⚙️  Configuration Files${colors.reset}`);
+  log(`\n${colors.blue}  Configuration Files${colors.reset}`);
   const configFiles: ConfigFile[] = [
     { file: 'vite.config.ts', name: 'Vite Config' },
     { file: 'tsconfig.json', name: 'TypeScript Config' },
@@ -116,63 +116,63 @@ function runHealthCheck(): void {
   for (const { file, name } of configFiles) {
     const check = checkFileSize(file);
     if (check.exists && check.formattedSize) {
-      log(`  ✅ ${name}: ${check.formattedSize}`);
+      log(` ${name}: ${check.formattedSize}`);
     } else {
-      log(`  ❌ ${name}: Missing`);
+      log(` ${name}: Missing`);
     }
   }
 
   // 5. Check development server
-  log(`\n${colors.blue}🚀 Development Server${colors.reset}`);
+  log(`\n${colors.blue} Development Server${colors.reset}`);
   try {
     // Check if port 3000 is available
     const netstat = execSync('netstat -an', { encoding: 'utf8' });
     const port3000InUse = netstat.includes(':3000');
     
     if (port3000InUse) {
-      log(`  ⚠️  Port 3000 is in use (development server may be running)`);
+      log(` Port 3000 is in use (development server may be running)`);
     } else {
-      log(`  ✅ Port 3000 is available`);
+      log(` Port 3000 is available`);
     }
   } catch {
-    log(`  ℹ️  Could not check port availability`);
+    log(` Could not check port availability`);
   }
 
   // 6. Performance metrics
-  log(`\n${colors.blue}⚡ Performance Metrics${colors.reset}`);
+  log(`\n${colors.blue} Performance Metrics${colors.reset}`);
   
   // Check node_modules size
   const nodeModulesCheck = checkFileSize('node_modules', 500 * 1024 * 1024); // 500MB
   if (nodeModulesCheck.exists && nodeModulesCheck.formattedSize) {
-    log(`  📊 node_modules size: ${nodeModulesCheck.formattedSize}`);
+    log(` node_modules size: ${nodeModulesCheck.formattedSize}`);
     if (nodeModulesCheck.isLarge) {
-      log(`  ⚠️  Large node_modules directory - consider cleaning`);
+      log(` Large node_modules directory - consider cleaning`);
     }
   }
 
   // Check cache directories
   const cacheCheck = checkFileSize('node_modules/.vite');
   if (cacheCheck.exists && cacheCheck.formattedSize) {
-    log(`  📊 Vite cache: ${cacheCheck.formattedSize}`);
+    log(` Vite cache: ${cacheCheck.formattedSize}`);
   }
 
   // 7. Git status
-  log(`\n${colors.blue}📝 Git Status${colors.reset}`);
+  log(`\n${colors.blue} Git Status${colors.reset}`);
   try {
     const gitStatus = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
     if (gitStatus) {
       const lines = gitStatus.split('\n').length;
-      log(`  ⚠️  ${lines} uncommitted changes`);
+      log(` ${lines} uncommitted changes`);
     } else {
-      log(`  ✅ Working directory clean`);
+      log(` Working directory clean`);
     }
   } catch {
-    log(`  ℹ️  Not a git repository or git not available`);
+    log(` Not a git repository or git not available`);
   }
 
   // Summary
-  log(`\n${colors.green}${colors.bright}🎯 Health Check Complete${colors.reset}`);
-  log(`${colors.yellow}💡 Recommendations:${colors.reset}`);
+  log(`\n${colors.green}${colors.bright} Health Check Complete${colors.reset}`);
+  log(`${colors.yellow} Recommendations:${colors.reset}`);
   log(`  • Run 'npm run workflow full' for complete validation`);
   log(`  • Use 'npm run build:analyze' to check bundle size`);
   log(`  • Keep dependencies updated with 'npm update'`);

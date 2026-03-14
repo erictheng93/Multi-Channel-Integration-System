@@ -79,18 +79,18 @@ export class AutomatedHealthMonitoring {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('⚠️ Health monitoring is already running');
+      console.log(' Health monitoring is already running');
       return;
     }
 
     if (!this.config.enabled) {
-      console.log('⏸️ Health monitoring is disabled');
+      console.log(' Health monitoring is disabled');
       return;
     }
 
-    console.log('🚀 Starting automated health monitoring...');
-    console.log(`📊 Monitoring interval: ${this.config.checkInterval}ms`);
-    console.log(`🚨 Alert threshold: ${this.config.alertThresholds.consecutiveFailures} consecutive failures`);
+    console.log(' Starting automated health monitoring...');
+    console.log(` Monitoring interval: ${this.config.checkInterval}ms`);
+    console.log(` Alert threshold: ${this.config.alertThresholds.consecutiveFailures} consecutive failures`);
 
     this.isRunning = true;
     this.runMonitoringCycle();
@@ -110,7 +110,7 @@ export class AutomatedHealthMonitoring {
       this.monitoringInterval = null;
     }
     this.isRunning = false;
-    console.log('🛑 Automated health monitoring stopped');
+    console.log(' Automated health monitoring stopped');
   }
 
   /**
@@ -118,7 +118,7 @@ export class AutomatedHealthMonitoring {
    */
   private async runMonitoringCycle(): Promise<void> {
     try {
-      console.log('🔍 Running health check cycle...');
+      console.log(' Running health check cycle...');
       const startTime = nowMs();
 
       // 執行系統健康檢查
@@ -144,10 +144,10 @@ export class AutomatedHealthMonitoring {
         await this.attemptAutoRemediation(health);
       }
 
-      console.log(`✅ Health check completed: ${health.overall.status} (${responseTime}ms)`);
+      console.log(` Health check completed: ${health.overall.status} (${responseTime}ms)`);
 
     } catch (error) {
-      console.error('❌ Health monitoring cycle failed:', error);
+      console.error(' Health monitoring cycle failed:', error);
       await this.handleMonitoringFailure(error);
     }
   }
@@ -201,7 +201,7 @@ export class AutomatedHealthMonitoring {
       } else {
         // 重置連續失敗計數
         if (this.consecutiveFailures.has(componentName)) {
-          console.log(`✅ Component ${componentName} recovered`);
+          console.log(` Component ${componentName} recovered`);
           this.consecutiveFailures.delete(componentName);
         }
       }
@@ -226,7 +226,7 @@ export class AutomatedHealthMonitoring {
       return;
     }
 
-    console.log('🔧 Attempting auto-remediation...');
+    console.log(' Attempting auto-remediation...');
 
     try {
       let remediationActions: string[] = [];
@@ -249,21 +249,21 @@ export class AutomatedHealthMonitoring {
 
       // 記錄修復動作
       if (remediationActions.length > 0) {
-        console.log(`🔧 Auto-remediation actions taken: ${remediationActions.join(', ')}`);
+        console.log(` Auto-remediation actions taken: ${remediationActions.join(', ')}`);
 
         // 等待一段時間後重新檢查
         setTimeout(async () => {
           const newHealth = await healthCheckService.getSystemHealth();
           if (newHealth.overall.status === 'healthy') {
-            console.log('✅ Auto-remediation successful');
+            console.log(' Auto-remediation successful');
           } else {
-            console.log('⚠️ Auto-remediation partially successful or failed');
+            console.log(' Auto-remediation partially successful or failed');
           }
         }, 10000); // 10秒後檢查
       }
 
     } catch (error) {
-      console.error('❌ Auto-remediation failed:', error);
+      console.error(' Auto-remediation failed:', error);
     }
   }
 
@@ -293,7 +293,7 @@ export class AutomatedHealthMonitoring {
       this.alertHistory = this.alertHistory.slice(-500);
     }
 
-    console.log(`🚨 ${alert.level.toUpperCase()} ALERT: ${alert.message}`);
+    console.log(` ${alert.level.toUpperCase()} ALERT: ${alert.message}`);
 
     // 發送通知（如果配置了）
     await this.sendNotifications(alert, alertData.details);
@@ -375,7 +375,7 @@ export class AutomatedHealthMonitoring {
   private async clearSystemCache(): Promise<void> {
     try {
       // 這裡實現快取清除邏輯
-      console.log('🧹 Clearing system cache...');
+      console.log(' Clearing system cache...');
       // await cacheService.clearAll(); // 實際的快取清除邏輯
     } catch (error) {
       console.error('Failed to clear cache:', error);
@@ -387,7 +387,7 @@ export class AutomatedHealthMonitoring {
    */
   private async attemptDatabaseReconnection(): Promise<void> {
     try {
-      console.log('🔄 Attempting database reconnection...');
+      console.log(' Attempting database reconnection...');
       // 這裡實現資料庫重連邏輯
       // await dbService.reconnect(); // 實際的資料庫重連邏輯
     } catch (error) {
@@ -465,7 +465,7 @@ export class AutomatedHealthMonitoring {
    */
   updateConfig(newConfig: Partial<MonitoringConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    console.log('⚙️ Health monitoring configuration updated');
+    console.log(' Health monitoring configuration updated');
 
     // 如果監控正在運行且間隔時間改變，重啟監控
     if (this.isRunning && newConfig.checkInterval) {

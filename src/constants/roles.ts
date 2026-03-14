@@ -33,9 +33,9 @@ export const ROLES = {
  * import { ROLES, type Role } from '@/constants/roles';
  *
  * function checkPermission(userRole: Role) {
- *   if (userRole === ROLES.ADMIN) {
- *     // Admin-specific logic
- *   }
+ * if (userRole === ROLES.ADMIN) {
+ * // Admin-specific logic
+ * }
  * }
  * ```
  */

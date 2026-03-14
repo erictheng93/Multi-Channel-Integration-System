@@ -3,7 +3,7 @@
 // Sets up global mocks, environment variables, and test infrastructure
 
 export async function setup() {
-  console.log('🌐 Setting up global WebSocket test environment...');
+  console.log(' Setting up global WebSocket test environment...');
 
   // Set test environment variables
   process.env.NODE_ENV = 'test';
@@ -29,32 +29,32 @@ export async function setup() {
 
   // Setup global error handling for unhandled promises
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error(' Unhandled Rejection at:', promise, 'reason:', reason);
     // Don't exit in tests, just log
   });
 
   process.on('uncaughtException', (error) => {
-    console.error('🚨 Uncaught Exception:', error);
+    console.error(' Uncaught Exception:', error);
     // Don't exit in tests, just log
   });
 
   // Increase memory limit for stress tests
   if (process.env.STRESS_TEST_ENABLED === 'true') {
-    console.log('💪 Stress testing enabled - increased memory limits');
+    console.log(' Stress testing enabled - increased memory limits');
   }
 
   // Setup garbage collection for memory tests
   if (global.gc) {
-    console.log('🗑️ Garbage collection available for memory testing');
+    console.log(' Garbage collection available for memory testing');
   } else {
-    console.log('⚠️ Garbage collection not available - memory tests may be less accurate');
+    console.log(' Garbage collection not available - memory tests may be less accurate');
   }
 
-  console.log('✅ Global WebSocket test environment setup complete');
+  console.log(' Global WebSocket test environment setup complete');
 }
 
 export async function teardown() {
-  console.log('🧹 Cleaning up global WebSocket test environment...');
+  console.log(' Cleaning up global WebSocket test environment...');
 
   // Force garbage collection if available
   if (global.gc) {
@@ -64,5 +64,5 @@ export async function teardown() {
   // Clean up any global timers or resources
   // Note: Vitest handles most cleanup automatically
 
-  console.log('✅ Global cleanup complete');
+  console.log(' Global cleanup complete');
 }

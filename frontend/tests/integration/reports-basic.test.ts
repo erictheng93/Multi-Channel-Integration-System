@@ -133,8 +133,8 @@ describe('報表系統基礎整合測試', () => {
     ]);
 
     vi.mocked(ReportsAPI.getAvailableFormats).mockReturnValue([
-      { value: 'pdf', label: 'PDF 文件', icon: '📕' },
-      { value: 'excel', label: 'Excel 檔案', icon: '📗' }
+      { value: 'pdf', label: 'PDF 文件', icon: '' },
+      { value: 'excel', label: 'Excel 檔案', icon: '' }
     ]);
 
     vi.mocked(ReportsAPI.getTimeRangeOptions).mockReturnValue([
@@ -145,7 +145,7 @@ describe('報表系統基礎整合測試', () => {
     vi.mocked(ReportsAPI.formatReportStatus).mockReturnValue({
       label: '已完成',
       color: 'green',
-      icon: '✅'
+      icon: ''
     });
 
     vi.mocked(ReportsAPI.formatFileSize).mockReturnValue('1.0 MB');
@@ -265,7 +265,7 @@ describe('報表系統基礎整合測試', () => {
 
       expect(status.label).toBe('已完成');
       expect(status.color).toBe('green');
-      expect(status.icon).toBe('✅');
+      expect(status.icon).toBe('');
     });
 
     it('應該正確格式化檔案大小', () => {
@@ -515,11 +515,11 @@ export const getTestSummary = () => {
       '國際化測試'
     ],
     coverage: [
-      '✅ API 整合驗證',
-      '✅ 錯誤處理機制',
-      '✅ 數據格式驗證',
-      '✅ 性能基準測試',
-      '✅ 中文本地化支援'
+      ' API 整合驗證',
+      ' 錯誤處理機制',
+      ' 數據格式驗證',
+      ' 性能基準測試',
+      ' 中文本地化支援'
     ]
   };
 };

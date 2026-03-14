@@ -10,10 +10,10 @@ import { nowISO } from '@/utils/timestamp'
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
+// CORS 處理已移至 src/index.ts 統一管理
 // 不再需要 handler 級別的 CORS middleware
 
-// 🔒 應用 JWT 認證中間件到所有端點
+// 應用 JWT 認證中間件到所有端點
 customerHandler.use('/*', jwtAuth);
 
 // ========================================

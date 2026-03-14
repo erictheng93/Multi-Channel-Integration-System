@@ -42,10 +42,10 @@ function getDatabaseConfig(): DatabaseConfig {
 // 執行資料庫遷移
 async function runMigration(): Promise<void> {
   try {
-    console.log('🚀 開始執行檔案附件資料庫遷移...');
+    console.log(' 開始執行檔案附件資料庫遷移...');
     
     const dbConfig = getDatabaseConfig();
-    console.log(`📊 資料庫: ${dbConfig.name} (${dbConfig.id})`);
+    console.log(` 資料庫: ${dbConfig.name} (${dbConfig.id})`);
     
     // 檢查 SQL 檔案是否存在
     const sqlFile = path.join(__dirname, 'file-attachments-schema.sql');
@@ -53,15 +53,15 @@ async function runMigration(): Promise<void> {
       throw new Error(`SQL 檔案不存在: ${sqlFile}`);
     }
     
-    console.log('📄 執行 SQL 檔案:', sqlFile);
+    console.log(' 執行 SQL 檔案:', sqlFile);
     
     // 執行本地遷移
-    console.log('🔧 執行本地資料庫遷移...');
+    console.log(' 執行本地資料庫遷移...');
     execSync(`wrangler d1 execute ${dbConfig.name} --local --file=${sqlFile}`, {
       stdio: 'inherit'
     });
     
-    console.log('✅ 本地資料庫遷移完成');
+    console.log(' 本地資料庫遷移完成');
     
     // 詢問是否執行生產環境遷移
     const rl = readline.createInterface({
@@ -72,21 +72,21 @@ async function runMigration(): Promise<void> {
     rl.question('是否要執行生產環境遷移？(y/N): ', (answer: string) => {
       if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
         try {
-          console.log('🌐 執行生產環境資料庫遷移...');
+          console.log(' 執行生產環境資料庫遷移...');
           execSync(`wrangler d1 execute ${dbConfig.name} --file=${sqlFile}`, {
             stdio: 'inherit'
           });
-          console.log('✅ 生產環境資料庫遷移完成');
+          console.log(' 生產環境資料庫遷移完成');
         } catch (error: any) {
-          console.error('❌ 生產環境遷移失敗:', error.message);
+          console.error(' 生產環境遷移失敗:', error.message);
         }
       } else {
-        console.log('⏭️  跳過生產環境遷移');
+        console.log('  跳過生產環境遷移');
       }
       rl.close();
     });
   } catch (error: any) {
-    console.error('❌ 遷移失敗:', error.message);
+    console.error(' 遷移失敗:', error.message);
     process.exit(1);
   }
 }
@@ -94,7 +94,7 @@ async function runMigration(): Promise<void> {
 // 驗證遷移結果
 async function verifyMigration(): Promise<void> {
   try {
-    console.log('🔍 驗證遷移結果...');
+    console.log(' 驗證遷移結果...');
     
     const dbConfig = getDatabaseConfig();
     
@@ -113,7 +113,7 @@ async function verifyMigration(): Promise<void> {
       execSync(`wrangler d1 execute ${dbConfig.name} --local --file=${tempSQLFile}`, {
         stdio: 'inherit'
       });
-      console.log('✅ 資料表驗證通過');
+      console.log(' 資料表驗證通過');
     } finally {
       // 清理臨時檔案
       if (fs.existsSync(tempSQLFile)) {
@@ -121,7 +121,7 @@ async function verifyMigration(): Promise<void> {
       }
     }
   } catch (error: any) {
-    console.error('❌ 驗證失敗:', error.message);
+    console.error(' 驗證失敗:', error.message);
   }
 }
 

@@ -141,7 +141,7 @@ initializeUnifiedConnection().catch(err => {
 3. onMounted `initializeUnifiedConnection()`
 4. : `[Phase 2.1] Initializing unified connection for conversation: ...`
 5. `createRealtimeConnection(conversationId)`
-6. : ` [Phase 2.1] Unified connection established: sse`
+6. : `[Phase 2.1] Unified connection established: sse`
 
 ---
 

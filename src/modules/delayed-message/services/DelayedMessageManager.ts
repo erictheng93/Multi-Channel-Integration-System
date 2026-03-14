@@ -52,7 +52,7 @@ export class DelayedMessageManager {
     user: { id: string; displayName?: string; role?: string }
   ): Promise<SendResult> {
     try {
-      console.log(`📤 [DelayedMessageManager] Processing delayed message request for user ${user.id}`);
+      console.log(`[DelayedMessageManager] Processing delayed message request for user ${user.id}`);
 
       // 1. 業務驗證
       const validation = this.validationService.validateDelayedMessageRequest(request);
@@ -84,11 +84,11 @@ export class DelayedMessageManager {
           });
         }
       } catch (eventError) {
-        console.warn('⚠️ [DelayedMessageManager] Failed to broadcast scheduled event:', eventError);
+        console.warn('[DelayedMessageManager] Failed to broadcast scheduled event:', eventError);
         // 事件廣播失敗不影響主要功能
       }
 
-      console.log(`✅ [DelayedMessageManager] Delayed message scheduled successfully: ${scheduleResult.messageId}`);
+      console.log(`[DelayedMessageManager] Delayed message scheduled successfully: ${scheduleResult.messageId}`);
 
       return {
         success: true,
@@ -98,7 +98,7 @@ export class DelayedMessageManager {
       };
 
     } catch (error) {
-      console.error('❌ [DelayedMessageManager] Failed to send delayed message:', error);
+      console.error('[DelayedMessageManager] Failed to send delayed message:', error);
       return this.createFailureResult(
         'Internal error',
         error instanceof Error ? error.message : 'Unknown error occurred'
@@ -114,7 +114,7 @@ export class DelayedMessageManager {
     user: { id: string; displayName?: string; role?: string }
   ): Promise<RecallResult> {
     try {
-      console.log(`🔄 [DelayedMessageManager] Processing recall request for message ${messageId} by user ${user.id}`);
+      console.log(`[DelayedMessageManager] Processing recall request for message ${messageId} by user ${user.id}`);
 
       // 1. 基本驗證
       if (!messageId?.trim()) {
@@ -162,11 +162,11 @@ export class DelayedMessageManager {
           originalContent
         );
       } catch (eventError) {
-        console.warn('⚠️ [DelayedMessageManager] Failed to broadcast recall event:', eventError);
+        console.warn('[DelayedMessageManager] Failed to broadcast recall event:', eventError);
         // 事件廣播失敗不影響主要功能
       }
 
-      console.log(`✅ [DelayedMessageManager] Message recalled successfully: ${messageId}`);
+      console.log(`[DelayedMessageManager] Message recalled successfully: ${messageId}`);
 
       return {
         success: true,
@@ -174,7 +174,7 @@ export class DelayedMessageManager {
       };
 
     } catch (error) {
-      console.error(`❌ [DelayedMessageManager] Failed to recall message ${messageId}:`, error);
+      console.error(`[DelayedMessageManager] Failed to recall message ${messageId}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -187,7 +187,7 @@ export class DelayedMessageManager {
    */
   async processQueueMessage(messageId: string, conversationId?: string): Promise<ProcessResult> {
     try {
-      console.log(`⚙️ [DelayedMessageManager] Processing queue message: ${messageId}`);
+      console.log(`[DelayedMessageManager] Processing queue message: ${messageId}`);
 
       // 1. 處理訊息
       const processResult = await this.processorService.processQueueMessage(messageId);
@@ -201,18 +201,18 @@ export class DelayedMessageManager {
           processResult
         );
       } catch (eventError) {
-        console.warn('⚠️ [DelayedMessageManager] Failed to broadcast processing result:', eventError);
+        console.warn('[DelayedMessageManager] Failed to broadcast processing result:', eventError);
         // 事件廣播失敗不影響主要功能
       }
 
-      const logLevel = processResult.success ? '✅' : processResult.skipped ? '🔄' : '❌';
+      const logLevel = processResult.success ? '' : processResult.skipped ? '' : '';
       const status = processResult.success ? 'succeeded' : processResult.skipped ? 'skipped' : 'failed';
       console.log(`${logLevel} [DelayedMessageManager] Queue message processing ${status}: ${messageId}`);
 
       return processResult;
 
     } catch (error) {
-      console.error(`❌ [DelayedMessageManager] Failed to process queue message ${messageId}:`, error);
+      console.error(`[DelayedMessageManager] Failed to process queue message ${messageId}:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -229,7 +229,7 @@ export class DelayedMessageManager {
     pageSize: number = 20
   ): Promise<PendingMessagesResult> {
     try {
-      console.log(`📋 [DelayedMessageManager] Getting pending messages for user ${userId}`);
+      console.log(`[DelayedMessageManager] Getting pending messages for user ${userId}`);
 
       // 驗證分頁參數
       if (page < 1 || pageSize < 1 || pageSize > 100) {
@@ -238,12 +238,12 @@ export class DelayedMessageManager {
 
       const result = await this.storageService.getPendingMessages(userId, page, pageSize);
 
-      console.log(`✅ [DelayedMessageManager] Retrieved ${result.items.length} pending messages`);
+      console.log(`[DelayedMessageManager] Retrieved ${result.items.length} pending messages`);
 
       return result;
 
     } catch (error) {
-      console.error(`❌ [DelayedMessageManager] Failed to get pending messages for user ${userId}:`, error);
+      console.error(`[DelayedMessageManager] Failed to get pending messages for user ${userId}:`, error);
       throw error;
     }
   }
@@ -257,7 +257,7 @@ export class DelayedMessageManager {
     user: { id: string; displayName?: string; role?: string }
   ): Promise<SendResult> {
     try {
-      console.log(`🔄 [DelayedMessageManager] Rescheduling message ${messageId} for user ${user.id}`);
+      console.log(`[DelayedMessageManager] Rescheduling message ${messageId} for user ${user.id}`);
 
       // 重新排程
       const rescheduleResult = await this.schedulerService.rescheduleMessage(
@@ -282,10 +282,10 @@ export class DelayedMessageManager {
           });
         }
       } catch (eventError) {
-        console.warn('⚠️ [DelayedMessageManager] Failed to broadcast reschedule event:', eventError);
+        console.warn('[DelayedMessageManager] Failed to broadcast reschedule event:', eventError);
       }
 
-      console.log(`✅ [DelayedMessageManager] Message rescheduled successfully: ${messageId}`);
+      console.log(`[DelayedMessageManager] Message rescheduled successfully: ${messageId}`);
 
       return {
         success: true,
@@ -294,7 +294,7 @@ export class DelayedMessageManager {
       };
 
     } catch (error) {
-      console.error(`❌ [DelayedMessageManager] Failed to reschedule message ${messageId}:`, error);
+      console.error(`[DelayedMessageManager] Failed to reschedule message ${messageId}:`, error);
       return this.createFailureResult(
         'Internal error',
         error instanceof Error ? error.message : 'Unknown error occurred'
@@ -310,17 +310,17 @@ export class DelayedMessageManager {
     result: ProcessResult;
   }>> {
     try {
-      console.log(`⚡ [DelayedMessageManager] Processing batch of ${messageIds.length} messages`);
+      console.log(`[DelayedMessageManager] Processing batch of ${messageIds.length} messages`);
 
       const results = await this.processorService.processBatch(messageIds);
 
       const successCount = results.filter(r => r.result.success).length;
-      console.log(`✅ [DelayedMessageManager] Batch processing completed: ${successCount}/${messageIds.length} successful`);
+      console.log(`[DelayedMessageManager] Batch processing completed: ${successCount}/${messageIds.length} successful`);
 
       return results;
 
     } catch (error) {
-      console.error('❌ [DelayedMessageManager] Batch processing failed:', error);
+      console.error('[DelayedMessageManager] Batch processing failed:', error);
       return messageIds.map(messageId => ({
         messageId,
         result: {
@@ -362,7 +362,7 @@ export class DelayedMessageManager {
         timestamp: nowISO()
       };
     } catch (error) {
-      console.error('❌ [DelayedMessageManager] Health check failed:', error);
+      console.error('[DelayedMessageManager] Health check failed:', error);
       return {
         healthy: false,
         services: {
@@ -391,13 +391,13 @@ export class DelayedMessageManager {
         'message',
         'send',
         {
-          userId: user.id, // ✅ 保持字符串類型，與修正一致
+          userId: user.id, //  保持字符串類型，與修正一致
           role: user.role || 'agent',
           resourceId: request.conversationId || ''
         }
       );
     } catch (error) {
-      console.error('❌ [DelayedMessageManager] Permission check failed:', error);
+      console.error('[DelayedMessageManager] Permission check failed:', error);
       return false;
     }
   }
@@ -410,7 +410,7 @@ export class DelayedMessageManager {
       const message = await this.storageService.getMessageById(messageId);
       return message?.conversationId || null;
     } catch (error) {
-      console.warn(`⚠️ [DelayedMessageManager] Failed to get conversation ID for message ${messageId}:`, error);
+      console.warn(`[DelayedMessageManager] Failed to get conversation ID for message ${messageId}:`, error);
       return null;
     }
   }

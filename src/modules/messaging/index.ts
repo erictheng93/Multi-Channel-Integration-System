@@ -26,48 +26,48 @@ export const MESSAGING_MODULE_INFO = {
     base: '/api/messages',
     endpoints: [
       // Basic CRUD
-      'POST /',                             // Create message
-      'GET /:id',                          // Get message details
-      'PUT /:id',                          // Update message
-      'HEAD /:id',                         // Check message exists
-      'GET /:id/can-recall',               // Check recall eligibility
+      'POST /', // Create message
+      'GET /:id', // Get message details
+      'PUT /:id', // Update message
+      'HEAD /:id', // Check message exists
+      'GET /:id/can-recall', // Check recall eligibility
 
       // Conversation messages
       'GET /conversation/:conversationId', // Get conversation messages
 
       // Search operations
-      'GET /search',                       // Quick search
-      'POST /advanced-search',             // Advanced search with filters
+      'GET /search', // Quick search
+      'POST /advanced-search', // Advanced search with filters
 
       // Statistics
-      'GET /stats',                        // General message stats
+      'GET /stats', // General message stats
 
       // Delayed messaging
-      'POST /delayed',                     // Schedule delayed message
-      'GET /delayed',                      // List delayed messages
-      'GET /delayed/:id',                  // Get delayed message details
-      'PUT /delayed/:id',                  // Update delayed message
-      'DELETE /delayed/:id',               // Cancel delayed message
+      'POST /delayed', // Schedule delayed message
+      'GET /delayed', // List delayed messages
+      'GET /delayed/:id', // Get delayed message details
+      'PUT /delayed/:id', // Update delayed message
+      'DELETE /delayed/:id', // Cancel delayed message
 
       // Message recall
-      'POST /:id/recall',                  // Recall message
-      'GET /recall/:id',                   // Get recall details
-      'GET /recalls',                      // List recall history
+      'POST /:id/recall', // Recall message
+      'GET /recall/:id', // Get recall details
+      'GET /recalls', // List recall history
 
       // Batch operations
-      'POST /batch/send',                  // Batch send messages
-      'GET /batch/:operationId',           // Get batch operation status
-      'DELETE /batch/:operationId',        // Cancel batch operation
+      'POST /batch/send', // Batch send messages
+      'GET /batch/:operationId', // Get batch operation status
+      'DELETE /batch/:operationId', // Cancel batch operation
 
       // Attachments
-      'POST /:id/attachments',             // Add attachments
-      'GET /:id/attachments',              // Get message attachments
+      'POST /:id/attachments', // Add attachments
+      'GET /:id/attachments', // Get message attachments
       'DELETE /:id/attachments/:attachmentId', // Remove attachment
 
       // Reactions and interactions
-      'POST /:id/reactions',               // Add reaction
-      'DELETE /:id/reactions',             // Remove reaction
-      'POST /:id/read',                    // Mark as read
+      'POST /:id/reactions', // Add reaction
+      'DELETE /:id/reactions', // Remove reaction
+      'POST /:id/read', // Mark as read
     ]
   },
   features: [

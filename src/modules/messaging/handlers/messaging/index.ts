@@ -5,23 +5,23 @@
 // The original messaging-main.ts (2003 lines) has been fully modularized.
 //
 // Route Modules:
-// - routes/health.ts       - Health check and module info endpoints
-// - routes/search.ts       - Search, stats, and tags endpoints
-// - routes/export.ts       - Message export functionality (JSON/CSV)
-// - routes/bulk.ts         - Bulk create/delete operations
+// - routes/health.ts - Health check and module info endpoints
+// - routes/search.ts - Search, stats, and tags endpoints
+// - routes/export.ts - Message export functionality (JSON/CSV)
+// - routes/bulk.ts - Bulk create/delete operations
 // - routes/conversation.ts - Conversation messages listing
 // - routes/attachments.ts  - Attachment management
-// - routes/forwarding.ts   - Message forwarding
-// - routes/tags.ts         - Message tagging (per-message)
-// - routes/crud.ts         - Basic CRUD operations (GET/PUT/DELETE/:id, POST/)
+// - routes/forwarding.ts - Message forwarding
+// - routes/tags.ts - Message tagging (per-message)
+// - routes/crud.ts - Basic CRUD operations (GET/PUT/DELETE/:id, POST/)
 //
 // Route Priority Order (following Hono's first-registered, first-matched priority):
-//   Priority 1: STATIC GET routes (/health, /info, /search, /stats, /tags, /export)
-//   Priority 2: STATIC POST routes (/bulk-create, /bulk-delete)
-//   Priority 3: SPECIFIC multi-segment GET (/conversation/:conversationId)
-//   Priority 4: MULTI-SEGMENT with /:id prefix (/:id/attachments, /:id/forward, /:id/tags)
-//   Priority 5: SINGLE PARAM (GET /:id, PUT /:id, DELETE /:id)
-//   Priority 6: WILDCARD (POST /)
+// Priority 1: STATIC GET routes (/health, /info, /search, /stats, /tags, /export)
+// Priority 2: STATIC POST routes (/bulk-create, /bulk-delete)
+// Priority 3: SPECIFIC multi-segment GET (/conversation/:conversationId)
+// Priority 4: MULTI-SEGMENT with /:id prefix (/:id/attachments, /:id/forward, /:id/tags)
+// Priority 5: SINGLE PARAM (GET /:id, PUT /:id, DELETE /:id)
+// Priority 6: WILDCARD (POST /)
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
@@ -59,12 +59,12 @@ messagingModule.route('/', bulkRoutes);
 messagingModule.route('/', conversationRoutes);
 
 // Priority 6: Multi-segment routes with /:id prefix
-messagingModule.route('/', attachmentRoutes);   // /:id/attachments
-messagingModule.route('/', forwardingRoutes);   // /:id/forward
-messagingModule.route('/', tagsRoutes);         // /:id/tags
+messagingModule.route('/', attachmentRoutes); // /:id/attachments
+messagingModule.route('/', forwardingRoutes); // /:id/forward
+messagingModule.route('/', tagsRoutes); // /:id/tags
 
 // Priority 7 (LAST): CRUD routes - includes single param routes and POST wildcard
-messagingModule.route('/', crudRoutes);         // GET/PUT/DELETE /:id, POST /
+messagingModule.route('/', crudRoutes); // GET/PUT/DELETE /:id, POST /
 
 // ======================== Module Exports ========================
 

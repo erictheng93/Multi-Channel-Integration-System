@@ -11,8 +11,8 @@
 
 export interface EncryptedData {
   encrypted: string;  // Base64 encoded encrypted data
-  iv: string;        // Base64 encoded initialization vector
-  tag: string;       // Base64 encoded authentication tag
+  iv: string; // Base64 encoded initialization vector
+  tag: string; // Base64 encoded authentication tag
 }
 
 export class EncryptionService {

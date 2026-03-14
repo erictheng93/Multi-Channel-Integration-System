@@ -79,13 +79,13 @@ async function fixAuthTest(filePath: string): Promise<boolean> {
         `// Mock JWT authentication\n` +
         `vi.mock('@/middleware/auth', () => ({\n` +
         `  jwtAuth: vi.fn((c, next) => {\n` +
-        `    c.set('jwtPayload', {\n` +
-        `      userId: 1,\n` +
-        `      username: 'test-user',\n` +
-        `      role: 'admin',\n` +
-        `      teamId: 1\n` +
-        `    });\n` +
-        `    return next();\n` +
+        ` c.set('jwtPayload', {\n` +
+        ` userId: 1,\n` +
+        ` username: 'test-user',\n` +
+        ` role: 'admin',\n` +
+        ` teamId: 1\n` +
+        ` });\n` +
+        ` return next();\n` +
         `  })\n` +
         `}));\n\n` +
         afterInsert;
@@ -106,7 +106,7 @@ async function fixAuthTest(filePath: string): Promise<boolean> {
     if (!matchStr.includes('headers') && !matchStr.includes('Authorization')) {
       const newRequest = matchStr.replace(
         /method:\s*['"](POST|PUT|DELETE)['"]/,
-        `method: '$1',\n        headers: { 'Authorization': 'Bearer test-token' }`
+        `method: '$1',\n headers: { 'Authorization': 'Bearer test-token' }`
       );
       content = content.replace(matchStr, newRequest);
       fixed = true;
@@ -147,7 +147,7 @@ async function findTestFiles(): Promise<string[]> {
 }
 
 async function main() {
-  console.log('\n🔧 Fixing Authentication Test Failures\n' + '='.repeat(60) + '\n');
+  console.log('\n Fixing Authentication Test Failures\n' + '='.repeat(60) + '\n');
 
   const files = await findTestFiles();
   const issues: AuthIssue[] = [];
@@ -163,27 +163,27 @@ async function main() {
       const wasFixed = await fixAuthTest(file);
       if (wasFixed) {
         fixedCount++;
-        console.log(`✅ Fixed: ${file.replace(process.cwd(), '').slice(1)}`);
+        console.log(` Fixed: ${file.replace(process.cwd(), '').slice(1)}`);
       }
     }
   }
 
-  console.log(`\n📊 Results:\n`);
-  console.log(`   Files analyzed: ${files.length}`);
-  console.log(`   Auth issues found: ${issues.length}`);
-  console.log(`   Files fixed: ${fixedCount}\n`);
+  console.log(`\n Results:\n`);
+  console.log(` Files analyzed: ${files.length}`);
+  console.log(` Auth issues found: ${issues.length}`);
+  console.log(` Files fixed: ${fixedCount}\n`);
 
   if (issues.length > 0) {
-    console.log(`\n⚠️  Remaining Issues:\n`);
+    console.log(`\n  Remaining Issues:\n`);
     issues.slice(0, 10).forEach(issue => {
-      console.log(`   File: ${issue.file.replace(process.cwd(), '').slice(1)}`);
-      console.log(`   Issue: ${issue.issue}`);
-      console.log(`   Suggestion: ${issue.suggestion}\n`);
+      console.log(` File: ${issue.file.replace(process.cwd(), '').slice(1)}`);
+      console.log(` Issue: ${issue.issue}`);
+      console.log(` Suggestion: ${issue.suggestion}\n`);
     });
   }
 
   // Generate report
-  let report = `# 🔐 Authentication Test Fix Report\n\n`;
+  let report = `#  Authentication Test Fix Report\n\n`;
   report += `**Date:** ${new Date().toISOString().split('T')[0]}\n\n`;
   report += `## Summary\n\n`;
   report += `- Files analyzed: ${files.length}\n`;
@@ -202,13 +202,13 @@ async function main() {
     report += `// Add this mock before your tests:\n`;
     report += `vi.mock('@/middleware/auth', () => ({\n`;
     report += `  jwtAuth: vi.fn((c, next) => {\n`;
-    report += `    c.set('jwtPayload', {\n`;
-    report += `      userId: 1,\n`;
-    report += `      username: 'test-user',\n`;
-    report += `      role: 'admin', // or 'agent'\n`;
-    report += `      teamId: 1\n`;
-    report += `    });\n`;
-    report += `    return next();\n`;
+    report += ` c.set('jwtPayload', {\n`;
+    report += ` userId: 1,\n`;
+    report += ` username: 'test-user',\n`;
+    report += ` role: 'admin', // or 'agent'\n`;
+    report += ` teamId: 1\n`;
+    report += ` });\n`;
+    report += ` return next();\n`;
     report += `  })\n`;
     report += `}));\n`;
     report += `\`\`\`\n\n`;
@@ -219,8 +219,8 @@ async function main() {
     report
   );
 
-  console.log('✅ Auth test fix complete!\n');
-  console.log('📄 Report saved to: docs/AUTH_TEST_FIX_REPORT.md\n');
+  console.log(' Auth test fix complete!\n');
+  console.log(' Report saved to: docs/AUTH_TEST_FIX_REPORT.md\n');
 }
 
 main().catch(console.error);

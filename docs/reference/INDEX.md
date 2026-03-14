@@ -1,4 +1,4 @@
-# 📖 Reference Documentation
+#  Reference Documentation
 
 > API references, specifications, and coding standards.
 

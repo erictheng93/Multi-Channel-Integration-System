@@ -22,7 +22,7 @@ import { nowMs } from '@/utils/timestamp'
 
 const dashboardHandler = new Hono<{ Bindings: Bindings }>();
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
+// CORS 處理已移至 src/index.ts 統一管理
 // 不再需要模組級別的 CORS middleware
 
 // Dashboard data endpoint
@@ -39,7 +39,7 @@ dashboardHandler.get('/api/dashboard/data', async (c) => {
 
     return c.json(dashboardData);
   } catch (error) {
-    console.error('❌ [Dashboard] Error fetching dashboard data:', error);
+    console.error('[Dashboard] Error fetching dashboard data:', error);
     return c.json({ error: 'Failed to fetch dashboard data' }, 500);
   }
 });
@@ -59,7 +59,7 @@ dashboardHandler.get('/api/dashboard/metrics/realtime', async (c) => {
       }
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Error fetching real-time metrics:', error);
+    console.error('[Dashboard] Error fetching real-time metrics:', error);
     return c.json({ error: 'Failed to fetch real-time metrics' }, 500);
   }
 });
@@ -79,7 +79,7 @@ dashboardHandler.get('/api/dashboard/metrics/historical', async (c) => {
       aggregations
     });
   } catch (error) {
-    console.error('❌ [Dashboard] Error fetching historical metrics:', error);
+    console.error('[Dashboard] Error fetching historical metrics:', error);
     return c.json({ error: 'Failed to fetch historical metrics' }, 500);
   }
 });
@@ -106,7 +106,7 @@ dashboardHandler.get('/api/dashboard/alerts', async (c) => {
 
     return c.json(alertSummary);
   } catch (error) {
-    console.error('❌ [Dashboard] Error fetching alerts:', error);
+    console.error('[Dashboard] Error fetching alerts:', error);
     return c.json({ error: 'Failed to fetch alerts' }, 500);
   }
 });
@@ -121,7 +121,7 @@ dashboardHandler.post('/api/dashboard/alerts/:alertId/acknowledge', async (c) =>
 
     return c.json({ success: true, alertId });
   } catch (error) {
-    console.error('❌ [Dashboard] Error acknowledging alert:', error);
+    console.error('[Dashboard] Error acknowledging alert:', error);
     return c.json({ error: 'Failed to acknowledge alert' }, 500);
   }
 });
@@ -132,7 +132,7 @@ dashboardHandler.get('/api/dashboard/components', async (c) => {
     const components = await getComponentStatuses(c.env);
     return c.json(components);
   } catch (error) {
-    console.error('❌ [Dashboard] Error fetching component status:', error);
+    console.error('[Dashboard] Error fetching component status:', error);
     return c.json({ error: 'Failed to fetch component status' }, 500);
   }
 });
@@ -146,7 +146,7 @@ dashboardHandler.get('/api/dashboard/trends', async (c) => {
     const trends = calculateMetricTrends(recentMetrics);
     return c.json(trends);
   } catch (error) {
-    console.error('❌ [Dashboard] Error fetching trends:', error);
+    console.error('[Dashboard] Error fetching trends:', error);
     return c.json({ error: 'Failed to fetch trends' }, 500);
   }
 });
@@ -161,7 +161,7 @@ dashboardHandler.get('/api/dashboard/report', async (c) => {
     const report = generatePerformanceReport(metrics, hours);
     return c.json(report);
   } catch (error) {
-    console.error('❌ [Dashboard] Error generating report:', error);
+    console.error('[Dashboard] Error generating report:', error);
     return c.json({ error: 'Failed to generate report' }, 500);
   }
 });
@@ -201,7 +201,7 @@ dashboardHandler.get('/api/dashboard/stream', async (c) => {
             const eventData = `data: ${JSON.stringify(data)}\n\n`;
             controller.enqueue(encoder.encode(eventData));
           } catch (error) {
-            console.error('❌ [Dashboard] SSE update error:', error);
+            console.error('[Dashboard] SSE update error:', error);
           }
         };
 
@@ -224,7 +224,7 @@ dashboardHandler.get('/api/dashboard/stream', async (c) => {
       }
     });
   } catch (error) {
-    console.error('❌ [Dashboard] SSE error:', error);
+    console.error('[Dashboard] SSE error:', error);
     return c.json({ error: 'Failed to start event stream' }, 500);
   }
 });
@@ -337,17 +337,17 @@ dashboardHandler.get('/dashboard', async (c) => {
 </head>
 <body>
     <div class="header">
-        <h1>🚀 WebSocket Performance Dashboard</h1>
+        <h1> WebSocket Performance Dashboard</h1>
         <div class="status-indicator">
             <div class="status-dot" id="statusDot"></div>
             <span id="systemStatus">Loading...</span>
-            <span id="refreshIndicator" style="margin-left: 1rem;">🔄</span>
+            <span id="refreshIndicator" style="margin-left: 1rem;"></span>
         </div>
     </div>
 
     <div class="dashboard">
         <div class="card">
-            <h3>📊 System Health</h3>
+            <h3> System Health</h3>
             <div class="metric">
                 <span>Health Score</span>
                 <span class="metric-value" id="healthScore">-</span>
@@ -363,7 +363,7 @@ dashboardHandler.get('/dashboard', async (c) => {
         </div>
 
         <div class="card">
-            <h3>🌐 WebSocket Metrics</h3>
+            <h3> WebSocket Metrics</h3>
             <div class="metric">
                 <span>Active Connections</span>
                 <span class="metric-value" id="activeConnections">-</span>
@@ -383,7 +383,7 @@ dashboardHandler.get('/dashboard', async (c) => {
         </div>
 
         <div class="card">
-            <h3>🔹 Durable Objects</h3>
+            <h3> Durable Objects</h3>
             <div class="metric">
                 <span>Events/Second</span>
                 <span class="metric-value" id="eventsPerSecond">-</span>
@@ -403,7 +403,7 @@ dashboardHandler.get('/dashboard', async (c) => {
         </div>
 
         <div class="card">
-            <h3>🚨 Active Alerts</h3>
+            <h3> Active Alerts</h3>
             <div id="alertsList">
                 <div style="color: #666; text-align: center; padding: 2rem;">
                     No active alerts
@@ -412,7 +412,7 @@ dashboardHandler.get('/dashboard', async (c) => {
         </div>
 
         <div class="card" style="grid-column: 1 / -1;">
-            <h3>📈 Performance Trends</h3>
+            <h3> Performance Trends</h3>
             <div class="chart-placeholder">
                 Real-time performance charts would be displayed here
                 <br>
@@ -481,7 +481,7 @@ dashboardHandler.get('/dashboard', async (c) => {
             const alertsList = document.getElementById('alertsList');
 
             if (alerts.total === 0) {
-                alertsList.innerHTML = '<div style="color: #4CAF50; text-align: center; padding: 2rem;">✅ No active alerts</div>';
+                alertsList.innerHTML = '<div style="color: #4CAF50; text-align: center; padding: 2rem;"> No active alerts</div>';
                 return;
             }
 

@@ -145,9 +145,9 @@ const isExpanded = ref(false);
 const trendIcon = computed(() => {
   switch (props.data.trend) {
     case 'up':
-      return '↗';
+      return '';
     case 'down':
-      return '↘';
+      return '';
     case 'stable':
       return '→';
     default:

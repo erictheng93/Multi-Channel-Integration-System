@@ -1,8 +1,8 @@
-# 📜 History (Archived Documentation)
+#  History (Archived Documentation)
 
 > Historical implementation reports, migration records, and archived references.
 > 
-> ⚠️ **Note**: This directory contains archived documentation for historical reference.
+>  **Note**: This directory contains archived documentation for historical reference.
 > For current documentation, see the main [INDEX](../INDEX.md).
 
 ---

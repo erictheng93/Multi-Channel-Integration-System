@@ -2,14 +2,14 @@
   <div class="credentials-box">
     <div class="credentials-header">
       <h3 class="credentials-title">
-        <span class="credentials-icon">🔑</span>
+        <span class="credentials-icon"></span>
         Admin Credentials
       </h3>
       <span class="credentials-badge">Important - Save These!</span>
     </div>
 
     <div class="credentials-warning">
-      ⚠️ <strong>Important:</strong> Save these credentials now. They won't be shown again!
+       <strong>Important:</strong> Save these credentials now. They won't be shown again!
     </div>
 
     <div class="credentials-list">
@@ -23,7 +23,7 @@
             ref="usernameInput"
           />
           <button @click="copyToClipboard(credentials.username, 'username')" class="btn-copy">
-            {{ copiedField === 'username' ? '✓ Copied' : '📋 Copy' }}
+            {{ copiedField === 'username' ? ' Copied' : ' Copy' }}
           </button>
         </div>
       </div>
@@ -39,10 +39,10 @@
             ref="passwordInput"
           />
           <button @click="togglePassword" class="btn-toggle">
-            {{ showPassword ? '🙈 Hide' : '👁️ Show' }}
+            {{ showPassword ? ' Hide' : ' Show' }}
           </button>
           <button @click="copyToClipboard(credentials.password, 'password')" class="btn-copy">
-            {{ copiedField === 'password' ? '✓ Copied' : '📋 Copy' }}
+            {{ copiedField === 'password' ? ' Copied' : ' Copy' }}
           </button>
         </div>
       </div>
@@ -57,7 +57,7 @@
             ref="emailInput"
           />
           <button @click="copyToClipboard(credentials.email, 'email')" class="btn-copy">
-            {{ copiedField === 'email' ? '✓ Copied' : '📋 Copy' }}
+            {{ copiedField === 'email' ? ' Copied' : ' Copy' }}
           </button>
         </div>
       </div>
@@ -65,7 +65,7 @@
 
     <div class="credentials-actions">
       <button @click="downloadCredentials" class="btn btn-secondary btn-sm">
-        💾 Download as Text File
+         Download as Text File
       </button>
     </div>
   </div>
@@ -126,7 +126,7 @@ Email: ${props.credentials.email}
 
 Generated: ${new Date().toLocaleString()}
 
-⚠️ IMPORTANT: Keep these credentials secure and do not share them with unauthorized users.
+ IMPORTANT: Keep these credentials secure and do not share them with unauthorized users.
   `.trim();
 
   const blob = new Blob([content], { type: 'text/plain' });

@@ -1,6 +1,6 @@
 # 人員管理優化評估報告 (Staff Management Optimization Analysis)
 
-## 📚 目錄
+##  目錄
 - [執行摘要](#執行摘要)
 - [當前狀態分析](#當前狀態分析)
 - [優化建議](#優化建議)
@@ -17,11 +17,11 @@
 
 | 操作 | 當前性能問題 | 優化優先級 | 預期改善 |
 |------|--------------|------------|----------|
-| 更新成員角色 | 有 Loading，無重新載入 | 🟢 **高** | ↓ 85% 延遲 |
-| 更新成員狀態 | 有 Loading，無重新載入 | 🟢 **高** | ↓ 85% 延遲 |
-| 移除成員 | 有 Loading，有確認對話框 | 🟡 **中** | ↓ 75% 延遲 |
-| 新增成員 | 調用 `loadMembers()` 重載 | 🟡 **中** | ↓ 50% 延遲 |
-| 新增團隊 | 調用 `loadTeams()` + `loadMembers()` | 🟡 **中** | ↓ 40% 延遲 |
+| 更新成員角色 | 有 Loading，無重新載入 |  **高** | ↓ 85% 延遲 |
+| 更新成員狀態 | 有 Loading，無重新載入 |  **高** | ↓ 85% 延遲 |
+| 移除成員 | 有 Loading，有確認對話框 |  **中** | ↓ 75% 延遲 |
+| 新增成員 | 調用 `loadMembers()` 重載 |  **中** | ↓ 50% 延遲 |
+| 新增團隊 | 調用 `loadTeams()` + `loadMembers()` |  **中** | ↓ 40% 延遲 |
 
 ### 總體建議
 - **立即實施**：更新成員角色、更新成員狀態（預期 85% 性能提升）
@@ -66,10 +66,10 @@ const updateMemberRole = async (memberId: string, role: string) => {
 // team.ts store
 const updateMemberRole = async (memberId: string, role: 'admin' | 'agent') => {
   try {
-    loading.value = true  // ⏱️ 顯示 Loading
+    loading.value = true  //  顯示 Loading
     const response = await teamApi.updateMemberRole(memberId, role)
     if (response.success) {
-      // ✅ 已經更新本地狀態
+      // 已經更新本地狀態
       const member = members.value.find(m => m.id === memberId)
       if (member) {
         member.role = role
@@ -89,15 +89,15 @@ Loading 開始 → API 調用 (~120ms) → 更新本地狀態 → Loading 結束
 總耗時：~150ms
 
 問題：
-❌ 用戶需要等待 Loading 動畫
-❌ 雖然有更新本地狀態，但在 API 響應後
+ 用戶需要等待 Loading 動畫
+ 雖然有更新本地狀態，但在 API 響應後
 ```
 
-**優化潛力**：🟢 **高優先級**
-- ✅ 簡單的狀態切換（admin ↔ agent）
-- ✅ 已經有本地狀態更新邏輯
-- ✅ 操作可逆，失敗率低
-- ✅ 不涉及複雜副作用
+**優化潛力**： **高優先級**
+-  簡單的狀態切換（admin  agent）
+-  已經有本地狀態更新邏輯
+-  操作可逆，失敗率低
+-  不涉及複雜副作用
 
 ---
 
@@ -122,15 +122,15 @@ const toggleMemberStatus = async (member: TeamMember) => {
 // team.ts store
 const updateMemberStatus = async (memberId: string, status: 'active' | 'inactive') => {
   try {
-    loading.value = true  // ⏱️ 顯示 Loading
+    loading.value = true  //  顯示 Loading
     const response = await teamApi.updateMemberStatus(memberId, status)
     if (response.success) {
-      // ✅ 已經更新本地狀態
+      // 已經更新本地狀態
       const member = members.value.find(m => m.id === memberId)
       if (member) {
         member.status = status
 
-        // ⚠️ 特殊邏輯：停用時發送 WebSocket 通知
+        // 特殊邏輯：停用時發送 WebSocket 通知
         if (status === 'inactive') {
           window.dispatchEvent(new CustomEvent('user-account-disabled', {
             detail: { memberId, memberName: member.name || member.loginId }
@@ -152,16 +152,16 @@ Loading 開始 → API 調用 (~120ms) → 更新本地狀態 + WebSocket 通知
 總耗時：~150ms
 
 問題：
-❌ 用戶需要等待 Loading 動畫
-❌ 雖然有更新本地狀態，但在 API 響應後
-✅ WebSocket 通知邏輯可以保留（在 API 成功後才發送）
+ 用戶需要等待 Loading 動畫
+ 雖然有更新本地狀態，但在 API 響應後
+ WebSocket 通知邏輯可以保留（在 API 成功後才發送）
 ```
 
-**優化潛力**：🟢 **高優先級**
-- ✅ 簡單的狀態切換（active ↔ inactive）
-- ✅ 已經有本地狀態更新邏輯
-- ✅ 操作可逆，失敗率低
-- ⚠️ 需保留 WebSocket 通知邏輯（只在 API 成功時發送）
+**優化潛力**： **高優先級**
+-  簡單的狀態切換（active  inactive）
+-  已經有本地狀態更新邏輯
+-  操作可逆，失敗率低
+-  需保留 WebSocket 通知邏輯（只在 API 成功時發送）
 
 ---
 
@@ -178,7 +178,7 @@ const confirmRemoveMember = (member: TeamMember) => {
   confirmMessage.value = `確定要移除成員 ${member.name} 嗎？此操作無法撤銷。`
   confirmCallback.value = async () => {
     try {
-      await teamStore.removeMember(member.id)  // ⏱️ 等待完成
+      await teamStore.removeMember(member.id)  //  等待完成
     } catch (error) {
       console.error('移除成員失敗:', error)
     }
@@ -189,10 +189,10 @@ const confirmRemoveMember = (member: TeamMember) => {
 // team.ts store
 const removeMember = async (memberId: string) => {
   try {
-    loading.value = true  // ⏱️ 顯示 Loading
+    loading.value = true  //  顯示 Loading
     const response = await teamApi.removeMember(memberId)
     if (response.success) {
-      // ✅ 已經從本地狀態移除
+      // 已經從本地狀態移除
       members.value = members.value.filter(m => m.id !== memberId)
     }
   } finally {
@@ -210,17 +210,17 @@ const removeMember = async (memberId: string) => {
 總耗時：用戶決策時間 + ~150ms
 
 問題：
-❌ 確認後需要等待 Loading 動畫
-❌ 雖然有從本地移除，但在 API 響應後
-✅ 已經有本地狀態更新邏輯（filter）
+ 確認後需要等待 Loading 動畫
+ 雖然有從本地移除，但在 API 響應後
+ 已經有本地狀態更新邏輯（filter）
 ```
 
-**優化潛力**：🟡 **中優先級**
-- ✅ 已經有本地狀態更新邏輯
-- ✅ 操作結果可預測（從列表移除）
-- ⚠️ 刪除操作，用戶期待明確確認
-- ⚠️ 需要處理確認對話框的 UX 流程
-- ❌ 操作不可逆（需謹慎設計錯誤恢復）
+**優化潛力**： **中優先級**
+-  已經有本地狀態更新邏輯
+-  操作結果可預測（從列表移除）
+-  刪除操作，用戶期待明確確認
+-  需要處理確認對話框的 UX 流程
+-  操作不可逆（需謹慎設計錯誤恢復）
 
 ---
 
@@ -240,7 +240,7 @@ const submitAddMember = async () => {
       ...addMemberForm,
       loginId: addMemberForm.email
     }
-    await teamStore.addMember(memberData)  // ⏱️ 等待完成
+    await teamStore.addMember(memberData)  //  等待完成
 
     showSuccess('新增成員成功')
     Object.assign(addMemberForm, { /* 重置表單 */ })
@@ -258,7 +258,7 @@ const addMember = async (request) => {
     loading.value = true
     const response = await teamApi.addMember(request)
     if (response.success && response.data) {
-      await loadMembers()  // ❌ 重新載入整個成員列表
+      await loadMembers()  //  重新載入整個成員列表
       return response.data
     }
   } finally {
@@ -276,15 +276,15 @@ loadMembers() 重新載入 (~200ms) → 關閉模態框 → Loading 結束
 總耗時：~400ms
 
 問題：
-❌ 調用 loadMembers() 重新載入整個列表
-❌ 用戶需要等待 Loading 動畫
-⚠️ 需要服務器返回完整的成員數據（包含 ID）
+ 調用 loadMembers() 重新載入整個列表
+ 用戶需要等待 Loading 動畫
+ 需要服務器返回完整的成員數據（包含 ID）
 ```
 
-**優化潛力**：🟡 **中優先級**
-- ⚠️ 需要服務器生成 ID（不能完全樂觀更新）
-- ✅ 可以優化 `loadMembers()` 調用
-- ✅ 可以在關閉模態框前不等待 API 完成
+**優化潛力**： **中優先級**
+-  需要服務器生成 ID（不能完全樂觀更新）
+-  可以優化 `loadMembers()` 調用
+-  可以在關閉模態框前不等待 API 完成
 - **優化策略**：
   1. 立即關閉模態框和顯示成功提示
   2. 背景調用 API
@@ -322,7 +322,7 @@ const submitAddTeam = async () => {
       showSuccess('新增團隊成功')
       closeAddTeamModal()
 
-      // ❌ 重新載入所有數據
+      // 重新載入所有數據
       await Promise.all([loadTeams(), teamStore.loadMembers()])
     }
   } finally {
@@ -341,16 +341,16 @@ const submitAddTeam = async () => {
 總耗時：~650ms + (N×120ms)
 
 問題：
-❌ 調用 loadTeams() 和 loadMembers() 重新載入所有數據
-❌ 順序執行多個 API 調用
-❌ 用戶需要等待所有操作完成
-⚠️ 需要服務器生成團隊 ID
+ 調用 loadTeams() 和 loadMembers() 重新載入所有數據
+ 順序執行多個 API 調用
+ 用戶需要等待所有操作完成
+ 需要服務器生成團隊 ID
 ```
 
-**優化潛力**：🟡 **中優先級**
-- ⚠️ 需要服務器生成團隊 ID
-- ❌ 涉及多個 API 調用（創建團隊 + 添加成員）
-- ✅ 可以優化 `loadTeams()` 和 `loadMembers()` 調用
+**優化潛力**： **中優先級**
+-  需要服務器生成團隊 ID
+-  涉及多個 API 調用（創建團隊 + 添加成員）
+-  可以優化 `loadTeams()` 和 `loadMembers()` 調用
 - **優化策略**：
   1. 立即關閉模態框和顯示成功提示
   2. 背景創建團隊和添加成員
@@ -362,7 +362,7 @@ const submitAddTeam = async () => {
 
 ## 優化建議
 
-### 優先級 1：更新成員角色 & 更新成員狀態 🟢
+### 優先級 1：更新成員角色 & 更新成員狀態 
 
 **推薦立即實施** - 預期改善：85-90%
 
@@ -471,7 +471,7 @@ const updateMemberStatus = async (memberId: string, status: 'active' | 'inactive
 
 ---
 
-### 優先級 2：移除成員 🟡
+### 優先級 2：移除成員 
 
 **短期實施** - 預期改善：75%
 
@@ -551,7 +551,7 @@ const removeMember = async (member: TeamMember) => {
 
 ---
 
-### 優先級 3：新增成員優化 🟡
+### 優先級 3：新增成員優化 
 
 **中期實施** - 預期改善：50%
 
@@ -723,8 +723,8 @@ loadMembers() (200ms) → 關閉模態框 → 移除 Loading (30ms)
 ═════════════════════════════════════════════════════════════
 1. 用戶點擊角色下拉選單
 2. 選擇新角色
-3. 📌 Loading 動畫顯示（~180ms）
-4. 📌 UI 凍結，用戶無法操作
+3.  Loading 動畫顯示（~180ms）
+4.  UI 凍結，用戶無法操作
 5. 角色更新完成
 6. Loading 動畫消失
 
@@ -735,8 +735,8 @@ loadMembers() (200ms) → 關閉模態框 → 移除 Loading (30ms)
 ═════════════════════════════════════════════════════════════
 1. 用戶點擊角色下拉選單
 2. 選擇新角色
-3. ✨ 角色立即更新（<20ms）
-4. ✅ 用戶可以立即進行其他操作
+3.  角色立即更新（<20ms）
+4.  用戶可以立即進行其他操作
 5. 背景：API 調用完成（用戶無感知）
 6. （如果 API 失敗）角色自動恢復並顯示錯誤提示
 
@@ -804,21 +804,21 @@ loadMembers() (200ms) → 關閉模態框 → 移除 Loading (30ms)
 ## 成功指標
 
 ### 性能指標
-- ✅ 更新成員角色：用戶感知延遲 < 30ms
-- ✅ 更新成員狀態：用戶感知延遲 < 30ms
-- ✅ 移除成員：用戶感知延遲 < 50ms
-- ✅ 新增成員：用戶感知延遲 < 100ms
+-  更新成員角色：用戶感知延遲 < 30ms
+-  更新成員狀態：用戶感知延遲 < 30ms
+-  移除成員：用戶感知延遲 < 50ms
+-  新增成員：用戶感知延遲 < 100ms
 
 ### 質量指標
-- ✅ TypeScript 檢查 100% 通過
-- ✅ ESLint 檢查 0 警告
-- ✅ API 失敗率 < 5%
-- ✅ 錯誤恢復成功率 > 95%
+-  TypeScript 檢查 100% 通過
+-  ESLint 檢查 0 警告
+-  API 失敗率 < 5%
+-  錯誤恢復成功率 > 95%
 
 ### 用戶體驗指標
-- ✅ 用戶操作立即得到反饋
-- ✅ 錯誤提示清晰明確
-- ✅ 無明顯的 UI 凍結或延遲
+-  用戶操作立即得到反饋
+-  錯誤提示清晰明確
+-  無明顯的 UI 凍結或延遲
 
 ---
 
@@ -829,18 +829,18 @@ loadMembers() (200ms) → 關閉模態框 → 移除 Loading (30ms)
 ### 推薦的實施順序
 
 1. **立即實施**（高優先級，2-3 小時）
-   - ✅ 更新成員角色樂觀更新
-   - ✅ 更新成員狀態樂觀更新
+   -  更新成員角色樂觀更新
+   -  更新成員狀態樂觀更新
    - **預期效益**：85-90% 用戶感知延遲降低
 
 2. **短期實施**（中優先級，3-4 小時）
-   - ✅ 移除成員樂觀更新
-   - ✅ 新增成員優化
+   -  移除成員樂觀更新
+   -  新增成員優化
    - **預期效益**：50-88% 用戶感知延遲降低
 
 3. **長期優化**（可選，4-5 小時）
-   - ✅ 新增團隊優化
-   - ✅ 全局性能優化
+   -  新增團隊優化
+   -  全局性能優化
    - **預期效益**：系統性能和代碼質量全面提升
 
 ### 總體預期效益

@@ -45,18 +45,18 @@ async function getTestToken(environment: 'local' | 'remote' = 'local') {
 
         console.log('?? 使用?��?:');
         console.log('  1. 設置?��?變數:');
-        console.log(`     export TEST_JWT_TOKEN="${data.token}"\n`);
+        console.log(` export TEST_JWT_TOKEN="${data.token}"\n`);
         console.log('  2. ??PowerShell �?');
-        console.log(`     $env:TEST_JWT_TOKEN="${data.token}"\n`);
+        console.log(` $env:TEST_JWT_TOKEN="${data.token}"\n`);
         console.log('  3. ?�測試中使用:');
-        console.log(`     curl -H "Authorization: Bearer ${data.token.substring(0, 50)}..." <URL>\n`);
+        console.log(` curl -H "Authorization: Bearer ${data.token.substring(0, 50)}..." <URL>\n`);
 
         if (data.user) {
           console.log('?�� ?�戶資�?:');
-          console.log(`   ?�戶ID: ${data.user.id}`);
-          console.log(`   Email: ${data.user.email}`);
-          console.log(`   角色: ${data.user.role}`);
-          console.log(`   ?��?ID: ${data.user.teamId}\n`);
+          console.log(` ?�戶ID: ${data.user.id}`);
+          console.log(` Email: ${data.user.email}`);
+          console.log(` 角色: ${data.user.role}`);
+          console.log(` ?��?ID: ${data.user.teamId}\n`);
         }
 
         return data.token;

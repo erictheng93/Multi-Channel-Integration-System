@@ -144,7 +144,7 @@ export class DatabaseService {
 
     // Fetch conversation with team and customer information using LEFT JOINs
     // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
-    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
+    // Added LEFT JOIN with customers for friend status and createdAt
     const result = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
@@ -206,7 +206,7 @@ export class DatabaseService {
 
     // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
     // Get all conversations assigned to the specified team
-    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
+    // Added LEFT JOIN with customers for friend status and createdAt
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
@@ -245,7 +245,7 @@ export class DatabaseService {
     }
 
     // Note: Individual assignment (assignedUserId) removed - only team-based access control
-    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
+    // Added LEFT JOIN with customers for friend status and createdAt
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
@@ -281,12 +281,12 @@ export class DatabaseService {
       // Admin can see all conversations
       return await this.getAllConversations(status, limit);
     } else {
-      // 🆕 Agents can see: 1) Public pool 2) Personal assignments 3) Team assignments (multi-team)
+      // Agents can see: 1) Public pool 2) Personal assignments 3) Team assignments (multi-team)
       return await this.getConversationsByAgentTeams(agent.id, status, limit);
     }
   }
 
-  // 🆕 Get conversations for agent based on multi-team membership
+  // Get conversations for agent based on multi-team membership
   // Note: Individual assignment (assignedUserId) removed - only team-based access control
   async getConversationsByAgentTeams(agentId: string, status?: string, limit: number = 50) {
     // Step 1: Get all team IDs this agent belongs to via agent_teams table
@@ -296,7 +296,7 @@ export class DatabaseService {
       .where(eq(schema.agentTeams.agentId, agentId));
 
     const userTeamIds = teamMemberships.map(m => m.teamId);
-    console.log(`🔍 [getConversationsByAgentTeams] Agent ${agentId} belongs to teams: [${userTeamIds.join(', ')}]`);
+    console.log(`[getConversationsByAgentTeams] Agent ${agentId} belongs to teams: [${userTeamIds.join(', ')}]`);
 
     // Step 2: Build query conditions (team-based only)
     const visibilityConditions = [
@@ -319,7 +319,7 @@ export class DatabaseService {
 
     // Step 4: Execute query with LEFT JOINs for enriched data
     // Note: Individual assignment (assignedUserId) removed - only team-based assignment is supported now
-    // 🆕 Added LEFT JOIN with customers for friend status and createdAt
+    // Added LEFT JOIN with customers for friend status and createdAt
     const results = await this.db.select()
       .from(schema.conversations)
       .leftJoin(schema.teams, eq(schema.conversations.assignedTeamId, schema.teams.id))
@@ -332,7 +332,7 @@ export class DatabaseService {
       .orderBy(desc(schema.conversations.lastMessageAt))
       .limit(limit);
 
-    console.log(`📋 [getConversationsByAgentTeams] Found ${results.length} conversations for agent ${agentId}`);
+    console.log(`[getConversationsByAgentTeams] Found ${results.length} conversations for agent ${agentId}`);
 
     // Enrich conversations with team and customer data
     // Note: assignedAgent removed - only team-based assignment is supported now
@@ -356,7 +356,7 @@ export class DatabaseService {
   }
 
   async updateConversation(id: string, updates: Partial<schema.NewConversation>) {
-    console.log('🔧 [DatabaseService] updateConversation called:', {
+    console.log('[DatabaseService] updateConversation called:', {
       id,
       updates,
       timestamp: nowISO()
@@ -368,7 +368,7 @@ export class DatabaseService {
         .where(eq(schema.conversations.id, id))
         .returning();
 
-      console.log('✅ [DatabaseService] Update executed, result:', {
+      console.log('[DatabaseService] Update executed, result:', {
         success: !!conversation,
         resultLength: conversation?.length,
         updatedConversation: conversation[0] ? {
@@ -381,11 +381,11 @@ export class DatabaseService {
 
       // Invalidate cache
       await this.kv.deleteCache(`conversation:${id}`);
-      console.log('🗑️  [DatabaseService] Cache cleared for conversation:', id);
+      console.log('  [DatabaseService] Cache cleared for conversation:', id);
 
       return conversation[0];
     } catch (error) {
-      console.error('❌ [DatabaseService] updateConversation failed:', error);
+      console.error('[DatabaseService] updateConversation failed:', error);
       throw error;
     }
   }

@@ -49,7 +49,7 @@ export {
 // ==================== WebSocket Real-time System ====================
 // WebSocket endpoints for real-time communication via Durable Objects
 app.route('/api/websocket', websocketMainHandler);
-console.log(' [Startup] WebSocket routes mounted at /api/websocket');
+console.log('[Startup] WebSocket routes mounted at /api/websocket');
 ```
 
 ****:
@@ -166,7 +166,7 @@ export {
 // ==================== WebSocket Real-time System ====================
 // WebSocket endpoints for real-time communication via Durable Objects
 app.route('/api/websocket', websocketMainHandler);
-console.log(' [Startup] WebSocket routes mounted at /api/websocket');
+console.log('[Startup] WebSocket routes mounted at /api/websocket');
 ```
 
 

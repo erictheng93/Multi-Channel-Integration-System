@@ -199,7 +199,7 @@ const EmptyStateTestComponent = {
     const hasLoadedInitially = mockHasLoadedInitially
     const isInitialLoading = mockIsInitialLoading
 
-    // 🔧 FIX: 延遲確認空狀態邏輯（與 ConversationDetail.vue 相同）
+    // FIX: 延遲確認空狀態邏輯（與 ConversationDetail.vue 相同）
     const isEmptyStateConfirmed = ref(false)
     let emptyStateTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -468,7 +468,7 @@ describe('ConversationDetail Integration with Empty State', () => {
 /**
  * 測試總結：
  *
- * ✅ 已測試：
+ * 已測試：
  * - 空狀態不會立即顯示
  * - 200ms 延遲後才顯示空狀態
  * - 訊息在延遲期間到達會取消空狀態顯示
@@ -478,7 +478,7 @@ describe('ConversationDetail Integration with Empty State', () => {
  * - 快速狀態變化的處理
  * - 與 ConversationDetail 的整合
  *
- * 🎯 覆蓋的修復場景：
+ * 覆蓋的修復場景：
  * - 避免訊息同步期間閃爍顯示「暫無訊息」
  * - 延遲 200ms 確認真的沒有訊息才顯示空狀態
  */

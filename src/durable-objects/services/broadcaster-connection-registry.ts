@@ -37,17 +37,17 @@ export class BroadcasterConnectionRegistry {
 
       this.ctx.stats.activeConnections++;
 
-      // 🔧 Phase B4 Fix: Persist connection IDs after registration
+      // Phase B4 Fix: Persist connection IDs after registration
       await this.helpers.persistConnectionIds();
 
-      console.log(`📝 [MessageBroadcaster] Registered ${type} connection: ${id}`);
+      console.log(`[MessageBroadcaster] Registered ${type} connection: ${id}`);
 
       return new Response(JSON.stringify({
         success: true,
         activeConnections: this.ctx.stats.activeConnections
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Connection registration error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Connection registration error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(JSON.stringify({ error: 'Registration failed' }), { status: 500 });
     }
   }
@@ -64,17 +64,17 @@ export class BroadcasterConnectionRegistry {
 
       this.ctx.stats.activeConnections = Math.max(0, this.ctx.stats.activeConnections - 1);
 
-      // 🔧 Phase B4 Fix: Persist connection IDs after unregistration
+      // Phase B4 Fix: Persist connection IDs after unregistration
       await this.helpers.persistConnectionIds();
 
-      console.log(`📝 [MessageBroadcaster] Unregistered ${type} connection: ${id}`);
+      console.log(`[MessageBroadcaster] Unregistered ${type} connection: ${id}`);
 
       return new Response(JSON.stringify({
         success: true,
         activeConnections: this.ctx.stats.activeConnections
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Connection unregistration error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Connection unregistration error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(JSON.stringify({ error: 'Unregistration failed' }), { status: 500 });
     }
   }

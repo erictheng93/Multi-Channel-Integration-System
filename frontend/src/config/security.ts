@@ -44,7 +44,7 @@ export const validateSecurityEnvironment = (): void => {
   
   // 在生產環境中檢查 HTTPS
   if (import.meta.env.PROD && !window.location.protocol.startsWith('https')) {
-    console.warn('⚠️ Application is running over HTTP in production mode')
+    console.warn(' Application is running over HTTP in production mode')
   }
 }
 

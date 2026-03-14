@@ -4,7 +4,7 @@
  * ============================================================================
  * 集中管理所有允許的 origins，支持動態環境配置
  *
- * 📋 設計原則:
+ * 設計原則:
  * 1. 生產環境: 必須通過環境變量顯式配置 (FRONTEND_URL, BACKEND_URL)
  * 2. 開發環境: 自動包含 localhost 相關域名
  * 3. 動態擴展: 支持通過 ADDITIONAL_ALLOWED_ORIGINS 添加額外域名
@@ -20,13 +20,13 @@ import { nowISO } from '@/utils/timestamp'
  * 這些域名僅在非生產環境自動包含
  */
 export const DEVELOPMENT_ORIGINS = [
-  'http://localhost:3000',                                  // Vite dev server
-  'http://localhost:3001',                                  // Vite dev server (alt port)
-  'https://localhost:3000',                                 // Vite dev server (SSL)
-  'https://localhost:3001',                                 // Vite dev server (SSL, alt port)
-  'http://127.0.0.1:3000',                                  // Local IP
-  'http://127.0.0.1:3001',                                  // Local IP (alt port)
-  'http://localhost:8787',                                  // Wrangler dev server
+  'http://localhost:3000', // Vite dev server
+  'http://localhost:3001', // Vite dev server (alt port)
+  'https://localhost:3000', // Vite dev server (SSL)
+  'https://localhost:3001', // Vite dev server (SSL, alt port)
+  'http://127.0.0.1:3000', // Local IP
+  'http://127.0.0.1:3001', // Local IP (alt port)
+  'http://localhost:8787', // Wrangler dev server
 ] as const;
 
 /**
@@ -36,7 +36,7 @@ export const DEVELOPMENT_ORIGINS = [
 export const ALLOWED_ORIGINS = DEVELOPMENT_ORIGINS;
 
 /**
- * ✅ 動態獲取允許的 origins (推薦)
+ * 動態獲取允許的 origins (推薦)
  * 根據環境變量動態構建允許的 origins 列表
  *
  * @param env - Cloudflare Workers 環境對象
@@ -46,7 +46,7 @@ export const ALLOWED_ORIGINS = DEVELOPMENT_ORIGINS;
  * ```ts
  * const allowedOrigins = getAllowedOrigins(c.env);
  * if (allowedOrigins.includes(origin)) {
- *   // 允許此 origin
+ * // 允許此 origin
  * }
  * ```
  */
@@ -190,9 +190,9 @@ export function createCorsPreflightResponse(origin: string | undefined, env?: Wo
 export function logCorsRequest(origin: string | undefined, allowed: boolean, context: string = ''): void {
   const prefix = context ? `[${context}]` : '';
   if (allowed) {
-    console.log(`✅ CORS ${prefix}: Allowed origin: ${origin}`);
+    console.log(` CORS ${prefix}: Allowed origin: ${origin}`);
   } else {
-    console.warn(`❌ CORS ${prefix}: Blocked origin: ${origin}`);
+    console.warn(` CORS ${prefix}: Blocked origin: ${origin}`);
   }
 }
 

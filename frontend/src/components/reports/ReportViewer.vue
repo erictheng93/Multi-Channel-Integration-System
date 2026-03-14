@@ -6,7 +6,7 @@
       class="loading-container"
     >
       <div class="loading-spinner">
-        ⚙️
+        
       </div>
       <div class="loading-text">
         正在載入報表...
@@ -19,7 +19,7 @@
       class="error-container"
     >
       <div class="error-icon">
-        ❌
+        
       </div>
       <div class="error-title">
         無法載入報表
@@ -31,7 +31,7 @@
         class="btn btn-primary"
         @click="loadReport"
       >
-        🔄 重新載入
+         重新載入
       </button>
     </div>
 

@@ -392,7 +392,7 @@ describe('useConversationController', () => {
 /**
  * 測試總結：
  *
- * ✅ 已測試：
+ * 已測試：
  * - 初始化和清理邏輯
  * - 樂觀更新流程（pending → confirmed → sent）
  * - 消息失敗處理和重試資料存儲
@@ -401,13 +401,13 @@ describe('useConversationController', () => {
  * - 搜索功能（設置結果/清除）
  * - UI 操作（滾動）
  *
- * 📝 測試策略：
+ * 測試策略：
  * - 使用完整 mocks 而非部分 spy
  * - 測試公開 API 而非內部實現
  * - 驗證方法存在性和可調用性
  * - 驗證外部副作用（API 調用、狀態變化）
  *
- * 🎯 覆蓋目標：
+ * 覆蓋目標：
  * - 核心業務流程：100%
  * - 邊界情況：待 Phase 6.4 補充
  * - 性能測試：待 Phase 6.4 補充

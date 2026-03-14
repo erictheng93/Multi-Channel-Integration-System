@@ -5,7 +5,7 @@
   >
     <div class="toast-content">
       <div class="toast-icon">
-        ✅
+        
       </div>
       <div class="toast-message">
         <div class="toast-title">
@@ -19,7 +19,7 @@
         class="toast-close"
         @click="$emit('close')"
       >
-        ✕
+        
       </button>
     </div>
   </div>

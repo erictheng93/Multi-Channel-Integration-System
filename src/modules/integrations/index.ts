@@ -71,9 +71,9 @@ export type {
 
 // ======================== 路由系統 ========================
 // Active routes are registered directly in src/index.ts via:
-//   - webhook.ts (Facebook webhook + webhook router)
-//   - webhook-multitenant.ts (LINE webhook)
-//   - channel-handler.ts (channel management)
+// - webhook.ts (Facebook webhook + webhook router)
+// - webhook-multitenant.ts (LINE webhook)
+// - channel-handler.ts (channel management)
 import { WebhookRouterService } from '@modules/integrations/services/webhook-router-service';
 import { CredentialManagementService } from '@modules/integrations/services/credential-management-service';
 

@@ -120,7 +120,7 @@ export interface SessionModuleConfig {
 
 export const DEFAULT_SESSION_MODULE_CONFIG: SessionModuleConfig = {
   maxSessionDuration: 24 * 60 * 60 * 1000, // 24 hours
-  inactivityTimeout: 30 * 60 * 1000,       // 30 minutes
+  inactivityTimeout: 30 * 60 * 1000, // 30 minutes
   autoArchiveAfter: 7 * 24 * 60 * 60 * 1000, // 7 days
   maxMessagesPerSession: 1000,
   enableBoundaryDetection: true,
@@ -154,14 +154,14 @@ export const MODULE_INFO = {
     implemented: 16,
     pending: 4,
     categories: {
-      basic: 4,      // health, info, status, config
-      crud: 5,       // create, read, update, delete, list
+      basic: 4, // health, info, status, config
+      crud: 5, // create, read, update, delete, list
       management: 3, // close, reopen, health
-      search: 1,     // search
-      messages: 1,   // get messages
+      search: 1, // search
+      messages: 1, // get messages
       statistics: 3, // stats, activity
-      batch: 1,      // batch operations
-      testing: 1,    // boundary detection test
+      batch: 1, // batch operations
+      testing: 1, // boundary detection test
       maintenance: 2 // cleanup, export
     }
   },
@@ -230,12 +230,12 @@ export function initializeSessionModule(config: Partial<SessionModuleConfig> = {
 
   // 驗證配置
   if (finalConfig.maxSessionDuration < 60000) { // min 1 minute
-    console.warn('⚠️ Session module: maxSessionDuration too short, setting to 1 minute');
+    console.warn(' Session module: maxSessionDuration too short, setting to 1 minute');
     finalConfig.maxSessionDuration = 60000;
   }
 
   if (finalConfig.maxMessagesPerSession < 1) {
-    console.warn('⚠️ Session module: maxMessagesPerSession must be at least 1');
+    console.warn(' Session module: maxMessagesPerSession must be at least 1');
     finalConfig.maxMessagesPerSession = 1;
   }
 

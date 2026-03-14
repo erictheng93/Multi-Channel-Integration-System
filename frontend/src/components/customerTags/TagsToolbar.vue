@@ -16,7 +16,7 @@
         class="search-clear"
         @click="handleClear"
       >
-        ✕
+        
       </button>
       <span
         v-if="isSearching"

@@ -81,7 +81,7 @@
                 v-if="activity.priority === 'high'"
                 class="activity-priority"
               >
-                🔴
+                
               </div>
             </div>
             <div class="activity-description">
@@ -239,7 +239,7 @@ const connectionStatusIcon = computed(() => {
     case 'reconnecting':
       return '◐'
     case 'error':
-      return '✕'
+      return ''
     case 'disconnected':
     default:
       return '○'

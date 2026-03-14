@@ -25,9 +25,9 @@ export interface CacheKeyStrategy {
  */
 export interface CacheConfig {
   defaultTTL: number; // 默認快取時間（秒）
-  shortTTL: number;   // 短期快取（秒）
-  longTTL: number;    // 長期快取（秒）
-  enabled: boolean;   // 是否啟用快取
+  shortTTL: number; // 短期快取（秒）
+  longTTL: number; // 長期快取（秒）
+  enabled: boolean; // 是否啟用快取
   compression?: boolean; // 是否壓縮數據
 }
 
@@ -71,12 +71,12 @@ export class AnalyticsCacheService {
   constructor(kv: KVNamespace, config?: Partial<CacheConfig & { useCacheAPI?: boolean }>) {
     this.kv = kv;
     this.config = {
-      defaultTTL: 300,      // 5 minutes
-      shortTTL: 60,         // 1 minute
-      longTTL: 1800,        // 30 minutes
+      defaultTTL: 300, // 5 minutes
+      shortTTL: 60, // 1 minute
+      longTTL: 1800, // 30 minutes
       enabled: true,
       compression: false,
-      useCacheAPI: true,    // Enable Cache API by default
+      useCacheAPI: true, // Enable Cache API by default
       ...config
     };
     this.stats = {

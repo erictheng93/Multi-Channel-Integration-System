@@ -21,7 +21,7 @@ import { nowISO } from '@/utils/timestamp'
 
 const fileMainHandler = new Hono<{ Bindings: Bindings }>();
 
-// 📂 檔案管理健康檢查
+// 檔案管理健康檢查
 fileMainHandler.get('/health', async (c) => {
   try {
     return successResponse(c, {
@@ -36,7 +36,7 @@ fileMainHandler.get('/health', async (c) => {
   }
 });
 
-// 📋 獲取檔案資訊
+// 獲取檔案資訊
 fileMainHandler.get('/info', jwtAuth, async (c) => {
   try {
     return successResponse(c, {
@@ -60,7 +60,7 @@ fileMainHandler.get('/info', jwtAuth, async (c) => {
   }
 });
 
-// 📊 檔案統計 (IMPORTANT: 必須在 /:fileId 之前註冊，避免路由攔截)
+// 檔案統計 (IMPORTANT: 必須在 /:fileId 之前註冊，避免路由攔截)
 fileMainHandler.get('/stats/summary', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload');
@@ -81,7 +81,7 @@ fileMainHandler.get('/stats/summary', jwtAuth, async (c) => {
   }
 });
 
-// 📤 檔案上傳
+// 檔案上傳
 fileMainHandler.post('/', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload');
@@ -145,7 +145,7 @@ fileMainHandler.post('/', jwtAuth, async (c) => {
   }
 });
 
-// 📥 檔案下載
+// 檔案下載
 fileMainHandler.get('/:fileId', jwtAuth, async (c) => {
   try {
     const fileId = c.req.param('fileId');
@@ -205,7 +205,7 @@ fileMainHandler.get('/:fileId', jwtAuth, async (c) => {
   }
 });
 
-// 📋 獲取文件列表
+// 獲取文件列表
 fileMainHandler.get('/', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload');
@@ -238,7 +238,7 @@ fileMainHandler.get('/', jwtAuth, async (c) => {
   }
 });
 
-// 🗑️ 檔案刪除
+// 檔案刪除
 fileMainHandler.delete('/:fileId', jwtAuth, async (c) => {
   try {
     const payload = c.get('jwtPayload');

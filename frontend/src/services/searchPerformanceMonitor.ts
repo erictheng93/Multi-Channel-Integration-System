@@ -66,7 +66,7 @@ export class SearchPerformanceMonitor {
     // 記錄慢查詢
     if (metric.executionTime > SLOW_QUERY_THRESHOLD) {
       console.warn(
-        `⚠️ [SearchPerf] 慢查詢檢測: "${metric.query}" 耗時 ${metric.executionTime.toFixed(2)}ms`
+        `[SearchPerf] 慢查詢檢測: "${metric.query}" 耗時 ${metric.executionTime.toFixed(2)}ms`
       )
     }
   }
@@ -182,7 +182,7 @@ export class SearchPerformanceMonitor {
    */
   clearMetrics(): void {
     this.metrics = []
-    console.log('🗑️ [SearchPerf] 指標已清除')
+    console.log('[SearchPerf] 指標已清除')
   }
 
   /**
@@ -190,7 +190,7 @@ export class SearchPerformanceMonitor {
    */
   setEnabled(enabled: boolean): void {
     this.isEnabled = enabled
-    console.log(`${enabled ? '✅' : '❌'} [SearchPerf] 監控已${enabled ? '啟用' : '禁用'}`)
+    console.log(`${enabled ? '' : ''} [SearchPerf] 監控已${enabled ? '啟用' : '禁用'}`)
   }
 
   /**
@@ -216,12 +216,12 @@ export class SearchPerformanceMonitor {
       const data = JSON.parse(json)
       if (Array.isArray(data.metrics)) {
         this.metrics = data.metrics.slice(-MAX_METRICS)
-        console.log(`📥 [SearchPerf] 已導入 ${this.metrics.length} 條指標`)
+        console.log(`[SearchPerf] 已導入 ${this.metrics.length} 條指標`)
         return true
       }
       return false
     } catch (error) {
-      console.error('❌ [SearchPerf] 導入失敗:', error)
+      console.error('[SearchPerf] 導入失敗:', error)
       return false
     }
   }

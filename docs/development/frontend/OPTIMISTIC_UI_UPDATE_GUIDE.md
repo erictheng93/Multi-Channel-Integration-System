@@ -1,6 +1,6 @@
 # 樂觀 UI 更新優化指南 (Optimistic UI Update Guide)
 
-## 📚 目錄
+##  目錄
 - [概述](#概述)
 - [核心概念](#核心概念)
 - [適用場景](#適用場景)
@@ -49,27 +49,27 @@
        │
        ▼
 ┌──────────────────────────────┐
-│ 1️⃣ 保存原始狀態（用於恢復）  │
+│ 1️ 保存原始狀態（用於恢復）  │
 └──────┬───────────────────────┘
        │
        ▼
 ┌──────────────────────────────┐
-│ 2️⃣ 立即更新 UI（樂觀更新）   │
+│ 2️ 立即更新 UI（樂觀更新） │
 └──────┬───────────────────────┘
        │
        ▼
 ┌──────────────────────────────┐
-│ 3️⃣ 顯示成功提示（可選）      │
+│ 3️ 顯示成功提示（可選） │
 └──────┬───────────────────────┘
        │
        ▼
 ┌──────────────────────────────┐
-│ 4️⃣ 背景調用 API             │
+│ 4️ 背景調用 API │
 └──────┬───────────────────────┘
        │
-       ├─── 成功 ──▶ 保持當前 UI 狀態
+       ├─── 成功 ── 保持當前 UI 狀態
        │
-       └─── 失敗 ──▶ 5️⃣ 恢復原始狀態 + 顯示錯誤提示
+       └─── 失敗 ── 5️ 恢復原始狀態 + 顯示錯誤提示
 ```
 
 ### 關鍵原則
@@ -83,7 +83,7 @@
 
 ## 適用場景
 
-### ✅ 適合樂觀更新的場景
+###  適合樂觀更新的場景
 
 #### 1. **簡單的狀態切換**
 - **示例**：啟用/停用、開/關、顯示/隱藏
@@ -116,7 +116,7 @@
   - 所有項目狀態一致
   - 有明確的回滾策略
 
-### ❌ 不適合樂觀更新的場景
+###  不適合樂觀更新的場景
 
 #### 1. **需要服務器端生成數據的操作**
 - **示例**：生成 QR 碼、生成報表、獲取統計數據
@@ -299,7 +299,7 @@ const submitEditTeam = async () => {
 ### 1. **TypeScript 類型安全**
 
 ```typescript
-// ✅ 好的做法：使用明確的類型和 null 檢查
+// 好的做法：使用明確的類型和 null 檢查
 const updateItem = async (item: Team) => {
   const itemIndex = items.value.findIndex(i => i.id === item.id)
   if (itemIndex === -1) return
@@ -310,7 +310,7 @@ const updateItem = async (item: Team) => {
   // 繼續處理...
 }
 
-// ❌ 不好的做法：使用非空斷言
+// 不好的做法：使用非空斷言
 const updateItem = async (item: Team) => {
   const itemIndex = items.value.findIndex(i => i.id === item.id)
   const itemObj = items.value[itemIndex]!  // 危險！可能為 undefined
@@ -321,7 +321,7 @@ const updateItem = async (item: Team) => {
 ### 2. **錯誤處理**
 
 ```typescript
-// ✅ 好的做法：區分 API 失敗和網絡錯誤
+// 好的做法：區分 API 失敗和網絡錯誤
 try {
   const response = await api.updateItem(id, data)
 
@@ -336,7 +336,7 @@ try {
   showError('網絡錯誤', '請檢查網絡連接後重試')
 }
 
-// ❌ 不好的做法：不區分錯誤類型
+// 不好的做法：不區分錯誤類型
 try {
   await api.updateItem(id, data)
 } catch (error) {
@@ -347,7 +347,7 @@ try {
 ### 3. **狀態恢復策略**
 
 ```typescript
-// ✅ 好的做法：保存完整的原始狀態
+// 好的做法：保存完整的原始狀態
 const originalData = {
   name: item.name,
   description: item.description,
@@ -360,7 +360,7 @@ item.name = originalData.name
 item.description = originalData.description
 item.isActive = originalData.isActive
 
-// ❌ 不好的做法：使用對象展開（可能導致類型錯誤）
+// 不好的做法：使用對象展開（可能導致類型錯誤）
 const originalData = { ...item }  // 可能包含不必要的屬性
 // ...
 item = originalData  // TypeScript 可能報錯
@@ -369,7 +369,7 @@ item = originalData  // TypeScript 可能報錯
 ### 4. **用戶反饋**
 
 ```typescript
-// ✅ 好的做法：提供清晰的操作反饋
+// 好的做法：提供清晰的操作反饋
 const toggleStatus = async (item: Team) => {
   const newStatus = !item.isActive
   item.isActive = newStatus
@@ -390,7 +390,7 @@ const toggleStatus = async (item: Team) => {
   }
 }
 
-// ❌ 不好的做法：沒有反饋或反饋模糊
+// 不好的做法：沒有反饋或反饋模糊
 const toggleStatus = async (item: Team) => {
   item.isActive = !item.isActive
   await api.update(item.id, { isActive: item.isActive })
@@ -401,7 +401,7 @@ const toggleStatus = async (item: Team) => {
 ### 5. **避免重複請求**
 
 ```typescript
-// ✅ 好的做法：使用加載狀態防止重複點擊
+// 好的做法：使用加載狀態防止重複點擊
 const isUpdating = ref(false)
 
 const updateItem = async (item: Team) => {
@@ -419,7 +419,7 @@ const updateItem = async (item: Team) => {
 ### 6. **移除不必要的重新加載**
 
 ```typescript
-// ✅ 好的做法：樂觀更新後不需要重新加載
+// 好的做法：樂觀更新後不需要重新加載
 const updateItem = async (item: Team) => {
   // 保存原狀態
   const original = item.status
@@ -433,14 +433,14 @@ const updateItem = async (item: Team) => {
   if (!response.success) {
     item.status = original  // 失敗時恢復
   }
-  // ✅ 無需調用 loadItems()
+  // 無需調用 loadItems()
 }
 
-// ❌ 不好的做法：更新後重新加載整個列表
+// 不好的做法：更新後重新加載整個列表
 const updateItem = async (item: Team) => {
   item.status = newStatus
   await api.update(item.id, { status: newStatus })
-  await loadItems()  // ❌ 多餘的 API 請求，降低性能
+  await loadItems()  //  多餘的 API 請求，降低性能
 }
 ```
 
@@ -573,14 +573,14 @@ describe('Optimistic Update', () => {
 
 在實施樂觀更新前，使用此清單評估：
 
-### ✅ 適合性檢查
+###  適合性檢查
 - [ ] 操作是否可逆或可恢復？
 - [ ] UI 狀態是否可以在客戶端預測？
 - [ ] 操作的失敗率是否較低（<5%）？
 - [ ] 操作是否不涉及複雜的服務器端計算？
 - [ ] 操作是否不需要服務器生成關鍵數據（如 ID、QR 碼）？
 
-### 🛠️ 實施檢查
+###  實施檢查
 - [ ] 已保存所有需要恢復的原始狀態
 - [ ] 已添加 TypeScript null 檢查
 - [ ] 已實現完整的錯誤恢復機制
@@ -588,7 +588,7 @@ describe('Optimistic Update', () => {
 - [ ] 已移除不必要的 `loadItems()` 調用
 - [ ] 已添加防重複點擊機制
 
-### 🧪 測試檢查
+###  測試檢查
 - [ ] 已測試成功場景（UI 立即更新）
 - [ ] 已測試 API 失敗場景（狀態正確恢復）
 - [ ] 已測試網絡錯誤場景（顯示適當錯誤提示）

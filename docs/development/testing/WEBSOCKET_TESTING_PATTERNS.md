@@ -6,7 +6,7 @@
 
 ---
 
-## 📋 概述
+##  概述
 
 本指南定義了統一的 WebSocket 測試模式，確保所有測試代碼使用一致的方法和最佳實踐。
 
@@ -14,31 +14,31 @@
 
 ```
 ┌─────────────────────────────────────────┐
-│  E2E Tests                              │  ← 完整用戶流程
-│  (Real-time conversation flows)         │
+│  E2E Tests │  ← 完整用戶流程
+│  (Real-time conversation flows) │
 ├─────────────────────────────────────────┤
-│  Integration Tests                      │  ← 組件交互
-│  (WebSocket + Durable Objects)          │
+│  Integration Tests │  ← 組件交互
+│  (WebSocket + Durable Objects) │
 ├─────────────────────────────────────────┤
-│  Unit Tests                             │  ← 單一組件
-│  (Handlers, Services, Monitors)         │
+│  Unit Tests │  ← 單一組件
+│  (Handlers, Services, Monitors) │
 ├─────────────────────────────────────────┤
-│  Performance Tests                      │  ← 負載和擴展性
-│  (Connection scalability, throughput)   │
+│  Performance Tests │  ← 負載和擴展性
+│  (Connection scalability, throughput) │
 └─────────────────────────────────────────┘
 ```
 
 ---
 
-## 🎯 模式 1: 單元測試模式
+##  模式 1: 單元測試模式
 
 **適用於**: Handlers、Services、Monitors 等單一組件測試
 
 ### 特徵
-- ✅ 輕量級設置
-- ✅ 快速執行
-- ✅ 使用 mock endpoints
-- ✅ 隔離測試單個組件
+-  輕量級設置
+-  快速執行
+-  使用 mock endpoints
+-  隔離測試單個組件
 
 ### 標準模板
 
@@ -169,15 +169,15 @@ describe('Component Name', () => {
 
 ---
 
-## 🎯 模式 2: 整合測試模式
+##  模式 2: 整合測試模式
 
 **適用於**: WebSocket 連接生命週期、消息廣播、Durable Objects 交互
 
 ### 特徵
-- ✅ 完整的 Durable Objects 環境
-- ✅ 真實的 WebSocket 連接模擬
-- ✅ 多組件交互測試
-- ✅ 使用專用測試工具
+-  完整的 Durable Objects 環境
+-  真實的 WebSocket 連接模擬
+-  多組件交互測試
+-  使用專用測試工具
 
 ### 標準模板
 
@@ -301,15 +301,15 @@ describe('WebSocket Integration Test Name', () => {
 
 ---
 
-## 🎯 模式 3: 性能測試模式
+##  模式 3: 性能測試模式
 
 **適用於**: 負載測試、連接擴展性、吞吐量測試
 
 ### 特徵
-- ✅ 大量併發連接模擬
-- ✅ 性能指標收集
-- ✅ 閾值驗證
-- ✅ 壓力測試場景
+-  大量併發連接模擬
+-  性能指標收集
+-  閾值驗證
+-  壓力測試場景
 
 ### 標準模板
 
@@ -396,15 +396,15 @@ describe('WebSocket Performance Test Name', () => {
 
 ---
 
-## 🎯 模式 4: E2E 測試模式
+##  模式 4: E2E 測試模式
 
 **適用於**: 完整用戶流程、端到端場景
 
 ### 特徵
-- ✅ 完整的應用流程
-- ✅ 多用戶交互
-- ✅ 真實場景模擬
-- ✅ 用戶體驗驗證
+-  完整的應用流程
+-  多用戶交互
+-  真實場景模擬
+-  用戶體驗驗證
 
 ### 標準模板
 
@@ -489,7 +489,7 @@ describe('Real-time Conversation E2E Flow', () => {
 
 ---
 
-## 📚 測試工具參考
+##  測試工具參考
 
 ### 核心工具類
 
@@ -499,10 +499,10 @@ describe('Real-time Conversation E2E Flow', () => {
 import { testEnv } from '../../helpers/websocket/durable-objects-test-env';
 
 // 功能
-testEnv.reset();                          // 重置環境
+testEnv.reset(); // 重置環境
 testEnv.registerDurableObject(name, cls); // 註冊 Durable Object
-testEnv.getBindings();                    // 獲取 bindings
-testEnv.cleanup();                        // 清理資源
+testEnv.getBindings(); // 獲取 bindings
+testEnv.cleanup(); // 清理資源
 ```
 
 #### 2. WebSocketTestClient
@@ -549,7 +549,7 @@ TestAssertions.assertPerformanceMetrics(metrics, thresholds);
 
 ---
 
-## ✅ 測試檢查清單
+##  測試檢查清單
 
 ### 單元測試
 
@@ -585,9 +585,9 @@ TestAssertions.assertPerformanceMetrics(metrics, thresholds);
 
 ---
 
-## 🚫 反模式（避免）
+##  反模式（避免）
 
-### ❌ 不要這樣做
+###  不要這樣做
 
 ```typescript
 // 1. 不要在單元測試中使用完整的 Durable Objects 環境
@@ -604,7 +604,7 @@ describe('Simple Service Test', () => {
 // BAD
 it('should test everything', async () => {
   const client = WebSocketTestClientFactory.create(); // 整合測試工具
-  const result = await simpleFunction();              // 單元測試邏輯
+  const result = await simpleFunction(); // 單元測試邏輯
   // 混亂且難以維護
 });
 
@@ -623,7 +623,7 @@ it('should receive message', async () => {
 });
 ```
 
-### ✅ 應該這樣做
+###  應該這樣做
 
 ```typescript
 // 1. 選擇適當的測試模式
@@ -665,18 +665,18 @@ it('should receive message', async () => {
 
 ---
 
-## 📊 測試覆蓋率目標
+##  測試覆蓋率目標
 
 | 測試類型 | 目標覆蓋率 | 當前狀態 |
 |---------|----------|---------|
-| 單元測試 | 80%+ | ✅ 85% |
-| 整合測試 | 60%+ | ✅ 65% |
-| E2E 測試 | 關鍵流程 100% | ✅ 100% |
-| 性能測試 | 核心場景 | ✅ 完成 |
+| 單元測試 | 80%+ |  85% |
+| 整合測試 | 60%+ |  65% |
+| E2E 測試 | 關鍵流程 100% |  100% |
+| 性能測試 | 核心場景 |  完成 |
 
 ---
 
-## 🔗 相關資源
+##  相關資源
 
 - [WebSocket Test Utilities](../../tests/helpers/websocket/README.md)
 - [Durable Objects Testing](../../tests/helpers/websocket/durable-objects-test-env.ts)
@@ -685,7 +685,7 @@ it('should receive message', async () => {
 
 ---
 
-## 📝 版本歷史
+##  版本歷史
 
 - **2.0.0** (2025-11-10): Phase 4 更新 - 統一 WebSocket 測試模式
 - **1.5.0** (2025-01-30): 添加性能測試模式

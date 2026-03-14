@@ -1,18 +1,18 @@
 # 团队选择器 WebSocket 实时更新规划
 
-## 📋 概述
+##  概述
 
 **目标**: 实现团队数据的 WebSocket 实时更新，消除手动刷新需求，提供 100% 实时的用户体验。
 
 **当前状态**:
-- ✅ Phase 1 完成：缓存优化 + 加载状态
-- ✅ Phase 2 完成：应用启动预加载
-- ✅ Phase 3.1 完成：手动刷新按钮
-- ⏳ Phase 3.2 规划中：WebSocket 实时更新
+-  Phase 1 完成：缓存优化 + 加载状态
+-  Phase 2 完成：应用启动预加载
+-  Phase 3.1 完成：手动刷新按钮
+-  Phase 3.2 规划中：WebSocket 实时更新
 
 ---
 
-## 🎯 业务场景
+##  业务场景
 
 ### 需要实时更新的场景
 
@@ -32,7 +32,7 @@
 
 ---
 
-## 🏗️ 技术架构
+##  技术架构
 
 ### 1. WebSocket 事件类型
 
@@ -130,13 +130,13 @@ export class WebSocketBroadcastService {
 ```typescript
 // src/handlers/team-main.ts
 
-// ✅ 团队创建
+// 团队创建
 export const createTeam = async (c: Context) => {
   // ... 现有代码 ...
 
   const newTeam = await teamService.create(data)
 
-  // 🆕 广播团队创建事件
+  // 广播团队创建事件
   await webSocketBroadcastService.broadcastTeamCreated(
     newTeam.id,
     newTeam.name,
@@ -146,13 +146,13 @@ export const createTeam = async (c: Context) => {
   return c.json({ success: true, data: newTeam })
 }
 
-// ✅ 团队更新
+// 团队更新
 export const updateTeam = async (c: Context) => {
   // ... 现有代码 ...
 
   const updatedTeam = await teamService.update(teamId, data)
 
-  // 🆕 广播团队更新事件
+  // 广播团队更新事件
   await webSocketBroadcastService.broadcastTeamUpdated(
     updatedTeam.id,
     updatedTeam.name,
@@ -162,14 +162,14 @@ export const updateTeam = async (c: Context) => {
   return c.json({ success: true, data: updatedTeam })
 }
 
-// ✅ 团队删除
+// 团队删除
 export const deleteTeam = async (c: Context) => {
   // ... 现有代码 ...
 
   const team = await teamService.findById(teamId)
   await teamService.delete(teamId)
 
-  // 🆕 广播团队删除事件
+  // 广播团队删除事件
   await webSocketBroadcastService.broadcastTeamDeleted(
     teamId,
     team.name,
@@ -208,14 +208,14 @@ export class TeamUpdateListener {
     websocketClient.on('team.deleted', this.handleTeamDeleted.bind(this))
 
     this.initialized = true
-    console.log('✅ [TeamUpdateListener] Initialized')
+    console.log('[TeamUpdateListener] Initialized')
   }
 
   /**
    * 处理团队创建事件
    */
   private async handleTeamCreated(event: TeamUpdateEvent) {
-    console.log('🆕 [TeamUpdateListener] Team created:', event.data)
+    console.log('[TeamUpdateListener] Team created:', event.data)
 
     // 刷新团队缓存
     await preloadService.refreshTeams()
@@ -229,7 +229,7 @@ export class TeamUpdateListener {
    * 处理团队更新事件
    */
   private async handleTeamUpdated(event: TeamUpdateEvent) {
-    console.log('🔄 [TeamUpdateListener] Team updated:', event.data)
+    console.log('[TeamUpdateListener] Team updated:', event.data)
 
     // 刷新团队缓存
     await preloadService.refreshTeams()
@@ -243,7 +243,7 @@ export class TeamUpdateListener {
    * 处理团队删除事件
    */
   private async handleTeamDeleted(event: TeamUpdateEvent) {
-    console.log('🗑️ [TeamUpdateListener] Team deleted:', event.data)
+    console.log('[TeamUpdateListener] Team deleted:', event.data)
 
     // 刷新团队缓存
     await preloadService.refreshTeams()
@@ -264,7 +264,7 @@ export class TeamUpdateListener {
     websocketClient.off('team.deleted')
 
     this.initialized = false
-    console.log('🧹 [TeamUpdateListener] Cleaned up')
+    console.log('[TeamUpdateListener] Cleaned up')
   }
 }
 
@@ -281,7 +281,7 @@ import { teamUpdateListener } from '@/services/teamUpdateListener'
 const startApp = async () => {
   // ... 现有代码 ...
 
-  // 🆕 初始化团队更新监听器（仅管理员）
+  // 初始化团队更新监听器（仅管理员）
   if (authStore.isAuthenticated && authStore.currentAgent?.role === 'admin') {
     teamUpdateListener.init()
   }
@@ -292,7 +292,7 @@ const startApp = async () => {
 
 ---
 
-## 📊 性能优化策略
+##  性能优化策略
 
 ### 1. 防抖处理
 
@@ -310,7 +310,7 @@ export class TeamUpdateListener {
   }, 500)
 
   private async handleTeamUpdated(event: TeamUpdateEvent) {
-    console.log('🔄 [TeamUpdateListener] Team updated:', event.data)
+    console.log('[TeamUpdateListener] Team updated:', event.data)
 
     // 使用防抖刷新
     this.debouncedRefresh()
@@ -332,7 +332,7 @@ private async handleTeamUpdated(event: TeamUpdateEvent) {
   setTimeout(async () => {
     if (this.pendingUpdates.size > 0) {
       await preloadService.refreshTeams()
-      console.log(`✅ Batch updated ${this.pendingUpdates.size} teams`)
+      console.log(` Batch updated ${this.pendingUpdates.size} teams`)
       this.pendingUpdates.clear()
     }
   }, 200)
@@ -363,7 +363,7 @@ private shouldShowNotification(event: TeamUpdateEvent): boolean {
 
 ---
 
-## 🧪 测试计划
+##  测试计划
 
 ### 1. 单元测试
 
@@ -465,7 +465,7 @@ describe('Team Real-time Updates E2E', () => {
 
 ---
 
-## 📅 实施时间表
+##  实施时间表
 
 ```
 Week 1-2: 后端开发
@@ -493,7 +493,7 @@ Week 6: 部署和监控
 
 ---
 
-## ✅ 成功指标
+##  成功指标
 
 ### 1. 性能指标
 
@@ -506,13 +506,13 @@ Week 6: 部署和监控
 
 ### 2. 用户体验指标
 
-- ✅ 用户无需手动刷新即可看到最新团队数据
-- ✅ 多用户协作时避免数据不一致
-- ✅ 团队变更通知及时且不打扰用户
+-  用户无需手动刷新即可看到最新团队数据
+-  多用户协作时避免数据不一致
+-  团队变更通知及时且不打扰用户
 
 ---
 
-## 🔒 安全考虑
+##  安全考虑
 
 ### 1. 权限控制
 
@@ -549,7 +549,7 @@ const rateLimiter = new RateLimiter(10, 1000)
 
 private async handleTeamUpdated(event: TeamUpdateEvent) {
   if (!rateLimiter.tryAcquire()) {
-    console.warn('⚠️ Rate limit exceeded, dropping event')
+    console.warn(' Rate limit exceeded, dropping event')
     return
   }
 
@@ -559,7 +559,7 @@ private async handleTeamUpdated(event: TeamUpdateEvent) {
 
 ---
 
-## 📚 参考资料
+##  参考资料
 
 - 现有 WebSocket 架构: `docs/architecture/WEBSOCKET_ARCHITECTURE.md`
 - WebSocket 监控: `src/handlers/websocket-health.ts`
@@ -568,7 +568,7 @@ private async handleTeamUpdated(event: TeamUpdateEvent) {
 
 ---
 
-## 🚀 快速开始（未来实施时）
+##  快速开始（未来实施时）
 
 ```bash
 # 1. 后端开发
@@ -588,7 +588,7 @@ npm run deploy
 
 ---
 
-**状态**: 📋 规划完成，等待实施批准
+**状态**:  规划完成，等待实施批准
 
 **优先级**: P2 (长期优化)
 

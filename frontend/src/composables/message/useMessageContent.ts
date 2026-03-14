@@ -42,9 +42,9 @@ export type MessageType = 'text' | 'image' | 'file' | 'sticker' | 'video' | 'aud
  * ```typescript
  * const props = ref({ message: textMessage })
  * const {
- *   processedMessageContent,
- *   actualMessageType,
- *   isProcessing
+ * processedMessageContent,
+ * actualMessageType,
+ * isProcessing
  * } = useMessageContent(props)
  * ```
  */
@@ -110,7 +110,7 @@ export function useMessageContent(props: Ref<MessageContentProps>) {
           return 'image'
         }
       } catch (error) {
-        console.warn('⚠️ [MessageContent] Failed to parse metadata for type detection:', error)
+        console.warn('[MessageContent] Failed to parse metadata for type detection:', error)
       }
     }
 
@@ -161,9 +161,9 @@ export function useMessageContent(props: Ref<MessageContentProps>) {
         }
 
         if (import.meta.env.DEV) {
-          console.log('🔍 [MessageContent] Processing content...')
-          console.log('🔍 [MessageContent] Message type:', messageType)
-          console.log('🔍 [MessageContent] Content length:', props.value.message.content.length)
+          console.log('[MessageContent] Processing content...')
+          console.log('[MessageContent] Message type:', messageType)
+          console.log('[MessageContent] Content length:', props.value.message.content.length)
         }
 
         let result: string
@@ -196,10 +196,10 @@ export function useMessageContent(props: Ref<MessageContentProps>) {
         processedMessageContent.value = result
 
         if (import.meta.env.DEV) {
-          console.log('🔍 [MessageContent] Content processed successfully')
+          console.log('[MessageContent] Content processed successfully')
         }
       } catch (error) {
-        console.error('❌ [MessageContent] Error processing content:', error)
+        console.error('[MessageContent] Error processing content:', error)
         // If processing fails, use original content (escaped HTML)
         processedMessageContent.value = escapeHtml(props.value.message.content)
       } finally {

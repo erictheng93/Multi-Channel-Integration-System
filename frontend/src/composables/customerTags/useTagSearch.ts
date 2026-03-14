@@ -62,18 +62,18 @@ export function useTagSearch(store: TagSearchStoreInterface) {
    * Uses cache service for optimal performance
    *
    * @param forceRefresh - When true, bypasses cache and fetches fresh data from API.
-   *                       Used by WebSocket real-time updates to ensure stale cache
-   *                       doesn't prevent updated counts from appearing.
+   * Used by WebSocket real-time updates to ensure stale cache
+   * doesn't prevent updated counts from appearing.
    */
   const loadTags = async (forceRefresh = false) => {
     try {
-      console.log(`📦 [TagSearch] Loading tags...${forceRefresh ? ' (force refresh)' : ''}`)
+      console.log(`[TagSearch] Loading tags...${forceRefresh ? ' (force refresh)' : ''}`)
 
       if (forceRefresh) {
         // Invalidate cache and fetch fresh data from API
         const freshTags = await tagCacheService.refreshTags()
         store.tags = freshTags
-        console.log(`✅ [TagSearch] Force-refreshed ${freshTags.length} tags from API`)
+        console.log(`[TagSearch] Force-refreshed ${freshTags.length} tags from API`)
         return
       }
 
@@ -81,15 +81,15 @@ export function useTagSearch(store: TagSearchStoreInterface) {
       const cachedTags = tagCacheService.getAllTags()
       if (cachedTags.length > 0) {
         store.tags = cachedTags
-        console.log(`✅ [TagSearch] Loaded ${cachedTags.length} tags from cache`)
+        console.log(`[TagSearch] Loaded ${cachedTags.length} tags from cache`)
         return
       }
 
       // Fetch from API if cache is empty
       await store.fetchTags()
-      console.log(`✅ [TagSearch] Loaded ${store.tags.length} tags from API`)
+      console.log(`[TagSearch] Loaded ${store.tags.length} tags from API`)
     } catch (error) {
-      console.error('❌ [TagSearch] Failed to load tags:', error)
+      console.error('[TagSearch] Failed to load tags:', error)
       throw error
     }
   }

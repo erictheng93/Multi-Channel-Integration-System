@@ -71,12 +71,12 @@ export class IPValidator {
 
         // Check if IP is in this CIDR range
         if (this.isInRange(addr, parsed)) {
-          console.log(`✅ [IPValidator] IP ${ip} matched ${platform} range ${range.cidr}`);
+          console.log(`[IPValidator] IP ${ip} matched ${platform} range ${range.cidr}`);
           return true;
         }
       }
 
-      console.warn(`⚠️ [IPValidator] IP ${ip} not in any ${platform} whitelist range`);
+      console.warn(`[IPValidator] IP ${ip} not in any ${platform} whitelist range`);
       return false;
     } catch (error) {
       console.error('[IPValidator] Error validating IP:', error);

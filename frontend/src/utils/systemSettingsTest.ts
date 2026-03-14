@@ -17,16 +17,16 @@ export class SystemSettingsTestSuite {
 
   private addResult(testName: string, success: boolean, message: string, details?: unknown, duration?: number) {
     this.results.push({ testName, success, message, details, duration })
-    const icon = success ? '✅' : '❌'
+    const icon = success ? '' : ''
     const durationText = duration ? ` (${duration}ms)` : ''
     console.log(`${icon} ${testName}: ${message}${durationText}`)
     if (details) {
-      console.log('   Details:', details)
+      console.log(' Details:', details)
     }
   }
 
   async runCompleteTest(): Promise<TestResult[]> {
-    console.group('🧪 SystemSettings 完整測試套件')
+    console.group(' SystemSettings 完整測試套件')
     this.results = []
 
     try {
@@ -54,7 +54,7 @@ export class SystemSettingsTestSuite {
   }
 
   private async testBasicConnectivity() {
-    console.group('🔗 基礎連接測試')
+    console.group(' 基礎連接測試')
 
     // 測試 API 基礎連接
     const startTime = Date.now()
@@ -91,7 +91,7 @@ export class SystemSettingsTestSuite {
   }
 
   private async testSettingsReadWrite() {
-    console.group('📖 設定讀寫測試')
+    console.group(' 設定讀寫測試')
 
     let originalSettings: Record<string, unknown> | null = null
 
@@ -166,7 +166,7 @@ export class SystemSettingsTestSuite {
   }
 
   private async testLanguageSwitching() {
-    console.group('🌐 語言切換測試')
+    console.group(' 語言切換測試')
 
     const testLanguages = ['zh-TW', 'zh-CN', 'en']
     const originalLanguage = getCurrentLocale()
@@ -253,7 +253,7 @@ export class SystemSettingsTestSuite {
   }
 
   private async testErrorHandling() {
-    console.group('🚨 錯誤處理測試')
+    console.group(' 錯誤處理測試')
 
     // 測試無效的設定數據
     try {
@@ -293,7 +293,7 @@ export class SystemSettingsTestSuite {
   }
 
   private async testPerformance() {
-    console.group('⚡ 性能測試')
+    console.group(' 性能測試')
 
     // 測試設定讀取性能
     const readTimes: number[] = []
@@ -370,22 +370,22 @@ export class SystemSettingsTestSuite {
 
 // 便利函數
 export const runCompleteSystemSettingsTest = async () => {
-  console.log('🚀 開始完整的 SystemSettings 測試...')
+  console.log(' 開始完整的 SystemSettings 測試...')
   
   const testSuite = new SystemSettingsTestSuite()
   const results = await testSuite.runCompleteTest()
   const summary = testSuite.getSummary()
 
-  console.group('📊 測試結果摘要')
+  console.group(' 測試結果摘要')
   console.log(`總測試數: ${summary.total}`)
-  console.log(`✅ 通過: ${summary.passed}`)
-  console.log(`❌ 失敗: ${summary.failed}`)
+  console.log(` 通過: ${summary.passed}`)
+  console.log(` 失敗: ${summary.failed}`)
   console.log(`通過率: ${summary.passRate}%`)
   console.groupEnd()
 
   // 如果測試失敗率較高，提供修復建議
   if (summary.passRate < 70) {
-    console.group('💡 修復建議')
+    console.group(' 修復建議')
     console.log('檢測到多個測試失敗，建議執行以下操作：')
     console.log('1. 運行完整診斷 (runFullDiagnostic)')
     console.log('2. 執行自動修復 (runFullFix)')
@@ -399,7 +399,7 @@ export const runCompleteSystemSettingsTest = async () => {
 
 // 快速測試函數
 export const quickSystemSettingsTest = async () => {
-  console.log('⚡ 快速 SystemSettings 測試...')
+  console.log(' 快速 SystemSettings 測試...')
   
   const results: TestResult[] = []
   

@@ -185,7 +185,7 @@ function calculatePriority(path: string): number {
  * 主檢測函數
  */
 async function detectConflicts() {
-  console.log('🔍 Route Conflict Detector\n');
+  console.log(' Route Conflict Detector\n');
   console.log('Scanning for route definitions...\n');
 
   // 掃描所有處理器文件
@@ -214,12 +214,12 @@ async function detectConflicts() {
     moduleStats.set(route.module, (moduleStats.get(route.module) || 0) + 1);
   });
 
-  console.log('📊 Module Distribution:');
+  console.log(' Module Distribution:');
   console.log('─'.repeat(100));
   Array.from(moduleStats.entries())
     .sort((a, b) => b[1] - a[1]) // 按路由數量排序
     .forEach(([module, count]) => {
-      console.log(`  📦 ${module.padEnd(40)} ${count} routes`);
+      console.log(` ${module.padEnd(40)} ${count} routes`);
     });
   console.log('');
 
@@ -235,7 +235,7 @@ async function detectConflicts() {
       const route1 = allRoutes[i];
       const route2 = allRoutes[j];
 
-      // 🔧 修復：只檢查同一模組內的路由衝突，避免跨模組誤報
+      // 修復：只檢查同一模組內的路由衝突，避免跨模組誤報
       // 例如：modules/system 的 /health 不會與 handlers/websocket-main 的 /health 衝突
       if (route1.module !== route2.module) {
         continue; // 跳過不同模組的路由比較
@@ -258,14 +258,14 @@ async function detectConflicts() {
 
   // 輸出報告
   console.log('═'.repeat(100));
-  console.log('📊 CONFLICT DETECTION REPORT');
+  console.log(' CONFLICT DETECTION REPORT');
   console.log('═'.repeat(100));
   console.log('');
 
   if (conflicts.length === 0) {
-    console.log('✅ No route conflicts detected!');
+    console.log(' No route conflicts detected!');
   } else {
-    console.log(`⚠️  Found ${conflicts.length} potential conflicts:\n`);
+    console.log(`  Found ${conflicts.length} potential conflicts:\n`);
 
     // 按嚴重程度分組
     const highSeverity = conflicts.filter(c => c.severity === 'high');
@@ -273,45 +273,45 @@ async function detectConflicts() {
     const lowSeverity = conflicts.filter(c => c.severity === 'low');
 
     if (highSeverity.length > 0) {
-      console.log('🔴 HIGH SEVERITY (Duplicate routes):');
+      console.log(' HIGH SEVERITY (Duplicate routes):');
       console.log('─'.repeat(100));
       highSeverity.forEach(({ route1, route2 }) => {
-        console.log(`  ❌ ${route1.method} ${route1.path}`);
-        console.log(`     📦 Module: ${route1.module}`);
-        console.log(`     📍 ${route1.file}:${route1.line}`);
-        console.log(`     📍 ${route2.file}:${route2.line}`);
+        console.log(` ${route1.method} ${route1.path}`);
+        console.log(` Module: ${route1.module}`);
+        console.log(` ${route1.file}:${route1.line}`);
+        console.log(` ${route2.file}:${route2.line}`);
         console.log('');
       });
     }
 
     if (mediumSeverity.length > 0) {
-      console.log('🟡 MEDIUM SEVERITY (Parameterized route conflicts):');
+      console.log(' MEDIUM SEVERITY (Parameterized route conflicts):');
       console.log('─'.repeat(100));
       mediumSeverity.forEach(({ route1, route2 }) => {
         const priority1 = calculatePriority(route1.path);
         const priority2 = calculatePriority(route2.path);
 
-        console.log(`  ⚠️  "${route1.path}" may intercept "${route2.path}"`);
-        console.log(`     📦 Module: ${route1.module}`);
-        console.log(`     Priority scores: ${priority1} vs ${priority2}`);
-        console.log(`     📍 ${route1.file}:${route1.line}`);
-        console.log(`     📍 ${route2.file}:${route2.line}`);
+        console.log(` "${route1.path}" may intercept "${route2.path}"`);
+        console.log(` Module: ${route1.module}`);
+        console.log(` Priority scores: ${priority1} vs ${priority2}`);
+        console.log(` ${route1.file}:${route1.line}`);
+        console.log(` ${route2.file}:${route2.line}`);
 
         if (priority1 < priority2) {
-          console.log(`     💡 Suggestion: Register "${route2.path}" before "${route1.path}"`);
+          console.log(` Suggestion: Register "${route2.path}" before "${route1.path}"`);
         }
         console.log('');
       });
     }
 
     if (lowSeverity.length > 0) {
-      console.log('🟢 LOW SEVERITY (Potential issues):');
+      console.log(' LOW SEVERITY (Potential issues):');
       console.log('─'.repeat(100));
       lowSeverity.forEach(({ route1, route2 }) => {
-        console.log(`  ℹ️  "${route1.path}" and "${route2.path}"`);
-        console.log(`     📦 Module: ${route1.module}`);
-        console.log(`     📍 ${route1.file}:${route1.line}`);
-        console.log(`     📍 ${route2.file}:${route2.line}`);
+        console.log(` "${route1.path}" and "${route2.path}"`);
+        console.log(` Module: ${route1.module}`);
+        console.log(` ${route1.file}:${route1.line}`);
+        console.log(` ${route2.file}:${route2.line}`);
         console.log('');
       });
     }

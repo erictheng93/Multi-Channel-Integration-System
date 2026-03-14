@@ -74,7 +74,7 @@ export class BroadcasterHelpers {
   async getTeamMembers(teamId: string): Promise<string[]> {
     try {
       if (!this.ctx.env.DB) {
-        log.warn('⚠️ [MessageBroadcaster] Database not available');
+        log.warn(' [MessageBroadcaster] Database not available');
         return [];
       }
 
@@ -90,19 +90,19 @@ export class BroadcasterHelpers {
 
       return (result.results || []).map((member: any) => member.id);
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Error getting team members:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Error getting team members:', { error: error instanceof Error ? error.message : String(error) });
       return [];
     }
   }
 
   /**
-   * 🔒 Security: Get all admin users for broadcasting
+   * Security: Get all admin users for broadcasting
    * Admins have access to all team conversations
    */
   async getAdminUsers(): Promise<string[]> {
     try {
       if (!this.ctx.env.DB) {
-        log.warn('⚠️ [MessageBroadcaster] Database not available');
+        log.warn(' [MessageBroadcaster] Database not available');
         return [];
       }
 
@@ -117,7 +117,7 @@ export class BroadcasterHelpers {
       log.debug('Found admin users', { count: adminIds.length });
       return adminIds;
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Error getting admin users:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Error getting admin users:', { error: error instanceof Error ? error.message : String(error) });
       return [];
     }
   }
@@ -144,12 +144,12 @@ export class BroadcasterHelpers {
       await this.ctx.state.storage.put('userConnectionIds', userConnectionIds);
       await this.ctx.state.storage.put('conversationRoomIds', conversationRoomIds);
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Error persisting queue state:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Error persisting queue state:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
   /**
-   * 🔧 Phase B4 Fix: Persist only connection IDs (lightweight operation)
+   * Phase B4 Fix: Persist only connection IDs (lightweight operation)
    */
   async persistConnectionIds(): Promise<void> {
     try {
@@ -158,7 +158,7 @@ export class BroadcasterHelpers {
       await this.ctx.state.storage.put('userConnectionIds', userConnectionIds);
       await this.ctx.state.storage.put('conversationRoomIds', conversationRoomIds);
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Error persisting connection IDs:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Error persisting connection IDs:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 
@@ -181,7 +181,7 @@ export class BroadcasterHelpers {
         Object.assign(this.ctx.stats, distributionStats);
       }
 
-      // 🔧 Phase B4 Fix: Restore connection stubs from persisted IDs
+      // Phase B4 Fix: Restore connection stubs from persisted IDs
       const userConnectionIds = await this.ctx.state.storage.get('userConnectionIds') as string[];
       if (userConnectionIds && Array.isArray(userConnectionIds) && this.ctx.env.USER_CONNECTION) {
         for (const userId of userConnectionIds) {
@@ -193,7 +193,7 @@ export class BroadcasterHelpers {
             log.warn('Failed to restore user connection stub', { userId, error: error instanceof Error ? error.message : String(error) });
           }
         }
-        console.log(`📂 [MessageBroadcaster] Restored ${this.ctx.userConnections.size} user connections`);
+        console.log(`[MessageBroadcaster] Restored ${this.ctx.userConnections.size} user connections`);
       }
 
       const conversationRoomIds = await this.ctx.state.storage.get('conversationRoomIds') as string[];
@@ -207,15 +207,15 @@ export class BroadcasterHelpers {
             log.warn('Failed to restore conversation room stub', { conversationId, error: error instanceof Error ? error.message : String(error) });
           }
         }
-        console.log(`📂 [MessageBroadcaster] Restored ${this.ctx.conversationRooms.size} conversation rooms`);
+        console.log(`[MessageBroadcaster] Restored ${this.ctx.conversationRooms.size} conversation rooms`);
       }
 
       // Update activeConnections count
       this.ctx.stats.activeConnections = this.ctx.userConnections.size + this.ctx.conversationRooms.size;
 
-      console.log(`📂 [MessageBroadcaster] State restored: ${this.ctx.eventQueue.length} events in queue, ${this.ctx.stats.activeConnections} connections`);
+      console.log(`[MessageBroadcaster] State restored: ${this.ctx.eventQueue.length} events in queue, ${this.ctx.stats.activeConnections} connections`);
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] State restoration error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] State restoration error:', { error: error instanceof Error ? error.message : String(error) });
     }
   }
 

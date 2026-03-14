@@ -92,7 +92,7 @@ function buildIndex(messages: Message[]): WorkerResponse {
       documentsObj[key] = value
     })
 
-    console.log(`✅ [Worker] 索引構建完成: ${messages.length} 條消息，耗時 ${buildTime.toFixed(2)}ms`)
+    console.log(`[Worker] 索引構建完成: ${messages.length} 條消息，耗時 ${buildTime.toFixed(2)}ms`)
 
     return {
       type: 'INDEX_BUILT',
@@ -103,7 +103,7 @@ function buildIndex(messages: Message[]): WorkerResponse {
       }
     }
   } catch (error) {
-    console.error('❌ [Worker] 索引構建失敗:', error)
+    console.error('[Worker] 索引構建失敗:', error)
     return {
       type: 'ERROR',
       payload: {
@@ -134,7 +134,7 @@ function search(query: string): WorkerResponse {
 
     const searchTime = performance.now() - startTime
 
-    console.log(`🔍 [Worker] 搜索完成: "${query}" -> ${resultIds.length} 條結果，耗時 ${searchTime.toFixed(2)}ms`)
+    console.log(`[Worker] 搜索完成: "${query}" -> ${resultIds.length} 條結果，耗時 ${searchTime.toFixed(2)}ms`)
 
     return {
       type: 'SEARCH_RESULTS',
@@ -144,7 +144,7 @@ function search(query: string): WorkerResponse {
       }
     }
   } catch (error) {
-    console.error('❌ [Worker] 搜索失敗:', error)
+    console.error('[Worker] 搜索失敗:', error)
     return {
       type: 'ERROR',
       payload: {

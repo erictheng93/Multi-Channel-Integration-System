@@ -1,8 +1,8 @@
 // Analytics Core Service - Facade that delegates to focused sub-modules
 // Sub-modules:
-//   analytics-queries.ts      - Database query functions
-//   analytics-aggregation.ts  - Time range building, WHERE conditions, aggregation helpers
-//   analytics-formatters.ts   - Output label/color formatting utilities
+// analytics-queries.ts - Database query functions
+// analytics-aggregation.ts  - Time range building, WHERE conditions, aggregation helpers
+// analytics-formatters.ts - Output label/color formatting utilities
 
 import { type Database } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
@@ -84,9 +84,9 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     if (this.kv) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- KVNamespace type compatibility between different @cloudflare/workers-types versions
       this.cacheService = new AnalyticsCacheService(this.kv as any, {
-        defaultTTL: 300,    // 5 minutes
-        shortTTL: 60,       // 1 minute
-        longTTL: 1800,      // 30 minutes
+        defaultTTL: 300, // 5 minutes
+        shortTTL: 60, // 1 minute
+        longTTL: 1800, // 30 minutes
         enabled: true
       });
     }

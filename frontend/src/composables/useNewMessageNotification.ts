@@ -8,15 +8,15 @@
  * @example
  * ```typescript
  * const notification = useNewMessageNotification({
- *   scrollToBottom: () => controller.scrollToBottom()
+ * scrollToBottom: () => controller.scrollToBottom()
  * })
  *
  * // In template
  * <NewMessageNotification
- *   :is-visible="notification.isVisible.value"
- *   :count="newMessageCount"
- *   @click="notification.scrollToNewest"
- *   @dismiss="notification.dismiss"
+ * :is-visible="notification.isVisible.value"
+ * :count="newMessageCount"
+ * @click="notification.scrollToNewest"
+ * @dismiss="notification.dismiss"
  * />
  * ```
  */
@@ -78,11 +78,11 @@ export interface NewMessageNotificationReturn {
  * 新消息通知管理 Composable
  *
  * 功能:
- * - ✅ 新消息通知显示/隐藏
- * - ✅ 滚动到最新消息
- * - ✅ 手动关闭通知
- * - ✅ 自动隐藏 (滚动到底部时)
- * - ✅ 消息计数跟踪
+ * -  新消息通知显示/隐藏
+ * -  滚动到最新消息
+ * -  手动关闭通知
+ * -  自动隐藏 (滚动到底部时)
+ * -  消息计数跟踪
  *
  * 交互流程:
  * 1. 用户向上滚动查看历史消息

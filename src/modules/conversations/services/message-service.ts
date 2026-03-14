@@ -28,7 +28,7 @@ export class MessageService implements MessageServiceInterface {
   private bindings: Bindings;
 
   constructor(bindings: Bindings) {
-    // 🔧 FIX: Use createDbClient with casing: 'camelCase' instead of raw drizzle()
+    // FIX: Use createDbClient with casing: 'camelCase' instead of raw drizzle()
     // Raw drizzle() missing casing option caused conversations.updatedAt and lastMessageAt
     // to not be updated in batch operations (column name mismatch)
     this.db = createDbClient(bindings.DB);
@@ -83,7 +83,7 @@ export class MessageService implements MessageServiceInterface {
 
       // Step 3: Insert message
       await this.db.insert(messages).values(messageData);
-      console.log(`[MessageService] ✅ Message inserted: ${messageId}`);
+      console.log(`[MessageService]  Message inserted: ${messageId}`);
 
       // Step 3b: Link attachments if any
       if (request.attachmentIds && request.attachmentIds.length > 0) {
@@ -91,7 +91,7 @@ export class MessageService implements MessageServiceInterface {
           .update(fileAttachments)
           .set({ messageId: messageId })
           .where(inArray(fileAttachments.id, request.attachmentIds));
-        console.log(`[MessageService] 📎 Linked ${request.attachmentIds.length} attachments`);
+        console.log(`[MessageService]  Linked ${request.attachmentIds.length} attachments`);
       }
 
       // Step 3c: Update conversation timestamps (explicit standalone UPDATE)
@@ -101,7 +101,7 @@ export class MessageService implements MessageServiceInterface {
         .update(conversations)
         .set({ lastMessageAt: timestamp, updatedAt: timestamp })
         .where(eq(conversations.id, request.conversationId));
-      console.log(`[MessageService] ✅ Conversation timestamps updated - updatedAt set to ${timestamp}`);
+      console.log(`[MessageService]  Conversation timestamps updated - updatedAt set to ${timestamp}`);
 
       const insertedMessage = { ...messageData, updatedAt: timestamp };
 
@@ -125,7 +125,7 @@ export class MessageService implements MessageServiceInterface {
    */
   async processBackgroundSending(messageId: string, request: MessageSendRequest, _user: any): Promise<void> {
     try {
-      console.log(`[MessageService] 🚀 Starting background sending for message ${messageId}`);
+      console.log(`[MessageService]  Starting background sending for message ${messageId}`);
       
       const [conversationData] = await this.db
         .select({
@@ -159,11 +159,11 @@ export class MessageService implements MessageServiceInterface {
             /^Sent a file:\s*.+$/i.test(request.content) ||
             /^Sent \d+ files$/i.test(request.content) ||
             /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content) ||
-            /^📎\s*.+$/.test(request.content)  // 匹配 "📎 filename" 格式
+            /^\s*.+$/.test(request.content)  // 匹配 " filename" 格式
           );
 
-          // 📝 詳細日誌：追蹤附件處理
-          console.log(`[MessageService] 📎 Attachment check:`, {
+          // 詳細日誌：追蹤附件處理
+          console.log(`[MessageService]  Attachment check:`, {
             hasAttachments,
             attachmentIds: request.attachmentIds,
             attachmentCount: request.attachmentIds?.length || 0,
@@ -177,27 +177,27 @@ export class MessageService implements MessageServiceInterface {
             lineMessages.push(createTextMessage(request.content));
           }
 
-          // 🔧 FIX: 改進附件處理邏輯，添加驗證和詳細錯誤報告
+          // FIX: 改進附件處理邏輯，添加驗證和詳細錯誤報告
           if (request.attachmentIds && request.attachmentIds.length > 0) {
-            console.log(`[MessageService] 📎 Querying ${request.attachmentIds.length} attachment(s):`, request.attachmentIds);
+            console.log(`[MessageService]  Querying ${request.attachmentIds.length} attachment(s):`, request.attachmentIds);
 
             const attachmentsData = await this.db
               .select()
               .from(fileAttachments)
               .where(inArray(fileAttachments.id, request.attachmentIds));
 
-            console.log(`[MessageService] 📎 Query result: found ${attachmentsData.length} attachment(s)`);
+            console.log(`[MessageService]  Query result: found ${attachmentsData.length} attachment(s)`);
 
-            // ⚠️ 關鍵驗證：檢查是否找到所有附件
+            // 關鍵驗證：檢查是否找到所有附件
             if (attachmentsData.length === 0) {
-              console.error(`[MessageService] ❌ CRITICAL: No attachments found in database!`, {
+              console.error(`[MessageService]  CRITICAL: No attachments found in database!`, {
                 requestedIds: request.attachmentIds,
                 conversationId: request.conversationId,
                 messageId
               });
               errorMessage = `附件未找到: 請求了 ${request.attachmentIds.length} 個附件但資料庫中未找到任何記錄`;
             } else if (attachmentsData.length < request.attachmentIds.length) {
-              console.warn(`[MessageService] ⚠️ Partial attachments found:`, {
+              console.warn(`[MessageService]  Partial attachments found:`, {
                 requested: request.attachmentIds.length,
                 found: attachmentsData.length,
                 foundIds: attachmentsData.map(a => a.id),
@@ -210,7 +210,7 @@ export class MessageService implements MessageServiceInterface {
 
             for (const attachment of attachmentsData) {
               const fileUrl = attachment.fileUrl;
-              console.log(`[MessageService] 📎 Processing attachment:`, {
+              console.log(`[MessageService]  Processing attachment:`, {
                 id: attachment.id,
                 filename: attachment.filename,
                 mimeType: attachment.mimeType,
@@ -222,7 +222,7 @@ export class MessageService implements MessageServiceInterface {
                 if (attachment.mimeType?.startsWith('image/')) {
                   // Use native LINE image message (直接顯示圖片，可儲存/分享)
                   lineMessages.push(createImageMessage(fileUrl));
-                  console.log(`[MessageService] ✅ Added image message for: ${attachment.filename}`);
+                  console.log(`[MessageService]  Added image message for: ${attachment.filename}`);
                 } else {
                   // Use Flex Message card for files (PDF, Word, Excel, etc.)
                   const flexMessage = createFileFlexMessage(
@@ -232,11 +232,11 @@ export class MessageService implements MessageServiceInterface {
                     attachment.fileSize || 0
                   );
                   lineMessages.push(flexMessage);
-                  console.log(`[MessageService] ✅ Added file flex message for: ${attachment.filename}`);
+                  console.log(`[MessageService]  Added file flex message for: ${attachment.filename}`);
                 }
                 processedCount++;
               } else {
-                console.error(`[MessageService] ❌ Skipping attachment with NULL fileUrl:`, {
+                console.error(`[MessageService]  Skipping attachment with NULL fileUrl:`, {
                   id: attachment.id,
                   filename: attachment.filename,
                   r2Key: attachment.r2Key
@@ -245,29 +245,29 @@ export class MessageService implements MessageServiceInterface {
               }
             }
 
-            console.log(`[MessageService] 📎 Attachment processing summary:`, {
+            console.log(`[MessageService]  Attachment processing summary:`, {
               total: attachmentsData.length,
               processed: processedCount,
               skipped: skippedCount,
               lineMessagesCount: lineMessages.length
             });
 
-            // ⚠️ 如果有附件但都沒有有效的 fileUrl，記錄錯誤
+            // 如果有附件但都沒有有效的 fileUrl，記錄錯誤
             if (attachmentsData.length > 0 && processedCount === 0) {
               errorMessage = `所有附件都缺少有效的 fileUrl (${skippedCount} 個附件被跳過)`;
-              console.error(`[MessageService] ❌ All attachments skipped due to missing fileUrl`);
+              console.error(`[MessageService]  All attachments skipped due to missing fileUrl`);
             }
           }
 
-          console.log(`[MessageService] 📤 Final lineMessages count: ${lineMessages.length}`);
+          console.log(`[MessageService]  Final lineMessages count: ${lineMessages.length}`);
 
           if (lineMessages.length > 0) {
-            // 🔧 FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
+            // FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
             const LINE_MESSAGE_LIMIT = 5;
             const totalMessages = lineMessages.length;
             const batches = Math.ceil(totalMessages / LINE_MESSAGE_LIMIT);
 
-            console.log(`[MessageService] 📦 Sending ${totalMessages} messages in ${batches} batch(es)`);
+            console.log(`[MessageService]  Sending ${totalMessages} messages in ${batches} batch(es)`);
 
             let allBatchesSuccessful = true;
             let successfulBatches = 0;
@@ -277,7 +277,7 @@ export class MessageService implements MessageServiceInterface {
               const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
               const batchNumber = Math.floor(i / LINE_MESSAGE_LIMIT) + 1;
 
-              console.log(`[MessageService] 📤 Sending batch ${batchNumber}/${batches} (${batch.length} messages)`);
+              console.log(`[MessageService]  Sending batch ${batchNumber}/${batches} (${batch.length} messages)`);
 
               const sendSuccess = await pushLineMessage(
                 this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
@@ -287,11 +287,11 @@ export class MessageService implements MessageServiceInterface {
 
               if (sendSuccess) {
                 successfulBatches++;
-                console.log(`[MessageService] ✅ Batch ${batchNumber}/${batches} sent successfully`);
+                console.log(`[MessageService]  Batch ${batchNumber}/${batches} sent successfully`);
               } else {
                 allBatchesSuccessful = false;
                 failedBatches++;
-                console.error(`[MessageService] ❌ Batch ${batchNumber}/${batches} failed`);
+                console.error(`[MessageService]  Batch ${batchNumber}/${batches} failed`);
               }
 
               // 如果有多個批次，稍微延遲以避免 LINE API rate limiting
@@ -304,29 +304,29 @@ export class MessageService implements MessageServiceInterface {
               platformMessageId = `line_${nowMs()}`;
               isSent = true;
               deliveryStatus = 'sent';
-              console.log(`[MessageService] ✅ All ${batches} batch(es) sent successfully (${totalMessages} messages total)`);
+              console.log(`[MessageService]  All ${batches} batch(es) sent successfully (${totalMessages} messages total)`);
             } else if (successfulBatches > 0) {
               // 部分成功
               platformMessageId = `line_${nowMs()}_partial`;
               isSent = true;
               deliveryStatus = 'partial';
               errorMessage = `部分發送成功: ${successfulBatches}/${batches} 批次成功`;
-              console.warn(`[MessageService] ⚠️ Partial success: ${successfulBatches}/${batches} batches sent`);
+              console.warn(`[MessageService]  Partial success: ${successfulBatches}/${batches} batches sent`);
             } else {
               errorMessage = 'LINE API returned failure for all batches';
-              console.error(`[MessageService] ❌ All ${batches} batch(es) failed`);
+              console.error(`[MessageService]  All ${batches} batch(es) failed`);
             }
           } else if (hasAttachments) {
-            // ⚠️ 有附件但最終沒有消息要發送 - 這是一個問題
+            // 有附件但最終沒有消息要發送 - 這是一個問題
             errorMessage = errorMessage || '有附件但無法生成 LINE 消息（可能是附件查詢或 fileUrl 問題）';
-            console.error(`[MessageService] ❌ Has attachments but no LINE messages generated!`, {
+            console.error(`[MessageService]  Has attachments but no LINE messages generated!`, {
               attachmentIds: request.attachmentIds,
               errorMessage
             });
           }
         } catch (lineError) {
           errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
-          console.error(`[MessageService] ❌ LINE API error:`, lineError);
+          console.error(`[MessageService]  LINE API error:`, lineError);
         }
       }
 
@@ -358,7 +358,7 @@ export class MessageService implements MessageServiceInterface {
         },
         priority: 'normal'
       });
-      console.log(`[MessageService] 📡 Broadcasted message update: ${deliveryStatus}`);
+      console.log(`[MessageService]  Broadcasted message update: ${deliveryStatus}`);
 
     } catch (error) {
       console.error('[MessageService] Background sending failed:', error);
@@ -414,7 +414,7 @@ export class MessageService implements MessageServiceInterface {
           const isFileOnlyContent = request.content && (
             /^Sent a file:\s*.+$/i.test(request.content) ||        // "Sent a file: xxx"
             /^Sent \d+ files$/i.test(request.content) ||           // "Sent 2 files", "Sent 3 files"
-            /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content)       // "[檔案] xxx", "[圖片] xxx"
+            /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content) // "[檔案] xxx", "[圖片] xxx"
           );
 
           if (request.content && request.content.trim() && !isFileOnlyContent) {
@@ -450,12 +450,12 @@ export class MessageService implements MessageServiceInterface {
           }
 
           if (lineMessages.length > 0) {
-            // 🔧 FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
+            // FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
             const LINE_MESSAGE_LIMIT = 5;
             const totalMessages = lineMessages.length;
             const batches = Math.ceil(totalMessages / LINE_MESSAGE_LIMIT);
 
-            console.log(`[MessageService:sendMessage] 📦 Sending ${totalMessages} messages in ${batches} batch(es)`);
+            console.log(`[MessageService:sendMessage]  Sending ${totalMessages} messages in ${batches} batch(es)`);
 
             let allBatchesSuccessful = true;
             let successfulBatches = 0;
@@ -474,7 +474,7 @@ export class MessageService implements MessageServiceInterface {
                 successfulBatches++;
               } else {
                 allBatchesSuccessful = false;
-                console.error(`[MessageService:sendMessage] ❌ Batch ${batchNumber}/${batches} failed`);
+                console.error(`[MessageService:sendMessage]  Batch ${batchNumber}/${batches} failed`);
               }
 
               // 批次間延遲
@@ -742,16 +742,16 @@ export class MessageRequestService {
     const conversationId = c.req.param('id');
     const body = await c.req.json();
 
-    console.log(`[MessageRequestService] 📥 Raw request body:`, JSON.stringify(body));
-    console.log(`[MessageRequestService] 📎 attachmentIds in body:`, body.attachmentIds);
+    console.log(`[MessageRequestService]  Raw request body:`, JSON.stringify(body));
+    console.log(`[MessageRequestService]  attachmentIds in body:`, body.attachmentIds);
 
     if (!conversationId) {
       throw new Error('Missing conversation ID');
     }
 
-    // 🔧 FIX: Content is required unless attachments are provided
+    // FIX: Content is required unless attachments are provided
     const hasAttachments = body.attachmentIds && body.attachmentIds.length > 0;
-    console.log(`[MessageRequestService] 📎 hasAttachments:`, hasAttachments);
+    console.log(`[MessageRequestService]  hasAttachments:`, hasAttachments);
 
     if (!body.content?.trim() && !hasAttachments) {
       throw new Error('Message content or attachments are required');
@@ -767,10 +767,10 @@ export class MessageRequestService {
       senderId: body.senderId,
       messageType: body.messageType || 'text',
       metadata: body.metadata || {},
-      attachmentIds: body.attachmentIds || []  // 🔧 FIX: Include attachmentIds
+      attachmentIds: body.attachmentIds || []  //  FIX: Include attachmentIds
     };
 
-    console.log(`[MessageRequestService] ✅ Parsed request:`, JSON.stringify(result));
+    console.log(`[MessageRequestService]  Parsed request:`, JSON.stringify(result));
     return result;
   }
 }

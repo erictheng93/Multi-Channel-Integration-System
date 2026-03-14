@@ -142,9 +142,9 @@ export function highlightText(
  * @example
  * highlightTextSegments('這是一條測試消息', '測試')
  * // 返回: [
- * //   { text: '這是一條', highlight: false },
- * //   { text: '測試', highlight: true },
- * //   { text: '消息', highlight: false }
+ * // { text: '這是一條', highlight: false },
+ * // { text: '測試', highlight: true },
+ * // { text: '消息', highlight: false }
  * // ]
  */
 export interface TextSegment {

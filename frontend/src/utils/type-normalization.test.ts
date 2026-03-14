@@ -91,7 +91,7 @@ describe('type-normalization utilities', () => {
       })
 
       it('should return undefined for whitespace-only string', () => {
-        expect(normalizeTeamId('   ')).toBeUndefined()
+        expect(normalizeTeamId(' ')).toBeUndefined()
       })
 
       it('should return undefined for boolean inputs', () => {
@@ -239,7 +239,7 @@ describe('type-normalization utilities', () => {
       })
 
       it('should return undefined for whitespace-only string', () => {
-        expect(normalizeStringId('   ')).toBeUndefined()
+        expect(normalizeStringId(' ')).toBeUndefined()
         expect(normalizeStringId('\t\n')).toBeUndefined()
       })
     })
@@ -320,7 +320,7 @@ describe('type-normalization utilities', () => {
         data: {
           conversationId: 'conv-123',
           fromTeamId: '42',  // String from JSON
-          toTeamId: 100,     // Number
+          toTeamId: 100, // Number
           action: 'removed'
         }
       }

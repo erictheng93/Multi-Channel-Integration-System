@@ -23,11 +23,11 @@ const REQUIRED_PRODUCTION_VARS = [
  * Optional environment variables with defaults
  */
 // const OPTIONAL_VARS = { // Reserved for future environment validation
-//   NODE_ENV: 'production',
-//   ENVIRONMENT: 'production',
-//   R2_PUBLIC_URL: '',
-//   FACEBOOK_PAGE_ACCESS_TOKEN: '',
-//   FACEBOOK_APP_SECRET: '',
+// NODE_ENV: 'production',
+// ENVIRONMENT: 'production',
+// R2_PUBLIC_URL: '',
+// FACEBOOK_PAGE_ACCESS_TOKEN: '',
+// FACEBOOK_APP_SECRET: '',
 // } as const;
 
 /**
@@ -119,18 +119,18 @@ export function initializeEnvironment(env: Record<string, any>): void {
   const validation = validateEnvironment(env);
 
   if (!validation.isValid) {
-    console.error('❌ Environment validation failed:');
+    console.error(' Environment validation failed:');
     console.error('Missing required variables:', validation.missing);
     throw new Error(`Missing required environment variables: ${validation.missing.join(', ')}`);
   }
 
   if (validation.warnings.length > 0) {
-    console.warn('⚠️ Environment warnings:');
+    console.warn(' Environment warnings:');
     validation.warnings.forEach(warning => console.warn(`  - ${warning}`));
   }
 
-  console.log('✅ Environment validation passed');
-  console.log('📊 Environment info:', getSanitizedEnvInfo(env));
+  console.log(' Environment validation passed');
+  console.log(' Environment info:', getSanitizedEnvInfo(env));
 }
 
 /**

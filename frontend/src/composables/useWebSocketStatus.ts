@@ -72,42 +72,42 @@ export function useWebSocketStatus() {
     const indicators: Record<WebSocketConnectionState, Omit<WebSocketStatusIndicator, 'state'>> = {
       disconnected: {
         color: 'text-gray-400',
-        icon: '⚫',
+        icon: '',
         label: '離線',
         description: 'WebSocket 未連接',
         showPulse: false
       },
       connecting: {
         color: 'text-yellow-500',
-        icon: '🟡',
+        icon: '',
         label: '連接中',
         description: '正在建立 WebSocket 連接',
         showPulse: true
       },
       connected: {
         color: 'text-green-500',
-        icon: '🟢',
+        icon: '',
         label: '已連接',
         description: 'WebSocket 連接正常',
         showPulse: false
       },
       reconnecting: {
         color: 'text-orange-500',
-        icon: '🟠',
+        icon: '',
         label: '重連中',
         description: '正在重新建立連接',
         showPulse: true
       },
       error: {
         color: 'text-red-500',
-        icon: '🔴',
+        icon: '',
         label: '錯誤',
         description: 'WebSocket 連接發生錯誤',
         showPulse: false
       },
       closed: {
         color: 'text-gray-500',
-        icon: '⚪',
+        icon: '',
         label: '已關閉',
         description: 'WebSocket 連接已關閉',
         showPulse: false
@@ -128,27 +128,27 @@ export function useWebSocketStatus() {
       excellent: {
         color: 'bg-green-100 text-green-800 border-green-200',
         label: '優秀',
-        icon: '⚡'
+        icon: ''
       },
       good: {
         color: 'bg-blue-100 text-blue-800 border-blue-200',
         label: '良好',
-        icon: '✓'
+        icon: ''
       },
       fair: {
         color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         label: '一般',
-        icon: '⚠'
+        icon: ''
       },
       poor: {
         color: 'bg-red-100 text-red-800 border-red-200',
         label: '較差',
-        icon: '⚠'
+        icon: ''
       },
       offline: {
         color: 'bg-gray-100 text-gray-800 border-gray-200',
         label: '離線',
-        icon: '⚫'
+        icon: ''
       }
     }
 

@@ -44,12 +44,12 @@ export class LatestMessageCache {
       // Try cache first
       const cached = await this.kv.get(cacheKey, 'json');
       if (cached) {
-        console.log(`✅ [LatestMessageCache] Cache hit for conversation ${conversationId}`);
+        console.log(`[LatestMessageCache] Cache hit for conversation ${conversationId}`);
         return cached as CachedLatestMessage;
       }
 
       // Cache miss - query database and populate cache
-      console.log(`⚠️ [LatestMessageCache] Cache miss for conversation ${conversationId}, querying DB`);
+      console.log(`[LatestMessageCache] Cache miss for conversation ${conversationId}, querying DB`);
       const latest = await this.queryLatestMessageFromDB(conversationId);
 
       if (latest) {
@@ -59,7 +59,7 @@ export class LatestMessageCache {
 
       return null;
     } catch (error) {
-      console.error(`❌ [LatestMessageCache] Error getting latest message for ${conversationId}:`, error);
+      console.error(`[LatestMessageCache] Error getting latest message for ${conversationId}:`, error);
       // Fallback to DB query
       return await this.queryLatestMessageFromDB(conversationId);
     }
@@ -83,14 +83,14 @@ export class LatestMessageCache {
           cacheMisses.push(convId);
         }
       } catch (error) {
-        console.warn(`⚠️ [LatestMessageCache] Cache read error for ${convId}:`, error);
+        console.warn(`[LatestMessageCache] Cache read error for ${convId}:`, error);
         cacheMisses.push(convId);
       }
     });
 
     await Promise.all(cachePromises);
 
-    console.log(`📊 [LatestMessageCache] Batch query - Cache hits: ${results.size}, Misses: ${cacheMisses.length}`);
+    console.log(`[LatestMessageCache] Batch query - Cache hits: ${results.size}, Misses: ${cacheMisses.length}`);
 
     // Handle cache misses with DB queries
     if (cacheMisses.length > 0) {
@@ -125,10 +125,10 @@ export class LatestMessageCache {
     if (this.USE_DO_BATCHING && this.env.LATEST_MESSAGE_COORDINATOR) {
       try {
         await this.scheduleDOUpdate(conversationId);
-        console.log(`✅ [LatestMessageCache] Scheduled DO update for conversation ${conversationId}`);
+        console.log(`[LatestMessageCache] Scheduled DO update for conversation ${conversationId}`);
         return;
       } catch (error) {
-        console.warn(`⚠️ [LatestMessageCache] DO scheduling failed for ${conversationId}, falling back to direct KV:`, error);
+        console.warn(`[LatestMessageCache] DO scheduling failed for ${conversationId}, falling back to direct KV:`, error);
         // Fall through to direct KV write
       }
     }
@@ -136,9 +136,9 @@ export class LatestMessageCache {
     // Fallback: Direct KV write (original behavior)
     try {
       await this.kv.put(cacheKey, JSON.stringify(cached), { expirationTtl: this.TTL });
-      console.log(`✅ [LatestMessageCache] Cached latest message for conversation ${conversationId} (direct KV)`);
+      console.log(`[LatestMessageCache] Cached latest message for conversation ${conversationId} (direct KV)`);
     } catch (error) {
-      console.error(`❌ [LatestMessageCache] Failed to cache message for ${conversationId}:`, error);
+      console.error(`[LatestMessageCache] Failed to cache message for ${conversationId}:`, error);
     }
   }
 
@@ -171,7 +171,7 @@ export class LatestMessageCache {
     }
 
     const result = await response.json() as any;
-    console.log(`📝 [LatestMessageCache] DO scheduled for ${conversationId}, queue size: ${result.queueSize}`);
+    console.log(`[LatestMessageCache] DO scheduled for ${conversationId}, queue size: ${result.queueSize}`);
   }
 
   /**
@@ -181,9 +181,9 @@ export class LatestMessageCache {
     const cacheKey = `latest_msg:${conversationId}`;
     try {
       await this.kv.delete(cacheKey);
-      console.log(`🗑️ [LatestMessageCache] Invalidated cache for conversation ${conversationId}`);
+      console.log(`[LatestMessageCache] Invalidated cache for conversation ${conversationId}`);
     } catch (error) {
-      console.error(`❌ [LatestMessageCache] Failed to invalidate cache for ${conversationId}:`, error);
+      console.error(`[LatestMessageCache] Failed to invalidate cache for ${conversationId}:`, error);
     }
   }
 
@@ -225,7 +225,7 @@ export class LatestMessageCache {
 
       return null;
     } catch (error) {
-      console.error(`❌ [LatestMessageCache] DB query error for ${conversationId}:`, error);
+      console.error(`[LatestMessageCache] DB query error for ${conversationId}:`, error);
       return null;
     }
   }
@@ -247,10 +247,10 @@ export class LatestMessageCache {
         }
       }
 
-      console.log(`📊 [LatestMessageCache] DB batch query returned ${results.length} messages`);
+      console.log(`[LatestMessageCache] DB batch query returned ${results.length} messages`);
       return results;
     } catch (error) {
-      console.error('❌ [LatestMessageCache] DB batch query error:', error);
+      console.error('[LatestMessageCache] DB batch query error:', error);
       return [];
     }
   }
@@ -278,10 +278,10 @@ export class LatestMessageCache {
         }
       }
 
-      console.log(`🔥 [LatestMessageCache] Warmed up cache for ${warmedUp} conversations`);
+      console.log(`[LatestMessageCache] Warmed up cache for ${warmedUp} conversations`);
       return warmedUp;
     } catch (error) {
-      console.error('❌ [LatestMessageCache] Cache warmup error:', error);
+      console.error('[LatestMessageCache] Cache warmup error:', error);
       return 0;
     }
   }

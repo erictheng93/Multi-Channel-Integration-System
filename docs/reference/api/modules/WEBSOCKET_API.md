@@ -7,56 +7,56 @@
 
 ---
 
-## ⚡ Overview
+##  Overview
 
 The WebSocket API provides real-time, bidirectional communication for the Multi-Channel Integration System. Built on Cloudflare Durable Objects, it offers high-performance, stateful connections with automatic failover and load balancing.
 
 ### Key Features
 
-- **🔌 WebSocket Connections** - Full-duplex real-time communication
-- **💪 Durable Objects** - Stateful connection management with automatic persistence
-- **🔄 Automatic Reconnection** - Client-side reconnection with exponential backoff
-- **📡 Event Broadcasting** - Real-time message, typing, and presence events
-- **🛡️ Circuit Breaker** - Automatic failure detection and fallback
-- **📊 Connection Monitoring** - Real-time metrics and health checks
-- **🔐 Secure Authentication** - JWT-based authentication with token refresh
-- **⚖️ Load Balancing** - Automatic distribution across Durable Objects
-- **🧹 Auto Cleanup** - Automatic connection cleanup on disconnect
+- ** WebSocket Connections** - Full-duplex real-time communication
+- ** Durable Objects** - Stateful connection management with automatic persistence
+- ** Automatic Reconnection** - Client-side reconnection with exponential backoff
+- ** Event Broadcasting** - Real-time message, typing, and presence events
+- ** Circuit Breaker** - Automatic failure detection and fallback
+- ** Connection Monitoring** - Real-time metrics and health checks
+- ** Secure Authentication** - JWT-based authentication with token refresh
+- ** Load Balancing** - Automatic distribution across Durable Objects
+- ** Auto Cleanup** - Automatic connection cleanup on disconnect
 
 ### Architecture
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│              Client Applications                     │
-│   (Browser, Mobile App, Desktop Client)             │
+│ Client Applications │
+│ (Browser, Mobile App, Desktop Client) │
 └────────────────────┬─────────────────────────────────┘
                      │
             WebSocket Connection
                      │
 ┌────────────────────▼─────────────────────────────────┐
-│           WebSocket Gateway (Workers)                │
-│  • Authentication & Authorization                    │
-│  • Connection Upgrade & Routing                      │
-│  • Load Balancing & Health Checks                    │
+│ WebSocket Gateway (Workers) │
+│  • Authentication & Authorization │
+│  • Connection Upgrade & Routing │
+│  • Load Balancing & Health Checks │
 └────────────────────┬─────────────────────────────────┘
                      │
         ┌────────────┴────────────┐
-        │                         │
-┌───────▼───────┐      ┌──────────▼────────┐
-│ ConversationRoom│     │  UserConnection   │
-│ Durable Object │     │  Durable Object   │
-│                │     │                    │
-│ • Message DO   │     │ • User Session    │
-│ • Broadcasting │     │ • Multi-device    │
-│ • Persistence  │     │ • Presence        │
-└───────┬────────┘     └───────┬───────────┘
-        │                      │
+        │ │
+┌───────▼───────┐ ┌──────────▼────────┐
+│ ConversationRoom│ │  UserConnection │
+│ Durable Object │ │  Durable Object │
+│ │     │ │
+│ • Message DO │     │ • User Session │
+│ • Broadcasting │ │ • Multi-device │
+│ • Persistence  │ │ • Presence │
+└───────┬────────┘ └───────┬───────────┘
+        │ │
 ┌───────▼──────────────────────▼───────────┐
-│         Backend Services                 │
-│  • D1 Database                           │
-│  • KV Store (Session & State)            │
-│  • R2 Storage (Files)                    │
-│  • Message Queue (Delayed Messages)      │
+│ Backend Services │
+│  • D1 Database │
+│  • KV Store (Session & State) │
+│  • R2 Storage (Files) │
+│  • Message Queue (Delayed Messages) │
 └──────────────────────────────────────────┘
 ```
 
@@ -64,19 +64,19 @@ The WebSocket API provides real-time, bidirectional communication for the Multi-
 
 | Feature               | WebSocket          | SSE (Legacy)       |
 |-----------------------|--------------------|--------------------|
-| Bidirectional         | ✅ Yes             | ❌ No (One-way)    |
-| Real-time Latency     | ✅ <50ms           | ⚠️ 100-500ms       |
+| Bidirectional         |  Yes             |  No (One-way)    |
+| Real-time Latency     |  <50ms           |  100-500ms       |
 | Connection Protocol   | `ws://` `wss://`   | `http://` `https://`|
-| Browser Support       | ✅ All modern      | ✅ All modern      |
-| Scalability           | ✅ Excellent       | ⚠️ Good            |
-| Durable Objects       | ✅ Yes             | ❌ No              |
-| Auto Reconnection     | ✅ Built-in        | ⚠️ Manual          |
-| Message Reliability   | ✅ High            | ⚠️ Medium          |
-| Current Status        | ✅ **Primary**     | ⚠️ **Deprecated**  |
+| Browser Support       |  All modern      |  All modern      |
+| Scalability           |  Excellent       |  Good            |
+| Durable Objects       |  Yes             |  No              |
+| Auto Reconnection     |  Built-in        |  Manual          |
+| Message Reliability   |  High            |  Medium          |
+| Current Status        |  **Primary**     |  **Deprecated**  |
 
 ---
 
-## 🔐 Authentication
+##  Authentication
 
 WebSocket connections support two authentication methods:
 
@@ -100,36 +100,36 @@ const ws = new WebSocket(
 ### Authentication Flow
 
 ```
-┌──────────┐                ┌──────────┐                ┌──────────────┐
-│  Client  │                │  Gateway │                │   Durable    │
-│          │                │  Worker  │                │   Object     │
-└─────┬────┘                └─────┬────┘                └──────┬───────┘
-      │                           │                             │
-      │ 1. WebSocket Upgrade      │                             │
-      │ + Authorization Header    │                             │
-      ├──────────────────────────>│                             │
-      │                           │                             │
-      │                           │ 2. Validate JWT             │
-      │                           │                             │
-      │                           │ 3. Check Connection Limits  │
-      │                           │                             │
-      │                           │ 4. Route to Durable Object  │
-      │                           ├────────────────────────────>│
-      │                           │                             │
-      │                           │ 5. Establish Connection     │
-      │                           │<────────────────────────────│
-      │                           │                             │
-      │ 6. Connection Established │                             │
-      │<──────────────────────────│                             │
-      │                           │                             │
-      │ 7. Send/Receive Messages  │                             │
+┌──────────┐ ┌──────────┐ ┌──────────────┐
+│  Client  │ │  Gateway │ │   Durable │
+│ │                │  Worker  │ │   Object │
+└─────┬────┘ └─────┬────┘ └──────┬───────┘
+      │ │                             │
+      │ 1. WebSocket Upgrade │                             │
+      │ + Authorization Header │                             │
+      ├──────────────────────────>│ │
+      │ │                             │
+      │ │ 2. Validate JWT │
+      │ │                             │
+      │ │ 3. Check Connection Limits  │
+      │ │                             │
+      │ │ 4. Route to Durable Object  │
+      │ ├────────────────────────────>│
+      │ │                             │
+      │ │ 5. Establish Connection │
+      │ │<────────────────────────────│
+      │ │                             │
+      │ 6. Connection Established │ │
+      │<──────────────────────────│ │
+      │ │                             │
+      │ 7. Send/Receive Messages  │ │
       │<──────────────────────────┼────────────────────────────>│
-      │                           │                             │
+      │ │                             │
 ```
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 1. [WebSocket Connection](#websocket-connection)
 2. [Health & Status](#health--status)
@@ -144,7 +144,7 @@ const ws = new WebSocket(
 
 ---
 
-## 🔌 WebSocket Connection
+##  WebSocket Connection
 
 ### GET /api/websocket/connect
 
@@ -271,7 +271,7 @@ class WebSocketClient {
   }
 
   handleOpen(event) {
-    console.log('✅ WebSocket connected');
+    console.log(' WebSocket connected');
     this.reconnectAttempts = 0;
 
     // Start heartbeat
@@ -281,7 +281,7 @@ class WebSocketClient {
   handleMessage(event) {
     try {
       const message = JSON.parse(event.data);
-      console.log('📨 Received:', message);
+      console.log(' Received:', message);
 
       switch (message.type) {
         case 'connection_established':
@@ -311,24 +311,24 @@ class WebSocketClient {
   }
 
   handleError(event) {
-    console.error('❌ WebSocket error:', event);
+    console.error(' WebSocket error:', event);
   }
 
   handleClose(event) {
-    console.log('🔌 WebSocket closed:', event.code, event.reason);
+    console.log(' WebSocket closed:', event.code, event.reason);
     this.stopHeartbeat();
 
     // Attempt reconnection
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-      console.log(`🔄 Reconnecting in ${delay}ms...`);
+      console.log(` Reconnecting in ${delay}ms...`);
 
       setTimeout(() => {
         this.reconnectAttempts++;
         this.connect();
       }, delay);
     } else {
-      console.error('❌ Max reconnection attempts reached');
+      console.error(' Max reconnection attempts reached');
       // Fallback to SSE or notify user
     }
   }
@@ -376,7 +376,7 @@ client.connect();
 
 ---
 
-## 🏥 Health & Status
+##  Health & Status
 
 ### GET /api/websocket/health
 
@@ -443,7 +443,7 @@ Get WebSocket migration and feature flag status.
 
 ---
 
-## 📨 Message Types
+##  Message Types
 
 ### Client → Server Messages
 
@@ -685,7 +685,7 @@ Get WebSocket migration and feature flag status.
 
 ---
 
-## 📡 Event Broadcasting
+##  Event Broadcasting
 
 ### Broadcast Scopes
 
@@ -693,28 +693,28 @@ WebSocket events are broadcast based on scope:
 
 ```
 ┌───────────────────────────────────────────┐
-│          Global Broadcast                 │
-│  • System announcements                   │
-│  • Maintenance notifications              │
-│  • All connected users                    │
+│ Global Broadcast │
+│  • System announcements │
+│  • Maintenance notifications │
+│  • All connected users │
 └───────────────┬───────────────────────────┘
                 │
 ┌───────────────▼───────────────────────────┐
-│         Team Broadcast                    │
-│  • Team-specific notifications            │
-│  • Members of specific team               │
+│ Team Broadcast │
+│  • Team-specific notifications │
+│  • Members of specific team │
 └───────────────┬───────────────────────────┘
                 │
 ┌───────────────▼───────────────────────────┐
-│       Conversation Broadcast              │
-│  • Messages, typing, viewers              │
-│  • Subscribers to conversation            │
+│ Conversation Broadcast │
+│  • Messages, typing, viewers │
+│  • Subscribers to conversation │
 └───────────────┬───────────────────────────┘
                 │
 ┌───────────────▼───────────────────────────┐
-│         User Broadcast                    │
-│  • Personal notifications                 │
-│  • User's own connections                 │
+│ User Broadcast │
+│  • Personal notifications │
+│  • User's own connections │
 └───────────────────────────────────────────┘
 ```
 
@@ -722,35 +722,35 @@ WebSocket events are broadcast based on scope:
 
 ```
 ┌──────────────────────────────────────────────────┐
-│          Event Source (e.g., New Message)        │
+│ Event Source (e.g., New Message) │
 └─────────────────────┬────────────────────────────┘
                       │
           ┌───────────▼───────────┐
           │  Message Broadcaster  │
-          │   Durable Object      │
+          │ Durable Object │
           └───────────┬───────────┘
                       │
           ┌───────────▼────────────┐
-          │   Routing & Filtering  │
+          │ Routing & Filtering  │
           └───────────┬────────────┘
                       │
         ┌─────────────┴─────────────┐
-        │                           │
-┌───────▼────────┐         ┌────────▼────────┐
-│ ConversationRoom│        │  UserConnection │
-│ Durable Object │        │  Durable Object │
-└───────┬────────┘        └────────┬─────────┘
-        │                          │
-        │                          │
+        │ │
+┌───────▼────────┐ ┌────────▼────────┐
+│ ConversationRoom│ │  UserConnection │
+│ Durable Object │ │  Durable Object │
+└───────┬────────┘ └────────┬─────────┘
+        │ │
+        │ │
 ┌───────▼──────────────────────────▼──────┐
-│        Connected WebSocket Clients       │
-│   Agent A  │  Agent B  │  Supervisor C  │
+│ Connected WebSocket Clients │
+│ Agent A  │  Agent B  │  Supervisor C  │
 └──────────────────────────────────────────┘
 ```
 
 ---
 
-## ⚠️ Error Handling
+##  Error Handling
 
 ### Error Codes
 
@@ -830,23 +830,23 @@ ws.onmessage = (event) => {
 
 ---
 
-## 🔄 Connection Lifecycle
+##  Connection Lifecycle
 
 ### Connection States
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                 Connection States                    │
+│ Connection States │
 ├──────────────────────────────────────────────────────┤
-│                                                      │
+│ │
 │  CONNECTING ──────> OPEN ──────> CLOSING ──> CLOSED │
-│       │              │             │           │     │
-│       │              │             │           │     │
-│       │              └──> ERROR ───┘           │     │
-│       │                    │                   │     │
-│       └────────────────────┴───────────────────┘     │
-│                       RECONNECTING                   │
-│                                                      │
+│ │              │ │           │ │
+│ │              │ │           │ │
+│ │              └──> ERROR ───┘ │     │
+│ │                    │ │     │
+│ └────────────────────┴───────────────────┘ │
+│ RECONNECTING │
+│ │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -863,7 +863,7 @@ ws.onmessage = (event) => {
 
 ```
 ┌─────────────┐
-│   Client    │
+│ Client │
 └──────┬──────┘
        │
        │ 1. Initiate Connection
@@ -877,7 +877,7 @@ ws.onmessage = (event) => {
        │ 4. Route to DO
        ▼
 ┌──────────────────────┐
-│   Durable Object     │
+│ Durable Object │
 │  (ConversationRoom)  │
 └──────┬───────────────┘
        │
@@ -886,25 +886,25 @@ ws.onmessage = (event) => {
        │ 7. Start Heartbeat
        ▼
 ┌─────────────────────┐
-│   Active Session    │
-│  • Send Messages    │
-│  • Receive Events   │
+│ Active Session │
+│  • Send Messages │
+│  • Receive Events │
 │  • Heartbeat Pings  │
 └──────┬──────────────┘
        │
        │ 8. Close/Disconnect
        ▼
 ┌─────────────────────┐
-│   Cleanup Process   │
+│ Cleanup Process │
 │  • Remove from Room │
 │  • Broadcast Leave  │
-│  • Free Resources   │
+│  • Free Resources │
 └─────────────────────┘
 ```
 
 ---
 
-## 📊 Dashboard & Monitoring
+##  Dashboard & Monitoring
 
 ### GET /api/websocket/dashboard/metrics
 
@@ -991,7 +991,7 @@ Get list of active connections.
 
 ---
 
-## 💻 Client Implementation
+##  Client Implementation
 
 ### Vue 3 Composable Example
 
@@ -1032,7 +1032,7 @@ export function useWebSocket(url, token) {
   }
 
   function handleOpen(event) {
-    console.log('✅ WebSocket connected');
+    console.log(' WebSocket connected');
     connected.value = true;
     reconnectAttempts.value = 0;
     startHeartbeat();
@@ -1053,18 +1053,18 @@ export function useWebSocket(url, token) {
   }
 
   function handleError(event) {
-    console.error('❌ WebSocket error:', event);
+    console.error(' WebSocket error:', event);
   }
 
   function handleClose(event) {
-    console.log('🔌 WebSocket closed:', event.code, event.reason);
+    console.log(' WebSocket closed:', event.code, event.reason);
     connected.value = false;
     stopHeartbeat();
 
     // Attempt reconnection
     if (reconnectAttempts.value < maxReconnectAttempts) {
       const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.value), 30000);
-      console.log(`🔄 Reconnecting in ${delay}ms...`);
+      console.log(` Reconnecting in ${delay}ms...`);
 
       setTimeout(() => {
         reconnectAttempts.value++;
@@ -1147,7 +1147,7 @@ export function useWebSocket(url, token) {
     const ws = new WebSocket(url, ['Authorization', `Bearer ${token}`]);
 
     ws.onopen = () => {
-      console.log('✅ Connected');
+      console.log(' Connected');
       setConnected(true);
       setConnectionState('connected');
       reconnectAttemptsRef.current = 0;
@@ -1170,11 +1170,11 @@ export function useWebSocket(url, token) {
     };
 
     ws.onerror = (event) => {
-      console.error('❌ Error:', event);
+      console.error(' Error:', event);
     };
 
     ws.onclose = (event) => {
-      console.log('🔌 Closed:', event.code);
+      console.log(' Closed:', event.code);
       setConnected(false);
       setConnectionState('disconnected');
 
@@ -1229,17 +1229,17 @@ export function useWebSocket(url, token) {
 
 ---
 
-## ✅ Best Practices
+##  Best Practices
 
 ### 1. Connection Management
 
-✅ **Do:**
+ **Do:**
 - Always implement reconnection logic with exponential backoff
 - Close connections when component unmounts
 - Limit concurrent connections per user
 - Use heartbeat to detect dead connections
 
-❌ **Don't:**
+ **Don't:**
 - Open multiple connections to the same conversation
 - Forget to close connections on navigation
 - Reconnect immediately after failure
@@ -1247,13 +1247,13 @@ export function useWebSocket(url, token) {
 
 ### 2. Message Handling
 
-✅ **Do:**
+ **Do:**
 - Validate message format before sending
 - Handle all message types gracefully
 - Implement message queueing for offline scenarios
 - Use message IDs for deduplication
 
-❌ **Don't:**
+ **Don't:**
 - Send very large messages (>10MB)
 - Ignore message delivery confirmations
 - Process messages synchronously
@@ -1261,13 +1261,13 @@ export function useWebSocket(url, token) {
 
 ### 3. Performance Optimization
 
-✅ **Do:**
+ **Do:**
 - Batch multiple updates when possible
 - Use message throttling for high-frequency events
 - Implement client-side caching
 - Monitor connection latency
 
-❌ **Don't:**
+ **Don't:**
 - Send typing indicators on every keystroke
 - Subscribe to unnecessary conversations
 - Create memory leaks with event listeners
@@ -1275,13 +1275,13 @@ export function useWebSocket(url, token) {
 
 ### 4. Security
 
-✅ **Do:**
+ **Do:**
 - Always use WSS (secure WebSocket) in production
 - Validate JWT tokens on every connection
 - Implement rate limiting
 - Log security events
 
-❌ **Don't:**
+ **Don't:**
 - Send sensitive data without encryption
 - Store tokens in localStorage (use sessionStorage)
 - Trust client-side data without validation
@@ -1289,7 +1289,7 @@ export function useWebSocket(url, token) {
 
 ---
 
-## 🔗 Related Resources
+##  Related Resources
 
 - [Main API Reference](../API_REFERENCE.md)
 - [Collaboration API](./COLLABORATION_API.md)

@@ -15,15 +15,15 @@ Integration tests in this project follow these principles:
 
 ```
 tests/integration/
-├── README.md                 # This file
+├── README.md # This file
 ├── helpers/
-│   └── integration-test-setup.ts  # Test utilities and mock factories
+│ └── integration-test-setup.ts  # Test utilities and mock factories
 └── handlers/
-    ├── auth.integration.test.ts        # Authentication endpoints
+    ├── auth.integration.test.ts # Authentication endpoints
     ├── conversation.integration.test.ts # Conversation management
-    ├── message.integration.test.ts     # Messaging endpoints
-    ├── webhook.integration.test.ts     # LINE/FB webhook handling
-    └── team.integration.test.ts        # Team management
+    ├── message.integration.test.ts # Messaging endpoints
+    ├── webhook.integration.test.ts # LINE/FB webhook handling
+    └── team.integration.test.ts # Team management
 ```
 
 ## Test Pattern
@@ -73,14 +73,14 @@ describe('Handler Integration Tests', () => {
 
 ### What to Mock
 
-✅ **DO Mock:**
+ **DO Mock:**
 - Database (D1) - `createMockDatabase()`
 - KV Storage - `createMockKV()`
 - R2 Bucket - `createMockR2Bucket()`
 - External APIs (LINE, Facebook)
 - JWT validation (bypass in tests)
 
-❌ **DON'T Mock:**
+ **DON'T Mock:**
 - Hono routing and middleware
 - Request/Response handling
 - Internal business logic

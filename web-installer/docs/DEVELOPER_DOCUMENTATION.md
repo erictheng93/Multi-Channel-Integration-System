@@ -59,56 +59,56 @@ The Web Installer is a self-service deployment system that enables customers to 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Web Installer                          │
+│ Web Installer │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌────────────────┐              ┌──────────────────┐      │
-│  │   Frontend     │◄─────────────┤   Backend        │      │
-│  │   (Vue 3)      │   REST API   │   (Worker)       │      │
-│  └────────────────┘              └──────────────────┘      │
-│         │                                 │                 │
-│         │                                 │                 │
-│         ▼                                 ▼                 │
-│  ┌────────────────┐              ┌──────────────────┐      │
-│  │  Pinia Store   │◄─────SSE─────┤  Durable Object  │      │
-│  │  (State Mgmt)  │   Stream     │  (Orchestrator)  │      │
-│  └────────────────┘              └──────────────────┘      │
-│                                           │                 │
-│                                           │                 │
-│                                           ▼                 │
-│                                   ┌──────────────────┐      │
-│                                   │  CloudflareAPI   │      │
-│                                   │    Service       │      │
-│                                   └──────────────────┘      │
-│                                           │                 │
+│ │
+│  ┌────────────────┐ ┌──────────────────┐ │
+│  │ Frontend │◄─────────────┤ Backend │      │
+│  │ (Vue 3) │   REST API │   (Worker) │      │
+│  └────────────────┘ └──────────────────┘ │
+│ │                                 │ │
+│ │                                 │ │
+│ ▼                                 ▼ │
+│  ┌────────────────┐ ┌──────────────────┐ │
+│  │  Pinia Store │◄─────SSE─────┤  Durable Object  │ │
+│  │  (State Mgmt)  │ Stream │  (Orchestrator)  │ │
+│  └────────────────┘ └──────────────────┘ │
+│ │                 │
+│ │                 │
+│ ▼                 │
+│ ┌──────────────────┐ │
+│ │  CloudflareAPI │      │
+│ │    Service │      │
+│ └──────────────────┘ │
+│ │                 │
 └───────────────────────────────────────────┼─────────────────┘
                                             │
                                             ▼
                                    ┌──────────────────┐
-                                   │   Cloudflare     │
-                                   │   Platform API   │
+                                   │ Cloudflare │
+                                   │ Platform API │
                                    └──────────────────┘
 ```
 
 ### 2.2 Deployment Flow
 
 ```
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Landing    │─────▶│    OAuth     │─────▶│    Config    │
-│     Page     │      │  Callback    │      │     Form     │
-└──────────────┘      └──────────────┘      └──────────────┘
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│ Landing │─────│ OAuth │─────│ Config │
+│ Page │      │  Callback │      │ Form │
+└──────────────┘ └──────────────┘ └──────────────┘
                                                      │
                                                      ▼
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Success    │◄─────│  Progress    │◄─────│  Deployment  │
-│     Page     │      │   Monitor    │      │   Initiated  │
-└──────────────┘      └──────────────┘      └──────────────┘
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│ Success │◄─────│  Progress │◄─────│  Deployment  │
+│ Page │      │ Monitor │      │ Initiated  │
+└──────────────┘ └──────────────┘ └──────────────┘
        │
        │ (on error)
        ▼
 ┌──────────────┐
-│    Error     │
-│     Page     │
+│ Error │
+│ Page │
 └──────────────┘
 ```
 
@@ -119,7 +119,7 @@ User Input ──┐
              │
              ▼
      ┌───────────────┐
-     │  Validation   │
+     │  Validation │
      └───────────────┘
              │
              ▼
@@ -129,29 +129,29 @@ User Input ──┐
              │
              ▼
      ┌───────────────┐
-     │  Durable      │
-     │  Object       │
+     │  Durable │
+     │  Object │
      │  Orchestrator │
      └───────────────┘
              │
              ├────┐
-             │    │
-             ▼    ▼
+             │ │
+             ▼ ▼
      ┌──────────┐ ┌──────────┐
-     │ Provision│ │   SSE    │
+     │ Provision│ │ SSE │
      │ Resources│ │ Broadcast│
      └──────────┘ └──────────┘
-             │         │
-             │         ▼
-             │    ┌──────────┐
-             │    │ Frontend │
-             │    │  Store   │
-             │    └──────────┘
+             │ │
+             │ ▼
+             │ ┌──────────┐
+             │ │ Frontend │
+             │ │  Store │
+             │ └──────────┘
              │
              ▼
      ┌───────────────┐
-     │  Success /    │
-     │  Rollback     │
+     │  Success / │
+     │  Rollback │
      └───────────────┘
 ```
 
@@ -164,34 +164,34 @@ User Input ──┐
 ```
 web-installer/backend/
 ├── src/
-│   ├── index.ts                    # Worker entry point
-│   ├── durable-objects/
-│   │   └── DeploymentOrchestrator.ts  # Deployment state machine
-│   ├── services/
-│   │   ├── CloudflareAPI.ts        # Cloudflare API wrapper
-│   │   ├── MigrationRunner.ts      # Database migrations
-│   │   ├── ConfigGenerator.ts      # wrangler.toml generator
-│   │   ├── EmailService.ts         # Email notifications
-│   │   └── RollbackService.ts      # Resource cleanup
-│   ├── routes/
-│   │   ├── oauth.ts                # OAuth flow routes
-│   │   └── deployment.ts           # Deployment API routes
-│   ├── utils/
-│   │   ├── validation.ts           # Input validation
-│   │   ├── errors.ts               # Custom error classes
-│   │   └── logger.ts               # Logging utilities
-│   └── types/
-│       ├── cloudflare.ts           # Cloudflare API types
-│       ├── deployment.ts           # Deployment types
-│       └── index.ts                # Exported types
+│ ├── index.ts # Worker entry point
+│ ├── durable-objects/
+│ │   └── DeploymentOrchestrator.ts  # Deployment state machine
+│ ├── services/
+│ │   ├── CloudflareAPI.ts # Cloudflare API wrapper
+│ │   ├── MigrationRunner.ts # Database migrations
+│ │   ├── ConfigGenerator.ts # wrangler.toml generator
+│ │   ├── EmailService.ts # Email notifications
+│ │   └── RollbackService.ts # Resource cleanup
+│ ├── routes/
+│ │   ├── oauth.ts # OAuth flow routes
+│ │   └── deployment.ts # Deployment API routes
+│ ├── utils/
+│ │   ├── validation.ts # Input validation
+│ │   ├── errors.ts # Custom error classes
+│ │   └── logger.ts # Logging utilities
+│ └── types/
+│ ├── cloudflare.ts # Cloudflare API types
+│ ├── deployment.ts # Deployment types
+│ └── index.ts # Exported types
 ├── tests/
-│   ├── unit/
-│   │   ├── utils/
-│   │   ├── services/
-│   │   └── durable-objects/
-│   ├── integration/
-│   └── e2e/
-├── wrangler.toml                   # Worker configuration
+│ ├── unit/
+│ │   ├── utils/
+│ │   ├── services/
+│ │   └── durable-objects/
+│ ├── integration/
+│ └── e2e/
+├── wrangler.toml # Worker configuration
 ├── package.json
 ├── tsconfig.json
 └── vitest.config.ts
@@ -202,37 +202,37 @@ web-installer/backend/
 ```
 web-installer/frontend/
 ├── src/
-│   ├── main.ts                     # Application entry
-│   ├── App.vue                     # Root component
-│   ├── router/
-│   │   └── index.ts                # Route configuration
-│   ├── views/
-│   │   ├── LandingPage.vue         # Step 1: Landing
-│   │   ├── OAuthCallback.vue       # Step 2: OAuth
-│   │   ├── ConfigForm.vue          # Step 3: Config
-│   │   ├── DeployProgress.vue      # Step 4: Progress
-│   │   ├── SuccessPage.vue         # Step 5: Success
-│   │   └── ErrorPage.vue           # Error handler
-│   ├── components/
-│   │   ├── ProgressBar.vue         # Progress indicator
-│   │   ├── LogConsole.vue          # Real-time logs
-│   │   ├── CredentialsBox.vue      # Credentials display
-│   │   └── FeatureCard.vue         # Feature display
-│   ├── stores/
-│   │   └── deploymentStore.ts      # Deployment state
-│   ├── api/
-│   │   └── installer.ts            # API client
-│   ├── assets/
-│   │   └── styles/
-│   │       └── global.css          # Global styles
-│   └── types/
-│       └── index.ts                # TypeScript types
+│ ├── main.ts # Application entry
+│ ├── App.vue # Root component
+│ ├── router/
+│ │   └── index.ts # Route configuration
+│ ├── views/
+│ │   ├── LandingPage.vue # Step 1: Landing
+│ │   ├── OAuthCallback.vue # Step 2: OAuth
+│ │   ├── ConfigForm.vue # Step 3: Config
+│ │   ├── DeployProgress.vue # Step 4: Progress
+│ │   ├── SuccessPage.vue # Step 5: Success
+│ │   └── ErrorPage.vue # Error handler
+│ ├── components/
+│ │   ├── ProgressBar.vue # Progress indicator
+│ │   ├── LogConsole.vue # Real-time logs
+│ │   ├── CredentialsBox.vue # Credentials display
+│ │   └── FeatureCard.vue # Feature display
+│ ├── stores/
+│ │   └── deploymentStore.ts # Deployment state
+│ ├── api/
+│ │   └── installer.ts # API client
+│ ├── assets/
+│ │   └── styles/
+│ │       └── global.css # Global styles
+│ └── types/
+│ └── index.ts # TypeScript types
 ├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── e2e/
+│ ├── unit/
+│ ├── integration/
+│ └── e2e/
 ├── public/
-│   └── favicon.ico
+│ └── favicon.ico
 ├── index.html
 ├── vite.config.ts
 ├── tsconfig.json
@@ -338,21 +338,21 @@ class DeploymentOrchestrator extends DurableObject {
 - Handles concurrent requests safely
 
 **Deployment Steps:**
-1. ✅ Initialize deployment (0%)
-2. ✅ Create D1 Database (5%)
-3. ✅ Create KV Namespaces x2 (10%)
-4. ✅ Create R2 Bucket (15%)
-5. ✅ Create Queue (20%)
-6. ✅ Run database migrations (40%)
-7. ✅ Generate wrangler.toml (50%)
-8. ✅ Deploy Worker (60%)
-9. ✅ Build frontend (70%)
-10. ✅ Deploy Pages (80%)
-11. ✅ Configure custom domain (85%)
-12. ✅ Create admin user (90%)
-13. ✅ Send welcome email (95%)
-14. ✅ Run health checks (98%)
-15. ✅ Complete (100%)
+1.  Initialize deployment (0%)
+2.  Create D1 Database (5%)
+3.  Create KV Namespaces x2 (10%)
+4.  Create R2 Bucket (15%)
+5.  Create Queue (20%)
+6.  Run database migrations (40%)
+7.  Generate wrangler.toml (50%)
+8.  Deploy Worker (60%)
+9.  Build frontend (70%)
+10.  Deploy Pages (80%)
+11.  Configure custom domain (85%)
+12.  Create admin user (90%)
+13.  Send welcome email (95%)
+14.  Run health checks (98%)
+15.  Complete (100%)
 
 #### 5.1.2 CloudflareAPI Service
 

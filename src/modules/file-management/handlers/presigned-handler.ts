@@ -68,11 +68,11 @@ export class PresignedHandler {
    *
    * Request Body:
    * {
-   *   filename: string,
-   *   mimeType: string,
-   *   size: number,
-   *   conversationId?: string,
-   *   messageId?: string
+   * filename: string,
+   * mimeType: string,
+   * size: number,
+   * conversationId?: string,
+   * messageId?: string
    * }
    */
   static async generatePresignedUrl(c: Context<{ Bindings: Bindings }>) {
@@ -180,8 +180,8 @@ export class PresignedHandler {
    *
    * Request Body:
    * {
-   *   size: number,
-   *   checksum?: string
+   * size: number,
+   * checksum?: string
    * }
    */
   static async confirmUpload(c: Context<{ Bindings: Bindings }>) {

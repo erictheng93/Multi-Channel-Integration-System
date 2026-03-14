@@ -170,7 +170,7 @@
     // 每次打開 modal 都重新載入成員資料，確保 memberCount 與真實數據同步
     await loadTeamMembers()
 
-    // 🆕 修正：每次打開 modal 都重新載入 QR Code，確保與其他元件同步
+    // 修正：每次打開 modal 都重新載入 QR Code，確保與其他元件同步
     // 移除 if (!currentQRCode.value) 檢查，總是載入最新資料
     await loadTeamQRCode()
   })
@@ -254,17 +254,17 @@
   }
 
   // LIFF QR Code 相關方法
-  // 🆕 使用 Pinia Store 統一管理 LIFF QR 碼狀態，與 TeamManagement 共享
+  // 使用 Pinia Store 統一管理 LIFF QR 碼狀態，與 TeamManagement 共享
   const loadTeamQRCode = async () => {
     loadingQRCode.value = true
     try {
-      console.log(`🔍 [TeamCard] 從 Store 載入 LIFF QR Code: team ${props.team.id}`)
+      console.log(`[TeamCard] 從 Store 載入 LIFF QR Code: team ${props.team.id}`)
       // 使用 Store 的 loadQRCode 方法，統一快取管理
       const qrCode = await qrCodeStore.loadQRCode(props.team.id)
       currentQRCode.value = qrCode
 
       if (qrCode) {
-        console.log(`✅ [TeamCard] LIFF QR Code 載入成功`)
+        console.log(`[TeamCard] LIFF QR Code 載入成功`)
         // 同時載入統計資料
         const stats = await qrCodeStore.getQRStats(props.team.id)
         if (stats) {
@@ -274,7 +274,7 @@
           }
         }
       } else {
-        console.log(`📭 [TeamCard] 團隊尚未有 LIFF QR Code: team ${props.team.id}`)
+        console.log(`[TeamCard] 團隊尚未有 LIFF QR Code: team ${props.team.id}`)
       }
     } catch (error) {
       console.error('載入 LIFF QR Code 失敗:', error)
@@ -313,10 +313,10 @@
     }
 
     // 輸出到控制台供調試（實際活動由後端 API 自動記錄到資料庫）
-    console.log('📝 [Activity Log] QR Code Operation:', logEntry)
+    console.log('[Activity Log] QR Code Operation:', logEntry)
   }
 
-  // 🆕 使用 Pinia Store 統一管理 QR 碼狀態
+  // 使用 Pinia Store 統一管理 QR 碼狀態
   const handleGenerateQR = async () => {
     const isRegeneration = !!currentQRCode.value
 
@@ -354,7 +354,7 @@
       // 使用 Store 的 generateQRCode 方法
       // 該方法會先檢查現有 QR（如不是重新生成），無現有才生成新的
       console.log(
-        `🔍 [TeamCard] 透過 Store ${isRegeneration ? '重新' : ''}生成 QR: team ${props.team.id}`
+        `[TeamCard] 透過 Store ${isRegeneration ? '重新' : ''}生成 QR: team ${props.team.id}`
       )
       const qrCode = await qrCodeStore.generateQRCode(
         props.team.id,

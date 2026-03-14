@@ -78,9 +78,9 @@ function dropTableIfExists(table: string, target: SyncTarget): void {
   
   try {
     execSync(command, { encoding: 'utf-8' });
-    console.log(`  ✓ Dropped existing table ${table} in ${target.name}`);
+    console.log(` Dropped existing table ${table} in ${target.name}`);
   } catch (error) {
-    console.log(`  ⚠ Could not drop table ${table} in ${target.name} (might not exist)`);
+    console.log(` Could not drop table ${table} in ${target.name} (might not exist)`);
   }
 }
 
@@ -92,17 +92,17 @@ function createTable(table: string, schema: string, target: SyncTarget): boolean
   
   try {
     execSync(command, { encoding: 'utf-8' });
-    console.log(`  ✓ Created table ${table} in ${target.name}`);
+    console.log(` Created table ${table} in ${target.name}`);
     return true;
   } catch (error: any) {
-    console.error(`  ✗ Failed to create table ${table} in ${target.name}: ${error.message}`);
+    console.error(` Failed to create table ${table} in ${target.name}: ${error.message}`);
     return false;
   }
 }
 
 function insertData(table: string, data: any[], target: SyncTarget): void {
   if (data.length === 0) {
-    console.log(`  ⚠ No data to sync for ${table}`);
+    console.log(` No data to sync for ${table}`);
     return;
   }
 
@@ -164,28 +164,28 @@ function insertData(table: string, data: any[], target: SyncTarget): void {
     }
   }
 
-  console.log(`\n  ✓ Inserted ${insertedCount} records, ${failedCount} failed`);
+  console.log(`\n Inserted ${insertedCount} records, ${failedCount} failed`);
 }
 
 async function syncToTarget(target: SyncTarget) {
   console.log(`\n${'='.repeat(50)}`);
-  console.log(`📡 Syncing to ${target.name} Environment`);
+  console.log(` Syncing to ${target.name} Environment`);
   console.log(`${'='.repeat(50)}\n`);
 
   for (const table of TABLES_TO_SYNC) {
-    console.log(`\n📊 Processing table: ${table}`);
+    console.log(`\n Processing table: ${table}`);
     console.log(`${'-'.repeat(30)}`);
 
     // Step 1: Get local table schema
     const schema = getTableSchema(table);
     if (!schema) {
-      console.log(`  ⚠ Table ${table} doesn't exist locally, skipping`);
+      console.log(` Table ${table} doesn't exist locally, skipping`);
       continue;
     }
 
     // Step 2: Get local table data
     const data = getTableData(table);
-    console.log(`  📋 Found ${data.length} records in local database`);
+    console.log(` Found ${data.length} records in local database`);
 
     // Step 3: Drop existing table in remote
     dropTableIfExists(table, target);
@@ -193,7 +193,7 @@ async function syncToTarget(target: SyncTarget) {
     // Step 4: Create table in remote
     const created = createTable(table, schema, target);
     if (!created) {
-      console.log(`  ⚠ Skipping data sync for ${table} due to schema creation failure`);
+      console.log(` Skipping data sync for ${table} due to schema creation failure`);
       continue;
     }
 
@@ -201,7 +201,7 @@ async function syncToTarget(target: SyncTarget) {
     insertData(table, data, target);
   }
 
-  console.log(`\n✅ Sync to ${target.name} completed!`);
+  console.log(`\n Sync to ${target.name} completed!`);
 }
 
 async function main() {
@@ -209,7 +209,7 @@ async function main() {
   console.log('Local to Remote Database Sync Script');
   console.log('==========================================\n');
 
-  console.log('📋 Tables to sync:');
+  console.log(' Tables to sync:');
   TABLES_TO_SYNC.forEach(table => console.log(`  - ${table}`));
 
   for (const target of SYNC_TARGETS) {
@@ -217,7 +217,7 @@ async function main() {
   }
 
   console.log('\n==========================================');
-  console.log('✨ All synchronization completed!');
+  console.log(' All synchronization completed!');
   console.log('==========================================');
 }
 

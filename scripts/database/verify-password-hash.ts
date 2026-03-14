@@ -4,7 +4,7 @@ async function verifyPasswordHash() {
   const password = '16011587DaC';
   const storedHash = '$2a$12$UIsYL7dO1fVE.ydLNXe.GuxSW7loLKNtzJgY8cZM5mPHKYywE7m0y';
   
-  console.log('🔐 Verifying Password Hash');
+  console.log(' Verifying Password Hash');
   console.log('=' .repeat(50));
   console.log('Password:', password);
   console.log('Stored Hash:', storedHash);
@@ -12,19 +12,19 @@ async function verifyPasswordHash() {
   
   // Test 1: Verify the stored hash
   const isValid = await bcrypt.compare(password, storedHash);
-  console.log('✅ Hash Verification:', isValid ? 'VALID' : 'INVALID');
+  console.log(' Hash Verification:', isValid ? 'VALID' : 'INVALID');
   
   // Test 2: Generate a new hash for comparison
   const newHash = await bcrypt.hash(password, 12);
-  console.log('🔑 New Hash Generated:', newHash);
+  console.log(' New Hash Generated:', newHash);
   
   // Test 3: Verify the new hash
   const newHashValid = await bcrypt.compare(password, newHash);
-  console.log('✅ New Hash Verification:', newHashValid ? 'VALID' : 'INVALID');
+  console.log(' New Hash Verification:', newHashValid ? 'VALID' : 'INVALID');
   
   // Test 4: Test API Login
   console.log('\n' + '=' .repeat(50));
-  console.log('🌐 Testing API Login');
+  console.log(' Testing API Login');
   console.log('=' .repeat(50));
   
   try {
@@ -39,16 +39,16 @@ async function verifyPasswordHash() {
       })
     });
     
-    console.log('📥 Response Status:', response.status);
+    console.log(' Response Status:', response.status);
     const responseText = await response.text();
     
     if (response.ok) {
       const data = JSON.parse(responseText);
-      console.log('✅ Login Successful!');
+      console.log(' Login Successful!');
       console.log('Token:', data.data?.token ? 'Received' : 'Not received');
       console.log('Agent:', data.data?.agent?.email);
     } else {
-      console.log('❌ Login Failed!');
+      console.log(' Login Failed!');
       console.log('Response:', responseText);
       
       // Try to parse error
@@ -63,7 +63,7 @@ async function verifyPasswordHash() {
       }
     }
   } catch (error) {
-    console.error('💥 Network Error:', error);
+    console.error(' Network Error:', error);
     console.log('Make sure backend is running with: npm run dev:local');
   }
   
@@ -73,10 +73,10 @@ async function verifyPasswordHash() {
 verifyPasswordHash().then(valid => {
   console.log('\n' + '=' .repeat(50));
   if (valid) {
-    console.log('✅ Password hash is correct!');
+    console.log(' Password hash is correct!');
     console.log('The issue might be with the backend authentication logic.');
   } else {
-    console.log('❌ Password hash is incorrect!');
+    console.log(' Password hash is incorrect!');
     console.log('Need to update the password hash in the database.');
   }
 });

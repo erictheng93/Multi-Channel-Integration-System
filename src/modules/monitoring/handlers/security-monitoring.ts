@@ -20,13 +20,13 @@ const app = new Hono<{ Bindings: Bindings }>();
  *
  * Response:
  * {
- *   success: true,
- *   data: {
- *     totalEvents: number,
- *     byType: { [type: string]: number },
- *     bySeverity: { [severity: string]: number },
- *     recentEvents: Array<SecurityEvent>
- *   }
+ * success: true,
+ * data: {
+ * totalEvents: number,
+ * byType: { [type: string]: number },
+ * bySeverity: { [severity: string]: number },
+ * recentEvents: Array<SecurityEvent>
+ * }
  * }
  */
 app.get('/events/stats', jwtAuth, async (c) => {
@@ -85,13 +85,13 @@ app.get('/events/stats', jwtAuth, async (c) => {
  *
  * Response:
  * {
- *   success: true,
- *   data: {
- *     events: Array<SecurityEvent>,
- *     total: number,
- *     limit: number,
- *     offset: number
- *   }
+ * success: true,
+ * data: {
+ * events: Array<SecurityEvent>,
+ * total: number,
+ * limit: number,
+ * offset: number
+ * }
  * }
  */
 app.get('/events', jwtAuth, async (c) => {
@@ -179,11 +179,11 @@ app.get('/events', jwtAuth, async (c) => {
  *
  * Response:
  * {
- *   success: true,
- *   data: {
- *     status: 'healthy',
- *     message: 'Security monitoring is operational'
- *   }
+ * success: true,
+ * data: {
+ * status: 'healthy',
+ * message: 'Security monitoring is operational'
+ * }
  * }
  */
 app.get('/health', async (c) => {

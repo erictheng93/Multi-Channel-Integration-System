@@ -87,7 +87,7 @@ export class AlertService {
     this.channels = channels;
     this.env = env;
 
-    console.log(`📢 [AlertService] Initialized with ${channels.length} channels (${channels.filter(c => c.enabled).length} enabled)`);
+    console.log(`[AlertService] Initialized with ${channels.length} channels (${channels.filter(c => c.enabled).length} enabled)`);
   }
 
   /**
@@ -125,7 +125,7 @@ export class AlertService {
       return true;
     });
 
-    console.log(`📢 [AlertService] Sending "${severity}" alert to ${enabledChannels.length} channels: ${title}`);
+    console.log(`[AlertService] Sending "${severity}" alert to ${enabledChannels.length} channels: ${title}`);
 
     // Send alerts to all enabled channels in parallel
     const promises = enabledChannels.map(async channel => {
@@ -142,12 +142,12 @@ export class AlertService {
             break;
         }
         results.success++;
-        console.log(`✅ [AlertService] Successfully sent ${channel.type} alert`);
+        console.log(`[AlertService] Successfully sent ${channel.type} alert`);
       } catch (error) {
         results.failed++;
         const errorMsg = `Failed to send ${channel.type} alert: ${error instanceof Error ? error.message : 'Unknown error'}`;
         results.errors.push(errorMsg);
-        console.error(`❌ [AlertService] ${errorMsg}`);
+        console.error(`[AlertService] ${errorMsg}`);
       }
     });
 
@@ -173,10 +173,10 @@ export class AlertService {
     }
 
     const severityEmoji = {
-      low: 'ℹ️',
-      medium: '⚠️',
-      high: '🚨',
-      critical: '🔥'
+      low: '',
+      medium: '',
+      high: '',
+      critical: ''
     };
 
     const emailBody = `
@@ -292,7 +292,7 @@ This is an automated security alert from Multi-Channel Customer Support System.
       elements: [
         {
           type: 'mrkdwn',
-          text: `🔒 Security Alert • Multi-Channel Support System`
+          text: ` Security Alert • Multi-Channel Support System`
         }
       ]
     });

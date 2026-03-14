@@ -48,8 +48,8 @@ class DatabaseSyncTool {
    * 主同步函數
    */
   async sync(): Promise<void> {
-    console.log('🚀 開始數據庫同步過程...');
-    console.log('📊 同步配置:', this.config);
+    console.log(' 開始數據庫同步過程...');
+    console.log(' 同步配置:', this.config);
 
     try {
       // 1. 預檢查
@@ -73,10 +73,10 @@ class DatabaseSyncTool {
       // 5. 後檢查
       await this.postCheck();
 
-      console.log('✅ 數據庫同步完成!');
+      console.log(' 數據庫同步完成!');
 
     } catch (error) {
-      console.error('❌ 同步過程中發生錯誤:', error);
+      console.error(' 同步過程中發生錯誤:', error);
       throw error;
     }
   }
@@ -85,7 +85,7 @@ class DatabaseSyncTool {
    * 預檢查 - 確保環境準備就緒
    */
   private async preCheck(): Promise<void> {
-    console.log('🔍 執行預檢查...');
+    console.log(' 執行預檢查...');
 
     // 檢查 Wrangler 是否可用
     try {
@@ -98,7 +98,7 @@ class DatabaseSyncTool {
     await this.checkDatabaseConnection('local');
     await this.checkDatabaseConnection('production');
 
-    console.log('✅ 預檢查通過');
+    console.log(' 預檢查通過');
   }
 
   /**
@@ -111,13 +111,13 @@ class DatabaseSyncTool {
         stdio: 'pipe',
         encoding: 'utf8'
       });
-      console.log(`✅ ${env} 數據庫連接正常`);
+      console.log(` ${env} 數據庫連接正常`);
     } catch (error: any) {
-      console.warn(`⚠️ ${env} 數據庫連接測試失敗:`, error.message);
+      console.warn(` ${env} 數據庫連接測試失敗:`, error.message);
 
       // 對於生產環境，我們可能因為網絡或權限問題無法連接，但仍可繼續
       if (env === 'production') {
-        console.log(`📝 注意: 生產數據庫連接失敗，但將繼續嘗試同步操作`);
+        console.log(` 注意: 生產數據庫連接失敗，但將繼續嘗試同步操作`);
         return;
       }
 
@@ -129,7 +129,7 @@ class DatabaseSyncTool {
    * 備份數據庫
    */
   private async backup(): Promise<void> {
-    console.log('💾 創建數據庫備份...');
+    console.log(' 創建數據庫備份...');
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupDir = path.join(process.cwd(), 'backups', timestamp);
@@ -146,9 +146,9 @@ class DatabaseSyncTool {
       const prodBackupPath = path.join(backupDir, 'production-backup.sql');
       execSync(`wrangler d1 export ${this.dbName} --remote --output "${prodBackupPath}"`, { stdio: 'pipe' });
 
-      console.log(`✅ 備份已保存到: ${backupDir}`);
+      console.log(` 備份已保存到: ${backupDir}`);
     } catch (error) {
-      console.warn('⚠️ 備份過程中發生警告:', error);
+      console.warn(' 備份過程中發生警告:', error);
     }
   }
 
@@ -156,25 +156,25 @@ class DatabaseSyncTool {
    * 同步數據庫結構
    */
   private async syncSchema(): Promise<void> {
-    console.log('🔧 同步數據庫結構...');
+    console.log(' 同步數據庫結構...');
 
     try {
       // 檢查待應用的遷移
       const migrationsOutput = execSync(`wrangler d1 migrations list ${this.dbName}`, { encoding: 'utf8' });
 
       if (migrationsOutput.includes('Migrations to be applied:')) {
-        console.log('📝 發現待應用的遷移，正在應用...');
+        console.log(' 發現待應用的遷移，正在應用...');
 
         if (!this.config.dryRun) {
           execSync(`wrangler d1 migrations apply ${this.dbName}`, { stdio: 'inherit' });
         } else {
-          console.log('🔍 DRY RUN: 跳過實際遷移應用');
+          console.log(' DRY RUN: 跳過實際遷移應用');
         }
       } else {
-        console.log('✅ 所有遷移已應用，結構已同步');
+        console.log(' 所有遷移已應用，結構已同步');
       }
     } catch (error) {
-      console.error('❌ 結構同步失敗:', error);
+      console.error(' 結構同步失敗:', error);
       throw error;
     }
   }
@@ -183,10 +183,10 @@ class DatabaseSyncTool {
    * 同步數據
    */
   private async syncData(): Promise<void> {
-    console.log('📊 開始數據同步...');
+    console.log(' 開始數據同步...');
 
     for (const table of this.config.tables) {
-      console.log(`🔄 同步表: ${table}`);
+      console.log(` 同步表: ${table}`);
       await this.syncTableData(table);
     }
   }
@@ -200,11 +200,11 @@ class DatabaseSyncTool {
       const sourceCount = await this.getTableCount(tableName, this.config.source);
       const targetCount = await this.getTableCount(tableName, this.config.target);
 
-      console.log(`📈 ${tableName}: ${this.config.source}(${sourceCount}) → ${this.config.target}(${targetCount})`);
+      console.log(` ${tableName}: ${this.config.source}(${sourceCount}) → ${this.config.target}(${targetCount})`);
 
       // 2. 如果源表為空，跳過
       if (sourceCount === 0) {
-        console.log(`⏭️ ${tableName} 源表為空，跳過同步`);
+        console.log(` ${tableName} 源表為空，跳過同步`);
         return;
       }
 
@@ -216,7 +216,7 @@ class DatabaseSyncTool {
       }
 
     } catch (error) {
-      console.error(`❌ 同步表 ${tableName} 失敗:`, error);
+      console.error(` 同步表 ${tableName} 失敗:`, error);
       // 可以選擇繼續同步其他表或中止
     }
   }
@@ -240,7 +240,7 @@ class DatabaseSyncTool {
 
       return 0;
     } catch (error) {
-      console.warn(`⚠️ 無法獲取 ${env} ${tableName} 的數據量`);
+      console.warn(` 無法獲取 ${env} ${tableName} 的數據量`);
       return 0;
     }
   }
@@ -250,21 +250,21 @@ class DatabaseSyncTool {
    */
   private async incrementalSync(tableName: string, sourceCount: number, targetCount: number): Promise<void> {
     if (sourceCount === targetCount) {
-      console.log(`✅ ${tableName} 數據量相同，跳過同步`);
+      console.log(` ${tableName} 數據量相同，跳過同步`);
       return;
     }
 
     if (sourceCount > targetCount) {
-      console.log(`📥 ${tableName} 需要同步 ${sourceCount - targetCount} 條記錄`);
+      console.log(` ${tableName} 需要同步 ${sourceCount - targetCount} 條記錄`);
 
       if (!this.config.dryRun) {
         // 這裡實現實際的數據同步邏輯
         await this.copyMissingRecords(tableName, targetCount);
       } else {
-        console.log(`🔍 DRY RUN: 跳過實際數據同步`);
+        console.log(` DRY RUN: 跳過實際數據同步`);
       }
     } else {
-      console.log(`⚠️ ${tableName} 目標環境數據量大於源環境，需要手動檢查`);
+      console.log(` ${tableName} 目標環境數據量大於源環境，需要手動檢查`);
     }
   }
 
@@ -272,13 +272,13 @@ class DatabaseSyncTool {
    * 完整同步
    */
   private async fullSync(tableName: string): Promise<void> {
-    console.log(`🔄 執行 ${tableName} 完整同步`);
+    console.log(` 執行 ${tableName} 完整同步`);
 
     if (!this.config.dryRun) {
       // 實現完整同步邏輯
-      console.log('⚠️ 完整同步功能開發中...');
+      console.log(' 完整同步功能開發中...');
     } else {
-      console.log('🔍 DRY RUN: 跳過完整同步');
+      console.log(' DRY RUN: 跳過完整同步');
     }
   }
 
@@ -287,16 +287,16 @@ class DatabaseSyncTool {
    */
   private async copyMissingRecords(tableName: string, skipCount: number): Promise<void> {
     // 這是一個簡化的實現，實際需要根據表結構定制
-    console.log(`📋 複製 ${tableName} 缺失記錄...`);
+    console.log(` 複製 ${tableName} 缺失記錄...`);
 
     // 敏感數據處理
     if (this.config.excludeSensitive && this.isSensitiveTable(tableName)) {
-      console.log(`🔒 ${tableName} 包含敏感數據，跳過同步`);
+      console.log(` ${tableName} 包含敏感數據，跳過同步`);
       return;
     }
 
     // 實際的數據複製邏輯將在這裡實現
-    console.log(`✅ ${tableName} 記錄複製完成`);
+    console.log(` ${tableName} 記錄複製完成`);
   }
 
   /**
@@ -311,7 +311,7 @@ class DatabaseSyncTool {
    * 後檢查
    */
   private async postCheck(): Promise<void> {
-    console.log('🔍 執行後檢查...');
+    console.log(' 執行後檢查...');
 
     // 驗證表結構一致性
     await this.validateTableStructures();
@@ -319,14 +319,14 @@ class DatabaseSyncTool {
     // 驗證數據完整性
     await this.validateDataIntegrity();
 
-    console.log('✅ 後檢查通過');
+    console.log(' 後檢查通過');
   }
 
   /**
    * 驗證表結構
    */
   private async validateTableStructures(): Promise<void> {
-    console.log('🔍 驗證表結構一致性...');
+    console.log(' 驗證表結構一致性...');
 
     try {
       const localTables = await this.getTableList('local');
@@ -340,19 +340,19 @@ class DatabaseSyncTool {
       const missingInProd = [...localSet].filter(table => !prodSet.has(table));
 
       if (missingInLocal.length > 0) {
-        console.warn('⚠️ 本地環境缺失表:', missingInLocal);
+        console.warn(' 本地環境缺失表:', missingInLocal);
       }
 
       if (missingInProd.length > 0) {
-        console.warn('⚠️ 生產環境缺失表:', missingInProd);
+        console.warn(' 生產環境缺失表:', missingInProd);
       }
 
       if (missingInLocal.length === 0 && missingInProd.length === 0) {
-        console.log('✅ 表結構一致');
+        console.log(' 表結構一致');
       }
 
     } catch (error) {
-      console.warn('⚠️ 表結構驗證失敗:', error);
+      console.warn(' 表結構驗證失敗:', error);
     }
   }
 
@@ -375,7 +375,7 @@ class DatabaseSyncTool {
 
       return [];
     } catch (error) {
-      console.warn(`⚠️ 獲取 ${env} 表列表失敗:`, error.message);
+      console.warn(` 獲取 ${env} 表列表失敗:`, error.message);
       return [];
     }
   }
@@ -384,13 +384,13 @@ class DatabaseSyncTool {
    * 驗證數據完整性
    */
   private async validateDataIntegrity(): Promise<void> {
-    console.log('🔍 驗證數據完整性...');
+    console.log(' 驗證數據完整性...');
 
     for (const table of this.config.tables) {
       const localCount = await this.getTableCount(table, 'local');
       const prodCount = await this.getTableCount(table, 'production');
 
-      console.log(`📊 ${table}: local(${localCount}) vs prod(${prodCount})`);
+      console.log(` ${table}: local(${localCount}) vs prod(${prodCount})`);
     }
   }
 
@@ -398,7 +398,7 @@ class DatabaseSyncTool {
    * 生成同步報告
    */
   generateReport(): void {
-    console.log('📋 生成同步報告...');
+    console.log(' 生成同步報告...');
 
     const report = {
       timestamp: new Date().toISOString(),
@@ -415,7 +415,7 @@ class DatabaseSyncTool {
     fs.mkdirSync(path.dirname(reportPath), { recursive: true });
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
-    console.log(`📋 報告已保存: ${reportPath}`);
+    console.log(` 報告已保存: ${reportPath}`);
   }
 }
 
@@ -466,11 +466,11 @@ if (isMainModule) {
   syncTool.sync()
     .then(() => {
       syncTool.generateReport();
-      console.log('🎉 同步完成!');
+      console.log(' 同步完成!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 同步失敗:', error);
+      console.error(' 同步失敗:', error);
       process.exit(1);
     });
 }

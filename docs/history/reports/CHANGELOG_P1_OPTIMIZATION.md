@@ -2,14 +2,14 @@
 
 ## [1.0.0] - 2025-12-19
 
-### 🎉 新功能
+###  新功能
 
 #### 批量 WebSocket 廣播系統
 - 實現時間窗口批量隊列機制
 - 支持可配置的批量參數（大小、延遲、優先級）
 - 緊急事件自動繞過批量處理
 
-### ⚡ 性能提升
+###  性能提升
 
 #### Durable Objects 調用優化
 - **減少 60-80%** 的 DO 調用次數
@@ -20,15 +20,15 @@
 - 普通/低優先級事件: +150ms 平均延遲（可接受）
 - 緊急/高優先級事件: 0ms 延遲（立即廣播）
 
-### 🔧 技術實現
+###  技術實現
 
 #### 新增配置選項
 ```typescript
 interface BatchConfig {
-  enabled: boolean;           // 默認: true
-  maxBatchSize: number;       // 默認: 50
-  batchWindowMs: number;      // 默認: 300ms
-  urgentBypass: boolean;      // 默認: true
+  enabled: boolean; // 默認: true
+  maxBatchSize: number; // 默認: 50
+  batchWindowMs: number; // 默認: 300ms
+  urgentBypass: boolean; // 默認: true
 }
 ```
 
@@ -39,7 +39,7 @@ interface BatchConfig {
 - `manualFlush()` - 手動刷新隊列（測試/關閉用）
 - `updateBatchConfig(config)` - 運行時更新配置
 
-### 🧪 測試覆蓋
+###  測試覆蓋
 
 #### 新增測試文件
 - `tests/unit/services/websocket-broadcast-batch.test.ts`
@@ -47,20 +47,20 @@ interface BatchConfig {
   - 100% 測試通過率
   - 覆蓋場景：批量、超時、配置、邊界情況、向後兼容性
 
-### 📊 性能指標追蹤
+###  性能指標追蹤
 
 #### 新增性能監控
 ```typescript
 metrics: {
-  totalEvents: number;      // 總事件數
-  batchedEvents: number;    // 批量處理事件數
+  totalEvents: number; // 總事件數
+  batchedEvents: number; // 批量處理事件數
   immediateEvents: number;  // 立即廣播事件數
-  batchesSent: number;      // 已發送批次數
-  avgBatchSize: number;     // 平均批量大小
+  batchesSent: number; // 已發送批次數
+  avgBatchSize: number; // 平均批量大小
 }
 ```
 
-### 📚 文檔更新
+###  文檔更新
 
 #### 新增文檔
 - `docs/optimizations/P1_BATCH_BROADCASTING_OPTIMIZATION.md`
@@ -69,10 +69,10 @@ metrics: {
   - 性能分析和案例研究
   - 監控和診斷工具
 
-### ⚠️ 破壞性變更
+###  破壞性變更
 **無** - 批量廣播完全向後兼容，可通過配置禁用
 
-### 🔄 遷移指南
+###  遷移指南
 
 #### 現有代碼無需修改
 ```typescript
@@ -90,10 +90,10 @@ const service = new WebSocketBroadcastService(env, {
 });
 ```
 
-### 🐛 Bug 修復
+###  Bug 修復
 - 無（新功能）
 
-### 🎯 下一步計劃
+###  下一步計劃
 
 #### Phase 2 優化（未來）
 - [ ] 智能批量參數自動調整
@@ -101,7 +101,7 @@ const service = new WebSocketBroadcastService(env, {
 - [ ] 事件合併和壓縮
 - [ ] 實時性能監控儀表板
 
-### 📈 預期影響
+###  預期影響
 
 #### 生產環境效益估算
 ```
@@ -118,10 +118,10 @@ const service = new WebSocketBroadcastService(env, {
 
 ### 修改的文件
 ```
-modified:   src/services/websocket-broadcast-service.ts
-new file:   tests/unit/services/websocket-broadcast-batch.test.ts
-new file:   docs/optimizations/P1_BATCH_BROADCASTING_OPTIMIZATION.md
-new file:   CHANGELOG_P1_OPTIMIZATION.md
+modified: src/services/websocket-broadcast-service.ts
+new file: tests/unit/services/websocket-broadcast-batch.test.ts
+new file: docs/optimizations/P1_BATCH_BROADCASTING_OPTIMIZATION.md
+new file: CHANGELOG_P1_OPTIMIZATION.md
 ```
 
 ### 代碼變更統計
@@ -138,13 +138,13 @@ tests/unit/services/websocket-broadcast-batch.test.ts:
 ```
 
 ### 向後兼容性
-- ✅ 所有現有測試通過
-- ✅ 現有 API 簽名未變更
-- ✅ 默認行為可配置（enabled: true/false）
-- ✅ 緊急事件保持原有延遲
+-  所有現有測試通過
+-  現有 API 簽名未變更
+-  默認行為可配置（enabled: true/false）
+-  緊急事件保持原有延遲
 
 ---
 
 *版本: 1.0.0*
 *發布日期: 2025-12-19*
-*狀態: ✅ 生產就緒*
+*狀態:  生產就緒*

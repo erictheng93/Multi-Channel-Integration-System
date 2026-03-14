@@ -119,7 +119,7 @@ export class TooManyRequestsError extends AppError {
  * Use with app.onError() to catch all unhandled errors
  */
 export function globalErrorHandler(error: Error, c: Context): Response {
-  console.error('🔴 [Global Error Handler]', {
+  console.error('[Global Error Handler]', {
     name: error.name,
     message: error.message,
     stack: error.stack,
@@ -208,7 +208,7 @@ export function errorWrapper(): MiddlewareHandler {
  * Automatically catches and forwards errors to error handler
  *
  * Usage:
- *   app.get('/path', asyncHandler(async (c) => { ... }))
+ * app.get('/path', asyncHandler(async (c) => { ... }))
  */
 export function asyncHandler(
   handler: (c: Context) => Promise<Response>

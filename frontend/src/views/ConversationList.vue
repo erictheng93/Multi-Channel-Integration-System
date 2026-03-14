@@ -29,7 +29,7 @@
             class="search-clear"
             @click="clearSearch"
           >
-            ✕
+            
           </button>
           <span
             v-if="isSearching"
@@ -138,7 +138,7 @@
               <template #end>
                 <div class="flex justify-center p-6">
                   <div class="end-stats">
-                    <span>✨ 已顯示全部 {{ controller.totalConversations.value }} 個對話</span>
+                    <span> 已顯示全部 {{ controller.totalConversations.value }} 個對話</span>
                   </div>
                 </div>
               </template>
@@ -223,7 +223,7 @@ const showExportDialog = ref(false)
 // Initialize composables
 const conversationsStore = useConversationsStore()
 const controller = useConversationListController()
-// ⚠️ useConversationSync 已廢棄，改用 store 的 initializeRealtime (Phase B4)
+// useConversationSync 已廢棄，改用 store 的 initializeRealtime (Phase B4)
 // const syncComposable = useConversationSync() // DEPRECATED
 const virtualScroll = useConversationVirtualScroll()
 
@@ -244,7 +244,7 @@ watch(debouncedSearch, (newVal) => {
 // Computed properties
 const showSkeleton = computed(() => conversationsStore.showSkeleton)
 const availableTags = computed(() => tagCacheService.getAllTags())
-// 🚀 Phase B4: 從 store 獲取同步狀態
+// Phase B4: 從 store 獲取同步狀態
 const isSyncing = computed(() => conversationsStore.syncStatus === 'connecting' || conversationsStore.syncStatus === 'polling')
 
 /**
@@ -287,28 +287,28 @@ function handlePredictiveLoad(direction: 'up' | 'down', estimatedDistance: numbe
 
 // Lifecycle
 onMounted(async () => {
-  console.log('🚀 [ConversationList] Component mounted (Phase B4 - Direct Real-time Updates)')
+  console.log('[ConversationList] Component mounted (Phase B4 - Direct Real-time Updates)')
 
   // 初始化控制器
   await controller.initialize()
 
-  // 🚀 Phase B4: 使用 Store 的 initializeRealtime 啟動 WebSocket 實時更新
+  // Phase B4: 使用 Store 的 initializeRealtime 啟動 WebSocket 實時更新
   // 這會訂閱 'conversations' channel 並直接更新對話列表
   await conversationsStore.initializeRealtime()
 
-  console.log('✅ [ConversationList] Initialized with real-time updates')
+  console.log('[ConversationList] Initialized with real-time updates')
 })
 
 onUnmounted(() => {
-  console.log('🛑 [ConversationList] Component unmounted')
+  console.log('[ConversationList] Component unmounted')
 
   // 清理资源
   controller.cleanup()
-  // 🚀 Phase B4: 使用 Store 的 cleanup 清理 WebSocket 訂閱
+  // Phase B4: 使用 Store 的 cleanup 清理 WebSocket 訂閱
   conversationsStore.cleanup()
   virtualScroll.resetScroll()
 
-  console.log('✨ [ConversationList] Cleanup completed')
+  console.log('[ConversationList] Cleanup completed')
 })
 </script>
 

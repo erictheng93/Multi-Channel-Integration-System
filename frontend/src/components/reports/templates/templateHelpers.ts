@@ -84,7 +84,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: [],
     optionalFilters: ['teamIds', 'agentIds', 'platforms'],
     estimatedTime: 15,
-    icon: '📊',
+    icon: '',
     category: 'basic'
   },
   {
@@ -104,7 +104,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: ['agentIds'],
     optionalFilters: ['teamIds', 'priority'],
     estimatedTime: 45,
-    icon: '👥',
+    icon: '',
     category: 'basic'
   },
   {
@@ -121,7 +121,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: [],
     optionalFilters: ['platforms', 'teamIds', 'priority'],
     estimatedTime: 30,
-    icon: '😊',
+    icon: '',
     category: 'basic'
   },
 
@@ -141,7 +141,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: ['teamIds'],
     optionalFilters: ['platforms', 'customFields'],
     estimatedTime: 120,
-    icon: '💰',
+    icon: '',
     category: 'enterprise'
   },
   {
@@ -158,7 +158,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: ['teamIds'],
     optionalFilters: ['agentIds', 'priority'],
     estimatedTime: 90,
-    icon: '⚖️',
+    icon: '',
     category: 'enterprise'
   },
   {
@@ -175,7 +175,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: [],
     optionalFilters: ['platforms', 'messageTypes'],
     estimatedTime: 180,
-    icon: '🚨',
+    icon: '',
     category: 'enterprise'
   },
 
@@ -194,7 +194,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: [],
     optionalFilters: ['platforms', 'teamIds', 'messageTypes'],
     estimatedTime: 240,
-    icon: '📈',
+    icon: '',
     category: 'enterprise'
   },
   {
@@ -212,7 +212,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: [],
     optionalFilters: ['platforms', 'customFields'],
     estimatedTime: 300,
-    icon: '💡',
+    icon: '',
     category: 'enterprise'
   },
 
@@ -231,7 +231,7 @@ export const DEFAULT_TEMPLATES: ReportTemplate[] = [
     requiredFilters: ['teamIds'],
     optionalFilters: ['platforms'],
     estimatedTime: 600,
-    icon: '💼',
+    icon: '',
     category: 'advanced'
   }
 ];

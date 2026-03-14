@@ -1,21 +1,21 @@
 # Phase 2 背景載入優化完成報告
 
 > **版本**: 2.0.0
-> **狀態**: ✅ 生產就緒
+> **狀態**:  生產就緒
 > **完成日期**: 2025-01-28
 > **關鍵改進**: 用戶完全無感知的智能背景載入
 
 ---
 
-## 📋 總覽
+##  總覽
 
 Phase 2 優化專注於**用戶體驗**，確保背景 QR Code 載入完全不會干擾用戶操作。通過智能檢測用戶行為和設備性能，系統能夠自動調整載入策略，實現真正的「零感知」背景載入。
 
 ---
 
-## ✨ 核心優化功能
+##  核心優化功能
 
-### 1️⃣ **用戶互動檢測與自動暫停/恢復**
+### 1️ **用戶互動檢測與自動暫停/恢復**
 
 **問題**：背景載入可能在用戶滾動、點擊時搶占網路資源，導致卡頓
 
@@ -28,11 +28,11 @@ Phase 1: 立即載入前 3 個團隊 (2 秒內)
     ↓
 Phase 2: 閒置時載入剩餘團隊
     ↓
-用戶開始滾動/點擊 → ⏸️ 自動暫停背景載入
+用戶開始滾動/點擊 →  自動暫停背景載入
     ↓
-用戶停止互動 → ⏰ 等待 2 秒
+用戶停止互動 →  等待 2 秒
     ↓
-確認用戶閒置 → ▶️ 自動恢復背景載入
+確認用戶閒置 →  自動恢復背景載入
 ```
 
 **技術實現**：
@@ -45,7 +45,7 @@ Phase 2: 閒置時載入剩餘團隊
 
 ---
 
-### 2️⃣ **自適應節流 - 設備性能檢測**
+### 2️ **自適應節流 - 設備性能檢測**
 
 **問題**：不同設備性能差異大，固定並發數可能浪費資源或導致低端設備卡頓
 
@@ -54,11 +54,11 @@ Phase 2: 閒置時載入剩餘團隊
 設備性能評分系統：
 
 ┌─────────────────┬──────────┬──────────┬──────────┐
-│ 性能等級        │ CPU 核心 │ 記憶體   │ 並發數   │
+│ 性能等級 │ CPU 核心 │ 記憶體 │ 並發數 │
 ├─────────────────┼──────────┼──────────┼──────────┤
-│ 🚀 High         │ 8+ 核心  │ 4GB+     │ 5 個     │
-│ ⚡ Medium       │ 4+ 核心  │ 2GB+     │ 3 個     │
-│ 🐢 Low          │ < 4 核心 │ < 2GB    │ 2 個     │
+│  High │ 8+ 核心  │ 4GB+ │ 5 個 │
+│  Medium │ 4+ 核心  │ 2GB+ │ 3 個 │
+│  Low │ < 4 核心 │ < 2GB │ 2 個 │
 └─────────────────┴──────────┴──────────┴──────────┘
 ```
 
@@ -72,7 +72,7 @@ Phase 2: 閒置時載入剩餘團隊
 
 ---
 
-### 3️⃣ **詳細進度日誌與即時反饋**
+### 3️ **詳細進度日誌與即時反饋**
 
 **問題**：缺少載入進度可見性，難以監控和調試
 
@@ -80,35 +80,35 @@ Phase 2: 閒置時載入剩餘團隊
 ```
 控制台輸出範例：
 
-[14:23:45] 🚀 Starting background preload for 10 teams
-[14:23:45] 📱 Device performance: medium (8 cores, 4.0GB RAM)
-[14:23:45] ⚙️ Adjusted maxConcurrent: 3
-[14:23:45] 👂 Registered user interaction listeners
-[14:23:45] 🎯 Phase 1: Loading 3 priority teams
-[14:23:45] 📥 [phase1] Loading QR for team 1 (客服團隊A)
-[14:23:46] ✅ [phase1] Loaded QR for team 1 in 85ms
-[14:23:47] ⏳ Phase 2: Scheduling idle-time loading
-[14:23:47] 📋 Load queue built: 7 teams
-[14:23:48] 📊 [Phase 2] Progress: 30% | Remaining: 7 teams | Queue: 2/3
-[14:23:50] ⏸️ Paused background preload (user interaction)
-[14:23:52] ⏰ User idle for 2s, resuming background preload
-[14:23:52] ▶️ Resumed background preload
-[14:23:55] 📊 [Phase 2] Progress: 70% | Remaining: 3 teams | Queue: 3/3
-[14:23:58] ✅ Phase 2 completed - 10/10 teams loaded (100%)
+[14:23:45]  Starting background preload for 10 teams
+[14:23:45]  Device performance: medium (8 cores, 4.0GB RAM)
+[14:23:45]  Adjusted maxConcurrent: 3
+[14:23:45]  Registered user interaction listeners
+[14:23:45]  Phase 1: Loading 3 priority teams
+[14:23:45]  [phase1] Loading QR for team 1 (客服團隊A)
+[14:23:46]  [phase1] Loaded QR for team 1 in 85ms
+[14:23:47]  Phase 2: Scheduling idle-time loading
+[14:23:47]  Load queue built: 7 teams
+[14:23:48]  [Phase 2] Progress: 30% | Remaining: 7 teams | Queue: 2/3
+[14:23:50]  Paused background preload (user interaction)
+[14:23:52]  User idle for 2s, resuming background preload
+[14:23:52]  Resumed background preload
+[14:23:55]  [Phase 2] Progress: 70% | Remaining: 3 teams | Queue: 3/3
+[14:23:58]  Phase 2 completed - 10/10 teams loaded (100%)
 ```
 
 **新增指標**：
-- ✅ 載入百分比 (0-100%)
-- ✅ 剩餘團隊數
-- ✅ 並發隊列狀態 (X/Y)
-- ✅ 暫停原因 (用戶互動 / 並發限制 / 閒置時間耗盡)
-- ✅ 最終統計摘要
+-  載入百分比 (0-100%)
+-  剩餘團隊數
+-  並發隊列狀態 (X/Y)
+-  暫停原因 (用戶互動 / 並發限制 / 閒置時間耗盡)
+-  最終統計摘要
 
 **代碼位置**：`frontend/src/services/qrPreloadService.ts:417-461`
 
 ---
 
-### 4️⃣ **requestIdleCallback 優化**
+### 4️ **requestIdleCallback 優化**
 
 **問題**：載入操作可能阻塞主執行緒，影響頁面響應
 
@@ -120,8 +120,8 @@ requestIdleCallback 工作流程：
     ├─ 用戶互動 (高優先級)
     ├─ 動畫渲染 (60fps)
     ├─ JavaScript 執行
-    └─ 🆓 閒置時間 (Idle Period)
-        └─ ✅ 背景載入 QR Code (不影響性能)
+    └─  閒置時間 (Idle Period)
+        └─  背景載入 QR Code (不影響性能)
 
 時間閾值：
 - 每次處理保留 50ms 閒置時間
@@ -138,7 +138,7 @@ requestIdleCallback 工作流程：
 
 ---
 
-## 🧪 如何測試
+##  如何測試
 
 ### 方法 1：使用測試頁面 (推薦)
 
@@ -149,10 +149,10 @@ requestIdleCallback 工作流程：
    ```
 
 2. **測試互動暫停**：
-   - 點擊「▶️ 開始預載」按鈕
+   - 點擊「 開始預載」按鈕
    - 觀察控制台輸出，應該看到載入進度
-   - **滾動頁面** 或 **點擊測試區** → 應該看到 `⏸️ Paused`
-   - **停止互動 2 秒** → 應該看到 `▶️ Resumed`
+   - **滾動頁面** 或 **點擊測試區** → 應該看到 ` Paused`
+   - **停止互動 2 秒** → 應該看到 ` Resumed`
 
 3. **測試設備性能檢測**：
    - 查看「設備性能」指標卡片
@@ -183,21 +183,21 @@ requestIdleCallback 工作流程：
 
 4. **觀察預載日誌**：
    ```
-   [QRPreload] 🚀 Starting background preload for 10 teams
-   [QRPreload] 📱 Device performance: medium (8 cores, 4.0GB RAM)
-   [QRPreload] 🎯 Phase 1: Loading 3 priority teams
+   [QRPreload]  Starting background preload for 10 teams
+   [QRPreload]  Device performance: medium (8 cores, 4.0GB RAM)
+   [QRPreload]  Phase 1: Loading 3 priority teams
    ...
    ```
 
 5. **測試互動暫停**：
    - 開始滾動頁面
-   - 應該看到 `⏸️ Paused background preload (user interaction)`
+   - 應該看到 ` Paused background preload (user interaction)`
    - 停止滾動 2 秒
-   - 應該看到 `⏰ User idle for 2s, resuming background preload`
+   - 應該看到 ` User idle for 2s, resuming background preload`
 
 ---
 
-## 📊 性能指標
+##  性能指標
 
 ### 實測數據 (10 個團隊)
 
@@ -206,7 +206,7 @@ requestIdleCallback 工作流程：
 | **首次點擊延遲 (P50)** | 220ms | **35ms** | ↓ 84% |
 | **首次點擊延遲 (P95)** | 450ms | **95ms** | ↓ 79% |
 | **快取命中率** | 40% | **95%** | ↑ 137% |
-| **頁面卡頓感知** | 經常 | **無** | ✅ 消除 |
+| **頁面卡頓感知** | 經常 | **無** |  消除 |
 | **背景載入耗時** | N/A | **3-5 秒** | 新增 |
 | **並發請求數** | 固定 3 | **2-5 動態** | 自適應 |
 
@@ -214,14 +214,14 @@ requestIdleCallback 工作流程：
 
 | 場景 | 優化前 | 優化後 |
 |------|--------|--------|
-| **滾動時流暢度** | ⚠️ 偶爾卡頓 | ✅ 完全流暢 |
-| **點擊響應速度** | ⚠️ 有延遲 | ✅ 即時響應 |
-| **首次查看 QR** | ⚠️ 需等待 200ms | ✅ 瞬間顯示 < 50ms |
-| **低端設備** | ❌ 明顯卡頓 | ✅ 自動降級 |
+| **滾動時流暢度** |  偶爾卡頓 |  完全流暢 |
+| **點擊響應速度** |  有延遲 |  即時響應 |
+| **首次查看 QR** |  需等待 200ms |  瞬間顯示 < 50ms |
+| **低端設備** |  明顯卡頓 |  自動降級 |
 
 ---
 
-## 🔧 配置選項
+##  配置選項
 
 ### Feature Flag 配置
 
@@ -229,17 +229,17 @@ requestIdleCallback 工作流程：
 // frontend/src/config/features.ts
 
 QR_BACKGROUND_PRELOAD: {
-  enabled: true,              // 總開關
-  rolloutPercentage: 100,     // 推出範圍
+  enabled: true, // 總開關
+  rolloutPercentage: 100, // 推出範圍
 
   config: {
-    maxConcurrent: 3,         // 初始並發數 (會自動調整)
-    idleTimeout: 2000,        // 延遲啟動時間 (ms)
-    enableLogging: true,      // 詳細日誌 (生產環境可關閉)
+    maxConcurrent: 3, // 初始並發數 (會自動調整)
+    idleTimeout: 2000, // 延遲啟動時間 (ms)
+    enableLogging: true, // 詳細日誌 (生產環境可關閉)
 
     networkConditions: {
-      disableOn3G: false,     // 3G 網路下禁用
-      disableOnSlow: false,   // 慢速網路下禁用
+      disableOn3G: false, // 3G 網路下禁用
+      disableOnSlow: false, // 慢速網路下禁用
       disableOnSaveData: true // 省流量模式下禁用
     }
   }
@@ -266,7 +266,7 @@ window.featureFlags.setRollout('QR_BACKGROUND_PRELOAD', 50) // 50% 用戶
 
 ---
 
-## 🐛 故障排除
+##  故障排除
 
 ### 問題 1: 背景載入未自動暫停
 
@@ -274,7 +274,7 @@ window.featureFlags.setRollout('QR_BACKGROUND_PRELOAD', 50) // 50% 用戶
 
 **檢查步驟**：
 1. 確認 Feature Flag 已啟用
-2. 檢查是否看到 `👂 Registered user interaction listeners`
+2. 檢查是否看到 ` Registered user interaction listeners`
 3. 嘗試手動暫停：`qrPreloadService.pause()`
 
 **解決方式**：
@@ -319,7 +319,7 @@ config: {
 
 ---
 
-## 📁 相關檔案
+##  相關檔案
 
 | 檔案 | 路徑 | 說明 |
 |------|------|------|
@@ -332,7 +332,7 @@ config: {
 
 ---
 
-## 🎯 下一步建議
+##  下一步建議
 
 ### 短期 (1-2 週)
 
@@ -368,17 +368,17 @@ config: {
 
 ---
 
-## 📊 總結
+##  總結
 
 Phase 2 優化成功實現了**用戶完全無感知**的背景載入系統：
 
-✅ **用戶體驗**: 消除卡頓，點擊延遲降低 84%
-✅ **智能化**: 自動檢測設備性能和用戶行為
-✅ **可維護性**: 詳細日誌和進度追蹤
-✅ **穩定性**: Fallback 機制確保舊瀏覽器兼容
-✅ **可配置**: Feature Flag 支援灰度發布和快速回滾
+ **用戶體驗**: 消除卡頓，點擊延遲降低 84%
+ **智能化**: 自動檢測設備性能和用戶行為
+ **可維護性**: 詳細日誌和進度追蹤
+ **穩定性**: Fallback 機制確保舊瀏覽器兼容
+ **可配置**: Feature Flag 支援灰度發布和快速回滾
 
-**生產就緒狀態**: ✅ 可立即部署
+**生產就緒狀態**:  可立即部署
 
 ---
 

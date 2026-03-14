@@ -244,7 +244,7 @@ export function useSelectMemberToTeam(): UseSelectMemberToTeamReturn {
 
   /**
    * 提交添加成員到團隊
-   * 🚀 Phase 2 優化: 使用批量 API
+   * Phase 2 優化: 使用批量 API
    * - 1 API 請求 (vs 原本 N 請求)
    * - 2-3 DB 查詢 (vs 原本 6*N 查詢)
    * - 用戶等待時間: ~200ms
@@ -259,7 +259,7 @@ export function useSelectMemberToTeam(): UseSelectMemberToTeamReturn {
     submitting.value = true
 
     try {
-      // 🚀 Phase 2: 使用批量 API (1 API 請求 + 2-3 DB 查詢)
+      // Phase 2: 使用批量 API (1 API 請求 + 2-3 DB 查詢)
       const response = await teamApi.batchAddMembersToTeam(
         targetTeamId.value,
         selectedIds,

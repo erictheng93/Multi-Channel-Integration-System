@@ -517,7 +517,7 @@ export class PredictiveLoader {
       }
       
     } catch (error) {
-      console.error('❌ [PredictiveLoader] Prediction failed:', error)
+      console.error('[PredictiveLoader] Prediction failed:', error)
     }
   }
 
@@ -582,10 +582,10 @@ export class PredictiveLoader {
       
       this.stats.value.preloadedDataSize += JSON.stringify(data).length
       
-      console.log(`🔮 [PredictiveLoader] Preloaded data for filters:`, prediction.filters)
+      console.log(`[PredictiveLoader] Preloaded data for filters:`, prediction.filters)
       
     } catch (error) {
-      console.error('❌ [PredictiveLoader] Preload failed:', error)
+      console.error('[PredictiveLoader] Preload failed:', error)
     } finally {
       this.activePreloads.delete(cacheKey)
     }
@@ -616,7 +616,7 @@ export class PredictiveLoader {
     this.stats.value.cacheHits++
     this.stats.value.successfulPredictions++
     
-    console.log(`✨ [PredictiveLoader] Cache hit for filters:`, filters)
+    console.log(`[PredictiveLoader] Cache hit for filters:`, filters)
     return cached.data
   }
 
@@ -682,7 +682,7 @@ export class PredictiveLoader {
       console.warn('[PredictiveLoader] Failed to remove user pattern:', error)
     }
     
-    console.log('🔄 [PredictiveLoader] User pattern reset')
+    console.log('[PredictiveLoader] User pattern reset')
   }
 
   // 獲取統計信息
@@ -719,7 +719,7 @@ export class PredictiveLoader {
     this.behaviorHistory.length = 0
     this.isEnabled.value = false
     
-    console.log('🔴 [PredictiveLoader] Destroyed')
+    console.log('[PredictiveLoader] Destroyed')
   }
 }
 

@@ -15,17 +15,17 @@ export function useI18n() {
 
   // 切換語言
   const switchLocale = async (newLocale: string) => {
-    console.log(`🔄 Attempting to switch locale to: ${newLocale}`)
+    console.log(` Attempting to switch locale to: ${newLocale}`)
     
     if (!isLocaleAvailable(newLocale)) {
-      console.warn(`❌ Locale ${newLocale} is not available`)
+      console.warn(` Locale ${newLocale} is not available`)
       return false
     }
     
     try {
       const success = setLocale(newLocale)
       if (success) {
-        console.log(`✅ Language switched successfully to: ${newLocale}`)
+        console.log(` Language switched successfully to: ${newLocale}`)
         console.log(`Current locale after switch: ${i18n.global.locale.value}`)
         
         // 強制觸發響應式更新
@@ -33,11 +33,11 @@ export function useI18n() {
         
         return true
       } else {
-        console.error(`❌ Failed to set locale: ${newLocale}`)
+        console.error(` Failed to set locale: ${newLocale}`)
         return false
       }
     } catch (error) {
-      console.error(`❌ Error switching locale:`, error)
+      console.error(` Error switching locale:`, error)
       return false
     }
   }

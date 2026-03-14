@@ -223,9 +223,9 @@ src/durable-objects/DelayedMessageBuffer.ts:
 
 ****:
 ```typescript
-console.log(` [DelayedMessageBuffer] Alarm triggered`);
+console.log(`[DelayedMessageBuffer] Alarm triggered`);
 console.log(` Found ${readyMessages.length} messages ready to send`);
-console.error(' [DelayedMessageBuffer] Message failed:', error);
+console.error('[DelayedMessageBuffer] Message failed:', error);
 ```
 
 ****:

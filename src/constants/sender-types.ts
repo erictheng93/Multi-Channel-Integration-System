@@ -34,7 +34,7 @@ export const SENDER_TYPES = {
  * import { SENDER_TYPES, type SenderType } from '@/constants/sender-types';
  *
  * function createMessage(senderId: string, type: SenderType, content: string) {
- *   // Type-safe sender type handling
+ * // Type-safe sender type handling
  * }
  * ```
  */
@@ -76,9 +76,9 @@ export const SENDER_TYPE_COLORS: Record<SenderType, string> = {
  * Sender type icons
  */
 export const SENDER_TYPE_ICONS: Record<SenderType, string> = {
-  [SENDER_TYPES.CUSTOMER]: '👤',
-  [SENDER_TYPES.AGENT]: '👨‍💼',
-  [SENDER_TYPES.SYSTEM]: '🤖'
+  [SENDER_TYPES.CUSTOMER]: '',
+  [SENDER_TYPES.AGENT]: '',
+  [SENDER_TYPES.SYSTEM]: ''
 };
 
 /**

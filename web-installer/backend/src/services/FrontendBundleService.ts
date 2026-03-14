@@ -50,7 +50,7 @@ export class FrontendBundleService {
    * basic status page functionality.
    *
    * To generate the production bundle:
-   *   npm run build:frontend-bundle
+   * npm run build:frontend-bundle
    */
   getBundledAssets(config: FrontendBundleConfig): Map<string, string> {
     // Use generated assets if available
@@ -358,7 +358,7 @@ export class FrontendBundleService {
    * Generate _redirects file for SPA routing
    */
   private generateRedirects(): string {
-    return `/*    /index.html   200`;
+    return `/* /index.html 200`;
   }
 
   /**

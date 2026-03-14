@@ -115,10 +115,10 @@ function generateSmartRegistryCode(routes: RouteExtraction[], originalVarName: s
     const priority = determinePriority(route.path);
 
     code.push('  {');
-    code.push(`    path: '${route.path}',`);
-    code.push(`    handler: ${route.handler.replace(/,?\s*$/, '')},  // 原: ${route.method}`);
-    code.push(`    priority: ${priority},`);
-    code.push(`    description: '${generateDescription(route)}'`);
+    code.push(` path: '${route.path}',`);
+    code.push(` handler: ${route.handler.replace(/,?\s*$/, '')},  // 原: ${route.method}`);
+    code.push(` priority: ${priority},`);
+    code.push(` description: '${generateDescription(route)}'`);
     code.push(`  }${index < routes.length - 1 ? ',' : ''}`);
   });
 
@@ -128,7 +128,7 @@ function generateSmartRegistryCode(routes: RouteExtraction[], originalVarName: s
   code.push('const { registered, conflicts } = registry.register();');
   code.push('');
   code.push('if (conflicts.length > 0) {');
-  code.push(`  console.warn('⚠️ Route conflicts detected! See registration report above.');`);
+  code.push(`  console.warn(' Route conflicts detected! See registration report above.');`);
   code.push('}');
 
   return code.join('\n');
@@ -179,7 +179,7 @@ function createBackup(filePath: string): string {
   const backupPath = filePath.replace(/\.ts$/, '.backup.ts');
   const content = readFileSync(filePath, 'utf-8');
   writeFileSync(backupPath, content);
-  console.log(`  ✅ Backup created: ${backupPath}`);
+  console.log(` Backup created: ${backupPath}`);
   return backupPath;
 }
 
@@ -187,10 +187,10 @@ function createBackup(filePath: string): string {
  * 應用智能註冊器到文件
  */
 function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
-  console.log(`\n📝 Processing: ${filePath}`);
+  console.log(`\n Processing: ${filePath}`);
 
   if (!existsSync(filePath)) {
-    console.log(`  ⚠️  File not found, skipping...`);
+    console.log(` File not found, skipping...`);
     return;
   }
 
@@ -198,11 +198,11 @@ function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
   const routes = extractRoutesFromFile(filePath);
 
   if (routes.length === 0) {
-    console.log(`  ℹ️  No routes found, skipping...`);
+    console.log(` No routes found, skipping...`);
     return;
   }
 
-  console.log(`  📊 Found ${routes.length} routes to convert`);
+  console.log(` Found ${routes.length} routes to convert`);
 
   // 確定變量名稱
   const varName = routes[0]?.varName || 'app';
@@ -211,7 +211,7 @@ function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
   const newCode = generateSmartRegistryCode(routes, varName);
 
   if (dryRun) {
-    console.log(`  🔍 DRY RUN - Preview of generated code:`);
+    console.log(` DRY RUN - Preview of generated code:`);
     console.log('  ' + '─'.repeat(80));
     console.log(newCode.split('\n').map(line => '  ' + line).join('\n'));
     console.log('  ' + '─'.repeat(80));
@@ -239,7 +239,7 @@ function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
       const smartComment = [
         '',
         '// ═'.repeat(40),
-        '// 🤖 SMART ROUTE REGISTRY',
+        '//  SMART ROUTE REGISTRY',
         '// 自動排序路由以避免衝突',
         '// ' + '═'.repeat(39),
         ''
@@ -255,9 +255,9 @@ function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
 
     // 寫入智能版本文件
     writeFileSync(smartFilePath, newContent);
-    console.log(`  ✅ Smart version created: ${smartFilePath}`);
-    console.log(`  📝 Original backed up to: ${backupPath}`);
-    console.log(`  💡 Next step: Review ${smartFilePath} and replace original if satisfied`);
+    console.log(` Smart version created: ${smartFilePath}`);
+    console.log(` Original backed up to: ${backupPath}`);
+    console.log(` Next step: Review ${smartFilePath} and replace original if satisfied`);
   }
 }
 
@@ -265,16 +265,16 @@ function applySmartRegistry(filePath: string, dryRun: boolean = false): void {
  * 批量修復所有模組
  */
 function batchFix(dryRun: boolean = false): void {
-  console.log('🚀 Batch Route Fix Script');
+  console.log(' Batch Route Fix Script');
   console.log('═'.repeat(100));
   console.log('');
 
   if (dryRun) {
-    console.log('🔍 DRY RUN MODE - No files will be modified\n');
+    console.log(' DRY RUN MODE - No files will be modified\n');
   }
 
-  console.log(`📋 Modules to fix: ${MODULES_TO_FIX.length}`);
-  console.log(`📊 Total conflicts: ${MODULES_TO_FIX.reduce((sum, m) => sum + m.conflicts, 0)}`);
+  console.log(` Modules to fix: ${MODULES_TO_FIX.length}`);
+  console.log(` Total conflicts: ${MODULES_TO_FIX.reduce((sum, m) => sum + m.conflicts, 0)}`);
   console.log('');
 
   let successCount = 0;
@@ -287,25 +287,25 @@ function batchFix(dryRun: boolean = false): void {
       applySmartRegistry(module.file, dryRun);
       successCount++;
     } catch (error) {
-      console.log(`  ❌ Error: ${error}`);
+      console.log(` Error: ${error}`);
       skipCount++;
     }
   });
 
   console.log('');
   console.log('═'.repeat(100));
-  console.log('📊 SUMMARY');
+  console.log(' SUMMARY');
   console.log('─'.repeat(100));
-  console.log(`✅ Successfully processed: ${successCount}`);
-  console.log(`⚠️  Skipped: ${skipCount}`);
+  console.log(` Successfully processed: ${successCount}`);
+  console.log(`  Skipped: ${skipCount}`);
   console.log('');
 
   if (!dryRun) {
-    console.log('📝 Next Steps:');
+    console.log(' Next Steps:');
     console.log('  1. Review each -smart.ts file');
     console.log('  2. Test the smart version');
     console.log('  3. If satisfied, replace original file:');
-    console.log('     mv <file>-smart.ts <file>.ts');
+    console.log(' mv <file>-smart.ts <file>.ts');
     console.log('  4. Run: npm run check:routes');
     console.log('  5. Commit changes');
   }
@@ -320,6 +320,6 @@ const dryRun = process.argv.includes('--dry-run');
 try {
   batchFix(dryRun);
 } catch (error) {
-  console.error('❌ Fatal error:', error);
+  console.error(' Fatal error:', error);
   process.exit(1);
 }

@@ -6,15 +6,15 @@ This directory contains unit tests for API monitor components and composables.
 
 ```
 tests/unit/api-monitor/
-├── useApiMonitorController.test.ts    # Controller composable tests
-├── ApiHeader.test.ts                  # ApiHeader component tests
-├── ApiStatsGrid.test.ts               # ApiStatsGrid component tests
-├── ApiFilter.test.ts                  # ApiFilter component tests
-├── ApiCard.test.ts                    # ApiCard component tests
-├── ApiCardList.test.ts                # ApiCardList component tests
-├── ApiModal.test.ts                   # ApiModal component tests
-├── MigrationStatus.test.ts            # MigrationStatus component tests
-└── ApiEmptyState.test.ts              # ApiEmptyState component tests
+├── useApiMonitorController.test.ts # Controller composable tests
+├── ApiHeader.test.ts # ApiHeader component tests
+├── ApiStatsGrid.test.ts # ApiStatsGrid component tests
+├── ApiFilter.test.ts # ApiFilter component tests
+├── ApiCard.test.ts # ApiCard component tests
+├── ApiCardList.test.ts # ApiCardList component tests
+├── ApiModal.test.ts # ApiModal component tests
+├── MigrationStatus.test.ts # MigrationStatus component tests
+└── ApiEmptyState.test.ts # ApiEmptyState component tests
 ```
 
 ## Test Coverage Goals

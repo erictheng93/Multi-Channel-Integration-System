@@ -66,7 +66,7 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
       updatedAt: now,
     });
 
-    console.log(`📝 [FeedbackHandler] Created feedback ${feedbackId} for conversation ${body.conversationId}`);
+    console.log(`[FeedbackHandler] Created feedback ${feedbackId} for conversation ${body.conversationId}`);
 
     return c.json({
       success: true,
@@ -146,7 +146,7 @@ feedbackHandler.get('/stats', jwtAuth, async (c) => {
     const satisfiedCount = (stats.rating4Count || 0) + (stats.rating5Count || 0);
     const satisfactionRate = Math.round((satisfiedCount / stats.totalCount) * 100);
 
-    console.log(`📊 [FeedbackHandler] Stats retrieved: ${satisfactionRate}% satisfaction rate (${stats.totalCount} feedback)`);
+    console.log(`[FeedbackHandler] Stats retrieved: ${satisfactionRate}% satisfaction rate (${stats.totalCount} feedback)`);
 
     return c.json({
       success: true,

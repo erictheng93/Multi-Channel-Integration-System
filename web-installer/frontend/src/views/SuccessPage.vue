@@ -10,12 +10,12 @@
       <!-- Error State -->
       <div v-else-if="loadError" class="error-state">
         <div class="error-card">
-          <div class="error-icon">⚠️</div>
+          <div class="error-icon"></div>
           <h2>Unable to Load Deployment Data</h2>
           <p class="error-message">{{ loadError }}</p>
           <div class="error-actions">
             <button @click="retryLoad" class="btn btn-primary">
-              🔄 Retry
+               Retry
             </button>
             <button @click="goToLanding" class="btn btn-secondary">
               ← Back to Home
@@ -36,7 +36,7 @@
             <div class="icon-fix"></div>
           </div>
         </div>
-        <h1 class="success-title">🎉 Deployment Successful!</h1>
+        <h1 class="success-title"> Deployment Successful!</h1>
         <p class="success-subtitle">
           Your Multi-Channel CRM is now live and ready to use
         </p>
@@ -49,7 +49,7 @@
 
       <!-- Quick Start Guide -->
       <div class="guide-section">
-        <h2>🚀 Quick Start Guide</h2>
+        <h2> Quick Start Guide</h2>
         <div class="steps-list">
           <div class="guide-step">
             <div class="guide-step-number">1</div>
@@ -62,7 +62,7 @@
                 target="_blank"
                 class="btn btn-primary"
               >
-                🌐 Open CRM Dashboard
+                 Open CRM Dashboard
               </a>
             </div>
           </div>
@@ -99,7 +99,7 @@
 
       <!-- Resources Summary -->
       <div class="resources-summary">
-        <h2>📦 Deployed Resources</h2>
+        <h2> Deployed Resources</h2>
         <div class="resources-table">
           <div v-if="resources.workerUrl" class="resource-row">
             <span class="resource-name">Backend API (Worker)</span>
@@ -131,21 +131,21 @@
       <!-- Deployment Stats -->
       <div class="stats-section">
         <div class="stat-item">
-          <div class="stat-icon">⏱️</div>
+          <div class="stat-icon"></div>
           <div class="stat-content">
             <div class="stat-value">{{ formatDuration(deploymentStore.duration) }}</div>
             <div class="stat-label">Deployment Time</div>
           </div>
         </div>
         <div class="stat-item">
-          <div class="stat-icon">✅</div>
+          <div class="stat-icon"></div>
           <div class="stat-content">
             <div class="stat-value">15/15</div>
             <div class="stat-label">Steps Completed</div>
           </div>
         </div>
         <div class="stat-item">
-          <div class="stat-icon">🎯</div>
+          <div class="stat-icon"></div>
           <div class="stat-content">
             <div class="stat-value">100%</div>
             <div class="stat-label">Success Rate</div>
@@ -155,10 +155,10 @@
 
       <!-- Next Steps -->
       <div class="next-steps">
-        <h2>📚 What's Next?</h2>
+        <h2> What's Next?</h2>
         <div class="next-steps-grid">
           <div class="next-step-card">
-            <div class="next-step-icon">📖</div>
+            <div class="next-step-icon"></div>
             <h3>Read Documentation</h3>
             <p>Learn about features, configuration, and best practices</p>
             <a href="https://docs.yourcompany.com" target="_blank" class="btn btn-secondary btn-sm">
@@ -166,7 +166,7 @@
             </a>
           </div>
           <div class="next-step-card">
-            <div class="next-step-icon">💬</div>
+            <div class="next-step-icon"></div>
             <h3>Join Community</h3>
             <p>Get help and share experiences with other users</p>
             <a href="https://discord.gg/yourcompany" target="_blank" class="btn btn-secondary btn-sm">
@@ -174,7 +174,7 @@
             </a>
           </div>
           <div class="next-step-card">
-            <div class="next-step-icon">🐛</div>
+            <div class="next-step-icon"></div>
             <h3>Report Issues</h3>
             <p>Found a bug or have a feature request?</p>
             <a href="https://github.com/yourcompany/crm/issues" target="_blank" class="btn btn-secondary btn-sm">
@@ -195,7 +195,7 @@
           target="_blank"
           class="btn btn-primary btn-lg"
         >
-          🚀 Launch CRM Dashboard
+           Launch CRM Dashboard
         </a>
       </div>
       </template>

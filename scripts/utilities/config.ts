@@ -1,29 +1,29 @@
 /**
- * å®¢æˆ¶ç®¡ç?å·¥å…·?ç½®?‡ä»¶ (TypeScript ?ˆæœ¬)
- * ?¨é€™è£¡è¨­å?ä½ ç? Worker URL ?Œå…¶ä»–é?ç½?
+ * å®¢æˆ¶ç®¡ï¿½?å·¥å…·?ï¿½ç½®?ï¿½ä»¶ (TypeScript ?ï¿½æœ¬)
+ * ?ï¿½é€™è£¡è¨­ï¿½?ä½ ï¿½? Worker URL ?ï¿½å…¶ä»–ï¿½?ï¿½?
  */
 
-// ?”§ ?ç½®è¨­å?
+// ?ï¿½ï¿½ ?ï¿½ç½®è¨­ï¿½?
 export const CONFIG = {
-  // Worker URL - è«‹æ›¿?›ç‚ºä½ ç?å¯¦é? Cloudflare Worker ç¶²å?
+  // Worker URL - è«‹æ›¿?ï¿½ç‚ºä½ ï¿½?å¯¦ï¿½? Cloudflare Worker ç¶²ï¿½?
   WORKER_URL: 'https://your-api-domain.example.com',
   
-  // ??§è¨­å?
-  MONITOR_INTERVAL: 30000, // 30ç§?
+  // ??ï¿½ï¿½è¨­ï¿½?
+  MONITOR_INTERVAL: 30000, // 30ï¿½?
   
-  // ?†æ?è¨­å?
+  // ?ï¿½ï¿½?è¨­ï¿½?
   TOP_CUSTOMERS_LIMIT: 10,
   RECENT_DAYS_LIMIT: 7,
   
-  // API è¨­å?
-  REQUEST_TIMEOUT: 10000, // 10ç§?
+  // API è¨­ï¿½?
+  REQUEST_TIMEOUT: 10000, // 10ï¿½?
   
-  // é¡¯ç¤ºè¨­å?
+  // é¡¯ç¤ºè¨­ï¿½?
   MAX_DISPLAY_ITEMS: 20,
   DATE_FORMAT: 'zh-TW'
 };
 
-// ?? ?°å?æª¢æ¸¬
+// ?? ?ï¿½ï¿½?æª¢æ¸¬
 export function detectEnvironment(): string {
   if (typeof window !== 'undefined') {
     return 'browser';
@@ -34,52 +34,52 @@ export function detectEnvironment(): string {
   }
 }
 
-// ???ç½®é©—è?
+// ???ï¿½ç½®é©—ï¿½?
 export function validateConfig(): string[] {
   const issues: string[] = [];
   
   if (CONFIG.WORKER_URL === 'https://your-api-domain.example.com') {
-    issues.push('è«‹æ›´??WORKER_URL ?ºä??„å¯¦??Worker ç¶²å?');
+    issues.push('è«‹æ›´??WORKER_URL ?ï¿½ï¿½??ï¿½å¯¦??Worker ç¶²ï¿½?');
   }
   
   if (!CONFIG.WORKER_URL.startsWith('https://')) {
-    issues.push('WORKER_URL å¿…é?ä½¿ç”¨ HTTPS');
+    issues.push('WORKER_URL å¿…ï¿½?ä½¿ç”¨ HTTPS');
   }
   
   if (CONFIG.MONITOR_INTERVAL < 5000) {
-    issues.push('MONITOR_INTERVAL ä¸æ?å°æ–¼ 5 ç§?);
+    issues.push('MONITOR_INTERVAL ä¸ï¿½?å°æ–¼ 5 ï¿½?);
   }
   
   return issues;
 }
 
-// ?? é¡¯ç¤º?ç½®è³‡è?
+// ?? é¡¯ç¤º?ï¿½ç½®è³‡ï¿½?
 export function showConfig(): boolean {
-  console.log('?™ï?  ?¶å??ç½®:');
+  console.log('?ï¿½ï¿½?  ?ï¿½ï¿½??ï¿½ç½®:');
   console.log(`  Worker URL: ${CONFIG.WORKER_URL}`);
-  console.log(`  ??§?“é?: ${CONFIG.MONITOR_INTERVAL / 1000} ç§’`);
-  console.log(`  ?°å?: ${detectEnvironment()}`);
+  console.log(`  ??ï¿½ï¿½?ï¿½ï¿½?: ${CONFIG.MONITOR_INTERVAL / 1000} ç§’`);
+  console.log(`  ?ï¿½ï¿½?: ${detectEnvironment()}`);
   console.log('');
   
   const issues = validateConfig();
   if (issues.length > 0) {
-    console.log('? ï?  ?ç½®?é?:');
+    console.log('?ï¿½ï¿½?  ?ï¿½ç½®?ï¿½ï¿½?:');
     issues.forEach(issue => console.log(`  - ${issue}`));
     console.log('');
     return false;
   }
   
-  console.log('???ç½®æª¢æŸ¥?šé?');
+  console.log('???ï¿½ç½®æª¢æŸ¥?ï¿½ï¿½?');
   return true;
 }
 
-// ?”§ ?´æ–°?ç½®?„è??©å‡½??
+// ?ï¿½ï¿½ ?ï¿½æ–°?ï¿½ç½®?ï¿½ï¿½??ï¿½å‡½??
 export function updateWorkerUrl(newUrl: string): void {
   CONFIG.WORKER_URL = newUrl;
-  console.log(`??Worker URL å·²æ›´?°ç‚º: ${newUrl}`);
+  console.log(`??Worker URL å·²æ›´?ï¿½ç‚º: ${newUrl}`);
 }
 
-// ?? API è¼”åŠ©?½æ•¸
+// ?? API è¼”åŠ©?ï¿½æ•¸
 export async function makeApiRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
   const url = `${CONFIG.WORKER_URL}${endpoint}`;
   const controller = new AbortController();
@@ -102,14 +102,14 @@ export async function makeApiRequest(endpoint: string, options: RequestInit = {}
     clearTimeout(timeoutId);
     
     if (error.name === 'AbortError') {
-      throw new Error('è«‹æ?è¶…æ?');
+      throw new Error('è«‹ï¿½?è¶…ï¿½?');
     }
     
     throw error;
   }
 }
 
-// ?¨ ?¼å??–è??©å‡½??
+// ?ï¿½ï¿½ ?ï¿½ï¿½??ï¿½ï¿½??ï¿½å‡½??
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleString(CONFIG.DATE_FORMAT);
@@ -124,25 +124,25 @@ export function createProgressBar(value: number, maxValue: number, length: numbe
   return '??.repeat(filled) + '??.repeat(length - filled);
 }
 
-// ?? å¿«é€Ÿå??•å‡½??
+// ?? å¿«é€Ÿï¿½??ï¿½å‡½??
 export async function quickStart(): Promise<boolean> {
-  console.log('?? å®¢æˆ¶ç®¡ç?å·¥å…·å¿«é€Ÿå??•\n');
+  console.log('?? å®¢æˆ¶ç®¡ï¿½?å·¥å…·å¿«é€Ÿï¿½??ï¿½\n');
   
   if (!showConfig()) {
-    console.log('??è«‹å?ä¿®æ­£?ç½®?é?');
+    console.log('??è«‹ï¿½?ä¿®æ­£?ï¿½ç½®?ï¿½ï¿½?');
     return false;
   }
   
   try {
-    console.log('?? æ¸¬è©¦ API ??¥...');
+    console.log('?? æ¸¬è©¦ API ??ï¿½ï¿½...');
     const healthCheck = await makeApiRequest('/health');
     
     if (healthCheck.status === 'healthy') {
-      console.log('??API ??¥æ­?¸¸');
+      console.log('??API ??ï¿½ï¿½ï¿½?ï¿½ï¿½');
       
       const stats = await makeApiRequest('/api/stats');
       if (stats.success) {
-        console.log('?? ç³»çµ±?€??');
+        console.log('?? ç³»çµ±?ï¿½??');
         console.log(`  å®¢æˆ¶?? ${stats.data.totalCustomers}`);
         console.log(`  å°è©±?? ${stats.data.totalConversations}`);
         console.log(`  è¨Šæ¯?? ${stats.data.totalMessages}`);
@@ -150,32 +150,32 @@ export async function quickStart(): Promise<boolean> {
       
       return true;
     } else {
-      console.log('??API ?¥åº·æª¢æŸ¥å¤±æ?');
+      console.log('??API ?ï¿½åº·æª¢æŸ¥å¤±ï¿½?');
       return false;
     }
   } catch (error: any) {
-    console.log(`??API ??¥å¤±æ?: ${error.message}`);
-    console.log('?’¡ è«‹æª¢??');
-    console.log('  1. Worker URL ?¯å¦æ­?¢º');
-    console.log('  2. Worker ?¯å¦æ­?œ¨?‹è?');
-    console.log('  3. ç¶²è·¯??¥?¯å¦æ­?¸¸');
+    console.log(`??API ??ï¿½ï¿½å¤±ï¿½?: ${error.message}`);
+    console.log('?ï¿½ï¿½ è«‹æª¢??');
+    console.log('  1. Worker URL ?ï¿½å¦ï¿½?ï¿½ï¿½');
+    console.log('  2. Worker ?ï¿½å¦ï¿½?ï¿½ï¿½?ï¿½ï¿½?');
+    console.log('  3. ç¶²è·¯??ï¿½ï¿½?ï¿½å¦ï¿½?ï¿½ï¿½');
     return false;
   }
 }
 
-// å¦‚æ??´æ¥?·è??™å€‹è…³??
+// å¦‚ï¿½??ï¿½æ¥?ï¿½ï¿½??ï¿½å€‹è…³??
 if (typeof window === 'undefined' && import.meta.url === `file://${process.argv[1]}`) {
-  console.log('?™ï?  å®¢æˆ¶ç®¡ç?å·¥å…·?ç½®\n');
+  console.log('?ï¿½ï¿½?  å®¢æˆ¶ç®¡ï¿½?å·¥å…·?ï¿½ç½®\n');
   showConfig();
   
-  console.log('?’¡ ä½¿ç”¨?¹æ?:');
-  console.log('1. ç·¨è¼¯ config.ts ä¸­ç? WORKER_URL');
-  console.log('2. ?·è? node config.ts æª¢æŸ¥?ç½®');
-  console.log('3. ä½¿ç”¨?¶ä?å·¥å…·?³æœ¬');
+  console.log('?ï¿½ï¿½ ä½¿ç”¨?ï¿½ï¿½?:');
+  console.log('1. ç·¨è¼¯ config.ts ä¸­ï¿½? WORKER_URL');
+  console.log('2. ?ï¿½ï¿½? node config.ts æª¢æŸ¥?ï¿½ç½®');
+  console.log('3. ä½¿ç”¨?ï¿½ï¿½?å·¥å…·?ï¿½æœ¬');
   console.log('');
-  console.log('??ï¸? ?¯ç”¨å·¥å…·:');
-  console.log('- node customer-manager.ts    (å®¢æˆ¶è³‡æ?ç®¡ç?)');
-  console.log('- node customer-analytics.ts  (å®¢æˆ¶è³‡æ??†æ?)');
-  console.log('- node monitor-customers.ts   (å®¢æˆ¶æ´»å???§)');
-  console.log('- node query-customers.ts     (å®¢æˆ¶è³‡æ??¥è©¢)');
+  console.log('??ï¿½? ?ï¿½ç”¨å·¥å…·:');
+  console.log('- node customer-manager.ts (å®¢æˆ¶è³‡ï¿½?ç®¡ï¿½?)');
+  console.log('- node customer-analytics.ts  (å®¢æˆ¶è³‡ï¿½??ï¿½ï¿½?)');
+  console.log('- node monitor-customers.ts (å®¢æˆ¶æ´»ï¿½???ï¿½ï¿½)');
+  console.log('- node query-customers.ts (å®¢æˆ¶è³‡ï¿½??ï¿½è©¢)');
 }

@@ -57,12 +57,12 @@ export const MESSAGE_STATUS_COLORS: Record<MessageStatus, string> = {
  * Message status icons
  */
 export const MESSAGE_STATUS_ICONS: Record<MessageStatus, string> = {
-  [MESSAGE_STATUS.PENDING]: '⏳',
-  [MESSAGE_STATUS.SENT]: '📤',
-  [MESSAGE_STATUS.DELIVERED]: '✓',
-  [MESSAGE_STATUS.FAILED]: '✗',
+  [MESSAGE_STATUS.PENDING]: '',
+  [MESSAGE_STATUS.SENT]: '',
+  [MESSAGE_STATUS.DELIVERED]: '',
+  [MESSAGE_STATUS.FAILED]: '',
   [MESSAGE_STATUS.RECALLED]: '↶',
-  [MESSAGE_STATUS.READ]: '✓✓'
+  [MESSAGE_STATUS.READ]: ''
 };
 
 /**

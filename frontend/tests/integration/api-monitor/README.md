@@ -6,7 +6,7 @@ This directory contains integration tests for the API monitor feature.
 
 ```
 tests/integration/api-monitor/
-└── ApiMonitor.integration.test.ts     # Full feature integration tests
+└── ApiMonitor.integration.test.ts # Full feature integration tests
 ```
 
 ## What Integration Tests Cover

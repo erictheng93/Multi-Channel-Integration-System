@@ -9,7 +9,7 @@
  * 4. Multiple messages → conversation timestamps reflect the latest message
  *
  * This fills the gap identified in the test coverage report:
- *   "欠缺驗證「建立訊息後，對話 (Conversation) 的 lastMessageAt 是否正確更新」等跨表聯動測試"
+ * "欠缺驗證「建立訊息後，對話 (Conversation) 的 lastMessageAt 是否正確更新」等跨表聯動測試"
  *
  * Mock Strategy:
  * - Operation-tracking DB mock that records ALL insert/update/select calls
@@ -437,7 +437,7 @@ describe('Cross-Table Data Consistency Tests (跨表聯動測試)', () => {
       const res = await app.request('/api/messages/msg-001', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: '   ' })
+        body: JSON.stringify({ content: ' ' })
       });
 
       expect(res.status).toBe(400);

@@ -6,7 +6,7 @@
           404
         </div>
         <div class="error-icon">
-          🔍
+          
         </div>
       </div>
       

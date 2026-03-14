@@ -347,7 +347,7 @@ function generateReport(result: DeploymentResult): void {
     console.log(`  ${status} ${test.name} (${test.duration}ms)`);
     
     if (test.error) {
-      console.log(`    ?�誤: ${test.error}`);
+      console.log(` ?�誤: ${test.error}`);
     }
   }
   
@@ -439,12 +439,12 @@ async function main(): Promise<void> {
   node deploy-test.ts [?��?]
 
 ?��?:
-  --prod     ?�署?��??�環�?
-  --help     顯示此幫?��???
+  --prod ?�署?��??�環�?
+  --help 顯示此幫?��???
 
 範�?:
-  node deploy-test.ts          # ?�署?��??�環�?
-  node deploy-test.ts --prod   # ?�署?��??�環�?
+  node deploy-test.ts # ?�署?��??�環�?
+  node deploy-test.ts --prod # ?�署?��??�環�?
     `);
     return;
   }

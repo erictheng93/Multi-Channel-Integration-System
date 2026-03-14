@@ -160,12 +160,12 @@ const setupImageErrorHandlers = () => {
     imgElement.addEventListener('load', () => {
       // 圖片加載成功，設置透明度
       imgElement.style.opacity = '1'
-      console.log('✅ Sticker loaded:', imgElement.src)
+      console.log(' Sticker loaded:', imgElement.src)
     })
 
     // 添加 error 事件處理
     imgElement.addEventListener('error', () => {
-      console.log('❌ Sticker failed to load:', imgElement.src)
+      console.log(' Sticker failed to load:', imgElement.src)
 
       // 隱藏圖片
       imgElement.style.display = 'none'

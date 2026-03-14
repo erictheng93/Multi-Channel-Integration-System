@@ -191,14 +191,14 @@ export function useTagActions(
           if (response.success && response.data) {
             tagCacheService.optimisticUpdateTag(response.data)
           }
-          console.log('✅ [TagActions] Tag updated (verified):', tagName)
+          console.log('[TagActions] Tag updated (verified):', tagName)
         } catch (error) {
           // Rollback on failure
           if (oldTag) {
             rollbackUpdateTag(oldTag)
           }
           showError('標籤更新失敗', '請檢查網路連線或稍後重試')
-          console.error('❌ [TagActions] Failed to update tag:', error)
+          console.error('[TagActions] Failed to update tag:', error)
         }
       } else {
         // ===== Create Tag - Optimistic =====
@@ -242,17 +242,17 @@ export function useTagActions(
               store.tags[index] = response.data
             }
             tagCacheService.optimisticAddTag(response.data)
-            console.log('✅ [TagActions] Tag created (verified):', tagName)
+            console.log('[TagActions] Tag created (verified):', tagName)
           }
         } catch (error) {
           // Rollback on failure
           rollbackAddTag(tempId)
           showError('標籤創建失敗', '請檢查網路連線或稍後重試')
-          console.error('❌ [TagActions] Failed to create tag:', error)
+          console.error('[TagActions] Failed to create tag:', error)
         }
       }
     } catch (error) {
-      console.error('❌ [TagActions] Unexpected error in saveTag:', error)
+      console.error('[TagActions] Unexpected error in saveTag:', error)
       showError(
         isEdit ? '標籤更新失敗' : '標籤創建失敗',
         '發生未預期的錯誤'
@@ -286,14 +286,14 @@ export function useTagActions(
     try {
       await deleteTag(tagToDelete.id)
       tagCacheService.optimisticRemoveTag(tagToDelete.id)
-      console.log('✅ [TagActions] Tag deleted (verified):', tagName)
+      console.log('[TagActions] Tag deleted (verified):', tagName)
     } catch (error) {
       // Rollback on failure
       if (deletedTag) {
         rollbackDeleteTag(deletedTag)
       }
       showError('標籤刪除失敗', '請檢查網路連線或稍後重試')
-      console.error('❌ [TagActions] Failed to delete tag:', error)
+      console.error('[TagActions] Failed to delete tag:', error)
     }
   }
 
@@ -329,7 +329,7 @@ export function useTagActions(
       const failedCount = results.filter(r => r.status === 'rejected').length
 
       if (failedCount > 0) {
-        console.error(`❌ [TagActions] ${failedCount}/${tagCount} tags failed to delete`)
+        console.error(`[TagActions] ${failedCount}/${tagCount} tags failed to delete`)
         showError(
           '批量刪除部分失敗',
           `${failedCount} 個標籤刪除失敗，請重試`
@@ -339,13 +339,13 @@ export function useTagActions(
       } else {
         // Update cache - bulk remove
         tagIdsToDelete.forEach(id => tagCacheService.optimisticRemoveTag(id))
-        console.log(`✅ [TagActions] ${tagCount} tags deleted successfully (verified)`)
+        console.log(`[TagActions] ${tagCount} tags deleted successfully (verified)`)
       }
     } catch (error) {
       // Rollback all on complete failure
       deletedTags.forEach(tag => rollbackDeleteTag(tag))
       showError('批量刪除失敗', '請檢查網路連線或稍後重試')
-      console.error('❌ [TagActions] Failed to bulk delete tags:', error)
+      console.error('[TagActions] Failed to bulk delete tags:', error)
     }
   }
 

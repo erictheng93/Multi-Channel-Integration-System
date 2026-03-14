@@ -70,7 +70,7 @@ export class SessionService implements SessionServiceInterface {
     try {
       await this.db.insert(conversationSessions).values(sessionData as any);
 
-      console.log(`🆕 [SessionService] 創建新會話: ${sessionId}, 主題: ${topic || '未知'}`);
+      console.log(`[SessionService] 創建新會話: ${sessionId}, 主題: ${topic || '未知'}`);
 
       return this.transformDbSession(sessionData as any);
     } catch (error) {
@@ -94,11 +94,11 @@ export class SessionService implements SessionServiceInterface {
     userRole?: 'admin' | 'agent'
   ): Promise<ConversationSession | null> {
     try {
-      // 🆕 P2-2: Permission check if user context provided
+      // P2-2: Permission check if user context provided
       if (userId && userRole) {
         const hasAccess = await this.canAccessSession(sessionId, userId, userRole);
         if (!hasAccess) {
-          console.warn(`❌ [SessionService] Access denied: User ${userId} (${userRole}) cannot access session ${sessionId}`);
+          console.warn(`[SessionService] Access denied: User ${userId} (${userRole}) cannot access session ${sessionId}`);
           return null;
         }
       }
@@ -150,7 +150,7 @@ export class SessionService implements SessionServiceInterface {
         throw new SessionOperationError('Session disappeared after update', 'update');
       }
 
-      console.log(`🔄 [SessionService] 更新會話: ${sessionId}`);
+      console.log(`[SessionService] 更新會話: ${sessionId}`);
       return updatedSession;
     } catch (error) {
       console.error('[SessionService] 更新會話失敗:', error);
@@ -172,7 +172,7 @@ export class SessionService implements SessionServiceInterface {
         .delete(conversationSessions)
         .where(eq(conversationSessions.id, sessionId));
 
-      console.log(`🗑️ [SessionService] 刪除會話: ${sessionId}`);
+      console.log(`[SessionService] 刪除會話: ${sessionId}`);
       return true;
     } catch (error) {
       console.error('[SessionService] 刪除會話失敗:', error);
@@ -199,7 +199,7 @@ export class SessionService implements SessionServiceInterface {
     try {
       // Admins have access to all sessions
       if (userRole === 'admin') {
-        console.log(`✅ [SessionService] Admin ${userId} granted access to session ${sessionId}`);
+        console.log(`[SessionService] Admin ${userId} granted access to session ${sessionId}`);
         return true;
       }
 
@@ -211,7 +211,7 @@ export class SessionService implements SessionServiceInterface {
         .get();
 
       if (!session) {
-        console.warn(`⚠️ [SessionService] Session ${sessionId} not found for access check`);
+        console.warn(`[SessionService] Session ${sessionId} not found for access check`);
         return false;
       }
 
@@ -223,7 +223,7 @@ export class SessionService implements SessionServiceInterface {
         .get();
 
       if (!conversation) {
-        console.warn(`⚠️ [SessionService] Conversation ${session.conversationId} not found for session ${sessionId}`);
+        console.warn(`[SessionService] Conversation ${session.conversationId} not found for session ${sessionId}`);
         return false;
       }
 
@@ -246,7 +246,7 @@ export class SessionService implements SessionServiceInterface {
         }
       }
 
-      console.warn(`❌ [SessionService] Agent ${userId} denied access to session ${sessionId} - no assignment or team match`);
+      console.warn(`[SessionService] Agent ${userId} denied access to session ${sessionId} - no assignment or team match`);
       return false;
     } catch (error) {
       console.error('[SessionService] Permission check error:', error);
@@ -423,7 +423,7 @@ export class SessionService implements SessionServiceInterface {
         })
         .where(eq(conversationSessions.id, sessionId));
 
-      console.log(`🔚 [SessionService] 關閉會話: ${sessionId}`);
+      console.log(`[SessionService] 關閉會話: ${sessionId}`);
       return true;
     } catch (error) {
       console.error('[SessionService] 關閉會話失敗:', error);
@@ -448,7 +448,7 @@ export class SessionService implements SessionServiceInterface {
         })
         .where(eq(conversationSessions.id, sessionId));
 
-      console.log(`🔄 [SessionService] 重新開啟會話: ${sessionId}`);
+      console.log(`[SessionService] 重新開啟會話: ${sessionId}`);
       return true;
     } catch (error) {
       console.error('[SessionService] 重新開啟會話失敗:', error);
@@ -699,7 +699,7 @@ export class SessionService implements SessionServiceInterface {
           case 'update_priority':
             // priority 欄位不存在於 conversationSessions 表中
             // if (operation.data?.priority) {
-            //   await this.update(sessionId, { priority: operation.data.priority });
+            // await this.update(sessionId, { priority: operation.data.priority });
             // }
             break;
           case 'add_tags':

@@ -185,7 +185,7 @@ function importTableData(table: string, data: any[], columns: string[]): void {
     }
   }
   
-  console.log(`✅ Successfully imported ${importedCount} records into ${table}`);
+  console.log(` Successfully imported ${importedCount} records into ${table}`);
 }
 
 async function main() {
@@ -194,9 +194,9 @@ async function main() {
   console.log('==========================================\n');
   
   // First, sync tables that exist in both
-  console.log('📊 Syncing common tables...\n');
+  console.log(' Syncing common tables...\n');
   for (const table of TABLES_TO_SYNC) {
-    console.log(`\n🔄 Processing table: ${table}`);
+    console.log(`\n Processing table: ${table}`);
     console.log('-'.repeat(40));
     
     const commonColumns = getCommonColumns(table);
@@ -209,9 +209,9 @@ async function main() {
   }
   
   // Then, handle remote-only tables
-  console.log('\n\n📊 Syncing remote-only tables...\n');
+  console.log('\n\n Syncing remote-only tables...\n');
   for (const table of REMOTE_ONLY_TABLES) {
-    console.log(`\n🔄 Processing remote-only table: ${table}`);
+    console.log(`\n Processing remote-only table: ${table}`);
     console.log('-'.repeat(40));
     
     const remoteColumns = getTableColumns(table, true);
@@ -222,7 +222,7 @@ async function main() {
   }
   
   console.log('\n==========================================');
-  console.log('✨ Sync completed successfully!');
+  console.log(' Sync completed successfully!');
   console.log('==========================================');
 }
 

@@ -25,12 +25,12 @@ interface RawConversationData {
   createdAt: string
   updatedAt: string
 
-  // 🔧 FIX: 旧格式（扁平字段，向后兼容）
+  // FIX: 旧格式（扁平字段，向后兼容）
   customerName?: string
   platform?: Platform  // 改为可选，因为新格式中 platform 在 customer 对象内
   platformUserId?: string  // 改为可选
 
-  // 🔧 FIX: 新格式（嵌套 customer 对象）- 后端现在返回完整的 customer 对象
+  // FIX: 新格式（嵌套 customer 对象）- 后端现在返回完整的 customer 对象
   customer?: {
     id: number | string
     name?: string
@@ -46,14 +46,14 @@ interface RawConversationData {
     updatedAt?: string
   }
 
-  // 🔧 FIX: 新格式（嵌套 assignedTeam 对象）
+  // FIX: 新格式（嵌套 assignedTeam 对象）
   assignedTeam?: {
     id: number
     name: string
     description?: string
   }
 
-  // 🔧 FIX: 新格式（嵌套 assignedAgent 对象）
+  // FIX: 新格式（嵌套 assignedAgent 对象）
   assignedAgent?: {
     id: string
     name: string
@@ -69,8 +69,8 @@ interface RawConversationData {
 // 指派對話選項
 // Note: Individual assignment (userId) removed - only team-based assignment is supported now
 export interface AssignConversationOptions {
-  teamId: number;     // 團隊 ID (必填)
-  reason?: string;    // 指派原因
+  teamId: number; // 團隊 ID (必填)
+  reason?: string; // 指派原因
 }
 
 // 數據轉換適配器
@@ -92,7 +92,7 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
 
   const customerId = rawData.customerId || rawData.customer_id
 
-  // 🔧 FIX: 優先使用嵌套的 customer 對象，fallback 到扁平字段
+  // FIX: 優先使用嵌套的 customer 對象，fallback 到扁平字段
   // 這樣可以同時支援新舊版本的 API 響應格式
   const customerName = rawData.customer?.name ||
                        rawData.customer?.displayName ||
@@ -107,7 +107,7 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
                          rawData.platformUserId ||
                          ''
 
-  // 🆕 Extract customer createdAt (prefer nested customer.createdAt if available)
+  // Extract customer createdAt (prefer nested customer.createdAt if available)
   const customerCreatedAt = rawData.customer?.createdAt
     ? new Date(rawData.customer.createdAt).getTime()
     : new Date(rawData.createdAt).getTime()
@@ -131,7 +131,7 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       avatarUrl: rawData.customer?.avatarUrl,
       createdAt: customerCreatedAt
     },
-    // 🔧 FIX: 处理嵌套的 assignedTeam 对象
+    // FIX: 处理嵌套的 assignedTeam 对象
     assignedTeam: rawData.assignedTeam ? {
       id: rawData.assignedTeam.id,
       name: rawData.assignedTeam.name,
@@ -169,9 +169,9 @@ interface ConversationListParams {
   teamId?: number;
   search?: string;
   tagIds?: number[];  // 標籤篩選
-  customerName?: string;    // 客戶名稱搜尋
-  updatedAfter?: string;    // 更新時間起始
-  updatedBefore?: string;   // 更新時間結束
+  customerName?: string; // 客戶名稱搜尋
+  updatedAfter?: string; // 更新時間起始
+  updatedBefore?: string; // 更新時間結束
 }
 
 interface SendMessageRequest {
@@ -346,7 +346,7 @@ export const conversationApi = {
       reason: options.reason
     });
 
-    // 🔧 FIX: 對返回的數據進行適配，確保 customer.name 等字段正確映射
+    // FIX: 對返回的數據進行適配，確保 customer.name 等字段正確映射
     if (response.success && response.data) {
       const adaptedConversation = adaptConversationData(response.data);
       return {
@@ -372,7 +372,7 @@ export const conversationApi = {
       reason: reason || undefined
     });
 
-    // 🔧 FIX: 對返回的數據進行適配，確保 customer.name 等字段正確映射
+    // FIX: 對返回的數據進行適配，確保 customer.name 等字段正確映射
     if (response.success && response.data) {
       const adaptedConversation = adaptConversationData(response.data);
       return {
@@ -464,7 +464,7 @@ export const conversationApi = {
    * @deprecated Individual assignment is no longer supported. Use assignConversation with teamId instead.
    */
   assign: async (_conversationId: string, _agentId: string): Promise<ApiResponse<Conversation>> => {
-    console.error('❌ [conversationApi.assign] Individual assignment is deprecated. Use assignConversation with teamId instead.')
+    console.error('[conversationApi.assign] Individual assignment is deprecated. Use assignConversation with teamId instead.')
     return { success: false, error: '個人指派功能已停用，請使用團隊指派' }
   },
 

@@ -98,7 +98,7 @@ export class MemberService {
     // Build where conditions
     const conditions = [];
 
-    // 🔑 Filter out soft-deleted members
+    // Filter out soft-deleted members
     conditions.push(isNull(agents.deletedAt));
 
     // teamId filter is handled via a subquery on agent_teams
@@ -349,7 +349,7 @@ export class MemberService {
         }
       }
 
-      console.log(`📦 [Member Bulk Delete] 批量永久刪除 ${deleted.length} 位成員`);
+      console.log(`[Member Bulk Delete] 批量永久刪除 ${deleted.length} 位成員`);
 
     } catch (err) {
       // 如果批量操作失敗，將所有成員標記為失敗
@@ -371,7 +371,7 @@ export class MemberService {
   /**
    * 批量更新成員
    *
-   * 🚀 Phase 2 優化: 使用批量 DB 操作
+   * Phase 2 優化: 使用批量 DB 操作
    * - 1 次批量查詢現有成員
    * - 1 次批量更新
    * - 總共 2 次 DB 查詢 (vs 原本 N 次)
@@ -423,7 +423,7 @@ export class MemberService {
     }
 
     try {
-      // 🚀 Step 1: 批量查詢現有成員 (N 查詢 → 1 查詢)
+      // Step 1: 批量查詢現有成員 (N 查詢 → 1 查詢)
       const existingMembers = await this.db
         .select()
         .from(agents)
@@ -460,7 +460,7 @@ export class MemberService {
         return { updated, failed, skipped, updatedMembers };
       }
 
-      // 🚀 Step 2: 批量更新 (N 更新 → 1 更新)
+      // Step 2: 批量更新 (N 更新 → 1 更新)
       const now = nowISO();
       const updateData: any = { updatedAt: now };
       if (updates.role !== undefined) updateData.role = updates.role;
@@ -485,7 +485,7 @@ export class MemberService {
         }
       });
 
-      console.log(`📦 [Member Bulk Update] 批量更新 ${updated.length} 位成員 (2 DB 查詢)`);
+      console.log(`[Member Bulk Update] 批量更新 ${updated.length} 位成員 (2 DB 查詢)`);
 
     } catch (err) {
       // 如果批量操作失敗，將所有成員標記為失敗
@@ -504,7 +504,7 @@ export class MemberService {
   /**
    * 批量編輯成員 (Per-member changes)
    *
-   * 🚀 優化: 支持每個成員有不同的 profile 和團隊變更
+   * 優化: 支持每個成員有不同的 profile 和團隊變更
    * - 批量處理 profile 更新 (displayName, email, role)
    * - 批量處理團隊加入/離開
    * - 返回原始資料用於撤銷
@@ -550,7 +550,7 @@ export class MemberService {
     const memberIds = members.map(m => m.memberId);
 
     try {
-      // 🚀 Step 1: 批量查詢現有成員資料 (用於驗證和收集原始資料)
+      // Step 1: 批量查詢現有成員資料 (用於驗證和收集原始資料)
       const existingMembers = await this.db
         .select()
         .from(agents)
@@ -563,10 +563,10 @@ export class MemberService {
         existingMembers.map(m => [m.id, m])
       );
 
-      // 🚀 Step 2: 批量獲取所有成員的當前團隊 (用於收集原始資料)
+      // Step 2: 批量獲取所有成員的當前團隊 (用於收集原始資料)
       const allAgentTeams = await agentTeamsService.getAllAgentsWithTeams();
 
-      // 🚀 Step 3: 處理每個成員
+      // Step 3: 處理每個成員
       for (const memberData of members) {
         const { memberId, profile, teamChanges } = memberData;
 
@@ -614,7 +614,7 @@ export class MemberService {
         };
 
         try {
-          // 🚀 Step 3.1: 更新 Profile (如果有變更)
+          // Step 3.1: 更新 Profile (如果有變更)
           if (profile && (profile.displayName || profile.email || profile.role)) {
             const updateData: Record<string, string> = {};
 
@@ -640,7 +640,7 @@ export class MemberService {
             }
           }
 
-          // 🚀 Step 3.2: 處理團隊變更
+          // Step 3.2: 處理團隊變更
           if (teamChanges) {
             // 加入團隊
             if (teamChanges.add && teamChanges.add.length > 0) {
@@ -673,7 +673,7 @@ export class MemberService {
         results.push(result);
       }
 
-      console.log('📦 [Member Batch Edit] 批量編輯完成:', {
+      console.log('[Member Batch Edit] 批量編輯完成:', {
         total: members.length,
         success: results.filter(r => r.success).length,
         failed: results.filter(r => !r.success).length,
@@ -705,7 +705,7 @@ export class MemberService {
   /**
    * 硬刪除成員 (Hard Delete)
    *
-   * ⚠️ 永久刪除，無法恢復！
+   * 永久刪除，無法恢復！
    *
    * 處理外鍵約束（依順序處理所有引用 agents 表的外鍵）：
    * 1. 刪除 notifications（用戶刪除後通知無意義）

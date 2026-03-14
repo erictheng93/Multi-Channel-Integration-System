@@ -20,24 +20,24 @@ src/modules/collaboration/
   types/
     collaboration-types.ts  # Type definitions
   adapters/
-    websocket-adapter.ts    # WebSocket transport adapter
+    websocket-adapter.ts # WebSocket transport adapter
   services/
     collaboration-manager.ts # Core collaboration logic
   handlers/
-    collaboration-main.ts   # API endpoints
+    collaboration-main.ts # API endpoints
 ```
 
 ## API Endpoints
 
 ```
-GET  /api/collaboration/conversations/:id/state     # Get conversation state
-GET  /api/collaboration/conversations/:id/viewers    # List viewers
-POST /api/collaboration/conversations/:id/join       # Join conversation
-POST /api/collaboration/conversations/:id/leave      # Leave conversation
-POST /api/collaboration/typing                       # Send typing indicator
-POST /api/collaboration/presence                     # Update presence
-GET  /api/collaboration/stats                        # Get statistics
-GET  /api/collaboration/health                       # Health check
+GET  /api/collaboration/conversations/:id/state # Get conversation state
+GET  /api/collaboration/conversations/:id/viewers # List viewers
+POST /api/collaboration/conversations/:id/join # Join conversation
+POST /api/collaboration/conversations/:id/leave # Leave conversation
+POST /api/collaboration/typing # Send typing indicator
+POST /api/collaboration/presence # Update presence
+GET  /api/collaboration/stats # Get statistics
+GET  /api/collaboration/health # Health check
 ```
 
 ## Usage

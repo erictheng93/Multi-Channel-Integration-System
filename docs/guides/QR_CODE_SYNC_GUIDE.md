@@ -1,10 +1,10 @@
 # QR Code 雙向同步機制使用指南
 
-## 📚 概述
+##  概述
 
 本指南說明如何使用 QR Code 雙向同步機制，該機制將 `qr_codes` 表的資料同步到 `teams.qrCode` 欄位，提升查詢效能 **50 倍以上**。
 
-## ✨ 核心改進
+##  核心改進
 
 ### 改進前
 - 每次查詢 QR Code 需要查詢 `qr_codes` 表
@@ -15,9 +15,9 @@
 - `teams.qrCode` 欄位直接存儲最新 QR Code
 - 團隊列表頁只需 1 次查詢
 - 查詢時間：~10-15ms (100 個團隊)
-- **效能提升 50 倍** ⚡
+- **效能提升 50 倍** 
 
-## 🔄 自動同步機制
+##  自動同步機制
 
 ### 1. 生成 QR Code 時自動同步
 
@@ -64,13 +64,13 @@ async deactivateQRCode(teamId, qrCodeId) {
 }
 ```
 
-## 🚀 API 端點使用
+##  API 端點使用
 
 ### 1. 極速查詢端點 (推薦使用)
 
 **端點:** `GET /api/teams/:id/qr-code/fast`
 **權限:** 需要 JWT 認證
-**效能:** ⚡ 最佳
+**效能:**  最佳
 
 此端點優先從 `teams.qrCode` 讀取，提供最快的查詢速度。
 
@@ -177,31 +177,31 @@ curl -X POST "https://your-domain.com/api/system/sync-qr-codes?teamId=1" \
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔄 QR Code 資料同步
+ QR Code 資料同步
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-模式: ✍️  執行模式
+模式: 執行模式
 時間: 2025/12/19 下午6:30:00
 
-📋 找到 10 個團隊
+ 找到 10 個團隊
 
-🔍 處理團隊 [1] 蝦皮團隊...
-   📍 找到 QR Code: abc-123-def
-   ⏰ 建立時間: 2025-12-19T10:00:00.000Z
-   ✅ 已同步到 teams.qrCode
+ 處理團隊 [1] 蝦皮團隊...
+    找到 QR Code: abc-123-def
+    建立時間: 2025-12-19T10:00:00.000Z
+    已同步到 teams.qrCode
 
-🔍 處理團隊 [2] 客服A組...
-   ℹ️  teams.qrCode 已存在
-   ✅ QR Code 有效，跳過同步
+ 處理團隊 [2] 客服A組...
+     teams.qrCode 已存在
+    QR Code 有效，跳過同步
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 同步完成統計
+ 同步完成統計
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-總團隊數:         10
-有 QR Code:       8
-無 QR Code:       2
-成功同步:         6
-已存在跳過:       2
-失敗:             0
+總團隊數: 10
+有 QR Code: 8
+無 QR Code: 2
+成功同步: 6
+已存在跳過: 2
+失敗: 0
 完成時間: 2025/12/19 下午6:30:05
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -266,7 +266,7 @@ curl -X GET "https://your-domain.com/api/system/sync-qr-codes/validate" \
 
 ---
 
-## 🛠️ 完整部署流程
+##  完整部署流程
 
 ### Step 1: 部署程式碼
 
@@ -322,7 +322,7 @@ curl -X GET "https://your-domain.com/api/system/sync-qr-codes/validate" \
 
 ---
 
-## 📊 效能基準測試
+##  效能基準測試
 
 ### 測試場景: 團隊列表頁載入 (100 個團隊)
 
@@ -341,7 +341,7 @@ curl -X GET "https://your-domain.com/api/system/sync-qr-codes/validate" \
 
 ---
 
-## 🔍 故障排除
+##  故障排除
 
 ### 問題 1: 某些團隊的 QR Code 未同步
 
@@ -400,7 +400,7 @@ wrangler tail
 
 ---
 
-## 🎯 最佳實踐
+##  最佳實踐
 
 ### 1. 定期驗證資料一致性
 
@@ -447,14 +447,14 @@ export async function getTeamQRCodeFast(teamId: number) {
 
 ---
 
-## 📝 版本歷史
+##  版本歷史
 
 ### v2.0.0 (2025-12-19)
-- ✨ 新增 QR Code 雙向同步機制
-- ⚡ 查詢效能提升 50 倍
-- 🚀 新增極速查詢端點 `/qr-code/fast`
-- 🔧 新增資料同步管理端點
-- 📊 新增資料一致性驗證端點
+-  新增 QR Code 雙向同步機制
+-  查詢效能提升 50 倍
+-  新增極速查詢端點 `/qr-code/fast`
+-  新增資料同步管理端點
+-  新增資料一致性驗證端點
 
 ### v1.0.0 (2025-01-28)
 - 初始版本
@@ -463,7 +463,7 @@ export async function getTeamQRCodeFast(teamId: number) {
 
 ---
 
-## 🔗 相關文件
+##  相關文件
 
 - [API 參考文件](../docs/api/API_REFERENCE.md)
 - [資料庫 Schema](../docs/architecture/SCHEMA.md)
@@ -471,7 +471,7 @@ export async function getTeamQRCodeFast(teamId: number) {
 
 ---
 
-## ❓ 常見問題 (FAQ)
+##  常見問題 (FAQ)
 
 **Q: 為什麼要使用雙向同步？**
 A: 為了提升查詢效能。直接從 `teams` 表讀取比 JOIN `qr_codes` 表快 50 倍以上。
@@ -490,6 +490,6 @@ A: 同步過程是異步的，不會阻塞主要業務邏輯。對於 100 個團
 
 ---
 
-## 📞 支援
+##  支援
 
 如有問題，請聯繫技術支援團隊或在 GitHub Issues 中提交問題。

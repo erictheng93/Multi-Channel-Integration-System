@@ -38,16 +38,16 @@ export function useConversationActions(
    */
   async function recallMessage(messageId: string): Promise<boolean> {
     try {
-      console.log('🔄 [ConversationActions] Recalling message:', messageId)
+      console.log('[ConversationActions] Recalling message:', messageId)
       // Recall API exists in backend (CustomerMessageDO) — frontend handler
       // uses ConversationDetail.vue's handleMessageRecall instead of this stub.
       // Refresh messages to reflect server state
       await state.refreshMessages()
 
-      console.log('✅ [ConversationActions] Message recalled (placeholder)')
+      console.log('[ConversationActions] Message recalled (placeholder)')
       return true
     } catch (error) {
-      console.error('❌ [ConversationActions] Failed to recall message:', error)
+      console.error('[ConversationActions] Failed to recall message:', error)
       return false
     }
   }
@@ -60,9 +60,9 @@ export function useConversationActions(
   function scrollToBottom() {
     if (scrollTarget.value?.scrollToBottom) {
       scrollTarget.value.scrollToBottom()
-      console.log('📜 [ConversationActions] Scrolled to bottom')
+      console.log('[ConversationActions] Scrolled to bottom')
     } else {
-      console.warn('⚠️ [ConversationActions] Scroll target not available')
+      console.warn('[ConversationActions] Scroll target not available')
     }
   }
 
@@ -80,24 +80,24 @@ export function useConversationActions(
    */
   async function refreshMessages() {
     try {
-      console.log('🔄 [ConversationActions] Refreshing messages...')
+      console.log('[ConversationActions] Refreshing messages...')
 
       // Priority 1: 如果 WebSocket 斷開，嘗試重連
       if (websocket.unifiedConnectionState.value === 'error' ||
           websocket.unifiedConnectionState.value === 'disconnected') {
-        console.log('🔄 [ConversationActions] Reconnecting WebSocket...')
+        console.log('[ConversationActions] Reconnecting WebSocket...')
         await websocket.reconnect()
       }
 
       // Priority 2: 如果未連接，使用 HTTP 刷新
       if (!websocket.unifiedIsConnected.value) {
-        console.log('🔄 [ConversationActions] Using HTTP API refresh...')
+        console.log('[ConversationActions] Using HTTP API refresh...')
         await state.refreshMessages()
       }
 
-      console.log('✅ [ConversationActions] Messages refreshed')
+      console.log('[ConversationActions] Messages refreshed')
     } catch (error) {
-      console.error('❌ [ConversationActions] Failed to refresh messages:', error)
+      console.error('[ConversationActions] Failed to refresh messages:', error)
       throw error
     }
   }
@@ -107,11 +107,11 @@ export function useConversationActions(
    */
   async function loadMoreMessages() {
     try {
-      console.log('🔄 [ConversationActions] Loading more messages...')
+      console.log('[ConversationActions] Loading more messages...')
       await state.loadMoreMessages()
-      console.log('✅ [ConversationActions] More messages loaded')
+      console.log('[ConversationActions] More messages loaded')
     } catch (error) {
-      console.error('❌ [ConversationActions] Failed to load more messages:', error)
+      console.error('[ConversationActions] Failed to load more messages:', error)
       throw error
     }
   }

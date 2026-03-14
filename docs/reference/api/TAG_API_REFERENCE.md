@@ -1,7 +1,7 @@
 # Tag Management API Reference
 # 標籤管理 API 參考文檔
 
-## 📋 (Overview)
+##  (Overview)
 
 標籤系統提供完整的 CRUD 操作、批量處理、使用統計追蹤等功能。標籤可以應用於客戶和對話，支持團隊範圍管理和全局管理。
 
@@ -10,19 +10,19 @@
 
 ---
 
-## 🏷️ 標籤系統特性
+##  標籤系統特性
 
-- ✅ **完整 CRUD 操作** - 創建、讀取、更新、刪除標籤
-- ✅ **團隊範圍管理** - 支持團隊專屬標籤和全局標籤
-- ✅ **批量操作** - 批量激活、停用、更新顏色
-- ✅ **使用統計** - 追蹤標籤使用情況和趨勢
-- ✅ **客戶關聯** - 管理客戶標籤關係
-- ✅ **對話關聯** - 管理對話標籤關係
-- ✅ **權限控制** - 基於角色的訪問控制
+-  **完整 CRUD 操作** - 創建、讀取、更新、刪除標籤
+-  **團隊範圍管理** - 支持團隊專屬標籤和全局標籤
+-  **批量操作** - 批量激活、停用、更新顏色
+-  **使用統計** - 追蹤標籤使用情況和趨勢
+-  **客戶關聯** - 管理客戶標籤關係
+-  **對話關聯** - 管理對話標籤關係
+-  **權限控制** - 基於角色的訪問控制
 
 ---
 
-## 🔐 認證 (Authentication)
+##  認證 (Authentication)
 
 所有端點（除了 `/health`）都需要 JWT 認證：
 
@@ -34,12 +34,12 @@ Authorization: Bearer <your_jwt_token>
 
 | 角色 (Role) | 創建全局標籤 | 創建團隊標籤 | 編輯/刪除 |
 |------------|------------|------------|----------|
-| **Admin** | ✅ | ✅ | ✅ 所有標籤 |
-| **Agent** | ❌ | ✅ | ✅ 僅團隊標籤 |
+| **Admin** |  |  |  所有標籤 |
+| **Agent** |  |  |  僅團隊標籤 |
 
 ---
 
-## 📍 API 端點總覽
+##  API 端點總覽
 
 ### 健康檢查 (Health Check)
 
@@ -67,7 +67,7 @@ curl https://your-domain.com/api/tags/health
 
 ---
 
-## 📝 CRUD 操作
+##  CRUD 操作
 
 ### GET /
 
@@ -78,11 +78,11 @@ curl https://your-domain.com/api/tags/health
 **查詢參數 (Query Parameters)**:
 | 參數 | 類型 | 必需 | 預設值 | 說明 |
 |------|------|------|--------|------|
-| `page` | integer | ❌ | 1 | 頁碼 |
-| `pageSize` | integer | ❌ | 50 | 每頁筆數 |
-| `teamId` | integer | ❌ | - | 篩選特定團隊的標籤 |
-| `search` | string | ❌ | - | 搜索標籤名稱或描述 |
-| `includeGlobal` | boolean | ❌ | true | 是否包含全局標籤 |
+| `page` | integer |  | 1 | 頁碼 |
+| `pageSize` | integer |  | 50 | 每頁筆數 |
+| `teamId` | integer |  | - | 篩選特定團隊的標籤 |
+| `search` | string |  | - | 搜索標籤名稱或描述 |
+| `includeGlobal` | boolean |  | true | 是否包含全局標籤 |
 
 **請求範例 (Request Example)**:
 ```bash
@@ -172,10 +172,10 @@ curl -H "Authorization: Bearer $TOKEN" \
 **欄位說明 (Field Description)**:
 | 欄位 | 類型 | 必需 | 說明 |
 |------|------|------|------|
-| `name` | string | ✅ | 標籤名稱（在同一範圍內唯一） |
-| `color` | string | ❌ | 十六進位顏色碼（預設: #3B82F6） |
-| `description` | string | ❌ | 標籤描述 |
-| `teamId` | integer | ❌ | 團隊 ID（null = 全局標籤） |
+| `name` | string |  | 標籤名稱（在同一範圍內唯一） |
+| `color` | string |  | 十六進位顏色碼（預設: #3B82F6） |
+| `description` | string |  | 標籤描述 |
+| `teamId` | integer |  | 團隊 ID（null = 全局標籤） |
 
 **請求範例 (Request Example)**:
 ```bash
@@ -311,10 +311,10 @@ curl -H "Authorization: Bearer $TOKEN" \
 **欄位說明 (Field Description)**:
 | 欄位 | 類型 | 必需 | 說明 |
 |------|------|------|------|
-| `name` | string | ❌ | 新的標籤名稱 |
-| `color` | string | ❌ | 新的顏色碼 |
-| `description` | string | ❌ | 新的描述 |
-| `isActive` | boolean | ❌ | 是否啟用 |
+| `name` | string |  | 新的標籤名稱 |
+| `color` | string |  | 新的顏色碼 |
+| `description` | string |  | 新的描述 |
+| `isActive` | boolean |  | 是否啟用 |
 
 **請求範例 (Request Example)**:
 ```bash
@@ -388,7 +388,7 @@ curl -X DELETE https://your-domain.com/api/tags/1 \
 
 ---
 
-## 🔀 批量操作
+##  批量操作
 
 ### POST /bulk
 
@@ -410,9 +410,9 @@ curl -X DELETE https://your-domain.com/api/tags/1 \
 **欄位說明 (Field Description)**:
 | 欄位 | 類型 | 必需 | 說明 |
 |------|------|------|------|
-| `operation` | string | ✅ | 操作類型: `activate`, `deactivate`, `update_color` |
-| `tagIds` | array | ✅ | 標籤 ID 陣列 |
-| `data` | object | ❌ | 操作相關數據（update_color 時必需） |
+| `operation` | string |  | 操作類型: `activate`, `deactivate`, `update_color` |
+| `tagIds` | array |  | 標籤 ID 陣列 |
+| `data` | object |  | 操作相關數據（update_color 時必需） |
 
 **請求範例 (Request Examples)**:
 
@@ -459,7 +459,7 @@ curl -X POST https://your-domain.com/api/tags/bulk \
 
 ---
 
-## 📊 統計與分析
+##  統計與分析
 
 ### GET /:id/stats
 
@@ -552,8 +552,8 @@ curl -H "Authorization: Bearer $TOKEN" \
 **查詢參數 (Query Parameters)**:
 | 參數 | 類型 | 必需 | 預設值 | 說明 |
 |------|------|------|--------|------|
-| `page` | integer | ❌ | 1 | 頁碼 |
-| `limit` | integer | ❌ | 50 | 每頁筆數（最大 100） |
+| `page` | integer |  | 1 | 頁碼 |
+| `limit` | integer |  | 50 | 每頁筆數（最大 100） |
 
 **請求範例 (Request Example)**:
 ```bash
@@ -593,7 +593,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## ⚠️ 錯誤碼 (Error Codes)
+##  錯誤碼 (Error Codes)
 
 | 錯誤碼 | HTTP 狀態碼 | 說明 |
 |--------|------------|------|
@@ -626,7 +626,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## 💡 使用範例 (Usage Examples)
+##  使用範例 (Usage Examples)
 
 ### 範例 1: 創建並管理標籤
 
@@ -726,7 +726,7 @@ const { data: customerData } = await customersResponse.json();
 
 ---
 
-## 🔒 限制與約束 (Limits & Constraints)
+##  限制與約束 (Limits & Constraints)
 
 | 項目 | 限制值 | 說明 |
 |------|--------|------|
@@ -741,20 +741,20 @@ const { data: customerData } = await customersResponse.json();
 
 ---
 
-## 🔄 版本歷史 (Version History)
+##  版本歷史 (Version History)
 
 ### v1.0.0 (2025-11-13)
-- ✅ 初始版本發布
-- ✅ 完整 CRUD 操作
-- ✅ 批量操作支持
-- ✅ 使用統計和趨勢分析
-- ✅ 客戶列表查詢
-- ✅ 團隊範圍和全局標籤支持
-- ✅ 權限控制和驗證
+-  初始版本發布
+-  完整 CRUD 操作
+-  批量操作支持
+-  使用統計和趨勢分析
+-  客戶列表查詢
+-  團隊範圍和全局標籤支持
+-  權限控制和驗證
 
 ---
 
-## 📚 相關文檔 (Related Documentation)
+##  相關文檔 (Related Documentation)
 
 - [Tag Management Guide](../TAG_MANAGEMENT_GUIDE.md) - 標籤管理完整指南
 - [Messaging API Reference](./MESSAGING_API_REFERENCE.md) - 訊息標籤整合
@@ -763,7 +763,7 @@ const { data: customerData } = await customersResponse.json();
 
 ---
 
-## 🆘 支援 (Support)
+##  支援 (Support)
 
 如有問題或建議，請聯繫：
 - **文檔倉庫**: GitHub Issues
@@ -773,4 +773,4 @@ const { data: customerData } = await customersResponse.json();
 
 **文檔生成日期**: 2025-11-13
 **維護者**: Development Team
-**狀態**: ✅ Production Ready
+**狀態**:  Production Ready

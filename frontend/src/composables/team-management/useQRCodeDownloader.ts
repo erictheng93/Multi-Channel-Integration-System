@@ -128,35 +128,35 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       isDownloading.value = true
       downloadError.value = null
 
-      // 🔧 Convert to CORS-safe proxy URL
+      // Convert to CORS-safe proxy URL
       const proxyUrl = convertToProxyUrl(qrCodeUrl)
-      console.log('🔧 [QR Download] Using proxy URL:', proxyUrl)
+      console.log('[QR Download] Using proxy URL:', proxyUrl)
 
-      // 🎨 Design parameters (3x scale for print quality)
+      // Design parameters (3x scale for print quality)
       const cardWidth = 260 * scale
       const borderRadius = 20 * scale
 
-      // 📐 Padding settings (matches QRcodeDesign.html)
+      // Padding settings (matches QRcodeDesign.html)
       const bodyPaddingTop = 35 * scale
       const footerPaddingX = 20 * scale
       const footerPaddingBottom = 20 * scale
 
-      // 🎯 QR Code dimensions
+      // QR Code dimensions
       const qrSize = 140 * scale
 
-      // ✍️ Typography settings
+      // Typography settings
       const titleFontSize = 19 * scale
       const titleMarginTop = 24 * scale
       const subtitleFontSize = 13 * scale
       const subtitleMarginTop = 8 * scale
 
-      // 🔘 Button settings
+      // Button settings
       const btnHeight = 40 * scale
       const btnRadius = 10 * scale
       const btnFontSize = 15 * scale
       const btnMarginTop = 25 * scale
 
-      // 📏 Calculate total height (with line-height buffer)
+      // Calculate total height (with line-height buffer)
       const titleHeight = titleFontSize * 1.3
       const subtitleHeight = subtitleFontSize * 1.3
       const cardHeight =
@@ -170,7 +170,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
         btnHeight +
         footerPaddingBottom
 
-      // 🎨 Create high-quality Canvas (alpha channel disabled for performance)
+      // Create high-quality Canvas (alpha channel disabled for performance)
       const canvas = document.createElement('canvas')
       canvas.width = cardWidth
       canvas.height = cardHeight
@@ -180,11 +180,11 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
         throw new Error('Unable to create Canvas 2D context')
       }
 
-      // 🔧 Enable high-quality rendering
+      // Enable high-quality rendering
       ctx.imageSmoothingEnabled = true
       ctx.imageSmoothingQuality = 'high'
 
-      // 1️⃣ Draw card background (white + iOS shadow)
+      // 1️ Draw card background (white + iOS shadow)
       ctx.shadowColor = 'rgba(0, 0, 0, 0.08)'
       ctx.shadowBlur = 12 * scale
       ctx.shadowOffsetX = 0
@@ -200,7 +200,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       ctx.shadowOffsetX = 0
       ctx.shadowOffsetY = 0
 
-      // 2️⃣ Load and draw QR Code image
+      // 2️ Load and draw QR Code image
       const qrImg = new window.Image()
       qrImg.crossOrigin = 'anonymous' // Enable CORS
       await new Promise<void>((resolve, reject) => {
@@ -214,7 +214,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       const qrY = bodyPaddingTop
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
 
-      // 3️⃣ Draw title (Team name - iOS font)
+      // 3️ Draw title (Team name - iOS font)
       ctx.fillStyle = '#000000' // Pure black
       ctx.font = `600 ${titleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
       ctx.textAlign = 'center'
@@ -223,7 +223,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       const titleY = qrY + qrSize + titleMarginTop
       ctx.fillText(teamName, cardWidth / 2, titleY)
 
-      // 4️⃣ Draw subtitle (iOS gray)
+      // 4️ Draw subtitle (iOS gray)
       ctx.fillStyle = '#8E8E93' // Apple System Gray
       ctx.font = `400 ${subtitleFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif`
       ctx.textAlign = 'center'
@@ -232,7 +232,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       const subtitleY = titleY + titleHeight + subtitleMarginTop
       ctx.fillText('掃描加入 LINE 官方帳號', cardWidth / 2, subtitleY)
 
-      // 5️⃣ Draw button (iOS Secondary style - gray background, blue text)
+      // 5️ Draw button (iOS Secondary style - gray background, blue text)
       const btnWidth = cardWidth - footerPaddingX * 2
       const btnX = footerPaddingX
       const btnY = subtitleY + subtitleHeight + btnMarginTop
@@ -249,7 +249,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       ctx.textBaseline = 'middle'
       ctx.fillText('掃描 QR Code 加入', cardWidth / 2, btnY + btnHeight / 2)
 
-      // 6️⃣ Convert to PNG and trigger download
+      // 6️ Convert to PNG and trigger download
       // Generate professional filename: {TeamName}_LINE_QR_{YYYYMMDD}.png
       const now = new Date()
       const year = now.getFullYear()
@@ -265,9 +265,9 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       link.click()
       document.body.removeChild(link)
 
-      showSuccess(`✅ QR Code 卡片已下載 (${teamName})`)
+      showSuccess(` QR Code 卡片已下載 (${teamName})`)
     } catch (error) {
-      console.error('❌ QR Code download failed:', error)
+      console.error(' QR Code download failed:', error)
       downloadError.value = error instanceof Error ? error.message : 'Unknown error'
       showError('QR Code 下載失敗，請稍後再試')
     } finally {

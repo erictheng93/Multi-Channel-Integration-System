@@ -1,14 +1,14 @@
-# 🔍 深度測試分析報告
+#  深度測試分析報告
 
 ## websocketManager.test.ts 失敗分析
 
-### 📊 **失敗統計**
+###  **失敗統計**
 - **失敗測試**: 34/34 (100% 失敗)
 - **根本原因**: API 不匹配 + Mock 實現缺失
 
 ---
 
-## 🚨 **根本原因分析**
+##  **根本原因分析**
 
 ### **問題 1: Mock WebSocketClient 缺少關鍵方法**
 
@@ -40,12 +40,12 @@ mockClient.setEventHandlers = vi.fn((handlers) => {
 
 | 測試中使用的 API | 實際實現的 API | 狀態 |
 |-----------------|---------------|------|
-| `manager.subscribeToConversation()` | `manager.joinConversation()` | ❌ 不匹配 |
-| `manager.unsubscribeFromConversation()` | `manager.leaveConversation()` | ❌ 不匹配 |
-| `manager.on('event', callback)` | `manager.setEventCallbacks({ onEvent: callback })` | ❌ 不匹配 |
-| `manager.getSubscribedConversations()` | `manager.connectedConversations.value` | ❌ 不匹配 |
-| `manager.resetStats()` | 不存在此方法 | ❌ 缺失 |
-| `manager.getConnectionStats()` | `manager.stats.value` | ❌ 不匹配 |
+| `manager.subscribeToConversation()` | `manager.joinConversation()` |  不匹配 |
+| `manager.unsubscribeFromConversation()` | `manager.leaveConversation()` |  不匹配 |
+| `manager.on('event', callback)` | `manager.setEventCallbacks({ onEvent: callback })` |  不匹配 |
+| `manager.getSubscribedConversations()` | `manager.connectedConversations.value` |  不匹配 |
+| `manager.resetStats()` | 不存在此方法 |  缺失 |
+| `manager.getConnectionStats()` | `manager.stats.value` |  不匹配 |
 
 ---
 
@@ -54,28 +54,28 @@ mockClient.setEventHandlers = vi.fn((handlers) => {
 **測試期望的訊息類型**:
 ```typescript
 {
-  type: 'conversation.new_message',     // 帶點號
-  type: 'conversation.subscribe',       // 帶點號
-  type: 'conversation.typing_start',    // 帶點號
-  type: 'user.presence'                 // 帶點號
+  type: 'conversation.new_message', // 帶點號
+  type: 'conversation.subscribe', // 帶點號
+  type: 'conversation.typing_start', // 帶點號
+  type: 'user.presence' // 帶點號
 }
 ```
 
 **實際實現處理的類型**:
 ```typescript
 {
-  type: 'new_message',              // 無點號
-  type: 'join_conversation',         // 不同名稱
-  type: 'typing_start',              // 無點號
-  type: 'user_presence'              // 下劃線
+  type: 'new_message', // 無點號
+  type: 'join_conversation', // 不同名稱
+  type: 'typing_start', // 無點號
+  type: 'user_presence' // 下劃線
 }
 ```
 
 ---
 
-## 🛠️ **修復策略**
+##  **修復策略**
 
-### **方案 A: 更新測試以匹配實現** (推薦 ✅)
+### **方案 A: 更新測試以匹配實現** (推薦 )
 
 **優點**:
 - 保持實現代碼穩定
@@ -113,7 +113,7 @@ mockClient.setEventHandlers = vi.fn((handlers) => {
 
 ---
 
-## 📋 **推薦修復步驟 (方案 A)**
+##  **推薦修復步驟 (方案 A)**
 
 ### **Step 1: 修復 Mock WebSocketClient**
 
@@ -122,7 +122,7 @@ mockClient.setEventHandlers = vi.fn((handlers) => {
 const mockClient = {
   // ... 現有屬性 ...
 
-  // ✅ 添加缺失的方法
+  // 添加缺失的方法
   setEventHandlers: vi.fn((handlers) => {
     mockClient.eventHandlers = handlers
   }),
@@ -171,7 +171,7 @@ const testMessage = {
   data: { ... }
 }
 
-// ✅ 新格式 (匹配實現)
+// 新格式 (匹配實現)
 const testMessage = {
   type: 'new_message',  // 無點號
   conversationId: 'conv-1',
@@ -186,78 +186,78 @@ const testMessage = {
 const messageHandler = mockClient.handlers.message?.[0]
 messageHandler?.(testMessage)
 
-// ✅ 新方式
+// 新方式
 mockClient.simulateMessage(testMessage)
 ```
 
 ---
 
-## 📝 **具體測試修復清單**
+##  **具體測試修復清單**
 
 ### **連接管理** (5 tests)
 
-1. ✅ **應該成功建立連接** - 需要 mock `setEventHandlers`
-2. ✅ **應該在沒有 token 時拋出錯誤** - 同上
-3. ✅ **應該正確斷開連接** - 同上
-4. ✅ **應該在連接時開始計算運行時間** - 同上
-5. ✅ **應該在斷開時停止運行時間計算** - 同上
+1.  **應該成功建立連接** - 需要 mock `setEventHandlers`
+2.  **應該在沒有 token 時拋出錯誤** - 同上
+3.  **應該正確斷開連接** - 同上
+4.  **應該在連接時開始計算運行時間** - 同上
+5.  **應該在斷開時停止運行時間計算** - 同上
 
 ### **會話訂閱管理** (5 tests)
 
-6. 🔄 **應該成功訂閱會話** - 改用 `joinConversation()` + 檢查 `join_conversation` 訊息
-7. 🔄 **應該成功取消訂閱會話** - 改用 `leaveConversation()` + 檢查 `leave_conversation` 訊息
-8. 🔄 **應該防止重複訂閱同一個會話** - 改用 `joinConversation()`
-9. 🔄 **應該支持同時訂閱多個會話** - 改用 `joinConversation()`
-10. 🔄 **應該返回當前訂閱的會話列表** - 改用 `connectedConversations.value`
+6.  **應該成功訂閱會話** - 改用 `joinConversation()` + 檢查 `join_conversation` 訊息
+7.  **應該成功取消訂閱會話** - 改用 `leaveConversation()` + 檢查 `leave_conversation` 訊息
+8.  **應該防止重複訂閱同一個會話** - 改用 `joinConversation()`
+9.  **應該支持同時訂閱多個會話** - 改用 `joinConversation()`
+10.  **應該返回當前訂閱的會話列表** - 改用 `connectedConversations.value`
 
 ### **訊息處理** (3 tests)
 
-11. 🔄 **應該處理新訊息事件** - 改用 `setEventCallbacks()` + `simulateMessage()`
-12. 🔄 **應該處理會話更新事件** - 同上
-13. 🔄 **應該過濾非訂閱會話的訊息** - 同上
+11.  **應該處理新訊息事件** - 改用 `setEventCallbacks()` + `simulateMessage()`
+12.  **應該處理會話更新事件** - 同上
+13.  **應該過濾非訂閱會話的訊息** - 同上
 
 ### **打字指示器** (4 tests)
 
-14. 🔄 **應該處理打字開始事件** - 訊息類型改為 `typing_start`
-15. 🔄 **應該處理打字停止事件** - 訊息類型改為 `typing_stop`
-16. 🔄 **應該支持多個用戶同時打字** - 同上
-17. 🔄 **應該返回指定會話的打字用戶列表** - 使用 `getTypingUsers()`
+14.  **應該處理打字開始事件** - 訊息類型改為 `typing_start`
+15.  **應該處理打字停止事件** - 訊息類型改為 `typing_stop`
+16.  **應該支持多個用戶同時打字** - 同上
+17.  **應該返回指定會話的打字用戶列表** - 使用 `getTypingUsers()`
 
 ### **用戶在線狀態** (4 tests)
 
-18. 🔄 **應該處理用戶在線狀態更新** - 訊息類型改為 `user_presence`
-19. 🔄 **應該處理用戶離線狀態** - 同上
-20. 🔄 **應該返回用戶在線狀態** - 使用 `getUserPresence()`
-21. 🔄 **應該支持多個用戶在線狀態** - 同上
+18.  **應該處理用戶在線狀態更新** - 訊息類型改為 `user_presence`
+19.  **應該處理用戶離線狀態** - 同上
+20.  **應該返回用戶在線狀態** - 使用 `getUserPresence()`
+21.  **應該支持多個用戶在線狀態** - 同上
 
 ### **事件回調** (4 tests)
 
-22. 🔄 **應該支持註冊事件監聽器** - 改用 `setEventCallbacks()`
-23. 🔄 **應該支持註冊多個事件監聽器** - 需要累積回調而非覆蓋
-24. 🔄 **應該觸發連接狀態變化回調** - 通過 mock 的 `onConnectionChange` 觸發
-25. 🔄 **應該觸發錯誤回調** - 通過 mock 的 `onError` 觸發
+22.  **應該支持註冊事件監聽器** - 改用 `setEventCallbacks()`
+23.  **應該支持註冊多個事件監聽器** - 需要累積回調而非覆蓋
+24.  **應該觸發連接狀態變化回調** - 通過 mock 的 `onConnectionChange` 觸發
+25.  **應該觸發錯誤回調** - 通過 mock 的 `onError` 觸發
 
 ### **統計數據** (3 tests)
 
-26. 🔄 **應該統計接收的訊息數量** - 使用 `totalMessagesReceived.value`
-27. 🔄 **應該返回訊息隊列大小** - 使用 `messageQueue.value`
-28. 🔄 **應該提供連接統計信息** - 改用 `manager.stats.value`
+26.  **應該統計接收的訊息數量** - 使用 `totalMessagesReceived.value`
+27.  **應該返回訊息隊列大小** - 使用 `messageQueue.value`
+28.  **應該提供連接統計信息** - 改用 `manager.stats.value`
 
 ### **會話活動追蹤** (3 tests)
 
-29. 🔄 **應該追蹤會話活動時間** - 使用內部 `conversations` Map
-30. 🔄 **應該統計會話訊息數量** - 同上
-31. 🔄 **應該標記會話為活動狀態** - 同上
+29.  **應該追蹤會話活動時間** - 使用內部 `conversations` Map
+30.  **應該統計會話訊息數量** - 同上
+31.  **應該標記會話為活動狀態** - 同上
 
 ### **清理和重置** (3 tests)
 
-32. 🔄 **應該在斷開連接時清理所有訂閱** - 檢查 `connectedConversations.value`
-33. 🔄 **應該在斷開連接時清理用戶狀態** - 檢查 `onlineUsers.value`
-34. ❌ **應該重置統計數據** - 需要實現 `resetStats()` 方法或手動重置
+32.  **應該在斷開連接時清理所有訂閱** - 檢查 `connectedConversations.value`
+33.  **應該在斷開連接時清理用戶狀態** - 檢查 `onlineUsers.value`
+34.  **應該重置統計數據** - 需要實現 `resetStats()` 方法或手動重置
 
 ---
 
-## ⏱️ **預估修復時間**
+##  **預估修復時間**
 
 | 任務 | 時間 | 說明 |
 |-----|------|------|
@@ -270,16 +270,16 @@ mockClient.simulateMessage(testMessage)
 
 ---
 
-## 🎯 **成功標準**
+##  **成功標準**
 
-- ✅ 所有 34 個測試通過
-- ✅ Mock 正確模擬真實 WebSocketClient 行為
-- ✅ 測試覆蓋所有公開 API
-- ✅ 測試與實際實現保持同步
+-  所有 34 個測試通過
+-  Mock 正確模擬真實 WebSocketClient 行為
+-  測試覆蓋所有公開 API
+-  測試與實際實現保持同步
 
 ---
 
-## 📚 **相關文件**
+##  **相關文件**
 
 - `/home/user/Multi-Channel-Integration-System/frontend/src/services/websocketManager.ts` (實現)
 - `/home/user/Multi-Channel-Integration-System/frontend/src/services/__tests__/websocketManager.test.ts` (測試)
@@ -289,14 +289,14 @@ mockClient.simulateMessage(testMessage)
 
 ## messages.test.ts 失敗分析
 
-### 📊 **失敗統計**
+###  **失敗統計**
 - **失敗測試**: 15/29 (51.7% 失敗)
 - **通過測試**: 14/29 (48.3% 通過)
 - **根本原因**: Fake Timers 未推進 + 錯誤訊息格式不匹配
 
 ---
 
-## 🚨 **根本原因分析**
+##  **根本原因分析**
 
 ### **問題 1: Fake Timers 未正確推進**
 
@@ -312,9 +312,9 @@ Error: Test timed out in 20000ms.
 - 導致 Promise 永遠不resolve,測試超時
 
 **失敗的測試**:
-1. ❌ **應該在載入時設置 loading 狀態** (line 136) - setTimeout 未推進
-2. ❌ **應該使用樂觀更新** (line 242) - setTimeout 未推進
-3. ❌ **應該在發送時設置正確的狀態** (line 290) - setTimeout 未推進
+1.  **應該在載入時設置 loading 狀態** (line 136) - setTimeout 未推進
+2.  **應該使用樂觀更新** (line 242) - setTimeout 未推進
+3.  **應該在發送時設置正確的狀態** (line 290) - setTimeout 未推進
 
 **修復方法**:
 ```typescript
@@ -337,7 +337,7 @@ expected 'Network error' to contain '網路錯誤'
 - 但實際 store 實現可能直接使用英文錯誤訊息或不轉換
 
 **失敗的測試**:
-4. ❌ **應該處理網路錯誤** (line 164)
+4.  **應該處理網路錯誤** (line 164)
 
 **修復方法**:
 ```typescript
@@ -357,9 +357,9 @@ expect(store.error).toMatch(/網路錯誤|Network error/i)
 - store 可能期望不同的響應結構
 
 **可能失敗的測試**:
-5. ❌ **應該成功發送訊息** (line 213)
-6. ❌ **應該處理發送失敗並回滾樂觀更新** (line 270)
-7-15. ❌ **訊息過濾、操作、索引相關測試**
+5.  **應該成功發送訊息** (line 213)
+6.  **應該處理發送失敗並回滾樂觀更新** (line 270)
+7-15.  **訊息過濾、操作、索引相關測試**
 
 **需要檢查**:
 - mockMessageApi.create() 的返回格式
@@ -369,78 +369,78 @@ expect(store.error).toMatch(/網路錯誤|Network error/i)
 
 ---
 
-## 📋 **具體測試修復清單**
+##  **具體測試修復清單**
 
 ### **載入訊息** (4 tests: 2 pass, 2 fail)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 1 | 應該成功載入訊息 | ✅ PASS | 無 | - |
-| 2 | 應該在載入時設置 loading 狀態 | ❌ FAIL | setTimeout 未推進 | 添加 `await vi.advanceTimersByTimeAsync(1000)` |
-| 3 | 應該處理載入錯誤 | ✅ PASS | 無 | - |
-| 4 | 應該處理網路錯誤 | ❌ FAIL | 錯誤訊息格式 | 改用 `.toBeTruthy()` |
-| 5 | 應該在載入成功後清空樂觀訊息 | ✅ PASS | 無 | - |
-| 6 | 應該在沒有 conversationId 時不執行載入 | ✅ PASS | 無 | - |
+| 1 | 應該成功載入訊息 |  PASS | 無 | - |
+| 2 | 應該在載入時設置 loading 狀態 |  FAIL | setTimeout 未推進 | 添加 `await vi.advanceTimersByTimeAsync(1000)` |
+| 3 | 應該處理載入錯誤 |  PASS | 無 | - |
+| 4 | 應該處理網路錯誤 |  FAIL | 錯誤訊息格式 | 改用 `.toBeTruthy()` |
+| 5 | 應該在載入成功後清空樂觀訊息 |  PASS | 無 | - |
+| 6 | 應該在沒有 conversationId 時不執行載入 |  PASS | 無 | - |
 
 ### **發送訊息** (4 tests: 1 pass, 3 fail)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 7 | 應該成功發送訊息 | ❌ FAIL | Mock 返回值 | 檢查 store 實現 |
-| 8 | 應該使用樂觀更新 | ❌ FAIL | setTimeout 未推進 | 添加 `await vi.advanceTimersByTimeAsync(1000)` |
-| 9 | 應該處理發送失敗並回滾樂觀更新 | ❌ FAIL | Mock 返回值 | 檢查 store 實現 |
-| 10 | 應該在發送時設置正確的狀態 | ❌ FAIL | setTimeout 未推進 | 添加 `await vi.advanceTimersByTimeAsync(100)` |
+| 7 | 應該成功發送訊息 |  FAIL | Mock 返回值 | 檢查 store 實現 |
+| 8 | 應該使用樂觀更新 |  FAIL | setTimeout 未推進 | 添加 `await vi.advanceTimersByTimeAsync(1000)` |
+| 9 | 應該處理發送失敗並回滾樂觀更新 |  FAIL | Mock 返回值 | 檢查 store 實現 |
+| 10 | 應該在發送時設置正確的狀態 |  FAIL | setTimeout 未推進 | 添加 `await vi.advanceTimersByTimeAsync(100)` |
 
 ### **訊息過濾** (6 tests: 1 pass, 5 fail)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 11 | 應該根據 conversationId 過濾訊息 | ✅ PASS | 無 | - |
-| 12 | 應該根據 senderType 過濾訊息 | ❌ FAIL | Store API | 檢查 `filteredMessages` 計算屬性 |
-| 13 | 應該根據 platform 過濾訊息 | ❌ FAIL | Store API | 同上 |
-| 14 | 應該根據 messageType 過濾訊息 | ❌ FAIL | Store API | 同上 |
-| 15 | 應該支持多重過濾 | ❌ FAIL | Store API | 同上 |
-| 16 | 應該能夠清除過濾器 | ❌ FAIL | Store API | 檢查 `clearFilters()` 方法 |
+| 11 | 應該根據 conversationId 過濾訊息 |  PASS | 無 | - |
+| 12 | 應該根據 senderType 過濾訊息 |  FAIL | Store API | 檢查 `filteredMessages` 計算屬性 |
+| 13 | 應該根據 platform 過濾訊息 |  FAIL | Store API | 同上 |
+| 14 | 應該根據 messageType 過濾訊息 |  FAIL | Store API | 同上 |
+| 15 | 應該支持多重過濾 |  FAIL | Store API | 同上 |
+| 16 | 應該能夠清除過濾器 |  FAIL | Store API | 檢查 `clearFilters()` 方法 |
 
 ### **未讀訊息** (3 tests: 3 pass)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 17 | 應該統計未讀訊息數量 | ✅ PASS | 無 | - |
-| 18 | 應該正確標記訊息為已讀 | ✅ PASS | 無 | - |
-| 19 | 應該處理標記已讀失敗 | ✅ PASS | 無 | - |
+| 17 | 應該統計未讀訊息數量 |  PASS | 無 | - |
+| 18 | 應該正確標記訊息為已讀 |  PASS | 無 | - |
+| 19 | 應該處理標記已讀失敗 |  PASS | 無 | - |
 
 ### **訊息排序** (2 tests: 2 pass)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 20 | 應該按時間排序所有訊息 | ✅ PASS | 無 | - |
-| 21 | 應該合併並排序樂觀訊息 | ✅ PASS | 無 | - |
+| 20 | 應該按時間排序所有訊息 |  PASS | 無 | - |
+| 21 | 應該合併並排序樂觀訊息 |  PASS | 無 | - |
 
 ### **錯誤處理** (2 tests: 2 pass)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 22 | 應該自動清除錯誤訊息 | ✅ PASS | 無 | - |
-| 23 | 應該提供手動清除錯誤的方法 | ✅ PASS | 無 | - |
+| 22 | 應該自動清除錯誤訊息 |  PASS | 無 | - |
+| 23 | 應該提供手動清除錯誤的方法 |  PASS | 無 | - |
 
 ### **訊息操作** (2 tests: 0 pass, 2 fail)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 24 | 應該成功更新訊息 | ❌ FAIL | Store API | 檢查 `updateMessage()` 方法 |
-| 25 | 應該成功刪除訊息 | ❌ FAIL | Store API | 檢查 `deleteMessage()` 方法 |
+| 24 | 應該成功更新訊息 |  FAIL | Store API | 檢查 `updateMessage()` 方法 |
+| 25 | 應該成功刪除訊息 |  FAIL | Store API | 檢查 `deleteMessage()` 方法 |
 
 ### **訊息索引** (2 tests: 0 pass, 2 fail)
 
 | # | 測試名稱 | 狀態 | 問題 | 修復方法 |
 |---|---------|------|------|---------|
-| 26 | 應該在載入訊息後建立索引 | ❌ FAIL | Service 調用 | 檢查 `fetchMessages()` 是否調用 indexMessages |
-| 27 | 應該支持訊息搜索 | ❌ FAIL | Store API | 檢查 `searchMessages()` 方法 |
+| 26 | 應該在載入訊息後建立索引 |  FAIL | Service 調用 | 檢查 `fetchMessages()` 是否調用 indexMessages |
+| 27 | 應該支持訊息搜索 |  FAIL | Store API | 檢查 `searchMessages()` 方法 |
 
 ---
 
-## 🛠️ **修復優先級 (messages.test.ts)**
+##  **修復優先級 (messages.test.ts)**
 
 ### **高優先級** (3 tests - 快速修復)
 
@@ -480,7 +480,7 @@ expect(store.error).toMatch(/網路錯誤|Network error/i)
 
 ---
 
-## ⏱️ **預估修復時間 (messages.test.ts)**
+##  **預估修復時間 (messages.test.ts)**
 
 | 任務 | 時間 | 說明 |
 |-----|------|------|
@@ -494,34 +494,34 @@ expect(store.error).toMatch(/網路錯誤|Network error/i)
 
 ---
 
-## 🎯 **總體修復策略**
+##  **總體修復策略**
 
 ### **Phase 1: 快速勝利** (20 分鐘)
-- ✅ 修復 Fake Timers (3 tests)
-- ✅ 修復錯誤訊息格式 (1 test)
+-  修復 Fake Timers (3 tests)
+-  修復錯誤訊息格式 (1 test)
 - **預期結果**: 18/29 通過 (62%)
 
 ### **Phase 2: API 檢查** (50 分鐘)
-- ✅ 檢查訊息過濾 API (5 tests)
-- ✅ 檢查訊息操作 API (2 tests)
+-  檢查訊息過濾 API (5 tests)
+-  檢查訊息操作 API (2 tests)
 - **預期結果**: 25/29 通過 (86%)
 
 ### **Phase 3: 深度修復** (50 分鐘)
-- ✅ 修復發送訊息邏輯 (2 tests)
-- ✅ 修復訊息索引功能 (2 tests)
+-  修復發送訊息邏輯 (2 tests)
+-  修復訊息索引功能 (2 tests)
 - **預期結果**: 29/29 通過 (100%)
 
 ---
 
-## 📚 **總結**
+##  **總結**
 
 ### **websocketManager.test.ts**
-- **難度**: ⭐⭐⭐⭐ (困難)
+- **難度**:  (困難)
 - **時間**: 3 小時
 - **主要問題**: API 完全不匹配,需要重寫測試
 
 ### **messages.test.ts**
-- **難度**: ⭐⭐ (簡單)
+- **難度**:  (簡單)
 - **時間**: 2 小時
 - **主要問題**: 計時器和格式問題,大部分是快速修復
 

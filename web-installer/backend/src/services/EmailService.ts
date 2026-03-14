@@ -33,7 +33,7 @@ export class EmailService {
     credentials: AdminCredentials,
     resources: CloudflareResources
   ): Promise<void> {
-    const subject = `✅ Your CRM System is Ready - ${projectName}`;
+    const subject = ` Your CRM System is Ready - ${projectName}`;
     const html = this.generateSuccessEmailHTML(projectName, credentials, resources);
     const text = this.generateSuccessEmailText(projectName, credentials, resources);
 
@@ -48,7 +48,7 @@ export class EmailService {
     projectName: string,
     error: string
   ): Promise<void> {
-    const subject = `❌ CRM Deployment Failed - ${projectName}`;
+    const subject = ` CRM Deployment Failed - ${projectName}`;
     const html = this.generateFailureEmailHTML(projectName, error);
     const text = this.generateFailureEmailText(projectName, error);
 
@@ -112,7 +112,7 @@ export class EmailService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Your CRM System is Ready!</h1>
+      <h1> Your CRM System is Ready!</h1>
       <p>Deployment completed successfully</p>
     </div>
 
@@ -121,17 +121,17 @@ export class EmailService {
       <p>Your Multi-Channel Customer Relationship Management system has been successfully deployed to Cloudflare.</p>
 
       <div class="credentials">
-        <h3>🔐 Admin Credentials</h3>
+        <h3> Admin Credentials</h3>
         <p><strong>Username:</strong> <code>${credentials.username}</code></p>
         <p><strong>Password:</strong> <code>${credentials.password}</code></p>
         <p><strong>Email:</strong> <code>${credentials.email}</code></p>
       </div>
 
       <div class="warning">
-        <strong>⚠️ Important:</strong> Please save these credentials securely and change your password immediately after first login.
+        <strong> Important:</strong> Please save these credentials securely and change your password immediately after first login.
       </div>
 
-      <h3>🌐 Your Application URLs</h3>
+      <h3> Your Application URLs</h3>
       <div class="url-box">
         <p><strong>Frontend (Main App):</strong><br>
         <a href="${resources.pagesUrl}">${resources.pagesUrl}</a></p>
@@ -145,7 +145,7 @@ export class EmailService {
         <a href="${resources.pagesUrl}" class="button">Open Your CRM →</a>
       </div>
 
-      <h3>📋 Next Steps</h3>
+      <h3> Next Steps</h3>
       <ol>
         <li><strong>Login:</strong> Click the button above or visit your CRM URL</li>
         <li><strong>Change Password:</strong> Go to Settings → Account → Change Password</li>
@@ -153,11 +153,11 @@ export class EmailService {
         <li><strong>Invite Team:</strong> Go to Team Management to add members</li>
       </ol>
 
-      <h3>💡 Need Help?</h3>
+      <h3> Need Help?</h3>
       <ul>
-        <li>📧 Email: <a href="mailto:support@yourcompany.com">support@yourcompany.com</a></li>
-        <li>📚 Documentation: <a href="https://docs.yourcompany.com">docs.yourcompany.com</a></li>
-        <li>💬 Discord: <a href="https://discord.gg/yourcompany">Join our community</a></li>
+        <li> Email: <a href="mailto:support@yourcompany.com">support@yourcompany.com</a></li>
+        <li> Documentation: <a href="https://docs.yourcompany.com">docs.yourcompany.com</a></li>
+        <li> Discord: <a href="https://discord.gg/yourcompany">Join our community</a></li>
       </ul>
 
       <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -182,30 +182,30 @@ export class EmailService {
     resources: CloudflareResources
   ): string {
     return `
-🎉 Your CRM System is Ready!
+ Your CRM System is Ready!
 
 Welcome to your CRM system, ${projectName}!
 
 Your Multi-Channel Customer Relationship Management system has been successfully deployed.
 
-🔐 ADMIN CREDENTIALS
+ ADMIN CREDENTIALS
 Username: ${credentials.username}
 Password: ${credentials.password}
 Email: ${credentials.email}
 
-⚠️  IMPORTANT: Save these credentials securely and change your password immediately after first login.
+  IMPORTANT: Save these credentials securely and change your password immediately after first login.
 
-🌐 YOUR APPLICATION URLS
+ YOUR APPLICATION URLS
 Frontend: ${resources.pagesUrl}
 Backend API: ${resources.workerUrl}
 
-📋 NEXT STEPS
+ NEXT STEPS
 1. Login to your CRM
 2. Change your password (Settings → Account → Change Password)
 3. Set up LINE OA integration (Settings → Channels → LINE OA)
 4. Invite team members (Team Management)
 
-💡 NEED HELP?
+ NEED HELP?
 - Email: support@yourcompany.com
 - Documentation: https://docs.yourcompany.com
 - Discord: https://discord.gg/yourcompany
@@ -235,7 +235,7 @@ Deployed on ${new Date().toLocaleString()}
 <body>
   <div class="container">
     <div class="header">
-      <h1>❌ Deployment Failed</h1>
+      <h1> Deployment Failed</h1>
       <p>We encountered an issue</p>
     </div>
 
@@ -256,10 +256,10 @@ Deployed on ${new Date().toLocaleString()}
         <li>If the issue persists, contact support with the error details above</li>
       </ol>
 
-      <h3>💡 Need Help?</h3>
+      <h3> Need Help?</h3>
       <ul>
-        <li>📧 Email: <a href="mailto:support@yourcompany.com">support@yourcompany.com</a></li>
-        <li>💬 Discord: <a href="https://discord.gg/yourcompany">Join our community</a></li>
+        <li> Email: <a href="mailto:support@yourcompany.com">support@yourcompany.com</a></li>
+        <li> Discord: <a href="https://discord.gg/yourcompany">Join our community</a></li>
       </ul>
 
       <p style="font-size: 12px; color: #6b7280; text-align: center; margin-top: 30px;">
@@ -277,7 +277,7 @@ Deployed on ${new Date().toLocaleString()}
    */
   private generateFailureEmailText(projectName: string, error: string): string {
     return `
-❌ Deployment Failed
+ Deployment Failed
 
 Unfortunately, the deployment of your CRM system "${projectName}" failed.
 

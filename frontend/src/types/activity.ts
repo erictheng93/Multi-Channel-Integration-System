@@ -4,16 +4,16 @@
  */
 
 export type ActivityType =
-  | 'message'           // 新消息
-  | 'assignment'        // 对话分配
-  | 'resolved'          // 对话解决
-  | 'urgent'            // 紧急事件
-  | 'system-error'      // 系统错误
-  | 'system-success'    // 系统成功
-  | 'system-warning'    // 系统警告
-  | 'system-info'       // 系统信息
-  | 'user'              // 用户活动
-  | 'settings'          // 设置变更
+  | 'message' // 新消息
+  | 'assignment' // 对话分配
+  | 'resolved' // 对话解决
+  | 'urgent' // 紧急事件
+  | 'system-error' // 系统错误
+  | 'system-success' // 系统成功
+  | 'system-warning' // 系统警告
+  | 'system-info' // 系统信息
+  | 'user' // 用户活动
+  | 'settings' // 设置变更
   | 'settings-critical' // 关键设置变更
 
 export type ActivityPriority = 'low' | 'medium' | 'high'

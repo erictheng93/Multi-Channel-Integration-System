@@ -364,10 +364,10 @@ describe('Role Transition and Permission Edge Cases', () => {
       });
 
       const boundaryContexts = [
-        { teamId: 0 },        // Zero team ID
-        { teamId: -1 },       // Negative team ID
+        { teamId: 0 }, // Zero team ID
+        { teamId: -1 }, // Negative team ID
         { assignedUserId: 0 }, // Zero user ID
-        { ownerId: 0 }        // Zero owner ID
+        { ownerId: 0 } // Zero owner ID
       ];
 
       for (const context of boundaryContexts) {
@@ -401,10 +401,10 @@ describe('Role Transition and Permission Edge Cases', () => {
 
       // Simulate concurrent permission checks
       const concurrentChecks = [
-        PermissionService.checkPermission(1, 'conversation', 'view'),           // Admin: wildcard -> true
-        PermissionService.checkPermission(2, 'conversation', 'view'),           // Agent: conversation/view (no conditions) -> true
+        PermissionService.checkPermission(1, 'conversation', 'view'), // Admin: wildcard -> true
+        PermissionService.checkPermission(2, 'conversation', 'view'), // Agent: conversation/view (no conditions) -> true
         PermissionService.checkPermission(3, 'message', 'send', { teamId: 1 }), // Agent: message/send has assigned condition, teamId matches -> true
-        PermissionService.checkPermission(1, 'user', 'delete'),                 // Admin: wildcard -> true
+        PermissionService.checkPermission(1, 'user', 'delete'), // Admin: wildcard -> true
         PermissionService.checkPermission(2, 'conversation', 'view', { teamId: 1 }) // Agent: conversation/view (no conditions) -> true
       ];
 

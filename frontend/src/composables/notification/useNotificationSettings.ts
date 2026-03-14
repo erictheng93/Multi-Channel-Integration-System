@@ -63,13 +63,13 @@ export function useNotificationSettings(
 
         // Update localStorage backup
         localStorage.setItem('notification-settings', JSON.stringify(settings.value))
-        console.log('✅ [NotificationSettings] Settings loaded from API')
+        console.log('[NotificationSettings] Settings loaded from API')
       } else {
         // Fallback to localStorage
         const cached = localStorage.getItem('notification-settings')
         if (cached) {
           settings.value = JSON.parse(cached)
-          console.log('📦 [NotificationSettings] Settings loaded from localStorage (fallback)')
+          console.log('[NotificationSettings] Settings loaded from localStorage (fallback)')
         }
       }
     } catch (_error) {
@@ -78,7 +78,7 @@ export function useNotificationSettings(
       if (cached) {
         try {
           settings.value = JSON.parse(cached)
-          console.log('📦 [NotificationSettings] Settings loaded from localStorage (error fallback)')
+          console.log('[NotificationSettings] Settings loaded from localStorage (error fallback)')
         } catch (parseError) {
           console.error('[NotificationSettings] Failed to parse localStorage settings:', parseError)
         }

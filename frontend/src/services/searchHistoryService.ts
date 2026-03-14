@@ -94,7 +94,7 @@ export class SearchHistoryService {
 
     this.saveToStorage()
 
-    console.log(`📝 [SearchHistory] 已添加: "${trimmedQuery}" (${resultCount ?? '?'} 條結果)`)
+    console.log(`[SearchHistory] 已添加: "${trimmedQuery}" (${resultCount ?? '?'} 條結果)`)
   }
 
   /**
@@ -137,7 +137,7 @@ export class SearchHistoryService {
   removeSearch(query: string): void {
     this.history = this.history.filter(item => item.query !== query)
     this.saveToStorage()
-    console.log(`🗑️ [SearchHistory] 已刪除: "${query}"`)
+    console.log(`[SearchHistory] 已刪除: "${query}"`)
   }
 
   /**
@@ -146,7 +146,7 @@ export class SearchHistoryService {
   clearHistory(): void {
     this.history = []
     this.saveToStorage()
-    console.log('🗑️ [SearchHistory] 已清空所有歷史記錄')
+    console.log('[SearchHistory] 已清空所有歷史記錄')
   }
 
   /**
@@ -212,11 +212,11 @@ export class SearchHistoryService {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed)) {
           this.history = parsed
-          console.log(`📂 [SearchHistory] 已加載 ${this.history.length} 條歷史記錄`)
+          console.log(`[SearchHistory] 已加載 ${this.history.length} 條歷史記錄`)
         }
       }
     } catch (error) {
-      console.error('❌ [SearchHistory] 加載歷史記錄失敗:', error)
+      console.error('[SearchHistory] 加載歷史記錄失敗:', error)
       this.history = []
     }
   }
@@ -228,15 +228,15 @@ export class SearchHistoryService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.history))
     } catch (error) {
-      console.error('❌ [SearchHistory] 保存歷史記錄失敗:', error)
+      console.error('[SearchHistory] 保存歷史記錄失敗:', error)
       // 如果存儲失敗（如配額已滿），嘗試清理舊記錄
       if (error instanceof Error && error.name === 'QuotaExceededError') {
-        console.warn('⚠️ [SearchHistory] 存儲配額已滿，清理舊記錄')
+        console.warn('[SearchHistory] 存儲配額已滿，清理舊記錄')
         this.history = this.history.slice(0, Math.floor(MAX_HISTORY_ITEMS / 2))
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(this.history))
         } catch (retryError) {
-          console.error('❌ [SearchHistory] 重試保存失敗:', retryError)
+          console.error('[SearchHistory] 重試保存失敗:', retryError)
         }
       }
     }
@@ -261,14 +261,14 @@ export class SearchHistoryService {
       if (Array.isArray(parsed)) {
         this.history = parsed.slice(0, MAX_HISTORY_ITEMS)
         this.saveToStorage()
-        console.log(`📥 [SearchHistory] 已導入 ${this.history.length} 條記錄`)
+        console.log(`[SearchHistory] 已導入 ${this.history.length} 條記錄`)
         return true
       } else {
-        console.error('❌ [SearchHistory] 無效的 JSON 格式')
+        console.error('[SearchHistory] 無效的 JSON 格式')
         return false
       }
     } catch (error) {
-      console.error('❌ [SearchHistory] 導入失敗:', error)
+      console.error('[SearchHistory] 導入失敗:', error)
       return false
     }
   }

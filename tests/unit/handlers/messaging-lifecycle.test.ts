@@ -2,15 +2,15 @@
  * Messaging Lifecycle Chain Tests
  *
  * Tests the complete message lifecycle through sequential API calls:
- *   1. POST /api/messages       → Create message
- *   2. GET  /api/messages/:id   → Query created message
- *   3. PUT  /api/messages/:id   → Update message content
- *   4. GET  /api/messages/:id   → Verify update applied
- *   5. DELETE /api/messages/:id → Recall message
- *   6. GET  /api/messages/:id   → Verify recall state
+ * 1. POST /api/messages → Create message
+ * 2. GET  /api/messages/:id → Query created message
+ * 3. PUT  /api/messages/:id → Update message content
+ * 4. GET  /api/messages/:id → Verify update applied
+ * 5. DELETE /api/messages/:id → Recall message
+ * 6. GET  /api/messages/:id → Verify recall state
  *
  * This fills the gap identified in the test coverage report:
- *   "欠缺「建立訊息 -> 查詢訊息 -> 更新訊息 -> 撤回訊息」的完整 API 鏈路測試"
+ * "欠缺「建立訊息 -> 查詢訊息 -> 更新訊息 -> 撤回訊息」的完整 API 鏈路測試"
  *
  * Mock Strategy:
  * - Stateful in-memory store simulating real DB behavior across operations

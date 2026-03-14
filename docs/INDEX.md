@@ -1,24 +1,24 @@
-# 📚 Documentation Index
+#  Documentation Index
 
 > Multi-Channel Customer Support System - Documentation Navigation
 
 ---
 
-## 🗂️ Directory Structure Overview
+##  Directory Structure Overview
 
 ```
 docs/
-├── reference/          # API 參考文檔、規格書、編碼標準
-├── guides/             # 用戶指南、部署指南、故障排除
-├── architecture/       # 系統架構設計、WebSocket、資料庫
-├── development/        # 開發者文檔、測試、組件
-├── claude/             # Claude Code 專用參考文檔
-└── history/            # 歷史記錄、實現報告、遷移記錄
+├── reference/ # API 參考文檔、規格書、編碼標準
+├── guides/ # 用戶指南、部署指南、故障排除
+├── architecture/ # 系統架構設計、WebSocket、資料庫
+├── development/ # 開發者文檔、測試、組件
+├── claude/ # Claude Code 專用參考文檔
+└── history/ # 歷史記錄、實現報告、遷移記錄
 ```
 
 ---
 
-## 📖 Reference (`reference/`)
+##  Reference (`reference/`)
 
 ### API Reference (`reference/api/`)
 - [API Reference](reference/api/API_REFERENCE.md) - Complete API reference documentation
@@ -41,7 +41,7 @@ docs/
 
 ---
 
-## 📘 Guides (`guides/`)
+##  Guides (`guides/`)
 
 ### Deployment (`guides/deployment/`)
 - [Deployment Guide](guides/deployment/DEPLOYMENT_GUIDE.md) - Production deployment
@@ -63,7 +63,7 @@ docs/
 
 ---
 
-## 🏗️ Architecture (`architecture/`)
+##  Architecture (`architecture/`)
 
 ### WebSocket (`architecture/websocket/`)
 - [WebSocket Final Architecture](architecture/websocket/WEBSOCKET_FINAL_ARCHITECTURE.md) - Complete WebSocket design
@@ -85,7 +85,7 @@ docs/
 
 ---
 
-## 💻 Development (`development/`)
+##  Development (`development/`)
 
 ### Testing (`development/testing/`)
 - [Testing Guide](development/testing/testing-guide.md) - Testing methodology
@@ -109,7 +109,7 @@ docs/
 
 ---
 
-## 🤖 Claude Code (`claude/`)
+##  Claude Code (`claude/`)
 
 - [INDEX](claude/INDEX.md) - Claude Code documentation index
 - [Environment Config](claude/ENVIRONMENT_CONFIG.md) - Environment configuration guide
@@ -120,7 +120,7 @@ docs/
 
 ---
 
-## 📜 History (`history/`)
+##  History (`history/`)
 
 > Archived documentation including implementation reports, migration records, and historical references.
 
@@ -141,7 +141,7 @@ docs/
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### For New Developers
 1. Read [CLAUDE.md](../CLAUDE.md) - Project overview
@@ -158,7 +158,7 @@ docs/
 
 ---
 
-## 📊 Documentation Statistics
+##  Documentation Statistics
 
 | Category | Files | Description |
 |----------|-------|-------------|

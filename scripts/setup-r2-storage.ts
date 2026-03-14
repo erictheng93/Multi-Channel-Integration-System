@@ -245,12 +245,12 @@ async function main(): Promise<void> {
   node setup-r2-storage.ts [?��?]
 
 ?��?:
-  --prod     設�??�產?��? R2 存儲
-  --help     顯示此幫?��???
+  --prod 設�??�產?��? R2 存儲
+  --help 顯示此幫?��???
 
 範�?:
-  node setup-r2-storage.ts          # 設�??�發?��?
-  node setup-r2-storage.ts --prod   # 設�??�產?��?
+  node setup-r2-storage.ts # 設�??�發?��?
+  node setup-r2-storage.ts --prod # 設�??�產?��?
     `);
     return;
   }

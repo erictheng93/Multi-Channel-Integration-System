@@ -342,7 +342,7 @@ describe('MigrationStatus', () => {
       props: { status: mockStatus }
     })
 
-    expect(wrapper.text()).toContain('✅ 已啟用')
+    expect(wrapper.text()).toContain(' 已啟用')
   })
 
   it('should show disabled status when websocket is disabled', () => {
@@ -356,7 +356,7 @@ describe('MigrationStatus', () => {
       props: { status: disabledStatus }
     })
 
-    expect(wrapper.text()).toContain('❌ 未啟用')
+    expect(wrapper.text()).toContain(' 未啟用')
   })
 
   it('should display migration strategy', () => {

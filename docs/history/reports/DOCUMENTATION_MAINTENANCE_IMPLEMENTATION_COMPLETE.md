@@ -31,9 +31,9 @@ EMOJI_PATTERN = re.compile(
     "["
     "\U0001F000-\U0001FFFF"  # All emoji and symbols
     "\U00002000-\U00002BFF"  # Arrows, mathematical symbols
-    "\u2300-\u23FF"          # Miscellaneous technical
-    "\u25A0-\u25FF"          # Geometric shapes
-    "\u2B00-\u2BFF"          # Misc symbols and arrows
+    "\u2300-\u23FF" # Miscellaneous technical
+    "\u25A0-\u25FF" # Geometric shapes
+    "\u2B00-\u2BFF" # Misc symbols and arrows
     "\u200d\uFE0F\uFE00-\uFE0F"  # Connectors and selectors
     "]+", flags=re.UNICODE
 )
@@ -176,19 +176,19 @@ chmod +x .git/hooks/pre-commit
 
 ```
 編輯文檔 → 清理 Emoji → 檢查質量 → Git 提交
-   ↓            ↓           ↓          ↓
-  手動       自動化工具   自動化工具  Pre-commit
- 編輯器    remove-emoji  check-docs    Hook
-          .py           .py        自動檢查
+   ↓ ↓           ↓ ↓
+  手動 自動化工具 自動化工具  Pre-commit
+ 編輯器 remove-emoji  check-docs Hook
+          .py .py 自動檢查
 ```
 
 ### 新文檔創建流程
 
 ```
 選擇模板 → 複製模板 → 編輯內容 → 質量檢查 → 更新索引
-   ↓          ↓          ↓         ↓         ↓
-templates/  cp命令    編輯器    check-docs  INDEX.md
-  4個模板   複製      填寫內容     .py       添加連結
+   ↓ ↓          ↓ ↓         ↓
+templates/  cp命令 編輯器 check-docs  INDEX.md
+  4個模板 複製 填寫內容 .py 添加連結
 ```
 
 ## 成果統計

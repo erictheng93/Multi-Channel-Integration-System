@@ -56,7 +56,7 @@ async function optimizeTestFile(filePath: string): Promise<OptimizationResult> {
     if (content.includes('beforeEach') && !content.includes('vi.clearAllMocks()')) {
       optimizedContent = optimizedContent.replace(
         /beforeEach\((async\s+)?\(\)\s*=>\s*\{/,
-        `beforeEach($1() => {\n    vi.clearAllMocks();`
+        `beforeEach($1() => {\n vi.clearAllMocks();`
       );
       hasChanges = true;
       result.optimizations.push('Added vi.clearAllMocks() to beforeEach');
@@ -70,7 +70,7 @@ async function optimizeTestFile(filePath: string): Promise<OptimizationResult> {
         if (beforeEachEnd > 0) {
           optimizedContent =
             content.slice(0, beforeEachEnd + 4) +
-            `\n\n  afterEach(() => {\n    vi.restoreAllMocks();\n  });` +
+            `\n\n  afterEach(() => {\n vi.restoreAllMocks();\n  });` +
             content.slice(beforeEachEnd + 4);
           hasChanges = true;
           result.optimizations.push('Added afterEach with vi.restoreAllMocks()');
@@ -150,15 +150,15 @@ async function findAllTestFiles(): Promise<string[]> {
 }
 
 async function runOptimization(): Promise<void> {
-  console.log(`\n🚀 Comprehensive Test Optimization\n${'='.repeat(60)}\n`);
+  console.log(`\n Comprehensive Test Optimization\n${'='.repeat(60)}\n`);
 
   // Step 1: Find all test files
-  console.log('📁 Scanning test files...\n');
+  console.log(' Scanning test files...\n');
   const testFiles = await findAllTestFiles();
   console.log(`Found ${testFiles.length} test files\n`);
 
   // Step 2: Optimize each file
-  console.log(`⚡ Optimizing test files...\n`);
+  console.log(` Optimizing test files...\n`);
   const results: OptimizationResult[] = [];
 
   for (let i = 0; i < testFiles.length; i++) {
@@ -173,44 +173,44 @@ async function runOptimization(): Promise<void> {
     }
   }
 
-  console.log(`\n\n✅ Optimization complete!\n`);
+  console.log(`\n\n Optimization complete!\n`);
 
   // Step 3: Summary
   const successfulOptimizations = results.filter(r => r.optimizations.length > 0);
   const failedOptimizations = results.filter(r => r.errors.length > 0);
 
-  console.log(`📊 Optimization Summary:\n`);
-  console.log(`   ✅ Files optimized: ${successfulOptimizations.length}`);
-  console.log(`   ❌ Files with errors: ${failedOptimizations.length}`);
-  console.log(`   ⏭️  Files skipped: ${testFiles.length - results.length}\n`);
+  console.log(` Optimization Summary:\n`);
+  console.log(` Files optimized: ${successfulOptimizations.length}`);
+  console.log(` Files with errors: ${failedOptimizations.length}`);
+  console.log(` Files skipped: ${testFiles.length - results.length}\n`);
 
   // Step 4: Detailed results
   if (successfulOptimizations.length > 0) {
-    console.log(`\n✅ Successfully Optimized Files:\n`);
+    console.log(`\n Successfully Optimized Files:\n`);
     successfulOptimizations.slice(0, 20).forEach(r => {
-      console.log(`   ${r.file.replace(process.cwd(), '').slice(0, 60)}`);
+      console.log(` ${r.file.replace(process.cwd(), '').slice(0, 60)}`);
       r.optimizations.forEach(opt => {
-        console.log(`      - ${opt}`);
+        console.log(` - ${opt}`);
       });
     });
 
     if (successfulOptimizations.length > 20) {
-      console.log(`\n   ... and ${successfulOptimizations.length - 20} more files\n`);
+      console.log(`\n ... and ${successfulOptimizations.length - 20} more files\n`);
     }
   }
 
   if (failedOptimizations.length > 0) {
-    console.log(`\n❌ Files with Errors:\n`);
+    console.log(`\n Files with Errors:\n`);
     failedOptimizations.forEach(r => {
-      console.log(`   ${r.file.replace(process.cwd(), '')}`);
+      console.log(` ${r.file.replace(process.cwd(), '')}`);
       r.errors.forEach(err => {
-        console.log(`      - ${err}`);
+        console.log(` - ${err}`);
       });
     });
   }
 
   // Step 5: Run tests to check improvements
-  console.log(`\n\n🧪 Running test suite to measure improvements...\n`);
+  console.log(`\n\n Running test suite to measure improvements...\n`);
 
   try {
     const startTime = Date.now();
@@ -227,34 +227,34 @@ async function runOptimization(): Promise<void> {
       const failedTests = testResults.numFailedTests || 0;
       const passRate = totalTests > 0 ? ((passedTests / totalTests) * 100).toFixed(1) : '0.0';
 
-      console.log(`\n📈 Test Results:\n`);
-      console.log(`   Total tests: ${totalTests}`);
-      console.log(`   Passed: ${passedTests}`);
-      console.log(`   Failed: ${failedTests}`);
-      console.log(`   Pass rate: ${passRate}%`);
-      console.log(`   Duration: ${duration}s\n`);
+      console.log(`\n Test Results:\n`);
+      console.log(` Total tests: ${totalTests}`);
+      console.log(` Passed: ${passedTests}`);
+      console.log(` Failed: ${failedTests}`);
+      console.log(` Pass rate: ${passRate}%`);
+      console.log(` Duration: ${duration}s\n`);
 
       // Check if we met our goals
       const passRateNum = parseFloat(passRate);
       if (passRateNum >= 92) {
-        console.log(`   ✅ GOAL MET: Pass rate >= 92%\n`);
+        console.log(` GOAL MET: Pass rate >= 92%\n`);
       } else {
-        console.log(`   ⚠️  GOAL PENDING: Need ${(92 - passRateNum).toFixed(1)}% more to reach 92%\n`);
+        console.log(` GOAL PENDING: Need ${(92 - passRateNum).toFixed(1)}% more to reach 92%\n`);
       }
 
     } catch (parseError) {
-      console.log(`   ⚠️  Could not parse test results\n`);
+      console.log(` Could not parse test results\n`);
     }
 
   } catch (error) {
-    console.log(`   ⚠️  Test run failed or timed out\n`);
+    console.log(` Test run failed or timed out\n`);
   }
 
-  console.log(`\n💡 Next Steps:\n`);
-  console.log(`   1. Review optimized files and verify changes`);
-  console.log(`   2. Run tests manually: npx vitest run`);
-  console.log(`   3. Address remaining failures`);
-  console.log(`   4. Continue MockFactory migration for suitable files\n`);
+  console.log(`\n Next Steps:\n`);
+  console.log(` 1. Review optimized files and verify changes`);
+  console.log(` 2. Run tests manually: npx vitest run`);
+  console.log(` 3. Address remaining failures`);
+  console.log(` 4. Continue MockFactory migration for suitable files\n`);
 }
 
 // Run optimization

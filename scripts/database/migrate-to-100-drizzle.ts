@@ -90,7 +90,7 @@ async function migrateSingleFile(filePath: string): Promise<void> {
   const fullPath = path.resolve(filePath);
   
   if (!fs.existsSync(fullPath)) {
-    console.log(`⚠️  File not found: ${filePath}`);
+    console.log(`  File not found: ${filePath}`);
     return;
   }
 
@@ -120,7 +120,7 @@ async function migrateSingleFile(filePath: string): Promise<void> {
   for (const rule of MIGRATION_RULES) {
     const matches = content.match(rule.pattern);
     if (matches) {
-      console.log(`🔄 Applying: ${rule.description} (${matches.length} occurrences)`);
+      console.log(` Applying: ${rule.description} (${matches.length} occurrences)`);
       content = content.replace(rule.pattern, rule.replacement);
       migrationCount += matches.length;
     }
@@ -131,32 +131,32 @@ async function migrateSingleFile(filePath: string): Promise<void> {
     // Find function bodies and add drizzleDb initialization
     content = content.replace(
       /(async \w+\([^)]*\)[^{]*\{\s*)(try\s*\{)?/g,
-      '$1const drizzleDb = drizzle(c.env.DB || this.db);\n    $2'
+      '$1const drizzleDb = drizzle(c.env.DB || this.db);\n $2'
     );
   }
 
   if (migrationCount > 0) {
     fs.writeFileSync(fullPath, content);
-    console.log(`✅ Migrated ${filePath}: ${migrationCount} SQL queries converted`);
+    console.log(` Migrated ${filePath}: ${migrationCount} SQL queries converted`);
   } else {
-    console.log(`✨ No migration needed for ${filePath}`);
+    console.log(` No migration needed for ${filePath}`);
   }
 }
 
 async function migrateAllFiles(): Promise<void> {
-  console.log('🚀 Starting 100% Drizzle ORM Migration...\n');
+  console.log(' Starting 100% Drizzle ORM Migration...\n');
 
   for (const filePath of MIGRATION_TARGETS) {
-    console.log(`📁 Processing: ${filePath}`);
+    console.log(` Processing: ${filePath}`);
     try {
       await migrateSingleFile(filePath);
     } catch (error) {
-      console.error(`❌ Error migrating ${filePath}:`, error);
+      console.error(` Error migrating ${filePath}:`, error);
     }
     console.log('');
   }
 
-  console.log('🎉 Migration Complete! All files now use Drizzle ORM.\n');
+  console.log(' Migration Complete! All files now use Drizzle ORM.\n');
 }
 
 // Run migration if this is the main module

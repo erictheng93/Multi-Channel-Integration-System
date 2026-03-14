@@ -10,7 +10,7 @@
       }"
       @click="handleItemClick(member)"
     >
-      <!-- 🆕 Selection Checkbox (shown in selection mode) -->
+      <!--  Selection Checkbox (shown in selection mode) -->
       <div
         v-if="isSelectionMode"
         class="selection-checkbox"
@@ -43,7 +43,7 @@
         title="從團隊移除"
         @click.stop="$emit('remove-member', member)"
       >
-        {{ removingMemberId === member.id ? '移除中...' : '✕' }}
+        {{ removingMemberId === member.id ? '移除中...' : '' }}
       </button>
     </div>
   </div>
@@ -60,8 +60,8 @@
  * - Avatar with initials
  * - Member name and role display
  * - Remove button with loading state
- * - 🆕 Selection mode with checkboxes
- * - 🆕 Visual feedback for selected items
+ * -  Selection mode with checkboxes
+ * -  Visual feedback for selected items
  * - Responsive grid layout
  */
 
@@ -74,10 +74,10 @@ interface Props {
   /** ID of member currently being removed (for loading state) */
   removingMemberId: string | null
 
-  /** 🆕 Whether selection mode is active */
+  /**  Whether selection mode is active */
   isSelectionMode?: boolean
 
-  /** 🆕 Set of selected member IDs */
+  /**  Set of selected member IDs */
   selectedMemberIds?: Set<string>
 }
 
@@ -85,7 +85,7 @@ interface Emits {
   /** Emitted when remove button is clicked */
   (_e: 'remove-member', _member: TeamMember): void
 
-  /** 🆕 Emitted when member selection is toggled */
+  /**  Emitted when member selection is toggled */
   (_e: 'toggle-selection', _memberId: string): void
 }
 
@@ -171,7 +171,7 @@ const getRoleDisplayName = (role: string): string => {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
-/* 🆕 Selection Mode Styles */
+/* Selection Mode Styles */
 .member-item.selection-mode {
   cursor: pointer;
 }
@@ -191,7 +191,7 @@ const getRoleDisplayName = (role: string): string => {
   background: #e0e7ff;
 }
 
-/* 🆕 Selection Checkbox */
+/* Selection Checkbox */
 .selection-checkbox {
   flex-shrink: 0;
   display: flex;

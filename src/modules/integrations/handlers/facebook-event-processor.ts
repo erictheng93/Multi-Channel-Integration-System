@@ -177,7 +177,7 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
     // 查詢或建立對話
     const conversation = await findOrCreateConversation(env, user.id, 'facebook');
 
-    // 🚨 冪等性檢查：檢查是否已存在相同的 platformMessageId (Facebook)
+    // 冪等性檢查：檢查是否已存在相同的 platformMessageId (Facebook)
     if (message.mid) {
       if (await isDuplicateMessage(env, message.mid, 'facebook')) {
         return; // 直接返回，不重複處理
@@ -218,7 +218,7 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       });
 
       if (activity) {
-        console.log('✅ [Facebook Webhook] Activity recorded');
+        console.log('[Facebook Webhook] Activity recorded');
 
         // Note: WebSocket real-time events are handled by websocket-broadcast-service
       } else {

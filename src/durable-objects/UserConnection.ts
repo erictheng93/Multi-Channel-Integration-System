@@ -104,7 +104,7 @@ export class UserConnection implements DurableObject {
         case '/broadcast':
           return this.handleBroadcastToUser(request);
         case '/batch-events':
-          // 🚀 Phase B4: Handle batch events from MessageBroadcaster for global broadcasts
+          // Phase B4: Handle batch events from MessageBroadcaster for global broadcasts
           return this.handleBatchEvents(request);
         case '/metrics':
           return this.handleGetMetrics(request);
@@ -112,7 +112,7 @@ export class UserConnection implements DurableObject {
           return new Response('Not Found', { status: 404 });
       }
     } catch (error) {
-      console.error('❌ [UserConnection] Request handling error:', error);
+      console.error('[UserConnection] Request handling error:', error);
       return new Response('Internal Server Error', { status: 500 });
     }
   }
@@ -125,7 +125,7 @@ export class UserConnection implements DurableObject {
       const token = url.searchParams.get('token');
       const role = url.searchParams.get('role') as 'admin' | 'agent';
       const deviceId = url.searchParams.get('deviceId') || 'unknown';
-      // 🔧 FIX: 從 URL 參數獲取 userId，而不是使用 this.userId (永遠是 'unknown')
+      // FIX: 從 URL 參數獲取 userId，而不是使用 this.userId (永遠是 'unknown')
       // websocket-main.ts 在轉發請求時已經將 userId 添加到 URL 參數中
       const userId = url.searchParams.get('userId');
 
@@ -133,20 +133,20 @@ export class UserConnection implements DurableObject {
         return new Response('Missing required parameters', { status: 400 });
       }
 
-      // 🔧 FIX: 驗證 userId 參數存在
+      // FIX: 驗證 userId 參數存在
       if (!userId) {
-        console.error('❌ [UserConnection] Missing userId parameter in WebSocket upgrade request');
+        console.error('[UserConnection] Missing userId parameter in WebSocket upgrade request');
         return new Response('Missing userId parameter', { status: 400 });
       }
 
       // Verify authentication
-      // 🔧 FIX: 使用從 URL 參數獲取的 userId，而不是 this.userId
+      // FIX: 使用從 URL 參數獲取的 userId，而不是 this.userId
       const isAuthenticated = await this.verifyAuthToken(token, userId);
       if (!isAuthenticated) {
         return new Response('Unauthorized', { status: 401 });
       }
 
-      // 🔧 FIX: 更新 this.userId 為實際的用戶 ID
+      // FIX: 更新 this.userId 為實際的用戶 ID
       this.userId = userId;
 
       // Check connection limits
@@ -187,11 +187,11 @@ export class UserConnection implements DurableObject {
       // Accept WebSocket
       server.accept();
 
-      console.log(`✅ [UserConnection] WebSocket connected: ${connectionId} for user ${this.userId}`);
+      console.log(`[UserConnection] WebSocket connected: ${connectionId} for user ${this.userId}`);
       return new Response(null, { status: 101, webSocket: client as WebSocket });
 
     } catch (error) {
-      console.error('❌ [UserConnection] WebSocket upgrade error:', error);
+      console.error('[UserConnection] WebSocket upgrade error:', error);
       return new Response('WebSocket upgrade failed', { status: 500 });
     }
   }
@@ -204,18 +204,18 @@ export class UserConnection implements DurableObject {
         const message: WebSocketMessage = JSON.parse(event.data as string);
         await this.handleWebSocketMessage(connection, message);
       } catch (error) {
-        console.error(`❌ [UserConnection] Message parsing error for ${connectionId}:`, error);
+        console.error(`[UserConnection] Message parsing error for ${connectionId}:`, error);
         this.sendError(connection, 'Invalid message format');
       }
     });
 
     websocket.addEventListener('close', async (event) => {
-      console.log(`🔌 [UserConnection] Connection closed: ${connectionId}, code: ${event.code}`);
+      console.log(`[UserConnection] Connection closed: ${connectionId}, code: ${event.code}`);
       await this.removeConnection(connectionId);
     });
 
     websocket.addEventListener('error', async (event) => {
-      console.error(`❌ [UserConnection] WebSocket error for ${connectionId}:`, event);
+      console.error(`[UserConnection] WebSocket error for ${connectionId}:`, event);
       await this.removeConnection(connectionId);
     });
 
@@ -239,7 +239,7 @@ export class UserConnection implements DurableObject {
 
     // SECURITY: Rate limiting check
     if (!this.checkRateLimit(connectionId)) {
-      console.warn(`⚠️ [UserConnection] Rate limit exceeded for connection ${connectionId}`);
+      console.warn(`[UserConnection] Rate limit exceeded for connection ${connectionId}`);
       this.sendError(connection, 'Rate limit exceeded. Please slow down.');
       return;
     }
@@ -247,7 +247,7 @@ export class UserConnection implements DurableObject {
     // SECURITY: Message size validation
     const messageSize = JSON.stringify(message).length;
     if (messageSize > this.RATE_LIMIT_MAX_MESSAGE_SIZE) {
-      console.warn(`⚠️ [UserConnection] Message too large (${messageSize} bytes) from ${connectionId}`);
+      console.warn(`[UserConnection] Message too large (${messageSize} bytes) from ${connectionId}`);
       this.sendError(connection, `Message too large. Maximum size is ${this.RATE_LIMIT_MAX_MESSAGE_SIZE} bytes.`);
       return;
     }
@@ -257,7 +257,7 @@ export class UserConnection implements DurableObject {
     this.lastSeen = nowMs();
     this.stats.lastActivity = nowMs();
 
-    console.log(`📨 [UserConnection] Message from ${connectionId}:`, message.type);
+    console.log(`[UserConnection] Message from ${connectionId}:`, message.type);
 
     switch (message.type) {
       case 'ping':
@@ -293,8 +293,8 @@ export class UserConnection implements DurableObject {
     // Track if this is the first connection (for registration)
     const wasOffline = this.connections.size === 0;
 
-    // 🔍 DEBUG: Log connection state before adding
-    console.log(`🔍 [UserConnection] addConnection called:`, {
+    // DEBUG: Log connection state before adding
+    console.log(`[UserConnection] addConnection called:`, {
       connectionId,
       userId: this.userId,
       wasOffline,
@@ -317,27 +317,27 @@ export class UserConnection implements DurableObject {
     // Update user state
     await this.updateUserState();
 
-    // 🚀 Phase B4: Register with MessageBroadcaster for global broadcasts
+    // Phase B4: Register with MessageBroadcaster for global broadcasts
     // Only register on first connection to avoid duplicate registrations
-    console.log(`🔍 [UserConnection] Checking registration condition: wasOffline=${wasOffline}, userId=${this.userId}, shouldRegister=${wasOffline && this.userId !== 'unknown'}`);
+    console.log(`[UserConnection] Checking registration condition: wasOffline=${wasOffline}, userId=${this.userId}, shouldRegister=${wasOffline && this.userId !== 'unknown'}`);
     if (wasOffline && this.userId !== 'unknown') {
       await this.registerWithMessageBroadcaster();
     } else {
-      console.log(`⚠️ [UserConnection] Skipping MessageBroadcaster registration: wasOffline=${wasOffline}, userId=${this.userId}`);
+      console.log(`[UserConnection] Skipping MessageBroadcaster registration: wasOffline=${wasOffline}, userId=${this.userId}`);
     }
 
-    console.log(`✅ [UserConnection] Connection added: ${connectionId} (Total: ${this.connections.size})`);
+    console.log(`[UserConnection] Connection added: ${connectionId} (Total: ${this.connections.size})`);
   }
 
   /**
-   * 🚀 Phase B4: Register this user with MessageBroadcaster for global broadcasts
+   * Phase B4: Register this user with MessageBroadcaster for global broadcasts
    * This enables conversation list real-time updates
    */
   private async registerWithMessageBroadcaster(): Promise<void> {
-    console.log(`🔍 [UserConnection] registerWithMessageBroadcaster called for user: ${this.userId}`);
+    console.log(`[UserConnection] registerWithMessageBroadcaster called for user: ${this.userId}`);
     try {
       if (!this.env.MESSAGE_BROADCASTER) {
-        console.warn('⚠️ [UserConnection] MESSAGE_BROADCASTER binding not available');
+        console.warn('[UserConnection] MESSAGE_BROADCASTER binding not available');
         return;
       }
 
@@ -345,7 +345,7 @@ export class UserConnection implements DurableObject {
       const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
       if (broadcasterStub) {
-        console.log(`📤 [UserConnection] Sending registration request for user ${this.userId}`);
+        console.log(`[UserConnection] Sending registration request for user ${this.userId}`);
         const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/register-connection', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -354,13 +354,13 @@ export class UserConnection implements DurableObject {
 
         if (response.ok) {
           const result = await response.json() as { activeConnections?: number };
-          console.log(`✅ [UserConnection] Registered user ${this.userId} with MessageBroadcaster for global broadcasts (total active: ${result.activeConnections})`);
+          console.log(`[UserConnection] Registered user ${this.userId} with MessageBroadcaster for global broadcasts (total active: ${result.activeConnections})`);
         } else {
-          console.error(`❌ [UserConnection] Failed to register with MessageBroadcaster: ${response.status}`);
+          console.error(`[UserConnection] Failed to register with MessageBroadcaster: ${response.status}`);
         }
       }
     } catch (error) {
-      console.error('❌ [UserConnection] MessageBroadcaster registration error:', error);
+      console.error('[UserConnection] MessageBroadcaster registration error:', error);
     }
   }
 
@@ -379,7 +379,7 @@ export class UserConnection implements DurableObject {
     if (!this.isOnline) {
       this.lastSeen = nowMs();
 
-      // 🚀 Phase B4: Unregister from MessageBroadcaster when all connections are closed
+      // Phase B4: Unregister from MessageBroadcaster when all connections are closed
       if (this.userId !== 'unknown') {
         await this.unregisterFromMessageBroadcaster();
       }
@@ -389,11 +389,11 @@ export class UserConnection implements DurableObject {
     await this.state.storage.delete(`connection:${connectionId}`);
     await this.updateUserState();
 
-    console.log(`🔌 [UserConnection] Connection removed: ${connectionId} (Remaining: ${this.connections.size})`);
+    console.log(`[UserConnection] Connection removed: ${connectionId} (Remaining: ${this.connections.size})`);
   }
 
   /**
-   * 🚀 Phase B4: Unregister this user from MessageBroadcaster
+   * Phase B4: Unregister this user from MessageBroadcaster
    * Called when all user connections are closed
    */
   private async unregisterFromMessageBroadcaster(): Promise<void> {
@@ -413,13 +413,13 @@ export class UserConnection implements DurableObject {
         }));
 
         if (response.ok) {
-          console.log(`✅ [UserConnection] Unregistered user ${this.userId} from MessageBroadcaster`);
+          console.log(`[UserConnection] Unregistered user ${this.userId} from MessageBroadcaster`);
         } else {
-          console.error(`❌ [UserConnection] Failed to unregister from MessageBroadcaster: ${response.status}`);
+          console.error(`[UserConnection] Failed to unregister from MessageBroadcaster: ${response.status}`);
         }
       }
     } catch (error) {
-      console.error('❌ [UserConnection] MessageBroadcaster unregistration error:', error);
+      console.error('[UserConnection] MessageBroadcaster unregistration error:', error);
     }
   }
 
@@ -453,7 +453,7 @@ export class UserConnection implements DurableObject {
         timestamp: nowMs()
       });
 
-      console.log(`🔔 [UserConnection] User ${this.userId} subscribed to conversation ${conversationId}`);
+      console.log(`[UserConnection] User ${this.userId} subscribed to conversation ${conversationId}`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -462,7 +462,7 @@ export class UserConnection implements DurableObject {
       }));
 
     } catch (error) {
-      console.error('❌ [UserConnection] Connect to conversation error:', error);
+      console.error('[UserConnection] Connect to conversation error:', error);
       return new Response(JSON.stringify({ error: 'Failed to connect to conversation' }), { status: 500 });
     }
   }
@@ -488,7 +488,7 @@ export class UserConnection implements DurableObject {
         timestamp: nowMs()
       });
 
-      console.log(`🔕 [UserConnection] User ${this.userId} unsubscribed from conversation ${conversationId}`);
+      console.log(`[UserConnection] User ${this.userId} unsubscribed from conversation ${conversationId}`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -497,7 +497,7 @@ export class UserConnection implements DurableObject {
       }));
 
     } catch (error) {
-      console.error('❌ [UserConnection] Disconnect from conversation error:', error);
+      console.error('[UserConnection] Disconnect from conversation error:', error);
       return new Response(JSON.stringify({ error: 'Failed to disconnect from conversation' }), { status: 500 });
     }
   }
@@ -532,7 +532,7 @@ export class UserConnection implements DurableObject {
 
     this.sendMessage(connection, responseMessage);
     this.stats.messagesSent++;
-    console.log(`📤 [UserConnection] Message acknowledged for conversation ${conversationId}`);
+    console.log(`[UserConnection] Message acknowledged for conversation ${conversationId}`);
   }
 
   private async broadcastToUserConnections(message: WebSocketMessage): Promise<void> {
@@ -541,7 +541,7 @@ export class UserConnection implements DurableObject {
     });
 
     await Promise.allSettled(broadcasts);
-    console.log(`📡 [UserConnection] Message broadcast to ${this.connections.size} connections`);
+    console.log(`[UserConnection] Message broadcast to ${this.connections.size} connections`);
   }
 
   private sendMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
@@ -553,7 +553,7 @@ export class UserConnection implements DurableObject {
         }
         resolve();
       } catch (error) {
-        console.error(`❌ [UserConnection] Send message error for ${connection.connectionId}:`, error);
+        console.error(`[UserConnection] Send message error for ${connection.connectionId}:`, error);
         resolve();
       }
     });
@@ -663,9 +663,9 @@ export class UserConnection implements DurableObject {
         this.subscriptions = new Set(subscriptions);
       }
 
-      console.log(`📂 [UserConnection] State restored for user ${this.userId}: ${this.subscriptions.size} subscriptions`);
+      console.log(`[UserConnection] State restored for user ${this.userId}: ${this.subscriptions.size} subscriptions`);
     } catch (error) {
-      console.error('❌ [UserConnection] State restoration error:', error);
+      console.error('[UserConnection] State restoration error:', error);
     }
   }
 
@@ -684,7 +684,7 @@ export class UserConnection implements DurableObject {
       .filter(([_, connection]) => now - connection.lastActivity > inactiveThreshold);
 
     for (const [connectionId, _connection] of inactiveConnections) {
-      console.log(`🧹 [UserConnection] Removing inactive connection: ${connectionId}`);
+      console.log(`[UserConnection] Removing inactive connection: ${connectionId}`);
       await this.removeConnection(connectionId);
     }
   }
@@ -700,14 +700,14 @@ export class UserConnection implements DurableObject {
 
       // Verify that the token belongs to the expected user
       if (payload.userId !== userId) {
-        console.error(`❌ [UserConnection] Token userId mismatch: expected ${userId}, got ${payload.userId}`);
+        console.error(`[UserConnection] Token userId mismatch: expected ${userId}, got ${payload.userId}`);
         return false;
       }
 
-      console.log(`✅ [UserConnection] Token valid for user ${userId}`);
+      console.log(`[UserConnection] Token valid for user ${userId}`);
       return true;
     } catch (error) {
-      console.error('❌ [UserConnection] Token validation failed:', error);
+      console.error('[UserConnection] Token validation failed:', error);
       return false;
     }
   }
@@ -734,7 +734,7 @@ export class UserConnection implements DurableObject {
         .get();
 
       if (!conversation) {
-        console.warn(`❌ [UserConnection] Conversation ${conversationId} not found`);
+        console.warn(`[UserConnection] Conversation ${conversationId} not found`);
         return false;
       }
 
@@ -749,7 +749,7 @@ export class UserConnection implements DurableObject {
         .get();
 
       if (!user) {
-        console.warn(`❌ [UserConnection] User ${userId} not found`);
+        console.warn(`[UserConnection] User ${userId} not found`);
         return false;
       }
 
@@ -779,10 +779,10 @@ export class UserConnection implements DurableObject {
         }
       }
 
-      console.warn(`❌ [UserConnection] User ${userId} denied ${action} access to conversation ${conversationId}`);
+      console.warn(`[UserConnection] User ${userId} denied ${action} access to conversation ${conversationId}`);
       return false;
     } catch (error) {
-      console.error(`❌ [UserConnection] Permission check failed:`, error);
+      console.error(`[UserConnection] Permission check failed:`, error);
       return false; // Fail secure - deny access on error
     }
   }
@@ -887,18 +887,18 @@ export class UserConnection implements DurableObject {
   }
 
   /**
-   * 🚀 Phase B4: Handle batch events from MessageBroadcaster
+   * Phase B4: Handle batch events from MessageBroadcaster
    * This enables global broadcasts to reach users viewing the conversation list
    */
   private async handleBatchEvents(request: Request): Promise<Response> {
     try {
       const { events } = await request.json() as { events: any[] };
 
-      // 🔍 ENHANCED DEBUG: Log received batch events with full details for duplicate tracking
-      console.log(`🔍 [UserConnection] ===== BATCH EVENTS RECEIVED =====`);
-      console.log(`🔍 [UserConnection] User: ${this.userId}, Connections: ${this.connections.size}`);
+      // ENHANCED DEBUG: Log received batch events with full details for duplicate tracking
+      console.log(`[UserConnection] ===== BATCH EVENTS RECEIVED =====`);
+      console.log(`[UserConnection] User: ${this.userId}, Connections: ${this.connections.size}`);
       for (const event of (events || [])) {
-        console.log(`🔍 [UserConnection] Event detail:`, {
+        console.log(`[UserConnection] Event detail:`, {
           userId: this.userId,
           eventId: event.id,
           eventType: event.type,
@@ -925,8 +925,8 @@ export class UserConnection implements DurableObject {
           timestamp: event.timestamp || nowMs()
         };
 
-        // 🔍 DEBUG: Log message being broadcast
-        console.log(`📤 [UserConnection] Broadcasting to ${this.connections.size} WebSocket connections:`, {
+        // DEBUG: Log message being broadcast
+        console.log(`[UserConnection] Broadcasting to ${this.connections.size} WebSocket connections:`, {
           messageType: message.type,
           conversationId: message.conversationId
         });
@@ -936,7 +936,7 @@ export class UserConnection implements DurableObject {
         deliveredCount++;
       }
 
-      console.log(`📡 [UserConnection] Batch events delivered: ${deliveredCount} events to user ${this.userId} (${this.connections.size} connections)`);
+      console.log(`[UserConnection] Batch events delivered: ${deliveredCount} events to user ${this.userId} (${this.connections.size} connections)`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -945,7 +945,7 @@ export class UserConnection implements DurableObject {
         activeConnections: this.connections.size
       }));
     } catch (error) {
-      console.error('❌ [UserConnection] Batch events error:', error);
+      console.error('[UserConnection] Batch events error:', error);
       return new Response(JSON.stringify({ error: 'Failed to process batch events' }), { status: 500 });
     }
   }
@@ -980,7 +980,7 @@ export class UserConnection implements DurableObject {
         break;
 
       default:
-        console.log(`🔔 [UserConnection] Event acknowledged: ${event.type}`);
+        console.log(`[UserConnection] Event acknowledged: ${event.type}`);
     }
   }
 }

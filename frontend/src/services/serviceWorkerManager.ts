@@ -116,13 +116,13 @@ export class ServiceWorkerManager {
   // 註冊 Service Worker
   async register(): Promise<boolean> {
     if (!('serviceWorker' in navigator)) {
-      console.warn('⚠️ [SWManager] Service Worker not supported')
+      console.warn('[SWManager] Service Worker not supported')
       this.status.value = 'unsupported'
       return false
     }
 
     try {
-      console.log('🚀 [SWManager] Registering Service Worker...')
+      console.log('[SWManager] Registering Service Worker...')
       this.status.value = 'installing'
 
       this.registration = await navigator.serviceWorker.register(
@@ -130,7 +130,7 @@ export class ServiceWorkerManager {
         { scope: this.config.scope }
       )
 
-      console.log('✅ [SWManager] Service Worker registered successfully')
+      console.log('[SWManager] Service Worker registered successfully')
       
       // 設置更新監聽
       this.setupUpdateListeners()
@@ -151,7 +151,7 @@ export class ServiceWorkerManager {
       return true
       
     } catch (error) {
-      console.error('❌ [SWManager] Service Worker registration failed:', error)
+      console.error('[SWManager] Service Worker registration failed:', error)
       this.status.value = 'error'
       return false
     }
@@ -160,34 +160,34 @@ export class ServiceWorkerManager {
   // 更新 Service Worker
   async update(): Promise<void> {
     if (!this.registration) {
-      console.warn('⚠️ [SWManager] No registration found for update')
+      console.warn('[SWManager] No registration found for update')
       return
     }
 
     try {
-      console.log('🔄 [SWManager] Checking for updates...')
+      console.log('[SWManager] Checking for updates...')
       await this.registration.update()
       
       if (this.registration.waiting) {
-        console.log('⏳ [SWManager] Update found, waiting for activation')
+        console.log('[SWManager] Update found, waiting for activation')
         this.updateAvailable.value = true
       } else {
-        console.log('✅ [SWManager] No updates available')
+        console.log('[SWManager] No updates available')
       }
     } catch (error) {
-      console.error('❌ [SWManager] Update check failed:', error)
+      console.error('[SWManager] Update check failed:', error)
     }
   }
 
   // 激活等待中的更新
   async activateUpdate(): Promise<void> {
     if (!this.registration?.waiting) {
-      console.warn('⚠️ [SWManager] No waiting service worker')
+      console.warn('[SWManager] No waiting service worker')
       return
     }
 
     try {
-      console.log('🔄 [SWManager] Activating update...')
+      console.log('[SWManager] Activating update...')
       
       // 發送跳過等待消息
       this.registration.waiting.postMessage({ type: 'SKIP_WAITING' })
@@ -202,20 +202,20 @@ export class ServiceWorkerManager {
       })
       
       this.updateAvailable.value = false
-      console.log('✅ [SWManager] Update activated, reloading...')
+      console.log('[SWManager] Update activated, reloading...')
       
       // 重新載入頁面
       window.location.reload()
       
     } catch (error) {
-      console.error('❌ [SWManager] Update activation failed:', error)
+      console.error('[SWManager] Update activation failed:', error)
     }
   }
 
   // 發送消息到 Service Worker
   async sendMessage(message: SWMessage): Promise<SWResponse> {
     if (!navigator.serviceWorker.controller) {
-      console.warn('⚠️ [SWManager] No active service worker controller available')
+      console.warn('[SWManager] No active service worker controller available')
       throw new Error('No active service worker')
     }
 
@@ -261,7 +261,7 @@ export class ServiceWorkerManager {
     // 更新統計
     this.stats.value.offlineActionsCount = this.offlineActions.length
     
-    console.log(`📝 [SWManager] Added offline action: ${action.type}`)
+    console.log(`[SWManager] Added offline action: ${action.type}`)
     
     // 如果線上，立即嘗試同步
     if (this.isOnline.value) {
@@ -272,31 +272,31 @@ export class ServiceWorkerManager {
   // 請求背景同步
   async requestBackgroundSync(tag: string): Promise<void> {
     if (!this.registration?.sync || !this.config.enableBackgroundSync) {
-      console.warn('⚠️ [SWManager] Background sync not supported')
+      console.warn('[SWManager] Background sync not supported')
       return
     }
 
     try {
       await this.registration.sync.register(tag)
-      console.log(`🔄 [SWManager] Background sync requested: ${tag}`)
+      console.log(`[SWManager] Background sync requested: ${tag}`)
     } catch (error) {
-      console.error(`❌ [SWManager] Background sync request failed: ${tag}`, error)
+      console.error(`[SWManager] Background sync request failed: ${tag}`, error)
     }
   }
 
   // 請求推送通知權限
   async requestNotificationPermission(): Promise<globalThis.NotificationPermission> {
     if (!('Notification' in window)) {
-      console.warn('⚠️ [SWManager] Notifications not supported')
+      console.warn('[SWManager] Notifications not supported')
       return 'denied'
     }
 
     try {
       const permission = await globalThis.Notification.requestPermission()
-      console.log(`🔔 [SWManager] Notification permission: ${permission}`)
+      console.log(`[SWManager] Notification permission: ${permission}`)
       return permission
     } catch (error) {
-      console.error('❌ [SWManager] Notification permission request failed:', error)
+      console.error('[SWManager] Notification permission request failed:', error)
       return 'denied'
     }
   }
@@ -316,10 +316,10 @@ export class ServiceWorkerManager {
         applicationServerKey: this.urlBase64ToUint8Array(vapidPublicKey)
       })
 
-      console.log('📱 [SWManager] Push subscription created')
+      console.log('[SWManager] Push subscription created')
       return subscription
     } catch (error) {
-      console.error('❌ [SWManager] Push subscription failed:', error)
+      console.error('[SWManager] Push subscription failed:', error)
       return null
     }
   }
@@ -328,7 +328,7 @@ export class ServiceWorkerManager {
   async getCacheStats(): Promise<SWResponse | null> {
     // 檢查 Service Worker 是否可用
     if (!navigator.serviceWorker.controller || this.status.value !== 'active') {
-      console.debug('🔍 [SWManager] Service Worker not ready for cache stats')
+      console.debug('[SWManager] Service Worker not ready for cache stats')
       return null
     }
 
@@ -337,7 +337,7 @@ export class ServiceWorkerManager {
       this.stats.value.cacheHitRate = stats.hitRate || 0
       return stats
     } catch (error) {
-      console.error('❌ [SWManager] Failed to get cache stats:', error)
+      console.error('[SWManager] Failed to get cache stats:', error)
       return null
     }
   }
@@ -349,9 +349,9 @@ export class ServiceWorkerManager {
         type: 'CLEAR_CACHE', 
         cacheNames 
       })
-      console.log('🧹 [SWManager] Cache cleared')
+      console.log('[SWManager] Cache cleared')
     } catch (error) {
-      console.error('❌ [SWManager] Cache clear failed:', error)
+      console.error('[SWManager] Cache clear failed:', error)
     }
   }
 
@@ -359,7 +359,7 @@ export class ServiceWorkerManager {
   private setupEventListeners(): void {
     // 線上/離線狀態監聽
     window.addEventListener('online', () => {
-      console.log('🌐 [SWManager] Connection restored')
+      console.log('[SWManager] Connection restored')
       this.isOnline.value = true
       
       // 嘗試同步離線操作
@@ -369,7 +369,7 @@ export class ServiceWorkerManager {
     })
 
     window.addEventListener('offline', () => {
-      console.log('📡 [SWManager] Connection lost')
+      console.log('[SWManager] Connection lost')
       this.isOnline.value = false
     })
 
@@ -377,7 +377,7 @@ export class ServiceWorkerManager {
     window.addEventListener('beforeinstallprompt', (event) => {
       event.preventDefault()
       this.installPromptEvent.value = event as BeforeInstallPromptEvent
-      console.log('📱 [SWManager] PWA install prompt available')
+      console.log('[SWManager] PWA install prompt available')
     })
   }
 
@@ -386,14 +386,14 @@ export class ServiceWorkerManager {
     if (!this.registration) {return}
 
     this.registration.addEventListener('updatefound', () => {
-      console.log('🔄 [SWManager] New service worker found')
+      console.log('[SWManager] New service worker found')
       
       const newWorker = this.registration?.installing
       if (!newWorker) {return}
 
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('⏳ [SWManager] New service worker installed, waiting for activation')
+          console.log('[SWManager] New service worker installed, waiting for activation')
           this.updateAvailable.value = true
         }
       })
@@ -403,7 +403,7 @@ export class ServiceWorkerManager {
   // 設置消息監聽器
   private setupMessageListeners(): void {
     navigator.serviceWorker.addEventListener('message', (event) => {
-      console.log('📨 [SWManager] Message from SW:', event.data)
+      console.log('[SWManager] Message from SW:', event.data)
       
       switch (event.data.type) {
         case 'CACHE_UPDATED':
@@ -424,7 +424,7 @@ export class ServiceWorkerManager {
     this.stats.value.backgroundSyncSupported = 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype
     this.stats.value.pushSupported = 'serviceWorker' in navigator && 'PushManager' in window
     
-    console.log('🔧 [SWManager] Feature support:', {
+    console.log('[SWManager] Feature support:', {
       backgroundSync: this.stats.value.backgroundSyncSupported,
       push: this.stats.value.pushSupported
     })
@@ -439,13 +439,13 @@ export class ServiceWorkerManager {
 
   // 處理快取更新
   private handleCacheUpdate(data: CacheUpdateData): void {
-    console.log('💾 [SWManager] Cache updated:', data)
+    console.log('[SWManager] Cache updated:', data)
     // 可以觸發UI更新通知
   }
 
   // 處理背景同步完成
   private handleBackgroundSyncComplete(data: BackgroundSyncData): void {
-    console.log('✅ [SWManager] Background sync completed:', data)
+    console.log('[SWManager] Background sync completed:', data)
     this.stats.value.lastSyncTime = new Date()
     
     if (data.tag === 'offline-actions') {
@@ -462,7 +462,7 @@ export class ServiceWorkerManager {
       this.saveOfflineActions()
       this.stats.value.offlineActionsCount = this.offlineActions.length
       
-      console.log(`✅ [SWManager] Offline action processed: ${actionId}`)
+      console.log(`[SWManager] Offline action processed: ${actionId}`)
     }
   }
 
@@ -474,7 +474,7 @@ export class ServiceWorkerManager {
     if (this.offlineActions.length !== originalLength) {
       this.saveOfflineActions()
       this.stats.value.offlineActionsCount = this.offlineActions.length
-      console.log(`🧹 [SWManager] Cleared ${originalLength - this.offlineActions.length} processed actions`)
+      console.log(`[SWManager] Cleared ${originalLength - this.offlineActions.length} processed actions`)
     }
   }
 
@@ -483,7 +483,7 @@ export class ServiceWorkerManager {
     try {
       localStorage.setItem('sw_offline_actions', JSON.stringify(this.offlineActions))
     } catch (error) {
-      console.warn('⚠️ [SWManager] Failed to save offline actions:', error)
+      console.warn('[SWManager] Failed to save offline actions:', error)
     }
   }
 
@@ -496,7 +496,7 @@ export class ServiceWorkerManager {
         this.stats.value.offlineActionsCount = this.offlineActions.length
         
         if (this.offlineActions.length > 0) {
-          console.log(`📥 [SWManager] Restored ${this.offlineActions.length} offline actions`)
+          console.log(`[SWManager] Restored ${this.offlineActions.length} offline actions`)
           
           // 如果線上，立即同步
           if (this.isOnline.value) {
@@ -505,7 +505,7 @@ export class ServiceWorkerManager {
         }
       }
     } catch (error) {
-      console.warn('⚠️ [SWManager] Failed to restore offline actions:', error)
+      console.warn('[SWManager] Failed to restore offline actions:', error)
     }
   }
 
@@ -534,7 +534,7 @@ export class ServiceWorkerManager {
   // PWA安裝
   async promptInstall(): Promise<boolean> {
     if (!this.installPromptEvent.value) {
-      console.warn('⚠️ [SWManager] No install prompt available')
+      console.warn('[SWManager] No install prompt available')
       return false
     }
 
@@ -542,7 +542,7 @@ export class ServiceWorkerManager {
       this.installPromptEvent.value.prompt()
       const { outcome } = await this.installPromptEvent.value.userChoice
       
-      console.log(`📱 [SWManager] Install prompt result: ${outcome}`)
+      console.log(`[SWManager] Install prompt result: ${outcome}`)
       
       if (outcome === 'accepted') {
         this.installPromptEvent.value = null
@@ -551,7 +551,7 @@ export class ServiceWorkerManager {
       
       return false
     } catch (error) {
-      console.error('❌ [SWManager] Install prompt failed:', error)
+      console.error('[SWManager] Install prompt failed:', error)
       return false
     }
   }
@@ -564,7 +564,7 @@ export const swManager = new ServiceWorkerManager()
 if (import.meta.env.PROD) {
   swManager.register().then((success) => {
     if (success) {
-      console.log('🎉 [SWManager] Service Worker ready for production')
+      console.log('[SWManager] Service Worker ready for production')
     }
   })
 }

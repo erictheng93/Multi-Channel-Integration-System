@@ -58,7 +58,7 @@ export function useModernVue<T = unknown>() {
   // 生命週期
   onMounted(() => {
     if (import.meta.env.DEV) {
-      console.log('🚀 Modern Vue composable mounted')
+      console.log(' Modern Vue composable mounted')
     }
   })
   

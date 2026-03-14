@@ -4,11 +4,11 @@
 // Created by: Webhook Handler Developer
 //
 // Phase 4 Refactoring: Thin facade (~230 lines) delegating to:
-//   - line-event-processor.ts (processLineMessage, processLineFollowEvent, processLineUnfollowEvent)
-//   - facebook-event-processor.ts (processFacebookMessage)
-//   - ../services/webhook-customer-service.ts (shared customer lookup/creation)
-//   - ../services/webhook-conversation-service.ts (shared conversation find/create/update)
-//   - ../services/webhook-media-service.ts (LINE/Facebook media download & R2 upload)
+// - line-event-processor.ts (processLineMessage, processLineFollowEvent, processLineUnfollowEvent)
+// - facebook-event-processor.ts (processFacebookMessage)
+// - ../services/webhook-customer-service.ts (shared customer lookup/creation)
+// - ../services/webhook-conversation-service.ts (shared conversation find/create/update)
+// - ../services/webhook-media-service.ts (LINE/Facebook media download & R2 upload)
 
 import { Context } from 'hono';
 import type {
@@ -27,7 +27,7 @@ import { createContextLogger } from '@/utils/logger';
 // Context logger for webhook handler
 const log = createContextLogger('Webhook');
 
-// 🆕 P2-1: Import shared webhook services
+// P2-1: Import shared webhook services
 import {
   verifyWebhookSignature,
 } from '@/services/webhook-signature-service';
@@ -51,27 +51,27 @@ export { processLineMessage, processLineFollowEvent, processLineUnfollowEvent };
 export const webhookHandler = {
   // 處理 Line Webhook
   async line(c: Context<{ Bindings: Bindings }>) {
-    console.log('🔔 [LINE Webhook] Request received at:', nowISO());
+    console.log('[LINE Webhook] Request received at:', nowISO());
 
     try {
       // 驗證簽名
       const signature = c.req.header('X-Line-Signature');
       const body = await c.req.text();
 
-      console.log('🔍 [LINE Webhook] Headers:', {
+      console.log('[LINE Webhook] Headers:', {
         'X-Line-Signature': signature ? 'Present' : 'Missing',
         'Content-Type': c.req.header('Content-Type'),
         'Content-Length': body.length
       });
 
-      // 🆕 P2-1: 使用共享服務驗證 payload 大小
+      // P2-1: 使用共享服務驗證 payload 大小
       const sizeValidation = validatePayloadSize(body, 1024 * 1024); // 1MB limit
       if (!sizeValidation.valid) {
         log.error('LINE Webhook: Payload too large', { size: sizeValidation.size });
         return errorResponse(c, 'Payload too large', 413);
       }
 
-      // 🆕 P2-1: 使用共享簽名驗證服務
+      // P2-1: 使用共享簽名驗證服務
       // P2-6: Use Array.from for better TypeScript compatibility
       const headers = Object.fromEntries(
         Array.from(c.req.raw.headers as unknown as Iterable<[string, string]>).map(([k, v]) => [k.toLowerCase(), v])
@@ -89,7 +89,7 @@ export const webhookHandler = {
         return unauthorizedResponse(c, signatureResult.error || 'Invalid signature');
       }
 
-      console.log('✅ [LINE Webhook] Signature verified successfully');
+      console.log('[LINE Webhook] Signature verified successfully');
 
       let data: LineWebhookBody;
       try {
@@ -98,14 +98,14 @@ export const webhookHandler = {
         return errorResponse(c, 'Invalid JSON payload');
       }
 
-      // 🆕 P2-1: 使用共享驗證服務
+      // P2-1: 使用共享驗證服務
       const validationResult = validateLinePayload(data);
       if (!validationResult.valid) {
         log.error('LINE Webhook: Invalid webhook payload', { errors: validationResult.errors });
         return errorResponse(c, validationResult.errors.join(', ') || 'Invalid webhook payload');
       }
 
-      console.log('📦 [LINE Webhook] Processing events:', {
+      console.log('[LINE Webhook] Processing events:', {
         destination: data.destination,
         eventCount: data.events.length,
         firstEventType: data.events[0]?.type
@@ -113,7 +113,7 @@ export const webhookHandler = {
 
       // 處理事件
       for (const event of data.events) {
-        console.log('🎯 [LINE Webhook] Processing event:', {
+        console.log('[LINE Webhook] Processing event:', {
           type: event.type,
           userId: event.source?.userId?.substring(0, 10) + '...',
           messageType: event.message?.type
@@ -122,17 +122,17 @@ export const webhookHandler = {
         if (event.type === 'message' && event.message) {
           await processLineMessage(c.env, event);
         } else if (event.type === 'follow') {
-          // 🆕 處理 QR Code 加好友事件
+          // 處理 QR Code 加好友事件
           await processLineFollowEvent(c.env, event);
         } else if (event.type === 'unfollow') {
-          // 🆕 處理取消關注事件 - 更新好友狀態為 blocked
+          // 處理取消關注事件 - 更新好友狀態為 blocked
           await processLineUnfollowEvent(c.env, event);
         } else {
-          console.log('🔄 [LINE Webhook] Skipping event:', event.type);
+          console.log('[LINE Webhook] Skipping event:', event.type);
         }
       }
 
-      console.log('✅ [LINE Webhook] All events processed successfully');
+      console.log('[LINE Webhook] All events processed successfully');
       return successResponse(c, null, 'LINE webhook processed successfully');
     } catch (error) {
       return handleApiError(error, c);

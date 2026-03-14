@@ -1,12 +1,12 @@
 # Phase 2: UI/UX Optimization Plan
 
 **Start Date**: 2026-01-05
-**Status**: 🚧 In Progress
+**Status**:  In Progress
 **Goal**: Enhance user experience with smart defaults, inline help, tooltips, and better error messaging
 
 ---
 
-## 🎯 Objectives
+##  Objectives
 
 Phase 2 builds on Phase 1's complete configuration collection by making the form:
 1. **Smarter** - Auto-suggest values based on user input
@@ -16,16 +16,16 @@ Phase 2 builds on Phase 1's complete configuration collection by making the form
 
 ---
 
-## 📊 Current UX Analysis
+##  Current UX Analysis
 
-### Strengths ✅
+### Strengths 
 - Clean step-based interface with progress indicator
 - Consistent form field styling
 - Basic validation with error display
 - Helpful placeholder examples
 - Form hints under each field
 
-### Areas for Improvement 🔄
+### Areas for Improvement 
 
 #### 1. **Lack of Smart Defaults**
 - Users must manually type correlated values (e.g., if customDomain = "crm.example.com", could suggest frontendUrl and backendUrl)
@@ -55,9 +55,9 @@ Phase 2 builds on Phase 1's complete configuration collection by making the form
 
 ---
 
-## 🎨 Phase 2 Enhancement Features
+##  Phase 2 Enhancement Features
 
-### Feature 1: Smart Default Suggestions 🤖
+### Feature 1: Smart Default Suggestions 
 
 #### Implementation Areas:
 
@@ -72,9 +72,9 @@ r2PublicUrl: "https://files.crm.example.com"
 ```
 
 **UI Approach**:
-- Show "💡 Suggested value" below input field
+- Show " Suggested value" below input field
 - "Use Suggestion" button to populate field
-- Dismissable suggestion with "✕" button
+- Dismissable suggestion with "" button
 
 **1.2 Project Name → Resource Naming Preview**
 Show live preview of resource names:
@@ -99,7 +99,7 @@ adminEmail: oauthStore.userEmail || ''
 
 **UI Approach**:
 - Already implemented, but add visual indicator
-- Show "✓ Using Cloudflare account email" message
+- Show " Using Cloudflare account email" message
 
 #### Technical Implementation:
 ```typescript
@@ -128,7 +128,7 @@ function applySuggestion(field: string, value: string): void {
 
 ---
 
-### Feature 2: Inline Help Documentation 📚
+### Feature 2: Inline Help Documentation 
 
 #### Implementation Areas:
 
@@ -138,9 +138,9 @@ Add collapsible help for complex fields:
 ```vue
 <div class="help-section">
   <button @click="toggleHelp('lineBotId')" class="help-toggle">
-    <span class="help-icon">ℹ️</span>
+    <span class="help-icon"></span>
     <span>How to find LINE Bot ID?</span>
-    <span class="help-arrow">{{ showHelp.lineBotId ? '▼' : '▶' }}</span>
+    <span class="help-arrow">{{ showHelp.lineBotId ? '▼' : '' }}</span>
   </button>
 
   <div v-show="showHelp.lineBotId" class="help-content">
@@ -164,7 +164,7 @@ Add expandable "Quick Reference" at top of each step:
 ```vue
 <div class="quick-reference">
   <button @click="toggleReference" class="reference-toggle">
-    📖 Quick Reference: What You'll Need
+     Quick Reference: What You'll Need
   </button>
 
   <div v-show="showReference" class="reference-content">
@@ -187,7 +187,7 @@ Add "Learn More" links next to complex fields:
   <a href="https://developers.line.biz/en/docs/liff/overview/"
      target="_blank"
      class="learn-more-link">
-    📖 Learn More
+     Learn More
   </a>
 </label>
 ```
@@ -215,7 +215,7 @@ function toggleReference(): void {
 
 ---
 
-### Feature 3: Enhanced Tooltips with Info Icons 💡
+### Feature 3: Enhanced Tooltips with Info Icons 
 
 #### Implementation Areas:
 
@@ -277,20 +277,20 @@ Add tooltips to all Phase 1 fields:
 
 ---
 
-### Feature 4: Enhanced Error Messages ❌→✅
+### Feature 4: Enhanced Error Messages →
 
 #### Current Problems:
 ```
-❌ "Please enter a valid URL"  (too generic)
-❌ "LINE Bot ID is required"   (no help on format)
-❌ "Invalid format"            (what is valid format?)
+ "Please enter a valid URL"  (too generic)
+ "LINE Bot ID is required" (no help on format)
+ "Invalid format" (what is valid format?)
 ```
 
 #### Improved Messages:
 ```
-✅ "Please enter a valid URL starting with https:// (e.g., https://files.example.com)"
-✅ "LINE Bot ID is required. It should start with @ followed by lowercase letters and numbers (e.g., @110xsqef)"
-✅ "LIFF ID format appears invalid. It should be at least 10 characters (e.g., 2008756115-vWtFyDMA)"
+ "Please enter a valid URL starting with https:// (e.g., https://files.example.com)"
+ "LINE Bot ID is required. It should start with @ followed by lowercase letters and numbers (e.g., @110xsqef)"
+ "LIFF ID format appears invalid. It should be at least 10 characters (e.g., 2008756115-vWtFyDMA)"
 ```
 
 #### Implementation:
@@ -356,13 +356,13 @@ Add positive feedback for valid input:
 ```vue
 <div v-if="!errors.lineBotId && formData.lineBotId && /^@[a-z0-9]+$/.test(formData.lineBotId)"
      class="form-success">
-  ✓ Valid LINE Bot ID format
+   Valid LINE Bot ID format
 </div>
 ```
 
 ---
 
-### Feature 5: Visual Improvements & Polish ✨
+### Feature 5: Visual Improvements & Polish 
 
 #### 5.1 Field Status Indicators
 Add visual states:
@@ -424,9 +424,9 @@ Show summary of filled fields at step transitions:
 <div class="step-summary">
   <h4>Step 1 Summary:</h4>
   <ul>
-    <li>✓ Project Name: {{ formData.projectName }}</li>
-    <li>✓ Admin Email: {{ formData.adminEmail }}</li>
-    <li v-if="formData.customDomain">✓ Custom Domain: {{ formData.customDomain }}</li>
+    <li> Project Name: {{ formData.projectName }}</li>
+    <li> Admin Email: {{ formData.adminEmail }}</li>
+    <li v-if="formData.customDomain"> Custom Domain: {{ formData.customDomain }}</li>
     <li v-else>○ Using default .workers.dev domain</li>
   </ul>
 </div>
@@ -434,7 +434,7 @@ Show summary of filled fields at step transitions:
 
 ---
 
-## 🎨 Design System Additions
+##  Design System Additions
 
 ### New CSS Variables
 ```css
@@ -562,7 +562,7 @@ Show summary of filled fields at step transitions:
 
 ---
 
-## 📝 Implementation Checklist
+##  Implementation Checklist
 
 ### Phase 2.1: Smart Defaults (Priority 1)
 - [ ] Implement computed properties for URL suggestions
@@ -610,7 +610,7 @@ Show summary of filled fields at step transitions:
 
 ---
 
-## 🎯 Success Metrics
+##  Success Metrics
 
 ### User Experience Improvements
 - **Reduced Input Time**: Smart suggestions reduce manual typing by ~40%
@@ -626,7 +626,7 @@ Show summary of filled fields at step transitions:
 
 ---
 
-## 📅 Estimated Timeline
+##  Estimated Timeline
 
 | Phase | Duration | Complexity |
 |-------|----------|-----------|
@@ -640,13 +640,13 @@ Show summary of filled fields at step transitions:
 
 ---
 
-## 🚀 Post-Phase 2
+##  Post-Phase 2
 
 After Phase 2 completion, the Web Installer will have:
-- ✅ Complete configuration collection (Phase 1)
-- ✅ Excellent user experience (Phase 2)
-- 🔄 Ready for Phase 3 (Remove main project hardcoding)
-- 🔄 Production deployment ready
+-  Complete configuration collection (Phase 1)
+-  Excellent user experience (Phase 2)
+-  Ready for Phase 3 (Remove main project hardcoding)
+-  Production deployment ready
 
 ---
 

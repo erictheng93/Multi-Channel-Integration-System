@@ -37,11 +37,11 @@ export function debugAuthData() {
     console.log('3. Auth Store state:')
     console.log('  - currentAgent:', authStore.currentAgent)
     if (authStore.currentAgent) {
-      console.log('    - id:', authStore.currentAgent.id)
-      console.log('    - email:', authStore.currentAgent.email)
-      console.log('    - name:', authStore.currentAgent.name)
-      console.log('    - displayName:', authStore.currentAgent.displayName)
-      console.log('    - role:', authStore.currentAgent.role)
+      console.log(' - id:', authStore.currentAgent.id)
+      console.log(' - email:', authStore.currentAgent.email)
+      console.log(' - name:', authStore.currentAgent.name)
+      console.log(' - displayName:', authStore.currentAgent.displayName)
+      console.log(' - role:', authStore.currentAgent.role)
     }
     console.log('  - isAuthenticated:', authStore.isAuthenticated)
   })

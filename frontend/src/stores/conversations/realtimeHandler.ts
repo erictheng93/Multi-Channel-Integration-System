@@ -80,11 +80,11 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
         (c as LiffConversation)._liffMetadata?.isPending
       )
       if (hasPending) {
-        console.log('🔄 [ConversationsStore] Pending reconciliation: triggering follow-up poll (5s)')
+        console.log('[ConversationsStore] Pending reconciliation: triggering follow-up poll (5s)')
         await pollConversations()
       }
     }, PENDING_RECONCILIATION_DELAY)
-    console.log('⏱️ [ConversationsStore] Scheduled pending reconciliation in 5s')
+    console.log('[ConversationsStore] Scheduled pending reconciliation in 5s')
   }
 
   /**
@@ -118,7 +118,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
       }
 
     } catch (err) {
-      console.error('❌ [ConversationsStore] Polling failed:', err)
+      console.error('[ConversationsStore] Polling failed:', err)
       error.value = '数据同步失败'
     }
   }
@@ -129,7 +129,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
    * 避免不必要的 HTTP 輪詢
    */
   const handleRealtimeUpdate = (message: WebSocketMessage) => {
-    console.log('📥 [ConversationsStore] Real-time update:', message.type, message)
+    console.log('[ConversationsStore] Real-time update:', message.type, message)
 
     // 提取通用數據
     const data = message.data as Record<string, unknown> | undefined
@@ -139,7 +139,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
       case 'new_message':
       case 'message_sent':
       case 'message_delivered': {
-        // 🚀 Phase B4: 直接更新對話列表，無需 HTTP 輪詢
+        // Phase B4: 直接更新對話列表，無需 HTTP 輪詢
         if (conversationId) {
           const messageContent = data?.content as string
           const messageType = data?.messageType as string
@@ -167,11 +167,11 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
 
           if (updated) {
             lastUpdateTime.value = new Date()
-            console.log(`✅ [ConversationsStore] Direct update for new_message in ${conversationId}`)
+            console.log(`[ConversationsStore] Direct update for new_message in ${conversationId}`)
           }
         } else {
           // 沒有 conversationId，回退到輪詢
-          console.log('⚠️ [ConversationsStore] No conversationId in message, falling back to polling')
+          console.log('[ConversationsStore] No conversationId in message, falling back to polling')
           lastUpdateTime.value = new Date()
           pollConversations()
         }
@@ -206,7 +206,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           if (Object.keys(updates).length > 0) {
             updateConversationStatus(conversationId, updates)
             lastUpdateTime.value = new Date()
-            console.log(`✅ [ConversationsStore] Direct status update for ${conversationId}`, { assignedTeamName })
+            console.log(`[ConversationsStore] Direct status update for ${conversationId}`, { assignedTeamName })
           } else {
             pollConversations()
           }
@@ -217,13 +217,13 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
       }
 
       case 'conversation_unassigned': {
-        // 🆕 對話取消指派 - 清除團隊指派
+        // 對話取消指派 - 清除團隊指派
         // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
         if (conversationId) {
           const previousTeamId = data?.previousTeamId as number | undefined
           const previousTeamName = data?.previousTeamName as string | undefined
 
-          console.log('🔓 [ConversationsStore] Conversation unassigned', {
+          console.log('[ConversationsStore] Conversation unassigned', {
             conversationId,
             previousTeamId,
             previousTeamName
@@ -237,7 +237,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           })
 
           lastUpdateTime.value = new Date()
-          console.log(`✅ [ConversationsStore] Cleared team assignment for ${conversationId}`)
+          console.log(`[ConversationsStore] Cleared team assignment for ${conversationId}`)
         } else {
           pollConversations()
         }
@@ -245,33 +245,33 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
       }
 
       case 'conversation_transferred': {
-        // 🆕 對話轉移 - 處理跨團隊轉移的三種動作
+        // 對話轉移 - 處理跨團隊轉移的三種動作
         const action = data?.action as 'removed' | 'assigned' | 'team_changed' | undefined
 
-        console.log('📦 [ConversationsStore] Conversation transferred event', {
+        console.log('[ConversationsStore] Conversation transferred event', {
           conversationId,
           action,
           data
         })
 
-        // 🔍 DEBUG: 詳細記錄完整的 data 對象
-        console.log('🔍 [DEBUG] Full event data:', JSON.stringify(data, null, 2))
+        // DEBUG: 詳細記錄完整的 data 對象
+        console.log('[DEBUG] Full event data:', JSON.stringify(data, null, 2))
 
         if (action === 'removed') {
-          // ❌ 從當前團隊移除：對話被轉移到其他團隊
-          // 🔒 安全檢查：只有當用戶屬於原團隊時才處理移除事件
-          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
+          // 從當前團隊移除：對話被轉移到其他團隊
+          // 安全檢查：只有當用戶屬於原團隊時才處理移除事件
+          // FIX: Normalize at boundary - WebSocket JSON may send string IDs
           const fromTeamId = normalizeTeamId(data?.fromTeamId)
           const toTeamId = normalizeTeamId(data?.toTeamId)
           const authStore = useAuthStore()
           const userTeamIds = authStore.allowedTeamIds || []
           const isAdmin = authStore.currentAgent?.role === 'admin'
 
-          // 🆕 FIX: 檢查用戶是否也屬於目標團隊
+          // FIX: 檢查用戶是否也屬於目標團隊
           const userBelongsToTargetTeam = toTeamId !== undefined && userTeamIds.includes(toTeamId)
 
           if (userBelongsToTargetTeam && !isAdmin) {
-            console.log(`🔒 [ConversationsStore] Ignoring removed event - user belongs to target team`, {
+            console.log(`[ConversationsStore] Ignoring removed event - user belongs to target team`, {
               conversationId,
               fromTeamId,
               toTeamId,
@@ -285,7 +285,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             (fromTeamId !== undefined && userTeamIds.includes(fromTeamId))
 
           if (!shouldProcessRemoval) {
-            console.log(`🔒 [ConversationsStore] Ignoring removed event - user not in source team`, {
+            console.log(`[ConversationsStore] Ignoring removed event - user not in source team`, {
               conversationId,
               fromTeamId,
               userTeamIds,
@@ -304,7 +304,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               conversationCache.invalidateConversation(conversationId)
               updateStatsFromConversations()
               lastUpdateTime.value = new Date()
-              console.log(`🚫 [ConversationsStore] Conversation removed from list (transferred to another team)`, {
+              console.log(`[ConversationsStore] Conversation removed from list (transferred to another team)`, {
                 conversationId,
                 toTeamId: data?.toTeamId,
                 toTeamName: data?.toTeamName,
@@ -312,7 +312,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               })
             }
 
-            // 🆕 FIX: 如果是當前查看的對話，設置 transferred 狀態給詳情頁顯示
+            // FIX: 如果是當前查看的對話，設置 transferred 狀態給詳情頁顯示
             if (currentConversation.value?.id === conversationId) {
               const toTeamName = (data?.toTeamName as string) || '其他團隊'
               transferredConversation.value = {
@@ -320,16 +320,16 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                 toTeamName,
                 transferredAt: nowISO()
               }
-              console.log(`🔄 [ConversationsStore] Also updated currentConversation for ${conversationId} - marked as transferred`, {
+              console.log(`[ConversationsStore] Also updated currentConversation for ${conversationId} - marked as transferred`, {
                 toTeamName,
                 transferredAt: transferredConversation.value.transferredAt
               })
             }
           }
         } else if (action === 'assigned') {
-          // ✅ 新團隊接收：對話被轉移到當前團隊
-          // 🔒 安全檢查：只有當用戶屬於目標團隊時才處理指派事件
-          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
+          // 新團隊接收：對話被轉移到當前團隊
+          // 安全檢查：只有當用戶屬於目標團隊時才處理指派事件
+          // FIX: Normalize at boundary - WebSocket JSON may send string IDs
           const toTeamId = normalizeTeamId(data?.toTeamId)
           const authStore = useAuthStore()
           const userTeamIds = authStore.allowedTeamIds || []
@@ -340,7 +340,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             (toTeamId !== undefined && userTeamIds.includes(toTeamId))
 
           if (!shouldProcessAssignment) {
-            console.log(`🔒 [ConversationsStore] Ignoring assigned event - user not in target team`, {
+            console.log(`[ConversationsStore] Ignoring assigned event - user not in target team`, {
               conversationId,
               toTeamId,
               userTeamIds,
@@ -352,7 +352,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           // 將對話添加到列表頂部
           const incomingConversation = data?.conversation as Record<string, unknown> | undefined
           if (conversationId && incomingConversation) {
-            // 🆕 LIFF 預通知：檢查傳入數據是否有 LIFF metadata
+            // LIFF 預通知：檢查傳入數據是否有 LIFF metadata
             const liffMetadata = incomingConversation?._liffMetadata as {
               isPending?: boolean
               lineUserId?: string
@@ -360,19 +360,19 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               scannedAt?: number
             } | undefined
 
-            // 🆕 LIFF Reconciliation：用 lineUserId 檢查是否有對應的 pending 對話
+            // LIFF Reconciliation：用 lineUserId 檢查是否有對應的 pending 對話
             const existingPendingIndex = liffMetadata?.lineUserId
               ? conversations.value.findIndex(c =>
                   (c as LiffConversation)._liffMetadata?.lineUserId === liffMetadata.lineUserId
                 )
               : -1
 
-            // 🆕 如果收到的是真實對話（非 pending-），需要替換現有的 pending 對話
+            // 如果收到的是真實對話（非 pending-），需要替換現有的 pending 對話
             if (existingPendingIndex !== -1 && !conversationId.startsWith('pending-')) {
               // Reconciliation: 移除 pending，準備添加真實對話
               const removedPending = conversations.value[existingPendingIndex]
               conversations.value.splice(existingPendingIndex, 1)
-              console.log(`🔄 [ConversationsStore] Reconciled pending → real conversation`, {
+              console.log(`[ConversationsStore] Reconciled pending → real conversation`, {
                 pendingId: removedPending?.id,
                 realConversationId: conversationId,
                 lineUserId: `${liffMetadata?.lineUserId?.substring(0, 10)  }...`
@@ -382,14 +382,14 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             // 檢查是否已存在（避免重複添加）
             const existingIndex = conversations.value.findIndex(c => c.id === conversationId)
             if (existingIndex === -1) {
-              // 🆕 如果是 pending 對話，檢查是否已有相同 lineUserId 的 pending（避免重複掃碼）
+              // 如果是 pending 對話，檢查是否已有相同 lineUserId 的 pending（避免重複掃碼）
               if (liffMetadata?.isPending && liffMetadata?.lineUserId) {
                 const duplicatePendingIndex = conversations.value.findIndex(c =>
                   (c as LiffConversation)._liffMetadata?.lineUserId === liffMetadata.lineUserId &&
                   (c as LiffConversation)._liffMetadata?.isPending === true
                 )
                 if (duplicatePendingIndex !== -1) {
-                  console.log(`🚫 [ConversationsStore] Ignoring duplicate pending conversation`, {
+                  console.log(`[ConversationsStore] Ignoring duplicate pending conversation`, {
                     conversationId,
                     lineUserId: `${liffMetadata.lineUserId.substring(0, 10)  }...`
                   })
@@ -405,7 +405,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
 
               // 構建完整的 Conversation 對象
               // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
-              // 🔧 FIX: Use already-normalized toTeamId from boundary
+              // FIX: Use already-normalized toTeamId from boundary
               const newConversation: Conversation = {
                 id: conversationId,
                 userId: customerId,
@@ -429,7 +429,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                 unreadCount: (incomingConversation.unreadCount as number) || 0,
                 createdAt: (incomingConversation.createdAt as number) || Date.now(),
                 updatedAt: Date.now(),
-                // 🆕 保留 LIFF metadata 用於 UI 顯示和 Reconciliation
+                // 保留 LIFF metadata 用於 UI 顯示和 Reconciliation
                 ...(liffMetadata && { _liffMetadata: liffMetadata } as Partial<LiffConversation>)
               }
 
@@ -439,9 +439,9 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               updateStatsFromConversations()
               lastUpdateTime.value = new Date()
 
-              // 🆕 Log 區分 pending 和真實對話
+              // Log 區分 pending 和真實對話
               if (liffMetadata?.isPending) {
-                console.log(`⏳ [ConversationsStore] Pending conversation added (LIFF pre-notification)`, {
+                console.log(`[ConversationsStore] Pending conversation added (LIFF pre-notification)`, {
                   conversationId,
                   teamId: data?.toTeamId,
                   customerName,
@@ -453,17 +453,17 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                 schedulePendingReconciliation()
               }
 
-              // 🆕 FIX: 同步更新 currentConversation（如果用戶正在查看這個對話）
+              // FIX: 同步更新 currentConversation（如果用戶正在查看這個對話）
               if (currentConversation.value && currentConversation.value.id === conversationId) {
                 currentConversation.value = newConversation
-                console.log(`🔄 [ConversationsStore] Also updated currentConversation from assigned event`, {
+                console.log(`[ConversationsStore] Also updated currentConversation from assigned event`, {
                   conversationId,
                   newTeamId: data?.toTeamId,
                   newTeamName: data?.toTeamName
                 })
               }
 
-              console.log(`✨ [ConversationsStore] Conversation added to list (transferred from another team)`, {
+              console.log(`[ConversationsStore] Conversation added to list (transferred from another team)`, {
                 conversationId,
                 fromTeamId: data?.fromTeamId,
                 fromTeamName: data?.fromTeamName,
@@ -472,7 +472,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             } else {
               // 已存在，更新團隊資訊
               // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
-              // 🔧 FIX: Use already-normalized toTeamId from boundary
+              // FIX: Use already-normalized toTeamId from boundary
               updateConversationStatus(conversationId, {
                 assignedTeamId: toTeamId,
                 assignedTeam: toTeamId ? {
@@ -483,19 +483,19 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               })
 
               lastUpdateTime.value = new Date()
-              console.log(`🔄 [ConversationsStore] Conversation already exists, updated team info`, {
+              console.log(`[ConversationsStore] Conversation already exists, updated team info`, {
                 conversationId
               })
             }
           } else {
             // 沒有完整數據，回退到輪詢
-            console.log('⚠️ [ConversationsStore] No conversation data in assigned event, polling')
+            console.log('[ConversationsStore] No conversation data in assigned event, polling')
             pollConversations()
           }
         } else if (action === 'team_changed') {
-          // 🔄 團隊變更通知：對話房間內的用戶收到
+          // 團隊變更通知：對話房間內的用戶收到
           // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
-          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
+          // FIX: Normalize at boundary - WebSocket JSON may send string IDs
           if (conversationId) {
             const toTeamId = normalizeTeamId(data?.toTeamId)
             const toTeamName = (data?.toTeamName || data?.assignedTeamName) as string | undefined
@@ -512,7 +512,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               } : undefined
             })
             lastUpdateTime.value = new Date()
-            console.log(`🏷️ [ConversationsStore] Conversation team changed in chat window`, {
+            console.log(`[ConversationsStore] Conversation team changed in chat window`, {
               conversationId,
               newTeamId: effectiveTeamId,
               newTeamName: toTeamName || newTeam?.name
@@ -521,7 +521,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
         } else {
           // 沒有 action 字段（舊格式），回退到原有邏輯
           // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
-          // 🔧 FIX: Normalize at boundary - WebSocket JSON may send string IDs
+          // FIX: Normalize at boundary - WebSocket JSON may send string IDs
           if (conversationId) {
             const status = data?.status as string | undefined
             const assignedTeamId = normalizeTeamId(data?.assignedTeamId)
@@ -545,7 +545,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             if (Object.keys(updates).length > 0) {
               updateConversationStatus(conversationId, updates)
               lastUpdateTime.value = new Date()
-              console.log(`✅ [ConversationsStore] Legacy transfer update for ${conversationId}`)
+              console.log(`[ConversationsStore] Legacy transfer update for ${conversationId}`)
             } else {
               pollConversations()
             }
@@ -558,7 +558,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
 
       case 'conversations_update': {
         // 批量更新，使用輪詢獲取完整數據
-        console.log('📥 [ConversationsStore] Batch update, using polling')
+        console.log('[ConversationsStore] Batch update, using polling')
         lastUpdateTime.value = new Date()
         pollConversations()
         break

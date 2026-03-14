@@ -7,7 +7,7 @@
 
 ---
 
-## 📊 执行概要 (Executive Summary)
+##  执行概要 (Executive Summary)
 
 ### 核心发现
 
@@ -18,23 +18,23 @@
 ```
 失败类型分布:
 ├─ Service Mock 问题 (35 个, 45.5%)
-│   └─ TeamService 构造函数 mock 未正确拦截
+│ └─ TeamService 构造函数 mock 未正确拦截
 ├─ 前端依赖缺失 (25 个, 32.5%)
-│   └─ Pinia, Vue Router 等前端库未安装
+│ └─ Pinia, Vue Router 等前端库未安装
 ├─ Transform/语法错误 (12 个, 15.6%)
-│   └─ API 测试文件的 TypeScript 语法问题
+│ └─ API 测试文件的 TypeScript 语法问题
 └─ 业务逻辑断言 (5 个, 6.5%)
     └─ Durable Objects 的功能性测试失败
 ```
 
 ---
 
-## 🔍 详细分析
+##  详细分析
 
 ### 问题 1: Team Service Mock 失败 (最关键)
 
 **影响范围**: 35 个测试
-**严重程度**: 🔴 HIGH
+**严重程度**:  HIGH
 **文件**: `tests/unit/handlers/team-main.test.ts`
 
 #### 根本原因
@@ -112,7 +112,7 @@ beforeEach(() => {
 ### 问题 2: 前端测试依赖缺失
 
 **影响范围**: 25 个测试
-**严重程度**: 🟡 MEDIUM
+**严重程度**:  MEDIUM
 **文件**: `tests/unit/composables/*.test.ts`, `tests/unit/api/*.test.ts`
 
 #### 根本原因
@@ -144,7 +144,7 @@ npm install
 ### 问题 3: API 测试 Transform 错误
 
 **影响范围**: 12 个测试
-**严重程度**: 🟡 MEDIUM
+**严重程度**:  MEDIUM
 **文件**: `tests/unit/api/*.test.ts`
 
 #### 根本原因
@@ -181,7 +181,7 @@ import type { SomeType } from './types';
 ### 问题 4: Durable Objects 业务逻辑测试
 
 **影响范围**: 5 个测试
-**严重程度**: 🟢 LOW
+**严重程度**:  LOW
 **文件**: `tests/unit/durable-objects/*.test.ts`
 
 #### 失败测试
@@ -207,22 +207,22 @@ import type { SomeType } from './types';
 
 ---
 
-## 📈 修复优先级矩阵
+##  修复优先级矩阵
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  问题           │  影响  │  严重度  │  修复难度  │  优先级   │
+│  问题 │  影响  │  严重度  │  修复难度  │  优先级 │
 ├────────────────────────────────────────────────────────────────┤
-│  Team Mock      │  35    │   高     │   中等     │   P0      │
-│  前端依赖       │  25    │   中     │   简单     │   P1      │
-│  API Transform  │  12    │   中     │   简单     │   P2      │
-│  DO 业务逻辑    │   5    │   低     │   复杂     │   P3      │
+│  Team Mock │  35 │   高 │   中等 │   P0 │
+│  前端依赖 │  25 │   中 │   简单 │   P1 │
+│  API Transform  │  12 │   中 │   简单 │   P2 │
+│  DO 业务逻辑 │   5 │   低 │   复杂 │   P3 │
 └────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🎯 修复路线图
+##  修复路线图
 
 ### Phase 1: 快速胜利 (预计提升 +12%)
 
@@ -253,10 +253,10 @@ import type { SomeType } from './types';
 #### 策略选择
 
 建议使用 **方案 A (依赖注入)**:
-- ✅ 更清晰的测试隔离
-- ✅ 更好的可测试性
-- ✅ 符合最佳实践
-- ⚠️  需要修改 handler 代码
+-  更清晰的测试隔离
+-  更好的可测试性
+-  符合最佳实践
+- 需要修改 handler 代码
 
 #### 实施步骤
 
@@ -279,10 +279,10 @@ import type { SomeType } from './types';
 
 ---
 
-## 📊 预期成果
+##  预期成果
 
 ```
-当前状态:        84.4% (417/501)
+当前状态: 84.4% (417/501)
 Phase 1 完成后:  96.4% (483/501)
 Phase 2 完成后:  98.8% (495/501)
 Phase 3 完成后: 100.0% (501/501)
@@ -290,7 +290,7 @@ Phase 3 完成后: 100.0% (501/501)
 
 ---
 
-## 🔧 快速修复示例
+##  快速修复示例
 
 ### 示例 1: 修复 Team Service Mock
 
@@ -333,7 +333,7 @@ export function setupTeamTest() {
 
 app.get('/', jwtAuth, async (c) => {
   try {
-    // ✅ 支持依赖注入，同时保持向后兼容
+    // 支持依赖注入，同时保持向后兼容
     const teamService = c.get('teamService') || new TeamService(c.env.DB);
 
     const params: TeamListRequest = {
@@ -352,7 +352,7 @@ app.get('/', jwtAuth, async (c) => {
 
 ---
 
-## 💡 长期建议
+##  长期建议
 
 ### 测试架构改进
 
@@ -388,13 +388,13 @@ app.get('/', jwtAuth, async (c) => {
 
 ---
 
-## 📝 下一步行动
+##  下一步行动
 
 ### 立即可做
 
-1. ✅ 运行 `cd frontend && npm install`
-2. ✅ 修复 API Transform 语法错误
-3. ✅ 重新运行测试验证改进
+1.  运行 `cd frontend && npm install`
+2.  修复 API Transform 语法错误
+3.  重新运行测试验证改进
 
 ### 需要决策
 
@@ -410,7 +410,7 @@ app.get('/', jwtAuth, async (c) => {
 
 ---
 
-## 📚 参考资料
+##  参考资料
 
 - [Vitest Mocking Guide](https://vitest.dev/guide/mocking.html)
 - [Dependency Injection Pattern](https://en.wikipedia.org/wiki/Dependency_injection)
@@ -420,4 +420,4 @@ app.get('/', jwtAuth, async (c) => {
 
 **报告生成**: 2025-11-20
 **版本**: 1.0
-**状态**: ✅ 分析完成，待实施修复
+**状态**:  分析完成，待实施修复

@@ -2,12 +2,12 @@
  * E2E: Tag Conversations Drilldown
  *
  * Tests the full browser flow for the tag conversation count feature:
- *   1. Navigate to /customers/tags
- *   2. Page renders tag cards with conversation counts
- *   3. Clicking any tag card or conversation button opens TagConversationsModal
- *   4. Modal shows tag name and conversations list (or empty state)
- *   5. Pagination controls appear when there are multiple pages
- *   6. Modal closes via X button, overlay click, and Escape key
+ * 1. Navigate to /customers/tags
+ * 2. Page renders tag cards with conversation counts
+ * 3. Clicking any tag card or conversation button opens TagConversationsModal
+ * 4. Modal shows tag name and conversations list (or empty state)
+ * 5. Pagination controls appear when there are multiple pages
+ * 6. Modal closes via X button, overlay click, and Escape key
  *
  * Data resilience: tests that depend on tags with conversations gracefully
  * skip when the production DB has no such tags, rather than failing.

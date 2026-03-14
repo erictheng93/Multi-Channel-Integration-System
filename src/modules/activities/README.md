@@ -242,8 +242,8 @@ export class CustomValidator extends ActivityValidator {
 
 ```typescript
 //
-console.log(' [Activity Service] Activity logged with ID:', activityId)
-console.error(' [Activity Service] Failed to log activity:', error)
+console.log('[Activity Service] Activity logged with ID:', activityId)
+console.error('[Activity Service] Failed to log activity:', error)
 ```
 
 

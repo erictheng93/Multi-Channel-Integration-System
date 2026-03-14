@@ -16,7 +16,7 @@
  *
  * @example
  * const debouncedSearch = debounce((query: string) => {
- *   console.log('搜索:', query)
+ * console.log('搜索:', query)
  * }, 300)
  *
  * debouncedSearch('a')
@@ -62,7 +62,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
  *
  * @example
  * const throttledScroll = throttle(() => {
- *   console.log('滾動事件')
+ * console.log('滾動事件')
  * }, 100)
  *
  * window.addEventListener('scroll', throttledScroll)
@@ -114,7 +114,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
  *
  * @example
  * const search = createDebouncedFunction((query: string) => {
- *   console.log('搜索:', query)
+ * console.log('搜索:', query)
  * }, 300)
  *
  * search.debounced('abc')
@@ -222,8 +222,8 @@ export function createThrottledFunction<T extends (...args: unknown[]) => unknow
  *
  * @example
  * const searchAPI = debounceAsync(async (query: string) => {
- *   const response = await fetch(`/api/search?q=${query}`)
- *   return response.json()
+ * const response = await fetch(`/api/search?q=${query}`)
+ * return response.json()
  * }, 300)
  *
  * await searchAPI('abc')

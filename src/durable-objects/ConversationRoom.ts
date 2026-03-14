@@ -71,7 +71,7 @@ export class ConversationRoom implements DurableObject {
     const maxConnections = resolvedConfig.maxConnections || 100;
 
     /**
-     * 🔧 重連同步優化: 增加訊息緩存到 50 條
+     * 重連同步優化: 增加訊息緩存到 50 條
      *
      * Rationale:
      * - 10 條訊息約覆蓋 1-2 分鐘的對話

@@ -53,7 +53,7 @@ global.CloseEvent = MockCloseEvent as unknown as typeof CloseEvent
 
 // Mock WebSocket - Synchronous version for reliable testing
 class MockWebSocket {
-  // ✅ WebSocket state constants (CRITICAL for tests to work)
+  // WebSocket state constants (CRITICAL for tests to work)
   static readonly CONNECTING = 0
   static readonly OPEN = 1
   static readonly CLOSING = 2
@@ -71,7 +71,7 @@ class MockWebSocket {
     this.url = url
     this.protocol = (Array.isArray(protocols) ? protocols[0] : protocols) || ''
 
-    // ✅ SYNCHRONOUS connection for test reliability
+    // SYNCHRONOUS connection for test reliability
     // Use setTimeout with 0 delay to defer to next tick
     setTimeout(() => {
       if (this.readyState === MockWebSocket.CONNECTING) {
@@ -185,7 +185,7 @@ beforeEach(async () => {
   // Setup mocks
   global.WebSocket = MockWebSocket as any
 
-  // ✅ Re-enable fake timers for timer-dependent tests
+  // Re-enable fake timers for timer-dependent tests
   vi.useFakeTimers()
 
   // Flush any pending operations from previous tests

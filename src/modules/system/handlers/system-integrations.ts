@@ -212,7 +212,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
 
         const testMessage = await facebookAdapter.sendTextMessage(
           testConfig.testUserId,
-          '🤖 Facebook Messenger 整合測試成功！'
+          ' Facebook Messenger 整合測試成功！'
         )
         messagingStatus = testMessage ? 'success' : 'failed'
       } catch (messageError) {

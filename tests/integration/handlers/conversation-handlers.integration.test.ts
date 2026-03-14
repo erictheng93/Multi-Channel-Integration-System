@@ -2,8 +2,8 @@
  * Conversation Handlers — Integration Tests
  *
  * Tests HTTP-level behavior of conversation endpoints:
- * - GET /api/conversations          (list with filters)
- * - GET /api/conversations/:id      (single conversation detail)
+ * - GET /api/conversations (list with filters)
+ * - GET /api/conversations/:id (single conversation detail)
  * - POST /api/conversations/:id/assign
  * - POST /api/conversations/:id/unassign
  * - POST /api/conversations/bulk
@@ -138,10 +138,10 @@ function resetMockDbState(overrides: Partial<MockDbState> = {}) {
 /**
  * Create a chainable Drizzle-like mock.
  * Supports: select().from().where().leftJoin().innerJoin().limit().offset().orderBy().get()
- *           update().set().where()
- *           insert().values().onConflictDoNothing()
- *           delete().where()
- *           selectDistinct().from().where()
+ * update().set().where()
+ * insert().values().onConflictDoNothing()
+ * delete().where()
+ * selectDistinct().from().where()
  */
 function createDrizzleMock() {
   const selectChain: any = {
@@ -982,8 +982,8 @@ describe('Conversation Handlers Integration Tests', () => {
     test('returns 200 with paginated messages', async () => {
       // Conversation existence check
       drizzleMock._selectChain.get
-        .mockResolvedValueOnce({ id: 'conv-001' })      // conversation exists
-        .mockResolvedValueOnce({ count: 2 });             // total count
+        .mockResolvedValueOnce({ id: 'conv-001' }) // conversation exists
+        .mockResolvedValueOnce({ count: 2 }); // total count
 
       const messageRows = [
         {

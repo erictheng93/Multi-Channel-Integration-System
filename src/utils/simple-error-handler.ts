@@ -28,7 +28,7 @@ export async function safeAsync<T>(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorContext = context ? { operation: context } : undefined
 
-    console.error(`❌ [${context || 'Unknown'}] Error:`, errorMessage)
+    console.error(`[${context || 'Unknown'}] Error:`, errorMessage)
 
     return {
       success: false,
@@ -54,7 +54,7 @@ export function safeSync<T>(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorContext = context ? { operation: context } : undefined
 
-    console.error(`❌ [${context || 'Unknown'}] Error:`, errorMessage)
+    console.error(`[${context || 'Unknown'}] Error:`, errorMessage)
 
     return {
       success: false,

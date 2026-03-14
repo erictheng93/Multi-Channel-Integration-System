@@ -1,6 +1,6 @@
 # 客戶部署指南
 
-## 📋 目錄
+##  目錄
 
 1. [部署前準備](#部署前準備)
 2. [環境需求](#環境需求)
@@ -14,16 +14,16 @@
 
 ---
 
-## 🎯 部署前準備
+##  部署前準備
 
 ### 必備條件清單
 
 在開始部署前，請確認您已具備以下條件：
 
-- ✅ **Cloudflare 帳號**（免費或付費方案均可）
-- ✅ **LINE Official Account**（用於 LINE Bot 集成）
-- ✅ **域名**（可選，用於自訂網址）
-- ✅ **系統管理員資訊**（Email 和密碼）
+-  **Cloudflare 帳號**（免費或付費方案均可）
+-  **LINE Official Account**（用於 LINE Bot 集成）
+-  **域名**（可選，用於自訂網址）
+-  **系統管理員資訊**（Email 和密碼）
 
 ### 預估時間
 
@@ -42,11 +42,11 @@ Cloudflare Workers 採用用量計費：
 | **KV 操作** | 前 100,000 次/天 免費 | $0.50/百萬次 |
 | **Pages 建置** | 前 500 次/月 免費 | $0.25/次 |
 
-**💡 提示**：小型企業通常在免費額度內即可運行。
+** 提示**：小型企業通常在免費額度內即可運行。
 
 ---
 
-## 🛠️ 環境需求
+##  環境需求
 
 ### 1. 安裝必要工具
 
@@ -63,10 +63,10 @@ Cloudflare Workers 採用用量計費：
 npm install -g wrangler
 
 # 驗證安裝
-node --version        # 應顯示 v18.x.x 或更高
-npm --version         # 應顯示 9.x.x 或更高
-terraform --version   # 應顯示 Terraform v1.x.x
-wrangler --version    # 應顯示 wrangler 4.x.x
+node --version # 應顯示 v18.x.x 或更高
+npm --version # 應顯示 9.x.x 或更高
+terraform --version # 應顯示 Terraform v1.x.x
+wrangler --version # 應顯示 wrangler 4.x.x
 ```
 
 #### macOS/Linux 用戶
@@ -107,7 +107,7 @@ cd Multi_Channel_Integration_System
 
 ---
 
-## 🔑 獲取 Cloudflare API Token
+##  獲取 Cloudflare API Token
 
 **詳細步驟請參閱：[API Token 設置指南](./API_TOKEN_SETUP_GUIDE.md)**
 
@@ -149,7 +149,7 @@ source ~/.bashrc
 
 ---
 
-## ⚙️ 配置部署參數
+##  配置部署參數
 
 ### 1. 複製配置範本
 
@@ -163,7 +163,7 @@ cp terraform.tfvars.example terraform.tfvars
 
 ```hcl
 # ============================================================
-# 🔧 基本配置
+#  基本配置
 # ============================================================
 
 # Cloudflare 帳戶 ID
@@ -177,23 +177,23 @@ project_name = "mcis-worker"
 environment = "production"
 
 # ============================================================
-# 👤 管理員帳戶
+#  管理員帳戶
 # ============================================================
 
-admin_email    = "admin@yourcompany.com"
+admin_email = "admin@yourcompany.com"
 admin_password = "YourSecurePassword123!"  # 至少 8 個字元
 
 # ============================================================
-# 📱 LINE Official Account 配置
+#  LINE Official Account 配置
 # ============================================================
 
 # 在 LINE Developers Console 獲取
 # https://developers.line.biz/console/
 line_channel_access_token = "your-line-channel-access-token"
-line_channel_secret       = "your-line-channel-secret"
+line_channel_secret = "your-line-channel-secret"
 
 # ============================================================
-# 🌐 域名配置（可選）
+#  域名配置（可選）
 # ============================================================
 
 # 如果您有自己的域名，可以在此設置
@@ -210,7 +210,7 @@ frontend_custom_domain = ""
 zone_id = ""
 
 # ============================================================
-# 🗺️ R2 儲存區域配置
+#  R2 儲存區域配置
 # ============================================================
 
 # 選擇最接近您用戶的區域以獲得最佳性能
@@ -218,7 +218,7 @@ zone_id = ""
 r2_location = "APAC"
 
 # ============================================================
-# 🎛️ 功能開關（可選）
+#  功能開關（可選）
 # ============================================================
 
 # 是否啟用 Facebook Messenger 整合
@@ -226,16 +226,16 @@ enable_facebook_integration = false
 
 # Facebook 配置（如啟用上面的開關）
 facebook_page_access_token = ""
-facebook_app_secret        = ""
+facebook_app_secret = ""
 
 # 是否啟用進階功能（WebSocket、Durable Objects）
 enable_advanced_features = true
 
 # ============================================================
-# 📊 資源配置（進階選項）
+#  資源配置（進階選項）
 # ============================================================
 
-worker_cpu_limit    = 50   # Worker CPU 限制（毫秒）
+worker_cpu_limit = 50 # Worker CPU 限制（毫秒）
 worker_memory_limit = 128  # Worker 記憶體限制（MB）
 ```
 
@@ -265,7 +265,7 @@ worker_memory_limit = 128  # Worker 記憶體限制（MB）
 
 ---
 
-## 🚀 執行部署
+##  執行部署
 
 ### 方法 1: 使用自動化腳本（推薦）
 
@@ -350,19 +350,19 @@ Do you want to perform these actions?
 輸入 `yes` 並按 Enter 開始部署。
 
 Terraform 將會建立：
-- ✅ D1 資料庫
-- ✅ R2 儲存桶
-- ✅ KV 命名空間（2 個）
-- ✅ Worker Script（含 7 個 Durable Objects）
-- ✅ Pages 專案
-- ✅ 資料庫 Migrations
-- ✅ 管理員帳戶
+-  D1 資料庫
+-  R2 儲存桶
+-  KV 命名空間（2 個）
+-  Worker Script（含 7 個 Durable Objects）
+-  Pages 專案
+-  資料庫 Migrations
+-  管理員帳戶
 
 預計時間：**2-5 分鐘**
 
 ---
 
-## 📋 部署後設置
+##  部署後設置
 
 ### 1. 獲取部署資訊
 
@@ -414,7 +414,7 @@ database_id = "08ae6790-2494-40a8-a07a-df3920783159"
 
 ---
 
-## ✅ 驗證部署
+##  驗證部署
 
 ### 自動驗證腳本
 
@@ -445,7 +445,7 @@ curl <your-api-url>/api/system/health
 
 ---
 
-## ❓ 常見問題
+##  常見問題
 
 ### Q1: 部署時出現 "Error: Invalid Credentials"
 
@@ -513,7 +513,7 @@ terraform destroy
 # 登入 Cloudflare Dashboard 手動檢查
 ```
 
-⚠️ **警告**：這會刪除所有資料，包括資料庫內容！請先備份重要資料。
+ **警告**：這會刪除所有資料，包括資料庫內容！請先備份重要資料。
 
 ### Q6: 如何部署多個環境（開發/測試/生產）？
 
@@ -543,7 +543,7 @@ terraform workspace list
 
 ---
 
-## 🔧 故障排除
+##  故障排除
 
 ### 部署失敗：資源已存在
 
@@ -589,7 +589,7 @@ Error applying migrations
 # 手動執行 migrations
 wrangler d1 migrations apply <database_name> --remote
 
-# 如果需要重置資料庫（⚠️ 會刪除所有資料）
+# 如果需要重置資料庫（ 會刪除所有資料）
 wrangler d1 delete <database_name>
 terraform apply
 ```
@@ -626,7 +626,7 @@ node --version  # 應該 >= 18
 
 ---
 
-## 📞 支援與聯繫
+##  支援與聯繫
 
 如果您在部署過程中遇到問題：
 
@@ -641,7 +641,7 @@ node --version  # 應該 >= 18
 
 ---
 
-## 📚 相關文檔
+##  相關文檔
 
 - [API Token 設置指南](./API_TOKEN_SETUP_GUIDE.md)
 - [Terraform 快速開始](./guides/TERRAFORM_QUICK_START.md)
@@ -650,7 +650,7 @@ node --version  # 應該 >= 18
 
 ---
 
-## 📝 變更記錄
+##  變更記錄
 
 - **2025-01-27**: 初版發布
   - 包含完整的部署流程
@@ -659,6 +659,6 @@ node --version  # 應該 >= 18
 
 ---
 
-**祝您部署順利！** 🎉
+**祝您部署順利！** 
 
 如有任何問題，請隨時聯繫我們的技術支援團隊。

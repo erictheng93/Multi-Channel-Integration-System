@@ -70,7 +70,7 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
         const alertService = new AlertNotificationService(c.env);
         const testAlert = await alertService.sendAlert(
           AlertLevel.INFO,
-          '🧪 Slack 配置測試',
+          ' Slack 配置測試',
           `Slack 通知渠道配置成功！配置者：${user.displayName}`,
           {
             configTest: true,
@@ -208,7 +208,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
         const alertService = new AlertNotificationService(c.env);
         const testAlert = await alertService.sendAlert(
           AlertLevel.INFO,
-          '📧 Email 配置測試',
+          ' Email 配置測試',
           `Email 通知渠道配置成功！\n\n配置詳情:\n- SMTP 服務器: ${smtpServer}:${smtpPort}\n- 發送郵箱: ${fromEmail}\n- 收件人數量: ${recipients.length}\n\n配置者：${user.displayName}`,
           {
             configTest: true,
@@ -301,7 +301,7 @@ alertConfigHandler.post('/channels/webhook', jwtAuth, async (c) => {
         const alertService = new AlertNotificationService(c.env);
         const testAlert = await alertService.sendAlert(
           AlertLevel.INFO,
-          '🔗 Webhook 配置測試',
+          ' Webhook 配置測試',
           `通用 Webhook 通知渠道配置成功！配置者：${user.displayName}`,
           { configTest: true, configuredBy: user.id }
         );
@@ -448,7 +448,7 @@ alertConfigHandler.post('/test-alert', jwtAuth, async (c) => {
 
     const testAlert = await alertService.sendAlert(
       level as AlertLevel,
-      title || `🧪 測試告警 - ${level.toUpperCase()}`,
+      title || ` 測試告警 - ${level.toUpperCase()}`,
       description || `這是一個 ${level} 級別的測試告警。\n\n發送者：${user.displayName}\n時間：${nowISO()}`,
       {
         testAlert: true,

@@ -1,6 +1,6 @@
 # FAQ: 為何選擇 Durable Objects 替代 Cloudflare Queues?
 
-## 📋 目錄
+##  目錄
 - [1. 背景](#1-背景)
 - [2. 架構對比](#2-架構對比)
 - [3. 常見問題](#3-常見問題)
@@ -17,25 +17,25 @@
 
 ```
                                    ┌─────────────────────┐
-                                   │ Cloudflare Queue    │
-  User Request ──┐                 │ (MESSAGE_QUEUE)     │
-                 │                 │                     │
-                 ▼                 │  - Message ID       │
-        ┌─────────────┐            │  - Delay Time       │
-        │   Worker    │───send────▶│  - Payload          │
-        │  (Handler)  │            └──────────┬──────────┘
-        └─────────────┘                       │
+                                   │ Cloudflare Queue │
+  User Request ──┐ │ (MESSAGE_QUEUE) │
+                 │ │                     │
+                 ▼ │  - Message ID │
+        ┌─────────────┐ │  - Delay Time │
+        │ Worker │───send────│  - Payload │
+        │  (Handler)  │ └──────────┬──────────┘
+        └─────────────┘ │
                                               │ Queue Consumer
                                               │ (queue-consumer.ts)
                                               │
                                               ▼
                                    ┌─────────────────────┐
-                                   │  Process Message    │
-                                   │  Send to Customer   │
+                                   │  Process Message │
+                                   │  Send to Customer │
                                    └─────────────────────┘
 ```
 
-#### ❌ 主要問題
+####  主要問題
 
 1. **複雜性高**
    - 需要維護兩個獨立的 Worker (主 Worker + Queue Consumer)
@@ -65,20 +65,20 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     舊架構流程圖                              │
+│ 舊架構流程圖 │
 └─────────────────────────────────────────────────────────────┘
 
  Step 1: Create Delayed Message
  ┌─────────────┐
- │   Worker    │
+ │ Worker │
  │  (Handler)  │
  └──────┬──────┘
         │ 1. Create DB record
         │ 2. Send to Queue
         ▼
  ┌─────────────────────┐
- │ Cloudflare Queue    │
- │ (Storage + Delay)   │
+ │ Cloudflare Queue │
+ │ (Storage + Delay) │
  └──────┬──────────────┘
         │ Wait for delay time...
         │
@@ -86,7 +86,7 @@
         │
         ▼
  ┌─────────────────────┐
- │  Queue Consumer     │
+ │  Queue Consumer │
  │  (queue-consumer.ts)│
  └──────┬──────────────┘
         │ 3. Receive message
@@ -95,11 +95,11 @@
         │ 6. Update DB status
         ▼
  ┌─────────────────────┐
- │  External API       │
- │  (LINE/Facebook)    │
+ │  External API │
+ │  (LINE/Facebook) │
  └─────────────────────┘
 
-💰 Cost Components:
+ Cost Components:
 - Queue storage
 - Queue operations
 - Consumer Worker execution
@@ -111,12 +111,12 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     新架構流程圖                              │
+│ 新架構流程圖 │
 └─────────────────────────────────────────────────────────────┘
 
  Step 1: Create & Schedule
  ┌─────────────┐
- │   Worker    │
+ │ Worker │
  │  (Handler)  │
  └──────┬──────┘
         │ 1. Create DB record
@@ -124,19 +124,19 @@
         ▼
  ┌─────────────────────────────────────────┐
  │  DelayedMessageBuffer (Durable Object)  │
- │                                         │
- │  ┌─────────────┐                       │
- │  │   State     │ ◀── Persistent        │
- │  │  - Messages │     in-memory         │
- │  │  - Timers   │     state             │
- │  └─────────────┘                       │
- │         │                               │
- │         │ Set alarm()                   │
- │         ▼                               │
- │  ┌─────────────┐                       │
- │  │ Alarm API   │ ◀── Native            │
- │  │ (Built-in)  │     Cloudflare        │
- │  └─────────────┘     feature           │
+ │ │
+ │  ┌─────────────┐ │
+ │  │ State │ ── Persistent │
+ │  │  - Messages │ in-memory │
+ │  │  - Timers │     state │
+ │  └─────────────┘ │
+ │ │                               │
+ │ │ Set alarm() │
+ │ ▼                               │
+ │  ┌─────────────┐ │
+ │  │ Alarm API │ ── Native │
+ │  │ (Built-in)  │ Cloudflare │
+ │  └─────────────┘ feature │
  └────────┬────────────────────────────────┘
           │ Alarm fires at scheduled time
           │
@@ -144,24 +144,24 @@
           │
           ▼
  ┌─────────────────────┐
- │  alarm() method     │
- │  - Send to API      │
- │  - Update DB        │
- │  - Clean up state   │
+ │  alarm() method │
+ │  - Send to API │
+ │  - Update DB │
+ │  - Clean up state │
  └──────┬──────────────┘
         │
         ▼
  ┌─────────────────────┐
- │  External API       │
- │  (LINE/Facebook)    │
+ │  External API │
+ │  (LINE/Facebook) │
  └─────────────────────┘
 
-💰 Cost Components:
+ Cost Components:
 - Durable Object requests (very low)
 - Main Worker execution
 - DB operations (fewer)
 
-✅ Alarm API is FREE!
+ Alarm API is FREE!
 ```
 
 ---
@@ -170,20 +170,20 @@
 
 ### Q1: 為什麼 Durable Objects 比 Queue 更適合?
 
-#### 📊 功能對比表
+####  功能對比表
 
 | Feature | Cloudflare Queue | Durable Objects + Alarm |
 |---------|------------------|------------------------|
-| **複雜性** | ⚠️ 高 (需要 Consumer Worker) | ✅ 低 (單一 Worker) |
-| **成本** | 💸 Queue + Consumer | 💰 僅 DO requests (Alarm 免費) |
-| **延遲精度** | ⚠️ 分鐘級 | ✅ 秒級 (1-120秒) |
-| **取消功能** | ❌ 困難 | ✅ 簡單 (直接刪除 DO) |
-| **狀態追蹤** | ⚠️ 需要輪詢 Queue | ✅ 即時查詢 DO state |
-| **錯誤處理** | ⚠️ Queue 重試機制 | ✅ 完全控制的錯誤處理 |
-| **部署** | ⚠️ 兩個 Worker 同步 | ✅ 單一部署單元 |
-| **監控** | ⚠️ 需要 Queue metrics | ✅ 標準 DO metrics |
-| **擴展性** | ✅ 自動擴展 | ✅ 自動擴展 |
-| **可靠性** | ✅ 高 | ✅ 高 (持久化狀態) |
+| **複雜性** |  高 (需要 Consumer Worker) |  低 (單一 Worker) |
+| **成本** |  Queue + Consumer |  僅 DO requests (Alarm 免費) |
+| **延遲精度** |  分鐘級 |  秒級 (1-120秒) |
+| **取消功能** |  困難 |  簡單 (直接刪除 DO) |
+| **狀態追蹤** |  需要輪詢 Queue |  即時查詢 DO state |
+| **錯誤處理** |  Queue 重試機制 |  完全控制的錯誤處理 |
+| **部署** |  兩個 Worker 同步 |  單一部署單元 |
+| **監控** |  需要 Queue metrics |  標準 DO metrics |
+| **擴展性** |  自動擴展 |  自動擴展 |
+| **可靠性** |  高 |  高 (持久化狀態) |
 
 ---
 
@@ -221,7 +221,7 @@ class DelayedMessageBuffer {
 }
 ```
 
-#### ✨ Alarm API 優勢
+####  Alarm API 優勢
 
 1. **零成本** - Alarm API 調用完全免費
 2. **精確** - 精確到毫秒級的定時
@@ -233,39 +233,39 @@ class DelayedMessageBuffer {
 
 ### Q3: Durable Objects 的可靠性如何?
 
-#### 🔒 可靠性保證
+####  可靠性保證
 
 | 項目 | 說明 | 保證級別 |
 |------|------|---------|
-| **狀態持久化** | 所有 storage 操作自動持久化到磁碟 | ✅ 100% |
-| **Alarm 執行** | Cloudflare 保證 Alarm 會被執行 | ✅ 至少一次 |
-| **故障恢復** | DO 實例崩潰後自動重啟並恢復狀態 | ✅ 自動 |
-| **數據一致性** | Storage 操作具有事務性保證 | ✅ ACID |
-| **地理複製** | DO 狀態在多個數據中心備份 | ✅ 自動 |
+| **狀態持久化** | 所有 storage 操作自動持久化到磁碟 |  100% |
+| **Alarm 執行** | Cloudflare 保證 Alarm 會被執行 |  至少一次 |
+| **故障恢復** | DO 實例崩潰後自動重啟並恢復狀態 |  自動 |
+| **數據一致性** | Storage 操作具有事務性保證 |  ACID |
+| **地理複製** | DO 狀態在多個數據中心備份 |  自動 |
 
 ```
                          ┌─────────────────────┐
-                         │  Primary DC         │
-                         │  (Durable Object)   │
-                         │                     │
+                         │  Primary DC │
+                         │  (Durable Object) │
+                         │ │
                          │  ┌──────────────┐  │
-Alarm set ──────────────▶│  │  Storage     │  │
-                         │  │  + Alarm     │  │
+Alarm set ──────────────│  │  Storage │  │
+                         │  │  + Alarm │  │
                          │  └──────────────┘  │
-                         │         │           │
+                         │ │           │
                          └─────────┼───────────┘
                                    │
                                    │ Auto-replicate
                                    │
                     ┌──────────────┼──────────────┐
-                    │              │              │
-                    ▼              ▼              ▼
+                    │ │              │
+                    ▼ ▼              ▼
          ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
          │  Backup DC  │ │  Backup DC  │ │  Backup DC  │
          │  (Replica)  │ │  (Replica)  │ │  (Replica)  │
          └─────────────┘ └─────────────┘ └─────────────┘
 
-🛡️ If Primary DC fails:
+ If Primary DC fails:
    1. Cloudflare automatically promotes a replica
    2. Alarm is preserved and will fire
    3. No data loss
@@ -275,23 +275,23 @@ Alarm set ──────────────▶│  │  Storage     │
 
 ### Q4: 遷移過程中有哪些挑戰?
 
-#### 🎯 已解決的挑戰
+####  已解決的挑戰
 
 | 挑戰 | 解決方案 | 狀態 |
 |------|---------|------|
-| **Queue 依賴移除** | 更新所有引用 Queue 的代碼 | ✅ 完成 |
-| **DO 類別設計** | 5 個專用 DO 類別 (ConversationRoom, UserConnection, etc.) | ✅ 完成 |
-| **Alarm API 整合** | DelayedMessageBuffer 使用 Alarm API | ✅ 完成 |
-| **錯誤處理** | 完整的錯誤處理和重試機制 | ✅ 完成 |
-| **測試覆蓋** | 132+ 測試,包含 DO 測試 | ✅ 完成 |
-| **部署驗證** | 生產環境完全運行 DO 架構 | ✅ 完成 |
-| **文檔更新** | 更新所有架構文檔 | ✅ 完成 |
+| **Queue 依賴移除** | 更新所有引用 Queue 的代碼 |  完成 |
+| **DO 類別設計** | 5 個專用 DO 類別 (ConversationRoom, UserConnection, etc.) |  完成 |
+| **Alarm API 整合** | DelayedMessageBuffer 使用 Alarm API |  完成 |
+| **錯誤處理** | 完整的錯誤處理和重試機制 |  完成 |
+| **測試覆蓋** | 132+ 測試,包含 DO 測試 |  完成 |
+| **部署驗證** | 生產環境完全運行 DO 架構 |  完成 |
+| **文檔更新** | 更新所有架構文檔 |  完成 |
 
 ---
 
 ### Q5: 成本對比如何?
 
-#### 💰 成本分析
+####  成本分析
 
 ##### 舊架構 (Cloudflare Queues)
 
@@ -339,7 +339,7 @@ Durable Object Duration:
 
 Alarm API:
   - 10,000 alarm fires
-  - FREE ✅
+  - FREE 
   = $0
 
 Main Worker:
@@ -348,35 +348,35 @@ Main Worker:
 
 Total: ~$0.0064/day = $0.192/month
 
-💡 Savings: $3.83/month (95% reduction!)
+ Savings: $3.83/month (95% reduction!)
 ```
 
-#### 📊 成本對比圖表
+####  成本對比圖表
 
 ```
 Monthly Cost Comparison
 ┌────────────────────────────────────────┐
-│                                        │
-│  Queue Architecture:                   │
-│  ████████████████████  $4.02          │
-│                                        │
-│  Durable Objects:                      │
-│  █  $0.19                              │
-│                                        │
+│ │
+│  Queue Architecture: │
+│  ████████████████████  $4.02 │
+│ │
+│  Durable Objects: │
+│  █  $0.19 │
+│ │
 └────────────────────────────────────────┘
 
-🎉 95% cost reduction!
+ 95% cost reduction!
 ```
 
 ---
 
 ### Q6: 如何確保 Alarm 不會丟失?
 
-#### 🔐 Alarm 可靠性機制
+####  Alarm 可靠性機制
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│              Alarm Reliability Flow                     │
+│ Alarm Reliability Flow │
 └─────────────────────────────────────────────────────────┘
 
 Step 1: Set Alarm
@@ -386,40 +386,40 @@ Step 1: Set Alarm
          │
          ▼
 ┌──────────────────────────────────┐
-│  Durable Object                  │
-│                                  │
-│  await ctx.storage.setAlarm()   │◀── Persistent write
-│                                  │    to Cloudflare storage
+│  Durable Object │
+│ │
+│  await ctx.storage.setAlarm() │── Persistent write
+│ │    to Cloudflare storage
 └────────┬─────────────────────────┘
          │
-         │ ✅ Write confirmed
+         │  Write confirmed
          ▼
 ┌──────────────────────────────────┐
-│  Response to Client              │
+│  Response to Client │
 └──────────────────────────────────┘
 
 Step 2: Alarm Execution (Guaranteed)
-         ⏰ Time passes...
+          Time passes...
          │
          ▼
 ┌──────────────────────────────────┐
-│  Cloudflare Infrastructure       │
-│  - Monitors all alarms           │
-│  - Triggers at scheduled time    │
-│  - Retries if DO unavailable     │
+│  Cloudflare Infrastructure │
+│  - Monitors all alarms │
+│  - Triggers at scheduled time │
+│  - Retries if DO unavailable │
 └────────┬─────────────────────────┘
          │
          │ Invoke alarm()
          ▼
 ┌──────────────────────────────────┐
-│  Durable Object                  │
-│                                  │
-│  async alarm() {                 │
-│    // Your code here             │
-│  }                               │
+│  Durable Object │
+│ │
+│  async alarm() { │
+│ // Your code here │
+│  } │
 └──────────────────────────────────┘
 
-🛡️ Guarantees:
+ Guarantees:
 1. Alarm persists across DO restarts
 2. Alarm persists across deployments
 3. Alarm executes at least once
@@ -430,7 +430,7 @@ Step 2: Alarm Execution (Guaranteed)
 
 ### Q7: 如果 Durable Object 崩潰怎麼辦?
 
-#### 🔄 故障恢復機制
+####  故障恢復機制
 
 ```
 Scenario: Durable Object Instance Crash
@@ -438,43 +438,43 @@ Scenario: Durable Object Instance Crash
 Before Crash:
 ┌───────────────────────────┐
 │  Durable Object Instance  │
-│                           │
-│  State:                   │
-│  - message: {...}         │
-│  - alarm: 2024-xx-xx      │◀── Persisted to
-│                           │    Cloudflare storage
+│ │
+│  State: │
+│  - message: {...} │
+│  - alarm: 2024-xx-xx │── Persisted to
+│ │    Cloudflare storage
 └───────────────────────────┘
 
-💥 CRASH! (network failure, code error, etc.)
+ CRASH! (network failure, code error, etc.)
 
 After Crash (Automatic Recovery):
-         ⏰ Alarm time arrives...
+          Alarm time arrives...
          │
          ▼
 ┌──────────────────────────────────┐
-│  Cloudflare Infrastructure       │
-│  "Alarm needs to fire for        │
-│   DO xyz, but instance is down"  │
+│  Cloudflare Infrastructure │
+│  "Alarm needs to fire for │
+│ DO xyz, but instance is down"  │
 └────────┬─────────────────────────┘
          │
          │ 1. Create new instance
          │ 2. Restore state from storage
          ▼
 ┌───────────────────────────────────┐
-│  NEW Durable Object Instance      │
-│                                   │
-│  Restored State:                  │
-│  - message: {...}    ◀── Same!    │
-│  - alarm: 2024-xx-xx ◀── Same!    │
+│  NEW Durable Object Instance │
+│ │
+│  Restored State: │
+│  - message: {...} ── Same! │
+│  - alarm: 2024-xx-xx ── Same! │
 └────────┬──────────────────────────┘
          │
          │ 3. Execute alarm()
          ▼
 ┌───────────────────────────────────┐
-│  Message sent successfully!       │
+│  Message sent successfully! │
 └───────────────────────────────────┘
 
-✅ Result: Zero data loss, automatic recovery
+ Result: Zero data loss, automatic recovery
 ```
 
 ---
@@ -483,7 +483,7 @@ After Crash (Automatic Recovery):
 
 ### 4.1 為什麼不繼續使用 Queue?
 
-#### ❌ Queue 的缺點
+####  Queue 的缺點
 
 1. **過度工程** (Over-engineering)
    - 延遲訊息是簡單的定時任務
@@ -509,92 +509,92 @@ After Crash (Automatic Recovery):
 
 ### 4.2 Durable Objects 的優勢
 
-#### ✅ 為什麼 DO + Alarm 更好?
+####  為什麼 DO + Alarm 更好?
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│         Durable Objects 核心優勢                         │
+│ Durable Objects 核心優勢 │
 └─────────────────────────────────────────────────────────┘
 
-1️⃣  Single Responsibility
+1️  Single Responsibility
    ┌────────────────────────┐
    │  DelayedMessageBuffer  │
-   │                        │
-   │  - Store message       │
-   │  - Set alarm           │
-   │  - Send on alarm       │
-   │  - Clean up            │
+   │ │
+   │  - Store message │
+   │  - Set alarm │
+   │  - Send on alarm │
+   │  - Clean up │
    └────────────────────────┘
 
-   ✅ 所有邏輯在一個地方
-   ✅ 狀態和行為緊密耦合
-   ✅ 易於理解和維護
+    所有邏輯在一個地方
+    狀態和行為緊密耦合
+    易於理解和維護
 
-2️⃣  Native Features
+2️  Native Features
    ┌────────────────────────┐
-   │  Cloudflare Platform   │
-   │                        │
-   │  ✓ Alarm API (FREE)    │
-   │  ✓ Storage (Built-in)  │
-   │  ✓ State management    │
+   │  Cloudflare Platform │
+   │ │
+   │ Alarm API (FREE) │
+   │ Storage (Built-in)  │
+   │ State management │
    └────────────────────────┘
 
-   ✅ 無需外部依賴
-   ✅ 最佳性能
-   ✅ 零配置
+    無需外部依賴
+    最佳性能
+    零配置
 
-3️⃣  Simplicity
+3️  Simplicity
    Before (Queue):
-   Worker ──▶ Queue ──▶ Consumer ──▶ API
+   Worker ── Queue ── Consumer ── API
 
    After (DO):
-   Worker ──▶ DO (alarm) ──▶ API
+   Worker ── DO (alarm) ── API
 
-   ✅ 更短的路徑
-   ✅ 更少的錯誤點
-   ✅ 更快的執行
+    更短的路徑
+    更少的錯誤點
+    更快的執行
 
-4️⃣  Control
+4️  Control
    ┌────────────────────────┐
-   │  Full Control Over:    │
-   │                        │
-   │  - Timing (exact)      │
-   │  - Error handling      │
-   │  - State lifecycle     │
-   │  - Cancellation        │
+   │  Full Control Over: │
+   │ │
+   │  - Timing (exact) │
+   │  - Error handling │
+   │  - State lifecycle │
+   │  - Cancellation │
    └────────────────────────┘
 
-   ✅ 完全掌控
-   ✅ 靈活調整
-   ✅ 精確控制
+    完全掌控
+    靈活調整
+    精確控制
 
-5️⃣  Cost Efficiency
+5️  Cost Efficiency
    Queue Architecture:
    $4.02/month (10k msgs/day)
 
    DO Architecture:
    $0.19/month (10k msgs/day)
 
-   ✅ 95% cost savings
-   ✅ Better ROI
-   ✅ Scalable pricing
+    95% cost savings
+    Better ROI
+    Scalable pricing
 ```
 
 ---
 
 ### 4.3 實際生產數據
 
-#### 📈 生產環境指標 (截至遷移完成)
+####  生產環境指標 (截至遷移完成)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| **Durable Objects 部署** | 5 個類別 | ✅ 100% |
-| **延遲訊息處理** | Alarm API | ✅ 100% |
-| **Queue 依賴** | 0 | ✅ 已移除 |
-| **測試覆蓋** | 132+ tests | ✅ 通過 |
-| **部署狀態** | Production | ✅ 穩定 |
-| **錯誤率** | < 0.1% | ✅ 優秀 |
-| **延遲精度** | ±1 秒 | ✅ 精確 |
+| **Durable Objects 部署** | 5 個類別 |  100% |
+| **延遲訊息處理** | Alarm API |  100% |
+| **Queue 依賴** | 0 |  已移除 |
+| **測試覆蓋** | 132+ tests |  通過 |
+| **部署狀態** | Production |  穩定 |
+| **錯誤率** | < 0.1% |  優秀 |
+| **延遲精度** | ±1 秒 |  精確 |
 
 ---
 
@@ -602,7 +602,7 @@ After Crash (Automatic Recovery):
 
 ### 5.1 遷移檢查清單
 
-#### ✅ 已完成項目
+####  已完成項目
 
 - [x] **架構設計**
   - [x] 5 個 Durable Objects 類別設計
@@ -638,27 +638,27 @@ After Crash (Automatic Recovery):
 
 ### 5.2 後續維護建議
 
-#### 🔧 維護清單
+####  維護清單
 
 1. **監控** (`src/handlers/websocket-health.ts`)
-   - ✅ 已實現 DO 健康檢查
-   - ✅ 已實現 Alarm 執行監控
-   - 📋 建議: 設置告警閾值
+   -  已實現 DO 健康檢查
+   -  已實現 Alarm 執行監控
+   -  建議: 設置告警閾值
 
 2. **文檔**
-   - ✅ 架構文檔已更新
-   - ✅ API 文檔已更新
-   - 📋 建議: 定期審查和更新
+   -  架構文檔已更新
+   -  API 文檔已更新
+   -  建議: 定期審查和更新
 
 3. **測試**
-   - ✅ 測試套件完整
-   - 📋 建議: 新增壓力測試
-   - 📋 建議: 定期執行性能基準測試
+   -  測試套件完整
+   -  建議: 新增壓力測試
+   -  建議: 定期執行性能基準測試
 
 4. **成本優化**
-   - ✅ 已實現最優架構
-   - 📋 建議: 定期審查 DO 實例生命週期
-   - 📋 建議: 監控實際成本
+   -  已實現最優架構
+   -  建議: 定期審查 DO 實例生命週期
+   -  建議: 監控實際成本
 
 ---
 
@@ -674,36 +674,36 @@ After Crash (Automatic Recovery):
 
 ---
 
-## 📌 結論
+##  結論
 
 ### 為什麼選擇 Durable Objects?
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  核心原因總結                            │
+│ 核心原因總結 │
 └─────────────────────────────────────────────────────────┘
 
-1. 🎯 Simple is Better
+1.  Simple is Better
    - 更簡單的架構
    - 更少的組件
    - 更易維護
 
-2. 💰 Cost Effective
+2.  Cost Effective
    - 95% 成本降低
    - Alarm API 免費
    - 更好的 ROI
 
-3. 🔧 Better Control
+3.  Better Control
    - 完全掌控延遲邏輯
    - 靈活的錯誤處理
    - 精確的時間控制
 
-4. 🚀 Production Ready
+4.  Production Ready
    - Cloudflare 原生支持
    - 自動擴展
    - 高可靠性
 
-5. 📈 Future Proof
+5.  Future Proof
    - 易於擴展新功能
    - 符合 Cloudflare 生態
    - 長期維護友好

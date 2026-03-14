@@ -122,7 +122,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   }
 
   async runBenchmarks(): Promise<BenchmarkReport> {
-    console.log('🏁 Starting Performance Benchmark Suite');
+    console.log(' Starting Performance Benchmark Suite');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
     const startTime = performance.now();
@@ -133,16 +133,16 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     try {
       // Run each benchmark suite
       for (const suiteName of this.config.benchmarkSuites) {
-        console.log(`\n📊 Running ${suiteName} benchmark suite`);
+        console.log(`\n Running ${suiteName} benchmark suite`);
         await this.runBenchmarkSuite(suiteName);
 
         // Cooldown between suites
-        console.log(`⏳ Cooldown for ${this.config.cooldownMs}ms`);
+        console.log(` Cooldown for ${this.config.cooldownMs}ms`);
         await this.sleep(this.config.cooldownMs);
       }
 
     } catch (error) {
-      console.error('❌ Benchmark error:', error);
+      console.error(' Benchmark error:', error);
     }
 
     const totalDuration = performance.now() - startTime;
@@ -151,7 +151,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
   }
 
   private async establishBaseline(): Promise<void> {
-    console.log('📏 Establishing system baseline');
+    console.log(' Establishing system baseline');
 
     // Force garbage collection if available
     if (global.gc) {
@@ -166,7 +166,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
       cpu: process.cpuUsage()
     };
 
-    console.log('✅ Baseline established');
+    console.log(' Baseline established');
   }
 
   private async runBenchmarkSuite(suiteName: string): Promise<void> {
@@ -187,7 +187,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
         await this.runDurableObjectsBenchmarks();
         break;
       default:
-        console.warn(`⚠️ Unknown benchmark suite: ${suiteName}`);
+        console.warn(` Unknown benchmark suite: ${suiteName}`);
     }
   }
 
@@ -204,7 +204,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
     for (const test of latencyTests) {
       for (const concurrency of this.config.concurrencyLevels) {
-        console.log(`  🔍 ${test.name} (concurrency: ${concurrency})`);
+        console.log(` ${test.name} (concurrency: ${concurrency})`);
 
         const result = await this.measureLatency(
           test.name,
@@ -237,7 +237,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     const startCpu = process.cpuUsage();
 
     // Warmup
-    console.log(`    🔥 Warming up (${this.config.warmupIterations} iterations)`);
+    console.log(` Warming up (${this.config.warmupIterations} iterations)`);
     for (let i = 0; i < this.config.warmupIterations; i++) {
       try {
         await operation();
@@ -247,7 +247,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     }
 
     // Actual benchmark
-    console.log(`    📐 Measuring (${this.config.iterations} iterations, concurrency: ${concurrency})`);
+    console.log(` Measuring (${this.config.iterations} iterations, concurrency: ${concurrency})`);
 
     for (let batch = 0; batch < Math.ceil(this.config.iterations / concurrency); batch++) {
       const batchPromises = [];
@@ -346,7 +346,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
     for (const test of throughputTests) {
       for (const concurrency of this.config.concurrencyLevels) {
-        console.log(`  📈 ${test.name} (concurrency: ${concurrency})`);
+        console.log(` ${test.name} (concurrency: ${concurrency})`);
 
         const result = await this.measureThroughput(
           test.name,
@@ -375,7 +375,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     const testDuration = 10000; // 10 seconds
     const endTime = startTime + testDuration;
 
-    console.log(`    ⚡ Running for ${testDuration}ms with concurrency ${concurrency}`);
+    console.log(` Running for ${testDuration}ms with concurrency ${concurrency}`);
 
     // Continuous throughput test
     const workers = Array(concurrency).fill(null).map(async () => {
@@ -453,7 +453,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
     ];
 
     for (const test of memoryTests) {
-      console.log(`  🧠 ${test.name}`);
+      console.log(` ${test.name}`);
 
       const result = await this.measureMemoryUsage(test.name, test.operation);
       this.results.push(result);
@@ -541,7 +541,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
     for (const test of websocketTests) {
       for (const concurrency of this.config.concurrencyLevels.slice(0, 3)) { // Limit WebSocket concurrency
-        console.log(`  🌐 ${test.name} (concurrency: ${concurrency})`);
+        console.log(` ${test.name} (concurrency: ${concurrency})`);
 
         const result = await this.measureLatency(
           test.name,
@@ -566,7 +566,7 @@ class PerformanceBenchmarkSuite extends EventEmitter {
 
     for (const test of doTests) {
       for (const concurrency of this.config.concurrencyLevels) {
-        console.log(`  🔹 ${test.name} (concurrency: ${concurrency})`);
+        console.log(` ${test.name} (concurrency: ${concurrency})`);
 
         const result = await this.measureLatency(
           test.name,
@@ -900,7 +900,7 @@ async function runBenchmarks() {
   try {
     const report = await benchmarkSuite.runBenchmarks();
 
-    console.log('\n🏆 Benchmark Report:');
+    console.log('\n Benchmark Report:');
     console.log('='.repeat(60));
     console.log('Summary:', JSON.stringify(report.summary, null, 2));
 
@@ -909,7 +909,7 @@ async function runBenchmarks() {
       .sort((a, b) => a.metrics.latency.mean - b.metrics.latency.mean)
       .slice(0, 10);
 
-    console.log('\n🥇 Top 10 Fastest Tests:');
+    console.log('\n Top 10 Fastest Tests:');
     sortedResults.forEach((result, index) => {
       console.log(`${index + 1}. ${result.testName} (${result.suiteName}): ${result.metrics.latency.mean.toFixed(2)}ms`);
     });
@@ -917,11 +917,11 @@ async function runBenchmarks() {
     // Save report
     const filename = await benchmarkSuite.saveReport(report);
     if (filename) {
-      console.log(`\n📁 Report saved to: ${filename}`);
+      console.log(`\n Report saved to: ${filename}`);
     }
 
   } catch (error) {
-    console.error('❌ Benchmark failed:', error);
+    console.error(' Benchmark failed:', error);
     process.exit(1);
   }
 }

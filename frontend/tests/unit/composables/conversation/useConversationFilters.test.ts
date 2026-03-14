@@ -192,7 +192,7 @@ describe('useConversationFilters', () => {
     it('当搜索为空白字符时应该为 false', () => {
       const { hasActiveFilters, updateFilter } = filtersComposable
 
-      updateFilter('search', '   ')
+      updateFilter('search', ' ')
       expect(hasActiveFilters.value).toBe(false)
     })
 
@@ -231,7 +231,7 @@ describe('useConversationFilters', () => {
 
     it('hasActiveFilters should be false when customerName is whitespace', () => {
       const { hasActiveFilters, updateFilter } = filtersComposable
-      updateFilter('customerName', '   ')
+      updateFilter('customerName', ' ')
       expect(hasActiveFilters.value).toBe(false)
     })
 

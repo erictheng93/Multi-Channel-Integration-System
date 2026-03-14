@@ -223,13 +223,13 @@ const integrationGroup = createRouteGroup({
     })
     // REMOVED: Old QR Code module - migrated to new LIFF QR Code system
     // createRouteModule({
-    //   name: 'qr-codes',
-    //   path: '/qr-codes',
-    //   handler: qrCodeRouterSimple,
-    //   description: 'QR Code Generation and Management (Simple Router - WORKING)',
-    //   version: '1.0.0',
-    //   dependencies: ['auth'],
-    //   healthCheck: '/health'
+    // name: 'qr-codes',
+    // path: '/qr-codes',
+    // handler: qrCodeRouterSimple,
+    // description: 'QR Code Generation and Management (Simple Router - WORKING)',
+    // version: '1.0.0',
+    // dependencies: ['auth'],
+    // healthCheck: '/health'
     // })
   ]
 });
@@ -290,13 +290,13 @@ const realtimeGroup = createRouteGroup({
   modules: [
     // DISABLED: websocket is manually registered in index.ts to avoid route conflicts with websocketHealthApp
     // createRouteModule({
-    //   name: 'websocket',
-    //   path: '/websocket',
-    //   handler: websocketMainHandler,
-    //   description: 'WebSocket Connection Handler',
-    //   version: '1.0.0',
-    //   dependencies: [], // Auth handled per-endpoint by websocketAuth middleware
-    //   healthCheck: '/health'
+    // name: 'websocket',
+    // path: '/websocket',
+    // handler: websocketMainHandler,
+    // description: 'WebSocket Connection Handler',
+    // version: '1.0.0',
+    // dependencies: [], // Auth handled per-endpoint by websocketAuth middleware
+    // healthCheck: '/health'
     // }),
     createRouteModule({
       name: 'websocket-analytics',

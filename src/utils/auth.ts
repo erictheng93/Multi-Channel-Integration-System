@@ -65,7 +65,7 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
     exp: now + expiresIn
   };
 
-  // ✅ 使用 UTF-8 安全的編碼函數
+  // 使用 UTF-8 安全的編碼函數
   const headerB64 = base64UrlEncode(JSON.stringify(header));
   const payloadB64 = base64UrlEncode(JSON.stringify(jwtPayload));
 
@@ -82,7 +82,7 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
 
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
 
-  // ✅ 使用安全的二進制數據編碼
+  // 使用安全的二進制數據編碼
   const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
@@ -113,7 +113,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
       ['verify']
     );
 
-    // ✅ 解碼簽名（二進制數據）
+    // 解碼簽名（二進制數據）
     const signatureBase64 = signatureB64
       .replace(/-/g, '+')
       .replace(/_/g, '/')
@@ -125,7 +125,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
       throw new Error('Invalid JWT signature');
     }
 
-    // ✅ 使用 UTF-8 安全的解碼函數解析 payload
+    // 使用 UTF-8 安全的解碼函數解析 payload
     const payload = JSON.parse(base64UrlDecode(payloadB64));
 
     // 檢查過期時間
@@ -392,15 +392,15 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
 
 // getUserByUsername function removed - using email for authentication instead
 
-// ✅ 優化：單次查詢完整認證（使用原始SQL避免Drizzle問題）
-// 🔧 FIX: 現在也查詢 agent_teams 以填充 allowedTeamIds 和 teamRoles
+// 優化：單次查詢完整認證（使用原始SQL避免Drizzle問題）
+// FIX: 現在也查詢 agent_teams 以填充 allowedTeamIds 和 teamRoles
 export async function authenticateUser(
   db: D1Database,
   email: string,
   password: string
 ): Promise<{ user: DbUser | null; passwordPolicy?: string; accountStatus?: string }> {
 
-  // 🚀 使用原始SQL查詢避免Drizzle ORM問題
+  // 使用原始SQL查詢避免Drizzle ORM問題
   const query = `
     SELECT id, email, password_hash, display_name, role,
            is_active, password_policy, created_at, updated_at
@@ -476,7 +476,7 @@ export async function authenticateUser(
   };
 }
 
-// ✅ 重構：使用優化後的 authenticateUser 函數（向後兼容）
+// 重構：使用優化後的 authenticateUser 函數（向後兼容）
 export async function authenticateUserByEmail(
   db: D1Database,
   email: string,
@@ -498,7 +498,7 @@ export function hasPermission(user: DbUser, requiredRole: 'admin' | 'agent'): bo
 /**
  * 檢查用戶是否可以訪問指定團隊
  *
- * 🚀 v3.0 OPTIMIZED MULTI-TEAM SUPPORT (Phase 1):
+ * v3.0 OPTIMIZED MULTI-TEAM SUPPORT (Phase 1):
  * - Priority 1: Admin 用戶可以訪問所有團隊 (instant)
  * - Priority 2: 檢查緩存的 allowedTeamIds (instant, no DB query)
  * - Priority 3: 檢查主團隊 teamId (backward compat)
@@ -519,7 +519,7 @@ export async function canAccessTeam(
     return true;
   }
 
-  // Priority 2: 🚀 OPTIMIZED - 使用緩存的 allowedTeamIds (無 DB 查詢)
+  // Priority 2:  OPTIMIZED - 使用緩存的 allowedTeamIds (無 DB 查詢)
   if (user.allowedTeamIds && user.allowedTeamIds.length > 0) {
     return user.allowedTeamIds.includes(teamId);
   }
@@ -563,7 +563,7 @@ export function getUserTeamRole(user: DbUser, teamId: number): TeamRoleInTeam | 
 }
 
 // ============================================================================
-// 🚀 Phase 2: Team RBAC (Role-Based Access Control)
+// Phase 2: Team RBAC (Role-Based Access Control)
 // ============================================================================
 
 /**
@@ -657,7 +657,7 @@ export function canPerformTeamOperation(
 /**
  * 同步版本的團隊權限檢查 (僅檢查主團隊)
  *
- * ⚠️ DEPRECATED: 建議使用 canAccessTeam() 的異步版本以支援多團隊
+ * DEPRECATED: 建議使用 canAccessTeam() 的異步版本以支援多團隊
  * 此函數保留用於向後兼容，僅檢查主團隊
  *
  * @param user 當前用戶
@@ -788,7 +788,7 @@ export async function deleteSession(kv: KVNamespace, sessionId: string): Promise
 /**
  * In-memory cache for last activity tracking
  *
- * ⚡ V3.0 OPTIMIZATION: Zero KV writes
+ * V3.0 OPTIMIZATION: Zero KV writes
  * - Worker-scoped Map for debouncing
  * - Survives for Worker lifecycle (typically hours)
  * - Cleared on Worker restart (acceptable for non-critical tracking)
@@ -801,7 +801,7 @@ const lastActivityCache = new Map<string, number>();
 /**
  * Update user's lastActive timestamp with debouncing
  *
- * ⚡ OPTIMIZED v3.0: Zero KV writes/reads (Pure in-memory debouncing)
+ * OPTIMIZED v3.0: Zero KV writes/reads (Pure in-memory debouncing)
  * - Uses Worker-scoped Map instead of KV for debouncing
  * - Only updates D1 if > 15 minutes since last update
  * - Prevents excessive D1 writes on every API request
@@ -809,14 +809,14 @@ const lastActivityCache = new Map<string, number>();
  *
  * Performance Impact:
  * - Before (v2.0): KV reads: 2,400/day, KV writes: 960/day, D1 writes: 960/day
- * - After (v3.0):  KV reads: 0/day,     KV writes: 0/day,     D1 writes: 960/day
+ * - After (v3.0):  KV reads: 0/day, KV writes: 0/day, D1 writes: 960/day
  * - KV cost savings: 100% (freed up 960/1000 daily write quota)
  *
  * Trade-offs:
- * - ✅ Zero KV operations (100% quota savings)
- * - ✅ Faster performance (no network calls)
- * - ⚠️ Cache lost on Worker restart (acceptable for activity tracking)
- * - ⚠️ Independent cache per Worker instance (acceptable for debouncing)
+ * -  Zero KV operations (100% quota savings)
+ * -  Faster performance (no network calls)
+ * -  Cache lost on Worker restart (acceptable for activity tracking)
+ * -  Independent cache per Worker instance (acceptable for debouncing)
  *
  * @param userId User ID to update
  * @param db D1 database instance
@@ -832,7 +832,7 @@ export async function updateUserActivityDebounced(
   try {
     const now = nowMs();
 
-    // ✅ Check in-memory cache (zero KV operations)
+    // Check in-memory cache (zero KV operations)
     const lastUpdate = lastActivityCache.get(userId);
 
     if (lastUpdate) {
@@ -852,7 +852,7 @@ export async function updateUserActivityDebounced(
       .where(eq(agents.id, userId))
       .run();
 
-    // ✅ Update in-memory cache (zero KV operations)
+    // Update in-memory cache (zero KV operations)
     lastActivityCache.set(userId, now);
 
     return true; // Updated successfully

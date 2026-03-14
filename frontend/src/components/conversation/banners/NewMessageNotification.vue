@@ -52,8 +52,8 @@
  *
  * 使用示例：
  * <NewMessageNotification
- *   :new-message-count="5"
- *   @click="scrollToBottom"
+ * :new-message-count="5"
+ * @click="scrollToBottom"
  * />
  */
 

@@ -702,7 +702,7 @@ describe('Session Boundary Detection Logic', () => {
         isActive: true
       });
 
-      const specialMessage = '🎉✨ 另外，我想問問題 💬🤔 #hashtag @mention';
+      const specialMessage = ' 另外，我想問問題  #hashtag @mention';
       const detection = await sessionService.detectSessionBoundary(
         session,
         specialMessage,

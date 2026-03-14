@@ -250,7 +250,7 @@ describe('SidebarWidgets.vue', () => {
     it('应该处理只包含空白字符的插槽', () => {
       const wrapper = mount(SidebarWidgets, {
         slots: {
-          'quick-actions': '   \n   '
+          'quick-actions': ' \n '
         }
       })
 

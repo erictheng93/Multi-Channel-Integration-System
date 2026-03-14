@@ -1,15 +1,15 @@
 /**
- * 🚀 Cloudflare Query Plugin for Pinia
+ * Cloudflare Query Plugin for Pinia
  *
  * 結合 TanStack Query 概念與 Cloudflare 生態系統
  * 提供多租戶隔離、容錯機制、Edge 優化
  *
  * 核心特性:
- * - ✅ 自動租戶隔離 (基於 currentTeamId)
- * - ✅ KV 緩存持久化 (stale-while-revalidate)
- * - ✅ 重試機制 (exponential backoff)
- * - ✅ 多層降級策略
- * - ✅ Edge 環境優化
+ * -  自動租戶隔離 (基於 currentTeamId)
+ * -  KV 緩存持久化 (stale-while-revalidate)
+ * -  重試機制 (exponential backoff)
+ * -  多層降級策略
+ * -  Edge 環境優化
  */
 
 import type { PiniaPluginContext } from 'pinia'

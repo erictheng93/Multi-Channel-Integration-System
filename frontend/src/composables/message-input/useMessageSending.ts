@@ -52,11 +52,11 @@ export interface MessageSendingOptions {
 
 /**
  * Orchestrates the full message-sending flow:
- *   1. Generate tempId / correlationId
- *   2. Emit optimistic `message-pending`
- *   3. Upload attachments in parallel with progress
- *   4. POST to /api/customer-conversations/:id/messages
- *   5. Emit `message-confirmed` or `message-failed`
+ * 1. Generate tempId / correlationId
+ * 2. Emit optimistic `message-pending`
+ * 3. Upload attachments in parallel with progress
+ * 4. POST to /api/customer-conversations/:id/messages
+ * 5. Emit `message-confirmed` or `message-failed`
  */
 export function useMessageSending(options: MessageSendingOptions) {
   const authStore = useAuthStore()
@@ -178,7 +178,7 @@ export function useMessageSending(options: MessageSendingOptions) {
           }
         }
 
-        console.log(`🚀 [並行上傳] ${totalFiles} 個文件全部上傳完成`)
+        console.log(`[並行上傳] ${totalFiles} 個文件全部上傳完成`)
 
         options.emit('upload-progress', {
           tempId,

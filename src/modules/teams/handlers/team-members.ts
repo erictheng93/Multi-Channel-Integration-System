@@ -1,6 +1,6 @@
 // Team Member Management
 // Handles: GET/POST /:id/members, POST /:id/members/batch,
-//          POST /:id/members/bulk-remove, PUT/DELETE /:id/members/:agentId
+// POST /:id/members/bulk-remove, PUT/DELETE /:id/members/:agentId
 
 import { Hono } from 'hono';
 import { TeamService } from '@modules/teams/services/team-service';

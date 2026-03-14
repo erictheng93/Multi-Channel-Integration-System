@@ -72,7 +72,7 @@ export class WebSocketAuthService {
     // Clean up expired challenges
     this.cleanupExpiredChallenges();
 
-    console.log(`🔐 [WebSocketAuth] Challenge generated for user ${userId}: ${challengeId}`);
+    console.log(`[WebSocketAuth] Challenge generated for user ${userId}: ${challengeId}`);
     return challenge;
   }
 
@@ -91,12 +91,12 @@ export class WebSocketAuthService {
       // Check if challenge exists and is not expired
       const challenge = this.challenges.get(challengeId);
       if (!challenge) {
-        console.log(`❌ [WebSocketAuth] Invalid challenge ID: ${challengeId}`);
+        console.log(`[WebSocketAuth] Invalid challenge ID: ${challengeId}`);
         return { isValid: false };
       }
 
       if (nowMs() > challenge.expiresAt) {
-        console.log(`❌ [WebSocketAuth] Expired challenge: ${challengeId}`);
+        console.log(`[WebSocketAuth] Expired challenge: ${challengeId}`);
         this.challenges.delete(challengeId);
         return { isValid: false };
       }
@@ -104,21 +104,21 @@ export class WebSocketAuthService {
       // Verify JWT token
       const payload = await verifyJWT(token, this.env.JWT_SECRET);
       if (!payload) {
-        console.log(`❌ [WebSocketAuth] Invalid JWT token`);
+        console.log(`[WebSocketAuth] Invalid JWT token`);
         return { isValid: false };
       }
 
       // Verify signature (HMAC of challengeId + token)
       const expectedSignature = await this.generateSignature(challengeId, token);
       if (signature !== expectedSignature) {
-        console.log(`❌ [WebSocketAuth] Invalid signature`);
+        console.log(`[WebSocketAuth] Invalid signature`);
         return { isValid: false };
       }
 
       // Clean up used challenge
       this.challenges.delete(challengeId);
 
-      console.log(`✅ [WebSocketAuth] Authentication successful for user ${payload.userId}`);
+      console.log(`[WebSocketAuth] Authentication successful for user ${payload.userId}`);
 
       const result: { isValid: boolean; userId?: string; role?: string; teamId?: number; } = {
         isValid: true,
@@ -133,7 +133,7 @@ export class WebSocketAuthService {
       return result;
 
     } catch (error) {
-      console.error('❌ [WebSocketAuth] Verification error:', error);
+      console.error('[WebSocketAuth] Verification error:', error);
       return { isValid: false };
     }
   }
@@ -184,7 +184,7 @@ export class WebSocketAuthService {
       exp: Math.floor(Date.now() / 1000) + 60 // 1 minute
     };
 
-    // ✅ 使用 UTF-8 安全的編碼函數
+    // 使用 UTF-8 安全的編碼函數
     return base64Encode(JSON.stringify(payload));
   }
 
@@ -197,7 +197,7 @@ export class WebSocketAuthService {
     challengeId?: string;
   }> {
     try {
-      // ✅ 使用 UTF-8 安全的解碼函數
+      // 使用 UTF-8 安全的解碼函數
       const payload = JSON.parse(base64Decode(token));
 
       if (payload.exp < Math.floor(Date.now() / 1000)) {
@@ -260,7 +260,7 @@ export class WebSocketAuthService {
       // Remove duplicates
       const uniqueIds = [...new Set(conversationIds)];
 
-      console.log(`📋 [WebSocketAuth] Agent ${agentId} has access to ${uniqueIds.length} conversations`);
+      console.log(`[WebSocketAuth] Agent ${agentId} has access to ${uniqueIds.length} conversations`);
       return uniqueIds;
     } catch (error) {
       console.error('[WebSocketAuth] Error fetching agent conversations:', error);
@@ -287,7 +287,7 @@ export class WebSocketAuthService {
       // Try cache first
       const cached = await this.cache.get(cacheKey, 'json');
       if (cached && Array.isArray(cached)) {
-        console.log(`💾 [WebSocketAuth] Cache hit for agent ${agentId} conversations`);
+        console.log(`[WebSocketAuth] Cache hit for agent ${agentId} conversations`);
         return cached as string[];
       }
     } catch (cacheError) {
@@ -302,7 +302,7 @@ export class WebSocketAuthService {
       await this.cache.put(cacheKey, JSON.stringify(conversationIds), {
         expirationTtl: this.CONVERSATION_CACHE_TTL
       });
-      console.log(`💾 [WebSocketAuth] Cached ${conversationIds.length} conversations for agent ${agentId}`);
+      console.log(`[WebSocketAuth] Cached ${conversationIds.length} conversations for agent ${agentId}`);
     } catch (cacheError) {
       console.warn('[WebSocketAuth] Cache write error:', cacheError);
     }
@@ -322,7 +322,7 @@ export class WebSocketAuthService {
   ): Promise<boolean> {
     // Admins have access to all conversations
     if (userRole === 'admin') {
-      console.log(`✅ [WebSocketAuth] Admin ${userId} granted access to conversation ${conversationId}`);
+      console.log(`[WebSocketAuth] Admin ${userId} granted access to conversation ${conversationId}`);
       return true;
     }
 
@@ -331,9 +331,9 @@ export class WebSocketAuthService {
     const hasAccess = allowedConversations.includes(conversationId);
 
     if (hasAccess) {
-      console.log(`✅ [WebSocketAuth] Agent ${userId} granted access to conversation ${conversationId}`);
+      console.log(`[WebSocketAuth] Agent ${userId} granted access to conversation ${conversationId}`);
     } else {
-      console.log(`❌ [WebSocketAuth] Agent ${userId} denied access to conversation ${conversationId}`);
+      console.log(`[WebSocketAuth] Agent ${userId} denied access to conversation ${conversationId}`);
     }
 
     return hasAccess;
@@ -352,7 +352,7 @@ export class WebSocketAuthService {
 
     try {
       await this.cache.delete(cacheKey);
-      console.log(`🗑️  [WebSocketAuth] Invalidated conversation cache for agent ${agentId}`);
+      console.log(`  [WebSocketAuth] Invalidated conversation cache for agent ${agentId}`);
     } catch (error) {
       console.error('[WebSocketAuth] Failed to invalidate cache:', error);
     }

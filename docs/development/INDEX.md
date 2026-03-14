@@ -1,4 +1,4 @@
-# 💻 Development Documentation
+#  Development Documentation
 
 > Developer guides, testing infrastructure, and component documentation.
 

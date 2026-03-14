@@ -12,12 +12,12 @@ import type { RecentActivity } from '@/components/reports/dashboard/RecentActivi
 describe('RecentActivityWidget.vue', () => {
   const mockGetStatusIcon = vi.fn((status) => {
     const icons: Record<string, string> = {
-      'completed': '✅',
-      'generating': '⚙️',
-      'failed': '❌',
-      'pending': '⏳'
+      'completed': '',
+      'generating': '',
+      'failed': '',
+      'pending': ''
     }
-    return icons[status] || '❓'
+    return icons[status] || ''
   })
 
   const mockFormatRelativeTime = vi.fn((_time) => {
@@ -67,7 +67,7 @@ describe('RecentActivityWidget.vue', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('📝 最近活動')
+      expect(wrapper.text()).toContain('最近活動')
     })
 
     it('应该显示活动数量标签', () => {

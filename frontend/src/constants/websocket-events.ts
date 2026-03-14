@@ -67,9 +67,9 @@ export const WS_EVENTS = {
  * import { WS_EVENTS, type WebSocketEventType } from '@/constants/websocket-events';
  *
  * function handleEvent(type: WebSocketEventType, payload: unknown) {
- *   if (type === WS_EVENTS.NEW_MESSAGE) {
- *     // Type-safe event handling
- *   }
+ * if (type === WS_EVENTS.NEW_MESSAGE) {
+ * // Type-safe event handling
+ * }
  * }
  * ```
  */

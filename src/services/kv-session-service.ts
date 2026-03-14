@@ -4,7 +4,7 @@ import { nowMs } from '@/utils/timestamp'
  *
  * Handles session storage and validation using Cloudflare KV
  *
- * ⚡ OPTIMIZED: KV Write-Free Architecture (v2.0)
+ * OPTIMIZED: KV Write-Free Architecture (v2.0)
  * - Relies on Cloudflare KV's expirationTtl for automatic cleanup
  * - Read-only validation (no KV writes on validation)
  * - Reduces KV writes by 100% (only writes on login/logout)
@@ -12,15 +12,15 @@ import { nowMs } from '@/utils/timestamp'
  *
  * Session Key Format: `session:{sessionId}`
  * Session Data Structure: {
- *   userId: string,
- *   displayName: string,
- *   email: string,
- *   role: 'admin' | 'agent' | 'customer',
- *   teamId?: number,
- *   platform?: 'line' | 'facebook' | 'whatsapp',  // For customer sessions
- *   platformUserId?: string,  // For customer sessions
- *   createdAt: number,
- *   metadata?: any
+ * userId: string,
+ * displayName: string,
+ * email: string,
+ * role: 'admin' | 'agent' | 'customer',
+ * teamId?: number,
+ * platform?: 'line' | 'facebook' | 'whatsapp',  // For customer sessions
+ * platformUserId?: string,  // For customer sessions
+ * createdAt: number,
+ * metadata?: any
  * }
  */
 
@@ -38,8 +38,8 @@ export interface SessionData {
 
   // Session metadata
   createdAt: number;
-  // ❌ Removed: expiresAt - managed by KV expirationTtl
-  // ❌ Removed: lastActivity - not needed for KV-based expiration
+  // Removed: expiresAt - managed by KV expirationTtl
+  // Removed: lastActivity - not needed for KV-based expiration
   ipAddress?: string;
   userAgent?: string;
   metadata?: Record<string, any>;
@@ -48,7 +48,7 @@ export interface SessionData {
 export interface SessionValidationResult {
   valid: boolean;
   session?: SessionData;
-  error?: 'not_found' | 'invalid_format';  // ❌ Removed: 'expired' - KV handles expiration
+  error?: 'not_found' | 'invalid_format';  //  Removed: 'expired' - KV handles expiration
 }
 
 export interface CreateSessionOptions {
@@ -73,7 +73,7 @@ export interface CreateSessionOptions {
 interface SessionCacheEntry {
   session: SessionData;
   cachedAt: number;
-  // ❌ Removed: lastWrittenAt - no longer tracking KV writes
+  // Removed: lastWrittenAt - no longer tracking KV writes
 }
 
 export class KVSessionService {
@@ -105,7 +105,7 @@ export class KVSessionService {
   /**
    * Create a new session in KV
    *
-   * ⚡ OPTIMIZED: Write-once strategy
+   * OPTIMIZED: Write-once strategy
    * - Only writes to KV on session creation
    * - Relies on expirationTtl for automatic cleanup
    * - No subsequent KV writes during validation
@@ -127,8 +127,8 @@ export class KVSessionService {
       platformUserId: options.platformUserId,
       customerId: options.customerId,
       createdAt: now,
-      // ❌ Removed: expiresAt - Cloudflare KV manages expiration via expirationTtl
-      // ❌ Removed: lastActivity - Not needed for KV-based expiration
+      // Removed: expiresAt - Cloudflare KV manages expiration via expirationTtl
+      // Removed: lastActivity - Not needed for KV-based expiration
       ipAddress: options.ipAddress,
       userAgent: options.userAgent,
       metadata: options.metadata || {},
@@ -147,7 +147,7 @@ export class KVSessionService {
   /**
    * Validate and retrieve a session
    *
-   * ⚡ OPTIMIZED v2.0: Zero KV writes during validation
+   * OPTIMIZED v2.0: Zero KV writes during validation
    * - Pure read operation - no KV writes
    * - Relies on Cloudflare KV's automatic expiration
    * - Uses in-memory cache to reduce KV reads (5-minute TTL)
@@ -166,7 +166,7 @@ export class KVSessionService {
       // ===== Step 1: Check in-memory cache first =====
       const cached = KVSessionService.sessionCache.get(sessionId);
       if (cached && (now - cached.cachedAt) < this.MEMORY_CACHE_TTL) {
-        // ✅ Cache hit - return immediately without KV read or write
+        // Cache hit - return immediately without KV read or write
         return { valid: true, session: cached.session };
       }
 
@@ -190,7 +190,7 @@ export class KVSessionService {
       };
       this.addToCache(sessionId, cacheEntry);
 
-      // ✅ Return session without any KV writes
+      // Return session without any KV writes
       return { valid: true, session };
     } catch (error) {
       console.error(`[KVSessionService] Error validating session ${sessionId}:`, error);
@@ -232,7 +232,7 @@ export class KVSessionService {
   /**
    * Update session data
    *
-   * ⚠️ CAUTION: This writes to KV
+   * CAUTION: This writes to KV
    * Use sparingly - prefer immutable sessions when possible
    */
   async updateSession(
@@ -249,7 +249,7 @@ export class KVSessionService {
     const updatedSession: SessionData = {
       ...session,
       ...updates,
-      // ❌ Removed: lastActivity update
+      // Removed: lastActivity update
     };
 
     const key = this.getSessionKey(sessionId);
@@ -291,7 +291,7 @@ export class KVSessionService {
   /**
    * Extend session expiration
    *
-   * ⚠️ CAUTION: This writes to KV
+   * CAUTION: This writes to KV
    * Extends the session TTL by writing with new expirationTtl
    */
   async extendSession(
@@ -305,7 +305,7 @@ export class KVSessionService {
 
     const now = nowMs();
     const session = validation.session;
-    // ❌ Removed: expiresAt and lastActivity updates
+    // Removed: expiresAt and lastActivity updates
 
     const key = this.getSessionKey(sessionId);
     await this.kv.put(key, JSON.stringify(session), {
@@ -446,7 +446,7 @@ export class KVSessionService {
   /**
    * Clean up invalid sessions (maintenance function)
    *
-   * ⚠️ NOTE: Cloudflare KV automatically deletes expired keys via expirationTtl
+   * NOTE: Cloudflare KV automatically deletes expired keys via expirationTtl
    * This method only cleans up sessions with invalid data format
    * Use sparingly - KV list operations are costly
    */

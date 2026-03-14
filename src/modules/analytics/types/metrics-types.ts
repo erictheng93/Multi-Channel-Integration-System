@@ -34,11 +34,11 @@ export type MetricUnit =
  * 指標類型分類
  */
 export type MetricType =
-  | 'counter'      // 計數器（只增不減）
-  | 'gauge'        // 測量值（可增可減）
-  | 'histogram'    // 直方圖
-  | 'rate'         // 比率
-  | 'duration'     // 持續時間
+  | 'counter' // 計數器（只增不減）
+  | 'gauge' // 測量值（可增可減）
+  | 'histogram' // 直方圖
+  | 'rate' // 比率
+  | 'duration' // 持續時間
   | 'distribution'; // 分佈
 
 /**
@@ -72,11 +72,11 @@ export type AggregationType =
  * 資料保留政策
  */
 export interface RetentionPolicy {
-  raw: number;       // 原始數據保留天數
-  hourly: number;    // 小時聚合保留天數
-  daily: number;     // 日聚合保留天數
-  weekly: number;    // 週聚合保留天數
-  monthly: number;   // 月聚合保留天數
+  raw: number; // 原始數據保留天數
+  hourly: number; // 小時聚合保留天數
+  daily: number; // 日聚合保留天數
+  weekly: number; // 週聚合保留天數
+  monthly: number; // 月聚合保留天數
 }
 
 /**
@@ -133,13 +133,13 @@ export interface AggregatedMetric {
  * 聚合週期
  */
 export type AggregationPeriod =
-  | '1m'   // 1分鐘
-  | '5m'   // 5分鐘
+  | '1m' // 1分鐘
+  | '5m' // 5分鐘
   | '15m'  // 15分鐘
-  | '1h'   // 1小時
-  | '6h'   // 6小時
-  | '1d'   // 1天
-  | '1w'   // 1週
+  | '1h' // 1小時
+  | '6h' // 6小時
+  | '1d' // 1天
+  | '1w' // 1週
   | '1M';  // 1月
 
 /**

@@ -25,11 +25,11 @@ const lineWebhookUrl = getWebhookUrl(env, 'line');
 const allWebhooks = getAllWebhookUrls(env);
 console.log(allWebhooks);
 // {
-//   line: 'https://your-api-domain.example.com/webhooks/line',
-//   facebook: 'https://your-api-domain.example.com/webhooks/facebook',
-//   whatsapp: 'https://your-api-domain.example.com/webhooks/whatsapp',
-//   telegram: 'https://your-api-domain.example.com/webhooks/telegram',
-//   instagram: 'https://your-api-domain.example.com/webhooks/instagram'
+// line: 'https://your-api-domain.example.com/webhooks/line',
+// facebook: 'https://your-api-domain.example.com/webhooks/facebook',
+// whatsapp: 'https://your-api-domain.example.com/webhooks/whatsapp',
+// telegram: 'https://your-api-domain.example.com/webhooks/telegram',
+// instagram: 'https://your-api-domain.example.com/webhooks/instagram'
 // }
 ```
 
@@ -94,10 +94,10 @@ import { getWebhookConfig } from '@/services/webhook-url-service';
 const config = getWebhookConfig(c.env, 'line');
 console.log(config);
 // {
-//   baseUrl: 'https://your-api-domain.example.com',
-//   path: '/webhooks/line',
-//   fullUrl: 'https://your-api-domain.example.com/webhooks/line',
-//   environment: 'production'
+// baseUrl: 'https://your-api-domain.example.com',
+// path: '/webhooks/line',
+// fullUrl: 'https://your-api-domain.example.com/webhooks/line',
+// environment: 'production'
 // }
 ```
 
@@ -116,11 +116,11 @@ import { getAllWebhookUrls } from '@/services/webhook-url-service';
 
 const webhooks = getAllWebhookUrls(c.env);
 // {
-//   line: '...',
-//   facebook: '...',
-//   whatsapp: '...',
-//   telegram: '...',
-//   instagram: '...'
+// line: '...',
+// facebook: '...',
+// whatsapp: '...',
+// telegram: '...',
+// instagram: '...'
 // }
 ```
 
@@ -150,7 +150,7 @@ Check if a URL is a valid webhook URL format.
 import { isValidWebhookUrl } from '@/services/webhook-url-service';
 
 isValidWebhookUrl('https://example.com/webhooks/line');  // true
-isValidWebhookUrl('invalid-url');                         // false
+isValidWebhookUrl('invalid-url'); // false
 ```
 
 #### `extractPlatformFromUrl(url)`
@@ -161,8 +161,8 @@ Extract platform identifier from a webhook URL.
 ```typescript
 import { extractPlatformFromUrl } from '@/services/webhook-url-service';
 
-extractPlatformFromUrl('https://example.com/webhooks/line');    // 'line'
-extractPlatformFromUrl('https://example.com/api/users');         // null
+extractPlatformFromUrl('https://example.com/webhooks/line'); // 'line'
+extractPlatformFromUrl('https://example.com/api/users'); // null
 ```
 
 #### `compareWebhookUrls(url1, url2)`
@@ -340,7 +340,7 @@ Extract domain from URL.
 import { extractDomain } from '@/services/url-validation-service';
 
 extractDomain('https://api.example.com/webhooks/line');  // 'example.com'
-extractDomain('https://localhost:8787/api');              // 'localhost'
+extractDomain('https://localhost:8787/api'); // 'localhost'
 ```
 
 ## Common Use Cases

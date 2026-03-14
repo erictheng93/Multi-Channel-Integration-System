@@ -11,11 +11,11 @@
  *
  * @example
  * const {
- *   reports,
- *   stats,
- *   pagination,
- *   loadReports,
- *   deleteReport
+ * reports,
+ * stats,
+ * pagination,
+ * loadReports,
+ * deleteReport
  * } = useReportDashboard()
  */
 
@@ -161,7 +161,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
     return [
       {
         category: 'basic',
-        title: '📊 基礎報表',
+        title: ' 基礎報表',
         types: types.filter(t =>
           [
             'conversation_summary',
@@ -179,7 +179,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
       },
       {
         category: 'enterprise',
-        title: '👑 企業級報表',
+        title: ' 企業級報表',
         types: types.filter(t =>
           [
             'cost_analysis',
@@ -192,7 +192,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
       },
       {
         category: 'business_intelligence',
-        title: '📈 商業智能',
+        title: ' 商業智能',
         types: types.filter(t =>
           [
             'trend_forecast',
@@ -205,7 +205,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
       },
       {
         category: 'advanced_analytics',
-        title: '🔬 高級分析',
+        title: ' 高級分析',
         types: types.filter(t =>
           ['security_risk', 'knowledge_base', 'call_quality', 'executive_summary'].includes(
             t.value
@@ -543,32 +543,32 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
    */
   function getReportTypeIcon(type: ReportType): string {
     const iconMap: Record<ReportType, string> = {
-      conversation_summary: '💬',
-      agent_performance: '👤',
-      team_analytics: '👥',
-      customer_satisfaction: '😊',
-      platform_usage: '📱',
-      message_statistics: '📊',
-      response_time_analysis: '⏱️',
-      workload_distribution: '⚖️',
-      system_health: '🏥',
-      custom: '🔧',
-      cost_analysis: '💰',
-      sla_compliance: '⚖️',
-      anomaly_detection: '🚨',
-      audit_trail: '📋',
-      resource_utilization: '⚡',
-      trend_forecast: '📈',
-      customer_insights: '💡',
-      channel_integration: '🌐',
-      goal_achievement: '🎯',
-      automation_effectiveness: '🤖',
-      security_risk: '🔒',
-      knowledge_base: '📚',
-      call_quality: '📞',
-      executive_summary: '💼'
+      conversation_summary: '',
+      agent_performance: '',
+      team_analytics: '',
+      customer_satisfaction: '',
+      platform_usage: '',
+      message_statistics: '',
+      response_time_analysis: '',
+      workload_distribution: '',
+      system_health: '',
+      custom: '',
+      cost_analysis: '',
+      sla_compliance: '',
+      anomaly_detection: '',
+      audit_trail: '',
+      resource_utilization: '',
+      trend_forecast: '',
+      customer_insights: '',
+      channel_integration: '',
+      goal_achievement: '',
+      automation_effectiveness: '',
+      security_risk: '',
+      knowledge_base: '',
+      call_quality: '',
+      executive_summary: ''
     }
-    return iconMap[type] || '📊'
+    return iconMap[type] || ''
   }
 
   /**
@@ -603,13 +603,13 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
    */
   function getStatusIcon(status: ReportStatus): string {
     const statusMap = {
-      pending: '⏳',
-      generating: '⚙️',
-      completed: '✅',
-      failed: '❌',
-      expired: '⏰'
+      pending: '',
+      generating: '',
+      completed: '',
+      failed: '',
+      expired: ''
     }
-    return statusMap[status] || '❓'
+    return statusMap[status] || ''
   }
 
   /**
@@ -645,13 +645,13 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
    */
   function getFormatIcon(format: ReportFormat): string {
     const formatMap = {
-      json: '📄',
-      csv: '📊',
-      excel: '📗',
-      pdf: '📕',
-      html: '🌐'
+      json: '',
+      csv: '',
+      excel: '',
+      pdf: '',
+      html: ''
     }
-    return formatMap[format] || '📄'
+    return formatMap[format] || ''
   }
 
   /**
@@ -673,13 +673,13 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
    */
   function getActivityIcon(action: string): string {
     const actionMap: Record<string, string> = {
-      已生成: '✨',
-      已下載: '📥',
-      已刪除: '🗑️',
-      已分享: '🔗',
-      已匯出: '📤'
+      已生成: '',
+      已下載: '',
+      已刪除: '',
+      已分享: '',
+      已匯出: ''
     }
-    return actionMap[action] || '📋'
+    return actionMap[action] || ''
   }
 
   /**

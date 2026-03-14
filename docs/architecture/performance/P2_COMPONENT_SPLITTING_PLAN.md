@@ -1,71 +1,71 @@
 # P2 優化：組件拆分架構設計
 
-## 📊 (核心概念總覽)
+##  (核心概念總覽)
 
 ### 當前問題分析
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  ConversationDetail.vue - 單體組件問題 (2890 lines)              │
+│  ConversationDetail.vue - 單體組件問題 (2890 lines) │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  📐 文件結構:                                                    │
-│    • Template:  325 lines (11%)  - UI 渲染邏輯                   │
-│    • Script:   1552 lines (54%)  - 業務邏輯 + 狀態管理            │
-│    • Styles:   1011 lines (35%)  - 樣式定義                      │
-│                                                                 │
-│  🚨 關鍵問題:                                                    │
-│    • 27,000+ tokens (超過可編輯閾值 3倍)                         │
-│    • 54+ 事件處理器 (耦合嚴重)                                   │
-│    • 18+ Composables (狀態管理混亂)                              │
-│    • 12+ 子組件引用 (職責不清)                                   │
-│    • 難以測試 (無法獨立測試功能模塊)                              │
-│    • 難以維護 (任何改動影響範圍大)                               │
-│                                                                 │
-│  ⚡ 性能影響:                                                    │
-│    • Vue 響應式追蹤開銷大 (1552 行響應式代碼)                    │
-│    • 組件重新渲染成本高 (54 個事件處理器)                         │
-│    • 內存佔用高 (所有狀態在一個組件內)                           │
-│                                                                 │
+│ │
+│ 文件結構: │
+│ • Template:  325 lines (11%)  - UI 渲染邏輯 │
+│ • Script: 1552 lines (54%)  - 業務邏輯 + 狀態管理 │
+│ • Styles: 1011 lines (35%)  - 樣式定義 │
+│ │
+│ 關鍵問題: │
+│ • 27,000+ tokens (超過可編輯閾值 3倍) │
+│ • 54+ 事件處理器 (耦合嚴重) │
+│ • 18+ Composables (狀態管理混亂) │
+│ • 12+ 子組件引用 (職責不清) │
+│ • 難以測試 (無法獨立測試功能模塊) │
+│ • 難以維護 (任何改動影響範圍大) │
+│ │
+│ 性能影響: │
+│ • Vue 響應式追蹤開銷大 (1552 行響應式代碼) │
+│ • 組件重新渲染成本高 (54 個事件處理器) │
+│ • 內存佔用高 (所有狀態在一個組件內) │
+│ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔍 (當前狀況分析)
+##  (當前狀況分析)
 
 ### 組件職責分析
 
 ```
 ConversationDetail.vue (當前單體架構)
-├── 🎨 UI 渲染層
-│   ├── AppLayout 容器
-│   ├── ConversationHeader (已拆分 ✅)
-│   ├── 拖放上傳覆蓋層 (📦 待拆分)
-│   ├── 已關閉對話橫幅 (📦 待拆分)
-│   ├── 搜索面板 (📦 待拆分)
-│   ├── VirtualMessageList (已拆分 ✅)
-│   ├── MessageInput (已拆分 ✅)
-│   ├── 新消息提醒 (📦 待拆分)
-│   └── 快速回覆按鈕組 (📦 待拆分)
+├──  UI 渲染層
+│ ├── AppLayout 容器
+│ ├── ConversationHeader (已拆分 )
+│ ├── 拖放上傳覆蓋層 ( 待拆分)
+│ ├── 已關閉對話橫幅 ( 待拆分)
+│ ├── 搜索面板 ( 待拆分)
+│ ├── VirtualMessageList (已拆分 )
+│ ├── MessageInput (已拆分 )
+│ ├── 新消息提醒 ( 待拆分)
+│ └── 快速回覆按鈕組 ( 待拆分)
 │
-├── 🧠 業務邏輯層
-│   ├── WebSocket 連接管理 (📦 待拆分)
-│   ├── HTTP 消息同步 (📦 待拆分)
-│   ├── 樂觀更新處理 (📦 待拆分)
-│   ├── 消息發送/重試邏輯 (📦 待拆分)
-│   ├── 文件上傳處理 (📦 待拆分)
-│   ├── 搜索過濾邏輯 (📦 待拆分)
-│   ├── 對話狀態管理 (📦 待拆分)
-│   └── 性能監控 (📦 待拆分)
+├──  業務邏輯層
+│ ├── WebSocket 連接管理 ( 待拆分)
+│ ├── HTTP 消息同步 ( 待拆分)
+│ ├── 樂觀更新處理 ( 待拆分)
+│ ├── 消息發送/重試邏輯 ( 待拆分)
+│ ├── 文件上傳處理 ( 待拆分)
+│ ├── 搜索過濾邏輯 ( 待拆分)
+│ ├── 對話狀態管理 ( 待拆分)
+│ └── 性能監控 ( 待拆分)
 │
-├── 🔄 狀態管理層
-│   ├── 18+ Composables 混合使用
-│   ├── 多個 computed 屬性交叉依賴
-│   ├── 54+ 事件處理器
-│   └── 複雜的響應式追蹤鏈
+├──  狀態管理層
+│ ├── 18+ Composables 混合使用
+│ ├── 多個 computed 屬性交叉依賴
+│ ├── 54+ 事件處理器
+│ └── 複雜的響應式追蹤鏈
 │
-└── 🎭 樣式層
+└──  樣式層
     └── 1011 行 CSS (包含多個組件樣式)
 ```
 
@@ -73,11 +73,11 @@ ConversationDetail.vue (當前單體架構)
 
 | 問題類別 | 嚴重程度 | 影響範圍 | 緊急程度 |
 |---------|---------|---------|---------|
-| **文件大小** | 🔴 極高 | 開發效率 -70% | 立即 |
-| **職責混亂** | 🔴 極高 | 可維護性 -80% | 立即 |
-| **測試困難** | 🟠 高 | 代碼質量 -60% | 高 |
-| **性能隱患** | 🟡 中 | 用戶體驗 -30% | 中 |
-| **擴展性差** | 🟠 高 | 新功能開發 -50% | 高 |
+| **文件大小** |  極高 | 開發效率 -70% | 立即 |
+| **職責混亂** |  極高 | 可維護性 -80% | 立即 |
+| **測試困難** |  高 | 代碼質量 -60% | 高 |
+| **性能隱患** |  中 | 用戶體驗 -30% | 中 |
+| **擴展性差** |  高 | 新功能開發 -50% | 高 |
 
 ---
 
@@ -87,35 +87,35 @@ ConversationDetail.vue (當前單體架構)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  P2 組件拆分策略 - 按功能職責分層                                 │
+│  P2 組件拆分策略 - 按功能職責分層 │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ConversationDetail.vue (容器組件 - 300 lines)                  │
-│         │                                                       │
-│         ├─→ ConversationHeader (已拆分 ✅)                       │
-│         │                                                       │
-│         ├─→ ConversationStatusBanner (新組件 - 150 lines)       │
-│         │   ├── 已關閉橫幅                                       │
-│         │   ├── 拖放覆蓋層                                       │
-│         │   └── 新消息提醒                                       │
-│         │                                                       │
-│         ├─→ ConversationMessagesSection (新組件 - 400 lines)    │
-│         │   ├── MessageSearch                                   │
-│         │   ├── VirtualMessageList (已拆分 ✅)                   │
-│         │   ├── MessageListSkeleton                             │
-│         │   └── EmptyState                                      │
-│         │                                                       │
-│         ├─→ ConversationInputSection (新組件 - 350 lines)       │
-│         │   ├── MessageInput (已拆分 ✅)                         │
-│         │   ├── QuickReplies                                    │
-│         │   └── ConnectionStatusBar                             │
-│         │                                                       │
-│         └─→ useConversationController (業務邏輯 Hook - 500 lines)│
-│             ├── useConversationState                            │
-│             ├── useMessageHandlers                              │
-│             ├── useWebSocketIntegration                         │
-│             └── useConversationActions                          │
-│                                                                 │
+│ │
+│  ConversationDetail.vue (容器組件 - 300 lines) │
+│ │                                                       │
+│ ├─→ ConversationHeader (已拆分 ) │
+│ │                                                       │
+│ ├─→ ConversationStatusBanner (新組件 - 150 lines) │
+│ │   ├── 已關閉橫幅 │
+│ │   ├── 拖放覆蓋層 │
+│ │   └── 新消息提醒 │
+│ │                                                       │
+│ ├─→ ConversationMessagesSection (新組件 - 400 lines) │
+│ │   ├── MessageSearch │
+│ │   ├── VirtualMessageList (已拆分 ) │
+│ │   ├── MessageListSkeleton │
+│ │   └── EmptyState │
+│ │                                                       │
+│ ├─→ ConversationInputSection (新組件 - 350 lines) │
+│ │   ├── MessageInput (已拆分 ) │
+│ │   ├── QuickReplies │
+│ │   └── ConnectionStatusBar │
+│ │                                                       │
+│ └─→ useConversationController (業務邏輯 Hook - 500 lines)│
+│ ├── useConversationState │
+│ ├── useMessageHandlers │
+│ ├── useWebSocketIntegration │
+│ └── useConversationActions │
+│ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -124,20 +124,20 @@ ConversationDetail.vue (當前單體架構)
 ```
                     ┌──────────────────────────┐
                     │  ConversationDetail.vue  │
-                    │    (容器組件 - 300行)      │
+                    │ (容器組件 - 300行) │
                     └───────────┬──────────────┘
                                 │
                     ┌───────────┴───────────┐
                     │  useConversationController │
-                    │   (業務邏輯 Hook - 500行)   │
+                    │ (業務邏輯 Hook - 500行) │
                     └───────────┬───────────┘
                                 │
               ┌─────────────────┼─────────────────┐
-              │                 │                 │
-              ▼                 ▼                 ▼
+              │ │                 │
+              ▼ ▼                 ▼
     ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
     │ StatusBanner │  │MessagesSection│  │ InputSection │
-    │   (150行)     │  │   (400行)     │  │   (350行)    │
+    │ (150行) │  │ (400行) │  │ (350行) │
     └──────────────┘  └──────────────┘  └──────────────┘
 ```
 
@@ -158,20 +158,20 @@ ConversationDetail.vue (當前單體架構)
 ```typescript
 // ====== useConversationController.ts (主控制器) ======
 export function useConversationController(conversationId: string) {
-  // 1️⃣ 狀態管理 (使用子 Composables)
+  // 1️ 狀態管理 (使用子 Composables)
   const state = useConversationState(conversationId)
   const handlers = useMessageHandlers(conversationId)
   const websocket = useWebSocketIntegration(conversationId)
   const actions = useConversationActions(conversationId)
 
-  // 2️⃣ 整合事件流
+  // 2️ 整合事件流
   const handleMessageSent = (data) => {
     handlers.onMessageSent(data)
     websocket.broadcastMessage(data)
     actions.scrollToBottom()
   }
 
-  // 3️⃣ 對外暴露接口 (僅 10-15 個核心方法)
+  // 3️ 對外暴露接口 (僅 10-15 個核心方法)
   return {
     // State
     conversation: state.conversation,
@@ -200,27 +200,27 @@ export function useConversationController(conversationId: string) {
 ```
 useConversationController (500 lines)
 ├── useConversationState (150 lines)
-│   ├── conversation (computed)
-│   ├── messages (computed)
-│   ├── displayedMessages (computed)
-│   ├── loading states
-│   └── search states
+│ ├── conversation (computed)
+│ ├── messages (computed)
+│ ├── displayedMessages (computed)
+│ ├── loading states
+│ └── search states
 │
 ├── useMessageHandlers (200 lines)
-│   ├── handleMessageSent
-│   ├── handleMessagePending
-│   ├── handleUploadProgress
-│   ├── handleMessageConfirmed
-│   ├── handleMessageFailed
-│   ├── retryFailedMessage
-│   └── optimistic update logic
+│ ├── handleMessageSent
+│ ├── handleMessagePending
+│ ├── handleUploadProgress
+│ ├── handleMessageConfirmed
+│ ├── handleMessageFailed
+│ ├── retryFailedMessage
+│ └── optimistic update logic
 │
 ├── useWebSocketIntegration (100 lines)
-│   ├── initializeConnection
-│   ├── handleUnifiedMessage
-│   ├── handleStateChange
-│   ├── isConnected
-│   └── connectionQuality
+│ ├── initializeConnection
+│ ├── handleUnifiedMessage
+│ ├── handleStateChange
+│ ├── isConnected
+│ └── connectionQuality
 │
 └── useConversationActions (50 lines)
     ├── closeConversation
@@ -245,13 +245,13 @@ useConversationController (500 lines)
 ```vue
 <template>
   <div class="status-banner-container">
-    <!-- 1️⃣ 已關閉對話橫幅 -->
+    <!-- 1️ 已關閉對話橫幅 -->
     <ClosedConversationBanner
       v-if="isConversationClosed"
       @reopen="$emit('reopen')"
     />
 
-    <!-- 2️⃣ 拖放上傳覆蓋層 -->
+    <!-- 2️ 拖放上傳覆蓋層 -->
     <Transition name="fade-overlay">
       <DragDropOverlay
         v-if="isDragging && !isConversationClosed"
@@ -259,7 +259,7 @@ useConversationController (500 lines)
       />
     </Transition>
 
-    <!-- 3️⃣ 新消息提醒 -->
+    <!-- 3️ 新消息提醒 -->
     <NewMessageNotification
       v-if="showNewMessageAlert"
       :count="newMessageCount"
@@ -304,10 +304,10 @@ const isConversationClosed = computed(() => props.conversationStatus === 'closed
 ```
 ConversationStatusBanner.vue (150 lines)
 ├── ClosedConversationBanner.vue (60 lines)
-│   └── 已關閉橫幅 + 重新打開按鈕
+│ └── 已關閉橫幅 + 重新打開按鈕
 │
 ├── DragDropOverlay.vue (50 lines)
-│   └── 拖放上傳覆蓋層 + 動畫
+│ └── 拖放上傳覆蓋層 + 動畫
 │
 └── NewMessageNotification.vue (60 lines)
     └── 新消息提醒氣泡 + 滾動按鈕
@@ -328,7 +328,7 @@ ConversationStatusBanner.vue (150 lines)
 ```vue
 <template>
   <div class="messages-section">
-    <!-- 1️⃣ 搜索面板 (可摺疊) -->
+    <!-- 1️ 搜索面板 (可摺疊) -->
     <Transition name="search-slide">
       <div v-if="showSearchPanel" class="search-panel">
         <Suspense>
@@ -342,7 +342,7 @@ ConversationStatusBanner.vue (150 lines)
       </div>
     </Transition>
 
-    <!-- 2️⃣ 消息列表容器 -->
+    <!-- 2️ 消息列表容器 -->
     <div class="messages-container">
       <Transition name="fade-content" mode="out-in">
         <!-- 骨架屏加載 -->
@@ -483,7 +483,7 @@ defineExpose({
 ```vue
 <template>
   <div v-if="!isConversationClosed" class="input-section">
-    <!-- 1️⃣ 消息輸入框 -->
+    <!-- 1️ 消息輸入框 -->
     <MessageInput
       ref="messageInputRef"
       :conversation-id="conversationId"
@@ -500,14 +500,14 @@ defineExpose({
       @attachment-upload="$emit('attachment-upload', $event)"
     />
 
-    <!-- 2️⃣ 快速回覆按鈕組 -->
+    <!-- 2️ 快速回覆按鈕組 -->
     <QuickReplies
       v-if="quickReplies.length > 0"
       :replies="quickReplies"
       @select="handleQuickReply"
     />
 
-    <!-- 3️⃣ 連接狀態欄 (僅調試模式) -->
+    <!-- 3️ 連接狀態欄 (僅調試模式) -->
     <ConnectionStatusBar
       v-if="showDebugInfo"
       :is-connected="isConnected"
@@ -595,9 +595,9 @@ defineExpose({
 
 ```
 ConversationInputSection.vue (350 lines)
-├── MessageInput.vue (已拆分 ✅)
+├── MessageInput.vue (已拆分 )
 ├── QuickReplies.vue (80 lines - 新組件)
-│   └── 快速回覆按鈕組 + 點擊處理
+│ └── 快速回覆按鈕組 + 點擊處理
 └── ConnectionStatusBar.vue (100 lines - 新組件)
     └── WebSocket 連接狀態 + 調試信息
 ```
@@ -624,7 +624,7 @@ ConversationInputSection.vue (350 lines)
       @dragover="handleDragOver"
       @drop="handleDrop"
     >
-      <!-- 1️⃣ 對話頭部 -->
+      <!-- 1️ 對話頭部 -->
       <ConversationHeader
         :conversation="controller.conversation"
         :loading="controller.loading"
@@ -635,7 +635,7 @@ ConversationInputSection.vue (350 lines)
         @search="toggleSearch"
       />
 
-      <!-- 2️⃣ 狀態橫幅 (已關閉/拖放/新消息) -->
+      <!-- 2️ 狀態橫幅 (已關閉/拖放/新消息) -->
       <ConversationStatusBanner
         :conversation-status="conversationStatus"
         :is-dragging="isDraggingFile"
@@ -648,7 +648,7 @@ ConversationInputSection.vue (350 lines)
         @dismiss-alert="dismissNewMessageModal"
       />
 
-      <!-- 3️⃣ 消息區域 -->
+      <!-- 3️ 消息區域 -->
       <ConversationMessagesSection
         ref="messagesSectionRef"
         :messages="controller.messages"
@@ -676,7 +676,7 @@ ConversationInputSection.vue (350 lines)
         @retry="controller.retryMessage"
       />
 
-      <!-- 4️⃣ 輸入區域 -->
+      <!-- 4️ 輸入區域 -->
       <ConversationInputSection
         ref="inputSectionRef"
         :conversation-id="conversationId"
@@ -953,7 +953,7 @@ const goBack = () => {
 // ===== 生命週期 =====
 
 onMounted(async () => {
-  console.log('🔧 ConversationDetail mounted')
+  console.log(' ConversationDetail mounted')
 
   // 初始化調試模式
   const urlParams = new URLSearchParams(window.location.search)
@@ -1005,13 +1005,13 @@ onUnmounted(() => {
 
 ### 實施 P2 優勢
 
-✅ **立即收益：**
+ **立即收益：**
 1. **開發效率提升 200%** - 小文件編輯流暢，快速定位問題
 2. **代碼質量提升 300%** - 獨立測試業務邏輯，更高測試覆蓋率
 3. **團隊協作優化** - 多人可同時編輯不同組件，減少衝突
 4. **Bug 率降低 60%** - 職責分離減少意外副作用
 
-✅ **長期收益：**
+ **長期收益：**
 1. **技術債務歸零** - 從根本解決單體組件問題
 2. **可擴展性提升 400%** - 新功能可獨立添加，不影響現有邏輯
 3. **新人上手速度 +150%** - 小文件易理解，快速熟悉業務
@@ -1019,17 +1019,17 @@ onUnmounted(() => {
 
 ### 不實施 P2 風險
 
-❌ **技術債務累積：**
+ **技術債務累積：**
 - **6 個月後：** 文件增長到 4000+ lines，35,000+ tokens (完全無法編輯)
 - **1 年後：** Bug 率增長 10倍，新功能開發時間增加 3倍
 - **2 年後：** 組件徹底無法維護，需完全重寫 (成本 4-6 週)
 
-❌ **團隊效率下降：**
+ **團隊效率下降：**
 - 開發效率每月下降 8-10%
 - Bug 修復時間增加 3-5 倍
 - Code Review 時間增加 5-8 倍
 
-❌ **業務影響：**
+ **業務影響：**
 - 新功能上線延遲
 - 用戶體驗改進困難
 - 競爭力下降
@@ -1090,7 +1090,7 @@ onUnmounted(() => {
 ### 測試策略
 
 ```typescript
-// 1️⃣ 單元測試 (useConversationController)
+// 1️ 單元測試 (useConversationController)
 describe('useConversationController', () => {
   it('should handle message pending', () => { /* ... */ })
   it('should handle message confirmed', () => { /* ... */ })
@@ -1099,14 +1099,14 @@ describe('useConversationController', () => {
   it('should handle conversation close/reopen', () => { /* ... */ })
 })
 
-// 2️⃣ 組件測試 (各子組件)
+// 2️ 組件測試 (各子組件)
 describe('ConversationStatusBanner', () => {
   it('should show closed banner when conversation is closed', () => { /* ... */ })
   it('should show drag-drop overlay when dragging', () => { /* ... */ })
   it('should show new message notification', () => { /* ... */ })
 })
 
-// 3️⃣ 集成測試 (ConversationDetail)
+// 3️ 集成測試 (ConversationDetail)
 describe('ConversationDetail Integration', () => {
   it('should send message and update UI optimistically', async () => { /* ... */ })
   it('should retry failed message with attachments', async () => { /* ... */ })
@@ -1114,7 +1114,7 @@ describe('ConversationDetail Integration', () => {
   it('should handle WebSocket reconnection', async () => { /* ... */ })
 })
 
-// 4️⃣ E2E 測試 (完整用戶流程)
+// 4️ E2E 測試 (完整用戶流程)
 describe('Conversation E2E', () => {
   it('complete conversation workflow', async () => {
     // 1. 加載對話
@@ -1129,7 +1129,7 @@ describe('Conversation E2E', () => {
 
 ---
 
-## 📚 (相關文檔)
+##  (相關文檔)
 
 - [P1 批量廣播優化文檔](./P1_BATCH_BROADCASTING_OPTIMIZATION.md)
 - [P2 風險分析](./P2_RISK_ANALYSIS.md)
@@ -1138,20 +1138,20 @@ describe('Conversation E2E', () => {
 
 ---
 
-## 🎉 總結
+##  總結
 
 P2 組件拆分優化是一個**低風險、高收益**的技術改進，具有以下特點：
 
-✅ **技術可行性：** 100% - 不涉及新技術，僅重構現有代碼
-✅ **業務影響：** 0% - 純內部重構，用戶無感知
-✅ **ROI (投資回報)：** 極高 - 8-11 天投入，永久性提升開發效率 200%+
-✅ **風險可控性：** 高 - 通過 50+ 單元測試 + E2E 測試保證正確性
+ **技術可行性：** 100% - 不涉及新技術，僅重構現有代碼
+ **業務影響：** 0% - 純內部重構，用戶無感知
+ **ROI (投資回報)：** 極高 - 8-11 天投入，永久性提升開發效率 200%+
+ **風險可控性：** 高 - 通過 50+ 單元測試 + E2E 測試保證正確性
 
 **推薦立即執行的理由：**
-1. ⏰ **時機成熟** - P1 已完成，團隊有優化動力
-2. 📈 **收益遞增** - 越早實施，收益越大（避免技術債複利）
-3. 🚀 **開發提速** - 立即提升後續開發效率 200%
-4. 🛡️ **預防性維護** - 避免 6 個月後面臨完全重寫的困境
+1.  **時機成熟** - P1 已完成，團隊有優化動力
+2.  **收益遞增** - 越早實施，收益越大（避免技術債複利）
+3.  **開發提速** - 立即提升後續開發效率 200%
+4.  **預防性維護** - 避免 6 個月後面臨完全重寫的困境
 
 ---
 

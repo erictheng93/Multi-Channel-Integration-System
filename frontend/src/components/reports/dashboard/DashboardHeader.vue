@@ -2,7 +2,7 @@
   <div class="dashboard-header">
     <div class="header-content">
       <h1 class="dashboard-title">
-        📊 報表儀表板
+         報表儀表板
       </h1>
       <p class="dashboard-subtitle">
         管理和監控您的報表生成與使用情況
@@ -14,14 +14,14 @@
         :disabled="loading"
         @click="$emit('refresh')"
       >
-        <span v-if="loading">⚙️ 載入中...</span>
-        <span v-else>🔄 重新整理</span>
+        <span v-if="loading"> 載入中...</span>
+        <span v-else> 重新整理</span>
       </button>
       <button
         class="btn btn-primary"
         @click="$emit('create-report')"
       >
-        ✨ 建立報表
+         建立報表
       </button>
     </div>
   </div>

@@ -83,7 +83,7 @@
       v-if="isSelected"
       class="selection-indicator"
     >
-      <i class="check-icon">✓</i>
+      <i class="check-icon"></i>
     </div>
   </div>
 </template>

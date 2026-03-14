@@ -6,23 +6,23 @@
 
 ---
 
-## 📊 Summary
+##  Summary
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│  TODO Distribution in Reports Module                   │
+│  TODO Distribution in Reports Module │
 ├────────────────────────────────────────────────────────┤
-│  reports-service.ts        ████████████████████  24個  │
-│  reports-validation.ts     █                      1個  │
-│  sample-data-generators.ts                        0個  │
-│                                                        │
-│  Total: 25 TODOs                                       │
+│  reports-service.ts ████████████████████  24個  │
+│  reports-validation.ts █                      1個  │
+│  sample-data-generators.ts 0個  │
+│ │
+│  Total: 25 TODOs │
 └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔴 CRITICAL Priority (6 items) - Database Persistence
+##  CRITICAL Priority (6 items) - Database Persistence
 
 These TODOs are essential for production readiness. The current implementation uses mock data.
 
@@ -44,7 +44,7 @@ These TODOs are essential for production readiness. The current implementation u
 
 ---
 
-## 🟠 HIGH Priority (8 items) - Data Query Logic
+##  HIGH Priority (8 items) - Data Query Logic
 
 These TODOs relate to actual data aggregation from the database instead of using sample data.
 
@@ -68,7 +68,7 @@ These TODOs relate to actual data aggregation from the database instead of using
 
 ---
 
-## 🟡 MEDIUM Priority (10 items) - Feature Enhancement
+##  MEDIUM Priority (10 items) - Feature Enhancement
 
 | Line | Location | Description | Category |
 |------|----------|-------------|----------|
@@ -85,7 +85,7 @@ These TODOs relate to actual data aggregation from the database instead of using
 
 ---
 
-## 🟢 LOW Priority (1 item) - Validation Enhancement
+##  LOW Priority (1 item) - Validation Enhancement
 
 | Line | Location | Description |
 |------|----------|-------------|
@@ -95,14 +95,14 @@ These TODOs relate to actual data aggregation from the database instead of using
 
 ---
 
-## 📈 Implementation Roadmap (Suggested)
+##  Implementation Roadmap (Suggested)
 
 ```
 Timeline Visualization:
 
 Phase A: Database Persistence (CRITICAL)
 ┌──────────────────────────────────────────┐
-│ Week 1-2: Schema + CRUD Operations       │
+│ Week 1-2: Schema + CRUD Operations │
 │ ████████████████████████████████████████ │
 └──────────────────────────────────────────┘
 Deliverables:
@@ -112,7 +112,7 @@ Deliverables:
 
 Phase B: Data Query Logic (HIGH)
 ┌──────────────────────────────────────────┐
-│ Week 3-4: Real Data Aggregation          │
+│ Week 3-4: Real Data Aggregation │
 │ ████████████████████████████████████████ │
 └──────────────────────────────────────────┘
 Deliverables:
@@ -132,8 +132,8 @@ Deliverables:
 
 Phase D: Validation (LOW)
 ┌────────────┐
-│ Week 7     │
-│ ████████   │
+│ Week 7 │
+│ ████████ │
 └────────────┘
 Deliverables:
 - Rate limiting middleware
@@ -141,7 +141,7 @@ Deliverables:
 
 ---
 
-## 📝 Detailed TODO Listing
+##  Detailed TODO Listing
 
 ### File: `src/modules/reports/services/reports-service.ts`
 
@@ -194,7 +194,7 @@ efficiency: 0 // TODO: 計算效率
 
 ---
 
-## ✅ Verification Commands
+##  Verification Commands
 
 ```bash
 # Search for TODOs in reports module
@@ -210,19 +210,19 @@ grep -c "TODO" src/modules/reports/services/sample-data-generators.ts
 
 ---
 
-## 📊 Test Coverage Status
+##  Test Coverage Status
 
 After Phase 2 implementation:
 
 | Component | Tests | Status |
 |-----------|-------|--------|
-| `sample-data-generators.ts` | 114 | ✅ 100% Pass |
-| `reports-service.ts` | TBD | 🔲 Needs Tests |
-| `reports-validation.ts` | TBD | 🔲 Needs Tests |
+| `sample-data-generators.ts` | 114 |  100% Pass |
+| `reports-service.ts` | TBD |  Needs Tests |
+| `reports-validation.ts` | TBD |  Needs Tests |
 
 ---
 
-## 🎯 Success Criteria for TODO Completion
+##  Success Criteria for TODO Completion
 
 ### Phase A (Database Persistence)
 - [ ] Reports can be saved to D1 database

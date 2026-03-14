@@ -44,7 +44,7 @@ export const CONVERSATION_STATUS = {
  * import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status';
  *
  * function updateConversation(id: string, status: ConversationStatus) {
- *   // Type-safe conversation status handling
+ * // Type-safe conversation status handling
  * }
  * ```
  */
@@ -92,11 +92,11 @@ export const CONVERSATION_STATUS_COLORS: Record<ConversationStatus, string> = {
  * Conversation status icons
  */
 export const CONVERSATION_STATUS_ICONS: Record<ConversationStatus, string> = {
-  [CONVERSATION_STATUS.ACTIVE]: '🟢',
-  [CONVERSATION_STATUS.PENDING]: '🟡',
-  [CONVERSATION_STATUS.IN_PROGRESS]: '🔵',
-  [CONVERSATION_STATUS.ASSIGNED]: '👤',
-  [CONVERSATION_STATUS.WAITING]: '⏸️'
+  [CONVERSATION_STATUS.ACTIVE]: '',
+  [CONVERSATION_STATUS.PENDING]: '',
+  [CONVERSATION_STATUS.IN_PROGRESS]: '',
+  [CONVERSATION_STATUS.ASSIGNED]: '',
+  [CONVERSATION_STATUS.WAITING]: ''
 };
 
 /**

@@ -34,7 +34,7 @@ export interface PermissionRule {
 }
 
 export interface PermissionContext {
-  userId: string | number; // ✅ 支持字符串和數字類型
+  userId: string | number; //  支持字符串和數字類型
   role: string;
   teamId?: number;
   resourceId?: string | number;

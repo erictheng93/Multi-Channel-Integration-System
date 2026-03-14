@@ -7,13 +7,13 @@
 
 import { createPinia, setActivePinia } from 'pinia'
 
-console.log('🍍 GLOBAL PINIA SETUP - Running before all other setup files')
+console.log(' GLOBAL PINIA SETUP - Running before all other setup files')
 
 // Create Pinia instance at the very beginning
 const globalPinia = createPinia()
 setActivePinia(globalPinia)
 
-console.log('🍍 Global Pinia created and set as active')
+console.log(' Global Pinia created and set as active')
 
 // Export the instance for use in other setup files
 export { globalPinia }

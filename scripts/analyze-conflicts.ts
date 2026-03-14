@@ -32,7 +32,7 @@ function extractConflicts(reportPath: string): ConflictInfo[] {
     const line = lines[i];
 
     // 檢測衝突標記
-    if (line.includes('⚠️') && line.includes('may intercept')) {
+    if (line.includes('') && line.includes('may intercept')) {
       // 提取路徑
       const pathMatch = line.match(/"([^"]+)" may intercept "([^"]+)"/);
       if (!pathMatch) continue;
@@ -41,13 +41,13 @@ function extractConflicts(reportPath: string): ConflictInfo[] {
       const path2 = pathMatch[2];
 
       // 提取模組
-      const moduleMatch = lines[i + 1]?.match(/📦 Module: (.+)/);
+      const moduleMatch = lines[i + 1]?.match(/ Module: (.+)/);
       if (!moduleMatch) continue;
 
       const module = moduleMatch[1].trim();
 
       // 提取文件路徑
-      const fileMatch = lines[i + 3]?.match(/📍 (.+\.ts):\d+/);
+      const fileMatch = lines[i + 3]?.match(/ (.+\.ts):\d+/);
       const file = fileMatch ? fileMatch[1] : '';
 
       conflicts.push({
@@ -136,7 +136,7 @@ function recommendStrategy(
 
 // 主分析函數
 function analyzeConflicts(reportPath: string): ModuleStats[] {
-  console.log('🔍 Analyzing route conflicts...\n');
+  console.log(' Analyzing route conflicts...\n');
 
   const conflicts = extractConflicts(reportPath);
   const groupedConflicts = groupByModule(conflicts);
@@ -174,7 +174,7 @@ function analyzeConflicts(reportPath: string): ModuleStats[] {
 // 生成報告
 function generateReport(stats: ModuleStats[]): void {
   console.log('═'.repeat(100));
-  console.log('📊 MODULE CLASSIFICATION REPORT');
+  console.log(' MODULE CLASSIFICATION REPORT');
   console.log('═'.repeat(100));
   console.log('');
 
@@ -183,33 +183,33 @@ function generateReport(stats: ModuleStats[]): void {
   const manualAnalysis = stats.filter(s => s.recommendation === 'manual-analysis');
   const hybrid = stats.filter(s => s.recommendation === 'hybrid');
 
-  console.log(`✅ Smart Registry (Option B): ${smartRegistry.length} modules (${smartRegistry.reduce((sum, m) => sum + m.conflictCount, 0)} conflicts)`);
-  console.log(`⚠️  Manual Analysis (Option C): ${manualAnalysis.length} modules (${manualAnalysis.reduce((sum, m) => sum + m.conflictCount, 0)} conflicts)`);
-  console.log(`🔄 Hybrid Approach: ${hybrid.length} modules (${hybrid.reduce((sum, m) => sum + m.conflictCount, 0)} conflicts)`);
+  console.log(` Smart Registry (Option B): ${smartRegistry.length} modules (${smartRegistry.reduce((sum, m) => sum + m.conflictCount, 0)} conflicts)`);
+  console.log(`  Manual Analysis (Option C): ${manualAnalysis.length} modules (${manualAnalysis.reduce((sum, m) => sum + m.conflictCount, 0)} conflicts)`);
+  console.log(` Hybrid Approach: ${hybrid.length} modules (${hybrid.reduce((sum, m) => sum + m.conflictCount, 0)} conflicts)`);
   console.log('');
 
   // 詳細列表
-  console.log('🤖 SMART REGISTRY MODULES (Quick Fix)');
+  console.log(' SMART REGISTRY MODULES (Quick Fix)');
   console.log('─'.repeat(100));
   smartRegistry.forEach(stat => {
-    console.log(`  📦 ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.complexity} complexity)`);
+    console.log(` ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.complexity} complexity)`);
   });
   console.log('');
 
   if (hybrid.length > 0) {
-    console.log('🔄 HYBRID APPROACH MODULES (Review + Auto)');
+    console.log(' HYBRID APPROACH MODULES (Review + Auto)');
     console.log('─'.repeat(100));
     hybrid.forEach(stat => {
-      console.log(`  📦 ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.criticality} criticality)`);
+      console.log(` ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.criticality} criticality)`);
     });
     console.log('');
   }
 
   if (manualAnalysis.length > 0) {
-    console.log('👁️  MANUAL ANALYSIS MODULES (Critical)');
+    console.log('  MANUAL ANALYSIS MODULES (Critical)');
     console.log('─'.repeat(100));
     manualAnalysis.forEach(stat => {
-      console.log(`  📦 ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.criticality} criticality)`);
+      console.log(` ${stat.module.padEnd(50)} ${stat.conflictCount} conflicts (${stat.criticality} criticality)`);
     });
     console.log('');
   }
@@ -221,13 +221,13 @@ function generateReport(stats: ModuleStats[]): void {
   const autoFixableConflicts = smartRegistry.reduce((sum, s) => sum + s.conflictCount, 0);
   const manualConflicts = manualAnalysis.reduce((sum, s) => sum + s.conflictCount, 0);
 
-  console.log('📈 STATISTICS');
+  console.log(' STATISTICS');
   console.log('─'.repeat(100));
   console.log(`Total Conflicts: ${totalConflicts}`);
   console.log(`Auto-fixable (Smart Registry): ${autoFixableConflicts} (${Math.round(autoFixableConflicts / totalConflicts * 100)}%)`);
   console.log(`Manual Review Required: ${manualConflicts} (${Math.round(manualConflicts / totalConflicts * 100)}%)`);
   console.log('');
-  console.log(`⏱️  Estimated Time:`);
+  console.log(`  Estimated Time:`);
   console.log(`  - Smart Registry: ${Math.round(smartRegistry.length * 0.25)} hours (15 min/module)`);
   console.log(`  - Manual Analysis: ${Math.round(manualAnalysis.length * 2)} hours (2 hr/module)`);
   console.log(`  - Hybrid: ${Math.round(hybrid.length * 1)} hours (1 hr/module)`);
@@ -253,7 +253,7 @@ try {
     }, null, 2)
   );
 
-  console.log('✅ Classification saved to conflict-classification.json');
+  console.log(' Classification saved to conflict-classification.json');
 
 } catch (error) {
   console.error('Error analyzing conflicts:', error);

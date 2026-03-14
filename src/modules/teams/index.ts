@@ -70,9 +70,9 @@ export const MODULE_INFO = {
     implemented: 12,
     pending: 0,
     categories: {
-      teams: 6,     // create, update, delete, list, get, stats
-      members: 4,   // add, remove, update, list
-      roles: 2      // assign, revoke
+      teams: 6, // create, update, delete, list, get, stats
+      members: 4, // add, remove, update, list
+      roles: 2 // assign, revoke
     }
   },
 
@@ -112,12 +112,12 @@ export function initializeTeamsModule(config: Partial<TeamsModuleConfig> = {}) {
 
   // 驗證配置
   if (finalConfig.maxTeamSize < 1) {
-    console.warn('⚠️ Teams module: maxTeamSize must be at least 1');
+    console.warn(' Teams module: maxTeamSize must be at least 1');
     finalConfig.maxTeamSize = 1;
   }
 
   if (finalConfig.maxTeamsPerUser < 1) {
-    console.warn('⚠️ Teams module: maxTeamsPerUser must be at least 1');
+    console.warn(' Teams module: maxTeamsPerUser must be at least 1');
     finalConfig.maxTeamsPerUser = 1;
   }
 

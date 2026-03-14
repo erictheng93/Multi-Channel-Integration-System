@@ -170,8 +170,8 @@ function cleanupTestFile(bucketName: string, filePath: string): void {
 // 驗�??��?R2 ?�置
 async function verifyR2Config(config: R2DomainConfig): Promise<boolean> {
   log(`\n?�� 驗�? ${config.environment} ?��??�置`, 'magenta');
-  log(`   Bucket: ${config.bucketName}`, 'cyan');
-  log(`   Domain: ${config.customDomain}`, 'cyan');
+  log(` Bucket: ${config.bucketName}`, 'cyan');
+  log(` Domain: ${config.customDomain}`, 'cyan');
 
   let success = true;
 
@@ -235,9 +235,9 @@ async function main(): Promise<void> {
   } else {
     log('???��? R2 ?�置驗�?失�?', 'red');
     log('\n?�� 請檢?�以下�???', 'yellow');
-    log('   1. Cloudflare R2 bucket ?�否已創�?, 'yellow');
-    log('   2. ?��?義�???DNS 設�??�否�?��', 'yellow');
-    log('   3. ?��??�否已�?定到對�???R2 bucket', 'yellow');
+    log(' 1. Cloudflare R2 bucket ?�否已創�?, 'yellow');
+    log(' 2. ?��?義�???DNS 設�??�否�?��', 'yellow');
+    log(' 3. ?��??�否已�?定到對�???R2 bucket', 'yellow');
     process.exit(1);
   }
 }

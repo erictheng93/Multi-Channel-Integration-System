@@ -1,8 +1,8 @@
 // Team QR Code Management
 // Handles: POST /:id/qr-code, GET /:id/qr-codes, GET /:id/qr-code/latest,
-//          GET /:id/qr-code/fast, POST /:id/qr-code-test,
-//          PUT /:id/qr-codes/:qrCodeId/deactivate,
-//          GET/POST /:id/qr-code/liff, GET /:id/qr-code/liff/stats
+// GET /:id/qr-code/fast, POST /:id/qr-code-test,
+// PUT /:id/qr-codes/:qrCodeId/deactivate,
+// GET/POST /:id/qr-code/liff, GET /:id/qr-code/liff/stats
 
 import { Hono } from 'hono';
 import { TeamQRService } from '@modules/teams/services/qr-service';

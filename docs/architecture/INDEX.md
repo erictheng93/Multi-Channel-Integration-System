@@ -1,4 +1,4 @@
-# 🏗️ Architecture Documentation
+#  Architecture Documentation
 
 > System architecture design, WebSocket infrastructure, database design, and performance optimization.
 

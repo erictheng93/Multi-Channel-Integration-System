@@ -9,10 +9,10 @@
  *
  * Mock Strategy:
  * - Endpoint-aware chainable DB mock that differentiates by query chain pattern:
- *   - No joins + no where = customers
- *   - No joins + where = agents
- *   - innerJoin + no leftJoin = count
- *   - innerJoin + leftJoin = messages
+ * - No joins + no where = customers
+ * - No joins + where = agents
+ * - innerJoin + no leftJoin = count
+ * - innerJoin + leftJoin = messages
  * - JWT auth middleware bypassed with mock jwtPayload
  *
  * @see src/handlers/messaging/routes/export.ts

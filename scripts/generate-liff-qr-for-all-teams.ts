@@ -39,41 +39,41 @@ const env: Bindings = {
 };
 
 async function generateLiffQRForAllTeams() {
-  console.log('🚀 开始批量生成 LIFF QR Code...\n');
+  console.log(' 开始批量生成 LIFF QR Code...\n');
 
   // 检查必需的环境变量
   const requiredEnvVars = ['LINE_LIFF_ID', 'R2_PUBLIC_URL'];
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
   if (missingVars.length > 0) {
-    console.error('❌ 缺少必需的环境变量：', missingVars.join(', '));
+    console.error(' 缺少必需的环境变量：', missingVars.join(', '));
     console.error('\n请在 .env 或 wrangler.toml 中配置以下变量：');
     missingVars.forEach(varName => {
-      console.error(`   - ${varName}`);
+      console.error(` - ${varName}`);
     });
     process.exit(1);
   }
 
-  console.log('✅ 环境变量检查通过');
-  console.log(`   LINE_LIFF_ID: ${env.LINE_LIFF_ID}`);
-  console.log(`   R2_PUBLIC_URL: ${env.R2_PUBLIC_URL}\n`);
+  console.log(' 环境变量检查通过');
+  console.log(` LINE_LIFF_ID: ${env.LINE_LIFF_ID}`);
+  console.log(` R2_PUBLIC_URL: ${env.R2_PUBLIC_URL}\n`);
 
   try {
     // 注意：这个脚本需要在 Cloudflare Workers 环境中运行
     // 或者需要提供 D1 和 R2 的本地访问方式
-    console.log('⚠️  注意：此脚本需要在 Cloudflare Workers 环境中运行');
-    console.log('   建议使用 wrangler 命令执行：');
-    console.log('   wrangler tail --env production\n');
+    console.log('  注意：此脚本需要在 Cloudflare Workers 环境中运行');
+    console.log(' 建议使用 wrangler 命令执行：');
+    console.log(' wrangler tail --env production\n');
 
     // 以下代码仅作示例，实际需要在 Worker 环境中执行
-    console.log('📋 建议的执行步骤：');
-    console.log('   1. 将此逻辑添加到一个临时的 Worker endpoint');
-    console.log('   2. 部署 Worker');
-    console.log('   3. 通过 HTTP 请求触发该 endpoint');
-    console.log('   4. 完成后删除该 endpoint\n');
+    console.log(' 建议的执行步骤：');
+    console.log(' 1. 将此逻辑添加到一个临时的 Worker endpoint');
+    console.log(' 2. 部署 Worker');
+    console.log(' 3. 通过 HTTP 请求触发该 endpoint');
+    console.log(' 4. 完成后删除该 endpoint\n');
 
     // 示例代码（需要在 Worker 中执行）
-    console.log('📝 Worker endpoint 示例代码：');
+    console.log(' Worker endpoint 示例代码：');
     console.log(`
 // 在 src/index.ts 中添加临时 endpoint
 app.get('/admin/generate-all-liff-qr', jwtAuth, requireAdmin(), async (c) => {
@@ -107,7 +107,7 @@ app.get('/admin/generate-all-liff-qr', jwtAuth, requireAdmin(), async (c) => {
 
       if (result.success) {
         results.success++;
-        console.log(\`✅ 团队 \${team.name} (ID: \${team.id}) LIFF QR Code 生成成功\`);
+        console.log(\` 团队 \${team.name} (ID: \${team.id}) LIFF QR Code 生成成功\`);
       } else {
         results.failed++;
         results.errors.push({
@@ -115,7 +115,7 @@ app.get('/admin/generate-all-liff-qr', jwtAuth, requireAdmin(), async (c) => {
           teamName: team.name,
           error: result.error || 'Unknown error'
         });
-        console.error(\`❌ 团队 \${team.name} (ID: \${team.id}) 生成失败: \${result.error}\`);
+        console.error(\` 团队 \${team.name} (ID: \${team.id}) 生成失败: \${result.error}\`);
       }
     } catch (error) {
       results.failed++;
@@ -125,7 +125,7 @@ app.get('/admin/generate-all-liff-qr', jwtAuth, requireAdmin(), async (c) => {
         teamName: team.name,
         error: errorMsg
       });
-      console.error(\`❌ 团队 \${team.name} (ID: \${team.id}) 生成异常: \${errorMsg}\`);
+      console.error(\` 团队 \${team.name} (ID: \${team.id}) 生成异常: \${errorMsg}\`);
     }
   }
 
@@ -138,7 +138,7 @@ app.get('/admin/generate-all-liff-qr', jwtAuth, requireAdmin(), async (c) => {
 `);
 
   } catch (error) {
-    console.error('❌ 脚本执行失败:', error);
+    console.error(' 脚本执行失败:', error);
     process.exit(1);
   }
 }

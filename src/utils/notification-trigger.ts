@@ -67,7 +67,7 @@ async function broadcastNotificationViaWebSocket(
     });
 
     if (success) {
-      console.log('📡 [Notification] WebSocket broadcast successful:', {
+      console.log('[Notification] WebSocket broadcast successful:', {
         userId,
         notificationId: notification.id,
         type: notification.type
@@ -76,7 +76,7 @@ async function broadcastNotificationViaWebSocket(
 
     return success;
   } catch (error) {
-    console.warn('⚠️ [Notification] WebSocket broadcast failed (notification still saved):', {
+    console.warn('[Notification] WebSocket broadcast failed (notification still saved):', {
       error: error instanceof Error ? error.message : String(error),
       userId,
       notificationId: notification.id
@@ -126,7 +126,7 @@ export async function triggerPriorityChangedNotification(
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
     });
 
-    console.log('✅ [Notification] Priority changed notification created:', {
+    console.log('[Notification] Priority changed notification created:', {
       notificationId,
       userId: parsedUserId,
       conversationCount: options.conversationIds.length,
@@ -149,7 +149,7 @@ export async function triggerPriorityChangedNotification(
 
     return notificationId;
   } catch (error) {
-    console.warn('⚠️ [Notification] Failed to send priority change notification:', {
+    console.warn('[Notification] Failed to send priority change notification:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -182,7 +182,7 @@ export async function triggerSystemNotification(
       options.data
     );
 
-    console.log('✅ [Notification] System notifications created:', {
+    console.log('[Notification] System notifications created:', {
       notificationIds,
       userCount: parsedUserIds.length
     });
@@ -203,7 +203,7 @@ export async function triggerSystemNotification(
 
     return notificationIds;
   } catch (error) {
-    console.warn('⚠️ [Notification] Failed to send system notifications:', {
+    console.warn('[Notification] Failed to send system notifications:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -212,7 +212,7 @@ export async function triggerSystemNotification(
 }
 
 /**
- * 🆕 Agent 移出團隊通知觸發器
+ * Agent 移出團隊通知觸發器
  * 當 Agent 被移出團隊時，通知該 Agent 並觸發前端刷新對話列表
  * 如果 Agent 正在查看該團隊的對話，前端應強制關閉對話視窗
  */
@@ -248,7 +248,7 @@ export async function triggerAgentRemovedFromTeamNotification(
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
     });
 
-    console.log('✅ [Notification] Agent removed from team notification created:', {
+    console.log('[Notification] Agent removed from team notification created:', {
       notificationId,
       agentId: options.agentId,
       teamId: options.teamId,
@@ -275,7 +275,7 @@ export async function triggerAgentRemovedFromTeamNotification(
 
     return notificationId;
   } catch (error) {
-    console.warn('⚠️ [Notification] Failed to send agent removed from team notification:', {
+    console.warn('[Notification] Failed to send agent removed from team notification:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -284,7 +284,7 @@ export async function triggerAgentRemovedFromTeamNotification(
 }
 
 /**
- * 🆕 團隊成員變更廣播觸發器
+ * 團隊成員變更廣播觸發器
  * 當團隊成員新增或移除時，廣播事件讓所有管理頁面即時更新 memberCount
  * 這不會創建通知記錄，只是廣播 WebSocket 事件
  */
@@ -314,7 +314,7 @@ export async function triggerTeamMemberChangeEvent(
     });
 
     if (success) {
-      console.log('📡 [Team Event] Member change broadcast successful:', {
+      console.log('[Team Event] Member change broadcast successful:', {
         type: options.type,
         teamId: options.teamId,
         teamName: options.teamName,
@@ -324,7 +324,7 @@ export async function triggerTeamMemberChangeEvent(
 
     return success;
   } catch (error) {
-    console.warn('⚠️ [Team Event] Member change broadcast failed:', {
+    console.warn('[Team Event] Member change broadcast failed:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -333,7 +333,7 @@ export async function triggerTeamMemberChangeEvent(
 }
 
 /**
- * 🆕 團隊資訊更新廣播觸發器
+ * 團隊資訊更新廣播觸發器
  * 當團隊資訊變更時（名稱、狀態等），廣播事件讓所有管理頁面即時更新
  */
 export async function triggerTeamUpdateEvent(
@@ -361,7 +361,7 @@ export async function triggerTeamUpdateEvent(
     });
 
     if (success) {
-      console.log('📡 [Team Event] Update broadcast successful:', {
+      console.log('[Team Event] Update broadcast successful:', {
         teamId: options.teamId,
         changes: options.changes
       });
@@ -369,7 +369,7 @@ export async function triggerTeamUpdateEvent(
 
     return success;
   } catch (error) {
-    console.warn('⚠️ [Team Event] Update broadcast failed:', {
+    console.warn('[Team Event] Update broadcast failed:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -378,7 +378,7 @@ export async function triggerTeamUpdateEvent(
 }
 
 /**
- * 🆕 任務提醒通知觸發器
+ * 任務提醒通知觸發器
  * 當任務提醒到期時發送通知
  */
 export async function triggerTaskReminderNotification(
@@ -403,7 +403,7 @@ export async function triggerTaskReminderNotification(
     const notificationId = await service.create({
       userId,
       type: 'task_reminder',
-      title: '⏰ 任務提醒',
+      title: ' 任務提醒',
       content: notificationContent,
       data: {
         reminderId: options.reminderId,
@@ -414,7 +414,7 @@ export async function triggerTaskReminderNotification(
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24小時後過期
     });
 
-    console.log('✅ [Notification] Task reminder notification created:', {
+    console.log('[Notification] Task reminder notification created:', {
       notificationId,
       userId: options.userId,
       reminderId: options.reminderId,
@@ -425,7 +425,7 @@ export async function triggerTaskReminderNotification(
     await broadcastNotificationViaWebSocket(env, options.userId, {
       id: notificationId,
       type: 'task_reminder',
-      title: '⏰ 任務提醒',
+      title: ' 任務提醒',
       content: notificationContent,
       priority: 'high',
       data: {
@@ -437,7 +437,7 @@ export async function triggerTaskReminderNotification(
 
     return notificationId;
   } catch (error) {
-    console.warn('⚠️ [Notification] Failed to send task reminder notification:', {
+    console.warn('[Notification] Failed to send task reminder notification:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -446,7 +446,7 @@ export async function triggerTaskReminderNotification(
 }
 
 /**
- * 🆕 @提及通知觸發器
+ * @提及通知觸發器
  * 當訊息中提及其他客服時發送通知
  */
 export async function triggerMentionNotification(
@@ -483,7 +483,7 @@ export async function triggerMentionNotification(
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
     });
 
-    console.log('✅ [Notification] Mention notification created:', {
+    console.log('[Notification] Mention notification created:', {
       notificationId,
       mentionedUserId: options.mentionedUserId,
       mentionerId: options.mentionerId,
@@ -506,7 +506,7 @@ export async function triggerMentionNotification(
 
     return notificationId;
   } catch (error) {
-    console.warn('⚠️ [Notification] Failed to send mention notification:', {
+    console.warn('[Notification] Failed to send mention notification:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -515,7 +515,7 @@ export async function triggerMentionNotification(
 }
 
 /**
- * 🆕 新客戶加入通知觸發器 (LINE follow event)
+ * 新客戶加入通知觸發器 (LINE follow event)
  * 當新客戶通過 LINE 加入時通知管理員或團隊成員
  */
 export async function triggerCustomerFollowedNotification(
@@ -536,7 +536,7 @@ export async function triggerCustomerFollowedNotification(
     const targetUserIds = await getNotificationTargetUsers(env, options.teamId);
 
     if (targetUserIds.length === 0) {
-      console.log('⚠️ [Notification] No target users for customer followed notification');
+      console.log('[Notification] No target users for customer followed notification');
       return [];
     }
 
@@ -550,12 +550,12 @@ export async function triggerCustomerFollowedNotification(
 
     for (const userId of targetUserIds) {
       try {
-        console.log(`🔄 [Notification] Creating customer_followed notification for user ${userId}...`);
+        console.log(`[Notification] Creating customer_followed notification for user ${userId}...`);
 
         const notificationId = await service.create({
           userId,
           type: 'customer_followed',
-          title: '🎉 新客戶加入',
+          title: ' 新客戶加入',
           content: `新客戶「${options.customerName}」透過 ${options.source === 'qr_code' ? 'QR Code' : '直接'} 在 ${options.platform} 加入${options.teamName ? ` 並加入「${options.teamName}」團隊` : ''}`,
           data: {
             customerName: options.customerName,
@@ -570,14 +570,14 @@ export async function triggerCustomerFollowedNotification(
         });
 
         if (notificationId) {
-          console.log(`✅ [Notification] Created customer_followed notification ${notificationId} for user ${userId}`);
+          console.log(`[Notification] Created customer_followed notification ${notificationId} for user ${userId}`);
           notificationIds.push(notificationId);
 
           // 透過 WebSocket 即時推送通知
           await broadcastNotificationViaWebSocket(env, userId, {
             id: notificationId,
             type: 'customer_followed',
-            title: '🎉 新客戶加入',
+            title: ' 新客戶加入',
             content: `新客戶「${options.customerName}」透過 ${options.source === 'qr_code' ? 'QR Code' : '直接'} 在 ${options.platform} 加入${options.teamName ? ` 並加入「${options.teamName}」團隊` : ''}`,
             priority: 'high',
             data: {
@@ -592,17 +592,17 @@ export async function triggerCustomerFollowedNotification(
         }
       } catch (userError) {
         const errorMsg = userError instanceof Error ? userError.message : String(userError);
-        console.error(`❌ [Notification] Failed to create customer_followed notification for user ${userId}:`, errorMsg);
+        console.error(`[Notification] Failed to create customer_followed notification for user ${userId}:`, errorMsg);
         errors.push({ userId: String(userId), error: errorMsg });
       }
     }
 
     // 記錄錯誤摘要（如果有）
     if (errors.length > 0) {
-      console.warn(`⚠️ [Notification] Failed to create customer_followed notifications for ${errors.length}/${targetUserIds.length} users:`, errors);
+      console.warn(`[Notification] Failed to create customer_followed notifications for ${errors.length}/${targetUserIds.length} users:`, errors);
     }
 
-    console.log('✅ [Notification] Customer followed notifications created:', {
+    console.log('[Notification] Customer followed notifications created:', {
       notificationIds,
       targetUserCount: targetUserIds.length,
       customerName: options.customerName,
@@ -611,7 +611,7 @@ export async function triggerCustomerFollowedNotification(
 
     return notificationIds;
   } catch (error) {
-    console.warn('⚠️ [Notification] Failed to send customer followed notifications:', {
+    console.warn('[Notification] Failed to send customer followed notifications:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -620,7 +620,7 @@ export async function triggerCustomerFollowedNotification(
 }
 
 /**
- * 🆕 新對話創建通知觸發器
+ * 新對話創建通知觸發器
  * 當創建新對話時（無論是否指派）通知管理員或團隊成員
  */
 export async function triggerNewConversationNotification(
@@ -640,7 +640,7 @@ export async function triggerNewConversationNotification(
     const targetUserIds = await getNotificationTargetUsers(env, options.teamId);
 
     if (targetUserIds.length === 0) {
-      console.log('⚠️ [Notification] No target users for new conversation notification');
+      console.log('[Notification] No target users for new conversation notification');
       return [];
     }
 
@@ -652,13 +652,13 @@ export async function triggerNewConversationNotification(
       ? `: ${options.messagePreview.substring(0, 50)}${options.messagePreview.length > 50 ? '...' : ''}`
       : '';
 
-    console.log(`🚀 [Notification] Creating bulk notifications for ${targetUserIds.length} users`);
+    console.log(`[Notification] Creating bulk notifications for ${targetUserIds.length} users`);
 
     // 準備批量通知請求
     const bulkRequests = targetUserIds.map(userId => ({
       userId,
       type: 'new_conversation' as const,
-      title: '💬 新對話',
+      title: ' 新對話',
       content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
       data: {
         conversationId,
@@ -674,7 +674,7 @@ export async function triggerNewConversationNotification(
     const bulkResult = await service.createBulk({ notifications: bulkRequests });
     const notificationIds = bulkResult.successful;
 
-    console.log(`✅ [Notification] Bulk create completed:`, {
+    console.log(`[Notification] Bulk create completed:`, {
       successful: bulkResult.successful.length,
       failed: bulkResult.failed.length,
       total: targetUserIds.length
@@ -682,7 +682,7 @@ export async function triggerNewConversationNotification(
 
     // 如果有失敗，記錄詳細信息
     if (bulkResult.failed.length > 0) {
-      console.warn(`⚠️ [Notification] Some notifications failed:`, bulkResult.failed);
+      console.warn(`[Notification] Some notifications failed:`, bulkResult.failed);
     }
 
     // 批量廣播 WebSocket 通知（不阻塞）
@@ -690,7 +690,7 @@ export async function triggerNewConversationNotification(
       broadcastNotificationViaWebSocket(env, targetUserIds[index], {
         id: notificationId,
         type: 'new_conversation',
-        title: '💬 新對話',
+        title: ' 新對話',
         content: `新客戶「${options.customerName}」在 ${options.platform} 開始了新對話${preview}`,
         priority: 'high',
         data: {
@@ -706,11 +706,11 @@ export async function triggerNewConversationNotification(
     Promise.allSettled(broadcastPromises).then(results => {
       const failedBroadcasts = results.filter(r => r.status === 'rejected').length;
       if (failedBroadcasts > 0) {
-        console.warn(`⚠️ [Notification] ${failedBroadcasts} WebSocket broadcasts failed`);
+        console.warn(`[Notification] ${failedBroadcasts} WebSocket broadcasts failed`);
       }
     });
 
-    console.log('✅ [Notification] New conversation notifications created:', {
+    console.log('[Notification] New conversation notifications created:', {
       notificationIds,
       targetUserCount: targetUserIds.length,
       conversationId: options.conversationId,
@@ -719,7 +719,7 @@ export async function triggerNewConversationNotification(
 
     return notificationIds;
   } catch (error) {
-    console.warn('⚠️ [Notification] Failed to send new conversation notifications:', {
+    console.warn('[Notification] Failed to send new conversation notifications:', {
       error: error instanceof Error ? error.message : String(error),
       ...options
     });
@@ -728,7 +728,7 @@ export async function triggerNewConversationNotification(
 }
 
 /**
- * 🆕 輔助函數：獲取應該接收通知的用戶列表
+ * 輔助函數：獲取應該接收通知的用戶列表
  * 根據團隊 ID 獲取管理員和團隊成員（或所有客服人員）
  *
  * 行為邏輯：
@@ -772,7 +772,7 @@ async function getNotificationTargetUsers(
 
       agentIds = teamMembers.map(m => m.agentId);
 
-      console.log('📋 [Notification Target] Team-specific:', {
+      console.log('[Notification Target] Team-specific:', {
         teamId,
         teamMemberCount: agentIds.length,
         adminCount: adminIds.size
@@ -790,7 +790,7 @@ async function getNotificationTargetUsers(
 
       agentIds = allAgents.map(a => a.id);
 
-      console.log('📋 [Notification Target] All agents:', {
+      console.log('[Notification Target] All agents:', {
         agentCount: agentIds.length,
         adminCount: adminIds.size
       });
@@ -804,7 +804,7 @@ async function getNotificationTargetUsers(
       }
     }
 
-    console.log('✅ [Notification Target] Final target users:', {
+    console.log('[Notification Target] Final target users:', {
       totalCount: allTargetUsers.length,
       adminCount: adminIds.size,
       agentCount: agentIds.length,
@@ -813,7 +813,7 @@ async function getNotificationTargetUsers(
 
     return allTargetUsers;
   } catch (error) {
-    console.error('❌ [Notification Target] Error getting notification target users:', error);
+    console.error('[Notification Target] Error getting notification target users:', error);
     return [];
   }
 }

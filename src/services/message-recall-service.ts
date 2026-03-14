@@ -2,7 +2,7 @@
  * 訊息撤回服務 - 優化版本
  * Message Recall Service - Optimized Version
  *
- * ⚠️ DEPRECATED: 此服務已棄用
+ * DEPRECATED: 此服務已棄用
  *
  * 原因：已從 Cloudflare Queues + KV 方案遷移到 Durable Objects
  * 替代方案：使用 DelayedMessageBuffer Durable Object

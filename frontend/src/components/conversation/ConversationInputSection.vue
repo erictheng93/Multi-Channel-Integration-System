@@ -59,16 +59,16 @@
  *
  * 使用示例：
  * <ConversationInputSection
- *   :quick-replies="quickRepliesList"
- *   :connection-state="connectionState"
- *   :is-typing="isCustomerTyping"
- *   :typing-users="['客戶A']"
- *   @quick-reply-select="insertQuickReply"
- *   @reconnect="reconnectWebSocket"
+ * :quick-replies="quickRepliesList"
+ * :connection-state="connectionState"
+ * :is-typing="isCustomerTyping"
+ * :typing-users="['客戶A']"
+ * @quick-reply-select="insertQuickReply"
+ * @reconnect="reconnectWebSocket"
  * >
- *   <template #message-input>
- *     <MessageInput @send="handleSendMessage" />
- *   </template>
+ * <template #message-input>
+ * <MessageInput @send="handleSendMessage" />
+ * </template>
  * </ConversationInputSection>
  */
 

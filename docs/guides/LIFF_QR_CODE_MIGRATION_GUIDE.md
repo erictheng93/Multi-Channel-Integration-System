@@ -1,6 +1,6 @@
 # LIFF QR Code 迁移和使用指南
 
-## 📋 目录
+##  目录
 
 1. [按钮功能分析](#按钮功能分析)
 2. [自动生成机制](#自动生成机制)
@@ -10,7 +10,7 @@
 
 ---
 
-## 🔍 按钮功能分析
+##  按钮功能分析
 
 ### "生成 QR Code"按钮在哪里？
 
@@ -29,16 +29,16 @@
 
 ### 按钮的存在意义
 
-#### ✅ **应该保留此按钮**，原因如下：
+####  **应该保留此按钮**，原因如下：
 
 | 场景 | 说明 | 是否需要按钮 |
 |------|------|------------|
-| **新创建的团队** | 创建时自动生成 LIFF QR Code | ❌ 不需要（已自动生成） |
-| **迁移前创建的团队** | 没有 LIFF QR Code | ✅ **需要**（手动生成） |
-| **QR Code 损坏/失效** | 需要重新生成 | ✅ **需要**（重新生成） |
-| **环境变量未配置** | 创建时自动生成失败 | ✅ **需要**（补救措施） |
+| **新创建的团队** | 创建时自动生成 LIFF QR Code |  不需要（已自动生成） |
+| **迁移前创建的团队** | 没有 LIFF QR Code |  **需要**（手动生成） |
+| **QR Code 损坏/失效** | 需要重新生成 |  **需要**（重新生成） |
+| **环境变量未配置** | 创建时自动生成失败 |  **需要**（补救措施） |
 
-#### 📊 **按钮的两个用途**：
+####  **按钮的两个用途**：
 
 1. **首次生成**：为迁移前创建的团队生成 LIFF QR Code
 2. **重新生成**：如果 QR Code 有问题，可以重新生成（会显示确认对话框）
@@ -47,25 +47,25 @@
 
 用户点击按钮时报错，可能的原因：
 
-#### 1. **环境变量未配置** ⚠️
+#### 1. **环境变量未配置** 
    - `LINE_LIFF_ID` 未设置
    - `R2_BUCKET` 未配置
    - `R2_PUBLIC_URL` 未设置
 
-#### 2. **R2 存储桶权限问题** ⚠️
+#### 2. **R2 存储桶权限问题** 
    - R2 Bucket 不存在
    - 权限不足，无法上传文件
 
-#### 3. **LIFF 应用未创建** ⚠️
+#### 3. **LIFF 应用未创建** 
    - LINE LIFF 应用未在 LINE Developers 中创建
 
 ---
 
-## 🤖 自动生成机制
+##  自动生成机制
 
 ### 当前实现状态
 
-✅ **系统已实现自动生成 LIFF QR Code**
+ **系统已实现自动生成 LIFF QR Code**
 
 **位置**：`src/modules/teams/handlers/team.ts` 第 1034-1039 行
 
@@ -85,7 +85,7 @@ generateTeamQRCode(team.id, team.name, c.env).catch(err => {
    │
    ├─→ Task 1: 记录活动日志
    ├─→ Task 2: 生成传统 QR Code（待移除）
-   └─→ Task 3: 生成 LIFF QR Code ✅
+   └─→ Task 3: 生成 LIFF QR Code 
           │
           ├─→ 生成 LIFF URL（https://liff.line.me/{LIFF_ID}?team={teamId}）
           ├─→ 生成 QR Code 图片（512x512 PNG）
@@ -100,7 +100,7 @@ generateTeamQRCode(team.id, team.name, c.env).catch(err => {
 
 ---
 
-## 📦 批量生成指南
+##  批量生成指南
 
 ### 方法 1：使用管理员 API（推荐）
 
@@ -170,7 +170,7 @@ curl -X POST https://your-domain.com/api/admin/liff-qr/batch-generate \
 
 ---
 
-## ⚙️ 环境变量配置
+##  环境变量配置
 
 ### 必需的环境变量
 
@@ -218,7 +218,7 @@ wrangler r2 bucket public-access enable your-bucket-name
 
 ---
 
-## 🔧 故障排除
+##  故障排除
 
 ### 问题 1："生成 QR Code"按钮点击无反应或报错
 
@@ -280,7 +280,7 @@ curl -X GET https://your-domain.com/api/admin/liff-qr/status \
 
 ---
 
-## 📝 部署步骤
+##  部署步骤
 
 ### 1. 更新代码
 
@@ -334,24 +334,24 @@ curl -X GET https://your-domain.com/api/admin/liff-qr/status \
 
 ---
 
-## 🎯 总结
+##  总结
 
-### ✅ 已完成的工作
+###  已完成的工作
 
-1. ✅ 创建批量生成 LIFF QR Code 的 API endpoint
-2. ✅ 分析"+ 生成 QR Code"按钮的存在意义
-3. ✅ 提供详细的配置和部署指南
+1.  创建批量生成 LIFF QR Code 的 API endpoint
+2.  分析"+ 生成 QR Code"按钮的存在意义
+3.  提供详细的配置和部署指南
 
-### 📌 关键结论
+###  关键结论
 
 | 项目 | 结论 |
 |------|------|
-| **按钮是否应该保留？** | ✅ **应该保留**，用于旧团队和重新生成 |
-| **新团队是否自动生成？** | ✅ **是**，创建时自动生成 LIFF QR Code |
+| **按钮是否应该保留？** |  **应该保留**，用于旧团队和重新生成 |
+| **新团队是否自动生成？** |  **是**，创建时自动生成 LIFF QR Code |
 | **如何批量生成？** | 使用 `/api/admin/liff-qr/batch-generate` API |
 | **报错原因？** | 环境变量未配置（LINE_LIFF_ID, R2_PUBLIC_URL） |
 
-### 🔜 下一步操作
+###  下一步操作
 
 1. 配置环境变量（`LINE_LIFF_ID`, `R2_PUBLIC_URL`）
 2. 部署更新后的代码
@@ -360,7 +360,7 @@ curl -X GET https://your-domain.com/api/admin/liff-qr/status \
 
 ---
 
-## 📞 支持
+##  支持
 
 如果遇到问题，请检查：
 1. Worker 日志：`wrangler tail --env production`

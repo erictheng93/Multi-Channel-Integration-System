@@ -60,7 +60,7 @@ export function guestGuard(
 
 /**
  * 組合認證守衛 - 結合多個守衛的邏輯
- * 🔧 修復無限刷新問題：等待 initializeSession 完成後再判斷
+ * 修復無限刷新問題：等待 initializeSession 完成後再判斷
  *
  * 問題分析：
  * 1. main.ts 中 initializeSession() 正在執行（檢查 token 有效性）
@@ -78,28 +78,28 @@ export async function combinedAuthGuard(
 ) {
   const authStore = useAuthStore()
 
-  console.log('🛡️ Auth Guard:', to.path, '| Session Status:', authStore.sessionStatus)
+  console.log(' Auth Guard:', to.path, '| Session Status:', authStore.sessionStatus)
 
-  // ✅ 關鍵修復：等待 session 初始化完成
+  // 關鍵修復：等待 session 初始化完成
   if (authStore.sessionStatus === 'pending') {
-    console.log('⏳ Waiting for session initialization...')
+    console.log(' Waiting for session initialization...')
     await authStore.initializeSession()
-    console.log('✅ Session initialization completed:', authStore.sessionStatus)
+    console.log(' Session initialization completed:', authStore.sessionStatus)
   }
 
-  // ✅ 使用最終確定的 isAuthenticated 狀態（token 已驗證）
+  // 使用最終確定的 isAuthenticated 狀態（token 已驗證）
   const isAuthenticated = authStore.isAuthenticated
 
   // 1. 處理 guestOnly 頁面（如登入頁）
   if (to.meta.guestOnly) {
     if (isAuthenticated) {
       // 已登入用戶訪問登入頁，重定向到 dashboard
-      console.log('🔀 Already authenticated, redirecting to dashboard')
+      console.log(' Already authenticated, redirecting to dashboard')
       next('/dashboard')
       return
     }
     // 未登入用戶，允許訪問登入頁
-    console.log('✅ Guest page, allowing access')
+    console.log(' Guest page, allowing access')
     next()
     return
   }
@@ -108,17 +108,17 @@ export async function combinedAuthGuard(
   if (to.meta.requiresAuth) {
     if (!isAuthenticated) {
       // 未認證，重定向到登入頁
-      console.log('🔒 Not authenticated, redirecting to login')
+      console.log(' Not authenticated, redirecting to login')
       next('/login')
       return
     }
     // 已認證，允許訪問
-    console.log('✅ Authenticated, allowing access')
+    console.log(' Authenticated, allowing access')
     next()
     return
   }
 
   // 3. 其他頁面，直接通過
-  console.log('✅ Public page, allowing access')
+  console.log(' Public page, allowing access')
   next()
 }

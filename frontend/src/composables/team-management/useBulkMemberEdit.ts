@@ -136,10 +136,10 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  * @example
  * ```ts
  * const {
- *   memberStates,
- *   initializeMembers,
- *   updateMemberForm,
- *   saveAllChanges
+ * memberStates,
+ * initializeMembers,
+ * updateMemberForm,
+ * saveAllChanges
  * } = useBulkMemberEdit()
  *
  * // Initialize with selected members
@@ -452,7 +452,7 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
 
   /**
    * Save all changes using batch API
-   * 🚀 優化: 使用單一批量 API 請求取代多次個別請求
+   * 優化: 使用單一批量 API 請求取代多次個別請求
    */
   async function saveAllChanges(
     currentUserId: string
@@ -544,7 +544,7 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
         return { success: false, updatedCount: 0, errors, undoToken: undefined, undoExpiresAt: undefined }
       }
 
-      // 🚀 Single batch API call
+      // Single batch API call
       const response = await teamApi.batchEditMembers(batchMembers)
 
       if (!response.success) {

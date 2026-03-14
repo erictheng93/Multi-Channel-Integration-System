@@ -32,17 +32,17 @@ export interface MessageDebounceState {
  * const { isSending, canSend, markSending, markComplete } = useMessageDebounce(500)
  *
  * const sendMessage = async () => {
- *   if (!canSend()) {
- *     console.warn('发送太快，已阻止')
- *     return
- *   }
+ * if (!canSend()) {
+ * console.warn('发送太快，已阻止')
+ * return
+ * }
  *
- *   markSending()
- *   try {
- *     await api.send(...)
- *   } finally {
- *     markComplete()
- *   }
+ * markSending()
+ * try {
+ * await api.send(...)
+ * } finally {
+ * markComplete()
+ * }
  * }
  * ```
  */
@@ -76,7 +76,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
 
     // 如果正在发送中，阻止
     if (state.value.isSending) {
-      console.warn('⚠️ [MessageDebounce] Already sending, blocked')
+      console.warn('[MessageDebounce] Already sending, blocked')
       state.value.blockedCount++
       return false
     }
@@ -87,7 +87,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
 
     if (timeSinceLastSend < delay) {
       const remainingTime = delay - timeSinceLastSend
-      console.warn(`⚠️ [MessageDebounce] Too fast (${timeSinceLastSend}ms since last), need to wait ${remainingTime}ms more`)
+      console.warn(`[MessageDebounce] Too fast (${timeSinceLastSend}ms since last), need to wait ${remainingTime}ms more`)
       state.value.blockedCount++
       return false
     }
@@ -102,7 +102,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
   const markSending = () => {
     state.value.isSending = true
     state.value.lastSentTime = Date.now()
-    console.log('📤 [MessageDebounce] Marked as sending')
+    console.log('[MessageDebounce] Marked as sending')
   }
 
   /**
@@ -111,7 +111,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
    */
   const markComplete = () => {
     state.value.isSending = false
-    console.log('✅ [MessageDebounce] Marked as complete')
+    console.log('[MessageDebounce] Marked as complete')
   }
 
   /**
@@ -120,7 +120,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
    */
   const markFailed = (error?: Error) => {
     state.value.isSending = false
-    console.error('❌ [MessageDebounce] Marked as failed:', error?.message)
+    console.error('[MessageDebounce] Marked as failed:', error?.message)
   }
 
   /**
@@ -133,7 +133,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
       lastSentTime: 0,
       blockedCount: 0
     }
-    console.log('🔄 [MessageDebounce] State reset')
+    console.log('[MessageDebounce] State reset')
   }
 
   /**

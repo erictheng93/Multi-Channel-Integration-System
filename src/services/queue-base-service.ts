@@ -213,19 +213,19 @@ export abstract class QueueBaseService {
 
   // 統一的日誌記錄方法
   protected logInfo(message: string, metadata?: Record<string, unknown>): void {
-    console.log(`ℹ️ [${this.queueName}] ${message}`, metadata || {});
+    console.log(`[${this.queueName}] ${message}`, metadata || {});
   }
 
   protected logSuccess(message: string, metadata?: Record<string, unknown>): void {
-    console.log(`✅ [${this.queueName}] ${message}`, metadata || {});
+    console.log(`[${this.queueName}] ${message}`, metadata || {});
   }
 
   protected logWarning(message: string, metadata?: Record<string, unknown>): void {
-    console.warn(`⚠️ [${this.queueName}] ${message}`, metadata || {});
+    console.warn(`[${this.queueName}] ${message}`, metadata || {});
   }
 
   protected logError(message: string, error?: unknown, metadata?: Record<string, unknown>): void {
-    console.error(`❌ [${this.queueName}] ${message}`, {
+    console.error(`[${this.queueName}] ${message}`, {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
       ...metadata

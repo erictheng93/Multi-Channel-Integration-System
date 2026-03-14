@@ -85,11 +85,11 @@ export class PerformanceMonitor {
 
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.warn('⚠️ [PerformanceMonitor] Monitor already running');
+      console.warn('[PerformanceMonitor] Monitor already running');
       return;
     }
 
-    console.log('🚀 [PerformanceMonitor] Starting performance monitoring');
+    console.log('[PerformanceMonitor] Starting performance monitoring');
     this.isRunning = true;
     this.lastMetricsCollection = nowMs();
 
@@ -101,13 +101,13 @@ export class PerformanceMonitor {
     // Initial metrics collection
     await this.collectAndAnalyzeMetrics();
 
-    console.log('✅ [PerformanceMonitor] Performance monitoring started');
+    console.log('[PerformanceMonitor] Performance monitoring started');
   }
 
   async stop(): Promise<void> {
     if (!this.isRunning) return;
 
-    console.log('🛑 [PerformanceMonitor] Stopping performance monitoring');
+    console.log('[PerformanceMonitor] Stopping performance monitoring');
     this.isRunning = false;
 
     if (this.monitoringInterval) {
@@ -118,7 +118,7 @@ export class PerformanceMonitor {
     // Send final metrics to storage
     await this.persistMetrics();
 
-    console.log('✅ [PerformanceMonitor] Performance monitoring stopped');
+    console.log('[PerformanceMonitor] Performance monitoring stopped');
   }
 
   async getSystemHealth(): Promise<SystemHealth> {
@@ -145,7 +145,7 @@ export class PerformanceMonitor {
     if (alert) {
       alert.acknowledged = true;
       alert.acknowledgedAt = nowMs();
-      console.log(`✅ [PerformanceMonitor] Alert acknowledged: ${alertId}`);
+      console.log(`[PerformanceMonitor] Alert acknowledged: ${alertId}`);
     }
   }
 
@@ -168,10 +168,10 @@ export class PerformanceMonitor {
       this.cleanupOldMetrics();
 
       const collectionTime = performance.now() - startTime;
-      console.log(`📊 [PerformanceMonitor] Metrics collected in ${collectionTime.toFixed(2)}ms`);
+      console.log(`[PerformanceMonitor] Metrics collected in ${collectionTime.toFixed(2)}ms`);
 
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] Error collecting metrics:', error);
+      console.error('[PerformanceMonitor] Error collecting metrics:', error);
     }
   }
 
@@ -238,7 +238,7 @@ export class PerformanceMonitor {
         lastUpdated: nowMs()
       };
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] WebSocket metrics collection failed:', error);
+      console.error('[PerformanceMonitor] WebSocket metrics collection failed:', error);
       return this.getDefaultWebSocketMetrics();
     }
   }
@@ -276,7 +276,7 @@ export class PerformanceMonitor {
         lastUpdated: nowMs()
       };
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] Durable Objects metrics collection failed:', error);
+      console.error('[PerformanceMonitor] Durable Objects metrics collection failed:', error);
       return this.getDefaultDurableObjectMetrics();
     }
   }
@@ -316,7 +316,7 @@ export class PerformanceMonitor {
         lastUpdated: nowMs()
       };
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] System metrics collection failed:', error);
+      console.error('[PerformanceMonitor] System metrics collection failed:', error);
       return this.getDefaultSystemMetrics();
     }
   }
@@ -344,7 +344,7 @@ export class PerformanceMonitor {
         lastUpdated: nowMs()
       };
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] Message metrics collection failed:', error);
+      console.error('[PerformanceMonitor] Message metrics collection failed:', error);
       return this.getDefaultMessageMetrics();
     }
   }
@@ -576,7 +576,7 @@ export class PerformanceMonitor {
       await this.sendAlertNotification(alert);
     }
 
-    console.warn(`🚨 [PerformanceMonitor] Alert triggered: ${alertId} - ${alertData.message}`);
+    console.warn(`[PerformanceMonitor] Alert triggered: ${alertId} - ${alertData.message}`);
   }
 
   private async resolveAlert(alertId: string): Promise<void> {
@@ -588,7 +588,7 @@ export class PerformanceMonitor {
         await this.sendAlertResolution(alert);
       }
 
-      console.log(`✅ [PerformanceMonitor] Alert resolved: ${alertId}`);
+      console.log(`[PerformanceMonitor] Alert resolved: ${alertId}`);
     }
   }
 
@@ -616,7 +616,7 @@ export class PerformanceMonitor {
       });
 
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] Failed to send alert notification:', error);
+      console.error('[PerformanceMonitor] Failed to send alert notification:', error);
     }
   }
 
@@ -641,7 +641,7 @@ export class PerformanceMonitor {
       await this.env.SESSIONS.delete(`alert:${alert.id}`);
 
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] Failed to send alert resolution:', error);
+      console.error('[PerformanceMonitor] Failed to send alert resolution:', error);
     }
   }
 
@@ -723,7 +723,7 @@ export class PerformanceMonitor {
         expirationTtl: 86400 // 24 hours
       });
     } catch (error) {
-      console.error('❌ [PerformanceMonitor] Failed to persist metrics:', error);
+      console.error('[PerformanceMonitor] Failed to persist metrics:', error);
     }
   }
 

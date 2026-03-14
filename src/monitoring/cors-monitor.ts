@@ -12,10 +12,10 @@ import { nowISO, nowMs } from '@/utils/timestamp'
  * CORS 監控事件類型
  */
 export type CORSEventType =
-  | 'allowed'           // 允許的 origin
-  | 'rejected'          // 被拒絕的 origin
-  | 'preflight'         // OPTIONS preflight 請求
-  | 'sse_connection'    // SSE 連接
+  | 'allowed' // 允許的 origin
+  | 'rejected' // 被拒絕的 origin
+  | 'preflight' // OPTIONS preflight 請求
+  | 'sse_connection' // SSE 連接
   | 'credentials_used'; // 使用了 credentials
 
 /**
@@ -75,7 +75,7 @@ export class CORSMonitor {
       this.events.shift(); // 移除最舊的事件
     }
 
-    // 🆕 P2-6: 記錄到 D1（用於持久化和統計）
+    // P2-6: 記錄到 D1（用於持久化和統計）
     try {
       const db = createDbClient(this.env.DB);
       const eventId = `cors_${nowMs()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -95,7 +95,7 @@ export class CORSMonitor {
         })
       });
 
-      console.log(`✅ [CORS Monitor] Event logged to D1: ${event.type} - ${event.origin}`);
+      console.log(`[CORS Monitor] Event logged to D1: ${event.type} - ${event.origin}`);
     } catch (error) {
       console.error('Failed to persist CORS event to D1:', error);
 
@@ -107,7 +107,7 @@ export class CORSMonitor {
           JSON.stringify(fullEvent),
           { expirationTtl: 86400 } // 24 小時後過期
         );
-        console.log('✅ [CORS Monitor] Event logged to KV (fallback)');
+        console.log('[CORS Monitor] Event logged to KV (fallback)');
       } catch (kvError) {
         console.error('Failed to persist CORS event to KV fallback:', kvError);
       }
@@ -115,7 +115,7 @@ export class CORSMonitor {
 
     // 如果是被拒絕的請求，記錄警告
     if (event.type === 'rejected') {
-      console.warn(`🚫 [CORS] Rejected origin: ${event.origin} - Path: ${event.path}`);
+      console.warn(`[CORS] Rejected origin: ${event.origin} - Path: ${event.path}`);
     }
   }
 
@@ -197,7 +197,7 @@ export class CORSMonitor {
       const db = createDbClient(this.env.DB);
       const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
-      // 🆕 P2-6: Query events from D1 (last 24 hours by default)
+      // P2-6: Query events from D1 (last 24 hours by default)
       const events = await db
         .select()
         .from(corsEvents)
@@ -252,7 +252,7 @@ export class CORSMonitor {
       // 取最近 50 個事件
       const recentEvents = allEvents.slice(0, 50);
 
-      console.log(`📊 [CORS Monitor] Retrieved ${events.length} events from D1 (last ${hours} hours)`);
+      console.log(`[CORS Monitor] Retrieved ${events.length} events from D1 (last ${hours} hours)`);
 
       return {
         total: allEvents.length,
@@ -278,7 +278,7 @@ export class CORSMonitor {
    * P2-6: Temporary fallback during errors
    */
   private getStatsFromMemory(): CORSStats {
-    console.warn('⚠️ [CORS Monitor] Using in-memory statistics (fallback)');
+    console.warn('[CORS Monitor] Using in-memory statistics (fallback)');
 
     const allEvents = [...this.events];
 
@@ -338,14 +338,14 @@ export class CORSMonitor {
       const db = createDbClient(this.env.DB);
       const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 
-      // 🆕 P2-6: Delete expired events from D1
+      // P2-6: Delete expired events from D1
       await db
         .delete(corsEvents)
         .where(sql`${corsEvents.timestamp} < ${cutoffTime}`);
 
       // Note: D1 delete doesn't return the number of affected rows directly
       // We'll log a message instead
-      console.log(`✅ [CORS Monitor] Cleaned CORS events older than ${hours} hours from D1`);
+      console.log(`[CORS Monitor] Cleaned CORS events older than ${hours} hours from D1`);
 
       // Optional: Also cleanup old KV events for migration period
       try {
@@ -371,7 +371,7 @@ export class CORSMonitor {
         }
 
         if (kvCleaned > 0) {
-          console.log(`✅ [CORS Monitor] Also cleaned ${kvCleaned} expired KV events`);
+          console.log(`[CORS Monitor] Also cleaned ${kvCleaned} expired KV events`);
         }
 
         return kvCleaned; // Return KV cleaned count for now

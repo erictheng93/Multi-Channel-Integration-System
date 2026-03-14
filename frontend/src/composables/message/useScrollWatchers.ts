@@ -128,13 +128,13 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
         firstVisibleMessageId: null
       }
       pendingScrollPreservation.value = true
-      console.log(`📌 [ScrollPreservation] Captured position before prepend: scrollTop=${scrollTop}, scrollHeight=${scrollHeight}, distanceFromBottom=${distanceFromBottom}, wasAtBottom=${wasAtBottom}`)
+      console.log(`[ScrollPreservation] Captured position before prepend: scrollTop=${scrollTop}, scrollHeight=${scrollHeight}, distanceFromBottom=${distanceFromBottom}, wasAtBottom=${wasAtBottom}`)
     }
   })
 
   // Watch displayedMessages count for auto-scroll behavior
   watch(() => displayedMessages.value.length, async (newCount, oldCount) => {
-    console.log(`📨 [DisplayedMessageWatch] Displayed count changed: ${oldCount} → ${newCount}, virtualItems: ${virtualItemsLength()}`)
+    console.log(`[DisplayedMessageWatch] Displayed count changed: ${oldCount} → ${newCount}, virtualItems: ${virtualItemsLength()}`)
 
     if (oldCount !== undefined && oldCount > 0 && newCount > oldCount) {
       // Check if this is a history prepend operation
@@ -144,7 +144,7 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
         const savedPosition = scrollPositionBeforePrepend.value
         const wasAtBottomBeforePrepend = savedPosition?.wasAtBottom ?? false
 
-        console.log(`📌 [ScrollPreservation] History prepend detected, wasAtBottom: ${wasAtBottomBeforePrepend}`)
+        console.log(`[ScrollPreservation] History prepend detected, wasAtBottom: ${wasAtBottomBeforePrepend}`)
 
         isProgrammaticScrolling.value = true
 
@@ -155,7 +155,7 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
           const container = scrollContainer.value
 
           if (wasAtBottomBeforePrepend) {
-            console.log(`📌 [ScrollPreservation] User was at bottom, scrolling to bottom after prepend...`)
+            console.log(`[ScrollPreservation] User was at bottom, scrolling to bottom after prepend...`)
 
             scrollPositionBeforePrepend.value = null
             pendingScrollPreservation.value = false
@@ -167,11 +167,11 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
 
             await new Promise(resolve => setTimeout(resolve, 200))
             if (!checkIfUserAtBottom()) {
-              console.log('📌 [ScrollPreservation] Post-scroll verification: not at bottom, scrolling again...')
+              console.log('[ScrollPreservation] Post-scroll verification: not at bottom, scrolling again...')
               await scrollToBottom()
             }
 
-            console.log(`📌 [ScrollPreservation] Scrolled to bottom after history prepend`)
+            console.log(`[ScrollPreservation] Scrolled to bottom after history prepend`)
             return
           } else {
             const newScrollHeight = container.scrollHeight
@@ -180,17 +180,17 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
             const newScrollTop = savedPosition.scrollTop + heightDifference
             container.scrollTop = newScrollTop
 
-            console.log(`📌 [ScrollPreservation] Adjusted scroll position (user was NOT at bottom):`)
-            console.log(`   - Old scrollHeight: ${savedPosition.scrollHeight}, New scrollHeight: ${newScrollHeight}`)
-            console.log(`   - Height difference: ${heightDifference}`)
-            console.log(`   - Old scrollTop: ${savedPosition.scrollTop}, New scrollTop: ${newScrollTop}`)
+            console.log(`[ScrollPreservation] Adjusted scroll position (user was NOT at bottom):`)
+            console.log(` - Old scrollHeight: ${savedPosition.scrollHeight}, New scrollHeight: ${newScrollHeight}`)
+            console.log(` - Height difference: ${heightDifference}`)
+            console.log(` - Old scrollTop: ${savedPosition.scrollTop}, New scrollTop: ${newScrollTop}`)
 
             scrollPositionBeforePrepend.value = null
             pendingScrollPreservation.value = false
 
             setTimeout(() => {
               isProgrammaticScrolling.value = false
-              console.log(`📌 [ScrollPreservation] Guard cleared`)
+              console.log(`[ScrollPreservation] Guard cleared`)
             }, 100)
           }
         }
@@ -200,7 +200,7 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
 
       // Normal new messages
       const wasAtBottom = isUserAtBottom.value
-      console.log(`📨 [DisplayedMessageWatch] New messages detected, wasAtBottom: ${wasAtBottom}`)
+      console.log(`[DisplayedMessageWatch] New messages detected, wasAtBottom: ${wasAtBottom}`)
 
       await nextTick()
       addMessageAnimation()
@@ -211,30 +211,30 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
       await new Promise(resolve => window.requestAnimationFrame(resolve))
       await new Promise(resolve => setTimeout(resolve, 20))
 
-      console.log(`📨 [DisplayedMessageWatch] After wait - virtualItems: ${virtualItemsLength()}`)
+      console.log(`[DisplayedMessageWatch] After wait - virtualItems: ${virtualItemsLength()}`)
 
       if (!props.isSearchActive && wasAtBottom) {
-        console.log('📨 [DisplayedMessageWatch] Auto-scrolling to bottom...')
+        console.log('[DisplayedMessageWatch] Auto-scrolling to bottom...')
         await waitForStableScrollHeight()
         await scrollToBottom()
 
         await new Promise(resolve => setTimeout(resolve, 200))
         if (!checkIfUserAtBottom()) {
-          console.log('📨 [DisplayedMessageWatch] Post-scroll verification: not at bottom, scrolling again...')
+          console.log('[DisplayedMessageWatch] Post-scroll verification: not at bottom, scrolling again...')
           await scrollToBottom()
         }
       } else if (!wasAtBottom) {
-        console.log('📨 [DisplayedMessageWatch] User not at bottom, showing notification')
+        console.log('[DisplayedMessageWatch] User not at bottom, showing notification')
         emit('newMessageWhileScrolled')
       }
     } else if ((oldCount === undefined || oldCount === 0) && newCount > 0) {
       // Initial load
       if (isInitialScrollDone.value) {
-        console.log('📨 [DisplayedMessageWatch] Initial load detected, but onMounted already handled scroll - skipping')
+        console.log('[DisplayedMessageWatch] Initial load detected, but onMounted already handled scroll - skipping')
         return
       }
 
-      console.log('📨 [DisplayedMessageWatch] Initial load detected, scrolling to bottom...')
+      console.log('[DisplayedMessageWatch] Initial load detected, scrolling to bottom...')
       await nextTick()
       await new Promise(resolve => window.requestAnimationFrame(resolve))
       await waitForStableScrollHeight()
@@ -244,18 +244,18 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
       await new Promise(resolve => window.requestAnimationFrame(resolve))
 
       if (!checkIfUserAtBottom()) {
-        console.log('📨 [DisplayedMessageWatch] Quick verification: not at bottom, scrolling again...')
+        console.log('[DisplayedMessageWatch] Quick verification: not at bottom, scrolling again...')
         await scrollToBottom()
       }
 
       isInitialScrollDone.value = true
 
       emit('initialScrollComplete')
-      console.log('📨 [DisplayedMessageWatch] Emitted initialScrollComplete event')
+      console.log('[DisplayedMessageWatch] Emitted initialScrollComplete event')
     } else if ((oldCount === undefined || oldCount === 0) && newCount === 0) {
-      // 🔧 FIX: Zero-message initial load — emit initialScrollComplete so skeleton can hide
+      // FIX: Zero-message initial load — emit initialScrollComplete so skeleton can hide
       if (!isInitialScrollDone.value) {
-        console.log('📨 [DisplayedMessageWatch] Initial load with zero messages, emitting initialScrollComplete')
+        console.log('[DisplayedMessageWatch] Initial load with zero messages, emitting initialScrollComplete')
         isInitialScrollDone.value = true
         emit('initialScrollComplete')
       }
@@ -264,7 +264,7 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
 
   // Lifecycle: Mount
   onMounted(async () => {
-    console.log('🚀 [VirtualMessageList] Component mounted')
+    console.log('[VirtualMessageList] Component mounted')
     await nextTick()
 
     await new Promise(resolve => window.requestAnimationFrame(resolve))
@@ -281,7 +281,7 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
 
     // Scroll to bottom if we have messages
     if (!props.isSearchActive && displayedMessages.value.length > 0) {
-      console.log(`🚀 [VirtualMessageList] Initial scroll to bottom with ${displayedMessages.value.length} messages`)
+      console.log(`[VirtualMessageList] Initial scroll to bottom with ${displayedMessages.value.length} messages`)
 
       await waitForStableScrollHeight()
       await scrollToBottom()
@@ -290,15 +290,15 @@ export function useScrollWatchers(options: UseScrollWatchersOptions) {
       await new Promise(resolve => window.requestAnimationFrame(resolve))
 
       if (!checkIfUserAtBottom()) {
-        console.log('🚀 [VirtualMessageList] Quick verification: not at bottom, scrolling again...')
+        console.log('[VirtualMessageList] Quick verification: not at bottom, scrolling again...')
         await scrollToBottom()
       }
 
       isInitialScrollDone.value = true
-      console.log('🚀 [VirtualMessageList] Single optimized scroll complete, isInitialScrollDone=true')
+      console.log('[VirtualMessageList] Single optimized scroll complete, isInitialScrollDone=true')
 
       emit('initialScrollComplete')
-      console.log('🚀 [VirtualMessageList] Emitted initialScrollComplete event')
+      console.log('[VirtualMessageList] Emitted initialScrollComplete event')
     }
   })
 

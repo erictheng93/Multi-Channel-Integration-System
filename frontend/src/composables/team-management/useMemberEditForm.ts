@@ -151,15 +151,15 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  * @example
  * ```ts
  * const {
- *   formData,
- *   isDirty,
- *   isFormValid,
- *   saveChanges,
- *   isSystemAdmin,
- *   canResetPassword,
- *   pendingTeamChanges,
- *   addTeamToPending,
- *   removeTeamFromPending
+ * formData,
+ * isDirty,
+ * isFormValid,
+ * saveChanges,
+ * isSystemAdmin,
+ * canResetPassword,
+ * pendingTeamChanges,
+ * addTeamToPending,
+ * removeTeamFromPending
  * } = useMemberEditForm(memberRef, allTeamsRef, () => emit('save'))
  * ```
  */
@@ -525,7 +525,7 @@ export function useMemberEditForm(
    * Restores both local state and store state
    */
   const rollbackToSnapshot = (snapshot: MemberEditSnapshot) => {
-    console.warn('🔄 [Optimistic Update] Rolling back to snapshot...')
+    console.warn('[Optimistic Update] Rolling back to snapshot...')
 
     // Restore local state
     originalData.value = { ...snapshot.originalData }
@@ -550,7 +550,7 @@ export function useMemberEditForm(
       }))
     })
 
-    console.log('✅ [Optimistic Update] Rollback completed')
+    console.log('[Optimistic Update] Rollback completed')
   }
 
   /**
@@ -576,7 +576,7 @@ export function useMemberEditForm(
     const removeChanges = snapshot.pendingChanges.filter(c => c.type === 'remove')
     const setPrimaryChanges = snapshot.pendingChanges.filter(c => c.type === 'set-primary')
 
-    console.log('🚀 [Background Save] Starting optimized API calls...', {
+    console.log('[Background Save] Starting optimized API calls...', {
       profileDirty,
       addTeams: addChanges.length,
       removeTeams: removeChanges.length,
@@ -603,7 +603,7 @@ export function useMemberEditForm(
         )
       }
 
-      // 🚀 Phase 2: Use batch API for multiple team additions
+      // Phase 2: Use batch API for multiple team additions
       if (addChanges.length > 0) {
         if (addChanges.length === 1) {
           // Single addition - use regular API
@@ -626,7 +626,7 @@ export function useMemberEditForm(
           const teamIds = addChanges.map(c => c.teamId)
           const teamNameMap = new Map(addChanges.map(c => [c.teamId, c.teamName]))
 
-          console.log('📦 [Batch API] Joining multiple teams in single request:', teamIds)
+          console.log('[Batch API] Joining multiple teams in single request:', teamIds)
 
           apiPromises.push(
             teamApi.joinMultipleTeams(memberId, teamIds, 'member')
@@ -650,7 +650,7 @@ export function useMemberEditForm(
                   }
                 }
 
-                console.log('📦 [Batch API] Result:', {
+                console.log('[Batch API] Result:', {
                   added: batchData?.added?.length || 0,
                   skipped: batchData?.skipped?.length || 0,
                   errors: batchData?.errors?.length || 0
@@ -701,16 +701,16 @@ export function useMemberEditForm(
       }
 
       if (errors.length > 0) {
-        console.error('❌ [Background Save] Some operations failed:', errors)
+        console.error('[Background Save] Some operations failed:', errors)
         // Rollback and notify user
         rollbackToSnapshot(snapshot)
         showError('部分儲存失敗', `${errors.join('\n')  }\n\n已恢復原狀態`)
       } else {
-        console.log('✅ [Background Save] All operations completed successfully')
+        console.log('[Background Save] All operations completed successfully')
       }
 
     } catch (error) {
-      console.error('❌ [Background Save] Critical error:', error)
+      console.error('[Background Save] Critical error:', error)
       // Rollback and notify user
       rollbackToSnapshot(snapshot)
       showError('儲存失敗', '背景儲存時發生錯誤，已恢復原狀態')
@@ -720,7 +720,7 @@ export function useMemberEditForm(
   /**
    * Save changes to member profile and team assignments
    *
-   * 🚀 Optimistic Update Pattern:
+   * Optimistic Update Pattern:
    * 1. Validate form (blocking)
    * 2. Role change confirmation if needed (blocking)
    * 3. Create snapshot for rollback
@@ -778,7 +778,7 @@ export function useMemberEditForm(
       return true
     }
 
-    console.log('🚀 [Optimistic Update] Starting save...', {
+    console.log('[Optimistic Update] Starting save...', {
       profileDirty,
       teamChanges: pendingTeamChanges.value.length
     })
@@ -817,7 +817,7 @@ export function useMemberEditForm(
     showSuccess('儲存成功', '成員資料已更新')
     onSaveSuccess?.()
 
-    console.log('✅ [Optimistic Update] UI updated, starting background save...')
+    console.log('[Optimistic Update] UI updated, starting background save...')
 
     // ========== Step 6: Execute API calls in background (non-blocking) ==========
     // Note: We don't await this - it runs in background

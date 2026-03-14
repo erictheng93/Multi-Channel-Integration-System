@@ -494,13 +494,13 @@ export class MessageRecallService {
       // 獲取按原因分組的統計 (reason field not available in schema)
       const reasonStats: { reason: string | null; count: number }[] = [];
       // const reasonStats = await this.drizzleDb
-      //   .select({
-      //     reason: messageRecallLogs.reason,
-      //     count: count(),
-      //   })
-      //   .from(messageRecallLogs)
-      //   .where(whereCondition)
-      //   .groupBy(messageRecallLogs.reason);
+      // .select({
+      // reason: messageRecallLogs.reason,
+      // count: count(),
+      // })
+      // .from(messageRecallLogs)
+      // .where(whereCondition)
+      // .groupBy(messageRecallLogs.reason);
 
       const byReason: Record<string, number> = {};
       reasonStats.forEach(stat => {

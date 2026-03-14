@@ -1,4 +1,4 @@
-# 📘 Guides
+#  Guides
 
 > User guides, deployment instructions, and troubleshooting resources.
 

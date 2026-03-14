@@ -12,7 +12,7 @@ async function createDacitAdmin() {
   const sqliteDb = new Database(dbPath, { readonly: false });
   // Use better-sqlite3 adapter with casing configuration
   const db = drizzle(sqliteDb, {
-    casing: 'camelCase' // ✅ Unified casing configuration
+    casing: 'camelCase' //  Unified casing configuration
   });
   console.log(`Connected to LOCAL DEV database`);
   console.log('=' .repeat(80));
@@ -40,8 +40,8 @@ async function createDacitAdmin() {
         })
         .where(eq(agents.email, 'admin@dacit.net'));
       
-      console.log(`✅ Updated admin user with new password`);
-      console.log(`   Update completed successfully`);
+      console.log(` Updated admin user with new password`);
+      console.log(` Update completed successfully`);
     } else {
       console.log('Creating new admin user admin@dacit.net...');
       
@@ -63,9 +63,9 @@ async function createDacitAdmin() {
         updatedAt: now
       });
       
-      console.log(`✅ Created new admin user`);
-      console.log(`   ID: ${userId}`);
-      console.log(`   Insert completed successfully`);
+      console.log(` Created new admin user`);
+      console.log(` ID: ${userId}`);
+      console.log(` Insert completed successfully`);
     }
     
     // Verify the user can be found and password works
@@ -77,25 +77,25 @@ async function createDacitAdmin() {
       .where(eq(agents.email, 'admin@dacit.net'))
       .get();
     if (adminUser) {
-      console.log(`✅ User found:`);
-      console.log(`   ID: ${adminUser.id}`);
-      console.log(`   Email: ${adminUser.email}`);
-      console.log(`   Display Name: ${adminUser.displayName}`);
-      console.log(`   Role: ${adminUser.role}`);
-      console.log(`   Active: ${adminUser.isActive}`);
+      console.log(` User found:`);
+      console.log(` ID: ${adminUser.id}`);
+      console.log(` Email: ${adminUser.email}`);
+      console.log(` Display Name: ${adminUser.displayName}`);
+      console.log(` Role: ${adminUser.role}`);
+      console.log(` Active: ${adminUser.isActive}`);
       
       // Test password
       const passwordValid = await bcrypt.compare('16011587DaC', adminUser.passwordHash);
-      console.log(`   Password test: ${passwordValid ? '✅ VALID' : '❌ INVALID'}`);
+      console.log(` Password test: ${passwordValid ? ' VALID' : ' INVALID'}`);
     } else {
-      console.log('❌ Failed to create/find user');
+      console.log(' Failed to create/find user');
     }
     
   } catch (error) {
     console.error('Error:', error);
   } finally {
     sqliteDb.close();
-    console.log('\n✅ Database operation completed');
+    console.log('\n Database operation completed');
   }
 }
 

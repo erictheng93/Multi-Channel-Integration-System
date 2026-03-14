@@ -83,10 +83,10 @@
  * @example
  * ```vue
  * <TransferredConversationBanner
- *   :is-visible="isTransferred"
- *   :team-name="transferredToTeam"
- *   :transferred-at="transferTime"
- *   @back="handleBackToList"
+ * :is-visible="isTransferred"
+ * :team-name="transferredToTeam"
+ * :transferred-at="transferTime"
+ * @back="handleBackToList"
  * />
  * ```
  */
@@ -168,7 +168,7 @@ const formatTime = (isoTime: string): string => {
 
 <style scoped>
 /* ====== Transferred Conversation Banner Styles ====== */
-/* 🎨 Warning amber/yellow color scheme for transfer notification */
+/* Warning amber/yellow color scheme for transfer notification */
 .transferred-conversation-banner {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   border-left: 4px solid #f59e0b;

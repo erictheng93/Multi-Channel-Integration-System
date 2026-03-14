@@ -22,40 +22,40 @@ export const SYSTEM_MODULE_INFO = {
     base: '/api/system',
     endpoints: [
       // 基本監控
-      'GET /health',                        // 健康檢查
-      'GET /status',                        // 系統狀態
-      'GET /info',                          // 系統資訊
-      'GET /diagnostics',                   // 系統診斷
+      'GET /health', // 健康檢查
+      'GET /status', // 系統狀態
+      'GET /info', // 系統資訊
+      'GET /diagnostics', // 系統診斷
 
       // API 和統計
-      'GET /api',                           // API 資訊
-      'GET /stats',                         // 系統統計
-      'GET /metrics',                       // 系統指標
-      'GET /performance/report',            // 效能報告
+      'GET /api', // API 資訊
+      'GET /stats', // 系統統計
+      'GET /metrics', // 系統指標
+      'GET /performance/report', // 效能報告
 
       // 設置管理
-      'GET /settings',                      // 獲取設置
-      'PUT /settings',                      // 更新設置
-      'POST /config/validate',              // 配置驗證
+      'GET /settings', // 獲取設置
+      'PUT /settings', // 更新設置
+      'POST /config/validate', // 配置驗證
 
       // 平台整合
       'POST /integrations/:platform/test',  // 測試整合
 
       // 維護操作
-      'POST /maintenance/mode',             // 維護模式
+      'POST /maintenance/mode', // 維護模式
 
       // 安全性和日誌
-      'GET /security/audit',                // 安全稽核
-      'GET /logs/system',                   // 系統日誌
+      'GET /security/audit', // 安全稽核
+      'GET /logs/system', // 系統日誌
 
       // 進階功能
-      'GET /messages/recall-stats',         // 召回統計
-      'GET /messages/:messageId/replies',   // 訊息回覆
+      'GET /messages/recall-stats', // 召回統計
+      'GET /messages/:messageId/replies', // 訊息回覆
       'GET /conversations/:conversationId/message-tree', // 對話樹
-      'GET /conversations/:conversationId/sessions',     // 會話統計
+      'GET /conversations/:conversationId/sessions', // 會話統計
 
       // 模組資訊
-      'GET /module-info'                    // 模組資訊
+      'GET /module-info' // 模組資訊
     ]
   },
   features: [

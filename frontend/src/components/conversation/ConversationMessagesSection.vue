@@ -88,13 +88,13 @@
  *
  * 使用示例：
  * <ConversationMessagesSection
- *   :messages="messages"
- *   :displayed-messages="displayedMessages"
- *   :loading="loading"
- *   :has-more="hasMore"
- *   @message-copy="handleCopy"
- *   @message-reply="handleReply"
- *   @load-more="loadMoreMessages"
+ * :messages="messages"
+ * :displayed-messages="displayedMessages"
+ * :loading="loading"
+ * :has-more="hasMore"
+ * @message-copy="handleCopy"
+ * @message-reply="handleReply"
+ * @load-more="loadMoreMessages"
  * />
  */
 

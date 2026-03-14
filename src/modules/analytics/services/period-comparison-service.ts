@@ -12,7 +12,7 @@ import { nowISO } from '@/utils/timestamp'
  */
 export interface Period {
   start: string;  // ISO 8601 date string
-  end: string;    // ISO 8601 date string
+  end: string; // ISO 8601 date string
   label?: string; // 人類可讀的標籤，如 "本週" "上週"
 }
 
@@ -20,9 +20,9 @@ export interface Period {
  * 比較數據結構
  */
 export interface ComparisonData {
-  current: number;           // 當前期間的值
-  previous: number;          // 上一期間的值
-  change: number;            // 絕對變化量
+  current: number; // 當前期間的值
+  previous: number; // 上一期間的值
+  change: number; // 絕對變化量
   changePercentage: number;  // 變化百分比
   trend: 'up' | 'down' | 'stable';  // 趨勢方向
   period: {
@@ -35,9 +35,9 @@ export interface ComparisonData {
  * 期間比較查詢參數
  */
 export interface PeriodComparisonQuery {
-  metric: string;              // 指標名稱，如 'total_conversations', 'total_messages'
-  currentPeriod: Period;       // 當前期間
-  previousPeriod?: Period;     // 上一期間（可選，如未提供則自動計算）
+  metric: string; // 指標名稱，如 'total_conversations', 'total_messages'
+  currentPeriod: Period; // 當前期間
+  previousPeriod?: Period; // 上一期間（可選，如未提供則自動計算）
   filters?: {
     teamId?: number;
     userId?: number;
@@ -55,9 +55,9 @@ export interface MultiMetricComparison {
   };
   summary: {
     totalMetrics: number;
-    improvedMetrics: number;     // 上升的指標數量
-    declinedMetrics: number;     // 下降的指標數量
-    stableMetrics: number;       // 穩定的指標數量
+    improvedMetrics: number; // 上升的指標數量
+    declinedMetrics: number; // 下降的指標數量
+    stableMetrics: number; // 穩定的指標數量
     overallTrend: 'positive' | 'negative' | 'neutral';
   };
 }
@@ -141,7 +141,7 @@ export class PeriodComparisonService {
 
       const cached = await this.cacheService.get<ComparisonData>(cacheKey);
       if (cached) {
-        console.log(`✅ Comparison cache HIT: ${metric}`);
+        console.log(` Comparison cache HIT: ${metric}`);
         return cached.data;
       }
     }
@@ -172,7 +172,7 @@ export class PeriodComparisonService {
         { data: comparison, metadata: { processedAt: nowISO(), cacheHit: false } } as any,
         ttl
       );
-      console.log(`💾 Cached comparison: ${metric} (TTL: ${ttl}s)`);
+      console.log(` Cached comparison: ${metric} (TTL: ${ttl}s)`);
     }
 
     return comparison;

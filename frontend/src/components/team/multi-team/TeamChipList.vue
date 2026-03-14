@@ -141,12 +141,12 @@ const isPendingRemove = (teamId: number): boolean => {
  */
 const getChipIcon = (team: AgentTeamMembership): string => {
   if (isPendingRemove(team.teamId)) {
-    return '🗑️'
+    return ''
   }
   if (isPendingAdd(team.teamId)) {
-    return '➕'
+    return ''
   }
-  return '👥'
+  return ''
 }
 </script>
 

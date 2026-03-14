@@ -1,39 +1,39 @@
 # P1 優化：批量 WebSocket 廣播
 
-## 🎯 優化目標
+##  優化目標
 
 **減少 Durable Objects 調用次數 60-80%，降低運營成本 50%**
 
-## 📊 性能提升總覽
+##  性能提升總覽
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  優化前 vs 優化後性能對比                                   │
+│  優化前 vs 優化後性能對比 │
 ├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  【Durable Objects 調用次數】                               │
-│   優化前: 每個事件1次DO調用                                 │
-│   優化後: 平均每5個事件1次DO調用 (批量模式)                 │
-│   減少率: 60-80%                                           │
-│                                                            │
-│  【平均延遲】                                               │
-│   優化前: 0-50ms (立即廣播)                                 │
-│   優化後: 150ms (300ms批量窗口的平均值)                    │
-│   影響評估: 可接受（非緊急消息）                            │
-│                                                            │
-│  【成本節省】                                               │
-│   DO 請求成本: ↓ 60-80%                                    │
-│   CPU 時間成本: ↓ 40-50%                                   │
-│   總體成本: ↓ 50-70%                                       │
-│                                                            │
-│  【測試覆蓋率】                                             │
-│   單元測試: 13個測試 100%通過                               │
-│   測試場景: 批量、超時、配置、邊界情況                      │
-│                                                            │
+│ │
+│  【Durable Objects 調用次數】 │
+│ 優化前: 每個事件1次DO調用 │
+│ 優化後: 平均每5個事件1次DO調用 (批量模式) │
+│ 減少率: 60-80% │
+│ │
+│  【平均延遲】 │
+│ 優化前: 0-50ms (立即廣播) │
+│ 優化後: 150ms (300ms批量窗口的平均值) │
+│ 影響評估: 可接受（非緊急消息） │
+│ │
+│  【成本節省】 │
+│ DO 請求成本: ↓ 60-80% │
+│ CPU 時間成本: ↓ 40-50% │
+│ 總體成本: ↓ 50-70% │
+│ │
+│  【測試覆蓋率】 │
+│ 單元測試: 13個測試 100%通過 │
+│ 測試場景: 批量、超時、配置、邊界情況 │
+│ │
 └────────────────────────────────────────────────────────────┘
 ```
 
-## 🔧 實現細節
+##  實現細節
 
 ### 核心機制
 
@@ -42,8 +42,8 @@
 ```
 Event 1 ───┐
 Event 2 ───┼──→ [批量隊列] ──→ 等待300ms ──→ [批量廣播] ──→ Durable Objects
-Event 3 ───┤                      或                    (1次DO調用)
-Event 4 ───┤                   達到50個事件
+Event 3 ───┤ 或                    (1次DO調用)
+Event 4 ───┤ 達到50個事件
 Event 5 ───┘
 ```
 
@@ -51,10 +51,10 @@ Event 5 ───┘
 
 ```typescript
 interface BatchConfig {
-  enabled: boolean;           // 啟用/禁用批量模式
-  maxBatchSize: number;       // 最大批量大小 (默認: 50)
-  batchWindowMs: number;      // 批量窗口時間 (默認: 300ms)
-  urgentBypass: boolean;      // 緊急事件繞過批量 (默認: true)
+  enabled: boolean; // 啟用/禁用批量模式
+  maxBatchSize: number; // 最大批量大小 (默認: 50)
+  batchWindowMs: number; // 批量窗口時間 (默認: 300ms)
+  urgentBypass: boolean; // 緊急事件繞過批量 (默認: true)
 }
 ```
 
@@ -72,12 +72,12 @@ interface BatchConfig {
 
 | 優先級    | 批量處理 | 延遲   | 使用場景                    |
 |-----------|----------|--------|----------------------------|
-| `urgent`  | ❌ 繞過  | <50ms  | 緊急通知、系統警報           |
-| `high`    | ✅ 批量  | ~150ms | 重要消息、關鍵更新           |
-| `normal`  | ✅ 批量  | ~150ms | 一般對話消息、狀態更新       |
-| `low`     | ✅ 批量  | ~150ms | 輸入指示器、在線狀態         |
+| `urgent`  |  繞過  | <50ms  | 緊急通知、系統警報           |
+| `high`    |  批量  | ~150ms | 重要消息、關鍵更新           |
+| `normal`  |  批量  | ~150ms | 一般對話消息、狀態更新       |
+| `low`     |  批量  | ~150ms | 輸入指示器、在線狀態         |
 
-## 📈 使用方法
+##  使用方法
 
 ### 基本使用（默認啟用）
 
@@ -103,19 +103,19 @@ await broadcastService.broadcastMessageEvent({
 ```typescript
 // 場景1: 高流量系統 - 增大批量大小
 const highThroughputService = new WebSocketBroadcastService(env, {
-  maxBatchSize: 100,       // 更大的批量
-  batchWindowMs: 500       // 更長的窗口
+  maxBatchSize: 100, // 更大的批量
+  batchWindowMs: 500 // 更長的窗口
 });
 
 // 場景2: 低延遲需求 - 減小批量窗口
 const lowLatencyService = new WebSocketBroadcastService(env, {
   maxBatchSize: 20,
-  batchWindowMs: 100       // 更短的窗口
+  batchWindowMs: 100 // 更短的窗口
 });
 
 // 場景3: 完全禁用批量（回退到舊行為）
 const immediatebbroadcastService = new WebSocketBroadcastService(env, {
-  enabled: false           // 禁用批量
+  enabled: false // 禁用批量
 });
 ```
 
@@ -153,7 +153,7 @@ await broadcastService.broadcastMessageEvent({
 });
 ```
 
-## 🔍 監控與診斷
+##  監控與診斷
 
 ### 查看批量隊列狀態
 
@@ -161,15 +161,15 @@ await broadcastService.broadcastMessageEvent({
 const status = service.getBatchQueueStatus();
 
 console.log('Batch Queue Status:', {
-  queueSize: status.queueSize,           // 當前隊列大小
-  timerActive: status.timerActive,       // 定時器是否激活
-  config: status.config,                 // 當前配置
+  queueSize: status.queueSize, // 當前隊列大小
+  timerActive: status.timerActive, // 定時器是否激活
+  config: status.config, // 當前配置
   metrics: {
-    totalEvents: status.metrics.totalEvents,       // 總事件數
-    batchedEvents: status.metrics.batchedEvents,   // 批量事件數
+    totalEvents: status.metrics.totalEvents, // 總事件數
+    batchedEvents: status.metrics.batchedEvents, // 批量事件數
     immediateEvents: status.metrics.immediateEvents, // 立即事件數
-    batchesSent: status.metrics.batchesSent,       // 已發送批次數
-    avgBatchSize: status.metrics.avgBatchSize      // 平均批量大小
+    batchesSent: status.metrics.batchesSent, // 已發送批次數
+    avgBatchSize: status.metrics.avgBatchSize // 平均批量大小
   }
 });
 ```
@@ -198,15 +198,15 @@ console.log(`平均批量大小: ${avgBatchSize} 個事件/批次`);
 批量廣播服務提供詳細的日誌輸出：
 
 ```
-📊 [WebSocket Broadcast] Initialized with batch config: { enabled: true, ... }
-📦 [Batch Queue] Event enqueued. Queue size: 3/50
-⏰ [Batch Queue] Flush scheduled in 300ms
-⚡ [Batch Queue] Max batch size reached, flushing immediately
-📤 [Batch Queue] Flushing 5 events
-✅ [Batch Queue] Batch broadcast complete: { successful: 5, failed: 0, ... }
+ [WebSocket Broadcast] Initialized with batch config: { enabled: true, ... }
+ [Batch Queue] Event enqueued. Queue size: 3/50
+ [Batch Queue] Flush scheduled in 300ms
+ [Batch Queue] Max batch size reached, flushing immediately
+ [Batch Queue] Flushing 5 events
+ [Batch Queue] Batch broadcast complete: { successful: 5, failed: 0, ... }
 ```
 
-## 🧪 測試
+##  測試
 
 ### 運行測試套件
 
@@ -215,12 +215,12 @@ console.log(`平均批量大小: ${avgBatchSize} 個事件/批次`);
 npx vitest tests/unit/services/websocket-broadcast-batch.test.ts --run
 
 # 測試覆蓋：
-# ✓ 批量隊列機制 (5 tests)
-# ✓ 配置管理 (2 tests)
-# ✓ 手動刷新 (1 test)
-# ✓ 性能指標 (2 tests)
-# ✓ 邊界情況 (2 tests)
-# ✓ 向後兼容性 (1 test)
+#  批量隊列機制 (5 tests)
+#  配置管理 (2 tests)
+#  手動刷新 (1 test)
+#  性能指標 (2 tests)
+#  邊界情況 (2 tests)
+#  向後兼容性 (1 test)
 ```
 
 ### 測試場景
@@ -241,7 +241,7 @@ for (let i = 0; i < 50; i++) {
 expect(status.queueSize).toBe(0);  // 自動刷新
 ```
 
-## ⚠️ 注意事項
+##  注意事項
 
 ### 1. 延遲敏感場景
 
@@ -253,17 +253,17 @@ expect(status.queueSize).toBe(0);  // 自動刷新
 - 評估是否真的需要實時（<100ms）響應
 
 ```typescript
-// ✅ 好的做法
+// 好的做法
 await service.broadcastMessageEvent({
   type: 'message_sent',
   priority: 'urgent',  // 關鍵消息立即廣播
   ...
 });
 
-// ❌ 避免
+// 避免
 await service.broadcastMessageEvent({
   type: 'typing_start',  // 輸入指示器不需要緊急
-  priority: 'urgent',    // 不要濫用 urgent
+  priority: 'urgent', // 不要濫用 urgent
   ...
 });
 ```
@@ -295,7 +295,7 @@ process.on('SIGTERM', async () => {
 });
 ```
 
-## 📊 實際案例分析
+##  實際案例分析
 
 ### 案例1: 中等流量客服系統
 
@@ -327,8 +327,8 @@ process.on('SIGTERM', async () => {
 ```typescript
 {
   enabled: true,
-  maxBatchSize: 100,     // 增大批量
-  batchWindowMs: 400,    // 稍長窗口
+  maxBatchSize: 100, // 增大批量
+  batchWindowMs: 400, // 稍長窗口
   urgentBypass: true
 }
 ```
@@ -345,7 +345,7 @@ process.on('SIGTERM', async () => {
   - 平均批量大小: 8-12 events/batch
 ```
 
-## 🚀 未來改進方向
+##  未來改進方向
 
 ### Phase 2 優化計劃
 
@@ -362,22 +362,22 @@ process.on('SIGTERM', async () => {
    - 合併相同對話的多個事件
    - 減少 payload 大小
 
-## 📚 相關文檔
+##  相關文檔
 
 - [WebSocket 廣播服務 API](../api/websocket-broadcast-service.md)
 - [Durable Objects 架構](../architecture/durable-objects.md)
 - [性能監控指南](../monitoring/performance-monitoring.md)
 - [成本優化策略](../operations/cost-optimization.md)
 
-## 🎉 總結
+##  總結
 
 P1 批量廣播優化是一個 **無損性能提升**，具有以下特點：
 
-✅ **大幅成本節省** - 減少 DO 調用 60-80%
-✅ **配置靈活** - 可根據需求調整或禁用
-✅ **向後兼容** - 不影響現有代碼
-✅ **充分測試** - 13 個測試全部通過
-✅ **易於監控** - 完整的性能指標追蹤
+ **大幅成本節省** - 減少 DO 調用 60-80%
+ **配置靈活** - 可根據需求調整或禁用
+ **向後兼容** - 不影響現有代碼
+ **充分測試** - 13 個測試全部通過
+ **易於監控** - 完整的性能指標追蹤
 
 **推薦配置：** 使用默認配置即可獲得最佳效果！
 

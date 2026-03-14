@@ -1,32 +1,32 @@
 # Sharding System Design for Multi-Channel Customer Support Platform
 
-## 📋 Document Information
+##  Document Information
 
 **Created**: 2025-10-28
 **Author**: System Architecture Team
 **Version**: 1.0.0 (Design Phase)
-**Status**: 🔧 Design & Planning
+**Status**:  Design & Planning
 **Related Files**:
 - `src/durable-objects/ConversationRoom.ts` (Current Implementation)
 - `TechStack/pubsub/src/durable-objects/topic.ts` (Reference Implementation)
 
 ---
 
-## 🎯 Executive Summary
+##  Executive Summary
 
 This document outlines the design for implementing an **automatic sharding system** for ConversationRoom Durable Objects, enabling the platform to scale from **~100 concurrent connections per conversation** to **50,000+ connections** through horizontal partitioning.
 
 ### Key Objectives
 
-✅ **Scalability**: Support 50,000+ concurrent connections per conversation
-✅ **Backward Compatibility**: Seamless upgrade without breaking existing features
-✅ **Performance**: Minimal latency overhead (<50ms for shard routing)
-✅ **Reliability**: Automatic failover and shard rebalancing
-✅ **Observability**: Comprehensive metrics and monitoring
+ **Scalability**: Support 50,000+ concurrent connections per conversation
+ **Backward Compatibility**: Seamless upgrade without breaking existing features
+ **Performance**: Minimal latency overhead (<50ms for shard routing)
+ **Reliability**: Automatic failover and shard rebalancing
+ **Observability**: Comprehensive metrics and monitoring
 
 ---
 
-## 📊 Current System Analysis
+##  Current System Analysis
 
 ### ConversationRoom Current Architecture
 
@@ -34,7 +34,7 @@ This document outlines the design for implementing an **automatic sharding syste
 // src/durable-objects/ConversationRoom.ts (Simplified)
 export class ConversationRoom implements DurableObject {
   private connections = new Map<string, WebSocketConnection>();
-  private readonly MAX_CONNECTIONS = 100; // ⚠️ Current Bottleneck
+  private readonly MAX_CONNECTIONS = 100; //  Current Bottleneck
 
   async handleWebSocketUpgrade(request: Request): Promise<Response> {
     if (this.connections.size >= this.MAX_CONNECTIONS) {
@@ -49,54 +49,54 @@ export class ConversationRoom implements DurableObject {
 
 | Aspect | Current State | Impact |
 |--------|--------------|--------|
-| **Max Connections** | ~100-1,000 per conversation | ❌ Cannot support viral events |
-| **Scalability** | Vertical only (single DO) | ❌ Hard limit per instance |
-| **Distribution** | None | ❌ All load on one DO |
-| **Failover** | Manual recovery | ⚠️ Downtime during failures |
+| **Max Connections** | ~100-1,000 per conversation |  Cannot support viral events |
+| **Scalability** | Vertical only (single DO) |  Hard limit per instance |
+| **Distribution** | None |  All load on one DO |
+| **Failover** | Manual recovery |  Downtime during failures |
 
 ---
 
-## 🏗️ Proposed Sharding Architecture
+##  Proposed Sharding Architecture
 
 ### Core Concept: Horizontal Partitioning
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              Conversation Sharding Architecture                  │
+│ Conversation Sharding Architecture │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                   │
-│  Client Request (conversationId: "conv-123")                     │
-│         │                                                         │
-│         ▼                                                         │
-│  ┌──────────────────────┐                                        │
-│  │  ShardingService     │  🔍 Find available shard               │
-│  │  (Worker Entry)      │                                        │
-│  └──────────────────────┘                                        │
-│         │                                                         │
-│         ├────► Check shard capacities (RPC)                      │
-│         │                                                         │
-│         ▼                                                         │
-│  ┌─────────────────────────────────────────────────┐            │
-│  │         Shard Selection Algorithm                │            │
-│  │  conv-123_shard-0  ──► 9,500 connections ❌ Full│            │
-│  │  conv-123_shard-1  ──► 8,200 connections ❌ Full│            │
-│  │  conv-123_shard-2  ──► 3,100 connections ✅ OK  │ ◄─ Select  │
-│  │  conv-123_shard-3  ──► 0 connections (idle)     │            │
-│  │  conv-123_shard-4  ──► Not created yet          │            │
-│  └─────────────────────────────────────────────────┘            │
-│         │                                                         │
-│         ▼                                                         │
-│  ┌──────────────────────┐                                        │
-│  │ ConversationRoom DO  │  🎯 Route to selected shard            │
-│  │ (conv-123_shard-2)   │                                        │
-│  │ • connections: 3,100 │                                        │
-│  │ • capacity: 10,000   │                                        │
-│  │ • shardIndex: 2      │                                        │
-│  └──────────────────────┘                                        │
-│         │                                                         │
-│         ▼                                                         │
-│  WebSocket Connection Established ✅                             │
-│                                                                   │
+│ │
+│  Client Request (conversationId: "conv-123") │
+│ │                                                         │
+│ ▼                                                         │
+│  ┌──────────────────────┐ │
+│  │  ShardingService │   Find available shard │
+│  │  (Worker Entry) │                                        │
+│  └──────────────────────┘ │
+│ │                                                         │
+│ ├────► Check shard capacities (RPC) │
+│ │                                                         │
+│ ▼                                                         │
+│  ┌─────────────────────────────────────────────────┐ │
+│  │ Shard Selection Algorithm │            │
+│  │  conv-123_shard-0  ──► 9,500 connections  Full│ │
+│  │  conv-123_shard-1  ──► 8,200 connections  Full│ │
+│  │  conv-123_shard-2  ──► 3,100 connections  OK  │ ◄─ Select  │
+│  │  conv-123_shard-3  ──► 0 connections (idle) │            │
+│  │  conv-123_shard-4  ──► Not created yet │            │
+│  └─────────────────────────────────────────────────┘ │
+│ │                                                         │
+│ ▼                                                         │
+│  ┌──────────────────────┐ │
+│  │ ConversationRoom DO  │ Route to selected shard │
+│  │ (conv-123_shard-2) │                                        │
+│  │ • connections: 3,100 │ │
+│  │ • capacity: 10,000 │                                        │
+│  │ • shardIndex: 2 │                                        │
+│  └──────────────────────┘ │
+│ │                                                         │
+│ ▼                                                         │
+│  WebSocket Connection Established │
+│ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -109,14 +109,14 @@ const SHARD_CONFIG = {
   MAX_SHARDS_PER_CONVERSATION: 5, // 50,000 total connections
   SHARD_REBALANCE_THRESHOLD: 0.8, // 80% capacity triggers rebalance check
   SHARD_NAMING_PATTERN: '{conversationId}_shard-{index}',
-  CAPACITY_CHECK_TIMEOUT: 2000,   // 2 seconds for RPC timeout
-  FAILOVER_RETRY_COUNT: 3,        // Retry on shard failure
+  CAPACITY_CHECK_TIMEOUT: 2000, // 2 seconds for RPC timeout
+  FAILOVER_RETRY_COUNT: 3, // Retry on shard failure
 };
 ```
 
 ---
 
-## 🔧 Detailed Technical Design
+##  Detailed Technical Design
 
 ### 1. ShardingService (New Component)
 
@@ -149,7 +149,7 @@ export class ConversationShardingService {
     retryAttempt: number = 0
   ): Promise<DurableObjectStub | null> {
 
-    // 1️⃣ Try existing shards first (from cache)
+    // 1️ Try existing shards first (from cache)
     const cachedShards = this.shardCache.get(conversationId) || [];
 
     for (const shardMeta of cachedShards) {
@@ -159,16 +159,16 @@ export class ConversationShardingService {
         const capacity = await this.checkShardCapacity(stub);
 
         if (capacity.hasCapacity) {
-          console.log(`✅ Using existing shard-${shardMeta.index} for ${conversationId}`);
+          console.log(` Using existing shard-${shardMeta.index} for ${conversationId}`);
           return stub;
         }
       } catch (error) {
-        console.warn(`⚠️ Shard-${shardMeta.index} check failed:`, error);
+        console.warn(` Shard-${shardMeta.index} check failed:`, error);
         // Continue to next shard
       }
     }
 
-    // 2️⃣ Create or find next available shard
+    // 2️ Create or find next available shard
     for (let shardIndex = 0; shardIndex < SHARD_CONFIG.MAX_SHARDS_PER_CONVERSATION; shardIndex++) {
       const stub = this.getShardStub(conversationId, shardIndex);
 
@@ -176,19 +176,19 @@ export class ConversationShardingService {
         const capacity = await this.checkShardCapacity(stub);
 
         if (capacity.hasCapacity) {
-          console.log(`🆕 Allocating shard-${shardIndex} for ${conversationId}`);
+          console.log(` Allocating shard-${shardIndex} for ${conversationId}`);
           await this.initializeShard(stub, conversationId, shardIndex);
           this.updateShardCache(conversationId, shardIndex, capacity);
           return stub;
         }
       } catch (error) {
-        console.error(`❌ Failed to check shard-${shardIndex}:`, error);
+        console.error(` Failed to check shard-${shardIndex}:`, error);
       }
     }
 
-    // 3️⃣ All shards full or unreachable
+    // 3️ All shards full or unreachable
     if (retryAttempt < SHARD_CONFIG.FAILOVER_RETRY_COUNT) {
-      console.log(`🔄 Retrying shard allocation (attempt ${retryAttempt + 1})...`);
+      console.log(` Retrying shard allocation (attempt ${retryAttempt + 1})...`);
       await this.sleep(500 * (retryAttempt + 1)); // Exponential backoff
       return this.getAvailableShardForConversation(conversationId, retryAttempt + 1);
     }
@@ -300,12 +300,12 @@ interface ShardMetadata {
 export class ConversationRoom implements DurableObject {
   // ... existing code ...
 
-  // ✨ NEW: Shard-specific metadata
+  // NEW: Shard-specific metadata
   private shardIndex: number = 0;
   private shardId: string = '';
   private maxConnectionsForShard: number = 10_000;
 
-  // ✨ NEW: Initialize shard metadata
+  // NEW: Initialize shard metadata
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
@@ -361,29 +361,29 @@ export class ConversationRoom implements DurableObject {
         initializedAt: Date.now()
       });
 
-      console.log(`🎉 Shard initialized: ${this.shardId}`);
+      console.log(` Shard initialized: ${this.shardId}`);
 
       return new Response(JSON.stringify({ success: true, shardId: this.shardId }));
     } catch (error) {
-      console.error('❌ Shard initialization failed:', error);
+      console.error(' Shard initialization failed:', error);
       return new Response(JSON.stringify({ error: 'Initialization failed' }), { status: 500 });
     }
   }
 
-  // ✨ MODIFIED: Update connection limit check
+  // MODIFIED: Update connection limit check
   private async handleWebSocketUpgrade(request: Request): Promise<Response> {
     // ... existing auth code ...
 
     // Check shard-specific connection limit
     if (this.connections.size >= this.maxConnectionsForShard) {
-      console.warn(`⚠️ Shard ${this.shardId} at capacity: ${this.connections.size}/${this.maxConnectionsForShard}`);
+      console.warn(` Shard ${this.shardId} at capacity: ${this.connections.size}/${this.maxConnectionsForShard}`);
       return new Response('Shard at capacity - please retry', { status: 503 });
     }
 
     // ... existing connection handling ...
   }
 
-  // ✨ NEW: Restore shard metadata from storage
+  // NEW: Restore shard metadata from storage
   private async initializeFromStorage(): Promise<void> {
     try {
       // Restore shard metadata
@@ -397,7 +397,7 @@ export class ConversationRoom implements DurableObject {
 
       // ... existing restoration code ...
     } catch (error) {
-      console.error('❌ Shard metadata restoration error:', error);
+      console.error(' Shard metadata restoration error:', error);
     }
   }
 }
@@ -426,7 +426,7 @@ export default {
         return new Response('Missing required parameters', { status: 400 });
       }
 
-      // 🆕 Use sharding service to find available shard
+      // Use sharding service to find available shard
       const shardingService = new ConversationShardingService(env);
 
       try {
@@ -440,7 +440,7 @@ export default {
         return shard.fetch(request);
 
       } catch (error) {
-        console.error('❌ Sharding error:', error);
+        console.error(' Sharding error:', error);
         return new Response('Service temporarily unavailable', { status: 503 });
       }
     }
@@ -452,7 +452,7 @@ export default {
 
 ---
 
-## 📊 Shard Distribution Strategy
+##  Shard Distribution Strategy
 
 ### Load Balancing Algorithm
 
@@ -498,7 +498,7 @@ function selectShard(conversationId: string): Shard {
 
 ---
 
-## 🔄 Message Broadcasting Across Shards
+##  Message Broadcasting Across Shards
 
 ### Challenge: Cross-Shard Communication
 
@@ -508,37 +508,37 @@ When a message is sent to a conversation with multiple shards, **all shards must
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│         Cross-Shard Message Broadcasting                     │
+│ Cross-Shard Message Broadcasting │
 ├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Client sends message                                         │
-│         │                                                     │
-│         ▼                                                     │
-│  ┌──────────────────┐                                        │
-│  │ Shard-0 receives │  ✅ Message received                   │
-│  └──────────────────┘                                        │
-│         │                                                     │
-│         ├──► Broadcasts to own connections (3,000 clients)   │
-│         │                                                     │
-│         └──► Notifies MessageBroadcaster DO                  │
-│                      │                                        │
-│                      ▼                                        │
-│         ┌────────────────────────────┐                       │
-│         │  MessageBroadcaster DO     │ 🎯 Coordination       │
-│         │  (Global Event Hub)        │                       │
-│         └────────────────────────────┘                       │
-│                      │                                        │
-│         ┌────────────┼────────────┬──────────────┐          │
-│         ▼            ▼            ▼              ▼          │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │ Shard-1  │  │ Shard-2  │  │ Shard-3  │  │ Shard-4  │   │
-│  │ 8,000    │  │ 7,500    │  │ 0 (idle) │  │ 0 (idle) │   │
-│  │ clients  │  │ clients  │  │          │  │          │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-│       │             │                                        │
-│       └─────────────┴──► Broadcast to all connections       │
-│                                                               │
-│  Total: 18,500 clients receive message ✅                   │
+│ │
+│  Client sends message │
+│ │                                                     │
+│ ▼                                                     │
+│  ┌──────────────────┐ │
+│  │ Shard-0 receives │ Message received │
+│  └──────────────────┘ │
+│ │                                                     │
+│ ├──► Broadcasts to own connections (3,000 clients) │
+│ │                                                     │
+│ └──► Notifies MessageBroadcaster DO │
+│ │                                        │
+│ ▼                                        │
+│ ┌────────────────────────────┐ │
+│ │  MessageBroadcaster DO │  Coordination │
+│ │  (Global Event Hub) │                       │
+│ └────────────────────────────┘ │
+│ │                                        │
+│ ┌────────────┼────────────┬──────────────┐ │
+│ ▼            ▼ ▼              ▼ │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │
+│  │ Shard-1  │  │ Shard-2  │  │ Shard-3  │  │ Shard-4  │ │
+│  │ 8,000 │  │ 7,500 │  │ 0 (idle) │  │ 0 (idle) │ │
+│  │ clients  │  │ clients  │  │ │  │ │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘ │
+│ │             │ │
+│ └─────────────┴──► Broadcast to all connections │
+│ │
+│  Total: 18,500 clients receive message │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -549,7 +549,7 @@ When a message is sent to a conversation with multiple shards, **all shards must
 async handleChatMessage(connection: WebSocketConnection, message: WebSocketMessage) {
   // ... existing logic ...
 
-  // 🆕 Notify MessageBroadcaster for cross-shard distribution
+  // Notify MessageBroadcaster for cross-shard distribution
   if (this.shardIndex === 0) { // Only shard-0 coordinates
     await this.broadcastToAllShards(event);
   }
@@ -578,7 +578,7 @@ private async broadcastToAllShards(event: DurableObjectEvent): Promise<void> {
 
 ---
 
-## 📈 Performance Optimization
+##  Performance Optimization
 
 ### Caching Strategy
 
@@ -618,7 +618,7 @@ class ShardCache {
 
 ---
 
-## 🧪 Testing Strategy
+##  Testing Strategy
 
 ### Phase 1: Unit Tests
 
@@ -717,7 +717,7 @@ describe('Sharding Load Test', () => {
 
 ---
 
-## 🛠️ Implementation Roadmap
+##  Implementation Roadmap
 
 ### Week 1: Foundation (Days 1-5)
 
@@ -736,7 +736,7 @@ describe('Sharding Load Test', () => {
 - [ ] Add `/capacity-check` and `/initialize` endpoints
 - [ ] Unit tests for core sharding logic
 
-**Milestone**: ✅ Basic sharding logic functional in isolated tests
+**Milestone**:  Basic sharding logic functional in isolated tests
 
 ---
 
@@ -757,7 +757,7 @@ describe('Sharding Load Test', () => {
 - [ ] Test message broadcasting across 2-3 shards
 - [ ] Verify connection distribution
 
-**Milestone**: ✅ Multi-shard messaging working in dev environment
+**Milestone**:  Multi-shard messaging working in dev environment
 
 ---
 
@@ -779,7 +779,7 @@ describe('Sharding Load Test', () => {
 - [ ] Fine-tune cache TTL values
 - [ ] Reduce RPC call overhead
 
-**Milestone**: ✅ Successfully handle 50,000 concurrent connections
+**Milestone**:  Successfully handle 50,000 concurrent connections
 
 ---
 
@@ -805,11 +805,11 @@ describe('Sharding Load Test', () => {
 - [ ] Run full integration tests
 - [ ] Deploy to production (5% → 25% → 100%)
 
-**Milestone**: ✅ Sharding system live in production
+**Milestone**:  Sharding system live in production
 
 ---
 
-## 📊 Success Metrics
+##  Success Metrics
 
 ### Technical KPIs
 
@@ -829,7 +829,7 @@ describe('Sharding Load Test', () => {
 
 ---
 
-## 🚨 Risk Assessment & Mitigation
+##  Risk Assessment & Mitigation
 
 | Risk | Probability | Impact | Mitigation Strategy |
 |------|-------------|--------|---------------------|
@@ -841,7 +841,7 @@ describe('Sharding Load Test', () => {
 
 ---
 
-## 📚 References
+##  References
 
 ### Internal Documentation
 - `CLAUDE.md` - Project architecture overview
@@ -855,7 +855,7 @@ describe('Sharding Load Test', () => {
 
 ---
 
-## 🔄 Future Enhancements (Post-MVP)
+##  Future Enhancements (Post-MVP)
 
 ### Phase 2: Advanced Features
 
@@ -881,7 +881,7 @@ describe('Sharding Load Test', () => {
 
 ---
 
-## ✅ Checklist for Implementation
+##  Checklist for Implementation
 
 ### Pre-Implementation
 - [ ] Review and approve this design document
@@ -903,7 +903,7 @@ describe('Sharding Load Test', () => {
 
 ---
 
-## 📞 Contact & Support
+##  Contact & Support
 
 **Technical Lead**: Development Team
 **Architecture Review**: System Architects
@@ -911,6 +911,6 @@ describe('Sharding Load Test', () => {
 
 ---
 
-**Document Status**: 🟢 Ready for Implementation
+**Document Status**:  Ready for Implementation
 **Last Updated**: 2025-10-28
 **Next Review**: After Week 2 Milestone

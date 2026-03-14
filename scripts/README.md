@@ -99,10 +99,10 @@ node scripts/route-conflict-detector.cjs --json > report.json
 - `2` - 發現嚴重衝突
 
 **檢測內容：**
-- ✅ 靜態路由 vs 動態路由衝突（如 `/search` vs `/:id`）
-- ✅ 重複路由註冊
-- ✅ 跨模組路由衝突
-- ✅ 註冊順序問題
+-  靜態路由 vs 動態路由衝突（如 `/search` vs `/:id`）
+-  重複路由註冊
+-  跨模組路由衝突
+-  註冊順序問題
 
 **詳細文檔：** `docs/tools/ROUTE_CONFLICT_DETECTOR.md`
 
@@ -120,7 +120,7 @@ node scripts/route-conflict-detector.cjs --json > report.json
 
 團隊處理器模組化架構的完整遷移報告
 - 部署版本: `e0a1cd14-1fc9-42c6-8d30-fb50fc80f212`
-- 狀態: ✅ 成功部署
+- 狀態:  成功部署
 
 ## 測試腳本
 

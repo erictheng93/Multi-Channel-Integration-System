@@ -19,7 +19,7 @@ describe('QRCode Service Tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });    });
+  }); });
 
     test('should have correct default values', () => {
       const defaults = {

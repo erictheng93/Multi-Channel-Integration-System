@@ -169,7 +169,7 @@ export class MessageBroadcaster implements DurableObject {
           return new Response('Not Found', { status: 404 });
       }
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Request handling error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Request handling error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response('Internal Server Error', { status: 500 });
     }
   }

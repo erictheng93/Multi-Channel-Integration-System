@@ -85,7 +85,7 @@ class ErrorHandlingMigrationTool {
       this.detectMissingErrorHandling(filePath, lines);
 
     } catch (error) {
-      console.warn(`⚠️ 無法讀取檔案: ${filePath}`);
+      console.warn(` 無法讀取檔案: ${filePath}`);
     }
   }
 
@@ -313,7 +313,7 @@ ${indent}}`;
 
     report += '### 按嚴重性分類\n';
     Object.entries(this.report.issuesBySeverity).forEach(([severity, count]) => {
-      const icon = severity === 'high' ? '🔴' : severity === 'medium' ? '🟡' : '🟢';
+      const icon = severity === 'high' ? '' : severity === 'medium' ? '' : '';
       report += `- ${icon} ${severity}: ${count}\n`;
     });
     report += '\n';
@@ -327,8 +327,8 @@ ${indent}}`;
     });
 
     sortedIssues.forEach((issue, index) => {
-      const severityIcon = issue.severity === 'high' ? '🔴' :
-                          issue.severity === 'medium' ? '🟡' : '🟢';
+      const severityIcon = issue.severity === 'high' ? '' :
+                          issue.severity === 'medium' ? '' : '';
 
       report += `### ${index + 1}. ${severityIcon} ${issue.type}\n\n`;
       report += `**檔案**: \`${issue.file}:${issue.line}\`\n\n`;
@@ -346,7 +346,7 @@ ${indent}}`;
   public saveReport(outputPath: string): void {
     const reportContent = this.generateReport();
     writeFileSync(outputPath, reportContent, 'utf-8');
-    console.log(`✅ 報告已保存: ${outputPath}`);
+    console.log(` 報告已保存: ${outputPath}`);
   }
 
   /**
@@ -364,18 +364,18 @@ ${indent}}`;
 
 // 執行工具
 function main() {
-  console.log('🔍 開始錯誤處理遷移分析...\n');
+  console.log(' 開始錯誤處理遷移分析...\n');
 
   const rootDir = join(__dirname, '..');
   const tool = new ErrorHandlingMigrationTool(rootDir);
 
   // 掃描 src 目錄
-  console.log('📂 掃描 src 目錄...');
+  console.log(' 掃描 src 目錄...');
   tool.scan(join(rootDir, 'src'));
 
   // 顯示統計
   const stats = tool.getStats();
-  console.log('\n📊 掃描完成！\n');
+  console.log('\n 掃描完成！\n');
   console.log(`總檔案數: ${stats.totalFiles}`);
   console.log(`已分析: ${stats.filesAnalyzed}`);
   console.log(`發現問題: ${stats.issuesFound}`);
@@ -385,7 +385,7 @@ function main() {
   const reportPath = join(rootDir, 'ERROR_HANDLING_MIGRATION_REPORT.md');
   tool.saveReport(reportPath);
 
-  console.log('✨ 遷移分析完成！');
+  console.log(' 遷移分析完成！');
 }
 
 export { ErrorHandlingMigrationTool };

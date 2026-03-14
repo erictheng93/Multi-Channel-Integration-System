@@ -141,21 +141,21 @@ export interface ErrorEvent extends BaseWebSocketEvent {
  * Usage with exhaustive pattern matching:
  * ```typescript
  * function handleEvent(event: WebSocketEvent) {
- *   switch (event.type) {
- *     case WS_EVENTS.NEW_MESSAGE:
- *       // TypeScript knows event is NewMessageEvent
- *       console.log(event.message.content)
- *       break
- *     case WS_EVENTS.USER_CONNECTED:
- *       // TypeScript knows event is UserConnectedEvent
- *       console.log(event.userId)
- *       break
- *     // ... other cases
- *     default:
- *       // Exhaustive check
- *       const _exhaustive: never = event
- *       throw new Error(`Unhandled event type: ${_exhaustive}`)
- *   }
+ * switch (event.type) {
+ * case WS_EVENTS.NEW_MESSAGE:
+ * // TypeScript knows event is NewMessageEvent
+ * console.log(event.message.content)
+ * break
+ * case WS_EVENTS.USER_CONNECTED:
+ * // TypeScript knows event is UserConnectedEvent
+ * console.log(event.userId)
+ * break
+ * // ... other cases
+ * default:
+ * // Exhaustive check
+ * const _exhaustive: never = event
+ * throw new Error(`Unhandled event type: ${_exhaustive}`)
+ * }
  * }
  * ```
  */

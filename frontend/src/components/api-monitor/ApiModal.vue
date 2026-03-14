@@ -25,7 +25,7 @@
         class="empty-stat-detail"
       >
         <div class="empty-icon">
-          📊
+          
         </div>
         <p>目前沒有{{ modalState.title }}的API端點</p>
       </div>

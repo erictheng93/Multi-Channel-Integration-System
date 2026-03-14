@@ -32,7 +32,7 @@ export async function findOrCreateConversation(
   const drizzleDb = createDbClient(env.DB);
   const platformLabel = platform.toUpperCase();
 
-  console.log(`🔍 [${platformLabel} Webhook] Searching for existing conversation for customer:`, customerId);
+  console.log(`[${platformLabel} Webhook] Searching for existing conversation for customer:`, customerId);
   let conversation = await drizzleDb
     .select()
     .from(conversations)
@@ -42,7 +42,7 @@ export async function findOrCreateConversation(
     ))
     .get();
 
-  console.log(`🔍 [${platformLabel} Webhook] Existing conversation found:`, conversation ? conversation.id : 'None');
+  console.log(`[${platformLabel} Webhook] Existing conversation found:`, conversation ? conversation.id : 'None');
 
   if (!conversation) {
     // 建立新對話（使用 UUID）
@@ -50,7 +50,7 @@ export async function findOrCreateConversation(
     const timestamp = nowISO();
 
     if (platform === 'line') {
-      console.log(`🔄 [${platformLabel} Webhook] Creating new conversation...`, {
+      console.log(`[${platformLabel} Webhook] Creating new conversation...`, {
         conversationId,
         customerId,
         timestamp
@@ -76,12 +76,12 @@ export async function findOrCreateConversation(
         });
 
       if (platform === 'line') {
-        console.log(`✅ [${platformLabel} Webhook] Conversation insert completed:`, { conversationId, insertResult });
+        console.log(`[${platformLabel} Webhook] Conversation insert completed:`, { conversationId, insertResult });
       }
 
       // Re-query the created conversation to get full object
       if (platform === 'line') {
-        console.log(`🔍 [${platformLabel} Webhook] Re-querying created conversation...`);
+        console.log(`[${platformLabel} Webhook] Re-querying created conversation...`);
       }
       const newConversation = await drizzleDb
         .select()
@@ -116,7 +116,7 @@ export async function findOrCreateConversation(
       conversation = convertConversation(newConversation) as any;
 
       if (platform === 'line') {
-        console.log(`✅ [${platformLabel} Webhook] New conversation created and retrieved successfully:`, {
+        console.log(`[${platformLabel} Webhook] New conversation created and retrieved successfully:`, {
           id: conversationId,
           customerId,
           status: conversation?.status
@@ -125,7 +125,7 @@ export async function findOrCreateConversation(
         log.debug('Created new Facebook conversation', { conversationId });
       }
 
-      // 🆕 觸發新對話通知（新創建的對話）— LINE only
+      // 觸發新對話通知（新創建的對話）— LINE only
       if (platform === 'line') {
         try {
           const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
@@ -136,7 +136,7 @@ export async function findOrCreateConversation(
             messagePreview: opts?.messageContent || '',
             teamId: newConversation.assignedTeamId || undefined
           });
-          console.log(`✅ [${platformLabel} Webhook] New conversation notification triggered`);
+          console.log(`[${platformLabel} Webhook] New conversation notification triggered`);
         } catch (notificationError) {
           log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
             error: notificationError instanceof Error ? notificationError.message : String(notificationError)
@@ -157,14 +157,14 @@ export async function findOrCreateConversation(
     // 更新對話
     const timestamp = nowISO();
     if (platform === 'line') {
-      console.log(`🔄 [${platformLabel} Webhook] Updating existing conversation:`, {
+      console.log(`[${platformLabel} Webhook] Updating existing conversation:`, {
         conversationId: conversation.id,
         customerId,
         timestamp
       });
     }
 
-    // 🔧 Fix: 如果現有對話沒有團隊指派，但呼叫方提供了 teamId，補上指派
+    // Fix: 如果現有對話沒有團隊指派，但呼叫方提供了 teamId，補上指派
     const updateFields: Record<string, any> = {
       lastMessageAt: timestamp,
       updatedAt: timestamp
@@ -172,7 +172,7 @@ export async function findOrCreateConversation(
 
     if (!conversation.assignedTeamId && opts?.assignedTeamId) {
       updateFields.assignedTeamId = opts.assignedTeamId;
-      console.log(`🎯 [${platformLabel} Webhook] Backfilling team assignment on existing conversation:`, {
+      console.log(`[${platformLabel} Webhook] Backfilling team assignment on existing conversation:`, {
         conversationId: conversation.id,
         assignedTeamId: opts.assignedTeamId
       });
@@ -189,7 +189,7 @@ export async function findOrCreateConversation(
     }
 
     if (platform === 'line') {
-      console.log(`✅ [${platformLabel} Webhook] Existing conversation updated successfully`);
+      console.log(`[${platformLabel} Webhook] Existing conversation updated successfully`);
     }
   }
 
@@ -208,7 +208,7 @@ export async function isDuplicateMessage(
   const drizzleDb = createDbClient(env.DB);
   const platformLabel = platform.toUpperCase();
 
-  console.log(`🔍 [${platformLabel} Webhook] Checking for duplicate messages with platformMessageId:`, platformMessageId);
+  console.log(`[${platformLabel} Webhook] Checking for duplicate messages with platformMessageId:`, platformMessageId);
   const existingMessage = await drizzleDb
     .select()
     .from(messages)
@@ -216,11 +216,11 @@ export async function isDuplicateMessage(
     .get();
 
   if (existingMessage) {
-    console.log(`⚠️ [${platformLabel} Webhook] Message already exists with platformMessageId: ${platformMessageId}, skipping duplicate processing`);
+    console.log(`[${platformLabel} Webhook] Message already exists with platformMessageId: ${platformMessageId}, skipping duplicate processing`);
     return true;
   }
 
-  console.log(`✅ [${platformLabel} Webhook] No duplicate message found, proceeding with message creation`);
+  console.log(`[${platformLabel} Webhook] No duplicate message found, proceeding with message creation`);
   return false;
 }
 
@@ -245,7 +245,7 @@ export async function saveMessage(
   const timestamp = nowISO();
 
   if (platform === 'line') {
-    console.log(`💾 [${platformLabel} Webhook] Creating message...`, {
+    console.log(`[${platformLabel} Webhook] Creating message...`, {
       messageId,
       conversationId,
       customerId,
@@ -273,7 +273,7 @@ export async function saveMessage(
         createdAt: timestamp
       });
 
-    // 🚀 Trigger latest message cache update
+    // Trigger latest message cache update
     try {
       const { LatestMessageJobQueue } = await import('@/workers/latest-message-worker');
       const jobQueue = new LatestMessageJobQueue(env);
@@ -285,7 +285,7 @@ export async function saveMessage(
     }
 
     if (platform === 'line') {
-      console.log(`✅ [${platformLabel} Webhook] Message created successfully:`, {
+      console.log(`[${platformLabel} Webhook] Message created successfully:`, {
         messageId,
         conversationId,
         customerId,

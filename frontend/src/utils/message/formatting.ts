@@ -33,9 +33,9 @@ export function escapeHtml(text: string): string {
  *
  * @example
  * ```typescript
- * formatFileSize(0)         // Returns: "0 B"
- * formatFileSize(1024)      // Returns: "1 KB"
- * formatFileSize(1536000)   // Returns: "1.46 MB"
+ * formatFileSize(0) // Returns: "0 B"
+ * formatFileSize(1024) // Returns: "1 KB"
+ * formatFileSize(1536000) // Returns: "1.46 MB"
  * formatFileSize(1073741824) // Returns: "1 GB"
  * ```
  */
@@ -57,10 +57,10 @@ export function formatFileSize(bytes: number): string {
  *
  * @example
  * ```typescript
- * getFileExtension('document.pdf')      // Returns: "PDF"
- * getFileExtension('image.jpg')         // Returns: "JPG"
- * getFileExtension('archive.tar.gz')    // Returns: "GZ"
- * getFileExtension('no-extension')      // Returns: ""
+ * getFileExtension('document.pdf') // Returns: "PDF"
+ * getFileExtension('image.jpg') // Returns: "JPG"
+ * getFileExtension('archive.tar.gz') // Returns: "GZ"
+ * getFileExtension('no-extension') // Returns: ""
  * ```
  */
 export function getFileExtension(filename: string): string {
@@ -79,10 +79,10 @@ export function getFileExtension(filename: string): string {
  *
  * @example
  * ```typescript
- * getFileTypeClass('document.pdf')   // Returns: "pdf"
- * getFileTypeClass('photo.jpg')      // Returns: "image"
- * getFileTypeClass('readme.txt')     // Returns: "text"
- * getFileTypeClass('archive.zip')    // Returns: "file-type-archive"
+ * getFileTypeClass('document.pdf') // Returns: "pdf"
+ * getFileTypeClass('photo.jpg') // Returns: "image"
+ * getFileTypeClass('readme.txt') // Returns: "text"
+ * getFileTypeClass('archive.zip') // Returns: "file-type-archive"
  * ```
  */
 export function getFileTypeClass(filename: string): string {
@@ -114,9 +114,9 @@ export function getFileTypeClass(filename: string): string {
  *
  * @example
  * ```typescript
- * isImageFile({ mimeType: 'image/jpeg' })           // Returns: true
- * isImageFile({ filename: 'photo.png' })            // Returns: true
- * isImageFile({ mimeType: 'application/pdf' })      // Returns: false
+ * isImageFile({ mimeType: 'image/jpeg' }) // Returns: true
+ * isImageFile({ filename: 'photo.png' }) // Returns: true
+ * isImageFile({ mimeType: 'application/pdf' }) // Returns: false
  * ```
  */
 export function isImageFile(attachment: {
@@ -148,9 +148,9 @@ export function isImageFile(attachment: {
  *
  * @example
  * ```typescript
- * isVideoFile({ mimeType: 'video/mp4' })           // Returns: true
- * isVideoFile({ filename: 'movie.mov' })           // Returns: true
- * isVideoFile({ mimeType: 'application/pdf' })     // Returns: false
+ * isVideoFile({ mimeType: 'video/mp4' }) // Returns: true
+ * isVideoFile({ filename: 'movie.mov' }) // Returns: true
+ * isVideoFile({ mimeType: 'application/pdf' }) // Returns: false
  * ```
  */
 export function isVideoFile(attachment: {

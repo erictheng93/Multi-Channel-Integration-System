@@ -79,7 +79,7 @@ if (healthData.websocketEnabled) { //
 ```typescript
 async function connectSSE() {
  // REMOVED: SSE connection logic (Phase 1-2 cleanup - SSE removed, WebSocket only)
- console.warn(' [Realtime] SSE is no longer supported. Use WebSocket instead.')
+ console.warn('[Realtime] SSE is no longer supported. Use WebSocket instead.')
  throw new Error('SSE connection not supported. Please use WebSocket.')
 }
 ```
@@ -189,7 +189,7 @@ if (isWebSocketEnabled) {
 ****:
 ```typescript
 async function connectSSE() {
- console.warn(' [Realtime] SSE is no longer supported. Use WebSocket instead.')
+ console.warn('[Realtime] SSE is no longer supported. Use WebSocket instead.')
  throw new Error('SSE connection not supported. Please use WebSocket.')
 }
 ```
@@ -210,7 +210,7 @@ async function connectSSE() {
  const eventSource = new EventSource(sseUrl)
 
  eventSource.onopen = () => {
- console.log(' [SSE] Connection established')
+ console.log('[SSE] Connection established')
  sseIsConnected.value = true
  }
 
@@ -219,19 +219,19 @@ async function connectSSE() {
  const data = JSON.parse(event.data)
  handleSSEMessage(data)
  } catch (error) {
- console.error(' [SSE] Parse error:', error)
+ console.error('[SSE] Parse error:', error)
  }
  }
 
  eventSource.onerror = (error) => {
- console.error(' [SSE] Connection error:', error)
+ console.error('[SSE] Connection error:', error)
  sseIsConnected.value = false
  eventSource.close()
  }
 
  return eventSource
  } catch (error) {
- console.error(' [SSE] Failed to connect:', error)
+ console.error('[SSE] Failed to connect:', error)
  throw error
  }
 }

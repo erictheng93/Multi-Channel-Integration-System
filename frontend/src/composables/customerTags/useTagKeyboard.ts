@@ -47,7 +47,7 @@ export function useTagKeyboard(
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'n') {
       event.preventDefault()
       showCreateModal.value = true
-      console.log('⌨️ [TagKeyboard] Triggered: Create tag (Ctrl+N)')
+      console.log('[TagKeyboard] Triggered: Create tag (Ctrl+N)')
       return
     }
 
@@ -55,16 +55,16 @@ export function useTagKeyboard(
     if (event.key === 'Escape') {
       if (showCreateModal.value || showEditModal.value) {
         closeModalsCallback()
-        console.log('⌨️ [TagKeyboard] Triggered: Close create/edit modal (Escape)')
+        console.log('[TagKeyboard] Triggered: Close create/edit modal (Escape)')
       } else if (showDeleteModal.value) {
         cancelDeleteCallback()
-        console.log('⌨️ [TagKeyboard] Triggered: Cancel delete (Escape)')
+        console.log('[TagKeyboard] Triggered: Cancel delete (Escape)')
       } else if (showBulkDeleteModal.value) {
         cancelBulkDeleteCallback()
-        console.log('⌨️ [TagKeyboard] Triggered: Cancel bulk delete (Escape)')
+        console.log('[TagKeyboard] Triggered: Cancel bulk delete (Escape)')
       } else if (showBulkMenu.value) {
         showBulkMenu.value = false
-        console.log('⌨️ [TagKeyboard] Triggered: Close bulk menu (Escape)')
+        console.log('[TagKeyboard] Triggered: Close bulk menu (Escape)')
       }
       return
     }
@@ -75,7 +75,7 @@ export function useTagKeyboard(
       const searchInput = document.querySelector('.search-input') as HTMLInputElement
       if (searchInput) {
         searchInput.focus()
-        console.log('⌨️ [TagKeyboard] Triggered: Focus search (Ctrl+/)')
+        console.log('[TagKeyboard] Triggered: Focus search (Ctrl+/)')
       }
       return
     }
@@ -88,10 +88,10 @@ export function useTagKeyboard(
    */
   const initialize = () => {
     document.addEventListener('keydown', handleKeyboardShortcuts)
-    console.log('🎹 [TagKeyboard] Keyboard shortcuts enabled')
-    console.log('   - Ctrl+N: Create new tag')
-    console.log('   - Escape: Close modals')
-    console.log('   - Ctrl+/: Focus search')
+    console.log('[TagKeyboard] Keyboard shortcuts enabled')
+    console.log(' - Ctrl+N: Create new tag')
+    console.log(' - Escape: Close modals')
+    console.log(' - Ctrl+/: Focus search')
   }
 
   /**
@@ -99,7 +99,7 @@ export function useTagKeyboard(
    */
   const cleanup = () => {
     document.removeEventListener('keydown', handleKeyboardShortcuts)
-    console.log('🧹 [TagKeyboard] Keyboard shortcuts disabled')
+    console.log('[TagKeyboard] Keyboard shortcuts disabled')
   }
 
   // Auto-initialize on mount

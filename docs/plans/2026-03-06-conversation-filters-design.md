@@ -24,10 +24,10 @@ export interface ConversationFilters {
   platform?: Platform | '' | undefined;
   tagIds?: number[];
   search?: string;
-  customerName?: string;       // NEW: customer name search (backend)
+  customerName?: string; // NEW: customer name search (backend)
   lastMessageSearch?: string;  // NEW: last message content filter (frontend)
-  updatedAfter?: string;       // NEW: ISO date string (backend)
-  updatedBefore?: string;      // NEW: ISO date string (backend)
+  updatedAfter?: string; // NEW: ISO date string (backend)
+  updatedBefore?: string; // NEW: ISO date string (backend)
 }
 ```
 
@@ -127,9 +127,9 @@ interface ConversationListParams {
   teamId?: number;
   search?: string;
   tagIds?: number[];
-  customerName?: string;    // NEW
-  updatedAfter?: string;    // NEW
-  updatedBefore?: string;   // NEW
+  customerName?: string; // NEW
+  updatedAfter?: string; // NEW
+  updatedBefore?: string; // NEW
 }
 ```
 

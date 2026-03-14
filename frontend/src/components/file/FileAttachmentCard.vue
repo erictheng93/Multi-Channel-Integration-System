@@ -48,7 +48,7 @@
           class="preview-overlay"
           @click="$emit('preview', attachment)"
         >
-          <span class="preview-icon">🔍</span>
+          <span class="preview-icon"></span>
         </div>
       </div>
 
@@ -70,7 +70,7 @@
         rel="noopener noreferrer"
         @click.stop
       >
-        <span class="button-icon">📥</span>
+        <span class="button-icon"></span>
         <span class="button-text">打開此文件</span>
       </a>
     </div>
@@ -157,7 +157,7 @@ const fileTypeInfo = computed(() => {
   if (mime.includes('pdf') || ext === 'pdf') {
     return {
       type: 'pdf',
-      icon: '📄',
+      icon: '',
       label: 'PDF 文件',
       typeName: 'PDF 文檔',
       headerColor: '#E53935',
@@ -170,7 +170,7 @@ const fileTypeInfo = computed(() => {
   if (mime.includes('excel') || mime.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) {
     return {
       type: 'excel',
-      icon: '📊',
+      icon: '',
       label: 'Excel 文件',
       typeName: 'Excel 表格',
       headerColor: '#4CAF50',
@@ -183,7 +183,7 @@ const fileTypeInfo = computed(() => {
   if (mime.includes('powerpoint') || mime.includes('presentation') || ['ppt', 'pptx'].includes(ext)) {
     return {
       type: 'ppt',
-      icon: '📑',
+      icon: '',
       label: 'PPT 文件',
       typeName: 'PowerPoint 簡報',
       headerColor: '#FF9800',
@@ -196,7 +196,7 @@ const fileTypeInfo = computed(() => {
   if (mime.includes('word') || mime.includes('wordprocessing') || ['doc', 'docx'].includes(ext)) {
     return {
       type: 'word',
-      icon: '📝',
+      icon: '',
       label: 'Word 文件',
       typeName: 'Word 文檔',
       headerColor: '#2196F3',
@@ -208,7 +208,7 @@ const fileTypeInfo = computed(() => {
   if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
     return {
       type: 'image',
-      icon: '🖼️',
+      icon: '',
       label: '圖片',
       typeName: '圖片檔案',
       headerColor: '#00BCD4',
@@ -220,7 +220,7 @@ const fileTypeInfo = computed(() => {
   if (mime.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
     return {
       type: 'video',
-      icon: '🎬',
+      icon: '',
       label: '影片',
       typeName: '影片檔案',
       headerColor: '#9C27B0',
@@ -232,7 +232,7 @@ const fileTypeInfo = computed(() => {
   if (mime.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext)) {
     return {
       type: 'audio',
-      icon: '🎵',
+      icon: '',
       label: '音訊',
       typeName: '音訊檔案',
       headerColor: '#E91E63',
@@ -245,7 +245,7 @@ const fileTypeInfo = computed(() => {
       ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
     return {
       type: 'archive',
-      icon: '📦',
+      icon: '',
       label: '壓縮檔',
       typeName: '壓縮檔案',
       headerColor: '#795548',
@@ -257,7 +257,7 @@ const fileTypeInfo = computed(() => {
   if (mime.includes('text') || ['txt', 'md', 'json', 'xml', 'log'].includes(ext)) {
     return {
       type: 'text',
-      icon: '📃',
+      icon: '',
       label: '文字檔',
       typeName: '文字文件',
       headerColor: '#607D8B',
@@ -269,7 +269,7 @@ const fileTypeInfo = computed(() => {
   if (['js', 'ts', 'py', 'java', 'cpp', 'c', 'html', 'css', 'vue', 'jsx', 'tsx'].includes(ext)) {
     return {
       type: 'code',
-      icon: '💻',
+      icon: '',
       label: '程式碼',
       typeName: '程式檔案',
       headerColor: '#3F51B5',
@@ -280,7 +280,7 @@ const fileTypeInfo = computed(() => {
   // Default
   return {
     type: 'file',
-    icon: '📁',
+    icon: '',
     label: '檔案',
     typeName: '檔案',
     headerColor: '#9C27B0',

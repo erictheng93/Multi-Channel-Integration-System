@@ -17,9 +17,9 @@ const log = createContextLogger('ConversationBulkHandler');
 
 const conversationBulkHandler = new Hono<{ Bindings: Bindings }>();
 
-// 📦 批量操作端點 - POST /bulk
+// 批量操作端點 - POST /bulk
 // 支援操作: assign, close, reopen, set_priority, add_tags, remove_tags
-// ✅ 優化版本：添加權限檢查、批量操作優化、WebSocket 廣播
+// 優化版本：添加權限檢查、批量操作優化、WebSocket 廣播
 conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
   const drizzleDb = createDbClient(c.env.DB);
   try {
@@ -43,12 +43,12 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
 
     const conversationIdsArray = conversationIds as string[];
 
-    // ✅ P1 優化：添加權限檢查 - 驗證用戶是否有權訪問這些對話
+    // P1 優化：添加權限檢查 - 驗證用戶是否有權訪問這些對話
     const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
     const unauthorizedIds = conversationIdsArray.filter(id => !visibleConversationIds.includes(id));
 
     if (unauthorizedIds.length > 0) {
-      console.warn(`⚠️ [Bulk] User ${user.id} attempted to access unauthorized conversations:`, unauthorizedIds);
+      console.warn(`[Bulk] User ${user.id} attempted to access unauthorized conversations:`, unauthorizedIds);
       return errorResponse(c, `Permission denied for ${unauthorizedIds.length} conversation(s). You can only perform bulk operations on conversations you have access to.`, 403);
     }
 
@@ -113,7 +113,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
           ]);
         }
 
-        // ✅ P2 優化：使用 Drizzle 批量插入（單條 SQL 語句）
+        // P2 優化：使用 Drizzle 批量插入（單條 SQL 語句）
         // 構建所有需要插入的值
         const tagInsertValues: { conversationId: string; tagId: number; assignedBy: string }[] = [];
         const parsedTagIds = data.tagIds.map((id: string | number) => parseInt(String(id)));
@@ -140,7 +140,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
           }
         }
 
-        console.log(`📦 [Bulk Tags] Inserted ${tagInsertValues.length} tag associations using batch insert`);
+        console.log(`[Bulk Tags] Inserted ${tagInsertValues.length} tag associations using batch insert`);
 
         // 記錄標籤操作以便 WebSocket 廣播
         tagOperation = 'add';
@@ -154,7 +154,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
           ]);
         }
 
-        // ✅ P3 優化：使用單條 SQL 批量刪除（替代嵌套循環 + 順序 await）
+        // P3 優化：使用單條 SQL 批量刪除（替代嵌套循環 + 順序 await）
         const tagIdsToRemove = data.tagIds.map((id: string | number) => parseInt(String(id)));
 
         await drizzleDb.delete(conversationTags)
@@ -165,7 +165,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
             )
           );
 
-        console.log(`📦 [Bulk Tags] Removed tags from ${conversationIdsArray.length} conversations using single SQL`);
+        console.log(`[Bulk Tags] Removed tags from ${conversationIdsArray.length} conversations using single SQL`);
 
         // 記錄標籤操作以便 WebSocket 廣播
         tagOperation = 'remove';
@@ -178,7 +178,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
         ]);
     }
 
-    // ✅ P4 優化：添加 WebSocket 廣播 - 通知其他用戶標籤變更
+    // P4 優化：添加 WebSocket 廣播 - 通知其他用戶標籤變更
     if (tagOperation && affectedTagIds.length > 0) {
       try {
         const broadcastService = new WebSocketBroadcastService(c.env);

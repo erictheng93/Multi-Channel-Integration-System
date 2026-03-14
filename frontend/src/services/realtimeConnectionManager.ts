@@ -140,7 +140,7 @@ export async function createRealtimeConnection(
   const config = await fetchMigrationConfig()
 
   // Always use WebSocket (100% rollout)
-  console.log(`🚀 [RealtimeConnectionManager] Using WebSocket connection (rollout: ${config.rolloutPercentage}%)`)
+  console.log(`[RealtimeConnectionManager] Using WebSocket connection (rollout: ${config.rolloutPercentage}%)`)
   return createWebSocketConnection(conversationId, config)
 }
 

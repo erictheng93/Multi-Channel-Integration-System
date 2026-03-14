@@ -79,10 +79,10 @@ export function getWebhookUrl(env: WorkerEnv, platform: WebhookPlatform): string
  * const config = getWebhookConfig(env, 'line');
  * console.log(config);
  * // {
- * //   baseUrl: 'https://your-api-domain.example.com',
- * //   path: '/webhooks/line',
- * //   fullUrl: 'https://your-api-domain.example.com/webhooks/line',
- * //   environment: 'production'
+ * // baseUrl: 'https://your-api-domain.example.com',
+ * // path: '/webhooks/line',
+ * // fullUrl: 'https://your-api-domain.example.com/webhooks/line',
+ * // environment: 'production'
  * // }
  * ```
  */
@@ -111,9 +111,9 @@ export function getWebhookConfig(env: WorkerEnv, platform: WebhookPlatform): Web
  * const urls = getAllWebhookUrls(env);
  * console.log(urls);
  * // {
- * //   line: 'https://your-api-domain.example.com/webhooks/line',
- * //   facebook: 'https://your-api-domain.example.com/webhooks/facebook',
- * //   ...
+ * // line: 'https://your-api-domain.example.com/webhooks/line',
+ * // facebook: 'https://your-api-domain.example.com/webhooks/facebook',
+ * // ...
  * // }
  * ```
  */
@@ -138,8 +138,8 @@ export function getAllWebhookUrls(env: WorkerEnv): Record<WebhookPlatform, strin
  * @example
  * ```typescript
  * isValidWebhookUrl('https://example.com/webhooks/line');  // true
- * isValidWebhookUrl('invalid-url');                         // false
- * isValidWebhookUrl('ftp://example.com/webhooks/line');    // false (invalid protocol)
+ * isValidWebhookUrl('invalid-url'); // false
+ * isValidWebhookUrl('ftp://example.com/webhooks/line'); // false (invalid protocol)
  * ```
  */
 export function isValidWebhookUrl(url: string): boolean {
@@ -175,9 +175,9 @@ export function isValidWebhookUrl(url: string): boolean {
  *
  * @example
  * ```typescript
- * extractPlatformFromUrl('https://example.com/webhooks/line');    // 'line'
+ * extractPlatformFromUrl('https://example.com/webhooks/line'); // 'line'
  * extractPlatformFromUrl('https://example.com/webhooks/facebook'); // 'facebook'
- * extractPlatformFromUrl('https://example.com/api/users');         // null
+ * extractPlatformFromUrl('https://example.com/api/users'); // null
  * ```
  */
 export function extractPlatformFromUrl(url: string): WebhookPlatform | null {
@@ -212,8 +212,8 @@ export function extractPlatformFromUrl(url: string): WebhookPlatform | null {
  * @example
  * ```typescript
  * buildWebhookUrlWithParams(env, 'line', {
- *   verify_token: 'abc123',
- *   mode: 'subscribe'
+ * verify_token: 'abc123',
+ * mode: 'subscribe'
  * });
  * // => 'https://your-api-domain.example.com/webhooks/line?verify_token=abc123&mode=subscribe'
  * ```
@@ -239,13 +239,13 @@ export function buildWebhookUrlWithParams(
  * @example
  * ```typescript
  * compareWebhookUrls(
- *   'https://example.com/webhooks/line/',
- *   'https://example.com/webhooks/line?token=123'
+ * 'https://example.com/webhooks/line/',
+ * 'https://example.com/webhooks/line?token=123'
  * );  // true
  *
  * compareWebhookUrls(
- *   'https://example.com/webhooks/line',
- *   'https://example.com/webhooks/facebook'
+ * 'https://example.com/webhooks/line',
+ * 'https://example.com/webhooks/facebook'
  * );  // false
  * ```
  */
@@ -288,7 +288,7 @@ export function getWebhookPath(platform: WebhookPlatform): string {
  * @example
  * ```typescript
  * isWebhookEndpoint('https://example.com/webhooks/line');  // true
- * isWebhookEndpoint('https://example.com/api/users');      // false
+ * isWebhookEndpoint('https://example.com/api/users'); // false
  * ```
  */
 export function isWebhookEndpoint(url: string): boolean {

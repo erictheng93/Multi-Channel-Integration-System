@@ -261,7 +261,7 @@ describe('CORS E2E Testing', () => {
       expect(data.data.rejected).toBeDefined();
 
       console.log(`??[CORS Test] CORS stats retrieved successfully`);
-      console.log(`   Total: ${data.data.total}, Allowed: ${data.data.allowed}, Rejected: ${data.data.rejected}`);
+      console.log(` Total: ${data.data.total}, Allowed: ${data.data.allowed}, Rejected: ${data.data.rejected}`);
     });
 
     it('should return rejected origins list for admin', async () => {
@@ -286,7 +286,7 @@ describe('CORS E2E Testing', () => {
       expect(Array.isArray(data.data.rejectedOrigins)).toBe(true);
 
       console.log(`??[CORS Test] Rejected origins list retrieved`);
-      console.log(`   Rejected count: ${data.data.rejectedOrigins.length}`);
+      console.log(` Rejected count: ${data.data.rejectedOrigins.length}`);
     });
   });
 

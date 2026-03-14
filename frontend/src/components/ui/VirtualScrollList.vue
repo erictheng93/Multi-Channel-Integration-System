@@ -121,14 +121,14 @@ const debounce = <T extends (..._args: Parameters<T>) => ReturnType<T>>(
 interface Props {
   // 數據相關
   items: T[]
-  itemHeight?: number          // 固定高度模式
+  itemHeight?: number // 固定高度模式
   estimatedItemHeight?: number // 動態高度模式的估計值
-  containerHeight?: number     // 容器高度
-  overscan?: number           // 預渲染項目數量
+  containerHeight?: number // 容器高度
+  overscan?: number // 預渲染項目數量
   
   // 功能開關
-  dynamicHeight?: boolean     // 是否支持動態高度
-  horizontal?: boolean        // 水平滾動（未實現）
+  dynamicHeight?: boolean // 是否支持動態高度
+  horizontal?: boolean // 水平滾動（未實現）
   
   // 回調函數
   getItemKey?: (_item: T, _index: number) => string | number
@@ -145,7 +145,7 @@ interface Props {
   
   // 性能配置
   throttleDelay?: number
-  preloadPages?: number       // 預載入頁數
+  preloadPages?: number // 預載入頁數
 }
 
 // 引用
@@ -300,7 +300,7 @@ const initializeContainer = () => {
     height: rect.height
   }
   
-  console.log('🖼️ [VirtualScroll] Container initialized:', containerRect.value)
+  console.log('[VirtualScroll] Container initialized:', containerRect.value)
 }
 
 // 滾動到指定項目
@@ -318,7 +318,7 @@ const scrollToItem = (index: number, position: 'start' | 'center' | 'end' = 'sta
   targetScrollTop = Math.max(0, targetScrollTop)
   containerRef.value.scrollTo({ top: targetScrollTop, behavior: 'smooth' })
   
-  console.log(`📍 [VirtualScroll] Scrolled to item ${index} (${position})`)
+  console.log(`[VirtualScroll] Scrolled to item ${index} (${position})`)
 }
 
 // 滾動到頂部

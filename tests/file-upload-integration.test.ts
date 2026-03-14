@@ -61,23 +61,23 @@ describe('File Upload Integration Status Check', () => {
       // Based on the component analysis
       status.component.implemented = true
       status.component.features = [
-        '✅ File input trigger button (paperclip icon)',
-        '✅ File selection handling',
-        '✅ File size validation (10MB limit)',
-        '✅ File type validation (images, PDF, DOC)',
-        '✅ Attachment preview display',
-        '✅ Attachment removal functionality',
-        '✅ File size formatting',
-        '✅ Multiple file support',
-        '✅ Error handling for oversized files',
-        '✅ Integration with send message flow'
+        ' File input trigger button (paperclip icon)',
+        ' File selection handling',
+        ' File size validation (10MB limit)',
+        ' File type validation (images, PDF, DOC)',
+        ' Attachment preview display',
+        ' Attachment removal functionality',
+        ' File size formatting',
+        ' Multiple file support',
+        ' Error handling for oversized files',
+        ' Integration with send message flow'
       ]
       
       status.component.missing = [
-        '❌ Actual file upload to backend (only local handling)',
-        '❌ Upload progress indication',
-        '❌ File upload retry mechanism',
-        '❌ Drag and drop support'
+        ' Actual file upload to backend (only local handling)',
+        ' Upload progress indication',
+        ' File upload retry mechanism',
+        ' Drag and drop support'
       ]
 
       expect(status.component.implemented).toBe(true)
@@ -89,17 +89,17 @@ describe('File Upload Integration Status Check', () => {
     test('should check message API file upload support', () => {
       status.api.implemented = true
       status.api.endpoints = [
-        '✅ uploadAttachment method defined',
-        '✅ FormData handling implemented',
-        '✅ File validation in API client',
-        '✅ Error handling for upload failures',
-        '✅ Authorization header support'
+        ' uploadAttachment method defined',
+        ' FormData handling implemented',
+        ' File validation in API client',
+        ' Error handling for upload failures',
+        ' Authorization header support'
       ]
 
       status.api.missing = [
-        '❌ Upload progress tracking',
-        '❌ Chunked upload for large files',
-        '❌ Upload cancellation support'
+        ' Upload progress tracking',
+        ' Chunked upload for large files',
+        ' Upload cancellation support'
       ]
 
       expect(status.api.implemented).toBe(true)
@@ -113,13 +113,13 @@ describe('File Upload Integration Status Check', () => {
       status.backend.handlers = []
 
       status.backend.missing = [
-        '❌ File upload endpoint (/api/conversations/:id/attachments)',
-        '❌ FormData parsing middleware',
-        '❌ File storage handling',
-        '❌ File type validation on server',
-        '❌ File size validation on server',
-        '❌ File metadata storage in database',
-        '❌ File URL generation for access'
+        ' File upload endpoint (/api/conversations/:id/attachments)',
+        ' FormData parsing middleware',
+        ' File storage handling',
+        ' File type validation on server',
+        ' File size validation on server',
+        ' File metadata storage in database',
+        ' File URL generation for access'
       ]
 
       expect(status.backend.implemented).toBe(false)
@@ -132,11 +132,11 @@ describe('File Upload Integration Status Check', () => {
       status.integration.complete = false
       
       status.integration.issues = [
-        '🔴 Backend file upload endpoints not implemented',
-        '🔴 File storage service not configured',
-        '🔴 Database schema missing file attachment tables',
-        '🔴 Message sending doesn\'t handle file attachments',
-        '🟡 Frontend component ready but not connected to backend'
+        ' Backend file upload endpoints not implemented',
+        ' File storage service not configured',
+        ' Database schema missing file attachment tables',
+        ' Message sending doesn\'t handle file attachments',
+        ' Frontend component ready but not connected to backend'
       ]
 
       status.integration.recommendations = [

@@ -6,30 +6,30 @@
 
 ```
 ╔═══════════════════════════════════════════════════════════════╗
-║ 第 3 層：業務邏輯代碼 (Business Logic Code)                   ║
-║ → 組件 (Components)、服務 (Services)、處理器 (Handlers)       ║
-║ → 使用：getBackendUrl(), getWebSocketUrl() 等                 ║
+║ 第 3 層：業務邏輯代碼 (Business Logic Code) ║
+║ → 組件 (Components)、服務 (Services)、處理器 (Handlers) ║
+║ → 使用：getBackendUrl(), getWebSocketUrl() 等 ║
 ╚═══════════════════════════════════════════════════════════════╝
                         │
                         │ (導入配置函數)
                         ▼
 ╔═══════════════════════════════════════════════════════════════╗
-║ 第 2 層：運行時配置層 (Runtime Configuration Layer)           ║
-║ → frontend/src/config/runtime.ts (428 行)                     ║
-║ → src/config/runtime.ts (300+ 行)                             ║
-║ → 函數：getBackendUrl(), getWebSocketUrl()                    ║
-║   getFrontendUrl(), getStoragePublicUrl()                     ║
-║   validateRuntimeConfig() 等                                  ║
+║ 第 2 層：運行時配置層 (Runtime Configuration Layer) ║
+║ → frontend/src/config/runtime.ts (428 行) ║
+║ → src/config/runtime.ts (300+ 行) ║
+║ → 函數：getBackendUrl(), getWebSocketUrl() ║
+║ getFrontendUrl(), getStoragePublicUrl() ║
+║ validateRuntimeConfig() 等 ║
 ╚═══════════════════════════════════════════════════════════════╝
                         │
                         │ (讀取環境變數)
                         ▼
 ╔═══════════════════════════════════════════════════════════════╗
-║ 第 1 層：環境變數 (Environment Variables)                     ║
-║ → .env.development / .env.production (前端)                   ║
-║ → .dev.vars (後端開發)                                        ║
-║ → wrangler.toml [vars] (後端生產)                             ║
-║ → Cloudflare Dashboard secrets (生產環境機密)                 ║
+║ 第 1 層：環境變數 (Environment Variables) ║
+║ → .env.development / .env.production (前端) ║
+║ → .dev.vars (後端開發) ║
+║ → wrangler.toml [vars] (後端生產) ║
+║ → Cloudflare Dashboard secrets (生產環境機密) ║
 ╚═══════════════════════════════════════════════════════════════╝
 ```
 
@@ -43,13 +43,13 @@ import { getBackendUrl, getWebSocketUrl, getApiEndpoint } from '@/config/runtime
 // 獲取後端 API 基礎 URL
 const apiUrl = getBackendUrl();
 // 返回：'https://your-api-domain.example.com' (生產環境)
-//    或 'http://localhost:8787' (開發環境)
+// 或 'http://localhost:8787' (開發環境)
 
 // 獲取 WebSocket URL (自動轉換協議)
 const wsUrl = getWebSocketUrl();
 // 自動轉換：https: → wss:, http: → ws:
 // 返回：'wss://your-api-domain.example.com/ws' (生產環境)
-//    或 'ws://localhost:8787/ws' (開發環境)
+// 或 'ws://localhost:8787/ws' (開發環境)
 
 // 獲取完整 API 端點
 const endpoint = getApiEndpoint('/api/messages');
@@ -198,30 +198,30 @@ app.get('/api/example', async (c) => {
 ## 遷移效益
 
 **遷移前 (硬編碼 URL)：**
-- ❌ 69+ 個文件含有硬編碼 URL
-- ❌ 切換環境需 4-6 小時
-- ❌ 手動查找替換容易出錯
-- ❌ 配置缺乏類型安全
-- ❌ 難以維持一致性
+-  69+ 個文件含有硬編碼 URL
+-  切換環境需 4-6 小時
+-  手動查找替換容易出錯
+-  配置缺乏類型安全
+-  難以維持一致性
 
 **遷移後 (3 層架構)：**
-- ✅ 0 個硬編碼 URL (除了 runtime.ts 中的預設值)
-- ✅ 切換環境僅需 5-10 分鐘
-- ✅ 僅需更改單個 `.env` 文件
-- ✅ 完整的 TypeScript 類型安全
-- ✅ 自動驗證和錯誤處理
-- ✅ 切換時間減少 96%
-- ✅ 732% 投資回報率 (ROI)
+-  0 個硬編碼 URL (除了 runtime.ts 中的預設值)
+-  切換環境僅需 5-10 分鐘
+-  僅需更改單個 `.env` 文件
+-  完整的 TypeScript 類型安全
+-  自動驗證和錯誤處理
+-  切換時間減少 96%
+-  732% 投資回報率 (ROI)
 
 ## 配置最佳實踐
 
 1. **始終使用配置函數：**
    ```typescript
-   // ✅ GOOD
+   // GOOD
    import { getBackendUrl } from '@/config/runtime';
    const url = getBackendUrl();
 
-   // ❌ BAD - 絕不要硬編碼 URL
+   // BAD - 絕不要硬編碼 URL
    const url = 'https://your-api-domain.example.com';
    ```
 
@@ -244,7 +244,7 @@ app.get('/api/example', async (c) => {
 4. **TypeScript 支持：**
    ```typescript
    // frontend/src/vite-env.d.ts 提供完整的自動補全
-   const url = import.meta.env.VITE_BACKEND_URL; // ✅ 類型安全
+   const url = import.meta.env.VITE_BACKEND_URL; //  類型安全
    ```
 
 5. **絕不提交敏感數據：**

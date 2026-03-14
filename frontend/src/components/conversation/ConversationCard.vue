@@ -65,12 +65,12 @@
 
         <!-- Status Row -->
         <div class="status-row">
-          <!-- 🆕 Pending Badge for LIFF Pre-notification -->
+          <!--  Pending Badge for LIFF Pre-notification -->
           <div
             v-if="isPendingConversation"
             class="pending-badge"
           >
-            <span class="pending-icon">⏳</span>
+            <span class="pending-icon"></span>
             <span>等待加入</span>
           </div>
 
@@ -83,7 +83,7 @@
             <span class="status-text">{{ statusDisplayText }}</span>
           </div>
 
-          <!-- 🆕 New Customer Badge - Shows for customers who joined within 7 days -->
+          <!--  New Customer Badge - Shows for customers who joined within 7 days -->
           <NewCustomerBadge
             v-if="conversation.customer?.createdAt"
             :created-at="conversation.customer.createdAt"
@@ -130,7 +130,7 @@ import {
   UserCheckIcon,
   ChevronRightIcon
 } from '@/components/icons'
-// 🆕 New Customer Badge Component
+// New Customer Badge Component
 import NewCustomerBadge from '@/components/ui/NewCustomerBadge.vue'
 
 interface Props {
@@ -236,7 +236,7 @@ const assignedToDisplay = computed(() => {
   return null
 })
 
-// 🆕 LIFF 預通知：檢測是否為 pending 對話
+// LIFF 預通知：檢測是否為 pending 對話
 const isPendingConversation = computed(() => {
   const conversation = props.conversation as { _liffMetadata?: { isPending?: boolean } }
   return conversation._liffMetadata?.isPending === true
@@ -252,7 +252,7 @@ const conversationAriaLabel = computed(() => {
 // Methods
 const handleMouseEnter = () => {
   isHovered.value = true
-  // 🔧 FIX: 使用新的 customer-conversations 端點
+  // FIX: 使用新的 customer-conversations 端點
   prefetchApiData(`/api/customer-conversations/${props.conversation.id}/messages`)
 }
 
@@ -567,7 +567,7 @@ const formatTime = (date: Date | string | number) => {
   background: var(--apple-blue);
 }
 
-/* 🆕 Pending Badge for LIFF Pre-notification */
+/* Pending Badge for LIFF Pre-notification */
 .pending-badge {
   display: inline-flex;
   align-items: center;

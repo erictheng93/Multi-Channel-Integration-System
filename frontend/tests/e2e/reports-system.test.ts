@@ -90,14 +90,14 @@ vi.mock('@/api/reports', () => {
         { value: 'agent_performance', label: '客服績效報告', description: '客服人員績效評估' }
       ]),
       getAvailableFormats: vi.fn().mockReturnValue([
-        { value: 'pdf', label: 'PDF 文件', icon: '📕' },
-        { value: 'excel', label: 'Excel 檔案', icon: '📗' }
+        { value: 'pdf', label: 'PDF 文件', icon: '' },
+        { value: 'excel', label: 'Excel 檔案', icon: '' }
       ]),
       getTimeRangeOptions: vi.fn().mockReturnValue([
         { value: 'last_7_days', label: '過去7天' },
         { value: 'last_30_days', label: '過去30天' }
       ]),
-      formatReportStatus: vi.fn().mockReturnValue({ label: '已完成', color: 'green', icon: '✅' }),
+      formatReportStatus: vi.fn().mockReturnValue({ label: '已完成', color: 'green', icon: '' }),
       formatFileSize: vi.fn().mockReturnValue('1.0 MB'),
       formatReportType: vi.fn().mockReturnValue('對話摘要報告')
     }

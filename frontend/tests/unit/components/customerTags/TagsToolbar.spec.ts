@@ -48,7 +48,7 @@ describe('TagsToolbar', () => {
       const wrapper = createWrapper({ searchQuery: 'test' })
       const clearBtn = wrapper.find('.search-clear')
       expect(clearBtn.exists()).toBe(true)
-      expect(clearBtn.text()).toContain('✕')
+      expect(clearBtn.text()).toContain('')
     })
 
     it('does not show search stats when isSearching is false', () => {

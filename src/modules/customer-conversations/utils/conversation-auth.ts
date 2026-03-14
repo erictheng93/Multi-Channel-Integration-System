@@ -24,10 +24,10 @@ export interface ConversationAccessResult {
 /**
  * Verifies that a session token is valid and the user has access to the
  * given conversation. Implements the 4-way permission check:
- *   1. Admin — always allowed
- *   2. Customer — owner of the conversation
- *   3. Unassigned — no team assigned (public pool, everyone can access)
- *   4. Team member — user belongs to the assigned team
+ * 1. Admin — always allowed
+ * 2. Customer — owner of the conversation
+ * 3. Unassigned — no team assigned (public pool, everyone can access)
+ * 4. Team member — user belongs to the assigned team
  *
  * @throws Error with message suitable for client response
  */

@@ -6,8 +6,8 @@
  * - 密码重置管理
  * - 角色和状态切换
  * - 表单状态管理
- * - 🆕 批量选择和删除操作
- * - 🆕 Undo 机制
+ * -  批量选择和删除操作
+ * -  Undo 机制
  *
  * @module composables/team-management/useMemberOperations
  */
@@ -71,7 +71,7 @@ export interface UseMemberOperationsReturn {
   toggleMemberStatus: (_member: TeamMember) => Promise<void>
   removeMember: (_member: TeamMember) => Promise<void>
 
-  // 🆕 Selection Mode (批量操作)
+  // Selection Mode (批量操作)
   isSelectionMode: Ref<boolean>
   selectedMemberIds: Ref<Set<string>>
   selectedCount: ComputedRef<number>
@@ -80,10 +80,10 @@ export interface UseMemberOperationsReturn {
   selectAllMembers: (_currentUserId: string) => void
   deselectAllMembers: () => void
 
-  // 🆕 Bulk Operations
+  // Bulk Operations
   bulkDeleteMembers: (_currentUserId: string) => Promise<void>
 
-  // 🆕 Bulk Edit Modal
+  // Bulk Edit Modal
   bulkEditModal: Ref<boolean>
   bulkEditForm: BulkEditFormData
   bulkEditLoading: Ref<boolean>
@@ -603,7 +603,7 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     toggleMemberStatus,
     removeMember,
 
-    // 🆕 Selection Mode (批量操作)
+    // Selection Mode (批量操作)
     isSelectionMode,
     selectedMemberIds,
     selectedCount,
@@ -612,10 +612,10 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     selectAllMembers,
     deselectAllMembers,
 
-    // 🆕 Bulk Operations
+    // Bulk Operations
     bulkDeleteMembers,
 
-    // 🆕 Bulk Edit Modal
+    // Bulk Edit Modal
     bulkEditModal,
     bulkEditForm,
     bulkEditLoading,

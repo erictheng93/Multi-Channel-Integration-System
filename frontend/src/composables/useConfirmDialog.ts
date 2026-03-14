@@ -13,14 +13,14 @@
  * const { showConfirm } = useConfirmDialog()
  *
  * const confirmed = await showConfirm({
- *   title: 'Delete Customer Tag?',
- *   message: 'This action cannot be undone.',
- *   type: 'danger'
+ * title: 'Delete Customer Tag?',
+ * message: 'This action cannot be undone.',
+ * type: 'danger'
  * })
  *
  * if (confirmed) {
- *   // User clicked confirm
- *   await deleteTag()
+ * // User clicked confirm
+ * await deleteTag()
  * }
  * ```
  *
@@ -115,9 +115,9 @@ class ConfirmDialogManager {
    * @example
    * ```ts
    * const confirmed = await confirmDialogManager.show({
-   *   title: 'Delete Item',
-   *   message: 'Are you sure?',
-   *   type: 'danger'
+   * title: 'Delete Item',
+   * message: 'Are you sure?',
+   * type: 'danger'
    * })
    * ```
    */
@@ -202,8 +202,8 @@ class ConfirmDialogManager {
    * @example
    * ```ts
    * const result = await confirmDialogManager.warning(
-   *   'Unsaved Changes',
-   *   'Do you want to discard your changes?'
+   * 'Unsaved Changes',
+   * 'Do you want to discard your changes?'
    * )
    * ```
    */
@@ -227,8 +227,8 @@ class ConfirmDialogManager {
    * @example
    * ```ts
    * const result = await confirmDialogManager.danger(
-   *   'Delete All Data',
-   *   'This action cannot be undone. All data will be permanently deleted.'
+   * 'Delete All Data',
+   * 'This action cannot be undone. All data will be permanently deleted.'
    * )
    * ```
    */
@@ -252,8 +252,8 @@ class ConfirmDialogManager {
    * @example
    * ```ts
    * const result = await confirmDialogManager.info(
-   *   'Confirm Logout',
-   *   'You will need to login again to access the system.'
+   * 'Confirm Logout',
+   * 'You will need to login again to access the system.'
    * )
    * ```
    */
@@ -300,11 +300,11 @@ const confirmDialogManager = new ConfirmDialogManager()
  *
  * // 基本用法
  * const confirmed = await showConfirm({
- *   title: '确定要删除吗？',
- *   message: '此操作无法撤销'
+ * title: '确定要删除吗？',
+ * message: '此操作无法撤销'
  * })
  * if (confirmed) {
- *   // 用户点击了确定
+ * // 用户点击了确定
  * }
  *
  * // 使用快捷方法
