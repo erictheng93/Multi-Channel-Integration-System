@@ -121,13 +121,13 @@ function filterConversations(
       // 可以在擴展的對話類型中添加 tags 支持
       // const hasMatchingTag = filters.tags.some(tag => conv.tags?.includes(tag))
       // if (!hasMatchingTag) {
-      //   return false
+      // return false
       // }
     }
     
     // 優先級過濾 (暫時跳過，因為基本的 Conversation 類型沒有 priority)
     // if (filters.priority && conv.priority !== filters.priority) {
-    //   return false
+    // return false
     // }
     
     return true
@@ -202,7 +202,7 @@ function searchConversations(conversations: Conversation[], query: string): Conv
         
         // 標籤匹配 (暫時跳過)
         // if (conv.tags?.some(tag => tag.toLowerCase().includes(term))) {
-        //   score += 7
+        // score += 7
         // }
         
         // 全文匹配（低權重）
@@ -265,7 +265,7 @@ function aggregateStats(conversations: Conversation[]) {
     
     // 標籤統計 (暫時跳過)
     // conv.tags?.forEach(tag => {
-    //   stats.topTags[tag] = (stats.topTags[tag] || 0) + 1
+    // stats.topTags[tag] = (stats.topTags[tag] || 0) + 1
     // })
   })
   

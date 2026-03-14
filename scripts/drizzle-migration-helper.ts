@@ -221,7 +221,7 @@ function processFile(filePath: string): { success: boolean; changes: string[] } 
  * Main migration function
  */
 async function runMigration() {
-  console.log('🚀 Starting Drizzle ORM Migration...\n');
+  console.log(' Starting Drizzle ORM Migration...\n');
   
   // Find all TypeScript files in src/ (excluding tests)
   const files = glob.sync('src/**/*.ts', {
@@ -238,30 +238,30 @@ async function runMigration() {
     if (result.success && result.changes.length > 0) {
       summary[file] = result.changes;
       totalChanges += result.changes.length;
-      console.log(`  ✅ ${result.changes.length} changes made`);
+      console.log(` ${result.changes.length} changes made`);
     } else if (!result.success) {
-      console.log(`  ❌ Failed to process`);
+      console.log(` Failed to process`);
     } else {
-      console.log(`  ⭕ No changes needed`);
+      console.log(` No changes needed`);
     }
   }
   
   // Print summary
-  console.log('\n📊 Migration Summary:');
+  console.log('\n Migration Summary:');
   console.log(`Files processed: ${files.length}`);
   console.log(`Files modified: ${Object.keys(summary).length}`);
   console.log(`Total changes: ${totalChanges}\n`);
   
   if (Object.keys(summary).length > 0) {
-    console.log('📝 Detailed Changes:');
+    console.log(' Detailed Changes:');
     Object.entries(summary).forEach(([file, changes]) => {
       console.log(`\n${file}:`);
       changes.forEach(change => console.log(`  - ${change}`));
     });
   }
   
-  console.log('\n🎉 Migration completed!');
-  console.log('\n⚠️  Manual Review Required:');
+  console.log('\n Migration completed!');
+  console.log('\n  Manual Review Required:');
   console.log('1. Check files marked with "/* MIGRATE:" comments');
   console.log('2. Verify complex queries are correctly converted');
   console.log('3. Test the application thoroughly');

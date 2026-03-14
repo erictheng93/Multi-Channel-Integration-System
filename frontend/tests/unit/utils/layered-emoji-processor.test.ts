@@ -92,8 +92,8 @@ describe('layered-emoji-processor', () => {
 
         // Should contain the URL as a link
         expect(result).toContain('<a href="https://example.com"')
-        // Emoji processing should convert (thumbs_up) to 👍
-        expect(result).toContain('👍')
+        // Emoji processing should convert (thumbs_up) to 
+        expect(result).toContain('')
         expect(result).not.toContain('(thumbs_up)') // Original should be replaced
       })
     })

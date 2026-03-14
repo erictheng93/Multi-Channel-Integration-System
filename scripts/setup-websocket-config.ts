@@ -5,10 +5,10 @@
  * This script initializes the WebSocket migration configuration in Cloudflare KV
  *
  * Usage:
- *   npm run setup:websocket
+ * npm run setup:websocket
  *
  * Or with custom settings:
- *   tsx scripts/setup-websocket-config.ts --enable-websocket=true --rollout=100
+ * tsx scripts/setup-websocket-config.ts --enable-websocket=true --rollout=100
  */
 
 interface MigrationConfig {
@@ -87,7 +87,7 @@ function getEnvironment(): 'production' | 'staging' | 'development' {
 }
 
 async function main() {
-  console.log('🚀 WebSocket Migration Configuration Setup\n');
+  console.log(' WebSocket Migration Configuration Setup\n');
 
   const environment = getEnvironment();
   const customArgs = parseArgs();
@@ -111,11 +111,11 @@ async function main() {
     ...customArgs
   };
 
-  console.log(`📋 Configuration for ${environment.toUpperCase()}:`);
+  console.log(` Configuration for ${environment.toUpperCase()}:`);
   console.log(JSON.stringify(finalConfig, null, 2));
   console.log('');
 
-  console.log('📝 To apply this configuration, run ONE of the following commands:\n');
+  console.log(' To apply this configuration, run ONE of the following commands:\n');
 
   console.log('Using wrangler CLI:');
   console.log(`wrangler kv:key put --binding=SESSIONS "websocket_migration_config" '${JSON.stringify(finalConfig)}' --env=${environment === 'production' ? 'production' : environment}`);
@@ -128,7 +128,7 @@ async function main() {
   console.log(`  -d '${JSON.stringify(finalConfig)}'`);
   console.log('');
 
-  console.log('💡 Quick configurations:\n');
+  console.log(' Quick configurations:\n');
   console.log('Staging (10% rollout):');
   console.log('  npm run setup:websocket -- --environment=staging');
   console.log('');
@@ -139,9 +139,9 @@ async function main() {
   console.log('  npm run setup:websocket -- --enable-websocket=false');
   console.log('');
 
-  console.log('✅ Configuration ready for deployment!');
+  console.log(' Configuration ready for deployment!');
   console.log('');
-  console.log('🔍 After deployment, verify with:');
+  console.log(' After deployment, verify with:');
   console.log('  curl https://your-domain.com/api/websocket/migration-status');
 }
 

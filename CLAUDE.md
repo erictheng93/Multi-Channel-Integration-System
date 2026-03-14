@@ -24,27 +24,27 @@ Frontend: frontend/src/main.ts → Vue 3 + Pinia stores + Vue Router
 
 ## Development Commands
 
-> ⚠️ **REMOTE RESOURCES ONLY** — all dev connects to production D1, KV, R2, Durable Objects. No local environment.
+>  **REMOTE RESOURCES ONLY** — all dev connects to production D1, KV, R2, Durable Objects. No local environment.
 
 ### Backend (root)
 ```bash
-bun run dev              # Wrangler dev with REMOTE bindings
-bun run build            # TypeScript compilation check
-bun run deploy           # Deploy to production
-bun run db:migrate       # Apply migrations to REMOTE D1
-bun run db:generate      # Generate Drizzle migrations
-bun run db:studio        # Open Drizzle Studio for REMOTE DB
+bun run dev # Wrangler dev with REMOTE bindings
+bun run build # TypeScript compilation check
+bun run deploy # Deploy to production
+bun run db:migrate # Apply migrations to REMOTE D1
+bun run db:generate # Generate Drizzle migrations
+bun run db:studio # Open Drizzle Studio for REMOTE DB
 bun run health:check:all # Check system + WebSocket health
 ```
 
 ### Frontend (frontend/)
 ```bash
-bun run dev              # Vite dev server (port 5173)
-bun run build            # Production build
-bun run test             # Run all Vitest tests
-bun run test:coverage    # Coverage report
-bun run lint             # ESLint with auto-fix
-bun run type-check       # Vue TypeScript checking
+bun run dev # Vite dev server (port 5173)
+bun run build # Production build
+bun run test # Run all Vitest tests
+bun run test:coverage # Coverage report
+bun run lint # ESLint with auto-fix
+bun run type-check # Vue TypeScript checking
 ```
 
 ## Package Manager
@@ -73,14 +73,14 @@ bun run type-check       # Vue TypeScript checking
 
 ```typescript
 import { getBackendUrl, getWebSocketUrl } from '@/config/runtime';
-// ✅ Never hardcode URLs — always use runtime config functions
+// Never hardcode URLs — always use runtime config functions
 ```
 
 See `docs/claude/ENVIRONMENT_CONFIG.md` for details.
 
 ## Development Rules
 
-### Route Registration Order (⚠️ Critical)
+### Route Registration Order ( Critical)
 
 In Hono, route registration order = routing priority. Routes registered later **cannot override** earlier catch-all routes.
 
@@ -91,11 +91,11 @@ In Hono, route registration order = routing priority. Routes registered later **
 4. **P4**: Fine-grained individual routes
 
 ```typescript
-// ❌ BAD: Register after unified route system — will be intercepted
+// BAD: Register after unified route system — will be intercepted
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
 app.route('/api/myendpoint', myHandler); // TOO LATE
 
-// ✅ GOOD: Pre-register BEFORE unified route system
+// GOOD: Pre-register BEFORE unified route system
 app.route('/api/myendpoint', myHandler); // PRIORITY
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
 ```
@@ -113,9 +113,9 @@ A PostToolUse hook runs TypeScript type-check + ESLint after every Edit/Write on
 **When health check reports errors: FIX THEM IMMEDIATELY without asking the user.** Read the error output, identify the root cause, and apply the fix. Do not ask for permission — just fix it.
 
 ```bash
-bash scripts/check.sh            # Full check (backend + frontend)
-bash scripts/check.sh backend    # Backend only
-bash scripts/check.sh frontend   # Frontend only
+bash scripts/check.sh # Full check (backend + frontend)
+bash scripts/check.sh backend # Backend only
+bash scripts/check.sh frontend # Frontend only
 ```
 
 Config: `.claude/hooks/health-check.sh`, `.claude/settings.local.json`

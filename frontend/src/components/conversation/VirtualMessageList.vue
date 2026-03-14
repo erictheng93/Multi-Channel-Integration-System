@@ -22,7 +22,7 @@
       v-if="loading && hasMore"
       class="loading-indicator loading-top"
     >
-      <span class="loading-spinner">⏳</span>
+      <span class="loading-spinner"></span>
       <span>載入中...</span>
     </div>
 
@@ -147,14 +147,14 @@ import { useScrollWatchers } from '@/composables/message/useScrollWatchers'
 interface Props {
   messages: Message[]
   displayedMessages?: Message[]
-  loading?: boolean           // General loading state
-  hasMore?: boolean           // Has more messages to load
-  loadingHistory?: boolean    // Loading historical messages
+  loading?: boolean // General loading state
+  hasMore?: boolean // Has more messages to load
+  loadingHistory?: boolean // Loading historical messages
   showDateSeparators?: boolean
   isSearchActive?: boolean
   isUpdating?: boolean
   isTyping?: boolean
-  typingUsers?: string[]      // Typing users from parent
+  typingUsers?: string[] // Typing users from parent
   searchTerm?: string
   enableAnimations?: boolean
   scrollBehavior?: 'auto' | 'smooth'
@@ -299,7 +299,7 @@ const scrollToMessage = async (messageId: string, retries = 3, delay = 100) => {
 
 // Handle retry event from MessageBubble
 const handleRetry = (messageId: string) => {
-  console.log('🔄 [VirtualMessageList] Retry event received for message:', messageId)
+  console.log('[VirtualMessageList] Retry event received for message:', messageId)
   emit('retry', messageId)
 }
 
@@ -314,7 +314,7 @@ defineExpose({
 </script>
 
 <style scoped>
-/* 🎨 Spacious, Minimal Container Design */
+/* Spacious, Minimal Container Design */
 .virtual-message-list {
   height: 100%;
   display: flex;
@@ -387,7 +387,7 @@ defineExpose({
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
-/* 🔼 載入指示器（頂部） */
+/* 載入指示器（頂部） */
 .loading-indicator {
   text-align: center;
   padding: 1rem;
@@ -416,7 +416,7 @@ defineExpose({
   to { transform: rotate(360deg); }
 }
 
-/* 🔼 載入更多按鈕（頂部） */
+/* 載入更多按鈕（頂部） */
 .load-more-trigger {
   text-align: center;
   padding: 1rem;
@@ -505,7 +505,7 @@ defineExpose({
   backdrop-filter: blur(8px);
 }
 
-/* 🎨 Spacious Message Item Container */
+/* Spacious Message Item Container */
 .message-item {
   padding: 0.375rem 1rem;
   display: flex;

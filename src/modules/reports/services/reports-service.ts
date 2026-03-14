@@ -26,10 +26,10 @@ import { ReportUtils } from './report-utils';
  * Reports Service Facade
  * Implements ReportsServiceInterface by delegating to focused sub-services.
  * Each sub-service handles a single responsibility:
- *   - ReportGeneratorService: report generation pipeline, data queries, formatting
- *   - ReportManagerService: CRUD, listing, statistics, batch operations
- *   - ReportSchedulerService: scheduled report lifecycle
- *   - ReportUtils: validation, templates, previews, permission checks
+ * - ReportGeneratorService: report generation pipeline, data queries, formatting
+ * - ReportManagerService: CRUD, listing, statistics, batch operations
+ * - ReportSchedulerService: scheduled report lifecycle
+ * - ReportUtils: validation, templates, previews, permission checks
  */
 export class ReportsService implements ReportsServiceInterface {
   private generator: ReportGeneratorService;

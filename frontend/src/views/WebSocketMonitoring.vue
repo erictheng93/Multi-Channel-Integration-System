@@ -9,7 +9,7 @@
         <!-- 連線數 -->
         <div class="metric-card primary">
           <div class="metric-icon">
-            🔌
+            
           </div>
           <div class="metric-content">
             <h3>活躍連線</h3>
@@ -28,7 +28,7 @@
         <!-- 訊息吞吐量 -->
         <div class="metric-card success">
           <div class="metric-icon">
-            📨
+            
           </div>
           <div class="metric-content">
             <h3>訊息/秒</h3>
@@ -45,7 +45,7 @@
         <!-- 平均延遲 -->
         <div class="metric-card warning">
           <div class="metric-icon">
-            ⏱️
+            
           </div>
           <div class="metric-content">
             <h3>平均延遲</h3>
@@ -64,7 +64,7 @@
         <!-- 錯誤率 -->
         <div class="metric-card danger">
           <div class="metric-icon">
-            ⚠️
+            
           </div>
           <div class="metric-content">
             <h3>錯誤率</h3>
@@ -216,7 +216,7 @@
         :disabled="isRefreshing"
         @click="refreshData"
       >
-        {{ isRefreshing ? '刷新中...' : '🔄 刷新資料' }}
+        {{ isRefreshing ? '刷新中...' : ' 刷新資料' }}
       </button>
       <label class="auto-refresh">
         <input
@@ -232,7 +232,7 @@
       v-if="error"
       class="error-message"
     >
-      ❌ {{ error }}
+       {{ error }}
     </div>
   </div>
 </template>
@@ -412,8 +412,8 @@ function getTrendClass(trend: number) {
 }
 
 function formatTrend(trend: number) {
-  if (trend > 0) {return `↗ +${trend}`}
-  if (trend < 0) {return `↘ ${trend}`}
+  if (trend > 0) {return ` +${trend}`}
+  if (trend < 0) {return ` ${trend}`}
   return '→ 持平'
 }
 
@@ -451,9 +451,9 @@ function formatDOName(name: string) {
 
 function getAlertIcon(severity: string) {
   switch (severity) {
-    case 'error': return '🔴'
-    case 'warning': return '🟡'
-    default: return '🔵'
+    case 'error': return ''
+    case 'warning': return ''
+    default: return ''
   }
 }
 

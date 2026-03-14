@@ -206,7 +206,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
-    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
+    lineUrl?: string;  //  Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -217,7 +217,7 @@ export const teamApi = {
   },
 
   // 創建團隊
-  // 🆕 Phase 3: 團隊創建時會並行生成 QR 碼，回應中包含 qrCode 和 lineUrl
+  // Phase 3: 團隊創建時會並行生成 QR 碼，回應中包含 qrCode 和 lineUrl
   createTeam: async (data: {
     name: string;
     description?: string;
@@ -226,7 +226,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
-    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
+    lineUrl?: string;  //  Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -244,7 +244,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
-    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
+    lineUrl?: string;  //  Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -263,7 +263,7 @@ export const teamApi = {
     name: string;
     description?: string;
     qrCode?: string;
-    lineUrl?: string;  // 🆕 Phase 3: LINE 連結 URL
+    lineUrl?: string;  //  Phase 3: LINE 連結 URL
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -456,7 +456,7 @@ export const teamApi = {
     }
   },
 
-  // 🆕 批量從團隊移除成員
+  // 批量從團隊移除成員
   bulkRemoveMembersFromTeam: async (teamId: number, agentIds: string[]): Promise<ApiResponse<{
     removed: string[];
     failed: { agentId: string; error: string }[];
@@ -491,7 +491,7 @@ export const teamApi = {
   },
 
   /**
-   * 🚀 Phase 2 優化：批量將多位成員加入單一團隊
+   * Phase 2 優化：批量將多位成員加入單一團隊
    * - 1 API 請求 (vs 原本 N 請求)
    * - 2-3 DB 查詢 (vs 原本 6*N 查詢)
    * - 用戶等待時間: ~200ms (vs 原本 ~1000ms for 5 members)

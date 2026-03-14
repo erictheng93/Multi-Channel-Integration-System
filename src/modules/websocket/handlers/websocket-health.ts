@@ -587,7 +587,7 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
   return {
     enableWebSocket: true,
     migrationStrategy: 'immediate' as const, // All users get WebSocket immediately
-    rolloutPercentage: 100,         // 100% WebSocket adoption
+    rolloutPercentage: 100, // 100% WebSocket adoption
     featureFlags: {
       websocketConnections: true,
       durableObjectMessaging: true,

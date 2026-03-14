@@ -10,23 +10,23 @@ This guide explains how to set up and configure Cloudflare Analytics for monitor
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    Cloudflare Analytics Integration                              │
+│ Cloudflare Analytics Integration │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌─────────────────┐    ┌────────────────┐    ┌─────────────────────────────┐   │
-│  │ Workers         │───▶│ Analytics      │───▶│ Dashboard / Grafana         │   │
-│  │ (src/index.ts)  │    │ Engine         │    │ (Visualization)             │   │
-│  └─────────────────┘    └────────────────┘    └─────────────────────────────┘   │
-│          │                      │                                                │
-│          │                      │                                                │
-│  ┌───────┴───────┐    ┌────────┴───────┐    ┌─────────────────────────────┐    │
-│  │ Durable       │    │ Workers        │    │ External Analytics          │    │
-│  │ Objects       │    │ Logpush        │    │ (Optional)                  │    │
-│  │ Metrics       │    │ (to R2/S3)     │    │ • Grafana Cloud            │    │
-│  └───────────────┘    └────────────────┘    │ • Datadog                  │    │
-│                                              │ • New Relic                │    │
-│                                              └─────────────────────────────┘    │
-│                                                                                  │
+│ │
+│  ┌─────────────────┐ ┌────────────────┐ ┌─────────────────────────────┐ │
+│  │ Workers │───│ Analytics │───│ Dashboard / Grafana │   │
+│  │ (src/index.ts)  │ │ Engine │    │ (Visualization) │   │
+│  └─────────────────┘ └────────────────┘ └─────────────────────────────┘ │
+│ │                      │ │
+│ │                      │ │
+│  ┌───────┴───────┐ ┌────────┴───────┐ ┌─────────────────────────────┐ │
+│  │ Durable │    │ Workers │    │ External Analytics │    │
+│  │ Objects │    │ Logpush │    │ (Optional) │    │
+│  │ Metrics │    │ (to R2/S3) │    │ • Grafana Cloud │    │
+│  └───────────────┘ └────────────────┘ │ • Datadog │    │
+│ │ • New Relic │    │
+│ └─────────────────────────────┘ │
+│ │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,20 +85,20 @@ import type { Bindings } from '../types';
 
 export interface MetricEvent {
   // Dimension indexes (up to 20)
-  metric: string;           // index1: metric name
-  source: string;           // index2: source (websocket, api, cron)
-  status: string;           // index3: success/failure
-  doType?: string;          // index4: DO type
+  metric: string; // index1: metric name
+  source: string; // index2: source (websocket, api, cron)
+  status: string; // index3: success/failure
+  doType?: string; // index4: DO type
 
   // Numeric values (up to 20)
-  value?: number;           // double1: primary metric value
-  latency?: number;         // double2: latency in ms
-  count?: number;           // double3: count/quantity
-  errorRate?: number;       // double4: error rate (0-1)
+  value?: number; // double1: primary metric value
+  latency?: number; // double2: latency in ms
+  count?: number; // double3: count/quantity
+  errorRate?: number; // double4: error rate (0-1)
 
   // String blobs (up to 20, for debugging)
-  eventId?: string;         // blob1
-  userId?: string;          // blob2
+  eventId?: string; // blob1
+  userId?: string; // blob2
   conversationId?: string;  // blob3
 }
 
@@ -339,8 +339,8 @@ query WebSocketMetrics {
           double2  # latency
         }
         dimensions {
-          index2   # source
-          index3   # status
+          index2 # source
+          index3 # status
           datetime(precision: HOUR)
         }
       }
@@ -495,7 +495,7 @@ monitoringHandler.post('/webhook/alert', async (c) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      text: `🚨 Alert: ${alert.message}`,
+      text: ` Alert: ${alert.message}`,
       attachments: [{
         color: alert.severity === 'critical' ? 'danger' : 'warning',
         fields: [

@@ -188,7 +188,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 
   // Week 3-4: Optimized lock parameters for faster cleanup
   const userLockId = await lockService.acquireLock(`user_cleanup:${userId}`, {
-    ttl: 2000,    // Reduced from 5000ms - cleanup should complete quickly
+    ttl: 2000, // Reduced from 5000ms - cleanup should complete quickly
     timeout: 1000  // Reduced from 2000ms - fast fail if system is overloaded
   });
 
@@ -386,7 +386,7 @@ async function getMigrationConfig(env: Bindings): Promise<MigrationConfig> {
     const defaultConfig: MigrationConfig = {
       enableWebSocket: true,
       migrationStrategy: 'immediate', // All users get WebSocket immediately
-      rolloutPercentage: 100,         // 100% WebSocket adoption
+      rolloutPercentage: 100, // 100% WebSocket adoption
       featureFlags: {
         websocketConnections: true,
         durableObjectMessaging: true,

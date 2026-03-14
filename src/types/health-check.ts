@@ -59,9 +59,9 @@ export interface HealthCheckConfig {
 // 健康檢查標準等級
 export enum HealthLevel {
   INFRASTRUCTURE = 'infrastructure', // 基礎設施
-  SERVICE = 'service',               // 服務層
-  APPLICATION = 'application',       // 應用層
-  INTEGRATION = 'integration'        // 整合層
+  SERVICE = 'service', // 服務層
+  APPLICATION = 'application', // 應用層
+  INTEGRATION = 'integration' // 整合層
 }
 
 // 檢查器接口

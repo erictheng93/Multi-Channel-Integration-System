@@ -70,7 +70,7 @@ try {
  const result = await complexOperation()
  return new Response(JSON.stringify({ success: true, data: result }))
 } catch (error) {
- console.error(' [Service] Error:', error)
+ console.error('[Service] Error:', error)
  return new Response(JSON.stringify({
  success: false,
  error: error.message

@@ -84,7 +84,7 @@ export class TeamService implements TeamServiceInterface {
 
     if (!team) return null;
 
-    // 🔧 Fix: Get member count from agent_teams table (supports multi-team architecture)
+    // Fix: Get member count from agent_teams table (supports multi-team architecture)
     // Exclude soft-deleted agents (deletedAt IS NULL)
     const memberCountResult = await this.db
       .select({ memberCount: count() })
@@ -93,7 +93,7 @@ export class TeamService implements TeamServiceInterface {
       .where(and(eq(agentTeams.teamId, id), sql`${agents.deletedAt} IS NULL`));
     const memberCount = memberCountResult[0]?.memberCount || 0;
 
-    // 🔧 Fix: Get active members count via agent_teams join
+    // Fix: Get active members count via agent_teams join
     // Exclude soft-deleted agents (deletedAt IS NULL)
     const activeMembersResult = await this.db
       .select({ activeMembers: count() })
@@ -194,7 +194,7 @@ export class TeamService implements TeamServiceInterface {
         .delete(teams)
         .where(eq(teams.id, id));
 
-      console.log(`🗑️ [Team Delete] Team ${id} permanently deleted with all associations cleaned up`);
+      console.log(`[Team Delete] Team ${id} permanently deleted with all associations cleaned up`);
       return true;
     } catch (error) {
       console.error('Delete team error:', error);
@@ -232,7 +232,7 @@ export class TeamService implements TeamServiceInterface {
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
     // Optimized: Get teams with all stats in a single query
-    // 🔧 Fix: Use agent_teams table for member count (supports multi-team architecture)
+    // Fix: Use agent_teams table for member count (supports multi-team architecture)
     const teamList = await this.db
       .select({
         team: teams,
@@ -404,7 +404,7 @@ export class TeamService implements TeamServiceInterface {
     }
   }
 
-  // 🆕 Bulk remove members from team (via agent_teams junction table)
+  // Bulk remove members from team (via agent_teams junction table)
   async bulkRemoveMembers(teamId: number, agentIds: string[]): Promise<{
     removed: string[];
     failed: { agentId: string; error: string }[];
@@ -452,7 +452,7 @@ export class TeamService implements TeamServiceInterface {
           ));
 
         removed.push(...validAgentIds);
-        console.log(`📦 [Team Bulk Remove] Removed ${validAgentIds.length} members from team ${teamId}`);
+        console.log(`[Team Bulk Remove] Removed ${validAgentIds.length} members from team ${teamId}`);
       }
 
       return { removed, failed };
@@ -498,12 +498,12 @@ export class TeamService implements TeamServiceInterface {
 
     return {
       id: agent.id,
-      name: agent.displayName, // ✅ Map displayName to name
+      name: agent.displayName, //  Map displayName to name
       displayName: agent.displayName,
-      loginId: agent.email || agent.id, // ✅ Add loginId
+      loginId: agent.email || agent.id, //  Add loginId
       email: agent.email,
       role: agent.role,
-      status: agent.isActive ? 'active' : 'inactive', // ✅ Add status
+      status: agent.isActive ? 'active' : 'inactive', //  Add status
       isActive: agent.isActive,
       lastActive: agent.lastActive,
       joinedAt: agent.createdAt,
@@ -513,7 +513,7 @@ export class TeamService implements TeamServiceInterface {
   }
 
   // Get team members
-  // 🔧 Fix: Use agent_teams table to get members (supports multi-team architecture)
+  // Fix: Use agent_teams table to get members (supports multi-team architecture)
   async getMembers(teamId: number): Promise<TeamMember[]> {
     const memberships = await this.db
       .select({
@@ -528,13 +528,13 @@ export class TeamService implements TeamServiceInterface {
 
     return memberships.map(({ agent, roleInTeam, joinedAt }) => ({
       id: agent.id,
-      name: agent.displayName, // ✅ Map displayName to name for frontend compatibility
+      name: agent.displayName, //  Map displayName to name for frontend compatibility
       displayName: agent.displayName, // Keep for backward compatibility
-      loginId: agent.email || agent.id, // ✅ Add loginId field (fallback to id if no email)
+      loginId: agent.email || agent.id, //  Add loginId field (fallback to id if no email)
       email: agent.email,
       role: agent.role,
-      roleInTeam: roleInTeam || 'member', // 🆕 Include team-specific role
-      status: agent.isActive ? 'active' : 'inactive', // ✅ Add status field for frontend
+      roleInTeam: roleInTeam || 'member', //  Include team-specific role
+      status: agent.isActive ? 'active' : 'inactive', //  Add status field for frontend
       isActive: agent.isActive,
       lastActive: agent.lastActive,
       joinedAt: joinedAt || agent.createdAt,
@@ -667,7 +667,7 @@ export class TeamService implements TeamServiceInterface {
           .insert(agentTeams)
           .values(newMemberships);
 
-        console.log(`📦 [Team Transfer] Transferred ${validAgentIds.length} agents via agent_teams`);
+        console.log(`[Team Transfer] Transferred ${validAgentIds.length} agents via agent_teams`);
       }
 
       const failedTransfers = invalidAgentIds.map(agentId => ({

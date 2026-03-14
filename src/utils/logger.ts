@@ -107,11 +107,11 @@ class Logger {
 
   // Reserved for future structured log formatting
   // private formatMessage(entry: LogEntry): string {
-  //   const timestamp = entry.timestamp;
-  //   const level = entry.level.toUpperCase().padEnd(5);
-  //   const context = entry.context ? `[${entry.context}]` : '';
-  //   const metadata = entry.metadata ? ` ${JSON.stringify(entry.metadata)}` : '';
-  //   return `${timestamp} ${level} ${context} ${entry.message}${metadata}`;
+  // const timestamp = entry.timestamp;
+  // const level = entry.level.toUpperCase().padEnd(5);
+  // const context = entry.context ? `[${entry.context}]` : '';
+  // const metadata = entry.metadata ? ` ${JSON.stringify(entry.metadata)}` : '';
+  // return `${timestamp} ${level} ${context} ${entry.message}${metadata}`;
   // }
 
   private addToBuffer(entry: LogEntry): void {
@@ -244,11 +244,11 @@ export const logger = new Logger({
  * ```ts
  * // In your Hono app or Worker fetch handler
  * app.use('*', async (c, next) => {
- *   configureLogger({
- *     logLevel: c.env.LOG_LEVEL,
- *     environment: c.env.ENVIRONMENT
- *   });
- *   await next();
+ * configureLogger({
+ * logLevel: c.env.LOG_LEVEL,
+ * environment: c.env.ENVIRONMENT
+ * });
+ * await next();
  * });
  * ```
  */

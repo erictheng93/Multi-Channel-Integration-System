@@ -45,7 +45,7 @@
         class="search-clear"
         @click="clearSearch"
       >
-        ✕
+        
       </button>
       <span
         v-if="isSearching"

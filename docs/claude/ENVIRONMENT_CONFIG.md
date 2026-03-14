@@ -6,30 +6,30 @@
 
 ```
 ╔═══════════════════════════════════════════════════════════════╗
-║ Layer 3: Business Logic Code                                  ║
-║ → Components, Services, Handlers                              ║
-║ → Uses: getBackendUrl(), getWebSocketUrl(), etc.              ║
+║ Layer 3: Business Logic Code ║
+║ → Components, Services, Handlers ║
+║ → Uses: getBackendUrl(), getWebSocketUrl(), etc. ║
 ╚═══════════════════════════════════════════════════════════════╝
                         │
                         │ (Imports configuration functions)
                         ▼
 ╔═══════════════════════════════════════════════════════════════╗
-║ Layer 2: Runtime Configuration Layer                          ║
-║ → frontend/src/config/runtime.ts (428 lines)                  ║
-║ → src/config/runtime.ts (300+ lines)                          ║
-║ → Functions: getBackendUrl(), getWebSocketUrl()               ║
-║   getFrontendUrl(), getStoragePublicUrl()                     ║
-║   validateRuntimeConfig(), etc.                               ║
+║ Layer 2: Runtime Configuration Layer ║
+║ → frontend/src/config/runtime.ts (428 lines) ║
+║ → src/config/runtime.ts (300+ lines) ║
+║ → Functions: getBackendUrl(), getWebSocketUrl() ║
+║ getFrontendUrl(), getStoragePublicUrl() ║
+║ validateRuntimeConfig(), etc. ║
 ╚═══════════════════════════════════════════════════════════════╝
                         │
                         │ (Reads from environment variables)
                         ▼
 ╔═══════════════════════════════════════════════════════════════╗
-║ Layer 1: Environment Variables                                ║
-║ → .env.development / .env.production (Frontend)               ║
-║ → .dev.vars (Backend development)                             ║
-║ → wrangler.toml [vars] (Backend production)                   ║
-║ → Cloudflare Dashboard secrets (Production secrets)           ║
+║ Layer 1: Environment Variables ║
+║ → .env.development / .env.production (Frontend) ║
+║ → .dev.vars (Backend development) ║
+║ → wrangler.toml [vars] (Backend production) ║
+║ → Cloudflare Dashboard secrets (Production secrets) ║
 ╚═══════════════════════════════════════════════════════════════╝
 ```
 
@@ -43,13 +43,13 @@ import { getBackendUrl, getWebSocketUrl, getApiEndpoint } from '@/config/runtime
 // Get backend API base URL
 const apiUrl = getBackendUrl();
 // Returns: 'https://your-api-domain.example.com' (production)
-//       or 'http://localhost:8787' (development)
+// or 'http://localhost:8787' (development)
 
 // Get WebSocket URL (auto protocol conversion)
 const wsUrl = getWebSocketUrl();
 // Automatically converts: https: → wss:, http: → ws:
 // Returns: 'wss://your-api-domain.example.com/ws' (production)
-//       or 'ws://localhost:8787/ws' (development)
+// or 'ws://localhost:8787/ws' (development)
 
 // Get full API endpoint
 const endpoint = getApiEndpoint('/api/messages');
@@ -198,30 +198,30 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 ## Migration Benefits
 
 **Before Migration (Hardcoded URLs):**
-- ❌ 69+ files with hardcoded URLs
-- ❌ 4-6 hours to switch environments
-- ❌ Manual find-and-replace prone to errors
-- ❌ No type safety for configuration
-- ❌ Difficult to maintain consistency
+-  69+ files with hardcoded URLs
+-  4-6 hours to switch environments
+-  Manual find-and-replace prone to errors
+-  No type safety for configuration
+-  Difficult to maintain consistency
 
 **After Migration (3-Layer Architecture):**
-- ✅ 0 hardcoded URLs (except defaults in runtime.ts)
-- ✅ 5-10 minutes to switch environments
-- ✅ Single `.env` file change
-- ✅ Full TypeScript type safety
-- ✅ Automatic validation and error handling
-- ✅ 96% reduction in switching time
-- ✅ 732% ROI (Return on Investment)
+-  0 hardcoded URLs (except defaults in runtime.ts)
+-  5-10 minutes to switch environments
+-  Single `.env` file change
+-  Full TypeScript type safety
+-  Automatic validation and error handling
+-  96% reduction in switching time
+-  732% ROI (Return on Investment)
 
 ## Configuration Best Practices
 
 1. **Always use configuration functions:**
    ```typescript
-   // ✅ GOOD
+   // GOOD
    import { getBackendUrl } from '@/config/runtime';
    const url = getBackendUrl();
 
-   // ❌ BAD - Never hardcode URLs
+   // BAD - Never hardcode URLs
    const url = 'https://your-api-domain.example.com';
    ```
 
@@ -244,7 +244,7 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 4. **TypeScript support:**
    ```typescript
    // frontend/src/vite-env.d.ts provides full autocomplete
-   const url = import.meta.env.VITE_BACKEND_URL; // ✅ Type-safe
+   const url = import.meta.env.VITE_BACKEND_URL; //  Type-safe
    ```
 
 5. **Never commit sensitive data:**

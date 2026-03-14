@@ -29,10 +29,10 @@ describe('Deployment Routes - Integration Tests', () => {
 
     it('should reject invalid project names', () => {
       const invalidNames = [
-        'Test-CRM',           // uppercase
-        'test@crm',           // special chars
-        'te',                 // too short
-        'test crm',           // spaces
+        'Test-CRM', // uppercase
+        'test@crm', // special chars
+        'te', // too short
+        'test crm', // spaces
         'test_crm_system_with_very_long_name_exceeding_limits' // too long
       ];
 

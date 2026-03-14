@@ -7,20 +7,20 @@
 
 ---
 
-## 📊 Overview
+##  Overview
 
 The Analytics API provides comprehensive data analysis capabilities for conversations, messages, users, and system performance. This module enables data-driven decision making with flexible querying, custom metrics, and multiple export formats.
 
 ### Key Features
 
-- **📈 Conversation Analytics** - Track conversation volumes, response times, and trends
-- **📨 Message Analytics** - Analyze message patterns, types, and throughput
-- **👥 User Analytics** - Monitor user activity, engagement, and performance
-- **⚡ Performance Analytics** - System performance metrics and bottleneck identification
-- **🔍 Custom Queries** - Flexible analytics with custom SQL-like queries
-- **📤 Data Export** - Export to JSON, CSV, PDF with chart generation
-- **📊 Metrics Collection** - Real-time metrics collection and aggregation
-- **🔎 Advanced Filtering** - Filter by time range, platform, team, status, etc.
+- ** Conversation Analytics** - Track conversation volumes, response times, and trends
+- ** Message Analytics** - Analyze message patterns, types, and throughput
+- ** User Analytics** - Monitor user activity, engagement, and performance
+- ** Performance Analytics** - System performance metrics and bottleneck identification
+- ** Custom Queries** - Flexible analytics with custom SQL-like queries
+- ** Data Export** - Export to JSON, CSV, PDF with chart generation
+- ** Metrics Collection** - Real-time metrics collection and aggregation
+- ** Advanced Filtering** - Filter by time range, platform, team, status, etc.
 
 ### Use Cases
 
@@ -33,7 +33,7 @@ The Analytics API provides comprehensive data analysis capabilities for conversa
 
 ---
 
-## 🔐 Authentication & Authorization
+##  Authentication & Authorization
 
 All endpoints require authentication:
 
@@ -48,7 +48,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 1. [Conversation Analytics](#conversation-analytics)
 2. [Message Analytics](#message-analytics)
@@ -65,7 +65,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-## 📊 Conversation Analytics
+##  Conversation Analytics
 
 ### GET /api/analytics/conversations
 
@@ -158,7 +158,7 @@ curl -X GET "https://api.example.com/api/analytics/conversations?timeRange=30d&m
 
 ---
 
-## 📨 Message Analytics
+##  Message Analytics
 
 ### GET /api/analytics/messages
 
@@ -234,7 +234,7 @@ Analyze message patterns, volumes, and types.
 
 ---
 
-## 👥 User Analytics
+##  User Analytics
 
 ### GET /api/analytics/users
 
@@ -313,7 +313,7 @@ Monitor user activity, engagement, and performance metrics.
 
 ---
 
-## ⚡ Performance Analytics
+##  Performance Analytics
 
 ### GET /api/analytics/performance
 
@@ -393,13 +393,13 @@ System performance metrics and bottleneck identification.
 
 ---
 
-## 🔍 Custom Analytics
+##  Custom Analytics
 
 ### POST /api/analytics/custom
 
 Execute custom analytics queries with flexible parameters.
 
-**⚠️ Admin Only Endpoint**
+** Admin Only Endpoint**
 
 #### Request
 
@@ -455,7 +455,7 @@ Execute custom analytics queries with flexible parameters.
 
 ---
 
-## 📤 Data Export
+##  Data Export
 
 ### POST /api/analytics/export
 
@@ -521,13 +521,13 @@ Date,Total Conversations,Avg Response Time,Customer Satisfaction,Platform,Team
 
 ---
 
-## 📊 Metrics Collection
+##  Metrics Collection
 
 ### POST /api/analytics/metrics
 
 Collect and store custom metrics data for later analysis.
 
-**⚠️ Admin Only Endpoint**
+** Admin Only Endpoint**
 
 #### Request
 
@@ -587,7 +587,7 @@ Collect and store custom metrics data for later analysis.
 
 ---
 
-## 🔎 Metrics Queries
+##  Metrics Queries
 
 ### GET /api/analytics/metrics/:name
 
@@ -646,7 +646,7 @@ curl -X GET "https://api.example.com/api/analytics/metrics/api_response_time?sta
 
 ---
 
-## 🏥 Health Check
+##  Health Check
 
 ### GET /api/analytics/health
 
@@ -685,7 +685,7 @@ Check analytics service health and dependencies.
 
 ---
 
-## 🔧 Common Parameters
+##  Common Parameters
 
 ### Time Ranges
 
@@ -729,7 +729,7 @@ Examples:
 
 ---
 
-## 📊 Response Structures
+##  Response Structures
 
 ### Standard Analytics Response
 
@@ -771,7 +771,7 @@ Examples:
 
 ---
 
-## 💡 Examples
+##  Examples
 
 ### Example 1: Dashboard Overview
 
@@ -872,7 +872,7 @@ curl -X POST "https://api.example.com/api/analytics/custom" \
 
 ---
 
-## 🚨 Error Codes
+##  Error Codes
 
 | Code                       | HTTP Status | Description                              |
 |----------------------------|-------------|------------------------------------------|
@@ -886,7 +886,7 @@ curl -X POST "https://api.example.com/api/analytics/custom" \
 
 ---
 
-## 📈 Best Practices
+##  Best Practices
 
 1. **Use Time Ranges Appropriately**
    - Use `24h` for real-time monitoring
@@ -917,7 +917,7 @@ curl -X POST "https://api.example.com/api/analytics/custom" \
 
 ---
 
-## 🔗 Related Resources
+##  Related Resources
 
 - [Main API Reference](../API_REFERENCE.md)
 - [Dashboard Integration Guide](../../guides/DASHBOARD_INTEGRATION.md)

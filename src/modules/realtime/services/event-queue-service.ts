@@ -28,9 +28,9 @@ interface EventRoutingRule {
 
 // 事件處理策略
 export enum ProcessingStrategy {
-  IMMEDIATE = 'immediate',    // 立即處理
-  BATCH = 'batch',           // 批量處理
-  DELAYED = 'delayed'        // 延遲處理
+  IMMEDIATE = 'immediate', // 立即處理
+  BATCH = 'batch', // 批量處理
+  DELAYED = 'delayed' // 延遲處理
 }
 
 // 高級事件隊列服務
@@ -231,7 +231,7 @@ export class EventQueueService extends QueueBaseService {
       const { event, targets } = queueMessage;
       const conversationId = targets.conversationId;
 
-      // ✅ 新架構: 直接通過 ConversationRoom DO 廣播
+      // 新架構: 直接通過 ConversationRoom DO 廣播
       if (conversationId) {
         // 對話級事件 → ConversationRoom DO
         if (!this.env.CONVERSATION_ROOM) {
@@ -322,7 +322,7 @@ export class EventQueueService extends QueueBaseService {
       try {
         const { event, targets } = queueMessage;
 
-        // ✅ 新架構: 使用 MessageBroadcaster DO 處理延遲事件
+        // 新架構: 使用 MessageBroadcaster DO 處理延遲事件
         if (!this.env.MESSAGE_BROADCASTER) {
           throw new Error('MESSAGE_BROADCASTER binding not configured');
         }
@@ -370,7 +370,7 @@ export class EventQueueService extends QueueBaseService {
     this.logInfo('開始處理批量隊列 (WebSocket/DO)', { batchSize: batch.length });
 
     try {
-      // ✅ 新架構: 使用 MessageBroadcaster DO 批處理
+      // 新架構: 使用 MessageBroadcaster DO 批處理
       if (!this.env.MESSAGE_BROADCASTER) {
         throw new Error('MESSAGE_BROADCASTER binding not configured');
       }

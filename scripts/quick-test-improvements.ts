@@ -94,7 +94,7 @@ async function findTestFiles(dir: string = 'tests'): Promise<string[]> {
 }
 
 async function main() {
-  console.log('\n⚡ Quick Test Improvements\n' + '='.repeat(60) + '\n');
+  console.log('\n Quick Test Improvements\n' + '='.repeat(60) + '\n');
 
   const files = await findTestFiles();
   console.log(`Found ${files.length} test files\n`);
@@ -120,14 +120,14 @@ async function main() {
     }
   }
 
-  console.log('\n\n📊 Results:\n');
-  console.log(`   Files processed: ${stats.filesProcessed}`);
-  console.log(`   Files improved: ${stats.filesImproved}`);
-  console.log(`   Improvement rate: ${((stats.filesImproved / stats.filesProcessed) * 100).toFixed(1)}%\n`);
+  console.log('\n\n Results:\n');
+  console.log(` Files processed: ${stats.filesProcessed}`);
+  console.log(` Files improved: ${stats.filesImproved}`);
+  console.log(` Improvement rate: ${((stats.filesImproved / stats.filesProcessed) * 100).toFixed(1)}%\n`);
 
-  console.log('   Improvements applied:');
+  console.log(' Improvements applied:');
   Object.entries(stats.improvements).forEach(([improvement, count]) => {
-    console.log(`      - ${improvement}: ${count} files`);
+    console.log(` - ${improvement}: ${count} files`);
   });
 
   // Calculate MockFactory usage
@@ -138,16 +138,16 @@ async function main() {
   }
 
   const mockFactoryPercentage = ((mockFactoryCount / files.length) * 100).toFixed(1);
-  console.log(`\n   MockFactory usage: ${mockFactoryCount}/${files.length} (${mockFactoryPercentage}%)`);
+  console.log(`\n MockFactory usage: ${mockFactoryCount}/${files.length} (${mockFactoryPercentage}%)`);
 
   if (parseFloat(mockFactoryPercentage) >= 50) {
-    console.log(`   ✅ GOAL MET: 50%+ MockFactory usage`);
+    console.log(` GOAL MET: 50%+ MockFactory usage`);
   } else {
     const needed = Math.ceil(files.length * 0.5) - mockFactoryCount;
-    console.log(`   ⚠️  Need ${needed} more files to reach 50% goal`);
+    console.log(` Need ${needed} more files to reach 50% goal`);
   }
 
-  console.log('\n✅ Quick improvements complete!\n');
+  console.log('\n Quick improvements complete!\n');
 }
 
 main().catch(console.error);

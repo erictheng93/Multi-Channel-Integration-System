@@ -63,11 +63,11 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
         const response = await systemApi.getDashboardStats()
 
         if (!response.success || !response.data) {
-          console.error('❌ Failed to fetch dashboard stats:', response)
+          console.error(' Failed to fetch dashboard stats:', response)
           throw new Error('Failed to fetch dashboard stats')
         }
 
-        console.log('✅ Dashboard stats fetched successfully:', response.data)
+        console.log(' Dashboard stats fetched successfully:', response.data)
 
         // 返回真实统计数据
         return {
@@ -78,7 +78,7 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
           resolvedToday: response.data.resolvedToday
         }
       } catch (error) {
-        console.error('❌ Error fetching dashboard stats:', error)
+        console.error(' Error fetching dashboard stats:', error)
         // 发生错误时返回默认值
         return DEFAULT_STATS
       }

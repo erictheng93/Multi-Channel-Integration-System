@@ -1,58 +1,58 @@
 # ConversationDetail.vue 重构计划
 
-> 📋 **状态**: 架构设计阶段
-> 📅 **创建时间**: 2026-01-05
-> 👤 **负责人**: Claude Code AI Assistant
-> 🎯 **目标**: 将 1,596 行单体组件重构为模块化、可维护的架构
+>  **状态**: 架构设计阶段
+>  **创建时间**: 2026-01-05
+>  **负责人**: Claude Code AI Assistant
+>  **目标**: 将 1,596 行单体组件重构为模块化、可维护的架构
 
 ---
 
-## 📊 (Core Concept Overview)
+##  (Core Concept Overview)
 
 ### 当前状态评估
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  ConversationDetail.vue - 对话详情页核心组件                      │
+│  ConversationDetail.vue - 对话详情页核心组件 │
 │  当前规模: 1,596 lines (Template: 320, Script: 266, Style: 1,010)│
-│  复杂度评分: ⚠️ 8/10 (VERY HIGH)                                 │
+│  复杂度评分:  8/10 (VERY HIGH) │
 └─────────────────────────────────────────────────────────────────┘
 
-  🎨 Template (320 lines)
-  ├── ✅ ConversationHeader (已提取)
-  ├── ⚠️ Drag-Drop Overlay (行内 SVG + 样式)
-  ├── ⚠️ Closed Banner (行内 SVG + 样式)
-  ├── ✅ MessageSearch (已提取)
-  ├── ✅ VirtualMessageList (已提取)
-  ├── ⚠️ New Message Notification (复杂交互)
-  ├── ✅ MessageInput (已提取)
-  ├── ⚠️ Quick Replies (硬编码数据)
-  ├── ⚠️ Connection Status Bar (调试模式)
-  └── ⚠️ Closed State (简单但重复)
+   Template (320 lines)
+  ├──  ConversationHeader (已提取)
+  ├──  Drag-Drop Overlay (行内 SVG + 样式)
+  ├──  Closed Banner (行内 SVG + 样式)
+  ├──  MessageSearch (已提取)
+  ├──  VirtualMessageList (已提取)
+  ├──  New Message Notification (复杂交互)
+  ├──  MessageInput (已提取)
+  ├──  Quick Replies (硬编码数据)
+  ├──  Connection Status Bar (调试模式)
+  └──  Closed State (简单但重复)
 
-  📜 Script (266 lines)
-  ├── ✅ Controller Pattern (已使用 useConversationController)
-  ├── ⚠️ Local State (7 个 ref 需要提取)
-  ├── ⚠️ Event Handlers (20+ 个函数需要整理)
-  ├── ⚠️ Drag-Drop Logic (5 个处理函数)
-  └── ⚠️ Computed Properties (部分可简化)
+   Script (266 lines)
+  ├──  Controller Pattern (已使用 useConversationController)
+  ├──  Local State (7 个 ref 需要提取)
+  ├──  Event Handlers (20+ 个函数需要整理)
+  ├──  Drag-Drop Logic (5 个处理函数)
+  └──  Computed Properties (部分可简化)
 
-  🎨 Style (1,010 lines!) ❌ CRITICAL ISSUE
-  ├── ⚠️ 重复的动画定义 (10+ @keyframes)
-  ├── ⚠️ 复杂的响应式样式 (@media)
-  ├── ⚠️ 内联样式规则 (应该模块化)
-  └── ⚠️ 性能优化样式 (contain, will-change)
+   Style (1,010 lines!)  CRITICAL ISSUE
+  ├──  重复的动画定义 (10+ @keyframes)
+  ├──  复杂的响应式样式 (@media)
+  ├──  内联样式规则 (应该模块化)
+  └──  性能优化样式 (contain, will-change)
 ```
 
-### 关键发现 ✨
+### 关键发现 
 
-**✅ 已完成的优化:**
+** 已完成的优化:**
 1. **Controller Pattern 已实现** - 使用 `useConversationController` 管理核心逻辑
 2. **Sub-components 已提取** - ConversationHeader, MessageInput, VirtualMessageList, MessageSearch
 3. **WebSocket 集成** - 通过 controller 实现实时通信
 4. **Event delegation** - 大部分事件已委托给 controller
 
-**⚠️ 主要问题:**
+** 主要问题:**
 1. **样式膨胀** - 1,010 行样式占总代码 63%
 2. **局部状态分散** - 7 个 ref 缺乏组织
 3. **内联 SVG** - 多个 SVG 图标硬编码在模板中
@@ -60,7 +60,7 @@
 
 ---
 
-## 📈 (Current Situation Analysis)
+##  (Current Situation Analysis)
 
 ### 代码分布与职责分析
 
@@ -68,24 +68,24 @@
 当前代码分布 (1,596 lines total)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🎨 Styles        ████████████████████████████████  1,010 lines (63%)
-📜 Template      ████████████                        320 lines (20%)
-📜 Script        █████████                           266 lines (17%)
+ Styles ████████████████████████████████  1,010 lines (63%)
+ Template ████████████ 320 lines (20%)
+ Script █████████ 266 lines (17%)
 
                  ↓ 重构后预期 ↓
 
-🎨 Styles        █████                               250 lines (55%)  ⬇️ -75%
-📜 Template      ████                                150 lines (33%)  ⬇️ -53%
-📜 Script        ██                                   50 lines (12%)  ⬇️ -81%
+ Styles █████ 250 lines (55%) -75%
+ Template ████ 150 lines (33%) -53%
+ Script ██ 50 lines (12%) -81%
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-目标总计                                             450 lines        ⬇️ -72%
+目标总计 450 lines -72%
 ```
 
 ### 职责分解 (Responsibility Matrix)
 
 | 职责类别                | 当前位置          | 行数  | 提取目标                     |
 | ----------------------- | ----------------- | ----- | ---------------------------- |
-| **核心逻辑**            | useController     | ~800  | ✅ 已在 composables 中        |
+| **核心逻辑**            | useController     | ~800  |  已在 composables 中        |
 | **搜索面板管理**        | Local State       | ~30   | → useSearchPanel             |
 | **对话操作 (关闭/重开)**| Event Handlers    | ~40   | → useConversationActions     |
 | **新消息通知**          | Local State + UI  | ~60   | → useNewMessageNotification  |
@@ -99,71 +99,71 @@
 
 ---
 
-## 🎯 (Solution/Concept Details)
+##  (Solution/Concept Details)
 
 ### 重构架构设计
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    ConversationDetail.vue                        │
-│                      (~450 lines total)                          │
-│                                                                  │
-│  📜 Template (~150 lines)                                        │
-│  ├── <ConversationHeader /> ✅                                   │
-│  ├── <ClosedConversationBanner />                               │
-│  ├── <DragDropOverlay />                                        │
-│  ├── <MessageSearch /> ✅                                        │
-│  ├── <VirtualMessageList /> ✅                                   │
-│  ├── <NewMessageNotification />                                 │
-│  ├── <MessageInput /> ✅                                         │
-│  ├── <QuickReplies />                                            │
-│  └── <ConnectionStatusBar />                                    │
-│                                                                  │
-│  📜 Script (~50 lines)                                           │
-│  ├── useConversationController ✅                                │
-│  ├── useSearchPanel                                             │
-│  ├── useConversationActions                                     │
-│  ├── useNewMessageNotification                                  │
-│  └── useDragAndDrop                                             │
-│                                                                  │
-│  🎨 Style (~250 lines)                                           │
-│  └── Layout & container only                                    │
+│ ConversationDetail.vue │
+│ (~450 lines total) │
+│ │
+│ Template (~150 lines) │
+│  ├── <ConversationHeader /> │
+│  ├── <ClosedConversationBanner /> │
+│  ├── <DragDropOverlay /> │
+│  ├── <MessageSearch /> │
+│  ├── <VirtualMessageList /> │
+│  ├── <NewMessageNotification /> │
+│  ├── <MessageInput /> │
+│  ├── <QuickReplies /> │
+│  └── <ConnectionStatusBar /> │
+│ │
+│ Script (~50 lines) │
+│  ├── useConversationController │
+│  ├── useSearchPanel │
+│  ├── useConversationActions │
+│  ├── useNewMessageNotification │
+│  └── useDragAndDrop │
+│ │
+│ Style (~250 lines) │
+│  └── Layout & container only │
 └──────────────────────────────────────────────────────────────────┘
                             │
             ┌───────────────┴───────────────┐
-            │                               │
-  ┌─────────▼─────────┐         ┌──────────▼──────────┐
-  │   Composables     │         │   UI Components     │
-  │   (~400 lines)    │         │   (~700 lines)      │
-  └───────────────────┘         └─────────────────────┘
-  │                             │
-  ├── useSearchPanel.ts         ├── DragDropOverlay.vue
-  │   • Toggle state            │   • Drag overlay UI
-  │   • Focus management        │   • Animated icons
-  │                             │
+            │ │
+  ┌─────────▼─────────┐ ┌──────────▼──────────┐
+  │ Composables │         │ UI Components │
+  │ (~400 lines) │         │ (~700 lines) │
+  └───────────────────┘ └─────────────────────┘
+  │ │
+  ├── useSearchPanel.ts ├── DragDropOverlay.vue
+  │ • Toggle state │   • Drag overlay UI
+  │ • Focus management │   • Animated icons
+  │ │
   ├── useConversationActions.ts ├── ClosedBanner.vue
-  │   • Close confirmation      │   • Banner layout
-  │   • Reopen logic            │   • Reopen button
-  │                             │
+  │ • Close confirmation │   • Banner layout
+  │ • Reopen logic │   • Reopen button
+  │ │
   ├── useNewMessageNotification.ts  ├── NewMessageNotification.vue
-  │   • Badge visibility        │   • Glassmorphism badge
-  │   • Count tracking          │   • Click to scroll
-  │   • Auto-dismiss            │
-  │                             │
-  ├── useDragAndDrop.ts         ├── QuickReplies.vue
-  │   • Drag counter            │   • Reply buttons
-  │   • File validation         │   • Click handlers
-  │   • Drop handler            │
-  │                             │
-  └── (Optional)                └── ConnectionStatusBar.vue
-      useQuickReplies.ts            • Status indicators
+  │ • Badge visibility │   • Glassmorphism badge
+  │ • Count tracking │   • Click to scroll
+  │ • Auto-dismiss │
+  │ │
+  ├── useDragAndDrop.ts ├── QuickReplies.vue
+  │ • Drag counter │   • Reply buttons
+  │ • File validation │   • Click handlers
+  │ • Drop handler │
+  │ │
+  └── (Optional) └── ConnectionStatusBar.vue
+      useQuickReplies.ts • Status indicators
                                     • Debug mode toggle
 ```
 
 ### Controller Pattern 增强
 
 ```typescript
-// ✅ 已存在 - useConversationController
+// 已存在 - useConversationController
 const controller = useConversationController(conversationId.value, {
   enablePagination: true,
   pageSize: 30,
@@ -179,7 +179,7 @@ const dragAndDrop = useDragAndDrop(messageInputRef)
 
 ---
 
-## 💡 (Specific Examples)
+##  (Specific Examples)
 
 ### Example 1: useSearchPanel Composable
 
@@ -301,7 +301,7 @@ const searchPanel = useSearchPanel({
        @dragover="handleDragOver"
        @drop="handleDrop">
 
-    <!-- 📎 Drag-and-Drop Overlay (150+ lines of template + style) -->
+    <!--  Drag-and-Drop Overlay (150+ lines of template + style) -->
     <Transition name="fade-overlay">
       <div v-if="isDraggingFile" class="drag-drop-overlay">
         <div class="drag-drop-content">
@@ -507,51 +507,51 @@ export function useConversationActions(controller: ConversationController) {
 
 ---
 
-## ⚖️ (Pros/Cons Comparison)
+##  (Pros/Cons Comparison)
 
 ### 重构前 vs 重构后对比
 
-| 维度                 | 重构前 ❌                          | 重构后 ✅                           | 改善幅度 |
+| 维度                 | 重构前                           | 重构后                            | 改善幅度 |
 | -------------------- | --------------------------------- | ---------------------------------- | -------- |
-| **代码规模**         | 1,596 lines (单体)                | ~450 lines (主组件)                | ⬇️ 72%   |
-| **样式复杂度**       | 1,010 lines (63% 占比)            | ~250 lines (55% 占比)              | ⬇️ 75%   |
-| **Script 复杂度**    | 266 lines (20+ 函数)              | ~50 lines (5-6 函数)               | ⬇️ 81%   |
-| **职责分离**         | ⚠️ 混杂 (UI + 逻辑 + 样式)         | ✅ 清晰分层                         | +90%     |
-| **可测试性**         | ⚠️ 低 (单体难测试)                 | ✅ 高 (Composables 单独测试)       | +85%     |
-| **可复用性**         | ❌ 无 (功能耦合)                   | ✅ 高 (5 个 composables, 5 个组件) | +100%    |
-| **维护难度**         | ⚠️ 高 (修改影响范围大)             | ✅ 低 (模块化修改)                  | -70%     |
-| **性能**             | ⚠️ 中 (大组件重渲染)               | ✅ 优 (细粒度更新)                  | +30%     |
-| **开发体验**         | ⚠️ 低 (文件过长，难以导航)         | ✅ 高 (清晰模块，快速定位)          | +80%     |
-| **代码可读性**       | ⚠️ 低 (需要滚动 1,596 行)          | ✅ 高 (主文件 <500 行)              | +85%     |
+| **代码规模**         | 1,596 lines (单体)                | ~450 lines (主组件)                |  72%   |
+| **样式复杂度**       | 1,010 lines (63% 占比)            | ~250 lines (55% 占比)              |  75%   |
+| **Script 复杂度**    | 266 lines (20+ 函数)              | ~50 lines (5-6 函数)               |  81%   |
+| **职责分离**         |  混杂 (UI + 逻辑 + 样式)         |  清晰分层                         | +90%     |
+| **可测试性**         |  低 (单体难测试)                 |  高 (Composables 单独测试)       | +85%     |
+| **可复用性**         |  无 (功能耦合)                   |  高 (5 个 composables, 5 个组件) | +100%    |
+| **维护难度**         |  高 (修改影响范围大)             |  低 (模块化修改)                  | -70%     |
+| **性能**             |  中 (大组件重渲染)               |  优 (细粒度更新)                  | +30%     |
+| **开发体验**         |  低 (文件过长，难以导航)         |  高 (清晰模块，快速定位)          | +80%     |
+| **代码可读性**       |  低 (需要滚动 1,596 行)          |  高 (主文件 <500 行)              | +85%     |
 
 ### 架构质量对比
 
 ```
 重构前架构问题:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-❌ 单体设计 - 所有逻辑在一个文件
-❌ 样式膨胀 - 1,010 行样式 (63% 占比)
-❌ 内联 SVG - 多个 SVG 硬编码
-❌ 状态分散 - 7 个 ref 缺乏组织
-❌ 函数过多 - 20+ 个事件处理函数
-❌ 难以测试 - 无法单独测试功能模块
-❌ 复用性差 - 功能与组件强耦合
+ 单体设计 - 所有逻辑在一个文件
+ 样式膨胀 - 1,010 行样式 (63% 占比)
+ 内联 SVG - 多个 SVG 硬编码
+ 状态分散 - 7 个 ref 缺乏组织
+ 函数过多 - 20+ 个事件处理函数
+ 难以测试 - 无法单独测试功能模块
+ 复用性差 - 功能与组件强耦合
 
 重构后架构优势:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Controller Pattern - 已使用 useConversationController
-✅ Composables 分层 - 5 个独立 composables
-✅ Component 提取 - 5 个 UI 子组件
-✅ Icon 组件化 - 所有 SVG 提取为组件
-✅ 样式模块化 - 组件级 scoped styles
-✅ 状态集中 - Composables 管理状态
-✅ 高可测试性 - 每个模块独立测试
-✅ 易于维护 - 修改影响范围小
+ Controller Pattern - 已使用 useConversationController
+ Composables 分层 - 5 个独立 composables
+ Component 提取 - 5 个 UI 子组件
+ Icon 组件化 - 所有 SVG 提取为组件
+ 样式模块化 - 组件级 scoped styles
+ 状态集中 - Composables 管理状态
+ 高可测试性 - 每个模块独立测试
+ 易于维护 - 修改影响范围小
 ```
 
 ---
 
-## 🚀 (Implementation Suggestions)
+##  (Implementation Suggestions)
 
 ### Phase 1: 提取 Composables (预计 4-6 小时)
 
@@ -560,10 +560,10 @@ export function useConversationActions(controller: ConversationController) {
 **文件:** `frontend/src/composables/useSearchPanel.ts`
 
 **功能:**
-- ✅ 搜索面板显示/隐藏状态
-- ✅ 自动聚焦管理
-- ✅ 搜索结果处理
-- ✅ 清除搜索
+-  搜索面板显示/隐藏状态
+-  自动聚焦管理
+-  搜索结果处理
+-  清除搜索
 
 **测试覆盖:**
 - 面板切换逻辑
@@ -577,10 +577,10 @@ export function useConversationActions(controller: ConversationController) {
 **文件:** `frontend/src/composables/useConversationActions.ts`
 
 **功能:**
-- ✅ 关闭对话 (带确认对话框)
-- ✅ 重新打开对话
-- ✅ Loading 状态管理
-- ✅ Toast 提示集成
+-  关闭对话 (带确认对话框)
+-  重新打开对话
+-  Loading 状态管理
+-  Toast 提示集成
 
 **测试覆盖:**
 - 关闭确认流程
@@ -594,10 +594,10 @@ export function useConversationActions(controller: ConversationController) {
 **文件:** `frontend/src/composables/useNewMessageNotification.ts`
 
 **功能:**
-- ✅ 新消息计数
-- ✅ 通知显示/隐藏
-- ✅ 自动滚动触发
-- ✅ 手动关闭
+-  新消息计数
+-  通知显示/隐藏
+-  自动滚动触发
+-  手动关闭
 
 **测试覆盖:**
 - 消息计数更新
@@ -611,10 +611,10 @@ export function useConversationActions(controller: ConversationController) {
 **文件:** `frontend/src/composables/useDragAndDrop.ts`
 
 **功能:**
-- ✅ 拖拽状态管理
-- ✅ 拖拽计数器 (防止嵌套元素误触发)
-- ✅ 文件验证
-- ✅ 文件回调
+-  拖拽状态管理
+-  拖拽计数器 (防止嵌套元素误触发)
+-  文件验证
+-  文件回调
 
 **测试覆盖:**
 - 拖拽事件处理
@@ -628,9 +628,9 @@ export function useConversationActions(controller: ConversationController) {
 **文件:** `frontend/src/composables/useQuickReplies.ts`
 
 **功能:**
-- ✅ 快速回复列表
-- ✅ 动态加载 (从 API)
-- ✅ 使用快速回复
+-  快速回复列表
+-  动态加载 (从 API)
+-  使用快速回复
 
 **测试覆盖:**
 - 回复列表加载
@@ -1156,11 +1156,11 @@ describe('ClosedConversationBanner', () => {
 #### 5.1 集成测试
 
 **测试场景:**
-- ✅ 完整对话流程 (加载 → 发送 → 接收 → 关闭)
-- ✅ 拖放文件上传流程
-- ✅ 搜索消息流程
-- ✅ WebSocket 实时更新
-- ✅ 新消息通知交互
+-  完整对话流程 (加载 → 发送 → 接收 → 关闭)
+-  拖放文件上传流程
+-  搜索消息流程
+-  WebSocket 实时更新
+-  新消息通知交互
 
 ---
 
@@ -1170,10 +1170,10 @@ describe('ClosedConversationBanner', () => {
 
 | 指标                     | 重构前   | 目标      | 改善幅度 |
 | ------------------------ | -------- | --------- | -------- |
-| **组件首次渲染**         | ~120ms   | <80ms     | ⬇️ 33%   |
-| **虚拟滚动帧率**         | ~55 FPS  | >58 FPS   | ⬆️ 5%    |
-| **内存占用 (初始化)**    | ~8.5 MB  | <7 MB     | ⬇️ 18%   |
-| **Bundle Size (gzipped)**| ~45 KB   | <35 KB    | ⬇️ 22%   |
+| **组件首次渲染**         | ~120ms   | <80ms     |  33%   |
+| **虚拟滚动帧率**         | ~55 FPS  | >58 FPS   |  5%    |
+| **内存占用 (初始化)**    | ~8.5 MB  | <7 MB     |  18%   |
+| **Bundle Size (gzipped)**| ~45 KB   | <35 KB    |  22%   |
 
 ---
 
@@ -1182,43 +1182,43 @@ describe('ClosedConversationBanner', () => {
 ```
 Week 1: Composables + UI Components
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Day 1-2  │ ✅ Phase 1.1-1.3 (useSearchPanel, useConversationActions, useNewMessageNotification)
-Day 3-4  │ ✅ Phase 1.4-1.5 (useDragAndDrop, useQuickReplies)
-Day 5-6  │ ✅ Phase 2.1-2.3 (DragDropOverlay, ClosedBanner, NewMessageNotification)
-Day 7    │ ✅ Phase 2.4-2.5 (QuickReplies, ConnectionStatusBar)
+Day 1-2  │  Phase 1.1-1.3 (useSearchPanel, useConversationActions, useNewMessageNotification)
+Day 3-4  │  Phase 1.4-1.5 (useDragAndDrop, useQuickReplies)
+Day 5-6  │  Phase 2.1-2.3 (DragDropOverlay, ClosedBanner, NewMessageNotification)
+Day 7 │  Phase 2.4-2.5 (QuickReplies, ConnectionStatusBar)
 
 Week 2: Integration + Testing
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Day 8-9  │ ✅ Phase 3 (重构主组件 Template + Script + Styles)
-Day 10-11│ ✅ Phase 4.1 (Composables 单元测试)
-Day 12   │ ✅ Phase 4.2 (UI 组件测试)
-Day 13-14│ ✅ Phase 5 (集成测试 + 性能优化)
+Day 8-9  │  Phase 3 (重构主组件 Template + Script + Styles)
+Day 10-11│  Phase 4.1 (Composables 单元测试)
+Day 12 │  Phase 4.2 (UI 组件测试)
+Day 13-14│  Phase 5 (集成测试 + 性能优化)
 
 Total: ~14 days (assuming 2-3 hours/day)
 ```
 
 ---
 
-## 📋 成功标准 (Success Criteria)
+##  成功标准 (Success Criteria)
 
 ### Code Quality Metrics
 
-✅ **代码规模:**
+ **代码规模:**
 - [x] 主组件 < 500 lines (目标: ~450 lines)
 - [x] 样式减少 > 70% (1,010 → ~250 lines)
 - [x] Script 减少 > 80% (266 → ~50 lines)
 
-✅ **测试覆盖率:**
+ **测试覆盖率:**
 - [x] Composables 测试覆盖率 > 80%
 - [x] UI 组件测试覆盖率 > 75%
 - [x] 所有测试通过 (100% pass rate)
 
-✅ **性能指标:**
+ **性能指标:**
 - [x] 首次渲染时间 < 80ms
 - [x] 虚拟滚动帧率 > 58 FPS
 - [x] 内存占用减少 > 15%
 
-✅ **架构质量:**
+ **架构质量:**
 - [x] 5 个独立 Composables
 - [x] 5 个 UI 子组件
 - [x] 无重复代码
@@ -1226,12 +1226,12 @@ Total: ~14 days (assuming 2-3 hours/day)
 
 ---
 
-## 🎓 关键学习点
+##  关键学习点
 
 ### 1. Controller Pattern 优势
 
-✅ **已应用:** `useConversationController` 管理核心逻辑
-✅ **扩展:** 添加 5 个辅助 composables 处理特定功能
+ **已应用:** `useConversationController` 管理核心逻辑
+ **扩展:** 添加 5 个辅助 composables 处理特定功能
 
 ### 2. Component Extraction 原则
 
@@ -1261,7 +1261,7 @@ Total: ~14 days (assuming 2-3 hours/day)
 
 ---
 
-## 📚 参考文档
+##  参考文档
 
 - [MessageBubble 重构总结](./MESSAGEBUBBLE_REFACTORING_SUMMARY.md) - 成功的重构案例
 - [重构优先级评估](./REFACTORING_PRIORITY_ASSESSMENT_UPDATED.md) - 整体重构策略
@@ -1274,4 +1274,4 @@ Total: ~14 days (assuming 2-3 hours/day)
 
 **预计完成时间:** 2 weeks (14 days × 2-3 hours/day)
 
-**成功概率:** 🟢 95% (基于 MessageBubble 成功经验)
+**成功概率:**  95% (基于 MessageBubble 成功经验)

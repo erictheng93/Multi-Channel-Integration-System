@@ -1,4 +1,4 @@
-# Route Registration Order (⚠️ Critical)
+# Route Registration Order ( Critical)
 
 **WHY IT MATTERS**: In Hono framework, route registration order determines routing priority. Routes registered later **cannot override** earlier catch-all routes. This can cause route interception issues where endpoints return unexpected authentication errors.
 
@@ -126,36 +126,36 @@ See `docs/architecture/ROUTE_REGISTRATION_ORDER.md` for detailed guide.
 ```
 src/index.ts Execution Flow:
 ┌───────────────────────────────────────────────────────┐
-│ 1. Import handlers and middleware                     │
+│ 1. Import handlers and middleware │
 └───────────────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────────────┐
-│ 2. Register Priority 1: Public Endpoints             │
-│    - WebSocket health                                 │
-│    - CORS monitoring                                  │
-│    - Analytics comparison                             │
+│ 2. Register Priority 1: Public Endpoints │
+│ - WebSocket health │
+│ - CORS monitoring │
+│ - Analytics comparison │
 └───────────────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────────────┐
-│ 3. Register Priority 2: Explicit Auth Endpoints      │
-│    - WebSocket dashboard (with jwtAuth)               │
+│ 3. Register Priority 2: Explicit Auth Endpoints │
+│ - WebSocket dashboard (with jwtAuth) │
 └───────────────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────────────┐
-│ 4. Register Priority 3: Unified Route System         │
-│    - RouteRegistry.registerGroup()                    │
-│    - Batch handler registration                       │
-│    - May create catch-all routes                      │
+│ 4. Register Priority 3: Unified Route System │
+│ - RouteRegistry.registerGroup() │
+│ - Batch handler registration │
+│ - May create catch-all routes │
 └───────────────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────────────┐
-│ 5. Register Priority 4: Fine-grained Routes          │
-│    - System settings                                  │
-│    - Credentials management                           │
+│ 5. Register Priority 4: Fine-grained Routes │
+│ - System settings │
+│ - Credentials management │
 └───────────────────────────────────────────────────────┘
                     ↓
 ┌───────────────────────────────────────────────────────┐
-│ 6. Export app                                         │
+│ 6. Export app │
 └───────────────────────────────────────────────────────┘
 ```
 

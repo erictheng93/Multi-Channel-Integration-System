@@ -62,7 +62,7 @@
         <span
           v-else
           class="action-icon"
-        >🏥</span>
+        ></span>
         <span class="action-label">{{ t('systemSettings.systemManagement.system.healthCheck') }}</span>
       </button>
     </div>

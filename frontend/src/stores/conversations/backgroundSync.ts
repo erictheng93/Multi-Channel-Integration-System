@@ -22,7 +22,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
   let isPageVisible = true
 
   /**
-   * 🆕 LIFF: Cleanup stale pending conversations (60s TTL)
+   * LIFF: Cleanup stale pending conversations (60s TTL)
    */
   const cleanupStalePendingConversations = () => {
     const now = Date.now()
@@ -42,7 +42,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
       staleIndices.reverse().forEach(index => {
         const removed = conversations.value[index]
         conversations.value.splice(index, 1)
-        console.log(`🧹 [ConversationsStore] Cleaned up stale pending conversation`, {
+        console.log(`[ConversationsStore] Cleaned up stale pending conversation`, {
           conversationId: removed?.id,
           lineUserId: `${(removed as LiffConversation)?._liffMetadata?.lineUserId?.substring(0, 10)}...`,
           age: `${Math.round((now - ((removed as LiffConversation)?._liffMetadata?.scannedAt || 0)) / 1000)}s`
@@ -57,21 +57,21 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
    */
   const startBackgroundSync = () => {
     if (backgroundSyncInterval) {
-      console.log('⏰ [ConversationsStore] Background sync already running, skipping')
+      console.log('[ConversationsStore] Background sync already running, skipping')
       return
     }
 
     backgroundSyncInterval = setInterval(async () => {
       if (!isPageVisible) {
-        console.log('⏸️ [ConversationsStore] Page hidden, skipping background sync')
+        console.log('[ConversationsStore] Page hidden, skipping background sync')
         return
       }
 
-      console.log('🔄 [ConversationsStore] Background sync triggered (30s interval)')
+      console.log('[ConversationsStore] Background sync triggered (30s interval)')
       await pollConversations()
     }, BACKGROUND_SYNC_INTERVAL)
 
-    console.log('⏰ [ConversationsStore] Started background sync timer (30s interval)')
+    console.log('[ConversationsStore] Started background sync timer (30s interval)')
   }
 
   /**
@@ -81,7 +81,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
     if (backgroundSyncInterval) {
       clearInterval(backgroundSyncInterval)
       backgroundSyncInterval = null
-      console.log('⏰ [ConversationsStore] Stopped background sync timer')
+      console.log('[ConversationsStore] Stopped background sync timer')
     }
   }
 
@@ -93,10 +93,10 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
     isPageVisible = document.visibilityState === 'visible'
 
     if (isPageVisible && !wasVisible) {
-      console.log('👁️ [ConversationsStore] Page became visible, triggering immediate sync')
+      console.log('[ConversationsStore] Page became visible, triggering immediate sync')
       pollConversations()
     } else if (!isPageVisible && wasVisible) {
-      console.log('👁️ [ConversationsStore] Page became hidden, pausing sync')
+      console.log('[ConversationsStore] Page became hidden, pausing sync')
     }
   }
 
@@ -104,7 +104,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
    * Trigger sync after WebSocket reconnection
    */
   const triggerReconnectionSync = async () => {
-    console.log('🔌 [ConversationsStore] Reconnection detected, triggering immediate sync')
+    console.log('[ConversationsStore] Reconnection detected, triggering immediate sync')
     await pollConversations()
   }
 
@@ -117,7 +117,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
         cleanupStalePendingConversations,
         PENDING_CLEANUP_INTERVAL
       )
-      console.log('🕐 [ConversationsStore] Started pending conversation cleanup timer (30s interval)')
+      console.log('[ConversationsStore] Started pending conversation cleanup timer (30s interval)')
     }
   }
 
@@ -128,7 +128,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
     if (pendingConversationCleanupInterval) {
       clearInterval(pendingConversationCleanupInterval)
       pendingConversationCleanupInterval = null
-      console.log('🕐 [ConversationsStore] Stopped pending conversation cleanup timer')
+      console.log('[ConversationsStore] Stopped pending conversation cleanup timer')
     }
   }
 

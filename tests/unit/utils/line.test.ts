@@ -250,7 +250,7 @@ describe('LINE API Integration Tests', () => {
     });
 
     test('should handle special characters', () => {
-      const text = '你好！🎉\n換行測試';
+      const text = '你好！\n換行測試';
       const message = createTextMessage(text);
 
       expect(message).toEqual({

@@ -60,12 +60,12 @@ export interface UseListSortingReturn<T extends string = string> {
  * @example
  * ```typescript
  * const { sortState, setSortField, toggleSortOrder, sortFn } = useListSorting({
- *   storageKey: 'member-list-sort',
- *   sortOptions: [
- *     { field: 'createdAt', label: '建立時間', defaultOrder: 'desc' },
- *     { field: 'name', label: '名稱', defaultOrder: 'asc' },
- *   ],
- *   defaultSort: { field: 'createdAt', order: 'desc' }
+ * storageKey: 'member-list-sort',
+ * sortOptions: [
+ * { field: 'createdAt', label: '建立時間', defaultOrder: 'desc' },
+ * { field: 'name', label: '名稱', defaultOrder: 'asc' },
+ * ],
+ * defaultSort: { field: 'createdAt', order: 'desc' }
  * })
  *
  * // 排序列表
@@ -306,13 +306,13 @@ export interface UseSortModeReturn {
  * @example
  * ```typescript
  * const { sortMode, customOrder, toggleSortMode, applyCustomOrder } = useSortMode({
- *   storageKey: 'member-list-sort-mode'
+ * storageKey: 'member-list-sort-mode'
  * })
  *
  * // 根據模式排序
  * const sortedItems = isCustomMode.value
- *   ? applyCustomOrder(items)
- *   : sortFn(items, getFieldValue)
+ * ? applyCustomOrder(items)
+ * : sortFn(items, getFieldValue)
  * ```
  */
 export function useSortMode(options: UseSortModeOptions): UseSortModeReturn {

@@ -1,9 +1,9 @@
 # Phase B5 - Conversation WebSocket Migration (Future Scope)
 
-**Status**: ⏳ Planned (Not Started)
+**Status**:  Planned (Not Started)
 **Estimated Effort**: 10-14 hours
 **Priority**: Medium
-**Dependencies**: Phase B4 Complete ✅
+**Dependencies**: Phase B4 Complete 
 
 ---
 
@@ -440,45 +440,45 @@ describe('Conversation WebSocket E2E', () => {
 **Before Phase B5**:
 ```
 ┌──────────────────────────────────────────┐
-│  ConversationDetail View                  │
+│  ConversationDetail View │
 ├──────────────────────────────────────────┤
-│  useConversationWebSocket.ts             │
-│  (Old pattern - separate connection)     │
+│  useConversationWebSocket.ts │
+│  (Old pattern - separate connection) │
 ├──────────────────────────────────────────┤
-│  Separate WebSocket Connection           │  ← Additional connection
+│  Separate WebSocket Connection │  ← Additional connection
 └──────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────┐
-│  Other Modules (Conversations, etc.)      │
+│  Other Modules (Conversations, etc.) │
 ├──────────────────────────────────────────┤
-│  Global WebSocket Store                  │
+│  Global WebSocket Store │
 ├──────────────────────────────────────────┤
-│  Single WebSocket Connection             │  ← Main connection
+│  Single WebSocket Connection │  ← Main connection
 └──────────────────────────────────────────┘
 ```
 
 **After Phase B5**:
 ```
 ┌──────────────────────────────────────────┐
-│  All Application Modules                  │
+│  All Application Modules │
 │  (Conversations, Notifications, Activity, │
-│   ConversationDetail)                     │
+│ ConversationDetail) │
 ├──────────────────────────────────────────┤
-│  Global WebSocket Store                  │
+│  Global WebSocket Store │
 │  ┌────────────────────────────────────┐  │
-│  │ Subscription Manager                │  │
-│  │  - conversations: [sub1]            │  │
-│  │  - notifications: [sub2]            │  │
-│  │  - activity: [sub3]                 │  │
-│  │  - conversation:{id}: [sub4]        │  │  ← NEW
+│  │ Subscription Manager │  │
+│  │  - conversations: [sub1] │  │
+│  │  - notifications: [sub2] │  │
+│  │  - activity: [sub3] │  │
+│  │  - conversation:{id}: [sub4] │  │  ← NEW
 │  └────────────────────────────────────┘  │
 ├──────────────────────────────────────────┤
-│  Single WebSocket Connection             │
+│  Single WebSocket Connection │
 │  ┌────────────────────────────────────┐  │
-│  │ Durable Objects Backend             │  │
-│  │  - ConversationRoom (per conv)      │  │  ← NEW
-│  │  - MessageBroadcaster (global)      │  │
-│  │  - UserConnection (per user)        │  │
+│  │ Durable Objects Backend │  │
+│  │  - ConversationRoom (per conv) │  │  ← NEW
+│  │  - MessageBroadcaster (global) │  │
+│  │  - UserConnection (per user) │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
 ```
@@ -538,14 +538,14 @@ describe('Conversation WebSocket E2E', () => {
 
 Phase B5 will be considered complete when:
 
-- ✅ `useConversationWebSocket.ts` migrated to global WebSocket Store
-- ✅ Conversation room Durable Object implemented and deployed
-- ✅ Typing indicators work in real-time across participants
-- ✅ Presence management updates correctly
-- ✅ All tests passing (unit, integration, E2E)
-- ✅ No regression in existing conversation features
-- ✅ Single WebSocket connection for entire application
-- ✅ Documentation updated with new architecture
+-  `useConversationWebSocket.ts` migrated to global WebSocket Store
+-  Conversation room Durable Object implemented and deployed
+-  Typing indicators work in real-time across participants
+-  Presence management updates correctly
+-  All tests passing (unit, integration, E2E)
+-  No regression in existing conversation features
+-  Single WebSocket connection for entire application
+-  Documentation updated with new architecture
 
 ---
 

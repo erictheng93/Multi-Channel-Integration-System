@@ -36,7 +36,7 @@ const DEFAULT_CONFIG: LoadTestConfig = {
   messagesPerConnection: 100,
   messageIntervalMs: 1000,
   testDurationMs: 300000, // 5 minutes
-  rampUpTimeMs: 60000,   // 1 minute
+  rampUpTimeMs: 60000, // 1 minute
   rampDownTimeMs: 30000, // 30 seconds
   concurrentRooms: 10,
   messageSize: 256, // bytes
@@ -124,7 +124,7 @@ class WebSocketLoadTester extends EventEmitter {
   }
 
   async runLoadTest(): Promise<TestResults> {
-    console.log('🚀 Starting WebSocket Load Test');
+    console.log(' Starting WebSocket Load Test');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
     this.testStartTime = performance.now();
@@ -144,7 +144,7 @@ class WebSocketLoadTester extends EventEmitter {
       await this.rampDownPhase();
 
     } catch (error) {
-      console.error('❌ Load test error:', error);
+      console.error(' Load test error:', error);
     } finally {
       this.isRunning = false;
       this.testEndTime = performance.now();
@@ -157,7 +157,7 @@ class WebSocketLoadTester extends EventEmitter {
   }
 
   private async rampUpPhase(): Promise<void> {
-    console.log('📈 Phase 1: Ramping up connections');
+    console.log(' Phase 1: Ramping up connections');
 
     const rampUpSteps = Math.ceil(this.config.rampUpTimeMs / 1000); // 1 second steps
     const connectionsPerStep = Math.ceil(this.config.maxConnections / rampUpSteps);
@@ -187,15 +187,15 @@ class WebSocketLoadTester extends EventEmitter {
         }
       }
 
-      console.log(`📊 Step ${step + 1}/${rampUpSteps}: ${this.connections.size} connections active`);
+      console.log(` Step ${step + 1}/${rampUpSteps}: ${this.connections.size} connections active`);
       await this.sleep(1000);
     }
 
-    console.log(`✅ Ramp up complete: ${this.connections.size} connections established`);
+    console.log(` Ramp up complete: ${this.connections.size} connections established`);
   }
 
   private async sustainedLoadPhase(): Promise<void> {
-    console.log('🔄 Phase 2: Sustained load testing');
+    console.log(' Phase 2: Sustained load testing');
 
     const sustainDuration = this.config.testDurationMs - this.config.rampUpTimeMs - this.config.rampDownTimeMs;
     const endTime = Date.now() + sustainDuration;
@@ -214,7 +214,7 @@ class WebSocketLoadTester extends EventEmitter {
       const totalMessages = Array.from(this.metrics.values()).reduce((sum, m) => sum + m.messagesSent, 0);
       const totalReceived = Array.from(this.metrics.values()).reduce((sum, m) => sum + m.messagesReceived, 0);
 
-      console.log(`📊 Progress: ${activeConnections} active connections, ${totalMessages} sent, ${totalReceived} received`);
+      console.log(` Progress: ${activeConnections} active connections, ${totalMessages} sent, ${totalReceived} received`);
     }, 10000); // Every 10 seconds
 
     // Wait for sustain phase
@@ -223,11 +223,11 @@ class WebSocketLoadTester extends EventEmitter {
     }
 
     clearInterval(progressInterval);
-    console.log('✅ Sustained load phase complete');
+    console.log(' Sustained load phase complete');
   }
 
   private async rampDownPhase(): Promise<void> {
-    console.log('📉 Phase 3: Ramping down connections');
+    console.log(' Phase 3: Ramping down connections');
 
     const rampDownSteps = Math.ceil(this.config.rampDownTimeMs / 1000);
     const connectionsPerStep = Math.ceil(this.connections.size / rampDownSteps);
@@ -240,11 +240,11 @@ class WebSocketLoadTester extends EventEmitter {
       const promises = connectionIds.map(id => this.closeConnection(id));
       await Promise.allSettled(promises);
 
-      console.log(`📊 Step ${step + 1}/${rampDownSteps}: ${this.connections.size} connections remaining`);
+      console.log(` Step ${step + 1}/${rampDownSteps}: ${this.connections.size} connections remaining`);
       await this.sleep(1000);
     }
 
-    console.log('✅ Ramp down complete');
+    console.log(' Ramp down complete');
   }
 
   private async createConnection(): Promise<void> {
@@ -300,7 +300,7 @@ class WebSocketLoadTester extends EventEmitter {
           metrics.connectionTime = connectTime;
           metrics.isActive = true;
 
-          console.log(`✅ Connection established: ${connectionId} (${connectTime.toFixed(2)}ms)`);
+          console.log(` Connection established: ${connectionId} (${connectTime.toFixed(2)}ms)`);
           resolve();
         });
 
@@ -321,7 +321,7 @@ class WebSocketLoadTester extends EventEmitter {
 
     } catch (error) {
       metrics.errors++;
-      console.error(`❌ Connection failed: ${connectionId}`, error);
+      console.error(` Connection failed: ${connectionId}`, error);
     }
   }
 
@@ -346,25 +346,25 @@ class WebSocketLoadTester extends EventEmitter {
 
       } catch (error) {
         metrics.errors++;
-        console.error(`❌ Message parsing error for ${metrics.connectionId}:`, error);
+        console.error(` Message parsing error for ${metrics.connectionId}:`, error);
       }
     });
 
     ws.on('close', (code, reason) => {
       metrics.isActive = false;
       metrics.disconnectedAt = Date.now();
-      console.log(`🔌 Connection closed: ${metrics.connectionId} (${code}: ${reason})`);
+      console.log(` Connection closed: ${metrics.connectionId} (${code}: ${reason})`);
     });
 
     ws.on('error', (error) => {
       metrics.errors++;
       metrics.isActive = false;
-      console.error(`❌ WebSocket error for ${metrics.connectionId}:`, error);
+      console.error(` WebSocket error for ${metrics.connectionId}:`, error);
     });
   }
 
   private startMessageGeneration(): void {
-    console.log('📤 Starting message generation');
+    console.log(' Starting message generation');
 
     for (const [connectionId, ws] of this.connections) {
       if (ws.readyState === WebSocket.OPEN) {
@@ -423,7 +423,7 @@ class WebSocketLoadTester extends EventEmitter {
         metrics.messagesSent++;
       } catch (error) {
         metrics.errors++;
-        console.error(`❌ Send error for ${connectionId}:`, error);
+        console.error(` Send error for ${connectionId}:`, error);
       }
 
       // Schedule next message
@@ -473,7 +473,7 @@ class WebSocketLoadTester extends EventEmitter {
         metrics.disconnectedAt = Date.now();
       } catch (error) {
         metrics.errors++;
-        console.error(`❌ Close error for ${connectionId}:`, error);
+        console.error(` Close error for ${connectionId}:`, error);
       }
     }
 
@@ -481,13 +481,13 @@ class WebSocketLoadTester extends EventEmitter {
   }
 
   private async cleanup(): Promise<void> {
-    console.log('🧹 Cleaning up connections');
+    console.log(' Cleaning up connections');
 
     const closePromises = Array.from(this.connections.keys()).map(id => this.closeConnection(id));
     await Promise.allSettled(closePromises);
 
     this.connections.clear();
-    console.log('✅ Cleanup complete');
+    console.log(' Cleanup complete');
   }
 
   private startPerformanceMonitoring(): void {
@@ -618,14 +618,14 @@ const config: Partial<LoadTestConfig> = {};
     try {
       const results = await tester.runLoadTest();
 
-      console.log('\n🎉 Load Test Results:');
+      console.log('\n Load Test Results:');
       console.log('='.repeat(50));
       console.log(JSON.stringify(results.summary, null, 2));
-      console.log('\n📊 Latency Statistics:');
+      console.log('\n Latency Statistics:');
       console.log(JSON.stringify(results.latency, null, 2));
-      console.log('\n🔗 Connection Statistics:');
+      console.log('\n Connection Statistics:');
       console.log(JSON.stringify(results.connectionStats, null, 2));
-      console.log('\n💬 Message Statistics:');
+      console.log('\n Message Statistics:');
       console.log(JSON.stringify(results.messageStats, null, 2));
 
       // Save detailed results to file
@@ -634,10 +634,10 @@ const config: Partial<LoadTestConfig> = {};
 
       const fs = require('fs');
       fs.writeFileSync(resultsFile, JSON.stringify(results, null, 2));
-      console.log(`\n📁 Detailed results saved to: ${resultsFile}`);
+      console.log(`\n Detailed results saved to: ${resultsFile}`);
 
     } catch (error) {
-      console.error('❌ Load test failed:', error);
+      console.error(' Load test failed:', error);
       process.exit(1);
     }
   }

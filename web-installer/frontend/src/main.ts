@@ -22,6 +22,6 @@ app.mount('#app');
 
 // Development logging
 if (import.meta.env.DEV) {
-  console.log('🚀 CRM Web Installer started in development mode');
-  console.log('📦 Environment:', import.meta.env.MODE);
+  console.log(' CRM Web Installer started in development mode');
+  console.log(' Environment:', import.meta.env.MODE);
 }

@@ -2,7 +2,7 @@
 // Force UTC timezone for all tests to ensure consistent date/time handling
 // across different environments and CI/CD systems
 process.env.TZ = 'UTC';
-console.log('🌍 [Frontend Tests] Timezone standardized to UTC');
+console.log('[Frontend Tests] Timezone standardized to UTC');
 
 import { config } from '@vue/test-utils'
 import { vi } from 'vitest'

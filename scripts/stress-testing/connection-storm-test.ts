@@ -129,7 +129,7 @@ export class ConnectionStormTester extends EventEmitter {
   }
 
   async runConnectionStorm(): Promise<ConnectionStormResults> {
-    console.log('⛈️ Starting Connection Storm Test');
+    console.log(' Starting Connection Storm Test');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
     this.testStartTime = performance.now();
@@ -150,7 +150,7 @@ export class ConnectionStormTester extends EventEmitter {
       this.analyzeResults();
 
     } catch (error) {
-      console.error('❌ Connection storm test error:', error);
+      console.error(' Connection storm test error:', error);
     } finally {
       // Cleanup any remaining connections
       await this.cleanup();
@@ -160,23 +160,23 @@ export class ConnectionStormTester extends EventEmitter {
   }
 
   private async executeStormWaves(): Promise<void> {
-    console.log(`🌊 Executing ${this.config.stormWaves} storm waves`);
+    console.log(` Executing ${this.config.stormWaves} storm waves`);
 
     for (let waveIndex = 0; waveIndex < this.config.stormWaves; waveIndex++) {
-      console.log(`\n🌊 Wave ${waveIndex + 1}/${this.config.stormWaves}`);
+      console.log(`\n Wave ${waveIndex + 1}/${this.config.stormWaves}`);
 
       const waveResult = await this.executeWave(waveIndex);
       this.results.waveResults.push(waveResult);
 
       // Log wave summary
-      console.log(`✅ Wave ${waveIndex + 1} complete:`);
+      console.log(` Wave ${waveIndex + 1} complete:`);
       console.log(`  - Connections: ${waveResult.connectionsSuccessful}/${waveResult.connectionsAttempted}`);
       console.log(`  - Duration: ${waveResult.duration.toFixed(0)}ms`);
       console.log(`  - Error rate: ${(waveResult.errorRate * 100).toFixed(1)}%`);
 
       // Wait between waves (except for the last wave)
       if (waveIndex < this.config.stormWaves - 1) {
-        console.log(`⏳ Waiting ${this.config.waveIntervalMs}ms before next wave`);
+        console.log(` Waiting ${this.config.waveIntervalMs}ms before next wave`);
         await this.sleep(this.config.waveIntervalMs);
       }
     }
@@ -236,14 +236,14 @@ export class ConnectionStormTester extends EventEmitter {
       this.peakConnections = Math.max(this.peakConnections, this.activeConnections.size);
 
       // Hold connections for specified time
-      console.log(`  📡 Holding ${this.activeConnections.size} connections for ${this.config.connectionHoldTimeMs}ms`);
+      console.log(` Holding ${this.activeConnections.size} connections for ${this.config.connectionHoldTimeMs}ms`);
       await this.sleep(this.config.connectionHoldTimeMs);
 
       // Disconnect connections with different patterns
       await this.disconnectWaveConnections(waveId);
 
     } catch (error) {
-      console.error(`❌ Wave ${waveId} error:`, error);
+      console.error(` Wave ${waveId} error:`, error);
       waveResult.connectionsFailed = this.config.connectionsPerWave;
       waveResult.errorRate = 1.0;
     }
@@ -336,11 +336,11 @@ export class ConnectionStormTester extends EventEmitter {
       // Store active connection
       this.activeConnections.set(connectionId, ws);
 
-      console.log(`✅ Storm connection established: ${connectionId} (${result.connectionTime.toFixed(2)}ms)`);
+      console.log(` Storm connection established: ${connectionId} (${result.connectionTime.toFixed(2)}ms)`);
 
     } catch (error) {
       result.error = error instanceof Error ? error.message : 'Unknown error';
-      console.warn(`❌ Storm connection failed: ${connectionId} - ${result.error}`);
+      console.warn(` Storm connection failed: ${connectionId} - ${result.error}`);
     }
 
     this.connectionResults.push(result);
@@ -348,7 +348,7 @@ export class ConnectionStormTester extends EventEmitter {
   }
 
   private async disconnectWaveConnections(waveId: number): Promise<void> {
-    console.log(`  🔌 Disconnecting wave ${waveId} connections`);
+    console.log(` Disconnecting wave ${waveId} connections`);
 
     const waveConnections = Array.from(this.activeConnections.entries())
       .filter(([id]) => id.startsWith(`wave_${waveId}_`));
@@ -379,7 +379,7 @@ export class ConnectionStormTester extends EventEmitter {
       ws.terminate(); // Immediate termination
       this.activeConnections.delete(connectionId);
     } catch (error) {
-      console.warn(`❌ Immediate disconnect error for ${connectionId}:`, error);
+      console.warn(` Immediate disconnect error for ${connectionId}:`, error);
     }
   }
 
@@ -393,7 +393,7 @@ export class ConnectionStormTester extends EventEmitter {
 
       this.activeConnections.delete(connectionId);
     } catch (error) {
-      console.warn(`❌ Graceful disconnect error for ${connectionId}:`, error);
+      console.warn(` Graceful disconnect error for ${connectionId}:`, error);
     }
   }
 
@@ -403,12 +403,12 @@ export class ConnectionStormTester extends EventEmitter {
       ws.close(1006, 'Network error simulation');
       this.activeConnections.delete(connectionId);
     } catch (error) {
-      console.warn(`❌ Abrupt disconnect error for ${connectionId}:`, error);
+      console.warn(` Abrupt disconnect error for ${connectionId}:`, error);
     }
   }
 
   private async measureSystemRecovery(): Promise<void> {
-    console.log('📈 Measuring system recovery time');
+    console.log(' Measuring system recovery time');
 
     const recoveryStartTime = performance.now();
     const maxRecoveryTime = 30000; // 30 seconds max
@@ -427,14 +427,14 @@ export class ConnectionStormTester extends EventEmitter {
 
       if (isRecovered) {
         recovered = true;
-        console.log(`✅ System recovered in ${recoveryTime.toFixed(0)}ms`);
+        console.log(` System recovered in ${recoveryTime.toFixed(0)}ms`);
       } else {
-        console.log(`⏳ System still recovering... (${recoveryTime.toFixed(0)}ms)`);
+        console.log(` System still recovering... (${recoveryTime.toFixed(0)}ms)`);
       }
     }
 
     if (!recovered) {
-      console.warn(`⚠️ System did not recover within ${maxRecoveryTime}ms`);
+      console.warn(` System did not recover within ${maxRecoveryTime}ms`);
       recoveryTime = maxRecoveryTime;
     }
 
@@ -452,7 +452,7 @@ export class ConnectionStormTester extends EventEmitter {
   }
 
   private startSystemMonitoring(): void {
-    console.log('📊 Starting system monitoring');
+    console.log(' Starting system monitoring');
 
     const monitoringInterval = setInterval(async () => {
       const metrics = await this.captureSystemMetrics();
@@ -492,7 +492,7 @@ export class ConnectionStormTester extends EventEmitter {
         memoryUsage: Math.random() * 100 // Placeholder
       };
     } catch (error) {
-      console.warn('❌ Error capturing system metrics:', error);
+      console.warn(' Error capturing system metrics:', error);
       return {
         timestamp: Date.now(),
         activeConnections: this.activeConnections.size,
@@ -503,7 +503,7 @@ export class ConnectionStormTester extends EventEmitter {
   }
 
   private analyzeResults(): void {
-    console.log('🔍 Analyzing connection storm results');
+    console.log(' Analyzing connection storm results');
 
     const totalDuration = performance.now() - this.testStartTime;
     const successfulConnections = this.connectionResults.filter(r => r.success).length;
@@ -571,52 +571,52 @@ export class ConnectionStormTester extends EventEmitter {
 
     // Connection rate recommendations
     if (this.results.systemStress.connectionRateLimit) {
-      recommendations.push('🔧 Implement connection rate limiting with exponential backoff');
-      recommendations.push('🔧 Add connection pooling to reduce overhead');
+      recommendations.push(' Implement connection rate limiting with exponential backoff');
+      recommendations.push(' Add connection pooling to reduce overhead');
     }
 
     // Latency recommendations
     if (this.results.systemStress.latencyDegradation) {
-      recommendations.push('⚡ Optimize WebSocket handshake process');
-      recommendations.push('⚡ Consider implementing connection preloading');
+      recommendations.push(' Optimize WebSocket handshake process');
+      recommendations.push(' Consider implementing connection preloading');
     }
 
     // Error rate recommendations
     if (this.results.systemStress.errorRateSpike) {
-      recommendations.push('🛡️ Implement circuit breaker pattern for overload protection');
-      recommendations.push('🛡️ Add health checks and automatic failover mechanisms');
+      recommendations.push(' Implement circuit breaker pattern for overload protection');
+      recommendations.push(' Add health checks and automatic failover mechanisms');
     }
 
     // Recovery recommendations
     if (!this.results.systemStress.recoverySuccess) {
-      recommendations.push('🚀 Implement graceful degradation under high load');
-      recommendations.push('🚀 Add automatic scaling mechanisms');
+      recommendations.push(' Implement graceful degradation under high load');
+      recommendations.push(' Add automatic scaling mechanisms');
     }
 
     // General recommendations
-    recommendations.push('📊 Implement real-time monitoring for connection storms');
-    recommendations.push('📊 Set up alerts for rapid connection rate increases');
-    recommendations.push('🔄 Consider implementing connection recycling');
+    recommendations.push(' Implement real-time monitoring for connection storms');
+    recommendations.push(' Set up alerts for rapid connection rate increases');
+    recommendations.push(' Consider implementing connection recycling');
 
     this.results.recommendations = recommendations;
   }
 
   private async cleanup(): Promise<void> {
-    console.log('🧹 Cleaning up storm test connections');
+    console.log(' Cleaning up storm test connections');
 
     // Close all remaining connections
     const closePromises = Array.from(this.activeConnections.entries()).map(async ([id, ws]) => {
       try {
         ws.close(1000, 'Storm test cleanup');
       } catch (error) {
-        console.warn(`❌ Cleanup error for ${id}:`, error);
+        console.warn(` Cleanup error for ${id}:`, error);
       }
     });
 
     await Promise.allSettled(closePromises);
     this.activeConnections.clear();
 
-    console.log('✅ Storm test cleanup complete');
+    console.log(' Storm test cleanup complete');
   }
 
   private initializeResults(): ConnectionStormResults {
@@ -663,7 +663,7 @@ export class ConnectionStormTester extends EventEmitter {
       await fs.writeFile(this.config.outputFile, JSON.stringify(this.results, null, 2));
       return this.config.outputFile;
     } catch (error) {
-      console.error('❌ Error saving results:', error);
+      console.error(' Error saving results:', error);
       return null;
     }
   }
@@ -696,21 +696,21 @@ async function runConnectionStorm() {
   try {
     const results = await tester.runConnectionStorm();
 
-    console.log('\n⛈️ Connection Storm Test Results:');
+    console.log('\n Connection Storm Test Results:');
     console.log('='.repeat(60));
     console.log('Summary:', JSON.stringify(results.summary, null, 2));
-    console.log('\n🚨 System Stress Indicators:', JSON.stringify(results.systemStress, null, 2));
-    console.log('\n💡 Recommendations:');
+    console.log('\n System Stress Indicators:', JSON.stringify(results.systemStress, null, 2));
+    console.log('\n Recommendations:');
     results.recommendations.forEach(rec => console.log(`- ${rec}`));
 
     // Save results if output file specified
     const savedFile = await tester.saveResults();
     if (savedFile) {
-      console.log(`\n📁 Detailed results saved to: ${savedFile}`);
+      console.log(`\n Detailed results saved to: ${savedFile}`);
     }
 
   } catch (error) {
-    console.error('❌ Connection storm test failed:', error);
+    console.error(' Connection storm test failed:', error);
     process.exit(1);
   }
 }

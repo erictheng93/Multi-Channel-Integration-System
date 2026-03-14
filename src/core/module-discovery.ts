@@ -391,12 +391,12 @@ export class ModuleLifecycleManager {
     failed: number;
     errors: string[];
   }> {
-    console.log('🚀 Initializing modular architecture system...');
+    console.log(' Initializing modular architecture system...');
 
     try {
       // 發現模組
       const discovered = await this.moduleDiscovery.discoverModules();
-      console.log(`📦 Discovered ${discovered.length} modules`);
+      console.log(` Discovered ${discovered.length} modules`);
 
       // 自動註冊模組
       const registrationResults = await this.moduleDiscovery.autoRegisterModules();
@@ -404,10 +404,10 @@ export class ModuleLifecycleManager {
       const successful = registrationResults.filter(r => r.success);
       const failed = registrationResults.filter(r => !r.success);
 
-      console.log(`✅ Successfully registered ${successful.length} modules`);
+      console.log(` Successfully registered ${successful.length} modules`);
       if (failed.length > 0) {
-        console.log(`❌ Failed to register ${failed.length} modules`);
-        failed.forEach(f => console.log(`   - ${f.module}: ${f.error}`));
+        console.log(` Failed to register ${failed.length} modules`);
+        failed.forEach(f => console.log(` - ${f.module}: ${f.error}`));
       }
 
       return {
@@ -418,7 +418,7 @@ export class ModuleLifecycleManager {
       };
 
     } catch (error) {
-      console.error('❌ Failed to initialize module system:', error);
+      console.error(' Failed to initialize module system:', error);
       throw error;
     }
   }

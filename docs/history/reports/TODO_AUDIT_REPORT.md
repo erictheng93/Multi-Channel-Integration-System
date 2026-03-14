@@ -7,33 +7,33 @@
 
 ---
 
-## 📊 執行摘要
+##  執行摘要
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         TODO 分布概覽                               │
+│ TODO 分布概覽 │
 ├─────────────────────────────────────────────────────────────────────┤
-│  後端 (src/)          : ~88 個 (84%)                               │
-│  前端 (frontend/src/) : ~17 個 (16%)                               │
+│  後端 (src/) : ~88 個 (84%) │
+│  前端 (frontend/src/) : ~17 個 (16%) │
 ├─────────────────────────────────────────────────────────────────────┤
-│  變化摘要 (自 2025-12-01):                                          │
-│  ├── 總數減少: 136 → ~105 (-23%)                                   │
-│  ├── 已完成: Durable Objects Session 驗證                          │
-│  ├── 已完成: 前端 WebSocket 整合 (5 項)                            │
-│  ├── 已移除: 邀請系統相關 TODO (功能移除)                          │
-│  └── 已清理: 過時/重複 TODO (~20 項)                               │
+│  變化摘要 (自 2025-12-01): │
+│  ├── 總數減少: 136 → ~105 (-23%) │
+│  ├── 已完成: Durable Objects Session 驗證 │
+│  ├── 已完成: 前端 WebSocket 整合 (5 項) │
+│  ├── 已移除: 邀請系統相關 TODO (功能移除) │
+│  └── 已清理: 過時/重複 TODO (~20 項) │
 ├─────────────────────────────────────────────────────────────────────┤
-│  優先級分布:                                                        │
-│  ├── 🔴 Critical (緊急)     : 5 個  (5%)   - 立即處理              │
-│  ├── 🟠 High (高優先)       : 18 個 (17%)  - 1-2 週內處理          │
-│  ├── 🟡 Medium (中優先)     : 40 個 (38%)  - 下個迭代處理          │
-│  └── 🟢 Low (低優先)        : 42 個 (40%)  - 待排程                │
+│  優先級分布: │
+│  ├──  Critical (緊急) : 5 個  (5%) - 立即處理 │
+│  ├──  High (高優先) : 18 個 (17%)  - 1-2 週內處理 │
+│  ├──  Medium (中優先) : 40 個 (38%)  - 下個迭代處理 │
+│  └──  Low (低優先) : 42 個 (40%)  - 待排程 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔴 Critical (緊急) - 5 個
+##  Critical (緊急) - 5 個
 
 需要立即處理，影響系統安全或核心功能。
 
@@ -41,28 +41,28 @@
 
 | 文件 | 行號 | TODO 內容 | 狀態 | 建議操作 |
 |------|------|-----------|------|----------|
-| `modules/session/middleware/session-auth.ts` | ~145 | 實現對話存取權限檢查 | ⚠️ 待處理 | 實現權限檢查邏輯 |
-| `modules/messaging/middleware/message-auth.ts` | ~295 | 從資料庫取得代理人的對話清單 | ⚠️ 待處理 | 實現資料庫查詢 |
+| `modules/session/middleware/session-auth.ts` | ~145 | 實現對話存取權限檢查 |  待處理 | 實現權限檢查邏輯 |
+| `modules/messaging/middleware/message-auth.ts` | ~295 | 從資料庫取得代理人的對話清單 |  待處理 | 實現資料庫查詢 |
 
 ### 2. 安全相關
 
 | 文件 | 行號 | TODO 內容 | 狀態 | 建議操作 |
 |------|------|-----------|------|----------|
-| `modules/reports/services/reports-service.ts` | ~1290 | 實現權限檢查 | ⚠️ 待處理 | 實現報告訪問權限控制 |
-| `modules/reports/services/reports-service.ts` | ~1300 | 檢查下載權限 | ⚠️ 待處理 | 實現下載權限驗證 |
-| `modules/reports/services/reports-service.ts` | ~1307 | 檢查刪除權限 | ⚠️ 待處理 | 實現刪除權限驗證 |
+| `modules/reports/services/reports-service.ts` | ~1290 | 實現權限檢查 |  待處理 | 實現報告訪問權限控制 |
+| `modules/reports/services/reports-service.ts` | ~1300 | 檢查下載權限 |  待處理 | 實現下載權限驗證 |
+| `modules/reports/services/reports-service.ts` | ~1307 | 檢查刪除權限 |  待處理 | 實現刪除權限驗證 |
 
-### ✅ 已解決 (本次審查)
+###  已解決 (本次審查)
 
 | 文件 | TODO 內容 | 狀態 |
 |------|-----------|------|
-| `durable-objects/CustomerConversationDO.ts` | Validate session | ✅ 已完整實現 |
-| `durable-objects/CustomerMessageDO.ts` | Validate session | ✅ 已完整實現 |
-| `modules/teams/handlers/invitations.ts` | In-memory invitations store | ✅ 功能已移除 |
+| `durable-objects/CustomerConversationDO.ts` | Validate session |  已完整實現 |
+| `durable-objects/CustomerMessageDO.ts` | Validate session |  已完整實現 |
+| `modules/teams/handlers/invitations.ts` | In-memory invitations store |  功能已移除 |
 
 ---
 
-## 🟠 High (高優先) - 18 個
+##  High (高優先) - 18 個
 
 影響用戶體驗或重要功能，應在 1-2 週內處理。
 
@@ -104,16 +104,16 @@
 |------|------|-----------|----------|
 | `services/alert-notification-service.ts` | ~348 | 整合實際的 SMTP 服務 | 整合郵件服務 |
 
-### ✅ 已解決 (本次審查)
+###  已解決 (本次審查)
 
 | 原條目 | 狀態 |
 |--------|------|
-| 前端 WebSocket 整合 (5 項) | ✅ 已完成重構，TODO 已移除 |
-| 緊急回滾服務 (2 項) | ❓ 文件已重構為 PowerShell 腳本 |
+| 前端 WebSocket 整合 (5 項) |  已完成重構，TODO 已移除 |
+| 緊急回滾服務 (2 項) |  文件已重構為 PowerShell 腳本 |
 
 ---
 
-## 🟡 Medium (中優先) - 40 個
+##  Medium (中優先) - 40 個
 
 功能增強或優化，可在下個迭代中處理。
 
@@ -163,7 +163,7 @@
 
 ---
 
-## 🟢 Low (低優先) - 42 個
+##  Low (低優先) - 42 個
 
 次要功能或優化，可按需安排。
 
@@ -228,7 +228,7 @@
 
 ---
 
-## 📋 建議的行動計劃
+##  建議的行動計劃
 
 ### Phase 1: 立即處理 (本週)
 
@@ -261,7 +261,7 @@
 
 ---
 
-## 📈 建議的 TODO 格式標準
+##  建議的 TODO 格式標準
 
 為了更好地追蹤技術債務，建議採用以下 TODO 格式：
 
@@ -290,20 +290,20 @@
 
 ---
 
-## 📝 本次審查變更摘要
+##  本次審查變更摘要
 
 ### 已完成項目
-- ✅ Durable Objects Session 驗證 (2 項) - 完整實現 `validateSession()` 方法
-- ✅ 前端 WebSocket 整合 (5 項) - 文件已重構，TODO 已清理
+-  Durable Objects Session 驗證 (2 項) - 完整實現 `validateSession()` 方法
+-  前端 WebSocket 整合 (5 項) - 文件已重構，TODO 已清理
 
 ### 已移除項目
-- 🗑️ 邀請系統相關 TODO (3 項) - 功能已完整移除
+-  邀請系統相關 TODO (3 項) - 功能已完整移除
   - `invitations.ts` In-memory store 遷移
   - 發送邀請郵件
   - 相關 API 端點
 
 ### 檔案變更
-- 📝 `emergency-rollback-service.ts` - 已重構為 PowerShell 腳本
+-  `emergency-rollback-service.ts` - 已重構為 PowerShell 腳本
 
 ### 行號偏移說明
 由於代碼重構，部分行號可能有 10-20 行的偏移。建議使用 TODO 內容文字搜索定位。

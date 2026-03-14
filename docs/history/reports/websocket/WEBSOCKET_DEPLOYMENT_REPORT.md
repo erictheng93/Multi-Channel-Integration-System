@@ -338,7 +338,7 @@ app.get('/api/websocket/migration-status', async (c) => {
 ```typescript
 // Before:
 app.route('/api/websocket', websocketMainHandler);
-console.log(' [Startup] WebSocket routes mounted at /api/websocket');
+console.log('[Startup] WebSocket routes mounted at /api/websocket');
 
 // After:
 // WebSocket routes are now managed by the Unified Route Registry

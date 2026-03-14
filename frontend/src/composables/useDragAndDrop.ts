@@ -8,21 +8,21 @@
  * @example
  * ```typescript
  * const dragAndDrop = useDragAndDrop({
- *   onFilesDropped: (files) => {
- *     messageInput.handleFilesDropped(files)
- *   },
- *   maxFiles: 5,
- *   maxFileSize: 10 * 1024 * 1024, // 10MB
+ * onFilesDropped: (files) => {
+ * messageInput.handleFilesDropped(files)
+ * },
+ * maxFiles: 5,
+ * maxFileSize: 10 * 1024 * 1024, // 10MB
  * })
  *
  * // In template
  * <div
- *   @dragenter="dragAndDrop.onDragEnter"
- *   @dragleave="dragAndDrop.onDragLeave"
- *   @dragover="dragAndDrop.onDragOver"
- *   @drop="dragAndDrop.onDrop"
+ * @dragenter="dragAndDrop.onDragEnter"
+ * @dragleave="dragAndDrop.onDragLeave"
+ * @dragover="dragAndDrop.onDragOver"
+ * @drop="dragAndDrop.onDrop"
  * >
- *   <DragDropOverlay :is-visible="dragAndDrop.isDragging.value" />
+ * <DragDropOverlay :is-visible="dragAndDrop.isDragging.value" />
  * </div>
  * ```
  */
@@ -100,12 +100,12 @@ export interface DragAndDropReturn {
  * 拖放管理 Composable
  *
  * 功能:
- * - ✅ 拖拽状态管理
- * - ✅ 拖拽计数器 (防止嵌套元素误触发)
- * - ✅ 文件类型验证
- * - ✅ 文件大小验证
- * - ✅ 文件数量验证
- * - ✅ 错误处理和回调
+ * -  拖拽状态管理
+ * -  拖拽计数器 (防止嵌套元素误触发)
+ * -  文件类型验证
+ * -  文件大小验证
+ * -  文件数量验证
+ * -  错误处理和回调
  *
  * 拖拽计数器原理:
  * - dragEnter 时 counter++

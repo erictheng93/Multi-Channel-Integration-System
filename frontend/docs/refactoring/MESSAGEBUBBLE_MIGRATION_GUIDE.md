@@ -7,7 +7,7 @@
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 1. [Migration Overview](#-migration-overview)
 2. [Prerequisites](#-prerequisites)
@@ -20,7 +20,7 @@
 
 ---
 
-## 🎯 Migration Overview
+##  Migration Overview
 
 ### What This Guide Covers
 
@@ -37,14 +37,14 @@ This guide provides a complete migration path from the original `MessageBubble.v
 
 ### Zero Breaking Changes Guarantee
 
-✅ **100% functional parity** - All features work identically
-✅ **Same API surface** - All props and emits unchanged
-✅ **Backward compatible** - Supports legacy properties
-✅ **29/29 tests pass** - Complete test coverage maintained
+ **100% functional parity** - All features work identically
+ **Same API surface** - All props and emits unchanged
+ **Backward compatible** - Supports legacy properties
+ **29/29 tests pass** - Complete test coverage maintained
 
 ---
 
-## ✅ Prerequisites
+##  Prerequisites
 
 ### Required Knowledge
 
@@ -76,7 +76,7 @@ npm run test -- MessageBubble.test.ts
 
 ---
 
-## 📝 Pre-Migration Checklist
+##  Pre-Migration Checklist
 
 ### 1. Identify All Usage Points
 
@@ -113,7 +113,7 @@ git commit -m "chore: pre-migration snapshot before MessageBubble optimization"
 
 ---
 
-## 🚀 Step-by-Step Migration
+##  Step-by-Step Migration
 
 ### Step 1: Update Import Statement
 
@@ -122,14 +122,14 @@ git commit -m "chore: pre-migration snapshot before MessageBubble optimization"
 #### Before (Original)
 
 ```typescript
-// ❌ Old import
+// Old import
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 ```
 
 #### After (Optimized)
 
 ```typescript
-// ✅ New import
+// New import
 import MessageBubble from '@/components/conversation/MessageBubbleOptimized.vue'
 ```
 
@@ -146,7 +146,7 @@ The optimized component accepts **identical props**:
 
 ```vue
 <template>
-  <!-- ✅ This works in BOTH versions - no changes needed -->
+  <!--  This works in BOTH versions - no changes needed -->
   <MessageBubble
     :message="message"
     :delivered="isDelivered"
@@ -167,7 +167,7 @@ The optimized component accepts **identical props**:
 </template>
 ```
 
-**Action Required**: ✅ **NONE** - Props are 100% compatible
+**Action Required**:  **NONE** - Props are 100% compatible
 
 ---
 
@@ -180,17 +180,17 @@ For each file updated in Step 1:
 npm run test -- MessageBubbleOptimized.test.ts
 
 # Expected output:
-✓ Component Rendering (5 tests)
-✓ Image Messages (5 tests)
-✓ Sticker Messages (2 tests)
-✓ File Attachments (3 tests)
-✓ Text Messages (2 tests)
-✓ Sender Information (2 tests)
-✓ Time Display (1 test)
-✓ User Interactions (3 tests)
-✓ Reactive Updates (2 tests)
-✓ Edge Cases (4 tests)
-✓ Composables Integration (2 tests)
+ Component Rendering (5 tests)
+ Image Messages (5 tests)
+ Sticker Messages (2 tests)
+ File Attachments (3 tests)
+ Text Messages (2 tests)
+ Sender Information (2 tests)
+ Time Display (1 test)
+ User Interactions (3 tests)
+ Reactive Updates (2 tests)
+ Edge Cases (4 tests)
+ Composables Integration (2 tests)
 
 Test Files  1 passed (1)
      Tests  29 passed (29)
@@ -238,7 +238,7 @@ If you have custom tests importing MessageBubble:
 #### Before
 
 ```typescript
-// ❌ Old test import
+// Old test import
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
 
 describe('Custom MessageBubble Tests', () => {
@@ -252,7 +252,7 @@ describe('Custom MessageBubble Tests', () => {
 #### After
 
 ```typescript
-// ✅ New test import
+// New test import
 import MessageBubble from '@/components/conversation/MessageBubbleOptimized.vue'
 
 describe('Custom MessageBubble Tests', () => {
@@ -272,7 +272,7 @@ describe('Custom MessageBubble Tests', () => {
 If you have custom type definitions:
 
 ```typescript
-// ✅ Types remain unchanged
+// Types remain unchanged
 import type { Message } from '@/types'
 
 interface MessageBubbleProps {
@@ -283,7 +283,7 @@ interface MessageBubbleProps {
 }
 ```
 
-**Action Required**: ✅ **NONE** - Types are identical
+**Action Required**:  **NONE** - Types are identical
 
 ---
 
@@ -309,7 +309,7 @@ BREAKING CHANGES: None
 
 ---
 
-## 🧪 Testing & Validation
+##  Testing & Validation
 
 ### Automated Testing
 
@@ -320,7 +320,7 @@ cd frontend
 npm run test -- MessageBubbleOptimized.test.ts
 ```
 
-**Expected Result**: ✅ 29/29 tests passing
+**Expected Result**:  29/29 tests passing
 
 #### Run Integration Tests
 
@@ -336,9 +336,9 @@ npm run test
 ```
 
 **Success Criteria**:
-- ✅ All existing tests pass
-- ✅ No new test failures introduced
-- ✅ Code coverage maintained or improved
+-  All existing tests pass
+-  No new test failures introduced
+-  Code coverage maintained or improved
 
 ---
 
@@ -350,72 +350,72 @@ npm run test
 
 1. Navigate to conversation view
 2. Send a text message
-3. ✅ Verify: Message appears correctly
-4. ✅ Verify: Timestamp shows
-5. ✅ Verify: Message status icon appears (for outgoing)
+3.  Verify: Message appears correctly
+4.  Verify: Timestamp shows
+5.  Verify: Message status icon appears (for outgoing)
 
 #### Test 2: Image Messages
 
 1. Send an image message
-2. ✅ Verify: Image loads and displays
+2.  Verify: Image loads and displays
 3. Click image to preview
-4. ✅ Verify: Preview modal opens
-5. ✅ Verify: Zoom controls work (+, -, Reset)
+4.  Verify: Preview modal opens
+5.  Verify: Zoom controls work (+, -, Reset)
 6. Click download button
-7. ✅ Verify: Image downloads
+7.  Verify: Image downloads
 
 #### Test 3: File Attachments
 
 1. Send a file (PDF, DOC, etc.)
-2. ✅ Verify: File icon shows correct type color
-3. ✅ Verify: File name and size display
+2.  Verify: File icon shows correct type color
+3.  Verify: File name and size display
 4. Click download button
-5. ✅ Verify: File downloads
+5.  Verify: File downloads
 
 #### Test 4: Multiple Attachments
 
 1. Send message with 2+ files
-2. ✅ Verify: All attachments display
-3. ✅ Verify: Each has separate status indicator
-4. ✅ Verify: Download works for each
+2.  Verify: All attachments display
+3.  Verify: Each has separate status indicator
+4.  Verify: Download works for each
 
 #### Test 5: Sticker Messages
 
 1. Send a LINE sticker
-2. ✅ Verify: Sticker loads (or shows placeholder)
-3. ✅ Verify: No console errors
-4. ✅ Verify: Fallback works if sticker fails
+2.  Verify: Sticker loads (or shows placeholder)
+3.  Verify: No console errors
+4.  Verify: Fallback works if sticker fails
 
 #### Test 6: Message Actions
 
 1. Hover over a message
-2. ✅ Verify: Action buttons appear
+2.  Verify: Action buttons appear
 3. Click copy button
-4. ✅ Verify: Message copied to clipboard
+4.  Verify: Message copied to clipboard
 5. Click more actions (⋮)
-6. ✅ Verify: Dropdown menu appears
+6.  Verify: Dropdown menu appears
 7. Click forward
-8. ✅ Verify: Forward dialog opens
+8.  Verify: Forward dialog opens
 
 #### Test 7: Failed Messages
 
 1. Disconnect internet
 2. Send a message
-3. ✅ Verify: Failed status shows
-4. ✅ Verify: Retry button appears
+3.  Verify: Failed status shows
+4.  Verify: Retry button appears
 5. Reconnect internet
 6. Click retry button
-7. ✅ Verify: Message sends successfully
+7.  Verify: Message sends successfully
 
 #### Test 8: Performance
 
 1. Scroll through 100+ messages
-2. ✅ Verify: No lag or stuttering
-3. ✅ Verify: Images load lazily
+2.  Verify: No lag or stuttering
+3.  Verify: Images load lazily
 4. Open DevTools > Performance
 5. Record scroll interaction
-6. ✅ Verify: No long tasks (> 50ms)
-7. ✅ Verify: No layout shifts
+6.  Verify: No long tasks (> 50ms)
+7.  Verify: No layout shifts
 
 ---
 
@@ -434,14 +434,14 @@ Test in the following browsers:
 
 ---
 
-## 🔄 Rollback Plan
+##  Rollback Plan
 
 ### When to Rollback
 
 Consider rollback if:
-- ❌ Critical bugs discovered in production
-- ❌ Performance degradation (> 10% slower)
-- ❌ User-facing issues affecting > 5% of users
+-  Critical bugs discovered in production
+-  Performance degradation (> 10% slower)
+-  User-facing issues affecting > 5% of users
 
 ### Quick Rollback (< 5 minutes)
 
@@ -478,21 +478,21 @@ git push origin main
 
 ### Post-Rollback Steps
 
-1. ✅ Verify production is stable
-2. ✅ Document the issue that caused rollback
-3. ✅ Create bug report with reproduction steps
-4. ✅ Fix the issue in development
-5. ✅ Re-test thoroughly before re-attempting migration
+1.  Verify production is stable
+2.  Document the issue that caused rollback
+3.  Create bug report with reproduction steps
+4.  Fix the issue in development
+5.  Re-test thoroughly before re-attempting migration
 
 ---
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Issue 1: Tests Failing After Migration
 
 **Symptom**:
 ```
-❌ Error: Cannot read properties of undefined (reading 'classes')
+ Error: Cannot read properties of undefined (reading 'classes')
 ```
 
 **Cause**: Test using `wrapper.classes()` directly
@@ -500,10 +500,10 @@ git push origin main
 **Solution**: Update test to use DOM-based approach
 
 ```typescript
-// ❌ Before (fails)
+// Before (fails)
 expect(wrapper.classes()).toContain('message-incoming')
 
-// ✅ After (works)
+// After (works)
 const bubble = wrapper.find('.message-bubble')
 expect(bubble.classes()).toContain('message-incoming')
 ```
@@ -519,10 +519,10 @@ expect(bubble.classes()).toContain('message-incoming')
 **Solution**: Verify template uses named handlers
 
 ```vue
-<!-- ❌ Wrong: inline expression -->
+<!--  Wrong: inline expression -->
 <div @mouseenter="showActions = true">
 
-<!-- ✅ Correct: named handler -->
+<!--  Correct: named handler -->
 <div @mouseenter="handleMouseEnter">
 ```
 
@@ -556,7 +556,7 @@ console.log('Sticker URLs:', stickerUrls.value)
 **Solution**: Verify Teleport target
 
 ```vue
-<!-- ✅ Correct: Teleport to body -->
+<!--  Correct: Teleport to body -->
 <Teleport to="body">
   <div class="image-preview-overlay" @click="closeImagePreview">
     <div class="image-preview-modal" @click.stop>
@@ -577,7 +577,7 @@ console.log('Sticker URLs:', stickerUrls.value)
 **Solution**: Verify CSS includes performance hints
 
 ```css
-/* ✅ Check these CSS properties exist */
+/* Check these CSS properties exist */
 .message-bubble {
   contain: layout style paint;
   will-change: transform;
@@ -604,10 +604,10 @@ TS2345: Argument of type 'Message' is not assignable to parameter
 **Solution**: Verify Message type imports
 
 ```typescript
-// ✅ Ensure correct type import
+// Ensure correct type import
 import type { Message } from '@/types'
 
-// ✅ Check composable prop types
+// Check composable prop types
 const attachmentProps = computed(() => ({
   message: props.message as Message,  // Type assertion if needed
   attachmentUrl: props.attachmentUrl,
@@ -626,7 +626,7 @@ const attachmentProps = computed(() => ({
 **Solution**: Verify unique keys
 
 ```vue
-<!-- ✅ Correct: use attachment.id as key -->
+<!--  Correct: use attachment.id as key -->
 <div
   v-for="attachment in nonImageAttachments"
   :key="attachment.id"
@@ -638,7 +638,7 @@ const attachmentProps = computed(() => ({
 
 ---
 
-## 📊 Performance Monitoring
+##  Performance Monitoring
 
 ### Metrics to Track
 
@@ -709,7 +709,7 @@ onUpdated(() => {
 
 ---
 
-## ✅ Post-Migration Checklist
+##  Post-Migration Checklist
 
 After completing migration:
 
@@ -744,7 +744,7 @@ After completing migration:
 
 ---
 
-## 📚 Additional Resources
+##  Additional Resources
 
 ### Documentation
 - [MessageBubble Component Comparison Report](./MESSAGEBUBBLE_COMPONENT_COMPARISON_REPORT.md)
@@ -765,7 +765,7 @@ After completing migration:
 
 ---
 
-## 🆘 Support
+##  Support
 
 If you encounter issues not covered in this guide:
 
@@ -778,4 +778,4 @@ If you encounter issues not covered in this guide:
 
 **Migration Guide Version**: 1.0.0
 **Last Updated**: 2026-01-05
-**Status**: ✅ Ready for Use
+**Status**:  Ready for Use

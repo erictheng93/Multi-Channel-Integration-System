@@ -135,7 +135,7 @@ export class MessageFloodTester {
   }
 
   async runMessageFlood(): Promise<MessageFloodResults> {
-    console.log('🌊 Starting Message Flood Test');
+    console.log(' Starting Message Flood Test');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
     this.testStartTime = performance.now();
@@ -158,7 +158,7 @@ export class MessageFloodTester {
       this.analyzeResults();
 
     } catch (error) {
-      console.error('❌ Message flood test error:', error);
+      console.error(' Message flood test error:', error);
     } finally {
       this.isRunning = false;
       await this.cleanup();
@@ -168,7 +168,7 @@ export class MessageFloodTester {
   }
 
   private async establishConnections(): Promise<void> {
-    console.log(`🔗 Establishing ${this.config.concurrentConnections} connections`);
+    console.log(` Establishing ${this.config.concurrentConnections} connections`);
 
     const connectionPromises = [];
     for (let i = 0; i < this.config.concurrentConnections; i++) {
@@ -178,7 +178,7 @@ export class MessageFloodTester {
     const results = await Promise.allSettled(connectionPromises);
     const successful = results.filter(r => r.status === 'fulfilled').length;
 
-    console.log(`✅ Established ${successful}/${this.config.concurrentConnections} connections`);
+    console.log(` Established ${successful}/${this.config.concurrentConnections} connections`);
 
     if (successful === 0) {
       throw new Error('Failed to establish any connections');
@@ -226,10 +226,10 @@ export class MessageFloodTester {
 
       this.connections.set(connectionId, context);
 
-      console.log(`✅ Flood connection established: ${connectionId}`);
+      console.log(` Flood connection established: ${connectionId}`);
 
     } catch (error) {
-      console.error(`❌ Failed to create flood connection ${connectionId}:`, error);
+      console.error(` Failed to create flood connection ${connectionId}:`, error);
       throw error;
     }
   }
@@ -242,17 +242,17 @@ export class MessageFloodTester {
         const message = JSON.parse(data.toString());
         this.handleReceivedMessage(context, message);
       } catch (error) {
-        console.error(`❌ Message parsing error for ${connectionId}:`, error);
+        console.error(` Message parsing error for ${connectionId}:`, error);
       }
     });
 
     websocket.on('close', (code, reason) => {
-      console.warn(`🔌 Connection closed: ${connectionId} (${code}: ${reason})`);
+      console.warn(` Connection closed: ${connectionId} (${code}: ${reason})`);
       context.isActive = false;
     });
 
     websocket.on('error', (error) => {
-      console.error(`❌ WebSocket error for ${connectionId}:`, error);
+      console.error(` WebSocket error for ${connectionId}:`, error);
       context.isActive = false;
     });
   }
@@ -290,7 +290,7 @@ export class MessageFloodTester {
   }
 
   private startThroughputMonitoring(): void {
-    console.log('📊 Starting throughput monitoring');
+    console.log(' Starting throughput monitoring');
 
     const monitoringInterval = setInterval(() => {
       if (!this.isRunning) {
@@ -325,12 +325,12 @@ export class MessageFloodTester {
 
     // Log progress periodically
     if (this.throughputHistory.length % 10 === 0) {
-      console.log(`📈 Progress: ${totalSent} sent, ${totalReceived} received, ${activeConnections} active connections`);
+      console.log(` Progress: ${totalSent} sent, ${totalReceived} received, ${activeConnections} active connections`);
     }
   }
 
   private async executeMessageFlood(): Promise<void> {
-    console.log(`🌊 Starting message flood: ${this.config.totalMessages} messages at ${this.config.messagesPerSecond} msg/s`);
+    console.log(` Starting message flood: ${this.config.totalMessages} messages at ${this.config.messagesPerSecond} msg/s`);
 
     const messageInterval = 1000 / this.config.messagesPerSecond; // ms between messages
     let messagesSent = 0;
@@ -365,12 +365,12 @@ export class MessageFloodTester {
 
       // Safety check for test duration
       if (currentTime - this.testStartTime > this.config.testDurationMs) {
-        console.log('⏰ Test duration reached, stopping message flood');
+        console.log(' Test duration reached, stopping message flood');
         break;
       }
     }
 
-    console.log(`✅ Message flood complete: ${messagesSent} messages sent`);
+    console.log(` Message flood complete: ${messagesSent} messages sent`);
   }
 
   private async sendFloodMessage(): Promise<void> {
@@ -378,7 +378,7 @@ export class MessageFloodTester {
     const activeConnections = Array.from(this.connections.values()).filter(c => c.isActive);
 
     if (activeConnections.length === 0) {
-      console.warn('⚠️ No active connections for message sending');
+      console.warn(' No active connections for message sending');
       return;
     }
 
@@ -409,7 +409,7 @@ export class MessageFloodTester {
       connection.messagesSent++;
 
     } catch (error) {
-      console.error(`❌ Failed to send ${messageType} message:`, error);
+      console.error(` Failed to send ${messageType} message:`, error);
     }
   }
 
@@ -574,7 +574,7 @@ export class MessageFloodTester {
   }
 
   private async waitForMessageDelivery(): Promise<void> {
-    console.log('⏳ Waiting for message delivery...');
+    console.log(' Waiting for message delivery...');
 
     const maxWaitTime = 30000; // 30 seconds
     const checkInterval = 1000; // Check every second
@@ -585,10 +585,10 @@ export class MessageFloodTester {
       const totalMessages = this.messageResults.size;
       const deliveryRate = totalMessages > 0 ? deliveredMessages / totalMessages : 0;
 
-      console.log(`📬 Delivery progress: ${deliveredMessages}/${totalMessages} (${(deliveryRate * 100).toFixed(1)}%)`);
+      console.log(` Delivery progress: ${deliveredMessages}/${totalMessages} (${(deliveryRate * 100).toFixed(1)}%)`);
 
       if (deliveryRate > 0.95) { // 95% delivery rate
-        console.log('✅ Message delivery threshold reached');
+        console.log(' Message delivery threshold reached');
         break;
       }
 
@@ -615,7 +615,7 @@ export class MessageFloodTester {
   }
 
   private analyzeResults(): void {
-    console.log('🔍 Analyzing message flood results');
+    console.log(' Analyzing message flood results');
 
     const testDuration = performance.now() - this.testStartTime;
     const deliveredMessages = Array.from(this.messageResults.values()).filter(m => m.delivered);
@@ -720,42 +720,42 @@ export class MessageFloodTester {
 
     // Delivery rate recommendations
     if (this.results.summary.deliveryRate < 0.9) {
-      recommendations.push('📈 Improve message delivery rate - consider increasing queue capacity');
-      recommendations.push('📈 Implement message prioritization to handle high-priority messages first');
+      recommendations.push(' Improve message delivery rate - consider increasing queue capacity');
+      recommendations.push(' Implement message prioritization to handle high-priority messages first');
     }
 
     // Latency recommendations
     if (this.results.summary.averageLatency > 1000) {
-      recommendations.push('⚡ Optimize message processing pipeline to reduce latency');
-      recommendations.push('⚡ Consider implementing message batching for better throughput');
+      recommendations.push(' Optimize message processing pipeline to reduce latency');
+      recommendations.push(' Consider implementing message batching for better throughput');
     }
 
     // System behavior recommendations
     if (this.results.systemBehavior.backpressure) {
-      recommendations.push('🚦 Implement flow control mechanisms to prevent backpressure');
-      recommendations.push('🚦 Add automatic scaling based on queue depth');
+      recommendations.push(' Implement flow control mechanisms to prevent backpressure');
+      recommendations.push(' Add automatic scaling based on queue depth');
     }
 
     if (this.results.systemBehavior.connectionDrops) {
-      recommendations.push('🔗 Improve connection stability under high load');
-      recommendations.push('🔗 Implement connection pooling and reuse strategies');
+      recommendations.push(' Improve connection stability under high load');
+      recommendations.push(' Implement connection pooling and reuse strategies');
     }
 
     if (this.results.systemBehavior.latencySpikes) {
-      recommendations.push('📊 Implement circuit breakers to prevent cascading failures');
-      recommendations.push('📊 Add load shedding mechanisms for extreme load scenarios');
+      recommendations.push(' Implement circuit breakers to prevent cascading failures');
+      recommendations.push(' Add load shedding mechanisms for extreme load scenarios');
     }
 
     // General recommendations
-    recommendations.push('📋 Implement real-time monitoring for message queue health');
-    recommendations.push('📋 Set up alerts for message delivery rate degradation');
-    recommendations.push('🔄 Consider implementing message replay mechanisms for failed deliveries');
+    recommendations.push(' Implement real-time monitoring for message queue health');
+    recommendations.push(' Set up alerts for message delivery rate degradation');
+    recommendations.push(' Consider implementing message replay mechanisms for failed deliveries');
 
     this.results.recommendations = recommendations;
   }
 
   private async cleanup(): Promise<void> {
-    console.log('🧹 Cleaning up flood test connections');
+    console.log(' Cleaning up flood test connections');
 
     const closePromises = Array.from(this.connections.values()).map(async (context) => {
       try {
@@ -763,14 +763,14 @@ export class MessageFloodTester {
           context.websocket.close(1000, 'Flood test cleanup');
         }
       } catch (error) {
-        console.warn(`❌ Cleanup error for ${context.connectionId}:`, error);
+        console.warn(` Cleanup error for ${context.connectionId}:`, error);
       }
     });
 
     await Promise.allSettled(closePromises);
     this.connections.clear();
 
-    console.log('✅ Flood test cleanup complete');
+    console.log(' Flood test cleanup complete');
   }
 
   private initializeResults(): MessageFloodResults {
@@ -819,7 +819,7 @@ export class MessageFloodTester {
       await fs.writeFile(this.config.outputFile, JSON.stringify(this.results, null, 2));
       return this.config.outputFile;
     } catch (error) {
-      console.error('❌ Error saving results:', error);
+      console.error(' Error saving results:', error);
       return null;
     }
   }
@@ -852,21 +852,21 @@ async function runMessageFlood() {
   try {
     const results = await tester.runMessageFlood();
 
-    console.log('\n🌊 Message Flood Test Results:');
+    console.log('\n Message Flood Test Results:');
     console.log('='.repeat(60));
     console.log('Summary:', JSON.stringify(results.summary, null, 2));
-    console.log('\n🚨 System Behavior:', JSON.stringify(results.systemBehavior, null, 2));
-    console.log('\n💡 Recommendations:');
+    console.log('\n System Behavior:', JSON.stringify(results.systemBehavior, null, 2));
+    console.log('\n Recommendations:');
     results.recommendations.forEach(rec => console.log(`- ${rec}`));
 
     // Save results if output file specified
     const savedFile = await tester.saveResults();
     if (savedFile) {
-      console.log(`\n📁 Detailed results saved to: ${savedFile}`);
+      console.log(`\n Detailed results saved to: ${savedFile}`);
     }
 
   } catch (error) {
-    console.error('❌ Message flood test failed:', error);
+    console.error(' Message flood test failed:', error);
     process.exit(1);
   }
 }

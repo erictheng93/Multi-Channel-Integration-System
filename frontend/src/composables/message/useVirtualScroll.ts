@@ -57,12 +57,12 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
     }
 
     recentlyScrolledToBottom.value = true
-    console.log(`🛡️ [GracePeriod] Started (${GRACE_PERIOD_MS}ms)`)
+    console.log(`[GracePeriod] Started (${GRACE_PERIOD_MS}ms)`)
 
     recentlyScrolledToBottomTimeout = setTimeout(() => {
       recentlyScrolledToBottom.value = false
       recentlyScrolledToBottomTimeout = null
-      console.log('🛡️ [GracePeriod] Ended')
+      console.log('[GracePeriod] Ended')
     }, GRACE_PERIOD_MS)
   }
 
@@ -119,17 +119,17 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
       if (currentScrollHeight === lastScrollHeight) {
         stableCount++
         if (stableCount >= requiredStableChecks) {
-          console.log(`📏 [ScrollHeight] Stabilized at ${currentScrollHeight}px after ${Date.now() - startTime}ms`)
+          console.log(`[ScrollHeight] Stabilized at ${currentScrollHeight}px after ${Date.now() - startTime}ms`)
           return
         }
       } else {
         stableCount = 0
-        console.log(`📏 [ScrollHeight] Changed: ${lastScrollHeight} → ${currentScrollHeight}`)
+        console.log(`[ScrollHeight] Changed: ${lastScrollHeight} → ${currentScrollHeight}`)
         lastScrollHeight = currentScrollHeight
       }
     }
 
-    console.log(`📏 [ScrollHeight] Timeout after ${maxWaitMs}ms, proceeding with current height: ${lastScrollHeight}`)
+    console.log(`[ScrollHeight] Timeout after ${maxWaitMs}ms, proceeding with current height: ${lastScrollHeight}`)
   }
 
   // Helper: Wait for next animation frame
@@ -208,11 +208,11 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   const scrollToBottom = async (retries = 10, delay = 100) => {
     const lastIndex = virtualItemsLength() - 1
     if (lastIndex < 0 || !virtualizer.value) {
-      console.log('🔽 [ScrollToBottom] Skipped - no items or virtualizer')
+      console.log('[ScrollToBottom] Skipped - no items or virtualizer')
       return
     }
 
-    console.log(`🔽 [ScrollToBottom] Starting scroll to bottom, items: ${virtualItemsLength()}, lastIndex: ${lastIndex}`)
+    console.log(`[ScrollToBottom] Starting scroll to bottom, items: ${virtualItemsLength()}, lastIndex: ${lastIndex}`)
 
     isProgrammaticScrolling.value = true
 
@@ -241,7 +241,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
             const beforeScrollTop = container.scrollTop
             container.scrollTop = container.scrollHeight
 
-            console.log(`✅ [ScrollToBottom] Scrolled on attempt ${attempt + 1}, ` +
+            console.log(`[ScrollToBottom] Scrolled on attempt ${attempt + 1}, ` +
               `scrollToIndex(${lastIndex}), scrollTop: ${beforeScrollTop} → ${container.scrollTop}, ` +
               `scrollHeight: ${container.scrollHeight}`)
           }
@@ -251,13 +251,13 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
             isUserAtBottom.value = true
 
             startGracePeriod()
-            console.log('🔽 [ScrollToBottom] Success - guard cleared, grace period started')
+            console.log('[ScrollToBottom] Success - guard cleared, grace period started')
           }, 100)
 
           return
         }
       } catch (error) {
-        console.warn(`⚠️ [ScrollToBottom] Attempt ${attempt + 1} failed:`, error)
+        console.warn(`[ScrollToBottom] Attempt ${attempt + 1} failed:`, error)
       }
 
       if (attempt < retries - 1) {
@@ -267,7 +267,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
     }
 
     // Final fallback
-    console.log('🔄 [ScrollToBottom] Using final fallback methods...')
+    console.log('[ScrollToBottom] Using final fallback methods...')
     try {
       await new Promise(resolve => setTimeout(resolve, 200))
 
@@ -281,14 +281,14 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
         }
       }
     } catch (error) {
-      console.warn('❌ [ScrollToBottom] Final fallback failed:', error)
+      console.warn('[ScrollToBottom] Final fallback failed:', error)
     } finally {
       setTimeout(() => {
         isProgrammaticScrolling.value = false
         isUserAtBottom.value = true
 
         startGracePeriod()
-        console.log('🔽 [ScrollToBottom] Guard cleared, isUserAtBottom set to true, grace period started')
+        console.log('[ScrollToBottom] Guard cleared, isUserAtBottom set to true, grace period started')
       }, 100)
     }
   }

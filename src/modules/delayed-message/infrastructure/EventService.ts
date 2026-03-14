@@ -61,10 +61,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`✅ [EventService] Message scheduled event broadcasted for ${message.id}`);
+      console.log(`[EventService] Message scheduled event broadcasted for ${message.id}`);
       return true;
     } catch (error) {
-      console.warn('⚠️ [EventService] Failed to broadcast message scheduled event:', error);
+      console.warn('[EventService] Failed to broadcast message scheduled event:', error);
       return false;
     }
   }
@@ -97,10 +97,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`✅ [EventService] Message recalled event broadcasted for ${messageId}`);
+      console.log(`[EventService] Message recalled event broadcasted for ${messageId}`);
       return true;
     } catch (error) {
-      console.warn('⚠️ [EventService] Failed to broadcast message recalled event:', error);
+      console.warn('[EventService] Failed to broadcast message recalled event:', error);
       return false;
     }
   }
@@ -134,10 +134,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`✅ [EventService] Message sent event broadcasted for ${message.id}`);
+      console.log(`[EventService] Message sent event broadcasted for ${message.id}`);
       return true;
     } catch (error) {
-      console.warn('⚠️ [EventService] Failed to broadcast message sent event:', error);
+      console.warn('[EventService] Failed to broadcast message sent event:', error);
       return false;
     }
   }
@@ -169,10 +169,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`✅ [EventService] Message failed event broadcasted for ${messageId}`);
+      console.log(`[EventService] Message failed event broadcasted for ${messageId}`);
       return true;
     } catch (broadcastError) {
-      console.warn('⚠️ [EventService] Failed to broadcast message failed event:', broadcastError);
+      console.warn('[EventService] Failed to broadcast message failed event:', broadcastError);
       return false;
     }
   }
@@ -202,10 +202,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`✅ [EventService] Message skip event broadcasted for ${messageId}`);
+      console.log(`[EventService] Message skip event broadcasted for ${messageId}`);
       return true;
     } catch (error) {
-      console.warn('⚠️ [EventService] Failed to broadcast message skip event:', error);
+      console.warn('[EventService] Failed to broadcast message skip event:', error);
       return false;
     }
   }
@@ -235,10 +235,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`✅ [EventService] Recall failed event broadcasted for ${messageId}`);
+      console.log(`[EventService] Recall failed event broadcasted for ${messageId}`);
       return true;
     } catch (broadcastError) {
-      console.warn('⚠️ [EventService] Failed to broadcast recall failed event:', broadcastError);
+      console.warn('[EventService] Failed to broadcast recall failed event:', broadcastError);
       return false;
     }
   }
@@ -276,7 +276,7 @@ export class EventService {
         );
       }
     } catch (error) {
-      console.warn('⚠️ [EventService] Failed to broadcast queue processing result:', error);
+      console.warn('[EventService] Failed to broadcast queue processing result:', error);
       return false;
     }
   }
@@ -308,7 +308,7 @@ export class EventService {
       await this.broadcastService.broadcastDelayedMessageEvent(event);
       return true;
     } catch (error) {
-      console.warn('⚠️ [EventService] Failed to broadcast countdown update:', error);
+      console.warn('[EventService] Failed to broadcast countdown update:', error);
       return false;
     }
   }
@@ -345,7 +345,7 @@ export class EventService {
       await this.broadcastService.broadcastDelayedMessageEvent(testEvent);
       return true;
     } catch (error) {
-      console.error('❌ [EventService] Health check failed:', error);
+      console.error('[EventService] Health check failed:', error);
       return false;
     }
   }

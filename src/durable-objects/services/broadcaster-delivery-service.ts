@@ -81,7 +81,7 @@ export class BroadcasterDeliveryService {
     this.ctx.stats.queueDepth = this.ctx.eventQueue.length + this.ctx.highPriorityQueue.length;
 
     await this.helpers.persistQueueState();
-    console.log(`📋 [MessageBroadcaster] Event queued: ${event.id} (Priority: ${event.priority})`);
+    console.log(`[MessageBroadcaster] Event queued: ${event.id} (Priority: ${event.priority})`);
   }
 
   // =================== Queue Processing ===================
@@ -117,7 +117,7 @@ export class BroadcasterDeliveryService {
     let successCount = 0;
     let failureCount = 0;
 
-    console.log(`⚡ [MessageBroadcaster] Processing ${batchType} batch: ${events.length} events`);
+    console.log(`[MessageBroadcaster] Processing ${batchType} batch: ${events.length} events`);
 
     const targetGroups = this.groupEventsByTarget(events);
 
@@ -141,7 +141,7 @@ export class BroadcasterDeliveryService {
     this.ctx.stats.averageLatency =
       (this.ctx.stats.averageLatency + processingTime) / 2;
 
-    console.log(`✅ [MessageBroadcaster] Batch processed: ${successCount} success, ${failureCount} failed, ${processingTime}ms`);
+    console.log(`[MessageBroadcaster] Batch processed: ${successCount} success, ${failureCount} failed, ${processingTime}ms`);
   }
 
   // =================== Event Grouping ===================
@@ -280,12 +280,12 @@ export class BroadcasterDeliveryService {
       const teamMembers = await this.helpers.getTeamMembers(teamId);
       let totalDelivered = 0;
 
-      // 🔍 Detailed logging for team broadcast debugging
+      // Detailed logging for team broadcast debugging
       const eventAction = events[0]?.data?.action;
       const eventId = events[0]?.id;
       const conversationId = events[0]?.conversationId;
-      console.log('📨 [MessageBroadcaster] ===== TEAM DELIVERY START =====');
-      console.log('📨 [MessageBroadcaster] Delivering to team', {
+      console.log('[MessageBroadcaster] ===== TEAM DELIVERY START =====');
+      console.log('[MessageBroadcaster] Delivering to team', {
         teamId,
         memberCount: teamMembers.length,
         memberIds: teamMembers,
@@ -299,7 +299,7 @@ export class BroadcasterDeliveryService {
       const deliveryPromises = teamMembers.map(async (userId: string) => {
         try {
           const delivered = await this.deliverToUser(userId, events);
-          console.log('📬 [MessageBroadcaster] Delivered to user', {
+          console.log('[MessageBroadcaster] Delivered to user', {
             userId,
             teamId,
             eventAction,
@@ -330,10 +330,10 @@ export class BroadcasterDeliveryService {
     try {
       let totalDelivered = 0;
 
-      // 🔍 DEBUG: Log registered connections before broadcast
+      // DEBUG: Log registered connections before broadcast
       const registeredUsers = Array.from(this.ctx.userConnections.keys());
       const registeredConversations = Array.from(this.ctx.conversationRooms.keys());
-      console.log(`🔍 [MessageBroadcaster] deliverGlobalBroadcast called:`, {
+      console.log(`[MessageBroadcaster] deliverGlobalBroadcast called:`, {
         eventCount: events.length,
         eventTypes: events.map(e => e.type),
         registeredUserCount: registeredUsers.length,
@@ -354,9 +354,9 @@ export class BroadcasterDeliveryService {
       // Broadcast to all active user connections
       const userPromises = Array.from(this.ctx.userConnections.entries()).map(async ([userId, _stub]) => {
         try {
-          console.log(`📤 [MessageBroadcaster] Delivering to user: ${userId}`);
+          console.log(`[MessageBroadcaster] Delivering to user: ${userId}`);
           const result = await this.deliverToUser(userId, events);
-          console.log(`✅ [MessageBroadcaster] Delivered to user ${userId}: ${result} events`);
+          console.log(`[MessageBroadcaster] Delivered to user ${userId}: ${result} events`);
           return result;
         } catch (error) {
           log.error('Global user delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
@@ -371,7 +371,7 @@ export class BroadcasterDeliveryService {
         }
       });
 
-      console.log(`📊 [MessageBroadcaster] Global broadcast complete: ${totalDelivered} total deliveries`);
+      console.log(`[MessageBroadcaster] Global broadcast complete: ${totalDelivered} total deliveries`);
       return totalDelivered;
     } catch (error) {
       log.error('Global broadcast error', { error: error instanceof Error ? error.message : String(error) });
@@ -394,7 +394,7 @@ export class BroadcasterDeliveryService {
     }
 
     if (retryableEvents.length > 0) {
-      console.log(`🔄 [MessageBroadcaster] Queued ${retryableEvents.length} events for retry`);
+      console.log(`[MessageBroadcaster] Queued ${retryableEvents.length} events for retry`);
     }
   }
 
@@ -424,7 +424,7 @@ export class BroadcasterDeliveryService {
     let failed = 0;
 
     const batches = this.chunkArray(conversationIds, this.ctx.config.DELIVERY_BATCH_SIZE);
-    console.log(`📦 [MessageBroadcaster] Processing ${conversationIds.length} conversations in ${batches.length} batches`);
+    console.log(`[MessageBroadcaster] Processing ${conversationIds.length} conversations in ${batches.length} batches`);
 
     for (const batch of batches) {
       const batchPromises = batch.map(async (conversationId) => {
@@ -450,7 +450,7 @@ export class BroadcasterDeliveryService {
     }
 
     const processingTime = Date.now() - startTime;
-    console.log(`✅ [MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
+    console.log(`[MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
     return { successful, failed };
   }
 
@@ -466,7 +466,7 @@ export class BroadcasterDeliveryService {
     let failed = 0;
 
     const batches = this.chunkArray(userIds, this.ctx.config.DELIVERY_BATCH_SIZE);
-    console.log(`📦 [MessageBroadcaster] Processing ${userIds.length} users in ${batches.length} batches`);
+    console.log(`[MessageBroadcaster] Processing ${userIds.length} users in ${batches.length} batches`);
 
     for (const batch of batches) {
       const batchPromises = batch.map(async (userId) => {
@@ -492,7 +492,7 @@ export class BroadcasterDeliveryService {
     }
 
     const processingTime = Date.now() - startTime;
-    console.log(`✅ [MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
+    console.log(`[MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
     return { successful, failed };
   }
 
@@ -508,7 +508,7 @@ export class BroadcasterDeliveryService {
     let failed = 0;
 
     const batches = this.chunkArray(teamIds, this.ctx.config.DELIVERY_BATCH_SIZE);
-    console.log(`📦 [MessageBroadcaster] Processing ${teamIds.length} teams in ${batches.length} batches`);
+    console.log(`[MessageBroadcaster] Processing ${teamIds.length} teams in ${batches.length} batches`);
 
     for (const batch of batches) {
       const batchPromises = batch.map(async (teamId) => {
@@ -534,7 +534,7 @@ export class BroadcasterDeliveryService {
     }
 
     const processingTime = Date.now() - startTime;
-    console.log(`✅ [MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
+    console.log(`[MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
     return { successful, failed };
   }
 }

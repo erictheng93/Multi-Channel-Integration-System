@@ -739,7 +739,7 @@ describe('MessageSearch.vue', () => {
       wrapper = createWrapper({ messages: createMessages(3), autoExpand: true })
 
       const input = wrapper.find('.search-input')
-      await input.setValue('   ')
+      await input.setValue(' ')
       await input.trigger('input')
       await flushPromises()
 

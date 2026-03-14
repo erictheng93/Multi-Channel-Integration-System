@@ -35,7 +35,7 @@ export class FileStorageService {
   ): Promise<MediaFile | null> {
     try {
       const storageLogger = createContextLogger('FileStorage');
-      console.log(`📥 [FileStorage] downloadAndStore called:`, {
+      console.log(`[FileStorage] downloadAndStore called:`, {
         originalUrl,
         filename,
         mimeType,
@@ -52,15 +52,15 @@ export class FileStorageService {
       if (platform === PLATFORMS.LINE && (originalUrl.includes('api.line.me') || originalUrl.includes('api-data.line.me'))) {
         const hasToken = !!this.env.LINE_CHANNEL_ACCESS_TOKEN;
         const tokenPrefix = hasToken ? this.env.LINE_CHANNEL_ACCESS_TOKEN.substring(0, 10) + '...' : 'MISSING';
-        console.log(`🔑 [FileStorage] LINE auth token status:`, { hasToken, tokenPrefix });
+        console.log(`[FileStorage] LINE auth token status:`, { hasToken, tokenPrefix });
         headers['Authorization'] = `Bearer ${this.env.LINE_CHANNEL_ACCESS_TOKEN}`;
       }
 
       // 下載檔案
-      console.log(`🌐 [FileStorage] Fetching from LINE API...`);
+      console.log(`[FileStorage] Fetching from LINE API...`);
       const response = await fetch(originalUrl, { headers });
 
-      console.log(`📡 [FileStorage] LINE API response:`, {
+      console.log(`[FileStorage] LINE API response:`, {
         ok: response.ok,
         status: response.status,
         statusText: response.statusText,
@@ -70,7 +70,7 @@ export class FileStorageService {
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => 'Could not read error body');
-        console.error(`❌ [FileStorage] LINE API download failed:`, {
+        console.error(`[FileStorage] LINE API download failed:`, {
           status: response.status,
           statusText: response.statusText,
           errorBody: errorBody.substring(0, 500)
@@ -81,7 +81,7 @@ export class FileStorageService {
 
       const fileBuffer = await response.arrayBuffer();
       const contentLength = fileBuffer.byteLength;
-      console.log(`✅ [FileStorage] Downloaded ${contentLength} bytes from LINE API`);
+      console.log(`[FileStorage] Downloaded ${contentLength} bytes from LINE API`);
       
       // 檢查檔案大小限制（10MB）
       if (contentLength > 10 * 1024 * 1024) {
@@ -93,15 +93,15 @@ export class FileStorageService {
       const fileId = crypto.randomUUID();
       const extension = this.getFileExtension(filename, mimeType);
       const storageKey = `media/${platform}/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${fileId}${extension}`;
-      console.log(`📁 [FileStorage] Generated storage key:`, { fileId, extension, storageKey });
+      console.log(`[FileStorage] Generated storage key:`, { fileId, extension, storageKey });
 
       // 上傳到 R2
       if (!this.env.R2_BUCKET) {
-        console.error(`❌ [FileStorage] R2_BUCKET is not configured!`);
+        console.error(`[FileStorage] R2_BUCKET is not configured!`);
         throw new Error('R2_BUCKET is not configured');
       }
 
-      console.log(`☁️ [FileStorage] Uploading to R2...`);
+      console.log(`[FileStorage] Uploading to R2...`);
       await this.env.R2_BUCKET.put(storageKey, fileBuffer, {
         httpMetadata: {
           contentType: mimeType,
@@ -114,12 +114,12 @@ export class FileStorageService {
           uploadedAt: nowISO()
         }
       });
-      console.log(`✅ [FileStorage] Successfully uploaded to R2: ${storageKey}`);
+      console.log(`[FileStorage] Successfully uploaded to R2: ${storageKey}`);
 
       storageLogger.info('File uploaded to R2', { storageKey, size: contentLength });
 
       const publicUrl = this.generatePublicUrl(storageKey);
-      console.log(`🔗 [FileStorage] Generated public URL: ${publicUrl}`);
+      console.log(`[FileStorage] Generated public URL: ${publicUrl}`);
 
       const mediaFile: MediaFile = {
         id: fileId,
@@ -132,11 +132,11 @@ export class FileStorageService {
         messageId: messageId || ''
       };
 
-      console.log(`✅ [FileStorage] Returning mediaFile:`, mediaFile);
+      console.log(`[FileStorage] Returning mediaFile:`, mediaFile);
       return mediaFile;
     } catch (error) {
       const storageLogger = createContextLogger('FileStorage');
-      console.error(`❌ [FileStorage] Exception during download/store:`, {
+      console.error(`[FileStorage] Exception during download/store:`, {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         originalUrl
@@ -239,7 +239,7 @@ export class FileStorageService {
    */
   generatePublicUrl(storageKey: string, apiHost?: string): string {
     // 使用 API 代理端點
-    // 🔧 FIX: 自動從環境變量獲取正確的後端 URL，不再硬編碼 localhost
+    // FIX: 自動從環境變量獲取正確的後端 URL，不再硬編碼 localhost
     const host = apiHost || getBackendUrl(this.env);
     const proxyUrl = `${host}/api/files/public/${storageKey}`;
     console.log(`[FileStorage] Generated proxy URL: ${proxyUrl}`);
@@ -291,7 +291,7 @@ export async function processLineMediaMessage(
 ): Promise<MediaFile | null> {
   const fileStorage = new FileStorageService(env);
 
-  // 🔧 FIX: Use api-data.line.me instead of api.line.me for content download
+  // FIX: Use api-data.line.me instead of api.line.me for content download
   // According to LINE API documentation, content download should use the data subdomain
   // See: https://developers.line.biz/en/reference/messaging-api/#get-content
   const originalUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;

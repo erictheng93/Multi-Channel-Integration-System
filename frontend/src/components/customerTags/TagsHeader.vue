@@ -3,7 +3,7 @@
     <div class="welcome-content">
       <div class="welcome-greeting">
         <h1 class="welcome-title">
-          客戶標籤管理 🏷️
+          客戶標籤管理 
         </h1>
         <p class="welcome-subtitle">
           統一管理和組織您的客戶標籤，提升客戶分類效率

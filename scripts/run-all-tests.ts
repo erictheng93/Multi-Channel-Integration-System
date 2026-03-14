@@ -182,7 +182,7 @@ class ComprehensiveTestRunner {
   }
 
   async runAllTests(suiteFilter?: string[]): Promise<TestReport> {
-    console.log('🚀 Starting Comprehensive Test Suite');
+    console.log(' Starting Comprehensive Test Suite');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
     this.startTime = performance.now();
@@ -193,7 +193,7 @@ class ComprehensiveTestRunner {
 
       // Filter test suites
       const suitesToRun = this.filterTestSuites(suiteFilter);
-      console.log(`📋 Running ${suitesToRun.length} test suites`);
+      console.log(` Running ${suitesToRun.length} test suites`);
 
       // Run tests
       if (this.config.parallel) {
@@ -213,7 +213,7 @@ class ComprehensiveTestRunner {
       return report;
 
     } catch (error) {
-      console.error('❌ Test runner error:', error);
+      console.error(' Test runner error:', error);
       throw error;
     }
   }
@@ -240,7 +240,7 @@ class ComprehensiveTestRunner {
   }
 
   private async runTestsSequentially(suites: TestSuite[]): Promise<void> {
-    console.log('📝 Running tests sequentially');
+    console.log(' Running tests sequentially');
 
     for (const [index, suite] of suites.entries()) {
       console.log(`\n[${index + 1}/${suites.length}] Running: ${suite.name}`);
@@ -254,32 +254,32 @@ class ComprehensiveTestRunner {
 
       // Check if we should stop on failure
       if (this.config.skipOnFailure && result.status === 'failed') {
-        console.log('⚠️ Stopping execution due to test failure');
+        console.log(' Stopping execution due to test failure');
         break;
       }
 
       // Brief pause between tests
       if (index < suites.length - 1) {
-        console.log('⏳ Pausing 5 seconds before next test...');
+        console.log(' Pausing 5 seconds before next test...');
         await this.sleep(5000);
       }
     }
   }
 
   private async runTestsInParallel(suites: TestSuite[]): Promise<void> {
-    console.log(`🔄 Running tests in parallel (max concurrency: ${this.config.maxConcurrency})`);
+    console.log(` Running tests in parallel (max concurrency: ${this.config.maxConcurrency})`);
 
     // Group suites by category to avoid conflicts
     const suiteGroups = this.groupSuitesByCategory(suites);
 
     for (const [category, categorysuites] of Object.entries(suiteGroups)) {
-      console.log(`\n📂 Running ${category} tests (${categorysuites.length} suites)`);
+      console.log(`\n Running ${category} tests (${categorysuites.length} suites)`);
 
       // Run category suites in batches
       const batches = this.createBatches(categorysuites, this.config.maxConcurrency);
 
       for (const [batchIndex, batch] of batches.entries()) {
-        console.log(`\n🔄 Batch ${batchIndex + 1}/${batches.length} (${batch.length} tests)`);
+        console.log(`\n Batch ${batchIndex + 1}/${batches.length} (${batch.length} tests)`);
 
         const promises = batch.map(suite => this.runSingleTest(suite));
         const results = await Promise.allSettled(promises);
@@ -307,7 +307,7 @@ class ComprehensiveTestRunner {
       }
 
       // Pause between categories
-      console.log('⏳ Pausing 10 seconds before next category...');
+      console.log(' Pausing 10 seconds before next category...');
       await this.sleep(10000);
     }
   }
@@ -450,20 +450,20 @@ class ComprehensiveTestRunner {
   private logTestResult(result: TestResult): void {
     const duration = (result.duration / 1000).toFixed(2);
     const statusEmoji = {
-      passed: '✅',
-      failed: '❌',
-      skipped: '⏭️',
-      timeout: '⏰'
+      passed: '',
+      failed: '',
+      skipped: '',
+      timeout: ''
     }[result.status];
 
     console.log(`${statusEmoji} ${result.suiteName}: ${result.status.toUpperCase()} (${duration}s)`);
 
     if (result.error) {
-      console.log(`   Error: ${result.error}`);
+      console.log(` Error: ${result.error}`);
     }
 
     if (result.metrics) {
-      console.log(`   Metrics: Output saved to ${result.outputFile}`);
+      console.log(` Metrics: Output saved to ${result.outputFile}`);
     }
   }
 
@@ -503,30 +503,30 @@ class ComprehensiveTestRunner {
     const timeoutTests = this.results.filter(r => r.status === 'timeout');
 
     if (failedTests.length > 0) {
-      recommendations.push(`🔧 ${failedTests.length} tests failed - investigate and fix underlying issues`);
-      recommendations.push('🔍 Review error logs and stderr output for specific failure causes');
+      recommendations.push(` ${failedTests.length} tests failed - investigate and fix underlying issues`);
+      recommendations.push(' Review error logs and stderr output for specific failure causes');
     }
 
     if (timeoutTests.length > 0) {
-      recommendations.push(`⏰ ${timeoutTests.length} tests timed out - consider increasing timeout values or optimizing system performance`);
+      recommendations.push(` ${timeoutTests.length} tests timed out - consider increasing timeout values or optimizing system performance`);
     }
 
     const longRunningTests = this.results.filter(r => r.duration > 600000); // > 10 minutes
     if (longRunningTests.length > 0) {
-      recommendations.push('⚡ Some tests took longer than expected - optimize test parameters or system performance');
+      recommendations.push(' Some tests took longer than expected - optimize test parameters or system performance');
     }
 
     if (this.results.length > 0) {
       const averageDuration = this.results.reduce((sum, r) => sum + r.duration, 0) / this.results.length;
       if (averageDuration > 300000) { // > 5 minutes average
-        recommendations.push('📊 Consider running tests in parallel to reduce total execution time');
+        recommendations.push(' Consider running tests in parallel to reduce total execution time');
       }
     }
 
     // General recommendations
-    recommendations.push('📋 Review individual test results for detailed performance insights');
-    recommendations.push('🚀 Use results to establish performance baselines and SLA targets');
-    recommendations.push('🔄 Run tests regularly to monitor performance regression');
+    recommendations.push(' Review individual test results for detailed performance insights');
+    recommendations.push(' Use results to establish performance baselines and SLA targets');
+    recommendations.push(' Run tests regularly to monitor performance regression');
 
     return recommendations;
   }
@@ -534,9 +534,9 @@ class ComprehensiveTestRunner {
   private async prepareOutputDirectory(): Promise<void> {
     try {
       await fs.mkdir(this.outputDirectory, { recursive: true });
-      console.log(`📁 Output directory prepared: ${this.outputDirectory}`);
+      console.log(` Output directory prepared: ${this.outputDirectory}`);
     } catch (error) {
-      console.error('❌ Failed to create output directory:', error);
+      console.error(' Failed to create output directory:', error);
       throw error;
     }
   }
@@ -557,11 +557,11 @@ class ComprehensiveTestRunner {
         recommendations: report.recommendations
       }, null, 2));
 
-      console.log(`📄 Test report saved: ${reportFile}`);
-      console.log(`📋 Test summary saved: ${summaryFile}`);
+      console.log(` Test report saved: ${reportFile}`);
+      console.log(` Test summary saved: ${summaryFile}`);
 
     } catch (error) {
-      console.error('❌ Failed to save test report:', error);
+      console.error(' Failed to save test report:', error);
     }
   }
 
@@ -598,7 +598,7 @@ let suiteFilter: string[] = [];
     try {
       const report = await runner.runAllTests(suiteFilter.length > 0 ? suiteFilter : undefined);
 
-      console.log('\n🎉 Test Execution Complete!');
+      console.log('\n Test Execution Complete!');
       console.log('='.repeat(60));
       console.log(`Total Suites: ${report.summary.totalSuites}`);
       console.log(`Passed: ${report.summary.passedSuites}`);
@@ -607,7 +607,7 @@ let suiteFilter: string[] = [];
       console.log(`Duration: ${(report.summary.totalDuration / 1000 / 60).toFixed(2)} minutes`);
 
       if (report.recommendations.length > 0) {
-        console.log('\n💡 Recommendations:');
+        console.log('\n Recommendations:');
         report.recommendations.forEach(rec => console.log(`- ${rec}`));
       }
 
@@ -618,12 +618,12 @@ let suiteFilter: string[] = [];
       );
 
       if (requiredTestsFailed.length > 0) {
-        console.error(`\n❌ ${requiredTestsFailed.length} required tests failed`);
+        console.error(`\n ${requiredTestsFailed.length} required tests failed`);
         process.exit(1);
       }
 
     } catch (error) {
-      console.error('❌ Test runner failed:', error);
+      console.error(' Test runner failed:', error);
       process.exit(1);
     }
   }

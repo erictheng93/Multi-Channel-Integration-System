@@ -43,90 +43,90 @@ export {
  * 基本會話存取中間件組合
  */
 // export const basicSessionAccess = [
-//   checkSessionAccess,
-//   logSessionOperation
+// checkSessionAccess,
+// logSessionOperation
 // ];
 
 /**
  * 會話檢視中間件組合
  */
 // export const sessionViewAccess = [
-//   checkSessionAccess,
-//   checkSessionViewPermission
+// checkSessionAccess,
+// checkSessionViewPermission
 // ];
 
 /**
  * 會話創建中間件組合
  */
 // export const sessionCreateAccess = [
-//   validateRequestSize,
-//   validateCreateSessionData,
-//   validateRateLimit,
-//   checkSessionAccess,
-//   checkSessionCreatePermission,
-//   logSessionOperation
+// validateRequestSize,
+// validateCreateSessionData,
+// validateRateLimit,
+// checkSessionAccess,
+// checkSessionCreatePermission,
+// logSessionOperation
 // ];
 
 /**
  * 會話更新中間件組合
  */
 // export const sessionUpdateAccess = [
-//   validateRequestSize,
-//   validateSessionId,
-//   validateUpdateSessionData,
-//   validateRateLimit,
-//   checkSessionAccess,
-//   checkSessionUpdatePermission,
-//   logSessionOperation
+// validateRequestSize,
+// validateSessionId,
+// validateUpdateSessionData,
+// validateRateLimit,
+// checkSessionAccess,
+// checkSessionUpdatePermission,
+// logSessionOperation
 // ];
 
 /**
  * 會話刪除中間件組合
  */
 // export const sessionDeleteAccess = [
-//   validateSessionId,
-//   validateRateLimit,
-//   checkSessionAccess,
-//   checkSessionDeletePermission,
-//   logSessionOperation
+// validateSessionId,
+// validateRateLimit,
+// checkSessionAccess,
+// checkSessionDeletePermission,
+// logSessionOperation
 // ];
 
 /**
  * 統計檢視中間件組合
  */
 // export const sessionStatsAccess = [
-//   checkSessionAccess,
-//   checkSessionStatsPermission
+// checkSessionAccess,
+// checkSessionStatsPermission
 // ];
 
 /**
  * 批量操作中間件組合
  */
 // export const sessionBatchAccess = [
-//   validateRequestSize,
-//   validateBatchSessionOperation,
-//   validateRateLimit,
-//   checkSessionAccess,
-//   checkSessionBatchPermission,
-//   logSessionOperation
+// validateRequestSize,
+// validateBatchSessionOperation,
+// validateRateLimit,
+// checkSessionAccess,
+// checkSessionBatchPermission,
+// logSessionOperation
 // ];
 
 /**
  * 會話列表查詢中間件組合
  */
 // export const sessionListAccess = [
-//   validateSessionListQuery,
-//   checkSessionAccess,
-//   checkSessionViewPermission
+// validateSessionListQuery,
+// checkSessionAccess,
+// checkSessionViewPermission
 // ];
 
 /**
  * 會話搜尋中間件組合
  */
 // export const sessionSearchAccess = [
-//   validateSessionSearchQuery,
-//   checkSessionAccess,
-//   checkSessionViewPermission
+// validateSessionSearchQuery,
+// checkSessionAccess,
+// checkSessionViewPermission
 // ];
 
 // ======================== 中間件配置 ========================
@@ -178,11 +178,11 @@ export function createSessionMiddleware(config: Partial<SessionMiddlewareConfig>
   // Note: Permission check middleware disabled in factory function
   // Use checkSessionAccess directly in route handlers for explicit control
   // if (finalConfig.enablePermissionCheck) {
-  //   middleware.push(checkSessionAccess);
+  // middleware.push(checkSessionAccess);
   // }
 
   // if (finalConfig.enableLogging) {
-  //   middleware.push(logSessionOperation);
+  // middleware.push(logSessionOperation);
   // }
 
   return middleware;

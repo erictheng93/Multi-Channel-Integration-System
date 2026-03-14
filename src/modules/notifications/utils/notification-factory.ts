@@ -274,7 +274,7 @@ export class NotificationFactory {
     }
   }
 
-  // 🆕 新客戶加入通知 (LINE follow event)
+  // 新客戶加入通知 (LINE follow event)
   static createCustomerFollowedNotification(
     targetUserIds: number[],  // 接收通知的用戶 ID 列表（管理員或團隊成員）
     customerName: string,
@@ -290,7 +290,7 @@ export class NotificationFactory {
     return targetUserIds.map(userId => ({
       userId,
       type: 'customer_followed',
-      title: '🎉 新客戶加入',
+      title: ' 新客戶加入',
       content,
       data: {
         customerName,
@@ -306,7 +306,7 @@ export class NotificationFactory {
     }));
   }
 
-  // 🆕 新對話創建通知 (未指派的新對話)
+  // 新對話創建通知 (未指派的新對話)
   static createNewConversationNotification(
     targetUserIds: number[],  // 接收通知的用戶 ID 列表（管理員或團隊成員）
     conversationId: number,
@@ -322,7 +322,7 @@ export class NotificationFactory {
     return targetUserIds.map(userId => ({
       userId,
       type: 'new_conversation',
-      title: '💬 新對話',
+      title: ' 新對話',
       content,
       data: {
         conversationId,

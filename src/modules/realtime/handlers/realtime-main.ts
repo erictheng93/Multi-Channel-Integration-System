@@ -181,7 +181,7 @@ export const realtimeManagementHandler = {
 
       return successResponse(c, health, 'Health check completed');
     } catch (error) {
-      console.error('❌ [Realtime Main] 健康檢查失敗:', error);
+      console.error('[Realtime Main] 健康檢查失敗:', error);
       return errorResponse(c, 'Health check failed', 500);
     }
   }

@@ -7,13 +7,13 @@
  * incorrect registration order in Hono framework.
  *
  * Usage:
- *   npm run validate:routes
- *   node scripts/validate-route-order.ts
+ * npm run validate:routes
+ * node scripts/validate-route-order.ts
  *
  * Exit Codes:
- *   0 - All route registrations are correct
- *   1 - Errors found in route registration order
- *   2 - Warnings found (non-critical issues)
+ * 0 - All route registrations are correct
+ * 1 - Errors found in route registration order
+ * 2 - Warnings found (non-critical issues)
  */
 
 import * as fs from 'fs';
@@ -76,8 +76,8 @@ function readIndexFile(): string {
   const indexPath = path.join(process.cwd(), 'src', 'index.ts');
 
   if (!fs.existsSync(indexPath)) {
-    console.error('❌ Error: src/index.ts not found');
-    console.error(`   Expected path: ${indexPath}`);
+    console.error(' Error: src/index.ts not found');
+    console.error(` Expected path: ${indexPath}`);
     process.exit(1);
   }
 
@@ -148,7 +148,7 @@ function validateRouteOrder(content: string): ValidationIssue[] {
     return issues;
   }
 
-  console.log(`ℹ️  Unified Route System found at line ${unifiedSystemLine}\n`);
+  console.log(`  Unified Route System found at line ${unifiedSystemLine}\n`);
 
   const registrations = extractRouteRegistrations(content);
 
@@ -257,74 +257,74 @@ function printIssues(issues: ValidationIssue[]): void {
   const infos = issues.filter(i => i.level === 'info');
 
   console.log('╔═══════════════════════════════════════════════════════════════╗');
-  console.log('║     Route Registration Order Validation Report               ║');
+  console.log('║ Route Registration Order Validation Report ║');
   console.log('╚═══════════════════════════════════════════════════════════════╝\n');
 
   if (errors.length === 0 && warnings.length === 0) {
-    console.log('✅ All route registrations are in correct order!\n');
-    console.log('📊 Summary:');
-    console.log(`   • Errors:   ${errors.length}`);
-    console.log(`   • Warnings: ${warnings.length}`);
-    console.log(`   • Info:     ${infos.length}`);
+    console.log(' All route registrations are in correct order!\n');
+    console.log(' Summary:');
+    console.log(` • Errors: ${errors.length}`);
+    console.log(` • Warnings: ${warnings.length}`);
+    console.log(` • Info: ${infos.length}`);
     return;
   }
 
   // Print errors
   if (errors.length > 0) {
-    console.log('❌ ERRORS:\n');
+    console.log(' ERRORS:\n');
     for (const issue of errors) {
-      console.log(`   Line ${issue.line}: ${issue.route}`);
-      console.log(`   ├─ Issue: ${issue.message}`);
+      console.log(` Line ${issue.line}: ${issue.route}`);
+      console.log(` ├─ Issue: ${issue.message}`);
       if (issue.suggestion) {
-        console.log(`   └─ Fix: ${issue.suggestion}\n`);
+        console.log(` └─ Fix: ${issue.suggestion}\n`);
       }
     }
   }
 
   // Print warnings
   if (warnings.length > 0) {
-    console.log('⚠️  WARNINGS:\n');
+    console.log('  WARNINGS:\n');
     for (const issue of warnings) {
-      console.log(`   Line ${issue.line}: ${issue.route}`);
-      console.log(`   ├─ Issue: ${issue.message}`);
+      console.log(` Line ${issue.line}: ${issue.route}`);
+      console.log(` ├─ Issue: ${issue.message}`);
       if (issue.suggestion) {
-        console.log(`   └─ Suggestion: ${issue.suggestion}\n`);
+        console.log(` └─ Suggestion: ${issue.suggestion}\n`);
       }
     }
   }
 
   // Print info messages
   if (infos.length > 0) {
-    console.log('ℹ️  INFORMATION:\n');
+    console.log('  INFORMATION:\n');
     for (const issue of infos) {
-      console.log(`   Line ${issue.line}: ${issue.message}\n`);
+      console.log(` Line ${issue.line}: ${issue.message}\n`);
     }
   }
 
   // Summary
   console.log('─────────────────────────────────────────────────────────────────');
-  console.log('📊 Summary:');
-  console.log(`   • Errors:   ${errors.length}`);
-  console.log(`   • Warnings: ${warnings.length}`);
-  console.log(`   • Info:     ${infos.length}`);
+  console.log(' Summary:');
+  console.log(` • Errors: ${errors.length}`);
+  console.log(` • Warnings: ${warnings.length}`);
+  console.log(` • Info: ${infos.length}`);
   console.log('─────────────────────────────────────────────────────────────────\n');
 
   if (errors.length > 0) {
-    console.log('❌ Route registration validation FAILED');
-    console.log('   Please fix the errors above before deploying.\n');
-    console.log('📚 For more information, see:');
-    console.log('   • CLAUDE.md: "Route Registration Order (⚠️ Critical)"');
-    console.log('   • docs/architecture/ROUTE_REGISTRATION_ORDER.md\n');
+    console.log(' Route registration validation FAILED');
+    console.log(' Please fix the errors above before deploying.\n');
+    console.log(' For more information, see:');
+    console.log(' • CLAUDE.md: "Route Registration Order ( Critical)"');
+    console.log(' • docs/architecture/ROUTE_REGISTRATION_ORDER.md\n');
   } else {
-    console.log('⚠️  Route registration validation passed with warnings');
-    console.log('   Consider addressing the warnings above.\n');
+    console.log('  Route registration validation passed with warnings');
+    console.log(' Consider addressing the warnings above.\n');
   }
 }
 
 // ==================== Main Execution ====================
 
 function main(): void {
-  console.log('🔍 Validating route registration order...\n');
+  console.log(' Validating route registration order...\n');
 
   try {
     const content = readIndexFile();
@@ -348,7 +348,7 @@ function main(): void {
     }
 
   } catch (error) {
-    console.error('❌ Validation failed with error:');
+    console.error(' Validation failed with error:');
     console.error(error);
     process.exit(1);
   }

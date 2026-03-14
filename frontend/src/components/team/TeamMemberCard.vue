@@ -8,7 +8,7 @@
     }"
     @click="handleCardClick"
   >
-    <!-- 🆕 Selection Checkbox (shown in selection mode) -->
+    <!--  Selection Checkbox (shown in selection mode) -->
     <div
       v-if="isSelectionMode"
       class="selection-checkbox"
@@ -138,10 +138,10 @@ interface Props {
   /** List of all teams for multi-team selection */
   allTeams: Team[]
 
-  /** 🆕 Whether selection mode is active */
+  /**  Whether selection mode is active */
   isSelectionMode?: boolean
 
-  /** 🆕 Whether this member is selected */
+  /**  Whether this member is selected */
   isSelected?: boolean
 }
 
@@ -166,7 +166,7 @@ if (typeof emit !== 'undefined') { /* noop */ }
 const showEditModal = ref(false)
 
 /**
- * 🆕 Handle card click
+ * Handle card click
  * - In selection mode: toggle selection
  * - Normal mode: open edit modal
  */
@@ -183,7 +183,7 @@ const handleCardClick = (event: Event) => {
 }
 
 /**
- * 🆕 Toggle member selection
+ * Toggle member selection
  */
 const toggleSelection = () => {
   if (!isCurrentUser.value) {
@@ -235,11 +235,11 @@ const getRoleText = (role: string) => {
 
 const getRoleIcon = (role: string) => {
   const iconMap = {
-    admin: '👑',
-    team: '👥',
-    agent: '🎧'
+    admin: '',
+    team: '',
+    agent: ''
   }
-  return iconMap[role as keyof typeof iconMap] || '👤'
+  return iconMap[role as keyof typeof iconMap] || ''
 }
 
 const formatDate = (date: string | Date) => {
@@ -289,7 +289,7 @@ const formatDate = (date: string | Date) => {
   @apply transform-none transition-none;
 }
 
-/* 🆕 Selection Mode Styles */
+/* Selection Mode Styles */
 .member-card.selection-mode {
   @apply cursor-pointer;
 }
@@ -303,7 +303,7 @@ const formatDate = (date: string | Date) => {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
-/* 🆕 Selection Checkbox */
+/* Selection Checkbox */
 .selection-checkbox {
   @apply flex-shrink-0 w-10 h-full flex items-center justify-center;
   @apply cursor-pointer;

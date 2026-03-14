@@ -26,7 +26,7 @@ describe('Platform Adapter', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });    });
+  }); });
 
     test('應該能夠創建 LineAdapter 實例', () => {
       expect(lineAdapter).toBeDefined();
@@ -296,7 +296,7 @@ describe('Platform Adapter', () => {
       vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const adapter = new LineAdapter('token', 'secret');
-      const specialText = 'Test 測試 🎉 \n\t\r';
+      const specialText = 'Test 測試  \n\t\r';
 
       const result = await adapter.sendTextMessage('user', specialText);
       expect(result).toBe(true);

@@ -92,7 +92,7 @@ export class EventBroadcaster {
         return await this.doClient.broadcast(wsEvent);
       }
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Message event error:', error);
+      console.error('[EventBroadcaster] Message event error:', error);
       return false;
     }
   }
@@ -138,7 +138,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Typing event error:', error);
+      console.error('[EventBroadcaster] Typing event error:', error);
       return false;
     }
   }
@@ -187,7 +187,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Conversation event error:', error);
+      console.error('[EventBroadcaster] Conversation event error:', error);
       return false;
     }
   }
@@ -487,7 +487,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Delayed message event error:', error);
+      console.error('[EventBroadcaster] Delayed message event error:', error);
       return false;
     }
   }
@@ -538,7 +538,7 @@ export class EventBroadcaster {
       const success = await this.doClient.broadcastToUserConnections(wsEvent, [event.userId]);
 
       if (success) {
-        console.log(`✅ [EventBroadcaster] Notification sent to user ${event.userId}:`, {
+        console.log(`[EventBroadcaster] Notification sent to user ${event.userId}:`, {
           notificationId: event.notification.id,
           type: event.notification.type
         });
@@ -546,7 +546,7 @@ export class EventBroadcaster {
 
       return success;
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Notification event error:', error);
+      console.error('[EventBroadcaster] Notification event error:', error);
       return false;
     }
   }
@@ -596,7 +596,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Presence event error:', error);
+      console.error('[EventBroadcaster] Presence event error:', error);
       return false;
     }
   }
@@ -648,7 +648,7 @@ export class EventBroadcaster {
         }
       };
 
-      console.log('📡 [EventBroadcaster] Team member event:', {
+      console.log('[EventBroadcaster] Team member event:', {
         type: event.type,
         teamId: event.teamId,
         teamName: event.teamName,
@@ -657,7 +657,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Team member event error:', error);
+      console.error('[EventBroadcaster] Team member event error:', error);
       return false;
     }
   }
@@ -709,14 +709,14 @@ export class EventBroadcaster {
         }
       };
 
-      console.log('📡 [EventBroadcaster] Team update event:', {
+      console.log('[EventBroadcaster] Team update event:', {
         teamId: event.teamId,
         changes: event.changes
       });
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Team update event error:', error);
+      console.error('[EventBroadcaster] Team update event error:', error);
       return false;
     }
   }
@@ -760,7 +760,7 @@ export class EventBroadcaster {
         }
       };
 
-      console.log('🏷️ [EventBroadcaster] Customer tag event:', {
+      console.log('[EventBroadcaster] Customer tag event:', {
         customerId: event.customerId,
         operation: event.operation,
         tagCount: event.tagIds.length
@@ -768,7 +768,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('❌ [EventBroadcaster] Customer tag event error:', error);
+      console.error('[EventBroadcaster] Customer tag event error:', error);
       return false;
     }
   }

@@ -40,8 +40,8 @@ The Web Installer allows customers to deploy the Multi-Channel CRM system to the
 Check your versions:
 ```bash
 node --version  # Should be >= 18.0.0
-npm --version   # Should be >= 9.0.0
-git --version   # Should be >= 2.30.0
+npm --version # Should be >= 9.0.0
+git --version # Should be >= 2.30.0
 ```
 
 ### Install Wrangler CLI
@@ -56,9 +56,9 @@ wrangler --version  # Should be >= 3.0.0
 ### Cloudflare Account
 
 You need a Cloudflare account with:
-- ✅ Workers enabled (free tier available)
-- ✅ Pages enabled (free tier available)
-- ✅ Ability to create OAuth applications
+-  Workers enabled (free tier available)
+-  Pages enabled (free tier available)
+-  Ability to create OAuth applications
 
 ---
 
@@ -243,9 +243,9 @@ npm run dev
 Open browser to: http://localhost:3000
 
 You should see the landing page with:
-- ✅ Hero section
-- ✅ Features grid
-- ✅ "Deploy to Cloudflare" button
+-  Hero section
+-  Features grid
+-  "Deploy to Cloudflare" button
 
 ### Step 3: Test OAuth Flow (Local)
 
@@ -321,10 +321,10 @@ deploy-all.bat
 ```
 
 This script will:
-1. ✅ Deploy backend Worker
-2. ✅ Deploy frontend Pages
-3. ✅ Update configuration
-4. ✅ Provide testing instructions
+1.  Deploy backend Worker
+2.  Deploy frontend Pages
+3.  Update configuration
+4.  Provide testing instructions
 
 ### Option 2: Manual Deployment
 
@@ -378,10 +378,10 @@ chmod +x test-deployment.sh
 Enter your production URLs when prompted.
 
 **Expected:**
-- ✅ All 8 tests pass
-- ✅ Backend health check OK
-- ✅ Frontend loads correctly
-- ✅ Integration working
+-  All 8 tests pass
+-  Backend health check OK
+-  Frontend loads correctly
+-  Integration working
 
 ### Step 3: Monitor Health
 
@@ -495,23 +495,23 @@ npm run build
 
 After successful setup:
 
-1. ✅ **Test Complete Flow**:
+1.  **Test Complete Flow**:
    - Start deployment
    - Monitor progress
    - Verify success page
    - Check email notification
 
-2. ✅ **Share with Users**:
+2.  **Share with Users**:
    - Provide installer URL
    - Document requirements
    - Create user guide
 
-3. ✅ **Monitor Usage**:
+3.  **Monitor Usage**:
    - Check Cloudflare Analytics
    - Review Worker logs
    - Monitor email delivery
 
-4. ✅ **Iterate**:
+4.  **Iterate**:
    - Collect user feedback
    - Fix issues
    - Add features
@@ -573,4 +573,4 @@ Use this checklist to track your progress:
 
 ---
 
-🎉 **Congratulations!** You've successfully set up the Web Installer!
+ **Congratulations!** You've successfully set up the Web Installer!

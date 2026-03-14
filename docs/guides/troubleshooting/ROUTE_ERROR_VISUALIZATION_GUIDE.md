@@ -1,9 +1,9 @@
-# 🔍 路由錯誤視覺化查看指南
+#  路由錯誤視覺化查看指南
 ## 快速定位和解決路由問題的完整指南
 
 ---
 
-## 📋 目錄
+##  目錄
 
 - [1. 錯誤檢測的 4 個入口](#1-錯誤檢測的-4-個入口)
 - [2. 開發階段：實時檢測](#2-開發階段實時檢測)
@@ -16,35 +16,35 @@
 
 ## 1. 錯誤檢測的 4 個入口
 
-### 🎯 檢測入口總覽
+###  檢測入口總覽
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ 入口 1: 開發時靜態檢測 (推薦)                       │
-│ 命令: npm run check:routes                          │
-│ 時機: 開發過程中隨時運行                            │
-│ 優點: ✅ 最快速 ✅ 零成本 ✅ 不需運行應用           │
+│ 入口 1: 開發時靜態檢測 (推薦) │
+│ 命令: npm run check:routes │
+│ 時機: 開發過程中隨時運行 │
+│ 優點:  最快速  零成本  不需運行應用 │
 └─────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────┐
-│ 入口 2: 瀏覽器開發者工具 (運行時)                  │
-│ 位置: Chrome DevTools → Network/Console             │
-│ 時機: API 請求返回錯誤時                            │
-│ 優點: ✅ 視覺化 ✅ 即時反饋 ✅ 完整請求細節         │
+│ 入口 2: 瀏覽器開發者工具 (運行時) │
+│ 位置: Chrome DevTools → Network/Console │
+│ 時機: API 請求返回錯誤時 │
+│ 優點:  視覺化  即時反饋  完整請求細節 │
 └─────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────┐
-│ 入口 3: 終端日誌 (本地開發伺服器)                  │
-│ 命令: npm run dev (查看輸出)                        │
-│ 時機: 應用啟動或路由註冊時                          │
-│ 優點: ✅ 顯示註冊順序 ✅ 系統層級視角               │
+│ 入口 3: 終端日誌 (本地開發伺服器) │
+│ 命令: npm run dev (查看輸出) │
+│ 時機: 應用啟動或路由註冊時 │
+│ 優點:  顯示註冊順序  系統層級視角 │
 └─────────────────────────────────────────────────────┘
                          ↓
 ┌─────────────────────────────────────────────────────┐
-│ 入口 4: 生產環境日誌 (Cloudflare Workers)          │
-│ 位置: Cloudflare Dashboard → Workers → Logs         │
-│ 時機: 生產環境錯誤發生時                            │
-│ 優點: ✅ 真實用戶請求 ✅ 完整堆疊追蹤              │
+│ 入口 4: 生產環境日誌 (Cloudflare Workers) │
+│ 位置: Cloudflare Dashboard → Workers → Logs │
+│ 時機: 生產環境錯誤發生時 │
+│ 優點:  真實用戶請求  完整堆疊追蹤 │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -52,18 +52,18 @@
 
 ## 2. 開發階段：實時檢測
 
-### 🚀 方法 1: 命令行檢測（最推薦）
+###  方法 1: 命令行檢測（最推薦）
 
 ```bash
 # 運行路由衝突檢測
 npm run check:routes
 ```
 
-#### 📊 視覺化輸出解讀
+####  視覺化輸出解讀
 
-**✅ 無衝突狀態（理想情況）**:
+** 無衝突狀態（理想情況）**:
 ```
-🔍 Route Conflict Detector
+ Route Conflict Detector
 
 Scanning for route definitions...
 
@@ -71,60 +71,60 @@ Found 97 handler files
 Extracted 439 route definitions
 
 ═════════════════════════════════════════════════════
-📊 CONFLICT DETECTION REPORT
+ CONFLICT DETECTION REPORT
 ═════════════════════════════════════════════════════
 
-✅ No route conflicts detected!
+ No route conflicts detected!
 
 ═════════════════════════════════════════════════════
 ```
 
-**⚠️ 有衝突狀態（需要修復）**:
+** 有衝突狀態（需要修復）**:
 ```
-🔍 Route Conflict Detector
+ Route Conflict Detector
 
 Found 97 handler files
 Extracted 439 route definitions
 
 ═════════════════════════════════════════════════════
-📊 CONFLICT DETECTION REPORT
+ CONFLICT DETECTION REPORT
 ═════════════════════════════════════════════════════
 
-⚠️  Found 2 potential conflicts:
+  Found 2 potential conflicts:
 
-🔴 HIGH SEVERITY (Duplicate routes):
+ HIGH SEVERITY (Duplicate routes):
 ─────────────────────────────────────────────────────
-  ❌ GET /members
-     📍 src/modules/teams/handlers/team.ts:310
-     📍 src/modules/teams/handlers/members.ts:27
-     💡 Remove duplicate definition
+   GET /members
+      src/modules/teams/handlers/team.ts:310
+      src/modules/teams/handlers/members.ts:27
+      Remove duplicate definition
 
-🟡 MEDIUM SEVERITY (Parameterized route conflicts):
+ MEDIUM SEVERITY (Parameterized route conflicts):
 ─────────────────────────────────────────────────────
-  ⚠️  "/:id/members" may intercept "/members"
+    "/:id/members" may intercept "/members"
      Priority scores: 11 vs 10
-     📍 src/modules/teams/handlers/team.ts:367
-     📍 src/modules/teams/handlers/members.ts:27
-     💡 Suggestion: Register "/members" before "/:id/members"
+      src/modules/teams/handlers/team.ts:367
+      src/modules/teams/handlers/members.ts:27
+      Suggestion: Register "/members" before "/:id/members"
 
 ═════════════════════════════════════════════════════
 ```
 
-#### 🎨 顏色和符號說明
+####  顏色和符號說明
 
 | 符號 | 嚴重度 | 含義 | 需要處理 |
 |------|--------|------|----------|
-| ❌ 🔴 | HIGH | 完全重複的路由定義 | ⚡ 立即修復 |
-| ⚠️ 🟡 | MEDIUM | 參數化路由可能攔截具體路由 | 📅 本週修復 |
-| ℹ️ 🟢 | LOW | 潛在問題，可能是誤報 | 👀 檢查評估 |
+|   | HIGH | 完全重複的路由定義 |  立即修復 |
+|   | MEDIUM | 參數化路由可能攔截具體路由 |  本週修復 |
+|   | LOW | 潛在問題，可能是誤報 |  檢查評估 |
 
-#### 📍 定位代碼位置
+####  定位代碼位置
 
 檢測報告中的路徑格式：
 ```
-📍 src/modules/teams/handlers/members.ts:27
-   │                                      │
-   └─ 文件路徑                            └─ 行號
+ src/modules/teams/handlers/members.ts:27
+   │ │
+   └─ 文件路徑 └─ 行號
 ```
 
 **快速跳轉到問題代碼**（VS Code）:
@@ -134,7 +134,7 @@ Extracted 439 route definitions
 
 ---
 
-### 🔍 方法 2: 監控模式（開發時持續監測）
+###  方法 2: 監控模式（開發時持續監測）
 
 ```bash
 # 啟動文件監控模式
@@ -145,53 +145,53 @@ npm run check:routes:watch
 ```
 [1] Watching src/modules/**/*.ts and src/handlers/**/*.ts
 [2]
-[3] 🔍 Initial scan complete - No conflicts
+[3]  Initial scan complete - No conflicts
 [4]
-[5] ⏱️  Waiting for changes...
+[5] Waiting for changes...
 [6]
 [7] ── File changed: src/modules/teams/handlers/members.ts ──
 [8]
-[9] 🔄 Re-scanning...
+[9]  Re-scanning...
 [10]
-[11] ⚠️  NEW CONFLICT DETECTED!
+[11] NEW CONFLICT DETECTED!
 [12]
-[13] 🟡 MEDIUM: "/:id/members" may intercept "/members"
-[14]     📍 src/modules/teams/handlers/team.ts:367
-[15]     📍 src/modules/teams/handlers/members.ts:27
+[13]  MEDIUM: "/:id/members" may intercept "/members"
+[14] src/modules/teams/handlers/team.ts:367
+[15] src/modules/teams/handlers/members.ts:27
 ```
 
 **使用場景**:
-- 📝 重構路由結構時
-- 🔨 新增多個路由時
-- 🧪 實驗不同路由設計時
+-  重構路由結構時
+-  新增多個路由時
+-  實驗不同路由設計時
 
 ---
 
 ## 3. 運行時錯誤：瀏覽器查看
 
-### 🌐 Chrome DevTools - Network 標籤
+###  Chrome DevTools - Network 標籤
 
 #### 視覺化錯誤識別
 
 **正常請求 (200 OK)**:
 ```
 ┌────────────────────────────────────────────────┐
-│ Name: members                                  │
-│ Status: 200 ✅                                 │
-│ Type: xhr                                      │
-│ Size: 2.5 KB                                   │
-│ Time: 142 ms                                   │
+│ Name: members │
+│ Status: 200 │
+│ Type: xhr │
+│ Size: 2.5 KB │
+│ Time: 142 ms │
 └────────────────────────────────────────────────┘
 ```
 
 **路由衝突錯誤 (400 Bad Request)**:
 ```
 ┌────────────────────────────────────────────────┐
-│ Name: members                                  │
-│ Status: 400 ❌                                 │  ← 紅色標記
-│ Type: xhr                                      │
-│ Size: 156 B                                    │
-│ Time: 45 ms                                    │
+│ Name: members │
+│ Status: 400 │  ← 紅色標記
+│ Type: xhr │
+│ Size: 156 B │
+│ Time: 45 ms │
 └────────────────────────────────────────────────┘
 
 Response Preview:
@@ -206,81 +206,81 @@ https://localhost:8787/api/teams/members
                               被當作 :id 參數解析
 ```
 
-#### 🔍 快速診斷步驟
+####  快速診斷步驟
 
 ```
 步驟 1: 打開 Chrome DevTools
 ┌─────────────────────────────────────┐
-│ 快捷鍵: F12 或 Ctrl+Shift+I        │
+│ 快捷鍵: F12 或 Ctrl+Shift+I │
 └─────────────────────────────────────┘
 
 步驟 2: 切換到 Network 標籤
 ┌─────────────────────────────────────┐
-│ 點擊: Network                       │
-│ 勾選: Preserve log (保留日誌)      │
+│ 點擊: Network │
+│ 勾選: Preserve log (保留日誌) │
 └─────────────────────────────────────┘
 
 步驟 3: 重現錯誤
 ┌─────────────────────────────────────┐
-│ 刷新頁面或觸發 API 請求             │
+│ 刷新頁面或觸發 API 請求 │
 └─────────────────────────────────────┘
 
 步驟 4: 篩選錯誤請求
 ┌─────────────────────────────────────┐
-│ 過濾器輸入: status-code:400        │
-│ 或點擊 "4xx" 按鈕                   │
+│ 過濾器輸入: status-code:400 │
+│ 或點擊 "4xx" 按鈕 │
 └─────────────────────────────────────┘
 
 步驟 5: 查看詳細信息
 ┌─────────────────────────────────────┐
-│ 點擊錯誤請求 → Preview 標籤        │
-│ 查看錯誤消息                        │
+│ 點擊錯誤請求 → Preview 標籤 │
+│ 查看錯誤消息 │
 └─────────────────────────────────────┘
 ```
 
-#### 📸 視覺化截圖指南
+####  視覺化截圖指南
 
 **如何截圖路由錯誤**:
 
 ```
 ┌──────────────────────────────────────────────────┐
-│ Chrome DevTools - Network Tab                   │
+│ Chrome DevTools - Network Tab │
 ├──────────────────────────────────────────────────┤
-│ Filter: [status-code:400        ] 🔍            │
+│ Filter: [status-code:400 ]             │
 ├──────────────────────────────────────────────────┤
-│ Name        Status  Type   Size    Time          │
-│ ----------------------------------------          │
-│ members     400❌   xhr    156B    45ms   ← 點擊 │
+│ Name Status  Type Size Time │
+│ ---------------------------------------- │
+│ members 400 xhr 156B 45ms ← 點擊 │
 ├──────────────────────────────────────────────────┤
-│ Headers | Preview | Response | Timing            │
+│ Headers | Preview | Response | Timing │
 ├──────────────────────────────────────────────────┤
-│ Preview:                                          │
-│                                                   │
-│ {                                                 │
-│   "success": false,                               │
-│   "error": "Invalid team ID"  ← 關鍵錯誤訊息     │
-│ }                                                 │
-│                                                   │
-│ Request URL:                                      │
-│ http://localhost:8787/api/teams/members           │
-│                               ^^^^^^^ ← 問題路徑  │
+│ Preview: │
+│ │
+│ { │
+│ "success": false, │
+│ "error": "Invalid team ID"  ← 關鍵錯誤訊息 │
+│ } │
+│ │
+│ Request URL: │
+│ http://localhost:8787/api/teams/members │
+│ ^^^^^^^ ← 問題路徑  │
 └──────────────────────────────────────────────────┘
 ```
 
 **截圖時必須包含的信息**:
-- ✅ Request URL（請求網址）
-- ✅ Status Code（狀態碼：400/404）
-- ✅ Response Body（回應內容）
-- ✅ Request Headers（可選，用於複雜問題）
+-  Request URL（請求網址）
+-  Status Code（狀態碼：400/404）
+-  Response Body（回應內容）
+-  Request Headers（可選，用於複雜問題）
 
 ---
 
-### 🖥️ Console 標籤 - 錯誤日誌
+###  Console 標籤 - 錯誤日誌
 
 ```javascript
 // 典型的路由衝突錯誤日誌
 
-❌ GET http://localhost:8787/api/teams/members 400 (Bad Request)
+ GET http://localhost:8787/api/teams/members 400 (Bad Request)
 
 Error: Failed to load resource
   at fetch (async)
@@ -307,9 +307,9 @@ Response:
 
 ## 4. 生產環境：日誌監控
 
-### ☁️ Cloudflare Workers 日誌
+###  Cloudflare Workers 日誌
 
-#### 📍 查看位置
+####  查看位置
 
 ```
 登入 Cloudflare Dashboard
@@ -325,54 +325,54 @@ Workers & Pages
 實時日誌串流
 ```
 
-#### 🔍 視覺化日誌篩選
+####  視覺化日誌篩選
 
 **Cloudflare Logs 界面**:
 ```
 ┌─────────────────────────────────────────────────────┐
-│ Cloudflare Workers - Real-time Logs                │
+│ Cloudflare Workers - Real-time Logs │
 ├─────────────────────────────────────────────────────┤
-│ 🔍 Filter: [400        ] 🔽 Level: All             │
+│  Filter: [400 ]  Level: All │
 ├─────────────────────────────────────────────────────┤
-│ Timestamp           Status  Method  Path            │
+│ Timestamp Status  Method  Path │
 │ ─────────────────────────────────────────────────── │
-│ 2025-01-20 14:23:45  200    GET     /api/health    │
-│ 2025-01-20 14:24:01  400❌  GET     /api/teams/... │
-│ 2025-01-20 14:24:02  200    POST    /api/auth/...  │
+│ 2025-01-20 14:23:45  200 GET /api/health │
+│ 2025-01-20 14:24:01  400  GET /api/teams/... │
+│ 2025-01-20 14:24:02  200 POST /api/auth/...  │
 └─────────────────────────────────────────────────────┘
 ```
 
 **點擊錯誤日誌查看詳情**:
 ```
 ┌─────────────────────────────────────────────────────┐
-│ Log Entry Details                                   │
+│ Log Entry Details │
 ├─────────────────────────────────────────────────────┤
-│ Timestamp: 2025-01-20 14:24:01.234 UTC             │
-│ Status: 400 Bad Request                             │
-│ Method: GET                                         │
-│ URL: /api/teams/members                             │
-│                                                     │
-│ Request Headers:                                    │
-│   Authorization: Bearer eyJ...                      │
-│   User-Agent: Mozilla/5.0...                        │
-│                                                     │
-│ Response:                                           │
-│   {                                                 │
-│     "success": false,                               │
-│     "error": "Invalid team ID"                      │
-│   }                                                 │
-│                                                     │
-│ Console Output:                                     │
-│   [ERROR] Route intercepted: members → /:id         │
-│   [INFO] Parsed teamId: NaN                         │
-│                                                     │
-│ Stack Trace:                                        │
-│   at requireTeamAccess (auth.ts:252)                │
-│   at handler (team.ts:367)                          │
+│ Timestamp: 2025-01-20 14:24:01.234 UTC │
+│ Status: 400 Bad Request │
+│ Method: GET │
+│ URL: /api/teams/members │
+│ │
+│ Request Headers: │
+│ Authorization: Bearer eyJ... │
+│ User-Agent: Mozilla/5.0... │
+│ │
+│ Response: │
+│ {                                                 │
+│ "success": false, │
+│ "error": "Invalid team ID" │
+│ }                                                 │
+│ │
+│ Console Output: │
+│ [ERROR] Route intercepted: members → /:id │
+│ [INFO] Parsed teamId: NaN │
+│ │
+│ Stack Trace: │
+│ at requireTeamAccess (auth.ts:252) │
+│ at handler (team.ts:367) │
 └─────────────────────────────────────────────────────┘
 ```
 
-#### 🎯 日誌搜索技巧
+####  日誌搜索技巧
 
 **常用篩選器**:
 ```bash
@@ -396,7 +396,7 @@ timestamp:[2025-01-20T14:00:00 TO 2025-01-20T15:00:00]
 
 ## 5. 錯誤解讀指南
 
-### 🎓 常見路由衝突模式
+###  常見路由衝突模式
 
 #### 模式 1: 參數攔截具體路由
 
@@ -404,50 +404,50 @@ timestamp:[2025-01-20T14:00:00 TO 2025-01-20T15:00:00]
 ```
 請求: GET /api/teams/members
 
-❌ 錯誤流程:
+ 錯誤流程:
 ┌─────────────────────────────────────┐
-│ 1. Hono 路由匹配引擎啟動            │
+│ 1. Hono 路由匹配引擎啟動 │
 └─────────────────────────────────────┘
             ↓
 ┌─────────────────────────────────────┐
-│ 2. 檢查第一個註冊的路由             │
-│    路由: /:id/members               │
-│    匹配: teams/members → :id=teams  │
-│    結果: ✅ 匹配成功                │
+│ 2. 檢查第一個註冊的路由 │
+│ 路由: /:id/members │
+│ 匹配: teams/members → :id=teams  │
+│ 結果:  匹配成功 │
 └─────────────────────────────────────┘
             ↓
 ┌─────────────────────────────────────┐
-│ 3. 執行中間件                       │
-│    requireTeamAccess('id')          │
-│    parseInt("teams") → NaN          │
-│    回傳: 400 "Invalid team ID"      │
+│ 3. 執行中間件 │
+│ requireTeamAccess('id') │
+│ parseInt("teams") → NaN │
+│ 回傳: 400 "Invalid team ID" │
 └─────────────────────────────────────┘
             ↓
 ┌─────────────────────────────────────┐
-│ 4. 請求結束，錯誤返回               │
-│    /members 路由永遠不會被觸發      │
+│ 4. 請求結束，錯誤返回 │
+│ /members 路由永遠不會被觸發 │
 └─────────────────────────────────────┘
 ```
 
 **檢測報告中的表現**:
 ```
-🟡 MEDIUM SEVERITY:
-  ⚠️  "/:id/members" may intercept "/members"
+ MEDIUM SEVERITY:
+    "/:id/members" may intercept "/members"
      Priority scores: 11 vs 10
-     📍 src/modules/teams/handlers/team.ts:367
-     📍 src/modules/teams/handlers/members.ts:27
-     💡 Register "/members" before "/:id/members"
+      src/modules/teams/handlers/team.ts:367
+      src/modules/teams/handlers/members.ts:27
+      Register "/members" before "/:id/members"
 ```
 
 **修復方法**:
 ```typescript
-// ❌ 錯誤順序
-app.route('/', teamHandlers);        // 包含 /:id/members
+// 錯誤順序
+app.route('/', teamHandlers); // 包含 /:id/members
 app.route('/members', membersHandler); // 被攔截
 
-// ✅ 正確順序
+// 正確順序
 app.route('/members', membersHandler); // 先註冊
-app.route('/', teamHandlers);          // 後註冊
+app.route('/', teamHandlers); // 後註冊
 ```
 
 #### 模式 2: 完全重複路由
@@ -458,16 +458,16 @@ app.route('/', teamHandlers);          // 後註冊
 
 第一次註冊:
 ┌────────────────────────────────────┐
-│ GET /members                       │
-│ 位置: team.ts:310                  │
-│ 狀態: ✅ 註冊成功                  │
+│ GET /members │
+│ 位置: team.ts:310 │
+│ 狀態:  註冊成功 │
 └────────────────────────────────────┘
 
 第二次註冊:
 ┌────────────────────────────────────┐
-│ GET /members                       │
-│ 位置: members.ts:27                │
-│ 狀態: ⚠️ 被忽略（後者不生效）     │
+│ GET /members │
+│ 位置: members.ts:27 │
+│ 狀態:  被忽略（後者不生效） │
 └────────────────────────────────────┘
 
 結果:
@@ -478,11 +478,11 @@ app.route('/', teamHandlers);          // 後註冊
 
 **檢測報告中的表現**:
 ```
-🔴 HIGH SEVERITY (Duplicate routes):
-  ❌ GET /members
-     📍 src/modules/teams/handlers/team.ts:310
-     📍 src/modules/teams/handlers/members.ts:27
-     💡 Remove duplicate definition
+ HIGH SEVERITY (Duplicate routes):
+   GET /members
+      src/modules/teams/handlers/team.ts:310
+      src/modules/teams/handlers/members.ts:27
+      Remove duplicate definition
 ```
 
 **修復方法**:
@@ -501,92 +501,92 @@ app.route('/', teamHandlers);          // 後註冊
 
 **視覺化示意圖**:
 ```
-❌ 錯誤流程:
+ 錯誤流程:
 
 註冊順序:
-1. app.route('/*', catchAllHandler)     ← 攔截所有請求
+1. app.route('/*', catchAllHandler) ← 攔截所有請求
 2. app.route('/members', membersHandler) ← 永遠無法觸及
-3. app.route('/health', healthHandler)   ← 永遠無法觸及
+3. app.route('/health', healthHandler) ← 永遠無法觸及
 
 所有請求都被 /* 處理:
 ┌──────────────────────────────────────┐
-│ GET /members  → /* (catchAll)        │
-│ GET /health   → /* (catchAll)        │
-│ GET /anything → /* (catchAll)        │
+│ GET /members  → /* (catchAll) │
+│ GET /health → /* (catchAll) │
+│ GET /anything → /* (catchAll) │
 └──────────────────────────────────────┘
 ```
 
 **修復方法**:
 ```typescript
-// ✅ 正確順序：通配符最後註冊
+// 正確順序：通配符最後註冊
 app.route('/health', healthHandler);
 app.route('/members', membersHandler);
-app.route('/*', catchAllHandler);      // 最後
+app.route('/*', catchAllHandler); // 最後
 ```
 
 ---
 
 ## 6. 快速修復流程
 
-### ⚡ 3 分鐘快速修復指南
+###  3 分鐘快速修復指南
 
 ```
 ┌────────────────────────────────────────────────┐
-│ 步驟 1: 識別錯誤 (30 秒)                      │
+│ 步驟 1: 識別錯誤 (30 秒) │
 ├────────────────────────────────────────────────┤
-│ 運行: npm run check:routes                    │
-│ 或查看瀏覽器 Network 標籤 400 錯誤            │
+│ 運行: npm run check:routes │
+│ 或查看瀏覽器 Network 標籤 400 錯誤 │
 └────────────────────────────────────────────────┘
                     ↓
 ┌────────────────────────────────────────────────┐
-│ 步驟 2: 定位代碼 (30 秒)                      │
+│ 步驟 2: 定位代碼 (30 秒) │
 ├────────────────────────────────────────────────┤
-│ 根據檢測報告的文件路徑和行號                  │
-│ 跳轉到問題代碼位置                            │
-│ VS Code: Ctrl+P → 輸入文件名:行號             │
+│ 根據檢測報告的文件路徑和行號 │
+│ 跳轉到問題代碼位置 │
+│ VS Code: Ctrl+P → 輸入文件名:行號 │
 └────────────────────────────────────────────────┘
                     ↓
 ┌────────────────────────────────────────────────┐
-│ 步驟 3: 應用修復 (1 分鐘)                     │
+│ 步驟 3: 應用修復 (1 分鐘) │
 ├────────────────────────────────────────────────┤
-│ 方法 A: 調整路由註冊順序                      │
-│   • 具體路由移到前面                          │
-│   • 參數化路由移到後面                        │
-│                                                │
-│ 方法 B: 移除重複定義                          │
-│   • 刪除其中一個路由定義                      │
-│   • 或合併到同一個處理器                      │
+│ 方法 A: 調整路由註冊順序 │
+│ • 具體路由移到前面 │
+│ • 參數化路由移到後面 │
+│ │
+│ 方法 B: 移除重複定義 │
+│ • 刪除其中一個路由定義 │
+│ • 或合併到同一個處理器 │
 └────────────────────────────────────────────────┘
                     ↓
 ┌────────────────────────────────────────────────┐
-│ 步驟 4: 驗證修復 (1 分鐘)                     │
+│ 步驟 4: 驗證修復 (1 分鐘) │
 ├────────────────────────────────────────────────┤
-│ 1. 再次運行: npm run check:routes             │
-│ 2. 啟動開發伺服器測試                         │
-│ 3. 瀏覽器中測試實際請求                       │
+│ 1. 再次運行: npm run check:routes │
+│ 2. 啟動開發伺服器測試 │
+│ 3. 瀏覽器中測試實際請求 │
 └────────────────────────────────────────────────┘
 ```
 
-### 🔧 修復模板庫
+###  修復模板庫
 
 #### 模板 1: 調整註冊順序
 
 ```typescript
 // BEFORE (有問題)
 const app = new Hono();
-app.route('/', genericHandlers);    // 包含參數化路由
+app.route('/', genericHandlers); // 包含參數化路由
 app.route('/specific', specificHandler); // 被攔截
 
 // AFTER (已修復)
 const app = new Hono();
-// 1️⃣ 靜態路由先註冊
+// 1️ 靜態路由先註冊
 app.get('/health', healthHandler);
 
-// 2️⃣ 具體路由接著註冊
+// 2️ 具體路由接著註冊
 app.route('/specific', specificHandler);
 app.route('/another', anotherHandler);
 
-// 3️⃣ 參數化路由最後註冊
+// 3️ 參數化路由最後註冊
 app.route('/', genericHandlers);
 ```
 
@@ -626,7 +626,7 @@ registry.register();
 
 ---
 
-## 📊 附錄：錯誤速查表
+##  附錄：錯誤速查表
 
 ### 快速診斷矩陣
 
@@ -665,7 +665,7 @@ npm run precheck:all
 
 ---
 
-## ✅ 總結：視覺化查看路由錯誤的最佳實踐
+##  總結：視覺化查看路由錯誤的最佳實踐
 
 ### 開發流程中的檢查點
 
@@ -673,29 +673,29 @@ npm run precheck:all
 編寫代碼
    ↓
 ┌─────────────────────────────────┐
-│ ✓ 運行檢測工具                  │
-│   npm run check:routes          │
+│  運行檢測工具 │
+│ npm run check:routes │
 └─────────────────────────────────┘
    ↓
 提交代碼
    ↓
 ┌─────────────────────────────────┐
-│ ✓ Pre-commit Hook 自動檢測     │
-│   (如已配置)                    │
+│  Pre-commit Hook 自動檢測 │
+│ (如已配置) │
 └─────────────────────────────────┘
    ↓
 本地測試
    ↓
 ┌─────────────────────────────────┐
-│ ✓ 瀏覽器 DevTools 檢查          │
-│   查看 Network 和 Console       │
+│  瀏覽器 DevTools 檢查 │
+│ 查看 Network 和 Console │
 └─────────────────────────────────┘
    ↓
 部署到生產
    ↓
 ┌─────────────────────────────────┐
-│ ✓ Cloudflare Logs 監控          │
-│   查看實時日誌                  │
+│  Cloudflare Logs 監控 │
+│ 查看實時日誌 │
 └─────────────────────────────────┘
 ```
 
@@ -703,14 +703,14 @@ npm run precheck:all
 
 | 階段 | 工具 | 使用頻率 | 優先級 |
 |------|------|---------|--------|
-| 開發 | `npm run check:routes` | 每次修改後 | ⭐⭐⭐⭐⭐ |
-| 開發 | Chrome DevTools | 遇到錯誤時 | ⭐⭐⭐⭐ |
-| 測試 | 本地終端日誌 | 啟動時檢查 | ⭐⭐⭐ |
-| 生產 | Cloudflare Logs | 錯誤發生時 | ⭐⭐⭐⭐ |
+| 開發 | `npm run check:routes` | 每次修改後 |  |
+| 開發 | Chrome DevTools | 遇到錯誤時 |  |
+| 測試 | 本地終端日誌 | 啟動時檢查 |  |
+| 生產 | Cloudflare Logs | 錯誤發生時 |  |
 
 ---
 
-**文件狀態**: ✅ 已完成
+**文件狀態**:  已完成
 **最後更新**: 2025-01-20
 **維護者**: Development Team
 **版本**: 1.0.0

@@ -64,7 +64,7 @@ export class MessageSchedulerService {
       const recallInfo = this.createRecallInfo(request, timeCalculation.recallDeadline);
       await this.storageService.markAsRecallable(messageEntity.id, recallInfo);
 
-      console.log(`⏰ [MessageSchedulerService] Message scheduled: ${messageEntity.id} for ${timeCalculation.scheduledSendTime}`);
+      console.log(`[MessageSchedulerService] Message scheduled: ${messageEntity.id} for ${timeCalculation.scheduledSendTime}`);
 
       return {
         success: true,
@@ -74,7 +74,7 @@ export class MessageSchedulerService {
       };
 
     } catch (error) {
-      console.error('❌ [MessageSchedulerService] Failed to schedule message:', error);
+      console.error('[MessageSchedulerService] Failed to schedule message:', error);
 
       if (error instanceof SchedulingError) {
         return {
@@ -121,14 +121,14 @@ export class MessageSchedulerService {
       // 異步更新資料庫狀態
       this.updateMessageStatusAsync(messageId, 'cancelled', userId, new Date());
 
-      console.log(`❌ [MessageSchedulerService] Message cancelled: ${messageId}`);
+      console.log(`[MessageSchedulerService] Message cancelled: ${messageId}`);
 
       return {
         success: true
       };
 
     } catch (error) {
-      console.error('❌ [MessageSchedulerService] Failed to cancel message:', error);
+      console.error('[MessageSchedulerService] Failed to cancel message:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown cancellation error'
@@ -207,7 +207,7 @@ export class MessageSchedulerService {
 
       // Rescheduled message will be picked up by DelayedMessageBuffer DO alarm
 
-      console.log(`🔄 [MessageSchedulerService] Message rescheduled: ${messageId} for ${timeCalculation.scheduledSendTime}`);
+      console.log(`[MessageSchedulerService] Message rescheduled: ${messageId} for ${timeCalculation.scheduledSendTime}`);
 
       return {
         success: true,
@@ -215,7 +215,7 @@ export class MessageSchedulerService {
       };
 
     } catch (error) {
-      console.error('❌ [MessageSchedulerService] Failed to reschedule message:', error);
+      console.error('[MessageSchedulerService] Failed to reschedule message:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown rescheduling error'
@@ -232,14 +232,14 @@ export class MessageSchedulerService {
     averageDelaySeconds: number;
   }> {
     try {
-      // ✅ 從 StorageService 獲取真實統計數據
+      // 從 StorageService 獲取真實統計數據
       const stats = await this.storageService.getSchedulingStats();
 
-      console.log('📊 [MessageSchedulerService] Scheduling stats retrieved:', stats);
+      console.log('[MessageSchedulerService] Scheduling stats retrieved:', stats);
 
       return stats;
     } catch (error) {
-      console.error('❌ [MessageSchedulerService] Failed to get scheduling stats:', error);
+      console.error('[MessageSchedulerService] Failed to get scheduling stats:', error);
       // 發生錯誤時返回默認值
       return {
         pendingCount: 0,
@@ -271,7 +271,7 @@ export class MessageSchedulerService {
         conflicts: []
       };
     } catch (error) {
-      console.error('❌ [MessageSchedulerService] Failed to check scheduling conflicts:', error);
+      console.error('[MessageSchedulerService] Failed to check scheduling conflicts:', error);
       return {
         hasConflicts: false,
         conflicts: []
@@ -320,7 +320,7 @@ export class MessageSchedulerService {
     try {
       return await this.storageService.healthCheck();
     } catch (error) {
-      console.error('❌ [MessageSchedulerService] Health check failed:', error);
+      console.error('[MessageSchedulerService] Health check failed:', error);
       return false;
     }
   }
@@ -406,7 +406,7 @@ export class MessageSchedulerService {
         await this.storageService.updateMessageStatus(messageId, status, timestamp);
         await this.storageService.logOperation(messageId, userId, status, timestamp);
       } catch (error) {
-        console.error('❌ [MessageSchedulerService] Failed to update message status async:', error);
+        console.error('[MessageSchedulerService] Failed to update message status async:', error);
       }
     }, 0);
   }

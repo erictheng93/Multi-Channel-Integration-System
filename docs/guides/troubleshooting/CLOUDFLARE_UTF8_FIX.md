@@ -6,7 +6,7 @@ Cloudflare Pages 部署時遇到 UTF-8 commit message 解析錯誤,雖然文件�
 
 ### 根本原因
 
-Git commit message 中包含 UTF-8 特殊字符(如箭頭 `→`、表情符號 `✅` `🤖` 等),Cloudflare Pages 的構建環境對這些字符的處理有限制。
+Git commit message 中包含 UTF-8 特殊字符(如箭頭 `→`、表情符號 `` `` 等),Cloudflare Pages 的構建環境對這些字符的處理有限制。
 
 ### 問題 Commit 示例
 
@@ -21,7 +21,7 @@ a8c43cd | fix: resolve route ordering conflicts in Conversations module (6 confl
 
 ## 快速解決方案 (推薦)
 
-### 方式 A: 使用自動化腳本 ⭐⭐⭐⭐⭐
+### 方式 A: 使用自動化腳本 
 
 我們提供了兩個自動化修復腳本:
 
@@ -32,9 +32,9 @@ a8c43cd | fix: resolve route ordering conflicts in Conversations module (6 confl
 .\scripts\fix-cloudflare-utf8-issue.ps1
 
 # 或直接執行特定方案
-.\scripts\fix-cloudflare-utf8-issue.ps1 -Action quick   # 快速修復
-.\scripts\fix-cloudflare-utf8-issue.ps1 -Action hooks   # 配置 hooks
-.\scripts\fix-cloudflare-utf8-issue.ps1 -Action all     # 全部執行
+.\scripts\fix-cloudflare-utf8-issue.ps1 -Action quick # 快速修復
+.\scripts\fix-cloudflare-utf8-issue.ps1 -Action hooks # 配置 hooks
+.\scripts\fix-cloudflare-utf8-issue.ps1 -Action all # 全部執行
 ```
 
 #### Linux/Mac/Git Bash
@@ -44,9 +44,9 @@ a8c43cd | fix: resolve route ordering conflicts in Conversations module (6 confl
 bash scripts/fix-cloudflare-utf8-issue.sh
 
 # 或直接執行特定方案
-bash scripts/fix-cloudflare-utf8-issue.sh quick   # 快速修復
-bash scripts/fix-cloudflare-utf8-issue.sh hooks   # 配置 hooks
-bash scripts/fix-cloudflare-utf8-issue.sh all     # 全部執行
+bash scripts/fix-cloudflare-utf8-issue.sh quick # 快速修復
+bash scripts/fix-cloudflare-utf8-issue.sh hooks # 配置 hooks
+bash scripts/fix-cloudflare-utf8-issue.sh all # 全部執行
 ```
 
 ### 方式 B: 手動快速修復 (1 分鐘)
@@ -82,12 +82,12 @@ git push origin main
 
 if grep -P '[^\x00-\x7F]' "$1" 2>/dev/null; then
     echo ""
-    echo "❌ Error: Commit message contains non-ASCII characters"
+    echo " Error: Commit message contains non-ASCII characters"
     echo ""
     echo "Please use ASCII-only characters. Common replacements:"
-    echo "  • → (arrow)      -> use '->' or 'to'"
-    echo "  • ✅ (checkmark) -> use '[x]' or 'done'"
-    echo "  • 🤖 (emoji)     -> remove or use text description"
+    echo "  • → (arrow) -> use '->' or 'to'"
+    echo "  •  (checkmark) -> use '[x]' or 'done'"
+    echo "  •  (emoji) -> remove or use text description"
     echo ""
     exit 1
 fi
@@ -109,7 +109,7 @@ chmod +x .git/hooks/commit-msg
 
 ### Interactive Rebase 修改歷史
 
-⚠️ **警告:** 此操作會改變 Git 歷史,如有協作者需協調!
+ **警告:** 此操作會改變 Git 歷史,如有協作者需協調!
 
 ```bash
 # 步驟 1: 找出問題 commit 位置
@@ -124,8 +124,8 @@ git rebase -i HEAD~10
 
 # 步驟 4: 保存後,Git 會打開編輯器讓你修改 commit message
 # 將 → 改為 ->
-# 將 ✅ 改為 [x]
-# 將 🤖 改為 (automated)
+# 將  改為 [x]
+# 將  改為 (automated)
 
 # 步驟 5: 完成 rebase
 git rebase --continue
@@ -140,10 +140,10 @@ git push origin main --force-with-lease
 
 | 方案 | 複雜度 | 破壞性 | 效果 | 推薦度 |
 |------|--------|--------|------|--------|
-| **自動腳本 (快速修復)** | ⭐ 低 | ✅ 無 | ✅ 立即生效 | ⭐⭐⭐⭐⭐ |
-| **手動空 commit** | ⭐ 最低 | ✅ 無 | ✅ 立即生效 | ⭐⭐⭐⭐⭐ |
-| **配置 Git hooks** | ⭐⭐ 中 | ✅ 無 | ⚠️ 預防未來 | ⭐⭐⭐⭐ |
-| **Interactive Rebase** | ⭐⭐⭐ 高 | ⚠️ 改變歷史 | ✅ 完全修復 | ⭐⭐⭐ |
+| **自動腳本 (快速修復)** |  低 |  無 |  立即生效 |  |
+| **手動空 commit** |  最低 |  無 |  立即生效 |  |
+| **配置 Git hooks** |  中 |  無 |  預防未來 |  |
+| **Interactive Rebase** |  高 |  改變歷史 |  完全修復 |  |
 
 ---
 
@@ -160,7 +160,7 @@ git commit --allow-empty -m "chore: trigger clean Cloudflare Pages deployment"
 git push origin main
 ```
 
-**結果:** ✅ Cloudflare Pages 立即重新部署,無警告
+**結果:**  Cloudflare Pages 立即重新部署,無警告
 
 ### Phase 2: 預防機制 (10 分鐘)
 
@@ -172,7 +172,7 @@ git push origin main
 .\scripts\fix-cloudflare-utf8-issue.ps1 -Action all
 ```
 
-**結果:** ✅ 未來自動防止 UTF-8 字符進入 commit message
+**結果:**  未來自動防止 UTF-8 字符進入 commit message
 
 ### Phase 3: 清理歷史 (可選,30 分鐘)
 

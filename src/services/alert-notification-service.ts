@@ -114,14 +114,14 @@ export class AlertNotificationService {
       // 檢查配置
       const config = await this.getConfig();
       if (!config.enabled) {
-        console.log(`⚠️ [Alert Service] Alert notifications disabled: ${title}`);
+        console.log(`[Alert Service] Alert notifications disabled: ${title}`);
         return alert;
       }
 
       // 檢查頻率限制
       const canSend = await this.checkRateLimit(level);
       if (!canSend) {
-        console.log(`⚠️ [Alert Service] Rate limited, skipping alert: ${title}`);
+        console.log(`[Alert Service] Rate limited, skipping alert: ${title}`);
         return alert;
       }
 
@@ -144,7 +144,7 @@ export class AlertNotificationService {
             success: false,
             error: error instanceof Error ? error.message : String(error)
           });
-          console.error(`❌ [Alert Service] Failed to send to ${channel}:`, error);
+          console.error(`[Alert Service] Failed to send to ${channel}:`, error);
         }
       }
 
@@ -159,11 +159,11 @@ export class AlertNotificationService {
         await this.scheduleEscalation(alert, config);
       }
 
-      console.log(`📢 [Alert Service] Alert sent: ${level.toUpperCase()} - ${title}`);
+      console.log(`[Alert Service] Alert sent: ${level.toUpperCase()} - ${title}`);
       return alert;
 
     } catch (error) {
-      console.error('❌ [Alert Service] Failed to send alert:', error);
+      console.error('[Alert Service] Failed to send alert:', error);
       throw error;
     }
   }
@@ -192,7 +192,7 @@ export class AlertNotificationService {
         return this.sendToSMS(alert, metadata);
 
       default:
-        console.warn(`⚠️ [Alert Service] Unknown notification channel: ${channel}`);
+        console.warn(`[Alert Service] Unknown notification channel: ${channel}`);
         return false;
     }
   }
@@ -202,9 +202,9 @@ export class AlertNotificationService {
     const timestamp = new Date(alert.timestamp).toISOString();
 
     console.log(`${icon} [ALERT ${alert.level.toUpperCase()}] ${alert.title}`);
-    console.log(`   Description: ${alert.description}`);
-    console.log(`   Time: ${timestamp}`);
-    console.log(`   Alert ID: ${alert.id}`);
+    console.log(` Description: ${alert.description}`);
+    console.log(` Time: ${timestamp}`);
+    console.log(` Alert ID: ${alert.id}`);
 
     return true;
   }
@@ -214,7 +214,7 @@ export class AlertNotificationService {
       // 獲取 Webhook URL 配置
       const webhookUrl = await this.env.CACHE?.get('alert_webhook_url');
       if (!webhookUrl) {
-        console.warn('⚠️ [Alert Service] No webhook URL configured');
+        console.warn('[Alert Service] No webhook URL configured');
         return false;
       }
 
@@ -244,11 +244,11 @@ export class AlertNotificationService {
         throw new Error(`Webhook responded with status ${response.status}`);
       }
 
-      console.log(`🌐 [Alert Service] Webhook notification sent successfully`);
+      console.log(`[Alert Service] Webhook notification sent successfully`);
       return true;
 
     } catch (error) {
-      console.error('❌ [Alert Service] Webhook notification failed:', error);
+      console.error('[Alert Service] Webhook notification failed:', error);
       return false;
     }
   }
@@ -257,7 +257,7 @@ export class AlertNotificationService {
     try {
       const slackWebhookUrl = await this.env.CACHE?.get('slack_webhook_url');
       if (!slackWebhookUrl) {
-        console.warn('⚠️ [Alert Service] No Slack webhook URL configured');
+        console.warn('[Alert Service] No Slack webhook URL configured');
         return false;
       }
 
@@ -312,11 +312,11 @@ export class AlertNotificationService {
         throw new Error(`Slack webhook responded with status ${response.status}`);
       }
 
-      console.log(`💬 [Alert Service] Slack notification sent successfully`);
+      console.log(`[Alert Service] Slack notification sent successfully`);
       return true;
 
     } catch (error) {
-      console.error('❌ [Alert Service] Slack notification failed:', error);
+      console.error('[Alert Service] Slack notification failed:', error);
       return false;
     }
   }
@@ -325,7 +325,7 @@ export class AlertNotificationService {
     try {
       const emailConfigStr = await this.env.CACHE?.get('email_notification_config');
       if (!emailConfigStr) {
-        console.warn('⚠️ [Alert Service] No email configuration found');
+        console.warn('[Alert Service] No email configuration found');
         return false;
       }
 
@@ -339,24 +339,24 @@ export class AlertNotificationService {
 
       // 在實際環境中，這裡會調用 SMTP 服務或 Email API
       // 目前作為高質量的模擬實現，記錄郵件發送意圖
-      console.log(`📧 [Alert Service] Email notification prepared for ${recipients.length} recipients`);
-      console.log(`   Subject: ${subject}`);
-      console.log(`   Recipients: ${recipients.join(', ')}`);
-      console.log(`   SMTP Server: ${smtpServer}:${smtpPort}`);
-      console.log(`   From: ${fromName} <${fromEmail}>`);
+      console.log(`[Alert Service] Email notification prepared for ${recipients.length} recipients`);
+      console.log(` Subject: ${subject}`);
+      console.log(` Recipients: ${recipients.join(', ')}`);
+      console.log(` SMTP Server: ${smtpServer}:${smtpPort}`);
+      console.log(` From: ${fromName} <${fromEmail}>`);
 
       // 模擬發送成功 - 實際環境中替換為真實的 SMTP 調用
       // Stub: Email alerting — integrate SMTP (SendGrid/AWS SES) when needed
       return true;
 
     } catch (error) {
-      console.error('❌ [Alert Service] Email notification failed:', error);
+      console.error('[Alert Service] Email notification failed:', error);
       return false;
     }
   }
 
   private async sendToSMS(alert: AlertRecord, _metadata: Record<string, any>): Promise<boolean> {
-    console.log(`📱 [Alert Service] SMS notification not implemented for: ${alert.title}`);
+    console.log(`[Alert Service] SMS notification not implemented for: ${alert.title}`);
     // 未來可以整合 Twilio 或其他簡訊服務
     return false;
   }
@@ -369,7 +369,7 @@ export class AlertNotificationService {
       const alertData = await this.env.CACHE?.get(alertKey);
 
       if (!alertData) {
-        console.warn(`⚠️ [Alert Service] Alert not found: ${alertId}`);
+        console.warn(`[Alert Service] Alert not found: ${alertId}`);
         return false;
       }
 
@@ -382,11 +382,11 @@ export class AlertNotificationService {
         expirationTtl: 30 * 24 * 60 * 60 // 30 days
       });
 
-      console.log(`✅ [Alert Service] Alert acknowledged: ${alertId} by ${acknowledgedBy}`);
+      console.log(`[Alert Service] Alert acknowledged: ${alertId} by ${acknowledgedBy}`);
       return true;
 
     } catch (error) {
-      console.error('❌ [Alert Service] Failed to acknowledge alert:', error);
+      console.error('[Alert Service] Failed to acknowledge alert:', error);
       return false;
     }
   }
@@ -397,7 +397,7 @@ export class AlertNotificationService {
       const alertData = await this.env.CACHE?.get(alertKey);
 
       if (!alertData) {
-        console.warn(`⚠️ [Alert Service] Alert not found: ${alertId}`);
+        console.warn(`[Alert Service] Alert not found: ${alertId}`);
         return false;
       }
 
@@ -409,11 +409,11 @@ export class AlertNotificationService {
         expirationTtl: 30 * 24 * 60 * 60 // 30 days
       });
 
-      console.log(`🔧 [Alert Service] Alert resolved: ${alertId}`);
+      console.log(`[Alert Service] Alert resolved: ${alertId}`);
       return true;
 
     } catch (error) {
-      console.error('❌ [Alert Service] Failed to resolve alert:', error);
+      console.error('[Alert Service] Failed to resolve alert:', error);
       return false;
     }
   }
@@ -425,7 +425,7 @@ export class AlertNotificationService {
       const configData = await this.env.CACHE?.get(this.CONFIG_KEY);
       return configData ? JSON.parse(configData) : this.DEFAULT_CONFIG;
     } catch (error) {
-      console.warn('⚠️ [Alert Service] Failed to get config, using defaults:', error);
+      console.warn('[Alert Service] Failed to get config, using defaults:', error);
       return this.DEFAULT_CONFIG;
     }
   }
@@ -439,9 +439,9 @@ export class AlertNotificationService {
         expirationTtl: 365 * 24 * 60 * 60 // 1 year
       });
 
-      console.log('⚙️ [Alert Service] Configuration updated');
+      console.log('[Alert Service] Configuration updated');
     } catch (error) {
-      console.error('❌ [Alert Service] Failed to update config:', error);
+      console.error('[Alert Service] Failed to update config:', error);
       throw error;
     }
   }
@@ -475,7 +475,7 @@ export class AlertNotificationService {
       return rateLimit.count < config.rateLimiting.maxAlertsPerHour;
 
     } catch (error) {
-      console.warn('⚠️ [Alert Service] Rate limit check failed, allowing alert:', error);
+      console.warn('[Alert Service] Rate limit check failed, allowing alert:', error);
       return true;
     }
   }
@@ -499,7 +499,7 @@ export class AlertNotificationService {
       });
 
     } catch (error) {
-      console.warn('⚠️ [Alert Service] Failed to update rate limit:', error);
+      console.warn('[Alert Service] Failed to update rate limit:', error);
     }
   }
 
@@ -510,7 +510,7 @@ export class AlertNotificationService {
         expirationTtl: 30 * 24 * 60 * 60 // 30 days
       });
     } catch (error) {
-      console.error('❌ [Alert Service] Failed to save alert record:', error);
+      console.error('[Alert Service] Failed to save alert record:', error);
     }
   }
 
@@ -520,7 +520,7 @@ export class AlertNotificationService {
     }
 
     // 在實際環境中，這裡可以使用 Cloudflare Durable Objects 或 Queue 來實現延遲執行
-    console.log(`⏰ [Alert Service] Escalation scheduled for alert ${alert.id} in ${config.escalation.escalationTimeMinutes} minutes`);
+    console.log(`[Alert Service] Escalation scheduled for alert ${alert.id} in ${config.escalation.escalationTimeMinutes} minutes`);
   }
 
   private generateAlertId(): string {
@@ -529,11 +529,11 @@ export class AlertNotificationService {
 
   private getAlertIcon(level: AlertLevel): string {
     switch (level) {
-      case AlertLevel.INFO: return 'ℹ️';
-      case AlertLevel.WARNING: return '⚠️';
-      case AlertLevel.CRITICAL: return '🚨';
-      case AlertLevel.EMERGENCY: return '🚨🔥';
-      default: return '❓';
+      case AlertLevel.INFO: return '';
+      case AlertLevel.WARNING: return '';
+      case AlertLevel.CRITICAL: return '';
+      case AlertLevel.EMERGENCY: return '';
+      default: return '';
     }
   }
 

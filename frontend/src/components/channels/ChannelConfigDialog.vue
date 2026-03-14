@@ -232,9 +232,9 @@
           :class="verificationStatus.type"
         >
           <div class="status-icon">
-            <span v-if="verificationStatus.type === 'success'">✓</span>
-            <span v-else-if="verificationStatus.type === 'error'">✗</span>
-            <span v-else>⚠</span>
+            <span v-if="verificationStatus.type === 'success'"></span>
+            <span v-else-if="verificationStatus.type === 'error'"></span>
+            <span v-else></span>
           </div>
           <div class="status-content">
             <div class="status-message">
@@ -305,7 +305,7 @@
         v-if="errorMessage"
         class="error-message"
       >
-        <span class="error-icon">⚠</span>
+        <span class="error-icon"></span>
         {{ errorMessage }}
       </div>
     </div>
@@ -420,19 +420,19 @@ const platforms = [
   {
     value: 'line' as ChannelPlatform,
     name: 'LINE',
-    icon: '💬',
+    icon: '',
     description: 'LINE Official Account'
   },
   {
     value: 'facebook' as ChannelPlatform,
     name: 'Facebook',
-    icon: '👍',
+    icon: '',
     description: 'Facebook Messenger'
   },
   {
     value: 'whatsapp' as ChannelPlatform,
     name: 'WhatsApp',
-    icon: '📱',
+    icon: '',
     description: 'WhatsApp Business'
   }
 ]

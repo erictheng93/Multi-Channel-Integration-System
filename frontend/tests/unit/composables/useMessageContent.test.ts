@@ -133,7 +133,7 @@ describe('useMessageContent', () => {
     it('should process text content with emoji processor', async () => {
       const props = ref({
         message: createMessage({
-          content: 'Hello 😀',
+          content: 'Hello ',
           messageType: 'text'
         })
       })

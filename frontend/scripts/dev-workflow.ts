@@ -28,13 +28,13 @@ function log(message: string, color: string = colors.reset): void {
 }
 
 function runCommand(command: string, description: string): boolean {
-  log(`\n${colors.blue}🔄 ${description}...${colors.reset}`);
+  log(`\n${colors.blue} ${description}...${colors.reset}`);
   try {
     execSync(command, { stdio: 'inherit' });
-    log(`${colors.green}✅ ${description} completed successfully${colors.reset}`);
+    log(`${colors.green} ${description} completed successfully${colors.reset}`);
     return true;
   } catch {
-    log(`${colors.red}❌ ${description} failed${colors.reset}`);
+    log(`${colors.red} ${description} failed${colors.reset}`);
     return false;
   }
 }
@@ -43,28 +43,28 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const workflow = (args[0] || 'check') as WorkflowType;
 
-  log(`${colors.cyan}${colors.bright}🚀 Frontend Development Workflow${colors.reset}`);
+  log(`${colors.cyan}${colors.bright} Frontend Development Workflow${colors.reset}`);
   log(`${colors.yellow}Workflow: ${workflow}${colors.reset}\n`);
 
   switch (workflow) {
     case 'check':
-      log(`${colors.magenta}📋 Running development environment check...${colors.reset}`);
+      log(`${colors.magenta} Running development environment check...${colors.reset}`);
       runCommand('npm run dev-tools:check', 'Development tools check');
       break;
 
     case 'lint':
-      log(`${colors.magenta}🔍 Running code quality checks...${colors.reset}`);
+      log(`${colors.magenta} Running code quality checks...${colors.reset}`);
       runCommand('npm run lint:check', 'ESLint check');
       runCommand('npm run type-check', 'TypeScript check');
       break;
 
     case 'fix':
-      log(`${colors.magenta}🔧 Fixing code issues...${colors.reset}`);
+      log(`${colors.magenta} Fixing code issues...${colors.reset}`);
       runCommand('npm run lint', 'ESLint fix');
       break;
 
     case 'build':
-      log(`${colors.magenta}📦 Building for production...${colors.reset}`);
+      log(`${colors.magenta} Building for production...${colors.reset}`);
       if (runCommand('npm run type-check', 'TypeScript check') &&
           runCommand('npm run lint:check', 'ESLint check')) {
         runCommand('npm run build', 'Production build');
@@ -72,27 +72,27 @@ async function main(): Promise<void> {
       break;
 
     case 'analyze':
-      log(`${colors.magenta}📊 Building with bundle analysis...${colors.reset}`);
+      log(`${colors.magenta} Building with bundle analysis...${colors.reset}`);
       runCommand('npm run build:report', 'Bundle analysis');
       break;
 
     case 'perf':
-      log(`${colors.magenta}⚡ Performance-optimized build...${colors.reset}`);
+      log(`${colors.magenta} Performance-optimized build...${colors.reset}`);
       runCommand('npm run build:perf', 'Performance build');
       break;
 
     case 'dev':
-      log(`${colors.magenta}🔥 Starting development server...${colors.reset}`);
+      log(`${colors.magenta} Starting development server...${colors.reset}`);
       runCommand('npm run dev', 'Development server');
       break;
 
     case 'test':
-      log(`${colors.magenta}🧪 Running tests...${colors.reset}`);
+      log(`${colors.magenta} Running tests...${colors.reset}`);
       runCommand('npm run test:run', 'Test suite');
       break;
 
     case 'full': {
-      log(`${colors.magenta}🎯 Running full development workflow...${colors.reset}`);
+      log(`${colors.magenta} Running full development workflow...${colors.reset}`);
       const steps: WorkflowStep[] = [
         { command: 'npm run dev-tools:check', description: 'Development tools check' },
         { command: 'npm run type-check', description: 'TypeScript check' },
@@ -110,9 +110,9 @@ async function main(): Promise<void> {
       }
       
       if (allPassed) {
-        log(`\n${colors.green}${colors.bright}🎉 All checks passed! Your code is ready for deployment.${colors.reset}`);
+        log(`\n${colors.green}${colors.bright} All checks passed! Your code is ready for deployment.${colors.reset}`);
       } else {
-        log(`\n${colors.red}${colors.bright}❌ Some checks failed. Please fix the issues before proceeding.${colors.reset}`);
+        log(`\n${colors.red}${colors.bright} Some checks failed. Please fix the issues before proceeding.${colors.reset}`);
         process.exit(1);
       }
       break;
@@ -120,15 +120,15 @@ async function main(): Promise<void> {
 
     default:
       log(`${colors.yellow}Available workflows:${colors.reset}`);
-      log(`  ${colors.cyan}check${colors.reset}   - Check development environment`);
-      log(`  ${colors.cyan}lint${colors.reset}    - Run code quality checks`);
-      log(`  ${colors.cyan}fix${colors.reset}     - Fix code issues automatically`);
-      log(`  ${colors.cyan}build${colors.reset}   - Build for production`);
+      log(`  ${colors.cyan}check${colors.reset} - Check development environment`);
+      log(`  ${colors.cyan}lint${colors.reset} - Run code quality checks`);
+      log(`  ${colors.cyan}fix${colors.reset} - Fix code issues automatically`);
+      log(`  ${colors.cyan}build${colors.reset} - Build for production`);
       log(`  ${colors.cyan}analyze${colors.reset} - Build with bundle analysis`);
-      log(`  ${colors.cyan}perf${colors.reset}    - Performance-optimized build`);
-      log(`  ${colors.cyan}dev${colors.reset}     - Start development server`);
-      log(`  ${colors.cyan}test${colors.reset}    - Run tests`);
-      log(`  ${colors.cyan}full${colors.reset}    - Run complete workflow`);
+      log(`  ${colors.cyan}perf${colors.reset} - Performance-optimized build`);
+      log(`  ${colors.cyan}dev${colors.reset} - Start development server`);
+      log(`  ${colors.cyan}test${colors.reset} - Run tests`);
+      log(`  ${colors.cyan}full${colors.reset} - Run complete workflow`);
       log(`\n${colors.yellow}Usage: npm run workflow [workflow-name]${colors.reset}`);
       break;
   }

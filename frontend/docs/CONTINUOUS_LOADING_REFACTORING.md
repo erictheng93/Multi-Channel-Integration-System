@@ -1,34 +1,34 @@
 # 持續性異步載入重構完成報告
 
 > **版本**: 2.0.0
-> **狀態**: ✅ 完成
+> **狀態**:  完成
 > **日期**: 2025-01-28
 > **重構類型**: 簡化 - 移除用戶互動暫停機制
 
 ---
 
-## 📋 重構目標
+##  重構目標
 
 將 QR Code 背景預載服務從「用戶互動暫停模式」改為「持續性異步載入模式」，簡化代碼邏輯並依賴瀏覽器原生的 requestIdleCallback 機制來管理資源優先級。
 
 ---
 
-## ✅ 已完成的修改
+##  已完成的修改
 
 ### **1. 移除用戶互動檢測相關代碼**
 
 #### **刪除的私有屬性**
 ```typescript
-// ❌ 已移除
+// 已移除
 private userInteractionListeners: Array<{ event: string; handler: () => void }> = []
 private resumeTimeout: number | null = null
 private lastInteractionTime = 0
 ```
 
 #### **刪除的方法**
-- ❌ `registerUserInteractionListeners()` - 註冊用戶互動監聽器
-- ❌ `unregisterUserInteractionListeners()` - 移除用戶互動監聽器
-- ❌ `handleUserInteraction()` - 處理用戶互動事件
+-  `registerUserInteractionListeners()` - 註冊用戶互動監聽器
+-  `unregisterUserInteractionListeners()` - 移除用戶互動監聽器
+-  `handleUserInteraction()` - 處理用戶互動事件
 
 **代碼減少**: ~60 行
 
@@ -48,11 +48,11 @@ private async processQueueDuringIdle(deadline: IdleDeadline): Promise<void> {
 
   // 記錄暫停原因
   if (this.isPaused) {
-    this.log('info', '⏸️ Queue paused (user interaction)')
+    this.log('info', ' Queue paused (user interaction)')
   } else if (this.currentLoading >= this.config.maxConcurrent) {
-    this.log('info', '⏸️ Queue paused (concurrent limit reached)')
+    this.log('info', ' Queue paused (concurrent limit reached)')
   } else {
-    this.log('info', '⏸️ Queue paused (browser idle time exhausted)')
+    this.log('info', ' Queue paused (browser idle time exhausted)')
   }
 }
 ```
@@ -86,7 +86,7 @@ private async processQueueDuringIdle(deadline: IdleDeadline): Promise<void> {
 #### **start() 方法**
 ```typescript
 // 修改前
-this.registerUserInteractionListeners()  // ❌ 已移除
+this.registerUserInteractionListeners()  //  已移除
 
 // 修改後
 // Phase 2: 閒置時間載入剩餘團隊（持續性異步載入）
@@ -96,7 +96,7 @@ this.schedulePhase2(teams)
 #### **stop() 方法**
 ```typescript
 // 修改前
-this.unregisterUserInteractionListeners()  // ❌ 已移除
+this.unregisterUserInteractionListeners()  //  已移除
 if (this.resumeTimeout !== null) {
   clearTimeout(this.resumeTimeout)
 }
@@ -109,28 +109,28 @@ if (this.resumeTimeout !== null) {
 
 ### **4. 保留的核心功能**
 
-✅ **requestIdleCallback** - 瀏覽器閒置時執行
-✅ **設備性能檢測** - 自動調整並發數 (2-5)
-✅ **並發限制** - 避免過多同時請求
-✅ **優先順序排序** - 智能載入順序
-✅ **詳細進度日誌** - 載入進度追蹤
-✅ **Fallback 機制** - 舊瀏覽器支持
+ **requestIdleCallback** - 瀏覽器閒置時執行
+ **設備性能檢測** - 自動調整並發數 (2-5)
+ **並發限制** - 避免過多同時請求
+ **優先順序排序** - 智能載入順序
+ **詳細進度日誌** - 載入進度追蹤
+ **Fallback 機制** - 舊瀏覽器支持
 
 ---
 
-## 📊 代碼對比
+##  代碼對比
 
 | 指標 | 修改前 | 修改後 | 改善 |
 |------|--------|--------|------|
 | **總行數** | ~480 行 | ~420 行 | ↓ **12.5%** |
 | **私有屬性** | 12 個 | 9 個 | ↓ **25%** |
 | **公開方法** | 6 個 | 4 個 | ↓ **33%** |
-| **複雜度** | 高 | 低 | ✅ 簡化 |
-| **維護成本** | 高 | 低 | ✅ 降低 |
+| **複雜度** | 高 | 低 |  簡化 |
+| **維護成本** | 高 | 低 |  降低 |
 
 ---
 
-## 🧪 如何測試
+##  如何測試
 
 ### **方法 1：在團隊管理頁面測試**
 
@@ -143,24 +143,24 @@ if (this.resumeTimeout !== null) {
 
 3. **觀察日誌輸出**:
    ```
-   [QRPreload] 🚀 Starting background preload for 10 teams
-   [QRPreload] 📱 Device performance: medium (8 cores, 4.0GB RAM)
-   [QRPreload] ⚙️ Adjusted maxConcurrent: 3
-   [QRPreload] 🎯 Phase 1: Loading 3 priority teams
-   [QRPreload] 📥 [phase1] Loading QR for team 1 (客服團隊A)
-   [QRPreload] ✅ [phase1] Loaded QR for team 1 in 85ms
-   [QRPreload] ⏳ Phase 2: Scheduling idle-time loading
-   [QRPreload] 📋 Load queue built: 7 teams
-   [QRPreload] 📊 [Phase 2] Progress: 40% | Remaining: 6 teams | Queue: 2/3
+   [QRPreload]  Starting background preload for 10 teams
+   [QRPreload]  Device performance: medium (8 cores, 4.0GB RAM)
+   [QRPreload]  Adjusted maxConcurrent: 3
+   [QRPreload]  Phase 1: Loading 3 priority teams
+   [QRPreload]  [phase1] Loading QR for team 1 (客服團隊A)
+   [QRPreload]  [phase1] Loaded QR for team 1 in 85ms
+   [QRPreload]  Phase 2: Scheduling idle-time loading
+   [QRPreload]  Load queue built: 7 teams
+   [QRPreload]  [Phase 2] Progress: 40% | Remaining: 6 teams | Queue: 2/3
    ...
-   [QRPreload] ✅ Phase 2 completed - 10/10 teams loaded (100%)
+   [QRPreload]  Phase 2 completed - 10/10 teams loaded (100%)
    ```
 
 4. **測試重點**:
-   - ❌ **不應該**看到 `⏸️ Paused (user interaction)` 日誌
-   - ❌ **不應該**看到 `▶️ Resumed` 日誌
-   - ✅ **應該**看到持續的載入進度更新
-   - ✅ **滾動頁面**時，載入**不會暫停**
+   -  **不應該**看到 ` Paused (user interaction)` 日誌
+   -  **不應該**看到 ` Resumed` 日誌
+   -  **應該**看到持續的載入進度更新
+   -  **滾動頁面**時，載入**不會暫停**
 
 ---
 
@@ -180,38 +180,38 @@ if (this.resumeTimeout !== null) {
 
 ---
 
-## 🎯 預期行為
+##  預期行為
 
 ### **正常流程**
 
 ```
-時間軸                  系統行為                     控制台輸出
+時間軸 系統行為 控制台輸出
 ─────────────────────────────────────────────────────────────
-t = 0s                頁面載入完成
-t = 2s                Phase 1 開始                 🎯 Phase 1: Loading 3 teams
-t = 2.3s              載入完成 3 個                ✅ Phase 1 completed
-t = 4s                Phase 2 開始                 ⏳ Phase 2: Scheduling...
-t = 4.5s              背景載入中 (3 並發)         📊 Progress: 60%
+t = 0s 頁面載入完成
+t = 2s Phase 1 開始 Phase 1: Loading 3 teams
+t = 2.3s 載入完成 3 個 Phase 1 completed
+t = 4s Phase 2 開始 Phase 2: Scheduling...
+t = 4.5s 背景載入中 (3 並發) Progress: 60%
   ↓
-用戶滾動頁面 📜        背景載入繼續 (不暫停)       📊 Progress: 70%
+用戶滾動頁面 背景載入繼續 (不暫停) Progress: 70%
   ↓
-用戶點擊按鈕 🖱️         背景載入繼續 (不暫停)       📊 Progress: 80%
+用戶點擊按鈕 背景載入繼續 (不暫停) Progress: 80%
   ↓
-t = 6s                所有 QR 載入完成             ✅ Phase 2 completed
+t = 6s 所有 QR 載入完成 Phase 2 completed
 ```
 
 ### **與舊版本的差異**
 
 | 場景 | 舊版本 (v1.0) | 新版本 (v2.0) |
 |------|--------------|--------------|
-| 用戶滾動時 | ⏸️ 暫停載入 | ✅ 持續載入 |
-| 用戶點擊時 | ⏸️ 暫停載入 | ✅ 持續載入 |
-| 閒置 2 秒後 | ▶️ 恢復載入 | ✅ 一直在載入 |
+| 用戶滾動時 |  暫停載入 |  持續載入 |
+| 用戶點擊時 |  暫停載入 |  持續載入 |
+| 閒置 2 秒後 |  恢復載入 |  一直在載入 |
 | 代碼複雜度 | 高 (480 行) | 低 (420 行) |
 
 ---
 
-## 📁 修改的文件
+##  修改的文件
 
 | 文件 | 修改內容 | 行數變化 |
 |------|---------|----------|
@@ -220,7 +220,7 @@ t = 6s                所有 QR 載入完成             ✅ Phase 2 completed
 
 ---
 
-## 🎯 設計理由
+##  設計理由
 
 ### **為什麼移除用戶互動暫停？**
 
@@ -243,7 +243,7 @@ t = 6s                所有 QR 載入完成             ✅ Phase 2 completed
 
 ---
 
-## ⚠️ 注意事項
+##  注意事項
 
 ### **何時可能需要回復暫停機制？**
 
@@ -268,22 +268,22 @@ t = 6s                所有 QR 載入完成             ✅ Phase 2 completed
 
 ---
 
-## 📊 總結
+##  總結
 
-### ✅ 成功完成
+###  成功完成
 
 - 移除用戶互動暫停機制
 - 簡化代碼邏輯（-60 行）
 - 保留核心功能
 - 測試驗證通過
 
-### 🎯 核心原則
+###  核心原則
 
 > **「讓瀏覽器做它擅長的事」**
 > requestIdleCallback 已經足以管理資源優先級，
 > 無需額外的用戶互動檢測邏輯。
 
-### 🚀 下一步
+###  下一步
 
 - 生產環境部署
 - 收集用戶反饋

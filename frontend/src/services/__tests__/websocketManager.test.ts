@@ -36,7 +36,7 @@ vi.mock('../websocketClient', () => {
     queueSize: { value: 0 },
     eventHandlers: null as any,
 
-    // ✅ 添加缺失的 setEventHandlers 方法
+    // 添加缺失的 setEventHandlers 方法
     setEventHandlers: vi.fn((handlers) => {
       mockClient.eventHandlers = handlers
     }),
@@ -162,10 +162,10 @@ describe('WebSocketManager', () => {
     it('應該成功訂閱會話', () => {
       const conversationId = 'conv-1'
 
-      // ✅ 更新 API: subscribeToConversation → joinConversation
+      // 更新 API: subscribeToConversation → joinConversation
       manager.joinConversation(conversationId)
 
-      // ✅ 更新訊息類型: conversation.subscribe → join_conversation
+      // 更新訊息類型: conversation.subscribe → join_conversation
       expect(mockClient.send).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'join_conversation',
@@ -178,11 +178,11 @@ describe('WebSocketManager', () => {
     it('應該成功取消訂閱會話', () => {
       const conversationId = 'conv-1'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
       manager.leaveConversation(conversationId)
 
-      // ✅ 更新訊息類型: conversation.unsubscribe → leave_conversation
+      // 更新訊息類型: conversation.unsubscribe → leave_conversation
       expect(mockClient.send).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'leave_conversation',
@@ -195,12 +195,12 @@ describe('WebSocketManager', () => {
     it('應該防止重複訂閱同一個會話', () => {
       const conversationId = 'conv-1'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
       manager.joinConversation(conversationId)
 
       // 應該只發送一次訂閱請求
-      // ✅ 更新訊息類型過濾
+      // 更新訊息類型過濾
       const subscribeCalls = mockClient.send.mock.calls.filter(
         (call: any[]) => call[0].type === 'join_conversation'
       )
@@ -210,7 +210,7 @@ describe('WebSocketManager', () => {
     it('應該支持同時訂閱多個會話', () => {
       const conversationIds = ['conv-1', 'conv-2', 'conv-3']
 
-      // ✅ 更新 API
+      // 更新 API
       conversationIds.forEach(id => {
         manager.joinConversation(id)
       })
@@ -223,12 +223,12 @@ describe('WebSocketManager', () => {
     it('應該返回當前訂閱的會話列表', () => {
       const conversationIds = ['conv-1', 'conv-2']
 
-      // ✅ 更新 API
+      // 更新 API
       conversationIds.forEach(id => {
         manager.joinConversation(id)
       })
 
-      // ✅ 更新 API: getSubscribedConversations() → connectedConversations.value
+      // 更新 API: getSubscribedConversations() → connectedConversations.value
       const subscribed = manager.connectedConversations.value
 
       expect(subscribed).toEqual(expect.arrayContaining(conversationIds))
@@ -245,7 +245,7 @@ describe('WebSocketManager', () => {
       const conversationId = 'conv-1'
       let receivedMessage: Message | null = null
 
-      // ✅ 更新 API: manager.on() → manager.setEventCallbacks()
+      // 更新 API: manager.on() → manager.setEventCallbacks()
       manager.setEventCallbacks({
         onConversationMessage: (convId, message) => {
           if (convId === conversationId) {
@@ -254,7 +254,7 @@ describe('WebSocketManager', () => {
         }
       })
 
-      // ✅ 更新訊息類型: conversation.new_message → new_message
+      // 更新訊息類型: conversation.new_message → new_message
       const testMessage: WebSocketMessage = {
         type: 'new_message',
         conversationId,
@@ -266,7 +266,7 @@ describe('WebSocketManager', () => {
         }
       }
 
-      // ✅ 使用新的輔助方法
+      // 使用新的輔助方法
       mockClient.simulateMessage(testMessage)
 
       expect(receivedMessage).toBeTruthy()
@@ -278,7 +278,7 @@ describe('WebSocketManager', () => {
       const conversationId = 'conv-1'
       let receivedConversation: Conversation | null = null
 
-      // ✅ 更新 API
+      // 更新 API
       manager.setEventCallbacks({
         onConversationUpdate: (convId, conversation) => {
           if (convId === conversationId) {
@@ -287,7 +287,7 @@ describe('WebSocketManager', () => {
         }
       })
 
-      // ✅ 更新訊息類型: conversation.update → conversation_update
+      // 更新訊息類型: conversation.update → conversation_update
       const testUpdate: WebSocketMessage = {
         type: 'conversation_update',
         conversationId,
@@ -298,7 +298,7 @@ describe('WebSocketManager', () => {
         }
       }
 
-      // ✅ 使用新的輔助方法
+      // 使用新的輔助方法
       mockClient.simulateMessage(testUpdate)
 
       expect(receivedConversation).toBeTruthy()
@@ -310,7 +310,7 @@ describe('WebSocketManager', () => {
       const unsubscribedConvId = 'conv-2'
       let messageReceived = false
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(subscribedConvId)
 
       manager.setEventCallbacks({
@@ -319,7 +319,7 @@ describe('WebSocketManager', () => {
         }
       })
 
-      // ✅ 更新訊息類型
+      // 更新訊息類型
       const testMessage: WebSocketMessage = {
         type: 'new_message',
         conversationId: unsubscribedConvId,
@@ -329,10 +329,10 @@ describe('WebSocketManager', () => {
         }
       }
 
-      // ✅ 使用新的輔助方法
+      // 使用新的輔助方法
       mockClient.simulateMessage(testMessage)
 
-      // ✅ 實際實現會通知所有消息,但不會追踪未訂閱會話的活動
+      // 實際實現會通知所有消息,但不會追踪未訂閱會話的活動
       // 改為測試活動追踪行為
       expect(messageReceived).toBe(true)  // 消息會被接收
 
@@ -351,18 +351,18 @@ describe('WebSocketManager', () => {
       const conversationId = 'conv-1'
       const userId = 'user-2'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
 
-      // ✅ 更新訊息類型: conversation.typing_start → typing_start
-      // ✅ 更新數據結構: userId 放在 data 中
+      // 更新訊息類型: conversation.typing_start → typing_start
+      // 更新數據結構: userId 放在 data 中
       const typingStartMessage: WebSocketMessage = {
         type: 'typing_start',
         conversationId,
         data: { userId }
       }
 
-      // ✅ 使用輔助方法
+      // 使用輔助方法
       mockClient.simulateMessage(typingStartMessage)
 
       expect(manager.typingUsers.value[conversationId]).toContain(userId)
@@ -372,11 +372,11 @@ describe('WebSocketManager', () => {
       const conversationId = 'conv-1'
       const userId = 'user-2'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
 
       // 開始打字
-      // ✅ 更新訊息類型和結構
+      // 更新訊息類型和結構
       const typingStartMessage: WebSocketMessage = {
         type: 'typing_start',
         conversationId,
@@ -387,7 +387,7 @@ describe('WebSocketManager', () => {
       expect(manager.typingUsers.value[conversationId]).toContain(userId)
 
       // 停止打字
-      // ✅ 更新訊息類型: conversation.typing_stop → typing_stop
+      // 更新訊息類型: conversation.typing_stop → typing_stop
       const typingStopMessage: WebSocketMessage = {
         type: 'typing_stop',
         conversationId,
@@ -403,10 +403,10 @@ describe('WebSocketManager', () => {
       const user1 = 'user-2'
       const user2 = 'user-3'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
 
-      // ✅ 更新訊息類型和結構
+      // 更新訊息類型和結構
       mockClient.simulateMessage({
         type: 'typing_start',
         conversationId,
@@ -427,10 +427,10 @@ describe('WebSocketManager', () => {
       const conversationId = 'conv-1'
       const userId = 'user-2'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
 
-      // ✅ 更新訊息類型和結構
+      // 更新訊息類型和結構
       const typingStartMessage: WebSocketMessage = {
         type: 'typing_start',
         conversationId,
@@ -453,7 +453,7 @@ describe('WebSocketManager', () => {
     it('應該處理用戶在線狀態更新', () => {
       const userId = 'user-2'
 
-      // ✅ 更新訊息類型: user.presence → user_presence
+      // 更新訊息類型: user.presence → user_presence
       const presenceMessage: WebSocketMessage = {
         type: 'user_presence',
         data: {
@@ -463,7 +463,7 @@ describe('WebSocketManager', () => {
         }
       }
 
-      // ✅ 使用輔助方法
+      // 使用輔助方法
       mockClient.simulateMessage(presenceMessage)
 
       expect(manager.onlineUsers.value).toContain(userId)
@@ -473,7 +473,7 @@ describe('WebSocketManager', () => {
       const userId = 'user-2'
 
       // 用戶上線
-      // ✅ 更新訊息類型和結構
+      // 更新訊息類型和結構
       mockClient.simulateMessage({
         type: 'user_presence',
         data: {
@@ -499,7 +499,7 @@ describe('WebSocketManager', () => {
     it('應該返回用戶在線狀態', () => {
       const userId = 'user-2'
 
-      // ✅ 更新訊息類型和結構
+      // 更新訊息類型和結構
       mockClient.simulateMessage({
         type: 'user_presence',
         data: {
@@ -518,7 +518,7 @@ describe('WebSocketManager', () => {
     it('應該支持多個用戶在線狀態', () => {
       const users = ['user-2', 'user-3', 'user-4']
 
-      // ✅ 更新訊息類型和結構
+      // 更新訊息類型和結構
       users.forEach(userId => {
         mockClient.simulateMessage({
           type: 'user_presence',
@@ -541,14 +541,14 @@ describe('WebSocketManager', () => {
     it('應該支持註冊事件監聽器', () => {
       let callbackCalled = false
 
-      // ✅ 更新 API: manager.on() → manager.setEventCallbacks()
+      // 更新 API: manager.on() → manager.setEventCallbacks()
       manager.setEventCallbacks({
         onConversationMessage: () => {
           callbackCalled = true
         }
       })
 
-      // ✅ 更新訊息類型和使用輔助方法
+      // 更新訊息類型和使用輔助方法
       mockClient.simulateMessage({
         type: 'new_message',
         conversationId: 'conv-1',
@@ -562,7 +562,7 @@ describe('WebSocketManager', () => {
       let call1 = false
       let call2 = false
 
-      // ✅ setEventCallbacks 會累積回調,需要分兩次調用
+      // setEventCallbacks 會累積回調,需要分兩次調用
       manager.setEventCallbacks({
         onConversationMessage: () => { call1 = true }
       })
@@ -576,7 +576,7 @@ describe('WebSocketManager', () => {
         }
       })
 
-      // ✅ 更新訊息類型
+      // 更新訊息類型
       mockClient.simulateMessage({
         type: 'new_message',
         conversationId: 'conv-1',
@@ -590,14 +590,14 @@ describe('WebSocketManager', () => {
     it('應該觸發連接狀態變化回調', () => {
       const stateChanges: string[] = []
 
-      // ✅ 更新 API
+      // 更新 API
       manager.setEventCallbacks({
         onConnectionStateChange: (state) => {
           stateChanges.push(state)
         }
       })
 
-      // ✅ 使用輔助方法
+      // 使用輔助方法
       mockClient.simulateConnectionChange('connecting')
       mockClient.simulateConnectionChange('connected')
 
@@ -608,7 +608,7 @@ describe('WebSocketManager', () => {
     it('應該觸發錯誤回調', () => {
       let errorReceived: Error | null = null
 
-      // ✅ 更新 API
+      // 更新 API
       manager.setEventCallbacks({
         onError: (error) => {
           errorReceived = error
@@ -616,7 +616,7 @@ describe('WebSocketManager', () => {
       })
 
       const testError = new Error('Test error')
-      // ✅ 使用輔助方法
+      // 使用輔助方法
       mockClient.simulateError(testError)
 
       expect(errorReceived).toBe(testError)
@@ -631,7 +631,7 @@ describe('WebSocketManager', () => {
     it('應該統計接收的訊息數量', () => {
       expect(manager.totalMessagesReceived.value).toBe(0)
 
-      // ✅ 更新訊息類型和使用輔助方法
+      // 更新訊息類型和使用輔助方法
       mockClient.simulateMessage({
         type: 'new_message',
         conversationId: 'conv-1',
@@ -654,7 +654,7 @@ describe('WebSocketManager', () => {
     })
 
     it('應該提供連接統計信息', () => {
-      // ✅ 更新 API: getConnectionStats() → stats.value
+      // 更新 API: getConnectionStats() → stats.value
       const stats = manager.stats.value
 
       expect(stats).toHaveProperty('connectionState')
@@ -673,10 +673,10 @@ describe('WebSocketManager', () => {
     it('應該追蹤會話活動時間', () => {
       const conversationId = 'conv-1'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
 
-      // ✅ 更新訊息類型
+      // 更新訊息類型
       mockClient.simulateMessage({
         type: 'new_message',
         conversationId,
@@ -692,11 +692,11 @@ describe('WebSocketManager', () => {
     it('應該統計會話訊息數量', () => {
       const conversationId = 'conv-1'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
 
       // 發送多個訊息
-      // ✅ 更新訊息類型
+      // 更新訊息類型
       for (let i = 0; i < 3; i++) {
         mockClient.simulateMessage({
           type: 'new_message',
@@ -713,7 +713,7 @@ describe('WebSocketManager', () => {
     it('應該標記會話為活動狀態', () => {
       const conversationId = 'conv-1'
 
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation(conversationId)
 
       const connection = (manager as any).conversations.get(conversationId)
@@ -728,7 +728,7 @@ describe('WebSocketManager', () => {
     })
 
     it('應該在斷開連接時清理所有訂閱', () => {
-      // ✅ 更新 API
+      // 更新 API
       manager.joinConversation('conv-1')
       manager.joinConversation('conv-2')
 
@@ -738,7 +738,7 @@ describe('WebSocketManager', () => {
     })
 
     it('應該在斷開連接時清理用戶狀態', () => {
-      // ✅ 更新訊息類型
+      // 更新訊息類型
       mockClient.simulateMessage({
         type: 'user_presence',
         data: {
@@ -753,14 +753,14 @@ describe('WebSocketManager', () => {
     })
 
     it('應該重置統計數據', () => {
-      // ✅ 更新訊息類型
+      // 更新訊息類型
       mockClient.simulateMessage({
         type: 'new_message',
         conversationId: 'conv-1',
         data: { id: 'msg-1', content: 'Test' }
       })
 
-      // ✅ resetStats() 不存在,需要手動重置或測試實際可用的 API
+      // resetStats() 不存在,需要手動重置或測試實際可用的 API
       // 選擇測試當前統計數據非零即可
       expect(manager.totalMessagesReceived.value).toBe(1)
 

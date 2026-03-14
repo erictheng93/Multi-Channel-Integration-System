@@ -452,8 +452,8 @@ describe('ConversationService', () => {
 
       const result = await service.transferConversation(
         'conversation-123',
-        1,    // fromTeamId
-        2,    // toTeamId
+        1, // fromTeamId
+        2, // toTeamId
         'Load balancing'
       );
 
@@ -594,9 +594,9 @@ describe('ConversationService', () => {
 
     it('should return zero metrics when database is empty', async () => {
       mockDb._queueResults(
-        [{ count: 0 }],   // total
-        [{ count: 0 }],   // active
-        []                 // no teams
+        [{ count: 0 }], // total
+        [{ count: 0 }], // active
+        [] // no teams
       );
 
       const result = await service.getConversationMetrics();

@@ -8,10 +8,10 @@
  * - Reports delivery status via WebSocket
  *
  * Architecture:
- *   Agent -> HTTP Handler -> Queue.send() -> Immediate Response
- *                              |
- *                              v
- *                        Queue Consumer -> LINE API -> WebSocket Status Update
+ * Agent -> HTTP Handler -> Queue.send() -> Immediate Response
+ * |
+ * v
+ * Queue Consumer -> LINE API -> WebSocket Status Update
  */
 
 import type { Bindings, LineMessageQueuePayload, LineMessageQueueResult } from '@/types/bindings';
@@ -40,7 +40,7 @@ export class LineMessageQueueConsumer {
    * Called by Cloudflare Queue consumer
    */
   async processBatch(batch: MessageBatch<LineMessageQueuePayload>): Promise<void> {
-    console.log(`📨 [LINE Queue] Processing batch of ${batch.messages.length} messages`);
+    console.log(`[LINE Queue] Processing batch of ${batch.messages.length} messages`);
 
     const results: { message: Message<LineMessageQueuePayload>; success: boolean; error?: string }[] = [];
 
@@ -52,14 +52,14 @@ export class LineMessageQueueConsumer {
         if (result.success) {
           // Acknowledge successful message
           message.ack();
-          console.log(`✅ [LINE Queue] Message ${message.body.messageId} delivered successfully`);
+          console.log(`[LINE Queue] Message ${message.body.messageId} delivered successfully`);
         } else {
           // Retry failed message (will be automatically retried by Cloudflare)
           message.retry();
-          console.warn(`⚠️ [LINE Queue] Message ${message.body.messageId} failed, will retry: ${result.error}`);
+          console.warn(`[LINE Queue] Message ${message.body.messageId} failed, will retry: ${result.error}`);
         }
       } catch (error) {
-        console.error(`❌ [LINE Queue] Error processing message ${message.body.messageId}:`, error);
+        console.error(`[LINE Queue] Error processing message ${message.body.messageId}:`, error);
         message.retry();
         results.push({
           message,
@@ -72,7 +72,7 @@ export class LineMessageQueueConsumer {
     // Log batch summary
     const successCount = results.filter(r => r.success).length;
     const failureCount = results.filter(r => !r.success).length;
-    console.log(`📊 [LINE Queue] Batch complete: ${successCount} succeeded, ${failureCount} failed`);
+    console.log(`[LINE Queue] Batch complete: ${successCount} succeeded, ${failureCount} failed`);
   }
 
   /**
@@ -94,7 +94,7 @@ export class LineMessageQueueConsumer {
         };
       }
 
-      // 🔧 FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
+      // FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
       const LINE_MESSAGE_LIMIT = 5;
       const totalMessages = lineMessages.length;
       let sendResult = true;
@@ -108,7 +108,7 @@ export class LineMessageQueueConsumer {
         );
       } else {
         // 超過 5 則需要分批發送
-        console.log(`[LINE Queue] 📦 Sending ${totalMessages} messages in batches`);
+        console.log(`[LINE Queue]  Sending ${totalMessages} messages in batches`);
 
         for (let i = 0; i < totalMessages; i += LINE_MESSAGE_LIMIT) {
           const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
@@ -120,7 +120,7 @@ export class LineMessageQueueConsumer {
 
           if (!batchSuccess) {
             sendResult = false;
-            console.error(`[LINE Queue] ❌ Batch ${Math.floor(i / LINE_MESSAGE_LIMIT) + 1} failed`);
+            console.error(`[LINE Queue]  Batch ${Math.floor(i / LINE_MESSAGE_LIMIT) + 1} failed`);
           }
 
           // 批次間延遲
@@ -143,7 +143,7 @@ export class LineMessageQueueConsumer {
         });
 
         const duration = Date.now() - startTime;
-        console.log(`✅ [LINE Queue] Message ${payload.messageId} delivered in ${duration}ms`);
+        console.log(`[LINE Queue] Message ${payload.messageId} delivered in ${duration}ms`);
 
         return {
           messageId: payload.messageId,
@@ -244,9 +244,9 @@ export class LineMessageQueueConsumer {
         })
         .where(eq(messages.id, messageId));
 
-      console.log(`📝 [LINE Queue] Updated message ${messageId} status to ${status}`);
+      console.log(`[LINE Queue] Updated message ${messageId} status to ${status}`);
     } catch (error) {
-      console.error(`❌ [LINE Queue] Failed to update message status:`, error);
+      console.error(`[LINE Queue] Failed to update message status:`, error);
       // Don't throw - status update failure shouldn't fail message delivery
     }
   }
@@ -271,9 +271,9 @@ export class LineMessageQueueConsumer {
         }
       });
 
-      console.log(`📡 [LINE Queue] Broadcasted delivery status for message ${result.messageId}`);
+      console.log(`[LINE Queue] Broadcasted delivery status for message ${result.messageId}`);
     } catch (error) {
-      console.error(`❌ [LINE Queue] Failed to broadcast delivery status:`, error);
+      console.error(`[LINE Queue] Failed to broadcast delivery status:`, error);
       // Don't throw - broadcast failure shouldn't fail message delivery
     }
   }
@@ -301,10 +301,10 @@ export async function enqueueLineMessage(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await env.LINE_MESSAGE_QUEUE.send(payload);
-    console.log(`📤 [LINE Queue] Enqueued message ${payload.messageId} for delivery`);
+    console.log(`[LINE Queue] Enqueued message ${payload.messageId} for delivery`);
     return { success: true };
   } catch (error) {
-    console.error(`❌ [LINE Queue] Failed to enqueue message:`, error);
+    console.error(`[LINE Queue] Failed to enqueue message:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to enqueue message'

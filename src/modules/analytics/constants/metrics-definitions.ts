@@ -141,10 +141,10 @@ export const METRIC_NAMES = {
  * 默認數據保留政策
  */
 export const DEFAULT_RETENTION_POLICY: RetentionPolicy = {
-  raw: 7,        // 原始數據保留 7 天
-  hourly: 30,    // 小時聚合保留 30 天
-  daily: 365,    // 日聚合保留 365 天
-  weekly: 730,   // 週聚合保留 2 年
+  raw: 7, // 原始數據保留 7 天
+  hourly: 30, // 小時聚合保留 30 天
+  daily: 365, // 日聚合保留 365 天
+  weekly: 730, // 週聚合保留 2 年
   monthly: 2190  // 月聚合保留 6 年
 };
 
@@ -152,10 +152,10 @@ export const DEFAULT_RETENTION_POLICY: RetentionPolicy = {
  * 高頻指標的特殊保留政策
  */
 export const HIGH_FREQUENCY_RETENTION: RetentionPolicy = {
-  raw: 1,        // 原始數據只保留 1 天
-  hourly: 7,     // 小時聚合保留 7 天
-  daily: 90,     // 日聚合保留 90 天
-  weekly: 365,   // 週聚合保留 1 年
+  raw: 1, // 原始數據只保留 1 天
+  hourly: 7, // 小時聚合保留 7 天
+  daily: 90, // 日聚合保留 90 天
+  weekly: 365, // 週聚合保留 1 年
   monthly: 1095  // 月聚合保留 3 年
 };
 
@@ -191,7 +191,7 @@ export const PREDEFINED_METRICS: Record<string, MetricDefinition> = {
       enabled: true,
       threshold: {
         warning: { operator: 'gt', value: 300, duration: 5 },  // 5分鐘
-        critical: { operator: 'gt', value: 600, duration: 5 }   // 10分鐘
+        critical: { operator: 'gt', value: 600, duration: 5 } // 10分鐘
       },
       notifications: []
     }
@@ -425,9 +425,9 @@ export const AGGREGATION_PERIODS = {
  */
 export const METRIC_COLLECTION_CONFIG = {
   BATCH_SIZE: 100,
-  FLUSH_INTERVAL: 5000,   // 5 秒
+  FLUSH_INTERVAL: 5000, // 5 秒
   MAX_RETRY_ATTEMPTS: 3,
-  RETRY_DELAY: 1000,      // 1 秒
+  RETRY_DELAY: 1000, // 1 秒
   COMPRESSION_ENABLED: true,
   COMPRESSION_LEVEL: 6
 };

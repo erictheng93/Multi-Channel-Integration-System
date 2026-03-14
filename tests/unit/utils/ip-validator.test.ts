@@ -42,10 +42,10 @@ describe('IPValidator', () => {
 
     it('should allow Facebook official IPs from various ranges', () => {
       // Test a few IPs from different Facebook CIDR blocks
-      expect(validator.isAllowed('31.13.24.1', 'facebook')).toBe(true);      // 31.13.24.0/21
-      expect(validator.isAllowed('69.63.176.100', 'facebook')).toBe(true);   // 69.63.176.0/20
-      expect(validator.isAllowed('157.240.0.1', 'facebook')).toBe(true);     // 157.240.0.0/17
-      expect(validator.isAllowed('173.252.64.50', 'facebook')).toBe(true);   // 173.252.64.0/18
+      expect(validator.isAllowed('31.13.24.1', 'facebook')).toBe(true); // 31.13.24.0/21
+      expect(validator.isAllowed('69.63.176.100', 'facebook')).toBe(true); // 69.63.176.0/20
+      expect(validator.isAllowed('157.240.0.1', 'facebook')).toBe(true); // 157.240.0.0/17
+      expect(validator.isAllowed('173.252.64.50', 'facebook')).toBe(true); // 173.252.64.0/18
     });
 
     it('should reject IPs outside Facebook ranges', () => {
@@ -103,13 +103,13 @@ describe('IPValidator', () => {
 
     it('should handle boundary IPs correctly', () => {
       // Test first and last IP of a range
-      expect(validator.isAllowed('147.92.128.0', 'line')).toBe(true);   // First IP
+      expect(validator.isAllowed('147.92.128.0', 'line')).toBe(true); // First IP
       expect(validator.isAllowed('147.92.255.255', 'line')).toBe(true); // Last IP
     });
 
     it('should reject IPs just outside range boundaries', () => {
       expect(validator.isAllowed('147.92.127.255', 'line')).toBe(false); // One before
-      expect(validator.isAllowed('147.93.0.0', 'line')).toBe(false);     // One after
+      expect(validator.isAllowed('147.93.0.0', 'line')).toBe(false); // One after
     });
   });
 

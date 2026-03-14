@@ -13,7 +13,7 @@ Mock the `jwtAuth` middleware **BEFORE importing the handler** to bypass authent
 ```typescript
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// ✅ CRITICAL: Mock auth middleware BEFORE importing the handler
+// CRITICAL: Mock auth middleware BEFORE importing the handler
 vi.mock('../../../src/middleware/auth', () => ({
   jwtAuth: vi.fn((c, next) => {
     // Set mock user on context
@@ -60,12 +60,12 @@ describe('My Handler Tests', () => {
 ## Order of Operations ( CRITICAL)
 
 ```typescript
-// ❌ WRONG - Handler imported BEFORE mock
+// WRONG - Handler imported BEFORE mock
 import myHandler from '@backend/handlers/my-handler';
 vi.mock('../../../src/middleware/auth', () => ({ /* ... */ }));
 // Handler already has the real jwtAuth - too late!
 
-// ✅ CORRECT - Mock BEFORE handler import
+// CORRECT - Mock BEFORE handler import
 vi.mock('../../../src/middleware/auth', () => ({ /* ... */ }));
 import myHandler from '@backend/handlers/my-handler';
 // Handler will use the mocked jwtAuth
@@ -75,17 +75,17 @@ import myHandler from '@backend/handlers/my-handler';
 
 ### Before Fix
 ```
-❌ tests/unit/handlers/customer-main.test.ts (0 of 13 passing)
+ tests/unit/handlers/customer-main.test.ts (0 of 13 passing)
    × should return all customers
      → expected 401 to be 200
 ```
 
 ### After Fix
 ```
-✅ tests/unit/handlers/customer-main.test.ts (13 of 13 passing)
-   ✓ should return all customers
-   ✓ should handle database errors
-   ✓ should return empty list when no customers
+ tests/unit/handlers/customer-main.test.ts (13 of 13 passing)
+    should return all customers
+    should handle database errors
+    should return empty list when no customers
    ... (all 13 tests passing)
 ```
 
@@ -111,8 +111,8 @@ vi.mock('../../../src/middleware/auth', () => ({
 
 ## Files Fixed
 
-- ✅ `tests/unit/handlers/customer-main-refactored.test.ts` - 7/7 passing
-- ✅ `tests/unit/handlers/customer-main.test.ts` - 13/13 passing
+-  `tests/unit/handlers/customer-main-refactored.test.ts` - 7/7 passing
+-  `tests/unit/handlers/customer-main.test.ts` - 13/13 passing
 
 ## Files Already With Auth Mocks
 

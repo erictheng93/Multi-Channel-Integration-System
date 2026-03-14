@@ -203,11 +203,11 @@ export const MODULE_INFO = {
     implemented: 15,
     pending: 0,
     categories: {
-      core: 6,       // generate, list, details, download, delete, stats
-      batch: 1,      // batch operations
+      core: 6, // generate, list, details, download, delete, stats
+      batch: 1, // batch operations
       templates: 2,  // templates, preview
       scheduled: 4,  // create, list, update, delete scheduled
-      system: 2      // health, info
+      system: 2 // health, info
     }
   },
 
@@ -262,17 +262,17 @@ export function initializeReportsModule(config: Partial<ReportsModuleConfig> = {
 
   // 驗證配置
   if (finalConfig.service.maxReportSize < 1024 * 1024) { // min 1MB
-    console.warn('⚠️ Reports module: maxReportSize too small, setting to 1MB');
+    console.warn(' Reports module: maxReportSize too small, setting to 1MB');
     finalConfig.service.maxReportSize = 1024 * 1024;
   }
 
   if (finalConfig.service.maxConcurrentGenerations < 1) {
-    console.warn('⚠️ Reports module: maxConcurrentGenerations must be at least 1');
+    console.warn(' Reports module: maxConcurrentGenerations must be at least 1');
     finalConfig.service.maxConcurrentGenerations = 1;
   }
 
   if (finalConfig.handler.validation.maxRecipientsCount < 1) {
-    console.warn('⚠️ Reports module: maxRecipientsCount must be at least 1');
+    console.warn(' Reports module: maxRecipientsCount must be at least 1');
     finalConfig.handler.validation.maxRecipientsCount = 1;
   }
 

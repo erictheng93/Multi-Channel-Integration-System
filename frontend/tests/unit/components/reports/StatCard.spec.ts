@@ -17,13 +17,13 @@ describe('StatCard.vue', () => {
     it('應該渲染基本 props', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總報表數'
         }
       })
 
-      expect(wrapper.find('.stat-icon').text()).toBe('📊')
+      expect(wrapper.find('.stat-icon').text()).toBe('')
       expect(wrapper.find('.stat-number').text()).toBe('100')
       expect(wrapper.find('.stat-label').text()).toBe('總報表數')
     })
@@ -31,7 +31,7 @@ describe('StatCard.vue', () => {
     it('應該接受字符串類型的 number', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '✅',
+          icon: '',
           number: '75%',
           label: '完成率'
         }
@@ -43,7 +43,7 @@ describe('StatCard.vue', () => {
     it('應該使用默認 type', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '測試'
         }
@@ -57,7 +57,7 @@ describe('StatCard.vue', () => {
     it('應該應用 total type 類', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總數',
           type: 'total'
@@ -70,7 +70,7 @@ describe('StatCard.vue', () => {
     it('應該應用 completed type 類', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '✅',
+          icon: '',
           number: 80,
           label: '已完成',
           type: 'completed'
@@ -83,7 +83,7 @@ describe('StatCard.vue', () => {
     it('應該應用 generating type 類', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '⚙️',
+          icon: '',
           number: 10,
           label: '處理中',
           type: 'generating'
@@ -96,7 +96,7 @@ describe('StatCard.vue', () => {
     it('應該應用 failed type 類', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '❌',
+          icon: '',
           number: 5,
           label: '失敗',
           type: 'failed'
@@ -111,7 +111,7 @@ describe('StatCard.vue', () => {
     it('應該渲染 extra slot', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總數'
         },
@@ -127,7 +127,7 @@ describe('StatCard.vue', () => {
     it('沒有提供 extra slot 時不應該渲染', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總數'
         }
@@ -143,7 +143,7 @@ describe('StatCard.vue', () => {
     it('應該響應 props 更新', async () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總數'
         }
@@ -159,7 +159,7 @@ describe('StatCard.vue', () => {
     it('應該響應 type 更新', async () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總數',
           type: 'total'
@@ -179,7 +179,7 @@ describe('StatCard.vue', () => {
     it('應該具有正確的 DOM 結構', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總數'
         }
@@ -195,7 +195,7 @@ describe('StatCard.vue', () => {
     it('應該具有正確的樣式類', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總數',
           type: 'total'
@@ -212,7 +212,7 @@ describe('StatCard.vue', () => {
     it('應該渲染帶有額外內容的完整卡片', () => {
       const wrapper = mount(StatCard, {
         props: {
-          icon: '📊',
+          icon: '',
           number: 100,
           label: '總報表數',
           type: 'total'
@@ -220,7 +220,7 @@ describe('StatCard.vue', () => {
         slots: {
           extra: `
             <div class="stat-trend">
-              <span class="trend-indicator up">↗</span>
+              <span class="trend-indicator up"></span>
               <span class="trend-text">本月 +10</span>
             </div>
           `
@@ -228,7 +228,7 @@ describe('StatCard.vue', () => {
       })
 
       // 驗證基本內容
-      expect(wrapper.find('.stat-icon').text()).toBe('📊')
+      expect(wrapper.find('.stat-icon').text()).toBe('')
       expect(wrapper.find('.stat-number').text()).toBe('100')
       expect(wrapper.find('.stat-label').text()).toBe('總報表數')
 

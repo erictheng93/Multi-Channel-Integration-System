@@ -159,7 +159,7 @@ const response = await broadcaster.fetch(new Request('https://broadcaster/batch-
 ****:
 ```typescript
 await env.REALTIME_QUEUE.send(queueMessage);
-console.log(` [Queue Handler] Event queued: ${eventId} (${eventType})`);
+console.log(`[Queue Handler] Event queued: ${eventId} (${eventType})`);
 ```
 
 ****:
@@ -186,7 +186,7 @@ const response = await broadcaster.fetch(new Request('https://broadcaster/broadc
  headers: { 'Content-Type': 'application/json' }
 }));
 
-console.log(` [Queue Handler] Event broadcast (WebSocket/DO): ${eventId} (${eventType})`);
+console.log(`[Queue Handler] Event broadcast (WebSocket/DO): ${eventId} (${eventType})`);
 ```
 
 ****:

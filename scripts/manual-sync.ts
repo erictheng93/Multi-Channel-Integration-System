@@ -22,7 +22,7 @@ const TABLES_TO_SYNC = [
 ];
 
 async function clearProductionTables(): Promise<void> {
-  console.log('🗑️ 清空生產環境表...');
+  console.log(' 清空生產環境表...');
   
   for (const table of TABLES_TO_SYNC) {
     try {
@@ -30,15 +30,15 @@ async function clearProductionTables(): Promise<void> {
         cwd: process.cwd(),
         stdio: 'inherit'
       });
-      console.log(`✅ 已清空表: ${table}`);
+      console.log(` 已清空表: ${table}`);
     } catch (error) {
-      console.warn(`⚠️ 清空表 ${table} 失敗:`, error);
+      console.warn(` 清空表 ${table} 失敗:`, error);
     }
   }
 }
 
 async function syncTableData(tableName: string): Promise<void> {
-  console.log(`🔄 同步表: ${tableName}`);
+  console.log(` 同步表: ${tableName}`);
   
   try {
     // 1. 從開發環境獲取數據
@@ -50,10 +50,10 @@ async function syncTableData(tableName: string): Promise<void> {
     const result = JSON.parse(devData);
     const rows = result[0]?.results || [];
     
-    console.log(`📊 開發環境有 ${rows.length} 條記錄`);
+    console.log(` 開發環境有 ${rows.length} 條記錄`);
     
     if (rows.length === 0) {
-      console.log(`⚠️ 表 ${tableName} 無數據，跳過`);
+      console.log(` 表 ${tableName} 無數據，跳過`);
       return;
     }
     
@@ -88,17 +88,17 @@ async function syncTableData(tableName: string): Promise<void> {
         stdio: 'inherit'
       });
       
-      console.log(`✅ 已插入 ${batch.length} 行到 ${tableName} (${i + 1}-${i + batch.length}/${rows.length})`);
+      console.log(` 已插入 ${batch.length} 行到 ${tableName} (${i + 1}-${i + batch.length}/${rows.length})`);
     }
     
   } catch (error) {
-    console.error(`❌ 同步表 ${tableName} 失敗:`, error);
+    console.error(` 同步表 ${tableName} 失敗:`, error);
     throw error;
   }
 }
 
 async function verifySync(): Promise<void> {
-  console.log('\n🔍 驗證同步結果...');
+  console.log('\n 驗證同步結果...');
   
   for (const tableName of TABLES_TO_SYNC) {
     try {
@@ -119,25 +119,25 @@ async function verifySync(): Promise<void> {
       const prodCount = prodResult[0]?.results[0]?.count || 0;
       
       if (devCount === prodCount) {
-        console.log(`✅ ${tableName}: ${devCount} 條記錄 (一致)`);
+        console.log(` ${tableName}: ${devCount} 條記錄 (一致)`);
       } else {
-        console.log(`❌ ${tableName}: 開發 ${devCount} vs 生產 ${prodCount} (不一致)`);
+        console.log(` ${tableName}: 開發 ${devCount} vs 生產 ${prodCount} (不一致)`);
       }
     } catch (error) {
-      console.warn(`⚠️ 無法驗證表 ${tableName}:`, error);
+      console.warn(` 無法驗證表 ${tableName}:`, error);
     }
   }
 }
 
 async function main() {
   try {
-    console.log('🚀 開始手動數據同步任務...');
-    console.log('⚠️ 警告：這將完全覆蓋生產環境的數據！\n');
+    console.log(' 開始手動數據同步任務...');
+    console.log(' 警告：這將完全覆蓋生產環境的數據！\n');
     
     // 1. 清空生產環境表
     await clearProductionTables();
     
-    console.log('\n🔄 開始同步數據...');
+    console.log('\n 開始同步數據...');
     
     // 2. 逐表同步
     for (const table of TABLES_TO_SYNC) {
@@ -147,10 +147,10 @@ async function main() {
     // 3. 驗證同步結果
     await verifySync();
     
-    console.log('\n✨ 數據同步任務完成！');
+    console.log('\n 數據同步任務完成！');
     
   } catch (error) {
-    console.error('💥 同步過程中出現錯誤:', error);
+    console.error(' 同步過程中出現錯誤:', error);
     process.exit(1);
   }
 }

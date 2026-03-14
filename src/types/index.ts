@@ -74,8 +74,8 @@ export interface LineMessage {
   duration?: number;  // For audio messages
   fileName?: string;  // For file messages
   fileSize?: number;  // For file messages
-  title?: string;     // For location messages
-  address?: string;   // For location messages
+  title?: string; // For location messages
+  address?: string; // For location messages
   latitude?: number;  // For location messages
   longitude?: number; // For location messages
   packageId?: string; // For sticker messages
@@ -102,11 +102,11 @@ export interface LineEvent {
     data: string;
     params?: LinePostbackParams;
   };
-  // 🆕 Follow event with QR code referral tracking
+  // Follow event with QR code referral tracking
   follow?: {
     isUnblocked?: boolean;  // true if user unblocked the account
   };
-  // 🆕 Link token for account linking (used for QR code tracking via liff.getContext())
+  // Link token for account linking (used for QR code tracking via liff.getContext())
   link?: {
     result: 'ok' | 'failed';
     nonce?: string;
@@ -223,8 +223,8 @@ export interface DbUser {
   createdAt: string;
   updatedAt: string;
   // Multi-team support (Phase 1 optimization)
-  allowedTeamIds?: number[];                    // All accessible team IDs (cached from agent_teams)
-  teamRoles?: Record<number, TeamRoleInTeam>;   // teamId -> roleInTeam mapping
+  allowedTeamIds?: number[]; // All accessible team IDs (cached from agent_teams)
+  teamRoles?: Record<number, TeamRoleInTeam>; // teamId -> roleInTeam mapping
 }
 
 // Team type
@@ -272,8 +272,8 @@ export interface JWTPayload {
   type?: 'access' | 'refresh' | 'temp_password_change';
   isSystemToken?: boolean;
   // Multi-team support (Phase 1 optimization)
-  allowedTeamIds?: number[];                    // All accessible team IDs
-  teamRoles?: Record<number, TeamRoleInTeam>;   // teamId -> roleInTeam mapping
+  allowedTeamIds?: number[]; // All accessible team IDs
+  teamRoles?: Record<number, TeamRoleInTeam>; // teamId -> roleInTeam mapping
 }
 
 // Facebook Webhook types

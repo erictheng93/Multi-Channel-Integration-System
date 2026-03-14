@@ -214,7 +214,7 @@ export function useApiMonitorController() {
    */
   async function loadApiStatusFromBackend(): Promise<void> {
     try {
-      // ✅ Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
+      // Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
       const baseUrl = import.meta.env.DEV ? '' : getBackendUrl()
       const response = await fetch(`${baseUrl}/api/system/api-status`)
 
@@ -243,7 +243,7 @@ export function useApiMonitorController() {
         }))
       }
     } catch (err) {
-      console.error('❌ Failed to load API status from backend:', err)
+      console.error(' Failed to load API status from backend:', err)
       error.value = err instanceof Error ? err.message : 'Unknown error'
       throw err
     }
@@ -254,7 +254,7 @@ export function useApiMonitorController() {
    */
   async function fetchMigrationStatus(): Promise<void> {
     try {
-      // ✅ Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
+      // Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
       const baseUrl = import.meta.env.DEV ? '' : getBackendUrl()
       const response = await fetch(`${baseUrl}/api/websocket/migration-status`)
 
@@ -357,7 +357,7 @@ export function useApiMonitorController() {
         fetchMigrationStatus()
       ])
     } catch (err) {
-      console.error('❌ Failed to refresh:', err)
+      console.error(' Failed to refresh:', err)
       error.value = err instanceof Error ? err.message : 'Refresh failed'
     } finally {
       isRefreshing.value = false

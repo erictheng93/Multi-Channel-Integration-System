@@ -2,7 +2,7 @@
   <div class="migration-status">
     <div class="migration-card">
       <div class="migration-header">
-        <h2>🚀 WebSocket 遷移狀態</h2>
+        <h2> WebSocket 遷移狀態</h2>
         <span class="migration-badge">已完成</span>
       </div>
 
@@ -23,13 +23,13 @@
         <div class="detail-row">
           <span>WebSocket 狀態:</span>
           <span class="status-badge success">
-            {{ status.websocketEnabled ? '✅ 已啟用' : '❌ 未啟用' }}
+            {{ status.websocketEnabled ? ' 已啟用' : ' 未啟用' }}
           </span>
         </div>
         <div class="detail-row">
           <span>Durable Objects:</span>
           <span class="status-badge success">
-            {{ status.durableObjectsAvailable ? '✅ 可用' : '❌ 不可用' }}
+            {{ status.durableObjectsAvailable ? ' 可用' : ' 不可用' }}
           </span>
         </div>
         <div class="detail-row">

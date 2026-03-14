@@ -68,14 +68,14 @@ export const messageApi = {
   },
 
   // 發送訊息
-  // 🔧 FIX: 使用 /api/conversations/ 端點 (發送到 LINE + WebSocket 廣播)
+  // FIX: 使用 /api/conversations/ 端點 (發送到 LINE + WebSocket 廣播)
   // 後端 message.ts 已加入 CustomerConversationDO 通知，實現即時同步
   send: async (conversationId: string, data: SendMessageRequest): Promise<ApiResponse<Message>> => {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
 
-    // 🔧 FIX: 允許發送純附件訊息（沒有文字內容）
+    // FIX: 允許發送純附件訊息（沒有文字內容）
     const hasAttachments = data.attachmentIds && data.attachmentIds.length > 0;
     const hasContent = data.content?.trim();
 
@@ -84,7 +84,7 @@ export const messageApi = {
     }
 
     const payload = {
-      content: data.content?.trim() || '',  // 🔧 FIX: 允許空字串
+      content: data.content?.trim() || '',  //  FIX: 允許空字串
       messageType: data.messageType || (hasAttachments ? 'file' : 'text'),
       platform: data.platform,
       senderId: data.senderId,

@@ -442,7 +442,7 @@ export class MessageBatchOptimizer {
 
     // Check memory usage
     if (this.isMemoryUsageHigh()) {
-      console.warn('⚠️ [BatchOptimizer] High memory usage, flushing batches');
+      console.warn('[BatchOptimizer] High memory usage, flushing batches');
       await this.flushAllBatches();
     }
   }
@@ -596,8 +596,8 @@ export class MessageBatchOptimizer {
   }
 
   // private calculateCacheHitRate(): number {
-  //   // This would be implemented with actual cache statistics
-  //   return 0.85; // Placeholder
+  // // This would be implemented with actual cache statistics
+  // return 0.85; // Placeholder
   // }
 
   // =================== Configuration Management ===================
@@ -618,7 +618,7 @@ export class MessageBatchOptimizer {
   // =================== Cleanup ===================
 
   shutdown(): void {
-    console.log('🛑 [BatchOptimizer] Shutting down message batch optimizer');
+    console.log('[BatchOptimizer] Shutting down message batch optimizer');
 
     // Clear all timers
     for (const timer of this.batchTimers.values()) {

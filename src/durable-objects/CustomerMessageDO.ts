@@ -53,7 +53,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
     this.setupRoutes();
-    console.log('🏗️ [CustomerMessageDO] Initialized');
+    console.log('[CustomerMessageDO] Initialized');
   }
 
   /**
@@ -110,7 +110,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         return c.json({ success: false, error: 'Conversation ID is required' }, 400);
       }
 
-      console.log(`📥 [CustomerMessageDO] Fetching messages:`, {
+      console.log(`[CustomerMessageDO] Fetching messages:`, {
         conversationId,
         limit,
         before
@@ -171,9 +171,9 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             .limit(limit);
         }
 
-        console.log(`✅ [CustomerMessageDO] Fetched ${fetchedMessages.length} messages`);
+        console.log(`[CustomerMessageDO] Fetched ${fetchedMessages.length} messages`);
 
-        // 🔧 FIX: Query attachments for all fetched messages
+        // FIX: Query attachments for all fetched messages
         let attachmentsByMessageId: Record<string, any[]> = {};
         if (fetchedMessages.length > 0) {
           const messageIds = fetchedMessages.map(m => m.id);
@@ -195,18 +195,18 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           }
         }
 
-        // 🔧 FIX: Map agentSenderId/customerSenderId to senderId and include attachments
+        // FIX: Map agentSenderId/customerSenderId to senderId and include attachments
         return c.json({
           success: true,
           messages: fetchedMessages.map(msg => ({
             ...msg,
             senderId: msg.agentSenderId || msg.customerSenderId,
-            file_attachments: attachmentsByMessageId[msg.id] || []  // 🔧 FIX: Include attachments
+            file_attachments: attachmentsByMessageId[msg.id] || []  //  FIX: Include attachments
           })),
           hasMore: fetchedMessages.length === limit
         });
       } catch (error) {
-        console.error('❌ [CustomerMessageDO] Error fetching messages:', error);
+        console.error('[CustomerMessageDO] Error fetching messages:', error);
         return c.json({
           success: false,
           error: 'Failed to fetch messages'
@@ -250,7 +250,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             agentId = sessionId;
           }
         } catch (decodeError) {
-          console.error('⚠️  [CustomerMessageDO] Failed to decode JWT, using sessionId as-is:', decodeError);
+          console.error('  [CustomerMessageDO] Failed to decode JWT, using sessionId as-is:', decodeError);
           agentId = sessionId;
         }
 
@@ -262,25 +262,25 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           return c.json({ success: false, error: 'Message content or attachments are required' }, 400);
         }
 
-        console.log(`📝 [CustomerMessageDO] Creating message:`, {
+        console.log(`[CustomerMessageDO] Creating message:`, {
           conversationId,
           agentId,
           contentLength: content?.length || 0,
           assetsCount: assets?.length || 0,
           attachmentIds: attachmentIds || [],
-          correlationId: correlationId || 'N/A'  // 🔧 Phase 3: Log correlationId
+          correlationId: correlationId || 'N/A'  //  Phase 3: Log correlationId
         });
 
         const messageId = crypto.randomUUID();
         const createdAt = nowISO();
 
         // Store assets and attachmentIds in metadata field as JSON
-        // 🔧 Phase 3: Include correlationId for deduplication
+        // Phase 3: Include correlationId for deduplication
         const metadata = JSON.stringify({
           assets: assets || [],
           attachmentIds: attachmentIds || [],
           platform: platform || 'system',
-          correlationId: correlationId || null  // 🔧 Phase 3: Track correlation for WebSocket dedup
+          correlationId: correlationId || null  //  Phase 3: Track correlation for WebSocket dedup
         });
 
         // Determine message type - use 'file' if there are attachments
@@ -316,29 +316,29 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         const db = createDbClient(this.env.DB);
         await db.insert(messages).values(messageData as any);
 
-        // 🔧 FIX: Link attachments to the message
+        // FIX: Link attachments to the message
         if (hasAttachments) {
-          console.log(`📎 [CustomerMessageDO] Linking ${attachmentIds.length} attachments to message ${messageId}`);
+          console.log(`[CustomerMessageDO] Linking ${attachmentIds.length} attachments to message ${messageId}`);
           for (const attachmentId of attachmentIds) {
             await db
               .update(fileAttachments)
               .set({ messageId: messageId })
               .where(eq(fileAttachments.id, attachmentId));
           }
-          console.log(`✅ [CustomerMessageDO] Attachments linked successfully`);
+          console.log(`[CustomerMessageDO] Attachments linked successfully`);
         }
 
-        console.log(`✅ [CustomerMessageDO] Message created: ${messageId}`);
+        console.log(`[CustomerMessageDO] Message created: ${messageId}`);
 
-        // 🔧 FIX: Update conversation timestamps (updatedAt + lastMessageAt)
+        // FIX: Update conversation timestamps (updatedAt + lastMessageAt)
         // This was missing, causing conversations to not re-sort after new messages
         await db
           .update(conversations)
           .set({ lastMessageAt: createdAt, updatedAt: createdAt })
           .where(eq(conversations.id, conversationId));
-        console.log(`✅ [CustomerMessageDO] Conversation timestamps updated: ${createdAt}`);
+        console.log(`[CustomerMessageDO] Conversation timestamps updated: ${createdAt}`);
 
-        // 🔧 FIX: Fetch linked attachments for response
+        // FIX: Fetch linked attachments for response
         let linkedAttachments: any[] = [];
         if (hasAttachments) {
           linkedAttachments = await db
@@ -346,23 +346,23 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             .from(fileAttachments)
             .where(eq(fileAttachments.messageId, messageId))
             .all();
-          console.log(`📎 [CustomerMessageDO] Fetched ${linkedAttachments.length} linked attachments`);
+          console.log(`[CustomerMessageDO] Fetched ${linkedAttachments.length} linked attachments`);
         }
 
         // Use the inserted data directly for broadcasting
         // This avoids D1 eventual consistency issues
-        // 🔧 FIX: Add senderId field and file_attachments for frontend compatibility
-        // 🔧 Phase 3: Add correlationId for WebSocket deduplication
+        // FIX: Add senderId field and file_attachments for frontend compatibility
+        // Phase 3: Add correlationId for WebSocket deduplication
         const createdMessage = {
           ...messageData,
           senderId: messageData.agentSenderId || messageData.customerSenderId,
           file_attachments: linkedAttachments,
-          correlationId: correlationId || null  // 🔧 Phase 3: For WebSocket deduplication
+          correlationId: correlationId || null  //  Phase 3: For WebSocket deduplication
         };
 
-        console.log(`📋 [CustomerMessageDO] Using direct message data for broadcast`);
+        console.log(`[CustomerMessageDO] Using direct message data for broadcast`);
 
-        // 🔧 FIX: Send message to LINE user if platform is LINE
+        // FIX: Send message to LINE user if platform is LINE
         // Query conversation to get customerId, then customer to get platform info
         try {
           const conversationData = await db
@@ -384,7 +384,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
               .limit(1);
 
             if (customerData.length > 0 && customerData[0].platform === 'line' && customerData[0].platformUserId) {
-              console.log(`📱 [CustomerMessageDO] Sending message to LINE user: ${customerData[0].platformUserId}`);
+              console.log(`[CustomerMessageDO] Sending message to LINE user: ${customerData[0].platformUserId}`);
 
               const LINE_MESSAGE_LIMIT = 5;
               const lineMessages: any[] = [];
@@ -398,13 +398,13 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
               // 2. Add attachment messages
               if (linkedAttachments && linkedAttachments.length > 0) {
                 for (const attachment of linkedAttachments) {
-                  // 🔧 FIX: Use correct field names from database schema
+                  // FIX: Use correct field names from database schema
                   // Schema uses: fileUrl (not url), fileSize (not size)
                   const attachmentUrl = attachment.fileUrl;
                   const attachmentSize = attachment.fileSize || 0;
 
                   if (!attachmentUrl) {
-                    console.warn(`⚠️ [CustomerMessageDO] Attachment ${attachment.id} has no URL, skipping`);
+                    console.warn(`[CustomerMessageDO] Attachment ${attachment.id} has no URL, skipping`);
                     continue;
                   }
 
@@ -451,17 +451,17 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
                 }
 
                 if (sendSuccess) {
-                  console.log(`✅ [CustomerMessageDO] LINE message sent successfully`);
+                  console.log(`[CustomerMessageDO] LINE message sent successfully`);
                 } else {
-                  console.error(`⚠️  [CustomerMessageDO] Failed to send LINE message`);
+                  console.error(`  [CustomerMessageDO] Failed to send LINE message`);
                 }
               }
             } else {
-              console.log(`ℹ️  [CustomerMessageDO] Not a LINE customer or no platformUserId, skipping LINE send`);
+              console.log(`  [CustomerMessageDO] Not a LINE customer or no platformUserId, skipping LINE send`);
             }
           }
         } catch (lineError) {
-          console.error('⚠️  [CustomerMessageDO] Error sending LINE message:', lineError);
+          console.error('  [CustomerMessageDO] Error sending LINE message:', lineError);
           // Don't fail the request - message is still stored and will be broadcast via WebSocket
         }
 
@@ -471,7 +471,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           const conversationDOId = this.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
           const conversationDO = this.env.CUSTOMER_CONVERSATION_DO.get(conversationDOId);
 
-          console.log(`📡 [CustomerMessageDO] Preparing to notify CustomerConversationDO`);
+          console.log(`[CustomerMessageDO] Preparing to notify CustomerConversationDO`);
 
           // Use fetch() to send notification to CustomerConversationDO
           // Cannot directly call methods on other Durable Objects!
@@ -487,23 +487,23 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           const response = await conversationDO.fetch(notifyRequest);
 
           if (response.ok) {
-            // 🔧 DEBUG: Log response with connection info
+            // DEBUG: Log response with connection info
             const responseData = await response.json() as { success: boolean; debug?: { totalConnections: number; connectedUsers: string[]; doConversationId: string } };
-            console.log(`✅ [CustomerMessageDO] Notified CustomerConversationDO for broadcast:`, {
+            console.log(`[CustomerMessageDO] Notified CustomerConversationDO for broadcast:`, {
               conversationId,
               debug: responseData.debug
             });
           } else {
             const errorText = await response.text();
-            console.error(`⚠️  [CustomerMessageDO] CustomerConversationDO returned error:`, errorText);
+            console.error(`  [CustomerMessageDO] CustomerConversationDO returned error:`, errorText);
           }
         } catch (error) {
-          console.error('⚠️  [CustomerMessageDO] Failed to notify CustomerConversationDO:', error);
+          console.error('  [CustomerMessageDO] Failed to notify CustomerConversationDO:', error);
           // Message is still stored, just not broadcasted in real-time
           // Clients will receive it on next fetch
         }
 
-        // 🆕 Broadcast to MessageBroadcaster for global updates (conversation list page)
+        // Broadcast to MessageBroadcaster for global updates (conversation list page)
         // This ensures conversation list lastMessage updates in real-time
         try {
           if (this.env.MESSAGE_BROADCASTER) {
@@ -539,23 +539,23 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             }));
 
             if (globalResponse.ok) {
-              console.log(`✅ [CustomerMessageDO] Global broadcast sent to MessageBroadcaster for conversation list updates`);
+              console.log(`[CustomerMessageDO] Global broadcast sent to MessageBroadcaster for conversation list updates`);
             } else {
-              console.warn(`⚠️  [CustomerMessageDO] MessageBroadcaster returned non-ok:`, await globalResponse.text());
+              console.warn(`  [CustomerMessageDO] MessageBroadcaster returned non-ok:`, await globalResponse.text());
             }
           }
         } catch (globalError) {
-          console.error(`⚠️  [CustomerMessageDO] Failed to broadcast globally:`, globalError);
+          console.error(`  [CustomerMessageDO] Failed to broadcast globally:`, globalError);
           // Non-critical - conversation detail page still gets updates via CustomerConversationDO
         }
 
-        console.log(`📤 [CustomerMessageDO] Returning success response`);
+        console.log(`[CustomerMessageDO] Returning success response`);
         return c.json({
           success: true,
           message: createdMessage
         });
       } catch (error) {
-        console.error('❌ [CustomerMessageDO] Error creating message:', error);
+        console.error('[CustomerMessageDO] Error creating message:', error);
         return c.json({
           success: false,
           error: 'Failed to create message'
@@ -595,7 +595,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           return c.json({ success: false, error: 'No file provided' }, 400);
         }
 
-        console.log(`📤 [CustomerMessageDO] Uploading file:`, {
+        console.log(`[CustomerMessageDO] Uploading file:`, {
           conversationId,
           userId,
           filename: file.name,
@@ -617,7 +617,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         // Generate the public URL
         const assetUrl = `${this.env.R2_PUBLIC_URL}/${uniqueFilename}`;
 
-        console.log(`✅ [CustomerMessageDO] File uploaded: ${assetUrl}`);
+        console.log(`[CustomerMessageDO] File uploaded: ${assetUrl}`);
 
         return c.json({
           success: true,
@@ -627,7 +627,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           contentType: file.type
         });
       } catch (error) {
-        console.error('❌ [CustomerMessageDO] File upload error:', error);
+        console.error('[CustomerMessageDO] File upload error:', error);
         return c.json({
           success: false,
           error: 'Failed to upload file'
@@ -635,7 +635,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       }
     });
 
-    console.log('🛣️  [CustomerMessageDO] Routes configured');
+    console.log('  [CustomerMessageDO] Routes configured');
   }
 
   /**

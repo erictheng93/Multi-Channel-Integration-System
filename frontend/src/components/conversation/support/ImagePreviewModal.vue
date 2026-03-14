@@ -115,7 +115,7 @@ const formattedSize = computed(() => {
   return props.imageSize ? formatFileSize(props.imageSize) : ''
 })
 
-// 🔧 FIX: 使用 computed style 確保樣式正確應用，避免 scoped CSS 與 Teleport 的問題
+// FIX: 使用 computed style 確保樣式正確應用，避免 scoped CSS 與 Teleport 的問題
 const imageStyle = computed(() => ({
   transform: `scale(${currentZoom.value})`,
   maxWidth: 'calc(90vw - 96px)',
@@ -305,12 +305,12 @@ onUnmounted(() => {
   padding: 24px;
   overflow: auto;
   background: #f9fafb;
-  /* 🔧 FIX: 允許 flex 子項目正確收縮 */
+  /* FIX: 允許 flex 子項目正確收縮 */
   min-height: 0;
 }
 
 .preview-image {
-  /* 🔧 關鍵尺寸由 inline style 控制以確保正確應用 */
+  /* 關鍵尺寸由 inline style 控制以確保正確應用 */
   transition: transform 0.2s ease;
   cursor: move;
   border-radius: 4px;

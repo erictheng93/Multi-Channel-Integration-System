@@ -151,7 +151,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       }
     });
 
-    // 🆕 Broadcast team member added event for real-time UI updates
+    // Broadcast team member added event for real-time UI updates
     await triggerTeamMemberChangeEvent(c.env, {
       type: 'added',
       teamId,
@@ -162,7 +162,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       changedBy: user.displayName || String(user.id)
     });
 
-    console.log('✅ Agent added to team with broadcast:', {
+    console.log(' Agent added to team with broadcast:', {
       agentId,
       teamId,
       teamName,
@@ -184,7 +184,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
  * 批量將客服加入多個團隊
  * POST /api/teams/agent-teams/:agentId/join-multiple
  *
- * 🚀 Phase 3 優化:
+ * Phase 3 優化:
  * - Service 層使用批量 DB 操作 (2*N 查詢 → 2 查詢)
  * - 批量獲取團隊資訊和 memberCount (1 次查詢)
  * - 並行廣播所有 WebSocket 事件
@@ -205,7 +205,7 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
     const db = drizzle(c.env.DB);
     const service = new AgentTeamsService(c.env.DB);
 
-    // 🚀 Phase 3: 使用批量 DB 操作
+    // Phase 3: 使用批量 DB 操作
     const results = await service.addAgentToMultipleTeams(agentId, teamIds, roleInTeam || 'member');
 
     // Log activity
@@ -224,7 +224,7 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
       }
     });
 
-    // 🚀 Phase 3: 批量 WebSocket 廣播
+    // Phase 3: 批量 WebSocket 廣播
     if (results.added.length > 0) {
       try {
         // 批量獲取團隊資訊 (1 次查詢)
@@ -264,19 +264,19 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
         Promise.allSettled(broadcastPromises).then(broadcastResults => {
           const failed = broadcastResults.filter(r => r.status === 'rejected').length;
           if (failed > 0) {
-            console.warn(`⚠️ [join-multiple] ${failed}/${results.added.length} WebSocket broadcasts failed`);
+            console.warn(`[join-multiple] ${failed}/${results.added.length} WebSocket broadcasts failed`);
           } else {
-            console.log(`✅ [join-multiple] All ${results.added.length} WebSocket broadcasts succeeded`);
+            console.log(`[join-multiple] All ${results.added.length} WebSocket broadcasts succeeded`);
           }
         });
 
       } catch (broadcastError) {
         // 廣播失敗不影響主要操作
-        console.warn('⚠️ [join-multiple] WebSocket broadcast error:', broadcastError);
+        console.warn('[join-multiple] WebSocket broadcast error:', broadcastError);
       }
     }
 
-    console.log('✅ Agent added to multiple teams with batch optimization:', {
+    console.log(' Agent added to multiple teams with batch optimization:', {
       agentId,
       added: results.added.length,
       skipped: results.skipped.length,
@@ -298,12 +298,12 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
  * 從團隊移除客服
  * DELETE /api/teams/agent-teams/:agentId/leave/:teamId
  *
- * 🆕 移出後會：
+ * 移出後會：
  * 1. 發送 WebSocket 通知給被移出的客服
  * 2. 前端收到通知後刷新對話列表
  * 3. 如果客服正在查看該團隊的對話，前端會強制關閉
  */
-// 🚀 Phase 2 RBAC: requires 'lead' role in the target team
+// Phase 2 RBAC: requires 'lead' role in the target team
 agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
     const user = c.get('user');
@@ -311,7 +311,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
     const teamId = getValidatedParam<number>(c, 'teamId');
     const db = drizzle(c.env.DB);
 
-    // 🆕 Step 1: Get team name for notification
+    // Step 1: Get team name for notification
     const [teamInfo] = await db
       .select({ name: teams.name })
       .from(teams)
@@ -320,7 +320,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
 
     const teamName = teamInfo?.name || `Team ${teamId}`;
 
-    // 🆕 Step 2: Get affected conversation IDs (conversations assigned to this team)
+    // Step 2: Get affected conversation IDs (conversations assigned to this team)
     // These are the conversations the agent will no longer be able to see
     const affectedConversations = await db
       .select({ id: conversations.id })
@@ -362,7 +362,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
       }
     });
 
-    // 🆕 Step 5: Send WebSocket notification to the removed agent
+    // Step 5: Send WebSocket notification to the removed agent
     // This triggers: 1) Toast notification 2) Conversation list refresh 3) Force close if viewing affected conversation
     await triggerAgentRemovedFromTeamNotification(c.env, {
       agentId,
@@ -372,7 +372,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
       affectedConversationIds
     });
 
-    // 🆕 Step 6: Broadcast team member removed event for real-time UI updates
+    // Step 6: Broadcast team member removed event for real-time UI updates
     await triggerTeamMemberChangeEvent(c.env, {
       type: 'removed',
       teamId,
@@ -383,7 +383,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
       changedBy: user.displayName || String(user.id)
     });
 
-    console.log('✅ Agent removed from team with notification and broadcast:', {
+    console.log(' Agent removed from team with notification and broadcast:', {
       agentId,
       teamId,
       teamName,
@@ -409,7 +409,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
 /**
  * 更新客服在團隊中的角色
  * PUT /api/teams/agent-teams/:agentId/role/:teamId
- * 🚀 Phase 2 RBAC: requires 'lead' role in the target team
+ * Phase 2 RBAC: requires 'lead' role in the target team
  */
 agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {
@@ -450,7 +450,7 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
 /**
  * 設定主要團隊
  * PUT /api/teams/agent-teams/:agentId/primary/:teamId
- * 🚀 Phase 2 RBAC: requires 'lead' role in the target team
+ * Phase 2 RBAC: requires 'lead' role in the target team
  */
 agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lead', 'teamId'), requireIntId('teamId'), async (c) => {
   try {

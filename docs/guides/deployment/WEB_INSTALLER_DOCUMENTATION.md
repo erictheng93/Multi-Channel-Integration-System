@@ -88,55 +88,55 @@ Cloudflare Platform API
 ```
 web-installer/
 ├── backend/
-│   ├── src/
-│   │   ├── utils/
-│   │   │   ├── validation.ts        # Implemented (13 tests)
-│   │   │   └── errors.ts            # Implemented (15 tests)
-│   │   ├── services/                # Fully Specified
-│   │   │   ├── CloudflareAPI.ts
-│   │   │   ├── MigrationRunner.ts
-│   │   │   ├── ConfigGenerator.ts
-│   │   │   ├── EmailService.ts
-│   │   │   └── RollbackService.ts
-│   │   ├── durable-objects/          # Fully Specified
-│   │   │   └── DeploymentOrchestrator.ts
-│   │   └── routes/                   # Fully Specified
-│   │       ├── oauth.ts
-│   │       └── deployment.ts
-│   ├── tests/
-│   │   └── unit/utils/              # 28 tests, 90.6% coverage
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── vitest.config.ts
-│   └── wrangler.toml
+│ ├── src/
+│ │   ├── utils/
+│ │   │ ├── validation.ts # Implemented (13 tests)
+│ │   │ └── errors.ts # Implemented (15 tests)
+│ │   ├── services/ # Fully Specified
+│ │   │ ├── CloudflareAPI.ts
+│ │   │ ├── MigrationRunner.ts
+│ │   │ ├── ConfigGenerator.ts
+│ │   │ ├── EmailService.ts
+│ │   │ └── RollbackService.ts
+│ │   ├── durable-objects/ # Fully Specified
+│ │   │ └── DeploymentOrchestrator.ts
+│ │   └── routes/ # Fully Specified
+│ │       ├── oauth.ts
+│ │       └── deployment.ts
+│ ├── tests/
+│ │   └── unit/utils/ # 28 tests, 90.6% coverage
+│ ├── package.json
+│ ├── tsconfig.json
+│ ├── vitest.config.ts
+│ └── wrangler.toml
 │
-├── frontend/                          # Fully Specified
-│   ├── src/
-│   │   ├── views/                    # 6 components
-│   │   │   ├── LandingPage.vue
-│   │   │   ├── OAuthCallback.vue
-│   │   │   ├── ConfigForm.vue
-│   │   │   ├── DeployProgress.vue
-│   │   │   ├── SuccessPage.vue
-│   │   │   └── ErrorPage.vue
-│   │   ├── components/               # 4 shared components
-│   │   │   ├── ProgressBar.vue
-│   │   │   ├── LogConsole.vue
-│   │   │   ├── CredentialsBox.vue
-│   │   │   └── FeatureCard.vue
-│   │   ├── stores/
-│   │   │   └── deploymentStore.ts
-│   │   ├── api/
-│   │   │   └── installer.ts
-│   │   └── router/
-│   │       └── index.ts
-│   └── [config files]
+├── frontend/ # Fully Specified
+│ ├── src/
+│ │   ├── views/ # 6 components
+│ │   │ ├── LandingPage.vue
+│ │   │ ├── OAuthCallback.vue
+│ │   │ ├── ConfigForm.vue
+│ │   │ ├── DeployProgress.vue
+│ │   │ ├── SuccessPage.vue
+│ │   │ └── ErrorPage.vue
+│ │   ├── components/ # 4 shared components
+│ │   │ ├── ProgressBar.vue
+│ │   │ ├── LogConsole.vue
+│ │   │ ├── CredentialsBox.vue
+│ │   │ └── FeatureCard.vue
+│ │   ├── stores/
+│ │   │ └── deploymentStore.ts
+│ │   ├── api/
+│ │   │ └── installer.ts
+│ │   └── router/
+│ │       └── index.ts
+│ └── [config files]
 │
-├── DEVELOPER_DOCUMENTATION.md        # 13 comprehensive sections
-├── README.md                         # Project overview
-├── DEPLOYMENT_CHECKLIST.md           # 26-step deployment guide
-├── QUICK_START_GUIDE.md              # User-friendly guide
-└── PROJECT_SUMMARY.md                # Complete summary
+├── DEVELOPER_DOCUMENTATION.md # 13 comprehensive sections
+├── README.md # Project overview
+├── DEPLOYMENT_CHECKLIST.md # 26-step deployment guide
+├── QUICK_START_GUIDE.md # User-friendly guide
+└── PROJECT_SUMMARY.md # Complete summary
 ```
 
 ---
@@ -191,16 +191,16 @@ cd web-installer/backend
 npm install
 
 # Run tests
-npm test                  # Run all tests (28 tests)
-npm run test:coverage     # Generate coverage report
-npm run test:watch        # Watch mode for TDD
+npm test # Run all tests (28 tests)
+npm run test:coverage # Generate coverage report
+npm run test:watch # Watch mode for TDD
 
 # Development
-npm run dev               # Start Worker development server
-npm run type-check        # TypeScript type checking
+npm run dev # Start Worker development server
+npm run type-check # TypeScript type checking
 
 # Deployment
-npm run deploy            # Deploy to production
+npm run deploy # Deploy to production
 ```
 
 ### Frontend
@@ -212,17 +212,17 @@ cd web-installer/frontend
 npm install
 
 # Development
-npm run dev               # Start Vite dev server (port 3000)
-npm run build             # Build for production
-npm run type-check        # Vue TypeScript checking
+npm run dev # Start Vite dev server (port 3000)
+npm run build # Build for production
+npm run type-check # Vue TypeScript checking
 
 # Testing
-npm run test              # Run frontend tests
-npm run test:coverage     # Generate coverage report
+npm run test # Run frontend tests
+npm run test:coverage # Generate coverage report
 
 # Deployment
-npm run build:pages       # Build for Cloudflare Pages
-npm run deploy:pages      # Deploy to Cloudflare Pages
+npm run build:pages # Build for Cloudflare Pages
+npm run deploy:pages # Deploy to Cloudflare Pages
 ```
 
 ---

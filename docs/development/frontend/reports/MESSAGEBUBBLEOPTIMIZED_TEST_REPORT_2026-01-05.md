@@ -2,206 +2,206 @@
 
 **生成日期**: 2026-01-05
 **組件版本**: MessageBubbleOptimized.vue
-**測試狀態**: ✅ 100% 通過 (29/29)
+**測試狀態**:  100% 通過 (29/29)
 **測試框架**: Vitest + @vue/test-utils
 
 ---
 
-## 📊 執行摘要
+##  執行摘要
 
 ### 測試結果總覽
 
 ```
-✓ Test Files    1 passed (1)
-✓ Tests         29 passed (29)
-✗ Failed        0
-  Duration      1.44s
-  Test Suite    MessageBubbleOptimized.test.ts
+ Test Files 1 passed (1)
+ Tests 29 passed (29)
+ Failed 0
+  Duration 1.44s
+  Test Suite MessageBubbleOptimized.test.ts
 ```
 
 ### 成功指標
 
 | 指標 | 數值 | 狀態 |
 |------|------|------|
-| **測試通過率** | 100% (29/29) | ✅ 優秀 |
-| **功能對等性** | 100% | ✅ 完全對等 |
-| **代碼覆蓋率** | 測試所有主要功能 | ✅ 全面 |
-| **測試執行時間** | 1.44s | ✅ 快速 |
-| **架構一致性** | DOM-based testing | ✅ 最佳實踐 |
+| **測試通過率** | 100% (29/29) |  優秀 |
+| **功能對等性** | 100% |  完全對等 |
+| **代碼覆蓋率** | 測試所有主要功能 |  全面 |
+| **測試執行時間** | 1.44s |  快速 |
+| **架構一致性** | DOM-based testing |  最佳實踐 |
 
 ---
 
-## 🎯 測試覆蓋範圍
+##  測試覆蓋範圍
 
-### 1. Component Rendering (4/4 ✅)
+### 1. Component Rendering (4/4 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should render customer message correctly` | 驗證客戶訊息正確渲染，包含 `.message-incoming` class | ✅ |
-| `should render agent message correctly` | 驗證客服訊息正確渲染，包含 `.message-outgoing` 和 `.message-delivered` | ✅ |
-| `should apply correct classes based on message type` | 驗證根據訊息類型應用正確的 CSS class (image/file/text) | ✅ |
-| `should show failed state for undelivered outgoing messages` | 驗證未送達訊息顯示失敗狀態 `.message-failed` | ✅ |
+| `should render customer message correctly` | 驗證客戶訊息正確渲染，包含 `.message-incoming` class |  |
+| `should render agent message correctly` | 驗證客服訊息正確渲染，包含 `.message-outgoing` 和 `.message-delivered` |  |
+| `should apply correct classes based on message type` | 驗證根據訊息類型應用正確的 CSS class (image/file/text) |  |
+| `should show failed state for undelivered outgoing messages` | 驗證未送達訊息顯示失敗狀態 `.message-failed` |  |
 
 **關鍵驗證點**:
-- ✅ CSS class 正確應用（`.message-bubble`, `.message-incoming`, `.message-outgoing`）
-- ✅ 發送狀態正確顯示（delivered/failed）
-- ✅ 訊息類型正確識別（text/image/file/sticker）
+-  CSS class 正確應用（`.message-bubble`, `.message-incoming`, `.message-outgoing`）
+-  發送狀態正確顯示（delivered/failed）
+-  訊息類型正確識別（text/image/file/sticker）
 
 ---
 
-### 2. Image Messages (4/4 ✅)
+### 2. Image Messages (4/4 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should render image message with preview` | 驗證圖片訊息渲染，包含正確的 src 和 alt 屬性 | ✅ |
-| `should emit preview event when image is clicked` | 驗證點擊圖片時發射 `preview` 事件 | ✅ |
-| `should emit image-load event on successful image load` | 驗證圖片載入成功時的處理 | ✅ |
-| `should emit image-error event on image load failure` | 驗證圖片載入失敗時發射 `image-error` 事件 | ✅ |
+| `should render image message with preview` | 驗證圖片訊息渲染，包含正確的 src 和 alt 屬性 |  |
+| `should emit preview event when image is clicked` | 驗證點擊圖片時發射 `preview` 事件 |  |
+| `should emit image-load event on successful image load` | 驗證圖片載入成功時的處理 |  |
+| `should emit image-error event on image load failure` | 驗證圖片載入失敗時發射 `image-error` 事件 |  |
 
 **關鍵驗證點**:
-- ✅ `img.message-image-content` 元素正確渲染
-- ✅ 圖片 URL 和名稱正確設置
-- ✅ 圖片預覽功能正常
-- ✅ 錯誤處理機制完善
+-  `img.message-image-content` 元素正確渲染
+-  圖片 URL 和名稱正確設置
+-  圖片預覽功能正常
+-  錯誤處理機制完善
 
 ---
 
-### 3. Sticker Messages (2/2 ✅)
+### 3. Sticker Messages (2/2 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should render sticker message` | 驗證貼圖訊息渲染 `.message-sticker` | ✅ |
-| `should display sticker image with correct URL` | 驗證貼圖圖片 URL 包含正確的 stickerId | ✅ |
+| `should render sticker message` | 驗證貼圖訊息渲染 `.message-sticker` |  |
+| `should display sticker image with correct URL` | 驗證貼圖圖片 URL 包含正確的 stickerId |  |
 
 **關鍵驗證點**:
-- ✅ 貼圖容器正確渲染
-- ✅ LINE 貼圖 URL 格式正確
-- ✅ `packageId` 和 `stickerId` 正確應用
+-  貼圖容器正確渲染
+-  LINE 貼圖 URL 格式正確
+-  `packageId` 和 `stickerId` 正確應用
 
 ---
 
-### 4. File Attachments (3/3 ✅)
+### 4. File Attachments (3/3 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should render single file attachment` | 驗證單一檔案附件渲染，包含檔名和大小 | ✅ |
-| `should render multiple file attachments` | 驗證多檔案附件列表渲染 | ✅ |
-| `should show upload progress for file being uploaded` | 驗證上傳進度條顯示，包含進度百分比 | ✅ |
+| `should render single file attachment` | 驗證單一檔案附件渲染，包含檔名和大小 |  |
+| `should render multiple file attachments` | 驗證多檔案附件列表渲染 |  |
+| `should show upload progress for file being uploaded` | 驗證上傳進度條顯示，包含進度百分比 |  |
 
 **關鍵驗證點**:
-- ✅ `.message-file-content` 正確渲染
-- ✅ `.message-attachments-container` 支援多檔案
-- ✅ `.progress-fill` 進度條動態更新（**新增功能**）
-- ✅ 檔案大小和類型正確顯示
+-  `.message-file-content` 正確渲染
+-  `.message-attachments-container` 支援多檔案
+-  `.progress-fill` 進度條動態更新（**新增功能**）
+-  檔案大小和類型正確顯示
 
 ---
 
-### 5. Text Messages (2/2 ✅)
+### 5. Text Messages (2/2 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should render plain text message` | 驗證純文字訊息渲染 `.message-text` | ✅ |
-| `should preserve line breaks in text content` | 驗證文字內容保留換行符號 | ✅ |
+| `should render plain text message` | 驗證純文字訊息渲染 `.message-text` |  |
+| `should preserve line breaks in text content` | 驗證文字內容保留換行符號 |  |
 
 **關鍵驗證點**:
-- ✅ 文字內容正確處理
-- ✅ 換行符號正確保留
-- ✅ `SafeHtmlRenderer` 組件整合
+-  文字內容正確處理
+-  換行符號正確保留
+-  `SafeHtmlRenderer` 組件整合
 
 ---
 
-### 6. Sender Information (2/2 ✅)
+### 6. Sender Information (2/2 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should display sender avatar for incoming messages when showSender is true` | 驗證發送者頭像顯示，包含正確的首字母 | ✅ |
-| `should not display sender avatar when showSender is false` | 驗證 showSender=false 時隱藏頭像 | ✅ |
+| `should display sender avatar for incoming messages when showSender is true` | 驗證發送者頭像顯示，包含正確的首字母 |  |
+| `should not display sender avatar when showSender is false` | 驗證 showSender=false 時隱藏頭像 |  |
 
 **關鍵驗證點**:
-- ✅ `.sender-avatar` 元素正確渲染（**新增功能**）
-- ✅ `senderInitials` 顯示正確的首字母（"客"/"客服"）（**新增功能**）
-- ✅ `.sender-name` 顯示正確的名稱（**新增功能**）
-- ✅ `showSender` prop 控制顯示邏輯
+-  `.sender-avatar` 元素正確渲染（**新增功能**）
+-  `senderInitials` 顯示正確的首字母（"客"/"客服"）（**新增功能**）
+-  `.sender-name` 顯示正確的名稱（**新增功能**）
+-  `showSender` prop 控制顯示邏輯
 
 ---
 
-### 7. Time Display (1/1 ✅)
+### 7. Time Display (1/1 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should display formatted timestamp` | 驗證時間戳格式化顯示 | ✅ |
+| `should display formatted timestamp` | 驗證時間戳格式化顯示 |  |
 
 **關鍵驗證點**:
-- ✅ `.message-time` 元素存在
-- ✅ 時間格式化正確
-- ✅ 支援 `timestamp` 和 `createdAt` 雙重屬性（**向後兼容**）
+-  `.message-time` 元素存在
+-  時間格式化正確
+-  支援 `timestamp` 和 `createdAt` 雙重屬性（**向後兼容**）
 
 ---
 
-### 8. User Interactions (3/3 ✅)
+### 8. User Interactions (3/3 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should show action buttons on hover` | 驗證滑鼠懸停時顯示操作按鈕 | ✅ |
-| `should emit copy event when copy action is triggered` | 驗證複製訊息功能 | ✅ |
-| `should handle right-click context menu` | 驗證右鍵選單顯示 `.actions-dropdown` | ✅ |
+| `should show action buttons on hover` | 驗證滑鼠懸停時顯示操作按鈕 |  |
+| `should emit copy event when copy action is triggered` | 驗證複製訊息功能 |  |
+| `should handle right-click context menu` | 驗證右鍵選單顯示 `.actions-dropdown` |  |
 
 **關鍵驗證點**:
-- ✅ `.message-actions` 在 hover 時顯示
-- ✅ `handleMouseEnter` / `handleMouseLeave` 事件處理
-- ✅ 右鍵選單 `.actions-dropdown` 正確顯示
-- ✅ 複製功能與剪貼板 API 整合
+-  `.message-actions` 在 hover 時顯示
+-  `handleMouseEnter` / `handleMouseLeave` 事件處理
+-  右鍵選單 `.actions-dropdown` 正確顯示
+-  複製功能與剪貼板 API 整合
 
 ---
 
-### 9. Reactive Updates (2/2 ✅)
+### 9. Reactive Updates (2/2 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should update when message prop changes` | 驗證訊息 prop 變更時正確更新 | ✅ |
-| `should update when delivered status changes` | 驗證發送狀態變更時 CSS class 正確切換 | ✅ |
+| `should update when message prop changes` | 驗證訊息 prop 變更時正確更新 |  |
+| `should update when delivered status changes` | 驗證發送狀態變更時 CSS class 正確切換 |  |
 
 **關鍵驗證點**:
-- ✅ Props 響應式更新
-- ✅ CSS class 動態切換（`.message-delivered` ↔ `.message-failed`）
-- ✅ UI 即時反映狀態變化
+-  Props 響應式更新
+-  CSS class 動態切換（`.message-delivered`  `.message-failed`）
+-  UI 即時反映狀態變化
 
 ---
 
-### 10. Edge Cases (4/4 ✅)
+### 10. Edge Cases (4/4 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should handle message with empty content` | 驗證空內容訊息不會崩潰 | ✅ |
-| `should handle message with null metadata` | 驗證 null metadata 的容錯處理 | ✅ |
-| `should handle message with invalid JSON metadata string` | 驗證無效 JSON 字串的錯誤處理 | ✅ |
-| `should handle missing attachmentUrl for file message` | 驗證缺少附件 URL 的 file 訊息處理 | ✅ |
+| `should handle message with empty content` | 驗證空內容訊息不會崩潰 |  |
+| `should handle message with null metadata` | 驗證 null metadata 的容錯處理 |  |
+| `should handle message with invalid JSON metadata string` | 驗證無效 JSON 字串的錯誤處理 |  |
+| `should handle missing attachmentUrl for file message` | 驗證缺少附件 URL 的 file 訊息處理 |  |
 
 **關鍵驗證點**:
-- ✅ 空值處理（empty/null/undefined）
-- ✅ 無效資料格式容錯
-- ✅ 缺少必要屬性時不崩潰
-- ✅ 優雅降級（graceful degradation）
+-  空值處理（empty/null/undefined）
+-  無效資料格式容錯
+-  缺少必要屬性時不崩潰
+-  優雅降級（graceful degradation）
 
 ---
 
-### 11. Composables Integration (2/2 ✅)
+### 11. Composables Integration (2/2 )
 
 | 測試用例 | 描述 | 狀態 |
 |---------|------|------|
-| `should integrate all composables correctly` | 驗證所有 composables 正確整合 | ✅ |
-| `should handle message type detection from metadata` | 驗證從 metadata 正確偵測訊息類型 | ✅ |
+| `should integrate all composables correctly` | 驗證所有 composables 正確整合 |  |
+| `should handle message type detection from metadata` | 驗證從 metadata 正確偵測訊息類型 |  |
 
 **關鍵驗證點**:
-- ✅ `useMessageBubble` - `isOutgoing`, `senderName`, `senderInitials`
-- ✅ `useMessageTime` - `formatTime`
-- ✅ `useMessageContent` - `actualMessageType`, `processedMessageContent`
-- ✅ `useMessageActions` - `copyMessage`, `replyToMessage`, `forwardMessage`
-- ✅ 自動類型偵測（sticker from metadata）
+-  `useMessageBubble` - `isOutgoing`, `senderName`, `senderInitials`
+-  `useMessageTime` - `formatTime`
+-  `useMessageContent` - `actualMessageType`, `processedMessageContent`
+-  `useMessageActions` - `copyMessage`, `replyToMessage`, `forwardMessage`
+-  自動類型偵測（sticker from metadata）
 
 ---
 
-## 🔧 修復項目詳細記錄
+##  修復項目詳細記錄
 
 ### 修復 #1: 補齊缺失的 Sender Info Section
 
@@ -247,8 +247,8 @@ const senderInitials = computed(() => {
 ```
 
 **測試驗證**:
-- ✅ `should display sender avatar for incoming messages when showSender is true`
-- ✅ `should not display sender avatar when showSender is false`
+-  `should display sender avatar for incoming messages when showSender is true`
+-  `should not display sender avatar when showSender is false`
 
 ---
 
@@ -293,7 +293,7 @@ const senderInitials = computed(() => {
 ```
 
 **測試驗證**:
-- ✅ `should show upload progress for file being uploaded`
+-  `should show upload progress for file being uploaded`
 
 ---
 
@@ -304,14 +304,14 @@ const senderInitials = computed(() => {
 **錯誤代碼**:
 
 ```typescript
-// ❌ 錯誤做法
+// 錯誤做法
 const SearchIcon = defineAsyncComponent(() => import('@/components/icons/SearchIcon.vue'))
 ```
 
 **修復方案**:
 
 ```typescript
-// ✅ 正確做法
+// 正確做法
 import {
   SearchIcon,
   DownloadIcon,
@@ -388,10 +388,10 @@ const canRecall = computed(() => {
 ```
 
 **權衡考量**:
-- ❌ 失去 v-memo 帶來的性能優化
-- ✅ 確保所有狀態變化正確響應
-- ✅ 測試通過率 100%
-- 💡 未來可考慮將 `showActions` 加入 v-memo 依賴陣列
+-  失去 v-memo 帶來的性能優化
+-  確保所有狀態變化正確響應
+-  測試通過率 100%
+-  未來可考慮將 `showActions` 加入 v-memo 依賴陣列
 
 ---
 
@@ -435,7 +435,7 @@ expect(actions.exists()).toBe(true)
 
 ---
 
-## 🏗️ DOM-Based Testing 架構轉換
+##  DOM-Based Testing 架構轉換
 
 ### 設計原則
 
@@ -456,10 +456,10 @@ expect(actions.exists()).toBe(true)
 #### 範例 1: CSS Class 測試
 
 ```typescript
-// ❌ 原始方法 (White-box)
+// 原始方法 (White-box)
 expect(wrapper.classes()).toContain('message-incoming')
 
-// ✅ DOM-based 方法 (Black-box)
+// DOM-based 方法 (Black-box)
 const bubble = wrapper.find('.message-bubble')
 expect(bubble.exists()).toBe(true)
 expect(bubble.classes()).toContain('message-incoming')
@@ -468,10 +468,10 @@ expect(bubble.classes()).toContain('message-incoming')
 #### 範例 2: 元素存在性測試
 
 ```typescript
-// ❌ 原始方法 (檢查內部狀態)
+// 原始方法 (檢查內部狀態)
 expect(wrapper.vm.showActions).toBe(true)
 
-// ✅ DOM-based 方法 (檢查可見元素)
+// DOM-based 方法 (檢查可見元素)
 const actions = wrapper.find('.message-actions')
 expect(actions.exists()).toBe(true)
 ```
@@ -479,42 +479,42 @@ expect(actions.exists()).toBe(true)
 #### 範例 3: 內容驗證
 
 ```typescript
-// ❌ 原始方法 (內部 computed property)
+// 原始方法 (內部 computed property)
 expect(wrapper.vm.senderInitials).toBe('客')
 
-// ✅ DOM-based 方法 (實際 DOM 文字)
+// DOM-based 方法 (實際 DOM 文字)
 const avatar = wrapper.find('.sender-avatar')
 expect(avatar.text()).toContain('客')
 ```
 
 ---
 
-## 📈 性能指標
+##  性能指標
 
 ### 測試執行時間分析
 
 ```
-Total Duration:     1.44s
-├─ Transform:       419ms (29%)
-├─ Environment:     395ms (27%)
-├─ Collect:         409ms (28%)
-├─ Tests:           137ms (10%)
-├─ Setup:           132ms (9%)
-└─ Prepare:         158ms (11%)
+Total Duration: 1.44s
+├─ Transform: 419ms (29%)
+├─ Environment: 395ms (27%)
+├─ Collect: 409ms (28%)
+├─ Tests: 137ms (10%)
+├─ Setup: 132ms (9%)
+└─ Prepare: 158ms (11%)
 ```
 
 ### 效能評估
 
 | 指標 | 數值 | 評級 |
 |------|------|------|
-| **平均單測時間** | ~47ms | ⭐⭐⭐⭐⭐ 優秀 |
-| **總執行時間** | 1.44s | ⭐⭐⭐⭐⭐ 快速 |
-| **編譯效能** | 419ms | ⭐⭐⭐⭐ 良好 |
-| **測試穩定性** | 100% | ⭐⭐⭐⭐⭐ 完美 |
+| **平均單測時間** | ~47ms |  優秀 |
+| **總執行時間** | 1.44s |  快速 |
+| **編譯效能** | 419ms |  良好 |
+| **測試穩定性** | 100% |  完美 |
 
 ---
 
-## ✅ 功能對等性驗證
+##  功能對等性驗證
 
 ### 對等性證明
 
@@ -526,43 +526,43 @@ Total Duration:     1.44s
 
 | 功能領域 | 原版 | 優化版 | 對等性 |
 |---------|------|--------|-------|
-| 訊息渲染 | ✅ | ✅ | ✅ 100% |
-| 圖片處理 | ✅ | ✅ | ✅ 100% |
-| 檔案附件 | ✅ | ✅ | ✅ 100% |
-| 貼圖顯示 | ✅ | ✅ | ✅ 100% |
-| 發送者資訊 | ✅ | ✅ | ✅ 100% |
-| 用戶交互 | ✅ | ✅ | ✅ 100% |
-| 狀態管理 | ✅ | ✅ | ✅ 100% |
-| 錯誤處理 | ✅ | ✅ | ✅ 100% |
-| Composables 整合 | ✅ | ✅ | ✅ 100% |
+| 訊息渲染 |  |  |  100% |
+| 圖片處理 |  |  |  100% |
+| 檔案附件 |  |  |  100% |
+| 貼圖顯示 |  |  |  100% |
+| 發送者資訊 |  |  |  100% |
+| 用戶交互 |  |  |  100% |
+| 狀態管理 |  |  |  100% |
+| 錯誤處理 |  |  |  100% |
+| Composables 整合 |  |  |  100% |
 
 ---
 
-## 🚀 部署準備狀態
+##  部署準備狀態
 
 ### 部署檢查清單
 
-- ✅ 所有測試通過 (29/29)
-- ✅ 功能對等性驗證完成
-- ✅ 代碼審查完成
-- ✅ 文檔更新完成
-- ✅ 性能驗證通過
-- ✅ 錯誤處理完善
-- ✅ 向後兼容確認
-- ✅ TypeScript 類型檢查通過
+-  所有測試通過 (29/29)
+-  功能對等性驗證完成
+-  代碼審查完成
+-  文檔更新完成
+-  性能驗證通過
+-  錯誤處理完善
+-  向後兼容確認
+-  TypeScript 類型檢查通過
 
 ### 風險評估
 
 | 風險項目 | 嚴重性 | 緩解措施 | 狀態 |
 |---------|--------|---------|------|
-| 功能缺失 | 高 | 使用相同測試套件驗證 | ✅ 已緩解 |
-| 性能退化 | 中 | 移除 v-memo 可能影響性能 | ⚠️ 需監控 |
-| 向後兼容 | 低 | 支援雙重日期屬性 | ✅ 已緩解 |
-| 用戶體驗 | 低 | 完全相同的 UI/UX | ✅ 已緩解 |
+| 功能缺失 | 高 | 使用相同測試套件驗證 |  已緩解 |
+| 性能退化 | 中 | 移除 v-memo 可能影響性能 |  需監控 |
+| 向後兼容 | 低 | 支援雙重日期屬性 |  已緩解 |
+| 用戶體驗 | 低 | 完全相同的 UI/UX |  已緩解 |
 
 ---
 
-## 📝 已知限制與建議
+##  已知限制與建議
 
 ### 限制
 
@@ -583,7 +583,7 @@ Total Duration:     1.44s
 
 ---
 
-## 🎓 學習要點
+##  學習要點
 
 ### 架構決策
 
@@ -604,7 +604,7 @@ Total Duration:     1.44s
 
 ---
 
-## 📚 參考文獻
+##  參考文獻
 
 - [Vue 3 Testing Handbook](https://lmiller1990.github.io/vue-testing-handbook/)
 - [Testing Library Philosophy](https://testing-library.com/docs/guiding-principles/)
@@ -613,11 +613,11 @@ Total Duration:     1.44s
 
 ---
 
-## 🏆 結論
+##  結論
 
 MessageBubbleOptimized.vue 已通過**100% 完整測試驗證**，具備與原版 MessageBubble.vue **完全相同的功能**，並採用**更優的測試架構**。
 
-**準備狀態**: ✅ 可以部署到生產環境
+**準備狀態**:  可以部署到生產環境
 
 ---
 

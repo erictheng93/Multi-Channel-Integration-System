@@ -37,7 +37,7 @@ const hasAssignment = computed(() => {
 const displayText = computed(() => {
   if (props.agentId && props.agentName) {
     // 如果指派給個人，優先顯示個人
-    return props.compact ? props.agentName : `👤 ${props.agentName}`
+    return props.compact ? props.agentName : ` ${props.agentName}`
   } else if (props.teamId && props.teamName) {
     // 如果只指派給團隊
     return props.compact ? props.teamName : props.teamName

@@ -256,7 +256,7 @@
         class="empty-state"
       >
         <div class="empty-icon">
-          📋
+          
         </div>
         <h3>沒有活動記錄</h3>
         <p>在選定的時間範圍內沒有找到任何活動記錄</p>
@@ -646,18 +646,18 @@ const refreshData = async () => {
 
 // 監聽路由變化，確保ActivityLog頁面正確重新渲染
 watch(() => route.path, (newPath, oldPath) => {
-  console.log('🔄 ActivityLog: Route changed from', oldPath, 'to', newPath)
+  console.log(' ActivityLog: Route changed from', oldPath, 'to', newPath)
 
   // 如果路由到達ActivityLog頁面，確保數據刷新
   if (newPath === '/activities') {
-    console.log('🔄 ActivityLog: Refreshing data due to route change')
+    console.log(' ActivityLog: Refreshing data due to route change')
     refreshData()
   }
 }, { immediate: false })
 
 // Lifecycle
 onMounted(() => {
-  console.log('🚀 ActivityLog mounted')
+  console.log(' ActivityLog mounted')
   loadActivities()
   loadUsers()
 })

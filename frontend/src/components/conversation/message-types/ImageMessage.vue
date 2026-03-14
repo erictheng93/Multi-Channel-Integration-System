@@ -19,7 +19,7 @@
         class="image-placeholder error"
       >
         <div class="error-icon">
-          📷
+          
         </div>
         <span class="error-text">圖片載入失敗</span>
       </div>
@@ -180,7 +180,7 @@ const handleDownloadClick = () => {
   border-radius: 8px;
   overflow: hidden;
   background: #f3f4f6;
-  /* 🔧 CLS FIX: 使用 aspect-ratio 預留空間，防止圖片載入後版面位移 */
+  /* CLS FIX: 使用 aspect-ratio 預留空間，防止圖片載入後版面位移 */
   aspect-ratio: 4 / 3;
   max-height: 400px;
 }
@@ -259,7 +259,7 @@ const handleDownloadClick = () => {
 }
 
 /* Loading State */
-/* 🔧 CLS FIX: 載入狀態使用與圖片容器相同的 aspect-ratio */
+/* CLS FIX: 載入狀態使用與圖片容器相同的 aspect-ratio */
 .image-placeholder {
   width: 100%;
   aspect-ratio: 4 / 3;

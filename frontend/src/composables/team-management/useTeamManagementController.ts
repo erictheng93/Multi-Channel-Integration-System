@@ -100,11 +100,11 @@ export interface UseTeamManagementControllerReturn {
  * const controller = useTeamManagementController()
  *
  * onMounted(async () => {
- *   await controller.initialize()
+ * await controller.initialize()
  * })
  *
  * onUnmounted(() => {
- *   controller.cleanup()
+ * controller.cleanup()
  * })
  *
  * // 访问成员操作
@@ -245,7 +245,7 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
    * 载入所有必要的数据
    */
   async function initialize() {
-    console.log('🚀 [TeamManagementController] Initializing...')
+    console.log('[TeamManagementController] Initializing...')
 
     try {
       // 并行载入团队和成员数据
@@ -254,11 +254,11 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
         teamStore.loadTeams()
       ])
 
-      console.log('✅ [TeamManagementController] Data loaded successfully')
-      console.log(`   - Teams: ${teams.value.length}`)
-      console.log(`   - Members: ${members.value.length}`)
+      console.log('[TeamManagementController] Data loaded successfully')
+      console.log(` - Teams: ${teams.value.length}`)
+      console.log(` - Members: ${members.value.length}`)
     } catch (error) {
-      console.error('❌ [TeamManagementController] Initialization failed:', error)
+      console.error('[TeamManagementController] Initialization failed:', error)
       throw error
     }
   }
@@ -268,8 +268,8 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
    * 停止所有后台任务
    */
   function cleanup() {
-    console.log('🧹 [TeamManagementController] Cleaning up...')
-    console.log('✅ [TeamManagementController] Cleanup complete')
+    console.log('[TeamManagementController] Cleaning up...')
+    console.log('[TeamManagementController] Cleanup complete')
   }
 
   /**
@@ -277,13 +277,13 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
    * 强制重新载入所有数据
    */
   async function refresh() {
-    console.log('🔄 [TeamManagementController] Refreshing data...')
+    console.log('[TeamManagementController] Refreshing data...')
 
     try {
       await initialize()
-      console.log('✅ [TeamManagementController] Refresh complete')
+      console.log('[TeamManagementController] Refresh complete')
     } catch (error) {
-      console.error('❌ [TeamManagementController] Refresh failed:', error)
+      console.error('[TeamManagementController] Refresh failed:', error)
       throw error
     }
   }

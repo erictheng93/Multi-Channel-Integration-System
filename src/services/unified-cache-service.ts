@@ -8,9 +8,9 @@
  * - Easy migration path from direct KV usage
  *
  * Usage:
- *   const cache = createUnifiedCache(env);
- *   await cache.analytics.set('daily:2024-01-15', data);
- *   const result = await cache.analytics.get('daily:2024-01-15');
+ * const cache = createUnifiedCache(env);
+ * await cache.analytics.set('daily:2024-01-15', data);
+ * const result = await cache.analytics.get('daily:2024-01-15');
  *
  * @module services/unified-cache-service
  */
@@ -641,9 +641,9 @@ let cachedInstance: UnifiedCacheService | null = null;
  *
  * // Query results (uses Cache API - FREE)
  * const result = await cache.query.getOrSet(
- *   cache.query.generateKey('conversation', { teamId: 1, period: '7d' }),
- *   () => fetchFromDatabase(),
- *   300
+ * cache.query.generateKey('conversation', { teamId: 1, period: '7d' }),
+ * () => fetchFromDatabase(),
+ * 300
  * );
  *
  * // Credentials (uses KV - required for persistent data)

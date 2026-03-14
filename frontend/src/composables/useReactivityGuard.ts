@@ -1,5 +1,5 @@
 /**
- * 🛡️ Layer 4 Defense: Reactivity Guard - Runtime Performance Monitor
+ * Layer 4 Defense: Reactivity Guard - Runtime Performance Monitor
  *
  * 實時監控 computed properties 的重新計算次數，
  * 當偵測到異常時發出警告，防止無限循環
@@ -9,9 +9,9 @@
  * const reactivityGuard = useReactivityGuard({ maxRecomputations: 10 })
  *
  * const messages = computed(() => {
- *   reactivityGuard.trackComputed('messages')
- *   // ... your logic
- *   return value
+ * reactivityGuard.trackComputed('messages')
+ * // ... your logic
+ * return value
  * })
  * ```
  */
@@ -87,7 +87,7 @@ export function useReactivityGuard(options: ReactivityGuardOptions = {}) {
     if (metrics.count > maxRecomputations && !alertedComputeds.has(name)) {
       alertedComputeds.add(name)
 
-      const message = `[ReactivityGuard] ⚠️ Excessive recomputations detected!
+      const message = `[ReactivityGuard]  Excessive recomputations detected!
   - Computed: "${name}"
   - Count: ${metrics.count} times in ${timeWindow}ms
   - Average interval: ${calculateAverageInterval(metrics.history)}ms

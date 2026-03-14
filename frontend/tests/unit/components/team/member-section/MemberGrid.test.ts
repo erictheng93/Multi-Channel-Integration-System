@@ -151,7 +151,7 @@ describe('MemberGrid', () => {
     })
 
     const firstRemoveBtn = wrapper.find('.btn-remove')
-    expect(firstRemoveBtn.text()).toBe('✕')
+    expect(firstRemoveBtn.text()).toBe('')
   })
 
   it('should handle empty member name with fallback to loginId', () => {

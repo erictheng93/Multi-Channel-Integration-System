@@ -108,9 +108,9 @@ class AutoFixTool {
       // 如果不是 dry run，寫入檔案
       if (!this.dryRun && fixCount > 0) {
         writeFileSync(filePath, modifiedContent, 'utf-8');
-        console.log(`✅ 已修復 ${filePath}: ${fixCount} 處修改`);
+        console.log(` 已修復 ${filePath}: ${fixCount} 處修改`);
       } else if (this.dryRun && fixCount > 0) {
-        console.log(`🔍 [Dry Run] 發現可修復問題 ${filePath}: ${fixCount} 處`);
+        console.log(`[Dry Run] 發現可修復問題 ${filePath}: ${fixCount} 處`);
       }
 
       this.results.push(result);
@@ -119,7 +119,7 @@ class AutoFixTool {
     } catch (error) {
       result.success = false;
       result.error = error instanceof Error ? error.message : String(error);
-      console.error(`❌ 修復失敗 ${filePath}:`, result.error);
+      console.error(` 修復失敗 ${filePath}:`, result.error);
       this.results.push(result);
       return result;
     }
@@ -142,7 +142,7 @@ class AutoFixTool {
       'src/handlers/qrcode-main.ts'
     ];
 
-    console.log(`\n🚀 開始批量修復核心檔案...\n`);
+    console.log(`\n 開始批量修復核心檔案...\n`);
     console.log(`模式: ${this.dryRun ? '預覽模式 (Dry Run)' : '實際修復模式'}\n`);
 
     for (const file of coreFiles) {
@@ -150,7 +150,7 @@ class AutoFixTool {
       try {
         this.fixFile(fullPath);
       } catch (error) {
-        console.warn(`⚠️ 跳過檔案 ${file}:`, error);
+        console.warn(` 跳過檔案 ${file}:`, error);
       }
     }
   }
@@ -165,7 +165,7 @@ class AutoFixTool {
     const failedFixes = this.results.filter(r => !r.success);
 
     let summary = '\n' + '='.repeat(60) + '\n';
-    summary += '📊 修復摘要報告\n';
+    summary += ' 修復摘要報告\n';
     summary += '='.repeat(60) + '\n\n';
     summary += `總處理檔案數: ${totalFiles}\n`;
     summary += `成功修復: ${successfulFixes}\n`;
@@ -173,7 +173,7 @@ class AutoFixTool {
     summary += `總修改點數: ${totalFixesApplied}\n\n`;
 
     if (totalFixesApplied > 0) {
-      summary += '✅ 已修復的檔案:\n';
+      summary += ' 已修復的檔案:\n';
       this.results
         .filter(r => r.fixesApplied > 0)
         .forEach(r => {
@@ -183,7 +183,7 @@ class AutoFixTool {
     }
 
     if (failedFixes.length > 0) {
-      summary += '❌ 修復失敗的檔案:\n';
+      summary += ' 修復失敗的檔案:\n';
       failedFixes.forEach(r => {
         summary += `  - ${r.file}: ${r.error}\n`;
       });
@@ -201,7 +201,7 @@ function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run') || args.includes('-d');
 
-  console.log('🔧 錯誤處理自動修復工具\n');
+  console.log(' 錯誤處理自動修復工具\n');
 
   const rootDir = join(__dirname, '..');
   const tool = new AutoFixTool(rootDir, dryRun);
@@ -214,14 +214,14 @@ function main() {
   console.log(summary);
 
   if (dryRun) {
-    console.log('ℹ️  這是預覽模式，沒有實際修改檔案');
-    console.log('ℹ️  移除 --dry-run 參數以執行實際修復\n');
+    console.log('  這是預覽模式，沒有實際修改檔案');
+    console.log('  移除 --dry-run 參數以執行實際修復\n');
   } else {
-    console.log('✨ 修復完成！\n');
-    console.log('⚠️  建議執行以下檢查：');
+    console.log(' 修復完成！\n');
+    console.log('  建議執行以下檢查：');
     console.log('  1. npm run type-check  (檢查 TypeScript 錯誤)');
-    console.log('  2. npm run lint        (檢查代碼風格)');
-    console.log('  3. npm run test        (運行測試)\n');
+    console.log('  2. npm run lint (檢查代碼風格)');
+    console.log('  3. npm run test (運行測試)\n');
   }
 }
 

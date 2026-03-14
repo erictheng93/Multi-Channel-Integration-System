@@ -83,7 +83,7 @@ async function processFile(filePath: string, mappings: FileMapping['replacements
 
       if (updatedContent.length !== beforeLength || updatedContent !== content) {
         hasChanges = true;
-        console.log(`  ✅ ${mapping.description} in ${path.basename(filePath)}`);
+        console.log(` ${mapping.description} in ${path.basename(filePath)}`);
       }
     }
 
@@ -94,7 +94,7 @@ async function processFile(filePath: string, mappings: FileMapping['replacements
 
     return false;
   } catch (error) {
-    console.error(`  ❌ Error processing ${filePath}:`, error);
+    console.error(` Error processing ${filePath}:`, error);
     return false;
   }
 }
@@ -103,13 +103,13 @@ async function processFile(filePath: string, mappings: FileMapping['replacements
  * 主執行函數
  */
 async function main() {
-  console.log('🚀 開始修復 conversation_id 引用不一致問題...\n');
+  console.log(' 開始修復 conversation_id 引用不一致問題...\n');
 
   let totalFilesProcessed = 0;
   let totalFilesChanged = 0;
 
   for (const mapping of FILE_MAPPINGS) {
-    console.log(`📁 處理模式: ${mapping.pattern}`);
+    console.log(` 處理模式: ${mapping.pattern}`);
 
     const files = await glob(mapping.pattern, { cwd: process.cwd() });
 
@@ -122,20 +122,20 @@ async function main() {
       }
     }
 
-    console.log(`   已處理 ${files.length} 個文件\n`);
+    console.log(` 已處理 ${files.length} 個文件\n`);
   }
 
-  console.log('📊 修復完成統計:');
-  console.log(`   總處理文件: ${totalFilesProcessed}`);
-  console.log(`   已修改文件: ${totalFilesChanged}`);
-  console.log(`   未修改文件: ${totalFilesProcessed - totalFilesChanged}`);
+  console.log(' 修復完成統計:');
+  console.log(` 總處理文件: ${totalFilesProcessed}`);
+  console.log(` 已修改文件: ${totalFilesChanged}`);
+  console.log(` 未修改文件: ${totalFilesProcessed - totalFilesChanged}`);
 
   if (totalFilesChanged > 0) {
-    console.log('\n✅ 修復完成！建議執行以下命令驗證:');
-    console.log('   npx tsc --noEmit');
-    console.log('   npm run test:session');
+    console.log('\n 修復完成！建議執行以下命令驗證:');
+    console.log(' npx tsc --noEmit');
+    console.log(' npm run test:session');
   } else {
-    console.log('\n✨ 沒有需要修復的文件');
+    console.log('\n 沒有需要修復的文件');
   }
 }
 

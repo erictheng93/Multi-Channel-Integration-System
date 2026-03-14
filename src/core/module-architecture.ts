@@ -252,19 +252,19 @@ export class ModuleLoggerImpl implements ModuleLogger {
   constructor(private moduleName: string) {}
 
   info(message: string, data?: LogData): void {
-    console.log(`[${this.moduleName}] ℹ️ ${message}`, data || '');
+    console.log(`[${this.moduleName}]  ${message}`, data || '');
   }
 
   warn(message: string, data?: LogData): void {
-    console.warn(`[${this.moduleName}] ⚠️ ${message}`, data || '');
+    console.warn(`[${this.moduleName}]  ${message}`, data || '');
   }
 
   error(message: string, error?: LogData): void {
-    console.error(`[${this.moduleName}] ❌ ${message}`, error || '');
+    console.error(`[${this.moduleName}]  ${message}`, error || '');
   }
 
   debug(message: string, data?: LogData): void {
-    console.debug(`[${this.moduleName}] 🐛 ${message}`, data || '');
+    console.debug(`[${this.moduleName}]  ${message}`, data || '');
   }
 }
 
@@ -332,7 +332,7 @@ export class ModuleLoader {
 
     // 健康監控將在 initialize() 完成後啟動，避免全局作用域異步操作
     // if (this.config.healthCheckInterval > 0) {
-    //   this.startHealthMonitoring();
+    // this.startHealthMonitoring();
     // }
   }
 

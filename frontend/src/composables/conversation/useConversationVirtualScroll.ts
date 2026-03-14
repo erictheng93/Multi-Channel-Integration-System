@@ -8,11 +8,11 @@
  * @example
  * ```ts
  * const {
- *   visibleRange,
- *   scrollConfig,
- *   handleVisibleRangeChange,
- *   handleReachBottom,
- *   resetScroll
+ * visibleRange,
+ * scrollConfig,
+ * handleVisibleRangeChange,
+ * handleReachBottom,
+ * resetScroll
  * } = useConversationVirtualScroll()
  * ```
  */
@@ -113,7 +113,7 @@ export function useConversationVirtualScroll(
    *
    * @example
    * await handleVisibleRangeChange(0, 20, async () => {
-   *   await loadNextPage()
+   * await loadNextPage()
    * })
    */
   async function handleVisibleRangeChange(
@@ -124,7 +124,7 @@ export function useConversationVirtualScroll(
     visibleRange.value = { startIndex, endIndex }
 
     if (import.meta.env.DEV) {
-      console.log(`👀 [VirtualScroll] Visible range: ${startIndex}-${endIndex}`)
+      console.log(`[VirtualScroll] Visible range: ${startIndex}-${endIndex}`)
     }
 
     // 智能预加载逻辑
@@ -142,7 +142,7 @@ export function useConversationVirtualScroll(
    *
    * @example
    * await handleReachBottom(async () => {
-   *   await loadMoreConversations()
+   * await loadMoreConversations()
    * })
    */
   async function handleReachBottom(onLoadMore?: () => Promise<void>): Promise<void> {
@@ -150,7 +150,7 @@ export function useConversationVirtualScroll(
       return
     }
 
-    console.log('🔄 [VirtualScroll] Reached bottom, loading more')
+    console.log('[VirtualScroll] Reached bottom, loading more')
     isPreloading.value = true
 
     try {
@@ -172,7 +172,7 @@ export function useConversationVirtualScroll(
    *
    * @example
    * handlePredictiveLoad('down', 5, async () => {
-   *   await preloadNextPage()
+   * await preloadNextPage()
    * })
    */
   function handlePredictiveLoad(
@@ -181,7 +181,7 @@ export function useConversationVirtualScroll(
     onPreload?: () => Promise<void>
   ): void {
     if (import.meta.env.DEV) {
-      console.log(`🔮 [VirtualScroll] Predictive load: ${direction}, distance: ${estimatedDistance}`)
+      console.log(`[VirtualScroll] Predictive load: ${direction}, distance: ${estimatedDistance}`)
     }
 
     // 如果向下滚动且接近底部，触发预加载
@@ -216,7 +216,7 @@ export function useConversationVirtualScroll(
     visibleRange.value = { startIndex: 0, endIndex: 0 }
     isPreloading.value = false
     reachedEnd.value = false
-    console.log('🔄 [VirtualScroll] Scroll state reset')
+    console.log('[VirtualScroll] Scroll state reset')
   }
 
   /**
@@ -230,7 +230,7 @@ export function useConversationVirtualScroll(
   function setReachedEnd(reached: boolean): void {
     reachedEnd.value = reached
     if (reached) {
-      console.log('🏁 [VirtualScroll] Reached end of list')
+      console.log('[VirtualScroll] Reached end of list')
     }
   }
 

@@ -178,7 +178,7 @@ describe('TextMessage Component', () => {
     })
 
     it('should handle Unicode characters', async () => {
-      mockMessage.content = 'Hello 你好 🎉 مرحبا'
+      mockMessage.content = 'Hello 你好  مرحبا'
 
       wrapper = mount(TextMessage, {
         props: {

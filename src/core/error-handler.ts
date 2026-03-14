@@ -312,26 +312,26 @@ export class ErrorHandler {
     // 根據錯誤級別使用不同的日誌方法
     switch (error.level) {
       case ErrorLevel.INFO:
-        console.info(`ℹ️ ${logMessage}`, {
+        console.info(` ${logMessage}`, {
           context: error.context,
           details: error.details
         });
         break;
       case ErrorLevel.WARNING:
-        console.warn(`⚠️ ${logMessage}`, {
+        console.warn(` ${logMessage}`, {
           context: error.context,
           details: error.details
         });
         break;
       case ErrorLevel.ERROR:
-        console.error(`❌ ${logMessage}`, {
+        console.error(` ${logMessage}`, {
           context: error.context,
           details: error.details,
           stack: error.stack
         });
         break;
       case ErrorLevel.CRITICAL:
-        console.error(`🚨 CRITICAL: ${logMessage}`, {
+        console.error(` CRITICAL: ${logMessage}`, {
           context: error.context,
           details: error.details,
           stack: error.stack

@@ -8,7 +8,7 @@ import { requireIntId } from '@/middleware/param-validator'
 // Create Hono router for activities
 const router = new Hono<{ Bindings: Bindings }>()
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
+// CORS 處理已移至 src/index.ts 統一管理
 // 不再需要 handler 級別的 CORS middleware
 
 // Register all activity routes

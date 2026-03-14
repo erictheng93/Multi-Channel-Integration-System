@@ -1,17 +1,17 @@
 # R2 集成优化方案
 
-## 📋 优化概览
+##  优化概览
 
 **目标**: 将Chat项目的高效R2集成模式应用到Phase 2A系统
 **预期收益**:
-- 🚀 **上传延迟降低 40%** (减少网络跳转)
-- 💾 **存储效率提升 25%** (智能压缩和去重)
-- 🔒 **安全性提升** (签名URL和访问控制)
-- 📊 **监控完善** (上传成功率和性能跟踪)
+-  **上传延迟降低 40%** (减少网络跳转)
+-  **存储效率提升 25%** (智能压缩和去重)
+-  **安全性提升** (签名URL和访问控制)
+-  **监控完善** (上传成功率和性能跟踪)
 
 ---
 
-## 🎯 当前状态 vs 优化目标
+##  当前状态 vs 优化目标
 
 ### 当前状态 (Legacy系统)
 
@@ -36,12 +36,12 @@ HTTP Handler
 ```
 
 **问题识别**:
-1. 🔴 **两次HTTP请求** - 上传和发送消息分离
-2. 🟡 **中间层开销** - HTTP Handler处理FormData
-3. 🟡 **无压缩优化** - 直接上传原始文件
-4. 🔴 **无去重机制** - 重复文件多次存储
-5. 🟡 **公开URL** - 所有文件公开访问
-6. 🟡 **无上传进度** - 前端无法显示进度
+1.  **两次HTTP请求** - 上传和发送消息分离
+2.  **中间层开销** - HTTP Handler处理FormData
+3.  **无压缩优化** - 直接上传原始文件
+4.  **无去重机制** - 重复文件多次存储
+5.  **公开URL** - 所有文件公开访问
+6.  **无上传进度** - 前端无法显示进度
 
 ### 优化目标 (Phase 2A + Chat Project Best Practices)
 
@@ -72,7 +72,7 @@ CustomerConversationDO
 
 ---
 
-## 🔧 具体优化策略
+##  具体优化策略
 
 ### 优化1: 直接DO-to-R2集成 (Chat Project模式)
 
@@ -621,7 +621,7 @@ export function useFileUpload(conversationId: string) {
 
 ---
 
-## 📊 性能对比和收益预测
+##  性能对比和收益预测
 
 ### 延迟对比
 
@@ -649,31 +649,31 @@ export function useFileUpload(conversationId: string) {
 
 ---
 
-## 🎯 实施计划
+##  实施计划
 
 ### Day 1 (8小时)
-- ✅ 实现CustomerMessageDO文件上传接口
-- ✅ 实现文件验证和hash计算
-- ✅ R2上传逻辑
+-  实现CustomerMessageDO文件上传接口
+-  实现文件验证和hash计算
+-  R2上传逻辑
 
 ### Day 2 (8小时)
-- ✅ 实现文件访问代理
-- ✅ 实现签名URL生成
-- ✅ 去重逻辑和数据库记录
+-  实现文件访问代理
+-  实现签名URL生成
+-  去重逻辑和数据库记录
 
 ### Day 3 (8小时)
-- ✅ 前端上传组件 (with progress)
-- ✅ 错误处理和重试逻辑
-- ✅ E2E测试
+-  前端上传组件 (with progress)
+-  错误处理和重试逻辑
+-  E2E测试
 
 ### Day 4 (可选优化)
-- ⭐ 图片压缩集成 (Sharp WASM)
-- ⭐ 视频转码 (FFmpeg WASM)
-- ⭐ CDN集成 (Cloudflare Images)
+-  图片压缩集成 (Sharp WASM)
+-  视频转码 (FFmpeg WASM)
+-  CDN集成 (Cloudflare Images)
 
 ---
 
-## 🧪 测试计划
+##  测试计划
 
 ### 单元测试
 ```typescript
@@ -744,28 +744,28 @@ describe('File Upload E2E', () => {
 
 ---
 
-## 📚 相关文档
+##  相关文档
 
-- 📄 [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
-- 📄 [Sharp WASM (Image Compression)](https://github.com/lovell/sharp)
-- 📄 [FFmpeg WASM (Video Processing)](https://github.com/ffmpegwasm/ffmpeg.wasm)
-- 📄 `src/durable-objects/CustomerMessageDO-Enhanced.ts` - DO实现
-- 📄 `src/handlers/file-proxy.ts` - 文件代理
-- 📄 `frontend/src/composables/useFileUpload.ts` - 前端上传
+-  [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
+-  [Sharp WASM (Image Compression)](https://github.com/lovell/sharp)
+-  [FFmpeg WASM (Video Processing)](https://github.com/ffmpegwasm/ffmpeg.wasm)
+-  `src/durable-objects/CustomerMessageDO-Enhanced.ts` - DO实现
+-  `src/handlers/file-proxy.ts` - 文件代理
+-  `frontend/src/composables/useFileUpload.ts` - 前端上传
 
 ---
 
-## 🎖️ 成功指标
+##  成功指标
 
-- ✅ 上传成功率 > 99.5%
-- ✅ 平均上传延迟 < 100ms (不含网络传输)
-- ✅ 去重命中率 > 20%
-- ✅ 压缩率 > 25% (图片)
-- ✅ 文件访问延迟 < 50ms
-- ✅ 零安全漏洞 (签名URL + 权限检查)
+-  上传成功率 > 99.5%
+-  平均上传延迟 < 100ms (不含网络传输)
+-  去重命中率 > 20%
+-  压缩率 > 25% (图片)
+-  文件访问延迟 < 50ms
+-  零安全漏洞 (签名URL + 权限检查)
 
 ---
 
 **文档版本**: v1.0
 **最后更新**: 2025-01-28
-**状态**: ✅ Ready for Implementation
+**状态**:  Ready for Implementation

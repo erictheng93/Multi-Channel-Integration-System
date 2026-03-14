@@ -22,11 +22,11 @@
  *
  * 使用示例：
  * <QuickReplies
- *   :quick-replies="[
- *     { text: '您好，有什麼可以幫助您的？' },
- *     { text: '感謝您的來信，我們會盡快處理' }
- *   ]"
- *   @select="handleQuickReply"
+ * :quick-replies="[
+ * { text: '您好，有什麼可以幫助您的？' },
+ * { text: '感謝您的來信，我們會盡快處理' }
+ * ]"
+ * @select="handleQuickReply"
  * />
  */
 

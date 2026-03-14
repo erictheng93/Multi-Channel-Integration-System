@@ -114,10 +114,10 @@ export class UserExperienceMonitoringService {
         await this.triggerLowExperienceAlert(metrics);
       }
 
-      console.log(`📊 [UX Monitor] Experience recorded for user ${metrics.userId}: score=${calculatedScore.toFixed(2)}`);
+      console.log(`[UX Monitor] Experience recorded for user ${metrics.userId}: score=${calculatedScore.toFixed(2)}`);
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to record user experience:', error);
+      console.error('[UX Monitor] Failed to record user experience:', error);
     }
   }
 
@@ -131,10 +131,10 @@ export class UserExperienceMonitoringService {
       // 分析用戶行為模式
       await this.analyzeBehaviorPatterns(behavior);
 
-      console.log(`👤 [UX Monitor] Behavior recorded: ${behavior.eventType} for user ${behavior.userId}`);
+      console.log(`[UX Monitor] Behavior recorded: ${behavior.eventType} for user ${behavior.userId}`);
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to record user behavior:', error);
+      console.error('[UX Monitor] Failed to record user behavior:', error);
     }
   }
 
@@ -150,10 +150,10 @@ export class UserExperienceMonitoringService {
       // 更新整體滿意度統計
       await this.updateSatisfactionStats(survey);
 
-      console.log(`📝 [UX Monitor] Survey recorded for user ${survey.userId}: satisfaction=${survey.overallSatisfaction}/5`);
+      console.log(`[UX Monitor] Survey recorded for user ${survey.userId}: satisfaction=${survey.overallSatisfaction}/5`);
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to record user survey:', error);
+      console.error('[UX Monitor] Failed to record user survey:', error);
     }
   }
 
@@ -195,7 +195,7 @@ export class UserExperienceMonitoringService {
       };
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to generate survey invitation:', error);
+      console.error('[UX Monitor] Failed to generate survey invitation:', error);
       return { shouldInvite: false, invitationUrl: '', reason: 'Error occurred' };
     }
   }
@@ -212,10 +212,10 @@ export class UserExperienceMonitoringService {
         expirationTtl: 180 * 24 * 60 * 60 // 180 天
       });
 
-      console.log(`🧪 [UX Monitor] A/B test created: ${config.name} (${config.testId})`);
+      console.log(`[UX Monitor] A/B test created: ${config.name} (${config.testId})`);
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to create A/B test:', error);
+      console.error('[UX Monitor] Failed to create A/B test:', error);
       throw error;
     }
   }
@@ -267,7 +267,7 @@ export class UserExperienceMonitoringService {
       return { assigned: false };
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to assign user to A/B test:', error);
+      console.error('[UX Monitor] Failed to assign user to A/B test:', error);
       return { assigned: false };
     }
   }
@@ -288,7 +288,7 @@ export class UserExperienceMonitoringService {
       });
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to record A/B test metric:', error);
+      console.error('[UX Monitor] Failed to record A/B test metric:', error);
     }
   }
 
@@ -340,11 +340,11 @@ export class UserExperienceMonitoringService {
         ]
       };
 
-      console.log(`📈 [UX Monitor] Experience report generated for ${timeRangeHours}h period`);
+      console.log(`[UX Monitor] Experience report generated for ${timeRangeHours}h period`);
       return report;
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to generate experience report:', error);
+      console.error('[UX Monitor] Failed to generate experience report:', error);
       throw error;
     }
   }
@@ -426,7 +426,7 @@ export class UserExperienceMonitoringService {
       });
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to update user historical stats:', error);
+      console.error('[UX Monitor] Failed to update user historical stats:', error);
     }
   }
 
@@ -441,7 +441,7 @@ export class UserExperienceMonitoringService {
       );
 
     } catch (error) {
-      console.warn('⚠️ [UX Monitor] Failed to trigger low experience alert:', error);
+      console.warn('[UX Monitor] Failed to trigger low experience alert:', error);
     }
   }
 
@@ -451,7 +451,7 @@ export class UserExperienceMonitoringService {
       const data = await this.env.CACHE?.get(statsKey);
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to get user historical stats:', error);
+      console.error('[UX Monitor] Failed to get user historical stats:', error);
       return null;
     }
   }
@@ -504,18 +504,18 @@ export class UserExperienceMonitoringService {
       });
 
     } catch (error) {
-      console.error('❌ [UX Monitor] Failed to record A/B test assignment:', error);
+      console.error('[UX Monitor] Failed to record A/B test assignment:', error);
     }
   }
 
   private async updateSatisfactionStats(survey: UserExperienceSurvey): Promise<void> {
     // 更新整體滿意度統計的實現
-    console.log(`📊 [UX Monitor] Updated satisfaction stats for survey ${survey.userId}`);
+    console.log(`[UX Monitor] Updated satisfaction stats for survey ${survey.userId}`);
   }
 
   private async analyzeBehaviorPatterns(behavior: UserBehaviorAnalytics): Promise<void> {
     // 行為模式分析的實現
-    console.log(`🔍 [UX Monitor] Analyzing behavior pattern: ${behavior.eventType}`);
+    console.log(`[UX Monitor] Analyzing behavior pattern: ${behavior.eventType}`);
   }
 }
 

@@ -227,12 +227,12 @@ Server-Sent Events (SSE) `EventSource` API
 if (origin && isOriginAllowed(origin)) {
  headers['Access-Control-Allow-Origin'] = origin;
  headers['Access-Control-Allow-Credentials'] = 'true';
- console.log(` [SSE CORS] Allowed origin: ${origin}`);
+ console.log(`[SSE CORS] Allowed origin: ${origin}`);
 }
 // origin - wildcard ( credentials)
 else {
  headers['Access-Control-Allow-Origin'] = '*';
- console.warn(` [SSE CORS] Unknown origin (wildcard fallback): ${origin}`);
+ console.warn(`[SSE CORS] Unknown origin (wildcard fallback): ${origin}`);
 }
 ```
 
@@ -403,9 +403,9 @@ const headers = getSSECorsHeaders(origin);
  ** CORS **
 ```typescript
 if (isOriginAllowed(origin)) {
- console.log(` [CORS] Allowed origin: ${origin}`);
+ console.log(`[CORS] Allowed origin: ${origin}`);
 } else {
- console.warn(` [CORS] Rejected origin: ${origin}`);
+ console.warn(`[CORS] Rejected origin: ${origin}`);
 }
 ```
 

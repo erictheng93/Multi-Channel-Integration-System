@@ -4,50 +4,50 @@
 
 ## Features
 
-- 🎨 Modern Vue 3 with Composition API
-- 📘 Full TypeScript support
-- 🗄️ Pinia state management
-- 🛣️ Vue Router navigation
-- ⚡ Vite build tool
-- 🎭 Real-time SSE updates
-- 📱 Responsive design
-- 🔒 OAuth 2.0 + PKCE authentication
+-  Modern Vue 3 with Composition API
+-  Full TypeScript support
+-  Pinia state management
+-  Vue Router navigation
+-  Vite build tool
+-  Real-time SSE updates
+-  Responsive design
+-  OAuth 2.0 + PKCE authentication
 
 ## Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── main.ts                    # App entry point
-│   ├── App.vue                    # Root component
-│   ├── router/
-│   │   └── index.ts               # Vue Router config
-│   ├── stores/
-│   │   └── deploymentStore.ts     # Pinia store
-│   ├── api/
-│   │   └── installer.ts           # API client
-│   ├── types/
-│   │   └── index.ts               # TypeScript types
-│   ├── views/                     # Page components (6)
-│   │   ├── LandingPage.vue
-│   │   ├── OAuthCallback.vue
-│   │   ├── ConfigForm.vue
-│   │   ├── DeployProgress.vue
-│   │   ├── SuccessPage.vue
-│   │   └── ErrorPage.vue
-│   ├── components/                # Shared components (4)
-│   │   ├── ProgressBar.vue
-│   │   ├── LogConsole.vue
-│   │   ├── CredentialsBox.vue
-│   │   └── FeatureCard.vue
-│   └── assets/
-│       └── styles/
-│           └── global.css         # Design system
-├── public/                        # Static assets
-├── index.html                     # HTML template
-├── vite.config.ts                 # Vite configuration
-├── tsconfig.json                  # TypeScript config
-└── package.json                   # Dependencies
+│ ├── main.ts # App entry point
+│ ├── App.vue # Root component
+│ ├── router/
+│ │   └── index.ts # Vue Router config
+│ ├── stores/
+│ │   └── deploymentStore.ts # Pinia store
+│ ├── api/
+│ │   └── installer.ts # API client
+│ ├── types/
+│ │   └── index.ts # TypeScript types
+│ ├── views/ # Page components (6)
+│ │   ├── LandingPage.vue
+│ │   ├── OAuthCallback.vue
+│ │   ├── ConfigForm.vue
+│ │   ├── DeployProgress.vue
+│ │   ├── SuccessPage.vue
+│ │   └── ErrorPage.vue
+│ ├── components/ # Shared components (4)
+│ │   ├── ProgressBar.vue
+│ │   ├── LogConsole.vue
+│ │   ├── CredentialsBox.vue
+│ │   └── FeatureCard.vue
+│ └── assets/
+│ └── styles/
+│ └── global.css # Design system
+├── public/ # Static assets
+├── index.html # HTML template
+├── vite.config.ts # Vite configuration
+├── tsconfig.json # TypeScript config
+└── package.json # Dependencies
 ```
 
 ## Quick Start
@@ -148,7 +148,7 @@ VITE_ENVIRONMENT=production
        │
        ▼
 ┌──────────────┐
-│ OAuth Flow   │ Redirects to Cloudflare, user authorizes
+│ OAuth Flow │ Redirects to Cloudflare, user authorizes
 └──────┬───────┘
        │
        ▼
@@ -247,13 +247,13 @@ The application uses a comprehensive design system defined in `src/assets/styles
 ### Utility Classes
 
 ```css
-.btn-primary        /* Primary button */
-.btn-secondary      /* Secondary button */
-.card               /* Card container */
-.card-glass         /* Glass morphism effect */
-.form-input         /* Form input field */
-.badge-success      /* Success badge */
-.spinner            /* Loading spinner */
+.btn-primary /* Primary button */
+.btn-secondary /* Secondary button */
+.card /* Card container */
+.card-glass /* Glass morphism effect */
+.form-input /* Form input field */
+.badge-success /* Success badge */
+.spinner /* Loading spinner */
 ```
 
 ## State Management
@@ -276,9 +276,9 @@ await deploymentStore.startDeployment({
 
 // Access state
 deploymentStore.totalProgress  // 0-100
-deploymentStore.currentStep    // Current step name
-deploymentStore.logs           // Log entries
-deploymentStore.credentials    // Admin credentials (on success)
+deploymentStore.currentStep // Current step name
+deploymentStore.logs // Log entries
+deploymentStore.credentials // Admin credentials (on success)
 ```
 
 ## API Client
@@ -302,12 +302,12 @@ const status = await deploymentAPI.getDeploymentStatus(projectName);
 ### Route Configuration
 
 ```typescript
-'/'                          // Landing page
-'/oauth/callback'            // OAuth callback
-'/configure'                 // Configuration form
-'/deploy/:projectName'       // Deployment progress
-'/success/:projectName'      // Success page
-'/error'                     // Error page
+'/' // Landing page
+'/oauth/callback' // OAuth callback
+'/configure' // Configuration form
+'/deploy/:projectName' // Deployment progress
+'/success/:projectName' // Success page
+'/error' // Error page
 ```
 
 ### Navigation Guards

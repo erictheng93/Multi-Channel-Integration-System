@@ -6,20 +6,20 @@
 
 ---
 
-## 📋 變更摘要
+##  變更摘要
 
 ### 核心優化
 
 **問題**：
 - 每次 API 請求都讀取 KV 檢查活動時間
 - 每 15 分鐘寫入一次 KV 更新活動時間
-- 10 個用戶 × 10 請求/小時 × 24 小時 = 960 KV 寫入/天（96% quota 使用率 ⚠️）
+- 10 個用戶 × 10 請求/小時 × 24 小時 = 960 KV 寫入/天（96% quota 使用率 ）
 
 **解決方案**：
-- ✅ 移除 KV 操作，改用 Worker-scoped Map
-- ✅ 純記憶體去重邏輯（15 分鐘間隔）
-- ✅ 零網路調用，性能更佳
-- ✅ 100% KV quota 節省
+-  移除 KV 操作，改用 Worker-scoped Map
+-  純記憶體去重邏輯（15 分鐘間隔）
+-  零網路調用，性能更佳
+-  100% KV quota 節省
 
 ### 修改文件
 
@@ -45,7 +45,7 @@
 
 ---
 
-## 🚀 部署步驟
+##  部署步驟
 
 ### Step 1: 本地測試
 
@@ -56,7 +56,7 @@ bun run scripts/test-kv-optimization.ts
 npx tsx scripts/test-kv-optimization.ts
 
 # 預期輸出：
-# ✅ ALL TESTS PASSED - KV OPTIMIZATION IS WORKING CORRECTLY
+#  ALL TESTS PASSED - KV OPTIMIZATION IS WORKING CORRECTLY
 
 # 2. 編譯檢查
 npm run build
@@ -115,9 +115,9 @@ curl -H "Authorization: Bearer $TOKEN" \
 
    # 預期輸出：
    # {
-   #   "savedReads": 2400,
-   #   "savedWrites": 960,
-   #   "savedWritesPercentage": "96.00%"
+   # "savedReads": 2400,
+   # "savedWrites": 960,
+   # "savedWritesPercentage": "96.00%"
    # }
    ```
 
@@ -130,7 +130,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## 📊 監控端點說明
+##  監控端點說明
 
 ### 1. GET /api/monitoring/kv/activity-cache
 
@@ -190,7 +190,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 }
 ```
 
-**⚠️ 警告閾值**:
+** 警告閾值**:
 - `currentHourRequests > 50`: 當前小時請求過高
 - `peakRequestsPerHour > 100`: 歷史峰值異常
 
@@ -255,9 +255,9 @@ curl -H "Authorization: Bearer $TOKEN" \
 ```
 
 **健康狀態**:
-- `healthy`: 一切正常 ✅
-- `warning`: 有警告但不嚴重 ⚠️
-- `error`: 發現問題需要處理 ❌
+- `healthy`: 一切正常 
+- `warning`: 有警告但不嚴重 
+- `error`: 發現問題需要處理 
 
 ### 5. POST /api/monitoring/kv/reset
 
@@ -272,15 +272,15 @@ curl -X POST \
 
 ---
 
-## ⚠️ 重要注意事項
+##  重要注意事項
 
 ### 權衡取捨
 
 | 項目 | 影響 | 可接受性 |
 |------|------|---------|
-| **Worker 重啟** | 快取丟失，最多 15 分鐘活動時間不準確 | ✅ 可接受（Worker 通常運行數小時）|
-| **多 Worker 實例** | 每個實例獨立快取 | ✅ 可接受（debounce 仍然生效）|
-| **記憶體使用** | 10,000 用戶 ≈ 160 KB | ✅ 可接受（Worker 有 128 MB 限制）|
+| **Worker 重啟** | 快取丟失，最多 15 分鐘活動時間不準確 |  可接受（Worker 通常運行數小時）|
+| **多 Worker 實例** | 每個實例獨立快取 |  可接受（debounce 仍然生效）|
+| **記憶體使用** | 10,000 用戶 ≈ 160 KB |  可接受（Worker 有 128 MB 限制）|
 
 ### 回滾計劃
 
@@ -298,28 +298,28 @@ npm run deploy
 
 ---
 
-## 📈 預期成效
+##  預期成效
 
 ### 性能提升
 
 | 指標 | v2.0 (KV) | v3.0 (Memory) | 改善 |
 |------|-----------|---------------|------|
-| KV 讀取/天 | 2,400 | 0 | ✅ -100% |
-| KV 寫入/天 | 960 | 0 | ✅ -100% |
+| KV 讀取/天 | 2,400 | 0 |  -100% |
+| KV 寫入/天 | 960 | 0 |  -100% |
 | D1 寫入/天 | 960 | 960 | 無變化 |
-| 響應時間 | ~50ms | ~5ms | ✅ -90% |
-| Quota 使用率 | 96% | 0% | ✅ -96% |
+| 響應時間 | ~50ms | ~5ms |  -90% |
+| Quota 使用率 | 96% | 0% |  -96% |
 
 ### Cloudflare KV Free Tier
 
 - **每日寫入限制**: 1,000 次
-- **優化前使用**: 960 次（96%）⚠️
-- **優化後使用**: ~40 次（4%）✅（僅登入/登出）
-- **釋放額度**: 960 次/天 ✅
+- **優化前使用**: 960 次（96%）
+- **優化後使用**: ~40 次（4%）（僅登入/登出）
+- **釋放額度**: 960 次/天 
 
 ---
 
-## 🐛 故障排除
+##  故障排除
 
 ### 問題 1: 監控端點返回 401
 
@@ -356,7 +356,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## ✅ 驗收標準
+##  驗收標準
 
 部署後 24 小時內：
 
@@ -368,7 +368,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## 📞 支援
+##  支援
 
 如遇問題，請檢查：
 1. **日誌**: `wrangler tail` 查看 Worker 日誌

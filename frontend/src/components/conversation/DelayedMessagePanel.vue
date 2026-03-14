@@ -50,7 +50,7 @@
           :disabled="cancelling[msg.id]"
           @click="cancelMessage(msg.id)"
         >
-          <span v-if="!cancelling[msg.id]">✕ 撤銷</span>
+          <span v-if="!cancelling[msg.id]"> 撤銷</span>
           <span
             v-else
             class="spinner"
@@ -65,7 +65,7 @@
       class="empty-state"
     >
       <div class="empty-icon">
-        ⏰
+        
       </div>
       <div class="empty-text">
         目前沒有待發送訊息

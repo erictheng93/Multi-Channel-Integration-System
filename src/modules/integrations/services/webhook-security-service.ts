@@ -123,8 +123,8 @@ export class WebhookSecurityService {
     // Initialize IP validator with all platform ranges
     this.ipValidator = new IPValidator([...LINE_IP_RANGES, ...FACEBOOK_IP_RANGES]);
 
-    console.log(`✅ [WebhookSecurity] Initialized with IP whitelist ${this.IP_WHITELIST_ENABLED ? 'ENABLED' : 'DISABLED'}`);
-    console.log(`   📋 Loaded ${this.ipValidator.getTotalRanges()} IP ranges (LINE: ${LINE_IP_RANGES.length}, Facebook: ${FACEBOOK_IP_RANGES.length})`);
+    console.log(`[WebhookSecurity] Initialized with IP whitelist ${this.IP_WHITELIST_ENABLED ? 'ENABLED' : 'DISABLED'}`);
+    console.log(` Loaded ${this.ipValidator.getTotalRanges()} IP ranges (LINE: ${LINE_IP_RANGES.length}, Facebook: ${FACEBOOK_IP_RANGES.length})`);
   }
 
   // ======================== 主要驗證方法 ========================
@@ -703,7 +703,7 @@ export class WebhookSecurityService {
     headers?: Record<string, string>
   ): Promise<{ valid: boolean; warning?: string }> {
     try {
-      // 🆕 P2-1: IP 白名單檢查
+      // P2-1: IP 白名單檢查
       if (this.IP_WHITELIST_ENABLED && sourceIP) {
         // Normalize platform for IP validation
         const platformForIP = platform === 'instagram' ? 'facebook' : platform;
@@ -712,17 +712,17 @@ export class WebhookSecurityService {
         const isAllowed = this.ipValidator.isAllowed(sourceIP, platformForIP);
 
         if (!isAllowed) {
-          console.warn(`🚫 [WebhookSecurity] IP ${sourceIP} not in ${platform} whitelist - REJECTED`);
+          console.warn(`[WebhookSecurity] IP ${sourceIP} not in ${platform} whitelist - REJECTED`);
           return {
             valid: false,
             warning: `IP address ${sourceIP} not in ${platform} official IP ranges`
           };
         }
 
-        console.log(`✅ [WebhookSecurity] IP ${sourceIP} validated for ${platform}`);
+        console.log(`[WebhookSecurity] IP ${sourceIP} validated for ${platform}`);
       } else if (this.IP_WHITELIST_ENABLED && !sourceIP) {
         // IP whitelist is enabled but no IP provided - warning
-        console.warn(`⚠️ [WebhookSecurity] IP whitelist enabled but no source IP provided for ${platform} webhook`);
+        console.warn(`[WebhookSecurity] IP whitelist enabled but no source IP provided for ${platform} webhook`);
         return {
           valid: true,
           warning: 'IP whitelist enabled but source IP not available'
@@ -800,7 +800,7 @@ export class WebhookSecurityService {
           createdAt: securityEvent.timestamp
         });
 
-      // 🆕 P2-5: 嚴重事件觸發告警系統
+      // P2-5: 嚴重事件觸發告警系統
       if (securityEvent.severity === 'critical' || securityEvent.severity === 'high') {
         console.error('[SECURITY ALERT]', securityEvent);
 
@@ -826,9 +826,9 @@ export class WebhookSecurityService {
               }
             );
 
-            console.log(`📢 [WebhookSecurity] Alert sent for ${securityEvent.severity} severity event`);
+            console.log(`[WebhookSecurity] Alert sent for ${securityEvent.severity} severity event`);
           } else {
-            console.warn('⚠️ [WebhookSecurity] No alert channels configured, skipping alert');
+            console.warn('[WebhookSecurity] No alert channels configured, skipping alert');
           }
         } catch (alertError) {
           console.error('[WebhookSecurity] Failed to send alert:', alertError);

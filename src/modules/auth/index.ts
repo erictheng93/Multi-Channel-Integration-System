@@ -60,9 +60,9 @@ export const MODULE_INFO = {
     implemented: 8,
     pending: 0,
     categories: {
-      auth: 4,      // login, logout, refresh, verify
-      user: 2,      // profile, update
-      admin: 2      // user management
+      auth: 4, // login, logout, refresh, verify
+      user: 2, // profile, update
+      admin: 2 // user management
     }
   },
 
@@ -102,7 +102,7 @@ export function initializeAuthModule(config: Partial<AuthModuleConfig> = {}) {
 
   // 驗證必要配置
   if (!finalConfig.jwtSecret || finalConfig.jwtSecret === 'default-secret') {
-    console.warn('⚠️ Auth module: Using default JWT secret. Please set JWT_SECRET environment variable.');
+    console.warn(' Auth module: Using default JWT secret. Please set JWT_SECRET environment variable.');
   }
 
   return {

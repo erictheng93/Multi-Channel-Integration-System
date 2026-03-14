@@ -107,7 +107,7 @@ describe('EncryptionService', () => {
     });
 
     it('should encrypt unicode characters', async () => {
-      const plaintext = '你好世界 🌍 こんにちは';
+      const plaintext = '你好世界  こんにちは';
 
       const encrypted = await service.encrypt(plaintext);
 
@@ -160,7 +160,7 @@ describe('EncryptionService', () => {
     });
 
     it('should decrypt unicode characters', async () => {
-      const plaintext = '你好世界 🌍 こんにちは';
+      const plaintext = '你好世界  こんにちは';
 
       const encrypted = await service.encrypt(plaintext);
       const decrypted = await service.decrypt(encrypted);

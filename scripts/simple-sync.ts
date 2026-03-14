@@ -17,7 +17,7 @@ if (!fs.existsSync(BACKUP_DIR)) {
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
 async function exportDevData(): Promise<string> {
-  console.log('📥 導出開發環境數據...');
+  console.log(' 導出開發環境數據...');
   
   const exportFile = path.join(BACKUP_DIR, `dev-export-${timestamp}.sql`);
   
@@ -27,16 +27,16 @@ async function exportDevData(): Promise<string> {
       stdio: 'inherit'
     });
     
-    console.log(`✅ 開發環境數據已導出到: ${exportFile}`);
+    console.log(` 開發環境數據已導出到: ${exportFile}`);
     return exportFile;
   } catch (error) {
-    console.error('❌ 導出開發環境數據失敗:', error);
+    console.error(' 導出開發環境數據失敗:', error);
     throw error;
   }
 }
 
 async function backupProdData(): Promise<void> {
-  console.log('📦 備份生產環境數據...');
+  console.log(' 備份生產環境數據...');
   
   const backupFile = path.join(BACKUP_DIR, `production-backup-${timestamp}.sql`);
   
@@ -46,15 +46,15 @@ async function backupProdData(): Promise<void> {
       stdio: 'inherit'
     });
     
-    console.log(`✅ 生產環境數據已備份到: ${backupFile}`);
+    console.log(` 生產環境數據已備份到: ${backupFile}`);
   } catch (error) {
-    console.error('❌ 備份生產環境數據失敗:', error);
+    console.error(' 備份生產環境數據失敗:', error);
     throw error;
   }
 }
 
 async function importToProd(exportFile: string): Promise<void> {
-  console.log('📤 導入開發環境數據到生產環境...');
+  console.log(' 導入開發環境數據到生產環境...');
   
   if (!fs.existsSync(exportFile)) {
     throw new Error(`導出文件不存在: ${exportFile}`);
@@ -66,15 +66,15 @@ async function importToProd(exportFile: string): Promise<void> {
       stdio: 'inherit'
     });
     
-    console.log('✅ 數據導入完成');
+    console.log(' 數據導入完成');
   } catch (error) {
-    console.error('❌ 導入數據失敗:', error);
+    console.error(' 導入數據失敗:', error);
     throw error;
   }
 }
 
 async function verifySync(): Promise<void> {
-  console.log('🔍 驗證同步結果...');
+  console.log(' 驗證同步結果...');
   
   try {
     // 檢查 agents 表的記錄數量
@@ -92,14 +92,14 @@ async function verifySync(): Promise<void> {
     console.log('生產環境 agents 數量:', prodResult);
     
   } catch (error) {
-    console.warn('⚠️ 驗證過程中出現問題:', error);
+    console.warn(' 驗證過程中出現問題:', error);
   }
 }
 
 async function main() {
   try {
-    console.log('🚀 開始數據同步任務...');
-    console.log('⚠️ 警告：這將完全覆蓋生產環境的數據！\n');
+    console.log(' 開始數據同步任務...');
+    console.log(' 警告：這將完全覆蓋生產環境的數據！\n');
     
     // 1. 備份生產環境數據
     await backupProdData();
@@ -113,10 +113,10 @@ async function main() {
     // 4. 驗證同步結果
     await verifySync();
     
-    console.log('\n✨ 數據同步任務完成！');
+    console.log('\n 數據同步任務完成！');
     
   } catch (error) {
-    console.error('💥 同步過程中出現錯誤:', error);
+    console.error(' 同步過程中出現錯誤:', error);
     process.exit(1);
   }
 }

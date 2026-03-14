@@ -2,7 +2,7 @@
   <div class="filter-section">
     <div class="filter-header">
       <h3 class="filter-title">
-        🔍 篩選器
+         篩選器
       </h3>
       <button
         v-if="hasActiveFilters"
@@ -53,19 +53,19 @@
             全部狀態
           </option>
           <option value="pending">
-            ⏳ 待處理
+             待處理
           </option>
           <option value="generating">
-            ⚙️ 生成中
+             生成中
           </option>
           <option value="completed">
-            ✅ 已完成
+             已完成
           </option>
           <option value="failed">
-            ❌ 失敗
+             失敗
           </option>
           <option value="expired">
-            ⏰ 已過期
+             已過期
           </option>
         </select>
       </div>
@@ -82,19 +82,19 @@
             全部格式
           </option>
           <option value="json">
-            📄 JSON
+             JSON
           </option>
           <option value="csv">
-            📊 CSV
+             CSV
           </option>
           <option value="excel">
-            📗 Excel
+             Excel
           </option>
           <option value="pdf">
-            📕 PDF
+             PDF
           </option>
           <option value="html">
-            🌐 HTML
+             HTML
           </option>
         </select>
       </div>
@@ -131,7 +131,7 @@
             @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
           >
           <div class="search-icon">
-            🔍
+            
           </div>
         </div>
       </div>

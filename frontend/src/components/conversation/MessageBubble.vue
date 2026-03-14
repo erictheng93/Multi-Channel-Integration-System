@@ -129,7 +129,7 @@
         </div>
       </div>
 
-      <!-- 🔧 FIX: Attachments Container - Images, Videos, and Documents -->
+      <!--  FIX: Attachments Container - Images, Videos, and Documents -->
       <div
         v-else-if="
           imageAttachments.length > 0 ||
@@ -139,7 +139,7 @@
         class="message-attachments-container"
       >
         <!-- 圖片附件：簡單顯示，不使用 Flex Message Card -->
-        <!-- 🔧 CLS FIX: 使用 aspect-ratio 預留空間，防止圖片載入後版面位移 -->
+        <!--  CLS FIX: 使用 aspect-ratio 預留空間，防止圖片載入後版面位移 -->
         <div
           v-for="attachment in imageAttachments"
           :key="attachment.id"
@@ -175,7 +175,7 @@
               </div>
             </div>
           </div>
-          <!-- 🆕 圖片附件發送狀態指示器 -->
+          <!--  圖片附件發送狀態指示器 -->
           <div
             class="attachment-status-indicator image-status"
             :class="getAttachmentStatusClass(attachment)"
@@ -185,11 +185,11 @@
               <span class="status-text">傳送中...</span>
             </template>
             <template v-else-if="messageStatus === MESSAGE_STATUS.FAILED">
-              <span class="status-icon failed">✕</span>
+              <span class="status-icon failed"></span>
               <span class="status-text failed">發送失敗</span>
             </template>
             <template v-else>
-              <span class="status-icon success">✓</span>
+              <span class="status-icon success"></span>
               <span class="status-text success">已發送</span>
             </template>
           </div>
@@ -227,7 +227,7 @@
               :compact="documentAttachments.length > 1"
               @preview="handleAttachmentPreview"
             />
-            <!-- 🆕 附件發送狀態指示器 -->
+            <!--  附件發送狀態指示器 -->
             <div
               class="attachment-status-indicator"
               :class="getAttachmentStatusClass(attachment)"
@@ -237,11 +237,11 @@
                 <span class="status-text">傳送中...</span>
               </template>
               <template v-else-if="messageStatus === MESSAGE_STATUS.FAILED">
-                <span class="status-icon failed">✕</span>
+                <span class="status-icon failed"></span>
                 <span class="status-text failed">發送失敗</span>
               </template>
               <template v-else>
-                <span class="status-icon success">✓</span>
+                <span class="status-icon success"></span>
                 <span class="status-text success">已發送</span>
               </template>
             </div>
@@ -310,7 +310,7 @@
               class="cdn-fallback-indicator"
               :title="`使用備用CDN源 #${currentStickerUrlIndex + 1}`"
             >
-              ⚡
+              
             </div>
           </div>
 
@@ -321,7 +321,7 @@
           >
             <div class="sticker-icon-large">
               <div class="sticker-emoji">
-                🎭
+                
               </div>
             </div>
             <div class="sticker-fallback-content">
@@ -341,7 +341,7 @@
             class="sticker-info enhanced"
           >
             <span class="sticker-id-info">
-              📦 {{ stickerMetadata.packageId }} · 🏷️ {{ stickerMetadata.stickerId }}
+               {{ stickerMetadata.packageId }} ·  {{ stickerMetadata.stickerId }}
             </span>
             <span
               v-if="currentStickerUrlIndex > 0"
@@ -372,12 +372,12 @@
           {{ message.senderName }}
         </span>
 
-        <!-- ⚡ Enhanced Message Status with Optimistic UI -->
+        <!--  Enhanced Message Status with Optimistic UI -->
         <div
           v-if="isOutgoing"
           class="message-status"
         >
-          <!-- ⏳ Sending状态 -->
+          <!--  Sending状态 -->
           <div
             v-if="messageStatus === 'sending' || messageStatus === MESSAGE_STATUS.PENDING"
             class="status-sending"
@@ -386,7 +386,7 @@
             <div class="spinner-small" />
           </div>
 
-          <!-- ✅ Sent/Delivered状态 -->
+          <!--  Sent/Delivered状态 -->
           <CheckIcon
             v-else-if="
               messageStatus === MESSAGE_STATUS.SENT ||
@@ -397,7 +397,7 @@
             title="已送达"
           />
 
-          <!-- ❌ Failed状态 with重试按钮 -->
+          <!--  Failed状态 with重试按钮 -->
           <div
             v-else-if="messageStatus === MESSAGE_STATUS.FAILED"
             class="status-failed-wrapper"
@@ -411,7 +411,7 @@
               title="重试发送"
               @click.stop="handleRetry"
             >
-              🔄
+              
             </button>
           </div>
 
@@ -582,7 +582,7 @@
     forward: [message: Message]
     recall: [message: Message]
     select: [message: Message]
-    retry: [messageId: string] // ⚡ New: Retry failed message
+    retry: [messageId: string] //  New: Retry failed message
   }>()
 
   // Use message composables
@@ -615,7 +615,7 @@
   // Mark fileAttachments as used (it's internally used by imageAttachments, videoAttachments, and documentAttachments)
   void fileAttachments
 
-  // 🔧 FIX: Handle attachment preview - open modal for images, emit event for others
+  // FIX: Handle attachment preview - open modal for images, emit event for others
   const handleAttachmentPreview = (attachment: FileAttachment) => {
     // For image attachments, open the local preview modal
     if (isImageFile(attachment)) {
@@ -684,10 +684,10 @@
   const imageLoaded = ref(false)
   const imageError = ref(false)
 
-  // 🆕 Image preview attachment state (for attachment images)
+  // Image preview attachment state (for attachment images)
   const previewImageAttachment = ref<FileAttachment | null>(null)
 
-  // ✅ Video player composable - handles video preview modal state
+  // Video player composable - handles video preview modal state
   // Note: Inline video players (VideoPlayer.vue) manage their own state internally
   const {
     showVideoPreview,
@@ -716,18 +716,18 @@
     return senderName.value[0]
   })
 
-  // ✅ Refactored: Attachment-related computed properties moved to useMessageAttachment composable
+  // Refactored: Attachment-related computed properties moved to useMessageAttachment composable
   // - attachmentUrl, attachmentName, attachmentSize
   // - fileAttachments, imageAttachments, nonImageAttachments
   // - hasMultipleAttachments, isFileOnlyContent
   // - messageStatus
 
-  // ✅ Refactored: Sticker-related logic moved to useMessageSticker composable
+  // Refactored: Sticker-related logic moved to useMessageSticker composable
   // - stickerMetadata, stickerUrls, stickerImageUrl
   // - currentStickerUrlIndex, stickerLoadError, stickerLoading
   // - onStickerLoadStart, onStickerError, onStickerLoad
 
-  // ✅ Refactored: Content processing moved to useMessageContent composable
+  // Refactored: Content processing moved to useMessageContent composable
   // - actualMessageType (smart type detection from metadata)
   // - processedMessageContent (async processing with caching)
   // - contentCache (LRU cache with max 100 entries)
@@ -735,7 +735,7 @@
   // - watch() for message changes
   // - onUnmounted() cleanup
 
-  // ✅ Refactored: Formatting functions moved to utils and composables
+  // Refactored: Formatting functions moved to utils and composables
   // - formatTime: from useMessageTime composable
   // - formatFileSize, getFileExtension, getFileTypeClass: from @/utils/message
 
@@ -783,11 +783,11 @@
     emit('image-error', props.message)
   }
 
-  // ✅ Refactored: All sticker event handlers moved to useMessageSticker composable
+  // Refactored: All sticker event handlers moved to useMessageSticker composable
   // - onStickerLoadStart(), onStickerError(), onStickerLoad()
   // - watch() for sticker metadata changes
 
-  // ✅ Refactored: All action methods moved to useMessageActions composable
+  // Refactored: All action methods moved to useMessageActions composable
   // - handleRightClick(), toggleActionsMenu(), copyMessage()
   // - replyToMessage(), forwardMessage(), recallMessage(), selectMessage()
   // - handleRetry()

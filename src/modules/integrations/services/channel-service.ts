@@ -98,8 +98,8 @@ export class ChannelService implements IChannelIntegrationService {
   /**
    * Decrypt the JSON credentials column value
    * Handles two formats:
-   *  - New format: EncryptedData envelope → decrypt → JSON.parse → ChannelCredentials
-   *  - Legacy format (from migration 0026): JSON with individually encrypted string fields
+   * - New format: EncryptedData envelope → decrypt → JSON.parse → ChannelCredentials
+   * - Legacy format (from migration 0026): JSON with individually encrypted string fields
    */
   private async decryptCredentials(credentialsJson: string | null | undefined): Promise<ChannelCredentials> {
     if (!credentialsJson) return {};
@@ -232,7 +232,7 @@ export class ChannelService implements IChannelIntegrationService {
         .orderBy(desc(channelIntegrations.createdAt))
         .limit(1);
 
-      console.log(`[ChannelService] ✅ Channel created successfully: ${createdChannel.id}`);
+      console.log(`[ChannelService]  Channel created successfully: ${createdChannel.id}`);
 
       return {
         success: true,
@@ -362,7 +362,7 @@ export class ChannelService implements IChannelIntegrationService {
         })
         .where(eq(channelIntegrations.id, channel.id));
 
-      console.log(`[ChannelService] ✅ LINE channel verified successfully: ${channel.id}`);
+      console.log(`[ChannelService]  LINE channel verified successfully: ${channel.id}`);
 
       return {
         success: true,
@@ -473,7 +473,7 @@ export class ChannelService implements IChannelIntegrationService {
         })
         .where(eq(channelIntegrations.id, channel.id));
 
-      console.log(`[ChannelService] ✅ Facebook channel verified successfully: ${channel.id}`);
+      console.log(`[ChannelService]  Facebook channel verified successfully: ${channel.id}`);
 
       return {
         success: true,
@@ -597,7 +597,7 @@ export class ChannelService implements IChannelIntegrationService {
         })
         .where(eq(channelIntegrations.id, channel.id));
 
-      console.log(`[ChannelService] ✅ WhatsApp channel verified successfully: ${channel.id}`);
+      console.log(`[ChannelService]  WhatsApp channel verified successfully: ${channel.id}`);
 
       return {
         success: true,
@@ -830,7 +830,7 @@ export class ChannelService implements IChannelIntegrationService {
 
       const updatedChannel = await this.getChannel(request.channelId);
 
-      console.log(`[ChannelService] ✅ Channel updated successfully: ${request.channelId}`);
+      console.log(`[ChannelService]  Channel updated successfully: ${request.channelId}`);
 
       return {
         success: true,
@@ -861,7 +861,7 @@ export class ChannelService implements IChannelIntegrationService {
         })
         .where(eq(channelIntegrations.id, channelId));
 
-      console.log(`[ChannelService] ✅ Channel deactivated: ${channelId}`);
+      console.log(`[ChannelService]  Channel deactivated: ${channelId}`);
       return true;
 
     } catch (error) {

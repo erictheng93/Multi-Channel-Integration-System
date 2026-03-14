@@ -1,13 +1,13 @@
 /**
  * Vitest Configuration for REAL Integration Tests
  *
- * 🎯 This configuration is for TRUE integration testing with:
+ * This configuration is for TRUE integration testing with:
  * - Real Remote D1 Database
  * - Real KV Namespaces
  * - Real R2 Buckets
  * - Real Durable Objects
  *
- * ⚠️ Tests using this config connect to PRODUCTION REMOTE resources
+ * Tests using this config connect to PRODUCTION REMOTE resources
  */
 
 import { defineConfig } from 'vitest/config';

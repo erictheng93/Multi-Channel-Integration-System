@@ -4,7 +4,7 @@
 import { beforeEach, vi } from 'vitest'
 import { webcrypto } from 'node:crypto'
 
-// ✅ Crypto polyfill for Node.js test environment
+// Crypto polyfill for Node.js test environment
 // This must be set BEFORE any imports that use crypto
 // Use webcrypto as the global crypto object
 if (!global.crypto) {

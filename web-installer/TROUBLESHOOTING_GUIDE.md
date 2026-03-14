@@ -6,7 +6,7 @@
 
 ---
 
-## 📑 Table of Contents
+##  Table of Contents
 
 1. [General Troubleshooting Approach](#general-troubleshooting-approach)
 2. [Web Installer Issues](#web-installer-issues)
@@ -21,7 +21,7 @@
 
 ---
 
-## 🔧 General Troubleshooting Approach
+##  General Troubleshooting Approach
 
 ### Step-by-Step Debugging Process
 
@@ -81,7 +81,7 @@ npx wrangler deployments list
 
 ---
 
-## 🌐 Web Installer Issues
+##  Web Installer Issues
 
 ### Issue: Web Installer Page Won't Load
 
@@ -165,7 +165,7 @@ node --version
 
 ---
 
-## 🔐 OAuth Authentication Issues
+##  OAuth Authentication Issues
 
 ### Issue: OAuth Login Fails
 
@@ -227,7 +227,7 @@ app.use('/*', cors({
 
 ---
 
-## ✏️ Configuration & Validation Issues
+##  Configuration & Validation Issues
 
 ### Issue: Form Validation Not Working
 
@@ -308,7 +308,7 @@ location.reload();
 
 ---
 
-## 🚀 Deployment Issues
+##  Deployment Issues
 
 ### Issue: Deployment Fails at Worker Creation
 
@@ -403,7 +403,7 @@ npm run type-check
 
 ---
 
-## 📦 Resource Creation Issues
+##  Resource Creation Issues
 
 ### Issue: KV Namespace Creation Fails
 
@@ -452,7 +452,7 @@ npx wrangler r2 bucket create {bucket-name}
 
 ---
 
-## 🔄 Post-Deployment Issues
+##  Post-Deployment Issues
 
 ### Issue: Deployed App Shows 404
 
@@ -569,7 +569,7 @@ npx wrangler secret put JWT_SECRET
 
 ---
 
-## 📱 LINE Integration Issues
+##  LINE Integration Issues
 
 ### Issue: LINE Bot ID Validation Fails
 
@@ -622,7 +622,7 @@ npx wrangler secret put JWT_SECRET
 
 ---
 
-## ⚡ Performance Issues
+##  Performance Issues
 
 ### Issue: Web Installer Loads Slowly
 
@@ -681,7 +681,7 @@ npm run dev
 
 ---
 
-## 🌐 Browser-Specific Issues
+##  Browser-Specific Issues
 
 ### Chrome Issues
 
@@ -732,7 +732,7 @@ about:config
 
 ---
 
-## 🆘 Emergency Recovery
+##  Emergency Recovery
 
 ### Complete Deployment Failure
 
@@ -777,7 +777,7 @@ cd web-installer/frontend && npm install
 
 ---
 
-## 📞 Getting Help
+##  Getting Help
 
 ### Before Asking for Help
 
@@ -845,7 +845,7 @@ When asking for help, include:
 
 ---
 
-## 🔍 Debug Mode
+##  Debug Mode
 
 ### Enable Verbose Logging
 

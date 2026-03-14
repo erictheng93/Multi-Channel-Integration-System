@@ -37,9 +37,9 @@ interface SyncStats {
  */
 async function syncQRCodes(dryRun: boolean = false) {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🔄 QR Code 資料同步腳本');
+  console.log(' QR Code 資料同步腳本');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`模式: ${dryRun ? '🔍 預覽模式 (Dry Run)' : '✍️  執行模式'}`);
+  console.log(`模式: ${dryRun ? ' 預覽模式 (Dry Run)' : '  執行模式'}`);
   console.log(`開始時間: ${new Date().toLocaleString('zh-TW')}\n`);
 
   // 初始化資料庫連接
@@ -49,13 +49,13 @@ async function syncQRCodes(dryRun: boolean = false) {
   // Stub: Replace with D1 binding when running in Worker context
   // const db = drizzle(env.DB);
 
-  console.log('❌ 錯誤：此腳本需要在 Cloudflare Workers 環境中執行');
-  console.log('📋 使用方式：');
-  console.log('   1. 將此腳本整合到 Worker 中作為管理端點');
-  console.log('   2. 或使用 wrangler dev 本地開發環境執行');
+  console.log(' 錯誤：此腳本需要在 Cloudflare Workers 環境中執行');
+  console.log(' 使用方式：');
+  console.log(' 1. 將此腳本整合到 Worker 中作為管理端點');
+  console.log(' 2. 或使用 wrangler dev 本地開發環境執行');
   console.log('\n建議實作方式：');
-  console.log('   在 src/handlers/admin-main.ts 中添加管理端點：');
-  console.log('   POST /api/admin/sync-qr-codes');
+  console.log(' 在 src/handlers/admin-main.ts 中添加管理端點：');
+  console.log(' POST /api/admin/sync-qr-codes');
 
   return;
 
@@ -74,19 +74,19 @@ async function syncQRCodes(dryRun: boolean = false) {
 
   try {
     // 1. 取得所有團隊
-    console.log('📋 正在載入所有團隊...');
+    console.log(' 正在載入所有團隊...');
     const allTeams = await db.select().from(teams);
     stats.totalTeams = allTeams.length;
-    console.log(`✅ 找到 ${stats.totalTeams} 個團隊\n`);
+    console.log(` 找到 ${stats.totalTeams} 個團隊\n`);
 
     // 2. 為每個團隊同步 QR Code
     for (const team of allTeams) {
       try {
-        console.log(`\n🔍 處理團隊 [${team.id}] ${team.name}...`);
+        console.log(`\n 處理團隊 [${team.id}] ${team.name}...`);
 
         // 2.1 檢查是否已有 QR Code
         if (team.qrCode && !dryRun) {
-          console.log(`   ℹ️  teams.qrCode 已存在: ${team.qrCode.substring(0, 50)}...`);
+          console.log(` teams.qrCode 已存在: ${team.qrCode.substring(0, 50)}...`);
           stats.alreadySynced++;
 
           // 驗證該 QR Code 是否仍然有效
@@ -103,10 +103,10 @@ async function syncQRCodes(dryRun: boolean = false) {
             .limit(1);
 
           if (existingQR.length > 0) {
-            console.log(`   ✅ QR Code 有效，跳過同步`);
+            console.log(` QR Code 有效，跳過同步`);
             continue;
           } else {
-            console.log(`   ⚠️  QR Code 已失效，將重新同步`);
+            console.log(` QR Code 已失效，將重新同步`);
           }
         }
 
@@ -125,10 +125,10 @@ async function syncQRCodes(dryRun: boolean = false) {
 
         if (latestQR.length > 0) {
           const qr = latestQR[0];
-          console.log(`   📍 找到 QR Code:`);
-          console.log(`      ID: ${qr.id}`);
-          console.log(`      URL: ${qr.qrCodeImageUrl?.substring(0, 50)}...`);
-          console.log(`      建立時間: ${qr.createdAt}`);
+          console.log(` 找到 QR Code:`);
+          console.log(` ID: ${qr.id}`);
+          console.log(` URL: ${qr.qrCodeImageUrl?.substring(0, 50)}...`);
+          console.log(` 建立時間: ${qr.createdAt}`);
 
           // 2.3 更新 teams.qrCode
           if (!dryRun) {
@@ -140,22 +140,22 @@ async function syncQRCodes(dryRun: boolean = false) {
               })
               .where(eq(teams.id, team.id));
 
-            console.log(`   ✅ 已同步到 teams.qrCode`);
+            console.log(` 已同步到 teams.qrCode`);
             stats.successfulSyncs++;
           } else {
-            console.log(`   🔍 [Dry Run] 將會更新 teams.qrCode`);
+            console.log(` [Dry Run] 將會更新 teams.qrCode`);
             stats.successfulSyncs++;
           }
 
           stats.teamsWithQR++;
         } else {
-          console.log(`   📭 未找到活躍的 QR Code`);
+          console.log(` 未找到活躍的 QR Code`);
           stats.teamsWithoutQR++;
         }
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : '未知錯誤';
-        console.error(`   ❌ 處理失敗: ${errorMessage}`);
+        console.error(` 處理失敗: ${errorMessage}`);
         stats.failedSyncs++;
         stats.errors.push({
           teamId: team.id,
@@ -167,19 +167,19 @@ async function syncQRCodes(dryRun: boolean = false) {
 
     // 3. 輸出統計報告
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 同步完成統計報告');
+    console.log(' 同步完成統計報告');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`總團隊數:         ${stats.totalTeams}`);
-    console.log(`有 QR Code:       ${stats.teamsWithQR}`);
-    console.log(`無 QR Code:       ${stats.teamsWithoutQR}`);
-    console.log(`成功同步:         ${stats.successfulSyncs}`);
-    console.log(`已存在跳過:       ${stats.alreadySynced}`);
-    console.log(`失敗:             ${stats.failedSyncs}`);
+    console.log(`總團隊數: ${stats.totalTeams}`);
+    console.log(`有 QR Code: ${stats.teamsWithQR}`);
+    console.log(`無 QR Code: ${stats.teamsWithoutQR}`);
+    console.log(`成功同步: ${stats.successfulSyncs}`);
+    console.log(`已存在跳過: ${stats.alreadySynced}`);
+    console.log(`失敗: ${stats.failedSyncs}`);
 
     if (stats.errors.length > 0) {
-      console.log('\n❌ 錯誤詳情:');
+      console.log('\n 錯誤詳情:');
       stats.errors.forEach((err, index) => {
-        console.log(`   ${index + 1}. [${err.teamId}] ${err.teamName}: ${err.error}`);
+        console.log(` ${index + 1}. [${err.teamId}] ${err.teamName}: ${err.error}`);
       });
     }
 
@@ -190,7 +190,7 @@ async function syncQRCodes(dryRun: boolean = false) {
     return stats;
 
   } catch (error) {
-    console.error('\n❌ 同步過程發生嚴重錯誤:', error);
+    console.error('\n 同步過程發生嚴重錯誤:', error);
     throw error;
   }
   */
@@ -200,7 +200,7 @@ async function syncQRCodes(dryRun: boolean = false) {
  * 驗證同步結果
  */
 async function validateSync() {
-  console.log('\n🔍 驗證同步結果...\n');
+  console.log('\n 驗證同步結果...\n');
 
   // Stub: Add QR code validation (URL format + team existence check)
   console.log('驗證邏輯需要在 Worker 環境中實作');

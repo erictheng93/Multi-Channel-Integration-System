@@ -43,7 +43,7 @@ export const createMockConversation = (status: ConversationStatus = CONVERSATION
 // 權限測試套件
 export class AssignmentPermissionTests {
   static testAdminPermissions() {
-    console.log('🔍 Testing Admin Permissions...')
+    console.log(' Testing Admin Permissions...')
     const admin = createMockAgent('admin')
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
     // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
@@ -81,7 +81,7 @@ export class AssignmentPermissionTests {
   }
 
   static testTeamPermissions() {
-    console.log('🔍 Testing Admin Permissions (team role removed)...')
+    console.log(' Testing Admin Permissions (team role removed)...')
     const teamLead = createMockAgent('admin') // Changed from 'team' to 'admin'
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
     // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
@@ -124,7 +124,7 @@ export class AssignmentPermissionTests {
   }
 
   static testAgentPermissions() {
-    console.log('🔍 Testing Agent Permissions...')
+    console.log(' Testing Agent Permissions...')
     const agent = createMockAgent('agent')
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
     // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
@@ -180,24 +180,24 @@ export class AssignmentPermissionTests {
       try {
         const result = test()
         if (result === expected) {
-          console.log(`  ✅ ${name}`)
+          console.log(` ${name}`)
           passed++
         } else {
-          console.log(`  ❌ ${name} (expected: ${expected}, got: ${result})`)
+          console.log(` ${name} (expected: ${expected}, got: ${result})`)
           failed++
         }
       } catch (error) {
-        console.log(`  💥 ${name} (error: ${error})`)
+        console.log(` ${name} (error: ${error})`)
         failed++
       }
     })
 
-    console.log(`\n📊 ${roleName} Results: ${passed} passed, ${failed} failed\n`)
+    console.log(`\n ${roleName} Results: ${passed} passed, ${failed} failed\n`)
     return { passed, failed, total: tests.length }
   }
 
   static runAllTests() {
-    console.log('🚀 Running Assignment System Permission Tests\n')
+    console.log(' Running Assignment System Permission Tests\n')
     
     const adminResults = this.testAdminPermissions()
     const teamResults = this.testTeamPermissions()
@@ -207,11 +207,11 @@ export class AssignmentPermissionTests {
     const totalFailed = adminResults.failed + teamResults.failed + agentResults.failed
     const totalTests = adminResults.total + teamResults.total + agentResults.total
 
-    console.log('🏁 Overall Test Results:')
-    console.log(`   Total Tests: ${totalTests}`)
-    console.log(`   Passed: ${totalPassed}`)
-    console.log(`   Failed: ${totalFailed}`)
-    console.log(`   Success Rate: ${((totalPassed / totalTests) * 100).toFixed(1)}%`)
+    console.log(' Overall Test Results:')
+    console.log(` Total Tests: ${totalTests}`)
+    console.log(` Passed: ${totalPassed}`)
+    console.log(` Failed: ${totalFailed}`)
+    console.log(` Success Rate: ${((totalPassed / totalTests) * 100).toFixed(1)}%`)
 
     return {
       passed: totalPassed,
@@ -225,7 +225,7 @@ export class AssignmentPermissionTests {
 // UI測試工具
 export class AssignmentUITests {
   static simulateQuickAssign() {
-    console.log('🎭 Simulating Quick Assign UI Flow...')
+    console.log(' Simulating Quick Assign UI Flow...')
     
     const scenarios = [
       {
@@ -247,9 +247,9 @@ export class AssignmentUITests {
     ]
 
     scenarios.forEach(({ description, user, conversation }) => {
-      console.log(`\n  📋 Scenario: ${description}`)
-      console.log(`     User Role: ${user.role}`)
-      console.log(`     Conversation Status: ${conversation.status}`)
+      console.log(`\n Scenario: ${description}`)
+      console.log(` User Role: ${user.role}`)
+      console.log(` Conversation Status: ${conversation.status}`)
       
       // 模擬UI權限檢查
       const canAssignToSelf = PermissionService.canAssignConversation(user, conversation, user.id)
@@ -257,14 +257,14 @@ export class AssignmentUITests {
                                PermissionService.canViewTeamMembers(user)
       const canUnassign = PermissionService.canUnassignConversation(user, conversation)
       
-      console.log(`     Can Assign to Self: ${canAssignToSelf ? '✅' : '❌'}`)
-      console.log(`     Can Assign to Others: ${canAssignToOthers ? '✅' : '❌'}`)
-      console.log(`     Can Unassign: ${canUnassign ? '✅' : '❌'}`)
+      console.log(` Can Assign to Self: ${canAssignToSelf ? '' : ''}`)
+      console.log(` Can Assign to Others: ${canAssignToOthers ? '' : ''}`)
+      console.log(` Can Unassign: ${canUnassign ? '' : ''}`)
     })
   }
 
   static testUIResponsiveness() {
-    console.log('\n📱 Testing UI Responsiveness...')
+    console.log('\n Testing UI Responsiveness...')
     
     const uiComponents = [
       'QuickAssignActions',
@@ -274,11 +274,11 @@ export class AssignmentUITests {
     ]
     
     uiComponents.forEach(component => {
-      console.log(`  📦 Component: ${component}`)
-      console.log(`     ✅ Responsive design implemented`)
-      console.log(`     ✅ Role-based visibility`)
-      console.log(`     ✅ Loading states handled`)
-      console.log(`     ✅ Error handling in place`)
+      console.log(` Component: ${component}`)
+      console.log(` Responsive design implemented`)
+      console.log(` Role-based visibility`)
+      console.log(` Loading states handled`)
+      console.log(` Error handling in place`)
     })
   }
 }
@@ -286,7 +286,7 @@ export class AssignmentUITests {
 // 主要測試運行器
 export function runAssignmentSystemTests() {
   console.log(`\n${  '='.repeat(60)}`)
-  console.log('  🧪 ASSIGNMENT SYSTEM COMPREHENSIVE TESTS')
+  console.log(' ASSIGNMENT SYSTEM COMPREHENSIVE TESTS')
   console.log(`${'='.repeat(60)  }\n`)
 
   // 權限測試
@@ -297,7 +297,7 @@ export function runAssignmentSystemTests() {
   AssignmentUITests.testUIResponsiveness()
   
   console.log(`\n${  '='.repeat(60)}`)
-  console.log('  🎉 TESTS COMPLETED')
+  console.log(' TESTS COMPLETED')
   console.log('='.repeat(60))
   
   return permissionResults

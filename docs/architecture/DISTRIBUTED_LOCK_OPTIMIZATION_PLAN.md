@@ -1,6 +1,6 @@
 # Week 3-4: 分布式锁优化方案
 
-## 🎯 优化目标
+##  优化目标
 
 **目标延迟降低**: 20ms
 **优化策略**: 移除不必要的锁，优化必要锁的参数
@@ -8,7 +8,7 @@
 
 ---
 
-## 📊 当前分布式锁使用分析
+##  当前分布式锁使用分析
 
 ### 锁使用场景总结
 
@@ -16,12 +16,12 @@
 
 | 位置 | Resource | TTL | Timeout | 必要性 | 性能影响 |
 |------|----------|-----|---------|--------|----------|
-| WebSocket Broadcast | `broadcast:${event.id}` | 10s | 5s | ❌ **不必要** | +15-20ms |
-| User Cleanup | `user_cleanup:${userId}` | 5s | 2s | ✅ **必要** | +5-10ms |
+| WebSocket Broadcast | `broadcast:${event.id}` | 10s | 5s |  **不必要** | +15-20ms |
+| User Cleanup | `user_cleanup:${userId}` | 5s | 2s |  **必要** | +5-10ms |
 
 ---
 
-## 🔍 详细分析
+##  详细分析
 
 ### 场景1: WebSocket Event Broadcasting 锁
 
@@ -36,7 +36,7 @@ private async broadcastToWebSocket(event: DurableObjectEvent): Promise<boolean> 
   // ...
   try {
     const lockId = await this.lockService.acquireLock(`broadcast:${event.id}`, {
-      ttl: 10000,   // 10秒锁定时间
+      ttl: 10000, // 10秒锁定时间
       timeout: 5000  // 5秒获取超时
     });
 
@@ -55,7 +55,7 @@ private async broadcastToWebSocket(event: DurableObjectEvent): Promise<boolean> 
 
 #### 问题分析
 
-**🚨 核心问题**: 这个锁是**完全不必要的**
+** 核心问题**: 这个锁是**完全不必要的**
 
 **理由**:
 
@@ -84,13 +84,13 @@ private async broadcastToWebSocket(event: DurableObjectEvent): Promise<boolean> 
    ```
    获取锁流程:
    Worker → LockCoordinator DO (HTTP request)  ≈ 5-8ms
-   等待锁可用 (如果有竞争)                     ≈ 0-100ms
+   等待锁可用 (如果有竞争) ≈ 0-100ms
    释放锁 → LockCoordinator DO (HTTP request)  ≈ 5-8ms
 
    总开销: 10-20ms (无竞争) 或 50-150ms (有竞争)
    ```
 
-#### 优化方案: **移除此锁** ✅
+#### 优化方案: **移除此锁** 
 
 **实施步骤**:
 ```typescript
@@ -103,7 +103,7 @@ private async broadcastToWebSocket(event: DurableObjectEvent): Promise<boolean> 
   }
 
   try {
-    // ✅ 直接执行广播，无需锁
+    // 直接执行广播，无需锁
     const promises: Promise<boolean>[] = [];
 
     if (event.deliveryOptions?.targets) {
@@ -130,17 +130,17 @@ private async broadcastToWebSocket(event: DurableObjectEvent): Promise<boolean> 
 
     return successCount > 0;
   } catch (error) {
-    console.error('❌ [WebSocket Broadcast] Broadcasting error:', error);
+    console.error('[WebSocket Broadcast] Broadcasting error:', error);
     return false;
   }
 }
 ```
 
 **预期收益**:
-- ✅ 每次广播减少 **15-20ms** 延迟（无竞争场景）
-- ✅ 每次广播减少 **50-150ms** 延迟（有竞争场景）
-- ✅ 减少LockCoordinator DO的负载
-- ✅ 简化代码逻辑
+-  每次广播减少 **15-20ms** 延迟（无竞争场景）
+-  每次广播减少 **50-150ms** 延迟（有竞争场景）
+-  减少LockCoordinator DO的负载
+-  简化代码逻辑
 
 **风险评估**: **极低**
 - UUID唯一性是数学保证
@@ -158,9 +158,9 @@ private async broadcastToWebSocket(event: DurableObjectEvent): Promise<boolean> 
 async function cleanupConnection(connectionId: string, userId: string, env: Bindings): Promise<void> {
   const lockService = new DistributedLockService(env);
 
-  // ✅ 这个锁是必要的
+  // 这个锁是必要的
   const userLockId = await lockService.acquireLock(`user_cleanup:${userId}`, {
-    ttl: 5000,    // 5秒锁定时间
+    ttl: 5000, // 5秒锁定时间
     timeout: 2000  // 2秒获取超时
   });
 
@@ -184,7 +184,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 
 #### 问题分析
 
-**✅ 这个锁是必要的**
+** 这个锁是必要的**
 
 **理由**:
 
@@ -218,9 +218,9 @@ Timeout 2000ms - 合理但可以优化
 async function cleanupConnection(connectionId: string, userId: string, env: Bindings): Promise<void> {
   const lockService = new DistributedLockService(env);
 
-  // ✅ 优化后的锁参数
+  // 优化后的锁参数
   const userLockId = await lockService.acquireLock(`user_cleanup:${userId}`, {
-    ttl: 2000,    // 2秒 (从5秒降低) - cleanup应该很快完成
+    ttl: 2000, // 2秒 (从5秒降低) - cleanup应该很快完成
     timeout: 1000  // 1秒 (从2秒降低) - 如果1秒内无法获取，快速失败
   });
 
@@ -233,7 +233,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
     const userConnectionId = env.USER_CONNECTION.idFromName(userId);
     const userConnectionStub = env.USER_CONNECTION.get(userConnectionId);
 
-    // ✅ 添加超时保护
+    // 添加超时保护
     const cleanupPromise = userConnectionStub.fetch(new Request('https://user-connection/disconnect', {
       method: 'POST',
       body: JSON.stringify({ connectionId }),
@@ -248,7 +248,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
     await Promise.race([cleanupPromise, timeoutPromise]);
 
   } catch (error) {
-    console.error(`❌ [WebSocket] User cleanup error for ${userId}:`, error);
+    console.error(`[WebSocket] User cleanup error for ${userId}:`, error);
     // 错误不应该阻止锁释放
   } finally {
     await lockService.releaseLock(userLockId);
@@ -269,16 +269,16 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
       headers: { 'Content-Type': 'application/json' }
     }));
   } catch (error) {
-    console.error(`❌ [WebSocket] Broadcaster unregister error:`, error);
+    console.error(`[WebSocket] Broadcaster unregister error:`, error);
   }
 }
 ```
 
 **优化收益**:
-- ✅ 减少锁竞争时的等待时间
-- ✅ 快速失败，避免长时间阻塞
-- ✅ 降低LockCoordinator DO负载
-- ✅ 改善用户体验（连接清理更快）
+-  减少锁竞争时的等待时间
+-  快速失败，避免长时间阻塞
+-  降低LockCoordinator DO负载
+-  改善用户体验（连接清理更快）
 
 **风险评估**: **低**
 - TTL 2秒对于cleanup操作足够
@@ -287,7 +287,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 
 ---
 
-## 📈 预期性能提升
+##  预期性能提升
 
 ### 优化前后对比
 
@@ -295,40 +295,40 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 
 ```
 优化前:
-1. 消息入库                    ≈ 20ms
-2. 获取broadcast锁             ≈ 8ms
-3. 广播到5个ConversationRoom   ≈ 25ms (并行)
-4. 释放broadcast锁             ≈ 8ms
+1. 消息入库 ≈ 20ms
+2. 获取broadcast锁 ≈ 8ms
+3. 广播到5个ConversationRoom ≈ 25ms (并行)
+4. 释放broadcast锁 ≈ 8ms
 -------------------------------------------
 总延迟: ~61ms
 
 优化后:
-1. 消息入库                    ≈ 20ms
-2. 广播到5个ConversationRoom   ≈ 25ms (并行)
+1. 消息入库 ≈ 20ms
+2. 广播到5个ConversationRoom ≈ 25ms (并行)
 -------------------------------------------
 总延迟: ~45ms
 
-⚡ 延迟降低: 16ms (26% 提升)
+ 延迟降低: 16ms (26% 提升)
 ```
 
 #### 场景: 用户快速断开重连
 
 ```
 优化前:
-1. 第一次cleanup开始，获取锁    ≈ 8ms
-2. 第二次cleanup等待锁          ≈ 5000ms (TTL)
-3. 第二次cleanup执行             ≈ 500ms
+1. 第一次cleanup开始，获取锁 ≈ 8ms
+2. 第二次cleanup等待锁 ≈ 5000ms (TTL)
+3. 第二次cleanup执行 ≈ 500ms
 -------------------------------------------
 总延迟: ~5508ms
 
 优化后:
-1. 第一次cleanup开始，获取锁    ≈ 8ms
-2. 第二次cleanup等待锁          ≈ 2000ms (TTL) 或 timeout失败
+1. 第一次cleanup开始，获取锁 ≈ 8ms
+2. 第二次cleanup等待锁 ≈ 2000ms (TTL) 或 timeout失败
 3. 第二次cleanup执行 (如果等到)  ≈ 500ms
 -------------------------------------------
 总延迟: ~2508ms 或 快速失败
 
-⚡ 延迟降低: 3000ms (54% 提升)
+ 延迟降低: 3000ms (54% 提升)
 ```
 
 ### 整体系统影响
@@ -339,7 +339,7 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 优化前: 1000次 × 16ms = 16,000ms 额外延迟/秒
 优化后: 0ms 额外延迟
 
-⚡ 节省: 16秒/秒的CPU时间
+ 节省: 16秒/秒的CPU时间
 ```
 
 **LockCoordinator DO负载**:
@@ -348,12 +348,12 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 优化前: 2000次锁操作/秒 (1000次获取 + 1000次释放)
 优化后: 约20次锁操作/秒 (仅cleanup操作)
 
-⚡ 负载降低: 99%
+ 负载降低: 99%
 ```
 
 ---
 
-## 🛠️ 实施计划
+##  实施计划
 
 ### Phase 1: 移除broadcast锁 (Day 1, 4小时)
 
@@ -528,7 +528,7 @@ test('LockCoordinator DO load test', async () => {
 
 ---
 
-## 📊 监控指标
+##  监控指标
 
 ### 关键指标 (在Cloudflare Dashboard监控)
 
@@ -554,9 +554,9 @@ Target:
 ```
 Metric: lock_operations_per_second
 Before: ~2000 ops/sec (1000 broadcasts × 2 operations)
-After:  ~20 ops/sec   (只有cleanup操作)
+After:  ~20 ops/sec (只有cleanup操作)
 
-⚡ 目标: 99% reduction
+ 目标: 99% reduction
 ```
 
 #### 4. 消息重复率
@@ -572,7 +572,7 @@ Target: < 0.001% (实际应该是 0%)
 
 ---
 
-## 🚨 回滚计划
+##  回滚计划
 
 ### 回滚触发条件
 
@@ -615,7 +615,7 @@ async function analyzeOptimizationFailure() {
 
 ---
 
-## 📝 测试清单
+##  测试清单
 
 ### 单元测试
 
@@ -659,24 +659,24 @@ async function analyzeOptimizationFailure() {
 
 ---
 
-## 🎯 成功标准
+##  成功标准
 
 ### 必须达成
 
-1. ✅ 消息广播延迟降低 **20ms** (P50)
-2. ✅ 消息重复率 **< 0.001%**
-3. ✅ Cleanup成功率 **> 95%**
-4. ✅ LockCoordinator负载降低 **99%**
+1.  消息广播延迟降低 **20ms** (P50)
+2.  消息重复率 **< 0.001%**
+3.  Cleanup成功率 **> 95%**
+4.  LockCoordinator负载降低 **99%**
 
 ### 期望达成
 
-1. ⭐ 消息广播延迟降低 **30ms** (P95)
-2. ⭐ Cleanup超时率 **< 2%**
-3. ⭐ 系统吞吐量提升 **15%**
+1.  消息广播延迟降低 **30ms** (P95)
+2.  Cleanup超时率 **< 2%**
+3.  系统吞吐量提升 **15%**
 
 ---
 
-## 📚 相关文档
+##  相关文档
 
 - `src/services/distributed-lock-service.ts` - 分布式锁实现
 - `src/services/websocket-broadcast-service.ts` - WebSocket广播服务
@@ -688,5 +688,5 @@ async function analyzeOptimizationFailure() {
 
 **文档版本**: 1.0
 **创建日期**: 2025-01-28
-**状态**: ✅ Ready for Implementation
+**状态**:  Ready for Implementation
 **预计完成时间**: 2天

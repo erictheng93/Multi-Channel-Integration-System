@@ -139,7 +139,7 @@ export function useConversationListController(): ConversationListControllerCompo
    * @throws {Error} 载入失败时抛出错误
    */
   async function loadConversations(): Promise<void> {
-    console.log('🚀 [Controller] Loading conversations')
+    console.log('[Controller] Loading conversations')
     isLoading.value = true
     loadError.value = null
 
@@ -153,7 +153,7 @@ export function useConversationListController(): ConversationListControllerCompo
       // 先尝试从缓存获取
       const cachedData = await cache.getCachedData(cacheKey)
       if (cachedData && cachedData.length > 0) {
-        console.log('✨ [Controller] Using cached data')
+        console.log('[Controller] Using cached data')
         conversationsStore.setConversations(cachedData)
         total.value = cachedData.length
 
@@ -195,13 +195,13 @@ export function useConversationListController(): ConversationListControllerCompo
     cacheKey: string
   ): Promise<void> {
     try {
-      // 🔧 使用 refreshConversations (直接 API 呼叫) 而非 loadWithCache
+      // 使用 refreshConversations (直接 API 呼叫) 而非 loadWithCache
       // loadWithCache 可能從 store cacheManager 返回 stale 資料，覆蓋 controller 快取的正確資料
       await conversationsStore.refreshConversations()
 
       total.value = conversationsStore.pagination.total
       await cache.setCachedData(cacheKey, conversations.value)
-      console.log('🔄 [Controller] Background cache refresh completed')
+      console.log('[Controller] Background cache refresh completed')
     } catch (error) {
       console.warn('[Controller] Background refresh failed:', error)
     }
@@ -249,16 +249,16 @@ export function useConversationListController(): ConversationListControllerCompo
    * @async
    */
   async function refresh(): Promise<void> {
-    console.log('🔄 [Controller] Manual refresh triggered')
+    console.log('[Controller] Manual refresh triggered')
     isRefreshing.value = true
     currentPage.value = 1
 
     try {
-      // 🔧 使兩層快取同時失效，避免 stale 資料覆蓋 fresh 資料
-      await cache.invalidateCache()       // Layer 1: Controller localStorage 快取
-      storeLevelCache.invalidateAll()     // Layer 2: Store cacheManager 快取
+      // 使兩層快取同時失效，避免 stale 資料覆蓋 fresh 資料
+      await cache.invalidateCache() // Layer 1: Controller localStorage 快取
+      storeLevelCache.invalidateAll() // Layer 2: Store cacheManager 快取
 
-      // 🔧 直接從 API 重新載入（不再呼叫 loadConversations 避免被快取覆蓋）
+      // 直接從 API 重新載入（不再呼叫 loadConversations 避免被快取覆蓋）
       await conversationsStore.refreshConversations()
 
       // 更新分頁資訊
@@ -290,7 +290,7 @@ export function useConversationListController(): ConversationListControllerCompo
       return
     }
 
-    console.log('📄 [Controller] Loading more conversations')
+    console.log('[Controller] Loading more conversations')
     loadingMore.value = true
 
     try {
@@ -334,7 +334,7 @@ export function useConversationListController(): ConversationListControllerCompo
    * @async
    */
   async function initialize(): Promise<void> {
-    console.log('🚀 [Controller] Initializing')
+    console.log('[Controller] Initializing')
 
     // Sync controller filters to store so background polling/refresh respects them
     watch(
@@ -358,14 +358,14 @@ export function useConversationListController(): ConversationListControllerCompo
       { deep: true }
     )
 
-    console.log('✅ [Controller] Initialized')
+    console.log('[Controller] Initialized')
   }
 
   /**
    * 清理资源
    */
   function cleanup(): void {
-    console.log('🛑 [Controller] Cleaning up')
+    console.log('[Controller] Cleaning up')
     // 重置状态
     isLoading.value = false
     isRefreshing.value = false

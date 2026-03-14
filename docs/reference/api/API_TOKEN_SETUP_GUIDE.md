@@ -1,6 +1,6 @@
 # Cloudflare API Token 設置指南
 
-## 📋 目錄
+##  目錄
 
 1. [為什麼需要 API Token](#為什麼需要-api-token)
 2. [API Token vs Global API Key](#api-token-vs-global-api-key)
@@ -14,36 +14,36 @@
 
 ---
 
-## 🔑 為什麼需要 API Token
+##  為什麼需要 API Token
 
 Cloudflare API Token 是用於自動化部署的**安全認證方式**，它允許 Terraform 在您的 Cloudflare 帳戶中建立和管理資源，而**無需手動登入**。
 
 ### 使用 API Token 的優勢
 
-✅ **安全性高**：可以精確控制權限範圍
-✅ **可撤銷**：隨時可以撤銷而不影響其他服務
-✅ **自動化友好**：適合 CI/CD 和腳本化部署
-✅ **無需互動**：不需要瀏覽器登入
+ **安全性高**：可以精確控制權限範圍
+ **可撤銷**：隨時可以撤銷而不影響其他服務
+ **自動化友好**：適合 CI/CD 和腳本化部署
+ **無需互動**：不需要瀏覽器登入
 
 ---
 
-## 🔐 API Token vs Global API Key
+##  API Token vs Global API Key
 
 ### 比較表
 
 | 特性 | API Token（推薦） | Global API Key（不推薦） |
 |------|------------------|------------------------|
-| **安全性** | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+| **安全性** |  |  |
 | **權限控制** | 精細控制 | 完全訪問 |
-| **可撤銷性** | ✅ 隨時撤銷 | ❌ 撤銷影響所有服務 |
+| **可撤銷性** |  隨時撤銷 |  撤銷影響所有服務 |
 | **到期時間** | 可設置 | 永不過期 |
-| **最佳實踐** | ✅ Cloudflare 官方推薦 | ⚠️ 不建議使用 |
+| **最佳實踐** |  Cloudflare 官方推薦 |  不建議使用 |
 
-**⚠️ 重要**：本指南只使用 **API Token**，不使用 Global API Key。
+** 重要**：本指南只使用 **API Token**，不使用 Global API Key。
 
 ---
 
-## 📝 建立 API Token 詳細步驟
+##  建立 API Token 詳細步驟
 
 ### 第 1 步：登入 Cloudflare Dashboard
 
@@ -142,7 +142,7 @@ Multi-Channel Platform Deployment
 - 單一 IP：`203.0.113.1`
 - IP 範圍：`203.0.113.0/24`
 
-**💡 提示**：如果您不確定，可以暫時跳過此步驟，但建議部署完成後回來設置。
+** 提示**：如果您不確定，可以暫時跳過此步驟，但建議部署完成後回來設置。
 
 ### 第 8 步：設置 Token 有效期（可選）
 
@@ -165,7 +165,7 @@ Multi-Channel Platform Deployment
 
 ### 第 10 步：複製並保存 Token
 
-**⚠️ 超級重要**：Token 只會顯示**一次**！
+** 超級重要**：Token 只會顯示**一次**！
 
 1. 您會看到一個長字串，類似：
    ```
@@ -177,16 +177,16 @@ Multi-Channel Platform Deployment
    - 加密筆記應用
    - 環境變數檔案（`.env`）
 
-**❌ 不要**：
-- ❌ 將 Token 提交到 Git repository
-- ❌ 在公開場所分享 Token
-- ❌ 將 Token 保存在純文字檔案中
+** 不要**：
+-  將 Token 提交到 Git repository
+-  在公開場所分享 Token
+-  將 Token 保存在純文字檔案中
 
 4. 完成後點擊 **完成**（Finished）
 
 ---
 
-## ✅ 驗證 API Token
+##  驗證 API Token
 
 ### 方法 1：使用 Cloudflare API
 
@@ -241,20 +241,20 @@ wrangler whoami
 
 **成功的回應**：
 ```
- ⛅️ wrangler 4.x.x
+  wrangler 4.x.x
 ───────────────────
 Getting User settings...
-👋 You are logged in with an OAuth Token, associated with the email your-email@example.com.
+ You are logged in with an OAuth Token, associated with the email your-email@example.com.
 ┌────────────────────────────────┬──────────────────────────────────┐
-│ Account Name                   │ Account ID                       │
+│ Account Name │ Account ID │
 ├────────────────────────────────┼──────────────────────────────────┤
-│ Your Company Name              │ abc123def456...                  │
+│ Your Company Name │ abc123def456... │
 └────────────────────────────────┴──────────────────────────────────┘
 ```
 
 ---
 
-## 🔧 設置環境變數
+##  設置環境變數
 
 有了 API Token 後，需要將它設置為環境變數供 Terraform 使用。
 
@@ -314,7 +314,7 @@ echo $CLOUDFLARE_API_TOKEN
 
 ### 使用 .env 檔案（適用於本地開發）
 
-**⚠️ 僅適用於本地開發，不要提交到 Git！**
+** 僅適用於本地開發，不要提交到 Git！**
 
 1. 在專案根目錄建立 `.env` 檔案：
    ```bash
@@ -339,7 +339,7 @@ echo $CLOUDFLARE_API_TOKEN
 
 ---
 
-## 🛡️ 權限說明
+##  權限說明
 
 ### 必需權限清單
 
@@ -363,9 +363,9 @@ echo $CLOUDFLARE_API_TOKEN
 
 ---
 
-## 🔒 安全性最佳實踐
+##  安全性最佳實踐
 
-### ✅ 應該做的
+###  應該做的
 
 1. **使用最小權限原則**
    - 只授予必要的權限
@@ -393,9 +393,9 @@ echo $CLOUDFLARE_API_TOKEN
    - 在 Cloudflare Audit Logs 查看 API 活動
    - 設置異常活動警報
 
-### ❌ 不應該做的
+###  不應該做的
 
-1. ❌ **不要將 Token 提交到 Git**
+1.  **不要將 Token 提交到 Git**
    ```bash
    # 確保 .gitignore 包含：
    .env
@@ -403,25 +403,25 @@ echo $CLOUDFLARE_API_TOKEN
    terraform.tfvars
    ```
 
-2. ❌ **不要在公開場所分享**
+2.  **不要在公開場所分享**
    - 不要貼到 Slack/Discord/論壇
    - 不要包含在螢幕截圖中
 
-3. ❌ **不要使用 Global API Key**
+3.  **不要使用 Global API Key**
    - Global API Key 有完全訪問權限
    - 無法細化權限控制
 
-4. ❌ **不要重複使用相同 Token**
+4.  **不要重複使用相同 Token**
    - 不同專案/環境應使用不同 Token
    - 方便撤銷和管理
 
-5. ❌ **不要在客戶端程式碼使用**
+5.  **不要在客戶端程式碼使用**
    - API Token 只應在後端/部署流程使用
    - 前端不應有任何 API Token
 
 ---
 
-## ❓ 常見問題
+##  常見問題
 
 ### Q1: Token 建立後忘記複製怎麼辦？
 
@@ -493,7 +493,7 @@ curl -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
 
 ---
 
-## 🔧 故障排除
+##  故障排除
 
 ### 問題 1: "Authentication error" 或 "Invalid credentials"
 
@@ -555,7 +555,7 @@ cloudflare_api_token = "your-token"
 ```hcl
 # variables.tf
 variable "cloudflare_api_token" {
-  type      = string
+  type = string
   sensitive = true
 }
 
@@ -565,7 +565,7 @@ provider "cloudflare" {
 }
 ```
 
-**⚠️ 注意**：方法 3 不推薦，因為 Token 會被寫入檔案。
+** 注意**：方法 3 不推薦，因為 Token 會被寫入檔案。
 
 ### 問題 4: Token 在 Windows 無法使用
 
@@ -603,7 +603,7 @@ Error: API rate limit exceeded
 
 ---
 
-## 📚 相關資源
+##  相關資源
 
 - [Cloudflare API Token 官方文檔](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
 - [Cloudflare API 參考](https://developers.cloudflare.com/api/)
@@ -612,7 +612,7 @@ Error: API rate limit exceeded
 
 ---
 
-## 🎓 快速參考
+##  快速參考
 
 ### Token 建立檢查清單
 
@@ -652,4 +652,4 @@ Error: API rate limit exceeded
 
 ---
 
-**完成設置後，請繼續參閱 [客戶部署指南](./CUSTOMER_DEPLOYMENT_GUIDE.md) 進行部署。** 🚀
+**完成設置後，請繼續參閱 [客戶部署指南](./CUSTOMER_DEPLOYMENT_GUIDE.md) 進行部署。** 

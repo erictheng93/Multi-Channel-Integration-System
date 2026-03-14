@@ -167,7 +167,7 @@ describe('Conversations API', () => {
     })
 
     it('should reject whitespace-only conversation ID', async () => {
-      const result = await conversationApi.getConversation('   ')
+      const result = await conversationApi.getConversation(' ')
       
       expect(result).toEqual({ success: false, error: '對話 ID 不能為空' })
       expect(mockGet).not.toHaveBeenCalled()
@@ -279,7 +279,7 @@ describe('Conversations API', () => {
 
     it('should reject whitespace-only message content', async () => {
       const conversationId = 'conv-123'
-      const request = { content: '   ' }
+      const request = { content: ' ' }
       
       const result = await conversationApi.sendMessage(conversationId, request)
       

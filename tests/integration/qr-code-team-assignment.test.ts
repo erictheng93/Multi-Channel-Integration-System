@@ -280,7 +280,7 @@ describe('QR Code Team Assignment Integration Tests', () => {
       const teamId = 5;
       const displayName = 'New User';
 
-      console.log('🚀 Starting New User Journey Test...\n');
+      console.log(' Starting New User Journey Test...\n');
 
       // Step 1: User scans QR Code, LIFF records assignment
       console.log('Step 1: LIFF assign-team (pre-notification)');
@@ -296,7 +296,7 @@ describe('QR Code Team Assignment Integration Tests', () => {
       );
       expect(preNotification).toBeDefined();
       expect(preNotification.data.conversation._liffMetadata.lineUserId).toBe(lineUserId);
-      console.log('✅ Pre-notification sent with isPending: true\n');
+      console.log(' Pre-notification sent with isPending: true\n');
 
       // Step 2: User clicks "Add Friend", webhook fires
       console.log('Step 2: Webhook follow event');
@@ -305,7 +305,7 @@ describe('QR Code Team Assignment Integration Tests', () => {
       expect(webhookResult.customerId).toBeDefined();
       expect(webhookResult.conversationId).toBeDefined();
       expect(webhookResult.teamId).toBe(teamId);
-      console.log('✅ Customer and conversation created\n');
+      console.log(' Customer and conversation created\n');
 
       // Verify confirmation broadcast
       const confirmation = broadcastEvents.find(e =>
@@ -314,20 +314,20 @@ describe('QR Code Team Assignment Integration Tests', () => {
       );
       expect(confirmation).toBeDefined();
       expect(confirmation.data.conversationId).toBe(webhookResult.conversationId);
-      console.log('✅ Confirmation sent with isPending: false\n');
+      console.log(' Confirmation sent with isPending: false\n');
 
       // Verify reconciliation metadata
       expect(confirmation.data.conversation._liffMetadata.lineUserId).toBe(lineUserId);
-      console.log('✅ Reconciliation metadata present for frontend matching\n');
+      console.log(' Reconciliation metadata present for frontend matching\n');
 
-      console.log('🎉 New User Journey completed successfully!\n');
+      console.log(' New User Journey completed successfully!\n');
     });
 
     it('should handle case when no QR code assignment exists', async () => {
       const lineUserId = 'Udirectfollow123';
       const displayName = 'Direct Follower';
 
-      console.log('🚀 Testing direct follow without QR code...\n');
+      console.log(' Testing direct follow without QR code...\n');
 
       // User follows directly (no LIFF assign-team call)
       const webhookResult = await simulateWebhookFollow(lineUserId, displayName);
@@ -339,7 +339,7 @@ describe('QR Code Team Assignment Integration Tests', () => {
       // Customer should still be created
       expect(customerRecords.has(lineUserId)).toBe(true);
 
-      console.log('✅ Customer created without team assignment\n');
+      console.log(' Customer created without team assignment\n');
     });
   });
 
@@ -352,7 +352,7 @@ describe('QR Code Team Assignment Integration Tests', () => {
       const oldTeamId = 3;
       const newTeamId = 7;
 
-      console.log('🚀 Starting Existing Friend Journey Test...\n');
+      console.log(' Starting Existing Friend Journey Test...\n');
 
       // Setup: Create existing customer and conversation
       const existingCustomer = {
@@ -377,7 +377,7 @@ describe('QR Code Team Assignment Integration Tests', () => {
       console.log('Step 1: LIFF assign-team');
       await simulateLiffAssignTeam(lineUserId, newTeamId, 'Existing Friend');
       expect(broadcastEvents.length).toBeGreaterThan(0);
-      console.log('✅ Pre-notification sent\n');
+      console.log(' Pre-notification sent\n');
 
       // Step 2: LIFF welcome (since already a friend)
       console.log('Step 2: LIFF welcome (conversation sync)');
@@ -385,7 +385,7 @@ describe('QR Code Team Assignment Integration Tests', () => {
 
       expect(welcomeResult.synced).toBe(true);
       expect(welcomeResult.action).toBe('transferred');
-      console.log('✅ Conversation transferred to new team\n');
+      console.log(' Conversation transferred to new team\n');
 
       // Verify the conversation was updated
       expect(existingConv.assignedTeamId).toBe(newTeamId);
@@ -395,9 +395,9 @@ describe('QR Code Team Assignment Integration Tests', () => {
         e.data.reason?.includes('Reassignment')
       );
       expect(transferBroadcast).toBeDefined();
-      console.log('✅ Transfer broadcast sent\n');
+      console.log(' Transfer broadcast sent\n');
 
-      console.log('🎉 Existing Friend Journey completed successfully!\n');
+      console.log(' Existing Friend Journey completed successfully!\n');
     });
 
     it('should create new conversation for existing friend without one', async () => {
@@ -592,29 +592,29 @@ describe('Integration Test Summary', () => {
   it('should provide test coverage summary', () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════════════╗
-║           QR Code Team Assignment Integration Tests               ║
+║ QR Code Team Assignment Integration Tests ║
 ╠═══════════════════════════════════════════════════════════════════╣
-║                                                                   ║
-║   Flow 1: New User Journey                                        ║
-║   ├── LIFF pre-assign → Webhook follow → Team assigned           ║
-║   └── Direct follow without QR code                              ║
-║                                                                   ║
-║   Flow 2: Existing Friend Journey                                 ║
-║   ├── Conversation sync on QR scan                               ║
-║   ├── New conversation for friend without one                    ║
-║   └── Idempotency for same team scan                             ║
-║                                                                   ║
-║   Flow 3: WebSocket Reconciliation                                ║
-║   ├── Correct metadata for frontend matching                     ║
-║   └── Frontend conversation replacement                          ║
-║                                                                   ║
-║   Flow 4: Error Recovery                                          ║
-║   ├── Broadcast failure handling                                 ║
-║   └── Duplicate scan handling                                    ║
-║                                                                   ║
-║   Flow 5: Team Assignment Priority                                ║
-║   └── assignment > qr_token verification                         ║
-║                                                                   ║
+║ ║
+║ Flow 1: New User Journey ║
+║ ├── LIFF pre-assign → Webhook follow → Team assigned ║
+║ └── Direct follow without QR code ║
+║ ║
+║ Flow 2: Existing Friend Journey ║
+║ ├── Conversation sync on QR scan ║
+║ ├── New conversation for friend without one ║
+║ └── Idempotency for same team scan ║
+║ ║
+║ Flow 3: WebSocket Reconciliation ║
+║ ├── Correct metadata for frontend matching ║
+║ └── Frontend conversation replacement ║
+║ ║
+║ Flow 4: Error Recovery ║
+║ ├── Broadcast failure handling ║
+║ └── Duplicate scan handling ║
+║ ║
+║ Flow 5: Team Assignment Priority ║
+║ └── assignment > qr_token verification ║
+║ ║
 ╚═══════════════════════════════════════════════════════════════════╝
     `);
     expect(true).toBe(true);

@@ -23,8 +23,8 @@ export interface PersistedMessage {
  * 重播配置
  */
 export interface ReplayConfig {
-  maxMessages?: number;      // 最多重播訊息數
-  since?: Date;              // 重播起始時間
+  maxMessages?: number; // 最多重播訊息數
+  since?: Date; // 重播起始時間
   includeDelivered?: boolean; // 是否包含已送達訊息
 }
 
@@ -83,9 +83,9 @@ export class MessagePersistenceService {
       // 添加到用戶的訊息索引
       await this.addToUserIndex(userId, messageId);
 
-      console.log(`💾 [Persistence] Message buffered for user ${userId}: ${messageId}`);
+      console.log(`[Persistence] Message buffered for user ${userId}: ${messageId}`);
     } catch (error) {
-      console.error('❌ [Persistence] Failed to buffer message:', error);
+      console.error('[Persistence] Failed to buffer message:', error);
       throw error;
     }
   }
@@ -109,11 +109,11 @@ export class MessagePersistenceService {
         success++;
       } catch (error) {
         failed++;
-        console.error(`❌ [Persistence] Failed to buffer message for user ${msg.userId}:`, error);
+        console.error(`[Persistence] Failed to buffer message for user ${msg.userId}:`, error);
       }
     }
 
-    console.log(`📊 [Persistence] Batch buffer completed: ${success} success, ${failed} failed`);
+    console.log(`[Persistence] Batch buffer completed: ${success} success, ${failed} failed`);
     return { success, failed };
   }
 
@@ -135,7 +135,7 @@ export class MessagePersistenceService {
       const messageIds = await this.getUserMessageIds(userId);
 
       if (messageIds.length === 0) {
-        console.log(`📭 [Persistence] No messages to replay for user ${userId}`);
+        console.log(`[Persistence] No messages to replay for user ${userId}`);
         return [];
       }
 
@@ -165,10 +165,10 @@ export class MessagePersistenceService {
         }
       }
 
-      console.log(`🔁 [Persistence] Replaying ${messages.length} messages for user ${userId}`);
+      console.log(`[Persistence] Replaying ${messages.length} messages for user ${userId}`);
       return messages;
     } catch (error) {
-      console.error('❌ [Persistence] Failed to replay messages:', error);
+      console.error('[Persistence] Failed to replay messages:', error);
       return [];
     }
   }
@@ -191,10 +191,10 @@ export class MessagePersistenceService {
           { expirationTtl: 3600 } // 已送達訊息保留 1 小時
         );
 
-        console.log(`✅ [Persistence] Message marked as delivered: ${messageId}`);
+        console.log(`[Persistence] Message marked as delivered: ${messageId}`);
       }
     } catch (error) {
-      console.error('❌ [Persistence] Failed to mark message as delivered:', error);
+      console.error('[Persistence] Failed to mark message as delivered:', error);
     }
   }
 
@@ -204,7 +204,7 @@ export class MessagePersistenceService {
   async markBatchAsDelivered(userId: number, messageIds: string[]): Promise<void> {
     const promises = messageIds.map(id => this.markAsDelivered(userId, id));
     await Promise.all(promises);
-    console.log(`✅ [Persistence] Batch marked ${messageIds.length} messages as delivered`);
+    console.log(`[Persistence] Batch marked ${messageIds.length} messages as delivered`);
   }
 
   /**
@@ -218,9 +218,9 @@ export class MessagePersistenceService {
       // 從索引移除
       await this.removeFromUserIndex(userId, messageId);
 
-      console.log(`🗑️ [Persistence] Message deleted: ${messageId}`);
+      console.log(`[Persistence] Message deleted: ${messageId}`);
     } catch (error) {
-      console.error('❌ [Persistence] Failed to delete message:', error);
+      console.error('[Persistence] Failed to delete message:', error);
     }
   }
 
@@ -241,10 +241,10 @@ export class MessagePersistenceService {
       const indexKey = `offline_msg_index:${userId}`;
       await this.env.SESSIONS.delete(indexKey);
 
-      console.log(`🧹 [Persistence] Cleared ${deletedCount} messages for user ${userId}`);
+      console.log(`[Persistence] Cleared ${deletedCount} messages for user ${userId}`);
       return deletedCount;
     } catch (error) {
-      console.error('❌ [Persistence] Failed to clear user messages:', error);
+      console.error('[Persistence] Failed to clear user messages:', error);
       return 0;
     }
   }
@@ -284,7 +284,7 @@ export class MessagePersistenceService {
 
       return stats;
     } catch (error) {
-      console.error('❌ [Persistence] Failed to get user stats:', error);
+      console.error('[Persistence] Failed to get user stats:', error);
       return {
         totalMessages: 0,
         deliveredMessages: 0,
@@ -320,12 +320,12 @@ export class MessagePersistenceService {
       }
 
       if (cleanedCount > 0) {
-        console.log(`🧹 [Persistence] Cleaned ${cleanedCount} expired messages for user ${userId}`);
+        console.log(`[Persistence] Cleaned ${cleanedCount} expired messages for user ${userId}`);
       }
 
       return cleanedCount;
     } catch (error) {
-      console.error('❌ [Persistence] Failed to cleanup expired messages:', error);
+      console.error('[Persistence] Failed to cleanup expired messages:', error);
       return 0;
     }
   }
@@ -352,15 +352,15 @@ export class MessagePersistenceService {
 
           toRetry.push(msg);
         } else {
-          console.warn(`⚠️ [Persistence] Message ${msg.id} exceeded max retries, marking as expired`);
+          console.warn(`[Persistence] Message ${msg.id} exceeded max retries, marking as expired`);
           await this.deleteMessage(userId, msg.id);
         }
       }
 
-      console.log(`🔄 [Persistence] Retrying ${toRetry.length} messages for user ${userId}`);
+      console.log(`[Persistence] Retrying ${toRetry.length} messages for user ${userId}`);
       return toRetry;
     } catch (error) {
-      console.error('❌ [Persistence] Failed to retry failed messages:', error);
+      console.error('[Persistence] Failed to retry failed messages:', error);
       return [];
     }
   }
@@ -387,7 +387,7 @@ export class MessagePersistenceService {
         );
       }
     } catch (error) {
-      console.error('❌ [Persistence] Failed to add to user index:', error);
+      console.error('[Persistence] Failed to add to user index:', error);
     }
   }
 
@@ -414,7 +414,7 @@ export class MessagePersistenceService {
         }
       }
     } catch (error) {
-      console.error('❌ [Persistence] Failed to remove from user index:', error);
+      console.error('[Persistence] Failed to remove from user index:', error);
     }
   }
 
@@ -428,7 +428,7 @@ export class MessagePersistenceService {
 
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error('❌ [Persistence] Failed to get user message IDs:', error);
+      console.error('[Persistence] Failed to get user message IDs:', error);
       return [];
     }
   }

@@ -64,7 +64,7 @@ function log(message: string, color: ColorName = 'reset'): void {
 function checkFileExists(filePath: string, description: string): boolean {
   const fullPath = path.join(rootDir, filePath);
   const exists = fs.existsSync(fullPath);
-  log(`  ${exists ? '✅' : '❌'} ${description}`, exists ? 'green' : 'red');
+  log(`  ${exists ? '' : ''} ${description}`, exists ? 'green' : 'red');
   return exists;
 }
 
@@ -73,17 +73,17 @@ function checkFileContent(filePath: string, searchTerms: string[], description: 
     const fullPath = path.join(rootDir, filePath);
     const content = fs.readFileSync(fullPath, 'utf8');
     const hasAllTerms = searchTerms.every(term => content.includes(term));
-    log(`  ${hasAllTerms ? '✅' : '❌'} ${description}`, hasAllTerms ? 'green' : 'red');
+    log(`  ${hasAllTerms ? '' : ''} ${description}`, hasAllTerms ? 'green' : 'red');
     return hasAllTerms;
   } catch (error) {
-    log(`  ❌ ${description} (檔案不存在)`, 'red');
+    log(` ${description} (檔案不存在)`, 'red');
     return false;
   }
 }
 
 // 前端組件檢查
 function checkFrontendComponents(): void {
-  log('\n🎨 前端組件檢查', 'blue');
+  log('\n 前端組件檢查', 'blue');
   
   // MessageInput 組件
   checkResults.frontend.messageInputExists = checkFileExists(
@@ -119,7 +119,7 @@ function checkFrontendComponents(): void {
 
 // 後端組件檢查
 function checkBackendComponents(): void {
-  log('\n🖥️ 後端組件檢查', 'blue');
+  log('\n 後端組件檢查', 'blue');
   
   // Attachment Handler
   checkResults.backend.attachmentHandlerExists = checkFileExists(
@@ -150,7 +150,7 @@ function checkBackendComponents(): void {
 
 // 資料庫結構檢查
 function checkDatabaseStructure(): void {
-  log('\n🗄️ 資料庫結構檢查', 'blue');
+  log('\n 資料庫結構檢查', 'blue');
   
   // 檔案附件 Schema
   checkResults.database.attachmentSchemaExists = checkFileExists(
@@ -174,7 +174,7 @@ function checkDatabaseStructure(): void {
 
 // 配置檢查
 function checkConfiguration(): void {
-  log('\n🔧 配置檢查', 'blue');
+  log('\n 配置檢查', 'blue');
   
   // Package.json 腳本
   checkResults.config.packageScripts = checkFileContent(
@@ -198,7 +198,7 @@ function checkConfiguration(): void {
 
 // 測試檢查
 function checkTests(): void {
-  log('\n🧪 測試檢查', 'blue');
+  log('\n 測試檢查', 'blue');
   
   // MessageInput 測試
   checkResults.tests.messageInputTest = checkFileExists(
@@ -242,17 +242,17 @@ function calculateCompletionRate(): CompletionRate {
 function generateReport(): void {
   const completion = calculateCompletionRate();
   
-  log('\n📊 檢查結果總覽', 'bold');
+  log('\n 檢查結果總覽', 'bold');
   log(`完成度: ${completion.passed}/${completion.total} (${completion.percentage}%)`, 
       completion.percentage >= 80 ? 'green' : completion.percentage >= 60 ? 'yellow' : 'red');
   
   // 各類別結果
   const categories: Category[] = [
-    { name: '前端組件', key: 'frontend', icon: '🎨' },
-    { name: '後端組件', key: 'backend', icon: '🖥️' },
-    { name: '資料庫結構', key: 'database', icon: '🗄️' },
-    { name: '配置', key: 'config', icon: '🔧' },
-    { name: '測試', key: 'tests', icon: '🧪' }
+    { name: '前端組件', key: 'frontend', icon: '' },
+    { name: '後端組件', key: 'backend', icon: '' },
+    { name: '資料庫結構', key: 'database', icon: '' },
+    { name: '配置', key: 'config', icon: '' },
+    { name: '測試', key: 'tests', icon: '' }
   ];
   
   categories.forEach(category => {
@@ -268,43 +268,43 @@ function generateReport(): void {
 
 // 生成建議
 function generateRecommendations(): void {
-  log('\n💡 建議和下一步', 'blue');
+  log('\n 建議和下一步', 'blue');
   
   const issues: string[] = [];
   
   // 檢查各種問題
   if (!checkResults.backend.attachmentHandlerExists) {
-    issues.push('❌ 需要創建 Attachment Handler');
+    issues.push(' 需要創建 Attachment Handler');
   }
   
   if (!checkResults.database.attachmentSchemaExists) {
-    issues.push('❌ 需要創建檔案附件資料庫 Schema');
+    issues.push(' 需要創建檔案附件資料庫 Schema');
   }
   
   if (!checkResults.frontend.messageInputFeatures) {
-    issues.push('❌ 需要完善 MessageInput 檔案上傳功能');
+    issues.push(' 需要完善 MessageInput 檔案上傳功能');
   }
   
   if (!checkResults.config.wranglerExists) {
-    issues.push('❌ 需要配置 Wrangler.toml');
+    issues.push(' 需要配置 Wrangler.toml');
   }
   
   if (issues.length === 0) {
-    log('✅ 所有核心組件都已實作完成！', 'green');
-    log('\n🚀 下一步行動：', 'bold');
+    log(' 所有核心組件都已實作完成！', 'green');
+    log('\n 下一步行動：', 'bold');
     log('1. 配置 Cloudflare R2 存儲');
     log('2. 執行資料庫遷移');
     log('3. 設定環境變數');
     log('4. 執行端到端測試');
   } else {
-    log('⚠️ 發現以下問題需要解決：', 'yellow');
+    log(' 發現以下問題需要解決：', 'yellow');
     issues.forEach(issue => log(issue, 'red'));
   }
 }
 
 // 主函數
 async function main(): Promise<void> {
-  log('🔍 檔案上傳整合狀態檢查開始...', 'bold');
+  log(' 檔案上傳整合狀態檢查開始...', 'bold');
   
   checkFrontendComponents();
   checkBackendComponents();
@@ -318,10 +318,10 @@ async function main(): Promise<void> {
   const completion = calculateCompletionRate();
   
   if (completion.percentage >= 80) {
-    log('\n🎉 檔案上傳功能整合狀態良好！', 'green');
+    log('\n 檔案上傳功能整合狀態良好！', 'green');
     process.exit(0);
   } else {
-    log('\n⚠️ 檔案上傳功能需要進一步完善。', 'yellow');
+    log('\n 檔案上傳功能需要進一步完善。', 'yellow');
     process.exit(1);
   }
 }

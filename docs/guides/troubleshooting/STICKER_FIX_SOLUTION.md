@@ -8,7 +8,7 @@
 // frontend/src/components/ui/SafeHtmlRenderer.vue:19-24
 allowedAttributes: () => ({
   img: ['src', 'alt', 'title', 'class', 'style', 'width', 'height'],
-  //    ❌ 缺少 'onload' 和 'onerror'
+  // 缺少 'onload' 和 'onerror'
 })
 ```
 
@@ -48,19 +48,19 @@ allowedAttributes: () => ({
 ```
 
 ### 優點
-- ✅ 快速修復（1 分鐘）
-- ✅ 無需改動其他代碼
-- ✅ 貼圖立即可以正常顯示
+-  快速修復（1 分鐘）
+-  無需改動其他代碼
+-  貼圖立即可以正常顯示
 
 ### 缺點
-- ⚠️ 安全風險（內聯事件可能被注入惡意代碼）
-- ⚠️ 違反 CSP (Content Security Policy) 最佳實踐
+-  安全風險（內聯事件可能被注入惡意代碼）
+-  違反 CSP (Content Security Policy) 最佳實踐
 
 ### 測試步驟
 1. 修改 `SafeHtmlRenderer.vue`
 2. 重啟前端開發伺服器 (`npm run dev`)
 3. 刷新瀏覽器
-4. 查看貼圖是否顯示 Fallback: 🎭 [貼圖] 貼圖暫時無法顯示
+4. 查看貼圖是否顯示 Fallback:  [貼圖] 貼圖暫時無法顯示
 
 ---
 
@@ -105,12 +105,12 @@ const setupImageErrorHandlers = () => {
     imgElement.addEventListener('load', () => {
       // 圖片加載成功，設置透明度
       imgElement.style.opacity = '1'
-      console.log('✅ Sticker loaded:', imgElement.src)
+      console.log(' Sticker loaded:', imgElement.src)
     })
 
     // 添加 error 事件處理
     imgElement.addEventListener('error', () => {
-      console.log('❌ Sticker failed to load:', imgElement.src)
+      console.log(' Sticker failed to load:', imgElement.src)
 
       // 隱藏圖片
       imgElement.style.display = 'none'
@@ -170,8 +170,8 @@ onMounted(renderSafeHtml)
 const content = `
   <img src="${url}" alt="${alt}" class="sticker-image" ${dataAttrs}
        style="object-fit: contain; border-radius: 8px; opacity: 0; transition: opacity 0.3s ease;"
-       onload="this.style.opacity=1; console.log('✅ Sticker loaded:', '${url}')"
-       onerror="console.log('❌ Sticker failed to load:', '${url}'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
+       onload="this.style.opacity=1; console.log(' Sticker loaded:', '${url}')"
+       onerror="console.log(' Sticker failed to load:', '${url}'); this.style.display='none'; this.nextElementSibling.style.display='block';" />
   <div class="sticker-fallback" style="display: none; ...">
     ...
   </div>
@@ -182,7 +182,7 @@ const content = `
   <img src="${url}" alt="${alt}" class="sticker-image" ${dataAttrs}
        style="object-fit: contain; border-radius: 8px; opacity: 0; transition: opacity 0.3s ease;" />
   <div class="sticker-fallback" style="display: none; text-align: center; padding: 12px 16px; background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%); border: 2px solid #d4dbe3; border-radius: 12px; font-size: 13px; color: #5a6c7d; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-    <span style="font-size: 32px; margin-bottom: 8px; opacity: 0.7;">🎭</span><br>
+    <span style="font-size: 32px; margin-bottom: 8px; opacity: 0.7;"></span><br>
     <span style="font-weight: 500;">[${alt}]</span><br>
     <span style="font-size: 11px; color: #8b96a3; margin-top: 4px;">貼圖暫時無法顯示</span>
   </div>
@@ -190,14 +190,14 @@ const content = `
 ```
 
 ### 優點
-- ✅ 安全（符合 CSP 最佳實踐）
-- ✅ 優雅（事件處理在 Vue 組件中）
-- ✅ 可維護（邏輯清晰分離）
-- ✅ 可擴展（未來可以添加更多處理邏輯）
+-  安全（符合 CSP 最佳實踐）
+-  優雅（事件處理在 Vue 組件中）
+-  可維護（邏輯清晰分離）
+-  可擴展（未來可以添加更多處理邏輯）
 
 ### 缺點
-- ⚠️ 需要修改 2 個檔案
-- ⚠️ 稍微複雜一點
+-  需要修改 2 個檔案
+-  稍微複雜一點
 
 ### 測試步驟
 1. 修改 `SafeHtmlRenderer.vue`（添加事件處理邏輯）
@@ -242,18 +242,18 @@ private async createImageResult(...) {
 ```
 
 ### 優點
-- ✅ 減少 HEAD 請求（節省網路流量）
-- ✅ 更快的渲染速度
+-  減少 HEAD 請求（節省網路流量）
+-  更快的渲染速度
 
 ### 缺點
-- ❌ 如果方案 A 或 B 沒實施，Fallback 依然無法顯示
-- ❌ 空文件的圖片會先嘗試加載（浪費資源）
+-  如果方案 A 或 B 沒實施，Fallback 依然無法顯示
+-  空文件的圖片會先嘗試加載（浪費資源）
 
 ---
 
 ## 推薦實施順序
 
-### 階段 1: 快速修復（方案 A）⭐
+### 階段 1: 快速修復（方案 A）
 
 **立即執行，5 分鐘內修復：**
 
@@ -285,7 +285,7 @@ private async createImageResult(...) {
 
 **預期結果：**
 ```
-🎭
+
 [貼圖]
 貼圖暫時無法顯示
 ```
@@ -298,7 +298,7 @@ private async createImageResult(...) {
 
 **預期結果：**
 - 顯示貼圖圖片
-- Console 顯示: `✅ Sticker loaded: https://...`
+- Console 顯示: ` Sticker loaded: https://...`
 
 ### 測試用例 3: 網路錯誤
 
@@ -309,7 +309,7 @@ private async createImageResult(...) {
 
 **預期結果：**
 - 所有貼圖顯示 Fallback
-- Console 顯示: `❌ Sticker failed to load: ...`
+- Console 顯示: ` Sticker failed to load: ...`
 
 ---
 

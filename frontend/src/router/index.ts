@@ -279,7 +279,7 @@ const router = createRouter({
   ]
 })
 
-// 🔧 FIX Phase 1: Auth state cache to reduce navigation delay
+// FIX Phase 1: Auth state cache to reduce navigation delay
 interface AuthCache {
   isAuthenticated: boolean
   requiresAuth: boolean
@@ -291,7 +291,7 @@ const AUTH_CACHE_TTL = 5000 // 5 seconds cache validity
 
 router.beforeEach(async (to, from, next) => {
   // 簡化的調試日誌
-  console.log('🔀 Navigation:', from.path, '->', to.path)
+  console.log(' Navigation:', from.path, '->', to.path)
 
   // Set page title immediately (no delay)
   if (to.meta.title) {
@@ -302,12 +302,12 @@ router.beforeEach(async (to, from, next) => {
 
   // 防止重複循環 - 如果已在目標路徑則直接允許
   if (to.path === from.path) {
-    console.log('⚠️ Same path navigation detected, allowing...')
+    console.log(' Same path navigation detected, allowing...')
     next()
     return
   }
 
-  // 🔧 FIX Phase 1: Use cached auth state if available and fresh
+  // FIX Phase 1: Use cached auth state if available and fresh
   const now = Date.now()
   const requiresAuth = to.meta.requiresAuth !== false // Default to true
 
@@ -315,14 +315,14 @@ router.beforeEach(async (to, from, next) => {
     // Cache is fresh
     if (!requiresAuth) {
       // Public route - allow immediately
-      console.log('✅ [Router Cache] Public route, allowing...')
+      console.log('[Router Cache] Public route, allowing...')
       next()
       return
     }
 
     if (authStateCache.isAuthenticated && authStateCache.requiresAuth) {
       // User was authenticated recently - allow immediately
-      console.log('✅ [Router Cache] Using cached auth state, allowing...')
+      console.log('[Router Cache] Using cached auth state, allowing...')
       next()
       return
     }
@@ -332,7 +332,7 @@ router.beforeEach(async (to, from, next) => {
   try {
     await combinedAuthGuard(to, from, next)
 
-    // 🔧 FIX Phase 1: Update cache after successful auth check
+    // FIX Phase 1: Update cache after successful auth check
     authStateCache = {
       isAuthenticated: true,
       requiresAuth,
@@ -341,7 +341,7 @@ router.beforeEach(async (to, from, next) => {
   } catch (error) {
     console.error('Router guard error:', error)
 
-    // 🔧 FIX Phase 1: Cache the failed state
+    // FIX Phase 1: Cache the failed state
     authStateCache = {
       isAuthenticated: false,
       requiresAuth,
@@ -355,12 +355,12 @@ router.beforeEach(async (to, from, next) => {
 
 // Handle navigation completion
 router.afterEach((to, from) => {
-  console.log('✅ Navigation completed:', from.path, '->', to.path)
+  console.log(' Navigation completed:', from.path, '->', to.path)
 })
 
 // Handle navigation errors
 router.onError((error) => {
-  console.error('❌ Router error:', error)
+  console.error(' Router error:', error)
 })
 
 export default router

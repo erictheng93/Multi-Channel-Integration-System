@@ -58,9 +58,9 @@ export interface UrlReachabilityResult {
  * ```typescript
  * const result = validateUrl('https://example.com/webhooks/line');
  * if (result.valid) {
- *   console.log('URL is valid:', result.normalizedUrl);
+ * console.log('URL is valid:', result.normalizedUrl);
  * } else {
- *   console.error('Invalid URL:', result.error);
+ * console.error('Invalid URL:', result.error);
  * }
  * ```
  */
@@ -168,9 +168,9 @@ export function validateUrl(
  * ```typescript
  * const result = await checkUrlReachability('https://example.com/api/health');
  * if (result.reachable) {
- *   console.log(`URL is reachable (${result.statusCode}) in ${result.responseTime}ms`);
+ * console.log(`URL is reachable (${result.statusCode}) in ${result.responseTime}ms`);
  * } else {
- *   console.error('URL is not reachable:', result.error);
+ * console.error('URL is not reachable:', result.error);
  * }
  * ```
  */
@@ -258,7 +258,7 @@ export async function checkUrlReachability(
  * ```typescript
  * const result = validateWebhookUrl('https://example.com/webhooks/line');
  * if (result.valid) {
- *   console.log('Webhook URL is valid');
+ * console.log('Webhook URL is valid');
  * }
  * ```
  */
@@ -280,12 +280,12 @@ export function validateWebhookUrl(url: string): UrlValidationResult {
  * @example
  * ```typescript
  * const results = validateUrlsBatch([
- *   'https://example.com/webhooks/line',
- *   'https://example.com/webhooks/facebook'
+ * 'https://example.com/webhooks/line',
+ * 'https://example.com/webhooks/facebook'
  * ]);
  *
  * results.forEach((result, url) => {
- *   console.log(`${url}: ${result.valid ? 'Valid' : result.error}`);
+ * console.log(`${url}: ${result.valid ? 'Valid' : result.error}`);
  * });
  * ```
  */
@@ -312,12 +312,12 @@ export function validateUrlsBatch(
  * @example
  * ```typescript
  * const results = await checkUrlsReachabilityBatch([
- *   'https://example.com/api/health',
- *   'https://example.com/api/status'
+ * 'https://example.com/api/health',
+ * 'https://example.com/api/status'
  * ]);
  *
  * results.forEach((result, url) => {
- *   console.log(`${url}: ${result.reachable ? 'Reachable' : result.error}`);
+ * console.log(`${url}: ${result.reachable ? 'Reachable' : result.error}`);
  * });
  * ```
  */
@@ -386,7 +386,7 @@ export function sanitizeUrl(
  * @example
  * ```typescript
  * extractDomain('https://api.example.com/webhooks/line');  // 'example.com'
- * extractDomain('https://localhost:8787/api');              // 'localhost'
+ * extractDomain('https://localhost:8787/api'); // 'localhost'
  * ```
  */
 export function extractDomain(url: string): string | null {

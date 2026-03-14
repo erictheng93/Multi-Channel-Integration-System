@@ -97,20 +97,20 @@ Expected: no errors.
 -- ===============================================
 -- Date: 2026-03-03
 -- Purpose: Drop unused table and column that have zero reads/writes
---          in production code.
+-- in production code.
 --
 -- CHANGES:
---   1. DROP TABLE qr_code_analytics  (0 usages in codebase)
---   2. ALTER TABLE reports DROP COLUMN file_hash  (0 usages in codebase)
+-- 1. DROP TABLE qr_code_analytics  (0 usages in codebase)
+-- 2. ALTER TABLE reports DROP COLUMN file_hash  (0 usages in codebase)
 --
 -- SAFETY:
---   D1 uses SQLite 3.42.0+ — DROP COLUMN supported since 3.35.0.
---   qr_code_analytics table has no FK references from other tables.
---   file_hash column has no constraints or indexes.
+-- D1 uses SQLite 3.42.0+ — DROP COLUMN supported since 3.35.0.
+-- qr_code_analytics table has no FK references from other tables.
+-- file_hash column has no constraints or indexes.
 --
 -- Rollback SQL:
---   CREATE TABLE qr_code_analytics ( ... ) -- see 0005_add_qr_codes_table.sql
---   ALTER TABLE reports ADD COLUMN file_hash TEXT;
+-- CREATE TABLE qr_code_analytics ( ... ) -- see 0005_add_qr_codes_table.sql
+-- ALTER TABLE reports ADD COLUMN file_hash TEXT;
 -- ===============================================
 
 -- 1. Drop the unused analytics table
@@ -316,23 +316,23 @@ Expected: no errors (all runtime references were removed in Task 4 & 5).
 -- ===============================================
 -- Date: 2026-03-03
 -- Purpose: Drop legacy `url` column from file_attachments (replaced by
---          `file_url` since migration 0025) and drop `internal_notes`
---          from conversations (never read; code cleaned up before this
---          migration).
+-- `file_url` since migration 0025) and drop `internal_notes`
+-- from conversations (never read; code cleaned up before this
+-- migration).
 --
 -- CHANGES:
---   1. ALTER TABLE file_attachments DROP COLUMN url
---   2. ALTER TABLE conversations DROP COLUMN internal_notes
+-- 1. ALTER TABLE file_attachments DROP COLUMN url
+-- 2. ALTER TABLE conversations DROP COLUMN internal_notes
 --
 -- SAFETY:
---   D1 uses SQLite 3.42.0+. Both columns are plain TEXT with no
---   constraints or indexes — DROP COLUMN is safe.
---   All backend fallback code referencing these columns was removed
---   in the codebase before this migration is applied.
+-- D1 uses SQLite 3.42.0+. Both columns are plain TEXT with no
+-- constraints or indexes — DROP COLUMN is safe.
+-- All backend fallback code referencing these columns was removed
+-- in the codebase before this migration is applied.
 --
 -- Rollback SQL:
---   ALTER TABLE file_attachments ADD COLUMN url TEXT;
---   ALTER TABLE conversations ADD COLUMN internal_notes TEXT;
+-- ALTER TABLE file_attachments ADD COLUMN url TEXT;
+-- ALTER TABLE conversations ADD COLUMN internal_notes TEXT;
 -- ===============================================
 
 -- 1. Drop legacy URL column (replaced by file_url since migration 0025)

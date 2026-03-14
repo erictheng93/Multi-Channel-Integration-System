@@ -2,18 +2,18 @@
  * Route-parameter validation middleware for Hono handlers.
  *
  * Usage:
- *   import { requireIntId, requireStringParam } from '@/middleware/param-validator'
+ * import { requireIntId, requireStringParam } from '@/middleware/param-validator'
  *
- *   app.get('/api/teams/:id', requireIntId(), handler)
- *   app.get('/api/teams/:teamId/members/:memberId',
- *     requireIntId('teamId'), requireIntId('memberId'), handler)
- *   app.get('/api/conversations/:uuid', requireStringParam('uuid'), handler)
+ * app.get('/api/teams/:id', requireIntId(), handler)
+ * app.get('/api/teams/:teamId/members/:memberId',
+ * requireIntId('teamId'), requireIntId('memberId'), handler)
+ * app.get('/api/conversations/:uuid', requireStringParam('uuid'), handler)
  */
 
 import type { Context, Next } from 'hono'
 
 // ──────────────────────────────────────────────
-//  Common param schemas
+// Common param schemas
 // ──────────────────────────────────────────────
 
 /**
@@ -87,14 +87,14 @@ export function requireStringParam(
 }
 
 // ──────────────────────────────────────────────
-//  Helper to retrieve validated params in handlers
+// Helper to retrieve validated params in handlers
 // ──────────────────────────────────────────────
 
 /**
  * Retrieve a previously validated param from middleware.
  *
  * @example
- *   const id = getValidatedParam<number>(c, 'id')
+ * const id = getValidatedParam<number>(c, 'id')
  */
 export function getValidatedParam<T = unknown>(c: Context, name: string): T {
   const params = (c.get('validatedParams') as Record<string, unknown>) || {}

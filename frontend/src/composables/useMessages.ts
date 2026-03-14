@@ -21,7 +21,7 @@ function getUserIdFromToken(): string | null {
   }
 }
 
-// 🔧 簡化消息處理工具函數 - 只分為最舊和最新兩種
+// 簡化消息處理工具函數 - 只分為最舊和最新兩種
 const messageOrderUtils = {
   // 確保消息按時間順序排列（最舊在前，最新在後）
   ensureChronologicalOrder: (messages: Message[]): Message[] => {
@@ -104,21 +104,21 @@ export function useMessages(conversationId?: string, options?: {
     clearError()
     
     try {
-      console.log(`🔄 載入分頁消息: conversationId=${currentConversationId.value}, page=${page}, pageSize=${pageSize}`)
+      console.log(` 載入分頁消息: conversationId=${currentConversationId.value}, page=${page}, pageSize=${pageSize}`)
       const response = await messageApi.listPaginated(currentConversationId.value, {
         page,
         pageSize
       })
       
-      console.log('🔍 [useMessages] Full API response:', response)
+      console.log('[useMessages] Full API response:', response)
       
       if (response.success && response.data) {
         // 檢查數據結構
-        console.log('🔍 [useMessages] response.data structure:', response.data)
-        console.log('🔍 [useMessages] response.data type:', typeof response.data)
-        console.log('🔍 [useMessages] Is response.data an array?', Array.isArray(response.data))
+        console.log('[useMessages] response.data structure:', response.data)
+        console.log('[useMessages] response.data type:', typeof response.data)
+        console.log('[useMessages] Is response.data an array?', Array.isArray(response.data))
         
-        // ✅ 處理兩種可能的響應格式
+        // 處理兩種可能的響應格式
         let messagesArray: Message[]
         let paginationInfo: {
           page?: number
@@ -130,7 +130,7 @@ export function useMessages(conversationId?: string, options?: {
         
         if (Array.isArray(response.data)) {
           // 舊格式：直接返回消息數組
-          console.log('📝 [useMessages] Legacy format detected: direct array')
+          console.log('[useMessages] Legacy format detected: direct array')
           messagesArray = response.data
           paginationInfo = {
             page: 1,
@@ -141,11 +141,11 @@ export function useMessages(conversationId?: string, options?: {
           }
         } else if (response.data && typeof response.data === 'object' && 'items' in response.data) {
           // 新格式：分頁響應格式
-          console.log('📝 [useMessages] Paginated format detected')
+          console.log('[useMessages] Paginated format detected')
           const paginatedData = response.data as PaginatedResponse<Message>
           
           if (!paginatedData.items || !Array.isArray(paginatedData.items)) {
-            console.error('❌ [useMessages] Invalid items in paginated data:', paginatedData.items)
+            console.error('[useMessages] Invalid items in paginated data:', paginatedData.items)
             handleError('訊息數據格式錯誤')
             return
           }
@@ -159,38 +159,38 @@ export function useMessages(conversationId?: string, options?: {
             hasMore: paginatedData.hasMore
           }
         } else {
-          console.error('❌ [useMessages] Unknown data format:', response.data)
+          console.error('[useMessages] Unknown data format:', response.data)
           handleError('未知的訊息數據格式')
           return
         }
         
-        console.log('📊 [useMessages] Processing messages array:', messagesArray.length, 'items')
+        console.log('[useMessages] Processing messages array:', messagesArray.length, 'items')
         
-        // 🔄 確保消息按時間順序排列（最舊→最新）
+        // 確保消息按時間順序排列（最舊→最新）
         const orderedMessages = messageOrderUtils.ensureChronologicalOrder(messagesArray)
         
         if (append && page > 1) {
           // 載入歷史消息時，使用專用合併函數
-          console.log(`🔗 [useMessages] Merging history: existing ${paginatedMessages.value.length} + new ${orderedMessages.length}`)
+          console.log(`[useMessages] Merging history: existing ${paginatedMessages.value.length} + new ${orderedMessages.length}`)
           const oldestExisting = paginatedMessages.value.length > 0 ? paginatedMessages.value[0]?.createdAt : 'none'
           const oldestNew = orderedMessages.length > 0 ? orderedMessages[0]?.createdAt : 'none'
-          console.log(`📅 [useMessages] Oldest existing: ${oldestExisting}, oldest new: ${oldestNew}`)
+          console.log(`[useMessages] Oldest existing: ${oldestExisting}, oldest new: ${oldestNew}`)
 
           paginatedMessages.value = messageOrderUtils.mergeHistoryMessages(paginatedMessages.value, orderedMessages)
 
-          console.log(`✅ [useMessages] After merge: ${paginatedMessages.value.length} total messages`)
+          console.log(`[useMessages] After merge: ${paginatedMessages.value.length} total messages`)
         } else {
           // 初始載入或刷新
-          console.log(`🔄 [useMessages] Initial load: ${orderedMessages.length} messages`)
+          console.log(`[useMessages] Initial load: ${orderedMessages.length} messages`)
           paginatedMessages.value = orderedMessages
         }
         
-        // ✅ 使用兼容的分頁信息
+        // 使用兼容的分頁信息
         totalMessages.value = paginationInfo.total || 0
         hasMore.value = paginationInfo.hasMore || false
         currentPage.value = paginationInfo.page || 1
 
-        console.log(`📊 [useMessages] Pagination updated:`, {
+        console.log(`[useMessages] Pagination updated:`, {
           page: paginationInfo.page,
           totalPages: paginationInfo.totalPages,
           hasMore: paginationInfo.hasMore,
@@ -198,7 +198,7 @@ export function useMessages(conversationId?: string, options?: {
           currentCount: paginatedMessages.value.length
         })
 
-        console.log(`📊 分頁載入成功: ${messagesArray.length} 條訊息 (頁面 ${paginationInfo.page}/${paginationInfo.totalPages || 1})`)
+        console.log(` 分頁載入成功: ${messagesArray.length} 條訊息 (頁面 ${paginationInfo.page}/${paginationInfo.totalPages || 1})`)
       } else {
         handleError(response.error || '無法載入訊息')
       }
@@ -236,7 +236,7 @@ export function useMessages(conversationId?: string, options?: {
 
     if (enablePagination) {
       // 在分頁模式下，只更新第1頁的最新訊息，但保持已載入的歷史訊息
-      console.log('🔄 [fetchLatestMessages] Polling latest messages without resetting pagination')
+      console.log('[fetchLatestMessages] Polling latest messages without resetting pagination')
 
       try {
         const response = await messageApi.listPaginated(currentConversationId.value, {
@@ -253,7 +253,7 @@ export function useMessages(conversationId?: string, options?: {
             const paginatedData = response.data as PaginatedResponse<Message>
             latestMessagesArray = paginatedData.items || []
           } else {
-            console.error('❌ [fetchLatestMessages] Unknown data format:', response.data)
+            console.error('[fetchLatestMessages] Unknown data format:', response.data)
             return
           }
 
@@ -274,7 +274,7 @@ export function useMessages(conversationId?: string, options?: {
             )
 
             if (newMessages.length > 0) {
-              console.log(`📥 [fetchLatestMessages] Found ${newMessages.length} new messages`)
+              console.log(`[fetchLatestMessages] Found ${newMessages.length} new messages`)
               // 將新訊息添加到現有訊息末尾（保持時間順序）
               paginatedMessages.value = messageOrderUtils.ensureChronologicalOrder([
                 ...paginatedMessages.value,
@@ -283,12 +283,12 @@ export function useMessages(conversationId?: string, options?: {
               // 更新總訊息數
               totalMessages.value += newMessages.length
             } else {
-              console.log('📥 [fetchLatestMessages] No new messages found')
+              console.log('[fetchLatestMessages] No new messages found')
             }
           }
         }
       } catch (err) {
-        console.error('❌ [fetchLatestMessages] Error:', err)
+        console.error('[fetchLatestMessages] Error:', err)
         // 如果polling失敗，不影響現有的分頁狀態
       }
     } else {
@@ -299,7 +299,7 @@ export function useMessages(conversationId?: string, options?: {
   
   // 載入更多歷史消息（infinite scroll）
   const loadMoreMessages = async () => {
-    console.log('🔄 [loadMoreMessages] Called with state:', {
+    console.log('[loadMoreMessages] Called with state:', {
       enablePagination,
       hasMore: hasMore.value,
       loadingHistory: loadingHistory.value,
@@ -308,7 +308,7 @@ export function useMessages(conversationId?: string, options?: {
     })
 
     if (!enablePagination || !hasMore.value || loadingHistory.value) {
-      console.log('⚠️ [loadMoreMessages] Blocked:', {
+      console.log('[loadMoreMessages] Blocked:', {
         enablePagination,
         hasMore: hasMore.value,
         loadingHistory: loadingHistory.value
@@ -317,13 +317,13 @@ export function useMessages(conversationId?: string, options?: {
     }
 
     const nextPage = currentPage.value + 1
-    console.log(`📄 [loadMoreMessages] Loading page ${nextPage}...`)
+    console.log(`[loadMoreMessages] Loading page ${nextPage}...`)
     await fetchMessagesPaginated(nextPage, true)
-    console.log(`✅ [loadMoreMessages] Page ${nextPage} loaded, hasMore: ${hasMore.value}`)
+    console.log(`[loadMoreMessages] Page ${nextPage} loaded, hasMore: ${hasMore.value}`)
     return hasMore.value
   }
 
-  // 🎯 簡化的消息排序邏輯 - 只關注時間順序
+  // 簡化的消息排序邏輯 - 只關注時間順序
   const sortedMessages = computed(() => {
     if (!messages.value || messages.value.length === 0) {return []}
     
@@ -384,7 +384,7 @@ export function useMessages(conversationId?: string, options?: {
         })
         
         if (response.success && response.data) {
-          // ✅ 新消息直接加到末尾（符合升序排列，最新在後）
+          // 新消息直接加到末尾（符合升序排列，最新在後）
           paginatedMessages.value.push(response.data)
           // 更新總消息數
           totalMessages.value += 1

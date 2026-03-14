@@ -103,7 +103,7 @@ export function generateConfigurationErrorResponse(
         '1. Go to Cloudflare Dashboard (https://dash.cloudflare.com)',
         '2. Navigate to: Workers & Pages -> Your Worker -> Settings -> Variables',
         '3. Add the following environment variables:',
-        ...validation.missing.map(v => `   - ${v}`),
+        ...validation.missing.map(v => ` - ${v}`),
         '4. Click "Save and Deploy"',
       ],
       documentation: 'https://developers.cloudflare.com/workers/configuration/environment-variables/',

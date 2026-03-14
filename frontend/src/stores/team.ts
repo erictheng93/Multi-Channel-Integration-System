@@ -25,7 +25,7 @@ export const useTeamStore = defineStore('team', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  // ✅ Loading counter to prevent race conditions when multiple operations run in parallel
+  // Loading counter to prevent race conditions when multiple operations run in parallel
   let loadingCounter = 0
 
   // ==================== Selection State (批量操作) ====================
@@ -45,7 +45,7 @@ export const useTeamStore = defineStore('team', () => {
   // 動作
   const loadMembers = async () => {
     try {
-      // ✅ Increment counter and set loading state
+      // Increment counter and set loading state
       loadingCounter++
       loading.value = true
       error.value = null
@@ -59,7 +59,7 @@ export const useTeamStore = defineStore('team', () => {
       error.value = (err as Error)?.message || '載入成員列表失敗'
       console.error('載入成員失敗:', err)
     } finally {
-      // ✅ Decrement counter and only set loading=false when all operations complete
+      // Decrement counter and only set loading=false when all operations complete
       loadingCounter--
       if (loadingCounter === 0) {
         loading.value = false
@@ -69,7 +69,7 @@ export const useTeamStore = defineStore('team', () => {
 
   const loadTeams = async () => {
     try {
-      // ✅ Increment counter and set loading state
+      // Increment counter and set loading state
       loadingCounter++
       loading.value = true
       error.value = null
@@ -83,7 +83,7 @@ export const useTeamStore = defineStore('team', () => {
       error.value = (err as Error)?.message || '載入團隊列表失敗'
       console.error('載入團隊失敗:', err)
     } finally {
-      // ✅ Decrement counter and only set loading=false when all operations complete
+      // Decrement counter and only set loading=false when all operations complete
       loadingCounter--
       if (loadingCounter === 0) {
         loading.value = false
@@ -469,36 +469,36 @@ export const useTeamStore = defineStore('team', () => {
     error.value = null
   }
 
-  // 🆕 WebSocket event handlers for real-time memberCount updates
+  // WebSocket event handlers for real-time memberCount updates
   const handleTeamMemberAdded = (data: TeamMemberEventData) => {
-    console.log('👥 [TeamStore] Member added event received:', data)
+    console.log('[TeamStore] Member added event received:', data)
 
     // Find and update the team's memberCount
     const team = teams.value.find(t => t.id === data.teamId)
     if (team) {
       team.memberCount = data.memberCount
-      console.log(`✅ [TeamStore] Updated memberCount for team ${data.teamName}: ${data.memberCount}`)
+      console.log(`[TeamStore] Updated memberCount for team ${data.teamName}: ${data.memberCount}`)
     } else {
       // Team not in store, might need to reload
-      console.log(`ℹ️ [TeamStore] Team ${data.teamId} not found in store, consider reloading`)
+      console.log(`[TeamStore] Team ${data.teamId} not found in store, consider reloading`)
     }
   }
 
   const handleTeamMemberRemoved = (data: TeamMemberEventData) => {
-    console.log('👥 [TeamStore] Member removed event received:', data)
+    console.log('[TeamStore] Member removed event received:', data)
 
     // Find and update the team's memberCount
     const team = teams.value.find(t => t.id === data.teamId)
     if (team) {
       team.memberCount = data.memberCount
-      console.log(`✅ [TeamStore] Updated memberCount for team ${data.teamName}: ${data.memberCount}`)
+      console.log(`[TeamStore] Updated memberCount for team ${data.teamName}: ${data.memberCount}`)
     } else {
-      console.log(`ℹ️ [TeamStore] Team ${data.teamId} not found in store`)
+      console.log(`[TeamStore] Team ${data.teamId} not found in store`)
     }
   }
 
   const handleTeamUpdated = (data: TeamUpdateEventData) => {
-    console.log('🔄 [TeamStore] Team updated event received:', data)
+    console.log('[TeamStore] Team updated event received:', data)
 
     // Find and update the team
     const team = teams.value.find(t => t.id === data.teamId)
@@ -507,13 +507,13 @@ export const useTeamStore = defineStore('team', () => {
       if (data.changes.description !== undefined) {team.description = data.changes.description}
       if (data.changes.isActive !== undefined) {team.isActive = data.changes.isActive}
       if (data.changes.memberCount !== undefined) {team.memberCount = data.changes.memberCount}
-      console.log(`✅ [TeamStore] Updated team ${data.teamId}:`, data.changes)
+      console.log(`[TeamStore] Updated team ${data.teamId}:`, data.changes)
     } else {
-      console.log(`ℹ️ [TeamStore] Team ${data.teamId} not found in store`)
+      console.log(`[TeamStore] Team ${data.teamId} not found in store`)
     }
   }
 
-  // 🆕 Setup WebSocket event listeners
+  // Setup WebSocket event listeners
   let isWebSocketSetup = false
   const setupWebSocketListeners = () => {
     if (isWebSocketSetup) {return}
@@ -528,9 +528,9 @@ export const useTeamStore = defineStore('team', () => {
       })
 
       isWebSocketSetup = true
-      console.log('✅ [TeamStore] WebSocket listeners setup complete')
+      console.log('[TeamStore] WebSocket listeners setup complete')
     } catch (err) {
-      console.warn('⚠️ [TeamStore] Failed to setup WebSocket listeners:', err)
+      console.warn('[TeamStore] Failed to setup WebSocket listeners:', err)
     }
   }
 
@@ -538,7 +538,7 @@ export const useTeamStore = defineStore('team', () => {
   setupWebSocketListeners()
 
   /**
-   * 🆕 直接更新本地成員資料（不發送 API 請求）
+   * 直接更新本地成員資料（不發送 API 請求）
    * 用於 API 成功後的本地同步，避免全量重新載入
    *
    * @param memberId - 成員 ID
@@ -570,12 +570,12 @@ export const useTeamStore = defineStore('team', () => {
     // 更新 updatedAt
     member.updatedAt = nowISO()
 
-    console.log(`✅ [TeamStore] updateMemberLocal: Member ${memberId} updated locally`, data)
+    console.log(`[TeamStore] updateMemberLocal: Member ${memberId} updated locally`, data)
     return true
   }
 
   /**
-   * 🆕 直接更新本地團隊資料（不發送 API 請求）
+   * 直接更新本地團隊資料（不發送 API 請求）
    * 用於 API 成功後的本地同步，避免全量重新載入
    *
    * @param teamId - 團隊 ID
@@ -603,7 +603,7 @@ export const useTeamStore = defineStore('team', () => {
     // 更新 updatedAt
     team.updatedAt = nowISO()
 
-    console.log(`✅ [TeamStore] updateTeamLocal: Team ${teamId} updated locally`, data)
+    console.log(`[TeamStore] updateTeamLocal: Team ${teamId} updated locally`, data)
     return true
   }
 
@@ -615,7 +615,7 @@ export const useTeamStore = defineStore('team', () => {
     error,
     stats,
 
-    // 🆕 Selection State (批量操作)
+    // Selection State (批量操作)
     selectedMemberIds,
     isSelectionMode,
     selectedCount,
@@ -634,7 +634,7 @@ export const useTeamStore = defineStore('team', () => {
     clearError,
     $reset,
 
-    // 🆕 Selection Operations (批量操作)
+    // Selection Operations (批量操作)
     toggleSelectionMode,
     toggleMemberSelection,
     selectAllMembers,
@@ -642,9 +642,9 @@ export const useTeamStore = defineStore('team', () => {
     bulkDeleteMembers,
     bulkUpdateMembers,
 
-    // 🆕 WebSocket setup (exposed for manual re-setup if needed)
+    // WebSocket setup (exposed for manual re-setup if needed)
     setupWebSocketListeners,
-    // 🆕 直接更新本地資料（用於最小化刷新）
+    // 直接更新本地資料（用於最小化刷新）
     updateMemberLocal,
     updateTeamLocal
   }

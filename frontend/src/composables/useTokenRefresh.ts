@@ -10,14 +10,14 @@ export function useTokenRefresh() {
     // 每 5 分鐘檢查一次是否需要刷新 token
     refreshInterval = window.setInterval(() => {
       if (authStore.isAuthenticated && authStore.shouldRefreshToken()) {
-        console.log('🔄 Scheduled token refresh check...')
+        console.log(' Scheduled token refresh check...')
         authStore.proactiveTokenRefresh()
       } else if (authStore.isAuthenticated) {
-        console.log('✅ Token is still valid, no refresh needed')
+        console.log(' Token is still valid, no refresh needed')
       }
     }, 5 * 60 * 1000) // 5 分鐘
     
-    console.log('🔄 Token refresh check started - will check every 5 minutes')
+    console.log(' Token refresh check started - will check every 5 minutes')
   }
 
   const stopTokenRefreshCheck = () => {

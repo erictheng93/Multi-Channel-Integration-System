@@ -83,7 +83,7 @@ declare module 'hono' {
  */
 export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> {
   try {
-    // 🔥 Skip authentication for OPTIONS requests (CORS preflight)
+    // Skip authentication for OPTIONS requests (CORS preflight)
     if (c.req.method === 'OPTIONS') {
       return await next();
     }
@@ -112,7 +112,7 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       user.primaryTeamId = payload.primaryTeamId;
     }
 
-    // 🚀 Phase 1 Optimization: Fallback to JWT multi-team data if not populated
+    // Phase 1 Optimization: Fallback to JWT multi-team data if not populated
     // This ensures cached allowedTeamIds are available even if getUserById fails to populate
     if (payload.allowedTeamIds && (!user.allowedTeamIds || user.allowedTeamIds.length === 0)) {
       user.allowedTeamIds = payload.allowedTeamIds;
@@ -121,7 +121,7 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       user.teamRoles = payload.teamRoles;
     }
 
-    // 🚀 Phase 1 Optimization: Parse and validate X-Context-Team-ID header
+    // Phase 1 Optimization: Parse and validate X-Context-Team-ID header
     const contextTeamHeader = c.req.header('X-Context-Team-ID');
     let contextTeamId: number | null = null;
 
@@ -155,18 +155,18 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     c.set('jwtPayload', payload);
     c.set('contextTeamId', contextTeamId);
 
-    // ⚡ OPTIMIZED v3.0: 更新用戶的最後活動時間（純記憶體去重，15分鐘間隔）
+    // OPTIMIZED v3.0: 更新用戶的最後活動時間（純記憶體去重，15分鐘間隔）
     // - Zero KV operations (100% quota savings)
     // - Faster performance (no network calls)
     // - Tracks theoretical KV savings for monitoring
     // agents 表使用字符串 ID
     if (typeof user.id === 'string') {
-      // 📊 P0 Monitoring: Track request frequency
+      // P0 Monitoring: Track request frequency
       incrementRequestCounter(user.id);
 
       // Update activity with pure in-memory debouncing
       updateUserActivityDebounced(user.id, c.env.DB, c.env.SESSIONS).then((wasUpdated) => {
-        // 📊 P0 Monitoring: Track theoretical KV savings
+        // P0 Monitoring: Track theoretical KV savings
         trackTheoreticalKVSavings(!wasUpdated);
       }).catch(() => {
         // 靜默失敗，不影響請求處理
@@ -331,7 +331,7 @@ export function requireAdmin() {
 /**
  * 團隊權限中間件
  *
- * 🔧 v2.0 MULTI-TEAM SUPPORT:
+ * v2.0 MULTI-TEAM SUPPORT:
  * - 支援多團隊成員資格檢查
  * - 首先檢查主團隊 (agent_teams WHERE isPrimary=true)
  * - 如果不匹配，查詢 agent_teams 表檢查次要團隊成員資格
@@ -357,7 +357,7 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
       return c.json({ error: 'Invalid team ID' }, 400);
     }
 
-    // 🔧 v2.0: 使用 canAccessTeam() 支援多團隊檢查
+    // v2.0: 使用 canAccessTeam() 支援多團隊檢查
     // 傳入 DB 以支援 agent_teams 表查詢
     const hasAccess = await canAccessTeam(user, teamId, c.env.DB);
 
@@ -379,7 +379,7 @@ export function requireTeamAccess(teamIdParam: string = 'teamId') {
 }
 
 // ============================================================================
-// 🚀 Phase 2: Team Role-Based Access Control Middleware
+// Phase 2: Team Role-Based Access Control Middleware
 // ============================================================================
 
 /**
@@ -509,7 +509,7 @@ export async function apiKeyAuth(c: Context<{ Bindings: Bindings }>, next: Next)
     const validApiKey = (c.env as Bindings & { API_KEY?: string }).API_KEY;
 
     if (!validApiKey) {
-      console.error('❌ [apiKeyAuth] API_KEY environment variable not configured');
+      console.error('[apiKeyAuth] API_KEY environment variable not configured');
       return c.json({ error: 'API key authentication not configured' }, 500);
     }
 

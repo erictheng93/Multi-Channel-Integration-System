@@ -64,7 +64,7 @@ export class ModularSystemManager {
    * 初始化整個模組化系統
    */
   async initialize(): Promise<SystemInitializationResult> {
-    console.log('🏗️ Initializing Modular Architecture System...');
+    console.log(' Initializing Modular Architecture System...');
     const startTime = nowMs();
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -82,7 +82,7 @@ export class ModularSystemManager {
         try {
           // 健康監控已配置，但需要在 Worker 的 fetch handler 中按需啟動
           healthMonitoring = true;
-          console.log('✅ Health monitoring configured (will start on first request)');
+          console.log(' Health monitoring configured (will start on first request)');
         } catch (error) {
           errors.push(`Health monitoring setup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -94,7 +94,7 @@ export class ModularSystemManager {
         try {
           // 錯誤處理器已在全域可用
           errorHandling = true;
-          console.log('✅ Error handling configured');
+          console.log(' Error handling configured');
         } catch (error) {
           errors.push(`Error handling setup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -110,7 +110,7 @@ export class ModularSystemManager {
       const systemHealth = await this.performSystemHealthCheck();
 
       const initTime = Date.now() - startTime;
-      console.log(`🎉 Modular system initialized in ${initTime}ms`);
+      console.log(` Modular system initialized in ${initTime}ms`);
 
       this.initializationResult = {
         success: errors.length === 0,
@@ -359,7 +359,7 @@ export class ModularSystemManager {
    * 關閉系統
    */
   async shutdown(): Promise<void> {
-    console.log('🛑 Shutting down modular system...');
+    console.log(' Shutting down modular system...');
 
     try {
       // 停止健康監控
@@ -369,9 +369,9 @@ export class ModularSystemManager {
       await globalModuleLoader.shutdown();
 
       this.isInitialized = false;
-      console.log('✅ Modular system shutdown complete');
+      console.log(' Modular system shutdown complete');
     } catch (error) {
-      console.error('❌ Error during shutdown:', error);
+      console.error(' Error during shutdown:', error);
       throw error;
     }
   }

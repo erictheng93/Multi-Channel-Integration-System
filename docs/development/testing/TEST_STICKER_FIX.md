@@ -2,7 +2,7 @@
 
 ## 修改內容總結
 
-✅ **已完成修改：**
+ **已完成修改：**
 1. **SafeHtmlRenderer.vue** - 添加 Vue 事件監聽器處理圖片加載失敗
 2. **sticker-renderer.ts** - 移除不安全的內聯事件處理器
 
@@ -25,9 +25,9 @@ npm run dev
 ```
 VITE v5.x.x  ready in xxx ms
 
-➜  Local:   http://localhost:3000/
-➜  Network: use --host to expose
-➜  press h + enter to show help
+  Local: http://localhost:3000/
+  Network: use --host to expose
+  press h + enter to show help
 ```
 
 ### Step 2: 清除瀏覽器緩存
@@ -55,21 +55,21 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 
 #### 4.1 渲染日誌
 ```
-🔍 [StickerRenderer] processStickerMetadata called
-🔍 [StickerRenderer] Parsed metadata: {packageId: "...", stickerId: "..."}
-🔍 [EnhancedMessageRenderer] Final HTML: <div class="sticker-container"...
+ [StickerRenderer] processStickerMetadata called
+ [StickerRenderer] Parsed metadata: {packageId: "...", stickerId: "..."}
+ [EnhancedMessageRenderer] Final HTML: <div class="sticker-container"...
 ```
 
 #### 4.2 圖片加載日誌
 
 **如果貼圖成功加載（有效的貼圖包）：**
 ```
-✅ Sticker loaded: https://stickershop.line-scdn.net/...
+ Sticker loaded: https://stickershop.line-scdn.net/...
 ```
 
 **如果貼圖加載失敗（已下架的貼圖包）：**
 ```
-❌ Sticker failed to load: https://stickershop.line-scdn.net/...
+ Sticker failed to load: https://stickershop.line-scdn.net/...
 ```
 
 ### Step 5: 檢查頁面顯示
@@ -80,10 +80,10 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 
 ```
 ┌─────────────────────────┐
-│         🎭              │
-│                         │
-│     [LINE 貼圖]         │
-│  貼圖暫時無法顯示       │
+│ │
+│ │
+│ [LINE 貼圖] │
+│  貼圖暫時無法顯示 │
 └─────────────────────────┘
 ```
 
@@ -121,15 +121,15 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
        class="sticker-image"
        style="opacity: 0; display: none;">
   <div class="sticker-fallback" style="display: block;">
-    🎭 [貼圖] 貼圖暫時無法顯示
+     [貼圖] 貼圖暫時無法顯示
   </div>
 </div>
 ```
 
 **重要檢查點：**
-- ✅ `<img>` 標籤**不應該**有 `onload` 屬性
-- ✅ `<img>` 標籤**不應該**有 `onerror` 屬性
-- ✅ `<img>` 標籤**應該**有 `data-sticker-*` 屬性
+-  `<img>` 標籤**不應該**有 `onload` 屬性
+-  `<img>` 標籤**不應該**有 `onerror` 屬性
+-  `<img>` 標籤**應該**有 `data-sticker-*` 屬性
 
 ---
 
@@ -142,8 +142,8 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 2. 查看顯示結果
 
 **預期結果：**
-- ✅ 顯示 Fallback: 🎭 [貼圖] 貼圖暫時無法顯示
-- ✅ Console 顯示: `❌ Sticker failed to load: ...`
+-  顯示 Fallback:  [貼圖] 貼圖暫時無法顯示
+-  Console 顯示: ` Sticker failed to load: ...`
 
 ### 測試用例 2: 發送新貼圖
 
@@ -153,9 +153,9 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 3. 查看新貼圖的顯示
 
 **預期結果：**
-- ✅ 顯示貼圖圖片
-- ✅ Console 顯示: `✅ Sticker loaded: ...`
-- ✅ 圖片有淡入動畫
+-  顯示貼圖圖片
+-  Console 顯示: ` Sticker loaded: ...`
+-  圖片有淡入動畫
 
 ### 測試用例 3: 網路錯誤模擬
 
@@ -165,8 +165,8 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 3. 刷新頁面
 
 **預期結果：**
-- ✅ 所有貼圖顯示 Fallback
-- ✅ Console 顯示多個: `❌ Sticker failed to load: ...`
+-  所有貼圖顯示 Fallback
+-  Console 顯示多個: ` Sticker failed to load: ...`
 
 ### 測試用例 4: 緩存測試
 
@@ -176,9 +176,9 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 3. 查看是否正常顯示
 
 **預期結果：**
-- ✅ 有效貼圖立即顯示（從緩存）
-- ✅ 失敗貼圖立即顯示 Fallback
-- ✅ Console 日誌正常
+-  有效貼圖立即顯示（從緩存）
+-  失敗貼圖立即顯示 Fallback
+-  Console 日誌正常
 
 ---
 
@@ -189,8 +189,8 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 - [ ] 前端開發服務器已重啟
 - [ ] 瀏覽器緩存已清除
 - [ ] 打開對話頁面無錯誤
-- [ ] Console 中看到 `✅ Sticker loaded` 或 `❌ Sticker failed to load`
-- [ ] 已下架的貼圖顯示 Fallback 🎭
+- [ ] Console 中看到 ` Sticker loaded` 或 ` Sticker failed to load`
+- [ ] 已下架的貼圖顯示 Fallback 
 - [ ] DOM 中 `<img>` 標籤沒有 `onload`/`onerror` 屬性
 - [ ] 新發送的貼圖可以正常顯示
 - [ ] 網路離線時所有貼圖顯示 Fallback
@@ -199,7 +199,7 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 
 ## 常見問題排查
 
-### Q1: Console 中沒有看到 `✅ Sticker loaded` 或 `❌ Sticker failed to load`
+### Q1: Console 中沒有看到 ` Sticker loaded` 或 ` Sticker failed to load`
 
 **可能原因：**
 - SafeHtmlRenderer.vue 的修改沒有生效
@@ -263,20 +263,20 @@ images.forEach(img => {
 
 修復被認為成功，當：
 
-1. ✅ **已下架的貼圖顯示 Fallback**
-   - 看到 🎭 圖示
+1.  **已下架的貼圖顯示 Fallback**
+   - 看到  圖示
    - 看到 "[貼圖]" 文字
    - 看到 "貼圖暫時無法顯示" 提示
 
-2. ✅ **新貼圖正常顯示**
+2.  **新貼圖正常顯示**
    - 看到貼圖圖片
    - 有淡入動畫效果
 
-3. ✅ **Console 日誌正確**
-   - 成功: `✅ Sticker loaded: ...`
-   - 失敗: `❌ Sticker failed to load: ...`
+3.  **Console 日誌正確**
+   - 成功: ` Sticker loaded: ...`
+   - 失敗: ` Sticker failed to load: ...`
 
-4. ✅ **安全性提升**
+4.  **安全性提升**
    - DOM 中沒有 `onload`/`onerror` 內聯事件
    - 符合 CSP 最佳實踐
 

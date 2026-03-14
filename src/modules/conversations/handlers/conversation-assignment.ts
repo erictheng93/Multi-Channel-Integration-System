@@ -33,7 +33,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       'conversation',
       'assign',
       undefined, // context
-      c.env.DB   // 傳入資料庫以正確檢查用戶角色
+      c.env.DB // 傳入資料庫以正確檢查用戶角色
     );
 
     if (!hasPermission) {
@@ -79,7 +79,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       await drizzleDb.insert(conversationTransfers).values(transferRecord);
     }
 
-    // 🚀 WebSocket Broadcasting: Conversation Assignment
+    // WebSocket Broadcasting: Conversation Assignment
     // Query team name for real-time UI updates
     try {
       let assignedTeamName: string | null = null;
@@ -118,7 +118,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
 
     // Note: Individual agent notifications removed - only team assignment is supported now
 
-    // 🔧 FIX: 获取并返回完整的对话对象
+    // FIX: 获取并返回完整的对话对象
     log.debug('Assign API fetching updated conversation with JOIN', {
       conversationId,
       expectedTeamId: teamId
@@ -128,7 +128,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       .select()
       .from(conversations)
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
-      .leftJoin(customers, eq(conversations.customerId, customers.id))  // 🔧 FIX: Add customer JOIN
+      .leftJoin(customers, eq(conversations.customerId, customers.id))  //  FIX: Add customer JOIN
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
@@ -142,7 +142,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       teamId: updatedConversation?.teams?.id,
       teamName: updatedConversation?.teams?.name,
       customerId: updatedConversation?.customers?.id,
-      customerName: updatedConversation?.customers?.displayName  // 🔧 FIX: Use displayName
+      customerName: updatedConversation?.customers?.displayName  //  FIX: Use displayName
     });
 
     if (!updatedConversation) {
@@ -159,7 +159,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       assignedTeam: updatedConversation.teams || undefined,
       customer: updatedConversation.customers ? {
         ...updatedConversation.customers,
-        name: updatedConversation.customers.displayName  // 🔧 FIX: 添加 name 字段以匹配前端類型定義
+        name: updatedConversation.customers.displayName  //  FIX: 添加 name 字段以匹配前端類型定義
       } : undefined
     };
 
@@ -170,7 +170,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       hasAssignedTeam: !!conversationData.assignedTeam,
       assignedTeamName: conversationData.assignedTeam?.name,
       hasCustomer: !!conversationData.customer,
-      customerName: conversationData.customer?.displayName  // 🔧 FIX: Use displayName
+      customerName: conversationData.customer?.displayName  //  FIX: Use displayName
     });
 
     return c.json({
@@ -274,7 +274,7 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
       await drizzleDb.insert(conversationTransfers).values(transferRecord);
     }
 
-    // 🚀 WebSocket Broadcasting: Conversation Unassignment
+    // WebSocket Broadcasting: Conversation Unassignment
     try {
       const broadcastService = new WebSocketBroadcastService(c.env);
       await broadcastService.broadcastConversationEvent({
@@ -314,7 +314,7 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
       assignedTeam: updatedConversation?.teams || undefined,
       customer: updatedConversation?.customers ? {
         id: updatedConversation.customers.id,
-        name: updatedConversation.customers.displayName, // 🔧 FIX: 添加 name 字段以匹配前端類型定義
+        name: updatedConversation.customers.displayName, //  FIX: 添加 name 字段以匹配前端類型定義
         displayName: updatedConversation.customers.displayName, // 保留向後兼容
         platformUserId: updatedConversation.customers.platformUserId,
         platform: updatedConversation.customers.platform,
@@ -396,12 +396,12 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
 
     await drizzleDb.insert(conversationTransfers).values(transferRecord);
 
-    // 🚀 WebSocket Broadcasting: Dual-Team Conversation Transfer
+    // WebSocket Broadcasting: Dual-Team Conversation Transfer
     // Uses new broadcastConversationTransferred() for proper team-scoped notifications
     try {
       const broadcastService = new WebSocketBroadcastService(c.env);
 
-      // 📦 Fetch conversation details for broadcast payload (team-based only)
+      // Fetch conversation details for broadcast payload (team-based only)
       const conversationDetails = await drizzleDb
         .select({
           id: conversations.id,
@@ -417,7 +417,7 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
         .where(eq(conversations.id, conversationId))
         .get();
 
-      // 📦 Fetch team names for broadcast
+      // Fetch team names for broadcast
       const fromTeamInfo = fromTeamId ? await drizzleDb
         .select({ name: teams.name })
         .from(teams)
@@ -430,7 +430,7 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
         .where(eq(teams.id, toTeamId))
         .get() : null;
 
-      // 🆕 Use new dual-team broadcast method
+      // Use new dual-team broadcast method
       const broadcastResults = await broadcastService.broadcastConversationTransferred({
         conversationId,
         fromTeamId: fromTeamId || null,

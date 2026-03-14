@@ -73,11 +73,11 @@ const messageTypeClass = computed(() => ({
 const messageIcon = computed(() => {
   switch (props.messageType) {
     case 'success':
-      return '✓'
+      return ''
     case 'error':
-      return '✗'
+      return ''
     case 'info':
-      return 'ℹ'
+      return ''
     default:
       return ''
   }

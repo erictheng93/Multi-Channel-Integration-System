@@ -7,13 +7,13 @@
  * Based on TechStack/pubsub proven capacity
  */
 export const SHARD_CONFIG = {
-  CONNECTIONS_PER_SHARD: 10_000,        // Matches Pubsub proven capacity
-  MAX_SHARDS_PER_CONVERSATION: 5,       // Maximum 50,000 total connections
-  SHARD_REBALANCE_THRESHOLD: 0.8,       // 80% capacity triggers rebalance check
+  CONNECTIONS_PER_SHARD: 10_000, // Matches Pubsub proven capacity
+  MAX_SHARDS_PER_CONVERSATION: 5, // Maximum 50,000 total connections
+  SHARD_REBALANCE_THRESHOLD: 0.8, // 80% capacity triggers rebalance check
   SHARD_NAMING_PATTERN: '{conversationId}_shard-{index}',
-  CAPACITY_CHECK_TIMEOUT: 2000,         // 2 seconds for RPC timeout
-  FAILOVER_RETRY_COUNT: 3,              // Retry on shard failure
-  CACHE_TTL: 60_000,                    // 1 minute cache TTL
+  CAPACITY_CHECK_TIMEOUT: 2000, // 2 seconds for RPC timeout
+  FAILOVER_RETRY_COUNT: 3, // Retry on shard failure
+  CACHE_TTL: 60_000, // 1 minute cache TTL
 } as const;
 
 /**

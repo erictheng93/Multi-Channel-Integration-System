@@ -42,9 +42,9 @@ export function resourceMiddleware() {
 
     // 記錄當前使用的環境（僅在開發模式下）
     if (resourceSelector.isDevelopment()) {
-      console.log(`🔧 Using DEVELOPMENT resources`);
+      console.log(` Using DEVELOPMENT resources`);
     } else {
-      console.log(`🚀 Using PRODUCTION resources`);
+      console.log(` Using PRODUCTION resources`);
     }
 
     // 繼續處理請求
@@ -68,7 +68,7 @@ export function validateResourcesMiddleware() {
     }
 
     if (missingResources.length > 0) {
-      console.error(`❌ Missing resources: ${missingResources.join(', ')}`);
+      console.error(` Missing resources: ${missingResources.join(', ')}`);
       return c.json({
         success: false,
         error: 'Resource configuration error',

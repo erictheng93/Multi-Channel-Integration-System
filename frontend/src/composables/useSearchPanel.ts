@@ -7,17 +7,17 @@
  * @example
  * ```typescript
  * const searchPanel = useSearchPanel({
- *   onSearchResults: (results) => controller.setSearchResults(results),
- *   onSearchClear: () => controller.clearSearch()
+ * onSearchResults: (results) => controller.setSearchResults(results),
+ * onSearchClear: () => controller.clearSearch()
  * })
  *
  * // In template
  * <ConversationHeader @search="searchPanel.toggle" />
  * <MessageSearch
- *   v-if="searchPanel.isOpen.value"
- *   ref="searchPanel.searchRef.value"
- *   @search-results="searchPanel.handleSearchResults"
- *   @search-clear="searchPanel.handleSearchClear"
+ * v-if="searchPanel.isOpen.value"
+ * ref="searchPanel.searchRef.value"
+ * @search-results="searchPanel.handleSearchResults"
+ * @search-clear="searchPanel.handleSearchClear"
  * />
  * ```
  */
@@ -83,10 +83,10 @@ export interface SearchPanelReturn {
  * 搜索面板管理 Composable
  *
  * 功能:
- * - ✅ 搜索面板显示/隐藏状态
- * - ✅ 自动聚焦管理
- * - ✅ 搜索结果处理
- * - ✅ 清除搜索
+ * -  搜索面板显示/隐藏状态
+ * -  自动聚焦管理
+ * -  搜索结果处理
+ * -  清除搜索
  *
  * @param options - 配置选项
  * @returns 搜索面板状态和操作方法

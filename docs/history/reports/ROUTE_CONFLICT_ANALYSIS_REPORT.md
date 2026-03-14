@@ -6,42 +6,42 @@
 
 ---
 
-## 📊 執行摘要 (Executive Summary)
+##  執行摘要 (Executive Summary)
 
 ### 修復成果
 - **修復前**: 4,192 個誤報（跨模組誤報）
 - **修復後**: 297 個真實衝突
-- **誤報消除率**: **93%** ✅
+- **誤報消除率**: **93%** 
 
 ### 衝突分類
 | 嚴重程度 | 數量 | 佔比 | 優先級 |
 |---------|------|------|--------|
-| 🔴 HIGH (重複路由) | 14 | 4.7% | P0 - 立即修復 |
-| 🟡 MEDIUM (參數化衝突) | 125 | 42.1% | P1 - 本週修復 |
-| 🟢 LOW (潛在問題) | 158 | 53.2% | P2 - 監控 |
+|  HIGH (重複路由) | 14 | 4.7% | P0 - 立即修復 |
+|  MEDIUM (參數化衝突) | 125 | 42.1% | P1 - 本週修復 |
+|  LOW (潛在問題) | 158 | 53.2% | P2 - 監控 |
 
 ---
 
-## 🔴 高嚴重度衝突 (HIGH SEVERITY) - 立即修復
+##  高嚴重度衝突 (HIGH SEVERITY) - 立即修復
 
 ### 1. `modules/teams` - 根路徑衝突 (8 個衝突)
 
 **問題**: 多個子處理器都註冊了 `/` 路由，導致路由覆蓋
 
 ```
-❌ GET /
-   📍 src/modules/teams/handlers/team.ts:67
-   📍 src/modules/teams/handlers/members.ts:27
-   📍 src/modules/teams/handlers/index.ts:28
+ GET /
+    src/modules/teams/handlers/team.ts:67
+    src/modules/teams/handlers/members.ts:27
+    src/modules/teams/handlers/index.ts:28
 
-❌ POST /
-   📍 src/modules/teams/handlers/team.ts:140
-   📍 src/modules/teams/handlers/members.ts:87
-   📍 src/modules/teams/handlers/index.ts:28
+ POST /
+    src/modules/teams/handlers/team.ts:140
+    src/modules/teams/handlers/members.ts:87
+    src/modules/teams/handlers/index.ts:28
 
-❌ ROUTE /members (重複註冊)
-   📍 src/modules/teams/handlers/index.ts:18
-   📍 src/modules/teams/handlers/index.ts:25
+ ROUTE /members (重複註冊)
+    src/modules/teams/handlers/index.ts:18
+    src/modules/teams/handlers/index.ts:25
 ```
 
 **根本原因**:
@@ -50,16 +50,16 @@
 - `index.ts` 通過 `app.route('/', teamHandler)` 再次註冊
 
 **影響**:
-- 🚨 **CRITICAL**: 只有最後註冊的路由會生效，其他全部被覆蓋
+-  **CRITICAL**: 只有最後註冊的路由會生效，其他全部被覆蓋
 - 用戶可能無法訪問團隊成員和邀請管理功能
 
 **修復方案** (3 選 1):
 
-#### 方案 A: 子路由掛載（推薦）✅
+#### 方案 A: 子路由掛載（推薦）
 ```typescript
 // index.ts
-app.route('/teams', teamHandler);        // GET /teams, POST /teams
-app.route('/teams/members', membersHandler);    // GET /teams/members
+app.route('/teams', teamHandler); // GET /teams, POST /teams
+app.route('/teams/members', membersHandler); // GET /teams/members
 
 // team.ts - 改為特定路徑
 app.get('/teams', listTeams);
@@ -92,10 +92,10 @@ app.route('/', teamHandler); // 根路由處理團隊 CRUD
 #### 方案 C: 合併到單一處理器
 ```typescript
 // index.ts - 統一註冊
-app.get('/', listTeams);              // GET / → 列出團隊
-app.post('/', createTeam);            // POST / → 創建團隊
-app.get('/members', listMembers);     // GET /members → 列出成員
-app.post('/members', addMember);      // POST /members → 添加成員
+app.get('/', listTeams); // GET / → 列出團隊
+app.post('/', createTeam); // POST / → 創建團隊
+app.get('/members', listMembers); // GET /members → 列出成員
+app.post('/members', addMember); // POST /members → 添加成員
 ```
 
 **優點**: 最簡單，完全消除衝突
@@ -108,13 +108,13 @@ app.post('/members', addMember);      // POST /members → 添加成員
 ### 2. `modules/session` - 根路徑衝突 (2 個衝突)
 
 ```
-❌ POST /
-   📍 src/modules/session/handlers/session.ts:32
-   📍 src/modules/session/handlers/index.ts:345
+ POST /
+    src/modules/session/handlers/session.ts:32
+    src/modules/session/handlers/index.ts:345
 
-❌ GET /
-   📍 src/modules/session/handlers/session.ts:230
-   📍 src/modules/session/handlers/index.ts:345
+ GET /
+    src/modules/session/handlers/session.ts:230
+    src/modules/session/handlers/index.ts:345
 ```
 
 **問題**: `session.ts` 和 `index.ts` 都註冊了根路由
@@ -123,7 +123,7 @@ app.post('/members', addMember);      // POST /members → 添加成員
 ```typescript
 // index.ts - 使用子應用掛載
 import sessionHandler from './session';
-app.route('/', sessionHandler); // ✅ 統一入口
+app.route('/', sessionHandler); //  統一入口
 
 // session.ts - 保持內部使用 /
 app.post('/', createSession);
@@ -135,10 +135,10 @@ app.get('/', listSessions);
 ### 3. `modules/qrcode` - Health 端點衝突 (3 個衝突)
 
 ```
-❌ GET /health
-   📍 src/modules/qrcode/handlers/qrcode-router-simple.ts:10
-   📍 src/modules/qrcode/handlers/index.ts:19
-   📍 src/modules/qrcode/handlers/qrcode-main.ts:656
+ GET /health
+    src/modules/qrcode/handlers/qrcode-router-simple.ts:10
+    src/modules/qrcode/handlers/index.ts:19
+    src/modules/qrcode/handlers/qrcode-main.ts:656
 ```
 
 **問題**: 三個文件重複註冊 `/health` 端點
@@ -151,13 +151,13 @@ app.get('/health', async (c) => {
 });
 
 // 刪除其他文件中的重複 health 端點
-// ❌ qrcode-router-simple.ts:10
-// ❌ qrcode-main.ts:656
+// qrcode-router-simple.ts:10
+// qrcode-main.ts:656
 ```
 
 ---
 
-## 🟡 中嚴重度衝突 (MEDIUM SEVERITY) - 優先修復
+##  中嚴重度衝突 (MEDIUM SEVERITY) - 優先修復
 
 ### 參數化路由順序問題（125 個衝突）
 
@@ -176,23 +176,23 @@ app.get('/health', async (c) => {
 
 **修復前**:
 ```typescript
-// ❌ 錯誤順序 - 參數化路由在前
-app.get('/:id/members', getTeamMembers);     // 會攔截 /members
-app.get('/members', listAllMembers);          // ⚠️ 永遠不會被觸發
+// 錯誤順序 - 參數化路由在前
+app.get('/:id/members', getTeamMembers); // 會攔截 /members
+app.get('/members', listAllMembers); //  永遠不會被觸發
 
-app.get('/:id/stats', getQRCodeStats);       // 會攔截 /stats/overview
-app.get('/stats/overview', getStatsOverview); // ⚠️ 永遠不會被觸發
+app.get('/:id/stats', getQRCodeStats); // 會攔截 /stats/overview
+app.get('/stats/overview', getStatsOverview); //  永遠不會被觸發
 ```
 
 **修復後**:
 ```typescript
-// ✅ 正確順序 - 具體路由在前
-app.get('/members', listAllMembers);          // ✅ 最具體，優先匹配
-app.get('/:id/members', getTeamMembers);     // ✅ 參數化路由在後
+// 正確順序 - 具體路由在前
+app.get('/members', listAllMembers); //  最具體，優先匹配
+app.get('/:id/members', getTeamMembers); //  參數化路由在後
 
-app.get('/stats/overview', getStatsOverview); // ✅ 具體路由
-app.get('/stats/types', getStatsTypes);       // ✅ 具體路由
-app.get('/:id/stats', getQRCodeStats);       // ✅ 參數化路由最後
+app.get('/stats/overview', getStatsOverview); //  具體路由
+app.get('/stats/types', getStatsTypes); //  具體路由
+app.get('/:id/stats', getQRCodeStats); //  參數化路由最後
 ```
 
 #### 智能註冊器自動修復:
@@ -205,7 +205,7 @@ registry.addMany([
   { path: '/members', handler: listAllMembers },
   // 智能註冊器會自動重排為正確順序
 ]);
-registry.register(); // ✅ 自動按 specificity 排序
+registry.register(); //  自動按 specificity 排序
 ```
 
 ---
@@ -215,11 +215,11 @@ registry.register(); // ✅ 自動按 specificity 排序
 #### 1. `modules/teams` - 成員管理路由衝突
 
 ```
-🟡 "/:id/members" 可能攔截 "/members"
+ "/:id/members" 可能攔截 "/members"
    優先級分數: 11 vs 10
-   📍 src/modules/teams/handlers/team.ts:175
-   📍 src/modules/teams/handlers/members.ts:27
-   💡 建議: 先註冊 "/members"，再註冊 "/:id/members"
+    src/modules/teams/handlers/team.ts:175
+    src/modules/teams/handlers/members.ts:27
+    建議: 先註冊 "/members"，再註冊 "/:id/members"
 ```
 
 **影響**:
@@ -229,17 +229,17 @@ registry.register(); // ✅ 自動按 specificity 排序
 **修復**:
 ```typescript
 // team.ts 或 index.ts
-app.get('/members', listAllMembers);     // ✅ 先註冊
-app.get('/:id/members', getTeamMembers); // ✅ 後註冊
+app.get('/members', listAllMembers); //  先註冊
+app.get('/:id/members', getTeamMembers); //  後註冊
 ```
 
 #### 2. `modules/qrcode` - 統計端點路由衝突
 
 ```
-🟡 "/:id/stats" 可能攔截 "/stats/overview"
+ "/:id/stats" 可能攔截 "/stats/overview"
    優先級分數: 11 vs 20
-   📍 src/modules/qrcode/handlers/index.ts:63
-   📍 src/modules/qrcode/handlers/index.ts:72
+    src/modules/qrcode/handlers/index.ts:63
+    src/modules/qrcode/handlers/index.ts:72
 ```
 
 **問題**:
@@ -250,30 +250,30 @@ app.get('/:id/members', getTeamMembers); // ✅ 後註冊
 ```typescript
 // 正確順序 - 具體路由組在前
 app.get('/stats/overview', getStatsOverview);  // specificity = 20
-app.get('/stats/types', getStatsTypes);        // specificity = 20
-app.get('/stats/trends', getStatsTrends);      // specificity = 20
-app.get('/:id/stats', getQRCodeStats);         // specificity = 11
+app.get('/stats/types', getStatsTypes); // specificity = 20
+app.get('/stats/trends', getStatsTrends); // specificity = 20
+app.get('/:id/stats', getQRCodeStats); // specificity = 11
 ```
 
 #### 3. `modules/analytics` - 批次操作路由衝突
 
 ```
-🟡 "/batch/:batchId" 可能攔截 "/batch/create"
+ "/batch/:batchId" 可能攔截 "/batch/create"
    優先級分數: 11 vs 20
-   📍 src/modules/analytics/handlers/index.ts:45
-   📍 src/modules/analytics/handlers/index.ts:52
+    src/modules/analytics/handlers/index.ts:45
+    src/modules/analytics/handlers/index.ts:52
 ```
 
 **修復**:
 ```typescript
-// ✅ 正確順序
-app.post('/batch/create', createBatch);        // 具體路由
-app.get('/batch/:batchId', getBatchStatus);    // 參數化路由
+// 正確順序
+app.post('/batch/create', createBatch); // 具體路由
+app.get('/batch/:batchId', getBatchStatus); // 參數化路由
 ```
 
 ---
 
-## 🟢 低嚴重度問題 (LOW SEVERITY) - 監控即可
+##  低嚴重度問題 (LOW SEVERITY) - 監控即可
 
 共 158 個潛在問題，主要是：
 
@@ -283,10 +283,10 @@ app.get('/batch/:batchId', getBatchStatus);    // 參數化路由
 
 2. **範例**:
 ```
-ℹ️  "/" 和 "/stats/overview"
-   📦 Module: modules/qrcode
-   📍 src/modules/qrcode/handlers/qrcode-router-simple.ts:13
-   📍 src/modules/qrcode/handlers/index.ts:72
+  "/" 和 "/stats/overview"
+    Module: modules/qrcode
+    src/modules/qrcode/handlers/qrcode-router-simple.ts:13
+    src/modules/qrcode/handlers/index.ts:72
 ```
 
 **分析**:
@@ -300,7 +300,7 @@ app.get('/batch/:batchId', getBatchStatus);    // 參數化路由
 
 ---
 
-## 📋 修復優先級與時間表
+##  修復優先級與時間表
 
 ### Phase 1: 緊急修復（本週完成）
 
@@ -332,7 +332,7 @@ app.get('/batch/:batchId', getBatchStatus);    // 參數化路由
 
 ---
 
-## 🛠️ 修復工具與資源
+##  修復工具與資源
 
 ### 1. 智能路由註冊器
 - **位置**: `src/core/smart-route-registry.ts`
@@ -351,20 +351,20 @@ app.get('/batch/:batchId', getBatchStatus);    // 參數化路由
 
 ---
 
-## 📈 長期改進建議
+##  長期改進建議
 
 ### 1. 建立路由規範
 ```typescript
 // 團隊路由規範範例
-// ✅ DO: 使用明確的路徑分組
-/api/teams              → 列出所有團隊
-/api/teams/:id          → 特定團隊詳情
+// DO: 使用明確的路徑分組
+/api/teams → 列出所有團隊
+/api/teams/:id → 特定團隊詳情
 /api/teams/:id/members  → 團隊成員管理
-/api/teams/members      → 跨團隊成員搜索
+/api/teams/members → 跨團隊成員搜索
 
-// ❌ DON'T: 使用模糊的根路由
-/                       → 避免在子處理器中使用
-/:id                    → 必須在所有具體路由之後
+// DON'T: 使用模糊的根路由
+/ → 避免在子處理器中使用
+/:id → 必須在所有具體路由之後
 ```
 
 ### 2. 啟用自動化防護
@@ -391,7 +391,7 @@ Week 4: 其餘模組
 describe('Team Routes', () => {
   it('should access /members before /:id/members', async () => {
     const res1 = await request(app).get('/api/teams/members');
-    expect(res1.status).toBe(200); // ✅ 不應該 404
+    expect(res1.status).toBe(200); //  不應該 404
 
     const res2 = await request(app).get('/api/teams/123/members');
     expect(res2.status).toBe(200);
@@ -401,7 +401,7 @@ describe('Team Routes', () => {
 
 ---
 
-## ✅ 成功指標
+##  成功指標
 
 ### 短期目標（1 週）
 - [ ] 修復所有 14 個 HIGH 嚴重度衝突
@@ -420,13 +420,13 @@ describe('Team Routes', () => {
 
 ---
 
-## 🎯 總結
+##  總結
 
 ### 關鍵發現
-1. ✅ **修復工具有效**: 跨模組誤報消除率 93%
-2. 🔴 **14 個緊急問題**: 需要立即修復的重複路由
-3. 🟡 **125 個順序問題**: 可以用智能註冊器自動修復
-4. 🟢 **158 個低優先級**: 持續監控即可
+1.  **修復工具有效**: 跨模組誤報消除率 93%
+2.  **14 個緊急問題**: 需要立即修復的重複路由
+3.  **125 個順序問題**: 可以用智能註冊器自動修復
+4.  **158 個低優先級**: 持續監控即可
 
 ### 下一步行動
 1. **立即**: 修復 `modules/teams` 的 12 個根路由衝突
@@ -436,4 +436,4 @@ describe('Team Routes', () => {
 
 ---
 
-**報告結束** | Generated by Claude Code 🤖
+**報告結束** | Generated by Claude Code 

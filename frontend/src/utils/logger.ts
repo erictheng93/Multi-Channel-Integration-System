@@ -5,12 +5,12 @@
  * In production: only warn and error are emitted; debug/info are silenced.
  *
  * Usage:
- *   import { createLogger } from '@/utils/logger'
- *   const log = createLogger('WebSocketIntegration')
- *   log.debug('connecting', { url })   // silenced in prod
- *   log.info('connected')              // silenced in prod
- *   log.warn('reconnecting', { attempt })
- *   log.error('failed', error)
+ * import { createLogger } from '@/utils/logger'
+ * const log = createLogger('WebSocketIntegration')
+ * log.debug('connecting', { url }) // silenced in prod
+ * log.info('connected') // silenced in prod
+ * log.warn('reconnecting', { attempt })
+ * log.error('failed', error)
  */
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'

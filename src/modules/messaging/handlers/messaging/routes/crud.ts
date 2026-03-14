@@ -424,7 +424,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
         .all();
     }
 
-    // 🔔 @提及通知檢測與觸發
+    // @提及通知檢測與觸發
     const mentionedUserIds = getMentionedUserIds(content);
     if (mentionedUserIds.length > 0) {
       // 獲取發送者的顯示名稱

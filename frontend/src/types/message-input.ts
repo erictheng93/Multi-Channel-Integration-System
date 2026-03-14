@@ -7,10 +7,10 @@ export interface MessageInputAttachment {
   name: string
   size: number
   file: globalThis.File
-  blobUrl?: string      // Used for image preview
-  isImage: boolean      // Whether the file is an image
-  fileType: string      // File type label (e.g., '圖片', 'PDF', 'Word')
-  typeColor: string     // Color associated with the file type
+  blobUrl?: string // Used for image preview
+  isImage: boolean // Whether the file is an image
+  fileType: string // File type label (e.g., '圖片', 'PDF', 'Word')
+  typeColor: string // Color associated with the file type
 }
 
 /** Data emitted when file attachments are sent — used for Flex Message Card display. */

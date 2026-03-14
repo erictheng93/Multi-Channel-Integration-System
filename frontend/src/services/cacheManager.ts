@@ -15,15 +15,15 @@ interface CacheItem<T> {
 
 // 快取配置
 interface CacheConfig {
-  maxAge: number        // 最大快取時間（毫秒）
-  maxSize: number       // 最大快取項目數量
+  maxAge: number // 最大快取時間（毫秒）
+  maxSize: number // 最大快取項目數量
   staleWhileRevalidate: number  // 後台更新閾值
   compression: boolean  // 是否啟用壓縮
 }
 
 const DEFAULT_CACHE_CONFIG: CacheConfig = {
-  maxAge: 5 * 60 * 1000,     // 5分鐘
-  maxSize: 50,               // 最多50個快取項目
+  maxAge: 5 * 60 * 1000, // 5分鐘
+  maxSize: 50, // 最多50個快取項目
   staleWhileRevalidate: 30 * 1000, // 30秒後後台更新
   compression: true
 }
@@ -128,7 +128,7 @@ export class CacheManager {
       this.cache.delete(oldestKey)
       this.accessTimes.delete(oldestKey)
       this.stats.value.evictions++
-      console.log(`🗑️ [CacheManager] Evicted LRU item: ${oldestKey}`)
+      console.log(`[CacheManager] Evicted LRU item: ${oldestKey}`)
     }
   }
 
@@ -154,7 +154,7 @@ export class CacheManager {
     // 持久化到 localStorage
     this.saveToPersistentStorage(key, cacheItem)
     
-    console.log(`💾 [CacheManager] Cached ${key}, size: ${this.cache.size}`)
+    console.log(`[CacheManager] Cached ${key}, size: ${this.cache.size}`)
   }
 
   // 獲取快取項目
@@ -183,7 +183,7 @@ export class CacheManager {
     const needsUpdate = this.needsRevalidation(item)
     this.updateStats()
 
-    console.log(`🎯 [CacheManager] Cache ${needsUpdate ? 'hit (stale)' : 'hit'}: ${key}`)
+    console.log(`[CacheManager] Cache ${needsUpdate ? 'hit (stale)' : 'hit'}: ${key}`)
     
     return {
       data: item.data,
@@ -200,7 +200,7 @@ export class CacheManager {
     // 立即更新快取
     this.set(key, optimisticData)
     
-    console.log(`⚡ [CacheManager] Optimistic update: ${key}`)
+    console.log(`[CacheManager] Optimistic update: ${key}`)
     return optimisticData
   }
 
@@ -222,7 +222,7 @@ export class CacheManager {
     }
 
     this.updateStats()
-    console.log(`🗑️ [CacheManager] Invalidated ${invalidatedCount} cache entries`)
+    console.log(`[CacheManager] Invalidated ${invalidatedCount} cache entries`)
     return invalidatedCount
   }
 
@@ -242,7 +242,7 @@ export class CacheManager {
 
     this.updateStats()
     if (cleanedCount > 0) {
-      console.log(`🧹 [CacheManager] Cleaned ${cleanedCount} expired items`)
+      console.log(`[CacheManager] Cleaned ${cleanedCount} expired items`)
     }
     return cleanedCount
   }
@@ -258,10 +258,10 @@ export class CacheManager {
     try {
       const data = await dataLoader()
       this.set(key, data)
-      console.log(`🔥 [CacheManager] Prefetched: ${key}`)
+      console.log(`[CacheManager] Prefetched: ${key}`)
       return data
     } catch (error) {
-      console.error(`❌ [CacheManager] Prefetch failed for ${key}:`, error)
+      console.error(`[CacheManager] Prefetch failed for ${key}:`, error)
       throw error
     }
   }
@@ -271,7 +271,7 @@ export class CacheManager {
     entries.forEach(({ key, data, options }) => {
       this.set(key, data, options)
     })
-    console.log(`📦 [CacheManager] Batch cached ${entries.length} items`)
+    console.log(`[CacheManager] Batch cached ${entries.length} items`)
   }
 
   // 更新統計資訊
@@ -313,7 +313,7 @@ export class CacheManager {
           }
         }
       }
-      console.log(`💿 [CacheManager] Loaded ${this.cache.size} items from storage`)
+      console.log(`[CacheManager] Loaded ${this.cache.size} items from storage`)
     } catch (error) {
       console.warn('[CacheManager] Failed to load from storage:', error)
     }
@@ -367,7 +367,7 @@ export class CacheManager {
     }
     
     this.updateStats()
-    console.log('🧹 [CacheManager] Cache cleared')
+    console.log('[CacheManager] Cache cleared')
   }
 }
 

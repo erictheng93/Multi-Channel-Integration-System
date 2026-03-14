@@ -12,11 +12,11 @@ import type { PopularType } from '@/components/reports/dashboard/PopularTypesWid
 describe('PopularTypesWidget.vue', () => {
   const mockGetReportTypeIcon = vi.fn((type) => {
     const icons: Record<string, string> = {
-      'basic': '📊',
-      'customer-analytics': '👥',
-      'performance': '⚡'
+      'basic': '',
+      'customer-analytics': '',
+      'performance': ''
     }
-    return icons[type] || '📄'
+    return icons[type] || ''
   })
 
   const mockPopularTypes: PopularType[] = [
@@ -34,7 +34,7 @@ describe('PopularTypesWidget.vue', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('📊 熱門報表類型')
+      expect(wrapper.text()).toContain('熱門報表類型')
     })
 
     it('应该显示 Top N 标签', () => {

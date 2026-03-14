@@ -61,7 +61,7 @@ export class RoomConnectionManager {
         connectionId,
         participants: Array.from(this.ctx.participants),
         mode: this.ctx.config.mode, // Inform client of room mode
-        serverLastMessageAt: this.messageService.getLastMessageTimestamp() // 🔧 重連同步：伺服器最後訊息時間戳
+        serverLastMessageAt: this.messageService.getLastMessageTimestamp() //  重連同步：伺服器最後訊息時間戳
       },
       timestamp: nowMs()
     });
@@ -103,7 +103,7 @@ export class RoomConnectionManager {
         }
         break;
 
-      // 🔧 重連同步：處理客戶端的同步請求
+      // 重連同步：處理客戶端的同步請求
       case 'sync_request':
         if (this.helpers.isFullMode()) {
           await this.messageService.handleSyncRequest(connection, message);

@@ -130,7 +130,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
 
 // 發送訊息 - Simplified with extracted services
 conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
-  // 🔵 Phase 1 Emergency Debug Logging
+  // Phase 1 Emergency Debug Logging
   log.debug('MESSAGE HANDLER entry', {
     timestamp: nowISO(),
     conversationId: c.req.param('id'),
@@ -210,12 +210,12 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
       log.warn('WEBSOCKET: Pending message broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
     }
 
-    // 🚀 Phase B4: Unified Broadcast for Conversation List & Detail Updates
+    // Phase B4: Unified Broadcast for Conversation List & Detail Updates
     // Uses WebSocketBroadcastService.broadcastNewMessage() for both:
     // 1. CustomerConversationDO - conversation detail page real-time updates
     // 2. MessageBroadcaster global - conversation list page lastMessage updates
     try {
-      // 🔒 Security: Fetch teamId for team-scoped broadcast (P1 fix)
+      // Security: Fetch teamId for team-scoped broadcast (P1 fix)
       let teamId: number | undefined;
       try {
         const db = createDbClient(c.env.DB);
@@ -243,7 +243,7 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
           deliveryStatus: 'pending'
         },
         source: 'api',
-        // 🔒 Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
+        // Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
         teamId
       });
       log.debug('UNIFIED_BROADCAST: Agent message broadcast completed', {
@@ -267,7 +267,7 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
     log.debug('RESPONSE returning early success response');
 
     // Transform to frontend format (Pending status)
-    // ✅ Safe metadata parsing with error handling
+    // Safe metadata parsing with error handling
     let parsedMetadata = {};
     if (result.message.metadata) {
       try {
@@ -408,7 +408,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
 
     log.debug('Messages API retrieved messages', { count: messageList.length, page });
 
-    // ✅ 轉換為前端期望的 Message 格式
+    // 轉換為前端期望的 Message 格式
     const formattedMessages = messageList.map(row => ({
       id: row.id,
       conversationId: row.conversationId,
@@ -433,7 +433,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       recalledAt: row.recalledAt
     }));
 
-    // ✅ 返回分頁響應格式
+    // 返回分頁響應格式
     const totalPages = Math.ceil(total / pageSize);
     const paginatedResponse = {
       items: formattedMessages,

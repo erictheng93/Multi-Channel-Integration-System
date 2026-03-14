@@ -6,7 +6,7 @@
 // Force UTC timezone for all tests to ensure consistent date/time handling
 // across different environments and CI/CD systems
 process.env.TZ = 'UTC';
-console.log('🌍 Timezone standardized to UTC for consistent test results');
+console.log(' Timezone standardized to UTC for consistent test results');
 
 import { beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, type Pinia } from 'pinia'
@@ -95,11 +95,11 @@ function resetAllStores(pinia: Pinia) {
   }
 }
 
-console.log('🔧 Loading vitest.setup.ts - Using global Pinia instance')
+console.log(' Loading vitest.setup.ts - Using global Pinia instance')
 
 // CRITICAL FIX: Vue Test Utils DOM Event Interface Issue
 // This must run before any Vue Test Utils imports
-console.log('🔧 Applying critical DOM event interface fix...')
+console.log(' Applying critical DOM event interface fix...')
 
 // Import and apply the enhanced DOM event fix
 import './dom-event-fix-enhanced'
@@ -169,7 +169,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-console.log('✅ DOM event interface fix applied successfully')
+console.log(' DOM event interface fix applied successfully')
 
 
 
@@ -341,7 +341,7 @@ vi.mock('vue-router', async () => {
 
 // Global setup for all tests
 beforeEach(() => {
-  console.log('🍍 Refreshing test environment (Pinia already active)')
+  console.log(' Refreshing test environment (Pinia already active)')
 
   // Standardize timezone to UTC for consistent test results
   process.env.TZ = 'UTC';

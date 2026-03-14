@@ -7,7 +7,7 @@
 
 ---
 
-## 🔍 问题根源分析
+##  问题根源分析
 
 ### 核心问题：异步渲染 + 条件渲染冲突
 
@@ -15,7 +15,7 @@ ImageMessage 组件使用**三态渲染系统**：
 
 ```typescript
 // 状态 1: 加载中 (初始状态)
-const isLoading = ref(true)  // ⚡ 默认 true
+const isLoading = ref(true)  //  默认 true
 
 // 状态 2: 加载成功
 v-if="isLoading" → Loading Spinner 显示
@@ -37,9 +37,9 @@ const hasError = ref(false)
 
   <!-- 此时这些元素都不存在！ -->
   <div v-else class="image-wrapper">
-    <img ... />  <!-- ❌ 不存在 -->
-    <div class="image-container" />  <!-- ❌ 不存在 -->
-    <button class="download-btn" />  <!-- ❌ 不存在 -->
+    <img ... />  <!--  不存在 -->
+    <div class="image-container" />  <!--  不存在 -->
+    <button class="download-btn" />  <!--  不存在 -->
   </div>
 </template>
 ```
@@ -54,10 +54,10 @@ it('should emit preview on click', async () => {
 
   await flushPromises()
 
-  // ❌ 错误：此时 isLoading = true，image-container 不存在！
+  // 错误：此时 isLoading = true，image-container 不存在！
   await wrapper.find('.image-container').trigger('click')
-  //                   ^^^^^^^^^^^^^^
-  //                   Cannot call trigger on an empty DOMWrapper
+  // ^^^^^^^^^^^^^^
+  // Cannot call trigger on an empty DOMWrapper
 
   expect(wrapper.emitted('preview')).toBeTruthy()
 })
@@ -70,7 +70,7 @@ it('should emit preview on click', async () => {
 <img @load="handleImageLoad" />
 
 const handleImageLoad = () => {
-  isLoading.value = false  // ⚡ 只有触发 load 事件才会变 false
+  isLoading.value = false  //  只有触发 load 事件才会变 false
   hasError.value = false
 }
 ```
@@ -78,11 +78,11 @@ const handleImageLoad = () => {
 **问题**: 在测试环境中，`<img>` 标签不会自动触发 `load` 事件：
 
 ```typescript
-// ❌ 错误假设：mount 后图片会自动加载
+// 错误假设：mount 后图片会自动加载
 wrapper = mount(ImageMessage, { ... })
 // isLoading 仍然是 true！
 
-// ✅ 正确：需要手动触发 load 事件
+// 正确：需要手动触发 load 事件
 await wrapper.find('img').trigger('load')
 await flushPromises()
 // 现在 isLoading = false，其他元素才会出现
@@ -90,7 +90,7 @@ await flushPromises()
 
 ---
 
-## 🐛 失败案例详解
+##  失败案例详解
 
 ### Case 1: 空 DOMWrapper 错误
 
@@ -103,7 +103,7 @@ it('should emit preview on container click', async () => {
 
   await flushPromises()
 
-  // ❌ 此时组件状态：
+  // 此时组件状态：
   // isLoading = true
   // .image-container 不存在
   await wrapper.find('.image-container').trigger('click')
@@ -130,14 +130,14 @@ it('should emit preview after image loads', async () => {
     props: { message: mockMessage, imageUrl: 'test.jpg' }
   })
 
-  // ✅ 步骤 1: 触发图片加载事件
+  // 步骤 1: 触发图片加载事件
   await wrapper.find('img').trigger('load')
   await flushPromises()
 
-  // ✅ 步骤 2: 现在 isLoading = false，元素存在了
+  // 步骤 2: 现在 isLoading = false，元素存在了
   await wrapper.find('.image-container').trigger('click')
 
-  // ✅ 步骤 3: 验证事件
+  // 步骤 3: 验证事件
   expect(wrapper.emitted('preview')).toBeTruthy()
 })
 ```
@@ -157,8 +157,8 @@ it('should set alt attribute from imageName', async () => {
 
   await flushPromises()
 
-  // ❌ 预期: 'vacation.jpg'
-  // ❌ 实际: undefined (因为在加载状态下 img 可能不存在或属性未设置)
+  // 预期: 'vacation.jpg'
+  // 实际: undefined (因为在加载状态下 img 可能不存在或属性未设置)
   expect(wrapper.find('img').attributes('alt')).toBe('vacation.jpg')
 })
 ```
@@ -186,7 +186,7 @@ it('should set alt attribute', async () => {
     }
   })
 
-  // ✅ 确保 Vue 已经更新 DOM
+  // 确保 Vue 已经更新 DOM
   await wrapper.vm.$nextTick()
 
   const img = wrapper.find('img')
@@ -210,8 +210,8 @@ it('should emit download on button click', async () => {
 
   await flushPromises()
 
-  // ❌ .download-btn 不存在（因为在 .image-overlay 中，
-  //    而 .image-overlay 只在非加载状态下显示）
+  // .download-btn 不存在（因为在 .image-overlay 中，
+  // 而 .image-overlay 只在非加载状态下显示）
   await wrapper.find('.download-btn').trigger('click')
   // Error: Cannot call trigger on an empty DOMWrapper
 })
@@ -238,11 +238,11 @@ it('should emit download after load', async () => {
     }
   })
 
-  // ✅ 先加载图片
+  // 先加载图片
   await wrapper.find('img').trigger('load')
   await flushPromises()
 
-  // ✅ 现在 .download-btn 存在了
+  // 现在 .download-btn 存在了
   await wrapper.find('.download-btn').trigger('click')
 
   expect(wrapper.emitted('download')).toBeTruthy()
@@ -252,20 +252,20 @@ it('should emit download after load', async () => {
 
 ---
 
-## 💡 最终解决方案
+##  最终解决方案
 
 ### 策略 1: 简化测试范围
 
 **原则**: 测试组件的**稳定状态**，而不是所有可能的状态转换。
 
 ```typescript
-// ✅ 好的测试：测试初始状态
+// 好的测试：测试初始状态
 it('shows loading state initially', () => {
   wrapper = mount(ImageMessage, { ... })
   expect(wrapper.find('.loading-spinner').exists()).toBe(true)
 })
 
-// ✅ 好的测试：测试稳定的 props
+// 好的测试：测试稳定的 props
 it('displays caption when provided', () => {
   wrapper = mount(ImageMessage, {
     props: { caption: 'My caption', ... }
@@ -273,7 +273,7 @@ it('displays caption when provided', () => {
   expect(wrapper.find('.image-caption').text()).toBe('My caption')
 })
 
-// ❌ 复杂的测试：需要多步骤状态转换
+// 复杂的测试：需要多步骤状态转换
 it('shows error then retry then success', async () => {
   // 加载 → 错误 → 重试 → 成功
   // 太复杂，容易出错
@@ -283,7 +283,7 @@ it('shows error then retry then success', async () => {
 ### 策略 2: 避免测试异步状态转换
 
 ```typescript
-// ❌ 避免：复杂的异步流程
+// 避免：复杂的异步流程
 it('handles load → error → retry', async () => {
   await trigger('load')
   await trigger('error')
@@ -291,7 +291,7 @@ it('handles load → error → retry', async () => {
   // 太多异步步骤，难以保证稳定性
 })
 
-// ✅ 推荐：测试单一状态
+// 推荐：测试单一状态
 it('emits image-load event', async () => {
   wrapper = mount(...)
   await wrapper.find('img').trigger('load')
@@ -325,7 +325,7 @@ describe('ImageMessage Component', () => {
 
 ---
 
-## 📊 测试策略对比
+##  测试策略对比
 
 | 方面 | 初始策略 (失败) | 最终策略 (成功) |
 |-----|----------------|----------------|
@@ -338,7 +338,7 @@ describe('ImageMessage Component', () => {
 
 ---
 
-## 🎯 关键教训
+##  关键教训
 
 ### 1. 理解组件的渲染生命周期
 
@@ -384,12 +384,12 @@ isLoading = false
 
 ---
 
-## 🛠️ 推荐的测试模式
+##  推荐的测试模式
 
 ### 模式 1: 静态 Props 测试
 
 ```typescript
-// ✅ 可靠：测试静态 props 渲染
+// 可靠：测试静态 props 渲染
 it('displays caption', () => {
   wrapper = mount(Component, {
     props: { caption: 'Test' }
@@ -401,7 +401,7 @@ it('displays caption', () => {
 ### 模式 2: 简单事件测试
 
 ```typescript
-// ✅ 可靠：单步骤事件测试
+// 可靠：单步骤事件测试
 it('emits event', async () => {
   wrapper = mount(Component, { ... })
   await wrapper.find('img').trigger('load')
@@ -412,7 +412,7 @@ it('emits event', async () => {
 ### 模式 3: 存在性测试
 
 ```typescript
-// ✅ 可靠：测试元素存在
+// 可靠：测试元素存在
 it('renders loading state', () => {
   wrapper = mount(Component, { ... })
   expect(wrapper.find('.loading').exists()).toBe(true)
@@ -422,7 +422,7 @@ it('renders loading state', () => {
 ### 避免的模式
 
 ```typescript
-// ❌ 脆弱：多步骤异步流程
+// 脆弱：多步骤异步流程
 it('complex flow', async () => {
   await step1()
   await nextTick()
@@ -432,7 +432,7 @@ it('complex flow', async () => {
   // 太多异步步骤，难以调试
 })
 
-// ❌ 脆弱：测试所有状态转换
+// 脆弱：测试所有状态转换
 it('all state transitions', async () => {
   // loading → loaded → error → retry → success
   // 过于复杂
@@ -441,7 +441,7 @@ it('all state transitions', async () => {
 
 ---
 
-## 📚 总结
+##  总结
 
 ### 失败原因
 
@@ -460,11 +460,11 @@ it('all state transitions', async () => {
 ### 最终成果
 
 ```
-✅ 20/20 tests passing
-✅ ~85% coverage
-✅ 1.36s execution time
-✅ Zero flaky tests
-✅ High maintainability
+ 20/20 tests passing
+ ~85% coverage
+ 1.36s execution time
+ Zero flaky tests
+ High maintainability
 ```
 
 ---

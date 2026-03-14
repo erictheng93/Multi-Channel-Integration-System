@@ -118,7 +118,7 @@ export class WebSocketClient {
       return
     }
 
-    // 🔧 增強版連接前預檢機制
+    // 增強版連接前預檢機制
     try {
       this.log('Performing pre-connection checks...')
       const preCheckResult = await this.performPreConnectionChecks()
@@ -237,7 +237,7 @@ export class WebSocketClient {
         checks.push('Token not expired')
 
         // 檢查 5: 令牌即將過期檢查與自動刷新
-        // 🔧 FIX: Changed from blocking at 5 minutes to proactive refresh at 2 minutes
+        // FIX: Changed from blocking at 5 minutes to proactive refresh at 2 minutes
         // Backend now allows tokens with >30 seconds remaining, so we refresh proactively
         const proactiveRefreshBuffer = 120 // 2 minutes - refresh proactively if close to expiry
         const minimumTokenLife = 30 // 30 seconds - matches backend expiryBuffer
@@ -292,7 +292,7 @@ export class WebSocketClient {
 
       // 檢查 6: 網路連接性預檢（可選）
       try {
-        // ✅ 使用 Vite proxy 在開發模式，避免 CORS 問題
+        // 使用 Vite proxy 在開發模式，避免 CORS 問題
         // 開發模式使用相對 URL (通過 Vite proxy)，生產模式使用完整 URL
         const healthUrl = import.meta.env.DEV
           ? '/api/websocket/health'
@@ -315,7 +315,7 @@ export class WebSocketClient {
 
         if (response.ok) {
           const healthData = await response.json()
-          // ✅ Fix: Check correct nested path with fallback for backward compatibility
+          // Fix: Check correct nested path with fallback for backward compatibility
           const isWebSocketEnabled = healthData.configuration?.websocketEnabled ??
                                      healthData.websocketEnabled ??
                                      false
@@ -351,7 +351,7 @@ export class WebSocketClient {
   private buildWebSocketUrl(): string {
     const authStore = useAuthStore()
 
-    // ✅ Layer 3: 使用運行時配置層
+    // Layer 3: 使用運行時配置層
     // 不再硬編碼 URL，自動適配開發/生產環境
     const wsBaseUrl = getWebSocketUrl()
 
@@ -590,7 +590,7 @@ export class WebSocketClient {
     this.handlers.onReconnect?.(this.reconnectAttempts)
 
     this.reconnectTimer = setTimeout(async () => {
-      // 🔧 在重新連接前檢查並刷新令牌
+      // 在重新連接前檢查並刷新令牌
       try {
         const authStore = useAuthStore()
 
@@ -726,12 +726,12 @@ export class WebSocketClient {
   }
 
   private updateConnectionState(state: WebSocketConnectionState): void {
-    // 🔥 Update state synchronously for immediate UI feedback
+    // Update state synchronously for immediate UI feedback
     this.connectionState.value = state
     this.isConnected.value = state === 'connected'
     this.log(`Connection state changed to: ${state}`)
 
-    // 🔥 Defer callback execution to prevent infinite recursion
+    // Defer callback execution to prevent infinite recursion
     // This breaks the synchronous execution chain that could trigger cascading updates
     if (this.handlers.onConnectionChange) {
       import('vue').then(({ nextTick }) => {

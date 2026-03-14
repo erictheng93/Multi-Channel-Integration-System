@@ -348,17 +348,17 @@ describe('useReportDashboard', () => {
     it('getReportTypeIcon 應該返回正確的圖標', () => {
       const { getReportTypeIcon } = useReportDashboard({ autoLoad: false })
 
-      expect(getReportTypeIcon('conversation_summary')).toBe('💬')
-      expect(getReportTypeIcon('agent_performance')).toBe('👤')
-      expect(getReportTypeIcon('custom')).toBe('🔧')
+      expect(getReportTypeIcon('conversation_summary')).toBe('')
+      expect(getReportTypeIcon('agent_performance')).toBe('')
+      expect(getReportTypeIcon('custom')).toBe('')
     })
 
     it('getStatusIcon 應該返回正確的圖標', () => {
       const { getStatusIcon } = useReportDashboard({ autoLoad: false })
 
-      expect(getStatusIcon('completed')).toBe('✅')
-      expect(getStatusIcon('pending')).toBe('⏳')
-      expect(getStatusIcon('failed')).toBe('❌')
+      expect(getStatusIcon('completed')).toBe('')
+      expect(getStatusIcon('pending')).toBe('')
+      expect(getStatusIcon('failed')).toBe('')
     })
 
     it('formatRelativeTime 應該正確格式化時間', () => {

@@ -155,7 +155,7 @@ describe('useMessageHandlers', () => {
 
     it('should skip empty messages with no attachments', () => {
       const data: MessageSentData = {
-        content: '   ',
+        content: ' ',
         attachments: []
       }
       // Should return early without error

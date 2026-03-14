@@ -3,7 +3,7 @@
  *
  * 本文件定義所有 Durable Objects 內部通信使用的路由路徑
  *
- * ⚠️ 重要說明：
+ * 重要說明：
  * Durable Objects 使用相對路徑進行內部 fetch 調用。
  * 這些路徑不是完整的 URL，而是 Durable Object 內部的路由。
  *
@@ -105,7 +105,7 @@ export type DurableObjectRoute =
 /**
  * 構建 Durable Object 內部 fetch URL
  *
- * ⚠️ Durable Objects 內部通信說明：
+ * Durable Objects 內部通信說明：
  * - Durable Objects 之間的 fetch 調用使用相對路徑
  * - 不需要完整的 HTTP URL
  * - 路由在 Durable Object 類中定義和處理

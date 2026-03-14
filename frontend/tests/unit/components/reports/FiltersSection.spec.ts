@@ -12,11 +12,11 @@ import type { ReportListQuery } from '@/types/reports'
 describe('FiltersSection.vue', () => {
   const mockGetReportTypeIcon = vi.fn((type) => {
     const icons: Record<string, string> = {
-      'basic': '📊',
-      'customer-analytics': '👥',
-      'performance': '⚡'
+      'basic': '',
+      'customer-analytics': '',
+      'performance': ''
     }
-    return icons[type] || '📄'
+    return icons[type] || ''
   })
 
   const mockGroupedReportTypes = [
@@ -61,7 +61,7 @@ describe('FiltersSection.vue', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('🔍 篩選器')
+      expect(wrapper.text()).toContain('篩選器')
     })
 
     it('应该渲染所有筛选器组', () => {
@@ -159,11 +159,11 @@ describe('FiltersSection.vue', () => {
 
       const statusSelect = wrapper.findAll('.filter-select')[1] // 第二个 select 是状态
       expect(statusSelect.text()).toContain('全部狀態')
-      expect(statusSelect.text()).toContain('⏳ 待處理')
-      expect(statusSelect.text()).toContain('⚙️ 生成中')
-      expect(statusSelect.text()).toContain('✅ 已完成')
-      expect(statusSelect.text()).toContain('❌ 失敗')
-      expect(statusSelect.text()).toContain('⏰ 已過期')
+      expect(statusSelect.text()).toContain(' 待處理')
+      expect(statusSelect.text()).toContain(' 生成中')
+      expect(statusSelect.text()).toContain(' 已完成')
+      expect(statusSelect.text()).toContain(' 失敗')
+      expect(statusSelect.text()).toContain(' 已過期')
     })
   })
 
@@ -181,11 +181,11 @@ describe('FiltersSection.vue', () => {
 
       const formatSelect = wrapper.findAll('.filter-select')[2] // 第三个 select 是格式
       expect(formatSelect.text()).toContain('全部格式')
-      expect(formatSelect.text()).toContain('📄 JSON')
-      expect(formatSelect.text()).toContain('📊 CSV')
-      expect(formatSelect.text()).toContain('📗 Excel')
-      expect(formatSelect.text()).toContain('📕 PDF')
-      expect(formatSelect.text()).toContain('🌐 HTML')
+      expect(formatSelect.text()).toContain(' JSON')
+      expect(formatSelect.text()).toContain(' CSV')
+      expect(formatSelect.text()).toContain(' Excel')
+      expect(formatSelect.text()).toContain(' PDF')
+      expect(formatSelect.text()).toContain(' HTML')
     })
   })
 
@@ -480,7 +480,7 @@ describe('FiltersSection.vue', () => {
 
       expect(wrapper.find('.search-input-wrapper').exists()).toBe(true)
       expect(wrapper.find('.search-input').exists()).toBe(true)
-      expect(wrapper.find('.search-icon').text()).toBe('🔍')
+      expect(wrapper.find('.search-icon').text()).toBe('')
     })
   })
 })

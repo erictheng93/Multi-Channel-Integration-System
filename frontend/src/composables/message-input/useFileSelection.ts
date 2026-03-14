@@ -43,7 +43,7 @@ export function useFileSelection(options: FileSelectionOptions) {
     // Duplicate check
     if (existingKeys.has(key)) {
       if (import.meta.env.DEV) {
-        console.log(`⏭️ [FileSelection] Skipping duplicate file: ${file.name}`)
+        console.log(`[FileSelection] Skipping duplicate file: ${file.name}`)
       }
       return false
     }
@@ -72,7 +72,7 @@ export function useFileSelection(options: FileSelectionOptions) {
     options.onAttachmentAdd(attachment)
 
     if (import.meta.env.DEV) {
-      console.log(`✅ [FileSelection] Added file: ${file.name}`)
+      console.log(`[FileSelection] Added file: ${file.name}`)
     }
     return true
   }
@@ -91,7 +91,7 @@ export function useFileSelection(options: FileSelectionOptions) {
     )
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [handleFileSelect] Called', {
+      console.log('[handleFileSelect] Called', {
         filesCount: files.length,
         existingAttachments: attachments.value.length,
         isDev: import.meta.env.DEV,
@@ -117,7 +117,7 @@ export function useFileSelection(options: FileSelectionOptions) {
     )
 
     if (import.meta.env.DEV) {
-      console.log('🔍 [addFiles] Called (drag & drop)', {
+      console.log('[addFiles] Called (drag & drop)', {
         filesCount: fileArray.length,
         existingAttachments: attachments.value.length,
       })

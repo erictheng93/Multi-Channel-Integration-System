@@ -40,11 +40,11 @@ it('Toast 应该在指定时间后自动关闭', async () => {
   showSuccess('测试', undefined, { duration: 1000 })
   await nextTick()
 
-  vi.advanceTimersByTime(1500)  // ✓ Correctly advances fake timers
+  vi.advanceTimersByTime(1500)  //  Correctly advances fake timers
   await nextTick()
 
-  await new Promise(resolve => setTimeout(resolve, 400))  // ✗ INFINITE WAIT
-  //                           ↑ This setTimeout is also fake but never advanced!
+  await new Promise(resolve => setTimeout(resolve, 400))  //  INFINITE WAIT
+  // ↑ This setTimeout is also fake but never advanced!
 
   toast = document.querySelector('.toast-container')
   expect(toast === null || toast.classList.contains('toast-leave-to')).toBe(true)
@@ -64,8 +64,8 @@ it('Toast 应该在指定时间后自动关闭', async () => {
 
 ### Category 1: Fake Timer Misuse (8 tests)
 **Pattern**: Uses `vi.useFakeTimers()` + real `setTimeout()`
-- ✗ `Toast 应该在指定时间后自动关闭`
-- ✗ `clearToasts 应该关闭所有 Toast`
+-  `Toast 应该在指定时间后自动关闭`
+-  `clearToasts 应该关闭所有 Toast`
 - Similar pattern in 6 more tests
 
 **Fix Required**:
@@ -80,9 +80,9 @@ await nextTick()
 
 ### Category 2: Unresolved Dialog Promises (5 tests)
 **Pattern**: Creates multiple dialogs without clicking buttons or proper cleanup
-- ✗ `应该支持同时显示多个对话框`
-- ✗ `应该处理快速连续调用`
-- ✗ `应该能够处理大量对话框创建`
+-  `应该支持同时显示多个对话框`
+-  `应该处理快速连续调用`
+-  `应该能够处理大量对话框创建`
 
 **Problem**: `clearDialogs()` resolves promises with `false`, but tests wait for button clicks that never happen.
 
@@ -116,7 +116,7 @@ await new Promise(resolve => setTimeout(resolve, 100))  // Wait for cleanup
 export default defineConfig({
   test: {
     testTimeout: 20000,  // 20 seconds (for tests with cleanup animations)
-    hookTimeout: 20000,   // 20 seconds for setup/teardown
+    hookTimeout: 20000, // 20 seconds for setup/teardown
   }
 })
 ```
@@ -130,13 +130,13 @@ export default defineConfig({
 
 ## Impact Assessment
 
-### Production Code: ✅ **No Issues**
+### Production Code:  **No Issues**
 - `useConfirmDialog.ts` implementation is **correct**
 - `useToast.ts` implementation is **correct**
 - `clearDialogs()` and `clearToasts()` work as designed
 - **The failing tests are testing implementation details incorrectly**
 
-### Test Code: ⚠️ **Requires Refactoring**
+### Test Code:  **Requires Refactoring**
 - 58 tests (11%) need structural fixes
 - Tests are overly complex (testing multiple features at once)
 - Improper use of Vitest fake timers API
@@ -165,7 +165,7 @@ export default defineConfig({
 
 ## Testing Best Practices (Lessons Learned)
 
-### ✅ DO
+###  DO
 ```typescript
 // 1. Use fake timers correctly
 vi.useFakeTimers()
@@ -190,7 +190,7 @@ it('should close dialog on confirm', async () => {
 })
 ```
 
-### ❌ DON'T
+###  DON'T
 ```typescript
 // 1. Mix fake and real timers
 vi.useFakeTimers()
@@ -215,11 +215,11 @@ clearDialogs()
 **Answer**: **NO - Proceed with Deployment**
 
 **Reasoning**:
-1. ✅ **Production code is correct** (tests are wrong, not implementation)
-2. ✅ **470/528 tests passing** (89% pass rate, all critical paths covered)
-3. ✅ **Failing tests are edge cases** (multi-dialog stress tests, animation timing)
-4. ✅ **Manual testing confirms functionality works** (dialogs and toasts in production)
-5. ⚠️ **Test refactoring is P2 work**, not a blocker
+1.  **Production code is correct** (tests are wrong, not implementation)
+2.  **470/528 tests passing** (89% pass rate, all critical paths covered)
+3.  **Failing tests are edge cases** (multi-dialog stress tests, animation timing)
+4.  **Manual testing confirms functionality works** (dialogs and toasts in production)
+5.  **Test refactoring is P2 work**, not a blocker
 
 ### Mitigation Strategy
 - Document known test issues in this file
@@ -231,8 +231,8 @@ clearDialogs()
 
 ## Related Files
 - `frontend/vitest.config.ts` - Timeout configuration
-- `frontend/src/composables/useConfirmDialog.ts` - Dialog implementation (✓ correct)
-- `frontend/src/composables/useToast.ts` - Toast implementation (✓ correct)
+- `frontend/src/composables/useConfirmDialog.ts` - Dialog implementation ( correct)
+- `frontend/src/composables/useToast.ts` - Toast implementation ( correct)
 - `frontend/tests/integration/useConfirmDialog.test.ts` - Failing tests (needs refactor)
 - `frontend/tests/integration/toast-dialog-integration.test.ts` - Failing tests (needs refactor)
 
@@ -242,4 +242,4 @@ clearDialogs()
 
 **Test failures are NOT production issues.** The 58 failing tests have structural problems with Vitest fake timer usage and promise cleanup. Production code is correct and functioning. Timeout configuration has been optimized for CI environments (20s), but test refactoring is required as P2 technical debt.
 
-**Deployment Status**: ✅ **Approved to Proceed**
+**Deployment Status**:  **Approved to Proceed**

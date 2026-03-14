@@ -72,7 +72,7 @@ export class ConversationShardingService {
     testSafeLog(`${getEmojiPrefix('SEARCH')}[ShardingService] Finding shard for conversation: ${conversationId} (attempt ${retryAttempt + 1})`);
 
     try {
-      // 1️⃣ Try existing shards first (from cache)
+      // 1️ Try existing shards first (from cache)
       const cachedShards = this.getCachedShards(conversationId);
 
       if (cachedShards.length > 0) {
@@ -107,7 +107,7 @@ export class ConversationShardingService {
         }
       }
 
-      // 2️⃣ Create or find next available shard
+      // 2️ Create or find next available shard
       testSafeLog(`${getEmojiPrefix('NEW')}[ShardingService] Searching for new shard (0-${SHARD_CONFIG.MAX_SHARDS_PER_CONVERSATION - 1})`);
 
       for (let shardIndex = 0; shardIndex < SHARD_CONFIG.MAX_SHARDS_PER_CONVERSATION; shardIndex++) {
@@ -138,7 +138,7 @@ export class ConversationShardingService {
         }
       }
 
-      // 3️⃣ All shards full or unreachable - retry with exponential backoff
+      // 3️ All shards full or unreachable - retry with exponential backoff
       if (retryAttempt < SHARD_CONFIG.FAILOVER_RETRY_COUNT) {
         const delay = 500 * (retryAttempt + 1); // Exponential backoff
         testSafeLog(`${getEmojiPrefix('ROCKET')}[ShardingService] Retrying shard allocation in ${delay}ms (attempt ${retryAttempt + 1}/${SHARD_CONFIG.FAILOVER_RETRY_COUNT})...`);
@@ -146,7 +146,7 @@ export class ConversationShardingService {
         return this.getAvailableShardForConversation(conversationId, retryAttempt + 1);
       }
 
-      // 4️⃣ All retries exhausted
+      // 4️ All retries exhausted
       const error: ShardError = {
         type: 'all_shards_full',
         conversationId,

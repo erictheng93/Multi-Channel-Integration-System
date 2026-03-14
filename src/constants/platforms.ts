@@ -38,7 +38,7 @@ export const PLATFORMS = {
  * import { PLATFORMS, type Platform } from '@/constants/platforms';
  *
  * function sendMessage(platform: Platform, message: string) {
- *   // Type-safe platform handling
+ * // Type-safe platform handling
  * }
  * ```
  */
@@ -83,10 +83,10 @@ export const PLATFORM_COLORS: Record<Platform, string> = {
  * Platform icons/emojis
  */
 export const PLATFORM_ICONS: Record<Platform, string> = {
-  [PLATFORMS.LINE]: '💬',
-  [PLATFORMS.FACEBOOK]: '📘',
-  [PLATFORMS.SYSTEM]: '⚙️',
-  [PLATFORMS.ADMIN]: '👨‍💼'
+  [PLATFORMS.LINE]: '',
+  [PLATFORMS.FACEBOOK]: '',
+  [PLATFORMS.SYSTEM]: '',
+  [PLATFORMS.ADMIN]: ''
 };
 
 /**
@@ -133,20 +133,20 @@ export const TYPING_INDICATOR_PLATFORMS = [
  * Platform-specific file size limits (in bytes)
  */
 export const PLATFORM_FILE_SIZE_LIMITS: Record<Platform, number> = {
-  [PLATFORMS.LINE]: 10 * 1024 * 1024,      // 10 MB for LINE
+  [PLATFORMS.LINE]: 10 * 1024 * 1024, // 10 MB for LINE
   [PLATFORMS.FACEBOOK]: 25 * 1024 * 1024,  // 25 MB for Facebook
-  [PLATFORMS.SYSTEM]: 50 * 1024 * 1024,    // 50 MB for system
-  [PLATFORMS.ADMIN]: 50 * 1024 * 1024      // 50 MB for admin
+  [PLATFORMS.SYSTEM]: 50 * 1024 * 1024, // 50 MB for system
+  [PLATFORMS.ADMIN]: 50 * 1024 * 1024 // 50 MB for admin
 };
 
 /**
  * Platform-specific message length limits (in characters)
  */
 export const PLATFORM_MESSAGE_LENGTH_LIMITS: Record<Platform, number> = {
-  [PLATFORMS.LINE]: 5000,       // LINE supports up to 5000 characters
-  [PLATFORMS.FACEBOOK]: 2000,   // Facebook Messenger ~2000 characters
-  [PLATFORMS.SYSTEM]: 10000,    // System messages can be longer
-  [PLATFORMS.ADMIN]: 10000      // Admin messages can be longer
+  [PLATFORMS.LINE]: 5000, // LINE supports up to 5000 characters
+  [PLATFORMS.FACEBOOK]: 2000, // Facebook Messenger ~2000 characters
+  [PLATFORMS.SYSTEM]: 10000, // System messages can be longer
+  [PLATFORMS.ADMIN]: 10000 // Admin messages can be longer
 };
 
 /**
@@ -156,7 +156,7 @@ export const PLATFORM_SUPPORTED_FILE_TYPES: Record<Platform, string[]> = {
   [PLATFORMS.LINE]: ['image/jpeg', 'image/png', 'video/mp4', 'audio/m4a'],
   [PLATFORMS.FACEBOOK]: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'application/pdf'],
   [PLATFORMS.SYSTEM]: ['*/*'],  // System supports all file types
-  [PLATFORMS.ADMIN]: ['*/*']    // Admin supports all file types
+  [PLATFORMS.ADMIN]: ['*/*'] // Admin supports all file types
 };
 
 /**

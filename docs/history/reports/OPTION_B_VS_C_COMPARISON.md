@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 快速對比表
+##  快速對比表
 
 | 維度 | 選項 B: 智能註冊器批量修復 | 選項 C: 逐個分析後修復 |
 |------|------------------------|-------------------|
@@ -15,15 +15,15 @@
 | **風險** | 低（工具自動排序） | 中（依賴人工判斷） |
 | **學習成本** | 低（使用範例已有） | 中（需理解每個衝突） |
 | **可逆性** | 高（易回滾） | 中（手動修復難追蹤） |
-| **長期維護** | ✅ 簡單（工具自動處理） | ❌ 困難（新路由需人工排序） |
+| **長期維護** |  簡單（工具自動處理） |  困難（新路由需人工排序） |
 | **適合場景** | 大批量修復 | 關鍵路由精確控制 |
-| **推薦指數** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **推薦指數** |  |  |
 
 ---
 
 ## 選項 B: 使用智能路由註冊器批量修復
 
-### 🎯 核心理念
+###  核心理念
 **"讓工具自動處理路由順序，開發者只需關注業務邏輯"**
 
 ### 工作原理
@@ -38,19 +38,19 @@ specificity = Σ(10 × (n-i)) for concrete segments
             + 0 for wildcard segments
 
 範例：
-/stats/overview           → specificity = 30
-/:id/stats                → specificity = 11
-/:resource/:id            → specificity = 2
-/*                        → specificity = 0
+/stats/overview → specificity = 30
+/:id/stats → specificity = 11
+/:resource/:id → specificity = 2
+/* → specificity = 0
 ```
 
 #### 2. 自動排序註冊
 工具會按照以下順序自動註冊路由：
 ```
-1️⃣ 靜態路由 (STATIC): /health, /info
-2️⃣ 具體路由 (SPECIFIC): /members, /invitations
-3️⃣ 參數化路由 (PARAMETERIZED): /:id, /:id/members
-4️⃣ 通配符路由 (WILDCARD): /*
+1️ 靜態路由 (STATIC): /health, /info
+2️ 具體路由 (SPECIFIC): /members, /invitations
+3️ 參數化路由 (PARAMETERIZED): /:id, /:id/members
+4️ 通配符路由 (WILDCARD): /*
 ```
 
 #### 3. 衝突檢測與報告
@@ -61,10 +61,10 @@ specificity = Σ(10 × (n-i)) for concrete segments
 #### 修復前（手動註冊，173 個衝突）
 ```typescript
 // handlers/notification-router.ts
-app.get('/', listNotifications);           // ❌ 順序錯誤
-app.get('/:id', getNotification);          // ❌ 被 / 攔截
-app.get('/channels/stats', getStats);      // ❌ 被 /:id 攔截
-app.get('/sse/stats', getSseStats);        // ❌ 被 /:id 攔截
+app.get('/', listNotifications); //  順序錯誤
+app.get('/:id', getNotification); //  被 / 攔截
+app.get('/channels/stats', getStats); //  被 /:id 攔截
+app.get('/sse/stats', getSseStats); //  被 /:id 攔截
 ```
 
 #### 修復後（智能註冊器，0 個衝突）
@@ -108,10 +108,10 @@ const { registered, conflicts } = registry.register();
 
 /*
 實際註冊順序（自動）：
-1. GET /channels/stats    ← 具體路由優先
-2. GET /sse/stats         ← 具體路由優先
-3. GET /:id               ← 參數化路由
-4. GET /                  ← 通配符最後
+1. GET /channels/stats ← 具體路由優先
+2. GET /sse/stats ← 具體路由優先
+3. GET /:id ← 參數化路由
+4. GET / ← 通配符最後
 */
 ```
 
@@ -136,8 +136,8 @@ registry.register();
 #### Step 3: 測試驗證
 ```bash
 npm run check:routes  # 驗證衝突消除
-npm run test          # 運行測試套件
-npm run dev           # 啟動測試 API
+npm run test # 運行測試套件
+npm run dev # 啟動測試 API
 ```
 
 #### Step 4: 替換原文件
@@ -146,7 +146,7 @@ npm run dev           # 啟動測試 API
 mv handlers/notification-router-smart.ts handlers/notification-router.ts
 ```
 
-### 優點 ✅
+### 優點 
 
 1. **速度快**: 2-3 小時完成 173 個衝突修復
 2. **低風險**: 工具經過測試，算法穩定
@@ -155,24 +155,24 @@ mv handlers/notification-router-smart.ts handlers/notification-router.ts
 5. **有範例**: `index-smart.ts` 可直接參考
 6. **自動化**: 減少人為錯誤
 
-### 缺點 ❌
+### 缺點 
 
 1. **學習曲線**: 需要理解智能註冊器 API（但很簡單）
 2. **代碼風格變化**: 從直接註冊改為聲明式註冊
 3. **額外依賴**: 引入新的工具類別
 
-### 適用場景 🎯
+### 適用場景 
 
-- ✅ 大量路由需要重新排序（如當前的 173 個衝突）
-- ✅ 希望長期維護成本低
-- ✅ 團隊成員對路由順序理解不深
-- ✅ 頻繁新增路由的活躍模組
+-  大量路由需要重新排序（如當前的 173 個衝突）
+-  希望長期維護成本低
+-  團隊成員對路由順序理解不深
+-  頻繁新增路由的活躍模組
 
 ---
 
 ## 選項 C: 逐個模組分析後修復
 
-### 🎯 核心理念
+###  核心理念
 **"深入理解每個衝突，手動精確控制路由順序"**
 
 ### 工作原理
@@ -182,9 +182,9 @@ mv handlers/notification-router-smart.ts handlers/notification-router.ts
 
 ```typescript
 // 範例衝突
-⚠️  "/" may intercept "/:id"
-   📍 handlers/notification-router.ts:42
-   📍 handlers/notification-router.ts:78
+  "/" may intercept "/:id"
+    handlers/notification-router.ts:42
+    handlers/notification-router.ts:78
 
 // 需要回答的問題：
 1. 這兩個路由實際處理什麼功能？
@@ -198,9 +198,9 @@ mv handlers/notification-router-smart.ts handlers/notification-router.ts
 
 ```typescript
 // 分析後決定
-app.get('/channels/stats', ...);  // 1️⃣ 具體路由先註冊
-app.get('/:id', ...);              // 2️⃣ 參數化路由後註冊
-app.get('/', ...);                 // 3️⃣ 通配符最後註冊
+app.get('/channels/stats', ...);  // 1️ 具體路由先註冊
+app.get('/:id', ...); // 2️ 參數化路由後註冊
+app.get('/', ...); // 3️ 通配符最後註冊
 ```
 
 #### 3. 測試驗證
@@ -235,18 +235,18 @@ cat tests/unit/handlers/notification-router.test.ts
 ```typescript
 // 情況 A: 確實需要修復
 // 當前: / 在前，會攔截 /:id
-app.get('/', listAll);     // 攔截所有請求
+app.get('/', listAll); // 攔截所有請求
 app.get('/:id', getById);  // 永遠不會執行
 
 // 修復: 調整順序
-app.get('/:id', getById);  // ✅ 先匹配參數化
-app.get('/', listAll);     // ✅ 其他請求走這裡
+app.get('/:id', getById);  //  先匹配參數化
+app.get('/', listAll); //  其他請求走這裡
 
 // 情況 B: 誤報，不需要修復
 // 當前: / 有業務邏輯判斷，不會攔截
 app.get('/', (c) => {
   const id = c.req.query('id');
-  if (id) return getById(c);    // 手動路由
+  if (id) return getById(c); // 手動路由
   return listAll(c);
 });
 app.get('/:id', getById);  // 可能永遠不用，但保留
@@ -261,7 +261,7 @@ app.get('/specific/path/1', handler1);  // 最具體
 app.get('/specific/path/2', handler2);
 app.get('/:param/path', handler3);
 app.get('/:param', handler4);
-app.get('/', handler5);                 // 最通用
+app.get('/', handler5); // 最通用
 ```
 
 #### Step 5: 測試驗證
@@ -281,14 +281,14 @@ npm run check:routes
 #### Step 6: 文檔記錄
 ```typescript
 // 在代碼中添加註釋說明順序原因
-// ⚠️ IMPORTANT: Route order is critical!
+// IMPORTANT: Route order is critical!
 // Specific routes MUST be registered before parameterized routes.
 // Reason: /channels/stats would be intercepted by /:id if registered after.
 app.get('/channels/stats', getChannelStats);  // ← Must be first
-app.get('/:id', getNotificationById);         // ← After specific routes
+app.get('/:id', getNotificationById); // ← After specific routes
 ```
 
-### 優點 ✅
+### 優點 
 
 1. **精確控制**: 完全理解每個路由的行為
 2. **深入理解**: 掌握業務邏輯和路由關係
@@ -296,7 +296,7 @@ app.get('/:id', getNotificationById);         // ← After specific routes
 4. **代碼風格一致**: 保持現有註冊方式
 5. **發現隱藏問題**: 可能發現其他業務邏輯問題
 
-### 缺點 ❌
+### 缺點 
 
 1. **耗時長**: 8-12 小時（173 個衝突）
 2. **容易出錯**: 手動排序可能遺漏
@@ -304,16 +304,16 @@ app.get('/:id', getNotificationById);         // ← After specific routes
 4. **知識依賴**: 依賴開發者對路由的深入理解
 5. **重複勞動**: 每個模組都要重複分析過程
 
-### 適用場景 🎯
+### 適用場景 
 
-- ✅ 關鍵業務模組需要精確控制
-- ✅ 路由數量少（<10 個衝突）
-- ✅ 需要深入理解業務邏輯
-- ✅ 複雜的條件路由邏輯
+-  關鍵業務模組需要精確控制
+-  路由數量少（<10 個衝突）
+-  需要深入理解業務邏輯
+-  複雜的條件路由邏輯
 
 ---
 
-## 📈 實際影響對比
+##  實際影響對比
 
 ### 時間成本
 
@@ -356,7 +356,7 @@ registry.add({
 // 4. 運行檢測工具驗證 (2 分鐘)
 // 5. 添加註釋說明原因 (2 分鐘)
 app.get('/specific-route', ...);  // ← 新路由插入這裡？
-app.get('/:id', ...);             // ← 還是這裡？
+app.get('/:id', ...); // ← 還是這裡？
 ```
 **每次新增路由時間**: ~16 分鐘
 
@@ -367,7 +367,7 @@ app.get('/:id', ...);             // ← 還是這裡？
 
 ---
 
-## 🎯 實際案例分析
+##  實際案例分析
 
 ### 案例 1: handlers/notification-router (24 個衝突)
 
@@ -402,7 +402,7 @@ registry.register();
 // - 哪些是誤報？
 
 // 3. 手動重排 (30 分鐘)
-app.get('/channels/stats', ...);    // 手動判斷順序
+app.get('/channels/stats', ...); // 手動判斷順序
 app.get('/sse/stats', ...);
 app.get('/sse/connections/count', ...);
 app.get('/:id', ...);
@@ -418,11 +418,11 @@ app.get('/', ...);
 
 ---
 
-## 🤔 決策建議
+##  決策建議
 
 ### 推薦選項 B（智能註冊器）的場景
 
-✅ **當以下條件大部分滿足時**:
+ **當以下條件大部分滿足時**:
 - [ ] 衝突數量 > 20 個
 - [ ] 希望快速完成（2-3 小時內）
 - [ ] 團隊對路由順序理解不深
@@ -431,14 +431,14 @@ app.get('/', ...);
 - [ ] 希望建立自動化防護
 
 **適用模組（當前專案）**:
-- ✅ handlers/notification-router (24 衝突)
-- ✅ handlers/messaging-main (17 衝突)
-- ✅ handlers/user-experience-main (10 衝突)
-- ✅ handlers/data-optimization-main (10 衝突)
+-  handlers/notification-router (24 衝突)
+-  handlers/messaging-main (17 衝突)
+-  handlers/user-experience-main (10 衝突)
+-  handlers/data-optimization-main (10 衝突)
 
 ### 推薦選項 C（手動分析）的場景
 
-✅ **當以下條件大部分滿足時**:
+ **當以下條件大部分滿足時**:
 - [ ] 衝突數量 < 5 個
 - [ ] 關鍵業務模組需精確控制
 - [ ] 路由邏輯複雜（有條件判斷）
@@ -447,10 +447,10 @@ app.get('/', ...);
 - [ ] 路由變更不頻繁
 
 **適用模組（當前專案）**:
-- ⚠️ modules/agents/sub:agent-main (3 衝突，關鍵模組)
-- ⚠️ 其他低衝突關鍵模組
+-  modules/agents/sub:agent-main (3 衝突，關鍵模組)
+-  其他低衝突關鍵模組
 
-### 混合策略（推薦）🌟
+### 混合策略（推薦）
 
 **最佳實踐**:
 1. **大批量模組用選項 B**（節省時間）
@@ -468,15 +468,15 @@ app.get('/', ...);
 
 ---
 
-## ✅ 智能路由註冊器當前狀態
+##  智能路由註冊器當前狀態
 
-### 實現狀態: ✅ Ready to Use
+### 實現狀態:  Ready to Use
 
 ```typescript
 // 文件: src/core/smart-route-registry.ts
-// 狀態: ✅ 完整實現 (351 lines)
-// 測試: ✅ 有使用範例
-// 文檔: ✅ 有詳細文檔
+// 狀態:  完整實現 (351 lines)
+// 測試:  有使用範例
+// 文檔:  有詳細文檔
 ```
 
 ### 已實現功能
@@ -513,27 +513,27 @@ registry.addMany([
 
 // 自動排序並註冊
 const result = registry.register();
-console.log(`✅ Registered ${result.registered} routes`);
+console.log(` Registered ${result.registered} routes`);
 ```
 
 ### 測試狀態
 ```bash
 # 檢查是否可用
 $ cat src/modules/teams/handlers/index-smart.ts
-✅ 範例文件存在
+ 範例文件存在
 
 # 測試運行
 $ node -e "require('./src/core/smart-route-registry.ts')"
-✅ 無語法錯誤
+ 無語法錯誤
 
 # 檢查文檔
 $ cat docs/SMART_REGISTRY_ALGORITHM_EXPLAINED.md
-✅ 完整文檔存在
+ 完整文檔存在
 ```
 
 ---
 
-## 🎯 最終建議
+##  最終建議
 
 ### 對於當前 173 個 MEDIUM 衝突
 
@@ -565,6 +565,6 @@ $ cat docs/SMART_REGISTRY_ALGORITHM_EXPLAINED.md
 
 ---
 
-**結論**: 智能路由註冊器已經 ✅ **Ready to Use**，推薦使用**選項 B（混合少量選項 C）**來快速高效地解決所有 MEDIUM 衝突。
+**結論**: 智能路由註冊器已經  **Ready to Use**，推薦使用**選項 B（混合少量選項 C）**來快速高效地解決所有 MEDIUM 衝突。
 
-Generated by Claude Code 🤖
+Generated by Claude Code 

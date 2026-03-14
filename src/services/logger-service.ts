@@ -318,7 +318,7 @@ export class Logger {
     if (context.duration) parts.push(`duration=${context.duration}ms`);
     if (context.durableObjectType) parts.push(`DO=${context.durableObjectType}`);
 
-    return parts.length > 0 ? ` [${parts.join(', ')}]` : '';
+    return parts.length > 0 ? `[${parts.join(', ')}]` : '';
   }
 
   /**
@@ -326,12 +326,12 @@ export class Logger {
    */
   private getLevelEmoji(level: LogLevel): string {
     switch (level) {
-      case LogLevel.DEBUG: return '🔍';
-      case LogLevel.INFO: return '📘';
-      case LogLevel.WARN: return '⚠️';
-      case LogLevel.ERROR: return '❌';
-      case LogLevel.CRITICAL: return '🚨';
-      default: return '📝';
+      case LogLevel.DEBUG: return '';
+      case LogLevel.INFO: return '';
+      case LogLevel.WARN: return '';
+      case LogLevel.ERROR: return '';
+      case LogLevel.CRITICAL: return '';
+      default: return '';
     }
   }
 
@@ -340,7 +340,7 @@ export class Logger {
    */
   private handleCriticalError(entry: LogEntry): void {
     // Phase 2: Integrate alerting (PagerDuty/Slack) for critical errors
-    console.error('🚨🚨🚨 CRITICAL ERROR DETECTED 🚨🚨🚨');
+    console.error(' CRITICAL ERROR DETECTED ');
     console.error(JSON.stringify(entry, null, 2));
 
     // 可以在這裡添加：

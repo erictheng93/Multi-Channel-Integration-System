@@ -160,7 +160,7 @@ const verificationChecks: VerificationCheck[] = [
 
 // 執行驗證
 async function runVerification(): Promise<boolean> {
-  log('🔍 檔案上傳功能驗證開始...', 'bold');
+  log(' 檔案上傳功能驗證開始...', 'bold');
   
   let passedChecks = 0;
   const totalChecks = verificationChecks.length;
@@ -171,51 +171,51 @@ async function runVerification(): Promise<boolean> {
     try {
       const result = await check.check();
       if (result) {
-        log('✅ 通過', 'green');
+        log(' 通過', 'green');
         passedChecks++;
       } else {
-        log('❌ 失敗', 'red');
+        log(' 失敗', 'red');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      log(`❌ 錯誤: ${errorMessage}`, 'red');
+      log(` 錯誤: ${errorMessage}`, 'red');
     }
   }
   
-  log(`\n📊 驗證結果: ${passedChecks}/${totalChecks} 項檢查通過`, 'blue');
+  log(`\n 驗證結果: ${passedChecks}/${totalChecks} 項檢查通過`, 'blue');
   
   if (passedChecks === totalChecks) {
-    log('🎉 所有檢查都通過！檔案上傳功能已完全配置。', 'green');
+    log(' 所有檢查都通過！檔案上傳功能已完全配置。', 'green');
     return true;
   } else {
-    log('⚠️  部分檢查未通過，請檢查上述失敗項目。', 'yellow');
+    log('  部分檢查未通過，請檢查上述失敗項目。', 'yellow');
     return false;
   }
 }
 
 // 生成配置報告
 function generateConfigReport(): void {
-  log('\n📋 配置報告:\n', 'bold');
+  log('\n 配置報告:\n', 'bold');
   
-  log('🗄️  資料庫表:', 'blue');
+  log('  資料庫表:', 'blue');
   log('  - file_attachments: 檔案附件主表');
   log('  - file_metadata: 檔案元數據表');
   log('  - file_access_logs: 檔案存取記錄表');
   
-  log('\n🪣 R2 Buckets:', 'blue');
+  log('\n R2 Buckets:', 'blue');
   log('  - omni-channel-attachments: 開發環境存儲');
   log('  - omni-channel-attachments-prod: 生產環境存儲');
   
-  log('\n🔧 需要配置的環境變數:', 'blue');
+  log('\n 需要配置的環境變數:', 'blue');
   log('  - R2_PUBLIC_URL: R2 公開存取 URL');
   log('  - MAX_FILE_SIZE: 檔案大小限制 (預設: 10MB)');
   log('  - JWT_SECRET: JWT 密鑰');
   
-  log('\n🚀 部署指令:', 'blue');
-  log('  npx tsx scripts/setup-r2.ts          # 設定開發環境 R2');
-  log('  npx tsx scripts/setup-r2.ts --prod   # 設定生產環境 R2');
-  log('  npm run db:migrate:attachments       # 執行資料庫遷移');
-  log('  npm run deploy                       # 部署到 Cloudflare Workers');
+  log('\n 部署指令:', 'blue');
+  log('  npx tsx scripts/setup-r2.ts # 設定開發環境 R2');
+  log('  npx tsx scripts/setup-r2.ts --prod # 設定生產環境 R2');
+  log('  npm run db:migrate:attachments # 執行資料庫遷移');
+  log('  npm run deploy # 部署到 Cloudflare Workers');
 }
 
 // 主函數
@@ -224,10 +224,10 @@ async function main(): Promise<void> {
   generateConfigReport();
   
   if (success) {
-    log('\n✅ 檔案上傳功能已完全準備就緒！', 'green');
+    log('\n 檔案上傳功能已完全準備就緒！', 'green');
     process.exit(0);
   } else {
-    log('\n❌ 請修正上述問題後重新驗證。', 'red');
+    log('\n 請修正上述問題後重新驗證。', 'red');
     process.exit(1);
   }
 }

@@ -21,7 +21,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
   let testEnv: any;
 
   beforeAll(async () => {
-    console.log('🚀 Setting up edge cases test environment...');
+    console.log(' Setting up edge cases test environment...');
 
     try {
       testEnv = {
@@ -55,10 +55,10 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
         env: testEnv
       });
 
-      console.log('✅ Edge cases test environment initialized');
+      console.log(' Edge cases test environment initialized');
 
     } catch (error) {
-      console.error('❌ Failed to initialize edge cases test environment:', error);
+      console.error(' Failed to initialize edge cases test environment:', error);
       throw error;
     }
   });
@@ -77,7 +77,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       expect(result.data).toBeDefined();
-      console.log('✅ Minimum time range (1h) handled correctly');
+      console.log(' Minimum time range (1h) handled correctly');
     });
 
     test('should handle maximum time range (1 year)', async () => {
@@ -91,7 +91,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       expect(result.data).toBeDefined();
-      console.log('✅ Maximum time range (365d) handled correctly');
+      console.log(' Maximum time range (365d) handled correctly');
     });
 
     test('should handle custom date range spanning 2 days', async () => {
@@ -112,7 +112,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query as any);
 
       expect(result).toBeDefined();
-      console.log('✅ Two-day date range handled correctly');
+      console.log(' Two-day date range handled correctly');
     });
 
     test('should allow same-day queries (startDate = endDate)', async () => {
@@ -129,7 +129,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       expect(result.data).toBeDefined();
-      console.log('✅ Same-day queries (startDate = endDate) allowed correctly');
+      console.log(' Same-day queries (startDate = endDate) allowed correctly');
     });
 
     test('should reject invalid time range (end before start)', async () => {
@@ -146,7 +146,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       expect(result.error).toBeDefined();
       expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
 
-      console.log('✅ Invalid time range rejected correctly');
+      console.log(' Invalid time range rejected correctly');
     });
 
     test('should handle future dates', async () => {
@@ -163,7 +163,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       // Should return empty results for future dates
-      console.log('✅ Future dates handled gracefully');
+      console.log(' Future dates handled gracefully');
     });
 
     test('should handle very old dates (10 years ago)', async () => {
@@ -179,7 +179,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query as any);
 
       expect(result).toBeDefined();
-      console.log('✅ Very old dates (10 years ago) handled correctly');
+      console.log(' Very old dates (10 years ago) handled correctly');
     });
   });
 
@@ -199,7 +199,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       expect(result.data.summary.totalConversations).toBe(0);
-      console.log('✅ Empty result set handled correctly');
+      console.log(' Empty result set handled correctly');
     });
 
     test('should handle single record result', async () => {
@@ -214,7 +214,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       expect(result.data).toBeDefined();
-      console.log('✅ Single record result handled correctly');
+      console.log(' Single record result handled correctly');
     });
 
     test('should handle maximum limit (1000)', async () => {
@@ -229,7 +229,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       expect(result.metadata).toBeDefined();
-      console.log('✅ Maximum limit (1000) handled correctly');
+      console.log(' Maximum limit (1000) handled correctly');
     });
 
     test('should handle zero limit', async () => {
@@ -243,7 +243,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Zero limit handled correctly');
+      console.log(' Zero limit handled correctly');
     });
 
     test('should handle negative limit', async () => {
@@ -258,9 +258,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Negative limit handled gracefully');
+        console.log(' Negative limit handled gracefully');
       } catch (error) {
-        console.log('✅ Negative limit rejected correctly');
+        console.log(' Negative limit rejected correctly');
       }
     });
   });
@@ -278,7 +278,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ No filters handled correctly');
+      console.log(' No filters handled correctly');
     });
 
     test('should handle multiple filters simultaneously', async () => {
@@ -295,7 +295,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Multiple filters handled correctly');
+      console.log(' Multiple filters handled correctly');
     });
 
     test('should handle invalid filter values', async () => {
@@ -311,7 +311,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
 
       expect(result).toBeDefined();
       // Should return empty results or all results
-      console.log('✅ Invalid filter values handled gracefully');
+      console.log(' Invalid filter values handled gracefully');
     });
 
     test('should handle null/undefined filter values', async () => {
@@ -327,7 +327,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Null/undefined filters handled correctly');
+      console.log(' Null/undefined filters handled correctly');
     });
 
     test('should handle extreme teamId values', async () => {
@@ -344,7 +344,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
         expect(result).toBeDefined();
       }
 
-      console.log('✅ Extreme teamId values handled correctly');
+      console.log(' Extreme teamId values handled correctly');
     });
   });
 
@@ -362,7 +362,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Empty groupBy array handled correctly');
+      console.log(' Empty groupBy array handled correctly');
     });
 
     test('should handle single groupBy field', async () => {
@@ -376,7 +376,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Single groupBy field handled correctly');
+      console.log(' Single groupBy field handled correctly');
     });
 
     test('should handle multiple groupBy fields', async () => {
@@ -390,7 +390,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Multiple groupBy fields handled correctly');
+      console.log(' Multiple groupBy fields handled correctly');
     });
 
     test('should handle invalid groupBy field names', async () => {
@@ -404,9 +404,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Invalid groupBy fields handled gracefully');
+        console.log(' Invalid groupBy fields handled gracefully');
       } catch (error) {
-        console.log('✅ Invalid groupBy fields rejected correctly');
+        console.log(' Invalid groupBy fields rejected correctly');
       }
     });
 
@@ -421,7 +421,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Duplicate groupBy fields handled correctly');
+      console.log(' Duplicate groupBy fields handled correctly');
     });
   });
 
@@ -438,7 +438,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Single metric handled correctly');
+      console.log(' Single metric handled correctly');
     });
 
     test('should handle all available metrics', async () => {
@@ -457,7 +457,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ All metrics handled correctly');
+      console.log(' All metrics handled correctly');
     });
 
     test('should handle invalid metric names', async () => {
@@ -470,9 +470,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Invalid metrics handled gracefully');
+        console.log(' Invalid metrics handled gracefully');
       } catch (error) {
-        console.log('✅ Invalid metrics rejected correctly');
+        console.log(' Invalid metrics rejected correctly');
       }
     });
 
@@ -486,9 +486,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Empty metrics array handled gracefully');
+        console.log(' Empty metrics array handled gracefully');
       } catch (error) {
-        console.log('✅ Empty metrics array rejected correctly');
+        console.log(' Empty metrics array rejected correctly');
       }
     });
 
@@ -506,7 +506,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Duplicate metrics handled correctly');
+      console.log(' Duplicate metrics handled correctly');
     });
   });
 
@@ -524,7 +524,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Empty orderBy array handled correctly');
+      console.log(' Empty orderBy array handled correctly');
     });
 
     test('should handle ascending order', async () => {
@@ -538,7 +538,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Ascending order handled correctly');
+      console.log(' Ascending order handled correctly');
     });
 
     test('should handle descending order', async () => {
@@ -552,7 +552,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Descending order handled correctly');
+      console.log(' Descending order handled correctly');
     });
 
     test('should handle multiple orderBy fields', async () => {
@@ -569,7 +569,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Multiple orderBy fields handled correctly');
+      console.log(' Multiple orderBy fields handled correctly');
     });
 
     test('should handle invalid orderBy field names', async () => {
@@ -583,9 +583,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Invalid orderBy fields handled gracefully');
+        console.log(' Invalid orderBy fields handled gracefully');
       } catch (error) {
-        console.log('✅ Invalid orderBy fields rejected correctly');
+        console.log(' Invalid orderBy fields rejected correctly');
       }
     });
 
@@ -600,9 +600,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Invalid orderBy direction handled gracefully');
+        console.log(' Invalid orderBy direction handled gracefully');
       } catch (error) {
-        console.log('✅ Invalid orderBy direction rejected correctly');
+        console.log(' Invalid orderBy direction rejected correctly');
       }
     });
   });
@@ -622,7 +622,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ SQL injection attempt safely handled');
+      console.log(' SQL injection attempt safely handled');
     });
 
     test('should handle extremely long filter strings', async () => {
@@ -639,9 +639,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Extremely long strings handled gracefully');
+        console.log(' Extremely long strings handled gracefully');
       } catch (error) {
-        console.log('✅ Extremely long strings rejected correctly');
+        console.log(' Extremely long strings rejected correctly');
       }
     });
 
@@ -650,14 +650,14 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
         timeRange: '7d',
         metrics: ['total_conversations'],
         filters: {
-          status: '測試🎉😊中文' as any
+          status: '測試中文' as any
         }
       };
 
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Unicode characters handled correctly');
+      console.log(' Unicode characters handled correctly');
     });
 
     test('should handle null bytes in input', async () => {
@@ -672,7 +672,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Null bytes handled correctly');
+      console.log(' Null bytes handled correctly');
     });
 
     test('should handle special regex characters', async () => {
@@ -687,7 +687,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Special regex characters handled correctly');
+      console.log(' Special regex characters handled correctly');
     });
   });
 
@@ -706,7 +706,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       const result = await analyticsService.getConversationAnalytics(query);
 
       expect(result).toBeDefined();
-      console.log('✅ Numeric string handled correctly');
+      console.log(' Numeric string handled correctly');
     });
 
     test('should handle boolean values in unexpected places', async () => {
@@ -721,9 +721,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Boolean values handled gracefully');
+        console.log(' Boolean values handled gracefully');
       } catch (error) {
-        console.log('✅ Boolean values rejected correctly');
+        console.log(' Boolean values rejected correctly');
       }
     });
 
@@ -739,9 +739,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Object values handled gracefully');
+        console.log(' Object values handled gracefully');
       } catch (error) {
-        console.log('✅ Object values rejected correctly');
+        console.log(' Object values rejected correctly');
       }
     });
 
@@ -757,9 +757,9 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       try {
         const result = await analyticsService.getConversationAnalytics(query);
         expect(result).toBeDefined();
-        console.log('✅ Array values handled gracefully');
+        console.log(' Array values handled gracefully');
       } catch (error) {
-        console.log('✅ Array values rejected correctly');
+        console.log(' Array values rejected correctly');
       }
     });
   });
@@ -784,7 +784,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data?.format).toBe('json');
-      console.log('✅ Export with empty results handled correctly');
+      console.log(' Export with empty results handled correctly');
     });
 
     test('should handle export with large dataset', async () => {
@@ -803,7 +803,7 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
       expect(result.data?.format).toBe('csv');
-      console.log('✅ Export with large dataset handled correctly');
+      console.log(' Export with large dataset handled correctly');
     });
 
     test('should handle invalid export format', async () => {
@@ -821,11 +821,11 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       // 可能成功（使用默認格式）或失敗（驗證錯誤）
       if (result.success) {
         expect(result.data).toBeDefined();
-        console.log('✅ Invalid export format handled gracefully (used default)');
+        console.log(' Invalid export format handled gracefully (used default)');
       } else {
         expect(result.error).toBeDefined();
         expect(result.metadata?.errorCode).toBeDefined();
-        console.log('✅ Invalid export format rejected correctly');
+        console.log(' Invalid export format rejected correctly');
       }
     });
 
@@ -844,11 +844,11 @@ describe('Analytics Edge Cases and Boundary Conditions', () => {
       // 可能成功（導出所有可用數據）或失敗（驗證錯誤）
       if (result.success) {
         expect(result.data).toBeDefined();
-        console.log('✅ Export with no metrics handled gracefully');
+        console.log(' Export with no metrics handled gracefully');
       } else {
         expect(result.error).toBeDefined();
         expect(result.metadata?.errorCode).toBe('VALIDATION_ERROR');
-        console.log('✅ Export with no metrics rejected correctly');
+        console.log(' Export with no metrics rejected correctly');
       }
     });
   });

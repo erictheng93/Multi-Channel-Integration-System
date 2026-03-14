@@ -791,7 +791,7 @@ describe('MessageRequestService - validateAndParse', () => {
   it('should reject whitespace-only content without attachments', async () => {
     const ctx = createMockContext(
       { id: 'conv-1' },
-      { content: '   ', senderId: 'agent-1' }
+      { content: ' ', senderId: 'agent-1' }
     );
 
     await expect(

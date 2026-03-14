@@ -28,7 +28,7 @@ import { comparisonAPI } from '@modules/analytics/handlers/comparison-api';
 // Direct import for messaging handler (modular version)
 import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 
-// 🆕 Phase 3: LINE Message Queue Consumer
+// Phase 3: LINE Message Queue Consumer
 import { handleLineMessageQueue } from '@modules/queue/handlers/line-message-queue';
 import type { LineMessageQueuePayload } from './types/bindings';
 
@@ -41,10 +41,10 @@ import { activityHandler } from '@modules/activities/handlers/activity';
 import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
 import { feedbackHandler } from '@modules/system/handlers/feedback-main';
 
-// 🆕 KV Optimization Monitoring (P0 - 2025-01-08)
+// KV Optimization Monitoring (P0 - 2025-01-08)
 import kvOptimizationMonitoringHandler from '@modules/system/handlers/kv-optimization-monitoring';
 
-// 🆕 Monitoring and Alerting API (2025-01-08)
+// Monitoring and Alerting API (2025-01-08)
 import monitoringMainHandler from '@modules/monitoring/handlers/monitoring-main';
 
 // System-legacy and credential functions now in extracted routers:
@@ -57,7 +57,7 @@ import { globalErrorHandler } from './middleware/error-handler';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// ==================== 🔥 CORS 中間件 - 必須在所有路由之前註冊 ====================
+// ==================== CORS 中間件 - 必須在所有路由之前註冊 ====================
 // 統一的 CORS 配置，使用 @/config/cors.ts 中的配置
 log.info('Registering global CORS middleware');
 
@@ -109,7 +109,7 @@ if (!routeValidation.valid) {
   throw new Error('Invalid route configuration');
 }
 
-// 🔧 Pre-register public WebSocket endpoints BEFORE unified route system
+// Pre-register public WebSocket endpoints BEFORE unified route system
 // This ensures they are NOT covered by any auth middleware from the route system
 import websocketHealthApp from '@modules/websocket/handlers/websocket-health';
 import websocketDashboardApp from '@modules/websocket/handlers/websocket-dashboard';
@@ -129,7 +129,7 @@ log.info('Public WebSocket health endpoints registered', {
   ]
 });
 
-// ⚠️  CRITICAL: Register WebSocket main handler AFTER health app to avoid route conflicts
+// CRITICAL: Register WebSocket main handler AFTER health app to avoid route conflicts
 // websocketMainHandler provides /connect endpoint with websocketAuth middleware
 app.route('/api/websocket', websocketMainHandler);
 log.info('WebSocket connection endpoints registered', {
@@ -139,7 +139,7 @@ log.info('WebSocket connection endpoints registered', {
   ]
 });
 
-// 🔧 Pre-register DelayedMessageScheduler health endpoint BEFORE unified route system
+// Pre-register DelayedMessageScheduler health endpoint BEFORE unified route system
 // This ensures /health endpoint is public (no auth required)
 app.get('/api/delayed-messages-v2/health', async (c) => {
   return c.json({
@@ -158,7 +158,7 @@ log.info('DelayedMessageScheduler public endpoint registered', {
   endpoint: 'GET /api/delayed-messages-v2/health (public, no auth)'
 });
 
-// 🆕 Pre-register Configuration Check endpoint (admin-only)
+// Pre-register Configuration Check endpoint (admin-only)
 // Exposes environment config — requires authentication
 import { getConfigCheck } from '@modules/system/handlers/health-main';
 app.get('/api/system/config-check', jwtAuth, requireAdmin(), getConfigCheck);
@@ -167,7 +167,7 @@ log.info('Configuration check endpoint registered (admin only)', {
 });
 
 
-// 🔧 Pre-register R2 Public Proxy Endpoint (QR Code Fix)
+// Pre-register R2 Public Proxy Endpoint (QR Code Fix)
 // This endpoint proxies R2 requests and adds CORS headers
 // WHY: R2 Custom Domains don't apply CORS settings, causing download failures
 app.get('/api/r2-public/:folder/:filename', async (c) => {
@@ -230,7 +230,7 @@ log.info('R2 Public Proxy endpoint registered', {
   ]
 });
 
-// 🔧 Pre-register Analytics Comparison API BEFORE unified route system
+// Pre-register Analytics Comparison API BEFORE unified route system
 // This prevents the /api/analytics/* catch-all from intercepting these routes
 app.use('/api/analytics/comparison/*', jwtAuth);
 app.route('/api/analytics/comparison', comparisonAPI);
@@ -238,7 +238,7 @@ log.info('Analytics Comparison API registered', {
   endpoints: ['/api/analytics/comparison/* (with internal OPTIONS handler)']
 });
 
-// 🔧 Pre-register KV Optimization Monitoring BEFORE unified route system
+// Pre-register KV Optimization Monitoring BEFORE unified route system
 // P0 Priority: Real-time monitoring for KV write optimization
 app.route('/api/monitoring/kv', kvOptimizationMonitoringHandler);
 log.info('KV Optimization Monitoring registered', {
@@ -251,7 +251,7 @@ log.info('KV Optimization Monitoring registered', {
   ]
 });
 
-// 🔧 Pre-register Monitoring & Alerting API BEFORE unified route system
+// Pre-register Monitoring & Alerting API BEFORE unified route system
 // Provides DO monitoring, Circuit Breaker status, and alerting
 app.route('/api/monitoring', monitoringMainHandler);
 log.info('Monitoring & Alerting API registered', {
@@ -268,7 +268,7 @@ log.info('Monitoring & Alerting API registered', {
   ]
 });
 
-// ⚠️ CRITICAL: CORS/Security endpoints BEFORE unified route system
+// CRITICAL: CORS/Security endpoints BEFORE unified route system
 // Route priority in Hono: first-registered wins. Moving these after RouteRegistry
 // will cause 401 errors on public endpoints. See docs/architecture/ROUTE_REGISTRATION_ORDER.md
 
@@ -305,7 +305,7 @@ log.info('Security monitoring endpoints registered (P2-4)', {
   ]
 });
 
-// 🆕 Register Security Dashboard handler (P2-7) - Real-time Analytics
+// Register Security Dashboard handler (P2-7) - Real-time Analytics
 app.route('/api/security/dashboard', securityDashboardHandler);
 log.info('Security dashboard endpoints registered (P2-7)', {
   endpoints: [
@@ -317,7 +317,7 @@ log.info('Security dashboard endpoints registered (P2-7)', {
   ]
 });
 
-// 🆕 Register KV Management handler - KV Namespace management and cleanup
+// Register KV Management handler - KV Namespace management and cleanup
 import kvManagementHandler from '@modules/monitoring/handlers/kv-management-main';
 app.route('/api/kv', kvManagementHandler);
 log.info('KV Management endpoints registered', {
@@ -330,7 +330,7 @@ log.info('KV Management endpoints registered', {
 });
 
 // =================================================================================
-// 🆕 PUBLIC FILE PROXY - R2 文件代理下載 (無需認證)
+// PUBLIC FILE PROXY - R2 文件代理下載 (無需認證)
 // =================================================================================
 // 用於代理 R2 文件下載，解決 R2 公開訪問未配置的問題
 // 客服和 LINE 消費者都可以通過此端點下載文件
@@ -347,7 +347,7 @@ log.info('File proxy endpoints PRE-REGISTERED (public access)', {
 });
 
 // =================================================================================
-// ⚠️  CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
+// CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
 // =================================================================================
 //
 // LINE and Facebook webhooks MUST be registered BEFORE the unified route system
@@ -421,7 +421,7 @@ log.info('Facebook Webhook endpoint PRE-REGISTERED', {
 // Webhook 事件處理由 handlers/webhook.ts 和 handlers/webhook-multitenant.ts 負責
 
 // Register P1 Optimization: WebSocket Dashboard (requires auth)
-// 🔒 添加 JWT 認證中間件保護所有 Dashboard 端點
+// 添加 JWT 認證中間件保護所有 Dashboard 端點
 app.use('/api/websocket/dashboard/*', jwtAuth);
 app.route('/api/websocket/dashboard', websocketDashboardApp);
 log.info('WebSocket Dashboard endpoints registered', {
@@ -437,7 +437,7 @@ log.info('WebSocket Dashboard endpoints registered', {
 
 // ==================== Customer Conversation System (Chat-Style) ====================
 // WebSocket + Message CRUD + File Upload — extracted to @modules/customer-conversations
-// ⚠️  Registered BEFORE unified route system to prevent route conflicts
+// Registered BEFORE unified route system to prevent route conflicts
 import { customerWsHandler, customerMessagesHandler } from '@modules/customer-conversations/handlers';
 app.route('/api/customer-ws', customerWsHandler);
 app.route('/api/customer-conversations', customerMessagesHandler);
@@ -451,12 +451,12 @@ log.info('Customer Conversation System (Chat-Style) endpoints registered', {
   ]
 });
 
-// ==================== 🔧 CHANNEL INTEGRATION MANAGEMENT ====================
+// ====================  CHANNEL INTEGRATION MANAGEMENT ====================
 //
 // Multi-tenant channel configuration system (LINE, Facebook, WhatsApp)
 // Allows customers to configure their own messaging platform credentials
 //
-// ⚠️  Registered BEFORE unified route system to prevent route conflicts
+// Registered BEFORE unified route system to prevent route conflicts
 // Routes require authentication (jwtAuth middleware)
 // Only Admin role can create/update/delete channels
 // =============================================================================
@@ -504,32 +504,32 @@ app.route('/api/reminders', taskReminderHandler);
 
 log.info('Task Reminder System registered', {
   endpoints: [
-    'GET    /api/reminders',
-    'GET    /api/reminders/upcoming',
-    'GET    /api/reminders/stats',
-    'POST   /api/reminders',
-    'GET    /api/reminders/:id',
-    'PUT    /api/reminders/:id',
-    'PUT    /api/reminders/:id/complete',
+    'GET /api/reminders',
+    'GET /api/reminders/upcoming',
+    'GET /api/reminders/stats',
+    'POST /api/reminders',
+    'GET /api/reminders/:id',
+    'PUT /api/reminders/:id',
+    'PUT /api/reminders/:id/complete',
     'DELETE /api/reminders/:id',
-    'POST   /api/reminders/process (Admin)'
+    'POST /api/reminders/process (Admin)'
   ]
 });
 
 log.info('Channel Integration Management endpoints registered', {
   endpoints: [
-    'GET    /api/channels',
-    'POST   /api/channels (Admin only)',
-    'GET    /api/channels/:id',
-    'PUT    /api/channels/:id (Admin only)',
+    'GET /api/channels',
+    'POST /api/channels (Admin only)',
+    'GET /api/channels/:id',
+    'PUT /api/channels/:id (Admin only)',
     'DELETE /api/channels/:id (Admin only)',
-    'POST   /api/channels/:id/verify',
-    'GET    /api/channels/:id/stats',
-    'GET    /api/channels/:id/health'
+    'POST /api/channels/:id/verify',
+    'GET /api/channels/:id/stats',
+    'GET /api/channels/:id/health'
   ]
 });
 
-// ❌ LEGACY PRE-REGISTRATION REMOVED
+// LEGACY PRE-REGISTRATION REMOVED
 // GET /api/teams/members is now handled by the new modular team handler
 // (src/modules/teams/handlers/team.ts:319)
 
@@ -547,11 +547,11 @@ routeRegistry.registerHealthEndpoint();
 // 顯示路由註冊統計
 const stats = routeRegistry.getStats();
 log.info(`Route system initialized successfully:
-  📊 Groups: ${stats.groups}
-  📈 Modules: ${stats.registeredModules}/${stats.totalModules}
-  ✅ Enabled: ${stats.enabledModules}
-  ⏸️ Disabled: ${stats.disabledModules}
-  📋 Registration Rate: ${stats.registrationRate}%`);
+   Groups: ${stats.groups}
+   Modules: ${stats.registeredModules}/${stats.totalModules}
+   Enabled: ${stats.enabledModules}
+   Disabled: ${stats.disabledModules}
+   Registration Rate: ${stats.registrationRate}%`);
 
 // ==================== 模組化架構系統初始化 ====================
 log.info('Initializing Modular Architecture System');
@@ -596,10 +596,10 @@ const securityConfig = getSecurityConfig(environment);
 // 添加中間件
 app.use('*', honoLogger());
 
-// 🏗️ Lazy init: modular system + collaboration (on first request)
+// Lazy init: modular system + collaboration (on first request)
 app.use('*', createLazyInitMiddleware());
 
-// 🔥 Initialize latest message cache on startup
+// Initialize latest message cache on startup
 app.use('*', async (c, next) => {
   // Only run warmup on the first request after deployment
   const shouldWarmup = c.req.header('cf-worker-started') ||
@@ -619,7 +619,7 @@ app.use('*', async (c, next) => {
   await next();
 });
 
-// 🔥 全域錯誤處理中間件 (在其他 middleware 之後)
+// 全域錯誤處理中間件 (在其他 middleware 之後)
 app.use('*', errorHandlingMiddleware());
 
 // 安全標頭中間件
@@ -659,26 +659,26 @@ app.route('/api/system', systemSettingsRouter);
 app.route('/api/credentials', credentialsRouter);
 
 // ========================================================================
-// 🚀 TEAM MANAGEMENT API ROUTES - FULLY MIGRATED TO MODULAR ARCHITECTURE
+// TEAM MANAGEMENT API ROUTES - FULLY MIGRATED TO MODULAR ARCHITECTURE
 // ========================================================================
 //
-// ❌ LEGACY ROUTES REMOVED - All team member management has been migrated to:
-//    src/modules/teams/handlers/members.ts
-//    src/modules/teams/handlers/password.ts
-//    src/modules/teams/handlers/invitations.ts
+// LEGACY ROUTES REMOVED - All team member management has been migrated to:
+// src/modules/teams/handlers/members.ts
+// src/modules/teams/handlers/password.ts
+// src/modules/teams/handlers/invitations.ts
 //
-// ✅ NEW MODULAR ROUTES (via unified route system):
-//    POST   /api/teams/members                     → Add member
-//    PUT    /api/teams/members/:memberId/status    → Update status
-//    PUT    /api/teams/members/:memberId/role      → Update role
-//    PUT    /api/teams/members/:memberId           → Update member
-//    DELETE /api/teams/members/:memberId           → Delete member
-//    POST   /api/teams/members/:memberId/reset     → Reset password (admin)
-//    POST   /api/teams/invitations                 → Send invitation
-//    GET    /api/teams/invitations                 → List invitations
-//    DELETE /api/teams/invitations/:id             → Revoke invitation
+// NEW MODULAR ROUTES (via unified route system):
+// POST /api/teams/members → Add member
+// PUT /api/teams/members/:memberId/status → Update status
+// PUT /api/teams/members/:memberId/role → Update role
+// PUT /api/teams/members/:memberId → Update member
+// DELETE /api/teams/members/:memberId → Delete member
+// POST /api/teams/members/:memberId/reset → Reset password (admin)
+// POST /api/teams/invitations → Send invitation
+// GET /api/teams/invitations → List invitations
+// DELETE /api/teams/invitations/:id → Revoke invitation
 //
-// 🔧 SPECIAL ROUTE: Password change endpoint needs to be under /api/auth
+// SPECIAL ROUTE: Password change endpoint needs to be under /api/auth
 // ========================================================================
 
 import passwordHandler from '@modules/teams/handlers/password';
@@ -775,9 +775,9 @@ app.get('/join', async (c) => {
 log.info('WebSocket routes managed by Unified Route Registry');
 
 // ==================== 以下路由已遷移到統一路由系統 (src/core/route-config.ts) ====================
-// ✅ Sessions, Notifications, Health, Analytics, Reports, Activities
-// ✅ WebSocket, User Experience, Phase2 Auth, Alert Config, Data Optimization
-// ✅ Realtime, Queue Monitor
+// Sessions, Notifications, Health, Analytics, Reports, Activities
+// WebSocket, User Experience, Phase2 Auth, Alert Config, Data Optimization
+// Realtime, Queue Monitor
 // 這些模組現在通過 RouteRegistry 自動註冊
 
 // Realtime + Queue monitor — fine-grained routers
@@ -842,7 +842,7 @@ app.notFound((c) => {
 
 // ==================== Queue Consumer ====================
 
-// ⚠️ REMOVED: AgentQueueService has been deprecated
+// REMOVED: AgentQueueService has been deprecated
 // Delayed messages are now handled by DelayedMessageBuffer Durable Object
 // 使用統一的 Real-time 模組處理即時事件
 
@@ -887,16 +887,16 @@ export { DelayedMessageScheduler as DelayedMessageBuffer };
 export { DelayedMessageScheduler as DelayedMessageProcessor };
 
 // ==================== 導出 Worker 處理器 ====================
-// ✅ LINE Message Queue Consumer
+// LINE Message Queue Consumer
 // Purpose: Async LINE message delivery for better UX
 // Benefits:
-//   - Immediate response to agents (~10ms vs ~100-500ms)
-//   - Automatic retry with exponential backoff
-//   - Built-in dead letter queue handling
+// - Immediate response to agents (~10ms vs ~100-500ms)
+// - Automatic retry with exponential backoff
+// - Built-in dead letter queue handling
 export default {
   fetch: app.fetch,
 
-  // 🆕 LINE Message Queue Consumer
+  // LINE Message Queue Consumer
   async queue(
     batch: MessageBatch<LineMessageQueuePayload>,
     env: Bindings
@@ -905,7 +905,7 @@ export default {
     await handleLineMessageQueue(batch, env);
   },
 
-  // ⏰ Scheduled Handler for Task Reminders (Phase 4)
+  // Scheduled Handler for Task Reminders (Phase 4)
   async scheduled(
     event: ScheduledEvent,
     env: Bindings,

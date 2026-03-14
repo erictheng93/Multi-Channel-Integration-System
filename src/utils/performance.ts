@@ -219,7 +219,7 @@ export class ResponseOptimizer {
 
   // 設置 CORS 優化標頭（統一配置版本）
   static setCORSHeaders(c: Context): void {
-    // ✅ 使用統一的 CORS 配置，從環境變量動態讀取
+    // 使用統一的 CORS 配置，從環境變量動態讀取
     const origin = c.req.header('Origin');
 
     // 使用集中式 CORS 配置
@@ -229,9 +229,9 @@ export class ResponseOptimizer {
     if (isAllowed) {
       c.header('Access-Control-Allow-Origin', origin!);
       c.header('Access-Control-Allow-Credentials', 'true');
-      console.log(`✅ [Performance CORS] Allowed origin: ${origin}`);
+      console.log(`[Performance CORS] Allowed origin: ${origin}`);
     } else if (origin) {
-      console.warn(`⚠️ [Performance CORS] Rejected origin: ${origin}`);
+      console.warn(`[Performance CORS] Rejected origin: ${origin}`);
       // 不設置 CORS 標頭，讓瀏覽器阻止請求
     }
 

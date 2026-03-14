@@ -52,7 +52,7 @@ export interface Message {
   mediaType?: 'text' | 'image' | 'video' | 'file';
   platform: Platform;
   createdAt: number;
-  // 🆕 檔案附件（用於 Flex Card 顯示）
+  // 檔案附件（用於 Flex Card 顯示）
   file_attachments?: FileAttachment[];
 }
 

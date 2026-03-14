@@ -88,12 +88,12 @@ async function clearTable(tableName: string, env: string = ''): Promise<void> {
   const command = `wrangler d1 execute DB ${envFlag} --command="DELETE FROM ${tableName}"`;
   
   await executeWranglerCommand(command);
-  console.log(`✅ 已清空表: ${tableName}`);
+  console.log(` 已清空表: ${tableName}`);
 }
 
 async function insertTableData(tableName: string, data: DatabaseRow[], env: string = ''): Promise<void> {
   if (data.length === 0) {
-    console.log(`⚠️ 表 ${tableName} 無數據，跳過插入`);
+    console.log(` 表 ${tableName} 無數據，跳過插入`);
     return;
   }
 
@@ -127,12 +127,12 @@ async function insertTableData(tableName: string, data: DatabaseRow[], env: stri
     const command = `wrangler d1 execute DB ${envFlag} --command="${insertSQL}"`;
     
     await executeWranglerCommand(command);
-    console.log(`✅ 已插入 ${batch.length} 行到表 ${tableName} (${i + 1}-${i + batch.length}/${data.length})`);
+    console.log(` 已插入 ${batch.length} 行到表 ${tableName} (${i + 1}-${i + batch.length}/${data.length})`);
   }
 }
 
 async function backupProductionData(): Promise<void> {
-  console.log('📦 開始備份生產環境數據...');
+  console.log(' 開始備份生產環境數據...');
   
   const backupDir = path.join(process.cwd(), 'database', 'backup');
   if (!fs.existsSync(backupDir)) {
@@ -146,7 +146,7 @@ async function backupProductionData(): Promise<void> {
   
   for (const tableName of TABLES_TO_SYNC) {
     try {
-      console.log(`📄 備份表: ${tableName}`);
+      console.log(` 備份表: ${tableName}`);
       
       // 獲取表結構
       const schema = await getTableSchema(tableName, 'production');
@@ -175,16 +175,16 @@ async function backupProductionData(): Promise<void> {
         backupSQL += '\n';
       }
     } catch (error) {
-      console.warn(`⚠️ 無法備份表 ${tableName}:`, error);
+      console.warn(` 無法備份表 ${tableName}:`, error);
     }
   }
   
   fs.writeFileSync(backupFile, backupSQL, 'utf8');
-  console.log(`✅ 生產環境數據已備份到: ${backupFile}`);
+  console.log(` 生產環境數據已備份到: ${backupFile}`);
 }
 
 async function syncDevToProduction(): Promise<void> {
-  console.log('🔄 開始同步開發環境數據到生產環境...');
+  console.log(' 開始同步開發環境數據到生產環境...');
   
   // 1. 備份生產環境數據
   await backupProductionData();
@@ -192,36 +192,36 @@ async function syncDevToProduction(): Promise<void> {
   // 2. 同步每個表
   for (const tableName of TABLES_TO_SYNC) {
     try {
-      console.log(`\n📋 處理表: ${tableName}`);
+      console.log(`\n 處理表: ${tableName}`);
       
       // 獲取開發環境數據
-      console.log(`📥 獲取開發環境數據...`);
+      console.log(` 獲取開發環境數據...`);
       const devData = await getTableData(tableName);
-      console.log(`📊 開發環境有 ${devData.length} 條記錄`);
+      console.log(` 開發環境有 ${devData.length} 條記錄`);
       
       // 清空生產環境表
-      console.log(`🗑️ 清空生產環境表...`);
+      console.log(` 清空生產環境表...`);
       await clearTable(tableName, 'production');
       
       // 插入開發環境數據到生產環境
       if (devData.length > 0) {
-        console.log(`📤 插入數據到生產環境...`);
+        console.log(` 插入數據到生產環境...`);
         await insertTableData(tableName, devData, 'production');
       }
       
-      console.log(`✅ 表 ${tableName} 同步完成`);
+      console.log(` 表 ${tableName} 同步完成`);
       
     } catch (error) {
-      console.error(`❌ 同步表 ${tableName} 失敗:`, error);
+      console.error(` 同步表 ${tableName} 失敗:`, error);
       throw error;
     }
   }
   
-  console.log('\n🎉 所有數據同步完成！');
+  console.log('\n 所有數據同步完成！');
 }
 
 async function verifySync(): Promise<void> {
-  console.log('\n🔍 驗證同步結果...');
+  console.log('\n 驗證同步結果...');
   
   for (const tableName of TABLES_TO_SYNC) {
     try {
@@ -229,28 +229,28 @@ async function verifySync(): Promise<void> {
       const prodCount = (await getTableData(tableName, 'production')).length;
       
       if (devCount === prodCount) {
-        console.log(`✅ ${tableName}: ${devCount} 條記錄 (一致)`);
+        console.log(` ${tableName}: ${devCount} 條記錄 (一致)`);
       } else {
-        console.log(`❌ ${tableName}: 開發 ${devCount} vs 生產 ${prodCount} (不一致)`);
+        console.log(` ${tableName}: 開發 ${devCount} vs 生產 ${prodCount} (不一致)`);
       }
     } catch (error) {
-      console.warn(`⚠️ 無法驗證表 ${tableName}:`, error);
+      console.warn(` 無法驗證表 ${tableName}:`, error);
     }
   }
 }
 
 async function main() {
   try {
-    console.log('🚀 開始數據同步任務...');
-    console.log('⚠️ 警告：這將完全覆蓋生產環境的數據！\n');
+    console.log(' 開始數據同步任務...');
+    console.log(' 警告：這將完全覆蓋生產環境的數據！\n');
     
     await syncDevToProduction();
     await verifySync();
     
-    console.log('\n✨ 數據同步任務完成！');
+    console.log('\n 數據同步任務完成！');
     
   } catch (error) {
-    console.error('💥 同步過程中出現錯誤:', error);
+    console.error(' 同步過程中出現錯誤:', error);
     process.exit(1);
   }
 }

@@ -69,7 +69,7 @@ export interface WebSocketEventCallbacks {
   onTypingStop?: (_conversationId: string, _userId: string) => void
   onUserPresence?: (_userId: string, _presence: UserPresence) => void
   onNotification?: (_notification: unknown) => void
-  // 🆕 Team event callbacks for real-time memberCount updates
+  // Team event callbacks for real-time memberCount updates
   onTeamMemberAdded?: (_data: TeamMemberEventData) => void
   onTeamMemberRemoved?: (_data: TeamMemberEventData) => void
   onTeamUpdated?: (_data: TeamUpdateEventData) => void
@@ -316,7 +316,7 @@ export class WebSocketManager {
         this.handleSystemUpdate(message)
         break
 
-      // 🆕 Team event handlers for real-time memberCount updates
+      // Team event handlers for real-time memberCount updates
       case 'team_member_added':
         this.handleTeamMemberAdded(message)
         break
@@ -435,13 +435,13 @@ export class WebSocketManager {
     console.log('System update received:', message.data)
   }
 
-  // 🆕 Team member added event handler
+  // Team member added event handler
   private handleTeamMemberAdded(message: WebSocketMessage): void {
     const { data } = message
     if (!data || typeof data !== 'object') {return}
 
     const eventData = data as TeamMemberEventData
-    console.log('👥 [WebSocket] Team member added:', {
+    console.log('[WebSocket] Team member added:', {
       teamId: eventData.teamId,
       teamName: eventData.teamName,
       agentName: eventData.agentName,
@@ -451,13 +451,13 @@ export class WebSocketManager {
     this.eventCallbacks.onTeamMemberAdded?.(eventData)
   }
 
-  // 🆕 Team member removed event handler
+  // Team member removed event handler
   private handleTeamMemberRemoved(message: WebSocketMessage): void {
     const { data } = message
     if (!data || typeof data !== 'object') {return}
 
     const eventData = data as TeamMemberEventData
-    console.log('👥 [WebSocket] Team member removed:', {
+    console.log('[WebSocket] Team member removed:', {
       teamId: eventData.teamId,
       teamName: eventData.teamName,
       agentName: eventData.agentName,
@@ -467,13 +467,13 @@ export class WebSocketManager {
     this.eventCallbacks.onTeamMemberRemoved?.(eventData)
   }
 
-  // 🆕 Team updated event handler
+  // Team updated event handler
   private handleTeamUpdated(message: WebSocketMessage): void {
     const { data } = message
     if (!data || typeof data !== 'object') {return}
 
     const eventData = data as TeamUpdateEventData
-    console.log('🔄 [WebSocket] Team updated:', {
+    console.log('[WebSocket] Team updated:', {
       teamId: eventData.teamId,
       changes: eventData.changes
     })
@@ -516,7 +516,7 @@ export class WebSocketManager {
   }
 
   private clearTemporaryState(): void {
-    // 🔥 Use nextTick to break synchronous execution chain and prevent infinite recursion
+    // Use nextTick to break synchronous execution chain and prevent infinite recursion
     // This ensures Vue's reactivity system processes updates in separate microtasks
     import('vue').then(({ nextTick }) => {
       nextTick(() => {

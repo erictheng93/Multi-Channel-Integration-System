@@ -14,11 +14,11 @@ import type { ReportBase } from '@/types/reports'
 describe('ReportsSection.vue', () => {
   const mockHelpers = {
     getTypeBadgeClass: vi.fn(() => 'basic'),
-    getReportTypeIcon: vi.fn(() => '📊'),
-    getStatusIcon: vi.fn(() => '✅'),
+    getReportTypeIcon: vi.fn(() => ''),
+    getStatusIcon: vi.fn(() => ''),
     getStatusLabel: vi.fn(() => '已完成'),
     getStatusClass: vi.fn(() => 'completed'),
-    getFormatIcon: vi.fn(() => '📄'),
+    getFormatIcon: vi.fn(() => ''),
     getFormatLabel: vi.fn(() => 'JSON'),
     formatRelativeTime: vi.fn(() => '5 分鐘前'),
     formatFileSize: vi.fn(() => '1.2 MB'),
@@ -64,7 +64,7 @@ describe('ReportsSection.vue', () => {
         }
       })
 
-      expect(wrapper.text()).toContain('📋 報表列表')
+      expect(wrapper.text()).toContain('報表列表')
     })
 
     it('非加载时应该显示报表数量', () => {

@@ -85,7 +85,7 @@ describe('MessageBubble - Timestamp Display', () => {
 
       // 应该包含完整日期，格式如 "2025/01/27 15:30"
       expect(timeText).toMatch(/\d{4}/)  // 包含年份
-      expect(timeText).toMatch(/\//)     // 包含日期分隔符
+      expect(timeText).toMatch(/\//) // 包含日期分隔符
       expect(timeText).toMatch(/\d{2}:\d{2}/)  // 包含时分
     })
 

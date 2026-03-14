@@ -642,7 +642,7 @@ describe('useTeamOperations', () => {
       })
 
       it('should handle whitespace only', () => {
-        expect(operations.getInitials('   ')).toBe('?')
+        expect(operations.getInitials(' ')).toBe('?')
       })
 
       it('should uppercase initials', () => {

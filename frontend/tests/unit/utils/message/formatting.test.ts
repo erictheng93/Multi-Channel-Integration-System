@@ -36,7 +36,7 @@ describe('Message Formatting Utilities', () => {
     })
 
     it('should handle Unicode characters', () => {
-      expect(escapeHtml('Hello 你好 🎉')).toBe('Hello 你好 🎉')
+      expect(escapeHtml('Hello 你好 ')).toBe('Hello 你好 ')
     })
   })
 

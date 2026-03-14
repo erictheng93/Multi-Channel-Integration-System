@@ -24,9 +24,9 @@ const E2E_CONFIG = {
   adminToken: process.env.TEST_ADMIN_TOKEN || '',
   liffId: process.env.TEST_LIFF_ID || 'test-liff-id',
   // Performance thresholds
-  maxPreNotificationDelay: 500,    // Pre-notification should arrive < 500ms
+  maxPreNotificationDelay: 500, // Pre-notification should arrive < 500ms
   maxWebhookProcessingTime: 2000,  // Webhook processing < 2s
-  maxTotalJourneyTime: 8000        // Total journey < 8s
+  maxTotalJourneyTime: 8000 // Total journey < 8s
 };
 
 // ============================================================================
@@ -226,24 +226,24 @@ class QRCodeJourneySimulator {
 
     console.log(`
 ╔═══════════════════════════════════════════════════════════════════╗
-║                    QR Code Journey Summary                        ║
+║ QR Code Journey Summary ║
 ╠═══════════════════════════════════════════════════════════════════╣
-║                                                                   ║
-║   Total Duration:         ${String(metrics.totalDuration).padStart(6)}ms                           ║
-║   Pre-notification Delay: ${String(metrics.preNotificationDelay).padStart(6)}ms                           ║
-║   Webhook Processing:     ${String(metrics.webhookProcessingTime).padStart(6)}ms                           ║
-║   User Perceived Latency: ${String(metrics.userPerceivedLatency).padStart(6)}ms                           ║
-║                                                                   ║
-║   Events Timeline:                                                ║`);
+║ ║
+║ Total Duration: ${String(metrics.totalDuration).padStart(6)}ms ║
+║ Pre-notification Delay: ${String(metrics.preNotificationDelay).padStart(6)}ms ║
+║ Webhook Processing: ${String(metrics.webhookProcessingTime).padStart(6)}ms ║
+║ User Perceived Latency: ${String(metrics.userPerceivedLatency).padStart(6)}ms ║
+║ ║
+║ Events Timeline: ║`);
 
     metrics.events.forEach((event, index) => {
       const time = event.duration || 0;
       const indicator = event.type.includes('notification') || event.type.includes('confirmation')
-        ? '📡' : '📱';
-      console.log(`║   ${indicator} +${String(time).padStart(5)}ms - ${event.type.padEnd(20)}                   ║`);
+        ? '' : '';
+      console.log(`║ ${indicator} +${String(time).padStart(5)}ms - ${event.type.padEnd(20)} ║`);
     });
 
-    console.log(`║                                                                   ║
+    console.log(`║ ║
 ╚═══════════════════════════════════════════════════════════════════╝
     `);
   }
@@ -271,7 +271,7 @@ describe('QR Code User Journey E2E Tests', () => {
     }
 
     if (!hasApiAccess) {
-      console.log('⚠️  API not accessible - running in simulation mode');
+      console.log('  API not accessible - running in simulation mode');
     }
   });
 
@@ -281,14 +281,14 @@ describe('QR Code User Journey E2E Tests', () => {
   describe('Journey 1: New User Complete Journey', () => {
     it('should complete new user journey within performance thresholds', async () => {
       if (!hasApiAccess) {
-        console.log('⏭️  Skipping real API test - no access');
+        console.log('  Skipping real API test - no access');
         return;
       }
 
       const lineUserId = `Ue2e_newuser_${Date.now()}`;
       const teamId = 1;
 
-      console.log('\n🎬 Starting New User Journey E2E Test...\n');
+      console.log('\n Starting New User Journey E2E Test...\n');
 
       // Step 1: Scan QR Code
       const qrResult = await simulator.scanQRCode(teamId);
@@ -302,14 +302,14 @@ describe('QR Code User Journey E2E Tests', () => {
 
         // Verify pre-notification delay
         expect(assignResult.preNotificationDelay).toBeLessThan(E2E_CONFIG.maxPreNotificationDelay);
-        console.log(`✅ Pre-notification in ${assignResult.preNotificationDelay}ms (< ${E2E_CONFIG.maxPreNotificationDelay}ms)\n`);
+        console.log(` Pre-notification in ${assignResult.preNotificationDelay}ms (< ${E2E_CONFIG.maxPreNotificationDelay}ms)\n`);
       } else {
-        console.log(`⚠️  Assign-team failed: ${JSON.stringify(assignResult.data)}`);
+        console.log(`  Assign-team failed: ${JSON.stringify(assignResult.data)}`);
       }
 
       // Step 3: Simulate webhook (would be real in production)
       const webhookResult = await simulator.simulateWebhookFollow(lineUserId);
-      console.log('✅ Webhook follow simulated\n');
+      console.log(' Webhook follow simulated\n');
 
       // Print journey summary
       simulator.printSummary();
@@ -326,14 +326,14 @@ describe('QR Code User Journey E2E Tests', () => {
   describe('Journey 2: Existing Friend Journey', () => {
     it('should handle existing friend scanning new team QR code', async () => {
       if (!hasApiAccess) {
-        console.log('⏭️  Skipping real API test - no access');
+        console.log('  Skipping real API test - no access');
         return;
       }
 
       const lineUserId = `Ue2e_existing_${Date.now()}`;
       const teamId = 2;
 
-      console.log('\n🎬 Starting Existing Friend Journey E2E Test...\n');
+      console.log('\n Starting Existing Friend Journey E2E Test...\n');
 
       // Step 1: Scan QR Code
       await simulator.scanQRCode(teamId);
@@ -345,9 +345,9 @@ describe('QR Code User Journey E2E Tests', () => {
       const welcomeResult = await simulator.callLiffWelcome(lineUserId, teamId);
 
       if (welcomeResult.status === 404) {
-        console.log('ℹ️  No customer found (expected for new test user)');
+        console.log('  No customer found (expected for new test user)');
       } else if (welcomeResult.success) {
-        console.log('✅ Welcome message sent and conversation synced');
+        console.log(' Welcome message sent and conversation synced');
       }
 
       simulator.printSummary();
@@ -360,14 +360,14 @@ describe('QR Code User Journey E2E Tests', () => {
   describe('Journey 3: Performance Benchmarks', () => {
     it('should measure pre-notification latency across multiple runs', async () => {
       if (!hasApiAccess) {
-        console.log('⏭️  Skipping real API test - no access');
+        console.log('  Skipping real API test - no access');
         return;
       }
 
       const iterations = 5;
       const latencies: number[] = [];
 
-      console.log(`\n📊 Running ${iterations} iterations for latency measurement...\n`);
+      console.log(`\n Running ${iterations} iterations for latency measurement...\n`);
 
       for (let i = 0; i < iterations; i++) {
         const lineUserId = `Uperf_${Date.now()}_${i}`;
@@ -392,15 +392,15 @@ describe('QR Code User Journey E2E Tests', () => {
 
       console.log(`
 ╔═══════════════════════════════════════════════════════════════════╗
-║                    Performance Benchmark Results                  ║
+║ Performance Benchmark Results ║
 ╠═══════════════════════════════════════════════════════════════════╣
-║   Iterations:    ${String(iterations).padStart(6)}                                      ║
-║   Avg Latency:   ${String(avgLatency.toFixed(0)).padStart(6)}ms                                      ║
-║   Min Latency:   ${String(minLatency).padStart(6)}ms                                      ║
-║   Max Latency:   ${String(maxLatency).padStart(6)}ms                                      ║
-║   P95 Latency:   ${String(p95Latency).padStart(6)}ms                                      ║
-║   Threshold:     ${String(E2E_CONFIG.maxPreNotificationDelay).padStart(6)}ms                                      ║
-║   Status:        ${avgLatency < E2E_CONFIG.maxPreNotificationDelay ? '✅ PASS' : '❌ FAIL'}                                         ║
+║ Iterations: ${String(iterations).padStart(6)} ║
+║ Avg Latency: ${String(avgLatency.toFixed(0)).padStart(6)}ms ║
+║ Min Latency: ${String(minLatency).padStart(6)}ms ║
+║ Max Latency: ${String(maxLatency).padStart(6)}ms ║
+║ P95 Latency: ${String(p95Latency).padStart(6)}ms ║
+║ Threshold: ${String(E2E_CONFIG.maxPreNotificationDelay).padStart(6)}ms ║
+║ Status: ${avgLatency < E2E_CONFIG.maxPreNotificationDelay ? ' PASS' : ' FAIL'} ║
 ╚═══════════════════════════════════════════════════════════════════╝
       `);
 
@@ -414,7 +414,7 @@ describe('QR Code User Journey E2E Tests', () => {
   describe('Journey 4: Error Scenarios', () => {
     it('should handle invalid team ID gracefully', async () => {
       if (!hasApiAccess) {
-        console.log('⏭️  Skipping real API test - no access');
+        console.log('  Skipping real API test - no access');
         return;
       }
 
@@ -425,12 +425,12 @@ describe('QR Code User Journey E2E Tests', () => {
 
       expect(result.status).toBe(404);
       expect(result.data.success).toBe(false);
-      console.log('✅ Invalid team ID handled correctly');
+      console.log(' Invalid team ID handled correctly');
     });
 
     it('should handle missing parameters', async () => {
       if (!hasApiAccess) {
-        console.log('⏭️  Skipping real API test - no access');
+        console.log('  Skipping real API test - no access');
         return;
       }
 
@@ -444,7 +444,7 @@ describe('QR Code User Journey E2E Tests', () => {
       });
 
       expect(response.status).toBe(400);
-      console.log('✅ Missing parameters handled correctly');
+      console.log(' Missing parameters handled correctly');
     });
   });
 
@@ -454,7 +454,7 @@ describe('QR Code User Journey E2E Tests', () => {
   describe('Journey 5: Timing Verification', () => {
     it('should verify event ordering is correct', async () => {
       if (!hasApiAccess) {
-        console.log('⏭️  Skipping real API test - no access');
+        console.log('  Skipping real API test - no access');
         return;
       }
 
@@ -481,7 +481,7 @@ describe('QR Code User Journey E2E Tests', () => {
       expect(preNotificationIndex).toBeLessThan(webhookFollowIndex);
       expect(webhookFollowIndex).toBeLessThan(confirmationIndex);
 
-      console.log('✅ Event ordering verified');
+      console.log(' Event ordering verified');
     });
   });
 });
@@ -494,47 +494,47 @@ describe('QR Code Journey Simulation Tests (No API Required)', () => {
   it('should demonstrate expected user journey flow', () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════════════╗
-║                Expected QR Code User Journey                      ║
+║ Expected QR Code User Journey ║
 ╠═══════════════════════════════════════════════════════════════════╣
-║                                                                   ║
-║   T+0ms      User scans QR Code                                   ║
-║      │                                                            ║
-║      ▼                                                            ║
-║   T+100ms    LIFF page loads                                      ║
-║      │                                                            ║
-║      ▼                                                            ║
-║   T+200ms    /api/liff/assign-team called                         ║
-║      │       └── Creates assignment record                        ║
-║      │       └── Sends WebSocket pre-notification                 ║
-║      │           (isPending: true)                                ║
-║      ▼                                                            ║
-║   T+300ms    Frontend receives pending conversation               ║
-║      │       └── Shows "Waiting..." state                         ║
-║      │                                                            ║
-║   [NEW USER PATH]                    [EXISTING FRIEND PATH]       ║
-║      │                                       │                    ║
-║      ▼                                       ▼                    ║
-║   User clicks "Add Friend"           /api/liff/welcome called     ║
-║      │                                       │                    ║
-║      ▼                                       │                    ║
-║   T+2-5s    LINE Webhook fires               │                    ║
-║      │       └── Creates customer            │                    ║
-║      │       └── Creates conversation        │                    ║
-║      │       └── Sends confirmation          │                    ║
-║      │           (isPending: false)          │                    ║
-║      │                                       │                    ║
-║      └───────────────────┬───────────────────┘                    ║
-║                          │                                        ║
-║                          ▼                                        ║
-║   T+5.5s    Frontend reconciliation                               ║
-║             └── Matches by lineUserId                             ║
-║             └── Replaces pending with real conversation           ║
-║                                                                   ║
-║   📊 Key Metrics:                                                 ║
-║   ├── User perceived latency: < 500ms (pre-notification)          ║
-║   ├── Total journey time: < 8s                                    ║
-║   └── Reconciliation: Automatic via lineUserId matching           ║
-║                                                                   ║
+║ ║
+║ T+0ms User scans QR Code ║
+║ │                                                            ║
+║ ▼                                                            ║
+║ T+100ms LIFF page loads ║
+║ │                                                            ║
+║ ▼                                                            ║
+║ T+200ms /api/liff/assign-team called ║
+║ │       └── Creates assignment record ║
+║ │       └── Sends WebSocket pre-notification ║
+║ │           (isPending: true) ║
+║ ▼                                                            ║
+║ T+300ms Frontend receives pending conversation ║
+║ │       └── Shows "Waiting..." state ║
+║ │                                                            ║
+║ [NEW USER PATH] [EXISTING FRIEND PATH] ║
+║ │                                       │ ║
+║ ▼                                       ▼ ║
+║ User clicks "Add Friend" /api/liff/welcome called ║
+║ │                                       │ ║
+║ ▼                                       │ ║
+║ T+2-5s LINE Webhook fires │                    ║
+║ │       └── Creates customer │                    ║
+║ │       └── Creates conversation │                    ║
+║ │       └── Sends confirmation │                    ║
+║ │           (isPending: false) │                    ║
+║ │                                       │ ║
+║ └───────────────────┬───────────────────┘ ║
+║ │                                        ║
+║ ▼                                        ║
+║ T+5.5s Frontend reconciliation ║
+║ └── Matches by lineUserId ║
+║ └── Replaces pending with real conversation ║
+║ ║
+║ Key Metrics: ║
+║ ├── User perceived latency: < 500ms (pre-notification) ║
+║ ├── Total journey time: < 8s ║
+║ └── Reconciliation: Automatic via lineUserId matching ║
+║ ║
 ╚═══════════════════════════════════════════════════════════════════╝
     `);
 

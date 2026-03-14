@@ -6,31 +6,31 @@
 
 ```
 ┌─────────────────────────────────────────────┐
-│          Cloudflare Worker                  │
+│ Cloudflare Worker │
 ├─────────────────────────────────────────────┤
-│                                             │
-│  Routes:                                    │
-│  ├─ /oauth/authorize                        │
-│  ├─ /oauth/callback                         │
-│  ├─ /deployment/start                       │
-│  ├─ /deployment/:name/status                │
-│  ├─ /deployment/:name/events (SSE)          │
-│  └─ /deployment/:name/cancel                │
-│                                             │
-│  Durable Objects:                           │
-│  └─ DeploymentOrchestrator                  │
-│      ├─ 15-step deployment pipeline         │
-│      ├─ State persistence                   │
-│      ├─ SSE broadcasting                    │
-│      └─ Automatic rollback                  │
-│                                             │
-│  Services:                                  │
-│  ├─ CloudflareAPI                           │
-│  ├─ MigrationRunner                         │
-│  ├─ ConfigGenerator                         │
-│  ├─ EmailService                            │
-│  └─ RollbackService                         │
-│                                             │
+│ │
+│  Routes: │
+│  ├─ /oauth/authorize │
+│  ├─ /oauth/callback │
+│  ├─ /deployment/start │
+│  ├─ /deployment/:name/status │
+│  ├─ /deployment/:name/events (SSE) │
+│  └─ /deployment/:name/cancel │
+│ │
+│  Durable Objects: │
+│  └─ DeploymentOrchestrator │
+│ ├─ 15-step deployment pipeline │
+│ ├─ State persistence │
+│ ├─ SSE broadcasting │
+│ └─ Automatic rollback │
+│ │
+│  Services: │
+│  ├─ CloudflareAPI │
+│  ├─ MigrationRunner │
+│  ├─ ConfigGenerator │
+│  ├─ EmailService │
+│  └─ RollbackService │
+│ │
 └─────────────────────────────────────────────┘
 ```
 
@@ -256,28 +256,28 @@ Response:
 ```
 backend/
 ├── src/
-│   ├── index.ts                    # Worker entry point
-│   ├── durable-objects/
-│   │   └── DeploymentOrchestrator.ts
-│   ├── routes/
-│   │   ├── oauth.ts
-│   │   └── deployment.ts
-│   ├── services/
-│   │   ├── CloudflareAPI.ts
-│   │   ├── MigrationRunner.ts
-│   │   ├── ConfigGenerator.ts
-│   │   ├── EmailService.ts
-│   │   └── RollbackService.ts
-│   ├── utils/
-│   │   ├── validation.ts
-│   │   └── errors.ts
-│   └── types/
-│       ├── index.ts
-│       ├── deployment.ts
-│       └── cloudflare.ts
+│ ├── index.ts # Worker entry point
+│ ├── durable-objects/
+│ │   └── DeploymentOrchestrator.ts
+│ ├── routes/
+│ │   ├── oauth.ts
+│ │   └── deployment.ts
+│ ├── services/
+│ │   ├── CloudflareAPI.ts
+│ │   ├── MigrationRunner.ts
+│ │   ├── ConfigGenerator.ts
+│ │   ├── EmailService.ts
+│ │   └── RollbackService.ts
+│ ├── utils/
+│ │   ├── validation.ts
+│ │   └── errors.ts
+│ └── types/
+│ ├── index.ts
+│ ├── deployment.ts
+│ └── cloudflare.ts
 ├── tests/
-│   └── unit/
-│       └── utils/
+│ └── unit/
+│ └── utils/
 ├── wrangler.toml
 ├── package.json
 ├── tsconfig.json

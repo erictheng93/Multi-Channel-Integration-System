@@ -15,7 +15,7 @@ class ApiClient {
   private baseURL: string;
   private token: string | null = null;
   private refreshToken: string | null = null;
-  private contextTeamId: number | null = null;  // 🚀 Phase 1: Multi-team context
+  private contextTeamId: number | null = null;  //  Phase 1: Multi-team context
   private isRefreshing = false;
   private failedQueue: Array<{ resolve: (_token: string | null) => void; reject: (_error?: unknown) => void }> = [];
   private defaultRetryConfig: RetryConfig = {
@@ -38,7 +38,7 @@ class ApiClient {
     if (typeof window !== 'undefined' && window.localStorage) {
       this.token = localStorage.getItem('token');
       this.refreshToken = localStorage.getItem('refreshToken');
-      // 🚀 Phase 1: Restore team context from localStorage
+      // Phase 1: Restore team context from localStorage
       const storedTeamId = localStorage.getItem('contextTeamId');
       if (storedTeamId) {
         const parsed = parseInt(storedTeamId, 10);
@@ -71,7 +71,7 @@ class ApiClient {
     return this.token;
   }
 
-  // 🚀 Phase 1 Optimization: Team context management
+  // Phase 1 Optimization: Team context management
   /**
    * Set the current team context for API requests
    * This team ID will be sent as X-Context-Team-ID header
@@ -171,7 +171,7 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    // 🚀 Phase 1 Optimization: Include team context header
+    // Phase 1 Optimization: Include team context header
     if (this.contextTeamId !== null) {
       headers['X-Context-Team-ID'] = this.contextTeamId.toString();
     }
@@ -191,8 +191,8 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const { retries = 0, isRetry = false } = options;
 
-    console.log(`🌐 API Request: ${method} ${this.baseURL}${endpoint}`);
-    console.log('📤 Request data:', data);
+    console.log(` API Request: ${method} ${this.baseURL}${endpoint}`);
+    console.log(' Request data:', data);
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -201,7 +201,7 @@ class ApiClient {
         body: data ? JSON.stringify(data) : undefined
       });
 
-      console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+      console.log(` Response status: ${response.status} ${response.statusText}`);
 
       let result;
       try {
@@ -318,7 +318,7 @@ class ApiClient {
         headers['Authorization'] = `Bearer ${this.token}`;
       }
 
-      // 🚀 Phase 1 Optimization: Include team context header
+      // Phase 1 Optimization: Include team context header
       if (this.contextTeamId !== null) {
         headers['X-Context-Team-ID'] = this.contextTeamId.toString();
       }
@@ -372,8 +372,8 @@ class ApiClient {
 import { getBackendUrl } from '@/config/runtime';
 
 // 建立 API 客戶端實例
-// ✅ 開發環境使用相對路徑，讓 Vite proxy 處理 CORS
-// ✅ 生產環境使用完整 URL 直連後端
+// 開發環境使用相對路徑，讓 Vite proxy 處理 CORS
+// 生產環境使用完整 URL 直連後端
 const apiBaseUrl = import.meta.env.DEV
   ? '/api'  // 開發環境: 走 Vite proxy (vite.config.ts 中配置)
   : `${getBackendUrl()}/api`;  // 生產環境: 直連後端

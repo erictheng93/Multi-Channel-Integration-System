@@ -36,17 +36,17 @@ export interface TeamWithStats extends Team {
 
 export interface TeamMember {
   id: string;
-  name?: string; // ✅ Frontend-compatible field (maps from displayName)
+  name?: string; //  Frontend-compatible field (maps from displayName)
   displayName: string; // Backend field (keep for compatibility)
-  loginId?: string; // ✅ Frontend-compatible field
+  loginId?: string; //  Frontend-compatible field
   email: string;
   role: string;
-  status?: 'active' | 'inactive' | 'pending'; // ✅ Frontend-compatible field
+  status?: 'active' | 'inactive' | 'pending'; //  Frontend-compatible field
   isActive: boolean | null;
   lastActive: string | null;
   joinedAt: string | null;
-  createdAt?: string; // ✅ Additional timestamp
-  updatedAt?: string; // ✅ Additional timestamp
+  createdAt?: string; //  Additional timestamp
+  updatedAt?: string; //  Additional timestamp
 }
 
 export interface TeamCreateRequest {

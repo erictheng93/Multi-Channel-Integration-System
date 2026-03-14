@@ -19,11 +19,11 @@ export interface RealtimeAuthPayload {
 
 // Real-time 認證配置
 interface RealtimeAuthConfig {
-  allowQueryToken: boolean;           // 允許查詢參數中的 token
-  allowHeaderToken: boolean;          // 允許 Header 中的 token
+  allowQueryToken: boolean; // 允許查詢參數中的 token
+  allowHeaderToken: boolean; // 允許 Header 中的 token
   requireConversationAccess: boolean; // 需要對話訪問權限
-  enableRoleValidation: boolean;      // 啟用角色驗證
-  validRoles: string[];              // 有效的角色列表
+  enableRoleValidation: boolean; // 啟用角色驗證
+  validRoles: string[]; // 有效的角色列表
 }
 
 // SECURITY: 2-tier role system configuration
@@ -87,7 +87,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
             // 將 payload 設置到 context 中
             c.set('jwtPayload', jwtPayload);
           } catch (error) {
-            console.error('❌ [Realtime Auth] Token 驗證失敗:', error);
+            console.error('[Realtime Auth] Token 驗證失敗:', error);
             return unauthorizedResponse(c, 'Invalid or expired token');
           }
         }
@@ -133,7 +133,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
       c.set('realtimeAuth', authPayload);
 
       // 7. 記錄認證成功
-      console.log(`✅ [Realtime Auth] 認證成功:`, {
+      console.log(`[Realtime Auth] 認證成功:`, {
         userId: authPayload.userId,
         role: authPayload.role,
         primaryTeamId: authPayload.primaryTeamId,
@@ -143,7 +143,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
       return await next();
 
     } catch (error) {
-      console.error('❌ [Realtime Auth] 認證中間件錯誤:', error);
+      console.error('[Realtime Auth] 認證中間件錯誤:', error);
       return unauthorizedResponse(c, 'Authentication error');
     }
   };
@@ -158,7 +158,7 @@ async function checkConversationAccess(
   env?: Bindings
 ): Promise<boolean> {
   if (!env?.DB) {
-    console.warn('⚠️ [Realtime Auth] 資料庫不可用，跳過權限檢查');
+    console.warn('[Realtime Auth] 資料庫不可用，跳過權限檢查');
     return true; // 如果資料庫不可用，允許訪問
   }
 
@@ -182,7 +182,7 @@ async function checkConversationAccess(
     `).bind(conversationId).first();
 
     if (!conversation) {
-      console.warn(`⚠️ [Realtime Auth] 對話不存在: ${conversationId}`);
+      console.warn(`[Realtime Auth] 對話不存在: ${conversationId}`);
       return false;
     }
 
@@ -214,7 +214,7 @@ async function checkConversationAccess(
     }
 
     // Note: Individual assignment (assignedUserId) removed - only team-based access control
-    console.warn(`⚠️ [Realtime Auth] 用戶無權訪問對話:`, {
+    console.warn(`[Realtime Auth] 用戶無權訪問對話:`, {
       userId,
       conversationId,
       userRole,
@@ -225,7 +225,7 @@ async function checkConversationAccess(
     return false;
 
   } catch (error) {
-    console.error('❌ [Realtime Auth] 權限檢查失敗:', error);
+    console.error('[Realtime Auth] 權限檢查失敗:', error);
     return false; // 安全考慮，檢查失敗時拒絕訪問
   }
 }

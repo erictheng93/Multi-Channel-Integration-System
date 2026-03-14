@@ -72,11 +72,11 @@ deploy-all.bat
 ```
 
 The automated script will:
-1. ✅ Check prerequisites
-2. ✅ Deploy backend Worker
-3. ✅ Deploy frontend Pages
-4. ✅ Update configuration
-5. ✅ Provide next steps
+1.  Check prerequisites
+2.  Deploy backend Worker
+3.  Deploy frontend Pages
+4.  Update configuration
+5.  Provide next steps
 
 ---
 
@@ -222,9 +222,9 @@ wrangler pages deploy dist --project-name=crm-installer-frontend
 
 **Expected Output:**
 ```
-✨ Success! Uploaded X files (X.XX sec)
+ Success! Uploaded X files (X.XX sec)
 
-✨ Deployment complete! Take a peek over at
+ Deployment complete! Take a peek over at
    https://xxxxxxxx.crm-installer-frontend.pages.dev
 ```
 
@@ -245,20 +245,20 @@ You should see the landing page with the "Deploy to Cloudflare" button.
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `CF_CLIENT_ID` | ✅ Yes | Cloudflare OAuth Client ID | `abc123...` |
-| `CF_CLIENT_SECRET` | ✅ Yes | Cloudflare OAuth Client Secret | `xyz789...` |
-| `RESEND_API_KEY` | ✅ Yes | Resend Email API Key | `re_abc123...` |
-| `FROM_EMAIL` | ⚠️ Optional | Sender email address | `installer@yourcompany.com` |
-| `SUPPORT_EMAIL` | ⚠️ Optional | Support email address | `support@yourcompany.com` |
-| `ENVIRONMENT` | ⚠️ Optional | Environment name | `production` |
+| `CF_CLIENT_ID` |  Yes | Cloudflare OAuth Client ID | `abc123...` |
+| `CF_CLIENT_SECRET` |  Yes | Cloudflare OAuth Client Secret | `xyz789...` |
+| `RESEND_API_KEY` |  Yes | Resend Email API Key | `re_abc123...` |
+| `FROM_EMAIL` |  Optional | Sender email address | `installer@yourcompany.com` |
+| `SUPPORT_EMAIL` |  Optional | Support email address | `support@yourcompany.com` |
+| `ENVIRONMENT` |  Optional | Environment name | `production` |
 
 ### Frontend Environment Variables
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `VITE_API_BASE_URL` | ✅ Yes | Backend Worker URL | `https://xxx.workers.dev` |
-| `VITE_OAUTH_REDIRECT_URI` | ✅ Yes | OAuth callback URL | `https://xxx.pages.dev/oauth/callback` |
-| `VITE_ENVIRONMENT` | ⚠️ Optional | Environment name | `production` |
+| `VITE_API_BASE_URL` |  Yes | Backend Worker URL | `https://xxx.workers.dev` |
+| `VITE_OAUTH_REDIRECT_URI` |  Yes | OAuth callback URL | `https://xxx.pages.dev/oauth/callback` |
+| `VITE_ENVIRONMENT` |  Optional | Environment name | `production` |
 
 ---
 
@@ -270,7 +270,7 @@ You should see the landing page with the "Deploy to Cloudflare" button.
 curl https://your-worker-url.workers.dev/health
 ```
 
-✅ **Expected:** 200 OK with JSON response
+ **Expected:** 200 OK with JSON response
 
 ### 2. OAuth Authorization Flow
 
@@ -278,13 +278,13 @@ curl https://your-worker-url.workers.dev/health
 curl "https://your-worker-url.workers.dev/oauth/authorize?redirect_uri=http://localhost:3000/oauth/callback"
 ```
 
-✅ **Expected:** JSON with `authorizationUrl`, `state`, and `codeVerifier`
+ **Expected:** JSON with `authorizationUrl`, `state`, and `codeVerifier`
 
 ### 3. Frontend Loading
 
 Open: `https://your-pages-url.pages.dev`
 
-✅ **Expected:**
+ **Expected:**
 - Landing page loads
 - No console errors
 - "Deploy to Cloudflare" button visible
@@ -292,11 +292,11 @@ Open: `https://your-pages-url.pages.dev`
 ### 4. Full OAuth Flow Test
 
 1. Click "Deploy to Cloudflare" on frontend
-2. ✅ Redirects to Cloudflare OAuth page
+2.  Redirects to Cloudflare OAuth page
 3. Authorize the application
-4. ✅ Redirects back to callback page
-5. ✅ Successfully exchanges token
-6. ✅ Redirects to configuration form
+4.  Redirects back to callback page
+5.  Successfully exchanges token
+6.  Redirects to configuration form
 
 ### 5. Monitor Logs
 
@@ -557,10 +557,10 @@ wrangler secret put CF_CLIENT_SECRET
 
 After successful deployment:
 
-1. ✅ Share installer URL with customers
-2. ✅ Monitor first few deployments
-3. ✅ Collect user feedback
-4. ✅ Iterate and improve
-5. ✅ Set up analytics and tracking
+1.  Share installer URL with customers
+2.  Monitor first few deployments
+3.  Collect user feedback
+4.  Iterate and improve
+5.  Set up analytics and tracking
 
-🎉 **Congratulations! Your Web Installer is live!**
+ **Congratulations! Your Web Installer is live!**

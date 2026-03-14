@@ -7,7 +7,7 @@ import { jwtDecode } from 'jwt-decode'
 import DOMPurify from 'dompurify'
 import { useDebounceFn } from '@vueuse/core'
 
-// ✅ SECURITY FIX: Properly validate JWT token with expiration check
+// SECURITY FIX: Properly validate JWT token with expiration check
 // Helper function to extract userId from JWT token
 function getUserIdFromToken(): string | null {
   const token = localStorage.getItem('token')
@@ -30,7 +30,7 @@ function getUserIdFromToken(): string | null {
   }
 }
 
-// ✅ INPUT VALIDATION: Validate and sanitize message content
+// INPUT VALIDATION: Validate and sanitize message content
 const MAX_MESSAGE_LENGTH = 10000
 
 interface ValidationResult {
@@ -80,7 +80,7 @@ export const useMessagesStore = defineStore('messages', () => {
     messageType: undefined
   })
 
-  // ✅ PERFORMANCE FIX: Cache sorted messages instead of sorting on every access
+  // PERFORMANCE FIX: Cache sorted messages instead of sorting on every access
   const sortedMessages = ref<Message[]>([])
 
   // Watch for changes and update sorted list
@@ -129,7 +129,7 @@ export const useMessagesStore = defineStore('messages', () => {
       if (response.success && response.data) {
         messages.value = response.data
         optimisticMessages.value = []
-        // ✅ 手動建立索引以支持測試
+        // 手動建立索引以支持測試
         messageIndexService.buildIndex(response.data)
       } else {
         handleError(response.error, '無法載入訊息')
@@ -141,7 +141,7 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  // ✅ REFACTOR + VALIDATION: Simplified API with input validation
+  // REFACTOR + VALIDATION: Simplified API with input validation
   interface SendMessageParams {
     conversationId: string
     content: string
@@ -169,7 +169,7 @@ export const useMessagesStore = defineStore('messages', () => {
       return false
     }
 
-    // ✅ INPUT VALIDATION: Validate and sanitize content
+    // INPUT VALIDATION: Validate and sanitize content
     const validation = validateAndSanitizeContent(params.content)
     if (!validation.valid) {
       handleError(validation.error ?? 'Validation error', validation.error ?? 'Validation error')
@@ -205,7 +205,7 @@ export const useMessagesStore = defineStore('messages', () => {
         senderId: senderId || undefined
       })
 
-      // ✅ RACE CONDITION FIX: Keep optimistic message visible on failure
+      // RACE CONDITION FIX: Keep optimistic message visible on failure
       if (response && response.success && response.data) {
         // Success: Remove optimistic message, add real message
         optimisticMessages.value = optimisticMessages.value.filter(m => m.id !== optimisticMessage.id)
@@ -343,7 +343,7 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  // ✅ TYPE SAFETY FIX: Use generic type instead of 'any'
+  // TYPE SAFETY FIX: Use generic type instead of 'any'
   const setFilter = <K extends keyof MessageFilters>(
     key: K,
     value: MessageFilters[K]
@@ -383,8 +383,8 @@ export const useMessagesStore = defineStore('messages', () => {
     return messageIndexService.search(query)
   }
 
-  // ✅ PERFORMANCE FIX: Use requestIdleCallback + debounce instead of setTimeout
-  // 🔍 Automatically build message index for search
+  // PERFORMANCE FIX: Use requestIdleCallback + debounce instead of setTimeout
+  // Automatically build message index for search
   // Debounced function to build index during browser idle time
   const debouncedBuildIndex = useDebounceFn(
     (messages: Message[]) => {
@@ -406,7 +406,7 @@ export const useMessagesStore = defineStore('messages', () => {
     500 // Debounce for 500ms to avoid excessive rebuilds
   )
 
-  // ✅ MEMORY LEAK FIX: Store watcher stop function for cleanup
+  // MEMORY LEAK FIX: Store watcher stop function for cleanup
   // When messages are loaded or updated, rebuild search index for high-performance search
   const stopIndexWatcher = watch(
     allMessages,
@@ -418,7 +418,7 @@ export const useMessagesStore = defineStore('messages', () => {
     { immediate: true, deep: false } // immediate: true ensures index is built on initial load
   )
 
-  // ✅ MEMORY LEAK FIX: Cleanup function to stop watchers and clear resources
+  // MEMORY LEAK FIX: Cleanup function to stop watchers and clear resources
   const $dispose = () => {
     stopIndexWatcher() // Stop the watcher
     messageIndexService.clearIndex() // Clear the index

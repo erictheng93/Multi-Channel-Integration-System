@@ -45,7 +45,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
 
     const drizzleDb = createDbClient(c.env.DB);
 
-    // 🔧 FIX: 使用完整的 JOIN 查詢，返回與 assign/unassign API 相同的數據結構
+    // FIX: 使用完整的 JOIN 查詢，返回與 assign/unassign API 相同的數據結構
     const [result] = await drizzleDb
       .select()
       .from(conversations)
@@ -62,7 +62,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // 🔧 FIX: 查詢該對話的最新訊息
+    // FIX: 查詢該對話的最新訊息
     let lastMessageData: {
       messageId: string;
       content: string;
@@ -97,7 +97,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       // 包含完整的 customer 對象
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName, // 🔧 FIX: 添加 name 字段以匹配前端類型定義
+        name: result.customers.displayName, //  FIX: 添加 name 字段以匹配前端類型定義
         displayName: result.customers.displayName, // 保留向後兼容
         platformUserId: result.customers.platformUserId,
         platform: result.customers.platform,
@@ -109,7 +109,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
         createdAt: result.customers.createdAt,
         updatedAt: result.customers.updatedAt
       } : undefined,
-      // 🔧 FIX: 添加 lastMessage 相關字段，與 list API 保持一致
+      // FIX: 添加 lastMessage 相關字段，與 list API 保持一致
       lastMessage: (lastMessageData && displayContent) ? {
         id: lastMessageData.messageId || '',
         content: displayContent,
@@ -166,7 +166,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       });
     }
 
-    // 🔧 FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
+    // FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
     log.debug('Conversation Handler querying conversation data');
     const drizzleDb = createDbClient(c.env.DB);
 
@@ -267,17 +267,17 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象
     const conversationData = conversationResults.map(result => ({
       ...result.conversations,
-      // 🔧 完整的 customer 對象 (匹配前端類型定義)
+      // 完整的 customer 對象 (匹配前端類型定義)
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName,        // 🔧 映射到 name 字段
+        name: result.customers.displayName, //  映射到 name 字段
         displayName: result.customers.displayName, // 保留向後兼容
         platform: result.customers.platform,
         platformUserId: result.customers.platformUserId,
         avatarUrl: result.customers.avatarUrl,
         createdAt: result.customers.createdAt
       } : undefined,
-      // 🔧 完整的 assignedTeam 對象
+      // 完整的 assignedTeam 對象
       assignedTeam: result.teams ? {
         id: result.teams.id,
         name: result.teams.name,
@@ -291,7 +291,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
 
     log.debug('Conversation Handler retrieved conversation data', { count: conversationData.length });
 
-    // 🔧 Phase B: 直接 DB 查詢獲取最新訊息（移除 KV 快取層以保證數據一致性）
+    // Phase B: 直接 DB 查詢獲取最新訊息（移除 KV 快取層以保證數據一致性）
     // 使用單一批量查詢獲取所有對話的最新訊息
     const conversationIds = conversationData.map(c => c.id);
 
@@ -327,7 +327,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       `;
 
       try {
-        // 🔍 DEBUG: Log conversation IDs being queried (using INFO level for production visibility)
+        // DEBUG: Log conversation IDs being queried (using INFO level for production visibility)
         log.info('LASTMSG_DEBUG: Starting latest messages query', {
           conversationIds: conversationIds.slice(0, 5), // Log first 5 for debugging
           totalCount: conversationIds.length
@@ -338,7 +338,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
           .bind(...conversationIds, ...conversationIds)
           .all();
 
-        // 🔍 DEBUG: Log raw SQL result
+        // DEBUG: Log raw SQL result
         log.info('LASTMSG_DEBUG: SQL query returned', {
           success: result.success,
           resultsCount: result.results?.length || 0
@@ -356,7 +356,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
           }
         }
 
-        // 🔍 DEBUG: Log which conversations have/don't have messages
+        // DEBUG: Log which conversations have/don't have messages
         const conversationsWithMessages = Array.from(lastMessagesMap.keys());
         const conversationsWithoutMessages = conversationIds.filter(id => !lastMessagesMap.has(id));
         log.info('LASTMSG_DEBUG: Message mapping complete', {
@@ -371,7 +371,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
           foundCount: lastMessagesMap.size
         });
 
-        // 🔍 DEBUG: Check if conversations without messages actually have messages in DB
+        // DEBUG: Check if conversations without messages actually have messages in DB
         if (conversationsWithoutMessages.length > 0) {
           const debugConvId = conversationsWithoutMessages[0];
           const debugQuery = await c.env.DB.prepare(
@@ -419,7 +419,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       };
     });
 
-    // 🔍 DEBUG: Log final response data
+    // DEBUG: Log final response data
     const conversationsWithLastMsg = combinedData.filter((c: any) => c.lastMessageContent);
     const conversationsWithoutLastMsg = combinedData.filter((c: any) => !c.lastMessageContent);
     log.info('LASTMSG_DEBUG: Final response data', {

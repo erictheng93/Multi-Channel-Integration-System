@@ -68,7 +68,7 @@ export class TaskReminderService {
       createdAt: nowISO()
     });
 
-    console.log('✅ [TaskReminder] Created:', {
+    console.log('[TaskReminder] Created:', {
       reminderId,
       userId: request.userId,
       title: request.title,
@@ -196,7 +196,7 @@ export class TaskReminderService {
       return 0;
     }
 
-    console.log(`🔔 [TaskReminder] Processing ${dueReminders.length} due reminders`);
+    console.log(`[TaskReminder] Processing ${dueReminders.length} due reminders`);
 
     let processedCount = 0;
 
@@ -227,11 +227,11 @@ export class TaskReminderService {
 
         processedCount++;
       } catch (error) {
-        console.error(`⚠️ [TaskReminder] Failed to process reminder ${reminder.id}:`, error);
+        console.error(`[TaskReminder] Failed to process reminder ${reminder.id}:`, error);
       }
     }
 
-    console.log(`✅ [TaskReminder] Processed ${processedCount}/${dueReminders.length} reminders`);
+    console.log(`[TaskReminder] Processed ${processedCount}/${dueReminders.length} reminders`);
 
     return processedCount;
   }
@@ -268,7 +268,7 @@ export class TaskReminderService {
       repeatInterval: reminder.repeatInterval || 1
     });
 
-    console.log(`🔄 [TaskReminder] Scheduled next reminder for ${nextRemindAt.toISOString()}`);
+    console.log(`[TaskReminder] Scheduled next reminder for ${nextRemindAt.toISOString()}`);
   }
 
   /**

@@ -1,7 +1,7 @@
 /**
  * 全局预加载服务 (Backward Compatibility Facade)
  *
- * 🎯 Purpose: Maintains backward compatibility while delegating to Pinia store
+ * Purpose: Maintains backward compatibility while delegating to Pinia store
  *
  * Architecture:
  * - This service acts as a facade over usePreloadStore
@@ -9,9 +9,9 @@
  * - Existing code using preloadService continues to work unchanged
  *
  * Migration Path:
- * - Phase 1: ✅ Tests written for preloadService
- * - Phase 2: ✅ usePreloadStore created with full functionality
- * - Phase 3: ✅ preloadService delegates to store (current)
+ * - Phase 1:  Tests written for preloadService
+ * - Phase 2:  usePreloadStore created with full functionality
+ * - Phase 3:  preloadService delegates to store (current)
  * - Phase 4: Gradually migrate consumers to use store directly
  *
  * Usage:
@@ -56,7 +56,7 @@ class PreloadService {
         this.setupAutoSync()
       } catch (err) {
         // This can happen if called before Pinia is installed
-        console.warn('⚠️ [PreloadService] Store not available yet, using fallback')
+        console.warn('[PreloadService] Store not available yet, using fallback')
         throw err
       }
     }
@@ -66,7 +66,7 @@ class PreloadService {
   /**
    * 響應式團隊數據引用 (Backward Compatibility)
    *
-   * 🔄 Sync Strategy:
+   * Sync Strategy:
    * - This ref auto-syncs with store.teams via Vue watch
    * - Existing code using `preloadService.teamsRef` continues to work
    * - For new code, use `usePreloadStore().teams` directly
@@ -134,7 +134,7 @@ class PreloadService {
    *
    * Delegates to: usePreloadStore().getTeams()
    *
-   * 🆕 響應式整合:
+   * 響應式整合:
    * - Returns teamsRef.value for Vue computed tracking
    * - When store updates, getTeams() will return updated data
    */
@@ -167,7 +167,7 @@ class PreloadService {
    * Delegates to: usePreloadStore().refreshTeams()
    */
   async refreshTeams(): Promise<Team[]> {
-    console.log('🔄 [PreloadService] Manual refresh of teams...')
+    console.log('[PreloadService] Manual refresh of teams...')
     const teams = await this.store.refreshTeams()
     this.syncTeamsRef()
     return teams
@@ -200,7 +200,7 @@ class PreloadService {
     }
     this.teamsRef.value = []
     this._store = null // Reset store reference
-    console.log('🗑️ [PreloadService] All cache cleared and teamsRef reset')
+    console.log('[PreloadService] All cache cleared and teamsRef reset')
   }
 
   /**
@@ -220,7 +220,7 @@ class PreloadService {
    * Delegates to: usePreloadStore().warmup()
    */
   async warmup(): Promise<void> {
-    console.log('🔥 [PreloadService] Warming up cache...')
+    console.log('[PreloadService] Warming up cache...')
     await this.store.warmup()
     this.syncTeamsRef()
   }

@@ -144,7 +144,7 @@ function uploadFileWithXhr(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🆕 Presigned URL Direct Upload to R2
+// Presigned URL Direct Upload to R2
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
@@ -605,7 +605,7 @@ export function useFileUpload() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🆕 Presigned URL Upload Methods
+  // Presigned URL Upload Methods
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
@@ -743,7 +743,7 @@ export function useFileUpload() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎯 Smart Upload - 自動 Fallback 機制
+  // Smart Upload - 自動 Fallback 機制
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
@@ -907,7 +907,7 @@ export function useFileUpload() {
     totalCount,
     fileStats,
 
-    // 🎯 智能上傳方法 (自動 Fallback) - 推薦使用
+    // 智能上傳方法 (自動 Fallback) - 推薦使用
     smartUploadSingleFile,
     smartUploadMultipleFiles,
     getUploadModeInfo,

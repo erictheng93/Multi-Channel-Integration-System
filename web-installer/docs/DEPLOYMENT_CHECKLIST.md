@@ -1,4 +1,4 @@
-# 🚀 Web Installer Deployment Checklist
+#  Web Installer Deployment Checklist
 
 Use this checklist to ensure a successful production deployment of the Web Installer.
 
@@ -369,13 +369,13 @@ wrangler rollback --message "Rollback to previous version"
 
 Deployment is considered successful when:
 
-- ✅ All checklist items completed
-- ✅ End-to-end flow working
-- ✅ Zero critical errors in first 24 hours
-- ✅ < 1% error rate
-- ✅ Average deployment time < 3 minutes
-- ✅ All monitoring alerts configured
-- ✅ Team trained on support procedures
+-  All checklist items completed
+-  End-to-end flow working
+-  Zero critical errors in first 24 hours
+-  < 1% error rate
+-  Average deployment time < 3 minutes
+-  All monitoring alerts configured
+-  Team trained on support procedures
 
 ---
 

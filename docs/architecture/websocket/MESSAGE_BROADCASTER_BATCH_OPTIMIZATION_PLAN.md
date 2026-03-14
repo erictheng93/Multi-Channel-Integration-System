@@ -1,6 +1,6 @@
 # MessageBroadcaster 批量发送优化计划
 
-## 📊 Executive Summary
+##  Executive Summary
 
 **目标**: 将MessageBroadcaster的消息发送模式从顺序逐个发送改为并行批量发送,减少网络往返次数,降低延迟。
 
@@ -13,7 +13,7 @@
 
 ---
 
-## 🎯 Current State Analysis
+##  Current State Analysis
 
 ### Problem: Sequential Message Delivery
 
@@ -22,7 +22,7 @@
 #### 1. Broadcast to Conversations (Lines 721-765)
 
 ```typescript
-// ❌ CURRENT: Sequential loop with individual requests
+// CURRENT: Sequential loop with individual requests
 private async handleBroadcastToConversations(request: Request): Promise<Response> {
   const { event, targets } = await request.json();
 
@@ -58,7 +58,7 @@ Network requests: 100 sequential requests
 #### 2. Broadcast to Users (Lines 767-808)
 
 ```typescript
-// ❌ CURRENT: Same sequential pattern
+// CURRENT: Same sequential pattern
 private async handleBroadcastToUsers(request: Request): Promise<Response> {
   const { event, userIds } = await request.json();
 
@@ -79,7 +79,7 @@ private async handleBroadcastToUsers(request: Request): Promise<Response> {
 #### 3. Broadcast to Teams (Lines 810-851)
 
 ```typescript
-// ❌ CURRENT: Sequential team delivery
+// CURRENT: Sequential team delivery
 private async handleBroadcastToTeams(request: Request): Promise<Response> {
   const { event, teamIds } = await request.json();
 
@@ -99,13 +99,13 @@ private async handleBroadcastToTeams(request: Request): Promise<Response> {
 
 ---
 
-## 💡 Proposed Solution: Parallel Batch Delivery
+##  Proposed Solution: Parallel Batch Delivery
 
 ### Strategy Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  CURRENT: Sequential Delivery                │
+│ CURRENT: Sequential Delivery │
 └─────────────────────────────────────────────────────────────┘
 
 Request 1 ──> [Wait 50ms] ──> Response 1
@@ -119,7 +119,7 @@ Network Requests: 100 sequential
 
 
 ┌─────────────────────────────────────────────────────────────┐
-│                OPTIMIZED: Parallel Batch Delivery            │
+│ OPTIMIZED: Parallel Batch Delivery │
 └─────────────────────────────────────────────────────────────┘
 
 Batch 1 (10 targets) ──┬──> Request 1  ──┐
@@ -154,7 +154,7 @@ Network Requests: 100 total, but 10 concurrent per batch
 
 ---
 
-## 🔧 Implementation Plan
+##  Implementation Plan
 
 ### Phase 1: Create Batch Processing Utilities
 
@@ -172,9 +172,9 @@ private readonly PROCESSING_INTERVAL = 500;
 private readonly METRICS_INTERVAL = 10000;
 
 // NEW: Batch delivery configuration
-private readonly DELIVERY_BATCH_SIZE = 10;        // 10 targets per parallel batch
-private readonly MAX_PARALLEL_BATCHES = 5;        // Max 5 batches concurrently (50 total requests)
-private readonly BATCH_RETRY_LIMIT = 2;           // Retry failed batches up to 2 times
+private readonly DELIVERY_BATCH_SIZE = 10; // 10 targets per parallel batch
+private readonly MAX_PARALLEL_BATCHES = 5; // Max 5 batches concurrently (50 total requests)
+private readonly BATCH_RETRY_LIMIT = 2; // Retry failed batches up to 2 times
 ```
 
 **Rationale**:
@@ -230,7 +230,7 @@ private async batchDeliverToConversations(
   // Split into batches of 10
   const batches = this.chunkArray(conversationIds, this.DELIVERY_BATCH_SIZE);
 
-  console.log(`📦 [MessageBroadcaster] Processing ${conversationIds.length} conversations in ${batches.length} batches`);
+  console.log(`[MessageBroadcaster] Processing ${conversationIds.length} conversations in ${batches.length} batches`);
 
   // Process each batch in parallel
   for (const batch of batches) {
@@ -241,7 +241,7 @@ private async batchDeliverToConversations(
         ]);
         return { success: true };
       } catch (error) {
-        console.error(`❌ Failed to deliver to conversation ${conversationId}:`, error);
+        console.error(` Failed to deliver to conversation ${conversationId}:`, error);
         return { success: false };
       }
     });
@@ -259,7 +259,7 @@ private async batchDeliverToConversations(
   }
 
   const processingTime = Date.now() - startTime;
-  console.log(`✅ [MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
+  console.log(`[MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
 
   return { successful, failed };
 }
@@ -277,7 +277,7 @@ private async batchDeliverToUsers(
 
   const batches = this.chunkArray(userIds, this.DELIVERY_BATCH_SIZE);
 
-  console.log(`📦 [MessageBroadcaster] Processing ${userIds.length} users in ${batches.length} batches`);
+  console.log(`[MessageBroadcaster] Processing ${userIds.length} users in ${batches.length} batches`);
 
   for (const batch of batches) {
     const batchPromises = batch.map(async (userId) => {
@@ -287,7 +287,7 @@ private async batchDeliverToUsers(
         ]);
         return { success: true };
       } catch (error) {
-        console.error(`❌ Failed to deliver to user ${userId}:`, error);
+        console.error(` Failed to deliver to user ${userId}:`, error);
         return { success: false };
       }
     });
@@ -304,7 +304,7 @@ private async batchDeliverToUsers(
   }
 
   const processingTime = Date.now() - startTime;
-  console.log(`✅ [MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
+  console.log(`[MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
 
   return { successful, failed };
 }
@@ -322,7 +322,7 @@ private async batchDeliverToTeams(
 
   const batches = this.chunkArray(teamIds, this.DELIVERY_BATCH_SIZE);
 
-  console.log(`📦 [MessageBroadcaster] Processing ${teamIds.length} teams in ${batches.length} batches`);
+  console.log(`[MessageBroadcaster] Processing ${teamIds.length} teams in ${batches.length} batches`);
 
   for (const batch of batches) {
     const batchPromises = batch.map(async (teamId) => {
@@ -332,7 +332,7 @@ private async batchDeliverToTeams(
         ]);
         return { success: true };
       } catch (error) {
-        console.error(`❌ Failed to deliver to team ${teamId}:`, error);
+        console.error(` Failed to deliver to team ${teamId}:`, error);
         return { success: false };
       }
     });
@@ -349,7 +349,7 @@ private async batchDeliverToTeams(
   }
 
   const processingTime = Date.now() - startTime;
-  console.log(`✅ [MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
+  console.log(`[MessageBroadcaster] Batch delivery complete: ${successful} success, ${failed} failed in ${processingTime}ms`);
 
   return { successful, failed };
 }
@@ -377,7 +377,7 @@ private async handleBroadcastToConversations(request: Request): Promise<Response
         await this.deliverToConversation(conversationId, [{ ...event, targets: [{ type: 'conversation', targets: [conversationId] }] }]);
         successful++;
       } catch (error) {
-        console.error(`❌ Failed to deliver to conversation ${conversationId}:`, error);
+        console.error(` Failed to deliver to conversation ${conversationId}:`, error);
         failed++;
       }
     }
@@ -414,7 +414,7 @@ private async handleBroadcastToConversations(request: Request): Promise<Response
       processingTime
     }));
   } catch (error) {
-    console.error('❌ [MessageBroadcaster] Broadcast to conversations error:', error);
+    console.error('[MessageBroadcaster] Broadcast to conversations error:', error);
     if (error instanceof SyntaxError) {
       return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
     }
@@ -424,10 +424,10 @@ private async handleBroadcastToConversations(request: Request): Promise<Response
 ```
 
 **Changes**:
-- ✅ Removed sequential `for` loop
-- ✅ Replaced with `batchDeliverToConversations()` call
-- ✅ Added `processingTime` to response for performance tracking
-- ✅ Simplified error handling
+-  Removed sequential `for` loop
+-  Replaced with `batchDeliverToConversations()` call
+-  Added `processingTime` to response for performance tracking
+-  Simplified error handling
 
 #### 2.2 Update `handleBroadcastToUsers()`
 
@@ -463,7 +463,7 @@ private async handleBroadcastToUsers(request: Request): Promise<Response> {
       processingTime
     }));
   } catch (error) {
-    console.error('❌ [MessageBroadcaster] Broadcast to users error:', error);
+    console.error('[MessageBroadcaster] Broadcast to users error:', error);
     if (error instanceof SyntaxError) {
       return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
     }
@@ -506,7 +506,7 @@ private async handleBroadcastToTeams(request: Request): Promise<Response> {
       processingTime
     }));
   } catch (error) {
-    console.error('❌ [MessageBroadcaster] Broadcast to teams error:', error);
+    console.error('[MessageBroadcaster] Broadcast to teams error:', error);
     if (error instanceof SyntaxError) {
       return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
     }
@@ -517,7 +517,7 @@ private async handleBroadcastToTeams(request: Request): Promise<Response> {
 
 ---
 
-## 📈 Performance Analysis
+##  Performance Analysis
 
 ### Before vs After Comparison
 
@@ -544,9 +544,9 @@ Throughput: 200 messages/second (10× improvement)
 ```
 
 **Improvement**:
-- ⚡ **Latency reduction**: 90% (5000ms → 500ms)
-- 📉 **Request time**: 90% reduction
-- 🚀 **Throughput**: 10× increase (20 msg/s → 200 msg/s)
+-  **Latency reduction**: 90% (5000ms → 500ms)
+-  **Request time**: 90% reduction
+-  **Throughput**: 10× increase (20 msg/s → 200 msg/s)
 
 #### Scenario 2: 50 Users Broadcast
 
@@ -579,8 +579,8 @@ Throughput: 200 messages/second
 ```
 
 **Improvement**:
-- ⚡ **90% latency reduction** (50s → 5s)
-- 🚀 **10× throughput increase**
+-  **90% latency reduction** (50s → 5s)
+-  **10× throughput increase**
 
 ### System-wide Impact
 
@@ -604,7 +604,7 @@ For a system with **1000 concurrent conversations**:
 
 ---
 
-## 🎯 Success Criteria
+##  Success Criteria
 
 ### Performance Targets
 
@@ -618,11 +618,11 @@ For a system with **1000 concurrent conversations**:
 
 ### Functional Requirements
 
-- ✅ All broadcast endpoints support batch delivery
-- ✅ Error handling preserves current behavior (individual failures don't block batch)
-- ✅ Metrics tracking includes batch processing stats
-- ✅ Backward compatibility maintained (API contracts unchanged)
-- ✅ Logging includes batch-level insights
+-  All broadcast endpoints support batch delivery
+-  Error handling preserves current behavior (individual failures don't block batch)
+-  Metrics tracking includes batch processing stats
+-  Backward compatibility maintained (API contracts unchanged)
+-  Logging includes batch-level insights
 
 ### Quality Gates
 
@@ -634,7 +634,7 @@ For a system with **1000 concurrent conversations**:
 
 ---
 
-## 🧪 Testing Plan
+##  Testing Plan
 
 ### Unit Tests
 
@@ -839,14 +839,14 @@ describe('MessageBroadcaster Performance Benchmarks', () => {
 
 ---
 
-## 🚀 Deployment Plan
+##  Deployment Plan
 
 ### Phase 1: Implementation (Day 1)
-- ✅ Create batch processing utilities
-- ✅ Implement `batchDeliverToConversations()`
-- ✅ Implement `batchDeliverToUsers()`
-- ✅ Implement `batchDeliverToTeams()`
-- ✅ Modify broadcast endpoints
+-  Create batch processing utilities
+-  Implement `batchDeliverToConversations()`
+-  Implement `batchDeliverToUsers()`
+-  Implement `batchDeliverToTeams()`
+-  Modify broadcast endpoints
 
 ### Phase 2: Testing (Day 1-2)
 - [ ] Unit tests for batch utilities
@@ -856,7 +856,7 @@ describe('MessageBroadcaster Performance Benchmarks', () => {
 - [ ] Error injection testing
 
 ### Phase 3: Documentation (Day 2)
-- ✅ Implementation report
+-  Implementation report
 - [ ] API documentation updates
 - [ ] Performance comparison charts
 - [ ] Migration guide (if needed)
@@ -870,7 +870,7 @@ describe('MessageBroadcaster Performance Benchmarks', () => {
 
 ---
 
-## ⚠️ Risk Assessment
+##  Risk Assessment
 
 ### Potential Risks
 
@@ -899,7 +899,7 @@ If critical issues arise post-deployment:
 
 ---
 
-## 📊 Monitoring & Metrics
+##  Monitoring & Metrics
 
 ### Key Metrics to Track
 
@@ -942,17 +942,17 @@ If critical issues arise post-deployment:
 
 ---
 
-## 🎯 Success Metrics Summary
+##  Success Metrics Summary
 
 ### Target Achievement
 
 | Metric | Baseline | Target | Expected |
 |--------|----------|--------|----------|
-| **Broadcast latency (100 targets)** | 5000ms | 500ms | ✅ 90% reduction |
-| **Throughput** | 20 msg/s | 200 msg/s | ✅ 10× increase |
-| **Request efficiency** | 100 requests | 10 batches | ✅ 90% reduction |
-| **Error rate** | <5% | <5% | ✅ Maintained |
-| **Code quality** | N/A | >90% test coverage | ✅ Comprehensive testing |
+| **Broadcast latency (100 targets)** | 5000ms | 500ms |  90% reduction |
+| **Throughput** | 20 msg/s | 200 msg/s |  10× increase |
+| **Request efficiency** | 100 requests | 10 batches |  90% reduction |
+| **Error rate** | <5% | <5% |  Maintained |
+| **Code quality** | N/A | >90% test coverage |  Comprehensive testing |
 
 ### Business Impact
 
@@ -963,7 +963,7 @@ If critical issues arise post-deployment:
 
 ---
 
-## 📝 Implementation Checklist
+##  Implementation Checklist
 
 ### Code Changes
 - [ ] Add batch processing configuration constants
@@ -1001,7 +1001,7 @@ If critical issues arise post-deployment:
 
 ---
 
-## 🔗 Related Documentation
+##  Related Documentation
 
 - `docs/LOCK_OPTIMIZATION_IMPLEMENTATION_REPORT.md` - Week 3-4 Task 1
 - `docs/CACHE_OPTIMIZATION_IMPLEMENTATION_REPORT.md` - Week 3-4 Task 2
@@ -1014,5 +1014,5 @@ If critical issues arise post-deployment:
 **Document Version**: 1.0
 **Created**: 2025-01-XX
 **Last Updated**: 2025-01-XX
-**Status**: 🔄 Implementation in Progress
+**Status**:  Implementation in Progress
 **Completion**: 0% (Planning phase complete)

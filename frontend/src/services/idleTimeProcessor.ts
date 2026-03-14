@@ -182,7 +182,7 @@ export class IdleTimeProcessor {
       this.stats.value.completedTasks++
       
     } catch (error) {
-      console.error(`❌ [IdleTimeProcessor] Task ${task.id} failed:`, error)
+      console.error(`[IdleTimeProcessor] Task ${task.id} failed:`, error)
       task.reject(error instanceof Error ? error : new Error(String(error)))
       this.stats.value.failedTasks++
     }
@@ -207,7 +207,7 @@ export class IdleTimeProcessor {
           entries.forEach(entry => {
             if (entry.entryType === 'measure' && entry.name.includes('idle-task')) {
               // 監控空閒任務的性能
-              console.log(`⏱️ [IdleTimeProcessor] ${entry.name}: ${entry.duration}ms`)
+              console.log(`[IdleTimeProcessor] ${entry.name}: ${entry.duration}ms`)
             }
           })
         })
@@ -306,7 +306,7 @@ export class IdleTimeProcessor {
     this.queueSize.value = 0
     this.isProcessing = false
     
-    console.log('🚫 [IdleTimeProcessor] All tasks cancelled')
+    console.log('[IdleTimeProcessor] All tasks cancelled')
   }
 
   // 取消特定優先級的任務
@@ -324,7 +324,7 @@ export class IdleTimeProcessor {
     
     this.queueSize.value = this.taskQueue.length
     
-    console.log(`🚫 [IdleTimeProcessor] Cancelled ${cancelledCount} tasks with priority ${priority}`)
+    console.log(`[IdleTimeProcessor] Cancelled ${cancelledCount} tasks with priority ${priority}`)
     return cancelledCount
   }
 
@@ -348,7 +348,7 @@ export class IdleTimeProcessor {
   // 清理資源
   destroy(): void {
     this.cancelAllTasks()
-    console.log('🔴 [IdleTimeProcessor] Processor destroyed')
+    console.log('[IdleTimeProcessor] Processor destroyed')
   }
 }
 

@@ -13,7 +13,7 @@ import { nowISO } from '@/utils/timestamp'
 // 創建對話主路由器
 const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
+// CORS 處理已移至 src/index.ts 統一管理
 // 不再需要模組級別的 CORS middleware 和 OPTIONS handler
 // 全局 CORS 使用 getAllowedOrigins(env) 動態配置，來源包括：
 // - FRONTEND_URL 環境變數 (生產環境必須設置)
@@ -64,7 +64,7 @@ conversationsMainHandler.get('/info', (c) => {
   });
 });
 
-// ⚠️ CRITICAL: Route registration order = matching priority
+// CRITICAL: Route registration order = matching priority
 // More specific routes MUST be registered BEFORE generic /:id patterns.
 // Hono uses first-registered, first-matched routing.
 

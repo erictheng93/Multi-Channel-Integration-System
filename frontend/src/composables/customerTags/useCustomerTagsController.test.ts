@@ -2,10 +2,10 @@
  * useCustomerTagsController — Unit Tests
  *
  * Focuses on the state managed directly by the controller:
- *   - Conversation modal open/close (the new feature)
- *   - All other modal open/close flows
- *   - Stats computed property
- *   - Lifecycle (initialize / cleanup)
+ * - Conversation modal open/close (the new feature)
+ * - All other modal open/close flows
+ * - Stats computed property
+ * - Lifecycle (initialize / cleanup)
  *
  * Sub-composables (useTagSearch, useTagActions, useTagSelection,
  * useTagKeyboard) are stubbed out so this file only tests controller logic.

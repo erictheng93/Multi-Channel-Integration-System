@@ -88,9 +88,9 @@ export class MessageIndexService {
       const endTime = performance.now()
       this.lastBuildTime = endTime - startTime
 
-      console.log(`✅ [MessageIndex] 索引构建完成: ${messages.length} 条消息，耗时 ${this.lastBuildTime.toFixed(2)}ms`)
+      console.log(`[MessageIndex] 索引构建完成: ${messages.length} 条消息，耗时 ${this.lastBuildTime.toFixed(2)}ms`)
     } catch (error) {
-      console.error('❌ [MessageIndex] 索引构建失败:', error)
+      console.error('[MessageIndex] 索引构建失败:', error)
       this.index = null
     } finally {
       this.isIndexing = false
@@ -124,11 +124,11 @@ export class MessageIndexService {
       const endTime = performance.now()
       const searchTime = endTime - startTime
 
-      console.log(`🔍 [MessageIndex] 搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
+      console.log(`[MessageIndex] 搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
 
       return messages
     } catch (error) {
-      console.error('❌ [MessageIndex] 搜索失败:', error)
+      console.error('[MessageIndex] 搜索失败:', error)
       return []
     }
   }
@@ -153,7 +153,7 @@ export class MessageIndexService {
 
       return this.search(fuzzyQuery)
     } catch (error) {
-      console.error('❌ [MessageIndex] 模糊搜索失败:', error)
+      console.error('[MessageIndex] 模糊搜索失败:', error)
       return []
     }
   }
@@ -165,17 +165,17 @@ export class MessageIndexService {
    *
    * @example
    * // 布尔运算符
-   * advancedSearch('订单 AND 完成')       // 同时包含 "订单" 和 "完成"
-   * advancedSearch('退款 OR 取消')       // 包含 "退款" 或 "取消"
-   * advancedSearch('问题 NOT 解决')      // 包含 "问题" 但不包含 "解决"
+   * advancedSearch('订单 AND 完成') // 同时包含 "订单" 和 "完成"
+   * advancedSearch('退款 OR 取消') // 包含 "退款" 或 "取消"
+   * advancedSearch('问题 NOT 解决') // 包含 "问题" 但不包含 "解决"
    *
    * // 通配符
-   * advancedSearch('产品*')             // 以 "产品" 开头
-   * advancedSearch('*配送')             // 以 "配送" 结尾
+   * advancedSearch('产品*') // 以 "产品" 开头
+   * advancedSearch('*配送') // 以 "配送" 结尾
    *
    * // 字段搜索
-   * advancedSearch('content:订单')      // 在内容字段搜索
-   * advancedSearch('senderName:客服')   // 在发送者名称搜索
+   * advancedSearch('content:订单') // 在内容字段搜索
+   * advancedSearch('senderName:客服') // 在发送者名称搜索
    *
    * // 组合使用
    * advancedSearch('(订单 OR 产品) AND content:完成')
@@ -196,13 +196,13 @@ export class MessageIndexService {
 
       const searchTime = performance.now() - startTime
 
-      console.log(`🔍 [MessageIndex] 高级搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
+      console.log(`[MessageIndex] 高级搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
 
       return messages
     } catch (error) {
-      console.error('❌ [MessageIndex] 高级搜索失败:', error)
+      console.error('[MessageIndex] 高级搜索失败:', error)
       // 尝试降级到普通搜索
-      console.warn('⚠️ [MessageIndex] 降级到普通搜索')
+      console.warn('[MessageIndex] 降级到普通搜索')
       return this.search(query)
     }
   }
@@ -323,7 +323,7 @@ export class MessageIndexService {
     this.index = null
     this.documents.clear()
     this.lastBuildTime = 0
-    console.log('🗑️ [MessageIndex] 索引已清空')
+    console.log('[MessageIndex] 索引已清空')
   }
 
   /**

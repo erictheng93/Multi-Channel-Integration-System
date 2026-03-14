@@ -67,7 +67,7 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
     exp: now + expiresIn
   };
 
-  // ✅ 使用 UTF-8 安全的編碼函數
+  // 使用 UTF-8 安全的編碼函數
   const headerB64 = base64UrlEncode(JSON.stringify(header));
   const payloadB64 = base64UrlEncode(JSON.stringify(jwtPayload));
 
@@ -84,7 +84,7 @@ export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: 
 
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
 
-  // ✅ 使用安全的二進制數據編碼
+  // 使用安全的二進制數據編碼
   const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
@@ -115,7 +115,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
       ['verify']
     );
 
-    // ✅ 解碼簽名（二進制數據）
+    // 解碼簽名（二進制數據）
     const signatureBase64 = signatureB64
       .replace(/-/g, '+')
       .replace(/_/g, '/')
@@ -127,7 +127,7 @@ export async function verifyJWT(token: string, secret: string): Promise<JWTPaylo
       throw new Error('Invalid JWT signature');
     }
 
-    // ✅ 使用 UTF-8 安全的解碼函數解析 payload
+    // 使用 UTF-8 安全的解碼函數解析 payload
     const payload = JSON.parse(base64UrlDecode(payloadB64));
 
     // 檢查過期時間
@@ -375,14 +375,14 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
 
 // getUserByUsername function removed - using email for authentication instead
 
-// ✅ 優化：單次查詢完整認證（使用原始SQL避免Drizzle問題）
+// 優化：單次查詢完整認證（使用原始SQL避免Drizzle問題）
 export async function authenticateUser(
   db: D1Database,
   email: string,
   password: string
 ): Promise<{ user: DbUser | null; passwordPolicy?: string; accountStatus?: string }> {
 
-  // 🚀 使用原始SQL查詢避免Drizzle ORM問題
+  // 使用原始SQL查詢避免Drizzle ORM問題
   const query = `
     SELECT id, email, password_hash, display_name, role,
            is_active, password_policy, created_at, updated_at
@@ -457,7 +457,7 @@ export async function authenticateUser(
   };
 }
 
-// ✅ 重構：使用優化後的 authenticateUser 函數（向後兼容）
+// 重構：使用優化後的 authenticateUser 函數（向後兼容）
 export async function authenticateUserByEmail(
   db: D1Database,
   email: string,
@@ -480,7 +480,7 @@ export function hasPermission(user: DbUser, requiredRole: 'admin' | 'agent'): bo
 /**
  * 檢查用戶是否可以訪問指定團隊
  *
- * 🔧 v2.0 MULTI-TEAM SUPPORT:
+ * v2.0 MULTI-TEAM SUPPORT:
  * - 首先檢查 allowedTeamIds (from agent_teams)
  * - 如果不匹配，查詢 agent_teams 表檢查次要團隊成員資格
  * - Admin 用戶可以訪問所有團隊
@@ -537,7 +537,7 @@ export async function canAccessTeam(
 /**
  * 同步版本的團隊權限檢查 (僅檢查主團隊)
  *
- * ⚠️ DEPRECATED: 建議使用 canAccessTeam() 的異步版本以支援多團隊
+ * DEPRECATED: 建議使用 canAccessTeam() 的異步版本以支援多團隊
  * 此函數保留用於向後兼容，僅檢查主團隊
  *
  * @param user 當前用戶

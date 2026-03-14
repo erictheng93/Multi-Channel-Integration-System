@@ -50,7 +50,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
     }
 
     // 使用直接的數據庫查詢來獲取所有成員
-    // 🔑 Filter out soft-deleted members
+    // Filter out soft-deleted members
     const db = createDbClient(c.env.DB);
     const members = await db
       .select({

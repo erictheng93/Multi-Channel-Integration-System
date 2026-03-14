@@ -329,7 +329,7 @@ describe('useWebSocketIntegration', () => {
 /**
  * 測試總結：
  *
- * ✅ 已測試：
+ * 已測試：
  * - handleUnifiedStateChange 狀態轉換檢測
  * - 從 reconnecting → connected 觸發訊息同步
  * - 有訊息時不觸發同步
@@ -338,7 +338,7 @@ describe('useWebSocketIntegration', () => {
  * - 連接狀態計算屬性
  * - 錯誤處理
  *
- * 🎯 覆蓋的修復場景：
+ * 覆蓋的修復場景：
  * - WebSocket 重連後的訊息同步邏輯
  * - 狀態轉換的正確檢測
  */

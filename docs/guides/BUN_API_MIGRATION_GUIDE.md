@@ -136,7 +136,7 @@ if (isUsingBun) {
 
 ## Best Practices
 
-### ✅ DO (Recommended)
+###  DO (Recommended)
 
 1. **Maintain compatibility** - Use `typeof Bun !== 'undefined'`
 2. **Prefer Bun APIs** - Use native APIs in Bun environment
@@ -144,7 +144,7 @@ if (isUsingBun) {
 4. **Clear comments** - Document compatibility code
 5. **Error handling** - Provide same error handling for both
 
-### ❌ DON'T (Avoid)
+###  DON'T (Avoid)
 
 1. **Remove npm support** - Keep rollback capability
 2. **Assume API parity** - Always detect environment
@@ -199,7 +199,7 @@ async function buildFrontend() {
       const { execSync } = await import('child_process');
       execSync('cd frontend && npx vue-tsc --noEmit', { stdio: 'inherit' });
     }
-    console.log('✓ Type check passed\n');
+    console.log(' Type check passed\n');
     
     // Build
     console.log('Building application...');
@@ -209,7 +209,7 @@ async function buildFrontend() {
       const { execSync } = await import('child_process');
       execSync('cd frontend && npm run build', { stdio: 'inherit' });
     }
-    console.log('✓ Build completed\n');
+    console.log(' Build completed\n');
     
     console.log('Frontend build successful!');
     process.exit(0);

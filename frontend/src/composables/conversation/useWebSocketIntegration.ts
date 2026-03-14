@@ -102,9 +102,9 @@ export function useWebSocketIntegration(
     }
   }
 
-  // 🔧 FIX: 追蹤前一個連接狀態，用於檢測重連
+  // FIX: 追蹤前一個連接狀態，用於檢測重連
   let previousConnectionState: ConnectionState = 'disconnected'
-  // 🆕 FIX: 追蹤是否已經首次連接成功，避免重複觸發
+  // FIX: 追蹤是否已經首次連接成功，避免重複觸發
   let hasConnectedOnce = false
 
   /**
@@ -123,14 +123,14 @@ export function useWebSocketIntegration(
     // Update state composable
     state.setUnifiedConnected(newState === 'connected')
 
-    // 🔧 FIX: 重連成功後檢查並同步訊息
+    // FIX: 重連成功後檢查並同步訊息
     // 當從 reconnecting 狀態變為 connected 時，觸發訊息同步
     if (newState === 'connected' && wasReconnecting) {
       log.info('Reconnected, checking message sync...')
       triggerMessageSyncAfterReconnection()
     }
 
-    // 🆕 FIX: 首次連接成功時，如果 HTTP 訊息為空，重新載入訊息
+    // FIX: 首次連接成功時，如果 HTTP 訊息為空，重新載入訊息
     // 解決問題：初始 HTTP 請求因權限失敗 (403) 後，WebSocket 連接成功但訊息未重新載入
     if (newState === 'connected' && wasConnecting && !hasConnectedOnce) {
       hasConnectedOnce = true
@@ -140,7 +140,7 @@ export function useWebSocketIntegration(
   }
 
   /**
-   * 🆕 首次連接時觸發訊息同步
+   * 首次連接時觸發訊息同步
    * 當 WebSocket 首次連接成功且 HTTP 訊息為空時，重新載入訊息
    */
   async function triggerMessageSyncOnFirstConnection() {
@@ -161,7 +161,7 @@ export function useWebSocketIntegration(
   }
 
   /**
-   * 🔧 重連後觸發訊息同步（基於時間戳的智能同步）
+   * 重連後觸發訊息同步（基於時間戳的智能同步）
    *
    * 舊邏輯：檢查 unifiedMessages.length === 0
    * 新邏輯：使用 serverLastMessageAt vs clientLastTs 時間戳比較
@@ -172,7 +172,7 @@ export function useWebSocketIntegration(
     try {
       log.debug('Triggering reconnection sync check...')
 
-      // 🔧 新邏輯：基於時間戳的同步由 connection_established 事件處理
+      // 新邏輯：基於時間戳的同步由 connection_established 事件處理
       // 這裡作為 fallback，當 connection_established 未觸發時使用
       const conn = unifiedConnection.value
       if (!conn) {
@@ -203,14 +203,14 @@ export function useWebSocketIntegration(
 
   /**
    * 處理統一連接接收的消息
-   * 🛡️ 方案 C: 使用小寫事件類型（customerWebSocketManager 已正規化）
-   * 🔧 Phase 2: 支援 Correlation ID 匹配
-   * 🔧 重連同步: 支援 connection_established 和 sync_response 事件
+   * 方案 C: 使用小寫事件類型（customerWebSocketManager 已正規化）
+   * Phase 2: 支援 Correlation ID 匹配
+   * 重連同步: 支援 connection_established 和 sync_response 事件
    */
   function handleUnifiedMessage(message: unknown) {
     const msg = message as {
       type?: string
-      message?: Message & { correlationId?: string }  // 🔧 Phase 2/3: 後端可能包含 correlationId
+      message?: Message & { correlationId?: string }  //  Phase 2/3: 後端可能包含 correlationId
       data?: {
         type?: string
         serverLastMessageAt?: string | null
@@ -220,17 +220,17 @@ export function useWebSocketIntegration(
       }
     }
 
-    // 🛡️ 防禦性編程：再次正規化以防萬一（defense-in-depth）
+    // 防禦性編程：再次正規化以防萬一（defense-in-depth）
     const eventType = normalizeEventType(msg.type || '')
     log.debug('Received message:', eventType, message)
 
-    // 🔧 重連同步: 處理連接建立事件（含 serverLastMessageAt）
+    // 重連同步: 處理連接建立事件（含 serverLastMessageAt）
     if (msg.data?.type === 'connection_established') {
       handleConnectionEstablished(msg.data.serverLastMessageAt)
       return
     }
 
-    // 🔧 重連同步: 處理同步回應
+    // 重連同步: 處理同步回應
     if (msg.data?.type === 'sync_response' && msg.data.missedMessages) {
       handleSyncResponse(msg.data.missedMessages)
       return
@@ -239,12 +239,12 @@ export function useWebSocketIntegration(
     // Handle new_message events (小寫，由 customerWebSocketManager 正規化)
     if (eventType === WS_EVENTS.NEW_MESSAGE && msg.message) {
       const messageId = msg.message.id
-      // 🔧 Phase 2/3: 從訊息或 metadata 中獲取 correlationId
+      // Phase 2/3: 從訊息或 metadata 中獲取 correlationId
       const correlationId = msg.message.correlationId ||
         (msg.message.metadata as Record<string, unknown> | undefined)?.correlationId as string | undefined
 
       // 檢查是否是本標籤發送的訊息（避免重複）
-      // 🔧 Phase 2: 優先使用 correlationId 進行匹配（更可靠）
+      // Phase 2: 優先使用 correlationId 進行匹配（更可靠）
       if (handlers.isSentMessage(messageId, correlationId)) {
         log.debug(
           `Skipping own message: id=${messageId}, correlationId=${correlationId || 'N/A'}`
@@ -262,10 +262,10 @@ export function useWebSocketIntegration(
     // if (eventType === WS_EVENTS.TYPING_STOP) { ... }
   }
 
-  // =================== 🔧 重連同步機制 ===================
+  // ===================  重連同步機制 ===================
 
   /**
-   * 🔧 重連同步: 處理連接建立事件
+   * 重連同步: 處理連接建立事件
    * 比較 serverLastMessageAt 和 clientLastTs，決定是否需要同步
    */
   function handleConnectionEstablished(serverLastMessageAt?: string | null) {
@@ -298,7 +298,7 @@ export function useWebSocketIntegration(
   }
 
   /**
-   * 🔧 重連同步: 發送同步請求
+   * 重連同步: 發送同步請求
    * @param since - 客戶端最後訊息時間戳，null 表示請求所有訊息
    */
   function requestMessageSync(since: string | null) {
@@ -320,7 +320,7 @@ export function useWebSocketIntegration(
   }
 
   /**
-   * 🔧 重連同步: 處理同步回應
+   * 重連同步: 處理同步回應
    * 將遺漏的訊息加入狀態
    */
   function handleSyncResponse(missedMessages: Message[]) {
@@ -415,22 +415,22 @@ export function useWebSocketIntegration(
       const msgCount = conn
         ? (((conn.messages as unknown) as Ref<Message[]>).value?.length ?? 0)
         : 0
-      return `🔌 WebSocket 已連接 (${msgCount} 條訊息)`
+      return ` WebSocket 已連接 (${msgCount} 條訊息)`
     }
 
     if (unifiedConnectionState.value === 'connecting') {
-      return '🔌 WebSocket 連接中...'
+      return ' WebSocket 連接中...'
     }
 
     if (unifiedConnectionState.value === 'reconnecting') {
-      return '🔌 WebSocket 重連中... (0/5)'
+      return ' WebSocket 重連中... (0/5)'
     }
 
     if (unifiedConnectionState.value === 'error') {
-      return '❌ WebSocket 連接失敗'
+      return ' WebSocket 連接失敗'
     }
 
-    return '⚠️ 未連接'
+    return ' 未連接'
   })
 
   /**

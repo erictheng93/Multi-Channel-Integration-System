@@ -11,11 +11,11 @@
  * - Layer 3: 業務代碼 (使用本文件提供的函數)
  *
  * 優勢:
- * - ✅ 類型安全 (TypeScript)
- * - ✅ 默認值支持
- * - ✅ 環境自動檢測
- * - ✅ 集中管理
- * - ✅ 易於測試
+ * -  類型安全 (TypeScript)
+ * -  默認值支持
+ * -  環境自動檢測
+ * -  集中管理
+ * -  易於測試
  *
  * @module config/runtime
  */
@@ -314,7 +314,7 @@ export function getApiUrl(endpoint: string): string {
 /**
  * 構建 API 端點 URL (總是返回完整 URL)
  *
- * ⚠️ 注意: 此函數總是返回完整 URL，開發環境可能遇到 CORS 問題
+ * 注意: 此函數總是返回完整 URL，開發環境可能遇到 CORS 問題
  * 推薦使用 getApiUrl() 替代，它會自動處理開發/生產環境差異
  *
  * @param path - API 路徑 (如 '/api/conversations')
@@ -467,7 +467,7 @@ export function validateRuntimeConfig(): void {
 
 // 在開發環境下打印配置信息
 if (isDevelopment()) {
-  console.group('🔧 Runtime Configuration');
+  console.group(' Runtime Configuration');
   console.log('Environment:', getCurrentEnvironment());
   console.log('Backend URL:', getBackendUrl());
   console.log('Frontend URL:', getFrontendUrl());

@@ -46,7 +46,7 @@ export const MESSAGE_STATUS = {
  * import { MESSAGE_STATUS, type MessageStatus } from '@/constants/message-status';
  *
  * function updateMessage(messageId: string, status: MessageStatus) {
- *   // Type-safe message status handling
+ * // Type-safe message status handling
  * }
  * ```
  */
@@ -97,12 +97,12 @@ export const MESSAGE_STATUS_COLORS: Record<MessageStatus, string> = {
  * Message status icons (for UI)
  */
 export const MESSAGE_STATUS_ICONS: Record<MessageStatus, string> = {
-  [MESSAGE_STATUS.PENDING]: '⏳',
-  [MESSAGE_STATUS.SENT]: '📤',
-  [MESSAGE_STATUS.DELIVERED]: '✓',
-  [MESSAGE_STATUS.FAILED]: '✗',
+  [MESSAGE_STATUS.PENDING]: '',
+  [MESSAGE_STATUS.SENT]: '',
+  [MESSAGE_STATUS.DELIVERED]: '',
+  [MESSAGE_STATUS.FAILED]: '',
   [MESSAGE_STATUS.RECALLED]: '↶',
-  [MESSAGE_STATUS.READ]: '✓✓'
+  [MESSAGE_STATUS.READ]: ''
 };
 
 /**

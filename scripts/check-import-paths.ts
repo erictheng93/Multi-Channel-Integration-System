@@ -28,7 +28,8 @@ function getStagedFiles(): string[] {
       .split('\n')
       .filter(file => file.endsWith('.ts') || file.endsWith('.tsx'))
       .filter(file => !file.includes('node_modules'))
-      .filter(file => !file.endsWith('.d.ts'));
+      .filter(file => !file.endsWith('.d.ts'))
+      .filter(file => !file.startsWith('scripts/'));
   } catch (error) {
     console.error('Error getting staged files:', error);
     return [];
@@ -95,26 +96,26 @@ function suggestAlias(importPath: string): string {
  * 主函數
  */
 function main(): void {
-  console.log('🔍 檢查路徑導入規範...\n');
+  console.log(' 檢查路徑導入規範...\n');
 
   const stagedFiles = getStagedFiles();
 
   if (stagedFiles.length === 0) {
-    console.log('✅ 沒有暫存的 TypeScript 文件');
+    console.log(' 沒有暫存的 TypeScript 文件');
     process.exit(0);
   }
 
-  console.log(`📂 檢查 ${stagedFiles.length} 個文件...\n`);
+  console.log(` 檢查 ${stagedFiles.length} 個文件...\n`);
 
   stagedFiles.forEach(file => checkFile(file));
 
   if (issues.length === 0) {
-    console.log('✅ 所有導入語句符合規範！\n');
+    console.log(' 所有導入語句符合規範！\n');
     process.exit(0);
   }
 
   // 顯示問題
-  console.log('⚠️  發現深層相對路徑導入：\n');
+  console.log('  發現深層相對路徑導入：\n');
   console.log('=' .repeat(80));
 
   issues.forEach(issue => {
@@ -124,7 +125,7 @@ function main(): void {
   });
 
   console.log('\n' + '='.repeat(80));
-  console.log(`\n❌ 發現 ${issues.length} 個問題`);
+  console.log(`\n 發現 ${issues.length} 個問題`);
   console.log('\n建議：');
   console.log('  1. 使用路徑別名代替深層相對路徑');
   console.log('  2. 運行自動遷移: npx tsx scripts/migrate-to-path-aliases.ts <目錄>');

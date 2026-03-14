@@ -52,13 +52,13 @@ export interface BulkAddResult {
 }
 
 /**
- * 🚀 Phase 2 優化: 批量將多位成員加入單一團隊的結果
+ * Phase 2 優化: 批量將多位成員加入單一團隊的結果
  * - 一次 API 請求處理多位成員
  * - DB 查詢從 30 次減少到 2-3 次
  */
 export interface BatchAddMembersResult {
-  added: string[];      // 成功加入的 agentId 列表
-  skipped: string[];    // 已存在於團隊的 agentId 列表
+  added: string[]; // 成功加入的 agentId 列表
+  skipped: string[]; // 已存在於團隊的 agentId 列表
   errors: { agentId: string; error: string }[];  // 失敗的記錄
 }
 
@@ -177,7 +177,7 @@ export class AgentTeamsService {
 
   /**
    * 將客服加入多個團隊
-   * 🚀 Phase 3 優化: 使用批量 DB 操作
+   * Phase 3 優化: 使用批量 DB 操作
    * - 單次查詢檢查所有現有成員資格 (N 查詢 → 1 查詢)
    * - 批量插入所有新成員資格 (N 插入 → 1 插入)
    */
@@ -199,7 +199,7 @@ export class AgentTeamsService {
     const now = nowISO();
 
     try {
-      // 🚀 Phase 3.1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)
+      // Phase 3.1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)
       const existingMemberships = await this.db
         .select({ teamId: agentTeams.teamId })
         .from(agentTeams)
@@ -220,7 +220,7 @@ export class AgentTeamsService {
         }
       }
 
-      // 🚀 Phase 3.2: 批量插入新成員資格 (N 插入 → 1 插入)
+      // Phase 3.2: 批量插入新成員資格 (N 插入 → 1 插入)
       if (teamsToAdd.length > 0) {
         const valuesToInsert = teamsToAdd.map(teamId => ({
           agentId,
@@ -238,7 +238,7 @@ export class AgentTeamsService {
         result.added = teamsToAdd;
       }
 
-      console.log('✅ [AgentTeamsService] Bulk add completed:', {
+      console.log('[AgentTeamsService] Bulk add completed:', {
         agentId,
         requested: teamIds.length,
         added: result.added.length,
@@ -254,14 +254,14 @@ export class AgentTeamsService {
           result.errors.push({ teamId, error: errorMsg });
         }
       }
-      console.error('❌ [AgentTeamsService] Bulk add failed:', error);
+      console.error('[AgentTeamsService] Bulk add failed:', error);
     }
 
     return result;
   }
 
   /**
-   * 🚀 Phase 2 優化: 批量將多位成員加入單一團隊
+   * Phase 2 優化: 批量將多位成員加入單一團隊
    * - 適用於「選擇成員加入團隊」Modal 的批量操作
    * - 單次查詢檢查所有現有成員資格 (N 查詢 → 1 查詢)
    * - 批量插入所有新成員資格 (N 插入 → 1 插入)
@@ -289,7 +289,7 @@ export class AgentTeamsService {
     const now = nowISO();
 
     try {
-      // 🚀 Step 1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)
+      // Step 1: 批量查詢現有成員資格 (N 查詢 → 1 查詢)
       const existingMemberships = await this.db
         .select({ agentId: agentTeams.agentId })
         .from(agentTeams)
@@ -310,7 +310,7 @@ export class AgentTeamsService {
         }
       }
 
-      // 🚀 Step 2: 批量插入新成員資格 (N 插入 → 1 插入)
+      // Step 2: 批量插入新成員資格 (N 插入 → 1 插入)
       if (agentsToAdd.length > 0) {
         const valuesToInsert = agentsToAdd.map(agentId => ({
           agentId,
@@ -328,7 +328,7 @@ export class AgentTeamsService {
         result.added = agentsToAdd;
       }
 
-      console.log('✅ [AgentTeamsService] Batch add members to team completed:', {
+      console.log('[AgentTeamsService] Batch add members to team completed:', {
         teamId,
         requested: agentIds.length,
         added: result.added.length,
@@ -344,14 +344,14 @@ export class AgentTeamsService {
           result.errors.push({ agentId, error: errorMsg });
         }
       }
-      console.error('❌ [AgentTeamsService] Batch add members to team failed:', error);
+      console.error('[AgentTeamsService] Batch add members to team failed:', error);
     }
 
     return result;
   }
 
   /**
-   * 🆕 批量獲取多個團隊的成員數量
+   * 批量獲取多個團隊的成員數量
    * 用於批量 WebSocket 廣播時一次獲取所有 memberCount
    */
   async getTeamMemberCounts(teamIds: number[]): Promise<Map<number, number>> {

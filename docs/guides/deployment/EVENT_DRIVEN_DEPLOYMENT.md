@@ -128,9 +128,9 @@ max_batch_timeout = 1 # 1-30
 
 
 ### ****
-- ` [Message] Event queued for message X` -
-- ` [SSE Manager] Connection registered` - SSE
-- ` [Queue Handler] Event X pushed to Y connections` -
+- `[Message] Event queued for message X` -
+- `[SSE Manager] Connection registered` - SSE
+- `[Queue Handler] Event X pushed to Y connections` -
 
 ### ****
 ```bash

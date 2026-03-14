@@ -46,14 +46,14 @@ export class IndexedDBCacheService {
       const request = indexedDB.open(DB_NAME, DB_VERSION)
 
       request.onerror = () => {
-        console.error('❌ [IndexedDBCache] 打開數據庫失敗:', request.error)
+        console.error('[IndexedDBCache] 打開數據庫失敗:', request.error)
         reject(request.error)
       }
 
       request.onsuccess = () => {
         this.db = request.result
         this.isInitialized = true
-        console.log('✅ [IndexedDBCache] 數據庫已打開')
+        console.log('[IndexedDBCache] 數據庫已打開')
         resolve()
       }
 
@@ -64,7 +64,7 @@ export class IndexedDBCacheService {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
           objectStore.createIndex('timestamp', 'timestamp', { unique: false })
-          console.log('✅ [IndexedDBCache] 對象存儲已創建')
+          console.log('[IndexedDBCache] 對象存儲已創建')
         }
       }
     })
@@ -104,12 +104,12 @@ export class IndexedDBCacheService {
       const request = store.put(cacheData)
 
       request.onsuccess = () => {
-        console.log(`✅ [IndexedDBCache] 索引已保存: ${messageCount} 條消息`)
+        console.log(`[IndexedDBCache] 索引已保存: ${messageCount} 條消息`)
         resolve()
       }
 
       request.onerror = () => {
-        console.error('❌ [IndexedDBCache] 保存索引失敗:', request.error)
+        console.error('[IndexedDBCache] 保存索引失敗:', request.error)
         reject(request.error)
       }
     })
@@ -138,7 +138,7 @@ export class IndexedDBCacheService {
         const cachedData = request.result as CachedIndex | undefined
 
         if (!cachedData) {
-          console.log('ℹ️ [IndexedDBCache] 緩存未找到')
+          console.log('[IndexedDBCache] 緩存未找到')
           resolve(null)
           return
         }
@@ -146,7 +146,7 @@ export class IndexedDBCacheService {
         // 檢查緩存是否過期
         const age = Date.now() - cachedData.timestamp
         if (age > MAX_CACHE_AGE) {
-          console.warn(`⚠️ [IndexedDBCache] 緩存已過期 (${Math.floor(age / (24 * 60 * 60 * 1000))} 天)`)
+          console.warn(`[IndexedDBCache] 緩存已過期 (${Math.floor(age / (24 * 60 * 60 * 1000))} 天)`)
           this.clearCache().catch(console.error)
           resolve(null)
           return
@@ -154,18 +154,18 @@ export class IndexedDBCacheService {
 
         // 檢查版本
         if (cachedData.version !== CACHE_VERSION) {
-          console.warn(`⚠️ [IndexedDBCache] 緩存版本不匹配 (${cachedData.version} vs ${CACHE_VERSION})`)
+          console.warn(`[IndexedDBCache] 緩存版本不匹配 (${cachedData.version} vs ${CACHE_VERSION})`)
           this.clearCache().catch(console.error)
           resolve(null)
           return
         }
 
-        console.log(`✅ [IndexedDBCache] 索引已加載: ${cachedData.messageCount} 條消息 (${Math.floor(age / 1000)}秒前)`)
+        console.log(`[IndexedDBCache] 索引已加載: ${cachedData.messageCount} 條消息 (${Math.floor(age / 1000)}秒前)`)
         resolve(cachedData)
       }
 
       request.onerror = () => {
-        console.error('❌ [IndexedDBCache] 加載索引失敗:', request.error)
+        console.error('[IndexedDBCache] 加載索引失敗:', request.error)
         reject(request.error)
       }
     })
@@ -199,14 +199,14 @@ export class IndexedDBCacheService {
 
     // 檢查消息數量是否匹配
     if (metadata.messageCount !== currentMessageCount) {
-      console.log(`ℹ️ [IndexedDBCache] 消息數量不匹配 (緩存: ${metadata.messageCount}, 當前: ${currentMessageCount})`)
+      console.log(`[IndexedDBCache] 消息數量不匹配 (緩存: ${metadata.messageCount}, 當前: ${currentMessageCount})`)
       return false
     }
 
     // 檢查緩存年齡
     const age = Date.now() - metadata.timestamp
     if (age > MAX_CACHE_AGE) {
-      console.log(`ℹ️ [IndexedDBCache] 緩存已過期 (${Math.floor(age / (24 * 60 * 60 * 1000))} 天)`)
+      console.log(`[IndexedDBCache] 緩存已過期 (${Math.floor(age / (24 * 60 * 60 * 1000))} 天)`)
       return false
     }
 
@@ -233,12 +233,12 @@ export class IndexedDBCacheService {
       const request = store.delete(INDEX_KEY)
 
       request.onsuccess = () => {
-        console.log('🗑️ [IndexedDBCache] 緩存已清除')
+        console.log('[IndexedDBCache] 緩存已清除')
         resolve()
       }
 
       request.onerror = () => {
-        console.error('❌ [IndexedDBCache] 清除緩存失敗:', request.error)
+        console.error('[IndexedDBCache] 清除緩存失敗:', request.error)
         reject(request.error)
       }
     })
@@ -302,7 +302,7 @@ export class IndexedDBCacheService {
       this.db.close()
       this.db = null
       this.isInitialized = false
-      console.log('✅ [IndexedDBCache] 數據庫已關閉')
+      console.log('[IndexedDBCache] 數據庫已關閉')
     }
   }
 }

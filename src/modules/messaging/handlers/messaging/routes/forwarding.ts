@@ -105,7 +105,7 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
         // 準備轉發的訊息內容
         let forwardedContent = `[Forwarded Message]\n${originalMessage.content}`;
         if (comment) {
-          forwardedContent += `\n\n📝 Comment: ${comment}`;
+          forwardedContent += `\n\n Comment: ${comment}`;
         }
 
         // 準備元數據

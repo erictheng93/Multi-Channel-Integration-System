@@ -152,14 +152,14 @@ export interface SystemHealthReportData {
 // === Phase 1: 新增報表類型資料介面 ===
 
 /**
- * 💰 成本分析報告資料
+ * 成本分析報告資料
  */
 export interface CostAnalysisReportData {
   totalCosts: {
-    operational: number;        // 營運成本
-    personnel: number;          // 人力成本
-    technology: number;         // 技術成本
-    overhead: number;           // 管理費用
+    operational: number; // 營運成本
+    personnel: number; // 人力成本
+    technology: number; // 技術成本
+    overhead: number; // 管理費用
   };
   costByTeam: Array<{
     teamId: string;
@@ -178,14 +178,14 @@ export interface CostAnalysisReportData {
     costPerConversation: number;
     costPerResolution: number;
     costPerCustomer: number;
-    rOI: number;                // 投資報酬率
+    rOI: number; // 投資報酬率
   };
   monthlyTrends: Array<{
     month: string;
     totalCost: number;
     conversations: number;
     costPerConversation: number;
-    budgetVariance: number;     // 預算差異百分比
+    budgetVariance: number; // 預算差異百分比
   }>;
   budgetComparison: {
     allocated: number;
@@ -202,7 +202,7 @@ export interface CostAnalysisReportData {
 }
 
 /**
- * ⚖️ SLA合規報告資料
+ * SLA合規報告資料
  */
 export interface SLAComplianceReportData {
   overallCompliance: {
@@ -216,7 +216,7 @@ export interface SLAComplianceReportData {
     metric: string;
     target: number;
     actual: number;
-    compliance: number;         // 百分比
+    compliance: number; // 百分比
     breaches: number;
     trend: 'improving' | 'stable' | 'declining';
   }>;
@@ -258,7 +258,7 @@ export interface SLAComplianceReportData {
 }
 
 /**
- * 🚨 異常檢測報告資料
+ * 異常檢測報告資料
  */
 export interface AnomalyDetectionReportData {
   detectionSummary: {
@@ -285,12 +285,12 @@ export interface AnomalyDetectionReportData {
     severity: 'low' | 'medium' | 'high' | 'critical';
     description: string;
     affectedSystems: string[];
-    confidence: number;         // 信心度 0-1
+    confidence: number; // 信心度 0-1
     status: 'detected' | 'investigating' | 'resolved' | 'false_positive';
     resolution: string;
   }>;
   predictiveInsights: {
-    riskScore: number;          // 0-100
+    riskScore: number; // 0-100
     probabilityOfIncident: number;
     timeToNextAnomaly: number;  // hours
     recommendedActions: string[];
@@ -298,12 +298,12 @@ export interface AnomalyDetectionReportData {
   anomalyPatterns: Array<{
     pattern: string;
     frequency: number;
-    timeOfDay: number[];        // hours when most frequent
-    dayOfWeek: number[];        // days when most frequent
+    timeOfDay: number[]; // hours when most frequent
+    dayOfWeek: number[]; // days when most frequent
     correlatedMetrics: string[];
   }>;
   systemHealthIndicators: {
-    overallHealth: number;      // 0-100
+    overallHealth: number; // 0-100
     performanceScore: number;
     reliabilityScore: number;
     securityScore: number;
@@ -311,7 +311,7 @@ export interface AnomalyDetectionReportData {
 }
 
 /**
- * 📋 審計追蹤報告資料
+ * 審計追蹤報告資料
  */
 export interface AuditTrailReportData {
   auditSummary: {
@@ -384,7 +384,7 @@ export interface AuditTrailReportData {
 }
 
 /**
- * ⚡ 資源利用率報告資料
+ * 資源利用率報告資料
  */
 export interface ResourceUtilizationReportData {
   utilizationSummary: {
@@ -399,35 +399,35 @@ export interface ResourceUtilizationReportData {
     teamId: string;
     totalHours: number;
     activeHours: number;
-    utilizationRate: number;    // 0-100
-    efficiency: number;         // conversations per hour
+    utilizationRate: number; // 0-100
+    efficiency: number; // conversations per hour
     idleTime: number;
     overloadIndicator: boolean;
     workloadBalance: 'underutilized' | 'optimal' | 'overloaded';
   }>;
   systemResources: {
     serverUtilization: {
-      cpu: number;              // 0-100
-      memory: number;           // 0-100
-      disk: number;             // 0-100
-      network: number;          // 0-100
+      cpu: number; // 0-100
+      memory: number; // 0-100
+      disk: number; // 0-100
+      network: number; // 0-100
     };
     databasePerformance: {
       connections: number;
-      queryTime: number;        // avg milliseconds
-      throughput: number;       // queries per second
+      queryTime: number; // avg milliseconds
+      throughput: number; // queries per second
       errors: number;
     };
     apiPerformance: {
-      requestRate: number;      // requests per minute
-      responseTime: number;     // avg milliseconds
-      errorRate: number;        // percentage
-      throughput: number;       // successful requests per minute
+      requestRate: number; // requests per minute
+      responseTime: number; // avg milliseconds
+      errorRate: number; // percentage
+      throughput: number; // successful requests per minute
     };
   };
   capacityPlan: {
     currentCapacity: number;
-    projectedNeed: number;      // next 3 months
+    projectedNeed: number; // next 3 months
     capacityGap: number;
     recommendations: Array<{
       type: 'scale_up' | 'scale_out' | 'optimize' | 'redistribute';
@@ -457,13 +457,13 @@ export interface ResourceUtilizationReportData {
 // === Phase 2: 商業智能增強報表資料介面 ===
 
 /**
- * 📈 趨勢預測報告資料
+ * 趨勢預測報告資料
  */
 export interface TrendForecastReportData {
   forecastSummary: {
-    forecastPeriod: number;     // 預測天數
-    confidence: number;         // 信心度 0-100
-    accuracy: number;           // 歷史準確度
+    forecastPeriod: number; // 預測天數
+    confidence: number; // 信心度 0-100
+    accuracy: number; // 歷史準確度
     lastUpdate: string;
   };
   conversationTrends: {
@@ -499,7 +499,7 @@ export interface TrendForecastReportData {
     }>;
   };
   riskAssessment: {
-    overloadRisk: number;       // 0-100
+    overloadRisk: number; // 0-100
     understaffingRisk: number;
     systemCapacityRisk: number;
     mitigationSuggestions: Array<{
@@ -509,15 +509,15 @@ export interface TrendForecastReportData {
     }>;
   };
   modelPerformance: {
-    mape: number;               // Mean Absolute Percentage Error
-    rmse: number;               // Root Mean Square Error
+    mape: number; // Mean Absolute Percentage Error
+    rmse: number; // Root Mean Square Error
     lastTraining: string;
-    dataQuality: number;        // 0-100
+    dataQuality: number; // 0-100
   };
 }
 
 /**
- * 💡 客戶洞察報告資料
+ * 客戶洞察報告資料
  */
 export interface CustomerInsightsReportData {
   customerSegmentation: {
@@ -553,7 +553,7 @@ export interface CustomerInsightsReportData {
     journeyMapping: Array<{
       stage: 'awareness' | 'consideration' | 'purchase' | 'support' | 'advocacy';
       touchpoints: string[];
-      duration: number;         // days
+      duration: number; // days
       conversionRate: number;
       dropoffRate: number;
     }>;
@@ -562,8 +562,8 @@ export interface CustomerInsightsReportData {
     overallSatisfaction: number;
     satisfactionDrivers: Array<{
       factor: string;
-      impact: number;           // correlation coefficient
-      improvement: number;      // potential improvement
+      impact: number; // correlation coefficient
+      improvement: number; // potential improvement
     }>;
     npsAnalysis: {
       score: number;
@@ -603,14 +603,14 @@ export interface CustomerInsightsReportData {
 }
 
 /**
- * 🌐 多通道整合報告資料
+ * 多通道整合報告資料
  */
 export interface ChannelIntegrationReportData {
   channelOverview: {
     activeChannels: Array<{
       channel: 'line' | 'facebook' | 'webchat' | 'email' | 'phone' | 'whatsapp';
       status: 'active' | 'inactive' | 'maintenance';
-      uptime: number;           // percentage
+      uptime: number; // percentage
       totalConversations: number;
       avgResponseTime: number;
       satisfaction: number;
@@ -636,7 +636,7 @@ export interface ChannelIntegrationReportData {
     }>;
   };
   integrationMetrics: {
-    dataConsistency: number;    // 0-100
+    dataConsistency: number; // 0-100
     responseTimeVariance: number;
     qualityConsistency: number;
     contextPreservation: number; // how well context is maintained across channels
@@ -665,7 +665,7 @@ export interface ChannelIntegrationReportData {
 }
 
 /**
- * 🎯 目標達成報告資料
+ * 目標達成報告資料
  */
 export interface GoalAchievementReportData {
   goalSummary: {
@@ -673,7 +673,7 @@ export interface GoalAchievementReportData {
     achievedGoals: number;
     onTrackGoals: number;
     atRiskGoals: number;
-    overallProgress: number;    // 0-100
+    overallProgress: number; // 0-100
   };
   departmentGoals: Array<{
     department: string;
@@ -682,7 +682,7 @@ export interface GoalAchievementReportData {
       title: string;
       target: number;
       current: number;
-      progress: number;         // 0-100
+      progress: number; // 0-100
       status: 'achieved' | 'on_track' | 'at_risk' | 'behind';
       deadline: string;
       priority: 'low' | 'medium' | 'high' | 'critical';
@@ -692,19 +692,19 @@ export interface GoalAchievementReportData {
   }>;
   kpiTracking: {
     responseTimeGoal: {
-      target: number;           // seconds
+      target: number; // seconds
       current: number;
-      improvement: number;      // percentage
+      improvement: number; // percentage
       trend: 'improving' | 'stable' | 'declining';
     };
     satisfactionGoal: {
-      target: number;           // 1-5 scale
+      target: number; // 1-5 scale
       current: number;
       improvement: number;
       trend: 'improving' | 'stable' | 'declining';
     };
     resolutionRateGoal: {
-      target: number;           // percentage
+      target: number; // percentage
       current: number;
       improvement: number;
       trend: 'improving' | 'stable' | 'declining';
@@ -741,7 +741,7 @@ export interface GoalAchievementReportData {
 }
 
 /**
- * 🤖 自動化成效報告資料
+ * 自動化成效報告資料
  */
 export interface AutomationEffectivenessReportData {
   automationOverview: {
@@ -773,18 +773,18 @@ export interface AutomationEffectivenessReportData {
       falseNegativeRate: number;
     };
     efficiencyGains: {
-      timeReduction: number;     // percentage
-      costReduction: number;     // percentage
-      volumeIncrease: number;    // percentage increase in handled volume
+      timeReduction: number; // percentage
+      costReduction: number; // percentage
+      volumeIncrease: number; // percentage increase in handled volume
       agentProductivityGain: number;
     };
   };
   automationROI: {
     totalInvestment: number;
     monthlySavings: number;
-    paybackPeriod: number;      // months
-    roi: number;                // percentage
-    npv: number;                // net present value
+    paybackPeriod: number; // months
+    roi: number; // percentage
+    npv: number; // net present value
   };
   failureAnalysis: {
     commonFailures: Array<{
@@ -812,11 +812,11 @@ export interface AutomationEffectivenessReportData {
 // === Phase 3: 高級分析功能報表資料介面 ===
 
 /**
- * 🔒 資安風險報告資料
+ * 資安風險報告資料
  */
 export interface SecurityRiskReportData {
   riskOverview: {
-    overallRiskScore: number;   // 0-100
+    overallRiskScore: number; // 0-100
     riskTrend: 'improving' | 'stable' | 'deteriorating';
     highRiskCount: number;
     criticalVulnerabilities: number;
@@ -826,9 +826,9 @@ export interface SecurityRiskReportData {
     identifiedThreats: Array<{
       threat: string;
       severity: 'low' | 'medium' | 'high' | 'critical';
-      likelihood: number;       // 0-100
-      impact: number;          // 0-100
-      riskScore: number;       // likelihood * impact
+      likelihood: number; // 0-100
+      impact: number; // 0-100
+      riskScore: number; // likelihood * impact
       mitigation: string;
       status: 'open' | 'mitigating' | 'closed';
     }>;
@@ -877,7 +877,7 @@ export interface SecurityRiskReportData {
   complianceStatus: {
     regulations: Array<{
       regulation: 'GDPR' | 'CCPA' | 'HIPAA' | 'PCI_DSS' | 'ISO_27001';
-      compliance: number;       // 0-100
+      compliance: number; // 0-100
       gaps: string[];
       nextAudit: string;
     }>;
@@ -893,13 +893,13 @@ export interface SecurityRiskReportData {
     category: 'preventive' | 'detective' | 'corrective' | 'compensating';
     recommendation: string;
     estimatedCost: number;
-    estimatedEffort: number;   // person-days
+    estimatedEffort: number; // person-days
     expectedRiskReduction: number;
   }>;
 }
 
 /**
- * 📚 知識庫效能報告資料
+ * 知識庫效能報告資料
  */
 export interface KnowledgeBaseReportData {
   knowledgeOverview: {
@@ -916,7 +916,7 @@ export interface KnowledgeBaseReportData {
       title: string;
       views: number;
       rating: number;
-      helpfulness: number;     // percentage
+      helpfulness: number; // percentage
       lastUpdated: string;
     }>;
     underperformingArticles: Array<{
@@ -931,14 +931,14 @@ export interface KnowledgeBaseReportData {
       topic: string;
       searchFrequency: number;
       availableArticles: number;
-      gapScore: number;        // search frequency / available articles
+      gapScore: number; // search frequency / available articles
     }>;
   };
   usageAnalytics: {
     searchPatterns: Array<{
       query: string;
       frequency: number;
-      successRate: number;     // found relevant results
+      successRate: number; // found relevant results
       avgTimeToResult: number; // seconds
     }>;
     userBehavior: {
@@ -958,7 +958,7 @@ export interface KnowledgeBaseReportData {
       id: string;
       title: string;
       lastUpdated: string;
-      staleness: number;       // days since last update
+      staleness: number; // days since last update
       priority: 'low' | 'medium' | 'high';
     }>;
     maintenanceBacklog: {
@@ -968,8 +968,8 @@ export interface KnowledgeBaseReportData {
       brokenLinks: number;
     };
     contentLifecycle: {
-      creationRate: number;    // articles per month
-      updateRate: number;      // updates per month
+      creationRate: number; // articles per month
+      updateRate: number; // updates per month
       retirementRate: number;  // archived per month
     };
   };
@@ -978,7 +978,7 @@ export interface KnowledgeBaseReportData {
       agentId: string;
       agentName: string;
       articlesViewed: number;
-      timeSpent: number;       // minutes
+      timeSpent: number; // minutes
       resolutionImprovement: number; // percentage
     }>;
     resolutionEfficiency: {
@@ -1009,7 +1009,7 @@ export interface KnowledgeBaseReportData {
 }
 
 /**
- * 📞 通話品質分析報告資料
+ * 通話品質分析報告資料
  */
 export interface CallQualityReportData {
   qualityOverview: {
@@ -1028,9 +1028,9 @@ export interface CallQualityReportData {
       solutions: string[];
     }>;
     networkPerformance: {
-      avgLatency: number;       // milliseconds
-      packetLoss: number;       // percentage
-      jitter: number;           // milliseconds
+      avgLatency: number; // milliseconds
+      packetLoss: number; // percentage
+      jitter: number; // milliseconds
       connectionQuality: number; // 0-100
     };
   };
@@ -1066,7 +1066,7 @@ export interface CallQualityReportData {
     satisfactionCorrelation: {
       qualityScore: number;
       satisfaction: number;
-      correlation: number;      // -1 to 1
+      correlation: number; // -1 to 1
     };
     callOutcomes: {
       resolved: number;
@@ -1087,8 +1087,8 @@ export interface CallQualityReportData {
   };
   technicalMetrics: {
     callStability: {
-      completionRate: number;   // percentage
-      dropCallRate: number;     // percentage
+      completionRate: number; // percentage
+      dropCallRate: number; // percentage
       reconnectionRate: number;
     };
     systemPerformance: {
@@ -1109,7 +1109,7 @@ export interface CallQualityReportData {
 }
 
 /**
- * 💼 高管摘要報告資料
+ * 高管摘要報告資料
  */
 export interface ExecutiveSummaryReportData {
   executiveOverview: {
@@ -1148,12 +1148,12 @@ export interface ExecutiveSummaryReportData {
   strategicInsights: {
     marketPosition: {
       competitiveRanking: number; // 1-10
-      marketShare: number;        // percentage
+      marketShare: number; // percentage
       brandPerception: 'positive' | 'neutral' | 'negative';
       differentiators: string[];
     };
     customerInsights: {
-      loyaltyIndex: number;       // 0-100
+      loyaltyIndex: number; // 0-100
       churnRisk: 'low' | 'medium' | 'high';
       growthOpportunities: string[];
       segmentPerformance: Record<string, {
@@ -1167,8 +1167,8 @@ export interface ExecutiveSummaryReportData {
     overallRisk: 'low' | 'medium' | 'high' | 'critical';
     riskFactors: Array<{
       risk: string;
-      probability: number;      // 0-100
-      impact: number;           // 0-100
+      probability: number; // 0-100
+      impact: number; // 0-100
       mitigation: string;
     }>;
     complianceStatus: 'compliant' | 'minor_issues' | 'major_concerns';

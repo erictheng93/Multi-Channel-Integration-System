@@ -79,7 +79,7 @@ export class BroadcasterLockService {
     }
 
     if (expiredLocks.length > 0) {
-      console.log(`🧹 [MessageBroadcaster] Cleaned up ${expiredLocks.length} expired locks`);
+      console.log(`[MessageBroadcaster] Cleaned up ${expiredLocks.length} expired locks`);
     }
   }
 

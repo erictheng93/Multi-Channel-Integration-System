@@ -2,7 +2,7 @@
  * Unit Tests for conversations/assignmentActions.ts
  *
  * Tests: createAssignmentActions (assignConversation, assignConversationToTeam,
- *        unassignConversation, transferConversationToTeam)
+ * unassignConversation, transferConversationToTeam)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'

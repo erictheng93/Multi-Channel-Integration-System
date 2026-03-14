@@ -47,16 +47,16 @@ const CACHE_BASE_URL = 'https://cache.internal';
 
 // Default TTLs (in seconds) - mirrors KV_TTL from kv-config.ts
 export const CACHE_TTL = {
-  ANALYTICS: 3600,      // 1 hour
-  REPORT: 3600,         // 1 hour
-  DASHBOARD: 3600,      // 1 hour
-  HEALTH: 60,           // 1 minute
-  HTTP: 300,            // 5 minutes
-  QUERY: 300,           // 5 minutes
-  PAGINATED: 60,        // 1 minute
-  QR_CODE: 86400,       // 24 hours
-  AGENT_STATUS: 300,    // 5 minutes
-  AGENT_SKILLS: 3600,   // 1 hour
+  ANALYTICS: 3600, // 1 hour
+  REPORT: 3600, // 1 hour
+  DASHBOARD: 3600, // 1 hour
+  HEALTH: 60, // 1 minute
+  HTTP: 300, // 5 minutes
+  QUERY: 300, // 5 minutes
+  PAGINATED: 60, // 1 minute
+  QR_CODE: 86400, // 24 hours
+  AGENT_STATUS: 300, // 5 minutes
+  AGENT_SKILLS: 3600, // 1 hour
 } as const;
 
 // Cache key prefixes that should use Cache API instead of KV

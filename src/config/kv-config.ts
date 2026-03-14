@@ -16,8 +16,8 @@
  * Centralized TTL settings in SECONDS
  *
  * Usage:
- *   import { KV_TTL } from '../config/kv-config';
- *   await kv.put(key, value, { expirationTtl: KV_TTL.SESSION });
+ * import { KV_TTL } from '../config/kv-config';
+ * await kv.put(key, value, { expirationTtl: KV_TTL.SESSION });
  */
 export const KV_TTL = {
   // ─────────────────────────────────────────────────────────
@@ -28,7 +28,7 @@ export const KV_TTL = {
   SESSION: 30 * 24 * 60 * 60, // 2,592,000 seconds
 
   /** WebSocket connections - 30 minutes (extended to support long idle periods)
-   * 🔧 FIX: Increased from 5 min to 30 min to prevent connection state cleanup
+   * FIX: Increased from 5 min to 30 min to prevent connection state cleanup
    * during user idle periods, which caused "暫無訊息" issue after reconnection */
   WEBSOCKET_CONNECTION: 30 * 60, // 1800 seconds
 
@@ -253,16 +253,16 @@ export const LEGACY_KEY_PATTERNS = [
 
   // Old naming conventions (to be migrated)
   'websocket_migration_config', // → ws:config
-  'latest_msg:',                // → cache:msg:latest:
-  'qr:team:',                   // → cache:qr:
-  'recallable:',                // → msg:recall:
-  'cancelled:',                 // → msg:cancel:
-  'sse_connection:',            // → (removed - SSE eliminated)
-  'ws_conn:',                   // → ws:conn:
-  'pending_msg:',               // → msg:pending:
-  'rate_limit:',                // → rate:
-  'circuit_breaker_',           // → cb:
-  'realtime_event:',            // → rt:event:
+  'latest_msg:', // → cache:msg:latest:
+  'qr:team:', // → cache:qr:
+  'recallable:', // → msg:recall:
+  'cancelled:', // → msg:cancel:
+  'sse_connection:', // → (removed - SSE eliminated)
+  'ws_conn:', // → ws:conn:
+  'pending_msg:', // → msg:pending:
+  'rate_limit:', // → rate:
+  'circuit_breaker_', // → cb:
+  'realtime_event:', // → rt:event:
 ] as const;
 
 /**

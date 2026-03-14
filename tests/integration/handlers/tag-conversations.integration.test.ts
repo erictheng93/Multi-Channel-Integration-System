@@ -12,8 +12,8 @@
  * Mock strategy:
  * - vi.mock('@/middleware/auth') — bypasses JWT for all tests
  * - vi.mock('@/db/drizzle-factory') — operation-aware chainable Drizzle mock
- *   The handler calls: drizzleDb.get (tag exists), drizzleDb.all (conversations),
- *   drizzleDb.get (count)
+ * The handler calls: drizzleDb.get (tag exists), drizzleDb.all (conversations),
+ * drizzleDb.get (count)
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
@@ -73,12 +73,12 @@ function resetMockState(overrides: Partial<MockState> = {}) {
 /**
  * Build a Drizzle mock that models the call sequence made by getTagConversations():
  *
- *   1. drizzleDb.get(sql`SELECT * FROM tags WHERE id = ? AND deleted_at IS NULL`)
- *      → tagRow (or null for 404)
- *   2. drizzleDb.all(sql`SELECT ... FROM conversation_tags JOIN conversations ...`)
- *      → conversationRows
- *   3. drizzleDb.get(sql`SELECT COUNT(*) as total FROM conversation_tags ...`)
- *      → countRow
+ * 1. drizzleDb.get(sql`SELECT * FROM tags WHERE id = ? AND deleted_at IS NULL`)
+ * → tagRow (or null for 404)
+ * 2. drizzleDb.all(sql`SELECT ... FROM conversation_tags JOIN conversations ...`)
+ * → conversationRows
+ * 3. drizzleDb.get(sql`SELECT COUNT(*) as total FROM conversation_tags ...`)
+ * → countRow
  *
  * We use a call-counter to distinguish the two .get() calls.
  */

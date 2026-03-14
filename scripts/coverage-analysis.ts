@@ -29,7 +29,7 @@ interface CoverageData {
 }
 
 async function runCoverageAnalysis(): Promise<CoverageData> {
-  console.log('📊 Running coverage analysis...\n');
+  console.log(' Running coverage analysis...\n');
 
   try {
     const { stdout, stderr } = await execAsync(
@@ -47,7 +47,7 @@ async function runCoverageAnalysis(): Promise<CoverageData> {
       const summaryContent = await readFile(summaryPath, 'utf-8');
       coverageSummary = JSON.parse(summaryContent);
     } catch (e) {
-      console.log('⚠️  Could not read coverage summary, using defaults\n');
+      console.log('  Could not read coverage summary, using defaults\n');
     }
 
     const recommendations: string[] = [];
@@ -129,16 +129,16 @@ async function runCoverageAnalysis(): Promise<CoverageData> {
 }
 
 async function generateCoverageReport(data: CoverageData): Promise<void> {
-  let report = `# 📊 Code Coverage Analysis\n\n`;
+  let report = `#  Code Coverage Analysis\n\n`;
   report += `**Date:** ${data.timestamp.split('T')[0]}\n\n`;
 
   report += `## Overall Coverage\n\n`;
   report += `| Metric | Coverage | Status |\n`;
   report += `|--------|----------|--------|\n`;
-  report += `| Lines | ${data.overall.lines.toFixed(1)}% | ${data.overall.lines >= 80 ? '✅' : '⚠️'} |\n`;
-  report += `| Statements | ${data.overall.statements.toFixed(1)}% | ${data.overall.statements >= 80 ? '✅' : '⚠️'} |\n`;
-  report += `| Functions | ${data.overall.functions.toFixed(1)}% | ${data.overall.functions >= 80 ? '✅' : '⚠️'} |\n`;
-  report += `| Branches | ${data.overall.branches.toFixed(1)}% | ${data.overall.branches >= 70 ? '✅' : '⚠️'} |\n\n`;
+  report += `| Lines | ${data.overall.lines.toFixed(1)}% | ${data.overall.lines >= 80 ? '' : ''} |\n`;
+  report += `| Statements | ${data.overall.statements.toFixed(1)}% | ${data.overall.statements >= 80 ? '' : ''} |\n`;
+  report += `| Functions | ${data.overall.functions.toFixed(1)}% | ${data.overall.functions >= 80 ? '' : ''} |\n`;
+  report += `| Branches | ${data.overall.branches.toFixed(1)}% | ${data.overall.branches >= 70 ? '' : ''} |\n\n`;
 
   if (data.uncoveredFiles.length > 0) {
     report += `## Files Needing More Tests\n\n`;
@@ -167,26 +167,26 @@ async function generateCoverageReport(data: CoverageData): Promise<void> {
 
   const reportPath = join(process.cwd(), 'docs', 'COVERAGE_ANALYSIS_REPORT.md');
   await writeFile(reportPath, report);
-  console.log(`\n📄 Coverage report saved to: ${reportPath}\n`);
+  console.log(`\n Coverage report saved to: ${reportPath}\n`);
 }
 
 async function main() {
-  console.log('\n📊 Code Coverage Analysis\n' + '='.repeat(60) + '\n');
+  console.log('\n Code Coverage Analysis\n' + '='.repeat(60) + '\n');
 
   const data = await runCoverageAnalysis();
   await generateCoverageReport(data);
 
-  console.log(`\n📈 Coverage Summary:\n`);
-  console.log(`   Lines: ${data.overall.lines.toFixed(1)}%`);
-  console.log(`   Statements: ${data.overall.statements.toFixed(1)}%`);
-  console.log(`   Functions: ${data.overall.functions.toFixed(1)}%`);
-  console.log(`   Branches: ${data.overall.branches.toFixed(1)}%\n`);
+  console.log(`\n Coverage Summary:\n`);
+  console.log(` Lines: ${data.overall.lines.toFixed(1)}%`);
+  console.log(` Statements: ${data.overall.statements.toFixed(1)}%`);
+  console.log(` Functions: ${data.overall.functions.toFixed(1)}%`);
+  console.log(` Branches: ${data.overall.branches.toFixed(1)}%\n`);
 
   if (data.uncoveredFiles.length > 0) {
-    console.log(`   Files needing tests: ${data.uncoveredFiles.length}\n`);
+    console.log(` Files needing tests: ${data.uncoveredFiles.length}\n`);
   }
 
-  console.log('✅ Coverage analysis complete!\n');
+  console.log(' Coverage analysis complete!\n');
 }
 
 main().catch(console.error);

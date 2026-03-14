@@ -22,7 +22,7 @@ interface TsConfig {
   };
 }
 
-console.log('🔧 Frontend Development Tools Check\n');
+console.log(' Frontend Development Tools Check\n');
 
 const checks: DevToolCheck[] = [
   {
@@ -55,24 +55,24 @@ const checks: DevToolCheck[] = [
 let allPassed = true;
 
 for (const check of checks) {
-  console.log(`📋 Checking ${check.name}...`);
+  console.log(` Checking ${check.name}...`);
   
   // Check files
   const missingFiles = check.files.filter(file => !existsSync(resolve(file)));
   if (missingFiles.length > 0) {
-    console.log(`  ❌ Missing files: ${missingFiles.join(', ')}`);
+    console.log(` Missing files: ${missingFiles.join(', ')}`);
     allPassed = false;
   } else {
-    console.log(`  ✅ All configuration files present`);
+    console.log(` All configuration files present`);
   }
   
   // Check command
   if (check.command) {
     try {
       const version = execSync(check.command, { encoding: 'utf8' }).trim();
-      console.log(`  ✅ Tool available: ${version}`);
+      console.log(` Tool available: ${version}`);
     } catch {
-      console.log(`  ❌ Tool not available or not working`);
+      console.log(` Tool not available or not working`);
       allPassed = false;
     }
   }
@@ -81,7 +81,7 @@ for (const check of checks) {
 }
 
 // Additional checks
-console.log('🔍 Additional Checks...');
+console.log(' Additional Checks...');
 
 // Check package.json scripts
 const packageJson: PackageJson = JSON.parse(readFileSync('package.json', 'utf8'));
@@ -92,18 +92,18 @@ const requiredScripts: string[] = [
 
 const missingScripts = requiredScripts.filter(script => !packageJson.scripts?.[script]);
 if (missingScripts.length > 0) {
-  console.log(`❌ Missing npm scripts: ${missingScripts.join(', ')}`);
+  console.log(` Missing npm scripts: ${missingScripts.join(', ')}`);
   allPassed = false;
 } else {
-  console.log('✅ All required npm scripts present');
+  console.log(' All required npm scripts present');
 }
 
 // Check TypeScript strict mode
 const tsConfig: TsConfig = JSON.parse(readFileSync('tsconfig.json', 'utf8'));
 if (tsConfig.compilerOptions?.strict) {
-  console.log('✅ TypeScript strict mode enabled');
+  console.log(' TypeScript strict mode enabled');
 } else {
-  console.log('❌ TypeScript strict mode not enabled');
+  console.log(' TypeScript strict mode not enabled');
   allPassed = false;
 }
 
@@ -115,17 +115,17 @@ const requiredDevDeps: string[] = [
 
 const missingDevDeps = requiredDevDeps.filter(dep => !packageJson.devDependencies?.[dep]);
 if (missingDevDeps.length > 0) {
-  console.log(`❌ Missing dev dependencies: ${missingDevDeps.join(', ')}`);
+  console.log(` Missing dev dependencies: ${missingDevDeps.join(', ')}`);
   allPassed = false;
 } else {
-  console.log('✅ All required dev dependencies present');
+  console.log(' All required dev dependencies present');
 }
 
 console.log(`\n${  '='.repeat(50)}`);
 if (allPassed) {
-  console.log('🎉 All development tools are properly configured!');
-  console.log('✨ Your frontend development environment is 100% complete!');
+  console.log(' All development tools are properly configured!');
+  console.log(' Your frontend development environment is 100% complete!');
 } else {
-  console.log('⚠️  Some issues found. Please address them for optimal development experience.');
+  console.log('  Some issues found. Please address them for optimal development experience.');
 }
 console.log('='.repeat(50));

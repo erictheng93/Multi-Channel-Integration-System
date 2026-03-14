@@ -27,14 +27,14 @@
  *
  * @example
  * <StatCard
- *   icon="📊"
- *   :number="totalReports"
- *   label="總報表數"
- *   type="total"
+ * icon=""
+ * :number="totalReports"
+ * label="總報表數"
+ * type="total"
  * >
- *   <template #extra>
- *     <div class="stat-trend">...</div>
- *   </template>
+ * <template #extra>
+ * <div class="stat-trend">...</div>
+ * </template>
  * </StatCard>
  */
 

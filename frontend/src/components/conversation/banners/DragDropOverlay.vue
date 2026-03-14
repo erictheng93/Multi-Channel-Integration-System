@@ -36,8 +36,8 @@
  *
  * 使用示例：
  * <DragDropOverlay
- *   :is-visible="isDragging"
- *   @drop="handleFileDrop"
+ * :is-visible="isDragging"
+ * @drop="handleFileDrop"
  * />
  */
 

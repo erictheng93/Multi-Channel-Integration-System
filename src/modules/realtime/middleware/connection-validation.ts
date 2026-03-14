@@ -72,7 +72,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
         ];
 
         if (suspiciousPatterns.some(pattern => pattern.test(userAgent))) {
-          console.warn(`⚠️ [Connection Validation] 可疑的 User-Agent: ${userAgent}`, {
+          console.warn(`[Connection Validation] 可疑的 User-Agent: ${userAgent}`, {
             userId: auth.userId,
             ip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For')
           });
@@ -107,7 +107,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
                 return badRequestResponse(c, 'Conversation not found');
               }
             } catch (error) {
-              console.error('❌ [Connection Validation] 對話查詢失敗:', error);
+              console.error('[Connection Validation] 對話查詢失敗:', error);
               // 繼續處理，不因為資料庫錯誤而阻止連接
             }
           }
@@ -131,7 +131,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
         rateLimit.count++;
 
         if (rateLimit.count > validationConfig.rateLimitRequests) {
-          console.warn(`⚠️ [Connection Validation] 速率限制觸發:`, {
+          console.warn(`[Connection Validation] 速率限制觸發:`, {
             userId: auth.userId,
             clientKey,
             count: rateLimit.count,
@@ -172,7 +172,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
         conversationId: c.req.query('conversationId')
       });
 
-      console.log(`✅ [Connection Validation] 驗證通過:`, {
+      console.log(`[Connection Validation] 驗證通過:`, {
         userId: auth.userId,
         userAgent: c.req.header('User-Agent'),
         conversationId: c.req.query('conversationId'),
@@ -182,7 +182,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
       return await next();
 
     } catch (error) {
-      console.error('❌ [Connection Validation] 驗證中間件錯誤:', error);
+      console.error('[Connection Validation] 驗證中間件錯誤:', error);
       return errorResponse(c, 'Connection validation error', 500);
     }
   };
@@ -206,7 +206,7 @@ async function getCurrentUserConnections(userId: number, env: Bindings): Promise
 
     return 0;
   } catch (error) {
-    console.error('❌ [Connection Validation] 獲取連接數失敗:', error);
+    console.error('[Connection Validation] 獲取連接數失敗:', error);
     return 0;
   }
 }

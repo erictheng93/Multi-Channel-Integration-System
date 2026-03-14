@@ -10,17 +10,17 @@ This project uses **`vi.fn()` with manual chainable mocks**. See `tests/helpers/
 
 ```
 tests/
-  unit/              # Unit tests
-  modules/           # Module-specific tests
-  integration/       # Integration tests
-  e2e/               # End-to-end tests
-  edge-cases/        # Boundary condition tests
-  helpers/           # Active test helpers (see helpers/README.md)
-    mockDrizzle.ts   # Drizzle ORM mocking
-    mockKV.ts        # Cloudflare KV mocking
-    testUtils.ts     # General utilities
-    websocket/       # WebSocket test infrastructure
-  archive/           # Historical reference only (do not use)
+  unit/ # Unit tests
+  modules/ # Module-specific tests
+  integration/ # Integration tests
+  e2e/ # End-to-end tests
+  edge-cases/ # Boundary condition tests
+  helpers/ # Active test helpers (see helpers/README.md)
+    mockDrizzle.ts # Drizzle ORM mocking
+    mockKV.ts # Cloudflare KV mocking
+    testUtils.ts # General utilities
+    websocket/ # WebSocket test infrastructure
+  archive/ # Historical reference only (do not use)
 ```
 
 ## Running Tests

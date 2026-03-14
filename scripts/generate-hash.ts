@@ -5,13 +5,13 @@ import { generateHashCLI, generateMultipleHashesCLI } from '../src/utils/passwor
 /**
  * CLI script for generating password hashes
  * Usage:
- *   npm run hash                    # Generate hash for default password
- *   npm run hash mypassword         # Generate hash for specific password
- *   npm run hash:batch              # Generate hashes for multiple passwords
- *   
+ * npm run hash # Generate hash for default password
+ * npm run hash mypassword # Generate hash for specific password
+ * npm run hash:batch # Generate hashes for multiple passwords
+ * 
  * 環境變數支援:
- *   ADMIN_PASSWORD=your-password npm run hash:batch
- *   AGENT_PASSWORD=your-password npm run hash:batch
+ * ADMIN_PASSWORD=your-password npm run hash:batch
+ * AGENT_PASSWORD=your-password npm run hash:batch
  */
 
 async function main() {
@@ -35,9 +35,9 @@ async function main() {
       { name: 'agent-004 (Agent 3)', password: agent3Password },
     ];
 
-    console.log('🔐 為你的實際系統用戶生成密碼雜湊');
-    console.log('⚠️  請先設定環境變數或修改腳本中的密碼');
-    console.log('💡 範例：ADMIN_PASSWORD=your-secure-password npm run hash:batch');
+    console.log(' 為你的實際系統用戶生成密碼雜湊');
+    console.log('  請先設定環境變數或修改腳本中的密碼');
+    console.log(' 範例：ADMIN_PASSWORD=your-secure-password npm run hash:batch');
     console.log('');
     
     const results = await generateMultipleHashesCLI(passwords);
@@ -49,8 +49,8 @@ async function main() {
       console.log('');
     });
     
-    console.log('📝 使用這些雜湊更新資料庫：');
-    console.log('   UPDATE agents SET password_hash = "hash-value" WHERE id = "user-id";');
+    console.log(' 使用這些雜湊更新資料庫：');
+    console.log(' UPDATE agents SET password_hash = "hash-value" WHERE id = "user-id";');
   } else {
     // Single password generation
     const password = command || undefined;

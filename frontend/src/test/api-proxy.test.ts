@@ -144,7 +144,7 @@ describe('Proxy Configuration Validation', () => {
   it('should validate Cloudflare Pages redirect rules', () => {
     // 驗證 Cloudflare Pages 重定向規則格式
     const redirectRules = [
-      '/*    /index.html   200',
+      '/* /index.html 200',
       `/api/*  ${  getBackendUrl()  }/api/:splat  200`
     ]
 

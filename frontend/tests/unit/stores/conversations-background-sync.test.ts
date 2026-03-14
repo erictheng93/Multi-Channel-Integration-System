@@ -326,7 +326,7 @@ describe('Conversations Store - Background Sync Feature', () => {
 /**
  * 測試總結：
  *
- * ✅ 已測試：
+ * 已測試：
  * - Background sync 定時器啟動
  * - Background sync 定時器停止
  * - 30 秒同步週期
@@ -336,7 +336,7 @@ describe('Conversations Store - Background Sync Feature', () => {
  * - 清理邏輯
  * - 錯誤處理
  *
- * 🎯 覆蓋的場景：
+ * 覆蓋的場景：
  * - 正常操作流程
  * - 邊緣情況（多次 cleanup）
  * - 錯誤恢復

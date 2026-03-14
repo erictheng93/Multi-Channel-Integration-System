@@ -13,7 +13,7 @@ describe('QuickActionsWidget.vue', () => {
     it('应该渲染小部件标题', () => {
       const wrapper = mount(QuickActionsWidget)
 
-      expect(wrapper.text()).toContain('⚡ 快速操作')
+      expect(wrapper.text()).toContain('快速操作')
     })
 
     it('应该渲染4个操作按钮', () => {

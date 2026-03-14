@@ -33,9 +33,9 @@ const DEFAULT_POOL_CONFIG: ConnectionPoolConfig = {
   maxPoolSize: 10000,
   maxConnectionsPerUser: 10,
   connectionTimeoutMs: 30000,
-  idleTimeoutMs: 300000,      // 5 minutes
+  idleTimeoutMs: 300000, // 5 minutes
   heartbeatIntervalMs: 30000,  // 30 seconds
-  cleanupIntervalMs: 60000,    // 1 minute
+  cleanupIntervalMs: 60000, // 1 minute
   enableConnectionReuse: true,
   enableSmartThrottling: true,
   enableAutomaticScaling: true,
@@ -87,13 +87,13 @@ export class ConnectionPoolManager {
 
     // Check pool capacity
     if (!this.canAcceptConnection(userId)) {
-      console.warn(`🚫 [ConnectionPool] Cannot accept connection: pool limits exceeded for user ${userId}`);
+      console.warn(`[ConnectionPool] Cannot accept connection: pool limits exceeded for user ${userId}`);
       return false;
     }
 
     // Apply throttling if enabled
     if (this.config.enableSmartThrottling && this.shouldThrottleConnection(userId)) {
-      console.warn(`⏱️ [ConnectionPool] Throttling connection for user ${userId}`);
+      console.warn(`[ConnectionPool] Throttling connection for user ${userId}`);
       await this.sleep(this.calculateThrottleDelay(userId));
     }
 
@@ -133,7 +133,7 @@ export class ConnectionPoolManager {
     // Update stats
     this.updatePoolStats();
 
-    console.log(`✅ [ConnectionPool] Connection added: ${connectionId} for user ${userId} (${this.poolStats.activeConnections} active)`);
+    console.log(`[ConnectionPool] Connection added: ${connectionId} for user ${userId} (${this.poolStats.activeConnections} active)`);
     return true;
   }
 
@@ -161,7 +161,7 @@ export class ConnectionPoolManager {
     // Update stats
     this.updatePoolStats();
 
-    console.log(`🔌 [ConnectionPool] Connection removed: ${connectionId} (${this.poolStats.activeConnections} remaining)`);
+    console.log(`[ConnectionPool] Connection removed: ${connectionId} (${this.poolStats.activeConnections} remaining)`);
   }
 
   getConnection(connectionId: string): WebSocketConnection | null {
@@ -284,7 +284,7 @@ export class ConnectionPoolManager {
           websocket.send(JSON.stringify(pingMessage));
           this.updateConnectionActivity(connectionId, 'heartbeat_sent');
         } catch (error) {
-          console.error(`❌ [ConnectionPool] Heartbeat failed for ${connectionId}:`, error);
+          console.error(`[ConnectionPool] Heartbeat failed for ${connectionId}:`, error);
           this.markConnectionAsUnhealthy(connectionId);
         }
       } else {
@@ -383,7 +383,7 @@ export class ConnectionPoolManager {
     const connection = this.connectionPool.get(connectionId);
     if (!connection) return;
 
-    console.warn(`⚠️ [ConnectionPool] Connection marked as unhealthy: ${connectionId}`);
+    console.warn(`[ConnectionPool] Connection marked as unhealthy: ${connectionId}`);
 
     // Attempt to recover the connection
     this.attemptConnectionRecovery(connectionId);
@@ -395,7 +395,7 @@ export class ConnectionPoolManager {
 
     if (!connection || !metrics) return;
 
-    console.log(`🔄 [ConnectionPool] Attempting recovery for connection: ${connectionId}`);
+    console.log(`[ConnectionPool] Attempting recovery for connection: ${connectionId}`);
 
     // Try to ping the connection
     try {
@@ -413,26 +413,26 @@ export class ConnectionPoolManager {
 
         // Check if connection improved
         if (metrics.healthScore !== undefined && metrics.healthScore > 50) {
-          console.log(`✅ [ConnectionPool] Connection recovered: ${connectionId}`);
+          console.log(`[ConnectionPool] Connection recovered: ${connectionId}`);
           return;
         }
       }
     } catch (error) {
-      console.error(`❌ [ConnectionPool] Recovery failed for ${connectionId}:`, error);
+      console.error(`[ConnectionPool] Recovery failed for ${connectionId}:`, error);
     }
 
     // Recovery failed, remove connection
-    console.log(`🚫 [ConnectionPool] Removing unrecoverable connection: ${connectionId}`);
+    console.log(`[ConnectionPool] Removing unrecoverable connection: ${connectionId}`);
     await this.removeConnection(connectionId);
   }
 
   private handleConnectionClose(connectionId: string, code: number, reason: string): void {
-    console.log(`🔌 [ConnectionPool] Connection closed: ${connectionId} (${code}: ${reason})`);
+    console.log(`[ConnectionPool] Connection closed: ${connectionId} (${code}: ${reason})`);
     this.removeConnection(connectionId);
   }
 
   private handleConnectionError(connectionId: string, error: Event): void {
-    console.error(`❌ [ConnectionPool] Connection error: ${connectionId}`, error);
+    console.error(`[ConnectionPool] Connection error: ${connectionId}`, error);
     this.updateConnectionActivity(connectionId, 'error');
   }
 
@@ -459,7 +459,7 @@ export class ConnectionPoolManager {
     const now = nowMs();
     const staleConnections: string[] = [];
 
-    console.log(`🧹 [ConnectionPool] Starting cleanup (${this.connectionPool.size} connections)`);
+    console.log(`[ConnectionPool] Starting cleanup (${this.connectionPool.size} connections)`);
 
     for (const [connectionId, connection] of this.connectionPool) {
       const metrics = this.connectionMetrics.get(connectionId);
@@ -494,7 +494,7 @@ export class ConnectionPoolManager {
     this.poolStats.lastCleanup = now;
 
     if (staleConnections.length > 0) {
-      console.log(`🧹 [ConnectionPool] Cleanup complete: removed ${staleConnections.length} stale connections`);
+      console.log(`[ConnectionPool] Cleanup complete: removed ${staleConnections.length} stale connections`);
     }
   }
 
@@ -515,10 +515,10 @@ export class ConnectionPoolManager {
     const healthRatio = healthyConnections / Math.max(1, this.connectionPool.size);
 
     if (healthRatio < 0.8) {
-      console.warn(`⚠️ [ConnectionPool] Pool health degraded: ${(healthRatio * 100).toFixed(1)}% healthy connections`);
+      console.warn(`[ConnectionPool] Pool health degraded: ${(healthRatio * 100).toFixed(1)}% healthy connections`);
     }
 
-    console.log(`💚 [ConnectionPool] Health check: ${healthyConnections} healthy, ${unhealthyConnections} unhealthy`);
+    console.log(`[ConnectionPool] Health check: ${healthyConnections} healthy, ${unhealthyConnections} unhealthy`);
   }
 
   private updatePoolStats(): void {
@@ -574,7 +574,7 @@ export class ConnectionPoolManager {
   }
 
   shutdown(): void {
-    console.log('🛑 [ConnectionPool] Shutting down connection pool manager');
+    console.log('[ConnectionPool] Shutting down connection pool manager');
 
     // Clear intervals
     if (this.cleanupInterval) clearInterval(this.cleanupInterval);
@@ -586,7 +586,7 @@ export class ConnectionPoolManager {
       try {
         connection.websocket.close(1001, 'Server shutdown');
       } catch (error) {
-        console.error(`❌ [ConnectionPool] Error closing connection ${connectionId}:`, error);
+        console.error(`[ConnectionPool] Error closing connection ${connectionId}:`, error);
       }
     }
 

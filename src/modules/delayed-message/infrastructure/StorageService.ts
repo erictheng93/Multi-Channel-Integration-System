@@ -53,7 +53,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to save message:', error);
+      console.error('[StorageService] Failed to save message:', error);
       throw new StorageError('Failed to save delayed message', { messageId: message.id, error });
     }
   }
@@ -75,7 +75,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return this.mapToEntity(result);
     } catch (error) {
-      console.error('❌ [StorageService] Failed to get message by ID:', error);
+      console.error('[StorageService] Failed to get message by ID:', error);
       throw new StorageError('Failed to get message by ID', { messageId, error });
     }
   }
@@ -104,7 +104,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to update message status:', error);
+      console.error('[StorageService] Failed to update message status:', error);
       throw new StorageError('Failed to update message status', { messageId, status, error });
     }
   }
@@ -170,7 +170,7 @@ export class StorageService implements DelayedMessageStorage {
         pageSize
       };
     } catch (error) {
-      console.error('❌ [StorageService] Failed to get pending messages:', error);
+      console.error('[StorageService] Failed to get pending messages:', error);
       throw new StorageError('Failed to get pending messages', { agentId, page, pageSize, error });
     }
   }
@@ -189,7 +189,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to mark as recallable:', error);
+      console.error('[StorageService] Failed to mark as recallable:', error);
       throw new StorageError('Failed to mark as recallable', { messageId, error });
     }
   }
@@ -208,7 +208,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return JSON.parse(data) as RecallInfo;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to check recallable:', error);
+      console.error('[StorageService] Failed to check recallable:', error);
       throw new StorageError('Failed to check recallable', { messageId, error });
     }
   }
@@ -225,7 +225,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to mark as cancelled:', error);
+      console.error('[StorageService] Failed to mark as cancelled:', error);
       throw new StorageError('Failed to mark as cancelled', { messageId, error });
     }
   }
@@ -239,7 +239,7 @@ export class StorageService implements DelayedMessageStorage {
       const data = await this.kv.get(kvKey);
       return data !== null;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to check cancelled:', error);
+      console.error('[StorageService] Failed to check cancelled:', error);
       return false; // 檢查失敗時假設未取消，確保訊息可以發送
     }
   }
@@ -256,7 +256,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to cleanup KV markers:', error);
+      console.error('[StorageService] Failed to cleanup KV markers:', error);
       throw new StorageError('Failed to cleanup KV markers', { messageId, error });
     }
   }
@@ -299,7 +299,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to save message record:', error);
+      console.error('[StorageService] Failed to save message record:', error);
       throw new StorageError('Failed to save message record', { messageId, error });
     }
   }
@@ -318,7 +318,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Failed to log operation:', error);
+      console.error('[StorageService] Failed to log operation:', error);
       // 日誌記錄失敗不應該影響主要功能
       return false;
     }
@@ -356,7 +356,7 @@ export class StorageService implements DelayedMessageStorage {
       const now = nowISO();
       const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-      // ✅ 查詢待處理消息數量
+      // 查詢待處理消息數量
       const [pendingResult, scheduledNext24Result, avgDelayResult] = await Promise.all([
         // 待處理消息總數
         this.db.select({ count: count() })
@@ -395,7 +395,7 @@ export class StorageService implements DelayedMessageStorage {
         averageDelaySeconds: avgDelayResult?.avgDelay || 0
       };
     } catch (error) {
-      console.error('❌ [StorageService] Failed to get scheduling stats:', error);
+      console.error('[StorageService] Failed to get scheduling stats:', error);
       return {
         pendingCount: 0,
         scheduledForNext24Hours: 0,
@@ -415,7 +415,7 @@ export class StorageService implements DelayedMessageStorage {
     averageProcessingTime: number;
   }> {
     try {
-      // ✅ 查詢已處理消息的統計
+      // 查詢已處理消息的統計
       const [totalResult, successResult, failedResult, cancelledResult] = await Promise.all([
         // 總處理數 (已發送 + 失敗)
         this.db.select({ count: count() })
@@ -455,7 +455,7 @@ export class StorageService implements DelayedMessageStorage {
         averageProcessingTime
       };
     } catch (error) {
-      console.error('❌ [StorageService] Failed to get processing stats:', error);
+      console.error('[StorageService] Failed to get processing stats:', error);
       return {
         totalProcessed: 0,
         successfulSends: 0,
@@ -475,7 +475,7 @@ export class StorageService implements DelayedMessageStorage {
       await this.db.select({ count: count() }).from(delayedMessages).limit(1).get();
       return true;
     } catch (error) {
-      console.error('❌ [StorageService] Health check failed:', error);
+      console.error('[StorageService] Health check failed:', error);
       return false;
     }
   }

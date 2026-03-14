@@ -4,20 +4,20 @@
  * Tests HTTP-level behavior of the tag-main.ts handler endpoints:
  *
  * CRUD:
- *   GET    /api/tags           — list tags (pagination, search)
- *   POST   /api/tags           — create tag (validation, duplicate check)
- *   GET    /api/tags/:id       — get tag details
- *   PUT    /api/tags/:id       — update tag (partial, duplicate name check)
- *   DELETE /api/tags/:id       — soft-delete tag
+ * GET /api/tags — list tags (pagination, search)
+ * POST /api/tags — create tag (validation, duplicate check)
+ * GET /api/tags/:id — get tag details
+ * PUT /api/tags/:id — update tag (partial, duplicate name check)
+ * DELETE /api/tags/:id — soft-delete tag
  *
  * Specialized:
- *   POST   /api/tags/bulk      — bulk activate/deactivate/update_color
- *   GET    /api/tags/:id/stats — usage statistics
- *   GET    /api/tags/:id/customers — customer list for tag
+ * POST /api/tags/bulk — bulk activate/deactivate/update_color
+ * GET /api/tags/:id/stats — usage statistics
+ * GET /api/tags/:id/customers — customer list for tag
  *
  * Mock strategy:
- *   - vi.mock('@/middleware/auth') — bypasses JWT for all tests
- *   - vi.mock('@/db/drizzle-factory') — operation-aware Drizzle mock with call counter
+ * - vi.mock('@/middleware/auth') — bypasses JWT for all tests
+ * - vi.mock('@/db/drizzle-factory') — operation-aware Drizzle mock with call counter
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';

@@ -151,12 +151,12 @@ export type DurableObjectEventType =
   | 'agent_available' | 'agent_busy' | 'agent_offline' | 'message_recall_success'
   | 'message_recall_failed' | 'batch_message' | 'message_updated'
   | 'notification' // Real-time notification events (new_message, assigned, transferred, etc.)
-  | 'new_message' // 🆕 Phase B4: New message broadcast for conversation list lastMessage updates
-  | 'agent_removed_from_team' // 🆕 Agent removed from team - triggers conversation visibility refresh
-  | 'team_member_added' // 🆕 Agent added to team - triggers memberCount update
-  | 'team_member_removed' // 🆕 Agent removed from team - triggers memberCount update
-  | 'team_updated' // 🆕 Team info updated (name, status, etc.)
-  | 'customer_tags_updated'; // 🆕 Customer tags changed - triggers tag list refetch
+  | 'new_message' //  Phase B4: New message broadcast for conversation list lastMessage updates
+  | 'agent_removed_from_team' //  Agent removed from team - triggers conversation visibility refresh
+  | 'team_member_added' //  Agent added to team - triggers memberCount update
+  | 'team_member_removed' //  Agent removed from team - triggers memberCount update
+  | 'team_updated' //  Team info updated (name, status, etc.)
+  | 'customer_tags_updated'; //  Customer tags changed - triggers tag list refetch
 
 export interface DurableObjectEvent {
   id: string;
@@ -178,13 +178,13 @@ export interface DurableObjectEvent {
 // =================== Conversation Transfer Types ===================
 
 /**
- * 🆕 Conversation Transfer Action Types
+ * Conversation Transfer Action Types
  * Used for dual-team notification when a conversation is transferred between teams
  */
 export type ConversationTransferAction = 'removed' | 'assigned' | 'team_changed';
 
 /**
- * 🆕 Conversation Transfer Event Data
+ * Conversation Transfer Event Data
  * Payload structure for conversation_transferred WebSocket events
  */
 export interface ConversationTransferredEventData {
@@ -235,7 +235,7 @@ export interface ConversationTransferredEventData {
 }
 
 /**
- * 🆕 Conversation Transfer Broadcast Results
+ * Conversation Transfer Broadcast Results
  * Return type for broadcastConversationTransferred()
  */
 export interface ConversationTransferBroadcastResult {

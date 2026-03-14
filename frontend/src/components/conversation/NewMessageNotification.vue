@@ -57,11 +57,11 @@
  * @example
  * ```vue
  * <NewMessageNotification
- *   :is-visible="hasNewMessages"
- *   :count="newMessageCount"
- *   :is-realtime="isWebSocketConnected"
- *   @click="scrollToNewest"
- *   @dismiss="dismissNotification"
+ * :is-visible="hasNewMessages"
+ * :count="newMessageCount"
+ * :is-realtime="isWebSocketConnected"
+ * @click="scrollToNewest"
+ * @dismiss="dismissNotification"
  * />
  * ```
  */

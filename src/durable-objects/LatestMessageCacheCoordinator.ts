@@ -78,10 +78,10 @@ export class LatestMessageCacheCoordinator {
       const storedQueue = await this.state.storage.get<Array<[string, UpdateRequest]>>('updateQueue');
       if (storedQueue) {
         this.updateQueue = new Map(storedQueue);
-        console.log(`📦 [LatestMessageCacheCoordinator] Restored ${this.updateQueue.size} pending updates from storage`);
+        console.log(`[LatestMessageCacheCoordinator] Restored ${this.updateQueue.size} pending updates from storage`);
       }
     } catch (error) {
-      console.error('⚠️ [LatestMessageCacheCoordinator] Failed to load state from storage:', error);
+      console.error('[LatestMessageCacheCoordinator] Failed to load state from storage:', error);
       // Initialize with default values if storage load fails
       // This ensures the coordinator can still function
     }
@@ -95,7 +95,7 @@ export class LatestMessageCacheCoordinator {
       await this.state.storage.put('stats', this.stats);
       await this.state.storage.put('updateQueue', Array.from(this.updateQueue.entries()));
     } catch (error) {
-      console.error('⚠️ [LatestMessageCacheCoordinator] Failed to save state to storage:', error);
+      console.error('[LatestMessageCacheCoordinator] Failed to save state to storage:', error);
       // Non-fatal error - state will be reconstructed from operations
     }
   }
@@ -171,7 +171,7 @@ export class LatestMessageCacheCoordinator {
       retryCount: existingRequest?.retryCount || 0
     });
 
-    console.log(`📝 [LatestMessageCacheCoordinator] Scheduled update for conversation ${conversationId} (queue size: ${this.updateQueue.size})`);
+    console.log(`[LatestMessageCacheCoordinator] Scheduled update for conversation ${conversationId} (queue size: ${this.updateQueue.size})`);
 
     // Schedule alarm if not already scheduled
     await this.scheduleAlarmIfNeeded();
@@ -208,7 +208,7 @@ export class LatestMessageCacheCoordinator {
 
     try {
       await this.cache.invalidateLatestMessage(conversationId);
-      console.log(`🗑️ [LatestMessageCacheCoordinator] Invalidated cache for conversation ${conversationId}`);
+      console.log(`[LatestMessageCacheCoordinator] Invalidated cache for conversation ${conversationId}`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -237,7 +237,7 @@ export class LatestMessageCacheCoordinator {
       const { limit = 100 } = body;
       const warmedUp = await this.cache.warmupCache(limit);
 
-      console.log(`🔥 [LatestMessageCacheCoordinator] Cache warmup completed: ${warmedUp} conversations`);
+      console.log(`[LatestMessageCacheCoordinator] Cache warmup completed: ${warmedUp} conversations`);
 
       return new Response(JSON.stringify({
         success: true,
@@ -317,7 +317,7 @@ export class LatestMessageCacheCoordinator {
    * Manual alarm trigger for testing
    */
   private async handleManualAlarmTrigger(_request: Request): Promise<Response> {
-    console.log('🔔 [LatestMessageCacheCoordinator] Manual alarm trigger requested');
+    console.log('[LatestMessageCacheCoordinator] Manual alarm trigger requested');
     await this.alarm();
 
     return new Response(JSON.stringify({
@@ -349,7 +349,7 @@ export class LatestMessageCacheCoordinator {
     await this.state.storage.setAlarm(alarmTime);
     this.alarmScheduled = true;
 
-    console.log(`⏰ [LatestMessageCacheCoordinator] Alarm scheduled for ${new Date(alarmTime).toISOString()}`);
+    console.log(`[LatestMessageCacheCoordinator] Alarm scheduled for ${new Date(alarmTime).toISOString()}`);
   }
 
   /**
@@ -357,12 +357,12 @@ export class LatestMessageCacheCoordinator {
    */
   async alarm(): Promise<void> {
     const startTime = nowMs();
-    console.log(`🔔 [LatestMessageCacheCoordinator] Alarm triggered - processing ${this.updateQueue.size} updates`);
+    console.log(`[LatestMessageCacheCoordinator] Alarm triggered - processing ${this.updateQueue.size} updates`);
 
     this.alarmScheduled = false;
 
     if (this.updateQueue.size === 0) {
-      console.log('📭 [LatestMessageCacheCoordinator] Queue is empty, nothing to process');
+      console.log('[LatestMessageCacheCoordinator] Queue is empty, nothing to process');
       return;
     }
 
@@ -385,14 +385,14 @@ export class LatestMessageCacheCoordinator {
         this.updateQueue.delete(conversationId);
       } else {
         failureCount++;
-        console.error(`❌ [LatestMessageCacheCoordinator] Failed to update ${conversationId}:`, result.reason);
+        console.error(`[LatestMessageCacheCoordinator] Failed to update ${conversationId}:`, result.reason);
 
         // Retry logic
         const retryCount = (request.retryCount || 0) + 1;
         if (retryCount < this.MAX_RETRY_COUNT) {
           failedUpdates.push([conversationId, { ...request, retryCount }]);
         } else {
-          console.error(`💀 [LatestMessageCacheCoordinator] Max retries exceeded for ${conversationId}`);
+          console.error(`[LatestMessageCacheCoordinator] Max retries exceeded for ${conversationId}`);
           this.updateQueue.delete(conversationId);
         }
       }
@@ -413,15 +413,15 @@ export class LatestMessageCacheCoordinator {
       (this.stats.averageProcessingTime * (this.stats.totalProcessed - updates.length) + processingTime) /
       this.stats.totalProcessed;
 
-    console.log(`✅ [LatestMessageCacheCoordinator] Batch completed: ${successCount} success, ${failureCount} failed, ${this.updateQueue.size} remaining`);
-    console.log(`📊 [LatestMessageCacheCoordinator] Processing time: ${processingTime}ms, Average: ${this.stats.averageProcessingTime.toFixed(2)}ms`);
+    console.log(`[LatestMessageCacheCoordinator] Batch completed: ${successCount} success, ${failureCount} failed, ${this.updateQueue.size} remaining`);
+    console.log(`[LatestMessageCacheCoordinator] Processing time: ${processingTime}ms, Average: ${this.stats.averageProcessingTime.toFixed(2)}ms`);
 
     // Save state
     await this.saveState();
 
     // Reschedule alarm if there are remaining updates
     if (this.updateQueue.size > 0) {
-      console.log(`🔄 [LatestMessageCacheCoordinator] Rescheduling alarm for ${this.updateQueue.size} remaining updates`);
+      console.log(`[LatestMessageCacheCoordinator] Rescheduling alarm for ${this.updateQueue.size} remaining updates`);
       await this.state.storage.setAlarm(Date.now() + this.ALARM_RETRY_DELAY_MS);
       this.alarmScheduled = true;
     }
@@ -439,15 +439,15 @@ export class LatestMessageCacheCoordinator {
       const latestMessage = await this.cache.getLatestMessage(conversationId);
 
       if (latestMessage) {
-        console.log(`📝 [LatestMessageCacheCoordinator] Updated cache for conversation ${conversationId}`);
+        console.log(`[LatestMessageCacheCoordinator] Updated cache for conversation ${conversationId}`);
 
         // Broadcast update via WebSocket
         await this.broadcastLatestMessageUpdate(conversationId, latestMessage);
       } else {
-        console.warn(`⚠️ [LatestMessageCacheCoordinator] No latest message found for conversation ${conversationId}`);
+        console.warn(`[LatestMessageCacheCoordinator] No latest message found for conversation ${conversationId}`);
       }
     } catch (error) {
-      console.error(`❌ [LatestMessageCacheCoordinator] Failed to process update for ${conversationId}:`, error);
+      console.error(`[LatestMessageCacheCoordinator] Failed to process update for ${conversationId}:`, error);
       throw error; // Re-throw to mark as failed
     }
   }
@@ -487,10 +487,10 @@ export class LatestMessageCacheCoordinator {
           })
         });
 
-        console.log(`📡 [LatestMessageCacheCoordinator] Broadcasted update for conversation ${conversationId}`);
+        console.log(`[LatestMessageCacheCoordinator] Broadcasted update for conversation ${conversationId}`);
       }
     } catch (error) {
-      console.warn(`⚠️ [LatestMessageCacheCoordinator] Failed to broadcast update:`, error);
+      console.warn(`[LatestMessageCacheCoordinator] Failed to broadcast update:`, error);
       // Don't fail the entire update for broadcast failures
     }
   }

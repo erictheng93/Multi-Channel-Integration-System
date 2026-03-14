@@ -8,24 +8,24 @@
 
 ---
 
-## 📋 遷移清單
+##  遷移清單
 
-### ✅ 已遷移到模組化 handler
+###  已遷移到模組化 handler
 
 | 功能 | 舊版路由 | 新版路由 | 狀態 |
 |------|---------|---------|------|
-| 列出團隊 | - | GET /api/teams | ✅ |
-| 獲取團隊詳情 | - | GET /api/teams/:id | ✅ |
-| 創建團隊 | - | POST /api/teams | ✅ |
-| 更新團隊 | - | PUT /api/teams/:id | ✅ |
-| 刪除團隊 | - | DELETE /api/teams/:id | ✅ |
-| 獲取團隊成員 | - | GET /api/teams/:id/members | ✅ |
-| 添加團隊成員 | - | POST /api/teams/:id/members | ✅ |
-| QR Code 管理 | - | POST /api/teams/:id/qr-code | ✅ |
-| 團隊統計 | - | GET /api/teams/:id/stats | ✅ |
-| 獲取所有成員 | GET /api/teams/members | GET /api/teams/members | ✅ (重複) |
+| 列出團隊 | - | GET /api/teams |  |
+| 獲取團隊詳情 | - | GET /api/teams/:id |  |
+| 創建團隊 | - | POST /api/teams |  |
+| 更新團隊 | - | PUT /api/teams/:id |  |
+| 刪除團隊 | - | DELETE /api/teams/:id |  |
+| 獲取團隊成員 | - | GET /api/teams/:id/members |  |
+| 添加團隊成員 | - | POST /api/teams/:id/members |  |
+| QR Code 管理 | - | POST /api/teams/:id/qr-code |  |
+| 團隊統計 | - | GET /api/teams/:id/stats |  |
+| 獲取所有成員 | GET /api/teams/members | GET /api/teams/members |  (重複) |
 
-### ❌ 待遷移函數
+###  待遷移函數
 
 | # | 函數名 | 當前路由 | 功能描述 | 檔案位置 |
 |---|--------|----------|----------|----------|
@@ -43,7 +43,7 @@
 
 ---
 
-## 🎯 遷移策略
+##  遷移策略
 
 ### 階段1: 成員管理端點 (Functions #2, #3, #4, #9, #11)
 
@@ -58,11 +58,11 @@
 
 **路由映射**:
 ```typescript
-POST   /api/teams/:teamId/members/:memberId/add       // 從 addTeamMember
-PUT    /api/teams/:teamId/members/:memberId/status    // 從 updateMemberStatus
-PUT    /api/teams/:teamId/members/:memberId/role      // 從 updateMemberRole
-PUT    /api/teams/:teamId/members/:memberId           // 從 updateMember
-DELETE /api/teams/:teamId/members/:memberId           // 從 deleteMember
+POST /api/teams/:teamId/members/:memberId/add // 從 addTeamMember
+PUT /api/teams/:teamId/members/:memberId/status // 從 updateMemberStatus
+PUT /api/teams/:teamId/members/:memberId/role // 從 updateMemberRole
+PUT /api/teams/:teamId/members/:memberId // 從 updateMember
+DELETE /api/teams/:teamId/members/:memberId // 從 deleteMember
 ```
 
 ---
@@ -75,14 +75,14 @@ DELETE /api/teams/:teamId/members/:memberId           // 從 deleteMember
 - `resetMemberPassword` → 管理員重置成員密碼
 - `resetPasswordWithPolicy` → 帶策略的密碼重置
 - `changePassword` → 用戶自行更改密碼
-- `getMemberPassword` → 獲取成員密碼 (⚠️ 安全性檢查)
+- `getMemberPassword` → 獲取成員密碼 ( 安全性檢查)
 
 **路由映射**:
 ```typescript
-POST /api/teams/members/:memberId/password/reset          // resetMemberPassword
-POST /api/teams/members/:memberId/password/reset-policy   // resetPasswordWithPolicy
-POST /api/auth/change-password                            // changePassword (保留)
-GET  /api/teams/members/:memberId/password                // getMemberPassword (⚠️)
+POST /api/teams/members/:memberId/password/reset // resetMemberPassword
+POST /api/teams/members/:memberId/password/reset-policy // resetPasswordWithPolicy
+POST /api/auth/change-password // changePassword (保留)
+GET  /api/teams/members/:memberId/password // getMemberPassword ()
 ```
 
 ---
@@ -112,27 +112,27 @@ POST /api/teams/admin/migrate-passwords  // migratePasswords
 
 ---
 
-## 📁 新文件結構
+##  新文件結構
 
 ```
 src/modules/teams/
 ├── handlers/
-│   ├── team.ts              ✅ 已存在 - 團隊CRUD + QR Code
-│   ├── members.ts           ✅ 已存在 - 成員管理
-│   ├── password.ts          ✅ 已存在 - 密碼管理
-│   ├── migration.ts         🆕 新建 - 遷移工具 (臨時)
-│   └── index.ts             ✅ 已存在 - 導出所有 handlers
+│ ├── team.ts 已存在 - 團隊CRUD + QR Code
+│ ├── members.ts 已存在 - 成員管理
+│ ├── password.ts 已存在 - 密碼管理
+│ ├── migration.ts 新建 - 遷移工具 (臨時)
+│ └── index.ts 已存在 - 導出所有 handlers
 ├── services/
-│   ├── member-service.ts    ✅ 已存在 - 成員業務邏輯
-│   └── password-service.ts  🆕 新建 - 密碼業務邏輯
+│ ├── member-service.ts 已存在 - 成員業務邏輯
+│ └── password-service.ts 新建 - 密碼業務邏輯
 └── types/
-    ├── member-types.ts      ✅ 已存在 - 成員類型定義
-    └── password-types.ts    🆕 新建 - 密碼類型定義
+    ├── member-types.ts 已存在 - 成員類型定義
+    └── password-types.ts 新建 - 密碼類型定義
 ```
 
 ---
 
-## 🔄 遷移步驟
+##  遷移步驟
 
 ### Step 1: 準備階段
 - [x] 創建遷移計劃文檔
@@ -166,7 +166,7 @@ src/modules/teams/
 
 ---
 
-## ⚠️ 注意事項
+##  注意事項
 
 ### 1. 向後兼容性
 - **保持舊路由可用** 直到完全測試通過
@@ -189,21 +189,21 @@ src/modules/teams/
 
 ---
 
-## 📊 預估時間
+##  預估時間
 
 ```
-階段1 (成員管理):     4-6 小時
-階段2 (密碼管理):     3-4 小時
-階段3 (遷移工具):     1-2 小時
-階段4 (清理):         2-3 小時
-測試 & 部署:         3-4 小時
+階段1 (成員管理): 4-6 小時
+階段2 (密碼管理): 3-4 小時
+階段3 (遷移工具): 1-2 小時
+階段4 (清理): 2-3 小時
+測試 & 部署: 3-4 小時
 ─────────────────────────────
-總計:                13-19 小時 (2 個工作日)
+總計: 13-19 小時 (2 個工作日)
 ```
 
 ---
 
-## ✅ 成功標準
+##  成功標準
 
 - [ ] 所有 11 個舊函數已遷移
 - [ ] src/handlers/team.ts 僅保留臨時兼容代碼

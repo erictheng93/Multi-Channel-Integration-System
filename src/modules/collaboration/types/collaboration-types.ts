@@ -22,12 +22,12 @@ export type TypingStatus = 'start' | 'stop';
  * 協作事件類型
  */
 export type CollaborationEventType =
-  | 'user_joined'           // 用戶加入對話
-  | 'user_left'             // 用戶離開對話
-  | 'typing_start'          // 開始輸入
-  | 'typing_stop'           // 停止輸入
-  | 'presence_update'       // 在線狀態更新
-  | 'message_sent'          // 發送訊息
+  | 'user_joined' // 用戶加入對話
+  | 'user_left' // 用戶離開對話
+  | 'typing_start' // 開始輸入
+  | 'typing_stop' // 停止輸入
+  | 'presence_update' // 在線狀態更新
+  | 'message_sent' // 發送訊息
   | 'conversation_update';  // 對話更新
 
 // =================== 協作實體 ===================

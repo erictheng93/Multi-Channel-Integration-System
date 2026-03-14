@@ -191,7 +191,7 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
    * Handles WebSocket messages from the 'activity' channel
    */
   function handleRealtimeActivity(message: WebSocketMessage) {
-    console.log('📊 [ActivityStream] Real-time activity:', message.type)
+    console.log('[ActivityStream] Real-time activity:', message.type)
 
     try {
       switch (message.type) {
@@ -249,7 +249,7 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
    * 初始化 WebSocket 订阅 (Phase B3)
    */
   async function setupWebSocketListeners() {
-    console.log('🚀 [ActivityStream] Initializing WebSocket subscription...')
+    console.log('[ActivityStream] Initializing WebSocket subscription...')
 
     // Ensure global WebSocket is connected
     if (!wsStore.isConnected) {
@@ -261,7 +261,7 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
       handleRealtimeActivity(message)
     })
 
-    console.log(`✅ [ActivityStream] Subscribed to activity channel (ID: ${activitySubscriptionId?.substring(0, 8)})`)
+    console.log(`[ActivityStream] Subscribed to activity channel (ID: ${activitySubscriptionId?.substring(0, 8)})`)
   }
 
   /**
@@ -308,7 +308,7 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
         }
         previousConnectionState = newState
 
-        console.log(`🔄 [ActivityStream] Connection state: ${oldState} → ${newState}`)
+        console.log(`[ActivityStream] Connection state: ${oldState} → ${newState}`)
 
         switch (newState) {
           case 'connecting':
@@ -378,13 +378,13 @@ export function useActivityStream(options: UseActivityStreamOptions = {}) {
   })
 
   onUnmounted(() => {
-    console.log('🛑 [ActivityStream] Cleaning up...')
+    console.log('[ActivityStream] Cleaning up...')
 
     // Unsubscribe from activity channel
     if (activitySubscriptionId) {
       wsStore.unsubscribe(activitySubscriptionId)
       activitySubscriptionId = null
-      console.log('✅ [ActivityStream] Unsubscribed from activity channel')
+      console.log('[ActivityStream] Unsubscribed from activity channel')
     }
   })
 

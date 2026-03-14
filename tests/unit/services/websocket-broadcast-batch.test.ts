@@ -249,7 +249,7 @@ describe('WebSocket Broadcast Service - P1 Batch Optimization', () => {
       const status = service.getBatchQueueStatus();
       expect(status.metrics.totalEvents).toBe(5);
       expect(status.metrics.immediateEvents).toBe(2);  // Urgent events
-      expect(status.metrics.batchedEvents).toBe(3);    // Normal events
+      expect(status.metrics.batchedEvents).toBe(3); // Normal events
     });
 
     it('should calculate average batch size', async () => {

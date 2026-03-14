@@ -6,7 +6,7 @@
 
 ---
 
-## 📋 目錄
+##  目錄
 
 1. [總覽](#總覽)
 2. [結構化日誌系統](#結構化日誌系統)
@@ -24,33 +24,33 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   監控與容錯架構                              │
+│ 監控與容錯架構 │
 ├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  Layer 1: 結構化日誌 (logger-service.ts)                     │
-│  • DEBUG, INFO, WARN, ERROR, CRITICAL 5 個級別               │
-│  • JSON 格式輸出，方便機器解析                                │
-│  • 自動上下文管理和性能追蹤                                   │
-│                                                               │
-│  Layer 2: DO 實例監控 (durable-objects-monitor.ts)          │
-│  • 監控所有 Durable Objects 實例健康狀態                      │
-│  • 自動檢測異常（高錯誤率、高延遲、內存洩漏）                  │
-│  • 實時告警機制                                               │
-│                                                               │
-│  Layer 3: Circuit Breaker (websocket-circuit-breaker.ts)     │
-│  • 自動故障隔離（CLOSED → OPEN → HALF_OPEN）                 │
-│  • 智能降級策略（Polling, SSE, Queue, Fail Fast）            │
-│  • 自動恢復機制                                               │
-│                                                               │
+│ │
+│  Layer 1: 結構化日誌 (logger-service.ts) │
+│  • DEBUG, INFO, WARN, ERROR, CRITICAL 5 個級別 │
+│  • JSON 格式輸出，方便機器解析 │
+│  • 自動上下文管理和性能追蹤 │
+│ │
+│  Layer 2: DO 實例監控 (durable-objects-monitor.ts) │
+│  • 監控所有 Durable Objects 實例健康狀態 │
+│  • 自動檢測異常（高錯誤率、高延遲、內存洩漏） │
+│  • 實時告警機制 │
+│ │
+│  Layer 3: Circuit Breaker (websocket-circuit-breaker.ts) │
+│  • 自動故障隔離（CLOSED → OPEN → HALF_OPEN） │
+│  • 智能降級策略（Polling, SSE, Queue, Fail Fast） │
+│  • 自動恢復機制 │
+│ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### 關鍵優勢
 
-✅ **主動式監控**: 自動檢測問題，無需人工介入
-✅ **智能降級**: Circuit Breaker 自動切換到備用方案
-✅ **可觀測性**: 結構化日誌便於分析和追蹤
-✅ **生產就緒**: 完整的告警和恢復機制
+ **主動式監控**: 自動檢測問題，無需人工介入
+ **智能降級**: Circuit Breaker 自動切換到備用方案
+ **可觀測性**: 結構化日誌便於分析和追蹤
+ **生產就緒**: 完整的告警和恢復機制
 
 ---
 
@@ -158,12 +158,12 @@ childLogger.info('Message sent');
 
 ```typescript
 export enum DOAlertType {
-  HIGH_ERROR_RATE = 'high_error_rate',      // 錯誤率過高
-  HIGH_LATENCY = 'high_latency',            // 延遲過高
-  HIGH_MEMORY = 'high_memory',              // 內存使用過高
-  CONNECTION_LIMIT = 'connection_limit',     // 接近連接上限
+  HIGH_ERROR_RATE = 'high_error_rate', // 錯誤率過高
+  HIGH_LATENCY = 'high_latency', // 延遲過高
+  HIGH_MEMORY = 'high_memory', // 內存使用過高
+  CONNECTION_LIMIT = 'connection_limit', // 接近連接上限
   INSTANCE_UNRESPONSIVE = 'instance_unresponsive', // 實例無響應
-  INSTANCE_CRASHED = 'instance_crashed'      // 實例崩潰
+  INSTANCE_CRASHED = 'instance_crashed' // 實例崩潰
 }
 ```
 
@@ -176,9 +176,9 @@ import { createDOMonitor } from '@/services/durable-objects-monitor';
 const monitor = createDOMonitor(env, {
   healthCheckInterval: 30000, // 30 秒檢查一次
   thresholds: {
-    errorRate: 0.1,          // 10% 錯誤率告警
-    latency: 1000,           // 1 秒延遲告警
-    memoryUsage: 100,        // 100MB 內存告警
+    errorRate: 0.1, // 10% 錯誤率告警
+    latency: 1000, // 1 秒延遲告警
+    memoryUsage: 100, // 100MB 內存告警
     connectionUtilization: 0.8 // 80% 連接使用率告警
   }
 });
@@ -210,10 +210,10 @@ Circuit Breaker 有三種狀態：
 ```
         連續失敗 ≥ 5 次
 CLOSED ──────────────────► OPEN
-  ▲                         │
-  │                         │ 60 秒後自動嘗試
-  │                         │
-  │   2 次成功            │
+  ▲ │
+  │ │ 60 秒後自動嘗試
+  │ │
+  │ 2 次成功 │
   └───────── HALF_OPEN ◄───┘
              測試恢復
 ```
@@ -224,19 +224,19 @@ CLOSED ──────────────────► OPEN
 import { getCircuitBreaker, FallbackStrategy } from '@/services/websocket-circuit-breaker';
 
 const circuitBreaker = getCircuitBreaker({
-  failureThreshold: 5,           // 連續失敗 5 次後開啟
-  successThreshold: 2,           // 成功 2 次後關閉
-  timeout: 60000,                // 開啟後 60 秒嘗試恢復
-  halfOpenMaxCalls: 3,           // 半開狀態最多測試 3 次
+  failureThreshold: 5, // 連續失敗 5 次後開啟
+  successThreshold: 2, // 成功 2 次後關閉
+  timeout: 60000, // 開啟後 60 秒嘗試恢復
+  halfOpenMaxCalls: 3, // 半開狀態最多測試 3 次
 
-  // 🆕 降級策略
+  // 降級策略
   fallbackStrategy: FallbackStrategy.QUEUE, // 隊列延遲處理
-  enableAutoRecovery: true,      // 啟用自動恢復
+  enableAutoRecovery: true, // 啟用自動恢復
 
-  // 🆕 高級監控
-  errorRateThreshold: 0.25,      // 25% 錯誤率觸發
-  latencyThreshold: 3000,        // 3 秒延遲觸發
-  volumeThreshold: 10            // 最少 10 個請求才判斷
+  // 高級監控
+  errorRateThreshold: 0.25, // 25% 錯誤率觸發
+  latencyThreshold: 3000, // 3 秒延遲觸發
+  volumeThreshold: 10 // 最少 10 個請求才判斷
 });
 
 circuitBreaker.setEnv(env);
@@ -268,9 +268,9 @@ const result = await circuitBreaker.execute(
 
 ```typescript
 export enum FallbackStrategy {
-  POLLING = 'polling',      // 降級到輪詢
-  SSE = 'sse',              // 降級到 Server-Sent Events
-  QUEUE = 'queue',          // 隊列延遲處理（推薦）
+  POLLING = 'polling', // 降級到輪詢
+  SSE = 'sse', // 降級到 Server-Sent Events
+  QUEUE = 'queue', // 隊列延遲處理（推薦）
   FAIL_FAST = 'fail_fast',  // 快速失敗（不降級）
   RETRY_LATER = 'retry_later' // 延遲重試
 }
@@ -597,10 +597,10 @@ export async function scheduledHealthCheck(env: Bindings) {
 ```typescript
 // 調整閾值
 const circuitBreaker = getCircuitBreaker({
-  failureThreshold: 10,        // 增加到 10 次
-  errorRateThreshold: 0.3,     // 增加到 30%
-  volumeThreshold: 20,         // 增加最小請求量
-  timeout: 120000              // 增加恢復等待時間到 2 分鐘
+  failureThreshold: 10, // 增加到 10 次
+  errorRateThreshold: 0.3, // 增加到 30%
+  volumeThreshold: 20, // 增加最小請求量
+  timeout: 120000 // 增加恢復等待時間到 2 分鐘
 });
 ```
 
@@ -617,12 +617,12 @@ const circuitBreaker = getCircuitBreaker({
 const monitor = createDOMonitor(env, {
   alerts: {
     enabled: true,
-    cooldownPeriod: 600000,    // 增加冷卻期到 10 分鐘
-    maxAlertsPerHour: 5        // 每小時最多 5 個告警
+    cooldownPeriod: 600000, // 增加冷卻期到 10 分鐘
+    maxAlertsPerHour: 5 // 每小時最多 5 個告警
   },
   thresholds: {
-    errorRate: 0.15,           // 增加到 15%
-    latency: 1500,             // 增加到 1.5 秒
+    errorRate: 0.15, // 增加到 15%
+    latency: 1500, // 增加到 1.5 秒
     connectionUtilization: 0.9 // 增加到 90%
   }
 });
@@ -636,9 +636,9 @@ const monitor = createDOMonitor(env, {
 ```typescript
 // 調整日誌級別
 const logger = createLogger({ service: 'MyService' }, {
-  minLevel: LogLevel.INFO,    // 在生產環境只記錄 INFO 以上
-  enableConsole: false,       // 禁用控制台輸出（只用結構化日誌）
-  maxContextSize: 5000        // 限制上下文大小
+  minLevel: LogLevel.INFO, // 在生產環境只記錄 INFO 以上
+  enableConsole: false, // 禁用控制台輸出（只用結構化日誌）
+  maxContextSize: 5000 // 限制上下文大小
 });
 ```
 
@@ -667,7 +667,7 @@ private async callWithTimeout<T>(promise: Promise<T>, timeout: number): Promise<
 
 ## 最佳實踐
 
-### ✅ DO
+###  DO
 
 1. **在關鍵路徑使用 Circuit Breaker**
    - 所有外部 API 調用
@@ -692,13 +692,13 @@ private async callWithTimeout<T>(promise: Promise<T>, timeout: number): Promise<
    - 分級告警（Warning vs Critical）
    - 自動化告警處理流程
 
-### ❌ DON'T
+###  DON'T
 
-1. ❌ 不要在循環中創建新的 Logger 實例
-2. ❌ 不要過度依賴 Circuit Breaker（修復根本問題更重要）
-3. ❌ 不要忽略 DEGRADED 狀態的告警
-4. ❌ 不要在日誌中記錄密碼、Token 等敏感信息
-5. ❌ 不要禁用告警（即使很煩）
+1.  不要在循環中創建新的 Logger 實例
+2.  不要過度依賴 Circuit Breaker（修復根本問題更重要）
+3.  不要忽略 DEGRADED 狀態的告警
+4.  不要在日誌中記錄密碼、Token 等敏感信息
+5.  不要禁用告警（即使很煩）
 
 ---
 

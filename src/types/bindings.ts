@@ -111,10 +111,10 @@ export interface Bindings {
   R2_CUSTOM_DOMAIN?: string;
   R2_BUCKET_NAME?: string;
 
-  // 🆕 R2 S3 API Configuration (用於 Presigned URLs)
+  // R2 S3 API Configuration (用於 Presigned URLs)
   // 這些需要通過 Cloudflare Dashboard 創建 R2 API Token 後設置
-  R2_ACCOUNT_ID?: string;        // Cloudflare Account ID
-  R2_ACCESS_KEY_ID?: string;     // R2 API Token Access Key ID
+  R2_ACCOUNT_ID?: string; // Cloudflare Account ID
+  R2_ACCESS_KEY_ID?: string; // R2 API Token Access Key ID
   R2_SECRET_ACCESS_KEY?: string; // R2 API Token Secret Access Key
   
   // Additional optional buckets
@@ -126,7 +126,7 @@ export interface Bindings {
   NOTIFICATION_QUEUE?: Queue;
   DELAYED_QUEUE?: Queue;
 
-  // 🆕 P2-5: Alert System Configuration
+  // P2-5: Alert System Configuration
   // Email alert settings
   ALERT_EMAIL_ENABLED?: string;
   ALERT_EMAIL_FROM?: string;

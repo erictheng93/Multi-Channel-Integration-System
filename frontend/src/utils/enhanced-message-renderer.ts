@@ -64,20 +64,20 @@ export class EnhancedMessageRenderer {
     messageType: string, 
     metadata: string | null = null
   ): Promise<string> {
-    console.log('🔍 [EnhancedMessageRenderer] renderMessageWithMetadata called:', { message, messageType, metadata })
+    console.log('[EnhancedMessageRenderer] renderMessageWithMetadata called:', { message, messageType, metadata })
     
     if (!message) {
-      console.log('🔍 [EnhancedMessageRenderer] Empty message, returning empty string')
+      console.log('[EnhancedMessageRenderer] Empty message, returning empty string')
       return '';
     }
 
     // 首先处理文本内容中的emoji描述
     let html = await this.processEmojiDescriptions(message);
-    console.log('🔍 [EnhancedMessageRenderer] After emoji processing:', html)
+    console.log('[EnhancedMessageRenderer] After emoji processing:', html)
     
     // 处理贴图（基于数据库元数据）
     if (this.options.enableStickers && messageType === 'sticker' && metadata) {
-      console.log('🔍 [EnhancedMessageRenderer] Processing sticker with options:', this.options)
+      console.log('[EnhancedMessageRenderer] Processing sticker with options:', this.options)
       
       const stickerResult = await comprehensiveStickerRenderer.processStickerMetadata(
         metadata, 
@@ -85,18 +85,18 @@ export class EnhancedMessageRenderer {
         this.options.stickerSize || 'medium'
       );
       
-      console.log('🔍 [EnhancedMessageRenderer] Sticker result:', stickerResult)
+      console.log('[EnhancedMessageRenderer] Sticker result:', stickerResult)
       
       if (stickerResult) {
         // 如果是贴图消息，替换整个文本内容为贴图HTML
         const stickerHTML = this.createStickerHTML(stickerResult);
-        console.log('🔍 [EnhancedMessageRenderer] Generated sticker HTML:', stickerHTML)
+        console.log('[EnhancedMessageRenderer] Generated sticker HTML:', stickerHTML)
         html = stickerHTML;
       } else {
-        console.log('❌ [EnhancedMessageRenderer] No sticker result returned')
+        console.log('[EnhancedMessageRenderer] No sticker result returned')
       }
     } else {
-      console.log('🔍 [EnhancedMessageRenderer] Skipping sticker processing:', { 
+      console.log('[EnhancedMessageRenderer] Skipping sticker processing:', { 
         enableStickers: this.options.enableStickers, 
         messageType, 
         hasMetadata: !!metadata 
@@ -105,7 +105,7 @@ export class EnhancedMessageRenderer {
     
     // 处理自定义表情
     html = await this.processCustomEmojis(html);
-    console.log('🔍 [EnhancedMessageRenderer] Final HTML:', html)
+    console.log('[EnhancedMessageRenderer] Final HTML:', html)
     
     return html;
   }
@@ -122,7 +122,7 @@ export class EnhancedMessageRenderer {
     
     const html = `<div class="${className}" style="${styleString}">${stickerResult.content}</div>`;
     
-    console.log('🔍 [EnhancedMessageRenderer] createStickerHTML result:', html)
+    console.log('[EnhancedMessageRenderer] createStickerHTML result:', html)
     
     return html;
   }
@@ -203,26 +203,26 @@ export class EnhancedMessageRenderer {
     // 智能匹配算法
     const patterns = [
       // 直接映射
-      { pattern: /^(flexed[\s_]?biceps?|muscle|strong)$/i, emoji: '💪' },
-      { pattern: /^(thumbs?[\s_]?up|\+1|like|good)$/i, emoji: '👍' },
-      { pattern: /^(thumbs?[\s_]?down|-1|dislike|bad)$/i, emoji: '👎' },
-      { pattern: /^(index[\s_]?pointing[\s_]?right|point[\s_]?right)$/i, emoji: '👉' },
-      { pattern: /^(ok[\s_]?hand|okay)$/i, emoji: '👌' },
-      { pattern: /^(smile|happy|grin)$/i, emoji: '😊' },
-      { pattern: /^(heart|love)$/i, emoji: '❤️' },
-      { pattern: /^(hungry|food)$/i, emoji: '😋' },
-      { pattern: /^(pleading|beg|puppy[\s_]?eyes)$/i, emoji: '🥺' },
+      { pattern: /^(flexed[\s_]?biceps?|muscle|strong)$/i, emoji: '' },
+      { pattern: /^(thumbs?[\s_]?up|\+1|like|good)$/i, emoji: '' },
+      { pattern: /^(thumbs?[\s_]?down|-1|dislike|bad)$/i, emoji: '' },
+      { pattern: /^(index[\s_]?pointing[\s_]?right|point[\s_]?right)$/i, emoji: '' },
+      { pattern: /^(ok[\s_]?hand|okay)$/i, emoji: '' },
+      { pattern: /^(smile|happy|grin)$/i, emoji: '' },
+      { pattern: /^(heart|love)$/i, emoji: '' },
+      { pattern: /^(hungry|food)$/i, emoji: '' },
+      { pattern: /^(pleading|beg|puppy[\s_]?eyes)$/i, emoji: '' },
       
       // 语义匹配
-      { pattern: /biceps?|muscle|strong/i, emoji: '💪' },
-      { pattern: /thumb.*up|like|good/i, emoji: '👍' },
-      { pattern: /thumb.*down|dislike|bad/i, emoji: '👎' },
-      { pattern: /point.*right|finger.*right/i, emoji: '👉' },
-      { pattern: /ok|okay|alright/i, emoji: '👌' },
-      { pattern: /smile|happy|joy/i, emoji: '😊' },
-      { pattern: /heart|love/i, emoji: '❤️' },
-      { pattern: /hungry|food|eat/i, emoji: '😋' },
-      { pattern: /plead|beg|puppy/i, emoji: '🥺' },
+      { pattern: /biceps?|muscle|strong/i, emoji: '' },
+      { pattern: /thumb.*up|like|good/i, emoji: '' },
+      { pattern: /thumb.*down|dislike|bad/i, emoji: '' },
+      { pattern: /point.*right|finger.*right/i, emoji: '' },
+      { pattern: /ok|okay|alright/i, emoji: '' },
+      { pattern: /smile|happy|joy/i, emoji: '' },
+      { pattern: /heart|love/i, emoji: '' },
+      { pattern: /hungry|food|eat/i, emoji: '' },
+      { pattern: /plead|beg|puppy/i, emoji: '' },
     ];
 
     for (const { pattern, emoji } of patterns) {

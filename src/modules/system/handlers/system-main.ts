@@ -12,7 +12,7 @@ import { nowISO } from '@/utils/timestamp'
 
 const systemHandler = new Hono<{ Bindings: Bindings }>();
 
-// ✅ CORS 處理已移至 src/index.ts 統一管理
+// CORS 處理已移至 src/index.ts 統一管理
 // 不再需要 handler 級別的 CORS middleware
 
 // 健康檢查端點
@@ -226,13 +226,13 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
         customersResult,
         conversationsResult,
         todayMessagesResult,
-        // ✅ 新增：今日已解決對話數
+        // 新增：今日已解決對話數
         resolvedTodayResult,
-        // ✅ 新增：在線客服數 (最近 5 分鐘有活動)
+        // 新增：在線客服數 (最近 5 分鐘有活動)
         onlineAgentsResult,
-        // ✅ 新增：平均響應時間 (最近 24 小時)
+        // 新增：平均響應時間 (最近 24 小時)
         responseTimeResult,
-        // ✅ 新增：客戶滿意度統計 (最近 30 天)
+        // 新增：客戶滿意度統計 (最近 30 天)
         satisfactionRateResult
       ] = await Promise.all([
         drizzleDb.select({ count: count() }).from(messages),
@@ -302,7 +302,7 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
         }
       }
 
-      // ✅ 客戶滿意度統計 (4分和5分的比例)
+      // 客戶滿意度統計 (4分和5分的比例)
       const feedbackStats = satisfactionRateResult[0];
       if (feedbackStats && feedbackStats.totalCount > 0) {
         satisfactionRate = Math.round((feedbackStats.satisfiedCount / feedbackStats.totalCount) * 100);
@@ -310,7 +310,7 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
         satisfactionRate = 0; // 沒有反饋數據時返回 0
       }
 
-      console.log('📊 Stats calculated:', {
+      console.log(' Stats calculated:', {
         totalMessages,
         totalCustomers,
         totalConversations,

@@ -1,5 +1,5 @@
 /**
- * ⚠️ DEPRECATED: 此 Composable 已废弃
+ * DEPRECATED: 此 Composable 已废弃
  *
  * Conversation Sync Composable
  *
@@ -91,11 +91,11 @@ export function useConversationSync(): ConversationSyncComposable {
    *
    * @example
    * await startSync((conversations) => {
-   *   console.log('Received conversations:', conversations.length)
+   * console.log('Received conversations:', conversations.length)
    * })
    */
   async function startSync(onData?: (_data: Conversation[]) => void): Promise<void> {
-    console.log('🔄 [ConversationSync] Starting sync service')
+    console.log('[ConversationSync] Starting sync service')
     isSyncing.value = true
     syncStatus.value = 'connecting'
     syncError.value = null
@@ -104,7 +104,7 @@ export function useConversationSync(): ConversationSyncComposable {
       // 设置数据回调
       if (onData) {
         conversationSync.onData((data: Conversation[]) => {
-          console.log('📥 [ConversationSync] Received data:', data.length)
+          console.log('[ConversationSync] Received data:', data.length)
           lastUpdate.value = new Date()
           onData(data)
         })
@@ -112,7 +112,7 @@ export function useConversationSync(): ConversationSyncComposable {
 
       // 设置状态回调
       conversationSync.onStatus((status: SyncStatus) => {
-        console.log('📊 [ConversationSync] Status changed:', status)
+        console.log('[ConversationSync] Status changed:', status)
         syncStatus.value = status
 
         // 更新同步状态
@@ -131,7 +131,7 @@ export function useConversationSync(): ConversationSyncComposable {
       // 启动同步服务
       await conversationSync.start()
 
-      console.log('✅ [ConversationSync] Sync service started')
+      console.log('[ConversationSync] Sync service started')
     } catch (error) {
       console.error('[ConversationSync] Failed to start sync:', error)
       syncStatus.value = 'error'
@@ -148,7 +148,7 @@ export function useConversationSync(): ConversationSyncComposable {
    * stopSync()
    */
   function stopSync(): void {
-    console.log('🛑 [ConversationSync] Stopping sync service')
+    console.log('[ConversationSync] Stopping sync service')
     conversationSync.stop()
     syncStatus.value = 'disconnected'
     isSyncing.value = false
@@ -164,7 +164,7 @@ export function useConversationSync(): ConversationSyncComposable {
    * await refresh()
    */
   async function refresh(): Promise<void> {
-    console.log('🔄 [ConversationSync] Manual refresh triggered')
+    console.log('[ConversationSync] Manual refresh triggered')
     isSyncing.value = true
 
     try {
@@ -187,7 +187,7 @@ export function useConversationSync(): ConversationSyncComposable {
    *
    * @example
    * onDataUpdate((conversations) => {
-   *   console.log('Updated:', conversations.length)
+   * console.log('Updated:', conversations.length)
    * })
    */
   function onDataUpdate(callback: (_data: Conversation[]) => void): void {
@@ -201,7 +201,7 @@ export function useConversationSync(): ConversationSyncComposable {
    *
    * @example
    * onStatusChange((status) => {
-   *   console.log('Status:', status)
+   * console.log('Status:', status)
    * })
    */
   function onStatusChange(callback: (_status: SyncStatus) => void): void {

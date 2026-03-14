@@ -17,7 +17,7 @@
           title="下載"
           @click.stop="$emit('download-report', report)"
         >
-          📥
+          
         </button>
         <button
           class="action-btn"
@@ -25,7 +25,7 @@
           title="刪除"
           @click.stop="$emit('delete-report', report)"
         >
-          🗑️
+          
         </button>
       </div>
     </div>

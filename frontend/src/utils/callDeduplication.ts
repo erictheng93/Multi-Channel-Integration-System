@@ -1,13 +1,13 @@
 /**
- * 🛡️ Layer 1 Defense: Call Deduplication Utility
+ * Layer 1 Defense: Call Deduplication Utility
  *
  * 防止同一個異步函數被重複調用，解決 race condition
  *
  * @example
  * ```ts
  * const debouncedLoad = createDedupedAsyncFunction(
- *   loadConversation,
- *   { key: 'loadConversation' }
+ * loadConversation,
+ * { key: 'loadConversation' }
  * )
  *
  * // 即使被調用多次，只會執行一次
@@ -55,7 +55,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
 
         if (warnOnDuplicate) {
           console.warn(
-            `[CallDedup] 🚫 Duplicate call detected for "${key}"`,
+            `[CallDedup]  Duplicate call detected for "${key}"`,
             `\n  - Duplicate count: ${pending.count}`,
             `\n  - Time since first call: ${now - pending.timestamp}ms`,
             `\n  - Returning existing promise instead of re-executing`
@@ -69,7 +69,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
         pendingCalls.delete(key)
         if (warnOnDuplicate) {
           console.log(
-            `[CallDedup] ⏱️ Previous call for "${key}" timed out, allowing new call`
+            `[CallDedup]  Previous call for "${key}" timed out, allowing new call`
           )
         }
       }
@@ -87,7 +87,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
       })
 
       if (warnOnDuplicate) {
-        console.log(`[CallDedup] ✅ Executing new call for "${key}"`)
+        console.log(`[CallDedup]  Executing new call for "${key}"`)
       }
 
       // 等待完成
@@ -97,7 +97,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
       pendingCalls.delete(key)
 
       if (warnOnDuplicate) {
-        console.log(`[CallDedup] ✅ Call completed for "${key}"`)
+        console.log(`[CallDedup]  Call completed for "${key}"`)
       }
 
       return result as ReturnType<T>
@@ -106,7 +106,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
       pendingCalls.delete(key)
 
       if (warnOnDuplicate) {
-        console.error(`[CallDedup] ❌ Call failed for "${key}":`, error)
+        console.error(`[CallDedup]  Call failed for "${key}":`, error)
       }
 
       throw error
@@ -121,7 +121,7 @@ export function clearPendingCall(key: string): void {
   if (pendingCalls.has(key)) {
     pendingCalls.delete(key)
     if (import.meta.env.DEV) {
-      console.log(`[CallDedup] 🧹 Manually cleared pending call for "${key}"`)
+      console.log(`[CallDedup]  Manually cleared pending call for "${key}"`)
     }
   }
 }
@@ -157,6 +157,6 @@ export function clearAllPendingCalls(): void {
   const count = pendingCalls.size
   pendingCalls.clear()
   if (import.meta.env.DEV && count > 0) {
-    console.warn(`[CallDedup] 🚨 Cleared ${count} pending calls`)
+    console.warn(`[CallDedup]  Cleared ${count} pending calls`)
   }
 }

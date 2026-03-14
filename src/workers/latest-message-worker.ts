@@ -30,7 +30,7 @@ export class LatestMessageWorker {
    * Main queue consumer function
    */
   async handleQueueMessage(batch: MessageBatch<LatestMessageJobPayload>): Promise<void> {
-    console.log(`🔄 [LatestMessageWorker] Processing batch of ${batch.messages.length} jobs`);
+    console.log(`[LatestMessageWorker] Processing batch of ${batch.messages.length} jobs`);
 
     const results = await Promise.allSettled(
       batch.messages.map(msg => this.processJob(msg))
@@ -40,7 +40,7 @@ export class LatestMessageWorker {
     const successful = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
 
-    console.log(`✅ [LatestMessageWorker] Batch completed: ${successful} success, ${failed} failed`);
+    console.log(`[LatestMessageWorker] Batch completed: ${successful} success, ${failed} failed`);
 
     // Handle failures
     const failures = results
@@ -49,7 +49,7 @@ export class LatestMessageWorker {
 
     for (const { result, message } of failures) {
       if (message) {
-        console.error(`❌ [LatestMessageWorker] Job failed:`, {
+        console.error(`[LatestMessageWorker] Job failed:`, {
           messageId: message.id,
           payload: message.body,
           error: (result as PromiseRejectedResult).reason
@@ -71,7 +71,7 @@ export class LatestMessageWorker {
     const payload = message.body;
     const jobId = message.id;
 
-    console.log(`🔧 [LatestMessageWorker] Processing job ${jobId}:`, payload.type);
+    console.log(`[LatestMessageWorker] Processing job ${jobId}:`, payload.type);
 
     try {
       switch (payload.type) {
@@ -91,9 +91,9 @@ export class LatestMessageWorker {
           throw new Error(`Unknown job type: ${(payload as any).type}`);
       }
 
-      console.log(`✅ [LatestMessageWorker] Job ${jobId} completed successfully`);
+      console.log(`[LatestMessageWorker] Job ${jobId} completed successfully`);
     } catch (error) {
-      console.error(`❌ [LatestMessageWorker] Job ${jobId} failed:`, error);
+      console.error(`[LatestMessageWorker] Job ${jobId} failed:`, error);
       throw error; // Re-throw to mark as failed
     }
   }
@@ -115,12 +115,12 @@ export class LatestMessageWorker {
     const latestMessage = await this.cache.getLatestMessage(conversationId);
 
     if (latestMessage) {
-      console.log(`📝 [LatestMessageWorker] Updated cache for conversation ${conversationId}`);
+      console.log(`[LatestMessageWorker] Updated cache for conversation ${conversationId}`);
 
       // Optional: Broadcast to WebSocket clients that latest message changed
       await this.broadcastLatestMessageUpdate(conversationId, latestMessage);
     } else {
-      console.warn(`⚠️ [LatestMessageWorker] No latest message found for conversation ${conversationId}`);
+      console.warn(`[LatestMessageWorker] No latest message found for conversation ${conversationId}`);
     }
   }
 
@@ -133,7 +133,7 @@ export class LatestMessageWorker {
     }
 
     await this.cache.invalidateLatestMessage(payload.conversationId);
-    console.log(`🗑️ [LatestMessageWorker] Invalidated cache for conversation ${payload.conversationId}`);
+    console.log(`[LatestMessageWorker] Invalidated cache for conversation ${payload.conversationId}`);
   }
 
   /**
@@ -141,7 +141,7 @@ export class LatestMessageWorker {
    */
   private async handleWarmupCache(_payload: LatestMessageJobPayload): Promise<void> {
     const warmedUp = await this.cache.warmupCache(QUEUE_LIMITS.WARMUP_CONVERSATIONS);
-    console.log(`🔥 [LatestMessageWorker] Cache warmup completed: ${warmedUp} conversations`);
+    console.log(`[LatestMessageWorker] Cache warmup completed: ${warmedUp} conversations`);
   }
 
   /**
@@ -155,7 +155,7 @@ export class LatestMessageWorker {
       // Schedule retry with exponential backoff
       const retryDelay = calculateExponentialBackoff(retryCount);
 
-      console.log(`🔄 [LatestMessageWorker] Scheduling retry ${retryCount + 1}/${maxRetries} for job ${message.id} in ${retryDelay}ms`);
+      console.log(`[LatestMessageWorker] Scheduling retry ${retryCount + 1}/${maxRetries} for job ${message.id} in ${retryDelay}ms`);
 
       // In a real implementation, you'd reschedule the job
       // For now, we'll just log it
@@ -163,11 +163,11 @@ export class LatestMessageWorker {
         try {
           await this.processJob(message);
         } catch (error) {
-          console.error(`❌ [LatestMessageWorker] Retry ${retryCount + 1} failed for job ${message.id}:`, error);
+          console.error(`[LatestMessageWorker] Retry ${retryCount + 1} failed for job ${message.id}:`, error);
         }
       }, retryDelay);
     } else {
-      console.error(`💀 [LatestMessageWorker] Job ${message.id} failed permanently after ${maxRetries} retries`);
+      console.error(`[LatestMessageWorker] Job ${message.id} failed permanently after ${maxRetries} retries`);
 
       // Send to dead letter queue or alert monitoring
       await this.handlePermanentFailure(message);
@@ -179,7 +179,7 @@ export class LatestMessageWorker {
    */
   private async handlePermanentFailure(message: Message<LatestMessageJobPayload>): Promise<void> {
     // Log to monitoring system
-    console.error(`💀 [LatestMessageWorker] PERMANENT FAILURE:`, {
+    console.error(`[LatestMessageWorker] PERMANENT FAILURE:`, {
       messageId: message.id,
       payload: message.body,
       timestamp: nowISO()
@@ -230,9 +230,9 @@ export class LatestMessageWorker {
         });
       }
 
-      console.log(`📡 [LatestMessageWorker] Broadcasted latest message update for conversation ${conversationId}`);
+      console.log(`[LatestMessageWorker] Broadcasted latest message update for conversation ${conversationId}`);
     } catch (error) {
-      console.warn(`⚠️ [LatestMessageWorker] Failed to broadcast latest message update:`, error);
+      console.warn(`[LatestMessageWorker] Failed to broadcast latest message update:`, error);
       // Don't fail the job for broadcast failures
     }
   }
@@ -292,9 +292,9 @@ export class LatestMessageJobQueue {
       }
 
       const result = await response.json() as { queueSize: number };
-      console.log(`📤 [LatestMessageJobQueue] Scheduled update for conversation ${conversationId} (queue size: ${result.queueSize})`);
+      console.log(`[LatestMessageJobQueue] Scheduled update for conversation ${conversationId} (queue size: ${result.queueSize})`);
     } catch (error) {
-      console.error(`❌ [LatestMessageJobQueue] Failed to schedule update:`, error);
+      console.error(`[LatestMessageJobQueue] Failed to schedule update:`, error);
       throw error;
     }
   }
@@ -314,9 +314,9 @@ export class LatestMessageJobQueue {
         throw new Error(`Coordinator responded with ${response.status}: ${await response.text()}`);
       }
 
-      console.log(`📤 [LatestMessageJobQueue] Invalidated cache for conversation ${conversationId}`);
+      console.log(`[LatestMessageJobQueue] Invalidated cache for conversation ${conversationId}`);
     } catch (error) {
-      console.error(`❌ [LatestMessageJobQueue] Failed to invalidate cache:`, error);
+      console.error(`[LatestMessageJobQueue] Failed to invalidate cache:`, error);
       // Don't throw - invalidation is not critical
     }
   }
@@ -337,9 +337,9 @@ export class LatestMessageJobQueue {
       }
 
       const result = await response.json() as { warmedUp: number };
-      console.log(`📤 [LatestMessageJobQueue] Cache warmup completed: ${result.warmedUp} conversations`);
+      console.log(`[LatestMessageJobQueue] Cache warmup completed: ${result.warmedUp} conversations`);
     } catch (error) {
-      console.error(`❌ [LatestMessageJobQueue] Failed to warmup cache:`, error);
+      console.error(`[LatestMessageJobQueue] Failed to warmup cache:`, error);
       throw error;
     }
   }

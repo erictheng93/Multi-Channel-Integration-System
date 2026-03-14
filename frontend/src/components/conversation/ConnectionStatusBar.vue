@@ -73,11 +73,11 @@
  * @example
  * ```vue
  * <ConnectionStatusBar
- *   :is-visible="debugMode"
- *   :status-text="wsStatus"
- *   :status-class="wsStatusClass"
- *   :reconnect-attempts="reconnectCount"
- *   :typing-users="typingCount"
+ * :is-visible="debugMode"
+ * :status-text="wsStatus"
+ * :status-class="wsStatusClass"
+ * :reconnect-attempts="reconnectCount"
+ * :typing-users="typingCount"
  * />
  * ```
  */

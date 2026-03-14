@@ -231,11 +231,11 @@ describe('報表組件類型和結構測試', () => {
 
     it('應該正確驗證狀態標籤映射', () => {
       const statusMap = {
-        'pending': { label: '待處理', color: 'orange', icon: '⏳' },
-        'generating': { label: '生成中', color: 'blue', icon: '⚙️' },
-        'completed': { label: '已完成', color: 'green', icon: '✅' },
-        'failed': { label: '失敗', color: 'red', icon: '❌' },
-        'expired': { label: '已過期', color: 'gray', icon: '⏰' }
+        'pending': { label: '待處理', color: 'orange', icon: '' },
+        'generating': { label: '生成中', color: 'blue', icon: '' },
+        'completed': { label: '已完成', color: 'green', icon: '' },
+        'failed': { label: '失敗', color: 'red', icon: '' },
+        'expired': { label: '已過期', color: 'gray', icon: '' }
       };
 
       Object.entries(statusMap).forEach(([_status, info]) => {
@@ -254,8 +254,8 @@ describe('報表組件類型和結構測試', () => {
         'agent_performance': '客服績效報告',
         'team_analytics': '團隊分析報告',
         'customer_satisfaction': '客戶滿意度報告',
-        'cost_analysis': '💰 成本分析報告',
-        'trend_forecast': '📈 趨勢預測報告'
+        'cost_analysis': ' 成本分析報告',
+        'trend_forecast': ' 趨勢預測報告'
       };
 
       Object.entries(typeLabels).forEach(([_type, label]) => {
@@ -624,13 +624,13 @@ export const getComponentTestSummary = () => {
       '錯誤處理機制測試'
     ],
     coverage: [
-      '✅ TypeScript 類型驗證',
-      '✅ 數據結構完整性檢查',
-      '✅ 工具函數邏輯驗證',
-      '✅ 組件接口規範檢查',
-      '✅ 表單驗證邏輯測試',
-      '✅ 數據處理算法驗證',
-      '✅ 錯誤處理機制測試'
+      ' TypeScript 類型驗證',
+      ' 數據結構完整性檢查',
+      ' 工具函數邏輯驗證',
+      ' 組件接口規範檢查',
+      ' 表單驗證邏輯測試',
+      ' 數據處理算法驗證',
+      ' 錯誤處理機制測試'
     ],
     estimatedTests: 25,
     description: '全面驗證報表系統組件的核心功能和數據結構'

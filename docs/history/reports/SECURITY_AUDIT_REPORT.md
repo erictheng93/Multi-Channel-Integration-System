@@ -98,9 +98,9 @@ export async function signJWT(
 ```typescript
 // RECOMMENDED
 const TOKEN_EXPIRATION = {
-  ACCESS_TOKEN: 1 * 60 * 60,    // 1 hour
+  ACCESS_TOKEN: 1 * 60 * 60, // 1 hour
   REFRESH_TOKEN: 7 * 24 * 60 * 60, // 7 days
-  SYSTEM_TOKEN: 15 * 60          // 15 minutes
+  SYSTEM_TOKEN: 15 * 60 // 15 minutes
 };
 ```
 
@@ -216,7 +216,7 @@ private static roleHierarchy = {
 
 ```typescript
 if (!db) {
-  console.log('? ï?  No database provided, returning mock data');
+  console.log('?ï¿½ï¿½?  No database provided, returning mock data');
   return {
     id: typeof userId === 'string' ? parseInt(userId) : userId,
     role: 'agent',  // ??Defaults to 'agent' role
@@ -544,7 +544,7 @@ export const ALLOWED_ORIGINS = [
 **File:** `src/config/cors.ts:16-20`
 
 ```typescript
-// ?‹ç™¼?°å?
+// ?ï¿½ç™¼?ï¿½ï¿½?
 'http://localhost:3000',
 'https://localhost:3000',
 'http://127.0.0.1:3000',

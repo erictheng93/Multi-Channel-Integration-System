@@ -7,9 +7,9 @@
  * import { useWebSocketPerformance } from '@/composables/useWebSocketPerformance'
  *
  * const { tracker, startTracking, stopTracking, stats } = useWebSocketPerformance({
- *   userId: user.id,
- *   conversationId: conversationId.value,
- *   connectionType: 'websocket'
+ * userId: user.id,
+ * conversationId: conversationId.value,
+ * connectionType: 'websocket'
  * })
  *
  * // Start tracking

@@ -46,8 +46,8 @@ export {
  * 包含身份驗證和權限檢查 (暫時註釋以避免部署錯誤)
  */
 // export const basicSystemAccess = [
-//   checkSystemAccess,
-//   logSystemOperation
+// checkSystemAccess,
+// logSystemOperation
 // ];
 
 /**
@@ -55,7 +55,7 @@ export {
  * 包含基本身份驗證 (暫時註釋以避免部署錯誤)
  */
 // export const healthCheckAccess = [
-//   checkHealthViewPermission
+// checkHealthViewPermission
 // ];
 
 /**
@@ -63,9 +63,9 @@ export {
  * 包含身份驗證和狀態檢視權限檢查
  */
 // export const systemStatusAccess = [
-//   checkSystemAccess,
-//   checkStatusViewPermission,
-//   logSystemOperation
+// checkSystemAccess,
+// checkStatusViewPermission,
+// logSystemOperation
 // ];
 
 /**
@@ -73,8 +73,8 @@ export {
  * 包含身份驗證和資訊檢視權限檢查
  */
 // export const systemInfoAccess = [
-//   checkSystemAccess,
-//   checkInfoViewPermission
+// checkSystemAccess,
+// checkInfoViewPermission
 // ];
 
 /**
@@ -82,8 +82,8 @@ export {
  * 包含身份驗證和統計檢視權限檢查
  */
 // export const systemStatsAccess = [
-//   checkSystemAccess,
-//   checkStatsViewPermission
+// checkSystemAccess,
+// checkStatsViewPermission
 // ];
 
 /**
@@ -91,8 +91,8 @@ export {
  * 包含身份驗證和設置檢視權限檢查
  */
 // export const settingsViewAccess = [
-//   checkSystemAccess,
-//   checkSettingsViewPermission
+// checkSystemAccess,
+// checkSettingsViewPermission
 // ];
 
 /**
@@ -100,12 +100,12 @@ export {
  * 包含數據驗證、身份驗證和設置更新權限檢查
  */
 // export const settingsUpdateAccess = [
-//   validateRequestSize,
-//   validateSystemSettingsUpdate,
-//   validateRateLimit,
-//   checkSystemAccess,
-//   checkSettingsUpdatePermission,
-//   logSystemOperation
+// validateRequestSize,
+// validateSystemSettingsUpdate,
+// validateRateLimit,
+// checkSystemAccess,
+// checkSettingsUpdatePermission,
+// logSystemOperation
 // ];
 
 /**
@@ -113,10 +113,10 @@ export {
  * 包含平台驗證、身份驗證和整合管理權限檢查
  */
 // export const integrationsManageAccess = [
-//   validatePlatformParameter,
-//   checkSystemAccess,
-//   checkIntegrationsManagePermission,
-//   logSystemOperation
+// validatePlatformParameter,
+// checkSystemAccess,
+// checkIntegrationsManagePermission,
+// logSystemOperation
 // ];
 
 /**
@@ -124,8 +124,8 @@ export {
  * 包含身份驗證和指標檢視權限檢查
  */
 // export const metricsViewAccess = [
-//   checkSystemAccess,
-//   checkMetricsViewPermission
+// checkSystemAccess,
+// checkMetricsViewPermission
 // ];
 
 /**
@@ -133,10 +133,10 @@ export {
  * 包含身份驗證和備份創建權限檢查
  */
 // export const backupCreateAccess = [
-//   validateRateLimit,
-//   checkSystemAccess,
-//   checkBackupCreatePermission,
-//   logSystemOperation
+// validateRateLimit,
+// checkSystemAccess,
+// checkBackupCreatePermission,
+// logSystemOperation
 // ];
 
 /**
@@ -144,11 +144,11 @@ export {
  * 包含ID驗證、身份驗證和備份恢復權限檢查
  */
 // export const backupRestoreAccess = [
-//   validateBackupId,
-//   validateRateLimit,
-//   checkSystemAccess,
-//   checkBackupRestorePermission,
-//   logSystemOperation
+// validateBackupId,
+// validateRateLimit,
+// checkSystemAccess,
+// checkBackupRestorePermission,
+// logSystemOperation
 // ];
 
 /**
@@ -156,10 +156,10 @@ export {
  * 包含身份驗證和快取管理權限檢查
  */
 // export const cacheManageAccess = [
-//   validateRateLimit,
-//   checkSystemAccess,
-//   checkCacheManagePermission,
-//   logSystemOperation
+// validateRateLimit,
+// checkSystemAccess,
+// checkCacheManagePermission,
+// logSystemOperation
 // ];
 
 /**
@@ -167,10 +167,10 @@ export {
  * 包含身份驗證和系統重啟權限檢查（僅限管理員）
  */
 // export const systemRestartAccess = [
-//   validateRateLimit,
-//   checkSystemAccess,
-//   checkSystemRestartPermission,
-//   logSystemOperation
+// validateRateLimit,
+// checkSystemAccess,
+// checkSystemRestartPermission,
+// logSystemOperation
 // ];
 
 /**
@@ -178,9 +178,9 @@ export {
  * 包含身份驗證和進階功能存取權限檢查
  */
 // export const advancedAccess = [
-//   validateMessageId,
-//   checkSystemAccess,
-//   checkAdvancedAccessPermission
+// validateMessageId,
+// checkSystemAccess,
+// checkAdvancedAccessPermission
 // ];
 
 /**
@@ -188,9 +188,9 @@ export {
  * 包含對話ID驗證、身份驗證和進階功能存取權限檢查
  */
 // export const conversationAccess = [
-//   validateConversationId,
-//   checkSystemAccess,
-//   checkAdvancedAccessPermission
+// validateConversationId,
+// checkSystemAccess,
+// checkAdvancedAccessPermission
 // ];
 
 // ======================== 中間件配置 ========================
@@ -228,19 +228,19 @@ export function createSystemMiddleware(config: Partial<SystemMiddlewareConfig> =
   void finalConfig;
 
   // if (finalConfig.enableSizeLimit) {
-  //   middleware.push(validateRequestSize);
+  // middleware.push(validateRequestSize);
   // } // Temporarily commented - function not implemented
 
   // if (finalConfig.enableRateLimit) {
-  //   middleware.push(validateRateLimit);
+  // middleware.push(validateRateLimit);
   // } // Temporarily commented - function not implemented
 
   // if (finalConfig.enablePermissionCheck) {
-  //   middleware.push(checkSystemAccess);
+  // middleware.push(checkSystemAccess);
   // } // Temporarily commented to avoid deployment errors
 
   // if (finalConfig.enableLogging) {
-  //   middleware.push(logSystemOperation);
+  // middleware.push(logSystemOperation);
   // } // Temporarily commented to avoid deployment errors
 
   return middleware;
@@ -268,7 +268,7 @@ export function createSystemOperationMiddleware(
 
     case 'status':
       // return systemStatusAccess.filter(m =>
-      //   finalConfig.enableLogging || m !== logSystemOperation
+      // finalConfig.enableLogging || m !== logSystemOperation
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
@@ -286,15 +286,15 @@ export function createSystemOperationMiddleware(
 
     case 'settings-update':
       // return settingsUpdateAccess.filter(m =>
-      //   (finalConfig.enableSizeLimit || m !== validateRequestSize) &&
-      //   (finalConfig.enableValidation || m !== validateSystemSettingsUpdate) &&
-      //   (finalConfig.enableRateLimit || m !== validateRateLimit)
+      // (finalConfig.enableSizeLimit || m !== validateRequestSize) &&
+      // (finalConfig.enableValidation || m !== validateSystemSettingsUpdate) &&
+      // (finalConfig.enableRateLimit || m !== validateRateLimit)
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
     case 'integrations':
       // return integrationsManageAccess.filter(m =>
-      //   finalConfig.enableValidation || m !== validatePlatformParameter
+      // finalConfig.enableValidation || m !== validatePlatformParameter
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
@@ -304,38 +304,38 @@ export function createSystemOperationMiddleware(
 
     case 'backup-create':
       // return backupCreateAccess.filter(m =>
-      //   finalConfig.enableRateLimit || m !== validateRateLimit
+      // finalConfig.enableRateLimit || m !== validateRateLimit
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
     case 'backup-restore':
       // return backupRestoreAccess.filter(m =>
-      //   (finalConfig.enableValidation || m !== validateBackupId) &&
-      //   (finalConfig.enableRateLimit || m !== validateRateLimit)
+      // (finalConfig.enableValidation || m !== validateBackupId) &&
+      // (finalConfig.enableRateLimit || m !== validateRateLimit)
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
     case 'cache-manage':
       // return cacheManageAccess.filter(m =>
-      //   finalConfig.enableRateLimit || m !== validateRateLimit
+      // finalConfig.enableRateLimit || m !== validateRateLimit
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
     case 'system-restart':
       // return systemRestartAccess.filter(m =>
-      //   finalConfig.enableRateLimit || m !== validateRateLimit
+      // finalConfig.enableRateLimit || m !== validateRateLimit
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
     case 'advanced':
       // return advancedAccess.filter(m =>
-      //   finalConfig.enableValidation || m !== validateMessageId
+      // finalConfig.enableValidation || m !== validateMessageId
       // ); // Temporarily commented to avoid deployment errors
       return [];
 
     case 'conversation':
       // return conversationAccess.filter(m =>
-      //   finalConfig.enableValidation || m !== validateConversationId
+      // finalConfig.enableValidation || m !== validateConversationId
       // ); // Temporarily commented to avoid deployment errors
       return [];
 

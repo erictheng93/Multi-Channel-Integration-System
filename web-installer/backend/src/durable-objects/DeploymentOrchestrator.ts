@@ -860,6 +860,6 @@ export class DeploymentOrchestrator implements DurableObject {
 
   private async stepComplete(): Promise<void> {
     if (!this.deploymentState) return;
-    this.log('success', '🎉 Deployment completed successfully!');
+    this.log('success', ' Deployment completed successfully!');
   }
 }

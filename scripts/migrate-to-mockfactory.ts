@@ -21,7 +21,7 @@ interface MigrationStats {
 }
 
 function migrateTestFile(filePath: string): MigrationStats {
-  console.log(`\n🔄 Migrating: ${filePath}`);
+  console.log(`\n Migrating: ${filePath}`);
 
   const stats: MigrationStats = {
     linesRemoved: 0,
@@ -44,14 +44,14 @@ function migrateTestFile(filePath: string): MigrationStats {
       stats.linesAdded += 1;
       return `${match}\nimport { MockFactory } from '../../helpers/mockFactory';`;
     });
-    console.log('  ✅ Added MockFactory import');
+    console.log(' Added MockFactory import');
   }
 
   // Step 2: Detect and replace manual DB mock creation
   const manualDBPattern = /mockDB\s*=\s*\{[\s\S]*?prepare:[\s\S]*?\}/g;
   if (manualDBPattern.test(content)) {
     // This is a complex replacement - would need manual intervention
-    console.log('  ⚠️  Manual DB mock detected - needs manual refactoring');
+    console.log(' Manual DB mock detected - needs manual refactoring');
     stats.mocksReplaced += 1;
   }
 
@@ -61,7 +61,7 @@ function migrateTestFile(filePath: string): MigrationStats {
   if (envMatches) {
     modified = modified.replace(envPassingPattern, ', mockEnv as any');
     stats.testsUpdated = envMatches.length;
-    console.log(`  ✅ Updated ${stats.testsUpdated} test environment calls`);
+    console.log(` Updated ${stats.testsUpdated} test environment calls`);
   }
 
   // Step 4: Update describe block to indicate refactoring
@@ -93,7 +93,7 @@ function generateMigrationReport(files: string[], allStats: MigrationStats[]): v
   }), { linesRemoved: 0, linesAdded: 0, mocksReplaced: 0, testsUpdated: 0 });
 
   console.log('\n' + '='.repeat(60));
-  console.log('📊 MIGRATION SUMMARY');
+  console.log(' MIGRATION SUMMARY');
   console.log('='.repeat(60));
   console.log(`Files Migrated: ${files.length}`);
   console.log(`Lines Removed: ${totalStats.linesRemoved}`);
@@ -111,13 +111,13 @@ function generateMigrationReport(files: string[], allStats: MigrationStats[]): v
     files.forEach(file => {
       const fileName = path.basename(file);
       plan = plan.replace(
-        new RegExp(`⏳\\s+(\\d+\\s+)?\\|\\s+\`${fileName}\``),
-        `✅ $1| \`${fileName}\``
+        new RegExp(`\\s+(\\d+\\s+)?\\|\\s+\`${fileName}\``),
+        ` $1| \`${fileName}\``
       );
     });
 
     fs.writeFileSync(planPath, plan, 'utf-8');
-    console.log('\n✅ Updated migration plan');
+    console.log('\n Updated migration plan');
   }
 }
 
@@ -134,7 +134,7 @@ const allStats: MigrationStats[] = [];
 
 for (const filePath of args) {
   if (!fs.existsSync(filePath)) {
-    console.error(`❌ File not found: ${filePath}`);
+    console.error(` File not found: ${filePath}`);
     continue;
   }
 
@@ -142,12 +142,12 @@ for (const filePath of args) {
     const stats = migrateTestFile(filePath);
     allStats.push(stats);
   } catch (error) {
-    console.error(`❌ Error migrating ${filePath}:`, error);
+    console.error(` Error migrating ${filePath}:`, error);
   }
 }
 
 if (allStats.length > 0) {
   generateMigrationReport(args, allStats);
-  console.log('\n✅ Migration complete! Please review changes and run tests.');
-  console.log('\n⚠️  Note: Some files may need manual adjustments for complex mocks.\n');
+  console.log('\n Migration complete! Please review changes and run tests.');
+  console.log('\n  Note: Some files may need manual adjustments for complex mocks.\n');
 }

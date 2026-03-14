@@ -6,13 +6,13 @@
         <div class="progress-header">
           <h1>
             <span v-if="!deploymentStore.isCompleted && !deploymentStore.isFailed">
-              🚀 Deploying {{ projectName }}
+               Deploying {{ projectName }}
             </span>
             <span v-else-if="deploymentStore.isCompleted">
-              ✅ Deployment Complete!
+               Deployment Complete!
             </span>
             <span v-else-if="deploymentStore.isFailed">
-              ❌ Deployment Failed
+               Deployment Failed
             </span>
           </h1>
           <p v-if="deploymentStore.isDeploying" class="progress-subtitle">
@@ -46,7 +46,7 @@
               }"
             >
               <div class="step-icon">
-                <span v-if="isStepCompleted(step.key)">✓</span>
+                <span v-if="isStepCompleted(step.key)"></span>
                 <span v-else-if="deploymentStore.currentStep === step.key" class="spinner"></span>
                 <span v-else>{{ step.number }}</span>
               </div>
@@ -65,7 +65,7 @@
 
         <!-- Resources (if available) -->
         <div v-if="deploymentStore.hasResources" class="resources-section">
-          <h2>📦 Provisioned Resources</h2>
+          <h2> Provisioned Resources</h2>
           <div class="resources-grid">
             <div v-if="deploymentStore.resources.workerUrl" class="resource-item">
               <span class="resource-label">Worker URL:</span>
@@ -96,7 +96,7 @@
 
         <!-- Error Display -->
         <div v-if="deploymentStore.error" class="error-section">
-          <h2>❌ Error Details</h2>
+          <h2> Error Details</h2>
           <div class="error-box">
             <p>{{ deploymentStore.error }}</p>
           </div>
@@ -143,7 +143,7 @@
 
         <!-- Duration -->
         <div v-if="deploymentStore.duration > 0" class="duration-info">
-          ⏱️ Time elapsed: {{ formatDuration(deploymentStore.duration) }}
+           Time elapsed: {{ formatDuration(deploymentStore.duration) }}
         </div>
       </div>
     </div>

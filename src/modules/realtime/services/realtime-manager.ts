@@ -85,11 +85,11 @@ export class RealtimeManager {
       this.startHealthCheck();
 
       this.status = ServiceStatus.RUNNING;
-      console.log('✅ [Realtime Manager] 服務初始化完成');
+      console.log('[Realtime Manager] 服務初始化完成');
 
     } catch (error) {
       this.status = ServiceStatus.ERROR;
-      console.error('❌ [Realtime Manager] 初始化失敗:', error);
+      console.error('[Realtime Manager] 初始化失敗:', error);
       throw error;
     }
   }
@@ -133,12 +133,12 @@ export class RealtimeManager {
         );
         queueDelivered = true;
       } catch (queueError) {
-        console.error('❌ [Realtime Manager] 隊列推送失敗:', queueError);
+        console.error('[Realtime Manager] 隊列推送失敗:', queueError);
       }
 
       const processingTime = Date.now() - startTime;
 
-      console.log(`✅ [Realtime Manager] 事件處理完成: ${eventId}`, {
+      console.log(`[Realtime Manager] 事件處理完成: ${eventId}`, {
         type: eventType,
         queueDelivered,
         processingTime
@@ -151,7 +151,7 @@ export class RealtimeManager {
       };
 
     } catch (error) {
-      console.error('❌ [Realtime Manager] 事件創建失敗:', error);
+      console.error('[Realtime Manager] 事件創建失敗:', error);
       throw error;
     }
   }
@@ -207,7 +207,7 @@ export class RealtimeManager {
 
     const totalProcessingTime = Date.now() - startTime;
 
-    console.log(`📊 [Realtime Manager] 批量事件處理完成`, {
+    console.log(`[Realtime Manager] 批量事件處理完成`, {
       totalEvents: events.length,
       successCount,
       failureCount,
@@ -302,25 +302,25 @@ export class RealtimeManager {
     try {
       switch (operation) {
         case 'cleanup':
-          console.log('🧹 [Realtime Manager] 清理操作完成');
+          console.log('[Realtime Manager] 清理操作完成');
           return true;
 
         case 'reset_stats':
           eventStats.reset();
-          console.log('📊 [Realtime Manager] 統計重置完成');
+          console.log('[Realtime Manager] 統計重置完成');
           return true;
 
         case 'restart_health_check':
           this.stopHealthCheck();
           this.startHealthCheck();
-          console.log('🏥 [Realtime Manager] 健康檢查重啟完成');
+          console.log('[Realtime Manager] 健康檢查重啟完成');
           return true;
 
         default:
           throw new Error(`未知的維護操作: ${operation}`);
       }
     } catch (error) {
-      console.error('❌ [Realtime Manager] 維護操作失敗:', error);
+      console.error('[Realtime Manager] 維護操作失敗:', error);
       return false;
     }
   }
@@ -330,9 +330,9 @@ export class RealtimeManager {
     try {
       this.status = ServiceStatus.STOPPED;
       this.stopHealthCheck();
-      console.log('🛑 [Realtime Manager] 服務已關閉');
+      console.log('[Realtime Manager] 服務已關閉');
     } catch (error) {
-      console.error('❌ [Realtime Manager] 關閉服務時發生錯誤:', error);
+      console.error('[Realtime Manager] 關閉服務時發生錯誤:', error);
     }
   }
 
@@ -342,10 +342,10 @@ export class RealtimeManager {
       try {
         const health = await this.getServiceHealth();
         if (health.status === ServiceStatus.ERROR) {
-          console.error('🚨 [Realtime Manager] 服務健康檢查失敗');
+          console.error('[Realtime Manager] 服務健康檢查失敗');
         }
       } catch (error) {
-        console.error('❌ [Realtime Manager] 健康檢查錯誤:', error);
+        console.error('[Realtime Manager] 健康檢查錯誤:', error);
       }
     }, 60000); // 每分鐘檢查一次
   }

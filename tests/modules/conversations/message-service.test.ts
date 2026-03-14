@@ -964,7 +964,7 @@ describe('MessageRequestService', () => {
 
     it('should treat whitespace-only content as empty', async () => {
       const c = createMockContext({ id: 'conv-123' }, {
-        content: '   ',
+        content: ' ',
         senderId: 'agent-1'
       });
 

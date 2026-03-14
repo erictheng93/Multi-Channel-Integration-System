@@ -46,13 +46,13 @@ Replace `your-installer-frontend` with your actual Cloudflare Pages project name
 
 Select the following scopes for the Web Installer to function properly:
 
-- ✅ **Account:Read** - Read account information
-- ✅ **Workers:Write** - Deploy Workers
-- ✅ **D1:Write** - Create and manage D1 databases
-- ✅ **KV:Write** - Create and manage KV namespaces
-- ✅ **R2:Write** - Create and manage R2 buckets
-- ✅ **Queues:Write** - Create and manage Queues
-- ✅ **Pages:Write** - Deploy Pages projects
+-  **Account:Read** - Read account information
+-  **Workers:Write** - Deploy Workers
+-  **D1:Write** - Create and manage D1 databases
+-  **KV:Write** - Create and manage KV namespaces
+-  **R2:Write** - Create and manage R2 buckets
+-  **Queues:Write** - Create and manage Queues
+-  **Pages:Write** - Deploy Pages projects
 
 ### Client Type
 Select: **Public Client** (for browser-based applications)
@@ -241,22 +241,22 @@ Update `VITE_OAUTH_REDIRECT_URI` with your actual Pages URL.
 
 ## Security Best Practices
 
-1. ✅ **Never commit** `.dev.vars` or `.env` files to Git
-2. ✅ **Use different** OAuth applications for development and production
-3. ✅ **Rotate secrets** regularly (every 90 days recommended)
-4. ✅ **Limit redirect URIs** to only what's needed
-5. ✅ **Use HTTPS** in production (Cloudflare Pages provides this automatically)
-6. ✅ **Monitor usage** in Cloudflare Dashboard → Analytics
+1.  **Never commit** `.dev.vars` or `.env` files to Git
+2.  **Use different** OAuth applications for development and production
+3.  **Rotate secrets** regularly (every 90 days recommended)
+4.  **Limit redirect URIs** to only what's needed
+5.  **Use HTTPS** in production (Cloudflare Pages provides this automatically)
+6.  **Monitor usage** in Cloudflare Dashboard → Analytics
 
 ## Next Steps
 
 After completing this setup:
 
-1. ✅ Test OAuth flow locally
-2. ✅ Deploy backend to Cloudflare Workers
-3. ✅ Deploy frontend to Cloudflare Pages
-4. ✅ Update production OAuth redirect URIs
-5. ✅ Test end-to-end deployment flow
+1.  Test OAuth flow locally
+2.  Deploy backend to Cloudflare Workers
+3.  Deploy frontend to Cloudflare Pages
+4.  Update production OAuth redirect URIs
+5.  Test end-to-end deployment flow
 
 See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for deployment instructions.
 

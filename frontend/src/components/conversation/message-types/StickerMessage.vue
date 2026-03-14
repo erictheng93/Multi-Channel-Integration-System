@@ -21,7 +21,7 @@
     >
       <div class="sticker-icon-large">
         <div class="sticker-emoji">
-          🎭
+          
         </div>
       </div>
       <div class="sticker-fallback-content">
@@ -54,7 +54,7 @@
         class="cdn-fallback-indicator"
         :title="`使用備用CDN源 #${cdnFallbackIndex + 1}`"
       >
-        ⚡
+        
       </div>
     </div>
 
@@ -64,7 +64,7 @@
       class="sticker-info"
     >
       <span class="sticker-id-info">
-        📦 {{ stickerMetadata.packageId }} · 🏷️ {{ stickerMetadata.stickerId }}
+         {{ stickerMetadata.packageId }} ·  {{ stickerMetadata.stickerId }}
       </span>
       <span
         v-if="cdnFallbackIndex > 0"

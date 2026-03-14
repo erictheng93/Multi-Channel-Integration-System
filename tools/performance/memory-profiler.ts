@@ -33,7 +33,7 @@ const DEFAULT_PROFILER_CONFIG: MemoryProfilerConfig = {
   workerUrl: 'https://localhost:8787',
   websocketUrl: 'wss://localhost:8787/api/websocket/connect',
   profileDurationMs: 300000, // 5 minutes
-  samplingIntervalMs: 1000,   // 1 second
+  samplingIntervalMs: 1000, // 1 second
   heapSnapshotInterval: 60000, // 1 minute
   enableHeapSnapshots: false,  // Disabled by default (requires --inspect)
   enableGarbageCollection: true,
@@ -124,7 +124,7 @@ class MemoryProfiler {
   }
 
   async runMemoryProfile(): Promise<MemoryProfileReport> {
-    console.log('🧠 Starting Memory Profiling Session');
+    console.log(' Starting Memory Profiling Session');
     console.log('Configuration:', JSON.stringify(this.config, null, 2));
 
     this.startTime = performance.now();
@@ -147,7 +147,7 @@ class MemoryProfiler {
       await this.performFinalAnalysis();
 
     } catch (error) {
-      console.error('❌ Memory profiling error:', error);
+      console.error(' Memory profiling error:', error);
     } finally {
       this.isRunning = false;
       this.stopMemoryMonitoring();
@@ -158,7 +158,7 @@ class MemoryProfiler {
   }
 
   private async establishBaseline(): Promise<void> {
-    console.log('📏 Establishing memory baseline');
+    console.log(' Establishing memory baseline');
 
     // Force garbage collection
     if (this.config.enableGarbageCollection && global.gc) {
@@ -170,11 +170,11 @@ class MemoryProfiler {
     this.baselineSnapshot = await this.takeMemorySnapshot();
     this.snapshots.push(this.baselineSnapshot);
 
-    console.log(`✅ Baseline established: ${this.formatMemory(this.baselineSnapshot.heapUsed)} heap used`);
+    console.log(` Baseline established: ${this.formatMemory(this.baselineSnapshot.heapUsed)} heap used`);
   }
 
   private startMemoryMonitoring(): void {
-    console.log('👀 Starting continuous memory monitoring');
+    console.log(' Starting continuous memory monitoring');
 
     this.intervalId = setInterval(async () => {
       if (!this.isRunning) return;
@@ -188,7 +188,7 @@ class MemoryProfiler {
         const memoryDelta = snapshot.heapUsed - previous.heapUsed;
 
         if (Math.abs(memoryDelta) > 10 * 1024 * 1024) { // 10MB change
-          console.log(`📊 Memory change: ${this.formatMemory(memoryDelta, true)} (${this.formatMemory(snapshot.heapUsed)} total)`);
+          console.log(` Memory change: ${this.formatMemory(memoryDelta, true)} (${this.formatMemory(snapshot.heapUsed)} total)`);
         }
       }
 
@@ -206,7 +206,7 @@ class MemoryProfiler {
   }
 
   private async runMemoryStressTests(): Promise<void> {
-    console.log('🔥 Running memory stress tests');
+    console.log(' Running memory stress tests');
 
     const tests = [
       { name: 'WebSocket Connection Cycles', test: () => this.testWebSocketMemory() },
@@ -217,7 +217,7 @@ class MemoryProfiler {
     ];
 
     for (const test of tests) {
-      console.log(`  🧪 ${test.name}`);
+      console.log(` ${test.name}`);
       const startSnapshot = await this.takeMemorySnapshot();
 
       await test.test();
@@ -225,7 +225,7 @@ class MemoryProfiler {
       const endSnapshot = await this.takeMemorySnapshot();
       const memoryDelta = endSnapshot.heapUsed - startSnapshot.heapUsed;
 
-      console.log(`    📈 Memory delta: ${this.formatMemory(memoryDelta, true)}`);
+      console.log(` Memory delta: ${this.formatMemory(memoryDelta, true)}`);
 
       // Force garbage collection between tests
       if (this.config.enableGarbageCollection && global.gc) {
@@ -240,7 +240,7 @@ class MemoryProfiler {
     const cycles = this.config.connectionCycles;
 
     for (let cycle = 0; cycle < cycles; cycle++) {
-      console.log(`    🔄 Connection cycle ${cycle + 1}/${cycles}`);
+      console.log(` Connection cycle ${cycle + 1}/${cycles}`);
 
       // Create connections
       const connections: WebSocket[] = [];
@@ -253,7 +253,7 @@ class MemoryProfiler {
           connections.push(ws);
           await this.waitForConnection(ws);
         } catch (error) {
-          console.warn(`      ⚠️ Connection ${i} failed:`, error.message);
+          console.warn(` Connection ${i} failed:`, error.message);
         }
       }
 
@@ -286,7 +286,7 @@ class MemoryProfiler {
   }
 
   private async testMessageMemory(): Promise<void> {
-    console.log(`    📨 Sending ${this.config.messageVolume} messages`);
+    console.log(` Sending ${this.config.messageVolume} messages`);
 
     const batchSize = 50;
     const batches = Math.ceil(this.config.messageVolume / batchSize);
@@ -311,7 +311,7 @@ class MemoryProfiler {
   }
 
   private async testDurableObjectMemory(): Promise<void> {
-    console.log(`    🔹 Testing ${this.config.durableObjectInstances} Durable Object instances`);
+    console.log(` Testing ${this.config.durableObjectInstances} Durable Object instances`);
 
     const promises = [];
     for (let i = 0; i < this.config.durableObjectInstances; i++) {
@@ -330,7 +330,7 @@ class MemoryProfiler {
   }
 
   private async testDistributedLockMemory(): Promise<void> {
-    console.log('    🔒 Testing distributed locks memory usage');
+    console.log(' Testing distributed locks memory usage');
 
     const lockPromises = [];
     for (let i = 0; i < 100; i++) {
@@ -341,7 +341,7 @@ class MemoryProfiler {
   }
 
   private async testMemoryCleanup(): Promise<void> {
-    console.log('    🧹 Testing memory cleanup');
+    console.log(' Testing memory cleanup');
 
     // Create and destroy many short-lived objects
     for (let cycle = 0; cycle < 10; cycle++) {
@@ -494,8 +494,8 @@ class MemoryProfiler {
     // Get system metrics if available
     const activeConnections = this.activeConnections.size;
     const durableObjectCount = 0; // Would need system integration
-    const messageQueueSize = 0;   // Would need system integration
-    const lockCount = 0;          // Would need system integration
+    const messageQueueSize = 0; // Would need system integration
+    const lockCount = 0; // Would need system integration
 
     return {
       timestamp: Date.now(),
@@ -518,7 +518,7 @@ class MemoryProfiler {
     const growthMB = memoryGrowth / (1024 * 1024);
 
     if (growthMB > this.config.leakDetectionThreshold) {
-      console.warn(`⚠️ Potential memory leak detected: ${this.formatMemory(memoryGrowth)} growth from baseline`);
+      console.warn(` Potential memory leak detected: ${this.formatMemory(memoryGrowth)} growth from baseline`);
 
       // Analyze growth rate
       const recentSnapshots = this.snapshots.slice(-10);
@@ -528,13 +528,13 @@ class MemoryProfiler {
       const growthRate = (recentGrowth / timespan) * 60000; // MB per minute
 
       if (growthRate > 5 * 1024 * 1024) { // 5MB per minute
-        console.error(`🚨 Critical memory leak detected: ${this.formatMemory(growthRate)} per minute`);
+        console.error(` Critical memory leak detected: ${this.formatMemory(growthRate)} per minute`);
       }
     }
   }
 
   private async performFinalAnalysis(): Promise<void> {
-    console.log('🔍 Performing final memory analysis');
+    console.log(' Performing final memory analysis');
 
     // Force final garbage collection
     if (this.config.enableGarbageCollection && global.gc) {
@@ -546,15 +546,15 @@ class MemoryProfiler {
     const finalSnapshot = await this.takeMemorySnapshot();
     this.snapshots.push(finalSnapshot);
 
-    console.log(`📊 Final memory usage: ${this.formatMemory(finalSnapshot.heapUsed)}`);
+    console.log(` Final memory usage: ${this.formatMemory(finalSnapshot.heapUsed)}`);
     if (this.baselineSnapshot) {
       const totalGrowth = finalSnapshot.heapUsed - this.baselineSnapshot.heapUsed;
-      console.log(`📈 Total memory growth: ${this.formatMemory(totalGrowth, true)}`);
+      console.log(` Total memory growth: ${this.formatMemory(totalGrowth, true)}`);
     }
   }
 
   private async cleanup(): Promise<void> {
-    console.log('🧹 Cleaning up profiling session');
+    console.log(' Cleaning up profiling session');
 
     // Close any remaining connections
     for (const [id, ws] of this.activeConnections) {
@@ -727,7 +727,7 @@ class MemoryProfiler {
 
     // Memory leak recommendations
     if (leaks.length > 0) {
-      recommendations.push('🚨 Memory leaks detected - immediate attention required');
+      recommendations.push(' Memory leaks detected - immediate attention required');
       recommendations.push('Implement automated memory monitoring in production');
       recommendations.push('Set up alerts for memory growth > 5MB/minute');
     }
@@ -735,17 +735,17 @@ class MemoryProfiler {
     // Component-specific recommendations
     Object.values(components).forEach(component => {
       if (component.efficiency === 'poor') {
-        recommendations.push(`🔧 Optimize ${component.name} - poor memory efficiency detected`);
+        recommendations.push(` Optimize ${component.name} - poor memory efficiency detected`);
       }
       if (component.memoryVariance > 0.2) {
-        recommendations.push(`📊 High memory variance in ${component.name} - consider optimization`);
+        recommendations.push(` High memory variance in ${component.name} - consider optimization`);
       }
     });
 
     // General optimization recommendations
-    recommendations.push('💡 Consider implementing connection pooling for WebSocket connections');
-    recommendations.push('💡 Implement message batching to reduce memory allocation overhead');
-    recommendations.push('💡 Add memory limits and automatic cleanup for long-running sessions');
+    recommendations.push(' Consider implementing connection pooling for WebSocket connections');
+    recommendations.push(' Implement message batching to reduce memory allocation overhead');
+    recommendations.push(' Add memory limits and automatic cleanup for long-running sessions');
 
     return recommendations;
   }
@@ -806,26 +806,26 @@ async function runMemoryProfiler() {
   try {
     const report = await profiler.runMemoryProfile();
 
-    console.log('\n🧠 Memory Profile Report:');
+    console.log('\n Memory Profile Report:');
     console.log('='.repeat(60));
     console.log('Summary:', JSON.stringify(report.summary, null, 2));
 
     if (report.leaks.length > 0) {
-      console.log('\n🚨 Memory Leaks Detected:');
+      console.log('\n Memory Leaks Detected:');
       report.leaks.forEach(leak => {
         console.log(`- ${leak.component}: ${leak.leakRate.toFixed(2)} MB/min (${leak.severity})`);
       });
     }
 
-    console.log('\n💡 Recommendations:');
+    console.log('\n Recommendations:');
     report.recommendations.forEach(rec => console.log(`- ${rec}`));
 
     // Save detailed report
     const filename = await profiler.saveReport(report);
-    console.log(`\n📁 Detailed report saved to: ${filename}`);
+    console.log(`\n Detailed report saved to: ${filename}`);
 
   } catch (error) {
-    console.error('❌ Memory profiling failed:', error);
+    console.error(' Memory profiling failed:', error);
     process.exit(1);
   }
 }

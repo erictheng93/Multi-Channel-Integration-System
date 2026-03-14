@@ -8,11 +8,11 @@
 
 ---
 
-## 📊 Executive Summary
+##  Executive Summary
 
 [Provide a 2-3 sentence summary of overall test results]
 
-**Overall Result**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Overall Result**: [ PASS /  PARTIAL /  FAIL]
 
 **Key Findings**:
 - [Finding 1]
@@ -23,19 +23,19 @@
 
 ---
 
-## 📋 Test Coverage
+##  Test Coverage
 
 ### Tests Completed
 
 | Test Category | Status | Pass Rate | Issues Found |
 |--------------|---------|-----------|--------------|
-| Phase 1: Core Configuration | [✅/⚠️/❌] | X/Y (Z%) | N |
-| Phase 2: UI/UX Features | [✅/⚠️/❌] | X/Y (Z%) | N |
-| Deployment Process | [✅/⚠️/❌] | X/Y (Z%) | N |
-| Browser Compatibility | [✅/⚠️/❌] | X/Y (Z%) | N |
-| Mobile Testing | [✅/⚠️/❌] | X/Y (Z%) | N |
-| Accessibility | [✅/⚠️/❌] | X/Y (Z%) | N |
-| **TOTAL** | **[✅/⚠️/❌]** | **X/Y (Z%)** | **N** |
+| Phase 1: Core Configuration | [//] | X/Y (Z%) | N |
+| Phase 2: UI/UX Features | [//] | X/Y (Z%) | N |
+| Deployment Process | [//] | X/Y (Z%) | N |
+| Browser Compatibility | [//] | X/Y (Z%) | N |
+| Mobile Testing | [//] | X/Y (Z%) | N |
+| Accessibility | [//] | X/Y (Z%) | N |
+| **TOTAL** | **[//]** | **X/Y (Z%)** | **N** |
 
 ### Tests Skipped
 
@@ -44,11 +44,11 @@
 
 ---
 
-## ✅ Phase 1: Core Configuration Testing
+##  Phase 1: Core Configuration Testing
 
 ### Test Scenario 1: Valid Configuration Flow
 
-**Status**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Status**: [ PASS /  PARTIAL /  FAIL]
 
 **Test Steps Completed**:
 - [x] Project Name field validation
@@ -63,7 +63,7 @@
 ```
 Expected: [Expected outcome]
 Actual: [Actual outcome]
-Status: [✅ As expected / ⚠️ Minor issues / ❌ Failed]
+Status: [ As expected /  Minor issues /  Failed]
 ```
 
 **Issues Found**: [None / See Issues section below]
@@ -72,49 +72,49 @@ Status: [✅ As expected / ⚠️ Minor issues / ❌ Failed]
 
 ### Test Scenario 2: Validation Error Handling
 
-**Status**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Status**: [ PASS /  PARTIAL /  FAIL]
 
 **Validation Tests**:
 - [x] Project Name validation
-  - Empty field: ✅ Error shown
-  - Invalid format: ✅ Error with example
-  - Too short: ✅ Error with example
+  - Empty field:  Error shown
+  - Invalid format:  Error with example
+  - Too short:  Error with example
 - [x] Admin Email validation
-  - Empty field: ✅ Error shown
-  - Invalid format: ✅ Error with example
+  - Empty field:  Error shown
+  - Invalid format:  Error with example
 - [x] Custom Domain validation
-  - With protocol: ✅ Error shown
-  - Invalid format: ✅ Error shown
+  - With protocol:  Error shown
+  - Invalid format:  Error shown
 - [x] R2 URL validation
-  - No protocol: ✅ Error shown
+  - No protocol:  Error shown
 - [x] LINE Bot ID validation
-  - No @ symbol: ✅ Error with guidance
-  - Invalid pattern: ✅ Error shown
+  - No @ symbol:  Error with guidance
+  - Invalid pattern:  Error shown
 - [x] LINE LIFF ID validation
-  - Too short: ✅ Error with example
+  - Too short:  Error with example
 
 **Results**:
-- All validation messages include examples: [✅/❌]
-- Error messages are actionable: [✅/❌]
-- Users can understand how to fix: [✅/❌]
+- All validation messages include examples: [/]
+- Error messages are actionable: [/]
+- Users can understand how to fix: [/]
 
 ---
 
 ### Test Scenario 3: Smart Default Suggestions
 
-**Status**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Status**: [ PASS /  PARTIAL /  FAIL]
 
 **Suggestion Tests**:
 - [x] Frontend URL suggestion
-  - Appears when custom domain entered: [✅/❌]
-  - Correct derivation logic: [✅/❌]
-  - "Use Suggestion" button works: [✅/❌]
+  - Appears when custom domain entered: [/]
+  - Correct derivation logic: [/]
+  - "Use Suggestion" button works: [/]
 - [x] Backend URL suggestion
-  - Correct derivation (api. subdomain): [✅/❌]
-  - Dismiss button works: [✅/❌]
+  - Correct derivation (api. subdomain): [/]
+  - Dismiss button works: [/]
 - [x] R2 URL suggestion
-  - Correct derivation (files. subdomain): [✅/❌]
-  - Auto-population works: [✅/❌]
+  - Correct derivation (files. subdomain): [/]
+  - Auto-population works: [/]
 
 **Results**:
 ```
@@ -123,117 +123,117 @@ Custom Domain: crm.example.com
 → Backend: [Suggested value]
 → R2: [Suggested value]
 
-Status: [✅ All correct / ⚠️ Some incorrect / ❌ Not working]
+Status: [ All correct /  Some incorrect /  Not working]
 ```
 
 ---
 
-## 🎨 Phase 2: UI/UX Features Testing
+##  Phase 2: UI/UX Features Testing
 
 ### Test Scenario 4: Visual Polish Elements
 
-**Status**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Status**: [ PASS /  PARTIAL /  FAIL]
 
 **Badge System**:
 | Field | Expected Badge | Actual Badge | Status |
 |-------|----------------|--------------|--------|
-| Project Name | Required (Red) | [Actual] | [✅/❌] |
-| Admin Email | Required (Red) | [Actual] | [✅/❌] |
-| Custom Domain | Optional (Blue) | [Actual] | [✅/❌] |
-| R2 Public URL | Optional (Blue) | [Actual] | [✅/❌] |
-| LINE Bot ID | Required* (Red) | [Actual] | [✅/❌] |
-| LINE LIFF ID | Optional (Blue) | [Actual] | [✅/❌] |
-| Channel Token | Required* (Red) | [Actual] | [✅/❌] |
-| Channel Secret | Required* (Red) | [Actual] | [✅/❌] |
+| Project Name | Required (Red) | [Actual] | [/] |
+| Admin Email | Required (Red) | [Actual] | [/] |
+| Custom Domain | Optional (Blue) | [Actual] | [/] |
+| R2 Public URL | Optional (Blue) | [Actual] | [/] |
+| LINE Bot ID | Required* (Red) | [Actual] | [/] |
+| LINE LIFF ID | Optional (Blue) | [Actual] | [/] |
+| Channel Token | Required* (Red) | [Actual] | [/] |
+| Channel Secret | Required* (Red) | [Actual] | [/] |
 
 *Conditional based on "Skip LINE" checkbox
 
 **Success Indicators (Green Checkmarks)**:
-- Project Name: [✅/❌]
-- Admin Email: [✅/❌]
-- Custom Domain: [✅/❌]
-- R2 Public URL: [✅/❌]
-- LINE Bot ID: [✅/❌]
-- LINE LIFF ID: [✅/❌]
-- Channel Token: [✅/❌]
-- Channel Secret: [✅/❌]
+- Project Name: [/]
+- Admin Email: [/]
+- Custom Domain: [/]
+- R2 Public URL: [/]
+- LINE Bot ID: [/]
+- LINE LIFF ID: [/]
+- Channel Token: [/]
+- Channel Secret: [/]
 
 **Character Counters**:
-- Project Name counter: [✅/❌]
-  - Shows count: [✅/❌]
-  - Orange at 40+ chars: [✅/❌]
-  - Red at 47+ chars: [✅/❌]
-- LINE LIFF ID counter: [✅/❌]
-  - Red when <10 chars: [✅/❌]
-  - Gray when ≥10 chars: [✅/❌]
+- Project Name counter: [/]
+  - Shows count: [/]
+  - Orange at 40+ chars: [/]
+  - Red at 47+ chars: [/]
+- LINE LIFF ID counter: [/]
+  - Red when <10 chars: [/]
+  - Gray when ≥10 chars: [/]
 
 **Enhanced Focus States**:
-- Blue shadow on focus: [✅/❌]
-- Smooth transitions: [✅/❌]
-- Keyboard navigation works: [✅/❌]
+- Blue shadow on focus: [/]
+- Smooth transitions: [/]
+- Keyboard navigation works: [/]
 
 **Animations**:
-- Suggestion boxes slide in: [✅/❌]
-- Help sections expand smoothly: [✅/❌]
-- Resource preview toggles smoothly: [✅/❌]
-- No janky/stuttering animations: [✅/❌]
+- Suggestion boxes slide in: [/]
+- Help sections expand smoothly: [/]
+- Resource preview toggles smoothly: [/]
+- No janky/stuttering animations: [/]
 
 ---
 
 ### Test Scenario 5: Inline Help Documentation
 
-**Status**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Status**: [ PASS /  PARTIAL /  FAIL]
 
 **Quick Reference Cards**:
-- Step 1 Quick Reference: [✅/❌]
-  - Expands/collapses smoothly: [✅/❌]
-  - Content is helpful: [✅/❌]
-  - Tip section visible: [✅/❌]
-- Step 2 Quick Reference: [✅/❌]
-  - LINE-specific guidance: [✅/❌]
+- Step 1 Quick Reference: [/]
+  - Expands/collapses smoothly: [/]
+  - Content is helpful: [/]
+  - Tip section visible: [/]
+- Step 2 Quick Reference: [/]
+  - LINE-specific guidance: [/]
 
 **LINE Bot ID Help Section**:
-- Toggle works: [✅/❌]
-- 6-step guide clear: [✅/❌]
-- Example shown: [✅/❌]
-- External link works: [✅/❌]
-- Opens in new tab: [✅/❌]
+- Toggle works: [/]
+- 6-step guide clear: [/]
+- Example shown: [/]
+- External link works: [/]
+- Opens in new tab: [/]
 
 **LINE LIFF ID Help Section**:
-- Toggle works: [✅/❌]
-- Creation guide helpful: [✅/❌]
-- Configuration details clear: [✅/❌]
-- Example format shown: [✅/❌]
-- "Learn more" link works: [✅/❌]
+- Toggle works: [/]
+- Creation guide helpful: [/]
+- Configuration details clear: [/]
+- Example format shown: [/]
+- "Learn more" link works: [/]
 
-**Overall Help Quality**: [⭐⭐⭐⭐⭐] (1-5 stars)
+**Overall Help Quality**: [] (1-5 stars)
 
 ---
 
-## 🚀 Deployment Testing
+##  Deployment Testing
 
 ### Test Scenario 6: Full Deployment Process
 
-**Status**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Status**: [ PASS /  PARTIAL /  FAIL]
 
 **OAuth Authentication**:
-- Login button visible: [✅/❌]
-- OAuth flow completes: [✅/❌]
-- Returns to form: [✅/❌]
-- Account ID populated: [✅/❌]
+- Login button visible: [/]
+- OAuth flow completes: [/]
+- Returns to form: [/]
+- Account ID populated: [/]
 
 **Deployment Steps**:
 | Step | Status | Duration | Notes |
 |------|---------|----------|-------|
-| 1. Create Worker | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 2. Create D1 Database | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 3. Create KV Namespaces | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 4. Create R2 Bucket | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 5. Create Queue | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 6. Generate Config | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 7. Deploy Frontend | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 8. Run Migrations | [✅/⚠️/❌] | [X sec] | [Notes] |
-| 9. Finalize | [✅/⚠️/❌] | [X sec] | [Notes] |
+| 1. Create Worker | [//] | [X sec] | [Notes] |
+| 2. Create D1 Database | [//] | [X sec] | [Notes] |
+| 3. Create KV Namespaces | [//] | [X sec] | [Notes] |
+| 4. Create R2 Bucket | [//] | [X sec] | [Notes] |
+| 5. Create Queue | [//] | [X sec] | [Notes] |
+| 6. Generate Config | [//] | [X sec] | [Notes] |
+| 7. Deploy Frontend | [//] | [X sec] | [Notes] |
+| 8. Run Migrations | [//] | [X sec] | [Notes] |
+| 9. Finalize | [//] | [X sec] | [Notes] |
 
 **Total Deployment Time**: [X minutes Y seconds]
 
@@ -244,7 +244,7 @@ Status: [✅ All correct / ⚠️ Some incorrect / ❌ Not working]
 
 ### Test Scenario 7: Verify Deployed Application
 
-**Status**: [✅ PASS / ⚠️ PARTIAL / ❌ FAIL]
+**Status**: [ PASS /  PARTIAL /  FAIL]
 
 **Cloudflare Resources**:
 - [ ] Worker deployed and active
@@ -265,19 +265,19 @@ Status: [✅ All correct / ⚠️ Some incorrect / ❌ Not working]
   - Name: [Queue name]
 
 **Application Access**:
-- Frontend loads: [✅/❌]
-- Backend health check: [✅/❌]
+- Frontend loads: [/]
+- Backend health check: [/]
   - URL: [Health endpoint]
   - Response: [Response]
-- Admin login works: [✅/❌]
-  - Credentials received: [✅/❌]
-  - Login successful: [✅/❌]
+- Admin login works: [/]
+  - Credentials received: [/]
+  - Login successful: [/]
 
 **Basic Functionality**:
-- Create team: [✅/❌]
-- Add agent: [✅/❌]
-- Create conversation: [✅/❌]
-- Send message: [✅/❌]
+- Create team: [/]
+- Add agent: [/]
+- Create conversation: [/]
+- Send message: [/]
 
 **Database Verification**:
 ```sql
@@ -292,28 +292,28 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 
 ---
 
-## 🌐 Browser Compatibility Testing
+##  Browser Compatibility Testing
 
 ### Desktop Browsers
 
 | Browser | Version | Test Result | Issues |
 |---------|---------|-------------|--------|
-| Chrome | [Version] | [✅/⚠️/❌] | [None/See below] |
-| Firefox | [Version] | [✅/⚠️/❌] | [None/See below] |
-| Safari | [Version] | [✅/⚠️/❌] | [None/See below] |
-| Edge | [Version] | [✅/⚠️/❌] | [None/See below] |
+| Chrome | [Version] | [//] | [None/See below] |
+| Firefox | [Version] | [//] | [None/See below] |
+| Safari | [Version] | [//] | [None/See below] |
+| Edge | [Version] | [//] | [None/See below] |
 
 **Chrome-Specific**:
-- DevTools console clean: [✅/❌]
+- DevTools console clean: [/]
 - Lighthouse score: [Score/100]
 
 **Firefox-Specific**:
-- Responsive design mode: [✅/❌]
-- No console warnings: [✅/❌]
+- Responsive design mode: [/]
+- No console warnings: [/]
 
 **Safari-Specific**:
-- Form inputs work: [✅/❌]
-- Animations smooth: [✅/❌]
+- Form inputs work: [/]
+- Animations smooth: [/]
 
 ---
 
@@ -321,47 +321,47 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 
 | Device | OS Version | Test Result | Issues |
 |--------|------------|-------------|--------|
-| iPhone [Model] | iOS [Version] | [✅/⚠️/❌] | [None/See below] |
-| iPad [Model] | iOS [Version] | [✅/⚠️/❌] | [None/See below] |
-| Android [Model] | Android [Version] | [✅/⚠️/❌] | [None/See below] |
+| iPhone [Model] | iOS [Version] | [//] | [None/See below] |
+| iPad [Model] | iOS [Version] | [//] | [None/See below] |
+| Android [Model] | Android [Version] | [//] | [None/See below] |
 
 **Mobile-Specific Tests**:
-- Responsive layout: [✅/❌]
-- No horizontal scroll: [✅/❌]
-- Text readable: [✅/❌]
-- Touch targets adequate: [✅/❌]
-- Keyboard behavior: [✅/❌]
-- Performance acceptable: [✅/❌]
+- Responsive layout: [/]
+- No horizontal scroll: [/]
+- Text readable: [/]
+- Touch targets adequate: [/]
+- Keyboard behavior: [/]
+- Performance acceptable: [/]
 
 ---
 
-## ♿ Accessibility Testing
+##  Accessibility Testing
 
 **Keyboard Navigation**:
-- Tab order logical: [✅/❌]
-- Focus indicators visible: [✅/❌]
-- All controls accessible: [✅/❌]
-- Escape key works: [✅/❌]
+- Tab order logical: [/]
+- Focus indicators visible: [/]
+- All controls accessible: [/]
+- Escape key works: [/]
 
 **Screen Reader**:
-- Labels announced: [✅/❌]
-- Errors announced: [✅/❌]
-- Help text announced: [✅/❌]
-- Button roles correct: [✅/❌]
+- Labels announced: [/]
+- Errors announced: [/]
+- Help text announced: [/]
+- Button roles correct: [/]
 
 **Color Contrast**:
-- Text contrast ≥ 4.5:1: [✅/❌]
-- Headings contrast ≥ 3:1: [✅/❌]
-- Buttons contrast adequate: [✅/❌]
-- Error messages readable: [✅/❌]
+- Text contrast ≥ 4.5:1: [/]
+- Headings contrast ≥ 3:1: [/]
+- Buttons contrast adequate: [/]
+- Error messages readable: [/]
 
-**Overall Accessibility**: [WCAG AA Compliant: ✅/❌]
+**Overall Accessibility**: [WCAG AA Compliant: /]
 
 ---
 
-## 🐛 Issues Found
+##  Issues Found
 
-### Critical Issues (🔴)
+### Critical Issues ()
 
 **Issue #1**: [Issue title]
 - **Severity**: Critical
@@ -375,7 +375,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - **Screenshot**: [Attach if applicable]
 - **Status**: [Open/Fixed]
 
-### High Priority Issues (🟠)
+### High Priority Issues ()
 
 **Issue #2**: [Issue title]
 - **Severity**: High
@@ -383,7 +383,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - **Description**: [Detailed description]
 - **Status**: [Open/Fixed]
 
-### Medium Priority Issues (🟡)
+### Medium Priority Issues ()
 
 **Issue #3**: [Issue title]
 - **Severity**: Medium
@@ -391,7 +391,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - **Description**: [Detailed description]
 - **Status**: [Open/Fixed]
 
-### Low Priority Issues (🟢)
+### Low Priority Issues ()
 
 **Issue #4**: [Issue title]
 - **Severity**: Low
@@ -401,7 +401,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 
 ---
 
-## ✅ Success Criteria Evaluation
+##  Success Criteria Evaluation
 
 ### Phase 1 Success Criteria
 
@@ -414,7 +414,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - [ ] Generated `.env` has all variables
 - [ ] No hardcoded domains in generated files
 
-**Phase 1 Status**: [✅ MET / ⚠️ PARTIAL / ❌ NOT MET]
+**Phase 1 Status**: [ MET /  PARTIAL /  NOT MET]
 
 ### Phase 2 Success Criteria
 
@@ -427,7 +427,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - [ ] All animations are smooth
 - [ ] Error messages include examples
 
-**Phase 2 Status**: [✅ MET / ⚠️ PARTIAL / ❌ NOT MET]
+**Phase 2 Status**: [ MET /  PARTIAL /  NOT MET]
 
 ### Deployment Success Criteria
 
@@ -438,7 +438,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - [ ] Basic features functional
 - [ ] No console errors in deployed app
 
-**Deployment Status**: [✅ MET / ⚠️ PARTIAL / ❌ NOT MET]
+**Deployment Status**: [ MET /  PARTIAL /  NOT MET]
 
 ### Browser Compatibility Success Criteria
 
@@ -450,7 +450,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - [ ] Chrome Mobile (Android 11+) works
 - [ ] No browser-specific bugs
 
-**Compatibility Status**: [✅ MET / ⚠️ PARTIAL / ❌ NOT MET]
+**Compatibility Status**: [ MET /  PARTIAL /  NOT MET]
 
 ### Accessibility Success Criteria
 
@@ -460,41 +460,41 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 - [ ] Color contrast meets WCAG AA
 - [ ] Interactive elements ≥ 44x44px (mobile)
 
-**Accessibility Status**: [✅ MET / ⚠️ PARTIAL / ❌ NOT MET]
+**Accessibility Status**: [ MET /  PARTIAL /  NOT MET]
 
 ---
 
-## 📈 Test Metrics
+##  Test Metrics
 
 ### Quantitative Results
 
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
-| Tests Passed | 100% | [X%] | [✅/⚠️/❌] |
-| Critical Issues | 0 | [X] | [✅/⚠️/❌] |
-| High Issues | ≤ 2 | [X] | [✅/⚠️/❌] |
-| Deployment Time | < 5 min | [X min] | [✅/⚠️/❌] |
-| Page Load Time | < 3 sec | [X sec] | [✅/⚠️/❌] |
-| Lighthouse Score | > 90 | [X] | [✅/⚠️/❌] |
+| Tests Passed | 100% | [X%] | [//] |
+| Critical Issues | 0 | [X] | [//] |
+| High Issues | ≤ 2 | [X] | [//] |
+| Deployment Time | < 5 min | [X min] | [//] |
+| Page Load Time | < 3 sec | [X sec] | [//] |
+| Lighthouse Score | > 90 | [X] | [//] |
 
 ### Qualitative Assessment
 
 **User Experience**: [Excellent / Good / Fair / Poor]
-- Ease of use: [⭐⭐⭐⭐⭐]
-- Error messages: [⭐⭐⭐⭐⭐]
-- Visual design: [⭐⭐⭐⭐⭐]
-- Performance: [⭐⭐⭐⭐⭐]
-- Documentation: [⭐⭐⭐⭐⭐]
+- Ease of use: []
+- Error messages: []
+- Visual design: []
+- Performance: []
+- Documentation: []
 
 **Code Quality**: [Excellent / Good / Fair / Poor]
-- TypeScript compliance: [✅/❌]
-- No `any` types: [✅/❌]
-- Consistent patterns: [✅/❌]
-- Well documented: [✅/❌]
+- TypeScript compliance: [/]
+- No `any` types: [/]
+- Consistent patterns: [/]
+- Well documented: [/]
 
 ---
 
-## 💡 Recommendations
+##  Recommendations
 
 ### Immediate Actions Required
 
@@ -516,9 +516,9 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 
 ---
 
-## 🎯 Next Steps
+##  Next Steps
 
-### If All Tests Pass (✅)
+### If All Tests Pass ()
 
 **Recommendation**: Proceed to Phase 3 with confidence
 
@@ -528,7 +528,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 3. [ ] Schedule Phase 3 kickoff
 4. [ ] Notify stakeholders of readiness
 
-### If Some Tests Fail (⚠️)
+### If Some Tests Fail ()
 
 **Recommendation**: Fix critical issues before Phase 3
 
@@ -539,7 +539,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 4. [ ] Re-test after fixes
 5. [ ] Review test report
 
-### If Most Tests Fail (❌)
+### If Most Tests Fail ()
 
 **Recommendation**: Major rework needed before Phase 3
 
@@ -552,7 +552,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 
 ---
 
-## 📎 Appendix
+##  Appendix
 
 ### Test Environment Details
 
@@ -606,7 +606,7 @@ SELECT COUNT(*) FROM agents WHERE role = 'admin';
 
 ---
 
-## ✍️ Sign-Off
+##  Sign-Off
 
 **Tester**: [Your Name]
 **Signature**: _________________

@@ -149,17 +149,17 @@ export interface DashboardLayout {
  * 響應式斷點配置
  */
 export interface ResponsiveBreakpoints {
-  mobile: number;    // < 768px
-  tablet: number;    // 768px - 1024px
-  desktop: number;   // 1024px - 1440px
-  large: number;     // > 1440px
+  mobile: number; // < 768px
+  tablet: number; // 768px - 1024px
+  desktop: number; // 1024px - 1440px
+  large: number; // > 1440px
 }
 
 /**
  * 儀表板權限
  */
 export interface DashboardPermissions {
-  owner: string;    // 擁有者用戶ID
+  owner: string; // 擁有者用戶ID
   viewers: string[]; // 觀看者用戶ID
   editors: string[]; // 編輯者用戶ID
 }
@@ -200,21 +200,21 @@ export interface DashboardWidget {
  * 小部件類型
  */
 export type WidgetType =
-  | 'metric'           // 單一指標顯示
-  | 'chart'            // 圖表
-  | 'table'            // 表格
-  | 'gauge'            // 儀表盤
-  | 'progress'         // 進度條
-  | 'status'           // 狀態指示器
-  | 'timeline'         // 時間軸
-  | 'heatmap'          // 熱力圖
-  | 'wordcloud'        // 詞雲
-  | 'map'              // 地圖
-  | 'alert'            // 警報
-  | 'text'             // 文字
-  | 'image'            // 圖片
-  | 'iframe'           // 嵌入式
-  | 'custom';          // 自定義
+  | 'metric' // 單一指標顯示
+  | 'chart' // 圖表
+  | 'table' // 表格
+  | 'gauge' // 儀表盤
+  | 'progress' // 進度條
+  | 'status' // 狀態指示器
+  | 'timeline' // 時間軸
+  | 'heatmap' // 熱力圖
+  | 'wordcloud' // 詞雲
+  | 'map' // 地圖
+  | 'alert' // 警報
+  | 'text' // 文字
+  | 'image' // 圖片
+  | 'iframe' // 嵌入式
+  | 'custom'; // 自定義
 
 /**
  * 小部件位置
@@ -519,15 +519,15 @@ export interface WidgetDataSource {
  * 數據源類型
  */
 export type DataSourceType =
-  | 'analytics'     // Analytics API
-  | 'metrics'       // Metrics API
-  | 'database'      // 直接數據庫查詢
-  | 'api'           // 外部 API
-  | 'static'        // 靜態數據
-  | 'realtime'      // 實時數據流
+  | 'analytics' // Analytics API
+  | 'metrics' // Metrics API
+  | 'database' // 直接數據庫查詢
+  | 'api' // 外部 API
+  | 'static' // 靜態數據
+  | 'realtime' // 實時數據流
   | 'conversation'  // 對話數據
-  | 'message'       // 消息數據
-  | 'user';         // 用戶數據
+  | 'message' // 消息數據
+  | 'user'; // 用戶數據
 
 /**
  * 數據源配置
@@ -600,13 +600,13 @@ export interface WidgetAction {
 }
 
 export type WidgetActionType =
-  | 'navigate'      // 導航到其他頁面
-  | 'filter'        // 設置過濾器
-  | 'drill_down'    // 向下鑽取
-  | 'drill_up'      // 向上鑽取
-  | 'export'        // 導出數據
-  | 'alert'         // 觸發警報
-  | 'custom';       // 自定義動作
+  | 'navigate' // 導航到其他頁面
+  | 'filter' // 設置過濾器
+  | 'drill_down' // 向下鑽取
+  | 'drill_up' // 向上鑽取
+  | 'export' // 導出數據
+  | 'alert' // 觸發警報
+  | 'custom'; // 自定義動作
 
 /**
  * 小部件動作配置

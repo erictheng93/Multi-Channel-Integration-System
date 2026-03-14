@@ -97,7 +97,7 @@ export const DEVELOPMENT_CONFIG: EnvironmentConfig = {
 
 /**
  * Staging environment configuration
- * ⚠️ Note: Actual URLs should come from environment variables
+ * Note: Actual URLs should come from environment variables
  * These are placeholder values only - set real values via BACKEND_URL, FRONTEND_URL, etc.
  */
 export const STAGING_CONFIG: EnvironmentConfig = {
@@ -122,7 +122,7 @@ export const STAGING_CONFIG: EnvironmentConfig = {
 
 /**
  * Production environment configuration
- * ⚠️ Note: Actual URLs should come from environment variables
+ * Note: Actual URLs should come from environment variables
  * These are placeholder values only - set real values via BACKEND_URL, FRONTEND_URL, etc.
  */
 export const PRODUCTION_CONFIG: EnvironmentConfig = {
@@ -147,7 +147,7 @@ export const PRODUCTION_CONFIG: EnvironmentConfig = {
 
 /**
  * Alternative production URLs (for backward compatibility)
- * ⚠️ Note: Use getAllowedOrigins(env) for dynamic CORS configuration instead
+ * Note: Use getAllowedOrigins(env) for dynamic CORS configuration instead
  */
 export const ALTERNATIVE_PRODUCTION_URLS = [
   'https://mcis-ey7.pages.dev',
@@ -302,15 +302,15 @@ export function getWebSocketEndpoint(path: string): string {
  */
 export const ENVIRONMENT_TIMEOUTS = {
   development: {
-    api: 30000,      // 30 seconds for development
+    api: 30000, // 30 seconds for development
     websocket: 60000 // 60 seconds for WebSocket
   },
   staging: {
-    api: 15000,      // 15 seconds for staging
+    api: 15000, // 15 seconds for staging
     websocket: 45000 // 45 seconds for WebSocket
   },
   production: {
-    api: 10000,      // 10 seconds for production
+    api: 10000, // 10 seconds for production
     websocket: 30000 // 30 seconds for WebSocket
   }
 } as const;

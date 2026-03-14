@@ -383,6 +383,6 @@ function validateFileContent(bytes: Uint8Array, mimeType: string): boolean {
   }
 
   // SECURITY: Unknown file types are NOT allowed - fail secure
-  console.warn(`⚠️ [File Validation] Unknown file signature for MIME type: ${mimeType}`);
+  console.warn(`[File Validation] Unknown file signature for MIME type: ${mimeType}`);
   return false;
 }

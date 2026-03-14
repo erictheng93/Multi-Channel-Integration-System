@@ -238,7 +238,7 @@ export const customerTagsHandler = {
           return errorResponse(c, 'Unauthorized: User ID not found in token', 401);
         }
 
-        // ✅ 優化：使用 Drizzle 批量插入（單條 SQL 語句）
+        // 優化：使用 Drizzle 批量插入（單條 SQL 語句）
         const tagInsertValues = newTagIds.map(tagId => ({
           customerId,
           tagId,
@@ -249,10 +249,10 @@ export const customerTagsHandler = {
           .insert(customerTags)
           .values(tagInsertValues);
 
-        console.log(`📦 [Customer Tags] Added ${newTagIds.length} tags using batch insert`);
+        console.log(`[Customer Tags] Added ${newTagIds.length} tags using batch insert`);
       }
 
-      // 🆕 Broadcast tag change event for real-time updates
+      // Broadcast tag change event for real-time updates
       if (newTagIds.length > 0) {
         try {
           const broadcastService = new WebSocketBroadcastService(c.env);
@@ -263,7 +263,7 @@ export const customerTagsHandler = {
             changedBy: String(payload?.userId || 'unknown')
           });
         } catch (broadcastError) {
-          console.warn('⚠️ [Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+          console.warn('[Customer Tags] Broadcast failed (non-blocking):', broadcastError);
         }
       }
 
@@ -319,7 +319,7 @@ export const customerTagsHandler = {
           )
         );
 
-      // 🆕 Broadcast tag change event for real-time updates
+      // Broadcast tag change event for real-time updates
       try {
         const payload = c.get('jwtPayload');
         const broadcastService = new WebSocketBroadcastService(c.env);
@@ -330,7 +330,7 @@ export const customerTagsHandler = {
           changedBy: String(payload?.userId || 'unknown')
         });
       } catch (broadcastError) {
-        console.warn('⚠️ [Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+        console.warn('[Customer Tags] Broadcast failed (non-blocking):', broadcastError);
       }
 
       return successResponse(c, null, `Successfully removed ${tagIds.length} tags from customer`);
@@ -402,7 +402,7 @@ export const customerTagsHandler = {
           return errorResponse(c, 'Unauthorized: User ID not found in token', 401);
         }
 
-        // ✅ 優化：使用 Drizzle 批量插入（單條 SQL 語句）
+        // 優化：使用 Drizzle 批量插入（單條 SQL 語句）
         const tagInsertValues = tagIds.map(tagId => ({
           customerId,
           tagId,
@@ -413,10 +413,10 @@ export const customerTagsHandler = {
           .insert(customerTags)
           .values(tagInsertValues);
 
-        console.log(`📦 [Customer Tags] Set ${tagIds.length} tags using batch insert`);
+        console.log(`[Customer Tags] Set ${tagIds.length} tags using batch insert`);
       }
 
-      // 🆕 Broadcast tag change event for real-time updates
+      // Broadcast tag change event for real-time updates
       try {
         const broadcastService = new WebSocketBroadcastService(c.env);
         await broadcastService.broadcastCustomerTagEvent({
@@ -426,7 +426,7 @@ export const customerTagsHandler = {
           changedBy: String(payload?.userId || 'unknown')
         });
       } catch (broadcastError) {
-        console.warn('⚠️ [Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+        console.warn('[Customer Tags] Broadcast failed (non-blocking):', broadcastError);
       }
 
       return successResponse(

@@ -8,19 +8,19 @@
  * @example
  * ```typescript
  * const quickReplies = useQuickReplies({
- *   initialReplies: [
- *     { id: '1', text: '感謝您的來信' },
- *     { id: '2', text: '請問還有其他需要協助的嗎？' }
- *   ],
- *   onSelect: (reply) => {
- *     messageInput.setMessageText(reply.text)
- *   }
+ * initialReplies: [
+ * { id: '1', text: '感謝您的來信' },
+ * { id: '2', text: '請問還有其他需要協助的嗎？' }
+ * ],
+ * onSelect: (reply) => {
+ * messageInput.setMessageText(reply.text)
+ * }
  * })
  *
  * // In template
  * <QuickReplies
- *   :replies="quickReplies.replies.value"
- *   @select="quickReplies.selectReply"
+ * :replies="quickReplies.replies.value"
+ * @select="quickReplies.selectReply"
  * />
  * ```
  */
@@ -118,11 +118,11 @@ const DEFAULT_QUICK_REPLIES: QuickReply[] = [
  * 快速回复管理 Composable
  *
  * 功能:
- * - ✅ 管理快速回复列表
- * - ✅ 支持静态配置
- * - ✅ 支持动态加载 (从 API)
- * - ✅ 支持过滤
- * - ✅ CRUD 操作
+ * -  管理快速回复列表
+ * -  支持静态配置
+ * -  支持动态加载 (从 API)
+ * -  支持过滤
+ * -  CRUD 操作
  *
  * @param options - 配置选项
  * @returns 快速回复状态和操作方法

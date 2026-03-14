@@ -8,41 +8,41 @@ The system uses a **dual role architecture** separating system-level and team-le
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    DUAL ROLE ARCHITECTURE                       │
+│ DUAL ROLE ARCHITECTURE │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────────┐    ┌─────────────────────────────────┐ │
-│  │   SYSTEM ROLES      │    │        TEAM ROLES               │ │
-│  │   (Global Access)   │    │        (Team-Scoped)            │ │
-│  ├─────────────────────┤    ├─────────────────────────────────┤ │
-│  │                     │    │                                 │ │
-│  │  ┌───────────────┐  │    │  ┌───────────────────────────┐  │ │
-│  │  │    ADMIN      │  │    │  │      SUPERVISOR           │  │ │
-│  │  │ (Full Access) │  │    │  │  • Update team settings   │  │ │
-│  │  └───────┬───────┘  │    │  │  • Manage QR codes        │  │ │
-│  │          │          │    │  │  • All Lead permissions   │  │ │
-│  │          ▼          │    │  └─────────────┬─────────────┘  │ │
-│  │  ┌───────────────┐  │    │                │                │ │
-│  │  │    AGENT      │  │    │                ▼                │ │
-│  │  │ (Team-Scoped) │  │    │  ┌───────────────────────────┐  │ │
-│  │  └───────────────┘  │    │  │         LEAD              │  │ │
-│  │                     │    │  │  • Add/remove members     │  │ │
-│  └─────────────────────┘    │  │  • Update member roles    │  │ │
-│                             │  │  • All Member permissions │  │ │
-│                             │  └─────────────┬─────────────┘  │ │
-│                             │                │                │ │
-│                             │                ▼                │ │
-│                             │  ┌───────────────────────────┐  │ │
-│                             │  │        MEMBER             │  │ │
-│                             │  │  • View team info         │  │ │
-│                             │  │  • View member list       │  │ │
-│                             │  │  • View team statistics   │  │ │
-│                             │  └───────────────────────────┘  │ │
-│                             │                                 │ │
-│                             └─────────────────────────────────┘ │
-│                                                                 │
-│  Note: Admin users bypass all team role checks                  │
-│                                                                 │
+│ │
+│  ┌─────────────────────┐ ┌─────────────────────────────────┐ │
+│  │ SYSTEM ROLES │    │ TEAM ROLES │ │
+│  │ (Global Access) │    │ (Team-Scoped) │ │
+│  ├─────────────────────┤ ├─────────────────────────────────┤ │
+│  │ │    │ │ │
+│  │  ┌───────────────┐  │ │  ┌───────────────────────────┐  │ │
+│  │  │ ADMIN │  │ │  │ SUPERVISOR │  │ │
+│  │  │ (Full Access) │  │ │  │  • Update team settings │  │ │
+│  │  └───────┬───────┘  │ │  │  • Manage QR codes │  │ │
+│  │ │          │ │  │  • All Lead permissions │  │ │
+│  │ ▼          │ │  └─────────────┬─────────────┘  │ │
+│  │  ┌───────────────┐  │ │                │ │ │
+│  │  │ AGENT │  │ │                ▼ │ │
+│  │  │ (Team-Scoped) │  │ │  ┌───────────────────────────┐  │ │
+│  │  └───────────────┘  │ │  │ LEAD │  │ │
+│  │ │    │  │  • Add/remove members │  │ │
+│  └─────────────────────┘ │  │  • Update member roles │  │ │
+│ │  │  • All Member permissions │  │ │
+│ │  └─────────────┬─────────────┘  │ │
+│ │                │ │ │
+│ │                ▼ │ │
+│ │  ┌───────────────────────────┐  │ │
+│ │  │ MEMBER │  │ │
+│ │  │  • View team info │  │ │
+│ │  │  • View member list │  │ │
+│ │  │  • View team statistics │  │ │
+│ │  └───────────────────────────┘  │ │
+│ │                                 │ │
+│ └─────────────────────────────────┘ │
+│ │
+│  Note: Admin users bypass all team role checks │
+│ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -93,9 +93,9 @@ hasTeamRole(userPayload, teamId, requiredRole)  // Check role hierarchy
 canPerformTeamOperation(userPayload, teamId, operation)  // Check operation permission
 
 // Frontend (stores/auth.ts)
-authStore.canAccessTeam(teamId)      // Check team membership
-authStore.getTeamRole(teamId)        // Get role in team
-authStore.switchTeam(teamId)         // Switch active team context
+authStore.canAccessTeam(teamId) // Check team membership
+authStore.getTeamRole(teamId) // Get role in team
+authStore.switchTeam(teamId) // Switch active team context
 ```
 
 ### Team-Scoped WebSocket Broadcasts
@@ -104,32 +104,32 @@ Security enhancement ensuring agents only receive data from their teams:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│               TEAM-SCOPED WEBSOCKET BROADCAST                   │
+│ TEAM-SCOPED WEBSOCKET BROADCAST │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Event: conversation_assigned                                   │
-│                                                                 │
-│  ┌─────────────────┐                                            │
+│ │
+│  Event: conversation_assigned │
+│ │
+│  ┌─────────────────┐ │
 │  │ MessageBroadcast│─────────┬──────────────────────────────────│
-│  │   Durable Object│         │                                  │
-│  └─────────────────┘         │                                  │
-│                              ▼                                  │
-│                    ┌─────────────────┐                          │
-│                    │ /broadcast-to-  │                          │
-│                    │ teams-and-admins│                          │
-│                    └────────┬────────┘                          │
-│                             │                                   │
-│            ┌────────────────┼────────────────┐                  │
-│            ▼                ▼                ▼                  │
-│     ┌────────────┐   ┌────────────┐   ┌────────────┐            │
-│     │   Admin    │   │  Team A    │   │  Team B    │            │
-│     │  Agents    │   │  Agents    │   │  Agents    │            │
-│     │  (ALL)     │   │  (Team A)  │   │  (Team B)  │            │
-│     └────────────┘   └────────────┘   └────────────┘            │
-│          ✓               ✓                 ✗                    │
-│     Receives all     Receives only    Does NOT receive         │
-│       events        Team A events      Team A events            │
-│                                                                 │
+│  │ Durable Object│ │                                  │
+│  └─────────────────┘ │                                  │
+│ ▼                                  │
+│ ┌─────────────────┐ │
+│ │ /broadcast-to-  │ │
+│ │ teams-and-admins│ │
+│ └────────┬────────┘ │
+│ │                                   │
+│ ┌────────────────┼────────────────┐ │
+│ ▼                ▼ ▼                  │
+│ ┌────────────┐ ┌────────────┐ ┌────────────┐ │
+│ │   Admin │   │  Team A │   │  Team B │            │
+│ │  Agents │   │  Agents │   │  Agents │            │
+│ │  (ALL) │   │  (Team A)  │ │  (Team B)  │ │
+│ └────────────┘ └────────────┘ └────────────┘ │
+│ │
+│ Receives all Receives only Does NOT receive │
+│ events Team A events Team A events │
+│ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -141,57 +141,57 @@ The team management UI features a flexible sorting system with both field-based 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    SORTING SYSTEM ARCHITECTURE                  │
+│ SORTING SYSTEM ARCHITECTURE │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
+│ │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │                    useListSorting.ts                        ││
-│  │                  (Core Sorting Logic)                       ││
+│  │ useListSorting.ts ││
+│  │ (Core Sorting Logic) ││
 │  ├─────────────────────────────────────────────────────────────┤│
-│  │                                                             ││
-│  │  useListSorting<T>()                useSortMode()           ││
-│  │  ├─ sortField (reactive)            ├─ mode: 'auto'|'custom'││
-│  │  ├─ sortOrder: 'asc'|'desc'         ├─ customOrder: string[]││
-│  │  ├─ toggleOrder()                   ├─ applyCustomOrder()   ││
-│  │  ├─ resetToDefault()                └─ saveCustomOrder()    ││
-│  │  └─ sortItems(items[])                                      ││
-│  │                                                             ││
-│  │  Pre-configured Hooks:                                      ││
-│  │  ├─ useMemberListSorting()                                  ││
-│  │  └─ useTeamListSorting()                                    ││
-│  │                                                             ││
+│  │ ││
+│  │  useListSorting<T>() useSortMode() ││
+│  │  ├─ sortField (reactive) ├─ mode: 'auto'|'custom'││
+│  │  ├─ sortOrder: 'asc'|'desc' ├─ customOrder: string[]││
+│  │  ├─ toggleOrder() ├─ applyCustomOrder() ││
+│  │  ├─ resetToDefault() └─ saveCustomOrder() ││
+│  │  └─ sortItems(items[]) ││
+│  │ ││
+│  │  Pre-configured Hooks: ││
+│  │  ├─ useMemberListSorting() ││
+│  │  └─ useTeamListSorting() ││
+│  │ ││
 │  └─────────────────────────────────────────────────────────────┘│
-│                              │                                  │
-│                              ▼                                  │
+│ │                                  │
+│ ▼                                  │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │                    UI Components                            ││
+│  │ UI Components ││
 │  ├─────────────────────────────────────────────────────────────┤│
-│  │                                                             ││
-│  │  SortDropdown.vue                                           ││
-│  │  ├─ Field selection dropdown                                ││
-│  │  ├─ Order toggle (↑/↓) within options                       ││
-│  │  ├─ Reset button when in custom mode                        ││
-│  │  └─ Visual indicator for custom mode                        ││
-│  │                                                             ││
-│  │  Drag-and-Drop (vue-draggable-plus)                         ││
-│  │  ├─ Entire card is draggable                                ││
-│  │  ├─ Auto-switches to custom mode on drag                    ││
-│  │  └─ Persists order to localStorage                          ││
-│  │                                                             ││
+│  │ ││
+│  │  SortDropdown.vue ││
+│  │  ├─ Field selection dropdown ││
+│  │  ├─ Order toggle (↑/↓) within options ││
+│  │  ├─ Reset button when in custom mode ││
+│  │  └─ Visual indicator for custom mode ││
+│  │ ││
+│  │  Drag-and-Drop (vue-draggable-plus) ││
+│  │  ├─ Entire card is draggable ││
+│  │  ├─ Auto-switches to custom mode on drag ││
+│  │  └─ Persists order to localStorage ││
+│  │ ││
 │  └─────────────────────────────────────────────────────────────┘│
-│                              │                                  │
-│                              ▼                                  │
+│ │                                  │
+│ ▼                                  │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │                    localStorage                             ││
+│  │ localStorage ││
 │  ├─────────────────────────────────────────────────────────────┤│
-│  │                                                             ││
-│  │  team-members-sort-field: "name"                            ││
-│  │  team-members-sort-order: "asc"                             ││
-│  │  team-members-sort-mode: "custom"                           ││
-│  │  team-members-custom-order: ["id1","id2","id3"]             ││
-│  │                                                             ││
+│  │ ││
+│  │  team-members-sort-field: "name" ││
+│  │  team-members-sort-order: "asc" ││
+│  │  team-members-sort-mode: "custom" ││
+│  │  team-members-custom-order: ["id1","id2","id3"] ││
+│  │ ││
 │  └─────────────────────────────────────────────────────────────┘│
-│                                                                 │
+│ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -256,29 +256,29 @@ When deleting a team member, the system performs comprehensive foreign key clean
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 MEMBER DELETION CLEANUP                         │
+│ MEMBER DELETION CLEANUP │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
+│ │
 │  DELETE member ──────────────────────────────────────────────── │
-│         │                                                       │
-│         ├─── notifications ──────────► DELETE all               │
-│         │                                                       │
-│         ├─── messageRecallLogs ──────► SET userId='deleted-user'│
-│         │                                                       │
-│         ├─── fileAttachments ────────► SET uploadedBy=null      │
-│         │                                                       │
-│         ├─── tags ───────────────────► SET createdBy='deleted'  │
-│         │                                                       │
-│         ├─── customerTags ───────────► SET assignedBy='deleted' │
-│         │                                                       │
-│         ├─── conversationTags ───────► SET assignedBy='deleted' │
-│         │                                                       │
-│         ├─── conversationTransfers ──► SET fields to null       │
-│         │                                                       │
-│         ├─── activities ─────────────► SET userId='deleted-user'│
-│         │                                                       │
-│         └─── agent_teams ────────────► DELETE (after all above) │
-│                                                                 │
+│ │                                                       │
+│ ├─── notifications ──────────► DELETE all │
+│ │                                                       │
+│ ├─── messageRecallLogs ──────► SET userId='deleted-user'│
+│ │                                                       │
+│ ├─── fileAttachments ────────► SET uploadedBy=null │
+│ │                                                       │
+│ ├─── tags ───────────────────► SET createdBy='deleted'  │
+│ │                                                       │
+│ ├─── customerTags ───────────► SET assignedBy='deleted' │
+│ │                                                       │
+│ ├─── conversationTags ───────► SET assignedBy='deleted' │
+│ │                                                       │
+│ ├─── conversationTransfers ──► SET fields to null │
+│ │                                                       │
+│ ├─── activities ─────────────► SET userId='deleted-user'│
+│ │                                                       │
+│ └─── agent_teams ────────────► DELETE (after all above) │
+│ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

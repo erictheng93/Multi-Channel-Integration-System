@@ -17,7 +17,7 @@ async function generateTestToken() {
   try {
     const token = await signJWT(payload, JWT_SECRET);
 
-    console.log('✅ 測試 Token 生成成功\n');
+    console.log(' 測試 Token 生成成功\n');
     console.log('Token 資訊:');
     console.log(`  User ID: ${payload.userId}`);
     console.log(`  Username: ${payload.username}`);
@@ -33,7 +33,7 @@ async function generateTestToken() {
 
     return token;
   } catch (error) {
-    console.error('❌ Token 生成失敗:', error);
+    console.error(' Token 生成失敗:', error);
     process.exit(1);
   }
 }

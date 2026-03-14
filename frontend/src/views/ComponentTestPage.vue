@@ -1,7 +1,7 @@
 <template>
   <div class="test-page">
     <div class="test-header">
-      <h1>🧪 Toast & ConfirmDialog 测试页面</h1>
+      <h1> Toast & ConfirmDialog 测试页面</h1>
       <p class="subtitle">
         验证统一弹窗组件功能
       </p>
@@ -10,31 +10,31 @@
     <div class="test-sections">
       <!-- Toast 测试区域 -->
       <section class="test-section">
-        <h2>📬 Toast 通知测试</h2>
+        <h2> Toast 通知测试</h2>
         <div class="test-grid">
           <button
             class="test-btn success-btn"
             @click="testSuccessToast"
           >
-            ✅ 成功 Toast
+             成功 Toast
           </button>
           <button
             class="test-btn error-btn"
             @click="testErrorToast"
           >
-            ❌ 错误 Toast
+             错误 Toast
           </button>
           <button
             class="test-btn warning-btn"
             @click="testWarningToast"
           >
-            ⚠️ 警告 Toast
+             警告 Toast
           </button>
           <button
             class="test-btn info-btn"
             @click="testInfoToast"
           >
-            ℹ️ 信息 Toast
+             信息 Toast
           </button>
         </div>
 
@@ -43,56 +43,56 @@
             class="test-btn"
             @click="testToastWithDescription"
           >
-            📝 带描述的 Toast
+             带描述的 Toast
           </button>
           <button
             class="test-btn"
             @click="testToastWithAction"
           >
-            🔘 带操作按钮的 Toast
+             带操作按钮的 Toast
           </button>
           <button
             class="test-btn"
             @click="testMultipleToasts"
           >
-            🔢 多个 Toast
+             多个 Toast
           </button>
           <button
             class="test-btn"
             @click="clearAllToasts"
           >
-            🗑️ 清除所有 Toast
+             清除所有 Toast
           </button>
         </div>
       </section>
 
       <!-- ConfirmDialog 测试区域 -->
       <section class="test-section">
-        <h2>💬 确认对话框测试</h2>
+        <h2> 确认对话框测试</h2>
         <div class="test-grid">
           <button
             class="test-btn"
             @click="testDefaultConfirm"
           >
-            ❓ 默认确认框
+             默认确认框
           </button>
           <button
             class="test-btn warning-btn"
             @click="testWarningConfirm"
           >
-            ⚠️ 警告对话框
+             警告对话框
           </button>
           <button
             class="test-btn error-btn"
             @click="testDangerConfirm"
           >
-            🚨 危险对话框
+             危险对话框
           </button>
           <button
             class="test-btn info-btn"
             @click="testInfoConfirm"
           >
-            ℹ️ 信息对话框
+             信息对话框
           </button>
         </div>
 
@@ -101,45 +101,45 @@
             class="test-btn"
             @click="testCustomButtons"
           >
-            🔤 自定义按钮文本
+             自定义按钮文本
           </button>
           <button
             class="test-btn"
             @click="testWithMessage"
           >
-            📄 带详细消息
+             带详细消息
           </button>
         </div>
       </section>
 
       <!-- 集成测试区域 -->
       <section class="test-section">
-        <h2>🔗 集成测试</h2>
+        <h2> 集成测试</h2>
         <div class="test-grid">
           <button
             class="test-btn success-btn"
             @click="testWebSocketAdminScenario"
           >
-            💾 模拟 WebSocketAdmin 保存
+             模拟 WebSocketAdmin 保存
           </button>
           <button
             class="test-btn error-btn"
             @click="testConversationHeaderScenario"
           >
-            🚫 模拟 ConversationHeader 错误
+             模拟 ConversationHeader 错误
           </button>
           <button
             class="test-btn warning-btn"
             @click="testAdvancedAssignScenario"
           >
-            👤 模拟 AdvancedAssign 取消指派
+             模拟 AdvancedAssign 取消指派
           </button>
         </div>
       </section>
 
       <!-- 测试结果 -->
       <section class="test-section">
-        <h2>📊 测试结果</h2>
+        <h2> 测试结果</h2>
         <div class="test-results">
           <div
             v-for="(result, index) in testResults"
@@ -204,37 +204,37 @@ const clearResults = () => {
 // Toast 测试函数
 const testSuccessToast = () => {
   showSuccess('操作成功！', '数据已成功保存到服务器')
-  addResult('✅ 成功 Toast 已显示', 'success')
+  addResult(' 成功 Toast 已显示', 'success')
 }
 
 const testErrorToast = () => {
   showError('操作失败', '网络连接错误，请稍后重试')
-  addResult('❌ 错误 Toast 已显示', 'error')
+  addResult(' 错误 Toast 已显示', 'error')
 }
 
 const testWarningToast = () => {
   showWarning('注意', '此操作可能影响系统性能')
-  addResult('⚠️ 警告 Toast 已显示', 'info')
+  addResult(' 警告 Toast 已显示', 'info')
 }
 
 const testInfoToast = () => {
   showInfo('提示', '系统将在 10 分钟后进行维护')
-  addResult('ℹ️ 信息 Toast 已显示', 'info')
+  addResult(' 信息 Toast 已显示', 'info')
 }
 
 const testToastWithDescription = () => {
   showSuccess('配置已更新', '新的配置将在 5 秒后生效，请注意观察系统行为变化')
-  addResult('📝 带长描述的 Toast 已显示', 'success')
+  addResult(' 带长描述的 Toast 已显示', 'success')
 }
 
 const testToastWithAction = () => {
   showInfo('新消息', '您有 3 条未读消息', {
     actionText: '查看',
     onAction: () => {
-      addResult('🔘 Toast 操作按钮被点击', 'success')
+      addResult(' Toast 操作按钮被点击', 'success')
     }
   })
-  addResult('🔘 带操作按钮的 Toast 已显示', 'info')
+  addResult(' 带操作按钮的 Toast 已显示', 'info')
 }
 
 const testMultipleToasts = () => {
@@ -242,12 +242,12 @@ const testMultipleToasts = () => {
   setTimeout(() => showInfo('第二个通知'), 300)
   setTimeout(() => showWarning('第三个通知'), 600)
   setTimeout(() => showError('第四个通知'), 900)
-  addResult('🔢 显示了 4 个连续 Toast', 'info')
+  addResult(' 显示了 4 个连续 Toast', 'info')
 }
 
 const clearAllToasts = () => {
   clearToasts()
-  addResult('🗑️ 已清除所有 Toast', 'success')
+  addResult(' 已清除所有 Toast', 'success')
 }
 
 // ConfirmDialog 测试函数
@@ -256,22 +256,22 @@ const testDefaultConfirm = async () => {
     title: '确认操作',
     message: '确定要继续吗？'
   })
-  addResult(`❓ 默认确认框 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
+  addResult(` 默认确认框 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
 }
 
 const testWarningConfirm = async () => {
   const result = await showWarningDialog('警告', '此操作无法撤销，确定继续吗？')
-  addResult(`⚠️ 警告对话框 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
+  addResult(` 警告对话框 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
 }
 
 const testDangerConfirm = async () => {
   const result = await showDanger('危险操作', '这将永久删除所有数据，无法恢复！')
-  addResult(`🚨 危险对话框 - 用户${result ? '确认' : '取消'}`, result ? 'error' : 'success')
+  addResult(` 危险对话框 - 用户${result ? '确认' : '取消'}`, result ? 'error' : 'success')
 }
 
 const testInfoConfirm = async () => {
   const result = await showInfoDialog('提示信息', '系统即将更新，是否继续？')
-  addResult(`ℹ️ 信息对话框 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
+  addResult(` 信息对话框 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
 }
 
 const testCustomButtons = async () => {
@@ -281,7 +281,7 @@ const testCustomButtons = async () => {
     confirmText: '保存',
     cancelText: '放弃'
   })
-  addResult(`🔤 自定义按钮 - 用户选择${result ? '保存' : '放弃'}`, result ? 'success' : 'info')
+  addResult(` 自定义按钮 - 用户选择${result ? '保存' : '放弃'}`, result ? 'success' : 'info')
 }
 
 const testWithMessage = async () => {
@@ -289,20 +289,20 @@ const testWithMessage = async () => {
     title: '导出数据',
     message: '将导出最近 30 天的所有数据，包括对话记录、客户信息和统计数据。文件大小约为 15MB。'
   })
-  addResult(`📄 带详细消息 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
+  addResult(` 带详细消息 - 用户${result ? '确认' : '取消'}`, result ? 'success' : 'info')
 }
 
 // 集成测试场景
 const testWebSocketAdminScenario = () => {
   // 模拟 WebSocketAdmin.vue 保存成功场景
   showSuccess('配置已保存成功！')
-  addResult('💾 WebSocketAdmin 保存场景测试完成', 'success')
+  addResult(' WebSocketAdmin 保存场景测试完成', 'success')
 }
 
 const testConversationHeaderScenario = () => {
   // 模拟 ConversationHeader.vue 错误场景
   showError('指派失敗', '指派过程中发生错误')
-  addResult('🚫 ConversationHeader 错误场景测试完成', 'error')
+  addResult(' ConversationHeader 错误场景测试完成', 'error')
 }
 
 const testAdvancedAssignScenario = async () => {
@@ -310,9 +310,9 @@ const testAdvancedAssignScenario = async () => {
   const result = await showWarningDialog('確定要取消對話指派嗎？')
   if (result) {
     showSuccess('已取消指派')
-    addResult('👤 AdvancedAssign 取消指派 - 用户确认', 'success')
+    addResult(' AdvancedAssign 取消指派 - 用户确认', 'success')
   } else {
-    addResult('👤 AdvancedAssign 取消指派 - 用户取消', 'info')
+    addResult(' AdvancedAssign 取消指派 - 用户取消', 'info')
   }
 }
 </script>

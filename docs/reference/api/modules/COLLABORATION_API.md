@@ -7,20 +7,20 @@
 
 ---
 
-## 🤝 Overview
+##  Overview
 
 The Collaboration API enables real-time collaboration features for customer support teams. It provides presence tracking, typing indicators, viewer management, and conversation state synchronization across multiple agents and channels.
 
 ### Key Features
 
-- **👀 Viewer Tracking** - See who's viewing each conversation in real-time
-- **✍️ Typing Indicators** - Show when agents are typing responses
-- **🟢 Presence Management** - Track online/offline/away/busy status
-- **🔄 State Synchronization** - Sync conversation state across clients
-- **📊 Collaboration Statistics** - Monitor team collaboration metrics
-- **🧹 Automatic Cleanup** - Remove expired states automatically
-- **🔌 Protocol Support** - WebSocket (primary) + SSE (fallback)
-- **🚀 High Performance** - Optimized for 1000+ concurrent users
+- ** Viewer Tracking** - See who's viewing each conversation in real-time
+- ** Typing Indicators** - Show when agents are typing responses
+- ** Presence Management** - Track online/offline/away/busy status
+- ** State Synchronization** - Sync conversation state across clients
+- ** Collaboration Statistics** - Monitor team collaboration metrics
+- ** Automatic Cleanup** - Remove expired states automatically
+- ** Protocol Support** - WebSocket (primary) + SSE (fallback)
+- ** High Performance** - Optimized for 1000+ concurrent users
 
 ### Use Cases
 
@@ -35,33 +35,33 @@ The Collaboration API enables real-time collaboration features for customer supp
 
 ```
 ┌──────────────────────────────────────────────────┐
-│         Frontend Clients (Browser)               │
-│   Agent A    Agent B    Supervisor    QA Team   │
+│ Frontend Clients (Browser) │
+│ Agent A Agent B Supervisor QA Team │
 └────────┬───────┬──────────┬────────────┬────────┘
-         │       │          │            │
+         │ │          │ │
          └───────┴──────────┴────────────┘
                      │
          ┌───────────▼────────────┐
-         │   Collaboration API    │
-         │   (REST + WebSocket)   │
+         │ Collaboration API │
+         │ (REST + WebSocket) │
          └───────────┬────────────┘
                      │
          ┌───────────▼────────────┐
-         │  Protocol Layer        │
+         │  Protocol Layer │
          │  • WebSocket (Primary) │
-         │  • SSE (Fallback)      │
+         │  • SSE (Fallback) │
          └───────────┬────────────┘
                      │
          ┌───────────▼────────────┐
-         │   State Storage        │
+         │ State Storage │
          │  • KV Store (Real-time)│
-         │  • Durable Objects     │
+         │  • Durable Objects │
          └────────────────────────┘
 ```
 
 ---
 
-## 🔐 Authentication & Authorization
+##  Authentication & Authorization
 
 All endpoints require authentication:
 
@@ -75,7 +75,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 1. [Get Conversation State](#get-conversation-state)
 2. [Get Conversation Viewers](#get-conversation-viewers)
@@ -92,7 +92,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-## 📊 Get Conversation State
+##  Get Conversation State
 
 ### GET /api/collaboration/conversations/:id/state
 
@@ -171,7 +171,7 @@ curl -X GET "https://api.example.com/api/collaboration/conversations/123/state?p
 
 ---
 
-## 👀 Get Conversation Viewers
+##  Get Conversation Viewers
 
 ### GET /api/collaboration/conversations/:id/viewers
 
@@ -228,7 +228,7 @@ curl -X GET "https://api.example.com/api/collaboration/conversations/123/viewers
 
 ---
 
-## 🚪 Join Conversation
+##  Join Conversation
 
 ### POST /api/collaboration/conversations/:id/join
 
@@ -318,7 +318,7 @@ curl -X POST "https://api.example.com/api/collaboration/conversations/123/join" 
 
 ---
 
-## 🚶 Leave Conversation
+##  Leave Conversation
 
 ### POST /api/collaboration/conversations/:id/leave
 
@@ -369,7 +369,7 @@ curl -X POST "https://api.example.com/api/collaboration/conversations/123/leave"
 
 ---
 
-## ✍️ Send Typing Indicator
+##  Send Typing Indicator
 
 ### POST /api/collaboration/typing
 
@@ -459,7 +459,7 @@ curl -X POST "https://api.example.com/api/collaboration/typing" \
 
 ---
 
-## 🟢 Update Presence
+##  Update Presence
 
 ### POST /api/collaboration/presence
 
@@ -507,10 +507,10 @@ Update user's online status and current activity.
 
 | Status    | Description                              | Color  |
 |-----------|------------------------------------------|--------|
-| `online`  | Available and active                     | 🟢 Green |
-| `away`    | Idle or temporarily unavailable          | 🟡 Yellow |
-| `busy`    | Do not disturb                           | 🔴 Red   |
-| `offline` | Not available                            | ⚪ Gray  |
+| `online`  | Available and active                     |  Green |
+| `away`    | Idle or temporarily unavailable          |  Yellow |
+| `busy`    | Do not disturb                           |  Red   |
+| `offline` | Not available                            |  Gray  |
 
 #### Auto-expiration
 
@@ -564,7 +564,7 @@ curl -X POST "https://api.example.com/api/collaboration/presence" \
 
 ---
 
-## 📊 Get Collaboration Statistics
+##  Get Collaboration Statistics
 
 ### GET /api/collaboration/stats
 
@@ -638,13 +638,13 @@ curl -X GET "https://api.example.com/api/collaboration/stats?protocol=websocket"
 
 ---
 
-## 🧹 Cleanup Expired States
+##  Cleanup Expired States
 
 ### POST /api/collaboration/cleanup
 
 Manually trigger cleanup of expired collaboration states.
 
-**⚠️ Admin Only Endpoint**
+** Admin Only Endpoint**
 
 #### Request
 
@@ -690,7 +690,7 @@ curl -X POST "https://api.example.com/api/collaboration/cleanup" \
 
 ---
 
-## 🏥 Health Check
+##  Health Check
 
 ### GET /api/collaboration/health
 
@@ -762,7 +762,7 @@ curl -X GET "https://api.example.com/api/collaboration/health"
 
 ---
 
-## 📡 Event Types
+##  Event Types
 
 ### Real-time Event Messages
 
@@ -840,12 +840,12 @@ Clients connected via WebSocket or SSE receive these event types:
 
 ---
 
-## 💡 Best Practices
+##  Best Practices
 
 ### 1. Join/Leave Management
 
 ```javascript
-// ✅ Good: Always join when viewing a conversation
+// Good: Always join when viewing a conversation
 useEffect(() => {
   if (conversationId) {
     joinConversation(conversationId);
@@ -860,7 +860,7 @@ useEffect(() => {
 ### 2. Typing Indicators
 
 ```javascript
-// ✅ Good: Throttle typing events
+// Good: Throttle typing events
 let typingTimeout;
 function handleTyping() {
   sendTypingStart();
@@ -882,7 +882,7 @@ setInterval(() => {
 ### 3. Presence Updates
 
 ```javascript
-// ✅ Good: Regular presence heartbeat
+// Good: Regular presence heartbeat
 setInterval(() => {
   updatePresence({
     status: 'online',
@@ -894,7 +894,7 @@ setInterval(() => {
 ### 4. Error Handling
 
 ```javascript
-// ✅ Good: Handle connection failures
+// Good: Handle connection failures
 try {
   await joinConversation(conversationId);
 } catch (error) {
@@ -908,7 +908,7 @@ try {
 ### 5. Protocol Selection
 
 ```javascript
-// ✅ Good: Use WebSocket when available
+// Good: Use WebSocket when available
 const protocol = hasWebSocketSupport() ? 'websocket' : 'sse';
 await joinConversation(conversationId, { protocol });
 ```
@@ -916,7 +916,7 @@ await joinConversation(conversationId, { protocol });
 ### 6. Memory Management
 
 ```javascript
-// ✅ Good: Clean up event listeners
+// Good: Clean up event listeners
 useEffect(() => {
   const unsubscribe = collaborationService.on('viewer_joined', handleViewerJoined);
 
@@ -928,7 +928,7 @@ useEffect(() => {
 
 ---
 
-## 📖 Examples
+##  Examples
 
 ### Example 1: Basic Conversation Viewing
 
@@ -1198,7 +1198,7 @@ function ViewersList({ conversationId }) {
 
 ---
 
-## 🚨 Error Codes
+##  Error Codes
 
 | Code                       | HTTP Status | Description                              |
 |----------------------------|-------------|------------------------------------------|
@@ -1211,7 +1211,7 @@ function ViewersList({ conversationId }) {
 
 ---
 
-## 🔗 Related Resources
+##  Related Resources
 
 - [Main API Reference](../API_REFERENCE.md)
 - [WebSocket API Documentation](./WEBSOCKET_API.md)

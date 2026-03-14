@@ -32,7 +32,7 @@ import { getCircuitBreaker as getCB } from './websocket-circuit-breaker';
 import { createMessagePersistenceService as createMPS } from './message-persistence-service';
 
 export async function initializeP1Optimizations(env: Bindings): Promise<void> {
-  console.log('🚀 [P1 Optimizations] Initializing...');
+  console.log('[P1 Optimizations] Initializing...');
 
   try {
     // 初始化 Circuit Breaker
@@ -47,17 +47,17 @@ export async function initializeP1Optimizations(env: Bindings): Promise<void> {
     circuitBreaker.setEnv(env);
     await circuitBreaker.loadStats();
 
-    console.log('✅ [P1 Optimizations] Circuit Breaker initialized');
+    console.log('[P1 Optimizations] Circuit Breaker initialized');
 
     // 初始化 Message Persistence Service
     createMPS(env);
 
-    console.log('✅ [P1 Optimizations] Message Persistence Service initialized');
+    console.log('[P1 Optimizations] Message Persistence Service initialized');
 
-    console.log('🎉 [P1 Optimizations] All P1 optimizations initialized successfully');
+    console.log('[P1 Optimizations] All P1 optimizations initialized successfully');
 
   } catch (error) {
-    console.error('❌ [P1 Optimizations] Initialization failed:', error);
+    console.error('[P1 Optimizations] Initialization failed:', error);
     throw error;
   }
 }
@@ -111,7 +111,7 @@ export async function checkP1OptimizationsHealth(env: Bindings): Promise<{
     health.messagePersistence.status = 'healthy';
 
   } catch (error) {
-    console.error('❌ [P1 Optimizations] Health check failed:', error);
+    console.error('[P1 Optimizations] Health check failed:', error);
   }
 
   return health;

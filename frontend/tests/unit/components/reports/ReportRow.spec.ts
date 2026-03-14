@@ -13,11 +13,11 @@ describe('ReportRow.vue', () => {
   // Mock helper functions
   const mockHelpers = {
     getTypeBadgeClass: vi.fn((type) => type === 'basic' ? 'basic' : 'enterprise'),
-    getReportTypeIcon: vi.fn(() => '📊'),
-    getStatusIcon: vi.fn((status) => status === 'completed' ? '✅' : '⏳'),
+    getReportTypeIcon: vi.fn(() => ''),
+    getStatusIcon: vi.fn((status) => status === 'completed' ? '' : ''),
     getStatusLabel: vi.fn((status) => status === 'completed' ? '已完成' : '待處理'),
     getStatusClass: vi.fn((status) => status),
-    getFormatIcon: vi.fn(() => '📄'),
+    getFormatIcon: vi.fn(() => ''),
     getFormatLabel: vi.fn(() => 'JSON'),
     formatRelativeTime: vi.fn(() => '5 分鐘前'),
     formatFileSize: vi.fn(() => '1.2 MB'),

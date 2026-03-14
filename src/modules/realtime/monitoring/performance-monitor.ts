@@ -85,13 +85,13 @@ export class RealtimePerformanceMonitor {
 
   // 性能閾值配置
   private thresholds = {
-    connectionFailureRate: 0.05,      // 5%
-    eventProcessingTime: 1000,        // 1秒
-    eventFailureRate: 0.02,           // 2%
-    sseErrorRate: 0.03,               // 3%
-    queueDepth: 1000,                 // 1000個事件
-    averageQueueWaitTime: 5000,       // 5秒
-    heartbeatSuccessRate: 0.95        // 95%
+    connectionFailureRate: 0.05, // 5%
+    eventProcessingTime: 1000, // 1秒
+    eventFailureRate: 0.02, // 2%
+    sseErrorRate: 0.03, // 3%
+    queueDepth: 1000, // 1000個事件
+    averageQueueWaitTime: 5000, // 5秒
+    heartbeatSuccessRate: 0.95 // 95%
   };
 
   static getInstance(): RealtimePerformanceMonitor {
@@ -112,13 +112,13 @@ export class RealtimePerformanceMonitor {
       this.thresholds = { ...this.thresholds, ...config.thresholds };
     }
 
-    console.log('📊 [Performance Monitor] 性能監控器已初始化');
+    console.log('[Performance Monitor] 性能監控器已初始化');
   }
 
   // 開始監控
   startMonitoring(intervalSeconds: number = 30): void {
     if (this.isMonitoring) {
-      console.warn('⚠️ [Performance Monitor] 監控已在運行中');
+      console.warn('[Performance Monitor] 監控已在運行中');
       return;
     }
 
@@ -130,11 +130,11 @@ export class RealtimePerformanceMonitor {
         this.checkThresholds();
         this.cleanupOldData();
       } catch (error) {
-        console.error('❌ [Performance Monitor] 監控收集錯誤:', error);
+        console.error('[Performance Monitor] 監控收集錯誤:', error);
       }
     }, intervalSeconds * 1000);
 
-    console.log(`🚀 [Performance Monitor] 開始監控 (間隔: ${intervalSeconds}秒)`);
+    console.log(`[Performance Monitor] 開始監控 (間隔: ${intervalSeconds}秒)`);
   }
 
   // 停止監控
@@ -145,7 +145,7 @@ export class RealtimePerformanceMonitor {
     }
     this.isMonitoring = false;
 
-    console.log('⏹️ [Performance Monitor] 監控已停止');
+    console.log('[Performance Monitor] 監控已停止');
   }
 
   // 收集性能指標
@@ -250,7 +250,7 @@ export class RealtimePerformanceMonitor {
       // 計算資源指標
       const resourceMetrics = {
         memoryUsage: 0, // Worker 環境中難以獲取
-        cpuUsage: 0,    // Worker 環境中難以獲取
+        cpuUsage: 0, // Worker 環境中難以獲取
         kvOperations: 0, // 需要額外追蹤
         databaseOperations: 0 // 需要額外追蹤
       };
@@ -267,7 +267,7 @@ export class RealtimePerformanceMonitor {
 
       this.metrics.push(metrics);
 
-      console.log('📈 [Performance Monitor] 指標收集完成:', {
+      console.log('[Performance Monitor] 指標收集完成:', {
         connections: connectionMetrics.totalConnections,
         events: eventMetrics.totalEventsProcessed,
         processingTime: eventMetrics.averageEventProcessingTime,
@@ -275,7 +275,7 @@ export class RealtimePerformanceMonitor {
       });
 
     } catch (error) {
-      console.error('❌ [Performance Monitor] 指標收集失敗:', error);
+      console.error('[Performance Monitor] 指標收集失敗:', error);
     }
   }
 
@@ -345,7 +345,7 @@ export class RealtimePerformanceMonitor {
     this.alerts.push(...newAlerts);
 
     if (newAlerts.length > 0) {
-      console.warn('🚨 [Performance Monitor] 發現性能警報:', {
+      console.warn('[Performance Monitor] 發現性能警報:', {
         alertCount: newAlerts.length,
         alerts: newAlerts.map(a => ({ level: a.level, metric: a.metric, message: a.message }))
       });
@@ -417,7 +417,7 @@ export class RealtimePerformanceMonitor {
     if (alert && !alert.resolved) {
       alert.resolved = true;
       alert.resolvedAt = nowISO();
-      console.log(`✅ [Performance Monitor] 警報已解決: ${alertId}`);
+      console.log(`[Performance Monitor] 警報已解決: ${alertId}`);
       return true;
     }
     return false;

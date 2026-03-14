@@ -17,7 +17,7 @@
 In `src/modules/tags/services/tag-service.ts`, the `list()` function (lines 188–202) was simplified and hardcodes zeros:
 
 ```typescript
-customerCount: 0,      // Simplified without subquery
+customerCount: 0, // Simplified without subquery
 conversationCount: 0,  // Simplified without subquery
 ```
 
@@ -105,8 +105,8 @@ const tagsResult: any[] = result.map((row: any) => ({
   isActive: Boolean(row.isActive),
   createdBy: row.createdBy,
   createdByName: null as string | null,
-  customerCount: 0,        // ← BUG: hardcoded 0
-  conversationCount: 0,    // ← BUG: hardcoded 0
+  customerCount: 0, // ← BUG: hardcoded 0
+  conversationCount: 0, // ← BUG: hardcoded 0
   createdAt: row.createdAt,
   updatedAt: row.updatedAt
 }));
@@ -284,7 +284,7 @@ tagMainHandler.get('/:id/stats', tagHandler.getUsageStats);
 // Get tag's customer list
 tagMainHandler.get('/:id/customers', tagHandler.getTagCustomers);
 
-// Get tag's conversation list   ← ADD THIS
+// Get tag's conversation list ← ADD THIS
 tagMainHandler.get('/:id/conversations', tagHandler.getTagConversations);
 ```
 
@@ -432,7 +432,7 @@ defineEmits<{
   edit: []
   delete: []
   'view-stats': []
-  'view-conversations': []   // ← ADD THIS
+  'view-conversations': [] // ← ADD THIS
 }>()
 ```
 
@@ -473,7 +473,7 @@ defineEmits<{
   'edit-tag': [tag: Tag]
   'delete-tag': [tag: Tag]
   'view-stats': [tag: Tag]
-  'view-conversations': [tag: Tag]   // ← ADD THIS
+  'view-conversations': [tag: Tag] // ← ADD THIS
 }>()
 ```
 
@@ -488,7 +488,7 @@ In the `TagCard` usage:
   @edit="$emit('edit-tag', tag)"
   @delete="$emit('delete-tag', tag)"
   @view-stats="$emit('view-stats', tag)"
-  @view-conversations="$emit('view-conversations', tag)"   <!-- ← ADD THIS -->
+  @view-conversations="$emit('view-conversations', tag)" <!-- ← ADD THIS -->
 />
 ```
 
@@ -1053,7 +1053,7 @@ import {
   TagFormModal,
   DeleteConfirmModal,
   BulkDeleteModal,
-  TagConversationsModal     // ← ADD
+  TagConversationsModal // ← ADD
 } from '@/components/customerTags'
 ```
 
@@ -1080,7 +1080,7 @@ In the `<TagsList>` component, add the event handler:
   @edit-tag="openEditModal"
   @delete-tag="openDeleteModal"
   @view-stats="openStatsModal"
-  @view-conversations="openConversationsModal"   <!-- ← ADD -->
+  @view-conversations="openConversationsModal" <!-- ← ADD -->
 />
 ```
 

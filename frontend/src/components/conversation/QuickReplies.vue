@@ -27,8 +27,8 @@
  * @example
  * ```vue
  * <QuickReplies
- *   :replies="quickReplies"
- *   @select="handleQuickReply"
+ * :replies="quickReplies"
+ * @select="handleQuickReply"
  * />
  * ```
  */

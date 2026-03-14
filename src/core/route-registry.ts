@@ -38,7 +38,7 @@ export class RouteRegistry {
    * 註冊路由組
    */
   registerGroup(group: RouteGroup): void {
-    console.log(`📚 Registering route group: ${group.name}`);
+    console.log(` Registering route group: ${group.name}`);
 
     this.groups.set(group.name, group);
 
@@ -47,7 +47,7 @@ export class RouteRegistry {
       if (module.enabled) {
         this.registerModule(group, module);
       } else {
-        console.log(`⏸️ Skipping disabled module: ${module.name}`);
+        console.log(` Skipping disabled module: ${module.name}`);
       }
     }
   }
@@ -63,7 +63,7 @@ export class RouteRegistry {
       if (module.dependencies) {
         for (const dep of module.dependencies) {
           if (!this.registeredRoutes.has(dep)) {
-            console.warn(`⚠️ Dependency '${dep}' not found for module '${module.name}'`);
+            console.warn(` Dependency '${dep}' not found for module '${module.name}'`);
           }
         }
       }
@@ -74,7 +74,7 @@ export class RouteRegistry {
       // 記錄註冊狀態
       this.registeredRoutes.set(module.name, module);
 
-      console.log(`✅ Registered: ${module.name} -> ${fullPath}`);
+      console.log(` Registered: ${module.name} -> ${fullPath}`);
 
       // 註冊健康檢查端點（如果提供）
       if (module.healthCheck) {
@@ -89,7 +89,7 @@ export class RouteRegistry {
       }
 
     } catch (error) {
-      console.error(`❌ Failed to register ${module.name}:`, error);
+      console.error(` Failed to register ${module.name}:`, error);
       throw new Error(`Route registration failed: ${module.name}`);
     }
   }
@@ -221,7 +221,7 @@ export class RouteRegistry {
       });
     });
 
-    console.log('📋 Route registry health endpoint registered at /api/system/routes');
+    console.log(' Route registry health endpoint registered at /api/system/routes');
   }
 
   /**
@@ -234,7 +234,7 @@ export class RouteRegistry {
     }
 
     module.enabled = enabled;
-    console.log(`🔄 Module ${moduleName} ${enabled ? 'enabled' : 'disabled'}`);
+    console.log(` Module ${moduleName} ${enabled ? 'enabled' : 'disabled'}`);
     return true;
   }
 

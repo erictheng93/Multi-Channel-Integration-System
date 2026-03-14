@@ -191,7 +191,7 @@ async function analyzeTrend(current: QualityMetrics, previous: QualityMetrics | 
     if (passRateDiff > 2) passRateTrend = 'improving';
     else if (passRateDiff < -2) {
       passRateTrend = 'declining';
-      alerts.push(`⚠️ Pass rate declined by ${Math.abs(passRateDiff).toFixed(1)}%`);
+      alerts.push(` Pass rate declined by ${Math.abs(passRateDiff).toFixed(1)}%`);
     }
 
     // Analyze performance trend
@@ -199,17 +199,17 @@ async function analyzeTrend(current: QualityMetrics, previous: QualityMetrics | 
     if (durationDiff < -5) performanceTrend = 'improving';
     else if (durationDiff > 10) {
       performanceTrend = 'declining';
-      alerts.push(`⚠️ Test duration increased by ${durationDiff.toFixed(1)}s`);
+      alerts.push(` Test duration increased by ${durationDiff.toFixed(1)}s`);
     }
   }
 
   // Check thresholds
   if (current.passRate < 90) {
-    alerts.push(`⚠️ Pass rate is ${current.passRate.toFixed(1)}% (target: 90%+)`);
+    alerts.push(` Pass rate is ${current.passRate.toFixed(1)}% (target: 90%+)`);
   }
 
   if (current.mockFactoryUsage < 50) {
-    alerts.push(`⚠️ MockFactory usage is ${current.mockFactoryUsage.toFixed(1)}% (target: 50%+)`);
+    alerts.push(` MockFactory usage is ${current.mockFactoryUsage.toFixed(1)}% (target: 50%+)`);
   }
 
   return {
@@ -225,18 +225,18 @@ async function analyzeTrend(current: QualityMetrics, previous: QualityMetrics | 
 }
 
 async function generateMonitoringReport(trend: QualityTrend): Promise<void> {
-  let report = `# 📊 Test Quality Monitoring Dashboard\n\n`;
+  let report = `#  Test Quality Monitoring Dashboard\n\n`;
   report += `**Last Updated:** ${trend.current.timestamp}\n\n`;
 
   report += `## Current Metrics\n\n`;
   report += `| Metric | Value | Status |\n`;
   report += `|--------|-------|--------|\n`;
-  report += `| Pass Rate | ${trend.current.passRate.toFixed(1)}% | ${trend.current.passRate >= 90 ? '✅' : '⚠️'} |\n`;
+  report += `| Pass Rate | ${trend.current.passRate.toFixed(1)}% | ${trend.current.passRate >= 90 ? '' : ''} |\n`;
   report += `| Total Tests | ${trend.current.totalTests} | - |\n`;
-  report += `| Passed | ${trend.current.passed} | ✅ |\n`;
-  report += `| Failed | ${trend.current.failed} | ${trend.current.failed === 0 ? '✅' : '❌'} |\n`;
+  report += `| Passed | ${trend.current.passed} |  |\n`;
+  report += `| Failed | ${trend.current.failed} | ${trend.current.failed === 0 ? '' : ''} |\n`;
   report += `| Duration | ${trend.current.duration.toFixed(1)}s | - |\n`;
-  report += `| MockFactory Usage | ${trend.current.mockFactoryUsage.toFixed(1)}% | ${trend.current.mockFactoryUsage >= 50 ? '✅' : '⚠️'} |\n\n`;
+  report += `| MockFactory Usage | ${trend.current.mockFactoryUsage.toFixed(1)}% | ${trend.current.mockFactoryUsage >= 50 ? '' : ''} |\n\n`;
 
   if (trend.previous) {
     report += `## Trends\n\n`;
@@ -251,7 +251,7 @@ async function generateMonitoringReport(trend: QualityTrend): Promise<void> {
   }
 
   if (trend.alerts.length > 0) {
-    report += `## ⚠️ Alerts\n\n`;
+    report += `##  Alerts\n\n`;
     trend.alerts.forEach(alert => {
       report += `${alert}\n`;
     });
@@ -277,14 +277,14 @@ async function generateMonitoringReport(trend: QualityTrend): Promise<void> {
 
 function getTrendEmoji(trend: string): string {
   switch (trend) {
-    case 'improving': return '📈';
-    case 'declining': return '📉';
-    default: return '➡️';
+    case 'improving': return '';
+    case 'declining': return '';
+    default: return '';
   }
 }
 
 async function main() {
-  console.log('\n📊 Continuous Test Quality Monitoring\n' + '='.repeat(60) + '\n');
+  console.log('\n Continuous Test Quality Monitoring\n' + '='.repeat(60) + '\n');
 
   console.log('Collecting current metrics...\n');
   const current = await collectMetrics();
@@ -302,20 +302,20 @@ async function main() {
   await generateMonitoringReport(trend);
 
   // Display results
-  console.log(`\n📈 Current Status:\n`);
-  console.log(`   Pass Rate: ${current.passRate.toFixed(1)}% ${current.passRate >= 90 ? '✅' : '⚠️'}`);
-  console.log(`   Total Tests: ${current.totalTests}`);
-  console.log(`   Duration: ${current.duration.toFixed(1)}s`);
-  console.log(`   MockFactory Usage: ${current.mockFactoryUsage.toFixed(1)}%\n`);
+  console.log(`\n Current Status:\n`);
+  console.log(` Pass Rate: ${current.passRate.toFixed(1)}% ${current.passRate >= 90 ? '' : ''}`);
+  console.log(` Total Tests: ${current.totalTests}`);
+  console.log(` Duration: ${current.duration.toFixed(1)}s`);
+  console.log(` MockFactory Usage: ${current.mockFactoryUsage.toFixed(1)}%\n`);
 
   if (trend.alerts.length > 0) {
-    console.log(`⚠️ Alerts (${trend.alerts.length}):\n`);
-    trend.alerts.forEach(alert => console.log(`   ${alert}`));
+    console.log(` Alerts (${trend.alerts.length}):\n`);
+    trend.alerts.forEach(alert => console.log(` ${alert}`));
     console.log('');
   }
 
-  console.log('✅ Monitoring complete!\n');
-  console.log('📄 Dashboard saved to: docs/TEST_MONITORING_DASHBOARD.md\n');
+  console.log(' Monitoring complete!\n');
+  console.log(' Dashboard saved to: docs/TEST_MONITORING_DASHBOARD.md\n');
 }
 
 main().catch(console.error);

@@ -27,7 +27,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
   const userId = event.source.userId;
   const message = event.message;
 
-  console.log('💬 [LINE Message] Processing message from user:', userId.substring(0, 10) + '...');
+  console.log('[LINE Message] Processing message from user:', userId.substring(0, 10) + '...');
 
   if (!message) {
     log.warn('LINE Message: No message in LINE event');
@@ -35,26 +35,26 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
   }
 
   try {
-    // 🔧 智能类型修正: 检测并修正 LINE API 的类型误判
+    // 智能类型修正: 检测并修正 LINE API 的类型误判
     // 问题: LINE API 可能将某些文件错误识别为 video/audio 类型
     // 解决: 如果消息有 fileName 字段,强制修正为 'file' 类型
     let correctedMessageType = message.type;
 
     if (message.fileName && message.type !== 'file') {
-      console.warn(`⚠️ [LINE Webhook] Message type mismatch detected!`, {
+      console.warn(`[LINE Webhook] Message type mismatch detected!`, {
         originalType: message.type,
         fileName: message.fileName,
         fileSize: message.fileSize,
         messageId: message.id,
         userId: userId.substring(0, 10) + '...'
       });
-      console.warn(`🔧 [LINE Webhook] Auto-correcting message type from "${message.type}" to "file"`);
+      console.warn(`[LINE Webhook] Auto-correcting message type from "${message.type}" to "file"`);
       correctedMessageType = 'file';
     }
 
-    // 📊 诊断日志: 记录所有文件相关消息的详细信息
+    // 诊断日志: 记录所有文件相关消息的详细信息
     if (message.fileName || message.type === 'file' || correctedMessageType === 'file') {
-      console.log('📎 [LINE Webhook] File message details:', {
+      console.log('[LINE Webhook] File message details:', {
         messageId: message.id,
         originalType: message.type,
         correctedType: correctedMessageType,
@@ -203,7 +203,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       return;
     }
 
-    console.log('✅ [LINE Webhook] User found/created successfully:', {
+    console.log('[LINE Webhook] User found/created successfully:', {
       userId: user.id,
       platformUserId: user.platformUserId?.substring(0, 10) + '...',
       displayName: user.displayName
@@ -227,7 +227,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       }
     }
 
-    // 🔧 Fix: 查詢 customer_team_assignments 取得 QR Code 團隊指派
+    // Fix: 查詢 customer_team_assignments 取得 QR Code 團隊指派
     // 解決 processLineMessage 建立對話時 assignedTeamId 永遠為 null 的 bug
     let assignedTeamId: number | null = null;
     try {
@@ -241,7 +241,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         .get();
       if (assignment) {
         assignedTeamId = assignment.teamId;
-        console.log(`🎯 [LINE Message] Found team assignment from QR code: teamId=${assignedTeamId}`);
+        console.log(`[LINE Message] Found team assignment from QR code: teamId=${assignedTeamId}`);
       }
     } catch (assignmentError) {
       log.warn('LINE Message: Failed to query customer_team_assignments', {
@@ -256,7 +256,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       assignedTeamId
     });
 
-    // 🚨 冪等性檢查：檢查是否已存在相同的 platformMessageId
+    // 冪等性檢查：檢查是否已存在相同的 platformMessageId
     if (await isDuplicateMessage(env, message.id, 'line')) {
       return; // 直接返回，不重複處理
     }
@@ -274,7 +274,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       'line'
     );
 
-    // 🔧 FIX: Process media BEFORE broadcasting so file_attachments is available
+    // FIX: Process media BEFORE broadcasting so file_attachments is available
     // This ensures WebSocket clients receive complete message data including file info
     let fileAttachmentData: any[] = [];
 
@@ -288,7 +288,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       );
     }
 
-    // 🚀 Phase B4: Unified Broadcast for Conversation List & Detail Updates
+    // Phase B4: Unified Broadcast for Conversation List & Detail Updates
     // Uses WebSocketBroadcastService.broadcastNewMessage() for both:
     // 1. CustomerConversationDO - conversation detail page real-time updates
     // 2. MessageBroadcaster global - conversation list page lastMessage updates
@@ -305,15 +305,15 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
           platform: 'line',
           timestamp: nowMs(),
           deliveryStatus: 'delivered',
-          // 🆕 Include file_attachments for immediate Flex Card display
+          // Include file_attachments for immediate Flex Card display
           file_attachments: fileAttachmentData.length > 0 ? fileAttachmentData : undefined
         },
         source: 'webhook',
-        // 🔒 Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
+        // Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
         teamId: conversation!.assignedTeamId || undefined
       });
 
-      console.log(`✅ [LINE Webhook] Unified broadcast completed`, {
+      console.log(`[LINE Webhook] Unified broadcast completed`, {
         conversationId: conversation!.id,
         conversationBroadcast: broadcastResult.conversationBroadcast,
         globalBroadcast: broadcastResult.globalBroadcast
@@ -346,7 +346,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       });
 
       if (activity) {
-        console.log('✅ [LINE Webhook] Activity recorded');
+        console.log('[LINE Webhook] Activity recorded');
 
         // Note: WebSocket real-time events are handled by websocket-broadcast-service
       } else {
@@ -356,11 +356,11 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       log.warn('LINE Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
     }
 
-    // 🔔 通知觸發：根據對話指派狀態發送適當的通知 (僅支援團隊指派)
+    // 通知觸發：根據對話指派狀態發送適當的通知 (僅支援團隊指派)
     try {
       // 情況 1: 已指派給團隊
       if (conversation!.assignedTeamId) {
-        console.log('📬 [LINE Webhook] Triggering notification for assigned team:', {
+        console.log('[LINE Webhook] Triggering notification for assigned team:', {
           conversationId: conversation!.id,
           assignedTeamId: conversation!.assignedTeamId,
           scenario: 'team_assignment'
@@ -380,7 +380,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       }
       // 情況 2: 未指派（沒有團隊）
       else {
-        console.log('📬 [LINE Webhook] Triggering notification for unassigned conversation:', {
+        console.log('[LINE Webhook] Triggering notification for unassigned conversation:', {
           conversationId: conversation!.id,
           scenario: 'unassigned'
         });
@@ -398,7 +398,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         });
       }
 
-      console.log('✅ [LINE Webhook] Notification triggered successfully');
+      console.log('[LINE Webhook] Notification triggered successfully');
     } catch (notificationError) {
       log.warn('LINE Webhook: Failed to trigger notification', {
         error: notificationError instanceof Error ? notificationError.message : String(notificationError),
@@ -408,10 +408,10 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       // 不要讓通知失敗影響主流程
     }
 
-    // ✅ 媒體已在廣播前處理完成 (Lines 622-666)
+    // 媒體已在廣播前處理完成 (Lines 622-666)
     // 不需要第二次處理，避免重複插入 file_attachments
 
-    // 🤖 Auto-Reply Engine: evaluate incoming message against rules
+    // Auto-Reply Engine: evaluate incoming message against rules
     if (conversation?.assignedTeamId) {
       try {
         const { evaluate } = await import('@modules/auto-reply/services/auto-reply-engine');
@@ -428,7 +428,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
         );
 
         if (autoReplyResult.matched) {
-          console.log('🤖 [LINE Webhook] Auto-reply triggered', {
+          console.log('[LINE Webhook] Auto-reply triggered', {
             ruleId: autoReplyResult.ruleId,
             ruleName: autoReplyResult.ruleName,
             replyMethod: autoReplyResult.replyMethod,
@@ -454,13 +454,13 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
 }
 
 /**
- * 🆕 處理 LINE Follow 事件 (QR Code 加好友)
+ * 處理 LINE Follow 事件 (QR Code 加好友)
  * 當用戶通過 QR Code 掃描加入時，自動指派到對應團隊
  */
 export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
   const userId = event.source.userId;
 
-  console.log('👤 [LINE Follow] Processing follow event:', {
+  console.log('[LINE Follow] Processing follow event:', {
     userId: userId?.substring(0, 10) + '...',
     timestamp: event.timestamp,
     replyToken: event.replyToken ? 'Present' : 'None'
@@ -519,14 +519,14 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 
     qrCodeToken = followParam || linkNonce || liffParam || null;
 
-    console.log('🔍 [LINE Follow] Checking for QR code tracking:', {
+    console.log('[LINE Follow] Checking for QR code tracking:', {
       followParam: followParam ? 'Present' : 'None',
       linkNonce: linkNonce ? 'Present' : 'None',
       liffParam: liffParam ? 'Present' : 'None',
       qrCodeToken: qrCodeToken ? qrCodeToken.substring(0, 10) + '...' : 'None'
     });
 
-    // 🔧 優化：並行執行 Step 4, 5, 6 的團隊查找（從串行改為並行，減少 40-100ms 延遲）
+    // 優化：並行執行 Step 4, 5, 6 的團隊查找（從串行改為並行，減少 40-100ms 延遲）
     const teamFindStartTime = nowMs();
 
     // 定義並行查找任務
@@ -594,18 +594,18 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     // 注意：已移除舊的 recent_qr fallback (qrCodes 表)，統一使用新 LIFF 系統
     if (assignmentResult) {
       assignedTeamId = assignmentResult.teamId;
-      console.log(`🎯 [LINE Follow] 從 customer_team_assignments 找到團隊分配: ${assignedTeamId}`, {
+      console.log(`[LINE Follow] 從 customer_team_assignments 找到團隊分配: ${assignedTeamId}`, {
         assignmentId: assignmentResult.assignmentId,
         source: assignmentResult.assignmentSource,
         assignedAt: assignmentResult.assignedAt
       });
     } else if (qrTokenResult) {
       assignedTeamId = qrTokenResult.teamId;
-      console.log(`✅ [LINE Follow] QR Code 追蹤成功，指派到團隊: ${assignedTeamId}`);
+      console.log(`[LINE Follow] QR Code 追蹤成功，指派到團隊: ${assignedTeamId}`);
     }
 
     const teamFindDuration = Date.now() - teamFindStartTime;
-    console.log(`⚡ [LINE Follow] 團隊查找完成 (並行優化)`, {
+    console.log(`[LINE Follow] 團隊查找完成 (並行優化)`, {
       duration: `${teamFindDuration}ms`,
       assignedTeamId,
       source: assignmentResult ? 'assignment' : qrTokenResult ? 'qr_token' : 'none'
@@ -615,7 +615,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 
     // Step 7: 創建或更新客戶記錄
     if (!existingCustomer) {
-      console.log('🆕 [LINE Follow] Creating new customer...');
+      console.log('[LINE Follow] Creating new customer...');
       await drizzleDb
         .insert(customers)
         .values({
@@ -642,14 +642,14 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         ))
         .get();
 
-      console.log('✅ [LINE Follow] Customer created:', {
+      console.log('[LINE Follow] Customer created:', {
         customerId: existingCustomer?.id,
         displayName,
         teamId: assignedTeamId
       });
     } else {
       // 更新現有客戶的 metadata
-      console.log('📝 [LINE Follow] Updating existing customer...');
+      console.log('[LINE Follow] Updating existing customer...');
       const existingMetadata = existingCustomer.metadata
         ? JSON.parse(existingCustomer.metadata as string)
         : {};
@@ -698,7 +698,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             updatedAt: timestamp
           });
 
-        console.log('✅ [LINE Follow] Conversation created with team assignment:', {
+        console.log('[LINE Follow] Conversation created with team assignment:', {
           conversationId,
           customerId: existingCustomer.id,
           teamId: assignedTeamId
@@ -713,14 +713,14 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           })
           .where(eq(conversations.id, existingConversation.id));
 
-        console.log('✅ [LINE Follow] Updated existing conversation with team:', {
+        console.log('[LINE Follow] Updated existing conversation with team:', {
           conversationId: existingConversation.id,
           teamId: assignedTeamId
         });
       }
     }
 
-    // 🔧 優化：統一查詢團隊資訊（避免 Step 10 和 Step 11 重複查詢）
+    // 優化：統一查詢團隊資訊（避免 Step 10 和 Step 11 重複查詢）
     let teamInfo: { id: number; name: string } | null = null;
     if (assignedTeamId) {
       try {
@@ -739,7 +739,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       }
     }
 
-    // 🆕 Step 8.5: 廣播自動指派事件到 WebSocket（實時更新前端 UI）
+    // Step 8.5: 廣播自動指派事件到 WebSocket（實時更新前端 UI）
     if (assignedTeamId && existingCustomer) {
       // 確定對話 ID（新創建的或已存在的）
       let broadcastConversationId: string | null = null;
@@ -766,7 +766,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           const { WebSocketBroadcastService } = await import('@/services/websocket-broadcast-service');
           const broadcastService = new WebSocketBroadcastService(env);
 
-          // 🆕 使用 broadcastConversationTransferred 以便前端 Reconciliation
+          // 使用 broadcastConversationTransferred 以便前端 Reconciliation
           // 這會觸發前端的 'assigned' action，替換之前的 pending 對話
           await broadcastService.broadcastConversationTransferred({
             conversationId: broadcastConversationId,
@@ -789,7 +789,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
                 id: teamInfo.id,
                 name: teamInfo.name
               } : undefined,
-              // 🆕 Reconciliation 標記：讓前端知道這是 Webhook 確認的真實對話
+              // Reconciliation 標記：讓前端知道這是 Webhook 確認的真實對話
               _liffMetadata: {
                 isPending: false,
                 lineUserId: userId, // 用於匹配和替換 pending 對話
@@ -803,7 +803,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             reason: 'QR Code Follow - Auto Assignment'
           });
 
-          console.log('✅ [LINE Follow] WebSocket broadcast sent for auto-assignment (with reconciliation):', {
+          console.log('[LINE Follow] WebSocket broadcast sent for auto-assignment (with reconciliation):', {
             conversationId: broadcastConversationId,
             teamId: assignedTeamId,
             teamName: teamInfo?.name,
@@ -839,21 +839,21 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           timestamp
         }
       });
-      console.log('✅ [LINE Follow] Activity logged');
+      console.log('[LINE Follow] Activity logged');
     } catch (activityError) {
       log.warn('LINE Follow: Failed to log activity', {
         error: activityError instanceof Error ? activityError.message : String(activityError)
       });
     }
 
-    console.log('✅ [LINE Follow] Follow event processed successfully:', {
+    console.log('[LINE Follow] Follow event processed successfully:', {
       userId: userId.substring(0, 10) + '...',
       customerId: existingCustomer?.id,
       teamId: assignedTeamId,
       source: qrCodeToken ? 'qr_code' : 'direct'
     });
 
-    // 🆕 Step 10: 觸發新客戶加入通知（使用已查詢的 teamInfo，避免重複查詢）
+    // Step 10: 觸發新客戶加入通知（使用已查詢的 teamInfo，避免重複查詢）
     try {
       const { triggerCustomerFollowedNotification } = await import('@/utils/notification-trigger');
 
@@ -863,11 +863,11 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         platform: 'LINE',
         source: qrCodeToken ? 'qr_code' : 'direct',
         teamId: assignedTeamId || undefined,
-        teamName: teamInfo?.name,  // 🔧 優化：使用已查詢的 teamInfo
+        teamName: teamInfo?.name,  //  優化：使用已查詢的 teamInfo
         conversationId: existingConversation?.id
       });
 
-      console.log('✅ [LINE Follow] Customer followed notification triggered');
+      console.log('[LINE Follow] Customer followed notification triggered');
     } catch (notificationError) {
       log.warn('LINE Follow: Failed to trigger customer followed notification', {
         error: notificationError instanceof Error ? notificationError.message : String(notificationError)
@@ -875,7 +875,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       // 不要讓通知失敗影響主流程
     }
 
-    // 🤖 Step 11: Auto-Reply Welcome Message (replaces hardcoded welcome)
+    // Step 11: Auto-Reply Welcome Message (replaces hardcoded welcome)
     if (event.replyToken && assignedTeamId && existingCustomer) {
       try {
         const { evaluateWelcome } = await import('@modules/auto-reply/services/auto-reply-engine');
@@ -905,7 +905,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         );
 
         if (welcomeResult.matched) {
-          console.log('🤖 [LINE Follow] Auto-reply welcome rule triggered', {
+          console.log('[LINE Follow] Auto-reply welcome rule triggered', {
             ruleId: welcomeResult.ruleId,
             ruleName: welcomeResult.ruleName,
             replyMethod: welcomeResult.replyMethod,
@@ -918,7 +918,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           const { sendLineReply, createTextMessage } = await import('@/utils/line');
           await sendLineReply(env.LINE_CHANNEL_ACCESS_TOKEN, event.replyToken, [createTextMessage(welcomeMessage)]);
 
-          console.log('✅ [LINE Follow] Default welcome message sent (no auto-reply rule)', {
+          console.log('[LINE Follow] Default welcome message sent (no auto-reply rule)', {
             userId: userId.substring(0, 10) + '...',
             teamId: assignedTeamId,
           });
@@ -941,13 +941,13 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 }
 
 /**
- * 🆕 處理 LINE Unfollow 事件
+ * 處理 LINE Unfollow 事件
  * 當用戶取消關注官方帳號時，更新好友狀態為 'blocked'
  */
 export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) {
   const userId = event.source.userId;
 
-  console.log('👋 [LINE Unfollow] Processing unfollow event:', {
+  console.log('[LINE Unfollow] Processing unfollow event:', {
     userId: userId?.substring(0, 10) + '...',
     timestamp: event.timestamp
   });
@@ -972,7 +972,7 @@ export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) 
       .get();
 
     if (!existingCustomer) {
-      console.log('⚠️ [LINE Unfollow] Customer not found for unfollowed user:', userId.substring(0, 10) + '...');
+      console.log('[LINE Unfollow] Customer not found for unfollowed user:', userId.substring(0, 10) + '...');
       return;
     }
 
@@ -984,7 +984,7 @@ export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) 
       })
       .where(eq(customers.id, existingCustomer.id));
 
-    console.log('✅ [LINE Unfollow] Customer unfollow recorded:', {
+    console.log('[LINE Unfollow] Customer unfollow recorded:', {
       customerId: existingCustomer.id,
       displayName: existingCustomer.displayName
     });
@@ -1006,7 +1006,7 @@ export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) 
           timestamp
         }
       });
-      console.log('✅ [LINE Unfollow] Activity logged');
+      console.log('[LINE Unfollow] Activity logged');
     } catch (activityError) {
       log.warn('LINE Unfollow: Failed to log activity', {
         error: activityError instanceof Error ? activityError.message : String(activityError)

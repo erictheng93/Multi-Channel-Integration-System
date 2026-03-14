@@ -491,7 +491,7 @@ export class NotificationHandler {
     }
   };
 
-  // 📢 系統公告廣播端點（簡化版）
+  // 系統公告廣播端點（簡化版）
   broadcast = async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const payload = c.get('jwtPayload');
@@ -568,6 +568,6 @@ export function createNotificationHandlerMethods(database: D1Database, kvNamespa
     notifyNewMessage: handler.notifyNewMessage,
     notifyConversationAssigned: handler.notifyConversationAssigned,
     notifySystem: handler.notifySystem,
-    broadcast: handler.broadcast  // 📢 系統公告廣播
+    broadcast: handler.broadcast  //  系統公告廣播
   };
 }

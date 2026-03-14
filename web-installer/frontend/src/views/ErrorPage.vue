@@ -5,7 +5,7 @@
         <!-- Error Icon -->
         <div class="error-icon">
           <div class="error-circle">
-            <span>✗</span>
+            <span></span>
           </div>
         </div>
 
@@ -41,7 +41,7 @@
 
         <!-- Rollback Info -->
         <div class="rollback-info">
-          <h3>🔄 Automatic Rollback</h3>
+          <h3> Automatic Rollback</h3>
           <p>
             Don't worry! Our system automatically cleans up any resources that were created
             before the error occurred. Your Cloudflare account remains clean.
@@ -50,28 +50,28 @@
 
         <!-- Common Issues -->
         <div class="common-issues">
-          <h3>💡 Common Issues & Solutions</h3>
+          <h3> Common Issues & Solutions</h3>
           <div class="issue-list">
             <div class="issue-item">
-              <div class="issue-title">❌ Invalid OAuth Token</div>
+              <div class="issue-title"> Invalid OAuth Token</div>
               <div class="issue-solution">
                 Solution: Try logging out and authenticating again with Cloudflare
               </div>
             </div>
             <div class="issue-item">
-              <div class="issue-title">❌ Insufficient Permissions</div>
+              <div class="issue-title"> Insufficient Permissions</div>
               <div class="issue-solution">
                 Solution: Make sure your Cloudflare account has permissions to create Workers, D1, KV, R2, and Pages
               </div>
             </div>
             <div class="issue-item">
-              <div class="issue-title">❌ Resource Quota Exceeded</div>
+              <div class="issue-title"> Resource Quota Exceeded</div>
               <div class="issue-solution">
                 Solution: Check your Cloudflare plan limits or upgrade to a paid plan
               </div>
             </div>
             <div class="issue-item">
-              <div class="issue-title">❌ Domain Not Found</div>
+              <div class="issue-title"> Domain Not Found</div>
               <div class="issue-solution">
                 Solution: Make sure the custom domain you specified exists in your Cloudflare account
               </div>
@@ -81,17 +81,17 @@
 
         <!-- Deployment Logs (if available) -->
         <div v-if="deploymentStore.logs.length > 0" class="logs-section">
-          <h3>📋 Deployment Logs</h3>
+          <h3> Deployment Logs</h3>
           <LogConsole :logs="deploymentStore.logs" />
         </div>
 
         <!-- Actions -->
         <div class="actions-section">
           <button @click="tryAgain" class="btn btn-primary btn-lg">
-            🔄 Try Again
+             Try Again
           </button>
           <button @click="getSupport" class="btn btn-secondary">
-            💬 Get Support
+             Get Support
           </button>
           <button @click="goHome" class="btn btn-secondary">
             ← Back to Home

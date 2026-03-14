@@ -99,9 +99,9 @@ function resetMockState(overrides: Partial<MockState> = {}) {
 function createChainableDrizzleMock() {
   /**
    * Tracks select queries sequentially across a single handler call:
-   *   1st → customer existence check  (.where().limit())
-   *   2nd → valid tags check           (.where() awaited directly)
-   *   3rd → existing assignments check  (.where() awaited directly)
+   * 1st → customer existence check  (.where().limit())
+   * 2nd → valid tags check (.where() awaited directly)
+   * 3rd → existing assignments check  (.where() awaited directly)
    */
   let selectCallCount = 0;
 
@@ -122,8 +122,8 @@ function createChainableDrizzleMock() {
 
           // Return a Promise that also has .limit() for optional chaining.
           // Handler uses BOTH patterns:
-          //   await db.select().from(t).where(cond).limit(1)   → customer check
-          //   await db.select().from(t).where(cond)            → tags / assignments
+          // await db.select().from(t).where(cond).limit(1) → customer check
+          // await db.select().from(t).where(cond) → tags / assignments
           const promise = Promise.resolve(data);
           (promise as any).limit = vi.fn(() => Promise.resolve(data));
           return promise;

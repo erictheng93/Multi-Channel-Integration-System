@@ -98,9 +98,9 @@ export class WebSocketAnalyticsService {
       // 檢查是否需要觸發告警
       await this.checkAlertConditions(error);
 
-      console.log(`📊 [Analytics] Error recorded: ${error.errorCode} - ${error.errorType}`);
+      console.log(`[Analytics] Error recorded: ${error.errorCode} - ${error.errorType}`);
     } catch (err) {
-      console.error('❌ [Analytics] Failed to record error:', err);
+      console.error('[Analytics] Failed to record error:', err);
     }
   }
 
@@ -115,9 +115,9 @@ export class WebSocketAnalyticsService {
       // 更新用戶連接質量統計
       await this.updateUserQualityStats(metrics);
 
-      console.log(`📈 [Analytics] Connection quality recorded for user: ${metrics.userId}`);
+      console.log(`[Analytics] Connection quality recorded for user: ${metrics.userId}`);
     } catch (err) {
-      console.error('❌ [Analytics] Failed to record connection quality:', err);
+      console.error('[Analytics] Failed to record connection quality:', err);
     }
   }
 
@@ -180,7 +180,7 @@ export class WebSocketAnalyticsService {
 
       return trendData;
     } catch (err) {
-      console.error('❌ [Analytics] Failed to generate trend analysis:', err);
+      console.error('[Analytics] Failed to generate trend analysis:', err);
       throw err;
     }
   }
@@ -209,7 +209,7 @@ export class WebSocketAnalyticsService {
       await this.checkErrorPatterns(recentErrors);
 
     } catch (err) {
-      console.error('❌ [Analytics] Failed to check alert conditions:', err);
+      console.error('[Analytics] Failed to check alert conditions:', err);
     }
   }
 
@@ -238,7 +238,7 @@ export class WebSocketAnalyticsService {
 
   async triggerAlert(level: AlertLevel, title: string, description: string): Promise<void> {
     try {
-      // 🆕 Phase 2: 整合智能告警通知系統
+      // Phase 2: 整合智能告警通知系統
       const { createAlertNotificationService } = await import('../services/alert-notification-service');
       const alertService = createAlertNotificationService(this.env);
 
@@ -254,13 +254,13 @@ export class WebSocketAnalyticsService {
         expirationTtl: 30 * 24 * 60 * 60 // 保存 30 天
       });
 
-      console.log(`🚨 [Analytics] ALERT [${level.toUpperCase()}]: ${title} - ${description} (ID: ${alertRecord.id})`);
+      console.log(`[Analytics] ALERT [${level.toUpperCase()}]: ${title} - ${description} (ID: ${alertRecord.id})`);
 
     } catch (err) {
-      console.error('❌ [Analytics] Failed to trigger alert:', err);
+      console.error('[Analytics] Failed to trigger alert:', err);
 
       // 降級處理：如果告警服務失敗，至少記錄到控制台
-      console.log(`🚨 [Analytics] FALLBACK ALERT [${level.toUpperCase()}]: ${title} - ${description}`);
+      console.log(`[Analytics] FALLBACK ALERT [${level.toUpperCase()}]: ${title} - ${description}`);
     }
   }
 
@@ -292,7 +292,7 @@ export class WebSocketAnalyticsService {
         topErrors
       };
     } catch (err) {
-      console.error('❌ [Analytics] Failed to get dashboard data:', err);
+      console.error('[Analytics] Failed to get dashboard data:', err);
       throw err;
     }
   }
@@ -336,7 +336,7 @@ export class WebSocketAnalyticsService {
         .sort((a, b) => b.count - a.count)
         .slice(0, limit);
     } catch (err) {
-      console.error('❌ [Analytics] Failed to get top errors:', err);
+      console.error('[Analytics] Failed to get top errors:', err);
       return [];
     }
   }
@@ -351,9 +351,9 @@ export class WebSocketAnalyticsService {
     try {
       // 模擬實現 - 在實際環境中需要實現 KV 範圍查詢
       // 由於 Cloudflare KV 不支持範圍查詢，可能需要使用 D1 數據庫
-      console.log(`🔍 [Analytics] Querying errors from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
+      console.log(`[Analytics] Querying errors from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
     } catch (err) {
-      console.error('❌ [Analytics] Error querying time range:', err);
+      console.error('[Analytics] Error querying time range:', err);
     }
 
     return errors;
@@ -363,9 +363,9 @@ export class WebSocketAnalyticsService {
     const metrics: ConnectionQualityMetrics[] = [];
 
     try {
-      console.log(`🔍 [Analytics] Querying quality metrics from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
+      console.log(`[Analytics] Querying quality metrics from ${new Date(startTime).toISOString()} to ${new Date(endTime).toISOString()}`);
     } catch (err) {
-      console.error('❌ [Analytics] Error querying quality metrics:', err);
+      console.error('[Analytics] Error querying quality metrics:', err);
     }
 
     return metrics;
@@ -390,7 +390,7 @@ export class WebSocketAnalyticsService {
         expirationTtl: 48 * 60 * 60 // 保存 48 小時
       });
     } catch (err) {
-      console.error('❌ [Analytics] Failed to update hourly stats:', err);
+      console.error('[Analytics] Failed to update hourly stats:', err);
     }
   }
 
@@ -419,7 +419,7 @@ export class WebSocketAnalyticsService {
         expirationTtl: 7 * 24 * 60 * 60 // 保存 7 天
       });
     } catch (err) {
-      console.error('❌ [Analytics] Failed to update user quality stats:', err);
+      console.error('[Analytics] Failed to update user quality stats:', err);
     }
   }
 
@@ -429,7 +429,7 @@ export class WebSocketAnalyticsService {
       const config = await this.env.CACHE?.get(configKey);
       return config ? JSON.parse(config) : this.DEFAULT_ALERT_CONFIG;
     } catch (err) {
-      console.warn('⚠️ [Analytics] Failed to get alert config, using defaults');
+      console.warn('[Analytics] Failed to get alert config, using defaults');
       return this.DEFAULT_ALERT_CONFIG;
     }
   }
@@ -438,10 +438,10 @@ export class WebSocketAnalyticsService {
     // 獲取活躍告警 - 簡化實現
     try {
       const alerts: any[] = [];
-      console.log('🔍 [Analytics] Querying active alerts');
+      console.log('[Analytics] Querying active alerts');
       return alerts;
     } catch (err) {
-      console.error('❌ [Analytics] Failed to get active alerts:', err);
+      console.error('[Analytics] Failed to get active alerts:', err);
       return [];
     }
   }
@@ -450,7 +450,7 @@ export class WebSocketAnalyticsService {
   private async _sendEmergencyNotification(alert: any): Promise<void> {
     try {
       // 這裡可以整合外部通知系統 (Slack, Teams, Email 等)
-      console.log(`🚨🚨 [Analytics] EMERGENCY NOTIFICATION: ${alert.title}`);
+      console.log(`[Analytics] EMERGENCY NOTIFICATION: ${alert.title}`);
       console.log(`Description: ${alert.description}`);
       console.log(`Timestamp: ${new Date(alert.timestamp).toISOString()}`);
 
@@ -461,7 +461,7 @@ export class WebSocketAnalyticsService {
       // - SMS 通知
 
     } catch (err) {
-      console.error('❌ [Analytics] Failed to send emergency notification:', err);
+      console.error('[Analytics] Failed to send emergency notification:', err);
     }
   }
   */

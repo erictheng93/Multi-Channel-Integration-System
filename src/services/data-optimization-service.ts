@@ -129,7 +129,7 @@ export class DataOptimizationService {
       return null;
 
     } catch (error) {
-      console.warn('⚠️ [Data Optimization] Optimized get failed, fallback to direct:', error);
+      console.warn('[Data Optimization] Optimized get failed, fallback to direct:', error);
       return fallbackFn ? await fallbackFn() : null;
     }
   }
@@ -158,7 +158,7 @@ export class DataOptimizationService {
       });
 
     } catch (error) {
-      console.error('❌ [Data Optimization] Optimized set failed:', error);
+      console.error('[Data Optimization] Optimized set failed:', error);
       throw error;
     }
   }
@@ -200,7 +200,7 @@ export class DataOptimizationService {
       return results;
 
     } catch (error) {
-      console.error('❌ [Data Optimization] Batch operation failed:', error);
+      console.error('[Data Optimization] Batch operation failed:', error);
       throw error;
     }
   }
@@ -242,7 +242,7 @@ export class DataOptimizationService {
 
         results.push(result);
       } catch (error) {
-        console.error(`❌ [Data Optimization] Batch operation failed for ${op.key}:`, error);
+        console.error(`[Data Optimization] Batch operation failed for ${op.key}:`, error);
         results.push(null);
       }
     }
@@ -293,10 +293,10 @@ export class DataOptimizationService {
         { expirationTtl: 24 * 60 * 60 } // 24 小時
       );
 
-      console.log(`📇 [Data Optimization] Index created: ${indexName}.${field} (${indexData.size} keys)`);
+      console.log(`[Data Optimization] Index created: ${indexName}.${field} (${indexData.size} keys)`);
 
     } catch (error) {
-      console.error('❌ [Data Optimization] Create index failed:', error);
+      console.error('[Data Optimization] Create index failed:', error);
       throw error;
     }
   }
@@ -317,7 +317,7 @@ export class DataOptimizationService {
       const indexData = await this.env.CACHE?.get(indexKey);
 
       if (!indexData) {
-        console.warn(`⚠️ [Data Optimization] Index not found: ${indexName}.${field}`);
+        console.warn(`[Data Optimization] Index not found: ${indexName}.${field}`);
         return [];
       }
 
@@ -325,7 +325,7 @@ export class DataOptimizationService {
       return index[value] || [];
 
     } catch (error) {
-      console.error('❌ [Data Optimization] Query by index failed:', error);
+      console.error('[Data Optimization] Query by index failed:', error);
       return [];
     }
   }
@@ -356,7 +356,7 @@ export class DataOptimizationService {
       };
 
     } catch (error) {
-      console.warn('⚠️ [Data Optimization] Compression failed, using original:', error);
+      console.warn('[Data Optimization] Compression failed, using original:', error);
       return {
         data,
         originalSize: data.length,
@@ -371,7 +371,7 @@ export class DataOptimizationService {
     try {
       return await this.simpleLZDecompress(compressedData);
     } catch (error) {
-      console.warn('⚠️ [Data Optimization] Decompression failed, returning as-is:', error);
+      console.warn('[Data Optimization] Decompression failed, returning as-is:', error);
       return compressedData;
     }
   }
@@ -477,7 +477,7 @@ export class DataOptimizationService {
       });
 
     } catch (error) {
-      console.warn('⚠️ [Data Optimization] Update stats failed:', error);
+      console.warn('[Data Optimization] Update stats failed:', error);
     }
   }
 
@@ -488,7 +488,7 @@ export class DataOptimizationService {
         return JSON.parse(statsData);
       }
     } catch (error) {
-      console.warn('⚠️ [Data Optimization] Get stats failed:', error);
+      console.warn('[Data Optimization] Get stats failed:', error);
     }
 
     return {
@@ -504,14 +504,14 @@ export class DataOptimizationService {
   // 初始化基準統計數據
   async initializeBaselineStats(): Promise<void> {
     try {
-      console.log('🚀 [Data Optimization] Initializing baseline statistics...');
+      console.log('[Data Optimization] Initializing baseline statistics...');
 
       // 執行自動基準測試來建立統計數據
       await this.runBaselineTests();
 
-      console.log('✅ [Data Optimization] Baseline statistics initialized successfully');
+      console.log('[Data Optimization] Baseline statistics initialized successfully');
     } catch (error) {
-      console.error('❌ [Data Optimization] Failed to initialize baseline:', error);
+      console.error('[Data Optimization] Failed to initialize baseline:', error);
     }
   }
 
@@ -560,7 +560,7 @@ export class DataOptimizationService {
       const configData = await this.env.CACHE?.get(this.CONFIG_KEY);
       return configData ? JSON.parse(configData) : this.DEFAULT_CONFIG;
     } catch (error) {
-      console.warn('⚠️ [Data Optimization] Failed to get config, using defaults:', error);
+      console.warn('[Data Optimization] Failed to get config, using defaults:', error);
       return this.DEFAULT_CONFIG;
     }
   }
@@ -574,9 +574,9 @@ export class DataOptimizationService {
         expirationTtl: 365 * 24 * 60 * 60 // 1 year
       });
 
-      console.log('⚙️ [Data Optimization] Configuration updated');
+      console.log('[Data Optimization] Configuration updated');
     } catch (error) {
-      console.error('❌ [Data Optimization] Failed to update config:', error);
+      console.error('[Data Optimization] Failed to update config:', error);
       throw error;
     }
   }
@@ -610,11 +610,11 @@ export class DataOptimizationService {
         expirationTtl: 7 * 24 * 60 * 60 // 7 days
       });
 
-      console.log(`🧹 [Data Optimization] Cleanup completed: ${deletedEntries} entries deleted`);
+      console.log(`[Data Optimization] Cleanup completed: ${deletedEntries} entries deleted`);
       return { deletedEntries, freedSpace };
 
     } catch (error) {
-      console.error('❌ [Data Optimization] Cleanup failed:', error);
+      console.error('[Data Optimization] Cleanup failed:', error);
       throw error;
     }
   }

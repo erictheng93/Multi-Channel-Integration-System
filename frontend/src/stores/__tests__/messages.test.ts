@@ -146,7 +146,7 @@ describe('Messages Store', () => {
 
       expect(store.loading).toBe(true)
 
-      // ✅ 推進 fake timers 以完成 setTimeout
+      // 推進 fake timers 以完成 setTimeout
       await vi.advanceTimersByTimeAsync(1000)
       await loadPromise
       expect(store.loading).toBe(false)
@@ -173,7 +173,7 @@ describe('Messages Store', () => {
       const store = useMessagesStore()
       await store.fetchMessages('conv-1')
 
-      // ✅ 只檢查錯誤存在,不檢查具體訊息格式
+      // 只檢查錯誤存在,不檢查具體訊息格式
       expect(store.error).toBeTruthy()
     })
 
@@ -265,7 +265,7 @@ describe('Messages Store', () => {
       expect(store.optimisticMessages.length).toBeGreaterThan(0)
       expect(store.sendingMessage).toBe(true)
 
-      // ✅ 推進 fake timers 以完成 setTimeout
+      // 推進 fake timers 以完成 setTimeout
       await vi.advanceTimersByTimeAsync(1000)
       await sendPromise
 
@@ -290,7 +290,7 @@ describe('Messages Store', () => {
       await store.sendMessage(newMessage)
 
       expect(store.error).toBeTruthy()
-      // ✅ NEW BEHAVIOR: Failed message is kept and marked as failed, not removed
+      // NEW BEHAVIOR: Failed message is kept and marked as failed, not removed
       expect(store.optimisticMessages.length).toBe(1)
       expect(store.optimisticMessages[0]?.metadata?.failed).toBe(true)
       expect(store.optimisticMessages[0]?.metadata?.error).toBe('發送失敗')
@@ -313,7 +313,7 @@ describe('Messages Store', () => {
 
       expect(store.sendingMessage).toBe(true)
 
-      // ✅ 推進 fake timers 以完成 setTimeout
+      // 推進 fake timers 以完成 setTimeout
       await vi.advanceTimersByTimeAsync(100)
       await sendPromise
       expect(store.sendingMessage).toBe(false)
@@ -548,7 +548,7 @@ describe('Messages Store', () => {
         } as any
       ]
 
-      // ✅ Wait for watcher to update sortedMessages
+      // Wait for watcher to update sortedMessages
       await vi.waitFor(() => {
         const sorted = store.allMessages
         expect(sorted.length).toBe(3)
@@ -586,7 +586,7 @@ describe('Messages Store', () => {
         } as any
       ]
 
-      // ✅ Wait for watcher to merge and sort
+      // Wait for watcher to merge and sort
       await vi.waitFor(() => {
         const all = store.allMessages
         expect(all).toHaveLength(2)

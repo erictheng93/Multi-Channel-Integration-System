@@ -15,7 +15,7 @@ export type ChannelType = 'database' | 'websocket' | 'email' | 'push' | 'webhook
 export interface ChannelConfig {
   retryAttempts: number;
   retryDelay: number; // milliseconds
-  timeout: number;    // milliseconds
+  timeout: number; // milliseconds
   batchSize?: number; // for bulk operations
   [key: string]: any; // channel-specific configurations
 }

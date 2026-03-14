@@ -26,11 +26,11 @@ import { useAuthStore } from './auth'
  * WebSocket 连接状态
  */
 export type WebSocketConnectionState =
-  | 'disconnected'   // 未连接
-  | 'connecting'     // 连接中
-  | 'connected'      // 已连接
-  | 'reconnecting'   // 重连中
-  | 'error'          // 错误状态
+  | 'disconnected' // 未连接
+  | 'connecting' // 连接中
+  | 'connected' // 已连接
+  | 'reconnecting' // 重连中
+  | 'error' // 错误状态
 
 /**
  * 事件处理器类型
@@ -70,10 +70,10 @@ interface WebSocketStats {
  * 重连配置
  */
 const RECONNECT_CONFIG = {
-  maxAttempts: 3,           // 最大重连次数
-  baseDelay: 5000,          // 基础延迟 (5 秒)
+  maxAttempts: 3, // 最大重连次数
+  baseDelay: 5000, // 基础延迟 (5 秒)
   heartbeatInterval: 30000, // 心跳间隔 (30 秒)
-  heartbeatTimeout: 35000   // 心跳超时 (35 秒)
+  heartbeatTimeout: 35000 // 心跳超时 (35 秒)
 }
 
 // ==================== Store ====================
@@ -147,7 +147,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
    */
   const setConnectionState = (state: WebSocketConnectionState) => {
     if (connectionState.value !== state) {
-      console.log(`🔄 [WebSocketStore] State: ${connectionState.value} → ${state}`)
+      console.log(`[WebSocketStore] State: ${connectionState.value} → ${state}`)
       connectionState.value = state
 
       // 重置错误状态
@@ -163,7 +163,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * 处理 WebSocket 消息
    */
   const handleMessage = (message: WebSocketMessage) => {
-    console.log('📥 [WebSocketStore] Received message:', message.type)
+    console.log('[WebSocketStore] Received message:', message.type)
 
     stats.value.messagesReceived++
 
@@ -183,13 +183,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
       return
     }
 
-    console.log(`🔀 [WebSocketStore] Routing to channels:`, channels)
+    console.log(`[WebSocketStore] Routing to channels:`, channels)
 
     channels.forEach(channel => {
       const subscriberIds = channelSubscribers.value.get(channel)
 
       if (subscriberIds && subscriberIds.size > 0) {
-        console.log(`📢 [WebSocketStore] Notifying ${subscriberIds.size} subscribers on channel: ${channel}`)
+        console.log(`[WebSocketStore] Notifying ${subscriberIds.size} subscribers on channel: ${channel}`)
 
         subscriberIds.forEach(subId => {
           const subscription = subscriptions.value.get(subId)
@@ -197,7 +197,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             try {
               subscription.handler(message)
             } catch (error) {
-              console.error(`❌ [WebSocketStore] Error in subscription handler (${subId}):`, error)
+              console.error(`[WebSocketStore] Error in subscription handler (${subId}):`, error)
             }
           }
         })
@@ -234,7 +234,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * 处理 WebSocket 错误
    */
   const handleError = (error: Error) => {
-    console.error('❌ [WebSocketStore] WebSocket error:', error)
+    console.error('[WebSocketStore] WebSocket error:', error)
     lastError.value = error
     setConnectionState('error')
 
@@ -243,13 +243,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
       reconnectAttempts.value++
       const delay = RECONNECT_CONFIG.baseDelay * reconnectAttempts.value
 
-      console.log(`🔄 [WebSocketStore] Reconnecting in ${delay}ms (${reconnectAttempts.value}/${RECONNECT_CONFIG.maxAttempts})...`)
+      console.log(`[WebSocketStore] Reconnecting in ${delay}ms (${reconnectAttempts.value}/${RECONNECT_CONFIG.maxAttempts})...`)
 
       reconnectTimer = setTimeout(() => {
         reconnect()
       }, delay)
     } else {
-      console.error(`❌ [WebSocketStore] Max reconnect attempts (${RECONNECT_CONFIG.maxAttempts}) reached`)
+      console.error(`[WebSocketStore] Max reconnect attempts (${RECONNECT_CONFIG.maxAttempts}) reached`)
     }
   }
 
@@ -289,17 +289,17 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const authStore = useAuthStore()
 
     if (!authStore.token) {
-      console.warn('⚠️ [WebSocketStore] No auth token, cannot connect')
+      console.warn('[WebSocketStore] No auth token, cannot connect')
       return
     }
 
     if (isConnected.value || isConnecting.value) {
-      console.log('ℹ️ [WebSocketStore] Already connected or connecting')
+      console.log('[WebSocketStore] Already connected or connecting')
       return
     }
 
     try {
-      console.log('🚀 [WebSocketStore] Connecting to WebSocket...')
+      console.log('[WebSocketStore] Connecting to WebSocket...')
       setConnectionState('connecting')
 
       // 创建 WebSocket 客户端
@@ -325,10 +325,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
       // 连接
       await wsClient.connect()
 
-      console.log('✅ [WebSocketStore] Connected successfully')
+      console.log('[WebSocketStore] Connected successfully')
 
     } catch (error) {
-      console.error('❌ [WebSocketStore] Connection failed:', error)
+      console.error('[WebSocketStore] Connection failed:', error)
       handleError(error instanceof Error ? error : new Error(String(error)))
     }
   }
@@ -337,7 +337,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * 断开连接
    */
   const disconnect = (): void => {
-    console.log('🛑 [WebSocketStore] Disconnecting...')
+    console.log('[WebSocketStore] Disconnecting...')
 
     // 清理重连定时器
     if (reconnectTimer) {
@@ -360,7 +360,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * 重连
    */
   const reconnect = async (): Promise<void> => {
-    console.log('🔄 [WebSocketStore] Reconnecting...')
+    console.log('[WebSocketStore] Reconnecting...')
 
     disconnect()
 
@@ -394,8 +394,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // 更新统计
     stats.value.subscriptionCount = subscriptions.value.size
 
-    console.log(`📝 [WebSocketStore] Subscribed to "${channel}" (id: ${id.substring(0, 8)}...)`)
-    console.log(`📊 [WebSocketStore] Active subscriptions: ${subscriptions.value.size}, Channels: ${channelSubscribers.value.size}`)
+    console.log(`[WebSocketStore] Subscribed to "${channel}" (id: ${id.substring(0, 8)}...)`)
+    console.log(`[WebSocketStore] Active subscriptions: ${subscriptions.value.size}, Channels: ${channelSubscribers.value.size}`)
 
     return id
   }
@@ -407,7 +407,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const subscription = subscriptions.value.get(id)
 
     if (!subscription) {
-      console.warn(`⚠️ [WebSocketStore] Subscription not found: ${id}`)
+      console.warn(`[WebSocketStore] Subscription not found: ${id}`)
       return
     }
 
@@ -428,8 +428,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
     // 更新统计
     stats.value.subscriptionCount = subscriptions.value.size
 
-    console.log(`🗑️ [WebSocketStore] Unsubscribed from "${subscription.channel}" (id: ${id.substring(0, 8)}...)`)
-    console.log(`📊 [WebSocketStore] Active subscriptions: ${subscriptions.value.size}, Channels: ${channelSubscribers.value.size}`)
+    console.log(`[WebSocketStore] Unsubscribed from "${subscription.channel}" (id: ${id.substring(0, 8)}...)`)
+    console.log(`[WebSocketStore] Active subscriptions: ${subscriptions.value.size}, Channels: ${channelSubscribers.value.size}`)
   }
 
   /**
@@ -437,27 +437,27 @@ export const useWebSocketStore = defineStore('websocket', () => {
    */
   const send = (message: WebSocketMessage): void => {
     if (!wsClient || !isConnected.value) {
-      console.warn('⚠️ [WebSocketStore] Cannot send message: not connected')
+      console.warn('[WebSocketStore] Cannot send message: not connected')
       return
     }
 
     wsClient.send(message)
     stats.value.messagesSent++
 
-    console.log(`📤 [WebSocketStore] Sent message: ${message.type}`)
+    console.log(`[WebSocketStore] Sent message: ${message.type}`)
   }
 
   /**
    * 清理所有订阅（用于测试）
    */
   const clearAllSubscriptions = (): void => {
-    console.log('🧹 [WebSocketStore] Clearing all subscriptions...')
+    console.log('[WebSocketStore] Clearing all subscriptions...')
 
     subscriptions.value.clear()
     channelSubscribers.value.clear()
     stats.value.subscriptionCount = 0
 
-    console.log('✅ [WebSocketStore] All subscriptions cleared')
+    console.log('[WebSocketStore] All subscriptions cleared')
   }
 
   // ==================== Return ====================

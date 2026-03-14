@@ -7,10 +7,10 @@ import { defineConfig, devices } from '@playwright/test'
  * which proxies /api requests to the remote production backend.
  *
  * Usage:
- *   npx playwright test                    # Run all tests
- *   npx playwright test --ui               # Interactive UI mode
- *   npx playwright test tests/e2e/auth     # Run auth tests only
- *   npx playwright test --headed           # Run with browser visible
+ * npx playwright test # Run all tests
+ * npx playwright test --ui # Interactive UI mode
+ * npx playwright test tests/e2e/auth # Run auth tests only
+ * npx playwright test --headed # Run with browser visible
  */
 export default defineConfig({
   testDir: './tests/e2e/playwright',

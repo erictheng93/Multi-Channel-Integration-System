@@ -66,11 +66,11 @@ export interface MessageAttachmentProps {
  * ```typescript
  * const props = ref({ message, attachmentUrl: '...' })
  * const {
- *   attachmentUrl,
- *   attachmentName,
- *   fileAttachments,
- *   downloadFile,
- *   downloadAttachment
+ * attachmentUrl,
+ * attachmentName,
+ * fileAttachments,
+ * downloadFile,
+ * downloadAttachment
  * } = useMessageAttachment(props)
  * ```
  */
@@ -354,7 +354,7 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
     attachment: FileAttachment,
     onPreview?: (_message: Message) => void
   ) => {
-    console.log('🖼️ [useMessageAttachment] Attachment preview requested:', attachment)
+    console.log('[useMessageAttachment] Attachment preview requested:', attachment)
     if (onPreview) {
       onPreview(props.value.message)
     }

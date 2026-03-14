@@ -11,11 +11,11 @@
  * - Layer 3: Handlers / Services (使用本文件提供的函數)
  *
  * 優勢:
- * - ✅ 類型安全 (TypeScript)
- * - ✅ 默認值支持
- * - ✅ 環境自動檢測
- * - ✅ 集中管理
- * - ✅ Cloudflare Workers 兼容
+ * -  類型安全 (TypeScript)
+ * -  默認值支持
+ * -  環境自動檢測
+ * -  集中管理
+ * -  Cloudflare Workers 兼容
  *
  * @module config/runtime
  */
@@ -360,8 +360,8 @@ export function getRuntimeConfig(env: WorkerEnv): RuntimeConfig {
  * @example
  * ```ts
  * app.get('/api/config', (c) => {
- *   const config = getConfigFromContext(c);
- *   return c.json(config);
+ * const config = getConfigFromContext(c);
+ * return c.json(config);
  * });
  * ```
  */
@@ -441,7 +441,7 @@ export function logRuntimeConfig(env: WorkerEnv): void {
   }
 
   const config = getRuntimeConfig(env);
-  console.log('🔧 [Runtime Config] Current Configuration:');
+  console.log('[Runtime Config] Current Configuration:');
   console.log('  Environment:', config.env);
   console.log('  Backend URL:', config.backendUrl);
   console.log('  Frontend URL:', config.frontendUrl);

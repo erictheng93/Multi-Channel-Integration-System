@@ -13,15 +13,15 @@
 This document analyzes the **5 major technical risks** introduced by the Single WebSocket architecture migration and provides **production-ready fallback measures** and **comprehensive monitoring solutions** for rapid debugging.
 
 **Risk Assessment**:
-- 🔴 **Highest Risk (P0)**: Single Point of Failure
-- 🟠 **High Risk (P0)**: Message Loss during disconnections
-- 🟠 **High Risk (P1)**: Memory leaks from subscription management
-- 🟡 **Medium Risk (P1)**: Concurrent subscription conflicts
-- 🟡 **Medium Risk (P1)**: Error propagation across modules
+-  **Highest Risk (P0)**: Single Point of Failure
+-  **High Risk (P0)**: Message Loss during disconnections
+-  **High Risk (P1)**: Memory leaks from subscription management
+-  **Medium Risk (P1)**: Concurrent subscription conflicts
+-  **Medium Risk (P1)**: Error propagation across modules
 
 ---
 
-## 🔴 Risk #1: Single Point of Failure (Highest Priority)
+##  Risk #1: Single Point of Failure (Highest Priority)
 
 ### **Problem**
 One WebSocket connection serves the entire application. If it fails:
@@ -67,7 +67,7 @@ class CircuitBreaker {
       }
       // Try half-open state
       this.state.state = 'HALF_OPEN'
-      console.log('🔄 Circuit Breaker: Entering HALF_OPEN state')
+      console.log(' Circuit Breaker: Entering HALF_OPEN state')
     }
 
     try {
@@ -88,7 +88,7 @@ class CircuitBreaker {
       lastFailureTime: 0,
       nextAttemptTime: 0
     }
-    console.log('✅ Circuit Breaker: Reset to CLOSED state')
+    console.log(' Circuit Breaker: Reset to CLOSED state')
   }
 
   private onFailure(): void {
@@ -98,7 +98,7 @@ class CircuitBreaker {
     if (this.state.failureCount >= this.FAILURE_THRESHOLD) {
       this.state.state = 'OPEN'
       this.state.nextAttemptTime = Date.now() + this.TIMEOUT
-      console.error(`🔴 Circuit Breaker: OPEN - too many failures (${this.state.failureCount})`)
+      console.error(` Circuit Breaker: OPEN - too many failures (${this.state.failureCount})`)
     }
   }
 
@@ -125,9 +125,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
 ```
 
 **Benefits**:
-- ✅ Prevents cascade failures with automatic trip
-- ✅ Self-healing with half-open state
-- ✅ Configurable thresholds for different environments
+-  Prevents cascade failures with automatic trip
+-  Self-healing with half-open state
+-  Configurable thresholds for different environments
 
 ---
 
@@ -147,7 +147,7 @@ export class HttpPollingFallback {
   start(conversationId: string): void {
     if (this.pollingInterval) return
 
-    console.log('🔄 HTTP Polling Fallback: Starting for conversation', conversationId)
+    console.log(' HTTP Polling Fallback: Starting for conversation', conversationId)
 
     this.pollingInterval = window.setInterval(async () => {
       try {
@@ -170,7 +170,7 @@ export class HttpPollingFallback {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval)
       this.pollingInterval = null
-      console.log('✅ HTTP Polling Fallback: Stopped')
+      console.log(' HTTP Polling Fallback: Stopped')
     }
   }
 }
@@ -197,13 +197,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
 ```
 
 **Benefits**:
-- ✅ Degraded but functional experience during WebSocket outages
-- ✅ Automatic switch back to WebSocket when available
-- ✅ Configurable polling interval for different use cases
+-  Degraded but functional experience during WebSocket outages
+-  Automatic switch back to WebSocket when available
+-  Configurable polling interval for different use cases
 
 ---
 
-## 🟠 Risk #2: Message Loss (High Priority)
+##  Risk #2: Message Loss (High Priority)
 
 ### **Problem**
 Messages sent during disconnection or network issues may be lost:
@@ -248,7 +248,7 @@ export class MessageQueue {
     }
 
     this.queue.push(queuedMessage)
-    console.log(`📥 Message Queue: Added message ${queuedMessage.id}`)
+    console.log(` Message Queue: Added message ${queuedMessage.id}`)
 
     return queuedMessage.id
   }
@@ -259,21 +259,21 @@ export class MessageQueue {
   async processQueue(sendFn: (msg: WebSocketMessage) => Promise<void>): Promise<void> {
     const pendingMessages = this.queue.filter(m => m.status === 'pending')
 
-    console.log(`🔄 Message Queue: Processing ${pendingMessages.length} pending messages`)
+    console.log(` Message Queue: Processing ${pendingMessages.length} pending messages`)
 
     for (const queuedMsg of pendingMessages) {
       try {
         await sendFn(queuedMsg.message)
         queuedMsg.status = 'sent'
-        console.log(`✅ Message Queue: Sent ${queuedMsg.id}`)
+        console.log(` Message Queue: Sent ${queuedMsg.id}`)
       } catch (error) {
         queuedMsg.attempts++
 
         if (queuedMsg.attempts >= this.MAX_ATTEMPTS) {
           queuedMsg.status = 'failed'
-          console.error(`❌ Message Queue: Failed ${queuedMsg.id} after ${queuedMsg.attempts} attempts`)
+          console.error(` Message Queue: Failed ${queuedMsg.id} after ${queuedMsg.attempts} attempts`)
         } else {
-          console.warn(`⚠️ Message Queue: Retry ${queuedMsg.id} (attempt ${queuedMsg.attempts})`)
+          console.warn(` Message Queue: Retry ${queuedMsg.id} (attempt ${queuedMsg.attempts})`)
           // Retry with exponential backoff
           await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY * queuedMsg.attempts))
         }
@@ -305,7 +305,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (!isConnected.value) {
       // Queue message when disconnected
       const messageId = messageQueue.enqueue(message)
-      console.log(`📥 Queued message ${messageId} - WebSocket disconnected`)
+      console.log(` Queued message ${messageId} - WebSocket disconnected`)
       return
     }
 
@@ -355,7 +355,7 @@ export class MessageAckService {
 
     // Set ACK timeout
     const timeoutId = window.setTimeout(() => {
-      console.error(`❌ ACK timeout for message ${messageId}`)
+      console.error(` ACK timeout for message ${messageId}`)
       this.pendingAcks.delete(messageId)
       onTimeout(message)
     }, this.ACK_TIMEOUT)
@@ -383,7 +383,7 @@ export class MessageAckService {
   handleAck(ackId: string): void {
     const pending = this.pendingAcks.get(ackId)
     if (!pending) {
-      console.warn(`⚠️ Received ACK for unknown message: ${ackId}`)
+      console.warn(` Received ACK for unknown message: ${ackId}`)
       return
     }
 
@@ -392,7 +392,7 @@ export class MessageAckService {
     this.pendingAcks.delete(ackId)
 
     const latency = Date.now() - pending.timestamp
-    console.log(`✅ ACK received for ${ackId} (latency: ${latency}ms)`)
+    console.log(` ACK received for ${ackId} (latency: ${latency}ms)`)
   }
 
   /**
@@ -408,13 +408,13 @@ export class MessageAckService {
 ```
 
 **Benefits**:
-- ✅ Guarantees message delivery with timeout detection
-- ✅ Automatic retry on ACK timeout
-- ✅ Latency tracking for performance monitoring
+-  Guarantees message delivery with timeout detection
+-  Automatic retry on ACK timeout
+-  Latency tracking for performance monitoring
 
 ---
 
-## 🟠 Risk #3: Memory Leaks (High Priority)
+##  Risk #3: Memory Leaks (High Priority)
 
 ### **Problem**
 Improper subscription management can cause memory leaks:
@@ -461,8 +461,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
       componentName
     })
 
-    console.log(`➕ WebSocket: Subscribed to "${channel}" (${id}) from ${componentName || 'unknown'}`)
-    console.log(`📊 WebSocket: Total subscriptions: ${subscriptions.size}`)
+    console.log(` WebSocket: Subscribed to "${channel}" (${id}) from ${componentName || 'unknown'}`)
+    console.log(` WebSocket: Total subscriptions: ${subscriptions.size}`)
 
     return id
   }
@@ -470,13 +470,13 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const unsubscribe = (id: SubscriptionId): void => {
     const subscription = subscriptions.get(id)
     if (!subscription) {
-      console.warn(`⚠️ WebSocket: Attempted to unsubscribe unknown subscription: ${id}`)
+      console.warn(` WebSocket: Attempted to unsubscribe unknown subscription: ${id}`)
       return
     }
 
     subscriptions.delete(id)
-    console.log(`➖ WebSocket: Unsubscribed from "${subscription.channel}" (${id})`)
-    console.log(`📊 WebSocket: Total subscriptions: ${subscriptions.size}`)
+    console.log(` WebSocket: Unsubscribed from "${subscription.channel}" (${id})`)
+    console.log(` WebSocket: Total subscriptions: ${subscriptions.size}`)
   }
 
   /**
@@ -503,7 +503,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const leaked = detectLeakedSubscriptions()
 
     leaked.forEach((sub) => {
-      console.warn(`🧹 WebSocket: Cleaning up leaked subscription ${sub.id} from ${sub.componentName}`)
+      console.warn(` WebSocket: Cleaning up leaked subscription ${sub.id} from ${sub.componentName}`)
       subscriptions.delete(sub.id)
     })
 
@@ -539,7 +539,7 @@ export class MemoryLeakDetector {
    */
   takeSnapshot(): void {
     if (!performance.memory) {
-      console.warn('⚠️ Performance.memory not available in this browser')
+      console.warn(' Performance.memory not available in this browser')
       return
     }
 
@@ -580,7 +580,7 @@ export class MemoryLeakDetector {
     const hasLeak = growthRate > 5
 
     if (hasLeak) {
-      console.error(`🚨 Memory Leak Detected: Growing at ${growthRate.toFixed(2)} MB/min`)
+      console.error(` Memory Leak Detected: Growing at ${growthRate.toFixed(2)} MB/min`)
     }
 
     return { hasLeak, trend: growthRate }
@@ -613,19 +613,19 @@ setInterval(() => {
     // Trigger cleanup
     const wsStore = useWebSocketStore()
     const cleaned = wsStore.cleanupLeakedSubscriptions()
-    console.log(`🧹 Cleaned up ${cleaned} leaked subscriptions`)
+    console.log(` Cleaned up ${cleaned} leaked subscriptions`)
   }
 }, 60000)
 ```
 
 **Benefits**:
-- ✅ Automatic detection of memory leaks
-- ✅ Proactive cleanup before browser crashes
-- ✅ Debugging information with component names
+-  Automatic detection of memory leaks
+-  Proactive cleanup before browser crashes
+-  Debugging information with component names
 
 ---
 
-## 🟡 Risk #4: Concurrent Subscription Conflicts (Medium Priority)
+##  Risk #4: Concurrent Subscription Conflicts (Medium Priority)
 
 ### **Problem**
 Multiple components subscribing to the same channel can cause conflicts:
@@ -658,7 +658,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     if (options?.deduplicate && channelSubscriptions.has(channel)) {
       const existing = channelSubscriptions.get(channel)!
       if (existing.size > 0) {
-        console.warn(`⚠️ WebSocket: Duplicate subscription to "${channel}" - using existing`)
+        console.warn(` WebSocket: Duplicate subscription to "${channel}" - using existing`)
         return Array.from(existing)[0]
       }
     }
@@ -671,8 +671,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     subscriptions.set(id, { id, channel, callback, createdAt: Date.now(), lastUsed: Date.now() })
 
-    console.log(`➕ WebSocket: Subscribed to "${channel}" (${id})`)
-    console.log(`📊 Channel "${channel}": ${channelSubscriptions.get(channel)!.size} subscribers`)
+    console.log(` WebSocket: Subscribed to "${channel}" (${id})`)
+    console.log(` Channel "${channel}": ${channelSubscriptions.get(channel)!.size} subscribers`)
 
     return id
   }
@@ -729,7 +729,7 @@ const CHANNEL_PATTERNS = {
 
 ---
 
-## 🟡 Risk #5: Error Propagation (Medium Priority)
+##  Risk #5: Error Propagation (Medium Priority)
 
 ### **Problem**
 Error in one subscription can crash entire WebSocket connection:
@@ -772,14 +772,14 @@ export const useWebSocketStore = defineStore('websocket', () => {
         errorCounts.set(subscription.id, count)
 
         console.error(
-          `❌ WebSocket: Error in subscription ${subscription.id} (${subscription.channel})`,
+          ` WebSocket: Error in subscription ${subscription.id} (${subscription.channel})`,
           error,
           `[${count}/${MAX_ERRORS_PER_SUBSCRIPTION} errors]`
         )
 
         // Auto-unsubscribe if too many errors
         if (count >= MAX_ERRORS_PER_SUBSCRIPTION) {
-          console.error(`🚨 WebSocket: Auto-unsubscribing ${subscription.id} due to repeated errors`)
+          console.error(` WebSocket: Auto-unsubscribing ${subscription.id} due to repeated errors`)
           unsubscribe(subscription.id)
         }
       }
@@ -834,7 +834,7 @@ export class WebSocketErrorHandler {
 
   private reportCriticalError(error: Error, context: string): void {
     // Send to monitoring service
-    console.error('🚨 CRITICAL WebSocket Error:', {
+    console.error(' CRITICAL WebSocket Error:', {
       error: error.message,
       context,
       timestamp: new Date().toISOString(),
@@ -856,7 +856,7 @@ export class WebSocketErrorHandler {
 
 ---
 
-## 📊 Monitoring & Observability
+##  Monitoring & Observability
 
 ### **Metrics to Track**
 
@@ -953,10 +953,10 @@ export class WebSocketLogger {
 
   private getPrefix(level: LogLevel): string {
     const prefixes = {
-      [LogLevel.DEBUG]: '🐛 [DEBUG]',
-      [LogLevel.INFO]: 'ℹ️ [INFO]',
-      [LogLevel.WARN]: '⚠️ [WARN]',
-      [LogLevel.ERROR]: '❌ [ERROR]'
+      [LogLevel.DEBUG]: ' [DEBUG]',
+      [LogLevel.INFO]: ' [INFO]',
+      [LogLevel.WARN]: ' [WARN]',
+      [LogLevel.ERROR]: ' [ERROR]'
     }
     return prefixes[level]
   }
@@ -1021,7 +1021,7 @@ export class WebSocketPerformance {
     const entries = performance.getEntriesByName(name)
     if (entries.length > 0) {
       const duration = entries[entries.length - 1].duration
-      console.log(`⏱️ Performance: ${name} took ${duration.toFixed(2)}ms`)
+      console.log(` Performance: ${name} took ${duration.toFixed(2)}ms`)
     }
   }
 
@@ -1043,7 +1043,7 @@ export class WebSocketPerformance {
 
 ---
 
-## 🛠️ Debug Tools
+##  Debug Tools
 
 ### **1. WebSocket Debug Panel** (Visual Tool)
 
@@ -1074,7 +1074,7 @@ const createDebugPanel = () => {
   `
 
   const title = document.createElement('h3')
-  title.textContent = '🔌 WebSocket Debug Panel'
+  title.textContent = ' WebSocket Debug Panel'
   title.style.cssText = 'margin: 0 0 12px 0; color: #4ade80;'
   panel.appendChild(title)
 
@@ -1098,7 +1098,7 @@ const createDebugPanel = () => {
   // Connection status
   panel.appendChild(createStat(
     'Status:',
-    wsStore.isConnected ? '✅ Connected' : '❌ Disconnected',
+    wsStore.isConnected ? ' Connected' : ' Disconnected',
     wsStore.isConnected ? '#4ade80' : '#ef4444'
   ))
 
@@ -1196,7 +1196,7 @@ if (import.meta.env.DEV) {
     cleanup: () => {
       const wsStore = useWebSocketStore()
       const count = wsStore.cleanupLeakedSubscriptions()
-      console.log(`✅ Cleaned up ${count} leaked subscriptions`)
+      console.log(` Cleaned up ${count} leaked subscriptions`)
     },
 
     /**
@@ -1222,9 +1222,9 @@ if (import.meta.env.DEV) {
      */
     reconnect: async () => {
       const wsStore = useWebSocketStore()
-      console.log('🔄 Forcing WebSocket reconnection...')
+      console.log(' Forcing WebSocket reconnection...')
       await wsStore.reconnect()
-      console.log('✅ Reconnection complete')
+      console.log(' Reconnection complete')
     },
 
     /**
@@ -1232,7 +1232,7 @@ if (import.meta.env.DEV) {
      */
     exportLogs: () => {
       const logs = wsLogger.exportLogs()
-      console.log('📄 Exported logs:')
+      console.log(' Exported logs:')
       console.log(logs)
       return logs
     },
@@ -1242,24 +1242,24 @@ if (import.meta.env.DEV) {
      */
     help: () => {
       console.log(`
-🔌 WebSocket Debug Commands:
+ WebSocket Debug Commands:
 
-wsDebug.getStore()             - Get WebSocket Store instance
-wsDebug.listSubscriptions()    - List all active subscriptions
-wsDebug.channelStats()         - Get subscription count per channel
-wsDebug.checkMemoryLeaks()     - Detect leaked subscriptions
-wsDebug.cleanup()              - Force cleanup leaked subscriptions
-wsDebug.queueStatus()          - Get message queue status
+wsDebug.getStore() - Get WebSocket Store instance
+wsDebug.listSubscriptions() - List all active subscriptions
+wsDebug.channelStats() - Get subscription count per channel
+wsDebug.checkMemoryLeaks() - Detect leaked subscriptions
+wsDebug.cleanup() - Force cleanup leaked subscriptions
+wsDebug.queueStatus() - Get message queue status
 wsDebug.circuitBreakerStatus() - Get circuit breaker state
-wsDebug.reconnect()            - Force WebSocket reconnection
-wsDebug.exportLogs()           - Export debug logs
-wsDebug.help()                 - Show this help message
+wsDebug.reconnect() - Force WebSocket reconnection
+wsDebug.exportLogs() - Export debug logs
+wsDebug.help() - Show this help message
       `)
     }
   }
 
   console.log(`
-🔌 WebSocket Debug Commands available!
+ WebSocket Debug Commands available!
 Type wsDebug.help() for available commands.
   `)
 }
@@ -1267,7 +1267,7 @@ Type wsDebug.help() for available commands.
 
 ---
 
-## 🎯 Implementation Priority
+##  Implementation Priority
 
 ### **P0 - Critical (Implement Immediately)**
 
@@ -1302,17 +1302,17 @@ Type wsDebug.help() for available commands.
 
 ---
 
-## 📋 Summary
+##  Summary
 
 ### **Key Risks Identified**
 
 | Risk | Severity | Likelihood | Solution | Priority |
 |------|----------|------------|----------|----------|
-| Single Point of Failure | 🔴 Critical | Medium | Circuit Breaker + HTTP Fallback | P0 |
-| Message Loss | 🟠 High | Medium | Message Queue + ACK | P0 |
-| Memory Leaks | 🟠 High | High | Lifecycle Mgmt + Auto Cleanup | P0 |
-| Subscription Conflicts | 🟡 Medium | Medium | Deduplication + Naming | P1 |
-| Error Propagation | 🟡 Medium | Medium | Error Isolation + Global Handler | P1 |
+| Single Point of Failure |  Critical | Medium | Circuit Breaker + HTTP Fallback | P0 |
+| Message Loss |  High | Medium | Message Queue + ACK | P0 |
+| Memory Leaks |  High | High | Lifecycle Mgmt + Auto Cleanup | P0 |
+| Subscription Conflicts |  Medium | Medium | Deduplication + Naming | P1 |
+| Error Propagation |  Medium | Medium | Error Isolation + Global Handler | P1 |
 
 ---
 
@@ -1327,16 +1327,16 @@ Type wsDebug.help() for available commands.
 
 ### **Success Criteria**
 
-✅ **Zero message loss** during network disconnections
-✅ **Automatic recovery** from WebSocket failures within 10 seconds
-✅ **Memory usage stable** over 24-hour period
-✅ **No subscription leaks** detected in production
-✅ **Error isolation** - single component error doesn't crash WebSocket
-✅ **Complete observability** - can debug production issues within 5 minutes
+ **Zero message loss** during network disconnections
+ **Automatic recovery** from WebSocket failures within 10 seconds
+ **Memory usage stable** over 24-hour period
+ **No subscription leaks** detected in production
+ **Error isolation** - single component error doesn't crash WebSocket
+ **Complete observability** - can debug production issues within 5 minutes
 
 ---
 
-**Document Status**: ✅ Complete
+**Document Status**:  Complete
 
 **Last Updated**: 2025-01-07
 

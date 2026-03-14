@@ -160,12 +160,12 @@
  *
  * 使用示例：
  * <ConnectionStatusBar
- *   connection-state="connected"
- *   connection-protocol="websocket"
- *   connection-quality="excellent"
- *   :show-protocol="true"
- *   :show-quality="true"
- *   @reconnect="handleReconnect"
+ * connection-state="connected"
+ * connection-protocol="websocket"
+ * connection-quality="excellent"
+ * :show-protocol="true"
+ * :show-quality="true"
+ * @reconnect="handleReconnect"
  * />
  */
 

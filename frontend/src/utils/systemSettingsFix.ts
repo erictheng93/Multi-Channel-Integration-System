@@ -14,14 +14,14 @@ export class SystemSettingsFix {
 
   private addResult(step: string, success: boolean, message: string, details?: unknown) {
     this.results.push({ step, success, message, details })
-    console.log(`${success ? '✅' : '❌'} ${step}: ${message}`)
+    console.log(`${success ? '' : ''} ${step}: ${message}`)
     if (details) {
-      console.log('   Details:', details)
+      console.log(' Details:', details)
     }
   }
 
   async fixLanguageSettingIssues(): Promise<FixResult[]> {
-    console.group('🔧 修復語言設定問題')
+    console.group(' 修復語言設定問題')
     this.results = []
 
     try {
@@ -46,7 +46,7 @@ export class SystemSettingsFix {
   }
 
   private async cleanLocalStorage() {
-    console.group('🧹 清理 localStorage')
+    console.group(' 清理 localStorage')
 
     try {
       // 清除可能損壞的語言設定
@@ -75,7 +75,7 @@ export class SystemSettingsFix {
   }
 
   private async initializeSystemSettings() {
-    console.group('⚙️ 初始化系統設定')
+    console.group(' 初始化系統設定')
 
     try {
       // 獲取當前設定
@@ -121,7 +121,7 @@ export class SystemSettingsFix {
   }
 
   private async fixFrontendBackendSync() {
-    console.group('🔄 修復前後端同步')
+    console.group(' 修復前後端同步')
 
     try {
       // 獲取後端語言設定
@@ -166,7 +166,7 @@ export class SystemSettingsFix {
   }
 
   private async testLanguageSwitchingAfterFix() {
-    console.group('🧪 測試修復後的語言切換')
+    console.group(' 測試修復後的語言切換')
 
     const testLanguages = ['zh-TW', 'zh-CN', 'en']
     let successCount = 0
@@ -251,7 +251,7 @@ export const fixSystemSettingsLanguage = async () => {
   const results = await fixer.fixLanguageSettingIssues()
   const successRate = fixer.getSuccessRate()
 
-  console.group('📊 修復結果摘要')
+  console.group(' 修復結果摘要')
   console.log(`修復項目: ${results.length}`)
   console.log(`成功率: ${successRate}%`)
   
@@ -267,7 +267,7 @@ export const fixSystemSettingsLanguage = async () => {
 
 // 快速修復函數
 export const quickFixLanguageSettings = async () => {
-  console.log('🚀 快速修復語言設定問題...')
+  console.log(' 快速修復語言設定問題...')
   
   try {
     // 1. 清理並重設 localStorage
@@ -288,15 +288,15 @@ export const quickFixLanguageSettings = async () => {
     })
     
     if (response.success) {
-      console.log('✅ 快速修復完成')
+      console.log(' 快速修復完成')
       return true
     } else {
-      console.error('❌ 快速修復失敗:', response.error)
+      console.error(' 快速修復失敗:', response.error)
       return false
     }
     
   } catch (error) {
-    console.error('❌ 快速修復異常:', error)
+    console.error(' 快速修復異常:', error)
     return false
   }
 }

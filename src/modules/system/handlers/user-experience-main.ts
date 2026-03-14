@@ -361,7 +361,7 @@ userExperienceHandler.get('/health', jwtAuth, async (c) => {
       healthChecks.reportGeneration = true;
 
     } catch (error) {
-      console.warn('⚠️ [UX API] Health check component failed:', error);
+      console.warn('[UX API] Health check component failed:', error);
     }
 
     const healthScore = Object.values(healthChecks).filter(Boolean).length / Object.keys(healthChecks).length;

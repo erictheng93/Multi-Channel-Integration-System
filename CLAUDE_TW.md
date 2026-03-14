@@ -2,7 +2,7 @@
 
 本文件旨在為 Claude Code (claude.ai/code) 處理此儲存庫中的程式碼時提供指導。
 
-> 📚 **延伸文檔**：詳細指南位於 `docs/claude/` 目錄中。請參閱 [文檔索引](docs/claude/INDEX.md) 進行導航。
+>  **延伸文檔**：詳細指南位於 `docs/claude/` 目錄中。請參閱 [文檔索引](docs/claude/INDEX.md) 進行導航。
 
 ## 專案概覽
 
@@ -20,7 +20,7 @@
 - **WebSocket 即時通訊**，採用 Durable Objects 架構 (100% 部署)
 - **團隊範圍廣播**，具有安全隔離 (專員只能看到自己團隊的數據)
 - **動態排序系統**，支援拖放和 localStorage 持久化
-- **🚀 Web 安裝程式** - 為客戶提供的一鍵式自託管部署系統 (生產就緒)
+- ** Web 安裝程式** - 為客戶提供的一鍵式自託管部署系統 (生產就緒)
 
 ## 架構
 
@@ -73,63 +73,63 @@
 
 ## 開發指令
 
-> ⚠️ **重要**：此專案僅使用 **遠程資源 (REMOTE RESOURCES)**。所有開發都直接連接到生產環境的 D1, KV, R2 和 Durable Objects。沒有本地開發環境。
+>  **重要**：此專案僅使用 **遠程資源 (REMOTE RESOURCES)**。所有開發都直接連接到生產環境的 D1, KV, R2 和 Durable Objects。沒有本地開發環境。
 
 ### 後端 (根目錄)
 ```bash
 # 開發 (連接至遠程資源)
-bun run dev              # 啟動 Wrangler 開發伺服器 (使用 REMOTE 綁定)
-bun run build            # TypeScript 編譯檢查
-bun run lint:check       # TypeScript + Vue 類型檢查與 linting
+bun run dev # 啟動 Wrangler 開發伺服器 (使用 REMOTE 綁定)
+bun run build # TypeScript 編譯檢查
+bun run lint:check # TypeScript + Vue 類型檢查與 linting
 
 # 資料庫操作 (全部在遠程 D1 上操作)
-bun run db:migrate       # 應用遷移至遠程 D1
-bun run db:generate      # 生成 Drizzle 遷移
-bun run db:push          # 推送架構變更至遠程
-bun run db:studio        # 開啟遠程 DB 的 Drizzle Studio
-bun run db:query         # 在遠程 D1 上執行查詢
+bun run db:migrate # 應用遷移至遠程 D1
+bun run db:generate # 生成 Drizzle 遷移
+bun run db:push # 推送架構變更至遠程
+bun run db:studio # 開啟遠程 DB 的 Drizzle Studio
+bun run db:query # 在遠程 D1 上執行查詢
 
 # 部署與生產
-bun run deploy           # 部署至生產環境
+bun run deploy # 部署至生產環境
 
 # 健康檢查與監控
-bun run health:check     # 檢查系統健康 (格式化 JSON)
+bun run health:check # 檢查系統健康 (格式化 JSON)
 bun run health:check:ws  # 檢查 WebSocket 健康 (格式化 JSON)
 bun run health:check:all # 檢查系統與 WebSocket 健康
 bun run health:check:detail # 詳細 WebSocket 健康資訊
 bun run monitor:deployment # 持續健康監控 (每 30 秒)
-bun run perf:baseline    # 查看 WebSocket 性能指標
+bun run perf:baseline # 查看 WebSocket 性能指標
 
 # 測試與驗證
-bun run test:handlers    # 測試所有處理器
-bun run test:api         # API 整合測試
-bun run test:upload      # 文件上傳端到端測試
+bun run test:handlers # 測試所有處理器
+bun run test:api # API 整合測試
+bun run test:upload # 文件上傳端到端測試
 
 # 性能與監控
-bun run benchmark        # 運行性能基準測試套件
-bun run profile:memory   # 記憶體使用分析
+bun run benchmark # 運行性能基準測試套件
+bun run profile:memory # 記憶體使用分析
 ```
 
 ### 前端 (frontend/ 目錄)
 ```bash
 # 開發
-bun run dev              # 啟動 Vite 開發伺服器 (端口 3000)
-bun run build            # 為生產環境構建
-bun run type-check       # Vue TypeScript 檢查
+bun run dev # 啟動 Vite 開發伺服器 (端口 3000)
+bun run build # 為生產環境構建
+bun run type-check # Vue TypeScript 檢查
 
 # 測試 (132+ 個測試)
-bun run test             # 使用 Vitest 運行所有測試
-bun run test:run         # 單次測試運行
-bun run test:coverage    # 生成覆蓋率報告
-bun run test:ui          # 互動式測試 UI
+bun run test # 使用 Vitest 運行所有測試
+bun run test:run # 單次測試運行
+bun run test:coverage # 生成覆蓋率報告
+bun run test:ui # 互動式測試 UI
 
 # Linting 與代碼品質
-bun run lint             # ESLint 自動修復
-bun run lint:check       # 僅 ESLint 檢查
+bun run lint # ESLint 自動修復
+bun run lint:check # 僅 ESLint 檢查
 
 # 部署
-bun run build:pages      # 構建並複製 Cloudflare Pages 配置
-bun run deploy:pages     # 部署至 Cloudflare Pages
+bun run build:pages # 構建並複製 Cloudflare Pages 配置
+bun run deploy:pages # 部署至 Cloudflare Pages
 bun run verify:deployment # 驗證生產部署
 ```
 
@@ -246,13 +246,13 @@ bun run verify:deployment # 驗證生產部署
 **快速範例：**
 ```typescript
 import { getBackendUrl, getWebSocketUrl } from '@/config/runtime';
-const apiUrl = getBackendUrl(); // ✅ 絕不硬編碼 URL
+const apiUrl = getBackendUrl(); //  絕不硬編碼 URL
 const wsUrl = getWebSocketUrl(); // 自動協議轉換
 ```
 
 **效益：** 環境切換時間減少 96% (4-6 小時 → 5-10 分鐘)
 
-📖 **詳細指南：** 請參閱 [`docs/claude/ENVIRONMENT_CONFIG.md`](docs/claude/ENVIRONMENT_CONFIG.md) 獲取完整的 3 層架構、所有環境變數、切換指南、最佳實踐和故障排除。
+ **詳細指南：** 請參閱 [`docs/claude/ENVIRONMENT_CONFIG.md`](docs/claude/ENVIRONMENT_CONFIG.md) 獲取完整的 3 層架構、所有環境變數、切換指南、最佳實踐和故障排除。
 
 ## 測試策略
 
@@ -270,11 +270,11 @@ const wsUrl = getWebSocketUrl(); // 自動協議轉換
 - `tests/helpers/websocket/WebSocketTestClient.ts` - 模擬真實 WebSocket 連接
 - `frontend/tests/helpers/directStoreCreation.ts` - 可靠的 store 測試
 
-📖 **詳細指南：** 請參閱 [`docs/claude/TESTING.md`](docs/claude/TESTING.md) 獲取完整的測試基礎設施、運行測試和最佳實踐。
+ **詳細指南：** 請參閱 [`docs/claude/TESTING.md`](docs/claude/TESTING.md) 獲取完整的測試基礎設施、運行測試和最佳實踐。
 
 ## 開發最佳實踐
 
-### 路由註冊順序 (⚠️ 關鍵)
+### 路由註冊順序 ( 關鍵)
 
 **為何重要**：在 Hono 框架中，路由註冊順序決定了路由優先級。較晚註冊的路由 **無法覆蓋** 較早的 catch-all 路由。
 
@@ -286,18 +286,18 @@ const wsUrl = getWebSocketUrl(); // 自動協議轉換
 
 **常見陷阱：**
 ```typescript
-// ❌ 壞：在統一路由系統之後註冊
+// 壞：在統一路由系統之後註冊
 const routeRegistry = new RouteRegistry(app);
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
 app.route('/api/myendpoint', myHandler); // 太晚了 - 將會被攔截！
 
-// ✅ 好：在統一路由系統之前預先註冊
+// 好：在統一路由系統之前預先註冊
 app.route('/api/myendpoint', myHandler); // 優先
 const routeRegistry = new RouteRegistry(app);
 routeGroups.forEach(group => routeRegistry.registerGroup(group));
 ```
 
-📖 **詳細指南：** 請參閱 [`docs/claude/ROUTE_REGISTRATION.md`](docs/claude/ROUTE_REGISTRATION.md) 獲取完整的優先級層級、檢查清單、範例和調試技巧。
+ **詳細指南：** 請參閱 [`docs/claude/ROUTE_REGISTRATION.md`](docs/claude/ROUTE_REGISTRATION.md) 獲取完整的優先級層級、檢查清單、範例和調試技巧。
 
 ---
 
@@ -389,7 +389,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 
 ## 開發快速開始
 
-> ⚠️ **重要**：此專案連接至 **遠程生產資源 (REMOTE PRODUCTION RESOURCES)**。所有資料庫和存儲操作都會影響生產數據。
+>  **重要**：此專案連接至 **遠程生產資源 (REMOTE PRODUCTION RESOURCES)**。所有資料庫和存儲操作都會影響生產數據。
 
 1. **先決條件**：Node.js 18+、Bun 1.2+ 和具有 Wrangler CLI 的 Cloudflare 帳戶
 2. **安裝依賴**：
@@ -401,12 +401,12 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 4. **驗證遠程連接**：
    ```bash
    bun run health:check:all  # 驗證連接至生產環境
-   bun run db:studio         # 開啟遠程 DB 的 Drizzle Studio
+   bun run db:studio # 開啟遠程 DB 的 Drizzle Studio
    ```
 5. **開始開發**：
    ```bash
    # 終端 1 - 後端 (連接至遠程資源)
-   bun run dev               # 使用遠程 D1, KV, R2 的 Wrangler 開發
+   bun run dev # 使用遠程 D1, KV, R2 的 Wrangler 開發
 
    # 終端 2 - 前端
    cd frontend && bun run dev # localhost:3000 上的 Vite 開發伺服器
@@ -415,7 +415,7 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 
 ## 生產部署
 
-### ⚠️ 部署環境政策
+###  部署環境政策
 
 **此專案僅使用遠程生產資源**
 
@@ -537,10 +537,10 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 
 ---
 
-## 🚀 Web 安裝程式 (自託管部署系統)
+##  Web 安裝程式 (自託管部署系統)
 
 **位置：** `web-installer/`
-**狀態：** ✅ 生產就緒 (完成於 2025-01-28)
+**狀態：**  生產就緒 (完成於 2025-01-28)
 **目的：** 使客戶能夠零技術知識將 CRM 系統部署到自己的 Cloudflare 帳戶
 
 ### 快速概覽
@@ -561,11 +561,11 @@ routeGroups.forEach(group => routeRegistry.registerGroup(group));
 - Pages (無限免費)
 - 26+ 個資料庫表
 
-📖 **詳細指南：** 請參閱 [`docs/claude/WEB_INSTALLER.md`](docs/claude/WEB_INSTALLER.md) 獲取完整的架構、部署流程、文檔、安全特性和成本估算。
+ **詳細指南：** 請參閱 [`docs/claude/WEB_INSTALLER.md`](docs/claude/WEB_INSTALLER.md) 獲取完整的架構、部署流程、文檔、安全特性和成本估算。
 
 ---
 
-## 📚 延伸文檔
+##  延伸文檔
 
 有關特定主題的詳細資訊，請參閱：
 

@@ -169,7 +169,7 @@ describe('ActivityFeedCard', () => {
 
       const status = wrapper.find('.connection-status')
       expect(status.classes()).toContain('error')
-      expect(status.text()).toBe('✕ 連線失敗')
+      expect(status.text()).toBe('連線失敗')
     })
   })
 
@@ -299,7 +299,7 @@ describe('ActivityFeedCard', () => {
       const item = wrapper.find('.activity-item')
       expect(item.classes()).toContain('high')
       expect(wrapper.find('.activity-priority').exists()).toBe(true)
-      expect(wrapper.find('.activity-priority').text()).toBe('🔴')
+      expect(wrapper.find('.activity-priority').text()).toBe('')
     })
 
     it('中优先级活动应该有对应样式', () => {

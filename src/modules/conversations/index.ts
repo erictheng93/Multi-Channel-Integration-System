@@ -77,8 +77,8 @@ export const MODULE_INFO = {
     pending: 0,
     categories: {
       conversation: 6,  // list, get, create, update, delete, assign
-      message: 4,       // list, send, recall, update
-      status: 2         // update, history
+      message: 4, // list, send, recall, update
+      status: 2 // update, history
     }
   },
 
@@ -118,12 +118,12 @@ export function initializeConversationsModule(config: Partial<ConversationsModul
 
   // 驗證配置
   if (finalConfig.maxMessageLength < 100) {
-    console.warn('⚠️ Conversations module: maxMessageLength too short, setting to 100');
+    console.warn(' Conversations module: maxMessageLength too short, setting to 100');
     finalConfig.maxMessageLength = 100;
   }
 
   if (finalConfig.defaultPageSize < 1) {
-    console.warn('⚠️ Conversations module: defaultPageSize must be at least 1');
+    console.warn(' Conversations module: defaultPageSize must be at least 1');
     finalConfig.defaultPageSize = 1;
   }
 

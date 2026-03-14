@@ -19,7 +19,7 @@
  * - Event-driven with precise timing guarantees
  *
  * Module split:
- * - ./delayed-message/types.ts         - Shared type definitions
+ * - ./delayed-message/types.ts - Shared type definitions
  * - ./delayed-message/schedule-manager.ts - Alarm scheduling, cancel, state restore
  * - ./delayed-message/retry-handler.ts  - Retry logic, platform senders, DLQ, DB persistence
  */
@@ -212,12 +212,12 @@ export class DelayedMessageScheduler implements DurableObject {
       const url = new URL(request.url);
       switch (url.pathname) {
         case '/schedule': return await this.handleSchedule(request);
-        case '/cancel':   return await this.handleCancel(request);
-        case '/status':   return await this.handleStatus(request);
-        case '/list':     return await this.handleList();
-        case '/dlq':      return await this.handleDLQ();
+        case '/cancel': return await this.handleCancel(request);
+        case '/status': return await this.handleStatus(request);
+        case '/list': return await this.handleList();
+        case '/dlq': return await this.handleDLQ();
         case '/metrics':  return await this.handleMetrics();
-        default:          return new Response('Not Found', { status: 404 });
+        default: return new Response('Not Found', { status: 404 });
       }
     } catch (error) {
       this.logger.error('Request error', error, {

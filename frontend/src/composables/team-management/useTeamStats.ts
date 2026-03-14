@@ -42,7 +42,7 @@ export interface UseTeamStatsReturn {
  * const { stats, totalMembers, adminCount } = useTeamStats()
  *
  * console.log(stats.value.totalMembers) // 15
- * console.log(totalMembers.value)       // 15
+ * console.log(totalMembers.value) // 15
  * ```
  */
 export function useTeamStats(): UseTeamStatsReturn {

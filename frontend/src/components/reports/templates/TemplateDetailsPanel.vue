@@ -9,7 +9,7 @@
         class="close-details"
         @click="$emit('close')"
       >
-        ✕
+        
       </button>
     </div>
 

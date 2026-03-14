@@ -42,7 +42,7 @@ export class BroadcasterHttpHandlers {
         queueDepth: this.ctx.eventQueue.length
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Broadcast error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Broadcast error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response(JSON.stringify({ error: 'Broadcast failed' }), { status: 500 });
     }
   }
@@ -73,7 +73,7 @@ export class BroadcasterHttpHandlers {
         processingTime
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Broadcast to conversations error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Broadcast to conversations error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -107,7 +107,7 @@ export class BroadcasterHttpHandlers {
         processingTime
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Broadcast to users error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Broadcast to users error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -141,7 +141,7 @@ export class BroadcasterHttpHandlers {
         processingTime
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Broadcast to teams error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Broadcast to teams error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -150,7 +150,7 @@ export class BroadcasterHttpHandlers {
   }
 
   /**
-   * 🔒 Security Enhancement (P1): Broadcast to specific teams AND all admin users
+   * Security Enhancement (P1): Broadcast to specific teams AND all admin users
    * Ensures team-scoped data isolation while allowing admins to monitor all conversations
    */
   async handleBroadcastToTeamsAndAdmins(request: Request): Promise<Response> {
@@ -178,7 +178,7 @@ export class BroadcasterHttpHandlers {
       if (includeAdmins) {
         try {
           const adminUsers = await this.helpers.getAdminUsers();
-          log.info('🔒 [Security] Broadcasting to admin users', { adminCount: adminUsers.length, teamIds });
+          log.info(' [Security] Broadcasting to admin users', { adminCount: adminUsers.length, teamIds });
 
           const adminPromises = adminUsers.map(async (userId: string) => {
             try {
@@ -219,7 +219,7 @@ export class BroadcasterHttpHandlers {
         processingTime
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Broadcast to teams and admins error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Broadcast to teams and admins error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -259,7 +259,7 @@ export class BroadcasterHttpHandlers {
         failed
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Global broadcast error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Global broadcast error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }
@@ -354,7 +354,7 @@ export class BroadcasterHttpHandlers {
         failed
       }));
     } catch (error) {
-      log.error('❌ [MessageBroadcaster] Batch broadcast error:', { error: error instanceof Error ? error.message : String(error) });
+      log.error(' [MessageBroadcaster] Batch broadcast error:', { error: error instanceof Error ? error.message : String(error) });
       if (error instanceof SyntaxError) {
         return new Response(JSON.stringify({ error: 'Invalid request' }), { status: 400 });
       }

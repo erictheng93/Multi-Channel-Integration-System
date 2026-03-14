@@ -10,7 +10,7 @@ import type { Bindings } from '@/types';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// ⚠️ IMPORTANT: Route registration order matters!
+// IMPORTANT: Route registration order matters!
 // More specific routes MUST be registered BEFORE generic parameter routes
 // Otherwise /:id/* patterns will intercept specific routes
 

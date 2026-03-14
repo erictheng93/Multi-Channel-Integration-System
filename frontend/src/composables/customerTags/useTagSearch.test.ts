@@ -2,11 +2,11 @@
  * useTagSearch Composable — Unit Tests
  *
  * Tests the computed derivation search pattern:
- *   - Debounced search query (300ms)
- *   - filteredTags computed (never mutates store)
- *   - Case-insensitive name + description matching
- *   - loadTags with cache / API fallback / force refresh
- *   - clearSearch restores full list
+ * - Debounced search query (300ms)
+ * - filteredTags computed (never mutates store)
+ * - Case-insensitive name + description matching
+ * - loadTags with cache / API fallback / force refresh
+ * - clearSearch restores full list
  *
  * @module composables/customerTags/useTagSearch.test
  */
@@ -68,9 +68,9 @@ function createMockStore(initialTags: Tag[] = []) {
  * computed re-evaluation.
  */
 async function flushDebounce() {
-  await nextTick()           // let Vue watcher schedule setTimeout
+  await nextTick() // let Vue watcher schedule setTimeout
   vi.advanceTimersByTime(300) // fire the setTimeout
-  await nextTick()           // let computed re-evaluate
+  await nextTick() // let computed re-evaluate
 }
 
 /**
@@ -212,7 +212,7 @@ describe('useTagSearch', () => {
       const store = createMockStore(getSampleTags())
       const search = await createSearch(store)
 
-      search.searchQuery.value = '   '
+      search.searchQuery.value = ' '
       await flushDebounce()
 
       expect(search.filteredTags.value).toHaveLength(4)
