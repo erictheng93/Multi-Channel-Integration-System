@@ -100,6 +100,7 @@
     '/channels': '\u983B\u9053\u7BA1\u7406',
     '/activities': '\u6D3B\u52D5\u8A18\u9304',
     '/monitoring/api': 'API\u76E3\u63A7',
+    '/auto-reply': '\u81EA\u52D5\u56DE\u8986',
     '/settings': '\u7CFB\u7D71\u8A2D\u5B9A',
   }
 
