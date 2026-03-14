@@ -268,6 +268,17 @@ const router = createRouter({
         }
       ]
     },
+    // ==================== 自動回覆路由 ====================
+    {
+      path: '/auto-reply',
+      name: 'AutoReply',
+      component: () => import('@/views/AutoReply.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresAdmin: true,
+        title: '自動回覆'
+      }
+    },
     {
       path: '/:pathMatch(.*)*',
       name: 'NotFound',

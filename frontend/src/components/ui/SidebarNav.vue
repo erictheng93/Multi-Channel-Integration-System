@@ -57,6 +57,7 @@
   import ReportsIcon from '@/components/icons/ReportsIcon.vue'
   import DataManagementIcon from '@/components/icons/DataManagementIcon.vue'
   import ChannelIcon from '@/components/icons/ChannelIcon.vue'
+  import AutoReplyIcon from '@/components/icons/AutoReplyIcon.vue'
 
   interface SubmenuItem {
     path: string
@@ -115,6 +116,7 @@
     ...baseNavigationItems,
     { path: '/team', label: '\u5718\u968A\u7BA1\u7406', icon: UsersIcon },
     { path: '/channels', label: '\u983B\u9053\u7BA1\u7406', icon: ChannelIcon },
+    { path: '/auto-reply', label: '\u81EA\u52D5\u56DE\u8986', icon: AutoReplyIcon },
     { path: '/activities', label: '\u6D3B\u52D5\u8A18\u9304', icon: ActivityIcon },
     { path: '/monitoring/api', label: 'API\u76E3\u63A7', icon: MonitorIcon },
     {
