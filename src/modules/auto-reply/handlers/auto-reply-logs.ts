@@ -31,7 +31,7 @@ autoReplyLogsHandler.get('/', async (c) => {
   try {
     const drizzleDb = createDbClient(c.env.DB);
     const payload = c.get('jwtPayload');
-    const teamId = parseInt(c.req.query('teamId') || '') || payload?.primaryTeamId;
+    const teamId = parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId;
 
     if (!teamId) {
       return badRequestResponse(c, 'teamId is required');

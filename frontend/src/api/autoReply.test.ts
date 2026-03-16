@@ -36,9 +36,10 @@ describe('getRules', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('calls GET /auto-reply/rules with no query string when no params', async () => {
+    // Backend paginatedResponse returns flat pagination fields in data
     const mockData = {
       items: [{ id: 1, name: 'Welcome Rule', triggerType: 'welcome' }],
-      pagination: { page: 1, limit: 20, total: 1 },
+      page: 1, limit: 20, total: 1,
     }
     mockGet.mockResolvedValue({ success: true, data: mockData, message: 'ok' })
 
@@ -53,7 +54,7 @@ describe('getRules', () => {
   it('appends query params when provided', async () => {
     mockGet.mockResolvedValue({
       success: true,
-      data: { items: [], pagination: { page: 2, limit: 10, total: 0 } },
+      data: { items: [], page: 2, limit: 10, total: 0 },
       message: 'ok',
     })
 
@@ -233,7 +234,7 @@ describe('getLogs', () => {
       success: true,
       data: {
         items: [],
-        pagination: { page: 2, limit: 20, total: 0 },
+        page: 2, limit: 20, total: 0,
       },
       message: 'ok',
     })

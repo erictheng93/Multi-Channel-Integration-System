@@ -153,16 +153,22 @@ export const getRules = async (params?: {
           .map(([key, value]) => [key, String(value)])
       ).toString()}`
     : ''
-  const response = await apiClient.get<{
-    items: AutoReplyRule[]
-    pagination: { page: number; limit: number; total: number }
-  }>(`/auto-reply/rules${queryString}`)
+  const response = await apiClient.get<Record<string, unknown>>(`/auto-reply/rules${queryString}`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch auto-reply rules')
   }
+  // Backend paginatedResponse puts pagination fields flat in data
+  const raw = response.data
   return {
     success: response.success,
-    data: response.data,
+    data: {
+      items: (raw.items ?? []) as AutoReplyRule[],
+      pagination: {
+        page: (raw.page as number) ?? 1,
+        limit: (raw.limit as number) ?? 20,
+        total: (raw.total as number) ?? 0
+      }
+    },
     message: response.message || 'Auto-reply rules retrieved successfully'
   }
 }
@@ -264,16 +270,22 @@ export const getLogs = async (params?: {
           .map(([key, value]) => [key, String(value)])
       ).toString()}`
     : ''
-  const response = await apiClient.get<{
-    items: AutoReplyLog[]
-    pagination: { page: number; limit: number; total: number }
-  }>(`/auto-reply/logs${queryString}`)
+  const response = await apiClient.get<Record<string, unknown>>(`/auto-reply/logs${queryString}`)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch auto-reply logs')
   }
+  // Backend paginatedResponse puts pagination fields flat in data
+  const raw = response.data
   return {
     success: response.success,
-    data: response.data,
+    data: {
+      items: (raw.items ?? []) as AutoReplyLog[],
+      pagination: {
+        page: (raw.page as number) ?? 1,
+        limit: (raw.limit as number) ?? 20,
+        total: (raw.total as number) ?? 0
+      }
+    },
     message: response.message || 'Auto-reply logs retrieved successfully'
   }
 }
