@@ -2,7 +2,7 @@
   <div class="recent-activity-widget">
     <div class="widget-header">
       <h3 class="widget-title">
-         最近活動
+        最近活動
       </h3>
       <span
         v-if="activities.length > 0"
@@ -18,9 +18,7 @@
         v-if="activities.length === 0"
         class="empty-state"
       >
-        <div class="empty-icon">
-          
-        </div>
+        <div class="empty-icon" />
         <p class="empty-text">
           暫無活動記錄
         </p>

@@ -22,7 +22,7 @@
       v-if="loading && hasMore"
       class="loading-indicator loading-top"
     >
-      <span class="loading-spinner"></span>
+      <span class="loading-spinner" />
       <span>載入中...</span>
     </div>
 

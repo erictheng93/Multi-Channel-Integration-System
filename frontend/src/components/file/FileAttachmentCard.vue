@@ -48,7 +48,7 @@
           class="preview-overlay"
           @click="$emit('preview', attachment)"
         >
-          <span class="preview-icon"></span>
+          <span class="preview-icon" />
         </div>
       </div>
 
@@ -70,7 +70,7 @@
         rel="noopener noreferrer"
         @click.stop
       >
-        <span class="button-icon"></span>
+        <span class="button-icon" />
         <span class="button-text">打開此文件</span>
       </a>
     </div>

@@ -70,7 +70,7 @@
             v-if="isPendingConversation"
             class="pending-badge"
           >
-            <span class="pending-icon"></span>
+            <span class="pending-icon" />
             <span>等待加入</span>
           </div>
 
