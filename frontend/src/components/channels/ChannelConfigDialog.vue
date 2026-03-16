@@ -232,9 +232,9 @@
           :class="verificationStatus.type"
         >
           <div class="status-icon">
-            <span v-if="verificationStatus.type === 'success'"></span>
-            <span v-else-if="verificationStatus.type === 'error'"></span>
-            <span v-else></span>
+            <span v-if="verificationStatus.type === 'success'" />
+            <span v-else-if="verificationStatus.type === 'error'" />
+            <span v-else />
           </div>
           <div class="status-content">
             <div class="status-message">
@@ -305,7 +305,7 @@
         v-if="errorMessage"
         class="error-message"
       >
-        <span class="error-icon"></span>
+        <span class="error-icon" />
         {{ errorMessage }}
       </div>
     </div>

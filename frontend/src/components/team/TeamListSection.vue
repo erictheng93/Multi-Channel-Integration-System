@@ -44,9 +44,7 @@
         v-if="searchQuery"
         class="search-clear"
         @click="clearSearch"
-      >
-        
-      </button>
+      />
       <span
         v-if="isSearching"
         class="search-stats"

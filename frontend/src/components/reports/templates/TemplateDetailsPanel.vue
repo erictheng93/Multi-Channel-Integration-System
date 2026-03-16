@@ -8,9 +8,7 @@
       <button
         class="close-details"
         @click="$emit('close')"
-      >
-        
-      </button>
+      />
     </div>
 
     <div class="details-content">

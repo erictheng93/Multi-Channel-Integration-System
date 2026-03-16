@@ -20,9 +20,7 @@
       class="sticker-placeholder error"
     >
       <div class="sticker-icon-large">
-        <div class="sticker-emoji">
-          
-        </div>
+        <div class="sticker-emoji" />
       </div>
       <div class="sticker-fallback-content">
         <div class="sticker-text">
@@ -53,9 +51,7 @@
         v-if="cdnFallbackIndex > 0"
         class="cdn-fallback-indicator"
         :title="`使用備用CDN源 #${cdnFallbackIndex + 1}`"
-      >
-        
-      </div>
+      />
     </div>
 
     <!-- Sticker Metadata (optional) -->
@@ -64,7 +60,7 @@
       class="sticker-info"
     >
       <span class="sticker-id-info">
-         {{ stickerMetadata.packageId }} ·  {{ stickerMetadata.stickerId }}
+        {{ stickerMetadata.packageId }} ·  {{ stickerMetadata.stickerId }}
       </span>
       <span
         v-if="cdnFallbackIndex > 0"

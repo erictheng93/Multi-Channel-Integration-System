@@ -40,9 +40,7 @@
       v-else-if="error"
       class="error-state"
     >
-      <div class="error-icon">
-        
-      </div>
+      <div class="error-icon" />
       <p class="error-message">
         {{ error }}
       </p>

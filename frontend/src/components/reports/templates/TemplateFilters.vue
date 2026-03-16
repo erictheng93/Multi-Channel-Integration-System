@@ -5,7 +5,7 @@
   <div class="filters-section">
     <div class="filter-controls">
       <div class="search-box">
-        <i class="search-icon"></i>
+        <i class="search-icon" />
         <input
           :value="searchQuery"
           type="text"

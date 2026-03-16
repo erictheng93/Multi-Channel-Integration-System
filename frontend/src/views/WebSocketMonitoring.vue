@@ -8,9 +8,7 @@
       <div class="metrics-grid">
         <!-- 連線數 -->
         <div class="metric-card primary">
-          <div class="metric-icon">
-            
-          </div>
+          <div class="metric-icon" />
           <div class="metric-content">
             <h3>活躍連線</h3>
             <div class="metric-value">
@@ -27,9 +25,7 @@
 
         <!-- 訊息吞吐量 -->
         <div class="metric-card success">
-          <div class="metric-icon">
-            
-          </div>
+          <div class="metric-icon" />
           <div class="metric-content">
             <h3>訊息/秒</h3>
             <div class="metric-value">
@@ -44,9 +40,7 @@
 
         <!-- 平均延遲 -->
         <div class="metric-card warning">
-          <div class="metric-icon">
-            
-          </div>
+          <div class="metric-icon" />
           <div class="metric-content">
             <h3>平均延遲</h3>
             <div class="metric-value">
@@ -63,9 +57,7 @@
 
         <!-- 錯誤率 -->
         <div class="metric-card danger">
-          <div class="metric-icon">
-            
-          </div>
+          <div class="metric-icon" />
           <div class="metric-content">
             <h3>錯誤率</h3>
             <div class="metric-value">
@@ -232,7 +224,7 @@
       v-if="error"
       class="error-message"
     >
-       {{ error }}
+      {{ error }}
     </div>
   </div>
 </template>

@@ -13,7 +13,7 @@
             v-if="stats.thisMonthGenerated > 0"
             class="stat-trend"
           >
-            <span class="trend-indicator up"></span>
+            <span class="trend-indicator up" />
             <span class="trend-text">本月 +{{ stats.thisMonthGenerated }}</span>
           </div>
         </template>
