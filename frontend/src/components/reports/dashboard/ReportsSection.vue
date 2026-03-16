@@ -4,7 +4,7 @@
     <div class="section-header">
       <div class="section-title">
         <h3 class="title-text">
-           報表列表
+          報表列表
         </h3>
         <span
           v-if="!loading"
@@ -40,7 +40,7 @@
             title="網格視圖"
             @click="$emit('update:viewMode', 'grid')"
           >
-             網格
+            網格
           </button>
           <button
             class="view-btn"
@@ -48,7 +48,7 @@
             title="列表視圖"
             @click="$emit('update:viewMode', 'list')"
           >
-             列表
+            列表
           </button>
         </div>
       </div>
@@ -70,9 +70,7 @@
       v-else-if="reports.length === 0"
       class="empty-state"
     >
-      <div class="empty-icon">
-        
-      </div>
+      <div class="empty-icon" />
       <h3 class="empty-title">
         暫無報表
       </h3>
@@ -84,7 +82,7 @@
         class="btn btn-primary"
         @click="$emit('create-report')"
       >
-         建立報表
+        建立報表
       </button>
     </div>
 

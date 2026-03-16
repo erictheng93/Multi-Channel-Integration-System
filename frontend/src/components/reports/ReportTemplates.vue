@@ -6,7 +6,7 @@
     <!-- 標題區 -->
     <div class="templates-header">
       <h1 class="page-title">
-        <i class="icon"></i>
+        <i class="icon" />
         報表模板
       </h1>
       <p class="page-description">
@@ -35,9 +35,7 @@
       v-else-if="error"
       class="error-state"
     >
-      <div class="error-icon">
-        
-      </div>
+      <div class="error-icon" />
       <h3>載入失敗</h3>
       <p>{{ error }}</p>
       <button
@@ -67,9 +65,7 @@
       v-if="!loading && !error && filteredTemplates.length === 0"
       class="empty-state"
     >
-      <div class="empty-icon">
-        
-      </div>
+      <div class="empty-icon" />
       <h3>找不到符合條件的模板</h3>
       <p>請嘗試調整篩選條件或搜尋關鍵字</p>
     </div>

@@ -16,25 +16,25 @@
             class="test-btn success-btn"
             @click="testSuccessToast"
           >
-             成功 Toast
+            成功 Toast
           </button>
           <button
             class="test-btn error-btn"
             @click="testErrorToast"
           >
-             错误 Toast
+            错误 Toast
           </button>
           <button
             class="test-btn warning-btn"
             @click="testWarningToast"
           >
-             警告 Toast
+            警告 Toast
           </button>
           <button
             class="test-btn info-btn"
             @click="testInfoToast"
           >
-             信息 Toast
+            信息 Toast
           </button>
         </div>
 
@@ -43,25 +43,25 @@
             class="test-btn"
             @click="testToastWithDescription"
           >
-             带描述的 Toast
+            带描述的 Toast
           </button>
           <button
             class="test-btn"
             @click="testToastWithAction"
           >
-             带操作按钮的 Toast
+            带操作按钮的 Toast
           </button>
           <button
             class="test-btn"
             @click="testMultipleToasts"
           >
-             多个 Toast
+            多个 Toast
           </button>
           <button
             class="test-btn"
             @click="clearAllToasts"
           >
-             清除所有 Toast
+            清除所有 Toast
           </button>
         </div>
       </section>
@@ -74,25 +74,25 @@
             class="test-btn"
             @click="testDefaultConfirm"
           >
-             默认确认框
+            默认确认框
           </button>
           <button
             class="test-btn warning-btn"
             @click="testWarningConfirm"
           >
-             警告对话框
+            警告对话框
           </button>
           <button
             class="test-btn error-btn"
             @click="testDangerConfirm"
           >
-             危险对话框
+            危险对话框
           </button>
           <button
             class="test-btn info-btn"
             @click="testInfoConfirm"
           >
-             信息对话框
+            信息对话框
           </button>
         </div>
 
@@ -101,13 +101,13 @@
             class="test-btn"
             @click="testCustomButtons"
           >
-             自定义按钮文本
+            自定义按钮文本
           </button>
           <button
             class="test-btn"
             @click="testWithMessage"
           >
-             带详细消息
+            带详细消息
           </button>
         </div>
       </section>
@@ -120,19 +120,19 @@
             class="test-btn success-btn"
             @click="testWebSocketAdminScenario"
           >
-             模拟 WebSocketAdmin 保存
+            模拟 WebSocketAdmin 保存
           </button>
           <button
             class="test-btn error-btn"
             @click="testConversationHeaderScenario"
           >
-             模拟 ConversationHeader 错误
+            模拟 ConversationHeader 错误
           </button>
           <button
             class="test-btn warning-btn"
             @click="testAdvancedAssignScenario"
           >
-             模拟 AdvancedAssign 取消指派
+            模拟 AdvancedAssign 取消指派
           </button>
         </div>
       </section>

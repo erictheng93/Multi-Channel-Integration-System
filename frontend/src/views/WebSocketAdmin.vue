@@ -183,7 +183,7 @@
       v-if="error"
       class="error-message"
     >
-       {{ error }}
+      {{ error }}
     </div>
   </div>
 </template>

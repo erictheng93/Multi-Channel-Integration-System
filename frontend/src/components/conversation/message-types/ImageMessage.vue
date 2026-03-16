@@ -18,9 +18,7 @@
         v-else-if="hasError"
         class="image-placeholder error"
       >
-        <div class="error-icon">
-          
-        </div>
+        <div class="error-icon" />
         <span class="error-text">圖片載入失敗</span>
       </div>
 

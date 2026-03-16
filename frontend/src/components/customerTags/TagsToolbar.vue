@@ -15,9 +15,7 @@
         v-if="localSearchQuery"
         class="search-clear"
         @click="handleClear"
-      >
-        
-      </button>
+      />
       <span
         v-if="isSearching"
         class="search-stats"

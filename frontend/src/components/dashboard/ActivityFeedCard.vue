@@ -80,9 +80,7 @@
               <div
                 v-if="activity.priority === 'high'"
                 class="activity-priority"
-              >
-                
-              </div>
+              />
             </div>
             <div class="activity-description">
               {{ activity.description }}

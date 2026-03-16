@@ -70,36 +70,28 @@
       </h2>
       <div class="features-grid">
         <div class="feature-item">
-          <div class="feature-icon">
-            
-          </div>
+          <div class="feature-icon" />
           <div class="feature-content">
             <h4>日期範圍篩選</h4>
             <p>指定起始和結束日期，只匯出特定時間段的對話記錄</p>
           </div>
         </div>
         <div class="feature-item">
-          <div class="feature-icon">
-            
-          </div>
+          <div class="feature-icon" />
           <div class="feature-content">
             <h4>用戶篩選</h4>
             <p>篩選特定 LINE 用戶的對話，快速找到需要的記錄</p>
           </div>
         </div>
         <div class="feature-item">
-          <div class="feature-icon">
-            
-          </div>
+          <div class="feature-icon" />
           <div class="feature-content">
             <h4>客服篩選</h4>
             <p>依照客服人員篩選，用於績效評估或品質審查</p>
           </div>
         </div>
         <div class="feature-item">
-          <div class="feature-icon">
-            
-          </div>
+          <div class="feature-icon" />
           <div class="feature-content">
             <h4>筆數控制</h4>
             <p>設定匯出筆數上限（100 / 500 / 1000），控制檔案大小</p>

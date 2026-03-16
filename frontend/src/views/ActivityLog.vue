@@ -255,9 +255,7 @@
         v-else
         class="empty-state"
       >
-        <div class="empty-icon">
-          
-        </div>
+        <div class="empty-icon" />
         <h3>沒有活動記錄</h3>
         <p>在選定的時間範圍內沒有找到任何活動記錄</p>
       </div>

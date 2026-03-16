@@ -39,9 +39,7 @@
             class="no-data"
           >
             <div class="no-data-content">
-              <div class="no-data-icon">
-                
-              </div>
+              <div class="no-data-icon" />
               <div class="no-data-text">
                 暫無對話記錄
               </div>
