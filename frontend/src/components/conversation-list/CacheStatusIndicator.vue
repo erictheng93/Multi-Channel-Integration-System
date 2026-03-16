@@ -11,9 +11,7 @@
     class="cache-status-indicator"
     :title="`快取命中率: ${hitRate.toFixed(1)}%`"
   >
-    <div class="cache-icon text-sm">
-      
-    </div>
+    <div class="cache-icon text-sm" />
     <span class="font-bold tracking-wider">{{ hitRate.toFixed(0) }}%</span>
   </div>
 </template>

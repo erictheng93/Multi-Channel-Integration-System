@@ -2,7 +2,7 @@
   <div class="quick-actions-widget">
     <div class="widget-header">
       <h3 class="widget-title">
-         快速操作
+        快速操作
       </h3>
     </div>
 
@@ -12,7 +12,7 @@
         class="action-item primary"
         @click="$emit('create-report')"
       >
-        <span class="action-icon"></span>
+        <span class="action-icon" />
         <div class="action-content">
           <div class="action-title">
             建立報表
@@ -29,7 +29,7 @@
         :disabled="loading"
         @click="$emit('refresh')"
       >
-        <span class="action-icon"></span>
+        <span class="action-icon" />
         <div class="action-content">
           <div class="action-title">
             重新整理
@@ -46,7 +46,7 @@
         :disabled="totalReports === 0"
         @click="$emit('export-all')"
       >
-        <span class="action-icon"></span>
+        <span class="action-icon" />
         <div class="action-content">
           <div class="action-title">
             匯出全部
@@ -62,7 +62,7 @@
         class="action-item"
         @click="$emit('view-settings')"
       >
-        <span class="action-icon"></span>
+        <span class="action-icon" />
         <div class="action-content">
           <div class="action-title">
             報表設定

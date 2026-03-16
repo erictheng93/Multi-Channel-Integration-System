@@ -108,7 +108,7 @@
           v-if="isSystemAdmin"
           class="system-admin-warning"
         >
-          <span class="warning-icon"></span>
+          <span class="warning-icon" />
           <span>系統管理員帳號無法透過此介面重設密碼</span>
         </div>
 
@@ -119,7 +119,7 @@
             class="btn btn-outline"
             @click="togglePasswordSection"
           >
-            <span class="btn-icon"></span>
+            <span class="btn-icon" />
             重設密碼
           </button>
 
@@ -133,9 +133,7 @@
               <button
                 class="close-btn"
                 @click="togglePasswordSection"
-              >
-                
-              </button>
+              />
             </div>
 
             <div class="form-group">
@@ -178,7 +176,7 @@
                 v-else-if="passwordMatchStatus === 'match'"
                 class="success-message"
               >
-                 密碼一致
+                密碼一致
               </span>
             </div>
 
@@ -222,7 +220,7 @@
         v-else
         class="admin-notice"
       >
-        <span class="notice-icon"></span>
+        <span class="notice-icon" />
         <span>管理員無需分配團隊</span>
       </div>
     </div>

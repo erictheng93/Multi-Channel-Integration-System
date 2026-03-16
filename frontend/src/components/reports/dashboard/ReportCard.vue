@@ -16,17 +16,13 @@
           :disabled="!canDownload"
           title="下載"
           @click.stop="$emit('download-report', report)"
-        >
-          
-        </button>
+        />
         <button
           class="action-btn"
           :disabled="!canDelete"
           title="刪除"
           @click.stop="$emit('delete-report', report)"
-        >
-          
-        </button>
+        />
       </div>
     </div>
     <div class="card-content">

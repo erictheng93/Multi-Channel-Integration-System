@@ -185,11 +185,11 @@
               <span class="status-text">傳送中...</span>
             </template>
             <template v-else-if="messageStatus === MESSAGE_STATUS.FAILED">
-              <span class="status-icon failed"></span>
+              <span class="status-icon failed" />
               <span class="status-text failed">發送失敗</span>
             </template>
             <template v-else>
-              <span class="status-icon success"></span>
+              <span class="status-icon success" />
               <span class="status-text success">已發送</span>
             </template>
           </div>
@@ -237,11 +237,11 @@
                 <span class="status-text">傳送中...</span>
               </template>
               <template v-else-if="messageStatus === MESSAGE_STATUS.FAILED">
-                <span class="status-icon failed"></span>
+                <span class="status-icon failed" />
                 <span class="status-text failed">發送失敗</span>
               </template>
               <template v-else>
-                <span class="status-icon success"></span>
+                <span class="status-icon success" />
                 <span class="status-text success">已發送</span>
               </template>
             </div>
@@ -309,9 +309,7 @@
               v-if="currentStickerUrlIndex > 0"
               class="cdn-fallback-indicator"
               :title="`使用備用CDN源 #${currentStickerUrlIndex + 1}`"
-            >
-              
-            </div>
+            />
           </div>
 
           <!-- Enhanced fallback for failed stickers -->
@@ -320,9 +318,7 @@
             class="sticker-placeholder enhanced"
           >
             <div class="sticker-icon-large">
-              <div class="sticker-emoji">
-                
-              </div>
+              <div class="sticker-emoji" />
             </div>
             <div class="sticker-fallback-content">
               <div class="sticker-text">
@@ -341,7 +337,7 @@
             class="sticker-info enhanced"
           >
             <span class="sticker-id-info">
-               {{ stickerMetadata.packageId }} ·  {{ stickerMetadata.stickerId }}
+              {{ stickerMetadata.packageId }} ·  {{ stickerMetadata.stickerId }}
             </span>
             <span
               v-if="currentStickerUrlIndex > 0"
@@ -410,9 +406,7 @@
               class="retry-btn"
               title="重试发送"
               @click.stop="handleRetry"
-            >
-              
-            </button>
+            />
           </div>
 
           <!-- Default状态 -->

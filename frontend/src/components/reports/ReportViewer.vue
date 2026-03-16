@@ -5,9 +5,7 @@
       v-if="loading"
       class="loading-container"
     >
-      <div class="loading-spinner">
-        
-      </div>
+      <div class="loading-spinner" />
       <div class="loading-text">
         正在載入報表...
       </div>
@@ -18,9 +16,7 @@
       v-else-if="error"
       class="error-container"
     >
-      <div class="error-icon">
-        
-      </div>
+      <div class="error-icon" />
       <div class="error-title">
         無法載入報表
       </div>
@@ -31,7 +27,7 @@
         class="btn btn-primary"
         @click="loadReport"
       >
-         重新載入
+        重新載入
       </button>
     </div>
 

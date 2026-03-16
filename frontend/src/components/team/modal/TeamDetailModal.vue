@@ -30,7 +30,7 @@
             class="btn btn-sm btn-secondary"
             @click="handleStartEdit"
           >
-             編輯
+            編輯
           </button>
         </div>
         <div class="stats-grid">

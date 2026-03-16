@@ -4,9 +4,7 @@
     class="success-toast"
   >
     <div class="toast-content">
-      <div class="toast-icon">
-        
-      </div>
+      <div class="toast-icon" />
       <div class="toast-message">
         <div class="toast-title">
           報表生成成功！
@@ -18,9 +16,7 @@
       <button
         class="toast-close"
         @click="$emit('close')"
-      >
-        
-      </button>
+      />
     </div>
   </div>
 </template>

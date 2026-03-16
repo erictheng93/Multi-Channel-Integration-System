@@ -1,8 +1,6 @@
 <template>
   <div class="empty-state">
-    <div class="empty-icon">
-      
-    </div>
+    <div class="empty-icon" />
     <h3>{{ title }}</h3>
     <p>{{ message }}</p>
   </div>

@@ -2,7 +2,7 @@
   <div class="popular-types-widget">
     <div class="widget-header">
       <h3 class="widget-title">
-         熱門報表類型
+        熱門報表類型
       </h3>
       <span
         v-if="popularTypes.length > 0"
@@ -18,9 +18,7 @@
         v-if="popularTypes.length === 0"
         class="empty-state"
       >
-        <div class="empty-icon">
-          
-        </div>
+        <div class="empty-icon" />
         <p class="empty-text">
           暫無報表數據
         </p>

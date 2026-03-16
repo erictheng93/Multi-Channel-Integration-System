@@ -64,9 +64,7 @@
       v-if="pendingMessages.length === 0"
       class="empty-state"
     >
-      <div class="empty-icon">
-        
-      </div>
+      <div class="empty-icon" />
       <div class="empty-text">
         目前沒有待發送訊息
       </div>

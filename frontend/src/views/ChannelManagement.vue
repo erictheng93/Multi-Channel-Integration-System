@@ -36,7 +36,7 @@
             :class="{ active: selectedPlatform === 'line' }"
             @click="filterByPlatform('line')"
           >
-             LINE
+            LINE
             <span class="count-badge">{{ getChannelCount('line') }}</span>
           </button>
           <button
@@ -44,7 +44,7 @@
             :class="{ active: selectedPlatform === 'facebook' }"
             @click="filterByPlatform('facebook')"
           >
-             Facebook
+            Facebook
             <span class="count-badge">{{ getChannelCount('facebook') }}</span>
           </button>
           <button
@@ -52,7 +52,7 @@
             :class="{ active: selectedPlatform === 'whatsapp' }"
             @click="filterByPlatform('whatsapp')"
           >
-             WhatsApp
+            WhatsApp
             <span class="count-badge">{{ getChannelCount('whatsapp') }}</span>
           </button>
         </div>
@@ -61,7 +61,7 @@
           class="btn btn-secondary btn-sm"
           @click="refreshChannels"
         >
-          <span></span>
+          <span />
           重新整理
         </button>
       </div>
@@ -80,9 +80,7 @@
         v-else-if="filteredChannels.length === 0"
         class="empty-state"
       >
-        <div class="empty-icon">
-          
-        </div>
+        <div class="empty-icon" />
         <h3>尚未設定任何頻道</h3>
         <p>點擊「新增頻道」按鈕開始設定您的第一個通訊平台</p>
         <button
@@ -225,13 +223,13 @@
               class="btn btn-sm btn-secondary"
               @click="copyWebhookUrl(channel)"
             >
-               複製 Webhook URL
+              複製 Webhook URL
             </button>
             <button
               class="btn btn-sm btn-primary"
               @click="verifyChannel(channel)"
             >
-               驗證
+              驗證
             </button>
           </div>
         </div>
