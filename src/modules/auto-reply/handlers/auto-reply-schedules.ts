@@ -34,7 +34,7 @@ autoReplySchedulesHandler.get('/', async (c) => {
   try {
     const drizzleDb = createDbClient(c.env.DB);
     const payload = c.get('jwtPayload');
-    const teamId = parseInt(c.req.query('teamId') || '') || payload?.primaryTeamId;
+    const teamId = parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId;
 
     if (!teamId) {
       return badRequestResponse(c, 'teamId is required');
@@ -59,7 +59,7 @@ autoReplySchedulesHandler.post('/', async (c) => {
     const payload = c.get('jwtPayload');
     const body = await c.req.json<BulkUpsertScheduleRequest>();
 
-    const teamId = parseInt(c.req.query('teamId') || '') || payload?.primaryTeamId;
+    const teamId = parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId;
     if (!teamId) {
       return badRequestResponse(c, 'teamId is required');
     }

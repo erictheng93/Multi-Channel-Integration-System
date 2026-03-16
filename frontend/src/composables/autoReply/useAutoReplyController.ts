@@ -1,5 +1,7 @@
 import { ref, computed, watch } from 'vue'
 import { useAutoReplyStore } from '@/stores/autoReply'
+import { useAuthStore } from '@/stores/auth'
+import { usePreloadStore } from '@/stores/preload'
 import { useRuleEditor } from './useRuleEditor'
 import { useScheduleEditor } from './useScheduleEditor'
 
@@ -7,6 +9,8 @@ export type TabName = 'rules' | 'schedules' | 'logs'
 
 export function useAutoReplyController() {
   const store = useAutoReplyStore()
+  const authStore = useAuthStore()
+  const preloadStore = usePreloadStore()
   const activeTab = ref<TabName>('rules')
   const loading = ref(true)
   const searchQuery = ref('')
@@ -58,14 +62,31 @@ export function useAutoReplyController() {
     }
   })
 
+  // Resolve a teamId for API calls: contextTeamId > first preloaded team
+  function resolveTeamId(): number | undefined {
+    // If auth store already has a context team, use it
+    if (authStore.contextTeamId) {
+      return authStore.contextTeamId
+    }
+    // For admin users without a context team, pick the first available team
+    const teams = preloadStore.getTeams()
+    const firstTeam = teams[0]
+    if (firstTeam) {
+      authStore.switchTeam(firstTeam.id)
+      return firstTeam.id
+    }
+    return undefined
+  }
+
   // Init
   async function initialize() {
     loading.value = true
     try {
+      const teamId = resolveTeamId()
       await Promise.all([
-        store.fetchRules(),
-        store.fetchSchedules(),
-        store.fetchLogs({ pageSize: 50 })
+        store.fetchRules({ teamId }),
+        store.fetchSchedules({ teamId }),
+        store.fetchLogs({ teamId, pageSize: 50 })
       ])
       scheduleEditor.loadFromSchedules(store.schedules)
     } catch (err) {
@@ -89,6 +110,7 @@ export function useAutoReplyController() {
   async function loadLogsPage(page: number) {
     logsPage.value = page
     await store.fetchLogs({
+      teamId: resolveTeamId(),
       page,
       pageSize: 50,
       ruleId: filterRuleId.value ? Number(filterRuleId.value) : undefined,
