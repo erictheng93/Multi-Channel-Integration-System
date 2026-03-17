@@ -44,11 +44,13 @@ autoReplyLogsHandler.get('/', async (c) => {
     // Filter by ruleId if provided
     const ruleIdFilter = c.req.query('ruleId');
     const platformFilter = c.req.query('platform');
+    const dateFrom = c.req.query('dateFrom');
 
     // Build WHERE conditions — include global rules (team_id IS NULL) alongside team rules
     const conditions: string[] = [`(r.team_id = ${teamId} OR r.team_id IS NULL)`];
     if (ruleIdFilter) conditions.push(`l.rule_id = ${parseInt(ruleIdFilter)}`);
     if (platformFilter) conditions.push(`l.platform = '${platformFilter}'`);
+    if (dateFrom) conditions.push(`l.created_at >= '${dateFrom}'`);
 
     const whereClause = conditions.join(' AND ');
 

@@ -264,6 +264,7 @@ export const getLogs = async (params?: {
   pageSize?: number
   ruleId?: number
   platform?: string
+  dateFrom?: string
 }): Promise<PaginatedLogsResponse> => {
   const queryString = params
     ?`?${new URLSearchParams(

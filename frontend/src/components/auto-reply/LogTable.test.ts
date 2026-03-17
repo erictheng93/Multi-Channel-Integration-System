@@ -67,30 +67,32 @@ function mountTable(overrides: {
 // ===========================================================================
 
 describe('LogTable -- rendering with data', () => {
-  it('renders table with log rows', () => {
+  it('renders cards for each log entry', () => {
     const wrapper = mountTable({
       logs: [makeMockLog(), makeMockLog({ id: 2 })],
       pagination: { page: 1, limit: 20, total: 2 },
     })
-    const rows = wrapper.find('.data-table tbody').findAll('tr')
-    expect(rows).toHaveLength(2)
+    const cards = wrapper.findAll('.log-card')
+    expect(cards).toHaveLength(2)
   })
 
-  it('displays rule name in row', () => {
+  it('displays rule name in card header', () => {
     const wrapper = mountTable({ logs: [makeMockLog({ rule_name: 'Welcome Rule' })] })
     expect(wrapper.find('.rule-name').text()).toBe('Welcome Rule')
   })
 
   it('displays trigger content', () => {
     const wrapper = mountTable({ logs: [makeMockLog({ trigger_content: 'hi there' })] })
-    const triggerCells = wrapper.findAll('.col-trigger .truncated-text')
-    expect(triggerCells[0]!.text()).toBe('hi there')
+    const triggerTexts = wrapper.findAll('.log-card-text--trigger')
+    expect(triggerTexts[0]!.text()).toBe('hi there')
   })
 
   it('displays response content', () => {
     const wrapper = mountTable({ logs: [makeMockLog({ response_content: 'auto reply' })] })
-    const responseCells = wrapper.findAll('.col-response .truncated-text')
-    expect(responseCells[0]!.text()).toBe('auto reply')
+    const cardLines = wrapper.findAll('.log-card-line')
+    // Second line is the response
+    const responseText = cardLines[1]!.find('.log-card-text')
+    expect(responseText.text()).toBe('auto reply')
   })
 
   it('displays platform label (LINE for line)', () => {

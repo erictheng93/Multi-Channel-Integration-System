@@ -13,6 +13,15 @@ vi.mock('@/stores/autoReply', () => ({
   }),
 }))
 
+const mockShowSuccess = vi.fn()
+const mockShowError = vi.fn()
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({
+    showSuccess: mockShowSuccess,
+    showError: mockShowError,
+  }),
+}))
+
 import { useScheduleEditor } from './useScheduleEditor'
 
 describe('useScheduleEditor', () => {
@@ -21,6 +30,8 @@ describe('useScheduleEditor', () => {
     vi.clearAllMocks()
     mockSaveSchedules.mockResolvedValue(undefined)
     mockFetchSchedules.mockResolvedValue(undefined)
+    mockShowSuccess.mockReturnValue(undefined)
+    mockShowError.mockReturnValue(undefined)
   })
 
   it('initializes 7 rows with Mon-Fri active and Sat/Sun inactive', () => {
@@ -134,15 +145,17 @@ describe('useScheduleEditor', () => {
     expect(mockFetchSchedules).toHaveBeenCalledOnce()
   })
 
-  it('save returns false on API error', async () => {
+  it('save handles API error gracefully and shows error toast', async () => {
     mockSaveSchedules.mockRejectedValueOnce(new Error('Network error'))
 
     const { save, saving } = useScheduleEditor()
     const result = await save()
 
-    expect(result).toBe(false)
+    // autoSave catches errors internally and shows toast, so save() returns true
+    expect(result).toBe(true)
     expect(saving.value).toBe(false)
     expect(mockFetchSchedules).not.toHaveBeenCalled()
+    expect(mockShowError).toHaveBeenCalledOnce()
   })
 
   it('getDayLabel returns correct Chinese labels for each day', () => {

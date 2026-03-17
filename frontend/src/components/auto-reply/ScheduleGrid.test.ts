@@ -23,13 +23,11 @@ const defaultRows: ScheduleRow[] = Array.from({ length: 7 }, (_, i) => ({
 function mountGrid(overrides: {
   rows?: ScheduleRow[]
   timezone?: string
-  saving?: boolean
 } = {}) {
   return mount(ScheduleGrid, {
     props: {
       rows: overrides.rows ?? defaultRows,
       timezone: overrides.timezone ?? 'Asia/Taipei',
-      saving: overrides.saving ?? false,
     },
   })
 }
@@ -95,26 +93,24 @@ describe('ScheduleGrid -- rendering', () => {
 })
 
 // ===========================================================================
-// Save button states
+// Auto-save (no save button -- schedules auto-save on change)
 // ===========================================================================
 
-describe('ScheduleGrid -- save button', () => {
-  it('disables save button when saving=true', () => {
-    const wrapper = mountGrid({ saving: true })
-    const btn = wrapper.find('.save-btn')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+describe('ScheduleGrid -- auto-save design', () => {
+  it('does not render a save button (auto-save replaces manual save)', () => {
+    const wrapper = mountGrid()
+    expect(wrapper.find('.save-btn').exists()).toBe(false)
   })
 
-  it('shows saving text when saving', () => {
-    const wrapper = mountGrid({ saving: true })
-    const btn = wrapper.find('.save-btn')
-    expect(btn.text()).toContain('儲存中...')
-  })
+  it('emits update-time when a time input changes', async () => {
+    const wrapper = mountGrid()
+    const timeInputs = wrapper.findAll('input[type="time"]')
+    // Monday start time is index 2 (Sunday has 2 inputs at index 0,1)
+    const mondayStart = timeInputs[2]!
+    await mondayStart.setValue('10:00')
 
-  it('shows normal text when not saving', () => {
-    const wrapper = mountGrid({ saving: false })
-    const btn = wrapper.find('.save-btn')
-    expect(btn.text()).toContain('儲存排程')
+    expect(wrapper.emitted('update-time')).toBeTruthy()
+    expect(wrapper.emitted('update-time')![0]).toEqual([1, 'startTime', '10:00'])
   })
 })
 
@@ -130,12 +126,6 @@ describe('ScheduleGrid -- emitted events', () => {
 
     expect(wrapper.emitted('toggle-day')).toBeTruthy()
     expect(wrapper.emitted('toggle-day')![0]).toEqual([2])
-  })
-
-  it('emits save on save button click', async () => {
-    const wrapper = mountGrid()
-    await wrapper.find('.save-btn').trigger('click')
-    expect(wrapper.emitted('save')).toBeTruthy()
   })
 
   it('emits update-timezone on timezone change', async () => {

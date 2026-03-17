@@ -6,19 +6,23 @@ import { ref, reactive } from 'vue'
 const mockFetchRules = vi.fn().mockResolvedValue(undefined)
 const mockFetchSchedules = vi.fn().mockResolvedValue(undefined)
 const mockFetchLogs = vi.fn().mockResolvedValue(undefined)
+const mockSilentFetchTodayCount = vi.fn().mockResolvedValue(undefined)
 const mockReset = vi.fn()
 const mockStoreRules = ref<Array<{ id: number; name: string; triggerType: string; isActive: boolean; conditions: Array<{ value: string }>; actions: unknown[] }>>([])
 const mockStoreSchedules = ref<Array<{ dayOfWeek: number; isActive: boolean; startTime: string; endTime: string }>>([])
 const mockStoreLogs = ref<Array<{ id: number; reply_method: string }>>([])
+const mockTodayReplyCount = ref(0)
 
 vi.mock('@/stores/autoReply', () => ({
   useAutoReplyStore: () => ({
     rules: mockStoreRules.value,
     schedules: mockStoreSchedules.value,
     logs: mockStoreLogs.value,
+    todayReplyCount: mockTodayReplyCount.value,
     fetchRules: mockFetchRules,
     fetchSchedules: mockFetchSchedules,
     fetchLogs: mockFetchLogs,
+    silentFetchTodayCount: mockSilentFetchTodayCount,
     $reset: mockReset,
   }),
 }))
@@ -76,6 +80,7 @@ describe('useAutoReplyController', () => {
     mockStoreRules.value = []
     mockStoreSchedules.value = []
     mockStoreLogs.value = []
+    mockTodayReplyCount.value = 0
   })
 
   // 1. Initial state
@@ -90,14 +95,15 @@ describe('useAutoReplyController', () => {
     expect(ctrl.logsPage.value).toBe(1)
   })
 
-  // 2. initialize calls all 3 fetches + loadFromSchedules
-  it('initialize calls fetchRules, fetchSchedules, fetchLogs, and loadFromSchedules', async () => {
+  // 2. initialize calls all 3 fetches + todayCount + loadFromSchedules
+  it('initialize calls fetchRules, fetchSchedules, fetchLogs, silentFetchTodayCount, and loadFromSchedules', async () => {
     const ctrl = useAutoReplyController()
     await ctrl.initialize()
 
     expect(mockFetchRules).toHaveBeenCalledWith({ scope: 'global' })
     expect(mockFetchSchedules).toHaveBeenCalledOnce()
     expect(mockFetchLogs).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 50 }))
+    expect(mockSilentFetchTodayCount).toHaveBeenCalledOnce()
     expect(mockLoadFromSchedules).toHaveBeenCalledOnce()
   })
 
@@ -186,15 +192,11 @@ describe('useAutoReplyController', () => {
     expect(ctrl.stats.value.activeRules).toBe(2)
   })
 
-  // 13. stats - todayReplies = logs length
-  it('stats computes todayReplies as logs length', () => {
-    mockStoreLogs.value = [
-      { id: 1, reply_method: 'reply_api' },
-      { id: 2, reply_method: 'push_api' },
-      { id: 3, reply_method: 'reply_api' },
-    ]
+  // 13. stats - todayReplies = store.todayReplyCount (from backend with date filter)
+  it('stats computes todayReplies from store.todayReplyCount', () => {
+    mockTodayReplyCount.value = 7
     const ctrl = useAutoReplyController()
-    expect(ctrl.stats.value.todayReplies).toBe(3)
+    expect(ctrl.stats.value.todayReplies).toBe(7)
   })
 
   // 14. stats - successRate calculation
@@ -238,9 +240,10 @@ describe('useAutoReplyController', () => {
     })
   })
 
-  // Bonus: stats successRate is 0 when no logs
+  // Bonus: stats successRate is 0 when no logs, todayReplies is 0 by default
   it('stats returns successRate 0 when there are no logs', () => {
     mockStoreLogs.value = []
+    mockTodayReplyCount.value = 0
     const ctrl = useAutoReplyController()
     expect(ctrl.stats.value.successRate).toBe(0)
     expect(ctrl.stats.value.todayReplies).toBe(0)

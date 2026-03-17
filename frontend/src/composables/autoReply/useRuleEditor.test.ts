@@ -11,9 +11,13 @@ vi.mock('@/api/autoReply', () => ({
 }))
 
 const mockFetchRules = vi.fn()
+const mockToggleRuleActive = vi.fn()
+const mockRules: unknown[] = []
 vi.mock('@/stores/autoReply', () => ({
   useAutoReplyStore: () => ({
     fetchRules: mockFetchRules,
+    toggleRuleActive: mockToggleRuleActive,
+    rules: mockRules,
   }),
 }))
 
@@ -57,6 +61,8 @@ describe('useRuleEditor', () => {
     mockUpdateRule.mockResolvedValue({})
     mockDeleteRule.mockResolvedValue({})
     mockFetchRules.mockResolvedValue(undefined)
+    mockToggleRuleActive.mockResolvedValue(true)
+    mockRules.length = 0
   })
 
   it('has correct initial state', () => {
@@ -264,13 +270,12 @@ describe('useRuleEditor', () => {
     expect(mockFetchRules).toHaveBeenCalled()
   })
 
-  it('toggleRuleActive calls updateRule with toggled isActive', async () => {
+  it('toggleRuleActive delegates to store.toggleRuleActive with rule id', async () => {
     const { toggleRuleActive } = useRuleEditor()
 
     const result = await toggleRuleActive(mockRule)
 
     expect(result).toBe(true)
-    expect(mockUpdateRule).toHaveBeenCalledWith(1, { isActive: false })
-    expect(mockFetchRules).toHaveBeenCalled()
+    expect(mockToggleRuleActive).toHaveBeenCalledWith(1)
   })
 })
