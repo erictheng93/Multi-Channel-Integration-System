@@ -30,8 +30,10 @@ export async function evaluate(
   const { message, teamId, replyToken, conversationId, customerId, platformUserId } = input;
 
   try {
-    // 1. Load active rules for team (KV cached)
-    const rules = await getTeamRules(teamId, env);
+    // 1. Load active rules: global + team-specific (KV cached)
+    log.info('evaluate() called', { teamId, conversationId, messageContent: message.content.slice(0, 50) });
+    const rules = await getRulesForEvaluation(teamId, env);
+    log.info('Rules loaded for evaluation', { ruleCount: rules.length, teamId, ruleNames: rules.map(r => r.name) });
 
     if (rules.length === 0) {
       return { matched: false };
@@ -39,8 +41,8 @@ export async function evaluate(
 
     // 2. Rules are pre-sorted by priority ASC (lower = higher priority)
     for (const rule of rules) {
-      // 3a. Check triggerType eligibility
-      const eligible = await isTriggerEligible(rule.triggerType, message, teamId, env);
+      // 3a. Check triggerType eligibility (use rule's teamId for schedule lookup)
+      const eligible = await isTriggerEligible(rule.triggerType, message, teamId, rule.teamId, env);
       if (!eligible) {
         continue;
       }
@@ -62,6 +64,7 @@ export async function evaluate(
         ruleName: rule.name,
         triggerType: rule.triggerType,
         conversationId,
+        isGlobalRule: rule.teamId === null,
       });
 
       const execResult = await executeActions(rule.actions, replyToken, platformUserId, env);
@@ -86,7 +89,7 @@ export async function evaluate(
         });
 
         // Broadcast via WebSocket so agents see the auto-reply
-        await broadcastAutoReply(env, conversationId, responseContentSummary, teamId);
+        await broadcastAutoReply(env, conversationId, responseContentSummary, teamId ?? undefined);
       }
 
       return {
@@ -114,7 +117,7 @@ export async function evaluate(
  * Evaluate for follow events (welcome trigger type).
  */
 export async function evaluateWelcome(
-  teamId: number,
+  teamId: number | null,
   replyToken: string | null,
   conversationId: string,
   customerId: number,
@@ -122,7 +125,7 @@ export async function evaluateWelcome(
   env: Bindings
 ): Promise<AutoReplyEvaluateResult> {
   try {
-    const rules = await getTeamRules(teamId, env);
+    const rules = await getRulesForEvaluation(teamId, env);
     const welcomeRules = rules.filter((r) => r.triggerType === 'welcome');
 
     if (welcomeRules.length === 0) {
@@ -149,7 +152,7 @@ export async function evaluateWelcome(
         replyMethod: execResult.replyMethod,
       });
 
-      await broadcastAutoReply(env, conversationId, responseContentSummary, teamId);
+      await broadcastAutoReply(env, conversationId, responseContentSummary, teamId ?? undefined);
     }
 
     return {
@@ -171,11 +174,14 @@ export async function evaluateWelcome(
 
 /**
  * Check if a trigger type is eligible based on the current context.
+ * For off_hours, uses the rule's own teamId for schedule lookup;
+ * falls back to the conversation's teamId if the rule is global.
  */
 async function isTriggerEligible(
   triggerType: TriggerType,
   message: AutoReplyEvaluateInput['message'],
-  teamId: number,
+  conversationTeamId: number | null,
+  ruleTeamId: number | null,
   env: Bindings
 ): Promise<boolean> {
   switch (triggerType) {
@@ -187,9 +193,15 @@ async function isTriggerEligible(
       // Only for text messages
       return message.messageType === 'text' && message.content.length > 0;
 
-    case 'off_hours':
-      // Only when outside business hours
-      return !(await isWithinBusinessHours(teamId, env));
+    case 'off_hours': {
+      // Use rule's team for schedule lookup; fall back to conversation's team
+      const scheduleTeamId = ruleTeamId ?? conversationTeamId;
+      if (scheduleTeamId === null) {
+        // No team context at all — no schedule defined, so not off-hours
+        return false;
+      }
+      return !(await isWithinBusinessHours(scheduleTeamId, env));
+    }
 
     case 'fallback':
       // Always eligible (catch-all)
@@ -201,7 +213,50 @@ async function isTriggerEligible(
 }
 
 /**
- * Load active rules (with conditions + actions) for a team from KV or D1.
+ * Load global rules (team_id IS NULL) from KV or D1.
+ */
+async function getGlobalRules(
+  env: Bindings
+): Promise<AutoReplyRuleWithRelations[]> {
+  const kvKey = `${KV_RULES_PREFIX}global`;
+
+  // Try KV cache
+  try {
+    const cached = await env.CACHE.get(kvKey, 'json');
+    if (cached) {
+      return cached as AutoReplyRuleWithRelations[];
+    }
+  } catch {
+    // KV miss
+  }
+
+  // Query D1
+  const drizzleDb = createDbClient(env.DB);
+
+  const ruleRows = await drizzleDb
+    .select()
+    .from(autoReplyRules)
+    .where(
+      and(
+        isNull(autoReplyRules.teamId),
+        eq(autoReplyRules.isActive, true),
+        isNull(autoReplyRules.deletedAt)
+      )
+    )
+    .orderBy(autoReplyRules.priority);
+
+  const rules = await hydrateRulesWithRelations(drizzleDb, ruleRows);
+
+  // Cache result
+  try {
+    await env.CACHE.put(kvKey, JSON.stringify(rules), { expirationTtl: KV_RULES_TTL });
+  } catch { /* non-fatal */ }
+
+  return rules;
+}
+
+/**
+ * Load active rules (with conditions + actions) for a specific team from KV or D1.
  */
 async function getTeamRules(
   teamId: number,
@@ -234,11 +289,53 @@ async function getTeamRules(
     )
     .orderBy(autoReplyRules.priority);
 
+  const rules = await hydrateRulesWithRelations(drizzleDb, ruleRows);
+
+  // Cache result
+  try {
+    await env.CACHE.put(kvKey, JSON.stringify(rules), { expirationTtl: KV_RULES_TTL });
+  } catch { /* non-fatal */ }
+
+  return rules;
+}
+
+/**
+ * Get all applicable rules for evaluation: global rules + team-specific rules.
+ * Merged and sorted by priority ASC. At same priority, team-specific wins over global.
+ */
+async function getRulesForEvaluation(
+  teamId: number | null,
+  env: Bindings
+): Promise<AutoReplyRuleWithRelations[]> {
+  // Always load global rules
+  const globalRules = await getGlobalRules(env);
+
+  // If team is specified, also load team-specific rules
+  const teamRules = teamId !== null ? await getTeamRules(teamId, env) : [];
+
+  // Merge: sort by priority ASC; at same priority, team-specific first (non-null teamId)
+  const merged = [...globalRules, ...teamRules];
+  merged.sort((a, b) => {
+    if (a.priority !== b.priority) {
+      return a.priority - b.priority;
+    }
+    // At same priority: team-specific rules first (they override global)
+    if (a.teamId !== null && b.teamId === null) return -1;
+    if (a.teamId === null && b.teamId !== null) return 1;
+    return 0;
+  });
+
+  return merged;
+}
+
+/**
+ * Hydrate rule rows with their conditions and actions.
+ */
+async function hydrateRulesWithRelations(
+  drizzleDb: ReturnType<typeof createDbClient>,
+  ruleRows: (typeof autoReplyRules.$inferSelect)[]
+): Promise<AutoReplyRuleWithRelations[]> {
   if (ruleRows.length === 0) {
-    // Cache empty result too
-    try {
-      await env.CACHE.put(kvKey, JSON.stringify([]), { expirationTtl: KV_RULES_TTL });
-    } catch { /* non-fatal */ }
     return [];
   }
 
@@ -269,7 +366,7 @@ async function getTeamRules(
     }
   }
 
-  const rules: AutoReplyRuleWithRelations[] = ruleRows.map((rule) => ({
+  return ruleRows.map((rule) => ({
     id: rule.id,
     teamId: rule.teamId,
     name: rule.name,
@@ -296,24 +393,21 @@ async function getTeamRules(
       sortOrder: a.sortOrder ?? 0,
     })),
   }));
-
-  // Cache result
-  try {
-    await env.CACHE.put(kvKey, JSON.stringify(rules), { expirationTtl: KV_RULES_TTL });
-  } catch { /* non-fatal */ }
-
-  return rules;
 }
 
 /**
- * Invalidate KV cache for a team's rules.
+ * Invalidate KV cache for a team's rules (or global rules when teamId is null).
  */
 export async function invalidateRulesCache(
-  teamId: number,
+  teamId: number | null,
   env: Bindings
 ): Promise<void> {
   try {
-    await env.CACHE.delete(`${KV_RULES_PREFIX}${teamId}`);
+    if (teamId === null) {
+      await env.CACHE.delete(`${KV_RULES_PREFIX}global`);
+    } else {
+      await env.CACHE.delete(`${KV_RULES_PREFIX}${teamId}`);
+    }
   } catch { /* non-fatal */ }
 }
 
@@ -385,7 +479,7 @@ async function broadcastAutoReply(
   env: Bindings,
   conversationId: string,
   content: string,
-  teamId: number
+  teamId: number | undefined
 ): Promise<void> {
   try {
     const broadcastService = new WebSocketBroadcastService(env);

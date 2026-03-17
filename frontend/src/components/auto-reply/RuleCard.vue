@@ -158,36 +158,40 @@ const triggerTypeLabel = computed(() => {
   flex-shrink: 0;
 }
 
-/* Toggle switch */
+/* Toggle switch — iOS native style */
 .rule-card__toggle {
   position: relative;
-  width: 36px;
-  height: 20px;
+  width: 44px;
+  height: 26px;
   border-radius: var(--radius-full);
-  background: var(--gray-300);
+  background: #E5E5EA;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .rule-card__toggle--active {
-  background: var(--primary-500);
+  background: #34C759;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .rule-card__toggle-knob {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: var(--radius-full);
-  background: white;
-  transition: transform var(--transition-fast);
-  box-shadow: var(--shadow-sm);
+  background: #FFFFFF;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .rule-card__toggle--active .rule-card__toggle-knob {
-  transform: translateX(16px);
+  transform: translateX(18px);
 }
 
 /* Name */
@@ -199,32 +203,34 @@ const triggerTypeLabel = computed(() => {
   text-overflow: ellipsis;
 }
 
-/* Trigger badge */
+/* Trigger badge — pastel accent system */
 .rule-card__trigger-badge {
   font-size: 0.75rem;
-  padding: 2px 8px;
+  font-weight: 500;
+  padding: 3px 10px;
   border-radius: var(--radius-full);
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .rule-card__trigger-badge--welcome {
-  background: #164e3f;
-  color: #34d399;
+  background: #E8F5E9;
+  color: #2E7D32;
 }
 
 .rule-card__trigger-badge--keyword {
-  background: #1e3a5f;
-  color: #60a5fa;
+  background: #E3F2FD;
+  color: #007AFF;
 }
 
 .rule-card__trigger-badge--off_hours {
-  background: #4a3728;
-  color: #fbbf24;
+  background: #FFF3E0;
+  color: #E67E00;
 }
 
 .rule-card__trigger-badge--fallback {
-  background: #3b1f4a;
-  color: #c084fc;
+  background: #F3E5F5;
+  color: #7C3AED;
 }
 
 /* Priority badge */

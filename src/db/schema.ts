@@ -625,7 +625,7 @@ export const customerTeamAssignments = sqliteTable('customer_team_assignments', 
 // Auto-Reply Rules table - 自動回覆規則
 export const autoReplyRules = sqliteTable('auto_reply_rules', {
   id: integer('id').primaryKey(),
-  teamId: integer('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   triggerType: text('trigger_type').notNull(), // 'welcome' | 'keyword' | 'off_hours' | 'fallback'
   priority: integer('priority').notNull().default(100), // Lower = higher priority

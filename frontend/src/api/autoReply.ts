@@ -29,7 +29,7 @@ export interface AutoReplyAction {
 
 export interface AutoReplyRule {
   id: number
-  teamId: number
+  teamId: number | null
   name: string
   triggerType: TriggerType
   priority: number
@@ -145,6 +145,7 @@ export const getRules = async (params?: {
   teamId?: number
   page?: number
   pageSize?: number
+  scope?: string
 }): Promise<PaginatedRulesResponse> => {
   const queryString = params
     ?`?${new URLSearchParams(
@@ -176,8 +177,9 @@ export const getRules = async (params?: {
 /**
  * 創建自動回覆規則
  */
-export const createRule = async (data: CreateRuleRequest): Promise<RuleResponse> => {
-  const response = await apiClient.post<AutoReplyRule>('/auto-reply/rules', data)
+export const createRule = async (data: CreateRuleRequest, params?: { scope?: string }): Promise<RuleResponse> => {
+  const queryString = params?.scope ? `?scope=${params.scope}` : ''
+  const response = await apiClient.post<AutoReplyRule>(`/auto-reply/rules${queryString}`, data)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to create auto-reply rule')
   }

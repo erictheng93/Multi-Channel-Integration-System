@@ -172,6 +172,8 @@ describe('auto-reply-engine', () => {
       messageCount: 1,
     });
     mockIsWithinBusinessHours.mockResolvedValue(true);
+    // Pre-cache empty global rules so tests don't need D1 for global query
+    kvStore.set('auto-reply:rules:global', JSON.stringify([]));
   });
 
   // ───────────── No Rules ─────────────
@@ -490,6 +492,82 @@ describe('auto-reply-engine', () => {
       await invalidateRulesCache(5, env);
 
       expect(mockKV.delete).toHaveBeenCalledWith('auto-reply:rules:5');
+    });
+
+    it('should delete global KV cache key when teamId is null', async () => {
+      const env = createMockEnv();
+      kvStore.set('auto-reply:rules:global', JSON.stringify([createRuleFixture()]));
+
+      await invalidateRulesCache(null, env);
+
+      expect(mockKV.delete).toHaveBeenCalledWith('auto-reply:rules:global');
+    });
+  });
+
+  // ───────────── Global Rules (teamId = null) ─────────────
+
+  describe('global rules (channel-level)', () => {
+    it('should match global rules when teamId is null', async () => {
+      const env = createMockEnv();
+      const globalRule = createRuleFixture({ id: 10, teamId: null, name: 'Global Keyword' });
+      kvStore.set('auto-reply:rules:global', JSON.stringify([globalRule]));
+
+      const result = await evaluate(createInput({ teamId: null }), env);
+
+      expect(result.matched).toBe(true);
+      expect(result.ruleId).toBe(10);
+      expect(result.ruleName).toBe('Global Keyword');
+    });
+
+    it('should merge global and team rules with team rules winning at same priority', async () => {
+      const env = createMockEnv();
+      const globalRule = createRuleFixture({
+        id: 10, teamId: null, name: 'Global Fallback',
+        triggerType: 'fallback', priority: 100, conditions: [],
+      });
+      const teamRule = createRuleFixture({
+        id: 20, teamId: 1, name: 'Team Fallback',
+        triggerType: 'fallback', priority: 100, conditions: [],
+      });
+      kvStore.set('auto-reply:rules:global', JSON.stringify([globalRule]));
+      kvStore.set('auto-reply:rules:1', JSON.stringify([teamRule]));
+
+      const result = await evaluate(createInput({ teamId: 1 }), env);
+
+      expect(result.matched).toBe(true);
+      // Team rule should win at same priority
+      expect(result.ruleId).toBe(20);
+      expect(result.ruleName).toBe('Team Fallback');
+    });
+
+    it('should use global rule when no team rules exist', async () => {
+      const env = createMockEnv();
+      const globalRule = createRuleFixture({
+        id: 10, teamId: null, name: 'Global Welcome',
+        triggerType: 'welcome',
+      });
+      kvStore.set('auto-reply:rules:global', JSON.stringify([globalRule]));
+      kvStore.set('auto-reply:rules:1', JSON.stringify([]));
+
+      const result = await evaluateWelcome(1, 'reply-token', 'conv-1', 42, 'U123', env);
+
+      expect(result.matched).toBe(true);
+      expect(result.ruleId).toBe(10);
+    });
+
+    it('should evaluateWelcome with null teamId using global rules', async () => {
+      const env = createMockEnv();
+      const globalWelcome = createRuleFixture({
+        id: 10, teamId: null, name: 'Global Welcome',
+        triggerType: 'welcome',
+        actions: [{ id: 1, ruleId: 10, actionType: 'reply_text', content: JSON.stringify({ text: 'Welcome!' }), sortOrder: 0 }],
+      });
+      kvStore.set('auto-reply:rules:global', JSON.stringify([globalWelcome]));
+
+      const result = await evaluateWelcome(null, 'reply-token', 'conv-1', 42, 'U123', env);
+
+      expect(result.matched).toBe(true);
+      expect(result.ruleName).toBe('Global Welcome');
     });
   });
 });

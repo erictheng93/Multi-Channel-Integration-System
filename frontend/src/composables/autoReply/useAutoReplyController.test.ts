@@ -95,9 +95,9 @@ describe('useAutoReplyController', () => {
     const ctrl = useAutoReplyController()
     await ctrl.initialize()
 
-    expect(mockFetchRules).toHaveBeenCalledOnce()
+    expect(mockFetchRules).toHaveBeenCalledWith({ scope: 'global' })
     expect(mockFetchSchedules).toHaveBeenCalledOnce()
-    expect(mockFetchLogs).toHaveBeenCalledWith({ pageSize: 50 })
+    expect(mockFetchLogs).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 50 }))
     expect(mockLoadFromSchedules).toHaveBeenCalledOnce()
   })
 
