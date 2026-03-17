@@ -175,13 +175,7 @@ export function useRuleEditor() {
   }
 
   async function toggleRuleActive(rule: AutoReplyRule): Promise<boolean> {
-    try {
-      await updateRule(rule.id, { isActive: !rule.isActive })
-      await store.fetchRules({ scope: 'global' })
-      return true
-    } catch {
-      return false
-    }
+    return store.toggleRuleActive(rule.id)
   }
 
   return {
