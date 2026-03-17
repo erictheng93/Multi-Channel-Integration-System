@@ -1,7 +1,8 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import type { AutoReplySchedule } from '@/api/autoReply'
 import { saveSchedules } from '@/api/autoReply'
 import { useAutoReplyStore } from '@/stores/autoReply'
+import { useToast } from '@/composables/useToast'
 
 interface ScheduleRow {
   dayOfWeek: number
@@ -11,11 +12,14 @@ interface ScheduleRow {
 }
 
 const DAY_LABELS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+const AUTO_SAVE_DELAY = 800
 
 export function useScheduleEditor() {
   const store = useAutoReplyStore()
+  const { showSuccess, showError } = useToast()
   const saving = ref(false)
   const timezone = ref('Asia/Taipei')
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
   const rows = reactive<ScheduleRow[]>(
     Array.from({ length: 7 }, (_, i) => ({
       dayOfWeek: i,
@@ -46,21 +50,8 @@ export function useScheduleEditor() {
     }
   }
 
-  function toggleDay(dayOfWeek: number) {
-    const row = rows[dayOfWeek]
-    if (row) {
-      row.isActive = !row.isActive
-    }
-  }
-
-  function updateTime(dayOfWeek: number, field: 'startTime' | 'endTime', value: string) {
-    const row = rows[dayOfWeek]
-    if (row) {
-      row[field] = value
-    }
-  }
-
-  async function save(): Promise<boolean> {
+  /** Auto-save: persist current state to backend with toast feedback */
+  async function autoSave(): Promise<void> {
     saving.value = true
     try {
       await saveSchedules({
@@ -73,11 +64,60 @@ export function useScheduleEditor() {
         }))
       })
       await store.fetchSchedules()
+      showSuccess('營業時間已儲存')
+    } catch {
+      showError('儲存營業時間失敗', '請稍後再試')
+    } finally {
+      saving.value = false
+    }
+  }
+
+  /** Debounced auto-save for continuous inputs (time fields) */
+  function debouncedAutoSave(): void {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+    }
+    debounceTimer = setTimeout(() => {
+      debounceTimer = null
+      void autoSave()
+    }, AUTO_SAVE_DELAY)
+  }
+
+  function toggleDay(dayOfWeek: number) {
+    const row = rows[dayOfWeek]
+    if (row) {
+      row.isActive = !row.isActive
+    }
+    void autoSave()
+  }
+
+  function updateTime(dayOfWeek: number, field: 'startTime' | 'endTime', value: string) {
+    const row = rows[dayOfWeek]
+    if (row) {
+      row[field] = value
+    }
+    debouncedAutoSave()
+  }
+
+  function updateTimezone(value: string) {
+    timezone.value = value
+    void autoSave()
+  }
+
+  // Keep save() for backward compat but it's no longer the primary path
+  async function save(): Promise<boolean> {
+    try {
+      await autoSave()
       return true
     } catch {
       return false
-    } finally {
-      saving.value = false
+    }
+  }
+
+  function cleanup() {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer)
+      debounceTimer = null
     }
   }
 
@@ -89,6 +129,8 @@ export function useScheduleEditor() {
     return dayOfWeek === 0 || dayOfWeek === 6
   }
 
+  onUnmounted(cleanup)
+
   return {
     saving,
     timezone,
@@ -96,7 +138,9 @@ export function useScheduleEditor() {
     loadFromSchedules,
     toggleDay,
     updateTime,
+    updateTimezone,
     save,
+    cleanup,
     getDayLabel,
     isWeekend
   }

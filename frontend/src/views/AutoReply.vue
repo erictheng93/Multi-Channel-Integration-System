@@ -98,11 +98,9 @@
               v-if="activeTab === 'schedules'"
               :rows="scheduleEditor.rows"
               :timezone="scheduleEditor.timezone.value"
-              :saving="scheduleEditor.saving.value"
               @toggle-day="scheduleEditor.toggleDay($event)"
               @update-time="(day, field, val) => scheduleEditor.updateTime(day, field, val)"
-              @update-timezone="scheduleEditor.timezone.value = $event"
-              @save="handleSaveSchedule"
+              @update-timezone="scheduleEditor.updateTimezone($event)"
             />
 
             <!-- Logs Tab -->
@@ -120,19 +118,35 @@
           </div>
         </div>
       </template>
+
+      <!-- Delete Confirmation Dialog -->
+      <ConfirmDialog
+        v-if="showDeleteConfirm"
+        type="danger"
+        title="確定刪除此規則？"
+        :message="deleteConfirmMessage"
+        confirm-text="刪除"
+        cancel-text="取消"
+        :loading="deleting"
+        @confirm="confirmDelete"
+        @cancel="showDeleteConfirm = false"
+        @close="showDeleteConfirm = false"
+      />
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import AutoReplyStats from '@/components/auto-reply/AutoReplyStats.vue'
 import RuleList from '@/components/auto-reply/RuleList.vue'
 import ScheduleGrid from '@/components/auto-reply/ScheduleGrid.vue'
 import LogTable from '@/components/auto-reply/LogTable.vue'
 import { useAutoReplyController } from '@/composables/autoReply/useAutoReplyController'
+import { useToast } from '@/composables/useToast'
 
 const {
   loading,
@@ -152,30 +166,47 @@ const {
   loadLogsPage
 } = useAutoReplyController()
 
+const { showSuccess, showError } = useToast()
+
 async function refresh() {
   await initialize()
 }
 
 async function handleSaveRule() {
   const success = await ruleEditor.saveRule()
-  if (!success) {
-    console.error('Failed to save rule')
+  if (success) {
+    showSuccess(ruleEditor.isCreating.value ? '規則已建立' : '規則已更新')
+  } else {
+    showError('儲存規則失敗', '請稍後再試')
   }
 }
 
-async function handleDeleteRule() {
-  if (ruleEditor.expandedRuleId.value) {
-    const success = await ruleEditor.removeRule(ruleEditor.expandedRuleId.value)
-    if (!success) {
-      console.error('Failed to delete rule')
-    }
-  }
+// Delete confirmation state
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
+
+const deleteConfirmMessage = computed(() => {
+  const ruleId = ruleEditor.expandedRuleId.value
+  const rule = store.rules.find(r => r.id === ruleId)
+  return rule
+    ? `規則「${rule.name}」刪除後無法復原，確定要繼續嗎？`
+    : '此操作無法復原，確定要刪除嗎？'
+})
+
+function handleDeleteRule() {
+  showDeleteConfirm.value = true
 }
 
-async function handleSaveSchedule() {
-  const success = await scheduleEditor.save()
-  if (!success) {
-    console.error('Failed to save schedule')
+async function confirmDelete() {
+  if (!ruleEditor.expandedRuleId.value) { return }
+  deleting.value = true
+  const success = await ruleEditor.removeRule(ruleEditor.expandedRuleId.value)
+  deleting.value = false
+  showDeleteConfirm.value = false
+  if (success) {
+    showSuccess('規則已刪除')
+  } else {
+    showError('刪除規則失敗', '請稍後再試')
   }
 }
 

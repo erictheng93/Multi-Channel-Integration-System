@@ -38,17 +38,6 @@
             UTC
           </option>
         </select>
-        <button
-          class="btn btn-primary save-btn"
-          :disabled="saving"
-          @click="emit('save')"
-        >
-          <span
-            v-if="saving"
-            class="spinner"
-          />
-          {{ saving ? '儲存中...' : '儲存排程' }}
-        </button>
       </div>
     </div>
 
@@ -139,14 +128,12 @@ interface ScheduleRow {
 defineProps<{
   rows: ScheduleRow[]
   timezone: string
-  saving: boolean
 }>()
 
 const emit = defineEmits<{
   'toggle-day': [dayOfWeek: number]
   'update-time': [dayOfWeek: number, field: 'startTime' | 'endTime', value: string]
   'update-timezone': [value: string]
-  'save': []
 }>()
 
 const dayLabels: Record<number, string> = {
@@ -201,29 +188,6 @@ function dayColorClass(dayOfWeek: number): string {
 .timezone-select {
   min-width: 200px;
   font-size: 0.875rem;
-}
-
-.save-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  white-space: nowrap;
-}
-
-.spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .table-wrapper {
@@ -363,11 +327,6 @@ function dayColorClass(dayOfWeek: number): string {
 
   .timezone-select {
     width: 100%;
-  }
-
-  .save-btn {
-    width: 100%;
-    justify-content: center;
   }
 
   .time-input {

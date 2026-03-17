@@ -134,6 +134,41 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     return togglingRuleIds.has(ruleId)
   }
 
+  /**
+   * Silent fetches for background stats polling.
+   * These do NOT set loading=true so the UI won't flash.
+   */
+  async function silentFetchRules(params?: {
+    teamId?: number
+    page?: number
+    pageSize?: number
+    scope?: string
+  }) {
+    try {
+      const response = await getRules(params)
+      rules.value = response.data.items
+      rulesPagination.value = response.data.pagination
+    } catch {
+      // Silently ignore — stats polling should not disrupt UI
+    }
+  }
+
+  async function silentFetchLogs(params?: {
+    teamId?: number
+    page?: number
+    pageSize?: number
+    ruleId?: number
+    platform?: string
+  }) {
+    try {
+      const response = await getLogs(params)
+      logs.value = response.data.items
+      logsPagination.value = response.data.pagination
+    } catch {
+      // Silently ignore — stats polling should not disrupt UI
+    }
+  }
+
   function $reset() {
     rules.value = []
     schedules.value = []
@@ -160,6 +195,8 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     fetchRules,
     fetchSchedules,
     fetchLogs,
+    silentFetchRules,
+    silentFetchLogs,
     toggleRuleActive,
     isToggling,
     $reset

@@ -857,33 +857,9 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       source: qrCodeToken ? 'qr_code' : 'direct'
     });
 
-    // Step 10: 觸發新客戶加入通知（使用已查詢的 teamInfo，避免重複查詢）
-    try {
-      const { triggerCustomerFollowedNotification } = await import('@/utils/notification-trigger');
-
-      // 觸發通知給管理員或團隊成員
-      await triggerCustomerFollowedNotification(env, {
-        customerName: displayName,
-        platform: 'LINE',
-        source: qrCodeToken ? 'qr_code' : 'direct',
-        teamId: assignedTeamId || undefined,
-        teamName: teamInfo?.name,  //  優化：使用已查詢的 teamInfo
-        conversationId: existingConversation?.id
-      });
-
-      console.log('[LINE Follow] Customer followed notification triggered');
-    } catch (notificationError) {
-      log.warn('LINE Follow: Failed to trigger customer followed notification', {
-        error: notificationError instanceof Error ? notificationError.message : String(notificationError)
-      });
-      // 不要讓通知失敗影響主流程
-    }
-
-    // Step 11: Auto-Reply Welcome Message (replaces hardcoded welcome)
+    // Step 10: Auto-Reply Welcome Message BEFORE notifications (reply tokens expire in ~30s)
     if (event.replyToken && existingCustomer) {
       try {
-
-
         // Determine conversation ID for logging
         let welcomeConversationId = existingConversation?.id;
         if (!welcomeConversationId) {
@@ -931,8 +907,27 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         log.warn('LINE Follow: Failed to send welcome message', {
           error: welcomeError instanceof Error ? welcomeError.message : String(welcomeError)
         });
-        // 不要讓歡迎訊息失敗影響主流程
       }
+    }
+
+    // Step 11: 觸發新客戶加入通知（使用已查詢的 teamInfo，避免重複查詢）
+    try {
+      const { triggerCustomerFollowedNotification } = await import('@/utils/notification-trigger');
+
+      await triggerCustomerFollowedNotification(env, {
+        customerName: displayName,
+        platform: 'LINE',
+        source: qrCodeToken ? 'qr_code' : 'direct',
+        teamId: assignedTeamId || undefined,
+        teamName: teamInfo?.name,
+        conversationId: existingConversation?.id
+      });
+
+      console.log('[LINE Follow] Customer followed notification triggered');
+    } catch (notificationError) {
+      log.warn('LINE Follow: Failed to trigger customer followed notification', {
+        error: notificationError instanceof Error ? notificationError.message : String(notificationError)
+      });
     }
 
   } catch (error) {

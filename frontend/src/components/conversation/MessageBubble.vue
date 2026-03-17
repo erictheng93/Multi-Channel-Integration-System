@@ -696,7 +696,8 @@
     if ('direction' in props.message) {
       return (props.message as { direction: string }).direction === 'outgoing'
     }
-    return props.message.senderType === 'agent'
+    // Both agent messages and system messages (e.g. auto-replies) are outgoing
+    return props.message.senderType === 'agent' || props.message.senderType === 'system'
   })
 
   const senderName = computed(() => {
