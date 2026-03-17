@@ -4,11 +4,12 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import {
   getRules,
   getSchedules,
   getLogs,
+  updateRule,
   type AutoReplyRule,
   type AutoReplySchedule,
   type AutoReplyLog
@@ -31,6 +32,8 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
   })
   const loading = ref(false)
   const error = ref<string | null>(null)
+  // Track in-flight toggle requests to prevent double-clicks
+  const togglingRuleIds = reactive(new Set<number>())
 
   // Actions
   async function fetchRules(params?: {
@@ -97,6 +100,40 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     }
   }
 
+  /**
+   * Optimistic toggle: flips local state instantly, syncs to backend,
+   * rolls back on failure. Prevents double-click via togglingRuleIds guard.
+   */
+  async function toggleRuleActive(ruleId: number): Promise<boolean> {
+    // Double-click guard: skip if already toggling this rule
+    if (togglingRuleIds.has(ruleId)) {return false}
+
+    const rule = rules.value.find(r => r.id === ruleId)
+    if (!rule) {return false}
+
+    const previousValue = rule.isActive
+    const newValue = !previousValue
+
+    // Optimistic update — UI flips instantly
+    rule.isActive = newValue
+    togglingRuleIds.add(ruleId)
+
+    try {
+      await updateRule(ruleId, { isActive: newValue })
+      return true
+    } catch {
+      // Rollback on failure
+      rule.isActive = previousValue
+      return false
+    } finally {
+      togglingRuleIds.delete(ruleId)
+    }
+  }
+
+  function isToggling(ruleId: number): boolean {
+    return togglingRuleIds.has(ruleId)
+  }
+
   function $reset() {
     rules.value = []
     schedules.value = []
@@ -105,6 +142,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     logsPagination.value = { page: 1, limit: 20, total: 0 }
     loading.value = false
     error.value = null
+    togglingRuleIds.clear()
   }
 
   return {
@@ -116,11 +154,14 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     logsPagination,
     loading,
     error,
+    togglingRuleIds,
 
     // Actions
     fetchRules,
     fetchSchedules,
     fetchLogs,
+    toggleRuleActive,
+    isToggling,
     $reset
   }
 })

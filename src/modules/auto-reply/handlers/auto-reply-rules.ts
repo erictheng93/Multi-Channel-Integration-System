@@ -6,7 +6,7 @@ import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
 import { autoReplyRules, autoReplyConditions, autoReplyActions } from '@/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, inArray } from 'drizzle-orm';
 import { invalidateRulesCache } from '../services/auto-reply-engine';
 import {
   successResponse,
@@ -73,18 +73,20 @@ autoReplyRulesHandler.get('/', async (c) => {
       .where(whereCondition);
     const total = allRules.length;
 
-    // Load conditions and actions for each rule
+    // Load conditions and actions only for the current page's rules
     const ruleIds = rules.map((r) => r.id);
-    const [conditions, actions] = await Promise.all([
-      drizzleDb.select().from(autoReplyConditions),
-      drizzleDb.select().from(autoReplyActions),
-    ]);
+    const [conditions, actions] = ruleIds.length > 0
+      ? await Promise.all([
+          drizzleDb.select().from(autoReplyConditions).where(inArray(autoReplyConditions.ruleId, ruleIds)),
+          drizzleDb.select().from(autoReplyActions).where(inArray(autoReplyActions.ruleId, ruleIds)),
+        ])
+      : [[], []];
 
     const result = rules.map((rule) => ({
       ...rule,
       isActive: rule.isActive ?? true,
       conditions: conditions
-        .filter((c) => ruleIds.includes(c.ruleId) && c.ruleId === rule.id)
+        .filter((c) => c.ruleId === rule.id)
         .map((c) => ({
           id: c.id,
           conditionType: c.conditionType,
@@ -93,7 +95,7 @@ autoReplyRulesHandler.get('/', async (c) => {
           matchMode: c.matchMode || 'any',
         })),
       actions: actions
-        .filter((a) => ruleIds.includes(a.ruleId) && a.ruleId === rule.id)
+        .filter((a) => a.ruleId === rule.id)
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
         .map((a) => ({
           id: a.id,

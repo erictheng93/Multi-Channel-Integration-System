@@ -89,6 +89,7 @@ export function useAutoReplyController() {
         store.fetchLogs({ teamId, pageSize: 50 })
       ])
       scheduleEditor.loadFromSchedules(store.schedules)
+      startLogsPolling()
     } catch (err) {
       console.error('Failed to initialize auto-reply:', err)
     } finally {
@@ -97,13 +98,43 @@ export function useAutoReplyController() {
   }
 
   function cleanup() {
+    stopLogsPolling()
     store.$reset()
+  }
+
+  // Polling: auto-refresh logs every 15s when logs tab is active
+  let logsPollingTimer: ReturnType<typeof setInterval> | null = null
+
+  function startLogsPolling() {
+    stopLogsPolling()
+    logsPollingTimer = setInterval(() => {
+      if (activeTab.value === 'logs') {
+        store.fetchLogs({
+          teamId: resolveTeamId(),
+          page: logsPage.value,
+          pageSize: 50,
+          ruleId: filterRuleId.value ? Number(filterRuleId.value) : undefined,
+          platform: filterPlatform.value || undefined
+        })
+      }
+    }, 15000)
+  }
+
+  function stopLogsPolling() {
+    if (logsPollingTimer) {
+      clearInterval(logsPollingTimer)
+      logsPollingTimer = null
+    }
   }
 
   // Tab switching
   function switchTab(tab: TabName) {
     activeTab.value = tab
     ruleEditor.collapseRule()
+    // Refresh logs immediately when switching to logs tab
+    if (tab === 'logs') {
+      loadLogsPage(logsPage.value)
+    }
   }
 
   // Log pagination
