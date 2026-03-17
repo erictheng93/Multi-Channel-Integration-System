@@ -30,6 +30,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     limit: 20,
     total: 0
   })
+  const todayReplyCount = ref(0)
   const loading = ref(false)
   const error = ref<string | null>(null)
   // Track in-flight toggle requests to prevent double-clicks
@@ -159,6 +160,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     pageSize?: number
     ruleId?: number
     platform?: string
+    dateFrom?: string
   }) {
     try {
       const response = await getLogs(params)
@@ -169,12 +171,28 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     }
   }
 
+  /**
+   * Fetch today's reply count without touching logs/logsPagination.
+   * Uses dateFrom filter + page=1&pageSize=1 to get only the total.
+   */
+  async function silentFetchTodayCount(params: { teamId?: number }) {
+    try {
+      const now = new Date()
+      const dateFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`
+      const response = await getLogs({ ...params, dateFrom, page: 1, pageSize: 1 })
+      todayReplyCount.value = response.data.pagination.total
+    } catch {
+      // Silently ignore
+    }
+  }
+
   function $reset() {
     rules.value = []
     schedules.value = []
     logs.value = []
     rulesPagination.value = { page: 1, limit: 20, total: 0 }
     logsPagination.value = { page: 1, limit: 20, total: 0 }
+    todayReplyCount.value = 0
     loading.value = false
     error.value = null
     togglingRuleIds.clear()
@@ -187,6 +205,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     logs,
     rulesPagination,
     logsPagination,
+    todayReplyCount,
     loading,
     error,
     togglingRuleIds,
@@ -197,6 +216,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     fetchLogs,
     silentFetchRules,
     silentFetchLogs,
+    silentFetchTodayCount,
     toggleRuleActive,
     isToggling,
     $reset

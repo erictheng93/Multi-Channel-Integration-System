@@ -47,9 +47,6 @@ export function useAutoReplyController() {
     void clockTick.value
 
     const activeRules = store.rules.filter(r => r.isActive).length
-    const todayLogs = store.logs.length
-    const successLogs = store.logs.filter(l => l.reply_method === 'reply_api').length
-    const successRate = todayLogs > 0 ? Math.round((successLogs / todayLogs) * 100) : 0
 
     // Check if currently within business hours
     const now = new Date()
@@ -60,9 +57,14 @@ export function useAutoReplyController() {
       ? todaySchedule.isActive && currentTime >= todaySchedule.startTime && currentTime <= todaySchedule.endTime
       : false
 
+    // Success rate from today's logs (still use store.logs for visible items)
+    const todayLogs = store.logs.length
+    const successLogs = store.logs.filter(l => l.reply_method === 'reply_api').length
+    const successRate = todayLogs > 0 ? Math.round((successLogs / todayLogs) * 100) : 0
+
     return {
       activeRules,
-      todayReplies: todayLogs,
+      todayReplies: store.todayReplyCount,
       isBusinessHours,
       successRate
     }
@@ -92,7 +94,8 @@ export function useAutoReplyController() {
       await Promise.all([
         store.fetchRules({ scope: 'global' }),
         store.fetchSchedules({ teamId }),
-        store.fetchLogs({ teamId, pageSize: 50 })
+        store.fetchLogs({ teamId, pageSize: 50 }),
+        store.silentFetchTodayCount({ teamId })
       ])
       scheduleEditor.loadFromSchedules(store.schedules)
       startPolling()
@@ -116,11 +119,12 @@ export function useAutoReplyController() {
   function startPolling() {
     stopPolling()
 
-    // Stats polling: silently refresh rules + logs every 30s (always active)
+    // Stats polling: silently refresh rules + logs + today count every 30s (always active)
     statsPollingTimer = setInterval(() => {
       const teamId = resolveTeamId()
       store.silentFetchRules({ scope: 'global' })
       store.silentFetchLogs({ teamId, pageSize: 50 })
+      store.silentFetchTodayCount({ teamId })
     }, 30000)
 
     // Logs tab polling: refresh with filters every 15s when logs tab is active

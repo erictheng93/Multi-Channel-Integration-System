@@ -70,9 +70,20 @@ export async function evaluate(
       const execResult = await executeActions(rule.actions, replyToken, platformUserId, env);
 
       if (execResult.success) {
-        // Save auto-reply as system message in messages table
+        // Each post-send operation is independent — one failure should not block the others.
+        // Previously, saveAutoReplyMessage had no try-catch, so a transient D1 error
+        // would skip both the audit log and WebSocket broadcast.
         const responseContentSummary = buildResponseSummary(rule.actions);
-        await saveAutoReplyMessage(env, conversationId, responseContentSummary);
+
+        // Save auto-reply as system message in messages table
+        try {
+          await saveAutoReplyMessage(env, conversationId, responseContentSummary);
+        } catch (saveError) {
+          log.error('Failed to save auto-reply message to DB', {
+            conversationId,
+            error: saveError instanceof Error ? saveError.message : String(saveError),
+          });
+        }
 
         // Insert audit log
         await insertAutoReplyLog(env, {
@@ -139,7 +150,15 @@ export async function evaluateWelcome(
 
     if (execResult.success) {
       const responseContentSummary = buildResponseSummary(rule.actions);
-      await saveAutoReplyMessage(env, conversationId, responseContentSummary);
+
+      try {
+        await saveAutoReplyMessage(env, conversationId, responseContentSummary);
+      } catch (saveError) {
+        log.error('Failed to save welcome auto-reply message to DB', {
+          conversationId,
+          error: saveError instanceof Error ? saveError.message : String(saveError),
+        });
+      }
 
       await insertAutoReplyLog(env, {
         ruleId: rule.id,
