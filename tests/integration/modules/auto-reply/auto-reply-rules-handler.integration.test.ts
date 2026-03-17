@@ -26,6 +26,7 @@ vi.mock('drizzle-orm', () => ({
   eq: (...args: any[]) => ({ type: 'eq', args }),
   and: (...args: any[]) => ({ type: 'and', args }),
   isNull: (col: any) => ({ type: 'isNull', col }),
+  inArray: (col: any, values: any[]) => ({ type: 'inArray', col, values }),
 }));
 
 // Schema tables

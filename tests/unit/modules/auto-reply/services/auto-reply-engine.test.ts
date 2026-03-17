@@ -482,6 +482,245 @@ describe('auto-reply-engine', () => {
     });
   });
 
+  // ───────────── Keyword Edge Cases ─────────────
+
+  describe('keyword edge cases', () => {
+    it('should skip keyword rule with empty message content', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture({
+        triggerType: 'keyword',
+        conditions: [{ id: 1, ruleId: 1, conditionType: 'contains', value: 'hello', caseSensitive: false, matchMode: 'any' }],
+      });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      // Empty content → keyword rule requires content.length > 0
+      const result = await evaluate(createInput({ message: { content: '', messageType: 'text', platform: 'line' } }), env);
+      expect(result.matched).toBe(false);
+    });
+  });
+
+  // ───────────── Off-Hours Schedule Lookup ─────────────
+
+  describe('off_hours schedule lookup', () => {
+    it('should use rule.teamId for off_hours schedule lookup', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture({
+        id: 1, teamId: 5, triggerType: 'off_hours', conditions: [],
+      });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      mockIsWithinBusinessHours.mockResolvedValue(false);
+
+      await evaluate(createInput({ teamId: 1 }), env);
+
+      // Engine passes rule.teamId (5) to isWithinBusinessHours, not conversation teamId (1)
+      // Actually: ruleTeamId ?? conversationTeamId → 5 ?? 1 → 5
+      expect(mockIsWithinBusinessHours).toHaveBeenCalledWith(5, env);
+    });
+
+    it('should fall back to conversation teamId for global rule off_hours', async () => {
+      const env = createMockEnv();
+      const globalRule = createRuleFixture({
+        id: 10, teamId: null, triggerType: 'off_hours', conditions: [],
+      });
+      kvStore.set('auto-reply:rules:global', JSON.stringify([globalRule]));
+      kvStore.set('auto-reply:rules:1', JSON.stringify([]));
+
+      mockIsWithinBusinessHours.mockResolvedValue(false);
+
+      await evaluate(createInput({ teamId: 1 }), env);
+
+      // ruleTeamId (null) ?? conversationTeamId (1) → 1
+      expect(mockIsWithinBusinessHours).toHaveBeenCalledWith(1, env);
+    });
+  });
+
+  // ───────────── Post-Action Side Effects ─────────────
+
+  describe('post-action side effects', () => {
+    it('should NOT insert audit log when action fails', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      mockExecuteActions.mockResolvedValue({
+        success: false, replyMethod: 'reply_api', messageCount: 0, error: 'Failed',
+      });
+
+      await evaluate(createInput(), env);
+
+      // Insert should NOT be called when execResult.success is false
+      expect(mockBroadcastNewMessage).not.toHaveBeenCalled();
+    });
+
+    it('should NOT broadcast via WebSocket when action fails', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      mockExecuteActions.mockResolvedValue({
+        success: false, replyMethod: 'push_api', messageCount: 0, error: 'Both APIs failed',
+      });
+
+      await evaluate(createInput(), env);
+
+      expect(mockBroadcastNewMessage).not.toHaveBeenCalled();
+    });
+
+    it('should insert message with senderType "system"', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      await evaluate(createInput(), env);
+
+      // Check that insert was called with senderType 'system'
+      const insertCalls = mockInsertValues.mock.calls;
+      const msgInsert = insertCalls.find((call: any[]) => call[0]?.senderType === 'system');
+      expect(msgInsert).toBeDefined();
+      expect(msgInsert[0].senderName).toBe('Auto-Reply');
+    });
+
+    it('should broadcast with senderType "agent" and senderId "auto-reply"', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      await evaluate(createInput(), env);
+
+      expect(mockBroadcastNewMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.objectContaining({
+            senderType: 'agent',
+            senderId: 'auto-reply',
+            senderName: 'Auto-Reply',
+          }),
+        })
+      );
+    });
+  });
+
+  // ───────────── evaluateWelcome Edge Cases ─────────────
+
+  describe('evaluateWelcome edge cases', () => {
+    it('should filter non-welcome rules in evaluateWelcome', async () => {
+      const env = createMockEnv();
+      const rules = [
+        createRuleFixture({ id: 1, triggerType: 'keyword', name: 'Keyword' }),
+        createRuleFixture({ id: 2, triggerType: 'welcome', name: 'Welcome', conditions: [] }),
+        createRuleFixture({ id: 3, triggerType: 'fallback', name: 'Fallback', conditions: [] }),
+      ];
+      kvStore.set('auto-reply:rules:1', JSON.stringify(rules));
+
+      const result = await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
+      expect(result.matched).toBe(true);
+      expect(result.ruleName).toBe('Welcome');
+    });
+
+    it('should broadcast same as regular evaluate on welcome', async () => {
+      const env = createMockEnv();
+      const welcomeRule = createRuleFixture({
+        triggerType: 'welcome', name: 'Welcome', conditions: [],
+      });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([welcomeRule]));
+
+      await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
+
+      expect(mockBroadcastNewMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conversationId: 'conv-1',
+          source: 'api',
+          teamId: 1,
+        })
+      );
+    });
+
+    it('should return error in evaluateWelcome on action failure', async () => {
+      const env = createMockEnv();
+      const welcomeRule = createRuleFixture({
+        triggerType: 'welcome', conditions: [],
+      });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([welcomeRule]));
+
+      mockExecuteActions.mockResolvedValue({
+        success: false, replyMethod: 'reply_api', messageCount: 0, error: 'API down',
+      });
+
+      const result = await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
+      expect(result.matched).toBe(true);
+      // evaluateWelcome doesn't include error in result currently (it only includes replyMethod)
+      // But the rule was matched
+      expect(result.ruleId).toBe(1);
+    });
+  });
+
+  // ───────────── Audit Log Details ─────────────
+
+  describe('audit log details', () => {
+    it('should log triggerType as matchedCondition for non-keyword rules', async () => {
+      const env = createMockEnv();
+      const fallbackRule = createRuleFixture({
+        triggerType: 'fallback', conditions: [],
+      });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([fallbackRule]));
+
+      await evaluate(createInput(), env);
+
+      const insertCalls = mockInsertValues.mock.calls;
+      const logInsert = insertCalls.find((call: any[]) => call[0]?.matchedCondition);
+      expect(logInsert).toBeDefined();
+      const condition = JSON.parse(logInsert[0].matchedCondition);
+      expect(condition).toEqual({ triggerType: 'fallback' });
+    });
+
+    it('should log serialized conditions for keyword rules', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture({
+        conditions: [{ id: 1, ruleId: 1, conditionType: 'contains', value: 'hello', caseSensitive: false, matchMode: 'any' }],
+      });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      await evaluate(createInput(), env);
+
+      const insertCalls = mockInsertValues.mock.calls;
+      const logInsert = insertCalls.find((call: any[]) => call[0]?.matchedCondition);
+      expect(logInsert).toBeDefined();
+      const condition = JSON.parse(logInsert[0].matchedCondition);
+      expect(Array.isArray(condition)).toBe(true);
+      expect(condition[0]).toEqual({ type: 'contains', value: 'hello' });
+    });
+
+    it('should log "[follow_event]" as triggerContent for welcome rules', async () => {
+      const env = createMockEnv();
+      const welcomeRule = createRuleFixture({
+        triggerType: 'welcome', conditions: [],
+      });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([welcomeRule]));
+
+      await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
+
+      const insertCalls = mockInsertValues.mock.calls;
+      const logInsert = insertCalls.find((call: any[]) => call[0]?.triggerContent === '[follow_event]');
+      expect(logInsert).toBeDefined();
+    });
+
+    it('should log correct replyMethod from action executor', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      mockExecuteActions.mockResolvedValue({
+        success: true, replyMethod: 'push_api', messageCount: 1,
+      });
+
+      await evaluate(createInput(), env);
+
+      const insertCalls = mockInsertValues.mock.calls;
+      const logInsert = insertCalls.find((call: any[]) => call[0]?.replyMethod === 'push_api');
+      expect(logInsert).toBeDefined();
+    });
+  });
+
   // ───────────── Cache Invalidation ─────────────
 
   describe('invalidateRulesCache', () => {

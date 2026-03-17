@@ -62,6 +62,14 @@ vi.mock('@/utils/notification-trigger', () => ({
   triggerCustomerFollowedNotification: mockTriggerCustomerFollowedNotification
 }));
 
+// Mock auto-reply engine (evaluateWelcome is called during follow events)
+const mockEvaluateWelcome = vi.fn().mockResolvedValue({ matched: false });
+vi.mock('@modules/auto-reply/services/auto-reply-engine', () => ({
+  evaluate: vi.fn().mockResolvedValue({ matched: false }),
+  evaluateWelcome: (...args: any[]) => mockEvaluateWelcome(...args),
+  invalidateRulesCache: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock uuid
 vi.mock('uuid', () => ({
   v4: vi.fn().mockReturnValue('mock-conversation-uuid')
@@ -102,6 +110,9 @@ vi.mock('@/db/drizzle-factory', () => ({
             limit: vi.fn().mockReturnValue({
               get: vi.fn().mockResolvedValue(result)
             }),
+            get: vi.fn().mockResolvedValue(result)
+          }),
+          limit: vi.fn().mockReturnValue({
             get: vi.fn().mockResolvedValue(result)
           }),
           ne: vi.fn().mockReturnValue({
@@ -170,12 +181,21 @@ vi.mock('@/db/drizzle-factory', () => ({
   })
 }));
 
+// Mock drizzle-orm operators (prevent crashes when schema columns are undefined)
+vi.mock('drizzle-orm', () => ({
+  eq: (...args: any[]) => ({ type: 'eq', args }),
+  and: (...args: any[]) => ({ type: 'and', args }),
+  ne: (...args: any[]) => ({ type: 'ne', args }),
+  desc: (...args: any[]) => ({ type: 'desc', args }),
+  isNull: (col: any) => ({ type: 'isNull', col }),
+}));
+
 // Mock schema imports
 vi.mock('@/db/schema', () => ({
-  customers: { name: 'customers' },
-  conversations: { name: 'conversations' },
-  teams: { name: 'teams' },
-  customerTeamAssignments: { name: 'customerTeamAssignments' }
+  customers: { name: 'customers', platformUserId: {}, platform: {}, id: {} },
+  conversations: { name: 'conversations', customerId: {}, status: {}, assignedTeamId: {}, id: {}, createdAt: {} },
+  teams: { name: 'teams', id: {}, name: {} },
+  customerTeamAssignments: { name: 'customerTeamAssignments', platformUserId: {}, assignedAt: {} },
 }));
 
 // Import function after mocks
@@ -379,12 +399,15 @@ describe('processLineFollowEvent', () => {
 
       await processLineFollowEvent(env as any, event);
 
-      // Verify LINE API was called for welcome message
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.line.me/v2/bot/message/reply',
-        expect.objectContaining({
-          method: 'POST'
-        })
+      // Verify auto-reply welcome evaluation was attempted
+      // (source code now uses evaluateWelcome from auto-reply engine, with LINE API fallback)
+      expect(mockEvaluateWelcome).toHaveBeenCalledWith(
+        5,                        // teamId from assignment
+        'valid-reply-token',      // replyToken
+        expect.any(String),       // conversationId
+        123,                      // customerId
+        'U1234567890abcdef',      // platformUserId
+        expect.anything()         // env
       );
     });
   });
@@ -756,15 +779,15 @@ describe('processLineFollowEvent', () => {
       // 3. Notification triggered
       expect(mockTriggerCustomerFollowedNotification).toHaveBeenCalled();
 
-      // 4. Welcome message sent via LINE API
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.line.me/v2/bot/message/reply',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer mock-line-token'
-          })
-        })
+      // 4. Welcome message attempted via auto-reply engine
+      // (source code now uses evaluateWelcome, with LINE API fallback)
+      expect(mockEvaluateWelcome).toHaveBeenCalledWith(
+        7,                        // teamId from assignment
+        'valid-reply-token',      // replyToken
+        expect.any(String),       // conversationId
+        999,                      // customerId
+        'U1234567890abcdef',      // platformUserId
+        expect.anything()         // env
       );
 
       // 5. Activity logged

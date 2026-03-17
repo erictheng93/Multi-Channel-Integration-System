@@ -488,6 +488,142 @@ describe('Webhook → Auto-Reply Full Flow', () => {
     });
   });
 
+  // ───────────── Multiple Messages ─────────────
+
+  describe('multiple messages in single reply', () => {
+    it('should send text + image in a single reply', async () => {
+      const env = createMockEnv();
+      const rule = {
+        id: 1, teamId: 1, name: 'Multi Message', triggerType: 'keyword',
+        priority: 100, isActive: true, createdBy: null,
+        createdAt: '', updatedAt: '', deletedAt: null,
+        conditions: [{ id: 1, ruleId: 1, conditionType: 'contains', value: '菜單', caseSensitive: false, matchMode: 'any' }],
+        actions: [
+          { id: 1, ruleId: 1, actionType: 'reply_text', content: JSON.stringify({ text: '以下是我們的菜單:' }), sortOrder: 0 },
+          { id: 2, ruleId: 1, actionType: 'reply_image', content: JSON.stringify({ url: 'https://example.com/menu.jpg' }), sortOrder: 1 },
+        ],
+      };
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      const result = await evaluate({
+        message: { content: '請給我看菜單', messageType: 'text', platform: 'line' },
+        conversationId: 'conv-001', teamId: 1, replyToken: 'token',
+        customerId: 42, platformUserId: 'U123',
+      }, env);
+
+      expect(result.matched).toBe(true);
+      // Should send both messages in a single API call
+      expect(mockSendLineReply).toHaveBeenCalledOnce();
+      const sentMessages = mockSendLineReply.mock.calls[0][2];
+      expect(sentMessages).toHaveLength(2);
+    });
+
+    it('should enforce 5-message limit', async () => {
+      const env = createMockEnv();
+      const rule = {
+        id: 1, teamId: 1, name: '6 Messages', triggerType: 'keyword',
+        priority: 100, isActive: true, createdBy: null,
+        createdAt: '', updatedAt: '', deletedAt: null,
+        conditions: [{ id: 1, ruleId: 1, conditionType: 'contains', value: 'test', caseSensitive: false, matchMode: 'any' }],
+        actions: Array.from({ length: 6 }, (_, i) => ({
+          id: i + 1, ruleId: 1, actionType: 'reply_text' as const,
+          content: JSON.stringify({ text: `Message ${i + 1}` }), sortOrder: i,
+        })),
+      };
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      const result = await evaluate({
+        message: { content: 'test', messageType: 'text', platform: 'line' },
+        conversationId: 'conv-001', teamId: 1, replyToken: 'token',
+        customerId: 42, platformUserId: 'U123',
+      }, env);
+
+      expect(result.matched).toBe(true);
+      // Only 5 messages should be sent (LINE limit)
+      const sentMessages = mockSendLineReply.mock.calls[0][2];
+      expect(sentMessages.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should sort actions by sortOrder before sending', async () => {
+      const env = createMockEnv();
+      const rule = {
+        id: 1, teamId: 1, name: 'Sort Order', triggerType: 'keyword',
+        priority: 100, isActive: true, createdBy: null,
+        createdAt: '', updatedAt: '', deletedAt: null,
+        conditions: [{ id: 1, ruleId: 1, conditionType: 'contains', value: 'test', caseSensitive: false, matchMode: 'any' }],
+        actions: [
+          { id: 2, ruleId: 1, actionType: 'reply_text', content: JSON.stringify({ text: 'Second' }), sortOrder: 2 },
+          { id: 1, ruleId: 1, actionType: 'reply_text', content: JSON.stringify({ text: 'First' }), sortOrder: 1 },
+        ],
+      };
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      await evaluate({
+        message: { content: 'test', messageType: 'text', platform: 'line' },
+        conversationId: 'conv-001', teamId: 1, replyToken: 'token',
+        customerId: 42, platformUserId: 'U123',
+      }, env);
+
+      const sentMessages = mockSendLineReply.mock.calls[0][2];
+      expect(sentMessages[0].text).toBe('First');
+      expect(sentMessages[1].text).toBe('Second');
+    });
+  });
+
+  // ───────────── Global Fallback ─────────────
+
+  describe('global fallback when no team rules match', () => {
+    it('should use global fallback rule when team keyword rules do not match', async () => {
+      const env = createMockEnv();
+      const teamKeywordRule = createKeywordRule({ id: 1, value: '特價', reply: '特價回覆', priority: 10 });
+      const globalFallback = {
+        id: 10, teamId: null, name: 'Global Fallback',
+        triggerType: 'fallback', priority: 999, isActive: true,
+        createdBy: null, createdAt: '', updatedAt: '', deletedAt: null,
+        conditions: [],
+        actions: [{
+          id: 10, ruleId: 10, actionType: 'reply_text',
+          content: JSON.stringify({ text: '感谢您的訊息!' }), sortOrder: 0,
+        }],
+      };
+      kvStore.set('auto-reply:rules:1', JSON.stringify([teamKeywordRule]));
+      kvStore.set('auto-reply:rules:global', JSON.stringify([globalFallback]));
+
+      const result = await evaluate({
+        message: { content: '隨便一個不匹配的訊息', messageType: 'text', platform: 'line' },
+        conversationId: 'conv-001', teamId: 1, replyToken: 'token',
+        customerId: 42, platformUserId: 'U123',
+      }, env);
+
+      expect(result.matched).toBe(true);
+      expect(result.ruleId).toBe(10);
+      expect(result.ruleName).toBe('Global Fallback');
+    });
+  });
+
+  // ───────────── Evaluate Resilience ─────────────
+
+  describe('evaluate resilience', () => {
+    it('should complete evaluate even when log insertion fails', async () => {
+      const env = createMockEnv();
+      const rule = createKeywordRule({ value: 'hello', reply: 'Hi!' });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      // Make the DB insert throw (for logs and messages)
+      mockInsertValues.mockRejectedValue(new Error('D1 insert error'));
+
+      // Should NOT throw — engine catches log insertion errors
+      const result = await evaluate({
+        message: { content: 'hello', messageType: 'text', platform: 'line' },
+        conversationId: 'conv-001', teamId: 1, replyToken: 'token',
+        customerId: 42, platformUserId: 'U123',
+      }, env);
+
+      expect(result.matched).toBe(true);
+      expect(result.replyMethod).toBe('reply_api');
+    });
+  });
+
   // ───────────── Image Action ─────────────
 
   describe('image action', () => {
