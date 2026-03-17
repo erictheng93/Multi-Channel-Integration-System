@@ -35,101 +35,69 @@
       </select>
     </div>
 
-    <div class="table-wrapper">
-      <table
-        v-if="logs.length > 0"
-        class="data-table"
-      >
-        <thead>
-          <tr>
-            <th class="col-time">
-              時間
-            </th>
-            <th class="col-rule">
-              規則
-            </th>
-            <th class="col-trigger">
-              觸發內容
-            </th>
-            <th class="col-response">
-              回覆內容
-            </th>
-            <th class="col-platform">
-              平台
-            </th>
-            <th class="col-method">
-              方式
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="log in logs"
-            :key="log.id"
-          >
-            <td class="col-time">
-              <span class="time-text">{{ formatTime(log.created_at) }}</span>
-            </td>
-            <td class="col-rule">
-              <span
-                class="trigger-badge"
-                :class="triggerBadgeClass(log)"
-              >
-                {{ triggerLabel(log) }}
-              </span>
-              <span class="rule-name">{{ log.rule_name }}</span>
-            </td>
-            <td class="col-trigger">
-              <span
-                class="truncated-text"
-                :title="log.trigger_content"
-              >
-                {{ log.trigger_content }}
-              </span>
-            </td>
-            <td class="col-response">
-              <span
-                class="truncated-text"
-                :title="log.response_content"
-              >
-                {{ log.response_content }}
-              </span>
-            </td>
-            <td class="col-platform">
-              <span class="platform-indicator">
-                <span
-                  class="platform-dot"
-                  :class="'platform-dot--' + log.platform"
-                />
-                {{ platformLabel(log.platform) }}
-              </span>
-            </td>
-            <td class="col-method">
-              <span
-                class="method-badge"
-                :class="methodBadgeClass(log.reply_method)"
-              >
-                {{ methodLabel(log.reply_method) }}
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
+    <div
+      v-if="logs.length > 0"
+      class="log-list"
+    >
       <div
-        v-else
-        class="empty-state"
+        v-for="log in logs"
+        :key="log.id"
+        class="log-card"
       >
-        <div class="empty-icon">
-          --
+        <div class="log-card-header">
+          <span
+            class="trigger-badge"
+            :class="triggerBadgeClass(log)"
+          >
+            {{ triggerLabel(log) }}
+          </span>
+          <span class="rule-name">{{ log.rule_name }}</span>
+          <span class="log-card-meta">
+            <span class="meta-divider" />
+            <span class="platform-indicator">
+              <span
+                class="platform-dot"
+                :class="'platform-dot--' + log.platform"
+              />
+              {{ platformLabel(log.platform) }}
+            </span>
+            <span class="meta-divider" />
+            <span
+              class="method-badge"
+              :class="methodBadgeClass(log.reply_method)"
+            >
+              {{ methodLabel(log.reply_method) }}
+            </span>
+            <span class="meta-divider" />
+            <span class="time-text">{{ formatTime(log.created_at) }}</span>
+          </span>
         </div>
-        <p class="empty-title">
-          尚無回覆記錄
-        </p>
-        <p class="empty-desc">
-          當自動回覆觸發時，記錄將會顯示在這裡
-        </p>
+        <div class="log-card-body">
+          <div class="log-card-line">
+            <span class="log-card-label">觸發</span>
+            <span class="log-card-text log-card-text--trigger">{{ log.trigger_content }}</span>
+          </div>
+          <div class="log-card-line">
+            <span class="log-card-label">回覆</span>
+            <span class="log-card-text">{{ log.response_content }}</span>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <div
+      v-else
+      class="empty-state"
+    >
+      <div class="empty-icon">
+        --
+      </div>
+      <p class="empty-title">
+        尚無回覆記錄
+      </p>
+      <p class="empty-desc">
+        當自動回覆觸發時，記錄將會顯示在這裡
+      </p>
     </div>
 
     <div
@@ -225,6 +193,7 @@ function formatTime(dateStr: string): string {
     return date.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
   }
   return date.toLocaleDateString('zh-TW', {
+    year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
@@ -234,30 +203,30 @@ function formatTime(dateStr: string): string {
 
 function triggerLabel(log: AutoReplyLog): string {
   const ruleMatch = props.rules.find((r) => r.id === log.rule_id)
-  if (ruleMatch) {return ruleMatch.triggerType}
+  if (ruleMatch) { return ruleMatch.triggerType }
   return 'keyword'
 }
 
 function triggerBadgeClass(log: AutoReplyLog): string {
   const type = triggerLabel(log)
-  return`trigger-badge--${type}`
+  return `trigger-badge--${type}`
 }
 
 function platformLabel(platform: string): string {
-  if (platform === 'line') {return 'LINE'}
-  if (platform === 'facebook') {return 'Facebook'}
+  if (platform === 'line') { return 'LINE' }
+  if (platform === 'facebook') { return 'Facebook' }
   return platform
 }
 
 function methodLabel(method: string): string {
-  if (method === 'reply_api') {return 'Reply API'}
-  if (method === 'push_api') {return 'Push API'}
+  if (method === 'reply_api') { return 'Reply API' }
+  if (method === 'push_api') { return 'Push API' }
   return method
 }
 
 function methodBadgeClass(method: string): string {
-  if (method === 'reply_api') {return 'method-badge--reply'}
-  if (method === 'push_api') {return 'method-badge--push'}
+  if (method === 'reply_api') { return 'method-badge--reply' }
+  if (method === 'push_api') { return 'method-badge--push' }
   return ''
 }
 </script>
@@ -265,9 +234,8 @@ function methodBadgeClass(method: string): string {
 <style scoped>
 .log-table {
   background: white;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--gray-100);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   overflow: hidden;
 }
 
@@ -285,142 +253,145 @@ function methodBadgeClass(method: string): string {
   font-size: 0.875rem;
 }
 
-.table-wrapper {
-  overflow-x: auto;
+/* Card list */
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table thead {
+.log-card {
   background: var(--gray-50, #f9fafb);
+  border-radius: 14px;
+  padding: 14px 18px;
+  transition: box-shadow 0.2s ease-out;
+  cursor: default;
 }
 
-.data-table th {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  font-size: 0.75rem;
+.log-card:hover {
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.06);
+}
+
+/* Card header: badge + rule name + inline meta */
+.log-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.log-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
+.meta-divider {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  background: var(--gray-200, #e5e7eb);
+  flex-shrink: 0;
+}
+
+/* Card body: trigger / response with labels */
+.log-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-card-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.log-card-label {
+  font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--gray-600);
+  color: var(--gray-400, #9ca3af);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--gray-100);
-  white-space: nowrap;
+  letter-spacing: 0.04em;
+  width: 38px;
+  flex-shrink: 0;
+  padding-top: 2px;
 }
 
-.data-table td {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--gray-100);
-  font-size: 0.875rem;
-  color: var(--gray-900);
-  vertical-align: middle;
+.log-card-text {
+  font-size: 0.8125rem;
+  color: var(--gray-600, #4b5563);
+  line-height: 1.45;
 }
 
-.data-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.data-table tbody tr:hover {
-  background: var(--primary-50);
-}
-
-/* Column widths */
-.col-time {
-  width: 120px;
-  white-space: nowrap;
-}
-
-.col-rule {
-  width: 180px;
-}
-
-.col-trigger,
-.col-response {
-  max-width: 200px;
-}
-
-.col-platform {
-  width: 110px;
-  white-space: nowrap;
-}
-
-.col-method {
-  width: 100px;
-  white-space: nowrap;
+.log-card-text--trigger {
+  font-weight: 500;
+  color: var(--gray-900, #1C1C1E);
 }
 
 /* Time */
 .time-text {
-  color: var(--gray-600);
-  font-size: 0.8125rem;
+  color: var(--gray-400, #9ca3af);
+  font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-/* Trigger badges */
+/* Trigger badges — pastel style */
 .trigger-badge {
   display: inline-block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-md);
-  margin-right: var(--space-2);
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  vertical-align: middle;
-}
-
-.trigger-badge--welcome {
-  background: #164e3f;
-  color: #34d399;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .trigger-badge--keyword {
-  background: #1e3a5f;
-  color: #60a5fa;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.trigger-badge--welcome {
+  background: #d1fae5;
+  color: #047857;
 }
 
 .trigger-badge--off_hours {
-  background: #4a3728;
-  color: #fbbf24;
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .trigger-badge--fallback {
-  background: #3b1f4a;
-  color: #c084fc;
+  background: #ede9fe;
+  color: #6d28d9;
 }
 
 .rule-name {
   font-size: 0.8125rem;
-  color: var(--gray-900);
-  vertical-align: middle;
-}
-
-/* Truncated text */
-.truncated-text {
-  display: block;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.8125rem;
-  color: var(--gray-600);
+  font-weight: 500;
+  color: var(--gray-900, #1C1C1E);
 }
 
 /* Platform */
 .platform-indicator {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  font-size: 0.8125rem;
-  color: var(--gray-900);
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--gray-500, #6b7280);
+  white-space: nowrap;
 }
 
 .platform-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -436,10 +407,11 @@ function methodBadgeClass(method: string): string {
 /* Method badges */
 .method-badge {
   display: inline-block;
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 600;
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-md);
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
 }
 
 .method-badge--reply {
@@ -520,9 +492,19 @@ function methodBadgeClass(method: string): string {
     width: 100%;
   }
 
-  .col-trigger,
-  .col-response {
-    display: none;
+  .log-list {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .log-card {
+    padding: 12px 14px;
+  }
+
+  .log-card-meta {
+    margin-left: 0;
+    margin-top: 4px;
+    width: 100%;
   }
 
   .pagination-footer {
