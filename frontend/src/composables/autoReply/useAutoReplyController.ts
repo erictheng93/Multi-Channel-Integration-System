@@ -95,7 +95,6 @@ export function useAutoReplyController() {
         store.fetchRules({ scope: 'global' }),
         store.fetchSchedules({ teamId }),
         store.fetchLogs({ teamId, pageSize: 50 }),
-        store.silentFetchTodayCount({ teamId })
       ])
       scheduleEditor.loadFromSchedules(store.schedules)
       startPolling()
@@ -119,12 +118,11 @@ export function useAutoReplyController() {
   function startPolling() {
     stopPolling()
 
-    // Stats polling: silently refresh rules + logs + today count every 30s (always active)
+    // Stats polling: silently refresh rules + logs every 30s (todayTotal piggybacks on logs response)
     statsPollingTimer = setInterval(() => {
       const teamId = resolveTeamId()
       store.silentFetchRules({ scope: 'global' })
       store.silentFetchLogs({ teamId, pageSize: 50 })
-      store.silentFetchTodayCount({ teamId })
     }, 30000)
 
     // Logs tab polling: refresh with filters every 15s when logs tab is active

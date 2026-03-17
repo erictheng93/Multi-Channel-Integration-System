@@ -6,7 +6,6 @@ import { ref, reactive } from 'vue'
 const mockFetchRules = vi.fn().mockResolvedValue(undefined)
 const mockFetchSchedules = vi.fn().mockResolvedValue(undefined)
 const mockFetchLogs = vi.fn().mockResolvedValue(undefined)
-const mockSilentFetchTodayCount = vi.fn().mockResolvedValue(undefined)
 const mockReset = vi.fn()
 const mockStoreRules = ref<Array<{ id: number; name: string; triggerType: string; isActive: boolean; conditions: Array<{ value: string }>; actions: unknown[] }>>([])
 const mockStoreSchedules = ref<Array<{ dayOfWeek: number; isActive: boolean; startTime: string; endTime: string }>>([])
@@ -22,7 +21,6 @@ vi.mock('@/stores/autoReply', () => ({
     fetchRules: mockFetchRules,
     fetchSchedules: mockFetchSchedules,
     fetchLogs: mockFetchLogs,
-    silentFetchTodayCount: mockSilentFetchTodayCount,
     $reset: mockReset,
   }),
 }))
@@ -95,15 +93,14 @@ describe('useAutoReplyController', () => {
     expect(ctrl.logsPage.value).toBe(1)
   })
 
-  // 2. initialize calls all 3 fetches + todayCount + loadFromSchedules
-  it('initialize calls fetchRules, fetchSchedules, fetchLogs, silentFetchTodayCount, and loadFromSchedules', async () => {
+  // 2. initialize calls all 3 fetches + loadFromSchedules (todayTotal piggybacks on fetchLogs)
+  it('initialize calls fetchRules, fetchSchedules, fetchLogs, and loadFromSchedules', async () => {
     const ctrl = useAutoReplyController()
     await ctrl.initialize()
 
     expect(mockFetchRules).toHaveBeenCalledWith({ scope: 'global' })
     expect(mockFetchSchedules).toHaveBeenCalledOnce()
     expect(mockFetchLogs).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 50 }))
-    expect(mockSilentFetchTodayCount).toHaveBeenCalledOnce()
     expect(mockLoadFromSchedules).toHaveBeenCalledOnce()
   })
 

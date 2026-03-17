@@ -92,6 +92,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
       const response = await getLogs(params)
       logs.value = response.data.items
       logsPagination.value = response.data.pagination
+      todayReplyCount.value = response.data.todayTotal
       return response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch auto-reply logs'
@@ -166,25 +167,12 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
       const response = await getLogs(params)
       logs.value = response.data.items
       logsPagination.value = response.data.pagination
+      todayReplyCount.value = response.data.todayTotal
     } catch {
       // Silently ignore — stats polling should not disrupt UI
     }
   }
 
-  /**
-   * Fetch today's reply count without touching logs/logsPagination.
-   * Uses dateFrom filter + page=1&pageSize=1 to get only the total.
-   */
-  async function silentFetchTodayCount(params: { teamId?: number }) {
-    try {
-      const now = new Date()
-      const dateFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00:00`
-      const response = await getLogs({ ...params, dateFrom, page: 1, pageSize: 1 })
-      todayReplyCount.value = response.data.pagination.total
-    } catch {
-      // Silently ignore
-    }
-  }
 
   function $reset() {
     rules.value = []
@@ -216,7 +204,6 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     fetchLogs,
     silentFetchRules,
     silentFetchLogs,
-    silentFetchTodayCount,
     toggleRuleActive,
     isToggling,
     $reset
