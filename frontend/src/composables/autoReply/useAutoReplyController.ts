@@ -39,7 +39,13 @@ export function useAutoReplyController() {
     return rules
   })
 
+  // Reactive clock tick — triggers business hours recomputation every 60s
+  const clockTick = ref(Date.now())
+
   const stats = computed(() => {
+    // Reference clockTick so Vue tracks it as a dependency
+    void clockTick.value
+
     const activeRules = store.rules.filter(r => r.isActive).length
     const todayLogs = store.logs.length
     const successLogs = store.logs.filter(l => l.reply_method === 'reply_api').length
@@ -48,7 +54,7 @@ export function useAutoReplyController() {
     // Check if currently within business hours
     const now = new Date()
     const dayOfWeek = now.getDay()
-    const currentTime =`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const todaySchedule = store.schedules.find(s => s.dayOfWeek === dayOfWeek)
     const isBusinessHours = todaySchedule
       ? todaySchedule.isActive && currentTime >= todaySchedule.startTime && currentTime <= todaySchedule.endTime
@@ -89,7 +95,7 @@ export function useAutoReplyController() {
         store.fetchLogs({ teamId, pageSize: 50 })
       ])
       scheduleEditor.loadFromSchedules(store.schedules)
-      startLogsPolling()
+      startPolling()
     } catch (err) {
       console.error('Failed to initialize auto-reply:', err)
     } finally {
@@ -98,15 +104,26 @@ export function useAutoReplyController() {
   }
 
   function cleanup() {
-    stopLogsPolling()
+    stopPolling()
     store.$reset()
   }
 
-  // Polling: auto-refresh logs every 15s when logs tab is active
+  // --- Polling timers ---
+  let statsPollingTimer: ReturnType<typeof setInterval> | null = null
   let logsPollingTimer: ReturnType<typeof setInterval> | null = null
+  let clockTickTimer: ReturnType<typeof setInterval> | null = null
 
-  function startLogsPolling() {
-    stopLogsPolling()
+  function startPolling() {
+    stopPolling()
+
+    // Stats polling: silently refresh rules + logs every 30s (always active)
+    statsPollingTimer = setInterval(() => {
+      const teamId = resolveTeamId()
+      store.silentFetchRules({ scope: 'global' })
+      store.silentFetchLogs({ teamId, pageSize: 50 })
+    }, 30000)
+
+    // Logs tab polling: refresh with filters every 15s when logs tab is active
     logsPollingTimer = setInterval(() => {
       if (activeTab.value === 'logs') {
         store.fetchLogs({
@@ -118,12 +135,25 @@ export function useAutoReplyController() {
         })
       }
     }, 15000)
+
+    // Clock tick: update business hours status every 60s
+    clockTickTimer = setInterval(() => {
+      clockTick.value = Date.now()
+    }, 60000)
   }
 
-  function stopLogsPolling() {
+  function stopPolling() {
+    if (statsPollingTimer) {
+      clearInterval(statsPollingTimer)
+      statsPollingTimer = null
+    }
     if (logsPollingTimer) {
       clearInterval(logsPollingTimer)
       logsPollingTimer = null
+    }
+    if (clockTickTimer) {
+      clearInterval(clockTickTimer)
+      clockTickTimer = null
     }
   }
 

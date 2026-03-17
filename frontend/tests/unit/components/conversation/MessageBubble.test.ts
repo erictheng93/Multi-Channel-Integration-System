@@ -318,10 +318,10 @@ describe('MessageBubble.vue', () => {
   // --------------------------------------------------------------------------
 
   describe('System messages', () => {
-    it('renders system message as incoming (not outgoing)', () => {
+    it('renders system message as outgoing (auto-replies are agent-side)', () => {
       const wrapper = mountBubble({ senderType: 'system', content: 'System notification' })
-      expect(wrapper.classes()).toContain('message-incoming')
-      expect(wrapper.classes()).not.toContain('message-outgoing')
+      expect(wrapper.classes()).toContain('message-outgoing')
+      expect(wrapper.classes()).not.toContain('message-incoming')
     })
 
     it('displays system message content', () => {

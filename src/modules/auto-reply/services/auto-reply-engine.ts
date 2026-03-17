@@ -196,10 +196,7 @@ async function isTriggerEligible(
     case 'off_hours': {
       // Use rule's team for schedule lookup; fall back to conversation's team
       const scheduleTeamId = ruleTeamId ?? conversationTeamId;
-      if (scheduleTeamId === null) {
-        // No team context at all — no schedule defined, so not off-hours
-        return false;
-      }
+      // null is valid — isWithinBusinessHours handles it by checking global schedules
       return !(await isWithinBusinessHours(scheduleTeamId, env));
     }
 

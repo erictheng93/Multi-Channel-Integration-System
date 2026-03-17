@@ -28,9 +28,6 @@
           <option value="off_hours">
             非營業時間
           </option>
-          <option value="fallback">
-            兜底回覆
-          </option>
         </select>
       </div>
       <div class="form-group rule-editor__priority">

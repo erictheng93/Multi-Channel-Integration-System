@@ -22,13 +22,11 @@ export async function isWithinBusinessHours(
   teamId: number | null,
   env: Bindings
 ): Promise<boolean> {
-  // Global rules (no team) have no schedule — always business hours
-  if (teamId === null) {
-    return true;
-  }
-
   try {
-    const schedules = await getTeamSchedules(teamId, env);
+    // For global rules (no team), load any available schedule
+    const schedules = teamId !== null
+      ? await getTeamSchedules(teamId, env)
+      : await getAnySchedules(env);
 
     // No schedules defined → treat as "always business hours"
     if (schedules.length === 0) {
@@ -84,6 +82,51 @@ export async function isWithinBusinessHours(
     // On error, assume business hours (don't trigger off-hours reply)
     return true;
   }
+}
+
+/**
+ * Load any available schedule (for global off_hours rules without team context).
+ * Picks the first team's schedules found in D1.
+ */
+async function getAnySchedules(
+  env: Bindings
+): Promise<ScheduleData[]> {
+  const kvKey = `${KV_SCHEDULE_PREFIX}global`;
+
+  try {
+    const cached = await env.CACHE.get(kvKey, 'json');
+    if (cached) {
+      return cached as ScheduleData[];
+    }
+  } catch {
+    // KV miss
+  }
+
+  const drizzleDb = createDbClient(env.DB);
+  const rows = await drizzleDb
+    .select()
+    .from(autoReplySchedules)
+    .where(eq(autoReplySchedules.isActive, true));
+
+  const schedules: ScheduleData[] = rows.map((row) => ({
+    id: row.id,
+    teamId: row.teamId,
+    dayOfWeek: row.dayOfWeek,
+    startTime: row.startTime,
+    endTime: row.endTime,
+    timezone: row.timezone || 'Asia/Taipei',
+    isActive: row.isActive ?? true,
+  }));
+
+  try {
+    await env.CACHE.put(kvKey, JSON.stringify(schedules), {
+      expirationTtl: KV_SCHEDULE_TTL,
+    });
+  } catch {
+    // Non-fatal
+  }
+
+  return schedules;
 }
 
 /**

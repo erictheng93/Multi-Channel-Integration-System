@@ -159,18 +159,27 @@ export function useRuleEditor() {
   }
 
   async function removeRule(id: number): Promise<boolean> {
-    saving.value = true
+    // Optimistic: remove from local list instantly
+    const ruleIndex = store.rules.findIndex(r => r.id === id)
+    const removedRule = ruleIndex !== -1 ? store.rules[ruleIndex] : null
+    if (ruleIndex !== -1) {
+      store.rules.splice(ruleIndex, 1)
+    }
+    if (expandedRuleId.value === id) {
+      collapseRule()
+    }
+
     try {
       await deleteRule(id)
+      // Sync with server to ensure consistency
       await store.fetchRules({ scope: 'global' })
-      if (expandedRuleId.value === id) {
-        collapseRule()
-      }
       return true
     } catch {
+      // Rollback: restore removed rule at original position
+      if (removedRule && ruleIndex !== -1) {
+        store.rules.splice(ruleIndex, 0, removedRule)
+      }
       return false
-    } finally {
-      saving.value = false
     }
   }
 
