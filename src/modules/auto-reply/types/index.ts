@@ -36,7 +36,7 @@ export interface AutoReplyActionData {
 
 export interface AutoReplyRuleWithRelations {
   id: number;
-  teamId: number;
+  teamId: number | null;
   name: string;
   triggerType: TriggerType;
   priority: number;
@@ -58,7 +58,7 @@ export interface AutoReplyEvaluateInput {
     platform: Platform;
   };
   conversationId: string;
-  teamId: number;
+  teamId: number | null;
   replyToken: string | null;
   customerId: number;
   platformUserId: string;

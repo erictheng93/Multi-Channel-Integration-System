@@ -19,9 +19,14 @@ const KV_SCHEDULE_TTL = 300; // 5 minutes
  * If no schedule is defined, returns true (always business hours = no off-hours reply).
  */
 export async function isWithinBusinessHours(
-  teamId: number,
+  teamId: number | null,
   env: Bindings
 ): Promise<boolean> {
+  // Global rules (no team) have no schedule — always business hours
+  if (teamId === null) {
+    return true;
+  }
+
   try {
     const schedules = await getTeamSchedules(teamId, env);
 

@@ -218,6 +218,7 @@ describe('useRuleEditor', () => {
     expect(result).toBe(true)
     expect(mockCreateRule).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'New Rule', triggerType: 'keyword' }),
+      { scope: 'global' }
     )
     expect(mockFetchRules).toHaveBeenCalled()
     expect(isCreating.value).toBe(false)

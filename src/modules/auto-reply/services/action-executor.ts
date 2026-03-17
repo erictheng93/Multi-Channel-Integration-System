@@ -50,16 +50,20 @@ export async function executeActions(
 
   // Try Reply API first (free)
   if (replyToken) {
+    log.info('Attempting Reply API', { replyToken: replyToken.slice(0, 10) + '...', messageCount: messageBatch.length, messageTypes: messageBatch.map(m => m.type) });
     const replySuccess = await sendLineReply(accessToken, replyToken, messageBatch);
     if (replySuccess) {
       log.info('Auto-reply sent via Reply API', { messageCount: messageBatch.length });
       return { success: true, replyMethod: 'reply_api', messageCount: messageBatch.length };
     }
     log.warn('Reply API failed, falling back to Push API');
+  } else {
+    log.info('No replyToken, using Push API directly');
   }
 
   // Fallback to Push API (costs quota)
   replyMethod = 'push_api';
+  log.info('Attempting Push API', { platformUserId: platformUserId.slice(0, 10) + '...', messageCount: messageBatch.length });
   const pushSuccess = await pushLineMessage(accessToken, platformUserId, messageBatch);
 
   if (pushSuccess) {
@@ -67,6 +71,7 @@ export async function executeActions(
     return { success: true, replyMethod, messageCount: messageBatch.length };
   }
 
+  log.error('Both Reply API and Push API failed', { messageCount: messageBatch.length });
   return {
     success: false,
     replyMethod,

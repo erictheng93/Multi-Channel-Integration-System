@@ -84,7 +84,7 @@ export function useAutoReplyController() {
     try {
       const teamId = resolveTeamId()
       await Promise.all([
-        store.fetchRules({ teamId }),
+        store.fetchRules({ scope: 'global' }),
         store.fetchSchedules({ teamId }),
         store.fetchLogs({ teamId, pageSize: 50 })
       ])

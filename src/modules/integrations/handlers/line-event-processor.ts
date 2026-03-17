@@ -13,7 +13,8 @@ import { createContextLogger } from '@/utils/logger';
 
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processLineMedia } from '../services/webhook-media-service';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp';
+import { evaluate as autoReplyEvaluate, evaluateWelcome as autoReplyEvaluateWelcome } from '@modules/auto-reply/services/auto-reply-engine';
 
 const log = createContextLogger('Webhook');
 
@@ -325,6 +326,40 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       // Don't fail webhook processing - message is saved to database
     }
 
+    // Auto-Reply Engine: evaluate BEFORE notifications (reply tokens expire in ~30s)
+    // Always invoke — global rules fire even without team assignment
+    if (conversation) {
+      try {
+        console.log('[LINE Webhook] Auto-reply evaluating', { teamId: conversation.assignedTeamId ?? null, conversationId: conversation.id });
+        const autoReplyResult = await autoReplyEvaluate(
+          {
+            message: { content: messageContent, messageType, platform: 'line' },
+            conversationId: conversation.id,
+            teamId: conversation.assignedTeamId ?? null,
+            replyToken: event.replyToken || null,
+            customerId: user.id,
+            platformUserId: userId,
+          },
+          env
+        );
+
+        if (autoReplyResult.matched) {
+          console.log('[LINE Webhook] Auto-reply triggered', {
+            ruleId: autoReplyResult.ruleId,
+            ruleName: autoReplyResult.ruleName,
+            replyMethod: autoReplyResult.replyMethod,
+            error: autoReplyResult.error || 'none',
+          });
+        } else {
+          console.log('[LINE Webhook] Auto-reply: no matching rule');
+        }
+      } catch (autoReplyError) {
+        log.warn('LINE Webhook: Auto-reply evaluation failed (non-critical)', {
+          error: autoReplyError instanceof Error ? autoReplyError.message : String(autoReplyError),
+        });
+      }
+    }
+
     // 記錄活動
     try {
       const activityService = new ActivityService(env.DB);
@@ -410,37 +445,6 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
 
     // 媒體已在廣播前處理完成 (Lines 622-666)
     // 不需要第二次處理，避免重複插入 file_attachments
-
-    // Auto-Reply Engine: evaluate incoming message against rules
-    if (conversation?.assignedTeamId) {
-      try {
-        const { evaluate } = await import('@modules/auto-reply/services/auto-reply-engine');
-        const autoReplyResult = await evaluate(
-          {
-            message: { content: messageContent, messageType, platform: 'line' },
-            conversationId: conversation.id,
-            teamId: conversation.assignedTeamId,
-            replyToken: event.replyToken || null,
-            customerId: user.id,
-            platformUserId: userId,
-          },
-          env
-        );
-
-        if (autoReplyResult.matched) {
-          console.log('[LINE Webhook] Auto-reply triggered', {
-            ruleId: autoReplyResult.ruleId,
-            ruleName: autoReplyResult.ruleName,
-            replyMethod: autoReplyResult.replyMethod,
-          });
-        }
-      } catch (autoReplyError) {
-        log.warn('LINE Webhook: Auto-reply evaluation failed (non-critical)', {
-          error: autoReplyError instanceof Error ? autoReplyError.message : String(autoReplyError),
-        });
-        // Auto-reply failure should not break webhook processing
-      }
-    }
 
     logSecurely('LINE', userId, messageContent.length);
   } catch (error) {
@@ -876,9 +880,9 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     }
 
     // Step 11: Auto-Reply Welcome Message (replaces hardcoded welcome)
-    if (event.replyToken && assignedTeamId && existingCustomer) {
+    if (event.replyToken && existingCustomer) {
       try {
-        const { evaluateWelcome } = await import('@modules/auto-reply/services/auto-reply-engine');
+
 
         // Determine conversation ID for logging
         let welcomeConversationId = existingConversation?.id;
@@ -895,8 +899,8 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           welcomeConversationId = newConv?.id || '';
         }
 
-        const welcomeResult = await evaluateWelcome(
-          assignedTeamId,
+        const welcomeResult = await autoReplyEvaluateWelcome(
+          assignedTeamId ?? null,
           event.replyToken,
           welcomeConversationId,
           existingCustomer.id,

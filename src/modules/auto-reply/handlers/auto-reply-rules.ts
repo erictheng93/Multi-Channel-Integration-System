@@ -37,21 +37,31 @@ autoReplyRulesHandler.get('/', async (c) => {
   try {
     const drizzleDb = createDbClient(c.env.DB);
     const payload = c.get('jwtPayload');
-    const teamId = parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId;
+    const scope = c.req.query('scope'); // 'global' | undefined
 
-    if (!teamId) {
-      return badRequestResponse(c, 'teamId is required');
+    // For global scope, no teamId needed
+    const teamId = scope === 'global'
+      ? null
+      : (parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId);
+
+    if (scope !== 'global' && !teamId) {
+      return badRequestResponse(c, 'teamId is required (or use scope=global)');
     }
 
     const page = Math.max(1, parseInt(c.req.query('page') || '1'));
     const pageSize = Math.min(parseInt(c.req.query('pageSize') || '50'), 100);
     const offset = (page - 1) * pageSize;
 
+    // Build WHERE clause based on scope
+    const whereCondition = scope === 'global'
+      ? and(isNull(autoReplyRules.teamId), isNull(autoReplyRules.deletedAt))
+      : and(eq(autoReplyRules.teamId, teamId!), isNull(autoReplyRules.deletedAt));
+
     // Get rules
     const rules = await drizzleDb
       .select()
       .from(autoReplyRules)
-      .where(and(eq(autoReplyRules.teamId, teamId), isNull(autoReplyRules.deletedAt)))
+      .where(whereCondition)
       .orderBy(autoReplyRules.priority)
       .limit(pageSize)
       .offset(offset);
@@ -60,7 +70,7 @@ autoReplyRulesHandler.get('/', async (c) => {
     const allRules = await drizzleDb
       .select({ id: autoReplyRules.id })
       .from(autoReplyRules)
-      .where(and(eq(autoReplyRules.teamId, teamId), isNull(autoReplyRules.deletedAt)));
+      .where(whereCondition);
     const total = allRules.length;
 
     // Load conditions and actions for each rule
@@ -115,9 +125,13 @@ autoReplyRulesHandler.post('/', async (c) => {
       return badRequestResponse(c, `Invalid triggerType. Must be one of: ${validTriggerTypes.join(', ')}`);
     }
 
-    const teamId = parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId;
-    if (!teamId) {
-      return badRequestResponse(c, 'teamId is required');
+    const scope = c.req.query('scope'); // 'global' | undefined
+    const resolvedTeamId: number | null = scope === 'global'
+      ? null
+      : (parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId || null);
+
+    if (scope !== 'global' && resolvedTeamId === null) {
+      return badRequestResponse(c, 'teamId is required (or use scope=global)');
     }
 
     const now = nowISO();
@@ -126,7 +140,7 @@ autoReplyRulesHandler.post('/', async (c) => {
     const [rule] = await drizzleDb
       .insert(autoReplyRules)
       .values({
-        teamId,
+        teamId: resolvedTeamId,
         name: body.name.trim(),
         triggerType: body.triggerType,
         priority: body.priority ?? 100,
@@ -179,7 +193,7 @@ autoReplyRulesHandler.post('/', async (c) => {
     }
 
     // Invalidate KV cache
-    await invalidateRulesCache(teamId, c.env);
+    await invalidateRulesCache(resolvedTeamId, c.env);
 
     // Re-fetch with relations
     const [conditions, actions] = await Promise.all([

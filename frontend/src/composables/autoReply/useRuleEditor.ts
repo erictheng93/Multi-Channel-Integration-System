@@ -135,7 +135,7 @@ export function useRuleEditor() {
           conditions: formData.conditions,
           actions: formData.actions
         }
-        await createRule(request)
+        await createRule(request, { scope: 'global' })
       } else if (expandedRuleId.value) {
         const request: UpdateRuleRequest = {
           name: formData.name,
@@ -148,7 +148,7 @@ export function useRuleEditor() {
         await updateRule(expandedRuleId.value, request)
       }
       // Refresh rules list
-      await store.fetchRules()
+      await store.fetchRules({ scope: 'global' })
       collapseRule()
       return true
     } catch {
@@ -162,7 +162,7 @@ export function useRuleEditor() {
     saving.value = true
     try {
       await deleteRule(id)
-      await store.fetchRules()
+      await store.fetchRules({ scope: 'global' })
       if (expandedRuleId.value === id) {
         collapseRule()
       }
@@ -177,7 +177,7 @@ export function useRuleEditor() {
   async function toggleRuleActive(rule: AutoReplyRule): Promise<boolean> {
     try {
       await updateRule(rule.id, { isActive: !rule.isActive })
-      await store.fetchRules()
+      await store.fetchRules({ scope: 'global' })
       return true
     } catch {
       return false

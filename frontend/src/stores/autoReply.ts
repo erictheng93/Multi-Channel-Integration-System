@@ -37,6 +37,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     teamId?: number
     page?: number
     pageSize?: number
+    scope?: string
   }) {
     loading.value = true
     error.value = null
@@ -53,6 +54,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
       loading.value = false
     }
   }
+
 
   async function fetchSchedules(params?: {
     teamId?: number

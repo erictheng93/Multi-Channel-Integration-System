@@ -78,6 +78,24 @@ import { getBackendUrl, getWebSocketUrl } from '@/config/runtime';
 
 See `docs/claude/ENVIRONMENT_CONFIG.md` for details.
 
+## UI/UX Design System
+
+**All frontend design work MUST follow the "Apple-Native Soft Minimalism" design system** documented in `docs/UIUX-Design-System.md`. Key rules:
+
+- Bento Grid modular card layout, page padding 20px, card gap 16px
+- Cards: white + large rounded corners (rounded-2xl~3xl) + soft shadow `shadow-[0_4px_16px_rgb(0,0,0,0.06)]`
+- No hard 1px borders — use shadow + background color difference
+- Buttons/tags: capsule shape (rounded-full)
+- Page background: `#F2F2F7` (iOS system gray), cards: `#FFFFFF`
+- Text: never pure black — primary `#1C1C1E`, secondary `#8E8E93`
+- Accent colors: Blue `#007AFF`, Green `#34C759`, Orange `#FF9500`, Red `#FF3B30`
+- Pastel accents for tags/categories (low saturation, high brightness)
+- Navigation bars: frosted glass `bg-white/80 backdrop-blur-xl`
+- Icons: SF Symbols / Lucide Icons (outline/filled toggle)
+- Animations: 200-350ms, ease-out, smooth and non-intrusive
+
+**Before outputting any UI, run through the design checklist in Section 15 of the design doc.**
+
 ## Development Rules
 
 ### Route Registration Order ( Critical)
