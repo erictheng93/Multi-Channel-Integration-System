@@ -7,7 +7,6 @@ import { jwtAuth } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql } from 'drizzle-orm';
 import {
-  paginatedResponse,
   badRequestResponse,
   handleApiError,
 } from '@/utils/api-response';
@@ -75,17 +74,47 @@ autoReplyLogsHandler.get('/', async (c) => {
       LIMIT ${pageSize} OFFSET ${offset}
     `));
 
-    // Count total
-    const countResult = await drizzleDb.all(sql.raw(`
-      SELECT COUNT(*) as total
-      FROM auto_reply_logs l
-      LEFT JOIN auto_reply_rules r ON l.rule_id = r.id
-      WHERE ${whereClause}
-    `));
+    // Count total + today's total in parallel
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayISO = todayStart.toISOString();
+    const teamCondition = `(r.team_id = ${teamId} OR r.team_id IS NULL)`;
+
+    const [countResult, todayCountResult] = await Promise.all([
+      drizzleDb.all(sql.raw(`
+        SELECT COUNT(*) as total
+        FROM auto_reply_logs l
+        LEFT JOIN auto_reply_rules r ON l.rule_id = r.id
+        WHERE ${whereClause}
+      `)),
+      drizzleDb.all(sql.raw(`
+        SELECT COUNT(*) as total
+        FROM auto_reply_logs l
+        LEFT JOIN auto_reply_rules r ON l.rule_id = r.id
+        WHERE ${teamCondition} AND l.created_at >= '${todayISO}'
+      `)),
+    ]);
 
     const total = (countResult[0] as { total: number } | undefined)?.total || 0;
+    const todayTotal = (todayCountResult[0] as { total: number } | undefined)?.total || 0;
 
-    return paginatedResponse(c, logs as Record<string, unknown>[], { page, limit: pageSize, total }, 'Logs retrieved successfully');
+    // Use custom response to include todayTotal alongside standard pagination
+    const totalPages = Math.ceil(total / pageSize);
+    return c.json({
+      success: true,
+      data: {
+        items: logs,
+        page,
+        pageSize,
+        limit: pageSize,
+        total,
+        todayTotal,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+      message: 'Logs retrieved successfully',
+    });
   } catch (error) {
     return handleApiError(error, c);
   }

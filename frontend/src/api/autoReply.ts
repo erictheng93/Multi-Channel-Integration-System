@@ -130,6 +130,7 @@ export interface PaginatedLogsResponse {
   data: {
     items: AutoReplyLog[]
     pagination: { page: number; limit: number; total: number }
+    todayTotal: number
   }
   message: string
 }
@@ -287,7 +288,8 @@ export const getLogs = async (params?: {
         page: (raw.page as number) ?? 1,
         limit: (raw.limit as number) ?? 20,
         total: (raw.total as number) ?? 0
-      }
+      },
+      todayTotal: (raw.todayTotal as number) ?? 0
     },
     message: response.message || 'Auto-reply logs retrieved successfully'
   }

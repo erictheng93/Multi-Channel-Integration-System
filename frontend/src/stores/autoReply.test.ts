@@ -106,6 +106,7 @@ function makeLogsResponse(
     data: {
       items: logs,
       pagination: { page: 1, limit: 20, total: logs.length, ...paginationOverrides },
+      todayTotal: logs.length,
     },
     message: 'ok',
   }
