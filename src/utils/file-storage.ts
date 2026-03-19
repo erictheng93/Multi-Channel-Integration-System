@@ -5,8 +5,8 @@ import type {
 } from '../types/file-storage';
 import { createContextLogger } from './logger';
 import { PLATFORMS } from '../constants/platforms';
-import { getBackendUrl } from '../config/runtime';
 import { nowISO } from '@/utils/timestamp'
+import { getPublicFileUrl } from '@/utils/file-url'
 
 // Legacy interface for backward compatibility
 export interface MediaFile {
@@ -15,6 +15,7 @@ export interface MediaFile {
   mimeType: string;
   size: number;
   url: string;
+  r2Key: string;
   originalUrl?: string;
   platform: string;
   messageId?: string;
@@ -105,7 +106,8 @@ export class FileStorageService {
       await this.env.R2_BUCKET.put(storageKey, fileBuffer, {
         httpMetadata: {
           contentType: mimeType,
-          contentDisposition: `inline; filename="${filename}"`
+          contentDisposition: `inline; filename="${filename}"`,
+          cacheControl: 'public, max-age=604800'
         },
         customMetadata: {
           originalUrl,
@@ -127,6 +129,7 @@ export class FileStorageService {
         mimeType,
         size: contentLength,
         url: publicUrl,
+        r2Key: storageKey,
         originalUrl,
         platform,
         messageId: messageId || ''
@@ -233,17 +236,9 @@ export class FileStorageService {
 
   /**
    * 生成檔案的公開 URL
-   * 使用 API 代理端點而非直接 R2 URL
-   * @param storageKey - 檔案的存儲鍵值
-   * @param apiHost - API 主機 URL (可選，預設從 getBackendUrl(env) 獲取)
    */
-  generatePublicUrl(storageKey: string, apiHost?: string): string {
-    // 使用 API 代理端點
-    // FIX: 自動從環境變量獲取正確的後端 URL，不再硬編碼 localhost
-    const host = apiHost || getBackendUrl(this.env);
-    const proxyUrl = `${host}/api/files/public/${storageKey}`;
-    console.log(`[FileStorage] Generated proxy URL: ${proxyUrl}`);
-    return proxyUrl;
+  generatePublicUrl(storageKey: string, _apiHost?: string): string {
+    return getPublicFileUrl(this.env, storageKey);
   }
 
   /**
