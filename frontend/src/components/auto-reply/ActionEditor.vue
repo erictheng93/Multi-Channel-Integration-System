@@ -391,7 +391,7 @@ function handleAddAction(actionType: string): void {
 
 .action-card-new.editing {
   background: white;
-  box-shadow: var(--shadow-sm), 0 0 0 2px var(--primary-50);
+  box-shadow: var(--shadow-sm), 0 0 0 2px var(--primary-100);
 }
 
 /* -- Collapsed header -- */
