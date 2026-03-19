@@ -215,9 +215,7 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', async (c) => {
               const mediaFile = await processLineMediaMessage(c.env, lineMessageId, 'image');
               if (mediaFile) {
                 const { nowISO } = await import('@/utils/timestamp');
-                const r2Key = mediaFile.url.includes('/api/files/public/')
-                  ? mediaFile.url.split('/api/files/public/')[1]
-                  : `media/line/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${mediaFile.id}`;
+                const r2Key = mediaFile.r2Key;
 
                 await db.insert(fileAttachments).values({
                   id: mediaFile.id,
