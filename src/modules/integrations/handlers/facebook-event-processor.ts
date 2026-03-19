@@ -12,7 +12,7 @@ import { createContextLogger } from '@/utils/logger';
 
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processFacebookMedia } from '../services/webhook-media-service';
-import { nowISO } from '@/utils/timestamp';
+import { nowISO, nowMs } from '@/utils/timestamp';
 import { DistributedLockService } from '@/services/distributed-lock-service';
 import type { DeferFn } from './webhook';
 
@@ -234,11 +234,11 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
             senderType: 'customer',
             senderId: String(customerId),
             platform: 'facebook',
-            timestamp: Date.now(),
+            timestamp: nowMs(),
             deliveryStatus: 'delivered',
           },
           source: 'webhook',
-          teamId: convTeamId || undefined
+          teamId: convTeamId ?? undefined
         });
       } catch (err) {
         log.warn('Facebook Webhook: Deferred broadcast failed', { error: err instanceof Error ? err.message : String(err) });

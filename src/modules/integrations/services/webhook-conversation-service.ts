@@ -159,25 +159,6 @@ export async function findOrCreateConversation(
             log.debug('Created new Facebook conversation', { conversationId });
           }
 
-          // 觸發新對話通知（新創建的對話）— LINE only
-          if (platform === 'line') {
-            try {
-              const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-              await triggerNewConversationNotification(env, {
-                conversationId: conversationId,
-                customerName: opts?.customerDisplayName || `${platformLabel} User`,
-                platform: platformLabel,
-                messagePreview: opts?.messageContent || '',
-                teamId: newConversation.assignedTeamId || undefined
-              });
-              console.log(`[${platformLabel} Webhook] New conversation notification triggered`);
-            } catch (notificationError) {
-              log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
-                error: notificationError instanceof Error ? notificationError.message : String(notificationError)
-              });
-            }
-          }
-
           return created;
         } catch (convError) {
           log.error(`${platformLabel} Webhook: Failed to create conversation`, {
@@ -191,6 +172,25 @@ export async function findOrCreateConversation(
       },
       { ttl: 10000, timeout: 5000 }
     );
+
+    // Trigger notification OUTSIDE the lock (non-critical, reduces lock hold time)
+    if (platform === 'line' && conversation) {
+      try {
+        const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+        await triggerNewConversationNotification(env, {
+          conversationId: conversation.id,
+          customerName: opts?.customerDisplayName || `${platformLabel} User`,
+          platform: platformLabel,
+          messagePreview: opts?.messageContent || '',
+          teamId: conversation.assignedTeamId || undefined
+        });
+        console.log(`[${platformLabel} Webhook] New conversation notification triggered`);
+      } catch (notificationError) {
+        log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
+          error: notificationError instanceof Error ? notificationError.message : String(notificationError)
+        });
+      }
+    }
 
     return conversation;
   } else {
