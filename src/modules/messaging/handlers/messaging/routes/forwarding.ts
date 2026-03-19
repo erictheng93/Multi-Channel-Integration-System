@@ -2,7 +2,7 @@
 // 訊息轉發端點
 
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations } from '@shared/database/schema';
@@ -81,34 +81,35 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
     const results: any[] = [];
     const errors: any[] = [];
 
-    // 轉發到每個目標對話
+    // Step 1: Batch-verify all target conversations exist in one SELECT
+    const existingConvs = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(inArray(conversations.id, targetConversationIds))
+      .all();
+    const existingConvIdSet = new Set(existingConvs.map(cv => cv.id));
+
+    // Step 2: Partition valid vs invalid targets
+    const validTargetIds: string[] = [];
     for (const targetConversationId of targetConversationIds) {
-      try {
-        // 檢查目標對話是否存在
-        const targetConversation = await db
-          .select({ id: conversations.id })
-          .from(conversations)
-          .where(eq(conversations.id, targetConversationId))
-          .get();
+      if (!existingConvIdSet.has(targetConversationId)) {
+        errors.push({ conversationId: targetConversationId, error: 'Target conversation not found' });
+      } else {
+        validTargetIds.push(targetConversationId);
+      }
+    }
 
-        if (!targetConversation) {
-          errors.push({
-            conversationId: targetConversationId,
-            error: 'Target conversation not found'
-          });
-          continue;
-        }
+    if (validTargetIds.length > 0) {
+      // Step 3: Prepare all forwarded message rows
+      const timestamp = nowISO();
+      let forwardedContent = `[Forwarded Message]\n${originalMessage.content}`;
+      if (comment) {
+        forwardedContent += `\n\n Comment: ${comment}`;
+      }
 
-        // 生成新訊息 ID
+      const messageRows = validTargetIds.map(targetConversationId => {
         const newMessageId = `msg_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        // 準備轉發的訊息內容
-        let forwardedContent = `[Forwarded Message]\n${originalMessage.content}`;
-        if (comment) {
-          forwardedContent += `\n\n Comment: ${comment}`;
-        }
-
-        // 準備元數據
         const forwardMetadata = {
           forwardedFrom: {
             messageId: originalMessage.id,
@@ -117,11 +118,12 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
           },
           comment: comment || null,
           forwardedBy: userPayload.userId.toString(),
-          forwardedAt: nowISO()
+          forwardedAt: timestamp
         };
 
-        // 創建轉發的訊息
-        const forwardedMessageData = {
+        results.push({ conversationId: targetConversationId, newMessageId, status: 'success' });
+
+        return {
           id: newMessageId,
           conversationId: targetConversationId,
           senderType: 'agent' as const,
@@ -132,34 +134,19 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
           isSent: true,
           deliveryStatus: 'sent',
           senderName: userPayload.displayName || null,
-          sentAt: nowISO(),
-          createdAt: nowISO()
+          sentAt: timestamp,
+          createdAt: timestamp
         };
+      });
 
-        // 插入轉發的訊息
-        await db.insert(messages).values(forwardedMessageData);
+      // Step 4: Single batch INSERT for all forwarded messages
+      await db.insert(messages).values(messageRows);
 
-        // 更新對話的最後訊息時間
-        await db
-          .update(conversations)
-          .set({
-            lastMessageAt: nowISO(),
-            updatedAt: nowISO()
-          })
-          .where(eq(conversations.id, targetConversationId));
-
-        results.push({
-          conversationId: targetConversationId,
-          newMessageId,
-          status: 'success'
-        });
-
-      } catch (error) {
-        errors.push({
-          conversationId: targetConversationId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
+      // Step 5: Single batch UPDATE for conversation timestamps
+      await db
+        .update(conversations)
+        .set({ lastMessageAt: timestamp, updatedAt: timestamp })
+        .where(inArray(conversations.id, validTargetIds));
     }
 
     return successResponse(c, {
