@@ -11,6 +11,7 @@ import { createDbClient } from '../db/drizzle-factory';
 import { messages, fileAttachments, conversations, customers } from '../db/schema';
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '../utils/line';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { getPublicFileUrl } from '@/utils/file-url';
 
 /**
  * Session data structure for validation
@@ -610,12 +611,13 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         // Upload to R2
         await this.env.R2_BUCKET.put(uniqueFilename, file, {
           httpMetadata: {
-            contentType: file.type
+            contentType: file.type,
+            cacheControl: 'public, max-age=604800'
           }
         });
 
         // Generate the public URL
-        const assetUrl = `${this.env.R2_PUBLIC_URL}/${uniqueFilename}`;
+        const assetUrl = getPublicFileUrl(this.env, uniqueFilename);
 
         console.log(`[CustomerMessageDO] File uploaded: ${assetUrl}`);
 
