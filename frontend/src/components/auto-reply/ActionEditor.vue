@@ -177,6 +177,8 @@ const emit = defineEmits<{
 
 const showDropdown = ref(false)
 const editingIndices = ref<Set<number>>(new Set())
+// Track indices added via "+ 新增動作" that haven't been confirmed yet
+const newIndices = ref<Set<number>>(new Set())
 
 // ---------------------------------------------------------------------------
 // Editing state management
@@ -192,12 +194,25 @@ function confirmEdit(index: number): void {
   const updated = new Set(editingIndices.value)
   updated.delete(index)
   editingIndices.value = updated
+
+  // Action is now confirmed — no longer "new"
+  const updatedNew = new Set(newIndices.value)
+  updatedNew.delete(index)
+  newIndices.value = updatedNew
 }
 
 function cancelEdit(index: number): void {
   const updated = new Set(editingIndices.value)
   updated.delete(index)
   editingIndices.value = updated
+
+  // If this action was newly added and never confirmed, remove it entirely
+  if (newIndices.value.has(index)) {
+    const updatedNew = new Set(newIndices.value)
+    updatedNew.delete(index)
+    newIndices.value = updatedNew
+    handleRemove(index)
+  }
 }
 
 function toggleEdit(index: number): void {
@@ -209,13 +224,18 @@ function handleRemove(index: number): void {
   const updated = new Set<number>()
   for (const idx of editingIndices.value) {
     if (idx === index) {continue}
-    if (idx > index) {
-      updated.add(idx - 1)
-    } else {
-      updated.add(idx)
-    }
+    updated.add(idx > index ? idx - 1 : idx)
   }
   editingIndices.value = updated
+
+  // Re-index newIndices to keep in sync after removal
+  const updatedNew = new Set<number>()
+  for (const idx of newIndices.value) {
+    if (idx === index) {continue}
+    updatedNew.add(idx > index ? idx - 1 : idx)
+  }
+  newIndices.value = updatedNew
+
   emit('remove', index)
 }
 
@@ -334,6 +354,7 @@ function handleAddAction(actionType: string): void {
   const newIndex = props.actions.length
   emit('add', actionType)
   editingIndices.value = new Set(editingIndices.value).add(newIndex)
+  newIndices.value = new Set(newIndices.value).add(newIndex)
   showDropdown.value = false
 }
 </script>
