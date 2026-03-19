@@ -107,7 +107,7 @@ export interface Bindings {
   // File upload settings
   MAX_FILE_SIZE?: string;
   ALLOWED_FILE_TYPES?: string;
-  R2_PUBLIC_URL: string;
+  R2_PUBLIC_URL?: string;
   R2_CUSTOM_DOMAIN?: string;
   R2_BUCKET_NAME?: string;
 
