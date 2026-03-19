@@ -142,6 +142,7 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     });
 
     // Process events with team-specific configuration
+    const mtDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
     let processedCount = 0;
     for (const event of data.events) {
       console.log('[LINE Webhook] Processing event:', {
@@ -150,7 +151,6 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
         messageType: event.message?.type
       });
 
-      const mtDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
       if (event.type === 'message' && event.message) {
         // Pass team-specific env and channel info with decrypted credentials
         await processLineMessageMultiTenant(c.env, event, channel, creds, mtDefer);

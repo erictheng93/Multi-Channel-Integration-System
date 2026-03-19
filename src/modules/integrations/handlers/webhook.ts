@@ -177,10 +177,10 @@ export const webhookHandler = {
 
       // 處理 Facebook 訊息
       if (body.object === 'page') {
+        const fbDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
         for (const entry of body.entry) {
           if (!entry.messaging || !Array.isArray(entry.messaging)) continue;
 
-          const fbDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
           for (const messaging of entry.messaging) {
             if (messaging.message) {
               await processFacebookMessage(c.env, messaging, fbDefer);

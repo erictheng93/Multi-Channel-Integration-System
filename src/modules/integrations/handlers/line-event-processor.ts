@@ -349,7 +349,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
             deliveryStatus: 'delivered',
           },
           source: 'webhook',
-          teamId: convTeamId || undefined
+          teamId: convTeamId ?? undefined
         });
         console.log('[LINE Webhook] Deferred broadcast completed', { conversationId: convId });
       } catch (err) {
@@ -416,7 +416,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
           customerName: userDisplayName,
           platform: 'LINE',
           messagePreview: messageContent,
-          teamId: convTeamId || undefined
+          teamId: convTeamId ?? undefined
         });
       } catch (err) {
         log.warn('LINE Webhook: Deferred notification failed', { error: err instanceof Error ? err.message : String(err) });

@@ -70,37 +70,29 @@ export async function evaluate(
       const execResult = await executeActions(rule.actions, replyToken, platformUserId, env);
 
       if (execResult.success) {
-        // Each post-send operation is independent — one failure should not block the others.
-        // Previously, saveAutoReplyMessage had no try-catch, so a transient D1 error
-        // would skip both the audit log and WebSocket broadcast.
+        // Post-send operations are independent — run in parallel for ~100ms savings.
+        // Each has its own error handling; one failure does not block the others.
         const responseContentSummary = buildResponseSummary(rule.actions);
 
-        // Save auto-reply as system message in messages table
-        try {
-          await saveAutoReplyMessage(env, conversationId, responseContentSummary);
-        } catch (saveError) {
-          log.error('Failed to save auto-reply message to DB', {
+        await Promise.allSettled([
+          saveAutoReplyMessage(env, conversationId, responseContentSummary)
+            .catch((e) => log.error('Failed to save auto-reply message to DB', {
+              conversationId, error: e instanceof Error ? e.message : String(e),
+            })),
+          insertAutoReplyLog(env, {
+            ruleId: rule.id,
             conversationId,
-            error: saveError instanceof Error ? saveError.message : String(saveError),
-          });
-        }
-
-        // Insert audit log
-        await insertAutoReplyLog(env, {
-          ruleId: rule.id,
-          conversationId,
-          customerId,
-          triggerContent: message.content,
-          responseContent: responseContentSummary,
-          matchedCondition: rule.triggerType === 'keyword'
-            ? JSON.stringify(rule.conditions.map((c) => ({ type: c.conditionType, value: c.value })))
-            : JSON.stringify({ triggerType: rule.triggerType }),
-          platform: message.platform,
-          replyMethod: execResult.replyMethod,
-        });
-
-        // Broadcast via WebSocket so agents see the auto-reply
-        await broadcastAutoReply(env, conversationId, responseContentSummary, teamId ?? undefined);
+            customerId,
+            triggerContent: message.content,
+            responseContent: responseContentSummary,
+            matchedCondition: rule.triggerType === 'keyword'
+              ? JSON.stringify(rule.conditions.map((c) => ({ type: c.conditionType, value: c.value })))
+              : JSON.stringify({ triggerType: rule.triggerType }),
+            platform: message.platform,
+            replyMethod: execResult.replyMethod,
+          }),
+          broadcastAutoReply(env, conversationId, responseContentSummary, teamId ?? undefined),
+        ]);
       }
 
       return {
@@ -151,27 +143,23 @@ export async function evaluateWelcome(
     if (execResult.success) {
       const responseContentSummary = buildResponseSummary(rule.actions);
 
-      try {
-        await saveAutoReplyMessage(env, conversationId, responseContentSummary);
-      } catch (saveError) {
-        log.error('Failed to save welcome auto-reply message to DB', {
+      await Promise.allSettled([
+        saveAutoReplyMessage(env, conversationId, responseContentSummary)
+          .catch((e) => log.error('Failed to save welcome auto-reply message to DB', {
+            conversationId, error: e instanceof Error ? e.message : String(e),
+          })),
+        insertAutoReplyLog(env, {
+          ruleId: rule.id,
           conversationId,
-          error: saveError instanceof Error ? saveError.message : String(saveError),
-        });
-      }
-
-      await insertAutoReplyLog(env, {
-        ruleId: rule.id,
-        conversationId,
-        customerId,
-        triggerContent: '[follow_event]',
-        responseContent: responseContentSummary,
-        matchedCondition: JSON.stringify({ triggerType: 'welcome' }),
-        platform: 'line',
-        replyMethod: execResult.replyMethod,
-      });
-
-      await broadcastAutoReply(env, conversationId, responseContentSummary, teamId ?? undefined);
+          customerId,
+          triggerContent: '[follow_event]',
+          responseContent: responseContentSummary,
+          matchedCondition: JSON.stringify({ triggerType: 'welcome' }),
+          platform: 'line',
+          replyMethod: execResult.replyMethod,
+        }),
+        broadcastAutoReply(env, conversationId, responseContentSummary, teamId ?? undefined),
+      ]);
     }
 
     return {
