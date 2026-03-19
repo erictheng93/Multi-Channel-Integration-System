@@ -1,146 +1,114 @@
 <template>
   <div class="action-editor">
     <div class="action-list">
-      <div
+      <template
         v-for="(action, index) in actions"
         :key="index"
-        :class="['action-card-new', { editing: editingIndices.has(index) }]"
       >
-        <!-- Collapsed header (always visible) -->
+        <!-- Collapsed: tag pill (like condition-tag) -->
         <div
-          class="collapsed-header"
+          v-if="!editingIndices.has(index)"
+          :class="['action-tag', `action-tag--${action.actionType}`]"
           @click="toggleEdit(index)"
         >
-          <span
-            :class="[
-              'status-dot',
-              editingIndices.has(index) ? 'status-dot--editing' : 'status-dot--done'
-            ]"
-          />
-          <span :class="['badge', `badge--${action.actionType}`]">
-            {{ actionTypeLabel(action.actionType) }}
-          </span>
-          <span
-            v-if="!editingIndices.has(index)"
-            class="collapsed-preview"
+          <span class="action-type-label">{{ actionTypeLabel(action.actionType) }}</span>
+          <span class="action-value">{{ getPreviewText(action) }}</span>
+          <button
+            class="action-remove"
+            type="button"
+            @click.stop="handleRemove(index)"
           >
-            {{ getPreviewText(action) }}
-          </span>
-          <div
-            v-if="!editingIndices.has(index)"
-            class="collapsed-actions"
-          >
-            <button
-              type="button"
-              class="btn-icon btn-icon--edit"
-              title="編輯"
-              @click.stop="startEdit(index)"
-            >
-              <svg
-                class="icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-            </button>
-            <button
-              type="button"
-              class="btn-icon btn-icon--delete"
-              title="刪除"
-              @click.stop="handleRemove(index)"
-            >
-              <svg
-                class="icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              ><path d="M3 6h18" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
-            </button>
-          </div>
+            &times;
+          </button>
         </div>
 
-        <!-- Expanded body (only visible when editing) -->
+        <!-- Expanded: editing card -->
         <div
-          v-if="editingIndices.has(index)"
-          class="expanded-body"
+          v-else
+          class="action-card-new editing"
         >
-          <!-- reply_text -->
-          <template v-if="action.actionType === 'reply_text'">
-            <div class="form-group">
-              <label class="form-label">回覆文字</label>
-              <textarea
-                class="form-input action-textarea"
-                rows="3"
-                :value="parseTextContent(action.content)"
-                placeholder="輸入回覆文字..."
-                @input="handleTextUpdate(index, ($event.target as HTMLTextAreaElement).value)"
-              />
-            </div>
-          </template>
+          <div class="editing-header">
+            <span
+              class="status-dot status-dot--editing"
+            />
+            <span :class="['badge', `badge--${action.actionType}`]">
+              {{ actionTypeLabel(action.actionType) }}
+            </span>
+          </div>
 
-          <!-- reply_image -->
-          <template v-else-if="action.actionType === 'reply_image'">
-            <div class="form-group">
-              <label class="form-label">圖片網址</label>
-              <input
-                type="text"
-                class="form-input"
-                :value="parseImageField(action.content, 'url')"
-                placeholder="https://example.com/image.jpg"
-                @input="handleImageUpdate(index, action.content, 'url', ($event.target as HTMLInputElement).value)"
+          <div class="expanded-body">
+            <!-- reply_text -->
+            <template v-if="action.actionType === 'reply_text'">
+              <div class="form-group">
+                <label class="form-label">回覆文字</label>
+                <textarea
+                  class="form-input action-textarea"
+                  rows="3"
+                  :value="parseTextContent(action.content)"
+                  placeholder="輸入回覆文字..."
+                  @input="handleTextUpdate(index, ($event.target as HTMLTextAreaElement).value)"
+                />
+              </div>
+            </template>
+
+            <!-- reply_image -->
+            <template v-else-if="action.actionType === 'reply_image'">
+              <div class="form-group">
+                <label class="form-label">圖片網址</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  :value="parseImageField(action.content, 'url')"
+                  placeholder="https://example.com/image.jpg"
+                  @input="handleImageUpdate(index, action.content, 'url', ($event.target as HTMLInputElement).value)"
+                >
+              </div>
+              <div class="form-group">
+                <label class="form-label">預覽圖網址</label>
+                <input
+                  type="text"
+                  class="form-input"
+                  :value="parseImageField(action.content, 'previewUrl')"
+                  placeholder="https://example.com/preview.jpg"
+                  @input="handleImageUpdate(index, action.content, 'previewUrl', ($event.target as HTMLInputElement).value)"
+                >
+              </div>
+            </template>
+
+            <!-- reply_flex -->
+            <template v-else-if="action.actionType === 'reply_flex'">
+              <div class="form-group">
+                <label class="form-label">Flex Message JSON</label>
+                <textarea
+                  class="form-input action-textarea action-textarea--json"
+                  rows="6"
+                  :value="formatJsonContent(action.content)"
+                  placeholder="{&quot;type&quot;: &quot;bubble&quot;, ...}"
+                  @input="handleFlexUpdate(index, ($event.target as HTMLTextAreaElement).value)"
+                />
+              </div>
+            </template>
+
+            <!-- Confirm / Cancel footer -->
+            <div class="expanded-footer">
+              <button
+                type="button"
+                class="btn btn-secondary btn-cancel"
+                @click="cancelEdit(index)"
               >
-            </div>
-            <div class="form-group">
-              <label class="form-label">預覽圖網址</label>
-              <input
-                type="text"
-                class="form-input"
-                :value="parseImageField(action.content, 'previewUrl')"
-                placeholder="https://example.com/preview.jpg"
-                @input="handleImageUpdate(index, action.content, 'previewUrl', ($event.target as HTMLInputElement).value)"
+                取消
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary btn-confirm"
+                @click="confirmEdit(index)"
               >
+                確認完成
+              </button>
             </div>
-          </template>
-
-          <!-- reply_flex -->
-          <template v-else-if="action.actionType === 'reply_flex'">
-            <div class="form-group">
-              <label class="form-label">Flex Message JSON</label>
-              <textarea
-                class="form-input action-textarea action-textarea--json"
-                rows="6"
-                :value="formatJsonContent(action.content)"
-                placeholder="{&quot;type&quot;: &quot;bubble&quot;, ...}"
-                @input="handleFlexUpdate(index, ($event.target as HTMLTextAreaElement).value)"
-              />
-            </div>
-          </template>
-
-          <!-- Confirm / Cancel footer -->
-          <div class="expanded-footer">
-            <button
-              type="button"
-              class="btn btn-secondary btn-cancel"
-              @click="cancelEdit(index)"
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary btn-confirm"
-              @click="confirmEdit(index)"
-            >
-              確認完成
-            </button>
           </div>
         </div>
-      </div>
+      </template>
 
       <div
         v-if="actions.length === 0"
@@ -379,12 +347,115 @@ function handleAddAction(actionType: string): void {
 
 .action-list {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-height: 36px;
+  align-items: flex-start;
 }
 
-/* -- Card base -- */
+/* -- Action tag (collapsed state, mirrors condition-tag) -- */
+.action-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border-radius: 9999px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  max-width: 100%;
+}
+
+.action-tag--reply_text {
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200, #bfdbfe);
+}
+
+.action-tag--reply_text:hover {
+  background: var(--primary-100, #dbeafe);
+}
+
+.action-tag--reply_image {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.action-tag--reply_image:hover {
+  background: #bbf7d0;
+}
+
+.action-tag--reply_flex {
+  background: #f3e8ff;
+  border: 1px solid #e9d5ff;
+}
+
+.action-tag--reply_flex:hover {
+  background: #e9d5ff;
+}
+
+.action-type-label {
+  font-weight: 600;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.action-tag--reply_text .action-type-label {
+  color: var(--primary-700);
+}
+
+.action-tag--reply_image .action-type-label {
+  color: #15803d;
+}
+
+.action-tag--reply_flex .action-type-label {
+  color: #7e22ce;
+}
+
+.action-value {
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.action-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: var(--gray-600);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.action-tag--reply_text .action-remove:hover {
+  background: var(--primary-200, #bfdbfe);
+  color: var(--primary-700);
+}
+
+.action-tag--reply_image .action-remove:hover {
+  background: #86efac;
+  color: #15803d;
+}
+
+.action-tag--reply_flex .action-remove:hover {
+  background: #d8b4fe;
+  color: #7e22ce;
+}
+
+/* -- Editing card -- */
 .action-card-new {
+  width: 100%;
   background: var(--gray-50);
   border-radius: var(--radius-xl);
   overflow: hidden;
@@ -396,40 +467,19 @@ function handleAddAction(actionType: string): void {
   box-shadow: var(--shadow-sm), 0 0 0 2px var(--primary-100);
 }
 
-/* -- Collapsed header -- */
-.collapsed-header {
+.editing-header {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-  user-select: none;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-2);
 }
 
-.collapsed-header:hover {
-  background: var(--gray-100);
-}
-
-.action-card-new.editing .collapsed-header {
-  cursor: default;
-  padding-bottom: var(--space-2);
-}
-
-.action-card-new.editing .collapsed-header:hover {
-  background: transparent;
-}
-
-/* -- Status dot -- */
+/* -- Status dot (editing state only) -- */
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
-}
-
-.status-dot--done {
-  background: var(--success-500);
 }
 
 .status-dot--editing {
@@ -442,7 +492,7 @@ function handleAddAction(actionType: string): void {
   50% { opacity: 0.4; }
 }
 
-/* -- Badge -- */
+/* -- Badge (editing header) -- */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -467,59 +517,6 @@ function handleAddAction(actionType: string): void {
 .badge--reply_flex {
   background: #f3e8ff;
   color: #7e22ce;
-}
-
-/* -- Collapsed preview -- */
-.collapsed-preview {
-  flex: 1;
-  font-size: 0.875rem;
-  color: var(--gray-700);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-/* -- Collapsed action buttons -- */
-.collapsed-actions {
-  display: flex;
-  gap: var(--space-1);
-  flex-shrink: 0;
-}
-
-.btn-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius-lg);
-  background: transparent;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  padding: 0;
-}
-
-.btn-icon--edit {
-  color: var(--primary-500);
-}
-
-.btn-icon--edit:hover {
-  background: var(--primary-50);
-}
-
-.btn-icon--delete {
-  color: var(--error-500);
-}
-
-.btn-icon--delete:hover {
-  background: var(--error-50);
-}
-
-.icon {
-  width: 16px;
-  height: 16px;
 }
 
 /* -- Expanded body -- */
@@ -570,6 +567,7 @@ function handleAddAction(actionType: string): void {
   font-style: italic;
   text-align: center;
   padding: var(--space-6) 0;
+  width: 100%;
 }
 
 /* -- Add action dropdown -- */
