@@ -45,6 +45,9 @@ import {
 } from './line-event-processor';
 import { processFacebookMessage } from './facebook-event-processor';
 
+/** Callback to defer a promise via executionCtx.waitUntil */
+export type DeferFn = (promise: Promise<unknown>) => void;
+
 // Re-export for backward compatibility (these were previously `export async function` in this file)
 export { processLineMessage, processLineFollowEvent, processLineUnfollowEvent };
 
@@ -111,6 +114,9 @@ export const webhookHandler = {
         firstEventType: data.events[0]?.type
       });
 
+      // Create defer function to run tasks after HTTP response via waitUntil
+      const defer: DeferFn = (p) => c.executionCtx.waitUntil(p);
+
       // 處理事件
       for (const event of data.events) {
         console.log('[LINE Webhook] Processing event:', {
@@ -120,7 +126,7 @@ export const webhookHandler = {
         });
 
         if (event.type === 'message' && event.message) {
-          await processLineMessage(c.env, event);
+          await processLineMessage(c.env, event, defer);
         } else if (event.type === 'follow') {
           // 處理 QR Code 加好友事件
           await processLineFollowEvent(c.env, event);
@@ -174,9 +180,10 @@ export const webhookHandler = {
         for (const entry of body.entry) {
           if (!entry.messaging || !Array.isArray(entry.messaging)) continue;
 
+          const fbDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
           for (const messaging of entry.messaging) {
             if (messaging.message) {
-              await processFacebookMessage(c.env, messaging);
+              await processFacebookMessage(c.env, messaging, fbDefer);
             }
           }
         }

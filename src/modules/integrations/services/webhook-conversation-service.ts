@@ -8,7 +8,8 @@ import { convertConversation } from '@/utils/drizzle-converters';
 import type { Bindings } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { createContextLogger } from '@/utils/logger';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp';
+import { DistributedLockService } from '@/services/distributed-lock-service';
 
 const log = createContextLogger('WebhookConversation');
 
@@ -33,6 +34,8 @@ export async function findOrCreateConversation(
   const platformLabel = platform.toUpperCase();
 
   console.log(`[${platformLabel} Webhook] Searching for existing conversation for customer:`, customerId);
+
+  // Fast path: check for existing conversation (no lock needed)
   let conversation = await drizzleDb
     .select()
     .from(conversations)
@@ -45,114 +48,151 @@ export async function findOrCreateConversation(
   console.log(`[${platformLabel} Webhook] Existing conversation found:`, conversation ? conversation.id : 'None');
 
   if (!conversation) {
-    // 建立新對話（使用 UUID）
-    const conversationId = uuidv4();
-    const timestamp = nowISO();
+    // Slow path: creation needs distributed lock to prevent duplicates
+    const lockService = new DistributedLockService(env);
+    conversation = await lockService.withLock(
+      `webhook:conversation:${customerId}`,
+      async () => {
+        // Double-check inside lock — another request may have created the conversation
+        const existing = await drizzleDb
+          .select()
+          .from(conversations)
+          .where(and(
+            eq(conversations.customerId, customerId),
+            ne(conversations.status, 'closed')
+          ))
+          .get();
 
-    if (platform === 'line') {
-      console.log(`[${platformLabel} Webhook] Creating new conversation...`, {
-        conversationId,
-        customerId,
-        timestamp
-      });
-    }
+        if (existing) {
+          // Another request created it while we waited for the lock — just update timestamps
+          const updateTimestamp = nowISO();
+          const updateFields: Record<string, unknown> = {
+            lastMessageAt: updateTimestamp,
+            updatedAt: updateTimestamp
+          };
+          if (!existing.assignedTeamId && opts?.assignedTeamId) {
+            updateFields.assignedTeamId = opts.assignedTeamId;
+          }
+          await drizzleDb
+            .update(conversations)
+            .set(updateFields)
+            .where(eq(conversations.id, existing.id));
+          if (!existing.assignedTeamId && opts?.assignedTeamId) {
+            existing.assignedTeamId = opts.assignedTeamId;
+          }
+          return existing;
+        }
 
-    try {
-      // 插入新對話 (只支援團隊指派，個人指派已移除)
-      const insertResult = await drizzleDb
-        .insert(conversations)
-        .values({
-          id: conversationId,
-          customerId,
-          assignedTeamId: opts?.assignedTeamId ?? null,
-          // Note: assignedUserId removed - only team assignment is supported now
-          status: 'active',
-          priority: 'normal',
-          firstResponseAt: null,
-          closedAt: null,
-          lastMessageAt: timestamp,
-          createdAt: timestamp,
-          updatedAt: timestamp
-        });
+        // 建立新對話（使用 UUID）
+        const conversationId = uuidv4();
+        const timestamp = nowISO();
 
-      if (platform === 'line') {
-        console.log(`[${platformLabel} Webhook] Conversation insert completed:`, { conversationId, insertResult });
-      }
-
-      // Re-query the created conversation to get full object
-      if (platform === 'line') {
-        console.log(`[${platformLabel} Webhook] Re-querying created conversation...`);
-      }
-      const newConversation = await drizzleDb
-        .select()
-        .from(conversations)
-        .where(eq(conversations.id, conversationId))
-        .get();
-
-      if (!newConversation) {
         if (platform === 'line') {
-          // 嘗試查詢是否有任何該用戶的對話
-          const anyUserConversations = await drizzleDb
-            .select()
-            .from(conversations)
-            .where(eq(conversations.customerId, customerId))
-            .all();
-
-          // 檢查數據庫連接狀態
-          const { customers: customersTable } = await import('@/db/schema');
-          const dbTest = await drizzleDb.select().from(customersTable).where(eq(customersTable.id, customerId)).get();
-
-          log.error(`${platformLabel} Webhook: Failed to retrieve created conversation`, {
+          console.log(`[${platformLabel} Webhook] Creating new conversation...`, {
             conversationId,
             customerId,
-            timestamp,
-            allConversationsCount: anyUserConversations?.length || 0,
-            dbConnectionTest: dbTest ? 'OK' : 'FAILED'
+            timestamp
           });
         }
-        throw new Error('Failed to retrieve created conversation after successful insert');
-      }
 
-      conversation = convertConversation(newConversation) as any;
-
-      if (platform === 'line') {
-        console.log(`[${platformLabel} Webhook] New conversation created and retrieved successfully:`, {
-          id: conversationId,
-          customerId,
-          status: conversation?.status
-        });
-      } else {
-        log.debug('Created new Facebook conversation', { conversationId });
-      }
-
-      // 觸發新對話通知（新創建的對話）— LINE only
-      if (platform === 'line') {
         try {
-          const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-          await triggerNewConversationNotification(env, {
-            conversationId: conversationId,
-            customerName: opts?.customerDisplayName || `${platformLabel} User`,
-            platform: platformLabel,
-            messagePreview: opts?.messageContent || '',
-            teamId: newConversation.assignedTeamId || undefined
+          // 插入新對話 (只支援團隊指派，個人指派已移除)
+          const insertResult = await drizzleDb
+            .insert(conversations)
+            .values({
+              id: conversationId,
+              customerId,
+              assignedTeamId: opts?.assignedTeamId ?? null,
+              status: 'active',
+              priority: 'normal',
+              firstResponseAt: null,
+              closedAt: null,
+              lastMessageAt: timestamp,
+              createdAt: timestamp,
+              updatedAt: timestamp
+            });
+
+          if (platform === 'line') {
+            console.log(`[${platformLabel} Webhook] Conversation insert completed:`, { conversationId, insertResult });
+          }
+
+          if (platform === 'line') {
+            console.log(`[${platformLabel} Webhook] Re-querying created conversation...`);
+          }
+          const newConversation = await drizzleDb
+            .select()
+            .from(conversations)
+            .where(eq(conversations.id, conversationId))
+            .get();
+
+          if (!newConversation) {
+            if (platform === 'line') {
+              const anyUserConversations = await drizzleDb
+                .select()
+                .from(conversations)
+                .where(eq(conversations.customerId, customerId))
+                .all();
+
+              const { customers: customersTable } = await import('@/db/schema');
+              const dbTest = await drizzleDb.select().from(customersTable).where(eq(customersTable.id, customerId)).get();
+
+              log.error(`${platformLabel} Webhook: Failed to retrieve created conversation`, {
+                conversationId,
+                customerId,
+                timestamp,
+                allConversationsCount: anyUserConversations?.length || 0,
+                dbConnectionTest: dbTest ? 'OK' : 'FAILED'
+              });
+            }
+            throw new Error('Failed to retrieve created conversation after successful insert');
+          }
+
+          const created = convertConversation(newConversation) as any;
+
+          if (platform === 'line') {
+            console.log(`[${platformLabel} Webhook] New conversation created and retrieved successfully:`, {
+              id: conversationId,
+              customerId,
+              status: created?.status
+            });
+          } else {
+            log.debug('Created new Facebook conversation', { conversationId });
+          }
+
+          // 觸發新對話通知（新創建的對話）— LINE only
+          if (platform === 'line') {
+            try {
+              const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+              await triggerNewConversationNotification(env, {
+                conversationId: conversationId,
+                customerName: opts?.customerDisplayName || `${platformLabel} User`,
+                platform: platformLabel,
+                messagePreview: opts?.messageContent || '',
+                teamId: newConversation.assignedTeamId || undefined
+              });
+              console.log(`[${platformLabel} Webhook] New conversation notification triggered`);
+            } catch (notificationError) {
+              log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
+                error: notificationError instanceof Error ? notificationError.message : String(notificationError)
+              });
+            }
+          }
+
+          return created;
+        } catch (convError) {
+          log.error(`${platformLabel} Webhook: Failed to create conversation`, {
+            error: convError instanceof Error ? convError.message : 'Unknown error',
+            conversationId,
+            customerId,
+            timestamp
           });
-          console.log(`[${platformLabel} Webhook] New conversation notification triggered`);
-        } catch (notificationError) {
-          log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
-            error: notificationError instanceof Error ? notificationError.message : String(notificationError)
-          });
-          // 不要讓通知失敗影響主流程
+          throw new Error(`Failed to create conversation: ${convError}`);
         }
-      }
-    } catch (convError) {
-      log.error(`${platformLabel} Webhook: Failed to create conversation`, {
-        error: convError instanceof Error ? convError.message : 'Unknown error',
-        conversationId,
-        customerId,
-        timestamp
-      });
-      throw new Error(`Failed to create conversation: ${convError}`);
-    }
+      },
+      { ttl: 10000, timeout: 5000 }
+    );
+
+    return conversation;
   } else {
     // 更新對話
     const timestamp = nowISO();
@@ -293,6 +333,19 @@ export async function saveMessage(
       });
     }
   } catch (messageError) {
+    // Handle UNIQUE constraint violation gracefully (race condition with dedup check)
+    if (messageError instanceof Error && messageError.message?.includes('UNIQUE constraint failed')) {
+      log.info(`${platformLabel} Webhook: Duplicate message caught by DB constraint`, { platformMessageId });
+      if (platformMessageId) {
+        const existing = await drizzleDb
+          .select({ id: messages.id })
+          .from(messages)
+          .where(eq(messages.platformMessageId, platformMessageId))
+          .get();
+        return existing?.id || messageId;
+      }
+      return messageId;
+    }
     log.error(`${platformLabel} Webhook: Failed to create message`, {
       error: messageError instanceof Error ? messageError.message : 'Unknown error',
       messageId,

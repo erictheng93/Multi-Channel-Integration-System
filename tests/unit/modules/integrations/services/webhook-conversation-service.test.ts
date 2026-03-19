@@ -99,6 +99,7 @@ vi.mock('@/utils/logger', () => ({
 
 vi.mock('@/utils/timestamp', () => ({
   nowISO: vi.fn(() => '2026-03-09T12:00:00.000Z'),
+  nowMs: vi.fn(() => 1741521600000),
 }));
 
 vi.mock('@/utils/drizzle-converters', () => ({
@@ -125,7 +126,11 @@ const mockEnv = { DB: {} } as any;
 
 describe('webhook-conversation-service', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    // Restore default implementations after reset
+    mockDb.select.mockImplementation(() => createSelectChain());
+    mockDb.insert.mockImplementation(() => createInsertChain());
+    mockDb.update.mockImplementation(() => createUpdateChain());
   });
 
   // =========================================================================
@@ -212,7 +217,9 @@ describe('webhook-conversation-service', () => {
     });
 
     it('should create new conversation when none exists', async () => {
-      // First select: no existing conversation
+      // First select: no existing conversation (fast path)
+      mockGet.mockResolvedValueOnce(undefined);
+      // Double-check inside lock: still no existing
       mockGet.mockResolvedValueOnce(undefined);
       // Re-query after insert: return the new conversation
       const newConversation = {
@@ -238,7 +245,8 @@ describe('webhook-conversation-service', () => {
     });
 
     it('should trigger notification for new LINE conversation', async () => {
-      mockGet.mockResolvedValueOnce(undefined); // no existing
+      mockGet.mockResolvedValueOnce(undefined); // no existing (fast path)
+      mockGet.mockResolvedValueOnce(undefined); // double-check inside lock
       mockGet.mockResolvedValueOnce({
         id: 'mock-uuid-1234',
         customerId: 1,
@@ -268,7 +276,8 @@ describe('webhook-conversation-service', () => {
     });
 
     it('should throw when re-query after insert fails', async () => {
-      mockGet.mockResolvedValueOnce(undefined); // no existing
+      mockGet.mockResolvedValueOnce(undefined); // no existing (fast path)
+      mockGet.mockResolvedValueOnce(undefined); // double-check inside lock
       mockGet.mockResolvedValueOnce(undefined); // re-query returns null
       mockAll.mockResolvedValueOnce([]); // diagnostic query
       mockGet.mockResolvedValueOnce(null); // db connection test
@@ -279,7 +288,8 @@ describe('webhook-conversation-service', () => {
     });
 
     it('should use assignedTeamId when creating new conversation', async () => {
-      mockGet.mockResolvedValueOnce(undefined); // no existing
+      mockGet.mockResolvedValueOnce(undefined); // no existing (fast path)
+      mockGet.mockResolvedValueOnce(undefined); // double-check inside lock
       mockGet.mockResolvedValueOnce({
         id: 'mock-uuid-1234',
         customerId: 1,
@@ -294,6 +304,76 @@ describe('webhook-conversation-service', () => {
       expect(mockInsertValues).toHaveBeenCalledWith(
         expect.objectContaining({ assignedTeamId: 10 })
       );
+    });
+
+    it('should use distributed lock when creating new conversation', async () => {
+      // Mock lock DO available
+      const mockLockFetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ success: true, lockId: 'test-lock-1' }))
+      );
+      const envWithLock = {
+        DB: {},
+        DISTRIBUTED_LOCK: {
+          idFromName: vi.fn().mockReturnValue('lock-id'),
+          get: vi.fn().mockReturnValue({ fetch: mockLockFetch }),
+        },
+      } as any;
+
+      mockGet.mockResolvedValueOnce(undefined); // fast path: no existing
+      mockGet.mockResolvedValueOnce(undefined); // double-check inside lock: still no existing
+      mockGet.mockResolvedValueOnce({            // re-query after insert
+        id: 'mock-uuid-1234',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: null,
+      });
+
+      await findOrCreateConversation(envWithLock, 1, 'line');
+
+      // Lock should be acquired and released (2 fetch calls: acquire + release)
+      expect(mockLockFetch).toHaveBeenCalledTimes(2);
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return existing conversation found during double-check inside lock', async () => {
+      const existingConv = {
+        id: 'conv-existing',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: 3,
+      };
+
+      mockGet.mockResolvedValueOnce(undefined);    // fast path: no existing
+      mockGet.mockResolvedValueOnce(existingConv);  // double-check inside lock: found!
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line');
+
+      // Should NOT insert — another request created it
+      expect(mockDb.insert).not.toHaveBeenCalled();
+      // Should update timestamps on the found conversation
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(existingConv);
+    });
+
+    it('should backfill team assignment during double-check inside lock', async () => {
+      const existingConv = {
+        id: 'conv-existing',
+        customerId: 1,
+        status: 'active',
+        assignedTeamId: null,
+      };
+
+      mockGet.mockResolvedValueOnce(undefined);    // fast path
+      mockGet.mockResolvedValueOnce(existingConv);  // double-check finds it
+
+      const result = await findOrCreateConversation(mockEnv, 1, 'line', {
+        assignedTeamId: 7,
+      });
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(
+        expect.objectContaining({ assignedTeamId: 7 })
+      );
+      expect(result.assignedTeamId).toBe(7);
     });
   });
 
@@ -453,6 +533,64 @@ describe('webhook-conversation-service', () => {
       mockInsertValues.mockReturnValueOnce({
         then: (_resolve: any, reject: any) =>
           Promise.reject(new Error('DB insert failed')).catch(reject),
+      });
+
+      await expect(
+        saveMessage(mockEnv, 'conv-1', 1, 'Hello', 'text', 'msg-1', null, null, 'line')
+      ).rejects.toThrow('Failed to create message');
+    });
+
+    it('should handle UNIQUE constraint violation gracefully', async () => {
+      // Simulate UNIQUE constraint failure on insert
+      mockInsertValues.mockReturnValueOnce({
+        then: (_resolve: any, reject: any) =>
+          Promise.reject(new Error('UNIQUE constraint failed: messages.platformMessageId')).catch(reject),
+      });
+
+      // Mock the fallback query for existing message
+      mockGet.mockResolvedValueOnce({ id: 'existing-msg-id' });
+
+      const result = await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        'Hello',
+        'text',
+        'duplicate-platform-msg',
+        null,
+        null,
+        'line'
+      );
+
+      // Should return the existing message ID, not throw
+      expect(result).toBe('existing-msg-id');
+    });
+
+    it('should return generated messageId when UNIQUE violation has no platformMessageId', async () => {
+      mockInsertValues.mockReturnValueOnce({
+        then: (_resolve: any, reject: any) =>
+          Promise.reject(new Error('UNIQUE constraint failed')).catch(reject),
+      });
+
+      const result = await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        'Hello',
+        'text',
+        null,  // no platformMessageId
+        null,
+        null,
+        'line'
+      );
+
+      expect(result).toBe('mock-uuid-1234');
+    });
+
+    it('should still throw on non-UNIQUE DB errors', async () => {
+      mockInsertValues.mockReturnValueOnce({
+        then: (_resolve: any, reject: any) =>
+          Promise.reject(new Error('Connection timeout')).catch(reject),
       });
 
       await expect(

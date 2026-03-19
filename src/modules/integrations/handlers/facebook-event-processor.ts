@@ -7,11 +7,14 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { customers } from '@/db/schema';
 import type { Bindings, FacebookMessaging, FacebookMediaData } from '@/types';
 import { ActivityService } from '@modules/activities';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
 
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processFacebookMedia } from '../services/webhook-media-service';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp';
+import { DistributedLockService } from '@/services/distributed-lock-service';
+import type { DeferFn } from './webhook';
 
 const log = createContextLogger('Webhook');
 
@@ -21,7 +24,7 @@ function logSecurely(platform: string, userId: string, messageLength: number) {
 }
 
 // 處理 Facebook 訊息
-export async function processFacebookMessage(env: Bindings, messaging: FacebookMessaging) {
+export async function processFacebookMessage(env: Bindings, messaging: FacebookMessaging, defer: DeferFn = () => {}) {
   const userId = messaging.sender.id;
   const message = messaging.message;
 
@@ -112,44 +115,59 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       .get();
 
     if (!user) {
-      // 使用用戶同步服務獲取用戶資料
-      let displayName = 'Facebook User';
-      let avatarUrl = null;
+      const lockService = new DistributedLockService(env);
+      user = await lockService.withLock(
+        `webhook:customer:facebook:${userId}`,
+        async () => {
+          const existing = await drizzleDb
+            .select()
+            .from(customers)
+            .where(and(
+              eq(customers.platformUserId, userId),
+              eq(customers.platform, 'facebook')
+            ))
+            .get();
+          if (existing) return existing;
 
-      try {
-        const { createUserSyncService } = await import('@/services/user-sync');
-        const userSyncService = createUserSyncService(env);
-        const profile = await userSyncService.syncFacebookUser(userId);
-        if (profile) {
-          displayName = profile.displayName;
-          avatarUrl = profile.pictureUrl;
-        }
-      } catch (profileError) {
-        log.warn('Failed to sync Facebook user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
-      }
+          let displayName = 'Facebook User';
+          let avatarUrl = null;
 
-      // 建立新使用者
-      const timestamp = nowISO();
-      await drizzleDb
-        .insert(customers)
-        .values({
-          platform: 'facebook',
-          platformUserId: userId,
-          displayName,
-          avatarUrl,
-          createdAt: timestamp,
-          updatedAt: timestamp
-        });
+          try {
+            const { createUserSyncService } = await import('@/services/user-sync');
+            const userSyncService = createUserSyncService(env);
+            const profile = await userSyncService.syncFacebookUser(userId);
+            if (profile) {
+              displayName = profile.displayName;
+              avatarUrl = profile.pictureUrl;
+            }
+          } catch (profileError) {
+            log.warn('Failed to sync Facebook user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
+          }
 
-      // 重新查詢刚建立的用户
-      user = await drizzleDb
-        .select()
-        .from(customers)
-        .where(and(
-          eq(customers.platformUserId, userId),
-          eq(customers.platform, 'facebook')
-        ))
-        .get();
+          const timestamp = nowISO();
+          await drizzleDb
+            .insert(customers)
+            .values({
+              platform: 'facebook',
+              platformUserId: userId,
+              displayName,
+              avatarUrl,
+              createdAt: timestamp,
+              updatedAt: timestamp
+            });
+
+          const created = await drizzleDb
+            .select()
+            .from(customers)
+            .where(and(
+              eq(customers.platformUserId, userId),
+              eq(customers.platform, 'facebook')
+            ))
+            .get();
+          return created!;
+        },
+        { ttl: 15000, timeout: 8000 }
+      );
     } else {
       // 檢查是否需要更新用戶資料
       try {
@@ -197,66 +215,99 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       'facebook'
     );
 
-    // 記錄活動
-    try {
-      const activityService = new ActivityService(env.DB);
-      const activity = await activityService.logActivity({
-        userId: 'system',
-        userName: 'Webhook Handler',
-        userRole: 'system',
-        action: 'message_received',
-        resourceType: 'conversation',
-        resourceId: String(conversation!.id),
-        details: {
-          conversationId: conversation!.id,
-          customerId: user.id,
-          platform: 'facebook',
-          messageType: messageType,
-          messageId: messageId,
-          content: messageContent.substring(0, 100) // 只記錄前100字元
-        }
-      });
+    // =================== DEFERRED: Non-critical tasks via waitUntil ===================
+    const convId = conversation!.id;
+    const convTeamId = conversation!.assignedTeamId;
+    const userDisplayName = user.displayName || 'Facebook User';
+    const customerId = user.id;
 
-      if (activity) {
-        console.log('[Facebook Webhook] Activity recorded');
-
-        // Note: WebSocket real-time events are handled by websocket-broadcast-service
-      } else {
-        log.warn('Facebook Webhook: Failed to create activity');
-      }
-    } catch (activityError) {
-      log.warn('Facebook Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
-    }
-
-    // Note: Individual agent notifications removed - only team assignment is supported now
-    // Team members will receive notifications via WebSocket broadcast
-    if (conversation!.assignedTeamId) {
-      // 動態導入 notification-trigger 函數
-      import('@/utils/notification-trigger').then(({ triggerNewConversationNotification }) => {
-        triggerNewConversationNotification(env, {
-          conversationId: conversation!.id,
-          customerName: user.displayName || 'Facebook User',
-          platform: 'Facebook',
-          messagePreview: messageContent.substring(0, 100),
-          teamId: conversation!.assignedTeamId ?? undefined
-        }).catch((err: unknown) => {
-          log.warn('Facebook Webhook: Failed to trigger team notification', {
-            error: err instanceof Error ? err.message : String(err)
-          });
+    // A. WebSocket broadcast (without file_attachments)
+    defer((async () => {
+      try {
+        const broadcastService = new WebSocketBroadcastService(env);
+        await broadcastService.broadcastNewMessage({
+          conversationId: convId,
+          message: {
+            id: messageId,
+            content: messageContent,
+            messageType: messageType,
+            senderType: 'customer',
+            senderId: String(customerId),
+            platform: 'facebook',
+            timestamp: Date.now(),
+            deliveryStatus: 'delivered',
+          },
+          source: 'webhook',
+          teamId: convTeamId || undefined
         });
-      });
+      } catch (err) {
+        log.warn('Facebook Webhook: Deferred broadcast failed', { error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+
+    // B+C. Media processing + follow-up message_updated broadcast
+    if (mediaData && mediaData.url && messageType !== 'location') {
+      const fbMediaUrl = mediaData.url;
+      const fbMediaTitle = mediaData.title;
+      const fbMid = message.mid || messageId;
+      defer((async () => {
+        try {
+          await processFacebookMedia(env, messageId, fbMediaUrl, messageType, fbMid, fbMediaTitle);
+          const broadcastService = new WebSocketBroadcastService(env);
+          await broadcastService.broadcastMessageEvent({
+            type: 'message_updated',
+            conversationId: convId,
+            messageId,
+            data: { mediaProcessed: true },
+            priority: 'high'
+          });
+        } catch (err) {
+          log.warn('Facebook Webhook: Deferred media processing failed', { error: err instanceof Error ? err.message : String(err) });
+        }
+      })());
     }
 
-    // 如果是多媒體訊息，下載並存儲到 R2
-    if (mediaData && mediaData.url && messageType !== 'location') {
-      await processFacebookMedia(
-        env,
-        messageId,
-        mediaData.url,
-        messageType,
-        message.mid || messageId,
-        mediaData.title
-      );
+    // E. Activity logging
+    defer((async () => {
+      try {
+        const activityService = new ActivityService(env.DB);
+        await activityService.logActivity({
+          userId: 'system',
+          userName: 'Webhook Handler',
+          userRole: 'system',
+          action: 'message_received',
+          resourceType: 'conversation',
+          resourceId: String(convId),
+          details: {
+            conversationId: convId,
+            customerId,
+            platform: 'facebook',
+            messageType: messageType,
+            messageId: messageId,
+            content: messageContent.substring(0, 100)
+          }
+        });
+      } catch (err) {
+        log.warn('Facebook Webhook: Deferred activity logging failed', { error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+
+    // F. Notifications
+    if (convTeamId) {
+      defer((async () => {
+        try {
+          const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+          await triggerNewConversationNotification(env, {
+            conversationId: convId,
+            customerName: userDisplayName,
+            platform: 'Facebook',
+            messagePreview: messageContent.substring(0, 100),
+            teamId: convTeamId ?? undefined
+          });
+        } catch (err) {
+          log.warn('Facebook Webhook: Deferred notification failed', { error: err instanceof Error ? err.message : String(err) });
+        }
+      })());
     }
 
     logSecurely('Facebook', userId, messageContent.length);

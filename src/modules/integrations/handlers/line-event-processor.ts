@@ -15,6 +15,8 @@ import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../se
 import { processLineMedia } from '../services/webhook-media-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { evaluate as autoReplyEvaluate, evaluateWelcome as autoReplyEvaluateWelcome } from '@modules/auto-reply/services/auto-reply-engine';
+import { DistributedLockService } from '@/services/distributed-lock-service';
+import type { DeferFn } from './webhook';
 
 const log = createContextLogger('Webhook');
 
@@ -24,7 +26,7 @@ function logSecurely(platform: string, userId: string, messageLength: number) {
 }
 
 // 處理 Line 訊息
-export async function processLineMessage(env: Bindings, event: LineEvent) {
+export async function processLineMessage(env: Bindings, event: LineEvent, defer: DeferFn = () => {}) {
   const userId = event.source.userId;
   const message = event.message;
 
@@ -138,65 +140,81 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       .get();
 
     if (!user) {
-      // 使用用戶同步服務獲取用戶資料
-      let displayName = 'LINE User';
-      let avatarUrl = null;
-
-      try {
-        const { createUserSyncService } = await import('@/services/user-sync');
-        const userSyncService = createUserSyncService(env);
-        const profile = await userSyncService.syncLineUser(userId, event.source.groupId);
-        if (profile) {
-          displayName = profile.displayName;
-          avatarUrl = profile.pictureUrl;
-        }
-      } catch (profileError) {
-        log.warn('Failed to sync LINE user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
-      }
-
-      // Fallback: check customer_team_assignments for LIFF-captured name
-      if (displayName === 'LINE User') {
-        try {
-          const assignment = await drizzleDb
-            .select({ displayName: customerTeamAssignments.displayName })
-            .from(customerTeamAssignments)
-            .where(eq(customerTeamAssignments.platformUserId, userId))
-            .orderBy(desc(customerTeamAssignments.assignedAt))
-            .limit(1)
+      // Race condition protection: use distributed lock for customer creation
+      const lockService = new DistributedLockService(env);
+      user = await lockService.withLock(
+        `webhook:customer:line:${userId}`,
+        async () => {
+          // Double-check inside lock
+          const existing = await drizzleDb
+            .select()
+            .from(customers)
+            .where(and(
+              eq(customers.platformUserId, userId),
+              eq(customers.platform, 'line')
+            ))
             .get();
-          if (assignment?.displayName) {
-            displayName = assignment.displayName;
-            log.info('LINE Message: Using LIFF-captured displayName as fallback', { displayName });
+          if (existing) return existing;
+
+          let displayName = 'LINE User';
+          let avatarUrl = null;
+
+          try {
+            const { createUserSyncService } = await import('@/services/user-sync');
+            const userSyncService = createUserSyncService(env);
+            const profile = await userSyncService.syncLineUser(userId, event.source.groupId);
+            if (profile) {
+              displayName = profile.displayName;
+              avatarUrl = profile.pictureUrl;
+            }
+          } catch (profileError) {
+            log.warn('Failed to sync LINE user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
           }
-        } catch (fallbackError) {
-          log.warn('Failed to query LIFF assignment for displayName fallback', {
-            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-          });
-        }
-      }
 
-      // 建立新使用者
-      const timestamp = nowISO();
-      await drizzleDb
-        .insert(customers)
-        .values({
-          platform: 'line',
-          platformUserId: userId,
-          displayName,
-          avatarUrl,
-          createdAt: timestamp,
-          updatedAt: timestamp
-        });
+          if (displayName === 'LINE User') {
+            try {
+              const assignment = await drizzleDb
+                .select({ displayName: customerTeamAssignments.displayName })
+                .from(customerTeamAssignments)
+                .where(eq(customerTeamAssignments.platformUserId, userId))
+                .orderBy(desc(customerTeamAssignments.assignedAt))
+                .limit(1)
+                .get();
+              if (assignment?.displayName) {
+                displayName = assignment.displayName;
+                log.info('LINE Message: Using LIFF-captured displayName as fallback', { displayName });
+              }
+            } catch (fallbackError) {
+              log.warn('Failed to query LIFF assignment for displayName fallback', {
+                error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+              });
+            }
+          }
 
-      // 重新查詢刚建立的用户
-      user = await drizzleDb
-        .select()
-        .from(customers)
-        .where(and(
-          eq(customers.platformUserId, userId),
-          eq(customers.platform, 'line')
-        ))
-        .get();
+          const timestamp = nowISO();
+          await drizzleDb
+            .insert(customers)
+            .values({
+              platform: 'line',
+              platformUserId: userId,
+              displayName,
+              avatarUrl,
+              createdAt: timestamp,
+              updatedAt: timestamp
+            });
+
+          const created = await drizzleDb
+            .select()
+            .from(customers)
+            .where(and(
+              eq(customers.platformUserId, userId),
+              eq(customers.platform, 'line')
+            ))
+            .get();
+          return created!;
+        },
+        { ttl: 15000, timeout: 8000 }
+      );
     }
 
     if (!user) {
@@ -275,59 +293,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       'line'
     );
 
-    // FIX: Process media BEFORE broadcasting so file_attachments is available
-    // This ensures WebSocket clients receive complete message data including file info
-    let fileAttachmentData: any[] = [];
-
-    if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
-      fileAttachmentData = await processLineMedia(
-        env,
-        messageId,
-        message.id,
-        message.type,
-        message.fileName
-      );
-    }
-
-    // Phase B4: Unified Broadcast for Conversation List & Detail Updates
-    // Uses WebSocketBroadcastService.broadcastNewMessage() for both:
-    // 1. CustomerConversationDO - conversation detail page real-time updates
-    // 2. MessageBroadcaster global - conversation list page lastMessage updates
-    try {
-      const broadcastService = new WebSocketBroadcastService(env);
-      const broadcastResult = await broadcastService.broadcastNewMessage({
-        conversationId: conversation!.id,
-        message: {
-          id: messageId,
-          content: messageContent,
-          messageType: messageType,
-          senderType: 'customer',
-          senderId: String(user.id),
-          platform: 'line',
-          timestamp: nowMs(),
-          deliveryStatus: 'delivered',
-          // Include file_attachments for immediate Flex Card display
-          file_attachments: fileAttachmentData.length > 0 ? fileAttachmentData : undefined
-        },
-        source: 'webhook',
-        // Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
-        teamId: conversation!.assignedTeamId || undefined
-      });
-
-      console.log(`[LINE Webhook] Unified broadcast completed`, {
-        conversationId: conversation!.id,
-        conversationBroadcast: broadcastResult.conversationBroadcast,
-        globalBroadcast: broadcastResult.globalBroadcast
-      });
-    } catch (broadcastError) {
-      log.error('LINE Webhook: Unified broadcast failed (non-critical)', {
-        error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
-      });
-      // Don't fail webhook processing - message is saved to database
-    }
-
-    // Auto-Reply Engine: evaluate BEFORE notifications (reply tokens expire in ~30s)
-    // Always invoke — global rules fire even without team assignment
+    // =================== SYNC: Auto-reply (replyToken expires ~30s) ===================
     if (conversation) {
       try {
         console.log('[LINE Webhook] Auto-reply evaluating', { teamId: conversation.assignedTeamId ?? null, conversationId: conversation.id });
@@ -360,91 +326,102 @@ export async function processLineMessage(env: Bindings, event: LineEvent) {
       }
     }
 
-    // 記錄活動
-    try {
-      const activityService = new ActivityService(env.DB);
-      const activity = await activityService.logActivity({
-        userId: 'system',
-        userName: 'Webhook Handler',
-        userRole: 'system',
-        action: 'message_received',
-        resourceType: 'conversation',
-        resourceId: String(conversation!.id),
-        details: {
-          conversationId: conversation!.id,
-          customerId: user.id,
-          platform: 'line',
-          messageType: messageType,
-          messageId: messageId,
-          content: messageContent.substring(0, 100) // 只記錄前100字元
+    // =================== DEFERRED: Non-critical tasks via waitUntil ===================
+    const convId = conversation!.id;
+    const convTeamId = conversation!.assignedTeamId;
+    const userDisplayName = user.displayName || 'LINE User';
+    const customerId = user.id;
+
+    // A. WebSocket broadcast (message WITHOUT file_attachments)
+    defer((async () => {
+      try {
+        const broadcastService = new WebSocketBroadcastService(env);
+        await broadcastService.broadcastNewMessage({
+          conversationId: convId,
+          message: {
+            id: messageId,
+            content: messageContent,
+            messageType: messageType,
+            senderType: 'customer',
+            senderId: String(customerId),
+            platform: 'line',
+            timestamp: nowMs(),
+            deliveryStatus: 'delivered',
+          },
+          source: 'webhook',
+          teamId: convTeamId || undefined
+        });
+        console.log('[LINE Webhook] Deferred broadcast completed', { conversationId: convId });
+      } catch (err) {
+        log.warn('LINE Webhook: Deferred broadcast failed', { error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+
+    // B+C. Media processing + follow-up message_updated broadcast
+    if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
+      const lineMessageId = message.id;
+      const lineMessageType = message.type;
+      const lineFileName = message.fileName;
+      defer((async () => {
+        try {
+          const fileAttachmentData = await processLineMedia(env, messageId, lineMessageId, lineMessageType, lineFileName);
+          if (fileAttachmentData.length > 0) {
+            const broadcastService = new WebSocketBroadcastService(env);
+            await broadcastService.broadcastMessageEvent({
+              type: 'message_updated',
+              conversationId: convId,
+              messageId,
+              data: { file_attachments: fileAttachmentData },
+              priority: 'high'
+            });
+            console.log('[LINE Webhook] Deferred media + message_updated completed', { messageId });
+          }
+        } catch (err) {
+          log.warn('LINE Webhook: Deferred media processing failed', { error: err instanceof Error ? err.message : String(err) });
         }
-      });
-
-      if (activity) {
-        console.log('[LINE Webhook] Activity recorded');
-
-        // Note: WebSocket real-time events are handled by websocket-broadcast-service
-      } else {
-        log.warn('LINE Webhook: Failed to create activity');
-      }
-    } catch (activityError) {
-      log.warn('LINE Webhook: Failed to record activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
+      })());
     }
 
-    // 通知觸發：根據對話指派狀態發送適當的通知 (僅支援團隊指派)
-    try {
-      // 情況 1: 已指派給團隊
-      if (conversation!.assignedTeamId) {
-        console.log('[LINE Webhook] Triggering notification for assigned team:', {
-          conversationId: conversation!.id,
-          assignedTeamId: conversation!.assignedTeamId,
-          scenario: 'team_assignment'
+    // E. Activity logging
+    defer((async () => {
+      try {
+        const activityService = new ActivityService(env.DB);
+        await activityService.logActivity({
+          userId: 'system',
+          userName: 'Webhook Handler',
+          userRole: 'system',
+          action: 'message_received',
+          resourceType: 'conversation',
+          resourceId: String(convId),
+          details: {
+            conversationId: convId,
+            customerId,
+            platform: 'line',
+            messageType: messageType,
+            messageId: messageId,
+            content: messageContent.substring(0, 100)
+          }
         });
+      } catch (err) {
+        log.warn('LINE Webhook: Deferred activity logging failed', { error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
 
-        // 動態導入 notification-trigger 函數
+    // F. Notifications
+    defer((async () => {
+      try {
         const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-
-        // 通知該團隊的所有成員和所有管理員
         await triggerNewConversationNotification(env, {
-          conversationId: conversation!.id,
-          customerName: user.displayName || 'LINE User',
+          conversationId: convId,
+          customerName: userDisplayName,
           platform: 'LINE',
           messagePreview: messageContent,
-          teamId: conversation!.assignedTeamId
+          teamId: convTeamId || undefined
         });
+      } catch (err) {
+        log.warn('LINE Webhook: Deferred notification failed', { error: err instanceof Error ? err.message : String(err) });
       }
-      // 情況 2: 未指派（沒有團隊）
-      else {
-        console.log('[LINE Webhook] Triggering notification for unassigned conversation:', {
-          conversationId: conversation!.id,
-          scenario: 'unassigned'
-        });
-
-        // 動態導入 notification-trigger 函數
-        const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
-
-        // 通知所有管理員和所有客服人員
-        await triggerNewConversationNotification(env, {
-          conversationId: conversation!.id,
-          customerName: user.displayName || 'LINE User',
-          platform: 'LINE',
-          messagePreview: messageContent,
-          teamId: undefined  // 沒有團隊 → 通知所有人
-        });
-      }
-
-      console.log('[LINE Webhook] Notification triggered successfully');
-    } catch (notificationError) {
-      log.warn('LINE Webhook: Failed to trigger notification', {
-        error: notificationError instanceof Error ? notificationError.message : String(notificationError),
-        conversationId: conversation!.id,
-        assignedTeamId: conversation!.assignedTeamId
-      });
-      // 不要讓通知失敗影響主流程
-    }
-
-    // 媒體已在廣播前處理完成 (Lines 622-666)
-    // 不需要第二次處理，避免重複插入 file_attachments
+    })());
 
     logSecurely('LINE', userId, messageContent.length);
   } catch (error) {
