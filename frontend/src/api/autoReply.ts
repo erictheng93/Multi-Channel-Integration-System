@@ -8,6 +8,18 @@ import { apiClient } from './base'
 // ============================================================================
 
 export type TriggerType = 'welcome' | 'keyword' | 'off_hours' | 'fallback'
+
+/** Trigger types available for creating/editing rules (single source of truth) */
+export const TRIGGER_TYPE_OPTIONS: Array<{ value: TriggerType; label: string }> = [
+  { value: 'welcome', label: '歡迎訊息' },
+  { value: 'keyword', label: '關鍵字' },
+  { value: 'off_hours', label: '非營業時間' },
+]
+
+/** Label map for all trigger types (including legacy/display-only types) */
+export const TRIGGER_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  TRIGGER_TYPE_OPTIONS.map(o => [o.value, o.label]),
+)
 export type ConditionType = 'exact' | 'contains' | 'regex' | 'message_type'
 export type MatchMode = 'any' | 'all'
 export type ActionType = 'reply_text' | 'reply_image' | 'reply_flex'

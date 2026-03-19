@@ -234,6 +234,35 @@
   border-left-color: var(--red-50);
 }
 
+/* ─── Image messages: strip card wrapper to match LINE native display ─── */
+.message-image .message-content {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  border: none;
+}
+
+.message-image .message-content::before {
+  display: none;
+}
+
+.message-image.message-outgoing .message-content {
+  background: transparent;
+  border-color: transparent;
+}
+
+.message-image .message-meta {
+  padding: var(--space-1) 0 0 0;
+}
+
+.message-image.message-outgoing .message-time {
+  color: var(--gray-500);
+}
+
+.message-image .status-delivered {
+  color: var(--primary-500);
+}
+
 /* Emoji and Sticker Styles in text */
 .message-text :deep(.emoji) {
   font-size: 1.2em;
