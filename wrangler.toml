@@ -85,26 +85,23 @@ preview_bucket_name = "mcis-files"
 # Latest message cache updates are handled by LatestMessageCacheCoordinator Durable Object
 # Migration completed: Phase 1.4b (2025-10-17)
 
-# =================== LINE MESSAGE QUEUE (NEW - Phase 3) ===================
-#
-# ⚠️ LINE_MESSAGE_QUEUE - DISABLED (Requires Workers Paid Plan)
-# Async LINE message delivery functionality is temporarily unavailable
-# To enable: Upgrade to Workers Paid plan and uncomment the queue configurations
-#
-# [[queues.producers]]
-# queue = "line-message-queue"
-# binding = "LINE_MESSAGE_QUEUE"
-#
-# [[queues.consumers]]
-# queue = "line-message-queue"
-# max_batch_size = 10
-# max_batch_timeout = 5
-# max_retries = 3
-# dead_letter_queue = "line-message-dlq"
-#
-# [[queues.producers]]
-# queue = "line-message-dlq"
-# binding = "LINE_MESSAGE_DLQ"
+# =================== LINE MESSAGE QUEUE (Phase 3) ===================
+# Async LINE outbound message delivery (Workers Paid Plan enabled)
+
+[[queues.producers]]
+queue = "line-message-queue"
+binding = "LINE_MESSAGE_QUEUE"
+
+[[queues.consumers]]
+queue = "line-message-queue"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "line-message-dlq"
+
+[[queues.producers]]
+queue = "line-message-dlq"
+binding = "LINE_MESSAGE_DLQ"
 
 # =================== DURABLE OBJECTS (WebSocket) ===================
 
