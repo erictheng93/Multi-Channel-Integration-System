@@ -49,10 +49,8 @@ export async function processLineMedia(
     }
 
     if (mediaFile) {
-      // Extract R2 key from the proxy URL
-      const r2Key = mediaFile.url.includes('/api/files/public/')
-        ? mediaFile.url.split('/api/files/public/')[1]
-        : `media/line/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${mediaFile.id}`;
+      // Use r2Key directly from MediaFile (set during R2 upload)
+      const r2Key = mediaFile.r2Key;
 
       const newFileAttachment = {
         id: mediaFile.id,

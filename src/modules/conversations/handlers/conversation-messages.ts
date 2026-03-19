@@ -14,7 +14,8 @@ import { WebSocketBroadcastService } from '@/services/websocket-broadcast-servic
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
 import { successResponse, errorResponse } from '@shared/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp';
+import { getPublicFileUrl } from '@/utils/file-url';
 
 const log = createContextLogger('ConversationMessagesHandler');
 
@@ -80,7 +81,8 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
       const arrayBuffer = await file.arrayBuffer();
       await c.env.R2_BUCKET.put(r2Key, arrayBuffer, {
         httpMetadata: {
-          contentType: file.type
+          contentType: file.type,
+          cacheControl: 'public, max-age=604800'
         }
       });
     } catch (error) {
@@ -91,10 +93,8 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    // 生成公開 URL - 使用 API 代理端點而非直接 R2 URL
-    const requestUrl = new URL(c.req.url);
-    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
-    const fileUrl = `${baseUrl}/api/files/public/${r2Key}`;
+    // Generate public URL via unified utility
+    const fileUrl = getPublicFileUrl(c.env, r2Key);
     log.debug('Upload generated proxy URL', { fileUrl });
 
     // 保存附件記錄到資料庫（messageId 為 null，等待消息創建時關聯）
