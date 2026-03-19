@@ -15,7 +15,8 @@ import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp';
+import { getPublicFileUrl } from '@/utils/file-url';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -71,13 +72,11 @@ export class PresignedUrlService {
   private s3Client: S3Client | null = null;
   private db: ReturnType<typeof drizzle>;
   private bucketName: string;
-  private publicUrl: string;
   private isConfigured: boolean = false;
 
   constructor(private env: Bindings) {
     this.db = drizzle(env.DB);
     this.bucketName = env.R2_BUCKET_NAME || 'mcis-files';
-    this.publicUrl = env.R2_PUBLIC_URL || '';
 
     // 檢查是否配置了 S3 API credentials
     if (env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY) {
@@ -333,20 +332,7 @@ export class PresignedUrlService {
   }
 
   private getPublicUrl(r2Key: string): string {
-    // 優先使用配置的公開 URL
-    if (this.publicUrl) {
-      return `${this.publicUrl}/${r2Key}`;
-    }
-
-    // 如果有自定義域名
-    if (this.env.R2_CUSTOM_DOMAIN) {
-      return `https://${this.env.R2_CUSTOM_DOMAIN}/${r2Key}`;
-    }
-
-    // 回退到 Worker 代理 URL (使用 BACKEND_URL 環境變量)
-    const backendUrl = this.env.BACKEND_URL || 'http://localhost:8787';
-    const domain = backendUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    return `https://${domain}/api/files/download/${encodeURIComponent(r2Key)}`;
+    return getPublicFileUrl(this.env, r2Key);
   }
 }
 
