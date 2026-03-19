@@ -14,7 +14,8 @@ import {
   notFoundResponse,
   forbiddenResponse
 } from '@/utils/api-response';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp';
+import { getPublicFileUrl } from '@/utils/file-url';
 
 const attachmentRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -151,7 +152,8 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       const arrayBuffer = await file.arrayBuffer();
       await c.env.R2_BUCKET.put(r2Key, arrayBuffer, {
         httpMetadata: {
-          contentType: file.type
+          contentType: file.type,
+          cacheControl: 'public, max-age=604800'
         }
       });
     } catch (error) {
@@ -159,10 +161,8 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
       return errorResponse(c, 'Failed to upload file to storage', 500);
     }
 
-    // 生成公開 URL - 使用 API 代理端點
-    const requestUrl = new URL(c.req.url);
-    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
-    const fileUrl = `${baseUrl}/api/files/public/${r2Key}`;
+    // Generate public URL via unified utility
+    const fileUrl = getPublicFileUrl(c.env, r2Key);
 
     // 保存附件記錄到資料庫
     const attachmentId = `att_${timestamp}_${randomStr}`;

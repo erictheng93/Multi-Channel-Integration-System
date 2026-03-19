@@ -7,6 +7,7 @@ import type { StorageService as IStorageService } from '@modules/file-management
 import type { Bindings } from '@/types';
 import { ErrorHandler, FileManagementError, FileLogger } from '@modules/file-management/utils/error-handler';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
+import { getPublicFileUrl } from '@/utils/file-url';
 
 export class StorageService {
   private static instances: Map<string, StorageService> = new Map();
@@ -199,10 +200,8 @@ export function createStorageService(env: Bindings): IStorageService {
 
             logger.info('File uploaded successfully to R2', { key });
 
-            // 生成 R2 公開 URL（如果設置了公開域名）
-            const publicUrl = env.R2_PUBLIC_DOMAIN
-              ? `https://${env.R2_PUBLIC_DOMAIN}/${key}`
-              : `r2://${key}`;
+            // 生成 R2 公開 URL
+            const publicUrl = getPublicFileUrl(env, key);
 
             return {
               success: true,
@@ -318,19 +317,10 @@ export function createStorageService(env: Bindings): IStorageService {
       );
     },
 
-    generateSignedUrl: async (key: string, operation: string, expiresIn?: number) => {
+    generateSignedUrl: async (key: string, _operation: string, _expiresIn?: number) => {
       try {
-        logger.info('Generating signed URL', { key, operation, expiresIn });
-
-        // R2 不支持原生 signed URLs，返回公開 URL 或通過 Worker 端點
-        // 如果配置了公開域名，返回公開 URL
-        if (env.R2_PUBLIC_DOMAIN) {
-          return `https://${env.R2_PUBLIC_DOMAIN}/${key}`;
-        }
-
-        // 否則返回通過 Worker 訪問的 URL（需要在 Worker 中實現檔案下載端點）
-        const workerDomain = env.WORKER_DOMAIN || 'your-worker.workers.dev';
-        return `https://${workerDomain}/api/files/download/${encodeURIComponent(key)}`;
+        logger.info('Generating signed URL', { key });
+        return getPublicFileUrl(env, key);
       } catch (error) {
         logger.error('Signed URL generation failed', error as Error, { key });
         throw new FileManagementError(
