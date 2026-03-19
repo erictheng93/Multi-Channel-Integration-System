@@ -4,22 +4,72 @@
       <div
         v-for="(action, index) in actions"
         :key="index"
-        class="card action-card"
+        :class="['action-card-new', { editing: editingIndices.has(index) }]"
       >
-        <div class="action-header">
-          <span :class="['badge',`badge--${action.actionType}`]">
+        <!-- Collapsed header (always visible) -->
+        <div
+          class="collapsed-header"
+          @click="toggleEdit(index)"
+        >
+          <span
+            :class="[
+              'status-dot',
+              editingIndices.has(index) ? 'status-dot--editing' : 'status-dot--done'
+            ]"
+          />
+          <span :class="['badge', `badge--${action.actionType}`]">
             {{ actionTypeLabel(action.actionType) }}
           </span>
-          <button
-            type="button"
-            class="btn btn-danger btn-sm"
-            @click="emit('remove', index)"
+          <span
+            v-if="!editingIndices.has(index)"
+            class="collapsed-preview"
           >
-            刪除
-          </button>
+            {{ getPreviewText(action) }}
+          </span>
+          <div
+            v-if="!editingIndices.has(index)"
+            class="collapsed-actions"
+          >
+            <button
+              type="button"
+              class="btn-icon btn-icon--edit"
+              title="編輯"
+              @click.stop="startEdit(index)"
+            >
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+            </button>
+            <button
+              type="button"
+              class="btn-icon btn-icon--delete"
+              title="刪除"
+              @click.stop="handleRemove(index)"
+            >
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ><path d="M3 6h18" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+            </button>
+          </div>
         </div>
 
-        <div class="action-body">
+        <!-- Expanded body (only visible when editing) -->
+        <div
+          v-if="editingIndices.has(index)"
+          class="expanded-body"
+        >
           <!-- reply_text -->
           <template v-if="action.actionType === 'reply_text'">
             <div class="form-group">
@@ -71,6 +121,24 @@
               />
             </div>
           </template>
+
+          <!-- Confirm / Cancel footer -->
+          <div class="expanded-footer">
+            <button
+              type="button"
+              class="btn btn-secondary btn-cancel"
+              @click="cancelEdit(index)"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary btn-confirm"
+              @click="confirmEdit(index)"
+            >
+              確認完成
+            </button>
+          </div>
         </div>
       </div>
 
@@ -125,7 +193,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   actions: Array<{
     actionType: 'reply_text' | 'reply_image' | 'reply_flex'
     content: string
@@ -140,6 +208,76 @@ const emit = defineEmits<{
 }>()
 
 const showDropdown = ref(false)
+const editingIndices = ref<Set<number>>(new Set())
+
+// ---------------------------------------------------------------------------
+// Editing state management
+// ---------------------------------------------------------------------------
+
+function startEdit(index: number): void {
+  editingIndices.value = new Set(editingIndices.value).add(index)
+}
+
+function confirmEdit(index: number): void {
+  const updated = new Set(editingIndices.value)
+  updated.delete(index)
+  editingIndices.value = updated
+}
+
+function cancelEdit(index: number): void {
+  const updated = new Set(editingIndices.value)
+  updated.delete(index)
+  editingIndices.value = updated
+}
+
+function toggleEdit(index: number): void {
+  if (editingIndices.value.has(index)) {return}
+  startEdit(index)
+}
+
+function handleRemove(index: number): void {
+  const updated = new Set<number>()
+  for (const idx of editingIndices.value) {
+    if (idx === index) {continue}
+    if (idx > index) {
+      updated.add(idx - 1)
+    } else {
+      updated.add(idx)
+    }
+  }
+  editingIndices.value = updated
+  emit('remove', index)
+}
+
+// ---------------------------------------------------------------------------
+// Preview text
+// ---------------------------------------------------------------------------
+
+function getPreviewText(action: { actionType: string; content: string }): string {
+  try {
+    const parsed = JSON.parse(action.content)
+    if (typeof parsed !== 'object' || parsed === null) {return String(parsed)}
+
+    switch (action.actionType) {
+      case 'reply_text':
+        return parsed.text ?? ''
+      case 'reply_image':
+        return parsed.url ?? ''
+      case 'reply_flex':
+        return action.content.length > 50
+          ? `${action.content.substring(0, 50)  }...`
+          : action.content
+      default:
+        return ''
+    }
+  } catch {
+    return action.content
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Action type labels
+// ---------------------------------------------------------------------------
 
 function actionTypeLabel(type: string): string {
   /* eslint-disable camelcase */
@@ -151,6 +289,10 @@ function actionTypeLabel(type: string): string {
   /* eslint-enable camelcase */
   return labels[type] ?? type
 }
+
+// ---------------------------------------------------------------------------
+// Content parsing (unchanged from original)
+// ---------------------------------------------------------------------------
 
 function parseTextContent(content: string): string {
   try {
@@ -179,6 +321,10 @@ function formatJsonContent(content: string): string {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Content update handlers (unchanged from original)
+// ---------------------------------------------------------------------------
+
 function handleTextUpdate(index: number, text: string): void {
   emit('update-content', index, JSON.stringify({ text }))
 }
@@ -203,16 +349,21 @@ function handleImageUpdate(
 }
 
 function handleFlexUpdate(index: number, raw: string): void {
-  // Emit raw string; the parent can validate JSON if needed
   emit('update-content', index, raw)
 }
+
+// ---------------------------------------------------------------------------
+// Dropdown & add action
+// ---------------------------------------------------------------------------
 
 function toggleDropdown(): void {
   showDropdown.value = !showDropdown.value
 }
 
 function handleAddAction(actionType: string): void {
+  const newIndex = props.actions.length
   emit('add', actionType)
+  editingIndices.value = new Set(editingIndices.value).add(newIndex)
   showDropdown.value = false
 }
 </script>
@@ -230,26 +381,75 @@ function handleAddAction(actionType: string): void {
   gap: var(--space-3);
 }
 
-.action-card {
-  padding: var(--space-4);
+/* -- Card base -- */
+.action-card-new {
+  background: var(--gray-50);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition: all var(--transition-normal);
 }
 
-.action-header {
+.action-card-new.editing {
+  background: white;
+  box-shadow: var(--shadow-sm), 0 0 0 2px var(--primary-50);
+}
+
+/* -- Collapsed header -- */
+.collapsed-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  user-select: none;
 }
 
+.collapsed-header:hover {
+  background: var(--gray-100);
+}
+
+.action-card-new.editing .collapsed-header {
+  cursor: default;
+  padding-bottom: var(--space-2);
+}
+
+.action-card-new.editing .collapsed-header:hover {
+  background: transparent;
+}
+
+/* -- Status dot -- */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.status-dot--done {
+  background: var(--success-500);
+}
+
+.status-dot--editing {
+  background: var(--warning-500);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* -- Badge -- */
 .badge {
   display: inline-flex;
   align-items: center;
   padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.025em;
+  flex-shrink: 0;
 }
 
 .badge--reply_text {
@@ -267,16 +467,69 @@ function handleAddAction(actionType: string): void {
   color: #7e22ce;
 }
 
-.btn-sm {
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.8125rem;
+/* -- Collapsed preview -- */
+.collapsed-preview {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--gray-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.action-body .form-group {
+/* -- Collapsed action buttons -- */
+.collapsed-actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.btn-icon--edit {
+  color: var(--primary-500);
+}
+
+.btn-icon--edit:hover {
+  background: var(--primary-50);
+}
+
+.btn-icon--delete {
+  color: var(--error-500);
+}
+
+.btn-icon--delete:hover {
+  background: var(--error-50);
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* -- Expanded body -- */
+.expanded-body {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.expanded-body .form-group {
   margin-bottom: var(--space-3);
 }
 
-.action-body .form-group:last-child {
+.expanded-body .form-group:last-of-type {
   margin-bottom: 0;
 }
 
@@ -287,19 +540,37 @@ function handleAddAction(actionType: string): void {
 }
 
 .action-textarea--json {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.8125rem;
   min-height: 120px;
 }
 
+/* -- Expanded footer -- */
+.expanded-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.btn-confirm,
+.btn-cancel {
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* -- Empty state -- */
 .action-empty {
-  color: var(--gray-600);
+  color: var(--gray-500);
   font-size: 0.875rem;
   font-style: italic;
   text-align: center;
   padding: var(--space-6) 0;
 }
 
+/* -- Add action dropdown -- */
 .action-add {
   display: flex;
 }
@@ -310,6 +581,7 @@ function handleAddAction(actionType: string): void {
 
 .btn-add-action {
   white-space: nowrap;
+  border-radius: var(--radius-full);
 }
 
 .action-dropdown {
@@ -317,9 +589,8 @@ function handleAddAction(actionType: string): void {
   top: calc(100% + var(--space-1));
   left: 0;
   background: white;
-  border: 1px solid var(--gray-100);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
   z-index: 10;
   min-width: 140px;
   overflow: hidden;
