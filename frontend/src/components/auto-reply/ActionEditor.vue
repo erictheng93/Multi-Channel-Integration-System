@@ -218,6 +218,8 @@ function startEdit(index: number): void {
   editingIndices.value = new Set(editingIndices.value).add(index)
 }
 
+// confirmEdit and cancelEdit are intentionally separate functions despite
+// identical logic today — Cancel may gain content-revert behavior in the future
 function confirmEdit(index: number): void {
   const updated = new Set(editingIndices.value)
   updated.delete(index)
