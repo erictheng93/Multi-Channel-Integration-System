@@ -19,6 +19,7 @@ import { verifyWebhookSignature } from '@/services/webhook-signature-service';
 
 // Import existing message processing (will be modified)
 import { processLineMessage, processLineFollowEvent } from './webhook';
+import type { DeferFn } from './webhook';
 import { nowISO } from '@/utils/timestamp'
 
 /**
@@ -149,9 +150,10 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
         messageType: event.message?.type
       });
 
+      const mtDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
       if (event.type === 'message' && event.message) {
         // Pass team-specific env and channel info with decrypted credentials
-        await processLineMessageMultiTenant(c.env, event, channel, creds);
+        await processLineMessageMultiTenant(c.env, event, channel, creds, mtDefer);
         processedCount++;
 
         // Increment message counter for this channel
@@ -187,7 +189,8 @@ async function processLineMessageMultiTenant(
   env: Bindings,
   event: any,
   channel: ChannelIntegration,
-  decryptedCreds: { accessToken?: string; secret?: string }
+  decryptedCreds: { accessToken?: string; secret?: string },
+  defer: DeferFn = () => {}
 ): Promise<void> {
   // Create a modified env object with team-specific decrypted credentials
   const teamEnv = {
@@ -199,8 +202,8 @@ async function processLineMessageMultiTenant(
     _CHANNEL_ID: channel.id
   };
 
-  // Call existing message processing with team-specific env
-  await processLineMessage(teamEnv as Bindings, event);
+  // Call existing message processing with team-specific env + defer for waitUntil
+  await processLineMessage(teamEnv as Bindings, event, defer);
 }
 
 /**
@@ -269,6 +272,9 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
       firstEventType: data.events[0]?.type
     });
 
+    // Create defer function to run tasks after HTTP response via waitUntil
+    const defer: DeferFn = (p) => c.executionCtx.waitUntil(p);
+
     // Process events
     for (const event of data.events) {
       console.log('[LINE Webhook] Processing event:', {
@@ -278,7 +284,7 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
       });
 
       if (event.type === 'message' && event.message) {
-        await processLineMessage(c.env, event);
+        await processLineMessage(c.env, event, defer);
       } else if (event.type === 'follow') {
         console.log('[LINE Webhook] Processing follow event');
         await processLineFollowEvent(c.env, event);
