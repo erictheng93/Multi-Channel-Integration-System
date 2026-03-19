@@ -2,7 +2,7 @@
 // 訊息批量操作端點
 
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations } from '@shared/database/schema';
@@ -55,81 +55,77 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
     const results: any[] = [];
     const errors: any[] = [];
 
-    // 批量處理
+    // Step 1: Validate input fields upfront
+    const validatedMessages: { index: number; conversationId: string; content: string; messageType: string; metadata: string | null }[] = [];
     for (let i = 0; i < messagesToCreate.length; i++) {
       const msgData = messagesToCreate[i];
-
-      try {
-        // 基本驗證
-        if (!msgData.conversationId || !msgData.content || msgData.content.trim().length === 0) {
-          errors.push({
-            index: i,
-            conversationId: msgData.conversationId,
-            error: 'Conversation ID and content are required'
-          });
-          continue;
-        }
-
-        // 檢查對話是否存在
-        const conversation = await db
-          .select({ id: conversations.id })
-          .from(conversations)
-          .where(eq(conversations.id, msgData.conversationId))
-          .get();
-
-        if (!conversation) {
-          errors.push({
-            index: i,
-            conversationId: msgData.conversationId,
-            error: 'Conversation not found'
-          });
-          continue;
-        }
-
-        // 生成訊息ID
-        const messageId = `msg_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        // 準備訊息數據
-        const messageData = {
-          id: messageId,
-          conversationId: msgData.conversationId,
-          senderType: 'agent' as const,
-          agentSenderId: userPayload.userId.toString(),
-          content: msgData.content,
-          messageType: msgData.messageType || 'text',
-          metadata: msgData.metadata ? JSON.stringify(msgData.metadata) : null,
-          isSent: true,
-          deliveryStatus: 'sent',
-          senderName: userPayload.displayName || null,
-          sentAt: nowISO(),
-          createdAt: nowISO()
-        };
-
-        // 插入訊息
-        await db.insert(messages).values(messageData);
-
-        // 更新對話的最後訊息時間
-        await db
-          .update(conversations)
-          .set({
-            lastMessageAt: nowISO(),
-            updatedAt: nowISO()
-          })
-          .where(eq(conversations.id, msgData.conversationId));
-
-        results.push({
-          index: i,
-          id: messageId,
-          conversationId: msgData.conversationId,
-          status: 'success'
-        });
-
-      } catch (error) {
+      if (!msgData.conversationId || !msgData.content || msgData.content.trim().length === 0) {
         errors.push({
           index: i,
           conversationId: msgData.conversationId,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: 'Conversation ID and content are required'
         });
+      } else {
+        validatedMessages.push({
+          index: i,
+          conversationId: msgData.conversationId,
+          content: msgData.content,
+          messageType: msgData.messageType || 'text',
+          metadata: msgData.metadata ? JSON.stringify(msgData.metadata) : null
+        });
+      }
+    }
+
+    if (validatedMessages.length > 0) {
+      // Step 2: Batch-query all referenced conversations in one SELECT
+      const uniqueConvIds = [...new Set(validatedMessages.map(m => m.conversationId))];
+      const existingConvs = await db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(inArray(conversations.id, uniqueConvIds))
+        .all();
+      const existingConvIdSet = new Set(existingConvs.map(c => c.id));
+
+      // Step 3: Partition into valid (conversation exists) and invalid
+      const insertableMessages: typeof validatedMessages = [];
+      for (const msg of validatedMessages) {
+        if (!existingConvIdSet.has(msg.conversationId)) {
+          errors.push({ index: msg.index, conversationId: msg.conversationId, error: 'Conversation not found' });
+        } else {
+          insertableMessages.push(msg);
+        }
+      }
+
+      if (insertableMessages.length > 0) {
+        // Step 4: Prepare all message rows and batch INSERT
+        const timestamp = nowISO();
+        const messageRows = insertableMessages.map(msg => {
+          const messageId = `msg_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
+          results.push({ index: msg.index, id: messageId, conversationId: msg.conversationId, status: 'success' });
+          return {
+            id: messageId,
+            conversationId: msg.conversationId,
+            senderType: 'agent' as const,
+            agentSenderId: userPayload.userId.toString(),
+            content: msg.content,
+            messageType: msg.messageType,
+            metadata: msg.metadata,
+            isSent: true,
+            deliveryStatus: 'sent',
+            senderName: userPayload.displayName || null,
+            sentAt: timestamp,
+            createdAt: timestamp
+          };
+        });
+
+        await db.insert(messages).values(messageRows);
+
+        // Step 5: Batch-update conversation timestamps for all affected conversations
+        const affectedConvIds = [...new Set(insertableMessages.map(m => m.conversationId))];
+        await db
+          .update(conversations)
+          .set({ lastMessageAt: timestamp, updatedAt: timestamp })
+          .where(inArray(conversations.id, affectedConvIds));
       }
     }
 
@@ -179,76 +175,73 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
     const results: any[] = [];
     const errors: any[] = [];
 
-    // 批量處理
+    // Step 1: Batch-fetch all messages in one SELECT
+    const existingMessages = await db
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        agentSenderId: messages.agentSenderId,
+        senderType: messages.senderType,
+        isRecalled: messages.isRecalled,
+        recallDeadline: messages.recallDeadline
+      })
+      .from(messages)
+      .where(inArray(messages.id, messageIds))
+      .all();
+
+    const messageMap = new Map(existingMessages.map(m => [m.id, m]));
+
+    // Step 2: Validate each message in application code
+    const recallableIds: string[] = [];
+    const recalledAt = nowISO();
+
     for (const messageId of messageIds) {
-      try {
-        // 檢查訊息是否存在以及用戶權限
-        const existingMessage = await db
-          .select({
-            id: messages.id,
-            conversationId: messages.conversationId,
-            agentSenderId: messages.agentSenderId,
-            senderType: messages.senderType,
-            isRecalled: messages.isRecalled,
-            recallDeadline: messages.recallDeadline
-          })
-          .from(messages)
-          .where(eq(messages.id, messageId))
-          .get();
+      const existing = messageMap.get(messageId);
 
-        if (!existingMessage) {
-          errors.push({ messageId, error: 'Message not found' });
-          continue;
-        }
-
-        // 檢查權限：只有發送者或管理員可以撤回
-        if (existingMessage.senderType === 'agent' &&
-            existingMessage.agentSenderId !== userPayload.userId.toString() &&
-            userPayload.role !== 'admin') {
-          errors.push({ messageId, error: 'Permission denied' });
-          continue;
-        }
-
-        // 檢查訊息是否已被撤回
-        if (existingMessage.isRecalled) {
-          errors.push({ messageId, error: 'Message already recalled' });
-          continue;
-        }
-
-        // 檢查撤回時限
-        if (existingMessage.recallDeadline) {
-          const deadline = new Date(existingMessage.recallDeadline);
-          if (new Date() > deadline) {
-            errors.push({ messageId, error: 'Recall deadline has passed' });
-            continue;
-          }
-        }
-
-        const recalledAt = nowISO();
-
-        // 撤回訊息 (軟刪除)
-        await db
-          .update(messages)
-          .set({
-            isRecalled: true,
-            recalledAt,
-            content: '[This message has been recalled]'
-          })
-          .where(eq(messages.id, messageId));
-
-        results.push({
-          messageId,
-          conversationId: existingMessage.conversationId,
-          recalledAt,
-          status: 'success'
-        });
-
-      } catch (error) {
-        errors.push({
-          messageId,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
+      if (!existing) {
+        errors.push({ messageId, error: 'Message not found' });
+        continue;
       }
+
+      if (existing.senderType === 'agent' &&
+          existing.agentSenderId !== userPayload.userId.toString() &&
+          userPayload.role !== 'admin') {
+        errors.push({ messageId, error: 'Permission denied' });
+        continue;
+      }
+
+      if (existing.isRecalled) {
+        errors.push({ messageId, error: 'Message already recalled' });
+        continue;
+      }
+
+      if (existing.recallDeadline) {
+        const deadline = new Date(existing.recallDeadline);
+        if (new Date() > deadline) {
+          errors.push({ messageId, error: 'Recall deadline has passed' });
+          continue;
+        }
+      }
+
+      recallableIds.push(messageId);
+      results.push({
+        messageId,
+        conversationId: existing.conversationId,
+        recalledAt,
+        status: 'success'
+      });
+    }
+
+    // Step 3: Single batch UPDATE for all recallable messages
+    if (recallableIds.length > 0) {
+      await db
+        .update(messages)
+        .set({
+          isRecalled: true,
+          recalledAt,
+          content: '[This message has been recalled]'
+        })
+        .where(inArray(messages.id, recallableIds));
     }
 
     return successResponse(c, {
