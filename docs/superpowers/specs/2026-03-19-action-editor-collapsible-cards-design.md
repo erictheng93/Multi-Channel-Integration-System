@@ -33,7 +33,7 @@ Transform `ActionEditor.vue` action cards into **collapsible dual-state cards** 
 - Orange pulsing dot indicates "editing" status
 - Card gets a subtle blue highlight: `box-shadow` with blue-light tint
 - Footer with "Cancel" and "Confirm" buttons
-- "Confirm" collapses the card; "Cancel" collapses without changes
+- "Confirm" collapses the card; "Cancel" collapses the card visually (content already emitted to parent is not rolled back — Cancel is a visual-only operation)
 
 **State transitions:**
 ```
