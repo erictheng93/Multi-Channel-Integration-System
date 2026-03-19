@@ -73,7 +73,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { AutoReplyRule } from '@/api/autoReply'
+import { TRIGGER_TYPE_LABELS, type AutoReplyRule } from '@/api/autoReply'
 import RuleEditor from './RuleEditor.vue'
 import type { RuleFormData } from './RuleEditor.vue'
 
@@ -99,15 +99,7 @@ const emit = defineEmits<{
 }>()
 
 const triggerTypeLabel = computed(() => {
-  /* eslint-disable camelcase */
-  const labels: Record<string, string> = {
-    welcome: '歡迎訊息',
-    keyword: '關鍵字',
-    off_hours: '非營業時間',
-    fallback: '兜底回覆',
-  }
-  /* eslint-enable camelcase */
-  return labels[props.rule.triggerType] || props.rule.triggerType
+  return TRIGGER_TYPE_LABELS[props.rule.triggerType] || props.rule.triggerType
 })
 </script>
 

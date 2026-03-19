@@ -19,14 +19,12 @@
           :value="formData.triggerType"
           @change="emit('update-field', 'triggerType', ($event.target as HTMLSelectElement).value)"
         >
-          <option value="welcome">
-            歡迎訊息
-          </option>
-          <option value="keyword">
-            關鍵字
-          </option>
-          <option value="off_hours">
-            非營業時間
+          <option
+            v-for="opt in TRIGGER_TYPE_OPTIONS"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
           </option>
         </select>
       </div>
@@ -95,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ConditionType, ActionType, MatchMode, TriggerType } from '@/api/autoReply'
+import { TRIGGER_TYPE_OPTIONS, type ConditionType, type ActionType, type MatchMode, type TriggerType } from '@/api/autoReply'
 import ConditionEditor from './ConditionEditor.vue'
 import ActionEditor from './ActionEditor.vue'
 

@@ -18,17 +18,12 @@
           <option value="">
             所有類型
           </option>
-          <option value="welcome">
-            歡迎訊息
-          </option>
-          <option value="keyword">
-            關鍵字
-          </option>
-          <option value="off_hours">
-            非營業時間
-          </option>
-          <option value="fallback">
-            兜底回覆
+          <option
+            v-for="opt in TRIGGER_TYPE_OPTIONS"
+            :key="opt.value"
+            :value="opt.value"
+          >
+            {{ opt.label }}
           </option>
         </select>
       </div>
@@ -114,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import type { AutoReplyRule } from '@/api/autoReply'
+import { TRIGGER_TYPE_OPTIONS, type AutoReplyRule } from '@/api/autoReply'
 import RuleEditor from './RuleEditor.vue'
 import type { RuleFormData } from './RuleEditor.vue'
 import RuleCard from './RuleCard.vue'
