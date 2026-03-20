@@ -189,7 +189,7 @@ const cards = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .stat-icon {
@@ -211,25 +211,27 @@ const cards = computed(() => {
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: #8E8E93;
   line-height: 1.3;
+  white-space: nowrap;
 }
 
 .stat-secondary {
   font-size: 13px;
   color: #8E8E93;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: #1C1C1E;
-  line-height: 1.2;
-  margin-bottom: 4px;
+  line-height: 1.1;
+  margin-bottom: 6px;
   white-space: nowrap;
+  letter-spacing: -0.02em;
 }
 
 .stat-subtitle {
