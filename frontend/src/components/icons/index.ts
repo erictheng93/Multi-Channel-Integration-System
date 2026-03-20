@@ -319,6 +319,58 @@ export const UploadCloudIcon = defineComponent<IconProps>({
 export const ClockIcon = createIcon('M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 6v6l4 2')
 export const HistoryIcon = createIcon('M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5')
 
+export const LoginIcon = defineComponent<IconProps>({
+  name: 'LoginIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4' }),
+      h('polyline', { points: '10 17 15 12 10 7' }),
+      h('line', { x1: '15', y1: '12', x2: '3', y2: '12' })
+    ])
+  }
+})
+
+export const LogoutIcon = defineComponent<IconProps>({
+  name: 'LogoutIcon',
+  props: {
+    size: { type: [Number, String], default: 24 },
+    strokeWidth: { type: [Number, String], default: 2 },
+    class: { type: String, default: '' }
+  },
+  setup(props) {
+    return () => h('svg', {
+      width: String(props.size || 24),
+      height: String(props.size || 24),
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': String(props.strokeWidth || 2),
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      class: props.class || ''
+    }, [
+      h('path', { d: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4' }),
+      h('polyline', { points: '16 17 21 12 16 7' }),
+      h('line', { x1: '21', y1: '12', x2: '9', y2: '12' })
+    ])
+  }
+})
+
 // System Settings Icons
 export const IntegrationIcon = defineComponent<IconProps>({
   name: 'IntegrationIcon',
