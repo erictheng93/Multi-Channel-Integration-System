@@ -22,18 +22,6 @@
         class="stat-card"
       >
         <div class="stat-card__top">
-          <div
-            class="stat-icon"
-            :style="{ backgroundColor: card.iconBg }"
-          >
-            <!-- eslint-disable vue/no-v-html -->
-            <span
-              class="stat-icon__svg"
-              :style="{ color: card.iconColor }"
-              v-html="card.svgIcon"
-            />
-            <!-- eslint-enable vue/no-v-html -->
-          </div>
           <span class="stat-label">{{ card.label }}</span>
         </div>
         <div
@@ -165,7 +153,7 @@ const cards = computed(() => {
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .stats-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -173,7 +161,7 @@ const cards = computed(() => {
 
 .stat-card {
   background: #FFFFFF;
-  border-radius: 16px;
+  border-radius: 28px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   padding: 20px;
   transition: transform 200ms ease-out, box-shadow 200ms ease-out;
