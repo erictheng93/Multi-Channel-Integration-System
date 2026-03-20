@@ -11,13 +11,17 @@ vi.mock('@/api/autoReply', () => ({
 }))
 
 const mockFetchRules = vi.fn()
+const mockUpsertRule = vi.fn()
 const mockToggleRuleActive = vi.fn()
 const mockRules: unknown[] = []
+const mockRulesPagination = { page: 1, limit: 20, total: 0 }
 vi.mock('@/stores/autoReply', () => ({
   useAutoReplyStore: () => ({
     fetchRules: mockFetchRules,
+    upsertRule: mockUpsertRule,
     toggleRuleActive: mockToggleRuleActive,
     rules: mockRules,
+    rulesPagination: mockRulesPagination,
   }),
 }))
 
@@ -57,8 +61,8 @@ describe('useRuleEditor', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    mockCreateRule.mockResolvedValue({})
-    mockUpdateRule.mockResolvedValue({})
+    mockCreateRule.mockResolvedValue({ data: { ...mockRule, id: 99 } })
+    mockUpdateRule.mockResolvedValue({ data: { ...mockRule, name: 'Updated Rule' } })
     mockDeleteRule.mockResolvedValue({})
     mockFetchRules.mockResolvedValue(undefined)
     mockToggleRuleActive.mockResolvedValue(true)
@@ -211,7 +215,7 @@ describe('useRuleEditor', () => {
     expect(formData.actions[1]!.sortOrder).toBe(1)
   })
 
-  it('saveRule in create mode calls createRule, fetchRules, collapses, returns true', async () => {
+  it('saveRule in create mode calls createRule, upserts result, collapses, returns true', async () => {
     const { formData, startCreate, saveRule, isCreating, expandedRuleId } =
       useRuleEditor()
 
@@ -226,7 +230,9 @@ describe('useRuleEditor', () => {
       expect.objectContaining({ name: 'New Rule', triggerType: 'keyword' }),
       { scope: 'global' }
     )
-    expect(mockFetchRules).toHaveBeenCalled()
+    // Optimistic: upsertRule called twice (once for preview, once swapped with server data)
+    expect(mockUpsertRule).toHaveBeenCalled()
+    expect(mockFetchRules).not.toHaveBeenCalled()
     expect(isCreating.value).toBe(false)
     expect(expandedRuleId.value).toBeNull()
   })
@@ -244,7 +250,9 @@ describe('useRuleEditor', () => {
       1,
       expect.objectContaining({ name: 'Updated Rule' }),
     )
-    expect(mockFetchRules).toHaveBeenCalled()
+    // Optimistic: uses upsertRule instead of fetchRules
+    expect(mockUpsertRule).toHaveBeenCalled()
+    expect(mockFetchRules).not.toHaveBeenCalled()
   })
 
   it('saveRule with empty name returns false without API call', async () => {

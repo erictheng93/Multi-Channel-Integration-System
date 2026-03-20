@@ -173,9 +173,11 @@ async function refresh() {
 }
 
 async function handleSaveRule() {
+  // Capture before saveRule() collapses the editor (resets isCreating)
+  const wasCreating = ruleEditor.isCreating.value
   const success = await ruleEditor.saveRule()
   if (success) {
-    showSuccess(ruleEditor.isCreating.value ? '規則已建立' : '規則已更新')
+    showSuccess(wasCreating ? '規則已建立' : '規則已更新')
   } else {
     showError('儲存規則失敗', '請稍後再試')
   }
