@@ -282,12 +282,14 @@ export function useApiMonitorController() {
     try {
       let response: Response | undefined
 
+      const backendUrl = getBackendUrl()
+
       switch (api.endpoint) {
         case '/api/system/health':
-          response = await fetch('/api/system/health')
+          response = await fetch(`${backendUrl}/api/system/health`)
           break
         case '/api/system/info':
-          response = await fetch('/api/system/info', { method: 'HEAD' })
+          response = await fetch(`${backendUrl}/api/system/info`, { method: 'HEAD' })
 
           // 401 means endpoint exists but needs auth - this is normal
           if (response.status === 401) {
@@ -302,7 +304,7 @@ export function useApiMonitorController() {
           break
         default:
           // For authenticated APIs, just check if endpoint exists
-          response = await fetch(api.endpoint, { method: 'HEAD' })
+          response = await fetch(`${backendUrl}${api.endpoint}`, { method: 'HEAD' })
       }
 
       const responseTime = Date.now() - startTime

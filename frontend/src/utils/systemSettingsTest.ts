@@ -1,5 +1,6 @@
 // SystemSettings 完整測試套件
 import { systemApi } from '@/api/system'
+import { getBackendUrl } from '@/config/runtime'
 import { setLocale, getCurrentLocale } from '@/plugins/i18n'
 // import { runSystemSettingsDiagnostic } from './systemSettingsDiagnostic'
 // import { fixSystemSettingsLanguage } from './systemSettingsFix'
@@ -278,7 +279,7 @@ export class SystemSettingsTestSuite {
     // 測試網路錯誤處理
     try {
       // 嘗試訪問不存在的端點
-      const response = await fetch('/api/non-existent-endpoint')
+      const response = await fetch(`${getBackendUrl()}/api/non-existent-endpoint`)
       
       if (response.status === 404) {
         this.addResult('404 錯誤處理', true, '404 錯誤正確處理')
