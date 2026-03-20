@@ -8,7 +8,7 @@
         @change="onUserChange"
       >
         <option value="">
-          All Users
+          &#25152;&#26377;&#29992;&#25142;
         </option>
         <option
           v-for="user in users"
@@ -26,25 +26,25 @@
         @change="onActionChange"
       >
         <option value="">
-          All Actions
+          &#25152;&#26377;&#25805;&#20316;
         </option>
         <option value="conversation_assign">
-          conversation_assign
+          &#23565;&#35441;&#25351;&#27966;
         </option>
         <option value="conversation_transfer">
-          conversation_transfer
+          &#23565;&#35441;&#36681;&#31227;
         </option>
         <option value="conversation_close">
-          conversation_close
+          &#23565;&#35441;&#38364;&#38281;
         </option>
         <option value="message_send">
-          message_send
+          &#30332;&#36865;&#35338;&#24687;
         </option>
         <option value="user_login">
-          user_login
+          &#29992;&#25142;&#30331;&#20837;
         </option>
         <option value="settings_update">
-          settings_update
+          &#35373;&#23450;&#26356;&#26032;
         </option>
       </select>
 
@@ -55,19 +55,19 @@
         @change="onResourceTypeChange"
       >
         <option value="">
-          All Resources
+          &#25152;&#26377;&#36039;&#28304;
         </option>
         <option value="conversation">
-          conversation
+          &#23565;&#35441;
         </option>
         <option value="message">
-          message
+          &#35338;&#24687;
         </option>
         <option value="user">
-          user
+          &#29992;&#25142;
         </option>
         <option value="system">
-          system
+          &#31995;&#32113;
         </option>
       </select>
 
@@ -78,16 +78,16 @@
         @change="onDateRangeChange"
       >
         <option value="today">
-          Today
+          &#20170;&#22825;
         </option>
         <option value="week">
-          This Week
+          &#26368;&#36817;&#19968;&#36913;
         </option>
         <option value="month">
-          This Month
+          &#26368;&#36817;&#19968;&#20491;&#26376;
         </option>
         <option value="custom">
-          Custom
+          &#33258;&#35330;&#31684;&#22285;
         </option>
       </select>
 
@@ -96,7 +96,7 @@
         class="filter-clear"
         href="#"
         @click.prevent="$emit('clear')"
-      >Clear Filters</a>
+      >&#28165;&#38500;&#31721;&#36984;</a>
     </div>
 
     <div
