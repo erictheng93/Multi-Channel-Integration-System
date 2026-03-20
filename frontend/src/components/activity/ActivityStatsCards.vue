@@ -26,11 +26,13 @@
             class="stat-icon"
             :style="{ backgroundColor: card.iconBg }"
           >
-            <component
-              :is="card.icon"
-              :size="20"
+            <!-- eslint-disable vue/no-v-html -->
+            <span
+              class="stat-icon__svg"
               :style="{ color: card.iconColor }"
+              v-html="card.svgIcon"
             />
+            <!-- eslint-enable vue/no-v-html -->
           </div>
           <span class="stat-label">{{ card.label }}</span>
         </div>
@@ -54,12 +56,23 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
-import { FileIcon, UsersIcon, BarChartIcon, LoginIcon } from '@/components/icons'
 
 const props = defineProps<{
   overview: ActivityOverview | null
   loading: boolean
 }>()
+
+// Apple SF Symbols-inspired filled SVG icons for stat cards
+const SVG_ICONS = {
+  // list.bullet.rectangle.fill — filled document with list lines
+  activities: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="2" width="18" height="20" rx="4" opacity="0.15"/><rect x="3" y="2" width="18" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="9" r="1.2"/><circle cx="8" cy="13" r="1.2"/><circle cx="8" cy="17" r="1.2"/><rect x="11" y="8.2" width="6" height="1.6" rx="0.8" fill="currentColor"/><rect x="11" y="12.2" width="6" height="1.6" rx="0.8" fill="currentColor"/><rect x="11" y="16.2" width="4" height="1.6" rx="0.8" fill="currentColor"/></svg>',
+  // person.2.fill — two filled person silhouettes
+  users: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="7" r="3.5"/><path d="M2 19.5c0-3.5 3.1-6 7-6s7 2.5 7 6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><circle cx="17" cy="8" r="2.5" opacity="0.6"/><path d="M22 19.5c0-2.5-1.8-4.5-4.2-5.3.9.7 1.6 1.7 2 2.8.3.8.2 1.5.2 2.5h1a1 1 0 0 0 1-1z" opacity="0.6"/></svg>',
+  // chart.bar.fill — filled bar chart
+  topAction: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4" height="9" rx="2"/><rect x="10" y="6" width="4" height="15" rx="2"/><rect x="17" y="3" width="4" height="18" rx="2"/></svg>',
+  // key.fill — filled key icon
+  logins: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="15" r="5.5" opacity="0.15"/><circle cx="8" cy="15" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="15" r="2" fill="currentColor"/><path d="M12.5 11.5L18 6l2.5 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 8.5L17.5 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+}
 
 /* eslint-disable camelcase */
 const ACTION_LABEL_MAP: Record<string, string> = {
@@ -97,7 +110,7 @@ const cards = computed(() => {
   return [
     {
       key: 'total',
-      icon: FileIcon,
+      svgIcon: SVG_ICONS.activities,
       iconBg: '#EFF6FF',
       iconColor: '#007AFF',
       label: '\u7E3D\u6D3B\u52D5',
@@ -107,7 +120,7 @@ const cards = computed(() => {
     },
     {
       key: 'users',
-      icon: UsersIcon,
+      svgIcon: SVG_ICONS.users,
       iconBg: '#F0FDF4',
       iconColor: '#34C759',
       label: '\u6D3B\u8E8D\u7528\u6236',
@@ -117,7 +130,7 @@ const cards = computed(() => {
     },
     {
       key: 'action',
-      icon: BarChartIcon,
+      svgIcon: SVG_ICONS.topAction,
       iconBg: '#FFF7ED',
       iconColor: '#FF9500',
       label: '\u6700\u591A\u64CD\u4F5C',
@@ -127,7 +140,7 @@ const cards = computed(() => {
     },
     {
       key: 'logins',
-      icon: LoginIcon,
+      svgIcon: SVG_ICONS.logins,
       iconBg: '#F2E8FB',
       iconColor: '#AF52DE',
       label: '\u767B\u5165\u6B21\u6578',
@@ -187,6 +200,14 @@ const cards = computed(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.stat-icon__svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
 }
 
 .stat-label {
