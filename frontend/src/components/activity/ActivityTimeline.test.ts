@@ -1,17 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 import type { ActivityLog } from '@/api/activities'
 
-// Mock icons used transitively through utils.ts
+// Mock icons used transitively through utils.ts — plain object stubs
 vi.mock('@/components/icons', () => {
-  const stub = defineComponent({
-    name: 'IconStub',
-    props: { size: { type: Number, default: 24 } },
-    setup() {
-      return () => h('svg', { class: 'icon-stub' })
-    },
-  })
+  const stub = { template: '<svg class="icon-stub" />', props: { size: { type: Number, default: 24 } } }
   return {
     LoginIcon: stub,
     LogoutIcon: stub,
@@ -49,23 +42,16 @@ function makeActivity(overrides: Partial<ActivityLog> = {}): ActivityLog {
   }
 }
 
-// Stubs for child components
-const ActivityTimelineItemStub = defineComponent({
-  name: 'ActivityTimelineItem',
-  props: ['activity'],
-  setup(props) {
-    return () =>
-      h('div', { class: 'activity-timeline-item-stub', 'data-id': String(props.activity.id) })
-  },
-})
+// Stubs for child components — use plain objects to avoid vue/one-component-per-file
+const ActivityTimelineItemStub = {
+  template: '<div class="activity-timeline-item-stub" :data-id="String(activity.id)" />',
+  props: { activity: { type: Object, required: true } },
+}
 
-const ActivityDetailPanelStub = defineComponent({
-  name: 'ActivityDetailPanel',
-  props: ['entries', 'show'],
-  setup() {
-    return () => h('div', { class: 'activity-detail-panel-stub' })
-  },
-})
+const ActivityDetailPanelStub = {
+  template: '<div class="activity-detail-panel-stub" />',
+  props: { entries: { type: Array, default: () => [] }, show: { type: Boolean, default: false } },
+}
 
 function mountTimeline(activities: ActivityLog[]) {
   return mount(ActivityTimeline, {
