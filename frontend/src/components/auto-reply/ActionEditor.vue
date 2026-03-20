@@ -1,42 +1,72 @@
 <template>
   <div class="action-editor">
-    <div class="action-list">
+    <div
+      v-if="actions.length > 0"
+      class="action-row-list"
+    >
       <template
         v-for="(action, index) in actions"
         :key="index"
       >
-        <!-- Collapsed: tag pill (like condition-tag) -->
+        <!-- Collapsed: row display -->
         <div
           v-if="!editingIndices.has(index)"
-          :class="['action-tag', `action-tag--${action.actionType}`]"
+          :class="['action-row', `action-row--${action.actionType}`]"
           @click="toggleEdit(index)"
         >
-          <span class="action-type-label">{{ actionTypeLabel(action.actionType) }}</span>
-          <span class="action-value">{{ getPreviewText(action) }}</span>
+          <span class="action-accent" />
+          <span class="action-step">{{ index + 1 }}</span>
+          <span :class="['action-badge', `action-badge--${action.actionType}`]">
+            {{ actionTypeLabel(action.actionType) }}
+          </span>
+          <span class="action-preview">{{ getPreviewText(action) }}</span>
           <button
-            class="action-remove"
+            class="action-row-remove"
             type="button"
+            title="移除動作"
             @click.stop="handleRemove(index)"
           >
-            &times;
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ><line
+              x1="18"
+              y1="6"
+              x2="6"
+              y2="18"
+            /><line
+              x1="6"
+              y1="6"
+              x2="18"
+              y2="18"
+            /></svg>
           </button>
         </div>
 
-        <!-- Expanded: editing card -->
+        <!-- Expanded: editing row -->
         <div
           v-else
-          class="action-card-new editing"
+          :class="['action-row', 'action-row--editing', `action-row--${action.actionType}`]"
         >
-          <div class="editing-header">
-            <span
-              class="status-dot status-dot--editing"
-            />
-            <span :class="['badge', `badge--${action.actionType}`]">
+          <div class="action-row-header">
+            <span class="action-accent" />
+            <span class="action-step">{{ index + 1 }}</span>
+            <span :class="['action-badge', `action-badge--${action.actionType}`]">
               {{ actionTypeLabel(action.actionType) }}
+            </span>
+            <span class="action-editing-indicator">
+              <span class="status-dot" />
+              編輯中
             </span>
           </div>
 
-          <div class="expanded-body">
+          <div class="action-row-body">
             <!-- reply_text -->
             <template v-if="action.actionType === 'reply_text'">
               <div class="form-group">
@@ -90,7 +120,7 @@
             </template>
 
             <!-- Confirm / Cancel footer -->
-            <div class="expanded-footer">
+            <div class="action-row-footer">
               <button
                 type="button"
                 class="btn btn-secondary btn-cancel"
@@ -109,13 +139,13 @@
           </div>
         </div>
       </template>
+    </div>
 
-      <div
-        v-if="actions.length === 0"
-        class="action-empty"
-      >
-        尚未設定動作
-      </div>
+    <div
+      v-else
+      class="action-empty"
+    >
+      尚未設定動作
     </div>
 
     <div class="action-add">
@@ -254,8 +284,8 @@ function getPreviewText(action: { actionType: string; content: string }): string
       case 'reply_image':
         return parsed.url ?? ''
       case 'reply_flex':
-        return action.content.length > 50
-          ? `${action.content.substring(0, 50)  }...`
+        return action.content.length > 80
+          ? `${action.content.substring(0, 80)}...`
           : action.content
       default:
         return ''
@@ -363,193 +393,263 @@ function handleAddAction(actionType: string): void {
 .action-editor {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
-.action-list {
+/* ================================================================
+   Row list container — iOS-style white card
+   ================================================================ */
+.action-row-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  min-height: 36px;
-  align-items: flex-start;
-}
-
-/* -- Action tag (collapsed state, mirrors condition-tag) -- */
-.action-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  border-radius: 9999px;
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
-  max-width: 100%;
-}
-
-.action-tag--reply_text {
-  background: var(--primary-50);
-  border: 1px solid var(--primary-200, #bfdbfe);
-}
-
-.action-tag--reply_text:hover {
-  background: var(--primary-100, #dbeafe);
-}
-
-.action-tag--reply_image {
-  background: #dcfce7;
-  border: 1px solid #bbf7d0;
-}
-
-.action-tag--reply_image:hover {
-  background: #bbf7d0;
-}
-
-.action-tag--reply_flex {
-  background: #f3e8ff;
-  border: 1px solid #e9d5ff;
-}
-
-.action-tag--reply_flex:hover {
-  background: #e9d5ff;
-}
-
-.action-type-label {
-  font-weight: 600;
-  font-size: 0.75rem;
-  flex-shrink: 0;
-}
-
-.action-tag--reply_text .action-type-label {
-  color: var(--primary-700);
-}
-
-.action-tag--reply_image .action-type-label {
-  color: #15803d;
-}
-
-.action-tag--reply_flex .action-type-label {
-  color: #7e22ce;
-}
-
-.action-value {
-  color: var(--gray-900);
-  white-space: nowrap;
+  flex-direction: column;
+  background: white;
+  border-radius: var(--radius-2xl, 1rem);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.04);
   overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 
-.action-remove {
+/* ================================================================
+   Collapsed action row
+   ================================================================ */
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px var(--space-4) 14px 0;
+  cursor: pointer;
+  transition: background-color 200ms ease-out;
+}
+
+.action-row:not(.action-row--editing):hover {
+  background: var(--gray-50, #f9fafb);
+}
+
+/* Divider: thin, indented past accent bar (iOS Settings-style) */
+.action-row:not(.action-row--editing) + .action-row:not(.action-row--editing) {
+  box-shadow: inset 0 1px 0 0 var(--gray-100, #f3f4f6);
+}
+
+/* ================================================================
+   Left accent bar — type color indicator
+   Creates a vertical "timeline" reinforcing execution order
+   ================================================================ */
+.action-accent {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 0 var(--radius-full, 9999px) var(--radius-full, 9999px) 0;
+  flex-shrink: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.action-row--reply_text .action-accent {
+  background: var(--primary-400, #60a5fa);
+}
+
+.action-row--reply_image .action-accent {
+  background: #4ade80;
+}
+
+.action-row--reply_flex .action-accent {
+  background: #a78bfa;
+}
+
+/* ================================================================
+   Step number — minimal, no circle background
+   ================================================================ */
+.action-step {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 18px;
-  height: 18px;
+  color: var(--gray-400, #9ca3af);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+/* ================================================================
+   Type badge — compact pastel capsule
+   ================================================================ */
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.action-badge--reply_text {
+  background: var(--primary-50, #eff6ff);
+  color: var(--primary-600, #2563eb);
+}
+
+.action-badge--reply_image {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.action-badge--reply_flex {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+/* ================================================================
+   Content preview
+   ================================================================ */
+.action-preview {
+  flex: 1;
+  min-width: 0;
+  color: var(--gray-500, #6b7280);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ================================================================
+   Remove button — hover-reveal, soft transition
+   ================================================================ */
+.action-row-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   border: none;
   background: transparent;
-  color: var(--gray-600);
-  font-size: 1rem;
-  line-height: 1;
+  color: var(--gray-300, #d1d5db);
   cursor: pointer;
-  border-radius: 50%;
+  border-radius: var(--radius-full, 9999px);
   padding: 0;
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  transition: all 200ms ease-out;
+  opacity: 0;
 }
 
-.action-tag--reply_text .action-remove:hover {
-  background: var(--primary-200, #bfdbfe);
-  color: var(--primary-700);
+.action-row:hover .action-row-remove {
+  opacity: 1;
+  color: var(--gray-400, #9ca3af);
 }
 
-.action-tag--reply_image .action-remove:hover {
-  background: #86efac;
-  color: #15803d;
+.action-row-remove:hover {
+  background: var(--error-50, #fef2f2);
+  color: var(--error-500, #ef4444);
 }
 
-.action-tag--reply_flex .action-remove:hover {
-  background: #d8b4fe;
-  color: #7e22ce;
-}
-
-/* -- Editing card -- */
-.action-card-new {
-  width: 100%;
-  background: var(--gray-50);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  transition: all var(--transition-normal);
-}
-
-.action-card-new.editing {
+/* ================================================================
+   Editing state — lifted card with type-tinted ring
+   ================================================================ */
+.action-row--editing {
+  flex-direction: column;
+  align-items: stretch;
+  cursor: default;
   background: white;
-  box-shadow: var(--shadow-sm), 0 0 0 2px var(--primary-100);
+  border-radius: var(--radius-2xl, 1rem);
+  padding: 0;
+  position: relative;
+  z-index: 1;
+  margin: var(--space-1) 0;
 }
 
-.editing-header {
+/* Type-tinted focus ring */
+.action-row--editing.action-row--reply_text {
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.06),
+    0 0 0 2px var(--primary-100, #dbeafe);
+}
+
+.action-row--editing.action-row--reply_image {
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.06),
+    0 0 0 2px #bbf7d0;
+}
+
+.action-row--editing.action-row--reply_flex {
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.06),
+    0 0 0 2px #e9d5ff;
+}
+
+.action-row--editing + .action-row {
+  box-shadow: none;
+}
+
+.action-row + .action-row--editing {
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06), 0 0 0 2px var(--primary-100, #dbeafe);
+}
+
+/* Re-apply type-tinted ring (specificity override for adjacent sibling) */
+.action-row + .action-row--editing.action-row--reply_text {
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.06),
+    0 0 0 2px var(--primary-100, #dbeafe);
+}
+
+.action-row + .action-row--editing.action-row--reply_image {
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.06),
+    0 0 0 2px #bbf7d0;
+}
+
+.action-row + .action-row--editing.action-row--reply_flex {
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 0.06),
+    0 0 0 2px #e9d5ff;
+}
+
+.action-row-header {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4) var(--space-2);
+  gap: var(--space-3);
+  padding: 14px var(--space-4) var(--space-2) 0;
 }
 
-/* -- Status dot (editing state only) -- */
+.action-editing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gray-400, #9ca3af);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ================================================================
+   Status dot — editing pulse
+   ================================================================ */
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--warning-500, #f59e0b);
   flex-shrink: 0;
-}
-
-.status-dot--editing {
-  background: var(--warning-500);
   animation: pulse-dot 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.35; }
 }
 
-/* -- Badge (editing header) -- */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.025em;
-  flex-shrink: 0;
+/* ================================================================
+   Row body (form area)
+   ================================================================ */
+.action-row-body {
+  padding: 0 var(--space-4) var(--space-4) calc(3px + var(--space-3) + 18px + var(--space-3));
 }
 
-.badge--reply_text {
-  background: var(--primary-50);
-  color: var(--primary-700);
-}
-
-.badge--reply_image {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.badge--reply_flex {
-  background: #f3e8ff;
-  color: #7e22ce;
-}
-
-/* -- Expanded body -- */
-.expanded-body {
-  padding: 0 var(--space-4) var(--space-4);
-}
-
-.expanded-body .form-group {
+.action-row-body .form-group {
   margin-bottom: var(--space-3);
 }
 
-.expanded-body .form-group:last-of-type {
+.action-row-body .form-group:last-of-type {
   margin-bottom: 0;
 }
 
@@ -565,33 +665,37 @@ function handleAddAction(actionType: string): void {
   min-height: 120px;
 }
 
-/* -- Expanded footer -- */
-.expanded-footer {
+/* ================================================================
+   Row footer (confirm / cancel)
+   ================================================================ */
+.action-row-footer {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 .btn-confirm,
 .btn-cancel {
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-full, 9999px);
   padding: var(--space-2) var(--space-4);
   font-size: 0.8125rem;
   font-weight: 500;
 }
 
-/* -- Empty state -- */
+/* ================================================================
+   Empty state
+   ================================================================ */
 .action-empty {
-  color: var(--gray-500);
-  font-size: 0.875rem;
-  font-style: italic;
+  color: var(--gray-400, #9ca3af);
+  font-size: 0.8125rem;
   text-align: center;
   padding: var(--space-6) 0;
-  width: 100%;
 }
 
-/* -- Add action dropdown -- */
+/* ================================================================
+   Add action dropdown
+   ================================================================ */
 .action-add {
   display: flex;
 }
@@ -602,16 +706,16 @@ function handleAddAction(actionType: string): void {
 
 .btn-add-action {
   white-space: nowrap;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-full, 9999px);
 }
 
 .action-dropdown {
   position: absolute;
-  top: calc(100% + var(--space-1));
+  top: calc(100% + 6px);
   left: 0;
   background: white;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-xl, 0.75rem);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.08);
   z-index: 10;
   min-width: 140px;
   overflow: hidden;
@@ -620,17 +724,21 @@ function handleAddAction(actionType: string): void {
 .action-dropdown-item {
   display: block;
   width: 100%;
-  padding: var(--space-2) var(--space-4);
+  padding: 10px var(--space-4);
   border: none;
   background: transparent;
   text-align: left;
-  font-size: 0.875rem;
-  color: var(--gray-900);
+  font-size: 0.8125rem;
+  color: var(--gray-700, #374151);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: background-color 150ms ease-out;
 }
 
 .action-dropdown-item:hover {
-  background: var(--gray-100);
+  background: var(--gray-50, #f9fafb);
+}
+
+.action-dropdown-item + .action-dropdown-item {
+  box-shadow: inset 0 1px 0 0 var(--gray-100, #f3f4f6);
 }
 </style>

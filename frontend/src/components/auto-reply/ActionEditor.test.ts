@@ -27,20 +27,25 @@ function mountEditor(actions: Action[] = []) {
   })
 }
 
+/** Find collapsed (non-editing) action rows */
+function findCollapsedRows(wrapper: ReturnType<typeof mountEditor>) {
+  return wrapper.findAll('.action-row:not(.action-row--editing)')
+}
+
 // ===========================================================================
 // Rendering
 // ===========================================================================
 
 describe('ActionEditor -- rendering', () => {
-  it('renders action tags for each action', () => {
+  it('renders action rows for each action', () => {
     const actions = [makeAction(), makeAction({ sortOrder: 1 })]
     const wrapper = mountEditor(actions)
-    expect(wrapper.findAll('.action-tag')).toHaveLength(2)
+    expect(findCollapsedRows(wrapper)).toHaveLength(2)
   })
 
-  it('shows action type label in tag (reply_text -> text label)', () => {
+  it('shows action type label in badge (reply_text -> text label)', () => {
     const wrapper = mountEditor([makeAction({ actionType: 'reply_text' })])
-    expect(wrapper.find('.action-type-label').text()).toBe('文字')
+    expect(wrapper.find('.action-badge').text()).toBe('文字')
   })
 
   it('shows empty state when actions=[]', () => {
@@ -49,31 +54,39 @@ describe('ActionEditor -- rendering', () => {
     expect(wrapper.find('.action-empty').text()).toContain('尚未設定動作')
   })
 
-  it('renders actions as tag pills by default (existing content)', () => {
+  it('renders actions as rows by default (existing content)', () => {
     const wrapper = mountEditor([makeAction()])
-    const tag = wrapper.find('.action-tag')
-    expect(tag.exists()).toBe(true)
-    expect(tag.find('.action-value').exists()).toBe(true)
+    const rows = findCollapsedRows(wrapper)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.find('.action-preview').exists()).toBe(true)
   })
 
-  it('shows preview text for reply_text in tag', () => {
+  it('shows preview text for reply_text in row', () => {
     const wrapper = mountEditor([makeAction({ content: JSON.stringify({ text: 'Hello World' }) })])
-    expect(wrapper.find('.action-value').text()).toBe('Hello World')
+    expect(wrapper.find('.action-preview').text()).toBe('Hello World')
   })
 
-  it('shows preview url for reply_image in tag', () => {
+  it('shows preview url for reply_image in row', () => {
     const wrapper = mountEditor([
       makeAction({
         actionType: 'reply_image',
         content: JSON.stringify({ url: 'https://example.com/img.jpg', previewUrl: '' }),
       }),
     ])
-    expect(wrapper.find('.action-value').text()).toBe('https://example.com/img.jpg')
+    expect(wrapper.find('.action-preview').text()).toBe('https://example.com/img.jpg')
   })
 
-  it('applies correct type class to tag', () => {
+  it('applies correct type class to badge', () => {
     const wrapper = mountEditor([makeAction({ actionType: 'reply_image' })])
-    expect(wrapper.find('.action-tag--reply_image').exists()).toBe(true)
+    expect(wrapper.find('.action-badge--reply_image').exists()).toBe(true)
+  })
+
+  it('shows step number in row', () => {
+    const actions = [makeAction(), makeAction({ sortOrder: 1 })]
+    const wrapper = mountEditor(actions)
+    const steps = wrapper.findAll('.action-step')
+    expect(steps[0]!.text()).toBe('1')
+    expect(steps[1]!.text()).toBe('2')
   })
 
   it('hides dropdown by default', () => {
@@ -87,6 +100,17 @@ describe('ActionEditor -- rendering', () => {
     const items = wrapper.findAll('.action-dropdown-item')
     expect(items).toHaveLength(3)
   })
+
+  it('renders accent bar in each row', () => {
+    const wrapper = mountEditor([makeAction()])
+    expect(wrapper.find('.action-accent').exists()).toBe(true)
+  })
+
+  it('applies action type class to row for color theming', () => {
+    const wrapper = mountEditor([makeAction({ actionType: 'reply_image' })])
+    const row = findCollapsedRows(wrapper)[0]!
+    expect(row.classes()).toContain('action-row--reply_image')
+  })
 })
 
 // ===========================================================================
@@ -94,71 +118,71 @@ describe('ActionEditor -- rendering', () => {
 // ===========================================================================
 
 describe('ActionEditor -- collapse/expand', () => {
-  it('expands to editing card when clicking tag', async () => {
+  it('expands to editing row when clicking collapsed row', async () => {
     const wrapper = mountEditor([makeAction()])
-    expect(wrapper.find('.action-tag').exists()).toBe(true)
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(false)
+    expect(findCollapsedRows(wrapper)).toHaveLength(1)
+    expect(wrapper.find('.action-row--editing').exists()).toBe(false)
 
-    await wrapper.find('.action-tag').trigger('click')
-    expect(wrapper.find('.action-tag').exists()).toBe(false)
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(true)
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
+    expect(findCollapsedRows(wrapper)).toHaveLength(0)
+    expect(wrapper.find('.action-row--editing').exists()).toBe(true)
   })
 
-  it('collapses back to tag when clicking confirm button', async () => {
+  it('collapses back to row when clicking confirm button', async () => {
     const wrapper = mountEditor([makeAction()])
 
-    await wrapper.find('.action-tag').trigger('click')
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(true)
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
+    expect(wrapper.find('.action-row--editing').exists()).toBe(true)
 
     await wrapper.find('.btn-confirm').trigger('click')
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(false)
-    expect(wrapper.find('.action-tag').exists()).toBe(true)
+    expect(wrapper.find('.action-row--editing').exists()).toBe(false)
+    expect(findCollapsedRows(wrapper)).toHaveLength(1)
   })
 
-  it('collapses back to tag when clicking cancel button', async () => {
+  it('collapses back to row when clicking cancel button', async () => {
     const wrapper = mountEditor([makeAction()])
 
-    await wrapper.find('.action-tag').trigger('click')
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(true)
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
+    expect(wrapper.find('.action-row--editing').exists()).toBe(true)
 
     await wrapper.find('.btn-cancel').trigger('click')
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(false)
-    expect(wrapper.find('.action-tag').exists()).toBe(true)
+    expect(wrapper.find('.action-row--editing').exists()).toBe(false)
+    expect(findCollapsedRows(wrapper)).toHaveLength(1)
   })
 
-  it('shows status-dot--editing when expanded', async () => {
+  it('shows status-dot when expanded', async () => {
     const wrapper = mountEditor([makeAction()])
-    await wrapper.find('.action-tag').trigger('click')
-    expect(wrapper.find('.status-dot--editing').exists()).toBe(true)
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
+    expect(wrapper.find('.status-dot').exists()).toBe(true)
   })
 
-  it('shows expanded-body with textarea when editing reply_text', async () => {
+  it('shows action-row-body with textarea when editing reply_text', async () => {
     const wrapper = mountEditor([makeAction({ actionType: 'reply_text' })])
-    await wrapper.find('.action-tag').trigger('click')
-    expect(wrapper.find('.expanded-body .action-textarea').exists()).toBe(true)
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
+    expect(wrapper.find('.action-row-body .action-textarea').exists()).toBe(true)
   })
 
-  it('shows expanded-body with inputs when editing reply_image', async () => {
+  it('shows action-row-body with inputs when editing reply_image', async () => {
     const wrapper = mountEditor([
       makeAction({
         actionType: 'reply_image',
         content: JSON.stringify({ url: '', previewUrl: '' }),
       }),
     ])
-    await wrapper.find('.action-tag').trigger('click')
-    const inputs = wrapper.findAll('.expanded-body input[type="text"]')
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
+    const inputs = wrapper.findAll('.action-row-body input[type="text"]')
     expect(inputs).toHaveLength(2)
   })
 
-  it('shows expanded-body with JSON textarea when editing reply_flex', async () => {
+  it('shows action-row-body with JSON textarea when editing reply_flex', async () => {
     const wrapper = mountEditor([
       makeAction({
         actionType: 'reply_flex',
         content: JSON.stringify({ type: 'bubble' }),
       }),
     ])
-    await wrapper.find('.action-tag').trigger('click')
-    expect(wrapper.find('.expanded-body .action-textarea--json').exists()).toBe(true)
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
+    expect(wrapper.find('.action-row-body .action-textarea--json').exists()).toBe(true)
   })
 })
 
@@ -167,9 +191,9 @@ describe('ActionEditor -- collapse/expand', () => {
 // ===========================================================================
 
 describe('ActionEditor -- emitted events', () => {
-  it('emits remove with index on tag remove button click', async () => {
+  it('emits remove with index on row remove button click', async () => {
     const wrapper = mountEditor([makeAction(), makeAction({ sortOrder: 1 })])
-    const removeButtons = wrapper.findAll('.action-remove')
+    const removeButtons = wrapper.findAll('.action-row-remove')
     await removeButtons[1]!.trigger('click')
 
     expect(wrapper.emitted('remove')).toBeTruthy()
@@ -230,12 +254,12 @@ describe('ActionEditor -- emitted events', () => {
     expect(wrapper.find('.action-dropdown').exists()).toBe(false)
   })
 
-  it('emits update-content when editing text content in expanded card', async () => {
+  it('emits update-content when editing text content in expanded row', async () => {
     const wrapper = mountEditor([makeAction({ actionType: 'reply_text' })])
 
-    await wrapper.find('.action-tag').trigger('click')
+    await findCollapsedRows(wrapper)[0]!.trigger('click')
 
-    const textarea = wrapper.find('.expanded-body .action-textarea')
+    const textarea = wrapper.find('.action-row-body .action-textarea')
     const el = textarea.element as HTMLTextAreaElement
     el.value = 'new text'
     await textarea.trigger('input')
@@ -252,7 +276,7 @@ describe('ActionEditor -- emitted events', () => {
 // ===========================================================================
 
 describe('ActionEditor -- editing index recalculation', () => {
-  it('shifts editing state down when a card before it is deleted', async () => {
+  it('shifts editing state down when a row before it is deleted', async () => {
     const actions = [
       makeAction({ sortOrder: 0, content: JSON.stringify({ text: 'First' }) }),
       makeAction({ sortOrder: 1, content: JSON.stringify({ text: 'Second' }) }),
@@ -260,15 +284,15 @@ describe('ActionEditor -- editing index recalculation', () => {
     ]
     const wrapper = mountEditor(actions)
 
-    // Expand card at index 2 by clicking its tag
-    const tags = wrapper.findAll('.action-tag')
-    await tags[2]!.trigger('click')
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(true)
+    // Expand row at index 2 by clicking it
+    const rows = findCollapsedRows(wrapper)
+    await rows[2]!.trigger('click')
+    expect(wrapper.find('.action-row--editing').exists()).toBe(true)
 
-    // Delete card at index 0 via its tag remove button
-    // After expanding index 2, there are 2 tags (index 0, 1) and 1 card (index 2)
-    const remainingTags = wrapper.findAll('.action-tag')
-    await remainingTags[0]!.find('.action-remove').trigger('click')
+    // Delete row at index 0 via its remove button
+    // After expanding index 2, there are 2 collapsed rows (index 0, 1) and 1 editing row (index 2)
+    const remainingRows = findCollapsedRows(wrapper)
+    await remainingRows[0]!.find('.action-row-remove').trigger('click')
     expect(wrapper.emitted('remove')![0]).toEqual([0])
 
     // Simulate parent removing item 0
@@ -278,27 +302,27 @@ describe('ActionEditor -- editing index recalculation', () => {
     ]
     await wrapper.setProps({ actions: updatedActions })
 
-    // Card formerly at index 2 (now index 1) should still be editing
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(true)
-    expect(wrapper.findAll('.action-tag')).toHaveLength(1)
+    // Row formerly at index 2 (now index 1) should still be editing
+    expect(wrapper.find('.action-row--editing').exists()).toBe(true)
+    expect(findCollapsedRows(wrapper)).toHaveLength(1)
   })
 
-  it('removes editing state when the editing card itself is deleted', async () => {
+  it('removes editing state when the editing row itself is deleted', async () => {
     const actions = [
       makeAction({ sortOrder: 0, content: JSON.stringify({ text: 'First' }) }),
       makeAction({ sortOrder: 1, content: JSON.stringify({ text: 'Second' }) }),
     ]
     const wrapper = mountEditor(actions)
 
-    // Expand card at index 0
-    const tags = wrapper.findAll('.action-tag')
-    await tags[0]!.trigger('click')
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(true)
+    // Expand row at index 0
+    const rows = findCollapsedRows(wrapper)
+    await rows[0]!.trigger('click')
+    expect(wrapper.find('.action-row--editing').exists()).toBe(true)
 
-    // Cancel to collapse back to tag, then delete
+    // Cancel to collapse back to row, then delete
     await wrapper.find('.btn-cancel').trigger('click')
-    const tagsAfterCancel = wrapper.findAll('.action-tag')
-    await tagsAfterCancel[0]!.find('.action-remove').trigger('click')
+    const rowsAfterCancel = findCollapsedRows(wrapper)
+    await rowsAfterCancel[0]!.find('.action-row-remove').trigger('click')
     expect(wrapper.emitted('remove')![0]).toEqual([0])
 
     // Simulate parent removing item 0
@@ -307,8 +331,8 @@ describe('ActionEditor -- editing index recalculation', () => {
     ]
     await wrapper.setProps({ actions: updatedActions })
 
-    // Remaining item should be a tag, not editing
-    expect(wrapper.findAll('.action-tag')).toHaveLength(1)
-    expect(wrapper.find('.action-card-new.editing').exists()).toBe(false)
+    // Remaining item should be a collapsed row, not editing
+    expect(findCollapsedRows(wrapper)).toHaveLength(1)
+    expect(wrapper.find('.action-row--editing').exists()).toBe(false)
   })
 })
