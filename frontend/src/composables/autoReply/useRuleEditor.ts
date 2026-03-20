@@ -145,7 +145,8 @@ export function useRuleEditor() {
 
     // --- Optimistic: build a local preview rule ---
     const now = new Date().toISOString()
-    const tempId = wasCreating ? -(Date.now()) : editedRuleId!
+    // Guard at line 135 ensures editedRuleId is defined when !wasCreating
+    const tempId = wasCreating ? -(Date.now()) : (editedRuleId as number)
     const optimisticRule: AutoReplyRule = {
       id: tempId,
       teamId: null,
@@ -191,7 +192,7 @@ export function useRuleEditor() {
         const response = await createRule(request, { scope: 'global' })
         serverRule = response.data
       } else {
-        const response = await updateRule(editedRuleId!, request as UpdateRuleRequest)
+        const response = await updateRule(editedRuleId as number, request as UpdateRuleRequest)
         serverRule = response.data
       }
 
