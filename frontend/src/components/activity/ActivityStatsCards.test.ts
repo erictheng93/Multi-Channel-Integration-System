@@ -1,23 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
 import type { ActivityOverview } from '@/api/activities'
-
-vi.mock('@/components/icons', () => {
-  const stub = defineComponent({
-    name: 'IconStub',
-    props: { size: { type: Number, default: 24 } },
-    setup() {
-      return () => h('svg', { class: 'icon-stub' })
-    },
-  })
-  return {
-    FileIcon: stub,
-    UsersIcon: stub,
-    BarChartIcon: stub,
-    LoginIcon: stub,
-  }
-})
 
 import ActivityStatsCards from './ActivityStatsCards.vue'
 
@@ -103,10 +86,10 @@ describe('ActivityStatsCards', () => {
     expect(cards[3]!.find('.stat-value').text()).toBe('0')
   })
 
-  it('renders stat-icon with correct structure', () => {
+  it('renders stat-label for each card', () => {
     const wrapper = mountCards({ overview: makeOverview(), loading: false })
-    const icons = wrapper.findAll('.stat-icon')
-    expect(icons).toHaveLength(4)
+    const labels = wrapper.findAll('.stat-label')
+    expect(labels).toHaveLength(4)
   })
 
   it('shows skeleton cards even when overview is provided if loading is true', () => {

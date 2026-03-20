@@ -13,7 +13,8 @@ import { PermissionService } from '@shared/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
@@ -117,6 +118,22 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
     }
 
     // Note: Individual agent notifications removed - only team assignment is supported now
+
+    // Activity logging: conversation assignment
+    try {
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: user.id.toString(),
+        userName: user.displayName || user.email,
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.CONVERSATION_ASSIGN,
+        resourceType: RESOURCE_TYPES.CONVERSATION,
+        resourceId: conversationId,
+        details: { teamId, reason },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
+    } catch (_) { /* non-blocking */ }
 
     // FIX: 获取并返回完整的对话对象
     log.debug('Assign API fetching updated conversation with JOIN', {
@@ -274,6 +291,22 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
       await drizzleDb.insert(conversationTransfers).values(transferRecord);
     }
 
+    // Activity logging: conversation unassignment
+    try {
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: user.id.toString(),
+        userName: user.displayName || user.email,
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.CONVERSATION_UNASSIGN,
+        resourceType: RESOURCE_TYPES.CONVERSATION,
+        resourceId: conversationId,
+        details: { previousTeamId: previousAssignment?.teamId, previousTeamName: previousAssignment?.teamName, reason },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
+    } catch (_) { /* non-blocking */ }
+
     // WebSocket Broadcasting: Conversation Unassignment
     try {
       const broadcastService = new WebSocketBroadcastService(c.env);
@@ -395,6 +428,22 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
     };
 
     await drizzleDb.insert(conversationTransfers).values(transferRecord);
+
+    // Activity logging: conversation transfer
+    try {
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: user.id.toString(),
+        userName: user.displayName || user.email,
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.CONVERSATION_TRANSFER,
+        resourceType: RESOURCE_TYPES.CONVERSATION,
+        resourceId: conversationId,
+        details: { fromTeamId, toTeamId, reason },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
+    } catch (_) { /* non-blocking */ }
 
     // WebSocket Broadcasting: Dual-Team Conversation Transfer
     // Uses new broadcastConversationTransferred() for proper team-scoped notifications

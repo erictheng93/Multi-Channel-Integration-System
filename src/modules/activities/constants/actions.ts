@@ -50,6 +50,25 @@ export const ACTIVITY_ACTIONS = {
   CUSTOMER_UNFOLLOWED: 'customer_unfollowed',
   MESSAGE_RECEIVED: 'message_received',
 
+  // 標籤管理 (Tag Management)
+  TAG_CREATE: 'tag_create',
+  TAG_UPDATE: 'tag_update',
+  TAG_DELETE: 'tag_delete',
+  TAG_ASSIGN: 'tag_assign',
+  TAG_UNASSIGN: 'tag_unassign',
+  TAG_BULK_UPDATE: 'tag_bulk_update',
+
+  // 延遲訊息 (Delayed Message)
+  DELAYED_MESSAGE_SCHEDULE: 'delayed_message_schedule',
+  DELAYED_MESSAGE_CANCEL: 'delayed_message_cancel',
+
+  // 對話額外操作 (Conversation Additional)
+  CONVERSATION_UNASSIGN: 'conversation_unassign',
+  CONVERSATION_BULK_ASSIGN: 'conversation_bulk_assign',
+
+  // 訊息額外操作 (Message Additional)
+  MESSAGE_FORWARD: 'message_forward',
+
   // 檔案管理 (File Management)
   FILE_UPLOAD: 'file_upload',
   FILE_DELETE: 'file_delete',

@@ -15,6 +15,7 @@ import { customers, tags, customerTags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 export const customerTagsHandler = {
   /**
@@ -250,6 +251,20 @@ export const customerTagsHandler = {
           .values(tagInsertValues);
 
         console.log(`[Customer Tags] Added ${newTagIds.length} tags using batch insert`);
+
+        // Activity log (fire-and-forget)
+        const activityService = new ActivityService(c.env.DB);
+        activityService.logActivity({
+          userId: payload?.userId?.toString() || 'system',
+          userName: payload?.displayName || payload?.username || 'System',
+          userRole: payload?.role || 'system',
+          action: ACTIVITY_ACTIONS.TAG_ASSIGN,
+          resourceType: RESOURCE_TYPES.CUSTOMER,
+          resourceId: customerId.toString(),
+          details: { tagIds: newTagIds, operation: 'add' },
+          ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+          userAgent: c.req.header('User-Agent')
+        }).catch(() => {});
       }
 
       // Broadcast tag change event for real-time updates
@@ -319,9 +334,23 @@ export const customerTagsHandler = {
           )
         );
 
+      // Activity log (fire-and-forget)
+      const payload = c.get('jwtPayload');
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: payload?.userId?.toString() || 'system',
+        userName: payload?.displayName || payload?.username || 'System',
+        userRole: payload?.role || 'system',
+        action: ACTIVITY_ACTIONS.TAG_UNASSIGN,
+        resourceType: RESOURCE_TYPES.CUSTOMER,
+        resourceId: customerId.toString(),
+        details: { tagIds, operation: 'remove' },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
+
       // Broadcast tag change event for real-time updates
       try {
-        const payload = c.get('jwtPayload');
         const broadcastService = new WebSocketBroadcastService(c.env);
         await broadcastService.broadcastCustomerTagEvent({
           customerId,
@@ -415,6 +444,20 @@ export const customerTagsHandler = {
 
         console.log(`[Customer Tags] Set ${tagIds.length} tags using batch insert`);
       }
+
+      // Activity log (fire-and-forget)
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: payload?.userId?.toString() || 'system',
+        userName: payload?.displayName || payload?.username || 'System',
+        userRole: payload?.role || 'system',
+        action: ACTIVITY_ACTIONS.TAG_ASSIGN,
+        resourceType: RESOURCE_TYPES.CUSTOMER,
+        resourceId: customerId.toString(),
+        details: { tagIds, operation: 'set' },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
 
       // Broadcast tag change event for real-time updates
       try {

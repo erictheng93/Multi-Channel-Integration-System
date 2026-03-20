@@ -18,6 +18,7 @@ import { successResponse, badRequestResponse, forbiddenResponse, internalErrorRe
 import { errorResponse } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 const log = createContextLogger('DelayedMessageBuffer');
 
@@ -120,6 +121,20 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
 
     log.info(`Message ${messageId} scheduled for ${delaySeconds}s delay`, { messageId, delaySeconds, conversationId });
 
+    // Fire-and-forget activity logging
+    const activityService = new ActivityService(c.env.DB);
+    activityService.logActivity({
+      userId: user.id.toString(),
+      userName: user.displayName || 'Unknown',
+      userRole: user.role || 'agent',
+      action: ACTIVITY_ACTIONS.DELAYED_MESSAGE_SCHEDULE,
+      resourceType: RESOURCE_TYPES.DELAYED_MESSAGE,
+      resourceId: messageId,
+      details: { conversationId, delaySeconds, platform },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent')
+    }).catch(() => {});
+
     return successResponse(c, {
       messageId: result.messageId,
       scheduledAt: result.scheduledAt,
@@ -189,6 +204,20 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
     }
 
     log.info(`Message ${messageId} cancelled by ${user.displayName}`, { messageId, cancelledBy: user.displayName });
+
+    // Fire-and-forget activity logging
+    const activityService = new ActivityService(c.env.DB);
+    activityService.logActivity({
+      userId: user.id.toString(),
+      userName: user.displayName || 'Unknown',
+      userRole: user.role || 'agent',
+      action: ACTIVITY_ACTIONS.DELAYED_MESSAGE_CANCEL,
+      resourceType: RESOURCE_TYPES.DELAYED_MESSAGE,
+      resourceId: messageId,
+      details: { conversationId, reason, messageId },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent')
+    }).catch(() => {});
 
     return successResponse(c, {
       messageId,

@@ -95,7 +95,7 @@ function formatTime(isoString: string): string {
 }
 
 .timeline-item:hover {
-  background-color: #F9F9FB;
+  background-color: #F2F2F7;
 }
 
 .timeline-item__icon {
@@ -141,7 +141,7 @@ function formatTime(isoString: string): string {
 
 .timeline-item__description {
   font-size: 14px;
-  color: #4B5563;
+  color: #1C1C1E;
 }
 
 .timeline-item__details-toggle {

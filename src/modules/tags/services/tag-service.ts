@@ -16,6 +16,7 @@ import { tags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 // ── Raw SQL result type interfaces ──────────────────────────────────────────
 
@@ -279,6 +280,20 @@ export const tagHandler = {
         return errorResponse(c, 'Failed to create tag', 500);
       }
 
+      // Fire-and-forget activity logging
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: payload?.userId?.toString() || 'system',
+        userName: payload?.displayName || payload?.username || 'System',
+        userRole: payload?.role || 'system',
+        action: ACTIVITY_ACTIONS.TAG_CREATE,
+        resourceType: RESOURCE_TYPES.TAG,
+        resourceId: insertedTag.id?.toString() || '',
+        details: { name, color, description },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
+
       return successResponse(c, {
         id: insertedTag.id,
         name: insertedTag.name,
@@ -446,6 +461,22 @@ export const tagHandler = {
       }
 
       const updatedRow = updatedTag as TagWithCountsRow;
+
+      // Fire-and-forget activity logging
+      const payload = c.get('jwtPayload');
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: payload?.userId?.toString() || 'system',
+        userName: payload?.displayName || payload?.username || 'System',
+        userRole: payload?.role || 'system',
+        action: ACTIVITY_ACTIONS.TAG_UPDATE,
+        resourceType: RESOURCE_TYPES.TAG,
+        resourceId: tagId,
+        details: { name, color, description, isActive },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
+
       return successResponse(c, {
         id: updatedRow.id,
         name: updatedRow.name,
@@ -482,12 +513,31 @@ export const tagHandler = {
 
       // Simplified permission model: all agents can delete any tag
 
+      // Capture tag name before deletion for activity log
+      const tagRow = existingTag as TagRow;
+      const tagName = tagRow.name;
+
       // Soft delete tag
       await drizzleDb.run(sql`
         UPDATE tags
         SET is_active = 0, deleted_at = datetime('now'), updated_at = datetime('now')
         WHERE id = ${tagId}
       `);
+
+      // Fire-and-forget activity logging
+      const payload = c.get('jwtPayload');
+      const activityService = new ActivityService(c.env.DB);
+      activityService.logActivity({
+        userId: payload?.userId?.toString() || 'system',
+        userName: payload?.displayName || payload?.username || 'System',
+        userRole: payload?.role || 'system',
+        action: ACTIVITY_ACTIONS.TAG_DELETE,
+        resourceType: RESOURCE_TYPES.TAG,
+        resourceId: tagId,
+        details: { tagName },
+        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+        userAgent: c.req.header('User-Agent')
+      }).catch(() => {});
 
       return successResponse(c, null, 'Tag deleted successfully');
 
