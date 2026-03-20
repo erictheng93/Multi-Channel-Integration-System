@@ -276,6 +276,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ROLES } from '@/constants/roles'
+import { getBackendUrl } from '@/config/runtime'
 
 const route = useRoute()
 import AppLayout from '@/components/ui/AppLayout.vue'
@@ -368,7 +369,7 @@ const loadActivities = async (page = 1) => {
     if (dateFilters.startDate) { params.append('startDate', dateFilters.startDate) }
     if (dateFilters.endDate) { params.append('endDate', dateFilters.endDate) }
 
-    const response = await fetch(`/api/activities?${params}`, {
+    const response = await fetch(`${getBackendUrl()}/api/activities?${params}`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
@@ -412,7 +413,7 @@ const loadUsers = async () => {
   if (!isAdmin.value) { return }
 
   try {
-    const response = await fetch('/api/teams/members', {
+    const response = await fetch(`${getBackendUrl()}/api/teams/members`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
@@ -601,7 +602,7 @@ const exportActivities = async () => {
     params.append('format', 'csv')
     params.append('export', 'true')
 
-    const response = await fetch(`/api/activities/export?${params}`, {
+    const response = await fetch(`${getBackendUrl()}/api/activities/export?${params}`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }

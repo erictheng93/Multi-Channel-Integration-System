@@ -1,5 +1,6 @@
 // 活動記錄 API 客戶端
 import { apiClient } from './base'
+import { getBackendUrl } from '@/config/runtime'
 import type { ApiResponse, PaginatedResponse } from '@/types'
 
 export interface ActivityLog {
@@ -167,7 +168,7 @@ export const activitiesApi = {
     
     try {
       // Use apiClient for consistent authentication
-      const response = await fetch(`/activities/export${queryString ? `?${queryString}` : ''}`, {
+      const response = await fetch(`${getBackendUrl()}/api/activities/export${queryString ? `?${queryString}` : ''}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
