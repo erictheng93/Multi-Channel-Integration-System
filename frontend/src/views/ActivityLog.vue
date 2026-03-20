@@ -224,14 +224,21 @@ const loadActivities = async (page = 1) => {
       endDate: dateFilters.endDate || undefined
     })
 
-    if (result.success) {
-      // The API returns data as an array with pagination in the response
-      activities.value = (result.data as unknown as ActivityLog[]) || []
+    if (result.success && result.data) {
+      // API returns { data: { items, page, pageSize, total, totalPages, ... } }
+      const responseData = result.data as unknown as {
+        items: ActivityLog[]
+        page: number
+        pageSize: number
+        total: number
+        totalPages: number
+      }
+      activities.value = responseData.items || []
       pagination.value = {
-        page: result.pagination?.page || 1,
-        pageSize: result.pagination?.limit || 50,
-        total: result.pagination?.total || 0,
-        totalPages: result.pagination?.totalPages || 0
+        page: responseData.page || 1,
+        pageSize: responseData.pageSize || 50,
+        total: responseData.total || 0,
+        totalPages: responseData.totalPages || 0
       }
     } else {
       throw new Error(result.error || 'Failed to load activities')
