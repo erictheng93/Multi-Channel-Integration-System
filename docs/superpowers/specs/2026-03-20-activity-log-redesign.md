@@ -47,17 +47,17 @@ ActivityLog.vue
 
 ## Section 1: Page Header
 
-- Title: `text-[28px] font-bold text-[#1C1C1E]` — "Activity Log" (zh: "...")
-- Subtitle: `text-sm text-[#8E8E93]` — "View system activity logs..."
-- Two action buttons (Export, Refresh): capsule ghost buttons `rounded-full bg-white shadow-card-sm`
+- Title: `text-3xl font-bold text-[#1C1C1E]` (34px — matches design system page title spec)
+- Subtitle: `text-sm text-[#8E8E93]`
+- Two action buttons (Export, Refresh): capsule ghost buttons `rounded-full bg-white shadow-[0_2px_8px_rgb(0,0,0,0.04)]`
 - "Clear Filters" button removed from header — moved inline with filter pills
 - Header sits directly on `#F2F2F7` page background (no card wrapper)
 
 ## Section 2: Stats Overview Cards (NEW)
 
 Four cards in a `grid grid-cols-4 gap-4` row. Each card:
-- Container: `bg-white rounded-2xl shadow-card p-5`
-- Hover: `translateY(-2px)` + elevated shadow
+- Container: `bg-white rounded-2xl shadow-[0_4px_16px_rgb(0,0,0,0.06)] p-5`
+- Hover: `translateY(-2px)` + `shadow-[0_8px_30px_rgb(0,0,0,0.08)]`
 - Icon: 40x40 `rounded-xl` with pastel background + matching icon color
 - Label: `text-xs font-medium text-[#8E8E93]`
 - Value: `text-2xl font-bold text-[#1C1C1E]`
@@ -66,11 +66,16 @@ Four cards in a `grid grid-cols-4 gap-4` row. Each card:
 | Card | Icon BG | Icon Color | Data Source |
 |------|---------|------------|-------------|
 | Total Activities | `bg-blue-50` | `#007AFF` | `overview.totalActivities` |
-| Active Users | `bg-green-50` | `#34C759` | `overview.topUsers.length` |
+| Top Users | `bg-green-50` | `#34C759` | `overview.topUsers.length` (top N most active users) |
 | Top Action | `bg-orange-50` | `#FF9500` | Highest from `overview.actionStats` |
-| Logins | `bg-purple-50` | `#AF52DE` | `overview.actionStats.user_login` |
+| Logins | `bg-[#F2E8FB]` | `#AF52DE` | `overview.actionStats.user_login` |
 
 **API:** `activitiesApi.getOverview(days)` — already exists, currently unused.
+
+**Stats card loading/error handling:**
+- While loading: show skeleton placeholders (shimmer animation) in each card
+- If `getOverview()` fails (network error, 403): hide the stats row entirely — do not show broken cards
+- Note: `getOverview()` is admin-only. For non-admin users, skip the API call and hide the stats row.
 
 ## Section 3: Filter Pills
 
@@ -86,11 +91,11 @@ Filters (same as current, restyled):
 3. Resource type — `<select>` with resource categories
 4. Date range — `<select>` with today/week/month/custom
 
-Custom date range: slides open below filters in a `bg-white rounded-2xl shadow-card p-4` card with `rounded-xl bg-[#F2F2F7]` date inputs.
+Custom date range: slides open below filters in a `bg-white rounded-2xl shadow-[0_4px_16px_rgb(0,0,0,0.06)] p-4` card with `rounded-xl bg-[#F2F2F7]` date inputs.
 
 ## Section 4: Activity Timeline
 
-Container: `bg-white rounded-2xl shadow-card overflow-hidden`
+Container: `bg-white rounded-2xl shadow-[0_4px_16px_rgb(0,0,0,0.06)] overflow-hidden`
 
 ### Date Group Headers
 - Background: `bg-[#F2F2F7]`
@@ -107,14 +112,14 @@ Container: `bg-white rounded-2xl shadow-card overflow-hidden`
 
 | Action Category | Icon BG | Icon Color | Icon |
 |----------------|---------|------------|------|
-| user_login/logout | `bg-blue-50` | `#007AFF` | Login arrow |
-| message_send/recall | `bg-green-50` | `#34C759` | Chat bubble |
-| conversation_assign | `bg-orange-50` | `#FF9500` | Users group |
-| conversation_transfer | `bg-orange-50` | `#FF9500` | Arrow forward |
-| conversation_close/reopen | `bg-red-50` | `#FF3B30` | X mark / Refresh |
-| settings_update | `bg-purple-50` | `#AF52DE` | Gear |
-| team_* | `bg-teal-50` | `#30B0C7` | User plus |
-| user_create/update/delete | `bg-red-50` | `#FF3B30` | User icon |
+| user_login/logout | `bg-blue-50` | `#007AFF` | **New: LoginIcon** (must add to icons/index.ts) |
+| message_send/recall | `bg-green-50` | `#34C759` | ChatIcon (existing) |
+| conversation_assign | `bg-orange-50` | `#FF9500` | UsersIcon (existing) |
+| conversation_transfer | `bg-orange-50` | `#FF9500` | ForwardIcon (existing) |
+| conversation_close/reopen | `bg-red-50` | `#FF3B30` | XIcon / RefreshIcon (existing) |
+| settings_update | `bg-[#F2E8FB]` | `#AF52DE` | CogIcon (existing) |
+| team_* | `bg-[#E6F7FA]` | `#30B0C7` | UserPlusIcon (existing) |
+| user_create/update/delete | `bg-red-50` | `#FF3B30` | UserIcon (existing) |
 
 Icon container: `w-10 h-10 rounded-xl flex items-center justify-center`
 
@@ -129,7 +134,7 @@ Icon container: `w-10 h-10 rounded-xl flex items-center justify-center`
 
 Replaces raw `JSON.stringify()` with formatted key-value display:
 - Container: `bg-[#F2F2F7] rounded-xl p-4`
-- Animation: `max-height` transition 300ms ease-out
+- Animation: Use Vue `<Transition>` with JS hooks — on `enter`, read `el.scrollHeight` and set `max-height` dynamically; on `leave`, animate back to 0. Duration 300ms ease-out. This avoids the hardcoded `max-height` problem with CSS-only transitions on dynamic content.
 - Keys: `text-xs text-[#8E8E93]` with fixed width
 - Values: `text-xs text-[#1C1C1E] font-mono`
 - Settings changes: old value in `text-red-500 line-through`, new value in `text-green-500 font-medium`
@@ -144,12 +149,12 @@ Replaces raw `JSON.stringify()` with formatted key-value display:
 
 - Container: `bg-[#F2F2F7] px-5 py-3.5` at bottom of timeline card
 - Info text: `text-sm text-[#8E8E93]` — "Page 1 of 5 (156 records)"
-- Buttons: capsule `rounded-full bg-white shadow-card-sm`
+- Buttons: capsule `rounded-full bg-white shadow-[0_2px_8px_rgb(0,0,0,0.04)]`
 - Disabled state: `opacity-50 cursor-not-allowed`
 
 ## Section 6: Empty / Loading / Error States
 
-All states render inside a `bg-white rounded-2xl shadow-card p-12 text-center` card.
+All states render inside a `bg-white rounded-2xl shadow-[0_4px_16px_rgb(0,0,0,0.06)] p-12 text-center` card.
 
 - **Loading:** iOS-style spinner in `#007AFF` + "Loading activities..." text
 - **Empty:** ClockIcon (48px, `text-[#AEAEB2]`) + title + subtitle
@@ -158,9 +163,11 @@ All states render inside a `bg-white rounded-2xl shadow-card p-12 text-center` c
 ## Date Grouping Logic
 
 New utility function `groupActivitiesByDate(activities)`:
-1. Compare activity date to today → "Today"
-2. Compare to yesterday → "Yesterday"
-3. Otherwise → formatted date (e.g., "March 18", or "2026/3/18" in zh-TW)
+1. Compare activity date to today → locale-aware label (zh-TW: "...", en: "Today")
+2. Compare to yesterday → locale-aware label
+3. Otherwise → `date.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })` — e.g., "3/18"
+
+Use the same locale detection as the existing `formatTime()` function in the current component.
 
 ## Files to Create/Modify
 
@@ -174,7 +181,7 @@ New utility function `groupActivitiesByDate(activities)`:
 | Create | `frontend/src/components/activity/ActivityDetailPanel.vue` |
 | Create | `frontend/src/components/activity/ActivityPagination.vue` |
 | Create | `frontend/src/components/activity/ActivityEmptyState.vue` |
-| May modify | `frontend/src/components/icons/index.ts` (add LoginIcon if needed) |
+| Modify | `frontend/src/components/icons/index.ts` (add LoginIcon — login arrow SVG) |
 
 ## Existing API — No Backend Changes
 
@@ -185,9 +192,9 @@ All data requirements are met by existing APIs:
 
 ## Responsive Behavior
 
-- `< 1024px`: Stats grid → `grid-cols-2`
-- `< 768px`: Stats grid → `grid-cols-2`, filter pills wrap, activity items stack
-- `< 640px`: Stats grid → `grid-cols-1`, simplified activity layout
+- `< 1024px`: Stats grid → `grid-cols-2`, filter pills wrap to 2 rows
+- `< 768px`: Stats grid → `grid-cols-2`, activity item layout stacks (icon above content), pagination stacks vertically
+- `< 640px`: Stats grid → `grid-cols-1`, simplified activity layout, header stacks vertically
 
 ## Accessibility
 
