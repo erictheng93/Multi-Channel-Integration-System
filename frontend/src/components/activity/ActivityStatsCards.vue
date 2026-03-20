@@ -21,18 +21,24 @@
         :key="card.key"
         class="stat-card"
       >
-        <div
-          class="stat-icon"
-          :style="{ backgroundColor: card.iconBg }"
-        >
-          <component
-            :is="card.icon"
-            :size="20"
-            :style="{ color: card.iconColor }"
-          />
+        <div class="stat-card__top">
+          <div
+            class="stat-icon"
+            :style="{ backgroundColor: card.iconBg }"
+          >
+            <component
+              :is="card.icon"
+              :size="20"
+              :style="{ color: card.iconColor }"
+            />
+          </div>
+          <span class="stat-label">{{ card.label }}</span>
         </div>
-        <div class="stat-label">
-          {{ card.label }}
+        <div
+          v-if="card.secondaryLabel"
+          class="stat-secondary"
+        >
+          {{ card.secondaryLabel }}
         </div>
         <div class="stat-value">
           {{ card.value }}
@@ -55,18 +61,35 @@ const props = defineProps<{
   loading: boolean
 }>()
 
+/* eslint-disable camelcase */
+const ACTION_LABEL_MAP: Record<string, string> = {
+  user_login: '\u767b\u5165',
+  user_logout: '\u767b\u51fa',
+  message_send: '\u8a0a\u606f\u767c\u9001',
+  message_recall: '\u8a0a\u606f\u64a4\u56de',
+  conversation_assign: '\u5c0d\u8a71\u6307\u6d3e',
+  conversation_transfer: '\u5c0d\u8a71\u8f49\u79fb',
+  conversation_close: '\u5c0d\u8a71\u95dc\u9589',
+  conversation_reopen: '\u5c0d\u8a71\u91cd\u958b',
+  settings_update: '\u8a2d\u5b9a\u66f4\u65b0',
+  team_invite: '\u5718\u968a\u9080\u8acb',
+  team_member_update: '\u6210\u54e1\u66f4\u65b0',
+  team_member_remove: '\u6210\u54e1\u79fb\u9664',
+}
+/* eslint-enable camelcase */
+
 const topAction = computed(() => {
-  if (!props.overview) {return { name: '-', count: 0 }}
+  if (!props.overview) { return { label: '-', count: 0 } }
   const stats = props.overview.actionStats
   const entries = Object.entries(stats)
-  if (entries.length === 0) {return { name: '-', count: 0 }}
+  if (entries.length === 0) { return { label: '-', count: 0 } }
   const [name, count] = entries.reduce((a, b) => (b[1] > a[1] ? b : a))
-  return { name, count }
+  return { label: ACTION_LABEL_MAP[name] || name, count }
 })
 
 const periodLabel = computed(() => {
   if (!props.overview) {return ''}
-  return `Last ${props.overview.period.days} days`
+  return `\u8FD1 ${props.overview.period.days} \u5929`
 })
 
 const cards = computed(() => {
@@ -77,7 +100,8 @@ const cards = computed(() => {
       icon: FileIcon,
       iconBg: '#EFF6FF',
       iconColor: '#007AFF',
-      label: 'Total Activities',
+      label: '\u7E3D\u6D3B\u52D5',
+      secondaryLabel: '',
       value: props.overview.totalActivities,
       subtitle: periodLabel.value,
     },
@@ -86,7 +110,8 @@ const cards = computed(() => {
       icon: UsersIcon,
       iconBg: '#F0FDF4',
       iconColor: '#34C759',
-      label: 'Top Users',
+      label: '\u6D3B\u8E8D\u7528\u6236',
+      secondaryLabel: '',
       value: props.overview.topUsers.length,
       subtitle: periodLabel.value,
     },
@@ -95,8 +120,9 @@ const cards = computed(() => {
       icon: BarChartIcon,
       iconBg: '#FFF7ED',
       iconColor: '#FF9500',
-      label: 'Top Action',
-      value: `${topAction.value.name} (${topAction.value.count})`,
+      label: '\u6700\u591A\u64CD\u4F5C',
+      secondaryLabel: topAction.value.label,
+      value: topAction.value.count,
       subtitle: periodLabel.value,
     },
     {
@@ -104,7 +130,8 @@ const cards = computed(() => {
       icon: LoginIcon,
       iconBg: '#F2E8FB',
       iconColor: '#AF52DE',
-      label: 'Logins',
+      label: '\u767B\u5165\u6B21\u6578',
+      secondaryLabel: '',
       value: props.overview.actionStats['user_login'] ?? 0,
       subtitle: periodLabel.value,
     },
@@ -145,6 +172,13 @@ const cards = computed(() => {
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.08);
 }
 
+.stat-card__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .stat-icon {
   width: 40px;
   height: 40px;
@@ -152,22 +186,29 @@ const cards = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .stat-label {
   font-size: 12px;
   font-weight: 500;
   color: #8E8E93;
-  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.stat-secondary {
+  font-size: 13px;
+  color: #8E8E93;
+  margin-bottom: 2px;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: #1C1C1E;
+  line-height: 1.2;
   margin-bottom: 4px;
-  word-break: break-word;
+  white-space: nowrap;
 }
 
 .stat-subtitle {
