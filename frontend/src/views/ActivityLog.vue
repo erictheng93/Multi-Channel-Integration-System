@@ -99,7 +99,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ROLES } from '@/constants/roles'
-import { getBackendUrl } from '@/config/runtime'
+import { apiClient } from '@/api'
 import { activitiesApi } from '@/api/activities'
 import type { ActivityLog, ActivityOverview } from '@/api/activities'
 
@@ -247,24 +247,16 @@ const loadActivities = async (page = 1) => {
 }
 
 const loadUsers = async () => {
-  if (!isAdmin.value) {return}
+  if (!isAdmin.value) { return }
 
   try {
-    const response = await fetch(`${getBackendUrl()}/api/teams/members`, {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.success) {
-        users.value = data.data.map((member: Record<string, unknown>) => ({
-          id: member.id,
-          name: member.name,
-          role: member.role
-        }))
-      }
+    const data = await apiClient.get<Array<{ id: string; name: string; role: string }>>('/teams/members')
+    if (data.success && data.data) {
+      users.value = (data.data as unknown as Array<{ id: string; name: string; role: string }>).map((member) => ({
+        id: member.id,
+        name: member.name,
+        role: member.role
+      }))
     }
   } catch (err) {
     console.error('Failed to load users:', err)
