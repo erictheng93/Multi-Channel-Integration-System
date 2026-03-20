@@ -137,6 +137,21 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
   }
 
   /**
+   * Insert or replace a single rule in the local list using the API response.
+   * - Update: find by id and replace in-place (preserves list position)
+   * - Create: push to front and bump pagination total
+   */
+  function upsertRule(rule: AutoReplyRule) {
+    const idx = rules.value.findIndex(r => r.id === rule.id)
+    if (idx !== -1) {
+      rules.value.splice(idx, 1, rule)
+    } else {
+      rules.value.unshift(rule)
+      rulesPagination.value.total += 1
+    }
+  }
+
+  /**
    * Silent fetches for background stats polling.
    * These do NOT set loading=true so the UI won't flash.
    */
@@ -204,6 +219,7 @@ export const useAutoReplyStore = defineStore('autoReply', () => {
     fetchLogs,
     silentFetchRules,
     silentFetchLogs,
+    upsertRule,
     toggleRuleActive,
     isToggling,
     $reset

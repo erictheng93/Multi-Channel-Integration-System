@@ -122,39 +122,114 @@ export function useRuleEditor() {
     }
   }
 
+  /**
+   * Optimistic save: updates store and collapses editor instantly,
+   * then syncs to backend in the background. Rolls back on failure.
+   */
   async function saveRule(): Promise<boolean> {
     if (!formData.name.trim()) {return false}
-    saving.value = true
+
+    const wasCreating = isCreating.value
+    const editedRuleId = expandedRuleId.value
+
+    if (!wasCreating && !editedRuleId) {return false}
+
+    const request: CreateRuleRequest = {
+      name: formData.name,
+      triggerType: formData.triggerType,
+      priority: formData.priority,
+      isActive: formData.isActive,
+      conditions: [...formData.conditions],
+      actions: [...formData.actions]
+    }
+
+    // --- Optimistic: build a local preview rule ---
+    const now = new Date().toISOString()
+    const tempId = wasCreating ? -(Date.now()) : editedRuleId!
+    const optimisticRule: AutoReplyRule = {
+      id: tempId,
+      teamId: null,
+      name: request.name,
+      triggerType: request.triggerType,
+      priority: request.priority ?? 100,
+      isActive: request.isActive ?? true,
+      createdBy: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      conditions: (request.conditions ?? []).map((c, i) => ({
+        id: -(i + 1),
+        conditionType: c.conditionType,
+        value: c.value,
+        caseSensitive: c.caseSensitive ?? false,
+        matchMode: c.matchMode ?? 'any'
+      })),
+      actions: (request.actions ?? []).map((a, i) => ({
+        id: -(i + 1),
+        actionType: a.actionType,
+        content: a.content,
+        sortOrder: a.sortOrder ?? i
+      }))
+    }
+
+    // Snapshot previous state for rollback
+    const previousRule = wasCreating
+      ? null
+      : store.rules.find(r => r.id === editedRuleId) ?? null
+    const previousSnapshot = previousRule
+      ? JSON.parse(JSON.stringify(previousRule)) as AutoReplyRule
+      : null
+
+    // --- Apply optimistic update instantly ---
+    store.upsertRule(optimisticRule)
+    collapseRule()
+
+    // --- Background sync to server ---
     try {
-      if (isCreating.value) {
-        const request: CreateRuleRequest = {
-          name: formData.name,
-          triggerType: formData.triggerType,
-          priority: formData.priority,
-          isActive: formData.isActive,
-          conditions: formData.conditions,
-          actions: formData.actions
-        }
-        await createRule(request, { scope: 'global' })
-      } else if (expandedRuleId.value) {
-        const request: UpdateRuleRequest = {
-          name: formData.name,
-          triggerType: formData.triggerType,
-          priority: formData.priority,
-          isActive: formData.isActive,
-          conditions: formData.conditions,
-          actions: formData.actions
-        }
-        await updateRule(expandedRuleId.value, request)
+      let serverRule: AutoReplyRule
+      if (wasCreating) {
+        const response = await createRule(request, { scope: 'global' })
+        serverRule = response.data
+      } else {
+        const response = await updateRule(editedRuleId!, request as UpdateRuleRequest)
+        serverRule = response.data
       }
-      // Refresh rules list
-      await store.fetchRules({ scope: 'global' })
-      collapseRule()
+
+      // Replace optimistic placeholder with server-confirmed data
+      if (wasCreating) {
+        // Swap tempId entry with real server rule
+        const tempIdx = store.rules.findIndex(r => r.id === tempId)
+        if (tempIdx !== -1) {
+          store.rules.splice(tempIdx, 1, serverRule)
+        }
+      } else {
+        store.upsertRule(serverRule)
+      }
       return true
     } catch {
+      // --- Rollback on failure ---
+      if (wasCreating) {
+        const tempIdx = store.rules.findIndex(r => r.id === tempId)
+        if (tempIdx !== -1) {
+          store.rules.splice(tempIdx, 1)
+          store.rulesPagination.total -= 1
+        }
+      } else if (previousSnapshot) {
+        store.upsertRule(previousSnapshot)
+      }
+
+      // Re-expand editor with the user's unsaved form data so they can retry
+      isCreating.value = wasCreating
+      expandedRuleId.value = wasCreating ? null : editedRuleId
+      Object.assign(formData, {
+        name: request.name,
+        triggerType: request.triggerType,
+        priority: request.priority,
+        isActive: request.isActive,
+        conditions: request.conditions,
+        actions: request.actions
+      })
       return false
-    } finally {
-      saving.value = false
     }
   }
 
