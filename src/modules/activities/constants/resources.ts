@@ -11,7 +11,9 @@ export const RESOURCE_TYPES = {
   FILE: 'file',
   QR_CODE: 'qr_code',
   WEBHOOK: 'webhook',
-  INTEGRATION: 'integration'
+  INTEGRATION: 'integration',
+  TAG: 'tag',
+  DELAYED_MESSAGE: 'delayed_message'
 } as const
 
 export type ResourceType = typeof RESOURCE_TYPES[keyof typeof RESOURCE_TYPES]

@@ -71,7 +71,7 @@ function onLeave(el: Element): void {
 <style scoped>
 .detail-panel__content {
   background: #F2F2F7;
-  border-radius: 12px;
+  border-radius: 20px;
   padding: 16px;
   display: flex;
   flex-direction: column;

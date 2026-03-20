@@ -26,26 +26,118 @@
         @change="onActionChange"
       >
         <option value="">
-          &#25152;&#26377;&#25805;&#20316;
+          所有操作
         </option>
-        <option value="conversation_assign">
-          &#23565;&#35441;&#25351;&#27966;
-        </option>
-        <option value="conversation_transfer">
-          &#23565;&#35441;&#36681;&#31227;
-        </option>
-        <option value="conversation_close">
-          &#23565;&#35441;&#38364;&#38281;
-        </option>
-        <option value="message_send">
-          &#30332;&#36865;&#35338;&#24687;
-        </option>
-        <option value="user_login">
-          &#29992;&#25142;&#30331;&#20837;
-        </option>
-        <option value="settings_update">
-          &#35373;&#23450;&#26356;&#26032;
-        </option>
+        <optgroup label="對話">
+          <option value="conversation_assign">
+            對話指派
+          </option>
+          <option value="conversation_transfer">
+            對話轉移
+          </option>
+          <option value="conversation_close">
+            對話關閉
+          </option>
+          <option value="conversation_reopen">
+            重新開啟對話
+          </option>
+          <option value="conversation_unassign">
+            取消對話指派
+          </option>
+          <option value="conversation_bulk_assign">
+            批量對話指派
+          </option>
+        </optgroup>
+        <optgroup label="訊息">
+          <option value="message_send">
+            發送訊息
+          </option>
+          <option value="message_recall">
+            撤回訊息
+          </option>
+          <option value="message_forward">
+            轉發訊息
+          </option>
+          <option value="message_received">
+            收到訊息
+          </option>
+        </optgroup>
+        <optgroup label="用戶">
+          <option value="user_login">
+            用戶登入
+          </option>
+          <option value="user_logout">
+            用戶登出
+          </option>
+          <option value="user_create">
+            建立用戶
+          </option>
+          <option value="user_update">
+            更新用戶
+          </option>
+          <option value="user_delete">
+            刪除用戶
+          </option>
+        </optgroup>
+        <optgroup label="團隊">
+          <option value="team_create">
+            建立團隊
+          </option>
+          <option value="team_update">
+            更新團隊
+          </option>
+          <option value="team_delete">
+            刪除團隊
+          </option>
+          <option value="member_add">
+            新增成員
+          </option>
+          <option value="member_remove">
+            移除成員
+          </option>
+        </optgroup>
+        <optgroup label="標籤">
+          <option value="tag_create">
+            建立標籤
+          </option>
+          <option value="tag_update">
+            更新標籤
+          </option>
+          <option value="tag_delete">
+            刪除標籤
+          </option>
+          <option value="tag_assign">
+            指派標籤
+          </option>
+          <option value="tag_unassign">
+            移除標籤
+          </option>
+        </optgroup>
+        <optgroup label="客戶">
+          <option value="customer_create">
+            建立客戶
+          </option>
+          <option value="customer_update">
+            更新客戶
+          </option>
+          <option value="customer_followed">
+            客戶追蹤
+          </option>
+          <option value="customer_unfollowed">
+            客戶取消追蹤
+          </option>
+        </optgroup>
+        <optgroup label="系統">
+          <option value="settings_update">
+            設定更新
+          </option>
+          <option value="delayed_message_schedule">
+            排程延遲訊息
+          </option>
+          <option value="delayed_message_cancel">
+            取消延遲訊息
+          </option>
+        </optgroup>
       </select>
 
       <select
@@ -55,19 +147,40 @@
         @change="onResourceTypeChange"
       >
         <option value="">
-          &#25152;&#26377;&#36039;&#28304;
+          所有資源
         </option>
         <option value="conversation">
-          &#23565;&#35441;
+          對話
         </option>
         <option value="message">
-          &#35338;&#24687;
+          訊息
         </option>
         <option value="user">
-          &#29992;&#25142;
+          用戶
+        </option>
+        <option value="team">
+          團隊
+        </option>
+        <option value="customer">
+          客戶
+        </option>
+        <option value="tag">
+          標籤
         </option>
         <option value="system">
-          &#31995;&#32113;
+          系統
+        </option>
+        <option value="file">
+          檔案
+        </option>
+        <option value="delayed_message">
+          延遲訊息
+        </option>
+        <option value="qr_code">
+          QR碼
+        </option>
+        <option value="integration">
+          整合
         </option>
       </select>
 
@@ -219,7 +332,7 @@ function onCustomEndChange(event: Event) {
   appearance: none;
   -webkit-appearance: none;
   background-color: #F2F2F7;
-  color: #4B5563;
+  color: #1C1C1E;
   border: none;
   border-radius: 9999px;
   padding: 10px 36px 10px 16px;

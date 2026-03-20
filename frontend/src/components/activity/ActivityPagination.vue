@@ -88,7 +88,7 @@ function onNext() {
   border: none;
   border-radius: 9999px;
   background: #FFFFFF;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.04);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   padding: 8px 16px;
   font-size: 14px;
   font-weight: 500;
@@ -98,7 +98,7 @@ function onNext() {
 }
 
 .pagination__btn:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
 }
 
 .pagination__btn:disabled {

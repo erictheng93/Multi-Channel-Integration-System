@@ -52,7 +52,7 @@ const displayMessage = computed(() => {
 <style scoped>
 .empty-state {
   background: #FFFFFF;
-  border-radius: 16px;
+  border-radius: 28px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   padding: 48px 20px;
   text-align: center;

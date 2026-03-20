@@ -9,7 +9,6 @@
         :key="i"
         class="stat-card stat-card--skeleton"
       >
-        <div class="skeleton-icon shimmer" />
         <div class="skeleton-label shimmer" />
         <div class="skeleton-value shimmer" />
         <div class="skeleton-subtitle shimmer" />
@@ -50,18 +49,6 @@ const props = defineProps<{
   loading: boolean
 }>()
 
-// Apple SF Symbols-inspired filled SVG icons for stat cards (Premium Redesigned)
-const SVG_ICONS = {
-  // list.bullet.rectangle.fill — filled document with list lines
-  activities: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" opacity="0.1" /><path d="M20 8h-6V2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" /><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><path d="M8 13h2l1-2 2 4 1-2h2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>',
-  // person.2.fill — two filled person silhouettes
-  users: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4" opacity="0.15" /><path d="M12 11c-3.5 0-7 2-7 5v2h14v-2c0-3-3.5-5-7-5z" opacity="0.15" /><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M5 18v-2c0-3 3.5-5 7-5s7 2 7 5v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /><path d="M17 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" fill="currentColor" opacity="0.4" /><path d="M7 8.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" fill="currentColor" opacity="0.4" /></svg>',
-  // chart.bar.fill — filled bar chart
-  topAction: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="13" width="4" height="8" rx="1.5" opacity="0.2" /><rect x="10" y="8" width="4" height="13" rx="1.5" opacity="0.5" /><rect x="17" y="3" width="4" height="18" rx="1.5" /><path d="M3 21h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.3" /><path d="M18 5l2 2-2 2M20 7H14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>',
-  // key.fill — filled key icon
-  logins: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L4 5v6c0 5.5 3.5 10.5 8 12 4.5-1.5 8-6.5 8-12V5l-8-3z" opacity="0.1" /><path d="M12 2L4 5v6c0 5.5 3.5 10.5 8 12 4.5-1.5 8-6.5 8-12V5l-8-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /><circle cx="12" cy="11" r="3" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M12 14v3M10.5 17h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>',
-}
-
 /* eslint-disable camelcase */
 const ACTION_LABEL_MAP: Record<string, string> = {
   user_login: '\u767b\u5165',
@@ -98,9 +85,6 @@ const cards = computed(() => {
   return [
     {
       key: 'total',
-      svgIcon: SVG_ICONS.activities,
-      iconBg: '#EFF6FF',
-      iconColor: '#007AFF',
       label: '\u7E3D\u6D3B\u52D5',
       secondaryLabel: '',
       value: props.overview.totalActivities,
@@ -108,9 +92,6 @@ const cards = computed(() => {
     },
     {
       key: 'users',
-      svgIcon: SVG_ICONS.users,
-      iconBg: '#F0FDF4',
-      iconColor: '#34C759',
       label: '\u6D3B\u8E8D\u7528\u6236',
       secondaryLabel: '',
       value: props.overview.topUsers.length,
@@ -118,9 +99,6 @@ const cards = computed(() => {
     },
     {
       key: 'action',
-      svgIcon: SVG_ICONS.topAction,
-      iconBg: '#FFF7ED',
-      iconColor: '#FF9500',
       label: '\u6700\u591A\u64CD\u4F5C',
       secondaryLabel: topAction.value.label,
       value: topAction.value.count,
@@ -128,9 +106,6 @@ const cards = computed(() => {
     },
     {
       key: 'logins',
-      svgIcon: SVG_ICONS.logins,
-      iconBg: '#F2E8FB',
-      iconColor: '#AF52DE',
       label: '\u767B\u5165\u6B21\u6578',
       secondaryLabel: '',
       value: props.overview.actionStats['user_login'] ?? 0,
@@ -174,28 +149,7 @@ const cards = computed(() => {
 }
 
 .stat-card__top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   margin-bottom: 16px;
-}
-
-.stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.stat-icon__svg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
 }
 
 .stat-label {
@@ -235,14 +189,6 @@ const cards = computed(() => {
 .stat-card--skeleton:hover {
   transform: none;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
-}
-
-.skeleton-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: #E5E5EA;
-  margin-bottom: 12px;
 }
 
 .skeleton-label {

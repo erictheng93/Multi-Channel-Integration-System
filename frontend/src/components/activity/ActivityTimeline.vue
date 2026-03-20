@@ -37,7 +37,7 @@ const dateGroups = computed(() => groupActivitiesByDate(props.activities))
 <style scoped>
 .activity-timeline {
   background: #FFFFFF;
-  border-radius: 16px;
+  border-radius: 28px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   overflow: hidden;
 }
@@ -56,7 +56,8 @@ const dateGroups = computed(() => groupActivitiesByDate(props.activities))
 }
 
 .timeline__divider {
-  border-bottom: 1px solid #F3F4F6;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #E5E5EA 10%, #E5E5EA 90%, transparent);
   margin-left: 68px;
 }
 </style>

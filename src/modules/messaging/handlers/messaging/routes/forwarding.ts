@@ -14,6 +14,7 @@ import {
   notFoundResponse
 } from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 const forwardingRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -148,6 +149,20 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
         .set({ lastMessageAt: timestamp, updatedAt: timestamp })
         .where(inArray(conversations.id, validTargetIds));
     }
+
+    // Fire-and-forget activity logging
+    const activityService = new ActivityService(c.env.DB);
+    activityService.logActivity({
+      userId: userPayload.userId.toString(),
+      userName: userPayload.displayName || userPayload.username || 'Unknown',
+      userRole: userPayload.role,
+      action: ACTIVITY_ACTIONS.MESSAGE_FORWARD,
+      resourceType: RESOURCE_TYPES.MESSAGE,
+      resourceId: messageId,
+      details: { originalMessageId: messageId, targetCount: validTargetIds.length },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent')
+    }).catch(() => {});
 
     return successResponse(c, {
       originalMessageId: messageId,

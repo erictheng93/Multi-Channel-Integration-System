@@ -370,7 +370,7 @@ onMounted(() => {
 .activity-log {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 20px;
 }
 
 .activity-log__header {
@@ -411,13 +411,13 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.06);
   transition: background-color 200ms ease-out, box-shadow 200ms ease-out;
 }
 
 .activity-log__action-btn:hover:not(:disabled) {
   background: #F2F2F7;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
 }
 
 .activity-log__action-btn:disabled {
@@ -433,7 +433,7 @@ onMounted(() => {
   background: #FFF2F2;
   color: #FF3B30;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   margin-top: 16px;
   font-size: 14px;
 }

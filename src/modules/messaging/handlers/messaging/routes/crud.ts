@@ -18,6 +18,7 @@ import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { getMentionedUserIds } from '@/utils/mention-parser';
 import { triggerMentionNotification } from '@/utils/notification-trigger';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -298,6 +299,20 @@ crudRoutes.delete('/:id', jwtAuth, async (c) => {
       })
       .where(eq(messages.id, messageId));
 
+    // Fire-and-forget activity logging
+    const activityService = new ActivityService(c.env.DB);
+    activityService.logActivity({
+      userId: userPayload.userId.toString(),
+      userName: userPayload.displayName || userPayload.username || 'Unknown',
+      userRole: userPayload.role,
+      action: ACTIVITY_ACTIONS.MESSAGE_RECALL,
+      resourceType: RESOURCE_TYPES.MESSAGE,
+      resourceId: messageId,
+      details: { conversationId: existingMessage.conversationId },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent')
+    }).catch(() => {});
+
     return successResponse(c, {
       id: messageId,
       conversationId: existingMessage.conversationId,
@@ -445,6 +460,20 @@ crudRoutes.post('/', jwtAuth, async (c) => {
         }
       }
     }
+
+    // Fire-and-forget activity logging
+    const activityService = new ActivityService(c.env.DB);
+    activityService.logActivity({
+      userId: userPayload.userId.toString(),
+      userName: userPayload.displayName || userPayload.username || 'Unknown',
+      userRole: userPayload.role,
+      action: ACTIVITY_ACTIONS.MESSAGE_SEND,
+      resourceType: RESOURCE_TYPES.MESSAGE,
+      resourceId: messageId,
+      details: { conversationId, messageType: messageType || 'text' },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent')
+    }).catch(() => {});
 
     return successResponse(c, {
       id: messageId,
