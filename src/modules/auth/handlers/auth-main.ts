@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import type { Bindings } from '@/types';
+import type { Bindings, TeamRoleInTeam } from '@/types';
 import {
   signJWT,
   authenticateUser,
@@ -17,7 +17,7 @@ import {
 } from '@/middleware/auth';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
-import { agents } from '@/db/schema';
+import { agents, agentTeams } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
 // P2-5: Import standard response utilities
@@ -455,8 +455,42 @@ authHandler.post('/refresh', async (c) => {
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
+    // Re-query fresh team data from DB instead of carrying over stale JWT claims
+    let freshAllowedTeamIds: number[] = payload.allowedTeamIds || [];
+    let freshTeamRoles: Record<number, TeamRoleInTeam> = payload.teamRoles || {};
+
+    try {
+      const teamMemberships = await drizzleDb
+        .select({
+          teamId: agentTeams.teamId,
+          role: agentTeams.roleInTeam,
+          isPrimary: agentTeams.isPrimary
+        })
+        .from(agentTeams)
+        .where(eq(agentTeams.agentId, String(payload.userId)));
+
+      if (teamMemberships.length > 0) {
+        freshAllowedTeamIds = teamMemberships.map(m => m.teamId);
+        freshTeamRoles = {};
+        for (const m of teamMemberships) {
+          if (m.role) {
+            freshTeamRoles[m.teamId] = m.role as TeamRoleInTeam;
+          }
+        }
+        authLogger.info('Refreshed team data from DB', {
+          userId: payload.userId,
+          teamCount: teamMemberships.length
+        });
+      }
+    } catch (teamError) {
+      // Fall back to JWT data if DB query fails
+      authLogger.warn('Failed to refresh team data from DB, using JWT data', {
+        error: teamError instanceof Error ? teamError.message : String(teamError)
+      });
+    }
+
     // 生成新的 access token
-    // Phase 1 Optimization: Carry over multi-team data from refresh token
+    // Phase 1 Optimization: Re-query multi-team data from DB on refresh
     const newToken = await signJWT(
       {
         userId: payload.userId,
@@ -465,16 +499,16 @@ authHandler.post('/refresh', async (c) => {
         role: payload.role,
         primaryTeamId: payload.primaryTeamId,
         type: 'access',
-        // Multi-team support (Phase 1 optimization) - carry over from refresh token
-        allowedTeamIds: payload.allowedTeamIds || [],
-        teamRoles: payload.teamRoles || {}
+        // Multi-team support - freshly queried from DB
+        allowedTeamIds: freshAllowedTeamIds,
+        teamRoles: freshTeamRoles
       },
       c.env.JWT_SECRET,
       2 * 60 * 60 // 2 小時
     );
 
     // 生成新的 refresh token (滾動刷新)
-    // Phase 1 Optimization: Carry over multi-team data
+    // Phase 1 Optimization: Re-query multi-team data from DB on refresh
     const newRefreshToken = await signJWT(
       {
         userId: payload.userId,
@@ -483,9 +517,9 @@ authHandler.post('/refresh', async (c) => {
         role: payload.role,
         primaryTeamId: payload.primaryTeamId,
         type: 'refresh',
-        // Multi-team support (Phase 1 optimization) - carry over
-        allowedTeamIds: payload.allowedTeamIds || [],
-        teamRoles: payload.teamRoles || {}
+        // Multi-team support - freshly queried from DB
+        allowedTeamIds: freshAllowedTeamIds,
+        teamRoles: freshTeamRoles
       },
       c.env.JWT_SECRET,
       7 * 24 * 60 * 60 // 7 天
