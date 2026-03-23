@@ -22,6 +22,20 @@ vi.mock('vue-router', () => ({
   })
 }))
 
+// Mock apiClient (auth store now delegates refresh to apiClient)
+vi.mock('@/api/base', () => ({
+  apiClient: {
+    post: vi.fn(),
+    get: vi.fn(),
+    setAuthHeader: vi.fn(),
+    removeAuthHeader: vi.fn(),
+    setContextTeam: vi.fn(),
+    getContextTeam: vi.fn(),
+    getCurrentToken: vi.fn(),
+    refreshAuthToken: vi.fn()
+  }
+}))
+
 // Helper function to create valid JWT token
 function createValidJWT(userId: string = 'test-agent-id', role: string = 'agent'): string {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
@@ -51,7 +65,13 @@ describe('Integration: Authentication Flow', () => {
     })
     
     Object.defineProperty(global, 'window', {
-      value: { localStorage: global.localStorage },
+      value: {
+        localStorage: global.localStorage,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        location: { pathname: '/dashboard', href: '' }
+      },
       writable: true
     })
   })
