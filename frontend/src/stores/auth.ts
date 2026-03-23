@@ -49,6 +49,22 @@ function base64UrlDecode(str: string): string {
   }
 }
 
+/**
+ * Parse JWT exp claim and return expiry time in milliseconds.
+ * Returns null if token is invalid or has no exp claim.
+ */
+function getJwtExpiryMs(tokenStr: string): number | null {
+  try {
+    const parts = tokenStr.split('.');
+    if (parts.length !== 3 || !parts[1]) {return null;}
+    const payload = JSON.parse(base64UrlDecode(parts[1]));
+    if (typeof payload.exp !== 'number') {return null;}
+    return payload.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
 // Utility functions for auth management
 function clearAuthStorage() {
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -444,12 +460,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 新增：檢查 Token 是否已完全過期
+  // Check if access token JWT has expired (uses JWT exp claim, not sessionExpiry)
   function isTokenExpired(): boolean {
     if (!token.value) {return true;}
-    if (!sessionExpiry.value) {return false;} // 如果沒有過期時間，假設有效
-
-    return Date.now() >= sessionExpiry.value;
+    const expiryMs = getJwtExpiryMs(token.value);
+    if (expiryMs === null) {return true;}
+    return Date.now() >= expiryMs;
   }
 
   // 新增：驗證 Token 格式和內容
@@ -481,20 +497,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 檢查是否需要刷新 token (PURE FUNCTION - No side effects)
+  // Check if token should be proactively refreshed (PURE FUNCTION - No side effects)
+  // Uses JWT exp claim to determine proximity to expiry, not sessionExpiry
   function shouldRefreshToken(): boolean {
-    if (!token.value || !sessionExpiry.value) {return false;}
+    if (!token.value || !refreshToken.value) {return false;}
 
-    // 增強：先檢查 Token 是否已經完全過期
     if (isTokenExpired()) {
-      console.warn('[Auth] Token has expired, cannot refresh');
-      // Do NOT call logout here - validation functions must be pure
-      // Caller should handle logout based on expiration check
+      console.warn('[Auth] Token has expired, cannot proactively refresh');
       return false;
     }
 
-    // 如果 token 在 30 分鐘內過期，就刷新
-    return (sessionExpiry.value - Date.now()) < TOKEN_REFRESH_THRESHOLD;
+    const expiryMs = getJwtExpiryMs(token.value);
+    if (expiryMs === null) {return false;}
+    return (expiryMs - Date.now()) < TOKEN_REFRESH_THRESHOLD;
   }
 
   // 主動刷新 token
