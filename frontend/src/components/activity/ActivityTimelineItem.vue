@@ -23,7 +23,7 @@
         {{ getActivityDescription(activity) }}
       </div>
       <button
-        v-if="activity.details && Object.keys(activity.details).length > 0"
+        v-if="formattedDetails.length > 0"
         class="timeline-item__details-toggle"
         :aria-expanded="detailsExpanded"
         @click="detailsExpanded = !detailsExpanded"
