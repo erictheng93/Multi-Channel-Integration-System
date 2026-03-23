@@ -597,40 +597,32 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 刷新 Token
+  // Unified token refresh — delegates to apiClient which has request queue + retry logic
   async function refreshAuthToken() {
     if (!refreshToken.value) {
       return { success: false, error: 'No refresh token available' };
     }
 
     try {
-      const response = await authApi.refreshToken();
-      if (response.success && response.data) {
-        token.value = response.data.token;
-        if (response.data.refreshToken) {
-          refreshToken.value = response.data.refreshToken;
+      const newToken = await apiClient.refreshAuthToken();
+      if (newToken) {
+        // apiClient already updated localStorage + dispatched event
+        // Sync our reactive refs
+        token.value = newToken;
+        const storedRefresh = localStorage.getItem('refreshToken');
+        if (storedRefresh) {
+          refreshToken.value = storedRefresh;
         }
 
-        // 更新 localStorage 中的 token 資料
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('token', response.data.token);
-          if (response.data.refreshToken) {
-            localStorage.setItem('refreshToken', response.data.refreshToken);
-          }
-        }
+        // Parse updated team data from new token
+        parseJwtTeamData(newToken);
 
-        authApi.setAuthHeader(response.data.token, response.data.refreshToken);
-
-        // Phase B4: Reconnect WebSocket with new token
-        // The WebSocket connection uses the token from the URL, so we need to reconnect
-        // after token refresh to ensure the new token is used
+        // Reconnect WebSocket with new token
         try {
           const { useWebSocketStore } = await import('@/stores/websocket');
           const wsStore = useWebSocketStore();
-          console.log('[Auth] Token refreshed, reconnecting global WebSocket Store with new token...');
-          wsStore.reconnect().then(() => {
-            console.log('[Auth] Global WebSocket Store reconnected successfully after token refresh');
-          }).catch((err: Error) => {
+          console.log('[Auth] Token refreshed, reconnecting WebSocket...');
+          wsStore.reconnect().catch((err: Error) => {
             console.warn('[Auth] WebSocket reconnection failed after token refresh:', err);
           });
         } catch (wsError) {
@@ -639,11 +631,10 @@ export const useAuthStore = defineStore('auth', () => {
 
         return { success: true };
       } else {
-        await logout(false);
-        return { success: false, error: response.error || 'Token refresh failed' };
+        // apiClient.refreshAuthToken() returns null on failure and handles redirect
+        return { success: false, error: 'Token refresh failed' };
       }
     } catch (_err) {
-      await logout(false);
       return { success: false, error: 'Token refresh error' };
     }
   }
@@ -652,6 +643,24 @@ export const useAuthStore = defineStore('auth', () => {
   // 會話恢復將由 main.ts 調用 initializeSession() 來處理
   if (typeof window !== 'undefined' && token.value) {
     authApi.setAuthHeader(token.value, refreshToken.value || undefined);
+  }
+
+  // Listen for token refresh events from apiClient (e.g., 401 interceptor path)
+  if (typeof window !== 'undefined') {
+    const handleTokenRefreshed = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      const newToken = detail?.token as string | undefined;
+      const newRefresh = detail?.refreshToken as string | undefined;
+      if (newToken && newToken !== token.value) {
+        token.value = newToken;
+        if (newRefresh) {
+          refreshToken.value = newRefresh;
+        }
+        // Parse updated team data from new token
+        parseJwtTeamData(newToken);
+      }
+    };
+    window.addEventListener('auth:token-refreshed', handleTokenRefreshed);
   }
 
   return {

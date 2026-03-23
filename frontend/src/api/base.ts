@@ -106,7 +106,7 @@ class ApiClient {
     this.failedQueue = [];
   }
 
-  private async refreshAuthToken(): Promise<string | null> {
+  async refreshAuthToken(): Promise<string | null> {
     if (!this.refreshToken) {return null;}
 
     if (this.isRefreshing) {
@@ -140,6 +140,16 @@ class ApiClient {
             if (this.refreshToken) {
               localStorage.setItem('refreshToken', this.refreshToken);
             }
+          }
+
+          // Dispatch event for auth store to sync
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:token-refreshed', {
+              detail: {
+                token: this.token,
+                refreshToken: this.refreshToken
+              }
+            }));
           }
 
           this.processQueue(null, this.token);

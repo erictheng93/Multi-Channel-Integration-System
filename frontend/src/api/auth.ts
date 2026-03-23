@@ -31,16 +31,6 @@ export const authApi = {
     return apiClient.post('/auth/logout')
   },
 
-  // 刷新 Token
-  refresh: async (refreshToken: string): Promise<ApiResponse<{ token: string; refreshToken?: string }>> => {
-    return apiClient.post('/auth/refresh', { refreshToken })
-  },
-
-  // 刷新 Token (無參數版本，使用存儲的 refreshToken)
-  refreshToken: async (): Promise<ApiResponse<{ token: string; refreshToken?: string }>> => {
-    return apiClient.post('/auth/refresh')
-  },
-
   // 更改密碼（用於強制密碼更改）
   changePassword: async (
     data: { newPassword: string; currentPassword?: string },
