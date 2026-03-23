@@ -161,19 +161,149 @@ describe('formatActivityDetails', () => {
 // ─── getActivityDescription ───────────────────────────────────────────────────
 
 describe('getActivityDescription', () => {
-  it("returns Chinese text containing '\u767b\u5165\u7cfb\u7d71' for user_login", () => {
+  // Simple actions (no template placeholders)
+  it('returns "登入系統" for user_login', () => {
     const activity = makeActivity({ action: 'user_login' })
-    const desc = getActivityDescription(activity)
-    expect(desc).toContain('\u767b\u5165\u7cfb\u7d71')
+    expect(getActivityDescription(activity)).toBe('登入系統')
   })
 
-  it('includes resource info (resourceId) when available', () => {
+  it('returns "登出系統" for user_logout', () => {
+    const activity = makeActivity({ action: 'user_logout' })
+    expect(getActivityDescription(activity)).toBe('登出系統')
+  })
+
+  it('returns "關閉對話" for conversation_close', () => {
+    const activity = makeActivity({ action: 'conversation_close' })
+    expect(getActivityDescription(activity)).toBe('關閉對話')
+  })
+
+  it('returns "更新系統設定" for settings_update', () => {
+    const activity = makeActivity({ action: 'settings_update' })
+    expect(getActivityDescription(activity)).toBe('更新系統設定')
+  })
+
+  // Template actions — resolve names from details
+  it('resolves targetName for user_update', () => {
+    const activity = makeActivity({
+      action: 'user_update',
+      resourceId: 'agent-123',
+      details: { targetName: 'Claire' },
+    })
+    expect(getActivityDescription(activity)).toBe('更新用戶 Claire')
+  })
+
+  it('resolves teamName for team_create', () => {
+    const activity = makeActivity({
+      action: 'team_create',
+      resourceId: '12',
+      details: { teamName: 'Support Team' },
+    })
+    expect(getActivityDescription(activity)).toBe('建立團隊 Support Team')
+  })
+
+  it('resolves addedAgentName + teamName for member_add', () => {
+    const activity = makeActivity({
+      action: 'member_add',
+      resourceId: '5',
+      details: { addedAgentName: 'Alice', teamName: 'Sales' },
+    })
+    expect(getActivityDescription(activity)).toBe('新增 Alice 至 Sales')
+  })
+
+  it('resolves removedAgentName + teamName for member_remove', () => {
+    const activity = makeActivity({
+      action: 'member_remove',
+      resourceId: '5',
+      details: { removedAgentName: 'Bob', teamName: 'Sales' },
+    })
+    expect(getActivityDescription(activity)).toBe('移除 Bob 從 Sales')
+  })
+
+  it('resolves teamName for conversation_assign', () => {
     const activity = makeActivity({
       action: 'conversation_assign',
-      resourceId: 'conv-123',
+      resourceId: 'conv-uuid-123',
+      details: { teamName: 'Support' },
+    })
+    expect(getActivityDescription(activity)).toBe('指派對話至 Support')
+  })
+
+  it('resolves fromTeamName/toTeamName for conversation_transfer', () => {
+    const activity = makeActivity({
+      action: 'conversation_transfer',
+      resourceId: 'conv-uuid-456',
+      details: { fromTeamName: 'Team A', toTeamName: 'Team B' },
+    })
+    expect(getActivityDescription(activity)).toContain('Team A')
+    expect(getActivityDescription(activity)).toContain('Team B')
+  })
+
+  it('resolves tagName for tag_assign', () => {
+    const activity = makeActivity({
+      action: 'tag_assign',
+      resourceId: '29',
+      details: { tagName: 'VIP' },
+    })
+    expect(getActivityDescription(activity)).toBe('指派標籤 VIP')
+  })
+
+  it('resolves invitedEmail + teamName for team_invite', () => {
+    const activity = makeActivity({
+      action: 'team_invite',
+      resourceId: '5',
+      details: { invitedEmail: 'new@co.com', teamName: 'Dev' },
+    })
+    expect(getActivityDescription(activity)).toBe('邀請 new@co.com 加入 Dev')
+  })
+
+  // Fallback behavior — name not in details
+  it('falls back to truncated resourceId for user_update without targetName', () => {
+    const activity = makeActivity({
+      action: 'user_update',
+      resourceId: 'agent-1772442197684-4qstqowd2',
+      details: { updatedFields: ['displayName'] },
     })
     const desc = getActivityDescription(activity)
-    expect(desc).toContain('conv-123')
+    expect(desc).toContain('更新用戶')
+    expect(desc).toContain('#agent-17')
+    expect(desc.length).toBeLessThan(30)
+  })
+
+  it('omits resourceId for conversation_assign without teamName (action-aware fallback)', () => {
+    const activity = makeActivity({
+      action: 'conversation_assign',
+      resourceId: '7b038396-4b50-45bd-9dc8-9e5fd352d987',
+      details: { teamId: 5 },
+    })
+    const desc = getActivityDescription(activity)
+    expect(desc).toBe('指派對話')
+    expect(desc).not.toContain('7b038396')
+  })
+
+  it('omits resourceId for tag_assign without tagName (action-aware fallback)', () => {
+    const activity = makeActivity({
+      action: 'tag_assign',
+      resourceId: '23',
+      details: { tagIds: [1, 2] },
+    })
+    const desc = getActivityDescription(activity)
+    expect(desc).toBe('指派標籤')
+    expect(desc).not.toContain('23')
+  })
+
+  it('shows just action label when no resourceId and no names', () => {
+    const activity = makeActivity({
+      action: 'user_update',
+      resourceId: undefined,
+      details: {},
+    })
+    expect(getActivityDescription(activity)).toBe('更新用戶')
+  })
+
+  // Unknown action fallback
+  it('returns raw action string for unknown actions', () => {
+    const activity = makeActivity({ action: 'some_future_action' })
+    expect(getActivityDescription(activity)).toBe('some_future_action')
   })
 })
 
