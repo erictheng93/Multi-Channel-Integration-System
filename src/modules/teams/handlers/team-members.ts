@@ -131,6 +131,7 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
       resourceType: RESOURCE_TYPES.TEAM,
       resourceId: String(teamId),
       details: {
+        teamName: teamInfo?.name || String(teamId),
         agentIds: result.added,
         skipped: result.skipped,
         roleInTeam,

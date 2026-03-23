@@ -80,18 +80,16 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       await drizzleDb.insert(conversationTransfers).values(transferRecord);
     }
 
-    // WebSocket Broadcasting: Conversation Assignment
-    // Query team name for real-time UI updates
-    try {
-      let assignedTeamName: string | null = null;
+    // Query team name for activity log and WebSocket broadcast
+    const teamInfoForLog = await drizzleDb
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .get();
+    const assignedTeamName = teamInfoForLog?.name || null;
 
-      // Query team name
-      const teamInfo = await drizzleDb
-        .select({ name: teams.name })
-        .from(teams)
-        .where(eq(teams.id, teamId))
-        .get();
-      assignedTeamName = teamInfo?.name || null;
+    // WebSocket Broadcasting: Conversation Assignment
+    try {
 
       const broadcastService = new WebSocketBroadcastService(c.env);
       await broadcastService.broadcastConversationEvent({
@@ -129,7 +127,7 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
         action: ACTIVITY_ACTIONS.CONVERSATION_ASSIGN,
         resourceType: RESOURCE_TYPES.CONVERSATION,
         resourceId: conversationId,
-        details: { teamId, reason },
+        details: { teamName: assignedTeamName || String(teamId), teamId, reason },
         ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
         userAgent: c.req.header('User-Agent')
       }).catch(() => {});
@@ -429,6 +427,20 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
 
     await drizzleDb.insert(conversationTransfers).values(transferRecord);
 
+    // Fetch team names for activity log and WebSocket broadcast
+    const fromTeamForLog = fromTeamId ? await drizzleDb
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, fromTeamId))
+      .limit(1) : [];
+    const toTeamForLog = toTeamId ? await drizzleDb
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, toTeamId))
+      .limit(1) : [];
+    const fromTeamDisplayName = fromTeamForLog[0]?.name || String(fromTeamId);
+    const toTeamDisplayName = toTeamForLog[0]?.name || String(toTeamId);
+
     // Activity logging: conversation transfer
     try {
       const activityService = new ActivityService(c.env.DB);
@@ -439,7 +451,7 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
         action: ACTIVITY_ACTIONS.CONVERSATION_TRANSFER,
         resourceType: RESOURCE_TYPES.CONVERSATION,
         resourceId: conversationId,
-        details: { fromTeamId, toTeamId, reason },
+        details: { fromTeamName: fromTeamDisplayName, toTeamName: toTeamDisplayName, fromTeamId, toTeamId, reason },
         ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
         userAgent: c.req.header('User-Agent')
       }).catch(() => {});
@@ -466,18 +478,9 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
         .where(eq(conversations.id, conversationId))
         .get();
 
-      // Fetch team names for broadcast
-      const fromTeamInfo = fromTeamId ? await drizzleDb
-        .select({ name: teams.name })
-        .from(teams)
-        .where(eq(teams.id, fromTeamId))
-        .get() : null;
-
-      const toTeamInfo = toTeamId ? await drizzleDb
-        .select({ name: teams.name })
-        .from(teams)
-        .where(eq(teams.id, toTeamId))
-        .get() : null;
+      // Reuse pre-fetched team names for broadcast
+      const fromTeamInfo = fromTeamForLog[0] ? { name: fromTeamForLog[0].name } : null;
+      const toTeamInfo = toTeamForLog[0] ? { name: toTeamForLog[0].name } : null;
 
       // Use new dual-team broadcast method
       const broadcastResults = await broadcastService.broadcastConversationTransferred({
