@@ -8,16 +8,25 @@
         v-for="(conversation, index) in conversations"
         :key="conversation.id"
         class="conversation-card"
+        :class="{ 'has-unread': conversation.unreadCount > 0 }"
         :style="{ animationDelay: `${index * 50}ms` }"
         @click="$emit('select', conversation.id)"
       >
         <div class="card-header">
           <div class="customer-info">
-            <div class="customer-name">
-              {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
+            <div
+              v-if="conversation.unreadCount > 0"
+              class="unread-dot"
+            >
+              <span class="sr-only">未讀</span>
             </div>
-            <div class="customer-id">
-              ID: {{ conversation.userId }}
+            <div>
+              <div class="customer-name">
+                {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
+              </div>
+              <div class="customer-id">
+                ID: {{ conversation.userId }}
+              </div>
             </div>
           </div>
           <div class="badges">
@@ -187,8 +196,8 @@ const getAssignedTo = (conversation: Conversation) => {
 
 .customer-info {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 10px;
 }
 
 .customer-name {
@@ -199,6 +208,41 @@ const getAssignedTo = (conversation: Conversation) => {
 .customer-id {
   font-size: 0.85rem;
   color: #666;
+}
+
+.unread-dot {
+  width: 9px;
+  height: 9px;
+  background: #34C759;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.4);
+}
+
+.conversation-card.has-unread {
+  background: #F8FAFF;
+}
+
+.conversation-card.has-unread .customer-name {
+  font-weight: 700;
+  color: #1C1C1E;
+}
+
+.conversation-card.has-unread .last-message {
+  font-weight: 600;
+  color: #1C1C1E;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .badges {
