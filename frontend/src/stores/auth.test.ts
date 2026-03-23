@@ -41,6 +41,14 @@ function createValidJWT(userId: string = 'test-agent-id', role: string = 'agent'
   return `${header}.${payload}.${signature}`
 }
 
+// Helper: create JWT with specific exp (seconds since epoch)
+function createJWTWithExp(expSeconds: number, userId: string = 'test-agent-id', role: string = 'agent'): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+  const payload = btoa(JSON.stringify({ userId, role, exp: expSeconds }))
+  const signature = btoa('test-signature')
+  return `${header}.${payload}.${signature}`
+}
+
 describe('Auth Store', () => {
   beforeEach(() => {
     // 重置所有mock
@@ -234,9 +242,47 @@ describe('Auth Store', () => {
       error: '請輸入密碼'
     })
     
-    // Test empty password  
+    // Test empty password
     const result2 = await store.login({ email: 'test@example.com', password: '' })
     expect(result2).toBe(false)
     expect(store.error).toBe('請輸入密碼')
+  })
+
+  it('should detect token as expired when JWT exp is in the past', async () => {
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    const pastExp = Math.floor(Date.now() / 1000) - 3600
+    store.token = createJWTWithExp(pastExp)
+    store.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+    expect(store.isTokenExpired()).toBe(true)
+  })
+
+  it('should detect token as NOT expired when JWT exp is in the future', async () => {
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    const futureExp = Math.floor(Date.now() / 1000) + 3600
+    store.token = createJWTWithExp(futureExp)
+    store.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+    expect(store.isTokenExpired()).toBe(false)
+  })
+
+  it('should recommend refresh when JWT exp is within 30 minutes', async () => {
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    const soonExp = Math.floor(Date.now() / 1000) + 20 * 60
+    store.token = createJWTWithExp(soonExp)
+    store.refreshToken = createValidJWT()
+    store.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+    expect(store.shouldRefreshToken()).toBe(true)
+  })
+
+  it('should NOT recommend refresh when JWT exp is more than 30 minutes away', async () => {
+    const { useAuthStore } = await import('./auth')
+    const store = useAuthStore()
+    const laterExp = Math.floor(Date.now() / 1000) + 90 * 60
+    store.token = createJWTWithExp(laterExp)
+    store.refreshToken = createValidJWT()
+    store.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+    expect(store.shouldRefreshToken()).toBe(false)
   })
 })
