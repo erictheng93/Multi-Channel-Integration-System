@@ -3,11 +3,11 @@ import { setActivePinia, createPinia } from 'pinia'
 
 // 創建mock函數
 const mockLogin = vi.fn()
-const mockLogout = vi.fn()  
+const mockLogout = vi.fn()
 const mockGetCurrentAgent = vi.fn()
-const mockRefreshToken = vi.fn()
 const mockSetAuthHeader = vi.fn()
 const mockRemoveAuthHeader = vi.fn()
+const mockApiClientRefreshAuthToken = vi.fn()
 
 // Mock router
 const mockRouterPush = vi.fn().mockResolvedValue(undefined)
@@ -23,9 +23,22 @@ vi.mock('@/api/auth', () => ({
     login: mockLogin,
     logout: mockLogout,
     me: mockGetCurrentAgent,
-    refreshToken: mockRefreshToken,
     setAuthHeader: mockSetAuthHeader,
     removeAuthHeader: mockRemoveAuthHeader
+  }
+}))
+
+// Mock apiClient - refreshAuthToken is now the unified refresh path
+vi.mock('@/api/base', () => ({
+  apiClient: {
+    post: vi.fn(),
+    get: vi.fn(),
+    setAuthHeader: vi.fn(),
+    removeAuthHeader: vi.fn(),
+    setContextTeam: vi.fn(),
+    getContextTeam: vi.fn(),
+    getCurrentToken: vi.fn(),
+    refreshAuthToken: mockApiClientRefreshAuthToken
   }
 }))
 
@@ -56,7 +69,7 @@ describe('Auth Store', () => {
     mockLogin.mockReset()
     mockLogout.mockReset()
     mockGetCurrentAgent.mockReset()
-    mockRefreshToken.mockReset()
+    mockApiClientRefreshAuthToken.mockReset()
     mockSetAuthHeader.mockReset()
     mockRemoveAuthHeader.mockReset()
     mockRouterPush.mockReset()
@@ -75,10 +88,14 @@ describe('Auth Store', () => {
       writable: true
     })
     
-    // Mock window
+    // Mock window (includes addEventListener for auth:token-refreshed listener)
     Object.defineProperty(global, 'window', {
       value: {
-        localStorage: global.localStorage
+        localStorage: global.localStorage,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        location: { pathname: '/dashboard', href: '' }
       },
       writable: true
     })
@@ -201,12 +218,16 @@ describe('Auth Store', () => {
     expect(store.currentAgent).toEqual(mockAgent)
   })
 
-  it('should handle token refresh', async () => {
+  it('should handle token refresh via apiClient', async () => {
     const newToken = createValidJWT('1', 'agent')
 
-    mockRefreshToken.mockResolvedValue({
-      success: true,
-      data: { token: newToken }
+    mockApiClientRefreshAuthToken.mockResolvedValue(newToken)
+    // Mock localStorage to return refresh token after apiClient updates it
+    vi.mocked(global.localStorage.getItem).mockImplementation((key) => {
+      if (key === 'refreshToken') {
+        return createValidJWT('1', 'agent')
+      }
+      return null
     })
 
     const { useAuthStore } = await import('./auth')
@@ -218,8 +239,7 @@ describe('Auth Store', () => {
 
     expect(result.success).toBe(true)
     expect(store.token).toBe(newToken)
-    expect(mockSetAuthHeader).toHaveBeenCalledWith(newToken, undefined)
-    expect(global.localStorage.setItem).toHaveBeenCalledWith('token', newToken)
+    expect(mockApiClientRefreshAuthToken).toHaveBeenCalled()
   })
 
   it('should handle login validation', async () => {

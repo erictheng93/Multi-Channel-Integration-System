@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Use vi.hoisted to ensure mocks are available
-const { mockLogin, mockLogout, mockMe, mockRefresh, mockRefreshToken, mockSetAuthHeader, mockRemoveAuthHeader } = vi.hoisted(() => ({
+const { mockLogin, mockLogout, mockMe, mockSetAuthHeader, mockRemoveAuthHeader } = vi.hoisted(() => ({
   mockLogin: vi.fn(),
   mockLogout: vi.fn(),
   mockMe: vi.fn(),
-  mockRefresh: vi.fn(),
-  mockRefreshToken: vi.fn(),
   mockSetAuthHeader: vi.fn(),
   mockRemoveAuthHeader: vi.fn()
 }))
@@ -18,9 +16,7 @@ vi.mock('./auth', () => ({
     removeAuthHeader: mockRemoveAuthHeader,
     login: mockLogin,
     me: mockMe,
-    logout: mockLogout,
-    refresh: mockRefresh,
-    refreshToken: mockRefreshToken
+    logout: mockLogout
   }
 }))
 
@@ -136,58 +132,6 @@ describe('Auth API', () => {
       const result = await authApi.me()
       
       expect(mockMe).toHaveBeenCalled()
-      expect(result).toEqual(mockResponse)
-    })
-  })
-
-  describe('Token Refresh', () => {
-    it('should refresh token with refresh token parameter', async () => {
-      const refreshToken = 'current-refresh-token'
-      const mockResponse = {
-        success: true,
-        data: {
-          token: 'new-auth-token',
-          refreshToken: 'new-refresh-token'
-        }
-      }
-      
-      mockRefresh.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.refresh(refreshToken)
-      
-      expect(mockRefresh).toHaveBeenCalledWith(refreshToken)
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should refresh token without parameter', async () => {
-      const mockResponse = {
-        success: true,
-        data: {
-          token: 'new-auth-token',
-          refreshToken: 'new-refresh-token'
-        }
-      }
-      
-      mockRefreshToken.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.refreshToken()
-      
-      expect(mockRefreshToken).toHaveBeenCalled()
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('should handle refresh token failure', async () => {
-      const refreshToken = 'expired-refresh-token'
-      const mockResponse = {
-        success: false,
-        error: 'Refresh token expired'
-      }
-      
-      mockRefresh.mockResolvedValue(mockResponse)
-      
-      const result = await authApi.refresh(refreshToken)
-      
-      expect(mockRefresh).toHaveBeenCalledWith(refreshToken)
       expect(result).toEqual(mockResponse)
     })
   })
