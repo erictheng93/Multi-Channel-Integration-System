@@ -22,6 +22,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Hono } from 'hono';
+import { getTableName } from 'drizzle-orm';
 import type { Bindings } from '@backend/types';
 
 // ============================================================================
@@ -121,12 +122,18 @@ vi.mock('@/db/drizzle-factory', () => ({
         return chain;
       }),
 
-      insert: vi.fn().mockImplementation(() => ({
-        values: vi.fn().mockImplementation((values: any) => {
-          trackOperation('insert', 'messages', values);
-          return Promise.resolve({ success: true });
-        })
-      })),
+      insert: vi.fn().mockImplementation((table: any) => {
+        const tableName = getTableName(table);
+        return {
+          values: vi.fn().mockImplementation((values: any) => {
+            trackOperation('insert', tableName, values);
+            return {
+              returning: vi.fn().mockReturnValue(Promise.resolve([{ id: 1 }])),
+              then: (resolve: any, reject?: any) => Promise.resolve({ success: true }).then(resolve, reject),
+            };
+          })
+        };
+      }),
 
       update: vi.fn().mockImplementation(() => ({
         set: vi.fn().mockImplementation((setValues: any) => ({
