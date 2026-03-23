@@ -253,6 +253,10 @@ export const customerTagsHandler = {
         console.log(`[Customer Tags] Added ${newTagIds.length} tags using batch insert`);
 
         // Activity log (fire-and-forget)
+        const customerForLog = await drizzleDb.select({ displayName: customers.displayName }).from(customers).where(eq(customers.id, customerId)).limit(1);
+        const custName = customerForLog[0]?.displayName || String(customerId);
+        const tagsForLog = await drizzleDb.select({ name: tags.name }).from(tags).where(inArray(tags.id, newTagIds));
+        const tagNames = tagsForLog.map(t => t.name).join(', ');
         const activityService = new ActivityService(c.env.DB);
         activityService.logActivity({
           userId: payload?.userId?.toString() || 'system',
@@ -261,7 +265,7 @@ export const customerTagsHandler = {
           action: ACTIVITY_ACTIONS.TAG_ASSIGN,
           resourceType: RESOURCE_TYPES.CUSTOMER,
           resourceId: customerId.toString(),
-          details: { tagIds: newTagIds, operation: 'add' },
+          details: { customerName: custName, tagName: tagNames, tagIds: newTagIds, operation: 'add' },
           ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
           userAgent: c.req.header('User-Agent')
         }).catch(() => {});
@@ -336,6 +340,10 @@ export const customerTagsHandler = {
 
       // Activity log (fire-and-forget)
       const payload = c.get('jwtPayload');
+      const customerForLog = await drizzleDb.select({ displayName: customers.displayName }).from(customers).where(eq(customers.id, customerId)).limit(1);
+      const custName = customerForLog[0]?.displayName || String(customerId);
+      const tagsForLog = await drizzleDb.select({ name: tags.name }).from(tags).where(inArray(tags.id, tagIds));
+      const tagNames = tagsForLog.map(t => t.name).join(', ');
       const activityService = new ActivityService(c.env.DB);
       activityService.logActivity({
         userId: payload?.userId?.toString() || 'system',
@@ -344,7 +352,7 @@ export const customerTagsHandler = {
         action: ACTIVITY_ACTIONS.TAG_UNASSIGN,
         resourceType: RESOURCE_TYPES.CUSTOMER,
         resourceId: customerId.toString(),
-        details: { tagIds, operation: 'remove' },
+        details: { customerName: custName, tagName: tagNames, tagIds, operation: 'remove' },
         ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
         userAgent: c.req.header('User-Agent')
       }).catch(() => {});
@@ -446,6 +454,10 @@ export const customerTagsHandler = {
       }
 
       // Activity log (fire-and-forget)
+      const customerForLog = await drizzleDb.select({ displayName: customers.displayName }).from(customers).where(eq(customers.id, customerId)).limit(1);
+      const custName = customerForLog[0]?.displayName || String(customerId);
+      const tagsForLog = tagIds.length > 0 ? await drizzleDb.select({ name: tags.name }).from(tags).where(inArray(tags.id, tagIds)) : [];
+      const tagNames = tagsForLog.map(t => t.name).join(', ');
       const activityService = new ActivityService(c.env.DB);
       activityService.logActivity({
         userId: payload?.userId?.toString() || 'system',
@@ -454,7 +466,7 @@ export const customerTagsHandler = {
         action: ACTIVITY_ACTIONS.TAG_ASSIGN,
         resourceType: RESOURCE_TYPES.CUSTOMER,
         resourceId: customerId.toString(),
-        details: { tagIds, operation: 'set' },
+        details: { customerName: custName, tagName: tagNames, tagIds, operation: 'set' },
         ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
         userAgent: c.req.header('User-Agent')
       }).catch(() => {});
