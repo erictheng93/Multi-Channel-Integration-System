@@ -184,82 +184,136 @@ export function getActionIconStyle(action: string): ActionIconStyle {
   return DEFAULT_ICON_STYLE
 }
 
-// ─── formatActivityDetails ────────────────────────────────────────────────────
+// ─── humanizeKey ─────────────────────────────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  displayName: '顯示名稱',
+  email: '電子郵件',
+  role: '角色',
+  isActive: '啟用狀態',
+  teamName: '團隊名稱',
+  invitedEmail: '邀請信箱',
+  invitedRole: '邀請角色',
+  addedAgentName: '新增成員',
+  removedAgentName: '移除成員',
+  tagName: '標籤名稱',
+  customerName: '客戶名稱',
+  assigneeName: '指派對象',
+  fromTeamName: '原團隊',
+  toTeamName: '新團隊',
+  previousTeamName: '原團隊',
+  primaryTeamId: '主要團隊',
+  oldRole: '原角色',
+  newRole: '新角色',
+  ipAddress: 'IP Address',
+  userAgent: 'User Agent',
+  userId: 'User ID',
+  field: 'Field',
+  oldValue: 'Old Value',
+  newValue: 'New Value',
+  teamId: 'Team ID',
+  conversationId: 'Conversation ID',
+  agentId: 'Agent ID',
+  reason: '原因',
+  description: '描述',
+  status: '狀態',
+  password: '密碼',
+}
 
 function humanizeKey(key: string): string {
-  const known: Record<string, string> = {
-    ipAddress: 'IP Address',
-    userAgent: 'User Agent',
-    userId: 'User ID',
-    field: 'Field',
-    oldValue: 'Old Value',
-    newValue: 'New Value',
-    teamId: 'Team ID',
-    conversationId: 'Conversation ID',
-    agentId: 'Agent ID',
-  }
-  if (known[key]) { return known[key] }
-  // camelCase to Title Case
+  if (FIELD_LABELS[key]) { return FIELD_LABELS[key] }
   return key
     .replace(/([A-Z])/g, ' $1')
     .replace(/^./, s => s.toUpperCase())
     .trim()
 }
 
+// ─── formatActivityDetails ────────────────────────────────────────────────────
+
+// Fields shown in the description line — exclude from detail panel
+const DESCRIPTION_FIELDS = new Set([
+  'targetName', 'teamName', 'addedAgentName', 'removedAgentName',
+  'tagName', 'assigneeName', 'fromTeamName', 'toTeamName',
+  'previousTeamName', 'customerName', 'updatedAgentName', 'invitedEmail',
+])
+
+function isIdField(key: string): boolean {
+  return key.endsWith('Id') || key.endsWith('Ids')
+}
+
+function truncateValue(value: string, maxLen = 120): string {
+  if (value.length <= maxLen) {return value}
+  return `${value.slice(0, maxLen)  }...`
+}
+
+interface ChangeEntry {
+  field: string
+  old?: string
+  new?: string
+}
+
 export function formatActivityDetails(
   details: Record<string, unknown> | null | undefined,
-  action: string,
+  _action: string,
 ): DetailEntry[] {
   if (details === null || details === undefined) { return [] }
 
-  // settings_update — show old/new values with typed entries
-  if (action === 'settings_update') {
-    const entries: DetailEntry[] = []
-    if (details['field'] !== undefined) {
-      entries.push({ key: 'Field', value: String(details['field']), type: 'default' })
-    }
-    if (details['oldValue'] !== undefined) {
-      entries.push({ key: 'Old Value', value: String(details['oldValue']), type: 'old-value' })
-    }
-    if (details['newValue'] !== undefined) {
-      entries.push({ key: 'New Value', value: String(details['newValue']), type: 'new-value' })
-    }
-    // Fallback for other keys not handled above
+  // MODE 1: Diff view — changes[] array
+  if (Array.isArray(details['changes']) && details['changes'].length > 0) {
+    return (details['changes'] as ChangeEntry[]).map(change => ({
+      key: humanizeKey(change.field),
+      value: truncateValue(String(change.new ?? '')),
+      oldValue: change.old !== undefined ? truncateValue(String(change.old)) : undefined,
+      type: 'diff' as const,
+    }))
+  }
+
+  // MODE 2: Normalized diff — old settings_update format { field, oldValue, newValue }
+  if (
+    details['field'] !== undefined &&
+    (details['oldValue'] !== undefined || details['newValue'] !== undefined)
+  ) {
+    const entries: DetailEntry[] = [{
+      key: humanizeKey(String(details['field'])),
+      value: truncateValue(String(details['newValue'] ?? '')),
+      oldValue: details['oldValue'] !== undefined ? truncateValue(String(details['oldValue'])) : undefined,
+      type: 'diff' as const,
+    }]
+    // Include remaining keys not part of the field/oldValue/newValue triple
     for (const [k, v] of Object.entries(details)) {
-      if (!['field', 'oldValue', 'newValue'].includes(k)) {
-        entries.push({ key: humanizeKey(k), value: String(v), type: 'default' })
-      }
+      if (['field', 'oldValue', 'newValue'].includes(k)) {continue}
+      if (DESCRIPTION_FIELDS.has(k) || isIdField(k)) {continue}
+      entries.push({ key: humanizeKey(k), value: truncateValue(String(v)), type: 'default' })
     }
     return entries
   }
 
-  // user_login / user_logout — special handling for known login fields
-  if (action === 'user_login' || action === 'user_logout') {
-    const entries: DetailEntry[] = []
-    if (details['ipAddress'] !== undefined) {
-      entries.push({ key: 'IP Address', value: String(details['ipAddress']), type: 'default' })
-    }
-    if (details['userAgent'] !== undefined) {
-      entries.push({ key: 'User Agent', value: String(details['userAgent']), type: 'default' })
-    }
-    if (details['userId'] !== undefined) {
-      entries.push({ key: 'User ID', value: String(details['userId']), type: 'default' })
-    }
-    // Remaining unknown keys
-    for (const [k, v] of Object.entries(details)) {
-      if (!['ipAddress', 'userAgent', 'userId'].includes(k)) {
-        entries.push({ key: humanizeKey(k), value: String(v), type: 'default' })
-      }
-    }
-    return entries
+  // MODE 3: Field list — updatedFields[] array
+  if (Array.isArray(details['updatedFields']) && details['updatedFields'].length > 0) {
+    return [{
+      key: '變更欄位',
+      value: (details['updatedFields'] as string[]).join(', '),
+      type: 'default' as const,
+    }]
   }
 
-  // Generic fallback
-  return Object.entries(details).map(([k, v]) => ({
-    key: humanizeKey(k),
-    value: String(v),
-    type: 'default' as const,
-  }))
+  // MODE 4: Key-Value fallback — filter out description fields and IDs
+  const entries: DetailEntry[] = []
+  for (const [k, v] of Object.entries(details)) {
+    if (DESCRIPTION_FIELDS.has(k)) {continue}
+    if (isIdField(k)) {continue}
+    if (v === null || v === undefined) {continue}
+    // Skip changes array (already handled) and updatedFields
+    if (k === 'changes' || k === 'updatedFields') {continue}
+
+    const stringValue = typeof v === 'object' ? JSON.stringify(v) : String(v)
+    entries.push({
+      key: humanizeKey(k),
+      value: truncateValue(stringValue),
+      type: 'default' as const,
+    })
+  }
+  return entries
 }
 
 // ─── getActivityDescription ───────────────────────────────────────────────────
