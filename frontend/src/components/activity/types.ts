@@ -19,7 +19,8 @@ export interface ActionIconStyle {
 export interface DetailEntry {
   key: string
   value: string
-  type?: 'default' | 'old-value' | 'new-value'
+  oldValue?: string
+  type?: 'default' | 'old-value' | 'new-value' | 'diff'
 }
 
 /** Stats card data */
