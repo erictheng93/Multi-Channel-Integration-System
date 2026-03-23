@@ -103,14 +103,12 @@
 
       <!-- Right Section - Unread & Chevron -->
       <div class="end-section">
-        <!-- Unread Count -->
+        <!-- Unread Dot -->
         <Transition name="scale-pop">
           <div
             v-if="hasUnreadMessages"
             class="unread-badge"
-          >
-            {{ formattedUnreadCount }}
-          </div>
+          />
         </Transition>
 
         <!-- Chevron -->
@@ -178,10 +176,6 @@ const hasUnreadMessages = computed(() =>
   Boolean(props.conversation.unreadCount && props.conversation.unreadCount > 0)
 )
 
-const formattedUnreadCount = computed(() => {
-  const count = props.conversation.unreadCount || 0
-  return count > 99 ? '99+' : String(count)
-})
 
 const effectiveStatus = computed(() => {
   // 簡化狀態邏輯：基於 firstResponseAt 判斷
@@ -378,7 +372,7 @@ const formatTime = (date: Date | string | number) => {
 }
 
 .conversation-card-apple.has-unread {
-  background: linear-gradient(135deg, rgba(255, 59, 48, 0.04) 0%, var(--apple-bg) 50%);
+  background: linear-gradient(135deg, rgba(52, 199, 89, 0.06) 0%, var(--apple-bg) 50%);
 }
 
 /* ============================================
@@ -626,17 +620,12 @@ const formatTime = (date: Date | string | number) => {
 }
 
 .unread-badge {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 7px;
-  background: var(--apple-red);
-  border-radius: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: white;
+  width: 12px;
+  height: 12px;
+  background: var(--apple-green);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(52, 199, 89, 0.5);
+  flex-shrink: 0;
 }
 
 .chevron-icon {
