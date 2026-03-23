@@ -146,6 +146,7 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       resourceType: RESOURCE_TYPES.USER,
       resourceId: member.id,
       details: {
+        targetName: member.displayName || member.email,
         memberEmail: member.email,
         memberRole: member.role
       }
@@ -189,6 +190,7 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
     }
 
     const memberService = new MemberService(c.env.DB);
+    const existingMember = await memberService.getMember(memberId);
     const member = await memberService.updateMemberStatus(memberId, data, String(user.id));
 
     // Log activity
@@ -201,8 +203,12 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       resourceType: RESOURCE_TYPES.USER,
       resourceId: memberId,
       details: {
-        field: 'status',
-        newValue: data.isActive ? 'active' : 'inactive',
+        targetName: existingMember?.displayName || existingMember?.email || memberId,
+        changes: [{
+          field: 'isActive',
+          old: existingMember?.isActive ? 'active' : 'inactive',
+          new: data.isActive ? 'active' : 'inactive',
+        }],
         reason: data.reason
       }
     });
@@ -252,6 +258,7 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
     }
 
     const memberService = new MemberService(c.env.DB);
+    const existingMember = await memberService.getMember(memberId);
     const member = await memberService.updateMemberRole(memberId, data, String(user.id));
 
     // Log activity
@@ -264,8 +271,12 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       resourceType: RESOURCE_TYPES.USER,
       resourceId: memberId,
       details: {
-        field: 'role',
-        newValue: data.role,
+        targetName: existingMember?.displayName || existingMember?.email || memberId,
+        changes: [{
+          field: 'role',
+          old: existingMember?.role || '',
+          new: data.role,
+        }],
         reason: data.reason
       }
     });
@@ -300,6 +311,7 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
     const data: UpdateMemberRequest = await c.req.json();
 
     const memberService = new MemberService(c.env.DB);
+    const existingMember = await memberService.getMember(memberId);
     const member = await memberService.updateMember(memberId, data, String(user.id));
 
     // Log activity
@@ -312,7 +324,12 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
       resourceType: RESOURCE_TYPES.USER,
       resourceId: memberId,
       details: {
-        updatedFields: Object.keys(data)
+        targetName: existingMember?.displayName || existingMember?.email || memberId,
+        changes: Object.keys(data).map(field => ({
+          field,
+          old: String((existingMember as unknown as Record<string, unknown>)?.[field] ?? ''),
+          new: String((data as unknown as Record<string, unknown>)[field] ?? ''),
+        })),
       }
     });
 
@@ -379,6 +396,7 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
         resourceType: RESOURCE_TYPES.USER,
         resourceId: memberId,
         details: {
+          targetName: member.displayName || member.email,
           memberEmail: member.email,
           memberRole: member.role
         }
