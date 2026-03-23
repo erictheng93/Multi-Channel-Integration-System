@@ -121,40 +121,130 @@ describe('getActionIconStyle', () => {
 // ─── formatActivityDetails ────────────────────────────────────────────────────
 
 describe('formatActivityDetails', () => {
+  // Null/undefined handling
   it('returns [] for null details', () => {
-    const result = formatActivityDetails(null, 'user_login')
-    expect(result).toEqual([])
+    expect(formatActivityDetails(null, 'user_login')).toEqual([])
   })
 
   it('returns [] for undefined details', () => {
-    const result = formatActivityDetails(undefined, 'user_login')
-    expect(result).toEqual([])
+    expect(formatActivityDetails(undefined, 'user_login')).toEqual([])
   })
 
-  it('formats login details with IP Address key', () => {
-    const details = { ipAddress: '192.168.1.1', userAgent: 'Chrome', userId: 'u1' }
+  // MODE: Diff view (changes[] array)
+  it('renders diff view when changes[] is present', () => {
+    const details = {
+      targetName: 'Claire',
+      changes: [
+        { field: 'displayName', old: 'Alice', new: 'Claire' },
+        { field: 'email', old: 'a@x.com', new: 'c@x.com' },
+      ],
+    }
+    const result = formatActivityDetails(details, 'user_update')
+    // Should have 2 diff entries (targetName excluded)
+    expect(result).toHaveLength(2)
+    expect(result[0]!.type).toBe('diff')
+    expect(result[0]!.oldValue).toBe('Alice')
+    expect(result[0]!.value).toBe('Claire')
+  })
+
+  // MODE: Normalized diff (old settings_update format)
+  it('normalizes old settings_update format into diff view', () => {
+    const details = {
+      field: 'maxTeamMembers',
+      oldValue: '50',
+      newValue: '100',
+    }
+    const result = formatActivityDetails(details, 'settings_update')
+    expect(result).toHaveLength(1)
+    expect(result[0]!.type).toBe('diff')
+    expect(result[0]!.oldValue).toBe('50')
+    expect(result[0]!.value).toBe('100')
+  })
+
+  // MODE: Field list (updatedFields[])
+  it('renders field list when updatedFields[] is present', () => {
+    const details = {
+      targetName: 'Claire',
+      updatedFields: ['displayName', 'email', 'role'],
+    }
+    const result = formatActivityDetails(details, 'user_update')
+    expect(result).toHaveLength(1)
+    expect(result[0]!.value).toContain('displayName')
+    expect(result[0]!.value).toContain('email')
+    expect(result[0]!.value).toContain('role')
+  })
+
+  // MODE: Key-Value (generic fallback)
+  it('renders key-value for login details', () => {
+    const details = { ipAddress: '192.168.1.1', userAgent: 'Chrome' }
     const result = formatActivityDetails(details, 'user_login')
     const keys = result.map(e => e.key)
     expect(keys).toContain('IP Address')
+    expect(keys).toContain('User Agent')
+    expect(result.every(e => e.type === 'default')).toBe(true)
   })
 
-  it('formats settings_update with old-value and new-value types', () => {
-    const details = {
-      field: 'teamName',
-      oldValue: 'Old Name',
-      newValue: 'New Name',
-    }
-    const result = formatActivityDetails(details, 'settings_update')
-    const types = result.map(e => e.type)
-    expect(types).toContain('old-value')
-    expect(types).toContain('new-value')
-  })
-
-  it('falls back to generic key-value for unknown action structures', () => {
+  it('renders generic key-value for unknown action structures', () => {
     const details = { someKey: 'someValue', anotherKey: 42 }
     const result = formatActivityDetails(details, 'unknown_action')
-    expect(result.length).toBeGreaterThan(0)
+    expect(result.length).toBe(2)
     expect(result[0]!.type).toBe('default')
+  })
+
+  // Exclusion rules
+  it('excludes name fields used in description (targetName, teamName, etc.)', () => {
+    const details = {
+      targetName: 'Claire',
+      teamName: 'Support',
+      addedAgentName: 'Alice',
+      reason: 'manual',
+    }
+    const result = formatActivityDetails(details, 'member_add')
+    const keys = result.map(e => e.key)
+    expect(keys).not.toContain('Target Name')
+    expect(keys).not.toContain('Team Name')
+    expect(keys).not.toContain('Added Agent Name')
+  })
+
+  it('excludes raw ID fields (suffix Id)', () => {
+    const details = {
+      teamName: 'Support',
+      addedAgentName: 'Alice',
+      addedAgentId: 'agent-123',
+      teamId: 5,
+    }
+    const result = formatActivityDetails(details, 'member_add')
+    const keys = result.map(e => e.key)
+    expect(keys).not.toContain('Added Agent Id')
+    expect(keys).not.toContain('Team Id')
+  })
+
+  it('returns empty array when all fields are excluded', () => {
+    const details = {
+      targetName: 'Claire',
+      addedAgentId: 'agent-123',
+    }
+    const result = formatActivityDetails(details, 'user_create')
+    expect(result).toHaveLength(0)
+  })
+
+  // humanizeKey
+  it('humanizes known field names to Chinese labels in diff view', () => {
+    const details = {
+      changes: [
+        { field: 'displayName', old: 'A', new: 'B' },
+      ],
+    }
+    const result = formatActivityDetails(details, 'user_update')
+    expect(result[0]!.key).toBe('顯示名稱')
+  })
+
+  // Long value truncation
+  it('truncates values longer than 120 characters', () => {
+    const longValue = 'x'.repeat(150)
+    const details = { description: longValue }
+    const result = formatActivityDetails(details, 'team_update')
+    expect(result[0]!.value.length).toBeLessThanOrEqual(123) // 120 + "..."
   })
 })
 
