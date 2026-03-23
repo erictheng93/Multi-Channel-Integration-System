@@ -32,16 +32,29 @@
           v-for="(conversation, index) in conversations"
           :key="conversation.id"
           class="conversation-row"
+          :class="{ 'has-unread': conversation.unreadCount > 0 }"
           :style="{ animationDelay: `${index * 50}ms` }"
           @click="$emit('select', conversation.id)"
         >
           <td class="customer-cell">
             <div class="customer-info">
-              <div class="customer-name">
-                {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
+              <div
+                v-if="conversation.unreadCount > 0"
+                class="unread-dot"
+              >
+                <span class="sr-only">未讀</span>
               </div>
-              <div class="customer-id">
-                ID: {{ conversation.userId }}
+              <div
+                v-else
+                class="unread-dot-spacer"
+              />
+              <div>
+                <div class="customer-name">
+                  {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
+                </div>
+                <div class="customer-id">
+                  ID: {{ conversation.userId }}
+                </div>
               </div>
             </div>
           </td>
@@ -231,8 +244,49 @@ const getAssignedTo = (conversation: Conversation) => {
 /* Cell Content Styles */
 .customer-info {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  gap: 10px;
+}
+
+.unread-dot {
+  width: 9px;
+  height: 9px;
+  background: #34C759;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.4);
+}
+
+.unread-dot-spacer {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+}
+
+.conversation-row.has-unread {
+  background: #F8FAFF;
+}
+
+.conversation-row.has-unread .customer-name {
+  font-weight: 700;
+  color: #1C1C1E;
+}
+
+.conversation-row.has-unread .last-message {
+  font-weight: 600;
+  color: #1C1C1E;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 .customer-name {

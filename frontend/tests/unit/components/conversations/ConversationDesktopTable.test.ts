@@ -249,4 +249,38 @@ describe('ConversationDesktopTable.vue', () => {
       expect(wrapper.emitted('select')![0]).toEqual(['c2'])
     })
   })
+
+  describe('Unread indicator', () => {
+    it('should show unread dot when conversation has unreadCount > 0', () => {
+      const conv = createConversation({ unreadCount: 3 })
+      const wrapper = mountTable([conv])
+      expect(wrapper.find('.unread-dot').exists()).toBe(true)
+    })
+
+    it('should not show unread dot when unreadCount is 0', () => {
+      const conv = createConversation({ unreadCount: 0 })
+      const wrapper = mountTable([conv])
+      expect(wrapper.find('.unread-dot').exists()).toBe(false)
+    })
+
+    it('should add has-unread class to row when unread', () => {
+      const conv = createConversation({ unreadCount: 5 })
+      const wrapper = mountTable([conv])
+      expect(wrapper.find('.conversation-row').classes()).toContain('has-unread')
+    })
+
+    it('should not add has-unread class when read', () => {
+      const conv = createConversation({ unreadCount: 0 })
+      const wrapper = mountTable([conv])
+      expect(wrapper.find('.conversation-row').classes()).not.toContain('has-unread')
+    })
+
+    it('should include sr-only text for accessibility', () => {
+      const conv = createConversation({ unreadCount: 2 })
+      const wrapper = mountTable([conv])
+      const srOnly = wrapper.find('.sr-only')
+      expect(srOnly.exists()).toBe(true)
+      expect(srOnly.text()).toContain('未讀')
+    })
+  })
 })
