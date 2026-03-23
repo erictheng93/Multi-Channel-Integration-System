@@ -235,6 +235,40 @@ describe('ConversationMobileCards.vue', () => {
     })
   })
 
+  describe('Unread indicator', () => {
+    it('should show unread dot when conversation has unreadCount > 0', () => {
+      const conv = createConversation({ unreadCount: 3 })
+      const wrapper = mountCards([conv])
+      expect(wrapper.find('.unread-dot').exists()).toBe(true)
+    })
+
+    it('should not show unread dot when unreadCount is 0', () => {
+      const conv = createConversation({ unreadCount: 0 })
+      const wrapper = mountCards([conv])
+      expect(wrapper.find('.unread-dot').exists()).toBe(false)
+    })
+
+    it('should add has-unread class to card when unread', () => {
+      const conv = createConversation({ unreadCount: 5 })
+      const wrapper = mountCards([conv])
+      expect(wrapper.find('.conversation-card').classes()).toContain('has-unread')
+    })
+
+    it('should not add has-unread class when read', () => {
+      const conv = createConversation({ unreadCount: 0 })
+      const wrapper = mountCards([conv])
+      expect(wrapper.find('.conversation-card').classes()).not.toContain('has-unread')
+    })
+
+    it('should include sr-only text for accessibility', () => {
+      const conv = createConversation({ unreadCount: 2 })
+      const wrapper = mountCards([conv])
+      const srOnly = wrapper.find('.sr-only')
+      expect(srOnly.exists()).toBe(true)
+      expect(srOnly.text()).toContain('未讀')
+    })
+  })
+
   describe('Select emit', () => {
     it('should emit "select" with conversation id on card click', async () => {
       const conv = createConversation({ id: 'conv-mobile-1' })
