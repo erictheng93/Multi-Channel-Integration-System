@@ -145,6 +145,8 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       resourceType: RESOURCE_TYPES.TEAM,
       resourceId: String(teamId),
       details: {
+        addedAgentName: agentName,
+        teamName,
         agentId,
         roleInTeam: membership.roleInTeam,
         isPrimary: membership.isPrimary
@@ -356,8 +358,9 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
       resourceType: RESOURCE_TYPES.TEAM,
       resourceId: String(teamId),
       details: {
-        agentId,
+        removedAgentName: agentName,
         teamName,
+        agentId,
         affectedConversationCount: affectedConversationIds.length
       }
     });
@@ -417,8 +420,15 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
     const agentId = c.req.param('agentId')!;
     const teamId = getValidatedParam<number>(c, 'teamId');
     const { roleInTeam, isPrimary } = await c.req.json();
+    const db = drizzle(c.env.DB);
     const service = new AgentTeamsService(c.env.DB);
     const updated = await service.updateAgentTeamRole(agentId, teamId, { roleInTeam, isPrimary });
+
+    // Fetch names for activity log
+    const agentForLog = await db.select({ displayName: agents.displayName }).from(agents).where(eq(agents.id, agentId)).limit(1);
+    const teamForLog = await db.select({ name: teams.name }).from(teams).where(eq(teams.id, Number(teamId))).limit(1);
+    const agentDisplayName = agentForLog[0]?.displayName || agentId;
+    const teamDisplayName = teamForLog[0]?.name || String(teamId);
 
     // Log activity
     const activityService = new ActivityService(c.env.DB);
@@ -430,6 +440,8 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
       resourceType: RESOURCE_TYPES.TEAM,
       resourceId: String(teamId),
       details: {
+        targetName: agentDisplayName,
+        teamName: teamDisplayName,
         agentId,
         roleInTeam: updated.roleInTeam,
         isPrimary: updated.isPrimary
@@ -457,8 +469,13 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lea
     const user = c.get('user');
     const agentId = c.req.param('agentId')!;
     const teamId = getValidatedParam<number>(c, 'teamId');
+    const db = drizzle(c.env.DB);
     const service = new AgentTeamsService(c.env.DB);
     await service.setPrimaryTeam(agentId, teamId);
+
+    // Fetch names for activity log
+    const agentForLog = await db.select({ displayName: agents.displayName }).from(agents).where(eq(agents.id, agentId)).limit(1);
+    const teamForLog = await db.select({ name: teams.name }).from(teams).where(eq(teams.id, Number(teamId))).limit(1);
 
     // Log activity
     const activityService = new ActivityService(c.env.DB);
@@ -470,6 +487,8 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lea
       resourceType: RESOURCE_TYPES.USER,
       resourceId: agentId,
       details: {
+        targetName: agentForLog[0]?.displayName || agentId,
+        teamName: teamForLog[0]?.name || String(teamId),
         primaryTeamId: teamId
       }
     });
