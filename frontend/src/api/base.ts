@@ -201,8 +201,10 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     const { retries = 0, isRetry = false } = options;
 
-    console.log(` API Request: ${method} ${this.baseURL}${endpoint}`);
-    console.log(' Request data:', data);
+    if (import.meta.env.DEV) {
+      console.log(`API Request: ${method} ${this.baseURL}${endpoint}`);
+      console.log('Request data:', data);
+    }
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -211,7 +213,9 @@ class ApiClient {
         body: data ? JSON.stringify(data) : undefined
       });
 
-      console.log(` Response status: ${response.status} ${response.statusText}`);
+      if (import.meta.env.DEV) {
+        console.log(`Response status: ${response.status} ${response.statusText}`);
+      }
 
       let result;
       try {
@@ -320,7 +324,13 @@ class ApiClient {
   }
 
   // 專門處理檔案上傳的方法
-  async uploadFile<T>(endpoint: string, formData: globalThis.FormData): Promise<ApiResponse<T>> {
+  async uploadFile<T>(
+    endpoint: string,
+    formData: globalThis.FormData,
+    options: { isRetry?: boolean } = {}
+  ): Promise<ApiResponse<T>> {
+    const { isRetry = false } = options;
+
     try {
       const headers: Record<string, string> = {};
 
@@ -348,7 +358,15 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        // Handle 401 Unauthorized
+        // Handle 401 Unauthorized with token refresh (same pattern as request())
+        if (response.status === 401 && !isRetry && this.refreshToken) {
+          const newToken = await this.refreshAuthToken();
+          if (newToken) {
+            return this.uploadFile<T>(endpoint, formData, { isRetry: true });
+          }
+        }
+
+        // Handle 401 without refresh token
         if (response.status === 401) {
           if (typeof window !== 'undefined') {
             localStorage.removeItem('token');
