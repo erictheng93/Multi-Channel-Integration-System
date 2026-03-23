@@ -1,5 +1,8 @@
 <template>
-  <div class="content-section">
+  <div
+    ref="sectionRef"
+    class="content-section"
+  >
     <!-- Header -->
     <div class="content-header">
       <h2 class="content-title">
@@ -194,7 +197,7 @@
         <PaginationControls
           :pagination="paginationInfo"
           :visible-pages="pagination.pageRange.value"
-          @change-page="pagination.setPage"
+          @change-page="handlePageChange"
         />
       </template>
     </div>
@@ -202,7 +205,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import type { TeamMember, Team } from '@/types'
 import type { SortOption, SortState, SortMode } from '@/composables/useListSorting'
@@ -260,6 +263,9 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+// Template ref for scroll-into-view on page change
+const sectionRef = ref<HTMLElement | null>(null)
 
 // Search
 const searchQuery = ref('')
@@ -369,6 +375,14 @@ function handleSortSelect(field: string) {
 function handleResetToAuto() {
   emit('sort-mode-change', 'auto')
   pagination.setPage(1)
+}
+
+// Handle page change: update page and scroll section into view
+function handlePageChange(page: number) {
+  pagination.setPage(page)
+  nextTick(() => {
+    sectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 // Select all members on current page
