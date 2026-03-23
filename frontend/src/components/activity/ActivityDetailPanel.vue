@@ -15,13 +15,31 @@
           class="detail-entry"
         >
           <span class="detail-key">{{ entry.key }}</span>
-          <span
-            class="detail-value"
-            :class="{
-              'detail-value--old': entry.type === 'old-value',
-              'detail-value--new': entry.type === 'new-value',
-            }"
-          >{{ entry.value }}</span>
+          <template v-if="entry.type === 'diff'">
+            <span
+              v-if="entry.oldValue"
+              class="detail-value detail-value--old"
+              :title="entry.oldValue"
+            >{{ entry.oldValue }}</span>
+            <span
+              v-if="entry.oldValue"
+              class="detail-arrow"
+            >&rarr;</span>
+            <span
+              class="detail-value detail-value--new"
+              :title="entry.value"
+            >{{ entry.value }}</span>
+          </template>
+          <template v-else>
+            <span
+              class="detail-value"
+              :class="{
+                'detail-value--old': entry.type === 'old-value',
+                'detail-value--new': entry.type === 'new-value',
+              }"
+              :title="entry.value"
+            >{{ entry.value }}</span>
+          </template>
         </div>
       </div>
     </div>
@@ -100,12 +118,18 @@ function onLeave(el: Element): void {
 }
 
 .detail-value--old {
-  color: #FF3B30;
-  text-decoration: line-through;
+  color: #8E8E93;
 }
 
 .detail-value--new {
   color: #34C759;
   font-weight: 500;
+}
+
+.detail-arrow {
+  font-size: 12px;
+  color: #8E8E93;
+  flex-shrink: 0;
+  padding: 0 2px;
 }
 </style>
