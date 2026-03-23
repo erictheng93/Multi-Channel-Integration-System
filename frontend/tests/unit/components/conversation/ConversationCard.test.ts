@@ -233,7 +233,7 @@ describe('ConversationCard.vue', () => {
       expect(wrapper.find('.avatar-text').text()).toBe('JD')
     })
 
-    it('當有未讀訊息時應顯示未讀徽章', () => {
+    it('當有未讀訊息時應顯示未讀標識 (green dot)', () => {
       const conversation = createMockConversation({
         unreadCount: 5
       })
@@ -241,16 +241,8 @@ describe('ConversationCard.vue', () => {
 
       const unreadBadge = wrapper.find('.unread-badge')
       expect(unreadBadge.exists()).toBe(true)
-      expect(unreadBadge.text()).toBe('5')
-    })
-
-    it('未讀數超過99時應顯示99+', () => {
-      const conversation = createMockConversation({
-        unreadCount: 150
-      })
-      const wrapper = createWrapper(conversation)
-
-      expect(wrapper.find('.unread-badge').text()).toBe('99+')
+      // Green dot has no text content (no count display)
+      expect(unreadBadge.text()).toBe('')
     })
 
     it('無未讀訊息時不應顯示未讀徽章', () => {
@@ -260,6 +252,24 @@ describe('ConversationCard.vue', () => {
       const wrapper = createWrapper(conversation)
 
       expect(wrapper.find('.unread-badge').exists()).toBe(false)
+    })
+
+    it('當有未讀訊息時應有 has-unread class', () => {
+      const conversation = createMockConversation({
+        unreadCount: 3
+      })
+      const wrapper = createWrapper(conversation)
+
+      expect(wrapper.classes()).toContain('has-unread')
+    })
+
+    it('無未讀訊息時不應有 has-unread class', () => {
+      const conversation = createMockConversation({
+        unreadCount: 0
+      })
+      const wrapper = createWrapper(conversation)
+
+      expect(wrapper.classes()).not.toContain('has-unread')
     })
   })
 
