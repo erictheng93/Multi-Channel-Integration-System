@@ -1098,6 +1098,119 @@ describe('Conversation Handlers Integration Tests', () => {
   });
 
   // =========================================================================
+  // Unread count in conversation list response
+  // =========================================================================
+
+  describe('GET /api/conversations — unreadCount', () => {
+    test('should include unreadCount in response when unread messages exist', async () => {
+      resetMockDbState({
+        selectResults: [
+          {
+            conversations: {
+              id: 'conv-001',
+              customerId: 1,
+              assignedTeamId: null,
+              status: 'active',
+              priority: null,
+              firstResponseAt: null,
+              closedAt: null,
+              lastMessageAt: '2026-01-01T00:00:00Z',
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+              deletedAt: null,
+            },
+            customers: {
+              id: 1,
+              displayName: 'Test Customer',
+              platform: 'line',
+              platformUserId: 'U123',
+              avatarUrl: null,
+              createdAt: '2026-01-01T00:00:00Z',
+            },
+            teams: null,
+          },
+        ],
+      });
+
+      // Mock DB.prepare to return lastMessage + unread counts
+      const mockAll = vi.fn()
+        .mockResolvedValueOnce({ success: true, results: [
+          { messageId: 'msg-1', conversationId: 'conv-001', content: 'Hello', createdAt: '2026-01-01T00:00:00Z', senderType: 'customer', messageType: 'text' }
+        ] })  // latestMessages query
+        .mockResolvedValueOnce({ success: true, results: [
+          { conversationId: 'conv-001', unreadCount: 3 }
+        ] });  // unreadCount query
+
+      env.DB.prepare = vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(null),
+          all: mockAll,
+          run: vi.fn().mockResolvedValue({ success: true }),
+        }),
+      });
+
+      const res = await makeRequest(app, '/api/conversations');
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any;
+      expect(body.success).toBe(true);
+      expect(body.data[0].unreadCount).toBe(3);
+    });
+
+    test('should return unreadCount 0 when no unread messages', async () => {
+      resetMockDbState({
+        selectResults: [
+          {
+            conversations: {
+              id: 'conv-001',
+              customerId: 1,
+              assignedTeamId: null,
+              status: 'active',
+              priority: null,
+              firstResponseAt: null,
+              closedAt: null,
+              lastMessageAt: '2026-01-01T00:00:00Z',
+              createdAt: '2026-01-01T00:00:00Z',
+              updatedAt: '2026-01-01T00:00:00Z',
+              deletedAt: null,
+            },
+            customers: {
+              id: 1,
+              displayName: 'Test Customer',
+              platform: 'line',
+              platformUserId: 'U123',
+              avatarUrl: null,
+              createdAt: '2026-01-01T00:00:00Z',
+            },
+            teams: null,
+          },
+        ],
+      });
+
+      // Mock: last message from agent, no unread
+      const mockAll = vi.fn()
+        .mockResolvedValueOnce({ success: true, results: [
+          { messageId: 'msg-1', conversationId: 'conv-001', content: 'Agent reply', createdAt: '2026-01-01T01:00:00Z', senderType: 'agent', messageType: 'text' }
+        ] })
+        .mockResolvedValueOnce({ success: true, results: [] });  // empty = no unread
+
+      env.DB.prepare = vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(null),
+          all: mockAll,
+          run: vi.fn().mockResolvedValue({ success: true }),
+        }),
+      });
+
+      const res = await makeRequest(app, '/api/conversations');
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any;
+      expect(body.data[0].unreadCount).toBe(0);
+    });
+  });
+
+  // =========================================================================
   // Health check endpoint (no auth needed)
   // =========================================================================
 

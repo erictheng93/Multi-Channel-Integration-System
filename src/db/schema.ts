@@ -105,6 +105,7 @@ export const conversations = sqliteTable('conversations', {
   firstResponseAt: text('first_response_at'),
   closedAt: text('closed_at'),
   lastMessageAt: text('last_message_at'),
+  lastReadAt: text('last_read_at'), // When an agent last viewed this conversation (Migration 0047)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)

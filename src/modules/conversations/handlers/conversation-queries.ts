@@ -87,6 +87,38 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       log.warn('Failed to fetch latest message for conversation', { conversationId, error: msgError });
     }
 
+    // Query unread count for this conversation
+    // "Unread" = customer messages after MAX(last_agent_reply, last_read_at)
+    let unreadCount = 0;
+    try {
+      const unreadResult = await c.env.DB.prepare(`
+        SELECT COUNT(*) as unreadCount
+        FROM messages m
+        WHERE m.conversation_id = ?
+          AND m.sender_type = 'customer'
+          AND m.deleted_at IS NULL
+          AND m.created_at > MAX(
+            COALESCE(
+              (SELECT MAX(m2.created_at) FROM messages m2
+               WHERE m2.conversation_id = m.conversation_id
+               AND m2.sender_type IN ('agent', 'system')
+               AND m2.deleted_at IS NULL),
+              '1970-01-01'
+            ),
+            COALESCE(
+              (SELECT last_read_at FROM conversations WHERE id = m.conversation_id),
+              '1970-01-01'
+            )
+          )
+      `).bind(conversationId).first();
+
+      if (unreadResult) {
+        unreadCount = Number((unreadResult as any).unreadCount) || 0;
+      }
+    } catch (unreadError) {
+      log.warn('Failed to fetch unread count for conversation', { conversationId, error: unreadError });
+    }
+
     const displayContent = lastMessageData ? getDisplayContent(lastMessageData.content, lastMessageData.messageType) : null;
 
     // 構建完整的對話對象，包含嵌套的 customer 和 assignedTeam 對象
@@ -119,7 +151,9 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       } : null,
       lastMessageContent: displayContent,
       lastMessageAtActual: lastMessageData?.createdAt || null,
-      lastMessageType: lastMessageData?.messageType || null
+      lastMessageType: lastMessageData?.messageType || null,
+      // Unread count: customer messages awaiting agent response
+      unreadCount
     };
 
     return c.json({
@@ -396,6 +430,54 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       }
     }
 
+    // Batch query: count unread customer messages per conversation
+    // "Unread" = customer messages after MAX(last_agent_reply, last_read_at)
+    let unreadCountMap = new Map<string, number>();
+
+    if (conversationIds.length > 0) {
+      const unreadPlaceholders = conversationIds.map(() => '?').join(',');
+      const unreadCountQuery = `
+        SELECT
+          m.conversation_id as conversationId,
+          COUNT(*) as unreadCount
+        FROM messages m
+        WHERE m.conversation_id IN (${unreadPlaceholders})
+          AND m.sender_type = 'customer'
+          AND m.deleted_at IS NULL
+          AND m.created_at > MAX(
+            COALESCE(
+              (SELECT MAX(m2.created_at) FROM messages m2
+               WHERE m2.conversation_id = m.conversation_id
+               AND m2.sender_type IN ('agent', 'system')
+               AND m2.deleted_at IS NULL),
+              '1970-01-01'
+            ),
+            COALESCE(
+              (SELECT last_read_at FROM conversations WHERE id = m.conversation_id),
+              '1970-01-01'
+            )
+          )
+        GROUP BY m.conversation_id
+      `;
+
+      try {
+        const unreadResult = await c.env.DB.prepare(unreadCountQuery)
+          .bind(...conversationIds)
+          .all();
+
+        if (unreadResult.results) {
+          for (const row of unreadResult.results as any[]) {
+            unreadCountMap.set(row.conversationId, Number(row.unreadCount));
+          }
+        }
+      } catch (unreadError) {
+        log.warn('Failed to fetch unread counts', {
+          error: unreadError instanceof Error ? unreadError.message : String(unreadError)
+        });
+        // Continue with empty map — unreadCount will default to 0
+      }
+    }
+
     // 結合數據并統一為camelCase格式
     const combinedData = conversationData.map(conv => {
       const lastMsg = lastMessagesMap.get(conv.id);
@@ -415,7 +497,9 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         lastMessageContent: displayContent,
         lastMessageAtActual: lastMsg?.createdAt || null,
         // 新增: 原始消息類型，供前端判斷顯示樣式
-        lastMessageType: lastMsg?.messageType || null
+        lastMessageType: lastMsg?.messageType || null,
+        // Unread count: customer messages awaiting agent response
+        unreadCount: unreadCountMap.get(conv.id) || 0
       };
     });
 

@@ -256,11 +256,13 @@ export const useAuthStore = defineStore('auth', () => {
           }
         }
       } else {
-        // JWT 已過期或無效，清除所有數據
+        // JWT 已過期或無效，清除所有數據 + apiClient 記憶體中的 stale token
         clearAuthStorage();
+        apiClient.removeAuthHeader();
       }
     } else {
       clearAuthStorage();
+      apiClient.removeAuthHeader();
     }
   }
 
@@ -378,7 +380,12 @@ export const useAuthStore = defineStore('auth', () => {
     
     // 設定會話狀態為未認證
     setSessionStatus('unauthenticated');
-    
+
+    // Notify router to invalidate auth cache (avoids circular dependency via event)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:state-changed'));
+    }
+
     // Navigate to login (only if not already on login page)
     if (typeof window !== 'undefined' && window.location && !window.location.pathname.includes('/login')) {
       window.location.href = '/login';

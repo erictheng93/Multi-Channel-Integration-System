@@ -300,6 +300,14 @@ interface AuthCache {
 let authStateCache: AuthCache | null = null
 const AUTH_CACHE_TTL = 5000 // 5 seconds cache validity
 
+// Invalidate auth cache when auth state changes (e.g., logout)
+// Uses custom event to avoid circular dependency: router -> authGuard -> authStore -> router
+if (typeof window !== 'undefined') {
+  window.addEventListener('auth:state-changed', () => {
+    authStateCache = null
+  })
+}
+
 router.beforeEach(async (to, from, next) => {
   // 簡化的調試日誌
   console.log(' Navigation:', from.path, '->', to.path)
@@ -341,11 +349,11 @@ router.beforeEach(async (to, from, next) => {
 
   // Use combined auth guard for all authentication logic
   try {
-    await combinedAuthGuard(to, from, next)
+    const isAuthenticated = await combinedAuthGuard(to, from, next)
 
-    // FIX Phase 1: Update cache after successful auth check
+    // Update cache with ACTUAL auth state from guard (not hardcoded true)
     authStateCache = {
-      isAuthenticated: true,
+      isAuthenticated,
       requiresAuth,
       timestamp: now
     }
