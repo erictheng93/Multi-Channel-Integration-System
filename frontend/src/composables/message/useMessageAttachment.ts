@@ -16,6 +16,7 @@ import { computed, type Ref, type ComputedRef } from 'vue'
 import type { Message } from '@/types'
 import { isImageFile, isVideoFile } from '@/utils/message'
 import { MESSAGE_STATUS } from '@/constants/message-status'
+import { getApiUrl } from '@/config/runtime'
 
 /**
  * File Attachment Interface
@@ -99,7 +100,7 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
         // Use proxy endpoint to download from LINE API with auth
         const lineMessageId = meta.originalContentUrl?.match(/\/message\/(\d+)\/content/)?.[1]
         if (lineMessageId) {
-          return `/api/files/line-proxy/${lineMessageId}`
+          return getApiUrl(`/api/files/line-proxy/${lineMessageId}`)
         }
         // Fallback to direct URL (won't work without auth, but keeps the data available)
         return meta.originalContentUrl || meta.previewImageUrl

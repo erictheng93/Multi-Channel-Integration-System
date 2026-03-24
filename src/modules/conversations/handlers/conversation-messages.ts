@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, count } from 'drizzle-orm';
+import { eq, desc, and, count, inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, messages, customers, agents, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -408,6 +408,46 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
 
     log.debug('Messages API retrieved messages', { count: messageList.length, page });
 
+    // Batch-fetch file_attachments for all messages in this page
+    let attachmentsByMessageId: Record<string, Array<{
+      id: string;
+      filename: string;
+      mimeType: string;
+      fileSize: number;
+      fileUrl: string | null;
+    }>> = {};
+    if (messageList.length > 0) {
+      const messageIds = messageList.map(m => m.id);
+      const allAttachments = await drizzleDb
+        .select({
+          id: fileAttachments.id,
+          messageId: fileAttachments.messageId,
+          filename: fileAttachments.filename,
+          mimeType: fileAttachments.mimeType,
+          fileSize: fileAttachments.fileSize,
+          fileUrl: fileAttachments.fileUrl,
+        })
+        .from(fileAttachments)
+        .where(inArray(fileAttachments.messageId, messageIds))
+        .all();
+
+      for (const attachment of allAttachments) {
+        const msgId = attachment.messageId;
+        if (msgId) {
+          if (!attachmentsByMessageId[msgId]) {
+            attachmentsByMessageId[msgId] = [];
+          }
+          attachmentsByMessageId[msgId].push({
+            id: attachment.id,
+            filename: attachment.filename,
+            mimeType: attachment.mimeType,
+            fileSize: attachment.fileSize,
+            fileUrl: attachment.fileUrl,
+          });
+        }
+      }
+    }
+
     // 轉換為前端期望的 Message 格式
     const formattedMessages = messageList.map(row => ({
       id: row.id,
@@ -418,7 +458,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
         : row.agentSenderId || '',
       senderName: row.senderType === 'customer' ? row.customerName : row.agentName,
       content: row.content,
-      mediaUrl: '', // 需要從 metadata 或其他表獲取
+      mediaUrl: '', // Populated via file_attachments below
       mediaType: row.messageType as 'text' | 'image' | 'video' | 'file',
       platform: 'line' as const, // 需要從 conversation->customer 獲取
       createdAt: row.createdAt ? new Date(row.createdAt).getTime() : nowMs(),
@@ -430,7 +470,9 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       sentAt: row.sentAt,
       isRecalled: row.isRecalled,
       recallDeadline: row.recallDeadline,
-      recalledAt: row.recalledAt
+      recalledAt: row.recalledAt,
+      // File attachments from R2 storage
+      file_attachments: attachmentsByMessageId[row.id] || [],
     }));
 
     // 返回分頁響應格式
