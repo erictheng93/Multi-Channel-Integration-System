@@ -583,7 +583,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // PDF
   if (mime.includes('pdf') || ext === 'pdf') {
     return {
-      icon: '',
+      icon: 'PDF',
       label: 'PDF 文件',
       typeName: 'PDF 文檔',
       headerColor: '#E53935',
@@ -594,7 +594,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // Word
   if (mime.includes('word') || mime.includes('document') || ['doc', 'docx'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'DOC',
       label: 'Word 文件',
       typeName: 'Word 文檔',
       headerColor: '#2196F3',
@@ -605,7 +605,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // Excel
   if (mime.includes('excel') || mime.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'XLS',
       label: 'Excel 文件',
       typeName: 'Excel 表格',
       headerColor: '#4CAF50',
@@ -616,7 +616,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // PowerPoint
   if (mime.includes('powerpoint') || mime.includes('presentation') || ['ppt', 'pptx'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'PPT',
       label: 'PPT 文件',
       typeName: 'PowerPoint 簡報',
       headerColor: '#FF9800',
@@ -627,7 +627,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // Images
   if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'IMG',
       label: '圖片',
       typeName: '圖片檔案',
       headerColor: '#00BCD4',
@@ -638,7 +638,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // Video
   if (mime.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'VID',
       label: '影片',
       typeName: '影片檔案',
       headerColor: '#9C27B0',
@@ -649,7 +649,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // Audio
   if (mime.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'aac'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'AUD',
       label: '音訊',
       typeName: '音訊檔案',
       headerColor: '#E91E63',
@@ -661,7 +661,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   if (mime.includes('zip') || mime.includes('rar') || mime.includes('7z') ||
       ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'ZIP',
       label: '壓縮檔',
       typeName: '壓縮檔案',
       headerColor: '#795548',
@@ -672,7 +672,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // Text files
   if (mime.includes('text') || ['txt', 'md', 'json', 'xml', 'log'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'TXT',
       label: '文字檔',
       typeName: '文字文件',
       headerColor: '#607D8B',
@@ -683,7 +683,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
   // Code files
   if (['js', 'ts', 'py', 'java', 'cpp', 'c', 'html', 'css', 'vue', 'jsx', 'tsx'].includes(ext)) {
     return {
-      icon: '',
+      icon: 'CODE',
       label: '程式碼',
       typeName: '程式檔案',
       headerColor: '#3F51B5',
@@ -693,7 +693,7 @@ function getFileTypeInfo(mimeType: string, filename: string): {
 
   // Default
   return {
-    icon: '',
+    icon: 'FILE',
     label: '檔案',
     typeName: '檔案',
     headerColor: '#9C27B0',
@@ -832,7 +832,7 @@ export function createFileFlexMessage(
           type: 'button',
           action: {
             type: 'uri',
-            label: ' 打開此文件',
+            label: '打開此文件',
             uri: fileUrl
           },
           style: 'primary',
@@ -846,7 +846,7 @@ export function createFileFlexMessage(
 
   return {
     type: 'flex',
-    altText: ` ${filename}`,
+    altText: `[${fileInfo.label}] ${filename}`,
     contents: flexBubble
   };
 }
@@ -977,7 +977,7 @@ export function createImageFlexMessage(
           type: 'button',
           action: {
             type: 'uri',
-            label: ' 打開此圖片',
+            label: '打開此圖片',
             uri: imageUrl
           },
           style: 'primary',
@@ -991,7 +991,7 @@ export function createImageFlexMessage(
 
   return {
     type: 'flex',
-    altText: ` ${filename}`,
+    altText: `[圖片] ${filename}`,
     contents: flexBubble
   };
 }
