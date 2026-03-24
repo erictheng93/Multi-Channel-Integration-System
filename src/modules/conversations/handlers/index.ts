@@ -7,6 +7,7 @@ import conversationBulkHandler from './conversation-bulk';
 import conversationAssignmentHandler from './conversation-assignment';
 import conversationTagsHandler from './conversation-tags';
 import conversationMessagesHandler from './conversation-messages';
+import conversationReadHandler from './conversation-read';
 import conversationQueriesHandler from './conversation-queries';
 import { nowISO } from '@/utils/timestamp'
 
@@ -77,8 +78,9 @@ conversationsMainHandler.route('/', conversationAssignmentHandler);
 // Priority 3: /:id/tags (GET/POST/DELETE)
 conversationsMainHandler.route('/', conversationTagsHandler);
 
-// Priority 4: /:id/messages, /:id/attachments (before GET /:id)
+// Priority 4: /:id/messages, /:id/attachments, /:id/read (before GET /:id)
 conversationsMainHandler.route('/', conversationMessagesHandler);
+conversationsMainHandler.route('/', conversationReadHandler);
 
 // Priority 5 (LAST): GET /:id and GET / (catch-all patterns)
 conversationsMainHandler.route('/', conversationQueriesHandler);

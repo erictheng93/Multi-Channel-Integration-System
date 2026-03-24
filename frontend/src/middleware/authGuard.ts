@@ -75,50 +75,47 @@ export async function combinedAuthGuard(
   to: RouteLocationNormalized,
   _from: RouteLocationNormalized,
   next: NavigationGuardNext
-) {
+): Promise<boolean> {
   const authStore = useAuthStore()
 
   console.log(' Auth Guard:', to.path, '| Session Status:', authStore.sessionStatus)
 
-  // 關鍵修復：等待 session 初始化完成
+  // Wait for session initialization to complete
   if (authStore.sessionStatus === 'pending') {
     console.log(' Waiting for session initialization...')
     await authStore.initializeSession()
     console.log(' Session initialization completed:', authStore.sessionStatus)
   }
 
-  // 使用最終確定的 isAuthenticated 狀態（token 已驗證）
+  // Use the finalized isAuthenticated state (token validated)
   const isAuthenticated = authStore.isAuthenticated
 
-  // 1. 處理 guestOnly 頁面（如登入頁）
+  // 1. Handle guestOnly pages (e.g., login page)
   if (to.meta.guestOnly) {
     if (isAuthenticated) {
-      // 已登入用戶訪問登入頁，重定向到 dashboard
       console.log(' Already authenticated, redirecting to dashboard')
       next('/dashboard')
-      return
+      return true
     }
-    // 未登入用戶，允許訪問登入頁
     console.log(' Guest page, allowing access')
     next()
-    return
+    return false
   }
 
-  // 2. 處理需要認證的頁面
+  // 2. Handle pages that require auth
   if (to.meta.requiresAuth) {
     if (!isAuthenticated) {
-      // 未認證，重定向到登入頁
       console.log(' Not authenticated, redirecting to login')
       next('/login')
-      return
+      return false
     }
-    // 已認證，允許訪問
     console.log(' Authenticated, allowing access')
     next()
-    return
+    return true
   }
 
-  // 3. 其他頁面，直接通過
+  // 3. Other pages — allow through
   console.log(' Public page, allowing access')
   next()
+  return isAuthenticated
 }

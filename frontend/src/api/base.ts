@@ -17,6 +17,7 @@ class ApiClient {
   private refreshToken: string | null = null;
   private contextTeamId: number | null = null;  //  Phase 1: Multi-team context
   private isRefreshing = false;
+  private isRedirecting = false;
   private failedQueue: Array<{ resolve: (_token: string | null) => void; reject: (_error?: unknown) => void }> = [];
   private defaultRetryConfig: RetryConfig = {
     maxRetries: 3,
@@ -64,6 +65,25 @@ class ApiClient {
     this.refreshToken = null;
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.removeItem('refreshToken');
+    }
+  }
+
+  /**
+   * Safely redirect to login page.
+   * Guards against multiple concurrent redirects from parallel 401 responses.
+   * The isRedirecting flag resets naturally on page reload (full state destruction).
+   */
+  private redirectToLogin(): void {
+    if (this.isRedirecting) {
+      return;
+    }
+    this.isRedirecting = true;
+    this.token = null;
+    this.refreshToken = null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      window.location.href = '/login';
     }
   }
 
@@ -162,13 +182,9 @@ class ApiClient {
       this.isRefreshing = false;
     }
 
-    // Refresh failed, clear everything
-    this.removeAuthHeader();
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    
+    // Refresh failed — redirect to login (guarded against concurrent calls)
+    this.redirectToLogin();
+
     return null;
   }
 
@@ -235,13 +251,9 @@ class ApiClient {
           }
         }
 
-        // Handle 401 without refresh token
+        // Handle 401 without refresh token — guarded redirect
         if (response.status === 401) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            window.location.href = '/login';
-          }
+          this.redirectToLogin();
         }
 
         // Check if we should retry for server errors
@@ -366,13 +378,9 @@ class ApiClient {
           }
         }
 
-        // Handle 401 without refresh token
+        // Handle 401 without refresh token — guarded redirect
         if (response.status === 401) {
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            window.location.href = '/login';
-          }
+          this.redirectToLogin();
         }
 
         const errorMessage = result.error || result.message || this.getErrorMessage(response.status);
