@@ -99,6 +99,12 @@ app.use('*', async (c, next) => {
 
 log.info('Global CORS middleware registered successfully');
 
+// ==================== METRICS MIDDLEWARE (after CORS, before auth) ====================
+import { metricsMiddleware } from './middleware/metrics'
+log.info('Registering metrics collection middleware')
+app.use('/api/*', metricsMiddleware)
+log.info('Metrics middleware registered')
+
 // ==================== 統一路由管理系統初始化 ====================
 log.info('Initializing Unified Route Management System');
 
