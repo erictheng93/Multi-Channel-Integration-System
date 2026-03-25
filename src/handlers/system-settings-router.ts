@@ -25,6 +25,6 @@ router.get('/metrics', jwtAuth, getMetrics);
 
 // Public system endpoints (no auth)
 router.get('/health', healthCheck);
-router.get('/api-status', getApiStatus);
+router.get('/api-status', jwtAuth, getApiStatus);
 
 export default router;
