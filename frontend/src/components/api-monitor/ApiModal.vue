@@ -84,20 +84,6 @@
                 {{ api.successRate }}%
               </span>
             </div>
-            <div
-              v-if="api.error"
-              class="info-row error-row"
-            >
-              <span class="info-label">錯誤原因:</span>
-              <span class="info-value error-text">{{ api.error }}</span>
-            </div>
-            <div
-              v-if="api.errorTime"
-              class="info-row"
-            >
-              <span class="info-label">錯誤時間:</span>
-              <span class="info-value">{{ formatTime(api.errorTime) }}</span>
-            </div>
             <div class="info-row">
               <span class="info-label">最後檢查:</span>
               <span class="info-value">{{ formatTime(api.lastCheck) }}</span>
@@ -170,14 +156,14 @@ function getSuccessRateClass(rate: number): string {
   return 'poor'
 }
 
-function formatTime(date: Date): string {
+function formatTime(date: string): string {
   return new Intl.DateTimeFormat('zh-TW', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     month: 'short',
     day: 'numeric'
-  }).format(date)
+  }).format(new Date(date))
 }
 </script>
 

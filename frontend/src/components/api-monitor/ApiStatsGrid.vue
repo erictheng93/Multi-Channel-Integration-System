@@ -6,7 +6,7 @@
     >
       <div class="stat-content">
         <div class="stat-number">
-          {{ stats.healthy }}
+          {{ stats.healthyCount }}
         </div>
         <div class="stat-label">
           正常端點
@@ -33,7 +33,7 @@
     >
       <div class="stat-content">
         <div class="stat-number">
-          {{ stats.warning }}
+          {{ stats.warningCount }}
         </div>
         <div class="stat-label">
           警告端點
@@ -61,7 +61,7 @@
     >
       <div class="stat-content">
         <div class="stat-number">
-          {{ stats.error }}
+          {{ stats.errorCount }}
         </div>
         <div class="stat-label">
           錯誤端點
@@ -93,7 +93,7 @@
     >
       <div class="stat-content">
         <div class="stat-number">
-          {{ stats.total }}
+          {{ stats.totalEndpoints }}
         </div>
         <div class="stat-label">
           總端點數
