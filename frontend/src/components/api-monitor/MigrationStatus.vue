@@ -2,39 +2,20 @@
   <div class="migration-status">
     <div class="migration-card">
       <div class="migration-header">
-        <h2> WebSocket 遷移狀態</h2>
-        <span class="migration-badge">已完成</span>
+        <h2>WebSocket Migration Status</h2>
+        <span class="migration-badge">Completed</span>
       </div>
 
       <div class="migration-progress">
         <div class="progress-bar">
           <div
             class="progress-fill"
-            :style="{ width: status.rolloutPercentage + '%' }"
+            :style="{ width: '100%' }"
           />
         </div>
         <div class="progress-info">
-          <span>Rollout 進度: {{ status.rolloutPercentage }}%</span>
-          <span>更新時間: {{ formatTime(status.lastCheck) }}</span>
-        </div>
-      </div>
-
-      <div class="migration-details">
-        <div class="detail-row">
-          <span>WebSocket 狀態:</span>
-          <span class="status-badge success">
-            {{ status.websocketEnabled ? ' 已啟用' : ' 未啟用' }}
-          </span>
-        </div>
-        <div class="detail-row">
-          <span>Durable Objects:</span>
-          <span class="status-badge success">
-            {{ status.durableObjectsAvailable ? ' 可用' : ' 不可用' }}
-          </span>
-        </div>
-        <div class="detail-row">
-          <span>遷移策略:</span>
-          <span>{{ getMigrationStrategyText(status.migrationStrategy) }}</span>
+          <span>Rollout: 100%</span>
+          <span>Durable Objects: Active</span>
         </div>
       </div>
     </div>
@@ -42,32 +23,8 @@
 </template>
 
 <script setup lang="ts">
-import type { MigrationStatus } from '@/types/api-monitor'
-
-interface Props {
-  status: MigrationStatus
-}
-
-defineProps<Props>()
-
-function formatTime(date: Date): string {
-  return new Intl.DateTimeFormat('zh-TW', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    month: 'short',
-    day: 'numeric'
-  }).format(date)
-}
-
-function getMigrationStrategyText(strategy: string): string {
-  const strategyMap: Record<string, string> = {
-    gradual: '漸進式',
-    immediate: '立即',
-    canary: '金絲雀'
-  }
-  return strategyMap[strategy] || strategy
-}
+// MigrationStatus is now a static display component.
+// WebSocket migration is complete; no dynamic props needed.
 </script>
 
 <style scoped>
@@ -132,30 +89,6 @@ function getMigrationStrategyText(strategy: string): string {
   opacity: 0.9;
 }
 
-.migration-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 1.5rem;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.875rem;
-}
-
-.status-badge.success {
-  background: rgba(34, 197, 94, 0.2);
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .migration-card {
@@ -171,10 +104,6 @@ function getMigrationStrategyText(strategy: string): string {
 
   .migration-header h2 {
     font-size: 1.25rem;
-  }
-
-  .migration-details {
-    grid-template-columns: 1fr;
   }
 }
 </style>

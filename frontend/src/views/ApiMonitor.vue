@@ -4,38 +4,37 @@
       <!-- Header with refresh controls -->
       <ApiHeader
         :loading="controller.isRefreshing.value"
-        :auto-refresh="controller.autoRefresh.enabled"
+        :auto-refresh="controller.autoRefresh.value.enabled"
         @refresh="controller.refreshAll"
         @toggle-auto-refresh="handleAutoRefreshToggle"
       />
 
       <!-- WebSocket Migration Status Card -->
-      <MigrationStatus :status="controller.migrationStatus.value" />
+      <MigrationStatus />
 
       <!-- Statistics Overview Grid -->
       <ApiStatsGrid
         :stats="controller.stats.value"
-        @stat-click="controller.showStatDetails"
+        @stat-click="handleStatClick"
       />
 
       <!-- Filter Controls -->
-      <ApiFilter v-model="controller.filters" />
+      <ApiFilter v-model="controller.filters.value" />
 
       <!-- API Cards List -->
       <ApiCardList
         :apis="controller.filteredApis.value"
         :expanded-card="controller.expandedCard.value"
         @card-click="controller.toggleCard"
-        @test="controller.testApi"
         @view-logs="handleViewLogs"
         @view-docs="handleViewDocs"
       />
 
       <!-- Statistics Detail Modal -->
       <ApiModal
-        v-if="controller.modal.show"
-        :modal-state="controller.modal"
-        :total-apis="controller.apis.value.length"
+        v-if="controller.modal.value.show"
+        :modal-state="controller.modal.value"
+        :total-apis="controller.endpoints.value.length"
         @close="controller.closeModal"
       />
     </div>
@@ -54,7 +53,7 @@ import {
   ApiModal,
   MigrationStatus
 } from '@/components/api-monitor'
-import type { ApiEndpoint } from '@/types/api-monitor'
+import type { ApiEndpoint, ApiStatus } from '@/types/api-monitor'
 
 // Initialize controller
 const controller = useApiMonitorController()
@@ -69,18 +68,22 @@ onUnmounted(() => {
 })
 
 // Event Handlers
-function handleAutoRefreshToggle(enabled: boolean) {
-  controller.autoRefresh.enabled = enabled
+function handleAutoRefreshToggle(_enabled: boolean) {
   controller.toggleAutoRefresh()
 }
 
+function handleStatClick(type: 'all' | 'healthy' | 'warning' | 'error') {
+  if (type === 'all') {return}
+  controller.showStatDetails(type as ApiStatus)
+}
+
 function handleViewLogs(api: ApiEndpoint) {
-  // Stub: Log viewer — requires backend /api/system/logs endpoint
+  // Stub: Log viewer -- requires backend /api/system/logs endpoint
   console.info('API logs requested for:', api.endpoint)
 }
 
 function handleViewDocs(api: ApiEndpoint) {
-  // Stub: API docs viewer — render OpenAPI spec when available
+  // Stub: API docs viewer -- render OpenAPI spec when available
   console.info('API documentation requested for:', api.endpoint)
 }
 </script>

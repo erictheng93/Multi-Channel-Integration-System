@@ -85,23 +85,6 @@
 
       <div class="detail-actions">
         <button
-          class="test-btn"
-          :disabled="api.testing"
-          @click.stop="$emit('test', api)"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-          </svg>
-          {{ api.testing ? '測試中...' : '測試API' }}
-        </button>
-        <button
           class="logs-btn"
           @click.stop="$emit('view-logs', api)"
         >
@@ -151,18 +134,12 @@
       </div>
 
       <div
-        v-if="api.error"
+        v-if="api.status === 'error'"
         class="error-info"
       >
         <h4>錯誤信息</h4>
         <div class="error-message">
-          {{ api.error }}
-        </div>
-        <div
-          v-if="api.errorTime"
-          class="error-time"
-        >
-          {{ formatErrorTime(api.errorTime) }}
+          Endpoint reporting error status
         </div>
       </div>
     </div>
@@ -180,7 +157,6 @@ interface Props {
 
 interface Emits {
   (_e: 'toggle', _id: string): void
-  (_e: 'test', _api: ApiEndpoint): void
   (_e: 'view-logs', _api: ApiEndpoint): void
   (_e: 'view-docs', _api: ApiEndpoint): void
 }
@@ -233,18 +209,8 @@ const lastCheckTime = computed(() => {
     second: '2-digit',
     month: 'short',
     day: 'numeric'
-  }).format(props.api.lastCheck)
+  }).format(new Date(props.api.lastCheck))
 })
-
-function formatErrorTime(date: Date): string {
-  return new Intl.DateTimeFormat('zh-TW', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    month: 'short',
-    day: 'numeric'
-  }).format(date)
-}
 </script>
 
 <style scoped>
