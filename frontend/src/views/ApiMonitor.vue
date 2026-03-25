@@ -4,13 +4,10 @@
       <!-- Header with refresh controls -->
       <ApiHeader
         :loading="controller.isRefreshing.value"
-        :auto-refresh="controller.autoRefresh.value.enabled"
+        :auto-refresh-enabled="controller.autoRefresh.value.enabled"
         @refresh="controller.refreshAll"
-        @toggle-auto-refresh="handleAutoRefreshToggle"
+        @toggle-auto-refresh="controller.toggleAutoRefresh"
       />
-
-      <!-- WebSocket Migration Status Card -->
-      <MigrationStatus />
 
       <!-- Statistics Overview Grid -->
       <ApiStatsGrid
@@ -19,15 +16,16 @@
       />
 
       <!-- Filter Controls -->
-      <ApiFilter v-model="controller.filters.value" />
+      <ApiFilter
+        :filters="controller.filters.value"
+        @update:filters="handleFilterUpdate"
+      />
 
       <!-- API Cards List -->
       <ApiCardList
-        :apis="controller.filteredApis.value"
+        :endpoints="controller.filteredApis.value"
         :expanded-card="controller.expandedCard.value"
-        @card-click="controller.toggleCard"
-        @view-logs="handleViewLogs"
-        @view-docs="handleViewDocs"
+        @toggle-card="controller.toggleCard"
       />
 
       <!-- Statistics Detail Modal -->
@@ -51,9 +49,8 @@ import {
   ApiFilter,
   ApiCardList,
   ApiModal,
-  MigrationStatus
 } from '@/components/api-monitor'
-import type { ApiEndpoint, ApiStatus } from '@/types/api-monitor'
+import type { ApiStatus, FilterState } from '@/types/api-monitor'
 
 // Initialize controller
 const controller = useApiMonitorController()
@@ -68,23 +65,13 @@ onUnmounted(() => {
 })
 
 // Event Handlers
-function handleAutoRefreshToggle(_enabled: boolean) {
-  controller.toggleAutoRefresh()
-}
-
-function handleStatClick(type: 'all' | 'healthy' | 'warning' | 'error') {
-  if (type === 'all') {return}
+function handleStatClick(type: string) {
+  if (type === 'all') { return }
   controller.showStatDetails(type as ApiStatus)
 }
 
-function handleViewLogs(api: ApiEndpoint) {
-  // Stub: Log viewer -- requires backend /api/system/logs endpoint
-  console.info('API logs requested for:', api.endpoint)
-}
-
-function handleViewDocs(api: ApiEndpoint) {
-  // Stub: API docs viewer -- render OpenAPI spec when available
-  console.info('API documentation requested for:', api.endpoint)
+function handleFilterUpdate(filters: FilterState) {
+  controller.filters.value = filters
 }
 </script>
 
