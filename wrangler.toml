@@ -155,6 +155,11 @@ class_name = "CustomerMessageDO"
 name = "RATE_LIMITER"
 class_name = "RateLimiterDO"
 
+# MetricsCollector - Aggregates API request metrics in memory
+[[durable_objects.bindings]]
+name = "METRICS_COLLECTOR"
+class_name = "MetricsCollectorDO"
+
 # =================== DURABLE OBJECTS MIGRATIONS ===================
 
 # Initial migration - Original Durable Objects (v1 - DO NOT MODIFY!)
@@ -193,6 +198,11 @@ new_classes = [
 [[migrations]]
 tag = "v5"
 new_sqlite_classes = ["RateLimiterDO"]
+
+# Migration v6 - Add MetricsCollectorDO for real API metrics
+[[migrations]]
+tag = "v6"
+new_classes = ["MetricsCollectorDO"]
 
 # =================== DEPLOYMENT ENVIRONMENT POLICY ===================
 #
