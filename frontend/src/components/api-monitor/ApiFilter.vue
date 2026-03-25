@@ -1,171 +1,102 @@
 <template>
-  <div class="api-filter">
-    <div class="filter-group">
-      <label>狀態:</label>
-      <select v-model="localFilters.status">
-        <option value="all">
-          全部
-        </option>
-        <option value="healthy">
-          正常
-        </option>
-        <option value="warning">
-          警告
-        </option>
-        <option value="error">
-          錯誤
-        </option>
-      </select>
-    </div>
+  <div class="flex flex-wrap gap-2">
+    <!-- Status pills -->
+    <button
+      v-for="s in statusOptions"
+      :key="s.value"
+      class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer"
+      :class="filters.status === s.value
+        ? 'bg-[#007AFF] text-white'
+        : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
+      @click="updateFilter('status', s.value)"
+    >
+      {{ s.label }}
+    </button>
 
-    <div class="filter-group">
-      <label>分類:</label>
-      <select v-model="localFilters.category">
-        <option value="all">
-          全部
-        </option>
-        <option value="system">
-          系統
-        </option>
-        <option value="auth">
-          認證
-        </option>
-        <option value="conversation">
-          對話
-        </option>
-        <option value="customer">
-          客戶
-        </option>
-        <option value="team">
-          團隊
-        </option>
-      </select>
-    </div>
+    <!-- Divider -->
+    <div class="w-px h-6 bg-[#E5E5EA] self-center mx-1" />
 
-    <div class="filter-group">
+    <!-- Category pills -->
+    <button
+      v-for="c in categoryOptions"
+      :key="c.value"
+      class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer"
+      :class="filters.category === c.value
+        ? 'bg-[#007AFF] text-white'
+        : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
+      @click="updateFilter('category', c.value)"
+    >
+      {{ c.label }}
+    </button>
+
+    <!-- Search input (right side) -->
+    <div class="flex-1 min-w-[160px] relative ml-auto">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#8E8E93"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+      >
+        <circle
+          cx="11"
+          cy="11"
+          r="8"
+        />
+        <line
+          x1="21"
+          y1="21"
+          x2="16.65"
+          y2="16.65"
+        />
+      </svg>
       <input
-        v-model="localFilters.search"
+        :value="filters.search"
         type="text"
-        placeholder="搜索API端點..."
-        class="search-input"
+        placeholder="Search endpoints..."
+        class="w-full rounded-full pl-9 pr-3.5 py-1.5 text-xs bg-[#F2F2F7] text-[#1C1C1E] border-none outline-none placeholder-[#8E8E93] focus:ring-2 focus:ring-[#007AFF]/30"
+        @input="updateSearch"
       >
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
 import type { FilterState } from '@/types/api-monitor'
 
-interface Props {
-  modelValue: FilterState
+const props = defineProps<{
+  filters: FilterState
+}>()
+
+const emit = defineEmits<{
+  (_e: 'update:filters', _value: FilterState): void
+}>()
+
+const statusOptions = [
+  { value: 'all' as const, label: 'All' },
+  { value: 'healthy' as const, label: 'Healthy' },
+  { value: 'warning' as const, label: 'Warning' },
+  { value: 'error' as const, label: 'Error' },
+]
+
+const categoryOptions = [
+  { value: 'all' as const, label: 'All' },
+  { value: 'system' as const, label: 'System' },
+  { value: 'auth' as const, label: 'Auth' },
+  { value: 'conversation' as const, label: 'Business' },
+  { value: 'integration' as const, label: 'Integration' },
+]
+
+function updateFilter(key: 'status' | 'category', value: string) {
+  emit('update:filters', { ...props.filters, [key]: value })
 }
 
-interface Emits {
-  (_e: 'update:modelValue', _value: FilterState): void
+function updateSearch(e: Event) {
+  const target = e.target as HTMLInputElement
+  emit('update:filters', { ...props.filters, search: target.value })
 }
-
-const props = defineProps<Props>()
-const emit = defineEmits<Emits>()
-
-const localFilters = reactive<FilterState>({
-  status: props.modelValue.status,
-  category: props.modelValue.category,
-  search: props.modelValue.search
-})
-
-// Watch for changes and emit
-watch(localFilters, (newValue) => {
-  emit('update:modelValue', { ...newValue })
-}, { deep: true })
-
-// Watch for external changes
-watch(() => props.modelValue, (newValue) => {
-  localFilters.status = newValue.status
-  localFilters.category = newValue.category
-  localFilters.search = newValue.search
-}, { deep: true })
 </script>
-
-<style scoped>
-.api-filter {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding: 1rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1.5rem;
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.filter-group label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #64748b;
-  white-space: nowrap;
-}
-
-.filter-group select,
-.search-input {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  background: white;
-  transition: all 0.2s;
-  outline: none;
-}
-
-.filter-group select {
-  min-width: 120px;
-  cursor: pointer;
-}
-
-.filter-group select:focus,
-.search-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.filter-group select:hover {
-  border-color: #667eea;
-}
-
-.search-input {
-  min-width: 200px;
-  flex: 1;
-}
-
-.search-input::placeholder {
-  color: #9ca3af;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .api-filter {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
-  }
-
-  .filter-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.25rem;
-  }
-
-  .filter-group select,
-  .search-input {
-    min-width: auto;
-    width: 100%;
-  }
-}
-</style>
