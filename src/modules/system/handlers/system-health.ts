@@ -110,130 +110,213 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
   }
 }
 
-// API monitoring endpoint - get all endpoint statuses
+// API monitoring endpoint - get all endpoint statuses (real data from MetricsCollectorDO + infra probes)
 export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const endpoints = [
-      {
-        id: 'system-health',
-        endpoint: '/api/system/health',
-        method: 'GET',
-        category: 'system',
-        description: '系統健康檢查',
-        status: 'healthy' as const,
-        requiresAuth: false
-      },
-      {
-        id: 'system-info',
-        endpoint: '/api/system/info',
-        method: 'GET',
-        category: 'system',
-        description: '獲取系統信息',
-        status: 'healthy' as const,
-        requiresAuth: true
-      },
-      {
-        id: 'system-metrics',
-        endpoint: '/api/system/metrics',
-        method: 'GET',
-        category: 'system',
-        description: '系統性能指標',
-        status: 'healthy' as const,
-        requiresAuth: true
-      },
-      {
-        id: 'auth-login',
-        endpoint: '/api/auth/login',
-        method: 'POST',
-        category: 'auth',
-        description: '用戶登入',
-        status: 'healthy' as const,
-        requiresAuth: false
-      },
-      {
-        id: 'conversations-list',
-        endpoint: '/api/conversations',
-        method: 'GET',
-        category: 'conversation',
-        description: '獲取對話列表',
-        status: 'healthy' as const,
-        requiresAuth: true
-      },
-      {
-        id: 'customers-list',
-        endpoint: '/api/customers',
-        method: 'GET',
-        category: 'customer',
-        description: '獲取客戶列表',
-        status: 'healthy' as const,
-        requiresAuth: true
-      },
-      {
-        id: 'team-members',
-        endpoint: '/api/team/members',
-        method: 'GET',
-        category: 'team',
-        description: '獲取團隊成員',
-        status: 'healthy' as const,
-        requiresAuth: true
-      },
-      {
-        id: 'delayed-messages',
-        endpoint: '/api/delayed-messages',
-        method: 'GET',
-        category: 'message',
-        description: '獲取延遲訊息',
-        status: 'healthy' as const,
-        requiresAuth: true
-      },
-      {
-        id: 'webhook',
-        endpoint: '/api/webhook',
-        method: 'POST',
-        category: 'integration',
-        description: 'LINE Webhook端點',
-        status: 'healthy' as const,
-        requiresAuth: false
+    const env = c.env
+    const now = nowISO()
+
+    // 1. Read real metrics from MetricsCollectorDO
+    let metricsEndpoints: Array<{
+      endpoint: string
+      method: string
+      category: string
+      requestCount: number
+      errorCount: number
+      avgResponseTime: number
+      successRate: number
+      lastCheck: string
+      status: 'healthy' | 'warning' | 'error'
+    }> = []
+
+    try {
+      const doId = env.METRICS_COLLECTOR.idFromName('global')
+      const stub = env.METRICS_COLLECTOR.get(doId)
+      const metricsResponse = await stub.fetch('http://metrics-collector/metrics')
+      if (metricsResponse.ok) {
+        const data = await metricsResponse.json() as { endpoints?: typeof metricsEndpoints }
+        metricsEndpoints = data.endpoints ?? []
       }
-    ]
+    } catch (err) {
+      console.error('Failed to fetch metrics from MetricsCollectorDO:', err)
+    }
 
-    // Simulate checking each endpoint status
-    const checkedEndpoints = await Promise.all(
-      endpoints.map(async (endpoint) => {
-        const responseTime = Math.floor(Math.random() * 500) + 50 // 50-550ms
-        const successRate = Math.floor(Math.random() * 10) + 90 // 90-100%
+    // 2. Run infrastructure health probes in parallel
+    const infraProbes = await Promise.allSettled([
+      // D1
+      (async () => {
+        const start = nowMs()
+        await env.DB.prepare('SELECT 1').first()
+        return nowMs() - start
+      })(),
+      // KV
+      (async () => {
+        const start = nowMs()
+        await env.CACHE.get('health-check-probe')
+        return nowMs() - start
+      })(),
+      // R2
+      (async () => {
+        const start = nowMs()
+        await env.R2_BUCKET.head('health-check-probe')
+        return nowMs() - start
+      })(),
+      // Durable Objects (ping MetricsCollectorDO /health)
+      (async () => {
+        const start = nowMs()
+        const doId = env.METRICS_COLLECTOR.idFromName('global')
+        const stub = env.METRICS_COLLECTOR.get(doId)
+        await stub.fetch('http://metrics-collector/health')
+        return nowMs() - start
+      })(),
+    ])
 
+    const infraNames = ['D1 Database', 'KV Cache', 'R2 Storage', 'Durable Objects']
+    const infraIds = ['d1', 'kv', 'r2', 'durable-objects']
+
+    const latencyToStatus = (ms: number): 'green' | 'orange' | 'red' =>
+      ms < 50 ? 'green' : ms < 200 ? 'orange' : 'red'
+
+    const infrastructure = infraProbes.map((result, i) => {
+      if (result.status === 'fulfilled') {
         return {
-          ...endpoint,
-          responseTime,
-          avgResponseTime: responseTime + Math.floor(Math.random() * 100),
-          successRate,
-          requestCount: Math.floor(Math.random() * 1000) + 100,
-          errorCount: Math.floor(Math.random() * 10),
-          lastCheck: new Date(),
-          status: successRate > 95 && responseTime < 200 ? 'healthy' as const :
-                 successRate > 90 && responseTime < 500 ? 'warning' as const : 'error' as const
+          id: infraIds[i],
+          name: infraNames[i],
+          status: latencyToStatus(result.value) as 'green' | 'orange' | 'red',
+          latencyMs: result.value,
+          lastCheck: now,
         }
-      })
-    )
+      }
+      return {
+        id: infraIds[i],
+        name: infraNames[i],
+        status: 'red' as const,
+        latencyMs: -1,
+        lastCheck: now,
+      }
+    })
 
-    const stats = {
-      totalEndpoints: checkedEndpoints.length,
-      healthyCount: checkedEndpoints.filter(e => e.status === 'healthy').length,
-      warningCount: checkedEndpoints.filter(e => e.status === 'warning').length,
-      errorCount: checkedEndpoints.filter(e => e.status === 'error').length,
-      avgResponseTime: Math.round(
-        checkedEndpoints.reduce((sum, e) => sum + e.responseTime, 0) / checkedEndpoints.length
+    // 3. Run channel integration checks in parallel
+    const [lineResult, fbResult] = await Promise.allSettled([
+      (async () => {
+        const start = nowMs()
+        const result = await checkLineIntegration(env)
+        return { ...result, latencyMs: nowMs() - start }
+      })(),
+      (async () => {
+        const start = nowMs()
+        const result = await checkFacebookIntegration(env)
+        return { ...result, latencyMs: nowMs() - start }
+      })(),
+    ])
+
+    const mapChannelResult = (
+      settledResult: PromiseSettledResult<{ status: boolean; message: string; latencyMs: number }>,
+      id: string,
+      name: string,
+    ) => {
+      if (settledResult.status === 'fulfilled') {
+        const r = settledResult.value
+        return {
+          id,
+          name,
+          status: r.status ? 'connected' as const : 'disconnected' as const,
+          details: r.message,
+          latencyMs: r.latencyMs,
+          lastCheck: now,
+        }
+      }
+      return {
+        id,
+        name,
+        status: 'error' as const,
+        details: settledResult.reason instanceof Error ? settledResult.reason.message : 'Unknown error',
+        latencyMs: -1,
+        lastCheck: now,
+      }
+    }
+
+    const lineChannel = mapChannelResult(lineResult, 'line', 'LINE')
+    const fbChannel = mapChannelResult(fbResult, 'facebook', 'Facebook Messenger')
+
+    // Webhook delivery status derived from channel status
+    const webhookDelivery = {
+      id: 'webhook-delivery',
+      name: 'Webhook Delivery',
+      status: (lineChannel.status === 'connected' || fbChannel.status === 'connected')
+        ? 'connected' as const
+        : 'disconnected' as const,
+      details: lineChannel.status === 'connected' && fbChannel.status === 'connected'
+        ? 'All webhook channels operational'
+        : 'Some webhook channels unavailable',
+      latencyMs: Math.max(
+        lineChannel.latencyMs > 0 ? lineChannel.latencyMs : 0,
+        fbChannel.latencyMs > 0 ? fbChannel.latencyMs : 0,
       ),
-      overallSuccessRate: Math.round(
-        checkedEndpoints.reduce((sum, e) => sum + e.successRate, 0) / checkedEndpoints.length
-      )
+      lastCheck: now,
+    }
+
+    const channels = [lineChannel, fbChannel, webhookDelivery]
+
+    // 4. Derive events at read-time
+    const events: Array<{ type: 'error' | 'warning' | 'info'; source: string; message: string; timestamp: string }> = []
+
+    for (const ep of metricsEndpoints) {
+      if (ep.status === 'error') {
+        events.push({ type: 'error', source: ep.endpoint, message: `Endpoint ${ep.method} ${ep.endpoint} is in error state`, timestamp: now })
+      } else if (ep.status === 'warning') {
+        events.push({ type: 'warning', source: ep.endpoint, message: `Endpoint ${ep.method} ${ep.endpoint} has elevated latency or error rate`, timestamp: now })
+      }
+    }
+
+    for (const infra of infrastructure) {
+      if (infra.status === 'red') {
+        events.push({ type: 'error', source: infra.name, message: `${infra.name} is unhealthy (latency: ${infra.latencyMs}ms)`, timestamp: now })
+      } else if (infra.status === 'orange') {
+        events.push({ type: 'warning', source: infra.name, message: `${infra.name} has elevated latency (${infra.latencyMs}ms)`, timestamp: now })
+      }
+    }
+
+    for (const ch of channels) {
+      if (ch.status === 'disconnected' || ch.status === 'error') {
+        events.push({ type: 'error', source: ch.name, message: `${ch.name}: ${ch.details}`, timestamp: now })
+      }
+    }
+
+    if (events.length === 0) {
+      events.push({ type: 'info', source: 'system', message: 'All systems operational', timestamp: now })
+    }
+
+    // 5. Compute aggregated stats
+    const totalEndpoints = metricsEndpoints.length
+    const healthyCount = metricsEndpoints.filter(e => e.status === 'healthy').length
+    const warningCount = metricsEndpoints.filter(e => e.status === 'warning').length
+    const errorCount = metricsEndpoints.filter(e => e.status === 'error').length
+    const avgResponseTime = totalEndpoints > 0
+      ? Math.round(metricsEndpoints.reduce((sum, e) => sum + e.avgResponseTime, 0) / totalEndpoints)
+      : 0
+
+    const stats = { totalEndpoints, healthyCount, warningCount, errorCount, avgResponseTime }
+
+    // 6. Determine overall status
+    const infraRedCount = infrastructure.filter(i => i.status === 'red').length
+    let overallStatus: 'operational' | 'degraded' | 'outage'
+    if (infraRedCount >= 2 || errorCount > totalEndpoints / 2) {
+      overallStatus = 'outage'
+    } else if (infraRedCount >= 1 || errorCount > 0 || warningCount > 0) {
+      overallStatus = 'degraded'
+    } else {
+      overallStatus = 'operational'
     }
 
     return successResponse(c, {
-      endpoints: checkedEndpoints,
+      overallStatus,
+      endpoints: metricsEndpoints,
+      infrastructure,
+      channels,
+      events,
       stats,
-      timestamp: nowISO()
+      timestamp: now,
     }, 'API status retrieved successfully')
   } catch (error) {
     return handleApiError(error, c)

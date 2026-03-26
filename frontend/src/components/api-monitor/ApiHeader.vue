@@ -1,171 +1,149 @@
 <template>
-  <div class="api-header">
-    <div class="header-content">
-      <div class="header-info">
-        <h1 class="page-title">
-          API 監控儀表板
-        </h1>
-        <p class="page-subtitle">
-          實時監控系統API狀態，快速診斷問題
-        </p>
-      </div>
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-[#1C1C1E] m-0">
+        System Status
+      </h1>
+      <p class="text-[15px] text-[#8E8E93] mt-1 m-0">
+        {{ lastUpdatedText }}
+      </p>
     </div>
 
-    <div class="header-actions">
-      <div class="auto-refresh-control">
-        <label class="auto-refresh-label">
-          <input
-            v-model="autoRefreshEnabled"
-            type="checkbox"
-            @change="handleAutoRefreshChange"
-          >
-          <span>自動刷新 (15秒)</span>
-        </label>
-      </div>
+    <div class="flex items-center gap-3">
+      <!-- Auto-refresh toggle -->
+      <button
+        class="flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium transition-colors duration-200"
+        :class="autoRefreshEnabled
+          ? 'bg-[#007AFF]/10 text-[#007AFF]'
+          : 'bg-[#F2F2F7] text-[#8E8E93]'"
+        @click="handleAutoRefreshToggle"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 12a9 9 0 1 1-3-6.74" />
+          <polyline points="21 3 21 9 15 9" />
+        </svg>
+        Auto
+      </button>
 
-      <RefreshButton
-        :loading="loading"
-        @refresh="$emit('refresh')"
-      />
+      <!-- System status badge -->
+      <span
+        class="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium"
+        :class="statusBadgeClass"
+      >
+        <span
+          class="w-2 h-2 rounded-full"
+          :class="statusDotClass"
+        />
+        {{ statusLabel }}
+      </span>
+
+      <!-- Refresh button -->
+      <button
+        class="flex items-center justify-center w-9 h-9 rounded-full bg-[#F2F2F7] text-[#1C1C1E] transition-colors duration-200 hover:bg-[#E5E5EA] border-none cursor-pointer"
+        :disabled="loading"
+        @click="$emit('refresh')"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="transition-transform duration-300"
+          :class="{ 'animate-spin': loading }"
+        >
+          <path d="M21 12a9 9 0 1 1-3-6.74" />
+          <polyline points="21 3 21 9 15 9" />
+        </svg>
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import RefreshButton from '@/components/ui/RefreshButton.vue'
+import { computed, ref, watch } from 'vue'
+import type { SystemStatus } from '@/types/api-monitor'
 
 interface Props {
   loading?: boolean
-  autoRefresh?: boolean
-}
-
-interface Emits {
-  (_e: 'refresh'): void
-  (_e: 'toggle-auto-refresh', _enabled: boolean): void
+  isRefreshing?: boolean
+  autoRefreshEnabled?: boolean
+  systemStatus?: SystemStatus
+  lastUpdated?: Date | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   loading: false,
-  autoRefresh: true
+  isRefreshing: false,
+  autoRefreshEnabled: true,
+  systemStatus: 'operational',
+  lastUpdated: null,
 })
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits<{
+  (_e: 'refresh'): void
+  (_e: 'toggle-auto-refresh'): void
+}>()
 
-const autoRefreshEnabled = ref(props.autoRefresh)
+const autoRefreshEnabled = ref(props.autoRefreshEnabled)
 
-function handleAutoRefreshChange() {
-  emit('toggle-auto-refresh', autoRefreshEnabled.value)
+watch(() => props.autoRefreshEnabled, (v) => {
+  autoRefreshEnabled.value = v
+})
+
+function handleAutoRefreshToggle() {
+  autoRefreshEnabled.value = !autoRefreshEnabled.value
+  emit('toggle-auto-refresh')
 }
+
+const lastUpdatedText = computed(() => {
+  if (!props.lastUpdated) { return 'Waiting for first check...' }
+  const now = Date.now()
+  const then = props.lastUpdated.getTime()
+  const diffSec = Math.floor((now - then) / 1000)
+  if (diffSec < 5) { return 'Updated just now' }
+  if (diffSec < 60) { return `Updated ${diffSec}s ago` }
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) { return `Updated ${diffMin}m ago` }
+  return `Updated ${Math.floor(diffMin / 60)}h ago`
+})
+
+const statusLabel = computed(() => {
+  const map: Record<SystemStatus, string> = {
+    operational: 'Operational',
+    degraded: 'Degraded',
+    outage: 'Outage',
+  }
+  return map[props.systemStatus]
+})
+
+const statusBadgeClass = computed(() => {
+  const map: Record<SystemStatus, string> = {
+    operational: 'bg-[#34C759]/10 text-[#34C759]',
+    degraded: 'bg-[#FF9500]/10 text-[#FF9500]',
+    outage: 'bg-[#FF3B30]/10 text-[#FF3B30]',
+  }
+  return map[props.systemStatus]
+})
+
+const statusDotClass = computed(() => {
+  const map: Record<SystemStatus, string> = {
+    operational: 'bg-[#34C759]',
+    degraded: 'bg-[#FF9500]',
+    outage: 'bg-[#FF3B30]',
+  }
+  return map[props.systemStatus]
+})
 </script>
-
-<style scoped>
-.api-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 2.5rem 2rem;
-  margin-bottom: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 2rem;
-}
-
-.header-content {
-  flex: 1;
-}
-
-.header-info {
-  text-align: left;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: white;
-  margin: 0 0 0.5rem 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.page-subtitle {
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-  font-weight: 400;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.auto-refresh-control {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s;
-}
-
-.auto-refresh-control:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-}
-
-.auto-refresh-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #374151;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  user-select: none;
-  margin: 0;
-}
-
-.auto-refresh-label input[type="checkbox"] {
-  margin: 0;
-  accent-color: #667eea;
-  cursor: pointer;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .api-header {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 2rem 1.5rem;
-  }
-
-  .header-info {
-    text-align: center;
-  }
-
-  .header-actions {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .page-subtitle {
-    font-size: 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .api-header {
-    padding: 1.5rem 1rem;
-  }
-
-  .page-title {
-    font-size: 1.25rem;
-  }
-}
-</style>
