@@ -61,6 +61,9 @@ export interface Bindings {
   // KV Optimization: Rate Limiter Durable Object
   RATE_LIMITER?: DurableObjectNamespace; // DO-based rate limiting (replaces KV rate:* keys)
   USE_DO_RATE_LIMITER?: string; // Feature flag: 'true' to use DO, 'false' for KV fallback
+
+  // Metrics: API request metrics accumulator
+  METRICS_COLLECTOR: DurableObjectNamespace;
   
   // Environment variables - LINE
   LINE_CHANNEL_ACCESS_TOKEN: string;

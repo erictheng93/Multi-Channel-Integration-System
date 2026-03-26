@@ -99,6 +99,12 @@ app.use('*', async (c, next) => {
 
 log.info('Global CORS middleware registered successfully');
 
+// ==================== METRICS MIDDLEWARE (after CORS, before auth) ====================
+import { metricsMiddleware } from './middleware/metrics'
+log.info('Registering metrics collection middleware')
+app.use('/api/*', metricsMiddleware)
+log.info('Metrics middleware registered')
+
 // ==================== 統一路由管理系統初始化 ====================
 log.info('Initializing Unified Route Management System');
 
@@ -866,6 +872,7 @@ import { CustomerMessageDO } from './durable-objects/CustomerMessageDO';
 
 // Import RateLimiterDO for KV optimization (Phase 1: Rate Limiting Migration)
 import { RateLimiterDO } from './durable-objects/RateLimiterDO';
+import { MetricsCollectorDO } from './durable-objects/MetricsCollectorDO';
 import { nowISO } from '@/utils/timestamp'
 
 // Export Durable Objects (must match wrangler.toml class_name exactly)
@@ -879,7 +886,9 @@ export {
   CustomerConversationDO,
   CustomerMessageDO,
   // KV Optimization: Rate Limiter (Phase 1)
-  RateLimiterDO
+  RateLimiterDO,
+  // Metrics: API request metrics accumulator
+  MetricsCollectorDO
 };
 
 // Export legacy Delayed Message DO names (kept for backward compatibility)
