@@ -1,36 +1,39 @@
 <template>
-  <div class="flex flex-wrap gap-2">
-    <!-- Status pills -->
-    <button
-      v-for="s in statusOptions"
-      :key="s.value"
-      class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer"
-      :class="filters.status === s.value
-        ? 'bg-[#007AFF] text-white'
-        : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
-      @click="updateFilter('status', s.value)"
-    >
-      {{ s.label }}
-    </button>
+  <div class="flex flex-col gap-2.5">
+    <!-- Pills row: horizontal scroll on mobile -->
+    <div class="filter-pills-scroll flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1">
+      <!-- Status pills -->
+      <button
+        v-for="s in statusOptions"
+        :key="s.value"
+        class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer whitespace-nowrap flex-shrink-0"
+        :class="filters.status === s.value
+          ? 'bg-[#007AFF] text-white'
+          : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
+        @click="updateFilter('status', s.value)"
+      >
+        {{ s.label }}
+      </button>
 
-    <!-- Divider -->
-    <div class="w-px h-6 bg-[#E5E5EA] self-center mx-1" />
+      <!-- Divider -->
+      <div class="w-px h-6 bg-[#E5E5EA] self-center mx-0.5 flex-shrink-0" />
 
-    <!-- Category pills -->
-    <button
-      v-for="c in categoryOptions"
-      :key="c.value"
-      class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer"
-      :class="filters.category === c.value
-        ? 'bg-[#007AFF] text-white'
-        : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
-      @click="updateFilter('category', c.value)"
-    >
-      {{ c.label }}
-    </button>
+      <!-- Category pills -->
+      <button
+        v-for="c in categoryOptions"
+        :key="c.value"
+        class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-200 border-none cursor-pointer whitespace-nowrap flex-shrink-0"
+        :class="filters.category === c.value
+          ? 'bg-[#007AFF] text-white'
+          : 'bg-[#F2F2F7] text-[#8E8E93] hover:bg-[#E5E5EA]'"
+        @click="updateFilter('category', c.value)"
+      >
+        {{ c.label }}
+      </button>
+    </div>
 
-    <!-- Search input (right side) -->
-    <div class="flex-1 min-w-[160px] relative ml-auto">
+    <!-- Search input (full width row) -->
+    <div class="relative">
       <svg
         width="14"
         height="14"
@@ -100,3 +103,13 @@ function updateSearch(e: Event) {
   emit('update:filters', { ...props.filters, search: target.value })
 }
 </script>
+
+<style scoped>
+.filter-pills-scroll::-webkit-scrollbar {
+  display: none;
+}
+.filter-pills-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+</style>
