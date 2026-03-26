@@ -5,9 +5,31 @@
  * structured and can be imported/used correctly.
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
+
+// Mock fetch globally so the controller doesn't make real requests
+vi.stubGlobal('fetch', vi.fn())
+
+// Mock useAuthStore
+vi.mock('@/stores/auth', () => ({
+  useAuthStore: () => ({
+    token: 'test-token',
+    isAuthenticated: true
+  })
+}))
+
+// Mock getBackendUrl
+vi.mock('@/config/runtime', () => ({
+  getBackendUrl: () => 'http://localhost:8787',
+  getWebSocketUrl: () => 'ws://localhost:8787'
+}))
 
 describe('ApiMonitor Refactoring Verification', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
   describe('Type Definitions', () => {
     it('should export all required types from api-monitor.ts', async () => {
       const types = await import('@/types/api-monitor')
@@ -33,36 +55,33 @@ describe('ApiMonitor Refactoring Verification', () => {
       const controller = useApiMonitorController()
 
       // State
-      expect(controller.apis).toBeDefined()
+      expect(controller.monitorData).toBeDefined()
       expect(controller.loading).toBeDefined()
       expect(controller.isRefreshing).toBeDefined()
       expect(controller.error).toBeDefined()
       expect(controller.filters).toBeDefined()
       expect(controller.modal).toBeDefined()
-      expect(controller.migrationStatus).toBeDefined()
       expect(controller.autoRefresh).toBeDefined()
       expect(controller.expandedCard).toBeDefined()
 
       // Computed
-      expect(controller.filteredApis).toBeDefined()
+      expect(controller.systemStatus).toBeDefined()
+      expect(controller.endpoints).toBeDefined()
+      expect(controller.infrastructure).toBeDefined()
+      expect(controller.channels).toBeDefined()
+      expect(controller.events).toBeDefined()
       expect(controller.stats).toBeDefined()
+      expect(controller.filteredApis).toBeDefined()
+      expect(controller.lastUpdated).toBeDefined()
 
       // Methods
       expect(typeof controller.initialize).toBe('function')
       expect(typeof controller.cleanup).toBe('function')
       expect(typeof controller.refreshAll).toBe('function')
-      expect(typeof controller.testApi).toBe('function')
       expect(typeof controller.toggleCard).toBe('function')
       expect(typeof controller.showStatDetails).toBe('function')
       expect(typeof controller.closeModal).toBe('function')
       expect(typeof controller.toggleAutoRefresh).toBe('function')
-
-      // Utilities
-      expect(typeof controller.getStatusText).toBe('function')
-      expect(typeof controller.getResponseTimeClass).toBe('function')
-      expect(typeof controller.getSuccessRateClass).toBe('function')
-      expect(typeof controller.formatTime).toBe('function')
-      expect(typeof controller.getCategoryText).toBe('function')
     })
   })
 
@@ -76,8 +95,11 @@ describe('ApiMonitor Refactoring Verification', () => {
       expect(components.ApiCardList).toBeDefined()
       expect(components.ApiCard).toBeDefined()
       expect(components.ApiModal).toBeDefined()
-      expect(components.MigrationStatus).toBeDefined()
       expect(components.ApiEmptyState).toBeDefined()
+      expect(components.EndpointDetailPanel).toBeDefined()
+      expect(components.InfrastructureCard).toBeDefined()
+      expect(components.ChannelIntegrationsCard).toBeDefined()
+      expect(components.RecentEventsCard).toBeDefined()
     })
 
     it('should be able to import ApiHeader component', async () => {
@@ -90,12 +112,6 @@ describe('ApiMonitor Refactoring Verification', () => {
       const ApiFilter = (await import('@/components/api-monitor/ApiFilter.vue')).default
       expect(ApiFilter).toBeDefined()
       expect(ApiFilter).toHaveProperty('__name')
-    })
-
-    it('should be able to import MigrationStatus component', async () => {
-      const MigrationStatus = (await import('@/components/api-monitor/MigrationStatus.vue')).default
-      expect(MigrationStatus).toBeDefined()
-      expect(MigrationStatus).toHaveProperty('__name')
     })
 
     it('should be able to import ApiStatsGrid component', async () => {
@@ -126,6 +142,18 @@ describe('ApiMonitor Refactoring Verification', () => {
       const ApiModal = (await import('@/components/api-monitor/ApiModal.vue')).default
       expect(ApiModal).toBeDefined()
       expect(ApiModal).toHaveProperty('__name')
+    })
+
+    it('should be able to import new components', async () => {
+      const InfrastructureCard = (await import('@/components/api-monitor/InfrastructureCard.vue')).default
+      const ChannelIntegrationsCard = (await import('@/components/api-monitor/ChannelIntegrationsCard.vue')).default
+      const RecentEventsCard = (await import('@/components/api-monitor/RecentEventsCard.vue')).default
+      const EndpointDetailPanel = (await import('@/components/api-monitor/EndpointDetailPanel.vue')).default
+
+      expect(InfrastructureCard).toBeDefined()
+      expect(ChannelIntegrationsCard).toBeDefined()
+      expect(RecentEventsCard).toBeDefined()
+      expect(EndpointDetailPanel).toBeDefined()
     })
   })
 
