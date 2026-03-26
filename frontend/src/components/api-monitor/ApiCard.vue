@@ -76,6 +76,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ApiEndpoint } from '@/types/api-monitor'
+import { getLatencyColorClass } from '@/utils/monitor-helpers'
 import EndpointDetailPanel from './EndpointDetailPanel.vue'
 
 const props = defineProps<{
@@ -108,12 +109,7 @@ const methodBadgeClass = computed(() => {
   return map[props.endpoint.method] ?? 'bg-[#8E8E93]/10 text-[#8E8E93]'
 })
 
-const p95ColorClass = computed(() => {
-  const ms = props.endpoint.responseTime
-  if (ms < 200) { return 'text-[#34C759]' }
-  if (ms < 500) { return 'text-[#FF9500]' }
-  return 'text-[#FF3B30]'
-})
+const p95ColorClass = computed(() => getLatencyColorClass(props.endpoint.responseTime))
 
 const successRateColorClass = computed(() => {
   const rate = props.endpoint.successRate

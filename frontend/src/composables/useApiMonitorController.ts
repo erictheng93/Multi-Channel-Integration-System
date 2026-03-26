@@ -162,11 +162,21 @@ export function useApiMonitorController() {
     }
   }
 
+  function handleVisibilityChange(): void {
+    if (document.visibilityState === 'hidden') {
+      stopAutoRefresh()
+    } else if (autoRefresh.value.enabled) {
+      refreshAll()
+      startAutoRefresh()
+    }
+  }
+
   function startAutoRefresh(): void {
     stopAutoRefresh()
     refreshTimer = setInterval(() => {
       refreshAll()
     }, autoRefresh.value.interval)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
   }
 
   function stopAutoRefresh(): void {
@@ -174,6 +184,7 @@ export function useApiMonitorController() {
       clearInterval(refreshTimer)
       refreshTimer = null
     }
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
   }
 
   function toggleAutoRefresh(): void {

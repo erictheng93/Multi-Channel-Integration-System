@@ -73,8 +73,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { SystemStatus } from '@/types/api-monitor'
+import { formatRelativeTime } from '@/utils/monitor-helpers'
 
 interface Props {
   loading?: boolean
@@ -97,14 +98,7 @@ const emit = defineEmits<{
   (_e: 'toggle-auto-refresh'): void
 }>()
 
-const autoRefreshEnabled = ref(props.autoRefreshEnabled)
-
-watch(() => props.autoRefreshEnabled, (v) => {
-  autoRefreshEnabled.value = v
-})
-
 function handleAutoRefreshToggle() {
-  autoRefreshEnabled.value = !autoRefreshEnabled.value
   emit('toggle-auto-refresh')
 }
 
@@ -112,12 +106,9 @@ const lastUpdatedText = computed(() => {
   if (!props.lastUpdated) { return 'Waiting for first check...' }
   const now = Date.now()
   const then = props.lastUpdated.getTime()
-  const diffSec = Math.floor((now - then) / 1000)
+  const diffSec = Math.round((now - then) / 1000)
   if (diffSec < 5) { return 'Updated just now' }
-  if (diffSec < 60) { return `Updated ${diffSec}s ago` }
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) { return `Updated ${diffMin}m ago` }
-  return `Updated ${Math.floor(diffMin / 60)}h ago`
+  return `Updated ${formatRelativeTime(props.lastUpdated)}`
 })
 
 const statusLabel = computed(() => {
