@@ -75,27 +75,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ApiEndpoint } from '@/types/api-monitor'
+import { formatRelativeTime, getLatencyColorClass } from '@/utils/monitor-helpers'
 
 const props = defineProps<{
   endpoint: ApiEndpoint
 }>()
 
-const p95ColorClass = computed(() => {
-  const ms = props.endpoint.responseTime
-  if (ms < 200) {return 'text-[#34C759]'}
-  if (ms < 500) {return 'text-[#FF9500]'}
-  return 'text-[#FF3B30]'
-})
+const p95ColorClass = computed(() => getLatencyColorClass(props.endpoint.responseTime))
 
-const relativeLastCheck = computed(() => {
-  const now = Date.now()
-  const then = new Date(props.endpoint.lastCheck).getTime()
-  const diffSec = Math.floor((now - then) / 1000)
-  if (diffSec < 60) {return `${diffSec}s ago`}
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) {return `${diffMin}m ago`}
-  return `${Math.floor(diffMin / 60)}h ago`
-})
+const relativeLastCheck = computed(() => formatRelativeTime(props.endpoint.lastCheck))
 
 // Generate pseudo-random bar chart from endpoint data
 const responseBars = computed(() => {
