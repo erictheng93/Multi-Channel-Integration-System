@@ -107,7 +107,8 @@ export function useApiMonitorController() {
   // ===== Methods =====
   async function fetchApiStatus(): Promise<void> {
     const authStore = useAuthStore()
-    const baseUrl = getBackendUrl()
+    // Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
+    const baseUrl = import.meta.env.DEV ? '' : getBackendUrl()
 
     const response = await fetch(`${baseUrl}/api/system/api-status`, {
       headers: {
