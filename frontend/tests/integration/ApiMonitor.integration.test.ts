@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file, vue/require-prop-types */
 /**
  * API Monitor Integration Tests
  *
