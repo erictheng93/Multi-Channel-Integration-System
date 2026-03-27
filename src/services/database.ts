@@ -187,16 +187,6 @@ export class DatabaseService {
       .limit(limit);
   }
 
-  /**
-   * @deprecated Individual assignment (assignedUserId) is no longer supported.
-   * Use getConversationsByTeamId instead for team-based queries.
-   */
-  async getConversationsByAgentId(_assignedUserId: number, _status?: string, _limit: number = 50) {
-    console.warn('[DatabaseService] getConversationsByAgentId is deprecated. Use getConversationsByTeamId instead.');
-    // Return empty array - individual agent queries are no longer supported
-    return [];
-  }
-
   // Team-based conversation queries for role-based access control
   async getConversationsByTeamId(teamId: number, status?: string, limit: number = 50) {
     const conditions = [];

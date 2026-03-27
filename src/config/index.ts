@@ -15,7 +15,6 @@ export * from './external-apis';
 
 // Re-export CORS configuration (specific exports to avoid conflicts)
 export {
-  ALLOWED_ORIGINS,
   CORS_HEADERS,
   addCorsHeaders,
   isOriginAllowed
