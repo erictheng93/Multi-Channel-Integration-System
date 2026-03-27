@@ -16,7 +16,7 @@ import type {
   TeamStatsRequest
 } from '../types/team-types';
 import type { Bindings } from '@/types';
-import { ERROR_MESSAGES } from '@shared/utils/error-messages';
+import { ERROR_MESSAGES } from '@/utils/error-messages';
 import { globalErrorHandler } from '@/core/error-handler';
 import {
   jwtAuth,
