@@ -9,6 +9,9 @@ import { eq, gte, desc } from 'drizzle-orm';
 import { IPValidator, LINE_IP_RANGES, FACEBOOK_IP_RANGES } from '@/utils/ip-validator';
 import { AlertService, getDefaultAlertChannels } from '@/services/alert-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('WebhookSecurity');
 
 /**
  * 安全驗證結果
@@ -123,8 +126,8 @@ export class WebhookSecurityService {
     // Initialize IP validator with all platform ranges
     this.ipValidator = new IPValidator([...LINE_IP_RANGES, ...FACEBOOK_IP_RANGES]);
 
-    console.log(`[WebhookSecurity] Initialized with IP whitelist ${this.IP_WHITELIST_ENABLED ? 'ENABLED' : 'DISABLED'}`);
-    console.log(` Loaded ${this.ipValidator.getTotalRanges()} IP ranges (LINE: ${LINE_IP_RANGES.length}, Facebook: ${FACEBOOK_IP_RANGES.length})`);
+    log.info('Initialized', { ipWhitelist: this.IP_WHITELIST_ENABLED ? 'ENABLED' : 'DISABLED' });
+    log.info('IP ranges loaded', { total: this.ipValidator.getTotalRanges(), line: LINE_IP_RANGES.length, facebook: FACEBOOK_IP_RANGES.length });
   }
 
   // ======================== 主要驗證方法 ========================
@@ -261,7 +264,7 @@ export class WebhookSecurityService {
 
     } catch (error) {
       result.errors.push(`Security validation error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.error('[WebhookSecurity] Validation error:', error);
+      log.error('Validation error', {}, error instanceof Error ? error : new Error(String(error)));
       return result;
     }
   }
@@ -356,7 +359,7 @@ export class WebhookSecurityService {
       const isValid = this.timingSafeEqual(calculatedSignature, signature);
 
       if (!isValid) {
-        console.warn('[LINE Webhook] Signature mismatch', {
+        log.warn('LINE Webhook signature mismatch', {
           expected: calculatedSignature.substring(0, 20) + '...',
           received: signature.substring(0, 20) + '...'
         });
@@ -423,7 +426,7 @@ export class WebhookSecurityService {
       const isValid = this.timingSafeEqual(calculatedSignature, signatureHash);
 
       if (!isValid) {
-        console.warn('[Facebook Webhook] Signature mismatch', {
+        log.warn('Facebook Webhook signature mismatch', {
           expected: calculatedSignature.substring(0, 20) + '...',
           received: signatureHash.substring(0, 20) + '...'
         });
@@ -496,7 +499,7 @@ export class WebhookSecurityService {
       return { valid: true };
     } catch (error) {
       // 時間戳驗證失敗不應阻擋請求
-      console.warn('[WebhookSecurity] Timestamp validation error:', error);
+      log.warn('Timestamp validation error', { error: error instanceof Error ? error.message : String(error) });
       return { valid: true };
     }
   }
@@ -543,7 +546,7 @@ export class WebhookSecurityService {
 
       return { isDuplicate: false, occurrences: 1 };
     } catch (error) {
-      console.error('[WebhookSecurity] Replay check error:', error);
+      log.error('Replay check error', {}, error instanceof Error ? error : new Error(String(error)));
       // 檢查失敗時，允許通過（避免誤殺）
       return { isDuplicate: false, occurrences: 1 };
     }
@@ -639,7 +642,7 @@ export class WebhookSecurityService {
         resetAt: new Date(now + this.RATE_LIMIT_WINDOW_MS).toISOString()
       };
     } catch (error) {
-      console.error('[WebhookSecurity] Rate limit check error:', error);
+      log.error('Rate limit check error', {}, error instanceof Error ? error : new Error(String(error)));
       // 失敗時允許通過（避免誤殺）
       return {
         allowed: true,
@@ -686,7 +689,7 @@ export class WebhookSecurityService {
 
       return 1;
     } catch (error) {
-      console.error('[WebhookSecurity] Rate limit counter error:', error);
+      log.error('Rate limit counter error', {}, error instanceof Error ? error : new Error(String(error)));
       return 0;
     }
   }
@@ -712,17 +715,17 @@ export class WebhookSecurityService {
         const isAllowed = this.ipValidator.isAllowed(sourceIP, platformForIP);
 
         if (!isAllowed) {
-          console.warn(`[WebhookSecurity] IP ${sourceIP} not in ${platform} whitelist - REJECTED`);
+          log.warn('IP not in platform whitelist - REJECTED', { sourceIP, platform });
           return {
             valid: false,
             warning: `IP address ${sourceIP} not in ${platform} official IP ranges`
           };
         }
 
-        console.log(`[WebhookSecurity] IP ${sourceIP} validated for ${platform}`);
+        log.debug('IP validated for platform', { sourceIP, platform });
       } else if (this.IP_WHITELIST_ENABLED && !sourceIP) {
         // IP whitelist is enabled but no IP provided - warning
-        console.warn(`[WebhookSecurity] IP whitelist enabled but no source IP provided for ${platform} webhook`);
+        log.warn('IP whitelist enabled but no source IP provided', { platform });
         return {
           valid: true,
           warning: 'IP whitelist enabled but source IP not available'
@@ -757,7 +760,7 @@ export class WebhookSecurityService {
 
       return { valid: true };
     } catch (error) {
-      console.error('[WebhookSecurity] Source verification error:', error);
+      log.error('Source verification error', {}, error instanceof Error ? error : new Error(String(error)));
       // Fail open to avoid blocking legitimate traffic on errors
       return {
         valid: true,
@@ -802,7 +805,7 @@ export class WebhookSecurityService {
 
       // P2-5: 嚴重事件觸發告警系統
       if (securityEvent.severity === 'critical' || securityEvent.severity === 'high') {
-        console.error('[SECURITY ALERT]', securityEvent);
+        log.error('SECURITY ALERT', { event: securityEvent });
 
         try {
           // Initialize alert service with configured channels
