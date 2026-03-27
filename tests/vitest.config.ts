@@ -9,7 +9,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, '../frontend/src'),
       '~': path.resolve(__dirname, '../'),
       '@backend': path.resolve(__dirname, '../src'),
-      '@shared': path.resolve(__dirname, '../src/shared'),
+      '@shared': path.resolve(__dirname, '../src'),
       '@modules': path.resolve(__dirname, '../src/modules'),
       '@real-time': path.resolve(__dirname, '../src/modules/realtime'),
       '@tests': path.resolve(__dirname, './'),

@@ -145,7 +145,7 @@ export function requireRoleLevel(requiredRole: 'admin' | 'team' | 'agent') {
     }
 
     // Import PermissionService dynamically to avoid circular dependency
-    const { PermissionService } = await import('../../../shared/services/permission-service');
+    const { PermissionService } = await import('../../../services/permission-service');
     
     // 檢查是否有足夠的角色層級
     if (!PermissionService.hasRoleAuthority(user.role, requiredRole)) {

@@ -37,7 +37,6 @@
     "paths": {
       "@/*": ["./src/*"],
       "@modules/*": ["./src/modules/*"],
-      "@shared/*": ["./src/shared/*"],
       "@infrastructure/*": ["./src/infrastructure/*"],
       "@auth/*": ["./src/modules/auth/*"],
       "@conversations/*": ["./src/modules/conversations/*"],
