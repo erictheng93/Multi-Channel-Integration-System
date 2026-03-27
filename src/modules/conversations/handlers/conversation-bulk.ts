@@ -6,10 +6,10 @@ import { inArray, and, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
-import { PermissionService } from '@shared/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
-import { successResponse, errorResponse, validationErrorResponse } from '@shared/utils/api-response';
+import { successResponse, errorResponse, validationErrorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp'
 

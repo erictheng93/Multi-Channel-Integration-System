@@ -3,7 +3,7 @@
 import { Context, Next } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { Bindings } from '@/types';
-import { PermissionService } from '@shared/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { nowISO } from '@/utils/timestamp'
 
