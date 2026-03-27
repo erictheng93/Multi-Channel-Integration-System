@@ -66,7 +66,7 @@ export async function metricsMiddleware(
     const statusCode = c.res.status;
     const method = c.req.method;
     const normalizedPath = normalizePath(requestPath);
-    const timestamp = new Date().toISOString();
+    const timestamp = Date.now();
 
     // Send metrics to MetricsCollectorDO non-blocking
     c.executionCtx.waitUntil(

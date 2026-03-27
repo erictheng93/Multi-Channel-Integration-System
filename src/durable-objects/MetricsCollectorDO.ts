@@ -131,18 +131,6 @@ export class MetricsCollectorDO {
     }
   }
 
-  // =================== Path Normalization ===================
-
-  private normalizePath(path: string): string {
-    // Remove query strings
-    const cleanPath = path.split('?')[0];
-
-    // Replace numeric IDs and UUIDs with :id placeholder
-    return cleanPath
-      .replace(/\/\d+(?=\/|$)/g, '/:id')
-      .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?=\/|$)/gi, '/:id');
-  }
-
   // =================== Fetch Handler ===================
 
   async fetch(request: Request): Promise<Response> {
@@ -192,8 +180,7 @@ export class MetricsCollectorDO {
       );
     }
 
-    const normalizedPath = this.normalizePath(path);
-    const key = `${method.toUpperCase()}:${normalizedPath}`;
+    const key = `${method.toUpperCase()}:${path}`;
 
     let endpoint = this.metrics.get(key);
     if (!endpoint) {

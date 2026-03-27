@@ -116,8 +116,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
     const env = c.env
     const now = nowISO()
 
-    // 1. Read real metrics from MetricsCollectorDO
-    let metricsEndpoints: Array<{
+    type MetricsEndpoint = {
       endpoint: string
       method: string
       category: string
@@ -127,52 +126,68 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
       successRate: number
       lastCheck: string
       status: 'healthy' | 'warning' | 'error'
-    }> = []
-
-    try {
-      const doId = env.METRICS_COLLECTOR.idFromName('global')
-      const stub = env.METRICS_COLLECTOR.get(doId)
-      const metricsResponse = await stub.fetch('http://metrics-collector/metrics')
-      if (metricsResponse.ok) {
-        const data = await metricsResponse.json() as { endpoints?: typeof metricsEndpoints }
-        metricsEndpoints = data.endpoints ?? []
-      }
-    } catch (err) {
-      console.error('Failed to fetch metrics from MetricsCollectorDO:', err)
     }
 
-    // 2. Run infrastructure health probes in parallel
-    const infraProbes = await Promise.allSettled([
-      // D1
+    // Run all three groups in parallel
+    const [metricsResult, infraProbes, channelResults] = await Promise.all([
+      // 1. Metrics from DO
       (async () => {
         const start = nowMs()
-        await env.DB.prepare('SELECT 1').first()
-        return nowMs() - start
+        try {
+          const doId = env.METRICS_COLLECTOR.idFromName('global')
+          const stub = env.METRICS_COLLECTOR.get(doId)
+          const metricsResponse = await stub.fetch('http://metrics-collector/metrics')
+          const latencyMs = nowMs() - start
+          if (metricsResponse.ok) {
+            const data = await metricsResponse.json() as { endpoints?: MetricsEndpoint[] }
+            return { ok: true as const, endpoints: data.endpoints ?? [], latencyMs }
+          }
+          return { ok: false as const, endpoints: [] as MetricsEndpoint[], latencyMs }
+        } catch (err) {
+          console.error('Failed to fetch metrics from MetricsCollectorDO:', err)
+          return { ok: false as const, endpoints: [] as MetricsEndpoint[], latencyMs: nowMs() - start }
+        }
       })(),
-      // KV
-      (async () => {
-        const start = nowMs()
-        await env.CACHE.get('health-check-probe')
-        return nowMs() - start
-      })(),
-      // R2
-      (async () => {
-        const start = nowMs()
-        await env.R2_BUCKET.head('health-check-probe')
-        return nowMs() - start
-      })(),
-      // Durable Objects (ping MetricsCollectorDO /health)
-      (async () => {
-        const start = nowMs()
-        const doId = env.METRICS_COLLECTOR.idFromName('global')
-        const stub = env.METRICS_COLLECTOR.get(doId)
-        await stub.fetch('http://metrics-collector/health')
-        return nowMs() - start
-      })(),
+      // 2. Infra probes (D1, KV, R2 -- no separate DO probe)
+      Promise.allSettled([
+        // D1
+        (async () => {
+          const start = nowMs()
+          await env.DB.prepare('SELECT 1').first()
+          return nowMs() - start
+        })(),
+        // KV
+        (async () => {
+          const start = nowMs()
+          await env.CACHE.get('health-check-probe')
+          return nowMs() - start
+        })(),
+        // R2
+        (async () => {
+          const start = nowMs()
+          await env.R2_BUCKET.head('health-check-probe')
+          return nowMs() - start
+        })(),
+      ]),
+      // 3. Channel checks
+      Promise.allSettled([
+        (async () => {
+          const start = nowMs()
+          const result = await checkLineIntegration(env)
+          return { ...result, latencyMs: nowMs() - start }
+        })(),
+        (async () => {
+          const start = nowMs()
+          const result = await checkFacebookIntegration(env)
+          return { ...result, latencyMs: nowMs() - start }
+        })(),
+      ]),
     ])
 
-    const infraNames = ['D1 Database', 'KV Cache', 'R2 Storage', 'Durable Objects']
-    const infraIds = ['d1', 'kv', 'r2', 'durable-objects']
+    const metricsEndpoints = metricsResult.endpoints
+
+    const infraNames = ['D1 Database', 'KV Cache', 'R2 Storage']
+    const infraIds = ['d1', 'kv', 'r2']
 
     const latencyToStatus = (ms: number): 'green' | 'orange' | 'red' =>
       ms < 50 ? 'green' : ms < 200 ? 'orange' : 'red'
@@ -196,19 +211,16 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
       }
     })
 
-    // 3. Run channel integration checks in parallel
-    const [lineResult, fbResult] = await Promise.allSettled([
-      (async () => {
-        const start = nowMs()
-        const result = await checkLineIntegration(env)
-        return { ...result, latencyMs: nowMs() - start }
-      })(),
-      (async () => {
-        const start = nowMs()
-        const result = await checkFacebookIntegration(env)
-        return { ...result, latencyMs: nowMs() - start }
-      })(),
-    ])
+    // Derive DO health from metrics fetch result
+    infrastructure.push({
+      id: 'durable-objects',
+      name: 'Durable Objects',
+      status: metricsResult.ok ? latencyToStatus(metricsResult.latencyMs) : 'red' as const,
+      latencyMs: metricsResult.latencyMs,
+      lastCheck: now,
+    })
+
+    const [lineResult, fbResult] = channelResults
 
     const mapChannelResult = (
       settledResult: PromiseSettledResult<{ status: boolean; message: string; latencyMs: number }>,
@@ -326,22 +338,13 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
 // Check LINE integration status (private helper)
 async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; message: string }> {
   try {
-    console.log('Starting LINE integration check...')
-
-    // Try to get credentials from KV
     const credentials = await getCredentialsFromKV(env, 'line')
-    console.log('LINE credentials from KV:', credentials ? 'Found credentials' : 'No credentials')
-
     const accessToken = credentials?.accessToken || env.LINE_CHANNEL_ACCESS_TOKEN
 
     if (!accessToken) {
-      console.log('No LINE access token found in KV or environment')
       return { status: false, message: 'LINE Access Token not configured' }
     }
 
-    console.log('LINE access token available, length:', accessToken.length)
-
-    // Simple Bot info check
     const response = await fetch('https://api.line.me/v2/bot/info', {
       headers: {
         'Authorization': `Bearer ${accessToken}`
@@ -349,28 +352,22 @@ async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; m
       signal: AbortSignal.timeout(5000)
     })
 
-    console.log('LINE API response status:', response.status)
-
     if (response.ok) {
       const botInfo = await response.json()
-      console.log('LINE bot info retrieved successfully')
       const botName = isLineBotInfo(botInfo) ? botInfo.displayName : 'Unknown Bot'
       return { status: true, message: `LINE Bot connected: ${botName}` }
     } else {
-      const errorText = await response.text().catch(() => 'Unable to read error')
-      console.error('LINE API error response:', errorText)
-
+      await response.text().catch(() => '')
       let errorMessage = `LINE API error: ${response.status}`
       if (response.status === 401) {
         errorMessage += ' (Invalid or expired access token)'
       } else if (response.status === 403) {
         errorMessage += ' (Insufficient permissions)'
       }
-
       return { status: false, message: errorMessage }
     }
   } catch (error) {
-    console.error('LINE integration check error:', error)
+    console.error(`LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     return {
       status: false,
       message: `LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`

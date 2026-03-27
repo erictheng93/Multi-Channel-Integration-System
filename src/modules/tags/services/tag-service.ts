@@ -138,6 +138,36 @@ const normalizeHexColor = (color: string): string => {
   return color.toUpperCase();
 };
 
+/** Extract user info from JWT payload for activity logging */
+const extractActivityMeta = (c: Context<{ Bindings: Bindings }>) => {
+  const payload = c.get('jwtPayload');
+  return {
+    userId: payload?.userId?.toString() || 'system',
+    userName: payload?.displayName || payload?.username || 'System',
+    userRole: payload?.role || 'system',
+    ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+    userAgent: c.req.header('User-Agent')
+  };
+};
+
+/** Fire-and-forget activity log for tag operations */
+const logTagActivity = (
+  c: Context<{ Bindings: Bindings }>,
+  action: string,
+  resourceId: string,
+  details: Record<string, unknown>
+) => {
+  const meta = extractActivityMeta(c);
+  const activityService = new ActivityService(c.env.DB);
+  activityService.logActivity({
+    ...meta,
+    action,
+    resourceType: RESOURCE_TYPES.TAG,
+    resourceId,
+    details
+  }).catch(() => {});
+};
+
 export const tagHandler = {
   // Get tag list (simplified model: all tags visible to all agents)
   async list(c: Context<{ Bindings: Bindings }>) {
@@ -158,41 +188,41 @@ export const tagHandler = {
         ? sql`AND (t.name LIKE ${'%' + search + '%'} OR t.description LIKE ${'%' + search + '%'})`
         : sql``;
 
-      // Main query with counts via subqueries
-      const result = await drizzleDb.all(sql`
-        SELECT
-          t.id,
-          t.name,
-          t.color,
-          t.description,
-          t.team_id,
-          t.is_active,
-          t.created_by,
-          t.created_at,
-          t.updated_at,
-          (SELECT COUNT(*) FROM customer_tags ct2
-            JOIN customers c2 ON ct2.customer_id = c2.id
-            WHERE ct2.tag_id = t.id AND c2.deleted_at IS NULL) as customer_count,
-          (SELECT COUNT(DISTINCT cv2.id) FROM customer_tags ct3
-            JOIN customers c3 ON ct3.customer_id = c3.id
-            JOIN conversations cv2 ON cv2.customer_id = c3.id
-            WHERE ct3.tag_id = t.id AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL) as conversation_count
-        FROM tags t
-        WHERE t.is_active = 1
-        AND t.deleted_at IS NULL
-        ${searchCondition}
-        ORDER BY t.name ASC
-        LIMIT ${limit} OFFSET ${offset}
-      `);
-
-      // Count total
-      const countResult = await drizzleDb.get(sql`
-        SELECT COUNT(*) as total
-        FROM tags t
-        WHERE t.is_active = 1
-        AND t.deleted_at IS NULL
-        ${searchCondition}
-      `);
+      // Run main query and count query in parallel
+      const [result, countResult] = await Promise.all([
+        drizzleDb.all(sql`
+          SELECT
+            t.id,
+            t.name,
+            t.color,
+            t.description,
+            t.team_id,
+            t.is_active,
+            t.created_by,
+            t.created_at,
+            t.updated_at,
+            (SELECT COUNT(*) FROM customer_tags ct2
+              JOIN customers c2 ON ct2.customer_id = c2.id
+              WHERE ct2.tag_id = t.id AND c2.deleted_at IS NULL) as customer_count,
+            (SELECT COUNT(DISTINCT cv2.id) FROM customer_tags ct3
+              JOIN customers c3 ON ct3.customer_id = c3.id
+              JOIN conversations cv2 ON cv2.customer_id = c3.id
+              WHERE ct3.tag_id = t.id AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL) as conversation_count
+          FROM tags t
+          WHERE t.is_active = 1
+          AND t.deleted_at IS NULL
+          ${searchCondition}
+          ORDER BY t.name ASC
+          LIMIT ${limit} OFFSET ${offset}
+        `),
+        drizzleDb.get(sql`
+          SELECT COUNT(*) as total
+          FROM tags t
+          WHERE t.is_active = 1
+          AND t.deleted_at IS NULL
+          ${searchCondition}
+        `)
+      ]);
 
       const tagsResult = (result as TagListRow[]).map((row: TagListRow) => ({
         id: row.id,
@@ -228,25 +258,19 @@ export const tagHandler = {
       const payload = c.get('jwtPayload');
       const { name, color = '#3B82F6', description, teamId: _teamId } = await c.req.json();
 
-      // Validate required fields
       if (!name || !name.trim()) {
         return badRequestResponse(c, 'Tag name is required');
       }
 
-      // Validate color format
       if (color && !isValidHexColor(color)) {
         return validationErrorResponse(c, [
           { field: 'color', message: 'Invalid color format. Use HEX format (e.g., #FF5733 or #F53)' }
         ]);
       }
 
-      // Normalize color format
       const normalizedColor = normalizeHexColor(color);
 
-      // Simplified permission model: all agents can create tags (no global/team distinction)
-      // Tags are stored uniformly, teamId kept as null (globally visible)
 
-      // Check if tag name already exists (global scope, no team distinction)
       const existingTag = await drizzleDb
         .select({ id: tags.id })
         .from(tags)
@@ -262,7 +286,6 @@ export const tagHandler = {
         return errorResponse(c, 'Tag name already exists', 409);
       }
 
-      // Create tag (simplified model: all tags are globally visible, teamId = null)
       const result = await drizzleDb
         .insert(tags)
         .values({
@@ -280,19 +303,7 @@ export const tagHandler = {
         return errorResponse(c, 'Failed to create tag', 500);
       }
 
-      // Fire-and-forget activity logging
-      const activityService = new ActivityService(c.env.DB);
-      activityService.logActivity({
-        userId: payload?.userId?.toString() || 'system',
-        userName: payload?.displayName || payload?.username || 'System',
-        userRole: payload?.role || 'system',
-        action: ACTIVITY_ACTIONS.TAG_CREATE,
-        resourceType: RESOURCE_TYPES.TAG,
-        resourceId: insertedTag.id?.toString() || '',
-        details: { name, color, description },
-        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-        userAgent: c.req.header('User-Agent')
-      }).catch(() => {});
+      logTagActivity(c, ACTIVITY_ACTIONS.TAG_CREATE, insertedTag.id?.toString() || '', { name, color, description });
 
       return successResponse(c, {
         id: insertedTag.id,
@@ -380,7 +391,6 @@ export const tagHandler = {
       const tagId = c.req.param('id');
       const { name, color, description, isActive } = await c.req.json();
 
-      // Check if tag exists
       const existingTag = await drizzleDb.get(sql`
         SELECT * FROM tags WHERE id = ${tagId}
       `);
@@ -389,9 +399,6 @@ export const tagHandler = {
         return notFoundResponse(c, 'Tag');
       }
 
-      // Simplified permission model: all agents can edit any tag
-
-      // Validate color format (if color provided)
       let normalizedColor = color;
       if (color !== undefined && color !== null) {
         if (!isValidHexColor(color)) {
@@ -402,7 +409,6 @@ export const tagHandler = {
         normalizedColor = normalizeHexColor(color);
       }
 
-      // If updating name, check for duplicates (global scope)
       const existingRow = existingTag as TagRow;
       if (name && name !== existingRow.name) {
         const duplicateTag = await drizzleDb
@@ -462,20 +468,7 @@ export const tagHandler = {
 
       const updatedRow = updatedTag as TagWithCountsRow;
 
-      // Fire-and-forget activity logging
-      const payload = c.get('jwtPayload');
-      const activityService = new ActivityService(c.env.DB);
-      activityService.logActivity({
-        userId: payload?.userId?.toString() || 'system',
-        userName: payload?.displayName || payload?.username || 'System',
-        userRole: payload?.role || 'system',
-        action: ACTIVITY_ACTIONS.TAG_UPDATE,
-        resourceType: RESOURCE_TYPES.TAG,
-        resourceId: tagId,
-        details: { name, color, description, isActive },
-        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-        userAgent: c.req.header('User-Agent')
-      }).catch(() => {});
+      logTagActivity(c, ACTIVITY_ACTIONS.TAG_UPDATE, String(tagId ?? ''), { name, color, description, isActive });
 
       return successResponse(c, {
         id: updatedRow.id,
@@ -502,19 +495,15 @@ export const tagHandler = {
     try {
       const tagId = c.req.param('id');
 
-      // Check if tag exists
       const existingTag = await drizzleDb.get(sql`
-        SELECT * FROM tags WHERE id = ${tagId}
+        SELECT id, name FROM tags WHERE id = ${tagId}
       `);
 
       if (!existingTag) {
         return notFoundResponse(c, 'Tag');
       }
 
-      // Simplified permission model: all agents can delete any tag
-
-      // Capture tag name before deletion for activity log
-      const tagRow = existingTag as TagRow;
+      const tagRow = existingTag as Pick<TagRow, 'id' | 'name'>;
       const tagName = tagRow.name;
 
       // Soft delete tag
@@ -524,20 +513,7 @@ export const tagHandler = {
         WHERE id = ${tagId}
       `);
 
-      // Fire-and-forget activity logging
-      const payload = c.get('jwtPayload');
-      const activityService = new ActivityService(c.env.DB);
-      activityService.logActivity({
-        userId: payload?.userId?.toString() || 'system',
-        userName: payload?.displayName || payload?.username || 'System',
-        userRole: payload?.role || 'system',
-        action: ACTIVITY_ACTIONS.TAG_DELETE,
-        resourceType: RESOURCE_TYPES.TAG,
-        resourceId: tagId,
-        details: { tagName },
-        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-        userAgent: c.req.header('User-Agent')
-      }).catch(() => {});
+      logTagActivity(c, ACTIVITY_ACTIONS.TAG_DELETE, tagId || '', { tagName });
 
       return successResponse(c, null, 'Tag deleted successfully');
 
@@ -552,68 +528,63 @@ export const tagHandler = {
     try {
       const tagId = c.req.param('id');
 
-      // Check if tag exists
       const tag = await drizzleDb.get(sql`
-        SELECT * FROM tags WHERE id = ${tagId}
+        SELECT id, name, color FROM tags WHERE id = ${tagId}
       `);
 
       if (!tag) {
         return notFoundResponse(c, 'Tag');
       }
 
-      // Customer usage statistics
-      const customerStats = await drizzleDb.get(sql`
-        SELECT
-          COUNT(*) as total_customers,
-          COUNT(CASE WHEN c.platform = 'line' THEN 1 END) as line_customers,
-          COUNT(CASE WHEN c.platform = 'facebook' THEN 1 END) as facebook_customers
-        FROM customer_tags ct
-        JOIN customers c ON ct.customer_id = c.id
-        WHERE ct.tag_id = ${tagId}
-      `);
+      // Run all 4 independent stat queries in parallel
+      const [customerStats, conversationStats, usageTrendResults, topAssignersResults] = await Promise.all([
+        drizzleDb.get(sql`
+          SELECT
+            COUNT(*) as total_customers,
+            COUNT(CASE WHEN c.platform = 'line' THEN 1 END) as line_customers,
+            COUNT(CASE WHEN c.platform = 'facebook' THEN 1 END) as facebook_customers
+          FROM customer_tags ct
+          JOIN customers c ON ct.customer_id = c.id
+          WHERE ct.tag_id = ${tagId}
+        `),
+        drizzleDb.get(sql`
+          SELECT
+            COUNT(DISTINCT conv.id) as total_conversations,
+            COUNT(DISTINCT CASE WHEN conv.status = 'active' THEN conv.id END) as active_conversations,
+            COUNT(DISTINCT CASE WHEN conv.status = 'closed' THEN conv.id END) as closed_conversations
+          FROM customer_tags ct
+          JOIN customers c ON ct.customer_id = c.id
+          JOIN conversations conv ON conv.customer_id = c.id
+          WHERE ct.tag_id = ${tagId}
+            AND c.deleted_at IS NULL
+            AND conv.deleted_at IS NULL
+        `),
+        drizzleDb.all(sql`
+          SELECT
+            DATE(ct.assigned_at) as date,
+            COUNT(*) as assignments
+          FROM customer_tags ct
+          WHERE ct.tag_id = ${tagId}
+          AND ct.assigned_at >= date('now', '-30 days')
+          GROUP BY DATE(ct.assigned_at)
+          ORDER BY date DESC
+          LIMIT 30
+        `),
+        drizzleDb.all(sql`
+          SELECT
+            a.display_name,
+            COUNT(*) as assignments
+          FROM customer_tags ct
+          JOIN agents a ON ct.assigned_by = a.id
+          WHERE ct.tag_id = ${tagId}
+          AND ct.assigned_at >= date('now', '-30 days')
+          GROUP BY ct.assigned_by, a.display_name
+          ORDER BY assignments DESC
+          LIMIT 10
+        `)
+      ]);
 
-      // Conversation usage statistics (via customer_tags → customers → conversations)
-      const conversationStats = await drizzleDb.get(sql`
-        SELECT
-          COUNT(DISTINCT conv.id) as total_conversations,
-          COUNT(DISTINCT CASE WHEN conv.status = 'active' THEN conv.id END) as active_conversations,
-          COUNT(DISTINCT CASE WHEN conv.status = 'closed' THEN conv.id END) as closed_conversations
-        FROM customer_tags ct
-        JOIN customers c ON ct.customer_id = c.id
-        JOIN conversations conv ON conv.customer_id = c.id
-        WHERE ct.tag_id = ${tagId}
-          AND c.deleted_at IS NULL
-          AND conv.deleted_at IS NULL
-      `);
-
-      // Recent usage trend (last 30 days)
-      const usageTrendResults = await drizzleDb.all(sql`
-        SELECT
-          DATE(ct.assigned_at) as date,
-          COUNT(*) as assignments
-        FROM customer_tags ct
-        WHERE ct.tag_id = ${tagId}
-        AND ct.assigned_at >= date('now', '-30 days')
-        GROUP BY DATE(ct.assigned_at)
-        ORDER BY date DESC
-        LIMIT 30
-      `);
-
-      // Most active assigners (Fixed: use agents table instead of users)
-      const topAssignersResults = await drizzleDb.all(sql`
-        SELECT
-          a.display_name,
-          COUNT(*) as assignments
-        FROM customer_tags ct
-        JOIN agents a ON ct.assigned_by = a.id
-        WHERE ct.tag_id = ${tagId}
-        AND ct.assigned_at >= date('now', '-30 days')
-        GROUP BY ct.assigned_by, a.display_name
-        ORDER BY assignments DESC
-        LIMIT 10
-      `);
-
-      const tagRow = tag as TagRow;
+      const tagRow = tag as Pick<TagRow, 'id' | 'name' | 'color'>;
       const custStats = customerStats as CustomerStatsRow | null;
       const convStats = conversationStats as ConversationStatsRow | null;
       const trendRows = (usageTrendResults || []) as UsageTrendRow[];
