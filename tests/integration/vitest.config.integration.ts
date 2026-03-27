@@ -61,7 +61,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@backend': path.resolve(__dirname, '../../src'),
-      '@shared': path.resolve(__dirname, '../../src'),
       '@modules': path.resolve(__dirname, '../../src/modules'),
       '@helpers': path.resolve(__dirname, '../helpers'),
       '@integration': path.resolve(__dirname, '../integration')

@@ -14,7 +14,7 @@
  * Mock strategy:
  * - vi.mock('@/middleware/auth') — bypasses JWT for all tests
  * - vi.mock('@/db/drizzle-factory') — chainable Drizzle mock
- * - vi.mock('@shared/services/permission-service') — controls permission results
+ * - vi.mock('@/services/permission-service') — controls permission results
  * - vi.mock('@/services/websocket-broadcast-service') — stubs WebSocket broadcasts
  * - vi.mock('@modules/conversations/services/message-service') — stubs message services
  */
@@ -56,7 +56,7 @@ vi.mock('@/middleware/auth', () => ({
 let permissionCheckResult = true;
 let visibleConversationIds: string[] = ['conv-001', 'conv-002', 'conv-003'];
 
-vi.mock('@shared/services/permission-service', () => ({
+vi.mock('@/services/permission-service', () => ({
   PermissionService: {
     checkPermission: vi.fn(() => Promise.resolve(permissionCheckResult)),
     getVisibleConversations: vi.fn(() => Promise.resolve(visibleConversationIds)),

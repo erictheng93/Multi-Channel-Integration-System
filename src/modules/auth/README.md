@@ -108,8 +108,8 @@ src/modules/auth/
 ```
 
 
-- `@shared/database` -
-- `@shared/utils` -
+- `@/db` - Database schema and types
+- `@/utils` - Shared utility functions
 
 
 - `hono` - Web
