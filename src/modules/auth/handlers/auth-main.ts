@@ -13,8 +13,8 @@ import {
   jwtAuth,
   sessionAuth,
   requireRole,
-  rateLimit
 } from '@/middleware/auth';
+import { loginRateLimiter } from '@/middleware/rate-limiter';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents, agentTeams } from '@/db/schema';
@@ -34,7 +34,7 @@ const authLogger = createContextLogger('Authentication');
 // 不再需要 handler 級別的 CORS middleware
 
 // 用戶登入
-authHandler.post('/login', rateLimit(10, 60 * 1000), async (c) => {
+authHandler.post('/login', loginRateLimiter, async (c) => {
   try {
     const { email, password } = await c.req.json();
 
