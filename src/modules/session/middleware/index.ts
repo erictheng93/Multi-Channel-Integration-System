@@ -35,100 +35,6 @@ export {
   validateISODate
 } from './session-validation';
 
-// ======================== 中間件組合 ========================
-// Note: Middleware combinations temporarily disabled for deployment stability
-// Individual middleware functions are available above and used directly in handlers
-
-/**
- * 基本會話存取中間件組合
- */
-// export const basicSessionAccess = [
-// checkSessionAccess,
-// logSessionOperation
-// ];
-
-/**
- * 會話檢視中間件組合
- */
-// export const sessionViewAccess = [
-// checkSessionAccess,
-// checkSessionViewPermission
-// ];
-
-/**
- * 會話創建中間件組合
- */
-// export const sessionCreateAccess = [
-// validateRequestSize,
-// validateCreateSessionData,
-// validateRateLimit,
-// checkSessionAccess,
-// checkSessionCreatePermission,
-// logSessionOperation
-// ];
-
-/**
- * 會話更新中間件組合
- */
-// export const sessionUpdateAccess = [
-// validateRequestSize,
-// validateSessionId,
-// validateUpdateSessionData,
-// validateRateLimit,
-// checkSessionAccess,
-// checkSessionUpdatePermission,
-// logSessionOperation
-// ];
-
-/**
- * 會話刪除中間件組合
- */
-// export const sessionDeleteAccess = [
-// validateSessionId,
-// validateRateLimit,
-// checkSessionAccess,
-// checkSessionDeletePermission,
-// logSessionOperation
-// ];
-
-/**
- * 統計檢視中間件組合
- */
-// export const sessionStatsAccess = [
-// checkSessionAccess,
-// checkSessionStatsPermission
-// ];
-
-/**
- * 批量操作中間件組合
- */
-// export const sessionBatchAccess = [
-// validateRequestSize,
-// validateBatchSessionOperation,
-// validateRateLimit,
-// checkSessionAccess,
-// checkSessionBatchPermission,
-// logSessionOperation
-// ];
-
-/**
- * 會話列表查詢中間件組合
- */
-// export const sessionListAccess = [
-// validateSessionListQuery,
-// checkSessionAccess,
-// checkSessionViewPermission
-// ];
-
-/**
- * 會話搜尋中間件組合
- */
-// export const sessionSearchAccess = [
-// validateSessionSearchQuery,
-// checkSessionAccess,
-// checkSessionViewPermission
-// ];
-
 // ======================== 中間件配置 ========================
 
 /**
@@ -157,64 +63,23 @@ export const DEFAULT_SESSION_MIDDLEWARE_CONFIG: SessionMiddlewareConfig = {
 type MiddlewareFunction = (c: unknown, next: () => Promise<void>) => Promise<void | Response>;
 
 /**
- * 根據配置動態組合中間件
+ * Create session middleware stack.
+ * Individual middleware functions should be applied directly in handlers.
+ * Middleware compositions are disabled for deployment stability.
  */
-export function createSessionMiddleware(config: Partial<SessionMiddlewareConfig> = {}): MiddlewareFunction[] {
-  const finalConfig = { ...DEFAULT_SESSION_MIDDLEWARE_CONFIG, ...config };
-  const middleware: MiddlewareFunction[] = [];
-
-  if (finalConfig.enableSizeLimit) {
-    // Note: validateRequestSize is available but disabled here
-    // Use directly in route handlers instead
-    // middleware.push(validateRequestSize);
-  }
-
-  if (finalConfig.enableRateLimit) {
-    // Note: validateRateLimit is available but disabled here
-    // Use directly in route handlers instead
-    // middleware.push(validateRateLimit);
-  }
-
-  // Note: Permission check middleware disabled in factory function
-  // Use checkSessionAccess directly in route handlers for explicit control
-  // if (finalConfig.enablePermissionCheck) {
-  // middleware.push(checkSessionAccess);
-  // }
-
-  // if (finalConfig.enableLogging) {
-  // middleware.push(logSessionOperation);
-  // }
-
-  return middleware;
+export function createSessionMiddleware(_options?: Partial<SessionMiddlewareConfig>): MiddlewareFunction[] {
+  return [];
 }
 
 /**
- * 為特定操作類型創建中間件
+ * Create operation-specific middleware.
+ * Individual middleware functions should be applied directly in handlers.
  */
 export function createSessionOperationMiddleware(
-  operation: 'view' | 'create' | 'update' | 'delete' | 'stats' | 'batch' | 'list' | 'search',
-  _config: Partial<SessionMiddlewareConfig> = {}
+  _operation: 'view' | 'create' | 'update' | 'delete' | 'stats' | 'batch' | 'list' | 'search',
+  _config?: Partial<SessionMiddlewareConfig>
 ): MiddlewareFunction[] {
-  switch (operation) {
-    case 'view':
-      return []; // return sessionViewAccess when enabled
-    case 'create':
-      return []; // return sessionCreateAccess when enabled
-    case 'update':
-      return []; // return sessionUpdateAccess when enabled
-    case 'delete':
-      return []; // return sessionDeleteAccess when enabled
-    case 'stats':
-      return []; // return sessionStatsAccess when enabled
-    case 'batch':
-      return []; // return sessionBatchAccess when enabled
-    case 'list':
-      return []; // return sessionListAccess when enabled
-    case 'search':
-      return []; // return sessionSearchAccess when enabled
-    default:
-      return []; // return basicSessionAccess when enabled
-  }
+  return [];
 }
 
 // ======================== 中間件工具函數 ========================
