@@ -156,6 +156,10 @@ function createDrizzleMock() {
       if (mockDbState.dbError) return Promise.reject(mockDbState.dbError);
       return Promise.resolve(mockDbState.selectGetResult);
     }),
+    all: vi.fn(() => {
+      if (mockDbState.dbError) return Promise.reject(mockDbState.dbError);
+      return Promise.resolve(mockDbState.selectResults);
+    }),
     then: function (resolve: any, reject: any) {
       if (mockDbState.dbError) return reject(mockDbState.dbError);
       return resolve(mockDbState.selectResults);
