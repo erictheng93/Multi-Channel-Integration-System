@@ -6,7 +6,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
-import { messages } from '@shared/database/schema';
+import { messages } from '@/db/schema';
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '@/middleware/auth';

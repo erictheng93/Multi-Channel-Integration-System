@@ -5,7 +5,7 @@ import { Hono } from 'hono';
 import { eq, and, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
-import { messages, conversations, customers, agents, fileAttachments } from '@shared/database/schema';
+import { messages, conversations, customers, agents, fileAttachments } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import {
   successResponse,
