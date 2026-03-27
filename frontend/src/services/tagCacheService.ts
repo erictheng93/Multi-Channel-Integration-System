@@ -103,15 +103,11 @@ class TagCacheService {
       return cached.data
     }
 
-    // 缓存失效或不存在，触发后台刷新
-    if (!cached || !this.isCacheValid(cached)) {
-      console.log('[TagCacheService] Cache expired, refreshing tags in background...')
-      this.preloadTags().catch(err => {
-        console.error('[TagCacheService] Background refresh failed:', err)
-      })
-    }
+    // Cache expired or missing — trigger background refresh
+    this.preloadTags().catch(err => {
+      console.error('[TagCacheService] Background refresh failed:', err)
+    })
 
-    // 返回过期的缓存数据（如果有）或空数组
     return cached?.data || []
   }
 

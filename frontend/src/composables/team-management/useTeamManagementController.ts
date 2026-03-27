@@ -30,6 +30,19 @@ import {
 } from '@/composables/useListSorting'
 import type { TeamMember } from '@/types'
 
+// ==================== Helpers ====================
+
+/** Identifies the system administrator account (pinned to top of member list) */
+function isSystemAdmin(member: TeamMember): boolean {
+  return member.role === 'admin' && !!(
+    member.name?.includes('系統管理員') ||
+    member.name?.includes('System Administrator') ||
+    member.name?.toLowerCase().includes('admin') ||
+    member.loginId === 'admin' ||
+    member.email?.includes('admin')
+  )
+}
+
 // ==================== Types ====================
 
 export interface Team {
@@ -187,27 +200,8 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
   const members = computed(() => {
     const allMembers = teamStore.members
 
-    // 識別系統管理員
-    const systemAdmin = allMembers.find(member =>
-      member.role === 'admin' && (
-        member.name?.includes('系統管理員') ||
-        member.name?.includes('System Administrator') ||
-        member.name?.toLowerCase().includes('admin') ||
-        member.loginId === 'admin' ||
-        member.email?.includes('admin')
-      )
-    )
-
-    // 過濾出其他成員
-    const otherMembers = allMembers.filter(member =>
-      !(member.role === 'admin' && (
-        member.name?.includes('系統管理員') ||
-        member.name?.includes('System Administrator') ||
-        member.name?.toLowerCase().includes('admin') ||
-        member.loginId === 'admin' ||
-        member.email?.includes('admin')
-      ))
-    )
+    const systemAdmin = allMembers.find(isSystemAdmin)
+    const otherMembers = allMembers.filter(m => !isSystemAdmin(m))
 
     // 根据排序模式对其他成员进行排序
     let sortedOtherMembers: TeamMember[]
