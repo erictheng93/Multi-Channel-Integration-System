@@ -217,22 +217,6 @@ export function createRateLimiter(config: RateLimitConfig) {
   };
 }
 
-// =================== Legacy Compatible Wrapper ===================
-
-/**
- * Legacy-compatible rate limit middleware
- *
- * @deprecated Use createRateLimiter instead for better configuration
- */
-export function rateLimit(maxRequests: number = 100, windowMs: number = 60 * 1000) {
-  return createRateLimiter({
-    maxRequests,
-    windowMs,
-    keyPrefix: 'legacy',
-    skipFailOpen: true,
-  });
-}
-
 // =================== Specialized Rate Limiters ===================
 
 /**
