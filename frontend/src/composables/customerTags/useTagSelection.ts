@@ -54,13 +54,9 @@ export function useTagSelection() {
   const toggleTagSelection = (tagId: number) => {
     const index = selectedTags.value.indexOf(tagId)
     if (index > -1) {
-      // Already selected - remove it
       selectedTags.value.splice(index, 1)
-      console.log(`[TagSelection] Deselected tag ${tagId}. Total: ${selectedTags.value.length}`)
     } else {
-      // Not selected - add it
       selectedTags.value.push(tagId)
-      console.log(`[TagSelection] Selected tag ${tagId}. Total: ${selectedTags.value.length}`)
     }
   }
 
@@ -68,9 +64,7 @@ export function useTagSelection() {
    * Clear all selections
    */
   const clearSelection = () => {
-    const count = selectedTags.value.length
     selectedTags.value = []
-    console.log(`[TagSelection] Cleared ${count} selections`)
   }
 
   /**
@@ -80,7 +74,6 @@ export function useTagSelection() {
    */
   const selectTags = (tagIds: number[]) => {
     selectedTags.value = [...tagIds]
-    console.log(`[TagSelection] Selected ${tagIds.length} tags`)
   }
 
   /**
@@ -90,7 +83,6 @@ export function useTagSelection() {
    */
   const selectAll = (allTagIds: number[]) => {
     selectedTags.value = [...allTagIds]
-    console.log(`[TagSelection] Selected all ${allTagIds.length} tags`)
   }
 
   // ==================== Return Interface ====================

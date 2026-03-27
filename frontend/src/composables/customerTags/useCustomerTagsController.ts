@@ -17,6 +17,12 @@ import { useTagSelection } from './useTagSelection'
 import { useTagKeyboard } from './useTagKeyboard'
 import type { Tag } from '@/types/tag'
 
+const DEFAULT_FORM_DATA = () => ({
+  name: '',
+  color: '#3B82F6',
+  description: ''
+})
+
 /**
  * Main controller for Customer Tags management
  *
@@ -54,11 +60,7 @@ export function useCustomerTagsController() {
   const conversationsTag = ref<Tag | null>(null)
 
   // Form state
-  const formData = ref({
-    name: '',
-    color: '#3B82F6',
-    description: ''
-  })
+  const formData = ref(DEFAULT_FORM_DATA())
 
   // Predefined color palette
   const predefinedColors = [
@@ -98,11 +100,7 @@ export function useCustomerTagsController() {
       showCreateModal.value = false
       showEditModal.value = false
       editingTag.value = null
-      formData.value = {
-        name: '',
-        color: '#3B82F6',
-        description: ''
-      }
+      formData.value = DEFAULT_FORM_DATA()
     },
     () => {
       // Cancel delete callback
@@ -126,11 +124,7 @@ export function useCustomerTagsController() {
       showCreateModal.value = false
       showEditModal.value = false
       editingTag.value = null
-      formData.value = {
-        name: '',
-        color: '#3B82F6',
-        description: ''
-      }
+      formData.value = DEFAULT_FORM_DATA()
     },
     () => {
       // Cancel delete callback
@@ -147,11 +141,7 @@ export function useCustomerTagsController() {
 
   const openCreateModal = () => {
     editingTag.value = null
-    formData.value = {
-      name: '',
-      color: '#3B82F6',
-      description: ''
-    }
+    formData.value = DEFAULT_FORM_DATA()
     showCreateModal.value = true
   }
 
@@ -198,11 +188,7 @@ export function useCustomerTagsController() {
     deletingTag.value = null
     statsTag.value = null
     conversationsTag.value = null
-    formData.value = {
-      name: '',
-      color: '#3B82F6',
-      description: ''
-    }
+    formData.value = DEFAULT_FORM_DATA()
   }
 
   // ==================== WebSocket Real-time Updates ====================

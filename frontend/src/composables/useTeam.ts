@@ -49,7 +49,7 @@ export function useTeam() {
     try {
       const status = isActive ? 'active' : 'inactive'
       await teamStore.updateMemberStatus(memberId, status)
-      await refreshMembers()
+      // Store already applies optimistic update — no full reload needed
       return true
     } catch (err) {
       handleError(err)
@@ -61,7 +61,7 @@ export function useTeam() {
     clearError()
     try {
       await teamStore.removeMember(memberId)
-      await refreshMembers()
+      // Store already removes member optimistically — no full reload needed
       return true
     } catch (err) {
       handleError(err)
