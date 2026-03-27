@@ -654,27 +654,6 @@ export function canPerformTeamOperation(
   return hasTeamRole(user, teamId, requiredRole);
 }
 
-/**
- * 同步版本的團隊權限檢查 (僅檢查主團隊)
- *
- * DEPRECATED: 建議使用 canAccessTeam() 的異步版本以支援多團隊
- * 此函數保留用於向後兼容，僅檢查主團隊
- *
- * @param user 當前用戶
- * @param teamId 要檢查的團隊 ID
- * @returns 是否有權限訪問該團隊 (僅主團隊)
- */
-export function canAccessTeamSync(user: DbUser, teamId: number): boolean {
-  if (user.role === 'admin') {
-    return true;
-  }
-  // Use allowedTeamIds if available, otherwise fall back to teamId
-  if (user.allowedTeamIds && user.allowedTeamIds.length > 0) {
-    return user.allowedTeamIds.includes(teamId);
-  }
-  return user.primaryTeamId === teamId;
-}
-
 // 會話管理
 export async function createSession(
   kv: KVNamespace,

@@ -29,11 +29,6 @@ export const DEVELOPMENT_ORIGINS = [
   'http://localhost:8787', // Wrangler dev server
 ] as const;
 
-/**
- * @deprecated 請使用 getAllowedOrigins(env) 以支持環境動態配置
- * 保留此常量僅為向後兼容，生產環境中不應直接使用
- */
-export const ALLOWED_ORIGINS = DEVELOPMENT_ORIGINS;
 
 /**
  * 動態獲取允許的 origins (推薦)
