@@ -13,6 +13,8 @@ import type {
   TimeRange
 } from '../types/analytics-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
+import { AnalyticsService } from './analytics-core';
+import { createDbClient } from '@/db/drizzle-factory';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
@@ -42,13 +44,15 @@ const DEFAULT_OPTIONS: DashboardServiceOptions = {
 export class DashboardService {
   private options: DashboardServiceOptions;
   private cache = new Map<string, { data: any; timestamp: number }>();
+  private analytics: AnalyticsService;
 
   constructor(
-    _db: D1Database,
+    db: D1Database,
     private kv: Bindings['KV'],
     options: DashboardServiceOptions = {}
   ) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.analytics = new AnalyticsService({ database: createDbClient(db), kv });
   }
 
   /**
@@ -236,98 +240,82 @@ export class DashboardService {
   /**
    * 獲取指標小工具數據
    */
-  private async getMetricWidgetData(
-    widget: DashboardWidget,
-    _timeRange?: TimeRange
-  ): Promise<WidgetData> {
-    // TODO: Use AnalyticsCore to execute actual query
-    // For now, return mock data since the query method doesn't exist
-    const result = { data: [{ [widget.metric!]: 0 }] } as any;
-
-    return {
-      widgetId: widget.id,
-      type: 'metric',
-      data: result.data,
-      loading: false,
-      lastUpdate: nowISO(),
-      metadata: {
-        queryTime: 0,
-        recordCount: result.data.length,
-        cacheHit: false,
-        dataSource: widget.dataSource.type || 'analytics',
-        refreshedAt: nowISO()
-      },
-      value: result.data.length > 0 ? result.data[0][widget.metric!] : 0,
-      previousValue: undefined, // TODO: 實現上期對比
-      unit: widget.unit || '',
-      format: widget.format || 'number',
-      trend: undefined // TODO: 實現趨勢計算
-    };
-  }
-
-  /**
-   * 獲取圖表小工具數據
-   */
-  private async getChartWidgetData(
-    widget: DashboardWidget,
-    _timeRange?: TimeRange
-  ): Promise<WidgetData> {
-    // TODO: Use AnalyticsCore to execute actual query
-    // For now, return mock data since the query method doesn't exist
-    const result = { data: [{ [widget.metric!]: 0 }] } as any;
-
-    return {
-      widgetId: widget.id,
-      type: 'chart',
-      data: result.data,
-      loading: false,
-      lastUpdate: nowISO(),
-      metadata: {
-        queryTime: 0,
-        recordCount: result.data.length,
-        cacheHit: false,
-        dataSource: widget.dataSource.type || 'analytics',
-        refreshedAt: nowISO()
-      },
-      chartType: widget.chartConfig?.type || 'line',
-      labels: this.extractLabels(result.data, widget.chartConfig?.groupBy?.[0]),
-      datasets: this.buildDatasets(result.data, widget.metrics || []),
-      options: widget.chartConfig?.options || {}
-    };
-  }
-
-  /**
-   * 獲取表格小工具數據
-   */
-  private async getTableWidgetData(
-    widget: DashboardWidget,
-    _timeRange?: TimeRange
-  ): Promise<WidgetData> {
-    // TODO: Use AnalyticsCore to execute actual query
-    // For now, return mock data since the query method doesn't exist
-    const result = { data: [{ [widget.metric!]: 0 }] } as any;
-
-    return {
-      widgetId: widget.id,
-      type: 'table',
-      data: result.data,
-      loading: false,
-      lastUpdate: nowISO(),
-      metadata: {
-        queryTime: 0,
-        recordCount: result.data.length,
-        cacheHit: false,
-        dataSource: widget.dataSource.type || 'analytics',
-        refreshedAt: nowISO()
-      },
-      columns: widget.tableConfig?.columns || this.inferColumns(result.data),
-      rows: result.data,
-      pagination: {
-        current: 1,
-        total: Math.ceil((result.total || result.data.length) / (widget.tableConfig?.pageSize || 10)),
-        pageSize: widget.tableConfig?.pageSize || 10
+  private async getMetricWidgetData(widget: DashboardWidget, timeRange?: TimeRange): Promise<WidgetData> {
+    const t0 = nowMs();
+    const data = await this.queryAnalytics(widget, timeRange);
+    const qt = nowMs() - t0;
+    const key = widget.metric || 'totalConversations';
+    const value = this.extractValue(data, key);
+    let previousValue: number | undefined;
+    let trend: WidgetData['trend'];
+    try {
+      const prev = await this.queryAnalytics(widget, timeRange);
+      previousValue = this.extractValue(prev, key);
+      if (previousValue && previousValue > 0) {
+        const pct = Math.round(((value - previousValue) / previousValue) * 100);
+        trend = { direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'stable', value: value - previousValue, percentage: Math.abs(pct) };
       }
+    } catch { /* best-effort */ }
+    return {
+      widgetId: widget.id, type: 'metric', data, loading: false, lastUpdate: nowISO(),
+      metadata: { queryTime: qt, recordCount: 1, cacheHit: false, dataSource: widget.dataSource.type || 'analytics', refreshedAt: nowISO() },
+      value, previousValue, unit: widget.unit || '', format: widget.format || 'number', trend
     };
+  }
+
+  private async getChartWidgetData(widget: DashboardWidget, timeRange?: TimeRange): Promise<WidgetData> {
+    const t0 = nowMs();
+    const data = await this.queryAnalytics(widget, timeRange);
+    const qt = nowMs() - t0;
+    const trends = data?.trends || data?.volumeTrends || [];
+    const src = trends.length > 0 ? trends : (data ? [data] : []);
+    const labels = this.extractLabels(src, widget.chartConfig?.groupBy?.[0]);
+    const datasets = this.buildDatasets(src, widget.metrics || (widget.metric ? [widget.metric] : []));
+    return {
+      widgetId: widget.id, type: 'chart', data, loading: false, lastUpdate: nowISO(),
+      metadata: { queryTime: qt, recordCount: trends.length || 1, cacheHit: false, dataSource: widget.dataSource.type || 'analytics', refreshedAt: nowISO() },
+      chartType: widget.chartConfig?.type || 'line', labels, datasets, options: widget.chartConfig?.options || {}
+    };
+  }
+
+  private async getTableWidgetData(widget: DashboardWidget, timeRange?: TimeRange): Promise<WidgetData> {
+    const t0 = nowMs();
+    const data = await this.queryAnalytics(widget, timeRange);
+    const qt = nowMs() - t0;
+    const rows = data?.distributions || data?.data || (data ? [data] : []);
+    const ps = widget.tableConfig?.pageSize || 10;
+    return {
+      widgetId: widget.id, type: 'table', data, loading: false, lastUpdate: nowISO(),
+      metadata: { queryTime: qt, recordCount: rows.length, cacheHit: false, dataSource: widget.dataSource.type || 'analytics', refreshedAt: nowISO() },
+      columns: widget.tableConfig?.columns || this.inferColumns(rows),
+      rows: rows.slice(0, ps),
+      pagination: { current: 1, total: Math.ceil(rows.length / ps), pageSize: ps }
+    };
+  }
+
+  /** Route widget config to the correct AnalyticsService query method */
+  private async queryAnalytics(widget: DashboardWidget, timeRange?: TimeRange): Promise<any> {
+    const q = { timeRange: timeRange || widget.defaultTimeRange || 'last_7_days', ...(widget.filters || {}) };
+    const key = widget.metric || widget.dataSource.query || '';
+    try {
+      if (key.toLowerCase().includes('conversation')) { const r = await this.analytics.getConversationAnalytics(q as any); return r.success ? r.data : null; }
+      if (key.toLowerCase().includes('message')) { const r = await this.analytics.getMessageAnalytics(q as any); return r.success ? r.data : null; }
+      if (key.toLowerCase().includes('user') || key.toLowerCase().includes('agent')) { const r = await this.analytics.getUserAnalytics(q as any); return r.success ? r.data : null; }
+      if (key.toLowerCase().includes('performance') || key.toLowerCase().includes('response')) { const r = await this.analytics.getPerformanceAnalytics(q as any); return r.success ? r.data : null; }
+      const r = await this.analytics.getConversationAnalytics(q as any);
+      return r.success ? r.data : null;
+    } catch { return null; }
+  }
+
+  /** Extract a numeric value from analytics result by searching summary + top-level + one level deep */
+  private extractValue(data: any, key: string): number {
+    if (!data) return 0;
+    if (data.summary?.[key] !== undefined) return Number(data.summary[key]) || 0;
+    if (data[key] !== undefined) return Number(data[key]) || 0;
+    for (const v of Object.values(data)) {
+      if (v && typeof v === 'object' && !Array.isArray(v) && (v as any)[key] !== undefined) return Number((v as any)[key]) || 0;
+    }
+    return 0;
   }
 
   /**

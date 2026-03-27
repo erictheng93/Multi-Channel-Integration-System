@@ -10,7 +10,8 @@ import type {
   ReportStatistics,
   ReportTimeRange,
   BatchReportOperation,
-  BatchOperationResult
+  BatchOperationResult,
+  ReportGenerationParams
 } from '../types/report-types';
 
 import {
@@ -181,8 +182,10 @@ export class ReportManagerService {
 
       await utils.checkDeletePermission(report, userId);
 
-      // TODO: Delete from database
-      // await this.deleteReportFromDb(reportId);
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { reports } = await import('../../../db/schema');
+      const { eq } = await import('drizzle-orm');
+      await drizzle(this.db).update(reports).set({ deletedAt: nowISO() }).where(eq(reports.id, reportId));
 
       if (report.downloadUrl) {
         await generator.deleteReportFile(report.downloadUrl);
@@ -202,70 +205,59 @@ export class ReportManagerService {
   /**
    * Get report statistics
    */
-  async getReportStatistics(_timeRange: ReportTimeRange = 'last_30_days'): Promise<ReportStatistics> {
+  async getReportStatistics(timeRange: ReportTimeRange = 'last_30_days'): Promise<ReportStatistics> {
     try {
-      // TODO: Implement real statistics query
-      const mockStats: ReportStatistics = {
-        totalReports: 156,
-        reportsByType: {
-          conversation_summary: 45,
-          agent_performance: 32,
-          team_analytics: 28,
-          customer_satisfaction: 25,
-          platform_usage: 15,
-          message_statistics: 8,
-          response_time_analysis: 2,
-          workload_distribution: 1,
-          system_health: 0,
-          custom: 0,
-          cost_analysis: 12,
-          sla_compliance: 8,
-          anomaly_detection: 6,
-          audit_trail: 4,
-          resource_utilization: 3,
-          trend_forecast: 7,
-          customer_insights: 5,
-          channel_integration: 4,
-          goal_achievement: 6,
-          automation_effectiveness: 3,
-          security_risk: 2,
-          knowledge_base: 3,
-          call_quality: 1,
-          executive_summary: 8
-        },
-        reportsByFormat: {
-          excel: 78,
-          pdf: 45,
-          json: 20,
-          csv: 10,
-          html: 3
-        },
-        reportsByStatus: {
-          completed: 140,
-          failed: 8,
-          generating: 5,
-          pending: 3,
-          expired: 0
-        },
-        averageGenerationTime: 42.5,
-        popularReports: [
-          { type: 'conversation_summary', count: 45, averageSize: 2.5 * 1024 * 1024 },
-          { type: 'agent_performance', count: 32, averageSize: 1.8 * 1024 * 1024 }
-        ],
-        usageByUser: [
-          { userId: 'admin', username: 'Administrator', reportCount: 45, lastGenerated: '2025-09-25T10:00:00.000Z' },
-          { userId: 'manager1', username: 'Team Manager 1', reportCount: 28, lastGenerated: '2025-09-24T15:30:00.000Z' }
-        ],
-        monthlyTrends: [
-          { month: '2025-09', reportsGenerated: 45, totalSize: 95 * 1024 * 1024 },
-          { month: '2025-08', reportsGenerated: 52, totalSize: 110 * 1024 * 1024 }
-        ]
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { reports, agents } = await import('../../../db/schema');
+      const { eq, and, gte, isNull, count: countFn, avg, sum, desc: descOrder, sql } = await import('drizzle-orm');
+      const db = drizzle(this.db);
+      const startDate = this.getTimeRangeStart(timeRange);
+      const baseConds = [isNull(reports.deletedAt)];
+      if (startDate) baseConds.push(gte(reports.createdAt, startDate));
+      const where = and(...baseConds);
+      const [totalR, typeR, fmtR, statusR, avgR, popR, userR, trendR] = await Promise.all([
+        db.select({ total: countFn() }).from(reports).where(where).get(),
+        db.select({ type: reports.type, cnt: countFn() }).from(reports).where(where).groupBy(reports.type).all(),
+        db.select({ format: reports.format, cnt: countFn() }).from(reports).where(where).groupBy(reports.format).all(),
+        db.select({ status: reports.status, cnt: countFn() }).from(reports).where(where).groupBy(reports.status).all(),
+        db.select({ avgTime: avg(reports.executionTime) }).from(reports).where(and(...baseConds, eq(reports.status, 'completed'))).get(),
+        db.select({ type: reports.type, cnt: countFn(), avgSize: avg(reports.fileSize) }).from(reports).where(where).groupBy(reports.type).orderBy(descOrder(countFn())).limit(5).all(),
+        db.select({ userId: reports.createdBy, username: agents.displayName, reportCount: countFn(), lastGenerated: sql<string>`MAX(${reports.createdAt})` }).from(reports).leftJoin(agents, eq(reports.createdBy, agents.id)).where(where).groupBy(reports.createdBy).orderBy(descOrder(countFn())).limit(10).all(),
+        db.select({ month: sql<string>`strftime('%Y-%m', ${reports.createdAt})`, reportsGenerated: countFn(), totalSize: sum(reports.fileSize) }).from(reports).where(where).groupBy(sql`strftime('%Y-%m', ${reports.createdAt})`).orderBy(descOrder(sql`strftime('%Y-%m', ${reports.createdAt})`)).limit(6).all(),
+      ]);
+      const init = <T extends Record<string, number>>(keys: string[]): T => { const r: Record<string, number> = {}; keys.forEach(k => r[k] = 0); return r as T; };
+      const byType = init<ReportStatistics['reportsByType']>(['conversation_summary','agent_performance','team_analytics','customer_satisfaction','platform_usage','message_statistics','response_time_analysis','workload_distribution','system_health','custom','cost_analysis','sla_compliance','anomaly_detection','audit_trail','resource_utilization','trend_forecast','customer_insights','channel_integration','goal_achievement','automation_effectiveness','security_risk','knowledge_base','call_quality','executive_summary']);
+      for (const r of typeR) if (r.type in byType) (byType as Record<string, number>)[r.type] = r.cnt;
+      const byFmt = init<ReportStatistics['reportsByFormat']>(['json','csv','excel','pdf','html']);
+      for (const r of fmtR) if (r.format in byFmt) (byFmt as Record<string, number>)[r.format] = r.cnt;
+      const byStat = init<ReportStatistics['reportsByStatus']>(['pending','generating','completed','failed','expired']);
+      for (const r of statusR) if (r.status in byStat) (byStat as Record<string, number>)[r.status] = r.cnt;
+      return {
+        totalReports: totalR?.total ?? 0, reportsByType: byType, reportsByFormat: byFmt, reportsByStatus: byStat,
+        averageGenerationTime: Number(avgR?.avgTime) || 0,
+        popularReports: popR.map(r => ({ type: r.type as any, count: r.cnt, averageSize: Number(r.avgSize) || 0 })),
+        usageByUser: userR.map(r => ({ userId: r.userId, username: r.username ?? r.userId, reportCount: r.reportCount, lastGenerated: r.lastGenerated ?? '' })),
+        monthlyTrends: trendR.map(r => ({ month: r.month, reportsGenerated: r.reportsGenerated, totalSize: Number(r.totalSize) || 0 })),
       };
-
-      return mockStats;
     } catch (error) {
       console.error('Get report statistics error:', error);
       throw new ReportGenerationError('Failed to get report statistics');
+    }
+  }
+  private getTimeRangeStart(tr: ReportTimeRange): string | null {
+    const n = new Date();
+    switch (tr) {
+      case 'last_24_hours': return new Date(n.getTime() - 86400000).toISOString();
+      case 'last_7_days': return new Date(n.getTime() - 604800000).toISOString();
+      case 'last_30_days': return new Date(n.getTime() - 2592000000).toISOString();
+      case 'last_90_days': return new Date(n.getTime() - 7776000000).toISOString();
+      case 'current_month': return new Date(n.getFullYear(), n.getMonth(), 1).toISOString();
+      case 'last_month': return new Date(n.getFullYear(), n.getMonth() - 1, 1).toISOString();
+      case 'current_quarter': return new Date(n.getFullYear(), Math.floor(n.getMonth()/3)*3, 1).toISOString();
+      case 'last_quarter': return new Date(n.getFullYear(), Math.floor(n.getMonth()/3)*3-3, 1).toISOString();
+      case 'current_year': return new Date(n.getFullYear(), 0, 1).toISOString();
+      case 'last_year': return new Date(n.getFullYear()-1, 0, 1).toISOString();
+      default: return null;
     }
   }
 
@@ -296,9 +288,12 @@ export class ReportManagerService {
             case 'delete':
               success = await this.deleteReport(reportId, userId, generator, utils);
               break;
-            case 'regenerate':
-              success = true; // TODO: Implement regeneration
+            case 'regenerate': {
+              const rp: ReportGenerationParams = { type: report.type, title: report.title, format: report.format, timeRange: report.metadata?.timeRange ?? 'last_30_days', startDate: report.metadata?.startDate, endDate: report.metadata?.endDate, filters: report.metadata?.filters, options: report.metadata?.options };
+              await generator.generateReport(rp, userId, utils);
+              success = true;
               break;
+            }
             case 'download':
               const downloadResult = await generator.downloadReport(reportId, userId, utils);
               success = !!downloadResult;
