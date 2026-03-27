@@ -7,7 +7,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
   notFoundResponse
-} from '@shared/utils/api-response';
+} from '@/utils/api-response';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import type { MessageAccessScope, MessagePermissions, SenderType } from '@modules/messaging/types/message-types';
 import { nowISO } from '@/utils/timestamp'

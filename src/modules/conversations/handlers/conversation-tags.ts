@@ -10,7 +10,7 @@ import { conversations, conversationTags, tags } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
-import { validationErrorResponse } from '@shared/utils/api-response';
+import { validationErrorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp'
 

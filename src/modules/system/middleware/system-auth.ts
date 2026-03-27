@@ -7,7 +7,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import {
   unauthorizedResponse,
   forbiddenResponse
-} from '@shared/utils/api-response';
+} from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 // ======================== 系統權限類型 ========================

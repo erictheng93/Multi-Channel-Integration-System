@@ -5,7 +5,7 @@ import { Context, Next } from 'hono';
 import {
   validationErrorResponse,
   errorResponse
-} from '@shared/utils/api-response';
+} from '@/utils/api-response';
 import {
   CreateCustomerData,
   UpdateCustomerData,
