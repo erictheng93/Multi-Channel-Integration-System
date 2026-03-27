@@ -1,173 +1,166 @@
-// Report Scheduler Service
-// Handles scheduled report creation, management and execution
+// Report Scheduler Service — CRUD + cron execution for scheduled reports
 
 import type { Bindings } from '@/types';
 import type { ScheduledReport } from '../types/report-types';
 import { ReportGenerationError } from '../types/report-types';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp';
+import logger from '@/utils/logger';
+import { toDbRow, fromDbRow, toDbUpdate } from './report-scheduler-mapper';
+import type { ScheduledReportDbRow } from './report-scheduler-mapper';
 
-/**
- * Handles scheduled report CRUD and next-run calculations
- */
 export class ReportSchedulerService {
-  constructor(_env: Bindings) {
-    // env stored for future use when report scheduling is implemented
-  }
+  private db: D1Database;
+  constructor(env: Bindings) { this.db = env.DB; }
 
-  /**
-   * Create a scheduled report
-   */
-  async createScheduledReport(
-    config: Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>,
-    userId: string
-  ): Promise<ScheduledReport> {
+  async createScheduledReport(config: Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>, userId: string): Promise<ScheduledReport> {
     try {
       const id = crypto.randomUUID();
       const now = nowISO();
       const nextRun = this.calculateNextRun(config.schedule);
-
-      const scheduledReport: ScheduledReport = {
-        ...config,
-        id,
-        createdBy: userId,
-        createdAt: now,
-        nextRun
-      };
-
-      // TODO: Save to database
-      // await this.saveScheduledReport(scheduledReport);
-
-      return scheduledReport;
+      const report: ScheduledReport = { ...config, id, createdBy: userId, createdAt: now, nextRun };
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { scheduledReports } = await import('../../../db/schema');
+      await drizzle(this.db).insert(scheduledReports).values(toDbRow(report) as typeof scheduledReports.$inferInsert);
+      return report;
     } catch (error) {
-      console.error('Create scheduled report error:', error);
+      logger.error('Create scheduled report error', 'ReportScheduler', undefined, error instanceof Error ? error : String(error));
       throw new ReportGenerationError('Failed to create scheduled report');
     }
   }
 
-  /**
-   * Update a scheduled report
-   */
-  async updateScheduledReport(
-    id: string,
-    updates: Partial<ScheduledReport>,
-    userId: string
-  ): Promise<ScheduledReport> {
+  async updateScheduledReport(id: string, updates: Partial<ScheduledReport>, userId: string): Promise<ScheduledReport> {
     try {
-      // TODO: Fetch existing from database
-
-      const updatedReport: ScheduledReport = {
-        id,
-        name: updates.name || 'Updated Report',
-        type: updates.type || 'conversation_summary',
-        format: updates.format || 'excel',
-        schedule: updates.schedule || { frequency: 'daily', time: '09:00' },
-        filters: updates.filters || {},
-        options: updates.options || {},
-        recipients: updates.recipients || [],
-        isActive: updates.isActive !== undefined ? updates.isActive : true,
-        createdBy: userId,
-        createdAt: nowISO(),
-        nextRun: this.calculateNextRun(updates.schedule || { frequency: 'daily', time: '09:00' })
-      };
-
-      // TODO: Update in database
-
-      return updatedReport;
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { scheduledReports } = await import('../../../db/schema');
+      const { eq, and, isNull } = await import('drizzle-orm');
+      const db = drizzle(this.db);
+      const existing = await db.select().from(scheduledReports).where(and(eq(scheduledReports.id, id), isNull(scheduledReports.deletedAt))).get() as ScheduledReportDbRow | undefined;
+      if (!existing) throw new ReportGenerationError('Scheduled report not found');
+      if (existing.createdBy !== userId) throw new ReportGenerationError('Not authorized to update this scheduled report');
+      const newSchedule = updates.schedule ?? fromDbRow(existing).schedule;
+      const nextExec = updates.schedule ? this.calculateNextRun(newSchedule) : undefined;
+      const patch = toDbUpdate(updates, nextExec);
+      patch.updatedAt = nowISO();
+      await db.update(scheduledReports).set(patch).where(eq(scheduledReports.id, id));
+      const updated = await db.select().from(scheduledReports).where(eq(scheduledReports.id, id)).get() as ScheduledReportDbRow | undefined;
+      if (!updated) throw new ReportGenerationError('Failed to fetch updated scheduled report');
+      return fromDbRow(updated);
     } catch (error) {
-      console.error('Update scheduled report error:', error);
+      if (error instanceof ReportGenerationError) throw error;
+      logger.error('Update scheduled report error', 'ReportScheduler', undefined, error instanceof Error ? error : String(error));
       throw new ReportGenerationError('Failed to update scheduled report');
     }
   }
 
-  /**
-   * Delete a scheduled report
-   */
-  async deleteScheduledReport(_id: string, _userId: string): Promise<boolean> {
+  async deleteScheduledReport(id: string, userId: string): Promise<boolean> {
     try {
-      // TODO: Check permissions and delete
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { scheduledReports } = await import('../../../db/schema');
+      const { eq, and, isNull } = await import('drizzle-orm');
+      const db = drizzle(this.db);
+      const existing = await db.select({ id: scheduledReports.id, createdBy: scheduledReports.createdBy }).from(scheduledReports).where(and(eq(scheduledReports.id, id), isNull(scheduledReports.deletedAt))).get();
+      if (!existing) return false;
+      if (existing.createdBy !== userId) throw new ReportGenerationError('Not authorized to delete this scheduled report');
+      await db.update(scheduledReports).set({ deletedAt: nowISO(), isActive: false }).where(eq(scheduledReports.id, id));
       return true;
     } catch (error) {
-      console.error('Delete scheduled report error:', error);
+      if (error instanceof ReportGenerationError) throw error;
+      logger.error('Delete scheduled report error', 'ReportScheduler', undefined, error instanceof Error ? error : String(error));
       return false;
     }
   }
 
-  /**
-   * List scheduled reports
-   */
   async listScheduledReports(userId?: string): Promise<ScheduledReport[]> {
     try {
-      // TODO: Query from database
-      const mockReports: ScheduledReport[] = [
-        {
-          id: '1',
-          name: '每日對話摘要',
-          type: 'conversation_summary',
-          format: 'excel',
-          schedule: { frequency: 'daily', time: '09:00' },
-          filters: {},
-          options: { includeCharts: true, includeSummary: true },
-          recipients: [
-            { email: 'manager@company.com', name: 'Manager', role: 'team' }
-          ],
-          isActive: true,
-          createdBy: userId || 'admin',
-          createdAt: '2025-09-01T00:00:00.000Z',
-          nextRun: '2025-09-26T09:00:00.000Z'
-        }
-      ];
-
-      return mockReports;
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { scheduledReports } = await import('../../../db/schema');
+      const { eq, and, isNull, asc } = await import('drizzle-orm');
+      const db = drizzle(this.db);
+      const conds = [isNull(scheduledReports.deletedAt)];
+      if (userId) conds.push(eq(scheduledReports.createdBy, userId));
+      const rows = await db.select().from(scheduledReports).where(and(...conds)).orderBy(asc(scheduledReports.nextExecutionAt)).all() as ScheduledReportDbRow[];
+      return rows.map(fromDbRow);
     } catch (error) {
-      console.error('List scheduled reports error:', error);
+      logger.error('List scheduled reports error', 'ReportScheduler', undefined, error instanceof Error ? error : String(error));
       return [];
     }
   }
 
-  /**
-   * Calculate next run time for a schedule
-   */
+  async getScheduledReport(id: string): Promise<ScheduledReport | null> {
+    try {
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { scheduledReports } = await import('../../../db/schema');
+      const { eq, and, isNull } = await import('drizzle-orm');
+      const db = drizzle(this.db);
+      const row = await db.select().from(scheduledReports).where(and(eq(scheduledReports.id, id), isNull(scheduledReports.deletedAt))).get() as ScheduledReportDbRow | undefined;
+      return row ? fromDbRow(row) : null;
+    } catch (error) {
+      logger.error('Get scheduled report error', 'ReportScheduler', undefined, error instanceof Error ? error : String(error));
+      return null;
+    }
+  }
+
   calculateNextRun(schedule: ScheduledReport['schedule']): string {
     const now = new Date();
     const [hour, minute] = schedule.time.split(':').map(Number);
-
-    let nextRun = new Date(now);
+    const nextRun = new Date(now);
     nextRun.setHours(hour, minute, 0, 0);
-
     switch (schedule.frequency) {
-      case 'daily':
-        if (nextRun <= now) {
-          nextRun.setDate(nextRun.getDate() + 1);
-        }
-        break;
-      case 'weekly': {
-        const targetDay = schedule.dayOfWeek || 1;
-        const currentDay = nextRun.getDay();
-        let daysToAdd = targetDay - currentDay;
-        if (daysToAdd <= 0 || (daysToAdd === 0 && nextRun <= now)) {
-          daysToAdd += 7;
-        }
-        nextRun.setDate(nextRun.getDate() + daysToAdd);
-        break;
-      }
-      case 'monthly': {
-        const targetDate = schedule.dayOfMonth || 1;
-        nextRun.setDate(targetDate);
-        if (nextRun <= now) {
-          nextRun.setMonth(nextRun.getMonth() + 1);
-        }
-        break;
-      }
-      case 'quarterly': {
-        const currentQuarter = Math.floor(nextRun.getMonth() / 3);
-        nextRun.setMonth(currentQuarter * 3, 1);
-        if (nextRun <= now) {
-          nextRun.setMonth((currentQuarter + 1) * 3, 1);
-        }
-        break;
-      }
+      case 'daily': if (nextRun <= now) nextRun.setDate(nextRun.getDate() + 1); break;
+      case 'weekly': { const t = schedule.dayOfWeek || 1; let d = t - nextRun.getDay(); if (d <= 0 || (d === 0 && nextRun <= now)) d += 7; nextRun.setDate(nextRun.getDate() + d); break; }
+      case 'monthly': { nextRun.setDate(schedule.dayOfMonth || 1); if (nextRun <= now) nextRun.setMonth(nextRun.getMonth() + 1); break; }
+      case 'quarterly': { const q = Math.floor(nextRun.getMonth() / 3); nextRun.setMonth(q * 3, 1); if (nextRun <= now) nextRun.setMonth((q + 1) * 3, 1); break; }
     }
-
     return nextRun.toISOString();
+  }
+
+  async processScheduledReports(): Promise<{ processed: number; succeeded: number; failed: number }> {
+    const stats = { processed: 0, succeeded: 0, failed: 0 };
+    try {
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { scheduledReports, scheduledReportExecutions } = await import('../../../db/schema');
+      const { eq, and, isNull, lte, sql } = await import('drizzle-orm');
+      const db = drizzle(this.db);
+      const now = nowISO();
+      const dueReports = await db.select().from(scheduledReports).where(and(eq(scheduledReports.isActive, true), isNull(scheduledReports.deletedAt), lte(scheduledReports.nextExecutionAt, now))).all() as ScheduledReportDbRow[];
+      if (dueReports.length === 0) return stats;
+      logger.info(`Processing ${dueReports.length} scheduled reports`, 'ReportScheduler');
+      const { ReportGeneratorService } = await import('./report-generator-service');
+      const { ReportUtils } = await import('./report-utils');
+      const env = { DB: this.db } as any;
+      const generator = new ReportGeneratorService(env);
+      const utils = new ReportUtils(this.db);
+      for (const dbRow of dueReports) {
+        stats.processed++;
+        const sr = fromDbRow(dbRow);
+        const execId = crypto.randomUUID();
+        const execStart = nowISO();
+        await db.insert(scheduledReportExecutions).values({ id: execId, scheduledReportId: dbRow.id, executionStartedAt: execStart, executionStatus: 'running', retryCount: 0 });
+        try {
+          const generated = await generator.generateReport({ type: sr.type, title: `${sr.name} - ${new Date().toISOString().split('T')[0]}`, format: sr.format, timeRange: 'last_24_hours', filters: sr.filters as Record<string, string | string[]>, options: sr.options as Record<string, boolean | string | number> }, dbRow.createdBy, utils);
+          const done = nowISO();
+          const dur = new Date(done).getTime() - new Date(execStart).getTime();
+          await db.update(scheduledReportExecutions).set({ executionStatus: 'success', executionCompletedAt: done, executionDuration: Math.round(dur / 1000), generatedReportId: generated.id }).where(eq(scheduledReportExecutions.id, execId));
+          await db.update(scheduledReports).set({ nextExecutionAt: this.calculateNextRun(sr.schedule), lastExecutionAt: done, lastExecutionStatus: 'success', executionCount: sql`COALESCE(${scheduledReports.executionCount}, 0) + 1`, updatedAt: done }).where(eq(scheduledReports.id, dbRow.id));
+          stats.succeeded++;
+        } catch (error) {
+          const failedAt = nowISO();
+          const retries = dbRow.executionCount ?? 0;
+          const max = dbRow.maxRetries ?? 3;
+          await db.update(scheduledReportExecutions).set({ executionStatus: 'failed', executionCompletedAt: failedAt, errorMessage: error instanceof Error ? error.message : String(error), retryCount: retries + 1 }).where(eq(scheduledReportExecutions.id, execId));
+          if (retries + 1 >= max) {
+            await db.update(scheduledReports).set({ isActive: false, lastExecutionStatus: 'failed', updatedAt: failedAt }).where(eq(scheduledReports.id, dbRow.id));
+          } else {
+            const delay = (dbRow.retryDelayMinutes ?? 30) * 60 * 1000;
+            await db.update(scheduledReports).set({ nextExecutionAt: new Date(Date.now() + delay).toISOString(), lastExecutionStatus: 'failed', updatedAt: failedAt }).where(eq(scheduledReports.id, dbRow.id));
+          }
+          stats.failed++;
+          logger.error(`Scheduled report ${dbRow.id} failed`, 'ReportScheduler', undefined, error instanceof Error ? error : String(error));
+        }
+      }
+    } catch (error) {
+      logger.error('processScheduledReports failed', 'ReportScheduler', undefined, error instanceof Error ? error : String(error));
+    }
+    return stats;
   }
 }

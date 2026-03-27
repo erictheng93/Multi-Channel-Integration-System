@@ -3,7 +3,7 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { eq, and, desc, asc, sql, count, avg, like } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, count, avg, like, gte, sum } from 'drizzle-orm';
 import { conversationSessions, messages, conversations, agentTeams } from '@/db/schema';
 import {
   ConversationSession,
@@ -643,17 +643,33 @@ export class SessionService implements SessionServiceInterface {
       const total = basicStats?.totalSessions || 0;
       const active = basicStats?.activeSessions || 0;
 
+      // Calculate average session duration from closed sessions
+      const closedSessions = await this.db.select({ startTime: conversationSessions.startTime, endTime: conversationSessions.endTime }).from(conversationSessions).where(and(baseCondition, eq(conversationSessions.isActive, false))).all();
+      const durations = closedSessions.filter(s => s.endTime).map(s => (new Date(s.endTime!).getTime() - new Date(s.startTime).getTime()) / 60000);
+      const avgDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : 0;
+
+      // Topics distribution
+      const topicRows = await this.db.select({ topic: conversationSessions.topic, topicCount: count() }).from(conversationSessions).where(baseCondition).groupBy(conversationSessions.topic).all();
+      const topicsWithData = topicRows.filter(t => t.topic);
+      const topicTotal = topicsWithData.reduce((acc, t) => acc + t.topicCount, 0);
+      const topicsDistribution = topicsWithData.map(t => ({ topic: t.topic!, count: t.topicCount, percentage: topicTotal > 0 ? Math.round((t.topicCount / topicTotal) * 100) : 0 }));
+
+      // Daily stats for last 7 days
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      const dailyRows = await this.db.select({ date: sql<string>`DATE(${conversationSessions.createdAt})`, sessionCount: count(), messageCount: sum(conversationSessions.messageCount) }).from(conversationSessions).where(and(baseCondition, gte(conversationSessions.createdAt, sevenDaysAgo))).groupBy(sql`DATE(${conversationSessions.createdAt})`).orderBy(desc(sql`DATE(${conversationSessions.createdAt})`)).all();
+      const dailyStats = dailyRows.map(d => ({ date: d.date, sessionCount: d.sessionCount, messageCount: Number(d.messageCount) || 0, avgDuration: 0 }));
+
       return {
         totalSessions: total,
         activeSessions: active,
         inactiveSessions: total - active,
         averageMessagesPerSession: Math.round(Number(basicStats?.avgMessages) || 0),
-        averageSessionDuration: 0, // TODO: Calculate from session duration
+        averageSessionDuration: avgDuration,
         sessionsByType: this.arrayToRecord(typeStats, 'sessionType', 'continuous'),
-        sessionsByPriority: { low: 0, medium: total, high: 0, urgent: 0 }, // 預設值，因為資料庫中沒有 priority 欄位
-        sessionsBySentiment: { positive: 0, negative: 0, neutral: total }, // 預設值，因為資料庫中沒有 sentiment 欄位
-        topicsDistribution: [], // TODO: Implement topic analysis
-        dailyStats: [] // TODO: Implement daily statistics
+        sessionsByPriority: { low: 0, medium: total, high: 0, urgent: 0 },
+        sessionsBySentiment: { positive: 0, negative: 0, neutral: total },
+        topicsDistribution,
+        dailyStats
       };
     } catch (error) {
       log.error('獲取統計失敗', {}, error instanceof Error ? error : String(error));
@@ -665,19 +681,26 @@ export class SessionService implements SessionServiceInterface {
    * 獲取活動統計
    */
   async getActivityStats(query: Omit<SessionActivityStats, 'activities' | 'summary'>): Promise<SessionActivityStats> {
-    // TODO: Implement activity statistics
-    return {
-      conversationId: query.conversationId || '',
-      timeRange: query.timeRange,
-      activities: [],
-      summary: {
-        totalActivity: 0,
-        avgSessionsPerDay: 0,
-        avgMessagesPerSession: 0,
-        peakActivityHour: 12,
-        leastActivityHour: 3
-      }
-    };
+    const { conversationId, timeRange } = query;
+    const rangeMs: Record<string, number> = { day: 86400000, week: 604800000, month: 2592000000, year: 31536000000 };
+    const startDate = new Date(Date.now() - (rangeMs[timeRange] || rangeMs.month)).toISOString();
+    const conds = [gte(conversationSessions.createdAt, startDate)];
+    if (conversationId) conds.push(eq(conversationSessions.conversationId, conversationId));
+    const where = and(...conds);
+    try {
+      const daily = await this.db.select({ date: sql<string>`DATE(${conversationSessions.createdAt})`, sessionsCreated: count(), messagesSent: sum(conversationSessions.messageCount) }).from(conversationSessions).where(where).groupBy(sql`DATE(${conversationSessions.createdAt})`).orderBy(asc(sql`DATE(${conversationSessions.createdAt})`)).all();
+      const activities = daily.map(d => ({ date: d.date, sessionsCreated: d.sessionsCreated, sessionsEnded: 0, messagesSent: Number(d.messagesSent) || 0, activeTime: 0 }));
+      const hourly = await this.db.select({ hour: sql<number>`CAST(strftime('%H', ${conversationSessions.startTime}) AS INTEGER)`, cnt: count() }).from(conversationSessions).where(where).groupBy(sql`strftime('%H', ${conversationSessions.startTime})`).all();
+      let peakHour = 12, leastHour = 3;
+      if (hourly.length > 0) { const sorted = [...hourly].sort((a, b) => b.cnt - a.cnt); peakHour = sorted[0].hour; leastHour = sorted[sorted.length - 1].hour; }
+      const totalS = activities.reduce((a, x) => a + x.sessionsCreated, 0);
+      const totalM = activities.reduce((a, x) => a + x.messagesSent, 0);
+      const days = Math.max(activities.length, 1);
+      return { conversationId: conversationId || '', timeRange, activities, summary: { totalActivity: totalS, avgSessionsPerDay: Math.round((totalS / days) * 10) / 10, avgMessagesPerSession: totalS > 0 ? Math.round((totalM / totalS) * 10) / 10 : 0, peakActivityHour: peakHour, leastActivityHour: leastHour } };
+    } catch (error) {
+      log.error('Failed to get activity stats', {}, error instanceof Error ? error : String(error));
+      return { conversationId: conversationId || '', timeRange, activities: [], summary: { totalActivity: 0, avgSessionsPerDay: 0, avgMessagesPerSession: 0, peakActivityHour: 12, leastActivityHour: 3 } };
+    }
   }
 
   // ======================== 批量操作 ========================

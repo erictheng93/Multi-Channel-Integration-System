@@ -165,33 +165,16 @@ sessionRouter.post(
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
-      // TODO: 實現邊界檢測測試
-      const detectionResult = {
-        shouldCreateNew: false,
-        reason: 'continuous_conversation' as const,
-        confidence: 0.85,
-        suggestedTopic: null as string | null,
-        analysis: {
-          timeGapAnalysis: {
-            lastMessageTime: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-            gapMinutes: 10,
-            exceedsThreshold: false
-          },
-          topicAnalysis: {
-            currentTopic: 'general_inquiry',
-            suggestedTopic: null as string | null,
-            topicChangeDetected: false
-          },
-          messageCountAnalysis: {
-            currentCount: 15,
-            exceedsLimit: false
-          },
-          sentimentAnalysis: {
-            sentiment: 'neutral' as const,
-            confidence: 0.7
-          }
-        }
-      };
+      const { SessionService } = await import('../services/session-service');
+      const sessionService = new SessionService(c.env.DB);
+      let currentSession = null;
+      if (body.currentSessionId) {
+        currentSession = await sessionService.get(body.currentSessionId);
+      } else {
+        const sessions = await sessionService.list({ conversationId: body.conversationId, isActive: true, page: 1, pageSize: 1 });
+        if (sessions.sessions.length > 0) currentSession = sessions.sessions[0];
+      }
+      const detectionResult = await sessionService.detectSessionBoundary(currentSession, body.messageContent, body.senderType);
 
       return c.json({
         success: true,
@@ -242,22 +225,27 @@ sessionRouter.post(
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
-      // TODO: 實現清理功能
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { conversationSessions } = await import('../../../db/schema');
+      const { and, eq, lt, count: countFn } = await import('drizzle-orm');
+      const db = drizzle(c.env.DB);
+      const cutoff = new Date(Date.now() - olderThanDays * 86400000).toISOString();
+      const conds = [lt(conversationSessions.createdAt, cutoff)];
+      if (inactiveOnly) conds.push(eq(conversationSessions.isActive, false));
+      const wh = and(...conds);
+      const [totalR, eligR] = await Promise.all([
+        db.select({ cnt: countFn() }).from(conversationSessions).get(),
+        db.select({ cnt: countFn() }).from(conversationSessions).where(wh).get(),
+      ]);
+      const totalSessions = totalR?.cnt ?? 0;
+      const eligible = eligR?.cnt ?? 0;
+      let deleted = 0;
+      if (!dryRun && eligible > 0) { await db.delete(conversationSessions).where(wh); deleted = eligible; }
       const cleanupResult = {
         dryRun,
-        criteria: {
-          olderThanDays,
-          inactiveOnly
-        },
-        analysis: {
-          totalSessions: 0,
-          eligibleForCleanup: 0,
-          wouldDelete: 0,
-          actuallyDeleted: dryRun ? 0 : 0
-        },
-        summary: dryRun
-          ? 'Dry run completed - no sessions were deleted'
-          : 'Cleanup operation completed'
+        criteria: { olderThanDays, inactiveOnly },
+        analysis: { totalSessions, eligibleForCleanup: eligible, wouldDelete: eligible, actuallyDeleted: dryRun ? 0 : deleted },
+        summary: dryRun ? `Dry run completed - ${eligible} sessions would be deleted` : `Cleanup completed - ${deleted} sessions deleted`
       };
 
       return c.json({
@@ -308,22 +296,37 @@ sessionRouter.post(
         }, HTTP_STATUS.BAD_REQUEST);
       }
 
-      // TODO: 實現匯出功能
+      const { drizzle } = await import('drizzle-orm/d1');
+      const { conversationSessions, messages: messagesTable } = await import('../../../db/schema');
+      const { and, eq, gte, lte } = await import('drizzle-orm');
+      const db = drizzle(c.env.DB);
+      const expConds = [];
+      if (body.conversationId) expConds.push(eq(conversationSessions.conversationId, body.conversationId));
+      if (body.startDate) expConds.push(gte(conversationSessions.createdAt, body.startDate));
+      if (body.endDate) expConds.push(lte(conversationSessions.createdAt, body.endDate));
+      const expWhere = expConds.length > 0 ? and(...expConds) : undefined;
+      const sessions = await db.select().from(conversationSessions).where(expWhere).all();
+      let exportMessages: any[] = [];
+      if (includeMessages && sessions.length > 0) {
+        const convIds = [...new Set(sessions.map(s => s.conversationId))].slice(0, 10);
+        for (const cid of convIds) { const msgs = await db.select().from(messagesTable).where(eq(messagesTable.conversationId, cid)).all(); exportMessages.push(...msgs); }
+      }
+      let downloadUrl: string | null = null;
+      const r2 = (c.env as any).R2_BUCKET;
+      if (r2) {
+        const key = `exports/sessions/${Date.now()}.${format}`;
+        const content = format === 'csv'
+          ? 'id,conversationId,sessionType,topic,startTime,endTime,messageCount,isActive,createdAt\n' + sessions.map(s => `${s.id},${s.conversationId},${s.sessionType || ''},${s.topic || ''},${s.startTime},${s.endTime || ''},${s.messageCount || 0},${s.isActive},${s.createdAt || ''}`).join('\n')
+          : JSON.stringify({ sessions, messages: includeMessages ? exportMessages : undefined }, null, 2);
+        await r2.put(key, content, { httpMetadata: { contentType: format === 'csv' ? 'text/csv' : 'application/json' } });
+        downloadUrl = `/api/storage/${key}`;
+      }
       const exportResult = {
         format,
-        criteria: {
-          conversationId: body.conversationId,
-          startDate: body.startDate,
-          endDate: body.endDate,
-          includeMessages
-        },
-        stats: {
-          totalSessions: 0,
-          totalMessages: includeMessages ? 0 : undefined,
-          exportedAt: nowISO()
-        },
-        downloadUrl: null as string | null, // TODO: Generate actual download URL
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+        criteria: { conversationId: body.conversationId, startDate: body.startDate, endDate: body.endDate, includeMessages },
+        stats: { totalSessions: sessions.length, totalMessages: includeMessages ? exportMessages.length : undefined, exportedAt: nowISO() },
+        downloadUrl,
+        expiresAt: new Date(Date.now() + 86400000).toISOString()
       };
 
       return c.json({

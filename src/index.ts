@@ -882,6 +882,16 @@ export default {
     _ctx: ExecutionContext
   ): Promise<void> {
     log.info('Scheduled event triggered', { cron: event.cron, scheduledTime: event.scheduledTime });
-    await handleScheduledEvent(env);
+    const [, reportStats] = await Promise.allSettled([
+      handleScheduledEvent(env),
+      (async () => {
+        const { ReportSchedulerService } = await import('@modules/reports/services/report-scheduler-service');
+        const scheduler = new ReportSchedulerService(env);
+        return scheduler.processScheduledReports();
+      })(),
+    ]);
+    if (reportStats.status === 'fulfilled' && reportStats.value.processed > 0) {
+      log.info('Scheduled reports processed', { processed: reportStats.value.processed, succeeded: reportStats.value.succeeded, failed: reportStats.value.failed });
+    }
   }
 };

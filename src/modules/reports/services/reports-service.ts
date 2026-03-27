@@ -41,7 +41,7 @@ export class ReportsService implements ReportsServiceInterface {
     this.generator = new ReportGeneratorService(env);
     this.manager = new ReportManagerService(env);
     this.scheduler = new ReportSchedulerService(env);
-    this.utils = new ReportUtils();
+    this.utils = new ReportUtils(env.DB);
   }
 
   // ======================== Report Generation ========================
