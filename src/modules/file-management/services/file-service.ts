@@ -19,7 +19,7 @@ import type { StorageService } from '@modules/file-management/types/storage-type
 import type { Bindings } from '@/types';
 import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, desc, sql, like, gte, lte } from 'drizzle-orm';
-import { fileAttachments } from '@shared/database/schema';
+import { fileAttachments } from '@/db/schema';
 
 import { FileValidationService } from '@modules/file-management/services/validation-service';
 import { MetadataService } from '@modules/file-management/services/metadata-service';

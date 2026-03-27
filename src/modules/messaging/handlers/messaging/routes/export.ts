@@ -6,7 +6,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, and, desc, gte, lte, count, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
-import { messages, conversations, agents, customers } from '@shared/database/schema';
+import { messages, conversations, agents, customers } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import { BULK_OPERATION_LIMITS } from '@/constants/limits';
 import { nowISO, nowMs } from '@/utils/timestamp'
