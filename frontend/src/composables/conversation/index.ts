@@ -18,3 +18,6 @@ export * from './useConversationVirtualScroll'
 
 // Legacy (for ConversationDetail page - not part of ConversationList refactoring)
 export * from './useConversationController'
+
+// Team Assignment (extracted from AdvancedAssignActions.vue)
+export * from './useTeamAssignment'

@@ -208,14 +208,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useAuth } from '@/composables'
-import { useConversationsStore } from '@/stores/conversations'
-import { usePermissions } from '@/services/permissionService'
-import type { Conversation, Agent } from '@/types'
-import { preloadService } from '@/services/preloadService'
-import { useConfirmDialog } from '@/composables/useConfirmDialog'
-import { useToast } from '@/composables/useToast'
+import type { Conversation } from '@/types'
+import { useTeamAssignment } from '@/composables/conversation/useTeamAssignment'
 import {
   UserCheckIcon,
   TeamIcon,
@@ -225,7 +219,6 @@ import {
   SearchIcon
 } from '@/components/icons'
 import TeamListSkeleton from '@/components/ui/TeamListSkeleton.vue'
-import { CONVERSATION_STATUS, isOpenConversation } from '@/constants/conversation-status'
 
 interface Props {
   conversation: Conversation
@@ -239,372 +232,30 @@ const emit = defineEmits<{
   error: [message: string]
 }>()
 
-const { currentAgent } = useAuth()
-const conversationsStore = useConversationsStore()
 const {
-  canAssignConversation,
-  canUnassignConversation
-} = usePermissions()
-
-// State
-const isAssigning = ref(false)
-const showTeamSelector = ref(false)
-const teamSearchTerm = ref('')
-const selectedTeam = ref<number | null>(null)
-const isLoadingTeams = ref(false) //  加载状态
-
-// Confirm dialog
-const { showWarning } = useConfirmDialog()
-
-// Toast notifications
-const { showSuccess, showError } = useToast()
-
-// 优化：使用预加载的团队数据
-// 響應式整合：preloadService.getTeams() 現在返回 shallowRef.value
-// 當快取更新時，teamsRef 會變化，觸發此 computed 自動重新計算
-const teams = computed(() => {
-  const cachedTeams = preloadService.getTeams()
-  return cachedTeams.map(team => ({
-    id: team.id,
-    name: team.name,
-    memberCount: team.memberCount
-  }))
-})
-
-// 類型適配函數
-const agentToTeamMember = (agent: Agent) => {
-  if (!agent) {return null}
-  return {
-    id: agent.id,
-    loginId: agent.email,
-    name: agent.displayName || agent.name,
-    email: agent.email,
-    role: agent.role,
-    status: (agent.isActive ? 'active' : 'inactive') as 'active' | 'inactive' | 'pending',
-    group: undefined,
-    primaryTeamId: agent.primaryTeamId,
-    avatar: undefined,
-    createdAt: new Date(agent.createdAt),
-    updatedAt: new Date(),
-    lastLoginAt: agent.lastActive ? new Date(agent.lastActive) : undefined
-  }
-}
-
-// Computed
-const canAssignToTeam = computed(() => {
-  if (!currentAgent.value || currentAgent.value.role !== 'admin') {
-    return false
-  }
-
-  const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  const result = canAssignConversation(teamMemberAgent, props.conversation) &&
-         isOpenConversation(props.conversation.status)
-
-  return result
-})
-
-const canUnassign = computed(() => {
-  if (!currentAgent.value) {
-    return false
-  }
-
-  const teamMemberAgent = agentToTeamMember(currentAgent.value)
-  const result = canUnassignConversation(teamMemberAgent, props.conversation)
-
-  return result
-})
-
-const filteredTeams = computed(() => {
-  let teamList = teams.value
-
-  // 搜索篩選
-  if (teamSearchTerm.value.trim()) {
-    const term = teamSearchTerm.value.toLowerCase()
-    teamList = teamList.filter(team =>
-      team.name.toLowerCase().includes(term)
-    )
-  }
-
-  return teamList
-})
-
-const selectedTeamName = computed(() => {
-  if (!selectedTeam.value) {return ''}
-  const team = teams.value.find(t => t.id === selectedTeam.value)
-  return team?.name || '未知團隊'
-})
-
-// Methods
-const getAssignedDisplayName = () => {
-  // Note: Individual assignment (assignedAgent) removed - only team-based assignment is supported now
-  if (props.conversation.assignedTeamId) {
-    // 從 teams 列表中查找團隊名稱
-    const team = teams.value.find(t => t.id === props.conversation.assignedTeamId)
-    return team?.name || `團隊 #${props.conversation.assignedTeamId}`
-  }
-  return '未指派'
-}
-
-const toggleTeamSelector = async () => {
-  if (showTeamSelector.value) {
-    closeTeamSelector()
-  } else {
-    showTeamSelector.value = true
-
-    // 如果团队数据为空，显示加载状态
-    if (teams.value.length === 0) {
-      isLoadingTeams.value = true
-    }
-
-    // 优化：确保团队数据已加载（如果已在缓存中，立即返回）
-    await preloadService.ensureTeamsLoaded()
-
-    // 加载完成，关闭加载状态
-    isLoadingTeams.value = false
-  }
-}
-
-const closeTeamSelector = () => {
-  showTeamSelector.value = false
-  selectedTeam.value = null
-  teamSearchTerm.value = ''
-  isLoadingTeams.value = false //  重置加载状态
-}
-
-const selectTeam = (teamId: number) => {
-  // 允許選擇任何團隊，包括當前已指派的團隊（用於重新確認指派）
-  selectedTeam.value = selectedTeam.value === teamId ? null : teamId
-}
-
-const cancelSelection = () => {
-  selectedTeam.value = null
-}
-
-// 手动刷新团队列表
-const handleManualRefresh = async () => {
-  if (isLoadingTeams.value) {return}
-
-  console.log('[AdvancedAssignActions] Manual refresh triggered by user')
-  isLoadingTeams.value = true
-
-  try {
-    // 强制刷新团队数据
-    await preloadService.refreshTeams()
-    showSuccess('刷新成功', '團隊列表已更新')
-  } catch (error) {
-    console.error('[AdvancedAssignActions] Manual refresh failed:', error)
-    showError('刷新失敗', '無法重新載入團隊列表，請稍後重試')
-  } finally {
-    isLoadingTeams.value = false
-  }
-}
-
-// 优化：添加乐观更新支持
-const confirmAssignment = async () => {
-  if (!selectedTeam.value || isAssigning.value) {
-    console.warn('[AdvancedAssignActions] Invalid selection or already assigning')
-    return
-  }
-
-  // 驗證團隊存在
-  const teamExists = teams.value.some(t => t.id === selectedTeam.value)
-  if (!teamExists) {
-    showError('指派失敗', '選中的團隊不存在，請重新選擇')
-    emit('error', '選中的團隊不存在，請重新選擇')
-    return
-  }
-
-  // 修复：保存 selectedTeam 到局部变量，避免被 closeTeamSelector() 清空
-  const selectedTeamId = selectedTeam.value
-  const selectedTeamData = teams.value.find(t => t.id === selectedTeamId)
-  const teamName = selectedTeamData?.name || '團隊'
-  console.log(`[AdvancedAssignActions] Starting assignment to team: ${teamName} (ID: ${selectedTeamId})`)
-
-  // 轉指派確認：檢查是否從一個團隊轉指派到另一個團隊
-  if (props.conversation.assignedTeamId && props.conversation.assignedTeamId !== selectedTeamId) {
-    // 這是轉指派的情況
-    const currentTeamId = props.conversation.assignedTeamId
-    const currentTeamData = teams.value.find(t => t.id === currentTeamId)
-    const currentTeamName = currentTeamData?.name || props.conversation.assignedTeam?.name || `團隊 #${currentTeamId}`
-
-    console.log(`[AdvancedAssignActions] Re-assignment detected: ${currentTeamName} → ${teamName}`)
-
-    // 顯示轉指派確認對話框
-    const confirmed = await showWarning(
-      '確定要轉指派給其他團隊？',
-      `此對話目前指派給「${currentTeamName}」，確定要轉指派給「${teamName}」嗎？`
-    )
-
-    if (!confirmed) {
-      console.log('[AdvancedAssignActions] Re-assignment cancelled by user')
-      return
-    }
-
-    console.log('[AdvancedAssignActions] Re-assignment confirmed by user')
-  }
-
-  // 步骤 1: 乐观更新 - 立即显示成功状态
-  showSuccess('指派成功', `已成功將對話指派給「${teamName}」`)
-  closeTeamSelector()  // 立即关闭面板，提升用户体验
-
-  // 发送已指派事件（乐观）
-  const optimisticConv = {
-    ...props.conversation,
-    assignedTeamId: selectedTeamId,
-    assignedTeam: {
-      id: selectedTeamId,
-      name: teamName,
-      description: null
-    }
-  }
-  emit('assigned', optimisticConv, `team-${selectedTeamId}`)
-
-  // 步骤 2: 后台同步到服务器
-  isAssigning.value = true
-  try {
-    let success: boolean
-
-    // 判斷是新指派還是轉指派
-    const isTransfer = props.conversation.assignedTeamId && props.conversation.assignedTeamId !== selectedTeamId
-
-    if (isTransfer) {
-      // 轉指派：使用 transfer API（會觸發三方通知：舊團隊移除、新團隊添加、觀看者更新）
-      const fromTeamId = props.conversation.assignedTeamId
-      const fromTeamName = props.conversation.assignedTeam?.name || `團隊 #${fromTeamId}`
-      console.log(`[AdvancedAssignActions] Using transfer API: ${fromTeamName} → ${teamName}`)
-
-      success = await conversationsStore.transferConversationToTeam(
-        props.conversation.id,
-        fromTeamId,
-        selectedTeamId,
-        teamName,
-        '管理員手動轉指派'
-      )
-    } else {
-      // 新指派：使用 assign API
-      console.log(`[AdvancedAssignActions] Using assign API: → ${teamName}`)
-
-      success = await conversationsStore.assignConversationToTeam(
-        props.conversation.id,
-        selectedTeamId,  //  使用保存的局部变量
-        teamName
-      )
-    }
-
-    if (success) {
-      console.log(`[AdvancedAssignActions] ${isTransfer ? 'Transfer' : 'Assignment'} confirmed by server`)
-      // 成功后不需要额外操作，UI已经更新
-    } else {
-      console.error(`[AdvancedAssignActions] Server rejected ${isTransfer ? 'transfer' : 'assignment'}`)
-      // 步骤 3: 失败时通知用户（不回滚UI，因为store会处理）
-      showError(isTransfer ? '轉指派失敗' : '指派失敗', `服務器拒絕${isTransfer ? '轉指派' : '指派'}，請稍後重試`)
-      emit('error', `${isTransfer ? '轉指派' : '指派'}給團隊 ${teamName} 失敗`)
-    }
-  } catch (error) {
-    console.error('[AdvancedAssignActions] Confirm assignment/transfer failed:', error)
-    showError('操作失敗', '操作過程中發生錯誤，請稍後重試')
-    emit('error', '操作過程中發生錯誤')
-  } finally {
-    isAssigning.value = false
-  }
-}
-
-const handleUnassign = async () => {
-  if (isAssigning.value) {
-    return
-  }
-
-  // 確認對話是否已指派 (only team-based assignment is supported now)
-  if (!props.conversation.assignedTeamId) {
-    showError('無法取消指派', '此對話尚未指派')
-    return
-  }
-
-  // 取得當前指派資訊用於提示
-  const assignedName = props.conversation.assignedTeam?.name || '未知'
-  const assignedType = '團隊'
-
-  // 顯示確認對話框
-  const confirmed = await showWarning(
-    `確定要取消指派嗎？`,
-    `此對話目前指派給${assignedType}「${assignedName}」，取消後將變為待處理狀態。`
-  )
-
-  if (!confirmed) {
-    return
-  }
-
-  console.log(`[AdvancedAssignActions] Starting unassign for conversation:`, props.conversation.id)
-
-  // 步驟 1: 樂觀更新 - 立即顯示成功狀態
-  showSuccess('取消指派成功', `已成功取消對話指派`)
-
-  // 立即發送 unassigned 事件（樂觀）
-  // Note: Individual assignment removed - only team-based assignment is supported now
-  const optimisticConv: Conversation = {
-    ...props.conversation,
-    status: CONVERSATION_STATUS.PENDING,
-    assignedTeamId: undefined,
-    assignedTeam: undefined
-  }
-  emit('unassigned', optimisticConv)
-
-  // 立即關閉面板，提升用戶體驗
-  closeTeamSelector()
-
-  // 步驟 2: 後台同步到服務器
-  isAssigning.value = true
-  try {
-    // 調用 Store 的取消指派方法
-    const success = await conversationsStore.unassignConversation(
-      props.conversation.id,
-      '管理員手動取消指派'
-    )
-
-    if (success) {
-      console.log(`[AdvancedAssignActions] Unassign confirmed by server`)
-      // 成功後不需要額外操作，UI已經更新
-    } else {
-      console.error(`[AdvancedAssignActions] Server rejected unassign`)
-      // 步驟 3: 失敗時通知用戶（不回滾UI，因為store會處理）
-      showError('取消指派失敗', '服務器拒絕取消指派，請稍後重試')
-      emit('error', '取消指派失敗')
-    }
-  } catch (error) {
-    console.error('[AdvancedAssignActions] Unassign failed with exception:', error)
-    showError('取消指派失敗', '取消指派過程中發生錯誤，請稍後重試')
-    emit('error', '取消指派過程中發生錯誤')
-  } finally {
-    isAssigning.value = false
-  }
-}
-
-// Note: Individual assignment UI removed - these functions kept for potential future use
-const _getInitials = (name: string | undefined): string => {
-  if (!name) {return 'U'}
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-}
-
-const _getRoleDisplayName = (role: string | undefined): string => {
-  if (!role) {return ''}
-  const roleNames = {
-    'admin': '管理員',
-    'team': '團隊主管',
-    'agent': '客服專員'
-  }
-  return roleNames[role as keyof typeof roleNames] || role
-}
-
-// Suppress unused variable warnings
-void _getInitials
-void _getRoleDisplayName
-
-// 优化：组件挂载时确保数据已预加载
-onMounted(async () => {
-  if (currentAgent.value?.role === 'admin') {
-    // 确保团队数据已加载（如果已在缓存中，立即返回，用户感知延迟 < 50ms）
-    await preloadService.ensureTeamsLoaded()
-  }
+  isAssigning,
+  showTeamSelector,
+  teamSearchTerm,
+  selectedTeam,
+  isLoadingTeams,
+  teams,
+  canAssignToTeam,
+  canUnassign,
+  filteredTeams,
+  selectedTeamName,
+  getAssignedDisplayName,
+  toggleTeamSelector,
+  closeTeamSelector,
+  selectTeam,
+  cancelSelection,
+  handleManualRefresh,
+  confirmAssignment,
+  handleUnassign
+} = useTeamAssignment({
+  conversation: () => props.conversation,
+  onAssigned: (conv, assignedTo) => emit('assigned', conv, assignedTo),
+  onUnassigned: (conv) => emit('unassigned', conv),
+  onError: (msg) => emit('error', msg)
 })
 </script>
 
