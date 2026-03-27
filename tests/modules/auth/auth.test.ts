@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { signJWT, verifyJWT, hashPassword, verifyPassword, authenticateUser } from '@modules/auth/services/auth';
 
-import type { JWTPayload } from '@shared/types';
+import type { JWTPayload } from '@/types';
 
 describe('Auth Module - JWT Functions', () => {
   const testSecret = 'test-secret-key';

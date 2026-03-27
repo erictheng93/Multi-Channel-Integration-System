@@ -23,7 +23,7 @@ import {
   createMockUpdateSessionData,
   createMockBatchOperation
 } from '../../helpers/session-test-helpers';
-import type { Bindings } from '@shared/types';
+import type { Bindings } from '@/types';
 
 // Mock JWT authentication
 vi.mock('@/middleware/auth', () => ({
