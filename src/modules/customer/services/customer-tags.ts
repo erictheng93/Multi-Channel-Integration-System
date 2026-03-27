@@ -139,7 +139,6 @@ export class CustomerTagService {
       const existingAssignmentTagIds = existingAssignments.map(a => a.tagId);
       const newTagIds = tagIds.filter(id => !existingAssignmentTagIds.includes(id));
 
-      // 只添加新的標籤關聯
       if (newTagIds.length > 0) {
         const timestamp = nowISO();
         const assignedBy = userPayload?.userId ? String(userPayload.userId) : 'system';
@@ -150,13 +149,10 @@ export class CustomerTagService {
           assignedAt: timestamp
         }));
 
-        // 批量插入新的標籤關聯
-        for (const tagAssignment of insertData) {
-          await this.drizzleDb
-            .insert(customerTags)
-            .values(tagAssignment)
-            .run();
-        }
+        await this.drizzleDb
+          .insert(customerTags)
+          .values(insertData)
+          .run();
       }
     } catch (error) {
       console.error('Error adding tags to customer:', error);
@@ -240,20 +236,19 @@ export class CustomerTagService {
     tagIds: number[],
     userPayload?: JWTPayload
   ): Promise<{ success: number[]; failed: number[]; }> {
-    const results = {
-      success: [] as number[],
-      failed: [] as number[]
-    };
+    const settled = await Promise.allSettled(
+      customerIds.map(id => this.addTagsToCustomer(id, tagIds, userPayload))
+    );
 
-    for (const customerId of customerIds) {
-      try {
-        await this.addTagsToCustomer(customerId, tagIds, userPayload);
-        results.success.push(customerId);
-      } catch (error) {
-        console.error(`Error adding tags to customer ${customerId}:`, error);
-        results.failed.push(customerId);
+    const results = { success: [] as number[], failed: [] as number[] };
+    settled.forEach((result, i) => {
+      if (result.status === 'fulfilled') {
+        results.success.push(customerIds[i]);
+      } else {
+        console.error(`Error adding tags to customer ${customerIds[i]}:`, result.reason);
+        results.failed.push(customerIds[i]);
       }
-    }
+    });
 
     return results;
   }
@@ -265,20 +260,19 @@ export class CustomerTagService {
     customerIds: number[],
     tagIds: number[]
   ): Promise<{ success: number[]; failed: number[]; }> {
-    const results = {
-      success: [] as number[],
-      failed: [] as number[]
-    };
+    const settled = await Promise.allSettled(
+      customerIds.map(id => this.removeTagsFromCustomer(id, tagIds))
+    );
 
-    for (const customerId of customerIds) {
-      try {
-        await this.removeTagsFromCustomer(customerId, tagIds);
-        results.success.push(customerId);
-      } catch (error) {
-        console.error(`Error removing tags from customer ${customerId}:`, error);
-        results.failed.push(customerId);
+    const results = { success: [] as number[], failed: [] as number[] };
+    settled.forEach((result, i) => {
+      if (result.status === 'fulfilled') {
+        results.success.push(customerIds[i]);
+      } else {
+        console.error(`Error removing tags from customer ${customerIds[i]}:`, result.reason);
+        results.failed.push(customerIds[i]);
       }
-    }
+    });
 
     return results;
   }

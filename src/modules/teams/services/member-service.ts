@@ -652,14 +652,18 @@ export class MemberService {
               result.teamsAdded = addResult.added;
             }
 
-            // 離開團隊
+            // 離開團隊 (parallel — independent removals)
             if (teamChanges.remove && teamChanges.remove.length > 0) {
-              for (const teamId of teamChanges.remove) {
-                try {
-                  await agentTeamsService.removeAgentFromTeam(memberId, teamId);
-                  result.teamsRemoved.push(teamId);
-                } catch (removeError) {
-                  console.error(`Failed to remove member ${memberId} from team ${teamId}:`, removeError);
+              const removeResults = await Promise.allSettled(
+                teamChanges.remove.map(teamId =>
+                  agentTeamsService.removeAgentFromTeam(memberId, teamId).then(() => teamId)
+                )
+              );
+              for (const r of removeResults) {
+                if (r.status === 'fulfilled') {
+                  result.teamsRemoved.push(r.value);
+                } else {
+                  console.error(`Failed to remove member ${memberId} from team:`, r.reason);
                 }
               }
             }
@@ -729,105 +733,29 @@ export class MemberService {
    * 19. 最後刪除成員帳號
    */
   async hardDeleteMember(memberId: string, _deletedBy: string): Promise<boolean> {
-    // Step 1: 刪除該成員的通知（用戶刪除後通知無意義）
-    await this.db
-      .delete(notifications)
-      .where(eq(notifications.userId, memberId));
+    // Phase 1: Clean up all FK references in parallel (independent tables)
+    await Promise.all([
+      this.db.delete(notifications).where(eq(notifications.userId, memberId)),
+      this.db.update(messages).set({ agentSenderId: null }).where(eq(messages.agentSenderId, memberId)),
+      this.db.delete(delayedMessages).where(eq(delayedMessages.agentId, memberId)),
+      this.db.update(messageRecallLogs).set({ userId: 'deleted-user' }).where(eq(messageRecallLogs.userId, memberId)),
+      this.db.update(fileAttachments).set({ uploadedBy: null }).where(eq(fileAttachments.uploadedBy, memberId)),
+      this.db.update(tags).set({ createdBy: 'deleted-user' }).where(eq(tags.createdBy, memberId)),
+      this.db.update(customerTags).set({ assignedBy: 'deleted-user' }).where(eq(customerTags.assignedBy, memberId)),
+      this.db.update(conversationTags).set({ assignedBy: 'deleted-user' }).where(eq(conversationTags.assignedBy, memberId)),
+      this.db.update(conversationTransfers).set({ transferredBy: 'deleted-user' }).where(eq(conversationTransfers.transferredBy, memberId)),
+      this.db.update(activities).set({ userId: 'deleted-user' }).where(eq(activities.userId, memberId)),
+      this.db.update(reports).set({ createdBy: 'deleted-user' }).where(eq(reports.createdBy, memberId)),
+      this.db.update(scheduledReports).set({ createdBy: 'deleted-user' }).where(eq(scheduledReports.createdBy, memberId)),
+      this.db.update(reportDownloadHistory).set({ downloadedBy: 'deleted-user' }).where(eq(reportDownloadHistory.downloadedBy, memberId)),
+      this.db.update(reportTemplates).set({ createdBy: 'deleted-user' }).where(eq(reportTemplates.createdBy, memberId)),
+      this.db.update(channelIntegrations).set({ configuredBy: null }).where(eq(channelIntegrations.configuredBy, memberId)),
+      this.db.update(customerFeedback).set({ agentId: null }).where(eq(customerFeedback.agentId, memberId)),
+    ])
 
-    // Step 2: 將該成員發送的訊息的 agentSenderId 設為 null（保留訊息歷史）
-    await this.db
-      .update(messages)
-      .set({ agentSenderId: null })
-      .where(eq(messages.agentSenderId, memberId));
-
-    // Step 3: 刪除該成員的待發延遲訊息
-    await this.db
-      .delete(delayedMessages)
-      .where(eq(delayedMessages.agentId, memberId));
-
-    // Step 4: 將訊息撤回記錄的 userId 設為 'deleted-user'（保留撤回記錄）
-    await this.db
-      .update(messageRecallLogs)
-      .set({ userId: 'deleted-user' })
-      .where(eq(messageRecallLogs.userId, memberId));
-
-    // Step 5: 將附件上傳者設為 null（保留附件記錄）
-    await this.db
-      .update(fileAttachments)
-      .set({ uploadedBy: null })
-      .where(eq(fileAttachments.uploadedBy, memberId));
-
-    // Step 6: 將標籤建立者設為 'deleted-user'（保留標籤）
-    await this.db
-      .update(tags)
-      .set({ createdBy: 'deleted-user' })
-      .where(eq(tags.createdBy, memberId));
-
-    // Step 7: 將客戶標籤指派者設為 'deleted-user'（保留標籤關聯）
-    await this.db
-      .update(customerTags)
-      .set({ assignedBy: 'deleted-user' })
-      .where(eq(customerTags.assignedBy, memberId));
-
-    // Step 8: 將對話標籤指派者設為 'deleted-user'（保留標籤關聯）
-    await this.db
-      .update(conversationTags)
-      .set({ assignedBy: 'deleted-user' })
-      .where(eq(conversationTags.assignedBy, memberId));
-
-    // Step 9: 將對話轉移記錄相關欄位設為 'deleted-user'（保留轉移記錄）
-    await this.db
-      .update(conversationTransfers)
-      .set({ transferredBy: 'deleted-user' })
-      .where(eq(conversationTransfers.transferredBy, memberId));
-
-    // Step 10: 將活動記錄的 userId 設為 'deleted-user'（保留審計記錄）
-    await this.db
-      .update(activities)
-      .set({ userId: 'deleted-user' })
-      .where(eq(activities.userId, memberId));
-
-    // Step 11: 將報告建立者設為 'deleted-user'（保留報告記錄）
-    await this.db
-      .update(reports)
-      .set({ createdBy: 'deleted-user' })
-      .where(eq(reports.createdBy, memberId));
-
-    // Step 12: 將排程報告建立者設為 'deleted-user'（保留排程報告）
-    await this.db
-      .update(scheduledReports)
-      .set({ createdBy: 'deleted-user' })
-      .where(eq(scheduledReports.createdBy, memberId));
-
-    // Step 13: 將報告下載記錄的下載者設為 'deleted-user'（保留下載記錄）
-    await this.db
-      .update(reportDownloadHistory)
-      .set({ downloadedBy: 'deleted-user' })
-      .where(eq(reportDownloadHistory.downloadedBy, memberId));
-
-    // Step 14: 將報告模板建立者設為 'deleted-user'（保留報告模板）
-    await this.db
-      .update(reportTemplates)
-      .set({ createdBy: 'deleted-user' })
-      .where(eq(reportTemplates.createdBy, memberId));
-
-    // Step 15: 將頻道整合設定者設為 null（保留整合設定）
-    await this.db
-      .update(channelIntegrations)
-      .set({ configuredBy: null })
-      .where(eq(channelIntegrations.configuredBy, memberId));
-
-    // Step 16: 將客戶回饋的 agentId 設為 null（保留客戶回饋）
-    await this.db
-      .update(customerFeedback)
-      .set({ agentId: null })
-      .where(eq(customerFeedback.agentId, memberId));
-
-    // Step 17: 刪除成員帳號
-    // (agent_teams, task_reminders, delayed_messages 會自動級聯刪除)
-    await this.db
-      .delete(agents)
-      .where(eq(agents.id, memberId));
+    // Phase 2: Delete the agent row after all FK references are cleared
+    // (agent_teams, task_reminders cascade automatically)
+    await this.db.delete(agents).where(eq(agents.id, memberId));
 
     return true;
   }
