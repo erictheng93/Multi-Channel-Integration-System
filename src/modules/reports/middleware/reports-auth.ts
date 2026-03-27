@@ -4,7 +4,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 import { verifyJWT } from '@/utils/auth';
-import { PermissionService } from '@shared/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { nowISO, nowMs } from '@/utils/timestamp'

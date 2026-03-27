@@ -8,7 +8,7 @@ import { eq, inArray, desc, and, like, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams, conversationTags, customerTags } from '@/db/schema';
 import type { Bindings } from '@/types';
-import { PermissionService } from '@shared/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { createContextLogger } from '@/utils/logger';
 import { getDisplayContent } from '../utils/message-helpers';

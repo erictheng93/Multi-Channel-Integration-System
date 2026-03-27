@@ -3,7 +3,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 import { unauthorizedResponse, forbiddenResponse } from '@/utils/api-response';
-import { PermissionService } from '@shared/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 
 /**

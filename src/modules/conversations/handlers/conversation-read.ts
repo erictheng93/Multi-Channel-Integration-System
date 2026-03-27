@@ -8,7 +8,7 @@ import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations } from '@/db/schema';
 import type { Bindings } from '@/types';
-import { PermissionService } from '@shared/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { nowISO } from '@/utils/timestamp';
 

@@ -9,7 +9,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams, conversationTransfers } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type { NewConversationTransfer } from '../types/conversation-types';
-import { PermissionService } from '@shared/services/permission-service';
+import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
