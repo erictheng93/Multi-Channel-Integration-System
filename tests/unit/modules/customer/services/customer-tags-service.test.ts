@@ -472,7 +472,7 @@ describe('CustomerTagService - Tag Operations', () => {
 
   describe('addTagsToCustomer', () => {
     it('should add new tags to customer', async () => {
-      const insertValues: any[] = [];
+      let insertedBatch: any[] = [];
       const selectSpy = vi.fn()
         // 1st: customer existence check
         .mockReturnValueOnce({
@@ -491,22 +491,22 @@ describe('CustomerTagService - Tag Operations', () => {
         select: selectSpy,
         insert: () => ({
           values: (data: any) => ({
-            run: async () => { insertValues.push(data); }
+            run: async () => { insertedBatch = Array.isArray(data) ? data : [data]; }
           })
         })
       };
 
       await service.addTagsToCustomer(1, [10, 20], { userId: 'agent-1' } as any);
 
-      expect(insertValues).toHaveLength(2);
-      expect(insertValues[0].customerId).toBe(1);
-      expect(insertValues[0].tagId).toBe(10);
-      expect(insertValues[0].assignedBy).toBe('agent-1');
-      expect(insertValues[1].tagId).toBe(20);
+      expect(insertedBatch).toHaveLength(2);
+      expect(insertedBatch[0].customerId).toBe(1);
+      expect(insertedBatch[0].tagId).toBe(10);
+      expect(insertedBatch[0].assignedBy).toBe('agent-1');
+      expect(insertedBatch[1].tagId).toBe(20);
     });
 
     it('should skip tags already assigned (deduplication)', async () => {
-      const insertValues: any[] = [];
+      let insertedBatch: any[] = [];
       const selectSpy = vi.fn()
         .mockReturnValueOnce({
           from: () => ({ where: () => ({ get: async () => ({ id: 1 }) }) })
@@ -523,7 +523,7 @@ describe('CustomerTagService - Tag Operations', () => {
         select: selectSpy,
         insert: () => ({
           values: (data: any) => ({
-            run: async () => { insertValues.push(data); }
+            run: async () => { insertedBatch = Array.isArray(data) ? data : [data]; }
           })
         })
       };
@@ -531,8 +531,8 @@ describe('CustomerTagService - Tag Operations', () => {
       await service.addTagsToCustomer(1, [10, 20]);
 
       // Only tag 20 should be inserted (10 was already assigned)
-      expect(insertValues).toHaveLength(1);
-      expect(insertValues[0].tagId).toBe(20);
+      expect(insertedBatch).toHaveLength(1);
+      expect(insertedBatch[0].tagId).toBe(20);
     });
 
     it('should throw CustomerNotFoundError for non-existent customer', async () => {
@@ -564,7 +564,7 @@ describe('CustomerTagService - Tag Operations', () => {
     });
 
     it('should use "system" as assignedBy when no userPayload', async () => {
-      const insertValues: any[] = [];
+      let insertedBatch: any[] = [];
       const selectSpy = vi.fn()
         .mockReturnValueOnce({
           from: () => ({ where: () => ({ get: async () => ({ id: 1 }) }) })
@@ -580,14 +580,14 @@ describe('CustomerTagService - Tag Operations', () => {
         select: selectSpy,
         insert: () => ({
           values: (data: any) => ({
-            run: async () => { insertValues.push(data); }
+            run: async () => { insertedBatch = Array.isArray(data) ? data : [data]; }
           })
         })
       };
 
       await service.addTagsToCustomer(1, [10]);
 
-      expect(insertValues[0].assignedBy).toBe('system');
+      expect(insertedBatch[0].assignedBy).toBe('system');
     });
 
     it('should not insert when all tags are already assigned', async () => {
@@ -619,7 +619,7 @@ describe('CustomerTagService - Tag Operations', () => {
     });
 
     it('should set assignedAt timestamp on each inserted tag', async () => {
-      const insertValues: any[] = [];
+      let insertedBatch: any[] = [];
       const selectSpy = vi.fn()
         .mockReturnValueOnce({
           from: () => ({ where: () => ({ get: async () => ({ id: 1 }) }) })
@@ -635,16 +635,16 @@ describe('CustomerTagService - Tag Operations', () => {
         select: selectSpy,
         insert: () => ({
           values: (data: any) => ({
-            run: async () => { insertValues.push(data); }
+            run: async () => { insertedBatch = Array.isArray(data) ? data : [data]; }
           })
         })
       };
 
       await service.addTagsToCustomer(1, [10]);
 
-      expect(insertValues[0].assignedAt).toBeDefined();
+      expect(insertedBatch[0].assignedAt).toBeDefined();
       // Should be a valid ISO timestamp
-      expect(new Date(insertValues[0].assignedAt).toISOString()).toBe(insertValues[0].assignedAt);
+      expect(new Date(insertedBatch[0].assignedAt).toISOString()).toBe(insertedBatch[0].assignedAt);
     });
   });
 
@@ -685,11 +685,8 @@ describe('CustomerTagService - Tag Operations', () => {
   describe('setCustomerTags', () => {
     it('should delete all existing tags then add new ones', async () => {
       let deleteExecuted = false;
-      const insertValues: any[] = [];
+      let insertedBatch: any[] = [];
 
-      // We need to handle multiple select calls:
-      // 1st: setCustomerTags checks customer exists
-      // 2nd-4th: addTagsToCustomer internal calls (customer check, tag check, existing check)
       const selectSpy = vi.fn()
         // setCustomerTags: customer existence
         .mockReturnValueOnce({
@@ -717,7 +714,7 @@ describe('CustomerTagService - Tag Operations', () => {
         }),
         insert: () => ({
           values: (data: any) => ({
-            run: async () => { insertValues.push(data); }
+            run: async () => { insertedBatch = Array.isArray(data) ? data : [data]; }
           })
         })
       };
@@ -725,8 +722,8 @@ describe('CustomerTagService - Tag Operations', () => {
       await service.setCustomerTags(1, [30]);
 
       expect(deleteExecuted).toBe(true);
-      expect(insertValues).toHaveLength(1);
-      expect(insertValues[0].tagId).toBe(30);
+      expect(insertedBatch).toHaveLength(1);
+      expect(insertedBatch[0].tagId).toBe(30);
     });
 
     it('should only delete when tagIds is empty (clear all tags)', async () => {
