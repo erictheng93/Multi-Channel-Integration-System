@@ -22,9 +22,6 @@ import { createMonitoringHandlerMethods } from '@modules/monitoring/handlers/mon
 // Import Analytics Module
 import { comparisonAPI } from '@modules/analytics/handlers/comparison-api';
 
-// REMOVED: Old QR Code module - migrated to new LIFF QR Code system
-// import { qrCodeRouter } from '@modules/qrcode/handlers/index';
-
 // Direct import for messaging handler (modular version)
 import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 
@@ -535,10 +532,6 @@ log.info('Channel Integration Management endpoints registered', {
   ]
 });
 
-// LEGACY PRE-REGISTRATION REMOVED
-// GET /api/teams/members is now handled by the new modular team handler
-// (src/modules/teams/handlers/team.ts:319)
-
 // 創建路由註冊器
 const routeRegistry = new RouteRegistry(app);
 
@@ -664,38 +657,10 @@ app.route('/api/system', systemSettingsRouter);
 // Note: /api/system/config-check is registered as a PUBLIC endpoint at the top of this file
 app.route('/api/credentials', credentialsRouter);
 
-// ========================================================================
-// TEAM MANAGEMENT API ROUTES - FULLY MIGRATED TO MODULAR ARCHITECTURE
-// ========================================================================
-//
-// LEGACY ROUTES REMOVED - All team member management has been migrated to:
-// src/modules/teams/handlers/members.ts
-// src/modules/teams/handlers/password.ts
-// src/modules/teams/handlers/invitations.ts
-//
-// NEW MODULAR ROUTES (via unified route system):
-// POST /api/teams/members → Add member
-// PUT /api/teams/members/:memberId/status → Update status
-// PUT /api/teams/members/:memberId/role → Update role
-// PUT /api/teams/members/:memberId → Update member
-// DELETE /api/teams/members/:memberId → Delete member
-// POST /api/teams/members/:memberId/reset → Reset password (admin)
-// POST /api/teams/invitations → Send invitation
-// GET /api/teams/invitations → List invitations
-// DELETE /api/teams/invitations/:id → Revoke invitation
-//
-// SPECIAL ROUTE: Password change endpoint needs to be under /api/auth
-// ========================================================================
-
 import passwordHandler from '@modules/teams/handlers/password';
 
 // Mount change-password under /api/auth (user self-service)
 app.route('/api/auth', passwordHandler);
-
-// ========================================================================
-// All other legacy team routes have been removed
-// They are now handled by the unified route system + modular handlers
-// ========================================================================
 
 // QR Code join page (special route) - need to add this to modular router if needed
 app.get('/join', async (c) => {
@@ -847,10 +812,6 @@ app.notFound((c) => {
 });
 
 // ==================== Queue Consumer ====================
-
-// REMOVED: AgentQueueService has been deprecated
-// Delayed messages are now handled by DelayedMessageBuffer Durable Object
-// 使用統一的 Real-time 模組處理即時事件
 
 // ==================== 導出 ====================
 
