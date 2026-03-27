@@ -9,8 +9,6 @@ import { incrementRequestCounter, trackTheoreticalKVSavings } from '@modules/sys
 import type { SystemPermissions, SystemAccessScope } from '@modules/system/middleware/system-auth';
 import type { CustomerPermissions, CustomerAccessScope, CreateCustomerData, UpdateCustomerData, CustomerFilters, CustomerTagOperation, CustomerSearchQuery } from '@modules/customer/types/customer-types';
 import type { CreateSessionData, UpdateSessionData, SessionListQuery, SessionSearchQuery } from '@modules/session/types/session-types';
-// REMOVED: Old QR Code module - migrated to new LIFF QR Code system
-// import type { QRCodeRecord } from '@modules/qrcode/types/qrcode-types';
 import type { RealtimeAuthPayload } from '@modules/realtime/middleware/realtime-auth';
 import type { FileValidationResult } from '@modules/file-management/types/validation-types';
 
@@ -54,8 +52,6 @@ declare module 'hono' {
     reportQuery: Record<string, unknown>;
     scheduledReportData: Record<string, unknown>;
     previewParams: Record<string, unknown>;
-    // REMOVED: QRCode module variables - migrated to new LIFF QR Code system
-    // qrCode: QRCodeRecord | null;
     canAccess: boolean;
     canModify: boolean;
     validatedData: Record<string, unknown>; // Flexible validated data
