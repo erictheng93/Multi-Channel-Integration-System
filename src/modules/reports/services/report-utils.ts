@@ -18,6 +18,9 @@ import { SampleDataGenerators } from './sample-data-generators';
  * Utility methods for report validation, templates, and permissions
  */
 export class ReportUtils {
+  constructor(_db?: D1Database) {
+    // db reserved for future use
+  }
   /**
    * Validate report generation parameters
    */
