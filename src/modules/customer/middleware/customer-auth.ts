@@ -11,7 +11,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
   notFoundResponse
-} from '@shared/utils/api-response';
+} from '@/utils/api-response';
 import {
   CustomerPermissions,
   CustomerAccessScope

@@ -9,7 +9,7 @@ import {
   successResponse,
   errorResponse,
   handleApiError
-} from '@shared/utils/api-response';
+} from '@/utils/api-response';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { nowISO } from '@/utils/timestamp'
 
