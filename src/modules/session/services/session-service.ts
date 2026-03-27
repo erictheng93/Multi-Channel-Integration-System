@@ -26,6 +26,9 @@ import {
   DEFAULT_PAGINATION
 } from '../types/session-types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('SessionService');
 
 /**
  * Session Service 主要實現
@@ -70,11 +73,11 @@ export class SessionService implements SessionServiceInterface {
     try {
       await this.db.insert(conversationSessions).values(sessionData as any);
 
-      console.log(`[SessionService] 創建新會話: ${sessionId}, 主題: ${topic || '未知'}`);
+      log.info('創建新會話', { sessionId, topic: topic || '未知' });
 
       return this.transformDbSession(sessionData as any);
     } catch (error) {
-      console.error('[SessionService] 創建會話失敗:', error);
+      log.error('創建會話失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to create session', 'create');
     }
   }
@@ -98,7 +101,7 @@ export class SessionService implements SessionServiceInterface {
       if (userId && userRole) {
         const hasAccess = await this.canAccessSession(sessionId, userId, userRole);
         if (!hasAccess) {
-          console.warn(`[SessionService] Access denied: User ${userId} (${userRole}) cannot access session ${sessionId}`);
+          log.warn('Access denied', { userId, userRole, sessionId });
           return null;
         }
       }
@@ -111,7 +114,7 @@ export class SessionService implements SessionServiceInterface {
 
       return session ? this.transformDbSession(session) : null;
     } catch (error) {
-      console.error('[SessionService] 獲取會話失敗:', error);
+      log.error('獲取會話失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to get session', 'get');
     }
   }
@@ -150,10 +153,10 @@ export class SessionService implements SessionServiceInterface {
         throw new SessionOperationError('Session disappeared after update', 'update');
       }
 
-      console.log(`[SessionService] 更新會話: ${sessionId}`);
+      log.info('更新會話', { sessionId });
       return updatedSession;
     } catch (error) {
-      console.error('[SessionService] 更新會話失敗:', error);
+      log.error('更新會話失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to update session', 'update');
     }
   }
@@ -172,10 +175,10 @@ export class SessionService implements SessionServiceInterface {
         .delete(conversationSessions)
         .where(eq(conversationSessions.id, sessionId));
 
-      console.log(`[SessionService] 刪除會話: ${sessionId}`);
+      log.info('刪除會話', { sessionId });
       return true;
     } catch (error) {
-      console.error('[SessionService] 刪除會話失敗:', error);
+      log.error('刪除會話失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to delete session', 'delete');
     }
   }
@@ -199,7 +202,7 @@ export class SessionService implements SessionServiceInterface {
     try {
       // Admins have access to all sessions
       if (userRole === 'admin') {
-        console.log(`[SessionService] Admin ${userId} granted access to session ${sessionId}`);
+        log.debug('Admin granted access to session', { userId, sessionId });
         return true;
       }
 
@@ -211,7 +214,7 @@ export class SessionService implements SessionServiceInterface {
         .get();
 
       if (!session) {
-        console.warn(`[SessionService] Session ${sessionId} not found for access check`);
+        log.warn('Session not found for access check', { sessionId });
         return false;
       }
 
@@ -223,7 +226,7 @@ export class SessionService implements SessionServiceInterface {
         .get();
 
       if (!conversation) {
-        console.warn(`[SessionService] Conversation ${session.conversationId} not found for session ${sessionId}`);
+        log.warn('Conversation not found for session access check', { conversationId: session.conversationId, sessionId });
         return false;
       }
 
@@ -241,15 +244,15 @@ export class SessionService implements SessionServiceInterface {
           .get();
 
         if (membership) {
-          console.log(`[SessionService] Agent ${userId} has team access to conversation ${conversation.id} via team ${membership.teamId}`);
+          log.debug('Agent has team access to conversation', { userId, conversationId: conversation.id, teamId: membership.teamId });
           return true;
         }
       }
 
-      console.warn(`[SessionService] Agent ${userId} denied access to session ${sessionId} - no assignment or team match`);
+      log.warn('Agent denied access to session - no assignment or team match', { userId, sessionId });
       return false;
     } catch (error) {
-      console.error('[SessionService] Permission check error:', error);
+      log.error('Permission check error', {}, error instanceof Error ? error : String(error));
       // Fail closed - deny access on errors
       return false;
     }
@@ -316,7 +319,7 @@ export class SessionService implements SessionServiceInterface {
         summary
       };
     } catch (error) {
-      console.error('[SessionService] 獲取會話列表失敗:', error);
+      log.error('獲取會話列表失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to list sessions', 'list');
     }
   }
@@ -345,7 +348,7 @@ export class SessionService implements SessionServiceInterface {
 
       return sessions.map(s => this.transformDbSession(s));
     } catch (error) {
-      console.error('[SessionService] 搜尋會話失敗:', error);
+      log.error('搜尋會話失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to search sessions', 'search');
     }
   }
@@ -402,7 +405,7 @@ export class SessionService implements SessionServiceInterface {
       await this.updateSessionActivity(activeSession.id);
       return this.transformDbSession(activeSession);
     } catch (error) {
-      console.error('[SessionService] getOrCreate 失敗:', error);
+      log.error('getOrCreate 失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to get or create session', 'getOrCreate');
     }
   }
@@ -423,10 +426,10 @@ export class SessionService implements SessionServiceInterface {
         })
         .where(eq(conversationSessions.id, sessionId));
 
-      console.log(`[SessionService] 關閉會話: ${sessionId}`);
+      log.info('關閉會話', { sessionId });
       return true;
     } catch (error) {
-      console.error('[SessionService] 關閉會話失敗:', error);
+      log.error('關閉會話失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to close session', 'close');
     }
   }
@@ -448,10 +451,10 @@ export class SessionService implements SessionServiceInterface {
         })
         .where(eq(conversationSessions.id, sessionId));
 
-      console.log(`[SessionService] 重新開啟會話: ${sessionId}`);
+      log.info('重新開啟會話', { sessionId });
       return true;
     } catch (error) {
-      console.error('[SessionService] 重新開啟會話失敗:', error);
+      log.error('重新開啟會話失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to reopen session', 'reopen');
     }
   }
@@ -518,7 +521,7 @@ export class SessionService implements SessionServiceInterface {
         }
       };
     } catch (error) {
-      console.error('[SessionService] 獲取會話訊息失敗:', error);
+      log.error('獲取會話訊息失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to get session messages', 'getMessages');
     }
   }
@@ -595,7 +598,7 @@ export class SessionService implements SessionServiceInterface {
         ...(messageData.metadata && { metadata: messageData.metadata })
       };
     } catch (error) {
-      console.error('[SessionService] 新增會話訊息失敗:', error);
+      log.error('新增會話訊息失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to add message to session', 'addMessage');
     }
   }
@@ -653,7 +656,7 @@ export class SessionService implements SessionServiceInterface {
         dailyStats: [] // TODO: Implement daily statistics
       };
     } catch (error) {
-      console.error('[SessionService] 獲取統計失敗:', error);
+      log.error('獲取統計失敗', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to get statistics', 'getStats');
     }
   }
