@@ -829,18 +829,18 @@ export class WebhookSecurityService {
               }
             );
 
-            console.log(`[WebhookSecurity] Alert sent for ${securityEvent.severity} severity event`);
+            log.info('Alert sent for security event', { severity: securityEvent.severity });
           } else {
-            console.warn('[WebhookSecurity] No alert channels configured, skipping alert');
+            log.warn('No alert channels configured, skipping alert');
           }
         } catch (alertError) {
-          console.error('[WebhookSecurity] Failed to send alert:', alertError);
+          log.error('Failed to send alert', {}, alertError instanceof Error ? alertError : new Error(String(alertError)));
           // Don't throw - alert failure shouldn't prevent event logging
         }
       }
 
     } catch (error) {
-      console.error('[WebhookSecurity] Failed to log security event:', error);
+      log.error('Failed to log security event', {}, error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -911,7 +911,7 @@ export class WebhookSecurityService {
         }))
       };
     } catch (error) {
-      console.error('[WebhookSecurity] Failed to get security stats:', error);
+      log.error('Failed to get security stats', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -1005,7 +1005,7 @@ export class WebhookSecurityService {
 
       return credentials;
     } catch (error) {
-      console.error('[WebhookSecurity] Failed to get credentials:', error);
+      log.error('Failed to get credentials', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -1037,7 +1037,7 @@ export class WebhookSecurityService {
       await this.cache.delete(key);
       return true;
     } catch (error) {
-      console.error('[WebhookSecurity] Failed to clear rate limit:', error);
+      log.error('Failed to clear rate limit', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
