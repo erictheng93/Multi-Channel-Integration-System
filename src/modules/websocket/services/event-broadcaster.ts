@@ -92,7 +92,7 @@ export class EventBroadcaster {
         return await this.doClient.broadcast(wsEvent);
       }
     } catch (error) {
-      console.error('[EventBroadcaster] Message event error:', error);
+      this.logger.error('Message event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -138,7 +138,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('[EventBroadcaster] Typing event error:', error);
+      this.logger.error('Typing event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -187,7 +187,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('[EventBroadcaster] Conversation event error:', error);
+      this.logger.error('Conversation event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -487,7 +487,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('[EventBroadcaster] Delayed message event error:', error);
+      this.logger.error('Delayed message event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -538,7 +538,8 @@ export class EventBroadcaster {
       const success = await this.doClient.broadcastToUserConnections(wsEvent, [event.userId]);
 
       if (success) {
-        console.log(`[EventBroadcaster] Notification sent to user ${event.userId}:`, {
+        this.logger.info('Notification sent to user', undefined, {
+          userId: event.userId,
           notificationId: event.notification.id,
           type: event.notification.type
         });
@@ -546,7 +547,7 @@ export class EventBroadcaster {
 
       return success;
     } catch (error) {
-      console.error('[EventBroadcaster] Notification event error:', error);
+      this.logger.error('Notification event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -596,7 +597,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('[EventBroadcaster] Presence event error:', error);
+      this.logger.error('Presence event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -648,7 +649,7 @@ export class EventBroadcaster {
         }
       };
 
-      console.log('[EventBroadcaster] Team member event:', {
+      this.logger.info('Team member event', undefined, {
         type: event.type,
         teamId: event.teamId,
         teamName: event.teamName,
@@ -657,7 +658,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('[EventBroadcaster] Team member event error:', error);
+      this.logger.error('Team member event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -709,14 +710,14 @@ export class EventBroadcaster {
         }
       };
 
-      console.log('[EventBroadcaster] Team update event:', {
+      this.logger.info('Team update event', undefined, {
         teamId: event.teamId,
-        changes: event.changes
+        changes: event.changes as Record<string, unknown>
       });
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('[EventBroadcaster] Team update event error:', error);
+      this.logger.error('Team update event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -760,7 +761,7 @@ export class EventBroadcaster {
         }
       };
 
-      console.log('[EventBroadcaster] Customer tag event:', {
+      this.logger.info('Customer tag event', undefined, {
         customerId: event.customerId,
         operation: event.operation,
         tagCount: event.tagIds.length
@@ -768,7 +769,7 @@ export class EventBroadcaster {
 
       return await this.doClient.broadcast(wsEvent);
     } catch (error) {
-      console.error('[EventBroadcaster] Customer tag event error:', error);
+      this.logger.error('Customer tag event error', undefined, { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
