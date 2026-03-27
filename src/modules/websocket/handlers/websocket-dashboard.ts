@@ -7,6 +7,9 @@ import type { JWTPayload } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
 import { successResponse, forbiddenResponse } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('WebSocketDashboard');
 
 const dashboardApp = new Hono<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>();
 
@@ -259,7 +262,7 @@ async function collectRealtimeMetrics(env: Bindings): Promise<RealtimeMetrics> {
 
     return metrics;
   } catch (error) {
-    console.error('[Dashboard] Error collecting metrics:', error);
+    log.error('Error collecting metrics', {}, error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }
@@ -294,7 +297,7 @@ async function collectConnectionMetrics(env: Bindings) {
       }
     }
   } catch (error) {
-    console.error('[Dashboard] Error collecting connection metrics:', error);
+    log.error('Error collecting connection metrics', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return {
@@ -317,7 +320,7 @@ async function collectThroughputMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('[Dashboard] Error collecting throughput:', error);
+    log.error('Error collecting throughput', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return { perSecond: 0, perMinute: 0, total: 0 };
@@ -335,7 +338,7 @@ async function collectDOHealthMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('[Dashboard] Error collecting DO health:', error);
+    log.error('Error collecting DO health', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return {
@@ -358,7 +361,7 @@ async function collectLatencyMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('[Dashboard] Error collecting latency:', error);
+    log.error('Error collecting latency', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return { p50: 0, p95: 0, p99: 0, max: 0 };
@@ -376,7 +379,7 @@ async function collectResourceMetrics(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('[Dashboard] Error collecting resource usage:', error);
+    log.error('Error collecting resource usage', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return {
@@ -402,7 +405,7 @@ async function getActiveConnections(env: Bindings) {
       }
     }
   } catch (error) {
-    console.error('[Dashboard] Error getting active connections:', error);
+    log.error('Error getting active connections', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return connections;
@@ -422,7 +425,7 @@ async function getConnectionHistory(env: Bindings, period: string): Promise<Conn
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('[Dashboard] Error getting connection history:', error);
+    log.error('Error getting connection history', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return history;
@@ -440,7 +443,7 @@ async function analyzePerformanceTrends(env: Bindings, period: string): Promise<
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('[Dashboard] Error analyzing trends:', error);
+    log.error('Error analyzing trends', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return {
@@ -486,7 +489,7 @@ async function getDurableObjectsHealth(env: Bindings) {
       }
     }
   } catch (error) {
-    console.error('[Dashboard] Error checking DO health:', error);
+    log.error('Error checking DO health', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return health;
@@ -506,7 +509,7 @@ async function getActiveAlerts(env: Bindings) {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('[Dashboard] Error getting alerts:', error);
+    log.error('Error getting alerts', undefined, error instanceof Error ? error : new Error(String(error)));
   }
 
   return alerts;
