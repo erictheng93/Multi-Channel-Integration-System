@@ -37,6 +37,7 @@ vi.mock('drizzle-orm', () => {
 
   return {
     eq: (...args: any[]) => ({ type: 'eq', args }),
+    gte: (...args: any[]) => ({ type: 'gte', args }),
     desc: (...args: any[]) => ({ type: 'desc', args }),
     and: (...args: any[]) => ({ type: 'and', args }),
     inArray: (...args: any[]) => ({ type: 'inArray', args }),
