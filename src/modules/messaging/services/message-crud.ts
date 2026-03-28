@@ -137,17 +137,21 @@ export class MessageCrudService {
         .offset(offset);
 
       // Batch-fetch attachment counts for all messages in this page
-      const { fileAttachments } = await import('@/db/schema');
-      const messageIds = results.map(r => r.message.id);
       const attachCounts = new Map<string, number>();
-      if (messageIds.length > 0) {
-        const rows = await this.drizzleDb
-          .select({ mid: fileAttachments.messageId, cnt: count() })
-          .from(fileAttachments)
-          .where(sql`${fileAttachments.messageId} IN (${sql.join(messageIds.map(id => sql`${id}`), sql`, `)})`)
-          .groupBy(fileAttachments.messageId)
-          .all();
-        for (const r of rows) { if (r.mid) attachCounts.set(r.mid, r.cnt); }
+      try {
+        const { fileAttachments } = await import('@/db/schema');
+        const messageIds = results.map(r => r.message.id);
+        if (messageIds.length > 0) {
+          const rows = await this.drizzleDb
+            .select({ mid: fileAttachments.messageId, cnt: count() })
+            .from(fileAttachments)
+            .where(sql`${fileAttachments.messageId} IN (${sql.join(messageIds.map(id => sql`${id}`), sql`, `)})`)
+            .groupBy(fileAttachments.messageId)
+            .all();
+          for (const r of rows) { if (r.mid) attachCounts.set(r.mid, r.cnt); }
+        }
+      } catch {
+        // Graceful degradation: if attachment query fails, counts default to 0
       }
 
       const messageItems: MessageListItem[] = results.map(result => {
