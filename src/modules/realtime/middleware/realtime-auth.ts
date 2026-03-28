@@ -6,7 +6,9 @@ import type { Bindings } from '@/types';
 // import type { SSEAuthPayload } from '@modules/realtime/types';
 import { verifyJWT } from '@/utils/auth';
 import { unauthorizedResponse } from '@/utils/api-response';
-import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('RealtimeAuth');
 
 // Real-time 認證 Payload (替代 SSEAuthPayload)
 export interface RealtimeAuthPayload {
@@ -87,7 +89,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
             // 將 payload 設置到 context 中
             c.set('jwtPayload', jwtPayload);
           } catch (error) {
-            console.error('[Realtime Auth] Token 驗證失敗:', error);
+            log.error('[Realtime Auth] Token 驗證失敗:', {}, error instanceof Error ? error : new Error(String(error)));
             return unauthorizedResponse(c, 'Invalid or expired token');
           }
         }
@@ -133,17 +135,12 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
       c.set('realtimeAuth', authPayload);
 
       // 7. 記錄認證成功
-      console.log(`[Realtime Auth] 認證成功:`, {
-        userId: authPayload.userId,
-        role: authPayload.role,
-        primaryTeamId: authPayload.primaryTeamId,
-        timestamp: nowISO()
-      });
+      log.info('Auth success', { userId: authPayload.userId, role: authPayload.role, primaryTeamId: authPayload.primaryTeamId });
 
       return await next();
 
     } catch (error) {
-      console.error('[Realtime Auth] 認證中間件錯誤:', error);
+      log.error('[Realtime Auth] 認證中間件錯誤:', {}, error instanceof Error ? error : new Error(String(error)));
       return unauthorizedResponse(c, 'Authentication error');
     }
   };
@@ -158,7 +155,7 @@ async function checkConversationAccess(
   env?: Bindings
 ): Promise<boolean> {
   if (!env?.DB) {
-    console.warn('[Realtime Auth] 資料庫不可用，跳過權限檢查');
+    log.warn('[Realtime Auth] 資料庫不可用，跳過權限檢查');
     return true; // 如果資料庫不可用，允許訪問
   }
 
@@ -182,7 +179,7 @@ async function checkConversationAccess(
     `).bind(conversationId).first();
 
     if (!conversation) {
-      console.warn(`[Realtime Auth] 對話不存在: ${conversationId}`);
+      log.warn("Conversation not found", { conversationId });
       return false;
     }
 
@@ -214,18 +211,12 @@ async function checkConversationAccess(
     }
 
     // Note: Individual assignment (assignedUserId) removed - only team-based access control
-    console.warn(`[Realtime Auth] 用戶無權訪問對話:`, {
-      userId,
-      conversationId,
-      userRole,
-      teamId,
-      assignedTeamId: conversation.assigned_team_id
-    });
+    log.warn('User has no access to conversation', { userId, conversationId, userRole, teamId, assignedTeamId: conversation.assigned_team_id });
 
     return false;
 
   } catch (error) {
-    console.error('[Realtime Auth] 權限檢查失敗:', error);
+    log.error('[Realtime Auth] 權限檢查失敗:', {}, error instanceof Error ? error : new Error(String(error)));
     return false; // 安全考慮，檢查失敗時拒絕訪問
   }
 }

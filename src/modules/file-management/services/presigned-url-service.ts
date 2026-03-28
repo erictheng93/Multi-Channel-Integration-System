@@ -17,6 +17,9 @@ import { fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { getPublicFileUrl } from '@/utils/file-url';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('PresignedUrl');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -89,9 +92,9 @@ export class PresignedUrlService {
         },
       });
       this.isConfigured = true;
-      console.log('[PresignedUrlService] S3 client initialized successfully');
+      log.info('[PresignedUrlService] S3 client initialized successfully');
     } else {
-      console.warn('[PresignedUrlService] S3 credentials not configured - presigned URLs will not work');
+      log.warn('[PresignedUrlService] S3 credentials not configured - presigned URLs will not work');
     }
   }
 
@@ -161,7 +164,7 @@ export class PresignedUrlService {
       createdAt: nowISO(),
     });
 
-    console.log(`[PresignedUrlService] Generated presigned URL for ${fileId}, key: ${r2Key}, expires: ${expiresAt}`);
+    log.info(`[PresignedUrlService] Generated presigned URL for ${fileId}, key: ${r2Key}, expires: ${expiresAt}`);
 
     return {
       presignedUrl,
@@ -191,7 +194,7 @@ export class PresignedUrlService {
 
     if (pendingFile.uploadStatus === 'completed') {
       // 已確認，返回現有記錄
-      console.log(`[PresignedUrlService] File ${fileId} already confirmed`);
+      log.info(`[PresignedUrlService] File ${fileId} already confirmed`);
       return {
         success: true,
         file: {
@@ -217,10 +220,10 @@ export class PresignedUrlService {
 
         // 記錄實際檔案大小（R2 可能會有差異）
         if (headResult.ContentLength && headResult.ContentLength !== size) {
-          console.warn(`[PresignedUrlService] Size mismatch for ${fileId}: expected ${size}, actual ${headResult.ContentLength}`);
+          log.warn("Size mismatch", { fileId, expected: size, actual: headResult.ContentLength });
         }
       } catch (error) {
-        console.error(`[PresignedUrlService] File verification failed for ${fileId}:`, error);
+        log.error(`[PresignedUrlService] File verification failed for ${fileId}:`, {}, error instanceof Error ? error : new Error(String(error)));
 
         // 更新狀態為 failed
         await this.db
@@ -246,7 +249,7 @@ export class PresignedUrlService {
       })
       .where(eq(fileAttachments.id, fileId));
 
-    console.log(`[PresignedUrlService] Upload confirmed for ${fileId}`);
+    log.info(`[PresignedUrlService] Upload confirmed for ${fileId}`);
 
     return {
       success: true,
@@ -279,7 +282,7 @@ export class PresignedUrlService {
    */
   async cleanupExpiredPendingUploads(maxAgeMinutes: number = 30): Promise<number> {
     // 注意：這裡使用簡單的查詢，實際生產環境可能需要分批處理
-    console.log(`[PresignedUrlService] Cleanup not implemented yet - would clean uploads older than ${maxAgeMinutes} minutes`);
+    log.info(`[PresignedUrlService] Cleanup not implemented yet - would clean uploads older than ${maxAgeMinutes} minutes`);
     return 0;
   }
 

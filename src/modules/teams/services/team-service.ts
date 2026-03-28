@@ -24,6 +24,9 @@ import type {
   TeamTransferResponse
 } from '../types/team-types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('TeamService');
 
 export class TeamService implements TeamServiceInterface {
   private db: DrizzleD1Database;
@@ -194,10 +197,10 @@ export class TeamService implements TeamServiceInterface {
         .delete(teams)
         .where(eq(teams.id, id));
 
-      console.log(`[Team Delete] Team ${id} permanently deleted with all associations cleaned up`);
+      log.info(`[Team Delete] Team ${id} permanently deleted with all associations cleaned up`);
       return true;
     } catch (error) {
-      console.error('Delete team error:', error);
+      log.error('Delete team error:', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -399,7 +402,7 @@ export class TeamService implements TeamServiceInterface {
 
       return true;
     } catch (error) {
-      console.error('Remove team member error:', error);
+      log.error('Remove team member error:', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -452,12 +455,12 @@ export class TeamService implements TeamServiceInterface {
           ));
 
         removed.push(...validAgentIds);
-        console.log(`[Team Bulk Remove] Removed ${validAgentIds.length} members from team ${teamId}`);
+        log.info(`[Team Bulk Remove] Removed ${validAgentIds.length} members from team ${teamId}`);
       }
 
       return { removed, failed };
     } catch (error) {
-      console.error('Bulk remove team members error:', error);
+      log.error('Bulk remove team members error:', {}, error instanceof Error ? error : new Error(String(error)));
       // If batch operation fails, mark all as failed
       idsToProcess.forEach(agentId => {
         if (!removed.includes(agentId)) {
@@ -667,7 +670,7 @@ export class TeamService implements TeamServiceInterface {
           .insert(agentTeams)
           .values(newMemberships);
 
-        console.log(`[Team Transfer] Transferred ${validAgentIds.length} agents via agent_teams`);
+        log.info(`[Team Transfer] Transferred ${validAgentIds.length} agents via agent_teams`);
       }
 
       const failedTransfers = invalidAgentIds.map(agentId => ({
@@ -681,7 +684,7 @@ export class TeamService implements TeamServiceInterface {
         failedTransfers
       };
     } catch (error) {
-      console.error('Transfer members error:', error);
+      log.error('Transfer members error:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         transferredAgents: [],

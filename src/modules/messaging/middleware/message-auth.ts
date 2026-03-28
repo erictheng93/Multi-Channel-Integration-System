@@ -11,6 +11,9 @@ import {
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import type { MessageAccessScope, MessagePermissions, SenderType } from '@modules/messaging/types/message-types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MessageAuth');
 
 /** Extended Hono context variables for message auth middleware */
 interface MessageAuthVariables {
@@ -53,7 +56,7 @@ export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, nex
 
     return await next();
   } catch (error) {
-    console.error('Error in message access check:', error);
+    log.error('Error in message access check:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -98,7 +101,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Error in specific message access check:', error);
+    log.error('Error in specific message access check:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Message permission check failed',
@@ -122,7 +125,7 @@ export async function checkMessageSendPermission(c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Error in message send permission check:', error);
+    log.error('Error in message send permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Send permission check failed',
@@ -144,7 +147,7 @@ export async function checkMessageRecallPermission(c: Context<{ Bindings: Bindin
 
     return await next();
   } catch (error) {
-    console.error('Error in message recall permission check:', error);
+    log.error('Error in message recall permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Recall permission check failed',
@@ -166,7 +169,7 @@ export async function checkDelayedSendPermission(c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Error in delayed send permission check:', error);
+    log.error('Error in delayed send permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Delayed send permission check failed',
@@ -188,7 +191,7 @@ export async function checkBatchOperationPermission(c: Context<{ Bindings: Bindi
 
     return await next();
   } catch (error) {
-    console.error('Error in batch operation permission check:', error);
+    log.error('Error in batch operation permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Batch operation permission check failed',
@@ -210,7 +213,7 @@ export async function checkStatsViewPermission(c: Context<{ Bindings: Bindings }
 
     return await next();
   } catch (error) {
-    console.error('Error in stats view permission check:', error);
+    log.error('Error in stats view permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Stats view permission check failed',
@@ -243,7 +246,7 @@ export async function applyMessageScopeFilter(c: Context<{ Bindings: Bindings }>
 
     return await next();
   } catch (error) {
-    console.error('Error applying message scope filter:', error);
+    log.error('Error applying message scope filter:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Scope filter application failed',
@@ -350,7 +353,7 @@ export async function validateMessageSender(c: Context<{ Bindings: Bindings }>, 
 
     return await next();
   } catch (error) {
-    console.error('Error validating message sender:', error);
+    log.error('Error validating message sender:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Sender validation failed',

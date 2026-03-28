@@ -16,6 +16,9 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CustomerTagsHandler');
 
 export const customerTagsHandler = {
   /**
@@ -230,12 +233,12 @@ export const customerTagsHandler = {
       // 添加新的標籤關聯
       if (newTagIds.length > 0) {
         // 確保有有效的用戶ID（JWT認證已確保payload.userId存在）
-        console.log('[customer-tags] Debug - payload:', payload);
-        console.log('[customer-tags] Debug - payload.userId:', payload?.userId);
+        log.info('[customer-tags] Debug - payload:', { detail: payload });
+        log.debug('Debug - payload.userId', { userId: payload?.userId });
         const assignedBy = payload?.userId;
 
         if (!assignedBy) {
-          console.error('[customer-tags] Error - No assignedBy found, payload:', payload);
+          log.error('[customer-tags] Error - No assignedBy found, payload:', { detail: payload });
           return errorResponse(c, 'Unauthorized: User ID not found in token', 401);
         }
 
@@ -250,7 +253,7 @@ export const customerTagsHandler = {
           .insert(customerTags)
           .values(tagInsertValues);
 
-        console.log(`[Customer Tags] Added ${newTagIds.length} tags using batch insert`);
+        log.info(`[Customer Tags] Added ${newTagIds.length} tags using batch insert`);
 
         // Activity log (fire-and-forget)
         const customerForLog = await drizzleDb.select({ displayName: customers.displayName }).from(customers).where(eq(customers.id, customerId)).limit(1);
@@ -282,7 +285,7 @@ export const customerTagsHandler = {
             changedBy: String(payload?.userId || 'unknown')
           });
         } catch (broadcastError) {
-          console.warn('[Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+          log.warn('[Customer Tags] Broadcast failed (non-blocking):', { detail: broadcastError });
         }
       }
 
@@ -367,7 +370,7 @@ export const customerTagsHandler = {
           changedBy: String(payload?.userId || 'unknown')
         });
       } catch (broadcastError) {
-        console.warn('[Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+        log.warn('[Customer Tags] Broadcast failed (non-blocking):', { detail: broadcastError });
       }
 
       return successResponse(c, null, `Successfully removed ${tagIds.length} tags from customer`);
@@ -450,7 +453,7 @@ export const customerTagsHandler = {
           .insert(customerTags)
           .values(tagInsertValues);
 
-        console.log(`[Customer Tags] Set ${tagIds.length} tags using batch insert`);
+        log.info(`[Customer Tags] Set ${tagIds.length} tags using batch insert`);
       }
 
       // Activity log (fire-and-forget)
@@ -481,7 +484,7 @@ export const customerTagsHandler = {
           changedBy: String(payload?.userId || 'unknown')
         });
       } catch (broadcastError) {
-        console.warn('[Customer Tags] Broadcast failed (non-blocking):', broadcastError);
+        log.warn('[Customer Tags] Broadcast failed (non-blocking):', { detail: broadcastError });
       }
 
       return successResponse(

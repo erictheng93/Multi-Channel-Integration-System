@@ -2,6 +2,9 @@
 // Encryption/decryption helpers and KV credential retrieval
 
 import type { Bindings } from '@/types'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CryptoUtils');
 
 // Simplified encryption utility (same as credentials.ts)
 export const decrypt = async (encryptedText: string, key: string): Promise<string> => {
@@ -45,9 +48,9 @@ export const getEncryptionKey = (env: Bindings): string => {
 // Helper to retrieve credentials from KV
 export const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'facebook') => {
   try {
-    console.log(`Getting ${platform} credentials from KV...`)
+    log.info(`Getting ${platform} credentials from KV...`)
     const encryptionKey = getEncryptionKey(env)
-    console.log('Encryption key available:', !!encryptionKey)
+    log.debug('Encryption key available', { available: !!encryptionKey })
 
     const credentialTypes = platform === 'line'
       ? ['channelId', 'channelSecret', 'accessToken']
@@ -57,27 +60,27 @@ export const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'fa
 
     for (const type of credentialTypes) {
       const key = `credentials:${platform}:${type}`
-      console.log(`Retrieving KV key: ${key}`)
+      log.info(`Retrieving KV key: ${key}`)
 
       const encryptedValue = await env.CACHE?.get(key)
       if (encryptedValue) {
-        console.log(`Found encrypted value for ${key}, length:`, encryptedValue.length)
+        log.info(`Found encrypted value for ${key}, length:`, { detail: encryptedValue.length })
         try {
           credentials[type] = await decrypt(encryptedValue, encryptionKey)
-          console.log(`Successfully decrypted ${key}`)
+          log.info(`Successfully decrypted ${key}`)
         } catch (decryptError) {
-          console.error(`Failed to decrypt ${key}:`, decryptError)
+          log.error(`Failed to decrypt ${key}:`, { detail: decryptError })
           // Continue with other credentials even if one fails
         }
       } else {
-        console.log(`No value found for KV key: ${key}`)
+        log.info(`No value found for KV key: ${key}`)
       }
     }
 
-    console.log('Final credentials object keys:', Object.keys(credentials))
+    log.debug('Final credentials object keys', { keys: Object.keys(credentials) })
     return Object.keys(credentials).length > 0 ? credentials : null
   } catch (error) {
-    console.error(`Failed to get ${platform} credentials from KV:`, error)
+    log.error(`Failed to get ${platform} credentials from KV:`, {}, error instanceof Error ? error : new Error(String(error)))
     return null
   }
 }

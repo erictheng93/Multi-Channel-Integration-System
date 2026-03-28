@@ -14,6 +14,9 @@ import type {
 import { REPORT_TYPE_CONFIG } from '@modules/reports/types/report-types';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('ReportsValidation');
 
 // ======================== 基礎驗證函數 ========================
 
@@ -96,7 +99,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
 
     return await next();
   } catch (error) {
-    console.error('Request size validation error:', error);
+    log.error('Request size validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Request validation failed',
@@ -114,7 +117,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
     // 報告生成需要更嚴格的速率限制，可以使用 Cloudflare KV 存儲請求計數
     return await next();
   } catch (error) {
-    console.error('Rate limit validation error:', error);
+    log.error('Rate limit validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Rate limit check failed',
@@ -151,7 +154,7 @@ export async function validateReportId(c: Context<{ Bindings: Bindings }>, next:
     (c as any).set('reportId', reportId);
     return await next();
   } catch (error) {
-    console.error('Report ID validation error:', error);
+    log.error('Report ID validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Report ID validation failed',
@@ -186,7 +189,7 @@ export async function validateScheduledReportId(c: Context<{ Bindings: Bindings 
     (c as any).set('scheduledReportId', scheduledReportId);
     return await next();
   } catch (error) {
-    console.error('Scheduled report ID validation error:', error);
+    log.error('Scheduled report ID validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Scheduled report ID validation failed',
@@ -396,7 +399,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
     (c as any).set('reportParams', body);
     return await next();
   } catch (error) {
-    console.error('Report generation params validation error:', error);
+    log.error('Report generation params validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
@@ -541,7 +544,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
     (c as any).set('reportQuery', query);
     return await next();
   } catch (error) {
-    console.error('Report list query validation error:', error);
+    log.error('Report list query validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Query validation failed',
@@ -619,7 +622,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
     (c as any).set('batchOperation', body);
     return await next();
   } catch (error) {
-    console.error('Batch operation validation error:', error);
+    log.error('Batch operation validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
@@ -763,7 +766,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
     (c as any).set('scheduledReportData', body);
     return await next();
   } catch (error) {
-    console.error('Scheduled report data validation error:', error);
+    log.error('Scheduled report data validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
@@ -801,7 +804,7 @@ export async function validateReportPreviewRequest(c: Context<{ Bindings: Bindin
     (c as any).set('previewParams', body);
     return await next();
   } catch (error) {
-    console.error('Report preview validation error:', error);
+    log.error('Report preview validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',

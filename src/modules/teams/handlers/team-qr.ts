@@ -21,6 +21,9 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { teams, qrCodes, teamLiffQrCodes } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('TeamQR');
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -191,7 +194,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), requireIntId(),
       .get();
 
     if (teamData?.qrCode) {
-      console.log(`[QR Latest] Optimal path: from teams.qrCode (teamId=${teamId})`);
+      log.info(`[QR Latest] Optimal path: from teams.qrCode (teamId=${teamId})`);
       const lineUrl = teamData.qrCode.includes('line.me')
         ? teamData.qrCode.replace('api.qrserver.com/v1/create-qr-code/?data=', '')
         : `https://line.me/R/ti/p/@${c.env.LINE_BOT_ID || 'unknown'}`;
@@ -208,7 +211,7 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), requireIntId(),
     }
 
     // Step 2: Fallback - query from qr_codes table
-    console.log(`[QR Latest] Fallback: teams.qrCode is empty, using qrService (teamId=${teamId})`);
+    log.info(`[QR Latest] Fallback: teams.qrCode is empty, using qrService (teamId=${teamId})`);
 
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
     const result = await qrService.getLatestQRCodeFast(teamId);
@@ -230,10 +233,10 @@ app.get('/:id/qr-code/latest', jwtAuth, requireTeamAccess('id'), requireIntId(),
         })
         .where(eq(teams.id, teamId))
         .then(() => {
-          console.log(`[QR Latest] Synced to teams.qrCode: teamId=${teamId}`);
+          log.info(`[QR Latest] Synced to teams.qrCode: teamId=${teamId}`);
         })
         .catch(err => {
-          console.error(`[QR Latest] Sync failed: teamId=${teamId}`, err);
+          log.error(`[QR Latest] Sync failed: teamId=${teamId}`, {}, err instanceof Error ? err : new Error(String(err)));
         })
     );
 
@@ -265,7 +268,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), requireIntId(), a
       .get();
 
     if (teamData?.qrCode) {
-      console.log(`[Fast QR Query] Direct read from teams table teamId=${teamId}`);
+      log.info(`[Fast QR Query] Direct read from teams table teamId=${teamId}`);
       return c.json({
         success: true,
         data: {
@@ -278,7 +281,7 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), requireIntId(), a
     }
 
     // Step 2: Fallback - query from qr_codes table and sync to teams
-    console.log(`[Fast QR Query] teams.qrCode is empty, querying qr_codes table teamId=${teamId}`);
+    log.info(`[Fast QR Query] teams.qrCode is empty, querying qr_codes table teamId=${teamId}`);
 
     const latestQR = await drizzleDb
       .select()
@@ -304,10 +307,10 @@ app.get('/:id/qr-code/fast', jwtAuth, requireTeamAccess('id'), requireIntId(), a
           })
           .where(eq(teams.id, teamId))
           .then(() => {
-            console.log(`[Fast QR Query] Synced to teams.qrCode: teamId=${teamId}`);
+            log.info(`[Fast QR Query] Synced to teams.qrCode: teamId=${teamId}`);
           })
           .catch(err => {
-            console.error(`[Fast QR Query] Sync failed: teamId=${teamId}`, err);
+            log.error(`[Fast QR Query] Sync failed: teamId=${teamId}`, {}, err instanceof Error ? err : new Error(String(err)));
           })
       );
 

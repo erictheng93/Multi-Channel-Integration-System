@@ -20,6 +20,9 @@ import type {
   BackupInfo
 } from '../types/system-types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('SystemService');
 
 export class SystemService implements SystemServiceInterface {
   private db: DrizzleD1Database;
@@ -93,7 +96,7 @@ export class SystemService implements SystemServiceInterface {
 
       return status;
     } catch (error) {
-      console.error('Error getting system status:', error);
+      log.error('Error getting system status:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         overall: 'unhealthy',
         timestamp: nowISO(),
@@ -220,7 +223,7 @@ export class SystemService implements SystemServiceInterface {
         }
       }
     } catch (dbError) {
-      console.warn('Database query error, returning default stats:', dbError);
+      log.warn('Database query error, returning default stats:', { detail: dbError });
     }
 
     return stats;
@@ -258,7 +261,7 @@ export class SystemService implements SystemServiceInterface {
 
       return stats;
     } catch (error) {
-      console.error('Error getting recall stats:', error);
+      log.error('Error getting recall stats:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         totalMessages: 0,
         recalledMessages: 0,
@@ -314,7 +317,7 @@ export class SystemService implements SystemServiceInterface {
 
       return settings;
     } catch (error) {
-      console.error('Error getting settings:', error);
+      log.error('Error getting settings:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -336,7 +339,7 @@ export class SystemService implements SystemServiceInterface {
 
       return currentSettings;
     } catch (error) {
-      console.error('Error updating settings:', error);
+      log.error('Error updating settings:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -416,7 +419,7 @@ export class SystemService implements SystemServiceInterface {
   // 恢復備份
   async restoreBackup(backupId: string): Promise<boolean> {
     // 這裡可以實現備份恢復邏輯
-    console.log(`Restoring backup: ${backupId}`);
+    log.info(`Restoring backup: ${backupId}`);
     return true;
   }
 
@@ -424,10 +427,10 @@ export class SystemService implements SystemServiceInterface {
   async clearCache(): Promise<boolean> {
     try {
       // 這裡可以實現清除 KV 緩存的邏輯
-      console.log('Cache cleared successfully');
+      log.info('Cache cleared successfully');
       return true;
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      log.error('Error clearing cache:', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -435,7 +438,7 @@ export class SystemService implements SystemServiceInterface {
   // 重啟系統
   async restartSystem(): Promise<boolean> {
     // Worker 環境中無法真正重啟，這裡只是記錄操作
-    console.log('System restart requested');
+    log.info('System restart requested');
     return true;
   }
 
@@ -459,7 +462,7 @@ export class SystemService implements SystemServiceInterface {
 
       return Object.keys(credentials).length > 0 ? credentials : null;
     } catch (error) {
-      console.error(`Failed to get ${platform} credentials from KV:`, error);
+      log.error(`Failed to get ${platform} credentials from KV:`, {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }

@@ -14,6 +14,9 @@ import { generateTeamQRCode } from '@/services/liff-qrcode-service';
 import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('LiffQRBatch');
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -31,7 +34,7 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
   try {
     const db = createDbClient(c.env.DB);
 
-    console.log('[Batch LIFF QR] 开始批量生成...');
+    log.info('[Batch LIFF QR] 开始批量生成...');
 
     // Step 1: 查找所有活跃团队
     const allTeams = await db
@@ -40,7 +43,7 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
       .where(eq(teams.isActive, true))
       .all();
 
-    console.log(`[Batch LIFF QR] 找到 ${allTeams.length} 个活跃团队`);
+    log.info(`[Batch LIFF QR] 找到 ${allTeams.length} 个活跃团队`);
 
     // Step 2: 查找已有 LIFF QR Code 的团队
     const existingLiffQRs = await db
@@ -50,12 +53,12 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
 
     const teamsWithLiffQR = new Set(existingLiffQRs.map(qr => qr.teamId));
 
-    console.log(`[Batch LIFF QR] 其中 ${teamsWithLiffQR.size} 个已有 LIFF QR Code`);
+    log.info(`[Batch LIFF QR] 其中 ${teamsWithLiffQR.size} 个已有 LIFF QR Code`);
 
     // Step 3: 筛选出没有 LIFF QR Code 的团队
     const teamsWithoutLiffQR = allTeams.filter(team => !teamsWithLiffQR.has(team.id));
 
-    console.log(`[Batch LIFF QR] 需要生成 ${teamsWithoutLiffQR.length} 个 LIFF QR Code`);
+    log.info(`[Batch LIFF QR] 需要生成 ${teamsWithoutLiffQR.length} 个 LIFF QR Code`);
 
     if (teamsWithoutLiffQR.length === 0) {
       return c.json({
@@ -85,13 +88,13 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
 
     for (const team of teamsWithoutLiffQR) {
       try {
-        console.log(`[Batch LIFF QR] 正在为团队 ${team.name} (ID: ${team.id}) 生成...`);
+        log.info(`[Batch LIFF QR] 正在为团队 ${team.name} (ID: ${team.id}) 生成...`);
 
         const result = await generateTeamQRCode(team.id, team.name, c.env);
 
         if (result.success) {
           results.success++;
-          console.log(`[Batch LIFF QR] 团队 ${team.name} (ID: ${team.id}) 生成成功`);
+          log.info(`[Batch LIFF QR] 团队 ${team.name} (ID: ${team.id}) 生成成功`);
         } else {
           results.failed++;
           results.errors.push({
@@ -99,7 +102,7 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
             teamName: team.name,
             error: result.error || 'Unknown error'
           });
-          console.error(`[Batch LIFF QR] 团队 ${team.name} (ID: ${team.id}) 生成失败: ${result.error}`);
+          log.error(`[Batch LIFF QR] 团队 ${team.name} (ID: ${team.id}) 生成失败: ${result.error}`);
         }
       } catch (error) {
         results.failed++;
@@ -109,11 +112,11 @@ app.post('/batch-generate', jwtAuth, requireAdmin(), async (c) => {
           teamName: team.name,
           error: errorMsg
         });
-        console.error(`[Batch LIFF QR] 团队 ${team.name} (ID: ${team.id}) 生成异常: ${errorMsg}`);
+        log.error(`[Batch LIFF QR] 团队 ${team.name} (ID: ${team.id}) 生成异常: ${errorMsg}`);
       }
     }
 
-    console.log(`[Batch LIFF QR] 批量生成完成！成功: ${results.success}, 失败: ${results.failed}`);
+    log.info(`[Batch LIFF QR] 批量生成完成！成功: ${results.success}, 失败: ${results.failed}`);
 
     return c.json({
       success: true,

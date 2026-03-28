@@ -40,6 +40,9 @@ import type {
 } from '../types/member-types';
 import { AgentTeamsService } from './agent-teams-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MemberService');
 
 export class MemberService {
   private db: ReturnType<typeof drizzle>;
@@ -349,7 +352,7 @@ export class MemberService {
         }
       }
 
-      console.log(`[Member Bulk Delete] 批量永久刪除 ${deleted.length} 位成員`);
+      log.info(`[Member Bulk Delete] 批量永久刪除 ${deleted.length} 位成員`);
 
     } catch (err) {
       // 如果批量操作失敗，將所有成員標記為失敗
@@ -359,7 +362,7 @@ export class MemberService {
           failed.push({ memberId, error: errorMsg });
         }
       });
-      console.error('批量永久刪除成員錯誤:', err);
+      log.error('批量永久刪除成員錯誤:', { detail: err });
     }
 
     return { deleted, failed, deletedMembers };
@@ -485,7 +488,7 @@ export class MemberService {
         }
       });
 
-      console.log(`[Member Bulk Update] 批量更新 ${updated.length} 位成員 (2 DB 查詢)`);
+      log.info(`[Member Bulk Update] 批量更新 ${updated.length} 位成員 (2 DB 查詢)`);
 
     } catch (err) {
       // 如果批量操作失敗，將所有成員標記為失敗
@@ -495,7 +498,7 @@ export class MemberService {
           failed.push({ memberId, error: errorMsg });
         }
       });
-      console.error('批量更新成員錯誤:', err);
+      log.error('批量更新成員錯誤:', { detail: err });
     }
 
     return { updated, failed, skipped, updatedMembers };
@@ -663,7 +666,7 @@ export class MemberService {
                 if (r.status === 'fulfilled') {
                   result.teamsRemoved.push(r.value);
                 } else {
-                  console.error(`Failed to remove member ${memberId} from team:`, r.reason);
+                  log.error("Failed to remove member from team", { memberId }, r.reason instanceof Error ? r.reason : new Error(String(r.reason)));
                 }
               }
             }
@@ -677,7 +680,7 @@ export class MemberService {
         results.push(result);
       }
 
-      console.log('[Member Batch Edit] 批量編輯完成:', {
+      log.info('[Member Batch Edit] 批量編輯完成:', {
         total: members.length,
         success: results.filter(r => r.success).length,
         failed: results.filter(r => !r.success).length,
@@ -700,7 +703,7 @@ export class MemberService {
           });
         }
       }
-      console.error('批量編輯成員錯誤:', err);
+      log.error('批量編輯成員錯誤:', { detail: err });
     }
 
     return { results, skipped, originalData };

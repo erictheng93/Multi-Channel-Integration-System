@@ -9,6 +9,9 @@ import { AlertNotificationService, NotificationChannel as _NotificationChannel }
 import { AlertLevel } from '@/monitoring/websocket-analytics-service';
 import { handleApiError } from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AlertConfig');
 
 const alertConfigHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -102,7 +105,7 @@ alertConfigHandler.post('/channels/slack', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -247,7 +250,7 @@ alertConfigHandler.post('/channels/email', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -329,7 +332,7 @@ alertConfigHandler.post('/channels/webhook', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -381,7 +384,7 @@ alertConfigHandler.get('/channels/status', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -415,7 +418,7 @@ alertConfigHandler.get('/logs', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -471,7 +474,7 @@ alertConfigHandler.post('/test-alert', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });

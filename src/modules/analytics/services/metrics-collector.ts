@@ -18,6 +18,9 @@ import { eq, and, desc, asc, sql, gte, lte } from 'drizzle-orm';
 import { metrics } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MetricsCollector');
 
 /**
  * 統一指標收集服務
@@ -78,7 +81,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
       }
 
     } catch (error) {
-      console.error('Failed to collect metric:', error);
+      log.error('Failed to collect metric:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -107,7 +110,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
       }
 
     } catch (error) {
-      console.error('Failed to collect batch metrics:', error);
+      log.error('Failed to collect batch metrics:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -153,7 +156,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
       };
 
     } catch (error) {
-      console.error('Failed to query metrics:', error);
+      log.error('Failed to query metrics:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -200,7 +203,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
       return aggregated.sort((a, b) => a.timestamp - b.timestamp);
 
     } catch (error) {
-      console.error('Failed to aggregate metrics:', error);
+      log.error('Failed to aggregate metrics:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -242,10 +245,10 @@ export class MetricsCollector implements MetricsCollectorInterface {
           );
       }
 
-      console.log('Metrics cleanup completed');
+      log.info('Metrics cleanup completed');
 
     } catch (error) {
-      console.error('Failed to cleanup metrics:', error);
+      log.error('Failed to cleanup metrics:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -264,12 +267,12 @@ export class MetricsCollector implements MetricsCollectorInterface {
       // 存儲到數據庫
       await this.storeBatchToDatabase(batch);
 
-      console.log(`Flushed ${batch.length} metrics to storage`);
+      log.info(`Flushed ${batch.length} metrics to storage`);
 
     } catch (error) {
       // 如果存儲失敗，重新添加到緩衝區
       this.batchBuffer.unshift(...batch);
-      console.error('Failed to flush metrics batch:', error);
+      log.error('Failed to flush metrics batch:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -284,7 +287,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
     }
 
     // 最後一次刷新
-    this.flush().catch(console.error);
+    this.flush().catch(err => log.error("Flush error", {}, err instanceof Error ? err : new Error(String(err))));
   }
 
   // 私有方法
@@ -559,7 +562,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
       try {
         await this.flush();
       } catch (error) {
-        console.error('Scheduled flush failed:', error);
+        log.error('Scheduled flush failed:', {}, error instanceof Error ? error : new Error(String(error)));
       }
     }, this.config.flushInterval);
   }

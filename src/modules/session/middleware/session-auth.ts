@@ -6,6 +6,10 @@ import type { Bindings } from '@/types';
 import { verifyJWT } from '@/utils/auth';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('SessionAuth');
+
 
 // ======================== 基礎權限檢查 ========================
 
@@ -39,7 +43,7 @@ export async function checkSessionAccess(c: Context<{ Bindings: Bindings }>, nex
     c.set('jwtPayload', payload);
     await next();
   } catch (error) {
-    console.error('Session access check error:', error);
+    log.error('Session access check error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Authentication failed',
@@ -76,7 +80,7 @@ export async function checkSessionViewPermission(c: Context<{ Bindings: Bindings
 
     await next();
   } catch (error) {
-    console.error('Session view permission check error:', error);
+    log.error('Session view permission check error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -111,7 +115,7 @@ export async function checkSessionCreatePermission(c: Context<{ Bindings: Bindin
 
     await next();
   } catch (error) {
-    console.error('Session create permission check error:', error);
+    log.error('Session create permission check error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -154,7 +158,7 @@ export async function checkSessionUpdatePermission(c: Context<{ Bindings: Bindin
       timestamp: nowISO()
     }, HTTP_STATUS.FORBIDDEN);
   } catch (error) {
-    console.error('Session update permission check error:', error);
+    log.error('Session update permission check error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -189,7 +193,7 @@ export async function checkSessionDeletePermission(c: Context<{ Bindings: Bindin
 
     await next();
   } catch (error) {
-    console.error('Session delete permission check error:', error);
+    log.error('Session delete permission check error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -224,7 +228,7 @@ export async function checkSessionStatsPermission(c: Context<{ Bindings: Binding
 
     await next();
   } catch (error) {
-    console.error('Session stats permission check error:', error);
+    log.error('Session stats permission check error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -259,7 +263,7 @@ export async function checkSessionBatchPermission(c: Context<{ Bindings: Binding
 
     await next();
   } catch (error) {
-    console.error('Session batch permission check error:', error);
+    log.error('Session batch permission check error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -281,15 +285,15 @@ export async function logSessionOperation(c: Context<{ Bindings: Bindings }>, ne
     const method = c.req.method;
     const path = c.req.path;
 
-    console.log(`Session operation started: ${method} ${path} by user ${payload?.userId || 'unknown'}`);
+    log.info('Session operation started', { method, path, userId: payload?.userId || 'unknown' });
 
     await next();
 
     const duration = Date.now() - startTime;
-    console.log(`Session operation completed: ${method} ${path} in ${duration}ms`);
+    log.info('Session operation completed', { method, path, durationMs: duration });
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`Session operation failed: ${c.req.method} ${c.req.path} after ${duration}ms`, error);
+    log.error('Session operation failed', { method: c.req.method, path: c.req.path, durationMs: duration }, error instanceof Error ? error : new Error(String(error)));
     throw error;
   }
 }

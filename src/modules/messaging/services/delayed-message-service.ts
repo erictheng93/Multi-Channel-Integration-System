@@ -20,6 +20,9 @@ import {
 } from '../types/message-types';
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('DelayedMessage');
 
 export class DelayedMessageService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -117,7 +120,7 @@ export class DelayedMessageService {
         recallDeadline: recallDeadline.toISOString(),
       };
     } catch (error) {
-      console.error('Error sending delayed message:', error);
+      log.error('Error sending delayed message:', {}, error instanceof Error ? error : new Error(String(error)));
 
       if (error instanceof InvalidMessageDataError) {
         throw error;
@@ -189,7 +192,7 @@ export class DelayedMessageService {
 
       return { success: true };
     } catch (error) {
-      console.error('Error cancelling delayed message:', error);
+      log.error('Error cancelling delayed message:', {}, error instanceof Error ? error : new Error(String(error)));
 
       if (error instanceof MessageNotFoundError) {
         return { success: false, error: error.message };
@@ -300,7 +303,7 @@ export class DelayedMessageService {
         processedAt: now.toISOString(),
       };
     } catch (error) {
-      console.error('Error processing delayed send:', error);
+      log.error('Error processing delayed send:', {}, error instanceof Error ? error : new Error(String(error)));
 
       await this.markDelayedMessageFailed(
         messageId,
@@ -334,7 +337,7 @@ export class DelayedMessageService {
 
       return this.transformDbDelayedMessage(result);
     } catch (error) {
-      console.error('Error finding delayed message by ID:', error);
+      log.error('Error finding delayed message by ID:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -369,7 +372,7 @@ export class DelayedMessageService {
 
       return { messages, total };
     } catch (error) {
-      console.error('Error getting pending delayed messages:', error);
+      log.error('Error getting pending delayed messages:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -405,7 +408,7 @@ export class DelayedMessageService {
 
       return { messages, total };
     } catch (error) {
-      console.error('Error getting conversation delayed messages:', error);
+      log.error('Error getting conversation delayed messages:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -449,7 +452,7 @@ export class DelayedMessageService {
 
       return { cleaned: expiredMessages.length };
     } catch (error) {
-      console.error('Error cleaning up expired delayed messages:', error);
+      log.error('Error cleaning up expired delayed messages:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -480,7 +483,7 @@ export class DelayedMessageService {
         })
         .where(eq(delayedMessages.id, messageId));
     } catch (error) {
-      console.error('Error marking delayed message as failed:', error);
+      log.error('Error marking delayed message as failed:', {}, error instanceof Error ? error : new Error(String(error)));
     }
   }
 

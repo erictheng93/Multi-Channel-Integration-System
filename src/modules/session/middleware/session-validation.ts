@@ -3,6 +3,9 @@
 
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('SessionValidation');
 import type {
   CreateSessionData,
   UpdateSessionData,
@@ -80,7 +83,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
 
     await next();
   } catch (error) {
-    console.error('Request size validation error:', error);
+    log.error('Request size validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Request validation failed',
@@ -98,7 +101,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
     // 可以使用 Cloudflare KV 存儲請求計數
     await next();
   } catch (error) {
-    console.error('Rate limit validation error:', error);
+    log.error('Rate limit validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Rate limit check failed',
@@ -135,7 +138,7 @@ export async function validateSessionId(c: Context<{ Bindings: Bindings }>, next
     c.set('sessionId', sessionId);
     await next();
   } catch (error) {
-    console.error('Session ID validation error:', error);
+    log.error('Session ID validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Session ID validation failed',
@@ -169,7 +172,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
 
     await next();
   } catch (error) {
-    console.error('Conversation ID validation error:', error);
+    log.error('Conversation ID validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Conversation ID validation failed',
@@ -268,7 +271,7 @@ export async function validateCreateSessionData(c: Context<{ Bindings: Bindings 
     c.set('createSessionData', body);
     await next();
   } catch (error) {
-    console.error('Create session data validation error:', error);
+    log.error('Create session data validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
@@ -367,7 +370,7 @@ export async function validateUpdateSessionData(c: Context<{ Bindings: Bindings 
     c.set('updateSessionData', body);
     await next();
   } catch (error) {
-    console.error('Update session data validation error:', error);
+    log.error('Update session data validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',
@@ -502,7 +505,7 @@ export async function validateSessionListQuery(c: Context<{ Bindings: Bindings }
     c.set('sessionQuery', query);
     await next();
   } catch (error) {
-    console.error('Session list query validation error:', error);
+    log.error('Session list query validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Query validation failed',
@@ -573,7 +576,7 @@ export async function validateSessionSearchQuery(c: Context<{ Bindings: Bindings
     c.set('sessionSearchQuery', query);
     await next();
   } catch (error) {
-    console.error('Session search query validation error:', error);
+    log.error('Session search query validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Search query validation failed',
@@ -656,7 +659,7 @@ export async function validateBatchSessionOperation(c: Context<{ Bindings: Bindi
     c.set('batchOperation', body);
     await next();
   } catch (error) {
-    console.error('Batch operation validation error:', error);
+    log.error('Batch operation validation error', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Invalid JSON data or validation failed',

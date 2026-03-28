@@ -20,6 +20,9 @@ import {
   CustomerAlreadyExistsError
 } from '../types/customer-types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CustomerCrud');
 
 export class CustomerCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -59,7 +62,7 @@ export class CustomerCrudService {
         updatedAt: customer.updatedAt
       };
     } catch (error) {
-      console.error('Error finding customer by ID:', error);
+      log.error('Error finding customer by ID:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -134,7 +137,7 @@ export class CustomerCrudService {
         recentMessages
       };
     } catch (error) {
-      console.error('Error finding customer with details:', error);
+      log.error('Error finding customer with details:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -171,7 +174,7 @@ export class CustomerCrudService {
         updatedAt: customer.updatedAt
       };
     } catch (error) {
-      console.error('Error finding customer by platform ID:', error);
+      log.error('Error finding customer by platform ID:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -226,7 +229,7 @@ export class CustomerCrudService {
 
       return newCustomer;
     } catch (error) {
-      console.error('Error creating customer:', error);
+      log.error('Error creating customer:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -290,7 +293,7 @@ export class CustomerCrudService {
 
       return customer;
     } catch (error) {
-      console.error('Error in findOrCreate:', error);
+      log.error('Error in findOrCreate:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -349,7 +352,7 @@ export class CustomerCrudService {
 
       return updatedCustomer;
     } catch (error) {
-      console.error('Error updating customer:', error);
+      log.error('Error updating customer:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -377,7 +380,7 @@ export class CustomerCrudService {
         metadata: currentMetadata
       });
     } catch (error) {
-      console.error('Error soft deleting customer:', error);
+      log.error('Error soft deleting customer:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }

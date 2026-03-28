@@ -20,6 +20,9 @@ import {
 } from '../utils/mime-type-utils';
 import { PROCESSING_OPTIONS } from '@modules/file-management/constants/file-config';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('FileMetadata');
 
 export class MetadataService {
   /**
@@ -60,7 +63,7 @@ export class MetadataService {
       // 檢測實際的 MIME 類型
       const detectedMimeType = detectMimeType(data);
       if (detectedMimeType && detectedMimeType !== metadata.mimeType) {
-        console.warn(`MIME type mismatch: declared ${metadata.mimeType}, detected ${detectedMimeType}`);
+        log.warn("MIME type mismatch", { declared: metadata.mimeType, detected: detectedMimeType });
       }
 
       // 根據檔案類型提取特定元數據
@@ -73,7 +76,7 @@ export class MetadataService {
       }
 
     } catch (error) {
-      console.warn('Failed to enrich metadata:', error);
+      log.warn('Failed to enrich metadata:', { error });
     }
   }
 
@@ -102,7 +105,7 @@ export class MetadataService {
       }
 
     } catch (error) {
-      console.warn('Failed to extract image metadata:', error);
+      log.warn('Failed to extract image metadata:', { error });
     }
   }
 
@@ -129,7 +132,7 @@ export class MetadataService {
           return null;
       }
     } catch (error) {
-      console.warn('Failed to parse image dimensions:', error);
+      log.warn('Failed to parse image dimensions:', { error });
       return null;
     }
   }
@@ -240,7 +243,7 @@ export class MetadataService {
   private async extractVideoMetadata(_data: ArrayBuffer, _metadata: FileMetadata): Promise<void> {
     // 影片元數據提取比較複雜，通常需要專門的程式庫
     // 這裡只做基本的檔案大小記錄
-    console.log('Video metadata extraction not fully implemented');
+    log.info('Video metadata extraction not fully implemented');
   }
 
   /**
@@ -248,7 +251,7 @@ export class MetadataService {
    */
   private async extractAudioMetadata(_data: ArrayBuffer, _metadata: FileMetadata): Promise<void> {
     // 音訊元數據提取，可以解析 ID3 標籤等
-    console.log('Audio metadata extraction not fully implemented');
+    log.info('Audio metadata extraction not fully implemented');
   }
 
   /**

@@ -15,6 +15,9 @@ import type { DelayedSendRequest, RecallRequest, BatchSendRequest } from '@modul
 import { HTTP_STATUS } from '@/constants/http-status';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MessageValidation');
 
 // ======================== 基礎驗證中間件 ========================
 
@@ -45,7 +48,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
 
     return await next();
   } catch (error) {
-    console.error('Error validating message ID:', error);
+    log.error('Error validating message ID:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Message ID validation failed',
@@ -81,7 +84,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
 
     return await next();
   } catch (error) {
-    console.error('Error validating conversation ID:', error);
+    log.error('Error validating conversation ID:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Conversation ID validation failed',
@@ -137,7 +140,7 @@ export async function validatePaginationParams(c: Context<{ Bindings: Bindings }
 
     return await next();
   } catch (error) {
-    console.error('Error validating pagination params:', error);
+    log.error('Error validating pagination params:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Pagination validation failed',
@@ -244,7 +247,7 @@ export async function validateCreateMessageData(c: Context<{ Bindings: Bindings 
 
     return await next();
   } catch (error) {
-    console.error('Error validating create message data:', error);
+    log.error('Error validating create message data:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Message data validation failed',
@@ -299,7 +302,7 @@ export async function validateUpdateMessageData(c: Context<{ Bindings: Bindings 
 
     return await next();
   } catch (error) {
-    console.error('Error validating update message data:', error);
+    log.error('Error validating update message data:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Update data validation failed',
@@ -371,7 +374,7 @@ export async function validateDelayedSendData(c: Context<{ Bindings: Bindings }>
 
     return await next();
   } catch (error) {
-    console.error('Error validating delayed send data:', error);
+    log.error('Error validating delayed send data:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Delayed send data validation failed',
@@ -424,7 +427,7 @@ export async function validateRecallRequest(c: Context<{ Bindings: Bindings }>, 
 
     return await next();
   } catch (error) {
-    console.error('Error validating recall request:', error);
+    log.error('Error validating recall request:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Recall request validation failed',
@@ -499,7 +502,7 @@ export async function validateBatchSendData(c: Context<{ Bindings: Bindings }>, 
 
     return await next();
   } catch (error) {
-    console.error('Error validating batch send data:', error);
+    log.error('Error validating batch send data:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Batch send data validation failed',
@@ -573,7 +576,7 @@ export async function validateSearchQuery(c: Context<{ Bindings: Bindings }>, ne
 
     return await next();
   } catch (error) {
-    console.error('Error validating search query:', error);
+    log.error('Error validating search query:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Search query validation failed',

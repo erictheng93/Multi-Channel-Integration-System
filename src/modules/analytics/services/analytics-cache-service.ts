@@ -9,6 +9,9 @@ import type { KVNamespace } from '@cloudflare/workers-types';
 import type { AnalyticsResult } from '@modules/analytics/types/analytics-types';
 import { HybridCacheService, shouldUseCacheAPI } from '@/services/cache-api-service';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AnalyticsCache');
 
 /**
  * 快取鍵策略配置
@@ -185,7 +188,7 @@ export class AnalyticsCacheService {
       this.updateHitRate();
       return null;
     } catch (error) {
-      console.error('Cache get error:', error);
+      log.error('Cache get error:', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -242,7 +245,7 @@ export class AnalyticsCacheService {
       this.stats.sets++;
       return true;
     } catch (error) {
-      console.error('Cache set error:', error);
+      log.error('Cache set error:', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -267,7 +270,7 @@ export class AnalyticsCacheService {
       this.stats.deletes++;
       return true;
     } catch (error) {
-      console.error('Cache delete error:', error);
+      log.error('Cache delete error:', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -296,7 +299,7 @@ export class AnalyticsCacheService {
       this.stats.deletes += deletedCount;
       return deletedCount;
     } catch (error) {
-      console.error('Cache deleteByPrefix error:', error);
+      log.error('Cache deleteByPrefix error:', {}, error instanceof Error ? error : new Error(String(error)));
       return 0;
     }
   }
@@ -363,7 +366,7 @@ export class AnalyticsCacheService {
         expirationTtl: 86400 // 24小時
       });
     } catch (error) {
-      console.error('Error persisting cache stats:', error);
+      log.error('Error persisting cache stats:', {}, error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -379,7 +382,7 @@ export class AnalyticsCacheService {
         this.stats = savedStats as CacheStats;
       }
     } catch (error) {
-      console.error('Error loading cache stats:', error);
+      log.error('Error loading cache stats:', {}, error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -542,7 +545,7 @@ export class CacheWarmer {
             break;
         }
       } catch (error) {
-        console.error(`Cache warmup failed for query ${JSON.stringify(query)}:`, error);
+        log.error(`Cache warmup failed for query ${JSON.stringify(query)}:`, {}, error instanceof Error ? error : new Error(String(error)));
       }
     }
   }
@@ -554,7 +557,7 @@ export class CacheWarmer {
     // 每 5 分鐘刷新一次常用查詢
     setInterval(() => {
       this.warmupCommonQueries().catch(error => {
-        console.error('Scheduled cache refresh failed:', error);
+        log.error('Scheduled cache refresh failed:', {}, error instanceof Error ? error : new Error(String(error)));
       });
     }, intervalMs);
   }

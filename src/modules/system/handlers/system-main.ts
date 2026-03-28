@@ -9,6 +9,9 @@ import { agents, customers, conversations, messages, customerFeedback } from '@/
 import { count, sql, eq, and } from 'drizzle-orm';
 import { handleApiError } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('SystemMain');
 
 const systemHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -124,7 +127,7 @@ systemHandler.get('/system/status', jwtAuth, async (c) => {
 
     return c.json(status);
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -146,7 +149,7 @@ systemHandler.get('/messages/:messageId/replies', jwtAuth, async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -175,7 +178,7 @@ systemHandler.get('/conversations/:conversationId/message-tree', jwtAuth, async 
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -194,7 +197,7 @@ systemHandler.get('/conversations/:conversationId/sessions', jwtAuth, async (c) 
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -310,7 +313,7 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
         satisfactionRate = 0; // 沒有反饋數據時返回 0
       }
 
-      console.log(' Stats calculated:', {
+      log.info(' Stats calculated:', {
         totalMessages,
         totalCustomers,
         totalConversations,
@@ -322,7 +325,7 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
         todayStart: todayISO
       });
     } catch (dbError) {
-      console.warn('Database query failed, using default values:', dbError);
+      log.warn('Database query failed, using default values:', { detail: dbError });
       // 如果查詢失敗，使用默認值 0
     }
 
@@ -342,7 +345,7 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -365,7 +368,7 @@ systemHandler.get('/messages/recall-stats', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
