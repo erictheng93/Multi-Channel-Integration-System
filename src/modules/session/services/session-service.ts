@@ -318,12 +318,12 @@ export class SessionService implements SessionServiceInterface {
     return this.statsService.getActivityStats(query);
   }
 
-  async batchOperation(operation: BatchSessionOperation): Promise<BatchOperationResult> {
+  async batchOperation(operation: BatchSessionOperation, userId?: string): Promise<BatchOperationResult> {
     return this.statsService.batchOperation(operation, {
       closeSession: (id: string) => this.closeSession(id),
       reopenSession: (id: string) => this.reopenSession(id),
       deleteSession: (id: string) => this.delete(id)
-    });
+    }, userId);
   }
 
   async detectSessionBoundary(
