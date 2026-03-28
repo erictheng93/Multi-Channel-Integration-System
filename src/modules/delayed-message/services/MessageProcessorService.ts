@@ -10,7 +10,10 @@ import type {
 } from '../types';
 import { ProcessingError } from '@modules/delayed-message/types';
 import { StorageService } from '@modules/delayed-message/infrastructure/StorageService';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MessageProcessor');
 
 /**
  * MessageProcessorService - 訊息處理專家
@@ -39,7 +42,7 @@ export class MessageProcessorService {
       // 1. 檢查是否已被取消
       const isCancelled = await this.storageService.isCancelled(messageId);
       if (isCancelled) {
-        console.log(`[MessageProcessorService] Message ${messageId} was cancelled, skipping send`);
+        log.info('Message was cancelled, skipping send', { messageId });
         return { success: true, skipped: true };
       }
 
@@ -50,7 +53,7 @@ export class MessageProcessorService {
       }
 
       if (message.status !== 'pending') {
-        console.log(`[MessageProcessorService] Message ${messageId} is not in pending status: ${message.status}`);
+        log.info('Message is not in pending status', { messageId, status: message.status });
         return { success: true, skipped: true };
       }
 
@@ -86,12 +89,12 @@ export class MessageProcessorService {
       // 7. 清理 KV 標記
       await this.storageService.cleanup(messageId);
 
-      console.log(`${sendSuccess ? '' : ''} [MessageProcessorService] Message ${messageId} processing ${sendSuccess ? 'succeeded' : 'failed'}`);
+      log.info('Message processing completed', { messageId, success: sendSuccess });
 
       return { success: sendSuccess };
 
     } catch (error) {
-      console.error(`[MessageProcessorService] Failed to process queue message ${messageId}:`, error);
+      log.error('Failed to process queue message', { messageId }, error instanceof Error ? error : String(error));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -168,7 +171,7 @@ export class MessageProcessorService {
       return await this.processQueueMessage(messageId);
 
     } catch (error) {
-      console.error(`[MessageProcessorService] Failed to retry message ${messageId}:`, error);
+      log.error('Failed to retry message', { messageId }, error instanceof Error ? error : String(error));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Retry failed'
@@ -189,7 +192,7 @@ export class MessageProcessorService {
       // 發送測試訊息（實際實現中可能需要測試端點）
       return true;
     } catch (error) {
-      console.error(`[MessageProcessorService] Platform connection test failed for ${platform}:`, error);
+      log.error('Platform connection test failed', { platform }, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -207,10 +210,10 @@ export class MessageProcessorService {
     try {
       // 從 StorageService 獲取真實統計數據
       const stats = await this.storageService.getProcessingStats();
-      console.log('[MessageProcessorService] Processing stats retrieved:', stats);
+      log.info('Processing stats retrieved', { stats });
       return stats;
     } catch (error) {
-      console.error('[MessageProcessorService] Failed to get processing stats:', error);
+      log.error('Failed to get processing stats', {}, error instanceof Error ? error : String(error));
       return {
         totalProcessed: 0,
         successfulSends: 0,
@@ -236,13 +239,13 @@ export class MessageProcessorService {
       for (const [platform, _sender] of this.platformSenders) {
         const platformHealthy = await this.testPlatformConnection(platform as 'line' | 'facebook');
         if (!platformHealthy) {
-          console.warn(`[MessageProcessorService] Platform ${platform} connection unhealthy`);
+          log.warn('Platform connection unhealthy', { platform });
         }
       }
 
       return true;
     } catch (error) {
-      console.error('[MessageProcessorService] Health check failed:', error);
+      log.error('Health check failed', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -294,7 +297,7 @@ export class MessageProcessorService {
       return await sender.sendMessage(messageData);
 
     } catch (error) {
-      console.error(`[MessageProcessorService] Failed to send message to platform:`, error);
+      log.error('Failed to send message to platform', {}, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -321,13 +324,13 @@ export class MessageProcessorService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[MessageProcessorService] LINE API error:`, errorText);
+        log.error('LINE API error', { errorText });
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('[MessageProcessorService] LINE message send error:', error);
+      log.error('LINE message send error', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -353,13 +356,13 @@ export class MessageProcessorService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[MessageProcessorService] Facebook API error:`, errorText);
+        log.error('Facebook API error', { errorText });
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('[MessageProcessorService] Facebook message send error:', error);
+      log.error('Facebook message send error', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -390,7 +393,7 @@ export class MessageProcessorService {
 
       return result;
     } catch (error) {
-      console.error('[MessageProcessorService] Error getting conversation info:', error);
+      log.error('Error getting conversation info', { conversationId }, error instanceof Error ? error : String(error));
       return null;
     }
   }
