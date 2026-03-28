@@ -10,7 +10,8 @@ import type {
 import { CredentialError } from '@modules/integrations/types/integration-types';
 
 import type { Bindings } from '@/types';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp';
+import { encryptPassword, decryptPassword } from '@/utils/encryption';
 
 /**
  * 憑證資料結構
@@ -49,7 +50,7 @@ export class CredentialManagementService {
 
   constructor(
     private kv: KVNamespace,
-    _env: Bindings
+    private env: Bindings
   ) {}
 
   // ======================== 加密操作 ========================
@@ -476,46 +477,26 @@ export class CredentialManagementService {
    * 執行加密
    */
   private async performEncryption(data: string, _keyId: string): Promise<string> {
-    // 這裡應該實作真正的加密邏輯
-    // 為了演示，使用簡單的 Base64 編碼
-    // 生產環境應該使用 Web Crypto API 進行真正的 AES-GCM 加密
-
-    const encoder = new TextEncoder();
-    const dataBuffer = encoder.encode(data);
-
-    // 生成隨機初始化向量
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-
-    // 模擬加密（生產環境需要真正的加密）
-    const encrypted = new Uint8Array(dataBuffer.length + iv.length);
-    encrypted.set(iv);
-    encrypted.set(dataBuffer, iv.length);
-
-    // 轉換為 Base64
-    return btoa(String.fromCharCode(...encrypted));
+    return encryptPassword(data, this.env);
   }
 
   /**
-   * 執行解密
+   * 執行解密 — uses AES-256-GCM via env.ENCRYPTION_KEY.
+   * Backward compatible: tries new AES format first, falls back to legacy Base64.
    */
   private async performDecryption(encryptedData: string, _keyId: string): Promise<string> {
     try {
-      // 這裡應該實作真正的解密邏輯
-      // 為了演示，使用簡單的 Base64 解碼
-      // 生產環境應該使用 Web Crypto API 進行真正的 AES-GCM 解密
-
-      const encrypted = new Uint8Array(
-        atob(encryptedData).split('').map(char => char.charCodeAt(0))
-      );
-
-      // Skip IV（前12字節）and extract data
-      const data = encrypted.slice(12);
-
-      // 解碼數據
-      const decoder = new TextDecoder();
-      return decoder.decode(data);
-    } catch (error) {
-      throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return await decryptPassword(encryptedData, this.env);
+    } catch {
+      // Fallback: legacy Base64-only data (pre-encryption migration)
+      try {
+        const raw = new Uint8Array(
+          atob(encryptedData).split('').map(c => c.charCodeAt(0))
+        );
+        return new TextDecoder().decode(raw.slice(12));
+      } catch (error) {
+        throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   }
 

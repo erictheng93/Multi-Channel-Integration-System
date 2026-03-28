@@ -6,7 +6,10 @@ import { eq, and, desc, count, sql } from 'drizzle-orm';
 import {
   messages,
   messageRecallLogs,
-  delayedMessages
+  delayedMessages,
+  conversations,
+  customers,
+  channelIntegrations
 } from '@/db/schema';
 import {
   MessageRecall,
@@ -15,6 +18,8 @@ import {
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { pushLineMessage, createTextMessage } from '@/utils/line';
+import { ChannelCredentialService } from '@/modules/integrations/services/channel-credential-service';
 const log = createContextLogger('MessageRecallService');
 
 export class MessageRecallService {
@@ -97,8 +102,8 @@ export class MessageRecallService {
         createdAt: recalledAt,
       });
 
-      // TODO: 通知平台撤回訊息 (LINE, Facebook 等)
-      // await this.notifyPlatformRecall(message);
+      // Notify platform about message recall (best-effort, failure does not revert DB recall)
+      await this.notifyPlatformRecall(message);
 
       return {
         success: true,
@@ -128,6 +133,141 @@ export class MessageRecallService {
         error: error instanceof Error ? error.message : 'Unknown error occurred',
         canRecall: false
       };
+    }
+  }
+
+  /**
+   * Notify the external platform about a recalled message (best-effort).
+   * Platform failure does NOT revert the DB recall.
+   */
+  private async notifyPlatformRecall(message: {
+    id: string;
+    conversationId: string;
+    platformMessageId: string | null;
+    senderType: string;
+  }): Promise<void> {
+    try {
+      // Look up conversation to find the customer
+      const conversation = await this.drizzleDb
+        .select({
+          customerId: conversations.customerId,
+          assignedTeamId: conversations.assignedTeamId,
+        })
+        .from(conversations)
+        .where(eq(conversations.id, message.conversationId))
+        .get();
+
+      if (!conversation) {
+        log.warn('Platform recall skipped: conversation not found', { messageId: message.id });
+        return;
+      }
+
+      // Look up customer to get platform and platformUserId
+      const customer = await this.drizzleDb
+        .select({
+          platform: customers.platform,
+          platformUserId: customers.platformUserId,
+        })
+        .from(customers)
+        .where(eq(customers.id, conversation.customerId))
+        .get();
+
+      if (!customer) {
+        log.warn('Platform recall skipped: customer not found', { messageId: message.id });
+        return;
+      }
+
+      // Find channel integration credentials for this platform + team
+      const conditions = [eq(channelIntegrations.platform, customer.platform)];
+      if (conversation.assignedTeamId) {
+        conditions.push(eq(channelIntegrations.teamId, conversation.assignedTeamId));
+      }
+
+      const channel = await this.drizzleDb
+        .select({
+          credentials: channelIntegrations.credentials,
+        })
+        .from(channelIntegrations)
+        .where(and(...conditions))
+        .get();
+
+      if (!channel?.credentials) {
+        log.warn('Platform recall skipped: no channel credentials found', {
+          messageId: message.id,
+          platform: customer.platform,
+        });
+        return;
+      }
+
+      // Decrypt credentials
+      const credentialService = new ChannelCredentialService(this.env);
+      const creds = await credentialService.getDecryptedCredentials(channel);
+
+      if (!creds.accessToken) {
+        log.warn('Platform recall skipped: no access token in credentials', {
+          messageId: message.id,
+          platform: customer.platform,
+        });
+        return;
+      }
+
+      // Dispatch based on platform
+      switch (customer.platform) {
+        case 'line': {
+          // LINE does not support unsending messages via API.
+          // Send a notification text to the customer instead.
+          const sent = await pushLineMessage(
+            creds.accessToken,
+            customer.platformUserId,
+            [createTextMessage('This message has been recalled')]
+          );
+          if (sent) {
+            log.info('LINE recall notification sent', { messageId: message.id });
+          } else {
+            log.warn('LINE recall notification failed', { messageId: message.id });
+          }
+          break;
+        }
+
+        case 'facebook': {
+          // Facebook supports deleting messages via Graph API
+          if (!message.platformMessageId) {
+            log.warn('Facebook recall skipped: no platformMessageId', { messageId: message.id });
+            return;
+          }
+
+          const fbResponse = await fetch(
+            `https://graph.facebook.com/v18.0/${message.platformMessageId}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${creds.accessToken}`,
+              },
+            }
+          );
+
+          if (fbResponse.ok) {
+            log.info('Facebook message deleted successfully', { messageId: message.id });
+          } else {
+            const errorText = await fbResponse.text();
+            log.warn('Facebook message deletion failed', {
+              messageId: message.id,
+              status: fbResponse.status,
+              error: errorText,
+            });
+          }
+          break;
+        }
+
+        default:
+          log.info('Platform recall not supported', {
+            messageId: message.id,
+            platform: customer.platform,
+          });
+      }
+    } catch (error) {
+      // Platform notification failure must not affect the recall result
+      log.error('Platform recall notification failed', { messageId: message.id }, error instanceof Error ? error : String(error));
     }
   }
 

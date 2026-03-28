@@ -135,6 +135,7 @@ export const messages = sqliteTable('messages', {
   sessionSequence: integer('session_sequence').default(1),
   metadata: text('metadata'),
   senderName: text('sender_name'), // 發送者名稱快照（持久化保存，不受帳號刪除或更名影響）
+  readBy: text('read_by'), // JSON array of agent IDs who have read this message
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at'), // Tracks message modifications (recall, status changes) (Migration 0036)
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)

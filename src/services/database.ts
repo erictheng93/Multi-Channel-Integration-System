@@ -413,10 +413,33 @@ export class DatabaseService {
       .offset(offset);
   }
 
-  async markMessagesAsRead(_conversationId: string, _agentId: string) {
-    // Note: Currently there's no isRead field in messages table
-    // This is a placeholder for future implementation
-    return Promise.resolve({ success: true });
+  async markMessagesAsRead(conversationId: string, agentId: string) {
+    // Mark all unread customer messages in this conversation as read by this agent
+    const unreadMessages = await this.db
+      .select({ id: schema.messages.id, readBy: schema.messages.readBy })
+      .from(schema.messages)
+      .where(
+        and(
+          eq(schema.messages.conversationId, conversationId),
+          eq(schema.messages.senderType, 'customer')
+        )
+      )
+      .all();
+
+    let updatedCount = 0;
+    for (const msg of unreadMessages) {
+      const readers: string[] = msg.readBy ? JSON.parse(msg.readBy) : [];
+      if (!readers.includes(agentId)) {
+        readers.push(agentId);
+        await this.db
+          .update(schema.messages)
+          .set({ readBy: JSON.stringify(readers) })
+          .where(eq(schema.messages.id, msg.id));
+        updatedCount++;
+      }
+    }
+
+    return { success: true, updatedCount };
   }
 
   // File attachment operations

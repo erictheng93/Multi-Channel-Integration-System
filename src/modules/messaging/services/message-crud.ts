@@ -136,6 +136,20 @@ export class MessageCrudService {
         .limit(limit)
         .offset(offset);
 
+      // Batch-fetch attachment counts for all messages in this page
+      const { fileAttachments } = await import('@/db/schema');
+      const messageIds = results.map(r => r.message.id);
+      const attachCounts = new Map<string, number>();
+      if (messageIds.length > 0) {
+        const rows = await this.drizzleDb
+          .select({ mid: fileAttachments.messageId, cnt: count() })
+          .from(fileAttachments)
+          .where(sql`${fileAttachments.messageId} IN (${sql.join(messageIds.map(id => sql`${id}`), sql`, `)})`)
+          .groupBy(fileAttachments.messageId)
+          .all();
+        for (const r of rows) { if (r.mid) attachCounts.set(r.mid, r.cnt); }
+      }
+
       const messageItems: MessageListItem[] = results.map(result => {
         const message = this.transformDbMessageToMessage(result.message);
         return {
@@ -145,9 +159,9 @@ export class MessageCrudService {
                      'Unknown',
           senderAvatar: result.customerSender?.avatarUrl ||
                        undefined,
-          attachmentCount: 0, // TODO: 計算附件數量
-          hasReactions: false, // TODO: 檢查是否有反應
-          isRead: true, // TODO: 實現已讀狀態
+          attachmentCount: attachCounts.get(result.message.id) ?? 0,
+          hasReactions: false, // Deferred: needs messageReactions table
+          isRead: true, // Deferred: needs readBy column (Phase 3)
         };
       });
 
