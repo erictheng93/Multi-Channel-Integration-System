@@ -3,8 +3,8 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { eq, and, desc, asc, sql, count, avg, gte, lte } from 'drizzle-orm';
-import { conversationSessions, messages } from '@/db/schema';
+import { eq, and, desc, asc, sql, count, avg, gte, lte, isNull } from 'drizzle-orm';
+import { conversationSessions, messages, conversations } from '@/db/schema';
 import {
   SessionStats,
   SessionActivityStats,
@@ -401,43 +401,39 @@ export class AnalyticsService {
     return stats;
   }
 
-  private async getSessionsByPriority(_whereCondition: any): Promise<Record<NonNullable<ConversationSession['priority']>, number>> {
-    // priority 欄位不存在於 conversationSessions 表中，返回預設統計
-    const stats: Record<NonNullable<ConversationSession['priority']>, number> = {
-      low: 0,
-      medium: 0,
-      high: 0,
-      urgent: 0
+  private async getSessionsByPriority(whereCondition: any): Promise<Record<NonNullable<ConversationSession['priority']>, number>> {
+    const result: Record<NonNullable<ConversationSession['priority']>, number> = {
+      low: 0, medium: 0, high: 0, urgent: 0
     };
+    try {
+      const rows = await this.db
+        .select({
+          priority: conversations.priority,
+          count: count()
+        })
+        .from(conversationSessions)
+        .innerJoin(conversations, eq(conversationSessions.conversationId, conversations.id))
+        .where(and(whereCondition, isNull(conversations.deletedAt)))
+        .groupBy(conversations.priority)
+        .all();
 
-    // 獲取總會話數並設為 medium 優先級
-    const totalSessions = await this.db
-      .select({ total: count() })
-      .from(conversationSessions)
-      .then(result => result[0]?.total ?? 0);
-
-    stats.medium = totalSessions; // 預設所有會話為中等優先級
-
-    return stats;
+      for (const row of rows) {
+        const key = (row.priority || 'normal') as string;
+        if (key in result) {
+          result[key as keyof typeof result] += row.count;
+        } else {
+          result.medium += row.count;
+        }
+      }
+    } catch {
+      // Return zeros on error
+    }
+    return result;
   }
 
-  private async getSessionsBySentiment(_whereCondition: any): Promise<Record<NonNullable<ConversationSession['sentiment']>, number>> {
-    // sentiment 欄位不存在於 conversationSessions 表中，返回預設統計
-    const stats: Record<NonNullable<ConversationSession['sentiment']>, number> = {
-      positive: 0,
-      negative: 0,
-      neutral: 0
-    };
-
-    // 可以在此處添加基於其他欄位的情感推測邏輯
-    const totalSessions = await this.db
-      .select({ total: count() })
-      .from(conversationSessions)
-      .then(result => result[0]?.total ?? 0);
-
-    stats.neutral = totalSessions; // 預設所有會話為中性
-
-    return stats;
+  private async getSessionsBySentiment(_whereCondition: any): Promise<Record<NonNullable<ConversationSession['sentiment']>, number> | null> {
+    // No sentiment column exists in the DB. Return null to signal "not available."
+    return null;
   }
 
   private async getTopicsDistribution(whereCondition: any): Promise<Array<{ topic: string; count: number; percentage: number }>> {
