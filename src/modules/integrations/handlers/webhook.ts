@@ -54,17 +54,17 @@ export { processLineMessage, processLineFollowEvent, processLineUnfollowEvent };
 export const webhookHandler = {
   // 處理 Line Webhook
   async line(c: Context<{ Bindings: Bindings }>) {
-    console.log('[LINE Webhook] Request received at:', nowISO());
+    log.info('Request received', { timestamp: nowISO() });
 
     try {
-      // 驗證簽名
+      // 驗證簽���
       const signature = c.req.header('X-Line-Signature');
       const body = await c.req.text();
 
-      console.log('[LINE Webhook] Headers:', {
-        'X-Line-Signature': signature ? 'Present' : 'Missing',
-        'Content-Type': c.req.header('Content-Type'),
-        'Content-Length': body.length
+      log.debug('Headers', {
+        signaturePresent: !!signature,
+        contentType: c.req.header('Content-Type'),
+        contentLength: body.length
       });
 
       // P2-1: 使用共享服務驗證 payload 大小
@@ -92,7 +92,7 @@ export const webhookHandler = {
         return unauthorizedResponse(c, signatureResult.error || 'Invalid signature');
       }
 
-      console.log('[LINE Webhook] Signature verified successfully');
+      log.info('Signature verified successfully');
 
       let data: LineWebhookBody;
       try {
@@ -108,7 +108,7 @@ export const webhookHandler = {
         return errorResponse(c, validationResult.errors.join(', ') || 'Invalid webhook payload');
       }
 
-      console.log('[LINE Webhook] Processing events:', {
+      log.info('Processing events', {
         destination: data.destination,
         eventCount: data.events.length,
         firstEventType: data.events[0]?.type
@@ -119,7 +119,7 @@ export const webhookHandler = {
 
       // 處理事件
       for (const event of data.events) {
-        console.log('[LINE Webhook] Processing event:', {
+        log.debug('Processing event', {
           type: event.type,
           userId: event.source?.userId?.substring(0, 10) + '...',
           messageType: event.message?.type
@@ -134,11 +134,11 @@ export const webhookHandler = {
           // 處理取消關注事件 - 更新好友狀態為 blocked
           await processLineUnfollowEvent(c.env, event);
         } else {
-          console.log('[LINE Webhook] Skipping event:', event.type);
+          log.debug('Skipping event', { type: event.type });
         }
       }
 
-      console.log('[LINE Webhook] All events processed successfully');
+      log.info('All events processed successfully');
       return successResponse(c, null, 'LINE webhook processed successfully');
     } catch (error) {
       return handleApiError(error, c);

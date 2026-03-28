@@ -20,7 +20,7 @@ const log = createContextLogger('Webhook');
 
 // 安全日誌記錄函數
 function logSecurely(platform: string, userId: string, messageLength: number) {
-  console.log(`Processed ${platform} message from user [${userId.slice(0, 8)}...]: [${messageLength} chars]`);
+  log.info('Processed message', { platform, userId: userId.slice(0, 8) + '...', messageLength });
 }
 
 // 處理 Facebook 訊息
