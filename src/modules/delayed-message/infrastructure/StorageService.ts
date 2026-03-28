@@ -13,7 +13,10 @@ import type {
   PendingMessagesResult
 } from '../types';
 import { StorageError } from '@modules/delayed-message/types';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('StorageService');
 
 /**
  * StorageService - 統一資料存取服務
@@ -53,7 +56,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('[StorageService] Failed to save message:', error);
+      log.error('Failed to save message', {}, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to save delayed message', { messageId: message.id, error });
     }
   }
@@ -75,7 +78,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return this.mapToEntity(result);
     } catch (error) {
-      console.error('[StorageService] Failed to get message by ID:', error);
+      log.error('Failed to get message by ID', { messageId }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to get message by ID', { messageId, error });
     }
   }
@@ -104,7 +107,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('[StorageService] Failed to update message status:', error);
+      log.error('Failed to update message status', { messageId, status }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to update message status', { messageId, status, error });
     }
   }
@@ -170,7 +173,7 @@ export class StorageService implements DelayedMessageStorage {
         pageSize
       };
     } catch (error) {
-      console.error('[StorageService] Failed to get pending messages:', error);
+      log.error('Failed to get pending messages', { agentId }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to get pending messages', { agentId, page, pageSize, error });
     }
   }
@@ -189,7 +192,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('[StorageService] Failed to mark as recallable:', error);
+      log.error('Failed to mark as recallable', { messageId }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to mark as recallable', { messageId, error });
     }
   }
@@ -208,7 +211,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return JSON.parse(data) as RecallInfo;
     } catch (error) {
-      console.error('[StorageService] Failed to check recallable:', error);
+      log.error('Failed to check recallable', { messageId }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to check recallable', { messageId, error });
     }
   }
@@ -225,7 +228,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('[StorageService] Failed to mark as cancelled:', error);
+      log.error('Failed to mark as cancelled', { messageId }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to mark as cancelled', { messageId, error });
     }
   }
@@ -239,7 +242,7 @@ export class StorageService implements DelayedMessageStorage {
       const data = await this.kv.get(kvKey);
       return data !== null;
     } catch (error) {
-      console.error('[StorageService] Failed to check cancelled:', error);
+      log.error('Failed to check cancelled', { messageId }, error instanceof Error ? error : String(error));
       return false; // 檢查失敗時假設未取消，確保訊息可以發送
     }
   }
@@ -256,7 +259,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('[StorageService] Failed to cleanup KV markers:', error);
+      log.error('Failed to cleanup KV markers', { messageId }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to cleanup KV markers', { messageId, error });
     }
   }
@@ -299,7 +302,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('[StorageService] Failed to save message record:', error);
+      log.error('Failed to save message record', { messageId }, error instanceof Error ? error : String(error));
       throw new StorageError('Failed to save message record', { messageId, error });
     }
   }
@@ -318,7 +321,7 @@ export class StorageService implements DelayedMessageStorage {
 
       return true;
     } catch (error) {
-      console.error('[StorageService] Failed to log operation:', error);
+      log.error('Failed to log operation', { messageId, userId, action }, error instanceof Error ? error : String(error));
       // 日誌記錄失敗不應該影響主要功能
       return false;
     }
@@ -395,7 +398,7 @@ export class StorageService implements DelayedMessageStorage {
         averageDelaySeconds: avgDelayResult?.avgDelay || 0
       };
     } catch (error) {
-      console.error('[StorageService] Failed to get scheduling stats:', error);
+      log.error('Failed to get scheduling stats', {}, error instanceof Error ? error : String(error));
       return {
         pendingCount: 0,
         scheduledForNext24Hours: 0,
@@ -455,7 +458,7 @@ export class StorageService implements DelayedMessageStorage {
         averageProcessingTime
       };
     } catch (error) {
-      console.error('[StorageService] Failed to get processing stats:', error);
+      log.error('Failed to get processing stats', {}, error instanceof Error ? error : String(error));
       return {
         totalProcessed: 0,
         successfulSends: 0,
@@ -475,7 +478,7 @@ export class StorageService implements DelayedMessageStorage {
       await this.db.select({ count: count() }).from(delayedMessages).limit(1).get();
       return true;
     } catch (error) {
-      console.error('[StorageService] Health check failed:', error);
+      log.error('Health check failed', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }

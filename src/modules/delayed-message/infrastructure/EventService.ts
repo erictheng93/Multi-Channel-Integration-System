@@ -8,7 +8,10 @@ import type {
   DelayedMessageEntity,
   ProcessResult
 } from '../types';
-import { nowISO } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('EventService');
 
 /**
  * EventService - 統一事件處理服務
@@ -61,10 +64,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`[EventService] Message scheduled event broadcasted for ${message.id}`);
+      log.info('Message scheduled event broadcasted', { messageId: message.id });
       return true;
     } catch (error) {
-      console.warn('[EventService] Failed to broadcast message scheduled event:', error);
+      log.warn('Failed to broadcast message scheduled event', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -97,10 +100,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`[EventService] Message recalled event broadcasted for ${messageId}`);
+      log.info('Message recalled event broadcasted', { messageId });
       return true;
     } catch (error) {
-      console.warn('[EventService] Failed to broadcast message recalled event:', error);
+      log.warn('Failed to broadcast message recalled event', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -134,10 +137,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`[EventService] Message sent event broadcasted for ${message.id}`);
+      log.info('Message sent event broadcasted', { messageId: message.id });
       return true;
     } catch (error) {
-      console.warn('[EventService] Failed to broadcast message sent event:', error);
+      log.warn('Failed to broadcast message sent event', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -169,10 +172,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`[EventService] Message failed event broadcasted for ${messageId}`);
+      log.info('Message failed event broadcasted', { messageId });
       return true;
     } catch (broadcastError) {
-      console.warn('[EventService] Failed to broadcast message failed event:', broadcastError);
+      log.warn('Failed to broadcast message failed event', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
       return false;
     }
   }
@@ -202,10 +205,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`[EventService] Message skip event broadcasted for ${messageId}`);
+      log.info('Message skip event broadcasted', { messageId });
       return true;
     } catch (error) {
-      console.warn('[EventService] Failed to broadcast message skip event:', error);
+      log.warn('Failed to broadcast message skip event', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -235,10 +238,10 @@ export class EventService {
       };
 
       await this.broadcastService.broadcastDelayedMessageEvent(event);
-      console.log(`[EventService] Recall failed event broadcasted for ${messageId}`);
+      log.info('Recall failed event broadcasted', { messageId });
       return true;
     } catch (broadcastError) {
-      console.warn('[EventService] Failed to broadcast recall failed event:', broadcastError);
+      log.warn('Failed to broadcast recall failed event', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
       return false;
     }
   }
@@ -276,7 +279,7 @@ export class EventService {
         );
       }
     } catch (error) {
-      console.warn('[EventService] Failed to broadcast queue processing result:', error);
+      log.warn('Failed to broadcast queue processing result', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -308,7 +311,7 @@ export class EventService {
       await this.broadcastService.broadcastDelayedMessageEvent(event);
       return true;
     } catch (error) {
-      console.warn('[EventService] Failed to broadcast countdown update:', error);
+      log.warn('Failed to broadcast countdown update', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -345,7 +348,7 @@ export class EventService {
       await this.broadcastService.broadcastDelayedMessageEvent(testEvent);
       return true;
     } catch (error) {
-      console.error('[EventService] Health check failed:', error);
+      log.error('Health check failed', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
