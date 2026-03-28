@@ -13,6 +13,9 @@ import {
 } from '@/utils/api-response'
 import { HTTP_STATUS } from '@/constants/http-status'
 import { getValidatedParam } from '@/middleware/param-validator'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('ActivityHandler')
 
 export class ActivityHandler {
   private activityService: ActivityService
@@ -74,7 +77,7 @@ export class ActivityHandler {
         total: result.total
       })
     } catch (error) {
-      console.error('Failed to get activities:', error)
+      log.error('Failed to get activities', {}, error instanceof Error ? error : String(error))
       if (error instanceof Error && error.message.includes('Invalid query parameters')) {
         return validationErrorResponse(c, [
           { field: 'query', message: error.message, value: null }
@@ -106,7 +109,7 @@ export class ActivityHandler {
 
       return successResponse(c, stats)
     } catch (error) {
-      console.error('Failed to get user activity stats:', error)
+      log.error('Failed to get user activity stats', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get user activity stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -131,7 +134,7 @@ export class ActivityHandler {
         `Cleaned up ${deletedCount} old activity records`
       )
     } catch (error) {
-      console.error('Failed to cleanup activities:', error)
+      log.error('Failed to cleanup activities', {}, error instanceof Error ? error : String(error))
       if (error instanceof Error && error.message.includes('Invalid cleanup parameters')) {
         return validationErrorResponse(c, [
           { field: 'daysToKeep', message: error.message, value: null }
@@ -156,7 +159,7 @@ export class ActivityHandler {
 
       return successResponse(c, overview)
     } catch (error) {
-      console.error('Failed to get activity overview:', error)
+      log.error('Failed to get activity overview', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get activity overview', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -176,7 +179,7 @@ export class ActivityHandler {
 
       return successResponse(c, stats)
     } catch (error) {
-      console.error('Failed to get resource stats:', error)
+      log.error('Failed to get resource stats', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get resource stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -196,7 +199,7 @@ export class ActivityHandler {
 
       return successResponse(c, stats)
     } catch (error) {
-      console.error('Failed to get role stats:', error)
+      log.error('Failed to get role stats', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get role stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -216,7 +219,7 @@ export class ActivityHandler {
 
       return successResponse(c, trends)
     } catch (error) {
-      console.error('Failed to get activity trends:', error)
+      log.error('Failed to get activity trends', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get activity trends', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -236,7 +239,7 @@ export class ActivityHandler {
 
       return successResponse(c, heatmap)
     } catch (error) {
-      console.error('Failed to get activity heatmap:', error)
+      log.error('Failed to get activity heatmap', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get activity heatmap', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -256,7 +259,7 @@ export class ActivityHandler {
 
       return successResponse(c, metrics)
     } catch (error) {
-      console.error('Failed to get activity metrics:', error)
+      log.error('Failed to get activity metrics', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get activity metrics', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -284,7 +287,7 @@ export class ActivityHandler {
 
       return successResponse(c, activity)
     } catch (error) {
-      console.error('Failed to get activity by ID:', error)
+      log.error('Failed to get activity by ID', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get activity', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }
@@ -312,7 +315,7 @@ export class ActivityHandler {
 
       return successResponse(c, stats)
     } catch (error) {
-      console.error('Failed to get custom stats:', error)
+      log.error('Failed to get custom stats', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get custom stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
   }

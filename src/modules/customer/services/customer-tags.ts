@@ -15,6 +15,9 @@ import {
 } from '../types/customer-types';
 import type { JWTPayload } from '@/types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('CustomerTags')
 
 export class CustomerTagService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -59,7 +62,7 @@ export class CustomerTagService {
         color: tag.color || '#3B82F6'
       }));
     } catch (error) {
-      console.error('Error getting customer tags:', error);
+      log.error('Error getting customer tags', { customerId }, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -85,7 +88,7 @@ export class CustomerTagService {
         color: tag.color || '#3B82F6'
       }));
     } catch (error) {
-      console.error('Error getting available tags:', error);
+      log.error('Error getting available tags', {}, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -155,7 +158,7 @@ export class CustomerTagService {
           .run();
       }
     } catch (error) {
-      console.error('Error adding tags to customer:', error);
+      log.error('Error adding tags to customer', { customerId }, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -185,7 +188,7 @@ export class CustomerTagService {
         ))
         .run();
     } catch (error) {
-      console.error('Error removing tags from customer:', error);
+      log.error('Error removing tags from customer', { customerId }, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -221,7 +224,7 @@ export class CustomerTagService {
         await this.addTagsToCustomer(customerId, tagIds, userPayload);
       }
     } catch (error) {
-      console.error('Error setting customer tags:', error);
+      log.error('Error setting customer tags', { customerId }, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -245,7 +248,7 @@ export class CustomerTagService {
       if (result.status === 'fulfilled') {
         results.success.push(customerIds[i]);
       } else {
-        console.error(`Error adding tags to customer ${customerIds[i]}:`, result.reason);
+        log.error('Error adding tags to customer', { customerId: customerIds[i], reason: result.reason instanceof Error ? result.reason.message : String(result.reason) });
         results.failed.push(customerIds[i]);
       }
     });
@@ -269,7 +272,7 @@ export class CustomerTagService {
       if (result.status === 'fulfilled') {
         results.success.push(customerIds[i]);
       } else {
-        console.error(`Error removing tags from customer ${customerIds[i]}:`, result.reason);
+        log.error('Error removing tags from customer', { customerId: customerIds[i], reason: result.reason instanceof Error ? result.reason.message : String(result.reason) });
         results.failed.push(customerIds[i]);
       }
     });
@@ -309,7 +312,7 @@ export class CustomerTagService {
         customerCount: stat.customerCount || 0
       }));
     } catch (error) {
-      console.error('Error getting tag usage stats:', error);
+      log.error('Error getting tag usage stats', {}, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -350,7 +353,7 @@ export class CustomerTagService {
         assignedAt: record.assignedAt || nowISO()
       }));
     } catch (error) {
-      console.error('Error getting customer tag history:', error);
+      log.error('Error getting customer tag history', { customerId }, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -390,7 +393,7 @@ export class CustomerTagService {
         return result.map(r => r.customerId);
       }
     } catch (error) {
-      console.error('Error finding customers by tags:', error);
+      log.error('Error finding customers by tags', {}, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -409,7 +412,7 @@ export class CustomerTagService {
 
       return result.map(r => r.customerId);
     } catch (error) {
-      console.error('Error getting customers without tags:', error);
+      log.error('Error getting customers without tags', {}, error instanceof Error ? error : String(error));
       throw error;
     }
   }

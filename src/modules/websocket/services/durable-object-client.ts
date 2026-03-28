@@ -14,6 +14,9 @@ import { getCircuitBreaker, type WebSocketCircuitBreaker } from '@/services/webs
 import type { BroadcastConfig } from './broadcast-config';
 import type { BatchQueueManager } from './batch-queue-manager';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('DOClient')
 
 /**
  * DurableObjectClient
@@ -188,7 +191,7 @@ export class DurableObjectClient {
     try {
       const promises = conversationIds.map(async (conversationId) => {
         if (!this.env.CONVERSATION_ROOM) {
-          console.warn('CONVERSATION_ROOM binding not available');
+          log.warn('CONVERSATION_ROOM binding not available');
           return false;
         }
 
@@ -210,7 +213,7 @@ export class DurableObjectClient {
       const results = await Promise.allSettled(promises);
       return results.some(r => r.status === 'fulfilled' && r.value);
     } catch (error) {
-      console.error('[DurableObjectClient] ConversationRoom broadcast error:', error);
+      log.error('ConversationRoom broadcast error', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -222,7 +225,7 @@ export class DurableObjectClient {
     try {
       const promises = userIds.map(async (userId) => {
         if (!this.env.USER_CONNECTION) {
-          console.warn('USER_CONNECTION binding not available');
+          log.warn('USER_CONNECTION binding not available');
           return false;
         }
 
@@ -244,7 +247,7 @@ export class DurableObjectClient {
       const results = await Promise.allSettled(promises);
       return results.some(r => r.status === 'fulfilled' && r.value);
     } catch (error) {
-      console.error('[DurableObjectClient] UserConnection broadcast error:', error);
+      log.error('UserConnection broadcast error', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -256,7 +259,7 @@ export class DurableObjectClient {
   async broadcastToTeamMembers(event: DurableObjectEvent, teamIds: number[], includeAdmins: boolean = false): Promise<boolean> {
     try {
       if (!this.env.MESSAGE_BROADCASTER) {
-        console.warn('MESSAGE_BROADCASTER binding not available');
+        log.warn('MESSAGE_BROADCASTER binding not available');
         return false;
       }
 
@@ -264,8 +267,7 @@ export class DurableObjectClient {
       const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
 
       if (broadcasterStub) {
-        console.log('[DurableObjectClient] ===== TEAM BROADCAST INITIATED =====');
-        console.log('[DurableObjectClient] Broadcasting to teams', {
+        log.info('Team broadcast initiated', {
           eventId: event.id,
           eventType: event.type,
           eventAction: (event.data as Record<string, unknown>)?.action,
@@ -293,7 +295,7 @@ export class DurableObjectClient {
 
         if (response.ok) {
           const result = await response.json() as { successful?: number; failed?: number };
-          console.log('[DurableObjectClient] Team broadcast completed', {
+          log.info('Team broadcast completed', {
             eventId: event.id,
             eventAction: (event.data as Record<string, unknown>)?.action,
             targetTeamIds: teamIds,
@@ -307,7 +309,7 @@ export class DurableObjectClient {
       }
       return false;
     } catch (error) {
-      console.error('[DurableObjectClient] Team broadcast error:', error);
+      log.error('Team broadcast error', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -318,7 +320,7 @@ export class DurableObjectClient {
   async broadcastToGlobal(event: DurableObjectEvent, target: BroadcastTarget): Promise<boolean> {
     try {
       if (!this.env.MESSAGE_BROADCASTER) {
-        console.warn('MESSAGE_BROADCASTER binding not available');
+        log.warn('MESSAGE_BROADCASTER binding not available');
         return false;
       }
 
@@ -339,7 +341,7 @@ export class DurableObjectClient {
       }
       return false;
     } catch (error) {
-      console.error('[DurableObjectClient] Global broadcast error:', error);
+      log.error('Global broadcast error', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
