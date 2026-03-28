@@ -121,7 +121,7 @@ export interface SessionStats {
   averageSessionDuration: number; // in minutes
   sessionsByType: Record<ConversationSession['sessionType'], number>;
   sessionsByPriority: Record<NonNullable<ConversationSession['priority']>, number>;
-  sessionsBySentiment: Record<NonNullable<ConversationSession['sentiment']>, number>;
+  sessionsBySentiment: Record<NonNullable<ConversationSession['sentiment']>, number> | null;
   topicsDistribution: Array<{
     topic: string;
     count: number;
@@ -282,7 +282,7 @@ export interface SessionServiceInterface {
   getActivityStats(query: Omit<SessionActivityStats, 'activities' | 'summary'>): Promise<SessionActivityStats>;
 
   // 批量操作
-  batchOperation(operation: BatchSessionOperation): Promise<BatchOperationResult>;
+  batchOperation(operation: BatchSessionOperation, userId?: string): Promise<BatchOperationResult>;
 
   // 工具方法
   detectSessionBoundary(currentSession: ConversationSession | null, messageContent: string, senderType: 'customer' | 'agent' | 'system'): Promise<SessionBoundaryDetection>;
