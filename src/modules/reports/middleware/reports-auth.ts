@@ -8,6 +8,9 @@ import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('ReportsAuth')
 
 // ======================== 基礎權限檢查 ========================
 
@@ -41,7 +44,7 @@ export async function checkReportsAccess(c: Context<{ Bindings: Bindings }>, nex
     c.set('jwtPayload', payload);
     return await next();
   } catch (error) {
-    console.error('Reports access check error:', error);
+    log.error('Reports access check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Authentication failed',
@@ -92,7 +95,7 @@ export async function checkReportsViewPermission(c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Reports view permission check error:', error);
+    log.error('Reports view permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -141,7 +144,7 @@ export async function checkReportsGeneratePermission(c: Context<{ Bindings: Bind
 
     return await next();
   } catch (error) {
-    console.error('Reports generate permission check error:', error);
+    log.error('Reports generate permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -191,7 +194,7 @@ export async function checkReportsDownloadPermission(c: Context<{ Bindings: Bind
 
     return await next();
   } catch (error) {
-    console.error('Reports download permission check error:', error);
+    log.error('Reports download permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -251,7 +254,7 @@ export async function checkReportsDeletePermission(c: Context<{ Bindings: Bindin
 
     return await next();
   } catch (error) {
-    console.error('Reports delete permission check error:', error);
+    log.error('Reports delete permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -286,7 +289,7 @@ export async function checkReportsStatsPermission(c: Context<{ Bindings: Binding
 
     return await next();
   } catch (error) {
-    console.error('Reports stats permission check error:', error);
+    log.error('Reports stats permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -321,7 +324,7 @@ export async function checkReportsBatchPermission(c: Context<{ Bindings: Binding
 
     return await next();
   } catch (error) {
-    console.error('Reports batch permission check error:', error);
+    log.error('Reports batch permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -370,7 +373,7 @@ export async function checkScheduledReportsPermission(c: Context<{ Bindings: Bin
 
     return await next();
   } catch (error) {
-    console.error('Scheduled reports permission check error:', error);
+    log.error('Scheduled reports permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -413,7 +416,7 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
 
     return await next();
   } catch (error) {
-    console.error('Special report type permission check error:', error);
+    log.error('Special report type permission check error', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -435,15 +438,15 @@ export async function logReportsOperation(c: Context<{ Bindings: Bindings }>, ne
     const method = c.req.method;
     const path = c.req.path;
 
-    console.log(`Reports operation started: ${method} ${path} by user ${payload?.userId || 'unknown'}`);
+    log.info('Reports operation started', { method, path, userId: payload?.userId || 'unknown' });
 
     await next();
 
     const duration = Date.now() - startTime;
-    console.log(`Reports operation completed: ${method} ${path} in ${duration}ms`);
+    log.info('Reports operation completed', { method, path, durationMs: duration });
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`Reports operation failed: ${c.req.method} ${c.req.path} after ${duration}ms`, error);
+    log.error('Reports operation failed', { method: c.req.method, path: c.req.path, durationMs: duration }, error instanceof Error ? error : String(error));
     throw error;
   }
 }

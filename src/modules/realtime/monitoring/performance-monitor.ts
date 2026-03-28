@@ -6,6 +6,9 @@ import type {
   EventPriority
 } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('PerformanceMonitor')
 
 // 性能指標定義
 export interface PerformanceMetrics {
@@ -112,13 +115,13 @@ export class RealtimePerformanceMonitor {
       this.thresholds = { ...this.thresholds, ...config.thresholds };
     }
 
-    console.log('[Performance Monitor] 性能監控器已初始化');
+    log.info('Performance monitor initialized');
   }
 
   // 開始監控
   startMonitoring(intervalSeconds: number = 30): void {
     if (this.isMonitoring) {
-      console.warn('[Performance Monitor] 監控已在運行中');
+      log.warn('Monitoring already running');
       return;
     }
 
@@ -130,11 +133,11 @@ export class RealtimePerformanceMonitor {
         this.checkThresholds();
         this.cleanupOldData();
       } catch (error) {
-        console.error('[Performance Monitor] 監控收集錯誤:', error);
+        log.error('Monitoring collection error', {}, error instanceof Error ? error : String(error));
       }
     }, intervalSeconds * 1000);
 
-    console.log(`[Performance Monitor] 開始監控 (間隔: ${intervalSeconds}秒)`);
+    log.info('Monitoring started', { intervalSeconds });
   }
 
   // 停止監控
@@ -145,7 +148,7 @@ export class RealtimePerformanceMonitor {
     }
     this.isMonitoring = false;
 
-    console.log('[Performance Monitor] 監控已停止');
+    log.info('Monitoring stopped');
   }
 
   // 收集性能指標
@@ -187,12 +190,12 @@ export class RealtimePerformanceMonitor {
               connectionsByRole: wsData.connections?.connectionsByRole || {}
             };
           } else {
-            console.warn('[PerformanceMonitor] Failed to fetch WebSocket metrics:', response.status);
+            log.warn('Failed to fetch WebSocket metrics', { status: response.status });
           }
         }
       } catch (error) {
         // WebSocket metrics unavailable (test environment or initialization) - use defaults
-        console.warn('[PerformanceMonitor] WebSocket metrics unavailable, using defaults:', error);
+        log.warn('WebSocket metrics unavailable, using defaults', { error: error instanceof Error ? error.message : String(error) });
       }
 
       // 收集事件統計
@@ -267,7 +270,7 @@ export class RealtimePerformanceMonitor {
 
       this.metrics.push(metrics);
 
-      console.log('[Performance Monitor] 指標收集完成:', {
+      log.debug('Metrics collected', {
         connections: connectionMetrics.totalConnections,
         events: eventMetrics.totalEventsProcessed,
         processingTime: eventMetrics.averageEventProcessingTime,
@@ -275,7 +278,7 @@ export class RealtimePerformanceMonitor {
       });
 
     } catch (error) {
-      console.error('[Performance Monitor] 指標收集失敗:', error);
+      log.error('Metrics collection failed', {}, error instanceof Error ? error : String(error));
     }
   }
 
@@ -345,7 +348,7 @@ export class RealtimePerformanceMonitor {
     this.alerts.push(...newAlerts);
 
     if (newAlerts.length > 0) {
-      console.warn('[Performance Monitor] 發現性能警報:', {
+      log.warn('Performance alerts detected', {
         alertCount: newAlerts.length,
         alerts: newAlerts.map(a => ({ level: a.level, metric: a.metric, message: a.message }))
       });
@@ -417,7 +420,7 @@ export class RealtimePerformanceMonitor {
     if (alert && !alert.resolved) {
       alert.resolved = true;
       alert.resolvedAt = nowISO();
-      console.log(`[Performance Monitor] 警報已解決: ${alertId}`);
+      log.info('Alert resolved', { alertId });
       return true;
     }
     return false;

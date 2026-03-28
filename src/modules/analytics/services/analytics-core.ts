@@ -36,6 +36,9 @@ import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cac
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import type { Period } from '@modules/analytics/services/period-comparison-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AnalyticsCore');
 
 // Sub-module imports
 import {
@@ -112,10 +115,10 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
         const cachedResult = await this.cacheService.get<ConversationAnalytics>(cacheKey);
         if (cachedResult && cachedResult.success) {
-          console.log(`Cache HIT for conversation analytics: ${cacheKey}`);
+          log.debug('Cache HIT for conversation analytics', { cacheKey });
           return { success: cachedResult.success, data: cachedResult.data, metadata: cachedResult.metadata };
         }
-        console.log(`Cache MISS for conversation analytics: ${cacheKey}`);
+        log.debug('Cache MISS for conversation analytics', { cacheKey });
       }
 
       const { startDate, endDate } = buildTimeRange(query.timeRange, query.startDate, query.endDate);
@@ -164,13 +167,13 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         };
         const ttl = this.cacheService.getTTLForQueryType('conversation', query.timeRange);
         await this.cacheService.set(cacheKey, analyticsResult, ttl);
-        console.log(`Cached conversation analytics with TTL ${ttl}s: ${cacheKey}`);
+        log.debug('Cached conversation analytics', { ttl, cacheKey });
       }
 
       return serviceResponse;
 
     } catch (error) {
-      console.error('Failed to get conversation analytics:', error);
+      log.error('Failed to get conversation analytics', {}, error instanceof Error ? error : String(error));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -202,10 +205,10 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
         const cachedResult = await this.cacheService.get<MessageAnalytics>(cacheKey);
         if (cachedResult && cachedResult.success) {
-          console.log(`Cache HIT for message analytics: ${cacheKey}`);
+          log.debug('Cache HIT for message analytics', { cacheKey });
           return { success: cachedResult.success, data: cachedResult.data, metadata: cachedResult.metadata };
         }
-        console.log(`Cache MISS for message analytics: ${cacheKey}`);
+        log.debug('Cache MISS for message analytics', { cacheKey });
       }
 
       const { startDate, endDate } = buildTimeRange(query.timeRange, query.startDate, query.endDate);
@@ -250,13 +253,13 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         };
         const ttl = this.cacheService.getTTLForQueryType('message', query.timeRange);
         await this.cacheService.set(cacheKey, analyticsResult, ttl);
-        console.log(`Cached message analytics with TTL ${ttl}s: ${cacheKey}`);
+        log.debug('Cached message analytics', { ttl, cacheKey });
       }
 
       return serviceResponse;
 
     } catch (error) {
-      console.error('Failed to get message analytics:', error);
+      log.error('Failed to get message analytics', {}, error instanceof Error ? error : String(error));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -288,10 +291,10 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
         const cachedResult = await this.cacheService.get<UserAnalytics>(cacheKey);
         if (cachedResult) {
-          console.log(`Cache HIT for user analytics: ${cacheKey}`);
+          log.debug('Cache HIT for user analytics', { cacheKey });
           return cachedResult;
         }
-        console.log(`Cache MISS for user analytics: ${cacheKey}`);
+        log.debug('Cache MISS for user analytics', { cacheKey });
       }
 
       const { startDate, endDate } = buildTimeRange(query.timeRange, query.startDate, query.endDate);
@@ -323,7 +326,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         });
         const ttl = this.cacheService.getTTLForQueryType('user', query.timeRange);
         await this.cacheService.set(cacheKey, analyticsResult, ttl);
-        console.log(`Cached user analytics with TTL ${ttl}s: ${cacheKey}`);
+        log.debug('Cached user analytics', { ttl, cacheKey });
       }
 
       return analyticsResult;
@@ -353,10 +356,10 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         const cacheKey = this.cacheService.generateCacheKey('performance', query);
         const cachedResult = await this.cacheService.get<PerformanceAnalytics>(cacheKey);
         if (cachedResult) {
-          console.log(`Cache HIT for performance analytics: ${cacheKey}`);
+          log.debug('Cache HIT for performance analytics', { cacheKey });
           return cachedResult;
         }
-        console.log(`Cache MISS for performance analytics: ${cacheKey}`);
+        log.debug('Cache MISS for performance analytics', { cacheKey });
       }
 
       const { startDate, endDate } = buildTimeRange(query.timeRange, query.startDate, query.endDate);
@@ -384,7 +387,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
         const cacheKey = this.cacheService.generateCacheKey('performance', query);
         const ttl = this.cacheService.getTTLForQueryType('performance', query.timeRange);
         await this.cacheService.set(cacheKey, analyticsResult, ttl);
-        console.log(`Cached performance analytics with TTL ${ttl}s: ${cacheKey}`);
+        log.debug('Cached performance analytics', { ttl, cacheKey });
       }
 
       return analyticsResult;

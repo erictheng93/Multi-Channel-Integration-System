@@ -14,6 +14,9 @@ import { EventQueueService } from '@modules/realtime/services/event-queue-servic
 import { eventStats } from '@modules/realtime/handlers/event-handler';
 import { RealtimeConfigManager } from '@modules/realtime/handlers/realtime-main';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('RealtimeManager')
 
 // 服務狀態枚舉
 export enum ServiceStatus {
@@ -85,11 +88,11 @@ export class RealtimeManager {
       this.startHealthCheck();
 
       this.status = ServiceStatus.RUNNING;
-      console.log('[Realtime Manager] 服務初始化完成');
+      log.info('Service initialized');
 
     } catch (error) {
       this.status = ServiceStatus.ERROR;
-      console.error('[Realtime Manager] 初始化失敗:', error);
+      log.error('Service initialization failed', {}, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -133,12 +136,13 @@ export class RealtimeManager {
         );
         queueDelivered = true;
       } catch (queueError) {
-        console.error('[Realtime Manager] 隊列推送失敗:', queueError);
+        log.error('Queue push failed', {}, queueError instanceof Error ? queueError : String(queueError));
       }
 
       const processingTime = Date.now() - startTime;
 
-      console.log(`[Realtime Manager] 事件處理完成: ${eventId}`, {
+      log.info('Event processed', {
+        eventId,
         type: eventType,
         queueDelivered,
         processingTime
@@ -151,7 +155,7 @@ export class RealtimeManager {
       };
 
     } catch (error) {
-      console.error('[Realtime Manager] 事件創建失敗:', error);
+      log.error('Event creation failed', {}, error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -207,7 +211,7 @@ export class RealtimeManager {
 
     const totalProcessingTime = Date.now() - startTime;
 
-    console.log(`[Realtime Manager] 批量事件處理完成`, {
+    log.info('Batch events processed', {
       totalEvents: events.length,
       successCount,
       failureCount,
@@ -302,25 +306,25 @@ export class RealtimeManager {
     try {
       switch (operation) {
         case 'cleanup':
-          console.log('[Realtime Manager] 清理操作完成');
+          log.info('Cleanup operation completed');
           return true;
 
         case 'reset_stats':
           eventStats.reset();
-          console.log('[Realtime Manager] 統計重置完成');
+          log.info('Stats reset completed');
           return true;
 
         case 'restart_health_check':
           this.stopHealthCheck();
           this.startHealthCheck();
-          console.log('[Realtime Manager] 健康檢查重啟完成');
+          log.info('Health check restarted');
           return true;
 
         default:
           throw new Error(`未知的維護操作: ${operation}`);
       }
     } catch (error) {
-      console.error('[Realtime Manager] 維護操作失敗:', error);
+      log.error('Maintenance operation failed', {}, error instanceof Error ? error : String(error));
       return false;
     }
   }
@@ -330,9 +334,9 @@ export class RealtimeManager {
     try {
       this.status = ServiceStatus.STOPPED;
       this.stopHealthCheck();
-      console.log('[Realtime Manager] 服務已關閉');
+      log.info('Service shut down');
     } catch (error) {
-      console.error('[Realtime Manager] 關閉服務時發生錯誤:', error);
+      log.error('Error shutting down service', {}, error instanceof Error ? error : String(error));
     }
   }
 
@@ -342,10 +346,10 @@ export class RealtimeManager {
       try {
         const health = await this.getServiceHealth();
         if (health.status === ServiceStatus.ERROR) {
-          console.error('[Realtime Manager] 服務健康檢查失敗');
+          log.error('Service health check failed', { status: health.status });
         }
       } catch (error) {
-        console.error('[Realtime Manager] 健康檢查錯誤:', error);
+        log.error('Health check error', {}, error instanceof Error ? error : String(error));
       }
     }, 60000); // 每分鐘檢查一次
   }
