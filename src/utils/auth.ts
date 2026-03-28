@@ -2,267 +2,25 @@ import { eq, and } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents, teams, agentTeams } from '../db/schema';
 import { convertAgent } from './drizzle-converters';
-import type { DbUser, JWTPayload, TeamRoleInTeam } from '../types';
+import type { DbUser, TeamRoleInTeam } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
-/**
- * JWT 認證工具函數
- */
+// Re-export JWT utilities from auth-jwt sub-module
+export {
+  signJWT,
+  verifyJWT,
+  generateRandomString,
+  generateSystemToken,
+  generateMonitoringToken,
+  generateTokenBatch
+} from './auth-jwt';
 
-/**
- * UTF-8 安全的 Base64 URL 編碼
- * 使用 TextEncoder 支持所有 Unicode 字符（包括中文、emoji 等）
- * 符合 RFC 7519 (JWT) 標準
- */
-function base64UrlEncode(str: string): string {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(str);
-  // 將 Uint8Array 轉為二進制字符串
-  const binaryString = String.fromCharCode(...data);
-  // Base64 編碼並轉換為 URL 安全格式
-  return btoa(binaryString)
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-}
+// Re-export password utilities from auth-password sub-module
+export { hashPassword, verifyPassword } from './auth-password';
 
-/**
- * UTF-8 安全的 Base64 URL 解碼
- * 使用 TextDecoder 支持所有 Unicode 字符
- */
-function base64UrlDecode(str: string): string {
-  // 將 URL 安全格式轉回標準 Base64
-  const base64 = str
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(str.length + (4 - str.length % 4) % 4, '=');
-
-  // Base64 解碼為二進制字符串
-  const binaryString = atob(base64);
-
-  // 轉為 Uint8Array
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-
-  // UTF-8 解碼
-  const decoder = new TextDecoder();
-  return decoder.decode(bytes);
-}
-
-// JWT 簽名和驗證
-export async function signJWT(payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: string, expiresIn: number = 24 * 60 * 60): Promise<string> {
-  const header = {
-    alg: 'HS256',
-    typ: 'JWT'
-  };
-
-  const now = Math.floor(Date.now() / 1000);
-  const jwtPayload = {
-    ...payload,
-    iat: now,
-    exp: now + expiresIn
-  };
-
-  // 使用 UTF-8 安全的編碼函數
-  const headerB64 = base64UrlEncode(JSON.stringify(header));
-  const payloadB64 = base64UrlEncode(JSON.stringify(jwtPayload));
-
-  const data = `${headerB64}.${payloadB64}`;
-
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
-
-  // 使用安全的二進制數據編碼
-  const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-
-  return `${data}.${signatureB64}`;
-}
-
-export async function verifyJWT(token: string, secret: string): Promise<JWTPayload> {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid JWT format');
-    }
-
-    const [headerB64, payloadB64, signatureB64] = parts;
-
-    if (!headerB64 || !payloadB64 || !signatureB64) {
-      throw new Error('Invalid JWT format - missing parts');
-    }
-
-    // 驗證簽名
-    const encoder = new TextEncoder();
-    const data = `${headerB64}.${payloadB64}`;
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['verify']
-    );
-
-    // 解碼簽名（二進制數據）
-    const signatureBase64 = signatureB64
-      .replace(/-/g, '+')
-      .replace(/_/g, '/')
-      .padEnd(signatureB64.length + (4 - signatureB64.length % 4) % 4, '=');
-    const signature = Uint8Array.from(atob(signatureBase64), c => c.charCodeAt(0));
-
-    const isValid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(data));
-    if (!isValid) {
-      throw new Error('Invalid JWT signature');
-    }
-
-    // 使用 UTF-8 安全的解碼函數解析 payload
-    const payload = JSON.parse(base64UrlDecode(payloadB64));
-
-    // 檢查過期時間
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      throw new Error('JWT token expired');
-    }
-
-    return payload;
-  } catch (error) {
-    throw new Error(`JWT verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
-
-// 密碼哈希 - 統一使用 bcrypt
-export async function hashPassword(password: string): Promise<string> {
-  const bcrypt = await import('bcryptjs');
-  return bcrypt.hash(password, 12);
-}
-
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  // 檢查是否為 bcrypt 哈希 (以 $2a$, $2b$, $2x$, $2y$ 開頭)
-  if (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2x$') || hash.startsWith('$2y$')) {
-    // 使用 bcrypt 驗證
-    try {
-      // 在 Cloudflare Workers 中，我們需要使用動態導入
-      const bcrypt = await import('bcryptjs');
-      return await bcrypt.compare(password, hash);
-    } catch (error) {
-      console.error('Bcrypt verification error:', error);
-      return false;
-    }
-  }
-
-  // 處理 PBKDF2 哈希 (Web Installer MigrationRunner 產生的格式)
-  if (hash.startsWith('pbkdf2:')) {
-    try {
-      const base64Data = hash.substring(7); // 移除 'pbkdf2:' 前綴
-      // 解碼 base64 → Uint8Array (salt 16 bytes + hash 32 bytes)
-      const binaryString = atob(base64Data);
-      const combined = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        combined[i] = binaryString.charCodeAt(i);
-      }
-
-      // 提取 salt (前16字節) 和 storedHash (後32字節)
-      const salt = combined.slice(0, 16);
-      const storedHash = combined.slice(16);
-
-      // 使用相同參數重新派生: PBKDF2-SHA256, 100000 iterations, 256 bits
-      const encoder = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(password),
-        'PBKDF2',
-        false,
-        ['deriveBits']
-      );
-
-      const derivedBits = await crypto.subtle.deriveBits(
-        {
-          name: 'PBKDF2',
-          salt: salt,
-          iterations: 100000,
-          hash: 'SHA-256'
-        },
-        keyMaterial,
-        256
-      );
-
-      // 逐字節比較派生的哈希與存儲的哈希
-      const derivedHash = new Uint8Array(derivedBits);
-      if (derivedHash.length !== storedHash.length) return false;
-      let match = true;
-      for (let i = 0; i < derivedHash.length; i++) {
-        if (derivedHash[i] !== storedHash[i]) match = false; // constant-time-ish comparison
-      }
-      return match;
-    } catch (error) {
-      console.error('PBKDF2 verification error:', error);
-      return false;
-    }
-  }
-
-  // 處理舊格式的hash (如SHA256) - 先檢查是否為SHA256格式
-  if (hash.startsWith('sha256$')) {
-    const actualHash = hash.substring(7); // 移除 'sha256$' 前綴
-    // 對於舊的 SHA256 哈希，我們需要使用舊的方法驗證
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const passwordHash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    return passwordHash === actualHash;
-  }
-
-  // 檢查純SHA256 hash (舊格式)
-  if (hash.length === 64 && /^[a-f0-9]+$/.test(hash)) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const passwordHash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    return passwordHash === hash;
-  }
-
-  // 如果都不匹配，嘗試 bcrypt（可能是新格式但沒有正確前綴）
-  try {
-    const bcrypt = await import('bcryptjs');
-    return await bcrypt.compare(password, hash);
-  } catch (error) {
-    console.error('Password verification failed for hash:', hash.substring(0, 10) + '...');
-    return false;
-  }
-}
-
-// 生成隨機字符串 - 使用加密安全的隨機數生成器 (CSPRNG)
-export function generateRandomString(length: number = 32): string {
-  // 使用 crypto.getRandomValues() 生成加密安全的隨機字節
-  // 每個字符需要 ~6 bits (log2(62) ≈ 5.95)，但我們使用字節 (8 bits) 來確保均勻分布
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const charsLength = chars.length; // 62
-
-  // 生成足夠的隨機字節（每個字符至少需要 1 字節）
-  const randomBytes = new Uint8Array(length);
-  crypto.getRandomValues(randomBytes);
-
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    // 使用模運算將字節映射到字符集，確保均勻分布
-    result += chars.charAt(randomBytes[i] % charsLength);
-  }
-
-  return result;
-}
+// Import for local use by functions in this file
+import { generateRandomString } from './auth-jwt';
+import { hashPassword, verifyPassword } from './auth-password';
 
 // 用戶認證相關的資料庫操作
 export async function createUser(
@@ -309,11 +67,11 @@ export async function createUser(
     .from(agents)
     .where(eq(agents.id, userId))
     .get();
-  
+
   if (!createdUser) {
     throw new Error('Failed to retrieve created user');
   }
-  
+
   return getUserById(db, createdUser.id);
 }
 
@@ -671,76 +429,6 @@ export async function createSession(
   }), { expirationTtl });
 
   return sessionId;
-}
-
-// Phase 2 監控系統 JWT 令牌管理
-export async function generateSystemToken(
-  userId: string,
-  role: 'admin' | 'agent',
-  displayName: string,
-  teamId: number,
-  secret: string,
-  expiresIn: number = 3600 // 1 小時默認
-): Promise<string> {
-  const payload = {
-    userId,
-    username: userId, // Use userId as username for system tokens
-    displayName,
-    role,
-    primaryTeamId: teamId
-  };
-
-  return await signJWT(payload, secret, expiresIn);
-}
-
-// 生成長期監控系統令牌 (用於內部 API 調用)
-export async function generateMonitoringToken(
-  secret: string,
-  _expiresIn: number = 7 * 24 * 60 * 60 // 7 天
-): Promise<string> {
-  const payload = {
-    userId: 'system-monitoring',
-    username: 'system-monitoring',
-    displayName: 'System Monitoring',
-    role: 'admin' as const,
-    primaryTeamId: 1,
-    isSystemToken: true
-  };
-
-  return await signJWT(payload, secret, _expiresIn);
-}
-
-// 批量令牌生成（用於測試和部署）
-export async function generateTokenBatch(
-  users: Array<{
-    userId: string;
-    role: 'admin' | 'agent';
-    displayName: string;
-    primaryTeamId?: number;
-  }>,
-  secret: string,
-  expiresIn: number = 3600
-): Promise<Array<{ userId: string; token: string; expiresAt: string }>> {
-  const tokens = [];
-
-  for (const user of users) {
-    const token = await generateSystemToken(
-      user.userId,
-      user.role,
-      user.displayName,
-      user.primaryTeamId || 0,
-      secret,
-      expiresIn
-    );
-
-    tokens.push({
-      userId: user.userId,
-      token,
-      expiresAt: new Date((Math.floor(Date.now() / 1000) + expiresIn) * 1000).toISOString()
-    });
-  }
-
-  return tokens;
 }
 
 export async function getSession(kv: KVNamespace, sessionId: string): Promise<Record<string, unknown> | null> {
