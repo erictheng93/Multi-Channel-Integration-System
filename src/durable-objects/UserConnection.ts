@@ -1,6 +1,6 @@
 // UserConnection Durable Object
-// 專案名稱：Multi-Channel Support MVP - WebSocket Real-time System
-// 管理用戶的全域連接狀態和跨對話訂閱
+// Manages user's global connection state and cross-conversation subscriptions
+// Delegates to focused sub-modules for state, subscriptions, and security
 
 import type {
   WebSocketConnection,
@@ -8,7 +8,10 @@ import type {
   WebSocketSubscription,
   DurableObjectEvent
 } from '../types/websocket-types';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO, nowMs } from '@/utils/timestamp';
+import { UserConnectionStateManager } from './user-connection-state';
+import { UserSubscriptionManager } from './user-subscription-manager';
+import { UserConnectionSecurity } from './user-connection-security';
 
 /**
  * Architecture Overview:
@@ -22,44 +25,22 @@ import { nowISO, nowMs } from '@/utils/timestamp'
  *
  * Each user gets their own Durable Object instance identified by userId
  * This enables efficient user-centric operations and presence management
+ *
+ * Delegates to:
+ * - UserConnectionStateManager: connection lifecycle, presence, preferences, metrics
+ * - UserSubscriptionManager: conversation subscriptions, permission checks, broadcaster registration
+ * - UserConnectionSecurity: rate limiting, auth verification, message validation
  */
 
 export class UserConnection implements DurableObject {
   private state: DurableObjectState;
   private env: any;
   private userId: string;
-  private connections = new Map<string, WebSocketConnection>();
-  private subscriptions = new Set<string>(); // conversation IDs
-  private isOnline = false;
-  private lastSeen = nowMs();
-  private preferences = {
-    notificationSettings: {
-      newMessage: true,
-      messageRecall: true,
-      conversationAssignment: true,
-      systemNotifications: true
-    }
-  };
 
-  // Metrics
-  private stats = {
-    totalConnections: 0,
-    messagesSent: 0,
-    messagesReceived: 0,
-    conversationsJoined: 0,
-    lastActivity: nowMs()
-  };
-
-  // Configuration
-  private readonly MAX_CONNECTIONS_PER_USER = 5; // Reduced from 10
-  private readonly MAX_SUBSCRIPTIONS = 50; // Reduced from 100
-  private readonly CONNECTION_CLEANUP_INTERVAL = 300000; // 5 minutes
-
-  // SECURITY: Rate limiting configuration
-  private readonly RATE_LIMIT_WINDOW_MS = 1000; // 1 second window
-  private readonly RATE_LIMIT_MAX_MESSAGES = 10; // Max 10 messages per second
-  private readonly RATE_LIMIT_MAX_MESSAGE_SIZE = 10240; // 10KB max message size
-  private rateLimitState = new Map<string, { count: number; windowStart: number }>();
+  // Sub-module delegates
+  private readonly stateManager = new UserConnectionStateManager();
+  private readonly subscriptionManager = new UserSubscriptionManager();
+  private readonly security = new UserConnectionSecurity();
 
   constructor(state: DurableObjectState, env: any) {
     this.state = state;
@@ -125,32 +106,29 @@ export class UserConnection implements DurableObject {
       const token = url.searchParams.get('token');
       const role = url.searchParams.get('role') as 'admin' | 'agent';
       const deviceId = url.searchParams.get('deviceId') || 'unknown';
-      // FIX: 從 URL 參數獲取 userId，而不是使用 this.userId (永遠是 'unknown')
-      // websocket-main.ts 在轉發請求時已經將 userId 添加到 URL 參數中
+      // FIX: Get userId from URL params instead of this.userId (always 'unknown')
       const userId = url.searchParams.get('userId');
 
       if (!token || !role) {
         return new Response('Missing required parameters', { status: 400 });
       }
 
-      // FIX: 驗證 userId 參數存在
       if (!userId) {
         console.error('[UserConnection] Missing userId parameter in WebSocket upgrade request');
         return new Response('Missing userId parameter', { status: 400 });
       }
 
       // Verify authentication
-      // FIX: 使用從 URL 參數獲取的 userId，而不是 this.userId
-      const isAuthenticated = await this.verifyAuthToken(token, userId);
+      const isAuthenticated = await this.security.verifyAuthToken(token, userId, this.env);
       if (!isAuthenticated) {
         return new Response('Unauthorized', { status: 401 });
       }
 
-      // FIX: 更新 this.userId 為實際的用戶 ID
+      // Update userId to actual user ID
       this.userId = userId;
 
       // Check connection limits
-      if (this.connections.size >= this.MAX_CONNECTIONS_PER_USER) {
+      if (this.stateManager.isAtConnectionLimit()) {
         return new Response('Connection limit reached', { status: 429 });
       }
 
@@ -162,7 +140,7 @@ export class UserConnection implements DurableObject {
         throw new Error('Failed to create WebSocket pair');
       }
 
-      const connectionId = this.generateConnectionId();
+      const connectionId = this.stateManager.generateConnectionId();
       const connection: WebSocketConnection = {
         websocket: server,
         userId: this.userId,
@@ -205,7 +183,7 @@ export class UserConnection implements DurableObject {
         await this.handleWebSocketMessage(connection, message);
       } catch (error) {
         console.error(`[UserConnection] Message parsing error for ${connectionId}:`, error);
-        this.sendError(connection, 'Invalid message format');
+        this.stateManager.sendError(connection, 'Invalid message format');
       }
     });
 
@@ -220,15 +198,15 @@ export class UserConnection implements DurableObject {
     });
 
     // Send welcome message with user state
-    this.sendMessage(connection, {
+    this.stateManager.sendMessage(connection, {
       type: 'event',
       data: {
         type: 'user_connected',
         userId: this.userId,
         connectionId,
-        subscriptions: Array.from(this.subscriptions),
-        preferences: this.preferences,
-        stats: this.stats
+        subscriptions: this.subscriptionManager.subscribedConversations,
+        preferences: this.stateManager.currentPreferences,
+        stats: this.stateManager.currentStats
       },
       timestamp: nowMs()
     });
@@ -238,30 +216,28 @@ export class UserConnection implements DurableObject {
     const { connectionId } = connection;
 
     // SECURITY: Rate limiting check
-    if (!this.checkRateLimit(connectionId)) {
+    if (!this.security.checkRateLimit(connectionId)) {
       console.warn(`[UserConnection] Rate limit exceeded for connection ${connectionId}`);
-      this.sendError(connection, 'Rate limit exceeded. Please slow down.');
+      this.stateManager.sendError(connection, 'Rate limit exceeded. Please slow down.');
       return;
     }
 
     // SECURITY: Message size validation
-    const messageSize = JSON.stringify(message).length;
-    if (messageSize > this.RATE_LIMIT_MAX_MESSAGE_SIZE) {
-      console.warn(`[UserConnection] Message too large (${messageSize} bytes) from ${connectionId}`);
-      this.sendError(connection, `Message too large. Maximum size is ${this.RATE_LIMIT_MAX_MESSAGE_SIZE} bytes.`);
+    const messageJson = JSON.stringify(message);
+    if (this.security.isMessageTooLarge(messageJson)) {
+      console.warn(`[UserConnection] Message too large (${messageJson.length} bytes) from ${connectionId}`);
+      this.stateManager.sendError(connection, `Message too large. Maximum size is ${this.security.getMaxMessageSize()} bytes.`);
       return;
     }
 
     // Update activity
-    connection.lastActivity = nowMs();
-    this.lastSeen = nowMs();
-    this.stats.lastActivity = nowMs();
+    this.stateManager.updateActivity(connection);
 
     console.log(`[UserConnection] Message from ${connectionId}:`, message.type);
 
     switch (message.type) {
       case 'ping':
-        this.sendMessage(connection, { type: 'pong', timestamp: nowMs() });
+        this.stateManager.sendMessage(connection, { type: 'pong', timestamp: nowMs() });
         break;
 
       case 'subscribe':
@@ -281,7 +257,7 @@ export class UserConnection implements DurableObject {
         break;
 
       default:
-        this.sendError(connection, `Unknown message type: ${message.type}`);
+        this.stateManager.sendError(connection, `Unknown message type: ${message.type}`);
     }
   }
 
@@ -291,28 +267,26 @@ export class UserConnection implements DurableObject {
     const { connectionId } = connection;
 
     // Track if this is the first connection (for registration)
-    const wasOffline = this.connections.size === 0;
+    const wasOffline = this.stateManager.wasOffline();
 
     // DEBUG: Log connection state before adding
     console.log(`[UserConnection] addConnection called:`, {
       connectionId,
       userId: this.userId,
       wasOffline,
-      currentConnectionCount: this.connections.size
+      currentConnectionCount: this.stateManager.connectionCount
     });
 
     // Add to connections
-    this.connections.set(connectionId, connection);
-    this.isOnline = true;
-    this.stats.totalConnections++;
+    this.stateManager.addConnection(connection);
 
     // Persist connection info
-    await this.state.storage.put(`connection:${connectionId}`, {
-      userId: this.userId,
-      connectedAt: nowMs(),
-      deviceId: connection.metadata?.deviceId,
-      lastActivity: connection.lastActivity
-    });
+    await this.stateManager.persistConnectionInfo(
+      this.state.storage,
+      connectionId,
+      this.userId,
+      connection.metadata?.deviceId
+    );
 
     // Update user state
     await this.updateUserState();
@@ -321,106 +295,31 @@ export class UserConnection implements DurableObject {
     // Only register on first connection to avoid duplicate registrations
     console.log(`[UserConnection] Checking registration condition: wasOffline=${wasOffline}, userId=${this.userId}, shouldRegister=${wasOffline && this.userId !== 'unknown'}`);
     if (wasOffline && this.userId !== 'unknown') {
-      await this.registerWithMessageBroadcaster();
+      await this.subscriptionManager.registerWithMessageBroadcaster(this.env, this.userId);
     } else {
       console.log(`[UserConnection] Skipping MessageBroadcaster registration: wasOffline=${wasOffline}, userId=${this.userId}`);
     }
 
-    console.log(`[UserConnection] Connection added: ${connectionId} (Total: ${this.connections.size})`);
-  }
-
-  /**
-   * Phase B4: Register this user with MessageBroadcaster for global broadcasts
-   * This enables conversation list real-time updates
-   */
-  private async registerWithMessageBroadcaster(): Promise<void> {
-    console.log(`[UserConnection] registerWithMessageBroadcaster called for user: ${this.userId}`);
-    try {
-      if (!this.env.MESSAGE_BROADCASTER) {
-        console.warn('[UserConnection] MESSAGE_BROADCASTER binding not available');
-        return;
-      }
-
-      const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
-      const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
-
-      if (broadcasterStub) {
-        console.log(`[UserConnection] Sending registration request for user ${this.userId}`);
-        const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/register-connection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'user', id: this.userId })
-        }));
-
-        if (response.ok) {
-          const result = await response.json() as { activeConnections?: number };
-          console.log(`[UserConnection] Registered user ${this.userId} with MessageBroadcaster for global broadcasts (total active: ${result.activeConnections})`);
-        } else {
-          console.error(`[UserConnection] Failed to register with MessageBroadcaster: ${response.status}`);
-        }
-      }
-    } catch (error) {
-      console.error('[UserConnection] MessageBroadcaster registration error:', error);
-    }
+    console.log(`[UserConnection] Connection added: ${connectionId} (Total: ${this.stateManager.connectionCount})`);
   }
 
   private async removeConnection(connectionId: string): Promise<void> {
-    const connection = this.connections.get(connectionId);
+    const connection = this.stateManager.removeConnection(connectionId);
     if (!connection) return;
 
-    // Remove connection
-    this.connections.delete(connectionId);
-
     // SECURITY: Clean up rate limit state for this connection
-    this.cleanupRateLimitState(connectionId);
+    this.security.cleanupRateLimitState(connectionId);
 
-    // Update online status
-    this.isOnline = this.connections.size > 0;
-    if (!this.isOnline) {
-      this.lastSeen = nowMs();
-
-      // Phase B4: Unregister from MessageBroadcaster when all connections are closed
-      if (this.userId !== 'unknown') {
-        await this.unregisterFromMessageBroadcaster();
-      }
+    // If all connections closed, unregister from broadcaster
+    if (!this.stateManager.online && this.userId !== 'unknown') {
+      await this.subscriptionManager.unregisterFromMessageBroadcaster(this.env, this.userId);
     }
 
     // Clean up storage
-    await this.state.storage.delete(`connection:${connectionId}`);
+    await this.stateManager.removeConnectionFromStorage(this.state.storage, connectionId);
     await this.updateUserState();
 
-    console.log(`[UserConnection] Connection removed: ${connectionId} (Remaining: ${this.connections.size})`);
-  }
-
-  /**
-   * Phase B4: Unregister this user from MessageBroadcaster
-   * Called when all user connections are closed
-   */
-  private async unregisterFromMessageBroadcaster(): Promise<void> {
-    try {
-      if (!this.env.MESSAGE_BROADCASTER) {
-        return;
-      }
-
-      const broadcasterId = this.env.MESSAGE_BROADCASTER.idFromName('global');
-      const broadcasterStub = this.env.MESSAGE_BROADCASTER.get(broadcasterId);
-
-      if (broadcasterStub) {
-        const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/unregister-connection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'user', id: this.userId })
-        }));
-
-        if (response.ok) {
-          console.log(`[UserConnection] Unregistered user ${this.userId} from MessageBroadcaster`);
-        } else {
-          console.error(`[UserConnection] Failed to unregister from MessageBroadcaster: ${response.status}`);
-        }
-      }
-    } catch (error) {
-      console.error('[UserConnection] MessageBroadcaster unregistration error:', error);
-    }
+    console.log(`[UserConnection] Connection removed: ${connectionId} (Remaining: ${this.stateManager.connectionCount})`);
   }
 
   // =================== Simplified Subscription Management ===================
@@ -430,35 +329,29 @@ export class UserConnection implements DurableObject {
       const { conversationId } = await request.json() as { conversationId: string };
 
       // Verify user has permission to join this conversation
-      const hasPermission = await this.checkConversationPermission(this.userId, conversationId, 'view');
+      const hasPermission = await this.subscriptionManager.checkConversationPermission(this.env, this.userId, conversationId, 'view');
       if (!hasPermission) {
         return new Response(JSON.stringify({ error: 'Permission denied' }), { status: 403 });
       }
 
-      // Add to subscriptions (simplified - no complex room coordination)
-      this.subscriptions.add(conversationId);
-      this.stats.conversationsJoined++;
+      // Add to subscriptions
+      this.subscriptionManager.addSubscription(conversationId);
+      this.stateManager.incrementConversationsJoined();
 
       // Persist subscription
-      await this.state.storage.put('subscriptions', Array.from(this.subscriptions));
+      await this.subscriptionManager.persistSubscriptions(this.state.storage);
 
       // Notify all user connections about new subscription
-      await this.broadcastToUserConnections({
-        type: 'event',
-        data: {
-          type: 'conversation_subscribed',
-          conversationId,
-          subscriptionCount: this.subscriptions.size
-        },
-        timestamp: nowMs()
-      });
+      await this.stateManager.broadcastToAllConnections(
+        this.subscriptionManager.buildConversationSubscribedMessage(conversationId)
+      );
 
       console.log(`[UserConnection] User ${this.userId} subscribed to conversation ${conversationId}`);
 
       return new Response(JSON.stringify({
         success: true,
         conversationId,
-        subscriptionCount: this.subscriptions.size
+        subscriptionCount: this.subscriptionManager.subscriptionCount
       }));
 
     } catch (error) {
@@ -471,29 +364,23 @@ export class UserConnection implements DurableObject {
     try {
       const { conversationId } = await request.json() as { conversationId: string };
 
-      // Remove from subscriptions (simplified)
-      this.subscriptions.delete(conversationId);
+      // Remove from subscriptions
+      this.subscriptionManager.removeSubscription(conversationId);
 
       // Persist subscriptions
-      await this.state.storage.put('subscriptions', Array.from(this.subscriptions));
+      await this.subscriptionManager.persistSubscriptions(this.state.storage);
 
       // Notify user connections
-      await this.broadcastToUserConnections({
-        type: 'event',
-        data: {
-          type: 'conversation_unsubscribed',
-          conversationId,
-          subscriptionCount: this.subscriptions.size
-        },
-        timestamp: nowMs()
-      });
+      await this.stateManager.broadcastToAllConnections(
+        this.subscriptionManager.buildConversationUnsubscribedMessage(conversationId)
+      );
 
       console.log(`[UserConnection] User ${this.userId} unsubscribed from conversation ${conversationId}`);
 
       return new Response(JSON.stringify({
         success: true,
         conversationId,
-        subscriptionCount: this.subscriptions.size
+        subscriptionCount: this.subscriptionManager.subscriptionCount
       }));
 
     } catch (error) {
@@ -508,13 +395,13 @@ export class UserConnection implements DurableObject {
     const { conversationId } = message;
 
     if (!conversationId) {
-      this.sendError(connection, 'Conversation ID required for chat messages');
+      this.stateManager.sendError(connection, 'Conversation ID required for chat messages');
       return;
     }
 
     // Check if user is subscribed to this conversation
-    if (!this.subscriptions.has(conversationId)) {
-      this.sendError(connection, 'Not subscribed to this conversation');
+    if (!this.subscriptionManager.isSubscribed(conversationId)) {
+      this.stateManager.sendError(connection, 'Not subscribed to this conversation');
       return;
     }
 
@@ -530,41 +417,9 @@ export class UserConnection implements DurableObject {
       timestamp: nowMs()
     };
 
-    this.sendMessage(connection, responseMessage);
-    this.stats.messagesSent++;
+    this.stateManager.sendMessage(connection, responseMessage);
+    this.stateManager.incrementMessagesSent();
     console.log(`[UserConnection] Message acknowledged for conversation ${conversationId}`);
-  }
-
-  private async broadcastToUserConnections(message: WebSocketMessage): Promise<void> {
-    const broadcasts = Array.from(this.connections.values()).map(connection => {
-      return this.sendMessage(connection, message);
-    });
-
-    await Promise.allSettled(broadcasts);
-    console.log(`[UserConnection] Message broadcast to ${this.connections.size} connections`);
-  }
-
-  private sendMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
-    return new Promise((resolve) => {
-      try {
-        if (connection.websocket.readyState === 1) { // WebSocket.OPEN = 1
-          connection.websocket.send(JSON.stringify(message));
-          connection.lastActivity = nowMs();
-        }
-        resolve();
-      } catch (error) {
-        console.error(`[UserConnection] Send message error for ${connection.connectionId}:`, error);
-        resolve();
-      }
-    });
-  }
-
-  private sendError(connection: WebSocketConnection, error: string): void {
-    this.sendMessage(connection, {
-      type: 'error',
-      error,
-      timestamp: nowMs()
-    });
   }
 
   // =================== Subscription Management ===================
@@ -577,28 +432,18 @@ export class UserConnection implements DurableObject {
       const conversationId = subscription.target;
 
       // Check permission
-      const hasPermission = await this.checkConversationPermission(this.userId, conversationId, 'view');
+      const hasPermission = await this.subscriptionManager.checkConversationPermission(this.env, this.userId, conversationId, 'view');
       if (!hasPermission) {
-        this.sendError(connection, 'Permission denied to subscribe to this conversation');
+        this.stateManager.sendError(connection, 'Permission denied to subscribe to this conversation');
         return;
       }
 
       // Add subscription
-      if (this.subscriptions.size < this.MAX_SUBSCRIPTIONS) {
-        this.subscriptions.add(conversationId);
-        await this.state.storage.put('subscriptions', Array.from(this.subscriptions));
-
-        this.sendMessage(connection, {
-          type: 'event',
-          data: {
-            type: 'subscription_added',
-            subscription,
-            subscriptionCount: this.subscriptions.size
-          },
-          timestamp: nowMs()
-        });
+      if (this.subscriptionManager.addSubscription(conversationId)) {
+        await this.subscriptionManager.persistSubscriptions(this.state.storage);
+        this.stateManager.sendMessage(connection, this.subscriptionManager.buildSubscriptionAddedMessage(subscription));
       } else {
-        this.sendError(connection, 'Maximum subscriptions reached');
+        this.stateManager.sendError(connection, 'Maximum subscriptions reached');
       }
     }
   }
@@ -610,233 +455,40 @@ export class UserConnection implements DurableObject {
     if (subscription.type === 'conversation' && typeof subscription.target === 'string') {
       const conversationId = subscription.target;
 
-      this.subscriptions.delete(conversationId);
-
-      await this.state.storage.put('subscriptions', Array.from(this.subscriptions));
-
-      this.sendMessage(connection, {
-        type: 'event',
-        data: {
-          type: 'subscription_removed',
-          subscription,
-          subscriptionCount: this.subscriptions.size
-        },
-        timestamp: nowMs()
-      });
+      this.subscriptionManager.removeSubscription(conversationId);
+      await this.subscriptionManager.persistSubscriptions(this.state.storage);
+      this.stateManager.sendMessage(connection, this.subscriptionManager.buildSubscriptionRemovedMessage(subscription));
     }
   }
 
   // =================== Presence and Status ===================
 
   private async updateUserState(): Promise<void> {
-    const state = {
-      userId: this.userId,
-      isOnline: this.isOnline,
-      lastSeen: this.lastSeen,
-      connectionCount: this.connections.size,
-      subscriptions: Array.from(this.subscriptions),
-      preferences: this.preferences,
-      stats: { ...this.stats }
-    };
-
-    await this.state.storage.put('userState', state);
+    await this.stateManager.persistUserState(this.state.storage, this.userId, new Set(this.subscriptionManager.subscribedConversations));
   }
-
-  // Removed complex room notification methods - simplified presence handling
 
   // =================== Helper Methods ===================
 
   private async initializeFromStorage(): Promise<void> {
-    try {
-      // Restore user state
-      const userState = await this.state.storage.get('userState') as any;
-      if (userState) {
-        this.isOnline = userState.isOnline || false;
-        this.lastSeen = userState.lastSeen || nowMs();
-        this.preferences = { ...this.preferences, ...userState.preferences };
-        this.stats = { ...this.stats, ...userState.stats };
-      }
-
-      // Restore subscriptions
-      const subscriptions = await this.state.storage.get('subscriptions') as string[];
-      if (subscriptions) {
-        this.subscriptions = new Set(subscriptions);
-      }
-
-      console.log(`[UserConnection] State restored for user ${this.userId}: ${this.subscriptions.size} subscriptions`);
-    } catch (error) {
-      console.error('[UserConnection] State restoration error:', error);
-    }
+    await this.stateManager.initializeFromStorage(this.state.storage);
+    await this.subscriptionManager.initializeFromStorage(this.state.storage);
+    console.log(`[UserConnection] State restored for user ${this.userId}: ${this.subscriptionManager.subscriptionCount} subscriptions`);
   }
 
   private setupPeriodicTasks(): void {
     // Clean up inactive connections only (simplified)
     setInterval(() => {
-      this.cleanupInactiveConnections();
-    }, this.CONNECTION_CLEANUP_INTERVAL);
-  }
-
-  private async cleanupInactiveConnections(): Promise<void> {
-    const now = nowMs();
-    const inactiveThreshold = 600000; // 10 minutes
-
-    const inactiveConnections = Array.from(this.connections.entries())
-      .filter(([_, connection]) => now - connection.lastActivity > inactiveThreshold);
-
-    for (const [connectionId, _connection] of inactiveConnections) {
-      console.log(`[UserConnection] Removing inactive connection: ${connectionId}`);
-      await this.removeConnection(connectionId);
-    }
-  }
-
-  private async verifyAuthToken(token: string, userId: string): Promise<boolean> {
-    try {
-      // Import JWT verification utility
-      const { verifyJWT } = await import('../utils/auth');
-      if (!this.env.JWT_SECRET) {
-        throw new Error('JWT_SECRET environment variable is required');
-      }
-      const payload = await verifyJWT(token, this.env.JWT_SECRET);
-
-      // Verify that the token belongs to the expected user
-      if (payload.userId !== userId) {
-        console.error(`[UserConnection] Token userId mismatch: expected ${userId}, got ${payload.userId}`);
-        return false;
-      }
-
-      console.log(`[UserConnection] Token valid for user ${userId}`);
-      return true;
-    } catch (error) {
-      console.error('[UserConnection] Token validation failed:', error);
-      return false;
-    }
-  }
-
-  private async checkConversationPermission(userId: string, conversationId: string, action: string): Promise<boolean> {
-    // Security: Actually validate conversation access through database
-    try {
-      // Import schema and drizzle for database access
-      const { drizzle } = await import('drizzle-orm/d1');
-      const { eq, and } = await import('drizzle-orm');
-      const schema = await import('../db/schema');
-
-      const db = drizzle(this.env.DB, { schema });
-
-      // Get the conversation (only team assignment is checked now)
-      const conversation = await db
-        .select({
-          id: schema.conversations.id,
-          // Note: assignedUserId removed - only team assignment is supported now
-          assignedTeamId: schema.conversations.assignedTeamId,
-        })
-        .from(schema.conversations)
-        .where(eq(schema.conversations.id, conversationId))
-        .get();
-
-      if (!conversation) {
-        console.warn(`[UserConnection] Conversation ${conversationId} not found`);
-        return false;
-      }
-
-      // Get the user's role
-      const user = await db
-        .select({
-          id: schema.agents.id,
-          role: schema.agents.role,
-        })
-        .from(schema.agents)
-        .where(eq(schema.agents.id, userId))
-        .get();
-
-      if (!user) {
-        console.warn(`[UserConnection] User ${userId} not found`);
-        return false;
-      }
-
-      // Admin has full access
-      if (user.role === 'admin') {
-        return true;
-      }
-
-      // For unassigned conversations, allow access (queue management)
-      if (!conversation.assignedTeamId) {
-        return action === 'read'; // Read-only for unassigned
-      }
-
-      // Check if user is in the assigned team (via agent_teams)
-      if (conversation.assignedTeamId) {
-        const membership = await db
-          .select({ id: schema.agentTeams.id })
-          .from(schema.agentTeams)
-          .where(and(
-            eq(schema.agentTeams.agentId, userId),
-            eq(schema.agentTeams.teamId, conversation.assignedTeamId)
-          ))
-          .limit(1);
-
-        if (membership.length > 0) {
-          return true;
-        }
-      }
-
-      console.warn(`[UserConnection] User ${userId} denied ${action} access to conversation ${conversationId}`);
-      return false;
-    } catch (error) {
-      console.error(`[UserConnection] Permission check failed:`, error);
-      return false; // Fail secure - deny access on error
-    }
-  }
-
-  /**
-   * SECURITY: Rate limiting to prevent message flooding and DoS attacks
-   * Uses a sliding window approach with per-connection tracking
-   */
-  private checkRateLimit(connectionId: string): boolean {
-    const now = nowMs();
-    const state = this.rateLimitState.get(connectionId);
-
-    if (!state) {
-      // First message from this connection
-      this.rateLimitState.set(connectionId, { count: 1, windowStart: now });
-      return true;
-    }
-
-    // Check if we're in the same time window
-    if (now - state.windowStart < this.RATE_LIMIT_WINDOW_MS) {
-      // Still in the same window
-      if (state.count >= this.RATE_LIMIT_MAX_MESSAGES) {
-        // Rate limit exceeded
-        return false;
-      }
-      state.count++;
-      return true;
-    } else {
-      // New time window - reset the counter
-      this.rateLimitState.set(connectionId, { count: 1, windowStart: now });
-      return true;
-    }
-  }
-
-  /**
-   * Clean up rate limit state for disconnected connections
-   */
-  private cleanupRateLimitState(connectionId: string): void {
-    this.rateLimitState.delete(connectionId);
-  }
-
-  private generateConnectionId(): string {
-    return `user_conn_${nowMs()}_${Math.random().toString(36).substring(2, 8)}`;
+      this.stateManager.cleanupInactiveConnections((connectionId) => this.removeConnection(connectionId));
+    }, this.stateManager.CONNECTION_CLEANUP_INTERVAL);
   }
 
   // =================== HTTP API Handlers ===================
 
   private async handleSubscribe(request: Request): Promise<Response> {
-    // const { conversationId } = await request.json(); // Reserved for future conversation-specific subscription
     return this.handleConnectToConversation(request);
   }
 
   private async handleUnsubscribe(request: Request): Promise<Response> {
-    // const { conversationId } = await request.json(); // Reserved for future conversation-specific unsubscription
     return this.handleDisconnectFromConversation(request);
   }
 
@@ -844,26 +496,24 @@ export class UserConnection implements DurableObject {
     const { status: _status } = await request.json() as { status?: string };
 
     // Update user presence
-    this.lastSeen = nowMs();
-    this.isOnline = true;
-
+    this.stateManager.updatePresence();
     await this.updateUserState();
 
     return new Response(JSON.stringify({
       success: true,
-      isOnline: this.isOnline,
-      lastSeen: this.lastSeen
+      isOnline: this.stateManager.online,
+      lastSeen: this.stateManager.currentLastSeen
     }));
   }
 
   private async handlePreferences(request: Request): Promise<Response> {
     if (request.method === 'GET') {
-      return new Response(JSON.stringify(this.preferences));
+      return new Response(JSON.stringify(this.stateManager.currentPreferences));
     } else if (request.method === 'PUT') {
       const newPreferences = await request.json() as Record<string, any>;
-      this.preferences = { ...this.preferences, ...newPreferences };
+      const updated = this.stateManager.updatePreferences(newPreferences);
       await this.updateUserState();
-      return new Response(JSON.stringify(this.preferences));
+      return new Response(JSON.stringify(updated));
     }
 
     return new Response('Method not allowed', { status: 405 });
@@ -871,18 +521,14 @@ export class UserConnection implements DurableObject {
 
   private async handleGetStatus(_request: Request): Promise<Response> {
     return new Response(JSON.stringify({
-      userId: this.userId,
-      isOnline: this.isOnline,
-      lastSeen: this.lastSeen,
-      connectionCount: this.connections.size,
-      subscriptionCount: this.subscriptions.size,
-      stats: this.stats
+      ...this.stateManager.getStatusSnapshot(this.userId),
+      subscriptionCount: this.subscriptionManager.subscriptionCount,
     }));
   }
 
   private async handleBroadcastToUser(request: Request): Promise<Response> {
     const message = await request.json() as WebSocketMessage;
-    await this.broadcastToUserConnections(message);
+    await this.stateManager.broadcastToAllConnections(message);
     return new Response(JSON.stringify({ success: true }));
   }
 
@@ -896,7 +542,7 @@ export class UserConnection implements DurableObject {
 
       // ENHANCED DEBUG: Log received batch events with full details for duplicate tracking
       console.log(`[UserConnection] ===== BATCH EVENTS RECEIVED =====`);
-      console.log(`[UserConnection] User: ${this.userId}, Connections: ${this.connections.size}`);
+      console.log(`[UserConnection] User: ${this.userId}, Connections: ${this.stateManager.connectionCount}`);
       for (const event of (events || [])) {
         console.log(`[UserConnection] Event detail:`, {
           userId: this.userId,
@@ -926,23 +572,23 @@ export class UserConnection implements DurableObject {
         };
 
         // DEBUG: Log message being broadcast
-        console.log(`[UserConnection] Broadcasting to ${this.connections.size} WebSocket connections:`, {
+        console.log(`[UserConnection] Broadcasting to ${this.stateManager.connectionCount} WebSocket connections:`, {
           messageType: message.type,
           conversationId: message.conversationId
         });
 
         // Broadcast to all user connections
-        await this.broadcastToUserConnections(message);
+        await this.stateManager.broadcastToAllConnections(message);
         deliveredCount++;
       }
 
-      console.log(`[UserConnection] Batch events delivered: ${deliveredCount} events to user ${this.userId} (${this.connections.size} connections)`);
+      console.log(`[UserConnection] Batch events delivered: ${deliveredCount} events to user ${this.userId} (${this.stateManager.connectionCount} connections)`);
 
       return new Response(JSON.stringify({
         success: true,
         deliveredCount,
         userId: this.userId,
-        activeConnections: this.connections.size
+        activeConnections: this.stateManager.connectionCount
       }));
     } catch (error) {
       console.error('[UserConnection] Batch events error:', error);
@@ -951,17 +597,10 @@ export class UserConnection implements DurableObject {
   }
 
   private async handleGetMetrics(_request: Request): Promise<Response> {
-    const metrics = {
-      userId: this.userId,
-      isOnline: this.isOnline,
-      lastSeen: this.lastSeen,
-      connections: this.connections.size,
-      subscriptions: this.subscriptions.size,
-      stats: this.stats,
-      uptime: Date.now() - (this.stats.lastActivity - 3600000) // Approximate uptime
-    };
-
-    return new Response(JSON.stringify(metrics));
+    return new Response(JSON.stringify({
+      ...this.stateManager.getMetricsSnapshot(this.userId),
+      subscriptions: this.subscriptionManager.subscriptionCount,
+    }));
   }
 
   private async handleEventMessage(_connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
@@ -972,7 +611,7 @@ export class UserConnection implements DurableObject {
       case 'typing_start':
       case 'typing_stop':
         // Simply broadcast to other user connections
-        await this.broadcastToUserConnections({
+        await this.stateManager.broadcastToAllConnections({
           type: 'event',
           data: event,
           timestamp: nowMs()
