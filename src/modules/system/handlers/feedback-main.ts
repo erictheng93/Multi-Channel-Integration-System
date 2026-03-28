@@ -2,6 +2,10 @@
 // 客户满意度反馈管理
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('FeedbackMain')
+
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
 import { customerFeedback, conversations, customers, agents } from '@/db/schema';
@@ -66,7 +70,7 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
       updatedAt: now,
     });
 
-    console.log(`[FeedbackHandler] Created feedback ${feedbackId} for conversation ${body.conversationId}`);
+    log.info(`Created feedback ${feedbackId} for conversation ${body.conversationId}`);
 
     return c.json({
       success: true,
@@ -146,7 +150,7 @@ feedbackHandler.get('/stats', jwtAuth, async (c) => {
     const satisfiedCount = (stats.rating4Count || 0) + (stats.rating5Count || 0);
     const satisfactionRate = Math.round((satisfiedCount / stats.totalCount) * 100);
 
-    console.log(`[FeedbackHandler] Stats retrieved: ${satisfactionRate}% satisfaction rate (${stats.totalCount} feedback)`);
+    log.info(`Stats retrieved: ${satisfactionRate}% satisfaction rate (${stats.totalCount} feedback)`);
 
     return c.json({
       success: true,

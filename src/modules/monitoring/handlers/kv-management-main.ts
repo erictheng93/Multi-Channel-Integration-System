@@ -13,6 +13,10 @@
  */
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('KvManagement')
+
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types/bindings';
 import { jwtAuth } from '@/middleware/auth';
@@ -49,7 +53,7 @@ kvManagementHandler.get('/stats', jwtAuth, async (c) => {
       },
     });
   } catch (error) {
-    console.error('[KV Management] Stats error:', error);
+    log.error('Stats error', {}, error as Error);
     return c.json({
       success: false,
       error: 'Failed to get KV statistics',
@@ -86,7 +90,7 @@ kvManagementHandler.get('/health', jwtAuth, async (c) => {
       },
     });
   } catch (error) {
-    console.error('[KV Management] Health check error:', error);
+    log.error('Health check error', {}, error as Error);
     return c.json({
       success: false,
       error: 'Failed to check KV health',
@@ -152,7 +156,7 @@ kvManagementHandler.post('/cleanup', jwtAuth, async (c) => {
         : 'Keys have been deleted.',
     });
   } catch (error) {
-    console.error('[KV Management] Cleanup error:', error);
+    log.error('Cleanup error', {}, error as Error);
     return c.json({
       success: false,
       error: 'Failed to clean up KV keys',
@@ -185,7 +189,7 @@ kvManagementHandler.get('/config', jwtAuth, async (c) => {
       },
     });
   } catch (error) {
-    console.error('[KV Management] Config error:', error);
+    log.error('Config error', {}, error as Error);
     return c.json({
       success: false,
       error: 'Failed to get KV configuration',
@@ -246,7 +250,7 @@ kvManagementHandler.post('/migrate', jwtAuth, async (c) => {
       },
     });
   } catch (error) {
-    console.error('[KV Management] Migration error:', error);
+    log.error('Migration error', {}, error as Error);
     return c.json({
       success: false,
       error: 'Failed to migrate keys',

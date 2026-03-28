@@ -21,6 +21,9 @@ import { verifyWebhookSignature } from '@/services/webhook-signature-service';
 import { processLineMessage, processLineFollowEvent } from './webhook';
 import type { DeferFn } from './webhook';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('WebhookMultitenant');
 
 /**
  * Multi-tenant LINE Webhook Handler
@@ -33,7 +36,7 @@ import { nowISO } from '@/utils/timestamp'
  * - Message counter tracking
  */
 export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindings }>) {
-  console.log('[LINE Webhook Multi-Tenant] Request received at:', nowISO());
+  log.info('Request received at:', { timestamp: nowISO() });
 
   try {
     // Extract route parameters
@@ -41,39 +44,39 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     const token = c.req.param('token');
 
     if (!teamIdParam || !token) {
-      console.error('[LINE Webhook] Missing teamId or token in URL');
+      log.error('Missing teamId or token in URL');
       return errorResponse(c, 'Invalid webhook URL', 400);
     }
 
     const teamId = parseInt(teamIdParam);
     if (isNaN(teamId)) {
-      console.error('[LINE Webhook] Invalid teamId:', teamIdParam);
+      log.error('Invalid teamId', { teamIdParam });
       return errorResponse(c, 'Invalid team ID', 400);
     }
 
-    console.log(`[LINE Webhook] Looking up channel for team ${teamId}`);
+    log.info(`Looking up channel for team ${teamId}`);
 
     // Get channel configuration from database
     const channelService = new ChannelService(c.env);
     const channel = await channelService.getChannelByWebhookToken('line', teamId, token);
 
     if (!channel) {
-      console.error(`[LINE Webhook] No channel found for team ${teamId} with provided token`);
+      log.error(`No channel found for team ${teamId} with provided token`);
       return unauthorizedResponse(c, 'Invalid webhook configuration');
     }
 
     if (!channel.isActive) {
-      console.error(`[LINE Webhook] Channel ${channel.id} is not active`);
+      log.error(`Channel ${channel.id} is not active`);
       return errorResponse(c, 'Channel is not active', 403);
     }
 
-    console.log(`[LINE Webhook] Found active channel ${channel.id} for team ${teamId}`);
+    log.info(`Found active channel ${channel.id} for team ${teamId}`);
 
     // Decrypt credentials (JSON-first with legacy fallback)
     const creds = await channelService.getDecryptedCredentials(channel);
 
     if (!creds.secret) {
-      console.error(`[LINE Webhook] Channel ${channel.id} missing LINE Channel Secret`);
+      log.error(`Channel ${channel.id} missing LINE Channel Secret`);
       return errorResponse(c, 'Channel configuration incomplete', 500);
     }
 
@@ -81,7 +84,7 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     const signature = c.req.header('X-Line-Signature');
     const body = await c.req.text();
 
-    console.log('[LINE Webhook] Headers:', {
+    log.debug('Headers', {
       'X-Line-Signature': signature ? 'Present' : 'Missing',
       'Content-Type': c.req.header('Content-Type'),
       'Content-Length': body.length
@@ -89,12 +92,12 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
 
     // Check payload size (1MB limit)
     if (body.length > 1024 * 1024) {
-      console.error('[LINE Webhook] Payload too large:', body.length);
+      log.error('Payload too large', { bodyLength: body.length });
       return errorResponse(c, 'Payload too large', 413);
     }
 
     if (!signature) {
-      console.error('[LINE Webhook] Missing X-Line-Signature header');
+      log.error('Missing X-Line-Signature header');
       return errorResponse(c, 'Missing signature');
     }
 
@@ -107,8 +110,7 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     );
 
     if (!signatureResult.valid) {
-      console.error('[LINE Webhook] Invalid signature for team', teamId);
-      console.log(' Received signature:', signature.substring(0, 20) + '...');
+      log.error('Invalid signature for team', { teamId, signaturePrefix: signature.substring(0, 20) + '...' });
 
       // Track error
       await channelService.incrementMessageCounter(channel.id, 'received'); // Still count as attempt
@@ -116,24 +118,24 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
       return unauthorizedResponse(c, 'Invalid signature');
     }
 
-    console.log('[LINE Webhook] Signature verified successfully for team', teamId);
+    log.info('Signature verified successfully for team', { teamId });
 
     // Parse webhook payload
     let data: LineWebhookBody;
     try {
       data = JSON.parse(body) as LineWebhookBody;
     } catch (parseError) {
-      console.error('[LINE Webhook] JSON parse error:', parseError);
+      log.error('JSON parse error', {}, parseError instanceof Error ? parseError : new Error(String(parseError)));
       return errorResponse(c, 'Invalid JSON payload');
     }
 
     // Validate webhook structure
     if (!isLineWebhookBody(data)) {
-      console.error('[LINE Webhook] Invalid webhook payload structure');
+      log.error('Invalid webhook payload structure');
       return errorResponse(c, 'Invalid webhook payload');
     }
 
-    console.log('[LINE Webhook] Processing events:', {
+    log.info('Processing events', {
       teamId,
       channelId: channel.id,
       destination: data.destination,
@@ -145,7 +147,7 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     const mtDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
     let processedCount = 0;
     for (const event of data.events) {
-      console.log('[LINE Webhook] Processing event:', {
+      log.debug('Processing event', {
         type: event.type,
         userId: event.source?.userId?.substring(0, 10) + '...',
         messageType: event.message?.type
@@ -159,15 +161,15 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
         // Increment message counter for this channel
         await channelService.incrementMessageCounter(channel.id, 'received');
       } else if (event.type === 'follow') {
-        console.log('[LINE Webhook Multi-Tenant] Processing follow event for team:', teamId);
+        log.info('Processing follow event for team', { teamId });
         await processLineFollowEvent(c.env, event);
         processedCount++;
       } else {
-        console.log('[LINE Webhook] Skipping non-message event:', event.type);
+        log.debug('Skipping non-message event', { eventType: event.type });
       }
     }
 
-    console.log(`[LINE Webhook] Processed ${processedCount}/${data.events.length} events for team ${teamId}`);
+    log.info(`Processed ${processedCount}/${data.events.length} events for team ${teamId}`);
 
     return successResponse(c, {
       teamId,
@@ -176,7 +178,7 @@ export async function handleLineWebhookMultiTenant(c: Context<{ Bindings: Bindin
     }, 'Webhook processed successfully');
 
   } catch (error) {
-    console.error('[LINE Webhook Multi-Tenant] Error:', error);
+    log.error('Error', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 }
@@ -212,15 +214,15 @@ async function processLineMessageMultiTenant(
  * Route: POST /api/webhooks/line
  */
 export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>) {
-  console.log('[LINE Webhook Legacy] Using single-tenant mode (deprecated)');
-  console.log('[LINE Webhook] Request received at:', nowISO());
+  log.warn('Using single-tenant mode (deprecated)');
+  log.info('Request received at', { timestamp: nowISO() });
 
   try {
     // Verify signature
     const signature = c.req.header('X-Line-Signature');
     const body = await c.req.text();
 
-    console.log('[LINE Webhook] Headers:', {
+    log.debug('Headers', {
       'X-Line-Signature': signature ? 'Present' : 'Missing',
       'Content-Type': c.req.header('Content-Type'),
       'Content-Length': body.length
@@ -228,12 +230,12 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
 
     // Check payload size (1MB limit)
     if (body.length > 1024 * 1024) {
-      console.error('[LINE Webhook] Payload too large:', body.length);
+      log.error('Payload too large', { bodyLength: body.length });
       return errorResponse(c, 'Payload too large', 413);
     }
 
     if (!signature) {
-      console.error('[LINE Webhook] Missing X-Line-Signature header');
+      log.error('Missing X-Line-Signature header');
       return errorResponse(c, 'Missing signature');
     }
 
@@ -246,12 +248,11 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
     );
 
     if (!signatureResult.valid) {
-      console.error('[LINE Webhook] Invalid signature');
-      console.log(' Received signature:', signature.substring(0, 20) + '...');
+      log.error('Invalid signature', { signaturePrefix: signature.substring(0, 20) + '...' });
       return unauthorizedResponse(c, 'Invalid signature');
     }
 
-    console.log('[LINE Webhook] Signature verified successfully');
+    log.info('Signature verified successfully');
 
     // Parse and validate
     let data: LineWebhookBody;
@@ -262,11 +263,11 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
     }
 
     if (!isLineWebhookBody(data)) {
-      console.error('[LINE Webhook] Invalid webhook payload structure');
+      log.error('Invalid webhook payload structure');
       return errorResponse(c, 'Invalid webhook payload');
     }
 
-    console.log('[LINE Webhook] Processing events:', {
+    log.info('Processing events', {
       destination: data.destination,
       eventCount: data.events.length,
       firstEventType: data.events[0]?.type
@@ -277,7 +278,7 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
 
     // Process events
     for (const event of data.events) {
-      console.log('[LINE Webhook] Processing event:', {
+      log.debug('Processing event', {
         type: event.type,
         userId: event.source?.userId?.substring(0, 10) + '...',
         messageType: event.message?.type
@@ -286,14 +287,14 @@ export async function handleLineWebhookLegacy(c: Context<{ Bindings: Bindings }>
       if (event.type === 'message' && event.message) {
         await processLineMessage(c.env, event, defer);
       } else if (event.type === 'follow') {
-        console.log('[LINE Webhook] Processing follow event');
+        log.info('Processing follow event');
         await processLineFollowEvent(c.env, event);
       } else {
-        console.log('[LINE Webhook] Skipping non-message event:', event.type);
+        log.debug('Skipping non-message event', { eventType: event.type });
       }
     }
 
-    console.log('[LINE Webhook] All events processed successfully');
+    log.info('All events processed successfully');
     return successResponse(c, null, 'LINE webhook processed successfully');
   } catch (error) {
     return handleApiError(error, c);

@@ -576,7 +576,7 @@ export class MessageRecallService {
 
       return { recalls, total };
     } catch (error) {
-      console.error('Error getting recall history:', error);
+      log.error('Error getting recall history', {}, error as Error);
       throw error;
     }
   }
@@ -675,7 +675,7 @@ export class MessageRecallService {
         successRate: Math.round(successRate * 100) / 100, // 保留2位小數
       };
     } catch (error) {
-      console.error('Error getting recall stats:', error);
+      log.error('Error getting recall stats', {}, error as Error);
       throw error;
     }
   }
@@ -711,7 +711,7 @@ export class MessageRecallService {
 
       return { cleaned: toClean };
     } catch (error) {
-      console.error('Error cleaning up expired recall logs:', error);
+      log.error('Error cleaning up expired recall logs', {}, error as Error);
       throw error;
     }
   }

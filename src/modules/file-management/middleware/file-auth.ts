@@ -1,6 +1,10 @@
 // File Management 認證中間件
 
 import type { Context, Next } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('FileAuth')
+
 import type { Bindings } from '@/types';
 import { unauthorizedResponse, forbiddenResponse } from '@/utils/api-response';
 import { PermissionService } from '@/services/permission-service';
@@ -44,7 +48,7 @@ export async function fileAuthMiddleware(c: Context<{ Bindings: Bindings }>, nex
     return await next();
 
   } catch (error) {
-    console.error('File auth middleware error:', error);
+    log.error('File auth middleware error', {}, error as Error);
     return unauthorizedResponse(c, 'Authentication system error');
   }
 }

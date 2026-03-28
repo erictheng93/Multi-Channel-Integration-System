@@ -27,6 +27,9 @@ import {
 
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
 import { nowISO } from '@/utils/timestamp';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AnalyticsQueries');
 
 import {
   buildTimeRange,
@@ -139,7 +142,7 @@ export async function getConversationTrends(
       }
     }));
   } catch (error) {
-    console.error('Error getting conversation trends:', error);
+    log.error('Error getting conversation trends', {}, error as Error);
     return [];
   }
 }
@@ -228,7 +231,7 @@ export async function getConversationDistributions(
 
     return distributions;
   } catch (error) {
-    console.error('Error getting conversation distributions:', error);
+    log.error('Error getting conversation distributions', {}, error as Error);
     return [];
   }
 }
@@ -271,7 +274,7 @@ export async function getConversationComparisons(
 
     return comparisons;
   } catch (error) {
-    console.error('Error getting conversation comparisons:', error);
+    log.error('Error getting conversation comparisons', {}, error as Error);
     return [];
   }
 }
@@ -350,7 +353,7 @@ export async function getMessageVolumeTrends(
       }
     }));
   } catch (error) {
-    console.error('Error getting message volume trends:', error);
+    log.error('Error getting message volume trends', {}, error as Error);
     return [];
   }
 }
@@ -461,7 +464,7 @@ export async function getUserActivityTrends(
       }
     }));
   } catch (error) {
-    console.error('Error getting user activity trends:', error);
+    log.error('Error getting user activity trends', {}, error as Error);
     return [];
   }
 }

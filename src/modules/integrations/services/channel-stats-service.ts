@@ -4,6 +4,9 @@ import { channelIntegrations } from '@/db/schema';
 import type { ChannelPlatform, ChannelIntegration, NewChannelIntegration, ChannelStatistics, ChannelHealthStatus, ChannelStats } from '../types/channel-types';
 import { parseChannelStats } from '../types/channel-types';
 import { nowISO, nowMs } from '@/utils/timestamp';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('ChannelStats');
 
 export type GetChannelCallback = (channelId: number) => Promise<ChannelIntegration | null>;
 
@@ -41,7 +44,7 @@ export class ChannelStatsService {
       updateData.stats = JSON.stringify(updatedStats);
       await this.db.update(channelIntegrations).set(updateData).where(eq(channelIntegrations.id, channelId));
     } catch (error) {
-      console.error('[ChannelService] Error incrementing message counter:', error);
+      log.error('Error incrementing message counter', {}, error instanceof Error ? error : new Error(String(error)));
     }
   }
 

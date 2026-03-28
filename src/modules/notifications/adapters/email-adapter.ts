@@ -11,6 +11,10 @@ import {
   ChannelConfig
 } from '../types';
 import { nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('EmailAdapter')
+
 
 export class EmailAdapter implements ChannelAdapter {
   readonly type: ChannelType = 'email';
@@ -346,12 +350,12 @@ export class EmailAdapter implements ChannelAdapter {
       throw new Error('Email fromAddress is required to enable email adapter');
     }
     this.enabled = true;
-    console.log('Email adapter enabled');
+    log.info('Email adapter enabled');
   }
 
   disable(): void {
     this.enabled = false;
-    console.log('Email adapter disabled');
+    log.info('Email adapter disabled');
   }
 
   // 獲取適配器統計

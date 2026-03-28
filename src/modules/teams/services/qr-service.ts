@@ -3,6 +3,10 @@
 // Phase 2 優化：雙向同步機制 - teams.qrCode 欄位同步
 
 import { drizzle } from 'drizzle-orm/d1';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('TeamQRService')
+
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { teams } from '@/db/schema';
@@ -65,9 +69,9 @@ export class TeamQRService {
         })
         .where(eq(teams.id, params.teamId));
 
-      console.log(`[TeamQRService] QR Code 已同步到 teams 表: teamId=${params.teamId}, qrCode=${qrCodeInfo.qrCodeImageUrl}`);
+      log.info(`QR Code synced to teams table: teamId=${params.teamId}`);
     } catch (error) {
-      console.error(`[TeamQRService] 同步 QR Code 失敗: teamId=${params.teamId}`, error);
+      log.error(`Sync QR Code failed: teamId=${params.teamId}`, {}, error as Error);
       // 不拋出錯誤，因為 QR Code 已成功生成並存入 qr_codes 表
       // 後續可透過資料修復腳本補救
     }
@@ -147,7 +151,7 @@ export class TeamQRService {
           })
           .where(eq(teams.id, teamId));
 
-        console.log(`[TeamQRService] 已更新 teams.qrCode 為最新活躍 QR Code: teamId=${teamId}`);
+        log.info(`Updated teams.qrCode to latest active QR Code: teamId=${teamId}`);
       } else {
         // 如果沒有其他活躍的 QR Code，清空欄位
         await this.db
@@ -158,10 +162,10 @@ export class TeamQRService {
           })
           .where(eq(teams.id, teamId));
 
-        console.log(`[TeamQRService] 已清空 teams.qrCode: teamId=${teamId} (無活躍 QR Code)`);
+        log.info(`Cleared teams.qrCode: teamId=${teamId} (no active QR Code)`);
       }
     } catch (error) {
-      console.error(`[TeamQRService] 同步停用 QR Code 失敗: teamId=${teamId}`, error);
+      log.error(`Sync deactivate QR Code failed: teamId=${teamId}`, {}, error as Error);
     }
   }
 

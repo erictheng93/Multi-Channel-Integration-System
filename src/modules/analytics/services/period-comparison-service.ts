@@ -6,6 +6,9 @@ import { and, gte, lte, count, sql } from 'drizzle-orm';
 import { conversations, messages, activities, conversationSessions, agents } from '@/db/schema';
 import type { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('PeriodComparison')
 
 /**
  * 期間定義
@@ -141,7 +144,7 @@ export class PeriodComparisonService {
 
       const cached = await this.cacheService.get<ComparisonData>(cacheKey);
       if (cached) {
-        console.log(` Comparison cache HIT: ${metric}`);
+        log.debug(`Comparison cache HIT: ${metric}`);
         return cached.data;
       }
     }
@@ -199,7 +202,7 @@ export class PeriodComparisonService {
         { data: comparison, metadata: { processedAt: nowISO(), cacheHit: false } } as any,
         ttl
       );
-      console.log(` Cached comparison: ${metric} (TTL: ${ttl}s)`);
+      log.debug(`Cached comparison: ${metric}`, { ttl });
     }
 
     return comparison;
@@ -397,11 +400,11 @@ export class PeriodComparisonService {
           return await this.getUserEngagementRate(period, filters);
 
         default:
-          console.warn(`Unknown metric: ${metric}`);
+          log.warn(`Unknown metric: ${metric}`);
           return 0;
       }
     } catch (error) {
-      console.error(`Error getting metric value for ${metric}:`, error);
+      log.error(`Error getting metric value for ${metric}`, {}, error as Error);
       return 0;
     }
   }

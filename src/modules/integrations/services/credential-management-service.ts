@@ -12,6 +12,9 @@ import { CredentialError } from '@modules/integrations/types/integration-types';
 import type { Bindings } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { encryptPassword, decryptPassword } from '@/utils/encryption';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CredentialManagement');
 
 /**
  * 憑證資料結構
@@ -98,7 +101,7 @@ export class CredentialManagementService {
 
       return result;
     } catch (error) {
-      console.error('Credential encryption error:', error);
+      log.error('Credential encryption error', {}, error instanceof Error ? error : new Error(String(error)));
       throw new CredentialError(
         'access_token',
         'encrypted_error',
@@ -156,7 +159,7 @@ export class CredentialManagementService {
 
       return credentials;
     } catch (error) {
-      console.error('Credential decryption error:', error);
+      log.error('Credential decryption error', {}, error instanceof Error ? error : new Error(String(error)));
 
       if (error instanceof CredentialError) {
         throw error;
@@ -389,7 +392,7 @@ export class CredentialManagementService {
 
       return null;
     } catch (error) {
-      console.error('Credential refresh error:', error);
+      log.error('Credential refresh error', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -436,7 +439,7 @@ export class CredentialManagementService {
 
       return null;
     } catch (error) {
-      console.error('Facebook credential refresh error:', error);
+      log.error('Facebook credential refresh error', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -528,7 +531,7 @@ export class CredentialManagementService {
       const keyData = await this.kv.get(`${this.keyPrefix}${keyId}`, 'json');
       return keyData as EncryptionKeyInfo | null;
     } catch (error) {
-      console.error('Failed to retrieve encryption key:', error);
+      log.error('Failed to retrieve encryption key', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -588,7 +591,7 @@ export class CredentialManagementService {
     try {
       // 這裡應該實作清理邏輯
       // 由於 Cloudflare KV 會自動清理過期的鍵值，主要是記錄清理活動
-      console.log('Credential cleanup completed');
+      log.info('Credential cleanup completed');
 
       return result;
     } catch (error) {
@@ -656,7 +659,7 @@ export class CredentialManagementService {
         errors: 0
       };
     } catch (error) {
-      console.error('Failed to get credential stats:', error);
+      log.error('Failed to get credential stats', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }

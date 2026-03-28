@@ -3,6 +3,9 @@
 // POST /:id/members/bulk-remove, PUT/DELETE /:id/members/:agentId
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger';
+const log = createContextLogger('TeamMembers');
+
 import { TeamService } from '@modules/teams/services/team-service';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@/modules/activities';
@@ -137,7 +140,7 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
         roleInTeam,
         batchOperation: true
       }
-    }).catch(err => console.error('Activity log failed:', err));
+    }).catch(err => log.error('Activity log failed', {}, err as Error));
 
     // WebSocket broadcasts for added members (non-blocking)
     if (result.added.length > 0) {
@@ -161,7 +164,7 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
           memberCount,
           changedBy: user.displayName || String(user.id)
         })
-      )).catch(err => console.error('WebSocket broadcasts failed:', err));
+      )).catch(err => log.error('WebSocket broadcasts failed', {}, err as Error));
     }
 
     return c.json({

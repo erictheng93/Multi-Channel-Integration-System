@@ -2,6 +2,10 @@
 // 訊息批量操作端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgBulk')
+
 import { inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
@@ -138,7 +142,7 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
     }, `Bulk operation completed: ${results.length} succeeded, ${errors.length} failed`, 201);
 
   } catch (error) {
-    console.error('Bulk create messages error:', error);
+    log.error('Bulk create messages error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to bulk create messages', 500);
   }
 });
@@ -253,7 +257,7 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
     }, `Bulk delete completed: ${results.length} succeeded, ${errors.length} failed`);
 
   } catch (error) {
-    console.error('Bulk delete messages error:', error);
+    log.error('Bulk delete messages error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to bulk delete messages', 500);
   }
 });

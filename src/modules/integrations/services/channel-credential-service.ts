@@ -1,6 +1,9 @@
 import type { Bindings } from '@/types';
 import { getEncryptionService, type EncryptedData } from '@/services/encryption-service';
 import type { ChannelPlatform, ChannelConfig, ChannelCredentials, ChannelWebhookConfig, ChannelStats } from '../types/channel-types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('ChannelCredential');
 
 export class ChannelCredentialService {
   constructor(private bindings: Bindings) {}
@@ -41,7 +44,7 @@ export class ChannelCredentialService {
       }
       return result;
     } catch (error) {
-      console.error('[ChannelService] Failed to decrypt credentials JSON:', error);
+      log.error('Failed to decrypt credentials JSON', {}, error instanceof Error ? error : new Error(String(error)));
       return {};
     }
   }

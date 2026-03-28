@@ -11,6 +11,9 @@ import {
   QRCodeActivityParams,
   ActivityLog
 } from '../types/interfaces'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('TeamActivityService')
 
 export class TeamActivityService {
   private activityService: ActivityService
@@ -77,7 +80,7 @@ export class TeamActivityService {
    */
   async logMemberAdd(params: MemberActivityParams): Promise<ActivityLog | null> {
     if (!params.addedAgentId || !params.addedAgentName) {
-      console.warn('[Team Activity Service] Missing agent info for member add')
+      log.warn('Missing agent info for member add')
       return null
     }
 
@@ -101,7 +104,7 @@ export class TeamActivityService {
    */
   async logMemberRemove(params: MemberActivityParams): Promise<ActivityLog | null> {
     if (!params.removedAgentId || !params.removedAgentName) {
-      console.warn('[Team Activity Service] Missing agent info for member remove')
+      log.warn('Missing agent info for member remove')
       return null
     }
 

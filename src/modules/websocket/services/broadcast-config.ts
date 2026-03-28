@@ -3,6 +3,10 @@
 // Extracted from websocket-broadcast-service.ts (Phase 3 refactor)
 
 import type { Bindings } from '@/types';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('BroadcastConfig')
+
 import type { MigrationConfig } from '@/types/websocket-types';
 import { nowMs } from '@/utils/timestamp'
 
@@ -48,7 +52,7 @@ export class BroadcastConfig {
         return this.migrationConfig!;
       }
     } catch (error) {
-      console.error('[BroadcastConfig] Config error:', error);
+      log.error('Config error', {}, error as Error);
     }
 
     // Default: 100% WebSocket rollout with all features enabled
@@ -92,7 +96,7 @@ export class BroadcastConfig {
           durableObjectsAvailable = response.ok;
         }
       } catch (error) {
-        console.error('[BroadcastConfig] Durable Objects health check failed:', error);
+        log.error('Durable Objects health check failed', {}, error as Error);
       }
 
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';

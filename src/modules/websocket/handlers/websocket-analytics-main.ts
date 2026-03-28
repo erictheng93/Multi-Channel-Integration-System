@@ -3,6 +3,10 @@
 // Multi-Channel Support MVP - WebSocket Monitoring System
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('WebsocketAnalytics')
+
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
@@ -221,7 +225,7 @@ analyticsHandler.get('/health', jwtAuth, async (c) => {
       healthChecks.alertSystem = true;
 
     } catch (error) {
-      console.warn('[Analytics API] Health check component failed:', error);
+      log.warn('Health check component failed', { error: error instanceof Error ? error.message : String(error) });
     }
 
     const healthScore = Object.values(healthChecks).filter(Boolean).length / Object.keys(healthChecks).length;
@@ -314,7 +318,7 @@ analyticsHandler.put('/config/alerts', jwtAuth, async (c) => {
       expirationTtl: 365 * 24 * 60 * 60 // Save for 1 year
     });
 
-    console.log(`[Analytics API] Alert config updated by ${user.displayName}:`, newConfig);
+    log.info(`Alert config updated by ${user.displayName}`);
 
     return c.json({
       success: true,

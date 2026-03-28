@@ -21,7 +21,7 @@ const log = createContextLogger('Webhook');
 export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
   const userId = event.source.userId;
 
-  console.log('[LINE Follow] Processing follow event:', {
+  log.info('Processing follow event', {
     userId: userId?.substring(0, 10) + '...',
     timestamp: event.timestamp,
     replyToken: event.replyToken ? 'Present' : 'None'
@@ -80,7 +80,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 
     qrCodeToken = followParam || linkNonce || liffParam || null;
 
-    console.log('[LINE Follow] Checking for QR code tracking:', {
+    log.debug('Checking for QR code tracking', {
       followParam: followParam ? 'Present' : 'None',
       linkNonce: linkNonce ? 'Present' : 'None',
       liffParam: liffParam ? 'Present' : 'None',
@@ -155,19 +155,20 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     // Note: Old recent_qr fallback (qrCodes table) removed, unified to new LIFF system
     if (assignmentResult) {
       assignedTeamId = assignmentResult.teamId;
-      console.log(`[LINE Follow] 從 customer_team_assignments 找到團隊分配: ${assignedTeamId}`, {
+      log.info('Found team assignment from customer_team_assignments', {
+        assignedTeamId,
         assignmentId: assignmentResult.assignmentId,
         source: assignmentResult.assignmentSource,
         assignedAt: assignmentResult.assignedAt
       });
     } else if (qrTokenResult) {
       assignedTeamId = qrTokenResult.teamId;
-      console.log(`[LINE Follow] QR Code 追蹤成功，指派到團隊: ${assignedTeamId}`);
+      log.info('QR Code tracking succeeded, assigned to team', { assignedTeamId });
     }
 
     const teamFindDuration = Date.now() - teamFindStartTime;
-    console.log(`[LINE Follow] 團隊查找完成 (並行優化)`, {
-      duration: `${teamFindDuration}ms`,
+    log.info('Team lookup completed (parallel optimized)', {
+      durationMs: teamFindDuration,
       assignedTeamId,
       source: assignmentResult ? 'assignment' : qrTokenResult ? 'qr_token' : 'none'
     });
@@ -176,7 +177,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 
     // Step 7: Create or update customer record
     if (!existingCustomer) {
-      console.log('[LINE Follow] Creating new customer...');
+      log.info('Creating new customer');
       await drizzleDb
         .insert(customers)
         .values({
@@ -203,14 +204,14 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         ))
         .get();
 
-      console.log('[LINE Follow] Customer created:', {
+      log.info('Customer created', {
         customerId: existingCustomer?.id,
         displayName,
         teamId: assignedTeamId
       });
     } else {
       // Update existing customer metadata
-      console.log('[LINE Follow] Updating existing customer...');
+      log.info('Updating existing customer');
       const existingMetadata = existingCustomer.metadata
         ? JSON.parse(existingCustomer.metadata as string)
         : {};
@@ -259,7 +260,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             updatedAt: timestamp
           });
 
-        console.log('[LINE Follow] Conversation created with team assignment:', {
+        log.info('Conversation created with team assignment', {
           conversationId,
           customerId: existingCustomer.id,
           teamId: assignedTeamId
@@ -274,7 +275,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           })
           .where(eq(conversations.id, existingConversation.id));
 
-        console.log('[LINE Follow] Updated existing conversation with team:', {
+        log.info('Updated existing conversation with team', {
           conversationId: existingConversation.id,
           teamId: assignedTeamId
         });
@@ -364,7 +365,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             reason: 'QR Code Follow - Auto Assignment'
           });
 
-          console.log('[LINE Follow] WebSocket broadcast sent for auto-assignment (with reconciliation):', {
+          log.info('WebSocket broadcast sent for auto-assignment (with reconciliation)', {
             conversationId: broadcastConversationId,
             teamId: assignedTeamId,
             teamName: teamInfo?.name,
@@ -400,14 +401,14 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           timestamp
         }
       });
-      console.log('[LINE Follow] Activity logged');
+      log.debug('Activity logged');
     } catch (activityError) {
       log.warn('LINE Follow: Failed to log activity', {
         error: activityError instanceof Error ? activityError.message : String(activityError)
       });
     }
 
-    console.log('[LINE Follow] Follow event processed successfully:', {
+    log.info('Follow event processed successfully', {
       userId: userId.substring(0, 10) + '...',
       customerId: existingCustomer?.id,
       teamId: assignedTeamId,
@@ -442,7 +443,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         );
 
         if (welcomeResult.matched) {
-          console.log('[LINE Follow] Auto-reply welcome rule triggered', {
+          log.info('Auto-reply welcome rule triggered', {
             ruleId: welcomeResult.ruleId,
             ruleName: welcomeResult.ruleName,
             replyMethod: welcomeResult.replyMethod,
@@ -455,7 +456,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           const { sendLineReply, createTextMessage } = await import('@/utils/line');
           await sendLineReply(env.LINE_CHANNEL_ACCESS_TOKEN, event.replyToken, [createTextMessage(welcomeMessage)]);
 
-          console.log('[LINE Follow] Default welcome message sent (no auto-reply rule)', {
+          log.info('Default welcome message sent (no auto-reply rule)', {
             userId: userId.substring(0, 10) + '...',
             teamId: assignedTeamId,
           });
@@ -480,7 +481,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         conversationId: existingConversation?.id
       });
 
-      console.log('[LINE Follow] Customer followed notification triggered');
+      log.debug('Customer followed notification triggered');
     } catch (notificationError) {
       log.warn('LINE Follow: Failed to trigger customer followed notification', {
         error: notificationError instanceof Error ? notificationError.message : String(notificationError)
@@ -503,7 +504,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) {
   const userId = event.source.userId;
 
-  console.log('[LINE Unfollow] Processing unfollow event:', {
+  log.info('Processing unfollow event', {
     userId: userId?.substring(0, 10) + '...',
     timestamp: event.timestamp
   });
@@ -528,7 +529,7 @@ export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) 
       .get();
 
     if (!existingCustomer) {
-      console.log('[LINE Unfollow] Customer not found for unfollowed user:', userId.substring(0, 10) + '...');
+      log.info('Customer not found for unfollowed user', { userId: userId.substring(0, 10) + '...' });
       return;
     }
 
@@ -540,7 +541,7 @@ export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) 
       })
       .where(eq(customers.id, existingCustomer.id));
 
-    console.log('[LINE Unfollow] Customer unfollow recorded:', {
+    log.info('Customer unfollow recorded', {
       customerId: existingCustomer.id,
       displayName: existingCustomer.displayName
     });
@@ -562,7 +563,7 @@ export async function processLineUnfollowEvent(env: Bindings, event: LineEvent) 
           timestamp
         }
       });
-      console.log('[LINE Unfollow] Activity logged');
+      log.debug('Activity logged');
     } catch (activityError) {
       log.warn('LINE Unfollow: Failed to log activity', {
         error: activityError instanceof Error ? activityError.message : String(activityError)

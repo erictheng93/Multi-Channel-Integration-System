@@ -12,6 +12,9 @@ import type {
 
 import type { Bindings } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('LineIntegration');
 
 /**
  * LINE Bot API 訊息類型
@@ -103,13 +106,13 @@ export class LineIntegrationService implements IPlatformAdapter {
       const response = await this.makeApiCall('GET', '/info');
 
       if (response.ok) {
-        console.log('LINE integration connected successfully');
+        log.info('LINE integration connected successfully');
         return true;
       }
 
       throw new Error(`LINE API connection failed: ${response.status}`);
     } catch (error) {
-      console.error('LINE integration connection error:', error);
+      log.error('LINE integration connection error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -120,10 +123,10 @@ export class LineIntegrationService implements IPlatformAdapter {
   async disconnect(): Promise<boolean> {
     try {
       // LINE API 沒有明確的斷線端點，標記為已斷線即可
-      console.log('LINE integration disconnected');
+      log.info('LINE integration disconnected');
       return true;
     } catch (error) {
-      console.error('LINE integration disconnect error:', error);
+      log.error('LINE integration disconnect error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -193,7 +196,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       this.stats.messages!.pending = Math.max(0, this.stats.messages!.pending - 1);
       this.stats.apiCalls!.failed++;
 
-      console.error('LINE send message error:', error);
+      log.error('LINE send message error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -223,7 +226,7 @@ export class LineIntegrationService implements IPlatformAdapter {
             this.stats.messages!.received++;
           }
         } catch (error) {
-          console.error('Error processing LINE event:', error);
+          log.error('Error processing LINE event', {}, error instanceof Error ? error : new Error(String(error)));
           this.stats.webhooks!.failed++;
         }
       }
@@ -231,7 +234,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       return events;
     } catch (error) {
       this.stats.webhooks!.failed++;
-      console.error('LINE receive message error:', error);
+      log.error('LINE receive message error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -269,7 +272,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       throw new Error(`LINE reply failed: ${errorData.message || response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('LINE reply message error:', error);
+      log.error('LINE reply message error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -305,7 +308,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       throw new Error(`Get profile failed: ${errorData.message || response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('LINE get user profile error:', error);
+      log.error('LINE get user profile error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -329,7 +332,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       throw new Error(`Get friendship status failed: ${response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('LINE get friendship status error:', error);
+      log.error('LINE get friendship status error', {}, error instanceof Error ? error : new Error(String(error)));
       return { isFriend: false };
     }
   }
@@ -356,7 +359,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       throw new Error(`Create rich menu failed: ${errorData.message || response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('LINE create rich menu error:', error);
+      log.error('LINE create rich menu error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -379,7 +382,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       throw new Error(`Set default rich menu failed: ${response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('LINE set default rich menu error:', error);
+      log.error('LINE set default rich menu error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -417,7 +420,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       throw new Error(`Broadcast failed: ${errorData.message || response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('LINE broadcast error:', error);
+      log.error('LINE broadcast error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -578,7 +581,7 @@ export class LineIntegrationService implements IPlatformAdapter {
 
       return platformEvent;
     } catch (error) {
-      console.error('Error processing LINE event:', error);
+      log.error('Error processing LINE event', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -614,8 +617,8 @@ export class LineIntegrationService implements IPlatformAdapter {
     // during development/testing. Production deployments MUST route webhooks
     // through the WebhookSecurityService for proper validation.
 
-    console.warn('[LineIntegrationService] Direct webhook call - security checks bypassed');
-    console.warn('[LineIntegrationService] Production webhooks should use: POST /api/integrations/webhooks/line/:integrationId');
+    log.warn('Direct webhook call - security checks bypassed');
+    log.warn('Production webhooks should use: POST /api/integrations/webhooks/line/:integrationId');
 
     return true;
   }

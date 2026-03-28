@@ -15,6 +15,9 @@ import { ActivityValidator } from '@modules/activities/utils/validators'
 import { ACTIVITY_ACTIONS } from '@modules/activities/constants/actions'
 import { RESOURCE_TYPES } from '@modules/activities/constants/resources'
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('ActivityService')
 
 export class ActivityService {
   constructor(private db: D1Database) {}
@@ -27,7 +30,7 @@ export class ActivityService {
       // 驗證請求數據
       const validationErrors = ActivityValidator.validateCreateRequest(request)
       if (validationErrors.length > 0) {
-        console.warn('[Activity Service] Validation failed:', validationErrors)
+        log.warn('Validation failed', { errors: validationErrors })
         return null
       }
 
@@ -64,10 +67,10 @@ export class ActivityService {
         createdAt: timestamp
       }
 
-      console.log('[Activity Service] Activity logged with ID:', createdActivity.id)
+      log.info('Activity logged', { id: createdActivity.id })
       return createdActivity
     } catch (error) {
-      console.error('[Activity Service] Failed to log activity:', error)
+      log.error('Failed to log activity', {}, error as Error)
       // 不拋出錯誤，避免影響主要業務流程
       return null
     }
@@ -238,7 +241,7 @@ export class ActivityService {
       .where(lt(activities.createdAt, cutoffDateStr))
 
     const deletedCount = toDeleteCount[0]?.count || 0
-    console.log(`[Activity Service] Cleaned up ${deletedCount} old activities`)
+    log.info('Cleaned up old activities', { deletedCount })
 
     return deletedCount
   }

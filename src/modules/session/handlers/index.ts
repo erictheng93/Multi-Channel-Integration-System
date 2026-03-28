@@ -2,6 +2,10 @@
 // 註冊所有 Session 相關的 API 路由
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('SessionHandlers')
+
 import sessionMainHandler from '@modules/session/handlers/session-main';
 import { HTTP_STATUS } from '@/constants/http-status';
 
@@ -127,7 +131,7 @@ sessionRouter.get(
         timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Get session config error:', error);
+      log.error('Get session config error', {}, error as Error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session configuration',
@@ -183,7 +187,7 @@ sessionRouter.post(
         timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Boundary detection test error:', error);
+      log.error('Boundary detection test error', {}, error as Error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to test boundary detection',
@@ -255,7 +259,7 @@ sessionRouter.post(
         timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Session cleanup error:', error);
+      log.error('Session cleanup error', {}, error as Error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to cleanup sessions',
@@ -336,7 +340,7 @@ sessionRouter.post(
         timestamp: nowISO()
       });
     } catch (error) {
-      console.error('Session export error:', error);
+      log.error('Session export error', {}, error as Error);
       return c.json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to export sessions',

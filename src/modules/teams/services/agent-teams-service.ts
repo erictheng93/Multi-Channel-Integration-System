@@ -3,6 +3,10 @@
 // Supports unlimited team membership for agents
 
 import { drizzle } from 'drizzle-orm/d1';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('AgentTeamsService')
+
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 import { agentTeams, agents, teams } from '@/db/schema';
@@ -238,7 +242,7 @@ export class AgentTeamsService {
         result.added = teamsToAdd;
       }
 
-      console.log('[AgentTeamsService] Bulk add completed:', {
+      log.info('Bulk add completed:', {
         agentId,
         requested: teamIds.length,
         added: result.added.length,
@@ -254,7 +258,7 @@ export class AgentTeamsService {
           result.errors.push({ teamId, error: errorMsg });
         }
       }
-      console.error('[AgentTeamsService] Bulk add failed:', error);
+      log.error('Bulk add failed', {}, error as Error);
     }
 
     return result;
@@ -328,7 +332,7 @@ export class AgentTeamsService {
         result.added = agentsToAdd;
       }
 
-      console.log('[AgentTeamsService] Batch add members to team completed:', {
+      log.info('Batch add members to team completed:', {
         teamId,
         requested: agentIds.length,
         added: result.added.length,
@@ -344,7 +348,7 @@ export class AgentTeamsService {
           result.errors.push({ agentId, error: errorMsg });
         }
       }
-      console.error('[AgentTeamsService] Batch add members to team failed:', error);
+      log.error('Batch add members to team failed', {}, error as Error);
     }
 
     return result;

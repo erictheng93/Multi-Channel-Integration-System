@@ -3,6 +3,10 @@
 // 專案：Multi-Channel Support MVP - WebSocket 用戶體驗追蹤
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('UserExperienceMain')
+
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
@@ -361,7 +365,7 @@ userExperienceHandler.get('/health', jwtAuth, async (c) => {
       healthChecks.reportGeneration = true;
 
     } catch (error) {
-      console.warn('[UX API] Health check component failed:', error);
+      log.warn('Health check component failed', { error: error instanceof Error ? error.message : String(error) });
     }
 
     const healthScore = Object.values(healthChecks).filter(Boolean).length / Object.keys(healthChecks).length;

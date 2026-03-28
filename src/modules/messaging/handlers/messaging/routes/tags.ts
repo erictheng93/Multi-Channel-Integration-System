@@ -2,6 +2,10 @@
 // 訊息標籤端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgTags')
+
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
@@ -114,7 +118,7 @@ tagsRoutes.put('/:id/tags', jwtAuth, async (c) => {
     }, 'Message tags updated successfully');
 
   } catch (error) {
-    console.error('Update message tags error:', error);
+    log.error('Update message tags error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to update message tags', 500);
   }
 });
@@ -183,7 +187,7 @@ tagsRoutes.delete('/:id/tags', jwtAuth, async (c) => {
     }, 'Message tags removed successfully');
 
   } catch (error) {
-    console.error('Remove message tags error:', error);
+    log.error('Remove message tags error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to remove message tags', 500);
   }
 });

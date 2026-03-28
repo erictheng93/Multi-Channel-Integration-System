@@ -48,7 +48,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
     const unauthorizedIds = conversationIdsArray.filter(id => !visibleConversationIds.includes(id));
 
     if (unauthorizedIds.length > 0) {
-      console.warn(`[Bulk] User ${user.id} attempted to access unauthorized conversations:`, unauthorizedIds);
+      log.warn('User attempted to access unauthorized conversations', { userId: user.id, unauthorizedIds });
       return errorResponse(c, `Permission denied for ${unauthorizedIds.length} conversation(s). You can only perform bulk operations on conversations you have access to.`, 403);
     }
 
@@ -140,7 +140,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
           }
         }
 
-        console.log(`[Bulk Tags] Inserted ${tagInsertValues.length} tag associations using batch insert`);
+        log.info(`Inserted ${tagInsertValues.length} tag associations using batch insert`);
 
         // 記錄標籤操作以便 WebSocket 廣播
         tagOperation = 'add';
@@ -165,7 +165,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
             )
           );
 
-        console.log(`[Bulk Tags] Removed tags from ${conversationIdsArray.length} conversations using single SQL`);
+        log.info(`Removed tags from ${conversationIdsArray.length} conversations using single SQL`);
 
         // 記錄標籤操作以便 WebSocket 廣播
         tagOperation = 'remove';

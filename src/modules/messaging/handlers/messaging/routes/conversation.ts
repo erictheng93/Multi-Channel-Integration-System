@@ -2,6 +2,10 @@
 // 對話訊息列表端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgConversation')
+
 import { eq, and, desc, count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
@@ -164,7 +168,7 @@ conversationRoutes.get('/conversation/:conversationId', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get conversation messages error:', error);
+    log.error('Get conversation messages error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to get conversation messages', 500);
   }
 });

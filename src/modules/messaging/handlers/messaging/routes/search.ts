@@ -2,6 +2,10 @@
 // 訊息搜尋、統計、標籤端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgSearch')
+
 import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
@@ -70,7 +74,7 @@ searchRoutes.get('/search', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Search messages error:', error);
+    log.error('Search messages error', {}, error as Error);
     return c.json({
       success: false,
       error: 'Failed to search messages',
@@ -120,7 +124,7 @@ searchRoutes.get('/stats', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get message statistics error:', error);
+    log.error('Get message statistics error', {}, error as Error);
     return c.json({
       success: false,
       error: 'Failed to get message statistics',
@@ -179,7 +183,7 @@ searchRoutes.get('/tags', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get message tags error:', error);
+    log.error('Get message tags error', {}, error as Error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get message tags',

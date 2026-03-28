@@ -3,6 +3,10 @@
 // Provides endpoints for viewing security events and statistics
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('SecurityMonitoring')
+
 import { jwtAuth } from '@/middleware/auth';
 import { successResponse, errorResponse } from '@/utils/api-response';
 import { WebhookSecurityService } from '@modules/integrations/services/webhook-security-service';
@@ -62,7 +66,7 @@ app.get('/events/stats', jwtAuth, async (c) => {
 
     return successResponse(c, stats);
   } catch (error) {
-    console.error('[SecurityMonitoring] Failed to get stats:', error);
+    log.error('Failed to get stats', {}, error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return errorResponse(
       c,
@@ -163,7 +167,7 @@ app.get('/events', jwtAuth, async (c) => {
       offset
     });
   } catch (error) {
-    console.error('[SecurityMonitoring] Failed to get events:', error);
+    log.error('Failed to get events', {}, error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return errorResponse(
       c,

@@ -2,6 +2,10 @@
 // Handles report CRUD, listing, statistics and batch operations
 
 import type { Bindings } from '@/types';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('ReportManager')
+
 import type {
   ReportBase,
   ReportDetails,
@@ -122,7 +126,7 @@ export class ReportManagerService {
         }
       };
     } catch (error) {
-      console.error('List reports error:', error);
+      log.error('List reports error', {}, error as Error);
       throw new ReportGenerationError('Failed to list reports');
     }
   }
@@ -160,7 +164,7 @@ export class ReportManagerService {
 
       return details;
     } catch (error) {
-      console.error('Get report details error:', error);
+      log.error('Get report details error', {}, error as Error);
       return null;
     }
   }
@@ -193,7 +197,7 @@ export class ReportManagerService {
 
       return true;
     } catch (error) {
-      console.error('Delete report error:', error);
+      log.error('Delete report error', {}, error as Error);
       if (error instanceof ReportNotFoundError ||
           error instanceof ReportAccessDeniedError) {
         throw error;
@@ -240,7 +244,7 @@ export class ReportManagerService {
         monthlyTrends: trendR.map(r => ({ month: r.month, reportsGenerated: r.reportsGenerated, totalSize: Number(r.totalSize) || 0 })),
       };
     } catch (error) {
-      console.error('Get report statistics error:', error);
+      log.error('Get report statistics error', {}, error as Error);
       throw new ReportGenerationError('Failed to get report statistics');
     }
   }
@@ -328,7 +332,7 @@ export class ReportManagerService {
         results
       };
     } catch (error) {
-      console.error('Batch operation error:', error);
+      log.error('Batch operation error', {}, error as Error);
       throw new ReportGenerationError('Failed to execute batch operation');
     }
   }

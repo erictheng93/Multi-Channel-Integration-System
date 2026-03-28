@@ -2,6 +2,10 @@
 // Handles report data generation, querying, formatting and serialization
 
 import type { Bindings } from '@/types';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('ReportGenerator')
+
 import type {
   ReportBase,
   ReportGenerationParams,
@@ -101,7 +105,7 @@ export class ReportGeneratorService {
         throw genError;
       }
     } catch (error) {
-      console.error('Generate report error:', error);
+      log.error('Generate report error', {}, error as Error);
       if (error instanceof InvalidReportParamsError ||
           error instanceof ReportAccessDeniedError) {
         throw error;
@@ -148,7 +152,7 @@ export class ReportGeneratorService {
         metadata: report.options ? JSON.parse(report.options) : undefined
       };
     } catch (error) {
-      console.error('Get report status error:', error);
+      log.error('Get report status error', {}, error as Error);
       return null;
     }
   }
@@ -178,7 +182,7 @@ export class ReportGeneratorService {
       const filename = `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}.${report.format}`;
       return { url: report.downloadUrl, filename };
     } catch (error) {
-      console.error('Download report error:', error);
+      log.error('Download report error', {}, error as Error);
       if (error instanceof ReportNotFoundError ||
           error instanceof ReportAccessDeniedError) {
         throw error;
@@ -279,9 +283,9 @@ export class ReportGeneratorService {
         userAgent: null
       });
 
-      console.log(`Download logged: ${reportId} by ${userId}`);
+      log.info(`Download logged: ${reportId} by ${userId}`);
     } catch (error) {
-      console.error('Failed to log download:', error);
+      log.error('Failed to log download', {}, error as Error);
     }
   }
 

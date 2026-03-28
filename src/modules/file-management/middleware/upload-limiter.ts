@@ -4,6 +4,10 @@
  */
 
 import type { Context, Next } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('UploadLimiter')
+
 import type { Bindings } from '@/types';
 import {
   errorResponse,
@@ -193,7 +197,7 @@ export function uploadLimiterMiddleware(options: UploadLimitOptions = {}) {
       }
 
     } catch (error) {
-      console.error('Upload limiter middleware error:', error);
+      log.error('Upload limiter middleware error', {}, error as Error);
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
     }
   };
@@ -231,7 +235,7 @@ export function fileSizeTotalMiddleware(maxTotalSize: number) {
 
       return await next();
     } catch (error) {
-      console.error('File size total middleware error:', error);
+      log.error('File size total middleware error', {}, error as Error);
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
     }
   };
@@ -252,7 +256,7 @@ export function uploadTimeoutMiddleware(timeoutMs: number = UPLOAD_CONFIG.TIMEOU
       if (error instanceof Error && error.message === 'Upload timeout') {
         return errorResponse(c, 'Upload timeout', 408);
       }
-      console.error('Upload timeout middleware error:', error);
+      log.error('Upload timeout middleware error', {}, error as Error);
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
     }
   };

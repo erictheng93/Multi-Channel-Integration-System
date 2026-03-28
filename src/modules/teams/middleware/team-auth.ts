@@ -2,6 +2,10 @@
 // Team Authentication Middleware
 
 import type { MiddlewareHandler } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('TeamAuth')
+
 import type { Bindings } from '@/types';
 import { verifyJWT } from '@/utils/auth';
 import { TeamPermissionError } from '@modules/teams/types/team-types';
@@ -221,7 +225,7 @@ export const teamErrorHandler = (): MiddlewareHandler<{ Bindings: Bindings }> =>
       }
 
       // 其他錯誤
-      console.error('Team middleware error:', error);
+      log.error('Team middleware error', {}, error as Error);
       return c.json({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'

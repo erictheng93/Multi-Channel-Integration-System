@@ -6,6 +6,10 @@ import { convertAgent } from '@/utils/drizzle-converters';
 import type { JWTPayload } from '@/types';
 import type { DbUser } from '@/types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('AuthService')
+
 
 /**
  * JWT 認證工具函數
@@ -157,7 +161,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
       const bcrypt = await import('bcryptjs');
       return await bcrypt.compare(password, hash);
     } catch (error) {
-      console.error('Bcrypt verification error:', error);
+      log.error('Bcrypt verification error', {}, error as Error);
       return false;
     }
   }
@@ -207,7 +211,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
       }
       return match;
     } catch (error) {
-      console.error('PBKDF2 verification error:', error);
+      log.error('PBKDF2 verification error', {}, error as Error);
       return false;
     }
   }
@@ -241,7 +245,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     const bcrypt = await import('bcryptjs');
     return await bcrypt.compare(password, hash);
   } catch (error) {
-    console.error('Password verification failed for hash:', hash.substring(0, 10) + '...');
+    log.error('Password verification failed', { hashPrefix: hash.substring(0, 10) });
     return false;
   }
 }
@@ -529,7 +533,7 @@ export async function canAccessTeam(
 
     return membership !== undefined;
   } catch (error) {
-    console.error('[canAccessTeam] Failed to check team membership:', error);
+    log.error('Failed to check team membership', {}, error as Error);
     return false;
   }
 }
@@ -634,7 +638,7 @@ export async function getSession(kv: KVNamespace, sessionId: string): Promise<Re
   try {
     return JSON.parse(sessionData);
   } catch (error) {
-    console.error('Failed to parse session data:', error);
+    log.error('Failed to parse session data', {}, error as Error);
     return null;
   }
 }

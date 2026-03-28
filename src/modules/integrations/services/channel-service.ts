@@ -33,6 +33,9 @@ import { ChannelCredentialService } from './channel-credential-service';
 import { ChannelVerificationService } from './channel-verification-service';
 import { ChannelWebhookService } from './channel-webhook-service';
 import { ChannelStatsService } from './channel-stats-service';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('ChannelService');
 
 export class ChannelService implements IChannelIntegrationService {
   private db: DrizzleD1Database;
@@ -59,7 +62,7 @@ export class ChannelService implements IChannelIntegrationService {
 
   async verifyChannel(request: ChannelVerificationRequest): Promise<ChannelVerificationResponse> {
     try {
-      console.log(`[ChannelService] Verifying channel ${request.channelId}`);
+      log.info(`Verifying channel ${request.channelId}`);
 
       const channel = await this.getChannel(request.channelId);
       if (!channel) {
@@ -68,7 +71,7 @@ export class ChannelService implements IChannelIntegrationService {
 
       return await this.verificationService.verifyChannel(channel, request.testMessage);
     } catch (error) {
-      console.error('[ChannelService] Error verifying channel:', error);
+      log.error('Error verifying channel', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         verified: false,
@@ -105,7 +108,7 @@ export class ChannelService implements IChannelIntegrationService {
 
   async createChannel(request: ChannelConfigRequest): Promise<ChannelConfigResponse> {
     try {
-      console.log(`[ChannelService] Creating ${request.platform} channel for team ${request.teamId}`);
+      log.info(`Creating ${request.platform} channel for team ${request.teamId}`);
 
       // Check if team already has an active channel for this platform
       const existingChannel = await this.db
@@ -191,7 +194,7 @@ export class ChannelService implements IChannelIntegrationService {
         .orderBy(desc(channelIntegrations.createdAt))
         .limit(1);
 
-      console.log(`[ChannelService]  Channel created successfully: ${createdChannel.id}`);
+      log.info(`Channel created successfully: ${createdChannel.id}`);
 
       return {
         success: true,
@@ -200,7 +203,7 @@ export class ChannelService implements IChannelIntegrationService {
       };
 
     } catch (error) {
-      console.error('[ChannelService] Error creating channel:', error);
+      log.error('Error creating channel', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create channel'
@@ -218,7 +221,7 @@ export class ChannelService implements IChannelIntegrationService {
 
       return channel || null;
     } catch (error) {
-      console.error('[ChannelService] Error getting channel:', error);
+      log.error('Error getting channel', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -243,14 +246,14 @@ export class ChannelService implements IChannelIntegrationService {
 
       return channels;
     } catch (error) {
-      console.error('[ChannelService] Error getting channels by team:', error);
+      log.error('Error getting channels by team', {}, error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   }
 
   async updateChannel(request: ChannelUpdateRequest): Promise<ChannelConfigResponse> {
     try {
-      console.log(`[ChannelService] Updating channel ${request.channelId}`);
+      log.info(`Updating channel ${request.channelId}`);
 
       const channel = await this.getChannel(request.channelId);
       if (!channel) {
@@ -368,7 +371,7 @@ export class ChannelService implements IChannelIntegrationService {
 
       const updatedChannel = await this.getChannel(request.channelId);
 
-      console.log(`[ChannelService]  Channel updated successfully: ${request.channelId}`);
+      log.info(`Channel updated successfully: ${request.channelId}`);
 
       return {
         success: true,
@@ -376,7 +379,7 @@ export class ChannelService implements IChannelIntegrationService {
       };
 
     } catch (error) {
-      console.error('[ChannelService] Error updating channel:', error);
+      log.error('Error updating channel', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to update channel'
@@ -386,7 +389,7 @@ export class ChannelService implements IChannelIntegrationService {
 
   async deactivateChannel(channelId: number): Promise<boolean> {
     try {
-      console.log(`[ChannelService] Deactivating channel ${channelId}`);
+      log.info(`Deactivating channel ${channelId}`);
 
       await this.db
         .update(channelIntegrations)
@@ -396,11 +399,11 @@ export class ChannelService implements IChannelIntegrationService {
         })
         .where(eq(channelIntegrations.id, channelId));
 
-      console.log(`[ChannelService]  Channel deactivated: ${channelId}`);
+      log.info(`Channel deactivated: ${channelId}`);
       return true;
 
     } catch (error) {
-      console.error('[ChannelService] Error deactivating channel:', error);
+      log.error('Error deactivating channel', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }

@@ -2,6 +2,10 @@
 // 任務提醒 API 路由處理器
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('TaskReminder')
+
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings, JWTPayload } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
@@ -324,14 +328,14 @@ export default app;
  * 由 wrangler.toml 中的 cron trigger 調用
  */
 export async function handleScheduledEvent(env: Bindings): Promise<void> {
-  console.log('[Cron] Processing due task reminders...');
+  log.info('Processing due task reminders');
 
   try {
     const service = new TaskReminderService(env.DB, env);
     const processedCount = await service.processDueReminders();
 
-    console.log(`[Cron] Processed ${processedCount} due reminders`);
+    log.info(`Processed ${processedCount} due reminders`);
   } catch (error) {
-    console.error('[Cron] Failed to process reminders:', error);
+    log.error('Failed to process reminders', {}, error as Error);
   }
 }

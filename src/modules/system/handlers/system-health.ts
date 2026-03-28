@@ -2,6 +2,10 @@
 // healthCheck, getApiStatus
 
 import { Context } from 'hono'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('SystemHealth')
+
 import type { Bindings } from '@/types'
 import {
   isLineBotInfo,
@@ -60,7 +64,7 @@ export const healthCheck = async (c: Context<{ Bindings: Bindings }>) => {
         await c.env.CACHE.delete(testKey)
 
       } catch (error) {
-        console.error('Cache health check error:', error)
+        log.error('Cache health check error', {}, error as Error)
         kvCheck = false
       }
     }
@@ -144,7 +148,7 @@ export const getApiStatus = async (c: Context<{ Bindings: Bindings }>) => {
           }
           return { ok: false as const, endpoints: [] as MetricsEndpoint[], latencyMs }
         } catch (err) {
-          console.error('Failed to fetch metrics from MetricsCollectorDO:', err)
+          log.error('Failed to fetch metrics from MetricsCollectorDO', {}, err as Error)
           return { ok: false as const, endpoints: [] as MetricsEndpoint[], latencyMs: nowMs() - start }
         }
       })(),
@@ -367,7 +371,7 @@ async function checkLineIntegration(env: Bindings): Promise<{ status: boolean; m
       return { status: false, message: errorMessage }
     }
   } catch (error) {
-    console.error(`LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    log.error(`LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     return {
       status: false,
       message: `LINE check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
