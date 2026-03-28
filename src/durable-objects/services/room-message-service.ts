@@ -221,7 +221,7 @@ export class RoomMessageService {
 
   // =================== Permission Checking ===================
 
-  async checkMessagePermission(userId: string, role: string, _conversationId: string): Promise<boolean> {
+  async checkMessagePermission(userId: string, role: string, conversationId: string): Promise<boolean> {
     try {
       const userConnections = Array.from(this.ctx.connections.values())
         .filter(conn => conn.userId === userId);
@@ -231,7 +231,19 @@ export class RoomMessageService {
       const userRole = userConnections[0]?.role || role;
 
       // SECURITY: Basic permission checks based on 2-tier role hierarchy
-      return ['admin', 'agent'].includes(userRole);
+      if (!['admin', 'agent'].includes(userRole)) return false;
+
+      // Validate user has an active connection to THIS specific conversation
+      const hasConversationAccess = userConnections.some(
+        conn => conn.conversationId === conversationId
+      );
+
+      if (!hasConversationAccess) {
+        testSafeLog(`[ConversationRoom] Permission denied: user ${userId} not connected to conversation ${conversationId}`);
+        return false;
+      }
+
+      return true;
     } catch (error) {
       testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Permission check failed:`, error);
       return false;
