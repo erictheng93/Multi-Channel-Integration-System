@@ -2,8 +2,8 @@
 // 提供當前期間與歷史期間的數據對比分析
 
 import type { Database } from '@/db/drizzle-factory';
-import { and, gte, lte, count, sql } from 'drizzle-orm';
-import { conversations, messages, activities } from '@/db/schema';
+import { and, gte, lte, count, sql, isNotNull, eq, countDistinct } from 'drizzle-orm';
+import { conversations, messages, activities, conversationSessions, agents } from '@/db/schema';
 import type { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import { nowISO } from '@/utils/timestamp'
 
@@ -420,13 +420,30 @@ export class PeriodComparisonService {
     return result[0]?.count || 0;
   }
 
-  private async getAverageResolutionTime(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    // TODO: 需要 resolution_time 欄位或計算邏輯
-    return 0;
+  private async getAverageResolutionTime(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+    try {
+      const conditions = [
+        ...this.buildWhereConditions('conversations', period, filters),
+        eq(conversations.status, 'closed'),
+        isNotNull(conversations.closedAt),
+      ];
+
+      const result = await this.db
+        .select({
+          avgMinutes: sql<number>`AVG((julianday(${conversations.closedAt}) - julianday(${conversations.createdAt})) * 24 * 60)`,
+        })
+        .from(conversations)
+        .where(and(...conditions));
+
+      return Math.round((result[0]?.avgMinutes || 0) * 100) / 100;
+    } catch {
+      return 0;
+    }
   }
 
   private async getCustomerSatisfactionScore(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    // TODO: 需要評分系統支援
+    // TODO: No satisfaction/rating table exists in the schema yet.
+    // When a ratings or feedback table is added, implement AVG(score) query here.
     return 0;
   }
 
@@ -471,9 +488,24 @@ export class PeriodComparisonService {
     return result[0]?.count || 0;
   }
 
-  private async getAverageResponseTime(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    // TODO: 需要計算消息間的時間差
-    return 0;
+  private async getAverageResponseTime(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+    try {
+      const conditions = [
+        ...this.buildWhereConditions('conversations', period, filters),
+        isNotNull(conversations.firstResponseAt),
+      ];
+
+      const result = await this.db
+        .select({
+          avgMinutes: sql<number>`AVG((julianday(${conversations.firstResponseAt}) - julianday(${conversations.createdAt})) * 24 * 60)`,
+        })
+        .from(conversations)
+        .where(and(...conditions));
+
+      return Math.round((result[0]?.avgMinutes || 0) * 100) / 100;
+    } catch {
+      return 0;
+    }
   }
 
   private async getMessagesPerConversation(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
@@ -509,14 +541,52 @@ export class PeriodComparisonService {
     return result[0]?.count || 0;
   }
 
-  private async getAverageSessionDuration(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    // TODO: 需要 session 持續時間計算
-    return 0;
+  private async getAverageSessionDuration(period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
+    try {
+      const conditions = [
+        gte(conversationSessions.startTime, period.start),
+        lte(conversationSessions.startTime, period.end),
+        isNotNull(conversationSessions.endTime),
+      ];
+
+      const result = await this.db
+        .select({
+          avgMinutes: sql<number>`AVG((julianday(${conversationSessions.endTime}) - julianday(${conversationSessions.startTime})) * 24 * 60)`,
+        })
+        .from(conversationSessions)
+        .where(and(...conditions));
+
+      return Math.round((result[0]?.avgMinutes || 0) * 100) / 100;
+    } catch {
+      return 0;
+    }
   }
 
-  private async getUserEngagementRate(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    // TODO: 需要定義 engagement 計算邏輯
-    return 0;
+  private async getUserEngagementRate(period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
+    try {
+      const activeAgentsResult = await this.db
+        .select({
+          activeCount: countDistinct(messages.agentSenderId),
+        })
+        .from(messages)
+        .where(and(
+          gte(messages.createdAt, period.start),
+          lte(messages.createdAt, period.end),
+          isNotNull(messages.agentSenderId),
+        ));
+
+      const totalAgentsResult = await this.db
+        .select({ total: count() })
+        .from(agents)
+        .where(eq(agents.isActive, true));
+
+      const activeCount = activeAgentsResult[0]?.activeCount || 0;
+      const totalCount = totalAgentsResult[0]?.total || 0;
+
+      return totalCount > 0 ? Math.round((activeCount / totalCount) * 10000) / 100 : 0;
+    } catch {
+      return 0;
+    }
   }
 
   // ============ 輔助方法 ============

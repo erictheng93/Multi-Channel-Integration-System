@@ -459,37 +459,9 @@ export const useConversationsStore = defineStore('conversations', () => {
         pagination.value = paginationData
       } else {
         handleError(response.error, '獲取對話列表失敗')
-
-        if (import.meta.env.DEV && !import.meta.env.VITEST && !append && !response.error) {
-          try {
-            const { generateMockConversations } = await import('@/utils/mockData')
-            let mockConversations = generateMockConversations(20)
-
-            if (filters.value.status) {
-              mockConversations = mockConversations.filter(c => c.status === filters.value.status)
-            }
-            if (filters.value.platform) {
-              mockConversations = mockConversations.filter(c => c.platform === filters.value.platform)
-            }
-
-            conversations.value = mockConversations
-            console.warn('[DEV] Using mock data due to API error')
-          } catch (mockError) {
-            console.error('Failed to load mock data:', mockError)
-          }
-        }
       }
     } catch (err) {
       handleError(err, '網路錯誤，無法載入對話列表')
-
-      if (import.meta.env.DEV && !append && !import.meta.env.VITEST) {
-        try {
-          const { generateMockConversations } = await import('@/utils/mockData')
-          updateConversationsIncrementally(generateMockConversations(20))
-        } catch (mockError) {
-          console.error('Failed to load mock data:', mockError)
-        }
-      }
     } finally {
       loading.value = false
       refreshing.value = false
@@ -562,28 +534,9 @@ export const useConversationsStore = defineStore('conversations', () => {
         optimisticMessages.value = []
       } else {
         handleError(response.error, '無法載入訊息')
-
-        if (import.meta.env.DEV && !import.meta.env.VITEST && !append && !response.error) {
-          try {
-            const { generateMockMessages } = await import('@/utils/mockData')
-            messages.value = generateMockMessages(conversationId, 15)
-            console.warn('[DEV] Using mock messages due to API error')
-          } catch (mockError) {
-            console.error('Failed to load mock messages:', mockError)
-          }
-        }
       }
     } catch (err) {
       handleError(err, '網路錯誤，無法載入訊息')
-
-      if (import.meta.env.DEV && !append && !import.meta.env.VITEST) {
-        try {
-          const { generateMockMessages } = await import('@/utils/mockData')
-          messages.value = generateMockMessages(conversationId, 15)
-        } catch (mockError) {
-          console.error('Failed to load mock messages:', mockError)
-        }
-      }
     } finally {
       messagesLoading.value = false
     }

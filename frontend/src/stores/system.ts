@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { systemApi } from '@/api/system'
 
 export interface SystemSettings {
   theme: 'light' | 'dark' | 'auto'
@@ -140,15 +141,17 @@ export const useSystemStore = defineStore('system', () => {
     error.value = null
 
     try {
-      // API integration ready for future implementation
-
-      // Mock data for now
-      stats.value = {
-        totalConversations: 1250,
-        activeAgents: 8,
-        responseTime: 2.5,
-        satisfaction: 4.2,
-        uptime: 99.8
+      const response = await systemApi.getDashboardStats()
+      if (response.success && response.data) {
+        stats.value = {
+          totalConversations: response.data.totalConversations,
+          activeAgents: response.data.onlineAgents,
+          responseTime: parseFloat(response.data.responseTime) || 0,
+          satisfaction: response.data.satisfactionRate,
+          uptime: 0
+        }
+      } else {
+        handleError(response.error, '載入系統統計失敗')
       }
     } catch (err) {
       handleError(err, '載入系統統計失敗')
