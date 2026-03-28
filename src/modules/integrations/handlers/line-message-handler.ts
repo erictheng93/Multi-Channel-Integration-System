@@ -1,0 +1,433 @@
+// src/modules/integrations/handlers/line-message-handler.ts
+// LINE message event processing — extracted from line-event-processor.ts
+
+import { eq, and, desc } from 'drizzle-orm';
+import { createDbClient } from '@/db/drizzle-factory';
+import { customers, customerTeamAssignments } from '@/db/schema';
+import type { Bindings, LineEvent, LineMediaData } from '@/types';
+import { ActivityService } from '@modules/activities';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { createContextLogger } from '@/utils/logger';
+
+import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
+import { processLineMedia } from '../services/webhook-media-service';
+import { nowISO, nowMs } from '@/utils/timestamp';
+import { evaluate as autoReplyEvaluate } from '@modules/auto-reply/services/auto-reply-engine';
+import { DistributedLockService } from '@/services/distributed-lock-service';
+import type { DeferFn } from './webhook';
+
+const log = createContextLogger('Webhook');
+
+// Safe logging function
+function logSecurely(platform: string, userId: string, messageLength: number) {
+  console.log(`Processed ${platform} message from user [${userId.slice(0, 8)}...]: [${messageLength} chars]`);
+}
+
+// Process LINE message events
+export async function processLineMessage(env: Bindings, event: LineEvent, defer: DeferFn = () => {}) {
+  const userId = event.source.userId;
+  const message = event.message;
+
+  console.log('[LINE Message] Processing message from user:', userId.substring(0, 10) + '...');
+
+  if (!message) {
+    log.warn('LINE Message: No message in LINE event');
+    return;
+  }
+
+  try {
+    // Smart type correction: detect and fix LINE API type misidentification
+    // Problem: LINE API may incorrectly identify some files as video/audio type
+    // Solution: If message has fileName field, force correct to 'file' type
+    let correctedMessageType = message.type;
+
+    if (message.fileName && message.type !== 'file') {
+      console.warn(`[LINE Webhook] Message type mismatch detected!`, {
+        originalType: message.type,
+        fileName: message.fileName,
+        fileSize: message.fileSize,
+        messageId: message.id,
+        userId: userId.substring(0, 10) + '...'
+      });
+      console.warn(`[LINE Webhook] Auto-correcting message type from "${message.type}" to "file"`);
+      correctedMessageType = 'file';
+    }
+
+    // Diagnostic log: record details of all file-related messages
+    if (message.fileName || message.type === 'file' || correctedMessageType === 'file') {
+      console.log('[LINE Webhook] File message details:', {
+        messageId: message.id,
+        originalType: message.type,
+        correctedType: correctedMessageType,
+        fileName: message.fileName,
+        fileSize: message.fileSize,
+        hasFileName: !!message.fileName,
+        wasTypeCorrected: message.type !== correctedMessageType
+      });
+    }
+
+    // Parse message content and type
+    let messageContent = '';
+    let messageType = correctedMessageType;  // Use corrected type
+    let mediaData: LineMediaData | null = null;
+
+    switch (correctedMessageType) {  // Use corrected type
+      case 'text':
+        messageContent = message.text || '';
+        break;
+      case 'image':
+        messageContent = '[圖片]';
+        mediaData = {
+          originalContentUrl: `https://api.line.me/v2/bot/message/${message.id}/content`,
+          previewImageUrl: `https://api.line.me/v2/bot/message/${message.id}/content/preview`
+        };
+        break;
+      case 'video':
+        messageContent = '[影片]';
+        mediaData = {
+          originalContentUrl: `https://api.line.me/v2/bot/message/${message.id}/content`,
+          previewImageUrl: `https://api.line.me/v2/bot/message/${message.id}/content/preview`
+        };
+        break;
+      case 'audio':
+        messageContent = '[語音]';
+        mediaData = {
+          originalContentUrl: `https://api.line.me/v2/bot/message/${message.id}/content`,
+          duration: message.duration || 0
+        };
+        break;
+      case 'file':
+        messageContent = `[檔案] ${message.fileName || 'Unknown file'}`;
+        mediaData = {
+          originalContentUrl: `https://api.line.me/v2/bot/message/${message.id}/content`,
+          fileName: message.fileName || '',
+          fileSize: message.fileSize || 0
+        };
+        break;
+      case 'location':
+        messageContent = `[位置] ${message.title || 'Location'}: ${message.address || 'Unknown address'}`;
+        mediaData = {
+          title: message.title || '',
+          address: message.address || '',
+          latitude: message.latitude || 0,
+          longitude: message.longitude || 0
+        };
+        break;
+      case 'sticker':
+        messageContent = '[貼圖]';
+        mediaData = {
+          packageId: message.packageId || '',
+          stickerId: message.stickerId || ''
+        };
+        break;
+      default:
+        messageContent = `[${message.type}]`;
+        mediaData = message;
+        break;
+    }
+
+    // Query or create user (uses shared service but with LINE-specific sync)
+    const drizzleDb = createDbClient(env.DB);
+    let user = await drizzleDb
+      .select()
+      .from(customers)
+      .where(and(
+        eq(customers.platformUserId, userId),
+        eq(customers.platform, 'line')
+      ))
+      .get();
+
+    if (!user) {
+      // Race condition protection: use distributed lock for customer creation
+      const lockService = new DistributedLockService(env);
+      user = await lockService.withLock(
+        `webhook:customer:line:${userId}`,
+        async () => {
+          // Double-check inside lock
+          const existing = await drizzleDb
+            .select()
+            .from(customers)
+            .where(and(
+              eq(customers.platformUserId, userId),
+              eq(customers.platform, 'line')
+            ))
+            .get();
+          if (existing) return existing;
+
+          let displayName = 'LINE User';
+          let avatarUrl = null;
+
+          try {
+            const { createUserSyncService } = await import('@/services/user-sync');
+            const userSyncService = createUserSyncService(env);
+            const profile = await userSyncService.syncLineUser(userId, event.source.groupId);
+            if (profile) {
+              displayName = profile.displayName;
+              avatarUrl = profile.pictureUrl;
+            }
+          } catch (profileError) {
+            log.warn('Failed to sync LINE user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
+          }
+
+          if (displayName === 'LINE User') {
+            try {
+              const assignment = await drizzleDb
+                .select({ displayName: customerTeamAssignments.displayName })
+                .from(customerTeamAssignments)
+                .where(eq(customerTeamAssignments.platformUserId, userId))
+                .orderBy(desc(customerTeamAssignments.assignedAt))
+                .limit(1)
+                .get();
+              if (assignment?.displayName) {
+                displayName = assignment.displayName;
+                log.info('LINE Message: Using LIFF-captured displayName as fallback', { displayName });
+              }
+            } catch (fallbackError) {
+              log.warn('Failed to query LIFF assignment for displayName fallback', {
+                error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
+              });
+            }
+          }
+
+          const timestamp = nowISO();
+          await drizzleDb
+            .insert(customers)
+            .values({
+              platform: 'line',
+              platformUserId: userId,
+              displayName,
+              avatarUrl,
+              createdAt: timestamp,
+              updatedAt: timestamp
+            });
+
+          const created = await drizzleDb
+            .select()
+            .from(customers)
+            .where(and(
+              eq(customers.platformUserId, userId),
+              eq(customers.platform, 'line')
+            ))
+            .get();
+          return created!;
+        },
+        { ttl: 15000, timeout: 8000 }
+      );
+    }
+
+    if (!user) {
+      log.error('LINE Webhook: Failed to find or create user after insert', { userIdPrefix: userId.substring(0, 10) });
+      return;
+    }
+
+    console.log('[LINE Webhook] User found/created successfully:', {
+      userId: user.id,
+      platformUserId: user.platformUserId?.substring(0, 10) + '...',
+      displayName: user.displayName
+    });
+
+    if (user.id) {
+      // Check if user profile needs updating
+      try {
+        const { createUserSyncService } = await import('@/services/user-sync');
+        const userSyncService = createUserSyncService(env);
+        const needsUpdate = await userSyncService.needsUpdate(userId, 'line');
+
+        if (needsUpdate) {
+          // Async update user profile (don't wait for completion)
+          userSyncService.syncLineUser(userId, event.source.groupId).catch((error: unknown) => {
+            log.warn('Background LINE user sync failed', { error: error instanceof Error ? error.message : String(error) });
+          });
+        }
+      } catch (syncError) {
+        log.warn('Error checking LINE user sync status', { error: syncError instanceof Error ? syncError.message : String(syncError) });
+      }
+    }
+
+    // Fix: Query customer_team_assignments to get QR Code team assignment
+    // Resolves bug where processLineMessage always had assignedTeamId as null
+    let assignedTeamId: number | null = null;
+    try {
+      const drizzleDb2 = createDbClient(env.DB);
+      const assignment = await drizzleDb2
+        .select({ teamId: customerTeamAssignments.teamId })
+        .from(customerTeamAssignments)
+        .where(eq(customerTeamAssignments.platformUserId, userId))
+        .orderBy(desc(customerTeamAssignments.assignedAt))
+        .limit(1)
+        .get();
+      if (assignment) {
+        assignedTeamId = assignment.teamId;
+        console.log(`[LINE Message] Found team assignment from QR code: teamId=${assignedTeamId}`);
+      }
+    } catch (assignmentError) {
+      log.warn('LINE Message: Failed to query customer_team_assignments', {
+        error: assignmentError instanceof Error ? assignmentError.message : String(assignmentError)
+      });
+    }
+
+    // Find or create conversation
+    const conversation = await findOrCreateConversation(env, user.id, 'line', {
+      messageContent,
+      customerDisplayName: user.displayName || 'LINE User',
+      assignedTeamId
+    });
+
+    // Idempotency check: check if same platformMessageId already exists
+    if (await isDuplicateMessage(env, message.id, 'line')) {
+      return; // Return directly, don't process duplicates
+    }
+
+    // Save message
+    const messageId = await saveMessage(
+      env,
+      conversation!.id,
+      user.id,
+      messageContent,
+      messageType,
+      message.id,
+      user.displayName || null,
+      mediaData,
+      'line'
+    );
+
+    // =================== SYNC: Auto-reply (replyToken expires ~30s) ===================
+    if (conversation) {
+      try {
+        console.log('[LINE Webhook] Auto-reply evaluating', { teamId: conversation.assignedTeamId ?? null, conversationId: conversation.id });
+        const autoReplyResult = await autoReplyEvaluate(
+          {
+            message: { content: messageContent, messageType, platform: 'line' },
+            conversationId: conversation.id,
+            teamId: conversation.assignedTeamId ?? null,
+            replyToken: event.replyToken || null,
+            customerId: user.id,
+            platformUserId: userId,
+          },
+          env
+        );
+
+        if (autoReplyResult.matched) {
+          console.log('[LINE Webhook] Auto-reply triggered', {
+            ruleId: autoReplyResult.ruleId,
+            ruleName: autoReplyResult.ruleName,
+            replyMethod: autoReplyResult.replyMethod,
+            error: autoReplyResult.error || 'none',
+          });
+        } else {
+          console.log('[LINE Webhook] Auto-reply: no matching rule');
+        }
+      } catch (autoReplyError) {
+        log.warn('LINE Webhook: Auto-reply evaluation failed (non-critical)', {
+          error: autoReplyError instanceof Error ? autoReplyError.message : String(autoReplyError),
+        });
+      }
+    }
+
+    // =================== DEFERRED: Non-critical tasks via waitUntil ===================
+    const convId = conversation!.id;
+    const convTeamId = conversation!.assignedTeamId;
+    const userDisplayName = user.displayName || 'LINE User';
+    const customerId = user.id;
+
+    // A. WebSocket broadcast (message WITHOUT file_attachments)
+    defer((async () => {
+      try {
+        const broadcastService = new WebSocketBroadcastService(env);
+        await broadcastService.broadcastNewMessage({
+          conversationId: convId,
+          message: {
+            id: messageId,
+            content: messageContent,
+            messageType: messageType,
+            senderType: 'customer',
+            senderId: String(customerId),
+            platform: 'line',
+            timestamp: nowMs(),
+            deliveryStatus: 'delivered',
+          },
+          source: 'webhook',
+          teamId: convTeamId ?? undefined
+        });
+        console.log('[LINE Webhook] Deferred broadcast completed', { conversationId: convId });
+      } catch (err) {
+        log.warn('LINE Webhook: Deferred broadcast failed', { error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+
+    // B+C. Media processing + follow-up message_updated broadcast
+    if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
+      const lineMessageId = message.id;
+      const lineMessageType = message.type;
+      const lineFileName = message.fileName;
+      defer((async () => {
+        try {
+          const fileAttachmentData = await processLineMedia(env, messageId, lineMessageId, lineMessageType, lineFileName);
+          if (fileAttachmentData.length > 0) {
+            const broadcastService = new WebSocketBroadcastService(env);
+            await broadcastService.broadcastMessageEvent({
+              type: 'message_updated',
+              conversationId: convId,
+              messageId,
+              data: { file_attachments: fileAttachmentData },
+              priority: 'high'
+            });
+            console.log('[LINE Webhook] Deferred media + message_updated completed', { messageId });
+          }
+        } catch (err) {
+          log.warn('LINE Webhook: Deferred media processing failed', { error: err instanceof Error ? err.message : String(err) });
+        }
+      })());
+    }
+
+    // E. Activity logging
+    defer((async () => {
+      try {
+        const activityService = new ActivityService(env.DB);
+        await activityService.logActivity({
+          userId: 'system',
+          userName: 'Webhook Handler',
+          userRole: 'system',
+          action: 'message_received',
+          resourceType: 'conversation',
+          resourceId: String(convId),
+          details: {
+            conversationId: convId,
+            customerId,
+            platform: 'line',
+            messageType: messageType,
+            messageId: messageId,
+            content: messageContent.substring(0, 100)
+          }
+        });
+      } catch (err) {
+        log.warn('LINE Webhook: Deferred activity logging failed', { error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+
+    // F. Notifications
+    defer((async () => {
+      try {
+        const { triggerNewConversationNotification } = await import('@/utils/notification-trigger');
+        await triggerNewConversationNotification(env, {
+          conversationId: convId,
+          customerName: userDisplayName,
+          platform: 'LINE',
+          messagePreview: messageContent,
+          teamId: convTeamId ?? undefined
+        });
+      } catch (err) {
+        log.warn('LINE Webhook: Deferred notification failed', { error: err instanceof Error ? err.message : String(err) });
+      }
+    })());
+
+    logSecurely('LINE', userId, messageContent.length);
+  } catch (error) {
+    log.error('Error processing LINE message', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      userIdPrefix: userId.slice(0, 8),
+      messageType: event.message?.type
+    });
+    throw error;
+  }
+}
