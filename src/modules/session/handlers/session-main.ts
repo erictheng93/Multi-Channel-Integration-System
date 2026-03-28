@@ -128,9 +128,10 @@ sessionHandler.post(
   async (c) => {
     try {
       const batchOperation = c.get('batchOperation');
+      const payload = c.get('jwtPayload');
       const sessionService = new SessionService(c.env.DB);
 
-      const result = await sessionService.batchOperation(batchOperation as any);
+      const result = await sessionService.batchOperation(batchOperation as any, payload?.userId?.toString());
 
       return c.json({
         success: true,
