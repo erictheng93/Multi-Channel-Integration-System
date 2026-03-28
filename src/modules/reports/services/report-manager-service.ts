@@ -299,9 +299,12 @@ export class ReportManagerService {
               success = !!downloadResult;
               downloadUrl = downloadResult?.url;
               break;
-            case 'export':
-              success = true; // TODO: Implement export
+            case 'export': {
+              const exportResult = await generator.downloadReport(reportId, userId, utils);
+              success = !!exportResult;
+              downloadUrl = exportResult?.url;
               break;
+            }
           }
 
           results.push({ reportId, success, downloadUrl });
