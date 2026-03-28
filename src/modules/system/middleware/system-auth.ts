@@ -9,6 +9,9 @@ import {
   forbiddenResponse
 } from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('SystemAuth')
 
 // ======================== 系統權限類型 ========================
 
@@ -58,7 +61,7 @@ export async function checkSystemAccess(c: Context<{ Bindings: Bindings }>, next
 
     return await next();
   } catch (error) {
-    console.error('Error in system access check:', error);
+    log.error('Error in system access check', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Permission check failed',
@@ -83,7 +86,7 @@ export async function checkHealthViewPermission(c: Context<{ Bindings: Bindings 
 
     return await next();
   } catch (error) {
-    console.error('Error in health view permission check:', error);
+    log.error('Error in health view permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Health permission check failed',
@@ -105,7 +108,7 @@ export async function checkStatusViewPermission(c: Context<{ Bindings: Bindings 
 
     return await next();
   } catch (error) {
-    console.error('Error in status view permission check:', error);
+    log.error('Error in status view permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Status permission check failed',
@@ -127,7 +130,7 @@ export async function checkInfoViewPermission(c: Context<{ Bindings: Bindings }>
 
     return await next();
   } catch (error) {
-    console.error('Error in info view permission check:', error);
+    log.error('Error in info view permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Info permission check failed',
@@ -149,7 +152,7 @@ export async function checkStatsViewPermission(c: Context<{ Bindings: Bindings }
 
     return await next();
   } catch (error) {
-    console.error('Error in stats view permission check:', error);
+    log.error('Error in stats view permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Stats permission check failed',
@@ -171,7 +174,7 @@ export async function checkSettingsViewPermission(c: Context<{ Bindings: Binding
 
     return await next();
   } catch (error) {
-    console.error('Error in settings view permission check:', error);
+    log.error('Error in settings view permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Settings view permission check failed',
@@ -193,7 +196,7 @@ export async function checkSettingsUpdatePermission(c: Context<{ Bindings: Bindi
 
     return await next();
   } catch (error) {
-    console.error('Error in settings update permission check:', error);
+    log.error('Error in settings update permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Settings update permission check failed',
@@ -215,7 +218,7 @@ export async function checkIntegrationsManagePermission(c: Context<{ Bindings: B
 
     return await next();
   } catch (error) {
-    console.error('Error in integrations manage permission check:', error);
+    log.error('Error in integrations manage permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Integrations permission check failed',
@@ -237,7 +240,7 @@ export async function checkMetricsViewPermission(c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Error in metrics view permission check:', error);
+    log.error('Error in metrics view permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Metrics permission check failed',
@@ -259,7 +262,7 @@ export async function checkBackupCreatePermission(c: Context<{ Bindings: Binding
 
     return await next();
   } catch (error) {
-    console.error('Error in backup create permission check:', error);
+    log.error('Error in backup create permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Backup create permission check failed',
@@ -281,7 +284,7 @@ export async function checkBackupRestorePermission(c: Context<{ Bindings: Bindin
 
     return await next();
   } catch (error) {
-    console.error('Error in backup restore permission check:', error);
+    log.error('Error in backup restore permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Backup restore permission check failed',
@@ -303,7 +306,7 @@ export async function checkCacheManagePermission(c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Error in cache manage permission check:', error);
+    log.error('Error in cache manage permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Cache manage permission check failed',
@@ -327,7 +330,7 @@ export async function checkSystemRestartPermission(c: Context<{ Bindings: Bindin
 
     return await next();
   } catch (error) {
-    console.error('Error in system restart permission check:', error);
+    log.error('Error in system restart permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'System restart permission check failed',
@@ -349,7 +352,7 @@ export async function checkAdvancedAccessPermission(c: Context<{ Bindings: Bindi
 
     return await next();
   } catch (error) {
-    console.error('Error in advanced access permission check:', error);
+    log.error('Error in advanced access permission check', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Advanced access permission check failed',
@@ -449,7 +452,7 @@ export async function validatePlatformParam(c: Context<{ Bindings: Bindings }>, 
 
     return await next();
   } catch (error) {
-    console.error('Error validating platform param:', error);
+    log.error('Error validating platform param', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Platform parameter validation failed',
@@ -481,7 +484,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
 
     return await next();
   } catch (error) {
-    console.error('Error in request size validation:', error);
+    log.error('Error in request size validation', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Request validation failed',
@@ -508,7 +511,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
     // 暫時允許所有請求，實際實作需要使用 KV
     return await next();
   } catch (error) {
-    console.error('Error in rate limit validation:', error);
+    log.error('Error in rate limit validation', {}, error instanceof Error ? error : String(error));
     return c.json({
       success: false,
       error: 'Rate limit validation failed',
@@ -546,11 +549,15 @@ export async function logSystemOperation(c: Context<{ Bindings: Bindings }>, nex
     if (sensitiveOperations.some(op => operationKey.includes(op))) {
       const duration = Date.now() - startTime;
 
-      // 這裡可以記錄到資料庫或日誌系統
-      console.log(`[SYSTEM OPERATION] ${userPayload.userId} (${userPayload.role}) performed ${operationKey} in ${duration}ms`);
+      log.info('System operation performed', {
+        userId: userPayload.userId,
+        role: userPayload.role,
+        operation: operationKey,
+        durationMs: duration
+      });
     }
   } catch (error) {
-    console.error('Error in system operation logging:', error);
+    log.error('Error in system operation logging', {}, error instanceof Error ? error : String(error));
     // 不影響主要流程，繼續執行
     return await next();
   }

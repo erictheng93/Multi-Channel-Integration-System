@@ -14,6 +14,9 @@ import {
 } from '@/utils/api-response'
 import { getCredentialsFromKV } from './system-crypto-utils'
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('SystemIntegrations')
 
 // Test platform integration
 export const testIntegration = async (c: Context<{ Bindings: Bindings }>) => {
@@ -58,18 +61,18 @@ async function testLineIntegration(config: any, env: Bindings) {
     }
 
     // Test 1: Get Bot info to validate Token
-    console.log('Testing LINE Access Token by getting bot info...', { tokenLength: testConfig.accessToken?.length })
+    log.info('Testing LINE Access Token by getting bot info', { tokenLength: testConfig.accessToken?.length })
     const botInfoResponse = await fetch('https://api.line.me/v2/bot/info', {
       headers: {
         'Authorization': `Bearer ${testConfig.accessToken}`
       }
     })
 
-    console.log('Bot info response:', botInfoResponse.status, botInfoResponse.statusText)
+    log.info('Bot info response', { status: botInfoResponse.status, statusText: botInfoResponse.statusText })
 
     if (!botInfoResponse.ok) {
       const errorText = await botInfoResponse.text().catch(() => 'Unable to read error response')
-      console.error('Bot info failed:', errorText)
+      log.error('Bot info failed', { errorText, status: botInfoResponse.status })
 
       let errorMessage = 'LINE Access Token 無效或已過期'
       if (botInfoResponse.status === 401) {
@@ -90,7 +93,7 @@ async function testLineIntegration(config: any, env: Bindings) {
     }
 
     const botInfo = await botInfoResponse.json().catch((e: Error): null => {
-      console.error('Failed to parse bot info JSON:', e)
+      log.error('Failed to parse bot info JSON', {}, e)
       return null
     })
 
@@ -105,7 +108,7 @@ async function testLineIntegration(config: any, env: Bindings) {
     // Test 2: Check Webhook settings (optional)
     let webhookStatus = 'not_tested'
     try {
-      console.log('Testing LINE Webhook endpoint...')
+      log.info('Testing LINE Webhook endpoint')
       const webhookResponse = await fetch('https://api.line.me/v2/bot/channel/webhook/endpoint', {
         headers: {
           'Authorization': `Bearer ${testConfig.accessToken}`
@@ -114,18 +117,18 @@ async function testLineIntegration(config: any, env: Bindings) {
 
       if (webhookResponse.ok) {
         const webhookInfo = await webhookResponse.json()
-        console.log('Webhook info retrieved successfully')
+        log.info('Webhook info retrieved successfully')
         if (isLineWebhookInfo(webhookInfo)) {
           webhookStatus = webhookInfo.active ? 'active' : 'inactive'
         }
       } else {
-        console.warn('Webhook check failed:', webhookResponse.status)
+        log.warn('Webhook check failed', { status: webhookResponse.status })
       }
     } catch (webhookError) {
-      console.warn('Webhook test failed:', webhookError)
+      log.warn('Webhook test failed', { error: webhookError instanceof Error ? webhookError.message : String(webhookError) })
     }
 
-    console.log('LINE integration test completed successfully')
+    log.info('LINE integration test completed successfully')
     return {
       status: 'success',
       message: 'LINE 連線測試成功',
@@ -138,7 +141,7 @@ async function testLineIntegration(config: any, env: Bindings) {
       }
     }
   } catch (error) {
-    console.error('LINE integration test error:', error)
+    log.error('LINE integration test error', {}, error instanceof Error ? error : String(error))
     return {
       status: 'error',
       message: 'LINE 測試過程中發生錯誤',
@@ -169,7 +172,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
     }
 
     // Test 1: Validate Page Access Token
-    console.log('Testing Facebook Page Access Token...')
+    log.info('Testing Facebook Page Access Token')
     const tokenResponse = await fetch(
       `https://graph.facebook.com/v18.0/me?access_token=${testConfig.pageToken}`
     )
@@ -185,7 +188,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
     const pageInfo = await tokenResponse.json()
 
     // Test 2: Validate App Secret
-    console.log('Testing Facebook App Secret...')
+    log.info('Testing Facebook App Secret')
     try {
       // Signature test placeholder
     } catch (signatureError) {
@@ -193,7 +196,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
     }
 
     // Test 3: Check page permissions
-    console.log('Testing Facebook Page Permissions...')
+    log.info('Testing Facebook Page Permissions')
     const permissionsResponse = await fetch(
       `https://graph.facebook.com/v18.0/${testConfig.pageId}?fields=access_token,name,category&access_token=${testConfig.pageToken}`
     )
@@ -216,7 +219,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
         )
         messagingStatus = testMessage ? 'success' : 'failed'
       } catch (messageError) {
-        console.warn('Test message failed:', messageError)
+        log.warn('Test message failed', { error: messageError instanceof Error ? messageError.message : String(messageError) })
         messagingStatus = 'failed'
       }
     }
@@ -233,7 +236,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
       }
     }
   } catch (error) {
-    console.error('Facebook integration test error:', error)
+    log.error('Facebook integration test error', {}, error instanceof Error ? error : String(error))
     return {
       status: 'error',
       message: 'Facebook 測試過程中發生錯誤',
