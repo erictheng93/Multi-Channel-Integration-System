@@ -4,6 +4,9 @@
 
 import { NotificationBase, NotificationStats } from '@modules/notifications/types';
 import { nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('NotificationCache');
 
 // Centralized TTL configuration for notification cache
 // Optimized values reduce KV operations by ~70%
@@ -75,7 +78,7 @@ export class NotificationCache {
     try {
       return JSON.parse(cached);
     } catch (error) {
-      console.error('Error parsing cached notification:', error);
+      log.error('Error parsing cached notification:', {}, error instanceof Error ? error : new Error(String(error)));
       await this.kv.delete(key);
       return null;
     }
@@ -120,7 +123,7 @@ export class NotificationCache {
         total: data.total
       };
     } catch (error) {
-      console.error('Error parsing cached notification list:', error);
+      log.error('Error parsing cached notification list:', {}, error instanceof Error ? error : new Error(String(error)));
       await this.kv.delete(key);
       return null;
     }
@@ -146,7 +149,7 @@ export class NotificationCache {
     try {
       return JSON.parse(cached);
     } catch (error) {
-      console.error('Error parsing cached stats:', error);
+      log.error('Error parsing cached stats:', {}, error instanceof Error ? error : new Error(String(error)));
       await this.kv.delete(key);
       return null;
     }
@@ -198,7 +201,7 @@ export class NotificationCache {
     try {
       return JSON.parse(cached);
     } catch (error) {
-      console.error('Error parsing cached recent notifications:', error);
+      log.error('Error parsing cached recent notifications:', {}, error instanceof Error ? error : new Error(String(error)));
       await this.kv.delete(key);
       return null;
     }
@@ -259,9 +262,9 @@ export class NotificationCache {
 
     try {
       // 如果有鍵索引，可以在這裡實作模式匹配刪除
-      console.log(`Pattern delete requested for: ${pattern}`);
+      log.info(`Pattern delete requested for: ${pattern}`);
     } catch (error) {
-      console.error(`Error deleting pattern ${pattern}:`, error);
+      log.error(`Error deleting pattern ${pattern}:`, {}, error instanceof Error ? error : new Error(String(error)));
     }
   }
 

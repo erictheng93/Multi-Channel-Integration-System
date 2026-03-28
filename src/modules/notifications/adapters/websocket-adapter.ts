@@ -10,6 +10,9 @@ import {
   ChannelConfig
 } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('NotifyWSAdapter');
 
 export class WebSocketAdapter implements ChannelAdapter {
   readonly type: ChannelType = 'websocket';
@@ -90,7 +93,7 @@ export class WebSocketAdapter implements ChannelAdapter {
             ws.send(JSON.stringify(wsMessage));
             deliveredCount++;
           } catch (error) {
-            console.error(`Failed to send WebSocket message:`, error);
+            log.error(`Failed to send WebSocket message:`, {}, error instanceof Error ? error : new Error(String(error)));
             failedCount++;
           }
         } else {
@@ -163,11 +166,11 @@ export class WebSocketAdapter implements ChannelAdapter {
     };
 
     ws.onerror = (error) => {
-      console.error(`WebSocket error for user ${userId}:`, error);
+      log.error(`WebSocket error for user ${userId}:`, {}, error instanceof Error ? error : new Error(String(error)));
       this.removeConnection(userId, ws);
     };
 
-    console.log(`WebSocket connection added for user ${userId}`);
+    log.info(`WebSocket connection added for user ${userId}`);
   }
 
   removeConnection(userId: number, ws: WebSocket): void {
@@ -177,7 +180,7 @@ export class WebSocketAdapter implements ChannelAdapter {
     const index = userConnections.indexOf(ws);
     if (index !== -1) {
       userConnections.splice(index, 1);
-      console.log(`WebSocket connection removed for user ${userId}`);
+      log.info(`WebSocket connection removed for user ${userId}`);
 
       // 如果用戶沒有連線了，移除用戶記錄
       if (userConnections.length === 0) {
@@ -213,7 +216,7 @@ export class WebSocketAdapter implements ChannelAdapter {
           try {
             ws.send(JSON.stringify(pingMessage));
           } catch (error) {
-            console.error(`Failed to send ping to user ${userId}:`, error);
+            log.error(`Failed to send ping to user ${userId}:`, {}, error instanceof Error ? error : new Error(String(error)));
             this.removeConnection(userId, ws);
           }
         }
@@ -261,7 +264,7 @@ export class WebSocketAdapter implements ChannelAdapter {
   // 啟用適配器 (當 WebSocket 實作完成時)
   enable(): void {
     this.enabled = true;
-    console.log('WebSocket adapter enabled');
+    log.info('WebSocket adapter enabled');
   }
 
   // 停用適配器
@@ -278,6 +281,6 @@ export class WebSocketAdapter implements ChannelAdapter {
     }
 
     this.connections.clear();
-    console.log('WebSocket adapter disabled');
+    log.info('WebSocket adapter disabled');
   }
 }

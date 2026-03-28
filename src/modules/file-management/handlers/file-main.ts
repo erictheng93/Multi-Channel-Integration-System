@@ -18,6 +18,9 @@ import type {
   FileDownloadOptions
 } from '@modules/file-management/types/file-types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('FileMain');
 
 const fileMainHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -76,7 +79,7 @@ fileMainHandler.get('/stats/summary', jwtAuth, async (c) => {
     return successResponse(c, stats);
 
   } catch (error) {
-    console.error('File statistics error:', error);
+    log.error('File statistics error:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -140,7 +143,7 @@ fileMainHandler.post('/', jwtAuth, async (c) => {
     }, 'File uploaded successfully', 201);
 
   } catch (error) {
-    console.error('File upload error:', error);
+    log.error('File upload error:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -200,7 +203,7 @@ fileMainHandler.get('/:fileId', jwtAuth, async (c) => {
     return badRequestResponse(c, 'No file data available');
 
   } catch (error) {
-    console.error('File download error:', error);
+    log.error('File download error:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -233,7 +236,7 @@ fileMainHandler.get('/', jwtAuth, async (c) => {
     return successResponse(c, result);
 
   } catch (error) {
-    console.error('File list error:', error);
+    log.error('File list error:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });
@@ -269,7 +272,7 @@ fileMainHandler.delete('/:fileId', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('File deletion error:', error);
+    log.error('File deletion error:', {}, error instanceof Error ? error : new Error(String(error)));
     return handleApiError(error, c);
   }
 });

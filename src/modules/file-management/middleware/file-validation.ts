@@ -14,6 +14,9 @@ import {
 import { getFileExtension } from '@modules/file-management/utils/file-helpers';
 import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { FILE_SIZE_LIMITS } from '@modules/file-management/constants/file-config';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('FileValidation');
 
 export interface FileValidationOptions {
   platform?: string;
@@ -138,7 +141,7 @@ export function fileValidationMiddleware(options: FileValidationOptions = {}) {
       return await next();
 
     } catch (error) {
-      console.error('File validation middleware error:', error);
+      log.error('File validation middleware error:', {}, error instanceof Error ? error : new Error(String(error)));
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
     }
   };
@@ -191,7 +194,7 @@ export async function fileUploadValidation(c: Context<{ Bindings: Bindings }>, n
     return await next();
 
   } catch (error) {
-    console.error('File upload validation error:', error);
+    log.error('File upload validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return badRequestResponse(c, 'File validation failed');
   }
 }
@@ -218,7 +221,7 @@ export async function fileIdValidation(c: Context<{ Bindings: Bindings }>, next:
     return await next();
 
   } catch (error) {
-    console.error('File ID validation error:', error);
+    log.error('File ID validation error:', {}, error instanceof Error ? error : new Error(String(error)));
     return badRequestResponse(c, 'File ID validation failed');
   }
 }
@@ -241,7 +244,7 @@ export function fileTypeMiddleware(allowedTypes: string[]) {
 
       return await next();
     } catch (error) {
-      console.error('File type middleware error:', error);
+      log.error('File type middleware error:', {}, error instanceof Error ? error : new Error(String(error)));
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
     }
   };
@@ -265,7 +268,7 @@ export function fileSizeMiddleware(maxSize: number) {
 
       return await next();
     } catch (error) {
-      console.error('File size middleware error:', error);
+      log.error('File size middleware error:', {}, error instanceof Error ? error : new Error(String(error)));
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
     }
   };
@@ -305,7 +308,7 @@ export function fileContentMiddleware() {
 
       return await next();
     } catch (error) {
-      console.error('File content middleware error:', error);
+      log.error('File content middleware error:', {}, error instanceof Error ? error : new Error(String(error)));
       return errorResponse(c, ERROR_MESSAGES.PROCESSING_FAILED, 500);
     }
   };
@@ -383,6 +386,6 @@ function validateFileContent(bytes: Uint8Array, mimeType: string): boolean {
   }
 
   // SECURITY: Unknown file types are NOT allowed - fail secure
-  console.warn(`[File Validation] Unknown file signature for MIME type: ${mimeType}`);
+  log.warn("Unknown file signature for MIME type", { mimeType });
   return false;
 }

@@ -32,6 +32,9 @@ import {
 } from '../utils/file-helpers';
 import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('FileService');
 
 export class FileService {
   private readonly db: Database;
@@ -164,7 +167,7 @@ export class FileService {
         try {
           thumbnailUrl = await this.generateThumbnail(managedFile, storageKey);
         } catch (error) {
-          console.warn('Failed to generate thumbnail:', error);
+          log.warn('Failed to generate thumbnail:', { error });
         }
       }
 
@@ -178,7 +181,7 @@ export class FileService {
       };
 
     } catch (error) {
-      console.error('File upload failed:', error);
+      log.error('File upload failed:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error instanceof Error ? error.message : ERROR_MESSAGES.UPLOAD_FAILED
@@ -258,7 +261,7 @@ export class FileService {
       };
 
     } catch (error) {
-      console.error('File download failed:', error);
+      log.error('File download failed:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error instanceof Error ? error.message : ERROR_MESSAGES.DOWNLOAD_FAILED
@@ -292,7 +295,7 @@ export class FileService {
       const deleteSuccess = await this.storageService.deleteFile(fileRecord.r2Key);
 
       if (!deleteSuccess) {
-        console.warn('Failed to delete file from storage, continuing with database deletion');
+        log.warn('Failed to delete file from storage, continuing with database deletion');
       }
 
       // 從資料庫刪除記錄
@@ -303,7 +306,7 @@ export class FileService {
       return { success: true };
 
     } catch (error) {
-      console.error('File deletion failed:', error);
+      log.error('File deletion failed:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Deletion failed'
@@ -329,7 +332,7 @@ export class FileService {
       return this.convertToManagedFile(fileRecord);
 
     } catch (error) {
-      console.error('Failed to get file details:', error);
+      log.error('Failed to get file details:', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -417,7 +420,7 @@ export class FileService {
       };
 
     } catch (error) {
-      console.error('Failed to list files:', error);
+      log.error('Failed to list files:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         items: [],
         total: 0,
@@ -493,7 +496,7 @@ export class FileService {
       };
 
     } catch (error) {
-      console.error('Failed to get file statistics:', error);
+      log.error('Failed to get file statistics:', {}, error instanceof Error ? error : new Error(String(error)));
       return {
         totalFiles: 0,
         totalSize: 0,
@@ -555,7 +558,7 @@ export class FileService {
   private async generateThumbnail(_file: ManagedFile, _originalKey: string): Promise<string | undefined> {
     // 縮圖產生邏輯
     // 這裡需要實作實際的縮圖產生功能
-    console.log('Thumbnail generation not implemented yet');
+    log.info('Thumbnail generation not implemented yet');
     return undefined;
   }
 

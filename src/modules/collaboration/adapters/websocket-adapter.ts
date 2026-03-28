@@ -17,6 +17,9 @@ import type {
 
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CollabWSAdapter');
 
 /**
  * WebSocket 協作適配器
@@ -74,7 +77,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         lastActivity: p.lastActivity || nowISO()
       }));
     } catch (error) {
-      console.error('[WebSocketAdapter] Error getting viewers:', error);
+      log.error('[WebSocketAdapter] Error getting viewers:', {}, error instanceof Error ? error : new Error(String(error)));
       return [];
     }
   }
@@ -129,7 +132,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         }
       };
     } catch (error) {
-      console.error('[WebSocketAdapter] Error getting state:', error);
+      log.error('[WebSocketAdapter] Error getting state:', {}, error instanceof Error ? error : new Error(String(error)));
       const viewers = await this.getConversationViewers(conversationId);
       return {
         conversationId,
@@ -162,7 +165,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         })
       }));
     } catch (error) {
-      console.error('[WebSocketAdapter] Error joining conversation:', error);
+      log.error('[WebSocketAdapter] Error joining conversation:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -186,7 +189,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         })
       }));
     } catch (error) {
-      console.error('[WebSocketAdapter] Error leaving conversation:', error);
+      log.error('[WebSocketAdapter] Error leaving conversation:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -213,7 +216,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         })
       }));
     } catch (error) {
-      console.error('[WebSocketAdapter] Error sending typing:', error);
+      log.error('[WebSocketAdapter] Error sending typing:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -257,7 +260,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         }));
       }
     } catch (error) {
-      console.error('[WebSocketAdapter] Error updating presence:', error);
+      log.error('[WebSocketAdapter] Error updating presence:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -282,7 +285,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         })
       }));
     } catch (error) {
-      console.error('[WebSocketAdapter] Error broadcasting event:', error);
+      log.error('[WebSocketAdapter] Error broadcasting event:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }

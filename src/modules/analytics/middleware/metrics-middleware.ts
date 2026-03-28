@@ -7,6 +7,9 @@ import { METRIC_NAMES } from '@modules/analytics/constants/metrics-definitions';
 import type { Bindings } from '@/types';
 import type { Metric } from '@modules/analytics/types/metrics-types';
 import { nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MetricsMiddleware');
 
 /**
  * 指標收集中間件選項
@@ -124,7 +127,7 @@ async function collectApiRequestStart(
     await metricsCollector.collect(requestMetric);
 
   } catch (error) {
-    console.error('Failed to collect API request start metrics:', error);
+    log.error('Failed to collect API request start metrics:', {}, error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -232,7 +235,7 @@ async function collectApiRequestComplete(
     await metricsCollector.collectBatch(metrics);
 
   } catch (error) {
-    console.error('Failed to collect API request complete metrics:', error);
+    log.error('Failed to collect API request complete metrics:', {}, error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -302,7 +305,7 @@ async function collectSystemMetrics(
     await metricsCollector.collectBatch(systemMetrics);
 
   } catch (error) {
-    console.error('Failed to collect system metrics:', error);
+    log.error('Failed to collect system metrics:', {}, error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -352,7 +355,7 @@ export function conversationMetricsMiddleware() {
         await metricsCollector.collect(conversationMetric);
 
       } catch (error) {
-        console.error('Failed to collect conversation metrics:', error);
+        log.error('Failed to collect conversation metrics:', {}, error instanceof Error ? error : new Error(String(error)));
       }
     }
   };
@@ -394,7 +397,7 @@ export function agentMetricsMiddleware() {
       await metricsCollector.collect(agentMetric);
 
     } catch (error) {
-      console.error('Failed to collect agent metrics:', error);
+      log.error('Failed to collect agent metrics:', {}, error instanceof Error ? error : new Error(String(error)));
     }
   };
 }
@@ -435,7 +438,7 @@ export function createCustomMetricsCollector(c: Context<{ Bindings: Bindings }>)
         await metricsCollector.collect(metric);
 
       } catch (error) {
-        console.error('Failed to collect custom metric:', error);
+        log.error('Failed to collect custom metric:', {}, error instanceof Error ? error : new Error(String(error)));
       }
     },
 

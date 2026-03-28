@@ -15,6 +15,9 @@ import {
   DEFAULT_CUSTOMER_VALIDATION
 } from '../types/customer-types';
 import type { Bindings } from '@/types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CustomerValidation');
 
 // ======================== 通用驗證中間件 ========================
 
@@ -47,7 +50,7 @@ export const validatePaginationParams = async (c: Context<{ Bindings: Bindings }
 
     return await next();
   } catch (error) {
-    console.error('Error validating pagination params:', error);
+    log.error('Error validating pagination params:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid pagination parameters');
   }
 };
@@ -77,7 +80,7 @@ export const validateCustomerId = async (c: Context<{ Bindings: Bindings }>, nex
 
     return await next();
   } catch (error) {
-    console.error('Error validating customer ID:', error);
+    log.error('Error validating customer ID:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid customer ID');
   }
 };
@@ -120,7 +123,7 @@ export const validateCreateCustomerData = async (c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Error validating create customer data:', error);
+    log.error('Error validating create customer data:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid customer data');
   }
 };
@@ -154,7 +157,7 @@ export const validateUpdateCustomerData = async (c: Context<{ Bindings: Bindings
 
     return await next();
   } catch (error) {
-    console.error('Error validating update customer data:', error);
+    log.error('Error validating update customer data:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid customer data');
   }
 };
@@ -195,7 +198,7 @@ export const validateTagOperation = async (c: Context<{ Bindings: Bindings }>, n
 
     return await next();
   } catch (error) {
-    console.error('Error validating tag operation:', error);
+    log.error('Error validating tag operation:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid tag operation data');
   }
 };
@@ -240,7 +243,7 @@ export const validateSearchQuery = async (c: Context<{ Bindings: Bindings }>, ne
 
     return await next();
   } catch (error) {
-    console.error('Error validating search query:', error);
+    log.error('Error validating search query:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid search parameters');
   }
 };
@@ -347,7 +350,7 @@ export const validateFilterParams = async (c: Context<{ Bindings: Bindings }>, n
 
     return await next();
   } catch (error) {
-    console.error('Error validating filter params:', error);
+    log.error('Error validating filter params:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid filter parameters');
   }
 };
@@ -492,7 +495,7 @@ export const validateBatchOperation = async (c: Context<{ Bindings: Bindings }>,
 
     return await next();
   } catch (error) {
-    console.error('Error validating batch operation:', error);
+    log.error('Error validating batch operation:', {}, error instanceof Error ? error : new Error(String(error)));
     return errorResponse(c, 'Invalid batch operation data');
   }
 };

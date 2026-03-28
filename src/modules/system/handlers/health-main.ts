@@ -9,6 +9,9 @@ import { CacheHealthChecker } from '@/health-checkers/cache-checker';
 import { successResponse, internalErrorResponse } from '@/utils/api-response';
 import { getConfigurationStatus } from '@/middleware/configuration-guard';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('HealthMain');
 
 let initialized = false;
 
@@ -51,7 +54,7 @@ export async function getSystemHealth(c: Context<{ Bindings: Bindings }>) {
     }
 
   } catch (error) {
-    console.error('System health check failed:', error);
+    log.error('System health check failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
@@ -74,7 +77,7 @@ export async function getInfrastructureHealth(c: Context<{ Bindings: Bindings }>
     }, `Infrastructure status: ${overallStatus}`);
 
   } catch (error) {
-    console.error('Infrastructure health check failed:', error);
+    log.error('Infrastructure health check failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
@@ -117,7 +120,7 @@ export async function getServicesHealth(c: Context<{ Bindings: Bindings }>) {
     }
 
   } catch (error) {
-    console.error('Services health check failed:', error);
+    log.error('Services health check failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
@@ -172,7 +175,7 @@ export async function runComponentCheck(c: Context<{ Bindings: Bindings }>) {
     }
 
   } catch (error) {
-    console.error('Component health check failed:', error);
+    log.error('Component health check failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
@@ -235,7 +238,7 @@ export async function getHealthStats(c: Context<{ Bindings: Bindings }>) {
     }, 'Health statistics retrieved successfully');
 
   } catch (error) {
-    console.error('Health stats retrieval failed:', error);
+    log.error('Health stats retrieval failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }
@@ -275,7 +278,7 @@ export async function getConfigCheck(c: Context<{ Bindings: Bindings }>) {
     return c.json(configStatus, httpStatus);
 
   } catch (error) {
-    console.error('Configuration check failed:', error);
+    log.error('Configuration check failed:', {}, error instanceof Error ? error : new Error(String(error)));
     return internalErrorResponse(c, error instanceof Error ? error.message : 'Internal server error');
   }
 }

@@ -19,6 +19,9 @@ import type {
 import { WebSocketCollaborationAdapter } from '@modules/collaboration/adapters/websocket-adapter';
 import { defaultCollaborationConfig, AdapterNotInitializedError } from '@modules/collaboration/types';
 import type { Bindings } from '@/types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CollaborationManager');
 
 /**
  * CollaborationManager
@@ -57,7 +60,7 @@ export class CollaborationManager {
       this.config = { ...this.config, ...config };
     }
 
-    console.log('[CollaborationManager] Initializing with config (WebSocket-only):', {
+    log.info('[CollaborationManager] Initializing with config (WebSocket-only):', {
       defaultProtocol: this.config.defaultProtocol,
       enableWebSocket: this.config.enableWebSocket
     });
@@ -66,9 +69,9 @@ export class CollaborationManager {
       const wsAdapter = new WebSocketCollaborationAdapter();
       await wsAdapter.initialize(env);
       this.adapters.set('websocket', wsAdapter);
-      console.log('[CollaborationManager] WebSocket adapter initialized');
+      log.info('[CollaborationManager] WebSocket adapter initialized');
     } catch (error) {
-      console.error('[CollaborationManager] Failed to initialize WebSocket adapter:', error);
+      log.error('[CollaborationManager] Failed to initialize WebSocket adapter:', {}, error instanceof Error ? error : new Error(String(error)));
       throw new Error('WebSocket initialization failed.');
     }
 
@@ -83,9 +86,9 @@ export class CollaborationManager {
     this.config.defaultProtocol = 'websocket';
 
     this.initialized = true;
-    console.log('[CollaborationManager] Initialization complete');
-    console.log('[CollaborationManager] Default protocol:', this.config.defaultProtocol);
-    console.log('[CollaborationManager] Available protocols:', Array.from(this.adapters.keys()));
+    log.info('[CollaborationManager] Initialization complete');
+    log.info('[CollaborationManager] Default protocol:', { detail: this.config.defaultProtocol });
+    log.info('Available protocols', { protocols: Array.from(this.adapters.keys()) });
   }
 
   /**
@@ -200,9 +203,9 @@ export class CollaborationManager {
       try {
         const cleaned = await adapter.cleanup();
         totalCleaned += cleaned;
-        console.log(`[CollaborationManager] Cleaned ${cleaned} items from ${protocol} adapter`);
+        log.info(`[CollaborationManager] Cleaned ${cleaned} items from ${protocol} adapter`);
       } catch (error) {
-        console.error(`[CollaborationManager] Cleanup error for ${protocol}:`, error);
+        log.error(`[CollaborationManager] Cleanup error for ${protocol}:`, {}, error instanceof Error ? error : new Error(String(error)));
       }
     }
 

@@ -6,6 +6,9 @@ import type { Bindings } from '@/types';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { SystemSettingsUpdate } from '@modules/system/types/system-types';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('SystemValidation');
 
 // ======================== 基礎驗證中間件 ========================
 
@@ -36,7 +39,7 @@ export async function validateBackupId(c: Context<{ Bindings: Bindings }>, next:
 
     return await next();
   } catch (error) {
-    console.error('Error validating backup ID:', error);
+    log.error('Error validating backup ID:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Backup ID validation failed',
@@ -72,7 +75,7 @@ export async function validateMessageId(c: Context<{ Bindings: Bindings }>, next
 
     return await next();
   } catch (error) {
-    console.error('Error validating message ID:', error);
+    log.error('Error validating message ID:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Message ID validation failed',
@@ -108,7 +111,7 @@ export async function validateConversationId(c: Context<{ Bindings: Bindings }>,
 
     return await next();
   } catch (error) {
-    console.error('Error validating conversation ID:', error);
+    log.error('Error validating conversation ID:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Conversation ID validation failed',
@@ -303,7 +306,7 @@ export async function validateSystemSettingsUpdate(c: Context<{ Bindings: Bindin
 
     return await next();
   } catch (error) {
-    console.error('Error validating system settings update:', error);
+    log.error('Error validating system settings update:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Settings validation failed',
@@ -340,7 +343,7 @@ export async function validatePlatformParameter(c: Context<{ Bindings: Bindings 
 
     return await next();
   } catch (error) {
-    console.error('Error validating platform parameter:', error);
+    log.error('Error validating platform parameter:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Platform parameter validation failed',
@@ -402,7 +405,7 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
 
     return await next();
   } catch (error) {
-    console.error('Error in rate limit validation:', error);
+    log.error('Error in rate limit validation:', {}, error instanceof Error ? error : new Error(String(error)));
     // 不影響主要流程，繼續執行
     return await next();
   }
@@ -433,7 +436,7 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
 
     return await next();
   } catch (error) {
-    console.error('Error validating request size:', error);
+    log.error('Error validating request size:', {}, error instanceof Error ? error : new Error(String(error)));
     return c.json({
       success: false,
       error: 'Request size validation failed',

@@ -27,6 +27,9 @@ import {
 } from '../types/message-types';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MessageCrud');
 
 export class MessageCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -54,7 +57,7 @@ export class MessageCrudService {
 
       return this.transformDbMessageToMessage(message);
     } catch (error) {
-      console.error('Error finding message by ID:', error);
+      log.error('Error finding message by ID:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -97,7 +100,7 @@ export class MessageCrudService {
         readReceipts: []
       } as MessageWithDetails;
     } catch (error) {
-      console.error('Error finding message with details:', error);
+      log.error('Error finding message with details:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -171,7 +174,7 @@ export class MessageCrudService {
 
       return { messages: messageItems, total };
     } catch (error) {
-      console.error('Error getting conversation messages:', error);
+      log.error('Error getting conversation messages:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -272,7 +275,7 @@ export class MessageCrudService {
         }
       };
     } catch (error) {
-      console.error('Error searching messages:', error);
+      log.error('Error searching messages:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -338,7 +341,7 @@ export class MessageCrudService {
 
       return this.transformDbMessageToMessage(newMessage);
     } catch (error) {
-      console.error('Error creating message:', error);
+      log.error('Error creating message:', {}, error instanceof Error ? error : new Error(String(error)));
       throw new InvalidMessageDataError('Failed to create message', { error });
     }
   }
@@ -389,7 +392,7 @@ export class MessageCrudService {
       if (error instanceof MessageNotFoundError) {
         throw error;
       }
-      console.error('Error updating message:', error);
+      log.error('Error updating message:', {}, error instanceof Error ? error : new Error(String(error)));
       throw new InvalidMessageDataError('Failed to update message', { error });
     }
   }
@@ -432,7 +435,7 @@ export class MessageCrudService {
       if (error instanceof MessageNotFoundError) {
         throw error;
       }
-      console.error('Error marking message as recalled:', error);
+      log.error('Error marking message as recalled:', {}, error instanceof Error ? error : new Error(String(error)));
       throw new InvalidMessageDataError('Failed to recall message', { error });
     }
   }
@@ -485,7 +488,7 @@ export class MessageCrudService {
 
       return { canRecall: true };
     } catch (error) {
-      console.error('Error checking recall eligibility:', error);
+      log.error('Error checking recall eligibility:', {}, error instanceof Error ? error : new Error(String(error)));
       return { canRecall: false, reason: 'Error checking recall eligibility' };
     }
   }

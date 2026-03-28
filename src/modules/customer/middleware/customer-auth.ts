@@ -17,6 +17,9 @@ import {
   CustomerAccessScope
 } from '../types/customer-types';
 import type { Bindings, JWTPayload } from '@/types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('CustomerAuth');
 
 // ======================== 權限檢查中間件 ========================
 
@@ -43,7 +46,7 @@ export const checkCustomerAccess = async (c: Context<{ Bindings: Bindings }>, ne
 
     await next();
   } catch (error) {
-    console.error('Error in customer access check:', error);
+    log.error('Error in customer access check:', {}, error instanceof Error ? error : new Error(String(error)));
     return forbiddenResponse(c, 'Access denied');
   }
 };
@@ -93,7 +96,7 @@ export const checkSpecificCustomerAccess = async (c: Context<{ Bindings: Binding
 
     await next();
   } catch (error) {
-    console.error('Error in specific customer access check:', error);
+    log.error('Error in specific customer access check:', {}, error instanceof Error ? error : new Error(String(error)));
     return forbiddenResponse(c, 'Access denied');
   }
 };
@@ -111,7 +114,7 @@ export const checkCustomerEditPermission = async (c: Context<{ Bindings: Binding
 
     await next();
   } catch (error) {
-    console.error('Error in customer edit permission check:', error);
+    log.error('Error in customer edit permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return forbiddenResponse(c, 'Access denied');
   }
 };
@@ -129,7 +132,7 @@ export const checkCustomerDeletePermission = async (c: Context<{ Bindings: Bindi
 
     await next();
   } catch (error) {
-    console.error('Error in customer delete permission check:', error);
+    log.error('Error in customer delete permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return forbiddenResponse(c, 'Access denied');
   }
 };
@@ -147,7 +150,7 @@ export const checkTagManagementPermission = async (c: Context<{ Bindings: Bindin
 
     await next();
   } catch (error) {
-    console.error('Error in tag management permission check:', error);
+    log.error('Error in tag management permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return forbiddenResponse(c, 'Access denied');
   }
 };
@@ -165,7 +168,7 @@ export const checkStatsViewPermission = async (c: Context<{ Bindings: Bindings }
 
     await next();
   } catch (error) {
-    console.error('Error in stats view permission check:', error);
+    log.error('Error in stats view permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return forbiddenResponse(c, 'Access denied');
   }
 };
@@ -183,7 +186,7 @@ export const checkExportPermission = async (c: Context<{ Bindings: Bindings }>, 
 
     await next();
   } catch (error) {
-    console.error('Error in export permission check:', error);
+    log.error('Error in export permission check:', {}, error instanceof Error ? error : new Error(String(error)));
     return forbiddenResponse(c, 'Access denied');
   }
 };
@@ -215,7 +218,7 @@ export const applyTeamScopeFilter = async (c: Context<{ Bindings: Bindings }>, n
 
     await next();
   } catch (error) {
-    console.error('Error applying team scope filter:', error);
+    log.error('Error applying team scope filter:', {}, error instanceof Error ? error : new Error(String(error)));
     await next(); // 繼續處理，讓後續邏輯處理錯誤
   }
 };

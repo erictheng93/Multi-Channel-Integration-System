@@ -11,6 +11,9 @@ import {
   ChannelConfig
 } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('PushAdapter');
 
 export class PushAdapter implements ChannelAdapter {
   readonly type: ChannelType = 'push';
@@ -85,7 +88,7 @@ export class PushAdapter implements ChannelAdapter {
           }
           results.push(result);
         } catch (error) {
-          console.error(`Failed to send push to subscription:`, error);
+          log.error(`Failed to send push to subscription:`, {}, error instanceof Error ? error : new Error(String(error)));
           failedCount++;
           results.push({
             success: false,
@@ -270,7 +273,7 @@ export class PushAdapter implements ChannelAdapter {
     }
 
     userSubscriptions.push(subscription);
-    console.log(`Push subscription added for user ${userId}`);
+    log.info(`Push subscription added for user ${userId}`);
   }
 
   removeSubscription(userId: number, endpoint: string): void {
@@ -280,7 +283,7 @@ export class PushAdapter implements ChannelAdapter {
     const index = userSubscriptions.findIndex(sub => sub.endpoint === endpoint);
     if (index !== -1) {
       userSubscriptions.splice(index, 1);
-      console.log(`Push subscription removed for user ${userId}`);
+      log.info(`Push subscription removed for user ${userId}`);
 
       if (userSubscriptions.length === 0) {
         this.subscriptions.delete(userId);
@@ -308,7 +311,7 @@ export class PushAdapter implements ChannelAdapter {
   cleanupExpiredSubscriptions(): void {
     // 在實際實作中，會驗證訂閱是否仍然有效
     // 這裡提供一個基本的框架
-    console.log('Cleaning up expired push subscriptions...');
+    log.info('Cleaning up expired push subscriptions...');
   }
 
   private hasValidCredentials(): boolean {
@@ -358,12 +361,12 @@ export class PushAdapter implements ChannelAdapter {
       throw new Error('Valid push service credentials are required to enable push adapter');
     }
     this.enabled = true;
-    console.log('Push adapter enabled');
+    log.info('Push adapter enabled');
   }
 
   disable(): void {
     this.enabled = false;
-    console.log('Push adapter disabled');
+    log.info('Push adapter disabled');
   }
 
   // 獲取適配器統計
