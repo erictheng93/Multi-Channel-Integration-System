@@ -2,7 +2,7 @@
 // 提供當前期間與歷史期間的數據對比分析
 
 import type { Database } from '@/db/drizzle-factory';
-import { and, gte, lte, count, sql, isNotNull, eq, countDistinct } from 'drizzle-orm';
+import { and, gte, lte, count, sql } from 'drizzle-orm';
 import { conversations, messages, activities, conversationSessions, agents } from '@/db/schema';
 import type { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import { nowISO } from '@/utils/timestamp'
@@ -151,6 +151,33 @@ export class PeriodComparisonService {
 
     // 獲取上一期間的值
     const previousValue = await this.getMetricValue(metric, previousPeriod, filters);
+
+    // Handle null metrics (features not yet implemented)
+    if (currentValue === null || previousValue === null) {
+      const comparison: ComparisonData = {
+        current: currentValue as any,
+        previous: previousValue as any,
+        change: 0,
+        changePercentage: 0,
+        trend: 'stable',
+        period: { current: currentPeriod, previous: previousPeriod }
+      };
+
+      if (this.cacheService) {
+        const cacheKey = this.cacheService.generateCacheKey(
+          `comparison:${metric}`,
+          { currentPeriod, previousPeriod, ...filters },
+          { includeUserId: !!filters?.userId, includeTeamId: !!filters?.teamId }
+        );
+        const ttl = this.getDurationBasedTTL(currentPeriod);
+        await this.cacheService.set(
+          cacheKey,
+          { data: comparison, metadata: { processedAt: nowISO(), cacheHit: false } } as any,
+          ttl
+        );
+      }
+      return comparison;
+    }
 
     // 計算變化
     const comparison = this.buildComparisonData(currentValue, previousValue, currentPeriod, previousPeriod);
@@ -321,7 +348,7 @@ export class PeriodComparisonService {
     metric: string,
     period: Period,
     filters?: PeriodComparisonQuery['filters']
-  ): Promise<number> {
+  ): Promise<number | null> {
     try {
       switch (metric) {
         // ========== 對話相關指標 ==========
@@ -421,30 +448,27 @@ export class PeriodComparisonService {
   }
 
   private async getAverageResolutionTime(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    try {
-      const conditions = [
-        ...this.buildWhereConditions('conversations', period, filters),
-        eq(conversations.status, 'closed'),
-        isNotNull(conversations.closedAt),
-      ];
+    const conditions = [
+      ...this.buildWhereConditions('conversations', period, filters),
+      sql`${conversations.closedAt} IS NOT NULL`,
+      sql`${conversations.deletedAt} IS NULL`
+    ];
 
-      const result = await this.db
-        .select({
-          avgMinutes: sql<number>`AVG((julianday(${conversations.closedAt}) - julianday(${conversations.createdAt})) * 24 * 60)`,
-        })
-        .from(conversations)
-        .where(and(...conditions));
+    const result = await this.db
+      .select({
+        avgMinutes: sql<number>`AVG((julianday(${conversations.closedAt}) - julianday(${conversations.createdAt})) * 24 * 60)`
+      })
+      .from(conversations)
+      .where(and(...conditions))
+      .get();
 
-      return Math.round((result[0]?.avgMinutes || 0) * 100) / 100;
-    } catch {
-      return 0;
-    }
+    return Math.round((result?.avgMinutes || 0) * 100) / 100;
   }
 
-  private async getCustomerSatisfactionScore(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    // TODO: No satisfaction/rating table exists in the schema yet.
-    // When a ratings or feedback table is added, implement AVG(score) query here.
-    return 0;
+  private async getCustomerSatisfactionScore(_period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number | null> {
+    // No rating/feedback table exists in the schema.
+    // Return null to signal "not available" rather than a misleading 0.
+    return null;
   }
 
   // ============ 消息指標實作 ============
@@ -489,23 +513,21 @@ export class PeriodComparisonService {
   }
 
   private async getAverageResponseTime(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    try {
-      const conditions = [
-        ...this.buildWhereConditions('conversations', period, filters),
-        isNotNull(conversations.firstResponseAt),
-      ];
+    const conditions = [
+      ...this.buildWhereConditions('conversations', period, filters),
+      sql`${conversations.firstResponseAt} IS NOT NULL`,
+      sql`${conversations.deletedAt} IS NULL`
+    ];
 
-      const result = await this.db
-        .select({
-          avgMinutes: sql<number>`AVG((julianday(${conversations.firstResponseAt}) - julianday(${conversations.createdAt})) * 24 * 60)`,
-        })
-        .from(conversations)
-        .where(and(...conditions));
+    const result = await this.db
+      .select({
+        avgMinutes: sql<number>`AVG((julianday(${conversations.firstResponseAt}) - julianday(${conversations.createdAt})) * 24 * 60)`
+      })
+      .from(conversations)
+      .where(and(...conditions))
+      .get();
 
-      return Math.round((result[0]?.avgMinutes || 0) * 100) / 100;
-    } catch {
-      return 0;
-    }
+    return Math.round((result?.avgMinutes || 0) * 100) / 100;
   }
 
   private async getMessagesPerConversation(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
@@ -541,52 +563,46 @@ export class PeriodComparisonService {
     return result[0]?.count || 0;
   }
 
-  private async getAverageSessionDuration(period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    try {
-      const conditions = [
-        gte(conversationSessions.startTime, period.start),
-        lte(conversationSessions.startTime, period.end),
-        isNotNull(conversationSessions.endTime),
-      ];
+  private async getAverageSessionDuration(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+    const conditions = [
+      ...this.buildWhereConditions('sessions', period, filters),
+      sql`${conversationSessions.endTime} IS NOT NULL`
+    ];
 
-      const result = await this.db
-        .select({
-          avgMinutes: sql<number>`AVG((julianday(${conversationSessions.endTime}) - julianday(${conversationSessions.startTime})) * 24 * 60)`,
-        })
-        .from(conversationSessions)
-        .where(and(...conditions));
+    const result = await this.db
+      .select({
+        avgMinutes: sql<number>`AVG((julianday(${conversationSessions.endTime}) - julianday(${conversationSessions.startTime})) * 24 * 60)`
+      })
+      .from(conversationSessions)
+      .where(and(...conditions))
+      .get();
 
-      return Math.round((result[0]?.avgMinutes || 0) * 100) / 100;
-    } catch {
-      return 0;
-    }
+    return Math.round((result?.avgMinutes || 0) * 100) / 100;
   }
 
-  private async getUserEngagementRate(period: Period, _filters?: PeriodComparisonQuery['filters']): Promise<number> {
-    try {
-      const activeAgentsResult = await this.db
-        .select({
-          activeCount: countDistinct(messages.agentSenderId),
-        })
-        .from(messages)
-        .where(and(
-          gte(messages.createdAt, period.start),
-          lte(messages.createdAt, period.end),
-          isNotNull(messages.agentSenderId),
-        ));
+  private async getUserEngagementRate(period: Period, filters?: PeriodComparisonQuery['filters']): Promise<number> {
+    const activeConditions = this.buildWhereConditions('activities', period, filters);
+    const activeResult = await this.db
+      .select({ uniqueUsers: sql<number>`COUNT(DISTINCT ${activities.userId})` })
+      .from(activities)
+      .where(and(...activeConditions))
+      .get();
 
-      const totalAgentsResult = await this.db
-        .select({ total: count() })
-        .from(agents)
-        .where(eq(agents.isActive, true));
+    const totalResult = await this.db
+      .select({ count: count() })
+      .from(agents)
+      .where(and(
+        sql`${agents.isActive} = 1`,
+        sql`${agents.deletedAt} IS NULL`
+      ))
+      .get();
 
-      const activeCount = activeAgentsResult[0]?.activeCount || 0;
-      const totalCount = totalAgentsResult[0]?.total || 0;
+    const activeUsers = activeResult?.uniqueUsers || 0;
+    const totalAgents = totalResult?.count || 0;
 
-      return totalCount > 0 ? Math.round((activeCount / totalCount) * 10000) / 100 : 0;
-    } catch {
-      return 0;
-    }
+    return totalAgents > 0
+      ? Math.round((activeUsers / totalAgents) * 10000) / 100
+      : 0;
   }
 
   // ============ 輔助方法 ============
@@ -595,7 +611,7 @@ export class PeriodComparisonService {
    * 構建 WHERE 條件
    */
   private buildWhereConditions(
-    table: 'conversations' | 'messages' | 'activities',
+    table: 'conversations' | 'messages' | 'activities' | 'sessions',
     period: Period,
     filters?: PeriodComparisonQuery['filters']
   ): any[] {
@@ -604,6 +620,7 @@ export class PeriodComparisonService {
     // 時間範圍條件
     const timeField = table === 'conversations' ? conversations.createdAt :
                       table === 'messages' ? messages.createdAt :
+                      table === 'sessions' ? conversationSessions.createdAt :
                       activities.createdAt;
 
     conditions.push(gte(timeField, period.start));
