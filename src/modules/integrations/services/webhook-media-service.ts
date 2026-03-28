@@ -23,7 +23,7 @@ export async function processLineMedia(
 ): Promise<any[]> {
   let fileAttachmentData: any[] = [];
 
-  console.log(`[LINE Webhook] Processing media BEFORE broadcast for ${lineMessageType} message...`);
+  log.info('Processing media before broadcast', { lineMessageType });
   try {
     const { processLineMediaMessage } = await import('@/utils/file-storage');
 
@@ -70,7 +70,7 @@ export async function processLineMedia(
       // Keep for broadcast
       fileAttachmentData = [newFileAttachment];
 
-      console.log(`[LINE Webhook] Media processed and stored BEFORE broadcast: ${mediaFile.filename}`);
+      log.info('Media processed and stored before broadcast', { filename: mediaFile.filename });
     }
   } catch (storageError) {
     log.error('LINE Webhook: Error processing media before broadcast', { error: storageError instanceof Error ? storageError.message : String(storageError) });
