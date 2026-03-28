@@ -2,7 +2,7 @@
 // 訊息服務層
 
 import { createDbClient, type Database } from '@/db/drizzle-factory';
-import { eq, desc, and, inArray } from 'drizzle-orm';
+import { eq, desc, and, inArray, gte } from 'drizzle-orm';
 import { messages, conversations, customers, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type {
@@ -720,7 +720,7 @@ export class MessageService implements MessageServiceInterface {
   /**
    * Get messages after a specific timestamp for streaming
    */
-  async getMessagesAfterTimestamp(conversationId: string, _afterTimestamp: string): Promise<Message[]> {
+  async getMessagesAfterTimestamp(conversationId: string, afterTimestamp: string): Promise<Message[]> {
     try {
       return await this.db
         .select()
@@ -728,7 +728,8 @@ export class MessageService implements MessageServiceInterface {
         .where(
           and(
             eq(messages.conversationId, conversationId),
-            eq(messages.isRecalled, false)
+            eq(messages.isRecalled, false),
+            gte(messages.createdAt, afterTimestamp)
           )
         )
         .orderBy(messages.createdAt);

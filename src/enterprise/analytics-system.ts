@@ -1,7 +1,7 @@
 // Analytics sub-module: system performance metrics
 import { createDbClient } from '../db/drizzle-factory';
 import { sql, eq, and, gte, lte, count, avg } from 'drizzle-orm';
-import { metrics } from '../db/schema';
+import { metrics, channelIntegrations } from '../db/schema';
 
 // Get API performance metrics
 export async function getApiMetrics(db: D1Database, period: { start: number; end: number }) {
@@ -81,17 +81,75 @@ export async function getDatabaseMetrics(db: D1Database, period: { start: number
 }
 
 // Get integration metrics (LINE, Facebook)
-export async function getIntegrationMetrics(_db: D1Database, _period: { start: number; end: number }) {
-  return {
-    line: {
-      webhookLatency: 0,
-      apiCallSuccess: 0,
-      apiCallFailure: 0
-    },
-    facebook: {
-      webhookLatency: 0,
-      apiCallSuccess: 0,
-      apiCallFailure: 0
+export async function getIntegrationMetrics(db: D1Database, period: { start: number; end: number }) {
+  const drizzle = createDbClient(db);
+
+  // Query per-platform integration counts and aggregate stats from channelIntegrations
+  const integrationRows = await drizzle
+    .select({
+      platform: channelIntegrations.platform,
+      stats: channelIntegrations.stats,
+      isActive: channelIntegrations.isActive,
+    })
+    .from(channelIntegrations)
+    .where(eq(channelIntegrations.isActive, true));
+
+  // Also query webhook-related metrics from the metrics table for the period
+  const webhookMetrics = await drizzle
+    .select({
+      platform: sql<string>`JSON_EXTRACT(${metrics.tags}, '$.platform')`.as('platform'),
+      totalRequests: count().as('total_requests'),
+      avgLatency: avg(metrics.metricValue).as('avg_latency'),
+      errorCount: sql<number>`COUNT(CASE WHEN JSON_EXTRACT(${metrics.tags}, '$.status') >= '400' THEN 1 END)`.as('error_count'),
+    })
+    .from(metrics)
+    .where(
+      and(
+        eq(metrics.metricName, 'webhook_request_duration'),
+        gte(metrics.timestamp, period.start),
+        lte(metrics.timestamp, period.end)
+      )
+    )
+    .groupBy(sql`JSON_EXTRACT(${metrics.tags}, '$.platform')`);
+
+  const webhookByPlatform = new Map(webhookMetrics.map(row => [row.platform, row]));
+
+  // Aggregate stats from channelIntegrations JSON stats column per platform
+  const platformStats: Record<string, { totalSent: number; totalReceived: number; integrationCount: number }> = {};
+  for (const row of integrationRows) {
+    const platform = row.platform;
+    if (!platformStats[platform]) {
+      platformStats[platform] = { totalSent: 0, totalReceived: 0, integrationCount: 0 };
     }
+    platformStats[platform].integrationCount++;
+    if (row.stats) {
+      try {
+        const parsed = JSON.parse(row.stats) as { totalSent?: number; totalReceived?: number };
+        platformStats[platform].totalSent += parsed.totalSent || 0;
+        platformStats[platform].totalReceived += parsed.totalReceived || 0;
+      } catch {
+        // Skip malformed JSON
+      }
+    }
+  }
+
+  function buildPlatformMetrics(platform: string) {
+    const webhook = webhookByPlatform.get(platform);
+    const stats = platformStats[platform];
+    const totalRequests = Number(webhook?.totalRequests) || 0;
+    const errorCount = Number(webhook?.errorCount) || 0;
+    return {
+      webhookLatency: Number(webhook?.avgLatency) || 0,
+      apiCallSuccess: totalRequests - errorCount,
+      apiCallFailure: errorCount,
+      integrationCount: stats?.integrationCount || 0,
+      totalSent: stats?.totalSent || 0,
+      totalReceived: stats?.totalReceived || 0,
+    };
+  }
+
+  return {
+    line: buildPlatformMetrics('line'),
+    facebook: buildPlatformMetrics('facebook'),
   };
 }

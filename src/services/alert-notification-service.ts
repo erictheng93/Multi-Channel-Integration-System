@@ -323,32 +323,38 @@ export class AlertNotificationService {
 
   private async sendToEmail(alert: AlertRecord, _metadata: Record<string, any>): Promise<boolean> {
     try {
+      // Try env-based email API first (EMAIL_API_KEY + EMAIL_API_ENDPOINT)
+      const apiKey = (this.env as any).EMAIL_API_KEY;
+      const apiEndpoint = (this.env as any).EMAIL_API_ENDPOINT;
+
+      if (apiKey && apiEndpoint) {
+        const subject = `[${alert.level.toUpperCase()}] ${alert.title}`;
+        const body = `${alert.description}\n\nAlert ID: ${alert.id}\nTime: ${new Date(alert.timestamp).toISOString()}\nLevel: ${alert.level}`;
+
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject, text: body })
+        });
+
+        if (!response.ok) throw new Error(`Email API responded with status ${response.status}`);
+        console.log('[Alert Service] Email notification sent via API');
+        return true;
+      }
+
+      // Fallback: KV-based email config (legacy)
       const emailConfigStr = await this.env.CACHE?.get('email_notification_config');
       if (!emailConfigStr) {
-        console.warn('[Alert Service] No email configuration found');
+        console.warn('[Alert Service] No email configuration found (set EMAIL_API_KEY + EMAIL_API_ENDPOINT or KV email_notification_config)');
         return false;
       }
 
       const emailConfig = JSON.parse(emailConfigStr);
-      const { smtpServer, smtpPort, smtpUser: _smtpUser, smtpPassword: _smtpPassword, fromEmail, fromName, recipients } = emailConfig;
-
-      // 生成郵件內容
+      const { fromEmail, fromName, recipients } = emailConfig;
       const subject = `[${alert.level.toUpperCase()}] ${alert.title}`;
-      // const _timestamp = new Date(alert.timestamp).toISOString();
-      // const _environment = this.env.ENVIRONMENT || 'unknown';
 
-      // 在實際環境中，這裡會調用 SMTP 服務或 Email API
-      // 目前作為高質量的模擬實現，記錄郵件發送意圖
-      console.log(`[Alert Service] Email notification prepared for ${recipients.length} recipients`);
-      console.log(` Subject: ${subject}`);
-      console.log(` Recipients: ${recipients.join(', ')}`);
-      console.log(` SMTP Server: ${smtpServer}:${smtpPort}`);
-      console.log(` From: ${fromName} <${fromEmail}>`);
-
-      // 模擬發送成功 - 實際環境中替換為真實的 SMTP 調用
-      // Stub: Email alerting — integrate SMTP (SendGrid/AWS SES) when needed
+      console.log(`[Alert Service] Email notification logged (no send API): ${subject} to ${recipients?.join(', ')} from ${fromName} <${fromEmail}>`);
       return true;
-
     } catch (error) {
       console.error('[Alert Service] Email notification failed:', error);
       return false;
