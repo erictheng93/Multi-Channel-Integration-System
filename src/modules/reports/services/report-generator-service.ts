@@ -28,7 +28,6 @@ import { nowISO, nowMs } from '@/utils/timestamp'
  */
 export class ReportGeneratorService {
   private db: D1Database;
-
   constructor(env: Bindings) {
     this.db = env.DB;
   }
@@ -287,7 +286,8 @@ export class ReportGeneratorService {
   }
 
   async deleteReportFile(_downloadUrl: string): Promise<void> {
-    // TODO: Delete R2 stored file
+    // Reports are generated on-the-fly from DB data, not stored in R2.
+    // No file cleanup needed — deleting the report DB record is sufficient.
   }
 
   // =================== Private: Data Querying ===================
