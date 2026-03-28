@@ -10,6 +10,9 @@
 
 import type { D1Database } from '@cloudflare/workers-types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('MessageNormalization');
 
 // ===== Type Definitions =====
 
@@ -173,7 +176,7 @@ export class MessageNormalizationService {
       // Step 5: Check for duplicates (idempotency)
       const isDuplicate = await this.checkDuplicate(db, normalizedMessage.platformMessageId);
       if (isDuplicate) {
-        console.log(`[MessageNormalization] Duplicate message detected: ${normalizedMessage.platformMessageId}`);
+        log.debug(`Duplicate message detected`, { platformMessageId: normalizedMessage.platformMessageId });
         return {
           success: true,
           normalizedMessage,
@@ -195,7 +198,7 @@ export class MessageNormalizationService {
         customerId: customer.id,
       };
     } catch (error) {
-      console.error(`[MessageNormalization] Error processing ${platform} message:`, error);
+      log.error(`Error processing ${platform} message`, {}, error instanceof Error ? error : new Error(String(error)));
       return { success: false, error: (error as Error).message };
     }
   }
@@ -224,7 +227,7 @@ export class MessageNormalizationService {
       case 'whatsapp':
         return this.extractWhatsAppData(rawEvent);
       default:
-        console.error(`[MessageNormalization] Unsupported platform: ${platform}`);
+        log.error(`Unsupported platform: ${platform}`);
         return null;
     }
   }
@@ -426,7 +429,7 @@ export class MessageNormalizationService {
         displayName,
       };
     } catch (error) {
-      console.error('[MessageNormalization] Error in findOrCreateCustomer:', error);
+      log.error('Error in findOrCreateCustomer', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -462,7 +465,7 @@ export class MessageNormalizationService {
 
       return { id: conversationId };
     } catch (error) {
-      console.error('[MessageNormalization] Error in findOrCreateConversation:', error);
+      log.error('Error in findOrCreateConversation', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }

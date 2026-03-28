@@ -4,6 +4,9 @@ import { channelIntegrations } from '@/db/schema';
 import type { Bindings } from '@/types';
 import type { ChannelPlatform, ChannelIntegration, WebhookUrlOptions } from '../types/channel-types';
 import { parseChannelWebhookConfig } from '../types/channel-types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('ChannelWebhook');
 
 export class ChannelWebhookService {
   constructor(private db: DrizzleD1Database, private bindings: Bindings) {}
@@ -24,10 +27,13 @@ export class ChannelWebhookService {
       if (!channel) return null;
       const webhookCfg = parseChannelWebhookConfig(channel.webhookConfig);
       const tokenField = webhookCfg.token || null;
-      if (tokenField !== token) { console.warn(`[ChannelService] Webhook token mismatch for team ${teamId}`); return null; }
+      if (tokenField !== token) {
+        log.warn(`Webhook token mismatch for team ${teamId}`);
+        return null;
+      }
       return channel;
     } catch (error) {
-      console.error('[ChannelService] Error getting channel by webhook token:', error);
+      log.error('Error getting channel by webhook token', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }

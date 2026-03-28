@@ -2,6 +2,10 @@
 // 提供客戶數據統計和分析功能
 
 import { drizzle } from 'drizzle-orm/d1';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('CustomerStats')
+
 import { eq, and, desc, sql, count, gte } from 'drizzle-orm';
 import {
   customers,
@@ -75,7 +79,7 @@ export class CustomerStatsService {
 
       return stats;
     } catch (error) {
-      console.error('Error getting customer stats:', error);
+      log.error('Error getting customer stats', {}, error as Error);
       throw error;
     }
   }
@@ -99,7 +103,7 @@ export class CustomerStatsService {
 
       return distribution;
     } catch (error) {
-      console.error('Error getting platform distribution:', error);
+      log.error('Error getting platform distribution', {}, error as Error);
       throw error;
     }
   }
@@ -121,7 +125,7 @@ export class CustomerStatsService {
 
       return distribution;
     } catch (error) {
-      console.error('Error getting team distribution:', error);
+      log.error('Error getting team distribution', {}, error as Error);
       throw error;
     }
   }
@@ -209,7 +213,7 @@ export class CustomerStatsService {
         topActiveCustomers
       };
     } catch (error) {
-      console.error('Error getting activity stats:', error);
+      log.error('Error getting activity stats', {}, error as Error);
       throw error;
     }
   }
@@ -259,7 +263,7 @@ export class CustomerStatsService {
         averageMonthlyGrowth: Math.round(averageMonthlyGrowth * 100) / 100
       };
     } catch (error) {
-      console.error('Error getting growth stats:', error);
+      log.error('Error getting growth stats', {}, error as Error);
       throw error;
     }
   }

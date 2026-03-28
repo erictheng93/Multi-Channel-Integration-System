@@ -9,6 +9,10 @@
  */
 
 import type { Context } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('PresignedHandler')
+
 import type { Bindings } from '@/types';
 import { createPresignedUrlService } from '../services/presigned-url-service';
 import {
@@ -165,7 +169,7 @@ export class PresignedHandler {
       }, 'Presigned URL generated successfully');
 
     } catch (error) {
-      console.error('[PresignedHandler] generatePresignedUrl error:', error);
+      log.error('generatePresignedUrl error', {}, error as Error);
       return errorResponse(
         c,
         error instanceof Error ? error.message : 'Failed to generate presigned URL',
@@ -230,7 +234,7 @@ export class PresignedHandler {
       }, 'Upload confirmed successfully');
 
     } catch (error) {
-      console.error('[PresignedHandler] confirmUpload error:', error);
+      log.error('confirmUpload error', {}, error as Error);
 
       // 特殊處理 "not found" 錯誤
       if (error instanceof Error && error.message.includes('not found')) {
@@ -266,7 +270,7 @@ export class PresignedHandler {
       }, isConfigured ? 'Service is ready' : 'Service not configured');
 
     } catch (error) {
-      console.error('[PresignedHandler] checkStatus error:', error);
+      log.error('checkStatus error', {}, error as Error);
       return errorResponse(
         c,
         error instanceof Error ? error.message : 'Failed to check status',
@@ -308,7 +312,7 @@ export class PresignedHandler {
       }, 'File status retrieved');
 
     } catch (error) {
-      console.error('[PresignedHandler] getFileStatus error:', error);
+      log.error('getFileStatus error', {}, error as Error);
       return errorResponse(
         c,
         error instanceof Error ? error.message : 'Failed to get file status',

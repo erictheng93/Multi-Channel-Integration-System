@@ -257,22 +257,25 @@ export const MODULE_INFO = {
 } as const;
 
 // ======================== 初始化函數 ========================
+import { createContextLogger } from '@/utils/logger';
+const log = createContextLogger('ReportsModule');
+
 export function initializeReportsModule(config: Partial<ReportsModuleConfig> = {}) {
   const finalConfig = { ...DEFAULT_REPORTS_MODULE_CONFIG, ...config };
 
   // 驗證配置
   if (finalConfig.service.maxReportSize < 1024 * 1024) { // min 1MB
-    console.warn(' Reports module: maxReportSize too small, setting to 1MB');
+    log.warn('maxReportSize too small, setting to 1MB');
     finalConfig.service.maxReportSize = 1024 * 1024;
   }
 
   if (finalConfig.service.maxConcurrentGenerations < 1) {
-    console.warn(' Reports module: maxConcurrentGenerations must be at least 1');
+    log.warn('maxConcurrentGenerations must be at least 1');
     finalConfig.service.maxConcurrentGenerations = 1;
   }
 
   if (finalConfig.handler.validation.maxRecipientsCount < 1) {
-    console.warn(' Reports module: maxRecipientsCount must be at least 1');
+    log.warn('maxRecipientsCount must be at least 1');
     finalConfig.handler.validation.maxRecipientsCount = 1;
   }
 

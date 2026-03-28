@@ -20,7 +20,7 @@ const log = createContextLogger('Webhook');
 
 // Safe logging function
 function logSecurely(platform: string, userId: string, messageLength: number) {
-  console.log(`Processed ${platform} message from user [${userId.slice(0, 8)}...]: [${messageLength} chars]`);
+  log.info(`Processed ${platform} message`, { userIdPrefix: userId.slice(0, 8), messageLength });
 }
 
 // Process LINE message events
@@ -28,7 +28,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
   const userId = event.source.userId;
   const message = event.message;
 
-  console.log('[LINE Message] Processing message from user:', userId.substring(0, 10) + '...');
+  log.info('Processing message from user', { userIdPrefix: userId.substring(0, 10) });
 
   if (!message) {
     log.warn('LINE Message: No message in LINE event');
@@ -42,20 +42,20 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     let correctedMessageType = message.type;
 
     if (message.fileName && message.type !== 'file') {
-      console.warn(`[LINE Webhook] Message type mismatch detected!`, {
+      log.warn('Message type mismatch detected — auto-correcting', {
         originalType: message.type,
+        correctedType: 'file',
         fileName: message.fileName,
         fileSize: message.fileSize,
         messageId: message.id,
-        userId: userId.substring(0, 10) + '...'
+        userIdPrefix: userId.substring(0, 10)
       });
-      console.warn(`[LINE Webhook] Auto-correcting message type from "${message.type}" to "file"`);
       correctedMessageType = 'file';
     }
 
     // Diagnostic log: record details of all file-related messages
     if (message.fileName || message.type === 'file' || correctedMessageType === 'file') {
-      console.log('[LINE Webhook] File message details:', {
+      log.debug('File message details', {
         messageId: message.id,
         originalType: message.type,
         correctedType: correctedMessageType,
@@ -220,9 +220,9 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
       return;
     }
 
-    console.log('[LINE Webhook] User found/created successfully:', {
+    log.debug('User found/created successfully', {
       userId: user.id,
-      platformUserId: user.platformUserId?.substring(0, 10) + '...',
+      platformUserIdPrefix: user.platformUserId?.substring(0, 10),
       displayName: user.displayName
     });
 
@@ -258,7 +258,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
         .get();
       if (assignment) {
         assignedTeamId = assignment.teamId;
-        console.log(`[LINE Message] Found team assignment from QR code: teamId=${assignedTeamId}`);
+        log.debug('Found team assignment from QR code', { assignedTeamId });
       }
     } catch (assignmentError) {
       log.warn('LINE Message: Failed to query customer_team_assignments', {
@@ -294,7 +294,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     // =================== SYNC: Auto-reply (replyToken expires ~30s) ===================
     if (conversation) {
       try {
-        console.log('[LINE Webhook] Auto-reply evaluating', { teamId: conversation.assignedTeamId ?? null, conversationId: conversation.id });
+        log.debug('Auto-reply evaluating', { teamId: conversation.assignedTeamId ?? null, conversationId: conversation.id });
         const autoReplyResult = await autoReplyEvaluate(
           {
             message: { content: messageContent, messageType, platform: 'line' },
@@ -308,14 +308,14 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
         );
 
         if (autoReplyResult.matched) {
-          console.log('[LINE Webhook] Auto-reply triggered', {
+          log.info('Auto-reply triggered', {
             ruleId: autoReplyResult.ruleId,
             ruleName: autoReplyResult.ruleName,
             replyMethod: autoReplyResult.replyMethod,
             error: autoReplyResult.error || 'none',
           });
         } else {
-          console.log('[LINE Webhook] Auto-reply: no matching rule');
+          log.debug('Auto-reply: no matching rule');
         }
       } catch (autoReplyError) {
         log.warn('LINE Webhook: Auto-reply evaluation failed (non-critical)', {
@@ -349,7 +349,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
           source: 'webhook',
           teamId: convTeamId ?? undefined
         });
-        console.log('[LINE Webhook] Deferred broadcast completed', { conversationId: convId });
+        log.debug('Deferred broadcast completed', { conversationId: convId });
       } catch (err) {
         log.warn('LINE Webhook: Deferred broadcast failed', { error: err instanceof Error ? err.message : String(err) });
       }
@@ -372,7 +372,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
               data: { file_attachments: fileAttachmentData },
               priority: 'high'
             });
-            console.log('[LINE Webhook] Deferred media + message_updated completed', { messageId });
+            log.debug('Deferred media + message_updated completed', { messageId });
           }
         } catch (err) {
           log.warn('LINE Webhook: Deferred media processing failed', { error: err instanceof Error ? err.message : String(err) });

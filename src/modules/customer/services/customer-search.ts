@@ -2,6 +2,10 @@
 // 提供客戶的搜索、篩選、分頁等功能
 
 import { drizzle } from 'drizzle-orm/d1';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('CustomerSearch')
+
 import { eq, and, desc, like, sql, or } from 'drizzle-orm';
 import {
   customers,
@@ -135,7 +139,7 @@ export class CustomerSearchService {
         }
       };
     } catch (error) {
-      console.error('Error getting customer list:', error);
+      log.error('Error getting customer list', {}, error as Error);
       throw error;
     }
   }
@@ -216,7 +220,7 @@ export class CustomerSearchService {
         total: results.length
       };
     } catch (error) {
-      console.error('Error in quick search:', error);
+      log.error('Error in quick search', {}, error as Error);
       throw error;
     }
   }
@@ -362,7 +366,7 @@ export class CustomerSearchService {
 
       return suggestions;
     } catch (error) {
-      console.error('Error getting search suggestions:', error);
+      log.error('Error getting search suggestions', {}, error as Error);
       return [];
     }
   }

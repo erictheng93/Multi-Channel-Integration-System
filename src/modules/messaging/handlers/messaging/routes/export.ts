@@ -2,6 +2,10 @@
 // 訊息匯出功能端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgExport')
+
 import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, and, desc, gte, lte, count, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
@@ -41,7 +45,7 @@ exportRoutes.get('/export/customers', jwtAuth, async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get export customers error:', error);
+    log.error('Get export customers error', {}, error as Error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get customers',
@@ -75,7 +79,7 @@ exportRoutes.get('/export/agents', jwtAuth, async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Get export agents error:', error);
+    log.error('Get export agents error', {}, error as Error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get agents',
@@ -141,7 +145,7 @@ exportRoutes.get('/export/count', jwtAuth, async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Export count error:', error);
+    log.error('Export count error', {}, error as Error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get export count',
@@ -367,7 +371,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
     }
 
   } catch (error) {
-    console.error('Export messages error:', error);
+    log.error('Export messages error', {}, error as Error);
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to export messages',

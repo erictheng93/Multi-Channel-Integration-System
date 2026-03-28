@@ -33,7 +33,7 @@ export async function findOrCreateConversation(
   const drizzleDb = createDbClient(env.DB);
   const platformLabel = platform.toUpperCase();
 
-  console.log(`[${platformLabel} Webhook] Searching for existing conversation for customer:`, customerId);
+  log.debug(`Searching for existing conversation for customer`, { platform: platformLabel, customerId });
 
   // Fast path: check for existing conversation (no lock needed)
   let conversation = await drizzleDb
@@ -45,7 +45,7 @@ export async function findOrCreateConversation(
     ))
     .get();
 
-  console.log(`[${platformLabel} Webhook] Existing conversation found:`, conversation ? conversation.id : 'None');
+  log.debug(`Existing conversation found`, { platform: platformLabel, conversationId: conversation ? conversation.id : 'None' });
 
   if (!conversation) {
     // Slow path: creation needs distributed lock to prevent duplicates
@@ -88,11 +88,7 @@ export async function findOrCreateConversation(
         const timestamp = nowISO();
 
         if (platform === 'line') {
-          console.log(`[${platformLabel} Webhook] Creating new conversation...`, {
-            conversationId,
-            customerId,
-            timestamp
-          });
+          log.debug(`Creating new conversation`, { platform: platformLabel, conversationId, customerId, timestamp });
         }
 
         try {
@@ -113,11 +109,11 @@ export async function findOrCreateConversation(
             });
 
           if (platform === 'line') {
-            console.log(`[${platformLabel} Webhook] Conversation insert completed:`, { conversationId, insertResult });
+            log.debug(`Conversation insert completed`, { platform: platformLabel, conversationId, insertResult });
           }
 
           if (platform === 'line') {
-            console.log(`[${platformLabel} Webhook] Re-querying created conversation...`);
+            log.debug(`Re-querying created conversation`, { platform: platformLabel });
           }
           const newConversation = await drizzleDb
             .select()
@@ -150,7 +146,8 @@ export async function findOrCreateConversation(
           const created = convertConversation(newConversation) as any;
 
           if (platform === 'line') {
-            console.log(`[${platformLabel} Webhook] New conversation created and retrieved successfully:`, {
+            log.debug(`New conversation created and retrieved successfully`, {
+              platform: platformLabel,
               id: conversationId,
               customerId,
               status: created?.status
@@ -184,7 +181,7 @@ export async function findOrCreateConversation(
           messagePreview: opts?.messageContent || '',
           teamId: conversation.assignedTeamId || undefined
         });
-        console.log(`[${platformLabel} Webhook] New conversation notification triggered`);
+        log.debug(`New conversation notification triggered`, { platform: platformLabel });
       } catch (notificationError) {
         log.warn(`${platformLabel} Webhook: Failed to trigger new conversation notification`, {
           error: notificationError instanceof Error ? notificationError.message : String(notificationError)
@@ -197,7 +194,8 @@ export async function findOrCreateConversation(
     // 更新對話
     const timestamp = nowISO();
     if (platform === 'line') {
-      console.log(`[${platformLabel} Webhook] Updating existing conversation:`, {
+      log.debug(`Updating existing conversation`, {
+        platform: platformLabel,
         conversationId: conversation.id,
         customerId,
         timestamp
@@ -212,7 +210,8 @@ export async function findOrCreateConversation(
 
     if (!conversation.assignedTeamId && opts?.assignedTeamId) {
       updateFields.assignedTeamId = opts.assignedTeamId;
-      console.log(`[${platformLabel} Webhook] Backfilling team assignment on existing conversation:`, {
+      log.debug(`Backfilling team assignment on existing conversation`, {
+        platform: platformLabel,
         conversationId: conversation.id,
         assignedTeamId: opts.assignedTeamId
       });
@@ -229,7 +228,7 @@ export async function findOrCreateConversation(
     }
 
     if (platform === 'line') {
-      console.log(`[${platformLabel} Webhook] Existing conversation updated successfully`);
+      log.debug(`Existing conversation updated successfully`, { platform: platformLabel });
     }
   }
 
@@ -248,7 +247,7 @@ export async function isDuplicateMessage(
   const drizzleDb = createDbClient(env.DB);
   const platformLabel = platform.toUpperCase();
 
-  console.log(`[${platformLabel} Webhook] Checking for duplicate messages with platformMessageId:`, platformMessageId);
+  log.debug(`Checking for duplicate messages`, { platform: platformLabel, platformMessageId });
   const existingMessage = await drizzleDb
     .select()
     .from(messages)
@@ -256,11 +255,11 @@ export async function isDuplicateMessage(
     .get();
 
   if (existingMessage) {
-    console.log(`[${platformLabel} Webhook] Message already exists with platformMessageId: ${platformMessageId}, skipping duplicate processing`);
+    log.debug(`Message already exists, skipping duplicate processing`, { platform: platformLabel, platformMessageId });
     return true;
   }
 
-  console.log(`[${platformLabel} Webhook] No duplicate message found, proceeding with message creation`);
+  log.debug(`No duplicate message found, proceeding with message creation`, { platform: platformLabel });
   return false;
 }
 
@@ -285,7 +284,8 @@ export async function saveMessage(
   const timestamp = nowISO();
 
   if (platform === 'line') {
-    console.log(`[${platformLabel} Webhook] Creating message...`, {
+    log.debug(`Creating message`, {
+      platform: platformLabel,
       messageId,
       conversationId,
       customerId,
@@ -325,7 +325,8 @@ export async function saveMessage(
     }
 
     if (platform === 'line') {
-      console.log(`[${platformLabel} Webhook] Message created successfully:`, {
+      log.debug(`Message created successfully`, {
+        platform: platformLabel,
         messageId,
         conversationId,
         customerId,

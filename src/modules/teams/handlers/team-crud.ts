@@ -3,6 +3,10 @@
 // POST /transfer, GET /search/:query, GET /health, GET /info
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('TeamCrud')
+
 import { TeamService } from '@modules/teams/services/team-service';
 import { TeamQRService } from '@modules/teams/services/qr-service';
 import { TeamActivityService } from '@modules/teams/services/activity-service';
@@ -290,7 +294,7 @@ app.get('/', jwtAuth, async (c) => {
 
     const result = await teamService.listTeams(params);
 
-    console.log('Teams List Result:', {
+    log.info('Teams List Result:', {
       teamsCount: result.teams?.length || 0,
       teams: result.teams,
       pagination: result.pagination,
@@ -344,12 +348,12 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
         campaignName: `${team.name} - \u9810\u8A2D QR \u78BC`,
         description: `\u5718\u968A ${team.name} \u81EA\u52D5\u751F\u6210QR \u78BC`
       }).catch(err => {
-        console.error(`[Phase 3] QR generation failed for team ${team.id}:`, err);
+        log.error(`QR generation failed for team ${team.id}`, {}, err as Error);
         return null;
       }),
       // Task 3: Generate LIFF QR code
       generateTeamQRCode(team.id, team.name, c.env).catch(err => {
-        console.error(`[LIFF QR] Generation failed for team ${team.id}:`, err);
+        log.error(`LIFF QR generation failed for team ${team.id}`, {}, err as Error);
         return { success: false, error: err.message };
       })
     ]);

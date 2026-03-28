@@ -2,6 +2,10 @@
 // Main session request handlers with comprehensive CRUD operations
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('SessionMain')
+
 import type { Bindings } from '@/types';
 import { SessionService } from '@modules/session/services/session-service';
 import { TopicService } from '@modules/session/services/topic-service';
@@ -786,7 +790,7 @@ sessionHandler.get(
 
 // 全域錯誤處理
 sessionHandler.onError((err, c) => {
-  console.error('Session handler error:', err);
+  log.error('Session handler error', {}, err as Error);
   return c.json({
     success: false,
     error: 'Internal server error in session module',

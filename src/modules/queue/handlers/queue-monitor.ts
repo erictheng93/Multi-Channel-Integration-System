@@ -2,6 +2,10 @@
 // Provides LINE_MESSAGE_QUEUE monitoring interface
 
 import { Context } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('QueueMonitor')
+
 import type { Bindings } from '@/types';
 import { successResponse, handleApiError } from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -45,7 +49,7 @@ export const queueMonitorHandler = {
   // Get unified queue monitoring data
   getUnifiedStats: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      console.log('[Queue Monitor] Fetching unified queue statistics...');
+      log.info('Fetching unified queue statistics');
 
       const lineMessageQueueStats: QueueStats = {
         name: 'LINE Message Queue',
@@ -85,7 +89,7 @@ export const queueMonitorHandler = {
       return successResponse(c, unifiedData, 'Queue monitoring data retrieved');
 
     } catch (error) {
-      console.error('[Queue Monitor] Error fetching statistics:', error);
+      log.error('Error fetching statistics', {}, error as Error);
       return handleApiError(error, c);
     }
   },

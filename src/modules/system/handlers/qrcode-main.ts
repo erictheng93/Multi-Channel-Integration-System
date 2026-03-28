@@ -1,5 +1,9 @@
 // QR Code 處理器 - 主要實現
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('QrcodeMain')
+
 import type { Bindings } from '@/types';
 import { QRCodeServiceImpl as QRCodeService } from '@/services/qrcode-service-impl';
 import { getTeamByQRCode } from '@/utils/team';
@@ -22,7 +26,7 @@ qrcodeHandler.delete('/:token', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed', {}, error as Error);
     return handleApiError(error, c);
   }
 });
@@ -85,7 +89,7 @@ qrcodeHandler.get('/join', async (c) => {
     `);
 
   } catch (error) {
-    console.error('Join team page error:', error);
+    log.error('Join team page error', {}, error as Error);
     return c.html(`
       <html>
         <head><title>錯誤</title></head>

@@ -112,18 +112,22 @@ export const MODULE_INFO = {
   }
 } as const;
 
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('ConversationsModule');
+
 // ======================== 初始化函數 ========================
 export function initializeConversationsModule(config: Partial<ConversationsModuleConfig> = {}) {
   const finalConfig = { ...DEFAULT_CONVERSATIONS_MODULE_CONFIG, ...config };
 
   // 驗證配置
   if (finalConfig.maxMessageLength < 100) {
-    console.warn(' Conversations module: maxMessageLength too short, setting to 100');
+    log.warn('maxMessageLength too short, setting to 100');
     finalConfig.maxMessageLength = 100;
   }
 
   if (finalConfig.defaultPageSize < 1) {
-    console.warn(' Conversations module: defaultPageSize must be at least 1');
+    log.warn('defaultPageSize must be at least 1');
     finalConfig.defaultPageSize = 1;
   }
 

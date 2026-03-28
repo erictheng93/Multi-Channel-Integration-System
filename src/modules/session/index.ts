@@ -225,17 +225,20 @@ export const MODULE_INFO = {
 } as const;
 
 // ======================== 初始化函數 ========================
+import { createContextLogger } from '@/utils/logger';
+const log = createContextLogger('SessionModule');
+
 export function initializeSessionModule(config: Partial<SessionModuleConfig> = {}) {
   const finalConfig = { ...DEFAULT_SESSION_MODULE_CONFIG, ...config };
 
   // 驗證配置
   if (finalConfig.maxSessionDuration < 60000) { // min 1 minute
-    console.warn(' Session module: maxSessionDuration too short, setting to 1 minute');
+    log.warn('maxSessionDuration too short, setting to 1 minute');
     finalConfig.maxSessionDuration = 60000;
   }
 
   if (finalConfig.maxMessagesPerSession < 1) {
-    console.warn(' Session module: maxMessagesPerSession must be at least 1');
+    log.warn('maxMessagesPerSession must be at least 1');
     finalConfig.maxMessagesPerSession = 1;
   }
 

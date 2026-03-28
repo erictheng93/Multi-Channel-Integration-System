@@ -198,17 +198,21 @@ declare global {
 }
 
 // ======================== 初始化函數 ========================
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AnalyticsModule');
+
 export function initializeAnalyticsModule(config: Partial<AnalyticsModuleConfig> = {}) {
   const finalConfig = { ...DEFAULT_ANALYTICS_MODULE_CONFIG, ...config };
 
   // 驗證配置
   if (finalConfig.metricsRetentionDays < 1) {
-    console.warn(' Analytics module: metricsRetentionDays must be at least 1');
+    log.warn('metricsRetentionDays must be at least 1');
     finalConfig.metricsRetentionDays = 1;
   }
 
   if (finalConfig.dashboardRefreshInterval < 1000) {
-    console.warn(' Analytics module: dashboardRefreshInterval too short, setting to 1 second');
+    log.warn('dashboardRefreshInterval too short, setting to 1 second');
     finalConfig.dashboardRefreshInterval = 1000;
   }
 

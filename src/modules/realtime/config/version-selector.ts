@@ -1,6 +1,10 @@
 // Real-time 版本選擇器 - 智能選擇最適合的版本
 
 import type { Bindings } from '@/types';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('VersionSelector')
+
 import type { RealtimeConfig } from '@modules/realtime/types';
 
 // 版本特性定義
@@ -115,7 +119,7 @@ export class RealtimeVersionSelector {
   // 設置版本
   setVersion(version: 'v1' | 'v2' | 'modular' | 'auto'): void {
     this.currentVersion = version;
-    console.log(`[Version Selector] 版本設置為: ${version}`);
+    log.info(`Version set to: ${version}`);
   }
 
   // 檢測環境能力
@@ -154,7 +158,7 @@ export class RealtimeVersionSelector {
 
     this.capabilities = capabilities;
 
-    console.log(`[Version Selector] 環境能力檢測完成:`, {
+    log.info('Environment capability detection complete:', {
       cloudflareQueue: capabilities.hasCloudflareQueue,
       kvStorage: capabilities.hasKVStorage,
       database: capabilities.hasD1Database,
@@ -224,7 +228,7 @@ export class RealtimeVersionSelector {
       }
     }
 
-    console.log(`[Version Selector] 選擇版本: ${selectedVersion}`, {
+    log.info(`Selected version: ${selectedVersion}`, {
       reason,
       capabilities: {
         queue: capabilities.hasCloudflareQueue,
@@ -272,7 +276,7 @@ export class RealtimeVersionSelector {
 
     const compatible = blockers.length === 0;
 
-    console.log(`[Version Selector] 版本相容性檢查 ${version}:`, {
+    log.info(`Version compatibility check ${version}:`, {
       compatible,
       warnings: warnings.length,
       blockers: blockers.length

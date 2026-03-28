@@ -16,6 +16,9 @@ import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/an
 import { AnalyticsService } from './analytics-core';
 import { createDbClient } from '@/db/drizzle-factory';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('DashboardService')
 
 /**
  * 儀表板服務配置選項
@@ -151,7 +154,7 @@ export class DashboardService {
           const data = await this.getWidgetData(widget, timeRange);
           return { widgetId: widget.id, data };
         } catch (error) {
-          console.error(`Failed to load widget ${widget.id}:`, error);
+          log.error(`Failed to load widget ${widget.id}`, {}, error as Error);
           return {
             widgetId: widget.id,
             data: {
@@ -498,7 +501,7 @@ export class DashboardService {
         const data = await this.getDashboardData(userId, dashboardId);
         callback(data);
       } catch (error) {
-        console.error('Failed to update real-time dashboard data:', error);
+        log.error('Failed to update real-time dashboard data', {}, error as Error);
       }
     }, this.options.refreshInterval);
 

@@ -2,6 +2,10 @@
 // 附件管理端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgAttachments')
+
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
@@ -80,7 +84,7 @@ attachmentRoutes.get('/:id/attachments', jwtAuth, async (c) => {
     });
 
   } catch (error) {
-    console.error('Get message attachments error:', error);
+    log.error('Get message attachments error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to get message attachments', 500);
   }
 });
@@ -157,7 +161,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
         }
       });
     } catch (error) {
-      console.error('R2 upload error:', error);
+      log.error('R2 upload error', {}, error as Error);
       return errorResponse(c, 'Failed to upload file to storage', 500);
     }
 
@@ -189,7 +193,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
     }, 'Attachment uploaded successfully', 201);
 
   } catch (error) {
-    console.error('Upload attachment error:', error);
+    log.error('Upload attachment error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to upload attachment', 500);
   }
 });

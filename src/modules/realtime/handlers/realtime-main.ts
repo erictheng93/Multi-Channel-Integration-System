@@ -2,6 +2,10 @@
 // 整合所有即時通訊功能的統一處理器
 
 import { Context } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('RealtimeMain')
+
 import type { Bindings, JWTPayload } from '@/types';
 import type {
   RealtimeConfig,
@@ -181,7 +185,7 @@ export const realtimeManagementHandler = {
 
       return successResponse(c, health, 'Health check completed');
     } catch (error) {
-      console.error('[Realtime Main] 健康檢查失敗:', error);
+      log.error('Health check failed', {}, error as Error);
       return errorResponse(c, 'Health check failed', 500);
     }
   }

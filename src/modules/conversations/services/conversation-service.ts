@@ -5,7 +5,11 @@ import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, sql } from 'drizzle-orm';
 import { conversations, messages, customers, agents, teams, conversationTransfers } from '@/db/schema';
-import { validateReplyToMessageId } from '@/utils/validate-reply-to';
+import { validateReplyToMessageId } from '@/utils/validate-reply-to'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('ConversationService')
+;
 import type {
   Conversation,
   NewConversation,
@@ -172,7 +176,7 @@ export class ConversationService implements ConversationServiceInterface {
 
       return true;
     } catch (error) {
-      console.error('Delete conversation error:', error);
+      log.error('Delete conversation error', {}, error as Error);
       return false;
     }
   }

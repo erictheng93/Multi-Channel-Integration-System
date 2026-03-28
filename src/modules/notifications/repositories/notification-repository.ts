@@ -2,6 +2,10 @@
 // 通知資料存取層
 
 import { drizzle } from 'drizzle-orm/d1';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('NotificationRepository')
+
 import { sql, eq, and, or, desc, count, gte, lte } from 'drizzle-orm';
 import { notifications } from '@/db/schema';
 import {
@@ -68,7 +72,7 @@ export class NotificationRepository {
       );
     } catch (error) {
       // 如果批量插入失敗，嘗試逐一插入
-      console.warn('Bulk insert failed, falling back to individual inserts:', error);
+      log.warn('Bulk insert failed, falling back to individual inserts', { error: error instanceof Error ? error.message : String(error) });
       const results = await Promise.allSettled(
         insertValues.map(values =>
           this.db.insert(notifications).values(values)

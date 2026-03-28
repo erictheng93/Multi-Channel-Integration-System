@@ -2,6 +2,10 @@
 // Main reports request handlers with comprehensive reporting operations
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('ReportsMain')
+
 import type { Bindings } from '@/types';
 import { ReportsService } from '@modules/reports/services/reports-service';
 import { REPORT_TYPE_CONFIG, ReportGenerationParams, BatchReportOperation, ReportType } from '@modules/reports/types/report-types';
@@ -566,7 +570,7 @@ reportsHandler.delete(
 
 // 全域錯誤處理
 reportsHandler.onError((err, c) => {
-  console.error('Reports handler error:', err);
+  log.error('Reports handler error', {}, err as Error);
   return c.json({
     success: false,
     error: 'Internal server error in reports module',

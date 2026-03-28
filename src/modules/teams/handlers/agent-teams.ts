@@ -3,6 +3,10 @@
 // Allows agents to belong to unlimited teams
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('AgentTeams')
+
 import { eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
@@ -164,7 +168,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       changedBy: user.displayName || String(user.id)
     });
 
-    console.log(' Agent added to team with broadcast:', {
+    log.info('Agent added to team with broadcast:', {
       agentId,
       teamId,
       teamName,
@@ -266,19 +270,19 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
         Promise.allSettled(broadcastPromises).then(broadcastResults => {
           const failed = broadcastResults.filter(r => r.status === 'rejected').length;
           if (failed > 0) {
-            console.warn(`[join-multiple] ${failed}/${results.added.length} WebSocket broadcasts failed`);
+            log.warn(`${failed}/${results.added.length} WebSocket broadcasts failed`);
           } else {
-            console.log(`[join-multiple] All ${results.added.length} WebSocket broadcasts succeeded`);
+            log.info(`All ${results.added.length} WebSocket broadcasts succeeded`);
           }
         });
 
       } catch (broadcastError) {
         // 廣播失敗不影響主要操作
-        console.warn('[join-multiple] WebSocket broadcast error:', broadcastError);
+        log.warn('WebSocket broadcast error', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
       }
     }
 
-    console.log(' Agent added to multiple teams with batch optimization:', {
+    log.info('Agent added to multiple teams with batch optimization:', {
       agentId,
       added: results.added.length,
       skipped: results.skipped.length,
@@ -386,7 +390,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
       changedBy: user.displayName || String(user.id)
     });
 
-    console.log(' Agent removed from team with notification and broadcast:', {
+    log.info('Agent removed from team with notification and broadcast:', {
       agentId,
       teamId,
       teamName,

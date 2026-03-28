@@ -5,6 +5,9 @@ import type { ChannelIntegration, ChannelVerificationResponse } from '../types/c
 import { parseChannelConfig, parseChannelWebhookConfig } from '../types/channel-types';
 import { nowISO } from '@/utils/timestamp';
 import type { ChannelCredentialService } from './channel-credential-service';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('ChannelVerification');
 
 export class ChannelVerificationService {
   constructor(private db: DrizzleD1Database, private credentialService: ChannelCredentialService) {}
@@ -25,17 +28,17 @@ export class ChannelVerificationService {
       const response = await fetch('https://api.line.me/v2/oauth/verify', { method: 'GET', headers: { 'Authorization': `Bearer ${accessToken}` } });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[ChannelService] LINE API verification failed:', errorText);
+        log.error('LINE API verification failed', { status: response.status, errorText });
         await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `LINE API returned ${response.status}: ${errorText}`, retryAttempt: (channel.errorCount || 0) + 1 });
         return { success: false, verified: false, message: `LINE API verification failed: ${response.status} ${response.statusText}` };
       }
       const verificationData = await response.json() as { client_id: string; expires_in: number };
       const timestamp = nowISO();
       await this.db.update(channelIntegrations).set({ isVerified: true, lastVerifiedAt: timestamp, errorCount: 0, lastError: null, updatedAt: timestamp }).where(eq(channelIntegrations.id, channel.id));
-      console.log(`[ChannelService]  LINE channel verified successfully: ${channel.id}`);
+      log.info(`LINE channel verified successfully: ${channel.id}`);
       return { success: true, verified: true, message: 'LINE channel verified successfully', details: { channelId: verificationData.client_id, webhookUrl: parseChannelWebhookConfig(channel.webhookConfig).url || undefined, lastVerifiedAt: timestamp } };
     } catch (error) {
-      console.error('[ChannelService] Error verifying LINE channel:', error);
+      log.error('Error verifying LINE channel', {}, error instanceof Error ? error : new Error(String(error)));
       await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: error instanceof Error ? error.message : 'Unknown error', retryAttempt: (channel.errorCount || 0) + 1, context: { stack: error instanceof Error ? error.stack : undefined } });
       return { success: false, verified: false, message: error instanceof Error ? error.message : 'Verification failed', error: error instanceof Error ? error.stack : undefined };
     }
@@ -52,17 +55,17 @@ export class ChannelVerificationService {
       const response = await fetch(`https://graph.facebook.com/v18.0/${pageId}?fields=id,name,access_token&access_token=${accessToken}`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[ChannelService] Facebook API verification failed:', errorText);
+        log.error('Facebook API verification failed', { status: response.status, errorText });
         await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `Facebook API returned ${response.status}: ${errorText}`, retryAttempt: (channel.errorCount || 0) + 1 });
         return { success: false, verified: false, message: `Facebook API verification failed: ${response.status} ${response.statusText}` };
       }
       const verificationData = await response.json() as { id: string; name: string };
       const timestamp = nowISO();
       await this.db.update(channelIntegrations).set({ isVerified: true, lastVerifiedAt: timestamp, errorCount: 0, lastError: null, updatedAt: timestamp }).where(eq(channelIntegrations.id, channel.id));
-      console.log(`[ChannelService]  Facebook channel verified successfully: ${channel.id}`);
+      log.info(`Facebook channel verified successfully: ${channel.id}`);
       return { success: true, verified: true, message: 'Facebook channel verified successfully', details: { pageId: verificationData.id, pageName: verificationData.name, lastVerifiedAt: timestamp } };
     } catch (error) {
-      console.error('[ChannelService] Error verifying Facebook channel:', error);
+      log.error('Error verifying Facebook channel', {}, error instanceof Error ? error : new Error(String(error)));
       await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: error instanceof Error ? error.message : 'Unknown error', retryAttempt: (channel.errorCount || 0) + 1, context: { platform: 'facebook' } });
       return { success: false, verified: false, message: error instanceof Error ? error.message : 'Verification failed', error: error instanceof Error ? error.stack : undefined };
     }
@@ -79,17 +82,17 @@ export class ChannelVerificationService {
       const response = await fetch(`https://graph.facebook.com/v18.0/${waConfig.phoneNumber}?access_token=${accessToken}`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[ChannelService] WhatsApp API verification failed:', errorText);
+        log.error('WhatsApp API verification failed', { status: response.status, errorText });
         await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_failed', errorMessage: `WhatsApp API returned ${response.status}: ${errorText}`, retryAttempt: (channel.errorCount || 0) + 1 });
         return { success: false, verified: false, message: `WhatsApp API verification failed: ${response.status} ${response.statusText}` };
       }
       const verificationData = await response.json() as { id: string; display_phone_number: string; verified_name: string };
       const timestamp = nowISO();
       await this.db.update(channelIntegrations).set({ isVerified: true, lastVerifiedAt: timestamp, errorCount: 0, lastError: null, updatedAt: timestamp }).where(eq(channelIntegrations.id, channel.id));
-      console.log(`[ChannelService]  WhatsApp channel verified successfully: ${channel.id}`);
+      log.info(`WhatsApp channel verified successfully: ${channel.id}`);
       return { success: true, verified: true, message: 'WhatsApp channel verified successfully', details: { phoneNumberId: verificationData.id, displayPhoneNumber: verificationData.display_phone_number, verifiedName: verificationData.verified_name, lastVerifiedAt: timestamp } };
     } catch (error) {
-      console.error('[ChannelService] Error verifying WhatsApp channel:', error);
+      log.error('Error verifying WhatsApp channel', {}, error instanceof Error ? error : new Error(String(error)));
       await this.updateChannelError(channel.id, { timestamp: nowISO(), errorType: 'verification_error', errorMessage: error instanceof Error ? error.message : 'Unknown error', retryAttempt: (channel.errorCount || 0) + 1, context: { platform: 'whatsapp' } });
       return { success: false, verified: false, message: error instanceof Error ? error.message : 'Verification failed', error: error instanceof Error ? error.stack : undefined };
     }
@@ -97,6 +100,6 @@ export class ChannelVerificationService {
 
   async updateChannelError(channelId: number, error: { timestamp: string; errorType: string; errorMessage: string; retryAttempt: number; context?: Record<string, unknown> }): Promise<void> {
     try { await this.db.update(channelIntegrations).set({ lastError: JSON.stringify(error), errorCount: error.retryAttempt, updatedAt: nowISO() }).where(eq(channelIntegrations.id, channelId)); }
-    catch (updateError) { console.error('[ChannelService] Failed to update error tracking:', updateError); }
+    catch (updateError) { log.error('Failed to update error tracking', {}, updateError instanceof Error ? updateError : new Error(String(updateError))); }
   }
 }

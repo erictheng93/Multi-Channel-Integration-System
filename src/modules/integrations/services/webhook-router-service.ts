@@ -14,6 +14,9 @@ import type { Bindings } from '@/types';
 // import { LineIntegrationService } from '@modules/integrations/services/line-integration-service';
 // import { FacebookIntegrationService } from '@modules/integrations/services/facebook-integration-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('WebhookRouter');
 
 /**
  * Webhook 路由結果
@@ -149,7 +152,7 @@ export class WebhookRouterService {
         `Webhook routing error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
 
-      console.error('Webhook routing error:', error);
+      log.error('Webhook routing error', {}, error instanceof Error ? error : new Error(String(error)));
       return result;
     }
   }
@@ -190,7 +193,7 @@ export class WebhookRouterService {
 
       return results;
     } catch (error) {
-      console.error('Batch webhook processing error:', error);
+      log.error('Batch webhook processing error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -498,7 +501,7 @@ export class WebhookRouterService {
           return await this.processGenericEvents(integration, webhookBody);
       }
     } catch (error) {
-      console.error(`Error processing ${platform} events:`, error);
+      log.error(`Error processing ${platform} events`, {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -542,7 +545,7 @@ export class WebhookRouterService {
 
         events.push(platformEvent);
       } catch (error) {
-        console.error('Error processing LINE event:', error);
+        log.error('Error processing LINE event', {}, error instanceof Error ? error : new Error(String(error)));
       }
     }
 
@@ -588,7 +591,7 @@ export class WebhookRouterService {
 
           events.push(platformEvent);
         } catch (error) {
-          console.error('Error processing Facebook event:', error);
+          log.error('Error processing Facebook event', {}, error instanceof Error ? error : new Error(String(error)));
         }
       }
     }
@@ -644,7 +647,7 @@ export class WebhookRouterService {
 
       events.push(platformEvent);
     } catch (error) {
-      console.error('Error processing generic event:', error);
+      log.error('Error processing generic event', {}, error instanceof Error ? error : new Error(String(error)));
     }
 
     return events;
@@ -693,7 +696,7 @@ export class WebhookRouterService {
 
       return result;
     } catch (error) {
-      console.error('Error getting integration by path:', error);
+      log.error('Error getting integration by path', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -725,7 +728,7 @@ export class WebhookRouterService {
 
       await this.cache.put(statsKey, JSON.stringify(stats), { expirationTtl: 86400 });
     } catch (error) {
-      console.error('Error updating webhook stats:', error);
+      log.error('Error updating webhook stats', {}, error instanceof Error ? error : new Error(String(error)));
     }
   }
 

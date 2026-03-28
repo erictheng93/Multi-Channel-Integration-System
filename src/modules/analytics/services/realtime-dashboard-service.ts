@@ -11,6 +11,9 @@ import type {
   DashboardConfig
 } from '../types/dashboard-types';
 import { AnalyticsError } from '@modules/analytics/types/analytics-types';
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('RealtimeDashboard');
 
 /**
  * 實時儀表板服務類
@@ -52,14 +55,14 @@ export class RealtimeDashboardService {
   async broadcastWidgetUpdate(dashboardId: string, widgetId: string, _data: WidgetData): Promise<void> {
     // In the WebSocket architecture, broadcasting is handled by Durable Objects.
     // This method is kept as a service-level abstraction for triggering updates.
-    console.log(`[RealtimeDashboard] Widget update: ${dashboardId}/${widgetId}`);
+    log.info(`Widget update: ${dashboardId}/${widgetId}`);
   }
 
   /**
    * Broadcast config change (placeholder for WebSocket integration)
    */
   async broadcastConfigChange(dashboardId: string, _config: DashboardConfig): Promise<void> {
-    console.log(`[RealtimeDashboard] Config change: ${dashboardId}`);
+    log.info(`Config change: ${dashboardId}`);
   }
 
   /**
@@ -67,7 +70,7 @@ export class RealtimeDashboardService {
    */
   async updateSubscription(connectionId: string, _updates: any): Promise<void> {
     // Subscriptions are managed by WebSocket Durable Objects
-    console.log(`[RealtimeDashboard] Subscription update requested for ${connectionId}`);
+    log.info(`Subscription update requested for ${connectionId}`);
   }
 
   /**

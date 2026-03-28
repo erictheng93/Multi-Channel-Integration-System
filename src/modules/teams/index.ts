@@ -107,17 +107,20 @@ export const MODULE_INFO = {
 } as const;
 
 // ======================== 初始化函數 ========================
+import { createContextLogger } from '@/utils/logger';
+const log = createContextLogger('TeamsModule');
+
 export function initializeTeamsModule(config: Partial<TeamsModuleConfig> = {}) {
   const finalConfig = { ...DEFAULT_TEAMS_MODULE_CONFIG, ...config };
 
   // 驗證配置
   if (finalConfig.maxTeamSize < 1) {
-    console.warn(' Teams module: maxTeamSize must be at least 1');
+    log.warn('maxTeamSize must be at least 1');
     finalConfig.maxTeamSize = 1;
   }
 
   if (finalConfig.maxTeamsPerUser < 1) {
-    console.warn(' Teams module: maxTeamsPerUser must be at least 1');
+    log.warn('maxTeamsPerUser must be at least 1');
     finalConfig.maxTeamsPerUser = 1;
   }
 

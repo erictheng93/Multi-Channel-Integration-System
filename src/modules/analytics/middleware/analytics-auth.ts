@@ -6,6 +6,9 @@ import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('AnalyticsAuth')
 
 // Analytics User interface
 interface AnalyticsUser {
@@ -92,7 +95,7 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
       throw error;
     }
 
-    console.error('Analytics auth error:', error);
+    log.error('Analytics auth error', {}, error as Error);
     throw new HTTPException(500, {
       message: 'Authentication system error',
       cause: 'AUTH_SYSTEM_ERROR'

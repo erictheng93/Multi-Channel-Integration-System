@@ -1,5 +1,9 @@
 // 健康檢查路由器 - 統一健康檢查路由處理器
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('HealthRouter')
+
 import type { Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
@@ -114,7 +118,7 @@ cache_hit_rate{service="mcis"} ${healthData.performance?.cacheHitRate || 0}
     });
 
   } catch (error) {
-    console.error('Metrics generation failed:', error);
+    log.error('Metrics generation failed', {}, error as Error);
     return c.text('# Error generating metrics\n', 500, {
       'Content-Type': 'text/plain; charset=utf-8'
     });

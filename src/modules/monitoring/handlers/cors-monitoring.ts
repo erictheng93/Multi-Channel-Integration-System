@@ -2,6 +2,10 @@
 // 提供 CORS 錯誤追蹤和統計數據的 API
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('CorsMonitoring')
+
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
 import { CORSMonitor } from '@/monitoring/cors-monitor';
@@ -29,7 +33,7 @@ corsMonitoringHandler.get('/stats', async (c: Context<{ Bindings: Bindings }>) =
 
     return successResponse(c, stats, 'CORS statistics retrieved successfully');
   } catch (error) {
-    console.error('Failed to get CORS stats:', error);
+    log.error('Failed to get CORS stats', {}, error as Error);
     return errorResponse(c, 'Failed to retrieve CORS statistics', 500);
   }
 });
@@ -75,7 +79,7 @@ corsMonitoringHandler.get('/events', async (c: Context<{ Bindings: Bindings }>) 
       filterType: typeFilter || null
     }, 'CORS events retrieved successfully');
   } catch (error) {
-    console.error('Failed to get CORS events:', error);
+    log.error('Failed to get CORS events', {}, error as Error);
     return errorResponse(c, 'Failed to retrieve CORS events', 500);
   }
 });
@@ -105,7 +109,7 @@ corsMonitoringHandler.get('/rejected-origins', async (c: Context<{ Bindings: Bin
       rejectionRate: stats.total > 0 ? (stats.rejected / stats.total * 100).toFixed(2) + '%' : '0%'
     }, 'Rejected origins retrieved successfully');
   } catch (error) {
-    console.error('Failed to get rejected origins:', error);
+    log.error('Failed to get rejected origins', {}, error as Error);
     return errorResponse(c, 'Failed to retrieve rejected origins', 500);
   }
 });
@@ -134,7 +138,7 @@ corsMonitoringHandler.post('/cleanup', async (c: Context<{ Bindings: Bindings }>
       message: `Cleaned ${cleaned} expired CORS events`
     }, 'CORS events cleanup completed successfully');
   } catch (error) {
-    console.error('Failed to cleanup CORS events:', error);
+    log.error('Failed to cleanup CORS events', {}, error as Error);
     return errorResponse(c, 'Failed to cleanup CORS events', 500);
   }
 });

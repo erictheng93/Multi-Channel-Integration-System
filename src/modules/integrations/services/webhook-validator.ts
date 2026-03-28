@@ -6,6 +6,9 @@ import type { IntegrationPlatform } from '@modules/integrations/types/integratio
 import { WebhookSecurityService, type SecurityValidationResult } from '@modules/integrations/services/webhook-security-service';
 import { WebhookRouterService, type WebhookRouteResult } from '@modules/integrations/services/webhook-router-service';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('WebhookValidator');
 
 /**
  * 完整的 Webhook 驗證結果
@@ -123,7 +126,7 @@ export class WebhookValidator {
       result.errors.push(
         `Webhook validation error: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
-      console.error('[WebhookValidator] Validation error:', error);
+      log.error('Validation error', {}, error instanceof Error ? error : new Error(String(error)));
       return result;
     }
   }

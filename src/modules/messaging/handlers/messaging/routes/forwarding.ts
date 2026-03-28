@@ -2,6 +2,10 @@
 // 訊息轉發端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgForwarding')
+
 import { eq, inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
@@ -174,7 +178,7 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
     }, `Message forwarded: ${results.length} succeeded, ${errors.length} failed`, 201);
 
   } catch (error) {
-    console.error('Forward message error:', error);
+    log.error('Forward message error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to forward message', 500);
   }
 });

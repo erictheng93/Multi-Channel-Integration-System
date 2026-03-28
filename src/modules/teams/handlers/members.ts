@@ -2,6 +2,10 @@
 // 團隊成員管理路由處理器
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('TeamMembersHandler')
+
 import type { Bindings } from '@/types';
 import { MemberService } from '@modules/teams/services/member-service';
 import { AgentTeamsService } from '@modules/teams/services/agent-teams-service';
@@ -402,7 +406,7 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
         }
       });
     } catch (activityError) {
-      console.error('Failed to log delete activity:', activityError);
+      log.error('Failed to log delete activity', {}, activityError as Error);
     }
 
     return c.json({

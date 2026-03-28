@@ -96,13 +96,17 @@ export const MODULE_INFO = {
   }
 } as const;
 
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('AuthModule');
+
 // ======================== 初始化函數 ========================
 export function initializeAuthModule(config: Partial<AuthModuleConfig> = {}) {
   const finalConfig = { ...DEFAULT_AUTH_MODULE_CONFIG, ...config };
 
   // 驗證必要配置
   if (!finalConfig.jwtSecret || finalConfig.jwtSecret === 'default-secret') {
-    console.warn(' Auth module: Using default JWT secret. Please set JWT_SECRET environment variable.');
+    log.warn('Using default JWT secret. Please set JWT_SECRET environment variable.');
   }
 
   return {

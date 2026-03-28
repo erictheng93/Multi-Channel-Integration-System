@@ -7,6 +7,10 @@ import { customerTagsHandler } from './customer-tags';
 import { jwtAuth } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { nowISO } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('CustomerMain')
+
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -57,7 +61,7 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed', {}, error as Error);
     return handleApiError(error, c);
   }
 });
@@ -94,7 +98,7 @@ customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed', {}, error as Error);
     return handleApiError(error, c);
   }
 });
@@ -115,7 +119,7 @@ customerHandler.get('/', async (c) => {
       timestamp: nowISO()
     });
   } catch (error) {
-    console.error('Operation failed:', error);
+    log.error('Operation failed', {}, error as Error);
     return handleApiError(error, c);
   }
 });

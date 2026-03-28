@@ -2,6 +2,10 @@
 // 訊息 CRUD 操作端點
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('MsgCrud')
+
 import { eq, and, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
@@ -119,7 +123,7 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
     return successResponse(c, messageDetail);
 
   } catch (error) {
-    console.error('Get message error:', error);
+    log.error('Get message error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to get message', 500);
   }
 });
@@ -226,7 +230,7 @@ crudRoutes.put('/:id', jwtAuth, async (c) => {
     }, 'Message updated successfully');
 
   } catch (error) {
-    console.error('Update message error:', error);
+    log.error('Update message error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to update message', 500);
   }
 });
@@ -325,7 +329,7 @@ crudRoutes.delete('/:id', jwtAuth, async (c) => {
     }, 'Message recalled successfully');
 
   } catch (error) {
-    console.error('Delete message error:', error);
+    log.error('Delete message error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to recall message', 500);
   }
 });
@@ -455,7 +459,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
             conversationId,
             messagePreview: content.substring(0, 100)
           }).catch(err => {
-            console.warn('Failed to trigger mention notification:', err);
+            log.warn('Failed to trigger mention notification', { error: err instanceof Error ? err.message : String(err) });
           });
         }
       }
@@ -489,7 +493,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
     }, 'Message created successfully', 201);
 
   } catch (error) {
-    console.error('Create message error:', error);
+    log.error('Create message error', {}, error as Error);
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to create message', 500);
   }
 });

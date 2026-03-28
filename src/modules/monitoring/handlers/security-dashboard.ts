@@ -2,6 +2,10 @@
 // Security analytics endpoints
 
 import { Hono } from 'hono';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('SecurityDashboard')
+
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { successResponse, errorResponse } from '@/utils/api-response';
@@ -52,7 +56,7 @@ app.get('/metrics', jwtAuth, async (c) => {
 
     return successResponse(c, metrics);
   } catch (error) {
-    console.error('[SecurityDashboard] Failed to get metrics:', error);
+    log.error('Failed to get metrics', {}, error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return errorResponse(c, `Failed to retrieve dashboard metrics: ${errorMessage}`, 500);
   }
@@ -88,7 +92,7 @@ app.get('/events/recent', jwtAuth, async (c) => {
       limit
     });
   } catch (error) {
-    console.error('[SecurityDashboard] Failed to get recent events:', error);
+    log.error('Failed to get recent events', {}, error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return errorResponse(c, `Failed to retrieve recent events: ${errorMessage}`, 500);
   }
@@ -127,7 +131,7 @@ app.get('/summary', jwtAuth, async (c) => {
       }
     });
   } catch (error) {
-    console.error('[SecurityDashboard] Failed to get summary:', error);
+    log.error('Failed to get summary', {}, error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return errorResponse(c, `Failed to retrieve security summary: ${errorMessage}`, 500);
   }

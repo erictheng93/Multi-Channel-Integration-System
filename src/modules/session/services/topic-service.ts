@@ -2,6 +2,10 @@
 // 會話主題檢測與分析服務
 
 import { drizzle } from 'drizzle-orm/d1';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('TopicService')
+
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc } from 'drizzle-orm';
 import { conversationSessions, messages } from '@/db/schema';
@@ -302,7 +306,7 @@ export class TopicService {
 
       return true;
     } catch (error) {
-      console.error('Failed to update session topic:', error);
+      log.error('Failed to update session topic', {}, error as Error);
       return false;
     }
   }

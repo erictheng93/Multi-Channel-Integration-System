@@ -12,6 +12,9 @@ import type {
 
 import type { Bindings } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { createContextLogger } from '@/utils/logger';
+
+const log = createContextLogger('FacebookIntegration');
 
 /**
  * Facebook 訊息類型
@@ -149,13 +152,13 @@ export class FacebookIntegrationService implements IPlatformAdapter {
 
       if (response.ok) {
         const pageData = await response.json();
-        console.log(`Facebook integration connected to page: ${(pageData as any).name}`);
+        log.info(`Facebook integration connected to page: ${(pageData as any).name}`);
         return true;
       }
 
       throw new Error(`Facebook API connection failed: ${response.status}`);
     } catch (error) {
-      console.error('Facebook integration connection error:', error);
+      log.error('Facebook integration connection error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -166,10 +169,10 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   async disconnect(): Promise<boolean> {
     try {
       // Facebook API 沒有明確的斷線端點，標記為已斷線即可
-      console.log('Facebook integration disconnected');
+      log.info('Facebook integration disconnected');
       return true;
     } catch (error) {
-      console.error('Facebook integration disconnect error:', error);
+      log.error('Facebook integration disconnect error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -234,7 +237,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       this.stats.messages!.pending = Math.max(0, this.stats.messages!.pending - 1);
       this.stats.apiCalls!.failed++;
 
-      console.error('Facebook send message error:', error);
+      log.error('Facebook send message error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -269,7 +272,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
               }
             }
           } catch (error) {
-            console.error('Error processing Facebook event:', error);
+            log.error('Error processing Facebook event', {}, error instanceof Error ? error : new Error(String(error)));
             this.stats.webhooks!.failed++;
           }
         }
@@ -278,7 +281,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       return events;
     } catch (error) {
       this.stats.webhooks!.failed++;
-      console.error('Facebook receive message error:', error);
+      log.error('Facebook receive message error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -311,7 +314,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       throw new Error(`Send sender action failed: ${response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('Facebook send sender action error:', error);
+      log.error('Facebook send sender action error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -351,7 +354,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       throw new Error(`Get profile failed: ${errorData.error?.message || response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('Facebook get user profile error:', error);
+      log.error('Facebook get user profile error', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -380,7 +383,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       throw new Error(`Set greeting failed: ${response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('Facebook set greeting error:', error);
+      log.error('Facebook set greeting error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -407,7 +410,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       throw new Error(`Set get started button failed: ${response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('Facebook set get started button error:', error);
+      log.error('Facebook set get started button error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -434,7 +437,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       throw new Error(`Set persistent menu failed: ${response.statusText}`);
     } catch (error) {
       this.stats.apiCalls!.failed++;
-      console.error('Facebook set persistent menu error:', error);
+      log.error('Facebook set persistent menu error', {}, error instanceof Error ? error : new Error(String(error)));
       return false;
     }
   }
@@ -604,7 +607,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
 
       return platformEvent;
     } catch (error) {
-      console.error('Error processing Facebook event:', error);
+      log.error('Error processing Facebook event', {}, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -643,8 +646,8 @@ export class FacebookIntegrationService implements IPlatformAdapter {
     // during development/testing. Production deployments MUST route webhooks
     // through the WebhookSecurityService for proper validation.
 
-    console.warn('[FacebookIntegrationService] Direct webhook call - security checks bypassed');
-    console.warn('[FacebookIntegrationService] Production webhooks should use: POST /api/integrations/webhooks/facebook/:integrationId');
+    log.warn('Direct webhook call - security checks bypassed');
+    log.warn('Production webhooks should use: POST /api/integrations/webhooks/facebook/:integrationId');
 
     return true;
   }

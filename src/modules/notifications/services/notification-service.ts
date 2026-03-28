@@ -11,6 +11,10 @@ import {
   NotificationType
 } from '../types';
 import { NotificationRepository } from '@modules/notifications/repositories/notification-repository';
+import { createContextLogger } from '@/utils/logger'
+
+const log = createContextLogger('NotificationService')
+
 import { NotificationCache } from '@modules/notifications/repositories/notification-cache';
 import { NotificationChannelService } from '@modules/notifications/services/notification-channel-service';
 import { NotificationValidator } from '@modules/notifications/utils/notification-validator';
@@ -286,7 +290,7 @@ export class NotificationService {
     const deletedCount = await this.repository.deleteExpired();
 
     // 注意：這會影響所有用戶的快取，在生產環境中需要更智能的快取失效策略
-    console.log(`Cleaned up ${deletedCount} expired notifications`);
+    log.info(`Cleaned up ${deletedCount} expired notifications`);
 
     return deletedCount;
   }
