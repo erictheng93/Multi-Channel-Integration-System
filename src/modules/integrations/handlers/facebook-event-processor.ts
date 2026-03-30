@@ -2,9 +2,6 @@
 // Facebook event processing logic extracted from webhook.ts (Phase 4 refactoring)
 // Contains: processFacebookMessage
 
-import { eq, and } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
-import { customers } from '@/db/schema';
 import type { Bindings, FacebookMessaging, FacebookMediaData } from '@/types';
 import { ActivityService } from '@modules/activities';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
@@ -12,8 +9,8 @@ import { createContextLogger } from '@/utils/logger';
 
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processFacebookMedia } from '../services/webhook-media-service';
-import { nowISO, nowMs } from '@/utils/timestamp';
-import { DistributedLockService } from '@/services/distributed-lock-service';
+import { nowMs } from '@/utils/timestamp';
+import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
 import type { DeferFn } from './webhook';
 
 const log = createContextLogger('Webhook');
@@ -103,94 +100,16 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
       messageContent = '[Unknown message]';
     }
 
-    // 查詢或建立使用者
-    const drizzleDb = createDbClient(env.DB);
-    let user = await drizzleDb
-      .select()
-      .from(customers)
-      .where(and(
-        eq(customers.platformUserId, userId),
-        eq(customers.platform, 'facebook')
-      ))
-      .get();
+    // Query or create customer (consolidated service with lock + deletedAt filter)
+    const user = await findOrCreateCustomer(env, userId, 'facebook');
 
     if (!user) {
-      const lockService = new DistributedLockService(env);
-      user = await lockService.withLock(
-        `webhook:customer:facebook:${userId}`,
-        async () => {
-          const existing = await drizzleDb
-            .select()
-            .from(customers)
-            .where(and(
-              eq(customers.platformUserId, userId),
-              eq(customers.platform, 'facebook')
-            ))
-            .get();
-          if (existing) return existing;
-
-          let displayName = 'Facebook User';
-          let avatarUrl = null;
-
-          try {
-            const { createUserSyncService } = await import('@/services/user-sync');
-            const userSyncService = createUserSyncService(env);
-            const profile = await userSyncService.syncFacebookUser(userId);
-            if (profile) {
-              displayName = profile.displayName;
-              avatarUrl = profile.pictureUrl;
-            }
-          } catch (profileError) {
-            log.warn('Failed to sync Facebook user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
-          }
-
-          const timestamp = nowISO();
-          await drizzleDb
-            .insert(customers)
-            .values({
-              platform: 'facebook',
-              platformUserId: userId,
-              displayName,
-              avatarUrl,
-              createdAt: timestamp,
-              updatedAt: timestamp
-            });
-
-          const created = await drizzleDb
-            .select()
-            .from(customers)
-            .where(and(
-              eq(customers.platformUserId, userId),
-              eq(customers.platform, 'facebook')
-            ))
-            .get();
-          return created!;
-        },
-        { ttl: 15000, timeout: 8000 }
-      );
-    } else {
-      // 檢查是否需要更新用戶資料
-      try {
-        const { createUserSyncService } = await import('@/services/user-sync');
-        const userSyncService = createUserSyncService(env);
-        const needsUpdate = await userSyncService.needsUpdate(userId, 'facebook');
-
-        if (needsUpdate) {
-          // 異步更新用戶資料（不等待完成）
-          userSyncService.syncFacebookUser(userId).catch((error: unknown) => {
-            log.warn('Background Facebook user sync failed', { error: error instanceof Error ? error.message : String(error) });
-          });
-        }
-      } catch (syncError) {
-        log.warn('Error checking Facebook user sync status', { error: syncError instanceof Error ? syncError.message : String(syncError) });
-      }
-    }
-
-    // 確保用戶存在才繼續
-    if (!user) {
-      log.error('Facebook Webhook: No user available for conversation');
+      log.error('Facebook Webhook: Failed to find or create user');
       return;
     }
+
+    // Trigger background profile sync if stale (fire-and-forget with retry)
+    triggerBackgroundSyncIfNeeded(env, userId, 'facebook');
 
     // 查詢或建立對話
     const conversation = await findOrCreateConversation(env, user.id, 'facebook');
