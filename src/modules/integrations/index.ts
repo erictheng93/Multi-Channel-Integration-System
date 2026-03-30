@@ -2,7 +2,7 @@
 // Main export file for Integration module
 
 // ======================== 處理器導出 ========================
-// Active handlers: webhook.ts, webhook-multitenant.ts, channel-handler.ts (registered via src/index.ts)
+// Active handlers: webhook.ts, channel-handler.ts (registered via src/index.ts)
 
 // ======================== 服務導出 ========================
 export { LineIntegrationService } from './services/line-integration-service';
@@ -71,8 +71,7 @@ export type {
 
 // ======================== 路由系統 ========================
 // Active routes are registered directly in src/index.ts via:
-// - webhook.ts (Facebook webhook + webhook router)
-// - webhook-multitenant.ts (LINE webhook)
+// - webhook.ts (LINE + Facebook webhook handlers)
 // - channel-handler.ts (channel management)
 import { WebhookRouterService } from '@modules/integrations/services/webhook-router-service';
 import { CredentialManagementService } from '@modules/integrations/services/credential-management-service';

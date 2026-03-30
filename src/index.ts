@@ -366,24 +366,13 @@ log.info('File proxy endpoints PRE-REGISTERED (public access)', {
 // =================================================================================
 
 import { webhookHandler } from '@modules/integrations/handlers/webhook';
-import { handleLineWebhookMultiTenant, handleLineWebhookLegacy } from '@modules/integrations/handlers/webhook-multitenant';
 
-// ==================== Multi-Tenant LINE Webhook (New) ====================
-// Route: POST /api/webhooks/line/:teamId/:token
-// Supports per-team channel configurations
-app.post('/api/webhooks/line/:teamId/:token', handleLineWebhookMultiTenant);
-
-log.info('Multi-Tenant LINE Webhook endpoint PRE-REGISTERED', {
-  endpoint: 'POST /api/webhooks/line/:teamId/:token (Team-specific webhook)'
-});
-
-// ==================== Legacy LINE Webhook (Backward Compatibility) ====================
-// Route: POST /api/webhooks/line (no parameters)
+// ==================== LINE Webhook (Single-Tenant) ====================
+// Route: POST /api/webhook — configured in LINE Developer Console
 // Uses global LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from env
-app.post('/api/webhook', handleLineWebhookLegacy);
-app.post('/api/webhooks/line', handleLineWebhookLegacy);
+app.post('/api/webhook', (c) => webhookHandler.line(c));
 
-// GET handlers for webhook verification and browser access
+// GET handler for webhook verification and browser access
 app.get('/api/webhook', (c) => {
   return c.json({
     success: true,
@@ -394,24 +383,8 @@ app.get('/api/webhook', (c) => {
   });
 });
 
-app.get('/api/webhooks/line', (c) => {
-  return c.json({
-    success: true,
-    message: 'LINE Webhook endpoint is ready',
-    timestamp: nowISO(),
-    endpoint: '/api/webhooks/line',
-    method: 'POST'
-  });
-});
-
-log.warn('Legacy LINE Webhook endpoints PRE-REGISTERED (backward compatibility)', {
-  endpoints: [
-    'POST /api/webhook (message processing)',
-    'GET /api/webhook (verification)',
-    'POST /api/webhooks/line (message processing)',
-    'GET /api/webhooks/line (verification)'
-  ],
-  note: 'These use global credentials. Consider migrating to multi-tenant webhook.'
+log.info('LINE Webhook endpoint PRE-REGISTERED', {
+  endpoint: 'POST /api/webhook'
 });
 
 // Facebook Webhook 路由
@@ -421,7 +394,7 @@ log.info('Facebook Webhook endpoint PRE-REGISTERED', {
   endpoint: 'GET/POST /api/webhooks/facebook'
 });
 
-// Webhook 事件處理由 handlers/webhook.ts 和 handlers/webhook-multitenant.ts 負責
+// Webhook event processing handled by handlers/webhook.ts
 
 // Register P1 Optimization: WebSocket Dashboard (requires auth)
 // 添加 JWT 認證中間件保護所有 Dashboard 端點
