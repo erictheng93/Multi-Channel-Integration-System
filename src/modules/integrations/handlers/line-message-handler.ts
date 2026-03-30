@@ -1,9 +1,9 @@
 // src/modules/integrations/handlers/line-message-handler.ts
 // LINE message event processing — extracted from line-event-processor.ts
 
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { customers, customerTeamAssignments } from '@/db/schema';
+import { customerTeamAssignments } from '@/db/schema';
 import type { Bindings, LineEvent, LineMediaData } from '@/types';
 import { ActivityService } from '@modules/activities';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
@@ -11,9 +11,9 @@ import { createContextLogger } from '@/utils/logger';
 
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { processLineMedia } from '../services/webhook-media-service';
-import { nowISO, nowMs } from '@/utils/timestamp';
+import { nowMs } from '@/utils/timestamp';
 import { evaluate as autoReplyEvaluate } from '@modules/auto-reply/services/auto-reply-engine';
-import { DistributedLockService } from '@/services/distributed-lock-service';
+import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
 import type { DeferFn } from './webhook';
 
 const log = createContextLogger('Webhook');
@@ -126,123 +126,23 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
         break;
     }
 
-    // Query or create user (uses shared service but with LINE-specific sync)
-    const drizzleDb = createDbClient(env.DB);
-    let user = await drizzleDb
-      .select()
-      .from(customers)
-      .where(and(
-        eq(customers.platformUserId, userId),
-        eq(customers.platform, 'line')
-      ))
-      .get();
+    // Query or create user via consolidated webhook-customer-service
+    const user = await findOrCreateCustomer(env, userId, 'line', {
+      groupId: event.source.groupId,
+    });
 
     if (!user) {
-      // Race condition protection: use distributed lock for customer creation
-      const lockService = new DistributedLockService(env);
-      user = await lockService.withLock(
-        `webhook:customer:line:${userId}`,
-        async () => {
-          // Double-check inside lock
-          const existing = await drizzleDb
-            .select()
-            .from(customers)
-            .where(and(
-              eq(customers.platformUserId, userId),
-              eq(customers.platform, 'line')
-            ))
-            .get();
-          if (existing) return existing;
-
-          let displayName = 'LINE User';
-          let avatarUrl = null;
-
-          try {
-            const { createUserSyncService } = await import('@/services/user-sync');
-            const userSyncService = createUserSyncService(env);
-            const profile = await userSyncService.syncLineUser(userId, event.source.groupId);
-            if (profile) {
-              displayName = profile.displayName;
-              avatarUrl = profile.pictureUrl;
-            }
-          } catch (profileError) {
-            log.warn('Failed to sync LINE user profile', { error: profileError instanceof Error ? profileError.message : String(profileError) });
-          }
-
-          if (displayName === 'LINE User') {
-            try {
-              const assignment = await drizzleDb
-                .select({ displayName: customerTeamAssignments.displayName })
-                .from(customerTeamAssignments)
-                .where(eq(customerTeamAssignments.platformUserId, userId))
-                .orderBy(desc(customerTeamAssignments.assignedAt))
-                .limit(1)
-                .get();
-              if (assignment?.displayName) {
-                displayName = assignment.displayName;
-                log.info('LINE Message: Using LIFF-captured displayName as fallback', { displayName });
-              }
-            } catch (fallbackError) {
-              log.warn('Failed to query LIFF assignment for displayName fallback', {
-                error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-              });
-            }
-          }
-
-          const timestamp = nowISO();
-          await drizzleDb
-            .insert(customers)
-            .values({
-              platform: 'line',
-              platformUserId: userId,
-              displayName,
-              avatarUrl,
-              createdAt: timestamp,
-              updatedAt: timestamp
-            });
-
-          const created = await drizzleDb
-            .select()
-            .from(customers)
-            .where(and(
-              eq(customers.platformUserId, userId),
-              eq(customers.platform, 'line')
-            ))
-            .get();
-          return created!;
-        },
-        { ttl: 15000, timeout: 8000 }
-      );
-    }
-
-    if (!user) {
-      log.error('LINE Webhook: Failed to find or create user after insert', { userIdPrefix: userId.substring(0, 10) });
+      log.error('LINE Webhook: Failed to find or create user', { userIdPrefix: userId.substring(0, 10) });
       return;
     }
 
     log.debug('User found/created successfully', {
       userId: user.id,
       platformUserIdPrefix: user.platformUserId?.substring(0, 10),
-      displayName: user.displayName
+      displayName: user.displayName,
     });
 
-    if (user.id) {
-      // Check if user profile needs updating
-      try {
-        const { createUserSyncService } = await import('@/services/user-sync');
-        const userSyncService = createUserSyncService(env);
-        const needsUpdate = await userSyncService.needsUpdate(userId, 'line');
-
-        if (needsUpdate) {
-          // Async update user profile (don't wait for completion)
-          userSyncService.syncLineUser(userId, event.source.groupId).catch((error: unknown) => {
-            log.warn('Background LINE user sync failed', { error: error instanceof Error ? error.message : String(error) });
-          });
-        }
-      } catch (syncError) {
-        log.warn('Error checking LINE user sync status', { error: syncError instanceof Error ? syncError.message : String(syncError) });
-      }
-    }
+    triggerBackgroundSyncIfNeeded(env, userId, 'line', event.source.groupId);
 
     // Fix: Query customer_team_assignments to get QR Code team assignment
     // Resolves bug where processLineMessage always had assignedTeamId as null
