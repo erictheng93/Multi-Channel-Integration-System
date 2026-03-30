@@ -23,11 +23,23 @@ import type { Bindings } from '@/types';
 
 // ======================== Mock Setup ========================
 
-const { mockVerifyJWT } = vi.hoisted(() => ({
-  mockVerifyJWT: vi.fn()
+const { mockVerifyJWT, mockLogInfo, mockLogError } = vi.hoisted(() => ({
+  mockVerifyJWT: vi.fn(),
+  mockLogInfo: vi.fn(),
+  mockLogError: vi.fn()
 }));
 vi.mock('../../../../../src/utils/auth', () => ({
   verifyJWT: mockVerifyJWT
+}));
+
+// Mock structured logger (source uses createContextLogger, not console.log)
+vi.mock('@/utils/logger', () => ({
+  createContextLogger: () => ({
+    info: mockLogInfo,
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: mockLogError,
+  }),
 }));
 
 // Mock HTTP_STATUS constant
@@ -644,7 +656,7 @@ describe('Session Middleware Integration', () => {
 
   describe('Real-World Scenario Simulation', () => {
     test('should handle complete session management workflow', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockLogInfo.mockClear();
 
       // Setup multiple endpoints simulating real session management
       app.post('/sessions',
@@ -719,10 +731,8 @@ describe('Session Middleware Integration', () => {
       data = await response.json();
       expect(data.action).toBe('updated');
 
-      // Verify logging was called for all operations
-      expect(consoleSpy).toHaveBeenCalledTimes(6); // 3 operations x 2 logs each (start + end)
-
-      consoleSpy.mockRestore();
+      // Verify structured logger was called for all operations (3 ops x 2 logs: start + completed)
+      expect(mockLogInfo).toHaveBeenCalledTimes(6);
     });
 
     test('should handle mixed success and failure scenarios', async () => {

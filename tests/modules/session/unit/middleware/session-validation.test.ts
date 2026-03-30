@@ -1002,26 +1002,23 @@ describe('Session Validation Middleware', () => {
 
   describe('Error Handling and Edge Cases', () => {
     test('should handle validation errors gracefully', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       app.post('/error-test', validateCreateSessionData, (c) => {
         return c.json({ success: true });
       });
 
-      // Simulate validation error
+      // Simulate validation error with malformed JSON
       const response = await app.request('/error-test', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json'
         },
         body: 'malformed json'
       });
 
+      // Validation middleware should return 400 gracefully (errors logged via structured logger, not console)
       expect(response.status).toBe(400);
-      expect(consoleErrorSpy).toHaveBeenCalled();
-
-      consoleErrorSpy.mockRestore();
+      const data = await response.json() as Record<string, unknown>;
+      expect(data.success).toBe(false);
     });
 
     test('should provide consistent error response format', async () => {
