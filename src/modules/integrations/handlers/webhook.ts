@@ -57,7 +57,7 @@ export const webhookHandler = {
     log.info('Request received', { timestamp: nowISO() });
 
     try {
-      // 驗證簽���
+      // Verify signature
       const signature = c.req.header('X-Line-Signature');
       const body = await c.req.text();
 
@@ -206,7 +206,7 @@ import { nowISO } from '@/utils/timestamp'
  */
 export const webhookRouter = new Hono<{ Bindings: Bindings }>();
 
-// Health check endpoint
+// Health check endpoint (only route on webhookRouter — LINE/Facebook are registered directly in index.ts)
 webhookRouter.get('/health', (c) => {
   return c.json({
     status: 'healthy',
@@ -215,13 +215,6 @@ webhookRouter.get('/health', (c) => {
     timestamp: nowISO()
   });
 });
-
-// LINE webhook endpoint
-webhookRouter.post('/line', (c) => webhookHandler.line(c));
-
-// Facebook webhook endpoint
-webhookRouter.get('/facebook', (c) => webhookHandler.facebook(c));
-webhookRouter.post('/facebook', (c) => webhookHandler.facebook(c));
 
 // Default export for route registry
 export default webhookRouter;
