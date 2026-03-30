@@ -11,6 +11,8 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import type { Bindings } from '@/types';
+import { findOrCreateCustomer as sharedFindOrCreateCustomer } from './webhook-customer-service';
 
 const log = createContextLogger('MessageNormalization');
 
@@ -111,6 +113,7 @@ export interface ProcessInboundMessageOptions {
   rawEvent: any;
   channelConfig: any;
   db: D1Database;
+  env?: Bindings;  // NEW: needed for distributed lock in shared service
   teamId: number;
 }
 
@@ -138,15 +141,27 @@ export class MessageNormalizationService {
         return { success: false, error: 'Failed to extract platform data' };
       }
 
-      // Step 2: Find or create customer
-      const customer = await this.findOrCreateCustomer(
-        db,
-        platform,
-        extracted.platformUserId,
-        extracted.displayName,
-        extracted.avatarUrl,
-        teamId
-      );
+      // Step 2: Find or create customer (use shared service if env available, fallback to local)
+      let customer: { id: number; displayName: string } | null;
+      if (options.env) {
+        const result = await sharedFindOrCreateCustomer(
+          options.env,
+          extracted.platformUserId,
+          platform as 'line' | 'facebook',
+          { sourceTeamId: teamId }
+        );
+        customer = result ? { id: result.id, displayName: result.displayName || 'Unknown' } : null;
+      } else {
+        // Legacy fallback for callers that don't pass env
+        customer = await this.findOrCreateCustomer(
+          db,
+          platform,
+          extracted.platformUserId,
+          extracted.displayName,
+          extracted.avatarUrl,
+          teamId
+        );
+      }
 
       if (!customer) {
         return { success: false, error: 'Failed to create customer' };
