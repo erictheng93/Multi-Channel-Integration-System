@@ -75,30 +75,45 @@ vi.mock('uuid', () => ({
   v4: vi.fn().mockReturnValue('mock-conversation-uuid')
 }));
 
+// Mock webhook-customer-service (findOrCreateCustomer + updateCustomerProfile)
+const mockFindOrCreateCustomer = vi.fn();
+const mockUpdateCustomerProfile = vi.fn().mockResolvedValue(undefined);
+vi.mock('@modules/integrations/services/webhook-customer-service', () => ({
+  findOrCreateCustomer: (...args: any[]) => mockFindOrCreateCustomer(...args),
+  updateCustomerProfile: (...args: any[]) => mockUpdateCustomerProfile(...args),
+}));
+
 // Database mock results storage
 let mockDbResults: {
   existingCustomer: any;
   assignment: any;
   team: any;
   conversation: any;
-  insertedCustomer: any;
   newConversation: any;
 } = {
   existingCustomer: null,
   assignment: null,
   team: null,
   conversation: null,
-  insertedCustomer: null,
   newConversation: null
 };
 
-// Track database operations
+// Track database operations (conversations still use inline DB calls)
 let dbOperations: {
   inserts: { table: string; values: any }[];
   updates: { table: string; set: any; where: any }[];
 } = { inserts: [], updates: [] };
 
 // Mock createDbClient
+// After refactor, customer creation/update is handled by webhook-customer-service.
+// The handler still uses drizzle directly for:
+//   1. select existing customer
+//   2. select customerTeamAssignments (parallel)
+//   3. select existing conversation
+//   4. insert/update conversations
+//   5. select team info
+//   6. select new conversation for broadcast
+//   7. select conversation for welcome message
 vi.mock('@/db/drizzle-factory', () => ({
   createDbClient: vi.fn().mockImplementation(() => {
     let selectQueryCount = 0;
@@ -132,34 +147,21 @@ vi.mock('@/db/drizzle-factory', () => ({
     return {
       select: vi.fn().mockImplementation((fields?: any) => {
         selectQueryCount++;
-        // Query order in processLineFollowEvent:
-        // 1. Check existing customer (line 828)
-        // 2. Query customerTeamAssignments (parallel task, line 909)
-        // 3. Re-query customer after insert (line 982) - only if new customer
-        // 4. Query existing conversation (line 1024)
-        // 5. Query team info (line 1081)
-        // 6. Query new conversation for broadcast (line 1103)
+        // Query order in processLineFollowEvent (after refactor):
+        // 1. Check existing customer (select from customers)
+        // 2. Query customerTeamAssignments (parallel task)
+        // -- findOrCreateCustomer is now mocked separately, no DB query here --
+        // -- updateCustomerProfile is now mocked separately, no DB query here --
+        // 3. Query existing conversation (if team assigned)
+        // 4. Query team info
+        // 5. Query new conversation for broadcast
+        // 6. Query conversation for welcome message
         if (selectQueryCount === 1) return createSelectChain(mockDbResults.existingCustomer);
         if (selectQueryCount === 2) return createSelectChain(mockDbResults.assignment);
-        // If no existing customer, query 3 is the re-query after insert
-        if (selectQueryCount === 3) {
-          if (!mockDbResults.existingCustomer) {
-            return createSelectChain(mockDbResults.insertedCustomer);
-          }
-          return createSelectChain(mockDbResults.conversation);
-        }
-        if (selectQueryCount === 4) {
-          if (!mockDbResults.existingCustomer) {
-            return createSelectChain(mockDbResults.conversation);
-          }
-          return createSelectChain(mockDbResults.team);
-        }
-        if (selectQueryCount === 5) {
-          if (!mockDbResults.existingCustomer) {
-            return createSelectChain(mockDbResults.team);
-          }
-          return createSelectChain(mockDbResults.newConversation || mockDbResults.conversation);
-        }
+        if (selectQueryCount === 3) return createSelectChain(mockDbResults.conversation);
+        if (selectQueryCount === 4) return createSelectChain(mockDbResults.team);
+        if (selectQueryCount === 5) return createSelectChain(mockDbResults.newConversation || mockDbResults.conversation);
+        // Additional queries (e.g., welcome message conversation lookup)
         if (selectQueryCount === 6) return createSelectChain(mockDbResults.newConversation || mockDbResults.conversation);
         return createSelectChain(null);
       }),
@@ -264,7 +266,6 @@ describe('processLineFollowEvent', () => {
       assignment: null,
       team: null,
       conversation: null,
-      insertedCustomer: null,
       newConversation: null
     };
     dbOperations = { inserts: [], updates: [] };
@@ -273,6 +274,12 @@ describe('processLineFollowEvent', () => {
       displayName: 'Test User',
       pictureUrl: 'https://example.com/avatar.jpg'
     });
+    // Default: findOrCreateCustomer returns a new customer record
+    mockFindOrCreateCustomer.mockResolvedValue({
+      id: 1, platform: 'line', platformUserId: 'U1234567890abcdef',
+      displayName: 'LINE User', avatarUrl: null, metadata: null
+    });
+    mockUpdateCustomerProfile.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -318,21 +325,24 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: null,
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 1, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
       await processLineFollowEvent(env as any, event);
 
-      // Verify customer was inserted
-      const customerInsert = dbOperations.inserts.find(i => i.table === 'customers');
-      expect(customerInsert).toBeDefined();
-      expect(customerInsert?.values).toMatchObject({
-        platform: 'line',
-        platformUserId: 'U1234567890abcdef'
-      });
+      // Verify findOrCreateCustomer was called with correct params
+      expect(mockFindOrCreateCustomer).toHaveBeenCalledWith(
+        expect.anything(),          // env
+        'U1234567890abcdef',        // userId
+        'line',                     // platform
+        expect.objectContaining({ sourceTeamId: 5 })
+      );
     });
 
     it('should create conversation with team assignment when new user follows via QR code', async () => {
@@ -341,15 +351,18 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123, platformUserId: 'U1234567890abcdef' },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
       await processLineFollowEvent(env as any, event);
 
-      // Verify conversation was inserted
+      // Verify conversation was inserted (conversations still use inline DB)
       const convInsert = dbOperations.inserts.find(i => i.table === 'conversations');
       expect(convInsert).toBeDefined();
       expect(convInsert?.values).toMatchObject({
@@ -365,9 +378,12 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123, platformUserId: 'U1234567890abcdef', displayName: 'Test User' },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'Test User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
@@ -391,9 +407,12 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123, platformUserId: 'U1234567890abcdef', displayName: 'Test User' },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'Test User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent({ replyToken: 'valid-reply-token' });
 
@@ -423,9 +442,12 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 10, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' }, // Priority
         team: { id: 10, name: 'Priority Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       mockHandleQRCodeFollow.mockResolvedValue({ autoAssigned: true, teamId: 5 }); // Lower priority
 
       const env = createMockEnv();
@@ -444,9 +466,12 @@ describe('processLineFollowEvent', () => {
         assignment: null, // No assignment
         team: { id: 5, name: 'QR Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       mockHandleQRCodeFollow.mockResolvedValue({ autoAssigned: true, teamId: 5 }); // Fallback
 
       const env = createMockEnv();
@@ -466,9 +491,12 @@ describe('processLineFollowEvent', () => {
         assignment: null,
         team: null,
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: null
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       mockHandleQRCodeFollow.mockResolvedValue({ autoAssigned: false, teamId: null });
 
       const env = createMockEnv();
@@ -476,9 +504,13 @@ describe('processLineFollowEvent', () => {
 
       await processLineFollowEvent(env as any, event);
 
-      // Customer should still be created
-      const customerInsert = dbOperations.inserts.find(i => i.table === 'customers');
-      expect(customerInsert).toBeDefined();
+      // Customer should still be created via findOrCreateCustomer
+      expect(mockFindOrCreateCustomer).toHaveBeenCalledWith(
+        expect.anything(),
+        'U1234567890abcdef',
+        'line',
+        expect.anything()
+      );
 
       // But no conversation should be created (no team)
       const convInsert = dbOperations.inserts.find(i => i.table === 'conversations');
@@ -504,7 +536,6 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: { id: 'existing-conv', assignedTeamId: 5 },
-        insertedCustomer: null,
         newConversation: null
       };
       const env = createMockEnv();
@@ -512,11 +543,21 @@ describe('processLineFollowEvent', () => {
 
       await processLineFollowEvent(env as any, event);
 
-      // Should update, not insert
-      expect(dbOperations.inserts.filter(i => i.table === 'customers')).toHaveLength(0);
+      // Should NOT call findOrCreateCustomer (existing customer found via initial query)
+      expect(mockFindOrCreateCustomer).not.toHaveBeenCalled();
 
-      const customerUpdate = dbOperations.updates.find(u => u.table === 'customers');
-      expect(customerUpdate).toBeDefined();
+      // Should call updateCustomerProfile to update metadata
+      expect(mockUpdateCustomerProfile).toHaveBeenCalledWith(
+        expect.anything(),  // env
+        456,                // customerId
+        expect.objectContaining({
+          displayName: 'Test User',
+          metadata: expect.objectContaining({
+            followedAt: '2023-01-01T00:00:00Z',
+            lastFollowedAt: expect.any(String)
+          })
+        })
+      );
     });
 
     it('should update conversation team only when no team is assigned (not when different team)', async () => {
@@ -524,11 +565,10 @@ describe('processLineFollowEvent', () => {
       // It does NOT override existing team assignments, even if the QR code belongs to a different team
       // This is intentional to preserve manual team assignments
       mockDbResults = {
-        existingCustomer: { id: 456, platformUserId: 'U1234567890abcdef' },
+        existingCustomer: { id: 456, platformUserId: 'U1234567890abcdef', metadata: null },
         assignment: { id: 'assign-1', teamId: 10, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 10, name: 'New Team' },
         conversation: { id: 'existing-conv', assignedTeamId: null, status: 'active' }, // No team assigned
-        insertedCustomer: null,
         newConversation: null
       };
       const env = createMockEnv();
@@ -547,11 +587,10 @@ describe('processLineFollowEvent', () => {
       // When conversation already exists AND has a team assigned,
       // the implementation will NOT update it (only updates if no team is assigned)
       mockDbResults = {
-        existingCustomer: { id: 456, platformUserId: 'U1234567890abcdef' },
+        existingCustomer: { id: 456, platformUserId: 'U1234567890abcdef', metadata: null },
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Same Team' },
         conversation: { id: 'existing-conv', assignedTeamId: 5, status: 'active' }, // Already has team
-        insertedCustomer: null,
         newConversation: null
       };
       const env = createMockEnv();
@@ -576,18 +615,26 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
       // Should not throw
       await expect(processLineFollowEvent(env as any, event)).resolves.not.toThrow();
 
-      // Customer should still be created with default name
-      const customerInsert = dbOperations.inserts.find(i => i.table === 'customers');
-      expect(customerInsert?.values.displayName).toBe('LINE User');
+      // Customer should still be created via findOrCreateCustomer
+      expect(mockFindOrCreateCustomer).toHaveBeenCalled();
+      // updateCustomerProfile should be called with fallback displayName 'LINE User'
+      expect(mockUpdateCustomerProfile).toHaveBeenCalledWith(
+        expect.anything(),
+        123,
+        expect.objectContaining({ displayName: 'LINE User' })
+      );
     });
 
     it('should continue when WebSocket broadcast fails (non-blocking)', async () => {
@@ -597,17 +644,20 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
       // Should not throw
       await expect(processLineFollowEvent(env as any, event)).resolves.not.toThrow();
 
-      // Customer and conversation should still be created
-      expect(dbOperations.inserts.find(i => i.table === 'customers')).toBeDefined();
+      // Customer should still be created via service and conversation via inline DB
+      expect(mockFindOrCreateCustomer).toHaveBeenCalled();
       expect(dbOperations.inserts.find(i => i.table === 'conversations')).toBeDefined();
     });
 
@@ -618,9 +668,12 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
@@ -635,17 +688,20 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
       // Should not throw
       await expect(processLineFollowEvent(env as any, event)).resolves.not.toThrow();
 
-      // Customer should still be created
-      expect(dbOperations.inserts.find(i => i.table === 'customers')).toBeDefined();
+      // Customer should still be created via findOrCreateCustomer
+      expect(mockFindOrCreateCustomer).toHaveBeenCalled();
     });
 
     it('should throw when critical database operation fails', async () => {
@@ -672,9 +728,12 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-1', teamId: 5, source: 'liff_qr', assignedAt: '2024-01-01T00:00:00Z' },
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent();
 
@@ -704,9 +763,12 @@ describe('processLineFollowEvent', () => {
         assignment: null,
         team: { id: 5, name: 'Sales Team' },
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
       mockHandleQRCodeFollow.mockResolvedValue({ autoAssigned: true, teamId: 5 });
 
       const env = createMockEnv();
@@ -730,9 +792,12 @@ describe('processLineFollowEvent', () => {
         assignment: null,
         team: null,
         conversation: null,
-        insertedCustomer: { id: 123 },
         newConversation: null
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 123, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'LINE User', avatarUrl: null, metadata: null
+      });
 
       const env = createMockEnv();
       const event = createFollowEvent({
@@ -756,9 +821,12 @@ describe('processLineFollowEvent', () => {
         assignment: { id: 'assign-abc', teamId: 7, source: 'liff_qr', assignedAt: '2024-01-15T10:00:00Z' },
         team: { id: 7, name: 'Support Team' },
         conversation: null,
-        insertedCustomer: { id: 999, platformUserId: 'U1234567890abcdef', displayName: 'Test User' },
         newConversation: { id: 'mock-conversation-uuid' }
       };
+      mockFindOrCreateCustomer.mockResolvedValue({
+        id: 999, platform: 'line', platformUserId: 'U1234567890abcdef',
+        displayName: 'Test User', avatarUrl: null, metadata: null
+      });
       const env = createMockEnv();
       const event = createFollowEvent({
         replyToken: 'valid-reply-token',
@@ -767,11 +835,15 @@ describe('processLineFollowEvent', () => {
 
       await processLineFollowEvent(env as any, event);
 
-      // 1. Customer created
-      const customerInsert = dbOperations.inserts.find(i => i.table === 'customers');
-      expect(customerInsert).toBeDefined();
+      // 1. Customer created via consolidated service
+      expect(mockFindOrCreateCustomer).toHaveBeenCalledWith(
+        expect.anything(),
+        'U1234567890abcdef',
+        'line',
+        expect.objectContaining({ sourceTeamId: 7 })
+      );
 
-      // 2. Conversation created with team
+      // 2. Conversation created with team (still inline DB)
       const convInsert = dbOperations.inserts.find(i => i.table === 'conversations');
       expect(convInsert).toBeDefined();
       expect(convInsert?.values.assignedTeamId).toBe(7);
