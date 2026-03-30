@@ -17,6 +17,7 @@
     "check": "bash scripts/check.sh",
     "check:backend": "bash scripts/check.sh backend",
     "check:frontend": "bash scripts/check.sh frontend",
+    "predeploy": "bunx tsx scripts/check-schema-drift.ts",
     "deploy": "wrangler deploy --minify",
     "health:check": "curl -s https://mcis-backend.daiwandist.com/api/system/health",
     "health:check:ws": "curl -s https://mcis-backend.daiwandist.com/api/websocket/health",
