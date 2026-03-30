@@ -572,6 +572,54 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
         break
       }
 
+      case 'customer_profile_updated': {
+        // Bug #3 fix: update cached customer data when profile changes on backend
+        const profileData = data as {
+          customerId?: number
+          changes?: { displayName?: string; avatarUrl?: string | null }
+          conversationIds?: string[]
+        } | undefined
+
+        if (profileData?.changes && profileData?.conversationIds) {
+          const { changes, conversationIds: affectedIds } = profileData
+
+          for (const convId of affectedIds) {
+            const convIndex = conversations.value.findIndex(c => c.id === convId)
+            if (convIndex !== -1) {
+              const conv = conversations.value[convIndex]
+              // Update the customer fields on the conversation object
+              if (conv?.customer) {
+                if (changes.displayName !== undefined) {
+                  conv.customer.name = changes.displayName
+                }
+                if (changes.avatarUrl !== undefined) {
+                  conv.customer.avatarUrl = changes.avatarUrl ?? undefined
+                }
+              }
+              // Also update currentConversation if it's the one being viewed
+              if (currentConversation.value?.id === convId && currentConversation.value.customer) {
+                if (changes.displayName !== undefined) {
+                  currentConversation.value.customer.name = changes.displayName
+                }
+                if (changes.avatarUrl !== undefined) {
+                  currentConversation.value.customer.avatarUrl = changes.avatarUrl ?? undefined
+                }
+              }
+            }
+          }
+
+          // Invalidate conversation list cache so next fetch gets fresh data
+          conversationCache.invalidateConversation(conversationId || affectedIds[0] || '')
+          lastUpdateTime.value = new Date()
+          console.log('[ConversationsStore] Customer profile updated', {
+            customerId: profileData.customerId,
+            changedFields: Object.keys(profileData.changes),
+            affectedConversations: affectedIds.length,
+          })
+        }
+        break
+      }
+
       default:
         console.warn('[ConversationsStore] Unhandled message type:', message.type)
     }
