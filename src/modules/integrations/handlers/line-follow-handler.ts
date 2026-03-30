@@ -5,6 +5,7 @@ import { eq, and, ne, desc } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { customers, conversations, teams } from '@/db/schema';
 import type { Bindings, LineEvent } from '@/types';
+import { findOrCreateCustomer, updateCustomerProfile } from '../services/webhook-customer-service';
 import { v4 as uuidv4 } from 'uuid';
 import { ActivityService } from '@modules/activities';
 import { createContextLogger } from '@/utils/logger';
@@ -36,7 +37,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     const drizzleDb = createDbClient(env.DB);
 
     // Step 1: Check if user already exists
-    let existingCustomer = await drizzleDb
+    let existingCustomer: typeof customers.$inferSelect | null | undefined = await drizzleDb
       .select()
       .from(customers)
       .where(and(
@@ -177,59 +178,36 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
 
     // Step 7: Create or update customer record
     if (!existingCustomer) {
-      log.info('Creating new customer');
-      await drizzleDb
-        .insert(customers)
-        .values({
-          platform: 'line',
-          platformUserId: userId,
-          displayName,
-          avatarUrl,
-          metadata: assignedTeamId ? JSON.stringify({
-            followedAt: timestamp,
-            assignedViaQR: true,
-            teamId: assignedTeamId
-          }) : JSON.stringify({ followedAt: timestamp }),
-          createdAt: timestamp,
-          updatedAt: timestamp
-        });
-
-      // Re-query customer
-      existingCustomer = await drizzleDb
-        .select()
-        .from(customers)
-        .where(and(
-          eq(customers.platformUserId, userId),
-          eq(customers.platform, 'line')
-        ))
-        .get();
-
-      log.info('Customer created', {
-        customerId: existingCustomer?.id,
-        displayName,
-        teamId: assignedTeamId
+      existingCustomer = await findOrCreateCustomer(env, userId, 'line', {
+        sourceTeamId: assignedTeamId ?? undefined,
       });
-    } else {
-      // Update existing customer metadata
-      log.info('Updating existing customer');
-      const existingMetadata = existingCustomer.metadata
-        ? JSON.parse(existingCustomer.metadata as string)
-        : {};
 
-      await drizzleDb
-        .update(customers)
-        .set({
-          displayName,
-          avatarUrl,
-          metadata: JSON.stringify({
-            ...existingMetadata,
-            lastFollowedAt: timestamp,
-            ...(assignedTeamId && { assignedViaQR: true, teamId: assignedTeamId })
-          }),
-          updatedAt: timestamp
-        })
-        .where(eq(customers.id, existingCustomer.id));
+      if (!existingCustomer) {
+        log.error('LINE Follow: Failed to find or create customer', { userId: userId.substring(0, 10) });
+        return;
+      }
+
+      log.info('Customer created via consolidated service', {
+        customerId: existingCustomer.id,
+        displayName,
+        teamId: assignedTeamId,
+      });
     }
+
+    // Update profile with follow event data (name, avatar, metadata)
+    const existingMetadata = existingCustomer.metadata
+      ? JSON.parse(existingCustomer.metadata as string)
+      : {};
+
+    await updateCustomerProfile(env, existingCustomer.id, {
+      displayName,
+      avatarUrl,
+      metadata: {
+        ...existingMetadata,
+        lastFollowedAt: timestamp,
+        ...(assignedTeamId && { assignedViaQR: true, teamId: assignedTeamId }),
+      },
+    });
 
     // Step 8: If team assigned, create default conversation
     if (assignedTeamId && existingCustomer) {
