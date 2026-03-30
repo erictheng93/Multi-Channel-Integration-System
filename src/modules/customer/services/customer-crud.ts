@@ -265,7 +265,7 @@ export class CustomerCrudService {
         }
 
         if (additionalInfo.avatarUrl && additionalInfo.avatarUrl !== customer.avatarUrl) {
-          updateData.displayName = additionalInfo.avatarUrl;
+          updateData.avatarUrl = additionalInfo.avatarUrl;
           needsUpdate = true;
         }
 
@@ -320,6 +320,10 @@ export class CustomerCrudService {
 
       if (updateData.displayName !== undefined) {
         updateFields.displayName = updateData.displayName;
+      }
+
+      if (updateData.avatarUrl !== undefined) {
+        updateFields.avatarUrl = updateData.avatarUrl;
       }
 
       if (updateData.email !== undefined) {
