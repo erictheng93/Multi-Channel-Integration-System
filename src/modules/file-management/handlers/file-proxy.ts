@@ -7,7 +7,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
-import { fileAttachments } from '@/db/schema';
+import { fileAttachments, messages as messagesTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
 
@@ -162,15 +162,49 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', async (c) => {
 
     log.info('Proxying LINE content', { lineMessageId });
 
-    // Determine the correct LINE channel access token
-    // Check if a per-channel token is available via query param (set by frontend with conversation context)
+    // Step 1: Check if we already have this file in R2 (fast path, avoids LINE API expiry)
+    const db = createDbClient(c.env.DB);
+    try {
+      const existingAttachment = await db.select({
+        fileUrl: fileAttachments.fileUrl,
+        r2Key: fileAttachments.r2Key,
+        mimeType: fileAttachments.mimeType,
+      })
+        .from(fileAttachments)
+        .innerJoin(messagesTable, eq(fileAttachments.messageId, messagesTable.id))
+        .where(eq(messagesTable.platformMessageId, lineMessageId))
+        .get();
+
+      if (existingAttachment?.r2Key && c.env.R2_BUCKET) {
+        const r2Object = await c.env.R2_BUCKET.get(existingAttachment.r2Key);
+        if (r2Object) {
+          log.info('Serving from R2 (fast path)', { lineMessageId, r2Key: existingAttachment.r2Key });
+          return new Response(r2Object.body, {
+            status: 200,
+            headers: {
+              'Content-Type': existingAttachment.mimeType || r2Object.httpMetadata?.contentType || 'image/jpeg',
+              'Content-Length': r2Object.size.toString(),
+              'Cache-Control': 'public, max-age=86400',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type'
+            }
+          });
+        }
+      }
+    } catch (r2LookupError) {
+      log.warn('R2 lookup failed, falling back to LINE API', {
+        error: r2LookupError instanceof Error ? r2LookupError.message : String(r2LookupError),
+      });
+    }
+
+    // Step 2: Fallback to LINE Content API (may fail for messages older than ~7 days)
     const token = c.env.LINE_CHANNEL_ACCESS_TOKEN;
     if (!token) {
       log.error('LINE_CHANNEL_ACCESS_TOKEN not configured', {});
       return c.json({ success: false, error: 'LINE token not configured' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    // Download from LINE Content API
     const lineUrl = `https://api-data.line.me/v2/bot/message/${lineMessageId}/content`;
     const lineResp = await fetch(lineUrl, {
       headers: {
@@ -180,7 +214,7 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', async (c) => {
     });
 
     if (!lineResp.ok) {
-      log.error('LINE API error', { status: lineResp.status, statusText: lineResp.statusText });
+      log.error('LINE API error (content may have expired)', { status: lineResp.status, statusText: lineResp.statusText, lineMessageId });
       return c.json({
         success: false,
         error: `LINE content unavailable (${lineResp.status})`
