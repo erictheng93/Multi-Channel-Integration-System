@@ -227,17 +227,26 @@ export async function updateCustomerProfile(
         ))
         .all();
 
-      if (activeConversations.length > 0) {
+      const conversationIds = activeConversations.map(c => c.id);
+      if (conversationIds.length > 0) {
         const broadcastService = new WebSocketBroadcastService(env);
+
+        // Build payload matching frontend's expected shape:
+        // { customerId, changes: { displayName?, avatarUrl? }, conversationIds: string[] }
+        const visibleChanges: Record<string, string | null> = {};
+        if ('displayName' in changes) visibleChanges.displayName = changes.displayName as string | null;
+        if ('avatarUrl' in changes) visibleChanges.avatarUrl = changes.avatarUrl as string | null;
+
         const broadcastData = {
           customerId,
-          ...changes,
+          changes: visibleChanges,
+          conversationIds,
         };
 
-        for (const conv of activeConversations) {
+        for (const convId of conversationIds) {
           await broadcastService.broadcastConversationEvent({
             type: 'customer_profile_updated' as any,
-            conversationId: conv.id,
+            conversationId: convId,
             data: broadcastData,
           });
         }

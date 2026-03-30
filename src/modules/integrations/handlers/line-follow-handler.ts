@@ -1,9 +1,9 @@
 // src/modules/integrations/handlers/line-follow-handler.ts
 // LINE follow/unfollow event processing — extracted from line-event-processor.ts
 
-import { eq, and, ne, desc } from 'drizzle-orm';
+import { eq, and, ne, desc, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { customers, conversations, teams } from '@/db/schema';
+import { customers, conversations, teams, messages } from '@/db/schema';
 import type { Bindings, LineEvent } from '@/types';
 import { findOrCreateCustomer, updateCustomerProfile } from '../services/webhook-customer-service';
 import { v4 as uuidv4 } from 'uuid';
@@ -42,7 +42,8 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
       .from(customers)
       .where(and(
         eq(customers.platformUserId, userId),
-        eq(customers.platform, 'line')
+        eq(customers.platform, 'line'),
+        isNull(customers.deletedAt)
       ))
       .get();
 
@@ -432,7 +433,35 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
           const welcomeMessage = `歡迎加入 ${teamName}！\n\n我們很高興為您服務。如有任何問題，請隨時聯繫我們。`;
 
           const { sendLineReply, createTextMessage } = await import('@/utils/line');
-          await sendLineReply(env.LINE_CHANNEL_ACCESS_TOKEN, event.replyToken, [createTextMessage(welcomeMessage)]);
+          const sent = await sendLineReply(env.LINE_CHANNEL_ACCESS_TOKEN, event.replyToken, [createTextMessage(welcomeMessage)]);
+
+          // Store default welcome message in DB so the conversation is not empty
+          if (sent && welcomeConversationId) {
+            try {
+              const messageId = uuidv4();
+              const messageTimestamp = nowISO();
+              await drizzleDb.insert(messages).values({
+                id: messageId,
+                conversationId: welcomeConversationId,
+                senderType: 'system',
+                content: welcomeMessage,
+                messageType: 'text',
+                isSent: true,
+                deliveryStatus: 'delivered',
+                senderName: 'Auto-Reply',
+                createdAt: messageTimestamp,
+              });
+              // Update conversation lastMessageAt so list view shows the message
+              await drizzleDb.update(conversations)
+                .set({ lastMessageAt: messageTimestamp, updatedAt: messageTimestamp })
+                .where(eq(conversations.id, welcomeConversationId));
+              log.info('Default welcome message stored in DB', { conversationId: welcomeConversationId, messageId });
+            } catch (saveError) {
+              log.warn('Failed to store default welcome message (non-blocking)', {
+                error: saveError instanceof Error ? saveError.message : String(saveError),
+              });
+            }
+          }
 
           log.info('Default welcome message sent (no auto-reply rule)', {
             userId: userId.substring(0, 10) + '...',

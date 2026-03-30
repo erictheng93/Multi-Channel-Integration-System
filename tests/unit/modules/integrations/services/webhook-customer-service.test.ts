@@ -419,7 +419,8 @@ describe('webhook-customer-service', () => {
           conversationId: 'conv-1',
           data: expect.objectContaining({
             customerId: 10,
-            displayName: 'New Name',
+            changes: { displayName: 'New Name' },
+            conversationIds: ['conv-1', 'conv-2'],
           }),
         })
       );
@@ -429,7 +430,8 @@ describe('webhook-customer-service', () => {
           conversationId: 'conv-2',
           data: expect.objectContaining({
             customerId: 10,
-            displayName: 'New Name',
+            changes: { displayName: 'New Name' },
+            conversationIds: ['conv-1', 'conv-2'],
           }),
         })
       );
