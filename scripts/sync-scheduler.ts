@@ -12,7 +12,6 @@
 import DatabaseSyncTool from './sync-database.ts';
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
 
 // 調度配置
 interface ScheduleConfig {
@@ -179,27 +178,31 @@ class DatabaseSyncScheduler {
       diskSpace: this.getDiskSpace()
     };
 
-    try {
-      // 檢查本地數據庫
-      execSync('wrangler d1 execute mcis-db --command "SELECT 1;"', { stdio: 'pipe' });
-      results.localDbOk = true;
-    } catch (error) {
-      this.log(' 本地數據庫健康檢查失敗');
-    }
+    // 檢查本地數據庫
+    const localResult = Bun.spawnSync(
+      ['wrangler', 'd1', 'execute', 'mcis-db', '--command', 'SELECT 1;'],
+      { stdout: 'pipe', stderr: 'pipe' }
+    );
+    results.localDbOk = localResult.exitCode === 0;
+    if (!results.localDbOk) this.log(' Local DB health check failed');
 
-    try {
-      // 檢查生產數據庫
-      execSync('wrangler d1 execute mcis-db --remote --command "SELECT 1;"', { stdio: 'pipe' });
-      results.prodDbOk = true;
-    } catch (error) {
-      this.log(' 生產數據庫健康檢查失敗');
-    }
+    // 檢查生產數據庫
+    const prodResult = Bun.spawnSync(
+      ['wrangler', 'd1', 'execute', 'mcis-db', '--remote', '--command', 'SELECT 1;'],
+      { stdout: 'pipe', stderr: 'pipe' }
+    );
+    results.prodDbOk = prodResult.exitCode === 0;
+    if (!results.prodDbOk) this.log(' 生產數據庫健康檢查失敗');
 
     // 檢查遷移狀態
-    try {
-      const migrationOutput = execSync('wrangler d1 migrations list mcis-db', { encoding: 'utf8' });
+    const migrationResult = Bun.spawnSync(
+      ['wrangler', 'd1', 'migrations', 'list', 'mcis-db'],
+      { stdout: 'pipe', stderr: 'pipe' }
+    );
+    if (migrationResult.exitCode === 0) {
+      const migrationOutput = migrationResult.stdout.toString();
       results.migrationStatus = migrationOutput.includes('No migrations to apply') ? 'up-to-date' : 'pending';
-    } catch (error) {
+    } else {
       results.migrationStatus = 'error';
     }
 
@@ -270,11 +273,15 @@ class DatabaseSyncScheduler {
   private getDiskSpace(): any {
     try {
       // Windows 系統
-      const output = execSync('dir /-c', { encoding: 'utf8', cwd: process.cwd() });
-      // 簡化實現，實際可以解析更詳細的磁碟空間信息
+      const diskResult = Bun.spawnSync(
+        ['cmd', '/c', 'dir', '/-c'],
+        { stdout: 'pipe', stderr: 'pipe', cwd: process.cwd() }
+      );
+      const output = diskResult.stdout.toString();
+      void output; // 簡化實現，實際可以解析更詳細的磁碟空間信息
       return { status: 'ok', details: 'disk space check completed' };
     } catch (error) {
-      return { status: 'error', error: error.toString() };
+      return { status: 'error', error: String(error) };
     }
   }
 
