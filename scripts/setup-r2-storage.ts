@@ -6,10 +6,24 @@
  * 檔�?路�?�?scripts/setup-r2-storage.ts
  */
 
-import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+function runSync(cmd: string[]): string {
+  const result = Bun.spawnSync(cmd, { stdout: 'pipe', stderr: 'pipe' });
+  if (result.exitCode !== 0) {
+    throw new Error(result.stderr.toString() || `Command failed with exit code ${result.exitCode}`);
+  }
+  return result.stdout.toString();
+}
+
+function runInherit(cmd: string[]): void {
+  const result = Bun.spawnSync(cmd, { stdout: 'inherit', stderr: 'inherit' });
+  if (result.exitCode !== 0) {
+    throw new Error(`Command failed with exit code ${result.exitCode}`);
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,7 +70,7 @@ const R2_CONFIG: R2ConfigType = {
 // 檢查 Cloudflare CLI ?�否已�?�?
 function checkCloudflareAuth(): boolean {
   try {
-    execSync('wrangler whoami', { stdio: 'pipe' });
+    runSync(['wrangler', 'whoami']);
     console.log('??Cloudflare 認�?已設�?);
     return true;
   } catch (error) {
@@ -72,15 +86,18 @@ function createR2Bucket(bucketName: string, environment: string = 'development')
     
     // 檢查 bucket ?�否已�???
     try {
-      execSync(`wrangler r2 bucket list | grep ${bucketName}`, { stdio: 'pipe' });
+      const bucketList = runSync(['wrangler', 'r2', 'bucket', 'list']);
+      if (!bucketList.includes(bucketName)) {
+        throw new Error('Bucket not found');
+      }
       console.log(`?��?  Bucket ${bucketName} 已�??�`);
       return true;
     } catch (error) {
       // Bucket 不�??��??�建?��?
     }
-    
+
     // ?�建 bucket
-    execSync(`wrangler r2 bucket create ${bucketName}`, { stdio: 'inherit' });
+    runInherit(['wrangler', 'r2', 'bucket', 'create', bucketName]);
     console.log(`??Bucket ${bucketName} ?�建?��?`);
     
     return true;
@@ -110,9 +127,7 @@ function setupCORS(bucketName: string, corsPolicy: CorsPolicy): boolean {
     
     try {
       // 設�? CORS
-      execSync(`wrangler r2 bucket cors put ${bucketName} --file ${corsConfigPath}`, {
-        stdio: 'inherit'
-      });
+      runInherit(['wrangler', 'r2', 'bucket', 'cors', 'put', bucketName, '--file', corsConfigPath]);
       console.log(`??${bucketName} CORS 設�?完�?`);
     } finally {
       // 清�??��?檔�?
@@ -139,19 +154,13 @@ function testR2Access(bucketName: string): boolean {
     
     try {
       // 上傳測試檔�?
-      execSync(`wrangler r2 object put ${bucketName}/test/test-file.txt --file ${testFilePath}`, {
-        stdio: 'pipe'
-      });
-      
+      runSync(['wrangler', 'r2', 'object', 'put', `${bucketName}/test/test-file.txt`, '--file', testFilePath]);
+
       // ?�出檔�?
-      execSync(`wrangler r2 object list ${bucketName} --prefix test/`, {
-        stdio: 'inherit'
-      });
-      
+      runInherit(['wrangler', 'r2', 'object', 'list', bucketName, '--prefix', 'test/']);
+
       // ?�除測試檔�?
-      execSync(`wrangler r2 object delete ${bucketName}/test/test-file.txt`, {
-        stdio: 'pipe'
-      });
+      runSync(['wrangler', 'r2', 'object', 'delete', `${bucketName}/test/test-file.txt`]);
       
       console.log(`??${bucketName} 存�?測試?��?`);
       return true;
