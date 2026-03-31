@@ -9,10 +9,18 @@
  * 4. 健康檢查 (Health Check)
  */
 
-import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+/** Runs a command synchronously, throws on failure (matches execSync behavior) */
+function runSync(cmd: string[], opts?: { cwd?: string; timeout?: number }): string {
+  const result = Bun.spawnSync(cmd, { stdout: 'pipe', stderr: 'pipe', ...opts });
+  if (result.exitCode !== 0) {
+    throw new Error(result.stderr.toString() || `Command failed with exit code ${result.exitCode}`);
+  }
+  return result.stdout.toString();
+}
 
 // 配置選項
 interface SyncConfig {
@@ -89,7 +97,7 @@ class DatabaseSyncTool {
 
     // 檢查 Wrangler 是否可用
     try {
-      execSync('wrangler --version', { stdio: 'pipe' });
+      runSync(['wrangler', '--version']);
     } catch (error) {
       throw new Error('Wrangler CLI 不可用，請先安裝 Wrangler');
     }
@@ -105,12 +113,11 @@ class DatabaseSyncTool {
    * 檢查數據庫連接
    */
   private async checkDatabaseConnection(env: 'local' | 'production'): Promise<void> {
-    const remoteFlag = env === 'production' ? '--remote' : '';
     try {
-      const result = execSync(`wrangler d1 execute ${this.dbName} ${remoteFlag} --command "SELECT 1;"`, {
-        stdio: 'pipe',
-        encoding: 'utf8'
-      });
+      const args = ['wrangler', 'd1', 'execute', this.dbName];
+      if (env === 'production') args.push('--remote');
+      args.push('--command', 'SELECT 1;');
+      runSync(args);
       console.log(` ${env} 數據庫連接正常`);
     } catch (error: any) {
       console.warn(` ${env} 數據庫連接測試失敗:`, error.message);
@@ -140,11 +147,11 @@ class DatabaseSyncTool {
     try {
       // 備份本地數據庫
       const localBackupPath = path.join(backupDir, 'local-backup.sql');
-      execSync(`wrangler d1 export ${this.dbName} --output "${localBackupPath}"`, { stdio: 'pipe' });
+      runSync(['wrangler', 'd1', 'export', this.dbName, '--output', localBackupPath]);
 
       // 備份生產數據庫
       const prodBackupPath = path.join(backupDir, 'production-backup.sql');
-      execSync(`wrangler d1 export ${this.dbName} --remote --output "${prodBackupPath}"`, { stdio: 'pipe' });
+      runSync(['wrangler', 'd1', 'export', this.dbName, '--remote', '--output', prodBackupPath]);
 
       console.log(` 備份已保存到: ${backupDir}`);
     } catch (error) {
@@ -160,13 +167,17 @@ class DatabaseSyncTool {
 
     try {
       // 檢查待應用的遷移
-      const migrationsOutput = execSync(`wrangler d1 migrations list ${this.dbName}`, { encoding: 'utf8' });
+      const migrationsOutput = runSync(['wrangler', 'd1', 'migrations', 'list', this.dbName]);
 
       if (migrationsOutput.includes('Migrations to be applied:')) {
         console.log(' 發現待應用的遷移，正在應用...');
 
         if (!this.config.dryRun) {
-          execSync(`wrangler d1 migrations apply ${this.dbName}`, { stdio: 'inherit' });
+          const applyResult = Bun.spawnSync(
+            ['wrangler', 'd1', 'migrations', 'apply', this.dbName],
+            { stdout: 'inherit', stderr: 'inherit' }
+          );
+          if (applyResult.exitCode !== 0) throw new Error('Migration apply failed');
         } else {
           console.log(' DRY RUN: 跳過實際遷移應用');
         }
@@ -225,9 +236,11 @@ class DatabaseSyncTool {
    * 獲取表數據量
    */
   private async getTableCount(tableName: string, env: 'local' | 'production'): Promise<number> {
-    const remoteFlag = env === 'production' ? '--remote' : '';
     try {
-      const result = execSync(`wrangler d1 execute ${this.dbName} ${remoteFlag} --command "SELECT COUNT(*) as count FROM ${tableName};"`, { encoding: 'utf8', stdio: 'pipe' });
+      const args = ['wrangler', 'd1', 'execute', this.dbName];
+      if (env === 'production') args.push('--remote');
+      args.push('--command', `SELECT COUNT(*) as count FROM ${tableName};`);
+      const result = runSync(args);
 
       // 提取 JSON 部分 (過濾掉 Wrangler 的輸出訊息)
       const lines = result.split('\n');
@@ -360,9 +373,11 @@ class DatabaseSyncTool {
    * 獲取表列表
    */
   private async getTableList(env: 'local' | 'production'): Promise<string[]> {
-    const remoteFlag = env === 'production' ? '--remote' : '';
     try {
-      const result = execSync(`wrangler d1 execute ${this.dbName} ${remoteFlag} --command "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name;"`, { encoding: 'utf8', stdio: 'pipe' });
+      const args = ['wrangler', 'd1', 'execute', this.dbName];
+      if (env === 'production') args.push('--remote');
+      args.push('--command', "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name;");
+      const result = runSync(args);
 
       // 提取 JSON 部分 (過濾掉 Wrangler 的輸出訊息)
       const lines = result.split('\n');
