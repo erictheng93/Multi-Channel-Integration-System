@@ -6,7 +6,7 @@
  * INSERT failures (the exact class of bug that broke message saving for 3 days).
  *
  * Usage:
- *   bunx tsx scripts/check-schema-drift.ts
+ *   bun scripts/check-schema-drift.ts
  *
  * Exit codes:
  *   0 = no critical drift (safe to deploy)
@@ -17,11 +17,10 @@
 
 import * as schema from '../src/db/schema';
 import { getTableName, getTableColumns } from 'drizzle-orm';
-import { execSync } from 'child_process';
 
 // Collect all sqliteTable exports from schema by trying getTableName on each export
 const tables: Array<[string, unknown]> = [];
-for (const [key, value] of Object.entries(schema)) {
+for (const [, value] of Object.entries(schema)) {
   if (value && typeof value === 'object') {
     try {
       getTableName(value as any);
@@ -40,13 +39,14 @@ interface ColumnMismatch {
 }
 
 function getD1Columns(tableName: string): string[] {
-  // Table names come from our own Drizzle schema, not user input — safe for shell
   try {
-    const result = execSync(
-      `npx wrangler d1 execute mcis-db --remote --json --command "SELECT name FROM pragma_table_info('${tableName}')"`,
-      { encoding: 'utf-8', timeout: 30000, stdio: ['pipe', 'pipe', 'pipe'] }
+    const result = Bun.spawnSync(
+      ['npx', 'wrangler', 'd1', 'execute', 'mcis-db', '--remote', '--json',
+       '--command', `SELECT name FROM pragma_table_info('${tableName}')`],
+      { timeout: 30_000, stderr: 'pipe', stdout: 'pipe' }
     );
-    const parsed = JSON.parse(result);
+    const output = result.stdout.toString();
+    const parsed = JSON.parse(output);
     if (Array.isArray(parsed) && parsed[0]?.results) {
       return parsed[0].results.map((r: { name: string }) => r.name);
     }

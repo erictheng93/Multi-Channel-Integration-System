@@ -216,6 +216,7 @@ onMounted(renderSafeHtml)
 <style scoped>
 .safe-html-container {
   display: inline;
+  white-space: pre-wrap;
 }
 
 /* 确保渲染的内容样式正确 */

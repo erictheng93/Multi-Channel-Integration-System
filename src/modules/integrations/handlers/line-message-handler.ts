@@ -133,7 +133,8 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
 
     if (!user) {
       log.error('LINE Webhook: Failed to find or create user', { userIdPrefix: userId.substring(0, 10) });
-      return;
+      // Throw instead of silent return — allows LINE to retry the webhook
+      throw new Error(`Failed to find or create LINE user: ${userId.substring(0, 10)}...`);
     }
 
     log.debug('User found/created successfully', {
