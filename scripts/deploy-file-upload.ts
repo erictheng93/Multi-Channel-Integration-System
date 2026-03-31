@@ -6,10 +6,26 @@
  * 檔案路徑：/scripts/deploy-file-upload.ts
  */
 
-import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+/** Runs a command synchronously, throws on failure */
+function runSync(cmd: string[], opts?: { cwd?: string }): string {
+  const result = Bun.spawnSync(cmd, { stdout: 'pipe', stderr: 'pipe', ...opts });
+  if (result.exitCode !== 0) {
+    throw new Error(result.stderr.toString() || `Command failed with exit code ${result.exitCode}`);
+  }
+  return result.stdout.toString();
+}
+
+/** Runs a command synchronously with output to terminal */
+function runInherit(cmd: string[], opts?: { cwd?: string }): void {
+  const result = Bun.spawnSync(cmd, { stdout: 'inherit', stderr: 'inherit', ...opts });
+  if (result.exitCode !== 0) {
+    throw new Error(`Command failed with exit code ${result.exitCode}`);
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,14 +74,17 @@ function log(message: string, color: ColorName = 'reset'): void {
 function executeCommand(command: string, description: string, options: ExecuteOptions = {}): string | null {
   log(`\n ${description}...`, 'blue');
   try {
-    const result = execSync(command, {
-      cwd: options.cwd || rootDir,
-      encoding: 'utf8',
-      stdio: options.silent ? 'pipe' : 'inherit',
-      ...options
-    });
-    log(` ${description} 完成`, 'green');
-    return result;
+    const cmd = command.split(' ');
+    const cwd = options.cwd || rootDir;
+    if (options.silent) {
+      const result = runSync(cmd, { cwd });
+      log(` ${description} 完成`, 'green');
+      return result;
+    } else {
+      runInherit(cmd, { cwd });
+      log(` ${description} 完成`, 'green');
+      return null;
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     log(` ${description} 失敗: ${errorMessage}`, 'red');
@@ -81,16 +100,16 @@ function checkPrerequisites(): void {
   
   // 檢查 wrangler 是否安裝
   try {
-    execSync('wrangler --version', { stdio: 'pipe' });
+    runSync(['wrangler', '--version']);
     log(' Wrangler CLI 已安裝', 'green');
   } catch (error) {
     log(' Wrangler CLI 未安裝，請先安裝: npm install -g wrangler', 'red');
     process.exit(1);
   }
-  
+
   // 檢查是否已登入 Cloudflare
   try {
-    execSync('wrangler whoami', { stdio: 'pipe' });
+    runSync(['wrangler', 'whoami']);
     log(' 已登入 Cloudflare 帳戶', 'green');
   } catch (error) {
     log(' 未登入 Cloudflare，請先執行: wrangler login', 'red');
@@ -120,7 +139,7 @@ function setupR2Storage(): void {
   
   // 檢查 R2 Bucket 是否存在
   try {
-    const buckets = execSync('wrangler r2 bucket list', { encoding: 'utf8', stdio: 'pipe' });
+    const buckets = runSync(['wrangler', 'r2', 'bucket', 'list']);
     if (buckets.includes('omni-channel-attachments')) {
       log(' R2 Bucket 已存在', 'green');
     } else {
@@ -162,7 +181,7 @@ function setupEnvironmentVariables(): void {
   
   for (const secret of secrets) {
     try {
-      const existingSecrets = execSync('wrangler secret list', { encoding: 'utf8', stdio: 'pipe' });
+      const existingSecrets = runSync(['wrangler', 'secret', 'list']);
       if (existingSecrets.includes(secret.name)) {
         log(` ${secret.description} 已設定`, 'green');
       } else {
@@ -180,7 +199,7 @@ function migrateDatabase(): void {
   
   // 檢查資料庫是否存在
   try {
-    const databases = execSync('wrangler d1 list', { encoding: 'utf8', stdio: 'pipe' });
+    const databases = runSync(['wrangler', 'd1', 'list']);
     if (!databases.includes('omni-channel-platform')) {
       log(' 資料庫不存在，請先創建資料庫', 'red');
       process.exit(1);
@@ -204,12 +223,13 @@ function migrateDatabase(): void {
   
   // 驗證表是否創建成功
   try {
-    const result = executeCommand(
-      'wrangler d1 execute omni-channel-platform --command="SELECT name FROM sqlite_master WHERE type=\'table\' AND name LIKE \'file_%\';"',
-      '驗證資料庫表創建',
-      { silent: true }
-    );
-    
+    log('\n 驗證資料庫表創建...', 'blue');
+    const result = runSync([
+      'wrangler', 'd1', 'execute', 'omni-channel-platform',
+      '--command', "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'file_%';"
+    ]);
+    log(' 驗證資料庫表創建 完成', 'green');
+
     if (result && result.includes('file_attachments')) {
       log(' 檔案附件表創建成功', 'green');
     } else {
