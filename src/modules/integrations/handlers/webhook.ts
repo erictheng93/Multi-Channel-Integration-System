@@ -117,7 +117,10 @@ export const webhookHandler = {
       // Create defer function to run tasks after HTTP response via waitUntil
       const defer: DeferFn = (p) => c.executionCtx.waitUntil(p);
 
-      // 處理事件
+      // 處理事件 — per-event try/catch to prevent one failure from blocking others
+      let failedEvents = 0;
+      let lastError: Error | null = null;
+
       for (const event of data.events) {
         log.debug('Processing event', {
           type: event.type,
@@ -125,17 +128,41 @@ export const webhookHandler = {
           messageType: event.message?.type
         });
 
-        if (event.type === 'message' && event.message) {
-          await processLineMessage(c.env, event, defer);
-        } else if (event.type === 'follow') {
-          // 處理 QR Code 加好友事件
-          await processLineFollowEvent(c.env, event);
-        } else if (event.type === 'unfollow') {
-          // 處理取消關注事件 - 更新好友狀態為 blocked
-          await processLineUnfollowEvent(c.env, event);
-        } else {
-          log.debug('Skipping event', { type: event.type });
+        try {
+          if (event.type === 'message' && event.message) {
+            await processLineMessage(c.env, event, defer);
+          } else if (event.type === 'follow') {
+            // 處理 QR Code 加好友事件
+            await processLineFollowEvent(c.env, event);
+          } else if (event.type === 'unfollow') {
+            // 處理取消關注事件 - 更新好友狀態為 blocked
+            await processLineUnfollowEvent(c.env, event);
+          } else {
+            log.debug('Skipping event', { type: event.type });
+          }
+        } catch (eventError) {
+          failedEvents++;
+          lastError = eventError instanceof Error ? eventError : new Error(String(eventError));
+          log.error('Failed to process event, continuing with next', {
+            eventType: event.type,
+            messageType: event.message?.type,
+            userId: event.source?.userId?.substring(0, 10) + '...',
+            error: lastError.message,
+            failedEvents
+          });
+          // Continue processing remaining events instead of aborting
         }
+      }
+
+      // If any events failed, return 500 so LINE retries the entire batch
+      // (successfully processed events are idempotent via platformMessageId dedup)
+      if (failedEvents > 0) {
+        log.error('Some webhook events failed', {
+          failedEvents,
+          totalEvents: data.events.length,
+          lastError: lastError?.message
+        });
+        return errorResponse(c, `Failed to process ${failedEvents}/${data.events.length} events`, 500);
       }
 
       log.info('All events processed successfully');
