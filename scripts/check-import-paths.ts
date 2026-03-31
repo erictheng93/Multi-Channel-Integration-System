@@ -6,7 +6,6 @@
  */
 
 import * as fs from 'fs';
-import { execSync } from 'child_process';
 
 interface ImportIssue {
   file: string;
@@ -20,9 +19,14 @@ const issues: ImportIssue[] = [];
 // 獲取所有暫存的 TypeScript 文件
 function getStagedFiles(): string[] {
   try {
-    const output = execSync('git diff --cached --name-only --diff-filter=ACMR', {
-      encoding: 'utf-8',
-    });
+    const result = Bun.spawnSync(
+      ['git', 'diff', '--cached', '--name-only', '--diff-filter=ACMR'],
+      { stdout: 'pipe', stderr: 'pipe' }
+    );
+    if (result.exitCode !== 0) {
+      throw new Error(result.stderr.toString());
+    }
+    const output = result.stdout.toString();
 
     return output
       .split('\n')
