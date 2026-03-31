@@ -12,12 +12,21 @@
  * npx tsx scripts/monitoring/queue-monitor-phase1-4.ts
  */
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-const execAsync = promisify(exec);
+/** Async command runner — replaces promisify(exec) */
+async function execAsync(command: string): Promise<{ stdout: string; stderr: string }> {
+  const parts = command.split(' ');
+  const proc = Bun.spawn(parts, { stdout: 'pipe', stderr: 'pipe' });
+  const exitCode = await proc.exited;
+  const stdout = await new Response(proc.stdout).text();
+  const stderr = await new Response(proc.stderr).text();
+  if (exitCode !== 0) {
+    throw new Error(stderr || `Command failed with exit code ${exitCode}`);
+  }
+  return { stdout, stderr };
+}
 
 interface QueueStats {
   timestamp: string;
