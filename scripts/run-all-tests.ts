@@ -8,7 +8,6 @@
  */
 
 import { performance } from 'perf_hooks';
-import { spawn, ChildProcess } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -404,47 +403,31 @@ class ComprehensiveTestRunner {
     return result;
   }
 
-  private executeTest(command: string, args: string[], timeout: number): Promise<{
+  private async executeTest(command: string, args: string[], timeout: number): Promise<{
     stdout: string;
     stderr: string;
     exitCode: number;
   }> {
-    return new Promise((resolve, reject) => {
-      const child = spawn(command, args, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        shell: true
-      });
+    const proc = Bun.spawn([command, ...args], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
 
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout?.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      child.stderr?.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      const timeoutId = setTimeout(() => {
-        child.kill('SIGKILL');
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        proc.kill();
         reject(new Error(`Test timeout after ${timeout}ms`));
       }, timeout);
-
-      child.on('close', (code) => {
-        clearTimeout(timeoutId);
-        resolve({
-          stdout,
-          stderr,
-          exitCode: code || 0
-        });
-      });
-
-      child.on('error', (error) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      });
     });
+
+    try {
+      const exitCode = await Promise.race([proc.exited, timeoutPromise]);
+      const stdout = await new Response(proc.stdout).text();
+      const stderr = await new Response(proc.stderr).text();
+      return { stdout, stderr, exitCode };
+    } catch (error) {
+      throw error;
+    }
   }
 
   private logTestResult(result: TestResult): void {
