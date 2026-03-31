@@ -6,7 +6,6 @@
  * 檔案路徑：/scripts/verify-file-upload.ts
  */
 
-import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -52,9 +51,12 @@ const verificationChecks: VerificationCheck[] = [
         const tempFile = path.join(__dirname, 'temp-check.sql');
         fs.writeFileSync(tempFile, checkSQL);
         
-        const result = execSync(`wrangler d1 execute omni-channel-platform --local --file=${tempFile}`, {
-          encoding: 'utf8'
-        });
+        const proc = Bun.spawnSync(
+          ['wrangler', 'd1', 'execute', 'omni-channel-platform', '--local', `--file=${tempFile}`],
+          { stdout: 'pipe', stderr: 'pipe' }
+        );
+        if (proc.exitCode !== 0) throw new Error(proc.stderr.toString());
+        const result = proc.stdout.toString();
         
         fs.unlinkSync(tempFile);
         
@@ -70,7 +72,9 @@ const verificationChecks: VerificationCheck[] = [
     name: 'R2 Bucket 配置',
     check: async (): Promise<boolean> => {
       try {
-        const result = execSync('wrangler r2 bucket list', { encoding: 'utf8' });
+        const proc = Bun.spawnSync(['wrangler', 'r2', 'bucket', 'list'], { stdout: 'pipe', stderr: 'pipe' });
+        if (proc.exitCode !== 0) throw new Error(proc.stderr.toString());
+        const result = proc.stdout.toString();
         return result.includes('omni-channel-attachments');
       } catch (error) {
         return false;
