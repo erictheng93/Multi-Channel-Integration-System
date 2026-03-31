@@ -1,6 +1,5 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
-import { execSync } from 'child_process';
 // import { readFileSync } from 'fs'; // Not used currently
 
 // 類型定義
@@ -29,11 +28,12 @@ function log(message: string, color: string = colors.reset): void {
 
 function runCommand(command: string, description: string): boolean {
   log(`\n${colors.blue} ${description}...${colors.reset}`);
-  try {
-    execSync(command, { stdio: 'inherit' });
+  const parts = command.split(' ');
+  const result = Bun.spawnSync(parts, { stdout: 'inherit', stderr: 'inherit' });
+  if (result.exitCode === 0) {
     log(`${colors.green} ${description} completed successfully${colors.reset}`);
     return true;
-  } catch {
+  } else {
     log(`${colors.red} ${description} failed${colors.reset}`);
     return false;
   }

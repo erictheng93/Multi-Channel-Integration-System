@@ -1,6 +1,5 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
-import { execSync } from 'child_process';
 import { existsSync, statSync, readFileSync } from 'fs';
 // import { resolve } from 'path'; // Not used currently
 
@@ -64,12 +63,12 @@ function runHealthCheck(): void {
 
   // 1. Check Node.js and npm versions
   log(`${colors.blue} Environment Check${colors.reset}`);
-  try {
-    const nodeVersion = execSync('node --version', { encoding: 'utf8' }).trim();
-    const npmVersion = execSync('npm --version', { encoding: 'utf8' }).trim();
-    log(` Node.js: ${nodeVersion}`);
-    log(` npm: ${npmVersion}`);
-  } catch {
+  const nodeResult = Bun.spawnSync(['node', '--version'], { stdout: 'pipe', stderr: 'pipe' });
+  const npmResult = Bun.spawnSync(['npm', '--version'], { stdout: 'pipe', stderr: 'pipe' });
+  if (nodeResult.exitCode === 0 && npmResult.exitCode === 0) {
+    log(` Node.js: ${nodeResult.stdout.toString().trim()}`);
+    log(` npm: ${npmResult.stdout.toString().trim()}`);
+  } else {
     log(` Failed to check Node.js/npm versions`);
   }
 
@@ -82,10 +81,10 @@ function runHealthCheck(): void {
     log(` Dependencies: ${depCount} production, ${devDepCount} development`);
     
     // Check for security vulnerabilities
-    try {
-      execSync('npm audit --audit-level=high', { stdio: 'pipe' });
+    const auditResult = Bun.spawnSync(['npm', 'audit', '--audit-level=high'], { stdout: 'pipe', stderr: 'pipe' });
+    if (auditResult.exitCode === 0) {
       log(` No high-severity security vulnerabilities`);
-    } catch {
+    } else {
       log(` Security vulnerabilities detected - run 'npm audit' for details`);
     }
   } catch {
@@ -124,17 +123,17 @@ function runHealthCheck(): void {
 
   // 5. Check development server
   log(`\n${colors.blue} Development Server${colors.reset}`);
-  try {
-    // Check if port 3000 is available
-    const netstat = execSync('netstat -an', { encoding: 'utf8' });
+  const netstatResult = Bun.spawnSync(['netstat', '-an'], { stdout: 'pipe', stderr: 'pipe' });
+  if (netstatResult.exitCode === 0) {
+    const netstat = netstatResult.stdout.toString();
     const port3000InUse = netstat.includes(':3000');
-    
+
     if (port3000InUse) {
       log(` Port 3000 is in use (development server may be running)`);
     } else {
       log(` Port 3000 is available`);
     }
-  } catch {
+  } else {
     log(` Could not check port availability`);
   }
 
@@ -158,15 +157,16 @@ function runHealthCheck(): void {
 
   // 7. Git status
   log(`\n${colors.blue} Git Status${colors.reset}`);
-  try {
-    const gitStatus = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
+  const gitResult = Bun.spawnSync(['git', 'status', '--porcelain'], { stdout: 'pipe', stderr: 'pipe' });
+  if (gitResult.exitCode === 0) {
+    const gitStatus = gitResult.stdout.toString().trim();
     if (gitStatus) {
       const lines = gitStatus.split('\n').length;
       log(` ${lines} uncommitted changes`);
     } else {
       log(` Working directory clean`);
     }
-  } catch {
+  } else {
     log(` Not a git repository or git not available`);
   }
 

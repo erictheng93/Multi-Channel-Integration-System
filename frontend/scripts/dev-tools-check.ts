@@ -1,8 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
-import { execSync } from 'child_process';
 
 // 類型定義
 interface DevToolCheck {
@@ -68,10 +67,12 @@ for (const check of checks) {
   
   // Check command
   if (check.command) {
-    try {
-      const version = execSync(check.command, { encoding: 'utf8' }).trim();
+    const parts = check.command.split(' ');
+    const result = Bun.spawnSync(parts, { stdout: 'pipe', stderr: 'pipe' });
+    if (result.exitCode === 0) {
+      const version = result.stdout.toString().trim();
       console.log(` Tool available: ${version}`);
-    } catch {
+    } else {
       console.log(` Tool not available or not working`);
       allPassed = false;
     }

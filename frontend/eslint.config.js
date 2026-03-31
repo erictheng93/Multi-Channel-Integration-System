@@ -116,6 +116,8 @@ export default [
         // Cloudflare Workers
         EventContext: 'readonly',
         Response: 'readonly',
+        // Bun runtime
+        Bun: 'readonly',
       }
     },
     
