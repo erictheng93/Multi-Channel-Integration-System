@@ -182,6 +182,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
       platform: string;
       timestamp?: number;
       deliveryStatus?: string;
+      metadata?: string; // JSON-serialized media metadata (URLs, fileName, fileSize)
       file_attachments?: Array<{
         id: string;
         filename: string;
@@ -225,6 +226,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
           createdAt: new Date(timestamp).toISOString(),
           deliveryStatus: message.deliveryStatus || 'delivered',
           senderName: message.senderName,
+          metadata: message.metadata,
           file_attachments: message.file_attachments || []
         };
 

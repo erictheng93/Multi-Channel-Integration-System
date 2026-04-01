@@ -43,6 +43,9 @@ export const WS_EVENTS = {
   /** Message was read by recipient */
   MESSAGE_READ: 'message_read',
 
+  /** Message was updated (e.g., file_attachments added after media processing) */
+  MESSAGE_UPDATED: 'message_updated',
+
   /** Message was recalled */
   MESSAGE_RECALLED: 'message_recalled',
 
@@ -115,6 +118,7 @@ export const WS_EVENT_LABELS: Record<WebSocketEventType, string> = {
   [WS_EVENTS.TYPING_START]: 'Typing Started',
   [WS_EVENTS.TYPING_STOP]: 'Typing Stopped',
   [WS_EVENTS.MESSAGE_READ]: 'Message Read',
+  [WS_EVENTS.MESSAGE_UPDATED]: 'Message Updated',
   [WS_EVENTS.MESSAGE_RECALLED]: 'Message Recalled',
   [WS_EVENTS.CONNECTION_STATE]: 'Connection State',
   [WS_EVENTS.HEARTBEAT]: 'Heartbeat',
@@ -132,6 +136,7 @@ export const WS_EVENT_DESCRIPTIONS: Record<WebSocketEventType, string> = {
   [WS_EVENTS.TYPING_START]: 'A user started typing a message',
   [WS_EVENTS.TYPING_STOP]: 'A user stopped typing',
   [WS_EVENTS.MESSAGE_READ]: 'A message was marked as read',
+  [WS_EVENTS.MESSAGE_UPDATED]: 'A message was updated (e.g., file attachments added after media processing)',
   [WS_EVENTS.MESSAGE_RECALLED]: 'A message was recalled by the sender',
   [WS_EVENTS.CONNECTION_STATE]: 'The WebSocket connection state changed',
   [WS_EVENTS.HEARTBEAT]: 'Heartbeat signal for connection health monitoring',
