@@ -14,9 +14,9 @@
     @mouseleave="showActions = false"
   >
     <div class="message-content">
-      <!-- Image Message -->
+      <!-- Image Message (legacy fallback, only when no R2 image attachments) -->
       <div
-        v-if="actualMessageType === 'image' && resolvedAttachmentUrl"
+        v-if="actualMessageType === 'image' && resolvedAttachmentUrl && imageAttachments.length === 0"
         class="message-media"
       >
         <div

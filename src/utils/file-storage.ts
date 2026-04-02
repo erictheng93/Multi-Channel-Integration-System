@@ -83,11 +83,20 @@ export class FileStorageService {
       const fileBuffer = await response.arrayBuffer();
       const contentLength = fileBuffer.byteLength;
       console.log(`[FileStorage] Downloaded ${contentLength} bytes from LINE API`);
-      
+
       // 檢查檔案大小限制（10MB）
       if (contentLength > 10 * 1024 * 1024) {
         storageLogger.error('File too large', { contentLength, maxSize: 10 * 1024 * 1024 });
         return null;
+      }
+
+      // Use actual Content-Type from response instead of caller's guess.
+      // LINE API returns the real type (e.g., image/webp, image/png, application/pdf)
+      // which is more accurate than the hardcoded mimeType map in processLineMediaMessage.
+      const actualContentType = response.headers.get('content-type');
+      if (actualContentType && actualContentType !== 'application/octet-stream') {
+        mimeType = actualContentType.split(';')[0].trim();
+        console.log(`[FileStorage] Using actual Content-Type from response: ${mimeType}`);
       }
 
       // 生成唯一檔案名
