@@ -224,22 +224,26 @@ describe('MessageBubble Component Integration', () => {
   })
 
   describe('File Attachments', () => {
-    it('should render single file attachment', () => {
+    it('should render single file attachment via FileAttachmentCard', () => {
       const wrapper = mount(MessageBubble, {
         props: {
           message: createMessage({
             messageType: 'file',
-            metadata: {
-              attachment: { url: 'https://example.com/file.pdf' }
-            }
-          }),
-          attachmentUrl: 'https://example.com/file.pdf',
-          attachmentName: 'document.pdf',
-          attachmentSize: 102400
+            file_attachments: [
+              {
+                id: 'att-1',
+                filename: 'document.pdf',
+                mimeType: 'application/pdf',
+                fileSize: 102400,
+                fileUrl: 'https://example.com/file.pdf'
+              }
+            ]
+          })
         }
       })
 
-      expect(wrapper.find('.message-file-content').exists()).toBe(true)
+      // File rendering is delegated to FileAttachmentCard
+      expect(wrapper.find('.message-file-attachments').exists()).toBe(true)
       expect(wrapper.text()).toContain('document.pdf')
     })
 
@@ -275,21 +279,27 @@ describe('MessageBubble Component Integration', () => {
       expect(wrapper.text()).toContain('file2.docx')
     })
 
-    it('should show upload progress for file being uploaded', () => {
+    it('should render attachment status indicator for file messages', () => {
       const wrapper = mount(MessageBubble, {
         props: {
           message: createMessage({
-            messageType: 'file'
-          }),
-          attachmentUrl: 'https://example.com/uploading.pdf',
-          attachmentName: 'uploading.pdf',
-          uploadProgress: 45
+            messageType: 'file',
+            file_attachments: [
+              {
+                id: 'att-1',
+                filename: 'uploading.pdf',
+                mimeType: 'application/pdf',
+                fileSize: 5000,
+                fileUrl: 'https://example.com/uploading.pdf'
+              }
+            ]
+          })
         }
       })
 
-      const progressBar = wrapper.find('.progress-fill')
-      expect(progressBar.exists()).toBe(true)
-      expect(progressBar.attributes('style')).toContain('width: 45%')
+      // Upload progress is now handled inside FileAttachmentCard;
+      // MessageBubble shows attachment status indicators instead
+      expect(wrapper.find('.attachment-status-indicator').exists()).toBe(true)
     })
   })
 

@@ -34,23 +34,34 @@ vi.mock('@/composables/message', () => {
         return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
       },
     }),
-    useMessageAttachment: (props: { value: { message: Message; attachmentUrl?: string; attachmentName?: string; attachmentSize?: number } }) => ({
-      attachmentUrl: computed(() => props.value?.attachmentUrl || null),
-      attachmentName: computed(() => props.value?.attachmentName || '附件'),
-      attachmentSize: computed(() => props.value?.attachmentSize || 0),
-      fileAttachments: computed(() => []),
-      imageAttachments: computed(() => []),
-      videoAttachments: computed(() => []),
-      documentAttachments: computed(() => []),
-      hasMultipleAttachments: computed(() => false),
-      isFileOnlyContent: computed(() => false),
-      messageStatus: computed(() => props.value?.message?.deliveryStatus || 'sent'),
-      downloadFile: vi.fn(),
-      downloadAttachment: vi.fn(),
-      handleAttachmentPreview: vi.fn(),
-      isAttachmentPending: vi.fn(() => false),
-      getAttachmentStatusClass: vi.fn(() => ''),
-    }),
+    useMessageAttachment: (props: { value: { message: Message; attachmentUrl?: string; attachmentName?: string; attachmentSize?: number } }) => {
+      const isFile = computed(() => props.value?.message?.messageType === 'file')
+      const url = computed(() => props.value?.attachmentUrl || null)
+      const name = computed(() => props.value?.attachmentName || '附件')
+      const size = computed(() => props.value?.attachmentSize || 0)
+      const docAttachment = computed(() =>
+        isFile.value && url.value
+          ? [{ id: 'att-1', filename: name.value, mimeType: 'application/octet-stream', fileSize: size.value, fileUrl: url.value }]
+          : [],
+      )
+      return {
+        attachmentUrl: url,
+        attachmentName: name,
+        attachmentSize: size,
+        fileAttachments: docAttachment,
+        imageAttachments: computed(() => []),
+        videoAttachments: computed(() => []),
+        documentAttachments: docAttachment,
+        hasMultipleAttachments: computed(() => false),
+        isFileOnlyContent: computed(() => isFile.value && !props.value?.message?.content),
+        messageStatus: computed(() => props.value?.message?.deliveryStatus || 'sent'),
+        downloadFile: vi.fn(),
+        downloadAttachment: vi.fn(),
+        handleAttachmentPreview: vi.fn(),
+        isAttachmentPending: vi.fn(() => false),
+        getAttachmentStatusClass: vi.fn(() => ''),
+      }
+    },
     useMessageActions: (
       _props: unknown,
       emitters: Record<string, (..._args: unknown[]) => void>,
@@ -244,12 +255,13 @@ describe('MessageBubble.vue', () => {
           attachmentSize: 2048,
         },
       )
-      const fileContent = wrapper.find('.message-file-content')
-      expect(fileContent.exists()).toBe(true)
-      expect(wrapper.find('.file-name').text()).toBe('doc.pdf')
+      // File rendering is delegated to FileAttachmentCard component
+      const fileCard = wrapper.find('.file-attachment-card')
+      expect(fileCard.exists()).toBe(true)
+      expect(fileCard.text()).toContain('doc.pdf')
     })
 
-    it('displays file size formatted correctly for file messages', () => {
+    it('renders FileAttachmentCard for each document attachment', () => {
       const wrapper = mountBubble(
         { messageType: 'file', content: '' },
         {
@@ -258,12 +270,11 @@ describe('MessageBubble.vue', () => {
           attachmentSize: 2048,
         },
       )
-      const sizeEl = wrapper.find('.file-size')
-      expect(sizeEl.exists()).toBe(true)
-      expect(sizeEl.text()).toBe('2.0 KB')
+      const cards = wrapper.findAll('.file-attachment-card')
+      expect(cards.length).toBe(1)
     })
 
-    it('displays file extension for file messages', () => {
+    it('wraps file attachments in message-file-attachments container', () => {
       const wrapper = mountBubble(
         { messageType: 'file', content: '' },
         {
@@ -272,9 +283,8 @@ describe('MessageBubble.vue', () => {
           attachmentSize: 1024,
         },
       )
-      const typeEl = wrapper.find('.file-type')
-      expect(typeEl.exists()).toBe(true)
-      expect(typeEl.text()).toBe('.PDF')
+      const container = wrapper.find('.message-file-attachments')
+      expect(container.exists()).toBe(true)
     })
   })
 
@@ -472,23 +482,8 @@ describe('MessageBubble.vue', () => {
   // Upload Progress
   // --------------------------------------------------------------------------
 
-  describe('Upload progress', () => {
-    it('shows progress bar when uploadProgress is provided', () => {
-      const wrapper = mountBubble(
-        { messageType: 'file', content: '' },
-        {
-          attachmentUrl: 'https://example.com/file.zip',
-          attachmentName: 'file.zip',
-          attachmentSize: 5000,
-          uploadProgress: 45,
-        },
-      )
-      const progress = wrapper.find('.file-progress')
-      expect(progress.exists()).toBe(true)
-      expect(wrapper.find('.progress-text').text()).toBe('45%')
-    })
-
-    it('does not show progress bar when uploadProgress is undefined', () => {
+  describe('File attachment status indicators', () => {
+    it('renders attachment status indicator for file messages', () => {
       const wrapper = mountBubble(
         { messageType: 'file', content: '' },
         {
@@ -497,22 +492,35 @@ describe('MessageBubble.vue', () => {
           attachmentSize: 5000,
         },
       )
-      expect(wrapper.find('.file-progress').exists()).toBe(false)
+      const statusIndicator = wrapper.find('.attachment-status-indicator')
+      expect(statusIndicator.exists()).toBe(true)
     })
 
-    it('renders progress bar width matching uploadProgress percentage', () => {
+    it('shows success status for sent file messages', () => {
+      const wrapper = mountBubble(
+        { messageType: 'file', content: '' },
+        {
+          attachmentUrl: 'https://example.com/file.zip',
+          attachmentName: 'file.zip',
+          attachmentSize: 5000,
+        },
+      )
+      const successIcon = wrapper.find('.status-icon.success')
+      expect(successIcon.exists()).toBe(true)
+    })
+
+    it('renders FileAttachmentCard inside attachment-wrapper', () => {
       const wrapper = mountBubble(
         { messageType: 'file', content: '' },
         {
           attachmentUrl: 'https://example.com/file.zip',
           attachmentName: 'file.zip',
           attachmentSize: 1000,
-          uploadProgress: 75,
         },
       )
-      const fill = wrapper.find('.progress-fill')
-      expect(fill.exists()).toBe(true)
-      expect(fill.attributes('style')).toContain('width: 75%')
+      const wrapperEl = wrapper.find('.attachment-wrapper')
+      expect(wrapperEl.exists()).toBe(true)
+      expect(wrapperEl.find('.file-attachment-card').exists()).toBe(true)
     })
   })
 
@@ -614,7 +622,7 @@ describe('MessageBubble.vue', () => {
   // --------------------------------------------------------------------------
 
   describe('File message specifics', () => {
-    it('renders download button for file messages', () => {
+    it('delegates file rendering to FileAttachmentCard with correct props', () => {
       const wrapper = mountBubble(
         { messageType: 'file', content: '' },
         {
@@ -623,22 +631,20 @@ describe('MessageBubble.vue', () => {
           attachmentSize: 1000,
         },
       )
-      const downloadBtn = wrapper.find('.file-action-btn.primary')
-      expect(downloadBtn.exists()).toBe(true)
-      expect(downloadBtn.text()).toContain('下載')
+      const card = wrapper.find('.file-attachment-card')
+      expect(card.exists()).toBe(true)
+      expect(card.text()).toContain('file.zip')
     })
 
-    it('does not show file size when attachmentSize is 0', () => {
+    it('does not render file attachments when attachmentUrl is missing', () => {
       const wrapper = mountBubble(
         { messageType: 'file', content: '' },
         {
-          attachmentUrl: 'https://example.com/file.zip',
           attachmentName: 'file.zip',
           attachmentSize: 0,
         },
       )
-      // attachmentSize is 0 (falsy), so v-if="attachmentSize" should hide it
-      expect(wrapper.find('.file-size').exists()).toBe(false)
+      expect(wrapper.find('.file-attachment-card').exists()).toBe(false)
     })
   })
 
