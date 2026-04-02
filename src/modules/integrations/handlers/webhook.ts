@@ -24,6 +24,8 @@ import {
 } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 
+import { alertWebhookFailure } from '@/utils/webhook-alert';
+
 // Context logger for webhook handler
 const log = createContextLogger('Webhook');
 
@@ -154,7 +156,7 @@ export const webhookHandler = {
         }
       }
 
-      // If any events failed, return 500 so LINE retries the entire batch
+      // If any events failed, alert + return 500 so LINE retries the entire batch
       // (successfully processed events are idempotent via platformMessageId dedup)
       if (failedEvents > 0) {
         log.error('Some webhook events failed', {
@@ -162,6 +164,17 @@ export const webhookHandler = {
           totalEvents: data.events.length,
           lastError: lastError?.message
         });
+
+        // Fire-and-forget alerting (KV audit + optional Slack/webhook)
+        c.executionCtx.waitUntil(
+          alertWebhookFailure(c.env, {
+            platform: 'line',
+            failedEvents,
+            totalEvents: data.events.length,
+            lastError: lastError?.message || 'Unknown error',
+          })
+        );
+
         return errorResponse(c, `Failed to process ${failedEvents}/${data.events.length} events`, 500);
       }
 
@@ -205,14 +218,40 @@ export const webhookHandler = {
       // 處理 Facebook 訊息
       if (body.object === 'page') {
         const fbDefer: DeferFn = (p) => c.executionCtx.waitUntil(p);
+        let fbFailedEvents = 0;
+        let fbLastError: Error | null = null;
+        let fbTotalEvents = 0;
+
         for (const entry of body.entry) {
           if (!entry.messaging || !Array.isArray(entry.messaging)) continue;
 
           for (const messaging of entry.messaging) {
             if (messaging.message) {
-              await processFacebookMessage(c.env, messaging, fbDefer);
+              fbTotalEvents++;
+              try {
+                await processFacebookMessage(c.env, messaging, fbDefer);
+              } catch (eventError) {
+                fbFailedEvents++;
+                fbLastError = eventError instanceof Error ? eventError : new Error(String(eventError));
+                log.error('Failed to process Facebook event', {
+                  error: fbLastError.message,
+                  fbFailedEvents
+                });
+              }
             }
           }
+        }
+
+        if (fbFailedEvents > 0) {
+          c.executionCtx.waitUntil(
+            alertWebhookFailure(c.env, {
+              platform: 'facebook',
+              failedEvents: fbFailedEvents,
+              totalEvents: fbTotalEvents,
+              lastError: fbLastError?.message || 'Unknown error',
+            })
+          );
+          return errorResponse(c, `Failed to process ${fbFailedEvents}/${fbTotalEvents} Facebook events`, 500);
         }
       }
 
