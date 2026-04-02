@@ -257,6 +257,24 @@ export function useWebSocketIntegration(
       log.debug('New message added to conversation')
     }
 
+    // Handle message_updated events (e.g., file_attachments added after media processing)
+    if (eventType === WS_EVENTS.MESSAGE_UPDATED && msg.data) {
+      const updateData = msg.data as {
+        messageId?: string;
+        file_attachments?: Array<{
+          id: string;
+          filename: string;
+          mimeType: string;
+          fileSize: number;
+          fileUrl: string;
+        }>;
+      }
+      if (updateData.messageId && updateData.file_attachments) {
+        state.updateMessageAttachments(updateData.messageId, updateData.file_attachments)
+        log.debug('Message attachments updated', { messageId: updateData.messageId })
+      }
+    }
+
     // Handle TYPING events (Phase 2)
     // if (eventType === WS_EVENTS.TYPING_START) { ... }
     // if (eventType === WS_EVENTS.TYPING_STOP) { ... }

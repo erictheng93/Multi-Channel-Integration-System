@@ -215,7 +215,7 @@
 
   const textareaRef = ref<globalThis.HTMLTextAreaElement>()
   // Bind the file input ref from composable so <input ref="fileInputRef"> works
-  // @ts-expect-error — used in template as ref="fileInputRef"
+  // @ts-expect-error TS6133 — fileInputRef IS used in template as ref="fileInputRef"
   const fileInputRef = fileSelection.fileInputRef
 
   const messageText = ref('')
