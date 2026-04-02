@@ -208,7 +208,8 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
       // mimeTypes (e.g., "image/jpeg" for PDFs) when LINE API type was misidentified.
       // If metadata has a proper fileName, use it to correct the attachment data.
       if (meta?.fileName && attachments.length === 1) {
-        const att = attachments[0]!
+        const att = attachments[0]
+        if (!att) {return attachments}
         const isDefaultFilename = /^(image|file|video|audio)_\d+$/.test(att.filename)
         if (isDefaultFilename || att.filename !== meta.fileName) {
           const ext = (meta.fileName as string).split('.').pop()?.toLowerCase() || ''
