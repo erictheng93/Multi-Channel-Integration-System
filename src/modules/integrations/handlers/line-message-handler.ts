@@ -10,7 +10,6 @@ import { WebSocketBroadcastService } from '@/services/websocket-broadcast-servic
 import { createContextLogger } from '@/utils/logger';
 
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
-import { processLineMedia } from '../services/webhook-media-service';
 import { nowMs } from '@/utils/timestamp';
 import { evaluate as autoReplyEvaluate } from '@modules/auto-reply/services/auto-reply-engine';
 import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
@@ -257,54 +256,29 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
       }
     })());
 
-    // B+C. Media processing + follow-up message_updated broadcast
-    // FIX: Use correctedMessageType (not message.type) to ensure type-corrected files
-    // are processed with the right MIME type and aren't accidentally skipped
+    // B+C. Media processing via Queue (replaces defer for reliability)
+    // Each file gets its own queue message → own Worker invocation → no resource contention
     if (mediaData && correctedMessageType !== 'location' && correctedMessageType !== 'sticker') {
-      const lineMessageId = message.id;
-      const lineMessageType = correctedMessageType;
-      const lineFileName = message.fileName;
-      defer((async () => {
-        try {
-          const fileAttachmentData = await processLineMedia(env, messageId, lineMessageId, lineMessageType, lineFileName);
-          if (fileAttachmentData.length > 0) {
-            // Broadcast to global WebSocket (conversation list)
-            const broadcastService = new WebSocketBroadcastService(env);
-            await broadcastService.broadcastMessageEvent({
-              type: 'message_updated',
-              conversationId: convId,
-              messageId,
-              data: { file_attachments: fileAttachmentData },
-              priority: 'high'
-            });
-
-            // Also notify CustomerConversationDO directly (conversation detail page)
-            try {
-              if (env.CUSTOMER_CONVERSATION_DO) {
-                const doId = env.CUSTOMER_CONVERSATION_DO.idFromName(convId);
-                const doStub = env.CUSTOMER_CONVERSATION_DO.get(doId);
-                await doStub.fetch(new Request('https://customer-conversation-do/notify-message-updated', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    conversationId: convId,
-                    messageId,
-                    data: { file_attachments: fileAttachmentData }
-                  })
-                }));
-              }
-            } catch (doErr) {
-              log.warn('CustomerConversationDO message_updated notify failed', {
-                error: doErr instanceof Error ? doErr.message : String(doErr)
-              });
-            }
-
-            log.debug('Deferred media + message_updated completed', { messageId });
-          }
-        } catch (err) {
-          log.warn('LINE Webhook: Deferred media processing failed', { error: err instanceof Error ? err.message : String(err) });
-        }
-      })());
+      try {
+        await env.LINE_MESSAGE_QUEUE.send({
+          type: 'media_processing' as const,
+          messageId,
+          conversationId: convId,
+          teamId: convTeamId ?? undefined,
+          lineMessageId: message.id,
+          lineMessageType: correctedMessageType,
+          fileName: message.fileName,
+          enqueuedAt: Date.now(),
+        });
+        log.debug('Enqueued media processing', { messageId, lineMessageId: message.id, type: correctedMessageType });
+      } catch (queueErr) {
+        log.error('Failed to enqueue media processing', {
+          messageId,
+          lineMessageId: message.id,
+          error: queueErr instanceof Error ? queueErr.message : String(queueErr)
+        });
+        // Non-critical: message is already saved, frontend has metadata fallback
+      }
     }
 
     // E. Activity logging
