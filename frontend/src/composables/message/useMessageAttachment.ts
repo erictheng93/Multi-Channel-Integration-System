@@ -118,7 +118,7 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
 
   /**
    * Extract attachment name from message
-   * Priority: prop override > metadata.attachment.name > content file match > default
+   * Priority: prop override > metadata.attachment.name > metadata.fileName (LINE) > content file match > default
    */
   const attachmentName = computed(() => {
     // Use prop if provided (for tests)
@@ -126,9 +126,21 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
       return props.value.attachmentName
     }
 
-    // Check metadata
-    if (props.value.message.metadata?.attachment?.name) {
-      return props.value.message.metadata.attachment.name
+    // Check metadata (handle both object and JSON string)
+    const rawMetadata = props.value.message.metadata
+    if (rawMetadata) {
+      const meta = typeof rawMetadata === 'string'
+        ? (() => { try { return JSON.parse(rawMetadata) } catch { return null } })()
+        : rawMetadata
+
+      // Standard attachment format
+      if (meta?.attachment?.name) {
+        return meta.attachment.name
+      }
+      // LINE file message format (stores fileName in metadata)
+      if (meta?.fileName) {
+        return meta.fileName
+      }
     }
 
     // Fallback: extract filename from content
@@ -138,7 +150,7 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
 
   /**
    * Extract attachment size from message
-   * Priority: prop override > metadata.attachment.size
+   * Priority: prop override > metadata.attachment.size > metadata.fileSize (LINE)
    */
   const attachmentSize = computed(() => {
     // Use prop if provided (for tests)
@@ -146,12 +158,40 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
       return props.value.attachmentSize
     }
 
-    return props.value.message.metadata?.attachment?.size
+    // Parse metadata (handle both object and JSON string)
+    const rawMetadata = props.value.message.metadata
+    if (rawMetadata) {
+      const meta = typeof rawMetadata === 'string'
+        ? (() => { try { return JSON.parse(rawMetadata) } catch { return null } })()
+        : rawMetadata
+
+      if (meta?.attachment?.size) {
+        return meta.attachment.size
+      }
+      // LINE file message format
+      if (meta?.fileSize) {
+        return meta.fileSize
+      }
+    }
+
+    return undefined
+  })
+
+  /**
+   * Parse metadata once for reuse across multiple computeds
+   */
+  const parsedMetadata = computed(() => {
+    const raw = props.value.message.metadata
+    if (!raw) {return null}
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) } catch { return null }
+    }
+    return raw
   })
 
   /**
    * Process file_attachments array with support for optimistic UI
-   * Priority 1: Confirmed file_attachments
+   * Priority 1: Confirmed file_attachments (with metadata reconciliation)
    * Priority 2: Pending attachments (during upload)
    */
   const fileAttachments: ComputedRef<FileAttachment[]> = computed(() => {
@@ -160,7 +200,39 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
       props.value.message.file_attachments &&
       props.value.message.file_attachments.length > 0
     ) {
-      return props.value.message.file_attachments as FileAttachment[]
+      const attachments = props.value.message.file_attachments as FileAttachment[]
+      const meta = parsedMetadata.value
+
+      // Reconciliation: fix corrupted file_attachments from old webhook processing.
+      // Old code sometimes stored default filenames (e.g., "image_12345") and wrong
+      // mimeTypes (e.g., "image/jpeg" for PDFs) when LINE API type was misidentified.
+      // If metadata has a proper fileName, use it to correct the attachment data.
+      if (meta?.fileName && attachments.length === 1) {
+        const att = attachments[0]!
+        const isDefaultFilename = /^(image|file|video|audio)_\d+$/.test(att.filename)
+        if (isDefaultFilename || att.filename !== meta.fileName) {
+          const ext = (meta.fileName as string).split('.').pop()?.toLowerCase() || ''
+          const extMimeMap: Record<string, string> = {
+            'pdf': 'application/pdf',
+            'doc': 'application/msword',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls': 'application/vnd.ms-excel',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt': 'application/vnd.ms-powerpoint',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          }
+          const correctedMime = extMimeMap[ext]
+
+          return [{
+            ...att,
+            filename: meta.fileName as string,
+            // Only override mimeType if we have a definitive mapping from the extension
+            mimeType: correctedMime || att.mimeType,
+          }] as FileAttachment[]
+        }
+      }
+
+      return attachments
     }
 
     // Priority 2: Use pending attachments from optimistic UI (during upload)
@@ -169,7 +241,7 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
 
     if (pendingAttachments && pendingAttachments.length > 0) {
       // Normalize pending attachments to match file_attachments structure
-      return pendingAttachments.map((pending, index) => ({
+      return pendingAttachments.map((pending, index): FileAttachment => ({
         id: `pending-${index}`,
         filename: pending.name,
         mimeType: pending.isImage ? 'image/*' : pending.fileType,

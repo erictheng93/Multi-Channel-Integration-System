@@ -258,9 +258,11 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     })());
 
     // B+C. Media processing + follow-up message_updated broadcast
-    if (mediaData && message.type !== 'location' && message.type !== 'sticker') {
+    // FIX: Use correctedMessageType (not message.type) to ensure type-corrected files
+    // are processed with the right MIME type and aren't accidentally skipped
+    if (mediaData && correctedMessageType !== 'location' && correctedMessageType !== 'sticker') {
       const lineMessageId = message.id;
-      const lineMessageType = message.type;
+      const lineMessageType = correctedMessageType;
       const lineFileName = message.fileName;
       defer((async () => {
         try {

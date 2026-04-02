@@ -70,9 +70,9 @@
         </div>
       </div>
 
-      <!-- File Message (Single Attachment - Legacy) -->
+      <!-- File Message (Single Attachment - Legacy fallback, only when no file_attachments) -->
       <div
-        v-else-if="actualMessageType === 'file' && resolvedAttachmentUrl && !hasMultipleAttachments"
+        v-else-if="actualMessageType === 'file' && resolvedAttachmentUrl && !hasMultipleAttachments && documentAttachments.length === 0 && imageAttachments.length === 0"
         class="message-file-content"
       >
         <div class="file-container">
