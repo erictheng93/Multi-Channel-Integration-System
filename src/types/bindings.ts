@@ -36,8 +36,8 @@ export interface Bindings {
   // Queues - LINE Async Processing
   // LINE_MESSAGE_QUEUE - Async LINE message delivery
   // Purpose: Decouple HTTP response from LINE API calls for better UX
-  LINE_MESSAGE_QUEUE: Queue<LineMessageQueuePayload>;
-  LINE_MESSAGE_DLQ: Queue<LineMessageQueuePayload>; // Dead Letter Queue for failed messages
+  LINE_MESSAGE_QUEUE: Queue<LineQueuePayload>;
+  LINE_MESSAGE_DLQ: Queue<LineQueuePayload>; // Dead Letter Queue for failed messages
 
   // These are set by resourceMiddleware based on ENVIRONMENT
   DB: D1Database;
@@ -252,6 +252,32 @@ export interface LineMessageAttachment {
   mimeType?: string;
   fileSize?: number;
 }
+
+// =================== Media Processing Queue Types ===================
+
+/**
+ * Media Processing Queue Payload
+ * Enqueued by webhook handler when LINE sends image/file/video/audio.
+ * Processed by queue consumer: downloads from LINE API, stores in R2,
+ * creates file_attachments row, broadcasts message_updated via WebSocket.
+ */
+export interface MediaProcessingPayload {
+  type: 'media_processing';
+  messageId: string;           // DB message ID (for file_attachments.messageId)
+  conversationId: string;      // For WebSocket message_updated broadcast
+  teamId?: number;             // For team-scoped broadcast
+  lineMessageId: string;       // LINE API message ID (for content download URL)
+  lineMessageType: string;     // 'image' | 'file' | 'video' | 'audio'
+  fileName?: string;           // Original filename (LINE file messages only)
+  enqueuedAt: number;          // Timestamp for tracking
+}
+
+/**
+ * Union type for all queue message payloads.
+ * The queue consumer uses the `type` field to route to the correct handler.
+ * Messages without a `type` field are treated as outbound messages (backward compat).
+ */
+export type LineQueuePayload = (LineMessageQueuePayload & { type?: 'outbound_message' }) | MediaProcessingPayload;
 
 /**
  * LINE Message Queue Result
