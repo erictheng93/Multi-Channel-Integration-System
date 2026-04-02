@@ -180,6 +180,36 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       }
     }
 
+    // Notify about message update (called after media processing completes)
+    if (url.pathname === '/notify-message-updated' && request.method === 'POST') {
+      try {
+        const { conversationId, messageId, data } = await request.json() as {
+          conversationId: string;
+          messageId: string;
+          data: { file_attachments?: unknown[] };
+        };
+
+        console.log(`[CustomerConversationDO] Received notify-message-updated:`, {
+          conversationId,
+          messageId,
+          attachmentCount: data?.file_attachments?.length || 0,
+          totalConnections: this.connections.size
+        });
+
+        await this.notifyMessageUpdated(conversationId, messageId, data);
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('[CustomerConversationDO] Error handling notify-message-updated:', error);
+        return new Response(JSON.stringify({ success: false, error: String(error) }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     return new Response('Not Found', { status: 404 });
   }
 
@@ -485,6 +515,48 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     console.log(`[CustomerConversationDO] Broadcast complete:`, {
       successCount,
       failureCount,
+      remainingConnections: this.connections.size
+    });
+  }
+
+  /**
+   * Broadcast a message_updated event to all connected clients
+   * Called after deferred media processing completes (e.g., R2 upload done, file_attachments ready)
+   */
+  public async notifyMessageUpdated(
+    conversationId: string,
+    messageId: string,
+    data: { file_attachments?: unknown[] }
+  ): Promise<void> {
+    const notification = JSON.stringify({
+      type: 'message_updated',
+      conversationId,
+      data: {
+        conversationId,
+        messageId,
+        ...data
+      },
+      timestamp: nowMs()
+    });
+
+    let successCount = 0;
+    for (const [connId, conn] of this.connections.entries()) {
+      if (conn.socket.readyState === WebSocket.OPEN) {
+        try {
+          conn.socket.send(notification);
+          successCount++;
+        } catch (error) {
+          console.error(`[CustomerConversationDO] Failed to send update to ${connId}:`, error);
+          this.connections.delete(connId);
+        }
+      } else {
+        this.connections.delete(connId);
+      }
+    }
+
+    console.log(`[CustomerConversationDO] message_updated broadcast:`, {
+      messageId,
+      successCount,
       remainingConnections: this.connections.size
     });
   }

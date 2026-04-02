@@ -409,6 +409,21 @@ export function useConversationState(
   }
 
   /**
+   * Update an existing message's file_attachments (called after media processing completes)
+   */
+  function updateMessageAttachments(
+    messageId: string,
+    fileAttachments: Array<{ id: string; filename: string; mimeType: string; fileSize: number; fileUrl: string }>
+  ) {
+    const messageList = httpMessages.messages.value
+    const message = messageList.find((m: Message) => m.id === messageId)
+    if (message) {
+      message.file_attachments = fileAttachments
+      console.log('[useConversationState] Updated file_attachments for message:', messageId)
+    }
+  }
+
+  /**
    * 重置加載狀態
    */
   function resetLoadingState() {
@@ -462,6 +477,7 @@ export function useConversationState(
     refreshMessagesAfterReconnection,  //  FIX: 重連後訊息同步
     loadMoreMessages,
     addMessage,
+    updateMessageAttachments,
     resetLoadingState,
     debouncedUpdateMessages,  //  向後兼容（內部使用隊列）
     queueMessageUpdate, //  新增：新的隊列 API

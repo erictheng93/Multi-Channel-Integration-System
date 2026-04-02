@@ -231,7 +231,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     const userDisplayName = user.displayName || 'LINE User';
     const customerId = user.id;
 
-    // A. WebSocket broadcast (message WITHOUT file_attachments)
+    // A. WebSocket broadcast (includes metadata for immediate file/media rendering)
     defer((async () => {
       try {
         const broadcastService = new WebSocketBroadcastService(env);
@@ -246,6 +246,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
             platform: 'line',
             timestamp: nowMs(),
             deliveryStatus: 'delivered',
+            metadata: mediaData ? JSON.stringify(mediaData) : undefined,
           },
           source: 'webhook',
           teamId: convTeamId ?? undefined
@@ -265,6 +266,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
         try {
           const fileAttachmentData = await processLineMedia(env, messageId, lineMessageId, lineMessageType, lineFileName);
           if (fileAttachmentData.length > 0) {
+            // Broadcast to global WebSocket (conversation list)
             const broadcastService = new WebSocketBroadcastService(env);
             await broadcastService.broadcastMessageEvent({
               type: 'message_updated',
@@ -273,6 +275,28 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
               data: { file_attachments: fileAttachmentData },
               priority: 'high'
             });
+
+            // Also notify CustomerConversationDO directly (conversation detail page)
+            try {
+              if (env.CUSTOMER_CONVERSATION_DO) {
+                const doId = env.CUSTOMER_CONVERSATION_DO.idFromName(convId);
+                const doStub = env.CUSTOMER_CONVERSATION_DO.get(doId);
+                await doStub.fetch(new Request('https://customer-conversation-do/notify-message-updated', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    conversationId: convId,
+                    messageId,
+                    data: { file_attachments: fileAttachmentData }
+                  })
+                }));
+              }
+            } catch (doErr) {
+              log.warn('CustomerConversationDO message_updated notify failed', {
+                error: doErr instanceof Error ? doErr.message : String(doErr)
+              });
+            }
+
             log.debug('Deferred media + message_updated completed', { messageId });
           }
         } catch (err) {
