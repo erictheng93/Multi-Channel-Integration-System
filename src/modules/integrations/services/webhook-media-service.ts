@@ -13,6 +13,9 @@ const log = createContextLogger('WebhookMedia');
  * Process a LINE media message: download content from LINE API, upload to R2,
  * and insert a file_attachments record.
  * Returns the array of file attachment data for broadcast inclusion.
+ *
+ * Note: Retries are handled by Cloudflare Queue (max_retries=3).
+ * This function is single-attempt — returns [] on failure so queue can retry.
  */
 export async function processLineMedia(
   env: Bindings,
@@ -21,63 +24,49 @@ export async function processLineMedia(
   lineMessageType: string,
   fileName?: string
 ): Promise<any[]> {
-  let fileAttachmentData: any[] = [];
+  log.info('Processing media', { lineMessageId, lineMessageType, fileName });
 
-  log.info('Processing media before broadcast', { lineMessageType });
   try {
     const { processLineMediaMessage } = await import('@/utils/file-storage');
 
-    // Retry up to 3 times with exponential backoff for transient LINE API / R2 failures
-    let mediaFile: Awaited<ReturnType<typeof processLineMediaMessage>> = null;
-    const MAX_RETRIES = 3;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      mediaFile = await processLineMediaMessage(
-        env,
-        lineMessageId,
-        lineMessageType,
-        fileName
-      );
-      if (mediaFile) break;
+    const mediaFile = await processLineMediaMessage(
+      env,
+      lineMessageId,
+      lineMessageType,
+      fileName
+    );
 
-      if (attempt < MAX_RETRIES) {
-        const delay = attempt * 500; // 500ms, 1000ms
-        log.warn(`LINE Webhook: Media download attempt ${attempt}/${MAX_RETRIES} failed, retrying in ${delay}ms`, { lineMessageId, lineMessageType });
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        log.error(`LINE Webhook: Media download failed after ${MAX_RETRIES} attempts`, { lineMessageId, lineMessageType });
-      }
+    if (!mediaFile) {
+      log.error('Media download/upload failed', { lineMessageId, lineMessageType });
+      return [];
     }
 
-    if (mediaFile) {
-      // Use r2Key directly from MediaFile (set during R2 upload)
-      const r2Key = mediaFile.r2Key;
+    const newFileAttachment = {
+      id: mediaFile.id,
+      messageId: messageId,
+      filename: mediaFile.filename,
+      mimeType: mediaFile.mimeType,
+      fileSize: mediaFile.size,
+      fileUrl: mediaFile.url,
+      r2Key: mediaFile.r2Key,
+      createdAt: nowISO()
+    };
 
-      const newFileAttachment = {
-        id: mediaFile.id,
-        messageId: messageId,
-        filename: mediaFile.filename,
-        mimeType: mediaFile.mimeType,
-        fileSize: mediaFile.size,
-        fileUrl: mediaFile.url,
-        r2Key: r2Key,
-        createdAt: nowISO()
-      };
+    // Store to database
+    const drizzleDb = createDbClient(env.DB);
+    await drizzleDb.insert(fileAttachments).values(newFileAttachment);
 
-      // Store to database
-      const drizzleDb = createDbClient(env.DB);
-      await drizzleDb.insert(fileAttachments).values(newFileAttachment);
+    log.info('Media processed and stored', { filename: mediaFile.filename, messageId });
 
-      // Keep for broadcast
-      fileAttachmentData = [newFileAttachment];
-
-      log.info('Media processed and stored before broadcast', { filename: mediaFile.filename });
-    }
+    return [newFileAttachment];
   } catch (storageError) {
-    log.error('LINE Webhook: Error processing media before broadcast', { error: storageError instanceof Error ? storageError.message : String(storageError) });
-    // Continue with broadcast even if media processing fails
+    log.error('Media processing error', {
+      lineMessageId,
+      lineMessageType,
+      error: storageError instanceof Error ? storageError.message : String(storageError)
+    });
+    return [];
   }
-
-  return fileAttachmentData;
 }
 
 /**
