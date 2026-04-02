@@ -290,16 +290,39 @@ export async function processLineMediaMessage(
   // According to LINE API documentation, content download should use the data subdomain
   // See: https://developers.line.biz/en/reference/messaging-api/#get-content
   const originalUrl = `https://api-data.line.me/v2/bot/message/${messageId}/content`;
-  const mimeTypeMap: Record<string, string> = {
-    'image': 'image/jpeg',
-    'video': 'video/mp4', 
-    'audio': 'audio/mp3',
-    'file': 'application/octet-stream'
-  };
-  
-  const mimeType = mimeTypeMap[messageType] || 'application/octet-stream';
+
+  // For 'file' type, infer mimeType from filename extension instead of hardcoding
+  // application/octet-stream. This allows FileAttachmentCard to detect file types
+  // (e.g., PDF, Word, Excel) via mimeType matching, not just extension fallback.
+  let mimeType: string;
+  if (messageType === 'file' && fileName) {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const extMimeMap: Record<string, string> = {
+      'pdf': 'application/pdf',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'csv': 'text/csv',
+      'txt': 'text/plain',
+      'zip': 'application/zip',
+      'rar': 'application/x-rar-compressed',
+      '7z': 'application/x-7z-compressed',
+    };
+    mimeType = extMimeMap[ext] || 'application/octet-stream';
+  } else {
+    const mimeTypeMap: Record<string, string> = {
+      'image': 'image/jpeg',
+      'video': 'video/mp4',
+      'audio': 'audio/mp3',
+    };
+    mimeType = mimeTypeMap[messageType] || 'application/octet-stream';
+  }
+
   const defaultFilename = `${messageType}_${messageId}`;
-  
+
   return await fileStorage.downloadAndStore(
     originalUrl,
     fileName || defaultFilename,
