@@ -27,7 +27,7 @@ import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 
 // Phase 3: LINE Message Queue Consumer
 import { handleLineMessageQueue } from '@modules/queue/handlers/line-message-queue';
-import type { LineMessageQueuePayload } from './types/bindings';
+import type { LineQueuePayload } from './types/bindings';
 
 // Debug: Log messaging handler
 log.debug('messagingMainHandler imported', { type: typeof messagingMainHandler });
@@ -841,7 +841,7 @@ export default {
 
   // LINE Message Queue Consumer
   async queue(
-    batch: MessageBatch<LineMessageQueuePayload>,
+    batch: MessageBatch<LineQueuePayload>,
     env: Bindings
   ): Promise<void> {
     log.info('LINE Queue received batch', { messageCount: batch.messages.length });
