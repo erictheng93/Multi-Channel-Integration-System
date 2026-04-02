@@ -14,7 +14,7 @@
  * Queue Consumer -> LINE API -> WebSocket Status Update
  */
 
-import type { Bindings, LineMessageQueuePayload, LineMessageQueueResult } from '@/types/bindings';
+import type { Bindings, LineMessageQueuePayload, LineMessageQueueResult, MediaProcessingPayload, LineQueuePayload } from '@/types/bindings';
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '@/utils/line';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createDbClient } from '@/db/drizzle-factory';
@@ -22,6 +22,7 @@ import { messages } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
+import { processLineMedia } from '@/modules/integrations/services/webhook-media-service';
 
 const log = createContextLogger('LineMessageQueue')
 
@@ -40,42 +41,37 @@ export class LineMessageQueueConsumer {
 
   /**
    * Process a batch of messages from the queue
-   * Called by Cloudflare Queue consumer
+   * Routes to outbound message handler or media processing handler based on payload type
    */
-  async processBatch(batch: MessageBatch<LineMessageQueuePayload>): Promise<void> {
+  async processBatch(batch: MessageBatch<LineQueuePayload>): Promise<void> {
     log.info('Processing batch', { count: batch.messages.length });
-
-    const results: { message: Message<LineMessageQueuePayload>; success: boolean; error?: string }[] = [];
 
     for (const message of batch.messages) {
       try {
-        const result = await this.processMessage(message.body);
-        results.push({ message, success: result.success, error: result.error });
+        const payload = message.body;
 
-        if (result.success) {
-          // Acknowledge successful message
+        // Route by type: media_processing vs outbound_message (default)
+        if (payload.type === 'media_processing') {
+          await this.processMediaMessage(payload as MediaProcessingPayload);
           message.ack();
-          log.info('Message delivered successfully', { messageId: message.body.messageId });
+          log.info('Media processing completed', { messageId: payload.messageId });
         } else {
-          // Retry failed message (will be automatically retried by Cloudflare)
-          message.retry();
-          log.warn('Message failed, will retry', { messageId: message.body.messageId, error: result.error });
+          // Outbound message (existing behavior, backward compatible for messages without type)
+          const result = await this.processMessage(payload as LineMessageQueuePayload);
+          if (result.success) {
+            message.ack();
+            log.info('Message delivered successfully', { messageId: result.messageId });
+          } else {
+            message.retry();
+            log.warn('Message failed, will retry', { messageId: result.messageId, error: result.error });
+          }
         }
       } catch (error) {
-        log.error('Error processing message', { messageId: message.body.messageId }, error instanceof Error ? error : String(error));
+        const messageId = message.body.messageId || 'unknown';
+        log.error('Error processing queue message', { messageId }, error instanceof Error ? error : String(error));
         message.retry();
-        results.push({
-          message,
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
       }
     }
-
-    // Log batch summary
-    const successCount = results.filter(r => r.success).length;
-    const failureCount = results.filter(r => !r.success).length;
-    log.info('Batch complete', { successCount, failureCount });
   }
 
   /**
@@ -280,6 +276,60 @@ export class LineMessageQueueConsumer {
       // Don't throw - broadcast failure shouldn't fail message delivery
     }
   }
+
+  /**
+   * Process a media processing message
+   * Downloads file from LINE API, stores in R2, creates file_attachments,
+   * and broadcasts message_updated via WebSocket
+   */
+  private async processMediaMessage(payload: MediaProcessingPayload): Promise<void> {
+    const { messageId, conversationId, lineMessageId, lineMessageType, fileName } = payload;
+
+    log.info('Processing media from queue', { messageId, lineMessageId, lineMessageType, fileName });
+
+    // Step 1: Download from LINE API + upload to R2 + insert file_attachments
+    const fileAttachmentData = await processLineMedia(
+      this.env, messageId, lineMessageId, lineMessageType, fileName
+    );
+
+    if (fileAttachmentData.length === 0) {
+      // processLineMedia returns [] on failure — let queue retry
+      throw new Error(`Media processing failed for LINE message ${lineMessageId}`);
+    }
+
+    // Step 2: Broadcast message_updated to global WebSocket (conversation list)
+    await this.broadcastService.broadcastMessageEvent({
+      type: 'message_updated',
+      conversationId,
+      messageId,
+      data: { file_attachments: fileAttachmentData },
+      priority: 'high'
+    });
+
+    // Step 3: Notify CustomerConversationDO directly (conversation detail page)
+    try {
+      if (this.env.CUSTOMER_CONVERSATION_DO) {
+        const doId = this.env.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+        const doStub = this.env.CUSTOMER_CONVERSATION_DO.get(doId);
+        await doStub.fetch(new Request('https://customer-conversation-do/notify-message-updated', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversationId,
+            messageId,
+            data: { file_attachments: fileAttachmentData }
+          })
+        }));
+      }
+    } catch (doErr) {
+      log.warn('CustomerConversationDO message_updated notify failed', {
+        error: doErr instanceof Error ? doErr.message : String(doErr)
+      });
+      // Non-critical — don't throw, media is already stored
+    }
+
+    log.info('Media processing complete', { messageId, lineMessageId, attachments: fileAttachmentData.length });
+  }
 }
 
 /**
@@ -287,7 +337,7 @@ export class LineMessageQueueConsumer {
  * This is called by the Workers runtime when messages arrive
  */
 export async function handleLineMessageQueue(
-  batch: MessageBatch<LineMessageQueuePayload>,
+  batch: MessageBatch<LineQueuePayload>,
   env: Bindings
 ): Promise<void> {
   const consumer = new LineMessageQueueConsumer(env);
