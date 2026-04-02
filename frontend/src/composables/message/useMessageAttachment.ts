@@ -251,6 +251,49 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
       }))
     }
 
+    // Priority 3: Synthesize from metadata when media processing failed.
+    // If file_attachments is empty but metadata has fileName (LINE file message),
+    // create a synthetic attachment so FileAttachmentCard renders instead of plain text.
+    const meta = parsedMetadata.value
+    if (meta?.fileName && meta?.originalContentUrl) {
+      const fileName = meta.fileName as string
+      const ext = fileName.split('.').pop()?.toLowerCase() || ''
+      const extMimeMap: Record<string, string> = {
+        // Image types — so isImageFile() classifies correctly via MIME check
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'bmp': 'image/bmp',
+        'webp': 'image/webp',
+        'svg': 'image/svg+xml',
+        // Video types
+        'mp4': 'video/mp4',
+        'mov': 'video/quicktime',
+        'avi': 'video/x-msvideo',
+        'webm': 'video/webm',
+        // Document types
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt': 'application/vnd.ms-powerpoint',
+        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      }
+      // Use LINE proxy URL as fallback download link
+      const lineMessageId = (meta.originalContentUrl as string).match(/\/message\/(\d+)\/content/)?.[1]
+      const proxyUrl = lineMessageId ? getApiUrl(`/api/files/line-proxy/${lineMessageId}`) : ''
+
+      return [{
+        id: `metadata-fallback-0`,
+        filename: fileName,
+        mimeType: extMimeMap[ext] || 'application/octet-stream',
+        fileSize: (meta.fileSize as number) || 0,
+        fileUrl: proxyUrl,
+      }]
+    }
+
     return []
   })
 

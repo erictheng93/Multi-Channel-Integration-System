@@ -93,8 +93,16 @@ export function useMessageContent(props: Ref<MessageContentProps>) {
           ? JSON.parse(props.value.message.metadata)
           : props.value.message.metadata
 
-        // If metadata contains file attachment info, it's actually a file message
+        // If metadata contains file attachment info, check if it's actually an image
+        // before classifying as 'file'. WEBP/PNG/JPG files from LINE arrive with
+        // fileName in metadata but should render as inline images, not file cards.
         if (metadata.attachment || metadata.file || metadata.fileName) {
+          const fileName = (metadata.fileName || metadata.file || '') as string
+          const ext = fileName.split('.').pop()?.toLowerCase() || ''
+          const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
+          if (imageExts.includes(ext)) {
+            return 'image'
+          }
           return 'file'
         }
 
