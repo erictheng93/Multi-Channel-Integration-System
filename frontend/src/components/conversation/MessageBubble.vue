@@ -70,66 +70,7 @@
         </div>
       </div>
 
-      <!-- File Message (Single Attachment - Legacy fallback, only when no file_attachments) -->
-      <div
-        v-else-if="actualMessageType === 'file' && resolvedAttachmentUrl && !hasMultipleAttachments && documentAttachments.length === 0 && imageAttachments.length === 0"
-        class="message-file-content"
-      >
-        <div class="file-container">
-          <div
-            class="file-icon"
-            :class="getFileTypeClass(attachmentName || '')"
-          >
-            <component :is="getFileIcon(attachmentName || '')" />
-          </div>
-          <div class="file-info">
-            <div
-              class="file-name"
-              :title="attachmentName"
-            >
-              {{ attachmentName }}
-            </div>
-            <div class="file-meta">
-              <span
-                v-if="attachmentSize"
-                class="file-size"
-              >{{
-                formatFileSize(attachmentSize)
-              }}</span>
-              <span class="file-type">{{ getFileExtension(attachmentName || '') }}</span>
-            </div>
-            <div
-              v-if="uploadProgress !== undefined"
-              class="file-progress"
-            >
-              <div class="progress-bar">
-                <div
-                  class="progress-fill"
-                  :style="{ width: `${uploadProgress}%` }"
-                />
-              </div>
-              <span class="progress-text">{{ uploadProgress }}%</span>
-            </div>
-          </div>
-          <div class="file-actions">
-            <button
-              class="file-action-btn primary"
-              @click="downloadFile"
-            >
-              <DownloadIcon />
-              下載
-            </button>
-          </div>
-        </div>
-        <div
-          v-if="message.content && !isFileOnlyContent"
-          class="media-caption"
-        >
-          {{ message.content }}
-        </div>
-      </div>
-
-      <!--  FIX: Attachments Container - Images, Videos, and Documents -->
+      <!-- Attachments Container - Images, Videos, and Documents -->
       <div
         v-else-if="
           imageAttachments.length > 0 ||
@@ -524,7 +465,7 @@
   import { MESSAGE_STATUS } from '@/constants/message-status'
 
   // Import message utilities and composables
-  import { formatFileSize, getFileExtension, getFileTypeClass, isImageFile } from '@/utils/message'
+  import { isImageFile } from '@/utils/message'
   import {
     useMessageTime,
     useMessageAttachment,
@@ -540,8 +481,6 @@
     XIcon,
     SearchIcon,
     DownloadIcon,
-    FileIcon,
-    ImageIcon,
     CopyIcon,
     ReplyIcon,
     MoreVerticalIcon,
@@ -553,7 +492,6 @@
     message: Message
     delivered?: boolean
     showSender?: boolean
-    uploadProgress?: number
     attachmentUrl?: string
     attachmentName?: string
     attachmentSize?: number
@@ -562,7 +500,6 @@
   const props = withDefaults(defineProps<Props>(), {
     delivered: true,
     showSender: false,
-    uploadProgress: undefined,
     attachmentUrl: '',
     attachmentName: '',
     attachmentSize: 0,
@@ -596,7 +533,7 @@
     imageAttachments,
     videoAttachments,
     documentAttachments,
-    hasMultipleAttachments,
+    // hasMultipleAttachments — removed: legacy file path no longer used
     isFileOnlyContent,
     messageStatus,
     downloadFile,
@@ -734,15 +671,7 @@
   // - formatTime: from useMessageTime composable
   // - formatFileSize, getFileExtension, getFileTypeClass: from @/utils/message
 
-  const getFileIcon = (filename: string) => {
-    const ext = filename.split('.').pop()?.toLowerCase()
-    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-
-    if (imageExts.includes(ext || '')) {
-      return ImageIcon
-    }
-    return FileIcon
-  }
+  // getFileIcon — removed: legacy file rendering path no longer used
 
   // Image preview methods
   const openImagePreview = () => {
