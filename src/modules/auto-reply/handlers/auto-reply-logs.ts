@@ -1,11 +1,21 @@
 // src/modules/auto-reply/handlers/auto-reply-logs.ts
 // Read-only handler for auto-reply audit logs
+//
+// SECURITY NOTE: this handler previously built SQL via template-literal
+// concatenation and `sql.raw()`, which meant `platform` and `dateFrom` query
+// parameters were interpolated directly into the SELECT. That was an active
+// authenticated SQL injection (see git log for commit fixing it). The current
+// implementation uses Drizzle's typed query builder exclusively — every value
+// is bound as a parameter, so injection is impossible by construction. The
+// explicit allowlist / format checks below are defence-in-depth: they reject
+// obviously bad input with a 400 instead of letting junk flow into the DB.
 
 import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { createDbClient } from '@/db/drizzle-factory';
-import { sql } from 'drizzle-orm';
+import { and, or, eq, gte, isNull, desc, count } from 'drizzle-orm';
+import { autoReplyLogs, autoReplyRules } from '@/db/schema';
 import {
   badRequestResponse,
   handleApiError,
@@ -15,6 +25,21 @@ import { nowISO } from '@/utils/timestamp';
 const autoReplyLogsHandler = new Hono<{ Bindings: Bindings }>();
 
 autoReplyLogsHandler.use('/*', jwtAuth);
+
+// Keep this aligned with `autoReplyLogs.platform` in src/db/schema.ts.
+// Drizzle binds values as parameters, so an unknown platform cannot inject
+// SQL even without this check — but returning 400 on typos beats silently
+// returning an empty page.
+const ALLOWED_PLATFORMS = new Set(['line', 'facebook', 'whatsapp']);
+
+/**
+ * Parse an ISO 8601 date string. Returns null if the input is unparseable.
+ * Used to reject obviously malformed `dateFrom` query params up front.
+ */
+function parseIsoDate(value: string): string | null {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 // ==================== Health check ====================
 autoReplyLogsHandler.get('/health', (c) => {
@@ -30,7 +55,10 @@ autoReplyLogsHandler.get('/', async (c) => {
   try {
     const drizzleDb = createDbClient(c.env.DB);
     const payload = c.get('jwtPayload');
-    const teamId = parseInt(c.req.query('teamId') || '') || c.get('contextTeamId') || payload?.primaryTeamId;
+    const teamId =
+      parseInt(c.req.query('teamId') || '') ||
+      c.get('contextTeamId') ||
+      payload?.primaryTeamId;
 
     if (!teamId) {
       return badRequestResponse(c, 'teamId is required');
@@ -40,66 +68,117 @@ autoReplyLogsHandler.get('/', async (c) => {
     const pageSize = Math.min(parseInt(c.req.query('pageSize') || '50'), 100);
     const offset = (page - 1) * pageSize;
 
-    // Filter by ruleId if provided
-    const ruleIdFilter = c.req.query('ruleId');
-    const platformFilter = c.req.query('platform');
-    const dateFrom = c.req.query('dateFrom');
+    // ──────────────────────────────────────────────────────────────────
+    // Parse and validate optional filters. All values eventually reach the
+    // DB as bound parameters via Drizzle, so SQL injection is impossible
+    // regardless of what we do here. The checks below just reject obviously
+    // bad input with a 400 instead of a confusing downstream error.
+    // ──────────────────────────────────────────────────────────────────
+    const rawRuleId = c.req.query('ruleId');
+    let ruleIdFilter: number | null = null;
+    if (rawRuleId !== undefined && rawRuleId !== '') {
+      const parsed = parseInt(rawRuleId, 10);
+      if (Number.isNaN(parsed)) {
+        return badRequestResponse(c, 'ruleId must be an integer');
+      }
+      ruleIdFilter = parsed;
+    }
 
-    // Build WHERE conditions — include global rules (team_id IS NULL) alongside team rules
-    const conditions: string[] = [`(r.team_id = ${teamId} OR r.team_id IS NULL)`];
-    if (ruleIdFilter) conditions.push(`l.rule_id = ${parseInt(ruleIdFilter)}`);
-    if (platformFilter) conditions.push(`l.platform = '${platformFilter}'`);
-    if (dateFrom) conditions.push(`l.created_at >= '${dateFrom}'`);
+    const rawPlatform = c.req.query('platform');
+    let platformFilter: string | null = null;
+    if (rawPlatform !== undefined && rawPlatform !== '') {
+      if (!ALLOWED_PLATFORMS.has(rawPlatform)) {
+        return badRequestResponse(
+          c,
+          `platform must be one of: ${[...ALLOWED_PLATFORMS].join(', ')}`
+        );
+      }
+      platformFilter = rawPlatform;
+    }
 
-    const whereClause = conditions.join(' AND ');
+    const rawDateFrom = c.req.query('dateFrom');
+    let dateFromFilter: string | null = null;
+    if (rawDateFrom !== undefined && rawDateFrom !== '') {
+      const parsed = parseIsoDate(rawDateFrom);
+      if (parsed === null) {
+        return badRequestResponse(c, 'dateFrom must be a valid ISO 8601 date');
+      }
+      dateFromFilter = parsed;
+    }
 
-    // Query logs with rule name via JOIN
-    const logs = await drizzleDb.all(sql.raw(`
-      SELECT
-        l.id,
-        l.rule_id,
-        r.name as rule_name,
-        l.conversation_id,
-        l.customer_id,
-        l.trigger_content,
-        l.response_content,
-        l.matched_condition,
-        l.platform,
-        l.reply_method,
-        l.created_at
-      FROM auto_reply_logs l
-      LEFT JOIN auto_reply_rules r ON l.rule_id = r.id
-      WHERE ${whereClause}
-      ORDER BY l.created_at DESC
-      LIMIT ${pageSize} OFFSET ${offset}
-    `));
+    // ──────────────────────────────────────────────────────────────────
+    // Team scoping: include rules owned by the caller's team AND global
+    // rules (team_id IS NULL). This matches the previous behaviour.
+    // ──────────────────────────────────────────────────────────────────
+    const teamCondition = or(
+      eq(autoReplyRules.teamId, teamId),
+      isNull(autoReplyRules.teamId)
+    );
 
-    // Count total + today's total in parallel
+    // Build the full filter set for the listing and total-count queries
+    const listConditions = [teamCondition];
+    if (ruleIdFilter !== null) {
+      listConditions.push(eq(autoReplyLogs.ruleId, ruleIdFilter));
+    }
+    if (platformFilter !== null) {
+      listConditions.push(eq(autoReplyLogs.platform, platformFilter));
+    }
+    if (dateFromFilter !== null) {
+      listConditions.push(gte(autoReplyLogs.createdAt, dateFromFilter));
+    }
+    const listWhere = and(...listConditions);
+
+    // "Today" cut-off for the auxiliary count
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayISO = todayStart.toISOString();
-    const teamCondition = `(r.team_id = ${teamId} OR r.team_id IS NULL)`;
+    const todayWhere = and(teamCondition, gte(autoReplyLogs.createdAt, todayISO));
 
-    const [countResult, todayCountResult] = await Promise.all([
-      drizzleDb.all(sql.raw(`
-        SELECT COUNT(*) as total
-        FROM auto_reply_logs l
-        LEFT JOIN auto_reply_rules r ON l.rule_id = r.id
-        WHERE ${whereClause}
-      `)),
-      drizzleDb.all(sql.raw(`
-        SELECT COUNT(*) as total
-        FROM auto_reply_logs l
-        LEFT JOIN auto_reply_rules r ON l.rule_id = r.id
-        WHERE ${teamCondition} AND l.created_at >= '${todayISO}'
-      `)),
+    // ──────────────────────────────────────────────────────────────────
+    // Run the three queries in parallel. The projection preserves the
+    // snake_case keys the frontend already expects (rule_id, rule_name,
+    // conversation_id, ...) — do NOT rename without coordinating a
+    // frontend change.
+    // ──────────────────────────────────────────────────────────────────
+    const logsProjection = {
+      id: autoReplyLogs.id,
+      rule_id: autoReplyLogs.ruleId,
+      rule_name: autoReplyRules.name,
+      conversation_id: autoReplyLogs.conversationId,
+      customer_id: autoReplyLogs.customerId,
+      trigger_content: autoReplyLogs.triggerContent,
+      response_content: autoReplyLogs.responseContent,
+      matched_condition: autoReplyLogs.matchedCondition,
+      platform: autoReplyLogs.platform,
+      reply_method: autoReplyLogs.replyMethod,
+      created_at: autoReplyLogs.createdAt,
+    };
+
+    const [logs, countRows, todayCountRows] = await Promise.all([
+      drizzleDb
+        .select(logsProjection)
+        .from(autoReplyLogs)
+        .leftJoin(autoReplyRules, eq(autoReplyLogs.ruleId, autoReplyRules.id))
+        .where(listWhere)
+        .orderBy(desc(autoReplyLogs.createdAt))
+        .limit(pageSize)
+        .offset(offset),
+      drizzleDb
+        .select({ total: count() })
+        .from(autoReplyLogs)
+        .leftJoin(autoReplyRules, eq(autoReplyLogs.ruleId, autoReplyRules.id))
+        .where(listWhere),
+      drizzleDb
+        .select({ total: count() })
+        .from(autoReplyLogs)
+        .leftJoin(autoReplyRules, eq(autoReplyLogs.ruleId, autoReplyRules.id))
+        .where(todayWhere),
     ]);
 
-    const total = (countResult[0] as { total: number } | undefined)?.total || 0;
-    const todayTotal = (todayCountResult[0] as { total: number } | undefined)?.total || 0;
-
-    // Use custom response to include todayTotal alongside standard pagination
+    const total = countRows[0]?.total ?? 0;
+    const todayTotal = todayCountRows[0]?.total ?? 0;
     const totalPages = Math.ceil(total / pageSize);
+
     return c.json({
       success: true,
       data: {
