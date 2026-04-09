@@ -20,6 +20,15 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# Check for unsafe sql.raw() usage (prevent SQL injection regressions)
+echo "🛡️  Checking for unsafe sql.raw() usage..."
+bun run check:sql-raw:ci
+if [ $? -ne 0 ]; then
+  echo "❌ Unsafe sql.raw() detected! See report above."
+  echo "💡 Rewrite using Drizzle query builder or add a justified suppression comment"
+  exit 1
+fi
+
 # Backend TypeScript check
 echo "Checking backend TypeScript..."
 bunx tsc --noEmit
