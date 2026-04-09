@@ -19,6 +19,7 @@ import {
   buildDrizzleSelectFields,
   buildGroupByExpressions,
   convertToCSV,
+  escapeCsvField,
   validateGroupByField,
   validateMetricName,
   validateReportConfig,
@@ -204,7 +205,82 @@ describe('buildGroupByExpressions', () => {
 });
 
 // ----------------------------------------------------------------------------
-// convertToCSV (existing helper — sanity coverage)
+// escapeCsvField — low-level RFC 4180 + OWASP CSV injection defence
+// ----------------------------------------------------------------------------
+
+describe('escapeCsvField', () => {
+  it('returns empty string for null and undefined', () => {
+    expect(escapeCsvField(null)).toBe('');
+    expect(escapeCsvField(undefined)).toBe('');
+  });
+
+  it('stringifies numbers and booleans without quoting', () => {
+    expect(escapeCsvField(0)).toBe('0');
+    expect(escapeCsvField(42)).toBe('42');
+    expect(escapeCsvField(-10)).toBe('-10'); // safe: number, not a formula
+    expect(escapeCsvField(3.14)).toBe('3.14');
+    expect(escapeCsvField(true)).toBe('true');
+    expect(escapeCsvField(false)).toBe('false');
+  });
+
+  it('stringifies bigints without quoting', () => {
+    // Use string constructor — passing the numeric literal through `number`
+    // first would lose precision above Number.MAX_SAFE_INTEGER.
+    expect(escapeCsvField(BigInt('9007199254740993'))).toBe('9007199254740993');
+  });
+
+  it('wraps plain string values in double quotes', () => {
+    expect(escapeCsvField('alice')).toBe('"alice"');
+    expect(escapeCsvField('')).toBe('""');
+  });
+
+  it('doubles embedded double quotes per RFC 4180', () => {
+    expect(escapeCsvField('she said "hi"')).toBe('"she said ""hi"""');
+    expect(escapeCsvField('"')).toBe('""""');
+  });
+
+  it('preserves commas inside quoted fields', () => {
+    expect(escapeCsvField('a,b,c')).toBe('"a,b,c"');
+  });
+
+  it('preserves newlines and carriage returns inside quoted fields', () => {
+    expect(escapeCsvField('line1\nline2')).toBe('"line1\nline2"');
+    // Leading 'c' is not a formula trigger, so no apostrophe is prepended.
+    // The embedded \r survives untouched inside the quoted field.
+    expect(escapeCsvField('cr\rlf')).toBe('"cr\rlf"');
+  });
+
+  it('prefixes formula-trigger leading characters with an apostrophe', () => {
+    // OWASP CSV injection defence. Each of these would be evaluated as a
+    // formula by Excel/Sheets if written to the cell unchanged.
+    const payloads: Array<[string, string]> = [
+      ['=SUM(A1:A10)', `"'=SUM(A1:A10)"`],
+      ['=HYPERLINK("http://evil/","x")', `"'=HYPERLINK(""http://evil/"",""x"")"`],
+      ['+1+1', `"'+1+1"`],
+      ['-10-10', `"'-10-10"`],
+      ['@cmd', `"'@cmd"`],
+      ['\tTAB-led', `"'\tTAB-led"`],
+      ['\rCR-led', `"'\rCR-led"`],
+    ];
+    for (const [input, expected] of payloads) {
+      expect(escapeCsvField(input)).toBe(expected);
+    }
+  });
+
+  it('does NOT prefix strings that only contain a leading space or letter', () => {
+    expect(escapeCsvField(' leading space')).toBe('" leading space"');
+    expect(escapeCsvField('alice')).toBe('"alice"');
+  });
+
+  it('coerces non-primitive objects to strings safely', () => {
+    // Object.toString -> "[object Object]" — has no formula chars but does
+    // have bracket/space chars that don't need special handling.
+    expect(escapeCsvField({ a: 1 })).toBe('"[object Object]"');
+  });
+});
+
+// ----------------------------------------------------------------------------
+// convertToCSV (row-assembly + header handling)
 // ----------------------------------------------------------------------------
 
 describe('convertToCSV', () => {
@@ -227,5 +303,22 @@ describe('convertToCSV', () => {
     const csv = convertToCSV([{ a: null, b: undefined, c: 0 }]);
     // null/undefined -> '', 0 stays as '0'
     expect(csv.split('\n')[1]).toBe(',,0');
+  });
+
+  it('neutralises formula-injection payloads in data rows', () => {
+    const csv = convertToCSV([
+      { user: '=cmd|"/c calc"!A1', action: 'click' },
+    ]);
+    const lines = csv.split('\n');
+    // Header passes through unchanged (trusted object keys).
+    expect(lines[0]).toBe('user,action');
+    // Payload is wrapped, quotes doubled, and prefixed with apostrophe.
+    expect(lines[1]).toBe(`"'=cmd|""/c calc""!A1","click"`);
+  });
+
+  it('keeps delimiters inside quoted string fields', () => {
+    const csv = convertToCSV([{ description: 'hello, world', tally: 3 }]);
+    const lines = csv.split('\n');
+    expect(lines[1]).toBe('"hello, world",3');
   });
 });

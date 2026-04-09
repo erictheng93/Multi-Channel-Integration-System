@@ -1,6 +1,7 @@
-/* eslint-env serviceworker */
 // Service Worker - 企業級PWA支援
 // 提供離線功能、背景同步、推送通知
+// Note: ServiceWorker globals (self, clients, caches, importScripts) are
+// declared in frontend/eslint.config.js under `languageOptions.globals`.
 
 const CACHE_NAME = 'multi-channel-support-v1.2.0'
 const STATIC_CACHE = 'static-cache-v1.2.0'
