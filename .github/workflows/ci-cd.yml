@@ -1,189 +1,298 @@
 name: CI/CD - Multi-Channel Integration System
 
+# -----------------------------------------------------------------------------
+# Triggers
+# -----------------------------------------------------------------------------
+# CLAUDE.md mandates "REMOTE PRODUCTION ONLY" — no staging, no develop branch.
+# wrangler.toml line 234 explicitly forbids [env.staging] sections.
+# Therefore this workflow targets `main` only.
+# -----------------------------------------------------------------------------
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main]
+
+# Cancel in-flight runs on the *same PR* when new commits arrive, but never
+# cancel a run that targets main (we don't want to interrupt a deploy).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Default to least privilege. Individual jobs widen this only if they need to.
+permissions:
+  contents: read
 
 env:
-  NODE_VERSION: '20'
+  HEALTH_URL: https://mcis-backend.daiwandist.com/api/system/health
+  WS_HEALTH_URL: https://mcis-backend.daiwandist.com/api/websocket/health
 
 jobs:
-  # =================================================================
-  #  Continuous Integration - Run on all pushes and pull requests
-  # =================================================================
-  ci:
-    name: Continuous Integration
+  # ===========================================================================
+  # 1. Validate — fast static checks (lint, types, route ordering)
+  # ===========================================================================
+  # Runs first as a cheap fail-fast gate. If TypeScript or lint is broken,
+  # there is no point spending CI minutes on tests.
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Validate (lint + types + routes)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        test-type: [frontend, backend, security]
+    timeout-minutes: 10
     steps:
-      - name: 1. Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: 2. Setup Node.js environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
 
-      - name: 3. Install root dependencies
+      - name: Install root dependencies
         run: bun install --frozen-lockfile
 
-      - name: 4. Install frontend dependencies
+      - name: Install frontend dependencies
         run: cd frontend && bun install --frozen-lockfile
 
-      - name: 5. Run Linting and Type Checking
+      # Runs: backend tsc --noEmit, frontend vue-tsc --noEmit, eslint --max-warnings 0
+      - name: Lint + TypeScript (full)
         run: bun run lint:check
 
-      - name: 6. Run Frontend Tests with Coverage
-        if: matrix.test-type == 'frontend'
-        run: cd frontend && bun run test -- --run --coverage
+      # Static analysis only — safe to run anywhere, no secrets needed.
+      # Catches the class of bugs documented in docs/claude/ROUTE_REGISTRATION.md.
+      - name: Detect route conflicts
+        run: bun run check:routes:ci
 
-      - name: 7. Run Backend Test Suite
-        if: matrix.test-type == 'backend'
-        run: |
-          # Run unit tests for services, utils, and modules
-          # Note: Some tests may fail due to environment-specific issues (console.spy, crypto mocking)
-          # These are tracked and will be fixed in future iterations
-          bunx vitest run tests/unit/services tests/unit/modules tests/modules --reporter=verbose --passWithNoTests || echo "⚠️ Some backend tests failed - see output above"
+  # ===========================================================================
+  # 2. Backend tests
+  # ===========================================================================
+  # Uses the curated `test:backend:ci` script in package.json. This excludes
+  # tests/e2e, tests/performance, tests/smoke and other suites that require
+  # external resources (Wrangler dev server, R2, live D1).
+  #
+  # TODO: as more suites become CI-safe, expand the script in package.json
+  # rather than this workflow — keep test selection in one source of truth.
+  # ---------------------------------------------------------------------------
+  test-backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: 8. Build Frontend for Verification
-        run: cd frontend && bun run build
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
 
-      - name: 9. Upload test coverage
-        if: matrix.test-type == 'frontend'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # NOTE: no `|| echo` swallowing — failures must fail the build.
+      - name: Run backend test suite
+        run: bun run test:backend:ci
+
+  # ===========================================================================
+  # 3. Frontend tests
+  # ===========================================================================
+  # Runs the full Vitest suite (3,624 tests) with coverage. Uploads coverage
+  # to Codecov but never blocks the build on Codecov availability.
+  # ---------------------------------------------------------------------------
+  test-frontend:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install frontend dependencies
+        run: cd frontend && bun install --frozen-lockfile
+
+      - name: Run frontend test suite with coverage
+        run: cd frontend && bun run test:run -- --coverage
+
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           directory: ./frontend/coverage
+          fail_ci_if_error: false
+        continue-on-error: true
 
-  # =================================================================
-  #  Staging Deployment - Deploy to staging on develop branch
-  # =================================================================
-  deploy-staging:
-    name: Deploy to Staging
+  # ===========================================================================
+  # 4. Build verification
+  # ===========================================================================
+  # Builds the frontend bundle and uploads it as an artifact so the deploy
+  # job can use *exactly* the bundle that was tested — never rebuild in deploy.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build verification
     runs-on: ubuntu-latest
-    needs: ci
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment: staging
+    needs: [test-backend, test-frontend]
+    timeout-minutes: 10
     steps:
-      - name: 1. Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: 2. Setup Node.js environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
 
-      - name: 3. Install dependencies
-        run: |
-          bun install --frozen-lockfile
-          cd frontend && bun install --frozen-lockfile
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
 
-      - name: 4. Build Frontend
+      - name: Install frontend dependencies
+        run: cd frontend && bun install --frozen-lockfile
+
+      - name: Build frontend
         run: cd frontend && bun run build
 
-      - name: 5. Deploy to Cloudflare Staging
-        uses: cloudflare/wrangler-action@v3
+      - name: Upload frontend dist artifact
+        uses: actions/upload-artifact@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env staging --minify
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+          if-no-files-found: error
 
-      - name: 6. Deploy Frontend to Staging Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/dist --project-name multi-channel-staging
-
-  # =================================================================
-  #  Production Deployment - Deploy to production on main branch
-  # =================================================================
+  # ===========================================================================
+  # 5. Deploy to Production
+  # ===========================================================================
+  # Only runs on push to main (not on PRs). Uses GitHub Environments so
+  # `production` secrets and protection rules apply (consider enabling
+  # required reviewers in repo settings → Environments → production).
+  #
+  # Order:
+  #   1. Schema drift check against live D1 (defence in depth)
+  #   2. Capture current deployment id (for rollback)
+  #   3. Apply D1 migrations BEFORE worker deploy (forward-compatible only)
+  #   4. Deploy worker
+  #   5. Deploy Pages
+  #   6. Health check
+  #   7. Roll back worker on failure (note: D1 migrations are NOT rolled back)
+  # ---------------------------------------------------------------------------
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: ci
+    needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
+    timeout-minutes: 20
+    # Serialise production deploys — never cancel one in progress.
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: 1. Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: 2. Setup Node.js environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
 
-      - name: 3. Install dependencies
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download frontend dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      # Compares Drizzle schema (src/db/schema.ts) against live D1 columns.
+      # This is the gate that would have caught the 3-day message-save outage
+      # described in scripts/check-schema-drift.ts.
+      - name: Schema drift check (against live D1)
+        run: bun scripts/check-schema-drift.ts
+
+      # Capture must never abort the deploy. If we can't read the current
+      # deployment (network blip, first-ever deploy, wrangler CLI change),
+      # we still want to proceed — we just lose the ability to auto-roll-back.
+      # The rollback step guards against this by checking for 'none'/empty.
+      - name: Capture current worker version for rollback
+        id: capture
+        continue-on-error: true
         run: |
-          bun install --frozen-lockfile
-          cd frontend && bun install --frozen-lockfile
+          set +e
+          PREV=$(bunx wrangler deployments list --name mcis-worker --json 2>/dev/null | jq -r '.[0].id // empty')
+          if [ -z "$PREV" ]; then
+            PREV="none"
+          fi
+          echo "previous=$PREV" >> "$GITHUB_OUTPUT"
+          echo "Previous worker version id: $PREV"
 
-      - name: 4. Build Frontend
-        run: cd frontend && bun run build
+      # Migrations run BEFORE worker deploy so new code never sees old schema.
+      # ASSUMPTION: every migration in drizzle/ is forward-compatible.
+      # NO continue-on-error — a failed migration MUST abort the deploy.
+      - name: Apply D1 migrations
+        run: bun run db:migrate
 
-      - name: 5. Record current deployment for rollback
-        run: |
-          echo "PREVIOUS_DEPLOYMENT=$(bunx wrangler deployments list --name mcis-worker --json | jq -r '.[0].id' || echo 'none')" >> $GITHUB_ENV
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: 6. Deploy to Cloudflare Production
+      - name: Deploy Worker (Cloudflare)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --minify
 
-      - name: 7. Deploy Frontend to Pages
+      - name: Deploy Frontend (Cloudflare Pages)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy frontend/dist --project-name mcis
 
-      - name: 8. Run Database Migrations
-        continue-on-error: true
-        run: bun run db:migrate
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Wait for edge propagation
+        run: sleep 30
 
-      - name: 9. Verify deployment health
+      - name: Verify production health (HTTP + WebSocket)
         run: |
-          # Wait for deployment to be ready
-          sleep 30
-          # Health check
-          curl -f https://mcis-backend.daiwandist.com/api/system/health || exit 1
+          set -euo pipefail
+          curl -fsSL "$HEALTH_URL"
+          curl -fsSL "$WS_HEALTH_URL"
 
-      - name: 10. Notify deployment success
+      - name: Report success
         if: success()
         run: |
-          echo "??Deployment successful! Previous version: ${{ env.PREVIOUS_DEPLOYMENT }}"
+          echo "Deployment successful."
+          echo "Previous worker version (kept for emergency rollback): ${{ steps.capture.outputs.previous }}"
 
-      - name: 11. Rollback on failure
-        if: failure()
+      # Rollback guard: three conditions must ALL hold.
+      #   1. failure()               — some prior step failed
+      #   2. previous is non-empty   — capture actually ran
+      #   3. previous is not 'none'  — we have a real version id
+      # If capture itself failed (output == '' or 'none'), we intentionally
+      # skip rollback and let a human decide — auto-rollback with no target
+      # would just crash wrangler with an empty --version-id.
+      - name: Roll back worker on failure
+        if: |
+          failure() &&
+          steps.capture.outputs.previous != '' &&
+          steps.capture.outputs.previous != 'none'
         run: |
-          if [ "${{ env.PREVIOUS_DEPLOYMENT }}" != "none" ]; then
-            echo "Rolling back to previous deployment: ${{ env.PREVIOUS_DEPLOYMENT }}"
-            bunx wrangler rollback --name mcis-worker --version-id ${{ env.PREVIOUS_DEPLOYMENT }}
-          fi
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          echo "Health check or deploy failed. Rolling back worker to ${{ steps.capture.outputs.previous }}."
+          bunx wrangler rollback --name mcis-worker --version-id "${{ steps.capture.outputs.previous }}"
+          echo "WARNING: D1 migrations are NOT rolled back. Manual intervention may be required."
+
+      - name: Flag un-rollbackable failure
+        if: |
+          failure() &&
+          (steps.capture.outputs.previous == '' || steps.capture.outputs.previous == 'none')
+        run: |
+          echo "::error::Deploy failed and no rollback target was captured."
+          echo "::error::Manual intervention required — check wrangler deployments list."
+          exit 1
