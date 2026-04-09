@@ -47,6 +47,9 @@
     "test:e2e:auth": "bunx playwright test tests/e2e/playwright/auth",
     "test:e2e:routing": "bunx playwright test tests/e2e/playwright/routing"
   },
+  "overrides": {
+    "vite": "^7.3.2"
+  },
   "dependencies": {
     "@tanstack/vue-virtual": "^3.13.19",
     "@vueuse/core": "^13.9.0",
