@@ -11,9 +11,9 @@ import {
   notFoundResponse,
   handleApiError
 } from '@/utils/api-response';
-import { customers, tags, customerTags } from '@/db/schema';
+import { customers, tags, customerTags, conversations } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
-import { sql, eq, and, inArray } from 'drizzle-orm';
+import { sql, eq, and, or, inArray, like, isNull, isNotNull, asc, desc, count } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createContextLogger } from '@/utils/logger';
@@ -24,6 +24,14 @@ export const customerTagsHandler = {
   /**
    * 獲取可用的標籤列表（用於標籤選擇器）
    * GET /api/customers/tags/available
+   *
+   * Rewritten to use Drizzle's typed query builder. The previous version
+   * built the SQL via template literal concatenation and passed it to
+   * sql.raw(), which was a smell even though quotes in `search` were
+   * escaped. Every value now flows through eq/or/like/and, which bind as
+   * parameters. The two COUNT columns are still correlated subqueries
+   * (expressed via Drizzle's `sql` template tag, which safely quotes
+   * table/column identifiers) -- there is no remaining sql.raw() call.
    */
   async getAvailableTags(c: Context<{ Bindings: Bindings }>) {
     const drizzleDb = createDbClient(c.env.DB);
@@ -36,81 +44,103 @@ export const customerTagsHandler = {
         includeGlobal = 'true'
       } = c.req.query();
 
-      const offset = (parseInt(page) - 1) * parseInt(pageSize);
+      const pageNum = parseInt(page);
       const limit = parseInt(pageSize);
+      const offset = (pageNum - 1) * limit;
 
-      // Build base query with direct value substitution
-      let whereConditions: string[] = ['t.is_active = 1'];
+      // ────────────────────────────────────────────────────────────────
+      // Build WHERE conditions. Every value passed to a drizzle operator
+      // is bound as a parameter -- SQL injection is impossible by
+      // construction.
+      // ────────────────────────────────────────────────────────────────
+      const conditions = [eq(tags.isActive, true)];
 
-      // 團隊篩選
       if (payload?.primaryTeamId && payload?.role !== 'admin') {
-        // 非管理員只能看到自己團隊的標籤和全局標籤
+        // Non-admin: scope to caller's team (and optionally global tags).
         if (includeGlobal === 'true') {
-          whereConditions.push(`(t.team_id = ${payload.primaryTeamId} OR t.team_id IS NULL)`);
+          conditions.push(
+            or(eq(tags.teamId, payload.primaryTeamId), isNull(tags.teamId)) as typeof conditions[number]
+          );
         } else {
-          whereConditions.push(`t.team_id = ${payload.primaryTeamId}`);
+          conditions.push(eq(tags.teamId, payload.primaryTeamId));
         }
       } else if (includeGlobal === 'false') {
-        whereConditions.push(`t.team_id IS NOT NULL`);
+        // Admin explicitly asking to exclude global tags.
+        conditions.push(isNotNull(tags.teamId));
       }
 
-      // 搜索
       if (search) {
-        const escapedSearch = search.replace(/'/g, "''");
-        whereConditions.push(`(t.name LIKE '%${escapedSearch}%' OR t.description LIKE '%${escapedSearch}%')`);
+        // `like()` binds the pattern, so `%`/`_` retain their SQL LIKE
+        // wildcard semantics (matching prior behaviour) but cannot break
+        // out of the parameter slot.
+        const pattern = `%${search}%`;
+        conditions.push(
+          or(like(tags.name, pattern), like(tags.description, pattern)) as typeof conditions[number]
+        );
       }
 
-      const whereClause = whereConditions.join(' AND ');
+      const whereClause = and(...conditions);
 
-      // 獲取標籤數據
-      const tagsQuery = `
-        SELECT
-          t.id,
-          t.name,
-          t.color,
-          t.description,
-          t.team_id as teamId,
-          t.is_active as isActive,
-          t.created_by as createdBy,
-          t.created_at as createdAt,
-          t.updated_at as updatedAt,
-          COALESCE(customer_count.count, 0) as customerCount,
-          (SELECT COUNT(DISTINCT cv2.id) FROM customer_tags ct3
-            JOIN customers c3 ON ct3.customer_id = c3.id
-            JOIN conversations cv2 ON cv2.customer_id = c3.id
-            WHERE ct3.tag_id = t.id AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL) as conversationCount
-        FROM tags t
-        LEFT JOIN (
-          SELECT tag_id, COUNT(DISTINCT customer_id) as count
-          FROM customer_tags
-          GROUP BY tag_id
-        ) customer_count ON t.id = customer_count.tag_id
-        WHERE ${whereClause}
-        ORDER BY t.name ASC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+      // ────────────────────────────────────────────────────────────────
+      // Count subqueries. These use Drizzle's `sql` template tag, which
+      // wraps table/column references as safely-quoted identifiers --
+      // this is NOT the same as sql.raw(). No user input reaches SQL
+      // outside of the parameter-bound values already vetted above.
+      // ────────────────────────────────────────────────────────────────
+      const customerCountExpr = sql<number>`(
+        SELECT COUNT(DISTINCT ${customerTags.customerId})
+        FROM ${customerTags}
+        WHERE ${customerTags.tagId} = ${tags.id}
+      )`.as('customerCount');
 
-      const tagsResult = await drizzleDb.all(sql.raw(tagsQuery));
+      // Counts conversations belonging to customers that have this tag
+      // (joining via customer_tags -> customers -> conversations). Both
+      // soft-deletes are excluded to match the pre-refactor behaviour.
+      const conversationCountExpr = sql<number>`(
+        SELECT COUNT(DISTINCT ${conversations.id})
+        FROM ${customerTags}
+        INNER JOIN ${customers} ON ${customerTags.customerId} = ${customers.id}
+        INNER JOIN ${conversations} ON ${conversations.customerId} = ${customers.id}
+        WHERE ${customerTags.tagId} = ${tags.id}
+          AND ${customers.deletedAt} IS NULL
+          AND ${conversations.deletedAt} IS NULL
+      )`.as('conversationCount');
 
-      // 獲取總數
-      const countQuery = `
-        SELECT COUNT(*) as total
-        FROM tags t
-        WHERE ${whereClause}
-      `;
+      // Page + total in parallel
+      const [tagsData, countRows] = await Promise.all([
+        drizzleDb
+          .select({
+            id: tags.id,
+            name: tags.name,
+            color: tags.color,
+            description: tags.description,
+            teamId: tags.teamId,
+            isActive: tags.isActive,
+            createdBy: tags.createdBy,
+            createdAt: tags.createdAt,
+            updatedAt: tags.updatedAt,
+            customerCount: customerCountExpr,
+            conversationCount: conversationCountExpr,
+          })
+          .from(tags)
+          .where(whereClause)
+          .orderBy(asc(tags.name))
+          .limit(limit)
+          .offset(offset),
+        drizzleDb
+          .select({ total: count() })
+          .from(tags)
+          .where(whereClause),
+      ]);
 
-      const countResult = await drizzleDb.all(sql.raw(countQuery));
-      const countData = Array.isArray(countResult) ? countResult : ((countResult as any)?.results || []);
-      const totalCount = (countData[0] as any)?.total || 0;
+      const totalCount = countRows[0]?.total ?? 0;
       const totalPages = Math.ceil(totalCount / limit);
-
-      const tagsData = Array.isArray(tagsResult) ? tagsResult : ((tagsResult as any)?.results || []);
 
       return c.json({
         success: true,
         data: tagsData,
         pagination: {
-          page: parseInt(page),
+          page: pageNum,
           limit,
           total: totalCount,
           totalPages
@@ -143,25 +173,28 @@ export const customerTagsHandler = {
         return notFoundResponse(c, 'Customer');
       }
 
-      // 獲取客戶的標籤
-      const customerTagsQuery = `
-        SELECT
-          t.id,
-          t.name,
-          t.color,
-          t.description,
-          t.team_id as teamId,
-          ct.assigned_at as assignedAt,
-          ct.assigned_by as assignedBy
-        FROM customer_tags ct
-        JOIN tags t ON ct.tag_id = t.id
-        WHERE ct.customer_id = ${customerId}
-        AND t.is_active = 1
-        ORDER BY ct.assigned_at DESC
-      `;
-
-      const customerTagsData = await drizzleDb.all(sql.raw(customerTagsQuery));
-      const tagsData = Array.isArray(customerTagsData) ? customerTagsData : ((customerTagsData as any)?.results || []);
+      // Fetch the customer's tags via a parameterised inner join. Rewritten
+      // from a sql.raw() template concatenation -- customerId is now bound
+      // through eq() rather than interpolated into the query string.
+      const tagsData = await drizzleDb
+        .select({
+          id: tags.id,
+          name: tags.name,
+          color: tags.color,
+          description: tags.description,
+          teamId: tags.teamId,
+          assignedAt: customerTags.assignedAt,
+          assignedBy: customerTags.assignedBy,
+        })
+        .from(customerTags)
+        .innerJoin(tags, eq(customerTags.tagId, tags.id))
+        .where(
+          and(
+            eq(customerTags.customerId, customerId),
+            eq(tags.isActive, true)
+          )
+        )
+        .orderBy(desc(customerTags.assignedAt));
 
       return successResponse(c, tagsData, 'Customer tags retrieved successfully');
 

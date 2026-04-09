@@ -86,56 +86,88 @@ function resetMockState(overrides: Partial<MockState> = {}) {
 /**
  * Build a chainable Drizzle mock that responds based on mockState.
  *
- * The handler makes these patterns:
- * 1. drizzleDb.select({id}).from(customers).where(...).limit(1) → customer check
- * 2. drizzleDb.select({id}).from(tags).where(inArray + isActive) → valid tags check
- * 3. drizzleDb.select({tagId}).from(customerTags).where(...) → existing assignments
- * 4. drizzleDb.insert(customerTags).values([...]) → insert
- * 5. drizzleDb.delete(customerTags).where(...) → delete
- * 6. drizzleDb.all(sql.raw(...)) → raw SQL queries
+ * After the 2026-04 customer-tags refactor off sql.raw(), every handler
+ * in this file uses the Drizzle query builder. The mock routes as follows:
  *
- * We track which table is being targeted via from/insert/delete calls.
+ *   - If the `select` call asks for `{total: count()}`  -- count projection
+ *     (getAvailableTags auxiliary count) -- consume from rawQueryResults.
+ *   - If the chain includes any of innerJoin / leftJoin / orderBy / offset
+ *     -- list/fetch query -- consume from rawQueryResults.
+ *   - Otherwise -- simple select-from-where[-limit] -- fall back to the
+ *     legacy per-test counter (customer check, valid tags, existing tags).
+ *
+ * This keeps POST/DELETE/PUT tests working with the counter pattern while
+ * letting GET tests drive the refactored handlers through a FIFO queue of
+ * drizzle-builder results.
+ *
+ * Handler patterns after the refactor:
+ *  1. drizzleDb.select({id}).from(customers).where().limit(1)   → counter
+ *  2. drizzleDb.select({id}).from(tags).where()                 → counter
+ *  3. drizzleDb.select({tagId}).from(customerTags).where()      → counter
+ *  4. drizzleDb.select({...}).from(tags).where().orderBy()
+ *       .limit().offset()                                       → rawQueryResults
+ *  5. drizzleDb.select({total: count()}).from(tags).where()     → rawQueryResults
+ *  6. drizzleDb.select({...}).from(customerTags).innerJoin()
+ *       .where().orderBy()                                      → rawQueryResults
+ *  7. drizzleDb.insert(customerTags).values([...])              → insert path
+ *  8. drizzleDb.delete(customerTags).where(...)                 → delete path
  */
 function createChainableDrizzleMock() {
-  /**
-   * Tracks select queries sequentially across a single handler call:
-   * 1st → customer existence check  (.where().limit())
-   * 2nd → valid tags check (.where() awaited directly)
-   * 3rd → existing assignments check  (.where() awaited directly)
-   */
-  let selectCallCount = 0;
+  let simpleSelectCount = 0;
 
-  function getSelectResult(n: number) {
+  function getSimpleSelectResult(n: number) {
     if (mockState.selectError) throw mockState.selectError;
     if (n === 1) return mockState.customerExists ? [{ id: 1 }] : [];
     if (n === 2) return mockState.validTags;
     return mockState.existingAssignments;
   }
 
+  function makeSelectChain(isQueue: boolean): any {
+    let markedAsQueue = isQueue;
+    const chain: any = {};
+    const ret = () => chain;
+    chain.from = vi.fn(ret);
+    chain.leftJoin = vi.fn(() => { markedAsQueue = true; return chain; });
+    chain.innerJoin = vi.fn(() => { markedAsQueue = true; return chain; });
+    chain.where = vi.fn(ret);
+    chain.orderBy = vi.fn(() => { markedAsQueue = true; return chain; });
+    chain.limit = vi.fn(ret);
+    chain.offset = vi.fn(() => { markedAsQueue = true; return chain; });
+
+    // Make the chain directly `await`-able -- drizzle's fluent builder
+    // resolves to the row array when awaited without an explicit terminal.
+    // We build a real Promise on each .then() so that rejection flows
+    // through the caller's await chain without leaking unhandled errors.
+    chain.then = (
+      onFulfilled: (v: unknown) => unknown,
+      onRejected?: (e: unknown) => unknown
+    ) => {
+      return Promise.resolve()
+        .then(() => {
+          if (mockState.selectError) throw mockState.selectError;
+          if (markedAsQueue) {
+            return mockState.rawQueryResults.shift() ?? [];
+          }
+          simpleSelectCount++;
+          return getSimpleSelectResult(simpleSelectCount);
+        })
+        .then(onFulfilled, onRejected);
+    };
+    return chain;
+  }
+
   const mock: any = {
     // ---- SELECT chain ----
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => {
-          selectCallCount++;
-          const data = getSelectResult(selectCallCount);
-
-          // Return a Promise that also has .limit() for optional chaining.
-          // Handler uses BOTH patterns:
-          // await db.select().from(t).where(cond).limit(1) → customer check
-          // await db.select().from(t).where(cond) → tags / assignments
-          const promise = Promise.resolve(data);
-          (promise as any).limit = vi.fn(() => Promise.resolve(data));
-          return promise;
-        }),
-        // Direct .limit() without .where() (unlikely but safe)
-        limit: vi.fn(() => {
-          selectCallCount++;
-          const data = getSelectResult(selectCallCount);
-          return Promise.resolve(data);
-        }),
-      })),
-    })),
+    select: vi.fn((projection?: Record<string, unknown>) => {
+      // `count()` projection: always queue-based (total row)
+      const keys = projection ? Object.keys(projection) : [];
+      const isCountProjection = keys.length === 1 && keys[0] === 'total';
+      // Multi-field projections belong to list/fetch queries (never simple
+      // existence checks which always project {id} or {tagId}).
+      const isMultiFieldProjection = keys.length > 1;
+      const routeToQueue = isCountProjection || isMultiFieldProjection;
+      return makeSelectChain(routeToQueue);
+    }),
 
     // ---- INSERT chain ----
     insert: vi.fn(() => ({
@@ -153,7 +185,9 @@ function createChainableDrizzleMock() {
       }),
     })),
 
-    // ---- RAW SQL (drizzleDb.all(sql.raw(...))) ----
+    // ---- RAW SQL (drizzleDb.all(sql.raw(...))) -- no longer reached by
+    //      handlers after the 2026-04 refactor, kept for safety in case a
+    //      future handler regresses back to sql.raw().
     all: vi.fn(() => {
       if (mockState.selectError) return Promise.reject(mockState.selectError);
       const result = mockState.rawQueryResults.shift();
@@ -161,7 +195,7 @@ function createChainableDrizzleMock() {
     }),
   };
 
-  mock._resetSelectCount = () => { selectCallCount = 0; };
+  mock._resetSelectCount = () => { simpleSelectCount = 0; };
   return mock;
 }
 
@@ -273,11 +307,12 @@ describe('Customer Tags Handler — Integration Tests', () => {
     test('admin should see all tags (no team filter)', async () => {
       resetMockState({ rawQueryResults: [[], [{ total: 0 }]] });
 
-      // drizzleMock.all is called with raw SQL — admin should NOT have team_id filter
-      await app.request('/api/customers/tags/available');
-
-      // The raw SQL was constructed and passed to .all(sql.raw(...))
-      expect(drizzleMock.all).toHaveBeenCalled();
+      const res = await app.request('/api/customers/tags/available');
+      // Admin payload: handler should complete without team-scoping errors.
+      // The query builder was invoked via .select().from(tags)... -- both
+      // the list and count queries should have run.
+      expect(res.status).toBe(200);
+      expect(drizzleMock.select).toHaveBeenCalled();
     });
 
     test('agent should only see team-scoped + global tags', async () => {
@@ -289,10 +324,13 @@ describe('Customer Tags Handler — Integration Tests', () => {
       };
       resetMockState({ rawQueryResults: [[], [{ total: 0 }]] });
 
-      await app.request('/api/customers/tags/available');
-
-      // Agent payload has teamId and role !== 'admin', so team filtering applies
-      expect(drizzleMock.all).toHaveBeenCalled();
+      const res = await app.request('/api/customers/tags/available');
+      // Agent payload has teamId and role !== 'admin', so the handler
+      // adds an OR(eq, isNull) team filter. We can't easily inspect the
+      // bound WHERE tokens in this mock, but the handler must still run
+      // to completion -- that's what we assert here.
+      expect(res.status).toBe(200);
+      expect(drizzleMock.select).toHaveBeenCalled();
     });
 
     test('should support search param', async () => {
