@@ -18,9 +18,12 @@
 import * as schema from '../src/db/schema';
 import { getTableName, getTableColumns } from 'drizzle-orm';
 
-// Collect all sqliteTable exports from schema by trying getTableName on each export
+// Collect all sqliteTable exports from schema by trying getTableName on each export.
+// Bug history: this loop used to destructure `[, value]` (discarding the key) but then
+// pushed `[key, value]` — undefined `key` threw ReferenceError which was swallowed by
+// the catch, leaving `tables` empty and the checker always reporting "Tables checked: 0".
 const tables: Array<[string, unknown]> = [];
-for (const [, value] of Object.entries(schema)) {
+for (const [key, value] of Object.entries(schema)) {
   if (value && typeof value === 'object') {
     try {
       getTableName(value as any);
