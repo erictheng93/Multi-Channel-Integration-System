@@ -114,6 +114,22 @@ vi.mock('@modules/integrations/services/webhook-media-service', () => ({
   processFacebookMedia: (...args: unknown[]) => mockProcessFacebookMedia(...args)
 }));
 
+// Mock webhook customer service
+// NOTE: handlers switched from inline DB queries to findOrCreateCustomer service
+// on 2026-03 refactor. Tests in "LINE customer creation lock" used to drive the
+// creation branch via `customerLookupResult = null` on the DB mock; after the
+// refactor the handler no longer reads the DB directly for customer lookup,
+// so we must mock the service layer instead. The concrete return value is set
+// per-test in beforeEach so it can reference mockCustomer / mockFbCustomer
+// (which are declared below).
+const mockFindOrCreateCustomer = vi.fn();
+const mockTriggerBackgroundSyncIfNeeded = vi.fn().mockResolvedValue(undefined);
+vi.mock('@modules/integrations/services/webhook-customer-service', () => ({
+  findOrCreateCustomer: (...args: unknown[]) => mockFindOrCreateCustomer(...args),
+  triggerBackgroundSyncIfNeeded: (...args: unknown[]) => mockTriggerBackgroundSyncIfNeeded(...args),
+  updateCustomerProfile: vi.fn().mockResolvedValue(undefined)
+}));
+
 // Mock distributed lock service
 const mockWithLock = vi.fn().mockImplementation(
   async (_resource: string, fn: () => Promise<unknown>) => fn()
@@ -326,6 +342,13 @@ describe('Webhook Async Optimization', () => {
     vi.clearAllMocks();
     customerLookupResult = mockCustomer;
     fbCustomerLookupResult = mockFbCustomer;
+    // Default: findOrCreateCustomer returns the platform-appropriate customer.
+    // Individual tests can override with mockFindOrCreateCustomer.mockResolvedValueOnce(null)
+    // to exercise the "failed to create" branch.
+    mockFindOrCreateCustomer.mockImplementation(
+      async (_env: unknown, _userId: unknown, platform: unknown) =>
+        platform === 'line' ? mockCustomer : mockFbCustomer
+    );
     mockFindOrCreateConversation.mockResolvedValue({
       id: 'conv-1',
       customerId: 1,
