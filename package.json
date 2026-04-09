@@ -109,6 +109,7 @@
   },
   "overrides": {
     "esbuild": "^0.25.9",
+    "vite": "^7.3.2",
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.9"
     }
