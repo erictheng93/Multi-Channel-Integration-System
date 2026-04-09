@@ -62,6 +62,13 @@ jobs:
       - name: Detect route conflicts
         run: bun run check:routes:ci
 
+      # Defence-in-depth against SQL injection: fail the build if any new
+      # `sql.raw(...)` call is introduced with a non-literal argument. The
+      # only legitimate usage (analytics-reports tagJsonPath) is gated by
+      # a `// eslint-disable-next-line no-unsafe-sql-raw` comment.
+      - name: Check for unsafe sql.raw usage
+        run: bun run check:sql-raw:ci
+
   # ===========================================================================
   # 2. Backend tests
   # ===========================================================================

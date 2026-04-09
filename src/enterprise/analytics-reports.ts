@@ -117,6 +117,12 @@ function tagJsonPath(tagName: string): SQL {
     // a future caller forgets to call validateMetricName first.
     throw new InvalidReportConfigError(`Refusing to build JSON path for unsafe tag name: ${tagName}`);
   }
+  // Safe because `tagName` has already been validated against
+  // SAFE_TAG_NAME_REGEX (= /^[a-zA-Z0-9_]{1,64}$/), which forbids every
+  // character that could break out of a single-quoted SQLite literal.
+  // SQLite json_extract paths MUST be literals (they cannot be bound as
+  // parameters), so this is the only legitimate sql.raw() in the repo.
+  // eslint-disable-next-line no-unsafe-sql-raw
   return sql`json_extract(${metrics.tags}, ${sql.raw(`'$.${tagName}'`)})`;
 }
 
