@@ -13,6 +13,24 @@ export const teamApi = {
     return apiClient.get('/teams/members')
   },
 
+  // Check if email already exists (for duplicate detection)
+  checkEmail: async (email: string): Promise<ApiResponse<{
+    exists: boolean;
+    status?: 'active' | 'deleted';
+    member?: {
+      id: string;
+      displayName: string;
+      email: string;
+      role: 'admin' | 'agent';
+      teamName: string | null;
+      lastLoginAt: string | null;
+      createdAt: string;
+      deletedAt: string | null;
+    };
+  }>> => {
+    return apiClient.get(`/teams/members/check-email?email=${encodeURIComponent(email)}`)
+  },
+
   // 直接新增成員
   addMember: async (request: {
     loginId: string;
