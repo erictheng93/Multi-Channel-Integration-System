@@ -18,7 +18,9 @@ import { useTeamStore } from '@/stores/team'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { ROLES } from '@/constants/roles'
+import { teamApi } from '@/api/team'
 import type { TeamMember } from '@/types'
+import type { DuplicateMemberInfo } from '@/components/team/DuplicateMemberModal.vue'
 
 // ==================== Types ====================
 
@@ -54,6 +56,15 @@ export interface UseMemberOperationsReturn {
   closeAddMemberModal: () => void
   toggleAddPasswordVisibility: () => void
   submitAddMember: () => Promise<void>
+
+  // Duplicate Detection
+  duplicateModalVisible: Ref<boolean>
+  duplicateStatus: Ref<'active' | 'deleted'>
+  duplicateMember: Ref<DuplicateMemberInfo | null>
+  emailCheckLoading: Ref<boolean>
+  checkEmailOnBlur: () => Promise<void>
+  closeDuplicateModal: () => void
+  handleReactivate: (_member: DuplicateMemberInfo) => void
 
   // Password Reset Modal
   passwordResetModal: Ref<boolean>
@@ -166,6 +177,86 @@ export function useMemberOperations(): UseMemberOperationsReturn {
    */
   function toggleAddPasswordVisibility() {
     showAddPassword.value = !showAddPassword.value
+  }
+
+  // ==================== Duplicate Email Detection ====================
+
+  const duplicateModalVisible = ref(false)
+  const duplicateStatus = ref<'active' | 'deleted'>('active')
+  const duplicateMember = ref<DuplicateMemberInfo | null>(null)
+  const emailCheckLoading = ref(false)
+  let emailCheckTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * Check if email exists on blur (debounced 300ms).
+   * Opens DuplicateMemberModal if a match is found.
+   */
+  async function checkEmailOnBlur() {
+    const email = addMemberForm.email.trim()
+
+    // Clear previous timer
+    if (emailCheckTimer) {
+      clearTimeout(emailCheckTimer)
+      emailCheckTimer = null
+    }
+
+    // Skip if empty or invalid format
+    if (!email || !email.includes('@')) {
+      return
+    }
+
+    emailCheckLoading.value = true
+
+    emailCheckTimer = setTimeout(async () => {
+      try {
+        const response = await teamApi.checkEmail(email)
+
+        if (response.success && response.data?.exists && response.data.member) {
+          duplicateStatus.value = response.data.status as 'active' | 'deleted'
+          duplicateMember.value = response.data.member as DuplicateMemberInfo
+          duplicateModalVisible.value = true
+        }
+      } catch {
+        // Silently ignore — submit will catch conflicts as fallback
+      } finally {
+        emailCheckLoading.value = false
+      }
+    }, 300)
+  }
+
+  /**
+   * Close the duplicate member modal.
+   * For active duplicates, clear the email field so user picks a different one.
+   */
+  function closeDuplicateModal() {
+    const wasActive = duplicateStatus.value === 'active'
+    duplicateModalVisible.value = false
+    duplicateMember.value = null
+
+    if (wasActive) {
+      addMemberForm.email = ''
+    }
+  }
+
+  /**
+   * Handle reactivation: pre-fill form with old member data.
+   */
+  function handleReactivate(member: DuplicateMemberInfo) {
+    addMemberForm.name = member.displayName
+    addMemberForm.role = member.role
+
+    // Pre-fill team if it exists in active teams
+    const teamStore2 = useTeamStore()
+    const { teams: teamList } = storeToRefs(teamStore2)
+    const matchingTeam = teamList.value.find(
+      (t) => t.name === member.teamName && t.isActive
+    )
+    addMemberForm.group = matchingTeam ? String(matchingTeam.id) : ''
+
+    // Password always blank — required fresh
+    addMemberForm.password = ''
+
+    duplicateModalVisible.value = false
+    duplicateMember.value = null
   }
 
   /**
@@ -586,6 +677,15 @@ export function useMemberOperations(): UseMemberOperationsReturn {
     closeAddMemberModal,
     toggleAddPasswordVisibility,
     submitAddMember,
+
+    // Duplicate Detection
+    duplicateModalVisible,
+    duplicateStatus,
+    duplicateMember,
+    emailCheckLoading,
+    checkEmailOnBlur,
+    closeDuplicateModal,
+    handleReactivate,
 
     // Password Reset Modal
     passwordResetModal,
