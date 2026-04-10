@@ -11,7 +11,7 @@ import {
   notFoundResponse,
   handleApiError
 } from '@/utils/api-response';
-import { customers, tags, customerTags, conversations } from '@/db/schema';
+import { customers, tags, customerTags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, or, inArray, isNull, isNotNull, asc, desc, count } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
@@ -91,23 +91,31 @@ export const customerTagsHandler = {
       // this is NOT the same as sql.raw(). No user input reaches SQL
       // outside of the parameter-bound values already vetted above.
       // ────────────────────────────────────────────────────────────────
+      // NOTE: We use fully-qualified table.column names via sql.raw()
+      // inside correlated subqueries because Drizzle's column references
+      // (e.g. ${customerTags.customerId}) emit UNQUALIFIED names like
+      // "customer_id" — which become ambiguous when multiple JOINed
+      // tables share column names ("id", "customer_id", "deleted_at").
+      // The outer ${tags.id} reference is safe because it resolves in
+      // the outer SELECT context where only the "tags" table is present.
+      // ────────────────────────────────────────────────────────────────
       const customerCountExpr = sql<number>`(
-        SELECT COUNT(DISTINCT ${customerTags.customerId})
-        FROM ${customerTags}
-        WHERE ${customerTags.tagId} = ${tags.id}
+        SELECT COUNT(DISTINCT "customer_tags"."customer_id")
+        FROM "customer_tags"
+        WHERE "customer_tags"."tag_id" = "tags"."id"
       )`.as('customerCount');
 
       // Counts conversations belonging to customers that have this tag
       // (joining via customer_tags -> customers -> conversations). Both
       // soft-deletes are excluded to match the pre-refactor behaviour.
       const conversationCountExpr = sql<number>`(
-        SELECT COUNT(DISTINCT ${conversations.id})
-        FROM ${customerTags}
-        INNER JOIN ${customers} ON ${customerTags.customerId} = ${customers.id}
-        INNER JOIN ${conversations} ON ${conversations.customerId} = ${customers.id}
-        WHERE ${customerTags.tagId} = ${tags.id}
-          AND ${customers.deletedAt} IS NULL
-          AND ${conversations.deletedAt} IS NULL
+        SELECT COUNT(DISTINCT "conversations"."id")
+        FROM "customer_tags"
+        INNER JOIN "customers" ON "customer_tags"."customer_id" = "customers"."id"
+        INNER JOIN "conversations" ON "conversations"."customer_id" = "customers"."id"
+        WHERE "customer_tags"."tag_id" = "tags"."id"
+          AND "customers"."deleted_at" IS NULL
+          AND "conversations"."deleted_at" IS NULL
       )`.as('conversationCount');
 
       // Page + total in parallel
