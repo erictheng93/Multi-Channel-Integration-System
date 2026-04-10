@@ -80,10 +80,21 @@
         :form="controller.member.addMemberForm"
         :loading="controller.member.addMemberLoading.value"
         :show-password="controller.member.showAddPassword.value"
+        :email-check-loading="controller.member.emailCheckLoading.value"
         :teams="teams"
         @close="controller.member.closeAddMemberModal"
         @submit="controller.member.submitAddMember"
         @toggle-password="controller.member.toggleAddPasswordVisibility"
+        @email-blur="controller.member.checkEmailOnBlur"
+      />
+
+      <!-- Duplicate Member Detection Modal -->
+      <DuplicateMemberModal
+        :visible="controller.member.duplicateModalVisible.value"
+        :status="controller.member.duplicateStatus.value"
+        :member="controller.member.duplicateMember.value"
+        @close="controller.member.closeDuplicateModal"
+        @reactivate="controller.member.handleReactivate"
       />
 
       <!-- Add Team Modal -->
@@ -155,6 +166,7 @@ import TeamStatsOverview from '@/components/team/TeamStatsOverview.vue'
 import MemberListSection from '@/components/team/MemberListSection.vue'
 import TeamListSection from '@/components/team/TeamListSection.vue'
 import AddMemberModal from '@/components/team/AddMemberModal.vue'
+import DuplicateMemberModal from '@/components/team/DuplicateMemberModal.vue'
 import AddTeamModal from '@/components/team/AddTeamModal.vue'
 import EditTeamModal from '@/components/team/EditTeamModal.vue'
 import PasswordResetModal from '@/components/team/PasswordResetModal.vue'

@@ -27,13 +27,20 @@
         <label for="add-member-email">
           Email <span class="required">*</span>
         </label>
-        <input
-          id="add-member-email"
-          v-model="form.email"
-          type="email"
-          placeholder="請輸入 Email"
-          required
-        >
+        <div class="email-input-wrapper">
+          <input
+            id="add-member-email"
+            v-model="form.email"
+            type="email"
+            placeholder="請輸入 Email"
+            required
+            @blur="emit('email-blur')"
+          >
+          <span
+            v-if="emailCheckLoading"
+            class="email-check-spinner"
+          />
+        </div>
         <small class="form-hint">將作為登入帳號</small>
       </div>
 
@@ -171,12 +178,16 @@ interface Props {
 
   /** 可選擇的團隊列表 */
   teams: Team[]
+
+  /** Loading state for email duplicate check */
+  emailCheckLoading?: boolean
 }
 
 interface Emits {
   (_e: 'close'): void
   (_e: 'submit'): void
   (_e: 'toggle-password'): void
+  (_e: 'email-blur'): void
 }
 
 const props = defineProps<Props>()
@@ -328,5 +339,33 @@ function togglePassword() {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+/* Email check spinner */
+.email-input-wrapper {
+  position: relative;
+}
+
+.email-input-wrapper input {
+  width: 100%;
+  padding: 0.75rem;
+  padding-right: 2.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.email-check-spinner {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid #E5E7EB;
+  border-top-color: #6366F1;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 </style>
