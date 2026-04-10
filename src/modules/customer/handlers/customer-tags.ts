@@ -13,10 +13,11 @@ import {
 } from '@/utils/api-response';
 import { customers, tags, customerTags, conversations } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
-import { sql, eq, and, or, inArray, like, isNull, isNotNull, asc, desc, count } from 'drizzle-orm';
+import { sql, eq, and, or, inArray, isNull, isNotNull, asc, desc, count } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createContextLogger } from '@/utils/logger';
+import { likeEscaped } from '@/utils/sql-like';
 
 const log = createContextLogger('CustomerTagsHandler');
 
@@ -70,12 +71,15 @@ export const customerTagsHandler = {
       }
 
       if (search) {
-        // `like()` binds the pattern, so `%`/`_` retain their SQL LIKE
-        // wildcard semantics (matching prior behaviour) but cannot break
-        // out of the parameter slot.
-        const pattern = `%${search}%`;
+        // `%` and `_` inside the user-supplied search must be treated as
+        // literals, not LIKE wildcards. `likeEscaped()` escapes those
+        // characters and emits `... LIKE ? ESCAPE '\'` so the bound
+        // pattern matches literally.
         conditions.push(
-          or(like(tags.name, pattern), like(tags.description, pattern)) as typeof conditions[number]
+          or(
+            likeEscaped(tags.name, search),
+            likeEscaped(tags.description, search)
+          ) as typeof conditions[number]
         );
       }
 
