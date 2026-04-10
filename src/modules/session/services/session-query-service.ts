@@ -1,5 +1,6 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { eq, and, desc, like, count, sql } from 'drizzle-orm';
+import { eq, and, desc, count, sql } from 'drizzle-orm';
+import { likeEscaped } from '@/utils/sql-like';
 import { conversationSessions } from '@/db/schema';
 import type { ConversationSession, SessionListQuery, SessionSearchQuery, SessionListResponse } from '../types/session-types';
 import { SessionOperationError, DEFAULT_PAGINATION } from '../types/session-types';
@@ -35,7 +36,7 @@ export class SessionQueryService {
     if (query.sessionType) conditions.push(eq(conversationSessions.sessionType, query.sessionType));
     if (query.startDate) conditions.push(sql`${conversationSessions.startTime} >= ${query.startDate}`);
     if (query.endDate) conditions.push(sql`${conversationSessions.startTime} <= ${query.endDate}`);
-    if (query.topic) conditions.push(like(conversationSessions.topic, `%${query.topic}%`));
+    if (query.topic) conditions.push(likeEscaped(conversationSessions.topic, query.topic));
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     try {
       const totalResult = await this.db.select({ count: count() }).from(conversationSessions).where(whereClause).get();
@@ -52,7 +53,7 @@ export class SessionQueryService {
 
   async search(query: SessionSearchQuery): Promise<ConversationSession[]> {
     const limit = Math.min(query.limit || 10, 50);
-    const conditions = [like(conversationSessions.topic, `%${query.query}%`)];
+    const conditions = [likeEscaped(conversationSessions.topic, query.query)];
     if (query.conversationId) conditions.push(eq(conversationSessions.conversationId, query.conversationId));
     if (query.sessionType) conditions.push(eq(conversationSessions.sessionType, query.sessionType));
     try {

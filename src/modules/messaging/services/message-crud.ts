@@ -2,7 +2,8 @@
 // 基礎訊息增刪改查服務
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, desc, asc, count, like, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, count, sql } from 'drizzle-orm';
+import { likeEscaped } from '@/utils/sql-like';
 import {
   messages,
   customers,
@@ -193,7 +194,7 @@ export class MessageCrudService {
 
       // 內容搜尋
       if (query.content) {
-        conditions.push(like(messages.content, `%${query.content}%`));
+        conditions.push(likeEscaped(messages.content, query.content));
       }
 
       // 發送者類型篩選
