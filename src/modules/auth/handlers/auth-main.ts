@@ -235,7 +235,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
     const existingUser = await drizzleDb
       .select({ id: agents.id })
       .from(agents)
-      .where(eq(agents.email, email))
+      .where(and(eq(agents.email, email), sql`${agents.deletedAt} IS NULL`))
       .get();
 
     if (existingUser) {

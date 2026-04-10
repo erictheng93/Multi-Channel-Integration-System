@@ -55,30 +55,59 @@ export class MemberService {
    * 添加團隊成員
    */
   async addMember(data: AddTeamMemberRequest, _createdBy: string): Promise<TeamMember> {
-    const memberId = `agent-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
     const now = nowISO();
 
     // Hash password using bcrypt (12 rounds)
     const hashedPassword = await hashPassword(data.password);
 
-    const [newMember] = await this.db
-      .insert(agents)
-      .values({
-        id: memberId,
-        email: data.email,
-        passwordHash: hashedPassword,
-        displayName: data.displayName,
-        role: data.role || 'agent',
-        isActive: data.isActive !== false,
-        createdAt: now,
-        updatedAt: now
-      })
-      .returning();
+    // Check if a soft-deleted agent with this email exists (UNIQUE constraint on email)
+    const [softDeleted] = await this.db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(and(eq(agents.email, data.email), sql`${agents.deletedAt} IS NOT NULL`))
+      .limit(1);
+
+    let newMember;
+
+    if (softDeleted) {
+      // Reactivate: update the soft-deleted row instead of INSERT (avoids UNIQUE constraint violation)
+      [newMember] = await this.db
+        .update(agents)
+        .set({
+          passwordHash: hashedPassword,
+          displayName: data.displayName,
+          role: data.role || 'agent',
+          isActive: data.isActive !== false,
+          deletedAt: null,
+          updatedAt: now
+        })
+        .where(eq(agents.id, softDeleted.id))
+        .returning();
+
+      // Clean up old team memberships before re-assigning
+      await this.db.delete(agentTeams).where(eq(agentTeams.agentId, softDeleted.id));
+    } else {
+      const memberId = `agent-${nowMs()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      [newMember] = await this.db
+        .insert(agents)
+        .values({
+          id: memberId,
+          email: data.email,
+          passwordHash: hashedPassword,
+          displayName: data.displayName,
+          role: data.role || 'agent',
+          isActive: data.isActive !== false,
+          createdAt: now,
+          updatedAt: now
+        })
+        .returning();
+    }
 
     // If teamId provided, create agent_teams membership (isPrimary=true)
     if (data.teamId) {
       await this.db.insert(agentTeams).values({
-        agentId: memberId,
+        agentId: newMember.id,
         teamId: data.teamId,
         roleInTeam: 'member',
         isPrimary: true,
@@ -770,7 +799,7 @@ export class MemberService {
     const [existing] = await this.db
       .select({ id: agents.id })
       .from(agents)
-      .where(eq(agents.email, email))
+      .where(and(eq(agents.email, email), isNull(agents.deletedAt)))
       .limit(1);
 
     return !!existing;
