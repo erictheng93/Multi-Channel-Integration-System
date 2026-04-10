@@ -22,9 +22,11 @@ const deploymentStore = useDeploymentStore();
 // LIFECYCLE
 // ========================================
 
-// Cleanup on unmount
+// Cleanup on unmount — the store was refactored from SSE to polling,
+// so `disconnectEventStream` no longer exists. `$dispose` stops the
+// poll timer and is the correct teardown hook.
 onUnmounted(() => {
-  deploymentStore.disconnectEventStream();
+  deploymentStore.$dispose();
 });
 </script>
 

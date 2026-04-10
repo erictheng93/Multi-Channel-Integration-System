@@ -31,7 +31,6 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { oauthAPI } from '@/api/installer';
-import type { RouteParams } from '@/types';
 
 // ========================================
 // COMPOSABLES
