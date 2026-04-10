@@ -59,6 +59,7 @@
     "sync:scheduler:status": "bun scripts/sync-scheduler.ts status",
     "sync:scheduler:test": "bun scripts/sync-scheduler.ts test-sync",
     "test:backend:ci": "bunx vitest run tests/unit tests/modules tests/edge-cases tests/contract tests/validation tests/integration tests/database tests/smoke tests/api-documentation-consistency.test.ts --reporter=verbose --passWithNoTests",
+    "test:installer:backend:ci": "cd web-installer/backend && bun install --frozen-lockfile && bun run test:ci",
     "db:view": "bun scripts/db-viewer.ts",
     "db:query": "wrangler d1 execute mcis-db --remote",
     "db:test-config": "bun scripts/test-drizzle-config.ts",
