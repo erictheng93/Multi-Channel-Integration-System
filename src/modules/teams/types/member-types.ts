@@ -232,3 +232,20 @@ export interface BatchEditUndoTokenData {
   /** 操作原因 */
   reason?: string;
 }
+
+export interface CheckEmailMemberInfo {
+  id: string;
+  displayName: string;
+  email: string;
+  role: 'admin' | 'agent';
+  teamName: string | null;
+  lastLoginAt: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+}
+
+export interface CheckEmailResponse {
+  exists: boolean;
+  status?: 'active' | 'deleted';
+  member?: CheckEmailMemberInfo;
+}
