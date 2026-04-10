@@ -110,6 +110,34 @@ membersHandler.get('/', jwtAuth, async (c) => {
 });
 
 /**
+ * Check if email already exists (active or soft-deleted)
+ * GET /api/teams/members/check-email?email=xxx
+ */
+membersHandler.get('/check-email', jwtAuth, requireManagerOrAdmin(), async (c) => {
+  try {
+    const email = c.req.query('email');
+
+    if (!email) {
+      return c.json({
+        success: false,
+        error: 'Email query parameter is required'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const memberService = new MemberService(c.env.DB);
+    const result = await memberService.checkEmailExists(email);
+
+    return c.json({
+      success: true,
+      data: result,
+      timestamp: nowISO()
+    });
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+});
+
+/**
  * 添加團隊成員
  * POST /api/teams/members
  */
