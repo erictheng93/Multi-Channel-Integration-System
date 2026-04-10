@@ -6,6 +6,7 @@ import { eq, and, or, desc, sql, isNull, inArray } from 'drizzle-orm';
 import {
   agents,
   agentTeams,
+  teams,
   messages,
   delayedMessages,
   notifications,
@@ -36,7 +37,8 @@ import type {
   BulkDeleteResult,
   BulkUpdateResult,
   MemberEditData,
-  MemberEditResult
+  MemberEditResult,
+  CheckEmailResponse
 } from '../types/member-types';
 import { AgentTeamsService } from './agent-teams-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -790,6 +792,48 @@ export class MemberService {
     await this.db.delete(agents).where(eq(agents.id, memberId));
 
     return true;
+  }
+
+  /**
+   * Check if an email is already in use by an active or soft-deleted agent.
+   * Returns member info for UI display.
+   */
+  async checkEmailExists(email: string): Promise<CheckEmailResponse> {
+    const [result] = await this.db
+      .select({
+        id: agents.id,
+        displayName: agents.displayName,
+        email: agents.email,
+        role: agents.role,
+        teamName: teams.name,
+        lastLoginAt: agents.lastLoginAt,
+        createdAt: agents.createdAt,
+        deletedAt: agents.deletedAt
+      })
+      .from(agents)
+      .leftJoin(agentTeams, and(eq(agentTeams.agentId, agents.id), eq(agentTeams.isPrimary, true)))
+      .leftJoin(teams, eq(agentTeams.teamId, teams.id))
+      .where(eq(agents.email, email))
+      .limit(1);
+
+    if (!result) {
+      return { exists: false };
+    }
+
+    return {
+      exists: true,
+      status: result.deletedAt ? 'deleted' : 'active',
+      member: {
+        id: result.id,
+        displayName: result.displayName,
+        email: result.email,
+        role: result.role as 'admin' | 'agent',
+        teamName: result.teamName,
+        lastLoginAt: result.lastLoginAt,
+        createdAt: result.createdAt ?? '',
+        deletedAt: result.deletedAt
+      }
+    };
   }
 
   /**
