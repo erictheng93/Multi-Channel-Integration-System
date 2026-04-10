@@ -3,7 +3,8 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { eq, desc, and, count, or, like, sql, inArray } from 'drizzle-orm';
+import { eq, desc, and, count, or, sql, inArray } from 'drizzle-orm';
+import { likeEscaped } from '@/utils/sql-like';
 import { teams, agents, agentTeams, conversations, messages, qrCodes, qrCodeScans, customers } from '@/db/schema';
 import type {
   Team,
@@ -226,8 +227,8 @@ export class TeamService implements TeamServiceInterface {
     if (search) {
       whereConditions.push(
         or(
-          like(teams.name, `%${search}%`),
-          like(teams.description, `%${search}%`)
+          likeEscaped(teams.name, search),
+          likeEscaped(teams.description, search)
         )
       );
     }
@@ -289,8 +290,8 @@ export class TeamService implements TeamServiceInterface {
         and(
           eq(teams.isActive, true),
           or(
-            like(teams.name, `%${query}%`),
-            like(teams.description, `%${query}%`)
+            likeEscaped(teams.name, query),
+            likeEscaped(teams.description, query)
           )
         )
       )

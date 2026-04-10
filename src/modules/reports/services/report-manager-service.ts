@@ -46,7 +46,8 @@ export class ReportManagerService {
     try {
       const { drizzle } = await import('drizzle-orm/d1');
       const { reports } = await import('../../../db/schema');
-      const { eq, and, gte, lte, like, desc, count } = await import('drizzle-orm');
+      const { eq, and, gte, lte, desc, count } = await import('drizzle-orm');
+      const { likeEscaped } = await import('@/utils/sql-like');
 
       const db = drizzle(this.db);
       const page = query.page || 1;
@@ -61,7 +62,7 @@ export class ReportManagerService {
       if (query.teamId) conditions.push(eq(reports.teamId, query.teamId));
       if (query.startDate) conditions.push(gte(reports.createdAt, query.startDate));
       if (query.endDate) conditions.push(lte(reports.createdAt, query.endDate));
-      if (query.search) conditions.push(like(reports.title, `%${query.search}%`));
+      if (query.search) conditions.push(likeEscaped(reports.title, query.search));
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
