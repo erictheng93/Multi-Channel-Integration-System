@@ -31,6 +31,12 @@ export interface DeploymentConfig {
   // ===== Basic Configuration =====
   projectName: string;
   adminEmail: string;
+  /**
+   * Optional admin password. If omitted, the backend generates a random
+   * one and returns it via AdminCredentials. Collected by ConfigForm's
+   * basic step and forwarded through startDeployment().
+   */
+  adminPassword?: string;
   customDomain?: string;
   accountId: string;
   oauthToken: string;

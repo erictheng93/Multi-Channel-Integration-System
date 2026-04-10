@@ -188,7 +188,7 @@
         <p class="cta-description">
           Deploy your own Multi-Channel CRM in less than 3 minutes
         </p>
-        <button @click="showTokenForm = true; window.scrollTo({ top: 0, behavior: 'smooth' })" class="btn btn-primary btn-lg">
+        <button @click="openTokenForm" class="btn btn-primary btn-lg">
           <span> Start Free Deployment</span>
         </button>
       </section>
@@ -222,6 +222,13 @@ const isVerifying = ref(false);
 // ========================================
 // METHODS
 // ========================================
+
+// vue-tsc 2.x no longer resolves bare `window` inside templates, so the
+// scroll is done from a method where `window` is the ambient global.
+function openTokenForm(): void {
+  showTokenForm.value = true;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 async function verifyAndConnect(): Promise<void> {
   tokenError.value = '';
