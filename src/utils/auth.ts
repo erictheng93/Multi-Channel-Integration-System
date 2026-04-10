@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { agents, teams, agentTeams } from '../db/schema';
 import { convertAgent } from './drizzle-converters';
@@ -35,20 +35,48 @@ export async function createUser(
 ): Promise<DbUser> {
   const hashedPassword = await hashPassword(userData.password);
   const now = nowISO();
-  const userId = crypto.randomUUID();
   const drizzleDb = createDbClient(db);
 
-  await drizzleDb
-    .insert(agents)
-    .values({
-      id: userId,
-      email: userData.email,
-      passwordHash: hashedPassword,
-      displayName: userData.displayName,
-      role: userData.role,
-      createdAt: now,
-      updatedAt: now
-    });
+  // Check if a soft-deleted agent with this email exists (UNIQUE constraint on email)
+  const softDeleted = await drizzleDb
+    .select({ id: agents.id })
+    .from(agents)
+    .where(and(eq(agents.email, userData.email), sql`${agents.deletedAt} IS NOT NULL`))
+    .get();
+
+  let userId: string;
+
+  if (softDeleted) {
+    // Reactivate: update the soft-deleted row instead of INSERT (avoids UNIQUE constraint violation)
+    userId = softDeleted.id;
+    await drizzleDb
+      .update(agents)
+      .set({
+        passwordHash: hashedPassword,
+        displayName: userData.displayName,
+        role: userData.role,
+        isActive: true,
+        deletedAt: null,
+        updatedAt: now
+      })
+      .where(eq(agents.id, userId));
+
+    // Clean up old team memberships before re-assigning
+    await drizzleDb.delete(agentTeams).where(eq(agentTeams.agentId, userId));
+  } else {
+    userId = crypto.randomUUID();
+    await drizzleDb
+      .insert(agents)
+      .values({
+        id: userId,
+        email: userData.email,
+        passwordHash: hashedPassword,
+        displayName: userData.displayName,
+        role: userData.role,
+        createdAt: now,
+        updatedAt: now
+      });
+  }
 
   // If teamId provided, create agent_teams membership (isPrimary=true)
   if (userData.teamId) {
