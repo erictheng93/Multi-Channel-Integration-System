@@ -104,6 +104,17 @@ run_frontend_checks() {
     TOTAL_ERRORS=$((TOTAL_ERRORS + $(echo "$ESLINT_OUT" | grep -c "error")))
   fi
 
+  # 3. Scoped .btn redefinition guard
+  echo -e "\n  Checking scoped .btn redefinitions..."
+  BTN_OUT=$(bun run lint:scoped-btn 2>&1)
+  if [ $? -eq 0 ]; then
+    print_pass "Scoped .btn guard"
+  else
+    print_fail "Scoped .btn guard"
+    echo "$BTN_OUT" | head -20 | sed 's/^/    /'
+    TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+  fi
+
   cd ..
 }
 
