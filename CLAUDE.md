@@ -96,6 +96,17 @@ See `docs/claude/ENVIRONMENT_CONFIG.md` for details.
 
 **Before outputting any UI, run through the design checklist in Section 15 of the design doc.**
 
+### Button System (Canonical Source)
+
+The global button system lives **only** in `frontend/src/style.css` (Apple-native: flat iOS system colors, no glow shadows, no layout-shifting hovers, `rounded-xl` 12px radius).
+
+**NEVER redefine these classes in component `<style>` blocks:**
+`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-success`, `.btn-warning`, `.btn-ghost`, `.btn-sm`, `.btn-lg`
+
+Component-level redefinitions cause a "flash of wrong styles" (scoped loads first, global loads second, they conflict). A lint guard (`bun run lint:scoped-btn`) enforces this — it runs automatically in the PostToolUse health-check hook and in `scripts/check.sh`.
+
+**Allowed:** contextual descendants (`.modal-footer .btn { margin: 0 }`), compound selectors (`.btn.is-loading`), and `@media` responsive/accessibility overrides.
+
 ## Development Rules
 
 ### Route Registration Order ( Critical)
