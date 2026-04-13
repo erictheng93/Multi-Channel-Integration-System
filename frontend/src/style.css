@@ -98,65 +98,135 @@
    Custom Components (Using @apply)
    ============================================ */
 @layer components {
-  /* Button Components */
+  /* ============================================
+     Apple-Native Button System
+     ============================================
+     Design principles (per docs/UIUX-Design-System.md):
+     - Flat solid colors — no gradients, no glow shadows
+     - No visible borders — depth comes from color alone
+     - iOS system colors (#007AFF, #FF3B30, #34C759, #FF9500)
+     - No layout-shifting hover effects (never change font-weight)
+     - Background darken on hover, subtle opacity dim on press
+     - 250ms ease-out for smooth native feel
+     - rounded-xl (12px) — Apple standard button radius
+     ============================================ */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2;
-    @apply text-sm font-medium leading-5 no-underline;
-    @apply border border-transparent rounded-md;
-    @apply cursor-pointer whitespace-nowrap select-none;
-    @apply transition-all duration-150;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
-    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+    cursor: pointer;
+    border: none;
+    border-radius: 0.75rem;
+    transition: background-color 250ms ease-out, color 250ms ease-out, opacity 150ms ease-out;
   }
 
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Primary — iOS System Blue */
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-600 to-primary-700 text-white border-primary-600;
-    @apply hover:from-primary-700 hover:to-primary-800 hover:border-primary-700;
-    @apply shadow-md hover:shadow-lg;
+    background-color: #007AFF;
+    color: white;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: #0066D6;
+  }
+  .btn-primary:active:not(:disabled) {
+    background-color: #0052AD;
+    opacity: 0.9;
   }
 
+  /* Secondary — iOS System Gray (tinted) */
   .btn-secondary {
-    @apply bg-white text-gray-700 border-gray-300;
-    @apply hover:bg-gray-50 hover:border-gray-400;
+    background-color: #F2F2F7;
+    color: #1C1C1E;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: #E5E5EA;
+  }
+  .btn-secondary:active:not(:disabled) {
+    background-color: #D1D1D6;
+    opacity: 0.9;
   }
 
+  /* Success — iOS System Green */
   .btn-success {
-    @apply bg-success-600 text-white border-success-400;
-    box-shadow:
-      0 0 0 1px rgba(34, 197, 94, 0.2),
-      0 0 12px rgba(34, 197, 94, 0.3);
-    @apply hover:bg-success-700 hover:border-success-300;
-    @apply hover:shadow-[0_0_20px_rgba(34,197,94,0.5)];
+    background-color: #34C759;
+    color: white;
+  }
+  .btn-success:hover:not(:disabled) {
+    background-color: #2CAB4B;
+  }
+  .btn-success:active:not(:disabled) {
+    background-color: #248F3F;
+    opacity: 0.9;
   }
 
+  /* Warning — iOS System Orange */
   .btn-warning {
-    @apply bg-warning-500 text-white border-warning-300;
-    box-shadow:
-      0 0 0 1px rgba(245, 158, 11, 0.2),
-      0 0 12px rgba(245, 158, 11, 0.3);
-    @apply hover:bg-warning-600 hover:border-warning-200;
-    @apply hover:shadow-[0_0_20px_rgba(245,158,11,0.5)];
+    background-color: #FF9500;
+    color: white;
+  }
+  .btn-warning:hover:not(:disabled) {
+    background-color: #E08300;
+  }
+  .btn-warning:active:not(:disabled) {
+    background-color: #C27100;
+    opacity: 0.9;
   }
 
+  /* Danger — iOS System Red */
   .btn-danger {
-    @apply bg-danger-600 text-white border-danger-400;
-    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2), 0 0 12px rgba(220, 38, 38, 0.3);
-    @apply hover:bg-danger-700 hover:border-danger-300 hover:font-bold;
-    @apply hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(220,38,38,0.5)];
-    @apply active:translate-y-0 active:bg-danger-800 active:border-danger-800;
+    background-color: #FF3B30;
+    color: white;
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: #E0342B;
+  }
+  .btn-danger:active:not(:disabled) {
+    background-color: #CC2D25;
+    opacity: 0.9;
   }
 
+  /* Ghost — Transparent, tinted blue text */
   .btn-ghost {
-    @apply bg-transparent text-gray-600 border-transparent;
-    @apply hover:bg-gray-100 hover:text-gray-900;
+    background-color: transparent;
+    color: #007AFF;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: rgba(0, 122, 255, 0.1);
+  }
+  .btn-ghost:active:not(:disabled) {
+    background-color: rgba(0, 122, 255, 0.15);
+    opacity: 0.9;
   }
 
+  /* Size variants */
   .btn-sm {
-    @apply px-3 py-1 text-xs;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    border-radius: 0.625rem;
   }
 
   .btn-lg {
-    @apply px-6 py-3 text-base;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 0.875rem;
   }
 
   /* Card Component */
