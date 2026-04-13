@@ -28,6 +28,7 @@
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
+    "lint:scoped-btn": "bun scripts/check-scoped-btn.ts",
     "build:analyze": "ANALYZE=true bun run build",
     "build:report": "bunx tsx scripts/build-analysis.ts",
     "build:perf": "vite build --config vite.config.performance.ts",

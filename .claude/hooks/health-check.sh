@@ -73,6 +73,17 @@ if [[ "$FILE_PATH" == *"frontend/"* ]] || [[ "$FILE_PATH" == *"frontend\\"* ]]; 
     fi
   fi
 
+  # 4. Scoped .btn guard (only for .vue file edits)
+  case "$FILE_PATH" in
+    *.vue)
+      BTN_OUT=$(bun scripts/check-scoped-btn.ts "$FILE_PATH" 2>&1)
+      if [ $? -ne 0 ]; then
+        HAS_ERRORS=1
+        ERRORS="${ERRORS}--- Scoped .btn Redefinition ---\n${BTN_OUT}\n\n"
+      fi
+      ;;
+  esac
+
 elif [[ "$FILE_PATH" == *"web-installer/"* ]]; then
   # =============================================
   #  WEB INSTALLER: tsc only
