@@ -292,29 +292,6 @@ function handleReactivate() {
 }
 
 /* Buttons */
-.btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.btn-secondary {
-  background: #F3F4F6;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background: #E5E7EB;
-}
-
-.btn-primary {
-  color: white;
-}
-
 .btn-info-theme {
   background: #2563EB;
   width: 100%;

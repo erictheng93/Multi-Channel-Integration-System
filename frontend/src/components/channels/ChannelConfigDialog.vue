@@ -983,43 +983,4 @@ watch(() => props.show, (newValue) => {
   font-size: 1.25rem;
 }
 
-/* Buttons */
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  font-size: 0.875rem;
-}
-
-.btn-primary {
-  background: var(--primary-500);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--primary-600);
-}
-
-.btn-primary:disabled {
-  background: var(--gray-300);
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: white;
-  color: var(--gray-700);
-  border: 1px solid var(--gray-300);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--gray-50);
-}
-
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 </style>

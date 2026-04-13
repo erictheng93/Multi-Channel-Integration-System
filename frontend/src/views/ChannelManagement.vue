@@ -897,44 +897,11 @@ if (typeof document !== 'undefined') {
   border-top: 1px solid var(--gray-100);
 }
 
-/* Buttons */
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.btn-primary {
-  background: var(--primary-500);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-600);
-}
-
-.btn-secondary {
-  background: white;
-  color: var(--gray-700);
-  border: 1px solid var(--gray-300);
-}
-
-.btn-secondary:hover {
-  background: var(--gray-50);
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
+.card-footer .btn {
   flex: 1;
 }
 
+/* Buttons */
 .btn-icon {
   font-size: 1.25rem;
   line-height: 1;

@@ -648,50 +648,6 @@ const handleTeamsLoaded = (teams: AgentTeamMembership[]) => {
 }
 
 /* Button Styles */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: 1px solid;
-  border-radius: 8px;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: #fff;
-  border-color: #3b82f6;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-  border-color: #2563eb;
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background: #f8fafc;
-  color: #475569;
-  border-color: #cbd5e1;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-  transform: translateY(-1px);
-}
-
 .btn-outline {
   background: transparent;
   color: #3b82f6;

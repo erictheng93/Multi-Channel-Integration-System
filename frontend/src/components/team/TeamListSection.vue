@@ -457,26 +457,6 @@ function handlePageChange(page: number) {
   box-shadow: 0 12px 35px rgba(16, 185, 129, 0.3);
 }
 
-.btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-}
-
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
 @media (max-width: 768px) {
   .content-section {
     padding: 1.5rem;
