@@ -372,59 +372,6 @@ const handleRemoveMember = async (member: TeamMember) => {
   gap: 12px;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 16px 24px;
-  border: 1px solid;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  min-width: 120px;
-  justify-content: center;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 10px 16px;
-  font-size: 0.875rem;
-  min-width: auto;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  border-color: #667eea;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #5a67d8, #6b4598);
-  border-color: #5a67d8;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-/* Secondary Button */
-.btn-secondary {
-  background: #e0e7ff;
-  color: #4f46e5;
-  border-color: #6366f1;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #c7d2fe;
-  border-color: #4f46e5;
-}
-
 /* Outline Button */
 .btn-outline {
   background: white;
@@ -435,21 +382,6 @@ const handleRemoveMember = async (member: TeamMember) => {
 .btn-outline:hover:not(:disabled) {
   background: #f3f4f6;
   border-color: #9ca3af;
-}
-
-/* Danger Button */
-.btn-danger {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: white;
-  border-color: #ef4444;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
-  border-color: #dc2626;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 /* Selection Count Badge */

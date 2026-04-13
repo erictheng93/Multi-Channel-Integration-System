@@ -323,55 +323,6 @@ function handleClear() {
   margin-top: 1rem;
 }
 
-.btn-primary,
-.btn-secondary,
-.btn-danger {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1.5rem;
-  border: none;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #4299e1;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #3182ce;
-}
-
-.btn-secondary {
-  background: #718096;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #4a5568;
-}
-
-.btn-danger {
-  background: #f56565;
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #e53e3e;
-}
-
-.btn-primary:disabled,
-.btn-secondary:disabled,
-.btn-danger:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .spinner {
   width: 1rem;
   height: 1rem;

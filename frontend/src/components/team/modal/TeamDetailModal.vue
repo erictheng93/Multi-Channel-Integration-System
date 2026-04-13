@@ -299,44 +299,6 @@ const handleDescriptionUpdate = (value: string) => {
   border: 1px solid #fecaca;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 16px 24px;
-  border: 1px solid;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  min-width: 120px;
-  justify-content: center;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: 14px 20px;
-  font-size: 1rem;
-}
-
-.btn-secondary {
-  background: #f8fafc;
-  color: #475569;
-  border-color: #cbd5e1;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-  transform: translateY(-1px);
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .stats-grid {

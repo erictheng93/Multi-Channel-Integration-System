@@ -113,26 +113,4 @@ defineEmits<{
   margin: 0 0 var(--space-6);
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-primary {
-  background: var(--primary-500);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-600);
-}
 </style>

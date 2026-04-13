@@ -265,56 +265,6 @@ const handleCardClick = () => {
   flex-shrink: 0;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  background: var(--gray-50);
-  color: var(--gray-700);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-}
-
-.btn:hover:not(:disabled) {
-  background: white;
-  border-color: var(--gray-300);
-  color: var(--gray-900);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-sm {
-  padding: var(--space-2) var(--space-3);
-  font-size: 0.8125rem;
-}
-
-.btn-secondary {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.btn-danger {
-  background: var(--gray-50);
-  color: var(--gray-700);
-  border-color: var(--gray-200);
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: var(--danger-50);
-  border-color: var(--danger-200);
-  color: var(--danger-700);
-}
-
 .icon {
   width: 14px;
   height: 14px;

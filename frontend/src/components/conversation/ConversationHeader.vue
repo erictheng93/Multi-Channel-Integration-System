@@ -519,27 +519,6 @@ defineExpose({
 
 /* 結束對話按鈕樣式 - 暫時移除，未來有需求再加入 */
 
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  background: var(--background-color);
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn:hover:not(:disabled) {
-  background: var(--hover-color);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 /* 客戶標籤樣式 */
 .customer-tags {
   display: flex;

@@ -106,35 +106,4 @@ defineEmits<{
   line-height: 1.5;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-danger {
-  background: var(--red-500);
-  color: white;
-}
-
-.btn-danger:hover {
-  background: var(--red-600);
-}
-
-.btn-secondary {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.btn-secondary:hover {
-  background: var(--gray-200);
-}
 </style>
