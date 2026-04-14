@@ -15,6 +15,7 @@
 import { computed, type Ref, type ComputedRef } from 'vue'
 import type { Message } from '@/types'
 import { isImageFile, isVideoFile } from '@/utils/message'
+import { ensureDownloadFilename } from '@/utils/message/formatting'
 import { MESSAGE_STATUS } from '@/constants/message-status'
 import { getApiUrl } from '@/config/runtime'
 
@@ -432,7 +433,9 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
     if (attachmentUrl.value) {
       const link = document.createElement('a')
       link.href = attachmentUrl.value
-      link.download = attachmentName.value || 'download'
+      // Use mime-aware filename so legacy rows without extension still open.
+      const mime = (props.value.message.metadata as { mimeType?: string } | undefined)?.mimeType
+      link.download = ensureDownloadFilename(attachmentName.value, mime)
       link.target = '_blank'
       document.body.appendChild(link)
       link.click()
@@ -448,11 +451,14 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
   const downloadAttachment = (attachment: {
     fileUrl?: string
     filename?: string
+    mimeType?: string
   }) => {
     if (attachment.fileUrl) {
       const link = document.createElement('a')
       link.href = attachment.fileUrl
-      link.download = attachment.filename || 'download'
+      // Defend against legacy rows whose filename lacks an extension by
+      // falling back to a mime-derived extension so Windows can open the file.
+      link.download = ensureDownloadFilename(attachment.filename, attachment.mimeType)
       link.target = '_blank'
       document.body.appendChild(link)
       link.click()
