@@ -105,6 +105,15 @@ export class FileStorageService {
       const storageKey = `media/${platform}/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${fileId}${extension}`;
       console.log(`[FileStorage] Generated storage key:`, { fileId, extension, storageKey });
 
+      // Ensure the human-readable filename carries the correct extension.
+      // LINE webhook supplies names like "image_<messageId>" with no extension;
+      // without this, the DB row + R2 Content-Disposition + <a download> all
+      // save the file without an extension, and Windows refuses to open it.
+      const hasExtension = !!filename && /\.[a-z0-9]{1,8}$/i.test(filename);
+      const finalFilename = hasExtension
+        ? filename
+        : `${filename || `file_${fileId}`}${extension}`;
+
       // 上傳到 R2
       if (!this.env.R2_BUCKET) {
         console.error(`[FileStorage] R2_BUCKET is not configured!`);
@@ -115,7 +124,7 @@ export class FileStorageService {
       await this.env.R2_BUCKET.put(storageKey, fileBuffer, {
         httpMetadata: {
           contentType: mimeType,
-          contentDisposition: `inline; filename="${filename}"`,
+          contentDisposition: `inline; filename="${finalFilename}"`,
           cacheControl: 'public, max-age=604800'
         },
         customMetadata: {
@@ -134,7 +143,7 @@ export class FileStorageService {
 
       const mediaFile: MediaFile = {
         id: fileId,
-        filename: filename || `file_${fileId}${extension}`,
+        filename: finalFilename,
         mimeType,
         size: contentLength,
         url: publicUrl,
