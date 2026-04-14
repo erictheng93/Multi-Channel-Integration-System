@@ -493,23 +493,6 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       };
     });
 
-    // DEBUG: Log final response data
-    const conversationsWithLastMsg = combinedData.filter((c: any) => c.lastMessageContent);
-    const conversationsWithoutLastMsg = combinedData.filter((c: any) => !c.lastMessageContent);
-    log.info('LASTMSG_DEBUG: Final response data', {
-      totalConversations: combinedData.length,
-      withLastMessage: conversationsWithLastMsg.length,
-      withoutLastMessage: conversationsWithoutLastMsg.length,
-      sampleWithMsg: conversationsWithLastMsg[0] ? {
-        id: conversationsWithLastMsg[0].id,
-        lastMsgContent: conversationsWithLastMsg[0].lastMessageContent?.substring(0, 30)
-      } : null,
-      sampleWithoutMsg: conversationsWithoutLastMsg[0] ? {
-        id: conversationsWithoutLastMsg[0].id,
-        lastMsgContent: conversationsWithoutLastMsg[0].lastMessageContent
-      } : null
-    });
-
     return c.json({
       success: true,
       data: combinedData,
