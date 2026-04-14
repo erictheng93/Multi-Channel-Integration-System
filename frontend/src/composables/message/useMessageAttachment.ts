@@ -449,21 +449,31 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
    * @param attachment - Attachment object with fileUrl and filename
    */
   const downloadAttachment = (attachment: {
+    id?: string
     fileUrl?: string
     filename?: string
     mimeType?: string
   }) => {
-    if (attachment.fileUrl) {
-      const link = document.createElement('a')
-      link.href = attachment.fileUrl
-      // Defend against legacy rows whose filename lacks an extension by
-      // falling back to a mime-derived extension so Windows can open the file.
-      link.download = ensureDownloadFilename(attachment.filename, attachment.mimeType)
-      link.target = '_blank'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
+    // Prefer the backend proxy endpoint: it sends Content-Disposition: attachment,
+    // which forces the browser to download regardless of cross-origin rules.
+    // Using the raw R2 URL (cross-origin + Content-Disposition: inline + target="_blank")
+    // makes Chrome open the image in a new tab instead of downloading it.
+    const href = attachment.id
+      ? getApiUrl(`/api/files/download/${attachment.id}`)
+      : attachment.fileUrl
+    if (!href) {return}
+
+    const link = document.createElement('a')
+    link.href = href
+    // `download` is a hint only (browsers ignore it cross-origin); the backend
+    // is the source of truth for the filename via Content-Disposition.
+    link.download = ensureDownloadFilename(attachment.filename, attachment.mimeType)
+    // Deliberately no target="_blank": with Content-Disposition: attachment,
+    // the browser downloads in place and never navigates, so opening a new tab
+    // just flashes an empty window.
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   /**
