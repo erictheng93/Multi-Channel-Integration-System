@@ -156,6 +156,13 @@ class Logger {
   }
 
   error(message: string, context?: string, metadata?: Record<string, unknown>, error?: Error | string): void {
+    // Respect `silent` log level (opt-out escape hatch for tests) and the
+    // configured level threshold, but do NOT gate on enableConsole — errors
+    // must never be silently dropped in production. See 2026-04-14 incident
+    // where a D1 query failure was invisible for weeks because enableConsole
+    // was false and there was no structured-logging sink wired up.
+    if (!this.shouldLog('error')) return;
+
     const entry: LogEntry = {
       timestamp: nowISO(),
       level: 'error',
@@ -168,13 +175,14 @@ class Logger {
     this.addToBuffer(entry);
 
     if (this.config.enableStructuredLogs) {
-      if (this.config.enableConsole) {
-        console.error(JSON.stringify(entry));
-      }
+      console.error(JSON.stringify(entry));
     }
   }
 
   fatal(message: string, context?: string, metadata?: Record<string, unknown>, error?: Error | string): void {
+    // See error() comment — fatal must also bypass enableConsole.
+    if (!this.shouldLog('fatal')) return;
+
     const entry: LogEntry = {
       timestamp: nowISO(),
       level: 'fatal',
@@ -187,9 +195,7 @@ class Logger {
     this.addToBuffer(entry);
 
     if (this.config.enableStructuredLogs) {
-      if (this.config.enableConsole) {
-        console.error(JSON.stringify(entry));
-      }
+      console.error(JSON.stringify(entry));
     }
   }
 
