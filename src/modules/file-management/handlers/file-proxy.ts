@@ -13,6 +13,38 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('FileProxy');
 
+// Minimal MIME -> extension map for legacy rows whose filename was written
+// before downloadAndStore started appending extensions. Kept in sync with
+// src/utils/file-storage.ts getFileExtension().
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/bmp': '.bmp',
+  'image/svg+xml': '.svg',
+  'video/mp4': '.mp4',
+  'video/quicktime': '.mov',
+  'video/x-msvideo': '.avi',
+  'audio/mpeg': '.mp3',
+  'audio/wav': '.wav',
+  'audio/ogg': '.ogg',
+  'audio/aac': '.aac',
+  'application/pdf': '.pdf',
+  'text/plain': '.txt',
+};
+
+function ensureFilenameExtension(filename: string, mimeType: string | null | undefined): string {
+  const base = filename && filename.trim() ? filename.trim() : 'download';
+  if (/\.[a-z0-9]{1,8}$/i.test(base)) {
+    return base;
+  }
+  const normalized = mimeType?.toLowerCase().split(';')[0]?.trim() ?? '';
+  const ext = MIME_TO_EXT[normalized] || '';
+  return ext ? `${base}${ext}` : base;
+}
+
 const fileProxyHandler = new Hono<{ Bindings: Bindings }>();
 
 /**
@@ -123,7 +155,11 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
 
     // 從附件記錄獲取元數據
     const contentType = attachment.mimeType || 'application/octet-stream';
-    const filename = attachment.filename || r2Key.split('/').pop() || 'download';
+    // Legacy rows (written before the downloadAndStore fix) may store filename
+    // without an extension (e.g. "image_12345"), which results in a downloaded
+    // file that Windows cannot open. Append an extension from mimeType if missing.
+    const rawFilename = attachment.filename || r2Key.split('/').pop() || 'download';
+    const filename = ensureFilenameExtension(rawFilename, attachment.mimeType);
 
     log.info('Serving attachment', { attachmentId, filename, contentType });
 
