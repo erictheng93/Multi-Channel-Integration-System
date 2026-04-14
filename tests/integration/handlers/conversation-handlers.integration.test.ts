@@ -1215,6 +1215,205 @@ describe('Conversation Handlers Integration Tests', () => {
   });
 
   // =========================================================================
+  // Regression: D1 100-bound-parameter limit on the latest-messages query
+  // =========================================================================
+  //
+  // Incident (2026-04-14): all conversations in the list view showed
+  // "暫無訊息" because the latest-messages SQL bound conversationIds twice
+  // (inner subquery + outer WHERE). At 52 conversations that is 104 bindings,
+  // one over D1's hard cap of 100 per query. D1 threw, the catch swallowed
+  // the error silently, and every conversation ended up with lastMessage=null.
+  //
+  // These tests lock in three properties that, together, prevent regression:
+  //   1. bind() is never called with more than 100 parameters
+  //   2. the handler produces lastMessage for every conversation end-to-end,
+  //      even when conversation count exceeds the chunk threshold
+  //   3. when the latest-messages query is split into chunks, each chunk
+  //      stays within the D1 parameter budget
+
+  describe('GET /api/conversations — D1 parameter limit regression', () => {
+    // A fake D1-like prepare()/bind() mock that:
+    //   * records every prepare SQL and its bind args
+    //   * simulates D1's real 100-parameter rejection (throws if exceeded)
+    //   * returns a synthetic latest-message row for each conversation id it sees
+    // This gives us end-to-end behaviour matching production without a real DB.
+    function installD1Mock(env: ReturnType<typeof createMockEnv>) {
+      const prepared: Array<{ sql: string; bindArgs: any[] }> = [];
+
+      env.DB.prepare = vi.fn((sql: string) => {
+        const record: { sql: string; bindArgs: any[] } = { sql, bindArgs: [] };
+        prepared.push(record);
+
+        return {
+          bind: vi.fn((...args: any[]) => {
+            record.bindArgs = args;
+
+            // Simulate D1's hard limit so buggy code surfaces the failure
+            // instead of silently succeeding in the unit test.
+            if (args.length > 100) {
+              const err = new Error(
+                `D1_ERROR: too many SQL variables (got ${args.length}, max 100)`
+              );
+              return {
+                first: vi.fn().mockRejectedValue(err),
+                all: vi.fn().mockRejectedValue(err),
+                run: vi.fn().mockRejectedValue(err),
+              };
+            }
+
+            // Route responses by SQL content
+            const isLatestMessages =
+              sql.includes('MAX(created_at)') && sql.includes('GROUP BY conversation_id');
+            const isUnreadCount =
+              sql.includes('unreadCount') && sql.includes('sender_type');
+
+            if (isLatestMessages) {
+              // Dedupe ids — in the fixed code bind receives N ids,
+              // in the buggy code it receives 2N (duplicated).
+              const uniqueIds = Array.from(new Set(args));
+              return {
+                first: vi.fn().mockResolvedValue(null),
+                all: vi.fn().mockResolvedValue({
+                  success: true,
+                  results: uniqueIds.map((id) => ({
+                    messageId: `msg-${id}`,
+                    conversationId: id,
+                    content: `Hello from ${id}`,
+                    createdAt: '2026-01-01T00:00:00Z',
+                    senderType: 'customer',
+                    messageType: 'text',
+                  })),
+                }),
+                run: vi.fn(),
+              };
+            }
+
+            if (isUnreadCount) {
+              return {
+                first: vi.fn().mockResolvedValue(null),
+                all: vi.fn().mockResolvedValue({ success: true, results: [] }),
+                run: vi.fn(),
+              };
+            }
+
+            // Fallback (e.g. the debug single-row lookup)
+            return {
+              first: vi.fn().mockResolvedValue(null),
+              all: vi.fn().mockResolvedValue({ success: true, results: [] }),
+              run: vi.fn(),
+            };
+          }),
+        } as any;
+      }) as any;
+
+      return prepared;
+    }
+
+    // Build N fake joined conversation rows that Drizzle's select() will return.
+    function seedConversations(n: number) {
+      const ids = Array.from({ length: n }, (_, i) =>
+        `conv-${i.toString().padStart(4, '0')}`
+      );
+      visibleConversationIds = [...ids];
+      resetMockDbState({
+        selectResults: ids.map((id) => ({
+          conversations: {
+            id,
+            customerId: 1,
+            assignedTeamId: null,
+            status: 'active',
+            priority: null,
+            firstResponseAt: null,
+            closedAt: null,
+            lastMessageAt: '2026-01-01T00:00:00Z',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+            deletedAt: null,
+          },
+          customers: {
+            id: 1,
+            displayName: `Customer ${id}`,
+            platform: 'line',
+            platformUserId: `U-${id}`,
+            avatarUrl: null,
+            createdAt: '2026-01-01T00:00:00Z',
+          },
+          teams: null,
+        })),
+      });
+      return ids;
+    }
+
+    test('bind() is never called with more than 100 parameters (52 conversations)', async () => {
+      seedConversations(52);
+      const prepared = installD1Mock(env);
+
+      const res = await makeRequest(app, '/api/conversations');
+      expect(res.status).toBe(200);
+
+      // Must have attempted the latest-messages query at least once
+      const latestMsgCalls = prepared.filter(
+        (p) =>
+          p.sql.includes('MAX(created_at)') && p.sql.includes('GROUP BY conversation_id')
+      );
+      expect(latestMsgCalls.length).toBeGreaterThanOrEqual(1);
+
+      // Every prepared bind stays under the D1 100-param limit
+      for (const call of prepared) {
+        expect(call.bindArgs.length).toBeLessThanOrEqual(100);
+      }
+    });
+
+    test('populates lastMessage for every conversation (52 conversations, end-to-end)', async () => {
+      const ids = seedConversations(52);
+      installD1Mock(env);
+
+      const res = await makeRequest(app, '/api/conversations');
+      expect(res.status).toBe(200);
+
+      const body = (await res.json()) as any;
+      expect(body.success).toBe(true);
+      expect(body.data).toHaveLength(52);
+
+      // Every conversation must carry the synthetic last-message content.
+      // With the 104-parameter bug this collapses to "暫無訊息" in the UI
+      // because lastMessageContent is null.
+      for (const conv of body.data) {
+        expect(conv.lastMessageContent).toBeTruthy();
+        expect(conv.lastMessage).not.toBeNull();
+        expect(conv.lastMessage.content).toContain('Hello from conv-');
+      }
+      expect(body.data.map((c: any) => c.id).sort()).toEqual([...ids].sort());
+    });
+
+    test('chunks the latest-messages query when visible conversations exceed CHUNK_SIZE', async () => {
+      // 150 > CHUNK_SIZE (90) — must produce at least 2 prepared queries
+      // and every chunk must still respect the 100-param budget.
+      seedConversations(150);
+      const prepared = installD1Mock(env);
+
+      const res = await makeRequest(app, '/api/conversations');
+      expect(res.status).toBe(200);
+
+      const latestMsgCalls = prepared.filter(
+        (p) =>
+          p.sql.includes('MAX(created_at)') && p.sql.includes('GROUP BY conversation_id')
+      );
+      expect(latestMsgCalls.length).toBeGreaterThanOrEqual(2);
+
+      for (const call of latestMsgCalls) {
+        expect(call.bindArgs.length).toBeLessThanOrEqual(100);
+      }
+
+      const body = (await res.json()) as any;
+      expect(body.data).toHaveLength(150);
+      for (const conv of body.data) {
+        expect(conv.lastMessageContent).toBeTruthy();
+      }
+    });
+  });
+
+  // =========================================================================
   // Health check endpoint (no auth needed)
   // =========================================================================
 

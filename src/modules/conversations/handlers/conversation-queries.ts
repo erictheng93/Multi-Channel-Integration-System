@@ -338,96 +338,86 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     }>();
 
     if (conversationIds.length > 0) {
-      // 使用 SQL 子查詢獲取每個對話的最新訊息
-      // SQLite/D1 支持的高效查詢模式
-      const placeholders = conversationIds.map(() => '?').join(',');
-      const latestMessagesQuery = `
-        SELECT
-          m.id as messageId,
-          m.conversation_id as conversationId,
-          m.content,
-          m.created_at as createdAt,
-          m.sender_type as senderType,
-          m.message_type as messageType
-        FROM messages m
-        INNER JOIN (
-          SELECT conversation_id, MAX(created_at) as max_created_at
-          FROM messages
-          WHERE conversation_id IN (${placeholders})
-          GROUP BY conversation_id
-        ) latest ON m.conversation_id = latest.conversation_id
-                AND m.created_at = latest.max_created_at
-        WHERE m.conversation_id IN (${placeholders})
-      `;
+      // D1 enforces a hard cap of 100 bound parameters per query.
+      // The previous implementation bound conversationIds TWICE (once for
+      // the subquery and once for a redundant outer WHERE), which pushed
+      // the system over the limit at 51 conversations — every conversation
+      // then showed "暫無訊息" in the list view because the query threw
+      // and the catch below silently swallowed the failure.
+      //
+      // Fix:
+      //   (A) Remove the redundant outer WHERE — the INNER JOIN with the
+      //       subquery already restricts m.conversation_id to IDs in the
+      //       IN list, so the outer filter was logically a no-op.
+      //   (B) Chunk the IDs so each query stays well under the 100 cap
+      //       regardless of how many conversations the caller can see.
+      //
+      // CHUNK_SIZE=90 leaves a safety margin under 100 while keeping the
+      // number of round trips minimal (e.g. 1 query for N=90, 2 for N=180).
+      const CHUNK_SIZE = 90;
 
-      try {
-        // DEBUG: Log conversation IDs being queried (using INFO level for production visibility)
-        log.info('LASTMSG_DEBUG: Starting latest messages query', {
-          conversationIds: conversationIds.slice(0, 5), // Log first 5 for debugging
-          totalCount: conversationIds.length
-        });
+      for (let offset = 0; offset < conversationIds.length; offset += CHUNK_SIZE) {
+        const chunk = conversationIds.slice(offset, offset + CHUNK_SIZE);
+        const placeholders = chunk.map(() => '?').join(',');
+        const latestMessagesQuery = `
+          SELECT
+            m.id as messageId,
+            m.conversation_id as conversationId,
+            m.content,
+            m.created_at as createdAt,
+            m.sender_type as senderType,
+            m.message_type as messageType
+          FROM messages m
+          INNER JOIN (
+            SELECT conversation_id, MAX(created_at) as max_created_at
+            FROM messages
+            WHERE conversation_id IN (${placeholders})
+            GROUP BY conversation_id
+          ) latest ON m.conversation_id = latest.conversation_id
+                  AND m.created_at = latest.max_created_at
+        `;
 
-        // 執行原生 SQL 查詢（參數需要傳遞兩次：一次給子查詢，一次給外層）
-        const result = await c.env.DB.prepare(latestMessagesQuery)
-          .bind(...conversationIds, ...conversationIds)
-          .all();
+        try {
+          const result = await c.env.DB.prepare(latestMessagesQuery)
+            .bind(...chunk)
+            .all();
 
-        // DEBUG: Log raw SQL result
-        log.info('LASTMSG_DEBUG: SQL query returned', {
-          success: result.success,
-          resultsCount: result.results?.length || 0
-        });
-
-        if (result.results) {
-          for (const row of result.results as any[]) {
-            lastMessagesMap.set(row.conversationId, {
-              messageId: row.messageId,
-              content: row.content,
-              createdAt: row.createdAt,
-              senderType: row.senderType,
-              messageType: row.messageType
-            });
+          if (result.results) {
+            for (const row of result.results as any[]) {
+              lastMessagesMap.set(row.conversationId, {
+                messageId: row.messageId,
+                content: row.content,
+                createdAt: row.createdAt,
+                senderType: row.senderType,
+                messageType: row.messageType
+              });
+            }
           }
-        }
-
-        // DEBUG: Log which conversations have/don't have messages
-        const conversationsWithMessages = Array.from(lastMessagesMap.keys());
-        const conversationsWithoutMessages = conversationIds.filter(id => !lastMessagesMap.has(id));
-        log.info('LASTMSG_DEBUG: Message mapping complete', {
-          requestedCount: conversationIds.length,
-          foundCount: lastMessagesMap.size,
-          withMessages: conversationsWithMessages.slice(0, 3),
-          withoutMessages: conversationsWithoutMessages.slice(0, 5)
-        });
-
-        log.debug('Conversation Handler fetched latest messages from DB', {
-          requestedCount: conversationIds.length,
-          foundCount: lastMessagesMap.size
-        });
-
-        // DEBUG: Check if conversations without messages actually have messages in DB
-        if (conversationsWithoutMessages.length > 0) {
-          const debugConvId = conversationsWithoutMessages[0];
-          const debugQuery = await c.env.DB.prepare(
-            'SELECT id, conversation_id, content, created_at, sender_type FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 3'
-          ).bind(debugConvId).all();
-          log.info('LASTMSG_DEBUG: Direct query for conversation without lastMessage', {
-            conversationId: debugConvId,
-            messagesFound: debugQuery.results?.length || 0,
-            messages: debugQuery.results?.map((m: any) => ({
-              id: m.id?.substring(0, 8),
-              content: m.content?.substring(0, 30),
-              createdAt: m.created_at,
-              senderType: m.sender_type
-            }))
+        } catch (dbError) {
+          // Defense in depth: write directly to console.error in addition
+          // to log.error, so the failure is visible even if the structured
+          // logger misbehaves (as it did during the 2026-04-14 incident
+          // where enableConsole=false hid the error for weeks).
+          const errMsg = dbError instanceof Error ? dbError.message : String(dbError);
+          console.error(
+            `[ConversationQueries] Latest-messages query failed ` +
+            `(chunk ${offset}-${offset + chunk.length}, size ${chunk.length}): ${errMsg}`
+          );
+          log.error('Conversation Handler failed to fetch latest messages', {
+            chunkStart: offset,
+            chunkSize: chunk.length,
+            totalCount: conversationIds.length,
+            error: errMsg
           });
+          // Continue processing remaining chunks — partial results are
+          // strictly better than dropping every conversation's lastMessage.
         }
-      } catch (dbError) {
-        log.error('Conversation Handler failed to fetch latest messages', {
-          error: dbError instanceof Error ? dbError.message : String(dbError)
-        });
-        // 繼續處理，但 lastMessage 將為 null
       }
+
+      log.debug('Conversation Handler fetched latest messages from DB', {
+        requestedCount: conversationIds.length,
+        foundCount: lastMessagesMap.size
+      });
     }
 
     // Batch query: count unread customer messages per conversation
