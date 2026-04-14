@@ -350,6 +350,23 @@ log.info('File proxy endpoints PRE-REGISTERED (public access)', {
 });
 
 // =================================================================================
+// ADMIN MIGRATIONS - PRE-REGISTERED (admin-only one-off data migrations)
+// =================================================================================
+// Must be registered BEFORE the unified route system so the /api/admin/migrations
+// namespace cannot be shadowed by catch-all routes. The handler itself enforces
+// jwtAuth + requireAdmin on every route.
+// =================================================================================
+
+import adminMigrationsHandler from '@modules/system/handlers/admin-migrations';
+
+app.route('/api/admin/migrations', adminMigrationsHandler);
+log.info('Admin migration endpoints PRE-REGISTERED (admin only)', {
+  endpoints: [
+    'POST /api/admin/migrations/backfill-legacy-filenames (dryRun, limit, cursor)'
+  ]
+});
+
+// =================================================================================
 // CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
 // =================================================================================
 //
