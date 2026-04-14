@@ -71,6 +71,47 @@ export function getFileExtension(filename: string): string {
   return ext || ''
 }
 
+// Minimal MIME to extension map, kept aligned with backend src/utils/file-storage.ts.
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/bmp': '.bmp',
+  'image/svg+xml': '.svg',
+  'video/mp4': '.mp4',
+  'video/quicktime': '.mov',
+  'video/x-msvideo': '.avi',
+  'audio/mpeg': '.mp3',
+  'audio/wav': '.wav',
+  'audio/ogg': '.ogg',
+  'audio/aac': '.aac',
+  'application/pdf': '.pdf',
+  'text/plain': '.txt',
+}
+
+/**
+ * Guarantees a download filename has a valid extension.
+ *
+ * Legacy rows created before the backend fix may carry filenames like
+ * `image_12345` with no extension — Windows cannot open such files because
+ * there is no file association. This helper appends the correct extension
+ * derived from mimeType when it is missing.
+ */
+export function ensureDownloadFilename(
+  filename: string | undefined,
+  mimeType: string | undefined
+): string {
+  const base = filename && filename.trim() ? filename.trim() : 'download'
+  if (/\.[a-z0-9]{1,8}$/i.test(base)) {
+    return base
+  }
+  const normalizedMime = mimeType?.toLowerCase().split(';')[0]?.trim() ?? ''
+  const ext = MIME_TO_EXT[normalizedMime] || ''
+  return ext ? `${base}${ext}` : base
+}
+
 /**
  * Determines CSS class name based on file type
  *
