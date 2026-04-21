@@ -2,9 +2,11 @@
 // Session module authentication and permission middleware
 
 import type { Context, Next } from 'hono';
+import { drizzle } from 'drizzle-orm/d1';
 import type { Bindings } from '@/types';
 import { verifyJWT } from '@/utils/auth';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { SessionAccessService } from '@modules/session/services/session-access-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
@@ -147,9 +149,24 @@ export async function checkSessionUpdatePermission(c: Context<{ Bindings: Bindin
 
     // Agent 角色需要檢查是否有權限訪問特定對話
     if (payload.role === 'agent') {
-      // TODO: 實現對話存取權限檢查
-      await next();
-      return;
+      const sessionId = (c.get('sessionId') as string | undefined) || c.req.param('sessionId');
+      const userId = payload.userId?.toString();
+
+      if (!sessionId || !userId) {
+        return c.json({
+          success: false,
+          error: 'Insufficient permissions to update sessions',
+          timestamp: nowISO()
+        }, HTTP_STATUS.FORBIDDEN);
+      }
+
+      const accessService = new SessionAccessService(drizzle(c.env.DB));
+      const hasAccess = await accessService.canAccessSession(sessionId, userId, 'agent');
+
+      if (hasAccess) {
+        await next();
+        return;
+      }
     }
 
     return c.json({

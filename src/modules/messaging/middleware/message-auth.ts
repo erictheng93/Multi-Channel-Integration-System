@@ -2,6 +2,8 @@
 // Message access control and permission middleware
 
 import { Context, Next } from 'hono';
+import { drizzle } from 'drizzle-orm/d1';
+import { eq, inArray } from 'drizzle-orm';
 import type { Bindings, JWTPayload } from '@/types';
 import {
   unauthorizedResponse,
@@ -10,6 +12,7 @@ import {
 } from '@/utils/api-response';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import type { MessageAccessScope, MessagePermissions, SenderType } from '@modules/messaging/types/message-types';
+import { agentTeams, conversations } from '@/db/schema';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
@@ -52,7 +55,7 @@ export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, nex
 
     // 將用戶權限資訊存入 context
     authCtx(c).set('messagePermissions', await getMessagePermissions(userPayload));
-    authCtx(c).set('messageAccessScope', await getMessageAccessScope(userPayload));
+    authCtx(c).set('messageAccessScope', await getMessageAccessScope(userPayload, c.env.DB));
 
     return await next();
   } catch (error) {
@@ -95,7 +98,7 @@ export async function checkSpecificMessageAccess(c: Context<{ Bindings: Bindings
     }
 
     // 檢查對話權限
-    if (accessScope.conversationIds && !accessScope.conversationIds.includes(message.conversationId)) {
+    if (!accessScope.conversationIds?.includes(message.conversationId)) {
       return forbiddenResponse(c, 'No permission to access this message');
     }
 
@@ -300,7 +303,7 @@ async function getMessagePermissions(userPayload: JWTPayload): Promise<MessagePe
 /**
  * 根據用戶資訊計算訊息存取範圍
  */
-async function getMessageAccessScope(userPayload: JWTPayload): Promise<MessageAccessScope> {
+async function getMessageAccessScope(userPayload: JWTPayload, database: D1Database): Promise<MessageAccessScope> {
   // Admin 有全域存取權限
   if (userPayload.role === 'admin') {
     return {
@@ -309,10 +312,37 @@ async function getMessageAccessScope(userPayload: JWTPayload): Promise<MessageAc
   }
 
   // Agent 角色只能存取指派給自己的對話
-  if (userPayload.role === 'agent' && userPayload.primaryTeamId) {
-    // TODO: 從資料庫取得代理人的對話清單
+  if (userPayload.role === 'agent') {
+    const db = drizzle(database);
+    const userId = userPayload.userId.toString();
+    const memberships = await db
+      .select({ teamId: agentTeams.teamId })
+      .from(agentTeams)
+      .where(eq(agentTeams.agentId, userId))
+      .all();
+
+    const teamIds = Array.from(new Set([
+      ...memberships.map((membership) => membership.teamId),
+      ...(userPayload.primaryTeamId ? [userPayload.primaryTeamId] : []),
+    ]));
+
+    if (teamIds.length === 0) {
+      return {
+        conversationIds: [],
+        teamIds: [],
+        isGlobalAccess: false,
+      };
+    }
+
+    const visibleConversations = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(inArray(conversations.assignedTeamId, teamIds))
+      .all();
+
     return {
-      teamIds: [userPayload.primaryTeamId],
+      conversationIds: visibleConversations.map((conversation) => conversation.id),
+      teamIds,
       isGlobalAccess: false,
     };
   }

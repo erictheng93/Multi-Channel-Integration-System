@@ -1,4 +1,4 @@
-// System 模組權限控制中間件
+﻿// System 模組權限控制中間件
 // System access control and permission middleware
 
 import { Context, Next } from 'hono';
@@ -504,11 +504,26 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
       return unauthorizedResponse(c, 'Authentication required for rate limiting');
     }
 
-    // 簡單的頻率限制實作，實際使用時可以使用 KV 存儲
-    // 這裡只是做基本的檢查
-    // const rateLimitKey = `rate_limit:${userPayload.userId}`; // TODO: 實作真正的頻率限制
+    const kv = c.env.KV || c.env.SESSIONS;
+    const windowMs = 60_000;
+    const windowSeconds = Math.ceil(windowMs / 1000);
+    const maxRequests = 120;
+    const windowId = Math.floor(nowMs() / windowMs);
+    const rateLimitKey = `rate_limit:system:${userPayload.userId}:${windowId}`;
+    const currentCount = Number(await kv.get(rateLimitKey) || '0');
 
-    // 暫時允許所有請求，實際實作需要使用 KV
+    if (currentCount >= maxRequests) {
+      return c.json({
+        success: false,
+        error: 'Rate limit exceeded',
+        timestamp: nowISO()
+      }, HTTP_STATUS.TOO_MANY_REQUESTS);
+    }
+
+    await kv.put(rateLimitKey, String(currentCount + 1), {
+      expirationTtl: windowSeconds * 2
+    });
+
     return await next();
   } catch (error) {
     log.error('Error in rate limit validation', {}, error instanceof Error ? error : String(error));

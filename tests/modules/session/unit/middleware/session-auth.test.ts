@@ -324,7 +324,7 @@ describe('Session Authentication Middleware', () => {
       expect(data.success).toBe(true);
     });
 
-    test('should allow agent to update sessions (with restrictions)', async () => {
+    test('should reject agent update when no session scope is available', async () => {
       const response = await app.request('/test', {
         method: 'PUT',
         headers: {
@@ -332,10 +332,11 @@ describe('Session Authentication Middleware', () => {
         }
       });
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(403);
 
       const data = await response.json();
-      expect(data.success).toBe(true);
+      expect(data.success).toBe(false);
+      expect(data.error).toBe('Insufficient permissions to update sessions');
     });
 
     test('should reject invalid roles', async () => {
@@ -780,7 +781,7 @@ describe('Session Authentication Middleware', () => {
         permissions: {
           view: true,
           create: true,
-          update: true,
+          update: false,
           delete: false,
           stats: false,
           batch: false
