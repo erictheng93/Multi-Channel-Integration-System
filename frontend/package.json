@@ -9,7 +9,7 @@
     "pnpm": "use bun instead - see CLAUDE.md"
   },
   "scripts": {
-    "preinstall": "npx only-allow bun",
+    "preinstall": "bunx only-allow bun",
     "dev": "vite --mode development --host --port 5173",
     "dev:local": "vite --mode local --host --port 5173",
     "dev:remote": "vite --mode development --host --port 5173",

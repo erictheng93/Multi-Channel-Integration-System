@@ -409,9 +409,23 @@ Verification:
 
 ### P3 - Lower Maintenance Cost
 
-- Split high-churn large Vue files.
-- Normalize package versions or formalize workspace boundaries.
-- Clean active docs/scripts so Bun is the only visible workflow.
+Status: completed on 2026-04-21.
+
+Changes made:
+
+- Split `frontend/src/views/ChannelManagement.vue` into:
+  - `frontend/src/components/channels/ChannelDetailsModal.vue`
+  - `frontend/src/composables/useChannelManagement.ts`
+- Reduced `ChannelManagement.vue` from 1017 lines to 688 lines.
+- Formalized the root/frontend package boundary in `docs/WORKSPACE_BOUNDARIES.md` and linked it from `README.md`.
+- Kept both package roots on Bun 1.3.9 and documented that root and `frontend/` intentionally own separate `bun.lock` files.
+- Replaced visible `npx only-allow bun` preinstall commands with `bunx only-allow bun`.
+- Removed the obsolete `scripts/switch-to-npm.ps1` workflow script.
+
+Verification:
+
+- Largest targeted Vue file after split: `frontend/src/views/ChannelManagement.vue` at 688 lines.
+- `bun run check`: passed, 7 checks passed, 0 failed, 0 errors.
 
 ## Suggested Tracking Metrics
 
