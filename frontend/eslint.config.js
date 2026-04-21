@@ -157,8 +157,10 @@ export default [
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       
       // General rules
-      'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
-      'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+      'no-console': process.env.NODE_ENV === 'production'
+        ? ['error', { allow: ['warn', 'error'] }]
+        : 'off',
+      'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
       'no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',

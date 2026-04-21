@@ -365,10 +365,30 @@ Status: completed on 2026-04-21.
 
 ### P1 - Reduce Production Risk
 
-- Make production runtime `console.log` fail lint for frontend source.
-- Address security/access-control TODOs first.
-- Remove or isolate stub/debug utilities.
-- Verify delayed message platform delivery behavior.
+Status: completed on 2026-04-21.
+
+Changes made:
+
+- Added a frontend production lint entrypoint:
+  - `cd frontend && bun run lint:production`
+  - production `console.log` is an ESLint error while `console.warn` and `console.error` remain allowed.
+  - production `debugger` is an ESLint error.
+- Replaced session update agent bypass with DB-backed session/team access checks.
+- Replaced messaging agent scope TODO with DB-backed team/conversation scope and deny-by-default behavior for non-global message access.
+- Added KV-backed system route rate limiting for authenticated system middleware callers.
+- Removed unreferenced i18n stub/debug utility files.
+- Added delayed-message Durable Object platform delivery tests for LINE and Facebook payload/endpoint routing.
+
+Verification:
+
+- `bun run check`: passed, 6 checks passed, 0 failed, 0 errors.
+- Focused session and delayed-message tests passed: 64 tests.
+- Messaging/conversation focused tests passed: 96 tests.
+- Security/access-control/rate TODO scan returned no matches.
+
+Remaining note:
+
+- `cd frontend && bun run lint:production` is intentionally stricter than the default health check and currently reports the existing frontend `console.log` backlog. The production gate is now available; removing the existing log backlog should be handled as a separate cleanup batch before wiring this stricter command into the default check.
 
 ### P2 - Tighten Type Safety
 
