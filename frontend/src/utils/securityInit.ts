@@ -3,6 +3,9 @@
 // Created by: Frontend Security Initialization
 
 import { validateSecurityEnvironment, getCurrentSecurityConfig } from '@/config/security'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('securityInit')
 
 /**
  * 初始化應用程式安全配置
@@ -10,7 +13,7 @@ import { validateSecurityEnvironment, getCurrentSecurityConfig } from '@/config/
  */
 export const initializeSecurity = async (): Promise<void> => {
   try {
-    console.log(' Initializing security configuration...')
+    frontendLogger.debug(' Initializing security configuration...')
     
     // 驗證環境變數
     validateSecurityEnvironment()
@@ -22,8 +25,8 @@ export const initializeSecurity = async (): Promise<void> => {
     const browserSecurity = securityConfig.checks.checkBrowserSecurity()
     
     // 記錄安全狀態
-    console.log(' Security validation passed')
-    console.log(' Browser security features:', {
+    frontendLogger.debug(' Security validation passed')
+    frontendLogger.debug(' Browser security features:', {
       localStorage: browserSecurity.localStorage,
       crypto: browserSecurity.crypto,
       secureContext: securityConfig.checks.isSecureContext(),
@@ -31,7 +34,7 @@ export const initializeSecurity = async (): Promise<void> => {
     
     // 在開發環境中顯示額外信息
     if (import.meta.env.DEV) {
-      console.log(' Development mode security settings:', {
+      frontendLogger.debug(' Development mode security settings:', {
         httpsRequired: securityConfig.environment.HTTPS_REQUIRED,
         secureCookies: securityConfig.environment.SECURE_COOKIES,
         strictCSP: securityConfig.environment.STRICT_CSP,

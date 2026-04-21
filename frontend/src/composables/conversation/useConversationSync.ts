@@ -30,13 +30,16 @@
  * store.cleanup()
  *
  * // 访问状态
- * console.log(store.syncStatus) // 'connected' | 'disconnected' | 'connecting' | 'polling' | 'error'
+ * logger.debug(store.syncStatus) // 'connected' | 'disconnected' | 'connecting' | 'polling' | 'error'
  * ```
  */
 
 import { ref, computed, type Ref } from 'vue'
 import { conversationSync } from '@/services/conversationSync'
 import type { Conversation } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useConversationSync')
 
 /**
  * 同步状态类型
@@ -91,11 +94,11 @@ export function useConversationSync(): ConversationSyncComposable {
    *
    * @example
    * await startSync((conversations) => {
-   * console.log('Received conversations:', conversations.length)
+   * logger.debug('Received conversations:', conversations.length)
    * })
    */
   async function startSync(onData?: (_data: Conversation[]) => void): Promise<void> {
-    console.log('[ConversationSync] Starting sync service')
+    frontendLogger.debug('[ConversationSync] Starting sync service')
     isSyncing.value = true
     syncStatus.value = 'connecting'
     syncError.value = null
@@ -104,7 +107,7 @@ export function useConversationSync(): ConversationSyncComposable {
       // 设置数据回调
       if (onData) {
         conversationSync.onData((data: Conversation[]) => {
-          console.log('[ConversationSync] Received data:', data.length)
+          frontendLogger.debug('[ConversationSync] Received data:', data.length)
           lastUpdate.value = new Date()
           onData(data)
         })
@@ -112,7 +115,7 @@ export function useConversationSync(): ConversationSyncComposable {
 
       // 设置状态回调
       conversationSync.onStatus((status: SyncStatus) => {
-        console.log('[ConversationSync] Status changed:', status)
+        frontendLogger.debug('[ConversationSync] Status changed:', status)
         syncStatus.value = status
 
         // 更新同步状态
@@ -131,7 +134,7 @@ export function useConversationSync(): ConversationSyncComposable {
       // 启动同步服务
       await conversationSync.start()
 
-      console.log('[ConversationSync] Sync service started')
+      frontendLogger.debug('[ConversationSync] Sync service started')
     } catch (error) {
       console.error('[ConversationSync] Failed to start sync:', error)
       syncStatus.value = 'error'
@@ -148,7 +151,7 @@ export function useConversationSync(): ConversationSyncComposable {
    * stopSync()
    */
   function stopSync(): void {
-    console.log('[ConversationSync] Stopping sync service')
+    frontendLogger.debug('[ConversationSync] Stopping sync service')
     conversationSync.stop()
     syncStatus.value = 'disconnected'
     isSyncing.value = false
@@ -164,7 +167,7 @@ export function useConversationSync(): ConversationSyncComposable {
    * await refresh()
    */
   async function refresh(): Promise<void> {
-    console.log('[ConversationSync] Manual refresh triggered')
+    frontendLogger.debug('[ConversationSync] Manual refresh triggered')
     isSyncing.value = true
 
     try {
@@ -187,7 +190,7 @@ export function useConversationSync(): ConversationSyncComposable {
    *
    * @example
    * onDataUpdate((conversations) => {
-   * console.log('Updated:', conversations.length)
+   * logger.debug('Updated:', conversations.length)
    * })
    */
   function onDataUpdate(callback: (_data: Conversation[]) => void): void {
@@ -201,7 +204,7 @@ export function useConversationSync(): ConversationSyncComposable {
    *
    * @example
    * onStatusChange((status) => {
-   * console.log('Status:', status)
+   * logger.debug('Status:', status)
    * })
    */
   function onStatusChange(callback: (_status: SyncStatus) => void): void {

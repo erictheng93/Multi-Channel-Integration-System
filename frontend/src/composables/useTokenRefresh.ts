@@ -1,6 +1,9 @@
 // Token 自動刷新 Composable
 import { onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useTokenRefresh')
 
 export function useTokenRefresh() {
   const authStore = useAuthStore()
@@ -10,14 +13,14 @@ export function useTokenRefresh() {
     // 每 5 分鐘檢查一次是否需要刷新 token
     refreshInterval = window.setInterval(() => {
       if (authStore.isAuthenticated && authStore.shouldRefreshToken()) {
-        console.log(' Scheduled token refresh check...')
+        frontendLogger.debug(' Scheduled token refresh check...')
         authStore.proactiveTokenRefresh()
       } else if (authStore.isAuthenticated) {
-        console.log(' Token is still valid, no refresh needed')
+        frontendLogger.debug(' Token is still valid, no refresh needed')
       }
     }, 5 * 60 * 1000) // 5 分鐘
     
-    console.log(' Token refresh check started - will check every 5 minutes')
+    frontendLogger.debug(' Token refresh check started - will check every 5 minutes')
   }
 
   const stopTokenRefreshCheck = () => {

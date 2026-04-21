@@ -2,6 +2,9 @@
 // 充分利用瀏覽器空閒時間執行低優先級任務
 
 import { ref } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('idleTimeProcessor')
 
 // 任務優先級
 export enum TaskPriority {
@@ -207,7 +210,7 @@ export class IdleTimeProcessor {
           entries.forEach(entry => {
             if (entry.entryType === 'measure' && entry.name.includes('idle-task')) {
               // 監控空閒任務的性能
-              console.log(`[IdleTimeProcessor] ${entry.name}: ${entry.duration}ms`)
+              frontendLogger.debug(`[IdleTimeProcessor] ${entry.name}: ${entry.duration}ms`)
             }
           })
         })
@@ -306,7 +309,7 @@ export class IdleTimeProcessor {
     this.queueSize.value = 0
     this.isProcessing = false
     
-    console.log('[IdleTimeProcessor] All tasks cancelled')
+    frontendLogger.debug('[IdleTimeProcessor] All tasks cancelled')
   }
 
   // 取消特定優先級的任務
@@ -324,7 +327,7 @@ export class IdleTimeProcessor {
     
     this.queueSize.value = this.taskQueue.length
     
-    console.log(`[IdleTimeProcessor] Cancelled ${cancelledCount} tasks with priority ${priority}`)
+    frontendLogger.debug(`[IdleTimeProcessor] Cancelled ${cancelledCount} tasks with priority ${priority}`)
     return cancelledCount
   }
 
@@ -348,7 +351,7 @@ export class IdleTimeProcessor {
   // 清理資源
   destroy(): void {
     this.cancelAllTasks()
-    console.log('[IdleTimeProcessor] Processor destroyed')
+    frontendLogger.debug('[IdleTimeProcessor] Processor destroyed')
   }
 }
 

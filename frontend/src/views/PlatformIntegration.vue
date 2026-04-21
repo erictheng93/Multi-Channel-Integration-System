@@ -367,6 +367,9 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('PlatformIntegration')
 import { ref, computed, onMounted } from 'vue'
 import { systemApi } from '@/api/system'
 import { useToast } from '@/composables/useToast'
@@ -568,11 +571,11 @@ const refreshAll = async () => {
 
 // Platform event handlers
 const handleConnect = async (platform: 'line' | 'facebook') => {
-  console.log(`連接 ${platform} 平台`)
+  frontendLogger.debug(`連接 ${platform} 平台`)
 }
 
 const handleTest = async (platform: 'line' | 'facebook') => {
-  console.log(`測試 ${platform} 平台連接`)
+  frontendLogger.debug(`測試 ${platform} 平台連接`)
 }
 
 const handleRefresh = async (platform: 'line' | 'facebook') => {
@@ -593,7 +596,7 @@ const handleStatusChange = (platform: 'line' | 'facebook', status: string) => {
 
 const handlePlatformSwitch = () => {
   // 這裡可以實現平台切換邏輯
-  console.log(`切換到 ${activePlatform.value} 平台`)
+  frontendLogger.debug(`切換到 ${activePlatform.value} 平台`)
 }
 
 // Settings modal

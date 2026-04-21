@@ -4,6 +4,9 @@
 
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('authGuard')
 
 /**
  * 認證守衛 - 檢查用戶是否已登入
@@ -78,13 +81,13 @@ export async function combinedAuthGuard(
 ): Promise<boolean> {
   const authStore = useAuthStore()
 
-  console.log(' Auth Guard:', to.path, '| Session Status:', authStore.sessionStatus)
+  frontendLogger.debug(' Auth Guard:', to.path, '| Session Status:', authStore.sessionStatus)
 
   // Wait for session initialization to complete
   if (authStore.sessionStatus === 'pending') {
-    console.log(' Waiting for session initialization...')
+    frontendLogger.debug(' Waiting for session initialization...')
     await authStore.initializeSession()
-    console.log(' Session initialization completed:', authStore.sessionStatus)
+    frontendLogger.debug(' Session initialization completed:', authStore.sessionStatus)
   }
 
   // Use the finalized isAuthenticated state (token validated)
@@ -93,11 +96,11 @@ export async function combinedAuthGuard(
   // 1. Handle guestOnly pages (e.g., login page)
   if (to.meta.guestOnly) {
     if (isAuthenticated) {
-      console.log(' Already authenticated, redirecting to dashboard')
+      frontendLogger.debug(' Already authenticated, redirecting to dashboard')
       next('/dashboard')
       return true
     }
-    console.log(' Guest page, allowing access')
+    frontendLogger.debug(' Guest page, allowing access')
     next()
     return false
   }
@@ -105,17 +108,17 @@ export async function combinedAuthGuard(
   // 2. Handle pages that require auth
   if (to.meta.requiresAuth) {
     if (!isAuthenticated) {
-      console.log(' Not authenticated, redirecting to login')
+      frontendLogger.debug(' Not authenticated, redirecting to login')
       next('/login')
       return false
     }
-    console.log(' Authenticated, allowing access')
+    frontendLogger.debug(' Authenticated, allowing access')
     next()
     return true
   }
 
   // 3. Other pages — allow through
-  console.log(' Public page, allowing access')
+  frontendLogger.debug(' Public page, allowing access')
   next()
   return isAuthenticated
 }

@@ -7,6 +7,9 @@ import { preloadService } from '@/services/preloadService'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useToast } from '@/composables/useToast'
 import { CONVERSATION_STATUS, isOpenConversation } from '@/constants/conversation-status'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useTeamAssignment')
 
 export interface UseTeamAssignmentOptions {
   conversation: () => Conversation
@@ -99,7 +102,7 @@ export function useTeamAssignment(options: UseTeamAssignmentOptions) {
 
   const handleManualRefresh = async () => {
     if (isLoadingTeams.value) { return }
-    console.log('[AdvancedAssignActions] Manual refresh triggered by user')
+    frontendLogger.debug('[AdvancedAssignActions] Manual refresh triggered by user')
     isLoadingTeams.value = true
     try {
       await preloadService.refreshTeams()
@@ -119,16 +122,16 @@ export function useTeamAssignment(options: UseTeamAssignmentOptions) {
     const selectedTeamId = selectedTeam.value
     const selectedTeamData = teams.value.find(t => t.id === selectedTeamId)
     const teamName = selectedTeamData?.name || '團隊'
-    console.log(`[AdvancedAssignActions] Starting assignment to team: ${teamName} (ID: ${selectedTeamId})`)
+    frontendLogger.debug(`[AdvancedAssignActions] Starting assignment to team: ${teamName} (ID: ${selectedTeamId})`)
 
     if (conv.assignedTeamId && conv.assignedTeamId !== selectedTeamId) {
       const currentTeamId = conv.assignedTeamId
       const currentTeamData = teams.value.find(t => t.id === currentTeamId)
       const currentTeamName = currentTeamData?.name || conv.assignedTeam?.name || `團隊 #${currentTeamId}`
-      console.log(`[AdvancedAssignActions] Re-assignment detected: ${currentTeamName} → ${teamName}`)
+      frontendLogger.debug(`[AdvancedAssignActions] Re-assignment detected: ${currentTeamName} → ${teamName}`)
       const confirmed = await showWarning('確定要轉指派給其他團隊？', `此對話目前指派給「${currentTeamName}」，確定要轉指派給「${teamName}」嗎？`)
-      if (!confirmed) { console.log('[AdvancedAssignActions] Re-assignment cancelled by user'); return }
-      console.log('[AdvancedAssignActions] Re-assignment confirmed by user')
+      if (!confirmed) { frontendLogger.debug('[AdvancedAssignActions] Re-assignment cancelled by user'); return }
+      frontendLogger.debug('[AdvancedAssignActions] Re-assignment confirmed by user')
     }
 
     showSuccess('指派成功', `已成功將對話指派給「${teamName}」`)
@@ -143,13 +146,13 @@ export function useTeamAssignment(options: UseTeamAssignmentOptions) {
       if (isTransfer) {
         const fromTeamId = conv.assignedTeamId
         const fromTeamName = conv.assignedTeam?.name || `團隊 #${fromTeamId}`
-        console.log(`[AdvancedAssignActions] Using transfer API: ${fromTeamName} → ${teamName}`)
+        frontendLogger.debug(`[AdvancedAssignActions] Using transfer API: ${fromTeamName} → ${teamName}`)
         success = await conversationsStore.transferConversationToTeam(conv.id, fromTeamId, selectedTeamId, teamName, '管理員手動轉指派')
       } else {
-        console.log(`[AdvancedAssignActions] Using assign API: → ${teamName}`)
+        frontendLogger.debug(`[AdvancedAssignActions] Using assign API: → ${teamName}`)
         success = await conversationsStore.assignConversationToTeam(conv.id, selectedTeamId, teamName)
       }
-      if (success) { console.log(`[AdvancedAssignActions] ${isTransfer ? 'Transfer' : 'Assignment'} confirmed by server`) }
+      if (success) { frontendLogger.debug(`[AdvancedAssignActions] ${isTransfer ? 'Transfer' : 'Assignment'} confirmed by server`) }
       else {
         console.error(`[AdvancedAssignActions] Server rejected ${isTransfer ? 'transfer' : 'assignment'}`)
         showError(isTransfer ? '轉指派失敗' : '指派失敗', `服務器拒絕${isTransfer ? '轉指派' : '指派'}，請稍後重試`)
@@ -170,7 +173,7 @@ export function useTeamAssignment(options: UseTeamAssignmentOptions) {
     const confirmed = await showWarning(`確定要取消指派嗎？`, `此對話目前指派給團隊「${assignedName}」，取消後將變為待處理狀態。`)
     if (!confirmed) {return}
 
-    console.log(`[AdvancedAssignActions] Starting unassign for conversation:`, conv.id)
+    frontendLogger.debug(`[AdvancedAssignActions] Starting unassign for conversation:`, conv.id)
     showSuccess('取消指派成功', `已成功取消對話指派`)
     const optimisticConv: Conversation = { ...conv, status: CONVERSATION_STATUS.PENDING, assignedTeamId: undefined, assignedTeam: undefined }
     onUnassigned(optimisticConv)
@@ -179,7 +182,7 @@ export function useTeamAssignment(options: UseTeamAssignmentOptions) {
     isAssigning.value = true
     try {
       const success = await conversationsStore.unassignConversation(conv.id, '管理員手動取消指派')
-      if (success) { console.log(`[AdvancedAssignActions] Unassign confirmed by server`) }
+      if (success) { frontendLogger.debug(`[AdvancedAssignActions] Unassign confirmed by server`) }
       else { console.error(`[AdvancedAssignActions] Server rejected unassign`); showError('取消指派失敗', '服務器拒絕取消指派，請稍後重試'); onError('取消指派失敗') }
     } catch (error) {
       console.error('[AdvancedAssignActions] Unassign failed with exception:', error)

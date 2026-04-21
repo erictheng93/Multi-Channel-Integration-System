@@ -1,5 +1,8 @@
 // 第五階段：簡化版預載入 - 利用瀏覽器原生能力
 import { ref } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('usePrefetch')
 
 const prefetchedUrls = new Set<string>()
 const prefetchQueue = new Set<string>()
@@ -58,7 +61,7 @@ export function usePrefetch() {
       }
     } catch (error) {
       // 靜默處理預載入錯誤
-      console.debug('Prefetch failed:', endpoint, error)
+      frontendLogger.debug('Prefetch failed:', endpoint, error)
     } finally {
       isPrefetching.value = false
     }

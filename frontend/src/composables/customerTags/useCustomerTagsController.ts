@@ -16,6 +16,9 @@ import { useTagActions } from './useTagActions'
 import { useTagSelection } from './useTagSelection'
 import { useTagKeyboard } from './useTagKeyboard'
 import type { Tag } from '@/types/tag'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useCustomerTagsController')
 
 const DEFAULT_FORM_DATA = () => ({
   name: '',
@@ -209,26 +212,26 @@ export function useCustomerTagsController() {
       if (message.type === 'customer_tags_updated') {
         const now = Date.now()
         if (now - lastRefetchTime < REFETCH_DEBOUNCE_MS) {
-          console.log('[CustomerTagsController] Debouncing tag refetch')
+          frontendLogger.debug('[CustomerTagsController] Debouncing tag refetch')
           return
         }
         lastRefetchTime = now
 
-        console.log('[CustomerTagsController] Real-time tag update received, refetching...', message.data)
+        frontendLogger.debug('[CustomerTagsController] Real-time tag update received, refetching...', message.data)
         search.loadTags(true).catch((err: unknown) => {
           console.error('[CustomerTagsController] Real-time refetch failed:', err)
         })
       }
     })
 
-    console.log('[CustomerTagsController] Subscribed to tag WebSocket updates')
+    frontendLogger.debug('[CustomerTagsController] Subscribed to tag WebSocket updates')
   }
 
   const unsubscribeFromTagUpdates = () => {
     if (wsSubscriptionId) {
       wsStore.unsubscribe(wsSubscriptionId)
       wsSubscriptionId = null
-      console.log('[CustomerTagsController] Unsubscribed from tag WebSocket updates')
+      frontendLogger.debug('[CustomerTagsController] Unsubscribed from tag WebSocket updates')
     }
   }
 
@@ -245,7 +248,7 @@ export function useCustomerTagsController() {
     try {
       await search.loadTags()
       subscribeToTagUpdates()
-      console.log('[CustomerTagsController] Initialized successfully')
+      frontendLogger.debug('[CustomerTagsController] Initialized successfully')
     } catch (error) {
       console.error('[CustomerTagsController] Initialization failed:', error)
       showError('載入標籤失敗', '請檢查網路連線或稍後重試')
@@ -262,7 +265,7 @@ export function useCustomerTagsController() {
   const cleanup = () => {
     unsubscribeFromTagUpdates()
     keyboard.cleanup()
-    console.log('[CustomerTagsController] Cleaned up')
+    frontendLogger.debug('[CustomerTagsController] Cleaned up')
   }
 
   // ==================== Return Controller Interface ====================

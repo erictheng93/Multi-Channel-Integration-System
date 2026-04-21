@@ -7,6 +7,9 @@ import type { WebSocketClient} from './websocketClient';
 import { createWebSocketClient, type WebSocketMessage, type WebSocketConnectionState } from './websocketClient'
 import { useAuthStore } from '@/stores/auth'
 import type { Conversation, Message } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('websocketManager')
 
 // Connection types
 export interface ConversationConnection {
@@ -140,7 +143,7 @@ export class WebSocketManager {
   // Conversation management
   public joinConversation(conversationId: string): void {
     if (this.conversations.has(conversationId)) {
-      console.log(`Already joined conversation: ${conversationId}`)
+      frontendLogger.debug(`Already joined conversation: ${conversationId}`)
       return
     }
 
@@ -162,13 +165,13 @@ export class WebSocketManager {
       timestamp: Date.now()
     })
 
-    console.log(`Joined conversation: ${conversationId}`)
+    frontendLogger.debug(`Joined conversation: ${conversationId}`)
   }
 
   public leaveConversation(conversationId: string): void {
     const connection = this.conversations.get(conversationId)
     if (!connection) {
-      console.log(`Not joined to conversation: ${conversationId}`)
+      frontendLogger.debug(`Not joined to conversation: ${conversationId}`)
       return
     }
 
@@ -185,7 +188,7 @@ export class WebSocketManager {
     // Clean up typing users for this conversation
     delete this.typingUsers.value[conversationId]
 
-    console.log(`Left conversation: ${conversationId}`)
+    frontendLogger.debug(`Left conversation: ${conversationId}`)
   }
 
   public isJoinedToConversation(conversationId: string): boolean {
@@ -330,7 +333,7 @@ export class WebSocketManager {
         break
 
       default:
-        console.log(`Unhandled WebSocket message type: ${message.type}`)
+        frontendLogger.debug(`Unhandled WebSocket message type: ${message.type}`)
     }
   }
 
@@ -432,7 +435,7 @@ export class WebSocketManager {
 
   private handleSystemUpdate(message: WebSocketMessage): void {
     // Handle system-wide updates that might affect all conversations
-    console.log('System update received:', message.data)
+    frontendLogger.debug('System update received:', message.data)
   }
 
   // Team member added event handler
@@ -441,7 +444,7 @@ export class WebSocketManager {
     if (!data || typeof data !== 'object') {return}
 
     const eventData = data as TeamMemberEventData
-    console.log('[WebSocket] Team member added:', {
+    frontendLogger.debug('[WebSocket] Team member added:', {
       teamId: eventData.teamId,
       teamName: eventData.teamName,
       agentName: eventData.agentName,
@@ -457,7 +460,7 @@ export class WebSocketManager {
     if (!data || typeof data !== 'object') {return}
 
     const eventData = data as TeamMemberEventData
-    console.log('[WebSocket] Team member removed:', {
+    frontendLogger.debug('[WebSocket] Team member removed:', {
       teamId: eventData.teamId,
       teamName: eventData.teamName,
       agentName: eventData.agentName,
@@ -473,7 +476,7 @@ export class WebSocketManager {
     if (!data || typeof data !== 'object') {return}
 
     const eventData = data as TeamUpdateEventData
-    console.log('[WebSocket] Team updated:', {
+    frontendLogger.debug('[WebSocket] Team updated:', {
       teamId: eventData.teamId,
       changes: eventData.changes
     })
@@ -482,7 +485,7 @@ export class WebSocketManager {
   }
 
   private handleConnectionChange(state: WebSocketConnectionState): void {
-    console.log(`WebSocket connection state changed to: ${state}`)
+    frontendLogger.debug(`WebSocket connection state changed to: ${state}`)
 
     if (state === 'connected') {
       // Rejoin all conversations on reconnection
@@ -501,7 +504,7 @@ export class WebSocketManager {
   }
 
   private handleReconnect(attempt: number): void {
-    console.log(`WebSocket reconnection attempt: ${attempt}`)
+    frontendLogger.debug(`WebSocket reconnection attempt: ${attempt}`)
   }
 
   private rejoinConversations(): void {
@@ -587,7 +590,7 @@ export class WebSocketManager {
 
   // Cleanup on destruction
   public destroy(): void {
-    console.log('Destroying WebSocket manager')
+    frontendLogger.debug('Destroying WebSocket manager')
     this.disconnect()
     this.client.destroy()
     this.clearEventCallbacks()

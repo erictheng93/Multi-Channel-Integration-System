@@ -18,6 +18,9 @@ import { ref, computed } from 'vue'
 import { teamApi } from '@/api/team'
 import type { LiffQRCode, LiffQRCodeStats } from '@/types'
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('qrcode')
 
 // 快取條目結構
 interface LiffQRCacheEntry {
@@ -100,7 +103,7 @@ export const useQRCodeStore = defineStore('qrcode', () => {
   const loadQRCode = async (teamId: number, forceRefresh = false): Promise<LiffQRCode | null> => {
     // 檢查快取
     if (!forceRefresh && isCacheValid.value(teamId)) {
-      console.log(`[LIFF QR Store] 快取命中: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] 快取命中: team ${teamId}`)
       return getQRCode.value(teamId)
     }
 
@@ -113,7 +116,7 @@ export const useQRCodeStore = defineStore('qrcode', () => {
     })
 
     try {
-      console.log(`[LIFF QR Store] 載入 LIFF QR 碼: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] 載入 LIFF QR 碼: team ${teamId}`)
 
       const response = await teamApi.getLiffQRCode(teamId)
 
@@ -136,11 +139,11 @@ export const useQRCodeStore = defineStore('qrcode', () => {
           loading: false
         })
 
-        console.log(`[LIFF QR Store] LIFF QR 碼載入成功`)
+        frontendLogger.debug(`[LIFF QR Store] LIFF QR 碼載入成功`)
         return liffQRCode
       } else {
         // 無現有 LIFF QR Code
-        console.log(`[LIFF QR Store] 團隊尚未有 LIFF QR Code: team ${teamId}`)
+        frontendLogger.debug(`[LIFF QR Store] 團隊尚未有 LIFF QR Code: team ${teamId}`)
         liffQRCache.value.set(teamId, {
           data: null,
           timestamp: Date.now(),
@@ -176,14 +179,14 @@ export const useQRCodeStore = defineStore('qrcode', () => {
   ): Promise<LiffQRCode | null> => {
     // 如果不是重新生成，先檢查是否有現有 LIFF QR
     if (!isRegeneration) {
-      console.log(`[LIFF QR Store] 生成前檢查現有 LIFF QR: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] 生成前檢查現有 LIFF QR: team ${teamId}`)
       const existingQR = await loadQRCode(teamId)
 
       if (existingQR) {
-        console.log(`[LIFF QR Store] 發現現有 LIFF QR，直接使用`)
+        frontendLogger.debug(`[LIFF QR Store] 發現現有 LIFF QR，直接使用`)
         return existingQR
       }
-      console.log(`[LIFF QR Store] 確認無現有 LIFF QR，開始生成新的`)
+      frontendLogger.debug(`[LIFF QR Store] 確認無現有 LIFF QR，開始生成新的`)
     }
 
     // 標記為生成中
@@ -191,7 +194,7 @@ export const useQRCodeStore = defineStore('qrcode', () => {
     error.value = null
 
     try {
-      console.log(`[LIFF QR Store] ${isRegeneration ? '重新' : ''}生成 LIFF QR 碼: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] ${isRegeneration ? '重新' : ''}生成 LIFF QR 碼: team ${teamId}`)
 
       const response = await teamApi.generateLiffQR(teamId)
 
@@ -214,7 +217,7 @@ export const useQRCodeStore = defineStore('qrcode', () => {
           loading: false
         })
 
-        console.log(`[LIFF QR Store] LIFF QR 碼${isRegeneration ? '重新' : ''}生成成功: team ${teamId}`)
+        frontendLogger.debug(`[LIFF QR Store] LIFF QR 碼${isRegeneration ? '重新' : ''}生成成功: team ${teamId}`)
         return newLiffQRCode
       } else {
         error.value = response.error || '生成 LIFF QR 碼失敗'
@@ -235,15 +238,15 @@ export const useQRCodeStore = defineStore('qrcode', () => {
    */
   const getQRStats = async (teamId: number): Promise<LiffQRCodeStats | null> => {
     try {
-      console.log(`[LIFF QR Store] 載入統計: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] 載入統計: team ${teamId}`)
 
       const response = await teamApi.getLiffQRStats(teamId)
 
       if (response.success && response.data) {
-        console.log(`[LIFF QR Store] 統計載入成功`)
+        frontendLogger.debug(`[LIFF QR Store] 統計載入成功`)
         return response.data
       } else {
-        console.log(`[LIFF QR Store] 統計載入失敗`)
+        frontendLogger.debug(`[LIFF QR Store] 統計載入失敗`)
         return null
       }
     } catch (err) {
@@ -263,12 +266,12 @@ export const useQRCodeStore = defineStore('qrcode', () => {
     }
 
     try {
-      console.log(`[LIFF QR Store] 預載 LIFF QR 碼: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] 預載 LIFF QR 碼: team ${teamId}`)
       await loadQRCode(teamId)
-      console.log(`[LIFF QR Store] 預載完成: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] 預載完成: team ${teamId}`)
     } catch (_err) {
       // 預載失敗靜默處理
-      console.log(`[LIFF QR Store] 預載失敗: team ${teamId}`)
+      frontendLogger.debug(`[LIFF QR Store] 預載失敗: team ${teamId}`)
     }
   }
 
@@ -277,7 +280,7 @@ export const useQRCodeStore = defineStore('qrcode', () => {
    */
   const invalidateCache = (teamId: number): void => {
     liffQRCache.value.delete(teamId)
-    console.log(`[LIFF QR Store] 快取已清除: team ${teamId}`)
+    frontendLogger.debug(`[LIFF QR Store] 快取已清除: team ${teamId}`)
   }
 
   /**
@@ -285,7 +288,7 @@ export const useQRCodeStore = defineStore('qrcode', () => {
    */
   const clearAllCache = (): void => {
     liffQRCache.value.clear()
-    console.log(`[LIFF QR Store] 所有快取已清除`)
+    frontendLogger.debug(`[LIFF QR Store] 所有快取已清除`)
   }
 
   /**

@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { combinedAuthGuard } from '@/middleware/authGuard'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('index')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -310,7 +313,7 @@ if (typeof window !== 'undefined') {
 
 router.beforeEach(async (to, from, next) => {
   // 簡化的調試日誌
-  console.log(' Navigation:', from.path, '->', to.path)
+  frontendLogger.debug(' Navigation:', from.path, '->', to.path)
 
   // Set page title immediately (no delay)
   if (to.meta.title) {
@@ -321,7 +324,7 @@ router.beforeEach(async (to, from, next) => {
 
   // 防止重複循環 - 如果已在目標路徑則直接允許
   if (to.path === from.path) {
-    console.log(' Same path navigation detected, allowing...')
+    frontendLogger.debug(' Same path navigation detected, allowing...')
     next()
     return
   }
@@ -334,14 +337,14 @@ router.beforeEach(async (to, from, next) => {
     // Cache is fresh
     if (!requiresAuth) {
       // Public route - allow immediately
-      console.log('[Router Cache] Public route, allowing...')
+      frontendLogger.debug('[Router Cache] Public route, allowing...')
       next()
       return
     }
 
     if (authStateCache.isAuthenticated && authStateCache.requiresAuth) {
       // User was authenticated recently - allow immediately
-      console.log('[Router Cache] Using cached auth state, allowing...')
+      frontendLogger.debug('[Router Cache] Using cached auth state, allowing...')
       next()
       return
     }
@@ -374,7 +377,7 @@ router.beforeEach(async (to, from, next) => {
 
 // Handle navigation completion
 router.afterEach((to, from) => {
-  console.log(' Navigation completed:', from.path, '->', to.path)
+  frontendLogger.debug(' Navigation completed:', from.path, '->', to.path)
 })
 
 // Handle navigation errors

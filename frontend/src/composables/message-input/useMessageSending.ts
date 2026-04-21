@@ -2,6 +2,9 @@ import { ref } from 'vue'
 import type { MessageInputAttachment, FileAttachmentEmitData, UploadResult } from '@/types/message-input'
 import { useAuthStore } from '@/stores/auth'
 import { getApiUrl } from '@/config/runtime'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMessageSending')
 
 /** Emit function signature expected by useMessageSending. */
 export interface MessageSendingEmit {
@@ -178,7 +181,7 @@ export function useMessageSending(options: MessageSendingOptions) {
           }
         }
 
-        console.log(`[並行上傳] ${totalFiles} 個文件全部上傳完成`)
+        frontendLogger.debug(`[並行上傳] ${totalFiles} 個文件全部上傳完成`)
 
         options.emit('upload-progress', {
           tempId,

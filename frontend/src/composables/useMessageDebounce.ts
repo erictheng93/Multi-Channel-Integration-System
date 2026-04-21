@@ -2,6 +2,9 @@
 // Prevents duplicate message sending with debounce protection
 
 import { ref, computed } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMessageDebounce')
 
 export interface MessageDebounceConfig {
   /** 防抖延迟时间 (毫秒) */
@@ -102,7 +105,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
   const markSending = () => {
     state.value.isSending = true
     state.value.lastSentTime = Date.now()
-    console.log('[MessageDebounce] Marked as sending')
+    frontendLogger.debug('[MessageDebounce] Marked as sending')
   }
 
   /**
@@ -111,7 +114,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
    */
   const markComplete = () => {
     state.value.isSending = false
-    console.log('[MessageDebounce] Marked as complete')
+    frontendLogger.debug('[MessageDebounce] Marked as complete')
   }
 
   /**
@@ -133,7 +136,7 @@ export function useMessageDebounce(config: MessageDebounceConfig = {}) {
       lastSentTime: 0,
       blockedCount: 0
     }
-    console.log('[MessageDebounce] State reset')
+    frontendLogger.debug('[MessageDebounce] State reset')
   }
 
   /**

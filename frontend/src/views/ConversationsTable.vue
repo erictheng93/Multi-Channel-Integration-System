@@ -69,6 +69,9 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('ConversationsTable')
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
@@ -130,7 +133,7 @@ const displayedConversations = computed(() => {
 
 // Watch debounced API filters and fetch from API
 watch(debouncedApiFilters, (newFilters) => {
-  console.log('[ConversationsTable] API filters changed:', newFilters)
+  frontendLogger.debug('[ConversationsTable] API filters changed:', newFilters)
   conversationsStore.fetchConversations(newFilters as ConversationFiltersType)
 })
 
@@ -154,7 +157,7 @@ watch(conversations, (currentConversations) => {
   previousConversationIds.value = currentConversations.map(conv => conv.id)
 }, { deep: true })
 
-console.log('[ConversationsTable] Initial state:', {
+frontendLogger.debug('[ConversationsTable] Initial state:', {
   loading: loading.value,
   conversationsLength: conversations.value.length,
   storeState: conversationsStore.$state
@@ -165,7 +168,7 @@ const performSmoothUpdate = async () => {
   if (isUpdating.value) {return} // 防止重複更新
 
   isUpdating.value = true
-  console.log('[ConversationsTable] Starting smooth update...')
+  frontendLogger.debug('[ConversationsTable] Starting smooth update...')
 
   try {
     await conversationsStore.fetchConversations(filterComposable.getApiFilters() as ConversationFiltersType)
@@ -174,7 +177,7 @@ const performSmoothUpdate = async () => {
     await nextTick()
     setTimeout(() => {
       isUpdating.value = false
-      console.log('[ConversationsTable] Smooth update completed')
+      frontendLogger.debug('[ConversationsTable] Smooth update completed')
     }, 800) // 800ms 的更新指示器顯示時間
 
   } catch (error) {
@@ -185,7 +188,7 @@ const performSmoothUpdate = async () => {
 
 // 刷新對話列表的函數
 const refreshConversations = () => {
-  console.log('[ConversationsTable] Manual refresh requested')
+  frontendLogger.debug('[ConversationsTable] Manual refresh requested')
   performSmoothUpdate()
 }
 
@@ -199,7 +202,7 @@ function handleFilterUpdate(key: keyof ConversationFiltersType, value: string | 
 }
 
 onMounted(async () => {
-  console.log(' ConversationsTable mounted')
+  frontendLogger.debug(' ConversationsTable mounted')
 
   // Load tags for filter dropdown (async, reactive)
   loadAvailableTags()
@@ -218,13 +221,13 @@ onMounted(async () => {
 
   // 方案 B 阶段 1: 启动实时同步
   // Store 层统一管理 WebSocket 连接，所有使用 store 的组件自动获得实时更新
-  console.log('[ConversationsTable] Initializing real-time sync from Store...')
+  frontendLogger.debug('[ConversationsTable] Initializing real-time sync from Store...')
   conversationsStore.initializeRealtime()
 })
 
 // 清理实时同步资源
 onUnmounted(() => {
-  console.log('[ConversationsTable] Component unmounting, cleaning up...')
+  frontendLogger.debug('[ConversationsTable] Component unmounting, cleaning up...')
   conversationsStore.cleanup()
 })
 </script>

@@ -3,6 +3,9 @@
 
 import { ref } from 'vue'
 import type { Conversation } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('webWorkerManager')
 
 // Worker 消息接口
 interface WorkerMessage {
@@ -90,7 +93,7 @@ export class WebWorkerManager {
       this.activeWorkers.value = this.workers.length
       this.isReady.value = true
       
-      console.log(`[WebWorkerManager] Initialized ${this.workers.length} workers`)
+      frontendLogger.debug(`[WebWorkerManager] Initialized ${this.workers.length} workers`)
       
     } catch (error) {
       console.error('[WebWorkerManager] Failed to initialize worker pool:', error)
@@ -320,7 +323,7 @@ export class WebWorkerManager {
     this.activeTasks.clear()
     this.queueSize.value = 0
     
-    console.log('[WebWorkerManager] All tasks cancelled')
+    frontendLogger.debug('[WebWorkerManager] All tasks cancelled')
   }
 
   // 擴展 Worker 池
@@ -340,7 +343,7 @@ export class WebWorkerManager {
       this.workers.push(worker)
       this.activeWorkers.value = this.workers.length
       
-      console.log(`[WebWorkerManager] Scaled up to ${this.workers.length} workers`)
+      frontendLogger.debug(`[WebWorkerManager] Scaled up to ${this.workers.length} workers`)
     } catch (error) {
       console.error('[WebWorkerManager] Failed to scale up:', error)
     }
@@ -358,7 +361,7 @@ export class WebWorkerManager {
       worker.terminate()
       this.activeWorkers.value = this.workers.length
       
-      console.log(`[WebWorkerManager] Scaled down to ${this.workers.length} workers`)
+      frontendLogger.debug(`[WebWorkerManager] Scaled down to ${this.workers.length} workers`)
     }
   }
 
@@ -385,7 +388,7 @@ export class WebWorkerManager {
     this.activeWorkers.value = 0
     this.isReady.value = false
     
-    console.log('[WebWorkerManager] Worker pool destroyed')
+    frontendLogger.debug('[WebWorkerManager] Worker pool destroyed')
   }
 }
 

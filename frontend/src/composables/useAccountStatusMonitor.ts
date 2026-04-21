@@ -1,5 +1,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuth } from './useAuth'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useAccountStatusMonitor')
 
 export function useAccountStatusMonitor() {
   const { currentAgent } = useAuth()
@@ -10,7 +13,7 @@ export function useAccountStatusMonitor() {
     
     // 檢查是否是當前用戶被停權
     if (currentAgent.value && currentAgent.value.id === memberId) {
-      console.log(' Current user account has been disabled')
+      frontendLogger.debug(' Current user account has been disabled')
       showDisabledModal.value = true
     }
   }

@@ -133,6 +133,42 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const props = withDefaults(defineProps<Props>(), {
+  displayedMessages: undefined,
+  loading: false,
+  hasMore: false,
+  loadingHistory: false,
+  showDateSeparators: true,
+  isSearchActive: false,
+  isUpdating: false,
+  isTyping: false,
+  typingUsers: () => [],
+  searchTerm: '',
+  enableAnimations: true,
+  scrollBehavior: 'smooth',
+  animationClasses: () => ({}),
+  websocketEnabled: false,
+  isHistoryPrepending: false,
+  historyPrependCount: 0
+})
+const emit = defineEmits<{
+  messageCopy: [message: Message]
+  messageReply: [message: Message]
+  messageForward: [message: Message]
+  messageRecall: [message: Message]
+  messageSelect: [message: Message]
+  searchClear: []
+  loadMore: []
+  scroll: [scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }]
+  scrollToTop: []
+  scrollToBottom: []
+  newMessageWhileScrolled: []
+  retry: [messageId: string]
+  initialScrollComplete: []
+}>()
+const frontendLogger = createLogger('VirtualMessageList')
 import { ref } from 'vue'
 import type { Message } from '@/types'
 import MessageBubble from '@/components/conversation/MessageBubble.vue'
@@ -163,41 +199,6 @@ interface Props {
   isHistoryPrepending?: boolean
   historyPrependCount?: number
 }
-
-const props = withDefaults(defineProps<Props>(), {
-  displayedMessages: undefined,
-  loading: false,
-  hasMore: false,
-  loadingHistory: false,
-  showDateSeparators: true,
-  isSearchActive: false,
-  isUpdating: false,
-  isTyping: false,
-  typingUsers: () => [],
-  searchTerm: '',
-  enableAnimations: true,
-  scrollBehavior: 'smooth',
-  animationClasses: () => ({}),
-  websocketEnabled: false,
-  isHistoryPrepending: false,
-  historyPrependCount: 0
-})
-
-const emit = defineEmits<{
-  messageCopy: [message: Message]
-  messageReply: [message: Message]
-  messageForward: [message: Message]
-  messageRecall: [message: Message]
-  messageSelect: [message: Message]
-  searchClear: []
-  loadMore: []
-  scroll: [scrollInfo: { scrollTop: number; scrollHeight: number; clientHeight: number }]
-  scrollToTop: []
-  scrollToBottom: []
-  newMessageWhileScrolled: []
-  retry: [messageId: string]
-  initialScrollComplete: []
-}>()
 
 // Template refs
 const scrollContainer = ref<HTMLElement>()
@@ -299,7 +300,7 @@ const scrollToMessage = async (messageId: string, retries = 3, delay = 100) => {
 
 // Handle retry event from MessageBubble
 const handleRetry = (messageId: string) => {
-  console.log('[VirtualMessageList] Retry event received for message:', messageId)
+  frontendLogger.debug('[VirtualMessageList] Retry event received for message:', messageId)
   emit('retry', messageId)
 }
 

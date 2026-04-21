@@ -16,6 +16,9 @@ import { createRealtimeHandler } from './conversations/realtimeHandler'
 import { createAssignmentActions } from './conversations/assignmentActions'
 import { createBackgroundSync } from './conversations/backgroundSync'
 import { createCacheStrategy } from './conversations/cacheStrategy'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('conversations')
 
 export const useConversationsStore = defineStore('conversations', () => {
   // ═══════════════════════════════════════════════════════════════════
@@ -146,7 +149,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     if (logChanges) {
       const duration = performance.now() - startTime
-      console.log(`[ConversationsStore] Incremental update completed:`, {
+      frontendLogger.debug(`[ConversationsStore] Incremental update completed:`, {
         total: updatedList.length,
         changed: changedCount,
         added: addedCount,
@@ -175,7 +178,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       const removed = conversations.value.splice(index, 1)
       if (removed.length > 0 && removed[0]) {
         conversations.value.unshift(removed[0])
-        console.log(`[ConversationsStore] Moved conversation ${conversationId} to top`)
+        frontendLogger.debug(`[ConversationsStore] Moved conversation ${conversationId} to top`)
       }
     }
   }
@@ -200,14 +203,14 @@ export const useConversationsStore = defineStore('conversations', () => {
     const index = conversations.value.findIndex(c => c.id === conversationId)
 
     if (index === -1) {
-      console.log(`[ConversationsStore] Conversation ${conversationId} not found in list, will fetch via polling`)
+      frontendLogger.debug(`[ConversationsStore] Conversation ${conversationId} not found in list, will fetch via polling`)
       pollConversations()
       return false
     }
 
     const conversation = conversations.value[index]
     if (!conversation) {
-      console.log(`[ConversationsStore] Conversation object is undefined at index ${index}`)
+      frontendLogger.debug(`[ConversationsStore] Conversation object is undefined at index ${index}`)
       pollConversations()
       return false
     }
@@ -252,7 +255,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     updateStatsFromConversations()
 
-    console.log(`[ConversationsStore] Real-time update applied to conversation ${conversationId}`, {
+    frontendLogger.debug(`[ConversationsStore] Real-time update applied to conversation ${conversationId}`, {
       lastMessage: messageData.content?.substring(0, 30),
       unreadCount: updatedConversation.unreadCount,
       movedToTop: moveToTop,
@@ -291,7 +294,7 @@ export const useConversationsStore = defineStore('conversations', () => {
           currentUpdated = true
         }
 
-        console.log(`[ConversationsStore] Status update applied to conversation ${conversationId}`, {
+        frontendLogger.debug(`[ConversationsStore] Status update applied to conversation ${conversationId}`, {
           updates,
           listUpdated,
           currentUpdated
@@ -301,7 +304,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     // FIX: Update currentConversation even if not in list
     if (!currentUpdated && currentConversation.value && currentConversation.value.id === conversationId) {
-      console.log(`[ConversationsStore] Conversation not in list, but updating currentConversation:`, {
+      frontendLogger.debug(`[ConversationsStore] Conversation not in list, but updating currentConversation:`, {
         conversationId,
         updates
       })
@@ -313,11 +316,11 @@ export const useConversationsStore = defineStore('conversations', () => {
       }
       currentUpdated = true
 
-      console.log(`[ConversationsStore] Updated currentConversation (not in list) for ${conversationId}`)
+      frontendLogger.debug(`[ConversationsStore] Updated currentConversation (not in list) for ${conversationId}`)
     }
 
     if (!listUpdated && !currentUpdated) {
-      console.log(`[ConversationsStore] Conversation ${conversationId} not found in list or currentConversation`)
+      frontendLogger.debug(`[ConversationsStore] Conversation ${conversationId} not found in list or currentConversation`)
     }
 
     return listUpdated || currentUpdated
@@ -450,7 +453,7 @@ export const useConversationsStore = defineStore('conversations', () => {
           conversations.value = [...conversations.value, ...newConversations]
 
           if (newConversations.length > 0) {
-            console.log(`[ConversationsStore] Loaded ${newConversations.length} more conversations`)
+            frontendLogger.debug(`[ConversationsStore] Loaded ${newConversations.length} more conversations`)
           }
         } else {
           updateConversationsIncrementally(conversationList, import.meta.env.DEV)
@@ -471,24 +474,24 @@ export const useConversationsStore = defineStore('conversations', () => {
   }
 
   const refreshConversations = async () => {
-    console.log('[ConversationsStore] User refresh triggered, activeFilters:', activeFilters.value)
+    frontendLogger.debug('[ConversationsStore] User refresh triggered, activeFilters:', activeFilters.value)
     await fetchConversations(activeFilters.value, 1, false)
   }
 
   const loadMoreConversations = async () => {
     const nextPage = pagination.value.page + 1
-    console.log(`[ConversationsStore] Loading page ${nextPage}`)
+    frontendLogger.debug(`[ConversationsStore] Loading page ${nextPage}`)
     await fetchConversations(undefined, nextPage, true)
   }
 
   const silentRefresh = async () => {
-    console.log('[ConversationsStore] Silent background refresh, activeFilters:', activeFilters.value)
+    frontendLogger.debug('[ConversationsStore] Silent background refresh, activeFilters:', activeFilters.value)
     await fetchConversations(activeFilters.value, 1, false)
   }
 
   const setActiveFilters = (newFilters: ConversationFilters) => {
     activeFilters.value = { ...newFilters }
-    console.log('[ConversationsStore] Active filters updated:', activeFilters.value)
+    frontendLogger.debug('[ConversationsStore] Active filters updated:', activeFilters.value)
   }
 
   const fetchConversation = async (id: string) => {
@@ -679,21 +682,21 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   const initializeRealtime = async () => {
     if (conversationsSubscriptionId) {
-      console.log(`[ConversationsStore] Already subscribed to conversations (ID: ${conversationsSubscriptionId.substring(0, 8)}), skipping`)
+      frontendLogger.debug(`[ConversationsStore] Already subscribed to conversations (ID: ${conversationsSubscriptionId.substring(0, 8)}), skipping`)
       return
     }
 
-    console.log('[ConversationsStore] Initializing real-time sync (Phase B3)...')
+    frontendLogger.debug('[ConversationsStore] Initializing real-time sync (Phase B3)...')
 
     updating.value = true
 
     if (!wsStore.isConnected) {
-      console.log('[ConversationsStore] Connecting to global WebSocket...')
+      frontendLogger.debug('[ConversationsStore] Connecting to global WebSocket...')
       await wsStore.connect()
     }
 
     conversationsSubscriptionId = wsStore.subscribe('conversations', (message) => {
-      console.log('[ConversationsStore] Received message on conversations channel:', {
+      frontendLogger.debug('[ConversationsStore] Received message on conversations channel:', {
         type: message.type,
         conversationId: message.conversationId,
         action: (message.data as Record<string, unknown>)?.action
@@ -709,27 +712,27 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     // Listen for page visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    console.log('[ConversationsStore] Added visibility change listener')
+    frontendLogger.debug('[ConversationsStore] Added visibility change listener')
 
     updating.value = false
 
-    console.log(`[ConversationsStore] Subscribed to conversations (ID: ${conversationsSubscriptionId?.substring(0, 8)})`)
+    frontendLogger.debug(`[ConversationsStore] Subscribed to conversations (ID: ${conversationsSubscriptionId?.substring(0, 8)})`)
   }
 
   const cleanup = () => {
-    console.log('[ConversationsStore] Cleaning up real-time sync...')
+    frontendLogger.debug('[ConversationsStore] Cleaning up real-time sync...')
 
     if (conversationsSubscriptionId) {
       wsStore.unsubscribe(conversationsSubscriptionId)
       conversationsSubscriptionId = null
-      console.log('[ConversationsStore] Unsubscribed from conversations')
+      frontendLogger.debug('[ConversationsStore] Unsubscribed from conversations')
     }
 
     stopPendingCleanup()
     stopBackgroundSync()
 
     document.removeEventListener('visibilitychange', handleVisibilityChange)
-    console.log('[ConversationsStore] Removed visibility change listener')
+    frontendLogger.debug('[ConversationsStore] Removed visibility change listener')
 
     error.value = null
     updating.value = false

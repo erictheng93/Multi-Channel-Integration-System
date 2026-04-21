@@ -12,6 +12,9 @@
  */
 
 import { useAsyncData } from '@/composables/useAsyncData'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useDashboardStats')
 
 export interface DashboardStats {
   todayMessages: number
@@ -67,7 +70,7 @@ export function useDashboardStats(options: UseDashboardStatsOptions = {}) {
           throw new Error('Failed to fetch dashboard stats')
         }
 
-        console.log(' Dashboard stats fetched successfully:', response.data)
+        frontendLogger.debug(' Dashboard stats fetched successfully:', response.data)
 
         // 返回真实统计数据
         return {

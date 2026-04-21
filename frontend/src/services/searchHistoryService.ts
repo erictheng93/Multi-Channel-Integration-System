@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('searchHistoryService')
 /**
  * 搜索歷史記錄服務
  * 管理用戶的搜索歷史，支持持久化存儲
@@ -94,7 +97,7 @@ export class SearchHistoryService {
 
     this.saveToStorage()
 
-    console.log(`[SearchHistory] 已添加: "${trimmedQuery}" (${resultCount ?? '?'} 條結果)`)
+    frontendLogger.debug(`[SearchHistory] 已添加: "${trimmedQuery}" (${resultCount ?? '?'} 條結果)`)
   }
 
   /**
@@ -137,7 +140,7 @@ export class SearchHistoryService {
   removeSearch(query: string): void {
     this.history = this.history.filter(item => item.query !== query)
     this.saveToStorage()
-    console.log(`[SearchHistory] 已刪除: "${query}"`)
+    frontendLogger.debug(`[SearchHistory] 已刪除: "${query}"`)
   }
 
   /**
@@ -146,7 +149,7 @@ export class SearchHistoryService {
   clearHistory(): void {
     this.history = []
     this.saveToStorage()
-    console.log('[SearchHistory] 已清空所有歷史記錄')
+    frontendLogger.debug('[SearchHistory] 已清空所有歷史記錄')
   }
 
   /**
@@ -212,7 +215,7 @@ export class SearchHistoryService {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed)) {
           this.history = parsed
-          console.log(`[SearchHistory] 已加載 ${this.history.length} 條歷史記錄`)
+          frontendLogger.debug(`[SearchHistory] 已加載 ${this.history.length} 條歷史記錄`)
         }
       }
     } catch (error) {
@@ -261,7 +264,7 @@ export class SearchHistoryService {
       if (Array.isArray(parsed)) {
         this.history = parsed.slice(0, MAX_HISTORY_ITEMS)
         this.saveToStorage()
-        console.log(`[SearchHistory] 已導入 ${this.history.length} 條記錄`)
+        frontendLogger.debug(`[SearchHistory] 已導入 ${this.history.length} 條記錄`)
         return true
       } else {
         console.error('[SearchHistory] 無效的 JSON 格式')

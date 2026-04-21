@@ -9,6 +9,9 @@
  */
 
 import { getTags, type Tag } from '@/api/tags'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('tagCacheService')
 
 interface CacheEntry<T> {
   data: T
@@ -38,14 +41,14 @@ class TagCacheService {
   }
 
   private async _doInit(): Promise<void> {
-    console.log('[TagCacheService] Initializing tag cache service...')
+    frontendLogger.debug('[TagCacheService] Initializing tag cache service...')
     const startTime = performance.now()
 
     try {
       await this.preloadTags()
 
       const duration = performance.now() - startTime
-      console.log(`[TagCacheService] Initialization completed in ${duration.toFixed(2)}ms`)
+      frontendLogger.debug(`[TagCacheService] Initialization completed in ${duration.toFixed(2)}ms`)
       this.initialized = true
     } catch (error) {
       console.error('[TagCacheService] Initialization failed:', error)
@@ -62,11 +65,11 @@ class TagCacheService {
 
     // 检查缓存是否有效
     if (cached && this.isCacheValid(cached)) {
-      console.log('[TagCacheService] Tags loaded from cache')
+      frontendLogger.debug('[TagCacheService] Tags loaded from cache')
       return cached.data
     }
 
-    console.log('[TagCacheService] Fetching tags from API...')
+    frontendLogger.debug('[TagCacheService] Fetching tags from API...')
     try {
       const response = await getTags({ pageSize: 100 })
 
@@ -80,7 +83,7 @@ class TagCacheService {
           ttl: 3 * 60 * 1000  // 3分钟 TTL (标签变化较频繁)
         })
 
-        console.log(`[TagCacheService] ${tags.length} tags cached`)
+        frontendLogger.debug(`[TagCacheService] ${tags.length} tags cached`)
         return tags
       } else {
         console.error('[TagCacheService] Failed to load tags: Invalid response')
@@ -128,7 +131,7 @@ class TagCacheService {
    * 手动刷新标签数据
    */
   async refreshTags(): Promise<Tag[]> {
-    console.log('[TagCacheService] Manual refresh of tags...')
+    frontendLogger.debug('[TagCacheService] Manual refresh of tags...')
     this.cache.delete('tags')
     return this.preloadTags()
   }
@@ -147,7 +150,7 @@ class TagCacheService {
         data: updatedTags,
         timestamp: Date.now()  // 更新时间戳
       })
-      console.log('[TagCacheService] Tag added optimistically:', tag.name)
+      frontendLogger.debug('[TagCacheService] Tag added optimistically:', tag.name)
     }
   }
 
@@ -164,7 +167,7 @@ class TagCacheService {
         data: updatedTags,
         timestamp: Date.now()
       })
-      console.log('[TagCacheService] Tag removed optimistically:', tagId)
+      frontendLogger.debug('[TagCacheService] Tag removed optimistically:', tagId)
     }
   }
 
@@ -183,7 +186,7 @@ class TagCacheService {
         data: updatedTags,
         timestamp: Date.now()
       })
-      console.log('[TagCacheService] Tag updated optimistically:', updatedTag.name)
+      frontendLogger.debug('[TagCacheService] Tag updated optimistically:', updatedTag.name)
     }
   }
 
@@ -209,7 +212,7 @@ class TagCacheService {
     }
 
     if (cleaned > 0) {
-      console.log(`[TagCacheService] Cleaned ${cleaned} expired cache entries`)
+      frontendLogger.debug(`[TagCacheService] Cleaned ${cleaned} expired cache entries`)
     }
   }
 
@@ -220,7 +223,7 @@ class TagCacheService {
     this.cache.clear()
     this.initialized = false
     this.initPromise = null
-    console.log('[TagCacheService] All cache cleared')
+    frontendLogger.debug('[TagCacheService] All cache cleared')
   }
 
   /**

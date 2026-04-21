@@ -5,6 +5,9 @@ import { ref, reactive } from 'vue'
 import type { Conversation, ConversationFilters, Platform } from '@/types'
 import { conversationApi } from '@/api/conversations'
 import { idleTimeProcessor, TaskPriority } from './idleTimeProcessor'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('predictiveLoader')
 
 // 滾動數據類型
 interface ScrollData {
@@ -582,7 +585,7 @@ export class PredictiveLoader {
       
       this.stats.value.preloadedDataSize += JSON.stringify(data).length
       
-      console.log(`[PredictiveLoader] Preloaded data for filters:`, prediction.filters)
+      frontendLogger.debug(`[PredictiveLoader] Preloaded data for filters:`, prediction.filters)
       
     } catch (error) {
       console.error('[PredictiveLoader] Preload failed:', error)
@@ -616,7 +619,7 @@ export class PredictiveLoader {
     this.stats.value.cacheHits++
     this.stats.value.successfulPredictions++
     
-    console.log(`[PredictiveLoader] Cache hit for filters:`, filters)
+    frontendLogger.debug(`[PredictiveLoader] Cache hit for filters:`, filters)
     return cached.data
   }
 
@@ -682,7 +685,7 @@ export class PredictiveLoader {
       console.warn('[PredictiveLoader] Failed to remove user pattern:', error)
     }
     
-    console.log('[PredictiveLoader] User pattern reset')
+    frontendLogger.debug('[PredictiveLoader] User pattern reset')
   }
 
   // 獲取統計信息
@@ -719,7 +722,7 @@ export class PredictiveLoader {
     this.behaviorHistory.length = 0
     this.isEnabled.value = false
     
-    console.log('[PredictiveLoader] Destroyed')
+    frontendLogger.debug('[PredictiveLoader] Destroyed')
   }
 }
 

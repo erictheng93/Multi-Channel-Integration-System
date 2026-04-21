@@ -10,6 +10,9 @@
 /* global ResizeObserver, ResizeObserverEntry */
 
 import { type Ref } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useResizeObserver')
 
 /**
  * Options for useResizeObserver composable
@@ -77,13 +80,13 @@ export function useResizeObserver(options: UseResizeObserverOptions) {
             const targetScroll = scrollContainer.value.scrollHeight - clientHeight
             scrollContainer.value.scrollTop = targetScroll
 
-            console.log(`[ResizeObserver] Compensated scroll for height change: ` +
+            frontendLogger.debug(`[ResizeObserver] Compensated scroll for height change: ` +
               `+${Math.round(heightDelta)}px, scrollTop: ${Math.round(scrollTop)} → ${Math.round(targetScroll)}`)
           }
           resizeCompensationPending = false
         })
       } else {
-        console.log(`[ResizeObserver] Height changed +${Math.round(heightDelta)}px but user not at bottom (distance: ${Math.round(distanceFromBottom)}px)`)
+        frontendLogger.debug(`[ResizeObserver] Height changed +${Math.round(heightDelta)}px but user not at bottom (distance: ${Math.round(distanceFromBottom)}px)`)
       }
     }
 
@@ -103,7 +106,7 @@ export function useResizeObserver(options: UseResizeObserverOptions) {
     contentResizeObserver.observe(listContainer.value)
 
     previousContentHeight = listContainer.value.getBoundingClientRect().height
-    console.log(`[ResizeObserver] Initialized with height: ${Math.round(previousContentHeight)}px`)
+    frontendLogger.debug(`[ResizeObserver] Initialized with height: ${Math.round(previousContentHeight)}px`)
   }
 
   /**
@@ -114,7 +117,7 @@ export function useResizeObserver(options: UseResizeObserverOptions) {
     if (contentResizeObserver) {
       contentResizeObserver.disconnect()
       contentResizeObserver = null
-      console.log('[ResizeObserver] Disconnected')
+      frontendLogger.debug('[ResizeObserver] Disconnected')
     }
   }
 

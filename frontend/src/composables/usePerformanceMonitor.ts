@@ -1,6 +1,9 @@
 // 高性能監控 Composable - 實時跟踪應用性能指標
 /* eslint-disable no-undef */
 import { ref, onUnmounted } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('usePerformanceMonitor')
 
 interface PerformanceMetrics {
   // Core Web Vitals
@@ -61,7 +64,7 @@ export function usePerformanceMonitor() {
     if (isMonitoring.value || !window.performance) {return}
     
     isMonitoring.value = true
-    console.log('[Performance Monitor] Starting performance monitoring')
+    frontendLogger.debug('[Performance Monitor] Starting performance monitoring')
     
     // Core Web Vitals monitoring
     if ('PerformanceObserver' in window) {
@@ -72,7 +75,7 @@ export function usePerformanceMonitor() {
           const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
           if (lastEntry) {
             metrics.value.lcp = lastEntry.renderTime || lastEntry.loadTime
-            console.log(`[Performance] LCP: ${metrics.value.lcp?.toFixed(2)}ms`)
+            frontendLogger.debug(`[Performance] LCP: ${metrics.value.lcp?.toFixed(2)}ms`)
           }
         })
         lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
@@ -83,7 +86,7 @@ export function usePerformanceMonitor() {
           entries.forEach((entry: PerformanceEntry & { processingStart?: number }) => {
             if (entry.processingStart !== undefined) {
               metrics.value.fid = entry.processingStart - entry.startTime
-              console.log(`[Performance] FID: ${metrics.value.fid.toFixed(2)}ms`)
+              frontendLogger.debug(`[Performance] FID: ${metrics.value.fid.toFixed(2)}ms`)
             }
           })
         })
@@ -127,7 +130,7 @@ export function usePerformanceMonitor() {
     if (!isMonitoring.value) {return}
     
     isMonitoring.value = false
-    console.log('[Performance Monitor] Stopping performance monitoring')
+    frontendLogger.debug('[Performance Monitor] Stopping performance monitoring')
     
     if (performanceObserver) {
       performanceObserver?.disconnect()
@@ -225,13 +228,13 @@ export function usePerformanceMonitor() {
     
     if (fcp) {
       metrics.value.initialRenderTime = fcp.startTime
-      console.log(`[Performance] First Contentful Paint: ${fcp.startTime.toFixed(2)}ms`)
+      frontendLogger.debug(`[Performance] First Contentful Paint: ${fcp.startTime.toFixed(2)}ms`)
     }
     
     // Measure Time to Interactive (TTI) - simplified version
     setTimeout(() => {
       metrics.value.timeToInteractive = performance.now()
-      console.log(`[Performance] Time to Interactive: ${metrics.value.timeToInteractive.toFixed(2)}ms`)
+      frontendLogger.debug(`[Performance] Time to Interactive: ${metrics.value.timeToInteractive.toFixed(2)}ms`)
     }, 0)
   }
   
@@ -245,7 +248,7 @@ export function usePerformanceMonitor() {
       startTime
     })
     
-    console.log(`[Performance Mark] ${name}: ${startTime.toFixed(2)}ms`)
+    frontendLogger.debug(`[Performance Mark] ${name}: ${startTime.toFixed(2)}ms`)
   }
   
   // Measure duration between marks
@@ -267,7 +270,7 @@ export function usePerformanceMonitor() {
         }
         
         performance.measure(name, startMark, endMark)
-        console.log(`[Performance Measure] ${name}: ${duration.toFixed(2)}ms`)
+        frontendLogger.debug(`[Performance Measure] ${name}: ${duration.toFixed(2)}ms`)
         
         return duration
       }
@@ -290,7 +293,7 @@ export function usePerformanceMonitor() {
       metrics.value.messageLoadTime = duration
       measure('message-load', 'message-load-start')
       
-      console.log(`[Performance] Message Load Time: ${duration.toFixed(2)}ms`)
+      frontendLogger.debug(`[Performance] Message Load Time: ${duration.toFixed(2)}ms`)
       return duration
     } catch (error) {
       console.error('Message load failed:', error)
@@ -339,12 +342,10 @@ export function usePerformanceMonitor() {
   
   // Log performance summary
   const logPerformanceSummary = () => {
-    console.group(' Performance Summary')
-    console.log('Metrics:', metrics.value)
-    console.log('Custom Marks:', marks.value)
-    console.log('Recommendations:', getPerformanceRecommendations())
-    console.groupEnd()
-  }
+    frontendLogger.debug(' Performance Summary')
+    frontendLogger.debug('Metrics:', metrics.value)
+    frontendLogger.debug('Custom Marks:', marks.value)
+    frontendLogger.debug('Recommendations:', getPerformanceRecommendations())  }
   
   // Cleanup
   onUnmounted(() => {
@@ -394,7 +395,7 @@ export const performanceUtils = {
         
         if (trackPerformance) {
           const duration = performance.now() - start
-          console.log(`[Debounced Function] Executed after ${callCount} calls, took ${duration.toFixed(2)}ms`)
+          frontendLogger.debug(`[Debounced Function] Executed after ${callCount} calls, took ${duration.toFixed(2)}ms`)
         }
         callCount = 0
       }, delay)
@@ -419,7 +420,7 @@ export const performanceUtils = {
         
         if (trackPerformance) {
           const duration = performance.now() - start
-          console.log(`[Throttled Function] Executed, took ${duration.toFixed(2)}ms`)
+          frontendLogger.debug(`[Throttled Function] Executed, took ${duration.toFixed(2)}ms`)
         }
         
         lastCallTime = now
@@ -447,7 +448,7 @@ export const performanceUtils = {
       performance.mark(`${name}-end`)
       performance.measure(name, `${name}-start`, `${name}-end`)
       
-      console.log(`[${name}] Completed in ${duration.toFixed(2)}ms`)
+      frontendLogger.debug(`[${name}] Completed in ${duration.toFixed(2)}ms`)
       return result
     } catch (error) {
       const duration = performance.now() - start

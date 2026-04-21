@@ -16,6 +16,9 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversations } from '@/composables/useConversations'
 import type { Conversation } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useDashboardData')
 
 export interface UseDashboardDataOptions {
   /**
@@ -50,7 +53,7 @@ export function useDashboardData(options: UseDashboardDataOptions = {}) {
   onMounted(async () => {
     // 只在沒有數據時載入，避免重複請求
     if (!conversations.value || conversations.value.length === 0) {
-      console.log('[useDashboardData] 自動載入對話數據...')
+      frontendLogger.debug('[useDashboardData] 自動載入對話數據...')
       await fetchConversations()
     }
   })

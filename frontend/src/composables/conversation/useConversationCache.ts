@@ -19,6 +19,9 @@
 
 import { ref, computed, type Ref } from 'vue'
 import type { Conversation, ConversationFilters } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useConversationCache')
 
 export interface CacheEntry<T = unknown> {
   /** 缓存数据 */
@@ -134,7 +137,7 @@ export function useConversationCache(): ConversationCacheComposable {
       }
 
       cacheHits.value++
-      console.log(`[Cache] Hit for key: ${key}`)
+      frontendLogger.debug(`[Cache] Hit for key: ${key}`)
       return entry.data
     } catch (error) {
       console.warn('[Cache] Failed to get cached data:', error)
@@ -165,7 +168,7 @@ export function useConversationCache(): ConversationCacheComposable {
         ttl
       }
       localStorage.setItem(key, JSON.stringify(entry))
-      console.log(`[Cache] Set cache for key: ${key}`)
+      frontendLogger.debug(`[Cache] Set cache for key: ${key}`)
     } catch (error) {
       console.warn('[Cache] Failed to set cached data:', error)
       // 如果存储失败（可能是因为空间不足），清除旧缓存
@@ -188,12 +191,12 @@ export function useConversationCache(): ConversationCacheComposable {
     try {
       if (key) {
         localStorage.removeItem(key)
-        console.log(`[Cache] Invalidated cache for key: ${key}`)
+        frontendLogger.debug(`[Cache] Invalidated cache for key: ${key}`)
       } else {
         // 清除所有对话缓存
         const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX))
         keys.forEach(k => localStorage.removeItem(k))
-        console.log(`[Cache] Invalidated all conversation caches (${keys.length} keys)`)
+        frontendLogger.debug(`[Cache] Invalidated all conversation caches (${keys.length} keys)`)
       }
     } catch (error) {
       console.warn('[Cache] Failed to invalidate cache:', error)
@@ -209,7 +212,7 @@ export function useConversationCache(): ConversationCacheComposable {
   async function clearAllCache(): Promise<void> {
     try {
       localStorage.clear()
-      console.log('[Cache] Cleared all cache')
+      frontendLogger.debug('[Cache] Cleared all cache')
     } catch (error) {
       console.warn('[Cache] Failed to clear cache:', error)
     }

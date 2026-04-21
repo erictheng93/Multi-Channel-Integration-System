@@ -181,6 +181,17 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const props = defineProps<Props>()
+defineEmits<{
+  back: []
+  // close: []  // 暫時移除 - 結束對話功能未來再加入
+  refresh: []
+  search: []
+  export: []
+}>()
+const frontendLogger = createLogger('ConversationHeader')
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
@@ -200,16 +211,6 @@ interface Props {
   loading?: boolean
   // closing?: boolean  // 暫時移除 - 結束對話功能未來再加入
 }
-
-const props = defineProps<Props>()
-
-defineEmits<{
-  back: []
-  // close: []  // 暫時移除 - 結束對話功能未來再加入
-  refresh: []
-  search: []
-  export: []
-}>()
 
 const customerTags = ref<Tag[]>([])
 const selectedTagIds = ref<number[]>([])
@@ -317,7 +318,7 @@ const toggleAssignPanel = () => {
   }
 
   // DEBUG: 添加调试日志
-  console.log('[AssignPanel] Toggle clicked', {
+  frontendLogger.debug('[AssignPanel] Toggle clicked', {
     before,
     after,
     conversation: {
@@ -332,12 +333,12 @@ const toggleAssignPanel = () => {
   // 验证 DOM 渲染
   setTimeout(() => {
     const dropdown = document.querySelector('.assign-panel-dropdown')
-    console.log('[AssignPanel] Dropdown element:', dropdown)
+    frontendLogger.debug('[AssignPanel] Dropdown element:', dropdown)
 
     if (dropdown) {
       const rect = dropdown.getBoundingClientRect()
       const styles = window.getComputedStyle(dropdown)
-      console.log('[AssignPanel] Dropdown styles:', {
+      frontendLogger.debug('[AssignPanel] Dropdown styles:', {
         display: styles.display,
         visibility: styles.visibility,
         opacity: styles.opacity,
@@ -353,7 +354,7 @@ const toggleAssignPanel = () => {
 
       // 检查 AdvancedAssignActions 内容
       const content = dropdown.innerHTML
-      console.log('[AssignPanel] Dropdown content length:', content.length)
+      frontendLogger.debug('[AssignPanel] Dropdown content length:', content.length)
       if (content.length < 100) {
         console.warn('[AssignPanel] Dropdown content seems empty or very small!')
       }
@@ -364,7 +365,7 @@ const toggleAssignPanel = () => {
 }
 
 const handleAssigned = (conversation: Conversation, assignedTo: string) => {
-  console.log('Conversation assigned:', { conversationId: conversation.id, assignedTo })
+  frontendLogger.debug('Conversation assigned:', { conversationId: conversation.id, assignedTo })
   showAssignPanel.value = false
   // 刷新對話以獲取最新狀態
   setTimeout(() => {
@@ -376,7 +377,7 @@ const handleAssigned = (conversation: Conversation, assignedTo: string) => {
 }
 
 const handleUnassigned = (conversation: Conversation) => {
-  console.log('Conversation unassigned:', conversation.id)
+  frontendLogger.debug('Conversation unassigned:', conversation.id)
   showAssignPanel.value = false
 }
 

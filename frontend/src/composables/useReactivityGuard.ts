@@ -17,6 +17,9 @@
  */
 
 import { onUnmounted, type ComputedRef } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useReactivityGuard')
 
 interface ReactivityGuardOptions {
   /** 允許的最大重新計算次數（在時間窗口內） */
@@ -95,7 +98,7 @@ export function useReactivityGuard(options: ReactivityGuardOptions = {}) {
 
       if (warnInDev) {
         console.error(message)
-        console.trace('Computed property call stack')
+        frontendLogger.debug('Computed property call stack')
       }
 
       if (throwOnExceed) {

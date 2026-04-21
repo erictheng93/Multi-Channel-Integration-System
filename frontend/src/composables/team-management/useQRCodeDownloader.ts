@@ -16,6 +16,9 @@
 import { ref, type Ref } from 'vue'
 import { getBackendUrl, getStoragePublicUrl } from '@/config/runtime'
 import { useToast } from '@/composables/useToast'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useQRCodeDownloader')
 
 /**
  * Return type for useQRCodeDownloader composable
@@ -130,7 +133,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
 
       // Convert to CORS-safe proxy URL
       const proxyUrl = convertToProxyUrl(qrCodeUrl)
-      console.log('[QR Download] Using proxy URL:', proxyUrl)
+      frontendLogger.debug('[QR Download] Using proxy URL:', proxyUrl)
 
       // Design parameters (3x scale for print quality)
       const cardWidth = 260 * scale

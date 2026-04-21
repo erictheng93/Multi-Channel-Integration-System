@@ -214,8 +214,18 @@ Recommended actions:
 
 ### 4. Runtime Debug Logging and Stub Code
 
-The scan found 2521 `console.log` occurrences. Many are in frontend runtime
-paths, stores, composables, service workers, and application startup code.
+The initial scan found 2521 `console.log` occurrences. Many were in frontend
+runtime paths, stores, composables, service workers, and application startup
+code.
+
+Follow-up status on 2026-04-22:
+
+- Frontend runtime `console.log`, `console.debug`, `console.info`,
+  `console.table`, `console.group`, and `console.trace` usage has been routed
+  through the environment-gated frontend logger or removed.
+- `cd frontend && bun run lint:production` now passes.
+- Production console lint is wired into the default `bun run check` health
+  check.
 
 Relevant configuration:
 
@@ -386,9 +396,9 @@ Verification:
 - Messaging/conversation focused tests passed: 96 tests.
 - Security/access-control/rate TODO scan returned no matches.
 
-Remaining note:
+Follow-up note:
 
-- `cd frontend && bun run lint:production` is intentionally stricter than the default health check and currently reports the existing frontend `console.log` backlog. The production gate is now available; removing the existing log backlog should be handled as a separate cleanup batch before wiring this stricter command into the default check.
+- Completed on 2026-04-22: the existing frontend console backlog was removed, `cd frontend && bun run lint:production` passes, and production console lint is now wired into the default health check.
 
 ### P2 - Tighten Type Safety
 

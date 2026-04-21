@@ -29,6 +29,9 @@ import {
   type TeamSortField
 } from '@/composables/useListSorting'
 import type { TeamMember } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useTeamManagementController')
 
 // ==================== Helpers ====================
 
@@ -127,7 +130,7 @@ export interface UseTeamManagementControllerReturn {
  * controller.team.openAddTeamModal()
  *
  * // 访问统计数据
- * console.log(controller.stats.value.totalMembers)
+ * logger.debug(controller.stats.value.totalMembers)
  * ```
  */
 export function useTeamManagementController(): UseTeamManagementControllerReturn {
@@ -239,7 +242,7 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
    * 载入所有必要的数据
    */
   async function initialize() {
-    console.log('[TeamManagementController] Initializing...')
+    frontendLogger.debug('[TeamManagementController] Initializing...')
 
     try {
       // 并行载入团队和成员数据
@@ -248,9 +251,9 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
         teamStore.loadTeams()
       ])
 
-      console.log('[TeamManagementController] Data loaded successfully')
-      console.log(` - Teams: ${teams.value.length}`)
-      console.log(` - Members: ${members.value.length}`)
+      frontendLogger.debug('[TeamManagementController] Data loaded successfully')
+      frontendLogger.debug(` - Teams: ${teams.value.length}`)
+      frontendLogger.debug(` - Members: ${members.value.length}`)
     } catch (error) {
       console.error('[TeamManagementController] Initialization failed:', error)
       throw error
@@ -262,8 +265,8 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
    * 停止所有后台任务
    */
   function cleanup() {
-    console.log('[TeamManagementController] Cleaning up...')
-    console.log('[TeamManagementController] Cleanup complete')
+    frontendLogger.debug('[TeamManagementController] Cleaning up...')
+    frontendLogger.debug('[TeamManagementController] Cleanup complete')
   }
 
   /**
@@ -271,11 +274,11 @@ export function useTeamManagementController(): UseTeamManagementControllerReturn
    * 强制重新载入所有数据
    */
   async function refresh() {
-    console.log('[TeamManagementController] Refreshing data...')
+    frontendLogger.debug('[TeamManagementController] Refreshing data...')
 
     try {
       await initialize()
-      console.log('[TeamManagementController] Refresh complete')
+      frontendLogger.debug('[TeamManagementController] Refresh complete')
     } catch (error) {
       console.error('[TeamManagementController] Refresh failed:', error)
       throw error

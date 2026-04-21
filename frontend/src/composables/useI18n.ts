@@ -3,6 +3,9 @@ import { computed } from 'vue'
 import { useI18n as useVueI18n } from 'vue-i18n'
 import { setLocale, isLocaleAvailable, i18n } from '@/plugins/i18n'
 import { availableLocales } from '@/locales'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useI18n')
 
 export function useI18n() {
   const { t, locale } = useVueI18n()
@@ -15,7 +18,7 @@ export function useI18n() {
 
   // 切換語言
   const switchLocale = async (newLocale: string) => {
-    console.log(` Attempting to switch locale to: ${newLocale}`)
+    frontendLogger.debug(` Attempting to switch locale to: ${newLocale}`)
     
     if (!isLocaleAvailable(newLocale)) {
       console.warn(` Locale ${newLocale} is not available`)
@@ -25,8 +28,8 @@ export function useI18n() {
     try {
       const success = setLocale(newLocale)
       if (success) {
-        console.log(` Language switched successfully to: ${newLocale}`)
-        console.log(`Current locale after switch: ${i18n.global.locale.value}`)
+        frontendLogger.debug(` Language switched successfully to: ${newLocale}`)
+        frontendLogger.debug(`Current locale after switch: ${i18n.global.locale.value}`)
         
         // 強制觸發響應式更新
         await new Promise(resolve => setTimeout(resolve, 100))

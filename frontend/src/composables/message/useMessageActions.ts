@@ -13,6 +13,9 @@
 
 import { ref, type Ref } from 'vue'
 import type { Message } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMessageActions')
 
 /**
  * Event Emitter Interface
@@ -47,8 +50,8 @@ export interface MessageActionsProps {
  * ```typescript
  * const props = ref({ message })
  * const emit = {
- * copy: (msg) => console.log('Copied:', msg),
- * reply: (msg) => console.log('Replying to:', msg),
+ * copy: (msg) => logger.debug('Copied:', msg),
+ * reply: (msg) => logger.debug('Replying to:', msg),
  * // ... other emitters
  * }
  *
@@ -174,7 +177,7 @@ export function useMessageActions(
    * Emits retry event with message ID
    */
   const handleRetry = () => {
-    console.log('[useMessageActions] Retry button clicked for message:', props.value.message.id)
+    frontendLogger.debug('[useMessageActions] Retry button clicked for message:', props.value.message.id)
     emit.retry(props.value.message.id)
   }
 

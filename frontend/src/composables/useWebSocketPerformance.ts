@@ -26,12 +26,14 @@
  */
 
 import { ref, computed, onUnmounted, watch, type Ref } from 'vue'
-import type {
-  WebSocketPerformanceTracker} from '@/services/websocketPerformanceTracker';
 import {
   getPerformanceTracker,
   clearPerformanceTracker
 } from '@/services/websocketPerformanceTracker'
+import type { WebSocketPerformanceTracker } from '@/services/websocketPerformanceTracker'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useWebSocketPerformance')
 
 export interface UseWebSocketPerformanceOptions {
   userId: string
@@ -95,7 +97,7 @@ export function useWebSocketPerformance(options: UseWebSocketPerformanceOptions)
     // Start stats update timer
     startStatsUpdate()
 
-    console.log('[useWebSocketPerformance] Tracking started')
+    frontendLogger.debug('[useWebSocketPerformance] Tracking started')
   }
 
   /**
@@ -116,7 +118,7 @@ export function useWebSocketPerformance(options: UseWebSocketPerformanceOptions)
     // Clear global tracker
     clearPerformanceTracker()
 
-    console.log('[useWebSocketPerformance] Tracking stopped')
+    frontendLogger.debug('[useWebSocketPerformance] Tracking stopped')
   }
 
   /**
@@ -125,7 +127,7 @@ export function useWebSocketPerformance(options: UseWebSocketPerformanceOptions)
    */
   const pauseTracking = (): void => {
     stopStatsUpdate()
-    console.log('[useWebSocketPerformance] Tracking paused')
+    frontendLogger.debug('[useWebSocketPerformance] Tracking paused')
   }
 
   /**
@@ -135,7 +137,7 @@ export function useWebSocketPerformance(options: UseWebSocketPerformanceOptions)
   const resumeTracking = (): void => {
     if (tracker.value) {
       startStatsUpdate()
-      console.log('[useWebSocketPerformance] Tracking resumed')
+      frontendLogger.debug('[useWebSocketPerformance] Tracking resumed')
     }
   }
 

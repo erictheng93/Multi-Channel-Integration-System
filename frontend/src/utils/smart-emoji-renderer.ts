@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('smartemojirenderer')
 /**
  * 智能emoji和贴图渲染系统
  * 支持动态解析各种emoji描述，无需预定义映射表
@@ -228,7 +231,7 @@ export class SmartEmojiRenderer {
       // 检查关键词匹配
       for (const [keyword, emoji] of Object.entries(commonEmojiMap)) {
         if (description.includes(keyword) || keyword.includes(description)) {
-          console.log(`通过API找到emoji映射: ${description} -> ${emoji}`);
+          frontendLogger.debug(`通过API找到emoji映射: ${description} -> ${emoji}`);
           return emoji;
         }
       }

@@ -13,6 +13,9 @@
  */
 
 import type { WebSocketMessage } from './websocketClient'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('websocketEventRouter')
 
 /**
  * 路由规则函数类型
@@ -229,7 +232,7 @@ export class WebSocketEventRouter {
     }
 
     ROUTING_RULES[type] = rule
-    console.log(`[WebSocketEventRouter] Registered rule for type: "${type}"`)
+    frontendLogger.debug(`[WebSocketEventRouter] Registered rule for type: "${type}"`)
   }
 
   /**

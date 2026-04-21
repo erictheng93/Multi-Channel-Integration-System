@@ -22,6 +22,9 @@
 import { shallowRef, watch, type ShallowRef, type WatchStopHandle } from 'vue'
 import { storeToRefs } from 'pinia'
 import { usePreloadStore, type Team } from '@/stores/preload'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('preloadService')
 
 // Re-export Team type for backward compatibility
 export type { Team }
@@ -167,7 +170,7 @@ class PreloadService {
    * Delegates to: usePreloadStore().refreshTeams()
    */
   async refreshTeams(): Promise<Team[]> {
-    console.log('[PreloadService] Manual refresh of teams...')
+    frontendLogger.debug('[PreloadService] Manual refresh of teams...')
     const teams = await this.store.refreshTeams()
     this.syncTeamsRef()
     return teams
@@ -200,7 +203,7 @@ class PreloadService {
     }
     this.teamsRef.value = []
     this._store = null // Reset store reference
-    console.log('[PreloadService] All cache cleared and teamsRef reset')
+    frontendLogger.debug('[PreloadService] All cache cleared and teamsRef reset')
   }
 
   /**
@@ -220,7 +223,7 @@ class PreloadService {
    * Delegates to: usePreloadStore().warmup()
    */
   async warmup(): Promise<void> {
-    console.log('[PreloadService] Warming up cache...')
+    frontendLogger.debug('[PreloadService] Warming up cache...')
     await this.store.warmup()
     this.syncTeamsRef()
   }

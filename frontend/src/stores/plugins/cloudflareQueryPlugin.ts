@@ -14,6 +14,9 @@
 
 import type { PiniaPluginContext } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('cloudflareQueryPlugin')
 
 // Cloudflare KV Namespace type (for frontend compatibility)
 type KVNamespace = {
@@ -181,9 +184,9 @@ class CloudflareKVPersister {
   private log(message: string, data?: unknown) {
     if (this._verbose) {
       if (data) {
-        console.log(message, data)
+        frontendLogger.debug(message, data)
       } else {
-        console.log(message)
+        frontendLogger.debug(message)
       }
     }
   }
@@ -326,9 +329,9 @@ class CloudflareQueryExecutor {
   private log(message: string, data?: unknown) {
     if (this._verbose) {
       if (data) {
-        console.log(message, data)
+        frontendLogger.debug(message, data)
       } else {
-        console.log(message)
+        frontendLogger.debug(message)
       }
     }
   }
@@ -371,7 +374,7 @@ export function createCloudflareQueryPlugin(options: CloudflareQueryPluginOption
     }
 
     if (verbose) {
-      console.log(`[CloudflareQuery] Plugin installed on store: ${store.$id}`)
+      frontendLogger.debug(`[CloudflareQuery] Plugin installed on store: ${store.$id}`)
     }
   }
 }

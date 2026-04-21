@@ -2,6 +2,9 @@
 import type { WatchSource, WatchOptions, WatchCallback, UnwrapRef } from 'vue';
 import { ref, computed, watch, onMounted, onUnmounted, reactive, toRefs } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useModernVue')
 
 // 現代化 Composition API 工具
 export function useModernVue<T = unknown>() {
@@ -58,7 +61,7 @@ export function useModernVue<T = unknown>() {
   // 生命週期
   onMounted(() => {
     if (import.meta.env.DEV) {
-      console.log(' Modern Vue composable mounted')
+      frontendLogger.debug(' Modern Vue composable mounted')
     }
   })
   

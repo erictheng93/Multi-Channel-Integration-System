@@ -12,6 +12,9 @@ import type { Message } from '@/types'
 import { renderDatabaseMessageForVue } from '@/utils/enhanced-message-renderer'
 import { convertEmojiForMessageDetail } from '@/utils/layered-emoji-processor'
 import { escapeHtml } from '@/utils/message/formatting'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMessageContent')
 
 /**
  * Props for useMessageContent composable
@@ -169,9 +172,9 @@ export function useMessageContent(props: Ref<MessageContentProps>) {
         }
 
         if (import.meta.env.DEV) {
-          console.log('[MessageContent] Processing content...')
-          console.log('[MessageContent] Message type:', messageType)
-          console.log('[MessageContent] Content length:', props.value.message.content.length)
+          frontendLogger.debug('[MessageContent] Processing content...')
+          frontendLogger.debug('[MessageContent] Message type:', messageType)
+          frontendLogger.debug('[MessageContent] Content length:', props.value.message.content.length)
         }
 
         let result: string
@@ -204,7 +207,7 @@ export function useMessageContent(props: Ref<MessageContentProps>) {
         processedMessageContent.value = result
 
         if (import.meta.env.DEV) {
-          console.log('[MessageContent] Content processed successfully')
+          frontendLogger.debug('[MessageContent] Content processed successfully')
         }
       } catch (error) {
         console.error('[MessageContent] Error processing content:', error)

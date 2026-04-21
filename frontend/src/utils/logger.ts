@@ -24,13 +24,14 @@ const LEVEL_PRIORITY: Record<LogLevel, number> = {
 
 /** Minimum level that gets emitted */
 const MIN_LEVEL: LogLevel = import.meta.env.DEV ? 'debug' : 'warn'
+const browserConsole = globalThis.console
 
 /* eslint-disable no-unused-vars */
 export interface Logger {
-  debug(message: string, ...args: unknown[]): void
-  info(message: string, ...args: unknown[]): void
-  warn(message: string, ...args: unknown[]): void
-  error(message: string, ...args: unknown[]): void
+  debug(message: unknown, ...args: unknown[]): void
+  info(message: unknown, ...args: unknown[]): void
+  warn(message: unknown, ...args: unknown[]): void
+  error(message: unknown, ...args: unknown[]): void
 }
 /* eslint-enable no-unused-vars */
 
@@ -47,25 +48,33 @@ export function createLogger(scope: string, overrideLevel?: LogLevel): Logger {
     return LEVEL_PRIORITY[level] >= minPriority
   }
 
+  function formatArgs(message: unknown, args: unknown[]): unknown[] {
+    if (typeof message === 'string') {
+      return [`[${scope}] ${message}`, ...args]
+    }
+
+    return [`[${scope}]`, message, ...args]
+  }
+
   return {
-    debug(message: string, ...args: unknown[]) {
+    debug(message: unknown, ...args: unknown[]) {
       if (shouldLog('debug')) {
-        console.debug(`[${scope}] ${message}`, ...args)
+        browserConsole.debug(...formatArgs(message, args))
       }
     },
-    info(message: string, ...args: unknown[]) {
+    info(message: unknown, ...args: unknown[]) {
       if (shouldLog('info')) {
-        console.info(`[${scope}] ${message}`, ...args)
+        browserConsole.info(...formatArgs(message, args))
       }
     },
-    warn(message: string, ...args: unknown[]) {
+    warn(message: unknown, ...args: unknown[]) {
       if (shouldLog('warn')) {
-        console.warn(`[${scope}] ${message}`, ...args)
+        browserConsole.warn(...formatArgs(message, args))
       }
     },
-    error(message: string, ...args: unknown[]) {
+    error(message: unknown, ...args: unknown[]) {
       if (shouldLog('error')) {
-        console.error(`[${scope}] ${message}`, ...args)
+        browserConsole.error(...formatArgs(message, args))
       }
     },
   }

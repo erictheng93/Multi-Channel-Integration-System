@@ -3,6 +3,9 @@
 
 import { ref } from 'vue'
 import type { Conversation, ConversationFilters } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('cacheManager')
 
 // 快取項目接口
 interface CacheItem<T> {
@@ -128,7 +131,7 @@ export class CacheManager {
       this.cache.delete(oldestKey)
       this.accessTimes.delete(oldestKey)
       this.stats.value.evictions++
-      console.log(`[CacheManager] Evicted LRU item: ${oldestKey}`)
+      frontendLogger.debug(`[CacheManager] Evicted LRU item: ${oldestKey}`)
     }
   }
 
@@ -154,7 +157,7 @@ export class CacheManager {
     // 持久化到 localStorage
     this.saveToPersistentStorage(key, cacheItem)
     
-    console.log(`[CacheManager] Cached ${key}, size: ${this.cache.size}`)
+    frontendLogger.debug(`[CacheManager] Cached ${key}, size: ${this.cache.size}`)
   }
 
   // 獲取快取項目
@@ -183,7 +186,7 @@ export class CacheManager {
     const needsUpdate = this.needsRevalidation(item)
     this.updateStats()
 
-    console.log(`[CacheManager] Cache ${needsUpdate ? 'hit (stale)' : 'hit'}: ${key}`)
+    frontendLogger.debug(`[CacheManager] Cache ${needsUpdate ? 'hit (stale)' : 'hit'}: ${key}`)
     
     return {
       data: item.data,
@@ -200,7 +203,7 @@ export class CacheManager {
     // 立即更新快取
     this.set(key, optimisticData)
     
-    console.log(`[CacheManager] Optimistic update: ${key}`)
+    frontendLogger.debug(`[CacheManager] Optimistic update: ${key}`)
     return optimisticData
   }
 
@@ -222,7 +225,7 @@ export class CacheManager {
     }
 
     this.updateStats()
-    console.log(`[CacheManager] Invalidated ${invalidatedCount} cache entries`)
+    frontendLogger.debug(`[CacheManager] Invalidated ${invalidatedCount} cache entries`)
     return invalidatedCount
   }
 
@@ -242,7 +245,7 @@ export class CacheManager {
 
     this.updateStats()
     if (cleanedCount > 0) {
-      console.log(`[CacheManager] Cleaned ${cleanedCount} expired items`)
+      frontendLogger.debug(`[CacheManager] Cleaned ${cleanedCount} expired items`)
     }
     return cleanedCount
   }
@@ -258,7 +261,7 @@ export class CacheManager {
     try {
       const data = await dataLoader()
       this.set(key, data)
-      console.log(`[CacheManager] Prefetched: ${key}`)
+      frontendLogger.debug(`[CacheManager] Prefetched: ${key}`)
       return data
     } catch (error) {
       console.error(`[CacheManager] Prefetch failed for ${key}:`, error)
@@ -271,7 +274,7 @@ export class CacheManager {
     entries.forEach(({ key, data, options }) => {
       this.set(key, data, options)
     })
-    console.log(`[CacheManager] Batch cached ${entries.length} items`)
+    frontendLogger.debug(`[CacheManager] Batch cached ${entries.length} items`)
   }
 
   // 更新統計資訊
@@ -313,7 +316,7 @@ export class CacheManager {
           }
         }
       }
-      console.log(`[CacheManager] Loaded ${this.cache.size} items from storage`)
+      frontendLogger.debug(`[CacheManager] Loaded ${this.cache.size} items from storage`)
     } catch (error) {
       console.warn('[CacheManager] Failed to load from storage:', error)
     }
@@ -367,7 +370,7 @@ export class CacheManager {
     }
     
     this.updateStats()
-    console.log('[CacheManager] Cache cleared')
+    frontendLogger.debug('[CacheManager] Cache cleared')
   }
 }
 

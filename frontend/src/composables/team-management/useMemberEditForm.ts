@@ -21,6 +21,9 @@ import { teamApi } from '@/api/team'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useTeamStore } from '@/stores/team'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMemberEditForm')
 
 /**
  * Form data for editing member profile
@@ -550,7 +553,7 @@ export function useMemberEditForm(
       }))
     })
 
-    console.log('[Optimistic Update] Rollback completed')
+    frontendLogger.debug('[Optimistic Update] Rollback completed')
   }
 
   /**
@@ -576,7 +579,7 @@ export function useMemberEditForm(
     const removeChanges = snapshot.pendingChanges.filter(c => c.type === 'remove')
     const setPrimaryChanges = snapshot.pendingChanges.filter(c => c.type === 'set-primary')
 
-    console.log('[Background Save] Starting optimized API calls...', {
+    frontendLogger.debug('[Background Save] Starting optimized API calls...', {
       profileDirty,
       addTeams: addChanges.length,
       removeTeams: removeChanges.length,
@@ -626,7 +629,7 @@ export function useMemberEditForm(
           const teamIds = addChanges.map(c => c.teamId)
           const teamNameMap = new Map(addChanges.map(c => [c.teamId, c.teamName]))
 
-          console.log('[Batch API] Joining multiple teams in single request:', teamIds)
+          frontendLogger.debug('[Batch API] Joining multiple teams in single request:', teamIds)
 
           apiPromises.push(
             teamApi.joinMultipleTeams(memberId, teamIds, 'member')
@@ -650,7 +653,7 @@ export function useMemberEditForm(
                   }
                 }
 
-                console.log('[Batch API] Result:', {
+                frontendLogger.debug('[Batch API] Result:', {
                   added: batchData?.added?.length || 0,
                   skipped: batchData?.skipped?.length || 0,
                   errors: batchData?.errors?.length || 0
@@ -706,7 +709,7 @@ export function useMemberEditForm(
         rollbackToSnapshot(snapshot)
         showError('部分儲存失敗', `${errors.join('\n')  }\n\n已恢復原狀態`)
       } else {
-        console.log('[Background Save] All operations completed successfully')
+        frontendLogger.debug('[Background Save] All operations completed successfully')
       }
 
     } catch (error) {
@@ -778,7 +781,7 @@ export function useMemberEditForm(
       return true
     }
 
-    console.log('[Optimistic Update] Starting save...', {
+    frontendLogger.debug('[Optimistic Update] Starting save...', {
       profileDirty,
       teamChanges: pendingTeamChanges.value.length
     })
@@ -817,7 +820,7 @@ export function useMemberEditForm(
     showSuccess('儲存成功', '成員資料已更新')
     onSaveSuccess?.()
 
-    console.log('[Optimistic Update] UI updated, starting background save...')
+    frontendLogger.debug('[Optimistic Update] UI updated, starting background save...')
 
     // ========== Step 6: Execute API calls in background (non-blocking) ==========
     // Note: We don't await this - it runs in background

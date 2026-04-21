@@ -221,6 +221,17 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const props = withDefaults(defineProps<Props>(), {
+  customerId: undefined,
+  conversationId: undefined,
+  alwaysOpen: false,
+  allowCreate: true,
+  buttonLabel: ''
+})
+const emit = defineEmits<Emits>()
+const frontendLogger = createLogger('TagSelector')
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { createTag, type Tag } from '@/api/tags'
 import { tagCacheService } from '@/services/tagCacheService'
@@ -239,16 +250,6 @@ interface Emits {
   (_e: 'update:modelValue', _value: number[]): void
   (_e: 'change', _value: Tag[]): void
 }
-
-const props = withDefaults(defineProps<Props>(), {
-  customerId: undefined,
-  conversationId: undefined,
-  alwaysOpen: false,
-  allowCreate: true,
-  buttonLabel: ''
-})
-
-const emit = defineEmits<Emits>()
 
 const isOpen = ref(false)
 const searchQuery = ref('')
@@ -370,7 +371,7 @@ const quickCreateTag = async () => {
       selectedTags.value.push(response.data.id)
       searchQuery.value = ''
 
-      console.log('[TagSelector] Tag created and cached:', response.data.name)
+      frontendLogger.debug('[TagSelector] Tag created and cached:', response.data.name)
     }
   } catch (error) {
     console.error('[TagSelector] Failed to create tag:', error)
@@ -382,7 +383,7 @@ const debouncedConfirm = debounce(() => {
   emit('update:modelValue', selectedTags.value)
   const selected = availableTags.value.filter(t => selectedTags.value.includes(t.id))
   emit('change', selected)
-  console.log('[TagSelector] Tags updated (debounced):', selected.map(t => t.name))
+  frontendLogger.debug('[TagSelector] Tags updated (debounced):', selected.map(t => t.name))
 }, 500)
 
 const handleConfirm = () => {
@@ -409,7 +410,7 @@ watch(() => props.modelValue, (newVal) => {
 // 优化：组件挂载时确保标签已加载
 onMounted(async () => {
   await tagCacheService.ensureTagsLoaded()
-  console.log('[TagSelector] Tags loaded from cache')
+  frontendLogger.debug('[TagSelector] Tags loaded from cache')
 
   // 監聽全局點擊事件（參考指派管理）
   document.addEventListener('click', handleClickOutside)

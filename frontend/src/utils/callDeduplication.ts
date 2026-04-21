@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('callDeduplication')
 /**
  * Layer 1 Defense: Call Deduplication Utility
  *
@@ -68,7 +71,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
         // 超時，清除舊的調用記錄
         pendingCalls.delete(key)
         if (warnOnDuplicate) {
-          console.log(
+          frontendLogger.debug(
             `[CallDedup]  Previous call for "${key}" timed out, allowing new call`
           )
         }
@@ -87,7 +90,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
       })
 
       if (warnOnDuplicate) {
-        console.log(`[CallDedup]  Executing new call for "${key}"`)
+        frontendLogger.debug(`[CallDedup]  Executing new call for "${key}"`)
       }
 
       // 等待完成
@@ -97,7 +100,7 @@ export function createDedupedAsyncFunction<T extends (..._args: never[]) => Prom
       pendingCalls.delete(key)
 
       if (warnOnDuplicate) {
-        console.log(`[CallDedup]  Call completed for "${key}"`)
+        frontendLogger.debug(`[CallDedup]  Call completed for "${key}"`)
       }
 
       return result as ReturnType<T>
@@ -121,7 +124,7 @@ export function clearPendingCall(key: string): void {
   if (pendingCalls.has(key)) {
     pendingCalls.delete(key)
     if (import.meta.env.DEV) {
-      console.log(`[CallDedup]  Manually cleared pending call for "${key}"`)
+      frontendLogger.debug(`[CallDedup]  Manually cleared pending call for "${key}"`)
     }
   }
 }

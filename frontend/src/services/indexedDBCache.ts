@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('indexedDBCache')
 /**
  * IndexedDB 緩存服務
  * 用於持久化消息索引，避免每次頁面加載都重新構建
@@ -53,7 +56,7 @@ export class IndexedDBCacheService {
       request.onsuccess = () => {
         this.db = request.result
         this.isInitialized = true
-        console.log('[IndexedDBCache] 數據庫已打開')
+        frontendLogger.debug('[IndexedDBCache] 數據庫已打開')
         resolve()
       }
 
@@ -64,7 +67,7 @@ export class IndexedDBCacheService {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
           objectStore.createIndex('timestamp', 'timestamp', { unique: false })
-          console.log('[IndexedDBCache] 對象存儲已創建')
+          frontendLogger.debug('[IndexedDBCache] 對象存儲已創建')
         }
       }
     })
@@ -104,7 +107,7 @@ export class IndexedDBCacheService {
       const request = store.put(cacheData)
 
       request.onsuccess = () => {
-        console.log(`[IndexedDBCache] 索引已保存: ${messageCount} 條消息`)
+        frontendLogger.debug(`[IndexedDBCache] 索引已保存: ${messageCount} 條消息`)
         resolve()
       }
 
@@ -138,7 +141,7 @@ export class IndexedDBCacheService {
         const cachedData = request.result as CachedIndex | undefined
 
         if (!cachedData) {
-          console.log('[IndexedDBCache] 緩存未找到')
+          frontendLogger.debug('[IndexedDBCache] 緩存未找到')
           resolve(null)
           return
         }
@@ -160,7 +163,7 @@ export class IndexedDBCacheService {
           return
         }
 
-        console.log(`[IndexedDBCache] 索引已加載: ${cachedData.messageCount} 條消息 (${Math.floor(age / 1000)}秒前)`)
+        frontendLogger.debug(`[IndexedDBCache] 索引已加載: ${cachedData.messageCount} 條消息 (${Math.floor(age / 1000)}秒前)`)
         resolve(cachedData)
       }
 
@@ -199,14 +202,14 @@ export class IndexedDBCacheService {
 
     // 檢查消息數量是否匹配
     if (metadata.messageCount !== currentMessageCount) {
-      console.log(`[IndexedDBCache] 消息數量不匹配 (緩存: ${metadata.messageCount}, 當前: ${currentMessageCount})`)
+      frontendLogger.debug(`[IndexedDBCache] 消息數量不匹配 (緩存: ${metadata.messageCount}, 當前: ${currentMessageCount})`)
       return false
     }
 
     // 檢查緩存年齡
     const age = Date.now() - metadata.timestamp
     if (age > MAX_CACHE_AGE) {
-      console.log(`[IndexedDBCache] 緩存已過期 (${Math.floor(age / (24 * 60 * 60 * 1000))} 天)`)
+      frontendLogger.debug(`[IndexedDBCache] 緩存已過期 (${Math.floor(age / (24 * 60 * 60 * 1000))} 天)`)
       return false
     }
 
@@ -233,7 +236,7 @@ export class IndexedDBCacheService {
       const request = store.delete(INDEX_KEY)
 
       request.onsuccess = () => {
-        console.log('[IndexedDBCache] 緩存已清除')
+        frontendLogger.debug('[IndexedDBCache] 緩存已清除')
         resolve()
       }
 
@@ -302,7 +305,7 @@ export class IndexedDBCacheService {
       this.db.close()
       this.db = null
       this.isInitialized = false
-      console.log('[IndexedDBCache] 數據庫已關閉')
+      frontendLogger.debug('[IndexedDBCache] 數據庫已關閉')
     }
   }
 }

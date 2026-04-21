@@ -11,6 +11,9 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('App')
 import { computed, onMounted, watch, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -38,16 +41,16 @@ const routeKey = computed(() => {
 
 // 監聽路由變化並記錄
 watch(() => route.path, (newPath, oldPath) => {
-  console.log(' App.vue detected route change:', oldPath, '->', newPath)
+  frontendLogger.debug(' App.vue detected route change:', oldPath, '->', newPath)
   
   // 強制增加計數器來確保組件重新渲染
   routeChangeCounter.value++
   
-  console.log(' Route key updated:', routeKey.value)
+  frontendLogger.debug(' Route key updated:', routeKey.value)
 }, { immediate: true })
 
 onMounted(() => {
-  console.log(' App.vue mounted')
+  frontendLogger.debug(' App.vue mounted')
 
   // 優化：智能初始化認證狀態
   if (authStore.token) {
@@ -58,7 +61,7 @@ onMounted(() => {
   // LCP 優化：非阻塞式預加載關鍵數據（團隊、標籤等）
   // 修復：移除 await 阻塞，讓 UI 先渲染，數據後台載入
   if (authStore.isAuthenticated) {
-    console.log('[App.vue] Starting non-blocking preload services...')
+    frontendLogger.debug('[App.vue] Starting non-blocking preload services...')
     const preloadStart = performance.now()
 
     // 使用 requestIdleCallback 在瀏覽器空閒時執行，避免阻塞 LCP
@@ -69,7 +72,7 @@ onMounted(() => {
       ]).then(results => {
         const duration = performance.now() - preloadStart
         const successCount = results.filter(r => r.status === 'fulfilled').length
-        console.log(`[App.vue] Preload completed: ${successCount}/2 services in ${duration.toFixed(2)}ms`)
+        frontendLogger.debug(`[App.vue] Preload completed: ${successCount}/2 services in ${duration.toFixed(2)}ms`)
 
         results.forEach((result, index) => {
           const serviceName = index === 0 ? 'preloadService' : 'tagCacheService'
@@ -88,12 +91,12 @@ onMounted(() => {
       setTimeout(schedulePreload, 100)
     }
   } else {
-    console.log('  [App.vue] Skipping preload (not authenticated)')
+    frontendLogger.debug('  [App.vue] Skipping preload (not authenticated)')
   }
 
   // 設置定期清理過期緩存（每5分鐘）
   setInterval(() => {
-    console.log('[App.vue] Running periodic cache cleanup...')
+    frontendLogger.debug('[App.vue] Running periodic cache cleanup...')
     preloadService.cleanup()
     tagCacheService.cleanup()
   }, 5 * 60 * 1000)

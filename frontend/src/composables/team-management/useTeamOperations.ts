@@ -18,6 +18,9 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { teamApi } from '@/api/team'
 import type { TeamMember } from '@/types'
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useTeamOperations')
 
 // ==================== Types ====================
 
@@ -219,7 +222,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
         // 团队创建时已预生成 QR 码，触发 Store 预载
         if (response.data.qrCode) {
           await qrCodeStore.loadQRCode(newTeamId, true)
-          console.log(` QR 碼已存入 Store: team ${newTeamId}`)
+          frontendLogger.debug(` QR 碼已存入 Store: team ${newTeamId}`)
         }
 
         // ④ 如果有选择成员，使用批量 API 将他们加入团队
@@ -263,7 +266,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
 
               // 記錄結果
               if (added.length > 0) {
-                console.log(` 成功添加 ${added.length} 位成員到團隊`)
+                frontendLogger.debug(` 成功添加 ${added.length} 位成員到團隊`)
               }
               if (skipped.length > 0) {
                 console.warn(` ${skipped.length} 位成員已在團隊中，跳過`)
@@ -291,7 +294,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
           }
         }
 
-        console.log(' 團隊創建完成，成員已正確寫入 agent_teams 表')
+        frontendLogger.debug(' 團隊創建完成，成員已正確寫入 agent_teams 表')
       } else {
         showError('新增團隊失敗', '團隊創建失敗，請重試')
       }
@@ -526,7 +529,7 @@ export function useTeamOperations(): UseTeamOperationsReturn {
 
       if (memberUpdatePromises.length > 0) {
         await Promise.all(memberUpdatePromises)
-        console.log(' 團隊成員更新完成')
+        frontendLogger.debug(' 團隊成員更新完成')
       }
     } catch (error) {
       console.error('更新團隊失敗:', error)
@@ -617,10 +620,10 @@ export function useTeamOperations(): UseTeamOperationsReturn {
    * 处理成员更新事件
    */
   async function handleMemberUpdated() {
-    console.log(' 團隊成員已更新，重新載入團隊數據...')
+    frontendLogger.debug(' 團隊成員已更新，重新載入團隊數據...')
     try {
       await teamStore.loadTeams()
-      console.log(' 團隊數據重新載入完成')
+      frontendLogger.debug(' 團隊數據重新載入完成')
     } catch (error) {
       console.error(' 重新載入團隊數據失敗:', error)
     }

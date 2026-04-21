@@ -7,6 +7,9 @@ import { getBackendUrl } from '@/config/runtime'
 import { ref, computed, type Ref } from 'vue'
 import { createWebSocketClient, type WebSocketMessage, type WebSocketConnectionState as WsConnectionState } from './websocketClient'
 import type { Message } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('realtimeConnectionManager')
 
 // =================== Type Definitions ===================
 
@@ -93,7 +96,7 @@ export async function fetchMigrationConfig(): Promise<MigrationConfig> {
     }
 
     configCacheTimestamp = now
-    console.log('[RealtimeConnectionManager] Migration config fetched:', configCache)
+    frontendLogger.debug('[RealtimeConnectionManager] Migration config fetched:', configCache)
 
     return configCache
 
@@ -134,13 +137,13 @@ export function refreshMigrationConfig(): void {
 export async function createRealtimeConnection(
   conversationId: string
 ): Promise<RealtimeConnection> {
-  console.log(`[RealtimeConnectionManager] Creating WebSocket connection for conversation: ${conversationId}`)
+  frontendLogger.debug(`[RealtimeConnectionManager] Creating WebSocket connection for conversation: ${conversationId}`)
 
   // Fetch migration config
   const config = await fetchMigrationConfig()
 
   // Always use WebSocket (100% rollout)
-  console.log(`[RealtimeConnectionManager] Using WebSocket connection (rollout: ${config.rolloutPercentage}%)`)
+  frontendLogger.debug(`[RealtimeConnectionManager] Using WebSocket connection (rollout: ${config.rolloutPercentage}%)`)
   return createWebSocketConnection(conversationId, config)
 }
 
@@ -193,11 +196,11 @@ function createWebSocketConnection(
 
     addMessage(_message: Message) {
       // Messages are typically managed by parent component
-      console.log('[WebSocket] Message added (handled by parent):', _message)
+      frontendLogger.debug('[WebSocket] Message added (handled by parent):', _message)
     },
 
     clearMessages() {
-      console.log('[WebSocket] Clear messages (handled by parent)')
+      frontendLogger.debug('[WebSocket] Clear messages (handled by parent)')
     },
 
     onMessage(_handler: (_message: unknown) => void) {

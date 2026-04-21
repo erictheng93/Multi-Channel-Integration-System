@@ -67,6 +67,8 @@
 
 <script setup lang="ts" generic="T">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { createLogger } from '@/utils/logger'
+
 const props = withDefaults(defineProps<Props>(), {
   itemHeight: 80,
   estimatedItemHeight: 80,
@@ -84,14 +86,13 @@ const props = withDefaults(defineProps<Props>(), {
   onReachTop: () => {},
   itemClass: ''
 })
-
 const emit = defineEmits<{
   scroll: [scrollTop: number, scrollLeft: number]
   reachBottom: []
   reachTop: []
   visibleRangeChange: [startIndex: number, endIndex: number]
 }>()
-
+const frontendLogger = createLogger('VirtualScrollList')
 // 原生實現 throttle 和 debounce
 const throttle = <T extends (..._args: Parameters<T>) => ReturnType<T>>(
   func: T, 
@@ -300,7 +301,7 @@ const initializeContainer = () => {
     height: rect.height
   }
   
-  console.log('[VirtualScroll] Container initialized:', containerRect.value)
+  frontendLogger.debug('[VirtualScroll] Container initialized:', containerRect.value)
 }
 
 // 滾動到指定項目
@@ -318,7 +319,7 @@ const scrollToItem = (index: number, position: 'start' | 'center' | 'end' = 'sta
   targetScrollTop = Math.max(0, targetScrollTop)
   containerRef.value.scrollTo({ top: targetScrollTop, behavior: 'smooth' })
   
-  console.log(`[VirtualScroll] Scrolled to item ${index} (${position})`)
+  frontendLogger.debug(`[VirtualScroll] Scrolled to item ${index} (${position})`)
 }
 
 // 滾動到頂部

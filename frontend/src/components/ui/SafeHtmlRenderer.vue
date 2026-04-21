@@ -6,13 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
-
-interface Props {
-  html?: string
-  allowedTags?: string[]
-  allowedAttributes?: Record<string, string[]>
-}
+import { createLogger } from '@/utils/logger'
 
 const props = withDefaults(defineProps<Props>(), {
   html: '',
@@ -24,6 +18,14 @@ const props = withDefaults(defineProps<Props>(), {
     a: ['href', 'target', 'rel', 'class', 'title']
   })
 })
+const frontendLogger = createLogger('SafeHtmlRenderer')
+import { ref, watch, onMounted, nextTick } from 'vue'
+
+interface Props {
+  html?: string
+  allowedTags?: string[]
+  allowedAttributes?: Record<string, string[]>
+}
 
 const containerRef = ref<HTMLElement>()
 
@@ -160,12 +162,12 @@ const setupImageErrorHandlers = () => {
     imgElement.addEventListener('load', () => {
       // 圖片加載成功，設置透明度
       imgElement.style.opacity = '1'
-      console.log(' Sticker loaded:', imgElement.src)
+      frontendLogger.debug(' Sticker loaded:', imgElement.src)
     })
 
     // 添加 error 事件處理
     imgElement.addEventListener('error', () => {
-      console.log(' Sticker failed to load:', imgElement.src)
+      frontendLogger.debug(' Sticker failed to load:', imgElement.src)
 
       // 隱藏圖片
       imgElement.style.display = 'none'

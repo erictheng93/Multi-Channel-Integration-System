@@ -2,6 +2,9 @@ import type { Ref } from 'vue'
 import type { Conversation } from '@/types'
 import { conversationApi } from '@/api/conversations'
 import { CONVERSATION_STATUS } from '@/constants/conversation-status'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('assignmentActions')
 
 export interface AssignmentActionsDeps {
   conversations: Ref<Conversation[]>
@@ -41,7 +44,7 @@ async function withOptimisticAssignment(
         ...current,
         ...optimisticUpdates
       } as Conversation
-      console.log(`[ConversationsStore] Optimistic update applied to list`)
+      frontendLogger.debug(`[ConversationsStore] Optimistic update applied to list`)
     }
   }
 
@@ -51,7 +54,7 @@ async function withOptimisticAssignment(
       ...currentConversation.value,
       ...optimisticUpdates
     }
-    console.log(`[ConversationsStore] Optimistic update applied to currentConversation`)
+    frontendLogger.debug(`[ConversationsStore] Optimistic update applied to currentConversation`)
   }
 
   error.value = null
@@ -60,7 +63,7 @@ async function withOptimisticAssignment(
     // 3. API call
     const response = await apiCall()
     if (response.success) {
-      console.log(`[ConversationsStore] Assignment API call succeeded`)
+      frontendLogger.debug(`[ConversationsStore] Assignment API call succeeded`)
 
       // 4. Merge API response
       let updatedConv = response.data
@@ -75,11 +78,11 @@ async function withOptimisticAssignment(
       if (updatedConv) {
         if (conversationIndex !== -1) {
           conversations.value[conversationIndex] = updatedConv
-          console.log(`[ConversationsStore] Updated conversation in list`)
+          frontendLogger.debug(`[ConversationsStore] Updated conversation in list`)
         }
         if (currentConversation.value && currentConversation.value.id === conversationId) {
           currentConversation.value = updatedConv
-          console.log(`[ConversationsStore] Updated currentConversation`)
+          frontendLogger.debug(`[ConversationsStore] Updated currentConversation`)
         }
       }
 
@@ -126,7 +129,7 @@ export function createAssignmentActions(deps: AssignmentActionsDeps) {
   const assignConversationToTeam = async (conversationId: string, teamId: number, teamName?: string) => {
     if (!conversationId || !teamId) { return false }
 
-    console.log(`[ConversationsStore] Assigning conversation ${conversationId} to team ${teamId} (${teamName || 'Unknown'})`)
+    frontendLogger.debug(`[ConversationsStore] Assigning conversation ${conversationId} to team ${teamId} (${teamName || 'Unknown'})`)
 
     return withOptimisticAssignment(
       deps,
@@ -146,7 +149,7 @@ export function createAssignmentActions(deps: AssignmentActionsDeps) {
   const unassignConversation = async (conversationId: string, reason?: string) => {
     if (!conversationId) { return false }
 
-    console.log(`[ConversationsStore] Unassigning conversation ${conversationId}`, reason ? `(reason: ${reason})` : '')
+    frontendLogger.debug(`[ConversationsStore] Unassigning conversation ${conversationId}`, reason ? `(reason: ${reason})` : '')
 
     return withOptimisticAssignment(
       deps,
@@ -172,7 +175,7 @@ export function createAssignmentActions(deps: AssignmentActionsDeps) {
   ) => {
     if (!conversationId || !toTeamId) { return false }
 
-    console.log(`[ConversationsStore] Transferring conversation ${conversationId} from team ${fromTeamId} to team ${toTeamId} (${toTeamName || 'Unknown'})`)
+    frontendLogger.debug(`[ConversationsStore] Transferring conversation ${conversationId} from team ${fromTeamId} to team ${toTeamId} (${toTeamName || 'Unknown'})`)
 
     return withOptimisticAssignment(
       deps,

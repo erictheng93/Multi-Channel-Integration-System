@@ -208,6 +208,9 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('ConversationDetail')
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -396,7 +399,7 @@ watch(
         isEmptyStateConfirmed.value = true
         // FIX: 空狀態確認後也需要設置 isScrollReady，讓空狀態顯示出來
         isScrollReady.value = true
-        console.log('[ConversationDetail] Empty state confirmed, setting isScrollReady=true')
+        frontendLogger.debug('[ConversationDetail] Empty state confirmed, setting isScrollReady=true')
       }, 200)
     } else {
       isEmptyStateConfirmed.value = false
@@ -504,7 +507,7 @@ function handleMessageReply(message: Message) {
 }
 
 function handleMessageForward(message: Message) {
-  console.log('Forward message:', message.id)
+  frontendLogger.debug('Forward message:', message.id)
   showSuccess('轉發功能開發中')
 }
 
@@ -520,7 +523,7 @@ async function handleMessageRecall(message: Message) {
 }
 
 function handleMessageSelect(message: Message) {
-  console.log('Select message:', message.id)
+  frontendLogger.debug('Select message:', message.id)
 }
 
 /**
@@ -529,12 +532,12 @@ function handleMessageSelect(message: Message) {
  * 這確保用戶看到的是已經滾動到底部的訊息列表，而不是從頂部跳到底部
  */
 function handleInitialScrollComplete() {
-  console.log('[ConversationDetail] Initial scroll complete, showing message list')
+  frontendLogger.debug('[ConversationDetail] Initial scroll complete, showing message list')
   isScrollReady.value = true
 }
 
 function handleAttachmentUpload(attachment: unknown) {
-  console.log('Attachment upload:', attachment)
+  frontendLogger.debug('Attachment upload:', attachment)
 }
 
 // Template refs (exposed to satisfy TypeScript noUnusedLocals)

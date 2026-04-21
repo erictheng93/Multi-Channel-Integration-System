@@ -6,6 +6,9 @@
 import type { Conversation, TeamMember } from '@/types'
 import { PermissionService, Permission } from '@/services/permissionService'
 import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('assignmentTestUtils')
 
 // 模擬數據生成器 - Simplified from 3-tier to 2-tier role system
 export const createMockAgent = (role: 'admin' | 'agent', options: Partial<TeamMember> = {}): TeamMember => ({
@@ -43,7 +46,7 @@ export const createMockConversation = (status: ConversationStatus = CONVERSATION
 // 權限測試套件
 export class AssignmentPermissionTests {
   static testAdminPermissions() {
-    console.log(' Testing Admin Permissions...')
+    frontendLogger.debug(' Testing Admin Permissions...')
     const admin = createMockAgent('admin')
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
     // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
@@ -81,7 +84,7 @@ export class AssignmentPermissionTests {
   }
 
   static testTeamPermissions() {
-    console.log(' Testing Admin Permissions (team role removed)...')
+    frontendLogger.debug(' Testing Admin Permissions (team role removed)...')
     const teamLead = createMockAgent('admin') // Changed from 'team' to 'admin'
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
     // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
@@ -124,7 +127,7 @@ export class AssignmentPermissionTests {
   }
 
   static testAgentPermissions() {
-    console.log(' Testing Agent Permissions...')
+    frontendLogger.debug(' Testing Agent Permissions...')
     const agent = createMockAgent('agent')
     const openConversation = createMockConversation(CONVERSATION_STATUS.PENDING)
     // Note: Individual assignment (assignedAgentId) removed - use team-based assignment instead
@@ -180,24 +183,24 @@ export class AssignmentPermissionTests {
       try {
         const result = test()
         if (result === expected) {
-          console.log(` ${name}`)
+          frontendLogger.debug(` ${name}`)
           passed++
         } else {
-          console.log(` ${name} (expected: ${expected}, got: ${result})`)
+          frontendLogger.debug(` ${name} (expected: ${expected}, got: ${result})`)
           failed++
         }
       } catch (error) {
-        console.log(` ${name} (error: ${error})`)
+        frontendLogger.debug(` ${name} (error: ${error})`)
         failed++
       }
     })
 
-    console.log(`\n ${roleName} Results: ${passed} passed, ${failed} failed\n`)
+    frontendLogger.debug(`\n ${roleName} Results: ${passed} passed, ${failed} failed\n`)
     return { passed, failed, total: tests.length }
   }
 
   static runAllTests() {
-    console.log(' Running Assignment System Permission Tests\n')
+    frontendLogger.debug(' Running Assignment System Permission Tests\n')
     
     const adminResults = this.testAdminPermissions()
     const teamResults = this.testTeamPermissions()
@@ -207,11 +210,11 @@ export class AssignmentPermissionTests {
     const totalFailed = adminResults.failed + teamResults.failed + agentResults.failed
     const totalTests = adminResults.total + teamResults.total + agentResults.total
 
-    console.log(' Overall Test Results:')
-    console.log(` Total Tests: ${totalTests}`)
-    console.log(` Passed: ${totalPassed}`)
-    console.log(` Failed: ${totalFailed}`)
-    console.log(` Success Rate: ${((totalPassed / totalTests) * 100).toFixed(1)}%`)
+    frontendLogger.debug(' Overall Test Results:')
+    frontendLogger.debug(` Total Tests: ${totalTests}`)
+    frontendLogger.debug(` Passed: ${totalPassed}`)
+    frontendLogger.debug(` Failed: ${totalFailed}`)
+    frontendLogger.debug(` Success Rate: ${((totalPassed / totalTests) * 100).toFixed(1)}%`)
 
     return {
       passed: totalPassed,
@@ -225,7 +228,7 @@ export class AssignmentPermissionTests {
 // UI測試工具
 export class AssignmentUITests {
   static simulateQuickAssign() {
-    console.log(' Simulating Quick Assign UI Flow...')
+    frontendLogger.debug(' Simulating Quick Assign UI Flow...')
     
     const scenarios = [
       {
@@ -247,9 +250,9 @@ export class AssignmentUITests {
     ]
 
     scenarios.forEach(({ description, user, conversation }) => {
-      console.log(`\n Scenario: ${description}`)
-      console.log(` User Role: ${user.role}`)
-      console.log(` Conversation Status: ${conversation.status}`)
+      frontendLogger.debug(`\n Scenario: ${description}`)
+      frontendLogger.debug(` User Role: ${user.role}`)
+      frontendLogger.debug(` Conversation Status: ${conversation.status}`)
       
       // 模擬UI權限檢查
       const canAssignToSelf = PermissionService.canAssignConversation(user, conversation, user.id)
@@ -257,14 +260,14 @@ export class AssignmentUITests {
                                PermissionService.canViewTeamMembers(user)
       const canUnassign = PermissionService.canUnassignConversation(user, conversation)
       
-      console.log(` Can Assign to Self: ${canAssignToSelf ? '' : ''}`)
-      console.log(` Can Assign to Others: ${canAssignToOthers ? '' : ''}`)
-      console.log(` Can Unassign: ${canUnassign ? '' : ''}`)
+      frontendLogger.debug(` Can Assign to Self: ${canAssignToSelf ? '' : ''}`)
+      frontendLogger.debug(` Can Assign to Others: ${canAssignToOthers ? '' : ''}`)
+      frontendLogger.debug(` Can Unassign: ${canUnassign ? '' : ''}`)
     })
   }
 
   static testUIResponsiveness() {
-    console.log('\n Testing UI Responsiveness...')
+    frontendLogger.debug('\n Testing UI Responsiveness...')
     
     const uiComponents = [
       'QuickAssignActions',
@@ -274,20 +277,20 @@ export class AssignmentUITests {
     ]
     
     uiComponents.forEach(component => {
-      console.log(` Component: ${component}`)
-      console.log(` Responsive design implemented`)
-      console.log(` Role-based visibility`)
-      console.log(` Loading states handled`)
-      console.log(` Error handling in place`)
+      frontendLogger.debug(` Component: ${component}`)
+      frontendLogger.debug(` Responsive design implemented`)
+      frontendLogger.debug(` Role-based visibility`)
+      frontendLogger.debug(` Loading states handled`)
+      frontendLogger.debug(` Error handling in place`)
     })
   }
 }
 
 // 主要測試運行器
 export function runAssignmentSystemTests() {
-  console.log(`\n${  '='.repeat(60)}`)
-  console.log(' ASSIGNMENT SYSTEM COMPREHENSIVE TESTS')
-  console.log(`${'='.repeat(60)  }\n`)
+  frontendLogger.debug(`\n${  '='.repeat(60)}`)
+  frontendLogger.debug(' ASSIGNMENT SYSTEM COMPREHENSIVE TESTS')
+  frontendLogger.debug(`${'='.repeat(60)  }\n`)
 
   // 權限測試
   const permissionResults = AssignmentPermissionTests.runAllTests()
@@ -296,9 +299,9 @@ export function runAssignmentSystemTests() {
   AssignmentUITests.simulateQuickAssign()
   AssignmentUITests.testUIResponsiveness()
   
-  console.log(`\n${  '='.repeat(60)}`)
-  console.log(' TESTS COMPLETED')
-  console.log('='.repeat(60))
+  frontendLogger.debug(`\n${  '='.repeat(60)}`)
+  frontendLogger.debug(' TESTS COMPLETED')
+  frontendLogger.debug('='.repeat(60))
   
   return permissionResults
 }

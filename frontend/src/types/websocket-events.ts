@@ -144,11 +144,11 @@ export interface ErrorEvent extends BaseWebSocketEvent {
  * switch (event.type) {
  * case WS_EVENTS.NEW_MESSAGE:
  * // TypeScript knows event is NewMessageEvent
- * console.log(event.message.content)
+ * logger.debug(event.message.content)
  * break
  * case WS_EVENTS.USER_CONNECTED:
  * // TypeScript knows event is UserConnectedEvent
- * console.log(event.userId)
+ * logger.debug(event.userId)
  * break
  * // ... other cases
  * default:

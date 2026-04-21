@@ -114,41 +114,9 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, nextTick, watch, onMounted, onUnmounted, toRef } from 'vue'
-  import type { VNodeRef } from 'vue'
-  import {
-    SendIcon,
-    SmileIcon,
-    PaperclipIcon,
-    XIcon,
-    LoadingIcon,
-    XCircleIcon,
-    CheckCircleIcon,
-  } from '@/components/icons'
-  import EmojiPicker from '@/components/ui/EmojiPicker.vue'
-  import ReplyReferenceBanner from './input/ReplyReferenceBanner.vue'
-  import AttachmentPreviewCards from './input/AttachmentPreviewCards.vue'
+import { createLogger } from '@/utils/logger'
 
-  // Composables
-  import { useFileTypeDetection } from '@/composables/message-input/useFileTypeDetection'
-  import { useFileSelection } from '@/composables/message-input/useFileSelection'
-  import { useFileUploadProgress } from '@/composables/message-input/useFileUploadProgress'
-  import { useMessageSending } from '@/composables/message-input/useMessageSending'
-
-  // Types (re-export for backward compat with tests that access internal types)
-  import type { MessageInputAttachment, FileAttachmentEmitData } from '@/types/message-input'
-
-  // ═══════════════════════════════════════════════════════════════════
-  // Props & Emits
-  // ═══════════════════════════════════════════════════════════════════
-
-  interface Props {
-    conversationId: string
-    disabled?: boolean
-  }
-
-  const props = defineProps<Props>()
-
+const props = defineProps<Props>()
   const emit = defineEmits<{
     'message-sent': [data: {
       content: string
@@ -186,6 +154,39 @@
     }]
     'attachment-upload': [attachment: MessageInputAttachment]
   }>()
+  const frontendLogger = createLogger('MessageInput')
+  import { ref, nextTick, watch, onMounted, onUnmounted, toRef } from 'vue'
+  import type { VNodeRef } from 'vue'
+  import {
+    SendIcon,
+    SmileIcon,
+    PaperclipIcon,
+    XIcon,
+    LoadingIcon,
+    XCircleIcon,
+    CheckCircleIcon,
+  } from '@/components/icons'
+  import EmojiPicker from '@/components/ui/EmojiPicker.vue'
+  import ReplyReferenceBanner from './input/ReplyReferenceBanner.vue'
+  import AttachmentPreviewCards from './input/AttachmentPreviewCards.vue'
+
+  // Composables
+  import { useFileTypeDetection } from '@/composables/message-input/useFileTypeDetection'
+  import { useFileSelection } from '@/composables/message-input/useFileSelection'
+  import { useFileUploadProgress } from '@/composables/message-input/useFileUploadProgress'
+  import { useMessageSending } from '@/composables/message-input/useMessageSending'
+
+  // Types (re-export for backward compat with tests that access internal types)
+  import type { MessageInputAttachment, FileAttachmentEmitData } from '@/types/message-input'
+
+  // ═══════════════════════════════════════════════════════════════════
+  // Props & Emits
+  // ═══════════════════════════════════════════════════════════════════
+
+  interface Props {
+    conversationId: string
+    disabled?: boolean
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // Composable setup
@@ -283,7 +284,7 @@
     // Arrow keys for message history (placeholder)
     if (!messageText.value.trim() && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
       event.preventDefault()
-      console.log(`Message history navigation: ${event.key}`)
+      frontendLogger.debug(`Message history navigation: ${event.key}`)
     }
   }
 

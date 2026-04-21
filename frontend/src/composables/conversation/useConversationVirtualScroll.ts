@@ -18,6 +18,9 @@
  */
 
 import { ref, type Ref } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useConversationVirtualScroll')
 
 export interface VisibleRange {
   /** 可见范围起始索引 */
@@ -124,7 +127,7 @@ export function useConversationVirtualScroll(
     visibleRange.value = { startIndex, endIndex }
 
     if (import.meta.env.DEV) {
-      console.log(`[VirtualScroll] Visible range: ${startIndex}-${endIndex}`)
+      frontendLogger.debug(`[VirtualScroll] Visible range: ${startIndex}-${endIndex}`)
     }
 
     // 智能预加载逻辑
@@ -150,7 +153,7 @@ export function useConversationVirtualScroll(
       return
     }
 
-    console.log('[VirtualScroll] Reached bottom, loading more')
+    frontendLogger.debug('[VirtualScroll] Reached bottom, loading more')
     isPreloading.value = true
 
     try {
@@ -181,7 +184,7 @@ export function useConversationVirtualScroll(
     onPreload?: () => Promise<void>
   ): void {
     if (import.meta.env.DEV) {
-      console.log(`[VirtualScroll] Predictive load: ${direction}, distance: ${estimatedDistance}`)
+      frontendLogger.debug(`[VirtualScroll] Predictive load: ${direction}, distance: ${estimatedDistance}`)
     }
 
     // 如果向下滚动且接近底部，触发预加载
@@ -216,7 +219,7 @@ export function useConversationVirtualScroll(
     visibleRange.value = { startIndex: 0, endIndex: 0 }
     isPreloading.value = false
     reachedEnd.value = false
-    console.log('[VirtualScroll] Scroll state reset')
+    frontendLogger.debug('[VirtualScroll] Scroll state reset')
   }
 
   /**
@@ -230,7 +233,7 @@ export function useConversationVirtualScroll(
   function setReachedEnd(reached: boolean): void {
     reachedEnd.value = reached
     if (reached) {
-      console.log('[VirtualScroll] Reached end of list')
+      frontendLogger.debug('[VirtualScroll] Reached end of list')
     }
   }
 

@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('unicodeemojiprocessor')
 /**
  * Unicode Emoji 处理器
  * 使用Unicode标准数据和智能算法，无需预定义映射表
@@ -289,7 +292,7 @@ export class AdvancedEmojiProcessor {
         } else {
           // 方法3：使用相似度匹配（需要候选数据）
           // 这里可以从Unicode数据中获取候选
-          console.log(`无法处理emoji描述: ${description}`);
+          frontendLogger.debug(`无法处理emoji描述: ${description}`);
         }
       }
 

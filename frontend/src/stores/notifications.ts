@@ -14,6 +14,9 @@ import {
 } from '@/api/notifications'
 import { translateError } from '@/utils/error-handler'
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('notifications')
 
 export const useNotificationsStore = defineStore('notifications', () => {
   // ==================== State ====================
@@ -139,7 +142,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
           totalPages: data.totalPages
         }
 
-        console.log(`[NotificationsStore] Loaded ${data.items.length} notifications`)
+        frontendLogger.debug(`[NotificationsStore] Loaded ${data.items.length} notifications`)
       } else {
         handleError(response.error, '獲取通知列表失敗')
       }
@@ -154,7 +157,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   // 刷新通知列表
   const refreshNotifications = async () => {
-    console.log('[NotificationsStore] Refreshing notifications')
+    frontendLogger.debug('[NotificationsStore] Refreshing notifications')
     refreshing.value = true
     await fetchNotifications(undefined, 1, false)
   }
@@ -163,7 +166,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const loadMoreNotifications = async () => {
     if (!canLoadMore.value) {return}
     const nextPage = pagination.value.page + 1
-    console.log(`[NotificationsStore] Loading page ${nextPage}`)
+    frontendLogger.debug(`[NotificationsStore] Loading page ${nextPage}`)
     await fetchNotifications(undefined, nextPage, true)
   }
 
@@ -173,7 +176,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       const response = await notificationApi.getRecent(limit)
       if (response.success && response.data) {
         recentNotifications.value = response.data.notifications
-        console.log(`[NotificationsStore] Loaded ${response.data.count} recent notifications`)
+        frontendLogger.debug(`[NotificationsStore] Loaded ${response.data.count} recent notifications`)
       }
     } catch (err) {
       console.error('[NotificationsStore] Failed to fetch recent notifications:', err)
@@ -227,7 +230,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         handleError(response.error, '標記已讀失敗')
         return false
       }
-      console.log(`[NotificationsStore] Marked notification ${id} as read`)
+      frontendLogger.debug(`[NotificationsStore] Marked notification ${id} as read`)
       return true
     } catch (err) {
       // 回滾
@@ -268,7 +271,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         handleError(response.error, '批量標記已讀失敗')
         return false
       }
-      console.log(`[NotificationsStore] Marked ${response.data?.updated || 'all'} notifications as read`)
+      frontendLogger.debug(`[NotificationsStore] Marked ${response.data?.updated || 'all'} notifications as read`)
       return true
     } catch (err) {
       // 回滾
@@ -305,7 +308,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         handleError(response.error, '刪除通知失敗')
         return false
       }
-      console.log(`[NotificationsStore] Deleted notification ${id}`)
+      frontendLogger.debug(`[NotificationsStore] Deleted notification ${id}`)
       return true
     } catch (err) {
       // 回滾
@@ -328,7 +331,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         // 刷新列表以獲取新通知
         await fetchRecentNotifications()
         await fetchUnreadCount()
-        console.log(`[NotificationsStore] Created notification ${response.data.id}`)
+        frontendLogger.debug(`[NotificationsStore] Created notification ${response.data.id}`)
         return response.data.id
       }
       handleError(response.error, '創建通知失敗')
@@ -356,7 +359,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         unreadCount.value++
       }
 
-      console.log(`[NotificationsStore] New notification received: ${notification.id}`)
+      frontendLogger.debug(`[NotificationsStore] New notification received: ${notification.id}`)
     }
   }
 
@@ -369,7 +372,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     }
 
     pollingEnabled.value = true
-    console.log(`[NotificationsStore] Starting polling every ${intervalMs}ms`)
+    frontendLogger.debug(`[NotificationsStore] Starting polling every ${intervalMs}ms`)
 
     // 立即執行一次
     fetchUnreadCount()
@@ -390,7 +393,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
       pollingInterval = null
     }
     pollingEnabled.value = false
-    console.log('[NotificationsStore] Polling stopped')
+    frontendLogger.debug('[NotificationsStore] Polling stopped')
   }
 
   // ==================== Filter Actions ====================

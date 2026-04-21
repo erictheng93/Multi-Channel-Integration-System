@@ -22,6 +22,9 @@
 // Browser APIs - 瀏覽器原生 API，ESLint 需要明確聲明
 
 import { useQRCodeStore } from '@/stores/qrcode'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('qrPreloadService')
 
 // ==================== 型別定義 ====================
 
@@ -449,7 +452,7 @@ export class QRPreloadService {
 
     switch (level) {
       case 'info':
-        console.log(prefix, message, ...args)
+        frontendLogger.debug(prefix, message, ...args)
         break
       case 'warn':
         console.warn(prefix, message, ...args)
@@ -484,8 +487,8 @@ export class QRPreloadService {
       ? this.metrics.endTime - this.metrics.startTime
       : Date.now() - this.metrics.startTime
 
-    console.log('[QRPreload] Performance Metrics:')
-    console.table({
+    frontendLogger.debug('[QRPreload] Performance Metrics:')
+    frontendLogger.debug({
       'Total Teams': this.metrics.totalTeams,
       'Loaded Successfully': this.metrics.loadedTeams,
       'Failed': this.metrics.failedTeams,

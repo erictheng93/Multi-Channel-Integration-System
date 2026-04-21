@@ -39,6 +39,9 @@ import { useConversationState } from './useConversationState'
 import { useMessageHandlers } from './useMessageHandlers'
 import { useWebSocketIntegration } from './useWebSocketIntegration'
 import { useConversationActions } from './useConversationActions'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useConversationController')
 
 export interface ConversationControllerOptions {
   enablePagination?: boolean
@@ -93,7 +96,7 @@ export function useConversationController(
     },
     (newCount, oldCount) => {
       if (newCount !== undefined && newCount !== oldCount) {
-        console.log(
+        frontendLogger.debug(
           `[ConversationController] Unified messages count changed: ${oldCount} → ${newCount}`
         )
       }
@@ -107,7 +110,7 @@ export function useConversationController(
    */
   async function initialize() {
     try {
-      console.log('[ConversationController] Initializing conversation:', conversationId)
+      frontendLogger.debug('[ConversationController] Initializing conversation:', conversationId)
 
       // 1. 初始化 WebSocket 連接
       await websocket.initialize()
@@ -115,7 +118,7 @@ export function useConversationController(
       // 2. 加載對話和消息
       await state.loadConversation()
 
-      console.log('[ConversationController] Conversation initialized successfully')
+      frontendLogger.debug('[ConversationController] Conversation initialized successfully')
     } catch (error) {
       console.error('[ConversationController] Failed to initialize conversation:', error)
       throw error
@@ -126,7 +129,7 @@ export function useConversationController(
    * 清理資源（在 onUnmounted 中調用）
    */
   function cleanup() {
-    console.log('[ConversationController] Cleaning up conversation resources')
+    frontendLogger.debug('[ConversationController] Cleaning up conversation resources')
 
     // 1. 斷開 WebSocket 連接
     websocket.disconnect()
@@ -134,7 +137,7 @@ export function useConversationController(
     // 2. 清理其他資源（如果需要）
     // state, handlers, actions 都是純函數，會自動被垃圾回收
 
-    console.log('[ConversationController] Cleanup completed')
+    frontendLogger.debug('[ConversationController] Cleanup completed')
   }
 
   // ===== 4️ 對外暴露的統一接口 =====

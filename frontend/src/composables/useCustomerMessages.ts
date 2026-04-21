@@ -5,6 +5,9 @@ import { useAuthStore } from '@/stores/auth'
 import type { Message } from '@/types'
 import { conversationCache } from '@/utils/conversationCache'
 import { getApiUrl } from '@/config/runtime'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useCustomerMessages')
 
 export interface CustomerMessagesOptions {
   enablePagination?: boolean
@@ -69,7 +72,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
     try {
       // ========== 階段 1: 快速加載最近 10 條消息 ==========
-      console.log('[Progressive] Phase 1: Loading recent messages...')
+      frontendLogger.debug('[Progressive] Phase 1: Loading recent messages...')
       const initialLimit = 10
 
       const initialResponse = await fetch(
@@ -90,7 +93,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         hasMore.value = initialData.hasMore || false
         initialLoadComplete.value = true
 
-        console.log(`[Progressive] Phase 1 complete: ${messages.value.length} recent messages`)
+        frontendLogger.debug(`[Progressive] Phase 1 complete: ${messages.value.length} recent messages`)
 
         // 更新緩存
         const lastMessage = messages.value[messages.value.length - 1]
@@ -126,7 +129,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     }
 
     loadingHistory.value = true
-    console.log('[Progressive] Phase 2: Loading history in background...')
+    frontendLogger.debug('[Progressive] Phase 2: Loading history in background...')
 
     try {
       const oldestMessage = messages.value[0]
@@ -160,12 +163,12 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         // FIX: 標記歷史前插開始，讓 VirtualMessageList 可以保持滾動位置
         isHistoryPrepending.value = true
         historyPrependCount.value = olderMessages.length
-        console.log(`[Progressive] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
+        frontendLogger.debug(`[Progressive] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
 
         messages.value = [...olderMessages, ...messages.value]
         hasMore.value = data.hasMore || false
 
-        console.log(`[Progressive] Phase 2 complete: ${olderMessages.length} history messages loaded`)
+        frontendLogger.debug(`[Progressive] Phase 2 complete: ${olderMessages.length} history messages loaded`)
 
         // 更新緩存
         conversationCache.set(conversationId, {
@@ -176,7 +179,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         setTimeout(() => {
           isHistoryPrepending.value = false
           historyPrependCount.value = 0
-          console.log(`[Progressive] Reset isHistoryPrepending=false`)
+          frontendLogger.debug(`[Progressive] Reset isHistoryPrepending=false`)
         }, 100)
       }
     } catch (error) {
@@ -208,7 +211,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         )
         hasMore.value = data.hasMore || false
 
-        console.log(`[useCustomerMessages] Loaded ${messages.value.length} messages`)
+        frontendLogger.debug(`[useCustomerMessages] Loaded ${messages.value.length} messages`)
 
         // 更新緩存
         const lastMessage = messages.value[messages.value.length - 1]
@@ -268,12 +271,12 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         // FIX: 標記歷史前插開始
         isHistoryPrepending.value = true
         historyPrependCount.value = olderMessages.length
-        console.log(`[loadMoreMessages] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
+        frontendLogger.debug(`[loadMoreMessages] Setting isHistoryPrepending=true, count=${olderMessages.length}`)
 
         messages.value = [...olderMessages, ...messages.value]
         hasMore.value = data.hasMore || false
 
-        console.log(`[useCustomerMessages] Loaded ${olderMessages.length} more messages`)
+        frontendLogger.debug(`[useCustomerMessages] Loaded ${olderMessages.length} more messages`)
 
         // FIX: 重置標記
         setTimeout(() => {
@@ -315,7 +318,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       const data = await response.json()
 
       if (data.success) {
-        console.log('[useCustomerMessages] Message sent successfully')
+        frontendLogger.debug('[useCustomerMessages] Message sent successfully')
         // 注意：新消息會通過 WebSocket 實時推送，不需要手動添加
         return true
       } else {
@@ -369,7 +372,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       const data = await response.json()
 
       if (data.success) {
-        console.log('[useCustomerMessages] Message with attachments sent successfully')
+        frontendLogger.debug('[useCustomerMessages] Message with attachments sent successfully')
         // 注意：新消息會通過 WebSocket 實時推送給所有連接的客服
         return { success: true, message: data.message }
       } else {
@@ -400,7 +403,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     // 1. 基本 ID 去重：防止完全相同的訊息被添加多次
     const existsById = messages.value.some(m => m.id === message.id)
     if (existsById) {
-      console.log('[useCustomerMessages] Message already exists by ID, skipping:', message.id)
+      frontendLogger.debug('[useCustomerMessages] Message already exists by ID, skipping:', message.id)
       return
     }
 
@@ -427,7 +430,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
 
     if (pendingMessage) {
       // 找到匹配的 pending 訊息 → 合併（更新 ID 而非添加）
-      console.log(`[useCustomerMessages] Merging WebSocket message with pending: ${pendingMessage.id} → ${message.id}`)
+      frontendLogger.debug(`[useCustomerMessages] Merging WebSocket message with pending: ${pendingMessage.id} → ${message.id}`)
 
       // 更新 pending 訊息的關鍵字段
       pendingMessage.id = message.id
@@ -444,7 +447,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       }
        
 
-      console.log('[useCustomerMessages] Pending message merged successfully with status=sent')
+      frontendLogger.debug('[useCustomerMessages] Pending message merged successfully with status=sent')
       return
     }
 
@@ -459,7 +462,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     })
 
     messages.value = newMessages
-    console.log('[useCustomerMessages] Added new message via WebSocket:', message.id)
+    frontendLogger.debug('[useCustomerMessages] Added new message via WebSocket:', message.id)
   }
 
   return {
