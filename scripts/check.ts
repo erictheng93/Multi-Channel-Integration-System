@@ -41,6 +41,10 @@ const backendChecks: CheckDefinition[] = [
     label: 'Route conflict check',
     args: ['run', 'check:routes:ci'],
   },
+  {
+    label: 'Type debt allowlist',
+    args: ['run', 'check:type-debt'],
+  },
 ]
 
 const frontendChecks: CheckDefinition[] = [

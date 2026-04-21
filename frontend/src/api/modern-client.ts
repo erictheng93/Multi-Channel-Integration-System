@@ -16,6 +16,8 @@ interface ModernApiClientOptions {
   retryDelay?: number
 }
 
+type ResponseHandler<T> = (_response: Response) => Promise<ApiResponse<T>>
+
 class ModernApiClient {
   private baseURL: string
   private timeout: number
@@ -130,12 +132,12 @@ class ModernApiClient {
     endpoint: string,
     data?: unknown,
     options: {
-      isPaginated?: boolean
       retryCount?: number
       isFileUpload?: boolean
+      responseHandler?: ResponseHandler<T>
     } = {}
   ): Promise<ApiResponse<T>> {
-    const { isPaginated = false, retryCount = 0, isFileUpload = false } = options
+    const { retryCount = 0, isFileUpload = false, responseHandler } = options
 
     try {
       const controller = new globalThis.AbortController()
@@ -169,11 +171,7 @@ class ModernApiClient {
       }
 
       // 處理響應
-      if (isPaginated) {
-        return this.handlePaginatedResponse<T[]>(response) as unknown as ApiResponse<T>
-      } else {
-        return this.handleResponse<T>(response)
-      }
+      return responseHandler ? responseHandler(response) : this.handleResponse<T>(response)
 
     } catch (error) {
       // 處理網路錯誤和超時
@@ -279,7 +277,9 @@ class ModernApiClient {
 
   // 分頁請求
   getPaginated<T>(endpoint: string): Promise<ApiResponse<T[]>> {
-    return this.makeRequest<T[]>('GET', endpoint, undefined, { isPaginated: true })
+    return this.makeRequest<T[]>('GET', endpoint, undefined, {
+      responseHandler: (response) => this.handlePaginatedResponse<T>(response)
+    })
   }
 
   // 文件上傳
