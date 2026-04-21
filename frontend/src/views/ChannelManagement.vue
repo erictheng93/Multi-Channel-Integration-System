@@ -244,301 +244,52 @@
         @success="handleChannelCreated"
       />
 
-      <!-- Details Modal -->
-      <Modal
+      <ChannelDetailsModal
         :show="showDetailsModal"
-        title="頻道詳情"
-        size="lg"
-        @close="showDetailsModal = false"
+        :channel="selectedChannel"
         @update:show="showDetailsModal = $event"
-      >
-        <div
-          v-if="selectedChannel"
-          class="details-content"
-        >
-          <div class="detail-section">
-            <h4>基本資訊</h4>
-            <div class="detail-grid">
-              <div class="detail-item">
-                <span class="detail-label">平台：</span>
-                <span class="detail-value">{{ getPlatformName(selectedChannel.platform) }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">狀態：</span>
-                <span class="detail-value">{{ selectedChannel.isActive ? '啟用中' : '已停用' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">驗證狀態：</span>
-                <span class="detail-value">{{ selectedChannel.isVerified ? '已驗證' : '未驗證' }}</span>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">建立時間：</span>
-                <span class="detail-value">{{ formatDate(selectedChannel.createdAt) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h4>Webhook 設定</h4>
-            <div class="webhook-url-container">
-              <input
-                :value="getWebhookUrl(selectedChannel)"
-                type="text"
-                class="webhook-url-display"
-                readonly
-              >
-              <button
-                class="btn btn-sm btn-primary"
-                @click="copyWebhookUrl(selectedChannel)"
-              >
-                複製
-              </button>
-            </div>
-          </div>
-
-          <div class="detail-section">
-            <h4>使用統計</h4>
-            <div class="stats-grid">
-              <div class="stat-box">
-                <div class="stat-number">
-                  {{ getStats(selectedChannel).totalSent }}
-                </div>
-                <div class="stat-text">
-                  發送訊息
-                </div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-number">
-                  {{ getStats(selectedChannel).totalReceived }}
-                </div>
-                <div class="stat-text">
-                  接收訊息
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Modal>
+        @close="showDetailsModal = false"
+        @copy-webhook-url="copyWebhookUrl"
+      />
     </div>
   </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { channelsApi, parseConfig, parseWebhookConfig, parseStats } from '@/api/channels'
-import type { ChannelIntegration, ChannelPlatform } from '@/api/channels'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ChannelConfigDialog from '@/components/channels/ChannelConfigDialog.vue'
-import Modal from '@/components/ui/Modal.vue'
-import { ROLES } from '@/constants/roles'
+import ChannelDetailsModal from '@/components/channels/ChannelDetailsModal.vue'
+import { useChannelManagement } from '@/composables/useChannelManagement'
 
-// Stores
-const authStore = useAuthStore()
-const router = useRouter()
-
-// State
-const channels = ref<ChannelIntegration[]>([])
-const isLoading = ref(false)
-const selectedPlatform = ref<ChannelPlatform | null>(null)
-const showConfigDialog = ref(false)
-const showDetailsModal = ref(false)
-const selectedChannel = ref<ChannelIntegration | undefined>(undefined)
-const activeDropdown = ref<number | null>(null)
-
-// Check admin role
-onMounted(() => {
-  if (authStore.currentAgent?.role !== ROLES.ADMIN) {
-    router.push('/conversations')
-    return
-  }
-  loadChannels()
-})
-
-// Computed
-const filteredChannels = computed(() => {
-  if (selectedPlatform.value === null) {
-    return channels.value
-  }
-  return channels.value.filter(ch => ch.platform === selectedPlatform.value)
-})
-
-// Methods
-const loadChannels = async () => {
-  isLoading.value = true
-  try {
-    const response = await channelsApi.list()
-    if (response.success) {
-      channels.value = response.data
-    }
-  } catch (error) {
-    console.error('Failed to load channels:', error)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const refreshChannels = () => {
-  loadChannels()
-}
-
-const filterByPlatform = (platform: ChannelPlatform | null) => {
-  selectedPlatform.value = platform
-}
-
-const getChannelCount = (platform: ChannelPlatform): number => {
-  return channels.value.filter(ch => ch.platform === platform).length
-}
-
-const getPlatformIcon = (platform: ChannelPlatform): string => {
-  const icons = {
-    line: '',
-    facebook: '',
-    whatsapp: ''
-  }
-  return icons[platform] || ''
-}
-
-const getPlatformName = (platform: ChannelPlatform): string => {
-  const names = {
-    line: 'LINE',
-    facebook: 'Facebook',
-    whatsapp: 'WhatsApp'
-  }
-  return names[platform] || platform
-}
-
-const getChannelId = (channel: ChannelIntegration): string => {
-  const config = parseConfig(channel)
-  if (channel.platform === 'line') { return config.channelId || 'N/A' }
-  if (channel.platform === 'facebook') { return config.pageId || 'N/A' }
-  if (channel.platform === 'whatsapp') { return config.phoneNumber || 'N/A' }
-  return 'N/A'
-}
-
-const getWebhookUrl = (channel: ChannelIntegration): string => {
-  const webhookCfg = parseWebhookConfig(channel)
-  return webhookCfg.url || ''
-}
-
-const getStats = (channel: ChannelIntegration) => {
-  return parseStats(channel)
-}
-
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-TW')
-}
-
-const openAddChannelDialog = () => {
-  selectedChannel.value = undefined
-  showConfigDialog.value = true
-}
-
-const closeConfigDialog = () => {
-  showConfigDialog.value = false
-  selectedChannel.value = undefined
-}
-
-const handleChannelCreated = (channel: ChannelIntegration) => {
-  channels.value.unshift(channel)
-  setTimeout(() => {
-    closeConfigDialog()
-  }, 2000)
-}
-
-const toggleDropdown = (channelId: number) => {
-  activeDropdown.value = activeDropdown.value === channelId ? null : channelId
-}
-
-const viewChannelDetails = (channel: ChannelIntegration) => {
-  selectedChannel.value = channel
-  showDetailsModal.value = true
-  activeDropdown.value = null
-}
-
-const toggleChannelStatus = async (channel: ChannelIntegration) => {
-  try {
-    await channelsApi.update(channel.id, {
-      isActive: !channel.isActive
-    })
-    channel.isActive = !channel.isActive
-  } catch (error) {
-    console.error('Failed to toggle channel status:', error)
-  }
-}
-
-const verifyChannel = async (channel: ChannelIntegration) => {
-  activeDropdown.value = null
-  try {
-    const response = await channelsApi.verify(channel.id)
-    if (response.verified) {
-      window.alert('頻道驗證成功！')
-      channel.isVerified = true
-    } else {
-      window.alert(`驗證失敗：${response.message}`)
-    }
-  } catch (error: unknown) {
-    const errorMsg = error instanceof Error ? error.message : '未知錯誤'
-    window.alert(`驗證錯誤：${errorMsg}`)
-  }
-}
-
-const viewStats = async (channel: ChannelIntegration) => {
-  activeDropdown.value = null
-  try {
-    const response = await channelsApi.getStats(channel.id)
-    if (response.success && response.data) {
-      window.alert(`統計資料：\n發送：${response.data.totalMessagesSent}\n接收：${response.data.totalMessagesReceived}`)
-    }
-  } catch (error) {
-    console.error('Failed to load stats:', error)
-  }
-}
-
-const editChannel = (channel: ChannelIntegration) => {
-  selectedChannel.value = channel
-  showConfigDialog.value = true
-  activeDropdown.value = null
-}
-
-const deleteChannel = async (channel: ChannelIntegration) => {
-  activeDropdown.value = null
-  if (!window.confirm(`確定要刪除頻道「${getPlatformName(channel.platform)}」嗎？`)) {
-    return
-  }
-
-  try {
-    await channelsApi.delete(channel.id)
-    channels.value = channels.value.filter(ch => ch.id !== channel.id)
-  } catch (error) {
-    console.error('Failed to delete channel:', error)
-    window.alert('刪除失敗')
-  }
-}
-
-const copyWebhookUrl = async (channel: ChannelIntegration) => {
-  const url = getWebhookUrl(channel)
-  if (!url) {
-    window.alert('Webhook URL 不可用')
-    return
-  }
-
-  try {
-    await navigator.clipboard.writeText(url)
-    window.alert('Webhook URL 已複製到剪貼簿')
-  } catch (error) {
-    console.error('Failed to copy webhook URL:', error)
-  }
-}
-
-// Close dropdown when clicking outside
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', () => {
-    activeDropdown.value = null
-  })
-}
+const {
+  activeDropdown,
+  channels,
+  closeConfigDialog,
+  copyWebhookUrl,
+  deleteChannel,
+  editChannel,
+  filterByPlatform,
+  filteredChannels,
+  formatDate,
+  getChannelCount,
+  getChannelId,
+  getPlatformIcon,
+  getPlatformName,
+  getStats,
+  handleChannelCreated,
+  isLoading,
+  openAddChannelDialog,
+  refreshChannels,
+  selectedChannel,
+  selectedPlatform,
+  showConfigDialog,
+  showDetailsModal,
+  toggleChannelStatus,
+  toggleDropdown,
+  verifyChannel,
+  viewChannelDetails,
+  viewStats
+} = useChannelManagement()
 </script>
 
 <style scoped>
@@ -907,83 +658,6 @@ if (typeof document !== 'undefined') {
   line-height: 1;
 }
 
-/* Details Modal */
-.details-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
-.detail-section h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--gray-900);
-  margin-bottom: var(--space-4);
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.detail-label {
-  font-size: 0.75rem;
-  color: var(--gray-600);
-  font-weight: 500;
-}
-
-.detail-value {
-  font-size: 0.875rem;
-  color: var(--gray-900);
-}
-
-.webhook-url-container {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.webhook-url-display {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid var(--gray-300);
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
-  font-family: monospace;
-  background: var(--gray-50);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-4);
-}
-
-.stat-box {
-  text-align: center;
-  padding: var(--space-4);
-  background: var(--primary-50);
-  border-radius: var(--radius-md);
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary-600);
-  margin-bottom: 0.5rem;
-}
-
-.stat-text {
-  font-size: 0.875rem;
-  color: var(--gray-600);
-}
-
 /* Responsive */
 @media (max-width: 768px) {
   .channel-management {
@@ -1009,8 +683,5 @@ if (typeof document !== 'undefined') {
     grid-template-columns: 1fr;
   }
 
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

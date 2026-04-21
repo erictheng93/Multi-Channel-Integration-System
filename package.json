@@ -8,7 +8,7 @@
     "pnpm": "use bun instead - see CLAUDE.md"
   },
   "scripts": {
-    "preinstall": "npx only-allow bun",
+    "preinstall": "bunx only-allow bun",
     "prepare": "husky",
     "dev": "wrangler dev --remote",
     "dev:remote": "wrangler dev --remote",
