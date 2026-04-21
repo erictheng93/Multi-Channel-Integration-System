@@ -12,6 +12,7 @@ import { systemApi, credentialsApi } from '@/api/system'
 import { SettingsIcon, IntegrationIcon, AdvancedIcon, SystemIcon } from '@/components/icons'
 import { useI18n } from '@/composables/useI18n'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import { createLogger } from '@/utils/logger'
 import type {
   SystemSettings,
   SettingsTab,
@@ -19,6 +20,8 @@ import type {
   TabConfig,
   StatusClasses
 } from '@/types/system-settings'
+
+const frontendLogger = createLogger('useSystemSettingsController')
 
 /**
  * System Settings Controller Composable
@@ -208,7 +211,7 @@ export function useSystemSettingsController() {
         }
       }
 
-      console.log('Loaded settings:', settings)
+      frontendLogger.debug('Loaded settings:', settings)
     } catch (error) {
       console.error('Failed to load settings:', error)
       showMessage(t('systemSettings.messages.loadFailed'), 'error')

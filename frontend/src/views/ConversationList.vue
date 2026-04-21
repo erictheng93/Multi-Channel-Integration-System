@@ -184,6 +184,9 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('ConversationList')
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useConversationsStore } from '@/stores/conversations'
 import {
@@ -285,7 +288,7 @@ function handlePredictiveLoad(direction: 'up' | 'down', estimatedDistance: numbe
 
 // Lifecycle
 onMounted(async () => {
-  console.log('[ConversationList] Component mounted (Phase B4 - Direct Real-time Updates)')
+  frontendLogger.debug('[ConversationList] Component mounted (Phase B4 - Direct Real-time Updates)')
 
   // 初始化控制器
   await controller.initialize()
@@ -294,11 +297,11 @@ onMounted(async () => {
   // 這會訂閱 'conversations' channel 並直接更新對話列表
   await conversationsStore.initializeRealtime()
 
-  console.log('[ConversationList] Initialized with real-time updates')
+  frontendLogger.debug('[ConversationList] Initialized with real-time updates')
 })
 
 onUnmounted(() => {
-  console.log('[ConversationList] Component unmounted')
+  frontendLogger.debug('[ConversationList] Component unmounted')
 
   // 清理资源
   controller.cleanup()
@@ -306,7 +309,7 @@ onUnmounted(() => {
   conversationsStore.cleanup()
   virtualScroll.resetScroll()
 
-  console.log('[ConversationList] Cleanup completed')
+  frontendLogger.debug('[ConversationList] Cleanup completed')
 })
 </script>
 

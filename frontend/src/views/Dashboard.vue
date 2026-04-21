@@ -122,6 +122,9 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('Dashboard')
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
@@ -163,9 +166,9 @@ const showAnalytics = ref(false)
 // Debug auth data in development
 if (import.meta.env.DEV) {
   import('@/utils/debug-auth').then(({ debugAuthData }) => {
-    console.log(' Dashboard mounted - debugging auth data:')
+    frontendLogger.debug(' Dashboard mounted - debugging auth data:')
     debugAuthData()
-    console.log(' currentAgent from useAuth:', currentAgent.value)
+    frontendLogger.debug(' currentAgent from useAuth:', currentAgent.value)
   })
 }
 
@@ -220,7 +223,7 @@ const refreshData = async () => {
 
 // 監聽 currentAgent 變化 - 啟用調試
 watch(() => currentAgent.value, (newAgent, oldAgent) => {
-  console.log(' Dashboard: currentAgent changed', {
+  frontendLogger.debug(' Dashboard: currentAgent changed', {
     old: oldAgent,
     new: newAgent,
     displayName: newAgent?.displayName,
@@ -230,18 +233,18 @@ watch(() => currentAgent.value, (newAgent, oldAgent) => {
 
 // 監聽路由變化，確保Dashboard正確重新渲染
 watch(() => router.currentRoute.value.path, (newPath, oldPath) => {
-  console.log(' Dashboard: Route changed from', oldPath, 'to', newPath)
+  frontendLogger.debug(' Dashboard: Route changed from', oldPath, 'to', newPath)
 
   // 如果路由到達Dashboard頁面，確保數據刷新
   if (newPath === '/dashboard') {
-    console.log(' Dashboard: Refreshing data due to route change')
+    frontendLogger.debug(' Dashboard: Refreshing data due to route change')
     refreshData()
   }
 }, { immediate: false })
 
 onMounted(async () => {
   // 數據會自動載入，因為 composables 都設置了 immediate: true
-  console.log(' Dashboard mounted')
+  frontendLogger.debug(' Dashboard mounted')
 
   // LCP 優化：快速切換到實際內容
   // 使用 requestAnimationFrame 確保骨架屏至少渲染一幀後再切換
@@ -249,7 +252,7 @@ onMounted(async () => {
     // 延遲一小段時間讓數據有機會載入
     setTimeout(() => {
       isInitialLoading.value = false
-      console.log('[Dashboard] Initial skeleton hidden, showing content')
+      frontendLogger.debug('[Dashboard] Initial skeleton hidden, showing content')
     }, 150) // 短暫延遲確保數據開始載入
   })
 
@@ -257,7 +260,7 @@ onMounted(async () => {
   // 等待主要內容渲染完成後，再加載 Analytics
   const scheduleAnalyticsLoad = () => {
     showAnalytics.value = true
-    console.log('[Dashboard] Analytics component loaded (deferred)')
+    frontendLogger.debug('[Dashboard] Analytics component loaded (deferred)')
   }
 
   if ('requestIdleCallback' in window) {
@@ -274,7 +277,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   // 清理 token 刷新檢查和活動追蹤
-  console.log(' Stopping token refresh and activity tracking')
+  frontendLogger.debug(' Stopping token refresh and activity tracking')
   stopTokenRefreshCheck()
   stopTracking()
 })

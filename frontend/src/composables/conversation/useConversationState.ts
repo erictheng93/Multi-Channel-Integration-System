@@ -21,6 +21,9 @@ import { useSmoothLoading } from '@/composables/useSmoothLoading'
 import { useLoadingState } from '@/composables/useLoadingState'
 import { conversationCache } from '@/utils/conversationCache'
 import type { Message } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useConversationState')
 
 export interface ConversationStateOptions {
   enablePagination?: boolean
@@ -128,7 +131,7 @@ export function useConversationState(
     // 這處理了重連後 unifiedMessages 尚未同步的情況，避免短暫顯示「暫無訊息」
     if (unifiedIsConnected.value && unifiedMessages.value.length === 0) {
       if (httpMessages.messages.value.length > 0) {
-        console.log('[useConversationState] WebSocket connected but no messages, using HTTP fallback')
+        frontendLogger.debug('[useConversationState] WebSocket connected but no messages, using HTTP fallback')
       }
       return httpMessages.messages.value
     }
@@ -209,11 +212,11 @@ export function useConversationState(
   function queueMessageUpdate(newMessages: Message[]) {
     // 過濾：只有當消息真的變化時才入隊
     if (newMessages.length === lastMessagesLength && lastMessagesLength > 0) {
-      console.log('[useConversationState] Messages length unchanged, skipping queue')
+      frontendLogger.debug('[useConversationState] Messages length unchanged, skipping queue')
       return
     }
 
-    console.log(`[useConversationState] Queuing message update: ${newMessages.length} messages`)
+    frontendLogger.debug(`[useConversationState] Queuing message update: ${newMessages.length} messages`)
     updateQueue.value.push(newMessages)
     lastMessagesLength = newMessages.length
 
@@ -231,7 +234,7 @@ export function useConversationState(
     }
 
     isProcessingQueue.value = true
-    console.log(`[useConversationState] Processing update queue: ${updateQueue.value.length} items`)
+    frontendLogger.debug(`[useConversationState] Processing update queue: ${updateQueue.value.length} items`)
 
     try {
       // FIX Phase 1: 批量處理所有待更新的消息
@@ -252,13 +255,13 @@ export function useConversationState(
 
       try {
         updateMessages(latestMessages, true)
-        console.log(`[useConversationState] Batch update applied: ${latestMessages.length} messages`)
+        frontendLogger.debug(`[useConversationState] Batch update applied: ${latestMessages.length} messages`)
       } catch (error) {
         console.error('[useConversationState] Error updating messages:', error)
       }
     } finally {
       isProcessingQueue.value = false
-      console.log('[useConversationState] Queue processing completed')
+      frontendLogger.debug('[useConversationState] Queue processing completed')
     }
   }
 
@@ -297,9 +300,9 @@ export function useConversationState(
       }
 
       // Load HTTP messages
-      console.log('[useConversationState] Loading HTTP messages...')
+      frontendLogger.debug('[useConversationState] Loading HTTP messages...')
       await httpMessages.fetchMessages()
-      console.log(
+      frontendLogger.debug(
         `[useConversationState] HTTP messages loaded: ${httpMessages.messages.value.length} messages`
       )
 
@@ -308,7 +311,7 @@ export function useConversationState(
       // 但 smoothMessages 因防抖延遲還是空的，導致顯示「暫無訊息」
       // 解決：使用 setMessagesImmediate 同步設置訊息，繞過防抖機制
       if (httpMessages.messages.value.length > 0) {
-        console.log('[useConversationState] Applying immediate messages update to prevent race condition')
+        frontendLogger.debug('[useConversationState] Applying immediate messages update to prevent race condition')
         setMessagesImmediate(httpMessages.messages.value)
 
         // FIX Phase 2: 同步更新 lastMessagesLength，防止 queueMessageUpdate 重複觸發
@@ -316,17 +319,17 @@ export function useConversationState(
         // 因為 lastMessagesLength 仍為 0，檢查 30 === 0 失敗，導致重複更新
         // 解決：立即更新 lastMessagesLength，讓後續的 queueMessageUpdate 能正確跳過
         lastMessagesLength = httpMessages.messages.value.length
-        console.log(`[useConversationState] Updated lastMessagesLength to ${lastMessagesLength} to prevent duplicate updates`)
+        frontendLogger.debug(`[useConversationState] Updated lastMessagesLength to ${lastMessagesLength} to prevent duplicate updates`)
 
         // 重連同步: 初始化 lastMessageTimestamp
         const lastMsg = httpMessages.messages.value[httpMessages.messages.value.length - 1]
         if (lastMsg?.createdAt) {
           lastMessageTimestamp.value = new Date(lastMsg.createdAt).toISOString()
-          console.log('[useConversationState] Initialized lastMessageTimestamp:', lastMessageTimestamp.value)
+          frontendLogger.debug('[useConversationState] Initialized lastMessageTimestamp:', lastMessageTimestamp.value)
         }
       } else {
         // FIX: 確認真的沒有訊息
-        console.log('[useConversationState] No messages found, confirming empty state')
+        frontendLogger.debug('[useConversationState] No messages found, confirming empty state')
         confirmNoMessages()
       }
     } catch (error) {
@@ -341,7 +344,7 @@ export function useConversationState(
   async function refreshMessages() {
     try {
       await httpMessages.refreshMessages()
-      console.log('[useConversationState] Messages refreshed')
+      frontendLogger.debug('[useConversationState] Messages refreshed')
     } catch (error) {
       console.error('[useConversationState] Failed to refresh messages:', error)
       throw error
@@ -357,7 +360,7 @@ export function useConversationState(
    * 2. 專門用於重連場景的訊息同步
    */
   async function refreshMessagesAfterReconnection() {
-    console.log('[useConversationState] Refreshing messages after reconnection...')
+    frontendLogger.debug('[useConversationState] Refreshing messages after reconnection...')
 
     try {
       // 1. 重新載入 HTTP 訊息
@@ -368,9 +371,9 @@ export function useConversationState(
         setMessagesImmediate(httpMessages.messages.value)
         // FIX: 同步更新 lastMessagesLength，防止 queueMessageUpdate 重複觸發
         lastMessagesLength = httpMessages.messages.value.length
-        console.log(`[useConversationState] Refreshed ${httpMessages.messages.value.length} messages after reconnection (lastMessagesLength updated)`)
+        frontendLogger.debug(`[useConversationState] Refreshed ${httpMessages.messages.value.length} messages after reconnection (lastMessagesLength updated)`)
       } else {
-        console.log('[useConversationState] No messages found after reconnection refresh')
+        frontendLogger.debug('[useConversationState] No messages found after reconnection refresh')
       }
     } catch (error) {
       console.error('[useConversationState] Failed to refresh messages after reconnection:', error)
@@ -403,7 +406,7 @@ export function useConversationState(
       // 只有當新訊息比目前記錄的更新時才更新
       if (!lastMessageTimestamp.value || newTimestamp > lastMessageTimestamp.value) {
         lastMessageTimestamp.value = newTimestamp
-        console.log('[useConversationState] Updated lastMessageTimestamp:', newTimestamp)
+        frontendLogger.debug('[useConversationState] Updated lastMessageTimestamp:', newTimestamp)
       }
     }
   }
@@ -419,7 +422,7 @@ export function useConversationState(
     const message = messageList.find((m: Message) => m.id === messageId)
     if (message) {
       message.file_attachments = fileAttachments
-      console.log('[useConversationState] Updated file_attachments for message:', messageId)
+      frontendLogger.debug('[useConversationState] Updated file_attachments for message:', messageId)
     }
   }
 

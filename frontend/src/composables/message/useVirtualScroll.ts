@@ -9,6 +9,9 @@
 
 import { ref, nextTick, type Ref } from 'vue'
 import type { Virtualizer } from '@tanstack/vue-virtual'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useVirtualScroll')
 
 /**
  * Options for useVirtualScroll composable
@@ -57,12 +60,12 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
     }
 
     recentlyScrolledToBottom.value = true
-    console.log(`[GracePeriod] Started (${GRACE_PERIOD_MS}ms)`)
+    frontendLogger.debug(`[GracePeriod] Started (${GRACE_PERIOD_MS}ms)`)
 
     recentlyScrolledToBottomTimeout = setTimeout(() => {
       recentlyScrolledToBottom.value = false
       recentlyScrolledToBottomTimeout = null
-      console.log('[GracePeriod] Ended')
+      frontendLogger.debug('[GracePeriod] Ended')
     }, GRACE_PERIOD_MS)
   }
 
@@ -119,17 +122,17 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
       if (currentScrollHeight === lastScrollHeight) {
         stableCount++
         if (stableCount >= requiredStableChecks) {
-          console.log(`[ScrollHeight] Stabilized at ${currentScrollHeight}px after ${Date.now() - startTime}ms`)
+          frontendLogger.debug(`[ScrollHeight] Stabilized at ${currentScrollHeight}px after ${Date.now() - startTime}ms`)
           return
         }
       } else {
         stableCount = 0
-        console.log(`[ScrollHeight] Changed: ${lastScrollHeight} → ${currentScrollHeight}`)
+        frontendLogger.debug(`[ScrollHeight] Changed: ${lastScrollHeight} → ${currentScrollHeight}`)
         lastScrollHeight = currentScrollHeight
       }
     }
 
-    console.log(`[ScrollHeight] Timeout after ${maxWaitMs}ms, proceeding with current height: ${lastScrollHeight}`)
+    frontendLogger.debug(`[ScrollHeight] Timeout after ${maxWaitMs}ms, proceeding with current height: ${lastScrollHeight}`)
   }
 
   // Helper: Wait for next animation frame
@@ -208,11 +211,11 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
   const scrollToBottom = async (retries = 10, delay = 100) => {
     const lastIndex = virtualItemsLength() - 1
     if (lastIndex < 0 || !virtualizer.value) {
-      console.log('[ScrollToBottom] Skipped - no items or virtualizer')
+      frontendLogger.debug('[ScrollToBottom] Skipped - no items or virtualizer')
       return
     }
 
-    console.log(`[ScrollToBottom] Starting scroll to bottom, items: ${virtualItemsLength()}, lastIndex: ${lastIndex}`)
+    frontendLogger.debug(`[ScrollToBottom] Starting scroll to bottom, items: ${virtualItemsLength()}, lastIndex: ${lastIndex}`)
 
     isProgrammaticScrolling.value = true
 
@@ -241,7 +244,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
             const beforeScrollTop = container.scrollTop
             container.scrollTop = container.scrollHeight
 
-            console.log(`[ScrollToBottom] Scrolled on attempt ${attempt + 1}, ` +
+            frontendLogger.debug(`[ScrollToBottom] Scrolled on attempt ${attempt + 1}, ` +
               `scrollToIndex(${lastIndex}), scrollTop: ${beforeScrollTop} → ${container.scrollTop}, ` +
               `scrollHeight: ${container.scrollHeight}`)
           }
@@ -251,7 +254,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
             isUserAtBottom.value = true
 
             startGracePeriod()
-            console.log('[ScrollToBottom] Success - guard cleared, grace period started')
+            frontendLogger.debug('[ScrollToBottom] Success - guard cleared, grace period started')
           }, 100)
 
           return
@@ -267,7 +270,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
     }
 
     // Final fallback
-    console.log('[ScrollToBottom] Using final fallback methods...')
+    frontendLogger.debug('[ScrollToBottom] Using final fallback methods...')
     try {
       await new Promise(resolve => setTimeout(resolve, 200))
 
@@ -288,7 +291,7 @@ export function useVirtualScroll(options: UseVirtualScrollOptions) {
         isUserAtBottom.value = true
 
         startGracePeriod()
-        console.log('[ScrollToBottom] Guard cleared, isUserAtBottom set to true, grace period started')
+        frontendLogger.debug('[ScrollToBottom] Guard cleared, isUserAtBottom set to true, grace period started')
       }, 100)
     }
   }

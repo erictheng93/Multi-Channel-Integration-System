@@ -4,6 +4,9 @@ import { filesApi } from '@/api/files'
 import { useError } from './useError'
 import { getApiUrl } from '@/config/runtime'
 import type { MediaFileInfo, FileStatsResponse } from '@/api/files'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useFileUpload')
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Presigned URL Service Status Cache (Module-level singleton)
@@ -173,7 +176,7 @@ function uploadToR2Direct(
     // 上傳完成
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        console.log('[uploadToR2Direct] Upload successful')
+        frontendLogger.debug('[uploadToR2Direct] Upload successful')
         resolve(true)
       } else {
         console.error('[uploadToR2Direct] Upload failed:', xhr.status, xhr.responseText)
@@ -216,7 +219,7 @@ async function uploadWithPresignedUrl(
   try {
     // Step 1: 獲取 presigned URL (5%)
     onProgress?.(5)
-    console.log('[Presigned] Step 1: Requesting presigned URL...')
+    frontendLogger.debug('[Presigned] Step 1: Requesting presigned URL...')
 
     const presignedResponse = await filesApi.generateSignedUrl(file.name, file.type, file.size)
 
@@ -231,7 +234,7 @@ async function uploadWithPresignedUrl(
 
     // Step 2: 直接上傳到 R2 (10% - 90%)
     onProgress?.(10)
-    console.log('[Presigned] Step 2: Uploading directly to R2...')
+    frontendLogger.debug('[Presigned] Step 2: Uploading directly to R2...')
 
     const uploadSuccess = await uploadToR2Direct(
       presignedUrl,
@@ -252,7 +255,7 @@ async function uploadWithPresignedUrl(
 
     // Step 3: 確認上傳 (95%)
     onProgress?.(95)
-    console.log('[Presigned] Step 3: Confirming upload...')
+    frontendLogger.debug('[Presigned] Step 3: Confirming upload...')
 
     const confirmResponse = await filesApi.confirmUpload(fileId, file.size)
 
@@ -265,7 +268,7 @@ async function uploadWithPresignedUrl(
 
     // 完成 (100%)
     onProgress?.(100)
-    console.log('[Presigned] Upload completed successfully!')
+    frontendLogger.debug('[Presigned] Upload completed successfully!')
 
     return {
       success: true,
@@ -696,20 +699,20 @@ export function useFileUpload() {
   const checkPresignedUrlServiceStatus = async (): Promise<PresignedServiceStatus | null> => {
     // 檢查緩存是否有效
     if (_presignedServiceStatus && (Date.now() - _presignedServiceStatus.checkedAt < STATUS_CACHE_TTL)) {
-      console.log('[PresignedStatus] Using cached status:', _presignedServiceStatus.configured)
+      frontendLogger.debug('[PresignedStatus] Using cached status:', _presignedServiceStatus.configured)
       return _presignedServiceStatus
     }
 
     // 如果已有正在進行的請求，等待它完成
     if (_statusCheckPromise) {
-      console.log('[PresignedStatus] Waiting for pending status check...')
+      frontendLogger.debug('[PresignedStatus] Waiting for pending status check...')
       return _statusCheckPromise
     }
 
     // 發起新的狀態檢查
     _statusCheckPromise = (async () => {
       try {
-        console.log('[PresignedStatus] Fetching service status...')
+        frontendLogger.debug('[PresignedStatus] Fetching service status...')
         const response = await filesApi.getPresignedUrlStatus()
 
         if (response.success && response.data) {
@@ -717,7 +720,7 @@ export function useFileUpload() {
             ...response.data,
             checkedAt: Date.now()
           }
-          console.log('[PresignedStatus] Service configured:', _presignedServiceStatus.configured)
+          frontendLogger.debug('[PresignedStatus] Service configured:', _presignedServiceStatus.configured)
           return _presignedServiceStatus
         }
         return null
@@ -739,7 +742,7 @@ export function useFileUpload() {
   const clearPresignedStatusCache = () => {
     _presignedServiceStatus = null
     _statusCheckPromise = null
-    console.log('[PresignedStatus] Cache cleared')
+    frontendLogger.debug('[PresignedStatus] Cache cleared')
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -781,7 +784,7 @@ export function useFileUpload() {
 
     // 3. 根據服務狀態選擇上傳方式
     if (serviceStatus?.configured) {
-      console.log(`[SmartUpload] Using Presigned URL (direct to R2) for: ${file.name}`)
+      frontendLogger.debug(`[SmartUpload] Using Presigned URL (direct to R2) for: ${file.name}`)
 
       // 使用 Presigned URL 直傳
       const result = await uploadWithPresignedUrl(file, undefined, (progress) => {
@@ -801,7 +804,7 @@ export function useFileUpload() {
       // Presigned 上傳失敗，嘗試 Fallback
       console.warn(`[SmartUpload] Presigned upload failed for ${file.name}, falling back to Worker...`)
     } else {
-      console.log(`[SmartUpload] Presigned URL not configured, using Worker binding for: ${file.name}`)
+      frontendLogger.debug(`[SmartUpload] Presigned URL not configured, using Worker binding for: ${file.name}`)
     }
 
     // 4. Fallback: 使用 Worker Binding 上傳
@@ -833,7 +836,7 @@ export function useFileUpload() {
       const serviceStatus = await checkPresignedUrlServiceStatus()
       const usePresigned = serviceStatus?.configured ?? false
 
-      console.log(`[SmartUpload] Uploading ${fileList.length} files, usePresigned: ${usePresigned}`)
+      frontendLogger.debug(`[SmartUpload] Uploading ${fileList.length} files, usePresigned: ${usePresigned}`)
 
       // 並行上傳檔案
       const uploadPromises = fileList.map(async (file) => {
@@ -855,7 +858,7 @@ export function useFileUpload() {
 
       // 統計結果
       const successCount = results.filter(r => r.success).length
-      console.log(`[SmartUpload] Completed: ${successCount}/${fileList.length} files uploaded successfully`)
+      frontendLogger.debug(`[SmartUpload] Completed: ${successCount}/${fileList.length} files uploaded successfully`)
 
       // 刷新檔案列表
       await loadFiles()

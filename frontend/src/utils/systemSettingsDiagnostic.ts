@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('systemSettingsDiagnostic')
 // SystemSettings 語言設定診斷工具 - 暫時停用
 // 此文件暫時註釋以避免 TypeScript 錯誤
 
@@ -9,7 +12,7 @@ interface DiagnosticResult {
 }
 
 export const runSystemSettingsDiagnostic = (): DiagnosticResult[] => {
-  console.log('SystemSettingsDiagnostic is temporarily disabled')
+  frontendLogger.debug('SystemSettingsDiagnostic is temporarily disabled')
   return []
 }
 

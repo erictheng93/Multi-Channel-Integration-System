@@ -10,6 +10,9 @@ import { computeStatsFromConversations } from './helpers'
 import type { LiffConversation, ConversationStats, TransferredConversationState } from './types'
 import type { Platform } from '@/types'
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('realtimeHandler')
 
 export interface RealtimeHandlerDeps {
   conversations: Ref<Conversation[]>
@@ -80,11 +83,11 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
         (c as LiffConversation)._liffMetadata?.isPending
       )
       if (hasPending) {
-        console.log('[ConversationsStore] Pending reconciliation: triggering follow-up poll (5s)')
+        frontendLogger.debug('[ConversationsStore] Pending reconciliation: triggering follow-up poll (5s)')
         await pollConversations()
       }
     }, PENDING_RECONCILIATION_DELAY)
-    console.log('[ConversationsStore] Scheduled pending reconciliation in 5s')
+    frontendLogger.debug('[ConversationsStore] Scheduled pending reconciliation in 5s')
   }
 
   /**
@@ -129,7 +132,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
    * 避免不必要的 HTTP 輪詢
    */
   const handleRealtimeUpdate = (message: WebSocketMessage) => {
-    console.log('[ConversationsStore] Real-time update:', message.type, message)
+    frontendLogger.debug('[ConversationsStore] Real-time update:', message.type, message)
 
     // 提取通用數據
     const data = message.data as Record<string, unknown> | undefined
@@ -167,11 +170,11 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
 
           if (updated) {
             lastUpdateTime.value = new Date()
-            console.log(`[ConversationsStore] Direct update for new_message in ${conversationId}`)
+            frontendLogger.debug(`[ConversationsStore] Direct update for new_message in ${conversationId}`)
           }
         } else {
           // 沒有 conversationId，回退到輪詢
-          console.log('[ConversationsStore] No conversationId in message, falling back to polling')
+          frontendLogger.debug('[ConversationsStore] No conversationId in message, falling back to polling')
           lastUpdateTime.value = new Date()
           pollConversations()
         }
@@ -206,7 +209,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           if (Object.keys(updates).length > 0) {
             updateConversationStatus(conversationId, updates)
             lastUpdateTime.value = new Date()
-            console.log(`[ConversationsStore] Direct status update for ${conversationId}`, { assignedTeamName })
+            frontendLogger.debug(`[ConversationsStore] Direct status update for ${conversationId}`, { assignedTeamName })
           } else {
             pollConversations()
           }
@@ -223,7 +226,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const previousTeamId = data?.previousTeamId as number | undefined
           const previousTeamName = data?.previousTeamName as string | undefined
 
-          console.log('[ConversationsStore] Conversation unassigned', {
+          frontendLogger.debug('[ConversationsStore] Conversation unassigned', {
             conversationId,
             previousTeamId,
             previousTeamName
@@ -237,7 +240,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           })
 
           lastUpdateTime.value = new Date()
-          console.log(`[ConversationsStore] Cleared team assignment for ${conversationId}`)
+          frontendLogger.debug(`[ConversationsStore] Cleared team assignment for ${conversationId}`)
         } else {
           pollConversations()
         }
@@ -248,14 +251,14 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
         // 對話轉移 - 處理跨團隊轉移的三種動作
         const action = data?.action as 'removed' | 'assigned' | 'team_changed' | undefined
 
-        console.log('[ConversationsStore] Conversation transferred event', {
+        frontendLogger.debug('[ConversationsStore] Conversation transferred event', {
           conversationId,
           action,
           data
         })
 
         // DEBUG: 詳細記錄完整的 data 對象
-        console.log('[DEBUG] Full event data:', JSON.stringify(data, null, 2))
+        frontendLogger.debug('[DEBUG] Full event data:', JSON.stringify(data, null, 2))
 
         if (action === 'removed') {
           // 從當前團隊移除：對話被轉移到其他團隊
@@ -271,7 +274,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           const userBelongsToTargetTeam = toTeamId !== undefined && userTeamIds.includes(toTeamId)
 
           if (userBelongsToTargetTeam && !isAdmin) {
-            console.log(`[ConversationsStore] Ignoring removed event - user belongs to target team`, {
+            frontendLogger.debug(`[ConversationsStore] Ignoring removed event - user belongs to target team`, {
               conversationId,
               fromTeamId,
               toTeamId,
@@ -285,7 +288,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             (fromTeamId !== undefined && userTeamIds.includes(fromTeamId))
 
           if (!shouldProcessRemoval) {
-            console.log(`[ConversationsStore] Ignoring removed event - user not in source team`, {
+            frontendLogger.debug(`[ConversationsStore] Ignoring removed event - user not in source team`, {
               conversationId,
               fromTeamId,
               userTeamIds,
@@ -304,7 +307,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               conversationCache.invalidateConversation(conversationId)
               updateStatsFromConversations()
               lastUpdateTime.value = new Date()
-              console.log(`[ConversationsStore] Conversation removed from list (transferred to another team)`, {
+              frontendLogger.debug(`[ConversationsStore] Conversation removed from list (transferred to another team)`, {
                 conversationId,
                 toTeamId: data?.toTeamId,
                 toTeamName: data?.toTeamName,
@@ -320,7 +323,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                 toTeamName,
                 transferredAt: nowISO()
               }
-              console.log(`[ConversationsStore] Also updated currentConversation for ${conversationId} - marked as transferred`, {
+              frontendLogger.debug(`[ConversationsStore] Also updated currentConversation for ${conversationId} - marked as transferred`, {
                 toTeamName,
                 transferredAt: transferredConversation.value.transferredAt
               })
@@ -340,7 +343,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             (toTeamId !== undefined && userTeamIds.includes(toTeamId))
 
           if (!shouldProcessAssignment) {
-            console.log(`[ConversationsStore] Ignoring assigned event - user not in target team`, {
+            frontendLogger.debug(`[ConversationsStore] Ignoring assigned event - user not in target team`, {
               conversationId,
               toTeamId,
               userTeamIds,
@@ -372,7 +375,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               // Reconciliation: 移除 pending，準備添加真實對話
               const removedPending = conversations.value[existingPendingIndex]
               conversations.value.splice(existingPendingIndex, 1)
-              console.log(`[ConversationsStore] Reconciled pending → real conversation`, {
+              frontendLogger.debug(`[ConversationsStore] Reconciled pending → real conversation`, {
                 pendingId: removedPending?.id,
                 realConversationId: conversationId,
                 lineUserId: `${liffMetadata?.lineUserId?.substring(0, 10)  }...`
@@ -389,7 +392,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                   (c as LiffConversation)._liffMetadata?.isPending === true
                 )
                 if (duplicatePendingIndex !== -1) {
-                  console.log(`[ConversationsStore] Ignoring duplicate pending conversation`, {
+                  frontendLogger.debug(`[ConversationsStore] Ignoring duplicate pending conversation`, {
                     conversationId,
                     lineUserId: `${liffMetadata.lineUserId.substring(0, 10)  }...`
                   })
@@ -441,7 +444,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
 
               // Log 區分 pending 和真實對話
               if (liffMetadata?.isPending) {
-                console.log(`[ConversationsStore] Pending conversation added (LIFF pre-notification)`, {
+                frontendLogger.debug(`[ConversationsStore] Pending conversation added (LIFF pre-notification)`, {
                   conversationId,
                   teamId: data?.toTeamId,
                   customerName,
@@ -456,14 +459,14 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               // FIX: 同步更新 currentConversation（如果用戶正在查看這個對話）
               if (currentConversation.value && currentConversation.value.id === conversationId) {
                 currentConversation.value = newConversation
-                console.log(`[ConversationsStore] Also updated currentConversation from assigned event`, {
+                frontendLogger.debug(`[ConversationsStore] Also updated currentConversation from assigned event`, {
                   conversationId,
                   newTeamId: data?.toTeamId,
                   newTeamName: data?.toTeamName
                 })
               }
 
-              console.log(`[ConversationsStore] Conversation added to list (transferred from another team)`, {
+              frontendLogger.debug(`[ConversationsStore] Conversation added to list (transferred from another team)`, {
                 conversationId,
                 fromTeamId: data?.fromTeamId,
                 fromTeamName: data?.fromTeamName,
@@ -483,13 +486,13 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               })
 
               lastUpdateTime.value = new Date()
-              console.log(`[ConversationsStore] Conversation already exists, updated team info`, {
+              frontendLogger.debug(`[ConversationsStore] Conversation already exists, updated team info`, {
                 conversationId
               })
             }
           } else {
             // 沒有完整數據，回退到輪詢
-            console.log('[ConversationsStore] No conversation data in assigned event, polling')
+            frontendLogger.debug('[ConversationsStore] No conversation data in assigned event, polling')
             pollConversations()
           }
         } else if (action === 'team_changed') {
@@ -512,7 +515,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               } : undefined
             })
             lastUpdateTime.value = new Date()
-            console.log(`[ConversationsStore] Conversation team changed in chat window`, {
+            frontendLogger.debug(`[ConversationsStore] Conversation team changed in chat window`, {
               conversationId,
               newTeamId: effectiveTeamId,
               newTeamName: toTeamName || newTeam?.name
@@ -545,7 +548,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             if (Object.keys(updates).length > 0) {
               updateConversationStatus(conversationId, updates)
               lastUpdateTime.value = new Date()
-              console.log(`[ConversationsStore] Legacy transfer update for ${conversationId}`)
+              frontendLogger.debug(`[ConversationsStore] Legacy transfer update for ${conversationId}`)
             } else {
               pollConversations()
             }
@@ -558,7 +561,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
 
       case 'conversations_update': {
         // 批量更新，使用輪詢獲取完整數據
-        console.log('[ConversationsStore] Batch update, using polling')
+        frontendLogger.debug('[ConversationsStore] Batch update, using polling')
         lastUpdateTime.value = new Date()
         pollConversations()
         break
@@ -611,7 +614,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
           // Invalidate conversation list cache so next fetch gets fresh data
           conversationCache.invalidateConversation(conversationId || affectedIds[0] || '')
           lastUpdateTime.value = new Date()
-          console.log('[ConversationsStore] Customer profile updated', {
+          frontendLogger.debug('[ConversationsStore] Customer profile updated', {
             customerId: profileData.customerId,
             changedFields: Object.keys(profileData.changes),
             affectedConversations: affectedIds.length,

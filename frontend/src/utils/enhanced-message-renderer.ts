@@ -4,6 +4,9 @@
  */
 
 import { comprehensiveStickerRenderer, type StickerRenderResult } from './sticker-renderer';
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('enhancedmessagerenderer')
 
 interface RenderOptions {
   enableEmoji: boolean;
@@ -64,20 +67,20 @@ export class EnhancedMessageRenderer {
     messageType: string, 
     metadata: string | null = null
   ): Promise<string> {
-    console.log('[EnhancedMessageRenderer] renderMessageWithMetadata called:', { message, messageType, metadata })
+    frontendLogger.debug('[EnhancedMessageRenderer] renderMessageWithMetadata called:', { message, messageType, metadata })
     
     if (!message) {
-      console.log('[EnhancedMessageRenderer] Empty message, returning empty string')
+      frontendLogger.debug('[EnhancedMessageRenderer] Empty message, returning empty string')
       return '';
     }
 
     // 首先处理文本内容中的emoji描述
     let html = await this.processEmojiDescriptions(message);
-    console.log('[EnhancedMessageRenderer] After emoji processing:', html)
+    frontendLogger.debug('[EnhancedMessageRenderer] After emoji processing:', html)
     
     // 处理贴图（基于数据库元数据）
     if (this.options.enableStickers && messageType === 'sticker' && metadata) {
-      console.log('[EnhancedMessageRenderer] Processing sticker with options:', this.options)
+      frontendLogger.debug('[EnhancedMessageRenderer] Processing sticker with options:', this.options)
       
       const stickerResult = await comprehensiveStickerRenderer.processStickerMetadata(
         metadata, 
@@ -85,18 +88,18 @@ export class EnhancedMessageRenderer {
         this.options.stickerSize || 'medium'
       );
       
-      console.log('[EnhancedMessageRenderer] Sticker result:', stickerResult)
+      frontendLogger.debug('[EnhancedMessageRenderer] Sticker result:', stickerResult)
       
       if (stickerResult) {
         // 如果是贴图消息，替换整个文本内容为贴图HTML
         const stickerHTML = this.createStickerHTML(stickerResult);
-        console.log('[EnhancedMessageRenderer] Generated sticker HTML:', stickerHTML)
+        frontendLogger.debug('[EnhancedMessageRenderer] Generated sticker HTML:', stickerHTML)
         html = stickerHTML;
       } else {
-        console.log('[EnhancedMessageRenderer] No sticker result returned')
+        frontendLogger.debug('[EnhancedMessageRenderer] No sticker result returned')
       }
     } else {
-      console.log('[EnhancedMessageRenderer] Skipping sticker processing:', { 
+      frontendLogger.debug('[EnhancedMessageRenderer] Skipping sticker processing:', { 
         enableStickers: this.options.enableStickers, 
         messageType, 
         hasMetadata: !!metadata 
@@ -105,7 +108,7 @@ export class EnhancedMessageRenderer {
     
     // 处理自定义表情
     html = await this.processCustomEmojis(html);
-    console.log('[EnhancedMessageRenderer] Final HTML:', html)
+    frontendLogger.debug('[EnhancedMessageRenderer] Final HTML:', html)
     
     return html;
   }
@@ -122,7 +125,7 @@ export class EnhancedMessageRenderer {
     
     const html = `<div class="${className}" style="${styleString}">${stickerResult.content}</div>`;
     
-    console.log('[EnhancedMessageRenderer] createStickerHTML result:', html)
+    frontendLogger.debug('[EnhancedMessageRenderer] createStickerHTML result:', html)
     
     return html;
   }

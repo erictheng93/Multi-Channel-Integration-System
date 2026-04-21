@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('runtime')
 /**
  * ============================================================================
  * 運行時配置層 - Layer 2: Runtime Configuration
@@ -94,7 +97,7 @@ function getEnv(key: string, defaultValue: string = ''): string {
 
   if (value === undefined || value === null || value === '') {
     if (defaultValue) {
-      console.debug(`[Runtime Config] ${key} not set, using default: ${defaultValue}`);
+      frontendLogger.debug(`[Runtime Config] ${key} not set, using default: ${defaultValue}`);
       return defaultValue;
     } else {
       console.warn(`[Runtime Config] ${key} not set and no default value provided`);
@@ -454,7 +457,7 @@ export function validateRuntimeConfig(): void {
     throw new Error(`Runtime configuration validation failed:\n${errors.join('\n')}`);
   }
 
-  console.info('[Runtime Config] Configuration validated successfully', {
+  frontendLogger.info('[Runtime Config] Configuration validated successfully', {
     env: config.env,
     backendUrl: config.backendUrl,
     frontendUrl: config.frontendUrl,
@@ -467,14 +470,13 @@ export function validateRuntimeConfig(): void {
 
 // 在開發環境下打印配置信息
 if (isDevelopment()) {
-  console.group(' Runtime Configuration');
-  console.log('Environment:', getCurrentEnvironment());
-  console.log('Backend URL:', getBackendUrl());
-  console.log('Frontend URL:', getFrontendUrl());
-  console.log('WebSocket URL:', getWebSocketUrl());
-  console.log('Storage URL:', getStoragePublicUrl());
-  console.log('Debug Mode:', isDebugEnabled());
-  console.groupEnd();
+  frontendLogger.debug(' Runtime Configuration');
+  frontendLogger.debug('Environment:', getCurrentEnvironment());
+  frontendLogger.debug('Backend URL:', getBackendUrl());
+  frontendLogger.debug('Frontend URL:', getFrontendUrl());
+  frontendLogger.debug('WebSocket URL:', getWebSocketUrl());
+  frontendLogger.debug('Storage URL:', getStoragePublicUrl());
+  frontendLogger.debug('Debug Mode:', isDebugEnabled());
 }
 
 // ============================================================================

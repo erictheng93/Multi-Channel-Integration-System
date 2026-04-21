@@ -21,6 +21,7 @@
 
 import { ref, reactive, computed, watch } from 'vue'
 import ReportsAPI from '@/api/reports'
+import { createLogger } from '@/utils/logger'
 import type {
   ReportBase,
   ReportListQuery,
@@ -29,6 +30,8 @@ import type {
   ReportFormat,
   ReportStatus
 } from '@/types/reports'
+
+const frontendLogger = createLogger('useReportDashboard')
 
 export interface UseReportDashboardOptions {
   /**
@@ -522,7 +525,7 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
 
       if (result.success) {
         // 處理批量匯出成功
-        console.log('批量匯出成功:', result)
+        frontendLogger.debug('批量匯出成功:', result)
         return true
       }
 

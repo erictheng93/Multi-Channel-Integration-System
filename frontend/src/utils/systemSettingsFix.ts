@@ -1,6 +1,9 @@
 // SystemSettings 語言設定修復工具
 import { systemApi } from '@/api/system'
 import { setLocale, getCurrentLocale } from '@/plugins/i18n'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('systemSettingsFix')
 
 interface FixResult {
   step: string
@@ -14,14 +17,14 @@ export class SystemSettingsFix {
 
   private addResult(step: string, success: boolean, message: string, details?: unknown) {
     this.results.push({ step, success, message, details })
-    console.log(`${success ? '' : ''} ${step}: ${message}`)
+    frontendLogger.debug(`${success ? '' : ''} ${step}: ${message}`)
     if (details) {
-      console.log(' Details:', details)
+      frontendLogger.debug(' Details:', details)
     }
   }
 
   async fixLanguageSettingIssues(): Promise<FixResult[]> {
-    console.group(' 修復語言設定問題')
+    frontendLogger.debug(' 修復語言設定問題')
     this.results = []
 
     try {
@@ -39,14 +42,11 @@ export class SystemSettingsFix {
 
     } catch (error) {
       this.addResult('修復過程', false, '修復過程中發生錯誤', error)
-    }
-
-    console.groupEnd()
-    return this.results
+    }    return this.results
   }
 
   private async cleanLocalStorage() {
-    console.group(' 清理 localStorage')
+    frontendLogger.debug(' 清理 localStorage')
 
     try {
       // 清除可能損壞的語言設定
@@ -69,29 +69,24 @@ export class SystemSettingsFix {
 
     } catch (error) {
       this.addResult('localStorage 清理', false, 'localStorage 清理失敗', error)
-    }
-
-    console.groupEnd()
-  }
+    }  }
 
   private async initializeSystemSettings() {
-    console.group(' 初始化系統設定')
+    frontendLogger.debug(' 初始化系統設定')
 
     try {
       // 獲取當前設定
       const currentSettings = await systemApi.getSettings()
       
       if (!currentSettings.success) {
-        this.addResult('獲取設定', false, '無法獲取當前系統設定', currentSettings.error)
-        console.groupEnd()
-        return
+        this.addResult('獲取設定', false, '無法獲取當前系統設定', currentSettings.error)        return
       }
 
       // 檢查是否需要初始化
       const needsInit = !currentSettings.data?.general?.language
       
       if (needsInit) {
-        console.log('需要初始化系統設定...')
+        frontendLogger.debug('需要初始化系統設定...')
         
         const defaultSettings = {
           general: {
@@ -115,28 +110,23 @@ export class SystemSettingsFix {
 
     } catch (error) {
       this.addResult('初始化設定', false, '初始化過程發生錯誤', error)
-    }
-
-    console.groupEnd()
-  }
+    }  }
 
   private async fixFrontendBackendSync() {
-    console.group(' 修復前後端同步')
+    frontendLogger.debug(' 修復前後端同步')
 
     try {
       // 獲取後端語言設定
       const settings = await systemApi.getSettings()
       
       if (!settings.success || !settings.data) {
-        this.addResult('獲取後端設定', false, '無法獲取後端語言設定')
-        console.groupEnd()
-        return
+        this.addResult('獲取後端設定', false, '無法獲取後端語言設定')        return
       }
 
       const backendLanguage = settings.data.general?.language || 'zh-TW'
       const frontendLanguage = getCurrentLocale()
 
-      console.log(`後端語言: ${backendLanguage}, 前端語言: ${frontendLanguage}`)
+      frontendLogger.debug(`後端語言: ${backendLanguage}, 前端語言: ${frontendLanguage}`)
 
       if (backendLanguage !== frontendLanguage) {
         // 同步前端到後端語言
@@ -160,20 +150,17 @@ export class SystemSettingsFix {
 
     } catch (error) {
       this.addResult('前後端同步', false, '同步過程發生錯誤', error)
-    }
-
-    console.groupEnd()
-  }
+    }  }
 
   private async testLanguageSwitchingAfterFix() {
-    console.group(' 測試修復後的語言切換')
+    frontendLogger.debug(' 測試修復後的語言切換')
 
     const testLanguages = ['zh-TW', 'zh-CN', 'en']
     let successCount = 0
 
     for (const lang of testLanguages) {
       try {
-        console.log(`測試切換到 ${lang}...`)
+        frontendLogger.debug(`測試切換到 ${lang}...`)
         
         // 1. 前端切換
         const frontendSuccess = setLocale(lang)
@@ -229,10 +216,7 @@ export class SystemSettingsFix {
     })
 
     this.addResult('測試總結', successCount === testLanguages.length, 
-      `語言切換測試完成 (${successCount}/${testLanguages.length})`)
-
-    console.groupEnd()
-  }
+      `語言切換測試完成 (${successCount}/${testLanguages.length})`)  }
 
   getResults(): FixResult[] {
     return this.results
@@ -251,23 +235,21 @@ export const fixSystemSettingsLanguage = async () => {
   const results = await fixer.fixLanguageSettingIssues()
   const successRate = fixer.getSuccessRate()
 
-  console.group(' 修復結果摘要')
-  console.log(`修復項目: ${results.length}`)
-  console.log(`成功率: ${successRate}%`)
+  frontendLogger.debug(' 修復結果摘要')
+  frontendLogger.debug(`修復項目: ${results.length}`)
+  frontendLogger.debug(`成功率: ${successRate}%`)
   
   const failures = results.filter(r => !r.success)
   if (failures.length > 0) {
-    console.log('失敗項目:')
-    failures.forEach(f => console.log(`  - ${f.step}: ${f.message}`))
+    frontendLogger.debug('失敗項目:')
+    failures.forEach(f => frontendLogger.debug(`  - ${f.step}: ${f.message}`))
   }
-  console.groupEnd()
-
   return { results, successRate }
 }
 
 // 快速修復函數
 export const quickFixLanguageSettings = async () => {
-  console.log(' 快速修復語言設定問題...')
+  frontendLogger.debug(' 快速修復語言設定問題...')
   
   try {
     // 1. 清理並重設 localStorage
@@ -288,7 +270,7 @@ export const quickFixLanguageSettings = async () => {
     })
     
     if (response.success) {
-      console.log(' 快速修復完成')
+      frontendLogger.debug(' 快速修復完成')
       return true
     } else {
       console.error(' 快速修復失敗:', response.error)

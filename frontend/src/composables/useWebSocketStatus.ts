@@ -6,6 +6,9 @@ import { ref, computed, onMounted, onUnmounted, type Ref } from 'vue'
 import { useWebSocket } from './useWebSocket'
 import type { WebSocketConnectionState } from '@/services/websocketClient'
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useWebSocketStatus')
 
 export interface ConnectionHealth {
   quality: 'excellent' | 'good' | 'fair' | 'poor' | 'offline'
@@ -270,7 +273,7 @@ export function useWebSocketStatus() {
   const setupEventTracking = (): void => {
     webSocket.setEventCallbacks({
       onConnectionStateChange: (state) => {
-        console.log(`[useWebSocketStatus] Connection state changed to: ${state}`)
+        frontendLogger.debug(`[useWebSocketStatus] Connection state changed to: ${state}`)
       },
       onError: (error) => {
         console.error('[useWebSocketStatus] WebSocket error:', error)

@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('stickerrenderer')
 /**
  * 綜合貼圖渲染系統
  * 支持LINE貼圖、Facebook媒體和自定義貼圖的顯示
@@ -73,26 +76,26 @@ export class ComprehensiveStickerRenderer {
     size: keyof typeof STICKER_SIZES = 'medium'
   ): Promise<StickerRenderResult | null> {
     
-    console.log('🔍 [StickerRenderer] processStickerMetadata called')
-    console.log('🔍 [StickerRenderer] metadata:', metadata)
-    console.log('🔍 [StickerRenderer] messageType:', messageType)
-    console.log('🔍 [StickerRenderer] size:', size)
+    frontendLogger.debug('🔍 [StickerRenderer] processStickerMetadata called')
+    frontendLogger.debug('🔍 [StickerRenderer] metadata:', metadata)
+    frontendLogger.debug('🔍 [StickerRenderer] messageType:', messageType)
+    frontendLogger.debug('🔍 [StickerRenderer] size:', size)
     
     if (!metadata || messageType !== 'sticker') {
-      console.log('❌ [StickerRenderer] Invalid metadata or messageType, returning null')
+      frontendLogger.debug('❌ [StickerRenderer] Invalid metadata or messageType, returning null')
       return null;
     }
 
     try {
       const parsedMetadata = JSON.parse(metadata);
-      console.log('🔍 [StickerRenderer] Parsed metadata:', parsedMetadata)
+      frontendLogger.debug('🔍 [StickerRenderer] Parsed metadata:', parsedMetadata)
       const result = await this.renderSticker(parsedMetadata, size);
-      console.log('🔍 [StickerRenderer] Render result:', result)
+      frontendLogger.debug('🔍 [StickerRenderer] Render result:', result)
       return result;
     } catch (error) {
       console.warn('❌ [StickerRenderer] 無法解析貼圖元數據:', error);
       const fallback = this.createFallbackResult('貼圖', size);
-      console.log('🔍 [StickerRenderer] Created fallback result:', fallback)
+      frontendLogger.debug('🔍 [StickerRenderer] Created fallback result:', fallback)
       return fallback;
     }
   }
@@ -144,11 +147,11 @@ export class ComprehensiveStickerRenderer {
     size: keyof typeof STICKER_SIZES
   ): Promise<StickerRenderResult> {
     
-    console.log('🔍 [StickerRenderer] renderLineSticker called with:', metadata)
+    frontendLogger.debug('🔍 [StickerRenderer] renderLineSticker called with:', metadata)
     
     const { packageId, stickerId } = metadata;
     if (!packageId || !stickerId) {
-      console.log('❌ [StickerRenderer] Missing packageId or stickerId')
+      frontendLogger.debug('❌ [StickerRenderer] Missing packageId or stickerId')
       return this.createFallbackResult('LINE 貼圖', size);
     }
 
@@ -156,46 +159,46 @@ export class ComprehensiveStickerRenderer {
     const validPackageId: string = packageId;
     const validStickerId: string = stickerId;
 
-    console.log('🔍 [StickerRenderer] Package ID:', validPackageId, 'Sticker ID:', validStickerId)
+    frontendLogger.debug('🔍 [StickerRenderer] Package ID:', validPackageId, 'Sticker ID:', validStickerId)
 
     const cacheKey = `line_${validPackageId}_${validStickerId}_${size}`;
     
     // 檢查緩存
     const cached = this.stickerCache.get(cacheKey);
     if (cached) {
-      console.log('🔍 [StickerRenderer] Found cached result for:', cacheKey)
+      frontendLogger.debug('🔍 [StickerRenderer] Found cached result for:', cacheKey)
       return cached;
     }
 
     // 生成LINE貼圖URL
     const stickerUrls = this.generateLineStickerUrls(validPackageId, validStickerId);
-    console.log('🔍 [StickerRenderer] Generated URLs:', stickerUrls)
+    frontendLogger.debug('🔍 [StickerRenderer] Generated URLs:', stickerUrls)
     
     // 測試URL可用性
     for (let i = 0; i < stickerUrls.length; i++) {
       const url = stickerUrls[i];
       if (!url) {continue;} // Skip undefined URLs
       
-      console.log(`🔍 [StickerRenderer] Trying URL ${i + 1}/${stickerUrls.length}: ${url}`)
+      frontendLogger.debug(`🔍 [StickerRenderer] Trying URL ${i + 1}/${stickerUrls.length}: ${url}`)
       
       if (!this.errorCache.has(url)) {
-        console.log('🔍 [StickerRenderer] URL not in error cache, creating image result')
+        frontendLogger.debug('🔍 [StickerRenderer] URL not in error cache, creating image result')
         const result = await this.createImageResult(url, `LINE 貼圖 ${validStickerId}`, size, {
           'data-sticker-package': validPackageId,
           'data-sticker-id': validStickerId,
           'data-sticker-type': 'line'
         });
         
-        console.log('✅ [StickerRenderer] Created image result for URL:', url)
+        frontendLogger.debug('✅ [StickerRenderer] Created image result for URL:', url)
         this.stickerCache.set(cacheKey, result);
         return result;
       } else {
-        console.log('❌ [StickerRenderer] URL is in error cache, skipping:', url)
+        frontendLogger.debug('❌ [StickerRenderer] URL is in error cache, skipping:', url)
       }
     }
 
     // 所有URL都失敗，返回後備方案
-    console.log('❌ [StickerRenderer] All URLs failed, creating fallback result')
+    frontendLogger.debug('❌ [StickerRenderer] All URLs failed, creating fallback result')
     const fallback = this.createFallbackResult('LINE 貼圖', size);
     this.stickerCache.set(cacheKey, fallback);
     return fallback;
@@ -287,7 +290,7 @@ export class ComprehensiveStickerRenderer {
     dataAttributes: Record<string, string> = {}
   ): Promise<StickerRenderResult> {
 
-    console.log('🔍 [StickerRenderer] createImageResult called with:', { url, alt, size, dataAttributes })
+    frontendLogger.debug('🔍 [StickerRenderer] createImageResult called with:', { url, alt, size, dataAttributes })
 
     // 检测空文件：发送 HEAD 请求检查 Content-Length
     try {
@@ -330,8 +333,8 @@ export class ComprehensiveStickerRenderer {
       }
     };
 
-    console.log('🔍 [StickerRenderer] Created image result:', result)
-    console.log('🔍 [StickerRenderer] Image HTML content:', content)
+    frontendLogger.debug('🔍 [StickerRenderer] Created image result:', result)
+    frontendLogger.debug('🔍 [StickerRenderer] Image HTML content:', content)
 
     return result;
   }
@@ -344,7 +347,7 @@ export class ComprehensiveStickerRenderer {
     size: keyof typeof STICKER_SIZES
   ): StickerRenderResult {
 
-    console.log('🔍 [StickerRenderer] createFallbackResult called with:', { label, size })
+    frontendLogger.debug('🔍 [StickerRenderer] createFallbackResult called with:', { label, size })
 
     const sizeStyle = STICKER_SIZES[size];
 
@@ -363,7 +366,7 @@ export class ComprehensiveStickerRenderer {
       }
     };
 
-    console.log('🔍 [StickerRenderer] Created fallback result:', result)
+    frontendLogger.debug('🔍 [StickerRenderer] Created fallback result:', result)
 
     return result;
   }

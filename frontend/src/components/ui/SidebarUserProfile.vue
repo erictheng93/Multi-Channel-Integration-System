@@ -67,6 +67,13 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const props = defineProps<{
+    sidebarCollapsed: boolean
+    isMobile: boolean
+  }>()
+  const frontendLogger = createLogger('SidebarUserProfile')
   import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
   import { useRoute } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
@@ -76,11 +83,6 @@
   import UserIcon from '@/components/icons/UserIcon.vue'
   import KeyIcon from '@/components/icons/KeyIcon.vue'
   import LogoutIcon from '@/components/icons/LogoutIcon.vue'
-
-  const props = defineProps<{
-    sidebarCollapsed: boolean
-    isMobile: boolean
-  }>()
 
   const route = useRoute()
   const authStore = useAuthStore()
@@ -124,12 +126,12 @@
 
   const viewProfile = () => {
     showUserMenu.value = false
-    console.log('查看個人資料')
+    frontendLogger.debug('查看個人資料')
   }
 
   const changePassword = () => {
     showUserMenu.value = false
-    console.log('修改密碼')
+    frontendLogger.debug('修改密碼')
   }
 
   const handleLogout = async () => {

@@ -21,6 +21,9 @@ import { useFileUpload } from '@/composables/useFileUpload'
 import { useToast } from '@/composables/useToast'
 import type { Message, FileAttachmentData } from '@/types'
 import type { ConversationState } from './useConversationState'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMessageHandlers')
 
 // ===== 類型定義 =====
 
@@ -132,7 +135,7 @@ export function useMessageHandlers(
    * 處理消息發送（向後兼容事件，主要用於日誌）
    */
   function handleMessageSent(data: MessageSentData) {
-    console.log('[MessageHandlers] handleMessageSent called (backward compatibility event)')
+    frontendLogger.debug('[MessageHandlers] handleMessageSent called (backward compatibility event)')
     trackUserActivity()
 
     if (!data.content?.trim() && (!data.file_attachments || data.file_attachments.length === 0)) {
@@ -140,7 +143,7 @@ export function useMessageHandlers(
       return
     }
 
-    console.log('[MessageHandlers] handleMessageSent completed - message already in UI via handleMessagePending')
+    frontendLogger.debug('[MessageHandlers] handleMessageSent completed - message already in UI via handleMessagePending')
   }
 
   /**
@@ -149,7 +152,7 @@ export function useMessageHandlers(
    * Phase 2: 支援 Correlation ID 追蹤
    */
   function handleMessagePending(data: MessagePendingData) {
-    console.log('[MessageHandlers] Message pending - showing immediately:', data.tempId)
+    frontendLogger.debug('[MessageHandlers] Message pending - showing immediately:', data.tempId)
     trackUserActivity()
 
     // Phase 2: 生成或使用傳入的 correlationId
@@ -157,7 +160,7 @@ export function useMessageHandlers(
 
     // FIX: 立即標記 tempId，防止 WebSocket 廣播重複
     pendingMessageIds.add(data.tempId)
-    console.log(`[MessageHandlers] Added to pendingMessageIds: ${data.tempId}`)
+    frontendLogger.debug(`[MessageHandlers] Added to pendingMessageIds: ${data.tempId}`)
 
     // Phase 2: 記錄到 correlationId Map
     pendingByCorrelationId.set(correlationId, {
@@ -166,7 +169,7 @@ export function useMessageHandlers(
       content: data.content,
       createdAt: Date.now()
     })
-    console.log(`[MessageHandlers] Added to pendingByCorrelationId: ${correlationId}`)
+    frontendLogger.debug(`[MessageHandlers] Added to pendingByCorrelationId: ${correlationId}`)
 
     // 創建樂觀訊息，立即顯示給用戶
     const optimisticMessage: Message = {
@@ -202,14 +205,14 @@ export function useMessageHandlers(
     // 立即添加到訊息列表
     state.addMessage(optimisticMessage)
 
-    console.log('[MessageHandlers] Optimistic message added to UI with correlationId:', correlationId)
+    frontendLogger.debug('[MessageHandlers] Optimistic message added to UI with correlationId:', correlationId)
   }
 
   /**
    * 處理上傳進度更新
    */
   function handleUploadProgress(data: UploadProgressData) {
-    console.log(`[MessageHandlers] Upload progress: ${data.progress}% - ${data.status}`)
+    frontendLogger.debug(`[MessageHandlers] Upload progress: ${data.progress}% - ${data.status}`)
 
     const messageList = state.httpMessages.messages.value
     const message = messageList.find(m => m.id === data.tempId)
@@ -244,13 +247,13 @@ export function useMessageHandlers(
    * 解決方案：檢測 realId 是否已存在，若存在則刪除樂觀訊息
    */
   function handleMessageConfirmed(data: MessageConfirmedData) {
-    console.log('[MessageHandlers] Message confirmed:', data.tempId, '->', data.realId)
+    frontendLogger.debug('[MessageHandlers] Message confirmed:', data.tempId, '->', data.realId)
 
     // FIX: 轉移標記從 tempId 到 realId
     pendingMessageIds.delete(data.tempId)
     sentMessageIds.add(data.realId)
-    console.log(`[MessageHandlers] Transferred: ${data.tempId} → ${data.realId}`)
-    console.log(`[MessageHandlers] pendingIds: ${pendingMessageIds.size}, sentIds: ${sentMessageIds.size}`)
+    frontendLogger.debug(`[MessageHandlers] Transferred: ${data.tempId} → ${data.realId}`)
+    frontendLogger.debug(`[MessageHandlers] pendingIds: ${pendingMessageIds.size}, sentIds: ${sentMessageIds.size}`)
 
     // Phase 2: 處理 Correlation ID 追蹤
     // 優先使用傳入的 correlationId，否則根據 tempId 查找
@@ -269,12 +272,12 @@ export function useMessageHandlers(
       const confirmedCorrelationId = correlationId
       pendingByCorrelationId.delete(confirmedCorrelationId)
       correlationToRealId.set(confirmedCorrelationId, data.realId)
-      console.log(`[MessageHandlers] Correlation: ${confirmedCorrelationId} → ${data.realId}`)
+      frontendLogger.debug(`[MessageHandlers] Correlation: ${confirmedCorrelationId} → ${data.realId}`)
 
       // 定時清理 correlation 映射
       setTimeout(() => {
         correlationToRealId.delete(confirmedCorrelationId)
-        console.log(`[MessageHandlers] Cleaned up correlationToRealId: ${confirmedCorrelationId}`)
+        frontendLogger.debug(`[MessageHandlers] Cleaned up correlationToRealId: ${confirmedCorrelationId}`)
       }, 5 * 60 * 1000)
     }
 
@@ -282,7 +285,7 @@ export function useMessageHandlers(
     setTimeout(
       () => {
         sentMessageIds.delete(data.realId)
-        console.log(`[MessageHandlers] Cleaned up sentMessageIds: ${data.realId}`)
+        frontendLogger.debug(`[MessageHandlers] Cleaned up sentMessageIds: ${data.realId}`)
       },
       5 * 60 * 1000
     )
@@ -296,32 +299,32 @@ export function useMessageHandlers(
     if (existingRealMessage && pendingMessage) {
       // 競態條件：WebSocket 已先添加 realId 訊息
       // 刪除樂觀訊息 (tempId)，保留 WebSocket 訊息 (realId)
-      console.log(`[MessageHandlers] Race condition detected: WebSocket already added realId`)
-      console.log(`[MessageHandlers] Removing duplicate pending message: ${data.tempId}`)
+      frontendLogger.debug(`[MessageHandlers] Race condition detected: WebSocket already added realId`)
+      frontendLogger.debug(`[MessageHandlers] Removing duplicate pending message: ${data.tempId}`)
 
       const pendingIndex = messageList.indexOf(pendingMessage)
       if (pendingIndex !== -1) {
         messageList.splice(pendingIndex, 1)
-        console.log(`[MessageHandlers] Removed pending message at index ${pendingIndex}`)
+        frontendLogger.debug(`[MessageHandlers] Removed pending message at index ${pendingIndex}`)
       }
 
       // 更新 WebSocket 訊息的附件資訊（如果有）
       if (data.file_attachments && data.file_attachments.length > 0) {
          
         existingRealMessage.file_attachments = data.file_attachments
-        console.log(`[MessageHandlers] Updated file_attachments on existing message`)
+        frontendLogger.debug(`[MessageHandlers] Updated file_attachments on existing message`)
       }
 
       // 確保狀態正確
       existingRealMessage.status = 'sent' as const
       existingRealMessage.deliveryStatus = 'sent' as const
 
-      console.log('[MessageHandlers] Race condition resolved - duplicate removed')
+      frontendLogger.debug('[MessageHandlers] Race condition resolved - duplicate removed')
     } else if (pendingMessage) {
       // 正常流程：HTTP 響應先於 WebSocket 到達
       // 更新樂觀訊息的 ID 從 tempId 到 realId
       pendingMessage.id = data.realId
-      console.log(`[MessageHandlers] Updated message ID: ${data.tempId} -> ${data.realId}`)
+      frontendLogger.debug(`[MessageHandlers] Updated message ID: ${data.tempId} -> ${data.realId}`)
 
       // 更新訊息狀態為已發送
       pendingMessage.status = 'sent' as const
@@ -339,10 +342,10 @@ export function useMessageHandlers(
         delete (pendingMessage.metadata as Record<string, unknown>).pendingAttachments
       }
 
-      console.log('[MessageHandlers] Message status updated to sent with realId')
+      frontendLogger.debug('[MessageHandlers] Message status updated to sent with realId')
     } else if (existingRealMessage) {
       // 邊界情況：只有 realId 訊息存在（tempId 可能已被其他機制處理）
-      console.log(`[MessageHandlers] Only realId exists, ensuring status is correct`)
+      frontendLogger.debug(`[MessageHandlers] Only realId exists, ensuring status is correct`)
       existingRealMessage.status = 'sent' as const
       existingRealMessage.deliveryStatus = 'sent' as const
 
@@ -380,7 +383,7 @@ export function useMessageHandlers(
         }
       }
 
-      console.log('[MessageHandlers] Failed message stored with retry data:', {
+      frontendLogger.debug('[MessageHandlers] Failed message stored with retry data:', {
         tempId: data.tempId,
         hasRetryData: !!data.retryData,
         attachmentCount: data.retryData?.attachments?.length || 0
@@ -401,7 +404,7 @@ export function useMessageHandlers(
     if (message) {
       message.status = newStatus
       message.deliveryStatus = newStatus
-      console.log(`[MessageHandlers] Updated message ${messageId} status to: ${newStatus}`)
+      frontendLogger.debug(`[MessageHandlers] Updated message ${messageId} status to: ${newStatus}`)
     }
   }
 
@@ -417,7 +420,7 @@ export function useMessageHandlers(
       return
     }
 
-    console.log('[MessageHandlers] Retrying failed message:', messageId)
+    frontendLogger.debug('[MessageHandlers] Retrying failed message:', messageId)
 
     // 從 metadata 獲取重試資料
     const meta = failedMessage.metadata as Record<string, unknown> | undefined
@@ -425,7 +428,7 @@ export function useMessageHandlers(
     const retryAttachments = (meta?.retryAttachments as RetryAttachment[]) || []
     const hasAttachments = retryAttachments.length > 0
 
-    console.log('[MessageHandlers] Retry data:', {
+    frontendLogger.debug('[MessageHandlers] Retry data:', {
       content: retryContent,
       attachmentCount: retryAttachments.length
     })
@@ -448,7 +451,7 @@ export function useMessageHandlers(
 
       // 如果有附件，重新上傳
       if (hasAttachments) {
-        console.log('[MessageHandlers] Re-uploading attachments...')
+        frontendLogger.debug('[MessageHandlers] Re-uploading attachments...')
         const totalFiles = retryAttachments.length
         let completedFiles = 0
 
@@ -467,7 +470,7 @@ export function useMessageHandlers(
             if (result.success && result.fileId) {
               attachmentIds.push(result.fileId)
               completedFiles++
-              console.log(`[MessageHandlers] Attachment uploaded: ${attachment.name}`)
+              frontendLogger.debug(`[MessageHandlers] Attachment uploaded: ${attachment.name}`)
             } else {
               throw new Error(result.error || '上傳失敗')
             }
@@ -518,7 +521,7 @@ export function useMessageHandlers(
           delete meta.uploadProgress
           delete meta.error
         }
-        console.log('[MessageHandlers] Retry successful')
+        frontendLogger.debug('[MessageHandlers] Retry successful')
         showSuccess('訊息重試發送成功')
       } else {
         updateOptimisticMessageStatus(messageId, 'failed')
@@ -553,14 +556,14 @@ export function useMessageHandlers(
     if (correlationId) {
       // 檢查是否有正在發送的訊息使用此 correlationId
       if (pendingByCorrelationId.has(correlationId)) {
-        console.log(`[MessageHandlers] Message found by correlationId (pending): ${correlationId}`)
+        frontendLogger.debug(`[MessageHandlers] Message found by correlationId (pending): ${correlationId}`)
         return true
       }
 
       // 檢查 correlationId 對應的 realId
       const mappedRealId = correlationToRealId.get(correlationId)
       if (mappedRealId && (mappedRealId === messageId || sentMessageIds.has(mappedRealId))) {
-        console.log(`[MessageHandlers] Message found by correlationId (confirmed): ${correlationId} → ${mappedRealId}`)
+        frontendLogger.debug(`[MessageHandlers] Message found by correlationId (confirmed): ${correlationId} → ${mappedRealId}`)
         return true
       }
     }
@@ -570,7 +573,7 @@ export function useMessageHandlers(
     const inSent = sentMessageIds.has(messageId)
 
     if (inPending || inSent) {
-      console.log(`[MessageHandlers] Message ${messageId} found in:`, {
+      frontendLogger.debug(`[MessageHandlers] Message ${messageId} found in:`, {
         pending: inPending,
         sent: inSent
       })
@@ -580,7 +583,7 @@ export function useMessageHandlers(
     // Phase 2: 額外檢查 - 根據 messageId 查找是否是某個 correlation 的 realId
     for (const [corrId, realId] of correlationToRealId.entries()) {
       if (realId === messageId) {
-        console.log(`[MessageHandlers] Message ${messageId} found via correlation mapping: ${corrId}`)
+        frontendLogger.debug(`[MessageHandlers] Message ${messageId} found via correlation mapping: ${corrId}`)
         return true
       }
     }

@@ -4,6 +4,9 @@
  */
 
 import lunr from 'lunr'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('messageIndexWorker')
 
 interface IndexDocument {
   id: string
@@ -92,7 +95,7 @@ function buildIndex(messages: Message[]): WorkerResponse {
       documentsObj[key] = value
     })
 
-    console.log(`[Worker] 索引構建完成: ${messages.length} 條消息，耗時 ${buildTime.toFixed(2)}ms`)
+    frontendLogger.debug(`[Worker] 索引構建完成: ${messages.length} 條消息，耗時 ${buildTime.toFixed(2)}ms`)
 
     return {
       type: 'INDEX_BUILT',
@@ -134,7 +137,7 @@ function search(query: string): WorkerResponse {
 
     const searchTime = performance.now() - startTime
 
-    console.log(`[Worker] 搜索完成: "${query}" -> ${resultIds.length} 條結果，耗時 ${searchTime.toFixed(2)}ms`)
+    frontendLogger.debug(`[Worker] 搜索完成: "${query}" -> ${resultIds.length} 條結果，耗時 ${searchTime.toFixed(2)}ms`)
 
     return {
       type: 'SEARCH_RESULTS',

@@ -53,8 +53,8 @@ export interface MessageBubbleProps {
  * })
  *
  * const emit = {
- * copy: (msg) => console.log('Copy', msg),
- * reply: (msg) => console.log('Reply', msg),
+ * copy: (msg) => logger.debug('Copy', msg),
+ * reply: (msg) => logger.debug('Reply', msg),
  * // ... other emitters
  * }
  *

@@ -18,6 +18,9 @@ import { isImageFile, isVideoFile } from '@/utils/message'
 import { ensureDownloadFilename } from '@/utils/message/formatting'
 import { MESSAGE_STATUS } from '@/constants/message-status'
 import { getApiUrl } from '@/config/runtime'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMessageAttachment')
 
 /**
  * File Attachment Interface
@@ -487,7 +490,7 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
     attachment: FileAttachment,
     onPreview?: (_message: Message) => void
   ) => {
-    console.log('[useMessageAttachment] Attachment preview requested:', attachment)
+    frontendLogger.debug('[useMessageAttachment] Attachment preview requested:', attachment)
     if (onPreview) {
       onPreview(props.value.message)
     }

@@ -7,6 +7,9 @@ import { ref, computed } from 'vue';
 import type { Agent, LoginRequest, LoginResponse } from '@/types';
 import { authApi } from '@/api/auth';
 import { apiClient } from '@/api/base';
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('auth')
 
 // Phase 1 Optimization: Team role type (matches backend TeamRoleInTeam)
 type TeamRoleInTeam = 'member' | 'lead' | 'supervisor';
@@ -145,7 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
           teamRoles.value = payload.teamRoles;
         }
 
-        console.log('[Auth] Parsed JWT team data:', {
+        frontendLogger.debug('[Auth] Parsed JWT team data:', {
           allowedTeamIds: allowedTeamIds.value,
           teamRoles: teamRoles.value
         });
@@ -174,7 +177,7 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('contextTeamId', teamId.toString());
     }
 
-    console.log('[Auth] Switched team context to:', teamId);
+    frontendLogger.debug('[Auth] Switched team context to:', teamId);
     return true;
   }
 
@@ -399,14 +402,14 @@ export const useAuthStore = defineStore('auth', () => {
     // 優化：如果已有有效資料且非強制刷新，直接返回
     if (!forceRefresh && currentAgent.value && isValidAgent(currentAgent.value)) {
       if (import.meta.env.DEV) {
-        console.log(' Agent data already cached, skipping API request');
+        frontendLogger.debug(' Agent data already cached, skipping API request');
       }
       return;
     }
 
     try {
       if (import.meta.env.DEV) {
-        console.log(' Fetching agent data from server...');
+        frontendLogger.debug(' Fetching agent data from server...');
       }
       
       const response = await authApi.me();
@@ -563,14 +566,14 @@ export const useAuthStore = defineStore('auth', () => {
       if (currentAgent.value && isValidAgent(currentAgent.value)) {
         setSessionStatus('authenticated');
         if (import.meta.env.DEV) {
-          console.log(' Using cached agent data, skipping /auth/me request');
+          frontendLogger.debug(' Using cached agent data, skipping /auth/me request');
         }
         return;
       }
       
       // 只有在沒有有效 currentAgent 時才發送 API 請求
       if (import.meta.env.DEV) {
-        console.log(' No cached agent data, fetching from server...');
+        frontendLogger.debug(' No cached agent data, fetching from server...');
       }
       
       const response = await authApi.me();
@@ -600,7 +603,7 @@ export const useAuthStore = defineStore('auth', () => {
       const timeLeft = sessionExpiry.value - Date.now();
       const daysLeft = Math.floor(timeLeft / (24 * 60 * 60 * 1000));
       const hoursLeft = Math.floor((timeLeft % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-      console.log(`Session: ${daysLeft}d ${hoursLeft}h remaining`);
+      frontendLogger.debug(`Session: ${daysLeft}d ${hoursLeft}h remaining`);
     }
   }
 
@@ -628,7 +631,7 @@ export const useAuthStore = defineStore('auth', () => {
         try {
           const { useWebSocketStore } = await import('@/stores/websocket');
           const wsStore = useWebSocketStore();
-          console.log('[Auth] Token refreshed, reconnecting WebSocket...');
+          frontendLogger.debug('[Auth] Token refreshed, reconnecting WebSocket...');
           wsStore.reconnect().catch((err: Error) => {
             console.warn('[Auth] WebSocket reconnection failed after token refresh:', err);
           });

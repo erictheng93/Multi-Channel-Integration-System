@@ -21,6 +21,9 @@ import { useNotificationFilters } from './useNotificationFilters'
 import { useNotificationActions } from './useNotificationActions'
 import { useNotificationSettings } from './useNotificationSettings'
 import { useNotificationKeyboard } from './useNotificationKeyboard'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useNotificationController')
 
 export function useNotificationController() {
   const router = useRouter()
@@ -69,7 +72,7 @@ export function useNotificationController() {
    * Phase B3: Using global WebSocket Store with subscription pattern
    */
   const handleRealtimeNotification = (message: WebSocketMessage) => {
-    console.log('[NotificationController] Real-time notification received:', message.type)
+    frontendLogger.debug('[NotificationController] Real-time notification received:', message.type)
 
     // Handle notification message
     if (message.type === 'notification') {
@@ -90,7 +93,7 @@ export function useNotificationController() {
   // ==================== Lifecycle ====================
 
   const initialize = async () => {
-    console.log('[NotificationController] Initializing (Phase B3)...')
+    frontendLogger.debug('[NotificationController] Initializing (Phase B3)...')
 
     // Load initial data
     await Promise.all([
@@ -101,7 +104,7 @@ export function useNotificationController() {
 
     // Ensure global WebSocket is connected
     if (!wsStore.isConnected) {
-      console.log('[NotificationController] Connecting to global WebSocket...')
+      frontendLogger.debug('[NotificationController] Connecting to global WebSocket...')
       await wsStore.connect()
     }
 
@@ -110,28 +113,28 @@ export function useNotificationController() {
       handleRealtimeNotification(message)
     })
 
-    console.log(`[NotificationController] Subscribed to notifications (ID: ${notificationSubscriptionId?.substring(0, 8)})`)
+    frontendLogger.debug(`[NotificationController] Subscribed to notifications (ID: ${notificationSubscriptionId?.substring(0, 8)})`)
 
     // Reduce polling frequency since we have WebSocket
     // Only poll every 2 minutes as a fallback
     if (!wsStore.isConnected) {
       store.startPolling(120000) // 2 minutes instead of 30 seconds
-      console.log('[NotificationController] Fallback polling enabled (WebSocket disconnected)')
+      frontendLogger.debug('[NotificationController] Fallback polling enabled (WebSocket disconnected)')
     }
 
     // Add keyboard event listener
     document.addEventListener('keydown', keyboard.handleKeyDown)
-    console.log('[NotificationController] Keyboard navigation enabled')
+    frontendLogger.debug('[NotificationController] Keyboard navigation enabled')
   }
 
   const cleanup = () => {
-    console.log('[NotificationController] Cleaning up...')
+    frontendLogger.debug('[NotificationController] Cleaning up...')
 
     // Unsubscribe from notifications channel
     if (notificationSubscriptionId) {
       wsStore.unsubscribe(notificationSubscriptionId)
       notificationSubscriptionId = null
-      console.log('[NotificationController] Unsubscribed from notifications')
+      frontendLogger.debug('[NotificationController] Unsubscribed from notifications')
     }
 
     // Remove keyboard event listener

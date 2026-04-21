@@ -2,6 +2,9 @@
 // 負責註冊、更新、通訊和離線功能管理
 
 import { ref, type Ref } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('serviceWorkerManager')
 
 // PWA 安装提示事件类型定义
 interface BeforeInstallPromptEvent extends Event {
@@ -122,7 +125,7 @@ export class ServiceWorkerManager {
     }
 
     try {
-      console.log('[SWManager] Registering Service Worker...')
+      frontendLogger.debug('[SWManager] Registering Service Worker...')
       this.status.value = 'installing'
 
       this.registration = await navigator.serviceWorker.register(
@@ -130,7 +133,7 @@ export class ServiceWorkerManager {
         { scope: this.config.scope }
       )
 
-      console.log('[SWManager] Service Worker registered successfully')
+      frontendLogger.debug('[SWManager] Service Worker registered successfully')
       
       // 設置更新監聽
       this.setupUpdateListeners()
@@ -165,14 +168,14 @@ export class ServiceWorkerManager {
     }
 
     try {
-      console.log('[SWManager] Checking for updates...')
+      frontendLogger.debug('[SWManager] Checking for updates...')
       await this.registration.update()
       
       if (this.registration.waiting) {
-        console.log('[SWManager] Update found, waiting for activation')
+        frontendLogger.debug('[SWManager] Update found, waiting for activation')
         this.updateAvailable.value = true
       } else {
-        console.log('[SWManager] No updates available')
+        frontendLogger.debug('[SWManager] No updates available')
       }
     } catch (error) {
       console.error('[SWManager] Update check failed:', error)
@@ -187,7 +190,7 @@ export class ServiceWorkerManager {
     }
 
     try {
-      console.log('[SWManager] Activating update...')
+      frontendLogger.debug('[SWManager] Activating update...')
       
       // 發送跳過等待消息
       this.registration.waiting.postMessage({ type: 'SKIP_WAITING' })
@@ -202,7 +205,7 @@ export class ServiceWorkerManager {
       })
       
       this.updateAvailable.value = false
-      console.log('[SWManager] Update activated, reloading...')
+      frontendLogger.debug('[SWManager] Update activated, reloading...')
       
       // 重新載入頁面
       window.location.reload()
@@ -261,7 +264,7 @@ export class ServiceWorkerManager {
     // 更新統計
     this.stats.value.offlineActionsCount = this.offlineActions.length
     
-    console.log(`[SWManager] Added offline action: ${action.type}`)
+    frontendLogger.debug(`[SWManager] Added offline action: ${action.type}`)
     
     // 如果線上，立即嘗試同步
     if (this.isOnline.value) {
@@ -278,7 +281,7 @@ export class ServiceWorkerManager {
 
     try {
       await this.registration.sync.register(tag)
-      console.log(`[SWManager] Background sync requested: ${tag}`)
+      frontendLogger.debug(`[SWManager] Background sync requested: ${tag}`)
     } catch (error) {
       console.error(`[SWManager] Background sync request failed: ${tag}`, error)
     }
@@ -293,7 +296,7 @@ export class ServiceWorkerManager {
 
     try {
       const permission = await globalThis.Notification.requestPermission()
-      console.log(`[SWManager] Notification permission: ${permission}`)
+      frontendLogger.debug(`[SWManager] Notification permission: ${permission}`)
       return permission
     } catch (error) {
       console.error('[SWManager] Notification permission request failed:', error)
@@ -316,7 +319,7 @@ export class ServiceWorkerManager {
         applicationServerKey: this.urlBase64ToUint8Array(vapidPublicKey)
       })
 
-      console.log('[SWManager] Push subscription created')
+      frontendLogger.debug('[SWManager] Push subscription created')
       return subscription
     } catch (error) {
       console.error('[SWManager] Push subscription failed:', error)
@@ -328,7 +331,7 @@ export class ServiceWorkerManager {
   async getCacheStats(): Promise<SWResponse | null> {
     // 檢查 Service Worker 是否可用
     if (!navigator.serviceWorker.controller || this.status.value !== 'active') {
-      console.debug('[SWManager] Service Worker not ready for cache stats')
+      frontendLogger.debug('[SWManager] Service Worker not ready for cache stats')
       return null
     }
 
@@ -349,7 +352,7 @@ export class ServiceWorkerManager {
         type: 'CLEAR_CACHE', 
         cacheNames 
       })
-      console.log('[SWManager] Cache cleared')
+      frontendLogger.debug('[SWManager] Cache cleared')
     } catch (error) {
       console.error('[SWManager] Cache clear failed:', error)
     }
@@ -359,7 +362,7 @@ export class ServiceWorkerManager {
   private setupEventListeners(): void {
     // 線上/離線狀態監聽
     window.addEventListener('online', () => {
-      console.log('[SWManager] Connection restored')
+      frontendLogger.debug('[SWManager] Connection restored')
       this.isOnline.value = true
       
       // 嘗試同步離線操作
@@ -369,7 +372,7 @@ export class ServiceWorkerManager {
     })
 
     window.addEventListener('offline', () => {
-      console.log('[SWManager] Connection lost')
+      frontendLogger.debug('[SWManager] Connection lost')
       this.isOnline.value = false
     })
 
@@ -377,7 +380,7 @@ export class ServiceWorkerManager {
     window.addEventListener('beforeinstallprompt', (event) => {
       event.preventDefault()
       this.installPromptEvent.value = event as BeforeInstallPromptEvent
-      console.log('[SWManager] PWA install prompt available')
+      frontendLogger.debug('[SWManager] PWA install prompt available')
     })
   }
 
@@ -386,14 +389,14 @@ export class ServiceWorkerManager {
     if (!this.registration) {return}
 
     this.registration.addEventListener('updatefound', () => {
-      console.log('[SWManager] New service worker found')
+      frontendLogger.debug('[SWManager] New service worker found')
       
       const newWorker = this.registration?.installing
       if (!newWorker) {return}
 
       newWorker.addEventListener('statechange', () => {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('[SWManager] New service worker installed, waiting for activation')
+          frontendLogger.debug('[SWManager] New service worker installed, waiting for activation')
           this.updateAvailable.value = true
         }
       })
@@ -403,7 +406,7 @@ export class ServiceWorkerManager {
   // 設置消息監聽器
   private setupMessageListeners(): void {
     navigator.serviceWorker.addEventListener('message', (event) => {
-      console.log('[SWManager] Message from SW:', event.data)
+      frontendLogger.debug('[SWManager] Message from SW:', event.data)
       
       switch (event.data.type) {
         case 'CACHE_UPDATED':
@@ -424,7 +427,7 @@ export class ServiceWorkerManager {
     this.stats.value.backgroundSyncSupported = 'serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype
     this.stats.value.pushSupported = 'serviceWorker' in navigator && 'PushManager' in window
     
-    console.log('[SWManager] Feature support:', {
+    frontendLogger.debug('[SWManager] Feature support:', {
       backgroundSync: this.stats.value.backgroundSyncSupported,
       push: this.stats.value.pushSupported
     })
@@ -439,13 +442,13 @@ export class ServiceWorkerManager {
 
   // 處理快取更新
   private handleCacheUpdate(data: CacheUpdateData): void {
-    console.log('[SWManager] Cache updated:', data)
+    frontendLogger.debug('[SWManager] Cache updated:', data)
     // 可以觸發UI更新通知
   }
 
   // 處理背景同步完成
   private handleBackgroundSyncComplete(data: BackgroundSyncData): void {
-    console.log('[SWManager] Background sync completed:', data)
+    frontendLogger.debug('[SWManager] Background sync completed:', data)
     this.stats.value.lastSyncTime = new Date()
     
     if (data.tag === 'offline-actions') {
@@ -462,7 +465,7 @@ export class ServiceWorkerManager {
       this.saveOfflineActions()
       this.stats.value.offlineActionsCount = this.offlineActions.length
       
-      console.log(`[SWManager] Offline action processed: ${actionId}`)
+      frontendLogger.debug(`[SWManager] Offline action processed: ${actionId}`)
     }
   }
 
@@ -474,7 +477,7 @@ export class ServiceWorkerManager {
     if (this.offlineActions.length !== originalLength) {
       this.saveOfflineActions()
       this.stats.value.offlineActionsCount = this.offlineActions.length
-      console.log(`[SWManager] Cleared ${originalLength - this.offlineActions.length} processed actions`)
+      frontendLogger.debug(`[SWManager] Cleared ${originalLength - this.offlineActions.length} processed actions`)
     }
   }
 
@@ -496,7 +499,7 @@ export class ServiceWorkerManager {
         this.stats.value.offlineActionsCount = this.offlineActions.length
         
         if (this.offlineActions.length > 0) {
-          console.log(`[SWManager] Restored ${this.offlineActions.length} offline actions`)
+          frontendLogger.debug(`[SWManager] Restored ${this.offlineActions.length} offline actions`)
           
           // 如果線上，立即同步
           if (this.isOnline.value) {
@@ -542,7 +545,7 @@ export class ServiceWorkerManager {
       this.installPromptEvent.value.prompt()
       const { outcome } = await this.installPromptEvent.value.userChoice
       
-      console.log(`[SWManager] Install prompt result: ${outcome}`)
+      frontendLogger.debug(`[SWManager] Install prompt result: ${outcome}`)
       
       if (outcome === 'accepted') {
         this.installPromptEvent.value = null
@@ -564,7 +567,7 @@ export const swManager = new ServiceWorkerManager()
 if (import.meta.env.PROD) {
   swManager.register().then((success) => {
     if (success) {
-      console.log('[SWManager] Service Worker ready for production')
+      frontendLogger.debug('[SWManager] Service Worker ready for production')
     }
   })
 }

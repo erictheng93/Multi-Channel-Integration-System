@@ -6,6 +6,9 @@ import { ref, computed, onMounted, onUnmounted, watch, type Ref } from 'vue'
 import { getWebSocketManager, type WebSocketEventCallbacks } from '@/services/websocketManager'
 import { useAuthStore } from '@/stores/auth'
 import type { WebSocketConnectionState } from '@/services/websocketClient'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useWebSocket')
 
 export interface UseWebSocketOptions {
   autoConnect?: boolean
@@ -70,14 +73,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       lastConnectionError.value = null
 
       if (enableLogging) {
-        console.log(`[useWebSocket] Connecting (attempt ${connectionAttempts.value})...`)
+        frontendLogger.debug(`[useWebSocket] Connecting (attempt ${connectionAttempts.value})...`)
       }
 
       await manager.connect()
       isInitialized.value = true
 
       if (enableLogging) {
-        console.log('[useWebSocket] Connected successfully')
+        frontendLogger.debug('[useWebSocket] Connected successfully')
       }
     } catch (error) {
       lastConnectionError.value = error as Error
@@ -92,7 +95,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
   const disconnect = (): void => {
     if (enableLogging) {
-      console.log('[useWebSocket] Disconnecting...')
+      frontendLogger.debug('[useWebSocket] Disconnecting...')
     }
 
     manager.disconnect()
@@ -101,7 +104,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
   const reconnect = async (): Promise<void> => {
     if (enableLogging) {
-      console.log('[useWebSocket] Reconnecting...')
+      frontendLogger.debug('[useWebSocket] Reconnecting...')
     }
 
     disconnect()
@@ -209,7 +212,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   // Lifecycle
   onMounted(async () => {
     if (enableLogging) {
-      console.log('[useWebSocket] Composable mounted')
+      frontendLogger.debug('[useWebSocket] Composable mounted')
     }
 
     await handleAutoConnect()
@@ -217,7 +220,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
   onUnmounted(() => {
     if (enableLogging) {
-      console.log('[useWebSocket] Composable unmounted')
+      frontendLogger.debug('[useWebSocket] Composable unmounted')
     }
 
     // Don't disconnect the global manager on component unmount

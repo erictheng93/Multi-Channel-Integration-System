@@ -8,6 +8,9 @@
  */
 
 import { ref, type Ref } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useScrollEventHandlers')
 
 /**
  * Props required by useScrollEventHandlers composable
@@ -83,7 +86,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
 
     // Skip during programmatic scrolling to prevent race conditions
     if (isProgrammaticScrolling.value) {
-      console.log('[handleScroll] Skipped - programmatic scrolling in progress')
+      frontendLogger.debug('[handleScroll] Skipped - programmatic scrolling in progress')
       return
     }
 
@@ -99,7 +102,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
     } else if (!recentlyScrolledToBottom.value) {
       isUserAtBottom.value = false
     } else {
-      console.log('[handleScroll] Grace period active - preserving isUserAtBottom = true')
+      frontendLogger.debug('[handleScroll] Grace period active - preserving isUserAtBottom = true')
     }
 
     // Check scroll direction with threshold to avoid flickering
@@ -137,7 +140,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
 
     // Debug scroll state every 2 seconds
     if (Date.now() - lastScrollDebugTime.value > 2000) {
-      console.log(`[VirtualMessageList] Scroll State:`, {
+      frontendLogger.debug(`[VirtualMessageList] Scroll State:`, {
         scrollTop: Math.round(scrollTop),
         scrollHeight: Math.round(scrollHeight),
         clientHeight: Math.round(clientHeight),
@@ -156,7 +159,7 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
     if (isAtTop && !props.loadingHistory && !props.loading && props.hasMore && isScrollingUp) {
       const now = Date.now()
       if (now - lastLoadMoreTime.value > LOAD_MORE_THROTTLE_MS) {
-        console.log(' User scrolled up to top, loading more history...')
+        frontendLogger.debug(' User scrolled up to top, loading more history...')
         lastLoadMoreTime.value = now
         emit('loadMore')
       }
@@ -175,10 +178,10 @@ export function useScrollEventHandlers(options: UseScrollEventHandlersOptions) {
    */
   const handleManualLoadMore = () => {
     if (props.loading || !props.hasMore) {
-      console.log('[VirtualMessageList] Cannot load more:', { loading: props.loading, hasMore: props.hasMore })
+      frontendLogger.debug('[VirtualMessageList] Cannot load more:', { loading: props.loading, hasMore: props.hasMore })
       return
     }
-    console.log('[VirtualMessageList] Manual load more triggered')
+    frontendLogger.debug('[VirtualMessageList] Manual load more triggered')
 
     showLoadMoreTrigger.value = false
 

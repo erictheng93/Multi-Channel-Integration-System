@@ -1,4 +1,7 @@
 import { ref, computed, shallowRef, type ComputedRef } from 'vue'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('usePerformanceOptimization')
 
 /**
  * 快取鍵類型
@@ -124,7 +127,7 @@ export function usePerformanceOptimization(
         cached.hitCount++
         totalHits.value++
         if (enableProfiling) {
-          console.debug(`Cache hit for key: ${key}`)
+          frontendLogger.debug(`Cache hit for key: ${key}`)
         }
         return cached.value as T
       }
@@ -132,7 +135,7 @@ export function usePerformanceOptimization(
       // 計算新值
       totalMisses.value++
       if (enableProfiling) {
-        console.debug(`Cache miss for key: ${key}`)
+        frontendLogger.debug(`Cache miss for key: ${key}`)
       }
 
       const value = getter()

@@ -4,6 +4,9 @@
  */
 
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('searchPerformanceMonitor')
 
 export interface SearchMetric {
   query: string
@@ -182,7 +185,7 @@ export class SearchPerformanceMonitor {
    */
   clearMetrics(): void {
     this.metrics = []
-    console.log('[SearchPerf] 指標已清除')
+    frontendLogger.debug('[SearchPerf] 指標已清除')
   }
 
   /**
@@ -190,7 +193,7 @@ export class SearchPerformanceMonitor {
    */
   setEnabled(enabled: boolean): void {
     this.isEnabled = enabled
-    console.log(`${enabled ? '' : ''} [SearchPerf] 監控已${enabled ? '啟用' : '禁用'}`)
+    frontendLogger.debug(`${enabled ? '' : ''} [SearchPerf] 監控已${enabled ? '啟用' : '禁用'}`)
   }
 
   /**
@@ -216,7 +219,7 @@ export class SearchPerformanceMonitor {
       const data = JSON.parse(json)
       if (Array.isArray(data.metrics)) {
         this.metrics = data.metrics.slice(-MAX_METRICS)
-        console.log(`[SearchPerf] 已導入 ${this.metrics.length} 條指標`)
+        frontendLogger.debug(`[SearchPerf] 已導入 ${this.metrics.length} 條指標`)
         return true
       }
       return false

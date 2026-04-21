@@ -12,6 +12,9 @@ import type { Tag } from '@/types/tag'
 import { createTag, updateTag, deleteTag } from '@/api/tags'
 import { tagCacheService } from '@/services/tagCacheService'
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useTagActions')
 
 /**
  * Store interface for tag actions
@@ -191,7 +194,7 @@ export function useTagActions(
           if (response.success && response.data) {
             tagCacheService.optimisticUpdateTag(response.data)
           }
-          console.log('[TagActions] Tag updated (verified):', tagName)
+          frontendLogger.debug('[TagActions] Tag updated (verified):', tagName)
         } catch (error) {
           // Rollback on failure
           if (oldTag) {
@@ -242,7 +245,7 @@ export function useTagActions(
               store.tags[index] = response.data
             }
             tagCacheService.optimisticAddTag(response.data)
-            console.log('[TagActions] Tag created (verified):', tagName)
+            frontendLogger.debug('[TagActions] Tag created (verified):', tagName)
           }
         } catch (error) {
           // Rollback on failure
@@ -286,7 +289,7 @@ export function useTagActions(
     try {
       await deleteTag(tagToDelete.id)
       tagCacheService.optimisticRemoveTag(tagToDelete.id)
-      console.log('[TagActions] Tag deleted (verified):', tagName)
+      frontendLogger.debug('[TagActions] Tag deleted (verified):', tagName)
     } catch (error) {
       // Rollback on failure
       if (deletedTag) {
@@ -339,7 +342,7 @@ export function useTagActions(
       } else {
         // Update cache - bulk remove
         tagIdsToDelete.forEach(id => tagCacheService.optimisticRemoveTag(id))
-        console.log(`[TagActions] ${tagCount} tags deleted successfully (verified)`)
+        frontendLogger.debug(`[TagActions] ${tagCount} tags deleted successfully (verified)`)
       }
     } catch (error) {
       // Rollback all on complete failure

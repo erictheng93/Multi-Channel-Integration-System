@@ -1,3 +1,6 @@
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('features')
 /**
  * Feature Flags Configuration
  *
@@ -168,7 +171,7 @@ export function checkNetworkConditions(): boolean {
   if (config.networkConditions.disableOnSaveData) {
     const connection = (navigator as { connection?: { effectiveType?: string; saveData?: boolean } }).connection
     if (connection?.saveData) {
-      console.log('[FeatureFlag] Background preload disabled: Save-Data mode enabled')
+      frontendLogger.debug('[FeatureFlag] Background preload disabled: Save-Data mode enabled')
       return false
     }
   }
@@ -179,12 +182,12 @@ export function checkNetworkConditions(): boolean {
     const effectiveType = connection?.effectiveType
 
     if (config.networkConditions.disableOn3G && effectiveType === '3g') {
-      console.log('[FeatureFlag] Background preload disabled: 3G network detected')
+      frontendLogger.debug('[FeatureFlag] Background preload disabled: 3G network detected')
       return false
     }
 
     if (config.networkConditions.disableOnSlow && (effectiveType === 'slow-2g' || effectiveType === '2g')) {
-      console.log('[FeatureFlag] Background preload disabled: Slow network detected')
+      frontendLogger.debug('[FeatureFlag] Background preload disabled: Slow network detected')
       return false
     }
   }
@@ -242,7 +245,7 @@ if (import.meta.env.DEV) {
   // @ts-expect-error - Development tool
   window.featureFlags = {
     list: () => {
-      console.table(
+      frontendLogger.debug(
         Object.entries(FEATURE_FLAGS).map(([name, flag]) => ({
           Feature: name,
           Enabled: flag.enabled ? '' : '',
@@ -254,17 +257,17 @@ if (import.meta.env.DEV) {
 
     enable: (name: keyof typeof FEATURE_FLAGS) => {
       (FEATURE_FLAGS[name] as { enabled: boolean }).enabled = true
-      console.log(` Enabled: ${name}`)
+      frontendLogger.debug(` Enabled: ${name}`)
     },
 
     disable: (name: keyof typeof FEATURE_FLAGS) => {
       (FEATURE_FLAGS[name] as { enabled: boolean }).enabled = false
-      console.log(` Disabled: ${name}`)
+      frontendLogger.debug(` Disabled: ${name}`)
     },
 
     setRollout: (name: keyof typeof FEATURE_FLAGS, percentage: number) => {
       (FEATURE_FLAGS[name] as { rolloutPercentage: number }).rolloutPercentage = Math.max(0, Math.min(100, percentage))
-      console.log(` Set rollout for ${name}: ${percentage}%`)
+      frontendLogger.debug(` Set rollout for ${name}: ${percentage}%`)
     },
 
     getConfig: (name: keyof typeof FEATURE_FLAGS) => {
@@ -272,5 +275,5 @@ if (import.meta.env.DEV) {
     }
   }
 
-  console.log(' Feature Flags loaded. Type `window.featureFlags.list()` to see all flags.')
+  frontendLogger.debug(' Feature Flags loaded. Type `window.featureFlags.list()` to see all flags.')
 }

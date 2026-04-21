@@ -2,6 +2,9 @@
 import { systemApi } from '@/api/system'
 import { getBackendUrl } from '@/config/runtime'
 import { setLocale, getCurrentLocale } from '@/plugins/i18n'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('systemSettingsTest')
 // import { runSystemSettingsDiagnostic } from './systemSettingsDiagnostic'
 // import { fixSystemSettingsLanguage } from './systemSettingsFix'
 
@@ -20,14 +23,14 @@ export class SystemSettingsTestSuite {
     this.results.push({ testName, success, message, details, duration })
     const icon = success ? '' : ''
     const durationText = duration ? ` (${duration}ms)` : ''
-    console.log(`${icon} ${testName}: ${message}${durationText}`)
+    frontendLogger.debug(`${icon} ${testName}: ${message}${durationText}`)
     if (details) {
-      console.log(' Details:', details)
+      frontendLogger.debug(' Details:', details)
     }
   }
 
   async runCompleteTest(): Promise<TestResult[]> {
-    console.group(' SystemSettings 完整測試套件')
+    frontendLogger.debug(' SystemSettings 完整測試套件')
     this.results = []
 
     try {
@@ -48,14 +51,11 @@ export class SystemSettingsTestSuite {
 
     } catch (error) {
       this.addResult('測試套件', false, '測試過程中發生未預期錯誤', error)
-    }
-
-    console.groupEnd()
-    return this.results
+    }    return this.results
   }
 
   private async testBasicConnectivity() {
-    console.group(' 基礎連接測試')
+    frontendLogger.debug(' 基礎連接測試')
 
     // 測試 API 基礎連接
     const startTime = Date.now()
@@ -86,13 +86,10 @@ export class SystemSettingsTestSuite {
       }
     } catch (error) {
       this.addResult('系統信息 API', false, '系統信息 API 異常', error)
-    }
-
-    console.groupEnd()
-  }
+    }  }
 
   private async testSettingsReadWrite() {
-    console.group(' 設定讀寫測試')
+    frontendLogger.debug(' 設定讀寫測試')
 
     let originalSettings: Record<string, unknown> | null = null
 
@@ -110,14 +107,10 @@ export class SystemSettingsTestSuite {
           hasAdvanced: !!response.data.advanced
         }, duration)
       } else {
-        this.addResult('讀取設定', false, '設定讀取失敗', response.error, duration)
-        console.groupEnd()
-        return
+        this.addResult('讀取設定', false, '設定讀取失敗', response.error, duration)        return
       }
     } catch (error) {
-      this.addResult('讀取設定', false, '設定讀取異常', error)
-      console.groupEnd()
-      return
+      this.addResult('讀取設定', false, '設定讀取異常', error)      return
     }
 
     // 測試寫入設定
@@ -161,13 +154,10 @@ export class SystemSettingsTestSuite {
       }
     } catch (error) {
       this.addResult('寫入設定', false, '設定寫入異常', error)
-    }
-
-    console.groupEnd()
-  }
+    }  }
 
   private async testLanguageSwitching() {
-    console.group(' 語言切換測試')
+    frontendLogger.debug(' 語言切換測試')
 
     const testLanguages = ['zh-TW', 'zh-CN', 'en']
     const originalLanguage = getCurrentLocale()
@@ -175,7 +165,7 @@ export class SystemSettingsTestSuite {
 
     for (const lang of testLanguages) {
       try {
-        console.log(`測試語言: ${lang}`)
+        frontendLogger.debug(`測試語言: ${lang}`)
         
         // 1. 前端切換測試
         const startTime = Date.now()
@@ -248,13 +238,10 @@ export class SystemSettingsTestSuite {
     })
 
     this.addResult('語言切換總結', successCount === testLanguages.length, 
-      `語言切換測試完成 (${successCount}/${testLanguages.length})`)
-
-    console.groupEnd()
-  }
+      `語言切換測試完成 (${successCount}/${testLanguages.length})`)  }
 
   private async testErrorHandling() {
-    console.group(' 錯誤處理測試')
+    frontendLogger.debug(' 錯誤處理測試')
 
     // 測試無效的設定數據
     try {
@@ -288,13 +275,10 @@ export class SystemSettingsTestSuite {
       }
     } catch (error) {
       this.addResult('404 錯誤處理', false, '404 錯誤測試異常', error)
-    }
-
-    console.groupEnd()
-  }
+    }  }
 
   private async testPerformance() {
-    console.group(' 性能測試')
+    frontendLogger.debug(' 性能測試')
 
     // 測試設定讀取性能
     const readTimes: number[] = []
@@ -344,10 +328,7 @@ export class SystemSettingsTestSuite {
           average: avgSwitchTime,
           samples: switchTimes.length
         })
-    }
-
-    console.groupEnd()
-  }
+    }  }
 
   getResults(): TestResult[] {
     return this.results
@@ -371,36 +352,32 @@ export class SystemSettingsTestSuite {
 
 // 便利函數
 export const runCompleteSystemSettingsTest = async () => {
-  console.log(' 開始完整的 SystemSettings 測試...')
+  frontendLogger.debug(' 開始完整的 SystemSettings 測試...')
   
   const testSuite = new SystemSettingsTestSuite()
   const results = await testSuite.runCompleteTest()
   const summary = testSuite.getSummary()
 
-  console.group(' 測試結果摘要')
-  console.log(`總測試數: ${summary.total}`)
-  console.log(` 通過: ${summary.passed}`)
-  console.log(` 失敗: ${summary.failed}`)
-  console.log(`通過率: ${summary.passRate}%`)
-  console.groupEnd()
-
+  frontendLogger.debug(' 測試結果摘要')
+  frontendLogger.debug(`總測試數: ${summary.total}`)
+  frontendLogger.debug(` 通過: ${summary.passed}`)
+  frontendLogger.debug(` 失敗: ${summary.failed}`)
+  frontendLogger.debug(`通過率: ${summary.passRate}%`)
   // 如果測試失敗率較高，提供修復建議
   if (summary.passRate < 70) {
-    console.group(' 修復建議')
-    console.log('檢測到多個測試失敗，建議執行以下操作：')
-    console.log('1. 運行完整診斷 (runFullDiagnostic)')
-    console.log('2. 執行自動修復 (runFullFix)')
-    console.log('3. 檢查網路連接和後端服務狀態')
-    console.log('4. 清除瀏覽器緩存和 localStorage')
-    console.groupEnd()
-  }
+    frontendLogger.debug(' 修復建議')
+    frontendLogger.debug('檢測到多個測試失敗，建議執行以下操作：')
+    frontendLogger.debug('1. 運行完整診斷 (runFullDiagnostic)')
+    frontendLogger.debug('2. 執行自動修復 (runFullFix)')
+    frontendLogger.debug('3. 檢查網路連接和後端服務狀態')
+    frontendLogger.debug('4. 清除瀏覽器緩存和 localStorage')  }
 
   return { results, summary }
 }
 
 // 快速測試函數
 export const quickSystemSettingsTest = async () => {
-  console.log(' 快速 SystemSettings 測試...')
+  frontendLogger.debug(' 快速 SystemSettings 測試...')
   
   const results: TestResult[] = []
   
@@ -470,7 +447,7 @@ export const quickSystemSettingsTest = async () => {
   const total = results.length
   const passRate = Math.round((passed / total) * 100)
 
-  console.log(`快速測試完成: ${passed}/${total} 通過 (${passRate}%)`)
+  frontendLogger.debug(`快速測試完成: ${passed}/${total} 通過 (${passRate}%)`)
   
   return { results, passed, total, passRate }
 }

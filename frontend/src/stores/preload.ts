@@ -18,6 +18,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed, shallowRef } from 'vue'
 import { teamApi } from '@/api/team'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('preload')
 
 // ============================================================================
 // Types
@@ -137,7 +140,7 @@ export const usePreloadStore = defineStore('preload', () => {
    * Fetch teams from API and update cache
    */
   async function fetchTeamsFromApi(): Promise<Team[]> {
-    console.log('[PreloadStore] Fetching teams from API...')
+    frontendLogger.debug('[PreloadStore] Fetching teams from API...')
     try {
       const response = await teamApi.getTeams(true) // includeInactive
 
@@ -154,7 +157,7 @@ export const usePreloadStore = defineStore('preload', () => {
         // Update reactive ref (triggers Vue computed recalculation)
         teams.value = fetchedTeams
 
-        console.log(`[PreloadStore] ${fetchedTeams.length} teams cached`)
+        frontendLogger.debug(`[PreloadStore] ${fetchedTeams.length} teams cached`)
         return fetchedTeams
       } else {
         console.error('[PreloadStore] Failed to load teams:', response.error)
@@ -191,7 +194,7 @@ export const usePreloadStore = defineStore('preload', () => {
   }
 
   async function _doInit(): Promise<void> {
-    console.log('[PreloadStore] Initializing...')
+    frontendLogger.debug('[PreloadStore] Initializing...')
     const startTime = performance.now()
 
     try {
@@ -205,7 +208,7 @@ export const usePreloadStore = defineStore('preload', () => {
       ])
 
       const duration = performance.now() - startTime
-      console.log(`[PreloadStore] Initialization completed in ${duration.toFixed(2)}ms`)
+      frontendLogger.debug(`[PreloadStore] Initialization completed in ${duration.toFixed(2)}ms`)
       initialized.value = true
     } catch (err) {
       console.error('[PreloadStore] Initialization failed:', err)
@@ -224,7 +227,7 @@ export const usePreloadStore = defineStore('preload', () => {
   async function preloadTeams(): Promise<Team[]> {
     // Return cached data if valid
     if (teamsCache.value && isCacheValid(teamsCache.value)) {
-      console.log('[PreloadStore] Teams loaded from cache')
+      frontendLogger.debug('[PreloadStore] Teams loaded from cache')
       // Ensure reactive ref is in sync
       if (teams.value !== teamsCache.value.data) {
         teams.value = teamsCache.value.data
@@ -265,7 +268,7 @@ export const usePreloadStore = defineStore('preload', () => {
 
     // Case 2: Cache expired but has data - Stale-While-Revalidate
     if (teamsCache.value && !isCacheValid(teamsCache.value)) {
-      console.log('[PreloadStore] Using stale cache while revalidating...')
+      frontendLogger.debug('[PreloadStore] Using stale cache while revalidating...')
       // Background refresh
       preloadTeams().catch(err => {
         console.error('[PreloadStore] Background refresh failed:', err)
@@ -278,7 +281,7 @@ export const usePreloadStore = defineStore('preload', () => {
     }
 
     // Case 3: No cache - trigger background load
-    console.log('[PreloadStore] No cache found, loading teams in background...')
+    frontendLogger.debug('[PreloadStore] No cache found, loading teams in background...')
     preloadTeams().catch(err => {
       console.error('[PreloadStore] Background load failed:', err)
     })
@@ -304,7 +307,7 @@ export const usePreloadStore = defineStore('preload', () => {
    * - Clears cache and fetches fresh data
    */
   async function refreshTeams(): Promise<Team[]> {
-    console.log('[PreloadStore] Manual refresh of teams...')
+    frontendLogger.debug('[PreloadStore] Manual refresh of teams...')
     teamsCache.value = null
     return preloadTeams()
   }
@@ -314,7 +317,7 @@ export const usePreloadStore = defineStore('preload', () => {
    * - Alias for init() for API compatibility
    */
   async function warmup(): Promise<void> {
-    console.log('[PreloadStore] Warming up cache...')
+    frontendLogger.debug('[PreloadStore] Warming up cache...')
     await init()
   }
 
@@ -331,7 +334,7 @@ export const usePreloadStore = defineStore('preload', () => {
     }
 
     if (cleaned > 0) {
-      console.log(`[PreloadStore] Cleaned ${cleaned} expired cache entries`)
+      frontendLogger.debug(`[PreloadStore] Cleaned ${cleaned} expired cache entries`)
     }
   }
 
@@ -345,7 +348,7 @@ export const usePreloadStore = defineStore('preload', () => {
     initPromise = null
     loadPromise = null
     error.value = null
-    console.log('[PreloadStore] All cache cleared')
+    frontendLogger.debug('[PreloadStore] All cache cleared')
   }
 
   /**

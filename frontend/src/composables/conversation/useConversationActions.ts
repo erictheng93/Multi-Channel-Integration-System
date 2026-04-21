@@ -16,6 +16,9 @@
 import { ref } from 'vue'
 import type { ConversationState } from './useConversationState'
 import type { WebSocketIntegration } from './useWebSocketIntegration'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useConversationActions')
 
 export interface ScrollTarget {
   scrollToBottom: () => void
@@ -38,13 +41,13 @@ export function useConversationActions(
    */
   async function recallMessage(messageId: string): Promise<boolean> {
     try {
-      console.log('[ConversationActions] Recalling message:', messageId)
+      frontendLogger.debug('[ConversationActions] Recalling message:', messageId)
       // Recall API exists in backend (CustomerMessageDO) — frontend handler
       // uses ConversationDetail.vue's handleMessageRecall instead of this stub.
       // Refresh messages to reflect server state
       await state.refreshMessages()
 
-      console.log('[ConversationActions] Message recalled (placeholder)')
+      frontendLogger.debug('[ConversationActions] Message recalled (placeholder)')
       return true
     } catch (error) {
       console.error('[ConversationActions] Failed to recall message:', error)
@@ -60,7 +63,7 @@ export function useConversationActions(
   function scrollToBottom() {
     if (scrollTarget.value?.scrollToBottom) {
       scrollTarget.value.scrollToBottom()
-      console.log('[ConversationActions] Scrolled to bottom')
+      frontendLogger.debug('[ConversationActions] Scrolled to bottom')
     } else {
       console.warn('[ConversationActions] Scroll target not available')
     }
@@ -80,22 +83,22 @@ export function useConversationActions(
    */
   async function refreshMessages() {
     try {
-      console.log('[ConversationActions] Refreshing messages...')
+      frontendLogger.debug('[ConversationActions] Refreshing messages...')
 
       // Priority 1: 如果 WebSocket 斷開，嘗試重連
       if (websocket.unifiedConnectionState.value === 'error' ||
           websocket.unifiedConnectionState.value === 'disconnected') {
-        console.log('[ConversationActions] Reconnecting WebSocket...')
+        frontendLogger.debug('[ConversationActions] Reconnecting WebSocket...')
         await websocket.reconnect()
       }
 
       // Priority 2: 如果未連接，使用 HTTP 刷新
       if (!websocket.unifiedIsConnected.value) {
-        console.log('[ConversationActions] Using HTTP API refresh...')
+        frontendLogger.debug('[ConversationActions] Using HTTP API refresh...')
         await state.refreshMessages()
       }
 
-      console.log('[ConversationActions] Messages refreshed')
+      frontendLogger.debug('[ConversationActions] Messages refreshed')
     } catch (error) {
       console.error('[ConversationActions] Failed to refresh messages:', error)
       throw error
@@ -107,9 +110,9 @@ export function useConversationActions(
    */
   async function loadMoreMessages() {
     try {
-      console.log('[ConversationActions] Loading more messages...')
+      frontendLogger.debug('[ConversationActions] Loading more messages...')
       await state.loadMoreMessages()
-      console.log('[ConversationActions] More messages loaded')
+      frontendLogger.debug('[ConversationActions] More messages loaded')
     } catch (error) {
       console.error('[ConversationActions] Failed to load more messages:', error)
       throw error

@@ -17,6 +17,9 @@
  */
 
 import { getBackendUrl } from '@/config/runtime'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('websocketPerformanceTracker')
 
 // REMOVED: axios import (replaced with native fetch API)
 
@@ -552,10 +555,10 @@ export class WebSocketPerformanceTracker {
         console.warn(prefix, message, logData)
         break
       case 'debug':
-        console.debug(prefix, message, logData)
+        frontendLogger.debug(prefix, message, logData)
         break
       default:
-        console.log(prefix, message, logData)
+        frontendLogger.debug(prefix, message, logData)
     }
   }
 }

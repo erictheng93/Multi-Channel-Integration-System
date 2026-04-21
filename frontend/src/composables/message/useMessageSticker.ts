@@ -9,6 +9,9 @@
 
 import { ref, computed, watch, nextTick, type Ref } from 'vue'
 import type { Message } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useMessageSticker')
 
 /**
  * Sticker metadata structure
@@ -61,7 +64,7 @@ export function useMessageSticker(props: Ref<MessageStickerProps>) {
    */
   const debugLog = (message: string, ...args: unknown[]) => {
     if (import.meta.env.DEV) {
-      console.log(message, ...args)
+      frontendLogger.debug(message, ...args)
     }
   }
 

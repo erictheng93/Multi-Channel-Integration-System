@@ -163,16 +163,18 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const emit = defineEmits<{
+  (_e: 'notification-click', _notification: Notification): void
+}>()
+const frontendLogger = createLogger('NotificationCenter')
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useNotificationsStore, type Notification } from '@/stores/notifications'
 import NotificationBadge from './NotificationBadge.vue'
 import NotificationItem from './NotificationItem.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { BellIcon, BellOffIcon, CheckAllIcon, RefreshIcon } from '@/components/icons'
-
-const emit = defineEmits<{
-  (_e: 'notification-click', _notification: Notification): void
-}>()
 
 const store = useNotificationsStore()
 
@@ -341,7 +343,7 @@ onUnmounted(() => {
 watch(() => store.unreadCount, (newCount, oldCount) => {
   if (newCount > oldCount && !isOpen.value) {
     // 可以在這裡觸發桌面通知或音效
-    console.log(` New notifications: ${newCount - oldCount}`)
+    frontendLogger.debug(` New notifications: ${newCount - oldCount}`)
 
     // 觸發搖鈴動畫
     shouldRing.value = true

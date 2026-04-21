@@ -200,6 +200,15 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const props = withDefaults(defineProps<Props>(), {
+  title: '指標比較儀表板',
+  preset: null,
+  autoRefresh: false,
+  refreshInterval: 30000
+});
+const frontendLogger = createLogger('MetricsComparisonDashboard')
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
 import Modal from '@/components/ui/Modal.vue';
 import MetricComparison from './MetricComparison.vue';
@@ -212,13 +221,6 @@ interface Props {
   autoRefresh?: boolean;
   refreshInterval?: number;
 }
-
-const props = withDefaults(defineProps<Props>(), {
-  title: '指標比較儀表板',
-  preset: null,
-  autoRefresh: false,
-  refreshInterval: 30000
-});
 
 // 狀態管理
 const loading = ref(false);
@@ -343,7 +345,7 @@ async function loadData() {
   // LCP 優化：先嘗試從本地快取獲取數據
   const cachedData = getLocalCache();
   if (cachedData) {
-    console.log('[Analytics] 使用本地快取數據');
+    frontendLogger.debug('[Analytics] 使用本地快取數據');
     comparisonData.value = cachedData.data;
     // 在背景更新數據
     loadDataFromAPI(true);
@@ -397,7 +399,7 @@ async function loadDataFromAPI(isBackground: boolean) {
 
     // LCP 優化：儲存到本地快取
     setLocalCache(result.data);
-    console.log('[Analytics] 數據已更新並快取');
+    frontendLogger.debug('[Analytics] 數據已更新並快取');
 
     // 載入快取統計（非阻塞）
     loadCacheStats().catch(err => console.warn('快取統計載入失敗:', err));

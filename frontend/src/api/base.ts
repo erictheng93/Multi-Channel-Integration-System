@@ -218,8 +218,8 @@ class ApiClient {
     const { retries = 0, isRetry = false } = options;
 
     if (import.meta.env.DEV) {
-      console.log(`API Request: ${method} ${this.baseURL}${endpoint}`);
-      console.log('Request data:', data);
+      frontendLogger.debug(`API Request: ${method} ${this.baseURL}${endpoint}`);
+      frontendLogger.debug('Request data:', data);
     }
 
     try {
@@ -230,7 +230,7 @@ class ApiClient {
       });
 
       if (import.meta.env.DEV) {
-        console.log(`Response status: ${response.status} ${response.statusText}`);
+        frontendLogger.debug(`Response status: ${response.status} ${response.statusText}`);
       }
 
       let result;
@@ -406,6 +406,9 @@ class ApiClient {
 // Layer 3: 使用運行時配置層
 // ============================================================================
 import { getBackendUrl } from '@/config/runtime';
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('base')
 
 // 建立 API 客戶端實例
 // 開發環境使用相對路徑，讓 Vite proxy 處理 CORS

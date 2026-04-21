@@ -102,6 +102,23 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+// 禁用自動屬性繼承，手動綁定到主 div (解決 fragment 警告)
+  defineOptions({
+    inheritAttrs: false
+  })
+  const props = defineProps<{
+    team: Team
+    loading?: boolean
+  }>()
+  const emit = defineEmits<{
+    'toggle-status': [team: Team]
+    'remove-team': [team: Team]
+    'member-updated': []
+    'team-updated': []
+  }>()
+  const frontendLogger = createLogger('TeamCard')
   import { ref, watch, computed } from 'vue'
   import SelectMemberToTeamModal from '@/components/team/SelectMemberToTeamModal.vue'
   import TeamQRSection from '@/components/team/qr-section/TeamQRSection.vue'
@@ -115,23 +132,6 @@
   import { useTeamStore } from '@/stores/team'
   import { useQRCodeStore } from '@/stores/qrcode'
   import type { Team, TeamMember, LiffQRCode } from '@/types'
-
-  // 禁用自動屬性繼承，手動綁定到主 div (解決 fragment 警告)
-  defineOptions({
-    inheritAttrs: false
-  })
-
-  const props = defineProps<{
-    team: Team
-    loading?: boolean
-  }>()
-
-  const emit = defineEmits<{
-    'toggle-status': [team: Team]
-    'remove-team': [team: Team]
-    'member-updated': []
-    'team-updated': []
-  }>()
 
   // Composables
   const { showConfirm } = useConfirmDialog()
@@ -258,13 +258,13 @@
   const loadTeamQRCode = async () => {
     loadingQRCode.value = true
     try {
-      console.log(`[TeamCard] 從 Store 載入 LIFF QR Code: team ${props.team.id}`)
+      frontendLogger.debug(`[TeamCard] 從 Store 載入 LIFF QR Code: team ${props.team.id}`)
       // 使用 Store 的 loadQRCode 方法，統一快取管理
       const qrCode = await qrCodeStore.loadQRCode(props.team.id)
       currentQRCode.value = qrCode
 
       if (qrCode) {
-        console.log(`[TeamCard] LIFF QR Code 載入成功`)
+        frontendLogger.debug(`[TeamCard] LIFF QR Code 載入成功`)
         // 同時載入統計資料
         const stats = await qrCodeStore.getQRStats(props.team.id)
         if (stats) {
@@ -274,7 +274,7 @@
           }
         }
       } else {
-        console.log(`[TeamCard] 團隊尚未有 LIFF QR Code: team ${props.team.id}`)
+        frontendLogger.debug(`[TeamCard] 團隊尚未有 LIFF QR Code: team ${props.team.id}`)
       }
     } catch (error) {
       console.error('載入 LIFF QR Code 失敗:', error)
@@ -313,7 +313,7 @@
     }
 
     // 輸出到控制台供調試（實際活動由後端 API 自動記錄到資料庫）
-    console.log('[Activity Log] QR Code Operation:', logEntry)
+    frontendLogger.debug('[Activity Log] QR Code Operation:', logEntry)
   }
 
   // 使用 Pinia Store 統一管理 QR 碼狀態
@@ -353,7 +353,7 @@
 
       // 使用 Store 的 generateQRCode 方法
       // 該方法會先檢查現有 QR（如不是重新生成），無現有才生成新的
-      console.log(
+      frontendLogger.debug(
         `[TeamCard] 透過 Store ${isRegeneration ? '重新' : ''}生成 QR: team ${props.team.id}`
       )
       const qrCode = await qrCodeStore.generateQRCode(

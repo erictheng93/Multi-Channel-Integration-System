@@ -200,6 +200,13 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+const emit = defineEmits<{
+  'create-delayed': []
+  'message-recalled': [messageId: string]
+}>()
+const frontendLogger = createLogger('PendingMessagesList')
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '@/composables'
 import { useToast } from '@/composables/useToast'
@@ -227,11 +234,6 @@ interface PendingMessage {
   can_recall: boolean
   message_type: string
 }
-
-const emit = defineEmits<{
-  'create-delayed': []
-  'message-recalled': [messageId: string]
-}>()
 
 const { currentAgent } = useAuth()
 const { showError } = useToast()
@@ -375,7 +377,7 @@ const confirmRecall = async () => {
 
 const viewDetails = (message: PendingMessage) => {
   // 可以實現訊息詳情查看功能
-  console.log('View message details:', message)
+  frontendLogger.debug('View message details:', message)
 }
 
 const startCountdownTimer = () => {

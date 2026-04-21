@@ -12,6 +12,9 @@
 
 import lunr from 'lunr'
 import type { Message } from '@/types'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('messageIndexService')
 
 /**
  * Lunr 索引文档接口
@@ -88,7 +91,7 @@ export class MessageIndexService {
       const endTime = performance.now()
       this.lastBuildTime = endTime - startTime
 
-      console.log(`[MessageIndex] 索引构建完成: ${messages.length} 条消息，耗时 ${this.lastBuildTime.toFixed(2)}ms`)
+      frontendLogger.debug(`[MessageIndex] 索引构建完成: ${messages.length} 条消息，耗时 ${this.lastBuildTime.toFixed(2)}ms`)
     } catch (error) {
       console.error('[MessageIndex] 索引构建失败:', error)
       this.index = null
@@ -124,7 +127,7 @@ export class MessageIndexService {
       const endTime = performance.now()
       const searchTime = endTime - startTime
 
-      console.log(`[MessageIndex] 搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
+      frontendLogger.debug(`[MessageIndex] 搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
 
       return messages
     } catch (error) {
@@ -196,7 +199,7 @@ export class MessageIndexService {
 
       const searchTime = performance.now() - startTime
 
-      console.log(`[MessageIndex] 高级搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
+      frontendLogger.debug(`[MessageIndex] 高级搜索完成: "${query}" -> ${messages.length} 条结果，耗时 ${searchTime.toFixed(2)}ms`)
 
       return messages
     } catch (error) {
@@ -323,7 +326,7 @@ export class MessageIndexService {
     this.index = null
     this.documents.clear()
     this.lastBuildTime = 0
-    console.log('[MessageIndex] 索引已清空')
+    frontendLogger.debug('[MessageIndex] 索引已清空')
   }
 
   /**

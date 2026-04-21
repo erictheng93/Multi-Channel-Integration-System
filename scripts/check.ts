@@ -65,6 +65,12 @@ const frontendChecks: CheckDefinition[] = [
     cwd: 'frontend',
     args: ['run', 'lint:scoped-btn'],
   },
+  {
+    label: 'Production console lint',
+    cwd: 'frontend',
+    args: ['run', 'lint:production'],
+    errorPattern: /\berror\b/gi,
+  },
 ]
 
 function printHeader(title: string) {

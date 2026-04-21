@@ -112,6 +112,16 @@
 </template>
 
 <script setup lang="ts">
+import { createLogger } from '@/utils/logger'
+
+// Emits
+const emit = defineEmits<{
+  'create-report': [initialType?: ReportType]
+  'view-report': [reportId: string]
+  'view-templates': []
+  'view-scheduled': []
+}>()
+const frontendLogger = createLogger('ReportDashboard')
 import { ref, computed } from 'vue'
 import { useReportDashboard } from '@/composables/useReportDashboard'
 import type { ReportBase, ReportType, ReportStatus } from '@/types/reports'
@@ -129,14 +139,6 @@ import QuickActionsWidget from './dashboard/QuickActionsWidget.vue'
 import PopularTypesWidget from './dashboard/PopularTypesWidget.vue'
 import RecentActivityWidget from './dashboard/RecentActivityWidget.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
-
-// Emits
-const emit = defineEmits<{
-  'create-report': [initialType?: ReportType]
-  'view-report': [reportId: string]
-  'view-templates': []
-  'view-scheduled': []
-}>()
 
 // ========================================
 // 使用 Composable 管理所有状态和逻辑
@@ -298,7 +300,7 @@ function handleFilterByType(type: string) {
  */
 function handleViewSettings() {
   // TODO: 实现设置界面导航
-  console.log('View settings')
+  frontendLogger.debug('View settings')
 }
 </script>
 

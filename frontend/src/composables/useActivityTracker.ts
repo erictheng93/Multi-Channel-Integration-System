@@ -1,6 +1,9 @@
 // 用戶活動追蹤 Composable
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useActivityTracker')
 
 export function useActivityTracker() {
   const authStore = useAuthStore()
@@ -42,7 +45,7 @@ export function useActivityTracker() {
     lastActivityTime.value = now
     
     if (import.meta.env.DEV) {
-      console.log(' User activity detected - extending session (debounced)')
+      frontendLogger.debug(' User activity detected - extending session (debounced)')
     }
     
     // 清除之前的會話延長計時器
@@ -71,7 +74,7 @@ export function useActivityTracker() {
     })
     
     if (import.meta.env.DEV) {
-      console.log(' Activity tracking started - monitoring user interactions')
+      frontendLogger.debug(' Activity tracking started - monitoring user interactions')
     }
     resetActivityTimer()
   }

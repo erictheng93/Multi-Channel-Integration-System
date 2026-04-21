@@ -32,6 +32,9 @@ import { translateError } from '@/utils/error-handler'
 import { conversationCache as storeLevelCache } from '@/services/cacheManager'
 import toast from '@/composables/useToast'
 import { nowISO } from '@/utils/timestamp'
+import { createLogger } from '@/utils/logger'
+
+const frontendLogger = createLogger('useConversationListController')
 
 export interface ConversationListControllerComposable {
   // 子 Composables
@@ -139,7 +142,7 @@ export function useConversationListController(): ConversationListControllerCompo
    * @throws {Error} 载入失败时抛出错误
    */
   async function loadConversations(): Promise<void> {
-    console.log('[Controller] Loading conversations')
+    frontendLogger.debug('[Controller] Loading conversations')
     isLoading.value = true
     loadError.value = null
 
@@ -153,7 +156,7 @@ export function useConversationListController(): ConversationListControllerCompo
       // 先尝试从缓存获取
       const cachedData = await cache.getCachedData(cacheKey)
       if (cachedData && cachedData.length > 0) {
-        console.log('[Controller] Using cached data')
+        frontendLogger.debug('[Controller] Using cached data')
         conversationsStore.setConversations(cachedData)
         total.value = cachedData.length
 
@@ -201,7 +204,7 @@ export function useConversationListController(): ConversationListControllerCompo
 
       total.value = conversationsStore.pagination.total
       await cache.setCachedData(cacheKey, conversations.value)
-      console.log('[Controller] Background cache refresh completed')
+      frontendLogger.debug('[Controller] Background cache refresh completed')
     } catch (error) {
       console.warn('[Controller] Background refresh failed:', error)
     }
@@ -249,7 +252,7 @@ export function useConversationListController(): ConversationListControllerCompo
    * @async
    */
   async function refresh(): Promise<void> {
-    console.log('[Controller] Manual refresh triggered')
+    frontendLogger.debug('[Controller] Manual refresh triggered')
     isRefreshing.value = true
     currentPage.value = 1
 
@@ -290,7 +293,7 @@ export function useConversationListController(): ConversationListControllerCompo
       return
     }
 
-    console.log('[Controller] Loading more conversations')
+    frontendLogger.debug('[Controller] Loading more conversations')
     loadingMore.value = true
 
     try {
@@ -334,7 +337,7 @@ export function useConversationListController(): ConversationListControllerCompo
    * @async
    */
   async function initialize(): Promise<void> {
-    console.log('[Controller] Initializing')
+    frontendLogger.debug('[Controller] Initializing')
 
     // Sync controller filters to store so background polling/refresh respects them
     watch(
@@ -358,14 +361,14 @@ export function useConversationListController(): ConversationListControllerCompo
       { deep: true }
     )
 
-    console.log('[Controller] Initialized')
+    frontendLogger.debug('[Controller] Initialized')
   }
 
   /**
    * 清理资源
    */
   function cleanup(): void {
-    console.log('[Controller] Cleaning up')
+    frontendLogger.debug('[Controller] Cleaning up')
     // 重置状态
     isLoading.value = false
     isRefreshing.value = false
