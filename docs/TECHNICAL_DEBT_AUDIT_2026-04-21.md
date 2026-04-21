@@ -40,11 +40,40 @@ hard to reproduce consistently across local, CI, and deployment environments.
 
 ## Check Results
 
+### P0 Reproducibility Update
+
+P0 has been executed on 2026-04-21.
+
+Changes made:
+
+- Added `scripts/check.ts` as the cross-platform canonical health check runner.
+- Updated root `package.json` check scripts to call the Bun runner directly:
+  - `bun run check`
+  - `bun run check:backend`
+  - `bun run check:frontend`
+- Removed the package-script dependency on `bash scripts/check.sh`, avoiding the
+  Windows ambiguity where `bash` can resolve to the WSL launcher instead of Git
+  Bash.
+- The legacy `scripts/check.sh` remains available for manual shell use, but it
+  is no longer the root package health-check entrypoint.
+
+Verification results after the change:
+
+- `bun run check`: passed, 6 checks passed, 0 failed, 0 errors.
+- `bun run check:backend`: passed, 3 checks passed, 0 failed, 0 errors.
+- `bun run check:frontend`: passed, 3 checks passed, 0 failed, 0 errors.
+- `bun run test:backend:ci`: passed.
+- `cd frontend && bun run test:run`: passed.
+
+Remaining P0 note:
+
+- This repository now has a cross-platform check entrypoint, but developer
+  machines still need Bun available on PATH to run package scripts directly.
+
 Command shape used on Windows:
 
 ```powershell
-$env:PATH = "$env:USERPROFILE\.bun\bin;C:\Program Files\Git\bin;$env:PATH"
-& 'C:\Program Files\Git\bin\bash.exe' scripts/check.sh
+bun run check
 ```
 
 Result:
@@ -318,10 +347,13 @@ Recommended actions:
 
 ### P0 - Make Verification Reproducible
 
-- Fix local Bun PATH resolution.
-- Ensure Git Bash is on PATH or remove the Bash dependency from `bun run check`.
-- Re-run `bun run check` until green.
-- Run backend and frontend CI test scripts.
+Status: completed on 2026-04-21.
+
+- Fixed the root health-check entrypoint by replacing the Bash package-script
+  dependency with `scripts/check.ts`.
+- Removed the need for Git Bash from `bun run check`.
+- Re-ran `bun run check` until green.
+- Ran backend and frontend CI test scripts.
 
 ### P1 - Reduce Production Risk
 
