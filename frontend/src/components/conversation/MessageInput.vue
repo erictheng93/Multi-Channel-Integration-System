@@ -68,7 +68,7 @@
 
     <!-- File upload input -->
     <input
-      ref="fileInputRef"
+      :ref="assignFileInputRef"
       type="file"
       multiple
       accept="image/*,application/pdf,.doc,.docx"
@@ -115,6 +115,7 @@
 
 <script setup lang="ts">
   import { ref, nextTick, watch, onMounted, onUnmounted, toRef } from 'vue'
+  import type { VNodeRef } from 'vue'
   import {
     SendIcon,
     SmileIcon,
@@ -214,8 +215,10 @@
   // ═══════════════════════════════════════════════════════════════════
 
   const textareaRef = ref<globalThis.HTMLTextAreaElement>()
-  // Bind the file input ref from composable so <input ref="fileInputRef"> works
-  const fileInputRef = fileSelection.fileInputRef
+
+  const assignFileInputRef: VNodeRef = (el) => {
+    fileSelection.fileInputRef.value = el instanceof HTMLInputElement ? el : undefined
+  }
 
   const messageText = ref('')
   const showEmojiPicker = ref(false)
