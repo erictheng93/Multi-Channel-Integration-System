@@ -70,6 +70,14 @@ Remaining P0 note:
 - This repository now has a cross-platform check entrypoint, but developer
   machines still need Bun available on PATH to run package scripts directly.
 
+Follow-up:
+
+- Added `scripts/setup-bun-path.ps1` as a Windows bootstrap helper. It is a dry
+  run by default and only updates the current user's PATH when called with
+  `-Apply`.
+- Updated `docs/guides/BUN_MIGRATION_GUIDE.md` with the dry-run and explicit
+  apply workflow.
+
 Command shape used on Windows:
 
 ```powershell
