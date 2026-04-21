@@ -37,10 +37,16 @@ This project has successfully completed a **gradual, phased migration from npm t
 powershell -c "irm bun.sh/install.ps1|iex"
 bun --version  # Verify: 1.2.20+
 
-# 2. Switch to Bun
+# 2. If Windows cannot resolve bun, inspect PATH without modifying it
+.\scripts\setup-bun-path.ps1
+
+# 3. To persist the standard Bun directory in User PATH, opt in explicitly
+.\scripts\setup-bun-path.ps1 -Apply
+
+# 4. Switch to Bun
 .\scripts\switch-to-bun.ps1
 
-# 3. Start development
+# 5. Start development
 bun run dev # Backend
 cd frontend && bun run bun:dev  # Frontend
 ```
@@ -59,6 +65,12 @@ cd frontend && npm run dev  # Frontend
 ### Environment Switching
 
 ```bash
+# Windows Bun PATH bootstrap (dry run by default)
+.\scripts\setup-bun-path.ps1
+
+# Apply the User PATH update explicitly
+.\scripts\setup-bun-path.ps1 -Apply
+
 # Switch to Bun (< 3 minutes)
 .\scripts\switch-to-bun.ps1
 
@@ -129,6 +141,7 @@ bun run build:bun # Production build (hybrid: npx + bun)
 **Key Files:**
 - `scripts/switch-to-bun.ps1` (NEW)
 - `scripts/switch-to-npm.ps1` (NEW)
+- `scripts/setup-bun-path.ps1` (Windows PATH bootstrap)
 - `README.md`
 
 ###  Phase 3: Testing Infrastructure (Week 3)
