@@ -392,9 +392,20 @@ Remaining note:
 
 ### P2 - Tighten Type Safety
 
-- Create an allowlist for existing `any` usage.
-- Prevent new `as any` in production code.
-- Replace API response casts with shared typed contracts.
+Status: completed on 2026-04-21.
+
+Changes made:
+
+- Added `scripts/type-debt-allowlist.json` to snapshot existing production `any` and `as any` usage.
+- Added `scripts/check-type-debt.ts` and `bun run check:type-debt` to fail when production code increases explicit `any` or `as any` counts.
+- Wired the type-debt allowlist into `bun run check:backend`, so the default full health check also prevents new production type debt.
+- Replaced the frontend paginated API response cast in `frontend/src/api/modern-client.ts` with a typed response handler contract.
+
+Verification:
+
+- `bun run check:type-debt`: passed, 234 allowlisted files, 1023 `any` keywords, 245 `as any` assertions, no increases.
+- `bun run check:backend`: passed, 4 checks passed, 0 failed, 0 errors.
+- `bun run check:frontend`: passed, 3 checks passed, 0 failed, 0 errors.
 
 ### P3 - Lower Maintenance Cost
 

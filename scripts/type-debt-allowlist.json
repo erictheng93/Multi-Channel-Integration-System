@@ -1,0 +1,938 @@
+{
+  "src/config/environment.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/config/runtime.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/config/security.ts": {
+    "any": 8,
+    "asAny": 1
+  },
+  "src/constants/durable-objects.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/core/error-handler.ts": {
+    "any": 19,
+    "asAny": 2
+  },
+  "src/core/modular-system-integration.ts": {
+    "any": 9,
+    "asAny": 0
+  },
+  "src/core/module-discovery.ts": {
+    "any": 8,
+    "asAny": 0
+  },
+  "src/core/module-templates.ts": {
+    "any": 5,
+    "asAny": 0
+  },
+  "src/core/route-registry.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/core/smart-route-registry.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/db/index.ts": {
+    "any": 7,
+    "asAny": 0
+  },
+  "src/db/schema.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/durable-objects/ConversationRoom.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/durable-objects/CustomerConversationDO.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/durable-objects/CustomerMessageDO.ts": {
+    "any": 4,
+    "asAny": 1
+  },
+  "src/durable-objects/DelayedMessageScheduler.ts": {
+    "any": 13,
+    "asAny": 1
+  },
+  "src/durable-objects/LatestMessageCacheCoordinator.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/durable-objects/MessageBroadcaster.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/durable-objects/RateLimiterDO.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/durable-objects/UserConnection.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/durable-objects/delayed-message/retry-handler.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/durable-objects/delayed-message/schedule-manager.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/durable-objects/delayed-message/types.ts": {
+    "any": 9,
+    "asAny": 0
+  },
+  "src/durable-objects/handlers/broadcaster-http-handlers.ts": {
+    "any": 5,
+    "asAny": 2
+  },
+  "src/durable-objects/services/broadcaster-delivery-service.ts": {
+    "any": 11,
+    "asAny": 0
+  },
+  "src/durable-objects/services/broadcaster-helpers.ts": {
+    "any": 8,
+    "asAny": 1
+  },
+  "src/durable-objects/services/room-auth-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/durable-objects/services/room-helpers.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/durable-objects/services/room-message-service.ts": {
+    "any": 3,
+    "asAny": 3
+  },
+  "src/enterprise/analytics-reports.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/handlers/index.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/handlers/realtime-router.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/health-checkers/cache-checker.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/health-checkers/database-checker.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/index.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/integrations/platform-adapter.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/activities/services/ActivityService.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/activities/services/ActivityStatsService.ts": {
+    "any": 11,
+    "asAny": 0
+  },
+  "src/modules/activities/services/TeamActivityService.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/activities/types/interfaces.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/activities/utils/validators.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/agents/handlers/agent-main.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/agents/services/agent-crud.ts": {
+    "any": 11,
+    "asAny": 0
+  },
+  "src/modules/agents/types/agent-types.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/modules/analytics/handlers/analytics-main.ts": {
+    "any": 4,
+    "asAny": 4
+  },
+  "src/modules/analytics/handlers/comparison-api.ts": {
+    "any": 6,
+    "asAny": 6
+  },
+  "src/modules/analytics/handlers/dashboard-main.ts": {
+    "any": 4,
+    "asAny": 4
+  },
+  "src/modules/analytics/handlers/realtime-dashboard-main.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/modules/analytics/middleware/analytics-auth.ts": {
+    "any": 5,
+    "asAny": 0
+  },
+  "src/modules/analytics/services/analytics-cache-service.ts": {
+    "any": 12,
+    "asAny": 4
+  },
+  "src/modules/analytics/services/analytics-core.ts": {
+    "any": 7,
+    "asAny": 1
+  },
+  "src/modules/analytics/services/analytics-queries.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/analytics/services/dashboard-service.ts": {
+    "any": 16,
+    "asAny": 7
+  },
+  "src/modules/analytics/services/layout-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/analytics/services/metrics-collector.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/modules/analytics/services/period-comparison-service.ts": {
+    "any": 5,
+    "asAny": 4
+  },
+  "src/modules/analytics/services/realtime-dashboard-service.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/analytics/services/widget-manager.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/analytics/types/analytics-types.ts": {
+    "any": 11,
+    "asAny": 0
+  },
+  "src/modules/analytics/types/metrics-types.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/analytics/types/reports-types.ts": {
+    "any": 15,
+    "asAny": 0
+  },
+  "src/modules/analytics/utils/calculation-helpers.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/auth/handlers/auth-main.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/modules/auth/handlers/credentials.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/modules/auth/services/auth.ts": {
+    "any": 3,
+    "asAny": 3
+  },
+  "src/modules/collaboration/adapters/websocket-adapter.ts": {
+    "any": 3,
+    "asAny": 1
+  },
+  "src/modules/collaboration/index.ts": {
+    "any": 10,
+    "asAny": 0
+  },
+  "src/modules/collaboration/services/collaboration-manager.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/collaboration/types/collaboration-types.ts": {
+    "any": 7,
+    "asAny": 0
+  },
+  "src/modules/conversations/handlers/conversation-assignment.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/conversations/handlers/conversation-queries.ts": {
+    "any": 5,
+    "asAny": 2
+  },
+  "src/modules/conversations/services/conversation-service.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/conversations/services/message-service.ts": {
+    "any": 7,
+    "asAny": 2
+  },
+  "src/modules/conversations/types/conversation-types.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/customer-conversations/handlers/customer-messages.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/customer-conversations/handlers/customer-ws.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/customer/middleware/customer-auth.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/customer/services/customer-search.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/customer/services/customer-stats.ts": {
+    "any": 7,
+    "asAny": 0
+  },
+  "src/modules/customer/types/customer-types.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/delayed-message/controllers/DelayedMessageController.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/delayed-message/index.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/delayed-message/infrastructure/EventService.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/delayed-message/infrastructure/StorageService.ts": {
+    "any": 3,
+    "asAny": 1
+  },
+  "src/modules/delayed-message/infrastructure/ValidationService.ts": {
+    "any": 5,
+    "asAny": 1
+  },
+  "src/modules/delayed-message/services/MessageProcessorService.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/delayed-message/services/MessageSchedulerService.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/delayed-message/types/index.ts": {
+    "any": 7,
+    "asAny": 0
+  },
+  "src/modules/file-management/handlers/file-handler.ts": {
+    "any": 8,
+    "asAny": 8
+  },
+  "src/modules/file-management/handlers/upload-handler.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/modules/file-management/middleware/file-validation.ts": {
+    "any": 3,
+    "asAny": 1
+  },
+  "src/modules/file-management/services/file-service.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/file-management/services/storage-service.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/file-management/services/validation-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/file-management/utils/mime-type-utils.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/integrations/handlers/line-follow-handler.ts": {
+    "any": 6,
+    "asAny": 5
+  },
+  "src/modules/integrations/index.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/modules/integrations/services/credential-management-service.ts": {
+    "any": 6,
+    "asAny": 6
+  },
+  "src/modules/integrations/services/facebook-integration-service.ts": {
+    "any": 29,
+    "asAny": 12
+  },
+  "src/modules/integrations/services/line-integration-service.ts": {
+    "any": 26,
+    "asAny": 9
+  },
+  "src/modules/integrations/services/message-normalization-service.ts": {
+    "any": 12,
+    "asAny": 0
+  },
+  "src/modules/integrations/services/webhook-conversation-service.ts": {
+    "any": 4,
+    "asAny": 1
+  },
+  "src/modules/integrations/services/webhook-customer-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/integrations/services/webhook-media-service.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/integrations/services/webhook-router-service.ts": {
+    "any": 19,
+    "asAny": 4
+  },
+  "src/modules/integrations/types/integration-types.ts": {
+    "any": 12,
+    "asAny": 0
+  },
+  "src/modules/liff/handlers/liff.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/messaging/handlers/messaging/routes/bulk.ts": {
+    "any": 5,
+    "asAny": 0
+  },
+  "src/modules/messaging/handlers/messaging/routes/conversation.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/messaging/handlers/messaging/routes/crud.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/modules/messaging/handlers/messaging/routes/export.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/messaging/handlers/messaging/routes/forwarding.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/messaging/handlers/messaging/routes/tags.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/messaging/index.ts": {
+    "any": 3,
+    "asAny": 2
+  },
+  "src/modules/messaging/middleware/message-validation.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/messaging/services/delayed-message-service.ts": {
+    "any": 2,
+    "asAny": 1
+  },
+  "src/modules/messaging/services/index.ts": {
+    "any": 6,
+    "asAny": 3
+  },
+  "src/modules/messaging/services/message-crud.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/messaging/types/message-types.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/modules/notifications/adapters/email-adapter.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/notifications/adapters/push-adapter.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/modules/notifications/handlers/notification-main.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/notifications/handlers/notification-router.ts": {
+    "any": 17,
+    "asAny": 17
+  },
+  "src/modules/notifications/repositories/notification-cache.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/notifications/repositories/notification-repository.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/notifications/services/notification-channel-service.ts": {
+    "any": 12,
+    "asAny": 8
+  },
+  "src/modules/notifications/services/notification-service.ts": {
+    "any": 3,
+    "asAny": 2
+  },
+  "src/modules/notifications/types/channel-types.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/modules/notifications/types/notification-types.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/notifications/utils/notification-factory.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/notifications/utils/notification-validator.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/queue/handlers/line-message-queue.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/realtime/config/version-selector.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/realtime/handlers/event-handler.ts": {
+    "any": 7,
+    "asAny": 0
+  },
+  "src/modules/realtime/handlers/realtime-main.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/realtime/index.ts": {
+    "any": 7,
+    "asAny": 0
+  },
+  "src/modules/realtime/middleware/connection-validation.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/realtime/middleware/realtime-auth.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/modules/realtime/monitoring/dashboard-handler.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/realtime/monitoring/performance-monitor.ts": {
+    "any": 8,
+    "asAny": 4
+  },
+  "src/modules/realtime/services/event-queue-service.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/realtime/services/index.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/realtime/services/realtime-manager.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/realtime/types/event-types.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/realtime/types/realtime-types.ts": {
+    "any": 10,
+    "asAny": 0
+  },
+  "src/modules/reports/handlers/reports-main.ts": {
+    "any": 3,
+    "asAny": 3
+  },
+  "src/modules/reports/middleware/reports-auth.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/reports/middleware/reports-validation.ts": {
+    "any": 9,
+    "asAny": 8
+  },
+  "src/modules/reports/services/report-generator-service.ts": {
+    "any": 22,
+    "asAny": 0
+  },
+  "src/modules/reports/services/report-manager-service.ts": {
+    "any": 5,
+    "asAny": 1
+  },
+  "src/modules/reports/services/report-scheduler-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/reports/services/report-utils.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/reports/services/reports-service.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/reports/types/report-core-types.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/reports/types/report-management-types.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/session/handlers/index.ts": {
+    "any": 2,
+    "asAny": 1
+  },
+  "src/modules/session/handlers/session-main.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/modules/session/middleware/index.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/modules/session/middleware/session-validation.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/session/services/analytics-service.ts": {
+    "any": 10,
+    "asAny": 0
+  },
+  "src/modules/session/services/session-message-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/session/services/session-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/session/services/topic-service.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/session/types/session-types.ts": {
+    "any": 5,
+    "asAny": 0
+  },
+  "src/modules/system/handlers/data-optimization-main.ts": {
+    "any": 7,
+    "asAny": 0
+  },
+  "src/modules/system/handlers/health-main.ts": {
+    "any": 9,
+    "asAny": 3
+  },
+  "src/modules/system/handlers/system-crypto-utils.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/system/handlers/system-integrations.ts": {
+    "any": 3,
+    "asAny": 1
+  },
+  "src/modules/system/handlers/system-main.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/system/handlers/system-settings.ts": {
+    "any": 3,
+    "asAny": 1
+  },
+  "src/modules/system/index.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/system/middleware/index.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/modules/system/services/system-service.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/modules/system/types/system-types.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/modules/tags/types/index.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/teams/handlers/members.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/teams/handlers/team-qr.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/teams/services/activity-service.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/teams/services/agent-teams-service.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/modules/teams/services/member-service.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/teams/services/team-service.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/teams/types/team-types.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/modules/websocket/handlers/websocket-dashboard.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/websocket/handlers/websocket-health.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/modules/websocket/handlers/websocket-main.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/modules/websocket/services/conversation-events.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/modules/websocket/services/message-events.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/modules/websocket/services/system-events.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/monitoring/performance-dashboard.ts": {
+    "any": 11,
+    "asAny": 1
+  },
+  "src/monitoring/performance-monitor.ts": {
+    "any": 19,
+    "asAny": 4
+  },
+  "src/monitoring/websocket-analytics-service.ts": {
+    "any": 5,
+    "asAny": 0
+  },
+  "src/services/alert-notification-service.ts": {
+    "any": 8,
+    "asAny": 2
+  },
+  "src/services/alert-service.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/services/automated-health-monitoring.ts": {
+    "any": 5,
+    "asAny": 1
+  },
+  "src/services/connection-pool-manager.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/services/conversation-sharding-service.ts": {
+    "any": 2,
+    "asAny": 1
+  },
+  "src/services/data-optimization-service.ts": {
+    "any": 6,
+    "asAny": 2
+  },
+  "src/services/database.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/services/distributed-lock-service.ts": {
+    "any": 17,
+    "asAny": 15
+  },
+  "src/services/durable-objects-monitor.ts": {
+    "any": 6,
+    "asAny": 4
+  },
+  "src/services/health-check-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/services/kv-session-service.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/services/latest-message-cache.ts": {
+    "any": 3,
+    "asAny": 3
+  },
+  "src/services/logger-service.ts": {
+    "any": 2,
+    "asAny": 2
+  },
+  "src/services/message-batch-optimizer.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/services/message-persistence-service.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/services/p1-optimizations.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/services/permission-service.ts": {
+    "any": 5,
+    "asAny": 5
+  },
+  "src/services/platform-message-parser.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/services/qrcode-service-impl.ts": {
+    "any": 8,
+    "asAny": 1
+  },
+  "src/services/qrcode-service.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/services/queue-base-service.ts": {
+    "any": 3,
+    "asAny": 0
+  },
+  "src/services/security-analytics-service.ts": {
+    "any": 5,
+    "asAny": 0
+  },
+  "src/services/task-reminder-service.ts": {
+    "any": 5,
+    "asAny": 4
+  },
+  "src/services/user-experience-monitoring.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/services/webhook-validation.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/services/websocket-circuit-breaker.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/types/bindings.ts": {
+    "any": 2,
+    "asAny": 0
+  },
+  "src/types/database.ts": {
+    "any": 4,
+    "asAny": 0
+  },
+  "src/types/external-apis.ts": {
+    "any": 10,
+    "asAny": 0
+  },
+  "src/types/handlers.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/types/health-check.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/types/monitoring-types.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/types/sharding-types.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/utils/analytics-helpers.ts": {
+    "any": 1,
+    "asAny": 0
+  },
+  "src/utils/api-response.ts": {
+    "any": 3,
+    "asAny": 3
+  },
+  "src/utils/auth.ts": {
+    "any": 3,
+    "asAny": 3
+  },
+  "src/utils/database.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/utils/drizzle-converters.ts": {
+    "any": 6,
+    "asAny": 0
+  },
+  "src/utils/environment.ts": {
+    "any": 8,
+    "asAny": 0
+  },
+  "src/utils/input-validation.ts": {
+    "any": 2,
+    "asAny": 1
+  },
+  "src/utils/team.ts": {
+    "any": 1,
+    "asAny": 1
+  },
+  "src/utils/test-logger.ts": {
+    "any": 16,
+    "asAny": 0
+  },
+  "src/workers/latest-message-worker.ts": {
+    "any": 4,
+    "asAny": 2
+  }
+}
