@@ -155,6 +155,19 @@ Config: `.claude/hooks/health-check.sh`, `.claude/settings.local.json`
 - **Vue 3 Composition API** preferred over Options API
 - **ESLint + Prettier** for formatting
 
+### Type-Check Toolchain (NEVER mix up `tsc` and `vue-tsc`)
+
+| Subproject | Correct tool | Reason |
+|------------|--------------|--------|
+| Backend (`src/`) | `tsc --noEmit` | No `.vue` SFCs |
+| Frontend (`frontend/`) | `vue-tsc --noEmit` (via `bun run type-check`) | Needs Volar to read `<script setup>` named exports |
+| `web-installer/backend/` | `tsc --noEmit` | No `.vue` SFCs |
+| `web-installer/frontend/` | `vue-tsc --noEmit` | SFC project |
+
+**Rule:** Never run plain `tsc` against `frontend/` — it cannot see named type exports inside `<script setup lang="ts">` blocks (the `*.vue` shim from `vite/client` only declares the default component export). It will produce phantom `TS2614 Module '"*.vue"' has no exported member 'X'` errors that do not exist under `vue-tsc`. Always use `bun run type-check` (or `bunx vue-tsc --noEmit`).
+
+CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse health-check hook all already route to the correct tool — this rule is for ad-hoc manual invocations.
+
 ### Database Operations
 - Use **Drizzle ORM** for all DB operations
 - **Soft Delete**: use `deletedAt` column instead of hard delete (teams, agents, customers, conversations, messages, tags)
