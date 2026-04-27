@@ -125,9 +125,9 @@ reportsHandler.get('/info', (c) => {
 reportsHandler.post(
   '/',
   validateRequestSize,
-  validateReportGenerationParams,
-  validateRateLimit,
   checkReportsAccess,
+  validateRateLimit,
+  validateReportGenerationParams,
   checkReportsGeneratePermission,
   checkSpecialReportTypePermission,
   logReportsOperation,
@@ -221,8 +221,8 @@ reportsHandler.get(
 reportsHandler.get(
   '/:id/download',
   validateReportId,
-  validateRateLimit,
   checkReportsAccess,
+  validateRateLimit,
   checkReportsDownloadPermission,
   logReportsOperation,
   async (c) => {
@@ -263,8 +263,8 @@ reportsHandler.get(
 reportsHandler.delete(
   '/:id',
   validateReportId,
-  validateRateLimit,
   checkReportsAccess,
+  validateRateLimit,
   checkReportsDeletePermission,
   logReportsOperation,
   async (c) => {
@@ -331,9 +331,9 @@ reportsHandler.get(
 reportsHandler.post(
   '/batch',
   validateRequestSize,
-  validateBatchReportOperation,
-  validateRateLimit,
   checkReportsAccess,
+  validateRateLimit,
+  validateBatchReportOperation,
   checkReportsBatchPermission,
   logReportsOperation,
   async (c) => {
@@ -433,9 +433,9 @@ reportsHandler.post(
 reportsHandler.post(
   '/scheduled',
   validateRequestSize,
-  validateScheduledReportData,
-  validateRateLimit,
   checkReportsAccess,
+  validateRateLimit,
+  validateScheduledReportData,
   checkScheduledReportsPermission,
   logReportsOperation,
   async (c) => {
@@ -498,9 +498,9 @@ reportsHandler.put(
   '/scheduled/:id',
   validateRequestSize,
   validateScheduledReportId,
-  validateScheduledReportData,
-  validateRateLimit,
   checkReportsAccess,
+  validateRateLimit,
+  validateScheduledReportData,
   checkScheduledReportsPermission,
   logReportsOperation,
   async (c) => {
@@ -535,8 +535,8 @@ reportsHandler.put(
 reportsHandler.delete(
   '/scheduled/:id',
   validateScheduledReportId,
-  validateRateLimit,
   checkReportsAccess,
+  validateRateLimit,
   checkScheduledReportsPermission,
   logReportsOperation,
   async (c) => {
