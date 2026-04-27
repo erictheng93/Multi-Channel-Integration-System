@@ -5,13 +5,27 @@ import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('useTokenRefresh')
 
+let sharedRefreshInterval: number | null = null
+let refreshConsumers = 0
+
 export function useTokenRefresh() {
   const authStore = useAuthStore()
-  let refreshInterval: number | null = null
+  let startedByInstance = false
 
   const startTokenRefreshCheck = () => {
+    if (startedByInstance) {
+      return
+    }
+
+    startedByInstance = true
+    refreshConsumers += 1
+
+    if (sharedRefreshInterval !== null) {
+      return
+    }
+
     // 每 5 分鐘檢查一次是否需要刷新 token
-    refreshInterval = window.setInterval(() => {
+    sharedRefreshInterval = window.setInterval(() => {
       if (authStore.isAuthenticated && authStore.shouldRefreshToken()) {
         frontendLogger.debug(' Scheduled token refresh check...')
         authStore.proactiveTokenRefresh()
@@ -24,9 +38,19 @@ export function useTokenRefresh() {
   }
 
   const stopTokenRefreshCheck = () => {
-    if (refreshInterval) {
-      clearInterval(refreshInterval)
-      refreshInterval = null
+    if (!startedByInstance) {
+      return
+    }
+
+    startedByInstance = false
+
+    if (refreshConsumers > 0) {
+      refreshConsumers -= 1
+    }
+
+    if (refreshConsumers === 0 && sharedRefreshInterval !== null) {
+      clearInterval(sharedRefreshInterval)
+      sharedRefreshInterval = null
     }
   }
 
