@@ -35,6 +35,25 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
   }
 
   try {
+    // EARLY DEDUPE: Skip ALL processing for redelivered messages.
+    //
+    // Why this MUST be first: findOrCreateConversation() unconditionally bumps
+    // conversations.last_message_at on existing conversations. Running dedup
+    // AFTER that would let a LINE redelivery (same platformMessageId) silently
+    // update the timestamp without storing a message, producing "ghost" updates:
+    // the conversation list re-orders but the detail view shows no new message.
+    //
+    // Incident: 2026-04-24 — 元隆企業社 redelivery bumped last_message_at to
+    // 08:18:44Z but no message row was written; operator believed a new message
+    // arrived (list re-sorted) and could not find it in the chat.
+    if (message.id && await isDuplicateMessage(env, message.id, 'line')) {
+      log.info('LINE Webhook: Duplicate message, skipping all processing', {
+        platformMessageId: message.id,
+        userIdPrefix: userId.substring(0, 10),
+      });
+      return;
+    }
+
     // Smart type correction: detect and fix LINE API type misidentification
     // Problem: LINE API may incorrectly identify some files as video/audio type
     // Solution: If message has fileName field, force correct to 'file' type
@@ -167,16 +186,12 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
     }
 
     // Find or create conversation
+    // (Dedupe already happened at the top of this try block — see EARLY DEDUPE.)
     const conversation = await findOrCreateConversation(env, user.id, 'line', {
       messageContent,
       customerDisplayName: user.displayName || 'LINE User',
       assignedTeamId
     });
-
-    // Idempotency check: check if same platformMessageId already exists
-    if (await isDuplicateMessage(env, message.id, 'line')) {
-      return; // Return directly, don't process duplicates
-    }
 
     // Save message
     const messageId = await saveMessage(
