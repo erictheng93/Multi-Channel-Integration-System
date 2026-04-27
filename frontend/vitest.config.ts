@@ -7,6 +7,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    reporters: process.env.CI ? ['basic'] : ['default'],
+    silent: process.env.CI ? 'passed-only' : false,
     setupFiles: ['./vitest.setup.ts'],
     // Increase timeouts for async dialog and toast tests
     // Multiple dialogs with 300ms cleanup animations require extended timeout
@@ -23,7 +25,7 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text-summary', 'json', 'html', 'lcov'],
       exclude: [
         'node_modules/',
         'dist/',

@@ -23,7 +23,11 @@ const LEVEL_PRIORITY: Record<LogLevel, number> = {
 }
 
 /** Minimum level that gets emitted */
-const MIN_LEVEL: LogLevel = import.meta.env.DEV ? 'debug' : 'warn'
+const MIN_LEVEL: LogLevel = import.meta.env.VITEST
+  ? 'error'
+  : import.meta.env.DEV
+    ? 'debug'
+    : 'warn'
 const browserConsole = globalThis.console
 
 /* eslint-disable no-unused-vars */

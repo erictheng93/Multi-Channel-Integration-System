@@ -2,7 +2,9 @@
 // Force UTC timezone for all tests to ensure consistent date/time handling
 // across different environments and CI/CD systems
 process.env.TZ = 'UTC';
-console.log('[Frontend Tests] Timezone standardized to UTC');
+if (process.env.DEBUG_TEST_SETUP === 'true') {
+  console.log('[Frontend Tests] Timezone standardized to UTC');
+}
 
 import { config } from '@vue/test-utils'
 import { vi } from 'vitest'
@@ -180,7 +182,14 @@ const i18n = createI18n({
 
 // Mock Vite environment variables for testing
 vi.stubEnv('VITE_API_BASE_URL', 'http://localhost:8787')
+vi.stubEnv('VITE_ENV', 'development')
 vi.stubEnv('VITE_ENVIRONMENT', 'test')
+vi.stubEnv('VITE_BACKEND_URL', 'http://localhost:8787')
+vi.stubEnv('VITE_FRONTEND_URL', 'http://localhost:3000')
+vi.stubEnv('VITE_STORAGE_PUBLIC_URL', 'http://localhost:8787/files')
+vi.stubEnv('VITE_WEBSOCKET_URL', 'ws://localhost:8787/ws')
+vi.stubEnv('VITE_DEBUG', 'false')
+vi.stubEnv('VITE_WEBSOCKET_DEBUG', 'false')
 
 // Vue Test Utils 全局配置
 config.global.plugins = [i18n]
@@ -201,6 +210,17 @@ config.global.mocks = {
     meta: {}
   }
 }
+config.global.stubs = {
+  ...(config.global.stubs ?? {}),
+  RouterLink: {
+    props: ['to'],
+    template: '<a><slot /></a>'
+  },
+  'router-link': {
+    props: ['to'],
+    template: '<a><slot /></a>'
+  }
+}
 
 // ======================== ASYNC CLEANUP ========================
 // Global handlers to prevent unhandled rejection warnings in tests
@@ -208,19 +228,80 @@ config.global.mocks = {
 
 // Store original console methods
 const originalConsoleError = console.error
+const originalConsoleWarn = console.warn
+
+const EXPECTED_TEST_NOISE = [
+  '[Vue warn]: Failed to resolve component: router-link',
+  'onUnmounted is called when there is no active component instance',
+  '[Runtime Config] VITE_WEBSOCKET_URL not set',
+  '[AdvancedAssignActions] Server rejected',
+  '[AdvancedAssignActions] Confirm assignment/transfer failed:',
+  '[AdvancedAssignActions] Unassign failed with exception:',
+  '[AdvancedAssignActions] Manual refresh failed:',
+  '[MessageHandlers] Message failed:',
+  '[MessageHandlers] Failed message not found:',
+  '[ConversationsStore] API sync failed',
+  '[ConversationsStore] Smart cache loading failed:',
+  '[ConversationsStore] Preload failed for page',
+  '[ConversationsStore] Current conversation not found in list',
+  'not found for optimistic update',
+  '[useConversationState] Failed to load conversation:',
+  '[useConversationState] Failed to refresh messages:',
+  '[useConversationState] Failed to refresh messages after reconnection:',
+  '[CustomerTagsController] Initialization failed:',
+  '[ConversationsStore] Assignment failed with exception:',
+  '[ConversationsStore] Assignment API call failed:',
+  '[Auth] Session has expired',
+  '[Sticker Debug] Failed to parse sticker metadata',
+  '[Sticker Debug] All CDN sources failed',
+  '[conversationApi.assign] Individual assignment is deprecated',
+  'Failed to copy message:',
+  'Failed to fetch dashboard stats:',
+  'Error fetching dashboard stats:',
+  '未找到emoji映射:',
+]
+
+function stringifyConsoleArg(arg: unknown): string {
+  if (arg instanceof Error) {
+    return arg.message
+  }
+
+  if (typeof arg === 'string') {
+    return arg
+  }
+
+  try {
+    return JSON.stringify(arg)
+  } catch {
+    return String(arg)
+  }
+}
+
+function isExpectedTestNoise(args: unknown[]): boolean {
+  const message = args.map(stringifyConsoleArg).join(' ')
+  return EXPECTED_TEST_NOISE.some(pattern => message.includes(pattern))
+}
 
 // Suppress specific known test-related errors during cleanup
 console.error = (...args) => {
-  const message = args[0]?.toString() || ''
-  // Suppress expected test cleanup errors
-  if (
-    message.includes('Unhandled error during cleanup') ||
-    message.includes('[Vue warn]') ||
-    message.includes('runtime-core.cjs')
-  ) {
+  if (isExpectedTestNoise(args)) {
     return
   }
+
+  const message = stringifyConsoleArg(args[0])
+  if (message.includes('Unhandled error during cleanup') || message.includes('runtime-core.cjs')) {
+    return
+  }
+
   originalConsoleError(...args)
+}
+
+console.warn = (...args) => {
+  if (isExpectedTestNoise(args)) {
+    return
+  }
+
+  originalConsoleWarn(...args)
 }
 
 // Handle unhandled promise rejections in tests gracefully
@@ -231,6 +312,7 @@ if (typeof process !== 'undefined') {
     if (
       reasonStr.includes('fetchConversations') ||
       reasonStr.includes('refreshConversations') ||
+      reasonStr.includes('Failed to load') ||
       reasonStr.includes('AbortError') ||
       reasonStr.includes('Component is unmounted')
     ) {
