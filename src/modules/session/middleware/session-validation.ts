@@ -4,6 +4,7 @@
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 import { createContextLogger } from '@/utils/logger';
+import { checkSimpleRateLimit } from '@/utils/simple-rate-limiter';
 
 const log = createContextLogger('SessionValidation');
 import type {
@@ -97,16 +98,29 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
  */
 export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next: Next): Promise<Response | void> {
   try {
-    // TODO: 實現速率限制邏輯
-    // 可以使用 Cloudflare KV 存儲請求計數
+    const result = checkSimpleRateLimit(c, {
+      namespace: 'session',
+      windowMs: 60 * 1000,
+      maxRequests: 60,
+    });
+
+    c.header('X-RateLimit-Limit', result.limit.toString());
+    c.header('X-RateLimit-Remaining', Math.max(0, result.limit - result.count).toString());
+    c.header('X-RateLimit-Reset', Math.ceil(result.resetTime / 1000).toString());
+
+    if (!result.allowed) {
+      c.header('Retry-After', result.retryAfterSeconds.toString());
+      return c.json({
+        success: false,
+        error: 'Rate limit exceeded',
+        timestamp: nowISO()
+      }, HTTP_STATUS.TOO_MANY_REQUESTS);
+    }
+
     await next();
   } catch (error) {
     log.error('Rate limit validation error', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: 'Rate limit check failed',
-      timestamp: nowISO()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    await next();
   }
 }
 

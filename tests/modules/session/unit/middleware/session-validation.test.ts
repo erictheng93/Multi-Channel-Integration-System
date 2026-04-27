@@ -24,6 +24,7 @@ import {
   createMockBatchOperation
 } from '../../helpers/session-test-helpers';
 import type { Bindings } from '@/types';
+import { resetSimpleRateLimitStore } from '@/utils/simple-rate-limiter';
 
 // Mock JWT authentication
 vi.mock('@/middleware/auth', () => ({
@@ -43,6 +44,7 @@ describe('Session Validation Middleware', () => {
 
   beforeEach(() => {
     app = new Hono<{ Bindings: Bindings }>();
+    resetSimpleRateLimitStore();
     vi.clearAllMocks();
   });
 
@@ -187,17 +189,6 @@ describe('Session Validation Middleware', () => {
       test('should allow requests within size limit', async () => {
         const response = await app.request('/test', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Length': '1000' // 1KB
           },
@@ -244,16 +235,64 @@ describe('Session Validation Middleware', () => {
         });
       });
 
-      test('should pass through (rate limiting not implemented yet)', async () => {
-        const response = await app.request('/test');
+      test('should allow requests under the per-minute limit', async () => {
+        const response = await app.request('/test', {
+          headers: {
+            'CF-Connecting-IP': '203.0.113.10'
+          }
+        });
 
         expect(response.status).toBe(200);
+        expect(response.headers.get('X-RateLimit-Limit')).toBe('60');
+        expect(response.headers.get('X-RateLimit-Remaining')).toBe('59');
 
         const data = await response.json();
         expect(data.success).toBe(true);
       });
 
-      // TODO: Add rate limiting implementation tests when available
+      test('should reject requests above the per-minute limit', async () => {
+        for (let i = 0; i < 60; i++) {
+          const response = await app.request('/test', {
+            headers: {
+              'CF-Connecting-IP': '203.0.113.20'
+            }
+          });
+          expect(response.status).toBe(200);
+        }
+
+        const response = await app.request('/test', {
+          headers: {
+            'CF-Connecting-IP': '203.0.113.20'
+          }
+        });
+
+        expect(response.status).toBe(429);
+        expect(response.headers.get('Retry-After')).toBeTruthy();
+        expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+
+        const data = await response.json();
+        expect(data.success).toBe(false);
+        expect(data.error).toBe('Rate limit exceeded');
+      });
+
+      test('should track separate clients independently', async () => {
+        for (let i = 0; i < 60; i++) {
+          await app.request('/test', {
+            headers: {
+              'CF-Connecting-IP': '203.0.113.30'
+            }
+          });
+        }
+
+        const response = await app.request('/test', {
+          headers: {
+            'CF-Connecting-IP': '203.0.113.31'
+          }
+        });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('X-RateLimit-Remaining')).toBe('59');
+      });
     });
   });
 
@@ -508,12 +547,6 @@ describe('Session Validation Middleware', () => {
 
         const response = await app.request('/test', {
           method: 'PUT',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json'
           },
@@ -800,15 +833,6 @@ describe('Session Validation Middleware', () => {
 
         const response = await app.request('/batch', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json'
           },
@@ -1069,7 +1093,6 @@ describe('Session Validation Middleware', () => {
 
       const response = await app.request('/special-chars', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json'
         },
@@ -1098,7 +1121,6 @@ describe('Session Validation Middleware', () => {
 
       const response = await app.request('/null-test', {
         method: 'PUT',
-        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json'
         },

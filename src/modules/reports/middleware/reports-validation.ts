@@ -15,6 +15,7 @@ import { REPORT_TYPE_CONFIG } from '@modules/reports/types/report-types';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { checkSimpleRateLimit } from '@/utils/simple-rate-limiter';
 
 const log = createContextLogger('ReportsValidation');
 
@@ -113,16 +114,29 @@ export async function validateRequestSize(c: Context<{ Bindings: Bindings }>, ne
  */
 export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    // TODO: 實現速率限制邏輯
-    // 報告生成需要更嚴格的速率限制，可以使用 Cloudflare KV 存儲請求計數
+    const result = checkSimpleRateLimit(c, {
+      namespace: 'reports',
+      windowMs: 60 * 1000,
+      maxRequests: 30,
+    });
+
+    c.header('X-RateLimit-Limit', result.limit.toString());
+    c.header('X-RateLimit-Remaining', Math.max(0, result.limit - result.count).toString());
+    c.header('X-RateLimit-Reset', Math.ceil(result.resetTime / 1000).toString());
+
+    if (!result.allowed) {
+      c.header('Retry-After', result.retryAfterSeconds.toString());
+      return c.json({
+        success: false,
+        error: 'Rate limit exceeded',
+        timestamp: nowISO()
+      }, HTTP_STATUS.TOO_MANY_REQUESTS);
+    }
+
     return await next();
   } catch (error) {
     log.error('Rate limit validation error:', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: 'Rate limit check failed',
-      timestamp: nowISO()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    return await next();
   }
 }
 
