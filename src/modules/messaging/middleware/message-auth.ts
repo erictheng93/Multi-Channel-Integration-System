@@ -4,7 +4,7 @@
 import { Context, Next } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, inArray } from 'drizzle-orm';
-import type { Bindings, JWTPayload } from '@/types';
+import type { Bindings, DbUser, JWTPayload } from '@/types';
 import {
   unauthorizedResponse,
   forbiddenResponse,
@@ -29,9 +29,36 @@ interface MessageAuthVariables {
 
 type MessageAuthContext = Context<{ Bindings: Bindings; Variables: MessageAuthVariables }>
 
+type MessageAuthUser = Pick<JWTPayload, 'role' | 'primaryTeamId' | 'allowedTeamIds'> & {
+  userId: string | number
+}
+
 /** Safely cast a base Hono context to our extended context (middleware enriches variables at runtime) */
 function authCtx(c: Context<{ Bindings: Bindings }>): MessageAuthContext {
   return c as unknown as MessageAuthContext;
+}
+
+function getAuthenticatedMessageUser(c: Context<{ Bindings: Bindings }>): MessageAuthUser | null {
+  const user = c.get('user' as never) as (DbUser | JWTPayload | undefined);
+  const jwtPayload = c.get('jwtPayload' as never) as (JWTPayload | undefined);
+  const source = user || jwtPayload;
+
+  if (!source) {
+    return null;
+  }
+
+  const userId = 'userId' in source ? source.userId : source.id;
+
+  if (userId === undefined || userId === null) {
+    return null;
+  }
+
+  return {
+    userId,
+    role: source.role,
+    primaryTeamId: source.primaryTeamId ?? undefined,
+    allowedTeamIds: source.allowedTeamIds,
+  };
 }
 
 // ======================== 基礎權限檢查 ========================
@@ -41,7 +68,7 @@ function authCtx(c: Context<{ Bindings: Bindings }>): MessageAuthContext {
  */
 export async function checkMessageAccess(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const userPayload = c.get('user') as unknown as JWTPayload;
+    const userPayload = getAuthenticatedMessageUser(c);
 
     if (!userPayload) {
       return unauthorizedResponse(c, 'Authentication required for message access');
@@ -263,7 +290,7 @@ export async function applyMessageScopeFilter(c: Context<{ Bindings: Bindings }>
 /**
  * 根據用戶資訊計算訊息權限
  */
-async function getMessagePermissions(userPayload: JWTPayload): Promise<MessagePermissions> {
+async function getMessagePermissions(userPayload: MessageAuthUser): Promise<MessagePermissions> {
   // 根據角色設定基礎權限
   const basePermissions: MessagePermissions = {
     canSend: false,
@@ -303,7 +330,7 @@ async function getMessagePermissions(userPayload: JWTPayload): Promise<MessagePe
 /**
  * 根據用戶資訊計算訊息存取範圍
  */
-async function getMessageAccessScope(userPayload: JWTPayload, database: D1Database): Promise<MessageAccessScope> {
+async function getMessageAccessScope(userPayload: MessageAuthUser, database: D1Database): Promise<MessageAccessScope> {
   // Admin 有全域存取權限
   if (userPayload.role === 'admin') {
     return {
@@ -323,6 +350,7 @@ async function getMessageAccessScope(userPayload: JWTPayload, database: D1Databa
 
     const teamIds = Array.from(new Set([
       ...memberships.map((membership) => membership.teamId),
+      ...(userPayload.allowedTeamIds ?? []),
       ...(userPayload.primaryTeamId ? [userPayload.primaryTeamId] : []),
     ]));
 
@@ -360,8 +388,12 @@ async function getMessageAccessScope(userPayload: JWTPayload, database: D1Databa
  */
 export async function validateMessageSender(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const userPayload = c.get('user') as unknown as JWTPayload;
+    const userPayload = getAuthenticatedMessageUser(c);
     const body = await c.req.json().catch(() => ({}));
+
+    if (!userPayload) {
+      return unauthorizedResponse(c, 'Authentication required for message sending');
+    }
 
     // 驗證發送者類型
     const senderType: SenderType = body.senderType || 'agent';
