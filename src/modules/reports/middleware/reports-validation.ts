@@ -125,6 +125,17 @@ export async function validateRateLimit(c: Context<{ Bindings: Bindings }>, next
     c.header('X-RateLimit-Reset', Math.ceil(result.resetTime / 1000).toString());
 
     if (!result.allowed) {
+      log.warn('Reports rate limit exceeded', {
+        namespace: 'reports',
+        method: c.req.method,
+        path: c.req.path,
+        clientType: result.clientType,
+        clientHash: result.clientHash,
+        count: result.count,
+        limit: result.limit,
+        retryAfterSeconds: result.retryAfterSeconds,
+        resetTime: result.resetTime,
+      });
       c.header('Retry-After', result.retryAfterSeconds.toString());
       return c.json({
         success: false,

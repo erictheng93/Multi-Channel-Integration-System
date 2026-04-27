@@ -204,9 +204,9 @@ sessionRouter.post(
 sessionRouter.post(
   '/maintenance/cleanup',
   validateRequestSize,
-  validateRateLimit,
   // ...basicSessionAccess, // Temporarily disabled due to import issue
   checkSessionAccess,
+  validateRateLimit,
   checkSessionBatchPermission,
   logSessionOperation,
   async (c) => {

@@ -124,9 +124,9 @@ sessionHandler.get('/info', (c) => {
 sessionHandler.post(
   '/batch',
   validateRequestSize,
-  validateBatchSessionOperation,
-  validateRateLimit,
   checkSessionAccess,
+  validateRateLimit,
+  validateBatchSessionOperation,
   checkSessionBatchPermission,
   logSessionOperation,
   async (c) => {
@@ -344,8 +344,8 @@ sessionHandler.post(
 sessionHandler.post(
   '/get-or-create',
   validateRequestSize,
-  validateRateLimit,
   checkSessionAccess,
+  validateRateLimit,
   checkSessionCreatePermission,
   logSessionOperation,
   async (c) => {
@@ -449,8 +449,8 @@ sessionHandler.get(
 sessionHandler.post(
   '/:sessionId/close',
   validateSessionId,
-  validateRateLimit,
   checkSessionAccess,
+  validateRateLimit,
   checkSessionUpdatePermission,
   logSessionOperation,
   async (c) => {
@@ -487,8 +487,8 @@ sessionHandler.post(
 sessionHandler.post(
   '/:sessionId/reopen',
   validateSessionId,
-  validateRateLimit,
   checkSessionAccess,
+  validateRateLimit,
   checkSessionUpdatePermission,
   logSessionOperation,
   async (c) => {
@@ -663,9 +663,9 @@ sessionHandler.put(
   '/:sessionId',
   validateRequestSize,
   validateSessionId,
-  validateUpdateSessionData,
-  validateRateLimit,
   checkSessionAccess,
+  validateRateLimit,
+  validateUpdateSessionData,
   checkSessionUpdatePermission,
   logSessionOperation,
   async (c) => {
@@ -695,8 +695,8 @@ sessionHandler.put(
 sessionHandler.delete(
   '/:sessionId',
   validateSessionId,
-  validateRateLimit,
   checkSessionAccess,
+  validateRateLimit,
   checkSessionDeletePermission,
   logSessionOperation,
   async (c) => {
@@ -735,9 +735,9 @@ sessionHandler.delete(
 sessionHandler.post(
   '/',
   validateRequestSize,
-  validateCreateSessionData,
-  validateRateLimit,
   checkSessionAccess,
+  validateRateLimit,
+  validateCreateSessionData,
   checkSessionCreatePermission,
   logSessionOperation,
   async (c) => {

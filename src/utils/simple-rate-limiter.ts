@@ -19,17 +19,39 @@ interface RateLimitResult {
   limit: number;
   resetTime: number;
   retryAfterSeconds: number;
+  clientType: 'user' | 'ip' | 'anonymous';
+  clientHash: string;
 }
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-function getClientIdentifier(c: Context<{ Bindings: Bindings }>): string {
+function hashIdentifier(value: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function getClientIdentifier(c: Context<{ Bindings: Bindings }>): {
+  id: string;
+  type: 'user' | 'ip' | 'anonymous';
+  hash: string;
+} {
   const payload =
     (c.get('jwtPayload' as never) as JWTPayload | undefined) ||
     (c.get('user' as never) as JWTPayload | undefined);
 
-  if (payload?.userId) {
-    return `user:${payload.userId}`;
+  const userId = payload?.userId || (payload as unknown as { id?: string | number } | undefined)?.id;
+
+  if (userId) {
+    const value = String(userId);
+    return {
+      id: `user:${value}`,
+      type: 'user',
+      hash: hashIdentifier(value),
+    };
   }
 
   const forwardedFor = c.req.header('CF-Connecting-IP') ||
@@ -37,10 +59,19 @@ function getClientIdentifier(c: Context<{ Bindings: Bindings }>): string {
     c.req.header('X-Real-IP');
 
   if (forwardedFor) {
-    return `ip:${forwardedFor.split(',')[0]?.trim() || 'unknown'}`;
+    const value = forwardedFor.split(',')[0]?.trim() || 'unknown';
+    return {
+      id: `ip:${value}`,
+      type: 'ip',
+      hash: hashIdentifier(value),
+    };
   }
 
-  return 'anonymous';
+  return {
+    id: 'anonymous',
+    type: 'anonymous',
+    hash: hashIdentifier('anonymous'),
+  };
 }
 
 function cleanupExpiredEntries(now: number, maxEntries: number): void {
@@ -61,8 +92,8 @@ export function checkSimpleRateLimit(
 ): RateLimitResult {
   const now = Date.now();
   const maxEntries = options.maxEntries ?? 5000;
-  const clientId = getClientIdentifier(c);
-  const key = `${options.namespace}:${clientId}`;
+  const client = getClientIdentifier(c);
+  const key = `${options.namespace}:${client.id}`;
 
   cleanupExpiredEntries(now, maxEntries);
 
@@ -85,6 +116,8 @@ export function checkSimpleRateLimit(
     limit: options.maxRequests,
     resetTime: entry.resetTime,
     retryAfterSeconds,
+    clientType: client.type,
+    clientHash: client.hash,
   };
 }
 
