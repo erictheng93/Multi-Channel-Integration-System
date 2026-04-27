@@ -27,3 +27,14 @@ Recent history follows Conventional Commit style, for example `fix(conversations
 
 ## Security & Agent Notes
 Do not commit `.env*` secrets or production credentials. Validate route and config changes with `bun run validate:all` when touching routing or runtime config. For Codex shell usage in this repo, prefix commands with `rtk` per the local tooling guide.
+
+## RTK Command Preference
+When invoking external CLI commands from Codex for this repository, prefer the `rtk` prefix for tools such as `php`, `composer`, `npm`, `git`, and `bash`.
+
+Examples:
+- `rtk php artisan test`
+- `rtk composer install`
+- `rtk npm run build`
+
+PowerShell builtins and simple read-only inspection commands do not need the `rtk` prefix.
+
