@@ -68,7 +68,7 @@
 
     <!-- File upload input -->
     <input
-      :ref="assignFileInputRef"
+      :ref="fileSelection.fileInputRef"
       type="file"
       multiple
       accept="image/*,application/pdf,.doc,.docx"
@@ -156,7 +156,6 @@ const props = defineProps<Props>()
   }>()
   const frontendLogger = createLogger('MessageInput')
   import { ref, nextTick, watch, onMounted, onUnmounted, toRef } from 'vue'
-  import type { VNodeRef } from 'vue'
   import {
     SendIcon,
     SmileIcon,
@@ -216,10 +215,6 @@ const props = defineProps<Props>()
   // ═══════════════════════════════════════════════════════════════════
 
   const textareaRef = ref<globalThis.HTMLTextAreaElement>()
-
-  const assignFileInputRef: VNodeRef = (el) => {
-    fileSelection.fileInputRef.value = el instanceof HTMLInputElement ? el : undefined
-  }
 
   const messageText = ref('')
   const showEmojiPicker = ref(false)
