@@ -1,3 +1,13 @@
+// ============================================================================
+// Frontend TypeScript config
+// ============================================================================
+// IMPORTANT: type-check this project with `vue-tsc`, NEVER plain `tsc`.
+// Plain `tsc` cannot resolve named type exports from inside `.vue`
+// `<script setup lang="ts">` blocks and will emit phantom TS2614 errors
+// (e.g. `Module '"*.vue"' has no exported member 'XxxProps'`).
+// Use `bun run type-check` (alias for `vue-tsc --noEmit`) or
+// `bunx vue-tsc --noEmit`. See CLAUDE.md "Type-Check Toolchain".
+// ============================================================================
 {
   "compilerOptions": {
     "target": "ES2022",
