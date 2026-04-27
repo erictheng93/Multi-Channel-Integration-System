@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { Conversation, ConversationFilters, PaginatedResponse } from '@/types'
 import { conversationApi } from '@/api/conversations'
+import { messageApi } from '@/api/message'
 import { conversationCache, cacheManager } from '@/services/cacheManager'
 import { hasConversationChanged } from './helpers'
 import { createLogger } from '@/utils/logger'
@@ -237,7 +238,6 @@ export function createCacheStrategy(deps: CacheStrategyDeps) {
         if (!convId) { return }
         try {
           await cacheManager.prefetch(`conversation:messages:${convId}`, async () => {
-            const { messageApi } = await import('@/api/message')
             const response = await messageApi.listPaginated(convId, {
               page: 1,
               pageSize: 10
