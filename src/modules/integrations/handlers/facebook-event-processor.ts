@@ -31,6 +31,18 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
   }
 
   try {
+    // EARLY DEDUPE: Skip ALL processing for redelivered messages.
+    // Same rationale as LINE handler: findOrCreateConversation() unconditionally
+    // bumps conversations.last_message_at, so dedup MUST happen before any DB
+    // writes to prevent ghost timestamp updates without saved messages.
+    // See line-message-handler.ts for the 2026-04-24 incident details.
+    if (message.mid && await isDuplicateMessage(env, message.mid, 'facebook')) {
+      log.info('Facebook Webhook: Duplicate message, skipping all processing', {
+        platformMessageId: message.mid,
+      });
+      return;
+    }
+
     // 解析訊息內容和類型
     let messageContent = '';
     let messageType = 'text';
@@ -112,14 +124,8 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
     triggerBackgroundSyncIfNeeded(env, userId, 'facebook');
 
     // 查詢或建立對話
+    // (Dedupe already happened at the top of this try block — see EARLY DEDUPE.)
     const conversation = await findOrCreateConversation(env, user.id, 'facebook');
-
-    // 冪等性檢查：檢查是否已存在相同的 platformMessageId (Facebook)
-    if (message.mid) {
-      if (await isDuplicateMessage(env, message.mid, 'facebook')) {
-        return; // 直接返回，不重複處理
-      }
-    }
 
     // 儲存訊息
     const messageId = await saveMessage(
