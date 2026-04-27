@@ -205,6 +205,12 @@ function validateRouteOrder(content: string): ValidationIssue[] {
 
     // Only flag if the SAME method is registered multiple times for the SAME route
     for (const [method, lines] of methodMap.entries()) {
+      // app.route() mounts a sub-application at a prefix. Multiple mounts at
+      // the same prefix can be intentional when their inner routes are disjoint.
+      if (method === 'ROUTE') {
+        continue;
+      }
+
       if (lines.length > 1) {
         issues.push({
           level: 'warning',

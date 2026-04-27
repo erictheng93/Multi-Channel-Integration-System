@@ -229,11 +229,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       // First start a deployment
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait a bit for state to be saved
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -271,6 +272,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       expect(response.headers.get('Content-Type')).toBe('text/event-stream');
       expect(response.headers.get('Cache-Control')).toBe('no-cache');
       expect(response.headers.get('Connection')).toBe('keep-alive');
+
+      await response.text();
     });
 
     it('should have readable stream body', async () => {
@@ -283,6 +286,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       expect(response.body).toBeTruthy();
       expect(response.body).toBeInstanceOf(ReadableStream);
+
+      await response.text();
     });
   });
 
@@ -305,11 +310,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       // Start deployment
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait a bit
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -393,11 +399,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       // Start deployment
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait a bit
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -421,11 +428,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       // Start deployment
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait a bit
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -450,11 +458,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const beforeTime = Date.now();
 
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       const afterTime = Date.now();
 
@@ -475,11 +484,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const id = env.DEPLOYMENT_ORCHESTRATOR.idFromName('test-deployment-timestamp-update');
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait a bit
       await new Promise(resolve => setTimeout(resolve, 50));
@@ -500,11 +510,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const id = env.DEPLOYMENT_ORCHESTRATOR.idFromName('test-deployment-logs');
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait for some logs to be generated
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -523,11 +534,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const id = env.DEPLOYMENT_ORCHESTRATOR.idFromName('test-deployment-logs-timestamp');
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait for logs
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -550,11 +562,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const id = env.DEPLOYMENT_ORCHESTRATOR.idFromName('test-deployment-resources-init');
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
-      await stub.fetch('http://localhost/deploy', {
+      const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validConfig)
       });
+      await startResponse.text();
 
       // Wait a bit
       await new Promise(resolve => setTimeout(resolve, 50));
