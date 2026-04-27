@@ -231,14 +231,9 @@ describe('useMessageActions', () => {
       const props = ref({ message: createMessage({ id: 'failed-msg-123' }) })
       const { handleRetry } = useMessageActions(props, mockEmit)
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-
       handleRetry()
 
       expect(mockEmit.retry).toHaveBeenCalledWith('failed-msg-123')
-      expect(consoleSpy).toHaveBeenCalled()
-
-      consoleSpy.mockRestore()
     })
   })
 

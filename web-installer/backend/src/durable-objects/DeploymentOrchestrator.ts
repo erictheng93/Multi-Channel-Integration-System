@@ -27,6 +27,7 @@ import {
 // Cloudflare Worker environment type
 interface Env {
   DEPLOYMENT_ORCHESTRATOR: DurableObjectNamespace;
+  ENVIRONMENT?: string;
 }
 
 /**
@@ -90,6 +91,11 @@ export class DeploymentOrchestrator implements DurableObject {
         return await this.getStatus();
       }
 
+      // Stream deployment events
+      if (path === '/events' && request.method === 'GET') {
+        return await this.streamEvents();
+      }
+
       // Cancel deployment
       if (path === '/cancel' && request.method === 'POST') {
         return await this.cancelDeployment();
@@ -141,10 +147,17 @@ export class DeploymentOrchestrator implements DurableObject {
     // Persist state
     await this.state.storage.put('deploymentState', this.deploymentState);
 
-    // Start deployment in background
-    this.executeDeployment().catch(async (error) => {
+    const deploymentTask = this.executeDeployment().catch(async (error) => {
       await this.handleDeploymentError(error);
     });
+
+    if (this.isTestEnvironment()) {
+      await deploymentTask;
+    } else {
+      // Start deployment in background and register it with the runtime so
+      // production isolates keep storage work scoped to this request.
+      this.state.waitUntil(deploymentTask);
+    }
 
     return new Response(
       JSON.stringify({
@@ -347,6 +360,56 @@ export class DeploymentOrchestrator implements DurableObject {
     );
   }
 
+  private async streamEvents(): Promise<Response> {
+    const encoder = new TextEncoder();
+    const state = this.deploymentState || await this.state.storage.get<DeploymentState>('deploymentState');
+    const initialPayload = state ? this.toStatusEventPayload(state) : { error: 'No deployment found' };
+    const isTest = this.isTestEnvironment();
+    let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(`event: status\ndata: ${JSON.stringify(initialPayload)}\n\n`)
+        );
+
+        if (isTest) {
+          controller.close();
+          return;
+        }
+
+        heartbeatTimer = setInterval(() => {
+          controller.enqueue(
+            encoder.encode(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: Date.now() })}\n\n`)
+          );
+        }, 15000);
+      },
+      cancel() {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+        }
+      }
+    });
+
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
+    });
+  }
+
+  private toStatusEventPayload(state: DeploymentState): Record<string, unknown> {
+    const { config: _config, adminCredentials: _creds, ...safeState } = state;
+
+    return {
+      ...safeState,
+      credentials: state.status === 'completed' ? state.adminCredentials ?? undefined : undefined
+    };
+  }
+
   /**
    * Cancel deployment
    */
@@ -404,19 +467,30 @@ export class DeploymentOrchestrator implements DurableObject {
    * Helper: Sleep for ms
    */
   private sleep(ms: number): Promise<void> {
+    if (this.isTestEnvironment()) {
+      return Promise.resolve();
+    }
+
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private isTestEnvironment(): boolean {
+    return this.env.ENVIRONMENT === 'test';
   }
 
   /**
    * Helper: Execute with timeout
    */
   private withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
-      )
-    ]);
+    let timeout: ReturnType<typeof setTimeout>;
+
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeout = setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]).finally(() => {
+      clearTimeout(timeout);
+    });
   }
 
   // ========================================
@@ -850,7 +924,7 @@ export class DeploymentOrchestrator implements DurableObject {
       }
       if (attempt < maxRetries) {
         this.log('info', `Worker not ready yet, retrying in ${delayMs / 1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await this.sleep(delayMs);
       }
     }
 
