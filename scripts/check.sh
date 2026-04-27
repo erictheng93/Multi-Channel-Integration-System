@@ -13,6 +13,17 @@
 
 export PATH="$HOME/.bun/bin:$PATH"
 
+BUN_CMD="${BUN_CMD:-bun}"
+BUNX_CMD="${BUNX_CMD:-bunx}"
+
+if ! command -v "$BUN_CMD" >/dev/null 2>&1 && command -v bun.exe >/dev/null 2>&1; then
+  BUN_CMD="bun.exe"
+fi
+
+if ! command -v "$BUNX_CMD" >/dev/null 2>&1 && command -v bunx.exe >/dev/null 2>&1; then
+  BUNX_CMD="bunx.exe"
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -47,7 +58,7 @@ run_backend_checks() {
 
   # 1. TypeScript compilation
   echo -e "\n  Checking backend TypeScript..."
-  TSC_OUT=$(bunx tsc --noEmit 2>&1)
+  TSC_OUT=$("$BUNX_CMD" tsc --noEmit 2>&1)
   if [ $? -eq 0 ]; then
     print_pass "tsc --noEmit (backend)"
   else
@@ -58,7 +69,7 @@ run_backend_checks() {
 
   # 2. Import path check
   echo -e "\n  Checking import paths..."
-  IMPORT_OUT=$(bunx tsx scripts/check-import-paths.ts 2>&1)
+  IMPORT_OUT=$("$BUNX_CMD" tsx scripts/check-import-paths.ts 2>&1)
   if [ $? -eq 0 ]; then
     print_pass "Import path check"
   else
@@ -68,7 +79,7 @@ run_backend_checks() {
 
   # 3. Route conflict check
   echo -e "\n  Checking route conflicts..."
-  ROUTE_OUT=$(bun run check:routes:ci 2>&1)
+  ROUTE_OUT=$("$BUN_CMD" run check:routes:ci 2>&1)
   if [ $? -eq 0 ]; then
     print_pass "Route conflict check"
   else
@@ -84,7 +95,7 @@ run_frontend_checks() {
 
   # 1. Vue TypeScript compilation
   echo -e "\n  Checking frontend TypeScript..."
-  TSC_OUT=$(bunx vue-tsc --noEmit 2>&1)
+  TSC_OUT=$("$BUNX_CMD" vue-tsc --noEmit 2>&1)
   if [ $? -eq 0 ]; then
     print_pass "vue-tsc --noEmit (frontend)"
   else
@@ -95,7 +106,7 @@ run_frontend_checks() {
 
   # 2. ESLint check
   echo -e "\n  Checking ESLint..."
-  ESLINT_OUT=$(bun run lint:check 2>&1)
+  ESLINT_OUT=$("$BUN_CMD" run lint:check 2>&1)
   if [ $? -eq 0 ]; then
     print_pass "ESLint (frontend)"
   else
@@ -106,7 +117,7 @@ run_frontend_checks() {
 
   # 3. Scoped .btn redefinition guard
   echo -e "\n  Checking scoped .btn redefinitions..."
-  BTN_OUT=$(bun run lint:scoped-btn 2>&1)
+  BTN_OUT=$("$BUN_CMD" run lint:scoped-btn 2>&1)
   if [ $? -eq 0 ]; then
     print_pass "Scoped .btn guard"
   else
