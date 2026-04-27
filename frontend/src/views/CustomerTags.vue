@@ -101,7 +101,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useCustomerTagsController } from '@/composables/customerTags/useCustomerTagsController'
-import { LoadingSpinner, AppLayout } from '@/components/ui'
+import AppLayout from '@/components/ui/AppLayout.vue'
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import {
   TagsHeader,
   TagsStats,
