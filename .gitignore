@@ -72,6 +72,7 @@ nul
 test-results/
 test-results.json
 coverage/
+coverage-report.json
 *verbose-output.txt
 
 # 開發工具臨時檔案
