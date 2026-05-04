@@ -1,1330 +1,165 @@
-# (FRS)
+# 功能需求規範（FRS）
 
-**** 1.0
-**** 2025825
-****
-****
-
----
-
-## 1.
-
-### 1.1
-(FRS)
-
-### 1.2
-FRS
--
--
--
--
--
--
--
--
-
-### 1.3
-- **2**
-- **3**
-- **4**
-- **5**
-- **6**
-- **7**
-- **8**
-- **9**
-- **10**
+> 多渠道客服整合系統 — 功能需求規範摘要（繁體中文版）  
+> **版本**: 2.0（對應 v4.0.0）  
+> **最後更新**: 2026-05-04  
+> **完整英文版**: [FRS.md](./FRS.md)（含每個 FR-ID 的詳細處理流程、邊界案例、業務規則）
 
 ---
 
-## 2.
+## 1. 文件目的
 
-### 2.1
-
-
-#### 2.1.1
-- **** (`auth-main.ts`)
-- **** (`conversation-main.ts`)
-- **** (`delayed-message-main.ts`)
-- **** (`team-main.ts`)
-- **** (`system-main.ts`)
-- **** (`customer-main.ts`)
-
-#### 2.1.2
-- **** (`platform-adapter.ts`)
-- **Webhook** (`webhook.ts`)webhook
-- **** (`activity-service.ts`)
-
-### 2.2
-```
- (LINE, Facebook)
- [Webhooks]
-Webhook
- []
-
- []
-
- []
- (Drizzle ORM)
- []
-Cloudflare D1/KV/R2
-```
+本規範定義系統實作的功能需求（Functional Requirements），按模組編號（如 `FR-AUTH-001`），用於開發、測試、驗收。本繁中版聚焦摘要與重點變更，細節請見英文版。
 
 ---
 
-## 3.
+## 2. 系統範圍（24 個後端模組）
 
-### 3.1
+| 類別 | 模組 |
+|------|------|
+| 對話與訊息 | conversations, messaging, delayed-message, customer-conversations, session |
+| 客戶與標籤 | customer, tags, auto-reply |
+| 認證與團隊 | auth, teams, agents, activities |
+| 渠道整合 | integrations, liff |
+| 即時通訊 | websocket, realtime, collaboration, notifications |
+| 系統與營運 | system, monitoring, analytics, reports, queue, file-management |
 
-#### 3.1.1 (FR-AUTH-001)
-****
-****`auth-main.ts:22-100`
-
-****
-- ()
-- ()
-- ()
-
-****
-1. (/)
-2. ()
-3.
-4. (/)
-5. bcrypt
-6.
-7. JWT
-8. Cloudflare KV
-9.
-
-****
-- JWT
-- HTTP
-
-****
--
--
-- (10)
-- "must_change"
--
-
-#### 3.1.2 (FR-AUTH-002)
-****
-****`auth-main.ts:register`
-
-****
--
-- ()
-- (/)
-
-****
-1.
-2.
-3.
-4. bcrypt
-5.
-6.
-7.
-8. JWT
-9.
-
-****
-- JWT
--
-
-****
--
--
--
-- /
-- bcrypt
-
-#### 3.1.3 (FR-AUTH-003)
-****
-****`auth-main.ts:changePassword`
-
-****
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
-
-****
--
--
--
--
-
-### 3.2
-
-#### 3.2.1 (FR-AUTH-004)
-****3
-****`permission-service.ts`
-
-****
-- **(3)**
-- **(2)**
-- **(1)**
-
-****
-1. JWT
-2.
-3.
-4. (/)
-5.
-
-****
--
-- /
--
--
-
-#### 3.2.2 (FR-AUTH-005)
-****
-****`session-main.ts`
-
-****
-1. Cloudflare KV
-2.
-3.
-4.
-5. ()
-
-****
-- 8
--
-- Cloudflare KV
--
+詳見 [`docs/modules/INDEX.md`](../../modules/INDEX.md)。
 
 ---
 
-## 4.
+## 3. 認證與授權
 
-### 4.1
+### 3.1 登入（FR-AUTH-001 ~ 003）
+- Email + 密碼登入
+- JWT 雙令牌（access 2 小時、refresh 7 天）
+- Refresh 端點重查 DB（可感應團隊異動）
+- 5 次失敗鎖 15 分鐘
+- 多種雜湊相容（bcrypt / PBKDF2 / SHA256）
 
-#### 4.1.1 (FR-CONV-001)
-****
-****`conversation-main.ts:create`
+### 3.2 角色與權限（FR-AUTH-004，v4 重大變更）
 
-****
-- (LINEFacebook)
-- /ID
--
--
+採用「**雙層角色**」取代 v3 的 3 層階層：
 
-****
-1.
-2.
-3. ID
-4. ""
-5.
-6.
-7.
-8.
+**系統角色（2 層）**：
+- **Admin** — 全系統存取
+- **Agent** — 須透過團隊角色取得對話存取
 
-****
-- ID
--
--
+**團隊角色（3 層，每團隊獨立）**：
+- **Supervisor** — 跨團隊監看與覆蓋
+- **Lead** — 團隊主管，組內派遣
+- **Member** — 一般客服
 
-****
--
--
--
-- ""
+**JWT Payload 內含**：`role` / `primaryTeamId` / `allowedTeamIds[]` / `teamRoles{teamId: roleInTeam}`
 
-#### 4.1.2 (FR-CONV-002)
-****
-****`conversation-main.ts:11-50`
+**重要**：
+- 同一 Agent 可在不同團隊扮演不同角色
+- 對話**僅指派給團隊**（v4 移除個人指派）
+- 詳見 [`RBAC_DESIGN.md`](../specifications/RBAC_DESIGN.md)
 
-****
-- ID
-- ID()
-- ID()
--
--
-
-****
-1.
-2.
-3. /
-4.
-5.
-6. /
-7.
-8.
-
-****
--
--
--
-
-****
-- "conversation:assign"
--
--
--
--
-
-#### 4.1.3 (FR-CONV-003)
-****
-****`conversation-main.ts:statusUpdate`
-
-****
-```
-
-
-[] [] [/]
-```
-
-****
-- ID
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5. ()
-6.
-7.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-### 4.2
-
-#### 4.2.1 (FR-CONV-004)
-****
-****`conversation-main.ts:transfer`
-
-****
-- ID
-- /ID
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-7.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-#### 4.2.2 (FR-CONV-005)
-****
-****`conversation-main.ts:search`
-
-****
-- (ID)
--
-- /
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
-- ()
--
-
-****
--
--
--
--
--
+### 3.3 工作階段管理（FR-AUTH-005）
+- KV 儲存，24 小時 TTL
+- 透過 `Session-ID` header 追蹤
+- 自動重新整理機制
 
 ---
 
-## 5.
+## 4. 對話管理
 
-### 5.1
-
-#### 5.1.1 (FR-MSG-001)
-****
-****`webhook.ts`
-
-****
-- webhook
-- /
--
--
-
-****
-1. webhook
-2.
-3.
-4.
-5.
-6. ()
-7.
-8.
-9.
-
-****
--
--
--
--
-
-****
--
--
--
--
--
-
-#### 5.1.2 (FR-MSG-002)
-****API
-****`message.ts:send`
-
-****
-- ID
--
-- ID
--
-
-****
-1.
-2.
-3. API
-4.
-5.
-6.
-7.
-8.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-#### 5.1.3 (FR-MSG-003)
-****
-****`message.ts:processContent`
-
-****
--
--
--
--
--
-- ()
-
-****
-1.
-2.
-3. (R2)
-4. URL
-5.
-6.
-7.
-
-****
--
-- URL
--
-
-****
--
--
-- URL
--
--
-
-### 5.2
-
-#### 5.2.1 (FR-MSG-004)
-****
-****`delayed-message-main.ts:schedule`
-
-****
-- ID
--
-- (1-120)
-- ID
-
-****
-1.
-2.
-3. Cloudflare Queue
-4. UI
-5.
-6.
-7.
-
-****
--
-- ID
--
--
-
-****
-- 1-120
--
--
--
--
-
-#### 5.2.2 (FR-MSG-005)
-****
-****`message-recall-service.ts`
-
-****
-- ID
--
--
-
-****
-1.
-2.
-3.
-4. ""
-5.
-6.
-7. UI
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-#### 5.2.3 (FR-MSG-006)
-****
-****`queue-consumer.ts`
-
-****
-1. Cloudflare Queue
-2.
-3.
-4. API
-5.
-6.
-7.
-
-****
--
--
-- 3
--
--
+- **狀態**：`pending` / `in-progress` / `waiting` / `resolved`
+- **指派**：僅指派給「團隊」（`assignedTeamId`）
+- **轉移**：跨團隊轉移寫入 `conversationTransfers` 表
+- **批次操作**：≤ 100 筆 / 次
+- **轉發**：單則訊息可轉到 ≤ 20 個對話
 
 ---
 
-## 6.
+## 5. 訊息核心
 
-### 6.1
-
-#### 6.1.1 (FR-TEAM-001)
-****
-****`team-main.ts:create`
-
-****
--
--
--
-
-****
-1. ()
-2.
-3.
-4. QR
-5.
-6.
-7.
-
-****
-- ID
-- QR
--
-
-****
--
--
-- QR
--
--
-
-#### 6.1.2 (FR-TEAM-002)
-****
-****`team-main.ts:manageMember`
-
-****
-- ID
-- ID
-- ()
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-7.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-#### 6.1.3 (FR-TEAM-003)
-****
-****`team-main.ts:settings`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-### 6.2
-
-#### 6.2.1 (FR-ROLE-001)
-****
-****`auth-main.ts:roleManagement`
-
-****
-- ****
-- ****
-- ****
-
-****
-1. ()
-2.
-3.
-4.
-5.
-6.
-7.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-#### 6.2.2 (FR-ROLE-002)
-****
-****`permission-service.ts`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-7.
-
-****
-- /
--
--
-
-****
--
-- /
--
--
--
+- **撤回**：軟刪除 + deadline（預設 5 分鐘）
+- **全文搜尋**：可篩類型 / 寄件人 / 日期 / 撤回狀態
+- **匯出**：JSON / CSV
+- **附件**：R2 儲存、自動縮圖、EXIF 清理
+- **回覆鏈**：`replyToMessageId` + `threadId`
+- **@mention**：自動觸發提及通知
 
 ---
 
-## 7.
+## 6. 延遲訊息
 
-### 7.1
-
-#### 7.1.1 (FR-FILE-001)
-****
-****`attachment.ts:upload`
-
-****
--
-- ()
--
--
-
-****
-1.
-2.
-3.
-4. Cloudflare R2
-5.
-6. URL
-7. /
-8.
-
-****
--
-- URL
--
-
-****
--
-- 50MB
--
-- Cloudflare R2
-- URL7
--
-
-#### 7.1.2 (FR-FILE-002)
-****
-****`attachment.ts:access`
-
-****
-1.
-2.
-3.
-4. URL
-5.
-6.
-
-****
-- URL
--
--
-
-****
--
-- URL1
--
--
--
-
-#### 7.1.3 (FR-FILE-003)
-****
-****`file-cleanup.ts`
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
-- 90
--
--
--
--
+- 1-120 秒可調延遲
+- DO Alarm 精準排程（取代 v3 的 KV 輪詢）
+- 即時撤回（< 100ms）
+- 重新排程（deadline 前）
 
 ---
 
-## 8.
+## 7. 多渠道整合
 
-### 8.1
-
-#### 8.1.1 (FR-ANALYTICS-001)
-****
-****`analytics.ts:conversationMetrics`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
-- 5
-- 2
-- CSVPDF
--
-
-#### 8.1.2 (FR-ANALYTICS-002)
-****
-****`analytics.ts:agentMetrics`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-#### 8.1.3 (FR-ANALYTICS-003)
-****
-****`system-main.ts:healthCheck`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-### 8.2
-
-#### 8.2.1 (FR-BI-001)
-****
-****`customer-analytics.ts`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
-- GDPR
--
--
--
-
-#### 8.2.2 (FR-BI-002)
-****
-****`operations-analytics.ts`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
-- ROI
--
+- LINE OA（含 LIFF）、Facebook Messenger
+- AES-256-GCM 憑證加密
+- HMAC-SHA256 Webhook 簽章驗證（timing-safe）
+- JSON 設定欄位（加新平台不需 schema 變動）
 
 ---
 
-## 9.
+## 8. 即時通訊
 
-### 9.1
-
-#### 9.1.1 (FR-ADMIN-001)
-****
-****`system-main.ts:settings`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-#### 9.1.2 (FR-ADMIN-002)
-****
-****`system-main.ts:integrations`
-
-****
-- LINEAPI
-- Facebook Messenger API
--
-- Webhook
-
-****
-1.
-2.
-3.
-4. webhook
-5. /
-6.
-
-****
--
--
--
-
-****
--
--
--
--
--
-
-### 9.2
-
-#### 9.2.1 (FR-ADMIN-003)
-****
-****`activity-service.ts`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
-- 5
--
-
-#### 9.2.2 (FR-ADMIN-004)
-****
-****`error-handler.ts`
-
-****
--
--
-- API
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
--
--
+- WebSocket + Durable Objects（v4 取代 v3 SSE）
+- 1000+ 併發連線
+- 多分頁同步、自動重連、心跳偵測
 
 ---
 
-## 10.
+## 9. 自動回覆
 
-### 10.1
-
-#### 10.1.1 LINE (FR-INTEGRATION-001)
-****LINE
-****`line.ts`, `webhook.ts`
-
-****
-- Webhook
-- LINE API
--
--
--
-
-****
-1. LINE webhook
-2.
-3.
-4. LINE API
-5. LINE
-6.
-
-****
--
-- LINE API
--
-
-****
-- LINE webhook
-- LINE API
-- LINE
--
--
-
-#### 10.1.2 Facebook Messenger (FR-INTEGRATION-002)
-****Facebook Messenger()
-****`facebook.ts`, `webhook.ts`
-
-****
-- Webhook
--
--
--
--
-
-****
-1. Facebook webhook
-2.
-3. Facebook
-4.
-5. Facebook API
-6. Facebook
-
-****
-- Facebook webhook
--
--
-
-****
-- Facebook webhook
--
-- Facebook
--
--
-
-#### 10.1.3 (FR-INTEGRATION-003)
-****
-****`platform-adapter.ts`
-
-****
--
--
--
--
--
-
-****
-1.
-2.
-3.
-4.
-5.
-6.
-
-****
--
--
--
-
-****
--
--
--
--
--
+- 規則引擎（keyword / regex / 訊息類型 / 非營業時間 / welcome）
+- AND / OR 條件邏輯
+- 動作鏈（文字 + 圖 + Flex Message）
+- 營業時間排程（每週各日 + 時區）
 
 ---
 
-## 11.
+## 10. 通知系統
 
-### 11.1
-
-#### 11.1.1 (FR-TEST-001)
-****
-****
-- 100%
--
--
--
-
-****
--
--
--
--
-- API
-
-#### 11.1.2 (FR-TEST-002)
-****
-****
--
--
--
--
--
-
-#### 11.1.3 (FR-TEST-003)
-****
-****
--
--
--
--
--
-
-### 11.2
-
-#### 11.2.1 (FR-VALIDATION-001)
-****
-****
--
--
--
--
--
-
-#### 11.2.2 (FR-VALIDATION-002)
-****
-****
--
--
--
--
--
+- 多通道：WebSocket / Email / Push
+- 11 種通知類型
+- 三級優先級
+- 系統公告廣播（admin）
 
 ---
 
-## 12.
+## 11. 報表與分析
 
-### 12.1
-
-| | | / | |
-|---|---|---|---|
-| | FR-INTEGRATION-001/002 | platform-adapter.ts | 100% |
-| | FR-ROLE-001/002 | permission-service.ts | 100% |
-| | FR-CONV-001/002/003 | conversation-main.ts | 100% |
-| | FR-MSG-004/005/006 | delayed-message-main.ts | 100% |
-| | FR-FILE-001/002/003 | attachment.ts | 100% |
-| | FR-ANALYTICS-001/002/003 | analytics.ts | 100% |
-| | FR-AUTH-001/002/003 | auth-main.ts | 100% |
-| | FR-ADMIN-001/002/003 | system-main.ts | 100% |
-
-### 12.2
-
-| | | | |
-|---|---|---|---|
-| | | 132/132 | |
-| | | 100% | |
-| | | 100% | |
-| | | 100% | |
-| | | 100% | |
-| | | 100% | |
-| | LINEFB | 100% | |
-| | | 100% | |
+- Analytics 即時指標
+- Reports 20+ 報表類型
+- 排程 Email 寄送
 
 ---
 
-## 13.
+## 12. 稽核日誌
 
-### 13.1
-
-
-- ****
-- ****
-- ****
-- ****
-
-### 13.2
-- ****
-- ****
-- ****
-- ****
-
-### 13.3
-- ****
-- ****
-- ****
-- ****
+- 所有動作自動寫入
+- 角色可見性（admin 看全部、agent 看自己）
 
 ---
 
-****
-****20251125
-****
-****QA
+## 13. 與 v3 重大差異
+
+| 面向 | v3 | v4 |
+|------|----|----|
+| 即時通訊 | SSE + KV 輪詢 | WebSocket + DO |
+| 系統角色 | 3 層 | 2 層 |
+| 對話指派 | 個人 + 團隊 | 僅團隊 |
+| 多團隊 | 受限 | 完整支援 |
+
+---
+
+## 14. 相關文件
+
+- [`FRS.md`](./FRS.md) — 完整英文版
+- [`SRS.md`](./SRS.md) / [`SRS_TW.md`](./SRS_TW.md) — 系統需求規範
+- [`BRD.md`](./BRD.md) / [`BRD_TW.md`](./BRD_TW.md) — 業務需求文件
+- [`NFR.md`](./NFR.md) / [`NFR_TW.md`](./NFR_TW.md) — 非功能需求
+- [`RBAC_DESIGN.md`](../specifications/RBAC_DESIGN.md) — 權限矩陣
+- [`docs/modules/INDEX.md`](../../modules/INDEX.md) — 24 模組使用者手冊

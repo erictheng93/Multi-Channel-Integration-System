@@ -168,26 +168,41 @@ Cloudflare D1/KV/R2
 ### 3.2 User Authorization
 
 #### 3.2.1 Role-Based Access Control (FR-AUTH-004)
-**Description**: Implement 3-tier role hierarchy with permission inheritance
+**Description**: Dual-role authorization (system role + per-team role)
 **Handler**: `permission-service.ts`
 
-**Role Hierarchy**:
-- **Admin (Level 3)**: System-wide access, all permissions
-- **Team (Level 2)**: Team-scoped management permissions
-- **Agent (Level 1)**: Conversation-specific permissions
+**Role Model** (v4):
+
+System role (`agents.role`): 2 tiers
+- **Admin**: System-wide access, all permissions, can bypass team scope
+- **Agent**: Customer-service operator; access scoped via team membership
+
+Team role (`agent_teams.role_in_team`): 3 tiers, **per-team independent**
+- **Supervisor**: Cross-team monitoring + override capability within authorized teams
+- **Lead**: Team supervision, member management, in-team conversation routing
+- **Member**: Day-to-day conversation handling within own team scope
+
+**JWT Payload Carries**:
+- `role`: 'admin' | 'agent' (system role)
+- `primaryTeamId`: number | null
+- `allowedTeamIds`: number[] (all teams the agent belongs to)
+- `teamRoles`: { [teamId]: 'member' | 'lead' | 'supervisor' }
 
 **Processing**:
-1. Extract user role from JWT token
-2. Determine required permission level for operation
-3. Check role hierarchy authorization
-4. Validate team-specific permissions (for Team/Agent roles)
+1. Extract user payload from JWT
+2. If `role === 'admin'` → pass (no team check)
+3. Otherwise: check operation requires which team and which `roleInTeam`
+4. Validate `teamRoles[teamId]` meets minimum required level
 5. Log authorization decisions
 
 **Business Rules**:
-- Higher roles inherit lower role permissions
-- Team/Agent roles restricted to assigned team scope
-- Admin role bypasses team restrictions
-- Permission checks required for all protected operations
+- Admin bypasses all team restrictions
+- Agent **must** have a `teamRoles[teamId]` entry to access team-scoped resources
+- Team role hierarchy: supervisor > lead > member (within a single team)
+- A single agent can hold different team roles in different teams (A 組 lead + B 組 member is the standard pattern)
+- Conversation assignment is **team-only** (`assignedTeamId`); individual-agent assignment was removed in v4
+
+> Detailed permission matrix: see [`docs/reference/specifications/RBAC_DESIGN.md`](../specifications/RBAC_DESIGN.md).
 
 #### 3.2.2 Session Management (FR-AUTH-005)
 **Description**: Manage user sessions with automatic expiration and renewal
@@ -710,13 +725,12 @@ pending in-progress closed
 - Analytics access
 
 **Processing**:
-1. Extract user role and team from authentication
+1. Extract `role` (system) and `teamRoles{}` (per-team) from JWT
 2. Identify required permission for operation
-3. Check role hierarchy authorization
-4. Validate team-specific restrictions
-5. Apply resource-level permissions
-6. Log permission decisions
-7. Return authorization result
+3. If admin, pass; otherwise check `teamRoles[targetTeamId]` against minimum required level
+4. Validate resource-level constraints (e.g., conversation `assignedTeamId` ∈ `allowedTeamIds`)
+5. Log permission decisions
+6. Return authorization result
 
 **Outputs**:
 - Permission granted/denied
@@ -724,9 +738,9 @@ pending in-progress closed
 - Audit log entry
 
 **Business Rules**:
-- Permissions follow role hierarchy
-- Team/agent roles restricted to assigned team
-- Resource-level permissions enforced
+- Admin bypasses team restrictions
+- Agent restricted to `allowedTeamIds[]` from JWT (refresh re-queries DB for changes)
+- Resource-level permissions enforced (e.g., recall message only within deadline)
 - Permission checks required for all operations
 - Failed permission attempts logged
 
