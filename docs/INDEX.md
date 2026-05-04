@@ -173,4 +173,30 @@ docs/
 
 ---
 
-*Last updated: 2025-01-29*
+## Audits & Historical Snapshots (`history/`)
+
+歷史資料區，僅供查詢用，**請勿據此實作**。包含已完成計畫、過時報告、廢棄方案。
+
+- [`history/INDEX.md`](history/INDEX.md) — 歷史目錄索引
+- [`history/audits/`](history/audits/) — 技術債審計（含 `TECHNICAL_DEBT_AUDIT_2026-04-21.md`）
+- [`history/migration/`](history/migration/) — v3→v4 遷移紀錄與舊版遷移指南
+- [`history/reports/`](history/reports/) — 部署 / 驗證 / 完成報告（72+ 份）
+- [`history/refactoring/`](history/refactoring/) — 已完成的重構計畫
+- [`history/proposals/`](history/proposals/) — 推測性計畫（如 SHARDING_DESIGN）
+- [`history/implementation/`](history/implementation/) — v3 實作報告
+- [`history/fixes/`](history/fixes/) — 修復紀錄
+
+## Module User Manuals (`modules/`)
+
+24 份使用者導向模組手冊，每份含：模組定位、解決問題、主要功能、UI 入口、API 端點、DO 觸點、邊界案例、常見疑難。
+
+- **入口**: [`modules/INDEX.md`](modules/INDEX.md)
+
+## Project Overview
+
+- [`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md) — 14 大功能模組對外完整描述（取代舊版 8 模組描述）
+- [`CURRENT_STATUS.md`](CURRENT_STATUS.md) — v4.0.0 系統現況、DO 對照、效能基準
+
+---
+
+*Last updated: 2026-05-04*

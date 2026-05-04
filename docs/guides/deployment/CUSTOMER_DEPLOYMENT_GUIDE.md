@@ -60,7 +60,7 @@ Cloudflare Workers 採用用量計費：
 # 下載並安裝: https://www.terraform.io/downloads
 
 # 安裝 Wrangler CLI
-npm install -g wrangler
+bun install -g wrangler
 
 # 驗證安裝
 node --version # 應顯示 v18.x.x 或更高
@@ -83,7 +83,7 @@ tfenv install 1.0.0
 tfenv use 1.0.0
 
 # 安裝 Wrangler CLI
-npm install -g wrangler
+bun install -g wrangler
 
 # 驗證安裝
 node --version
@@ -109,7 +109,7 @@ cd Multi_Channel_Integration_System
 
 ##  獲取 Cloudflare API Token
 
-**詳細步驟請參閱：[API Token 設置指南](./API_TOKEN_SETUP_GUIDE.md)**
+**詳細步驟請參閱：[Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens)**
 
 ### 快速步驟
 
@@ -314,15 +314,15 @@ terraform output
 
 ```bash
 # 1. 安裝依賴
-npm install
-cd frontend && npm install && cd ..
+bun install
+cd frontend && bun install && cd ..
 
 # 2. 建置專案
-npm run build
-cd frontend && npm run build && cd ..
+bun run build
+cd frontend && bun run build && cd ..
 
 # 3. 建置 Worker
-npx wrangler deploy --dry-run --outdir=dist
+bunx wrangler deploy --dry-run --outdir=dist
 
 # 4. Terraform 部署
 terraform init
@@ -477,8 +477,8 @@ terraform apply
 重新部署前端：
 ```bash
 cd frontend
-npm run build:pages
-npm run deploy:pages
+bun run build:pages
+bun run deploy:pages
 ```
 
 ### Q4: 如何更新系統到新版本？
@@ -489,8 +489,8 @@ npm run deploy:pages
 git pull origin main
 
 # 安裝新依賴
-npm install
-cd frontend && npm install && cd ..
+bun install
+cd frontend && bun install && cd ..
 
 # 重新建置
 ./scripts/pre-deployment-build.sh  # 或 .ps1
@@ -617,8 +617,8 @@ npm ERR! code ELIFECYCLE
 # 清理快取
 cd frontend
 rm -rf node_modules package-lock.json
-npm install
-npm run build
+bun install
+bun run build
 
 # 如果仍然失敗，檢查 Node.js 版本
 node --version  # 應該 >= 18
@@ -643,7 +643,7 @@ node --version  # 應該 >= 18
 
 ##  相關文檔
 
-- [API Token 設置指南](./API_TOKEN_SETUP_GUIDE.md)
+- [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens)
 - [Terraform 快速開始](./guides/TERRAFORM_QUICK_START.md)
 - [系統架構說明](../CLAUDE.md)
 - [API 參考文檔](./api/)

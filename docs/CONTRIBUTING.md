@@ -1,241 +1,142 @@
 # Documentation Contributing Guide
 
-歡迎為本專案文檔做出貢獻！本指南將幫助您了解如何創建、編輯和維護專案文檔。
+> 本指南說明如何為本專案文檔做出貢獻。文檔結構於 2026-05 重新整理，舊版分類（api/、enterprise/、components/、features/、implementation/、security/、templates/）已不存在，請以 [INDEX.md](./INDEX.md) 為準。
 
-## 文檔標準
+**最後更新**: 2026-05-04
 
-### 文件命名規範
+---
 
-1. **使用英文命名**
-   - 所有文件名必須使用英文
-   - 使用大寫字母和底線（例如：`EXAMPLE_DOCUMENT.md`）
-   - 避免使用空格、中文或特殊符號
+## 目錄結構
 
-2. **命名模式**
-   ```
-   正確: WEBSOCKET_CONFIGURATION_GUIDE.md
-   正確: API_ENDPOINT_REFERENCE.md
-   錯誤: websocket guide.md
-   錯誤: WebSocket指南.md
-   錯誤: websocket-guide.md (連字符僅用於特殊情況)
-   ```
-
-### 文件內容規範
-
-1. **禁止使用 Emoji**
-   - 不要在文檔中使用任何 emoji 符號
-   - 使用文字描述替代圖示
-
-2. **文件編碼**
-   - 統一使用 UTF-8 編碼
-   - 確保跨平台兼容性
-
-3. **Markdown 格式**
-   - 使用標準 Markdown 語法
-   - 標題層級清晰（H1-H6）
-   - 適當使用代碼區塊、列表和表格
-
-## 文檔分類
-
-請將文檔放置在正確的文件夾中：
-
-### 主要分類
+實際結構如下（以 [INDEX.md](./INDEX.md) 為單一真相來源）：
 
 ```
 docs/
-├── analytics/ # 分析功能文檔
-├── api/ # API 參考文檔
-├── architecture/ # 系統架構文檔
-├── components/ # 前端元件文檔
-├── database/ # 資料庫文檔
-├── deployment/ # 部署相關文檔
-├── enterprise/ # 企業功能文檔
-├── features/ # 功能特性文檔
-├── guides/ # 操作指南
-├── implementation/ # 實作報告
-├── migration/ # 遷移指南
-├── monitoring/ # 監控文檔
-├── optimization/ # 效能優化
-├── performance/ # 效能測試
-├── reports/ # 各類報告
-│ ├── analytics/ # 分析報告
-│ ├── deployment/ # 部署報告
-│ ├── enhancement/ # 功能增強報告
-│ ├── migration/ # 遷移報告
-│ ├── modules/ # 模組報告
-│ ├── monitoring/ # 監控報告
-│ ├── verification/ # 驗證報告
-│ └── websocket/ # WebSocket 報告
-├── standards/ # 編碼標準
-├── testing/ # 測試文檔
-└── troubleshooting/ # 故障排除
+├── INDEX.md              # 文檔總索引（請以此為準）
+├── PROJECT_OVERVIEW.md   # 專案對外完整描述
+├── CURRENT_STATUS.md     # v4.0.0 系統現況快照
+├── CONTRIBUTING.md       # 本文件
+├── WORKSPACE_BOUNDARIES.md # Bun package 邊界
+├── UIUX-Design-System.md # Apple-Native Soft Minimalism 設計系統
+├── modules/              # 24 份模組使用者手冊
+├── reference/            # API 參考、規格書（BRD/FRS/NFR/SRS）、編碼標準
+├── guides/               # 使用者指南、部署、CORS、KV、效能等
+├── architecture/         # 系統架構、WebSocket、資料庫、安全、效能
+├── development/          # 測試、組件、工具、前端開發指引
+├── claude/               # Claude Code 開發指引
+└── history/              # 歷史審計、實作報告、遷移記錄、廢棄方案
 ```
 
-### 如何選擇正確的文件夾？
+> 「曾經出現但已被刪除」的舊類別（如 `enterprise/`、`features/`）若你看到舊文檔仍提及，請忽略。
 
-- **guides/** - 操作步驟、設置指南、快速開始
-- **api/** - API 端點參考、接口文檔
-- **architecture/** - 系統設計、架構圖、技術決策
-- **reports/** - 實施報告、測試報告、驗證報告
-- **features/** - 功能說明、使用手冊
-- **troubleshooting/** - 問題排查、解決方案
+---
 
-## 文檔模板
+## 文件命名規範
 
-### 使用模板
+1. **使用英文 + 大寫底線**
+   - 正確：`WEBSOCKET_FINAL_ARCHITECTURE.md`、`API_REFERENCE.md`
+   - 錯誤：`websocket guide.md`、`websocket-guide.md`、`WebSocket指南.md`
+2. **模組手冊例外**：`docs/modules/` 內檔案使用小寫加連字符（與 `src/modules/` 資料夾名一致），例如 `delayed-message.md`、`auto-reply.md`
+3. **歷史快照加日期**：放在 `history/` 內的審計、報告檔名末尾帶日期，如 `TECHNICAL_DEBT_AUDIT_2026-04-21.md`
 
-在 `docs/templates/` 文件夾中提供了各種文檔模板：
+---
 
-- `FEATURE_DOCUMENT_TEMPLATE.md` - 功能文檔模板
-- `API_REFERENCE_TEMPLATE.md` - API 參考模板
-- `GUIDE_TEMPLATE.md` - 操作指南模板
-- `REPORT_TEMPLATE.md` - 報告文檔模板
+## 內容規範
 
-複製相應的模板開始創建新文檔。
+### 不准用 Emoji
+專案規範禁止 emoji 出現在所有原始碼與文檔。已有 emoji 的舊檔可用以下工具批次清除：
+```powershell
+bun run scripts/remove-emoji.py --root .
+```
 
-## 貢獻流程
+### 中英文選擇
+- 對內文檔：中文（繁體）為主，與專案其他文件一致
+- API 參考、規格書（BRD/FRS/NFR/SRS）：英文或雙語
+- 不要在同一份文件內混用簡體與繁體
 
-### 1. 創建新文檔
+### Markdown 規則
+- 統一 UTF-8 編碼
+- 使用標準 GFM 語法
+- 程式碼區塊指定語言（` ```typescript ` 而非裸 ` ``` `）
+- 標題層級從 H1 起，逐級遞進
+
+### 連結規則
+- 內部連結使用相對路徑：`[模組索引](./modules/INDEX.md)`
+- **每次新增文檔請更新 [INDEX.md](./INDEX.md)** — 否則文檔會被孤立
+- 連到原始碼用 `path:line` 格式：`src/index.ts:846`
+
+---
+
+## 何時用哪個目錄
+
+| 你要寫的東西 | 放在哪 |
+|---|---|
+| 「某模組怎麼用」使用者手冊 | `modules/<module>.md` |
+| API 端點規格、欄位定義 | `reference/api/` |
+| BRD / FRS / NFR / SRS | `reference/specifications/` |
+| 操作步驟、設置流程 | `guides/` |
+| 部署相關 | `guides/deployment/` |
+| 系統設計、架構決策 | `architecture/` |
+| 測試方法、覆蓋率報告 | `development/testing/` |
+| 一次性審計、已完成計畫、遷移紀錄 | `history/` |
+| Claude Code 專用開發規範 | `claude/` |
+
+**判斷原則**：問自己「這份文檔半年後還有人會讀嗎？」
+- 會 → 放在 reference / guides / architecture / modules
+- 不會（一次性） → 放在 history
+
+---
+
+## 新增文檔的標準流程
 
 ```bash
-# 1. 從模板複製
-cp docs/templates/GUIDE_TEMPLATE.md docs/guides/YOUR_NEW_GUIDE.md
-
-# 2. 編輯文檔內容
-# 使用您喜歡的編輯器編輯文件
-
-# 3. 確認文檔格式
-python scripts/check-docs.py docs/guides/YOUR_NEW_GUIDE.md
-```
-
-### 2. 更新現有文檔
-
-```bash
-# 1. 編輯文檔
-# 2. 移除 emoji（如果有）
-python scripts/remove-emoji.py --root .
-
-# 3. 驗證更改
-# 確保文檔仍然可讀且格式正確
-```
-
-### 3. 更新文檔索引
-
-當添加新文檔時，請更新 `docs/DOCUMENTATION_INDEX.md`：
-
-```markdown
-### 新增的分類
-- [您的文檔標題](./path/to/YOUR_NEW_DOCUMENT.md) - 簡短描述
-```
-
-### 4. 提交更改
-
-```bash
-# 1. 檢查更改
-git status
-
-# 2. 添加文件
+# 1. 確認目錄正確
+# 2. 用相同類別的既有文檔為範本（不要從外部範本複製過時結構）
+# 3. 寫完後務必：
+#    a. 更新 docs/INDEX.md 加上連結
+#    b. 如果是模組手冊，更新 docs/modules/INDEX.md
+#    c. 跑 bun run check 確認沒打壞健康檢查
 git add docs/
-
-# 3. 提交
-git commit -m "docs: add/update documentation for [feature/topic]"
-
-# 4. 推送（如果適用）
-git push
+git commit -m "docs: add <topic> guide"
 ```
-
-## 文檔質量檢查清單
-
-在提交文檔前，請確認：
-
-- [ ] 文件名使用英文大寫加底線
-- [ ] 沒有使用 emoji 符號
-- [ ] 使用 UTF-8 編碼
-- [ ] 放置在正確的文件夾中
-- [ ] 包含清晰的標題和目錄（如果需要）
-- [ ] 代碼示例格式正確
-- [ ] 連結有效且指向正確位置
-- [ ] 更新了 DOCUMENTATION_INDEX.md（新文檔）
-- [ ] 語法和拼寫檢查通過
-- [ ] 內容準確且最新
-
-## 常見問題
-
-### Q: 我應該使用中文還是英文寫文檔？
-
-A: 文檔內容可以使用中文或英文，但**文件名必須使用英文**。建議根據目標受眾選擇語言：
-- 內部團隊文檔：可以使用中文
-- API 參考、技術規格：建議使用英文或雙語
-
-### Q: 如何處理圖片？
-
-A:
-1. 將圖片放在 `docs/images/` 文件夾中
-2. 使用描述性的英文文件名
-3. 在文檔中使用相對路徑引用
-
-```markdown
-![Architecture Diagram](../images/WEBSOCKET_ARCHITECTURE.png)
-```
-
-### Q: 如何添加代碼示例？
-
-A: 使用 Markdown 代碼區塊並指定語言：
-
-\`\`\`typescript
-// TypeScript 示例
-const example = "Hello World";
-\`\`\`
-
-### Q: 文檔需要包含版本信息嗎？
-
-A: 是的，建議在文檔末尾添加：
-
-```markdown
----
-最後更新: 2025-10-18
-版本: 1.0
-作者: [Your Name]
-```
-
-## 自動化工具
-
-### Emoji 移除工具
-
-```bash
-# 掃描並移除所有 emoji
-python scripts/remove-emoji.py --root .
-
-# 預覽模式（不修改文件）
-python scripts/remove-emoji.py --root . --dry-run
-```
-
-### 文檔檢查工具
-
-```bash
-# 檢查文檔格式
-python scripts/check-docs.py [file]
-
-# 檢查所有文檔
-python scripts/check-docs.py --all
-```
-
-## 聯繫方式
-
-如有任何問題或建議，請：
-- 創建 Issue
-- 聯繫文檔維護團隊
-- 在團隊會議中提出
-
-## 參考資源
-
-- [Markdown 語法指南](https://www.markdownguide.org/)
-- [專案文檔索引](./DOCUMENTATION_INDEX.md)
-- [README.md](../README.md)
 
 ---
 
-感謝您對專案文檔的貢獻！
+## 文檔健康檢查
 
-最後更新: 2025-10-18
-版本: 1.0
+```powershell
+# 移除所有 emoji（dry-run 不會修改）
+bun run scripts/remove-emoji.py --root . --dry-run
+
+# 文件格式檢查
+bun run scripts/check-docs.py --all
+```
+
+---
+
+## 提交清單
+
+提交文檔變更前確認：
+
+- [ ] 文件名符合命名規範
+- [ ] 沒有 emoji
+- [ ] UTF-8 編碼，繁體中文（除規格書類）
+- [ ] 放在正確目錄
+- [ ] 內部連結指向實際存在的檔案
+- [ ] 已更新 [INDEX.md](./INDEX.md)
+- [ ] 程式碼範例語法正確、可執行
+- [ ] 內容反映現況（特別注意 v4.0.0 是 WebSocket+DO，不是 v3 的 SSE+KV）
+- [ ] 跑過 `bun run check` 通過
+
+---
+
+## 文檔常見錯誤
+
+| 錯誤 | 修正 |
+|---|---|
+| 「使用 SSE 連線」 | 「使用 WebSocket + Durable Objects」（v4 已換） |
+| 「3 層系統角色 Admin/Team/Agent」 | 「2 層系統角色 Admin/Agent + 3 層團隊角色 Member/Lead/Supervisor」 |
+| `npm run xxx` | `bun run xxx`（本專案 Bun only） |
+| 「個人對話指派」 | 「團隊對話指派」（v4 已移除個人指派） |
+| 連到 `docs/api/`、`docs/enterprise/` | 改連 `docs/reference/api/`、實際對應位置 |
+| 「8 個 Durable Objects」 | 「10 個 Durable Objects」（含 MetricsCollectorDO + LockCoordinator） |
