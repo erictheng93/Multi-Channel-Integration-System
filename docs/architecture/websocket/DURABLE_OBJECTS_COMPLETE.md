@@ -1,7 +1,7 @@
 # Durable Objects Architecture - Complete Guide
 **Project**: Multi-Channel Customer Support System
-**Date**: 2025-11-14
-**Status**:  Production Deployed
+**Date**: Updated 2026-05-04 (originally 2025-11-14)
+**Status**: Production Deployed (v4.0.0)
 
 ---
 
@@ -18,7 +18,9 @@
 9. [LockCoordinator](#lockcoordinator)
 10. [CustomerConversationDO](#customerconversationdo)
 11. [CustomerMessageDO](#customermessagedo)
-12. [State Management Patterns](#state-management-patterns)
+12. [RateLimiterDO](#ratelimiterdo)
+13. [MetricsCollectorDO](#metricscollectordo)
+14. [State Management Patterns](#state-management-patterns)
 13. [Alarm Handling](#alarm-handling)
 14. [Testing Strategy](#testing-strategy)
 15. [Common Pitfalls](#common-pitfalls)
@@ -29,10 +31,12 @@
 
 ## Executive Summary
 
-This system uses **8 Durable Objects** to manage real-time WebSocket communication, message scheduling, cache coordination, and distributed locking across a globally distributed multi-channel customer support platform.
+This system uses **10 Durable Objects** to manage real-time WebSocket communication, message scheduling, cache coordination, and distributed locking across a globally distributed multi-channel customer support platform.
 
 ### Production Status
-- **Deployed**:  All 8 Durable Objects in production
+- **Deployed**: All 10 Durable Objects in production
+  - Primary 8: ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageScheduler (binding name: DelayedMessageBuffer), LatestMessageCacheCoordinator, CustomerConversationDO, CustomerMessageDO, LockCoordinator (lives in `src/services/distributed-lock-service.ts`, not `durable-objects/`)
+  - Added in v4: **RateLimiterDO** (global API rate limiting), **MetricsCollectorDO** (request-level metrics, 60s flush to KV)
 - **Test Coverage**: 84% pass rate for tested DOs
 - **Performance**: Handles 1000+ concurrent connections
 - **Reliability**: 99.9% uptime

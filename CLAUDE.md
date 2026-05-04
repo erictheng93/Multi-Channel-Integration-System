@@ -14,7 +14,10 @@ Frontend: frontend/src/main.ts → Vue 3 + Pinia stores + Vue Router
 ```
 
 - **Backend modules**: `src/modules/<domain>/handlers/` (routes) + `services/` (logic) + `types/`
-- **9 Durable Objects**: `src/durable-objects/` — ConversationRoom, UserConnection, MessageBroadcaster, DelayedMessageBuffer, LockCoordinator, LatestMessageCacheCoordinator, CustomerConversationDO, CustomerMessageDO, RateLimiterDO
+- **10 Durable Objects** (binding names per `wrangler.toml`):
+  - In `src/durable-objects/`: `ConversationRoom`, `UserConnection`, `MessageBroadcaster`, `LatestMessageCacheCoordinator`, `CustomerConversationDO`, `CustomerMessageDO`, `RateLimiterDO`, `MetricsCollectorDO`
+  - Aliased: `DelayedMessageBuffer` → exports `DelayedMessageScheduler` from `durable-objects/DelayedMessageScheduler.ts` (see `src/index.ts:846`)
+  - Outside DO folder: `LockCoordinator` lives in `src/services/distributed-lock-service.ts`
 - **Frontend stores**: `frontend/src/stores/` (Pinia)
 - **Frontend services**: `frontend/src/services/` (WebSocket client, conversation sync)
 - **Schema**: `src/db/schema.ts`

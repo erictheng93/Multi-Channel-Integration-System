@@ -435,15 +435,17 @@ Multi_Channel_Integration_System/
 │ │   ├── activities/ # 活動紀錄
 │ │   ├── customer-conversations/  # 客戶對話
 │ │   └── liff/ # LINE LIFF
-│ ├── durable-objects/ # 8 個 Durable Objects
+│ ├── durable-objects/ # 10 個 Durable Objects (含 LockCoordinator 在 services/)
 │ │   ├── ConversationRoom.ts
 │ │   ├── UserConnection.ts
 │ │   ├── MessageBroadcaster.ts
-│ │   ├── DelayedMessageScheduler.ts
+│ │   ├── DelayedMessageScheduler.ts (binding: DelayedMessageBuffer)
 │ │   ├── LatestMessageCacheCoordinator.ts
 │ │   ├── CustomerConversationDO.ts
 │ │   ├── CustomerMessageDO.ts
-│ │   └── RateLimiterDO.ts
+│ │   ├── RateLimiterDO.ts
+│ │   ├── MetricsCollectorDO.ts                       # 即時指標收集 (v4)
+│ │   └── (LockCoordinator → src/services/distributed-lock-service.ts)
 │ ├── services/ # 40+ 共用服務
 │ ├── middleware/ # Auth, CORS 等中介層
 │ ├── db/schema.ts # Drizzle ORM 資料庫綱要
