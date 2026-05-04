@@ -1,3 +1,7 @@
+> **STALE WARNING (2026-05-04)**: 本檔案內容受文件重組過程中的中文字符剝除腳本影響，部分原有說明已遺失；且仍提及 v3 的 SSE 為現行架構。**v4 已完全移除 SSE，改用 WebSocket + Durable Objects**。建議改參考 [`docs/CURRENT_STATUS.md`](../CURRENT_STATUS.md)、相關模組手冊（`docs/modules/`），或 [`docs/architecture/websocket/WEBSOCKET_FINAL_ARCHITECTURE.md`](../architecture/websocket/WEBSOCKET_FINAL_ARCHITECTURE.md)。
+
+---
+
 # 監控、告警與熔斷器使用指南
 
 **版本**: v1.0

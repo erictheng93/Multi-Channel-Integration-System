@@ -32,7 +32,7 @@
 
 - [ ] **Cloudflare 帳號**已創建並登入
 - [ ] **Account ID** 已獲取（在 Dashboard 右側欄）
-- [ ] **API Token** 已創建（參考 [API Token 設置指南](./API_TOKEN_SETUP_GUIDE.md)）
+- [ ] **API Token** 已創建（參考 [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens)）
 - [ ] API Token **權限**包含：
   - [ ] Account Settings (Read)
   - [ ] Workers Scripts (Edit)
@@ -96,27 +96,27 @@
 
 - [ ] 後端依賴已安裝
   ```bash
-  npm install
+  bun install
   ```
 
 - [ ] 前端依賴已安裝
   ```bash
-  cd frontend && npm install && cd ..
+  cd frontend && bun install && cd ..
   ```
 
 - [ ] TypeScript 編譯檢查通過
   ```bash
-  npm run build
+  bun run build
   ```
 
 - [ ] Worker 已建置
   ```bash
-  npx wrangler deploy --dry-run --outdir=dist
+  bunx wrangler deploy --dry-run --outdir=dist
   ```
 
 - [ ] 前端已建置
   ```bash
-  cd frontend && npm run build && cd ..
+  cd frontend && bun run build && cd ..
   ```
 
 - [ ] `dist/index.js` 檔案存在
@@ -355,7 +355,7 @@
 
 - [ ] 文檔已交付：
   - [ ] [客戶部署指南](./CUSTOMER_DEPLOYMENT_GUIDE.md)
-  - [ ] [API Token 設置指南](./API_TOKEN_SETUP_GUIDE.md)
+  - [ ] [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens)
   - [ ] 本檢查清單
 
 ---
@@ -388,7 +388,7 @@
 
 如遇問題，請參考：
 - [客戶部署指南](./CUSTOMER_DEPLOYMENT_GUIDE.md) - 常見問題
-- [API Token 設置指南](./API_TOKEN_SETUP_GUIDE.md) - Token 相關問題
+- [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens) - Token 相關問題
 - 技術支援：support@yourcompany.com
 
 ---

@@ -1,3 +1,7 @@
+> **STALE WARNING (2026-05-04)**: 本檔案內容受文件重組過程中的中文字符剝除腳本影響，部分原有說明已遺失；且仍提及 v3 的 SSE 為現行架構。**v4 已完全移除 SSE，改用 WebSocket + Durable Objects**。建議改參考 [`docs/CURRENT_STATUS.md`](../../CURRENT_STATUS.md)、相關模組手冊（`docs/modules/`），或 [`docs/architecture/websocket/WEBSOCKET_FINAL_ARCHITECTURE.md`](../../architecture/websocket/WEBSOCKET_FINAL_ARCHITECTURE.md)。
+
+---
+
 
 
  SSE Cloudflare Queue
@@ -24,16 +28,16 @@
 
 ```bash
 # 1. TypeScript
-npm run build
+bun run build
 
 # 2.
-npm run test
+bun run test
 
 # 3. Lint
-npm run lint:check
+bun run lint:check
 
 # 4.
-npm run deploy
+bun run deploy
 ```
 
 
@@ -61,10 +65,10 @@ npm run deploy
 ### 1. ****
 ```bash
 
-npm run test
+bun run test
 
 # SSE
-npm run test -- --grep "SSE|message|realtime"
+bun run test -- --grep "SSE|message|realtime"
 ```
 
 ### 2. ****
