@@ -275,40 +275,40 @@
 
 ```bash
 
-npm run test:recall
+bun run test:recall
 
 
-npx ts-node tests/run-recall-tests.ts
+bunx ts-node tests/run-recall-tests.ts
 ```
 
 
 ```bash
 
-npx vitest tests/unit/services/message-recall-service.test.ts
+bunx vitest tests/unit/services/message-recall-service.test.ts
 
 # API
-npx vitest tests/unit/handlers/delayed-message-drizzle.test.ts
+bunx vitest tests/unit/handlers/delayed-message-drizzle.test.ts
 
 
-npx vitest tests/integration/message-recall-integration.test.ts
+bunx vitest tests/integration/message-recall-integration.test.ts
 
 # E2E
-npx vitest tests/e2e/message-recall-e2e.test.ts
+bunx vitest tests/e2e/message-recall-e2e.test.ts
 
 
-npx vitest tests/unit/services/message-recall-performance.test.ts
+bunx vitest tests/unit/services/message-recall-performance.test.ts
 
 
-npx vitest tests/unit/services/message-recall-edge-cases.test.ts
+bunx vitest tests/unit/services/message-recall-edge-cases.test.ts
 ```
 
 
 ```bash
 
-npx vitest --coverage
+bunx vitest --coverage
 
 
-npx ts-node tests/run-recall-tests.ts
+bunx ts-node tests/run-recall-tests.ts
 ```
 
 

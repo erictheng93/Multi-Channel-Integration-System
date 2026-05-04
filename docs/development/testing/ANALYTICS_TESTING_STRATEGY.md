@@ -489,15 +489,15 @@ expect(result.data).toBeUndefined();
 
 ```bash
 # -
-npm run test:unit # < 1 second
-npm run test:integration # < 1 second
+bun run test:unit # < 1 second
+bun run test:integration # < 1 second
 
 # -
-npm run test:edge-cases # ~1 second
-npm run test:performance # ~6 seconds
+bun run test:edge-cases # ~1 second
+bun run test:performance # ~6 seconds
 
 # - E2E
-npm run test:e2e # ~7 seconds
+bun run test:e2e # ~7 seconds
 ```
 
 ### 2. GitHub Actions
@@ -524,19 +524,19 @@ jobs:
  run: npm ci
 
  - name: Run Unit Tests
- run: npx vitest run tests/unit/ --reporter=basic
+ run: bunx vitest run tests/unit/ --reporter=basic
 
  - name: Run Integration Tests
- run: npx vitest run tests/e2e/analytics-real-d1-simplified.test.ts
+ run: bunx vitest run tests/e2e/analytics-real-d1-simplified.test.ts
 
  - name: Run Edge Cases Tests
- run: npx vitest run tests/edge-cases/
+ run: bunx vitest run tests/edge-cases/
 
  - name: Run Performance Tests
- run: npx vitest run tests/performance/
+ run: bunx vitest run tests/performance/
 
  - name: Run E2E Tests with Auth
- run: npx vitest run tests/e2e/analytics-api-e2e-auth.test.ts
+ run: bunx vitest run tests/e2e/analytics-api-e2e-auth.test.ts
 ```
 
 ### 3.
@@ -632,40 +632,40 @@ const mockD1 = {
 
 ```bash
 # E2E with Auth
-npx vitest run tests/e2e/analytics-api-e2e-auth.test.ts
+bunx vitest run tests/e2e/analytics-api-e2e-auth.test.ts
 
 # Integration (Simplified)
-npx vitest run tests/e2e/analytics-real-d1-simplified.test.ts
+bunx vitest run tests/e2e/analytics-real-d1-simplified.test.ts
 
 # Performance
-npx vitest run tests/performance/analytics-stress-test.test.ts
+bunx vitest run tests/performance/analytics-stress-test.test.ts
 
 # Edge Cases
-npx vitest run tests/edge-cases/analytics-edge-cases.test.ts
+bunx vitest run tests/edge-cases/analytics-edge-cases.test.ts
 ```
 
 
 ```bash
 # Analytics
-npx vitest run tests/e2e/ tests/performance/ tests/edge-cases/
+bunx vitest run tests/e2e/ tests/performance/ tests/edge-cases/
 
 
-npx vitest run --coverage tests/
+bunx vitest run --coverage tests/
 
 # Watch ()
-npx vitest watch tests/e2e/analytics-real-d1-simplified.test.ts
+bunx vitest watch tests/e2e/analytics-real-d1-simplified.test.ts
 ```
 
 
 ```bash
 
-npx vitest run --reporter=basic
+bunx vitest run --reporter=basic
 
 
-npx vitest run --reporter=verbose
+bunx vitest run --reporter=verbose
 
 # JSON (CI )
-npx vitest run --reporter=json --outputFile=test-results.json
+bunx vitest run --reporter=json --outputFile=test-results.json
 ```
 
 ---
@@ -752,18 +752,18 @@ expect(result).toMatchSnapshot();
 
 **** ():
 ```bash
-npm run test:integration # < 1 second
+bun run test:integration # < 1 second
 ```
 
 **** (git commit):
 ```bash
-npm run test:edge-cases # ~1 second
+bun run test:edge-cases # ~1 second
 ```
 
 **** (production release):
 ```bash
-npm run test:e2e # ~7 seconds
-npm run test:performance # ~6 seconds
+bun run test:e2e # ~7 seconds
+bun run test:performance # ~6 seconds
 ```
 
 ---

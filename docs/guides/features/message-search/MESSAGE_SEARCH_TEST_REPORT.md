@@ -212,7 +212,7 @@ Phase 3 : 11.48 KB (gzipped: 4.38 KB)
 ### TypeScript
 
 ```bash
-$ cd frontend && npx vue-tsc --noEmit
+$ cd frontend && bunx vue-tsc --noEmit
 
 Result: PASSED
  - : 0
@@ -223,7 +223,7 @@ Result: PASSED
 ### ESLint
 
 ```bash
-$ cd frontend && npm run lint:check
+$ cd frontend && bun run lint:check
 
 Result: PASSED
  - : 0
@@ -233,7 +233,7 @@ Result: PASSED
 
 
 ```bash
-$ cd frontend && npm run build
+$ cd frontend && bun run build
 
 Result: SUCCESS
  - : 2.65s

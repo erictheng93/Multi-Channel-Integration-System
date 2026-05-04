@@ -117,18 +117,18 @@ web-installer/
 ```bash
 # Backend Development
 cd web-installer/backend
-npm install
-npm run dev # Start Worker development server
+bun install
+bun run dev # Start Worker development server
 npm test # Run tests (28 tests, 90.6% coverage)
-npm run test:coverage # Generate coverage report
-npm run deploy # Deploy to production
+bun run test:coverage # Generate coverage report
+bun run deploy # Deploy to production
 
 # Frontend Development
 cd web-installer/frontend
-npm install
-npm run dev # Start Vite dev server
-npm run build # Build for production
-npm run deploy:pages # Deploy to Cloudflare Pages
+bun install
+bun run dev # Start Vite dev server
+bun run build # Build for production
+bun run deploy:pages # Deploy to Cloudflare Pages
 ```
 
 ## Documentation

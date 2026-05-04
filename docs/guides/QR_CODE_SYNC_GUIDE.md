@@ -272,7 +272,7 @@ curl -X GET "https://your-domain.com/api/system/sync-qr-codes/validate" \
 
 ```bash
 # 部署到 Cloudflare Workers
-npm run deploy
+bun run deploy
 ```
 
 ### Step 2: 驗證現有資料狀態

@@ -397,8 +397,8 @@ Vendor (lunr.js): +30 KB (gzipped: ~10 KB)
 3. ****
  ```bash
  cd frontend
- npm run build
- npm run deploy:pages
+ bun run build
+ bun run deploy:pages
  ```
 
 4. ****

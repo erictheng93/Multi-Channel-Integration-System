@@ -62,8 +62,8 @@ VITE_API_URL=https://your-backend-domain.com
 
 ### 5. 部署
 
-1. 部署後端：`npm run deploy`
-2. 部署前端：`cd frontend && npm run build && npm run deploy:pages`
+1. 部署後端：`bun run deploy`
+2. 部署前端：`cd frontend && bun run build && bun run deploy:pages`
 
 ## 流程說明
 

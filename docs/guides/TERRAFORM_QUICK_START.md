@@ -27,7 +27,7 @@
 ```bash
 git clone <repository-url>
 cd Multi_Channel_Integration_System
-npm install
+bun install
 ```
 
 ### 2.

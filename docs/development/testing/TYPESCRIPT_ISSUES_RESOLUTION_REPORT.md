@@ -126,7 +126,7 @@ export type SenderType = 'user' | 'agent' | 'system' | 'customer'
 
 
 ```bash
-cd frontend && npx vue-tsc --noEmit
+cd frontend && bunx vue-tsc --noEmit
 # : 0
 ```
 
@@ -138,7 +138,7 @@ cd frontend && npm test
 
 
 ```bash
-cd frontend && npm run build
+cd frontend && bun run build
 # :
 ```
 

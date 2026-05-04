@@ -455,12 +455,12 @@ CREATE INDEX IF NOT EXISTS idx_agent_teams_agent_id
 ### 立即执行
 1. **部署到开发环境**
    ```bash
-   npm run deploy
+   bun run deploy
    ```
 
 2. **验证 WebSocket 连接**
    ```bash
-   npm run health:check:ws
+   bun run health:check:ws
    ```
 
 3. **运行手动测试**

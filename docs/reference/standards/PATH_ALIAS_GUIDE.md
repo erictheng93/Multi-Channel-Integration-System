@@ -113,13 +113,13 @@ import { logger } from '@shared/utils/logger';
 
 ```bash
 
-npx tsx scripts/migrate-to-path-aliases.ts src/modules/your-module --dry-run
+bunx tsx scripts/migrate-to-path-aliases.ts src/modules/your-module --dry-run
 
 
-npx tsx scripts/migrate-to-path-aliases.ts src/modules/your-module
+bunx tsx scripts/migrate-to-path-aliases.ts src/modules/your-module
 
 
-npx tsx scripts/migrate-to-path-aliases.ts src/modules
+bunx tsx scripts/migrate-to-path-aliases.ts src/modules
 ```
 
 ### Pre-commit Hook

@@ -264,7 +264,7 @@ app.all('/api/customer-conversations/:id/messages', async (c) => {
 
 3. Deploy migration:
 ```bash
-npx wrangler deploy
+bunx wrangler deploy
 ```
 
 ---

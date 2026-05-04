@@ -203,7 +203,7 @@ interface WebhookStatus {
 
 
 ```bash
-npm run test:run -- src/components/platform/PlatformStatus.test.ts
+bun run test:run -- src/components/platform/PlatformStatus.test.ts
 ```
 
 

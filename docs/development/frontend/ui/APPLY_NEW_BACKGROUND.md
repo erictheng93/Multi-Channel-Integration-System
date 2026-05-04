@@ -101,7 +101,7 @@ import './styles/conversation-background.css';
 ### 步骤 3: 保存并测试
 
 1. 保存文件
-2. 启动开发服务器：`npm run dev`
+2. 启动开发服务器：`bun run dev`
 3. 打开浏览器访问对话页面
 4. 验证背景效果
 

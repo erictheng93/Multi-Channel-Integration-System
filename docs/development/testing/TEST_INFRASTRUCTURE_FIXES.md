@@ -139,9 +139,9 @@ For existing test files, you can now:
 ## Testing Commands
 
 All existing test commands continue to work:
-- `npm run test` - Run all tests
-- `npm run test:watch` - Watch mode
-- `npm run test:coverage` - With coverage
+- `bun run test` - Run all tests
+- `bun run test:watch` - Watch mode
+- `bun run test:coverage` - With coverage
 - Component-specific test commands remain unchanged
 
 The infrastructure fixes ensure these commands now run more reliably and consistently.

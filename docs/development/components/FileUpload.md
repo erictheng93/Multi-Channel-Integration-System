@@ -205,7 +205,7 @@ const customUpload = async (file) => {
 
 
 ```bash
-npm run test -- src/components/ui/FileUpload.test.ts
+bun run test -- src/components/ui/FileUpload.test.ts
 ```
 
 

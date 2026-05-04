@@ -703,9 +703,9 @@ it('應該按時間排序所有訊息', async () => {
 # 快速回滾
 git revert 94fdf3d  # 回滾主要改進
 git revert fda60a1  # 回滾關鍵修復 (如需要)
-npm install # 恢復依賴
-npm run build # 重新構建
-npm run deploy # 重新部署
+bun install # 恢復依賴
+bun run build # 重新構建
+bun run deploy # 重新部署
 ```
 
 ---

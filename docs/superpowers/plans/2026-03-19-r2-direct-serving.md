@@ -71,7 +71,7 @@ Note: Also added `http://localhost:5173` (Vite dev server port from `frontend/`)
 
 Run (requires wrangler auth):
 ```bash
-npx wrangler r2 bucket cors put mcis-files --rules ./config/r2-cors-config.json
+bunx wrangler r2 bucket cors put mcis-files --rules ./config/r2-cors-config.json
 ```
 
 Expected: `Successfully applied CORS rules` or similar success message.
@@ -86,7 +86,7 @@ Expected: Response includes `Access-Control-Allow-Origin: https://mcis.daiwandis
 
 If you don't know an existing key, list one:
 ```bash
-npx wrangler r2 object list mcis-files --prefix media/ --max-keys 1
+bunx wrangler r2 object list mcis-files --prefix media/ --max-keys 1
 ```
 
 - [ ] **Step 4: Commit**
@@ -274,7 +274,7 @@ describe('isPublicDomainConfigured', () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 ```bash
-npx vitest run tests/unit/utils/file-url.test.ts
+bunx vitest run tests/unit/utils/file-url.test.ts
 ```
 
 Expected: FAIL -- module `@/utils/file-url` not found.
@@ -365,7 +365,7 @@ export function isPublicDomainConfigured(env: Bindings): boolean {
 - [ ] **Step 4: Run tests to verify they pass**
 
 ```bash
-npx vitest run tests/unit/utils/file-url.test.ts
+bunx vitest run tests/unit/utils/file-url.test.ts
 ```
 
 Expected: All tests PASS.
@@ -709,7 +709,7 @@ Expected: PASS. The `mediaFile.r2Key` is now part of the `MediaFile` interface (
 - [ ] **Step 4: Run full test suite to check for regressions**
 
 ```bash
-npx vitest run
+bunx vitest run
 ```
 
 Expected: All existing tests pass. No tests currently cover these specific code paths (verified: no file-storage/file-proxy tests exist).
@@ -735,7 +735,7 @@ No code changes. Verify the optimization works end-to-end.
 
 ```bash
 # List an existing file in the bucket
-npx wrangler r2 object list mcis-files --prefix media/ --max-keys 1
+bunx wrangler r2 object list mcis-files --prefix media/ --max-keys 1
 ```
 
 Take the key from the output and verify direct access:
@@ -777,7 +777,7 @@ After deploy, test by sending a LINE message with an image. Verify in browser De
 - [ ] **Step 1: Run full test suite one more time**
 
 ```bash
-npx vitest run
+bunx vitest run
 cd frontend && bun run test
 ```
 

@@ -44,7 +44,7 @@
 
 **Test Execution:**
 ```bash
-npx vitest run tests/unit/handlers/ --reporter=verbose
+bunx vitest run tests/unit/handlers/ --reporter=verbose
 ```
 
 **Results:**
@@ -117,7 +117,7 @@ Duration: 2.21s
 
 **Test Execution:**
 ```bash
-npx vitest run tests/integration/ --reporter=verbose
+bunx vitest run tests/integration/ --reporter=verbose
 ```
 
 **Results:**
@@ -187,7 +187,7 @@ Duration: 2.55s
 
 **Test Execution:**
 ```bash
-npx vitest run tests/e2e/ --reporter=verbose
+bunx vitest run tests/e2e/ --reporter=verbose
 ```
 
 **Results:**
@@ -630,15 +630,15 @@ P4 = E2E Tests Added
 on: [push, pull_request]
 jobs:
   backend-tests:
-    - run: npx vitest run tests/unit/handlers/
+    - run: bunx vitest run tests/unit/handlers/
     - threshold: 90%
 
   integration-tests:
-    - run: npx vitest run tests/integration/
+    - run: bunx vitest run tests/integration/
     - threshold: 80%
 
   e2e-tests:
-    - run: npx vitest run tests/e2e/
+    - run: bunx vitest run tests/e2e/
     - threshold: 80%
 ```
 

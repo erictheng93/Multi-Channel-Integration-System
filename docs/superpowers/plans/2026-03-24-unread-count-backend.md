@@ -98,7 +98,7 @@ The full return block should look like:
 
 - [ ] **Step 3: Run type check**
 
-Run: `cd /d/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd /d/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 Expected: PASS — no type errors
 
 - [ ] **Step 4: Commit**
@@ -158,7 +158,7 @@ In the `conversationData` object (line ~93), add `unreadCount` after `lastMessag
 
 - [ ] **Step 3: Run type check**
 
-Run: `cd /d/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd /d/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 Expected: PASS
 
 - [ ] **Step 4: Commit**
@@ -293,7 +293,7 @@ Add a new describe block inside the existing `Conversation Handlers Integration 
 
 - [ ] **Step 2: Run tests to verify they pass**
 
-Run: `cd /d/Code/Multi_Channel_Integration_System && npx vitest run tests/integration/handlers/conversation-handlers.integration.test.ts`
+Run: `cd /d/Code/Multi_Channel_Integration_System && bunx vitest run tests/integration/handlers/conversation-handlers.integration.test.ts`
 Expected: ALL PASS
 
 - [ ] **Step 3: Commit**
@@ -321,5 +321,5 @@ Expected: Successful deployment
 
 - [ ] **Step 3: Run full test suite**
 
-Run: `cd /d/Code/Multi_Channel_Integration_System && npx vitest run`
+Run: `cd /d/Code/Multi_Channel_Integration_System && bunx vitest run`
 Expected: ALL PASS — no regressions

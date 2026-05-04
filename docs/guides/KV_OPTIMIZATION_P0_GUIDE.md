@@ -53,16 +53,16 @@
 # 1. 運行自動化測試
 bun run scripts/test-kv-optimization.ts
 # 或
-npx tsx scripts/test-kv-optimization.ts
+bunx tsx scripts/test-kv-optimization.ts
 
 # 預期輸出：
 #  ALL TESTS PASSED - KV OPTIMIZATION IS WORKING CORRECTLY
 
 # 2. 編譯檢查
-npm run build
+bun run build
 
 # 3. 本地開發環境測試
-npm run dev
+bun run dev
 ```
 
 ### Step 2: 驗證監控端點
@@ -90,7 +90,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ```bash
 # 1. 部署到 Cloudflare Workers
-npm run deploy
+bun run deploy
 
 # 2. 等待 1-2 分鐘讓 Worker 啟動
 
@@ -288,7 +288,7 @@ curl -X POST \
 
 ```bash
 git revert <commit-hash>
-npm run deploy
+bun run deploy
 ```
 
 或手動恢復：

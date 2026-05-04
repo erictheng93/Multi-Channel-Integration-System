@@ -398,7 +398,7 @@ describe('ActionEditor -- editing index recalculation', () => {
 
 - [ ] **Step 2: Run tests to verify they fail (component not updated yet)**
 
-Run: `cd frontend && npx vitest run src/components/auto-reply/ActionEditor.test.ts`
+Run: `cd frontend && bunx vitest run src/components/auto-reply/ActionEditor.test.ts`
 Expected: Multiple FAILs — `.action-card-new` not found, `.collapsed-header` not found, etc.
 
 - [ ] **Step 3: Commit test updates**
@@ -1071,12 +1071,12 @@ Replace the entire `<style scoped>` section with:
 
 - [ ] **Step 2: Run all tests**
 
-Run: `cd frontend && npx vitest run src/components/auto-reply/ActionEditor.test.ts`
+Run: `cd frontend && bunx vitest run src/components/auto-reply/ActionEditor.test.ts`
 Expected: All tests PASS
 
 - [ ] **Step 3: Run type-check and lint**
 
-Run: `cd frontend && npx vue-tsc --noEmit && npx eslint src/components/auto-reply/ActionEditor.vue --fix`
+Run: `cd frontend && bunx vue-tsc --noEmit && bunx eslint src/components/auto-reply/ActionEditor.vue --fix`
 Expected: No errors
 
 - [ ] **Step 4: Commit styles**
@@ -1095,12 +1095,12 @@ git commit -m "feat(auto-reply): add collapsible card styles following design sy
 
 - [ ] **Step 1: Run full frontend test suite to ensure no regressions**
 
-Run: `cd frontend && npx vitest run`
+Run: `cd frontend && bunx vitest run`
 Expected: All tests pass (3624+ tests)
 
 - [ ] **Step 2: Run backend type check to confirm no cross-impact**
 
-Run: `npx tsc --noEmit`
+Run: `bunx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 3: Manual verification checklist**

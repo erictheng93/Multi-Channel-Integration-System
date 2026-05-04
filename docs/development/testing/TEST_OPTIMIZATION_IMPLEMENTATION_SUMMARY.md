@@ -264,25 +264,25 @@ afterEach(() => {
 ### 运行测试
 ```bash
 # 运行所有测试
-npx vitest run
+bunx vitest run
 
 # 运行特定文件
-npx vitest run path/to/test.test.ts
+bunx vitest run path/to/test.test.ts
 
 # 查看覆盖率
-npx vitest run --coverage
+bunx vitest run --coverage
 
 # 分析测试状况
-npx tsx scripts/test-analysis.ts
+bunx tsx scripts/test-analysis.ts
 ```
 
 ### 继续改进
 ```bash
 # 快速改进检查
-npx tsx scripts/quick-test-improvements.ts
+bunx tsx scripts/quick-test-improvements.ts
 
 # 质量评估
-npx tsx scripts/test-quality-assessment.ts
+bunx tsx scripts/test-quality-assessment.ts
 ```
 
 ---

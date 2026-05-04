@@ -22,7 +22,7 @@ wrangler dev --port 8787
 
 # 2:
 cd frontend
-npm run dev
+bun run dev
 ```
 
 ## API
@@ -135,10 +135,10 @@ wrangler tail --env production
 ****:
 ```bash
 
-npm install
+bun install
 
 
-npm run clean
+bun run clean
 ```
 
 ### 2.
@@ -190,16 +190,16 @@ wrangler d1 execute omni-channel-platform --local --file=database/schema.sql
 ```bash
 
 cd frontend
-npm run type-check
+bun run type-check
 
 # Lint ( TypeScript )
-npm run lint:check
+bun run lint:check
 
 # ( lint )
 vite build
 
 # ( lint )
-npm run build
+bun run build
 
 # API
 .\test-api.ps1 local
@@ -223,7 +223,7 @@ npm run build
  - Wrangler
 
 
-- `npm run build:analyze`
+- `bun run build:analyze`
 - API
 -
 
@@ -236,7 +236,7 @@ npm run build
 2. ****:
  ```bash
  cd frontend
- npm run build:pages
+ bun run build:pages
  ```
 
 3. ****:

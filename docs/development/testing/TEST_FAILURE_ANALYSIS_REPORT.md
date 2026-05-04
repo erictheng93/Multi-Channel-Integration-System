@@ -134,7 +134,7 @@ Cannot find module '@vue/test-utils' or its corresponding type declarations
 
 ```bash
 cd frontend
-npm install
+bun install
 ```
 
 **注意**: 这些是前端测试，应该在 `frontend/` 目录下运行，而不是根目录的后端测试套件中。
@@ -235,7 +235,7 @@ import type { SomeType } from './types';
 1. **修复前端依赖** (25 tests)
    ```bash
    cd frontend
-   npm install
+   bun install
    # 或者将这些测试移到正确的测试套件
    ```
 
@@ -392,7 +392,7 @@ app.get('/', jwtAuth, async (c) => {
 
 ### 立即可做
 
-1.  运行 `cd frontend && npm install`
+1.  运行 `cd frontend && bun install`
 2.  修复 API Transform 语法错误
 3.  重新运行测试验证改进
 

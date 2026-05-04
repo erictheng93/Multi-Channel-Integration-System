@@ -498,13 +498,13 @@ class PreloadService {
 ```bash
 # 1. 构建前端
 cd frontend
-npm run build
+bun run build
 
 # 2. 部署到 Cloudflare Pages
-npm run deploy:pages
+bun run deploy:pages
 
 # 3. 验证部署
-npm run verify:deployment
+bun run verify:deployment
 
 # 4. 监控性能
 # 查看缓存命中率、API 调用频率等指标

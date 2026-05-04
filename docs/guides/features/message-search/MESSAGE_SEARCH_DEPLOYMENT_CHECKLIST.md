@@ -3,19 +3,19 @@
 
 - [x] **TypeScript **
  ```bash
- cd frontend && npx vue-tsc --noEmit
+ cd frontend && bunx vue-tsc --noEmit
  ```
  :
 
 - [x] ****
  ```bash
- cd frontend && npm run build
+ cd frontend && bun run build
  ```
  : 2.65
 
 - [x] **ESLint **
  ```bash
- cd frontend && npm run lint:check
+ cd frontend && bun run lint:check
  ```
  :
 
@@ -237,7 +237,7 @@ cd frontend
 rm -rf node_modules package-lock.json
 
 
-npm install
+bun install
 
 # lunr
 npm list lunr
@@ -248,13 +248,13 @@ npm list lunr
 
 ```bash
 # TypeScript
-npm run type-check
+bun run type-check
 
 # ESLint
-npm run lint:check
+bun run lint:check
 
 
-npm run build
+bun run build
 # dist/
 ```
 
@@ -262,7 +262,7 @@ npm run build
 
 ```bash
 
-npm run dev
+bun run dev
 
 # http://localhost:3000
 
@@ -272,10 +272,10 @@ npm run dev
 
 ```bash
 # Cloudflare Pages
-npm run deploy:pages
+bun run deploy:pages
 
 
-npm run build:pages
+bun run build:pages
 ```
 
 ### 6.
@@ -379,10 +379,10 @@ console.log(':', slowQueries)
 git revert HEAD
 
 # 2.
-cd frontend && npm run build
+cd frontend && bun run build
 
 # 3.
-npm run deploy:pages
+bun run deploy:pages
 ```
 
 

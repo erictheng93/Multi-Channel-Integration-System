@@ -92,7 +92,7 @@ shared/types/
 ### ()
 ```bash
 # 1.
-npm run dev #
+bun run dev #
 npm test #
 
 # 2.

@@ -16,7 +16,7 @@
 │ 新增內容: │
 │ # Check route conflicts │
 │ echo "  Checking route conflicts..." │
-│ npm run check:routes:ci │
+│ bun run check:routes:ci │
 │ if [ $? -ne 0 ]; then │
 │ echo " Route conflict detected!" │
 │ exit 1 │
@@ -45,7 +45,7 @@ git commit -m "test: verify pre-commit hook"
 
 # 如果有路由衝突，會看到:
 #  Route conflict detected!
-#  Run 'npm run check:routes' for detailed report
+#  Run 'bun run check:routes' for detailed report
 # (提交會被阻止)
 
 # 如果沒有衝突:
@@ -65,7 +65,7 @@ git commit -m "test: verify pre-commit hook"
 │ Pass │
 │ │
 │ 2️ 檢查路由衝突 (新增) │
-│ Running npm run check:routes:ci │
+│ Running bun run check:routes:ci │
 │ 掃描 97 個文件... │
 │ 分析 439 條路由... │
 │ ├─ 發現 HIGH 衝突? →  阻止提交 │
@@ -432,13 +432,13 @@ if (conflicts.length > 0) {
 
 ```bash
 # 1. 運行路由檢測
-npm run check:routes
+bun run check:routes
 
 # 預期輸出:
 #  No route conflicts detected!
 
 # 2. 啟動開發伺服器
-npm run dev
+bun run dev
 
 # 查看啟動日誌，應該看到:
 #  Smart Route Registry - Starting registration...
@@ -456,7 +456,7 @@ curl http://localhost:8787/api/teams/invitations
 # 應該返回 200 OK + 邀請列表
 
 # 4. 運行單元測試（如果有）
-npm run test:handlers:team
+bun run test:handlers:team
 ```
 
 ### 步驟 5: 提交變更 (5 分鐘)

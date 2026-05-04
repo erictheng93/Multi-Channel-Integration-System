@@ -22,7 +22,7 @@
 
 ### 1.1 Wrangler CLI
 ```bash
-npm install -g wrangler
+bun install -g wrangler
 wrangler login
 ```
 
@@ -207,13 +207,13 @@ wrangler d1 execute omni-channel-platform --local --file=./seed.sql
 ### 4.1
 ```bash
 
-npm install
+bun install
 
 
-npm run cf-typegen
+bun run cf-typegen
 
 
-npm run dev
+bun run dev
 ```
 
 ### 4.2 API
@@ -237,7 +237,7 @@ wrangler d1 execute omni-channel-platform --local --command="SELECT * FROM users
 ### 5.1 Workers
 ```bash
 # Worker
-npm run deploy
+bun run deploy
 
 
 wrangler deployments list
@@ -327,10 +327,10 @@ wrangler secret put SECRET_NAME
 ### Q3:
 ```bash
 # wrangler.jsonc
-npx jsonc-parser wrangler.jsonc
+bunx jsonc-parser wrangler.jsonc
 
 # TypeScript
-npx tsc --noEmit
+bunx tsc --noEmit
 ```
 
 ### Q4: LINE Webhook

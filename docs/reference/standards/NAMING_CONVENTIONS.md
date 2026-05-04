@@ -292,7 +292,7 @@ module.exports = {
 ### Q3: 現有代碼如何遷移？
 **A**: 使用 TypeScript 編譯器快速發現所有不一致的地方：
 ```bash
-npm run lint:check
+bun run lint:check
 ```
 
 ### Q4: 如何防止未來出現混亂？
@@ -300,7 +300,7 @@ npm run lint:check
 1. Code Review 時嚴格檢查
 2. 配置 ESLint 規則
 3. 使用 TypeScript strict mode
-4. 定期運行 `npm run lint:check`
+4. 定期運行 `bun run lint:check`
 
 ---
 

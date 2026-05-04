@@ -6,7 +6,7 @@
 
 ```bash
 cd frontend
-npm run dev
+bun run dev
 ```
 
 等�??�到�?
@@ -128,7 +128,7 @@ https://your-frontend-domain.example.com/conversations/2f11b76c-672b-461f-9eca-e
 ### 检?��??��?
 
 - [ ] 确认修改已�?存到?�件
-- [ ] ?�启 Vite 开?��??�器（`Ctrl+C` ?��? `npm run dev`�?
+- [ ] ?�启 Vite 开?��??�器（`Ctrl+C` ?��? `bun run dev`�?
 - [ ] 清除浏�??��?存�?`Ctrl+Shift+R` 强制?�新�?
 - [ ] 检??Console ?�否?�其他�?�?
 

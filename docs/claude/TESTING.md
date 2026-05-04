@@ -49,29 +49,29 @@ Key test helpers:
 cd frontend
 
 # Run all tests
-npm run test
+bun run test
 
 # Run with coverage
-npm run test:coverage
+bun run test:coverage
 
 # Run specific test file
-npm run test -- unit/components/MyComponent.test.ts
+bun run test -- unit/components/MyComponent.test.ts
 
 # Interactive test UI
-npm run test:ui
+bun run test:ui
 ```
 
 ### Backend Tests
 
 ```bash
 # Run all handler tests
-npm run test:handlers
+bun run test:handlers
 
 # Run API integration tests
-npm run test:api
+bun run test:api
 
 # Run file upload end-to-end tests
-npm run test:upload
+bun run test:upload
 
 # Run specific test file
 npm test tests/unit/handlers/messaging-handler.test.ts
@@ -110,7 +110,7 @@ bun vitest --ui
 ```
 
 **Performance Comparison:**
-- **npm run test**: ~20 seconds
+- **bun run test**: ~20 seconds
 - **bun run bun:test**: ~10 seconds (2x faster )
 
 ### Backend Tests with Bun
@@ -168,7 +168,7 @@ cd frontend && bun run bun:test
 
 # Switch back to npm (if needed)
 .\scripts\switch-to-npm.ps1
-cd frontend && npm run test
+cd frontend && bun run test
 ```
 
 **Rollback Time:** < 3 minutes for full environment switch

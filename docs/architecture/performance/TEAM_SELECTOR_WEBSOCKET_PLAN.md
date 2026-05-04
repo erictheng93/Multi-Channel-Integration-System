@@ -580,10 +580,10 @@ cd frontend/src/services
 # 创建 teamUpdateListener.ts
 
 # 3. 测试
-npm run test:integration -- team-websocket
+bun run test:integration -- team-websocket
 
 # 4. 部署
-npm run deploy
+bun run deploy
 ```
 
 ---

@@ -585,10 +585,10 @@ const comparisons = await Promise.all(
 **:**
 ```bash
 # Analytics
-npm run test -- tests/unit/modules/analytics/
+bun run test -- tests/unit/modules/analytics/
 
 
-npm run test:coverage -- tests/unit/modules/analytics/
+bun run test:coverage -- tests/unit/modules/analytics/
 ```
 
 ### ()

@@ -148,10 +148,10 @@ export function dbUserToUser(dbUser: DbUser): User {
 
 ```bash
 
-cd frontend && npx vue-tsc --noEmit
+cd frontend && bunx vue-tsc --noEmit
 
 
-npx tsc --noEmit
+bunx tsc --noEmit
 ```
 
 

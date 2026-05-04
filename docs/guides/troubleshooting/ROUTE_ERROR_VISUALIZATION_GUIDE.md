@@ -21,7 +21,7 @@
 ```
 ┌─────────────────────────────────────────────────────┐
 │ 入口 1: 開發時靜態檢測 (推薦) │
-│ 命令: npm run check:routes │
+│ 命令: bun run check:routes │
 │ 時機: 開發過程中隨時運行 │
 │ 優點:  最快速  零成本  不需運行應用 │
 └─────────────────────────────────────────────────────┘
@@ -35,7 +35,7 @@
                          ↓
 ┌─────────────────────────────────────────────────────┐
 │ 入口 3: 終端日誌 (本地開發伺服器) │
-│ 命令: npm run dev (查看輸出) │
+│ 命令: bun run dev (查看輸出) │
 │ 時機: 應用啟動或路由註冊時 │
 │ 優點:  顯示註冊順序  系統層級視角 │
 └─────────────────────────────────────────────────────┘
@@ -56,7 +56,7 @@
 
 ```bash
 # 運行路由衝突檢測
-npm run check:routes
+bun run check:routes
 ```
 
 ####  視覺化輸出解讀
@@ -138,7 +138,7 @@ Extracted 439 route definitions
 
 ```bash
 # 啟動文件監控模式
-npm run check:routes:watch
+bun run check:routes:watch
 ```
 
 **視覺化輸出**:
@@ -534,7 +534,7 @@ app.route('/*', catchAllHandler); // 最後
 ┌────────────────────────────────────────────────┐
 │ 步驟 1: 識別錯誤 (30 秒) │
 ├────────────────────────────────────────────────┤
-│ 運行: npm run check:routes │
+│ 運行: bun run check:routes │
 │ 或查看瀏覽器 Network 標籤 400 錯誤 │
 └────────────────────────────────────────────────┘
                     ↓
@@ -561,7 +561,7 @@ app.route('/*', catchAllHandler); // 最後
 ┌────────────────────────────────────────────────┐
 │ 步驟 4: 驗證修復 (1 分鐘) │
 ├────────────────────────────────────────────────┤
-│ 1. 再次運行: npm run check:routes │
+│ 1. 再次運行: bun run check:routes │
 │ 2. 啟動開發伺服器測試 │
 │ 3. 瀏覽器中測試實際請求 │
 └────────────────────────────────────────────────┘
@@ -642,16 +642,16 @@ registry.register();
 
 ```bash
 # 基礎檢測
-npm run check:routes
+bun run check:routes
 
 # 監控模式（開發時）
-npm run check:routes:watch
+bun run check:routes:watch
 
 # CI/CD 模式（發現錯誤時失敗）
-npm run check:routes:ci
+bun run check:routes:ci
 
 # 完整驗證（配置 + 路由）
-npm run precheck:all
+bun run precheck:all
 ```
 
 ### 常用文件路徑
@@ -674,7 +674,7 @@ npm run precheck:all
    ↓
 ┌─────────────────────────────────┐
 │  運行檢測工具 │
-│ npm run check:routes │
+│ bun run check:routes │
 └─────────────────────────────────┘
    ↓
 提交代碼
@@ -703,7 +703,7 @@ npm run precheck:all
 
 | 階段 | 工具 | 使用頻率 | 優先級 |
 |------|------|---------|--------|
-| 開發 | `npm run check:routes` | 每次修改後 |  |
+| 開發 | `bun run check:routes` | 每次修改後 |  |
 | 開發 | Chrome DevTools | 遇到錯誤時 |  |
 | 測試 | 本地終端日誌 | 啟動時檢查 |  |
 | 生產 | Cloudflare Logs | 錯誤發生時 |  |

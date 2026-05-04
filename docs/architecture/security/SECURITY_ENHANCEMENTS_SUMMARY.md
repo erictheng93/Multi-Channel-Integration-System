@@ -135,8 +135,8 @@ The following were initially flagged but determined to be **NOT VULNERABLE**:
 
 ### Build Status
 ```bash
- npm run build - PASSED
- npm run lint:check - PASSED
+ bun run build - PASSED
+ bun run lint:check - PASSED
  TypeScript compilation - SUCCESS
 ```
 

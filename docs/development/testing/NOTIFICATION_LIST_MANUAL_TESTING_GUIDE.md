@@ -12,11 +12,11 @@
 
 ```bash
 # 终端 1 - 启动后端
-npm run dev
+bun run dev
 
 # 终端 2 - 启动前端
 cd frontend
-npm run dev
+bun run dev
 ```
 
 ### 2. 登录系统

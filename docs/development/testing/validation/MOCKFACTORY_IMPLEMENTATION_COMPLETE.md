@@ -150,7 +150,7 @@ Successfully implemented a comprehensive test infrastructure modernization using
 
 **Usage**:
 ```bash
-npx tsx scripts/migrate-to-mockfactory.ts <test-file-path>
+bunx tsx scripts/migrate-to-mockfactory.ts <test-file-path>
 ```
 
 #### **B. Metrics Tracking System** (`scripts/track-test-metrics.ts`)
@@ -168,7 +168,7 @@ npx tsx scripts/migrate-to-mockfactory.ts <test-file-path>
 
 **Usage**:
 ```bash
-npx tsx scripts/track-test-metrics.ts [--baseline]
+bunx tsx scripts/track-test-metrics.ts [--baseline]
 ```
 
 **Metrics Tracked**:

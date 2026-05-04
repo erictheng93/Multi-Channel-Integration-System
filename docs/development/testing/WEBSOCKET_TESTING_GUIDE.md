@@ -41,34 +41,34 @@ tests/
 
 ### All WebSocket Tests
 ```bash
-npm run test:websocket
+bun run test:websocket
 ```
 
 ### Specific Test Categories
 ```bash
 # Unit tests only
-npm run test:websocket:unit
+bun run test:websocket:unit
 
 # Integration tests
-npm run test:websocket:integration
+bun run test:websocket:integration
 
 # Performance tests
-npm run test:websocket:performance
+bun run test:websocket:performance
 
 # E2E tests
-npm run test:websocket:e2e
+bun run test:websocket:e2e
 
 # Stress tests (requires special environment)
-npm run test:websocket:stress
+bun run test:websocket:stress
 ```
 
 ### Performance Testing Mode
 ```bash
 # Run with detailed performance monitoring
-PERFORMANCE_TEST_MODE=benchmark npm run test:websocket:performance
+PERFORMANCE_TEST_MODE=benchmark bun run test:websocket:performance
 
 # Enable stress testing
-STRESS_TEST_ENABLED=true npm run test:websocket:stress
+STRESS_TEST_ENABLED=true bun run test:websocket:stress
 ```
 
 ## Test Utilities
@@ -327,10 +327,10 @@ export default defineConfig({
 
 ```bash
 # Run with detailed logging
-NODE_ENV=development npm run test:websocket
+NODE_ENV=development bun run test:websocket
 
 # Run specific test with debugging
-npx vitest run tests/unit/durable-objects/ConversationRoom.test.ts --reporter=verbose
+bunx vitest run tests/unit/durable-objects/ConversationRoom.test.ts --reporter=verbose
 ```
 
 ### Memory Debugging
@@ -344,7 +344,7 @@ node --expose-gc node_modules/.bin/vitest run tests/performance/websocket/
 
 ```bash
 # Run with performance profiling
-PERFORMANCE_TEST_MODE=benchmark npm run test:websocket:performance
+PERFORMANCE_TEST_MODE=benchmark bun run test:websocket:performance
 ```
 
 ## CI/CD Integration
@@ -354,13 +354,13 @@ PERFORMANCE_TEST_MODE=benchmark npm run test:websocket:performance
 ```yaml
 - name: Run WebSocket Tests
  run: |
- npm run test:websocket:unit
- npm run test:websocket:integration
+ bun run test:websocket:unit
+ bun run test:websocket:integration
 
 - name: Performance Tests (on main branch)
  if: github.ref == 'refs/heads/main'
  run: |
- PERFORMANCE_TEST_MODE=benchmark npm run test:websocket:performance
+ PERFORMANCE_TEST_MODE=benchmark bun run test:websocket:performance
 
 - name: Upload Test Results
  uses: actions/upload-artifact@v3

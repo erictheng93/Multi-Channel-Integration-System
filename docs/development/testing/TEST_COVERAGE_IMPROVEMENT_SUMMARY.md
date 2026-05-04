@@ -380,16 +380,16 @@ Phase 4: Validation  PLANNED
 
 ```bash
 # Run backend tests
-npx vitest run tests/unit/handlers/
+bunx vitest run tests/unit/handlers/
 
 # Run specific test file
-npx vitest run tests/unit/handlers/message.test.ts
+bunx vitest run tests/unit/handlers/message.test.ts
 
 # Run with verbose output
-npx vitest run tests/unit/handlers/message.test.ts --reporter=verbose
+bunx vitest run tests/unit/handlers/message.test.ts --reporter=verbose
 
 # Watch mode for development
-npx vitest watch tests/unit/handlers/message.test.ts
+bunx vitest watch tests/unit/handlers/message.test.ts
 ```
 
 ### Migration Checklist (Per Test)

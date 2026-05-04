@@ -49,7 +49,7 @@ to:
 
 - [ ] **Step 2: Run type check to see what breaks**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit --project tsconfig.json 2>&1 | head -30`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit --project tsconfig.json 2>&1 | head -30`
 
 Expected: Errors in files that assign non-null values to `sessionsBySentiment` — this confirms the type change propagated. We'll fix those in subsequent tasks.
 
@@ -151,7 +151,7 @@ describe('SessionStatsService — priority stats', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/modules/session/unit/services/session-stats-priority.test.ts --reporter=verbose 2>&1 | tail -20`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/modules/session/unit/services/session-stats-priority.test.ts --reporter=verbose 2>&1 | tail -20`
 
 Expected: FAIL — `sessionsBySentiment` returns `{ positive: 0, negative: 0, neutral: 5 }` instead of `null`, and priority returns all-medium.
 
@@ -273,13 +273,13 @@ import { eq, and, count, avg, sql, isNull } from 'drizzle-orm';
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/modules/session/unit/services/session-stats-priority.test.ts --reporter=verbose 2>&1 | tail -20`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/modules/session/unit/services/session-stats-priority.test.ts --reporter=verbose 2>&1 | tail -20`
 
 Expected: PASS
 
 - [ ] **Step 5: Run full type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
 
 Expected: PASS (or only pre-existing errors)
 
@@ -359,7 +359,7 @@ Check `src/modules/session/types/session-types.ts` for the interface definition.
 
 - [ ] **Step 4: Run type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
 
 Expected: PASS
 
@@ -493,7 +493,7 @@ With:
 
 - [ ] **Step 4: Run type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
 
 Expected: PASS
 
@@ -644,7 +644,7 @@ describe('PeriodComparisonService — previously stubbed metrics', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/modules/analytics/period-comparison-metrics.test.ts --reporter=verbose 2>&1 | tail -30`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/modules/analytics/period-comparison-metrics.test.ts --reporter=verbose 2>&1 | tail -30`
 
 Expected: FAIL — methods currently return `0`.
 
@@ -886,13 +886,13 @@ Also update the default return in `getMetricValue` from `return 0;` to `return 0
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/modules/analytics/period-comparison-metrics.test.ts --reporter=verbose 2>&1 | tail -30`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/modules/analytics/period-comparison-metrics.test.ts --reporter=verbose 2>&1 | tail -30`
 
 Expected: PASS
 
 - [ ] **Step 5: Run type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
 
 Expected: PASS
 
@@ -965,7 +965,7 @@ describe('ReportManagerService.batchOperation — export action', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/modules/reports/report-manager-batch.test.ts --reporter=verbose 2>&1 | tail -20`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/modules/reports/report-manager-batch.test.ts --reporter=verbose 2>&1 | tail -20`
 
 Expected: FAIL — export returns `success: true` without calling `downloadReport`, so `downloadUrl` is undefined.
 
@@ -992,7 +992,7 @@ With:
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/modules/reports/report-manager-batch.test.ts --reporter=verbose 2>&1 | tail -20`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/modules/reports/report-manager-batch.test.ts --reporter=verbose 2>&1 | tail -20`
 
 Expected: PASS
 
@@ -1031,7 +1031,7 @@ With:
 
 - [ ] **Step 2: Run type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
 
 Expected: PASS
 
@@ -1048,19 +1048,19 @@ git commit -m "docs: clarify deleteReportFile no-op (reports not stored in R2)"
 
 - [ ] **Step 1: Run all backend tests**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run 2>&1 | tail -20`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run 2>&1 | tail -20`
 
 Expected: All tests pass (existing + 3 new test files).
 
 - [ ] **Step 2: Run full type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit --project tsconfig.json 2>&1 | tail -10`
 
 Expected: PASS
 
 - [ ] **Step 3: Run frontend type check (for any consumers of SessionStats)**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && npx vue-tsc --noEmit 2>&1 | tail -10`
+Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && bunx vue-tsc --noEmit 2>&1 | tail -10`
 
 Expected: PASS (or flag frontend files that need `null` guards for `sessionsBySentiment`)
 

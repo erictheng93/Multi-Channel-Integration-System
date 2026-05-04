@@ -54,12 +54,12 @@ cd frontend && bun run bun:dev  # Frontend
 **Option 2: Use npm (Traditional approach)**
 ```bash
 # 1. Install dependencies
-npm install
-cd frontend && npm install
+bun install
+cd frontend && bun install
 
 # 2. Start development
-npm run dev # Backend
-cd frontend && npm run dev  # Frontend
+bun run dev # Backend
+cd frontend && bun run dev  # Frontend
 ```
 
 ### Environment Switching
@@ -86,19 +86,19 @@ cd frontend && npm run dev  # Frontend
 
 | Task | npm Command | Bun Command | Speed Gain |
 |------|-------------|-------------|------------|
-| **Development** | `npm run dev` | `bun run dev` | Same |
-| **Type Check** | `npm run build` | `bun run build` | Same |
-| **Worker Bundle** | `npm run build:worker-bundle` | `bun run build:worker-bundle:bun` | 25% faster |
-| **Frontend Bundle** | `npm run build:frontend-bundle` | `bun run build:frontend-bundle:bun` | 29% faster |
-| **Both Bundles** | `npm run build:installer-bundles` | `bun run build:installer-bundles:bun` | 27% faster |
+| **Development** | `bun run dev` | `bun run dev` | Same |
+| **Type Check** | `bun run build` | `bun run build` | Same |
+| **Worker Bundle** | `bun run build:worker-bundle` | `bun run build:worker-bundle:bun` | 25% faster |
+| **Frontend Bundle** | `bun run build:frontend-bundle` | `bun run build:frontend-bundle:bun` | 29% faster |
+| **Both Bundles** | `bun run build:installer-bundles` | `bun run build:installer-bundles:bun` | 27% faster |
 
 ### Frontend Commands (frontend/ directory)
 
 | Task | npm Command | Bun Command | Speed Gain |
 |------|-------------|-------------|------------|
-| **Development** | `npm run dev` | `bun run bun:dev` | Faster startup |
-| **Build** | `npm run build` | `bun run bun:build` | Same |
-| **Test** | `npm run test` | `bun run bun:test` | **2x faster** |
+| **Development** | `bun run dev` | `bun run bun:dev` | Faster startup |
+| **Build** | `bun run build` | `bun run bun:build` | Same |
+| **Test** | `bun run test` | `bun run bun:test` | **2x faster** |
 
 ### Web Installer Commands
 
@@ -113,7 +113,7 @@ bun run test:bun # Vitest tests
 ```bash
 cd web-installer/frontend
 bun run dev:bun # Vite dev server
-bun run build:bun # Production build (hybrid: npx + bun)
+bun run build:bun # Production build (hybrid: bunx + bun)
 ```
 
 ---
@@ -260,7 +260,7 @@ Search string not found: "/supportedTSExtensions = .*(?=;)/"
 
 **Solution:** Use hybrid approach (already implemented):
 ```bash
-npx vue-tsc --noEmit && bun vite build
+bunx vue-tsc --noEmit && bun vite build
 ```
 
 ### Issue 3: PowerShell Script Execution Blocked
@@ -282,8 +282,8 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\scripts\switch-to-npm.ps1
 
 # Step 2: Verify
-npm run dev
-cd frontend && npm run dev
+bun run dev
+cd frontend && bun run dev
 
 # Step 3: Clean up (optional)
 rm bun.lockb
@@ -293,15 +293,15 @@ rm bun.lockb
 
 **Backend only:**
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 **Frontend only:**
 ```bash
 cd frontend
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ---

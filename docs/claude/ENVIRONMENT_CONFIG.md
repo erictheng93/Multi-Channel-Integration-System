@@ -171,13 +171,13 @@ See `frontend/.env.example` for complete list with detailed descriptions.
    cd frontend
    cp .env.development .env
    # Edit .env to customize local URLs if needed
-   npm run dev
+   bun run dev
    ```
 
 2. **Backend:**
    ```bash
    # Ensure .dev.vars is configured
-   npm run dev  # Connects to REMOTE resources
+   bun run dev  # Connects to REMOTE resources
    ```
 
 **Switch to Production Environment:**
@@ -186,13 +186,13 @@ See `frontend/.env.example` for complete list with detailed descriptions.
    ```bash
    cd frontend
    cp .env.production .env
-   npm run build
-   npm run deploy:pages
+   bun run build
+   bun run deploy:pages
    ```
 
 2. **Backend:**
    ```bash
-   npm run deploy  # Uses wrangler.toml [vars] section
+   bun run deploy  # Uses wrangler.toml [vars] section
    ```
 
 ## Migration Benefits
@@ -268,7 +268,7 @@ See `frontend/.env.example` for complete list with detailed descriptions.
 - Check backend `FRONTEND_URL` includes correct port (usually 3000)
 
 **Problem: Configuration not updating after change**
-- Restart Vite dev server (`npm run dev`)
+- Restart Vite dev server (`bun run dev`)
 - Clear browser cache and reload
 - Verify `.env` file is in correct directory
 

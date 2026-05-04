@@ -10,7 +10,7 @@
 
 
 ```bash
-npx tsx tests/integration/activity-log.test.ts
+bunx tsx tests/integration/activity-log.test.ts
 ```
 
 
@@ -21,8 +21,8 @@ npx tsx tests/integration/activity-log.test.ts
 
 
 ```bash
-npx tsx tests/test-activity-logging.ts
-npx tsx tests/test-permissions.ts
+bunx tsx tests/test-activity-logging.ts
+bunx tsx tests/test-permissions.ts
 ```
 
 

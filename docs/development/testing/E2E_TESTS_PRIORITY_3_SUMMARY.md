@@ -643,7 +643,7 @@ E2E tests are **EXCELLENT** and **EXCEEDING TARGET** by 21.1%.
 
 ### Weekly Monitoring
 
-- [ ] Run full E2E suite: `npm run test:e2e`
+- [ ] Run full E2E suite: `bun run test:e2e`
 - [ ] Verify pass rate >= 80%
 - [ ] Check for new flaky tests
 - [ ] Review execution times

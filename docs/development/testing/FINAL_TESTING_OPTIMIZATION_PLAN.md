@@ -370,13 +370,13 @@ jobs:
 
  - name: Type check
  run: |
- npm run type-check
- cd frontend && npm run type-check
+ bun run type-check
+ cd frontend && bun run type-check
 
  - name: Lint
  run: |
- npm run lint
- cd frontend && npm run lint
+ bun run lint
+ cd frontend && bun run lint
 
  e2e-test:
  runs-on: ubuntu-latest
@@ -394,13 +394,13 @@ jobs:
  run: npm ci
 
  - name: Start development server
- run: npm run dev &
+ run: bun run dev &
 
  - name: Wait for server
- run: npx wait-on http://localhost:8787
+ run: bunx wait-on http://localhost:8787
 
  - name: Run E2E tests
- run: npx playwright test
+ run: bunx playwright test
 
  - name: Upload E2E results
  uses: actions/upload-artifact@v3
@@ -426,7 +426,7 @@ jobs:
  run: npm ci
 
  - name: Deploy to Cloudflare Workers
- run: npx wrangler deploy --env production
+ run: bunx wrangler deploy --env production
  env:
  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 ```

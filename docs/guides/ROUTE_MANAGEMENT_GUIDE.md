@@ -150,7 +150,7 @@ app.route('/*', catchAllHandler);
 
 ```bash
 # 手動運行檢測
-npm run check:routes
+bun run check:routes
 
 # 輸出示例：
 #  Route Conflict Detector
@@ -175,11 +175,11 @@ npm run check:routes
 
 ```bash
 # 安裝 husky（如果還沒有）
-npm install -D husky
-npx husky install
+bun install -D husky
+bunx husky install
 
 # 添加 pre-commit hook
-npx husky add .husky/pre-commit "npm run check:routes"
+bunx husky add .husky/pre-commit "bun run check:routes"
 ```
 
 #### CI/CD 自動檢測
@@ -197,7 +197,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
       - run: npm ci
-      - run: npm run check:routes
+      - run: bun run check:routes
 ```
 
 ---
@@ -271,8 +271,8 @@ registry.register();
   "scripts": {
     "check:routes": "tsx scripts/detect-route-conflicts.ts",
     "check:routes:watch": "nodemon --exec tsx scripts/detect-route-conflicts.ts --watch src",
-    "predev": "npm run check:routes",
-    "predeploy": "npm run check:routes"
+    "predev": "bun run check:routes",
+    "predeploy": "bun run check:routes"
   }
 }
 ```
@@ -312,10 +312,10 @@ GET /api/teams/members → 404 Not Found
 **解決方法**：
 ```bash
 # 運行檢測工具
-npm run check:routes
+bun run check:routes
 
 # 檢查路由註冊日誌
-npm run dev | grep "Registered:"
+bun run dev | grep "Registered:"
 
 # 手動測試路由
 curl -v http://localhost:8787/api/teams/members
@@ -469,7 +469,7 @@ app.route('/api/v2', v2Registry.register());
 ###  關鍵原則
 
 1. **具體路由優先** - 總是在參數化路由之前註冊
-2. **使用檢測工具** - 定期運行 `npm run check:routes`
+2. **使用檢測工具** - 定期運行 `bun run check:routes`
 3. **添加 CI 檢查** - 防止錯誤合併到主分支
 4. **文檔化路由** - 為每個路由添加描述
 5. **定期審查** - 重構時檢查路由結構

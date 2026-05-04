@@ -509,10 +509,10 @@ new_classes = ["DelayedMessageBuffer"]
 
 ```bash
 # Worker ( Durable Objects)
-npm run deploy
+bun run deploy
 
 # Wrangler
-npx wrangler deploy
+bunx wrangler deploy
 ```
 
 ### 3.
@@ -558,7 +558,7 @@ curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
 
 ```bash
 
-npx wrangler tail
+bunx wrangler tail
 ```
 
 ### 3.
@@ -668,7 +668,7 @@ curl -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
 ****:
 ```bash
 # Worker ( DO )
-npx wrangler deploy
+bunx wrangler deploy
 
 # Cloudflare Dashboard
 # - Durable Objects CPU/Memory

@@ -40,7 +40,7 @@ WHERE type='index' AND tbl_name='customers' AND name LIKE 'idx%';
 
 #### 编译命令
 ```bash
-$ npm run build
+$ bun run build
 > tsc --noEmit
 ```
 
@@ -48,8 +48,8 @@ $ npm run build
 
 #### Lint 检查
 ```bash
-$ npm run lint:check
-> npx tsc --noEmit && cd frontend && npx vue-tsc --noEmit && npm run lint
+$ bun run lint:check
+> bunx tsc --noEmit && cd frontend && bunx vue-tsc --noEmit && bun run lint
 ```
 
 **结果**:  **Lint 检查通过，无警告**
@@ -176,7 +176,7 @@ describe('Analytics Platform Filter', () => {
 
 #### API 端点测试
 ```bash
-# 需要运行: npm run dev
+# 需要运行: bun run dev
 
 # 1. File Management Health Check
 GET http://localhost:8787/api/files/health
@@ -197,7 +197,7 @@ Authorization: Bearer <token>
 #### 单元测试执行
 ```bash
 # 需要测试环境配置
-npm run test:handlers
+bun run test:handlers
 ```
 
 **状态**:  **待服务器运行后执行**

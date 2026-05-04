@@ -212,7 +212,7 @@ console.log(`平均批量大小: ${avgBatchSize} 個事件/批次`);
 
 ```bash
 # 運行批量廣播測試
-npx vitest tests/unit/services/websocket-broadcast-batch.test.ts --run
+bunx vitest tests/unit/services/websocket-broadcast-batch.test.ts --run
 
 # 測試覆蓋：
 #  批量隊列機制 (5 tests)
