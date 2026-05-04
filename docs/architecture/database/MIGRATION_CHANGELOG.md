@@ -170,19 +170,19 @@ DROP INDEX idx_agents_role_active;
 ### Local Development
 ```bash
 # Apply all pending migrations
-npm run db:migrate
+bun run db:migrate
 
 # View database in Drizzle Studio
-npm run db:studio:local
+bun run db:studio:local
 ```
 
 ### Production
 ```bash
 # Apply migrations to production
-npm run db:migrate:prod
+bun run db:migrate:prod
 
 # Verify migration success
-npm run health:check:all
+bun run health:check:all
 ```
 
 ---
@@ -196,13 +196,13 @@ npm run health:check:all
 
 2. **Test locally first**
    ```bash
-   npm run db:migrate
-   npm run test:handlers
+   bun run db:migrate
+   bun run test:handlers
    ```
 
 3. **Monitor after deployment**
    ```bash
-   npm run monitor:deployment
+   bun run monitor:deployment
    ```
 
 4. **Keep rollback scripts ready**

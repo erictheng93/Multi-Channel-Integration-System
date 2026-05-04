@@ -46,7 +46,7 @@
 │ 1. 編寫代碼 (30 分鐘) │
 ├─────────────────────────────────────────┤
 │ 2. 手動檢測? (應該做但常被跳過) │
-│ $ npm run check:routes │
+│ $ bun run check:routes │
 │ ↓                                    │
 │ 60% 的人會跳過這步 │
 │ 原因: │
@@ -89,7 +89,7 @@
 │ Pre-commit Hook 自動觸發 │
 ├─────────────────────────────────────────┤
 │ 3. 自動檢測 (2 秒) │
-│ Running: npm run check:routes:ci │
+│ Running: bun run check:routes:ci │
 │ ↓                                    │
 │ FOUND CONFLICT! │
 │ Commit BLOCKED │
@@ -131,8 +131,8 @@
 設置成本:
 ┌────────────────────────────────┐
 │ 安裝和配置: 5 分鐘 │
-│ $ npx husky add .husky/ │
-│ pre-commit "npm run │
+│ $ bunx husky add .husky/ │
+│ pre-commit "bun run │
 │ check:routes:ci" │
 │ │
 │ 一次性成本: 0.08 小時 │
@@ -407,8 +407,8 @@ Priority 1: Pre-commit Hook (立即配置)
 │ 風險: 零 (可隨時移除) │
 │ │
 │ 命令: │
-│ $ npx husky add .husky/pre-commit │
-│ "npm run check:routes:ci" │
+│ $ bunx husky add .husky/pre-commit │
+│ "bun run check:routes:ci" │
 │ │
 │ 建議: 今天就配置！ │
 └─────────────────────────────────────────────┘
@@ -435,10 +435,10 @@ Priority 2: 智能註冊器 (逐步遷移)
 ls .husky 2>/dev/null && echo " Husky already installed" || echo " Need to install"
 
 # 步驟 2: 如果未安裝，初始化 Husky
-npx husky install
+bunx husky install
 
 # 步驟 3: 添加 Pre-commit Hook
-npx husky add .husky/pre-commit "npm run check:routes:ci"
+bunx husky add .husky/pre-commit "bun run check:routes:ci"
 
 # 步驟 4: 確保 Hook 可執行 (Linux/Mac)
 chmod +x .husky/pre-commit
@@ -494,8 +494,8 @@ if (conflicts.length > 0) {
 }
 
 // 步驟 6: 測試驗證
-// $ npm run dev
-// $ npm run test
+// $ bun run dev
+// $ bun run test
 ```
 
 ---
@@ -558,8 +558,8 @@ if (conflicts.length > 0) {
 ```
 1️ 配置 Pre-commit Hook (5 分鐘) 
 ┌────────────────────────────────────┐
-│ $ npx husky add .husky/pre-commit  │
-│ "npm run check:routes:ci" │
+│ $ bunx husky add .husky/pre-commit  │
+│ "bun run check:routes:ci" │
 │ │
 │ 為什麼要做: │
 │ • 預防 100% 的人為錯誤 │

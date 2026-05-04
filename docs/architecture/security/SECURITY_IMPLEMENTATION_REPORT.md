@@ -523,7 +523,7 @@ curl -X POST http://localhost:8787/api/integrations/channels/3/verify \
 **Check Logs**:
 ```bash
 # Local development
-npm run dev  # Watch console for encryption/decryption logs
+bun run dev  # Watch console for encryption/decryption logs
 
 # Production (Cloudflare)
 wrangler tail  # Stream live logs
@@ -532,7 +532,7 @@ wrangler tail  # Stream live logs
 **Database Inspection**:
 ```bash
 # Check encrypted credentials format
-npm run db:studio:local
+bun run db:studio:local
 
 # Verify channel_integrations table:
 # - lineChannelAccessToken should be JSON string with encrypted/iv/tag

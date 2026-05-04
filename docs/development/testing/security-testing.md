@@ -53,12 +53,12 @@ cp tests/.env.test.example tests/.env.test
 
 ```bash
 # Run all security tests
-npm run test:security
+bun run test:security
 
 # Run specific security test suites
-npm run test:auth
-npm run test:permissions
-npm run test:validation
+bun run test:auth
+bun run test:permissions
+bun run test:validation
 ```
 
 ## Security Test Checklist

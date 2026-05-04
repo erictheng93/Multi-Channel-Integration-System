@@ -239,14 +239,14 @@ app.route('/api/files', fileAccessRouter);
 # 發送測試貼圖到 LINE OA
 # 檢查後端日誌確認下載成功
 
-npx wrangler tail --format pretty
+bunx wrangler tail --format pretty
 ```
 
 ### 2. 驗證 R2 儲存
 
 ```bash
 # 列出 R2 Bucket 中的貼圖文件
-npx wrangler r2 object list multi-channel-crm-files --prefix=line-media/sticker/
+bunx wrangler r2 object list multi-channel-crm-files --prefix=line-media/sticker/
 ```
 
 ### 3. 測試前端顯示

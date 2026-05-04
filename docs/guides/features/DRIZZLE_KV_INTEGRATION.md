@@ -6,7 +6,7 @@
 ### 1.
 
 ```bash
-npm install
+bun install
 ```
 
 ### 2.
@@ -41,19 +41,19 @@ wrangler kv:namespace create "CACHE" --preview
 
 ```bash
 # Drizzle
-npm run db:generate
+bun run db:generate
 
 
-npm run db:migrate
+bun run db:migrate
 
 
-npm run db:migrate:prod
+bun run db:migrate:prod
 ```
 
 ### 5.
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 
@@ -139,19 +139,19 @@ Authorization: Bearer <token>
 ### Drizzle Studio
 
 ```bash
-npm run db:studio
+bun run db:studio
 ```
 
 
 ```bash
 
-npm run db:generate
+bun run db:generate
 
 # schema
-npm run db:push
+bun run db:push
 
 # schema
-npm run db:introspect
+bun run db:introspect
 ```
 
 

@@ -23,7 +23,7 @@ wrangler dev
 
 # 2:
 cd frontend
-npm run dev
+bun run dev
 ```
 
 ****: `frontend/.env.development`
@@ -212,7 +212,7 @@ wrangler dev
 
 # 2. ()
 cd frontend
-npm run dev
+bun run dev
 
 # 3.
 # : http://localhost:3000
@@ -230,14 +230,14 @@ cp frontend/.env.local.example frontend/.env.local
 
 # 3.
 cd frontend
-npm run dev
+bun run dev
 ```
 
 
 ```bash
 # 1.
 cd frontend
-npm run build:pages
+bun run build:pages
 
 # 2. Pages
 wrangler pages deploy dist --project-name=your-project-name

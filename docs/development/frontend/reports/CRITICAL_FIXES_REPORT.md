@@ -406,7 +406,7 @@ it('應該處理發送失敗並回滾樂觀更新', async () => {
 
 ```bash
 cd frontend
-npm install jwt-decode
+bun install jwt-decode
 ```
 
 ### 函式庫資訊
@@ -512,7 +512,7 @@ Net change: +55 lines
 - [x] **所有測試通過**: 620/620 (100%)
 - [x] **無迴歸**: 既有功能未破壞
 - [x] **新行為驗證**: 失敗訊息測試更新
-- [x] **類型檢查**: `npm run type-check` 通過
+- [x] **類型檢查**: `bun run type-check` 通過
 
 ### 部署驗證
 
@@ -543,16 +543,16 @@ git merge claude/analyze-test-coverage-0124PX8XkMwpxN7HaBp4Co3H
 
 # 2. 安裝依賴
 cd frontend
-npm install
+bun install
 
 # 3. 執行測試
-npm run test:run
+bun run test:run
 
 # 4. 構建生產版本
-npm run build
+bun run build
 
 # 5. 部署
-npm run deploy:pages
+bun run deploy:pages
 ```
 
 ### 回滾計劃
@@ -561,8 +561,8 @@ npm run deploy:pages
 
 ```bash
 git revert fda60a1  # 回滾此次修復
-npm install # 恢復依賴
-npm run build # 重新構建
+bun install # 恢復依賴
+bun run build # 重新構建
 ```
 
 ### 監控建議

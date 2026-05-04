@@ -11,7 +11,7 @@
 ###  Backend - 100% 通過
 
 ```bash
-npm run lint:check
+bun run lint:check
 ```
 
 **結果**:  **完全通過**
@@ -24,7 +24,7 @@ npm run lint:check
 ###  Frontend - 100% 通過
 
 ```bash
-cd frontend && npm run lint
+cd frontend && bun run lint
 ```
 
 **結果**:  **完全通過，0 個錯誤**
@@ -90,7 +90,7 @@ After:  0 命名不一致問題
 ### Before (修復前)
 
 ```bash
-npm run lint:check
+bun run lint:check
 #  140+ TypeScript/ESLint 錯誤
 #  19 個文件存在命名不一致
 #  Backend: 70+ 處 snake_case
@@ -100,7 +100,7 @@ npm run lint:check
 ### After (修復後)
 
 ```bash
-npm run lint:check
+bun run lint:check
 #  0 個 TypeScript 錯誤
 #  0 個 ESLint 錯誤
 #  100% 文件命名統一
@@ -179,7 +179,7 @@ npm run lint:check
 ```yaml
 # .github/workflows/lint.yml
 - name: Run Lint Check
-  run: npm run lint:check
+  run: bun run lint:check
 ```
 
 ---
@@ -256,13 +256,13 @@ console.log(customer.platformUserId);  //  直接訪問 camelCase
 
 ```bash
 # 完整驗證（Backend + Frontend）
-npm run lint:check
+bun run lint:check
 
 # 僅 Backend
-npx tsc --noEmit
+bunx tsc --noEmit
 
 # 僅 Frontend
-cd frontend && npm run lint
+cd frontend && bun run lint
 ```
 
 ### 預期結果
@@ -287,7 +287,7 @@ cd frontend && npm run lint
 
 2. **提交前檢查**
    ```bash
-   npm run lint:check
+   bun run lint:check
    ```
 
 3. **Code Review 時**
@@ -339,7 +339,7 @@ ESLint 規範: ████████████████████ 100%
 
 ### 維護建議
 
-1.  定期運行 `npm run lint:check`
+1.  定期運行 `bun run lint:check`
 2.  Code Review 時檢查命名
 3.  新成員學習 `NAMING_CONVENTIONS.md`
 4.  考慮添加 pre-commit hooks
@@ -352,16 +352,16 @@ ESLint 規範: ████████████████████ 100%
 
 ```bash
 # 完整驗證
-npm run lint:check
+bun run lint:check
 
 # Backend 獨立驗證
-npx tsc --noEmit
+bunx tsc --noEmit
 
 # Frontend 獨立驗證
-cd frontend && npm run lint
+cd frontend && bun run lint
 
 # 運行測試確保功能正常
-cd frontend && npm run test
+cd frontend && bun run test
 ```
 
 ### 所有文檔位置

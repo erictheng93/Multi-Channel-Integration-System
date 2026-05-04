@@ -18,7 +18,7 @@ cd frontend
 
 # 停止當前的開發服務器 (Ctrl+C)
 # 然後重新啟動
-npm run dev
+bun run dev
 ```
 
 **等待輸出：**
@@ -208,7 +208,7 @@ http://localhost:3000/conversations/39754c72-ba50-4a35-ba86-56feb46bd710
 
 **解決方法：**
 1. 停止前端服務器 (Ctrl+C)
-2. 重新啟動 `npm run dev`
+2. 重新啟動 `bun run dev`
 3. 清除瀏覽器緩存
 4. 刷新頁面
 
@@ -304,8 +304,8 @@ images.forEach(img => {
 2. **部署到生產環境**
    ```bash
    cd frontend
-   npm run build
-   npm run deploy:pages
+   bun run build
+   bun run deploy:pages
    ```
 
 3. **監控生產環境**

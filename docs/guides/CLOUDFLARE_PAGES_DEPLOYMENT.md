@@ -16,10 +16,10 @@
 cd frontend
 
 
-npm install
+bun install
 
 
-npm run build:pages
+bun run build:pages
 ```
 
 ### 2. Cloudflare Pages
@@ -32,7 +32,7 @@ npm run build:pages
 4. Git
 5.
  - **Framework preset**: Vue
- - **Build command**: `npm run build:pages`
+ - **Build command**: `bun run build:pages`
  - **Build output directory**: `dist`
  - **Root directory**: `frontend`
 
@@ -40,7 +40,7 @@ npm run build:pages
 
 ```bash
 # Wrangler
-npm install -g wrangler
+bun install -g wrangler
 
 # Cloudflare
 wrangler login
@@ -125,10 +125,10 @@ wrangler pages deployment tail --project-name=mcis-ey7
 
 ```bash
 
-npm run preview
+bun run preview
 
 # API
-npm run dev
+bun run dev
 ```
 
 
@@ -163,7 +163,7 @@ jobs:
  - name: Build
  run: |
  cd frontend
- npm run build:pages
+ bun run build:pages
 
  - name: Deploy to Cloudflare Pages
  uses: cloudflare/pages-action@v1

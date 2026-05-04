@@ -547,7 +547,7 @@ All existing props work identically:
 
 Run the test suite to verify:
 ```bash
-npm run test -- MessageBubbleOptimized.test.ts
+bun run test -- MessageBubbleOptimized.test.ts
 ```
 
 Expected: **29/29 tests passing**

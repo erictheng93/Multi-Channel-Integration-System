@@ -1255,29 +1255,29 @@ CREATE INDEX idx_activities_created ON activities(created_at);
 
 ```bash
 # 应用迁移到本地数据库
-npm run db:migrate
+bun run db:migrate
 
 # 查看本地数据库 (Drizzle Studio)
-npm run db:studio:local
+bun run db:studio:local
 
 # 生成新的迁移文件
-npm run db:generate
+bun run db:generate
 
 # 直接推送 schema 变更 (开发环境)
-npm run db:push
+bun run db:push
 ```
 
 ### 生产环境
 
 ```bash
 # 应用迁移到生产数据库
-npm run db:migrate:prod
+bun run db:migrate:prod
 
 # 健康检查
-npm run health:check:all
+bun run health:check:all
 
 # 监控部署
-npm run monitor:deployment
+bun run monitor:deployment
 ```
 
 ### 数据库查询示例
@@ -1503,7 +1503,7 @@ AND is_read = 1;
 
 如有数据库相关问题，请:
 1. 查看迁移历史 (`drizzle/*.sql`)
-2. 查看 Drizzle Studio (`npm run db:studio:local`)
+2. 查看 Drizzle Studio (`bun run db:studio:local`)
 3. 检查健康端点 (`/api/system/health`)
 4. 提交 GitHub Issue
 

@@ -375,10 +375,10 @@ export default {
 
 **Migration Management**:
 - **Location**: `drizzle/` directory
-- **Generation**: `npm run db:generate`
-- **Local Application**: `npm run db:migrate`
-- **Production Application**: `npm run db:migrate:prod`
-- **Schema Studio**: `npm run db:studio:local`
+- **Generation**: `bun run db:generate`
+- **Local Application**: `bun run db:migrate`
+- **Production Application**: `bun run db:migrate:prod`
+- **Schema Studio**: `bun run db:studio:local`
 
 ### 4.2 Data Management Requirements
 
@@ -1071,33 +1071,33 @@ git clone <repository-url>
 cd multi-channel-integration-system
 
 # Install backend dependencies
-npm install
+bun install
 
 # Install frontend dependencies
-cd frontend && npm install && cd ..
+cd frontend && bun install && cd ..
 
 # Setup development environment
 .\setup-env.ps1
 
 # Setup database
-npm run db:migrate
-npm run db:studio:local # Optional: Database GUI
+bun run db:migrate
+bun run db:studio:local # Optional: Database GUI
 ```
 
 **Development Workflow**:
 ```bash
 # Start backend development server
-npm run dev # Wrangler dev server on localhost:8787
+bun run dev # Wrangler dev server on localhost:8787
 
 # Start frontend development server
-cd frontend && npm run dev # Vite dev server on localhost:3000
+cd frontend && bun run dev # Vite dev server on localhost:3000
 
 # Run tests
-cd frontend && npm run test # 132 tests, 100% coverage
+cd frontend && bun run test # 132 tests, 100% coverage
 
 # Type checking
-npm run build # Backend TypeScript check
-cd frontend && npm run type-check # Frontend TypeScript check
+bun run build # Backend TypeScript check
+cd frontend && bun run type-check # Frontend TypeScript check
 ```
 
 #### 8.1.3 Development Configuration
@@ -1198,7 +1198,7 @@ export const createMockConversation = (): Conversation => ({
 **Backend Build** (TypeScript):
 ```bash
 # Type checking only (no build output for Workers)
-npm run build # tsc --noEmit
+bun run build # tsc --noEmit
 
 # Deployment build
 wrangler deploy --env production
@@ -1236,7 +1236,7 @@ export default defineConfig({
 wrangler deploy --env development
 
 # Frontend deployment to staging
-cd frontend && npm run build && npm run deploy:pages
+cd frontend && bun run build && bun run deploy:pages
 ```
 
 **Production Deployment**:
@@ -1245,8 +1245,8 @@ cd frontend && npm run build && npm run deploy:pages
 .\quick-deploy.ps1
 
 # Manual production deployment
-npm run deploy # Backend
-cd frontend && npm run deploy:pages # Frontend
+bun run deploy # Backend
+cd frontend && bun run deploy:pages # Frontend
 ```
 
 #### 8.3.3 Environment Promotion
@@ -1265,7 +1265,7 @@ curl https://your-api-domain.example.com/api/health
 curl https://frontend.example.com
 
 # Database migration verification
-npm run db:migrate:prod --dry-run
+bun run db:migrate:prod --dry-run
 ```
 
 ---
@@ -1444,7 +1444,7 @@ npm update
 cd frontend && npm update
 
 # Verify functionality after updates
-npm run test:all
+bun run test:all
 ```
 
 **Security Updates**:
@@ -1799,7 +1799,7 @@ export default defineConfig({
 wrangler d1 info DB
 
 # Verify database connectivity
-npm run db:studio:local
+bun run db:studio:local
 
 # Reset local database
 wrangler d1 migrations apply DB --local
@@ -1809,11 +1809,11 @@ wrangler d1 migrations apply DB --local
 ```bash
 # Clear build cache
 rm -rf dist node_modules/.vite
-npm install
+bun install
 
 # Verify TypeScript compilation
-npm run build
-cd frontend && npm run type-check
+bun run build
+cd frontend && bun run type-check
 
 # Test deployment configuration
 wrangler deploy --dry-run
@@ -1822,10 +1822,10 @@ wrangler deploy --dry-run
 **Performance Issues**:
 ```bash
 # Analyze bundle size
-cd frontend && npm run build:analyze
+cd frontend && bun run build:analyze
 
 # Check database query performance
-npm run db:studio:local
+bun run db:studio:local
 
 # Monitor application performance
 curl https://your-domain.com/api/health

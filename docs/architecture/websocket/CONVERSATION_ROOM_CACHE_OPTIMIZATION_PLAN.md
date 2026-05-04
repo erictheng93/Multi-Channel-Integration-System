@@ -599,13 +599,13 @@ describe('ConversationRoom Cache Optimization', () => {
 
 ```bash
 # Test message throughput with cache optimization
-npm run test -- tests/integration/websocket/high-volume-messaging.test.ts
+bun run test -- tests/integration/websocket/high-volume-messaging.test.ts
 
 # Test DO memory usage
-npm run test:memory -- ConversationRoom
+bun run test:memory -- ConversationRoom
 
 # Test lazy load performance
-npm run test -- tests/integration/websocket/lazy-load.test.ts
+bun run test -- tests/integration/websocket/lazy-load.test.ts
 ```
 
 ---
@@ -673,10 +673,10 @@ Target: P95 < 100ms
 git revert <commit-hash>
 
 # 2. 重新部署
-npm run deploy
+bun run deploy
 
 # 3. 验证
-npm run health:check:all
+bun run health:check:all
 
 # 4. 监控30分钟
 ```

@@ -207,7 +207,7 @@ $ curl https://your-domain.com/api/myendpoint
 **Solution:**
 Use the validation tool to check:
 ```bash
-npm run validate:routes
+bun run validate:routes
 ```
 
 ### Problem 3: Duplicate Route Registrations
@@ -307,13 +307,13 @@ app.route('/test-myendpoint', myHandler); // Diagnostic
 
 ```bash
 # Run validation tool
-npm run validate:routes
+bun run validate:routes
 
 # Test endpoints
 curl https://your-domain.com/api/myendpoint
 
 # Run E2E tests
-npm run test:api
+bun run test:api
 ```
 
 #### Step 6: Clean Up
@@ -333,13 +333,13 @@ Run the route registration order validation tool:
 
 ```bash
 # Basic validation
-npm run validate:routes
+bun run validate:routes
 
 # CI/CD validation (fails on errors)
-npm run validate:routes:ci
+bun run validate:routes:ci
 
 # Validate all configurations
-npm run validate:all
+bun run validate:all
 ```
 
 ### Tool Output Example
@@ -450,7 +450,7 @@ $ curl https://your-api-domain.example.com/api/cors/health
 {"status":"healthy","timestamp":"2025-10-14T07:54:49.695Z"} # 200 OK
 
 # E2E tests
-$ npm run test:cors
+$ bun run test:cors
  12/12 tests passing (100% success rate)
 ```
 
@@ -506,7 +506,7 @@ When adding a new handler, test it in both positions:
 Always run the validation tool before committing:
 
 ```bash
-npm run validate:routes
+bun run validate:routes
 ```
 
 Add it to your pre-commit hook:
@@ -516,7 +516,7 @@ Add it to your pre-commit hook:
 {
  "husky": {
  "hooks": {
- "pre-commit": "npm run validate:routes && npm run lint:check"
+ "pre-commit": "bun run validate:routes && bun run lint:check"
  }
  }
 }
@@ -548,7 +548,7 @@ After deployment, verify endpoints work correctly:
 
 ```bash
 # Automated monitoring script
-npm run health:check:all
+bun run health:check:all
 
 # Manual verification
 curl https://your-domain.com/api/cors/health
@@ -566,7 +566,7 @@ curl https://your-domain.com/api/websocket/health
 - [ ] Add to appropriate location in src/index.ts
 - [ ] Add clear documentation comments
 - [ ] Test with diagnostic route first
-- [ ] Run validation tool: `npm run validate:routes`
+- [ ] Run validation tool: `bun run validate:routes`
 - [ ] Test production endpoint
 - [ ] Remove diagnostic routes
 - [ ] Add E2E tests
@@ -577,17 +577,17 @@ curl https://your-domain.com/api/websocket/health
 
 ```bash
 # Validate route order
-npm run validate:routes
+bun run validate:routes
 
 # Validate all configuration
-npm run validate:all
+bun run validate:all
 
 # Test CORS endpoints
 curl https://your-domain.com/api/cors/health
 curl https://your-domain.com/api/cors/config
 
 # Run E2E tests
-npm run test:api
+bun run test:api
 ```
 
 ### Key Files
@@ -605,7 +605,7 @@ npm run test:api
 
 If you encounter route registration issues:
 
-1. **Run the validation tool**: `npm run validate:routes`
+1. **Run the validation tool**: `bun run validate:routes`
 2. **Check this document** for your specific problem
 3. **Review CLAUDE.md** "Route Registration Order ( Critical)" section
 4. **Use diagnostic routes** to isolate the issue

@@ -64,7 +64,7 @@ graph TB
 
 ```bash
 
-npm run test:load:websocket -- \
+bun run test:load:websocket -- \
  --url wss://localhost:8787/api/websocket/connect \
  --connections 1000 \
  --rate 50 \
@@ -72,7 +72,7 @@ npm run test:load:websocket -- \
  --duration 300
 
 
-npm run test:load:websocket -- \
+bun run test:load:websocket -- \
  --url wss://localhost:8787/api/websocket/connect \
  --connections 5000 \
  --rate 100 \
@@ -94,7 +94,7 @@ npm run test:load:websocket -- \
 
 ```bash
 # Durable Objects
-npm run test:stress:do -- \
+bun run test:stress:do -- \
  --url https://localhost:8787 \
  --rooms 100 \
  --users 1000 \
@@ -103,7 +103,7 @@ npm run test:stress:do -- \
  --concurrency 50
 
 
-npm run test:stress:do -- \
+bun run test:stress:do -- \
  --url https://localhost:8787 \
  --rooms 20 \
  --users 200 \
@@ -124,14 +124,14 @@ npm run test:stress:do -- \
 
 ```bash
 
-npm run benchmark -- \
+bun run benchmark -- \
  --url https://localhost:8787 \
  --websocket-url wss://localhost:8787/api/websocket/connect \
  --iterations 1000 \
  --suites latency,throughput,memory,websocket,durableobjects
 
 
-npm run benchmark -- \
+bun run benchmark -- \
  --suites latency,websocket \
  --iterations 500 \
  --format json \
@@ -143,7 +143,7 @@ npm run benchmark -- \
 
 ```bash
 
-npm run profile:memory -- \
+bun run profile:memory -- \
  --url https://localhost:8787 \
  --websocket-url wss://localhost:8787/api/websocket/connect \
  --duration 300 \
@@ -152,7 +152,7 @@ npm run profile:memory -- \
  --threshold 50
 
 
-npm run profile:memory -- \
+bun run profile:memory -- \
  --gc true \
  --output ./memory-profiles
 ```
@@ -169,7 +169,7 @@ npm run profile:memory -- \
 
 ```bash
 
-npm run test:storm:connections -- \
+bun run test:storm:connections -- \
  --url wss://localhost:8787/api/websocket/connect \
  --waves 10 \
  --connections 100 \
@@ -178,7 +178,7 @@ npm run test:storm:connections -- \
  --rapid-ratio 0.3
 
 
-npm run test:storm:connections -- \
+bun run test:storm:connections -- \
  --waves 20 \
  --connections 500 \
  --interval 1000 \
@@ -198,7 +198,7 @@ npm run test:storm:connections -- \
 
 ```bash
 
-npm run test:flood:messages -- \
+bun run test:flood:messages -- \
  --url https://localhost:8787 \
  --websocket-url wss://localhost:8787/api/websocket/connect \
  --messages 10000 \
@@ -207,7 +207,7 @@ npm run test:flood:messages -- \
  --size 1024
 
 
-npm run test:flood:messages -- \
+bun run test:flood:messages -- \
  --messages 50000 \
  --rate 500 \
  --connections 100 \
@@ -347,13 +347,13 @@ const monitorConfig = {
 1. ****
  ```bash
  #
- npm run benchmark -- --suites latency --iterations 1000
+ bun run benchmark -- --suites latency --iterations 1000
 
  #
- npm run test:network-latency
+ bun run test:network-latency
 
  # Durable Objects
- npm run test:stress:do -- --rooms 10 --users 100
+ bun run test:stress:do -- --rooms 10 --users 100
  ```
 
 2. ****
@@ -362,35 +362,35 @@ const monitorConfig = {
  curl https://your-domain.com/api/websocket/metrics
 
  #
- npm run test:storm:connections -- --waves 5 --connections 50
+ bun run test:storm:connections -- --waves 5 --connections 50
  ```
 
 3. ****
  ```bash
  #
- npm run profile:memory -- --duration 180 --connections 5
+ bun run profile:memory -- --duration 180 --connections 5
 
  #
- npm run profile:memory -- --gc true --threshold 30
+ bun run profile:memory -- --gc true --threshold 30
  ```
 
 
 1. ****
  ```bash
  #
- npm run benchmark:baseline
+ bun run benchmark:baseline
  ```
 
 2. ****
  ```bash
  #
- npm run analyze:performance
+ bun run analyze:performance
  ```
 
 3. ****
  ```bash
  #
- npm run benchmark:compare
+ bun run benchmark:compare
  ```
 
 
@@ -409,19 +409,19 @@ const monitorConfig = {
 1. ****
  ```bash
  #
- npm run test:production-readiness
+ bun run test:production-readiness
 
  #
- npm run benchmark:production
+ bun run benchmark:production
  ```
 
 2. ****
  ```bash
  #
- npm run deploy:monitoring
+ bun run deploy:monitoring
 
  #
- npm run test:alerts
+ bun run test:alerts
  ```
 
 3. ****

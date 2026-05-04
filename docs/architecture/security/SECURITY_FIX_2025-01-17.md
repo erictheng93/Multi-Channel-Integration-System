@@ -167,7 +167,7 @@ catch (error) {
 
 ### Build Verification
 ```bash
- npm run build
+ bun run build
 > tsc --noEmit
 # Build completed successfully with no errors
 ```
@@ -332,7 +332,7 @@ The following were initially flagged but determined to be **NOT VULNERABLE** aft
 ## Deployment Checklist
 
 - [x] Code changes implemented
-- [x] TypeScript compilation verified ( `npm run build` passes)
+- [x] TypeScript compilation verified ( `bun run build` passes)
 - [ ] Integration tests created and passing
 - [ ] Manual security testing completed
 - [ ] Code review by security team

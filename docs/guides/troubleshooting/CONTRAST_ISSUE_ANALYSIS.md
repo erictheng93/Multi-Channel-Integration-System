@@ -350,7 +350,7 @@ module.exports = {
 . "$(dirname "$0")/_/husky.sh"
 
 # Run contrast ratio tests
-npm run test:accessibility
+bun run test:accessibility
 
 # Check for CSS variable misuse
 if git diff --cached | grep -E "prefers-color-scheme.*--foreground.*25[0-9]"; then
@@ -387,7 +387,7 @@ jobs:
       - name: Run accessibility tests
         run: |
           cd frontend
-          npm run test:accessibility
+          bun run test:accessibility
 
       - name: Lighthouse CI
         uses: treosh/lighthouse-ci-action@v9

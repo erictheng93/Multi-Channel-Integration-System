@@ -754,10 +754,10 @@ watch(
 
 ,:
 
-- [ ] **TypeScript **: `npm run type-check`
-- [ ] **ESLint **: `npm run lint:check`
-- [ ] ****: `npm run test`
-- [ ] ****: `npm run dev`
+- [ ] **TypeScript **: `bun run type-check`
+- [ ] **ESLint **: `bun run lint:check`
+- [ ] ****: `bun run test`
+- [ ] ****: `bun run dev`
 - [ ] ****:
  - [ ] ,
  - [ ] ,

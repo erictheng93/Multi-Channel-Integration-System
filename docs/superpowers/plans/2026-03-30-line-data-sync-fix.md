@@ -207,7 +207,7 @@ describe('CustomerCrudService.findOrCreate — field mapping regression', () => 
 
 - [ ] **Step 2: Run the test — expect FAIL on "avatar change" test**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/unit/modules/customer/services/customer-crud-field-mapping.test.ts`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/unit/modules/customer/services/customer-crud-field-mapping.test.ts`
 
 Expected: The first test ("BUG #1 REGRESSION") should FAIL because `setArg.displayName` will be `'https://new-avatar.jpg'` instead of `undefined`.
 
@@ -225,13 +225,13 @@ updateData.avatarUrl = additionalInfo.avatarUrl;
 
 - [ ] **Step 4: Run the test — expect PASS**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/unit/modules/customer/services/customer-crud-field-mapping.test.ts`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/unit/modules/customer/services/customer-crud-field-mapping.test.ts`
 
 Expected: All 4 tests PASS.
 
 - [ ] **Step 5: Run full backend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 
 Expected: No new errors.
 
@@ -646,7 +646,7 @@ describe('webhook-customer-service (consolidated)', () => {
 
 - [ ] **Step 2: Run the tests — expect FAIL (old service lacks new functions)**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/unit/modules/integrations/services/webhook-customer-service.test.ts`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/unit/modules/integrations/services/webhook-customer-service.test.ts`
 
 Expected: FAIL — `updateCustomerProfile` is not exported, distributed lock tests fail, deletedAt tests fail.
 
@@ -956,13 +956,13 @@ export async function triggerBackgroundSyncIfNeeded(
 
 - [ ] **Step 4: Run the tests — expect PASS**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run tests/unit/modules/integrations/services/webhook-customer-service.test.ts`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run tests/unit/modules/integrations/services/webhook-customer-service.test.ts`
 
 Expected: All tests PASS.
 
 - [ ] **Step 5: Run backend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 
 Expected: No new errors. (Existing handler imports of `findOrCreateCustomer` and `triggerBackgroundSyncIfNeeded` still work since the function signatures are compatible.)
 
@@ -1033,7 +1033,7 @@ Keep everything after the team assignment lookup unchanged (findOrCreateConversa
 
 - [ ] **Step 2: Run backend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 
 Expected: No errors.
 
@@ -1109,7 +1109,7 @@ Keep `eq`, `and`, `ne`, `desc` imports — they are still used for conversation 
 
 - [ ] **Step 2: Run backend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 
 Expected: No errors.
 
@@ -1169,7 +1169,7 @@ Keep everything after (`findOrCreateConversation`, `isDuplicateMessage`, `saveMe
 
 - [ ] **Step 2: Run backend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 
 Expected: No errors.
 
@@ -1250,7 +1250,7 @@ Mark the private `findOrCreateCustomer` method as `@deprecated`:
 
 - [ ] **Step 2: Run backend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 
 Expected: No errors.
 
@@ -1329,13 +1329,13 @@ In `frontend/src/stores/conversations/realtimeHandler.ts`, inside the `switch (m
 
 - [ ] **Step 2: Run frontend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && npx vue-tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && bunx vue-tsc --noEmit`
 
 Expected: No errors.
 
 - [ ] **Step 3: Run frontend lint**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && npx eslint src/stores/conversations/realtimeHandler.ts --fix`
+Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && bunx eslint src/stores/conversations/realtimeHandler.ts --fix`
 
 Expected: No errors (or auto-fixed).
 
@@ -1359,25 +1359,25 @@ view immediately, without waiting for cache expiry or page reload."
 
 - [ ] **Step 1: Run backend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx tsc --noEmit`
 
 Expected: No errors.
 
 - [ ] **Step 2: Run frontend type check**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && npx vue-tsc --noEmit`
+Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && bunx vue-tsc --noEmit`
 
 Expected: No errors.
 
 - [ ] **Step 3: Run all backend tests**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System && npx vitest run`
+Run: `cd D:/Code/Multi_Channel_Integration_System && bunx vitest run`
 
 Expected: All tests pass (1842+ existing + new tests).
 
 - [ ] **Step 4: Run all frontend tests**
 
-Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && npx vitest run`
+Run: `cd D:/Code/Multi_Channel_Integration_System/frontend && bunx vitest run`
 
 Expected: All tests pass (3624+ existing tests).
 

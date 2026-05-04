@@ -287,7 +287,7 @@ const newUrl = `https://your-api-domain.example.com/r2-public/qr-codes/${filenam
 ### Step 3: ?�署?�新
 
 ```bash
-npm run deploy
+bun run deploy
 ```
 
 ---

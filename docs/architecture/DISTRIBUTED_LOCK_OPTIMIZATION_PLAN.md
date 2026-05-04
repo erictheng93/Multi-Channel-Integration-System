@@ -365,22 +365,22 @@ async function cleanupConnection(connectionId: string, userId: string, env: Bind
 #### 步骤2: 测试
 ```bash
 # 单元测试
-npm run test -- tests/unit/services/websocket-broadcast-service.test.ts
+bun run test -- tests/unit/services/websocket-broadcast-service.test.ts
 
 # 集成测试
-npm run test -- tests/integration/websocket/
+bun run test -- tests/integration/websocket/
 
 # 负载测试
-npm run test:load -- --scenario=broadcast --connections=1000
+bun run test:load -- --scenario=broadcast --connections=1000
 ```
 
 #### 步骤3: 部署
 ```bash
 # 1. 部署到开发环境
-npm run deploy -- --env=dev
+bun run deploy -- --env=dev
 
 # 2. 验证（发送1000条测试消息）
-npm run test:e2e -- --scenario=high-volume-broadcast
+bun run test:e2e -- --scenario=high-volume-broadcast
 
 # 3. 监控（观察1小时）
 # 检查指标:
@@ -402,10 +402,10 @@ npm run test:e2e -- --scenario=high-volume-broadcast
 #### 步骤2: 测试
 ```bash
 # 测试快速重连场景
-npm run test -- tests/integration/websocket/rapid-reconnect.test.ts
+bun run test -- tests/integration/websocket/rapid-reconnect.test.ts
 
 # 测试cleanup超时
-npm run test -- tests/unit/handlers/websocket-cleanup.test.ts
+bun run test -- tests/unit/handlers/websocket-cleanup.test.ts
 ```
 
 #### 步骤3: 部署
@@ -592,10 +592,10 @@ Target: < 0.001% (实际应该是 0%)
 git revert <commit-hash>
 
 # 2. 紧急部署
-npm run deploy -- --emergency
+bun run deploy -- --emergency
 
 # 3. 验证
-npm run health:check:all
+bun run health:check:all
 
 # 4. 监控30分钟
 # 确认指标恢复正常

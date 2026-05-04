@@ -8,29 +8,29 @@
 
 ### Prerequisites
 - Node.js 18+
-- NPM packages installed: `npm install`
+- NPM packages installed: `bun install`
 - Running WebSocket system (localhost:8787 or production URL)
 
 ### Essential Commands
 
 ```bash
 # Run all performance tests
-npm run test:production-readiness
+bun run test:production-readiness
 
 # Generate performance baseline
-npm run benchmark:baseline
+bun run benchmark:baseline
 
 # Test connection handling under load
-npm run test:load:websocket -- --connections 1000 --rate 50
+bun run test:load:websocket -- --connections 1000 --rate 50
 
 # Stress test connection storms
-npm run test:stress:connections -- --waves 10 --connections 100
+bun run test:stress:connections -- --waves 10 --connections 100
 
 # Profile memory usage
-npm run profile:memory -- --duration 300 --connections 10
+bun run profile:memory -- --duration 300 --connections 10
 
 # View real-time dashboard
-npm run dev
+bun run dev
 # Then visit: http://localhost:8787/dashboard
 ```
 
@@ -84,14 +84,14 @@ npm run dev
 
 ```bash
 # Basic load test
-npm run test:load:websocket -- \
+bun run test:load:websocket -- \
  --connections 1000 \
  --rate 50 \
  --messages 100 \
  --duration 300
 
 # Advanced options
-npm run test:load:websocket -- \
+bun run test:load:websocket -- \
  --connections 5000 \
  --rate 100 \
  --rooms 50 \
@@ -111,14 +111,14 @@ npm run test:load:websocket -- \
 
 ```bash
 # Test all DO components
-npm run test:load:durable-objects -- \
+bun run test:load:durable-objects -- \
  --rooms 100 \
  --users 1000 \
  --messages 500 \
  --duration 300
 
 # Focus on specific components
-npm run test:load:durable-objects -- \
+bun run test:load:durable-objects -- \
  --rooms 20 \
  --enable-locks true \
  --cross-room-events true
@@ -136,14 +136,14 @@ npm run test:load:durable-objects -- \
 
 ```bash
 # Simulate connection storms
-npm run test:stress:connections -- \
+bun run test:stress:connections -- \
  --waves 10 \
  --connections 100 \
  --interval 5000 \
  --rapid-ratio 0.3
 
 # Extreme stress scenario
-npm run test:stress:connections -- \
+bun run test:stress:connections -- \
  --waves 20 \
  --connections 500 \
  --interval 1000 \
@@ -162,14 +162,14 @@ npm run test:stress:connections -- \
 
 ```bash
 # High-volume message testing
-npm run test:stress:messages -- \
+bun run test:stress:messages -- \
  --messages 10000 \
  --rate 100 \
  --connections 50 \
  --size 1024
 
 # Burst traffic simulation
-npm run test:stress:messages -- \
+bun run test:stress:messages -- \
  --messages 50000 \
  --rate 500 \
  --burst-intervals true \
@@ -188,15 +188,15 @@ npm run test:stress:messages -- \
 
 ```bash
 # Comprehensive benchmarks
-npm run benchmark -- \
+bun run benchmark -- \
  --suites latency,throughput,memory,websocket,durableobjects \
  --iterations 1000
 
 # Establish baseline
-npm run benchmark:baseline
+bun run benchmark:baseline
 
 # Compare performance
-npm run benchmark:compare
+bun run benchmark:compare
 ```
 
 **Benchmark Suites**:
@@ -211,14 +211,14 @@ npm run benchmark:compare
 
 ```bash
 # Memory analysis
-npm run profile:memory -- \
+bun run profile:memory -- \
  --duration 300 \
  --connections 10 \
  --messages 1000 \
  --threshold 50
 
 # Enable garbage collection analysis
-npm run profile:memory:gc
+bun run profile:memory:gc
 ```
 
 **Analysis Features**:
@@ -318,24 +318,24 @@ const batchConfig = {
 ### Run Complete Test Suite
 ```bash
 # All tests sequentially
-npm run test:all
+bun run test:all
 
 # Run tests in parallel (faster)
-npm run test:all:parallel
+bun run test:all:parallel
 
 # Test specific categories
-npm run test:load # Load testing only
-npm run test:stress # Stress testing only
-npm run test:benchmark # Benchmarking only
+bun run test:load # Load testing only
+bun run test:stress # Stress testing only
+bun run test:benchmark # Benchmarking only
 
 # Production readiness check
-npm run test:production-readiness
+bun run test:production-readiness
 ```
 
 ### Custom Test Scenarios
 ```bash
 # High-concurrency WebSocket test
-npm run test:load:websocket -- \
+bun run test:load:websocket -- \
  --connections 5000 \
  --rate 200 \
  --messages 1000 \
@@ -343,14 +343,14 @@ npm run test:load:websocket -- \
  --rooms 100
 
 # Extreme stress testing
-npm run test:stress:connections -- \
+bun run test:stress:connections -- \
  --waves 50 \
  --connections 1000 \
  --interval 500 \
  --rapid-ratio 0.8
 
 # Memory leak detection
-npm run profile:memory -- \
+bun run profile:memory -- \
  --duration 1800 \
  --connections 50 \
  --threshold 100 \
@@ -360,33 +360,33 @@ npm run profile:memory -- \
 ### Performance Analysis
 ```bash
 # Establish performance baseline
-npm run setup:test-env
-npm run benchmark:baseline
+bun run setup:test-env
+bun run benchmark:baseline
 
 # Run optimization analysis
-npm run analyze:performance
+bun run analyze:performance
 
 # Compare before/after optimization
-npm run benchmark:compare
+bun run benchmark:compare
 
 # Generate comprehensive report
-npm run test:all -- --output ./test-results
+bun run test:all -- --output ./test-results
 ```
 
 ## Quick Commands Reference
 
 | Command | Purpose |
 |---------|---------|
-| `npm run test:production-readiness` | Full production test suite |
-| `npm run benchmark:baseline` | Establish performance baseline |
-| `npm run test:load:websocket` | WebSocket load testing |
-| `npm run test:stress:connections` | Connection storm testing |
-| `npm run test:stress:messages` | Message flood testing |
-| `npm run profile:memory` | Memory usage analysis |
-| `npm run dashboard` | Access monitoring dashboard |
-| `npm run analyze:performance` | Complete performance analysis |
-| `npm run setup:test-env` | Prepare test environment |
-| `npm run clean:test-results` | Clean test output files |
+| `bun run test:production-readiness` | Full production test suite |
+| `bun run benchmark:baseline` | Establish performance baseline |
+| `bun run test:load:websocket` | WebSocket load testing |
+| `bun run test:stress:connections` | Connection storm testing |
+| `bun run test:stress:messages` | Message flood testing |
+| `bun run profile:memory` | Memory usage analysis |
+| `bun run dashboard` | Access monitoring dashboard |
+| `bun run analyze:performance` | Complete performance analysis |
+| `bun run setup:test-env` | Prepare test environment |
+| `bun run clean:test-results` | Clean test output files |
 
 ## Configuration
 
@@ -427,11 +427,11 @@ Create `test-config.json`:
 ### 1. Baseline Establishment
 ```bash
 # Step 1: Run baseline tests
-npm run benchmark:baseline
-npm run test:load:websocket -- --connections 100 --output baseline-load.json
+bun run benchmark:baseline
+bun run test:load:websocket -- --connections 100 --output baseline-load.json
 
 # Step 2: Identify bottlenecks
-npm run analyze:performance
+bun run analyze:performance
 ```
 
 ### 2. Optimization Implementation
@@ -442,17 +442,17 @@ npm run analyze:performance
 # Tune Durable Objects
 
 # Step 4: Validate improvements
-npm run benchmark:compare
-npm run test:production-readiness
+bun run benchmark:compare
+bun run test:production-readiness
 ```
 
 ### 3. Continuous Monitoring
 ```bash
 # Step 5: Set up monitoring
-npm run monitor:start
+bun run monitor:start
 
 # Step 6: Regular testing
-npm run test:all -- --schedule weekly
+bun run test:all -- --schedule weekly
 ```
 
 ## Troubleshooting
@@ -462,28 +462,28 @@ npm run test:all -- --schedule weekly
 **High Latency**:
 ```bash
 # Diagnose latency issues
-npm run benchmark -- --suites latency --iterations 1000
-npm run test:load:websocket -- --connections 100 --detailed-logging true
+bun run benchmark -- --suites latency --iterations 1000
+bun run test:load:websocket -- --connections 100 --detailed-logging true
 ```
 
 **Connection Problems**:
 ```bash
 # Test connection stability
-npm run test:stress:connections -- --waves 5 --connections 50
+bun run test:stress:connections -- --waves 5 --connections 50
 curl http://localhost:8787/api/websocket/health
 ```
 
 **Memory Issues**:
 ```bash
 # Analyze memory usage
-npm run profile:memory:gc -- --duration 300 --threshold 50
+bun run profile:memory:gc -- --duration 300 --threshold 50
 ```
 
 **Performance Regression**:
 ```bash
 # Compare with baseline
-npm run benchmark:compare
-npm run test:production-readiness
+bun run benchmark:compare
+bun run test:production-readiness
 ```
 
 ## Additional Resources
@@ -499,4 +499,4 @@ npm run test:production-readiness
 
 This performance suite validates your WebSocket + Durable Objects system for enterprise-grade deployment with confidence in reliability, scalability, and performance under real-world conditions.
 
-** Get Started**: `npm run test:production-readiness`
+** Get Started**: `bun run test:production-readiness`

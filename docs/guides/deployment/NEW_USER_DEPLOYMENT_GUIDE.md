@@ -50,7 +50,7 @@ terraform --version # v1.0.0
 #### **Wrangler CLI**
 ```bash
 # Wrangler
-npm install -g wrangler
+bun install -g wrangler
 
 
 wrangler --version # 3.x.x
@@ -258,11 +258,11 @@ cd Multi_Channel_Integration_System
 cd Multi_Channel_Integration_System
 
 
-npm install
+bun install
 
 
 cd frontend
-npm install
+bun install
 cd ..
 
 
@@ -274,11 +274,11 @@ cd frontend && npm ls --depth=0 && cd ..
 
 ```bash
 # Worker
-npm run build
+bun run build
 
 
 cd frontend
-npm run build:pages
+bun run build:pages
 cd ..
 
 
@@ -546,7 +546,7 @@ wrangler whoami
 ls dist/index.js
 
 
-npm run build
+bun run build
 
 # wrangler.toml
 cat wrangler.toml
@@ -561,22 +561,22 @@ npm cache clean --force
 
 # node_modules
 rm -rf node_modules package-lock.json
-npm install
+bun install
 
 
 cd frontend
 rm -rf node_modules package-lock.json
-npm install
+bun install
 ```
 
 #### ****: TypeScript
 ```bash
 # TypeScript
-npx tsc --noEmit
+bunx tsc --noEmit
 
 # TypeScript
 cd frontend
-npm run type-check
+bun run type-check
 
 
 ```
@@ -592,7 +592,7 @@ echo $env:NODE_ENV
 $env:NODE_ENV = "production"
 
 
-npm run build:pages
+bun run build:pages
 
 
 ls dist/
@@ -680,10 +680,10 @@ rm create_admin.sql
 
 - [ ] ****
  - [ ]
- - [ ] (npm install)
- - [ ] (cd frontend && npm install)
- - [ ] (npm run build)
- - [ ] (npm run build:pages)
+ - [ ] (bun install)
+ - [ ] (cd frontend && bun install)
+ - [ ] (bun run build)
+ - [ ] (bun run build:pages)
 
 
 - [ ] ****
@@ -1013,7 +1013,7 @@ wrangler queues consumer your-queue-name
 #### ** ChatGPT **
 1. ****
  ```bash
- npm install openai
+ bun install openai
  ```
 
 2. ** AI **

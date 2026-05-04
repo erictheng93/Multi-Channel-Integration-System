@@ -47,13 +47,13 @@ npm list @types/lunr
 
 ```bash
 # TypeScript
-npm run type-check
+bun run type-check
 
 # ESLint
-npm run lint:check
+bun run lint:check
 
 
-npm run build
+bun run build
 # dist/
 ```
 
@@ -70,13 +70,13 @@ rm -rf dist node_modules/.vite
 
 # :
 rm -rf node_modules package-lock.json
-npm install
+bun install
 ```
 
 ### Step 2:
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 : http://localhost:3000
@@ -120,10 +120,10 @@ console.log(':', searchHistoryService.getStats())
 cd frontend
 
 
-npm run build
+bun run build
 
 
-npx vite build
+bunx vite build
 ```
 
 ****:
@@ -141,21 +141,21 @@ dist/
 #### A:
 
 ```bash
-npm run build:pages
-npm run deploy:pages
+bun run build:pages
+bun run deploy:pages
 ```
 
 #### B:
 
 ```bash
 # 1.
-npm run build
+bun run build
 
 # 2.
-npm run copy-pages-config
+bun run copy-pages-config
 
 # 3.
-npx wrangler pages deploy dist --project-name=multi-channel-frontend
+bunx wrangler pages deploy dist --project-name=multi-channel-frontend
 ```
 
 #### C: Git

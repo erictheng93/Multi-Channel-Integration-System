@@ -1,7 +1,7 @@
 # Node.js → Bun API Migration Guide
 
 **Project:** Multi-Channel CRM System  
-**Purpose:** Migrate 50+ TypeScript scripts from `npx tsx` to `bun run`  
+**Purpose:** Migrate 50+ TypeScript scripts from `bunx tsx` to `bun run`  
 **Strategy:** Maintain dual compatibility (npm + Bun)
 
 ---
@@ -24,12 +24,12 @@ const isUsingBun = typeof Bun !== 'undefined';
 
 if (isUsingBun) {
   // Bun environment
-  const result = await Bun.$`npm run build`;
+  const result = await Bun.$`bun run build`;
   if (result.exitCode !== 0) throw new Error('Build failed');
 } else {
   // Node.js environment
   const { execSync } = await import('child_process');
-  execSync('npm run build', { stdio: 'inherit' });
+  execSync('bun run build', { stdio: 'inherit' });
 }
 ```
 
@@ -55,7 +55,7 @@ const config = {
 ```typescript
 import { execSync } from 'child_process';
 
-execSync('npm run build', { stdio: 'inherit' });
+execSync('bun run build', { stdio: 'inherit' });
 ```
 
 **After (Bun compatible):**
@@ -63,10 +63,10 @@ execSync('npm run build', { stdio: 'inherit' });
 const isUsingBun = typeof Bun !== 'undefined';
 
 if (isUsingBun) {
-  await Bun.$`npm run build`;
+  await Bun.$`bun run build`;
 } else {
   const { execSync } = await import('child_process');
-  execSync('npm run build', { stdio: 'inherit' });
+  execSync('bun run build', { stdio: 'inherit' });
 }
 ```
 
@@ -170,7 +170,7 @@ if (isUsingBun) {
 
 ### Testing
 - [ ] Test with Bun (`bun run script.ts`)
-- [ ] Test with npm (`npx tsx script.ts`)
+- [ ] Test with npm (`bunx tsx script.ts`)
 - [ ] Verify functionality
 - [ ] Verify error handling
 
@@ -197,7 +197,7 @@ async function buildFrontend() {
       await Bun.$`cd frontend && bun vue-tsc --noEmit`;
     } else {
       const { execSync } = await import('child_process');
-      execSync('cd frontend && npx vue-tsc --noEmit', { stdio: 'inherit' });
+      execSync('cd frontend && bunx vue-tsc --noEmit', { stdio: 'inherit' });
     }
     console.log(' Type check passed\n');
     
@@ -207,7 +207,7 @@ async function buildFrontend() {
       await Bun.$`cd frontend && bun run build`;
     } else {
       const { execSync } = await import('child_process');
-      execSync('cd frontend && npm run build', { stdio: 'inherit' });
+      execSync('cd frontend && bun run build', { stdio: 'inherit' });
     }
     console.log(' Build completed\n');
     

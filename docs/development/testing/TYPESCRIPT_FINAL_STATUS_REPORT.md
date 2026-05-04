@@ -47,7 +47,7 @@
 ### 1: ()
 ```bash
 
-npm run build #
+bun run build #
 npm test #
 ```
 

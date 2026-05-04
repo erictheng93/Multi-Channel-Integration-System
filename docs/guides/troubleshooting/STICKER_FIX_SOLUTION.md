@@ -58,7 +58,7 @@ allowedAttributes: () => ({
 
 ### 測試步驟
 1. 修改 `SafeHtmlRenderer.vue`
-2. 重啟前端開發伺服器 (`npm run dev`)
+2. 重啟前端開發伺服器 (`bun run dev`)
 3. 刷新瀏覽器
 4. 查看貼圖是否顯示 Fallback:  [貼圖] 貼圖暫時無法顯示
 

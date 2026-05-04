@@ -215,7 +215,7 @@ fi
 ```
 
 
-1. ****: `npm run dev`
+1. ****: `bun run dev`
 2. ** jq**: JSON
  - Windows: `choco install jq`
  - Mac: `brew install jq`

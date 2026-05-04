@@ -146,7 +146,7 @@ imported from 'C:/Users/minim/OneDrive/文档/Code/Multi-Channel-Integration-Sys
 **Recommendation**: **CRITICAL PRIORITY**
 1. Verify `tsconfig.json` path mappings match `vitest.config.ts` aliases
 2. Use relative imports instead of aliases for backend tests temporarily
-3. Test with: `npx vitest run tests/unit/handlers/auth-main.test.ts` (simpler handler)
+3. Test with: `bunx vitest run tests/unit/handlers/auth-main.test.ts` (simpler handler)
 4. Consider separate `vitest.backend.config.ts` with adjusted path resolution
 
 ### 2.4 Service Test Coverage (10 Test Files)
@@ -534,13 +534,13 @@ Based on code review and test analysis:
 
 3. **Validate fix**:
    ```bash
-   npx vitest run tests/unit/handlers/auth-main.test.ts
-   npx vitest run tests/unit/handlers/messaging-main.test.ts
+   bunx vitest run tests/unit/handlers/auth-main.test.ts
+   bunx vitest run tests/unit/handlers/messaging-main.test.ts
    ```
 
 4. **Measure baseline coverage**:
    ```bash
-   npx vitest run tests/unit/handlers --coverage
+   bunx vitest run tests/unit/handlers --coverage
    ```
 
 **Expected Outcome**: 550+ backend tests executable within 4 hours.
@@ -992,43 +992,43 @@ Using the TMMI (Test Maturity Model Integration) framework:
 ### Frontend Tests
 ```bash
 # Run all frontend tests
-cd frontend && npm run test
+cd frontend && bun run test
 
 # Run with coverage
-npm run test:coverage
+bun run test:coverage
 
 # Run specific test file
-npm run test src/api/auth.test.ts
+bun run test src/api/auth.test.ts
 
 # Watch mode
-npm run test:watch
+bun run test:watch
 
 # UI mode
-npm run test:ui
+bun run test:ui
 ```
 
 ### Backend Tests (Currently Non-Executable)
 ```bash
 # Run all handler tests (BLOCKED)
-npm run test:handlers
+bun run test:handlers
 
 # Run specific handler test (BLOCKED)
-npx vitest run tests/unit/handlers/messaging-main.test.ts
+bunx vitest run tests/unit/handlers/messaging-main.test.ts
 
 # Run with coverage (BLOCKED)
-npx vitest run tests/unit/handlers --coverage
+bunx vitest run tests/unit/handlers --coverage
 
 # Run integration tests (BLOCKED)
-npx vitest run tests/integration
+bunx vitest run tests/integration
 ```
 
 ### WebSocket Tests (Currently Unknown)
 ```bash
 # Run WebSocket integration tests
-npx vitest run tests/integration/websocket
+bunx vitest run tests/integration/websocket
 
 # Run WebSocket performance tests
-npx vitest run tests/performance/websocket
+bunx vitest run tests/performance/websocket
 ```
 
 ---

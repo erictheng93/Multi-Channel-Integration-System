@@ -266,10 +266,10 @@ const canSend = computed(() => {
 
 ```bash
 
-npm run test -- MessageInput.test.ts
+bun run test -- MessageInput.test.ts
 
 
-npm run test:coverage -- MessageInput.test.ts
+bun run test:coverage -- MessageInput.test.ts
 ```
 
 
@@ -307,10 +307,10 @@ localStorage.setItem('debug', 'MessageInput')
 - CSS
 
 
-1. : `npm install`
-2. : `npm run dev`
-3. : `npm run test`
-4. : `npm run type-check`
+1. : `bun install`
+2. : `bun run dev`
+3. : `bun run test`
+4. : `bun run type-check`
 
 
 - Vue 3 Composition API

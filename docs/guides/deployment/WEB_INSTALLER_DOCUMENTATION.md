@@ -188,19 +188,19 @@ Duration: 348ms
 cd web-installer/backend
 
 # Install dependencies
-npm install
+bun install
 
 # Run tests
 npm test # Run all tests (28 tests)
-npm run test:coverage # Generate coverage report
-npm run test:watch # Watch mode for TDD
+bun run test:coverage # Generate coverage report
+bun run test:watch # Watch mode for TDD
 
 # Development
-npm run dev # Start Worker development server
-npm run type-check # TypeScript type checking
+bun run dev # Start Worker development server
+bun run type-check # TypeScript type checking
 
 # Deployment
-npm run deploy # Deploy to production
+bun run deploy # Deploy to production
 ```
 
 ### Frontend
@@ -209,20 +209,20 @@ npm run deploy # Deploy to production
 cd web-installer/frontend
 
 # Install dependencies
-npm install
+bun install
 
 # Development
-npm run dev # Start Vite dev server (port 3000)
-npm run build # Build for production
-npm run type-check # Vue TypeScript checking
+bun run dev # Start Vite dev server (port 3000)
+bun run build # Build for production
+bun run type-check # Vue TypeScript checking
 
 # Testing
-npm run test # Run frontend tests
-npm run test:coverage # Generate coverage report
+bun run test # Run frontend tests
+bun run test:coverage # Generate coverage report
 
 # Deployment
-npm run build:pages # Build for Cloudflare Pages
-npm run deploy:pages # Deploy to Cloudflare Pages
+bun run build:pages # Build for Cloudflare Pages
+bun run deploy:pages # Deploy to Cloudflare Pages
 ```
 
 ---
@@ -463,8 +463,8 @@ wrangler deploy
 
 # Frontend
 cd web-installer/frontend
-npm run build
-npx wrangler pages deploy dist --project-name=crm-installer-frontend
+bun run build
+bunx wrangler pages deploy dist --project-name=crm-installer-frontend
 ```
 
 ---

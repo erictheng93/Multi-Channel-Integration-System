@@ -360,7 +360,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: bun install
 
       - name: Run route conflict detector
         run: node scripts/route-conflict-detector.cjs --json > route-report.json

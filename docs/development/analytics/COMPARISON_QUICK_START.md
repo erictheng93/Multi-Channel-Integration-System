@@ -46,10 +46,10 @@ app.route('/api/analytics/comparison', comparisonAPI);
 
 ```bash
 
-npm run dev
+bun run dev
 
 # ()
-cd frontend && npm run dev
+cd frontend && bun run dev
 
 
 # http://localhost:3000/dashboard

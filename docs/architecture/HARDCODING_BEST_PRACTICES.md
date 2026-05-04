@@ -339,8 +339,8 @@ const { page, pageSize } = normalizePagination(
   - Durable Objects 使用路由常�?
 
 - [ ] **TypeScript 類�?檢查?��?**
-  - `npm run build` (後端)
-  - `npm run type-check` (?�端)
+  - `bun run build` (後端)
+  - `bun run type-check` (?�端)
 
 ### ?��? ?�薦檢查
 

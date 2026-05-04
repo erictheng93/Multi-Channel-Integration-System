@@ -88,7 +88,7 @@ frontend/src/
 
 ### TypeScript
 ```bash
-> npm run build
+> bun run build
 > tsc --noEmit
 
 

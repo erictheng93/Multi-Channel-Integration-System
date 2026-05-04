@@ -176,7 +176,7 @@ testWebhook();
 
 
 ```bash
-npm run deploy
+bun run deploy
 ```
 
 

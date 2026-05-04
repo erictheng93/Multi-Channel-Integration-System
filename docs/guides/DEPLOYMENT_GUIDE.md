@@ -42,7 +42,7 @@
 
 ```bash
 # Wrangler CLI
-npm install -g wrangler
+bun install -g wrangler
 
 # Cloudflare
 wrangler login
@@ -52,7 +52,7 @@ git clone <your-repo>
 cd Multi_Channel_Integration_System
 
 
-npm install
+bun install
 ```
 
 ### 2. Cloudflare
@@ -63,8 +63,8 @@ npm install
 wrangler d1 create omni-channel-platform
 
 # Drizzle
-npm run db:generate
-npm run db:migrate:prod
+bun run db:generate
+bun run db:migrate:prod
 
 # SQL
 wrangler d1 execute omni-channel-platform --file=./database/schema.sql
@@ -186,10 +186,10 @@ database_id = "37537e1f-625e-4cf9-be60-a01b5c063772"
 cd frontend
 
 
-npm install
+bun install
 
 # ( Pages )
-npm run build:pages
+bun run build:pages
 ```
 
 #### 5.2 Cloudflare Pages
@@ -218,10 +218,10 @@ wrangler deploy --env production
 
 ```bash
 # ( frontend/ )
-cd frontend && npm run dev
+cd frontend && bun run dev
 
 
-cd frontend && npm run build:pages
+cd frontend && bun run build:pages
 wrangler pages deploy dist --project-name=mcis-ey7
 ```
 

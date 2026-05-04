@@ -171,13 +171,13 @@ app.get('/api/example', async (c) => {
    cd frontend
    cp .env.development .env
    # 如果需要，編輯 .env 以自定義本地 URL
-   npm run dev
+   bun run dev
    ```
 
 2. **後端：**
    ```bash
    # 確保已配置 .dev.vars
-   npm run dev  # 連接到遠程資源 (REMOTE resources)
+   bun run dev  # 連接到遠程資源 (REMOTE resources)
    ```
 
 **切換至生產環境 (Production Environment)：**
@@ -186,13 +186,13 @@ app.get('/api/example', async (c) => {
    ```bash
    cd frontend
    cp .env.production .env
-   npm run build
-   npm run deploy:pages
+   bun run build
+   bun run deploy:pages
    ```
 
 2. **後端：**
    ```bash
-   npm run deploy  # 使用 wrangler.toml [vars] 部分
+   bun run deploy  # 使用 wrangler.toml [vars] 部分
    ```
 
 ## 遷移效益
@@ -268,7 +268,7 @@ app.get('/api/example', async (c) => {
 - 檢查後端 `FRONTEND_URL` 包含正確的端口 (通常是 3000)
 
 **問題：更改後配置未更新**
-- 重啟 Vite 開發伺服器 (`npm run dev`)
+- 重啟 Vite 開發伺服器 (`bun run dev`)
 - 清除瀏覽器緩存並重新加載
 - 驗證 `.env` 文件是否在正確的目錄中
 

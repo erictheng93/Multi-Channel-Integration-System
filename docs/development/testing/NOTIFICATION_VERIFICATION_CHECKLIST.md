@@ -15,21 +15,21 @@
 2. **检查数据库状态**
    ```bash
    # 确认 agent_teams 表存在
-   npx wrangler d1 execute mcis-db \
+   bunx wrangler d1 execute mcis-db \
      --command="SELECT name FROM sqlite_master WHERE type='table' AND name='agent_teams'"
 
    # 查看团队和成员
-   npx wrangler d1 execute mcis-db \
+   bunx wrangler d1 execute mcis-db \
      --command="SELECT t.id, t.name, COUNT(at.agent_id) as member_count FROM teams t LEFT JOIN agent_teams at ON t.id = at.team_id GROUP BY t.id"
    ```
 
 3. **启动服务**
    ```bash
    # Backend
-   npm run dev
+   bun run dev
 
    # Frontend (新终端)
-   cd frontend && npm run dev
+   cd frontend && bun run dev
    ```
 
 ---
@@ -133,7 +133,7 @@ WHERE id = 'conv-xxx';
 **检查步骤**:
 1. 确认 WebSocket 连接状态
    ```bash
-   npm run health:check:ws
+   bun run health:check:ws
    ```
 
 2. 检查 Backend Console 日志
