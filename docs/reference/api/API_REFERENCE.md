@@ -1,694 +1,239 @@
-# Multi-Channel Integration System - Complete API Reference
+# Multi-Channel Integration System — API Reference
 
-**Version:** 2.0.0
-**Last Updated:** 2025-01-28
-**Base URL (Development):** `http://localhost:8787`
-**Base URL (Production):** `https://your-api-domain.example.com`
+**Version**: 4.0.0  
+**Last Updated**: 2026-05-04  
+**Production Base URL**: `https://your-api-domain.example.com`
 
----
-
-## ?? Table of Contents
-
-- [Overview](#overview)
-- [Authentication](#authentication)
-- [Response Standards](#response-standards)
-- [Error Handling](#error-handling)
-- [API Modules](#api-modules)
-- [Rate Limiting](#rate-limiting)
-- [Versioning](#versioning)
-- [Quick Start Guide](#quick-start-guide)
+> 本文件為「導覽級」API 參考。各模組詳細端點清單、行為說明、邊界案例請見 **[`docs/modules/INDEX.md`](../../modules/INDEX.md)** 內對應的模組手冊。
 
 ---
 
-## ?? Overview
+## 1. 認證
 
-The Multi-Channel Integration System provides a comprehensive REST API for managing customer support operations across multiple messaging platforms (LINE, Facebook, etc.). This API is built on Cloudflare Workers for edge computing performance and uses modern web standards.
-
-### Key Features
-
-- **?? JWT Authentication** - Secure token-based authentication
-- **?? Multi-Platform Support** - LINE OA, Facebook Messenger integration
-- **??Real-time Communication** - WebSocket and SSE support
-- **?? Analytics & Reporting** - Comprehensive data analytics
-- **?? Collaboration Tools** - Real-time presence and typing indicators
-- **?? File Management** - R2-based file storage with 10MB limit
-- **?���?Tagging System** - Flexible message and customer tagging
-- **?? Bulk Operations** - Efficient batch processing (up to 100 items)
-
-### Architecture
-
-```
-?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
-?? API Gateway Layer ??
-?? (Cloudflare Workers + Hono Framework) ??
-?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
-                    ??
-        ?��??�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�??
-        ?? ??
-?��??�?�?�?�?�?�?��??�?�?�?�?�?�?�?? ?��??�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�??
-?? HTTP/REST API ?? ?? WebSocket API ??
-??  (Standard) ?? ?? (Real-time) ??
-?��??�?�?�?�?�?�?��??�?�?�?�?�?�?�?? ?��??�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�??
-        ?? ??
-?��??�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�??
-?? Module Layer ??
-?? ?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?? ??
-?? ??Auth ??Conversations ??Messages  ?? ??
-?? ??Teams ??Customers ??Analytics ?? ??
-?? ??Collaboration ??Files ??Webhooks ?? ??
-?? ?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?? ??
-?��??�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
-            ??
-?��??�?�?�?�?�?�?�?�?�?�?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
-?? Data Layer ??
-?? ?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?? ??
-?? ??D1 Database ??KV Store ??R2 Storage????
-?? ??Queues ??Durable Objects ?? ??
-?? ?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?? ??
-?��??�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�??
-```
-
----
-
-## ?? Authentication
-
-All authenticated endpoints require a JWT token in the `Authorization` header:
+所有受保護端點需要在 `Authorization` 標頭帶 JWT：
 
 ```http
-Authorization: Bearer <your_jwt_token>
+Authorization: Bearer <jwt-access-token>
 ```
 
-### Obtaining a Token
+### 1.1 取得 Token
 
-**Endpoint:** `POST /api/auth/login`
+**端點**：`POST /api/auth/login`
 
-**Request:**
 ```json
+// Request
 {
   "email": "user@example.com",
   "password": "your_password"
 }
-```
 
-**Response:**
-```json
+// Response
 {
   "success": true,
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "refresh_token_here",
+    "token": "eyJhbGciOiJIUzI1...",        // access token (2h)
+    "refreshToken": "...",                  // refresh token (7d)
     "agent": {
-      "id": "agent-123",
+      "id": 123,
       "email": "user@example.com",
       "displayName": "User Name",
-      "role": "agent|admin",
-      "teamId": 1
+      "role": "agent",                      // 'admin' | 'agent'
+      "primaryTeamId": 1,
+      "allowedTeamIds": [1, 3],
+      "teamRoles": { "1": "lead", "3": "member" }
     }
   },
   "message": "Login successful"
 }
 ```
 
-### Role-Based Access Control (RBAC)
+### 1.2 刷新 Token
 
-| Role    | Permissions                                      |
-|---------|--------------------------------------------------|
-| `admin` | Full system access including configuration       |
-| `agent` | Conversation management, customer interaction    |
+**端點**：`POST /api/auth/refresh`
 
-### Token Refresh
+Access token 過期前用 refresh token 換新；refresh 端點會**重新查 DB**，可感應團隊歸屬異動。
 
-**Endpoint:** `POST /api/auth/refresh`
+### 1.3 角色與權限模型
 
-Tokens expire after 24 hours. Use the refresh token to obtain a new access token without re-authentication.
+雙層角色：
+- **系統角色** (`role`)：`admin` / `agent`（v4 簡化，移除 v3 的 `team` 系統角色）
+- **團隊角色** (`teamRoles[teamId]`)：`member` / `lead` / `supervisor`，每團隊獨立
 
-**?? Full Documentation:** [Authentication API Reference](./modules/AUTH_API.md)
-
----
-
-## ?? Response Standards
-
-### Standard Response Format
-
-All API responses follow this structure:
-
-```typescript
-{
-  "success": boolean,
-  "data": object | array | null,
-  "message": string,
-  "timestamp": string, // ISO 8601 format
-  "requestId": string // Unique request identifier
-}
-```
-
-### Paginated Response Format
-
-List endpoints include pagination metadata:
-
-```typescript
-{
-  "success": true,
-  "data": {
-    "items": [...],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 100,
-      "totalPages": 5,
-      "hasNext": true,
-      "hasPrev": false
-    }
-  },
-  "message": "Data retrieved successfully",
-  "timestamp": "2025-01-28T10:00:00.000Z",
-  "requestId": "req_1234567890_abc123"
-}
-```
-
-### Success Response Examples
-
-**Single Resource:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "conv-123",
-    "status": "open"
-  },
-  "message": "Resource retrieved successfully"
-}
-```
-
-**List of Resources:**
-```json
-{
-  "success": true,
-  "data": {
-    "items": [...],
-    "pagination": {...}
-  }
-}
-```
-
-**Operation Result:**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Operation completed successfully"
-}
-```
+詳見：[`RBAC_DESIGN.md`](../specifications/RBAC_DESIGN.md)、[`auth 模組手冊`](../../modules/auth.md)
 
 ---
 
-## ?��? Error Handling
+## 2. 標準回應格式
 
-### Error Response Format
+### 2.1 一般回應
 
-```json
+```typescript
 {
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable error description",
-    "details": {
-      "field": "fieldName",
-      "value": "invalidValue"
-    },
-    "timestamp": "2025-01-28T10:00:00.000Z",
-    "requestId": "req_1234567890_abc123"
-  }
+  success: boolean
+  data: T | null
+  message: string
+  timestamp: string  // ISO 8601
+  requestId: string  // 唯一請求 ID
 }
 ```
 
-### HTTP Status Codes
+### 2.2 分頁回應
 
-| Code | Status                  | Description                           |
-|------|-------------------------|---------------------------------------|
-| 200  | OK                      | Request successful                    |
-| 201  | Created                 | Resource created successfully         |
-| 204  | No Content              | Successful deletion                   |
-| 400  | Bad Request             | Invalid request parameters            |
-| 401  | Unauthorized            | Missing or invalid authentication     |
-| 403  | Forbidden               | Insufficient permissions              |
-| 404  | Not Found               | Resource does not exist               |
-| 409  | Conflict                | Resource already exists               |
-| 422  | Unprocessable Entity    | Validation failed                     |
-| 429  | Too Many Requests       | Rate limit exceeded                   |
-| 500  | Internal Server Error   | Server-side error                     |
-| 503  | Service Unavailable     | Temporary service outage              |
-
-### Common Error Codes
-
-| Code                      | HTTP | Description                           |
-|---------------------------|------|---------------------------------------|
-| `AUTHENTICATION_ERROR`    | 401  | Invalid or missing credentials        |
-| `AUTHORIZATION_ERROR`     | 403  | Insufficient permissions              |
-| `VALIDATION_ERROR`        | 400  | Request validation failed             |
-| `NOT_FOUND_ERROR`         | 404  | Resource not found                    |
-| `CONFLICT_ERROR`          | 409  | Resource already exists               |
-| `RATE_LIMIT_ERROR`        | 429  | Too many requests                     |
-| `SYSTEM_ERROR`            | 500  | Internal server error                 |
-| `DATABASE_ERROR`          | 500  | Database operation failed             |
-| `EXTERNAL_SERVICE_ERROR`  | 502  | External service unavailable          |
-
-### Error Response Examples
-
-**Validation Error:**
-```json
+```typescript
 {
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Request validation failed",
-    "details": {
-      "errors": [
-        {
-          "field": "email",
-          "message": "Email is required",
-          "value": ""
-        },
-        {
-          "field": "password",
-          "message": "Password must be at least 8 characters",
-          "value": "short"
-        }
-      ]
+  success: true
+  data: {
+    items: T[]
+    pagination: {
+      page: number
+      pageSize: number     // max 100
+      total: number
+      totalPages: number
     }
   }
 }
 ```
 
-**Authentication Error:**
-```json
+### 2.3 錯誤回應
+
+```typescript
 {
-  "success": false,
-  "error": {
-    "code": "AUTHENTICATION_ERROR",
-    "message": "Invalid credentials",
-    "timestamp": "2025-01-28T10:00:00.000Z",
-    "requestId": "req_1234567890_abc123"
+  success: false
+  error: {
+    code: string           // 例如 'VALIDATION_ERROR'
+    message: string
+    details?: unknown      // 選用，欄位級錯誤等
   }
+  timestamp: string
+  requestId: string
 }
 ```
 
----
-
-## ??�?API Modules
-
-The API is organized into the following modules:
-
-### ?? Authentication & Authorization
-
-- **[Authentication API](./modules/AUTH_API.md)** - Login, logout, token management
-  - `POST /api/auth/login` - User login
-  - `POST /api/auth/logout` - User logout
-  - `POST /api/auth/refresh` - Refresh access token
-  - `GET /api/auth/me` - Get current user information
-  - `POST /api/auth/change-password` - Change password
-
-### ?�� Conversation Management
-
-- **[Conversations API](./modules/CONVERSATIONS_API.md)** - Conversation lifecycle and assignment
-  - `GET /api/conversations` - List conversations
-  - `POST /api/conversations` - Create conversation
-  - `GET /api/conversations/:id` - Get conversation details
-  - `PUT /api/conversations/:id` - Update conversation
-  - `DELETE /api/conversations/:id` - Delete conversation
-  - `POST /api/conversations/:id/assign` - Assign conversation to agent/team
-  - `POST /api/conversations/:id/transfer` - Transfer conversation
-  - `POST /api/conversations/:id/close` - Close conversation
-
-### ?�� Messaging
-
-- **[Messaging API](./modules/MESSAGING_API.md)** - Complete messaging system (??Already documented)
-  - Message CRUD operations
-  - Bulk operations (create/delete up to 100 messages)
-  - File attachments (R2 integration, 10MB limit)
-  - Message forwarding (up to 20 conversations)
-  - Message tagging (up to 10 tags)
-  - Message recall functionality
-  - Data export (JSON/CSV formats)
-
-### ?�� Customer Management
-
-- **[Customer API](./modules/CUSTOMER_API.md)** - Customer profiles and data
-  - `GET /api/customers` - List customers
-  - `POST /api/customers` - Create customer
-  - `GET /api/customers/:id` - Get customer details
-  - `PUT /api/customers/:id` - Update customer
-  - `DELETE /api/customers/:id` - Delete customer
-  - `GET /api/customers/:id/conversations` - Get customer conversations
-  - `GET /api/customers/search` - Search customers
-
-### ?���?Tag Management
-
-- **[Tag API](./modules/TAG_API.md)** - Customer and conversation tagging
-  - `GET /api/tags` - List all tags
-  - `POST /api/tags` - Create tag
-  - `GET /api/tags/:id` - Get tag details
-  - `PUT /api/tags/:id` - Update tag
-  - `DELETE /api/tags/:id` - Delete tag
-  - `POST /api/tags/bulk-create` - Bulk create tags
-  - `DELETE /api/tags/bulk-delete` - Bulk delete tags
-  - `GET /api/tags/stats` - Get tag usage statistics
-
-### ?��?��??Team Management
-
-- **[Teams API](./modules/TEAMS_API.md)** - Team and member management
-  - Team CRUD operations
-  - Member management
-  - Invitation system
-  - Role assignment
-  - Team statistics
-
-### ?? Analytics & Reporting
-
-- **[Analytics API](./modules/ANALYTICS_API.md)** - ?��? **NEW - Previously Undocumented!**
-  - `GET /api/analytics/conversations` - Conversation analytics
-  - `GET /api/analytics/messages` - Message analytics
-  - `GET /api/analytics/users` - User activity analytics
-  - `GET /api/analytics/performance` - System performance metrics
-  - `POST /api/analytics/custom` - Custom analytics queries
-  - `POST /api/analytics/export` - Export analytics data
-  - `GET /api/analytics/health` - Analytics service health
-  - `POST /api/analytics/metrics` - Collect metrics
-  - `GET /api/analytics/metrics/:name` - Query specific metrics
-
-### ?? Collaboration & Real-time
-
-- **[Collaboration API](./modules/COLLABORATION_API.md)** - ?��? **NEW - Previously Undocumented!**
-  - `GET /api/collaboration/conversations/:id/state` - Get collaboration state
-  - `GET /api/collaboration/conversations/:id/viewers` - Get active viewers
-  - `POST /api/collaboration/conversations/:id/join` - Join conversation
-  - `POST /api/collaboration/conversations/:id/leave` - Leave conversation
-  - `POST /api/collaboration/typing` - Send typing indicator
-  - `POST /api/collaboration/presence` - Update online status
-  - `GET /api/collaboration/stats` - Get collaboration statistics
-  - `POST /api/collaboration/cleanup` - Cleanup expired states
-
-### ?? WebSocket & Real-time Communication
-
-- **[WebSocket API](./modules/WEBSOCKET_API.md)** - ?��? **Newly Unified Documentation!**
-  - Connection management
-  - Real-time message delivery
-  - Presence tracking
-  - Typing indicators
-  - WebSocket health monitoring
-  - Dashboard metrics
-  - Durable Objects integration
-
-### ?? File Management
-
-- **[File Management API](./modules/FILE_MANAGEMENT_API.md)** - File upload and storage
-  - File upload to R2 storage
-  - File retrieval and download
-  - File metadata management
-  - Multi-file attachments
-  - File type validation
-  - Storage quota management
-
-### ?? Notifications
-
-- **[Notifications API](./modules/NOTIFICATIONS_API.md)** - System notifications
-  - Push notifications
-  - Email notifications
-  - In-app notifications
-  - Notification preferences
-  - Notification history
-
-### ?? Activity Logging
-
-- **[Activities API](./modules/ACTIVITIES_API.md)** - Audit trail and activity logs
-  - `GET /api/activities` - List activities
-  - `GET /api/activities/stream` - Real-time activity stream
-  - Activity filtering and search
-  - Audit trail export
-
-### ?�� Agents & Users
-
-- **[Agents API](./modules/AGENTS_API.md)** - Agent management
-  - Agent CRUD operations
-  - Agent performance metrics
-  - Agent availability status
-  - Agent assignment rules
-
-### ?��? System Configuration
-
-- **[System API](./modules/SYSTEM_API.md)** - System settings and health
-  - `GET /api/system/health` - System health check
-  - `GET /api/system/info` - System information
-  - `GET /api/system/settings` - Get system settings
-  - `PUT /api/system/settings` - Update system settings
-  - `GET /api/system/metrics` - System metrics
-  - Cache management
-  - Backup and restore
-
-### ?? Integration & Webhooks
-
-- **[Integration API](./modules/INTEGRATION_API.md)** - Platform integrations
-  - `POST /api/webhooks/line` - LINE webhook endpoint
-  - `POST /api/webhooks/line/:teamId/:token` - Multi-tenant LINE webhook
-  - `POST /api/webhooks/facebook` - Facebook webhook endpoint
-  - Platform configuration
-  - Webhook verification
-  - Channel management
-
-### ?? QR Code Management
-
-- **[QRCode API](./modules/QRCODE_API.md)** - QR code generation and tracking
-  - `POST /api/qrcode/generate` - Generate QR code
-  - `GET /api/qrcode/:id` - Get QR code details
-  - `GET /api/qrcode/:id/image` - Get QR code image
-  - `PUT /api/qrcode/:id` - Update QR code
-  - `DELETE /api/qrcode/:id` - Delete QR code
-  - `GET /api/qrcode` - List QR codes
-
-### ?? CORS & Monitoring
-
-- **[CORS Monitoring API](./modules/CORS_MONITORING_API.md)** - CORS configuration and analytics
-  - `GET /api/cors/health` - CORS health check (Public)
-  - `GET /api/cors/config` - Get CORS configuration (Public)
-  - `GET /api/cors/stats` - CORS statistics (Admin)
-  - `GET /api/cors/events` - CORS events log (Admin)
-  - `GET /api/cors/rejected-origins` - Rejected origins (Admin)
-  - `POST /api/cors/cleanup` - Cleanup old data (Admin)
+常見 HTTP 狀態：`400` 驗證錯 / `401` 未認證 / `403` 權限不足 / `404` 找不到 / `409` 衝突 / `429` 速率限制 / `5xx` 伺服器錯誤。
 
 ---
 
-## ?�� Rate Limiting
+## 3. 模組 API 索引
 
-To ensure fair usage and system stability, rate limiting is applied:
+24 個模組各有獨立手冊（含 API 端點、UI 入口、邊界案例）。下表給高階分類：
 
-| Endpoint Type          | Limit              | Window  |
-|------------------------|-------------------|---------|
-| Authentication         | 5 requests        | 1 min   |
-| Read Operations (GET)  | 100 requests      | 1 min   |
-| Write Operations       | 50 requests       | 1 min   |
-| Bulk Operations        | 10 requests       | 1 min   |
-| File Uploads           | 20 requests       | 1 min   |
-| Analytics Queries      | 30 requests       | 1 min   |
+### 對話與訊息
+| 模組 | 主要端點前綴 | 文件 |
+|------|------------|------|
+| Conversations | `/api/conversations` | [conversations.md](../../modules/conversations.md) |
+| Messaging | `/api/messages` | [messaging.md](../../modules/messaging.md) |
+| Delayed Messages | `/api/delayed-messages` | [delayed-message.md](../../modules/delayed-message.md) |
+| Customer Conversations | `/api/customer-ws` | [customer-conversations.md](../../modules/customer-conversations.md) |
+| Sessions | `/api/sessions` | [session.md](../../modules/session.md) |
 
-### Rate Limit Headers
+### 客戶與標籤
+| 模組 | 主要端點前綴 | 文件 |
+|------|------------|------|
+| Customers | `/api/customers` | [customer.md](../../modules/customer.md) |
+| Tags | `/api/tags` | [tags.md](../../modules/tags.md) |
+| Auto-Reply | `/api/auto-reply` | [auto-reply.md](../../modules/auto-reply.md) |
 
-All responses include rate limit information:
+### 認證與團隊
+| 模組 | 主要端點前綴 | 文件 |
+|------|------------|------|
+| Auth | `/api/auth` | [auth.md](../../modules/auth.md) |
+| Teams | `/api/teams` | [teams.md](../../modules/teams.md) |
+| Agents | `/api/agents` | [agents.md](../../modules/agents.md) |
+| Activities | `/api/activities` | [activities.md](../../modules/activities.md) |
 
-```http
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1706432400
-```
+### 渠道整合
+| 模組 | 主要端點前綴 | 文件 |
+|------|------------|------|
+| Integrations | `/api/channels` | [integrations.md](../../modules/integrations.md) |
+| LIFF | `/api/liff` | [liff.md](../../modules/liff.md) |
 
-### Rate Limit Exceeded Response
+### 即時通訊
+| 模組 | 主要端點前綴 | 文件 |
+|------|------------|------|
+| WebSocket | `/api/websocket` | [websocket.md](../../modules/websocket.md) |
+| Realtime | `/api/realtime` | [realtime.md](../../modules/realtime.md) |
+| Collaboration | `/api/collaboration` | [collaboration.md](../../modules/collaboration.md) |
+| Notifications | `/api/notifications` | [notifications.md](../../modules/notifications.md) |
 
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RATE_LIMIT_ERROR",
-    "message": "Rate limit exceeded. Please try again later.",
-    "retryAfter": 60
-  }
-}
-```
+### 系統與營運
+| 模組 | 主要端點前綴 | 文件 |
+|------|------------|------|
+| System | `/api/system`, `/api/health`, `/api/stats` | [system.md](../../modules/system.md) |
+| Monitoring | `/api/monitoring` | [monitoring.md](../../modules/monitoring.md) |
+| Analytics | `/api/analytics` | [analytics.md](../../modules/analytics.md) |
+| Reports | `/api/reports` | [reports.md](../../modules/reports.md) |
+| File Management | `/api/files` | [file-management.md](../../modules/file-management.md) |
+| Queue | `/api/queue` | [queue.md](../../modules/queue.md) |
 
----
-
-## ?? Versioning
-
-The API uses URL versioning for major changes:
-
-- **Current Version:** v2 (default, no prefix required)
-- **Legacy Version:** v1 (deprecated, use `/api/v1/...` prefix)
-
-### Version Support
-
-| Version | Status       | End of Life  |
-|---------|--------------|--------------|
-| v2      | Current      | -            |
-| v1      | Deprecated   | 2025-12-31   |
-
-### Breaking Changes Policy
-
-- Major version changes (v1 ??v2) may include breaking changes
-- Minor changes are backward compatible
-- 6-month deprecation notice for breaking changes
-- Changelog available at `/api/changelog`
-
----
-
-## ?? Quick Start Guide
-
-### 1. Authentication
-
-```bash
-# Login to get access token
-curl -X POST https://your-api-domain.example.com/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "password": "your_password"
-  }'
-
-# Save the token from response
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-```
-
-### 2. List Conversations
-
-```bash
-curl -X GET "https://your-api-domain.example.com/api/conversations?page=1&limit=20" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### 3. Create a Message
-
-```bash
-curl -X POST "https://your-api-domain.example.com/api/messages" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "conversationId": "conv_123",
-    "content": "Hello, how can I help you?",
-    "messageType": "text"
-  }'
-```
-
-### 4. Get Analytics
-
-```bash
-curl -X GET "https://your-api-domain.example.com/api/analytics/conversations?timeRange=7d" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### 5. Connect to WebSocket
-
-```javascript
-const ws = new WebSocket(
-  'wss://your-api-domain.example.com/api/websocket?token=' + TOKEN
-);
-
-ws.onopen = () => {
-  console.log('Connected to WebSocket');
-  ws.send(JSON.stringify({
-    type: 'subscribe',
-    conversationId: 'conv_123'
-  }));
-};
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received:', data);
-};
-```
+### 模組級 API 規格（如有獨立規格書）
+- [`modules/WEBSOCKET_API.md`](./modules/WEBSOCKET_API.md)
+- [`modules/COLLABORATION_API.md`](./modules/COLLABORATION_API.md)
+- [`modules/ANALYTICS_API.md`](./modules/ANALYTICS_API.md)
+- [`MESSAGING_API_REFERENCE.md`](./MESSAGING_API_REFERENCE.md)
+- [`TAG_API_REFERENCE.md`](./TAG_API_REFERENCE.md)
 
 ---
 
-## ?? Additional Resources
+## 4. WebSocket 連線
 
-### Developer Tools
+v4 即時通訊由 WebSocket + Durable Objects 提供（v3 的 SSE 已完全移除）。
 
-- **Postman Collection:** [Download Collection](./postman/Multi-Channel-API.postman_collection.json)
-- **OpenAPI Spec:** [Download Spec](./openapi/api-spec.yaml)
-- **SDK (JavaScript):** [NPM Package](https://npmjs.com/package/@multi-channel/sdk)
+**端點**：`GET /api/websocket/connect?conversationId=<id>`（HTTP Upgrade）
 
-### Guides & Tutorials
-
-- [Authentication Guide](./guides/AUTHENTICATION.md)
-- [WebSocket Integration Guide](./guides/WEBSOCKET_INTEGRATION.md)
-- [Bulk Operations Best Practices](./guides/BULK_OPERATIONS.md)
-- [Error Handling Guide](./guides/ERROR_HANDLING.md)
-- [Rate Limiting Guide](./guides/RATE_LIMITING.md)
-- [Analytics Query Examples](./guides/ANALYTICS_EXAMPLES.md)
-
-### Support
-
-- **Documentation:** [https://mcis-backend.daiwandist.com/docs](https://mcis-backend.daiwandist.com/docs)
-- **GitHub Issues:** [https://github.com/your-org/multi-channel/issues](https://github.com/your-org/multi-channel/issues)
-- **Email Support:** support@daiwandist.com
+詳見 [`websocket 模組手冊`](../../modules/websocket.md) 與 [`WEBSOCKET_API.md`](./modules/WEBSOCKET_API.md)。
 
 ---
 
-## ?? Changelog
+## 5. 速率限制
 
-### Version 2.0.0 (2025-01-28)
+由 `RateLimiterDO` 全域控制：
+- 每用戶連線上限：10
+- 全域連線上限：10,000
+- 細部端點限制依模組而定（見各模組手冊）
 
-**New Features:**
-- ??Analytics API (9 endpoints)
-- ??Collaboration API (8 endpoints)
-- ??Unified WebSocket API documentation
-- ??File Management API
-- ??Tag Management API with bulk operations
-- ??CORS Monitoring API
-
-**Improvements:**
-- Enhanced error responses with detailed codes
-- Improved rate limiting with custom limits per endpoint
-- Better pagination support
-- WebSocket reconnection handling
-
-**Deprecated:**
-- Server-Sent Events (SSE) API (use WebSocket instead)
-- Legacy webhook endpoints without team support
-
-### Version 1.0.0 (2024-09-01)
-
-- Initial API release
-- Basic authentication and authorization
-- Conversation and message management
-- LINE OA integration
+超限回 `429 Too Many Requests`。
 
 ---
 
-## ?? Security Best Practices
+## 6. CORS
 
-1. **Never expose your JWT token** in client-side code or public repositories
-2. **Use HTTPS** for all API requests in production
-3. **Rotate tokens regularly** using the refresh token mechanism
-4. **Validate webhook signatures** for external integrations
-5. **Use environment variables** for sensitive configuration
-6. **Enable CORS** only for trusted domains
-7. **Monitor API usage** for suspicious patterns
-8. **Implement proper error handling** to avoid information leakage
+由 `src/config/cors.ts` 統一管理。允許：
+- 認證 header（Authorization, Session-ID）
+- 標準 HTTP methods
+- 預檢請求快取
+
+詳見 [`docs/guides/CORS_CONFIGURATION_GUIDE.md`](../../guides/CORS_CONFIGURATION_GUIDE.md)。
 
 ---
 
-## ?? API Status
+## 7. 版本管理
 
-Current system status: [https://mcis-backend.daiwandist.com/api/health](https://mcis-backend.daiwandist.com/api/health)
+| 變更類型 | 處理 |
+|---------|------|
+| Breaking change | 主版號 +1（v4 → v5），CHANGELOG 標 BREAKING |
+| 新增端點 | 次版號 +1 |
+| 修補 | 修訂號 +1 |
 
-| Service              | Status    | Uptime   |
-|----------------------|-----------|----------|
-| API Gateway          | ??Operational | 99.9%  |
-| WebSocket Service    | ??Operational | 99.8%  |
-| Database (D1)        | ??Operational | 99.9%  |
-| File Storage (R2)    | ??Operational | 99.9%  |
-| Message Queue        | ??Operational | 99.7%  |
-| Analytics Service    | ??Operational | 99.5%  |
+> v3 → v4 重大變更（移除 SSE、簡化角色、團隊指派專屬）的完整對照見 [`docs/CURRENT_STATUS.md`](../../CURRENT_STATUS.md) §8。
 
 ---
 
-**Last Updated:** 2025-01-28
-**API Version:** 2.0.0
-**Documentation Version:** 2.0.0
+## 8. 與 v3 (v2.0.0 規格) 差異速查
+
+| 面向 | v3 (v2.0.0 docs) | v4 (本文件) |
+|------|------------------|-------------|
+| 即時通訊 | WebSocket + SSE 雙通道 | **僅 WebSocket** |
+| JWT Payload | 單團隊 | 多團隊（`primaryTeamId` + `allowedTeamIds[]` + `teamRoles{}`） |
+| 對話指派 | 個人或團隊 | **僅團隊** |
+| 系統角色 | admin / team / agent | **admin / agent** |
+| Durable Objects | 7 個 | **10 個**（新增 RateLimiterDO + MetricsCollectorDO） |
+
+---
+
+## 9. 相關文件
+
+- [`docs/PROJECT_OVERVIEW.md`](../../PROJECT_OVERVIEW.md) — 系統對外完整描述
+- [`docs/CURRENT_STATUS.md`](../../CURRENT_STATUS.md) — v4 系統現況快照
+- [`docs/modules/INDEX.md`](../../modules/INDEX.md) — 24 模組使用者手冊
+- [`docs/architecture/`](../../architecture/) — 系統設計與架構決策
+- [`docs/guides/`](../../guides/) — 部署、CORS、KV、效能優化指南

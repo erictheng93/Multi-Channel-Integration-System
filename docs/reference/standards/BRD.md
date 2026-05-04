@@ -1,8 +1,8 @@
 # Business Requirements Document (BRD)
 ## Multi-Channel Customer Support System
 
-**Document Version:** 1.0
-**Date:** August 25, 2025
+**Document Version:** 2.0 (v4.0.0 alignment)
+**Date:** Updated 2026-05-04 (original 2025-08-25)
 **Prepared for:** Multi-Channel Integration System
 **Prepared by:** System Development Team
 
@@ -52,7 +52,7 @@ The global customer service software market is valued at $11.5 billion (2024) wi
 
 #### Primary Stakeholders
 - **Customer Service Teams**: Direct users managing customer interactions
-- **Team Managers**: Supervisors monitoring performance and managing workflows
+- **Team Leads / Supervisors**: Team-scoped supervisors monitoring performance and managing workflows
 - **System Administrators**: Technical staff responsible for system configuration and maintenance
 - **Business Executives**: Decision-makers requiring performance insights and ROI data
 
@@ -75,18 +75,25 @@ The global customer service software market is valued at $11.5 billion (2024) wi
 - **Extensible Architecture**: Support for future platform additions (WhatsApp, Telegram, etc.)
 
 #### 3.1.2 Enterprise Role Management
-**Requirement**: Implement comprehensive 3-role hierarchy system
-- **Admin Role (Level 3)**: System-wide access and configuration management
-- **Team Role (Level 2)**: Team-scoped management and supervision capabilities
-- **Agent Role (Level 1)**: Conversation-focused customer service operations
-- **Team Structure**: Hierarchical organization with role-based permissions
+**Requirement**: Dual-role system (system role + team role) for flexible enterprise scenarios
+- **System Role (2 tiers)**:
+  - **Admin**: System-wide access and configuration management; can act across all teams
+  - **Agent**: Customer-service operator; access scoped via team-role membership
+- **Team Role (3 tiers, per-team)**:
+  - **Supervisor**: Cross-team monitoring and override capability within authorized teams
+  - **Lead**: Team supervision, member management, in-team conversation routing
+  - **Member**: Day-to-day conversation handling within team scope
+- **Multi-Team Membership**: A single agent can belong to multiple teams with independent team roles per team
+- **JWT Encoding**: Token carries `primaryTeamId`, `allowedTeamIds[]`, and `teamRoles{teamId: roleInTeam}` to avoid per-request DB lookups
+
+> Detailed permission matrix: see [`reference/specifications/RBAC_DESIGN.md`](../specifications/RBAC_DESIGN.md).
 
 #### 3.1.3 Conversation Management
-**Requirement**: Centralized conversation handling with advanced features
+**Requirement**: Centralized conversation handling with team-based routing
 - **Unified Inbox**: All channel conversations in single interface
-- **Assignment System**: Automatic and manual conversation routing
-- **Status Tracking**: Conversation lifecycle management (pending, in-progress, closed)
-- **Transfer Capabilities**: Inter-agent and inter-team conversation transfer
+- **Team-Only Assignment**: Conversations are assigned to a **team** (`assignedTeamId`); team members self-pull or Lead/Supervisor distributes (individual-agent assignment was removed in v4)
+- **Status Tracking**: Conversation lifecycle (pending, in-progress, waiting, resolved)
+- **Transfer Capabilities**: Cross-team conversation transfer with full audit history (`conversationTransfers` table)
 
 #### 3.1.4 Delayed Messaging System
 **Requirement**: Advanced message scheduling and recall capabilities
@@ -236,7 +243,7 @@ The global customer service software market is valued at $11.5 billion (2024) wi
 
 #### Phase 2: Enterprise Features (Completed)
 - **Duration**: Q2 2024 - Q3 2024
-- **Deliverables**: 3-role system, team management, advanced permissions
+- **Deliverables**: Dual-role system (system + team), multi-team management, advanced permissions
 - **Status**: Complete with production deployment
 
 #### Phase 3: Advanced Features (Completed)

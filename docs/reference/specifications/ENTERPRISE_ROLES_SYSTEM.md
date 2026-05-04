@@ -1,273 +1,161 @@
-# Enterprise 3-Role System Documentation
+# Enterprise Role System (v4.0.0)
 
-## Overview
-
-The Multi-Channel Integration System now supports a comprehensive 3-role enterprise system designed for scalable customer support operations.
-
-## Role Hierarchy
-
-```
-Admin (Level 3) > Manager (Level 2) > Agent (Level 1)
-```
-
-### Role Definitions
-
-#### 1. Admin (System Administrator)
-- **Level**: 3 (Highest)
-- **Scope**: System-wide access
-- **Team Association**: None (can access all teams)
-
-**Permissions:**
-- Full system access (`*:*`)
-- Manage all teams and users
-- System configuration and settings
-- Database and infrastructure management
-- Create/modify/delete any resource
-- Access all conversations across teams
-- Manage integrations (LINE, Facebook)
-- View system analytics and reports
-
-#### 2. Manager (Team Manager)
-- **Level**: 2 (Middle)
-- **Scope**: Team-specific access
-- **Team Association**: Must be assigned to a specific team
-
-**Permissions:**
-- **Conversation Management:**
- - View all team conversations
- - Assign conversations to team agents
- - Transfer conversations within/outside team
- - Close/reopen conversations
-
-- **Team Management:**
- - View own team details
- - Manage team settings (own team only)
- - Invite agents to team
-
-- **Agent Management:**
- - View all agents in team
- - Invite new agents to team
-
-- **Customer Management:**
- - View all team customers
- - Edit customer information (team scope)
- - Manage customer tags (team scope)
-
-- **Message Management:**
- - View all team messages
- - Send messages on behalf of team
- - Recall messages (team scope)
-
-- **Analytics & Reporting:**
- - Generate team reports
- - View team analytics
- - Team performance metrics
-
-- **Resource Management:**
- - Generate QR codes for team
- - Manage team tags
-
-- **Limitations:**
- - Cannot access other teams' data
- - Cannot delete teams or agents
- - Cannot modify system settings
- - Cannot access system-level analytics
-
-#### 3. Agent (Customer Service Representative)
-- **Level**: 1 (Basic)
-- **Scope**: Assigned conversation access
-- **Team Association**: Must be assigned to a specific team
-
-**Permissions:**
-- **Conversation Management:**
- - View assigned conversations only
- - Reply to assigned conversations
-
-- **Message Management:**
- - Send messages in assigned conversations
- - Recall own messages only
-
-- **Customer Management:**
- - View customer details in assigned conversations
- - Add tags to customers (team scope)
-
-- **Limitations:**
- - Cannot view unassigned conversations
- - Cannot access other agents' conversations
- - Cannot manage team settings
- - Cannot invite other users
- - Cannot access analytics/reports
-
-## Database Schema Changes
-
-### 1. Teams Table
-```sql
-CREATE TABLE teams (
- id INTEGER PRIMARY KEY AUTOINCREMENT,
- name TEXT NOT NULL,
- description TEXT,
- qr_code TEXT,
- is_active INTEGER DEFAULT 1,
- created_at TEXT DEFAULT (datetime('now')),
- updated_at TEXT DEFAULT (datetime('now'))
-);
-```
-
-### 2. Updated Agents Table
-```sql
--- Added team_id column
-ALTER TABLE agents ADD COLUMN team_id INTEGER REFERENCES teams(id);
-
--- Updated role column comment
--- role: 'admin', 'manager', 'agent'
-```
-
-### 3. Updated Invitations Table
-```sql
--- Added team_id column for team-specific invitations
-ALTER TABLE invitations ADD COLUMN team_id INTEGER REFERENCES teams(id);
-```
-
-## Permission Implementation
-
-### Backend Permission Service
-
-The `PermissionService` class implements the role hierarchy:
-
-```typescript
-class PermissionService {
- // Role hierarchy levels
- private static roleHierarchy = {
- admin: 3,
- manager: 2,
- agent: 1
- };
-
- // Check role authority
- static hasRoleAuthority(userRole: string, requiredRole: string): boolean {
- const userLevel = this.roleHierarchy[userRole] || 0;
- const requiredLevel = this.roleHierarchy[requiredRole] || 0;
- return userLevel >= requiredLevel;
- }
-}
-```
-
-### Middleware Functions
-
-New middleware functions for role-based access control:
-
-- `requireAdmin()` - Admin-only access
-- `requireManagerOrAdmin()` - Manager or Admin access
-- `requireRoleLevel(role)` - Minimum role level required
-
-### Frontend Authentication
-
-Updated auth store with role-specific computed properties:
-
-```typescript
-const isAdmin = computed(() => currentAgent.value?.role === 'admin');
-const isManager = computed(() => currentAgent.value?.role === 'manager');
-const isAgent = computed(() => currentAgent.value?.role === 'agent');
-const isManagerOrAdmin = computed(() =>
- currentAgent.value?.role === 'admin' || currentAgent.value?.role === 'manager'
-);
-```
-
-## API Endpoints Access Control
-
-### Team Management
-- `GET /api/teams` - All roles (filtered by permission)
-- `POST /api/teams` - Manager+
-- `PUT /api/teams/:id` - Manager+ (own team only for managers)
-- `DELETE /api/teams/:id` - Admin only
-
-### User Management
-- `POST /api/auth/register` - Manager+ (with role validation)
-- `PUT /api/users/:id/role` - Admin only
-- `GET /api/users` - Manager+ (filtered by team for managers)
-
-### Conversation Management
-- Conversations filtered by role and team permissions
-- Managers see all team conversations
-- Agents see only assigned conversations
-
-## Migration Guide
-
-### Existing Users
-1. All existing agents remain as 'agent' role
-2. Admins retain 'admin' role
-3. New 'manager' role available for team leaders
-4. Default team created for existing agents
-
-### Team Assignment
-1. Existing agents assigned to "Default Team"
-2. Admins have no team assignment (system-wide access)
-3. New managers must be assigned to specific teams
-
-## Best Practices
-
-### Role Assignment
-- **Admins**: System administrators, technical leads
-- **Managers**: Team leads, supervisors, customer service managers
-- **Agents**: Front-line customer service representatives
-
-### Team Structure
-- Organize teams by:
- - Product lines
- - Geographic regions
- - Language/locale
- - Skill specializations
-
-### Security Considerations
-- Managers can only access their assigned team's data
-- Cross-team data access requires admin privileges
-- All role changes require admin approval
-- Team transfers require admin privileges
-
-## UI/UX Changes
-
-### Role-Based Navigation
-- Admin: Full system menu
-- Manager: Team-focused menu with analytics
-- Agent: Conversation-focused simplified menu
-
-### Feature Visibility
-- Role-specific feature flags
-- Conditional menu items
-- Permission-based button states
-
-## Deployment Notes
-
-### Database Migration
-Run the migration script: `drizzle/0004_add_enterprise_roles_team_support.sql`
-
-### Environment Variables
-No new environment variables required.
-
-### Testing
-1. Test role hierarchy enforcement
-2. Verify team-scoped data access
-3. Validate permission-based UI rendering
-4. Test user invitation flows with team assignment
-
-## Future Enhancements
-
-### Planned Features
-- Custom role permissions (beyond predefined roles)
-- Multi-team assignments for managers
-- Department/division hierarchy
-- Advanced analytics with role-based dashboards
-
-### API Extensions
-- Role-based rate limiting
-- Team-specific webhook configurations
-- Advanced audit logging by role
+> 多渠道客服整合系統的角色權限規格  
+> **最後更新**: 2026-05-04  
+> **取代**：原 3-role 系統（Admin/Manager/Agent），v4 已重新設計
 
 ---
 
-## Support
+## 1. 概覽
 
-For implementation questions or issues with the enterprise role system, refer to:
-- [Permission System Guide](../features/PERMISSION_SYSTEM_GUIDE.md)
-- [Team Management Implementation](../implementation/TEAM_MANAGEMENT_IMPLEMENTATION_COMPLETE.md)
-- [API Endpoints Documentation](../api/api-endpoints.md)
+本系統使用 **雙層角色（Dual-Role）** 而非單層階層：
+
+```
+系統角色（System Role）           團隊角色（Team Role）
+─────────────────────             ───────────────────────
+Admin                             Supervisor  ┐
+  │                               Lead        │  在每個團隊
+  │（全域）                       Member      ┘  獨立指定
+  │
+Agent ───────────────► (受限於團隊角色才能做事)
+```
+
+詳細權限矩陣請見 [RBAC_DESIGN.md](./RBAC_DESIGN.md)；本文件聚焦於「企業客服場景下，每個角色實際在做什麼」。
+
+---
+
+## 2. Admin（系統管理員）
+
+**典型人選**：IT 主管 / 專案 owner / 客服中心總監
+
+**核心職責**：
+- 接通新渠道（LINE OA、Facebook 粉專）
+- 建立 / 解散團隊
+- 設定全域延遲訊息預設、自動回覆模板
+- 查看跨團隊報表、稽核日誌
+- 緊急斷流（斷路器）、系統備份還原
+- 管理員工帳號的建立與停權
+
+**典型一天**：
+1. 早上看 Dashboard 確認系統 KPI
+2. 處理新進員工的帳號建立、加進團隊
+3. 設定本月新上線的 Facebook 粉專
+4. 月底匯出客服效能報表給高層
+
+**權限上限**：無限制 — 可看可改任何東西。
+
+---
+
+## 3. Agent + Supervisor（督導）
+
+**典型人選**：客服中心副主管、跨組督導
+
+**核心職責**：
+- 監看自己被授權的多個團隊
+- 處理跨組轉移的協調
+- 培訓新進客服（看他們的對話、給回饋）
+- 異常情況覆蓋指派（強制改派）
+
+**典型工作場景**：
+- 售前組客服都在忙，VIP 客戶來訊 → Supervisor 把對話覆蓋指派給專屬窗口
+- 月底審視各組成員效能、與 Lead 討論績效
+
+**權限上限**：被授權團隊內全部可見、可改；無法改系統設定、無法建團隊。
+
+---
+
+## 4. Agent + Lead（團隊主管）
+
+**典型人選**：售前組組長、售後組組長、企業客戶組組長
+
+**核心職責**：
+- 組內對話分派（看哪位 Member 較閒就分過去）
+- 處理 Member 處理不來的疑難對話
+- 組內人員邀請與移除
+- 編輯自己團隊的資料（QR Code、團隊描述）
+- 看組內統計（每位 Member 處理量、平均回應時間）
+
+**典型工作場景**：
+- 早上看 5 個待派對話 → 依專長分給 3 位 Member
+- 下午有客戶投訴 → 把對話轉到自己處理
+- 看到新人 Member 處理速度慢 → 私下指導
+
+**權限上限**：自己團隊內可改；其他團隊不可見（除非 Supervisor）。
+
+---
+
+## 5. Agent + Member（一般客服）
+
+**典型人選**：第一線客服人員
+
+**核心職責**：
+- 處理被指派到的對話
+- 接收新訊息、回覆、撤回（在期限內）、貼標籤
+- 上傳檔案附件給客戶
+- 設定自己的線上狀態（online / busy / away）
+- 必要時請主管轉移
+
+**典型工作場景**：
+- 一上線就把狀態設 online
+- 處理 Lead 派下來的對話
+- 客戶問「上次的訂單編號」→ 全文搜訊息找答案
+- 下班前把狀態切 offline
+
+**權限上限**：只能看 / 改自己被指派的對話；不能指派給別人。
+
+---
+
+## 6. 多團隊歸屬常見模式
+
+| 模式 | 設定 | 場景 |
+|------|------|------|
+| 單一團隊客服 | A 組 Member | 新人 / 專責特定產線 |
+| 跨團隊資深客服 | A 組 Lead + B 組 Member | 兼任業務組長 + 客服組支援 |
+| 跨團隊督導 | A、B、C 組 Supervisor | 三組共用督導 |
+| 全公司管理員 | 系統 Admin（不需團隊角色） | 老闆 / IT 主管 |
+
+`primaryTeamId` 用於決定 UI 預設視角（登入後預設展開哪個團隊），不影響權限。
+
+---
+
+## 7. 角色變更場景
+
+### 新人入職
+1. Admin 用 `POST /api/auth/register` 建帳號（角色：`agent`）
+2. Lead 把新人加進團隊：`POST /api/teams/:id/members`（角色：`member`）
+3. 新人首次登入要求改密碼（policy: `must_change`）
+
+### 升任 Lead
+1. Admin 或現任 Lead 在團隊內用 `PUT /api/teams/:id/members/:agentId` 改 `roleInTeam` 為 `lead`
+2. 該員下次 token refresh 即生效（無需 logout）
+
+### 跨組調動
+1. Admin 用 `PUT /api/agents/batch/transfer` 將員工從 A 組移到 B 組
+2. 該員失去 A 組所有權限，獲得 B 組權限（依新分配的 `roleInTeam`）
+
+### 離職
+1. Admin 軟刪除帳號（設 `deletedAt`）
+2. 所有對話指派保留歷史，但該員無法登入
+
+---
+
+## 8. 與 v3 的差異
+
+| 面向 | v3 | v4 |
+|------|----|----|
+| 系統角色 | Admin / Manager / Agent（3 層） | Admin / Agent（2 層） |
+| Manager 角色 | 獨立的中階角色 | **已移除** — 改由「團隊角色 Lead/Supervisor」承擔 |
+| 對話指派目標 | 可指派給「個人」或「團隊」 | **僅可指派給團隊** |
+| 多團隊支援 | 一人一團隊 | **一人多團隊**，每團獨立角色 |
+| 權限傳遞 | 純 DB 查詢 | JWT 內嵌（含 `allowedTeamIds`、`teamRoles`） |
+
+> 升級規劃：原 v3 Manager 自動轉為「在原團隊任 Lead」；原 v3 Team 角色合併為 Agent。
+
+---
+
+## 9. 相關文檔
+
+- [RBAC_DESIGN.md](./RBAC_DESIGN.md) — 完整權限矩陣與 middleware 實作
+- [`docs/modules/auth.md`](../../modules/auth.md) — Auth 模組使用者手冊
+- [`docs/modules/teams.md`](../../modules/teams.md) — Teams 模組
+- [`docs/modules/agents.md`](../../modules/agents.md) — Agents 模組
