@@ -12,7 +12,7 @@
 import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { drizzle } from 'drizzle-orm/d1';
-import { eq } from 'drizzle-orm';
+import { and, eq, lt } from 'drizzle-orm';
 import { fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp';
@@ -281,9 +281,30 @@ export class PresignedUrlService {
    * 清理過期的 pending 記錄 (可由定時任務調用)
    */
   async cleanupExpiredPendingUploads(maxAgeMinutes: number = 30): Promise<number> {
-    // 注意：這裡使用簡單的查詢，實際生產環境可能需要分批處理
-    log.info(`[PresignedUrlService] Cleanup not implemented yet - would clean uploads older than ${maxAgeMinutes} minutes`);
-    return 0;
+    const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000).toISOString();
+
+    const expired = await this.db
+      .select({ id: fileAttachments.id })
+      .from(fileAttachments)
+      .where(and(
+        eq(fileAttachments.uploadStatus, 'pending'),
+        lt(fileAttachments.createdAt, cutoff)
+      ))
+      .all();
+
+    if (expired.length === 0) {
+      return 0;
+    }
+
+    await this.db
+      .delete(fileAttachments)
+      .where(and(
+        eq(fileAttachments.uploadStatus, 'pending'),
+        lt(fileAttachments.createdAt, cutoff)
+      ));
+
+    log.info(`[PresignedUrlService] Cleaned ${expired.length} expired pending uploads older than ${maxAgeMinutes} minutes`);
+    return expired.length;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

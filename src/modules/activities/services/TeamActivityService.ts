@@ -9,7 +9,8 @@ import {
   TeamUpdateActivityParams,
   MemberActivityParams,
   QRCodeActivityParams,
-  ActivityLog
+  ActivityLog,
+  ActivityQueryParams
 } from '../types/interfaces'
 import { createContextLogger } from '@/utils/logger'
 
@@ -207,7 +208,7 @@ export class TeamActivityService {
     pageSize?: number
     days?: number
   }) {
-    const params: any = {
+    const params: ActivityQueryParams = {
       resourceType: RESOURCE_TYPES.TEAM,
       resourceId: teamId.toString(),
       page: options?.page || 1,

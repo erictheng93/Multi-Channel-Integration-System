@@ -245,7 +245,7 @@ export async function updateCustomerProfile(
 
         for (const convId of conversationIds) {
           await broadcastService.broadcastConversationEvent({
-            type: 'customer_profile_updated' as any,
+            type: 'customer_profile_updated',
             conversationId: convId,
             data: broadcastData,
           });
@@ -284,7 +284,7 @@ export async function triggerBackgroundSyncIfNeeded(
         ? userSyncService.syncLineUser(platformUserId, groupId)
         : userSyncService.syncFacebookUser(platformUserId);
 
-      syncPromise.catch(async (error: unknown) => {
+      syncPromise.catch(async (error) => {
         log.warn(`Background ${platform} user sync failed`, {
           error: error instanceof Error ? error.message : String(error),
         });

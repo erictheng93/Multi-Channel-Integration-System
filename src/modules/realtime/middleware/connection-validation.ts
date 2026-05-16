@@ -229,7 +229,7 @@ export const managementValidation = connectionValidation({
 });
 
 // 從 context 獲取連接驗證信息
-export function getConnectionValidation(c: Context): any {
+export function getConnectionValidation(c: Context) {
   return c.get('connectionValidation') || null;
 }
 

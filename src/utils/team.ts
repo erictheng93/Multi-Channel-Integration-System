@@ -5,6 +5,10 @@ import { eq, and, count, inArray, sql, desc } from 'drizzle-orm';
 import type { NewTeam, NewConversationTransfer } from '../db/schema';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
+interface ResponseTimeRow {
+  avg_response_time: number | null;
+}
+
 /**
  * 團隊管理工具函數
  */
@@ -386,7 +390,7 @@ export async function getTeamStats(db: D1Database, teamId: number): Promise<{
     memberCount: memberResult?.count || 0,
     activeConversations: conversationResult?.count || 0,
     totalMessages: messageResult?.count || 0,
-    avgResponseTime: (responseTimeResult as any)?.avg_response_time as number || null
+    avgResponseTime: (responseTimeResult as ResponseTimeRow | undefined)?.avg_response_time || null
   };
 }
 

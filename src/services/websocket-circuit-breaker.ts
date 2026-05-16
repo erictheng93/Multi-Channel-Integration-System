@@ -60,6 +60,14 @@ interface CircuitBreakerStats {
   rejectedCalls: number;
 }
 
+interface CircuitBreakerAlert {
+  type: 'circuit_opened' | 'circuit_closed';
+  timestamp: string;
+  oldState: CircuitState;
+  newState: CircuitState;
+  stats: CircuitBreakerStats;
+}
+
 /**
  * 斷路器事件
  */
@@ -67,7 +75,7 @@ interface CircuitBreakerEvent {
   type: 'state_change' | 'failure' | 'success' | 'rejected';
   timestamp: string;
   state: CircuitState;
-  details?: any;
+  details?: unknown;
 }
 
 /**
@@ -269,7 +277,7 @@ export class WebSocketCircuitBreaker {
   /**
    * 失敗處理（帶錯誤率監控）
    */
-  private onFailure(error: any, context?: LogContext): void {
+  private onFailure(error: unknown, context?: LogContext): void {
     this.stats.failedCalls++;
     this.failureCount++;
     this.lastFailureTime = nowMs();
@@ -462,7 +470,7 @@ export class WebSocketCircuitBreaker {
    */
   private recordEvent(
     type: CircuitBreakerEvent['type'],
-    details?: any
+    details?: unknown
   ): void {
     const event: CircuitBreakerEvent = {
       type,
@@ -535,7 +543,7 @@ export class WebSocketCircuitBreaker {
           (oldState === CircuitState.OPEN && newState === CircuitState.CLOSED)) {
 
         const alertKey = `circuit_breaker:alert:${nowMs()}`;
-        const alert = {
+        const alert: CircuitBreakerAlert = {
           type: newState === CircuitState.OPEN ? 'circuit_opened' : 'circuit_closed',
           timestamp: nowISO(),
           oldState,
@@ -552,13 +560,13 @@ export class WebSocketCircuitBreaker {
         // 添加到活躍警報列表
         const activeAlertsKey = 'websocket:active_alerts';
         const activeAlertsData = await this.env.SESSIONS.get(activeAlertsKey);
-        const activeAlerts = activeAlertsData ? JSON.parse(activeAlertsData) : [];
+        const activeAlerts: CircuitBreakerAlert[] = activeAlertsData ? JSON.parse(activeAlertsData) : [];
 
         if (newState === CircuitState.OPEN) {
           activeAlerts.push(alert);
         } else {
           // 移除相關警報
-          const filtered = activeAlerts.filter((a: any) => a.type !== 'circuit_opened');
+          const filtered = activeAlerts.filter((a: CircuitBreakerAlert) => a.type !== 'circuit_opened');
           await this.env.SESSIONS.put(
             activeAlertsKey,
             JSON.stringify(filtered),

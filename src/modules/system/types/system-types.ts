@@ -59,7 +59,7 @@ export interface SystemStats {
   totalMessages: number;
   totalCustomers: number;
   totalConversations: number;
-  recentMessages: any[];
+  recentMessages: unknown[];
 }
 
 // 系統設置響應（不包含敏感信息）
@@ -126,15 +126,15 @@ export interface SystemSettingsUpdate {
 // 消息回復統計
 export interface MessageRepliesResponse {
   messageId: string;
-  replies: any[];
+  replies: unknown[];
   count: number;
 }
 
 // 對話消息樹結構
 export interface ConversationMessageTree {
   conversationId: string;
-  messages: any[];
-  replyMap: Record<string, any[]>;
+  messages: unknown[];
+  replyMap: Record<string, unknown[]>;
   totalMessages: number;
 }
 
@@ -152,7 +152,7 @@ export interface IntegrationTestResult {
   status: 'success' | 'error';
   message: string;
   timestamp: string;
-  details?: any;
+  details?: unknown;
 }
 
 // 系統指標
@@ -213,7 +213,7 @@ export interface SystemServiceInterface {
 }
 
 // API 響應類型
-export interface SystemApiResponse<T = any> {
+export interface SystemApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;

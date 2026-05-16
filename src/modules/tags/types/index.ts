@@ -87,7 +87,7 @@ export interface TagUsageStatsResponse {
 
 /** Tag customers response */
 export interface TagCustomersResponse {
-  customers: any[];
+  customers: unknown[];
   pagination: {
     page: number;
     limit: number;

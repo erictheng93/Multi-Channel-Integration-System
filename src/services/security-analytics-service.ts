@@ -6,6 +6,9 @@ import { createDbClient } from '../db/drizzle-factory';
 import { webhookSecurityEvents, corsEvents } from '@/db/schema';
 import { gte, desc } from 'drizzle-orm';
 
+type WebhookSecurityEventRow = typeof webhookSecurityEvents.$inferSelect;
+type CorsEventRow = typeof corsEvents.$inferSelect;
+
 /**
  * Real-time security dashboard metrics
  */
@@ -165,7 +168,7 @@ export class SecurityAnalyticsService {
     platform?: string;
     origin?: string;
     timestamp: string;
-    metadata: any;
+    metadata: unknown;
   }>> {
     const db = createDbClient(this.env.DB);
 
@@ -223,7 +226,7 @@ export class SecurityAnalyticsService {
    * Calculate summary metrics from webhook events
    */
   private calculateSummaryMetrics(
-    events: any[],
+    events: WebhookSecurityEventRow[],
     hours: number
   ): SecurityDashboardMetrics['summary'] {
     const severityCounts = {
@@ -274,7 +277,7 @@ export class SecurityAnalyticsService {
    * Calculate webhook security metrics
    */
   private calculateWebhookMetrics(
-    events: any[]
+    events: WebhookSecurityEventRow[]
   ): SecurityDashboardMetrics['webhookSecurity'] {
     const byPlatform: Record<string, number> = {};
     const byType: Record<string, number> = {};
@@ -308,7 +311,7 @@ export class SecurityAnalyticsService {
    * Calculate CORS monitoring metrics
    */
   private calculateCorsMetrics(
-    events: any[]
+    events: CorsEventRow[]
   ): SecurityDashboardMetrics['corsMonitoring'] {
     const allowedRequests = events.filter(e => e.type === 'allowed').length;
     const rejectedRequests = events.filter(e => e.type === 'rejected').length;
@@ -348,7 +351,7 @@ export class SecurityAnalyticsService {
    * Calculate trend metrics
    */
   private calculateTrends(
-    events: any[]
+    events: WebhookSecurityEventRow[]
   ): SecurityDashboardMetrics['trends'] {
     // Hourly distribution (last 24 hours)
     const hourlyMap: Record<string, { count: number; criticalCount: number }> = {};

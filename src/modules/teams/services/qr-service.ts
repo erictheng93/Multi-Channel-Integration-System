@@ -2,12 +2,11 @@
 // 團隊 QR Code 服務
 // Phase 2 優化：雙向同步機制 - teams.qrCode 欄位同步
 
-import { drizzle } from 'drizzle-orm/d1';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('TeamQRService')
 
-import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { teams } from '@/db/schema';
 import { QRCodeServiceImpl } from '@/services/qrcode-service-impl';
@@ -15,13 +14,13 @@ import type { QRCodeMetadata } from '@/types/services';
 import { nowISO } from '@/utils/timestamp'
 
 export class TeamQRService {
-  private db: DrizzleD1Database;
+  private db: Database;
   private kv?: KVNamespace;
   private lineBotId?: string;
   private frontendUrl?: string;
 
   constructor(database: D1Database, kv?: KVNamespace, lineBotId?: string, frontendUrl?: string) {
-    this.db = drizzle(database);
+    this.db = createDbClient(database);
     this.kv = kv;
     this.lineBotId = lineBotId;
     this.frontendUrl = frontendUrl;
@@ -40,6 +39,14 @@ export class TeamQRService {
     maxUses?: number;
     metadata?: QRCodeMetadata;
   }) {
+    const metadata: { description?: string; [key: string]: unknown } = params.metadata
+      ? { ...params.metadata }
+      : {
+          description: params.description || '',
+          teamId: params.teamId,
+          createdBy: 0
+        };
+
     // 1. 生成 QR Code 並存入 qr_codes 表
     const qrCodeInfo = await QRCodeServiceImpl.generateTeamQRCode(
       this.db,
@@ -48,11 +55,7 @@ export class TeamQRService {
         ...(params.campaignName && { campaignName: params.campaignName }),
         ...(params.expiresAt && { expiresAt: params.expiresAt }),
         ...(params.maxUses && { maxUses: params.maxUses }),
-        metadata: params.metadata || ({
-          description: params.description || '',
-          teamId: params.teamId,
-          createdBy: 0
-        } as QRCodeMetadata)
+        metadata
       },
       this.kv, // 傳遞 KV 命名空間
       this.lineBotId, // 傳遞 LINE Bot ID

@@ -11,6 +11,12 @@ interface RetryConfig {
   retryCondition?: (_error: unknown) => boolean;
 }
 
+export interface FileDownloadResponse {
+  blob: Blob;
+  filename: string;
+  contentType: string;
+}
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
@@ -333,6 +339,60 @@ class ApiClient {
 
   delete<T>(endpoint: string) {
     return this.request<T>('DELETE', endpoint);
+  }
+
+  async downloadFile(
+    endpoint: string,
+    options: { isRetry?: boolean } = {}
+  ): Promise<FileDownloadResponse> {
+    const { isRetry = false } = options;
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'GET',
+      headers: this.getHeaders()
+    });
+
+    if (response.status === 401 && !isRetry && this.refreshToken) {
+      const newToken = await this.refreshAuthToken();
+      if (newToken) {
+        return this.downloadFile(endpoint, { isRetry: true });
+      }
+    }
+
+    if (response.status === 401) {
+      this.redirectToLogin();
+    }
+
+    if (!response.ok) {
+      let errorMessage = this.getErrorMessage(response.status);
+      try {
+        const errorBody = await response.json();
+        errorMessage = errorBody.error || errorBody.message || errorMessage;
+      } catch {
+        // File endpoints may return non-JSON errors.
+      }
+      throw new Error(errorMessage);
+    }
+
+    return {
+      blob: await response.blob(),
+      filename: this.getFilenameFromContentDisposition(response.headers.get('Content-Disposition')) || 'download',
+      contentType: response.headers.get('Content-Type') || 'application/octet-stream'
+    };
+  }
+
+  private getFilenameFromContentDisposition(header: string | null): string | null {
+    if (!header) {
+      return null;
+    }
+
+    const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      return decodeURIComponent(utf8Match[1].trim());
+    }
+
+    const asciiMatch = header.match(/filename="?([^";]+)"?/i);
+    return asciiMatch?.[1]?.trim() || null;
   }
 
   // 專門處理檔案上傳的方法

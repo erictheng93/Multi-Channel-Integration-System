@@ -25,6 +25,7 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
+type MessageUpdateValues = Partial<typeof messages.$inferInsert>;
 
 /**
  * 獲取特定訊息
@@ -144,7 +145,7 @@ crudRoutes.put('/:id', jwtAuth, async (c) => {
     let updateData: {
       content?: string;
       messageType?: string;
-      metadata?: any;
+      metadata?: unknown;
     };
 
     try {
@@ -185,7 +186,7 @@ crudRoutes.put('/:id', jwtAuth, async (c) => {
     }
 
     // 準備更新數據
-    const updateValues: any = {
+    const updateValues: MessageUpdateValues = {
       updatedAt: nowISO()
     };
 
@@ -347,7 +348,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
       content: string;
       messageType?: string;
       replyToMessageId?: string;
-      metadata?: any;
+      metadata?: unknown;
       attachmentIds?: string[];
     };
 
@@ -434,7 +435,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
     }
 
     // 查詢關聯的附件
-    let attachments: any[] = [];
+    let attachments: unknown[] = [];
     if (attachmentIds && attachmentIds.length > 0) {
       attachments = await db
         .select()

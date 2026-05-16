@@ -32,6 +32,13 @@ export interface UpdateTaskReminderRequest {
   repeatInterval?: number;
 }
 
+type TaskReminderUpdate = Partial<typeof taskReminders.$inferInsert>;
+type RepeatType = NonNullable<CreateTaskReminderRequest['repeatType']>;
+
+interface MutationResult {
+  changes?: number;
+}
+
 /**
  * 任務提醒服務
  */
@@ -117,7 +124,7 @@ export class TaskReminderService {
    * 更新任務提醒
    */
   async update(id: string, userId: string, updates: UpdateTaskReminderRequest): Promise<boolean> {
-    const updateData: any = {};
+    const updateData: TaskReminderUpdate = {};
 
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.content !== undefined) updateData.content = updates.content;
@@ -139,7 +146,7 @@ export class TaskReminderService {
         eq(taskReminders.userId, userId)
       ));
 
-    return (result as any).changes > 0;
+    return ((result as MutationResult).changes || 0) > 0;
   }
 
   /**
@@ -157,7 +164,7 @@ export class TaskReminderService {
         eq(taskReminders.userId, userId)
       ));
 
-    return (result as any).changes > 0;
+    return ((result as MutationResult).changes || 0) > 0;
   }
 
   /**
@@ -171,7 +178,7 @@ export class TaskReminderService {
         eq(taskReminders.userId, userId)
       ));
 
-    return (result as any).changes > 0;
+    return ((result as MutationResult).changes || 0) > 0;
   }
 
   /**
@@ -264,11 +271,17 @@ export class TaskReminderService {
       content: reminder.content || undefined,
       remindAt: nextRemindAt,
       conversationId: reminder.conversationId || undefined,
-      repeatType: reminder.repeatType as any,
+      repeatType: this.normalizeRepeatType(reminder.repeatType),
       repeatInterval: reminder.repeatInterval || 1
     });
 
     console.log(`[TaskReminder] Scheduled next reminder for ${nextRemindAt.toISOString()}`);
+  }
+
+  private normalizeRepeatType(repeatType: string | null): RepeatType {
+    return repeatType === 'daily' || repeatType === 'weekly' || repeatType === 'monthly'
+      ? repeatType
+      : 'none';
   }
 
   /**

@@ -179,6 +179,14 @@ export interface ScheduledReportExecution {
   deliveryStatus: Record<string, 'sent' | 'failed'>;
 }
 
+export interface ReportDownloadContent {
+  body: BodyInit;
+  contentType: string;
+  filename: string;
+  fileSize?: number;
+  url: string;
+}
+
 // ======================== 服務介面 ========================
 
 /**
@@ -188,7 +196,7 @@ export interface ReportsServiceInterface {
   // 報告生成
   generateReport(params: ReportGenerationParams, userId: string): Promise<ReportBase>;
   getReportStatus(reportId: string): Promise<ReportBase | null>;
-  downloadReport(reportId: string, userId: string): Promise<{ url: string; filename: string } | null>;
+  downloadReport(reportId: string, userId: string): Promise<ReportDownloadContent | null>;
 
   // 報告管理
   listReports(query: ReportListQuery): Promise<ReportListResponse>;
@@ -210,7 +218,7 @@ export interface ReportsServiceInterface {
   // 工具方法
   validateReportParams(params: ReportGenerationParams): Promise<{ valid: boolean; errors: string[] }>;
   getAvailableTemplates(type: ReportType): Promise<Array<{ name: string; description: string; options: ReportOptions }>>;
-  previewReport(params: ReportGenerationParams): Promise<any>; // Sample data for preview
+  previewReport(params: ReportGenerationParams): Promise<unknown>; // Sample data for preview
 }
 
 // ======================== 中間件類型 ========================
@@ -245,7 +253,7 @@ export class ReportNotFoundError extends Error {
 }
 
 export class ReportGenerationError extends Error {
-  constructor(message: string, public details?: any) {
+  constructor(message: string, public details?: unknown) {
     super(message);
     this.name = 'ReportGenerationError';
   }

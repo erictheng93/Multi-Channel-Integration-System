@@ -45,7 +45,8 @@ export class SessionMessageService {
     const sessionSequence = sequenceResult?.nextSequence || 1;
     const now = nowISO();
     const messageRecord = {
-      conversationId: parseInt(messageData.conversationId), sessionId, senderType: messageData.senderType,
+      id: crypto.randomUUID(),
+      conversationId: messageData.conversationId, sessionId, senderType: messageData.senderType,
       agentSenderId: messageData.senderType === 'agent' ? messageData.senderId : null,
       customerSenderId: messageData.senderType === 'customer' ? parseInt(messageData.senderId) : null,
       content: messageData.content, messageType: messageData.messageType, sessionSequence,
@@ -53,7 +54,7 @@ export class SessionMessageService {
       metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : null, createdAt: now
     };
     try {
-      await this.db.insert(messages).values(messageRecord as any);
+      await this.db.insert(messages).values(messageRecord);
       await updateSessionActivity(sessionId, true);
       const insertedMessage = await this.db.select().from(messages).where(and(eq(messages.sessionId, sessionId), eq(messages.sessionSequence, sessionSequence), eq(messages.createdAt, now))).limit(1).all();
       const message = insertedMessage[0];

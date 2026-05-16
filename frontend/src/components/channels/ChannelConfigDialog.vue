@@ -452,18 +452,16 @@ const canProceed = computed(() => {
   if (currentStep.value === 2) {
     if (formData.value.platform === 'line') {
       return lineConfig.value.channelId &&
-             lineConfig.value.channelAccessToken &&
-             lineConfig.value.channelSecret
+             (isEditMode.value || (lineConfig.value.channelAccessToken && lineConfig.value.channelSecret))
     }
     if (formData.value.platform === 'facebook') {
       return facebookConfig.value.pageId &&
-             facebookConfig.value.accessToken &&
-             facebookConfig.value.appSecret
+             (isEditMode.value || (facebookConfig.value.accessToken && facebookConfig.value.appSecret))
     }
     if (formData.value.platform === 'whatsapp') {
       return whatsappConfig.value.phoneNumber &&
              whatsappConfig.value.businessAccountId &&
-             whatsappConfig.value.accessToken
+             (isEditMode.value || whatsappConfig.value.accessToken)
     }
   }
 
@@ -516,8 +514,9 @@ const handleSubmit = async () => {
     const request: CreateChannelRequest = {
       platform: formData.value.platform,
       configMetadata: {
+        ...(isEditMode.value ? props.channel?.configMetadata : {}),
         description: formData.value.description,
-        createdAt: new Date().toISOString()
+        [isEditMode.value ? 'updatedAt' : 'createdAt']: new Date().toISOString()
       }
     }
 
@@ -541,15 +540,24 @@ const handleSubmit = async () => {
       }
     }
 
-    const response = await channelsApi.create(request)
+    const response = isEditMode.value && props.channel
+      ? await channelsApi.update(props.channel.id, {
+          lineConfig: request.lineConfig,
+          facebookConfig: request.facebookConfig,
+          whatsappConfig: request.whatsappConfig,
+          configMetadata: request.configMetadata
+        })
+      : await channelsApi.create(request)
 
-    if (response.success) {
+    if (response.success && response.data) {
       createdChannel.value = response.data
-      webhookUrl.value = response.webhookUrl
+      webhookUrl.value = 'webhookUrl' in response
+        ? response.webhookUrl
+        : parseChannelJson(response.data.webhookConfig).url || ''
 
       verificationStatus.value = {
         type: 'success',
-        message: '頻道建立成功！',
+        message: isEditMode.value ? '頻道更新成功！' : '頻道建立成功！',
         details: '請將 Webhook URL 設定到通訊平台中以接收訊息'
       }
 
@@ -560,7 +568,7 @@ const handleSubmit = async () => {
 
       emit('success', response.data)
     } else {
-      throw new Error('頻道建立失敗')
+      throw new Error(isEditMode.value ? '頻道更新失敗' : '頻道建立失敗')
     }
   } catch (error: unknown) {
     console.error('Failed to create channel:', error)
@@ -626,14 +634,51 @@ const resetForm = () => {
   isCopied.value = false
 }
 
+const parseChannelJson = (value?: string | null): Record<string, string> => {
+  if (!value) { return {} }
+
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+    )
+  } catch {
+    return {}
+  }
+}
+
+const loadChannelForEdit = (channel: ChannelIntegration) => {
+  resetForm()
+  currentStep.value = 2
+  formData.value.platform = channel.platform
+  formData.value.description = typeof channel.configMetadata?.description === 'string'
+    ? channel.configMetadata.description
+    : ''
+  createdChannel.value = channel
+
+  const config = parseChannelJson(channel.config)
+  const webhookConfig = parseChannelJson(channel.webhookConfig)
+  webhookUrl.value = webhookConfig.url || ''
+
+  if (channel.platform === 'line') {
+    lineConfig.value.channelId = config.channelId || ''
+  } else if (channel.platform === 'facebook') {
+    facebookConfig.value.pageId = config.pageId || ''
+  } else if (channel.platform === 'whatsapp') {
+    whatsappConfig.value.phoneNumber = config.phoneNumber || ''
+    whatsappConfig.value.businessAccountId = config.businessAccountId || ''
+  }
+}
+
 // Watch for dialog visibility changes
 watch(() => props.show, (newValue) => {
   if (!newValue) {
     // Reset form when dialog closes
     setTimeout(resetForm, 300) // Delay to allow closing animation
   } else if (props.channel) {
-    // Load channel data for edit mode
-    // TODO: Implement edit mode loading
+    loadChannelForEdit(props.channel)
+  } else {
+    resetForm()
   }
 })
 </script>

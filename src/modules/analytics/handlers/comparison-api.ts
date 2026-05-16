@@ -31,7 +31,7 @@ const comparisonAPI = new Hono<{ Bindings: Bindings }>();
 comparisonAPI.get('/metric', async (c) => {
   try {
     const db = createDbClient(c.env.DB);
-    const cacheService = new AnalyticsCacheService(c.env.KV as any);
+    const cacheService = new AnalyticsCacheService(c.env.KV as KVNamespace);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
     // 解析查詢參數
@@ -102,7 +102,7 @@ comparisonAPI.get('/metric', async (c) => {
 comparisonAPI.get('/metrics', async (c) => {
   try {
     const db = createDbClient(c.env.DB);
-    const cacheService = new AnalyticsCacheService(c.env.KV as any);
+    const cacheService = new AnalyticsCacheService(c.env.KV as KVNamespace);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
     // 解析查詢參數
@@ -171,7 +171,7 @@ comparisonAPI.get('/metrics', async (c) => {
 comparisonAPI.get('/preset/conversation', async (c) => {
   try {
     const db = createDbClient(c.env.DB);
-    const cacheService = new AnalyticsCacheService(c.env.KV as any);
+    const cacheService = new AnalyticsCacheService(c.env.KV as KVNamespace);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
     const currentStart = c.req.query('currentStart');
@@ -208,7 +208,7 @@ comparisonAPI.get('/preset/conversation', async (c) => {
 comparisonAPI.get('/preset/message', async (c) => {
   try {
     const db = createDbClient(c.env.DB);
-    const cacheService = new AnalyticsCacheService(c.env.KV as any);
+    const cacheService = new AnalyticsCacheService(c.env.KV as KVNamespace);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
     const currentStart = c.req.query('currentStart');
@@ -245,7 +245,7 @@ comparisonAPI.get('/preset/message', async (c) => {
 comparisonAPI.get('/preset/user-activity', async (c) => {
   try {
     const db = createDbClient(c.env.DB);
-    const cacheService = new AnalyticsCacheService(c.env.KV as any);
+    const cacheService = new AnalyticsCacheService(c.env.KV as KVNamespace);
     const comparisonService = new PeriodComparisonService(db, cacheService);
 
     const currentStart = c.req.query('currentStart');
@@ -281,7 +281,7 @@ comparisonAPI.get('/preset/user-activity', async (c) => {
  */
 comparisonAPI.get('/cache/stats', async (c) => {
   try {
-    const cacheService = new AnalyticsCacheService(c.env.KV as any);
+    const cacheService = new AnalyticsCacheService(c.env.KV as KVNamespace);
     await cacheService.loadStats();
 
     const stats = await cacheService.getStats();

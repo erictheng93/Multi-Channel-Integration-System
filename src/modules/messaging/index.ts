@@ -198,21 +198,30 @@ export const DEFAULT_MESSAGING_CONFIG = {
 
 // ======================== 錯誤處理 ========================
 
+interface CodedError extends Error {
+  code: string;
+  details?: unknown;
+}
+
+function hasErrorCode(error: Error): error is CodedError {
+  return 'code' in error && typeof (error as { code?: unknown }).code === 'string';
+}
+
 /**
  * 統一的訊息模組錯誤處理
  */
 export function handleMessagingError(error: unknown): {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 } {
   if (error instanceof Error) {
     // 檢查是否為已知的訊息錯誤類型
-    if ('code' in error) {
+    if (hasErrorCode(error)) {
       return {
-        code: (error as any).code,
+        code: error.code,
         message: error.message,
-        details: 'details' in error ? (error as any).details : undefined
+        details: error.details
       };
     }
 

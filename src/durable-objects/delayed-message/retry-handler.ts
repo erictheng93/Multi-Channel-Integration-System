@@ -237,7 +237,7 @@ export async function sendWithRetry(
     message.retryCount = 0;
   }
 
-  let lastError: any = null;
+  let lastError: unknown = null;
   const sendStartTime = nowMs();
 
   for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
@@ -314,7 +314,7 @@ export async function handleSendSuccess(
  */
 export async function handlePermanentFailure(
   message: PendingMessage,
-  error: any,
+  error: unknown,
   deps: RetryHandlerDeps
 ): Promise<void> {
   message.status = 'failed';
@@ -341,7 +341,7 @@ export async function handlePermanentFailure(
  */
 export async function handleCatastrophicError(
   message: PendingMessage,
-  error: any,
+  error: unknown,
   deps: RetryHandlerDeps
 ): Promise<void> {
   deps.logger.critical('Fatal error sending message', error, {
@@ -396,7 +396,7 @@ export async function sendMessage(
  */
 export async function addToDeadLetterQueue(
   message: PendingMessage,
-  reason: any,
+  reason: unknown,
   deps: RetryHandlerDeps
 ): Promise<void> {
   const maxAttempts = 3;

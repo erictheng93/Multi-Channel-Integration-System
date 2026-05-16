@@ -60,7 +60,7 @@ export interface HandlerContext {
 export type HandlerResponse = Response
 
 // 處理器函數類型
-export type HandlerFunction = (c: any) => Promise<HandlerResponse>
+export type HandlerFunction = (c: unknown) => Promise<HandlerResponse>
 
 // 處理器對象類型
 export interface Handler {

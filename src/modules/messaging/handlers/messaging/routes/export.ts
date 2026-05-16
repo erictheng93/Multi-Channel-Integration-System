@@ -8,6 +8,7 @@ const log = createContextLogger('MsgExport')
 
 import { HTTP_STATUS } from '@/constants/http-status';
 import { eq, and, desc, gte, lte, count, isNull } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations, agents, customers } from '@/db/schema';
@@ -103,7 +104,7 @@ exportRoutes.get('/export/count', jwtAuth, async (c) => {
     const customerId = c.req.query('customerId');
     const agentId = c.req.query('agentId');
 
-    const whereConditions: any[] = [
+    const whereConditions: SQL<unknown>[] = [
       eq(messages.isRecalled, false)
     ];
 
@@ -183,7 +184,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
     const db = createDbClient(c.env.DB);
 
     // 構建查詢條件
-    const whereConditions: any[] = [
+    const whereConditions: SQL<unknown>[] = [
       eq(messages.isRecalled, false)
     ];
 

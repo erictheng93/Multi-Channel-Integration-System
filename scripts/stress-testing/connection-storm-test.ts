@@ -301,7 +301,7 @@ export class ConnectionStormTester extends EventEmitter {
       url.searchParams.set('deviceId', 'storm-test');
 
       // Add auth token if provided
-      const headers: any = {};
+      const headers: Record<string, string> = {};
       if (this.config.authToken) {
         headers['Authorization'] = `Bearer ${this.config.authToken}`;
       }

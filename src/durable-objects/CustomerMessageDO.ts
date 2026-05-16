@@ -12,6 +12,10 @@ import { messages, fileAttachments, conversations, customers } from '../db/schem
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '../utils/line';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { getPublicFileUrl } from '@/utils/file-url';
+import type { LineReplyMessage } from '../types';
+
+type MessageInsert = typeof messages.$inferInsert;
+type FileAttachment = typeof fileAttachments.$inferSelect;
 
 /**
  * Session data structure for validation
@@ -175,7 +179,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         console.log(`[CustomerMessageDO] Fetched ${fetchedMessages.length} messages`);
 
         // FIX: Query attachments for all fetched messages
-        let attachmentsByMessageId: Record<string, any[]> = {};
+        let attachmentsByMessageId: Record<string, unknown[]> = {};
         if (fetchedMessages.length > 0) {
           const messageIds = fetchedMessages.map(m => m.id);
           const allAttachments = await db
@@ -289,11 +293,11 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         // Construct the complete message object with ALL required fields
         // This prevents Drizzle ORM schema mismatch errors
-        const messageData = {
+        const messageData: MessageInsert = {
           id: messageId,
           conversationId: conversationId,
           senderType: 'agent' as const,
-          customerSenderId: null as string | null,
+          customerSenderId: null,
           agentSenderId: agentId,
           content: content || '',
           messageType: effectiveMessageType as 'text' | 'file',
@@ -315,7 +319,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         // Store message in D1 database
         const db = createDbClient(this.env.DB);
-        await db.insert(messages).values(messageData as any);
+        await db.insert(messages).values(messageData);
 
         // FIX: Link attachments to the message
         if (hasAttachments) {
@@ -340,7 +344,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         console.log(`[CustomerMessageDO] Conversation timestamps updated: ${createdAt}`);
 
         // FIX: Fetch linked attachments for response
-        let linkedAttachments: any[] = [];
+        let linkedAttachments: FileAttachment[] = [];
         if (hasAttachments) {
           linkedAttachments = await db
             .select()
@@ -388,7 +392,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
               console.log(`[CustomerMessageDO] Sending message to LINE user: ${customerData[0].platformUserId}`);
 
               const LINE_MESSAGE_LIMIT = 5;
-              const lineMessages: any[] = [];
+              const lineMessages: LineReplyMessage[] = [];
 
               // Build LINE messages
               // 1. Add text message if content exists
@@ -476,7 +480,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
           // Use fetch() to send notification to CustomerConversationDO
           // Cannot directly call methods on other Durable Objects!
-          const notifyRequest = new Request('https://fake-host/notify-message', {
+          const notifyRequest = new Request('https://customer-conversation-do/notify-message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

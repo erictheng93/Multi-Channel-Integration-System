@@ -202,9 +202,9 @@ export class AgentAlreadyExistsError extends Error {
 }
 
 export class InvalidAgentDataError extends Error {
-  public details?: any;
+  public details?: unknown;
 
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message);
     this.name = 'InvalidAgentDataError';
     this.details = details;
@@ -230,23 +230,9 @@ export interface AgentServiceInterface {
   listAgents(params: AgentListRequest): Promise<AgentListResponse>;
   searchAgents(query: AgentSearchQuery): Promise<AgentWithDetails[]>;
 
-  // 技能管理
-  addSkill(agentId: string, skill: AddSkillRequest): Promise<AgentSkill>;
-  updateSkill(agentId: string, skillId: string, updates: UpdateSkillRequest): Promise<AgentSkill>;
-  removeSkill(agentId: string, skillId: string): Promise<boolean>;
-  getAgentSkills(agentId: string): Promise<AgentSkill[]>;
-
-  // 狀態管理
-  updateStatus(agentId: string, status: UpdateStatusRequest): Promise<AgentStatus>;
-  getAgentStatus(agentId: string): Promise<AgentStatus | null>;
-
-  // 工作負載和績效
-  getWorkloadStats(agentId: string, period?: { from: string; to: string }): Promise<AgentWorkloadStats>;
-  getPerformanceStats(agentId: string, period?: { from: string; to: string }): Promise<AgentPerformanceStats>;
-
   // 批次操作
   batchUpdateAgents(request: BatchUpdateAgentsRequest): Promise<Agent[]>;
-  batchTransferAgents(request: BatchTransferAgentsRequest): Promise<{ success: boolean; errors: any[] }>;
+  batchTransferAgents(request: BatchTransferAgentsRequest): Promise<{ success: boolean; errors: unknown[] }>;
 }
 
 // 權限相關類型
@@ -267,7 +253,7 @@ export interface AgentEvent {
         'agent.status.changed' | 'agent.skill.added' | 'agent.skill.updated' |
         'agent.assigned' | 'agent.performance.updated';
   agentId: string;
-  data: any;
+  data: unknown;
   timestamp: string;
   userId?: string;
 }

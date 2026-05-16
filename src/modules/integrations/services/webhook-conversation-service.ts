@@ -14,6 +14,7 @@ import { DistributedLockService } from '@/services/distributed-lock-service';
 const log = createContextLogger('WebhookConversation');
 
 type Platform = 'line' | 'facebook';
+type WebhookConversation = ReturnType<typeof convertConversation>;
 
 /**
  * Find an existing open conversation for a customer,
@@ -29,14 +30,14 @@ export async function findOrCreateConversation(
     customerDisplayName?: string;
     assignedTeamId?: number | null;
   }
-): Promise<any> {
+) : Promise<WebhookConversation | undefined> {
   const drizzleDb = createDbClient(env.DB);
   const platformLabel = platform.toUpperCase();
 
   log.debug(`Searching for existing conversation for customer`, { platform: platformLabel, customerId });
 
   // Fast path: check for existing conversation (no lock needed)
-  let conversation = await drizzleDb
+  const existingConversation = await drizzleDb
     .select()
     .from(conversations)
     .where(and(
@@ -44,6 +45,9 @@ export async function findOrCreateConversation(
       ne(conversations.status, 'closed')
     ))
     .get();
+  let conversation: WebhookConversation | undefined = existingConversation
+    ? convertConversation(existingConversation)
+    : undefined;
 
   log.debug(`Existing conversation found`, { platform: platformLabel, conversationId: conversation ? conversation.id : 'None' });
 
@@ -80,7 +84,7 @@ export async function findOrCreateConversation(
           if (!existing.assignedTeamId && opts?.assignedTeamId) {
             existing.assignedTeamId = opts.assignedTeamId;
           }
-          return existing;
+          return convertConversation(existing);
         }
 
         // 建立新對話（使用 UUID）
@@ -143,7 +147,7 @@ export async function findOrCreateConversation(
             throw new Error('Failed to retrieve created conversation after successful insert');
           }
 
-          const created = convertConversation(newConversation) as any;
+          const created = convertConversation(newConversation);
 
           if (platform === 'line') {
             log.debug(`New conversation created and retrieved successfully`, {
@@ -203,7 +207,7 @@ export async function findOrCreateConversation(
     }
 
     // Fix: 如果現有對話沒有團隊指派，但呼叫方提供了 teamId，補上指派
-    const updateFields: Record<string, any> = {
+    const updateFields: Record<string, unknown> = {
       lastMessageAt: timestamp,
       updatedAt: timestamp
     };
@@ -275,7 +279,7 @@ export async function saveMessage(
   messageType: string,
   platformMessageId: string | null,
   displayName: string | null,
-  mediaData: any,
+  mediaData: unknown,
   platform: Platform
 ): Promise<string> {
   const drizzleDb = createDbClient(env.DB);

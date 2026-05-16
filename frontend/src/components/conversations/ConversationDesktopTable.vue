@@ -50,7 +50,7 @@
               />
               <div>
                 <div class="customer-name">
-                  {{ conversation.customer?.name || conversation.user?.name || (conversation as any).customer_name || '未知用戶' }}
+                  {{ getCustomerName(conversation) }}
                 </div>
                 <div class="customer-id">
                   ID: {{ conversation.userId }}
@@ -86,7 +86,7 @@
           </td>
           <td class="time-cell">
             <div class="timestamp">
-              {{ formatTime(conversation.updatedAt || (conversation as any).updated_at) }}
+              {{ formatTime(getUpdatedAt(conversation)) }}
             </div>
           </td>
         </tr>
@@ -106,6 +106,27 @@ defineProps<{
 defineEmits<{
   select: [id: string]
 }>()
+
+interface LegacyConversationFields {
+  customer_name?: string
+  updated_at?: string
+}
+
+type ConversationWithLegacyFields = Conversation & LegacyConversationFields
+
+const withLegacyFields = (conversation: Conversation): ConversationWithLegacyFields => {
+  return conversation as ConversationWithLegacyFields
+}
+
+const getCustomerName = (conversation: Conversation) => {
+  const legacyConversation = withLegacyFields(conversation)
+  return conversation.customer?.name || conversation.user?.name || legacyConversation.customer_name || '未知用戶'
+}
+
+const getUpdatedAt = (conversation: Conversation) => {
+  const legacyConversation = withLegacyFields(conversation)
+  return conversation.updatedAt || legacyConversation.updated_at
+}
 
 const getPlatformText = (platform: string) => {
   const platformMap = {
@@ -128,8 +149,14 @@ const getStatusText = (status: string) => {
   return statusMap[status] || status
 }
 
-const formatTime = (date: Date | number) => {
-  const dateObj = typeof date === 'number' ? new Date(date) : date
+const formatTime = (date?: Date | number | string) => {
+  if (!date) {
+    return ''
+  }
+  const dateObj = typeof date === 'number' || typeof date === 'string' ? new Date(date) : date
+  if (Number.isNaN(dateObj.getTime())) {
+    return ''
+  }
   return dateObj.toLocaleString('zh-TW')
 }
 

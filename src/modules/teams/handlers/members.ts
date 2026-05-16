@@ -77,7 +77,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
     const agentTeamsService = new AgentTeamsService(c.env.DB);
     const allAgentTeams = await agentTeamsService.getAllAgentsWithTeams();
 
-    const formattedMembers = members.map((member: any) => {
+    const formattedMembers = members.map((member) => {
       const agentTeamList = allAgentTeams.get(member.id) || [];
       const primaryTeam = agentTeamList.find(t => t.isPrimary);
 

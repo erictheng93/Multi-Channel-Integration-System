@@ -46,6 +46,10 @@ export interface DataCompressionResult {
   compressionTime: number;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export class DataOptimizationService {
   private env: Bindings;
   private readonly CONFIG_KEY = 'data_optimization_config';
@@ -231,12 +235,12 @@ export class DataOptimizationService {
                 expirationTtl: op.ttl || 3600
               });
             }
-            result = true as any;
+            result = null;
             break;
 
           case 'delete':
             await this.env.CACHE?.delete(op.key);
-            result = true as any;
+            result = null;
             break;
         }
 
@@ -255,7 +259,7 @@ export class DataOptimizationService {
   async createIndex(
     indexName: string,
     field: string,
-    data: Array<Record<string, any>>
+    data: Array<Record<string, unknown>>
   ): Promise<void> {
     const config = await this.getConfig();
 
@@ -280,7 +284,7 @@ export class DataOptimizationService {
           }
           const keyArray = indexData.get(key);
           if (keyArray) {
-            keyArray.push(record.id || i.toString());
+            keyArray.push(typeof record.id === 'string' ? record.id : i.toString());
           }
         }
       }
@@ -621,14 +625,16 @@ export class DataOptimizationService {
 
   // =================== 輔助方法 ===================
 
-  private mergeDeep(target: any, source: any): any {
-    const result = { ...target };
+  private mergeDeep(target: unknown, source: unknown): Record<string, unknown> {
+    const targetRecord = isRecord(target) ? target : {};
+    const sourceRecord = isRecord(source) ? source : {};
+    const result: Record<string, unknown> = { ...targetRecord };
 
-    for (const key in source) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        result[key] = this.mergeDeep(target[key] || {}, source[key]);
+    for (const key in sourceRecord) {
+      if (isRecord(sourceRecord[key])) {
+        result[key] = this.mergeDeep(targetRecord[key] || {}, sourceRecord[key]);
       } else {
-        result[key] = source[key];
+        result[key] = sourceRecord[key];
       }
     }
 

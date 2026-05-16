@@ -21,6 +21,24 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('CollabWSAdapter');
 
+interface RoomParticipant {
+  userId: string;
+  username?: string;
+  displayName?: string;
+  role?: Viewer['role'];
+  joinedAt?: string;
+  isTyping?: boolean;
+  lastActivity?: string;
+}
+
+interface RoomMetricsState {
+  typingUsers?: TypingInfo[];
+  connectionCount?: number;
+  lastActivity?: string;
+  messageHistory?: unknown[];
+  isActive?: boolean;
+}
+
 /**
  * WebSocket 協作適配器
  * 封裝 Durable Objects 基礎設施,提供統一的協作接口
@@ -63,19 +81,29 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         throw new Error(`Failed to get participants: ${response.statusText}`);
       }
 
-      const participants = await response.json() as any[];
+      const participants = await response.json() as RoomParticipant[];
 
       // 轉換為統一的 Viewer 格式
-      return participants.map(p => ({
-        userId: p.userId,
-        username: p.username || `User ${p.userId}`,
-        displayName: p.displayName || p.username || `User ${p.userId}`,
-        role: p.role || 'agent',
-        joinedAt: p.joinedAt || nowISO(),
-        protocol: 'websocket',
-        isTyping: p.isTyping || false,
-        lastActivity: p.lastActivity || nowISO()
-      }));
+      const viewers: Viewer[] = [];
+      for (const p of participants) {
+        const numericUserId = Number(p.userId);
+        if (!Number.isFinite(numericUserId)) {
+          continue;
+        }
+
+        viewers.push({
+          userId: numericUserId,
+          username: p.username || `User ${p.userId}`,
+          displayName: p.displayName || p.username || `User ${p.userId}`,
+          role: p.role || 'agent',
+          joinedAt: p.joinedAt || nowISO(),
+          protocol: 'websocket',
+          isTyping: p.isTyping || false,
+          lastActivity: p.lastActivity || nowISO()
+        });
+      }
+
+      return viewers;
     } catch (error) {
       log.error('[WebSocketAdapter] Error getting viewers:', {}, error instanceof Error ? error : new Error(String(error)));
       return [];
@@ -107,10 +135,10 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
         };
       }
 
-      const state = await response.json() as any;
+      const state = await response.json() as RoomMetricsState;
 
       const viewers = await this.getConversationViewers(conversationId);
-      const typing: TypingInfo[] = state.typingUsers?.map((u: any) => ({
+      const typing: TypingInfo[] = state.typingUsers?.map((u: TypingInfo) => ({
         userId: u.userId,
         username: u.username,
         displayName: u.displayName,

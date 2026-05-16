@@ -17,6 +17,15 @@ export * from './handlers';
 import { collaboration, CollaborationManager } from '@modules/collaboration/services/collaboration-manager';
 import collaborationMainHandler from '@modules/collaboration/handlers/collaboration-main';
 import { defaultCollaborationConfig } from '@modules/collaboration/types';
+import type {
+  BroadcastEventRequest,
+  CollaborationProtocol,
+  JoinConversationRequest,
+  LeaveConversationRequest,
+  SendTypingRequest,
+  UpdatePresenceRequest
+} from '@modules/collaboration/types';
+import type { Bindings } from '@/types';
 
 /**
  * 協作模組便捷訪問對象
@@ -35,39 +44,39 @@ export const Collaboration = {
   defaultConfig: defaultCollaborationConfig,
 
   // 快速方法
-  async initialize(env: any, config?: any) {
+  async initialize(env: Bindings, config = defaultCollaborationConfig) {
     return await collaboration.initialize(env, config);
   },
 
-  async getConversationState(conversationId: number, protocol?: any) {
+  async getConversationState(conversationId: number, protocol?: CollaborationProtocol) {
     return await collaboration.getConversationState(conversationId, protocol);
   },
 
-  async getConversationViewers(conversationId: number, protocol?: any) {
+  async getConversationViewers(conversationId: number, protocol?: CollaborationProtocol) {
     return await collaboration.getConversationViewers(conversationId, protocol);
   },
 
-  async joinConversation(request: any) {
+  async joinConversation(request: JoinConversationRequest) {
     return await collaboration.joinConversation(request);
   },
 
-  async leaveConversation(request: any) {
+  async leaveConversation(request: LeaveConversationRequest) {
     return await collaboration.leaveConversation(request);
   },
 
-  async sendTyping(request: any) {
+  async sendTyping(request: SendTypingRequest) {
     return await collaboration.sendTyping(request);
   },
 
-  async updatePresence(request: any) {
+  async updatePresence(request: UpdatePresenceRequest) {
     return await collaboration.updatePresence(request);
   },
 
-  async broadcastEvent(request: any) {
+  async broadcastEvent(request: BroadcastEventRequest) {
     return await collaboration.broadcastEvent(request);
   },
 
-  async getStats(protocol?: any) {
+  async getStats(protocol?: CollaborationProtocol) {
     return await collaboration.getStats(protocol);
   }
 };

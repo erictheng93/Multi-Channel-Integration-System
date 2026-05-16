@@ -83,7 +83,7 @@ tagsRoutes.put('/:id/tags', jwtAuth, async (c) => {
     }
 
     // 解析現有的元數據
-    let existingMetadata: Record<string, any> = {};
+    let existingMetadata: Record<string, unknown> = {};
     if (message.metadata) {
       try {
         existingMetadata = JSON.parse(message.metadata);
@@ -154,7 +154,7 @@ tagsRoutes.delete('/:id/tags', jwtAuth, async (c) => {
     }
 
     // 解析現有的元數據
-    let existingMetadata: Record<string, any> = {};
+    let existingMetadata: Record<string, unknown> = {};
     if (message.metadata) {
       try {
         existingMetadata = JSON.parse(message.metadata);

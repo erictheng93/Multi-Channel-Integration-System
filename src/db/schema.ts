@@ -393,7 +393,7 @@ export interface SessionData {
 
 export interface CacheData {
   key: string;
-  value: any;
+  value: unknown;
   expiresAt: string;
 }
 

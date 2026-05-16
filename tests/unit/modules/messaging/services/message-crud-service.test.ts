@@ -75,14 +75,31 @@ const mockAgent = {
   updatedAt: NOW
 };
 
+const mockAttachment = {
+  id: 'file-1',
+  messageId: 'msg-1',
+  conversationId: 'conv-1',
+  filename: 'invoice.pdf',
+  mimeType: 'application/pdf',
+  fileSize: 1024,
+  fileUrl: '/api/files/file-1',
+  r2Key: 'files/invoice.pdf',
+  uploadStatus: 'completed',
+  uploadedBy: 'agent-1',
+  createdAt: NOW,
+  updatedAt: NOW
+};
+
 // ======================== Drizzle Mock ========================
 
 const createMockDrizzle = () => {
   const messagesStore = new Map<string, typeof mockMessage>();
+  const attachmentsStore = new Map<string, typeof mockAttachment>();
   const recallLogs: Array<{ messageId: string; userId: string; action: string; createdAt: string }> = [];
 
   // Reset with default data
   messagesStore.set('msg-1', { ...mockMessage });
+  attachmentsStore.set('file-1', { ...mockAttachment });
 
   /**
    * Creates a Drizzle-like query chain.
@@ -147,8 +164,29 @@ const createMockDrizzle = () => {
     return chain;
   };
 
+  const createAttachmentChain = () => {
+    const chain: any = {
+      from: () => chain,
+      where: () => chain,
+      all: async () => Array.from(attachmentsStore.values()).map(attachment => ({
+        attachmentId: attachment.id,
+        messageId: attachment.messageId,
+        filename: attachment.filename,
+        mimeType: attachment.mimeType,
+        fileSize: attachment.fileSize,
+        fileUrl: attachment.fileUrl,
+        uploadedBy: attachment.uploadedBy,
+        createdAt: attachment.createdAt
+      }))
+    };
+    return chain;
+  };
+
   const mockDb = {
     select: (fields?: any) => {
+      if (fields && fields.attachmentId !== undefined) {
+        return createAttachmentChain();
+      }
       // Detect count queries: select({ count: count() })
       if (fields && fields.count !== undefined) {
         return createCountChain();
@@ -186,6 +224,7 @@ const createMockDrizzle = () => {
       })
     }),
     _store: messagesStore,
+    _attachments: attachmentsStore,
     _recallLogs: recallLogs
   };
 
@@ -266,14 +305,41 @@ describe('MessageCrudService - Query Operations', () => {
 
   describe('findByIdWithDetails', () => {
     it('should return message with sender details', async () => {
+      mockDrizzle._store.set('msg-1', {
+        ...mockMessage,
+        readBy: JSON.stringify([{ userId: 'agent-2', readAt: '2024-06-15T10:05:00.000Z' }]),
+        metadata: JSON.stringify({
+          reactions: [{ id: 'reaction-1', userId: 'agent-2', reaction: 'thumbs_up', createdAt: '2024-06-15T10:06:00.000Z' }]
+        })
+      } as typeof mockMessage);
+
       // Default data has agentSenderId set, so agent sender should be returned
       const result = await service.findByIdWithDetails('msg-1');
 
       expect(result).toBeDefined();
       expect(result!.senderName).toBe('Agent Smith');
-      expect(result!.attachments).toEqual([]);
-      expect(result!.reactions).toEqual([]);
-      expect(result!.readReceipts).toEqual([]);
+      expect(result!.attachments).toEqual([
+        expect.objectContaining({
+          id: 'file-1',
+          filename: 'invoice.pdf',
+          size: 1024,
+          url: '/api/files/file-1'
+        })
+      ]);
+      expect(result!.reactions).toEqual([
+        expect.objectContaining({
+          id: 'reaction-1',
+          userId: 'agent-2',
+          reaction: 'thumbs_up'
+        })
+      ]);
+      expect(result!.readReceipts).toEqual([
+        expect.objectContaining({
+          id: 'msg-1:agent-2',
+          userId: 'agent-2',
+          readAt: '2024-06-15T10:05:00.000Z'
+        })
+      ]);
     });
 
     it('should return customer sender name when customer sent message', async () => {

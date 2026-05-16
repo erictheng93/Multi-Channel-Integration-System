@@ -398,7 +398,7 @@ export async function checkSpecialReportTypePermission(c: Context<{ Bindings: Bi
     }
 
     // 檢查報告類型
-    const reportType = (c.get('reportParams') as any)?.type || c.req.param('type');
+    const reportType = c.get('reportParams')?.type || c.req.param('type');
 
     // 某些報告類型需要特殊權限
     const restrictedReportTypes = ['system_health', 'custom', 'team_analytics'];

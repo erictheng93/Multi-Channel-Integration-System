@@ -4,6 +4,7 @@
 import type {
   DelayedMessageRequest,
   DelayedMessageEntity,
+  RecallInfo,
   ValidationRule,
   ValidationResult
 } from '../types';
@@ -19,7 +20,7 @@ import { ValidationError } from '@modules/delayed-message/types';
  * - 支援複合驗證規則
  */
 export class ValidationService {
-  private rules = new Map<string, ValidationRule<any>>();
+  private rules = new Map<string, ValidationRule<unknown>>();
 
   constructor() {
     this.registerDefaultRules();
@@ -192,7 +193,7 @@ export class ValidationService {
   /**
    * 驗證撤回權限
    */
-  validateRecallPermission(messageId: string, userId: string, recallInfo: any): ValidationResult {
+  validateRecallPermission(messageId: string, userId: string, recallInfo: RecallInfo | null): ValidationResult {
     const errors: string[] = [];
 
     if (!messageId?.trim()) {
@@ -297,7 +298,7 @@ export class ValidationService {
   /**
    * 批量驗證
    */
-  validateBatch(validations: Array<{ name: string; value: any; rule?: string }>): ValidationResult {
+  validateBatch(validations: Array<{ name: string; value: unknown; rule?: string }>): ValidationResult {
     const allErrors: string[] = [];
 
     for (const validation of validations) {
@@ -308,7 +309,7 @@ export class ValidationService {
       } else {
         // 嘗試根據名稱匹配預設驗證方法
         const methodName = `validate${validation.name.charAt(0).toUpperCase()}${validation.name.slice(1)}`;
-        const method = (this as any)[methodName];
+        const method = (this as Record<string, unknown>)[methodName];
 
         if (typeof method === 'function') {
           result = method.call(this, validation.value);
@@ -331,7 +332,7 @@ export class ValidationService {
   /**
    * 建立驗證錯誤
    */
-  createValidationError(message: string, field: string, details?: any): ValidationError {
+  createValidationError(message: string, field: string, details?: Record<string, unknown>): ValidationError {
     return new ValidationError(message, field, details);
   }
 

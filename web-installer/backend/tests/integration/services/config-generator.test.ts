@@ -51,19 +51,19 @@ describe('ConfigGenerator Service - Integration Tests', () => {
 
       // Verify KV bindings
       expect(config).toContain('[[kv_namespaces]]');
-      expect(config).toContain('binding = "SESSION_KV"');
+      expect(config).toContain('binding = "SESSIONS"');
       expect(config).toContain('id = "kv-session-789"');
-      expect(config).toContain('binding = "CACHE_KV"');
+      expect(config).toContain('binding = "CACHE"');
       expect(config).toContain('id = "kv-cache-012"');
 
       // Verify R2 binding
       expect(config).toContain('[[r2_buckets]]');
-      expect(config).toContain('binding = "FILE_STORAGE"');
+      expect(config).toContain('binding = "R2_BUCKET"');
       expect(config).toContain('bucket_name = "test-crm-uploads"');
 
       // Verify Queue binding
       expect(config).toContain('[[queues.producers]]');
-      expect(config).toContain('binding = "MESSAGE_QUEUE"');
+      expect(config).toContain('binding = "LINE_MESSAGE_QUEUE"');
       expect(config).toContain('queue = "delayed-messages"');
     });
 
@@ -104,12 +104,12 @@ describe('ConfigGenerator Service - Integration Tests', () => {
       const config = generator.generateWranglerConfig(projectName, resources, mockConfig);
 
       // Verify all Durable Objects
-      expect(config).toContain('[durable_objects]');
+      expect(config).toContain('[[durable_objects.bindings]]');
       expect(config).toContain('name = "CONVERSATION_ROOM"');
       expect(config).toContain('name = "USER_CONNECTION"');
       expect(config).toContain('name = "MESSAGE_BROADCASTER"');
-      expect(config).toContain('name = "DELAYED_MESSAGE_PROCESSOR"');
-      expect(config).toContain('name = "DELAYED_MESSAGE_BUFFER"');
+      expect(config).toContain('name = "DELAYED_MESSAGE_SCHEDULER"');
+      expect(config).toContain('name = "METRICS_COLLECTOR"');
     });
 
     it('should include environment variables section', () => {

@@ -10,7 +10,7 @@ export interface Metric {
   timestamp: number;
   tags: Record<string, string>;
   unit?: MetricUnit;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -126,7 +126,7 @@ export interface AggregatedMetric {
   period: AggregationPeriod;
   tags: Record<string, string>;
   sampleCount?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -384,7 +384,7 @@ export interface MetricReport {
   format: 'json' | 'csv' | 'html' | 'pdf';
   generatedAt: number;
   generatedBy: string;
-  data: any;
+  data: unknown;
 }
 
 /**

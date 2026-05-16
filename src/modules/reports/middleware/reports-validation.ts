@@ -9,6 +9,7 @@ import type {
   BatchReportOperation,
   ReportType,
   ReportFormat,
+  ReportStatus,
   ScheduledReport
 } from '../types/report-types';
 import { REPORT_TYPE_CONFIG } from '@modules/reports/types/report-types';
@@ -38,8 +39,8 @@ export function sanitizeString(input: string): string {
 /**
  * 驗證數值範圍
  */
-export function validateNumberRange(value: any, min: number, max: number): number | null {
-  const num = parseInt(value);
+export function validateNumberRange(value: unknown, min: number, max: number): number | null {
+  const num = parseInt(String(value));
   if (isNaN(num) || num < min || num > max) {
     return null;
   }
@@ -52,6 +53,22 @@ export function validateNumberRange(value: any, min: number, max: number): numbe
 export function validateUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
+}
+
+/**
+ * Report IDs are UUIDs for new records. Legacy generated records used
+ * report_<uuid>, so keep accepting that shape for existing persisted reports.
+ */
+export function validateReportIdentifier(reportId: string): boolean {
+  if (validateUUID(reportId)) {
+    return true;
+  }
+
+  if (reportId.startsWith('report_')) {
+    return validateUUID(reportId.slice('report_'.length));
+  }
+
+  return false;
 }
 
 /**
@@ -168,7 +185,7 @@ export async function validateReportId(c: Context<{ Bindings: Bindings }>, next:
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (!validateUUID(reportId)) {
+    if (!validateReportIdentifier(reportId)) {
       return c.json({
         success: false,
         error: 'Invalid report ID format',
@@ -176,7 +193,7 @@ export async function validateReportId(c: Context<{ Bindings: Bindings }>, next:
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    (c as any).set('reportId', reportId);
+    c.set('reportId', reportId);
     return await next();
   } catch (error) {
     log.error('Report ID validation error:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -211,7 +228,7 @@ export async function validateScheduledReportId(c: Context<{ Bindings: Bindings 
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    (c as any).set('scheduledReportId', scheduledReportId);
+    c.set('scheduledReportId', scheduledReportId);
     return await next();
   } catch (error) {
     log.error('Scheduled report ID validation error:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -421,7 +438,7 @@ export async function validateReportGenerationParams(c: Context<{ Bindings: Bind
       }
     }
 
-    (c as any).set('reportParams', body);
+    c.set('reportParams', body);
     return await next();
   } catch (error) {
     log.error('Report generation params validation error:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -464,7 +481,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
           timestamp: nowISO()
         }, HTTP_STATUS.BAD_REQUEST);
       }
-      query.status = status as any;
+      query.status = status as ReportStatus;
     }
 
     // 報告格式
@@ -566,7 +583,7 @@ export async function validateReportListQuery(c: Context<{ Bindings: Bindings }>
     }
     if (sortOrder) query.sortOrder = sortOrder as 'asc' | 'desc';
 
-    (c as any).set('reportQuery', query);
+    c.set('reportQuery', query);
     return await next();
   } catch (error) {
     log.error('Report list query validation error:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -644,7 +661,7 @@ export async function validateBatchReportOperation(c: Context<{ Bindings: Bindin
       }
     }
 
-    (c as any).set('batchOperation', body);
+    c.set('batchOperation', body);
     return await next();
   } catch (error) {
     log.error('Batch operation validation error:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -788,7 +805,7 @@ export async function validateScheduledReportData(c: Context<{ Bindings: Binding
       }
     }
 
-    (c as any).set('scheduledReportData', body);
+    c.set('scheduledReportData', body);
     return await next();
   } catch (error) {
     log.error('Scheduled report data validation error:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -826,7 +843,7 @@ export async function validateReportPreviewRequest(c: Context<{ Bindings: Bindin
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    (c as any).set('previewParams', body);
+    c.set('previewParams', body);
     return await next();
   } catch (error) {
     log.error('Report preview validation error:', {}, error instanceof Error ? error : new Error(String(error)));

@@ -164,7 +164,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import type { ConfigFormData, ResourceNames } from './types';
+import type { ConfigFormData, ConfigFormTextField, ResourceNames } from './types';
 import type { FormErrors } from '@/types';
 
 // ========================================
@@ -177,7 +177,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:field', field: keyof ConfigFormData, value: string): void;
+  (e: 'update:field', field: ConfigFormTextField, value: string): void;
   (e: 'clearError', field: keyof FormErrors): void;
 }>();
 
@@ -209,7 +209,7 @@ const resourceNames = computed<ResourceNames>(() => {
 // METHODS
 // ========================================
 
-function onFieldInput(field: keyof ConfigFormData, value: string): void {
+function onFieldInput(field: ConfigFormTextField, value: string): void {
   emit('update:field', field, value);
   emit('clearError', field as keyof FormErrors);
 }

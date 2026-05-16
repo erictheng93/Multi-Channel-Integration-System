@@ -21,7 +21,7 @@ router.get('/stats', jwtAuth, realtime.handlers.management.getStats);
 router.get('/health', jwtAuth, realtime.handlers.management.healthCheck);
 
 // Monitoring endpoints
-router.get('/monitoring/dashboard', jwtAuth, realtime.monitoring.dashboard as any);
+router.get('/monitoring/dashboard', jwtAuth, realtime.monitoring.dashboard.getOverview);
 router.get('/monitoring/metrics', jwtAuth, realtime.monitoring.metricsHistory);
 router.get('/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);
 router.post('/monitoring/alerts', jwtAuth, realtime.monitoring.alerts);

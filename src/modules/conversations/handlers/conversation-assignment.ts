@@ -18,6 +18,11 @@ import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/acti
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
+type AssignedConversationResponse = typeof conversations.$inferSelect & {
+  assignedTeam?: typeof teams.$inferSelect;
+  customer?: (typeof customers.$inferSelect & { name: string }) | undefined;
+};
+
 const conversationAssignmentHandler = new Hono<{ Bindings: Bindings }>();
 
 // 指派對話到團隊 (僅支援團隊指派，個人指派已移除)
@@ -169,12 +174,14 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
     }
 
     // 构建返回对象，確保 customer 對象包含 name 字段
-    const conversationData: any = {
+    const conversationData: AssignedConversationResponse = {
       ...updatedConversation.conversations,
       assignedTeam: updatedConversation.teams || undefined,
       customer: updatedConversation.customers ? {
         ...updatedConversation.customers,
-        name: updatedConversation.customers.displayName  //  FIX: 添加 name 字段以匹配前端類型定義
+        name: updatedConversation.customers.displayName
+          ?? updatedConversation.customers.platformUserId
+          ?? 'Unknown customer'  //  FIX: 添加 name 字段以匹配前端類型定義
       } : undefined
     };
 
@@ -340,7 +347,7 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
-    const conversationData: any = {
+    const conversationData: unknown = {
       ...updatedConversation?.conversations,
       assignedTeam: updatedConversation?.teams || undefined,
       customer: updatedConversation?.customers ? {

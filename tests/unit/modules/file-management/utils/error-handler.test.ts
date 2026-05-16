@@ -155,6 +155,15 @@ describe('FileManagementError', () => {
 });
 
 describe('ErrorHandler', () => {
+  beforeEach(() => {
+    ErrorHandler.setCriticalAlertHandler(undefined);
+  });
+
+  afterEach(() => {
+    ErrorHandler.setCriticalAlertHandler(undefined);
+    vi.restoreAllMocks();
+  });
+
   describe('wrap', () => {
     test('should wrap regular Error as FileManagementError', () => {
       const originalError = new Error('Test error');
@@ -193,6 +202,45 @@ describe('ErrorHandler', () => {
 
       expect(wrapped).toBeInstanceOf(FileManagementError);
       expect(wrapped.originalError).toBeUndefined();
+    });
+  });
+
+  describe('critical alert sink', () => {
+    test('should notify registered alert handler for critical errors', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const alertHandler = vi.fn().mockResolvedValue(undefined);
+      ErrorHandler.setCriticalAlertHandler(alertHandler);
+
+      const error = new FileManagementError(
+        ERROR_CODES.VIRUS_DETECTED,
+        { operation: 'scan', fileId: 'file-1' }
+      );
+
+      const result = await ErrorHandler.handle(error, { operation: 'scan' });
+
+      expect(result).toBe(error);
+      expect(alertHandler).toHaveBeenCalledWith(error, expect.objectContaining({
+        level: 'critical',
+        error: expect.objectContaining({
+          code: ERROR_CODES.VIRUS_DETECTED
+        })
+      }));
+    });
+
+    test('should not fail error handling when alert handler rejects', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      ErrorHandler.setCriticalAlertHandler(vi.fn().mockRejectedValue(new Error('alert failed')));
+
+      const error = new FileManagementError(
+        ERROR_CODES.STORAGE_UNAVAILABLE,
+        { operation: 'upload' }
+      );
+
+      await expect(ErrorHandler.handle(error, { operation: 'upload' })).resolves.toBe(error);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[CRITICAL_ALERT_FAILED]',
+        expect.objectContaining({ error: 'alert failed' })
+      );
     });
   });
 

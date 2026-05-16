@@ -42,6 +42,7 @@ import {
 
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
+import { DEFAULT_PAGINATION, DEFAULT_SESSION_CONFIG } from '../types/session-types';
 
 // 創建會話路由實例
 const sessionRouter = new Hono<{ Bindings: Bindings }>();
@@ -94,34 +95,31 @@ sessionRouter.get(
   checkSessionStatsPermission,
   async (c) => {
     try {
-      // TODO: 實現設定管理功能
+      const realtimeAvailable = Boolean(c.env.CONVERSATION_ROOM && c.env.USER_CONNECTION && c.env.MESSAGE_BROADCASTER);
       const config = {
         sessionBoundaryConfig: {
-          timeGapThreshold: 30, // minutes
-          maxMessagesPerSession: 50,
-          maxSessionDuration: 24, // hours
-          autoCloseInactive: true,
-          inactiveThreshold: 60 // minutes
+          timeGapThreshold: DEFAULT_SESSION_CONFIG.timeGapThreshold,
+          maxMessagesPerSession: DEFAULT_SESSION_CONFIG.maxMessagesPerSession,
+          maxSessionDuration: DEFAULT_SESSION_CONFIG.maxSessionDuration,
+          autoCloseInactive: DEFAULT_SESSION_CONFIG.autoCloseInactive,
+          inactiveThreshold: DEFAULT_SESSION_CONFIG.inactiveThreshold
         },
         analysisConfig: {
-          enableSentimentAnalysis: true,
-          enableTopicDetection: true,
-          topicChangeKeywords: [
-            '另外', '還有', '換個話題', '問個別的', '新問題',
-            'by the way', 'btw', 'another question', 'different topic'
-          ]
+          enableSentimentAnalysis: DEFAULT_SESSION_CONFIG.enableSentimentAnalysis,
+          enableTopicDetection: DEFAULT_SESSION_CONFIG.enableTopicDetection,
+          topicChangeKeywords: DEFAULT_SESSION_CONFIG.topicChangeKeywords
         },
         performanceConfig: {
           maxBatchSize: 100,
-          defaultPageSize: 20,
-          maxPageSize: 100,
+          defaultPageSize: DEFAULT_PAGINATION.pageSize,
+          maxPageSize: DEFAULT_PAGINATION.maxPageSize,
           cacheExpiryMinutes: 15
         },
         featureFlags: {
           enableAdvancedSearch: true,
           enableBatchOperations: true,
           enableHealthMonitoring: true,
-          enableRealtimeUpdates: false // TODO: WebSocket integration
+          enableRealtimeUpdates: realtimeAvailable
         }
       };
 
@@ -310,13 +308,13 @@ sessionRouter.post(
       if (body.endDate) expConds.push(lte(conversationSessions.createdAt, body.endDate));
       const expWhere = expConds.length > 0 ? and(...expConds) : undefined;
       const sessions = await db.select().from(conversationSessions).where(expWhere).all();
-      let exportMessages: any[] = [];
+      let exportMessages: unknown[] = [];
       if (includeMessages && sessions.length > 0) {
         const convIds = [...new Set(sessions.map(s => s.conversationId))].slice(0, 10);
         for (const cid of convIds) { const msgs = await db.select().from(messagesTable).where(eq(messagesTable.conversationId, cid)).all(); exportMessages.push(...msgs); }
       }
       let downloadUrl: string | null = null;
-      const r2 = (c.env as any).R2_BUCKET;
+      const r2 = c.env.R2_BUCKET;
       if (r2) {
         const key = `exports/sessions/${Date.now()}.${format}`;
         const content = format === 'csv'

@@ -45,6 +45,35 @@ interface ScheduleConfig {
   };
 }
 
+interface DiskSpaceInfo {
+  status: 'ok' | 'error';
+  details?: string;
+  error?: string;
+}
+
+interface HealthReportResults {
+  localDbOk: boolean;
+  prodDbOk: boolean;
+  migrationStatus: string;
+  lastSyncTime: string | null;
+  diskSpace: DiskSpaceInfo;
+}
+
+interface NotificationPayload {
+  type: 'success' | 'warning' | 'error';
+  message: string;
+  timestamp: string;
+  source: string;
+}
+
+interface SchedulerStatus {
+  isRunning: boolean;
+  config: ScheduleConfig;
+  uptime: number;
+  lastHealthCheck: string | null;
+  nextSync: string;
+}
+
 // 預設調度配置
 const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
   syncInterval: 60, // 每小時同步一次
@@ -270,7 +299,7 @@ class DatabaseSyncScheduler {
   /**
    * 獲取磁碟空間信息
    */
-  private getDiskSpace(): any {
+  private getDiskSpace(): DiskSpaceInfo {
     try {
       // Windows 系統
       const diskResult = Bun.spawnSync(
@@ -288,7 +317,7 @@ class DatabaseSyncScheduler {
   /**
    * 保存健康檢查報告
    */
-  private saveHealthReport(results: any): void {
+  private saveHealthReport(results: HealthReportResults): void {
     const reportPath = path.join(process.cwd(), 'health-reports', `health-${Date.now()}.json`);
 
     fs.mkdirSync(path.dirname(reportPath), { recursive: true });
@@ -328,7 +357,7 @@ class DatabaseSyncScheduler {
   /**
    * 發送郵件通知 (模擬實現)
    */
-  private sendEmailNotification(notification: any): void {
+  private sendEmailNotification(notification: NotificationPayload): void {
     this.log(` 郵件通知: ${JSON.stringify(notification)}`);
     // 實際實現將整合郵件服務
   }
@@ -336,7 +365,7 @@ class DatabaseSyncScheduler {
   /**
    * 發送 Webhook 通知 (模擬實現)
    */
-  private sendWebhookNotification(notification: any): void {
+  private sendWebhookNotification(notification: NotificationPayload): void {
     this.log(` Webhook 通知: ${JSON.stringify(notification)}`);
     // 實際實現將調用 HTTP endpoint
   }
@@ -344,7 +373,7 @@ class DatabaseSyncScheduler {
   /**
    * 發送 Slack 通知 (模擬實現)
    */
-  private sendSlackNotification(notification: any): void {
+  private sendSlackNotification(notification: NotificationPayload): void {
     this.log(` Slack 通知: ${JSON.stringify(notification)}`);
     // 實際實現將調用 Slack API
   }
@@ -366,7 +395,7 @@ class DatabaseSyncScheduler {
   /**
    * 獲取運行狀態
    */
-  getStatus(): any {
+  getStatus(): SchedulerStatus {
     return {
       isRunning: this.isRunning,
       config: this.config,

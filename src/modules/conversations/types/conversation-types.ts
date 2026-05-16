@@ -78,7 +78,7 @@ export interface MessageSendRequest {
   senderId: string;
   senderName?: string; // 發送者名稱快照（持久化保存）
   messageType?: 'text' | 'image' | 'file' | 'quick_reply';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   replyToId?: string;
   attachmentIds?: string[];  //  FIX: Add attachmentIds for file attachments
 }
@@ -155,7 +155,7 @@ export interface ConversationServiceInterface {
   updateStatus(id: string, status: string, reason?: string): Promise<Conversation>;
 
   // Analytics
-  getConversationMetrics(filters?: any): Promise<ConversationMetrics>;
+  getConversationMetrics(filters?: unknown): Promise<ConversationMetrics>;
 }
 
 // Event types for real-time updates
@@ -163,7 +163,7 @@ export interface ConversationEvent {
   type: 'conversation.created' | 'conversation.updated' | 'conversation.assigned' |
         'message.sent' | 'message.received';
   conversationId: string;
-  data: any;
+  data: unknown;
   timestamp: string;
   userId?: string;
 }

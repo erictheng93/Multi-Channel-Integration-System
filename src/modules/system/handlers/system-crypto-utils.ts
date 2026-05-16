@@ -46,7 +46,10 @@ export const getEncryptionKey = (env: Bindings): string => {
 }
 
 // Helper to retrieve credentials from KV
-export const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'facebook') => {
+export const getCredentialsFromKV = async (
+  env: Bindings,
+  platform: 'line' | 'facebook'
+): Promise<Record<string, string> | null> => {
   try {
     log.info(`Getting ${platform} credentials from KV...`)
     const encryptionKey = getEncryptionKey(env)
@@ -56,7 +59,7 @@ export const getCredentialsFromKV = async (env: Bindings, platform: 'line' | 'fa
       ? ['channelId', 'channelSecret', 'accessToken']
       : ['appId', 'appSecret', 'pageId', 'pageToken']
 
-    const credentials: any = {}
+    const credentials: Record<string, string> = {}
 
     for (const type of credentialTypes) {
       const key = `credentials:${platform}:${type}`

@@ -18,6 +18,9 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('StorageService');
 
+type DelayedMessageRow = typeof delayedMessages.$inferSelect;
+type DelayedMessageUpdate = Partial<typeof delayedMessages.$inferInsert>;
+
 /**
  * StorageService - 統一資料存取服務
  *
@@ -88,7 +91,7 @@ export class StorageService implements DelayedMessageStorage {
    */
   async updateMessageStatus(messageId: string, status: string, timestamp: Date): Promise<boolean> {
     try {
-      const updateData: any = {
+      const updateData: DelayedMessageUpdate = {
         status,
         updatedAt: timestamp.toISOString()
       };
@@ -164,7 +167,7 @@ export class StorageService implements DelayedMessageStorage {
         ))
         .get();
 
-      const items = messagesResult.map(item => this.mapToEntity(item as any));
+      const items = messagesResult.map(item => this.mapToEntity(item as DelayedMessageRow));
 
       return {
         items,
@@ -330,7 +333,7 @@ export class StorageService implements DelayedMessageStorage {
   /**
    * 將資料庫記錄映射為實體物件
    */
-  private mapToEntity(record: any): DelayedMessageEntity {
+  private mapToEntity(record: DelayedMessageRow): DelayedMessageEntity {
     return {
       id: record.id,
       conversationId: record.conversationId,
@@ -338,12 +341,14 @@ export class StorageService implements DelayedMessageStorage {
       content: record.content,
       messageType: record.messageType,
       scheduledAt: record.scheduledAt,
-      status: record.status,
-      metadata: typeof record.metadata === 'string' ? JSON.parse(record.metadata) : record.metadata,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-      sentAt: record.sentAt,
-      cancelledAt: record.cancelledAt
+      status: record.status as DelayedMessageEntity['status'],
+      metadata: typeof record.metadata === 'string'
+        ? JSON.parse(record.metadata) as Record<string, unknown>
+        : {},
+      createdAt: record.createdAt || nowISO(),
+      updatedAt: record.updatedAt || nowISO(),
+      sentAt: record.sentAt ?? undefined,
+      cancelledAt: record.cancelledAt ?? undefined
     };
   }
 
@@ -419,7 +424,7 @@ export class StorageService implements DelayedMessageStorage {
   }> {
     try {
       // 查詢已處理消息的統計
-      const [totalResult, successResult, failedResult, cancelledResult] = await Promise.all([
+      const [totalResult, successResult, failedResult, cancelledResult, avgProcessingResult] = await Promise.all([
         // 總處理數 (已發送 + 失敗)
         this.db.select({ count: count() })
           .from(delayedMessages)
@@ -444,18 +449,29 @@ export class StorageService implements DelayedMessageStorage {
         this.db.select({ count: count() })
           .from(delayedMessages)
           .where(eq(delayedMessages.status, 'cancelled'))
+          .get(),
+
+        this.db.select({
+          averageProcessingTime: sql<number>`
+            AVG(
+              MAX(
+                0,
+                CAST((julianday(COALESCE(sent_at, updated_at)) - julianday(scheduled_at)) * 24 * 60 * 60 AS INTEGER)
+              )
+            )
+          `.as('average_processing_time')
+        })
+          .from(delayedMessages)
+          .where(sql`status IN ('sent', 'failed') AND scheduled_at IS NOT NULL AND COALESCE(sent_at, updated_at) IS NOT NULL`)
           .get()
       ]);
-
-      // TODO: 計算平均處理時間 (需要記錄處理時間戳)
-      const averageProcessingTime = 0;
 
       return {
         totalProcessed: totalResult?.count || 0,
         successfulSends: successResult?.count || 0,
         failedSends: failedResult?.count || 0,
         skippedMessages: cancelledResult?.count || 0,
-        averageProcessingTime
+        averageProcessingTime: Math.round(Number(avgProcessingResult?.averageProcessingTime) || 0)
       };
     } catch (error) {
       log.error('Failed to get processing stats', {}, error instanceof Error ? error : String(error));

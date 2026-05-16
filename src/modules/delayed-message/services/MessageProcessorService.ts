@@ -15,6 +15,22 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('MessageProcessor');
 
+interface ConversationInfo {
+  id: string;
+  customerId: number;
+  platform: string;
+  platformUserId: string;
+  customerName: string | null;
+}
+
+function asSupportedPlatform(value: unknown): 'line' | 'facebook' | undefined {
+  return value === 'line' || value === 'facebook' ? value : undefined;
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
 /**
  * MessageProcessorService - 訊息處理專家
  *
@@ -152,7 +168,10 @@ export class MessageProcessorService {
       }
 
       // 檢查重試次數
-      const retryCount = (message.metadata.retryCount || 0) + 1;
+      const previousRetryCount = typeof message.metadata.retryCount === 'number'
+        ? message.metadata.retryCount
+        : 0;
+      const retryCount = previousRetryCount + 1;
       if (retryCount > maxRetries) {
         return {
           success: false,
@@ -274,10 +293,18 @@ export class MessageProcessorService {
    */
   private async sendMessageToPlatform(
     message: DelayedMessageEntity,
-    conversationInfo: any
+    conversationInfo: ConversationInfo
   ): Promise<boolean> {
     try {
-      const platform = message.metadata.platform || conversationInfo.platform;
+      const platform = asSupportedPlatform(message.metadata.platform) ||
+        asSupportedPlatform(conversationInfo.platform);
+      if (!platform) {
+        throw new ProcessingError(`Unsupported platform: ${String(message.metadata.platform || conversationInfo.platform)}`, {
+          platform: String(message.metadata.platform || conversationInfo.platform),
+          messageId: message.id
+        });
+      }
+
       const sender = this.platformSenders.get(platform);
 
       if (!sender) {
@@ -288,10 +315,10 @@ export class MessageProcessorService {
       }
 
       const messageData: PlatformMessageData = {
-        recipientId: message.metadata.recipientPlatformId || conversationInfo.platformUserId,
+        recipientId: asString(message.metadata.recipientPlatformId) || conversationInfo.platformUserId,
         content: message.content,
         messageType: message.messageType,
-        mediaUrl: message.metadata.mediaUrl
+        mediaUrl: asString(message.metadata.mediaUrl)
       };
 
       return await sender.sendMessage(messageData);
@@ -370,7 +397,7 @@ export class MessageProcessorService {
   /**
    * 獲取對話資訊
    */
-  private async getConversationInfo(conversationId: string): Promise<any> {
+  private async getConversationInfo(conversationId: string): Promise<ConversationInfo | null> {
     try {
       const { drizzle } = await import('drizzle-orm/d1');
       const { eq } = await import('drizzle-orm');
@@ -391,7 +418,7 @@ export class MessageProcessorService {
         .where(eq(conversations.id, conversationId))
         .get();
 
-      return result;
+      return result ?? null;
     } catch (error) {
       log.error('Error getting conversation info', { conversationId }, error instanceof Error ? error : String(error));
       return null;

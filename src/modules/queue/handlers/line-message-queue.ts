@@ -15,6 +15,7 @@
  */
 
 import type { Bindings, LineMessageQueuePayload, LineMessageQueueResult, MediaProcessingPayload, LineQueuePayload } from '@/types/bindings';
+import type { LineReplyMessage } from '@/types';
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '@/utils/line';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createDbClient } from '@/db/drizzle-factory';
@@ -194,8 +195,8 @@ export class LineMessageQueueConsumer {
   /**
    * Build LINE message objects from payload
    */
-  private async buildLineMessages(payload: LineMessageQueuePayload): Promise<any[]> {
-    const lineMessages: any[] = [];
+  private async buildLineMessages(payload: LineMessageQueuePayload): Promise<LineReplyMessage[]> {
+    const lineMessages: LineReplyMessage[] = [];
 
     // Check if content is just a file description (should not send as text)
     const isFileOnlyContent = payload.content && (

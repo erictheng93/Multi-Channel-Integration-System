@@ -11,6 +11,16 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('WebSocketHealth');
 
+interface BroadcasterMetricsResponse {
+  userConnections?: number;
+  conversationRooms?: number;
+  activeConnections?: number;
+  averageLatency?: number;
+  eventsPerSecond?: number;
+  failedDeliveries?: number;
+  totalEvents?: number;
+}
+
 const healthApp = new Hono<{ Bindings: Bindings }>();
 
 // CORS handling moved to src/index.ts unified management
@@ -812,7 +822,7 @@ async function getRealtimeConnectionMetrics(env: Bindings): Promise<{
     const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/metrics'));
 
     if (response.ok) {
-      const data = await response.json() as any;
+      const data = await response.json() as BroadcasterMetricsResponse;
       return {
         totalConnections: (data.userConnections || 0) + (data.conversationRooms || 0),
         activeConnections: data.activeConnections || 0,

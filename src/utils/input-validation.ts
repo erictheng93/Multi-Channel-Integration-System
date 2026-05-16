@@ -163,7 +163,7 @@ export class InputValidator {
    */
   static validateWebSocketMessage(data: unknown): {
     isValid: boolean;
-    message?: any;
+    message?: unknown;
     error?: string;
   } {
     try {
@@ -269,7 +269,7 @@ export class InputValidator {
 
       return {
         isValid: true,
-        data: result.data as any // Type assertion to work around complex generic inference
+        data: result.data as z.infer<typeof apiSchemas[T]>
       };
     } catch (error) {
       return {

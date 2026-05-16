@@ -4,10 +4,14 @@
  */
 
 import type { Bindings } from '../types';
-import { LatestMessageCache } from '../services/latest-message-cache';
+import { LatestMessageCache, type CachedLatestMessage } from '../services/latest-message-cache';
 import { MESSAGE_BROADCASTER_ROUTES, CACHE_COORDINATOR_ROUTES, buildDOFetchUrl } from '../constants/durable-objects';
 import { QUEUE_LIMITS, calculateExponentialBackoff } from '../constants/limits';
 import { nowISO } from '@/utils/timestamp'
+
+type RetryableMessage<T> = Message<T> & {
+  retryCount?: number;
+};
 
 export interface LatestMessageJobPayload {
   type: 'update_latest_message' | 'invalidate_cache' | 'warmup_cache';
@@ -88,7 +92,7 @@ export class LatestMessageWorker {
           break;
 
         default:
-          throw new Error(`Unknown job type: ${(payload as any).type}`);
+          throw new Error('Unknown latest-message job type');
       }
 
       console.log(`[LatestMessageWorker] Job ${jobId} completed successfully`);
@@ -148,7 +152,7 @@ export class LatestMessageWorker {
    * Handle job failure with retry logic
    */
   private async handleJobFailure(message: Message<LatestMessageJobPayload>): Promise<void> {
-    const retryCount = (message as any).retryCount || 0;
+    const retryCount = (message as RetryableMessage<LatestMessageJobPayload>).retryCount ?? 0;
     const maxRetries = 3;
 
     if (retryCount < maxRetries) {
@@ -195,7 +199,7 @@ export class LatestMessageWorker {
    */
   private async broadcastLatestMessageUpdate(
     conversationId: string,
-    latestMessage: any
+    latestMessage: CachedLatestMessage
   ): Promise<void> {
     try {
       // Use the existing WebSocket broadcast service
@@ -253,7 +257,7 @@ export async function handleLatestMessageQueue(
  * Utility functions for scheduling cache updates via Durable Object
  */
 export class LatestMessageJobQueue {
-  private readonly coordinator: any; // DurableObjectStub type causes recursion issues
+  private readonly coordinator: DurableObjectStub;
 
   constructor(env: Bindings) {
     // Use Durable Object instead of Queue

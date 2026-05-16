@@ -33,7 +33,7 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
         conversationId: string;
         content: string;
         messageType?: string;
-        metadata?: any;
+        metadata?: unknown;
       }[];
     };
 
@@ -56,8 +56,8 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
     }
 
     const db = createDbClient(c.env.DB);
-    const results: any[] = [];
-    const errors: any[] = [];
+    const results: unknown[] = [];
+    const errors: unknown[] = [];
 
     // Step 1: Validate input fields upfront
     const validatedMessages: { index: number; conversationId: string; content: string; messageType: string; metadata: string | null }[] = [];
@@ -176,8 +176,8 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
     }
 
     const db = createDbClient(c.env.DB);
-    const results: any[] = [];
-    const errors: any[] = [];
+    const results: unknown[] = [];
+    const errors: unknown[] = [];
 
     // Step 1: Batch-fetch all messages in one SELECT
     const existingMessages = await db

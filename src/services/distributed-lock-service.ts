@@ -8,6 +8,47 @@ import type {
 } from '../types/websocket-types';
 import { nowMs } from '@/utils/timestamp'
 
+interface DistributedLockEnv {
+  DISTRIBUTED_LOCK?: DurableObjectNamespace;
+}
+
+interface LockErrorResponse {
+  message?: string;
+}
+
+interface LockAcquisitionResponse {
+  lockId: string;
+}
+
+interface LockStatusResponse {
+  isLocked: boolean;
+}
+
+interface LockInfoResponse {
+  lock?: DistributedLock;
+}
+
+interface LockExtensionResponse {
+  expiresAt: number;
+}
+
+interface ActiveLocksResponse {
+  locks?: DistributedLock[];
+}
+
+interface LockCleanupResponse {
+  cleanedCount?: number;
+}
+
+interface LockMetrics {
+  totalLocks: number;
+  activeLocks: number;
+  expiredLocks: number;
+  averageLockDuration: number;
+  lockAcquisitionRate: number;
+  lockContentionRate: number;
+}
+
 /**
  * Architecture Overview:
  *
@@ -31,7 +72,7 @@ export class DistributedLockService {
   private readonly DEFAULT_RETRY_INTERVAL = 100; // 100ms
   private readonly MAX_RETRIES = 50;
 
-  constructor(env: any) {
+  constructor(env: DistributedLockEnv) {
     // Use a global lock coordinator Durable Object
     if (!env?.DISTRIBUTED_LOCK) {
       // 測試環境或 DISTRIBUTED_LOCK 不可用時的靜默處理
@@ -59,9 +100,9 @@ export class DistributedLockService {
    * @returns Lock ID if successful
    */
   async acquireLock(resource: string, options: LockAcquisitionOptions = {}): Promise<string> {
-    // 如果服務不可用，返回模擬的成功回應 (測試環境)
+    // Local/test fallback when the Durable Object binding is unavailable.
     if (!this.isAvailable()) {
-      return `mock-lock-${nowMs()}`;
+      return `local-lock-${nowMs()}`;
     }
     const {
       ttl = this.DEFAULT_TTL,
@@ -96,11 +137,11 @@ export class DistributedLockService {
       }));
 
       if (!response.ok) {
-        const error = await response.json() as any;
+        const error = await response.json() as LockErrorResponse;
         throw new Error(`Lock acquisition failed: ${error.message || 'Unknown error'}`);
       }
 
-      const result = await response.json() as any;
+      const result = await response.json() as LockAcquisitionResponse;
       const acquisitionTime = Date.now() - startTime;
 
       console.log(`[DistributedLockService] Lock acquired: ${lockId} for ${resource} (${acquisitionTime}ms)`);
@@ -143,7 +184,7 @@ export class DistributedLockService {
       }));
 
       if (!response.ok) {
-        const error = await response.json() as any;
+        const error = await response.json() as LockErrorResponse;
         console.warn(`[DistributedLockService] Lock release warning: ${error.message}`);
       } else {
         console.log(`[DistributedLockService] Lock released: ${lockId}`);
@@ -180,14 +221,14 @@ export class DistributedLockService {
       }));
 
       if (response.ok) {
-        const result = await response.json() as any;
+        const result = await response.json() as LockAcquisitionResponse;
         console.log(`[DistributedLockService] Lock acquired immediately: ${result.lockId}`);
         return result.lockId;
       } else if (response.status === 423) { // Locked
         console.log(`[DistributedLockService] Resource ${resource} is already locked`);
         return null;
       } else {
-        const error = await response.json() as any;
+        const error = await response.json() as LockErrorResponse;
         throw new Error(`Try lock failed: ${error.message}`);
       }
 
@@ -209,7 +250,7 @@ export class DistributedLockService {
       }));
 
       if (response.ok) {
-        const result = await response.json() as any;
+        const result = await response.json() as LockStatusResponse;
         return result.isLocked;
       } else {
         console.warn(`[DistributedLockService] Error checking lock status for ${resource}`);
@@ -234,12 +275,12 @@ export class DistributedLockService {
       }));
 
       if (response.ok) {
-        const result = await response.json() as any;
-        return result.lock;
+        const result = await response.json() as LockInfoResponse;
+        return result.lock ?? null;
       } else if (response.status === 404) {
         return null;
       } else {
-        const error = await response.json() as any;
+        const error = await response.json() as LockErrorResponse;
         throw new Error(`Get lock info failed: ${error.message}`);
       }
 
@@ -271,11 +312,11 @@ export class DistributedLockService {
       }));
 
       if (response.ok) {
-        const result = await response.json() as any;
+        const result = await response.json() as LockExtensionResponse;
         console.log(`[DistributedLockService] Lock extended: ${lockId}, new expiry: ${result.expiresAt}`);
         return result.expiresAt;
       } else {
-        const error = await response.json() as any;
+        const error = await response.json() as LockErrorResponse;
         throw new Error(`Lock extension failed: ${error.message}`);
       }
 
@@ -360,10 +401,10 @@ export class DistributedLockService {
       }));
 
       if (response.ok) {
-        const result = await response.json() as any;
-        return result.locks;
+        const result = await response.json() as ActiveLocksResponse;
+        return result.locks ?? [];
       } else {
-        const error = await response.json() as any;
+        const error = await response.json() as LockErrorResponse;
         throw new Error(`Get active locks failed: ${error.message}`);
       }
 
@@ -389,11 +430,11 @@ export class DistributedLockService {
       }));
 
       if (response.ok) {
-        const result = await response.json() as any;
+        const result = await response.json() as LockCleanupResponse;
         console.log(`[DistributedLockService] Cleaned up ${result.cleanedCount} expired locks`);
-        return result.cleanedCount;
+        return result.cleanedCount ?? 0;
       } else {
-        const error = await response.json() as any;
+        const error = await response.json() as LockErrorResponse;
         throw new Error(`Cleanup failed: ${error.message}`);
       }
 
@@ -407,22 +448,14 @@ export class DistributedLockService {
    * Get lock statistics and metrics
    * @returns Lock system metrics
    */
-  async getLockMetrics(): Promise<{
-    totalLocks: number;
-    activeLocks: number;
-    expiredLocks: number;
-    averageLockDuration: number;
-    lockAcquisitionRate: number;
-    lockContentionRate: number;
-  }> {
+  async getLockMetrics(): Promise<LockMetrics> {
     try {
       const response = await this.lockStub!.fetch(new Request('https://lock-coordinator/metrics', {
         method: 'GET'
       }));
 
       if (response.ok) {
-        const metrics = await response.json();
-        return metrics as { totalLocks: number; activeLocks: number; expiredLocks: number; averageLockDuration: number; lockAcquisitionRate: number; lockContentionRate: number; };
+        return await response.json() as LockMetrics;
       } else {
         throw new Error('Failed to get lock metrics');
       }
@@ -497,7 +530,7 @@ export class LockCoordinator implements DurableObject {
     lastCleanup: nowMs()
   };
 
-  constructor(state: DurableObjectState, _env: any) {
+  constructor(state: DurableObjectState, _env: unknown) {
     this.state = state;
 
     // Initialize from storage
@@ -851,7 +884,7 @@ export class LockCoordinator implements DurableObject {
         this.resourceLocks = new Map(resourceLocks);
       }
 
-      const metrics = await this.state.storage.get('metrics') as any;
+      const metrics = await this.state.storage.get('metrics') as unknown;
       if (metrics) {
         this.metrics = { ...this.metrics, ...metrics };
       }

@@ -7,6 +7,7 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('SessionMain')
 
 import type { Bindings } from '@/types';
+import type { BatchSessionOperation, SessionSearchQuery } from '../types/session-types';
 import { SessionService } from '@modules/session/services/session-service';
 import { TopicService } from '@modules/session/services/topic-service';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -135,7 +136,7 @@ sessionHandler.post(
       const payload = c.get('jwtPayload');
       const sessionService = new SessionService(c.env.DB);
 
-      const result = await sessionService.batchOperation(batchOperation as any, payload?.userId?.toString());
+      const result = await sessionService.batchOperation(batchOperation as BatchSessionOperation, payload?.userId?.toString());
 
       return c.json({
         success: true,
@@ -163,7 +164,7 @@ sessionHandler.get(
       const searchQuery = c.get('sessionSearchQuery');
       const sessionService = new SessionService(c.env.DB);
 
-      const sessions = await sessionService.search(searchQuery as any);
+      const sessions = await sessionService.search(searchQuery as SessionSearchQuery);
 
       return c.json({
         success: true,

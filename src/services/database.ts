@@ -5,6 +5,28 @@ import { v4 as uuidv4 } from 'uuid';
 import { MESSAGE_STATUS } from '../constants/message-status';
 import { nowISO } from '@/utils/timestamp'
 
+type AgentInsert = typeof schema.agents.$inferInsert;
+type MessageInsert = typeof schema.messages.$inferInsert;
+type FileAttachmentInsert = typeof schema.fileAttachments.$inferInsert;
+type DelayedMessageInsert = typeof schema.delayedMessages.$inferInsert;
+
+type EnrichedConversation = typeof schema.conversations.$inferSelect & {
+  assignedTeam: {
+    id: number;
+    name: string;
+    description: string | null;
+  } | null;
+  customer: {
+    id: number;
+    name: string;
+    displayName: string | null;
+    platform: string;
+    platformUserId: string;
+    avatarUrl: string | null;
+    createdAt: string | null;
+  } | null;
+};
+
 export class DatabaseService {
   constructor(
     private db: Database,
@@ -70,7 +92,7 @@ export class DatabaseService {
   }
 
   // Agent operations
-  async createAgent(agentData: any) {
+  async createAgent(agentData: Omit<AgentInsert, 'id'>) {
     const id = uuidv4();
     const agent = await this.db.insert(schema.agents).values({
       id,
@@ -137,9 +159,9 @@ export class DatabaseService {
     return conversation[0];
   }
 
-  async getConversationById(id: string) {
+  async getConversationById(id: string): Promise<EnrichedConversation | null> {
     // Try cache first
-    const cached = await this.kv.getCache(`conversation:${id}`);
+    const cached = await this.kv.getCache<EnrichedConversation>(`conversation:${id}`);
     if (cached) return cached;
 
     // Fetch conversation with team and customer information using LEFT JOINs
@@ -381,7 +403,7 @@ export class DatabaseService {
   }
 
   // Message operations - 並行化優化
-  async createMessage(messageData: any) {
+  async createMessage(messageData: Omit<MessageInsert, 'id'> & { conversationId: string }) {
     const id = uuidv4();
     const timestamp = nowISO();
     
@@ -443,7 +465,7 @@ export class DatabaseService {
   }
 
   // File attachment operations
-  async createFileAttachment(attachmentData: any) {
+  async createFileAttachment(attachmentData: Omit<FileAttachmentInsert, 'id'>) {
     const id = uuidv4();
     return await this.db.insert(schema.fileAttachments).values({
       id,
@@ -457,7 +479,7 @@ export class DatabaseService {
   }
 
   // Delayed message operations
-  async createDelayedMessage(messageData: any) {
+  async createDelayedMessage(messageData: Omit<DelayedMessageInsert, 'id'>) {
     const id = uuidv4();
     return await this.db.insert(schema.delayedMessages).values({
       id,
@@ -556,7 +578,7 @@ export class DatabaseService {
     const stats: Record<string, number> = {};
     
     for (const status of statuses) {
-      const cached = await this.kv.getCache(`stats:conversations:${status}`);
+      const cached = await this.kv.getCache<number>(`stats:conversations:${status}`);
       if (cached !== null) {
         stats[status] = cached;
       } else {
@@ -605,7 +627,7 @@ export class DatabaseService {
   // Advanced caching methods
   async incrementConversationCount(status: string) {
     const key = `stats:conversations:${status}`;
-    const current = await this.kv.getCache(key) || 0;
+    const current = await this.kv.getCache<number>(key) || 0;
     await this.kv.setCache(key, current + 1, 3600);
   }
 

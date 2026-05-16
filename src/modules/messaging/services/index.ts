@@ -8,23 +8,23 @@ export { MessageRecallService } from './message-recall-service';
 // 服務工廠函數
 import type { Bindings } from '@/types';
 import type { D1Database } from '@cloudflare/workers-types';
+import { MessageCrudService } from './message-crud';
+import { DelayedMessageService } from './delayed-message-service';
+import { MessageRecallService } from './message-recall-service';
 
-export function createMessagingServices(_db: D1Database, _env: Bindings) {
-  // Note: Services are exported above and can be instantiated directly
-  // Using null as placeholders - instantiate services when module initialization is needed
-  // Services available: MessageCrudService, DelayedMessageService, MessageRecallService
+export function createMessagingServices(db: D1Database, env: Bindings): MessagingServices {
   return {
-    crud: null as any, // Use: new MessageCrudService(db)
-    delayed: null as any, // Use: new DelayedMessageService(db, env)
-    recall: null as any // Use: new MessageRecallService(db, env)
+    crud: new MessageCrudService(db),
+    delayed: new DelayedMessageService(db, env),
+    recall: new MessageRecallService(db, env)
   };
 }
 
 // 服務介面定義
 export interface MessagingServices {
-  crud: any; // MessageCrudService;
-  delayed: any; // DelayedMessageService;
-  recall: any; // MessageRecallService;
+  crud: MessageCrudService;
+  delayed: DelayedMessageService;
+  recall: MessageRecallService;
 }
 
 // 重新導出類型

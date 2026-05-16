@@ -100,7 +100,7 @@ export class RealtimeManager {
   // 創建並處理事件
   async createEvent(
     eventType: RealtimeEvent['type'],
-    eventData: any,
+    eventData: unknown,
     targets: EventTargets,
     priority: EventPriority = 'normal',
     source: EventSource = 'system'
@@ -164,7 +164,7 @@ export class RealtimeManager {
   async createBatchEvents(
     events: Array<{
       eventType: RealtimeEvent['type'];
-      eventData: any;
+      eventData: unknown;
       targets: EventTargets;
       priority?: EventPriority;
     }>,
@@ -285,7 +285,7 @@ export class RealtimeManager {
   async getComprehensiveStats(): Promise<{
     service: ServiceHealth;
     events: EventStats;
-    queue?: any;
+    queue?: unknown;
     config: RealtimeConfig;
   }> {
     const serviceHealth = await this.getServiceHealth();

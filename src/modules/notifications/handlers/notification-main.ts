@@ -22,13 +22,23 @@ import {
   BulkCreateNotificationRequest,
   NotificationQuery,
   NotificationType,
-  NotificationPriority
+  NotificationPriority,
+  ChannelType
 } from '../types';
 import { triggerSystemNotification } from '@/utils/notification-trigger';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents } from '@/db/schema';
 import { isNull } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
+
+function isChannelType(value: string): value is ChannelType {
+  return value === 'database'
+    || value === 'websocket'
+    || value === 'email'
+    || value === 'push'
+    || value === 'webhook'
+    || value === 'sms';
+}
 
 export class NotificationHandler {
   private notificationService: NotificationService;
@@ -378,8 +388,12 @@ export class NotificationHandler {
         return unauthorizedResponse(c, 'Authentication required');
       }
 
-      const channelType = c.req.param('channelType') as any;
+      const channelType = c.req.param('channelType');
       const { message } = await c.req.json().catch(() => ({}));
+
+      if (!channelType || !isChannelType(channelType)) {
+        return validationErrorResponse(c, [{ field: 'channelType', message: 'Invalid notification channel' }]);
+      }
 
       const result = await this.channelService.testChannel(
         channelType,

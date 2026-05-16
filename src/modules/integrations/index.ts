@@ -78,7 +78,12 @@ import { CredentialManagementService } from '@modules/integrations/services/cred
 
 // Import types for local use
 import type { Bindings } from '../../types';
-import type { IntegrationPlatform } from '@modules/integrations/types/integration-types';
+import type {
+  FacebookIntegrationConfig,
+  IntegrationConfig,
+  IntegrationPlatform,
+  LineIntegrationConfig
+} from '@modules/integrations/types/integration-types';
 
 // ======================== 模組資訊 ========================
 export const INTEGRATION_MODULE_INFO = {
@@ -190,10 +195,10 @@ export function createIntegrationModule(
     moduleInfo: INTEGRATION_MODULE_INFO,
 
     // 便利方法
-    createLineIntegration: (token: string, secret: string, config: any) =>
+    createLineIntegration: (token: string, secret: string, config: LineIntegrationConfig) =>
       new LineIntegrationService(token, secret, config, env),
 
-    createFacebookIntegration: (token: string, secret: string, pageId: string, config: any) =>
+    createFacebookIntegration: (token: string, secret: string, pageId: string, config: FacebookIntegrationConfig) =>
       new FacebookIntegrationService(token, secret, pageId, config, env)
   };
 }
@@ -255,7 +260,7 @@ export const PLATFORM_CAPABILITIES = {
 export function handleIntegrationError(error: unknown): {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 } {
   if (error instanceof Error) {
     if (error.message.includes('credentials')) {
@@ -301,7 +306,7 @@ export function getPlatformCapabilities(platform: IntegrationPlatform) {
 }
 
 // ======================== 驗證工具 ========================
-export function validateIntegrationConfig(config: any): { isValid: boolean; errors: string[] } {
+export function validateIntegrationConfig(config: Partial<IntegrationConfig>): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   if (config.maxRetries && (config.maxRetries < 0 || config.maxRetries > 10)) {

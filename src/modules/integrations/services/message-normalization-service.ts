@@ -51,7 +51,7 @@ export interface NormalizedMessage {
   platformData: PlatformMessageData;
 
   // Additional metadata
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MessageAttachment {
@@ -110,8 +110,8 @@ export interface WhatsAppMessageData {
 
 export interface ProcessInboundMessageOptions {
   platform: Platform;
-  rawEvent: any;
-  channelConfig: any;
+  rawEvent: unknown;
+  channelConfig: unknown;
   db: D1Database;
   env?: Bindings;  // NEW: needed for distributed lock in shared service
   teamId: number;
@@ -123,6 +123,123 @@ export interface ProcessInboundMessageResult {
   conversationId?: string;
   customerId?: number;
   error?: string;
+}
+
+interface ExtractedPlatformData {
+  platformMessageId: string;
+  platformUserId: string;
+  displayName: string;
+  avatarUrl?: string;
+  content: string;
+  messageType: MessageType;
+  attachments?: MessageAttachment[];
+  platformData: PlatformMessageData;
+}
+
+interface LineRawMessage {
+  id: string;
+  type: string;
+  text?: string;
+  duration?: number;
+  fileName?: string;
+  fileSize?: number;
+  address?: string;
+  packageId?: string;
+  stickerId?: string;
+}
+
+interface LineRawEvent {
+  message: LineRawMessage;
+  source: {
+    type: 'user' | 'group' | 'room';
+    userId?: string;
+    groupId?: string;
+    roomId?: string;
+  };
+  replyToken?: string;
+  timestamp?: number;
+}
+
+interface FacebookRawAttachment {
+  type: MessageAttachment['type'];
+  payload?: {
+    url?: string;
+    name?: string;
+  };
+}
+
+interface FacebookRawEvent {
+  sender: { id: string };
+  recipient?: { id?: string };
+  message: {
+    mid: string;
+    text?: string;
+    attachments?: FacebookRawAttachment[];
+    quick_reply?: { payload: string };
+    referral?: FacebookMessageData['referral'];
+  };
+  timestamp?: number;
+}
+
+interface WhatsAppMediaPayload {
+  id?: string;
+  mime_type?: string;
+  caption?: string;
+  filename?: string;
+  sha256?: string;
+}
+
+interface WhatsAppRawMessage {
+  id: string;
+  from: string;
+  timestamp?: string;
+  type: string;
+  text?: { body?: string };
+  image?: WhatsAppMediaPayload;
+  video?: WhatsAppMediaPayload;
+  audio?: WhatsAppMediaPayload;
+  document?: WhatsAppMediaPayload;
+  sticker?: WhatsAppMediaPayload;
+  location?: {
+    latitude?: number;
+    longitude?: number;
+    name?: string;
+    address?: string;
+  };
+  interactive?: {
+    type?: string;
+    button_reply?: { id?: string; title?: string };
+    list_reply?: { id?: string; title?: string; description?: string };
+  };
+  button?: {
+    text?: string;
+    payload?: string;
+  };
+  context?: {
+    id?: string;
+  };
+}
+
+interface WhatsAppRawContact {
+  wa_id?: string;
+  profile?: {
+    name?: string;
+  };
+}
+
+interface WhatsAppValuePayload {
+  messages?: WhatsAppRawMessage[];
+  contacts?: WhatsAppRawContact[];
+}
+
+interface WhatsAppWebhookEvent {
+  entry?: Array<{
+    changes?: Array<{
+      value?: WhatsAppValuePayload;
+    }>;
+  }>;
+  messages?: WhatsAppRawMessage[];
+  contacts?: WhatsAppRawContact[];
 }
 
 export class MessageNormalizationService {
@@ -143,11 +260,11 @@ export class MessageNormalizationService {
 
       // Step 2: Find or create customer (use shared service if env available, fallback to local)
       let customer: { id: number; displayName: string } | null;
-      if (options.env) {
+      if (options.env && (platform === 'line' || platform === 'facebook')) {
         const result = await sharedFindOrCreateCustomer(
           options.env,
           extracted.platformUserId,
-          platform as 'line' | 'facebook',
+          platform,
           { sourceTeamId: teamId }
         );
         customer = result ? { id: result.id, displayName: result.displayName || 'Unknown' } : null;
@@ -223,17 +340,8 @@ export class MessageNormalizationService {
    */
   private async extractPlatformData(
     platform: Platform,
-    rawEvent: any
-  ): Promise<{
-    platformMessageId: string;
-    platformUserId: string;
-    displayName: string;
-    avatarUrl?: string;
-    content: string;
-    messageType: MessageType;
-    attachments?: MessageAttachment[];
-    platformData: PlatformMessageData;
-  } | null> {
+    rawEvent: unknown
+  ): Promise<ExtractedPlatformData | null> {
     switch (platform) {
       case 'line':
         return this.extractLineData(rawEvent);
@@ -250,8 +358,8 @@ export class MessageNormalizationService {
   /**
    * Extract LINE message data
    */
-  private async extractLineData(event: any): Promise<any> {
-    const { message, source, replyToken, timestamp: _timestamp } = event;
+  private async extractLineData(event: unknown): Promise<ExtractedPlatformData> {
+    const { message, source, replyToken, timestamp: _timestamp } = event as LineRawEvent;
 
     let content = '';
     let messageType: MessageType = 'text';
@@ -259,7 +367,7 @@ export class MessageNormalizationService {
 
     switch (message.type) {
       case 'text':
-        content = message.text;
+        content = message.text || '';
         messageType = 'text';
         break;
       case 'image':
@@ -311,7 +419,7 @@ export class MessageNormalizationService {
 
     return {
       platformMessageId: message.id,
-      platformUserId: source.userId,
+      platformUserId: source.userId || '',
       displayName: 'LINE User',  // Will be updated via profile sync
       content,
       messageType,
@@ -321,7 +429,7 @@ export class MessageNormalizationService {
         replyToken,
         packageId: message.packageId,
         stickerId: message.stickerId,
-        userId: source.userId,
+        userId: source.userId || '',
         source: {
           type: source.type,
           userId: source.userId,
@@ -335,8 +443,8 @@ export class MessageNormalizationService {
   /**
    * Extract Facebook message data
    */
-  private async extractFacebookData(event: any): Promise<any> {
-    const { sender, message, timestamp: _timestamp } = event;
+  private async extractFacebookData(event: unknown): Promise<ExtractedPlatformData> {
+    const { sender, message, recipient, timestamp: _timestamp } = event as FacebookRawEvent;
 
     let content = '';
     let messageType: MessageType = 'text';
@@ -389,7 +497,7 @@ export class MessageNormalizationService {
         platform: 'facebook' as const,
         mid: message.mid,
         senderId: sender.id,
-        recipientId: event.recipient?.id || '',
+        recipientId: recipient?.id || '',
         quickReply: message.quick_reply,
         referral: message.referral,
       },
@@ -397,11 +505,120 @@ export class MessageNormalizationService {
   }
 
   /**
-   * Extract WhatsApp message data (placeholder for future implementation)
+   * Extract WhatsApp Cloud API message data.
    */
-  private async extractWhatsAppData(_event: any): Promise<any> {
-    // TODO: Implement WhatsApp message extraction
-    throw new Error('WhatsApp integration not yet implemented');
+  private async extractWhatsAppData(event: unknown): Promise<ExtractedPlatformData | null> {
+    const payload = this.getWhatsAppValuePayload(event);
+    const message = payload.messages?.[0];
+
+    if (!message?.id || !message.from) {
+      throw new Error('Invalid WhatsApp webhook payload: missing message id or sender');
+    }
+
+    const contact = payload.contacts?.find((item) => item.wa_id === message.from) || payload.contacts?.[0];
+    const displayName = contact?.profile?.name || message.from;
+    const attachments: MessageAttachment[] = [];
+    let content = '';
+    let messageType: MessageType = 'text';
+
+    switch (message.type) {
+      case 'text':
+        content = message.text?.body || '';
+        messageType = 'text';
+        break;
+      case 'image':
+        ({ content, messageType } = this.extractWhatsAppMedia(message.image, 'image', '[Image]', attachments));
+        break;
+      case 'video':
+        ({ content, messageType } = this.extractWhatsAppMedia(message.video, 'video', '[Video]', attachments));
+        break;
+      case 'audio':
+        ({ content, messageType } = this.extractWhatsAppMedia(message.audio, 'audio', '[Audio]', attachments));
+        break;
+      case 'document':
+        ({ content, messageType } = this.extractWhatsAppMedia(message.document, 'file', '[File]', attachments));
+        break;
+      case 'sticker':
+        content = '[Sticker]';
+        messageType = 'sticker';
+        break;
+      case 'location':
+        content = this.formatWhatsAppLocation(message.location);
+        messageType = 'location';
+        break;
+      case 'interactive':
+        content = message.interactive?.button_reply?.title
+          || message.interactive?.list_reply?.title
+          || '[Interactive message]';
+        messageType = 'template';
+        break;
+      case 'button':
+        content = message.button?.text || '[Button reply]';
+        messageType = 'text';
+        break;
+      default:
+        content = `[Unsupported WhatsApp message type: ${message.type}]`;
+        messageType = 'text';
+    }
+
+    return {
+      platformMessageId: message.id,
+      platformUserId: message.from,
+      displayName,
+      content,
+      messageType,
+      attachments,
+      platformData: {
+        platform: 'whatsapp' as const,
+        messageId: message.id,
+        from: message.from,
+        timestamp: message.timestamp || '',
+        context: message.context?.id ? { messageId: message.context.id } : undefined,
+      },
+    };
+  }
+
+  private getWhatsAppValuePayload(event: unknown): WhatsAppValuePayload {
+    const webhookEvent = event as WhatsAppWebhookEvent;
+    return webhookEvent.entry?.[0]?.changes?.[0]?.value || {
+      messages: webhookEvent.messages,
+      contacts: webhookEvent.contacts,
+    };
+  }
+
+  private extractWhatsAppMedia(
+    media: WhatsAppMediaPayload | undefined,
+    type: MessageAttachment['type'],
+    fallbackContent: string,
+    attachments: MessageAttachment[]
+  ): { content: string; messageType: MessageType } {
+    attachments.push({
+      type,
+      url: media?.id || '',
+      filename: media?.filename,
+      mimeType: media?.mime_type,
+    });
+
+    return {
+      content: media?.caption || (media?.filename ? `[File: ${media.filename}]` : fallbackContent),
+      messageType: type === 'file' ? 'file' : type,
+    };
+  }
+
+  private formatWhatsAppLocation(location: WhatsAppRawMessage['location']): string {
+    if (!location) {
+      return '[Location]';
+    }
+
+    if (location.name || location.address) {
+      return `[Location: ${[location.name, location.address].filter(Boolean).join(' - ')}]`;
+    }
+
+    if (location.latitude !== undefined && location.longitude !== undefined) {
+      return `[Location: ${location.latitude}, ${location.longitude}]`;
+    }
+
+    return '[Location]';
   }
 
   /**
@@ -490,8 +707,8 @@ export class MessageNormalizationService {
    */
   private async normalizeMessage(
     platform: Platform,
-    rawEvent: any,
-    extracted: any,
+    rawEvent: unknown,
+    extracted: ExtractedPlatformData,
     conversationId: string,
     customerId: number,
     customerDisplayName: string

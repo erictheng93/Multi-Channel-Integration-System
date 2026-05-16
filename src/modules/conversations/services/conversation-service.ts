@@ -312,7 +312,7 @@ export class ConversationService implements ConversationServiceInterface {
       throw new Error('Team ID is required for assignment');
     }
 
-    const updateData: any = {
+    const updateData = {
       assignedTeamId: params.teamId,
       updatedAt: nowISO()
     };
@@ -463,7 +463,7 @@ export class ConversationService implements ConversationServiceInterface {
   // Closed/resolved statuses are no longer part of the conversation lifecycle
 
   // Get conversation metrics
-  async getConversationMetrics(_filters?: any): Promise<ConversationMetrics> {
+  async getConversationMetrics(_filters?: unknown): Promise<ConversationMetrics> {
     // Get basic counts
     const [totalCount] = await this.db
       .select({ count: count() })

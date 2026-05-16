@@ -25,14 +25,21 @@ interface Violation {
 }
 
 const allowlistPath = 'scripts/type-debt-allowlist.json';
-const roots = ['src', 'frontend/src'];
+const roots = [
+  'src',
+  'frontend/src',
+  'web-installer/backend/src',
+  'web-installer/frontend/src',
+  'scripts',
+  'frontend/scripts',
+];
 const ignoredPathParts = new Set(['node_modules', 'dist', 'coverage', '__tests__']);
 const ignoredFileSuffixes = ['.d.ts', '.test.ts', '.test.tsx', '.spec.ts', '.spec.tsx'];
 const shouldUpdate = Bun.argv.includes('--update');
 
 function isSourceFile(path: string): boolean {
   return (
-    (path.endsWith('.ts') || path.endsWith('.tsx')) &&
+    (path.endsWith('.ts') || path.endsWith('.tsx') || path.endsWith('.vue')) &&
     !ignoredFileSuffixes.some((suffix) => path.endsWith(suffix))
   );
 }
@@ -65,38 +72,59 @@ function collectFiles(dir: string): string[] {
 
 function countTypeDebt(file: string): TypeDebtCounts {
   const sourceText = readFileSync(file, 'utf8');
-  const sourceFile = ts.createSourceFile(
-    file,
-    sourceText,
-    ts.ScriptTarget.Latest,
-    true,
-    file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-  );
   const counts: TypeDebtCounts = { any: 0, asAny: 0 };
 
-  function visit(node: ts.Node) {
-    if (node.kind === ts.SyntaxKind.AnyKeyword) {
-      counts.any += 1;
+  function countSource(source: string, fileName: string, scriptKind: ts.ScriptKind) {
+    const sourceFile = ts.createSourceFile(
+      fileName,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      scriptKind
+    );
+
+    function visit(node: ts.Node) {
+      if (node.kind === ts.SyntaxKind.AnyKeyword) {
+        counts.any += 1;
+      }
+
+      if (
+        ts.isAsExpression(node) &&
+        node.type.kind === ts.SyntaxKind.AnyKeyword
+      ) {
+        counts.asAny += 1;
+      }
+
+      if (
+        ts.isTypeAssertionExpression(node) &&
+        node.type.kind === ts.SyntaxKind.AnyKeyword
+      ) {
+        counts.asAny += 1;
+      }
+
+      ts.forEachChild(node, visit);
     }
 
-    if (
-      ts.isAsExpression(node) &&
-      node.type.kind === ts.SyntaxKind.AnyKeyword
-    ) {
-      counts.asAny += 1;
-    }
-
-    if (
-      ts.isTypeAssertionExpression(node) &&
-      node.type.kind === ts.SyntaxKind.AnyKeyword
-    ) {
-      counts.asAny += 1;
-    }
-
-    ts.forEachChild(node, visit);
+    visit(sourceFile);
   }
 
-  visit(sourceFile);
+  if (file.endsWith('.vue')) {
+    const scriptBlockPattern = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+    const scriptBlocks = Array.from(sourceText.matchAll(scriptBlockPattern));
+
+    for (const [index, match] of scriptBlocks.entries()) {
+      countSource(match[1], `${file}.${index}.ts`, ts.ScriptKind.TS);
+    }
+
+    counts.asAny += sourceText.match(/\bas\s+any\b/g)?.length ?? 0;
+    return counts;
+  }
+
+  countSource(
+    sourceText,
+    file,
+    file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  );
   return counts;
 }
 

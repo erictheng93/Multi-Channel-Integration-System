@@ -11,13 +11,9 @@ import { createDbClient } from '../src/db/drizzle-factory';
 import { teams, teamLiffQrCodes } from '../src/db/schema';
 import { eq, isNull } from 'drizzle-orm';
 import { generateTeamQRCode } from '../src/services/liff-qrcode-service';
-import type { Bindings } from '../src/types';
 
-// 模拟 Bindings 环境（从环境变量读取）
-const env: Bindings = {
-  DB: null as any, // 将在运行时设置
-  CACHE: null as any,
-  R2_BUCKET: null as any,
+// 模拟环境配置（从环境变量读取）
+const envConfig = {
   LINE_LIFF_ID: process.env.LINE_LIFF_ID || '',
   R2_PUBLIC_URL: process.env.R2_PUBLIC_URL || '',
   LINE_BOT_ID: process.env.LINE_BOT_ID || '',
@@ -26,16 +22,6 @@ const env: Bindings = {
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
   JWT_SECRET: process.env.JWT_SECRET || '',
   ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || '',
-
-  // Durable Objects bindings (not used in this script)
-  CONVERSATION_ROOM: null as any,
-  USER_CONNECTION: null as any,
-  MESSAGE_BROADCASTER: null as any,
-  DELAYED_MESSAGE_PROCESSOR: null as any,
-  DELAYED_MESSAGE_BUFFER: null as any,
-
-  // Queue binding (not used in this script)
-  MESSAGE_QUEUE: null as any,
 };
 
 async function generateLiffQRForAllTeams() {
@@ -55,8 +41,8 @@ async function generateLiffQRForAllTeams() {
   }
 
   console.log(' 环境变量检查通过');
-  console.log(` LINE_LIFF_ID: ${env.LINE_LIFF_ID}`);
-  console.log(` R2_PUBLIC_URL: ${env.R2_PUBLIC_URL}\n`);
+  console.log(` LINE_LIFF_ID: ${envConfig.LINE_LIFF_ID}`);
+  console.log(` R2_PUBLIC_URL: ${envConfig.R2_PUBLIC_URL}\n`);
 
   try {
     // 注意：这个脚本需要在 Cloudflare Workers 环境中运行

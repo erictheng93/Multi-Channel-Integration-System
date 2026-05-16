@@ -284,7 +284,7 @@ export class NotificationCache {
   }
 
   // 生成查詢雜湊
-  generateQueryHash(query: any): string {
+  generateQueryHash(query: Record<string, unknown>): string {
     const keys = Object.keys(query).sort();
     const hashInput = keys.map(key => `${key}:${query[key]}`).join('|');
 

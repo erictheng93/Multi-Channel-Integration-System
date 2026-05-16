@@ -221,7 +221,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { ConfigFormData } from './types';
+import type { ConfigFormData, ConfigFormTextField } from './types';
 import type { FormErrors } from '@/types';
 
 // ========================================
@@ -235,7 +235,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:field', field: keyof ConfigFormData, value: string): void;
+  (e: 'update:field', field: ConfigFormTextField, value: string): void;
   (e: 'clearError', field: keyof FormErrors): void;
   (e: 'update:skipLineConfig', value: boolean): void;
 }>();
@@ -259,7 +259,7 @@ function toggleHelp(field: string): void {
   showHelp.value[field] = !showHelp.value[field];
 }
 
-function onFieldInput(field: keyof ConfigFormData, value: string): void {
+function onFieldInput(field: ConfigFormTextField, value: string): void {
   emit('update:field', field, value);
   emit('clearError', field as keyof FormErrors);
 }

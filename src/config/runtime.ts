@@ -108,13 +108,13 @@ export interface RuntimeConfig {
  * @param defaultValue - 默認值
  * @returns 環境變量值或默認值
  */
-function getEnv(env: WorkerEnv | Record<string, any>, key: string, defaultValue: string = ''): string {
+function getEnv(env: WorkerEnv | Record<string, unknown>, key: string, defaultValue: string = ''): string {
   if (!env || typeof env !== 'object') {
     console.warn(`[Runtime Config] env object is invalid, using default value for ${key}`);
     return defaultValue;
   }
 
-  const value = (env as Record<string, any>)[key];
+  const value = (env as Record<string, unknown>)[key];
 
   if (value === undefined || value === null || value === '') {
     if (defaultValue) {

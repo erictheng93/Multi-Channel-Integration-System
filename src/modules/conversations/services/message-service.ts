@@ -5,6 +5,8 @@ import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, desc, and, inArray, gte } from 'drizzle-orm';
 import { messages, conversations, customers, fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
+import type { LineReplyMessage } from '@/types';
+import type { Context } from 'hono';
 import type {
   Message,
   NewMessage,
@@ -18,10 +20,49 @@ import { createContextLogger } from '@/utils/logger';
 const log = createContextLogger('MessageService');
 const requestLog = createContextLogger('MessageRequestService');
 
+function toMessageSnapshot(messageData: NewMessage, updatedAt: string | null): Message {
+  return {
+    id: messageData.id ?? '',
+    conversationId: messageData.conversationId,
+    senderType: messageData.senderType,
+    customerSenderId: messageData.customerSenderId ?? null,
+    agentSenderId: messageData.agentSenderId ?? null,
+    content: messageData.content,
+    messageType: typeof messageData.messageType === 'string' ? messageData.messageType : 'text',
+    platformMessageId: messageData.platformMessageId ?? null,
+    isRecalled: messageData.isRecalled ?? false,
+    recallDeadline: messageData.recallDeadline ?? null,
+    recalledAt: messageData.recalledAt ?? null,
+    isSent: messageData.isSent ?? true,
+    sentAt: messageData.sentAt ?? null,
+    deliveryStatus: messageData.deliveryStatus ?? 'delivered',
+    replyToMessageId: messageData.replyToMessageId ?? null,
+    threadId: messageData.threadId ?? null,
+    sessionId: messageData.sessionId ?? null,
+    sessionSequence: messageData.sessionSequence ?? 1,
+    metadata: messageData.metadata ?? null,
+    senderName: messageData.senderName ?? null,
+    readBy: messageData.readBy ?? null,
+    createdAt: messageData.createdAt ?? null,
+    updatedAt,
+    deletedAt: null
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+type MessageRequestType = NonNullable<MessageSendRequest['messageType']>;
+
+function isMessageRequestType(value: unknown): value is MessageRequestType {
+  return value === 'text' || value === 'image' || value === 'file' || value === 'quick_reply';
+}
+
 export interface MessageServiceInterface {
   sendMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
   createPendingMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
-  processBackgroundSending(messageId: string, request: MessageSendRequest, user: any): Promise<void>;
+  processBackgroundSending(messageId: string, request: MessageSendRequest, user: unknown): Promise<void>;
   getMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
   recallMessage(messageId: string, userId: string): Promise<boolean>;
   updateMessage(messageId: string, updates: Partial<Message>): Promise<Message>;
@@ -107,12 +148,12 @@ export class MessageService implements MessageServiceInterface {
         .where(eq(conversations.id, request.conversationId));
       log.info('Conversation timestamps updated', { updatedAt: timestamp });
 
-      const insertedMessage = { ...messageData, updatedAt: timestamp };
+      const insertedMessage = toMessageSnapshot(messageData, timestamp);
 
       return {
         success: true,
         messageId,
-        message: insertedMessage as any,
+        message: insertedMessage,
         conversationId: request.conversationId,
         content: request.content,
         timestamp
@@ -127,7 +168,7 @@ export class MessageService implements MessageServiceInterface {
    * Process background sending (Step 2 of Async Sending)
    * Sends to LINE and updates DB status.
    */
-  async processBackgroundSending(messageId: string, request: MessageSendRequest, _user: any): Promise<void> {
+  async processBackgroundSending(messageId: string, request: MessageSendRequest, _user: unknown): Promise<void> {
     try {
       log.info('Starting background sending', { messageId });
 
@@ -156,7 +197,7 @@ export class MessageService implements MessageServiceInterface {
       if (customer.platform === 'line' && customer.platformUserId) {
         try {
           const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
-          const lineMessages: any[] = [];
+          const lineMessages: LineReplyMessage[] = [];
 
           const hasAttachments = request.attachmentIds && request.attachmentIds.length > 0;
           const isFileOnlyContent = request.content && (
@@ -412,7 +453,7 @@ export class MessageService implements MessageServiceInterface {
           log.info('Sending LINE message', { platformUserId: customer.platformUserId });
 
           const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
-          const lineMessages: any[] = [];
+          const lineMessages: LineReplyMessage[] = [];
 
           const hasAttachments = request.attachmentIds && request.attachmentIds.length > 0;
           const isFileOnlyContent = request.content && (
@@ -558,15 +599,12 @@ export class MessageService implements MessageServiceInterface {
         })
         .where(eq(conversations.id, request.conversationId));
 
-      const insertedMessage = {
-        ...messageData,
-        updatedAt: timestamp
-      };
+      const insertedMessage = toMessageSnapshot(messageData, timestamp);
 
       return {
         success: isSent,
         messageId,
-        message: insertedMessage as any,
+        message: insertedMessage,
         conversationId: request.conversationId,
         content: request.content,
         timestamp,
@@ -743,9 +781,9 @@ export class MessageService implements MessageServiceInterface {
 
 // Message Request Validation Service
 export class MessageRequestService {
-  static async validateAndParse(c: any): Promise<MessageSendRequest> {
+  static async validateAndParse(c: Context<{ Bindings: Bindings }>): Promise<MessageSendRequest> {
     const conversationId = c.req.param('id');
-    const body = await c.req.json();
+    const body = await c.req.json<Record<string, unknown>>();
 
     requestLog.debug('Raw request body', { body: JSON.stringify(body) });
     requestLog.debug('attachmentIds in body', { attachmentIds: body.attachmentIds });
@@ -755,24 +793,28 @@ export class MessageRequestService {
     }
 
     // FIX: Content is required unless attachments are provided
-    const hasAttachments = body.attachmentIds && body.attachmentIds.length > 0;
+    const attachmentIds = Array.isArray(body.attachmentIds)
+      ? body.attachmentIds.filter((id): id is string => typeof id === 'string')
+      : [];
+    const hasAttachments = attachmentIds.length > 0;
     requestLog.debug('hasAttachments', { hasAttachments });
 
-    if (!body.content?.trim() && !hasAttachments) {
+    const content = typeof body.content === 'string' ? body.content.trim() : '';
+    if (!content && !hasAttachments) {
       throw new Error('Message content or attachments are required');
     }
 
-    if (!body.senderId) {
+    if (typeof body.senderId !== 'string' || !body.senderId) {
       throw new Error('Sender ID is required');
     }
 
-    const result = {
+    const result: MessageSendRequest = {
       conversationId,
-      content: body.content?.trim() || '',
+      content,
       senderId: body.senderId,
-      messageType: body.messageType || 'text',
-      metadata: body.metadata || {},
-      attachmentIds: body.attachmentIds || []  //  FIX: Include attachmentIds
+      messageType: isMessageRequestType(body.messageType) ? body.messageType : 'text',
+      metadata: isRecord(body.metadata) ? body.metadata : {},
+      attachmentIds
     };
 
     requestLog.debug('Parsed request', { result: JSON.stringify(result) });

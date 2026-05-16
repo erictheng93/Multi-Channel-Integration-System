@@ -13,6 +13,14 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('DelayedMessageController');
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 // 擴展 Context 類型以包含用戶信息
 type AuthenticatedContext = Context<{ Bindings: Bindings }> & {
   get(key: 'user'): { id: string; displayName?: string; role?: string };
@@ -311,28 +319,29 @@ export class DelayedMessageController {
   /**
    * 驗證發送請求
    */
-  private validateSendRequest(body: any): { isValid: boolean; errors: string[] } {
+  private validateSendRequest(body: unknown): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
+    const data = isRecord(body) ? body : {};
 
-    if (!body.conversationId?.trim()) {
+    if (!isNonEmptyString(data.conversationId)) {
       errors.push('conversationId is required');
     }
 
-    if (!body.content?.trim()) {
+    if (!isNonEmptyString(data.content)) {
       errors.push('content is required');
     }
 
-    if (!body.platform?.trim()) {
+    if (!isNonEmptyString(data.platform)) {
       errors.push('platform is required');
     }
 
-    if (!body.recipientPlatformId?.trim()) {
+    if (!isNonEmptyString(data.recipientPlatformId)) {
       errors.push('recipientPlatformId is required');
     }
 
-    if (typeof body.delaySeconds !== 'number') {
+    if (typeof data.delaySeconds !== 'number') {
       errors.push('delaySeconds must be a number');
-    } else if (body.delaySeconds < 1 || body.delaySeconds > 120) {
+    } else if (data.delaySeconds < 1 || data.delaySeconds > 120) {
       errors.push('delaySeconds must be between 1 and 120');
     }
 

@@ -12,7 +12,7 @@ export interface ReportConfig {
   description?: string;
   templateId: string;
   dataSource: ReportDataSource;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   format: ReportFormat[];
   schedule?: ReportSchedule;
   distribution?: ReportDistribution;
@@ -51,9 +51,9 @@ export interface ReportTemplate {
 export interface ReportDataSource {
   type: DataSourceType;
   query: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
   timeRange?: DashboardTimeRange;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
   aggregations?: DataAggregation[];
   joins?: DataJoin[];
   transformations?: DataTransformation[];
@@ -162,7 +162,7 @@ export enum SectionType {
 export interface SectionContent {
   template?: string;
   dataBinding?: DataBinding;
-  staticContent?: any;
+  staticContent?: unknown;
   chartConfig?: ChartConfiguration;
   tableConfig?: TableConfiguration;
 }
@@ -210,7 +210,7 @@ export interface TableConfiguration {
 export interface ReportVariable {
   name: string;
   type: VariableType;
-  defaultValue?: any;
+  defaultValue?: unknown;
   description?: string;
   validation?: VariableValidation;
   options?: VariableOption[];
@@ -242,7 +242,7 @@ export interface ReportSchedule {
   timezone: string;
   startDate: string;
   endDate?: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
   retryConfig?: RetryConfig;
 }
 
@@ -470,7 +470,7 @@ export interface SectionStyling {
 export interface RenderCondition {
   field: string;
   operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'exists';
-  value: any;
+  value: unknown;
 }
 
 export interface DataAggregation {
@@ -488,7 +488,7 @@ export interface DataJoin {
 
 export interface DataTransformation {
   type: 'filter' | 'sort' | 'group' | 'calculate' | 'format';
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 export interface DataFormat {
@@ -500,7 +500,7 @@ export interface DataFormat {
 export interface DataFilter {
   field: string;
   operator: string;
-  value: any;
+  value: unknown;
 }
 
 export interface AxisConfig {
@@ -526,7 +526,7 @@ export interface LegendConfig {
 
 export interface ChartAnnotation {
   type: 'line' | 'area' | 'point' | 'text';
-  value: any;
+  value: unknown;
   label?: string;
   color?: string;
 }
@@ -578,7 +578,7 @@ export interface VariableValidation {
 }
 
 export interface VariableOption {
-  value: any;
+  value: unknown;
   label: string;
   description?: string;
 }
@@ -590,13 +590,13 @@ export interface RetryConfig {
 }
 
 export interface ChannelConfig {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface DistributionCondition {
   field: string;
   operator: string;
-  value: any;
+  value: unknown;
 }
 
 export interface ArchivalConfig {
@@ -631,7 +631,7 @@ export interface GenerationMetadata {
   duration: number;
   recordCount: number;
   dataSourcesUsed: string[];
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
   warnings?: string[];
 }
 
@@ -682,7 +682,7 @@ export interface ReportExportOptions {
   watermark?: ReportWatermark;
   includeData?: boolean;
   includeCharts?: boolean;
-  customOptions?: Record<string, any>;
+  customOptions?: Record<string, unknown>;
 }
 
 // All enums are already exported at their declaration site above

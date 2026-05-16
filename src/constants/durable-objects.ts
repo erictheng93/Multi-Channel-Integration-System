@@ -152,7 +152,7 @@ export function buildDOFetchUrl(route: string): string {
  * @returns 如果路由有效則返回 true
  */
 export function isValidDORoute(route: string): boolean {
-  const allRoutes = [
+  const allRoutes: readonly string[] = [
     ...Object.values(MESSAGE_BROADCASTER_ROUTES),
     ...Object.values(CACHE_COORDINATOR_ROUTES),
     ...Object.values(CONVERSATION_ROOM_ROUTES),
@@ -161,5 +161,5 @@ export function isValidDORoute(route: string): boolean {
     ...Object.values(METRICS_COLLECTOR_ROUTES),
   ];
 
-  return allRoutes.includes(route as any);
+  return allRoutes.includes(route);
 }

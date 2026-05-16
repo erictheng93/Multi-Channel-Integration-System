@@ -6,6 +6,17 @@ import type { RoomContext, RoomHelpers } from './room-helpers';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
 import { nowMs } from '@/utils/timestamp'
 
+interface RoomAuthEnv {
+  JWT_SECRET: string;
+}
+
+interface StoredRoomAuthChallenge extends WebSocketAuthChallenge {
+  token: string;
+  userId: string | number;
+  role?: 'admin' | 'agent';
+  teamId?: number;
+}
+
 /**
  * Handles all authentication logic for ConversationRoom:
  * - Full mode: Token-based + Challenge-Response authentication
@@ -18,6 +29,10 @@ export class RoomAuthService {
     private ctx: RoomContext,
     _helpers: RoomHelpers
   ) {}
+
+  private get env(): RoomAuthEnv {
+    return this.ctx.env as RoomAuthEnv;
+  }
 
   /**
    * Full mode authentication: Token-based or Challenge-Response
@@ -39,10 +54,10 @@ export class RoomAuthService {
 
       try {
         const { verifyJWT } = await import('../../utils/auth');
-        if (!this.ctx.env.JWT_SECRET) {
+        if (!this.env.JWT_SECRET) {
           throw new Error('JWT_SECRET environment variable is required');
         }
-        const payload = await verifyJWT(token, this.ctx.env.JWT_SECRET);
+        const payload = await verifyJWT(token, this.env.JWT_SECRET);
 
         testSafeLog(`${getEmojiPrefix('CHECK')}[ConversationRoom] Token valid for user ${payload.userId} with role ${payload.role}`);
         return {
@@ -136,7 +151,7 @@ export class RoomAuthService {
 
       // Verify JWT token
       const { verifyJWT } = await import('../../utils/auth');
-      const payload = await verifyJWT(token, this.ctx.env.JWT_SECRET);
+      const payload = await verifyJWT(token, this.env.JWT_SECRET);
 
       if (!payload || !payload.userId) {
         return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
@@ -196,7 +211,7 @@ export class RoomAuthService {
   }> {
     try {
       // Check if challenge exists in storage
-      const challengeData = await this.ctx.state.storage.get(`challenge:${challengeId}`) as any;
+      const challengeData = await this.ctx.state.storage.get<StoredRoomAuthChallenge>(`challenge:${challengeId}`);
 
       if (!challengeData) {
         testSafeLog(`[ConversationRoom] Invalid challenge ID: ${challengeId}`);
@@ -243,7 +258,7 @@ export class RoomAuthService {
   async generateSignature(challengeId: string, token: string): Promise<string> {
     const data = challengeId + ':' + token;
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(this.ctx.env.JWT_SECRET);
+    const keyData = encoder.encode(this.env.JWT_SECRET);
     const messageData = encoder.encode(data);
 
     const cryptoKey = await crypto.subtle.importKey(

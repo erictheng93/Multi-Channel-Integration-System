@@ -23,7 +23,7 @@ export async function processLineMedia(
   lineMessageId: string,
   lineMessageType: string,
   fileName?: string
-): Promise<any[]> {
+) {
   log.info('Processing media', { lineMessageId, lineMessageType, fileName });
 
   try {
@@ -94,14 +94,14 @@ export async function processFacebookMedia(
     if (mediaFile) {
       // 將檔案資訊存儲到資料庫 - using Drizzle ORM
       const drizzleDb = createDbClient(env.DB);
-      const newFileAttachment: any = {
+      const newFileAttachment = {
         id: mediaFile.id,
         messageId: messageId,
-        fileName: mediaFile.filename,
-        fileType: mediaFile.mimeType,
+        filename: mediaFile.filename,
+        mimeType: mediaFile.mimeType,
         fileSize: mediaFile.size,
+        fileUrl: mediaFile.originalUrl,
         r2Key: mediaFile.url, // Using url as r2Key for now
-        url: mediaFile.originalUrl,
         createdAt: nowISO()
       };
 

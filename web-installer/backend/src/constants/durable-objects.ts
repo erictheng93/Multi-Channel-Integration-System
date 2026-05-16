@@ -21,7 +21,8 @@ export const DURABLE_OBJECT_BINDINGS: readonly DurableObjectBinding[] = [
   { name: 'LATEST_MESSAGE_COORDINATOR', class_name: 'LatestMessageCacheCoordinator' },
   { name: 'CUSTOMER_CONVERSATION_DO', class_name: 'CustomerConversationDO' },
   { name: 'CUSTOMER_MESSAGE_DO', class_name: 'CustomerMessageDO' },
-  { name: 'RATE_LIMITER', class_name: 'RateLimiterDO' }
+  { name: 'RATE_LIMITER', class_name: 'RateLimiterDO' },
+  { name: 'METRICS_COLLECTOR', class_name: 'MetricsCollectorDO' }
 ] as const;
 
 /** All DO class names — used for SQLite migration steps */

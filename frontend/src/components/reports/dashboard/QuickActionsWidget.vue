@@ -56,22 +56,6 @@
           </div>
         </div>
       </button>
-
-      <!-- 報表設定 -->
-      <button
-        class="action-item"
-        @click="$emit('view-settings')"
-      >
-        <span class="action-icon" />
-        <div class="action-content">
-          <div class="action-title">
-            報表設定
-          </div>
-          <div class="action-subtitle">
-            配置偏好選項
-          </div>
-        </div>
-      </button>
     </div>
   </div>
 </template>
@@ -85,7 +69,6 @@
  * @emits create-report - 创建新报表
  * @emits refresh - 刷新报表列表
  * @emits export-all - 导出所有报表
- * @emits view-settings - 查看报表设置
  */
 
 export interface QuickActionsWidgetProps {
@@ -109,7 +92,6 @@ defineEmits<{
   'create-report': []
   'refresh': []
   'export-all': []
-  'view-settings': []
 }>()
 </script>
 

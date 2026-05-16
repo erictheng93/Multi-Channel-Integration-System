@@ -6,6 +6,11 @@ import type {
 } from '../types/services';
 import { nowISO } from '@/utils/timestamp'
 
+interface AgentOnlineStatus {
+  isOnline?: boolean;
+  lastSeen?: string;
+}
+
 export class ConversationService {
   constructor(
     private dbService: DatabaseService,
@@ -63,7 +68,7 @@ export class ConversationService {
 
     const agentWorkloads = await Promise.all(
       agents.map(async (agent) => {
-        const status = await this.dbService.getAgentOnlineStatus(agent.id.toString());
+        const status = await this.dbService.getAgentOnlineStatus(agent.id.toString()) as AgentOnlineStatus | null;
         const activeCount = await this.dbService.getActiveConversationCount(agent.id.toString());
         
         return {

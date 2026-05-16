@@ -21,7 +21,7 @@ const log = createContextLogger('LineIntegration');
  */
 interface LineMessage {
   type: 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker' | 'imagemap' | 'template' | 'flex';
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -41,15 +41,15 @@ interface LineWebhookEvent {
     id: string;
     type: string;
     text?: string;
-    contentProvider?: any;
-    [key: string]: any;
+    contentProvider?: unknown;
+    [key: string]: unknown;
   };
   postback?: {
     data: string;
-    params?: any;
+    params?: unknown;
   };
   replyToken?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -61,6 +61,31 @@ interface LineApiError {
     message: string;
     property: string;
   }>;
+}
+
+interface LineWebhookPayload {
+  events?: LineWebhookEvent[];
+}
+
+interface LineProfileResponse {
+  displayName?: string;
+  pictureUrl?: string;
+  statusMessage?: string;
+  language?: string;
+}
+
+interface LineFriendshipResponse {
+  friendFlag?: boolean;
+}
+
+interface LineRichMenuResponse {
+  richMenuId?: string;
+}
+
+interface LineBotInfoResponse {
+  userId?: string;
+  displayName?: string;
+  pictureUrl?: string;
 }
 
 /**
@@ -95,7 +120,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 建立 LINE API 連接
    */
-  async connect(credentials: Record<string, any>, _config: LineIntegrationConfig): Promise<boolean> {
+  async connect(credentials: Record<string, unknown>, _config: LineIntegrationConfig): Promise<boolean> {
     try {
       // 驗證必要憑證
       if (!credentials.channelAccessToken || !credentials.channelSecret) {
@@ -148,7 +173,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 發送訊息
    */
-  async sendMessage(recipient: string, message: LineMessage | string): Promise<any> {
+  async sendMessage(recipient: string, message: LineMessage | string) {
     try {
       this.stats.messages!.pending++;
       this.stats.apiCalls!.total++;
@@ -204,7 +229,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 處理接收訊息
    */
-  async receiveMessage(webhookData: any): Promise<PlatformEvent[]> {
+  async receiveMessage(webhookData: LineWebhookPayload): Promise<PlatformEvent[]> {
     try {
       this.stats.webhooks!.received++;
 
@@ -242,7 +267,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 回覆訊息
    */
-  async replyMessage(replyToken: string, messages: LineMessage[]): Promise<any> {
+  async replyMessage(replyToken: string, messages: LineMessage[]) {
     try {
       this.stats.apiCalls!.total++;
 
@@ -282,7 +307,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 獲取用戶資料
    */
-  async getUserProfile(userId: string): Promise<any> {
+  async getUserProfile(userId: string) {
     try {
       this.stats.apiCalls!.total++;
 
@@ -290,15 +315,15 @@ export class LineIntegrationService implements IPlatformAdapter {
 
       if (response.ok) {
         this.stats.apiCalls!.successful++;
-        const profile = await response.json();
+        const profile = await response.json() as LineProfileResponse;
 
         return {
           platform: 'line',
           userId,
-          displayName: (profile as any).displayName,
-          pictureUrl: (profile as any).pictureUrl,
-          statusMessage: (profile as any).statusMessage,
-          language: (profile as any).language,
+          displayName: profile.displayName,
+          pictureUrl: profile.pictureUrl,
+          statusMessage: profile.statusMessage,
+          language: profile.language,
           retrievedAt: nowISO()
         };
       }
@@ -324,8 +349,8 @@ export class LineIntegrationService implements IPlatformAdapter {
 
       if (response.ok) {
         this.stats.apiCalls!.successful++;
-        const data = await response.json();
-        return { isFriend: (data as any).friendFlag };
+        const data = await response.json() as LineFriendshipResponse;
+        return { isFriend: data.friendFlag || false };
       }
 
       this.stats.apiCalls!.failed++;
@@ -342,7 +367,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 創建 Rich Menu
    */
-  async createRichMenu(richMenu: any): Promise<string> {
+  async createRichMenu(richMenu: unknown): Promise<string> {
     try {
       this.stats.apiCalls!.total++;
 
@@ -350,8 +375,11 @@ export class LineIntegrationService implements IPlatformAdapter {
 
       if (response.ok) {
         this.stats.apiCalls!.successful++;
-        const data = await response.json();
-        return (data as any).richMenuId;
+        const data = await response.json() as LineRichMenuResponse;
+        if (!data.richMenuId) {
+          throw new Error('LINE rich menu response missing richMenuId');
+        }
+        return data.richMenuId;
       }
 
       this.stats.apiCalls!.failed++;
@@ -392,7 +420,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 廣播訊息
    */
-  async broadcast(messages: LineMessage[]): Promise<any> {
+  async broadcast(messages: LineMessage[]) {
     try {
       this.stats.apiCalls!.total++;
 
@@ -439,7 +467,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       const duration = Date.now() - startTime;
 
       if (response.ok) {
-        const info = await response.json();
+        const info = await response.json() as LineBotInfoResponse;
 
         return {
           status: 'pass',
@@ -451,9 +479,9 @@ export class LineIntegrationService implements IPlatformAdapter {
             latency: duration,
             errorRate: this.calculateErrorRate(),
             metadata: {
-              botId: (info as any).userId,
-              displayName: (info as any).displayName,
-              pictureUrl: (info as any).pictureUrl,
+              botId: info.userId,
+              displayName: info.displayName,
+              pictureUrl: info.pictureUrl,
               apiVersion: '2.0'
             }
           }
@@ -516,7 +544,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 執行 LINE API 呼叫
    */
-  private async makeApiCall(method: string, endpoint: string, body?: any): Promise<Response> {
+  private async makeApiCall(method: string, endpoint: string, body?: unknown): Promise<Response> {
     const url = `${this.apiBaseUrl}${endpoint}`;
 
     const options: RequestInit = {
@@ -608,7 +636,7 @@ export class LineIntegrationService implements IPlatformAdapter {
    * @see src/modules/integrations/handlers/webhook-handler.ts:41-100
    * @deprecated Use WebhookSecurityService.validateWebhookSecurity() instead
    */
-  private verifyWebhookSignature(_webhookData: any): boolean {
+  private verifyWebhookSignature(_webhookData: unknown): boolean {
     // WARNING: This method bypasses full security checks
     // For production use, webhooks should be processed through webhook-handler.ts
     // which provides complete HMAC-SHA256 signature verification.
@@ -626,8 +654,8 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 對應 LINE 事件類型
    */
-  private mapLineEventType(lineEventType: string): any {
-    const eventMap: Record<string, string> = {
+  private mapLineEventType(lineEventType: string): PlatformEvent['type'] {
+    const eventMap: Record<string, PlatformEvent['type']> = {
       'message': 'message',
       'postback': 'postback',
       'follow': 'follow',
@@ -642,7 +670,7 @@ export class LineIntegrationService implements IPlatformAdapter {
       'read': 'read'
     };
 
-    return eventMap[lineEventType] || lineEventType;
+    return eventMap[lineEventType] || 'message';
   }
 
   /**
@@ -711,7 +739,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 創建快速回覆訊息
    */
-  static createQuickReplyMessage(text: string, quickReply: any): LineMessage {
+  static createQuickReplyMessage(text: string, quickReply: unknown): LineMessage {
     return {
       type: 'text',
       text,
@@ -722,7 +750,7 @@ export class LineIntegrationService implements IPlatformAdapter {
   /**
    * 創建 Flex 訊息
    */
-  static createFlexMessage(altText: string, contents: any): LineMessage {
+  static createFlexMessage(altText: string, contents: unknown): LineMessage {
     return {
       type: 'flex',
       altText,

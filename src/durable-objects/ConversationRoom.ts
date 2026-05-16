@@ -66,7 +66,7 @@ export class ConversationRoom implements DurableObject {
   private connectionManager: RoomConnectionManager;
   private shardingHandler: RoomShardingHandler;
 
-  constructor(state: DurableObjectState, env: any, config?: ConversationRoomConfig) {
+  constructor(state: DurableObjectState, env: unknown, config?: ConversationRoomConfig) {
     const resolvedConfig = config || { mode: 'full' };
     const maxConnections = resolvedConfig.maxConnections || 100;
 

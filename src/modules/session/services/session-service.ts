@@ -78,16 +78,18 @@ export class SessionService implements SessionServiceInterface {
       lastActivity: now,
       messageCount: 0,
       isActive: true,
-      createdAt: now,
+      createdAt: now
+    };
+    const responseData = {
+      ...sessionData,
       tags: data.tags ? JSON.stringify(data.tags) : null,
       metadata: data.metadata ? JSON.stringify(data.metadata) : null
     };
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await this.db.insert(conversationSessions).values(sessionData as any);
+      await this.db.insert(conversationSessions).values(sessionData);
       log.info('Created session', { sessionId, topic: topic || 'unknown' });
-      return transformDbSession(sessionData as unknown as Record<string, unknown>);
+      return transformDbSession(responseData);
     } catch (error) {
       log.error('Failed to create session', {}, error instanceof Error ? error : String(error));
       throw new SessionOperationError('Failed to create session', 'create');

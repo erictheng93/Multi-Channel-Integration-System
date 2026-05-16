@@ -32,7 +32,7 @@ export class TeamActivityService_Legacy {
     userRole: string;
     teamId: number;
     teamName: string;
-    updates: any;
+    updates: unknown;
   }) {
     return await this.teamActivityService.logTeamUpdate(params);
   }

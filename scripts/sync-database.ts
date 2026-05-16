@@ -22,6 +22,18 @@ function runSync(cmd: string[], opts?: { cwd?: string; timeout?: number }): stri
   return result.stdout.toString();
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+interface TableListRow {
+  name: string;
+}
+
+interface WranglerQueryResult<T> {
+  results?: T[];
+}
+
 // 配置選項
 interface SyncConfig {
   source: 'production' | 'local';
@@ -119,8 +131,8 @@ class DatabaseSyncTool {
       args.push('--command', 'SELECT 1;');
       runSync(args);
       console.log(` ${env} 數據庫連接正常`);
-    } catch (error: any) {
-      console.warn(` ${env} 數據庫連接測試失敗:`, error.message);
+    } catch (error) {
+      console.warn(` ${env} 數據庫連接測試失敗:`, getErrorMessage(error));
 
       // 對於生產環境，我們可能因為網絡或權限問題無法連接，但仍可繼續
       if (env === 'production') {
@@ -384,13 +396,13 @@ class DatabaseSyncTool {
       const jsonLine = lines.find(line => line.trim().startsWith('['));
 
       if (jsonLine) {
-        const jsonResult = JSON.parse(jsonLine);
-        return jsonResult[0].results.map((row: any) => row.name);
+        const jsonResult = JSON.parse(jsonLine) as Array<WranglerQueryResult<TableListRow>>;
+        return jsonResult[0]?.results?.map((row) => row.name) ?? [];
       }
 
       return [];
     } catch (error) {
-      console.warn(` 獲取 ${env} 表列表失敗:`, error.message);
+      console.warn(` 獲取 ${env} 表列表失敗:`, getErrorMessage(error));
       return [];
     }
   }

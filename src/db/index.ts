@@ -2,6 +2,16 @@ import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
+interface RateLimitState {
+  count: number;
+  windowStart: number;
+}
+
+interface LockData {
+  lockId: string;
+  acquiredAt: string;
+}
+
 // Database connection helper with unified casing configuration
 // ENHANCED: Now includes camelCase casing for consistent query behavior
 export function createDb(d1: D1Database) {
@@ -33,7 +43,7 @@ export class KVService {
   }
 
   // Cache management
-  async setCache(key: string, value: any, ttl: number = 3600) {
+  async setCache(key: string, value: unknown, ttl: number = 3600) {
     const cacheData: schema.CacheData = {
       key,
       value,
@@ -42,7 +52,7 @@ export class KVService {
     await this.cache.put(key, JSON.stringify(cacheData), { expirationTtl: ttl });
   }
 
-  async getCache<T = any>(key: string): Promise<T | null> {
+  async getCache<T = unknown>(key: string): Promise<T | null> {
     const data = await this.cache.get(key);
     if (!data) return null;
     
@@ -61,7 +71,7 @@ export class KVService {
   }
 
   // Conversation cache helpers
-  async cacheConversation(conversationId: string, conversation: any, ttl: number = 1800) {
+  async cacheConversation(conversationId: string, conversation: unknown, ttl: number = 1800) {
     await this.setCache(`conversation:${conversationId}`, conversation, ttl);
   }
 
@@ -74,7 +84,7 @@ export class KVService {
   }
 
   // User cache helpers
-  async cacheUser(userId: string, user: any, ttl: number = 3600) {
+  async cacheUser(userId: string, user: unknown, ttl: number = 3600) {
     await this.setCache(`user:${userId}`, user, ttl);
   }
 
@@ -87,7 +97,7 @@ export class KVService {
   }
 
   // Advanced KV operations
-  async setWithTags(key: string, value: any, ttl: number, tags: string[] = []) {
+  async setWithTags(key: string, value: unknown, ttl: number, tags: string[] = []) {
     const metadata = { tags, createdAt: nowISO() };
     await this.cache.put(key, JSON.stringify({ value, metadata }), { 
       expirationTtl: ttl,
@@ -114,7 +124,7 @@ export class KVService {
     const windowStart = now - (windowSeconds * 1000);
     const rateLimitKey = `rate_limit:${key}`;
     
-    const current = await this.getCache(rateLimitKey) || { count: 0, windowStart: now };
+    const current = await this.getCache<RateLimitState>(rateLimitKey) || { count: 0, windowStart: now };
     
     // Reset if window expired
     if (current.windowStart < windowStart) {
@@ -141,13 +151,13 @@ export class KVService {
     const lockData = { lockId, acquiredAt: nowISO() };
     
     // Try to acquire lock
-    const existing = await this.getCache(`lock:${lockKey}`);
+    const existing = await this.getCache<LockData>(`lock:${lockKey}`);
     if (existing) return null;
     
     await this.setCache(`lock:${lockKey}`, lockData, ttl);
     
     // Verify we got the lock (race condition check)
-    const verification = await this.getCache(`lock:${lockKey}`);
+    const verification = await this.getCache<LockData>(`lock:${lockKey}`);
     if (verification?.lockId === lockId) {
       return lockId;
     }
@@ -156,7 +166,7 @@ export class KVService {
   }
 
   async releaseLock(lockKey: string, lockId: string): Promise<boolean> {
-    const existing = await this.getCache(`lock:${lockKey}`);
+    const existing = await this.getCache<LockData>(`lock:${lockKey}`);
     if (existing?.lockId === lockId) {
       await this.deleteCache(`lock:${lockKey}`);
       return true;
@@ -165,31 +175,34 @@ export class KVService {
   }
 
   // Pub/Sub simulation using KV
-  async publishEvent(channel: string, event: any) {
+  async publishEvent(channel: string, event: unknown) {
     const eventKey = `event:${channel}:${nowMs()}`;
     await this.setCache(eventKey, event, 300); // 5 minutes TTL
     
     // Update channel index
     const indexKey = `channel:${channel}:index`;
-    const currentIndex = await this.getCache(indexKey) || [];
+    const currentIndex = await this.getCache<string[]>(indexKey) || [];
     currentIndex.push(eventKey);
     
     // Keep only last 100 events
     if (currentIndex.length > 100) {
       const oldKey = currentIndex.shift();
-      await this.deleteCache(oldKey);
+      if (oldKey) {
+        await this.deleteCache(oldKey);
+      }
     }
     
     await this.setCache(indexKey, currentIndex, 3600);
   }
 
-  async getChannelEvents(channel: string, since?: number): Promise<any[]> {
+  async getChannelEvents(channel: string, since?: number) {
     const indexKey = `channel:${channel}:index`;
-    const eventKeys = await this.getCache(indexKey) || [];
+    const eventKeys = await this.getCache<string[]>(indexKey) || [];
     
-    const events = [];
+    const events: unknown[] = [];
     for (const eventKey of eventKeys) {
-      if (since && parseInt(eventKey.split(':')[2]) <= since) continue;
+      const eventTimestamp = Number(eventKey.split(':')[2] ?? 0);
+      if (since && eventTimestamp <= since) continue;
       
       const event = await this.getCache(eventKey);
       if (event) events.push(event);

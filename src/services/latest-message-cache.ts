@@ -21,6 +21,25 @@ export interface CachedLatestMessage {
   cachedAt: string;
 }
 
+interface ScheduleResponse {
+  queueSize?: number;
+}
+
+interface LatestMessageRow {
+  conversationId: string;
+  content: string;
+  createdAt: string;
+  messageId: string;
+  senderType: string;
+  agentSenderId?: string | null;
+  customerSenderId?: number | null;
+  messageType: string;
+}
+
+interface RecentConversationRow {
+  conversation_id: string;
+}
+
 export class LatestMessageCache {
   private readonly kv: KVNamespace;
   private readonly db: ReturnType<typeof drizzle>;
@@ -170,7 +189,7 @@ export class LatestMessageCache {
       throw new Error(`DO scheduling failed: ${error}`);
     }
 
-    const result = await response.json() as any;
+    const result = await response.json() as ScheduleResponse;
     console.log(`[LatestMessageCache] DO scheduled for ${conversationId}, queue size: ${result.queueSize}`);
   }
 
@@ -209,15 +228,15 @@ export class LatestMessageCache {
       `);
 
       if (result && result.length > 0) {
-        const row = result[0] as any;
+        const row = result[0] as LatestMessageRow;
         return {
           conversationId: row.conversationId,
           content: row.content,
           createdAt: row.createdAt,
           messageId: row.messageId,
           senderType: row.senderType,
-          agentSenderId: row.agentSenderId,
-          customerSenderId: row.customerSenderId,
+          agentSenderId: row.agentSenderId ?? undefined,
+          customerSenderId: row.customerSenderId ?? undefined,
           messageType: row.messageType,
           cachedAt: nowISO()
         };
@@ -270,7 +289,7 @@ export class LatestMessageCache {
 
       let warmedUp = 0;
       for (const row of recentConversations) {
-        const convId = (row as any).conversation_id;
+        const convId = (row as RecentConversationRow).conversation_id;
         const latest = await this.queryLatestMessageFromDB(convId);
         if (latest) {
           await this.setLatestMessage(convId, latest);

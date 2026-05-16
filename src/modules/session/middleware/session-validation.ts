@@ -37,8 +37,8 @@ export function sanitizeString(input: string): string {
 /**
  * 驗證數值範圍
  */
-export function validateNumberRange(value: any, min: number, max: number): number | null {
-  const num = parseInt(value);
+export function validateNumberRange(value: unknown, min: number, max: number): number | null {
+  const num = parseInt(String(value), 10);
   if (isNaN(num) || num < min || num > max) {
     return null;
   }

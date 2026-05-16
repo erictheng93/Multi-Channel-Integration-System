@@ -440,7 +440,7 @@ export async function getMessageStats(
     totalMessages: totalMessagesResult?.count || 0,
     totalCustomers: totalCustomersResult?.count || 0,
     totalConversations: totalConversationsResult?.count || 0,
-    recentMessages: recentMessages as any
+    recentMessages
   };
 }
 

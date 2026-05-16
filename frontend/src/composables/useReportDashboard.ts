@@ -455,15 +455,17 @@ export function useReportDashboard(options: UseReportDashboardOptions = {}) {
 
     try {
       const downloadInfo = await ReportsAPI.downloadReport(report.id)
+      const objectUrl = URL.createObjectURL(downloadInfo.blob)
 
       // 創建下載連結
       const link = document.createElement('a')
-      link.href = downloadInfo.url
+      link.href = objectUrl
       link.download = downloadInfo.filename
       link.style.display = 'none'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      URL.revokeObjectURL(objectUrl)
 
       return true
     } catch (err) {

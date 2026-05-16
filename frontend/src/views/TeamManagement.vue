@@ -42,7 +42,7 @@
         @toggle-status="controller.member.toggleMemberStatus"
         @reset-password="controller.member.openPasswordResetModal"
         @remove-member="controller.member.removeMember"
-        @sort-change="(field: string) => memberSorting.setSortField(field as any)"
+        @sort-change="handleMemberSortChange"
         @sort-toggle="memberSorting.toggleSortOrder"
         @sort-mode-change="memberSortMode.setSortMode"
         @custom-order-change="memberSortMode.updateCustomOrder"
@@ -67,7 +67,7 @@
         @remove-team="controller.team.removeTeam"
         @member-updated="controller.team.handleMemberUpdated"
         @team-updated="controller.refresh"
-        @sort-change="(field: string) => teamSorting.setSortField(field as any)"
+        @sort-change="handleTeamSortChange"
         @sort-toggle="teamSorting.toggleSortOrder"
         @sort-mode-change="teamSortMode.setSortMode"
         @custom-order-change="teamSortMode.updateCustomOrder"
@@ -160,6 +160,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useTeamManagementController } from '@/composables/team-management'
 import { useToast } from '@/composables/useToast'
 import { teamApi } from '@/api/team'
+import type { MemberSortField, TeamSortField } from '@/composables/useListSorting'
 import AppLayout from '@/components/ui/AppLayout.vue'
 import RefreshButton from '@/components/ui/RefreshButton.vue'
 import TeamStatsOverview from '@/components/team/TeamStatsOverview.vue'
@@ -193,6 +194,26 @@ function handleSelectPage(memberIds: string[]) {
     if (id !== currentUserId.value && !controller.member.selectedMemberIds.value.has(id)) {
       controller.member.toggleMemberSelection(id)
     }
+  }
+}
+
+function isMemberSortField(field: string): field is MemberSortField {
+  return memberSorting.sortOptions.some(option => option.field === field)
+}
+
+function isTeamSortField(field: string): field is TeamSortField {
+  return teamSorting.sortOptions.some(option => option.field === field)
+}
+
+function handleMemberSortChange(field: string) {
+  if (isMemberSortField(field)) {
+    memberSorting.setSortField(field)
+  }
+}
+
+function handleTeamSortChange(field: string) {
+  if (isTeamSortField(field)) {
+    teamSorting.setSortField(field)
   }
 }
 

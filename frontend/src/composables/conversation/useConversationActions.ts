@@ -16,6 +16,7 @@
 import { ref } from 'vue'
 import type { ConversationState } from './useConversationState'
 import type { WebSocketIntegration } from './useWebSocketIntegration'
+import { messageApi } from '@/api/message'
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('useConversationActions')
@@ -27,7 +28,7 @@ export interface ScrollTarget {
 // ===== Composable =====
 
 export function useConversationActions(
-  _conversationId: string,
+  conversationId: string,
   state: ConversationState,
   websocket: WebSocketIntegration
 ) {
@@ -42,12 +43,13 @@ export function useConversationActions(
   async function recallMessage(messageId: string): Promise<boolean> {
     try {
       frontendLogger.debug('[ConversationActions] Recalling message:', messageId)
-      // Recall API exists in backend (CustomerMessageDO) — frontend handler
-      // uses ConversationDetail.vue's handleMessageRecall instead of this stub.
-      // Refresh messages to reflect server state
+      const response = await messageApi.recallMessage(conversationId, { messageId })
+      if (!response.success) {
+        throw new Error(response.error || 'Recall request failed')
+      }
       await state.refreshMessages()
 
-      frontendLogger.debug('[ConversationActions] Message recalled (placeholder)')
+      frontendLogger.debug('[ConversationActions] Message recalled')
       return true
     } catch (error) {
       console.error('[ConversationActions] Failed to recall message:', error)

@@ -81,10 +81,10 @@ export abstract class QueueBaseService {
   }
 
   // 抽象方法：子類必須實現具體的處理邏輯
-  protected abstract processMessage(messageBody: any): Promise<QueueProcessingResult>;
+  protected abstract processMessage(messageBody: unknown): Promise<QueueProcessingResult>;
 
   // 統一的隊列消息處理入口
-  async handleQueueMessage(message: MessageBatch<any>['messages'][0]): Promise<void> {
+  async handleQueueMessage(message: MessageBatch<unknown>['messages'][0]): Promise<void> {
     const startTime = nowMs();
     let result: QueueProcessingResult;
 
@@ -124,7 +124,7 @@ export abstract class QueueBaseService {
 
   // 處理錯誤情況：決定重試還是放棄
   private async handleProcessingError(
-    message: MessageBatch<any>['messages'][0], 
+    message: MessageBatch<unknown>['messages'][0],
     result: QueueProcessingResult
   ): Promise<void> {
     const errorType = this.classifyError(result.error || '');

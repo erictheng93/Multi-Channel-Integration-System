@@ -138,6 +138,11 @@ export interface Bindings {
   EMAIL_API_KEY?: string;
   EMAIL_API_ENDPOINT?: string;
 
+  // SMS alert settings
+  SMS_API_KEY?: string;
+  SMS_API_ENDPOINT?: string;
+  SMS_TO?: string;
+
   // Slack alert settings
   ALERT_SLACK_ENABLED?: string;
   ALERT_SLACK_WEBHOOK_URL?: string;
@@ -167,8 +172,8 @@ export interface HonoContext {
   Variables: {
     db: Database;
     kv: KVService;
-    dbService: any;
-    conversationService: any;
+    dbService: unknown;
+    conversationService: unknown;
     agent?: Agent;
   };
 }

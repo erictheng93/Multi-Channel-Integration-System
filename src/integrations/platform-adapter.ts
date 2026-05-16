@@ -37,7 +37,7 @@ export class LineAdapter {
     return true;
   }
 
-  async sendMultipleMessages(userId: string, messages: Array<{ type: string; content: any }>): Promise<boolean> {
+  async sendMultipleMessages(userId: string, messages: Array<{ type: string; content: unknown }>): Promise<boolean> {
     console.log(`[LineAdapter] Sending ${messages.length} messages to ${userId}`);
     return true;
   }
@@ -88,12 +88,22 @@ export interface PlatformAdapter {
   sendFileMessage(userId: string, fileUrl: string, filename: string): Promise<boolean>;
 }
 
+type PlatformAdapterConfig =
+  | { channelAccessToken: string; channelSecret: string }
+  | { appSecret: string; pageAccessToken: string };
+
 // 適配器工廠函數
-export function createPlatformAdapter(platform: 'line' | 'facebook', config: any): PlatformAdapter {
+export function createPlatformAdapter(platform: 'line' | 'facebook', config: PlatformAdapterConfig): PlatformAdapter {
   switch (platform) {
     case 'line':
+      if (!('channelAccessToken' in config)) {
+        throw new Error('LINE adapter requires channelAccessToken and channelSecret');
+      }
       return new LineAdapter(config.channelAccessToken, config.channelSecret);
     case 'facebook':
+      if (!('appSecret' in config)) {
+        throw new Error('Facebook adapter requires appSecret and pageAccessToken');
+      }
       return new FacebookAdapter(config.appSecret, config.pageAccessToken);
     default:
       throw new Error(`Unsupported platform: ${platform}`);

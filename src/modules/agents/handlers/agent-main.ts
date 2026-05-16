@@ -8,6 +8,7 @@ import { createDb } from '@/db';
 import { AgentService } from '@modules/agents/services/agent-crud';
 import { AgentSkillsService } from '@modules/agents/services/agent-skills';
 import { AgentStatusService } from '@modules/agents/services/agent-status';
+import type { AgentStatusType } from '@modules/agents/types/agent-types';
 import {
   agentAuthMiddleware,
   requireAdminRole,
@@ -17,6 +18,11 @@ import {
 } from '../middleware/agent-auth';
 import { agentValidationMiddleware } from '@modules/agents/middleware/agent-validation';
 import { nowISO } from '@/utils/timestamp'
+
+function asAgentStatus(value: string | undefined): AgentStatusType | undefined {
+  const allowed: readonly AgentStatusType[] = ['online', 'busy', 'away', 'offline', 'break', 'meeting'];
+  return value && (allowed as readonly string[]).includes(value) ? value as AgentStatusType : undefined;
+}
 
 // 建立 Agent 路由
 export function createAgentRouter() {
@@ -400,7 +406,7 @@ export function createAgentRouter() {
         search: c.req.query('search'),
         teamId: c.req.query('teamId') ? parseInt(c.req.query('teamId')!) : undefined,
         role: c.req.query('role'),
-        status: c.req.query('status') as any
+        status: asAgentStatus(c.req.query('status'))
       };
 
       const result = await agentService.listAgents(params);

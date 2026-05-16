@@ -119,9 +119,9 @@ export interface CreateChannelRequest {
  * Update Channel Request
  */
 export interface UpdateChannelRequest {
-  lineConfig?: LineChannelConfig
-  facebookConfig?: FacebookChannelConfig
-  whatsappConfig?: WhatsAppChannelConfig
+  lineConfig?: Partial<LineChannelConfig>
+  facebookConfig?: Partial<FacebookChannelConfig>
+  whatsappConfig?: Partial<WhatsAppChannelConfig>
   isActive?: boolean
   configMetadata?: Record<string, unknown>
 }

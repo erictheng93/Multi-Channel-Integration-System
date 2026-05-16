@@ -25,7 +25,7 @@ export interface ConversationSession {
   sentiment?: 'positive' | 'negative' | 'neutral';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   tags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -39,7 +39,7 @@ export interface CreateSessionData {
   senderType: 'customer' | 'agent' | 'system';
   priority?: ConversationSession['priority'];
   tags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -53,7 +53,7 @@ export interface UpdateSessionData {
   priority?: ConversationSession['priority'];
   sentiment?: ConversationSession['sentiment'];
   tags?: string[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ======================== 查詢和分頁 ========================
@@ -181,7 +181,7 @@ export interface SessionBoundaryDetection {
   reason: 'time_gap' | 'message_limit' | 'duration_limit' | 'topic_change' | 'manual' | 'first_session';
   confidence: number; // 0-1
   suggestedTopic?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ======================== 會話訊息關聯 ========================
@@ -200,7 +200,7 @@ export interface SessionMessage {
   sessionSequence: number;
   platformMessageId?: string | undefined;
   createdAt: string;
-  metadata?: Record<string, any> | undefined;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 /**

@@ -7,6 +7,7 @@ const log = createContextLogger('QrcodeMain')
 import type { Bindings } from '@/types';
 import { QRCodeServiceImpl as QRCodeService } from '@/services/qrcode-service-impl';
 import { getTeamByQRCode } from '@/utils/team';
+import { createDbClient } from '@/db/drizzle-factory';
 import { jwtAuth } from '@/middleware/auth';
 import { handleApiError } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
@@ -17,7 +18,7 @@ const qrcodeHandler = new Hono<{ Bindings: Bindings }>();
 qrcodeHandler.delete('/:token', jwtAuth, async (c) => {
   try {
     const token = c.req.param('token')!;
-    await QRCodeService.deactivateQRCode(c.env.DB, token);
+    await QRCodeService.deactivateQRCode(createDbClient(c.env.DB), token);
 
     return c.json({
       success: true,

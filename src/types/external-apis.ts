@@ -58,7 +58,7 @@ export interface FacebookWebhookInfo {
 }
 
 // Generic API response wrapper
-export interface ExternalApiResponse<T = any> {
+export interface ExternalApiResponse<T = unknown> {
   data?: T;
   error?: {
     message: string;
@@ -70,12 +70,12 @@ export interface ExternalApiResponse<T = any> {
 }
 
 // LINE specific API responses
-export interface LineApiResponse<T = any> extends ExternalApiResponse<T> {
+export interface LineApiResponse<T = unknown> extends ExternalApiResponse<T> {
   message?: string;
 }
 
 // Facebook specific API responses  
-export interface FacebookApiResponse<T = any> extends ExternalApiResponse<T> {
+export interface FacebookApiResponse<T = unknown> extends ExternalApiResponse<T> {
   paging?: {
     cursors: {
       before: string;
@@ -86,31 +86,39 @@ export interface FacebookApiResponse<T = any> extends ExternalApiResponse<T> {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 // Type guards for external API responses
-export function isLineProfile(obj: any): obj is LineProfile {
-  return obj && typeof obj.userId === 'string' && typeof obj.displayName === 'string';
+export function isLineProfile(obj: unknown): obj is LineProfile {
+  return isRecord(obj) && typeof obj.userId === 'string' && typeof obj.displayName === 'string';
 }
 
-export function isFacebookProfile(obj: any): obj is FacebookProfile {
-  return obj && typeof obj.id === 'string';
+export function isFacebookProfile(obj: unknown): obj is FacebookProfile {
+  return isRecord(obj) && typeof obj.id === 'string';
 }
 
-export function isLineBotInfo(obj: any): obj is LineBotInfo {
-  return obj && typeof obj.userId === 'string' && typeof obj.displayName === 'string';
+export function isLineBotInfo(obj: unknown): obj is LineBotInfo {
+  return isRecord(obj) && typeof obj.userId === 'string' && typeof obj.displayName === 'string';
 }
 
-export function isFacebookPageInfo(obj: any): obj is FacebookPageInfo {
-  return obj && typeof obj.id === 'string' && typeof obj.name === 'string';
+export function isFacebookPageInfo(obj: unknown): obj is FacebookPageInfo {
+  return isRecord(obj) && typeof obj.id === 'string' && typeof obj.name === 'string';
 }
 
-export function isLineTokenInfo(obj: any): obj is LineTokenInfo {
-  return obj && typeof obj.expires_in === 'number';
+export function isLineTokenInfo(obj: unknown): obj is LineTokenInfo {
+  return isRecord(obj) && typeof obj.expires_in === 'number';
 }
 
-export function hasApiError(response: any): response is { error: { message: string } } {
-  return response && response.error && typeof response.error.message === 'string';
+export function hasApiError(response: unknown): response is { error: { message: string } } {
+  return (
+    isRecord(response) &&
+    isRecord(response.error) &&
+    typeof response.error.message === 'string'
+  );
 }
 
-export function isLineWebhookInfo(obj: any): obj is LineWebhookInfo {
-  return obj && typeof obj.active === 'boolean';
+export function isLineWebhookInfo(obj: unknown): obj is LineWebhookInfo {
+  return isRecord(obj) && typeof obj.active === 'boolean';
 }

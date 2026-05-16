@@ -8,7 +8,17 @@ const log = createContextLogger('ReportsMain')
 
 import type { Bindings } from '@/types';
 import { ReportsService } from '@modules/reports/services/reports-service';
-import { REPORT_TYPE_CONFIG, ReportGenerationParams, BatchReportOperation, ReportType } from '@modules/reports/types/report-types';
+import {
+  REPORT_TYPE_CONFIG,
+  GENERATABLE_REPORT_FORMATS,
+  GENERATABLE_REPORT_TYPES,
+  ReportGenerationParams,
+  BatchReportOperation,
+  ReportType,
+  ReportTimeRange,
+  ScheduledReport,
+  isReportTimeRange
+} from '@modules/reports/types/report-types';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 
@@ -66,8 +76,8 @@ reportsHandler.get('/info', (c) => {
       version: '1.0.0',
       description: 'Comprehensive reporting system with multiple report types and export formats',
       features: [
-        'Report generation (10 types: conversation_summary, agent_performance, team_analytics, etc.)',
-        'Multiple export formats (json, csv, excel, pdf, html)',
+        `Report generation (${GENERATABLE_REPORT_TYPES.length} production-backed types: ${GENERATABLE_REPORT_TYPES.join(', ')})`,
+        `Export formats (${GENERATABLE_REPORT_FORMATS.join(', ')})`,
         'Scheduled reports with automated delivery',
         'Batch operations for report management',
         'Report preview functionality',
@@ -77,18 +87,7 @@ reportsHandler.get('/info', (c) => {
         'Report templates and presets',
         'Download history and access control'
       ],
-      reportTypes: [
-        'conversation_summary - 對話摘要報告',
-        'agent_performance - 客服績效報告',
-        'team_analytics - 團隊分析報告',
-        'customer_satisfaction - 客戶滿意度報告',
-        'platform_usage - 平台使用情況',
-        'message_statistics - 訊息統計報告',
-        'response_time_analysis - 回應時間分析',
-        'workload_distribution - 工作量分配報告',
-        'system_health - 系統健康報告',
-        'custom - 自定義報告'
-      ],
+      reportTypes: GENERATABLE_REPORT_TYPES.map((type) => `${type} - ${REPORT_TYPE_CONFIG[type].name}`),
       endpoints: [
         'GET /health - Health check',
         'GET /info - Module information',
@@ -241,14 +240,19 @@ reportsHandler.get(
         }, HTTP_STATUS.NOT_FOUND);
       }
 
-      return c.json({
-        success: true,
-        data: {
-          downloadUrl: downloadInfo.url,
-          filename: downloadInfo.filename,
-          message: 'Report ready for download'
-        },
-        timestamp: nowISO()
+      const headers = new Headers({
+        'Content-Type': downloadInfo.contentType,
+        'Content-Disposition': `attachment; filename="${downloadInfo.filename}"`,
+        'Cache-Control': 'private, max-age=60',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      if (downloadInfo.fileSize !== undefined) {
+        headers.set('Content-Length', downloadInfo.fileSize.toString());
+      }
+
+      return new Response(downloadInfo.body, {
+        status: HTTP_STATUS.OK,
+        headers
       });
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
@@ -306,7 +310,10 @@ reportsHandler.get(
   checkReportsStatsPermission,
   async (c) => {
     try {
-      const timeRange = c.req.query('timeRange') as any || 'last_30_days';
+      const requestedTimeRange = c.req.query('timeRange');
+      const timeRange: ReportTimeRange = isReportTimeRange(requestedTimeRange)
+        ? requestedTimeRange
+        : 'last_30_days';
       const reportsService = new ReportsService(c.env);
 
       const stats = await reportsService.getReportStatistics(timeRange);
@@ -445,7 +452,7 @@ reportsHandler.post(
       const reportsService = new ReportsService(c.env);
 
       const scheduledReport = await reportsService.createScheduledReport(
-        scheduledReportData as any,
+        scheduledReportData as Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>,
         String(String(payload.userId))
       );
 
@@ -512,7 +519,7 @@ reportsHandler.put(
 
       const updatedReport = await reportsService.updateScheduledReport(
         String(scheduledReportId),
-        scheduledReportData as any,
+        scheduledReportData as Partial<ScheduledReport>,
         String(String(payload.userId))
       );
 

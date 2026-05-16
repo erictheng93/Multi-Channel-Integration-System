@@ -8,7 +8,8 @@ import {
   NotificationQuery,
   NotificationListResponse,
   NotificationStats,
-  NotificationType
+  NotificationType,
+  NotificationChannel
 } from '../types';
 import { NotificationRepository } from '@modules/notifications/repositories/notification-repository';
 import { createContextLogger } from '@/utils/logger'
@@ -139,7 +140,7 @@ export class NotificationService {
 
   async getByQuery(query: NotificationQuery): Promise<NotificationListResponse> {
     // 生成快取鍵
-    const queryHash = this.cache.generateQueryHash(query);
+    const queryHash = this.cache.generateQueryHash({ ...query });
 
     // 檢查快取
     const cached = await this.cache.getCachedNotificationList(query.userId, queryHash);
@@ -320,7 +321,7 @@ export class NotificationService {
     conversationId: number,
     senderName: string,
     content: string,
-    channels?: string[]
+    channels?: NotificationChannel[]
   ): Promise<string> {
     return this.create({
       userId,
@@ -329,7 +330,7 @@ export class NotificationService {
       content: `${senderName}: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`,
       data: { conversationId, senderName },
       priority: 'normal',
-      channels: channels as any,
+      channels,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24小時後過期
     });
   }
@@ -355,7 +356,7 @@ export class NotificationService {
     userIds: number[],
     title: string,
     content: string,
-    data?: Record<string, any>
+    data?: Record<string, unknown>
   ): Promise<string[]> {
     const requests = userIds.map(userId => ({
       userId,
@@ -363,7 +364,7 @@ export class NotificationService {
       title,
       content,
       data,
-      priority: 'normal' as any,
+      priority: 'normal' as const,
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30天後過期
     }));
 

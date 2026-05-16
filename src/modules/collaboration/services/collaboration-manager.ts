@@ -23,6 +23,14 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('CollaborationManager');
 
+interface DestroyableAdapter {
+  destroy(): void;
+}
+
+function hasDestroy(adapter: CollaborationAdapter): adapter is CollaborationAdapter & DestroyableAdapter {
+  return 'destroy' in adapter && typeof (adapter as { destroy?: unknown }).destroy === 'function';
+}
+
 /**
  * CollaborationManager
  * 統一的協作管理器,負責協調不同協議的適配器
@@ -316,8 +324,8 @@ export class CollaborationManager {
    */
   destroy(): void {
     for (const [_protocol, adapter] of this.adapters) {
-      if ('destroy' in adapter && typeof adapter.destroy === 'function') {
-        (adapter as any).destroy();
+      if (hasDestroy(adapter)) {
+        adapter.destroy();
       }
     }
 

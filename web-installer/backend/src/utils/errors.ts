@@ -49,9 +49,23 @@ export class CloudflareAPIError extends InstallerError {
   }
 }
 
-export function mapCloudflareError(error: any): InstallerError {
-  const message = error.message || 'Unknown Cloudflare API error';
-  const statusCode = error.statusCode || 500;
+interface CloudflareErrorLike {
+  message?: string;
+  statusCode?: number;
+}
+
+function isCloudflareErrorLike(error: unknown): error is CloudflareErrorLike {
+  return typeof error === 'object' && error !== null;
+}
+
+export function mapCloudflareError(error: unknown): InstallerError {
+  const errorLike = isCloudflareErrorLike(error) ? error : {};
+  const message = typeof errorLike.message === 'string'
+    ? errorLike.message
+    : 'Unknown Cloudflare API error';
+  const statusCode = typeof errorLike.statusCode === 'number'
+    ? errorLike.statusCode
+    : 500;
 
   if (statusCode === 401 || statusCode === 403) {
     return new AuthenticationError('Insufficient permissions or invalid credentials');

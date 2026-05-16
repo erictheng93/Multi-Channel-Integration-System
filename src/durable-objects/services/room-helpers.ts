@@ -30,7 +30,7 @@ export interface ShardMetadata {
  */
 export interface RoomContext {
   state: DurableObjectState;
-  env: any;
+  env: unknown;
   config: ConversationRoomConfig;
 
   // Core state (both modes)
@@ -51,7 +51,7 @@ export interface RoomContext {
 
   // Storage optimization
   messageDirty: boolean;
-  writeDebounceTimer: any;
+  writeDebounceTimer: ReturnType<typeof setTimeout> | null;
 
   // Configuration constants
   MAX_CONNECTIONS: number;

@@ -48,6 +48,21 @@ import {
   type RetryHandlerDeps,
 } from './delayed-message/retry-handler';
 
+interface SchedulerMetricsSnapshot extends SchedulerMetrics {
+  startTime?: number;
+}
+
+interface DeadLetterMessageSummary {
+  id: string;
+  content: string;
+  platform: PendingMessage['platform'];
+  failedAt: number;
+  failureReason?: string;
+  retryCount?: number;
+  scheduledAt: number;
+  conversationId: string;
+}
+
 /**
  * DelayedMessageScheduler Durable Object
  *
@@ -112,28 +127,28 @@ export class DelayedMessageScheduler implements DurableObject {
   // ---------------------------------------------------------------------------
 
   private logger: SchedulerLogger = {
-    info: (action: string, context?: Record<string, any>) => {
+    info: (action: string, context?: Record<string, unknown>) => {
       console.log(JSON.stringify({
         timestamp: nowISO(), level: 'info',
         service: 'DelayedMessageScheduler', doId: this.state.id.toString(),
         action, ...context,
       }));
     },
-    success: (action: string, context?: Record<string, any>) => {
+    success: (action: string, context?: Record<string, unknown>) => {
       console.log(JSON.stringify({
         timestamp: nowISO(), level: 'success',
         service: 'DelayedMessageScheduler', doId: this.state.id.toString(),
         action, ...context,
       }));
     },
-    warn: (action: string, context?: Record<string, any>) => {
+    warn: (action: string, context?: Record<string, unknown>) => {
       console.warn(JSON.stringify({
         timestamp: nowISO(), level: 'warn',
         service: 'DelayedMessageScheduler', doId: this.state.id.toString(),
         action, ...context,
       }));
     },
-    error: (action: string, error: any, context?: Record<string, any>) => {
+    error: (action: string, error: unknown, context?: Record<string, unknown>) => {
       console.error(JSON.stringify({
         timestamp: nowISO(), level: 'error',
         service: 'DelayedMessageScheduler', doId: this.state.id.toString(),
@@ -144,7 +159,7 @@ export class DelayedMessageScheduler implements DurableObject {
         ...context,
       }));
     },
-    critical: (action: string, error: any, context?: Record<string, any>) => {
+    critical: (action: string, error: unknown, context?: Record<string, unknown>) => {
       console.error(JSON.stringify({
         timestamp: nowISO(), level: 'CRITICAL',
         service: 'DelayedMessageScheduler', doId: this.state.id.toString(),
@@ -242,7 +257,7 @@ export class DelayedMessageScheduler implements DurableObject {
       platform: string;
       recipientPlatformId: string;
       delaySeconds: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     };
 
     if (!data.messageId || !data.conversationId || !data.content || !data.agentId) {
@@ -380,15 +395,15 @@ export class DelayedMessageScheduler implements DurableObject {
 
   private async handleDLQ(): Promise<Response> {
     try {
-      const dlqEntries = await this.state.storage.list<any>({ prefix: 'dlq:' });
-      const failedMessages: any[] = [];
+      const dlqEntries = await this.state.storage.list<PendingMessage>({ prefix: 'dlq:' });
+      const failedMessages: DeadLetterMessageSummary[] = [];
 
       for (const [_key, entry] of dlqEntries) {
         failedMessages.push({
           id: entry.id,
           content: entry.content?.substring(0, 100) || '',
           platform: entry.platform,
-          failedAt: entry.failedAt,
+          failedAt: entry.failedAt ?? 0,
           failureReason: entry.failureReason,
           retryCount: entry.retryCount,
           scheduledAt: entry.scheduledAt,
@@ -495,7 +510,7 @@ export class DelayedMessageScheduler implements DurableObject {
           durableObjectId: this.state.id.toString(),
           timestamp: nowISO(),
           uptimeSeconds: Math.floor(
-            (Date.now() - ((m as any).startTime || nowMs())) / 1000
+            (Date.now() - ((m as SchedulerMetricsSnapshot).startTime || nowMs())) / 1000
           ),
         },
       });
@@ -555,14 +570,14 @@ export class DelayedMessageScheduler implements DurableObject {
     }
   }
 
-  private jsonResponse(data: any, status: number = 200): Response {
+  private jsonResponse(data: unknown, status: number = 200): Response {
     return new Response(JSON.stringify(data), {
       status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  private errorResponse(error: any, status: number = 500): Response {
+  private errorResponse(error: unknown, status: number = 500): Response {
     return new Response(
       JSON.stringify({
         success: false,

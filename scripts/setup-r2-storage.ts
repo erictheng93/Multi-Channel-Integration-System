@@ -25,6 +25,10 @@ function runInherit(cmd: string[]): void {
   }
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -101,8 +105,8 @@ function createR2Bucket(bucketName: string, environment: string = 'development')
     console.log(`??Bucket ${bucketName} ?�建?��?`);
     
     return true;
-  } catch (error: any) {
-    console.error(`???�建 Bucket 失�?: ${error.message}`);
+  } catch (error) {
+    console.error(`???�建 Bucket 失�?: ${getErrorMessage(error)}`);
     return false;
   }
 }
@@ -137,8 +141,8 @@ function setupCORS(bucketName: string, corsPolicy: CorsPolicy): boolean {
     }
     
     return true;
-  } catch (error: any) {
-    console.error(`??CORS 設�?失�?: ${error.message}`);
+  } catch (error) {
+    console.error(`??CORS 設�?失�?: ${getErrorMessage(error)}`);
     return false;
   }
 }
@@ -170,8 +174,8 @@ function testR2Access(bucketName: string): boolean {
         fs.unlinkSync(testFilePath);
       }
     }
-  } catch (error: any) {
-    console.error(`??R2 存�?測試失�?: ${error.message}`);
+  } catch (error) {
+    console.error(`??R2 存�?測試失�?: ${getErrorMessage(error)}`);
     return false;
   }
 }

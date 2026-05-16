@@ -23,6 +23,7 @@ interface PerformanceMonitorConfig {
   metricsRetentionHours: number;
   alerting: {
     enabled: boolean;
+    channels?: string[];
     webhookUrl?: string;
     emailRecipients?: string[];
     slackChannel?: string;
@@ -38,6 +39,65 @@ interface PerformanceMonitorConfig {
     enabled: boolean;
     rate: number; // 0.0 to 1.0
   };
+}
+
+type WebSocketMetrics = PerformanceMetrics['websocket'] & {
+  totalConnections: number;
+  connectionsPerSecond: number;
+  connectionsByRole: Record<string, number>;
+  lastUpdated: number;
+};
+
+type DurableObjectMetrics = NonNullable<PerformanceMetrics['durableObjects']>;
+type SystemMetrics = PerformanceMetrics['system'];
+type MessageMetrics = NonNullable<PerformanceMetrics['messaging']>;
+
+interface WebSocketMetricsResponse {
+  connections?: {
+    activeConnections?: number;
+    totalConnections?: number;
+    connectionsByType?: {
+      websocket?: number;
+    };
+    averageLatency?: number;
+    messagesThroughput?: {
+      outbound?: number;
+    };
+    errorRate?: number;
+    connectionsByRole?: Record<string, number>;
+  };
+}
+
+interface BroadcasterMetricsResponse {
+  eventsPerSecond?: number;
+  eventQueueDepth?: number;
+  successfulDeliveries?: number;
+  totalEvents?: number;
+  averageLatency?: number;
+  activeConnections?: number;
+}
+
+interface RoomMetrics {
+  participants?: number;
+  messageHistory?: number;
+  isActive?: boolean;
+}
+
+interface DelayedMessageMetricsResponse {
+  totalScheduled?: number;
+  processingRate?: number;
+  averageProcessingTime?: number;
+  queueDepth?: number;
+  successRate?: number;
+}
+
+interface PerformanceAlertInput {
+  message: string;
+  severity: AlertNotification['severity'];
+  metric: string;
+  value: number;
+  threshold?: number;
+  context?: Record<string, unknown>;
 }
 
 const DEFAULT_MONITOR_CONFIG: PerformanceMonitorConfig = {
@@ -200,9 +260,16 @@ export class PerformanceMonitor {
       durableObjects: durableObjectMetrics,
       messaging: messageMetrics,
       aggregated: {
-        overallLatency: this.calculateOverallLatency([websocketMetrics, durableObjectMetrics, messageMetrics]),
+        overallLatency: this.calculateOverallLatency([
+          { averageLatency: websocketMetrics.averageLatency },
+          { averageLatency: durableObjectMetrics.messageBroadcaster.averageLatency },
+          { averageLatency: messageMetrics.averageProcessingTime }
+        ]),
         totalThroughput: websocketMetrics.throughput + messageMetrics.throughput,
-        overallErrorRate: this.calculateOverallErrorRate([websocketMetrics, durableObjectMetrics, messageMetrics]),
+        overallErrorRate: this.calculateOverallErrorRate([
+          { errorRate: websocketMetrics.errorRate },
+          { errorRate: messageMetrics.errorRate }
+        ]),
         systemLoad: systemMetrics.cpuUsage + systemMetrics.memoryUsage
       },
       comparison: {
@@ -214,7 +281,7 @@ export class PerformanceMonitor {
     };
   }
 
-  private async collectWebSocketMetrics(): Promise<any> {
+  private async collectWebSocketMetrics(): Promise<WebSocketMetrics> {
     try {
       // Get metrics from WebSocket handler
       const response = await fetch(`${this.getWorkerUrl()}/api/websocket/metrics`, {
@@ -225,16 +292,19 @@ export class PerformanceMonitor {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = await response.json() as any; // Type assertion for API response
+      const data = await response.json() as WebSocketMetricsResponse;
+      const connections = data.connections;
 
       return {
-        activeConnections: data.connections?.activeConnections || 0,
-        totalConnections: data.connections?.totalConnections || 0,
-        connectionsPerSecond: data.connections?.connectionsByType?.websocket || 0,
-        averageLatency: data.connections?.averageLatency || 0,
-        throughput: data.connections?.messagesThroughput?.outbound || 0,
-        errorRate: data.connections?.errorRate || 0,
-        connectionsByRole: data.connections?.connectionsByRole || {},
+        connections: connections?.activeConnections || 0,
+        activeConnections: connections?.activeConnections || 0,
+        totalConnections: connections?.totalConnections || 0,
+        connectionsPerSecond: connections?.connectionsByType?.websocket || 0,
+        latency: connections?.averageLatency || 0,
+        averageLatency: connections?.averageLatency || 0,
+        throughput: connections?.messagesThroughput?.outbound || 0,
+        errorRate: connections?.errorRate || 0,
+        connectionsByRole: connections?.connectionsByRole || {},
         lastUpdated: nowMs()
       };
     } catch (error) {
@@ -243,16 +313,16 @@ export class PerformanceMonitor {
     }
   }
 
-  private async collectDurableObjectMetrics(): Promise<any> {
+  private async collectDurableObjectMetrics(): Promise<DurableObjectMetrics> {
     try {
       // Collect metrics from MessageBroadcaster
       const broadcasterResponse = await fetch(`${this.getWorkerUrl()}/api/message-broadcaster/metrics`, {
         headers: this.getAuthHeaders()
       });
 
-      let broadcasterMetrics: any = {};
+      let broadcasterMetrics: BroadcasterMetricsResponse = {};
       if (broadcasterResponse.ok) {
-        broadcasterMetrics = await broadcasterResponse.json();
+        broadcasterMetrics = await broadcasterResponse.json() as BroadcasterMetricsResponse;
       }
 
       // Sample metrics from a few ConversationRooms
@@ -281,9 +351,9 @@ export class PerformanceMonitor {
     }
   }
 
-  private async sampleConversationRoomMetrics(): Promise<any[]> {
+  private async sampleConversationRoomMetrics(): Promise<RoomMetrics[]> {
     const sampleRooms = ['room_1', 'room_2', 'room_3', 'room_4', 'room_5'];
-    const metrics = [];
+    const metrics: RoomMetrics[] = [];
 
     for (const roomId of sampleRooms) {
       try {
@@ -292,7 +362,7 @@ export class PerformanceMonitor {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data = await response.json() as RoomMetrics;
           metrics.push(data);
         }
       } catch (error) {
@@ -303,7 +373,7 @@ export class PerformanceMonitor {
     return metrics;
   }
 
-  private async collectSystemMetrics(): Promise<any> {
+  private async collectSystemMetrics(): Promise<SystemMetrics> {
     try {
       // In a real Cloudflare Worker environment, these would come from
       // Worker Analytics API or custom tracking
@@ -321,16 +391,16 @@ export class PerformanceMonitor {
     }
   }
 
-  private async collectMessageMetrics(): Promise<any> {
+  private async collectMessageMetrics(): Promise<MessageMetrics> {
     try {
       // Collect metrics from message processing systems
       const delayedMessagesResponse = await fetch(`${this.getWorkerUrl()}/api/delayed-messages/metrics`, {
         headers: this.getAuthHeaders()
       });
 
-      let delayedMetrics: any = {};
+      let delayedMetrics: DelayedMessageMetricsResponse = {};
       if (delayedMessagesResponse.ok) {
-        delayedMetrics = await delayedMessagesResponse.json();
+        delayedMetrics = await delayedMessagesResponse.json() as DelayedMessageMetricsResponse;
       }
 
       return {
@@ -381,7 +451,7 @@ export class PerformanceMonitor {
     } else if (latency >= threshold.warning) {
       await this.triggerAlert('latency_warning', {
         message: `High latency detected: ${latency}ms (threshold: ${threshold.warning}ms)`,
-        severity: 'warning',
+            severity: 'medium',
         metric: 'latency',
         value: latency,
         threshold: threshold.warning
@@ -407,7 +477,7 @@ export class PerformanceMonitor {
     } else if (throughput <= threshold.warning) {
       await this.triggerAlert('throughput_warning', {
         message: `Low throughput detected: ${throughput} ops/s (threshold: ${threshold.warning} ops/s)`,
-        severity: 'warning',
+            severity: 'medium',
         metric: 'throughput',
         value: throughput,
         threshold: threshold.warning
@@ -433,7 +503,7 @@ export class PerformanceMonitor {
     } else if (errorRate >= threshold.warning) {
       await this.triggerAlert('error_rate_warning', {
         message: `High error rate: ${(errorRate * 100).toFixed(2)}% (threshold: ${(threshold.warning * 100)}%)`,
-        severity: 'warning',
+            severity: 'medium',
         metric: 'errorRate',
         value: errorRate,
         threshold: threshold.warning
@@ -459,7 +529,7 @@ export class PerformanceMonitor {
     } else if (memoryUsage >= threshold.warning) {
       await this.triggerAlert('memory_warning', {
         message: `High memory usage: ${memoryUsage.toFixed(1)}% (threshold: ${threshold.warning}%)`,
-        severity: 'warning',
+            severity: 'medium',
         metric: 'memoryUsage',
         value: memoryUsage,
         threshold: threshold.warning
@@ -485,7 +555,7 @@ export class PerformanceMonitor {
     } else if (connectionCount >= threshold.warning) {
       await this.triggerAlert('connections_warning', {
         message: `High connection count: ${connectionCount} (threshold: ${threshold.warning})`,
-        severity: 'warning',
+            severity: 'medium',
         metric: 'connectionCount',
         value: connectionCount,
         threshold: threshold.warning
@@ -510,7 +580,7 @@ export class PerformanceMonitor {
     if (latencyDeviation > averageLatency * 2 && currentLatency > 100) {
       await this.triggerAlert('latency_anomaly', {
         message: `Latency anomaly detected: ${currentLatency}ms vs recent average ${averageLatency.toFixed(1)}ms`,
-        severity: 'warning',
+        severity: 'medium',
         metric: 'latency',
         value: currentLatency,
         context: { averageLatency, deviation: latencyDeviation }
@@ -520,7 +590,7 @@ export class PerformanceMonitor {
 
   // =================== Alerting ===================
 
-  private async triggerAlert(alertId: string, alertData: any): Promise<void> {
+  private async triggerAlert(alertId: string, alertData: PerformanceAlertInput): Promise<void> {
     // Check if alert is already active
     if (this.activeAlerts.has(alertId)) {
       // Update existing alert
@@ -564,7 +634,7 @@ export class PerformanceMonitor {
         currentValue: alertData.value,
         createdAt: nowMs()
       },
-      channels: (this.config.alerting as any).channels || ['default'],
+      channels: this.config.alerting.channels || ['default'],
       sentAt: nowMs(),
       status: 'pending'
     };
@@ -700,17 +770,17 @@ export class PerformanceMonitor {
     return { status, score };
   }
 
-  private calculateOverallLatency(componentMetrics: any[]): number {
+  private calculateOverallLatency(componentMetrics: Array<{ averageLatency?: number }>): number {
     const latencies = componentMetrics.map(m => m.averageLatency || 0).filter(l => l > 0);
     return latencies.length > 0 ? latencies.reduce((sum, l) => sum + l, 0) / latencies.length : 0;
   }
 
-  private calculateOverallErrorRate(componentMetrics: any[]): number {
+  private calculateOverallErrorRate(componentMetrics: Array<{ errorRate?: number }>): number {
     const errorRates = componentMetrics.map(m => m.errorRate || 0);
     return errorRates.reduce((sum, rate) => sum + rate, 0) / Math.max(1, errorRates.length);
   }
 
-  private calculateDurableObjectHealth(roomMetrics: any[]): number {
+  private calculateDurableObjectHealth(roomMetrics: RoomMetrics[]): number {
     if (roomMetrics.length === 0) return 0;
     const activeRooms = roomMetrics.filter(m => m.isActive).length;
     return (activeRooms / roomMetrics.length) * 100;
@@ -757,12 +827,12 @@ export class PerformanceMonitor {
   }
 
   private getWorkerUrl(): string {
-    return (this.env as any).WORKER_URL || 'https://localhost:8787';
+    return this.env.WORKER_URL || 'https://localhost:8787';
   }
 
   private getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {};
-    const adminToken = (this.env as any).ADMIN_TOKEN;
+    const adminToken = this.env.ADMIN_TOKEN;
     if (adminToken) {
       headers['Authorization'] = `Bearer ${adminToken}`;
     }
@@ -787,11 +857,13 @@ export class PerformanceMonitor {
 
   // =================== Default Metrics ===================
 
-  private getDefaultWebSocketMetrics(): any {
+  private getDefaultWebSocketMetrics(): WebSocketMetrics {
     return {
+      connections: 0,
       activeConnections: 0,
       totalConnections: 0,
       connectionsPerSecond: 0,
+      latency: 0,
       averageLatency: 0,
       throughput: 0,
       errorRate: 0,
@@ -800,7 +872,7 @@ export class PerformanceMonitor {
     };
   }
 
-  private getDefaultDurableObjectMetrics(): any {
+  private getDefaultDurableObjectMetrics(): DurableObjectMetrics {
     return {
       messageBroadcaster: {
         eventsPerSecond: 0,
@@ -820,7 +892,7 @@ export class PerformanceMonitor {
     };
   }
 
-  private getDefaultSystemMetrics(): any {
+  private getDefaultSystemMetrics(): SystemMetrics {
     return {
       cpuUsage: 0,
       memoryUsage: 0,
@@ -831,7 +903,7 @@ export class PerformanceMonitor {
     };
   }
 
-  private getDefaultMessageMetrics(): any {
+  private getDefaultMessageMetrics(): MessageMetrics {
     return {
       totalMessages: 0,
       messagesPerSecond: 0,

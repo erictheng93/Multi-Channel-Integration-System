@@ -7,7 +7,7 @@
 import { MESSAGE_STATUS } from '../constants/message-status';
 import type { SenderType } from '../constants/sender-types';
 
-import type {
+import {
   customers,
   conversations,
   messages,
@@ -146,15 +146,15 @@ export function convertAgent(drizzleAgent: DrizzleAgent, teamName?: string, prim
 /**
  * 批量轉換函數
  */
-export function convertCustomers(drizzleCustomers: any[]): Customer[] {
+export function convertCustomers(drizzleCustomers: DrizzleCustomer[]): Customer[] {
   return drizzleCustomers.map(convertCustomer);
 }
 
-export function convertConversations(drizzleConversations: any[]): DbConversation[] {
+export function convertConversations(drizzleConversations: DrizzleConversation[]): DbConversation[] {
   return drizzleConversations.map(convertConversation);
 }
 
-export function convertMessages(drizzleMessages: any[]): DbMessage[] {
+export function convertMessages(drizzleMessages: DrizzleMessage[]): DbMessage[] {
   return drizzleMessages.map(convertMessage);
 }
 
@@ -170,7 +170,7 @@ export function prepareCustomerInsert(customerData: {
   email?: string;
   sourceTeamId?: number;
   metadata?: string;
-}): Omit<any, 'id'> {
+}): Omit<unknown, 'id'> {
   const timestamp = nowISO();
   return {
     platform: customerData.platform,
@@ -192,7 +192,7 @@ export function prepareConversationInsert(conversationData: {
   status?: string;
   assignedTeamId?: number;
   // Note: assignedUserId removed - only team assignment is supported now
-}): any {
+}) {
   const timestamp = nowISO();
   return {
     id: conversationData.id,
@@ -216,7 +216,7 @@ export function prepareMessageInsert(messageData: {
   platformMessageId?: string;
   isSent?: boolean;
   metadata?: string;
-}): any {
+}) {
   const timestamp = nowISO();
   return {
     id: messageData.id,

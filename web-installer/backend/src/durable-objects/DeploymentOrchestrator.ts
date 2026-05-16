@@ -23,6 +23,7 @@ import {
   type CloudflareResources,
   type AdminCredentials
 } from '../types/deployment';
+import type { DeploymentIndexItem } from '../types';
 
 // Cloudflare Worker environment type
 interface Env {
@@ -80,6 +81,17 @@ export class DeploymentOrchestrator implements DurableObject {
     const path = url.pathname;
 
     try {
+      // Register deployment metadata in the global deployment index
+      if (path === '/index/register' && request.method === 'POST') {
+        const item: DeploymentIndexItem = await request.json();
+        return await this.registerDeploymentIndexItem(item);
+      }
+
+      // List deployment metadata from the global deployment index
+      if (path === '/index/list' && request.method === 'GET') {
+        return await this.listDeploymentIndexItems();
+      }
+
       // Start deployment
       if (path === '/deploy' && request.method === 'POST') {
         const config: DeploymentConfig = await request.json();
@@ -108,6 +120,38 @@ export class DeploymentOrchestrator implements DurableObject {
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
+  }
+
+  private async registerDeploymentIndexItem(item: DeploymentIndexItem): Promise<Response> {
+    const items = await this.state.storage.get<DeploymentIndexItem[]>('deploymentIndex') || [];
+    const existingIndex = items.findIndex((existing) => existing.projectName === item.projectName);
+    const nextItem: DeploymentIndexItem = {
+      ...item,
+      updatedAt: Date.now()
+    };
+
+    if (existingIndex >= 0) {
+      items[existingIndex] = {
+        ...items[existingIndex],
+        ...nextItem
+      };
+    } else {
+      items.push(nextItem);
+    }
+
+    items.sort((a, b) => b.updatedAt - a.updatedAt);
+    await this.state.storage.put('deploymentIndex', items);
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  private async listDeploymentIndexItems(): Promise<Response> {
+    const items = await this.state.storage.get<DeploymentIndexItem[]>('deploymentIndex') || [];
+    return new Response(JSON.stringify({ deployments: items }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   /**
@@ -234,7 +278,7 @@ export class DeploymentOrchestrator implements DurableObject {
   ): Promise<void> {
     if (!this.deploymentState) return;
 
-    const stepConfig = (DEPLOYMENT_STEPS as any)[stepName];
+    const stepConfig = DEPLOYMENT_STEPS[stepName];
     let retryCount = 0;
     let lastError: Error | null = null;
 

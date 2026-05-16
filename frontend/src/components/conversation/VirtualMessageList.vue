@@ -204,10 +204,39 @@ interface Props {
 const scrollContainer = ref<HTMLElement>()
 const listContainer = ref<HTMLElement>()
 
+interface ScrollInfo {
+  scrollTop: number
+  scrollHeight: number
+  clientHeight: number
+}
+
+function isScrollInfo(value: unknown): value is ScrollInfo {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as Partial<ScrollInfo>).scrollTop === 'number' &&
+    typeof (value as Partial<ScrollInfo>).scrollHeight === 'number' &&
+    typeof (value as Partial<ScrollInfo>).clientHeight === 'number'
+  )
+}
+
 // Emit wrapper that matches the composable's expected signature
 const emitWrapper = (event: string, ...args: unknown[]) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (emit as any)(event, ...args)
+  if (event === 'scroll') {
+    const [scrollInfo] = args
+    if (isScrollInfo(scrollInfo)) {
+      emit('scroll', scrollInfo)
+    }
+    return
+  }
+
+  if (event === 'loadMore') {
+    emit('loadMore')
+  } else if (event === 'newMessageWhileScrolled') {
+    emit('newMessageWhileScrolled')
+  } else if (event === 'initialScrollComplete') {
+    emit('initialScrollComplete')
+  }
 }
 
 // 1. Virtual List (virtualizer, displayedMessages, virtualItems)

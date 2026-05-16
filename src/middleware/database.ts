@@ -5,6 +5,13 @@ import { ConversationService } from '../services/conversation-service';
 import type { HonoContext } from '../types/bindings';
 import { nowMs } from '@/utils/timestamp'
 
+interface RequestPerformanceMetrics {
+  count: number;
+  totalTime: number;
+  avgTime: number;
+  maxTime: number;
+}
+
 // Database and KV initialization middleware
 export const databaseMiddleware = createMiddleware<HonoContext>(async (c, next) => {
   // Initialize database connection
@@ -42,12 +49,12 @@ export const performanceMiddleware = createMiddleware<HonoContext>(async (c, nex
   if (duration > 1000) {
     console.warn(`Slow request: ${path} took ${duration}ms`);
   }
-  
+
   // Update performance metrics in KV
   const metricsKey = `metrics:${path.replace(/\//g, '_')}`;
-  const currentMetrics = await kv.getCache(metricsKey) || { 
-    count: 0, 
-    totalTime: 0, 
+  const currentMetrics: RequestPerformanceMetrics = await kv.getCache<RequestPerformanceMetrics>(metricsKey) || {
+    count: 0,
+    totalTime: 0,
     avgTime: 0,
     maxTime: 0 
   };

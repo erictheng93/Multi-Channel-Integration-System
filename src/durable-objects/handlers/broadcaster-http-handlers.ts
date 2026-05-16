@@ -1,7 +1,7 @@
 // Broadcaster HTTP Handlers
 // All HTTP API endpoint handlers for MessageBroadcaster
 
-import type { DurableObjectEvent, BroadcastTarget } from '../../types/websocket-types';
+import type { DurableObjectEvent, BroadcastTarget, WebSocketSubscription } from '../../types/websocket-types';
 import type { BroadcasterContext } from '../services/broadcaster-helpers';
 import type { BroadcasterHelpers } from '../services/broadcaster-helpers';
 import type { BroadcasterDeliveryService } from '../services/broadcaster-delivery-service';
@@ -9,6 +9,36 @@ import { createContextLogger } from '../../utils/logger';
 import { nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('MessageBroadcaster');
+
+interface QueuedEvent extends DurableObjectEvent {
+  targets: BroadcastTarget[];
+  options: unknown;
+  queuedAt: number;
+  retryCount: number;
+  retryAt?: number;
+}
+
+interface RuntimeProcess {
+  memoryUsage?: () => { heapUsed: number; heapTotal: number };
+}
+
+function toQueuedEvent(
+  event: DurableObjectEvent,
+  targets: BroadcastTarget[],
+  options: unknown = {}
+): QueuedEvent {
+  return {
+    ...event,
+    targets,
+    options,
+    queuedAt: nowMs(),
+    retryCount: 0
+  };
+}
+
+function getMemoryUsage(): { heapUsed: number; heapTotal: number } {
+  return (process as RuntimeProcess).memoryUsage?.() ?? { heapUsed: 0, heapTotal: 0 };
+}
 
 /**
  * HTTP API handlers for MessageBroadcaster.
@@ -26,7 +56,7 @@ export class BroadcasterHttpHandlers {
       const { event, targets, options } = await request.json() as {
         event: DurableObjectEvent;
         targets: BroadcastTarget[];
-        options?: any;
+        options?: unknown;
       };
 
       if (!this.helpers.validateEvent(event)) {
@@ -182,7 +212,9 @@ export class BroadcasterHttpHandlers {
 
           const adminPromises = adminUsers.map(async (userId: string) => {
             try {
-              const delivered = await this.delivery.deliverToUser(userId, [event]);
+              const delivered = await this.delivery.deliverToUser(userId, [
+                toQueuedEvent(event, [{ type: 'user', targets: [userId] }])
+              ]);
               return delivered;
             } catch (error) {
               log.error('Admin user delivery error', { userId, error: error instanceof Error ? error.message : String(error) });
@@ -240,7 +272,7 @@ export class BroadcasterHttpHandlers {
 
       try {
         const deliveredCount = await this.delivery.deliverGlobalBroadcast([
-          { ...event, targets: [target || { type: 'global', targets: ['all'] }] }
+          toQueuedEvent(event, [target || { type: 'global', targets: ['all'] }])
         ]);
         successful = deliveredCount;
       } catch (error) {
@@ -281,7 +313,7 @@ export class BroadcasterHttpHandlers {
       let failed = 0;
 
       // Group events by target for efficient delivery
-      const eventsByTarget = new Map<string, any[]>();
+      const eventsByTarget = new Map<string, QueuedEvent[]>();
 
       for (let i = 0; i < events.length; i++) {
         const event = events[i];
@@ -291,19 +323,19 @@ export class BroadcasterHttpHandlers {
           for (const conversationId of eventTargets.targets) {
             const key = String(conversationId);
             if (!eventsByTarget.has(key)) eventsByTarget.set(key, []);
-            eventsByTarget.get(key)!.push(event);
+            eventsByTarget.get(key)!.push(toQueuedEvent(event, [eventTargets]));
           }
         } else if (eventTargets.type === 'user') {
           for (const userId of eventTargets.targets) {
             const key = `user:${String(userId)}`;
             if (!eventsByTarget.has(key)) eventsByTarget.set(key, []);
-            eventsByTarget.get(key)!.push(event);
+            eventsByTarget.get(key)!.push(toQueuedEvent(event, [eventTargets]));
           }
         } else if (eventTargets.type === 'team') {
           for (const teamId of eventTargets.targets) {
             const key = `team:${String(teamId)}`;
             if (!eventsByTarget.has(key)) eventsByTarget.set(key, []);
-            eventsByTarget.get(key)!.push(event);
+            eventsByTarget.get(key)!.push(toQueuedEvent(event, [eventTargets]));
           }
         }
         processed++;
@@ -382,7 +414,10 @@ export class BroadcasterHttpHandlers {
   }
 
   async handleUpdateFilters(request: Request): Promise<Response> {
-    const { target, subscriptions } = await request.json() as { target: string; subscriptions: any };
+    const { target, subscriptions } = await request.json() as {
+      target: string;
+      subscriptions: WebSocketSubscription[];
+    };
     this.ctx.targetFilters.set(target, subscriptions);
 
     return new Response(JSON.stringify({ success: true }));
@@ -433,7 +468,7 @@ export class BroadcasterHttpHandlers {
       highPriorityQueueDepth: this.ctx.highPriorityQueue.length,
       activeLocks: this.ctx.locks.size,
       uptime: Date.now() - (this.ctx.stats.lastProcessed - 3600000),
-      memoryUsage: (process as any).memoryUsage?.() || { heapUsed: 0, heapTotal: 0 }
+      memoryUsage: getMemoryUsage()
     };
 
     return new Response(JSON.stringify(metrics));
@@ -456,7 +491,7 @@ export class BroadcasterHttpHandlers {
       eventProcessingRate: this.ctx.stats.eventsPerSecond,
       errorRate: errorRate,
       averageLatency: this.ctx.stats.averageLatency,
-      memoryUsage: (process as any).memoryUsage?.() || { heapUsed: 0, heapTotal: 0 },
+      memoryUsage: getMemoryUsage(),
       timestamp: nowMs()
     };
 

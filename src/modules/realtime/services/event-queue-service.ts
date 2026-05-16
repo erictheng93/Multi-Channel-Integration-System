@@ -13,6 +13,10 @@ import type {
 import { QueueBaseService, QueueProcessingResult } from '@/services/queue-base-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 // 事件路由規則
 interface EventRoutingRule {
   eventType: EventType;
@@ -129,7 +133,7 @@ export class EventQueueService extends QueueBaseService {
   // 創建並路由事件
   async createAndRouteEvent(
     eventType: EventType,
-    eventData: any,
+    eventData: unknown,
     targets: EventTargets,
     priority?: EventPriority,
     source: EventSource = 'system'
@@ -147,7 +151,7 @@ export class EventQueueService extends QueueBaseService {
         type: eventType,
         timestamp: nowISO(),
         source,
-        data: eventData
+        data: isRecord(eventData) ? eventData : { value: eventData }
       };
 
       // 合併目標

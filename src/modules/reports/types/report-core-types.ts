@@ -57,6 +57,24 @@ export type ReportTimeRange =
   | 'custom'
   ;
 
+export const REPORT_TIME_RANGES: readonly ReportTimeRange[] = [
+  'last_24_hours',
+  'last_7_days',
+  'last_30_days',
+  'last_90_days',
+  'current_month',
+  'last_month',
+  'current_quarter',
+  'last_quarter',
+  'current_year',
+  'last_year',
+  'custom'
+] as const;
+
+export function isReportTimeRange(value: unknown): value is ReportTimeRange {
+  return typeof value === 'string' && REPORT_TIME_RANGES.includes(value as ReportTimeRange);
+}
+
 /**
  * 報告格式
  */
@@ -101,7 +119,7 @@ export interface ReportBase {
   downloadUrl?: string;
   fileSize?: number;
   errorMessage?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -131,7 +149,7 @@ export interface ReportFilters {
   messageTypes?: string[];
   priority?: ('low' | 'medium' | 'high' | 'urgent')[];
   tags?: string[];
-  customFields?: Record<string, any>;
+  customFields?: Record<string, unknown>;
 }
 
 /**

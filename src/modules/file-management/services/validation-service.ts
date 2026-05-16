@@ -370,7 +370,7 @@ export class FileValidationService {
     }
 
     // 檢查平台支援的檔案類型
-    if (!platformConfig.allowedTypes.includes(metadata.mimeType as any)) {
+    if (!(platformConfig.allowedTypes as readonly string[]).includes(metadata.mimeType)) {
       errors.push({
         code: ERROR_CODES.INVALID_FILE_TYPE,
         message: `${metadata.platform} 平台不支援此檔案類型`,

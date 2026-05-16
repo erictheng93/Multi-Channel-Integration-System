@@ -101,6 +101,35 @@ interface TestResults {
   connectionMetrics: ConnectionMetrics[];
 }
 
+interface LoadTestMessage {
+  type: 'message';
+  id: string;
+  timestamp: number;
+  data: {
+    messageType: string;
+    content: string;
+    senderName: string;
+    metadata: {
+      loadTest: boolean;
+      connectionId: string;
+    };
+    delaySeconds?: number;
+  };
+}
+
+interface LoadTestEvent {
+  type: 'event';
+  data: {
+    type: string;
+    userId: string;
+    conversationId: string | undefined;
+    timestamp: number;
+  };
+  timestamp: number;
+}
+
+type LoadTestOutgoingMessage = LoadTestMessage | LoadTestEvent;
+
 // =================== Load Test Engine ===================
 
 class WebSocketLoadTester extends EventEmitter {
@@ -387,7 +416,7 @@ class WebSocketLoadTester extends EventEmitter {
 
       const messageType = messageTypes[Math.floor(Math.random() * messageTypes.length)];
 
-      let messageData: any = {
+      let messageData: LoadTestOutgoingMessage = {
         type: 'message',
         id: `msg_${++this.messageCounter}`,
         timestamp: Date.now(),

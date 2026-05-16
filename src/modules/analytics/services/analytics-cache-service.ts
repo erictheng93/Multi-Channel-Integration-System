@@ -5,13 +5,22 @@
 // Keys starting with 'cache:analytics:' will automatically use FREE Cache API
 // instead of paid KV operations.
 
-import type { KVNamespace } from '@cloudflare/workers-types';
-import type { AnalyticsResult } from '@modules/analytics/types/analytics-types';
+import type {
+  AnalyticsResult,
+  AnalyticsServiceInterface,
+  ConversationAnalyticsQuery,
+  MessageAnalyticsQuery,
+  UserAnalyticsQuery
+} from '@modules/analytics/types/analytics-types';
 import { HybridCacheService, shouldUseCacheAPI } from '@/services/cache-api-service';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('AnalyticsCache');
+
+interface KvListWithCursor {
+  cursor?: string;
+}
 
 /**
  * 快取鍵策略配置
@@ -93,8 +102,7 @@ export class AnalyticsCacheService {
 
     // Initialize HybridCacheService for Cache API routing
     if (this.config.useCacheAPI) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      this.hybridCache = new HybridCacheService(kv as any);
+      this.hybridCache = new HybridCacheService(kv);
     }
   }
 
@@ -111,7 +119,7 @@ export class AnalyticsCacheService {
    */
   generateCacheKey(
     queryType: string,
-    params: Record<string, any>,
+    params: Record<string, unknown>,
     strategy?: Partial<CacheKeyStrategy>
   ): string {
     const keyStrategy: CacheKeyStrategy = {
@@ -151,7 +159,7 @@ export class AnalyticsCacheService {
    * 獲取快取數據
    * Automatically routes to Cache API for cache:analytics:* keys (FREE)
    */
-  async get<T = any>(
+  async get<T = unknown>(
     cacheKey: string
   ): Promise<AnalyticsResult<T> | null> {
     if (!this.config.enabled) {
@@ -177,8 +185,11 @@ export class AnalyticsCacheService {
 
         // 更新元數據中的 cacheHit 標記
         if (cachedData && typeof cachedData === 'object' && 'metadata' in cachedData) {
-          (cachedData as any).metadata.cacheHit = true;
-          (cachedData as any).metadata.cacheSource = this.shouldUseCacheAPI(cacheKey) ? 'cache-api' : 'kv';
+          cachedData.metadata = {
+            ...cachedData.metadata,
+            cacheHit: true,
+            cacheSource: this.shouldUseCacheAPI(cacheKey) ? 'cache-api' : 'kv'
+          } as AnalyticsResult<T>['metadata'] & { cacheSource: 'cache-api' | 'kv' };
         }
 
         return cachedData as AnalyticsResult<T>;
@@ -197,7 +208,7 @@ export class AnalyticsCacheService {
    * 設置快取數據
    * Automatically routes to Cache API for cache:analytics:* keys (FREE)
    */
-  async set<T = any>(
+  async set<T = unknown>(
     cacheKey: string,
     data: AnalyticsResult<T>,
     ttl?: number
@@ -293,7 +304,7 @@ export class AnalyticsCacheService {
         }
 
         // Check if there's a cursor for the next iteration
-        cursor = !list.list_complete && 'cursor' in list ? (list as any).cursor : undefined;
+        cursor = !list.list_complete ? (list as typeof list & KvListWithCursor).cursor : undefined;
       } while (cursor);
 
       this.stats.deletes += deletedCount;
@@ -434,7 +445,7 @@ export class AnalyticsCacheService {
   /**
    * 對查詢參數進行排序和序列化
    */
-  private sortAndSerializeParams(params: Record<string, any>): string {
+  private sortAndSerializeParams(params: Record<string, unknown>): string {
     const sortedKeys = Object.keys(params).sort();
     const sortedParams = sortedKeys.map(key => {
       const value = params[key];
@@ -475,13 +486,13 @@ export class AnalyticsCacheService {
  * 快取裝飾器工廠函數
  * 用於自動為方法添加快取功能
  */
-export function withCache<T extends (...args: any[]) => Promise<any>>(
+export function withCache<T extends (...args: unknown[]) => Promise<unknown>>(
   cacheService: AnalyticsCacheService,
   cacheKeyGenerator: (args: Parameters<T>) => string,
   ttl?: number
 ) {
   return function (
-    _target: any,
+    _target: unknown,
     _propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
@@ -516,32 +527,36 @@ export function withCache<T extends (...args: any[]) => Promise<any>>(
 export class CacheWarmer {
   constructor(
     _cacheService: AnalyticsCacheService,
-    private analyticsService: any // AnalyticsService 實例
+    private analyticsService: AnalyticsServiceInterface
   ) {}
 
   /**
    * 預熱常用查詢
    */
   async warmupCommonQueries(): Promise<void> {
-    const commonQueries = [
-      { type: 'conversation', timeRange: '24h' },
-      { type: 'conversation', timeRange: '7d' },
-      { type: 'message', timeRange: '24h' },
-      { type: 'user', timeRange: '7d' }
+    const commonQueries: Array<
+      | { kind: 'conversation'; query: ConversationAnalyticsQuery }
+      | { kind: 'message'; query: MessageAnalyticsQuery }
+      | { kind: 'user'; query: UserAnalyticsQuery }
+    > = [
+      { kind: 'conversation', query: { type: 'conversation', timeRange: '24h' } },
+      { kind: 'conversation', query: { type: 'conversation', timeRange: '7d' } },
+      { kind: 'message', query: { type: 'message', timeRange: '24h' } },
+      { kind: 'user', query: { type: 'user', timeRange: '7d' } }
     ];
 
     for (const query of commonQueries) {
       try {
         // 根據查詢類型調用對應方法
-        switch (query.type) {
+        switch (query.kind) {
           case 'conversation':
-            await this.analyticsService.getConversationAnalytics(query);
+            await this.analyticsService.getConversationAnalytics(query.query);
             break;
           case 'message':
-            await this.analyticsService.getMessageAnalytics(query);
+            await this.analyticsService.getMessageAnalytics(query.query);
             break;
           case 'user':
-            await this.analyticsService.getUserAnalytics(query);
+            await this.analyticsService.getUserAnalytics(query.query);
             break;
         }
       } catch (error) {

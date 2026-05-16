@@ -20,6 +20,20 @@ import { nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('WebSocketHandler');
 
+interface BroadcasterMetricsResponse {
+  userConnections?: number;
+  conversationRooms?: number;
+  activeConnections?: number;
+  averageLatency?: number;
+  eventsPerSecond?: number;
+  failedDeliveries?: number;
+  totalEvents?: number;
+}
+
+interface UserConnectionStatusResponse {
+  connectionCount?: number;
+}
+
 /**
  * Architecture Overview:
  *
@@ -300,7 +314,7 @@ async function getConnectionMetrics(env: Bindings): Promise<ConnectionMetrics> {
       const broadcasterStub = env.MESSAGE_BROADCASTER.get(broadcasterId);
       const response = await broadcasterStub.fetch(new Request('https://message-broadcaster/metrics'));
       if (response.ok) {
-        const data = await response.json() as any;
+        const data = await response.json() as BroadcasterMetricsResponse;
         return {
           totalConnections: (data.userConnections || 0) + (data.conversationRooms || 0),
           activeConnections: data.activeConnections || 0,
@@ -445,7 +459,7 @@ async function checkConnectionLimits(userId: string, env: Bindings): Promise<boo
     const userConnectionStub = env.USER_CONNECTION.get(userConnectionId);
     const response = await userConnectionStub.fetch(new Request('https://user-connection/status'));
     if (response.ok) {
-      const status = await response.json() as any;
+      const status = await response.json() as UserConnectionStatusResponse;
       if ((status.connectionCount || 0) >= DEFAULT_CONFIG.maxConnectionsPerUser) {
         return false;
       }

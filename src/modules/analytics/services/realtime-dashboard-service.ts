@@ -26,7 +26,7 @@ export class RealtimeDashboardService {
   constructor(
     db: D1Database,
     kv: Bindings['KV'],
-    _options: Record<string, any> = {}
+    _options: Record<string, unknown> = {}
   ) {
     this.dashboardService = new DashboardService(db, kv);
   }
@@ -34,7 +34,7 @@ export class RealtimeDashboardService {
   /**
    * Get dashboard data for a user
    */
-  async getDashboardData(userId: string, dashboardId: string): Promise<any> {
+  async getDashboardData(userId: string, dashboardId: string) {
     await this.validateUserAccess(userId, dashboardId);
     return await this.dashboardService.getDashboardData(userId, dashboardId);
   }
@@ -50,7 +50,7 @@ export class RealtimeDashboardService {
   }
 
   /**
-   * Broadcast widget update (placeholder for WebSocket integration)
+   * Broadcast widget update event.
    */
   async broadcastWidgetUpdate(dashboardId: string, widgetId: string, _data: WidgetData): Promise<void> {
     // In the WebSocket architecture, broadcasting is handled by Durable Objects.
@@ -59,7 +59,7 @@ export class RealtimeDashboardService {
   }
 
   /**
-   * Broadcast config change (placeholder for WebSocket integration)
+   * Broadcast config change event.
    */
   async broadcastConfigChange(dashboardId: string, _config: DashboardConfig): Promise<void> {
     log.info(`Config change: ${dashboardId}`);
@@ -68,7 +68,7 @@ export class RealtimeDashboardService {
   /**
    * Update subscription (no-op, kept for API compatibility)
    */
-  async updateSubscription(connectionId: string, _updates: any): Promise<void> {
+  async updateSubscription(connectionId: string, _updates: unknown): Promise<void> {
     // Subscriptions are managed by WebSocket Durable Objects
     log.info(`Subscription update requested for ${connectionId}`);
   }

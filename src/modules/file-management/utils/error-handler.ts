@@ -47,6 +47,17 @@ export interface ErrorDetails {
   retryable: boolean;
 }
 
+export interface FileErrorLogData {
+  level: ErrorSeverity;
+  error: Record<string, unknown>;
+  timestamp: string;
+}
+
+export type CriticalAlertHandler = (
+  error: FileManagementError,
+  logData: FileErrorLogData
+) => void | Promise<void>;
+
 /**
  * 自定義檔案管理錯誤類別
  */
@@ -192,6 +203,12 @@ export class FileManagementError extends Error {
  * 錯誤處理器類別
  */
 export class ErrorHandler {
+  private static criticalAlertHandler: CriticalAlertHandler | undefined;
+
+  static setCriticalAlertHandler(handler: CriticalAlertHandler | undefined): void {
+    this.criticalAlertHandler = handler;
+  }
+
   /**
    * 包裝錯誤為 FileManagementError
    */
@@ -232,7 +249,7 @@ export class ErrorHandler {
    * 記錄錯誤
    */
   private static async logError(error: FileManagementError): Promise<void> {
-    const logData = {
+    const logData: FileErrorLogData = {
       level: error.severity,
       error: error.toJSON(),
       timestamp: error.timestamp
@@ -242,7 +259,7 @@ export class ErrorHandler {
     switch (error.severity) {
       case 'critical':
         console.error('[CRITICAL]', logData);
-        // TODO: 發送告警通知
+        await this.notifyCriticalAlert(error, logData);
         break;
       case 'error':
         console.error('[ERROR]', logData);
@@ -253,6 +270,24 @@ export class ErrorHandler {
       case 'info':
         console.info('[INFO]', logData);
         break;
+    }
+  }
+
+  private static async notifyCriticalAlert(
+    error: FileManagementError,
+    logData: FileErrorLogData
+  ): Promise<void> {
+    if (!this.criticalAlertHandler) {
+      return;
+    }
+
+    try {
+      await this.criticalAlertHandler(error, logData);
+    } catch (alertError) {
+      console.error('[CRITICAL_ALERT_FAILED]', {
+        error: alertError instanceof Error ? alertError.message : String(alertError),
+        originalError: error.toJSON()
+      });
     }
   }
 

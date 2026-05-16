@@ -1,6 +1,7 @@
 // Real-time 版本選擇器 - 智能選擇最適合的版本
 
 import type { Bindings } from '@/types';
+import type { Context } from 'hono';
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('VersionSelector')
@@ -123,7 +124,10 @@ export class RealtimeVersionSelector {
   }
 
   // 檢測環境能力
-  async detectEnvironmentCapabilities(env: Bindings, context?: any): Promise<EnvironmentCapabilities> {
+  async detectEnvironmentCapabilities(
+    env: Bindings,
+    context?: Context<{ Bindings: Bindings }>
+  ): Promise<EnvironmentCapabilities> {
     const capabilities: EnvironmentCapabilities = {
       // Phase 2: Queue replaced by Durable Objects (MessageBroadcaster, LatestMessageCacheCoordinator)
       hasCloudflareQueue: !!env.MESSAGE_BROADCASTER && !!env.LATEST_MESSAGE_COORDINATOR,
@@ -169,7 +173,7 @@ export class RealtimeVersionSelector {
   }
 
   // 選擇最佳版本
-  async selectBestVersion(env: Bindings, context?: any, config?: RealtimeConfig): Promise<{
+  async selectBestVersion(env: Bindings, context?: Context<{ Bindings: Bindings }>, config?: RealtimeConfig): Promise<{
     selectedVersion: 'v1' | 'v2' | 'modular';
     reason: string;
     versionInfo: VersionInfo;

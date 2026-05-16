@@ -34,11 +34,27 @@ import {
 
 import { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
 import { PeriodComparisonService } from '@modules/analytics/services/period-comparison-service';
-import type { Period } from '@modules/analytics/services/period-comparison-service';
+import type { Period, PeriodComparisonQuery } from '@modules/analytics/services/period-comparison-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('AnalyticsCore');
+
+type DispatchQuery =
+  | (ConversationAnalyticsQuery & { type: 'conversation' })
+  | (MessageAnalyticsQuery & { type: 'message' })
+  | (UserAnalyticsQuery & { type: 'user' })
+  | (PerformanceAnalyticsQuery & { type: 'performance' });
+
+function queryToRecord(query: object): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(query));
+}
+
+function isDispatchQuery(value: unknown): value is DispatchQuery {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const type = (value as Record<string, unknown>).type;
+  return type === 'conversation' || type === 'message' || type === 'user' || type === 'performance';
+}
 
 // Sub-module imports
 import {
@@ -85,8 +101,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     this.kv = config.kv;
 
     if (this.kv) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- KVNamespace type compatibility between different @cloudflare/workers-types versions
-      this.cacheService = new AnalyticsCacheService(this.kv as any, {
+      this.cacheService = new AnalyticsCacheService(this.kv, {
         defaultTTL: 300, // 5 minutes
         shortTTL: 60, // 1 minute
         longTTL: 1800, // 30 minutes
@@ -109,7 +124,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
 
       // Try cache
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('conversation', query, {
+        const cacheKey = this.cacheService.generateCacheKey('conversation', queryToRecord(query), {
           includeUserId: !!query.filters?.userId,
           includeTeamId: !!query.filters?.teamId
         });
@@ -149,7 +164,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
 
       // Store in cache
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('conversation', query, {
+        const cacheKey = this.cacheService.generateCacheKey('conversation', queryToRecord(query), {
           includeUserId: !!query.filters?.userId,
           includeTeamId: !!query.filters?.teamId
         });
@@ -199,7 +214,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       validateQuery(query);
 
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('message', query, {
+        const cacheKey = this.cacheService.generateCacheKey('message', queryToRecord(query), {
           includeUserId: !!query.filters?.userId,
           includeTeamId: !!query.filters?.teamId
         });
@@ -235,7 +250,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       };
 
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('message', query, {
+        const cacheKey = this.cacheService.generateCacheKey('message', queryToRecord(query), {
           includeUserId: !!query.filters?.userId,
           includeTeamId: !!query.filters?.teamId
         });
@@ -285,7 +300,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       validateQuery(query);
 
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('user', query, {
+        const cacheKey = this.cacheService.generateCacheKey('user', queryToRecord(query), {
           includeUserId: !!query.filters?.userId,
           includeTeamId: !!query.filters?.teamId
         });
@@ -320,7 +335,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       };
 
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('user', query, {
+        const cacheKey = this.cacheService.generateCacheKey('user', queryToRecord(query), {
           includeUserId: !!query.filters?.userId,
           includeTeamId: !!query.filters?.teamId
         });
@@ -353,7 +368,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       validateQuery(query);
 
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('performance', query);
+        const cacheKey = this.cacheService.generateCacheKey('performance', queryToRecord(query));
         const cachedResult = await this.cacheService.get<PerformanceAnalytics>(cacheKey);
         if (cachedResult) {
           log.debug('Cache HIT for performance analytics', { cacheKey });
@@ -384,7 +399,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
       };
 
       if (this.cacheService) {
-        const cacheKey = this.cacheService.generateCacheKey('performance', query);
+        const cacheKey = this.cacheService.generateCacheKey('performance', queryToRecord(query));
         const ttl = this.cacheService.getTTLForQueryType('performance', query.timeRange);
         await this.cacheService.set(cacheKey, analyticsResult, ttl);
         log.debug('Cached performance analytics', { ttl, cacheKey });
@@ -408,7 +423,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
   // ---------------------------------------------------------------------------
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getCustomAnalytics(query: CustomAnalyticsQuery): Promise<AnalyticsResult<any>> {
+  async getCustomAnalytics(query: CustomAnalyticsQuery): Promise<AnalyticsResult<unknown>> {
     const startTime = nowMs();
 
     try {
@@ -445,7 +460,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
   async exportAnalytics(query: ExportQuery): Promise<ServiceResponse<ExportResult>> {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let data: any;
+      let data: unknown;
       const metrics = query.metrics || [];
 
       const hasConversationMetrics = metrics.some(m =>
@@ -512,7 +527,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getCacheStats(): Promise<any> {
+  async getCacheStats() {
     if (!this.cacheService) {
       return { enabled: false, stats: null };
     }
@@ -532,7 +547,7 @@ export class AnalyticsService implements AnalyticsServiceInterface {
     currentPeriod: Period,
     previousPeriod?: Period,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    filters?: any
+    filters?: PeriodComparisonQuery['filters']
   ) {
     return await this.comparisonService.compareMultipleMetrics(
       metrics,
@@ -547,10 +562,21 @@ export class AnalyticsService implements AnalyticsServiceInterface {
   // ---------------------------------------------------------------------------
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async query(query: any): Promise<any> {
+  async query(query: unknown) {
     const startTime = nowMs();
 
     try {
+      if (!isDispatchQuery(query)) {
+        return {
+          data: {},
+          metadata: {
+            queryTime: Date.now() - startTime,
+            recordCount: 0,
+            cacheHit: false
+          }
+        };
+      }
+
       switch (query.type) {
         case 'conversation':
           return await this.getConversationAnalytics(query);

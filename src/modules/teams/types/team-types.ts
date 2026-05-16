@@ -166,7 +166,7 @@ export interface TeamEvent {
         'member.added' | 'member.removed' | 'member.updated' |
         'qr.generated' | 'stats.updated';
   teamId: number;
-  data: any;
+  data: unknown;
   timestamp: string;
   userId?: string;
 }
@@ -191,7 +191,7 @@ export interface QRCodeScan {
     ip?: string;
     location?: string;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Error classes
@@ -203,9 +203,9 @@ export class TeamPermissionError extends Error {
 }
 
 export class InvalidTeamDataError extends Error {
-  public details?: any;
+  public details?: unknown;
 
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message);
     this.name = 'InvalidTeamDataError';
     this.details = details;

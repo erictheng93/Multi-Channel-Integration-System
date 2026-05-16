@@ -16,6 +16,26 @@ import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('ConversationQueriesHandler');
 
+interface LatestConversationMessageRow {
+  messageId: string;
+  content: string;
+  createdAt: string;
+  senderType: string;
+  messageType: string;
+}
+
+interface UnreadCountRow {
+  unreadCount: number;
+}
+
+interface ConversationListLatestMessageRow extends LatestConversationMessageRow {
+  conversationId: string;
+}
+
+interface ConversationUnreadCountRow extends UnreadCountRow {
+  conversationId: string;
+}
+
 const conversationQueriesHandler = new Hono<{ Bindings: Bindings }>();
 
 // ==================== Priority 4: SINGLE PARAM routes ====================
@@ -78,10 +98,10 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
         WHERE conversation_id = ?
         ORDER BY created_at DESC
         LIMIT 1
-      `).bind(conversationId).first();
+      `).bind(conversationId).first<LatestConversationMessageRow>();
 
       if (latestMessageResult) {
-        lastMessageData = latestMessageResult as any;
+        lastMessageData = latestMessageResult;
       }
     } catch (msgError) {
       log.warn('Failed to fetch latest message for conversation', { conversationId, error: msgError });
@@ -110,10 +130,10 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
               '1970-01-01'
             )
           )
-      `).bind(conversationId).first();
+      `).bind(conversationId).first<UnreadCountRow>();
 
       if (unreadResult) {
-        unreadCount = Number((unreadResult as any).unreadCount) || 0;
+        unreadCount = Number(unreadResult.unreadCount) || 0;
       }
     } catch (unreadError) {
       log.warn('Failed to fetch unread count for conversation', { conversationId, error: unreadError });
@@ -122,7 +142,7 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     const displayContent = lastMessageData ? getDisplayContent(lastMessageData.content, lastMessageData.messageType) : null;
 
     // 構建完整的對話對象，包含嵌套的 customer 和 assignedTeam 對象
-    const conversationData: any = {
+    const conversationData: unknown = {
       ...result.conversations,
       // 包含完整的 assignedTeam 對象（如果已指派）
       assignedTeam: result.teams || undefined,
@@ -383,7 +403,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
             .all();
 
           if (result.results) {
-            for (const row of result.results as any[]) {
+            for (const row of result.results as unknown as ConversationListLatestMessageRow[]) {
               lastMessagesMap.set(row.conversationId, {
                 messageId: row.messageId,
                 content: row.content,
@@ -456,7 +476,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
           .all();
 
         if (unreadResult.results) {
-          for (const row of unreadResult.results as any[]) {
+          for (const row of unreadResult.results as unknown as ConversationUnreadCountRow[]) {
             unreadCountMap.set(row.conversationId, Number(row.unreadCount));
           }
         }

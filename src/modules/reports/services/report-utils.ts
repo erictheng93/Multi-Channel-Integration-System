@@ -1,7 +1,13 @@
 // Report Utilities — validation, templates, previews, permission checks
 
-import type { ReportBase, ReportGenerationParams, ReportType } from '../types/report-types';
-import { ReportAccessDeniedError, REPORT_TYPE_CONFIG, DEFAULT_REPORT_CONFIG } from '../types/report-types';
+import type { ReportBase, ReportGenerationParams, ReportOptions, ReportType } from '../types/report-types';
+import {
+  ReportAccessDeniedError,
+  REPORT_TYPE_CONFIG,
+  DEFAULT_REPORT_CONFIG,
+  GENERATABLE_REPORT_FORMATS,
+  GENERATABLE_REPORT_TYPES
+} from '../types/report-types';
 import { SampleDataGenerators } from './sample-data-generators';
 import logger from '@/utils/logger';
 
@@ -13,11 +19,17 @@ export class ReportUtils {
     const errors: string[] = [];
     if (!params.type) errors.push('Report type is required');
     else if (!Object.keys(REPORT_TYPE_CONFIG).includes(params.type)) errors.push('Invalid report type');
+    else if (!(GENERATABLE_REPORT_TYPES as readonly string[]).includes(params.type)) {
+      errors.push(`Report type '${params.type}' is not available for generation yet`);
+    }
     if (!params.title || params.title.length < 1) errors.push('Report title is required');
     else if (params.title.length > 200) errors.push('Report title too long (max 200 characters)');
     if (!params.format) errors.push('Report format is required');
     else if (params.type && REPORT_TYPE_CONFIG[params.type]) {
       if (!REPORT_TYPE_CONFIG[params.type].supportedFormats.includes(params.format)) errors.push(`Format '${params.format}' not supported for report type '${params.type}'`);
+      if (!(GENERATABLE_REPORT_FORMATS as readonly string[]).includes(params.format)) {
+        errors.push(`Format '${params.format}' is not available for generated reports yet`);
+      }
     }
     if (params.timeRange === 'custom') {
       if (!params.startDate || !params.endDate) errors.push('Start date and end date are required for custom time range');
@@ -26,7 +38,7 @@ export class ReportUtils {
     return { valid: errors.length === 0, errors };
   }
 
-  async getAvailableTemplates(type: ReportType): Promise<Array<{ name: string; description: string; options: any }>> {
+  async getAvailableTemplates(type: ReportType): Promise<Array<{ name: string; description: string; options: ReportOptions }>> {
     const templates = {
       conversation_summary: [
         { name: 'Standard Summary', description: 'Basic conversation metrics and trends', options: { includeCharts: true, includeSummary: true, includeDetails: false } },
@@ -37,10 +49,10 @@ export class ReportUtils {
       ]
     };
     const k = type as keyof typeof templates;
-    return (k in templates ? templates[k] : []) as Array<{ name: string; description: string; options: any }>;
+    return (k in templates ? templates[k] : []) as Array<{ name: string; description: string; options: ReportOptions }>;
   }
 
-  async previewReport(params: ReportGenerationParams): Promise<any> {
+  async previewReport(params: ReportGenerationParams) {
     const d = SampleDataGenerators.getSampleData(params.type);
     return d === null ? { message: 'Preview not available for this report type' } : d;
   }

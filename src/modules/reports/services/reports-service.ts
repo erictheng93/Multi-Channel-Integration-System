@@ -9,6 +9,7 @@ import type {
   ReportListQuery,
   ReportListResponse,
   ReportStatistics,
+  ReportOptions,
   ReportType,
   ReportTimeRange,
   BatchReportOperation,
@@ -17,7 +18,7 @@ import type {
   ReportsServiceInterface
 } from '../types/report-types';
 
-import { ReportGeneratorService } from './report-generator-service';
+import { ReportGeneratorService, type ReportDownloadContent } from './report-generator-service';
 import { ReportManagerService } from './report-manager-service';
 import { ReportSchedulerService } from './report-scheduler-service';
 import { ReportUtils } from './report-utils';
@@ -54,7 +55,7 @@ export class ReportsService implements ReportsServiceInterface {
     return this.generator.getReportStatus(reportId);
   }
 
-  async downloadReport(reportId: string, userId: string): Promise<{ url: string; filename: string } | null> {
+  async downloadReport(reportId: string, userId: string): Promise<ReportDownloadContent | null> {
     return this.generator.downloadReport(reportId, userId, this.utils);
   }
 
@@ -115,11 +116,11 @@ export class ReportsService implements ReportsServiceInterface {
     return this.utils.validateReportParams(params);
   }
 
-  async getAvailableTemplates(type: ReportType): Promise<Array<{ name: string; description: string; options: any }>> {
+  async getAvailableTemplates(type: ReportType): Promise<Array<{ name: string; description: string; options: ReportOptions }>> {
     return this.utils.getAvailableTemplates(type);
   }
 
-  async previewReport(params: ReportGenerationParams): Promise<any> {
+  async previewReport(params: ReportGenerationParams) {
     return this.utils.previewReport(params);
   }
 }

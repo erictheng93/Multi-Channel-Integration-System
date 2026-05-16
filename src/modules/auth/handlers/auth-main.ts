@@ -30,6 +30,61 @@ import { nowISO } from '@/utils/timestamp'
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
 
+type RefreshUserRow = Pick<
+  typeof agents.$inferSelect,
+  'id' | 'email' | 'displayName' | 'role' | 'isActive'
+>;
+
+interface RefreshTokenPayload {
+  type?: string;
+  userId: string;
+  displayName?: string;
+  email?: string;
+  role?: string;
+  primaryTeamId?: number;
+  allowedTeamIds?: number[];
+  teamRoles?: Record<number, TeamRoleInTeam>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isRefreshTokenPayload(value: unknown): value is RefreshTokenPayload {
+  return (
+    isRecord(value) &&
+    typeof value.userId === 'string' &&
+    (value.type === undefined || typeof value.type === 'string') &&
+    (value.displayName === undefined || typeof value.displayName === 'string') &&
+    (value.email === undefined || typeof value.email === 'string') &&
+    (value.role === undefined || typeof value.role === 'string') &&
+    (value.primaryTeamId === undefined || typeof value.primaryTeamId === 'number') &&
+    (value.allowedTeamIds === undefined || (
+      Array.isArray(value.allowedTeamIds) &&
+      value.allowedTeamIds.every(teamId => typeof teamId === 'number')
+    )) &&
+    (value.teamRoles === undefined || isRecord(value.teamRoles))
+  );
+}
+
+function mapLegacyRefreshUser(row: unknown): RefreshUserRow | undefined {
+  if (!isRecord(row) || typeof row.id !== 'string' || typeof row.email !== 'string') {
+    return undefined;
+  }
+
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: typeof row.display_name === 'string'
+      ? row.display_name
+      : typeof row.displayName === 'string'
+        ? row.displayName
+        : '',
+    role: typeof row.role === 'string' ? row.role : 'agent',
+    isActive: Boolean(row.is_active ?? row.isActive)
+  };
+}
+
 // CORS 處理已移至 src/index.ts 統一管理
 // 不再需要 handler 級別的 CORS middleware
 
@@ -399,10 +454,18 @@ authHandler.post('/refresh', async (c) => {
 
     // 驗證 refresh token
     const jwt = await import('jsonwebtoken');
-    let payload;
+    let payload: RefreshTokenPayload;
 
     try {
-      payload = jwt.verify(refreshToken, c.env.JWT_SECRET) as any;
+      const verified = jwt.verify(refreshToken, c.env.JWT_SECRET) as unknown;
+      if (!isRefreshTokenPayload(verified)) {
+        return c.json({
+          success: false,
+          error: 'Invalid refresh token payload',
+          timestamp: nowISO()
+        }, HTTP_STATUS.UNAUTHORIZED);
+      }
+      payload = verified;
     } catch (error) {
       return c.json({
         success: false,
@@ -424,7 +487,7 @@ authHandler.post('/refresh', async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
 
     // 首先嘗試 agents 表（新的用戶表）
-    let userRow = await drizzleDb
+    let userRow: RefreshUserRow | undefined = await drizzleDb
       .select()
       .from(agents)
       .where(and(
@@ -440,7 +503,9 @@ authHandler.post('/refresh', async (c) => {
         const fallbackResult = await drizzleDb.all(
           sql`SELECT * FROM users WHERE id = ${payload.userId} AND is_active = 1`
         );
-        userRow = (fallbackResult && fallbackResult.length > 0) ? fallbackResult[0] as any : undefined;
+        userRow = fallbackResult && fallbackResult.length > 0
+          ? mapLegacyRefreshUser(fallbackResult[0])
+          : undefined;
       } catch (error) {
         authLogger.warn('Legacy users table query failed', { error: error instanceof Error ? error.message : String(error) });
         userRow = undefined;
@@ -489,6 +554,8 @@ authHandler.post('/refresh', async (c) => {
       });
     }
 
+    const refreshedRole = payload.role === 'admin' ? 'admin' : 'agent';
+
     // 生成新的 access token
     // Phase 1 Optimization: Re-query multi-team data from DB on refresh
     const newToken = await signJWT(
@@ -496,7 +563,7 @@ authHandler.post('/refresh', async (c) => {
         userId: payload.userId,
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
-        role: payload.role,
+        role: refreshedRole,
         primaryTeamId: payload.primaryTeamId,
         type: 'access',
         // Multi-team support - freshly queried from DB
@@ -514,7 +581,7 @@ authHandler.post('/refresh', async (c) => {
         userId: payload.userId,
         displayName: payload.displayName || userRow.displayName || userRow.displayName,
         email: payload.email || userRow.email,
-        role: payload.role,
+        role: refreshedRole,
         primaryTeamId: payload.primaryTeamId,
         type: 'refresh',
         // Multi-team support - freshly queried from DB

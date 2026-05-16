@@ -6,6 +6,10 @@ import type { DurableObjectEvent } from '@/types/websocket-types';
 import { nowMs } from '@/utils/timestamp';
 import { EventBroadcasterBase } from './event-broadcaster-deps';
 
+function eventData(data: unknown): Record<string, unknown> {
+  return typeof data === 'object' && data !== null && !Array.isArray(data) ? data as Record<string, unknown> : {};
+}
+
 /**
  * Handles all message-related event broadcasts:
  * - Message CRUD events (sent, delivered, read, recall, updated)
@@ -25,7 +29,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
     messageId: string;
     userId?: string;
     agentId?: string;
-    data: any;
+    data: unknown;
     priority?: 'low' | 'normal' | 'high' | 'urgent';
   }): Promise<boolean> {
     try {
@@ -38,7 +42,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
         conversationId: event.conversationId,
         data: {
           messageId: event.messageId,
-          ...event.data
+          ...eventData(event.data)
         },
         priority: event.priority || 'normal',
         deliveryOptions: {
@@ -77,7 +81,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
     conversationId: string;
     userId: string;
     userName?: string;
-    data?: any;
+    data?: unknown;
   }): Promise<boolean> {
     try {
       const wsEvent: DurableObjectEvent = {
@@ -89,7 +93,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
         conversationId: event.conversationId,
         data: {
           userName: event.userName,
-          ...event.data
+          ...eventData(event.data)
         },
         priority: 'low',
         deliveryOptions: {
@@ -123,7 +127,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
     conversationId: string;
     messageId: string;
     agentId: string;
-    data: any;
+    data: unknown;
     priority?: 'low' | 'normal' | 'high' | 'urgent';
   }): Promise<boolean> {
     try {
@@ -136,7 +140,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
         conversationId: event.conversationId,
         data: {
           messageId: event.messageId,
-          ...event.data
+          ...eventData(event.data)
         },
         priority: event.priority || 'normal',
         deliveryOptions: {

@@ -23,6 +23,25 @@ export const DEFAULT_REPORT_CONFIG = {
 } as const;
 
 /**
+ * Report types that currently have production data queries implemented.
+ * Other configured report types remain reserved/template-only until their
+ * query pipelines are added.
+ */
+export const GENERATABLE_REPORT_TYPES = [
+  'conversation_summary',
+  'agent_performance',
+  'message_statistics'
+] as const satisfies readonly ReportType[];
+
+/**
+ * Formats that are backed by real serializers in ReportGeneratorService.
+ */
+export const GENERATABLE_REPORT_FORMATS = [
+  'json',
+  'csv'
+] as const satisfies readonly ReportFormat[];
+
+/**
  * 報告類型配置
  */
 export const REPORT_TYPE_CONFIG: Record<ReportType, {

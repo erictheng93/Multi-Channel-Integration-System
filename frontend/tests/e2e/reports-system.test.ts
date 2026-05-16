@@ -75,7 +75,12 @@ vi.mock('@/api/reports', () => {
       generateReport: vi.fn().mockResolvedValue(mockReport),
       listReports: vi.fn().mockResolvedValue(mockReportsList),
       getReportDetails: vi.fn().mockResolvedValue(mockReport),
-      downloadReport: vi.fn().mockResolvedValue(new Blob()),
+      downloadReport: vi.fn().mockResolvedValue({
+        blob: new Blob(['report']),
+        filename: 'report.json',
+        contentType: 'application/json'
+      }),
+      getReportJsonContent: vi.fn().mockResolvedValue({ report: 'data' }),
       deleteReport: vi.fn().mockResolvedValue({ success: true }),
       getReportStatistics: vi.fn().mockResolvedValue(mockStatistics),
       batchOperation: vi.fn().mockResolvedValue({ success: true }),

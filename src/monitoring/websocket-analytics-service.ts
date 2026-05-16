@@ -267,9 +267,9 @@ export class WebSocketAnalyticsService {
   // =================== 數據檢索方法 ===================
 
   async getDashboardData(): Promise<{
-    currentStats: any;
+    currentStats: unknown;
     recentTrends: TrendAnalysisData;
-    activeAlerts: any[];
+    activeAlerts: unknown[];
     topErrors: Array<{errorCode: number; count: number; percentage: number}>;
   }> {
     try {
@@ -297,7 +297,7 @@ export class WebSocketAnalyticsService {
     }
   }
 
-  private async getCurrentStats(): Promise<any> {
+  private async getCurrentStats() {
     const now = nowMs();
     const oneHourAgo = now - (60 * 60 * 1000);
 
@@ -434,10 +434,10 @@ export class WebSocketAnalyticsService {
     }
   }
 
-  private async getActiveAlerts(): Promise<any[]> {
+  private async getActiveAlerts() {
     // 獲取活躍告警 - 簡化實現
     try {
-      const alerts: any[] = [];
+      const alerts: unknown[] = [];
       console.log('[Analytics] Querying active alerts');
       return alerts;
     } catch (err) {

@@ -154,61 +154,82 @@ class EventProcessingStats {
 
 const eventStats = new EventProcessingStats();
 
+type RealtimeEventPayload<T> = T & Record<string, unknown>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isAssignee(value: unknown): value is AssignmentEventData['newAssignee'] {
+  return (
+    isRecord(value) &&
+    (value.type === 'user' || value.type === 'team') &&
+    typeof value.id === 'number' &&
+    typeof value.name === 'string'
+  );
+}
+
 // 事件驗證器
 class EventValidator {
-  static validateMessageEvent(data: any): data is MessageEventData {
-    return data &&
+  static validateMessageEvent(data: unknown): data is RealtimeEventPayload<MessageEventData> {
+    return isRecord(data) &&
       typeof data.messageId === 'number' &&
       typeof data.conversationId === 'number' &&
       typeof data.content === 'string' &&
+      typeof data.messageType === 'string' &&
       ['text', 'image', 'file', 'sticker', 'location'].includes(data.messageType) &&
+      typeof data.senderType === 'string' &&
       ['customer', 'agent', 'system'].includes(data.senderType);
   }
 
-  static validateTypingEvent(data: any): data is TypingEventData {
-    return data &&
+  static validateTypingEvent(data: unknown): data is RealtimeEventPayload<TypingEventData> {
+    return isRecord(data) &&
       typeof data.conversationId === 'number' &&
       typeof data.userId === 'number' &&
       typeof data.userName === 'string' &&
       typeof data.isTyping === 'boolean';
   }
 
-  static validateStatusEvent(data: any): data is StatusEventData {
-    return data &&
+  static validateStatusEvent(data: unknown): data is RealtimeEventPayload<StatusEventData> {
+    return isRecord(data) &&
       typeof data.conversationId === 'number' &&
       typeof data.oldStatus === 'string' &&
       typeof data.newStatus === 'string' &&
       typeof data.changedBy === 'number';
   }
 
-  static validateAssignmentEvent(data: any): data is AssignmentEventData {
-    return data &&
+  static validateAssignmentEvent(data: unknown): data is RealtimeEventPayload<AssignmentEventData> {
+    return isRecord(data) &&
       typeof data.conversationId === 'number' &&
-      data.newAssignee &&
-      ['user', 'team'].includes(data.newAssignee.type) &&
+      isAssignee(data.newAssignee) &&
+      (data.oldAssignee === undefined || isAssignee(data.oldAssignee)) &&
       typeof data.assignedBy === 'number';
   }
 
-  static validateNotificationEvent(data: any): data is NotificationEventData {
-    return data &&
+  static validateNotificationEvent(data: unknown): data is RealtimeEventPayload<NotificationEventData> {
+    return isRecord(data) &&
       typeof data.notificationId === 'number' &&
       typeof data.type === 'string' &&
       typeof data.title === 'string' &&
       typeof data.content === 'string' &&
-      Array.isArray(data.targetUsers);
+      Array.isArray(data.targetUsers) &&
+      data.targetUsers.every((userId) => typeof userId === 'number');
   }
 
-  static validateConnectionEvent(data: any): data is ConnectionEventData {
-    return data &&
+  static validateConnectionEvent(data: unknown): data is RealtimeEventPayload<ConnectionEventData> {
+    return isRecord(data) &&
       typeof data.connectionId === 'string' &&
       typeof data.userId === 'number' &&
+      typeof data.action === 'string' &&
       ['connected', 'disconnected', 'heartbeat', 'error'].includes(data.action);
   }
 
-  static validateSystemEvent(data: any): data is SystemEventData {
-    return data &&
+  static validateSystemEvent(data: unknown): data is RealtimeEventPayload<SystemEventData> {
+    return isRecord(data) &&
+      typeof data.type === 'string' &&
       ['maintenance', 'update', 'alert', 'info'].includes(data.type) &&
       typeof data.message === 'string' &&
+      typeof data.severity === 'string' &&
       ['low', 'medium', 'high', 'critical'].includes(data.severity);
   }
 }
@@ -542,7 +563,7 @@ export const eventHandler = {
   sendTypingStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
     try {
       c.get('jwtPayload');
-      const { conversationId } = await c.req.json();
+      const { conversationId } = await c.req.json() as { conversationId?: number | string };
 
       if (!conversationId) {
         return errorResponse(c, 'Conversation ID is required', 400);
@@ -561,7 +582,10 @@ export const eventHandler = {
   // 廣播事件到對話
   broadcastToConversation: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      const { conversationId, event } = await c.req.json();
+      const { conversationId, event } = await c.req.json() as {
+        conversationId?: number | string;
+        event?: unknown;
+      };
 
       if (!conversationId || !event) {
         return errorResponse(c, 'Conversation ID and event are required', 400);
@@ -581,7 +605,7 @@ export const eventHandler = {
   updateOnlineStatus: async (c: Context<{ Bindings: Bindings; Variables: { jwtPayload: JWTPayload } }>) => {
     try {
       c.get('jwtPayload');
-      const { isOnline } = await c.req.json();
+      const { isOnline } = await c.req.json() as { isOnline?: boolean };
 
       // REMOVED: SSE handler import and delivery (Phase 3 cleanup - WebSocket handles all real-time events now)
       // const { enhancedSSEManager } = await import('./sse-handler');

@@ -13,6 +13,14 @@ import { UserConnectionStateManager } from './user-connection-state';
 import { UserSubscriptionManager } from './user-subscription-manager';
 import { UserConnectionSecurity } from './user-connection-security';
 
+type UserConnectionEnv = Record<string, unknown> & {
+  userId?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Architecture Overview:
  *
@@ -34,7 +42,7 @@ import { UserConnectionSecurity } from './user-connection-security';
 
 export class UserConnection implements DurableObject {
   private state: DurableObjectState;
-  private env: any;
+  private env: UserConnectionEnv;
   private userId: string;
 
   // Sub-module delegates
@@ -42,7 +50,7 @@ export class UserConnection implements DurableObject {
   private readonly subscriptionManager = new UserSubscriptionManager();
   private readonly security = new UserConnectionSecurity();
 
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, env: UserConnectionEnv) {
     this.state = state;
     this.env = env;
     this.userId = env.userId || 'unknown';
@@ -510,7 +518,7 @@ export class UserConnection implements DurableObject {
     if (request.method === 'GET') {
       return new Response(JSON.stringify(this.stateManager.currentPreferences));
     } else if (request.method === 'PUT') {
-      const newPreferences = await request.json() as Record<string, any>;
+      const newPreferences = await request.json() as Record<string, unknown>;
       const updated = this.stateManager.updatePreferences(newPreferences);
       await this.updateUserState();
       return new Response(JSON.stringify(updated));
@@ -538,20 +546,21 @@ export class UserConnection implements DurableObject {
    */
   private async handleBatchEvents(request: Request): Promise<Response> {
     try {
-      const { events } = await request.json() as { events: any[] };
+      const { events } = await request.json() as { events?: DurableObjectEvent[] };
 
       // ENHANCED DEBUG: Log received batch events with full details for duplicate tracking
       console.log(`[UserConnection] ===== BATCH EVENTS RECEIVED =====`);
       console.log(`[UserConnection] User: ${this.userId}, Connections: ${this.stateManager.connectionCount}`);
       for (const event of (events || [])) {
+        const eventData = isRecord(event.data) ? event.data : {};
         console.log(`[UserConnection] Event detail:`, {
           userId: this.userId,
           eventId: event.id,
           eventType: event.type,
-          eventAction: event.data?.action,
+          eventAction: eventData.action,
           conversationId: event.conversationId,
-          fromTeamId: event.data?.fromTeamId,
-          toTeamId: event.data?.toTeamId,
+          fromTeamId: eventData.fromTeamId,
+          toTeamId: eventData.toTeamId,
           timestamp: nowISO()
         });
       }
@@ -565,8 +574,8 @@ export class UserConnection implements DurableObject {
       for (const event of events) {
         // Convert DurableObjectEvent to WebSocketMessage format
         const message: WebSocketMessage = {
-          type: event.type || 'event',
-          data: event.data,
+          type: 'event',
+          data: event,
           conversationId: event.conversationId,
           timestamp: event.timestamp || nowMs()
         };

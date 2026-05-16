@@ -8,7 +8,9 @@ import type { Bindings } from '@/types';
 import type {
   FileUploadRequest,
   FileQueryOptions,
-  BatchFileOperation
+  BatchFileOperation,
+  FileType,
+  PlatformType
 } from '../types/file-types';
 
 import { FileService } from '@modules/file-management/services/file-service';
@@ -23,6 +25,47 @@ import {
 } from '@/utils/api-response';
 
 import { ERROR_MESSAGES } from '@modules/file-management/constants/error-codes';
+
+function parsePlatformType(value: unknown): PlatformType | undefined {
+  switch (value) {
+    case 'line':
+    case 'facebook':
+    case 'system':
+    case 'admin':
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+function parseFileType(value: unknown): FileType | undefined {
+  switch (value) {
+    case 'image':
+    case 'video':
+    case 'audio':
+    case 'document':
+    case 'archive':
+    case 'other':
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+function parseFileSortBy(value: unknown): FileQueryOptions['sortBy'] {
+  switch (value) {
+    case 'createdAt':
+    case 'filename':
+    case 'size':
+      return value;
+    default:
+      return 'createdAt';
+  }
+}
+
+function parseSortOrder(value: unknown): FileQueryOptions['sortOrder'] {
+  return value === 'asc' ? 'asc' : 'desc';
+}
 
 export class FileHandler {
   private fileService: FileService;
@@ -41,7 +84,7 @@ export class FileHandler {
       // 解析 FormData
       const formData = await c.req.formData();
       const file = formData.get('file') as File;
-      const platform = formData.get('platform') as string;
+      const platform = formData.get('platform');
       const conversationId = formData.get('conversationId') as string;
       const messageId = formData.get('messageId') as string;
 
@@ -56,7 +99,7 @@ export class FileHandler {
         file,
         filename: file.name,
         mimeType: file.type,
-        platform: platform as any || 'system',
+        platform: parsePlatformType(platform) ?? 'system',
         conversationId,
         messageId,
         uploadedBy: payload?.userId?.toString(),
@@ -251,15 +294,15 @@ export class FileHandler {
       const options: FileQueryOptions = {
         page,
         pageSize,
-        platform: platform as any,
-        type: type as any,
+        platform: parsePlatformType(platform),
+        type: parseFileType(type),
         conversationId,
         messageId,
         uploadedBy,
         dateFrom,
         dateTo,
-        sortBy: sortBy as any,
-        sortOrder: sortOrder as any
+        sortBy: parseFileSortBy(sortBy),
+        sortOrder: parseSortOrder(sortOrder)
       };
 
       const result = await this.fileService.listFiles(options);
@@ -349,8 +392,8 @@ export class FileHandler {
       const options: FileQueryOptions = {
         page,
         pageSize,
-        platform: platform as any,
-        type: type as any,
+        platform: parsePlatformType(platform),
+        type: parseFileType(type),
         dateFrom,
         dateTo
       };
@@ -394,7 +437,7 @@ export class FileHandler {
         page,
         pageSize,
         conversationId,
-        type: type as any
+        type: parseFileType(type)
       };
 
       const result = await this.fileService.listFiles(options);

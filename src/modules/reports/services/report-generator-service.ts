@@ -2,6 +2,7 @@
 // Handles report data generation, querying, formatting and serialization
 
 import type { Bindings } from '@/types';
+import type { drizzle } from 'drizzle-orm/d1';
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('ReportGenerator')
@@ -21,19 +22,50 @@ import {
   InvalidReportParamsError,
   ReportAccessDeniedError,
   ReportNotFoundError,
-  DEFAULT_REPORT_CONFIG
+  DEFAULT_REPORT_CONFIG,
+  isReportTimeRange
 } from '../types/report-types';
 
 import type { ReportUtils } from './report-utils';
 import { nowISO, nowMs } from '@/utils/timestamp'
+
+type DrizzleDb = ReturnType<typeof drizzle>;
+type ReportInsert = typeof import('../../../db/schema').reports.$inferInsert;
+
+export interface ReportDownloadContent {
+  body: BodyInit;
+  contentType: string;
+  filename: string;
+  fileSize?: number;
+  url: string;
+}
+
+interface FormattedReportData {
+  reportInfo: {
+    title: string;
+    type: ReportGenerationParams['type'];
+    generatedAt: string;
+    parameters: {
+      timeRange?: ReportTimeRange;
+      filters?: ReportGenerationParams['filters'];
+    };
+  };
+  data: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /**
  * Handles all report generation, data querying, and formatting
  */
 export class ReportGeneratorService {
   private db: D1Database;
+  private bucket: R2Bucket;
   constructor(env: Bindings) {
     this.db = env.DB;
+    this.bucket = env.R2_BUCKET;
   }
 
   /**
@@ -56,7 +88,7 @@ export class ReportGeneratorService {
       await utils.checkReportPermission(params.type, userId, 'generate');
       await utils.checkConcurrentGenerations(userId);
 
-      const reportId = `report_${crypto.randomUUID()}`;
+      const reportId = crypto.randomUUID();
       const now = nowISO();
       const expiresAt = new Date(Date.now() + DEFAULT_REPORT_CONFIG.reportExpiryDays * 24 * 60 * 60 * 1000).toISOString();
 
@@ -87,15 +119,23 @@ export class ReportGeneratorService {
         const rawData = await this.queryReportData(params);
         const formattedReport = await this.formatReport(rawData, params);
         const reportContent = this.serializeReport(formattedReport, params.format);
-        const fileSize = new Blob([reportContent]).size;
+        const fileSize = new TextEncoder().encode(reportContent).byteLength;
         const executionTime = Math.floor((Date.now() - startTime) / 1000);
+        const downloadUrl = `/api/reports/${reportId}/download`;
+
+        await this.storeReportFile(reportId, reportContent, params.format, {
+          title: params.title,
+          type: params.type,
+          createdBy: userId,
+          generatedAt: nowISO()
+        });
 
         await this.updateReportCompletion(reportId, {
           status: 'completed',
           completedAt: nowISO(),
           fileSize,
           executionTime,
-          downloadUrl: `/api/reports/${reportId}/download`
+          downloadUrl
         });
 
         return (await this.getReportStatus(reportId))!;
@@ -137,9 +177,9 @@ export class ReportGeneratorService {
       return {
         id: report.id,
         title: report.title,
-        type: report.type as 'conversation_summary' | 'agent_performance' | 'message_statistics' | 'custom',
-        format: report.format as 'json' | 'csv' | 'excel' | 'pdf',
-        status: report.status as 'pending' | 'generating' | 'completed' | 'failed',
+        type: report.type as ReportBase['type'],
+        format: report.format as ReportFormat,
+        status: report.status as ReportStatus,
         createdBy: report.createdBy,
         createdAt: report.createdAt || nowISO(),
         updatedAt: report.updatedAt || undefined,
@@ -164,7 +204,7 @@ export class ReportGeneratorService {
     reportId: string,
     userId: string,
     utils: ReportUtils
-  ): Promise<{ url: string; filename: string } | null> {
+  ): Promise<ReportDownloadContent | null> {
     try {
       const report = await this.getReportStatus(reportId);
       if (!report) {
@@ -177,10 +217,23 @@ export class ReportGeneratorService {
         return null;
       }
 
+      const objectKey = this.getReportObjectKey(report.id, report.format);
+      const object = await this.bucket.get(objectKey);
+      if (!object) {
+        log.error('Report object missing from R2', { reportId, objectKey });
+        return null;
+      }
+
       await this.logDownload(reportId, userId);
 
-      const filename = `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}.${report.format}`;
-      return { url: report.downloadUrl, filename };
+      const filename = `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}.${this.getReportExtension(report.format)}`;
+      return {
+        body: object.body,
+        contentType: object.httpMetadata?.contentType || this.getReportContentType(report.format),
+        filename,
+        fileSize: object.size,
+        url: report.downloadUrl
+      };
     } catch (error) {
       log.error('Download report error', {}, error as Error);
       if (error instanceof ReportNotFoundError ||
@@ -199,22 +252,25 @@ export class ReportGeneratorService {
 
     const db = drizzle(this.db);
 
-    await db.insert(reports).values({
+    const metadata = report.metadata ?? {};
+    const insertData: ReportInsert = {
       id: report.id,
       title: report.title,
-      description: report.description,
+      description: report.description ?? null,
       type: report.type,
       format: report.format,
       status: report.status,
       createdBy: report.createdBy,
       createdAt: report.createdAt,
-      expiresAt: report.expiresAt,
-      timeRange: report.metadata?.timeRange,
-      startDate: report.metadata?.startDate,
-      endDate: report.metadata?.endDate,
-      filters: report.metadata?.filters ? JSON.stringify(report.metadata.filters) : null,
-      options: report.metadata?.options ? JSON.stringify(report.metadata.options) : null
-    });
+      expiresAt: report.expiresAt ?? null,
+      timeRange: isReportTimeRange(metadata.timeRange) ? metadata.timeRange : null,
+      startDate: typeof metadata.startDate === 'string' ? metadata.startDate : null,
+      endDate: typeof metadata.endDate === 'string' ? metadata.endDate : null,
+      filters: isRecord(metadata.filters) ? JSON.stringify(metadata.filters) : null,
+      options: isRecord(metadata.options) ? JSON.stringify(metadata.options) : null
+    };
+
+    await db.insert(reports).values(insertData);
   }
 
   private async updateReportStatus(
@@ -229,7 +285,7 @@ export class ReportGeneratorService {
 
     const db = drizzle(this.db);
 
-    const updates: any = { status, updatedAt: timestamp };
+    const updates: Partial<ReportInsert> = { status, updatedAt: timestamp };
 
     if (status === 'generating') {
       updates.generationStartedAt = timestamp;
@@ -289,14 +345,22 @@ export class ReportGeneratorService {
     }
   }
 
-  async deleteReportFile(_downloadUrl: string): Promise<void> {
-    // Reports are generated on-the-fly from DB data, not stored in R2.
-    // No file cleanup needed — deleting the report DB record is sufficient.
+  async deleteReportFile(downloadUrl: string): Promise<void> {
+    const match = downloadUrl.match(/\/api\/reports\/([^/]+)\/download$/);
+    if (!match?.[1]) {
+      return;
+    }
+
+    await Promise.allSettled(
+      (['json', 'csv'] as ReportFormat[]).map(format =>
+        this.bucket.delete(this.getReportObjectKey(match[1], format))
+      )
+    );
   }
 
   // =================== Private: Data Querying ===================
 
-  private async queryReportData(params: ReportGenerationParams): Promise<any> {
+  private async queryReportData(params: ReportGenerationParams) {
     const { drizzle } = await import('drizzle-orm/d1');
 
     const db = drizzle(this.db);
@@ -350,7 +414,7 @@ export class ReportGeneratorService {
     };
   }
 
-  private async queryConversationSummary(db: any, startDate: string, endDate: string, _filters: any): Promise<ConversationSummaryReportData> {
+  private async queryConversationSummary(db: DrizzleDb, startDate: string, endDate: string, _filters: unknown): Promise<ConversationSummaryReportData> {
     const { conversations } = await import('../../../db/schema');
     const { gte, lte, count, and } = await import('drizzle-orm');
 
@@ -365,9 +429,9 @@ export class ReportGeneratorService {
       .where(and(...baseConditions))
       .groupBy(conversations.status);
 
-    const totalConversations = conversationStats.reduce((sum: number, s: any) => sum + s.total, 0);
-    const activeConversations = conversationStats.find((s: any) => s.status === 'active')?.total || 0;
-    const closedConversations = conversationStats.find((s: any) => s.status === 'closed')?.total || 0;
+    const totalConversations = conversationStats.reduce((sum: number, s) => sum + s.total, 0);
+    const activeConversations = conversationStats.find((s) => s.status === 'active')?.total || 0;
+    const closedConversations = conversationStats.find((s) => s.status === 'closed')?.total || 0;
 
     // Message stats query available if needed:
     // await db.select({ total: count() }).from(messages).where(and(gte(messages.createdAt, startDate), lte(messages.createdAt, endDate)));
@@ -388,7 +452,7 @@ export class ReportGeneratorService {
     };
   }
 
-  private async queryAgentPerformance(db: any, startDate: string, endDate: string, _filters: any): Promise<AgentPerformanceReportData> {
+  private async queryAgentPerformance(db: DrizzleDb, startDate: string, endDate: string, _filters: unknown): Promise<AgentPerformanceReportData> {
     const { messages, agents } = await import('../../../db/schema');
     const { gte, lte, count, eq, and, isNotNull } = await import('drizzle-orm');
 
@@ -403,7 +467,9 @@ export class ReportGeneratorService {
       .groupBy(messages.agentSenderId);
 
     const agentPerformance = await Promise.all(
-      agentStats.map(async (stat: any) => {
+      agentStats
+        .filter((stat): stat is typeof stat & { agentId: string } => stat.agentId !== null)
+        .map(async (stat) => {
         const agent = await db
           .select()
           .from(agents)
@@ -422,7 +488,9 @@ export class ReportGeneratorService {
         return {
           agentId: stat.agentId,
           agentName: agent?.displayName || 'Unknown',
-          conversationsHandled: stat.conversationCount,
+          teamId: null as number | null,
+          teamName: '',
+          conversationsHandled: stat.messageCount,
           messagesSent: messageCount[0]?.total || 0,
           avgResponseTime: 0,
           satisfactionScore: null as number | null
@@ -452,7 +520,7 @@ export class ReportGeneratorService {
     };
   }
 
-  private async queryMessageStatistics(db: any, startDate: string, endDate: string, _filters: any): Promise<any> {
+  private async queryMessageStatistics(db: DrizzleDb, startDate: string, endDate: string, _filters: unknown) {
     const { messages } = await import('../../../db/schema');
     const { sql, count } = await import('drizzle-orm');
 
@@ -469,9 +537,9 @@ export class ReportGeneratorService {
     return {
       period: { startDate, endDate },
       summary: {
-        totalMessages: messageStats.reduce((sum: number, s: any) => sum + s.total, 0),
-        customerMessages: messageStats.filter((s: any) => s.senderType === 'customer').reduce((sum: number, s: any) => sum + s.total, 0),
-        agentMessages: messageStats.filter((s: any) => s.senderType === 'agent').reduce((sum: number, s: any) => sum + s.total, 0)
+        totalMessages: messageStats.reduce((sum: number, s) => sum + s.total, 0),
+        customerMessages: messageStats.filter((s) => s.senderType === 'customer').reduce((sum: number, s) => sum + s.total, 0),
+        agentMessages: messageStats.filter((s) => s.senderType === 'agent').reduce((sum: number, s) => sum + s.total, 0)
       },
       messagesByType: messageStats
     };
@@ -479,7 +547,7 @@ export class ReportGeneratorService {
 
   // =================== Private: Formatting ===================
 
-  private async formatReport(data: any, params: ReportGenerationParams): Promise<any> {
+  private async formatReport(data: unknown, params: ReportGenerationParams): Promise<FormattedReportData> {
     return {
       reportInfo: {
         title: params.title,
@@ -491,7 +559,7 @@ export class ReportGeneratorService {
     };
   }
 
-  serializeReport(data: any, format: ReportFormat): string {
+  serializeReport(data: FormattedReportData, format: ReportFormat): string {
     switch (format) {
       case 'json':
         return JSON.stringify(data, null, 2);
@@ -502,13 +570,52 @@ export class ReportGeneratorService {
     }
   }
 
-  private convertToCSV(data: any): string {
+  private async storeReportFile(
+    reportId: string,
+    content: string,
+    format: ReportFormat,
+    metadata: Record<string, string>
+  ): Promise<void> {
+    await this.bucket.put(this.getReportObjectKey(reportId, format), content, {
+      httpMetadata: {
+        contentType: this.getReportContentType(format),
+        contentDisposition: `attachment; filename="${reportId}.${this.getReportExtension(format)}"`
+      },
+      customMetadata: metadata
+    });
+  }
+
+  private getReportObjectKey(reportId: string, format: ReportFormat): string {
+    return `reports/${reportId}.${this.getReportExtension(format)}`;
+  }
+
+  private getReportExtension(format: ReportFormat): string {
+    return format === 'excel' ? 'csv' : format;
+  }
+
+  private getReportContentType(format: ReportFormat): string {
+    switch (format) {
+      case 'json':
+        return 'application/json; charset=utf-8';
+      case 'csv':
+      case 'excel':
+        return 'text/csv; charset=utf-8';
+      case 'html':
+        return 'text/html; charset=utf-8';
+      case 'pdf':
+        return 'application/pdf';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  private convertToCSV(data: FormattedReportData): string {
     const lines: string[] = [];
     lines.push(`Report: ${data.reportInfo.title}`);
     lines.push(`Generated: ${data.reportInfo.generatedAt}`);
     lines.push('');
 
-    if (data.data.summary) {
+    if (isRecord(data.data) && isRecord(data.data.summary)) {
       lines.push('Summary');
       Object.entries(data.data.summary).forEach(([key, value]) => {
         lines.push(`${key},${value}`);

@@ -5,12 +5,19 @@ import { Hono } from 'hono';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { createDataOptimizationService } from '@/services/data-optimization-service';
-import type { DataOptimizationConfig } from '@/services/data-optimization-service';
+import type { DataOptimizationConfig, QueryOptimizationStats } from '@/services/data-optimization-service';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { nowMs } from '@/utils/timestamp'
 
 const dataOptimizationHandler = new Hono<{ Bindings: Bindings }>();
+
+type DataOptimizationServiceInstance = ReturnType<typeof createDataOptimizationService>;
+type BatchTestOperation = {
+  type: 'get' | 'set' | 'delete';
+  key: string;
+  value?: string;
+};
 
 // =================== 配置管理 API ===================
 
@@ -225,6 +232,13 @@ dataOptimizationHandler.post('/test-batch', jwtAuth, async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
+    if (!isBatchOperationType(operationType)) {
+      return c.json({
+        error: 'Invalid operation type',
+        message: 'Operation type must be one of: set, get, delete, mixed'
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
     const optimizationService = createDataOptimizationService(c.env);
     const batchTestResults = await performBatchTest(
       optimizationService,
@@ -355,7 +369,7 @@ dataOptimizationHandler.get('/health', async (c) => {
     };
 
     // 智能健康檢查邏輯 - 處理初始化狀態
-    const evaluateCheck = (check: any) => {
+    const evaluateCheck = (check: boolean | number) => {
       if (typeof check === 'boolean') return check;
       if (check === 0 && stats.totalQueries === 0) {
         // 系統剛初始化，優化分數為0是正常的，給予中性評分
@@ -516,7 +530,7 @@ function getPerformanceGrade(score: number): string {
   return 'F';
 }
 
-function generateOptimizationRecommendations(stats: any): string[] {
+function generateOptimizationRecommendations(stats: QueryOptimizationStats): string[] {
   const recommendations: string[] = [];
 
   if (stats.totalQueries > 0) {
@@ -542,7 +556,7 @@ function generateOptimizationRecommendations(stats: any): string[] {
   return recommendations;
 }
 
-async function performCacheTest(service: any, testSize: number, testData?: any[]): Promise<any> {
+async function performCacheTest(service: DataOptimizationServiceInstance, testSize: number, testData?: unknown[]) {
   const startTime = nowMs();
   const testKeys: string[] = [];
 
@@ -590,16 +604,24 @@ async function performCacheTest(service: any, testSize: number, testData?: any[]
   }
 }
 
-async function performBatchTest(service: any, operationCount: number, operationType: string): Promise<any> {
+function isBatchOperationType(value: unknown): value is 'set' | 'get' | 'delete' | 'mixed' {
+  return value === 'set' || value === 'get' || value === 'delete' || value === 'mixed';
+}
+
+async function performBatchTest(
+  service: DataOptimizationServiceInstance,
+  operationCount: number,
+  operationType: 'set' | 'get' | 'delete' | 'mixed'
+) {
   const startTime = nowMs();
 
   try {
-    const operations = [];
+    const operations: BatchTestOperation[] = [];
 
     // 生成測試操作
     for (let i = 0; i < operationCount; i++) {
       if (operationType === 'mixed') {
-        const type = i % 3 === 0 ? 'set' : (i % 3 === 1 ? 'get' : 'delete');
+        const type: 'set' | 'get' | 'delete' = i % 3 === 0 ? 'set' : (i % 3 === 1 ? 'get' : 'delete');
         operations.push({
           type,
           key: `batch_test_${i}`,
@@ -615,7 +637,7 @@ async function performBatchTest(service: any, operationCount: number, operationT
     }
 
     // 執行批量操作
-    const results = await service.batchOperation(operations);
+    const results = await service.batchOperation<string>(operations);
     const totalTime = Date.now() - startTime;
 
     return {
@@ -623,8 +645,8 @@ async function performBatchTest(service: any, operationCount: number, operationT
       operationType,
       totalTime,
       averageTimePerOperation: Math.round(totalTime / operationCount),
-      successCount: results.filter((_r: unknown) => _r !== null).length,
-      successRate: `${Math.round((results.filter((_r: unknown) => _r !== null).length / operationCount) * 100)}%`
+      successCount: results.filter((_r) => _r !== null).length,
+      successRate: `${Math.round((results.filter((_r) => _r !== null).length / operationCount) * 100)}%`
     };
 
   } catch (error) {

@@ -347,14 +347,22 @@ app.post('/:id/qr-code', jwtAuth, requireTeamRole('supervisor'), requireIntId(),
     const { campaignName, description, expiresAt, maxUses } = await c.req.json().catch(() => ({}));
 
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
-    const qrCodeParams: any = {
+    const qrCodeParams: {
+      teamId: number;
+      campaignName?: string;
+      description?: string;
+      expiresAt?: Date;
+      maxUses?: number;
+      metadata?: { description?: string; teamId: number; createdBy: number };
+    } = {
       teamId,
       campaignName,
       description,
       maxUses,
       metadata: {
         description,
-        teamId
+        teamId,
+        createdBy: 0
       }
     };
 

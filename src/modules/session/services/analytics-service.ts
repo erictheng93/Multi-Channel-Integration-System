@@ -4,6 +4,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, and, desc, asc, sql, count, avg, gte, lte, isNull } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { conversationSessions, messages, conversations } from '@/db/schema';
 import {
   SessionStats,
@@ -63,7 +64,7 @@ export class AnalyticsService {
    * 獲取會話統計資訊
    */
   async getSessionStats(conversationId?: string): Promise<SessionStats> {
-    let whereCondition = undefined;
+    let whereCondition: SQL<unknown> | undefined = undefined;
     if (conversationId) {
       whereCondition = eq(conversationSessions.conversationId, conversationId);
     }
@@ -358,11 +359,11 @@ export class AnalyticsService {
 
   // 私有輔助方法
 
-  private calculateAverageDuration(sessions: any[]): number {
+  private calculateAverageDuration(sessions: Array<{ startTime: string; endTime: string | null }>): number {
     if (!sessions.length) return 0;
 
     const durations = sessions
-      .filter(s => s.startTime && s.endTime)
+      .filter((s): s is { startTime: string; endTime: string } => Boolean(s.startTime && s.endTime))
       .map(s => {
         const start = new Date(s.startTime).getTime();
         const end = new Date(s.endTime).getTime();
@@ -374,7 +375,7 @@ export class AnalyticsService {
       : 0;
   }
 
-  private async getSessionsByType(whereCondition: any): Promise<Record<ConversationSession['sessionType'], number>> {
+  private async getSessionsByType(whereCondition: SQL<unknown> | undefined): Promise<Record<ConversationSession['sessionType'], number>> {
     const results = await this.db
       .select({
         sessionType: conversationSessions.sessionType,
@@ -401,7 +402,7 @@ export class AnalyticsService {
     return stats;
   }
 
-  private async getSessionsByPriority(whereCondition: any): Promise<Record<NonNullable<ConversationSession['priority']>, number>> {
+  private async getSessionsByPriority(whereCondition: SQL<unknown> | undefined): Promise<Record<NonNullable<ConversationSession['priority']>, number>> {
     const result: Record<NonNullable<ConversationSession['priority']>, number> = {
       low: 0, medium: 0, high: 0, urgent: 0
     };
@@ -431,12 +432,12 @@ export class AnalyticsService {
     return result;
   }
 
-  private async getSessionsBySentiment(_whereCondition: any): Promise<Record<NonNullable<ConversationSession['sentiment']>, number> | null> {
+  private async getSessionsBySentiment(_whereCondition: SQL<unknown> | undefined): Promise<Record<NonNullable<ConversationSession['sentiment']>, number> | null> {
     // No sentiment column exists in the DB. Return null to signal "not available."
     return null;
   }
 
-  private async getTopicsDistribution(whereCondition: any): Promise<Array<{ topic: string; count: number; percentage: number }>> {
+  private async getTopicsDistribution(whereCondition: SQL<unknown> | undefined): Promise<Array<{ topic: string; count: number; percentage: number }>> {
     const results = await this.db
       .select({
         topic: conversationSessions.topic,
@@ -458,7 +459,7 @@ export class AnalyticsService {
     }));
   }
 
-  private async getDailyStats(whereCondition: any): Promise<Array<{
+  private async getDailyStats(whereCondition: SQL<unknown> | undefined): Promise<Array<{
     date: string;
     sessionCount: number;
     messageCount: number;
@@ -505,12 +506,12 @@ export class AnalyticsService {
     }
   }
 
-  private async getActivitiesInRange(_whereCondition: any, _timeRange: string): Promise<any[]> {
+  private async getActivitiesInRange(_whereCondition: unknown, _timeRange: string) {
     // 簡化實現，返回基本活動資料
     return [];
   }
 
-  private async calculateActivitySummary(activities: any[]): Promise<any> {
+  private async calculateActivitySummary(activities: unknown[]) {
     return {
       totalActivity: activities.length,
       avgSessionsPerDay: 0,

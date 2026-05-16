@@ -15,12 +15,20 @@ import type {
 
 import { createDbClient, type Database } from '@/db/drizzle-factory';
 import { eq, and, desc, asc, sql, gte, lte } from 'drizzle-orm';
+import type { SQLWrapper } from 'drizzle-orm';
 import { metrics } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('MetricsCollector');
+
+interface AggregatedMetricRow {
+  aggregated_value: number;
+  period_timestamp: string | number;
+  tags?: string | null;
+  sample_count: number;
+}
 
 /**
  * 統一指標收集服務
@@ -31,7 +39,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
   private kv?: Bindings['KV'];
   private config: MetricStorageConfig;
   private batchBuffer: Metric[] = [];
-  private flushTimer?: any;
+  private flushTimer?: ReturnType<typeof setInterval>;
 
   constructor(
     database: D1Database,
@@ -123,6 +131,22 @@ export class MetricsCollector implements MetricsCollectorInterface {
 
     try {
       this.validateQuery(query);
+      const cacheKey = this.buildQueryCacheKey(query);
+
+      if (this.kv && this.config.backend !== 'database') {
+        const cached = await this.kv.get(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached) as MetricQueryResult;
+          return {
+            ...parsed,
+            metadata: {
+              ...parsed.metadata,
+              queryTime: nowMs() - startTime,
+              cacheHit: true
+            }
+          };
+        }
+      }
 
       // 構建查詢條件
       const whereConditions = [
@@ -145,20 +169,45 @@ export class MetricsCollector implements MetricsCollectorInterface {
         ? await this.queryAggregated(query, whereConditions)
         : await this.queryRaw(query, whereConditions);
 
-      return {
+      const response: MetricQueryResult = {
         metrics: result,
         metadata: {
           totalRecords: result.length,
-          queryTime: Date.now() - startTime,
-          cacheHit: false, // TODO: 實現緩存檢測
+          queryTime: nowMs() - startTime,
+          cacheHit: false,
           aggregationLevel: query.period || '1m'
         }
       };
+
+      if (this.kv && this.config.backend !== 'database') {
+        await this.kv.put(cacheKey, JSON.stringify(response), { expirationTtl: 60 });
+      }
+
+      return response;
 
     } catch (error) {
       log.error('Failed to query metrics:', {}, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
+  }
+
+  private buildQueryCacheKey(query: MetricQuery): string {
+    const tags = query.tags
+      ? Object.entries(query.tags).sort(([a], [b]) => a.localeCompare(b))
+      : [];
+    const parts = {
+      name: query.name,
+      aggregation: query.aggregation || '',
+      period: query.period || '',
+      startTime: query.startTime,
+      endTime: query.endTime,
+      tags,
+      groupBy: query.groupBy || [],
+      orderBy: query.orderBy || '',
+      limit: query.limit || ''
+    };
+
+    return `metrics:query:${btoa(JSON.stringify(parts)).replace(/=+$/g, '')}`;
   }
 
   /**
@@ -359,7 +408,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
     await this.db.insert(metrics).values(records);
   }
 
-  private async queryRaw(query: MetricQuery, whereConditions: any[]): Promise<AggregatedMetric[]> {
+  private async queryRaw(query: MetricQuery, whereConditions: SQLWrapper[]): Promise<AggregatedMetric[]> {
     const queryBuilder = this.db
       .select({
         id: metrics.id,
@@ -397,7 +446,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
     }));
   }
 
-  private async queryAggregated(query: MetricQuery, whereConditions: any[]): Promise<AggregatedMetric[]> {
+  private async queryAggregated(query: MetricQuery, whereConditions: SQLWrapper[]): Promise<AggregatedMetric[]> {
     const aggregationSQL = this.buildAggregationSQL(query.aggregation!);
     const periodSQL = this.buildPeriodSQL(query.period!);
 
@@ -414,18 +463,26 @@ export class MetricsCollector implements MetricsCollectorInterface {
       ${query.limit ? sql`LIMIT ${query.limit}` : sql``}
     `);
 
-    return (results.results || []).map((row: any) => ({
-      name: query.name,
-      aggregation: query.aggregation!,
-      value: row.aggregated_value,
-      timestamp: row.period_timestamp,
-      period: query.period!,
-      tags: JSON.parse(row.tags || '{}'),
-      sampleCount: row.sample_count
-    }));
+    const rows = (results.results || []) as AggregatedMetricRow[];
+
+    return rows.map((row) => {
+      const parsedTimestamp = typeof row.period_timestamp === 'number'
+        ? row.period_timestamp
+        : Date.parse(row.period_timestamp);
+
+      return {
+        name: query.name,
+        aggregation: query.aggregation!,
+        value: row.aggregated_value,
+        timestamp: Number.isFinite(parsedTimestamp) ? parsedTimestamp : 0,
+        period: query.period!,
+        tags: JSON.parse(row.tags || '{}') as Record<string, string>,
+        sampleCount: row.sample_count
+      };
+    });
   }
 
-  private buildAggregationSQL(aggregation: AggregationType): any {
+  private buildAggregationSQL(aggregation: AggregationType) {
     switch (aggregation) {
       case 'sum':
         return sql`SUM(${metrics.metricValue})`;
@@ -448,7 +505,7 @@ export class MetricsCollector implements MetricsCollectorInterface {
     }
   }
 
-  private buildPeriodSQL(period: AggregationPeriod): any {
+  private buildPeriodSQL(period: AggregationPeriod) {
     switch (period) {
       case '1m':
         return sql`(${metrics.timestamp} / 60000) * 60000`;

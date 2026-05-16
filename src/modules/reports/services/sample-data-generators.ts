@@ -38,7 +38,7 @@ export class SampleDataGenerators {
    * @param reportType - The type of report to generate sample data for
    * @returns Sample data for the report type, or null if not available
    */
-  static getSampleData(reportType: ReportType): unknown {
+  static getSampleData(reportType: ReportType) {
     switch (reportType) {
       case 'conversation_summary':
         return generateConversationData();

@@ -95,7 +95,7 @@ export class AlertNotificationService {
     level: AlertLevel,
     title: string,
     description: string,
-    metadata: Record<string, any> = {}
+    metadata: Record<string, unknown> = {}
   ): Promise<AlertRecord> {
     const alertId = this.generateAlertId();
 
@@ -173,7 +173,7 @@ export class AlertNotificationService {
   private async sendToChannel(
     channel: NotificationChannel,
     alert: AlertRecord,
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
   ): Promise<boolean> {
     switch (channel) {
       case NotificationChannel.CONSOLE:
@@ -209,7 +209,7 @@ export class AlertNotificationService {
     return true;
   }
 
-  private async sendToWebhook(alert: AlertRecord, metadata: Record<string, any>): Promise<boolean> {
+  private async sendToWebhook(alert: AlertRecord, metadata: Record<string, unknown>): Promise<boolean> {
     try {
       // 獲取 Webhook URL 配置
       const webhookUrl = await this.env.CACHE?.get('alert_webhook_url');
@@ -253,7 +253,7 @@ export class AlertNotificationService {
     }
   }
 
-  private async sendToSlack(alert: AlertRecord, _metadata: Record<string, any>): Promise<boolean> {
+  private async sendToSlack(alert: AlertRecord, _metadata: Record<string, unknown>): Promise<boolean> {
     try {
       const slackWebhookUrl = await this.env.CACHE?.get('slack_webhook_url');
       if (!slackWebhookUrl) {
@@ -321,11 +321,11 @@ export class AlertNotificationService {
     }
   }
 
-  private async sendToEmail(alert: AlertRecord, _metadata: Record<string, any>): Promise<boolean> {
+  private async sendToEmail(alert: AlertRecord, _metadata: Record<string, unknown>): Promise<boolean> {
     try {
       // Try env-based email API first (EMAIL_API_KEY + EMAIL_API_ENDPOINT)
-      const apiKey = (this.env as any).EMAIL_API_KEY;
-      const apiEndpoint = (this.env as any).EMAIL_API_ENDPOINT;
+      const apiKey = this.env.EMAIL_API_KEY;
+      const apiEndpoint = this.env.EMAIL_API_ENDPOINT;
 
       if (apiKey && apiEndpoint) {
         const subject = `[${alert.level.toUpperCase()}] ${alert.title}`;
@@ -361,10 +361,54 @@ export class AlertNotificationService {
     }
   }
 
-  private async sendToSMS(alert: AlertRecord, _metadata: Record<string, any>): Promise<boolean> {
-    console.log(`[Alert Service] SMS notification not implemented for: ${alert.title}`);
-    // 未來可以整合 Twilio 或其他簡訊服務
-    return false;
+  private async sendToSMS(alert: AlertRecord, metadata: Record<string, unknown>): Promise<boolean> {
+    try {
+      const apiEndpoint = this.env.SMS_API_ENDPOINT || await this.env.CACHE?.get('sms_notification_endpoint');
+      const apiKey = this.env.SMS_API_KEY || await this.env.CACHE?.get('sms_notification_api_key');
+      const recipientList = this.env.SMS_TO || await this.env.CACHE?.get('sms_notification_recipients');
+
+      if (!apiEndpoint || !recipientList) {
+        console.warn('[Alert Service] No SMS configuration found (set SMS_API_ENDPOINT + SMS_TO or KV sms_notification_* keys)');
+        return false;
+      }
+
+      const recipients = recipientList
+        .split(',')
+        .map((recipient) => recipient.trim())
+        .filter(Boolean);
+
+      if (recipients.length === 0) {
+        console.warn('[Alert Service] SMS recipient list is empty');
+        return false;
+      }
+
+      const message = `[${alert.level.toUpperCase()}] ${alert.title}: ${alert.description}`;
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: {
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: recipients,
+          message,
+          alertId: alert.id,
+          level: alert.level,
+          timestamp: alert.timestamp,
+          metadata
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`SMS API responded with status ${response.status}`);
+      }
+
+      console.log(`[Alert Service] SMS notification sent to ${recipients.length} recipient(s)`);
+      return true;
+    } catch (error) {
+      console.error('[Alert Service] SMS notification failed:', error);
+      return false;
+    }
   }
 
   // =================== 告警管理功能 ===================

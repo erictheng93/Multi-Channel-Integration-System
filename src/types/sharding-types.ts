@@ -90,7 +90,7 @@ export interface ShardSelectionResult {
  */
 export interface CrossShardBroadcastPayload {
   conversationId: string;
-  event: any; // DurableObjectEvent from websocket-types
+  event: unknown; // DurableObjectEvent from websocket-types
   excludeShardIndex: number; // Don't re-broadcast to source shard
   priority: 'low' | 'normal' | 'high' | 'urgent';
   timestamp: number;

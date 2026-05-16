@@ -27,6 +27,10 @@ export interface ConfigFormData {
   logLevel: 'debug' | 'info' | 'warn' | 'error' | 'silent';
 }
 
+export type ConfigFormTextField = Exclude<{
+  [K in keyof ConfigFormData]: ConfigFormData[K] extends string ? K : never;
+}[keyof ConfigFormData], 'logLevel'>;
+
 export interface ResourceNames {
   worker: string;
   database: string;

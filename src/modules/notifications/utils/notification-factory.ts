@@ -209,7 +209,7 @@ export class NotificationFactory {
     userId: number,
     title: string,
     content: string,
-    data?: Record<string, any>,
+    data?: Record<string, unknown>,
     priority: NotificationPriority = 'normal',
     expiresInDays: number = 30
   ): CreateNotificationRequest {
@@ -233,7 +233,7 @@ export class NotificationFactory {
     userIds: number[],
     title: string,
     content: string,
-    data?: Record<string, any>,
+    data?: Record<string, unknown>,
     priority: NotificationPriority = 'normal',
     expiresInDays: number = 30
   ): CreateNotificationRequest[] {
