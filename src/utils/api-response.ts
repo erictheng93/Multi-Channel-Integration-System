@@ -1,5 +1,6 @@
 // API 響應標準化工具
 import type { Context } from 'hono'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import type { 
   StandardApiResponse, 
   ApiError
@@ -27,7 +28,7 @@ export function successResponse<T>(
     requestId: generateRequestId()
   }
   
-  return c.json(response, status as any)
+  return c.json(response, status as ContentfulStatusCode)
 }
 
 // 分頁響應
@@ -80,7 +81,7 @@ export function errorResponse(
     requestId: generateRequestId()
   }
   
-  return c.json(response, status as any)
+  return c.json(response, status as ContentfulStatusCode)
 }
 
 // 驗證錯誤響應
@@ -99,7 +100,7 @@ export function validationErrorResponse(
     requestId: generateRequestId()
   }
   
-  return c.json(response, HTTP_STATUS.UNPROCESSABLE_ENTITY as any)
+  return c.json(response, HTTP_STATUS.UNPROCESSABLE_ENTITY as ContentfulStatusCode)
 }
 
 // 未授權響應

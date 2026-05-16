@@ -10,6 +10,14 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('RealtimeAuth');
 
+function getConversationAccess(payload: unknown): number[] {
+  if (typeof payload !== 'object' || payload === null) {
+    return [];
+  }
+  const value = (payload as { conversationAccess?: unknown }).conversationAccess;
+  return Array.isArray(value) ? value.filter((item): item is number => typeof item === 'number') : [];
+}
+
 // Real-time 認證 Payload (替代 SSEAuthPayload)
 export interface RealtimeAuthPayload {
   userId: number;
@@ -53,7 +61,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
           displayName: existingPayload.displayName,
           role: existingPayload.role,
           primaryTeamId: existingPayload.primaryTeamId,
-          conversationAccess: (existingPayload as any).conversationAccess || []
+          conversationAccess: getConversationAccess(existingPayload)
         };
       }
 
@@ -83,7 +91,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
               displayName: jwtPayload.displayName,
               role: jwtPayload.role,
               primaryTeamId: jwtPayload.primaryTeamId,
-              conversationAccess: (jwtPayload as any).conversationAccess || []
+              conversationAccess: getConversationAccess(jwtPayload)
             };
 
             // 將 payload 設置到 context 中

@@ -33,6 +33,7 @@ export interface ActivityQueryParams {
   userId?: string | undefined
   action?: string | undefined
   resourceType?: string | undefined
+  resourceId?: string | undefined
   startDate?: string | undefined
   endDate?: string | undefined
 }
@@ -84,7 +85,7 @@ export interface TeamCreateActivityParams extends TeamActivityParams {
 }
 
 export interface TeamUpdateActivityParams extends TeamActivityParams {
-  updates: any
+  updates: unknown
 }
 
 export interface MemberActivityParams extends TeamActivityParams {

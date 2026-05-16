@@ -63,6 +63,16 @@ export interface Env {
   DEPLOYMENT_ORCHESTRATOR: DurableObjectNamespace;
 }
 
+export interface DeploymentIndexItem {
+  projectName: string;
+  deploymentId?: string;
+  adminEmail: string;
+  accountId: string;
+  customDomain?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 // OAuth Types
 export interface OAuthState {
   state: string;

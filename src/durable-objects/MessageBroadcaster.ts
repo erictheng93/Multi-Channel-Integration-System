@@ -33,11 +33,11 @@ const log = createContextLogger('MessageBroadcaster');
  */
 export class MessageBroadcaster implements DurableObject {
   private state: DurableObjectState;
-  private env: any;
+  private env: BroadcasterContext['env'];
 
   // Shared mutable state (passed by reference to all sub-services)
-  private eventQueue: any[] = [];
-  private highPriorityQueue: any[] = [];
+  private eventQueue: unknown[] = [];
+  private highPriorityQueue: unknown[] = [];
   private conversationRooms = new Map<string, DurableObjectStub>();
   private userConnections = new Map<string, DurableObjectStub>();
   private targetFilters = new Map<string, WebSocketSubscription[]>();
@@ -75,7 +75,7 @@ export class MessageBroadcaster implements DurableObject {
   private connections: BroadcasterConnectionRegistry;
   private httpHandlers: BroadcasterHttpHandlers;
 
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, env: BroadcasterContext['env']) {
     this.state = state;
     this.env = env;
 

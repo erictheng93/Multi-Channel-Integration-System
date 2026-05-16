@@ -122,7 +122,7 @@ export interface CustomerTagOperation {
 
 // ======================== 客戶元數據類型 ========================
 export interface CustomerMetadata {
-  [key: string]: any;
+  [key: string]: unknown;
   // LINE specific metadata
   line?: {
     statusMessage?: string;
@@ -256,7 +256,7 @@ export const DEFAULT_CUSTOMER_VALIDATION: CustomerValidationRules = {
 // ======================== 錯誤類型 ========================
 export interface CustomerError extends Error {
   code: 'CUSTOMER_NOT_FOUND' | 'CUSTOMER_ALREADY_EXISTS' | 'INVALID_CUSTOMER_DATA' | 'PERMISSION_DENIED';
-  details?: any;
+  details?: unknown;
 }
 
 export class CustomerNotFoundError extends Error implements CustomerError {
@@ -275,7 +275,7 @@ export class CustomerAlreadyExistsError extends Error implements CustomerError {
 
 export class InvalidCustomerDataError extends Error implements CustomerError {
   code = 'INVALID_CUSTOMER_DATA' as const;
-  constructor(message: string, public details?: any) {
+  constructor(message: string, public details?: unknown) {
     super(message);
   }
 }

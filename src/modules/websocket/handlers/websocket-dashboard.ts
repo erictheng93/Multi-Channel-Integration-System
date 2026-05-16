@@ -393,7 +393,7 @@ async function collectResourceMetrics(env: Bindings) {
  * Get active connections list
  */
 async function getActiveConnections(env: Bindings) {
-  const connections: any[] = [];
+  const connections: unknown[] = [];
 
   try {
     const connectionKeys = await env.SESSIONS.list({ prefix: 'ws_conn:' });
@@ -460,8 +460,17 @@ async function analyzePerformanceTrends(env: Bindings, period: string): Promise<
 /**
  * Get Durable Objects health status
  */
+interface DurableObjectsHealth {
+  timestamp: string;
+  bindings: Array<{
+    name: string;
+    status: 'available' | 'unavailable';
+    instances?: string;
+  }>;
+}
+
 async function getDurableObjectsHealth(env: Bindings) {
-  const health: any = {
+  const health: DurableObjectsHealth = {
     timestamp: nowISO(),
     bindings: []
   };
@@ -499,7 +508,7 @@ async function getDurableObjectsHealth(env: Bindings) {
  * Get current alerts
  */
 async function getActiveAlerts(env: Bindings) {
-  const alerts: any[] = [];
+  const alerts: unknown[] = [];
 
   try {
     const alertKey = 'websocket:active_alerts';

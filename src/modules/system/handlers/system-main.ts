@@ -162,7 +162,7 @@ systemHandler.get('/conversations/:conversationId/message-tree', jwtAuth, async 
     const tree = await getConversationMessageTree(c.env.DB, conversationId);
 
     // 轉換 Map 為普通物件以便 JSON 序列化
-    const replyMapObj: Record<string, any[]> = {};
+    const replyMapObj: Record<string, unknown[]> = {};
     tree.replyMap.forEach((replies, messageId) => {
       replyMapObj[messageId] = replies;
     });

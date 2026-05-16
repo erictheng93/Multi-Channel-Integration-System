@@ -19,6 +19,11 @@ const REQUIRED_PRODUCTION_VARS = [
   'LINE_CHANNEL_SECRET',
 ] as const;
 
+function getEnvString(env: Record<string, unknown>, key: string, fallback = ''): string {
+  const value = env[key];
+  return typeof value === 'string' ? value : fallback;
+}
+
 /**
  * Optional environment variables with defaults
  */
@@ -33,7 +38,7 @@ const REQUIRED_PRODUCTION_VARS = [
 /**
  * Validate environment configuration
  */
-export function validateEnvironment(env: Record<string, any>): {
+export function validateEnvironment(env: Record<string, unknown>): {
   isValid: boolean;
   missing: string[];
   warnings: string[];
@@ -42,8 +47,8 @@ export function validateEnvironment(env: Record<string, any>): {
   const missing: string[] = [];
   const warnings: string[] = [];
 
-  const nodeEnv = env.NODE_ENV || 'production';
-  const environment = env.ENVIRONMENT || nodeEnv;
+  const nodeEnv = getEnvString(env, 'NODE_ENV', 'production');
+  const environment = getEnvString(env, 'ENVIRONMENT', nodeEnv);
   const isDevelopment = nodeEnv === 'development' || environment === 'development';
   const isProduction = nodeEnv === 'production' || environment === 'production';
   const isTest = nodeEnv === 'test' || environment === 'test';
@@ -51,22 +56,23 @@ export function validateEnvironment(env: Record<string, any>): {
   // Check required variables for production
   if (isProduction) {
     for (const varName of REQUIRED_PRODUCTION_VARS) {
-      if (!env[varName] || env[varName].trim() === '') {
+      if (getEnvString(env, varName).trim() === '') {
         missing.push(varName);
       }
     }
 
     // Check for weak JWT secrets
-    if (env.JWT_SECRET && env.JWT_SECRET.length < 32) {
+    const jwtSecret = getEnvString(env, 'JWT_SECRET');
+    if (jwtSecret && jwtSecret.length < 32) {
       warnings.push('JWT_SECRET should be at least 32 characters long for production');
     }
 
     // Check for default/example values
-    if (env.JWT_SECRET === 'your-super-secret-jwt-key-here') {
+    if (jwtSecret === 'your-super-secret-jwt-key-here') {
       missing.push('JWT_SECRET (using example value)');
     }
 
-    if (env.LINE_CHANNEL_SECRET === 'your-line-channel-secret') {
+    if (getEnvString(env, 'LINE_CHANNEL_SECRET') === 'your-line-channel-secret') {
       missing.push('LINE_CHANNEL_SECRET (using example value)');
     }
   }
@@ -93,9 +99,9 @@ export function validateEnvironment(env: Record<string, any>): {
 /**
  * Get sanitized environment info for logging
  */
-export function getSanitizedEnvInfo(env: Record<string, any>): Record<string, any> {
+export function getSanitizedEnvInfo(env: Record<string, unknown>): Record<string, unknown> {
   const sensitiveKeys = ['secret', 'key', 'token', 'password'];
-  const result: Record<string, any> = {};
+  const result: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(env)) {
     const isSensitive = sensitiveKeys.some(sensitive =>
@@ -115,7 +121,7 @@ export function getSanitizedEnvInfo(env: Record<string, any>): Record<string, an
 /**
  * Initialize and validate environment on startup
  */
-export function initializeEnvironment(env: Record<string, any>): void {
+export function initializeEnvironment(env: Record<string, unknown>): void {
   const validation = validateEnvironment(env);
 
   if (!validation.isValid) {
@@ -136,7 +142,7 @@ export function initializeEnvironment(env: Record<string, any>): void {
 /**
  * Check if debug features should be enabled
  */
-export function isDebugEnabled(env: Record<string, any>): boolean {
+export function isDebugEnabled(env: Record<string, unknown>): boolean {
   const validation = validateEnvironment(env);
   return validation.config.isDevelopment || env.ENABLE_DEBUG === 'true';
 }
@@ -144,7 +150,7 @@ export function isDebugEnabled(env: Record<string, any>): boolean {
 /**
  * Get CORS origins based on environment
  */
-export function getCorsOrigins(env: Record<string, any>): string[] {
+export function getCorsOrigins(env: Record<string, unknown>): string[] {
   const validation = validateEnvironment(env);
 
   if (validation.config.isDevelopment) {
@@ -161,16 +167,19 @@ export function getCorsOrigins(env: Record<string, any>): string[] {
   const origins: string[] = [];
 
   // 添加配置的 URLs
-  if (env.FRONTEND_URL) {
-    origins.push(env.FRONTEND_URL);
+  const frontendUrl = getEnvString(env, 'FRONTEND_URL');
+  if (frontendUrl) {
+    origins.push(frontendUrl);
   }
-  if (env.BACKEND_URL) {
-    origins.push(env.BACKEND_URL);
+  const backendUrl = getEnvString(env, 'BACKEND_URL');
+  if (backendUrl) {
+    origins.push(backendUrl);
   }
 
   // Add custom origins if specified
-  if (env.CORS_ORIGINS) {
-    const customOrigins = env.CORS_ORIGINS.split(',').map((origin: string) => origin.trim());
+  const corsOrigins = getEnvString(env, 'CORS_ORIGINS');
+  if (corsOrigins) {
+    const customOrigins = corsOrigins.split(',').map((origin) => origin.trim());
     origins.push(...customOrigins);
   }
 
@@ -180,7 +189,7 @@ export function getCorsOrigins(env: Record<string, any>): string[] {
 /**
  * Security middleware factory
  */
-export function createSecurityConfig(env: Record<string, any>) {
+export function createSecurityConfig(env: Record<string, unknown>) {
   const validation = validateEnvironment(env);
 
   return {

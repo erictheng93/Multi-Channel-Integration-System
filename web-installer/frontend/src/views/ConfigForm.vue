@@ -106,7 +106,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeploymentStore } from '@/stores/deploymentStore';
 import type { FormErrors } from '@/types';
-import type { ConfigFormData } from './config-form/types';
+import type { ConfigFormData, ConfigFormTextField } from './config-form/types';
 import { createDefaultFormData } from './config-form/types';
 import ConfigFormBasic from './config-form/ConfigFormBasic.vue';
 import ConfigFormLineOA from './config-form/ConfigFormLineOA.vue';
@@ -165,9 +165,8 @@ onMounted(() => {
 // METHODS
 // ========================================
 
-function updateField(field: keyof ConfigFormData, value: string): void {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (formData.value as any)[field] = value;
+function updateField(field: ConfigFormTextField, value: string): void {
+  formData.value[field] = value;
 }
 
 function clearError(field: keyof FormErrors): void {

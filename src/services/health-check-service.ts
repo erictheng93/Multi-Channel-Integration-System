@@ -11,7 +11,7 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 export class HealthCheckService {
   private checkers: Map<string, HealthChecker> = new Map();
   private results: Map<string, HealthCheckResult> = new Map();
-  private intervals: Map<string, number> = new Map();
+  private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
 
   constructor() {
     this.initializeStandardCheckers();
@@ -122,7 +122,7 @@ export class HealthCheckService {
       });
     }, config.interval * 1000);
 
-    this.intervals.set(checker.name, intervalId as any);
+    this.intervals.set(checker.name, intervalId);
   }
 
   /**

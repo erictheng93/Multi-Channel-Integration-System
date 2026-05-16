@@ -19,7 +19,7 @@ export function getCurrentEnvironment(): Environment {
   // In Cloudflare Workers, we can check the binding or use a custom env variable
   // For now, we'll use a simple heuristic
   if (typeof globalThis !== 'undefined' && 'process' in globalThis) {
-    const nodeEnv = (globalThis as any).process?.env?.NODE_ENV;
+    const nodeEnv = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV;
     if (nodeEnv === 'production') return 'production';
     if (nodeEnv === 'staging') return 'staging';
   }

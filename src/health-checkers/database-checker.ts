@@ -1,5 +1,6 @@
 // 資料庫健康檢查器
 import { HealthLevel, type HealthChecker, type HealthCheckResult, type HealthCheckConfig } from '../types/health-check';
+import type { D1Database } from '@cloudflare/workers-types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 export class DatabaseHealthChecker implements HealthChecker {
@@ -7,7 +8,7 @@ export class DatabaseHealthChecker implements HealthChecker {
   level = HealthLevel.INFRASTRUCTURE;
   description = 'Database connectivity and performance check';
 
-  constructor(private db: any) {}
+  constructor(private db: D1Database) {}
 
   async check(): Promise<HealthCheckResult> {
     const startTime = nowMs();
@@ -19,7 +20,7 @@ export class DatabaseHealthChecker implements HealthChecker {
 
       const responseTime = Date.now() - startTime;
 
-      if (!result || result.test !== 1) {
+      if (!result || (result as { test?: number }).test !== 1) {
         return {
           status: 'critical',
           message: 'Database query returned unexpected result',

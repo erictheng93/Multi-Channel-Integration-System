@@ -17,7 +17,7 @@ export interface ChannelConfig {
   retryDelay: number; // milliseconds
   timeout: number; // milliseconds
   batchSize?: number; // for bulk operations
-  [key: string]: any; // channel-specific configurations
+  [key: string]: unknown; // channel-specific configurations
 }
 
 export interface ChannelMessage {
@@ -30,7 +30,7 @@ export interface ChannelMessage {
   lastAttempt?: string;
   deliveredAt?: string;
   errorMessage?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export type DeliveryStatus = 'pending' | 'sending' | 'sent' | 'delivered' | 'failed' | 'cancelled';
@@ -40,7 +40,7 @@ export interface DeliveryResult {
   messageId?: string;
   errorMessage?: string;
   deliveryTime?: number; // milliseconds
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ChannelAdapter {
@@ -56,7 +56,7 @@ export interface ChannelAdapter {
 // WebSocket 特定類型
 export interface WebSocketMessage {
   type: 'notification' | 'ping' | 'pong' | 'error' | 'subscribe' | 'unsubscribe';
-  data?: any;
+  data?: unknown;
   timestamp: string;
   userId?: string | number;  // 支援字串和數字格式的 userId
   messageId?: string;
@@ -82,7 +82,7 @@ export interface EmailConfig extends ChannelConfig {
 // Push 通知特定類型
 export interface PushConfig extends ChannelConfig {
   provider: 'fcm' | 'apns' | 'webpush';
-  credentials: Record<string, any>;
+  credentials: Record<string, unknown>;
   defaultSound?: string;
   defaultIcon?: string;
 }
@@ -114,7 +114,7 @@ export interface ChannelRoutingRule {
 export interface RoutingCondition {
   field: keyof NotificationBase | 'userSettings' | 'timeRange';
   operator: 'equals' | 'not_equals' | 'contains' | 'in' | 'not_in' | 'greater_than' | 'less_than';
-  value: any;
+  value: unknown;
 }
 
 export interface ChannelRouterConfig {

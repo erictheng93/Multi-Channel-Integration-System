@@ -15,11 +15,20 @@ import { evaluateWelcome as autoReplyEvaluateWelcome } from '@modules/auto-reply
 
 const log = createContextLogger('Webhook');
 
+type LineFollowTrackingEvent = LineEvent & {
+  follow?: LineEvent['follow'] & { param?: string };
+  link?: LineEvent['link'] & { nonce?: string };
+  liff?: { context?: { utouId?: string } };
+};
+
+type ConversationRow = typeof conversations.$inferSelect;
+
 /**
  * Process LINE Follow event (QR Code friend addition)
  * When a user joins via QR Code scan, auto-assign to the corresponding team
  */
 export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
+  const trackingEvent = event as LineFollowTrackingEvent;
   const userId = event.source.userId;
 
   log.info('Processing follow event', {
@@ -68,17 +77,17 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
     // Step 3: Try to get team ID from QR Code tracking parameter
     let assignedTeamId: number | null = null;
     let qrCodeToken: string | null = null;
-    let existingConversation: any = null; // Declare at function scope for later use
+    let existingConversation: ConversationRow | null | undefined = null;
 
     // Try getting tracking parameter from multiple sources
     // Method 1: LINE standard follow.param (if available)
-    const followParam = (event as any).follow?.param;
+    const followParam = trackingEvent.follow?.param;
 
     // Method 2: From replyToken related context (some LINE versions support this)
-    const linkNonce = (event as any).link?.nonce;
+    const linkNonce = trackingEvent.link?.nonce;
 
     // Method 3: From liff context (if using LIFF)
-    const liffParam = (event as any).liff?.context?.utouId;
+    const liffParam = trackingEvent.liff?.context?.utouId;
 
     qrCodeToken = followParam || linkNonce || liffParam || null;
 
@@ -99,11 +108,12 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
         if (!qrCodeToken) return null;
         try {
           const { QRCodeServiceImpl } = await import('@/services/qrcode-service-impl');
-          const result = await QRCodeServiceImpl.handleQRCodeFollow(env.DB, {
+          const result = await QRCodeServiceImpl.handleQRCodeFollow(drizzleDb, {
             type: 'follow',
             source: { userId, type: 'user' },
-            follow: { param: qrCodeToken }
-          } as any);
+            follow: { param: qrCodeToken },
+            timestamp: event.timestamp
+          });
           if (result.autoAssigned && result.teamId) {
             return { source: 'qr_token', teamId: result.teamId };
           }
@@ -336,7 +346,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
                 lineUserId: userId, // Used for matching and replacing pending conversation
                 isWebhookConfirmation: true
               }
-            } as any,
+            },
             transferredBy: {
               id: 'system',
               name: 'Auto-Assignment'

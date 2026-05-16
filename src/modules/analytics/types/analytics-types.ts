@@ -40,7 +40,7 @@ export interface AnalyticsFilters {
   status?: string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   tags?: string[];
-  customFields?: Record<string, any>;
+  customFields?: Record<string, unknown>;
   includePrevious?: boolean; // 是否包含上期對比數據
 }
 
@@ -55,7 +55,7 @@ export interface OrderByClause {
 /**
  * 統一服務響應接口 - 標準化所有 Service 層返回格式
  */
-export interface ServiceResponse<T = any> {
+export interface ServiceResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -80,7 +80,7 @@ export interface ServiceResponse<T = any> {
  * 統一分析結果接口 - 繼承 ServiceResponse
  * @deprecated 使用 ServiceResponse<T> 代替以獲得更好的一致性
  */
-export interface AnalyticsResult<T = any> extends ServiceResponse<T> {
+export interface AnalyticsResult<T = unknown> extends ServiceResponse<T> {
   data: T;
   metadata: {
     totalRecords: number;
@@ -108,7 +108,7 @@ export interface AnalyticsServiceInterface {
   getPerformanceAnalytics(query: PerformanceAnalyticsQuery): Promise<ServiceResponse<PerformanceAnalytics>>;
 
   // 自定義分析
-  getCustomAnalytics(query: CustomAnalyticsQuery): Promise<ServiceResponse<any>>;
+  getCustomAnalytics(query: CustomAnalyticsQuery): Promise<ServiceResponse<unknown>>;
 
   // 導出功能
   exportAnalytics(query: ExportQuery): Promise<ServiceResponse<ExportResult>>;
@@ -280,7 +280,7 @@ export interface PerformanceSummary {
  */
 export interface CustomAnalyticsQuery extends AnalyticsQuery {
   query: string;
-  parameters?: Record<string, any>;
+  parameters?: Record<string, unknown>;
   aggregation?: AggregationConfig;
 }
 
@@ -307,7 +307,7 @@ export type AggregationFunction =
 export interface FilterCondition {
   field: string;
   operator: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'like';
-  value: any;
+  value: unknown;
 }
 
 /**
@@ -317,7 +317,7 @@ export interface TimeSeriesData {
   timestamp: string;
   value: number;
   label?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -547,7 +547,7 @@ export class AnalyticsError extends Error {
     message: string,
     public code: string,
     public statusCode: number = 500,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'AnalyticsError';
@@ -555,21 +555,21 @@ export class AnalyticsError extends Error {
 }
 
 export class QueryValidationError extends AnalyticsError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, 'QUERY_VALIDATION_ERROR', 400, details);
     this.name = 'QueryValidationError';
   }
 }
 
 export class DataProcessingError extends AnalyticsError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, 'DATA_PROCESSING_ERROR', 500, details);
     this.name = 'DataProcessingError';
   }
 }
 
 export class ExportError extends AnalyticsError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, 'EXPORT_ERROR', 500, details);
     this.name = 'ExportError';
   }

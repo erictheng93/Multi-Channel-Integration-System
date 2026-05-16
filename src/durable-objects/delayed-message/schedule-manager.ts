@@ -88,7 +88,7 @@ export function collectReadyMessages(
 
 export interface BatchResultsDeps {
   logger: SchedulerLogger;
-  addToDeadLetterQueue: (message: PendingMessage, reason: any) => Promise<void>;
+  addToDeadLetterQueue: (message: PendingMessage, reason: unknown) => Promise<void>;
 }
 
 /**

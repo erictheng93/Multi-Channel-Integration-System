@@ -10,6 +10,8 @@
 import { performance } from 'perf_hooks';
 import fetch from 'node-fetch';
 
+type JsonRecord = Record<string, unknown>;
+
 // =================== Configuration ===================
 
 interface StressTestConfig {
@@ -304,7 +306,8 @@ class DurableObjectsStressTester {
         metrics
       );
 
-      if (lockResponse.lockId) {
+      const lockId = typeof lockResponse.lockId === 'string' ? lockResponse.lockId : undefined;
+      if (lockId) {
         // Hold lock briefly
         await this.sleep(Math.random() * 1000);
 
@@ -314,7 +317,7 @@ class DurableObjectsStressTester {
           'POST',
           {
             action: 'release',
-            options: { lockId: lockResponse.lockId }
+            options: { lockId }
           },
           metrics
         );
@@ -679,14 +682,15 @@ class DurableObjectsStressTester {
         }
       );
 
-      if (lockResponse.lockId) {
+      const lockId = typeof lockResponse.lockId === 'string' ? lockResponse.lockId : undefined;
+      if (lockId) {
         await this.sleep(Math.random() * 500);
         await this.makeRequest(
           'POST',
           `/api/conversation-rooms/${roomId}/lock`,
           {
             action: 'release',
-            options: { lockId: lockResponse.lockId }
+            options: { lockId }
           }
         );
       }
@@ -735,9 +739,9 @@ class DurableObjectsStressTester {
   private async performRequest(
     endpoint: string,
     method: string,
-    body: any,
+    body: unknown,
     metrics: DurableObjectMetrics
-  ): Promise<any> {
+  ): Promise<JsonRecord> {
     const requestId = `req_${++this.requestCounter}`;
     this.activeRequests.add(requestId);
 
@@ -764,7 +768,7 @@ class DurableObjectsStressTester {
     }
   }
 
-  private async makeRequest(method: string, endpoint: string, body?: any): Promise<any> {
+  private async makeRequest(method: string, endpoint: string, body?: unknown): Promise<JsonRecord> {
     const url = `${this.config.workerUrl}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
@@ -785,7 +789,8 @@ class DurableObjectsStressTester {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return response.json();
+    const json = await response.json();
+    return typeof json === 'object' && json !== null ? json as JsonRecord : {};
   }
 
   private async runScenarioWithRetry(

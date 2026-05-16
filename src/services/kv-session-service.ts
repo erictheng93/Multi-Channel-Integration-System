@@ -42,7 +42,7 @@ export interface SessionData {
   // Removed: lastActivity - not needed for KV-based expiration
   ipAddress?: string;
   userAgent?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SessionValidationResult {
@@ -61,7 +61,7 @@ export interface CreateSessionOptions {
   platformUserId?: string;
   customerId?: number;
   ttl?: number;  // Time to live in seconds (default: 30 days)
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -377,7 +377,7 @@ export class KVSessionService {
     options?: {
       teamId?: number;
       ttl?: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     }
   ): Promise<{ sessionId: string; session: SessionData }> {
     // Generate session ID: `customer_{platform}_{platformUserId}_{timestamp}`

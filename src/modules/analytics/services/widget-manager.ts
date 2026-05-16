@@ -325,12 +325,12 @@ export class WidgetManager {
         }
 
         // 值域檢查
-        if (rule.allowedValues && !rule.allowedValues.includes(value)) {
+        if (rule.allowedValues && (!this.isAllowedValue(value) || !rule.allowedValues.includes(value))) {
           throw new DataProcessingError(`Invalid value for ${rule.field}: must be one of ${rule.allowedValues.join(', ')}`);
         }
 
         // 數值範圍檢查
-        if (rule.type === 'number') {
+        if (rule.type === 'number' && typeof value === 'number') {
           if (rule.min !== undefined && value < rule.min) {
             throw new DataProcessingError(`Value for ${rule.field} must be at least ${rule.min}`);
           }
@@ -528,14 +528,23 @@ export class WidgetManager {
   /**
    * 獲取嵌套對象的值
    */
-  private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => current?.[key], obj);
+  private getNestedValue(obj: unknown, path: string): unknown {
+    return path.split('.').reduce<unknown>((current, key) => {
+      if (typeof current !== 'object' || current === null || Array.isArray(current)) {
+        return undefined;
+      }
+      return (current as Record<string, unknown>)[key];
+    }, obj);
+  }
+
+  private isAllowedValue(value: unknown): value is string | number | boolean {
+    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
   }
 
   /**
    * 驗證數據類型
    */
-  private validateType(value: any, expectedType: string): boolean {
+  private validateType(value: unknown, expectedType: string): boolean {
     switch (expectedType) {
       case 'string':
         return typeof value === 'string';

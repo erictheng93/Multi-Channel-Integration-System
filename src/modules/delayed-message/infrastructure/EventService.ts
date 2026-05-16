@@ -377,7 +377,7 @@ export class EventService {
   /**
    * 建立標準化的錯誤事件資料
    */
-  createErrorEventData(error: Error, operation: string, context?: Record<string, any>): Record<string, any> {
+  createErrorEventData(error: Error, operation: string, context?: Record<string, unknown>): Record<string, unknown> {
     return {
       failureReason: error.message,
       operation,

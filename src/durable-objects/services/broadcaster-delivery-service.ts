@@ -10,6 +10,23 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 
 const log = createContextLogger('MessageBroadcaster');
 
+type QueuedEvent = DurableObjectEvent & {
+  targets: BroadcastTarget[];
+  options: unknown;
+  queuedAt: number;
+  retryCount: number;
+  retryAt?: number;
+};
+
+interface BroadcasterEnv {
+  CONVERSATION_ROOM: DurableObjectNamespace;
+  USER_CONNECTION: DurableObjectNamespace;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Handles all event delivery for MessageBroadcaster:
  * - Queue management with priority-aware overflow eviction
@@ -24,9 +41,31 @@ export class BroadcasterDeliveryService {
     private lockService: BroadcasterLockService
   ) {}
 
+  private get eventQueue(): QueuedEvent[] {
+    return this.ctx.eventQueue as QueuedEvent[];
+  }
+
+  private get highPriorityQueue(): QueuedEvent[] {
+    return this.ctx.highPriorityQueue as QueuedEvent[];
+  }
+
+  private get env(): BroadcasterEnv {
+    return this.ctx.env as BroadcasterEnv;
+  }
+
+  private createTargetedQueuedEvent(event: DurableObjectEvent, targets: BroadcastTarget[]): QueuedEvent {
+    return {
+      ...event,
+      targets,
+      options: event.deliveryOptions ?? {},
+      queuedAt: nowMs(),
+      retryCount: 0
+    };
+  }
+
   // =================== Queue Management ===================
 
-  async queueEvent(event: DurableObjectEvent, targets: BroadcastTarget[], options: any = {}): Promise<void> {
+  async queueEvent(event: DurableObjectEvent, targets: BroadcastTarget[], options: unknown = {}): Promise<void> {
     const enrichedEvent = {
       ...event,
       targets,
@@ -37,21 +76,21 @@ export class BroadcasterDeliveryService {
 
     // Route to appropriate queue based on priority
     if (event.priority === 'urgent' || event.priority === 'high') {
-      this.ctx.highPriorityQueue.push(enrichedEvent);
+      this.highPriorityQueue.push(enrichedEvent);
     } else {
-      this.ctx.eventQueue.push(enrichedEvent);
+      this.eventQueue.push(enrichedEvent);
     }
 
     // Prevent queue overflow with priority-aware eviction
-    if (this.ctx.eventQueue.length > this.ctx.config.MAX_QUEUE_SIZE) {
+    if (this.eventQueue.length > this.ctx.config.MAX_QUEUE_SIZE) {
       const evictionCount = Math.min(
         this.ctx.config.BATCH_SIZE,
-        this.ctx.eventQueue.length - this.ctx.config.MAX_QUEUE_SIZE + this.ctx.config.BATCH_SIZE
+        this.eventQueue.length - this.ctx.config.MAX_QUEUE_SIZE + this.ctx.config.BATCH_SIZE
       );
 
       const lowPriorityIndices: number[] = [];
-      for (let i = 0; i < this.ctx.eventQueue.length && lowPriorityIndices.length < evictionCount; i++) {
-        const ev = this.ctx.eventQueue[i];
+      for (let i = 0; i < this.eventQueue.length && lowPriorityIndices.length < evictionCount; i++) {
+        const ev = this.eventQueue[i];
         if (!ev.priority || ev.priority === 'low' || ev.priority === 'normal') {
           lowPriorityIndices.push(i);
         }
@@ -60,11 +99,11 @@ export class BroadcasterDeliveryService {
       let removedCount = 0;
       if (lowPriorityIndices.length >= evictionCount) {
         for (let i = lowPriorityIndices.length - 1; i >= 0 && removedCount < evictionCount; i--) {
-          this.ctx.eventQueue.splice(lowPriorityIndices[i], 1);
+          this.eventQueue.splice(lowPriorityIndices[i], 1);
           removedCount++;
         }
       } else {
-        const removedEvents = this.ctx.eventQueue.splice(0, evictionCount);
+        const removedEvents = this.eventQueue.splice(0, evictionCount);
         removedCount = removedEvents.length;
       }
 
@@ -72,13 +111,13 @@ export class BroadcasterDeliveryService {
       this.ctx.stats.evictedEvents = (this.ctx.stats.evictedEvents || 0) + removedCount;
     }
 
-    if (this.ctx.highPriorityQueue.length > this.ctx.config.MAX_QUEUE_SIZE / 2) {
-      log.error('High priority queue overflow', { size: this.ctx.highPriorityQueue.length });
+    if (this.highPriorityQueue.length > this.ctx.config.MAX_QUEUE_SIZE / 2) {
+      log.error('High priority queue overflow', { size: this.highPriorityQueue.length });
     }
 
     // Update metrics
     this.ctx.stats.totalEvents++;
-    this.ctx.stats.queueDepth = this.ctx.eventQueue.length + this.ctx.highPriorityQueue.length;
+    this.ctx.stats.queueDepth = this.eventQueue.length + this.highPriorityQueue.length;
 
     await this.helpers.persistQueueState();
     console.log(`[MessageBroadcaster] Event queued: ${event.id} (Priority: ${event.priority})`);
@@ -87,12 +126,12 @@ export class BroadcasterDeliveryService {
   // =================== Queue Processing ===================
 
   async processHighPriorityQueue(): Promise<void> {
-    if (this.ctx.highPriorityQueue.length === 0) return;
+    if (this.highPriorityQueue.length === 0) return;
 
     const lockId = await this.lockService.acquireLock('high_priority_processing', { ttl: 5000 });
 
     try {
-      const batch = this.ctx.highPriorityQueue.splice(0, this.ctx.config.HIGH_PRIORITY_BATCH_SIZE);
+      const batch = this.highPriorityQueue.splice(0, this.ctx.config.HIGH_PRIORITY_BATCH_SIZE);
       await this.processBatch(batch, 'high_priority');
     } finally {
       await this.lockService.releaseLock(lockId);
@@ -100,19 +139,19 @@ export class BroadcasterDeliveryService {
   }
 
   async processEventQueue(): Promise<void> {
-    if (this.ctx.eventQueue.length === 0) return;
+    if (this.eventQueue.length === 0) return;
 
     const lockId = await this.lockService.acquireLock('normal_processing', { ttl: 10000 });
 
     try {
-      const batch = this.ctx.eventQueue.splice(0, this.ctx.config.BATCH_SIZE);
+      const batch = this.eventQueue.splice(0, this.ctx.config.BATCH_SIZE);
       await this.processBatch(batch, 'normal');
     } finally {
       await this.lockService.releaseLock(lockId);
     }
   }
 
-  private async processBatch(events: any[], batchType: string): Promise<void> {
+  private async processBatch(events: QueuedEvent[], batchType: string): Promise<void> {
     const startTime = nowMs();
     let successCount = 0;
     let failureCount = 0;
@@ -146,13 +185,11 @@ export class BroadcasterDeliveryService {
 
   // =================== Event Grouping ===================
 
-  groupEventsByTarget(events: any[]): Map<string, any[]> {
-    const groups = new Map<string, any[]>();
+  groupEventsByTarget(events: QueuedEvent[]): Map<string, QueuedEvent[]> {
+    const groups = new Map<string, QueuedEvent[]>();
 
     for (const event of events) {
-      const targets = event.targets as BroadcastTarget[];
-
-      for (const target of targets) {
+      for (const target of event.targets) {
         if (target.type === 'conversation') {
           for (const conversationId of target.targets) {
             const key = `conversation:${conversationId}`;
@@ -184,7 +221,7 @@ export class BroadcasterDeliveryService {
 
   // =================== Target-Specific Delivery ===================
 
-  async deliverToTarget(target: string, events: any[]): Promise<number> {
+  async deliverToTarget(target: string, events: QueuedEvent[]): Promise<number> {
     const [targetType, targetId] = target.split(':');
 
     if (!targetId && targetType !== 'global') {
@@ -207,13 +244,13 @@ export class BroadcasterDeliveryService {
     }
   }
 
-  async deliverToConversation(conversationId: string, events: any[]): Promise<number> {
+  async deliverToConversation(conversationId: string, events: QueuedEvent[]): Promise<number> {
     try {
       let roomStub = this.ctx.conversationRooms.get(conversationId);
 
       if (!roomStub) {
-        const id = this.ctx.env.CONVERSATION_ROOM.idFromName(conversationId);
-        roomStub = this.ctx.env.CONVERSATION_ROOM.get(id);
+        const id = this.env.CONVERSATION_ROOM.idFromName(conversationId);
+        roomStub = this.env.CONVERSATION_ROOM.get(id);
         if (roomStub) {
           this.ctx.conversationRooms.set(conversationId, roomStub);
         }
@@ -241,13 +278,13 @@ export class BroadcasterDeliveryService {
     }
   }
 
-  async deliverToUser(userId: string, events: any[]): Promise<number> {
+  async deliverToUser(userId: string, events: QueuedEvent[]): Promise<number> {
     try {
       let userStub = this.ctx.userConnections.get(userId);
 
       if (!userStub) {
-        const id = this.ctx.env.USER_CONNECTION.idFromName(userId);
-        userStub = this.ctx.env.USER_CONNECTION.get(id);
+        const id = this.env.USER_CONNECTION.idFromName(userId);
+        userStub = this.env.USER_CONNECTION.get(id);
         if (userStub) {
           this.ctx.userConnections.set(userId, userStub);
         }
@@ -275,15 +312,17 @@ export class BroadcasterDeliveryService {
     }
   }
 
-  async deliverToTeam(teamId: string, events: any[]): Promise<number> {
+  async deliverToTeam(teamId: string, events: QueuedEvent[]): Promise<number> {
     try {
       const teamMembers = await this.helpers.getTeamMembers(teamId);
       let totalDelivered = 0;
 
       // Detailed logging for team broadcast debugging
-      const eventAction = events[0]?.data?.action;
-      const eventId = events[0]?.id;
-      const conversationId = events[0]?.conversationId;
+      const firstEvent = events[0];
+      const firstEventData = isRecord(firstEvent?.data) ? firstEvent.data : {};
+      const eventAction = firstEventData.action;
+      const eventId = firstEvent?.id;
+      const conversationId = firstEvent?.conversationId;
       console.log('[MessageBroadcaster] ===== TEAM DELIVERY START =====');
       console.log('[MessageBroadcaster] Delivering to team', {
         teamId,
@@ -291,7 +330,7 @@ export class BroadcasterDeliveryService {
         memberIds: teamMembers,
         eventId,
         eventAction,
-        eventType: events[0]?.type,
+        eventType: firstEvent?.type,
         conversationId,
         timestamp: nowISO()
       });
@@ -326,7 +365,7 @@ export class BroadcasterDeliveryService {
     }
   }
 
-  async deliverGlobalBroadcast(events: any[]): Promise<number> {
+  async deliverGlobalBroadcast(events: QueuedEvent[]): Promise<number> {
     try {
       let totalDelivered = 0;
 
@@ -381,7 +420,7 @@ export class BroadcasterDeliveryService {
 
   // =================== Retry Logic ===================
 
-  private async retryFailedEvents(events: any[]): Promise<void> {
+  private async retryFailedEvents(events: QueuedEvent[]): Promise<void> {
     const retryableEvents = events.filter(event =>
       (event.retryCount || 0) < 3 &&
       event.priority !== 'low'
@@ -390,7 +429,7 @@ export class BroadcasterDeliveryService {
     for (const event of retryableEvents) {
       event.retryCount = (event.retryCount || 0) + 1;
       event.retryAt = Date.now() + (event.retryCount * 1000);
-      this.ctx.eventQueue.push(event);
+      this.eventQueue.push(event);
     }
 
     if (retryableEvents.length > 0) {
@@ -430,7 +469,7 @@ export class BroadcasterDeliveryService {
       const batchPromises = batch.map(async (conversationId) => {
         try {
           await this.deliverToConversation(conversationId, [
-            { ...event, targets: [{ type: 'conversation', targets: [conversationId] }] }
+            this.createTargetedQueuedEvent(event, [{ type: 'conversation', targets: [conversationId] }])
           ]);
           return { success: true };
         } catch (error) {
@@ -472,7 +511,7 @@ export class BroadcasterDeliveryService {
       const batchPromises = batch.map(async (userId) => {
         try {
           await this.deliverToUser(userId, [
-            { ...event, targets: [{ type: 'user', targets: [userId] }] }
+            this.createTargetedQueuedEvent(event, [{ type: 'user', targets: [userId] }])
           ]);
           return { success: true };
         } catch (error) {
@@ -514,7 +553,7 @@ export class BroadcasterDeliveryService {
       const batchPromises = batch.map(async (teamId) => {
         try {
           await this.deliverToTeam(String(teamId), [
-            { ...event, targets: [{ type: 'team', targets: [String(teamId)] }] }
+            this.createTargetedQueuedEvent(event, [{ type: 'team', targets: [String(teamId)] }])
           ]);
           return { success: true };
         } catch (error) {

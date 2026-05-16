@@ -8,7 +8,8 @@ import {
   ChannelType,
   EmailTemplate,
   EmailConfig,
-  ChannelConfig
+  ChannelConfig,
+  NotificationBase
 } from '../types';
 import { nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
@@ -293,7 +294,7 @@ export class EmailAdapter implements ChannelAdapter {
     });
   }
 
-  private replaceVariables(template: string, variables: Record<string, any>): string {
+  private replaceVariables(template: string, variables: Record<string, unknown>): string {
     let result = template;
 
     for (const [key, value] of Object.entries(variables)) {
@@ -304,7 +305,7 @@ export class EmailAdapter implements ChannelAdapter {
     return result;
   }
 
-  private generateDefaultHtml(notification: any): string {
+  private generateDefaultHtml(notification: NotificationBase): string {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>${notification.title}</h2>
@@ -318,7 +319,7 @@ export class EmailAdapter implements ChannelAdapter {
     `;
   }
 
-  private generateDefaultText(notification: any): string {
+  private generateDefaultText(notification: NotificationBase): string {
     return `${notification.title}\n\n${notification.content}\n\n類型: ${notification.type}\n優先級: ${notification.priority}\n時間: ${new Date(notification.createdAt).toLocaleString()}`;
   }
 

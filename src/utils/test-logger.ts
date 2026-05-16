@@ -72,7 +72,7 @@ export const getEmojiPrefix = (context: string): string => {
  * Test-safe log function
  * Suppresses output in test environments to avoid cluttering test results
  */
-export const testSafeLog = (message: string, ...args: any[]): void => {
+export const testSafeLog = (message: string, ...args: unknown[]): void => {
   if (!isTestEnvironment()) {
     // In production, use the centralized logger
     logger.info(message, 'test-safe', args.length > 0 ? { args } : undefined);
@@ -84,14 +84,14 @@ export const testSafeLog = (message: string, ...args: any[]): void => {
  * Test-safe error logging function
  * Suppresses output in test environments but still tracks errors internally
  */
-export const testSafeError = (message: string, error?: any, ...args: any[]): void => {
+export const testSafeError = (message: string, error?: unknown, ...args: unknown[]): void => {
   if (!isTestEnvironment()) {
     // In production, use the centralized logger
     logger.error(
       message,
       'test-safe',
       args.length > 0 ? { args } : undefined,
-      error
+      error instanceof Error || typeof error === 'string' ? error : undefined
     );
   } else {
     // In test environment, store for potential inspection but don't output
@@ -105,7 +105,7 @@ export const testSafeError = (message: string, error?: any, ...args: any[]): voi
 /**
  * Test-safe warning logging function
  */
-export const testSafeWarn = (message: string, ...args: any[]): void => {
+export const testSafeWarn = (message: string, ...args: unknown[]): void => {
   if (!isTestEnvironment()) {
     logger.warn(message, 'test-safe', args.length > 0 ? { args } : undefined);
   }
@@ -114,7 +114,7 @@ export const testSafeWarn = (message: string, ...args: any[]): void => {
 /**
  * Test-safe debug logging function
  */
-export const testSafeDebug = (message: string, ...args: any[]): void => {
+export const testSafeDebug = (message: string, ...args: unknown[]): void => {
   if (!isTestEnvironment()) {
     logger.debug(message, 'test-safe', args.length > 0 ? { args } : undefined);
   }
@@ -124,7 +124,7 @@ export const testSafeDebug = (message: string, ...args: any[]): void => {
  * Log with timestamp
  * Enhanced version that uses centralized logger
  */
-export function logWithTimestamp(message: string, ...args: any[]): void {
+export function logWithTimestamp(message: string, ...args: unknown[]): void {
   const timestamp = nowISO();
   testSafeLog(`[${timestamp}] ${message}`, ...args);
 }
@@ -133,7 +133,7 @@ export function logWithTimestamp(message: string, ...args: any[]): void {
  * Log error with timestamp
  * Enhanced version that uses centralized logger
  */
-export function logErrorWithTimestamp(message: string, ...args: any[]): void {
+export function logErrorWithTimestamp(message: string, ...args: unknown[]): void {
   const timestamp = nowISO();
   testSafeError(`[${timestamp}] ${message}`, undefined, ...args);
 }
@@ -142,7 +142,7 @@ export function logErrorWithTimestamp(message: string, ...args: any[]): void {
  * Log with emoji and timestamp
  * Enhanced version that uses centralized logger
  */
-export function logWithEmoji(type: string, message: string, ...args: any[]): void {
+export function logWithEmoji(type: string, message: string, ...args: unknown[]): void {
   const emoji = getEmojiPrefix(type);
   const timestamp = nowISO();
   testSafeLog(`${emoji} [${timestamp}] ${message}`, ...args);
@@ -153,15 +153,15 @@ export function logWithEmoji(type: string, message: string, ...args: any[]): voi
  * Unified version combining both approaches
  */
 export const createTestSafeLogger = (context: string) => ({
-  log: (message: string, ...args: any[]) =>
+  log: (message: string, ...args: unknown[]) =>
     testSafeLog(`[${context}] ${message}`, ...args),
-  error: (message: string, error?: any, ...args: any[]) =>
+  error: (message: string, error?: unknown, ...args: unknown[]) =>
     testSafeError(`[${context}] ${message}`, error, ...args),
-  warn: (message: string, ...args: any[]) =>
+  warn: (message: string, ...args: unknown[]) =>
     testSafeWarn(`[${context}] ${message}`, ...args),
-  debug: (message: string, ...args: any[]) =>
+  debug: (message: string, ...args: unknown[]) =>
     testSafeDebug(`[${context}] ${message}`, ...args),
-  info: (type: string, message: string, ...args: any[]) => {
+  info: (type: string, message: string, ...args: unknown[]) => {
     const emoji = getEmojiPrefix(type);
     testSafeLog(`${emoji} [${context}] ${message}`, ...args);
   }
@@ -174,5 +174,5 @@ export const createLogger = createTestSafeLogger;
 
 // Global type extension for test error tracking
 declare global {
-  var __TEST_ERRORS__: Array<{ message: string; error?: any; args: any[] }>;
+  var __TEST_ERRORS__: Array<{ message: string; error?: unknown; args: unknown[] }>;
 }

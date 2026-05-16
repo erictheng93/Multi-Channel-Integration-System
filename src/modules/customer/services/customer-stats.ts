@@ -7,6 +7,7 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('CustomerStats')
 
 import { eq, and, desc, sql, count, gte } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import {
   customers,
   customerTags,
@@ -273,8 +274,8 @@ export class CustomerStatsService {
   /**
    * 建立權限條件
    */
-  private buildPermissionConditions(userPayload?: JWTPayload) {
-    const conditions = [];
+  private buildPermissionConditions(userPayload?: JWTPayload): SQL<unknown>[] {
+    const conditions: SQL<unknown>[] = [];
 
     // 非admin用戶只能看到自己團隊的統計
     if (userPayload?.role !== 'admin' && userPayload?.primaryTeamId) {
@@ -294,7 +295,7 @@ export class CustomerStatsService {
   /**
    * 獲取客戶總數
    */
-  private async getTotalCustomers(baseCondition?: any): Promise<number> {
+  private async getTotalCustomers(baseCondition?: SQL<unknown>): Promise<number> {
     const result = await this.drizzleDb
       .select({ total: count(customers.id) })
       .from(customers)
@@ -307,7 +308,7 @@ export class CustomerStatsService {
   /**
    * 獲取平台統計
    */
-  private async getPlatformStats(baseCondition?: any): Promise<Array<{ platform: string; count: number; }>> {
+  private async getPlatformStats(baseCondition?: SQL<unknown>): Promise<Array<{ platform: string; count: number; }>> {
     return await this.drizzleDb
       .select({
         platform: customers.platform,
@@ -322,7 +323,7 @@ export class CustomerStatsService {
   /**
    * 獲取團隊統計
    */
-  private async getTeamStats(baseCondition?: any): Promise<Array<{ teamName: string; count: number; }>> {
+  private async getTeamStats(baseCondition?: SQL<unknown>): Promise<Array<{ teamName: string; count: number; }>> {
     return await this.drizzleDb
       .select({
         teamName: sql<string>`COALESCE(${teams.name}, '未分配')`,
@@ -338,7 +339,7 @@ export class CustomerStatsService {
   /**
    * 獲取有標籤的客戶數量
    */
-  private async getTaggedCustomersCount(baseCondition?: any): Promise<number> {
+  private async getTaggedCustomersCount(baseCondition?: SQL<unknown>): Promise<number> {
     const result = await this.drizzleDb
       .select({ count: sql<number>`COUNT(DISTINCT ${customers.id})` })
       .from(customers)
@@ -352,8 +353,8 @@ export class CustomerStatsService {
   /**
    * 獲取有Email的客戶數量
    */
-  private async getCustomersWithEmailCount(baseCondition?: any): Promise<number> {
-    const conditions = baseCondition ? [baseCondition] : [];
+  private async getCustomersWithEmailCount(baseCondition?: SQL<unknown>): Promise<number> {
+    const conditions: SQL<unknown>[] = baseCondition ? [baseCondition] : [];
     conditions.push(sql`${customers.email} IS NOT NULL AND ${customers.email} != ''`);
 
     const result = await this.drizzleDb
@@ -368,8 +369,8 @@ export class CustomerStatsService {
   /**
    * 獲取有電話的客戶數量
    */
-  private async getCustomersWithPhoneCount(baseCondition?: any): Promise<number> {
-    const conditions = baseCondition ? [baseCondition] : [];
+  private async getCustomersWithPhoneCount(baseCondition?: SQL<unknown>): Promise<number> {
+    const conditions: SQL<unknown>[] = baseCondition ? [baseCondition] : [];
     conditions.push(sql`${customers.phone} IS NOT NULL AND ${customers.phone} != ''`);
 
     const result = await this.drizzleDb
@@ -384,8 +385,8 @@ export class CustomerStatsService {
   /**
    * 獲取最近活躍的客戶數量 (最近7天)
    */
-  private async getRecentActiveCustomersCount(baseCondition?: any): Promise<number> {
-    const conditions = baseCondition ? [baseCondition] : [];
+  private async getRecentActiveCustomersCount(baseCondition?: SQL<unknown>): Promise<number> {
+    const conditions: SQL<unknown>[] = baseCondition ? [baseCondition] : [];
     conditions.push(
       gte(messages.createdAt, sql`datetime('now', '-7 days')`),
       eq(messages.senderType, 'customer')

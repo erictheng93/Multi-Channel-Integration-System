@@ -5,6 +5,7 @@ import type { Bindings } from '@/types';
 import { healthCheckService } from '@/services/health-check-service';
 import { DatabaseHealthChecker } from '@/health-checkers/database-checker';
 import { CacheHealthChecker } from '@/health-checkers/cache-checker';
+import { HealthLevel, type SystemHealth } from '@/types/health-check';
 
 import { successResponse, internalErrorResponse } from '@/utils/api-response';
 import { getConfigurationStatus } from '@/middleware/configuration-guard';
@@ -18,7 +19,7 @@ let initialized = false;
 /**
  * 初始化健康檢查器
  */
-function initializeHealthCheckers(db: any, cache: any) {
+function initializeHealthCheckers(db: D1Database, cache: KVNamespace) {
   if (initialized) return;
 
   // 註冊基礎設施檢查器
@@ -66,7 +67,7 @@ export async function getInfrastructureHealth(c: Context<{ Bindings: Bindings }>
   try {
     initializeHealthCheckers(c.env.DB, c.env.CACHE);
 
-    const health = await healthCheckService.getHealthByLevel('infrastructure' as any);
+    const health = await healthCheckService.getHealthByLevel(HealthLevel.INFRASTRUCTURE);
 
     const overallStatus = health.every(h => h.status.status === 'healthy') ? 'healthy' :
                          health.some(h => h.status.status === 'critical') ? 'critical' : 'warning';
@@ -89,7 +90,7 @@ export async function getServicesHealth(c: Context<{ Bindings: Bindings }>) {
   try {
     initializeHealthCheckers(c.env.DB, c.env.CACHE);
 
-    const health = await healthCheckService.getHealthByLevel('service' as any);
+    const health = await healthCheckService.getHealthByLevel(HealthLevel.SERVICE);
 
     const overallStatus = health.every(h => h.status.status === 'healthy') ? 'healthy' :
                          health.some(h => h.status.status === 'critical') ? 'critical' : 'warning';
@@ -246,10 +247,10 @@ export async function getHealthStats(c: Context<{ Bindings: Bindings }>) {
 /**
  * 簡單的運行時間計算
  */
-function calculateUptime(health: any): string {
+function calculateUptime(health: SystemHealth): string {
   // 簡化的運行時間計算
   // 在實際環境中，這應該基於實際的啟動時間
-  const healthyRatio = health.components.filter((c: any) => c.status.status === 'healthy').length / health.components.length;
+  const healthyRatio = health.components.filter((component) => component.status.status === 'healthy').length / health.components.length;
   return `${Math.round(healthyRatio * 100)}%`;
 }
 
@@ -266,7 +267,7 @@ export async function getConfigCheck(c: Context<{ Bindings: Bindings }>) {
     const configStatus = getConfigurationStatus(c.env);
 
     // 根據配置狀態設置 HTTP 狀態碼
-    const httpStatus = (configStatus as any).success ? 200 : 503;
+    const httpStatus = (configStatus as { success?: boolean }).success ? 200 : 503;
 
     // 添加 CORS headers 以便從前端檢查
     const origin = c.req.header('Origin');
@@ -286,7 +287,7 @@ export async function getConfigCheck(c: Context<{ Bindings: Bindings }>) {
 /**
  * 創建健康檢查方法集合
  */
-export function createHealthCheckHandlerMethods(db: any, cache: any) {
+export function createHealthCheckHandlerMethods(db: D1Database, cache: KVNamespace) {
   // 初始化檢查器
   initializeHealthCheckers(db, cache);
 

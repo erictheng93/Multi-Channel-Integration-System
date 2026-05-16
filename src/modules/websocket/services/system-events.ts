@@ -7,6 +7,10 @@ import type { DurableObjectEvent } from '@/types/websocket-types';
 import { nowMs } from '@/utils/timestamp';
 import { EventBroadcasterBase } from './event-broadcaster-deps';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Handles system-level event broadcasts:
  * - Presence events (online/offline/away/available/busy)
@@ -29,7 +33,7 @@ export class SystemEventBroadcaster extends EventBroadcasterBase {
       title: string;
       content: string;
       priority: string;
-      data?: Record<string, any>;
+      data?: Record<string, unknown>;
       createdAt: string;
     };
   }): Promise<boolean> {
@@ -84,7 +88,7 @@ export class SystemEventBroadcaster extends EventBroadcasterBase {
     type: 'user_online' | 'user_offline' | 'user_away' | 'agent_available' | 'agent_busy' | 'agent_offline';
     userId: string;
     teamId?: number;
-    data?: any;
+    data?: unknown;
   }): Promise<boolean> {
     try {
       const wsEvent: DurableObjectEvent = {
@@ -95,7 +99,7 @@ export class SystemEventBroadcaster extends EventBroadcasterBase {
         userId: event.userId,
         data: {
           teamId: event.teamId,
-          ...event.data
+          ...(isRecord(event.data) ? event.data : {})
         },
         priority: 'low',
         deliveryOptions: {

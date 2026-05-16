@@ -554,7 +554,7 @@ export async function generateRecommendations(
  * Execute a custom analytics query (stub implementation)
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function executeCustomQuery(_db: Database, _query: CustomAnalyticsQuery): Promise<any> {
+export async function executeCustomQuery(_db: Database, _query: CustomAnalyticsQuery) {
   return {};
 }
 
@@ -562,6 +562,6 @@ export async function executeCustomQuery(_db: Database, _query: CustomAnalyticsQ
  * Generate an export file from analytics data (stub implementation)
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function generateExportFile(_data: any, _query: ExportQuery): Promise<string> {
+export async function generateExportFile(_data: unknown, _query: ExportQuery): Promise<string> {
   return 'https://example.com/export/file.csv';
 }

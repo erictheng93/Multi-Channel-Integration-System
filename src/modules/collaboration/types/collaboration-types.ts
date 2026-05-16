@@ -54,7 +54,7 @@ export interface PresenceInfo {
   status: PresenceStatus;
   currentConversation?: number;
   lastSeen: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -79,7 +79,7 @@ export interface ConversationRoomState {
   totalConnections: number;
   protocol: CollaborationProtocol;
   lastActivity: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -89,9 +89,9 @@ export interface CollaborationEvent {
   type: CollaborationEventType;
   conversationId: number;
   userId: number;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   timestamp: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // =================== 請求/響應類型 ===================
@@ -103,7 +103,7 @@ export interface JoinConversationRequest {
   conversationId: number;
   userId: number;
   protocol?: CollaborationProtocol;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -130,7 +130,7 @@ export interface UpdatePresenceRequest {
   userId: number;
   status: PresenceStatus;
   currentConversation?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -171,7 +171,7 @@ export interface CollaborationAdapter {
   /**
    * 初始化適配器
    */
-  initialize(env: any): Promise<void>;
+  initialize(env: unknown): Promise<void>;
 
   /**
    * 獲取對話的查看者列表

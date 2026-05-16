@@ -296,7 +296,7 @@ export class MessageBatchOptimizer {
   private activeBatches: Map<string, MessageBatch> = new Map(); // target -> batch
   private batchTimers: Map<string, NodeJS.Timeout> = new Map(); // target -> timer
   private messageQueue: Map<string, DurableObjectEvent[]> = new Map(); // priority -> messages
-  private compressionCache: Map<string, any> = new Map();
+  private compressionCache: Map<string, unknown> = new Map();
   private optimizerMetrics: OptimizationMetrics;
 
   constructor(config: Partial<BatchOptimizerConfig> = {}) {

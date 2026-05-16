@@ -4,7 +4,7 @@ export interface HealthCheckResult {
   message: string;
   timestamp: string;
   responseTime?: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   metrics?: HealthMetrics;
 }
 

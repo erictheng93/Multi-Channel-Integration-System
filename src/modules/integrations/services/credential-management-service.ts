@@ -44,6 +44,22 @@ interface CredentialValidationResult {
   scopes?: string[];
 }
 
+interface LineBotInfoResponse {
+  displayName?: string;
+}
+
+interface FacebookPageInfoResponse {
+  name?: string;
+  error?: {
+    message?: string;
+  };
+}
+
+interface FacebookTokenResponse {
+  access_token?: string;
+  expires_in?: number;
+}
+
 /**
  * 憑證管理服務
  */
@@ -257,9 +273,9 @@ export class CredentialManagementService {
         });
 
         if (apiResponse.ok) {
-          const info = await apiResponse.json() as any;
+          const info = await apiResponse.json() as LineBotInfoResponse;
           result.scopes = ['messaging'];
-          if (info?.displayName) {
+          if (info.displayName) {
             result.warnings.push(`Connected to LINE bot: ${info.displayName}`);
           }
         } else if (apiResponse.status === 401) {
@@ -304,12 +320,12 @@ export class CredentialManagementService {
         );
 
         if (apiResponse.ok) {
-          const pageInfo = await apiResponse.json();
+          const pageInfo = await apiResponse.json() as FacebookPageInfoResponse;
           result.scopes = ['pages_messaging'];
-          result.warnings.push(`Connected to Facebook page: ${(pageInfo as any).name}`);
+          result.warnings.push(`Connected to Facebook page: ${pageInfo.name || 'Unknown'}`);
         } else if (apiResponse.status === 400) {
-          const errorData = await apiResponse.json();
-          result.errors.push(`Facebook API error: ${(errorData as any).error?.message || 'Invalid request'}`);
+          const errorData = await apiResponse.json() as FacebookPageInfoResponse;
+          result.errors.push(`Facebook API error: ${errorData.error?.message || 'Invalid request'}`);
         } else if (apiResponse.status === 401) {
           result.errors.push('Facebook page access token is invalid or expired');
         }
@@ -427,12 +443,13 @@ export class CredentialManagementService {
         );
 
         if (response.ok) {
-          const data = await response.json();
+          const data = await response.json() as FacebookTokenResponse;
+          const expiresIn = data.expires_in;
           return {
             ...credentials,
-            pageAccessToken: String((data as any).access_token || ''),
-            tokenExpiresAt: (data as any).expires_in ?
-              new Date(Date.now() + (data as any).expires_in * 1000).toISOString() : undefined
+            pageAccessToken: data.access_token || '',
+            tokenExpiresAt: expiresIn ?
+              new Date(Date.now() + expiresIn * 1000).toISOString() : undefined
           };
         }
       }

@@ -5,6 +5,7 @@
 
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
+import type { PlatformType } from '@modules/file-management/types/file-types';
 import { FileValidationService } from '@modules/file-management/services/validation-service';
 import {
   validationErrorResponse,
@@ -18,11 +19,17 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('FileValidation');
 
+function toPlatformType(platform: string): PlatformType {
+  return platform === 'line' || platform === 'facebook' || platform === 'admin' || platform === 'system'
+    ? platform
+    : 'system';
+}
+
 export interface FileValidationOptions {
   platform?: string;
   maxFiles?: number;
   requireAuthentication?: boolean;
-  customRules?: any;
+  customRules?: unknown;
 }
 
 /**
@@ -154,7 +161,7 @@ async function validateSingleFile(
   file: File,
   platform: string,
   validationService: FileValidationService,
-  customRules?: any
+  customRules?: unknown
 ) {
   const metadata = {
     filename: file.name,
@@ -164,7 +171,7 @@ async function validateSingleFile(
     platform
   };
 
-  const rules = customRules || validationService.getRulesForPlatform(platform as any);
+  const rules = customRules || validationService.getRulesForPlatform(toPlatformType(platform));
 
   return await validationService.validateFile(file, metadata, rules);
 }

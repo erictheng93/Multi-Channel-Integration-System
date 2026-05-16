@@ -7,6 +7,12 @@
 import { HealthLevel, type HealthChecker, type HealthCheckResult, type HealthCheckConfig } from '../types/health-check';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
+interface CacheKvBinding {
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+  get(key: string): Promise<string | null>;
+  delete(key: string): Promise<void>;
+}
+
 // In-memory cache for health check results to reduce KV operations
 interface CachedHealthResult {
   result: HealthCheckResult;
@@ -22,7 +28,7 @@ export class CacheHealthChecker implements HealthChecker {
   private static healthCache: CachedHealthResult | null = null;
   private static readonly CACHE_TTL_MS = 60 * 1000; // 1 minute memory cache
 
-  constructor(private kv: any) {}
+  constructor(private kv: CacheKvBinding) {}
 
   async check(): Promise<HealthCheckResult> {
     const now = nowMs();

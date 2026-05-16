@@ -7,10 +7,21 @@ import type {
   DashboardConfig,
   DashboardWidget,
   WidgetData,
-  DashboardTemplate
+  DashboardTemplate,
+  TableRow
 } from '../types/dashboard-types';
 import type {
-  TimeRange
+  AnalyticsFilters,
+  ConversationAnalytics,
+  ConversationAnalyticsQuery,
+  MessageAnalytics,
+  MessageAnalyticsQuery,
+  PerformanceAnalytics,
+  PerformanceAnalyticsQuery,
+  TimeRange,
+  TimeSeriesData,
+  UserAnalytics,
+  UserAnalyticsQuery
 } from '../types/analytics-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
 import { AnalyticsService } from './analytics-core';
@@ -41,12 +52,40 @@ const DEFAULT_OPTIONS: DashboardServiceOptions = {
   enablePermissionCheck: true
 };
 
+type DashboardAnalyticsData =
+  | ConversationAnalytics
+  | MessageAnalytics
+  | UserAnalytics
+  | PerformanceAnalytics;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toRecord(value: object): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value));
+}
+
+function toTableCellValue(value: unknown): TableRow[string] {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    value === null ||
+    value === undefined
+  ) {
+    return value;
+  }
+
+  return JSON.stringify(value);
+}
+
 /**
  * 儀表板服務類
  */
 export class DashboardService {
   private options: DashboardServiceOptions;
-  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number }>();
   private analytics: AnalyticsService;
 
   constructor(
@@ -260,7 +299,7 @@ export class DashboardService {
       }
     } catch { /* best-effort */ }
     return {
-      widgetId: widget.id, type: 'metric', data, loading: false, lastUpdate: nowISO(),
+      widgetId: widget.id, type: 'metric', data: this.toWidgetData(data), loading: false, lastUpdate: nowISO(),
       metadata: { queryTime: qt, recordCount: 1, cacheHit: false, dataSource: widget.dataSource.type || 'analytics', refreshedAt: nowISO() },
       value, previousValue, unit: widget.unit || '', format: widget.format || 'number', trend
     };
@@ -270,12 +309,12 @@ export class DashboardService {
     const t0 = nowMs();
     const data = await this.queryAnalytics(widget, timeRange);
     const qt = nowMs() - t0;
-    const trends = data?.trends || data?.volumeTrends || [];
-    const src = trends.length > 0 ? trends : (data ? [data] : []);
+    const trends = this.getTimeSeriesRows(data);
+    const src = trends.length > 0 ? trends.map(toRecord) : (data ? [toRecord(data)] : []);
     const labels = this.extractLabels(src, widget.chartConfig?.groupBy?.[0]);
     const datasets = this.buildDatasets(src, widget.metrics || (widget.metric ? [widget.metric] : []));
     return {
-      widgetId: widget.id, type: 'chart', data, loading: false, lastUpdate: nowISO(),
+      widgetId: widget.id, type: 'chart', data: this.toWidgetData(data), loading: false, lastUpdate: nowISO(),
       metadata: { queryTime: qt, recordCount: trends.length || 1, cacheHit: false, dataSource: widget.dataSource.type || 'analytics', refreshedAt: nowISO() },
       chartType: widget.chartConfig?.type || 'line', labels, datasets, options: widget.chartConfig?.options || {}
     };
@@ -285,10 +324,10 @@ export class DashboardService {
     const t0 = nowMs();
     const data = await this.queryAnalytics(widget, timeRange);
     const qt = nowMs() - t0;
-    const rows = data?.distributions || data?.data || (data ? [data] : []);
+    const rows = this.getTableRows(data).map((row, index) => this.toTableRow(row, index));
     const ps = widget.tableConfig?.pageSize || 10;
     return {
-      widgetId: widget.id, type: 'table', data, loading: false, lastUpdate: nowISO(),
+      widgetId: widget.id, type: 'table', data: this.toWidgetData(data), loading: false, lastUpdate: nowISO(),
       metadata: { queryTime: qt, recordCount: rows.length, cacheHit: false, dataSource: widget.dataSource.type || 'analytics', refreshedAt: nowISO() },
       columns: widget.tableConfig?.columns || this.inferColumns(rows),
       rows: rows.slice(0, ps),
@@ -297,26 +336,32 @@ export class DashboardService {
   }
 
   /** Route widget config to the correct AnalyticsService query method */
-  private async queryAnalytics(widget: DashboardWidget, timeRange?: TimeRange): Promise<any> {
-    const q = { timeRange: timeRange || widget.defaultTimeRange || 'last_7_days', ...(widget.filters || {}) };
+  private async queryAnalytics(widget: DashboardWidget, timeRange?: TimeRange): Promise<DashboardAnalyticsData | null> {
+    const filters = widget.filters as AnalyticsFilters | undefined;
+    const baseQuery = { timeRange: timeRange || widget.defaultTimeRange || '7d', filters };
     const key = widget.metric || widget.dataSource.query || '';
     try {
-      if (key.toLowerCase().includes('conversation')) { const r = await this.analytics.getConversationAnalytics(q as any); return r.success ? r.data : null; }
-      if (key.toLowerCase().includes('message')) { const r = await this.analytics.getMessageAnalytics(q as any); return r.success ? r.data : null; }
-      if (key.toLowerCase().includes('user') || key.toLowerCase().includes('agent')) { const r = await this.analytics.getUserAnalytics(q as any); return r.success ? r.data : null; }
-      if (key.toLowerCase().includes('performance') || key.toLowerCase().includes('response')) { const r = await this.analytics.getPerformanceAnalytics(q as any); return r.success ? r.data : null; }
-      const r = await this.analytics.getConversationAnalytics(q as any);
-      return r.success ? r.data : null;
+      if (key.toLowerCase().includes('conversation')) { const r = await this.analytics.getConversationAnalytics(baseQuery as ConversationAnalyticsQuery); return r.success ? r.data || null : null; }
+      if (key.toLowerCase().includes('message')) { const r = await this.analytics.getMessageAnalytics(baseQuery as MessageAnalyticsQuery); return r.success ? r.data || null : null; }
+      if (key.toLowerCase().includes('user') || key.toLowerCase().includes('agent')) { const r = await this.analytics.getUserAnalytics(baseQuery as UserAnalyticsQuery); return r.success ? r.data || null : null; }
+      if (key.toLowerCase().includes('performance') || key.toLowerCase().includes('response')) { const r = await this.analytics.getPerformanceAnalytics(baseQuery as PerformanceAnalyticsQuery); return r.success ? r.data || null : null; }
+      const r = await this.analytics.getConversationAnalytics(baseQuery as ConversationAnalyticsQuery);
+      return r.success ? r.data || null : null;
     } catch { return null; }
   }
 
   /** Extract a numeric value from analytics result by searching summary + top-level + one level deep */
-  private extractValue(data: any, key: string): number {
+  private extractValue(data: DashboardAnalyticsData | null, key: string): number {
     if (!data) return 0;
-    if (data.summary?.[key] !== undefined) return Number(data.summary[key]) || 0;
-    if (data[key] !== undefined) return Number(data[key]) || 0;
-    for (const v of Object.values(data)) {
-      if (v && typeof v === 'object' && !Array.isArray(v) && (v as any)[key] !== undefined) return Number((v as any)[key]) || 0;
+    const record = toRecord(data);
+    if (isRecord(record.summary) && record.summary[key] !== undefined) {
+      return Number(record.summary[key]) || 0;
+    }
+    if (record[key] !== undefined) return Number(record[key]) || 0;
+    for (const value of Object.values(record)) {
+      if (isRecord(value) && value[key] !== undefined) {
+        return Number(value[key]) || 0;
+      }
     }
     return 0;
   }
@@ -631,7 +676,7 @@ export class DashboardService {
     }
   }
 
-  private getCachedData(key: string): any | null {
+  private getCachedData(key: string): unknown | null {
     const cached = this.cache.get(key);
     if (!cached) return null;
 
@@ -644,26 +689,81 @@ export class DashboardService {
     return cached.data;
   }
 
-  private setCachedData(key: string, data: any): void {
+  private setCachedData(key: string, data: unknown): void {
     this.cache.set(key, {
       data,
       timestamp: nowMs()
     });
   }
 
-  private extractLabels(data: any[], groupBy?: string): string[] {
-    if (!groupBy || data.length === 0) return [];
-    return data.map(item => item[groupBy]).filter((value, index, self) => self.indexOf(value) === index);
+  private toWidgetData(data: DashboardAnalyticsData | null): WidgetData['data'] {
+    return data ? toRecord(data) : {};
   }
 
-  private buildDatasets(data: any[], metrics: string[]): any[] {
+  private getTimeSeriesRows(data: DashboardAnalyticsData | null): TimeSeriesData[] {
+    if (!data) return [];
+    if ('trends' in data) return data.trends;
+    if ('volume' in data) return data.volume;
+    if ('activity' in data) return data.activity;
+    return [];
+  }
+
+  private getTableRows(data: DashboardAnalyticsData | null): Record<string, unknown>[] {
+    if (!data) return [];
+
+    const record = toRecord(data);
+    const preferredRowKeys = [
+      'distributions',
+      'types',
+      'channels',
+      'sentiments',
+      'activity',
+      'trends',
+      'volume',
+      'performance',
+      'workload',
+      'bottlenecks',
+      'recommendations'
+    ];
+
+    for (const key of preferredRowKeys) {
+      const value = record[key];
+      if (Array.isArray(value)) {
+        const rows = value.filter(isRecord);
+        if (rows.length > 0) return rows;
+      }
+    }
+
+    return [record];
+  }
+
+  private toTableRow(row: Record<string, unknown>, index: number): TableRow {
+    const id = typeof row.id === 'string' || typeof row.id === 'number' ? row.id : index;
+    const tableRow: TableRow = { id };
+
+    Object.entries(row).forEach(([key, value]) => {
+      tableRow[key] = toTableCellValue(value);
+    });
+
+    return tableRow;
+  }
+
+  private extractLabels(data: Record<string, unknown>[], groupBy?: string): string[] {
+    if (!groupBy || data.length === 0) return [];
+    return data
+      .map(item => item[groupBy])
+      .filter((value, index, self) => value !== undefined && self.indexOf(value) === index)
+      .map(value => String(value));
+  }
+
+  private buildDatasets(data: Record<string, unknown>[], metrics: string[]) {
     return metrics.map(metric => ({
       label: metric,
-      data: data.map(item => item[metric] || 0)
+      data: data.map(item => Number(item[metric]) || 0)
     }));
   }
 
-  private inferColumns(data: any[]): Array<{ key: string; title: string; type: string }> {
+  private inferColumns(data: TableRow[]): Array<{ key: string; title: string; type: string }> {
     if (data.length === 0) return [];
 
     const firstRow = data[0];

@@ -7,9 +7,32 @@
 import { Hono } from 'hono';
 import { validator } from 'hono/validator';
 import { validateProjectName, validateEmail } from '../utils/validation';
-import type { Env, StartDeploymentRequest, DeploymentConfig } from '../types';
+import type { Env, StartDeploymentRequest, DeploymentConfig, DeploymentIndexItem, DeploymentState } from '../types';
 
 const deployment = new Hono<{ Bindings: Env }>();
+
+interface DeploymentIndexResponse {
+  deployments?: DeploymentIndexItem[];
+}
+
+interface DeploymentSummary {
+  projectName: string;
+  deploymentId?: string;
+  status: DeploymentState['status'] | 'unknown';
+  currentStep?: DeploymentState['currentStep'];
+  totalProgress?: number;
+  adminEmail: string;
+  accountId: string;
+  customDomain?: string;
+  createdAt: number;
+  updatedAt: number;
+  completedAt?: number;
+  urls?: {
+    frontend?: string;
+    backend?: string;
+  };
+  error?: DeploymentState['error'];
+}
 
 /**
  * Health check endpoint
@@ -91,6 +114,24 @@ deployment.post(
       });
 
       const result = await response.json();
+      const resultRecord = result && typeof result === 'object' ? result as { deploymentId?: string } : {};
+
+      const indexId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName('__deployment-index__');
+      const indexStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(indexId);
+      await indexStub.fetch('http://do/index/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectName: body.projectName,
+          deploymentId: resultRecord.deploymentId,
+          adminEmail: body.adminEmail,
+          accountId: body.accountId,
+          customDomain: body.customDomain,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        } satisfies DeploymentIndexItem)
+      });
+
       return c.json(result);
 
     } catch (error) {
@@ -167,12 +208,52 @@ deployment.post('/deployment/:projectName/cancel', async (c) => {
  * GET /deployments
  */
 deployment.get('/deployments', async (c) => {
-  // In production, you'd query all Durable Objects or maintain a list in KV
-  // For now, return a simple response
-  return c.json({
-    message: 'List endpoint not implemented',
-    info: 'Each deployment is isolated in its own Durable Object'
-  });
+  try {
+    const indexId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName('__deployment-index__');
+    const indexStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(indexId);
+    const indexResponse = await indexStub.fetch('http://do/index/list', { method: 'GET' });
+
+    if (!indexResponse.ok) {
+      return c.json({ error: 'Failed to read deployment index' }, 500);
+    }
+
+    const index = await indexResponse.json<DeploymentIndexResponse>();
+    const deployments = await Promise.all((index.deployments || []).map(async (item): Promise<DeploymentSummary> => {
+      const doId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName(item.projectName);
+      const doStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(doId);
+      const statusResponse = await doStub.fetch('http://do/status', { method: 'GET' });
+
+      if (!statusResponse.ok) {
+        return {
+          ...item,
+          status: 'unknown'
+        };
+      }
+
+      const status = await statusResponse.json<Partial<DeploymentState> & { urls?: DeploymentSummary['urls'] }>();
+      return {
+        ...item,
+        deploymentId: status.deploymentId || item.deploymentId,
+        status: status.status || 'unknown',
+        currentStep: status.currentStep,
+        totalProgress: status.totalProgress,
+        updatedAt: status.updatedAt || item.updatedAt,
+        completedAt: status.completedAt,
+        urls: status.urls,
+        error: status.error
+      };
+    }));
+
+    return c.json({
+      deployments,
+      count: deployments.length
+    });
+  } catch (error) {
+    console.error('List deployments error:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : 'Failed to list deployments'
+    }, 500);
+  }
 });
 
 export default deployment;

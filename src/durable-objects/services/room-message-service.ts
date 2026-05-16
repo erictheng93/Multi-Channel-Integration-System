@@ -12,6 +12,17 @@ import type { RoomStorageService } from './room-storage-service';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
+interface RoomMessageData {
+  content?: string;
+  messageType?: string;
+  senderName?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface RoomEnv {
+  CONVERSATION_ROOM?: DurableObjectNamespace;
+}
+
 /**
  * Handles all message broadcasting and ordering for ConversationRoom:
  * - Chat message handling with permission checks
@@ -27,6 +38,10 @@ export class RoomMessageService {
     private helpers: RoomHelpers,
     private storageService: RoomStorageService
   ) {}
+
+  private get env(): RoomEnv {
+    return this.ctx.env as RoomEnv;
+  }
 
   async handleChatMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
     const { userId, role } = connection;
@@ -44,8 +59,8 @@ export class RoomMessageService {
     const messageOrder = this.getNextMessageOrder();
 
     // Type guard for message data
-    const messageData = message.data as any;
-    const isValidMessageData = messageData && typeof messageData === 'object';
+    const messageData = message.data as RoomMessageData | undefined;
+    const isValidMessageData = !!messageData && typeof messageData === 'object';
 
     // Check if this is a typing indicator
     const isTypingMessage = isValidMessageData &&
@@ -67,7 +82,7 @@ export class RoomMessageService {
       conversationId: this.ctx.conversationId,
       data: {
         messageId: message.id,
-        content: isValidMessageData ? messageData.content : '',
+        content: isValidMessageData ? messageData.content || '' : '',
         messageType: (isValidMessageData ? messageData.messageType : null) || 'text',
         senderName: isValidMessageData ? messageData.senderName : undefined,
         metadata: { ...(isValidMessageData && messageData.metadata ? messageData.metadata : {}), order: messageOrder }
@@ -79,10 +94,23 @@ export class RoomMessageService {
     if (this.helpers.isFullMode()) {
       const realtimeEvent: RealtimeEvent = {
         id: event.id,
-        type: event.type as any,
+        type: 'message_created',
         timestamp: event.timestamp.toString(),
         source: event.source,
-        data: event.data as any
+        data: {
+          messageId: message.id ?? event.id,
+          conversationId: Number(this.ctx.conversationId),
+          content: isValidMessageData ? messageData.content || '' : '',
+          messageType: messageData?.messageType === 'image' || messageData?.messageType === 'file'
+            ? messageData.messageType
+            : 'text',
+          senderType: 'agent',
+          senderId: userId,
+          senderName: messageData?.senderName,
+          metadata: isValidMessageData ? messageData.metadata : undefined,
+          createdAt: nowISO(),
+          isRead: false
+        }
       };
       this.ctx.messageHistory.push(realtimeEvent);
       if (this.ctx.messageHistory.length > this.ctx.MAX_MESSAGE_HISTORY) {
@@ -283,13 +311,13 @@ export class RoomMessageService {
         const peerShardId = `${this.ctx.conversationId}_shard-${shardIndex}`;
 
         // Get peer shard stub
-        if (!this.ctx.env.CONVERSATION_ROOM) {
+        if (!this.env.CONVERSATION_ROOM) {
           testSafeLog(`${getEmojiPrefix('WARNING')}[ConversationRoom] CONVERSATION_ROOM binding not available for cross-shard broadcast`);
           return;
         }
 
-        const peerId = this.ctx.env.CONVERSATION_ROOM.idFromName(peerShardId);
-        const peerStub = this.ctx.env.CONVERSATION_ROOM.get(peerId);
+        const peerId = this.env.CONVERSATION_ROOM.idFromName(peerShardId);
+        const peerStub = this.env.CONVERSATION_ROOM.get(peerId);
 
         broadcastPromises.push(
           peerStub.fetch(new Request('https://shard/cross-shard-broadcast', {

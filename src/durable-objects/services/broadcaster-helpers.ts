@@ -38,15 +38,21 @@ export interface BroadcasterConfig {
   LOCK_TTL: number;
 }
 
+export interface BroadcasterEnv {
+  DB?: D1Database;
+  USER_CONNECTION?: DurableObjectNamespace;
+  CONVERSATION_ROOM?: DurableObjectNamespace;
+}
+
 /**
  * Shared context passed to all broadcaster sub-services by reference.
  * All collections (Maps, Arrays, stats object) are mutable and shared.
  */
 export interface BroadcasterContext {
   state: DurableObjectState;
-  env: any;
-  eventQueue: any[];
-  highPriorityQueue: any[];
+  env: BroadcasterEnv;
+  eventQueue: unknown[];
+  highPriorityQueue: unknown[];
   conversationRooms: Map<string, DurableObjectStub>;
   userConnections: Map<string, DurableObjectStub>;
   targetFilters: Map<string, WebSocketSubscription[]>;
@@ -86,9 +92,9 @@ export class BroadcasterHelpers {
         WHERE (a.team_id = ?1 OR at.team_id = ?1)
           AND a.is_active = 1
           AND a.deleted_at IS NULL
-      `).bind(teamId).all();
+      `).bind(teamId).all<{ id: string }>();
 
-      return (result.results || []).map((member: any) => member.id);
+      return (result.results || []).map((member) => member.id);
     } catch (error) {
       log.error(' [MessageBroadcaster] Error getting team members:', { error: error instanceof Error ? error.message : String(error) });
       return [];
@@ -111,9 +117,9 @@ export class BroadcasterHelpers {
         WHERE role = 'admin'
           AND is_active = 1
           AND deleted_at IS NULL
-      `).all();
+      `).all<{ id: string }>();
 
-      const adminIds = (result.results || []).map((admin: any) => admin.id);
+      const adminIds = (result.results || []).map((admin) => admin.id);
       log.debug('Found admin users', { count: adminIds.length });
       return adminIds;
     } catch (error) {
@@ -164,19 +170,19 @@ export class BroadcasterHelpers {
 
   async initializeFromStorage(): Promise<void> {
     try {
-      const eventQueue = await this.ctx.state.storage.get('eventQueue') as any[];
+      const eventQueue = await this.ctx.state.storage.get('eventQueue') as unknown[];
       if (eventQueue) {
         this.ctx.eventQueue.length = 0;
         this.ctx.eventQueue.push(...eventQueue);
       }
 
-      const highPriorityQueue = await this.ctx.state.storage.get('highPriorityQueue') as any[];
+      const highPriorityQueue = await this.ctx.state.storage.get('highPriorityQueue') as unknown[];
       if (highPriorityQueue) {
         this.ctx.highPriorityQueue.length = 0;
         this.ctx.highPriorityQueue.push(...highPriorityQueue);
       }
 
-      const distributionStats = await this.ctx.state.storage.get('distributionStats') as any;
+      const distributionStats = await this.ctx.state.storage.get('distributionStats') as Partial<DistributionStats> | undefined;
       if (distributionStats) {
         Object.assign(this.ctx.stats, distributionStats);
       }

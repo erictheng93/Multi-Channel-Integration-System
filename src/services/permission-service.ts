@@ -121,17 +121,17 @@ export class PermissionService {
     // 只能操作指派給自己團隊的對話
     // Note: Individual assignment (assignedUserId) removed - use team-based access control instead
     if (conditions.assigned) {
-      if (resource === 'conversation' && context && (context as any).resourceId && db) {
+      if (resource === 'conversation' && context.resourceId && db) {
         // 查詢對話的 assignedTeamId
         try {
           const drizzleDb = createDbClient(db);
           const conversation = await drizzleDb
             .select({ assignedTeamId: conversations.assignedTeamId })
             .from(conversations)
-            .where(eq(conversations.id, (context as any).resourceId))
+            .where(eq(conversations.id, String(context.resourceId)))
             .get();
 
-          console.log(` Conversation team assignment check - ConversationId: ${(context as any).resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.primaryTeamId}`);
+          console.log(` Conversation team assignment check - ConversationId: ${context.resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.primaryTeamId}`);
 
           // 如果對話未指派給任何團隊，允許訪問
           if (!conversation || !conversation.assignedTeamId) {
@@ -146,12 +146,12 @@ export class PermissionService {
         }
       } else {
         // 對於非對話資源，檢查 teamId
-        return (context as any).teamId === user.primaryTeamId;
+        return context.teamId === user.primaryTeamId;
       }
     }
 
     // 只能操作自己的資源
-    if (conditions.own && (context as any).ownerId !== user.id) {
+    if (conditions.own && context.metadata?.ownerId !== user.id) {
       return false;
     }
 

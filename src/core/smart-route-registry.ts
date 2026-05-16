@@ -18,7 +18,7 @@ export enum RoutePriority {
  */
 export interface RouteDefinition {
   path: string;
-  handler: any;
+  handler: Hono;
   priority?: RoutePriority;
   description?: string;
 }
@@ -46,10 +46,10 @@ interface RouteAnalysis {
  */
 export class SmartRouteRegistry {
   private routes: Map<string, RouteDefinition> = new Map();
-  private app: Hono<any>;
+  private app: Hono;
   private registered: Set<string> = new Set();
 
-  constructor(app: Hono<any>) {
+  constructor(app: Hono) {
     this.app = app;
   }
 
@@ -346,6 +346,6 @@ export class SmartRouteRegistry {
 /**
  * 便捷工廠函數
  */
-export function createSmartRegistry(app: Hono<any>): SmartRouteRegistry {
+export function createSmartRegistry(app: Hono): SmartRouteRegistry {
   return new SmartRouteRegistry(app);
 }

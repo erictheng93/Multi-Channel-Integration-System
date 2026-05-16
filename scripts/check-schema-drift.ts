@@ -18,16 +18,19 @@
 import * as schema from '../src/db/schema';
 import { getTableName, getTableColumns } from 'drizzle-orm';
 
+type DrizzleTable = Parameters<typeof getTableName>[0];
+
 // Collect all sqliteTable exports from schema by trying getTableName on each export.
 // Bug history: this loop used to destructure `[, value]` (discarding the key) but then
 // pushed `[key, value]` — undefined `key` threw ReferenceError which was swallowed by
 // the catch, leaving `tables` empty and the checker always reporting "Tables checked: 0".
-const tables: Array<[string, unknown]> = [];
+const tables: Array<[string, DrizzleTable]> = [];
 for (const [key, value] of Object.entries(schema)) {
   if (value && typeof value === 'object') {
     try {
-      getTableName(value as any);
-      tables.push([key, value]);
+      const table = value as DrizzleTable;
+      getTableName(table);
+      tables.push([key, table]);
     } catch {
       // Not a table object, skip
     }
@@ -59,10 +62,10 @@ function getD1Columns(tableName: string): string[] {
   }
 }
 
-function getSchemaColumns(tableObj: unknown): string[] {
+function getSchemaColumns(tableObj: DrizzleTable): string[] {
   try {
-    const columns = getTableColumns(tableObj as any);
-    return Object.values(columns).map((col: any) => col.name as string);
+    const columns = getTableColumns(tableObj);
+    return Object.values(columns).map((col) => (col as { name: string }).name);
   } catch {
     return [];
   }
@@ -77,7 +80,7 @@ function main() {
   let tablesChecked = 0;
 
   for (const [, tableObj] of tables) {
-    const tableName = getTableName(tableObj as any);
+    const tableName = getTableName(tableObj);
     const schemaColumns = getSchemaColumns(tableObj);
     if (schemaColumns.length === 0) continue;
 

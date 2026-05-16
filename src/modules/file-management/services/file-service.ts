@@ -36,6 +36,8 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('FileService');
 
+type FileAttachmentRow = typeof fileAttachments.$inferSelect;
+
 export class FileService {
   private readonly db: Database;
   private readonly validationService: FileValidationService;
@@ -154,11 +156,15 @@ export class FileService {
       await this.db.insert(fileAttachments).values({
         id: fileId,
         messageId: request.messageId || null,
+        conversationId: request.conversationId || null,
         filename: request.filename,
         mimeType: request.mimeType,
         fileSize: metadata.size,
         fileUrl: uploadResult.url,
-        r2Key: storageKey
+        r2Key: storageKey,
+        uploadedBy: request.uploadedBy || null,
+        createdAt: managedFile.createdAt,
+        updatedAt: managedFile.updatedAt
       });
 
       // 檢查是否需要產生縮圖
@@ -435,22 +441,32 @@ export class FileService {
   /**
    * 獲取檔案統計
    */
-  async getFileStatistics(period = '30d'): Promise<FileStatistics> {
+  async getFileStatistics(period = '30d', filters: { uploadedBy?: string } = {}): Promise<FileStatistics> {
     try {
       // 計算日期範圍
       const now = new Date();
       const daysMap = { '24h': 1, '7d': 7, '30d': 30 };
       const days = daysMap[period as keyof typeof daysMap] || 30;
       const fromDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      const baseConditions = filters.uploadedBy
+        ? [eq(fileAttachments.uploadedBy, filters.uploadedBy)]
+        : [];
+      const baseWhere = baseConditions.length > 0 ? and(...baseConditions) : undefined;
+      const recentWhere = and(
+        ...(baseWhere ? [baseWhere] : []),
+        gte(fileAttachments.createdAt, fromDate.toISOString())
+      );
 
       // 獲取總檔案數和大小
-      const totalStats = await this.db
+      const totalQuery = this.db
         .select({
           count: sql<number>`COUNT(*)`.as('count'),
           totalSize: sql<number>`SUM(file_size)`.as('totalSize')
         })
-        .from(fileAttachments)
-        .get();
+        .from(fileAttachments);
+      const totalStats = baseWhere
+        ? await totalQuery.where(baseWhere).get()
+        : await totalQuery.get();
 
       const totalFiles = Number(totalStats?.count) || 0;
       const totalSize = Number(totalStats?.totalSize) || 0;
@@ -459,29 +475,52 @@ export class FileService {
       const recentActivity = await this.db
         .select({ count: sql<number>`COUNT(*)`.as('count') })
         .from(fileAttachments)
-        .where(gte(fileAttachments.createdAt, fromDate.toISOString()))
+        .where(recentWhere)
         .get();
 
       const uploaded = Number(recentActivity?.count) || 0;
+      const filesQuery = this.db
+        .select({
+          mimeType: fileAttachments.mimeType,
+          filename: fileAttachments.filename,
+          r2Key: fileAttachments.r2Key,
+          fileSize: fileAttachments.fileSize
+        })
+        .from(fileAttachments);
+      const files = baseWhere
+        ? await filesQuery.where(baseWhere).all()
+        : await filesQuery.all();
+
+      const filesByType: FileStatistics['filesByType'] = {
+        image: 0,
+        video: 0,
+        audio: 0,
+        document: 0,
+        archive: 0,
+        other: 0
+      };
+      const filesByPlatform: FileStatistics['filesByPlatform'] = {
+        line: 0,
+        facebook: 0,
+        system: 0,
+        admin: 0
+      };
+
+      for (const file of files) {
+        const extension = getFileExtension(file.filename, file.mimeType);
+        const fileType = getFileType(file.mimeType, extension);
+        filesByType[fileType] += 1;
+
+        const platform = this.extractPlatformFromStorageKey(file.r2Key);
+        filesByPlatform[platform] += 1;
+      }
 
       return {
         totalFiles,
         totalSize,
         averageFileSize: totalFiles > 0 ? Math.round(totalSize / totalFiles) : 0,
-        filesByType: {
-          image: 0, // 需要實作按類型分組查詢
-          video: 0,
-          audio: 0,
-          document: 0,
-          archive: 0,
-          other: 0
-        },
-        filesByPlatform: {
-          line: 0, // 需要實作按平台分組查詢
-          facebook: 0,
-          system: 0,
-          admin: 0
-        },
+        filesByType,
+        filesByPlatform,
         storageUsage: {
           used: totalSize,
           available: -1, // 需要從儲存服務獲取
@@ -555,31 +594,44 @@ export class FileService {
   /**
    * 產生縮圖
    */
-  private async generateThumbnail(_file: ManagedFile, _originalKey: string): Promise<string | undefined> {
-    // 縮圖產生邏輯
-    // 這裡需要實作實際的縮圖產生功能
-    log.info('Thumbnail generation not implemented yet');
-    return undefined;
+  private async generateThumbnail(file: ManagedFile, _originalKey: string): Promise<string | undefined> {
+    if (file.type !== 'image') {
+      return undefined;
+    }
+
+    return file.publicUrl || file.url;
+  }
+
+  private extractPlatformFromStorageKey(r2Key: string): keyof FileStatistics['filesByPlatform'] {
+    const platform = r2Key.split('/')[1];
+    if (platform === 'line' || platform === 'facebook' || platform === 'admin') {
+      return platform;
+    }
+    return 'system';
   }
 
   /**
    * 轉換資料庫記錄為 ManagedFile
    */
-  private convertToManagedFile(record: any): ManagedFile {
+  private convertToManagedFile(record: FileAttachmentRow): ManagedFile {
+    const filename = record.filename;
+    const mimeType = record.mimeType;
+    const extension = filename.split('.').pop() || '';
+
     return {
       id: record.id,
-      filename: record.filename,
-      mimeType: record.mimeType,
+      filename,
+      mimeType,
       size: record.fileSize,
-      extension: record.filename.split('.').pop() || '',
-      type: getFileType(record.mimeType),
-      url: record.fileUrl,
+      extension,
+      type: getFileType(mimeType),
+      url: record.fileUrl || '',
       platform: 'system', // 需要從記錄中獲取
       metadata: {
-        filename: record.filename,
-        mimeType: record.mimeType,
+        filename,
+        mimeType,
         size: record.fileSize,
-        extension: record.filename.split('.').pop() || ''
+        extension
       },
       processingStatus: 'completed',
       createdAt: record.createdAt || nowISO(),

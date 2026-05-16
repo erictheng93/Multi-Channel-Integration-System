@@ -39,7 +39,7 @@ export class TopicService {
   private db: DrizzleD1Database;
   private config: typeof DEFAULT_SESSION_CONFIG;
 
-  constructor(database: any, config?: Partial<typeof DEFAULT_SESSION_CONFIG>) {
+  constructor(database: D1Database, config?: Partial<typeof DEFAULT_SESSION_CONFIG>) {
     this.db = drizzle(database);
     this.config = { ...DEFAULT_SESSION_CONFIG, ...config };
   }

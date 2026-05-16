@@ -105,7 +105,7 @@ export async function createAuthErrorResponse(
   clientIP?: string,
   userAgent?: string,
   duration?: number,
-  additionalData: Record<string, any> = {}
+  additionalData: Record<string, unknown> = {}
 ): Promise<Response> {
   // 記錄錯誤統計
   await recordAuthError(env, errorCode, clientIP, userAgent, duration);

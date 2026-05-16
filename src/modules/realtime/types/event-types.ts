@@ -27,7 +27,7 @@ export type EventSource = 'system' | 'user' | 'api' | 'webhook' | 'queue' | 'man
 export interface BaseEventData {
   timestamp: string;
   source: EventSource;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MessageEventData extends BaseEventData {

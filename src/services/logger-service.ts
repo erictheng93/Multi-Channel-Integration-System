@@ -63,6 +63,10 @@ export interface LogEntry {
   metadata?: Record<string, unknown>;
 }
 
+interface ErrorWithCode extends Error {
+  code?: string | number;
+}
+
 /**
  * 日誌配置
  */
@@ -249,7 +253,7 @@ export class Logger {
           name: error.name,
           message: error.message,
           stack: this.config.includeStackTrace ? error.stack : undefined,
-          code: (error as any).code
+          code: (error as ErrorWithCode).code
         };
       } else {
         entry.error = {
@@ -441,7 +445,7 @@ export function serializeError(error: unknown): Record<string, unknown> {
       name: error.name,
       message: error.message,
       stack: error.stack,
-      code: (error as any).code
+      code: (error as ErrorWithCode).code
     };
   }
   return {

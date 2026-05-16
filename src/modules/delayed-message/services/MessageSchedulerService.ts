@@ -14,6 +14,10 @@ import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('MessageScheduler')
 
+function asSupportedPlatform(value: unknown): 'line' | 'facebook' | undefined {
+  return value === 'line' || value === 'facebook' ? value : undefined;
+}
+
 /**
  * MessageSchedulerService - 訊息排程專家
  *
@@ -202,8 +206,16 @@ export class MessageSchedulerService {
       await this.storageService.updateMessageStatus(messageId, 'pending', new Date());
 
       // 更新 KV 撤回標記
+      const platform = asSupportedPlatform(message.metadata.platform);
+      if (!platform) {
+        throw new SchedulingError('Cannot reschedule message without a supported platform', {
+          messageId,
+          platform: message.metadata.platform
+        });
+      }
+
       const recallInfo = this.createRecallInfo(
-        { platform: message.metadata.platform, senderId: message.agentId } as any,
+        { platform, senderId: message.agentId },
         timeCalculation.recallDeadline
       );
       await this.storageService.markAsRecallable(messageId, recallInfo);

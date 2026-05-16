@@ -6,7 +6,7 @@
 
 import type { DurableObjectState } from '@cloudflare/workers-types';
 import type { Bindings } from '../types';
-import { LatestMessageCache } from '../services/latest-message-cache';
+import { LatestMessageCache, type CachedLatestMessage } from '../services/latest-message-cache';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 /**
@@ -455,7 +455,7 @@ export class LatestMessageCacheCoordinator {
   /**
    * Broadcast latest message update via WebSocket
    */
-  private async broadcastLatestMessageUpdate(conversationId: string, latestMessage: any): Promise<void> {
+  private async broadcastLatestMessageUpdate(conversationId: string, latestMessage: CachedLatestMessage): Promise<void> {
     try {
       const event = {
         type: 'latest_message_updated',

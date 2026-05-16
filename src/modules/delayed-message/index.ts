@@ -120,7 +120,7 @@ export {
 } from './types';
 
 // Factory function to create a controller instance
-export function createDelayedMessageController(env: any) {
+export function createDelayedMessageController(env: unknown) {
   const { DelayedMessageController } = require('./controllers');
   return new DelayedMessageController(env);
 }

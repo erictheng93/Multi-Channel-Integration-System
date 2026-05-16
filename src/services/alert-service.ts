@@ -60,7 +60,7 @@ export interface AlertMetadata {
   integrationId?: string;
   sourceIP?: string;
   eventType?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp?: string;
 }
 
@@ -69,7 +69,7 @@ export interface AlertMetadata {
  */
 interface SlackMessage {
   text?: string;
-  blocks?: any[];
+  blocks?: unknown[];
   channel?: string;
   username?: string;
   icon_emoji?: string;
@@ -272,7 +272,7 @@ This is an automated security alert from Multi-Channel Customer Support System.
 
     // Add metadata fields if available
     if (metadata) {
-      const fields: any[] = [];
+      const fields: unknown[] = [];
       if (metadata.platform) fields.push({ type: 'mrkdwn', text: `*Platform:*\n${metadata.platform}` });
       if (metadata.eventType) fields.push({ type: 'mrkdwn', text: `*Event:*\n${metadata.eventType}` });
       if (metadata.sourceIP) fields.push({ type: 'mrkdwn', text: `*Source IP:*\n${metadata.sourceIP}` });

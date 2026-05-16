@@ -11,6 +11,12 @@ import type { CustomerPermissions, CustomerAccessScope, CreateCustomerData, Upda
 import type { CreateSessionData, UpdateSessionData, SessionListQuery, SessionSearchQuery } from '@modules/session/types/session-types';
 import type { RealtimeAuthPayload } from '@modules/realtime/middleware/realtime-auth';
 import type { FileValidationResult } from '@modules/file-management/types/validation-types';
+import type {
+  BatchReportOperation,
+  ReportGenerationParams,
+  ReportListQuery,
+  ScheduledReport
+} from '@modules/reports/types/report-types';
 
 // Context logger for auth middleware
 const log = createContextLogger('AuthMiddleware');
@@ -36,22 +42,25 @@ declare module 'hono' {
     updateSessionData: UpdateSessionData;
     sessionQuery: SessionListQuery;
     sessionSearchQuery: SessionSearchQuery | Record<string, unknown>;
-    batchOperation: Record<string, unknown>; // Flexible for different batch operations
+    batchOperation: BatchReportOperation | Record<string, unknown>; // Flexible for different batch operations
     // 系統變數
     requestId: string;
     userId: string;
     // 其他常用變數 (P2-6: Improved type hints with union types)
     customerFilters: CustomerFilters;
+    teamFilters: { teamId: string };
     paginationParams: { page: number; pageSize: number };
     searchQuery: CustomerSearchQuery | Record<string, unknown>; // Union for various search types
     tagOperation: CustomerTagOperation;
     // Reports module variables
     reportId: string;
     scheduledReportId: string;
-    reportParams: Record<string, unknown>;
-    reportQuery: Record<string, unknown>;
-    scheduledReportData: Record<string, unknown>;
-    previewParams: Record<string, unknown>;
+    reportParams: ReportGenerationParams;
+    reportQuery: ReportListQuery;
+    scheduledReportData:
+      | Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>
+      | Partial<ScheduledReport>;
+    previewParams: ReportGenerationParams;
     canAccess: boolean;
     canModify: boolean;
     validatedData: Record<string, unknown>; // Flexible validated data

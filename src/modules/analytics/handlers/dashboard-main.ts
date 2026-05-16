@@ -255,7 +255,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           editors: []
         },
         createdBy: user?.id?.toString() || 'system',
-        createdAt: (configData as any).createdAt || nowISO(),
+        createdAt: (configData as Partial<DashboardConfig>).createdAt || nowISO(),
         updatedAt: nowISO(),
         refreshInterval: configData.refreshInterval || 30000, // 30 seconds default
         autoRefresh: configData.autoRefresh ?? true
@@ -284,7 +284,7 @@ const createDashboardApp = (dashboardService: DashboardService, widgetManager: W
           editors: []
         },
         createdBy: user?.id?.toString() || 'system',
-        createdAt: (configData as any).createdAt || nowISO(),
+        createdAt: (configData as Partial<DashboardConfig>).createdAt || nowISO(),
         updatedAt: nowISO(),
         refreshInterval: configData.refreshInterval || 30000, // 30 seconds default
         autoRefresh: configData.autoRefresh ?? true
@@ -536,8 +536,8 @@ export const createDashboardHandler = (dashboardService: DashboardService, widge
 // 為了向後兼容，也導出一個默認的處理器創建函數
 export const dashboardHandler = new Hono<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>()
   .all('*', async (c) => {
-    const dashboardService = new DashboardService(c.env.DB, c.env.KV as any);
-    const widgetManager = new WidgetManager(c.env.DB, c.env.KV as any);
+    const dashboardService = new DashboardService(c.env.DB, c.env.KV);
+    const widgetManager = new WidgetManager(c.env.DB, c.env.KV);
     const app = createDashboardApp(dashboardService, widgetManager);
 
     // 使用正確的 fetch 方法

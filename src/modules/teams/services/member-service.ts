@@ -1,8 +1,8 @@
 // Team Member Service
 // 團隊成員業務邏輯服務
 
-import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, or, desc, sql, isNull, inArray } from 'drizzle-orm';
+import { createDbClient, type Database } from '@/db/drizzle-factory';
 import {
   agents,
   agentTeams,
@@ -46,11 +46,14 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('MemberService');
 
+type AgentRow = typeof agents.$inferSelect;
+type AgentUpdate = Partial<Pick<AgentRow, 'email' | 'displayName' | 'role' | 'isActive' | 'updatedAt'>>;
+
 export class MemberService {
-  private db: ReturnType<typeof drizzle>;
+  private db: Database;
 
   constructor(database: D1Database) {
-    this.db = drizzle(database);
+    this.db = createDbClient(database);
   }
 
   /**
@@ -275,7 +278,7 @@ export class MemberService {
     data: UpdateMemberRequest,
     _updatedBy: string
   ): Promise<TeamMember> {
-    const updateData: any = {
+    const updateData: AgentUpdate = {
       updatedAt: nowISO()
     };
 
@@ -496,7 +499,7 @@ export class MemberService {
 
       // Step 2: 批量更新 (N 更新 → 1 更新)
       const now = nowISO();
-      const updateData: any = { updatedAt: now };
+      const updateData: AgentUpdate = { updatedAt: now };
       if (updates.role !== undefined) updateData.role = updates.role;
       if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
 
@@ -511,7 +514,7 @@ export class MemberService {
         const originalMember = existingMemberMap.get(memberId);
         if (originalMember) {
           // 合併更新後的資料
-          const updatedMember = {
+          const updatedMember: AgentRow = {
             ...originalMember,
             ...updateData
           };
@@ -852,21 +855,21 @@ export class MemberService {
   /**
    * 格式化成員數據
    */
-  private formatMember(member: any, teamIdOverride?: number): TeamMember {
+  private formatMember(member: AgentRow, teamIdOverride?: number): TeamMember {
     return {
       id: member.id,
       loginId: member.displayName, // Use displayName as loginId (schema doesn't have loginId field)
       email: member.email,
       name: member.displayName,
       displayName: member.displayName,
-      role: member.role,
+      role: member.role as TeamMember['role'],
       primaryTeamId: teamIdOverride ?? null,
       group: '', // Legacy field
-      isActive: member.isActive,
+      isActive: member.isActive ?? false,
       status: member.isActive ? 'active' : 'inactive',
-      createdAt: member.createdAt,
-      lastActive: member.lastLoginAt,
-      lastLoginAt: member.lastLoginAt
+      createdAt: member.createdAt || nowISO(),
+      lastActive: member.lastActive ?? member.lastLoginAt ?? null,
+      lastLoginAt: member.lastLoginAt ?? null
     };
   }
 }

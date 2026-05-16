@@ -3,11 +3,13 @@ import type { Hono } from 'hono';
 import type { Bindings } from '../types';
 import { nowISO } from '@/utils/timestamp'
 
+export type RouteHandler = unknown;
+
 // 路由模組定義
 export interface RouteModule {
   name: string;
   path: string;
-  handler: any;
+  handler: RouteHandler;
   description: string;
   version: string;
   enabled: boolean;
@@ -20,7 +22,7 @@ export interface RouteGroup {
   name: string;
   prefix: string;
   modules: RouteModule[];
-  middleware?: any[];
+  middleware?: unknown[];
   description: string;
 }
 
@@ -69,7 +71,7 @@ export class RouteRegistry {
       }
 
       // 註冊路由
-      this.app.route(fullPath, module.handler);
+      this.app.route(fullPath, module.handler as Hono);
 
       // 記錄註冊狀態
       this.registeredRoutes.set(module.name, module);
@@ -111,7 +113,7 @@ export class RouteRegistry {
   /**
    * 生成路由文檔
    */
-  generateRouteDocs(): any {
+  generateRouteDocs() {
     const docs = {
       generated: nowISO(),
       totalGroups: this.groups.size,
@@ -241,7 +243,7 @@ export class RouteRegistry {
   /**
    * 獲取統計信息
    */
-  getStats(): any {
+  getStats() {
     const totalModules = Array.from(this.groups.values()).reduce((sum, group) => sum + group.modules.length, 0);
     const enabledModules = Array.from(this.registeredRoutes.values()).filter(r => r.enabled).length;
 
@@ -262,7 +264,7 @@ export class RouteRegistry {
 export function createRouteModule(config: {
   name: string;
   path: string;
-  handler: any;
+  handler: RouteHandler;
   description: string;
   version?: string;
   enabled?: boolean;
@@ -283,7 +285,7 @@ export function createRouteGroup(config: {
   prefix: string;
   modules: RouteModule[];
   description: string;
-  middleware?: any[];
+  middleware?: unknown[];
 }): RouteGroup {
   return {
     middleware: [],

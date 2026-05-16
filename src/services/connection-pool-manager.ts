@@ -302,7 +302,7 @@ export class ConnectionPoolManager {
   private updateConnectionActivity(
     connectionId: string,
     activityType: string,
-    data?: any
+    data?: unknown
   ): void {
     const metrics = this.connectionMetrics.get(connectionId);
     if (!metrics) return;
@@ -336,7 +336,7 @@ export class ConnectionPoolManager {
     this.updateConnectionState(connectionId);
   }
 
-  private calculateMessageSize(data: any): number {
+  private calculateMessageSize(data: unknown): number {
     if (typeof data === 'string') {
       return new Blob([data]).size;
     } else if (data instanceof ArrayBuffer) {

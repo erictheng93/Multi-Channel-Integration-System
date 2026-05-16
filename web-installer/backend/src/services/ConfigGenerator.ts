@@ -6,6 +6,7 @@
  */
 
 import type { CloudflareResources, DeploymentConfig } from '../types/deployment';
+import { DURABLE_OBJECT_BINDINGS } from '../constants/durable-objects';
 
 export class ConfigGenerator {
   /**
@@ -31,6 +32,16 @@ export class ConfigGenerator {
     const r2PublicUrl = config.r2PublicUrl ||
       `https://pub-<hash>.r2.dev`;  // Cloudflare default R2 public URL
 
+    const durableObjectBindings = DURABLE_OBJECT_BINDINGS
+      .map(({ name, class_name }) => `[[durable_objects.bindings]]
+name = "${name}"
+class_name = "${class_name}"`)
+      .join('\n\n');
+
+    const regularDurableObjectClasses = DURABLE_OBJECT_BINDINGS
+      .map(binding => binding.class_name)
+      .filter(className => className !== 'RateLimiterDO');
+
     // Generate routes section if custom domain is provided
     const routesSection = config.customDomain ? `
 # Production routes
@@ -44,30 +55,15 @@ name = "${projectName}-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
-[durable_objects]
-bindings = [
-  { name = "CONVERSATION_ROOM", class_name = "ConversationRoom" },
-  { name = "USER_CONNECTION", class_name = "UserConnection" },
-  { name = "MESSAGE_BROADCASTER", class_name = "MessageBroadcaster" },
-  { name = "DELAYED_MESSAGE_PROCESSOR", class_name = "DelayedMessageProcessor" },
-  { name = "DELAYED_MESSAGE_BUFFER", class_name = "DelayedMessageBuffer" },
-  { name = "CUSTOMER_CONVERSATION_DO", class_name = "CustomerConversationDO" },
-  { name = "CUSTOMER_MESSAGE_DO", class_name = "CustomerMessageDO" }
-]
+${durableObjectBindings}
 
 [[migrations]]
 tag = "v1"
-new_classes = [
-  "ConversationRoom",
-  "UserConnection",
-  "MessageBroadcaster",
-  "DelayedMessageProcessor",
-  "DelayedMessageBuffer"
-]
+new_classes = ${JSON.stringify(regularDurableObjectClasses)}
 
 [[migrations]]
 tag = "v2"
-new_classes = ["CustomerConversationDO", "CustomerMessageDO"]
+new_sqlite_classes = ["RateLimiterDO"]
 
 [[d1_databases]]
 binding = "DB"
@@ -75,19 +71,19 @@ database_name = "${projectName}-db"
 database_id = "${resources.d1DatabaseId}"
 
 [[kv_namespaces]]
-binding = "SESSION_KV"
+binding = "SESSIONS"
 id = "${resources.kvSessionNamespaceId}"
 
 [[kv_namespaces]]
-binding = "CACHE_KV"
+binding = "CACHE"
 id = "${resources.kvCacheNamespaceId}"
 
 [[r2_buckets]]
-binding = "FILE_STORAGE"
+binding = "R2_BUCKET"
 bucket_name = "${resources.r2BucketName}"
 
 [[queues.producers]]
-binding = "MESSAGE_QUEUE"
+binding = "LINE_MESSAGE_QUEUE"
 queue = "${resources.queueName}"
 
 [[queues.consumers]]

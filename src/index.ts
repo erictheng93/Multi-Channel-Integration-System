@@ -579,7 +579,7 @@ app.get('/api/monitoring/stats', jwtAuth, requireAdmin(), monitoringHandlers.get
 // 獲取安全配置
 // Note: In Cloudflare Workers, env is passed to handler, not available globally
 // Default to 'production' for security; actual env is accessed in handlers
-const environment = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.NODE_ENV) || 'production';
+const environment = (typeof globalThis !== 'undefined' && (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV) || 'production';
 const securityConfig = getSecurityConfig(environment);
 
 // 添加中間件

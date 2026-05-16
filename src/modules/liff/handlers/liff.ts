@@ -234,7 +234,7 @@ liffHandler.post('/assign-team', async (c) => {
             assignmentId: assignmentId,
             scannedAt: scannedAt
           }
-        } as any, // Cast to any to allow _liffMetadata extension
+        },
         transferredBy: {
           id: 'system',
           name: 'QR Code Scan'

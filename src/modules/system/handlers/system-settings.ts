@@ -13,8 +13,12 @@ import { gte, count } from 'drizzle-orm'
 import { systemSettings, agents, conversations, messages } from '@/db/schema'
 import { nowISO } from '@/utils/timestamp'
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 // Interface for partial settings update - all properties optional
-interface SystemSettingsUpdate {
+interface SystemSettingsUpdate extends Record<string, unknown> {
   general?: Partial<{
     systemName: string;
     contactEmail: string;
@@ -48,7 +52,7 @@ interface SystemSettingsUpdate {
 }
 
 // Interface for getSettings response - excludes sensitive credentials
-interface SystemSettingsResponse {
+interface SystemSettingsResponse extends Record<string, unknown> {
   general?: {
     systemName: string;
     contactEmail: string;
@@ -133,12 +137,12 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
     // Override with database settings
     settingsResult.forEach(row => {
       const keys = row.key.split('.')
-      let current: any = settings
+      let current: Record<string, unknown> = settings
 
       for (let i = 0; i < keys.length - 1; i++) {
         const key = keys[i];
-        if (key && !current[key]) current[key] = {}
-        if (key) current = current[key]
+        if (key && !isRecord(current[key])) current[key] = {}
+        if (key && isRecord(current[key])) current = current[key]
       }
 
       const lastKey = keys[keys.length - 1]
@@ -164,14 +168,14 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
     const settings = await c.req.json<SystemSettingsUpdate>()
 
     // Flatten settings for database storage
-    const flattenSettings = (obj: any, prefix = ''): Array<{ key: string; value: string }> => {
+    const flattenSettings = (obj: Record<string, unknown>, prefix = ''): Array<{ key: string; value: string }> => {
       const result: Array<{ key: string; value: string }> = []
 
       for (const [key, value] of Object.entries(obj)) {
         const fullKey = prefix ? `${prefix}.${key}` : key
 
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-          result.push(...flattenSettings(value, fullKey))
+          result.push(...flattenSettings(value as Record<string, unknown>, fullKey))
         } else {
           result.push({
             key: fullKey,
@@ -245,7 +249,7 @@ export const getMetrics = async (c: Context<{ Bindings: Bindings }>) => {
     const [activeUsers, totalConversations, messagesToday] = await Promise.all([
       drizzleDb.select({ count: count() }).from(agents).where(gte(agents.lastLoginAt, oneHourAgo)),
       drizzleDb.select({ count: count() }).from(conversations),
-      (drizzleDb.select({ count: count() }).from(messages) as any)
+      drizzleDb.select({ count: count() }).from(messages)
     ])
 
     const metrics = {

@@ -19,6 +19,11 @@ import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('ActivityService')
 
+interface ActionStatRow {
+  action: string
+  count: number
+}
+
 export class ActivityService {
   constructor(private db: D1Database) {}
 
@@ -92,6 +97,7 @@ export class ActivityService {
       userId,
       action,
       resourceType,
+      resourceId,
       startDate,
       endDate
     } = params
@@ -109,6 +115,10 @@ export class ActivityService {
 
     if (resourceType) {
       conditions.push(eq(activities.resourceType, resourceType))
+    }
+
+    if (resourceId) {
+      conditions.push(eq(activities.resourceId, resourceId))
     }
 
     if (startDate) {
@@ -195,7 +205,7 @@ export class ActivityService {
       `)
 
     const actionsByType: Record<string, number> = {}
-    ;(actionStats.results || []).forEach((row: any) => {
+    ;((actionStats.results || []) as ActionStatRow[]).forEach((row) => {
       actionsByType[row.action] = row.count
     })
 

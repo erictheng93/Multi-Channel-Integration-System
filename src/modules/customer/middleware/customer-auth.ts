@@ -212,7 +212,7 @@ export const applyTeamScopeFilter = async (c: Context<{ Bindings: Bindings }>, n
     if (!existingTeamId && payload.primaryTeamId) {
       // 如果查詢中沒有指定團隊ID，則自動添加用戶的團隊ID到上下文
       if (!c.req.query('teamId')) {
-        (c as any).set('teamFilters', { teamId: payload.primaryTeamId.toString() });
+        c.set('teamFilters', { teamId: payload.primaryTeamId.toString() });
       }
     }
 

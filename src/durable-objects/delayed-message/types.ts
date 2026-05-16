@@ -18,10 +18,11 @@ export interface PendingMessage {
   recipientPlatformId: string;
   scheduledAt: number; // timestamp ms
   status: 'pending' | 'sent' | 'cancelled' | 'failed';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: number;
   retryCount?: number;
   lastRetryAt?: number;
+  failedAt?: number;
   failureReason?: string;
 }
 
@@ -50,7 +51,7 @@ export interface StatusResult {
  */
 export interface SendResult {
   success: boolean;
-  error?: any;
+  error?: unknown;
   attempt?: number;
   duration?: number;
 }
@@ -59,11 +60,11 @@ export interface SendResult {
  * Structured logger interface used by scheduler helpers.
  */
 export interface SchedulerLogger {
-  info(action: string, context?: Record<string, any>): void;
-  success(action: string, context?: Record<string, any>): void;
-  warn(action: string, context?: Record<string, any>): void;
-  error(action: string, error: any, context?: Record<string, any>): void;
-  critical(action: string, error: any, context?: Record<string, any>): void;
+  info(action: string, context?: Record<string, unknown>): void;
+  success(action: string, context?: Record<string, unknown>): void;
+  warn(action: string, context?: Record<string, unknown>): void;
+  error(action: string, error: unknown, context?: Record<string, unknown>): void;
+  critical(action: string, error: unknown, context?: Record<string, unknown>): void;
 }
 
 /**

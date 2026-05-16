@@ -32,23 +32,66 @@ export interface LocationData {
   longitude: number;
 }
 
+interface LineRawMessage {
+  type?: string;
+  text?: string;
+  id?: string;
+  contentProvider?: MediaData['contentProvider'];
+  duration?: number;
+  fileName?: string;
+  fileSize?: number;
+  title?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  packageId?: string;
+  stickerId?: string;
+}
+
+interface FacebookAttachmentPayload {
+  url?: string;
+  title?: string;
+  coordinates?: {
+    lat?: number;
+    long?: number;
+  };
+}
+
+interface FacebookAttachment {
+  type?: string;
+  payload?: FacebookAttachmentPayload;
+}
+
+interface FacebookRawMessage {
+  text?: string;
+  attachments?: FacebookAttachment[];
+  quick_reply?: unknown;
+  reply_to?: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 /**
  * Parse LINE message event into normalized format
  * Extracted from webhook.ts (lines 242-295)
  */
-export function parseLineMessage(message: any): ParsedMessage {
+export function parseLineMessage(message: unknown): ParsedMessage {
   let content = '';
   let type: MessageType = 'text';
   let mediaData: MediaData | null = null;
   const metadata: Record<string, unknown> = {};
 
-  if (!message) {
+  if (!isRecord(message)) {
     return { content: '', type: 'text', platform: 'line', mediaData: null, metadata };
   }
 
-  switch (message.type) {
+  const lineMessage = message as LineRawMessage;
+
+  switch (lineMessage.type) {
     case 'text':
-      content = message.text || '';
+      content = lineMessage.text || '';
       type = 'text';
       break;
 
@@ -56,9 +99,9 @@ export function parseLineMessage(message: any): ParsedMessage {
       content = '[圖片]';
       type = 'image';
       mediaData = {
-        id: message.id,
+        id: lineMessage.id,
         type: 'image',
-        contentProvider: message.contentProvider
+        contentProvider: lineMessage.contentProvider
       };
       break;
 
@@ -66,10 +109,10 @@ export function parseLineMessage(message: any): ParsedMessage {
       content = '[影片]';
       type = 'video';
       mediaData = {
-        id: message.id,
+        id: lineMessage.id,
         type: 'video',
-        duration: message.duration,
-        contentProvider: message.contentProvider
+        duration: lineMessage.duration,
+        contentProvider: lineMessage.contentProvider
       };
       break;
 
@@ -77,34 +120,34 @@ export function parseLineMessage(message: any): ParsedMessage {
       content = '[語音]';
       type = 'audio';
       mediaData = {
-        id: message.id,
+        id: lineMessage.id,
         type: 'audio',
-        duration: message.duration,
-        contentProvider: message.contentProvider
+        duration: lineMessage.duration,
+        contentProvider: lineMessage.contentProvider
       };
       break;
 
     case 'file':
-      content = `[檔案] ${message.fileName || 'Unknown file'}`;
+      content = `[檔案] ${lineMessage.fileName || 'Unknown file'}`;
       type = 'file';
       mediaData = {
-        id: message.id,
+        id: lineMessage.id,
         type: 'file',
-        fileName: message.fileName,
-        fileSize: message.fileSize
+        fileName: lineMessage.fileName,
+        fileSize: lineMessage.fileSize
       };
       break;
 
     case 'location':
-      const locationTitle = message.title || 'Location';
-      const locationAddress = message.address || 'Unknown address';
+      const locationTitle = lineMessage.title || 'Location';
+      const locationAddress = lineMessage.address || 'Unknown address';
       content = `[位置] ${locationTitle}: ${locationAddress}`;
       type = 'location';
       metadata.location = {
-        title: message.title,
-        address: message.address,
-        latitude: message.latitude,
-        longitude: message.longitude
+        title: lineMessage.title,
+        address: lineMessage.address,
+        latitude: lineMessage.latitude,
+        longitude: lineMessage.longitude
       } as LocationData;
       break;
 
@@ -112,15 +155,15 @@ export function parseLineMessage(message: any): ParsedMessage {
       content = '[貼圖]';
       type = 'sticker';
       metadata.sticker = {
-        packageId: message.packageId,
-        stickerId: message.stickerId
+        packageId: lineMessage.packageId,
+        stickerId: lineMessage.stickerId
       };
       break;
 
     default:
-      content = `[未支援的訊息類型: ${message.type}]`;
+      content = `[未支援的訊息類型: ${lineMessage.type}]`;
       type = 'text';
-      metadata.originalType = message.type;
+      metadata.originalType = lineMessage.type;
   }
 
   return {
@@ -136,25 +179,27 @@ export function parseLineMessage(message: any): ParsedMessage {
  * Parse Facebook message event into normalized format
  * Extracted from webhook.ts (lines 796-858)
  */
-export function parseFacebookMessage(message: any): ParsedMessage {
+export function parseFacebookMessage(message: unknown): ParsedMessage {
   let content = '';
   let type: MessageType = 'text';
   let mediaData: MediaData | null = null;
   const metadata: Record<string, unknown> = {};
 
-  if (!message) {
+  if (!isRecord(message)) {
     return { content: '', type: 'text', platform: 'facebook', mediaData: null, metadata };
   }
 
+  const facebookMessage = message as FacebookRawMessage;
+
   // Text message
-  if (message.text) {
-    content = message.text;
+  if (facebookMessage.text) {
+    content = facebookMessage.text;
     type = 'text';
   }
 
   // Attachments (images, videos, audio, files)
-  if (message.attachments && Array.isArray(message.attachments)) {
-    const attachment = message.attachments[0]; // Process first attachment
+  if (facebookMessage.attachments && Array.isArray(facebookMessage.attachments)) {
+    const attachment = facebookMessage.attachments[0]; // Process first attachment
 
     if (attachment) {
       switch (attachment.type) {
@@ -232,18 +277,18 @@ export function parseFacebookMessage(message: any): ParsedMessage {
       }
 
       // Store all attachments for reference
-      metadata.attachments = message.attachments;
+      metadata.attachments = facebookMessage.attachments;
     }
   }
 
   // Quick reply payload
-  if (message.quick_reply) {
-    metadata.quickReply = message.quick_reply;
+  if (facebookMessage.quick_reply) {
+    metadata.quickReply = facebookMessage.quick_reply;
   }
 
   // Reply to
-  if (message.reply_to) {
-    metadata.replyTo = message.reply_to;
+  if (facebookMessage.reply_to) {
+    metadata.replyTo = facebookMessage.reply_to;
   }
 
   return {
@@ -292,7 +337,7 @@ export function mapFacebookMessageType(fbAttachmentType: string): MessageType {
 /**
  * Parse message from any supported platform
  */
-export function parseMessage(platform: Platform, message: any): ParsedMessage {
+export function parseMessage(platform: Platform, message: unknown): ParsedMessage {
   switch (platform) {
     case 'line':
       return parseLineMessage(message);

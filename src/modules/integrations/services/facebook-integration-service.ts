@@ -28,7 +28,7 @@ interface FacebookMessage {
     text?: string;
     attachment?: {
       type: 'image' | 'audio' | 'video' | 'file' | 'template';
-      payload: any;
+      payload: unknown;
     };
     quick_replies?: Array<{
       content_type: 'text' | 'user_phone_number' | 'user_email';
@@ -58,7 +58,7 @@ interface FacebookWebhookEvent {
         text?: string;
         attachments?: Array<{
           type: string;
-          payload: any;
+          payload: unknown;
         }>;
         quick_reply?: {
           payload: string;
@@ -87,7 +87,7 @@ interface FacebookWebhookEvent {
         status: 'linked' | 'unlinked';
         authorization_code?: string;
       };
-      [key: string]: any;
+      [key: string]: unknown;
     }>;
   }>;
 }
@@ -104,6 +104,28 @@ interface FacebookApiError {
     fbtrace_id?: string;
   };
 }
+
+interface FacebookSendResponse {
+  message_id?: string;
+}
+
+interface FacebookPageResponse {
+  id?: string;
+  name?: string;
+}
+
+interface FacebookProfileResponse {
+  first_name?: string;
+  last_name?: string;
+  profile_pic?: string;
+  locale?: string;
+  timezone?: number;
+  gender?: string;
+}
+
+type FacebookEntry = FacebookWebhookEvent['entry'][number];
+type FacebookMessaging = FacebookEntry['messaging'][number];
+type FacebookQuickReply = NonNullable<NonNullable<FacebookMessage['message']>['quick_replies']>[number];
 
 /**
  * Facebook Messenger 整合服務實作
@@ -140,7 +162,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 建立 Facebook API 連接
    */
-  async connect(credentials: Record<string, any>, _config: FacebookIntegrationConfig): Promise<boolean> {
+  async connect(credentials: Record<string, unknown>, _config: FacebookIntegrationConfig): Promise<boolean> {
     try {
       // 驗證必要憑證
       if (!credentials.pageAccessToken || !credentials.appSecret || !credentials.pageId) {
@@ -151,8 +173,8 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       const response = await this.makeApiCall('GET', `/${this.pageId}?fields=id,name,access_token`);
 
       if (response.ok) {
-        const pageData = await response.json();
-        log.info(`Facebook integration connected to page: ${(pageData as any).name}`);
+        const pageData = await response.json() as FacebookPageResponse;
+        log.info(`Facebook integration connected to page: ${pageData.name}`);
         return true;
       }
 
@@ -194,7 +216,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 發送訊息
    */
-  async sendMessage(recipient: string, message: FacebookMessage | string): Promise<any> {
+  async sendMessage(recipient: string, message: FacebookMessage | string) {
     try {
       this.stats.messages!.pending++;
       this.stats.apiCalls!.total++;
@@ -206,14 +228,14 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       const response = await this.makeApiCall('POST', '/me/messages', facebookMessage);
 
       if (response.ok) {
-        const result = await response.json();
+        const result = await response.json() as FacebookSendResponse;
         this.stats.messages!.sent++;
         this.stats.messages!.pending--;
         this.stats.apiCalls!.successful++;
 
         return {
           success: true,
-          messageId: (result as any).message_id || `facebook_${nowMs()}`,
+          messageId: result.message_id || `facebook_${nowMs()}`,
           platform: 'facebook',
           recipient,
           sentAt: nowISO()
@@ -289,7 +311,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 發送發送者行為 (typing indicator)
    */
-  async sendSenderAction(recipient: string, action: 'mark_seen' | 'typing_on' | 'typing_off'): Promise<any> {
+  async sendSenderAction(recipient: string, action: 'mark_seen' | 'typing_on' | 'typing_off') {
     try {
       this.stats.apiCalls!.total++;
 
@@ -324,7 +346,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 獲取用戶資料
    */
-  async getUserProfile(userId: string): Promise<any> {
+  async getUserProfile(userId: string) {
     try {
       this.stats.apiCalls!.total++;
 
@@ -333,18 +355,18 @@ export class FacebookIntegrationService implements IPlatformAdapter {
 
       if (response.ok) {
         this.stats.apiCalls!.successful++;
-        const profile = await response.json();
+        const profile = await response.json() as FacebookProfileResponse;
 
         return {
           platform: 'facebook',
           userId,
-          firstName: (profile as any).first_name,
-          lastName: (profile as any).last_name,
-          displayName: `${(profile as any).first_name} ${(profile as any).last_name}`.trim(),
-          pictureUrl: (profile as any).profile_pic,
-          locale: (profile as any).locale,
-          timezone: (profile as any).timezone,
-          gender: (profile as any).gender,
+          firstName: profile.first_name,
+          lastName: profile.last_name,
+          displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+          pictureUrl: profile.profile_pic,
+          locale: profile.locale,
+          timezone: profile.timezone,
+          gender: profile.gender,
           retrievedAt: nowISO()
         };
       }
@@ -418,7 +440,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 設定持續選單
    */
-  async setPersistentMenu(menu: any[]): Promise<boolean> {
+  async setPersistentMenu(menu: unknown[]): Promise<boolean> {
     try {
       this.stats.apiCalls!.total++;
 
@@ -456,7 +478,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
       const duration = Date.now() - startTime;
 
       if (response.ok) {
-        const pageData = await response.json();
+        const pageData = await response.json() as FacebookPageResponse;
 
         return {
           status: 'pass',
@@ -468,8 +490,8 @@ export class FacebookIntegrationService implements IPlatformAdapter {
             latency: duration,
             errorRate: this.calculateErrorRate(),
             metadata: {
-              pageId: (pageData as any).id,
-              pageName: (pageData as any).name,
+              pageId: pageData.id,
+              pageName: pageData.name,
               apiVersion: 'v18.0'
             }
           }
@@ -532,7 +554,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 執行 Facebook API 呼叫
    */
-  private async makeApiCall(method: string, endpoint: string, body?: any): Promise<Response> {
+  private async makeApiCall(method: string, endpoint: string, body?: unknown): Promise<Response> {
     const url = `${this.apiBaseUrl}${endpoint}`;
 
     const options: RequestInit = {
@@ -578,7 +600,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 處理 Facebook 事件
    */
-  private async processFacebookEvent(_entry: any, messaging: any): Promise<PlatformEvent | null> {
+  private async processFacebookEvent(_entry: FacebookEntry, messaging: FacebookMessaging): Promise<PlatformEvent | null> {
     try {
       const platformEvent: PlatformEvent = {
         id: `facebook_${messaging.timestamp}_${Math.random().toString(36).substr(2, 9)}`,
@@ -637,7 +659,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
    * @see src/modules/integrations/handlers/webhook-handler.ts:105-167
    * @deprecated Use WebhookSecurityService.validateWebhookSecurity() instead
    */
-  private verifyWebhookSignature(_webhookData: any): boolean {
+  private verifyWebhookSignature(_webhookData: unknown): boolean {
     // WARNING: This method bypasses full security checks
     // For production use, webhooks should be processed through webhook-handler.ts
     // which provides complete HMAC-SHA256 signature verification.
@@ -655,7 +677,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 對應 Facebook 事件類型
    */
-  private mapFacebookEventType(messaging: any): any {
+  private mapFacebookEventType(messaging: FacebookMessaging): PlatformEvent['type'] {
     if (messaging.message) return 'message';
     if (messaging.postback) return 'postback';
     if (messaging.read) return 'read';
@@ -667,10 +689,11 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 對應 Facebook 訊息類型
    */
-  private mapFacebookMessageType(message: any): MessageType {
+  private mapFacebookMessageType(message: NonNullable<FacebookMessaging['message']>): MessageType {
     if (message.text) return 'text';
     if (message.attachments) {
       const firstAttachment = message.attachments[0];
+      if (!firstAttachment) return 'text';
       switch (firstAttachment.type) {
         case 'image': return 'image';
         case 'video': return 'video';
@@ -739,7 +762,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 創建快速回覆訊息
    */
-  static createQuickReplyMessage(recipient: string, text: string, quickReplies: any[]): FacebookMessage {
+  static createQuickReplyMessage(recipient: string, text: string, quickReplies: FacebookQuickReply[]): FacebookMessage {
     return {
       messaging_type: 'RESPONSE',
       recipient: { id: recipient },
@@ -753,7 +776,7 @@ export class FacebookIntegrationService implements IPlatformAdapter {
   /**
    * 創建按鈕模板訊息
    */
-  static createButtonTemplate(recipient: string, text: string, buttons: any[]): FacebookMessage {
+  static createButtonTemplate(recipient: string, text: string, buttons: unknown[]): FacebookMessage {
     return {
       messaging_type: 'RESPONSE',
       recipient: { id: recipient },

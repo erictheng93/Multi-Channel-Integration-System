@@ -9,8 +9,8 @@ import { ALLOWED_MIME_TYPES, MIME_TO_EXTENSION } from '@modules/file-management/
  * 檢查 MIME 類型是否被允許
  */
 export function isAllowedMimeType(mimeType: string): boolean {
-  const allAllowedTypes = Object.values(ALLOWED_MIME_TYPES).flat();
-  return allAllowedTypes.includes(mimeType as any);
+  const allAllowedTypes = Object.values(ALLOWED_MIME_TYPES).flat() as readonly string[];
+  return allAllowedTypes.includes(mimeType);
 }
 
 /**

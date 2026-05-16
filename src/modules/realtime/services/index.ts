@@ -1,4 +1,5 @@
 // Real-time module service layer exports (WebSocket only)
+import type { Bindings } from '@/types';
 
 // Main services
 export {
@@ -13,7 +14,7 @@ export {
 } from './event-queue-service';
 
 // Service instance creation utility (WebSocket only)
-export const createRealtimeServices = async (env: any) => {
+export const createRealtimeServices = async (env: Bindings) => {
   const { RealtimeManager } = await import('./realtime-manager');
   const { EventQueueService } = await import('./event-queue-service');
 
@@ -33,6 +34,6 @@ export async function getRealtimeServices() {
 
   return {
     manager: RealtimeManager.getInstance,
-    createQueue: (env: any) => new EventQueueService(env)
+    createQueue: (env: Bindings) => new EventQueueService(env)
   };
 }

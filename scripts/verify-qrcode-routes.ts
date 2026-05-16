@@ -10,6 +10,13 @@ interface RouteTest {
   expectedStatus: number[];
 }
 
+interface RouteTestResults {
+  total: number;
+  passed: number;
+  failed: number;
+  messages: string[];
+}
+
 const BASE_URL_LOCAL = 'http://localhost:8787';
 const BASE_URL_REMOTE = 'https://your-worker.workers.dev'; // 替換為實際的遠端 URL
 
@@ -522,7 +529,7 @@ async function testRoute(baseUrl: string, route: RouteTest, authToken?: string):
 }
 
 // 主測試函數
-async function runTests(environment: 'local' | 'remote', authToken?: string) {
+async function runTests(environment: 'local' | 'remote', authToken?: string): Promise<RouteTestResults> {
   const baseUrl = environment === 'local' ? BASE_URL_LOCAL : BASE_URL_REMOTE;
   console.log(`\n 測試環境: ${environment.toUpperCase()}`);
   console.log(` Base URL: ${baseUrl}\n`);
@@ -550,8 +557,8 @@ async function runTests(environment: 'local' | 'remote', authToken?: string) {
 
 // 生成報告
 function generateReport(
-  localResults: any,
-  remoteResults: any,
+  localResults: RouteTestResults,
+  remoteResults: RouteTestResults,
   conflicts: RouteConflict[],
   warnings: string[]
 ) {

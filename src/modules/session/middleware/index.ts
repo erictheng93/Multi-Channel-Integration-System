@@ -96,10 +96,10 @@ export function isMiddlewareEnabled(middlewareType: keyof SessionMiddlewareConfi
  * 動態添加中間件到現有陣列
  */
 export function addMiddleware(
-  existingMiddleware: any[],
-  newMiddleware: any[],
+  existingMiddleware: unknown[],
+  newMiddleware: unknown[],
   position: 'before' | 'after' = 'after'
-): any[] {
+) {
   if (position === 'before') {
     return [...newMiddleware, ...existingMiddleware];
   }
@@ -109,6 +109,6 @@ export function addMiddleware(
 /**
  * 從中間件陣列中移除特定中間件
  */
-export function removeMiddleware(middlewareArray: any[], middlewareToRemove: any[]): any[] {
+export function removeMiddleware(middlewareArray: unknown[], middlewareToRemove: unknown[]) {
   return middlewareArray.filter(middleware => !middlewareToRemove.includes(middleware));
 }

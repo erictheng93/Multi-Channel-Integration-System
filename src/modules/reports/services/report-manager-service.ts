@@ -13,6 +13,9 @@ import type {
   ReportListResponse,
   ReportStatistics,
   ReportTimeRange,
+  ReportType,
+  ReportFilters,
+  ReportOptions,
   BatchReportOperation,
   BatchOperationResult,
   ReportGenerationParams
@@ -22,12 +25,17 @@ import {
   ReportNotFoundError,
   ReportGenerationError,
   ReportAccessDeniedError,
-  DEFAULT_REPORT_CONFIG
+  DEFAULT_REPORT_CONFIG,
+  isReportTimeRange
 } from '../types/report-types';
 
 import type { ReportGeneratorService } from './report-generator-service';
 import type { ReportUtils } from './report-utils';
 import { nowISO } from '@/utils/timestamp'
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /**
  * Handles report listing, details, deletion, statistics and batch operations
@@ -84,7 +92,7 @@ export class ReportManagerService {
         .offset(offset)
         .all();
 
-      const reportsList: ReportBase[] = reportRecords.map((report: any) => ({
+      const reportsList: ReportBase[] = reportRecords.map((report) => ({
         id: report.id,
         title: report.title,
         type: report.type as 'conversation_summary' | 'agent_performance' | 'message_statistics' | 'custom',
@@ -121,9 +129,9 @@ export class ReportManagerService {
         },
         summary: {
           totalReports: allReports.length,
-          pendingReports: allReports.filter((r: any) => r.status === 'pending').length,
-          completedReports: allReports.filter((r: any) => r.status === 'completed').length,
-          failedReports: allReports.filter((r: any) => r.status === 'failed').length
+          pendingReports: allReports.filter((r) => r.status === 'pending').length,
+          completedReports: allReports.filter((r) => r.status === 'completed').length,
+          failedReports: allReports.filter((r) => r.status === 'failed').length
         }
       };
     } catch (error) {
@@ -240,7 +248,7 @@ export class ReportManagerService {
       return {
         totalReports: totalR?.total ?? 0, reportsByType: byType, reportsByFormat: byFmt, reportsByStatus: byStat,
         averageGenerationTime: Number(avgR?.avgTime) || 0,
-        popularReports: popR.map(r => ({ type: r.type as any, count: r.cnt, averageSize: Number(r.avgSize) || 0 })),
+        popularReports: popR.map(r => ({ type: r.type as ReportType, count: r.cnt, averageSize: Number(r.avgSize) || 0 })),
         usageByUser: userR.map(r => ({ userId: r.userId, username: r.username ?? r.userId, reportCount: r.reportCount, lastGenerated: r.lastGenerated ?? '' })),
         monthlyTrends: trendR.map(r => ({ month: r.month, reportsGenerated: r.reportsGenerated, totalSize: Number(r.totalSize) || 0 })),
       };
@@ -294,7 +302,17 @@ export class ReportManagerService {
               success = await this.deleteReport(reportId, userId, generator, utils);
               break;
             case 'regenerate': {
-              const rp: ReportGenerationParams = { type: report.type, title: report.title, format: report.format, timeRange: report.metadata?.timeRange ?? 'last_30_days', startDate: report.metadata?.startDate, endDate: report.metadata?.endDate, filters: report.metadata?.filters, options: report.metadata?.options };
+              const metadata = report.metadata ?? {};
+              const rp: ReportGenerationParams = {
+                type: report.type,
+                title: report.title,
+                format: report.format,
+                timeRange: isReportTimeRange(metadata.timeRange) ? metadata.timeRange : 'last_30_days',
+                startDate: typeof metadata.startDate === 'string' ? metadata.startDate : undefined,
+                endDate: typeof metadata.endDate === 'string' ? metadata.endDate : undefined,
+                filters: isRecord(metadata.filters) ? metadata.filters as ReportFilters : undefined,
+                options: isRecord(metadata.options) ? metadata.options as ReportOptions : undefined
+              };
               await generator.generateReport(rp, userId, utils);
               success = true;
               break;

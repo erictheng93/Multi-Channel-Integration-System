@@ -5,6 +5,20 @@ import { convertAgent } from './drizzle-converters';
 import type { DbUser, TeamRoleInTeam } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
+type AgentRow = typeof agents.$inferSelect;
+
+interface AuthSqlUser {
+  id: string;
+  email: string;
+  password_hash: string;
+  display_name: string;
+  role: string;
+  is_active: number | boolean | null;
+  password_policy?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 // Re-export JWT utilities from auth-jwt sub-module
 export {
   signJWT,
@@ -153,7 +167,7 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
   }
 
   // 構建並返回增強的 DbUser
-  const baseUser = convertAgent({
+  const agentRow: AgentRow = {
     id: agent.id,
     email: agent.email,
     displayName: agent.display_name,
@@ -166,7 +180,8 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     passwordHash: '', // Not needed for return
     passwordPolicy: 'changeable',
     lastLoginAt: null
-  } as any, agent.team_name || undefined, agent.team_id);
+  };
+  const baseUser = convertAgent(agentRow, agent.team_name || undefined, agent.team_id);
 
   // 返回帶有多團隊資料的 DbUser
   return {
@@ -194,8 +209,7 @@ export async function authenticateUser(
     WHERE email = ?
   `;
 
-  const result = await db.prepare(query).bind(email).first();
-  const user = result as any;
+  const user = await db.prepare(query).bind(email).first<AuthSqlUser>();
 
   // 用戶不存在
   if (!user) {
@@ -236,20 +250,21 @@ export async function authenticateUser(
   }
 
   // 認證成功，返回用戶資訊（agent_teams 為唯一來源）
-  const authenticatedUser = convertAgent({
+  const authenticatedAgent: AgentRow = {
     id: user.id,
     email: user.email,
-    displayName: user.display_name,
-    role: user.role,
+    displayName: user.display_name ?? '',
+    role: user.role ?? 'agent',
     isActive: Boolean(user.is_active),
     lastActive: null,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at,
+    createdAt: user.created_at ?? null,
+    updatedAt: user.updated_at ?? null,
     deletedAt: null,
     passwordHash: '', // Not needed for return
     passwordPolicy: user.password_policy || 'changeable',
     lastLoginAt: null
-  } as any, undefined, primaryTeamId);
+  };
+  const authenticatedUser = convertAgent(authenticatedAgent, undefined, primaryTeamId);
 
   return {
     user: {

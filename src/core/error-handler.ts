@@ -1,5 +1,6 @@
 // 統一錯誤處理系統 - 改善使用者體驗
 import type { Context } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 錯誤類型定義
@@ -33,7 +34,7 @@ export interface StandardizedError {
   code: string;
   message: string;
   userMessage: string; // 用戶友好的訊息
-  details?: any;
+  details?: unknown;
   context?: {
     userId?: string;
     requestId?: string;
@@ -55,7 +56,7 @@ interface ErrorResponse {
     type: string;
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
     suggestions?: string[];
     requestId?: string;
   };
@@ -72,6 +73,10 @@ interface ErrorStats {
   errorRate: number;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 export class ErrorHandler {
   private errorHistory: StandardizedError[] = [];
   private readonly maxHistorySize = 1000;
@@ -80,8 +85,8 @@ export class ErrorHandler {
    * 處理並標準化錯誤
    */
   handleError(
-    c: Context<any, any, any>,
-    error: any,
+    c: Context,
+    error: unknown,
     errorType?: ErrorType,
     userMessage?: string
   ): Response {
@@ -111,13 +116,13 @@ export class ErrorHandler {
    * 標準化錯誤
    */
   private standardizeError(
-    error: any,
+    error: unknown,
     errorType?: ErrorType,
     userMessage?: string
   ): StandardizedError {
     // 如果已經是標準化錯誤，直接返回
-    if (error && error.type && error.level) {
-      return error as StandardizedError;
+    if (isRecord(error) && error.type && error.level) {
+      return error as unknown as StandardizedError;
     }
 
     let standardError: StandardizedError;
@@ -245,7 +250,7 @@ export class ErrorHandler {
    * 創建錯誤響應
    */
   private createErrorResponse(
-    c: Context<any>,
+    c: Context,
     error: StandardizedError
   ): Response {
     const httpStatus = this.getHttpStatus(error.type);
@@ -266,12 +271,12 @@ export class ErrorHandler {
     // 對於速率限制錯誤，添加 Retry-After 頭
     if (error.type === ErrorType.RATE_LIMIT) {
       response.retryAfter = 60; // 60秒後重試
-      return c.json(response, httpStatus as any, {
+      return c.json(response, httpStatus as ContentfulStatusCode, {
         'Retry-After': '60'
       });
     }
 
-    return c.json(response, httpStatus as any);
+    return c.json(response, httpStatus as ContentfulStatusCode);
   }
 
   /**
@@ -403,7 +408,7 @@ export class ErrorHandler {
   static createBusinessError(
     message: string,
     userMessage?: string,
-    details?: any
+    details?: unknown
   ): StandardizedError {
     return {
       type: ErrorType.BUSINESS_LOGIC_ERROR,
@@ -424,7 +429,7 @@ export class ErrorHandler {
   static createValidationError(
     field: string,
     message: string,
-    value?: any
+    value?: unknown
   ): StandardizedError {
     return {
       type: ErrorType.VALIDATION,
@@ -445,7 +450,7 @@ export const globalErrorHandler = new ErrorHandler();
 
 // 中間件：全域錯誤捕獲
 export function errorHandlingMiddleware() {
-  return async (c: Context<any, any, any>, next: () => Promise<void>) => {
+  return async (c: Context, next: () => Promise<void>) => {
     try {
       return await next();
     } catch (error) {
@@ -456,14 +461,14 @@ export function errorHandlingMiddleware() {
 }
 
 // 便利方法：包裝處理器以自動捕獲錯誤
-export function withErrorHandling<T extends any[], R>(
+export function withErrorHandling<T extends unknown[], R>(
   handler: (...args: T) => Promise<R>
 ) {
   return async (...args: T): Promise<R | Response> => {
     try {
       return await handler(...args);
     } catch (error) {
-      const context = args[0] as Context<any, any, any>;
+      const context = args[0] as Context;
       return globalErrorHandler.handleError(context, error);
     }
   };

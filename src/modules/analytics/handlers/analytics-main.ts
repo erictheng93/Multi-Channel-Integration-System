@@ -22,6 +22,25 @@ import type {
   UserMetric,
   PerformanceMetric
 } from '../types/analytics-types';
+import type { AggregationPeriod, AggregationType, MetricQuery } from '../types/metrics-types';
+
+function asPerformancePlatform(value: string | undefined): 'line' | 'facebook' | 'web' | undefined {
+  return value === 'line' || value === 'facebook' || value === 'web' ? value : undefined;
+}
+
+function asAggregationType(value: string | undefined): AggregationType | undefined {
+  const allowed: readonly AggregationType[] = ['sum', 'avg', 'min', 'max', 'count', 'percentile_50', 'percentile_95', 'percentile_99'];
+  return value && (allowed as readonly string[]).includes(value) ? value as AggregationType : undefined;
+}
+
+function asAggregationPeriod(value: string | undefined): AggregationPeriod | undefined {
+  const allowed: readonly AggregationPeriod[] = ['1m', '5m', '15m', '1h', '6h', '1d', '1w', '1M'];
+  return value && (allowed as readonly string[]).includes(value) ? value as AggregationPeriod : undefined;
+}
+
+function asMetricOrderBy(value: string | undefined): MetricQuery['orderBy'] {
+  return value === 'timestamp' || value === 'value' ? value : undefined;
+}
 
 /**
  * Analytics API 路由處理器
@@ -171,7 +190,7 @@ analyticsHandler.get('/performance', async (c) => {
       endDate: c.req.query('endDate'),
       metrics: (c.req.query('metrics') || 'response_times,throughput,error_rates').split(',') as PerformanceMetric[],
       filters: {
-        platform: c.req.query('platform') as any
+        platform: asPerformancePlatform(c.req.query('platform'))
       },
       groupBy: c.req.query('groupBy')?.split(',') || [],
       limit: c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined
@@ -325,15 +344,15 @@ analyticsHandler.get('/metrics/:name', async (c) => {
     const metricsCollector = new MetricsCollector(c.env.DB, c.env.KV);
 
     const metricName = c.req.param('name');
-    const query = {
+    const query: MetricQuery = {
       name: metricName,
       startTime: parseInt(c.req.query('startTime') || '0'),
       endTime: parseInt(c.req.query('endTime') || Date.now().toString()),
-      aggregation: c.req.query('aggregation') as any,
-      period: c.req.query('period') as any,
-      tags: c.req.query('tags') ? JSON.parse(c.req.query('tags')!) : undefined,
+      aggregation: asAggregationType(c.req.query('aggregation')),
+      period: asAggregationPeriod(c.req.query('period')),
+      tags: c.req.query('tags') ? JSON.parse(c.req.query('tags')!) as Record<string, string> : undefined,
       groupBy: c.req.query('groupBy')?.split(','),
-      orderBy: c.req.query('orderBy') as any,
+      orderBy: asMetricOrderBy(c.req.query('orderBy')),
       limit: c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined
     };
 

@@ -10,7 +10,11 @@ import type { ScheduledReportDbRow } from './report-scheduler-mapper';
 
 export class ReportSchedulerService {
   private db: D1Database;
-  constructor(env: Bindings) { this.db = env.DB; }
+  private env: Bindings;
+  constructor(env: Bindings) {
+    this.db = env.DB;
+    this.env = env;
+  }
 
   async createScheduledReport(config: Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>, userId: string): Promise<ScheduledReport> {
     try {
@@ -127,8 +131,7 @@ export class ReportSchedulerService {
       logger.info(`Processing ${dueReports.length} scheduled reports`, 'ReportScheduler');
       const { ReportGeneratorService } = await import('./report-generator-service');
       const { ReportUtils } = await import('./report-utils');
-      const env = { DB: this.db } as any;
-      const generator = new ReportGeneratorService(env);
+      const generator = new ReportGeneratorService(this.env);
       const utils = new ReportUtils(this.db);
       for (const dbRow of dueReports) {
         stats.processed++;

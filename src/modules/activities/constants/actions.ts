@@ -24,6 +24,7 @@ export const ACTIVITY_ACTIONS = {
 
   // 系統設定 (System Settings)
   SETTINGS_UPDATE: 'settings_update',
+  INTEGRATION_CREATE: 'integration_create',
 
   // 團隊管理 (Team Management)
   TEAM_CREATE: 'team_create',

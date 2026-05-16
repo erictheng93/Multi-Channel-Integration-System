@@ -3,6 +3,13 @@ import type { ModuleMetadata, ModuleLifecycle, ModuleContext, HealthStatus, Heal
 import type { Hono } from 'hono';
 import type { Bindings } from '../types';
 
+type ServiceLifecycle = {
+  start?: () => Promise<void> | void;
+  stop?: () => Promise<void> | void;
+  destroy?: () => Promise<void> | void;
+  isHealthy?: () => Promise<boolean> | boolean;
+};
+
 // 模組類型枚舉
 export enum ModuleType {
   API_HANDLER = 'api-handler',
@@ -127,10 +134,10 @@ export abstract class BaseApiModule extends BaseModule {
     return this.app !== undefined;
   }
 
-  protected async getHealthDetails(): Promise<Record<string, any>> {
+  protected async getHealthDetails(): Promise<HealthCheckDetails> {
     return {
       hasApp: this.app !== undefined,
-      routes: this.getRouteInfo()
+      routeCount: this.getRouteInfo().length
     };
   }
 
@@ -152,7 +159,7 @@ export abstract class BaseApiModule extends BaseModule {
 
 // 服務模組基礎類別
 export abstract class BaseServiceModule extends BaseModule {
-  protected service?: any;
+  protected service?: ServiceLifecycle;
 
   protected async initializeModule(): Promise<void> {
     this.service = await this.createService();
@@ -185,7 +192,7 @@ export abstract class BaseServiceModule extends BaseModule {
     return this.service !== undefined;
   }
 
-  protected async getHealthDetails(): Promise<Record<string, any>> {
+  protected async getHealthDetails(): Promise<HealthCheckDetails> {
     return {
       hasService: this.service !== undefined,
       serviceType: this.service?.constructor?.name || 'unknown'
@@ -193,12 +200,11 @@ export abstract class BaseServiceModule extends BaseModule {
   }
 
   // 抽象方法
-  protected abstract createService(): Promise<any>;
+  protected abstract createService(): Promise<ServiceLifecycle>;
   protected abstract configureService(): Promise<void>;
 
   // 獲取服務實例
-  // P2-6: Added override modifier for strict mode compliance
-  override getService(): any {
+  getServiceInstance(): ServiceLifecycle | undefined {
     return this.service;
   }
 }

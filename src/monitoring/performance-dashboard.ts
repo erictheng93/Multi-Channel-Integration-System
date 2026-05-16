@@ -92,13 +92,13 @@ dashboardHandler.get('/api/dashboard/alerts', async (c) => {
 
     const alertSummary = {
       total: systemHealth.alerts?.length || 0,
-      critical: systemHealth.alerts?.filter((a: any) => a.severity === 'critical').length || 0,
-      warning: systemHealth.alerts?.filter((a: any) => a.severity === 'warning').length || 0,
-      info: systemHealth.alerts?.filter((a: any) => a.severity === 'info').length || 0,
+      critical: systemHealth.alerts?.filter((a) => a.severity === 'critical').length || 0,
+      warning: systemHealth.alerts?.filter((a) => a.severity === 'high' || a.severity === 'medium').length || 0,
+      info: systemHealth.alerts?.filter((a) => a.severity === 'low').length || 0,
       recentAlerts: systemHealth.alerts?.slice(0, 5) || [],
       topAlerts: systemHealth.alerts
-        ?.sort((a: any, b: any) => {
-          const severityOrder: Record<string, number> = { critical: 3, warning: 2, info: 1 };
+        ?.sort((a, b) => {
+          const severityOrder: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
           return (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0);
         })
         .slice(0, 10) || []
@@ -556,13 +556,13 @@ async function generateDashboardData(
 
   const alertSummary = {
     total: systemHealth.alerts?.length || 0,
-    critical: systemHealth.alerts?.filter((a: any) => a.severity === 'critical').length || 0,
-    warning: systemHealth.alerts?.filter((a: any) => a.severity === 'warning').length || 0,
-    info: systemHealth.alerts?.filter((a: any) => a.severity === 'info').length || 0,
+    critical: systemHealth.alerts?.filter((a) => a.severity === 'critical').length || 0,
+    warning: systemHealth.alerts?.filter((a) => a.severity === 'high' || a.severity === 'medium').length || 0,
+    info: systemHealth.alerts?.filter((a) => a.severity === 'low').length || 0,
     recentAlerts: systemHealth.alerts?.slice(0, 5) || [],
     topAlerts: systemHealth.alerts
-      ?.sort((a: any, b: any) => {
-        const severityOrder: Record<string, number> = { critical: 3, warning: 2, info: 1 };
+      ?.sort((a, b) => {
+        const severityOrder: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
         return (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0);
       })
       .slice(0, 10) || []
@@ -598,7 +598,7 @@ async function generateDashboardData(
 
 async function getComponentStatuses(env: Bindings): Promise<ComponentStatus[]> {
   const components: ComponentStatus[] = [];
-  const workerUrl = (env as any).WORKER_URL || 'http://localhost:8787';
+  const workerUrl = env.WORKER_URL || 'http://localhost:8787';
 
   // Check WebSocket handler
   try {

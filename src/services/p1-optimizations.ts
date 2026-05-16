@@ -69,7 +69,7 @@ export async function checkP1OptimizationsHealth(env: Bindings): Promise<{
   circuitBreaker: {
     status: 'healthy' | 'degraded' | 'unhealthy';
     state: string;
-    stats: any;
+    stats: unknown;
   };
   messagePersistence: {
     status: 'healthy' | 'unhealthy';

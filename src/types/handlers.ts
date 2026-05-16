@@ -62,7 +62,7 @@ export interface CustomerData {
   }>;
   createdAt: string;
   updatedAt: string;
-  metadata?: any;
+  metadata?: unknown;
 }
 
 // Message handler types
@@ -140,7 +140,7 @@ export interface NotificationData {
   type: string;
   title: string;
   message: string;
-  data?: any;
+  data?: unknown;
   isRead: boolean;
   readAt?: string;
   expiresAt?: string;
@@ -196,24 +196,28 @@ export interface WebhookValidationResult {
 export interface HandlerError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
   statusCode?: number;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 // Type guards for handler payloads
-export function isAuthPayload(obj: any): obj is AuthPayload {
-  return obj && 
+export function isAuthPayload(obj: unknown): obj is AuthPayload {
+  return isRecord(obj) &&
     typeof obj.userId === 'number' && 
     typeof obj.displayName === 'string' && 
     typeof obj.role === 'string';
 }
 
-export function isSendMessageRequest(obj: any): obj is SendMessageRequest {
-  return obj && 
+export function isSendMessageRequest(obj: unknown): obj is SendMessageRequest {
+  return isRecord(obj) &&
     typeof obj.conversationId === 'number' && 
     typeof obj.content === 'string';
 }
 
-export function isMessageSearchParams(obj: any): obj is MessageSearchParams {
-  return obj && typeof obj === 'object';
+export function isMessageSearchParams(obj: unknown): obj is MessageSearchParams {
+  return isRecord(obj);
 }

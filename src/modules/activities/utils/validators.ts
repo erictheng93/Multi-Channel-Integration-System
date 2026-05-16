@@ -8,7 +8,7 @@ import { CreateActivityRequest, ActivityQueryParams } from '@modules/activities/
 export interface ValidationError {
   field: string
   message: string
-  value?: any
+  value?: unknown
 }
 
 export class ActivityValidator {

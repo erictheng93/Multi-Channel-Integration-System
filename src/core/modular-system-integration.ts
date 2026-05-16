@@ -210,8 +210,8 @@ export class ModularSystemManager {
    */
   private async performSystemHealthCheck(): Promise<{
     overall: 'healthy' | 'warning' | 'critical';
-    modules: Array<{ name: string; status: string; health: any }>;
-    summary: any;
+    modules: Array<{ name: string; status: string; health: unknown }>;
+    summary: unknown;
   }> {
     return await globalModuleLifecycleManager.performSystemHealthCheck();
   }
@@ -222,10 +222,10 @@ export class ModularSystemManager {
   getSystemStatus(): {
     initialized: boolean;
     uptime: number;
-    modules: any;
-    routes: any;
-    health: any;
-    performance: any;
+    modules: unknown;
+    routes: unknown;
+    health: unknown;
+    performance: unknown;
   } {
     const startTime = this.initializationResult?.timestamp ?
       new Date(this.initializationResult.timestamp).getTime() : nowMs();
@@ -243,7 +243,7 @@ export class ModularSystemManager {
   /**
    * 獲取性能指標
    */
-  private getPerformanceMetrics(): any {
+  private getPerformanceMetrics() {
     if (!this.config.performanceMonitoring) {
       return { enabled: false };
     }
@@ -260,7 +260,7 @@ export class ModularSystemManager {
   /**
    * 獲取記憶體使用情況（模擬）
    */
-  private getMemoryUsage(): any {
+  private getMemoryUsage() {
     // 在 Cloudflare Workers 環境中，記憶體監控有限
     return {
       modules: globalModuleLoader.getAllModules().size * 0.1, // MB 估算
@@ -317,7 +317,7 @@ export class ModularSystemManager {
   async registerModule(
     metadata: ModuleMetadata,
     lifecycle: ModuleLifecycle,
-    exports: Record<string, any> = {}
+    exports: Record<string, unknown> = {}
   ): Promise<{ success: boolean; error?: string }> {
     try {
       await globalModuleLoader.registerModule(metadata, lifecycle, exports);

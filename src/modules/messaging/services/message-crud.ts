@@ -8,7 +8,8 @@ import {
   messages,
   customers,
   agents,
-  messageRecallLogs
+  messageRecallLogs,
+  fileAttachments
 } from '@/db/schema';
 import {
   Message,
@@ -31,6 +32,9 @@ import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('MessageCrud');
+
+type MessageRow = typeof messages.$inferSelect;
+type MessageUpdate = Partial<typeof messages.$inferInsert>;
 
 export class MessageCrudService {
   private drizzleDb: ReturnType<typeof drizzle>;
@@ -95,10 +99,9 @@ export class MessageCrudService {
                    'Unknown',
         senderAvatar: result.customerSender?.avatarUrl ||
                      undefined,
-        // TODO: 實現附件、反應等關聯數據查詢
-        attachments: [],
-        reactions: [],
-        readReceipts: []
+        attachments: await this.getMessageAttachments(message.id),
+        reactions: this.getMessageReactions(message),
+        readReceipts: this.getMessageReadReceipts(result.message)
       } as MessageWithDetails;
     } catch (error) {
       log.error('Error finding message with details:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -251,7 +254,7 @@ export class MessageCrudService {
         .limit(query.limit || 50)
         .offset(query.offset || 0);
 
-      const messageDetails: MessageWithDetails[] = results.map(result => {
+      const messageDetails: MessageWithDetails[] = await Promise.all(results.map(async result => {
         const message = this.transformDbMessageToMessage(result.message);
         return {
           ...message,
@@ -260,11 +263,11 @@ export class MessageCrudService {
                      'Unknown',
           senderAvatar: result.customerSender?.avatarUrl ||
                        undefined,
-          attachments: [] as MessageAttachment[],
-          reactions: [] as MessageReaction[],
-          readReceipts: [] as MessageReadReceipt[]
+          attachments: await this.getMessageAttachments(message.id),
+          reactions: this.getMessageReactions(message),
+          readReceipts: this.getMessageReadReceipts(result.message)
         };
-      });
+      }));
 
       return {
         messages: messageDetails,
@@ -318,7 +321,7 @@ export class MessageCrudService {
       // 計算召回截止時間 (發送後30分鐘內可召回)
       const recallDeadline = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
-      const newMessage = {
+      const newMessage: MessageRow = {
         id: messageId,
         conversationId: messageData.conversationId,
         senderType: messageData.senderType,
@@ -334,8 +337,15 @@ export class MessageCrudService {
         sentAt: now,
         deliveryStatus: 'sent' as DeliveryStatus,
         replyToMessageId: messageData.replyToMessageId || (null as string | null),
+        threadId: null,
+        sessionId: null,
+        sessionSequence: 1,
         metadata: messageData.metadata ? JSON.stringify(messageData.metadata) : (null as string | null),
+        senderName: null,
+        readBy: null,
         createdAt: now,
+        updatedAt: null,
+        deletedAt: null
       };
 
       await this.drizzleDb.insert(messages).values(newMessage);
@@ -364,7 +374,7 @@ export class MessageCrudService {
         throw new MessageNotFoundError(messageId);
       }
 
-      const updates: any = {};
+      const updates: MessageUpdate = {};
 
       if (updateData.content !== undefined) {
         updates.content = updateData.content;
@@ -443,10 +453,126 @@ export class MessageCrudService {
 
   // ======================== 工具方法 ========================
 
+  private async getMessageAttachments(messageId: string): Promise<MessageAttachment[]> {
+    try {
+      const rows = await this.drizzleDb
+        .select({
+          attachmentId: fileAttachments.id,
+          messageId: fileAttachments.messageId,
+          filename: fileAttachments.filename,
+          mimeType: fileAttachments.mimeType,
+          fileSize: fileAttachments.fileSize,
+          fileUrl: fileAttachments.fileUrl,
+          uploadedBy: fileAttachments.uploadedBy,
+          createdAt: fileAttachments.createdAt
+        })
+        .from(fileAttachments)
+        .where(eq(fileAttachments.messageId, messageId))
+        .all();
+
+      return rows
+        .filter((row): row is {
+          attachmentId: string;
+          messageId: string;
+          filename: string;
+          mimeType: string;
+          fileSize: number;
+          fileUrl: string | null;
+          uploadedBy: string | null;
+          createdAt: string | null;
+        } => typeof row.filename === 'string' && typeof row.fileSize === 'number')
+        .map(row => ({
+          id: row.attachmentId,
+          messageId: row.messageId,
+          filename: row.filename,
+          originalFilename: row.filename,
+          mimeType: row.mimeType,
+          size: row.fileSize,
+          url: row.fileUrl || '',
+          uploadedAt: row.createdAt || nowISO(),
+          uploadedBy: row.uploadedBy || ''
+        }));
+    } catch (error) {
+      log.warn('Failed to load message attachments', { messageId, error });
+      return [];
+    }
+  }
+
+  private getMessageReactions(message: Message): MessageReaction[] {
+    const metadata = message.metadata as (MessageMetadata & { reactions?: unknown }) | undefined;
+    if (!Array.isArray(metadata?.reactions)) {
+      return [];
+    }
+
+    return metadata.reactions.flatMap((reaction, index) => {
+      if (!reaction || typeof reaction !== 'object') {
+        return [];
+      }
+
+      const data = reaction as Record<string, unknown>;
+      const userId = typeof data.userId === 'string' ? data.userId : '';
+      const value = typeof data.reaction === 'string' ? data.reaction : '';
+      if (!userId || !value) {
+        return [];
+      }
+
+      return [{
+        id: typeof data.id === 'string' ? data.id : `${message.id}:reaction:${index}`,
+        messageId: message.id,
+        userId,
+        reaction: value,
+        createdAt: typeof data.createdAt === 'string' ? data.createdAt : message.createdAt
+      }];
+    });
+  }
+
+  private getMessageReadReceipts(dbMessage: MessageRow & { readBy?: string | null }): MessageReadReceipt[] {
+    if (!dbMessage.readBy) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(dbMessage.readBy) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed.flatMap((entry, index) => {
+        if (typeof entry === 'string') {
+          return [{
+            id: `${dbMessage.id}:${entry}`,
+            messageId: dbMessage.id,
+            userId: entry,
+            readAt: dbMessage.updatedAt || dbMessage.createdAt || nowISO()
+          }];
+        }
+
+        if (!entry || typeof entry !== 'object') {
+          return [];
+        }
+
+        const data = entry as Record<string, unknown>;
+        const userId = typeof data.userId === 'string' ? data.userId : '';
+        if (!userId) {
+          return [];
+        }
+
+        return [{
+          id: typeof data.id === 'string' ? data.id : `${dbMessage.id}:${userId || index}`,
+          messageId: dbMessage.id,
+          userId,
+          readAt: typeof data.readAt === 'string' ? data.readAt : dbMessage.updatedAt || dbMessage.createdAt || nowISO()
+        }];
+      });
+    } catch {
+      return [];
+    }
+  }
+
   /**
    * 將資料庫記錄轉換為 Message 物件
    */
-  private transformDbMessageToMessage(dbMessage: any): Message {
+  private transformDbMessageToMessage(dbMessage: MessageRow): Message {
     return {
       id: dbMessage.id,
       conversationId: dbMessage.conversationId,
@@ -463,9 +589,9 @@ export class MessageCrudService {
       sentAt: dbMessage.sentAt,
       deliveryStatus: dbMessage.deliveryStatus as DeliveryStatus,
       replyToMessageId: dbMessage.replyToMessageId,
-      metadata: dbMessage.metadata ? JSON.parse(dbMessage.metadata) : undefined,
-      createdAt: dbMessage.createdAt,
-      updatedAt: dbMessage.updatedAt,
+      metadata: dbMessage.metadata ? JSON.parse(dbMessage.metadata) as MessageMetadata : undefined,
+      createdAt: dbMessage.createdAt || nowISO(),
+      updatedAt: dbMessage.updatedAt || dbMessage.createdAt || nowISO(),
     };
   }
 

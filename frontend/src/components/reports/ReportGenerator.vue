@@ -92,6 +92,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
 import ReportTypeSelector from './ReportTypeSelector.vue';
 import ReportParameterForm from './ReportParameterForm.vue';
@@ -118,6 +119,8 @@ const emit = defineEmits<{
   'view-report': [reportId: string];
   'error': [error: Error];
 }>();
+
+const router = useRouter();
 
 // Reactive state
 const formData = reactive<ReportFormState>({
@@ -280,9 +283,11 @@ const generateReport = async () => {
 
     // Emit event
     emit('report-generated', report.id);
+    emit('view-report', report.id);
 
     // Reload recent reports
     await loadRecentReports();
+    await router.push(`/reports/${report.id}`);
 
   } catch (error) {
     console.error('報表生成失敗:', error);

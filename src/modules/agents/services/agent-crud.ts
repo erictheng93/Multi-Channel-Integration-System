@@ -50,7 +50,7 @@ import { createContextLogger } from '@/utils/logger';
 const log = createContextLogger('AgentCrudService');
 
 export class AgentService implements AgentServiceInterface {
-  constructor(private db: DrizzleD1Database<any>) {}
+  constructor(private db: DrizzleD1Database<Record<string, unknown>>) {}
 
   // CRUD 操作
   async createAgent(data: CreateAgentRequest): Promise<Agent> {
@@ -468,10 +468,10 @@ export class AgentService implements AgentServiceInterface {
     }
   }
 
-  async batchTransferAgents(request: BatchTransferAgentsRequest): Promise<{ success: boolean; errors: any[] }> {
+  async batchTransferAgents(request: BatchTransferAgentsRequest): Promise<{ success: boolean; errors: unknown[] }> {
     try {
       const { agentIds, toTeamId, reason: _reason } = request;
-      const errors: any[] = [];
+      const errors: unknown[] = [];
 
       // 驗證目標團隊是否存在
       const targetTeam = await this.db
@@ -514,36 +514,4 @@ export class AgentService implements AgentServiceInterface {
     }
   }
 
-  // 佔位符方法 - 這些需要額外的服務來實現
-  async addSkill(): Promise<any> {
-    throw new Error('Method not implemented - use AgentSkillsService');
-  }
-
-  async updateSkill(): Promise<any> {
-    throw new Error('Method not implemented - use AgentSkillsService');
-  }
-
-  async removeSkill(): Promise<any> {
-    throw new Error('Method not implemented - use AgentSkillsService');
-  }
-
-  async getAgentSkills(): Promise<any> {
-    throw new Error('Method not implemented - use AgentSkillsService');
-  }
-
-  async updateStatus(): Promise<any> {
-    throw new Error('Method not implemented - use AgentStatusService');
-  }
-
-  async getAgentStatus(): Promise<any> {
-    throw new Error('Method not implemented - use AgentStatusService');
-  }
-
-  async getWorkloadStats(): Promise<any> {
-    throw new Error('Method not implemented - requires analytics service');
-  }
-
-  async getPerformanceStats(): Promise<any> {
-    throw new Error('Method not implemented - requires analytics service');
-  }
 }

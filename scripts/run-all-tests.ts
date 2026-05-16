@@ -142,7 +142,7 @@ interface TestResult {
   stdout?: string;
   stderr?: string;
   outputFile?: string;
-  metrics?: any;
+  metrics?: Record<string, unknown>;
   error?: string;
 }
 

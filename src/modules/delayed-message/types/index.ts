@@ -20,7 +20,7 @@ export interface DelayedMessageEntity {
   messageType: string;
   scheduledAt: string;
   status: 'pending' | 'sent' | 'cancelled' | 'failed';
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   sentAt?: string;
@@ -61,7 +61,7 @@ export interface DelayedMessageEvent {
   conversationId: string;
   messageId: string;
   agentId: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   priority: 'low' | 'normal' | 'high';
 }
 
@@ -120,7 +120,7 @@ export class DelayedMessageError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: Record<string, any>
+    public details?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'DelayedMessageError';
@@ -128,28 +128,28 @@ export class DelayedMessageError extends Error {
 }
 
 export class ValidationError extends DelayedMessageError {
-  constructor(message: string, public field: string, details?: Record<string, any>) {
+  constructor(message: string, public field: string, details?: Record<string, unknown>) {
     super(message, 'VALIDATION_ERROR', details);
     this.name = 'ValidationError';
   }
 }
 
 export class StorageError extends DelayedMessageError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'STORAGE_ERROR', details);
     this.name = 'StorageError';
   }
 }
 
 export class SchedulingError extends DelayedMessageError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'SCHEDULING_ERROR', details);
     this.name = 'SchedulingError';
   }
 }
 
 export class ProcessingError extends DelayedMessageError {
-  constructor(message: string, details?: Record<string, any>) {
+  constructor(message: string, details?: Record<string, unknown>) {
     super(message, 'PROCESSING_ERROR', details);
     this.name = 'ProcessingError';
   }

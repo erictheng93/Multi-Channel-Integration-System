@@ -127,7 +127,7 @@ export function getSecurityHeaders(config: SecurityConfig, isHttps: boolean = fa
 /**
  * Sanitize log data to prevent sensitive information exposure
  */
-export function sanitizeLogData(data: any): any {
+export function sanitizeLogData(data: unknown): unknown {
   if (typeof data !== 'object' || data === null) {
     return data;
   }
@@ -136,7 +136,7 @@ export function sanitizeLogData(data: any): any {
     return data.map(sanitizeLogData);
   }
 
-  const sanitized: any = {};
+  const sanitized: Record<string, unknown> = {};
   const sensitiveFields = [
     'password',
     'passwordHash',
@@ -171,7 +171,7 @@ export function sanitizeLogData(data: any): any {
 function getEnvironment(): string {
   // Check if we're in a Node.js-like environment
   if (typeof globalThis !== 'undefined' && 'process' in globalThis) {
-    const nodeEnv = (globalThis as any).process?.env?.NODE_ENV;
+    const nodeEnv = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env?.NODE_ENV;
     if (nodeEnv) {
       return nodeEnv;
     }
@@ -192,17 +192,17 @@ export class SecureLogger {
     return this.getEnvironment() === 'development';
   }
 
-  static log(message: string, data?: any): void {
+  static log(message: string, data?: unknown): void {
     if (this.isDevelopment()) {
       console.log(message, data ? sanitizeLogData(data) : '');
     }
   }
 
-  static warn(message: string, data?: any): void {
+  static warn(message: string, data?: unknown): void {
     console.warn(message, data ? sanitizeLogData(data) : '');
   }
 
-  static error(message: string, error?: any): void {
+  static error(message: string, error?: unknown): void {
     if (error instanceof Error) {
       console.error(message, {
         message: error.message,
@@ -213,7 +213,7 @@ export class SecureLogger {
     }
   }
 
-  static debug(message: string, data?: any): void {
+  static debug(message: string, data?: unknown): void {
     if (this.isDevelopment()) {
       console.debug(message, sanitizeLogData(data));
     }

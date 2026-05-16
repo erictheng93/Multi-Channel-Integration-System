@@ -56,7 +56,7 @@ class RealtimeConfigManager {
   }
 
   // Version selection (WebSocket only - SSE removed)
-  selectVersion(_context: any): 'v1' | 'v2' {
+  selectVersion(_context: unknown): 'v1' | 'v2' {
     const config = this.getConfig();
 
     if (config.version !== 'auto') {

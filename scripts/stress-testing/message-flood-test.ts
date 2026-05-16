@@ -11,6 +11,8 @@ import WebSocket from 'ws';
 import fetch from 'node-fetch';
 import { performance } from 'perf_hooks';
 
+type WebSocketHeaders = Record<string, string>;
+
 // =================== Configuration ===================
 
 interface MessageFloodConfig {
@@ -106,6 +108,18 @@ interface MessageResult {
   connectionId?: string;
 }
 
+interface ReceivedFloodMessage {
+  id?: string;
+  type?: string;
+}
+
+interface MessageTypeStats {
+  sent: number;
+  received: number;
+  averageLatency: number;
+  errorRate: number;
+}
+
 interface ConnectionContext {
   websocket: WebSocket;
   connectionId: string;
@@ -197,7 +211,7 @@ export class MessageFloodTester {
       url.searchParams.set('conversationId', conversationId);
       url.searchParams.set('deviceId', 'flood-test');
 
-      const headers: any = {};
+      const headers: WebSocketHeaders = {};
       if (this.config.authToken) {
         headers['Authorization'] = `Bearer ${this.config.authToken}`;
       }
@@ -257,7 +271,7 @@ export class MessageFloodTester {
     });
   }
 
-  private handleReceivedMessage(context: ConnectionContext, message: any): void {
+  private handleReceivedMessage(context: ConnectionContext, message: ReceivedFloodMessage): void {
     context.messagesReceived++;
     context.lastActivity = Date.now();
 
@@ -653,7 +667,7 @@ export class MessageFloodTester {
   }
 
   private analyzeMessageTypes(): void {
-    const typeStats: { [type: string]: any } = {};
+    const typeStats: Record<string, MessageTypeStats> = {};
 
     for (const messageType of this.config.messageTypes) {
       const messagesOfType = Array.from(this.messageResults.values()).filter(m => m.type === messageType);

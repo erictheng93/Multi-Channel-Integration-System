@@ -8,7 +8,8 @@ import {
   ChannelType,
   PushConfig,
   PushSubscription,
-  ChannelConfig
+  ChannelConfig,
+  NotificationBase
 } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
@@ -75,7 +76,7 @@ export class PushAdapter implements ChannelAdapter {
       const pushPayload = this.preparePushPayload(message);
       let deliveredCount = 0;
       let failedCount = 0;
-      const results: any[] = [];
+      const results: unknown[] = [];
 
       // 發送到所有用戶裝置
       for (const subscription of userSubscriptions) {
@@ -148,7 +149,7 @@ export class PushAdapter implements ChannelAdapter {
     return results;
   }
 
-  private preparePushPayload(message: ChannelMessage): any {
+  private preparePushPayload(message: ChannelMessage) {
     const notification = message.notification;
 
     return {
@@ -176,7 +177,7 @@ export class PushAdapter implements ChannelAdapter {
 
   private async sendToPushService(
     _subscription: PushSubscription,
-    _payload: any
+    _payload: unknown
   ): Promise<{ success: boolean; error?: string }> {
     // 這裡是模擬實作，實際使用時需要整合真正的 push 服務
     // 例如 Web Push, FCM, APNs 等
@@ -205,7 +206,7 @@ export class PushAdapter implements ChannelAdapter {
     }
   }
 
-  private getNotificationUrl(notification: any): string {
+  private getNotificationUrl(notification: NotificationBase): string {
     // 根據通知類型生成對應的 URL
     switch (notification.type) {
       case 'new_message':
@@ -223,7 +224,7 @@ export class PushAdapter implements ChannelAdapter {
     }
   }
 
-  private getNotificationActions(notification: any): any[] {
+  private getNotificationActions(notification: NotificationBase) {
     const actions = [];
 
     switch (notification.type) {

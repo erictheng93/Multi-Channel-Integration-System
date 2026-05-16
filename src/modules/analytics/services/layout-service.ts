@@ -441,7 +441,7 @@ export class LayoutService {
     baseWidgets: DashboardWidget[],
     containerWidths: Record<DeviceType, number>
   ): Record<DeviceType, DashboardWidget[]> {
-    const responsiveLayouts: Record<DeviceType, DashboardWidget[]> = {} as any;
+    const responsiveLayouts = {} as Record<DeviceType, DashboardWidget[]>;
 
     Object.values(DeviceType).forEach(deviceType => {
       const containerWidth = containerWidths[deviceType];

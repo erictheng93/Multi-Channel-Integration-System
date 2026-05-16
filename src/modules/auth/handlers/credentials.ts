@@ -232,9 +232,9 @@ export const getAllCredentials = async (c: Context<{ Bindings: Bindings }>) => {
           const decryptedValue = await decrypt(encryptedValue, encryptionKey)
 
           if (platform === 'line' && type) {
-            (credentials.line as any)[type] = decryptedValue
+            (credentials.line as Record<string, string>)[type] = decryptedValue
           } else if (platform === 'facebook' && type) {
-            (credentials.facebook as any)[type] = decryptedValue
+            (credentials.facebook as Record<string, string>)[type] = decryptedValue
           }
         } catch (error) {
           log.warn(`Failed to decrypt credential`, { key, error: error instanceof Error ? error.message : String(error) })

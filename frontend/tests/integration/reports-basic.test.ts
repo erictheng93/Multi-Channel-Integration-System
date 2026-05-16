@@ -15,7 +15,7 @@ const mockReport: ReportBase = {
   title: '測試報表',
   description: '這是一個測試報表',
   type: 'conversation_summary',
-  format: 'pdf',
+  format: 'json',
   status: 'completed',
   createdBy: 'test-user',
   createdAt: '2024-01-01T10:00:00Z',
@@ -52,6 +52,7 @@ vi.mock('@/api/reports', () => ({
     listReports: vi.fn(),
     getReportDetails: vi.fn(),
     downloadReport: vi.fn(),
+    getReportJsonContent: vi.fn(),
     deleteReport: vi.fn(),
     getReportStatistics: vi.fn(),
     batchOperation: vi.fn(),
@@ -105,8 +106,9 @@ describe('報表系統基礎整合測試', () => {
     });
 
     vi.mocked(ReportsAPI.downloadReport).mockResolvedValue({
-      url: 'https://example.com/download',
-      filename: 'report.pdf'
+      blob: new Blob(['report'], { type: 'application/json' }),
+      filename: 'report.json',
+      contentType: 'application/json'
     });
 
     vi.mocked(ReportsAPI.deleteReport).mockResolvedValue({
@@ -133,8 +135,8 @@ describe('報表系統基礎整合測試', () => {
     ]);
 
     vi.mocked(ReportsAPI.getAvailableFormats).mockReturnValue([
-      { value: 'pdf', label: 'PDF 文件', icon: '' },
-      { value: 'excel', label: 'Excel 檔案', icon: '' }
+      { value: 'json', label: 'JSON 文件', icon: '' },
+      { value: 'csv', label: 'CSV 檔案', icon: '' }
     ]);
 
     vi.mocked(ReportsAPI.getTimeRangeOptions).mockReturnValue([
@@ -177,7 +179,7 @@ describe('報表系統基礎整合測試', () => {
       const params = {
         type: 'conversation_summary' as const,
         title: '測試報表',
-        format: 'pdf' as const,
+        format: 'json' as const,
         timeRange: 'last_30_days' as const
       };
 
@@ -210,8 +212,9 @@ describe('報表系統基礎整合測試', () => {
     it('應該正確下載報表', async () => {
       const result = await ReportsAPI.downloadReport('test-report-001');
 
-      expect(result.url).toBe('https://example.com/download');
-      expect(result.filename).toBe('report.pdf');
+      expect(result.blob).toBeInstanceOf(Blob);
+      expect(result.filename).toBe('report.json');
+      expect(result.contentType).toBe('application/json');
       expect(ReportsAPI.downloadReport).toHaveBeenCalledWith('test-report-001');
     });
 
@@ -247,9 +250,9 @@ describe('報表系統基礎整合測試', () => {
       const formats = ReportsAPI.getAvailableFormats();
 
       expect(formats).toHaveLength(2);
-      expect(formats[0].value).toBe('pdf');
-      expect(formats[0].label).toBe('PDF 文件');
-      expect(formats[1].value).toBe('excel');
+      expect(formats[0].value).toBe('json');
+      expect(formats[0].label).toBe('JSON 文件');
+      expect(formats[1].value).toBe('csv');
     });
 
     it('應該正確獲取時間範圍選項', () => {
@@ -482,7 +485,7 @@ describe('報表系統基礎整合測試', () => {
 
       // 檢查中文標籤
       expect(types[0].label).toBe('對話摘要報告');
-      expect(formats[0].label).toBe('PDF 文件');
+      expect(formats[0].label).toBe('JSON 文件');
       expect(timeRanges[0].label).toBe('過去7天');
     });
 

@@ -15,6 +15,7 @@
 import type { AnalyticsFilter } from '../types/enterprise';
 import { createDbClient } from '../db/drizzle-factory';
 import { sql, and, gte, lte, desc, count, avg, sum, type SQL } from 'drizzle-orm';
+import type { SelectedFields } from 'drizzle-orm/sqlite-core';
 import { metrics, conversations } from '../db/schema';
 
 // ----------------------------------------------------------------------------
@@ -132,8 +133,7 @@ function tagJsonPath(tagName: string): SQL {
 export function buildDrizzleSelectFields(metricNames: string[], groupBy: string[]) {
   validateReportConfig(metricNames, groupBy);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const selectFields: Record<string, any> = {};
+  const selectFields: SelectedFields = {};
 
   // Add metric fields
   for (const metricName of metricNames) {

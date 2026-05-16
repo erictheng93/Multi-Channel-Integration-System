@@ -10,6 +10,38 @@ import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('PerformanceMonitor')
 
+interface WorkerMetricsEnv extends Bindings {
+  WORKER_URL?: string;
+  ADMIN_TOKEN?: string;
+}
+
+interface ConnectionStats {
+  totalConnections: number;
+  activeConnections: number;
+  connectionsByUser: Record<number, number>;
+  connectionsByRole: Record<string, number>;
+}
+
+interface WebSocketMetricsResponse {
+  connections?: Partial<ConnectionStats>;
+}
+
+interface QueueStats {
+  queueDepth?: number;
+  averageProcessingTime?: number;
+  throughputPerSecond?: number;
+  errorRate?: number;
+  retryRate?: number;
+}
+
+interface RealtimeEventStats {
+  totalEvents: number;
+  averageProcessingTime: number;
+  errorRate: number;
+  eventsByType: Record<EventType, number>;
+  eventsByPriority: Record<EventPriority, number>;
+}
+
 // 性能指標定義
 export interface PerformanceMetrics {
   // 連接指標
@@ -164,7 +196,7 @@ export class RealtimePerformanceMonitor {
       // 1. WebSocket handler metrics endpoint
       // 2. Durable Objects connection tracking
       // 3. Real-time connection state management
-      let connectionStats: any = {
+      let connectionStats: ConnectionStats = {
         totalConnections: 0,
         activeConnections: 0,
         connectionsByUser: {} as Record<number, number>,
@@ -173,21 +205,23 @@ export class RealtimePerformanceMonitor {
 
       try {
         // Attempt to fetch WebSocket metrics from the WebSocket health endpoint
-        if (this.env && (this.env as any).WORKER_URL) {
-          const wsMetricsUrl = `${(this.env as any).WORKER_URL}/api/websocket/metrics`;
+        const metricsEnv = this.env as WorkerMetricsEnv;
+        if (metricsEnv.WORKER_URL) {
+          const wsMetricsUrl = `${metricsEnv.WORKER_URL}/api/websocket/metrics`;
           const response = await fetch(wsMetricsUrl, {
             headers: {
-              'Authorization': `Bearer ${(this.env as any).ADMIN_TOKEN || ''}`
+              'Authorization': `Bearer ${metricsEnv.ADMIN_TOKEN || ''}`
             }
           });
 
           if (response.ok) {
-            const wsData = await response.json() as any;
+            const wsData = await response.json() as WebSocketMetricsResponse;
+            const connections = wsData.connections ?? {};
             connectionStats = {
-              totalConnections: wsData.connections?.totalConnections || 0,
-              activeConnections: wsData.connections?.activeConnections || 0,
-              connectionsByUser: wsData.connections?.connectionsByUser || {},
-              connectionsByRole: wsData.connections?.connectionsByRole || {}
+              totalConnections: connections.totalConnections || 0,
+              activeConnections: connections.activeConnections || 0,
+              connectionsByUser: connections.connectionsByUser || {},
+              connectionsByRole: connections.connectionsByRole || {}
             };
           } else {
             log.warn('Failed to fetch WebSocket metrics', { status: response.status });
@@ -200,10 +234,10 @@ export class RealtimePerformanceMonitor {
 
       // 收集事件統計
       const { eventStats } = await import('../handlers/event-handler');
-      const eventStatsData = eventStats.getStats();
+      const eventStatsData = eventStats.getStats() as RealtimeEventStats;
 
       // 收集隊列統計（如果可用）
-      let queueStats: any = {};
+      let queueStats: QueueStats = {};
       try {
         const { RealtimeManager } = await import('../services/realtime-manager');
         const manager = RealtimeManager.getInstance();
@@ -527,7 +561,7 @@ export class RealtimePerformanceMonitor {
   }
 
   // 工具方法
-  private calculateAverageConnectionDuration(_stats: any): number {
+  private calculateAverageConnectionDuration(_stats: ConnectionStats): number {
     // 這裡需要額外的連接持續時間追蹤
     // WebSocket 架構下可以從 Durable Objects 獲取連接持續時間
     return 0;
@@ -538,7 +572,7 @@ export class RealtimePerformanceMonitor {
     return 0;
   }
 
-  private calculateEventProcessingRate(eventStats: any): number {
+  private calculateEventProcessingRate(eventStats: RealtimeEventStats): number {
     // 基於總事件數計算處理速率
     return eventStats.totalEvents / 60; // 假設過去一分鐘
   }

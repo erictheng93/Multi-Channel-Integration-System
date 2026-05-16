@@ -15,6 +15,10 @@ export interface ValidationError {
   code?: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export class NotificationValidator {
   private readonly MAX_TITLE_LENGTH = 200;
   private readonly MAX_CONTENT_LENGTH = 1000;
@@ -342,13 +346,9 @@ export class NotificationValidator {
     };
   }
 
-  private sanitizeData(data: any): any {
-    if (typeof data !== 'object' || data === null) {
-      return data;
-    }
-
+  private sanitizeData(data: Record<string, unknown>): Record<string, unknown> {
     // 深度清理物件，移除潛在的危險內容
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(data)) {
       if (typeof value === 'string') {
@@ -356,7 +356,7 @@ export class NotificationValidator {
         sanitized[key] = value.replace(/<script[^>]*>.*?<\/script>/gi, '')
                               .replace(/<[^>]+>/g, '')
                               .trim();
-      } else if (typeof value === 'object' && value !== null) {
+      } else if (isRecord(value)) {
         sanitized[key] = this.sanitizeData(value);
       } else {
         sanitized[key] = value;

@@ -25,6 +25,15 @@ interface SessionValidationResult {
   error?: string;
 }
 
+interface CustomerMessageNotification {
+  id?: string;
+  content?: unknown;
+  messageType?: string;
+  senderType?: string;
+  senderId?: string;
+  platform?: string;
+}
+
 /**
  * Connection info - stores WebSocket and associated user data
  * FIX: Now using connectionId as key to support multiple connections per user
@@ -146,7 +155,10 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     // Notify about new message endpoint (called by CustomerMessageDO)
     if (url.pathname === '/notify-message' && request.method === 'POST') {
       try {
-        const { conversationId, message } = await request.json() as { conversationId: string; message: any };
+        const { conversationId, message } = await request.json() as {
+          conversationId: string;
+          message: CustomerMessageNotification;
+        };
 
         // DEBUG: Log detailed connection info
         const connectionDetails = this.getConnectionDetails();
@@ -375,7 +387,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * Currently not used - messages sent via HTTP API then broadcasted
    */
   // P2-6: Added override modifier for strict mode compliance
-  override async webSocketMessage(_ws: WebSocket, message: any) {
+  override async webSocketMessage(_ws: WebSocket, message: unknown) {
     console.log('[CustomerConversationDO] Received WebSocket message:', message);
     // Future: Handle client-side events (typing indicators, read receipts, etc.)
   }
@@ -450,7 +462,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    *
    * FIX: Now broadcasts to ALL connections, including multiple tabs from same user
    */
-  public async notifyNewMessage(conversationId: string, message: any): Promise<void> {
+  public async notifyNewMessage(conversationId: string, message: CustomerMessageNotification): Promise<void> {
     // FIX: Use lowercase 'new_message' to match frontend WebSocketEventRouter
     // The frontend expects lowercase event types for routing to channels
     const notification = JSON.stringify({

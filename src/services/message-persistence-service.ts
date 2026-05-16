@@ -59,7 +59,7 @@ export class MessagePersistenceService {
     message: WebSocketMessage
   ): Promise<void> {
     try {
-      const messageId = (message as any).messageId || `msg-${nowMs()}-${Math.random().toString(36).substring(2)}`;
+      const messageId = message.id || `msg-${nowMs()}-${Math.random().toString(36).substring(2)}`;
 
       const persistedMessage: PersistedMessage = {
         id: messageId,

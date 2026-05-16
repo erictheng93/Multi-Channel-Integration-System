@@ -248,17 +248,17 @@ export function isQueryResult<T = Record<string, unknown>>(result: unknown): res
 }
 
 // Generic database row type
-export type DatabaseRow = Record<string, any>;
+export type DatabaseRow = Record<string, unknown>;
 
 // Safe type conversion helpers
-export function asString(value: any): string {
+export function asString(value: unknown): string {
   return String(value || '');
 }
 
-export function asNumber(value: any): number {
+export function asNumber(value: unknown): number {
   return Number(value || 0);
 }
 
-export function asBoolean(value: any): boolean {
+export function asBoolean(value: unknown): boolean {
   return Boolean(value);
 }

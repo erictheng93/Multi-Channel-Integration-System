@@ -127,6 +127,10 @@ export const SYSTEM_MODULE_INFO = {
 import type { Bindings } from '../../types';
 import { nowISO } from '@/utils/timestamp'
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * 創建完整的 System 服務實例
  * 提供統一的系統服務初始化接口
@@ -160,21 +164,25 @@ export function isValidLogLevel(level: string): level is 'error' | 'warn' | 'inf
 /**
  * 驗證系統狀態
  */
-export function isSystemHealthy(status: any): boolean {
-  return status?.overall === 'healthy' || status?.status === 'healthy';
+export function isSystemHealthy(status: unknown): boolean {
+  if (!isRecord(status)) {
+    return false;
+  }
+  return status.overall === 'healthy' || status.status === 'healthy';
 }
 
 /**
  * 格式化系統指標
  */
-export function formatSystemMetrics(metrics: any) {
+export function formatSystemMetrics(metrics: unknown) {
+  const metricRecord = isRecord(metrics) ? metrics : {};
   return {
     timestamp: nowISO(),
-    cpu: metrics.cpu || 'N/A',
-    memory: metrics.memory || 'N/A',
-    disk: metrics.disk || 'N/A',
-    network: metrics.network || { inbound: 'N/A', outbound: 'N/A' },
-    requests: metrics.requests || { total: 0, successful: 0, failed: 0 }
+    cpu: metricRecord.cpu || 'N/A',
+    memory: metricRecord.memory || 'N/A',
+    disk: metricRecord.disk || 'N/A',
+    network: metricRecord.network || { inbound: 'N/A', outbound: 'N/A' },
+    requests: metricRecord.requests || { total: 0, successful: 0, failed: 0 }
   };
 }
 
@@ -215,7 +223,7 @@ export const DEFAULT_SYSTEM_CONFIG = {
 export function handleSystemError(error: unknown): {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 } {
   if (error instanceof Error) {
     // 檢查是否為已知的系統錯誤類型

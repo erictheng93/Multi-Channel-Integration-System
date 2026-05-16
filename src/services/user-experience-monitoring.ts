@@ -48,7 +48,7 @@ export interface UserBehaviorAnalytics {
   userId: string;
   timestamp: number;
   eventType: 'connection' | 'disconnection' | 'message_sent' | 'message_received' | 'error' | 'reconnection';
-  eventData: Record<string, any>;
+  eventData: Record<string, unknown>;
   contextData: {
     conversationId?: string;
     deviceType?: string;
@@ -68,7 +68,7 @@ export interface ABTestConfig {
     id: string;
     name: string;
     weight: number; // 0-100
-    config: Record<string, any>;
+    config: Record<string, unknown>;
   }>;
   targetCriteria: {
     userRoles?: string[];
@@ -223,7 +223,7 @@ export class UserExperienceMonitoringService {
   async assignUserToABTest(userId: string, testId: string): Promise<{
     assigned: boolean;
     variantId?: string;
-    variantConfig?: Record<string, any>;
+    variantConfig?: Record<string, unknown>;
   }> {
     try {
       const testKey = `${this.AB_TEST_KEY_PREFIX}${testId}`;
@@ -445,7 +445,7 @@ export class UserExperienceMonitoringService {
     }
   }
 
-  private async getUserHistoricalStats(userId: string): Promise<any> {
+  private async getUserHistoricalStats(userId: string) {
     try {
       const statsKey = `user_stats:${userId}`;
       const data = await this.env.CACHE?.get(statsKey);

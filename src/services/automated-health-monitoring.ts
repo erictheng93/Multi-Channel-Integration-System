@@ -48,7 +48,7 @@ interface AlertRecord {
 
 export class AutomatedHealthMonitoring {
   private config: MonitoringConfig;
-  private monitoringInterval: number | null = null;
+  private monitoringInterval: ReturnType<typeof setInterval> | null = null;
   private healthHistory: HealthRecord[] = [];
   private alertHistory: AlertRecord[] = [];
   private consecutiveFailures: Map<string, number> = new Map();
@@ -98,7 +98,7 @@ export class AutomatedHealthMonitoring {
     // 設定週期性檢查
     this.monitoringInterval = setInterval(() => {
       this.runMonitoringCycle();
-    }, this.config.checkInterval) as any;
+    }, this.config.checkInterval);
   }
 
   /**
@@ -274,7 +274,7 @@ export class AutomatedHealthMonitoring {
     level: 'warning' | 'critical';
     message: string;
     component: string;
-    details?: any;
+    details?: unknown;
   }): Promise<void> {
     const alert: AlertRecord = {
       id: `alert_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -302,7 +302,7 @@ export class AutomatedHealthMonitoring {
   /**
    * 發送通知
    */
-  private async sendNotifications(alert: AlertRecord, details?: any): Promise<void> {
+  private async sendNotifications(alert: AlertRecord, details?: unknown): Promise<void> {
     try {
       // Webhook 通知
       if (this.config.notifications.webhook) {
@@ -327,12 +327,13 @@ export class AutomatedHealthMonitoring {
   /**
    * 處理監控失敗
    */
-  private async handleMonitoringFailure(error: any): Promise<void> {
+  private async handleMonitoringFailure(error: unknown): Promise<void> {
+    const message = error instanceof Error ? error.message : String(error);
     await this.sendAlert({
       level: 'critical',
-      message: `Health monitoring system failure: ${error.message}`,
+      message: `Health monitoring system failure: ${message}`,
       component: 'monitoring',
-      details: { error: error.message }
+      details: { error: message }
     });
   }
 
@@ -410,7 +411,7 @@ export class AutomatedHealthMonitoring {
   /**
    * 獲取監控統計
    */
-  getMonitoringStats(): any {
+  getMonitoringStats() {
     const recentRecords = this.healthHistory.slice(-100); // 最近100條記錄
     const recentAlerts = this.alertHistory.filter(alert => {
       const alertTime = new Date(alert.timestamp).getTime();

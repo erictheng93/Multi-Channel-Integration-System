@@ -3,6 +3,7 @@ import { globalModuleLoader } from './module-architecture';
 import type { ModuleMetadata, ModuleLifecycle } from './module-architecture';
 import type { RouteGroup } from './route-registry';
 import { routeGroups } from './route-config';
+import type { Hono } from 'hono';
 
 // 重新導出 globalModuleLoader 以供其他模組使用
 export { globalModuleLoader };
@@ -21,7 +22,7 @@ export interface DiscoveredModule {
   path: string;
   metadata: ModuleMetadata;
   lifecycle: ModuleLifecycle;
-  exports: Record<string, any>;
+  exports: Record<string, unknown>;
   isValid: boolean;
   errors: string[];
 }
@@ -158,7 +159,7 @@ export class ModuleDiscovery {
   /**
    * 整合到現有路由系統
    */
-  private async integrateWithRouteSystem(metadata: ModuleMetadata, app: any): Promise<string> {
+  private async integrateWithRouteSystem(metadata: ModuleMetadata, app: unknown): Promise<string> {
     // 根據模組類型選擇合適的路由組
     const targetGroup = this.findAppropriateRouteGroup(metadata);
 
@@ -167,7 +168,7 @@ export class ModuleDiscovery {
       const routeModule = {
         name: metadata.name,
         path: metadata.apiPrefix || `/api/${metadata.name.toLowerCase()}`,
-        handler: app,
+        handler: app as Hono,
         description: metadata.description,
         version: metadata.version,
         enabled: true,
@@ -427,9 +428,9 @@ export class ModuleLifecycleManager {
    * 獲取系統狀態
    */
   getSystemStatus(): {
-    moduleLoader: any;
-    discovery: any;
-    routes: any;
+    moduleLoader: unknown;
+    discovery: unknown;
+    routes: unknown;
   } {
     return {
       moduleLoader: globalModuleLoader.getModuleStats(),
@@ -446,11 +447,11 @@ export class ModuleLifecycleManager {
    */
   async performSystemHealthCheck(): Promise<{
     overall: 'healthy' | 'warning' | 'critical';
-    modules: Array<{ name: string; status: string; health: any }>;
-    summary: any;
+    modules: Array<{ name: string; status: string; health: unknown }>;
+    summary: unknown;
   }> {
     const modules = globalModuleLoader.getAllModules();
-    const moduleHealths: Array<{ name: string; status: string; health: any }> = [];
+    const moduleHealths: Array<{ name: string; status: string; health: unknown }> = [];
 
     let healthyCount = 0;
     let warningCount = 0;

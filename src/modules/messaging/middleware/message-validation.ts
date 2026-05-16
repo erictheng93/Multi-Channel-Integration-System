@@ -162,7 +162,7 @@ export async function validateCreateMessageData(c: Context<{ Bindings: Bindings 
       messageType?: string;
       senderType?: string;
       replyToMessageId?: string;
-      metadata?: any;
+      metadata?: unknown;
     };
 
     try {
@@ -263,7 +263,7 @@ export async function validateUpdateMessageData(c: Context<{ Bindings: Bindings 
   try {
     let updateData: {
       content?: string;
-      metadata?: any;
+      metadata?: unknown;
     };
 
     try {

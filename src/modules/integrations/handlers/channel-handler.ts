@@ -14,6 +14,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import type { ChannelIntegration } from '../types/channel-types';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 /**
  * Sanitize channel data for API responses — strip encrypted credentials JSON
@@ -425,8 +426,26 @@ channelHandler.post('/', async (c: Context) => {
       return c.json(result, 400);
     }
 
-    // Record activity
-    // TODO: Add activity logging
+    if (!result.data) {
+      return c.json({ success: false, error: 'Channel creation returned no data' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    }
+
+    const activityService = new ActivityService(c.env.DB);
+    await activityService.logActivity({
+      userId: String(user.id),
+      userName: user.displayName || String(user.id),
+      userRole: user.role,
+      action: ACTIVITY_ACTIONS.INTEGRATION_CREATE,
+      resourceType: RESOURCE_TYPES.INTEGRATION,
+      resourceId: String(result.data.id),
+      details: {
+        platform: body.platform,
+        teamId,
+        channelId: result.data.id
+      },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent')
+    });
 
     return c.json({
       ...result,

@@ -9,7 +9,8 @@ import {
   DeliveryResult,
   ChannelRoutingRule,
   ChannelRouterConfig,
-  NotificationSettings
+  NotificationSettings,
+  RoutingCondition
 } from '../types';
 
 // 導入所有適配器
@@ -17,6 +18,12 @@ import { WebSocketAdapter } from '@modules/notifications/adapters/websocket-adap
 import { EmailAdapter } from '@modules/notifications/adapters/email-adapter';
 import { PushAdapter } from '@modules/notifications/adapters/push-adapter';
 import { nowISO } from '@/utils/timestamp'
+
+type ManageableChannelAdapter = ChannelAdapter & {
+  enable?: () => void;
+  disable?: () => void;
+  getStats?: () => unknown;
+};
 
 export class NotificationChannelService {
   private adapters = new Map<ChannelType, ChannelAdapter>();
@@ -54,7 +61,7 @@ export class NotificationChannelService {
     };
   }> {
     const targetChannels = channels || await this.determineChannels(notification);
-    const results: Record<ChannelType, DeliveryResult> = {} as any;
+    const results = {} as Record<ChannelType, DeliveryResult>;
     let successfulChannels = 0;
     let failedChannels = 0;
 
@@ -331,10 +338,10 @@ export class NotificationChannelService {
     return rule.conditions.every(condition => this.evaluateCondition(notification, condition));
   }
 
-  private evaluateCondition(notification: NotificationBase, condition: any): boolean {
+  private evaluateCondition(notification: NotificationBase, condition: RoutingCondition): boolean {
     const { field, operator, value } = condition;
 
-    let fieldValue: any;
+    let fieldValue: unknown;
     switch (field) {
       case 'type':
         fieldValue = notification.type;
@@ -389,15 +396,17 @@ export class NotificationChannelService {
 
   enableChannel(channelType: ChannelType): void {
     const adapter = this.adapters.get(channelType);
-    if (adapter && typeof (adapter as any).enable === 'function') {
-      (adapter as any).enable();
+    const manageableAdapter = adapter as ManageableChannelAdapter | undefined;
+    if (manageableAdapter?.enable) {
+      manageableAdapter.enable();
     }
   }
 
   disableChannel(channelType: ChannelType): void {
     const adapter = this.adapters.get(channelType);
-    if (adapter && typeof (adapter as any).disable === 'function') {
-      (adapter as any).disable();
+    const manageableAdapter = adapter as ManageableChannelAdapter | undefined;
+    if (manageableAdapter?.disable) {
+      manageableAdapter.disable();
     }
   }
 
@@ -437,16 +446,21 @@ export class NotificationChannelService {
   getChannelStats(): Record<ChannelType, {
     enabled: boolean;
     type: ChannelType;
-    stats?: any;
+    stats?: unknown;
   }> {
-    const stats: Record<ChannelType, any> = {} as any;
+    const stats = {} as Record<ChannelType, {
+      enabled: boolean;
+      type: ChannelType;
+      stats?: unknown;
+    }>;
 
     for (const [channelType, adapter] of this.adapters.entries()) {
+      const manageableAdapter = adapter as ManageableChannelAdapter;
       stats[channelType] = {
         enabled: adapter.isEnabled(),
         type: adapter.type,
-        stats: typeof (adapter as any).getStats === 'function'
-          ? (adapter as any).getStats()
+        stats: manageableAdapter.getStats
+          ? manageableAdapter.getStats()
           : undefined
       };
     }

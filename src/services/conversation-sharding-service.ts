@@ -176,11 +176,13 @@ export class ConversationShardingService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), SHARD_CONFIG.CAPACITY_CHECK_TIMEOUT);
 
-      const response = await stub.fetch('https://shard/capacity-check', {
+      type DurableObjectFetchInit = NonNullable<Parameters<DurableObjectStub['fetch']>[1]>;
+      const init: DurableObjectFetchInit = {
         method: 'GET',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AbortSignal type mismatch between DOM and Cloudflare Workers environments
-        signal: controller.signal as any
-      });
+        signal: controller.signal as unknown as DurableObjectFetchInit['signal']
+      };
+
+      const response = await stub.fetch('https://shard/capacity-check', init);
 
       clearTimeout(timeoutId);
 
@@ -424,7 +426,7 @@ export class ConversationShardingService {
    */
   async broadcastToAllShards(
     conversationId: string,
-    event: any,
+    event: unknown,
     sourceShardIndex: number,
     priority: 'low' | 'normal' | 'high' | 'urgent' = 'normal'
   ): Promise<{

@@ -72,9 +72,9 @@ fileMainHandler.get('/stats/summary', jwtAuth, async (c) => {
     }
 
     const fileService = new FileService(c.env);
-    // Note: Current implementation doesn't support user filtering
-    // TODO: Extend getFileStatistics to support user-specific stats
-    const stats = await fileService.getFileStatistics('30d');
+    const stats = await fileService.getFileStatistics('30d', {
+      uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
+    });
 
     return successResponse(c, stats);
 

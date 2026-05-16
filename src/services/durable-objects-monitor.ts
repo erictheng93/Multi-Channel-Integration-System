@@ -48,6 +48,21 @@ export interface DOInstanceMetrics {
   alerts: DOAlert[];
 }
 
+type DOObjectType = DOInstanceMetrics['objectType'];
+
+interface DOHealthData {
+  activeConnections?: number;
+  totalConnectionsServed?: number;
+  connectionLimit?: number;
+  averageLatency?: number;
+  requestsPerSecond?: number;
+  errorRate?: number;
+  memoryUsageMB?: number;
+  cpuUsagePercent?: number;
+  uptime?: number;
+  lastActivity?: number;
+}
+
 /**
  * DO 告警類型
  */
@@ -275,7 +290,7 @@ export class DurableObjectsMonitor {
         return;
       }
 
-      const health = await response.json() as any;
+      const health = await response.json() as DOHealthData;
       this.updateInstanceMetrics('ConversationRoom', conversationId, health);
 
     } catch (error) {
@@ -346,7 +361,7 @@ export class DurableObjectsMonitor {
         return;
       }
 
-      const health = await response.json() as any;
+      const health = await response.json() as DOHealthData;
       this.updateInstanceMetrics('UserConnection', userId, health);
 
     } catch (error) {
@@ -377,7 +392,7 @@ export class DurableObjectsMonitor {
         return 0;
       }
 
-      const health = await response.json() as any;
+      const health = await response.json() as DOHealthData;
       this.updateInstanceMetrics('MessageBroadcaster', 'global', health);
       return 1;
 
@@ -401,9 +416,9 @@ export class DurableObjectsMonitor {
    * 更新實例指標
    */
   private updateInstanceMetrics(
-    objectType: 'ConversationRoom' | 'UserConnection' | 'MessageBroadcaster' | 'DelayedMessageProcessor',
+    objectType: DOObjectType,
     instanceId: string,
-    healthData: any
+    healthData: DOHealthData
   ): void {
     const key = `${objectType}:${instanceId}`;
 
@@ -444,7 +459,7 @@ export class DurableObjectsMonitor {
   /**
    * 確定健康狀態
    */
-  private determineHealthStatus(healthData: any): DOHealthStatus {
+  private determineHealthStatus(healthData: DOHealthData): DOHealthStatus {
     const errorRate = healthData.errorRate || 0;
     const latency = healthData.averageLatency || 0;
     const memoryUsage = healthData.memoryUsageMB || 0;
@@ -565,12 +580,12 @@ export class DurableObjectsMonitor {
    * 記錄不健康實例
    */
   private recordUnhealthyInstance(
-    objectType: string,
+    objectType: DOObjectType,
     instanceId: string,
     reason: string
   ): void {
     this.logger.error('Unhealthy DO instance detected', undefined, {
-      durableObjectType: objectType as any,
+      durableObjectType: objectType,
       durableObjectId: instanceId,
       reason
     });

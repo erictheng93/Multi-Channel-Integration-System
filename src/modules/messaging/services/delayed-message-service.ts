@@ -24,6 +24,9 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('DelayedMessage');
 
+type DelayedMessageRow = typeof delayedMessages.$inferSelect;
+type MessageInsert = typeof messages.$inferInsert;
+
 export class DelayedMessageService {
   private drizzleDb: ReturnType<typeof drizzle>;
 
@@ -241,6 +244,28 @@ export class DelayedMessageService {
         };
       }
 
+      const platform = this.getDelayedMessagePlatform(delayedMessage);
+      if (platform === 'line' || platform === 'facebook') {
+        const { MessageProcessorService } = await import('@modules/delayed-message/services/MessageProcessorService');
+        const processor = new MessageProcessorService(this.env);
+        const result = await processor.processQueueMessage(messageId);
+
+        return {
+          success: result.success,
+          processedAt: nowISO(),
+          error: result.error
+        };
+      }
+
+      if (platform !== 'webchat') {
+        await this.markDelayedMessageFailed(messageId, `Unsupported platform: ${platform}`);
+        return {
+          success: false,
+          processedAt: now.toISOString(),
+          error: `Unsupported platform: ${platform}`
+        };
+      }
+
       // 創建實際訊息
       const messageId_actual = crypto.randomUUID();
       const conversation = await this.drizzleDb
@@ -259,28 +284,28 @@ export class DelayedMessageService {
       }
 
       // 插入實際訊息到 messages 表
-      const actualMessage = {
+      const actualMessage: MessageInsert = {
         id: messageId_actual,
         conversationId: delayedMessage.conversationId,
         senderType: 'agent' as const,
-        customerSenderId: null as string | null,
+        customerSenderId: null,
         agentSenderId: delayedMessage.agentId,
         content: delayedMessage.content,
         messageType: delayedMessage.messageType,
-        platformMessageId: null as string | null,
+        platformMessageId: null,
         isRecalled: false,
         recallDeadline: new Date(now.getTime() + 30 * 60 * 1000).toISOString(), // 30分鐘召回期限
-        recalledAt: null as string | null,
+        recalledAt: null,
         isSent: true,
         sentAt: now.toISOString(),
         deliveryStatus: 'sent' as const,
-        replyToMessageId: null as string | null,
-        metadata: delayedMessage.metadata,
+        replyToMessageId: null,
+        metadata: JSON.stringify(delayedMessage.metadata || {}),
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
       };
 
-      await this.drizzleDb.insert(messages).values(actualMessage as any);
+      await this.drizzleDb.insert(messages).values(actualMessage);
 
       // 更新延遲訊息狀態
       await this.drizzleDb
@@ -294,9 +319,6 @@ export class DelayedMessageService {
       // 清理 KV 標記
       const kvKey = `recallable:${messageId}`;
       await this.env.SESSIONS.delete(kvKey);
-
-      // TODO: 發送到實際平台 (LINE, Facebook 等)
-      // await this.sendToPlatform(delayedMessage, actualMessage);
 
       return {
         success: true,
@@ -431,11 +453,10 @@ export class DelayedMessageService {
             eq(delayedMessages.status, 'failed'),
             lte(delayedMessages.updatedAt, expiredThreshold)
           )
-        );
+      );
 
       if (expiredMessages.length > 0) {
-        // TODO: 根據業務需求決定是否真的刪除還是標記為archived
-        // 這裡先標記為已清理
+        // Keep historical records for audit while excluding them from failed-message cleanup scans.
         await this.drizzleDb
           .update(delayedMessages)
           .set({
@@ -458,6 +479,21 @@ export class DelayedMessageService {
   }
 
   // ======================== 私有工具方法 ========================
+
+  private getDelayedMessagePlatform(message: DelayedMessage): Platform {
+    if (message.platform) {
+      return message.platform;
+    }
+
+    if (message.metadata && typeof message.metadata === 'object' && 'platform' in message.metadata) {
+      const platform = (message.metadata as { platform?: unknown }).platform;
+      if (platform === 'line' || platform === 'facebook' || platform === 'webchat') {
+        return platform;
+      }
+    }
+
+    return 'webchat';
+  }
 
   private async markDelayedMessageFailed(messageId: string, reason: string): Promise<void> {
     try {
@@ -487,26 +523,28 @@ export class DelayedMessageService {
     }
   }
 
-  private transformDbDelayedMessage(dbRecord: any): DelayedMessage {
+  private transformDbDelayedMessage(dbRecord: DelayedMessageRow): DelayedMessage {
     // Parse metadata to extract fields not in schema
-    const metadata = dbRecord.metadata ? JSON.parse(dbRecord.metadata) : {};
+    const metadata = dbRecord.metadata
+      ? JSON.parse(dbRecord.metadata) as Record<string, unknown>
+      : {};
 
     return {
       id: dbRecord.id,
       conversationId: dbRecord.conversationId,
       agentId: dbRecord.agentId,
-      recipientPlatformId: metadata.recipientPlatformId || '',
-      platform: (metadata.platform || 'webchat') as Platform,
+      recipientPlatformId: typeof metadata.recipientPlatformId === 'string' ? metadata.recipientPlatformId : '',
+      platform: (typeof metadata.platform === 'string' ? metadata.platform : 'webchat') as Platform,
       content: dbRecord.content,
       messageType: dbRecord.messageType as MessageType,
-      delaySeconds: metadata.delaySeconds || 0,
+      delaySeconds: typeof metadata.delaySeconds === 'number' ? metadata.delaySeconds : 0,
       scheduledAt: dbRecord.scheduledAt,
-      status: dbRecord.status,
-      failureReason: metadata.failureReason, // Store failure reason in metadata
-      mediaUrl: metadata.mediaUrl,
-      metadata: dbRecord.metadata ? JSON.parse(dbRecord.metadata) : undefined,
-      createdAt: dbRecord.createdAt,
-      updatedAt: dbRecord.updatedAt,
+      status: dbRecord.status as DelayedMessage['status'],
+      failureReason: typeof metadata.failureReason === 'string' ? metadata.failureReason : undefined, // Store failure reason in metadata
+      mediaUrl: typeof metadata.mediaUrl === 'string' ? metadata.mediaUrl : undefined,
+      metadata: dbRecord.metadata ? JSON.parse(dbRecord.metadata) as Record<string, unknown> : undefined,
+      createdAt: dbRecord.createdAt || nowISO(),
+      updatedAt: dbRecord.updatedAt || nowISO(),
     };
   }
 }

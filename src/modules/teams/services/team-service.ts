@@ -477,7 +477,7 @@ export class TeamService implements TeamServiceInterface {
 
   // Update team member
   async updateMember(_teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember> {
-    const updateData: any = {
+    const updateData: Partial<typeof agents.$inferInsert> = {
       updatedAt: nowISO()
     };
 

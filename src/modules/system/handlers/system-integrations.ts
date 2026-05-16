@@ -18,11 +18,27 @@ import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('SystemIntegrations')
 
+interface LineIntegrationTestConfig {
+  channelId?: string;
+  channelSecret?: string;
+  accessToken?: string;
+}
+
+interface FacebookIntegrationTestConfig {
+  appId?: string;
+  appSecret?: string;
+  pageId?: string;
+  pageToken?: string;
+  testUserId?: string;
+}
+
+type IntegrationTestConfig = LineIntegrationTestConfig & FacebookIntegrationTestConfig;
+
 // Test platform integration
 export const testIntegration = async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const platform = c.req.param('platform')
-    const config = await c.req.json()
+    const config = await c.req.json() as IntegrationTestConfig
 
     let testResult = { status: 'error', message: '測試失敗' }
 
@@ -41,10 +57,10 @@ export const testIntegration = async (c: Context<{ Bindings: Bindings }>) => {
 }
 
 // Test LINE integration
-async function testLineIntegration(config: any, env: Bindings) {
+async function testLineIntegration(config: LineIntegrationTestConfig, env: Bindings) {
   try {
     // If no config provided, try to get from KV
-    let testConfig = config
+    let testConfig: LineIntegrationTestConfig = config
     if (!config.channelId || !config.channelSecret || !config.accessToken) {
       const kvCredentials = await getCredentialsFromKV(env, 'line')
       if (kvCredentials) {
@@ -151,10 +167,10 @@ async function testLineIntegration(config: any, env: Bindings) {
 }
 
 // Test Facebook integration
-async function testFacebookIntegration(config: any, env: Bindings) {
+async function testFacebookIntegration(config: FacebookIntegrationTestConfig, env: Bindings) {
   try {
     // If no config provided, try to get from KV
-    let testConfig = config
+    let testConfig: FacebookIntegrationTestConfig = config
     if (!config.appId || !config.appSecret || !config.pageId || !config.pageToken) {
       const kvCredentials = await getCredentialsFromKV(env, 'facebook')
       if (kvCredentials) {
@@ -187,12 +203,35 @@ async function testFacebookIntegration(config: any, env: Bindings) {
 
     const pageInfo = await tokenResponse.json()
 
-    // Test 2: Validate App Secret
+    // Test 2: Validate App Secret by checking the Page token against the app.
     log.info('Testing Facebook App Secret')
-    try {
-      // Signature test placeholder
-    } catch (signatureError) {
-      // Expected to fail, this is normal
+    const debugParams = new URLSearchParams({
+      input_token: testConfig.pageToken,
+      access_token: `${testConfig.appId}|${testConfig.appSecret}`
+    })
+    const debugTokenResponse = await fetch(`https://graph.facebook.com/v18.0/debug_token?${debugParams.toString()}`)
+
+    if (!debugTokenResponse.ok) {
+      return {
+        status: 'error',
+        message: 'Facebook App Secret 或 Page Access Token 無效',
+        details: `Token debug failed: ${debugTokenResponse.status}`
+      }
+    }
+
+    const debugToken = await debugTokenResponse.json() as {
+      data?: {
+        app_id?: string;
+        is_valid?: boolean;
+      };
+    }
+
+    if (!debugToken.data || debugToken.data.is_valid === false || (debugToken.data.app_id && debugToken.data.app_id !== testConfig.appId)) {
+      return {
+        status: 'error',
+        message: 'Facebook App Secret 與 Page Access Token 不匹配',
+        details: `Expected app ${testConfig.appId}, got ${debugToken.data?.app_id || 'unknown'}`
+      }
     }
 
     // Test 3: Check page permissions
@@ -201,9 +240,9 @@ async function testFacebookIntegration(config: any, env: Bindings) {
       `https://graph.facebook.com/v18.0/${testConfig.pageId}?fields=access_token,name,category&access_token=${testConfig.pageToken}`
     )
 
-    let pageDetails = {}
+    let pageDetails: Partial<{ category: string }> = {}
     if (permissionsResponse.ok) {
-      pageDetails = await permissionsResponse.json()
+      pageDetails = await permissionsResponse.json() as Partial<{ category: string }>
     }
 
     // Test 4: Test messaging capability (to test user, if provided)
@@ -230,7 +269,7 @@ async function testFacebookIntegration(config: any, env: Bindings) {
       details: {
         pageId: isFacebookPageInfo(pageInfo) ? pageInfo.id : 'Unknown',
         pageName: isFacebookPageInfo(pageInfo) ? pageInfo.name : 'Unknown',
-        pageCategory: (pageDetails as any).category,
+        pageCategory: pageDetails.category,
         messagingStatus,
         appId: testConfig.appId
       }

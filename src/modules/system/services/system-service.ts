@@ -19,17 +19,26 @@ import type {
   SystemMetrics,
   BackupInfo
 } from '../types/system-types';
+import type { Bindings } from '@/types/bindings';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('SystemService');
 
+interface SqliteTableRow {
+  name: string;
+}
+
 export class SystemService implements SystemServiceInterface {
   private db: DrizzleD1Database;
   private cache: KVNamespace;
-  private env: any;
+  private env: Pick<Bindings, 'ENVIRONMENT' | 'JWT_SECRET' | 'ENCRYPTION_KEY'>;
 
-  constructor(database: D1Database, cache: KVNamespace, env: any) {
+  constructor(
+    database: D1Database,
+    cache: KVNamespace,
+    env: Pick<Bindings, 'ENVIRONMENT' | 'JWT_SECRET' | 'ENCRYPTION_KEY'>
+  ) {
     this.db = drizzle(database);
     this.cache = cache;
     this.env = env;
@@ -197,14 +206,14 @@ export class SystemService implements SystemServiceInterface {
 
     try {
       // 檢查表是否存在
-      const tablesResult = await this.db.all(
+      const tablesResult = await this.db.all<SqliteTableRow>(
         sql`SELECT name FROM sqlite_master
             WHERE type='table' AND name IN ('messages', 'customers', 'conversations')`
       );
 
       const tablesCheck = tablesResult || [];
       if (tablesCheck.length > 0) {
-        const tableNames = tablesCheck.map((t: any) => t.name);
+        const tableNames = tablesCheck.map((t) => t.name);
 
         // 安全地查詢存在的表
         if (tableNames.includes('messages')) {
@@ -443,14 +452,14 @@ export class SystemService implements SystemServiceInterface {
   }
 
   // 私有方法：從 KV 獲取憑證
-  private async getCredentialsFromKV(platform: 'line' | 'facebook') {
+  private async getCredentialsFromKV(platform: 'line' | 'facebook'): Promise<Record<string, string> | null> {
     try {
       const encryptionKey = this.getEncryptionKey();
       const credentialTypes = platform === 'line'
         ? ['channelId', 'channelSecret', 'accessToken']
         : ['appId', 'appSecret', 'pageId', 'pageToken'];
 
-      const credentials: any = {};
+      const credentials: Record<string, string> = {};
 
       for (const type of credentialTypes) {
         const key = `credentials:${platform}:${type}`;

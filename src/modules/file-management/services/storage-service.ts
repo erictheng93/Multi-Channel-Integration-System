@@ -3,7 +3,7 @@
  * 包含完整的錯誤處理、重試機制和日誌記錄
  */
 
-import type { StorageService as IStorageService } from '@modules/file-management/types/storage-types';
+import type { StorageMetadata, StorageService as IStorageService } from '@modules/file-management/types/storage-types';
 import type { Bindings } from '@/types';
 import { ErrorHandler, FileManagementError, FileLogger } from '@modules/file-management/utils/error-handler';
 import { ERROR_CODES } from '@modules/file-management/constants/error-codes';
@@ -180,11 +180,11 @@ export function createStorageService(env: Bindings): IStorageService {
   const logger = new FileLogger({ operation: 'storage-factory' });
 
   return {
-    uploadFile: async (key: string, data: Uint8Array, options?: any) => {
+    uploadFile: async (key: string, data: ArrayBuffer | Uint8Array, metadata: StorageMetadata) => {
       return ErrorHandler.executeWithRetry(
         async () => {
           try {
-            logger.info('Uploading file to R2', { key, size: data.length });
+            logger.info('Uploading file to R2', { key, size: data.byteLength });
 
             const bucket = env.R2_BUCKET;
             if (!bucket) {
@@ -195,8 +195,19 @@ export function createStorageService(env: Bindings): IStorageService {
               );
             }
 
+            const putOptions: R2PutOptions = {
+              httpMetadata: {
+                contentType: metadata.contentType,
+                contentDisposition: metadata.contentDisposition,
+                contentEncoding: metadata.contentEncoding,
+                cacheControl: metadata.cacheControl,
+                cacheExpiry: metadata.expires
+              },
+              customMetadata: metadata.customMetadata
+            };
+
             // 執行 R2 上傳
-            await bucket.put(key, data, options);
+            await bucket.put(key, data, putOptions);
 
             logger.info('File uploaded successfully to R2', { key });
 

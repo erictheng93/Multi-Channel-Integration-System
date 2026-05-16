@@ -9,7 +9,7 @@ export interface QRCodeConfig {
   expiresAt?: Date;
   metadata?: {
     description?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

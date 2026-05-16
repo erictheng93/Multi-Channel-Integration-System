@@ -5,7 +5,7 @@
 
 import type { Context } from 'hono';
 import type { Bindings } from '@/types';
-import type { FileUploadRequest, FileUploadOptions } from '@modules/file-management/types/file-types';
+import type { FileUploadRequest, FileUploadOptions, PlatformType } from '@modules/file-management/types/file-types';
 
 import { FileService } from '@modules/file-management/services/file-service';
 import { FileValidationService } from '@modules/file-management/services/validation-service';
@@ -28,6 +28,12 @@ export class UploadHandler {
     this.validationService = new FileValidationService();
   }
 
+  private parsePlatform(value: FormDataEntryValue | null): PlatformType {
+    return value === 'line' || value === 'facebook' || value === 'admin' || value === 'system'
+      ? value
+      : 'system';
+  }
+
   /**
    * 單檔上傳
    */
@@ -47,14 +53,14 @@ export class UploadHandler {
 
       // 獲取上傳選項
       const options = this.parseUploadOptions(formData);
-      const platform = (formData.get('platform') as string) || 'system';
+      const platform = this.parsePlatform(formData.get('platform'));
 
       // 建立上傳請求
       const uploadRequest: FileUploadRequest = {
         file,
         filename: file.name,
         mimeType: file.type,
-        platform: platform as any,
+        platform,
         conversationId: formData.get('conversationId') as string,
         messageId: formData.get('messageId') as string,
         uploadedBy: payload?.userId?.toString(),
@@ -117,7 +123,7 @@ export class UploadHandler {
 
       // 獲取共同選項
       const options = this.parseUploadOptions(formData);
-      const platform = (formData.get('platform') as string) || 'system';
+      const platform = this.parsePlatform(formData.get('platform'));
       const conversationId = formData.get('conversationId') as string;
       const messageId = formData.get('messageId') as string;
 
@@ -131,7 +137,7 @@ export class UploadHandler {
             file,
             filename: file.name,
             mimeType: file.type,
-            platform: platform as any,
+            platform,
             conversationId,
             messageId,
             uploadedBy: payload?.userId?.toString(),

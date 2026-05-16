@@ -5,6 +5,7 @@ import type { Database } from '@/db/drizzle-factory';
 import { and, gte, lte, count, sql } from 'drizzle-orm';
 import { conversations, messages, activities, conversationSessions, agents } from '@/db/schema';
 import type { AnalyticsCacheService } from '@modules/analytics/services/analytics-cache-service';
+import type { AnalyticsResult } from '@modules/analytics/types/analytics-types';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
 
@@ -31,6 +32,19 @@ export interface ComparisonData {
   period: {
     current: Period;
     previous: Period;
+  };
+}
+
+function toComparisonCacheResult(data: ComparisonData): AnalyticsResult<ComparisonData> {
+  return {
+    success: true,
+    data,
+    metadata: {
+      totalRecords: 1,
+      processedAt: nowISO(),
+      queryTime: 0,
+      cacheHit: false
+    }
   };
 }
 
@@ -158,8 +172,8 @@ export class PeriodComparisonService {
     // Handle null metrics (features not yet implemented)
     if (currentValue === null || previousValue === null) {
       const comparison: ComparisonData = {
-        current: currentValue as any,
-        previous: previousValue as any,
+        current: currentValue ?? 0,
+        previous: previousValue ?? 0,
         change: 0,
         changePercentage: 0,
         trend: 'stable',
@@ -175,7 +189,7 @@ export class PeriodComparisonService {
         const ttl = this.getDurationBasedTTL(currentPeriod);
         await this.cacheService.set(
           cacheKey,
-          { data: comparison, metadata: { processedAt: nowISO(), cacheHit: false } } as any,
+          toComparisonCacheResult(comparison),
           ttl
         );
       }
@@ -199,7 +213,7 @@ export class PeriodComparisonService {
       const ttl = this.getDurationBasedTTL(currentPeriod);
       await this.cacheService.set(
         cacheKey,
-        { data: comparison, metadata: { processedAt: nowISO(), cacheHit: false } } as any,
+        toComparisonCacheResult(comparison),
         ttl
       );
       log.debug(`Cached comparison: ${metric}`, { ttl });
@@ -617,7 +631,7 @@ export class PeriodComparisonService {
     table: 'conversations' | 'messages' | 'activities' | 'sessions',
     period: Period,
     filters?: PeriodComparisonQuery['filters']
-  ): any[] {
+  ) {
     const conditions = [];
 
     // 時間範圍條件

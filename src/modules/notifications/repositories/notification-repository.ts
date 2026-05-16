@@ -8,18 +8,41 @@ const log = createContextLogger('NotificationRepository')
 
 import { sql, eq, and, or, desc, count, gte, lte } from 'drizzle-orm';
 import { notifications } from '@/db/schema';
+import type { DbCompat } from '@/types/db-compat';
 import {
   NotificationBase,
   NotificationQuery,
   CreateNotificationRequest,
+  NotificationPriority,
   NotificationType
 } from '../types';
 
+interface NotificationRow {
+  id: string;
+  userId?: string | number | null;
+  user_id?: string | number | null;
+  type: NotificationType;
+  title: string;
+  content: string;
+  data?: string | null;
+  priority?: NotificationPriority | null;
+  isRead?: boolean | null;
+  is_read?: boolean | null;
+  readAt?: string | null;
+  read_at?: string | null;
+  expiresAt?: string | null;
+  expires_at?: string | null;
+  createdAt?: string | null;
+  created_at?: string | null;
+  updatedAt?: string | null;
+  updated_at?: string | null;
+}
+
 export class NotificationRepository {
-  private db: any;
+  private db: DbCompat;
 
   constructor(database: D1Database) {
-    this.db = drizzle(database);
+    this.db = drizzle(database) as unknown as DbCompat;
   }
 
   async create(request: CreateNotificationRequest): Promise<string> {
@@ -93,7 +116,7 @@ export class NotificationRepository {
 
   async findById(id: string, userId: string | number): Promise<NotificationBase | null> {
     const result = await this.db
-      .select()
+      .select<NotificationRow>()
       .from(notifications)
       .where(and(
         eq(notifications.id, id),
@@ -145,7 +168,7 @@ export class NotificationRepository {
 
     // 取得總數
     const countResult = await this.db
-      .select({ total: count() })
+      .select<{ total: number }>({ total: count() })
       .from(notifications)
       .where(and(...whereConditions));
 
@@ -157,14 +180,14 @@ export class NotificationRepository {
     const offset = (page - 1) * pageSize;
 
     const result = await this.db
-      .select()
+      .select<NotificationRow>()
       .from(notifications)
       .where(and(...whereConditions))
       .orderBy(desc(notifications.createdAt))
       .limit(pageSize)
       .offset(offset);
 
-    const notificationList = result.map(this.mapToNotification);
+    const notificationList = result.map((row) => this.mapToNotification(row));
 
     return {
       notifications: notificationList,
@@ -185,7 +208,7 @@ export class NotificationRepository {
         eq(notifications.userId, userId.toString())
       ));
 
-    return result.changes > 0;
+    return (result.changes ?? 0) > 0;
   }
 
   async markAllAsRead(userId: string | number, type?: NotificationType): Promise<number> {
@@ -218,7 +241,7 @@ export class NotificationRepository {
         eq(notifications.userId, userId.toString())
       ));
 
-    return result.changes > 0;
+    return (result.changes ?? 0) > 0;
   }
 
   async deleteExpired(): Promise<number> {
@@ -249,7 +272,7 @@ export class NotificationRepository {
     }
 
     const result = await this.db
-      .select({ count: count() })
+      .select<{ count: number }>({ count: count() })
       .from(notifications)
       .where(and(...whereConditions));
 
@@ -258,7 +281,7 @@ export class NotificationRepository {
 
   async getRecentNotifications(userId: string | number, limit: number = 10): Promise<NotificationBase[]> {
     const result = await this.db
-      .select()
+      .select<NotificationRow>()
       .from(notifications)
       .where(and(
         eq(notifications.userId, userId.toString()),
@@ -271,10 +294,10 @@ export class NotificationRepository {
       .orderBy(desc(notifications.createdAt))
       .limit(limit);
 
-    return result.map(this.mapToNotification);
+    return result.map((row) => this.mapToNotification(row));
   }
 
-  async getStatsByUserId(userId: string | number): Promise<any> {
+  async getStatsByUserId(userId: string | number) {
     const result = await this.db.get(sql`
       SELECT
         COUNT(*) as total,
@@ -295,20 +318,20 @@ export class NotificationRepository {
     return result;
   }
 
-  private mapToNotification(row: any): NotificationBase {
+  private mapToNotification(row: NotificationRow): NotificationBase {
     return {
       id: row.id,
-      userId: row.userId || row.user_id,  // 保持原始格式，支援字串和數字
+      userId: row.userId ?? row.user_id ?? '',  // 保持原始格式，支援字串和數字
       type: row.type,
       title: row.title,
       content: row.content,
-      data: row.data ? JSON.parse(row.data) : undefined,
+      data: row.data ? JSON.parse(row.data) as Record<string, unknown> : undefined,
       priority: row.priority || 'normal',
       isRead: Boolean(row.isRead || row.is_read),
-      readAt: row.readAt || row.read_at,
-      expiresAt: row.expiresAt || row.expires_at,
-      createdAt: row.createdAt || row.created_at,
-      updatedAt: row.updatedAt || row.updated_at
+      readAt: row.readAt || row.read_at || undefined,
+      expiresAt: row.expiresAt || row.expires_at || undefined,
+      createdAt: row.createdAt || row.created_at || '',
+      updatedAt: row.updatedAt || row.updated_at || undefined
     };
   }
 }

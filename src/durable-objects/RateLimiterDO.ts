@@ -89,7 +89,7 @@ export class RateLimiterDO implements DurableObject {
   private readonly ENTRY_TTL_MS = 600000; // 10 minutes TTL for inactive entries
 
 
-  constructor(state: DurableObjectState, _env: any) {
+  constructor(state: DurableObjectState, _env: unknown) {
     this.state = state;
 
     // Initialize from storage on first request

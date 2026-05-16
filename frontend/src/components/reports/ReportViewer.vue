@@ -74,26 +74,6 @@
       <ReportViewerMetadata :report="report" />
     </div>
 
-    <!-- 分享對話框 -->
-    <!-- TODO: 實現 ShareDialog 組件
-    <ShareDialog
-      v-if="showShareDialog"
-      :report="report"
-      @close="showShareDialog = false"
-      @shared="onReportShared"
-    />
-    -->
-
-    <!-- 匯出對話框 -->
-    <!-- TODO: 實現 ExportDialog 組件
-    <ExportDialog
-      v-if="showExportDialog"
-      :report="report"
-      @close="showExportDialog = false"
-      @exported="onReportExported"
-    />
-    -->
-
     <!-- 刪除確認對話框 -->
     <ConfirmDialog
       v-if="showDeleteDialog"
@@ -112,6 +92,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ReportsAPI from '@/api/reports';
 import type { ReportDetails } from '@/types/reports';
+import { createLogger } from '@/utils/logger';
 
 // Child components
 import ReportViewerHeader from './ReportViewerHeader.vue';
@@ -138,6 +119,8 @@ const emit = defineEmits<{
   'back': [];
 }>();
 
+const frontendLogger = createLogger('ReportViewer');
+
 // Router
 const router = useRouter();
 
@@ -152,8 +135,6 @@ const downloading = ref(false);
 const regenerating = ref(false);
 const viewMode = ref<'formatted' | 'raw'>('formatted');
 const showActionMenu = ref(false);
-const showShareDialog = ref(false);
-const showExportDialog = ref(false);
 const showDeleteDialog = ref(false);
 
 // 進度狀態
@@ -173,11 +154,13 @@ const canRegenerate = computed(() => {
 });
 
 const canShare = computed(() => {
-  return report.value?.status === 'completed';
+  return report.value?.status === 'completed' &&
+    typeof navigator !== 'undefined' &&
+    (!!navigator.share || !!navigator.clipboard);
 });
 
 const canExport = computed(() => {
-  return report.value?.status === 'completed';
+  return canDownload.value;
 });
 
 const canSchedule = computed(() => {
@@ -220,13 +203,10 @@ const loadReport = async () => {
 };
 
 const loadReportData = async () => {
-  if (!report.value?.downloadUrl) { return; }
+  if (!report.value?.id) { return; }
 
   try {
-    const response = await fetch(report.value.downloadUrl);
-    if (response.ok) {
-      reportData.value = await response.json();
-    }
+    reportData.value = await ReportsAPI.getReportJsonContent(report.value.id);
   } catch (err) {
     console.error('載入報表資料失敗:', err);
   }
@@ -239,15 +219,17 @@ const downloadReport = async () => {
 
   try {
     const downloadInfo = await ReportsAPI.downloadReport(report.value.id);
+    const objectUrl = URL.createObjectURL(downloadInfo.blob);
 
     // 創建下載連結
     const link = document.createElement('a');
-    link.href = downloadInfo.url;
+    link.href = objectUrl;
     link.download = downloadInfo.filename;
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
 
   } catch (err) {
     console.error('下載報表失敗:', err);
@@ -281,14 +263,28 @@ const regenerateReport = async () => {
   }
 };
 
-const shareReport = () => {
-  showShareDialog.value = true;
+const shareReport = async () => {
   showActionMenu.value = false;
+  if (!report.value) { return; }
+
+  const shareUrl = window.location.href;
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: report.value.title,
+        url: shareUrl
+      });
+    } else if (navigator.clipboard) {
+      await navigator.clipboard.writeText(shareUrl);
+    }
+  } catch (err) {
+    frontendLogger.error('分享報表失敗:', err);
+  }
 };
 
 const exportReport = () => {
-  showExportDialog.value = true;
   showActionMenu.value = false;
+  void downloadReport();
 };
 
 const scheduleReport = () => {

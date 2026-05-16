@@ -2,6 +2,8 @@
 
 // === 類型定義導出 ===
 export * from './types';
+import type { Bindings } from '@/types';
+import type { RealtimeConfig, RealtimeEvent, QueueMessage } from '@modules/realtime/types';
 import type { EventSource } from '@modules/realtime/types/event-types';
 
 // === 處理器導出 ===
@@ -52,7 +54,7 @@ export const realtime = {
   // 服務實例
   services: {
     manager: RealtimeManager.getInstance(),
-    createQueue: (env: any) => new EventQueueService(env)
+    createQueue: (env: Bindings) => new EventQueueService(env)
   },
 
   // 中間件
@@ -70,7 +72,7 @@ export const realtime = {
   },
 
   // 快速初始化函數
-  async initialize(env: any, config?: any) {
+  async initialize(env: Bindings, config?: Partial<RealtimeConfig>) {
     const manager = RealtimeManager.getInstance();
     await manager.initialize(env, config);
     return manager;
@@ -78,10 +80,10 @@ export const realtime = {
 
   // 快速創建事件函數
   async createEvent(
-    eventType: any,
-    eventData: any,
-    targets: any,
-    priority: any = 'normal',
+    eventType: RealtimeEvent['type'],
+    eventData: RealtimeEvent['data'],
+    targets: QueueMessage['targets'],
+    priority: QueueMessage['priority'] = 'normal',
     source: EventSource = 'api'
   ) {
     const manager = RealtimeManager.getInstance();

@@ -83,8 +83,8 @@ forwardingRoutes.post('/:id/forward', jwtAuth, async (c) => {
       return notFoundResponse(c, 'Message not found');
     }
 
-    const results: any[] = [];
-    const errors: any[] = [];
+    const results: unknown[] = [];
+    const errors: unknown[] = [];
 
     // Step 1: Batch-verify all target conversations exist in one SELECT
     const existingConvs = await db

@@ -139,10 +139,10 @@ export interface MonitoringDashboard {
   health: {
     overall: string;
     score: number;
-    connections: any;
-    performance: any;
-    errors: any;
-    resources: any;
+    connections: unknown;
+    performance: unknown;
+    errors: unknown;
+    resources: unknown;
   };
   migration: {
     websocketAdoption: number; // 0-100
@@ -192,7 +192,7 @@ export interface DashboardData {
   historicalData?: {
     timeRange: string;
     dataPoints: PerformanceMetrics[];
-    aggregations: any;
+    aggregations: unknown;
   };
   alerts: MonitoringAlert[];
   components?: ComponentStatus[];
@@ -338,7 +338,7 @@ export interface AlertNotification {
   acknowledgedAt?: number;
   acknowledged?: boolean;
   count?: number;
-  data?: any;
+  data?: unknown;
   createdAt?: number;
   resolvedAt?: number;
   resolution?: string;

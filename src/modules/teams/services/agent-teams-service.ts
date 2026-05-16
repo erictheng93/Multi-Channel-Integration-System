@@ -437,7 +437,7 @@ export class AgentTeamsService {
     teamId: number,
     data: UpdateTeamRoleRequest
   ): Promise<AgentTeamMembership> {
-    const updateData: any = {};
+    const updateData: Partial<typeof agentTeams.$inferInsert> = {};
 
     if (data.roleInTeam !== undefined) {
       updateData.roleInTeam = data.roleInTeam;
@@ -637,8 +637,7 @@ export class AgentTeamsService {
  * Standalone helper for files that don't have an AgentTeamsService instance.
  * Queries agent_teams for the agent's primary team ID.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getPrimaryTeamId(db: DrizzleD1Database<any>, agentId: string): Promise<number | null> {
+export async function getPrimaryTeamId(db: DrizzleD1Database<Record<string, unknown>>, agentId: string): Promise<number | null> {
   const [result] = await db
     .select({ teamId: agentTeams.teamId })
     .from(agentTeams)

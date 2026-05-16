@@ -243,10 +243,13 @@ export const DURABLE_OBJECT_CLASSES = [
   'ConversationRoom',
   'UserConnection',
   'MessageBroadcaster',
-  'DelayedMessageProcessor',
   'DelayedMessageBuffer',
+  'LockCoordinator',
+  'LatestMessageCacheCoordinator',
   'CustomerConversationDO',
   'CustomerMessageDO',
+  'RateLimiterDO',
+  'MetricsCollectorDO',
 ] as const;
 
 /**
@@ -254,9 +257,9 @@ export const DURABLE_OBJECT_CLASSES = [
  */
 export const REQUIRED_BINDINGS = {
   d1: ['DB'],
-  kv: ['SESSION_KV', 'CACHE_KV'],
-  r2: ['FILE_STORAGE'],
-  queue: ['MESSAGE_QUEUE'],
+  kv: ['SESSIONS', 'CACHE'],
+  r2: ['R2_BUCKET'],
+  queue: ['LINE_MESSAGE_QUEUE'],
   durableObjects: DURABLE_OBJECT_CLASSES,
 } as const;
 `;

@@ -106,7 +106,7 @@ export interface IntegrationConfig {
   };
 
   // 高級設定
-  advanced?: Record<string, any>;
+  advanced?: Record<string, unknown>;
 }
 
 /**
@@ -298,7 +298,7 @@ export interface HealthCheck {
     latency?: number;
     errorRate?: number;
     lastError?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
 }
 
@@ -389,7 +389,7 @@ export interface TestIntegrationRequest {
   // Webhook 測試設定
   webhookTest?: {
     eventType: WebhookEventType;
-    payload?: Record<string, any>;
+    payload?: Record<string, unknown>;
   };
 }
 
@@ -430,7 +430,7 @@ export interface TestResult {
     httpStatus?: number;
     responseTime?: number;
     errorCode?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
 
   warnings?: string[];
@@ -470,7 +470,7 @@ export interface FacebookIntegrationConfig extends IntegrationConfig {
 
   messenger?: {
     greetingText?: string;
-    persistentMenu?: any[];
+    persistentMenu?: unknown[];
     getStartedPayload?: string;
   };
 
@@ -559,16 +559,16 @@ export interface IPlatformAdapter {
   platform: IntegrationPlatform;
 
   // 連接管理
-  connect(credentials: Record<string, any>, config: IntegrationConfig): Promise<boolean>;
+  connect(credentials: Record<string, unknown>, config: IntegrationConfig): Promise<boolean>;
   disconnect(): Promise<boolean>;
   isConnected(): Promise<boolean>;
 
   // 訊息操作
-  sendMessage(recipient: string, message: any): Promise<any>;
-  receiveMessage(webhook: any): Promise<any>;
+  sendMessage(recipient: string, message: unknown): Promise<unknown>;
+  receiveMessage(webhook: unknown): Promise<unknown>;
 
   // 用戶操作
-  getUserProfile(userId: string): Promise<any>;
+  getUserProfile(userId: string): Promise<unknown>;
 
   // 健康檢查
   healthCheck(): Promise<HealthCheck>;
@@ -832,7 +832,7 @@ export interface PlatformEvent {
   message?: {
     id: string;
     type: MessageType;
-    content: any;
+    content: unknown;
     timestamp: string;
   };
 

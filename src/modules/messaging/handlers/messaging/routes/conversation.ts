@@ -7,6 +7,7 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('MsgConversation')
 
 import { eq, and, desc, count } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
 import { messages, conversations, customers, agents } from '@/db/schema';
@@ -56,7 +57,7 @@ conversationRoutes.get('/conversation/:conversationId', jwtAuth, async (c) => {
     }
 
     // 構建查詢條件
-    const whereConditions: any[] = [eq(messages.conversationId, conversationId)];
+    const whereConditions: SQL<unknown>[] = [eq(messages.conversationId, conversationId)];
 
     if (!includeRecalled) {
       whereConditions.push(eq(messages.isRecalled, false));

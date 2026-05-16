@@ -23,14 +23,22 @@ export class BroadcasterConnectionRegistry {
 
       if (type === 'conversation') {
         if (!this.ctx.conversationRooms.has(id)) {
-          const doId = this.ctx.env.CONVERSATION_ROOM.idFromName(id);
-          const stub = this.ctx.env.CONVERSATION_ROOM.get(doId);
+          const namespace = this.ctx.env.CONVERSATION_ROOM;
+          if (!namespace) {
+            return new Response(JSON.stringify({ error: 'CONVERSATION_ROOM binding is not configured' }), { status: 503 });
+          }
+          const doId = namespace.idFromName(id);
+          const stub = namespace.get(doId);
           this.ctx.conversationRooms.set(id, stub);
         }
       } else if (type === 'user') {
         if (!this.ctx.userConnections.has(id)) {
-          const doId = this.ctx.env.USER_CONNECTION.idFromName(id);
-          const stub = this.ctx.env.USER_CONNECTION.get(doId);
+          const namespace = this.ctx.env.USER_CONNECTION;
+          if (!namespace) {
+            return new Response(JSON.stringify({ error: 'USER_CONNECTION binding is not configured' }), { status: 503 });
+          }
+          const doId = namespace.idFromName(id);
+          const stub = namespace.get(doId);
           this.ctx.userConnections.set(id, stub);
         }
       }

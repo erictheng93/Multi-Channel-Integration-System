@@ -107,7 +107,7 @@ export class CustomerSearchService {
       const totalCount = await this.getFilteredCustomersCount(filters, userPayload);
 
       // 格式化結果
-      const customersData: CustomerListItem[] = result.map((row: any) => ({
+      const customersData: CustomerListItem[] = result.map((row) => ({
         id: row.id,
         platform: row.platform,
         platformUserId: row.platformUserId,

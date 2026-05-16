@@ -18,10 +18,10 @@ export class ConversationEventBroadcaster extends EventBroadcasterBase {
    * Broadcast conversation events
    */
   async broadcastConversationEvent(event: {
-    type: 'conversation_assigned' | 'conversation_unassigned' | 'conversation_transferred' | 'conversation_status_changed' | 'conversation_tags_updated' | 'participant_joined' | 'participant_left';
+    type: 'conversation_assigned' | 'conversation_unassigned' | 'conversation_transferred' | 'conversation_status_changed' | 'conversation_tags_updated' | 'customer_profile_updated' | 'participant_joined' | 'participant_left';
     conversationId: string;
     userId?: string;
-    data: any;
+    data: unknown;
     priority?: 'low' | 'normal' | 'high' | 'urgent';
   }): Promise<boolean> {
     try {
@@ -93,6 +93,7 @@ export class ConversationEventBroadcaster extends EventBroadcasterBase {
         id: number;
         name: string;
       };
+      _liffMetadata?: Record<string, unknown>;
     };
     transferredBy: {
       id: string;

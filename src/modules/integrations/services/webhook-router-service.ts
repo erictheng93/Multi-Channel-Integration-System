@@ -63,6 +63,80 @@ interface RoutingRule {
   };
 }
 
+interface LineWebhookEvent {
+  type: string;
+  timestamp: number;
+  source: {
+    type: 'user' | 'group' | 'room';
+    userId?: string;
+    groupId?: string;
+    roomId?: string;
+  };
+  message?: {
+    id: string;
+    type: string;
+    [key: string]: unknown;
+  };
+}
+
+interface LineWebhookBody {
+  events: LineWebhookEvent[];
+}
+
+interface FacebookMessage {
+  mid: string;
+  text?: string;
+  attachments?: Array<{
+    type: string;
+    payload?: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+interface FacebookMessaging {
+  sender: { id: string };
+  timestamp: number;
+  message?: FacebookMessage;
+  postback?: unknown;
+  read?: unknown;
+  delivery?: unknown;
+  account_linking?: unknown;
+}
+
+interface FacebookWebhookBody {
+  object?: string;
+  entry: Array<{
+    messaging?: FacebookMessaging[];
+  }>;
+}
+
+interface GenericWebhookBody {
+  userId?: string;
+  from?: string;
+  message?: unknown;
+  text?: unknown;
+  messageId?: string;
+}
+
+interface WebhookStats {
+  received: number;
+  processed: number;
+  failed: number;
+  lastUpdated: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isLineWebhookBody(value: unknown): value is LineWebhookBody {
+  return isRecord(value) && Array.isArray(value.events);
+}
+
+function isFacebookWebhookBody(value: unknown): value is FacebookWebhookBody {
+  return isRecord(value) && Array.isArray(value.entry);
+}
+
 /**
  * Webhook 路由服務
  */
@@ -86,7 +160,7 @@ export class WebhookRouterService {
     path: string,
     method: string,
     headers: Record<string, string>,
-    body: any,
+    body: unknown,
     sourceIP?: string
   ): Promise<WebhookRouteResult> {
     const result: WebhookRouteResult = {
@@ -165,7 +239,7 @@ export class WebhookRouterService {
       path: string;
       method: string;
       headers: Record<string, string>;
-      body: any;
+      body: unknown;
       sourceIP?: string;
     }>
   ): Promise<WebhookRouteResult[]> {
@@ -206,7 +280,7 @@ export class WebhookRouterService {
   private validateBasicRequest(
     method: string,
     headers: Record<string, string>,
-    body: any
+    body: unknown
   ): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
@@ -247,7 +321,7 @@ export class WebhookRouterService {
     platform: IntegrationPlatform,
     path: string,
     headers: Record<string, string>,
-    body: any,
+    body: unknown,
     sourceIP?: string
   ): Promise<WebhookValidationResult> {
     const result: WebhookValidationResult = {
@@ -289,7 +363,7 @@ export class WebhookRouterService {
   private async validateLineWebhook(
     path: string,
     headers: Record<string, string>,
-    body: any,
+    body: unknown,
     result: WebhookValidationResult
   ): Promise<void> {
     // 檢查 LINE 特定標頭
@@ -306,7 +380,7 @@ export class WebhookRouterService {
     }
 
     // 驗證請求體結構
-    if (!body.events || !Array.isArray(body.events)) {
+    if (!isLineWebhookBody(body)) {
       result.errors.push('Invalid LINE webhook body structure');
     }
 
@@ -325,7 +399,7 @@ export class WebhookRouterService {
   private async validateFacebookWebhook(
     path: string,
     headers: Record<string, string>,
-    body: any,
+    body: unknown,
     result: WebhookValidationResult
   ): Promise<void> {
     // 檢查 Facebook 特定標頭
@@ -336,11 +410,11 @@ export class WebhookRouterService {
     }
 
     // 驗證請求體結構
-    if (body.object !== 'page') {
+    if (!isRecord(body) || body.object !== 'page') {
       result.errors.push('Invalid Facebook webhook object type');
     }
 
-    if (!body.entry || !Array.isArray(body.entry)) {
+    if (!isFacebookWebhookBody(body)) {
       result.errors.push('Invalid Facebook webhook body structure');
     }
 
@@ -359,11 +433,11 @@ export class WebhookRouterService {
   private async validateGenericWebhook(
     path: string,
     _headers: Record<string, string>,
-    body: any,
+    body: unknown,
     result: WebhookValidationResult
   ): Promise<void> {
     // 基本結構驗證
-    if (typeof body !== 'object') {
+    if (!isRecord(body)) {
       result.errors.push('Webhook body must be a JSON object');
     }
 
@@ -487,7 +561,7 @@ export class WebhookRouterService {
   private async processWebhookEvents(
     platform: IntegrationPlatform,
     integration: IntegrationRecord,
-    webhookBody: any
+    webhookBody: unknown
   ): Promise<PlatformEvent[]> {
     try {
       switch (platform) {
@@ -511,9 +585,12 @@ export class WebhookRouterService {
    */
   private async processLineEvents(
     integration: IntegrationRecord,
-    webhookBody: any
+    webhookBody: unknown
   ): Promise<PlatformEvent[]> {
     const events: PlatformEvent[] = [];
+    if (!isLineWebhookBody(webhookBody)) {
+      return events;
+    }
 
     for (const lineEvent of webhookBody.events || []) {
       try {
@@ -557,9 +634,12 @@ export class WebhookRouterService {
    */
   private async processFacebookEvents(
     integration: IntegrationRecord,
-    webhookBody: any
+    webhookBody: unknown
   ): Promise<PlatformEvent[]> {
     const events: PlatformEvent[] = [];
+    if (!isFacebookWebhookBody(webhookBody)) {
+      return events;
+    }
 
     for (const entry of webhookBody.entry || []) {
       for (const messaging of entry.messaging || []) {
@@ -604,7 +684,7 @@ export class WebhookRouterService {
    */
   private async processInstagramEvents(
     integration: IntegrationRecord,
-    webhookBody: any
+    webhookBody: unknown
   ): Promise<PlatformEvent[]> {
     // Instagram 使用與 Facebook 相同的 Webhook 格式
     return await this.processFacebookEvents(integration, webhookBody);
@@ -615,9 +695,10 @@ export class WebhookRouterService {
    */
   private async processGenericEvents(
     integration: IntegrationRecord,
-    webhookBody: any
+    webhookBody: unknown
   ): Promise<PlatformEvent[]> {
     const events: PlatformEvent[] = [];
+    const body = isRecord(webhookBody) ? (webhookBody as GenericWebhookBody) : {};
 
     try {
       const platformEvent: PlatformEvent = {
@@ -627,7 +708,7 @@ export class WebhookRouterService {
         type: 'message',
 
         source: {
-          userId: webhookBody.userId || webhookBody.from || 'unknown',
+          userId: body.userId || body.from || 'unknown',
           type: 'user'
         },
 
@@ -636,11 +717,11 @@ export class WebhookRouterService {
       };
 
       // 嘗試提取訊息內容
-      if (webhookBody.message || webhookBody.text) {
+      if (body.message || body.text) {
         platformEvent.message = {
-          id: webhookBody.messageId || `msg_${nowMs()}`,
+          id: body.messageId || `msg_${nowMs()}`,
           type: 'text',
-          content: webhookBody.message || webhookBody.text,
+          content: body.message || body.text,
           timestamp: nowISO()
         };
       }
@@ -711,20 +792,20 @@ export class WebhookRouterService {
   ): Promise<void> {
     try {
       const statsKey = `webhook_stats_${integrationId}`;
-      const stats = await this.cache.get(statsKey, 'json') || {
+      const stats = (await this.cache.get<WebhookStats>(statsKey, 'json')) || {
         received: 0,
         processed: 0,
         failed: 0,
         lastUpdated: nowISO()
       };
 
-      (stats as any).received += eventCount;
+      stats.received += eventCount;
       if (success) {
-        (stats as any).processed += eventCount;
+        stats.processed += eventCount;
       } else {
-        (stats as any).failed += eventCount;
+        stats.failed += eventCount;
       }
-      (stats as any).lastUpdated = nowISO();
+      stats.lastUpdated = nowISO();
 
       await this.cache.put(statsKey, JSON.stringify(stats), { expirationTtl: 86400 });
     } catch (error) {
@@ -752,8 +833,8 @@ export class WebhookRouterService {
     return eventMap[lineEventType] || 'message';
   }
 
-  private mapLineMessageType(lineMessageType: string): any {
-    const messageMap: Record<string, string> = {
+  private mapLineMessageType(lineMessageType: string): MessageType {
+    const messageMap: Record<string, MessageType> = {
       'text': 'text',
       'image': 'image',
       'video': 'video',
@@ -769,7 +850,7 @@ export class WebhookRouterService {
     return messageMap[lineMessageType] || 'text';
   }
 
-  private mapFacebookEventType(messaging: any): WebhookEventType {
+  private mapFacebookEventType(messaging: FacebookMessaging): WebhookEventType {
     if (messaging.message) return 'message';
     if (messaging.postback) return 'postback';
     if (messaging.read) return 'read';
@@ -778,10 +859,11 @@ export class WebhookRouterService {
     return 'message';
   }
 
-  private mapFacebookMessageType(message: any): MessageType {
+  private mapFacebookMessageType(message: FacebookMessage): MessageType {
     if (message.text) return 'text';
     if (message.attachments) {
       const firstAttachment = message.attachments[0];
+      if (!firstAttachment) return 'text';
       const attachmentType = firstAttachment.type;
       // 映射 Facebook 附件類型到系統 MessageType
       switch (attachmentType) {

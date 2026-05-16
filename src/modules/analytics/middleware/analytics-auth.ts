@@ -23,6 +23,44 @@ interface AnalyticsUser {
   updatedAt: string;
 }
 
+interface JwtPayload {
+  userId?: string;
+  role?: string;
+  email?: string;
+  displayName?: string;
+  primaryTeamId?: number;
+  teamName?: string;
+  exp?: number;
+  iss?: string;
+}
+
+interface AnalyticsFilterQuery {
+  filters?: {
+    teamId?: number;
+    userId?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isJwtPayload(value: unknown): value is JwtPayload {
+  if (!isRecord(value)) return false;
+  return (
+    (value.userId === undefined || typeof value.userId === 'string') &&
+    (value.role === undefined || typeof value.role === 'string') &&
+    (value.email === undefined || typeof value.email === 'string') &&
+    (value.displayName === undefined || typeof value.displayName === 'string') &&
+    (value.primaryTeamId === undefined || typeof value.primaryTeamId === 'number') &&
+    (value.teamName === undefined || typeof value.teamName === 'string') &&
+    (value.exp === undefined || typeof value.exp === 'number') &&
+    (value.iss === undefined || typeof value.iss === 'string')
+  );
+}
+
 /**
  * Analytics 模組權限驗證中間件
  * 確保用戶有權限訪問分析數據
@@ -55,8 +93,8 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
     }
 
     // 檢查用戶角色和權限
-    const userRole = decoded.role as string;
-    const userId = decoded.userId as string;
+    const userRole = decoded.role;
+    const userId = decoded.userId;
 
     if (!userRole || !userId) {
       throw new HTTPException(401, {
@@ -109,7 +147,7 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
  */
 async function verifyJWT(token: string, secret: string): Promise<{
   success: boolean;
-  decoded?: any;
+  decoded?: JwtPayload;
   error?: string;
 }> {
   try {
@@ -124,7 +162,10 @@ async function verifyJWT(token: string, secret: string): Promise<{
     if (!parts[1]) {
       return { success: false, error: 'Invalid token format' };
     }
-    const payload = JSON.parse(atob(parts[1]));
+    const payload = JSON.parse(atob(parts[1])) as unknown;
+    if (!isJwtPayload(payload)) {
+      return { success: false, error: 'Invalid token payload' };
+    }
 
     // 檢查過期時間
     if (payload.exp && payload.exp < Date.now() / 1000) {
@@ -252,7 +293,7 @@ export function requireTeamDataAccess(c: Context<{ Bindings: Bindings; Variables
 /**
  * 數據過濾中間件 - 根據用戶權限過濾數據
  */
-export function applyDataFilters(c: Context<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>, query: any): any {
+export function applyDataFilters(c: Context<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>, query: AnalyticsFilterQuery) {
   const user = c.get('user');
   if (!user) return query;
 
@@ -279,15 +320,15 @@ export function applyDataFilters(c: Context<{ Bindings: Bindings; Variables: { u
 /**
  * 敏感數據脫敏中間件
  */
-export function sanitizeAnalyticsData(data: any, userRole: string): any {
+export function sanitizeAnalyticsData(data: unknown, userRole: string) {
   if (userRole === 'admin') {
     return data; // Admin 可以看到所有數據
   }
 
   // 對非 Admin 用戶脫敏處理
-  if (data && typeof data === 'object') {
+  if (isRecord(data)) {
     // 移除敏感的個人信息
-    const sanitized = { ...data };
+    const sanitized: Record<string, unknown> = { ...data };
 
     // 遞歸處理嵌套對象
     Object.keys(sanitized).forEach(key => {
@@ -297,7 +338,7 @@ export function sanitizeAnalyticsData(data: any, userRole: string): any {
 
       // 脫敏特定字段
       if (['email', 'phone', 'personalId', 'creditCard'].includes(key)) {
-        if (userRole !== 'admin') {
+        if (userRole !== 'admin' && typeof sanitized[key] === 'string') {
           sanitized[key] = maskSensitiveData(sanitized[key]);
         }
       }

@@ -3,6 +3,7 @@
 // Phase 1 優化：KV 快取層支援
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { qrCodes, qrCodeScans, teams, customers, conversations } from '../db/schema';
+import type { Database } from '@/db/drizzle-factory';
 import type { QRCodeConfig, QRCodeInfo } from './qrcode-service';
 import type {
   QRFollowEvent
@@ -11,7 +12,13 @@ import QRCode from 'qrcode';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 // 自定義類型
-type D1Database = any;
+type QRCodeDb = Database;
+
+interface QRFollowEventWithParam extends QRFollowEvent {
+  follow?: {
+    param?: string;
+  };
+}
 
 // KV 快取相關常量
 const QR_CACHE_PREFIX = 'qr:team:';
@@ -23,6 +30,26 @@ interface QRCodeCacheData {
   lineUrl: string;
   token: string;
   cachedAt: number;
+}
+
+type QRCodeRow = typeof qrCodes.$inferSelect;
+
+function toQRCodeInfo(qr: QRCodeRow): QRCodeInfo {
+  return {
+    id: qr.id,
+    teamId: qr.teamId,
+    token: qr.token,
+    lineUrl: qr.lineUrl,
+    qrCodeImageUrl: qr.qrCodeImageUrl,
+    campaignName: qr.campaignName ?? '',
+    description: qr.description,
+    usageCount: qr.usageCount ?? 0,
+    maxUses: qr.maxUses ?? undefined,
+    isActive: qr.isActive ?? false,
+    expiresAt: qr.expiresAt ? new Date(qr.expiresAt) : undefined,
+    createdAt: new Date(qr.createdAt ?? nowISO()),
+    updatedAt: qr.updatedAt ?? ''
+  };
 }
 
 export class QRCodeServiceImpl {
@@ -128,7 +155,7 @@ export class QRCodeServiceImpl {
    * @param frontendUrl 前端 URL (用於 LIFF 重定向)
    */
   static async generateTeamQRCode(
-    db: D1Database,
+    db: QRCodeDb,
     config: QRCodeConfig,
     kv?: KVNamespace,
     lineBotId?: string,
@@ -208,13 +235,7 @@ export class QRCodeServiceImpl {
     const totalTime = performance.now() - startTime;
     console.log(` QR Code 生成統計: QR生成=${qrGenTime.toFixed(0)}ms, DB+快取=${dbTime.toFixed(0)}ms, 總計=${totalTime.toFixed(0)}ms`);
 
-    return {
-      ...qrCodeData,
-      campaignName: qrCodeData.campaignName || '',
-      maxUses: qrCodeData.maxUses || undefined,
-      expiresAt: qrCodeData.expiresAt ? new Date(qrCodeData.expiresAt) : undefined,
-      createdAt: new Date(qrCodeData.createdAt)
-    };
+    return toQRCodeInfo(qrCodeData);
   }
 
   /**
@@ -222,7 +243,7 @@ export class QRCodeServiceImpl {
    * 用於前端懸停預載
    */
   static async getLatestQRCodeFast(
-    db: D1Database,
+    db: QRCodeDb,
     teamId: number,
     kv?: KVNamespace
   ): Promise<{ qrCodeImageUrl: string; lineUrl: string; fromCache: boolean } | null> {
@@ -275,10 +296,10 @@ export class QRCodeServiceImpl {
 
   // 處理通過 QR Code 加入的用戶
   static async handleQRCodeFollow(
-    db: D1Database,
-    followEvent: QRFollowEvent
+    db: QRCodeDb,
+    followEvent: QRFollowEventWithParam
   ): Promise<{ teamId?: number; autoAssigned: boolean }> {
-    const referralParam = (followEvent as any).follow?.param;
+    const referralParam = followEvent.follow?.param;
     
     if (!referralParam) {
       return { autoAssigned: false };
@@ -301,7 +322,7 @@ export class QRCodeServiceImpl {
     }
 
     // 檢查使用次數限制
-    if (qrCodeResult.maxUses && qrCodeResult.usageCount >= qrCodeResult.maxUses) {
+    if (qrCodeResult.maxUses && (qrCodeResult.usageCount ?? 0) >= qrCodeResult.maxUses) {
       await this.deactivateQRCode(db, qrCodeResult.token);
       return { autoAssigned: false };
     }
@@ -331,7 +352,7 @@ export class QRCodeServiceImpl {
 
   // 獲取團隊的所有 QR Code
   static async getTeamQRCodes(
-    db: D1Database, 
+    db: QRCodeDb,
     teamId: number
   ): Promise<QRCodeInfo[]> {
     const results = await db.select()
@@ -340,18 +361,14 @@ export class QRCodeServiceImpl {
       .orderBy(desc(qrCodes.createdAt))
       .all();
     
-    return results.map((qr: any) => ({
-      ...qr,
-      expiresAt: qr.expiresAt ? new Date(qr.expiresAt) : undefined,
-      createdAt: new Date(qr.createdAt)
-    }));
+    return results.map((qr) => toQRCodeInfo(qr));
   }
 
   /**
    * 停用 QR Code 並清除快取
    */
   static async deactivateQRCode(
-    db: D1Database,
+    db: QRCodeDb,
     token: string,
     teamId?: number,
     kv?: KVNamespace
@@ -372,7 +389,7 @@ export class QRCodeServiceImpl {
 
   // 獲取 QR Code 使用統計
   static async getQRCodeStats(
-    db: D1Database,
+    db: QRCodeDb,
     teamId: number, 
     _dateRange?: { start: Date; end: Date }
   ) {
@@ -381,7 +398,7 @@ export class QRCodeServiceImpl {
       .where(eq(qrCodes.teamId, teamId))
       .all();
 
-    const qrCodeIds = teamQRCodes.map((qr: any) => qr.id);
+    const qrCodeIds = teamQRCodes.map((qr) => qr.id);
     
     if (qrCodeIds.length === 0) {
       return {
@@ -393,19 +410,19 @@ export class QRCodeServiceImpl {
     }
 
     // 獲取日期範圍內的統計資料 - 簡化版本
-    const totalScans = teamQRCodes.reduce((sum: number, qr: any) => sum + (qr.usageCount || 0), 0);
+    const totalScans = teamQRCodes.reduce((sum: number, qr) => sum + (qr.usageCount || 0), 0);
     const newCustomers = Math.floor(totalScans * 0.8); // 模擬轉換率
     const conversionRate = totalScans > 0 ? (newCustomers / totalScans) * 100 : 0;
 
     // 找出表現最佳的 QR Code
     const topPerformingCodes = teamQRCodes
-      .map((qr: any) => ({
+      .map((qr) => ({
         qrCodeId: qr.id,
         campaignName: qr.campaignName || 'Unknown',
         totalScans: qr.usageCount || 0,
         newCustomers: Math.floor((qr.usageCount || 0) * 0.8)
       }))
-      .sort((a: any, b: any) => b.totalScans - a.totalScans)
+      .sort((a, b) => b.totalScans - a.totalScans)
       .slice(0, 5);
 
     return {
@@ -467,7 +484,7 @@ export class QRCodeServiceImpl {
 
   // 增加使用次數
   private static async incrementQRCodeUsage(
-    db: D1Database, 
+    db: QRCodeDb,
     token: string
   ): Promise<void> {
     await db.update(qrCodes)
@@ -481,23 +498,25 @@ export class QRCodeServiceImpl {
 
   // 自動指派客戶到團隊
   private static async autoAssignCustomerToTeam(
-    db: D1Database,
+    db: QRCodeDb,
     platformUserId: string, 
     teamId: number, 
     source: string
   ): Promise<void> {
     // 查找或創建客戶記錄
-    let customer = await db.select()
+    const customer = await db.select()
       .from(customers)
       .where(and(
         eq(customers.platform, 'line'),
         eq(customers.platformUserId, platformUserId)
       ))
       .get();
+
+    let customerId: number;
     
     if (!customer) {
       // 創建新客戶
-      const customerId = await db.insert(customers).values({
+      const createdCustomer = await db.insert(customers).values({
         platform: 'line',
         platformUserId,
         displayName: 'LINE User',
@@ -507,8 +526,9 @@ export class QRCodeServiceImpl {
         updatedAt: nowISO()
       }).returning({ id: customers.id }).get();
       
-      customer = { id: customerId.id };
+      customerId = createdCustomer.id;
     } else if (!customer.sourceTeamId) {
+      customerId = customer.id;
       // 更新來源團隊
       await db.update(customers)
         .set({ 
@@ -517,13 +537,15 @@ export class QRCodeServiceImpl {
         })
         .where(eq(customers.id, customer.id))
         .run();
+    } else {
+      customerId = customer.id;
     }
 
     // 查找或創建對話
     const activeConversation = await db.select()
       .from(conversations)
       .where(and(
-        eq(conversations.customerId, customer.id),
+        eq(conversations.customerId, customerId),
         eq(conversations.status, 'active')
       ))
       .get();
@@ -532,13 +554,9 @@ export class QRCodeServiceImpl {
       // 創建新對話
       await db.insert(conversations).values({
         id: crypto.randomUUID(),
-        customerId: customer.id,
+        customerId,
         assignedTeamId: teamId,
         status: 'active',
-        metadata: JSON.stringify({ 
-          autoAssigned: true, 
-          qrCodeSource: source 
-        }),
         createdAt: nowISO(),
         updatedAt: nowISO()
       }).run();

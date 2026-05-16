@@ -23,6 +23,27 @@ export const CONFIG = {
   DATE_FORMAT: 'zh-TW'
 };
 
+interface HealthCheckResponse {
+  status?: string;
+}
+
+interface StatsResponse {
+  success?: boolean;
+  data?: {
+    totalCustomers?: number;
+    totalConversations?: number;
+    totalMessages?: number;
+  };
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 // ?? ?��?檢測
 export function detectEnvironment(): string {
   if (typeof window !== 'undefined') {
@@ -80,7 +101,7 @@ export function updateWorkerUrl(newUrl: string): void {
 }
 
 // ?? API 輔助?�數
-export async function makeApiRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+export async function makeApiRequest<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${CONFIG.WORKER_URL}${endpoint}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
@@ -97,11 +118,11 @@ export async function makeApiRequest(endpoint: string, options: RequestInit = {}
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    return await response.json();
-  } catch (error: any) {
+    return await response.json() as T;
+  } catch (error) {
     clearTimeout(timeoutId);
     
-    if (error.name === 'AbortError') {
+    if (isAbortError(error)) {
       throw new Error('請�?超�?');
     }
     
@@ -135,17 +156,17 @@ export async function quickStart(): Promise<boolean> {
   
   try {
     console.log('?? 測試 API ??��...');
-    const healthCheck = await makeApiRequest('/health');
+    const healthCheck = await makeApiRequest<HealthCheckResponse>('/health');
     
     if (healthCheck.status === 'healthy') {
       console.log('??API ??���?��');
       
-      const stats = await makeApiRequest('/api/stats');
+      const stats = await makeApiRequest<StatsResponse>('/api/stats');
       if (stats.success) {
         console.log('?? 系統?�??');
-        console.log(`  客戶?? ${stats.data.totalCustomers}`);
-        console.log(`  對話?? ${stats.data.totalConversations}`);
-        console.log(`  訊息?? ${stats.data.totalMessages}`);
+        console.log(`  客戶?? ${stats.data?.totalCustomers ?? 0}`);
+        console.log(`  對話?? ${stats.data?.totalConversations ?? 0}`);
+        console.log(`  訊息?? ${stats.data?.totalMessages ?? 0}`);
       }
       
       return true;
@@ -153,8 +174,8 @@ export async function quickStart(): Promise<boolean> {
       console.log('??API ?�康檢查失�?');
       return false;
     }
-  } catch (error: any) {
-    console.log(`??API ??��失�?: ${error.message}`);
+  } catch (error) {
+    console.log(`??API ??��失�?: ${getErrorMessage(error)}`);
     console.log('?�� 請檢??');
     console.log('  1. Worker URL ?�否�?��');
     console.log('  2. Worker ?�否�?��?��?');

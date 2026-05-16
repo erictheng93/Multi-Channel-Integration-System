@@ -8,6 +8,23 @@ import { ActivityOverview } from '@modules/activities/types/interfaces'
 import { ActivityFormatter } from '@modules/activities/utils/formatters'
 import { nowISO } from '@/utils/timestamp'
 
+interface DailyActionStatRow {
+  date: string;
+  action: string;
+  count: number;
+}
+
+interface DailyStatRow {
+  date: string;
+  count: number;
+}
+
+interface HeatmapRow {
+  date: string;
+  hour: number;
+  count: number;
+}
+
 export class ActivityStatsService {
   constructor(private db: D1Database) {}
 
@@ -64,17 +81,17 @@ export class ActivityStatsService {
 
     return {
       totalActivities: totalResult[0]?.count || 0,
-      actionStats: actionStats.reduce((acc: Record<string, number>, row: any) => {
+      actionStats: actionStats.reduce((acc: Record<string, number>, row) => {
         acc[row.action] = row.count
         return acc
       }, {} as Record<string, number>),
-      topUsers: userStats.map((row: any) => ({
+      topUsers: userStats.map((row) => ({
         userName: row.userName,
         userRole: row.userRole,
         count: row.count
       })),
-      dailyStats: dailyStats.map((row: any) => ({
-        date: row.date,
+      dailyStats: dailyStats.map((row) => ({
+        date: String(row.date),
         count: row.count
       })),
       period: {
@@ -112,7 +129,7 @@ export class ActivityStatsService {
 
     const total = resourceStats.reduce((sum, row) => sum + row.count, 0)
 
-    return resourceStats.map((row: any) => ({
+    return resourceStats.map((row) => ({
       resourceType: row.resourceType,
       count: row.count,
       percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
@@ -147,7 +164,7 @@ export class ActivityStatsService {
 
     const total = roleStats.reduce((sum, row) => sum + row.count, 0)
 
-    return roleStats.map((row: any) => ({
+    return roleStats.map((row) => ({
       userRole: row.userRole,
       count: row.count,
       percentage: total > 0 ? Math.round((row.count / total) * 100) : 0,
@@ -200,7 +217,7 @@ export class ActivityStatsService {
     }> = {}
 
     // 初始化每日總數
-    dailyStats.forEach((row: any) => {
+    ;(dailyStats as DailyStatRow[]).forEach((row) => {
       trendsMap[row.date] = {
         date: row.date,
         count: row.count,
@@ -209,7 +226,7 @@ export class ActivityStatsService {
     })
 
     // 添加每日動作統計
-    ;(dailyActionStats.results || []).forEach((row: any) => {
+    ;((dailyActionStats.results || []) as DailyActionStatRow[]).forEach((row) => {
       const dateEntry = trendsMap[row.date];
       if (dateEntry) {
         dateEntry.actions[row.action] = row.count
@@ -245,7 +262,7 @@ export class ActivityStatsService {
       ORDER BY date ASC, hour ASC
     `)
 
-    const results = (heatmapData.results || []).map((row: any) => ({
+    const results = ((heatmapData.results || []) as HeatmapRow[]).map((row) => ({
       date: row.date,
       hour: row.hour,
       count: row.count,
@@ -358,17 +375,17 @@ export class ActivityStatsService {
 
     return {
       totalActivities: totalResult[0]?.count || 0,
-      actionStats: actionStats.reduce((acc: Record<string, number>, row: any) => {
+      actionStats: actionStats.reduce((acc: Record<string, number>, row) => {
         acc[row.action] = row.count
         return acc
       }, {} as Record<string, number>),
-      topUsers: userStats.map((row: any) => ({
+      topUsers: userStats.map((row) => ({
         userName: row.userName,
         userRole: row.userRole,
         count: row.count
       })),
-      dailyStats: dailyStats.map((row: any) => ({
-        date: row.date,
+      dailyStats: dailyStats.map((row) => ({
+        date: String(row.date),
         count: row.count
       })),
       period: {

@@ -2,6 +2,7 @@
 // Extracted from src/index.ts — handles GET /api/customer-ws
 
 import { Hono } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Bindings } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
 import { verifyConversationAccess } from '../utils/conversation-auth';
@@ -10,6 +11,18 @@ import { createContextLogger } from '@/utils/logger';
 const log = createContextLogger('CustomerWS');
 
 const router = new Hono<{ Bindings: Bindings }>();
+
+function getAuthErrorResponse(error: unknown): { status: ContentfulStatusCode; message: string } {
+  if (typeof error === 'object' && error !== null) {
+    const candidate = error as { status?: unknown; message?: unknown };
+    return {
+      status: (typeof candidate.status === 'number' ? candidate.status : 401) as ContentfulStatusCode,
+      message: typeof candidate.message === 'string' ? candidate.message : 'Authentication failed'
+    };
+  }
+
+  return { status: 401, message: 'Authentication failed' };
+}
 
 // WebSocket upgrade endpoint for customer conversations
 router.get('/', async (c) => {
@@ -53,9 +66,9 @@ router.get('/', async (c) => {
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
-  } catch (authError: any) {
-    const status = authError.status || 401;
-    return c.json({ success: false, error: authError.message || 'Authentication failed' }, status);
+  } catch (authError: unknown) {
+    const { status, message } = getAuthErrorResponse(authError);
+    return c.json({ success: false, error: message }, status);
   }
 });
 

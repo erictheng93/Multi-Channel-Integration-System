@@ -255,7 +255,7 @@ export class CalculationHelpers {
    */
   static detectAnomalies(values: number[], method: 'iqr' | 'zscore' | 'modified_zscore' = 'iqr'): {
     anomalies: { index: number; value: number; score: number }[];
-    statistics: any;
+    statistics: unknown;
   } {
     if (values.length === 0) {
       return { anomalies: [], statistics: {} };

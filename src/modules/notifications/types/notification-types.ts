@@ -7,7 +7,7 @@ export interface NotificationBase {
   type: NotificationType;
   title: string;
   content: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   priority: NotificationPriority;
   isRead: boolean;
   readAt?: string;
@@ -40,7 +40,7 @@ export interface CreateNotificationRequest {
   type: NotificationType;
   title: string;
   content: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   priority?: NotificationPriority;
   channels?: NotificationChannel[];
   expiresAt?: Date;

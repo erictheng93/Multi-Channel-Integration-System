@@ -13,18 +13,18 @@ export interface Message {
   id: string;
   conversationId: string;
   senderType: SenderType;
-  customerSenderId?: number;
-  agentSenderId?: string;
+  customerSenderId?: number | null;
+  agentSenderId?: string | null;
   content: string;
   messageType: MessageType;
-  platformMessageId?: string;
+  platformMessageId?: string | null;
   isRecalled: boolean;
-  recallDeadline?: string;
-  recalledAt?: string;
+  recallDeadline?: string | null;
+  recalledAt?: string | null;
   isSent: boolean;
-  sentAt?: string;
+  sentAt?: string | null;
   deliveryStatus: DeliveryStatus;
-  replyToMessageId?: string;
+  replyToMessageId?: string | null;
   metadata?: MessageMetadata;
   createdAt: string;
   updatedAt: string;
@@ -84,7 +84,7 @@ export interface MessageMetadata {
 
   // 自訂欄位
   customFields?: {
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -105,7 +105,7 @@ export interface DelayedMessage {
   status: 'pending' | 'sent' | 'failed' | 'cancelled';
   failureReason?: string;
   mediaUrl?: string;
-  metadata?: any;
+  metadata?: unknown;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -181,7 +181,7 @@ export interface BatchMessageOperation {
 export interface BatchOperationResult {
   itemId: string;
   status: 'success' | 'failed';
-  result?: any;
+  result?: unknown;
   error?: string;
 }
 
@@ -315,7 +315,7 @@ export interface QueueMessagePayload {
     delayedMessageId?: string;
     batchOperationId?: string;
     conversationId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   scheduledTime: string;
   retryCount?: number;
@@ -381,7 +381,7 @@ export interface MessageError extends Error {
     | 'DELAYED_SEND_FAILED'
     | 'BATCH_OPERATION_FAILED'
     | 'QUOTA_EXCEEDED';
-  details?: any;
+  details?: unknown;
 }
 
 export class MessageNotFoundError extends Error implements MessageError {
@@ -400,7 +400,7 @@ export class RecallDeadlineExceededError extends Error implements MessageError {
 
 export class InvalidMessageDataError extends Error implements MessageError {
   code = 'INVALID_MESSAGE_DATA' as const;
-  constructor(message: string, public details?: any) {
+  constructor(message: string, public details?: unknown) {
     super(message);
   }
 }

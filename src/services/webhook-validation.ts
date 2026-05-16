@@ -26,7 +26,7 @@ export interface LineWebhookEvent {
     groupId?: string;
     roomId?: string;
   };
-  message?: any;
+  message?: unknown;
   replyToken?: string;
 }
 
@@ -46,13 +46,13 @@ export interface FacebookMessaging {
   sender: { id: string };
   recipient: { id: string };
   timestamp: number;
-  message?: any;
-  postback?: any;
+  message?: unknown;
+  postback?: unknown;
 }
 
 export interface FacebookChange {
   field: string;
-  value: any;
+  value: unknown;
 }
 
 /**
