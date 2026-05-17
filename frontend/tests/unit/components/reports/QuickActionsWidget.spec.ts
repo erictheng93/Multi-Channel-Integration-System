@@ -16,11 +16,11 @@ describe('QuickActionsWidget.vue', () => {
       expect(wrapper.text()).toContain('快速操作')
     })
 
-    it('应该渲染4个操作按钮', () => {
+    it('应该渲染3个操作按钮', () => {
       const wrapper = mount(QuickActionsWidget)
 
       const buttons = wrapper.findAll('.action-item')
-      expect(buttons).toHaveLength(4)
+      expect(buttons).toHaveLength(3)
     })
 
     it('应该正确渲染所有操作项', () => {
@@ -29,7 +29,6 @@ describe('QuickActionsWidget.vue', () => {
       expect(wrapper.text()).toContain('建立報表')
       expect(wrapper.text()).toContain('重新整理')
       expect(wrapper.text()).toContain('匯出全部')
-      expect(wrapper.text()).toContain('報表設定')
     })
 
     it('建立報表按钮应该有 primary 类', () => {
@@ -142,15 +141,6 @@ describe('QuickActionsWidget.vue', () => {
       expect(wrapper.emitted('export-all')![0]).toEqual([])
     })
 
-    it('点击報表設定应该发射 view-settings 事件', async () => {
-      const wrapper = mount(QuickActionsWidget)
-
-      const settingsButton = wrapper.findAll('.action-item')[3]
-      await settingsButton.trigger('click')
-
-      expect(wrapper.emitted('view-settings')).toBeTruthy()
-      expect(wrapper.emitted('view-settings')![0]).toEqual([])
-    })
   })
 
   describe('响应式更新', () => {

@@ -10,6 +10,12 @@ import { useConversationActions } from '@/composables/conversation/useConversati
 import type { ConversationState } from '@/composables/conversation/useConversationState'
 import type { WebSocketIntegration } from '@/composables/conversation/useWebSocketIntegration'
 
+vi.mock('@/api/message', () => ({
+  messageApi: {
+    recallMessage: vi.fn().mockResolvedValue({ success: true })
+  }
+}))
+
 // ===== Mock State & WebSocket =====
 
 function createMockState(overrides: Partial<ConversationState> = {}): ConversationState {
