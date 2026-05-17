@@ -151,7 +151,7 @@ describe('webhook-conversation-service', () => {
 
       const result = await findOrCreateConversation(mockEnv, 1, 'line');
 
-      expect(result).toEqual(existingConversation);
+      expect(result).toEqual({ ...existingConversation, converted: true });
       expect(mockDb.select).toHaveBeenCalledTimes(1);
       expect(mockDb.insert).not.toHaveBeenCalled();
     });
@@ -352,7 +352,7 @@ describe('webhook-conversation-service', () => {
       expect(mockDb.insert).not.toHaveBeenCalled();
       // Should update timestamps on the found conversation
       expect(mockDb.update).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(existingConv);
+      expect(result).toEqual({ ...existingConv, converted: true });
     });
 
     it('should backfill team assignment during double-check inside lock', async () => {
