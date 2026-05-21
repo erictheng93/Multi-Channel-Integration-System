@@ -1,22 +1,35 @@
 /**
- * ?�入並獲??JWT Token，然後進�?完整測試
+ * Login helper for obtaining a JWT token and smoke-testing authenticated message APIs.
+ *
+ * Usage:
+ *   TEST_ADMIN_EMAIL=admin@example.com TEST_ADMIN_PASSWORD=... bunx tsx scripts/admin/login-and-test.ts
  */
 
-const REMOTE_URL = 'https://your-api-domain.example.com';
+const REMOTE_URL = process.env.TEST_API_URL || 'https://your-api-domain.example.com';
 
-// ?��??�入?��? - 請填?��?�?
 const credentials = {
-  email: 'admin@dacit.net',  // ?�使??'dacagent@dacit.net' ??'test@dacit.net'
-  password: ''  // ?��? 請填?�您?��?�?
+  email: process.env.TEST_ADMIN_EMAIL || 'admin@dacit.net',
+  password: process.env.TEST_ADMIN_PASSWORD || ''
 };
 
-async function login() {
-  console.log('?? �?��?�入...\n');
-  console.log(`Email: ${credentials.email}\n`);
+type LoginResponse = {
+  token?: string;
+  user?: {
+    id?: string | number;
+    email?: string;
+    role?: string;
+    teamId?: string | number | null;
+  };
+  error?: string;
+  message?: string;
+};
+
+async function login(): Promise<string | null> {
+  console.log('Logging in...');
+  console.log(`Email: ${credentials.email}`);
 
   if (!credentials.password) {
-    console.error('???�誤: 請在?�本中設置您?��?�?);
-    console.log('\n請編�?login-and-test.ts 並設�?credentials.password\n');
+    console.error('Missing TEST_ADMIN_PASSWORD. Set it before running this script.');
     return null;
   }
 
@@ -27,48 +40,37 @@ async function login() {
       body: JSON.stringify(credentials)
     });
 
-    const data = await response.json();
+    const data = await response.json() as LoginResponse;
 
-    if (!response.ok) {
-      console.error(`???�入失�?: ${data.error || data.message}`);
+    if (!response.ok || !data.token) {
+      console.error(`Login failed: ${data.error || data.message || response.statusText}`);
       return null;
     }
 
-    console.log('???�入?��?！\n');
-    console.log('?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?');
-    console.log('?�� JWT Token:');
-    console.log('?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?');
+    console.log('Login succeeded.');
+    console.log('JWT token:');
     console.log(data.token);
-    console.log('?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?\n');
 
     if (data.user) {
-      console.log('?�� ?�戶資�?:');
-      console.log(` ID: ${data.user.id}`);
-      console.log(` Email: ${data.user.email}`);
-      console.log(` 角色: ${data.user.role}`);
-      console.log(` ?��?ID: ${data.user.teamId || 'N/A'}\n`);
+      console.log('User:');
+      console.log(`  ID: ${data.user.id ?? 'N/A'}`);
+      console.log(`  Email: ${data.user.email ?? 'N/A'}`);
+      console.log(`  Role: ${data.user.role ?? 'N/A'}`);
+      console.log(`  Team ID: ${data.user.teamId ?? 'N/A'}`);
     }
 
-    console.log('?? 使用�?Token ?�方�?\n');
-    console.log('1️  設置?��?變數並�??�執行測�?');
-    console.log(' PowerShell:');
-    console.log(` $env:TEST_JWT_TOKEN="${data.token}"`);
-    console.log(' npx tsx test-messaging-dual.ts\n');
-
-    console.log('2️  ?�接??curl 中使??');
-    console.log(` curl -H "Authorization: Bearer ${data.token.substring(0, 50)}..." https://your-api-domain.example.com/api/messages/stats\n`);
+    console.log('PowerShell:');
+    console.log(`  $env:TEST_JWT_TOKEN="${data.token}"`);
 
     return data.token;
-
   } catch (error) {
-    console.error('????��?�誤:', error instanceof Error ? error.message : String(error));
+    console.error('Login request failed:', error instanceof Error ? error.message : String(error));
     return null;
   }
 }
 
-// 測試 token ?�否?��?
-async function testToken(token: string) {
-  console.log('\n?�� 測試 Token ?��???..\n');
+async function testToken(token: string): Promise<void> {
+  console.log('Testing token against message endpoints...');
 
   const testEndpoints = [
     { name: 'Stats', url: '/api/messages/stats', method: 'GET' },
@@ -81,58 +83,39 @@ async function testToken(token: string) {
       const response = await fetch(`${REMOTE_URL}${endpoint.url}`, {
         method: endpoint.method,
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      const data = await response.json();
-      const status = response.ok ? '?? : '??;
+      const data = await response.json().catch(() => ({}));
+      const status = response.ok ? 'PASS' : 'FAIL';
 
       console.log(`${status} ${endpoint.name}: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
-        console.log(` ?�誤: ${data.error || data.message || JSON.stringify(data)}`);
+        const message = data?.error || data?.message || JSON.stringify(data);
+        console.log(`  Error: ${message}`);
       }
-
     } catch (error) {
-      console.log(`??${endpoint.name}: ??��失�?`);
+      console.log(`FAIL ${endpoint.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-
-  console.log('');
 }
 
-// 主�?�?
-(async () => {
+async function main(): Promise<void> {
   const token = await login();
 
-  if (token) {
-    await testToken(token);
-
-    console.log('\n?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?');
-    console.log('??Token ?��??��?�?);
-    console.log('?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?\n');
-
-    console.log('?�� 下�?�? 使用�?token ?��?完整測試\n');
-    console.log('複製上面?�環境�??�設置命令並?��?測試?�本?�\n');
-
-    process.exit(0);
-  } else {
-    console.log('\n?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?');
-    console.log('???��??��? Token');
-    console.log('?��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��??��?\n');
-
-    console.log('請檢??');
-    console.log('  1. 密碼?�否�?��');
-    console.log('  2. ?�戶?�否存在');
-    console.log('  3. 網絡??��?�否�?��\n');
-
-    console.log('?�用?�用??email:');
-    console.log('  ??admin@dacit.net (管�???');
-    console.log('  ??dacagent@dacit.net (客�?)');
-    console.log('  ??test@dacit.net (測試?�戶)\n');
-
+  if (!token) {
+    console.log('No token returned. Check credentials and API URL.');
     process.exit(1);
   }
-})();
+
+  await testToken(token);
+  console.log('Token is ready for authenticated smoke tests.');
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

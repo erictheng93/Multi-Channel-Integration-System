@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * Security Validation Script
- * Tests security fixes and validates configuration
+ * Security validation script.
+ * Checks whether expected security controls are present in source files.
  */
 
+import { fileURLToPath } from 'url';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
@@ -52,10 +53,7 @@ class SecurityValidator {
   }
 
   private async checkDebugEndpointSecurity(): Promise<boolean> {
-    const indexPath = join(process.cwd(), 'src', 'index.ts');
-    const content = await this.readFile(indexPath);
-
-    // Check if debug endpoint is properly protected
+    const content = await this.readFile(join(process.cwd(), 'src', 'index.ts'));
     const hasEnvironmentCheck = content.includes('securityConfig.debug.enabled');
     const hasAuthCheck = content.includes('jwtAuth');
     const hasRoleCheck = content.includes("user.role !== 'admin'");
@@ -64,10 +62,7 @@ class SecurityValidator {
   }
 
   private async checkCorsConfiguration(): Promise<boolean> {
-    const indexPath = join(process.cwd(), 'src', 'index.ts');
-    const content = await this.readFile(indexPath);
-
-    // Check if CORS is no longer wildcard
+    const content = await this.readFile(join(process.cwd(), 'src', 'index.ts'));
     const hasWildcardCors = content.includes("origin: '*'");
     const hasSecureCors = content.includes('isOriginAllowed');
 
@@ -75,10 +70,7 @@ class SecurityValidator {
   }
 
   private async checkSecurityHeaders(): Promise<boolean> {
-    const indexPath = join(process.cwd(), 'src', 'index.ts');
-    const content = await this.readFile(indexPath);
-
-    // Check if security headers are implemented
+    const content = await this.readFile(join(process.cwd(), 'src', 'index.ts'));
     const hasCSP = content.includes('Content-Security-Policy');
     const hasHSTS = content.includes('Strict-Transport-Security');
     const hasFrameOptions = content.includes('X-Frame-Options');
@@ -87,10 +79,7 @@ class SecurityValidator {
   }
 
   private async checkMockDataProduction(): Promise<boolean> {
-    const storePath = join(process.cwd(), 'frontend', 'src', 'stores', 'conversations.ts');
-    const content = await this.readFile(storePath);
-
-    // Check if mock data has proper environment checks
+    const content = await this.readFile(join(process.cwd(), 'frontend', 'src', 'stores', 'conversations.ts'));
     const hasDEVCheck = content.includes('import.meta.env.DEV');
     const hasVITESTCheck = content.includes('!import.meta.env.VITEST');
     const hasWarningLog = content.includes('console.warn');
@@ -99,20 +88,15 @@ class SecurityValidator {
   }
 
   private async checkSecurityConfigExists(): Promise<boolean> {
-    const configPath = join(process.cwd(), 'src', 'config', 'security.ts');
-    return await this.fileExists(configPath);
+    return this.fileExists(join(process.cwd(), 'src', 'config', 'security.ts'));
   }
 
   private async checkEnvironmentValidation(): Promise<boolean> {
-    const envPath = join(process.cwd(), 'src', 'utils', 'environment.ts');
-    return await this.fileExists(envPath);
+    return this.fileExists(join(process.cwd(), 'src', 'utils', 'environment.ts'));
   }
 
   private async checkProductionBuildSecurity(): Promise<boolean> {
-    const vitePath = join(process.cwd(), 'frontend', 'vite.config.ts');
-    const content = await this.readFile(vitePath);
-
-    // Check if production build removes debug code
+    const content = await this.readFile(join(process.cwd(), 'frontend', 'vite.config.ts'));
     const hasDropConsole = content.includes('drop_console');
     const hasDropDebugger = content.includes('drop_debugger');
     const hasPureFuncs = content.includes('pure_funcs');
@@ -127,17 +111,15 @@ class SecurityValidator {
       'src/middleware/auth.ts'
     ];
 
-    for (const path of paths) {
-      const fullPath = join(process.cwd(), path);
-      const content = await this.readFile(fullPath);
+    const suspiciousPatterns = [
+      'password\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']',
+      'secret\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']',
+      'key\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']',
+      'token\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']'
+    ];
 
-      // Check for common hardcoded secrets patterns
-      const suspiciousPatterns = [
-        'password\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']',
-        'secret\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']',
-        'key\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']',
-        'token\\s*=\\s*["\'](?!\\$|\\{)[^"\']{8,}["\']'
-      ];
+    for (const path of paths) {
+      const content = await this.readFile(join(process.cwd(), path));
 
       for (const pattern of suspiciousPatterns) {
         if (new RegExp(pattern, 'i').test(content)) {
@@ -150,10 +132,7 @@ class SecurityValidator {
   }
 
   private async checkSQLInjectionProtection(): Promise<boolean> {
-    const schemaPath = join(process.cwd(), 'src', 'db', 'schema.ts');
-    const content = await this.readFile(schemaPath);
-
-    // Check if using Drizzle ORM (which provides SQL injection protection)
+    const content = await this.readFile(join(process.cwd(), 'src', 'db', 'schema.ts'));
     const usesDrizzle = content.includes('drizzle-orm');
     const usesParameterized = content.includes('sqliteTable');
 
@@ -223,22 +202,17 @@ class SecurityValidator {
     try {
       const passed = await check.check();
 
+      this.results.results.push({
+        name: check.name,
+        status: passed ? 'pass' : 'fail',
+        message: passed ? check.description : `FAILED: ${check.description}`,
+        severity: check.severity
+      });
+
       if (passed) {
         this.results.passed++;
-        this.results.results.push({
-          name: check.name,
-          status: 'pass',
-          message: check.description,
-          severity: check.severity
-        });
       } else {
         this.results.failed++;
-        this.results.results.push({
-          name: check.name,
-          status: 'fail',
-          message: `FAILED: ${check.description}`,
-          severity: check.severity
-        });
       }
     } catch (error) {
       this.results.skipped++;
@@ -252,11 +226,9 @@ class SecurityValidator {
   }
 
   public async validate(): Promise<ValidationResult> {
-    console.log(' Running Security Validation...\n');
+    console.log('Running security validation...');
 
-    const checks = this.getSecurityChecks();
-
-    for (const check of checks) {
+    for (const check of this.getSecurityChecks()) {
       await this.runCheck(check);
     }
 
@@ -264,38 +236,64 @@ class SecurityValidator {
   }
 
   public printResults(): void {
-    console.log(' Security Validation Results\n');
-    console.log('=' .repeat(50));
+    console.log('Security validation results');
+    console.log('='.repeat(50));
 
-    // Summary
     const total = this.results.passed + this.results.failed + this.results.skipped;
     console.log(`Total checks: ${total}`);
-    console.log(` Passed: ${this.results.passed}`);
-    console.log(` Failed: ${this.results.failed}`);
-    console.log(`  Skipped: ${this.results.skipped}\n`);
+    console.log(`Passed: ${this.results.passed}`);
+    console.log(`Failed: ${this.results.failed}`);
+    console.log(`Skipped: ${this.results.skipped}`);
 
-    // Detailed results
-    const highSeverityFailures = this.results.results.filter(r => r.status === 'fail' && r.severity === 'high');
-    const mediumSeverityFailures = this.results.results.filter(r => r.status === 'fail' && r.severity === 'medium');
+    const highSeverityFailures = this.results.results.filter(
+      (result) => result.status === 'fail' && result.severity === 'high'
+    );
+    const mediumSeverityFailures = this.results.results.filter(
+      (result) => result.status === 'fail' && result.severity === 'medium'
+    );
 
     if (highSeverityFailures.length > 0) {
-      console.log(' HIGH SEVERITY FAILURES:');
-      highSeverityFailures.forEach(result => {
-        console.log(` ${result.name}: ${result.message}`);
+      console.log('\nHigh severity failures:');
+      highSeverityFailures.forEach((result) => {
+        console.log(`- ${result.name}: ${result.message}`);
       });
-      console.log();
     }
 
     if (mediumSeverityFailures.length > 0) {
-      console.log('  MEDIUM SEVERITY FAILURES:');
-      mediumSeverityFailures.forEach(result => {
-        console.log(` ${result.name}: ${result.message}`);
+      console.log('\nMedium severity failures:');
+      mediumSeverityFailures.forEach((result) => {
+        console.log(`- ${result.name}: ${result.message}`);
       });
-      console.log();
     }
 
-    // All results
-    console.log('DETAILED RESULTS:');
-    this.results.results.forEach(result => {
-      const icon = result.status === 'pass' ? '' : result.status === 'fail' ? '' : '';
-      console.log(`  ${icon} ${result.name}: ${result.message}`);\n });\n \n // Final verdict\n const criticalFailures = highSeverityFailures.length;\n if (criticalFailures === 0) {\n console.log('\\n Security validation PASSED! No critical vulnerabilities found.');\n } else {\n console.log(`\\n Security validation FAILED! ${criticalFailures} critical vulnerabilities found.`);\n process.exit(1);\n }\n  }\n}\n\n// Main execution\nasync function main() {\n  const validator = new SecurityValidator();\n  await validator.validate();\n  validator.printResults();\n}\n\nif (require.main === module) {\n  main().catch(console.error);\n}\n\nexport { SecurityValidator };
+    console.log('\nDetailed results:');
+    this.results.results.forEach((result) => {
+      console.log(`- ${result.status.toUpperCase()} ${result.name}: ${result.message}`);
+    });
+
+    if (highSeverityFailures.length === 0) {
+      console.log('\nSecurity validation passed. No critical vulnerabilities found.');
+      return;
+    }
+
+    console.log(`\nSecurity validation failed. ${highSeverityFailures.length} critical issue(s) found.`);
+    process.exit(1);
+  }
+}
+
+async function main(): Promise<void> {
+  const validator = new SecurityValidator();
+  await validator.validate();
+  validator.printResults();
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isMain) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+export { SecurityValidator };
