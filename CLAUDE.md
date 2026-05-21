@@ -240,5 +240,25 @@ This project is indexed by GitNexus as **Multi-Channel-Integration-System** (553
 | Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
 | Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Work in the Services area (1554 symbols) | `.claude/skills/generated/services/SKILL.md` |
+| Work in the Middleware area (204 symbols) | `.claude/skills/generated/middleware/SKILL.md` |
+| Work in the Scripts area (190 symbols) | `.claude/skills/generated/scripts/SKILL.md` |
+| Work in the Handlers area (147 symbols) | `.claude/skills/generated/handlers/SKILL.md` |
+| Work in the Composables area (131 symbols) | `.claude/skills/generated/composables/SKILL.md` |
+| Work in the Durable-objects area (118 symbols) | `.claude/skills/generated/durable-objects/SKILL.md` |
+| Work in the Api area (100 symbols) | `.claude/skills/generated/api/SKILL.md` |
+| Work in the Stores area (71 symbols) | `.claude/skills/generated/stores/SKILL.md` |
+| Work in the Performance area (55 symbols) | `.claude/skills/generated/performance/SKILL.md` |
+| Work in the Repositories area (52 symbols) | `.claude/skills/generated/repositories/SKILL.md` |
+| Work in the Config area (43 symbols) | `.claude/skills/generated/config/SKILL.md` |
+| Work in the Infrastructure area (43 symbols) | `.claude/skills/generated/infrastructure/SKILL.md` |
+| Work in the Conversation area (41 symbols) | `.claude/skills/generated/conversation/SKILL.md` |
+| Work in the Team-management area (39 symbols) | `.claude/skills/generated/team-management/SKILL.md` |
+| Work in the Load-testing area (39 symbols) | `.claude/skills/generated/load-testing/SKILL.md` |
+| Work in the Enterprise area (35 symbols) | `.claude/skills/generated/enterprise/SKILL.md` |
+| Work in the Views area (29 symbols) | `.claude/skills/generated/views/SKILL.md` |
+| Work in the Stress-testing area (25 symbols) | `.claude/skills/generated/stress-testing/SKILL.md` |
+| Work in the Delayed-message area (21 symbols) | `.claude/skills/generated/delayed-message/SKILL.md` |
+| Work in the AutoReply area (20 symbols) | `.claude/skills/generated/autoreply/SKILL.md` |
 
 <!-- gitnexus:end -->
