@@ -8,7 +8,7 @@
 ![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)
 ![Drizzle ORM](https://img.shields.io/badge/Drizzle-ORM-green.svg)
 ![Cloudflare KV](https://img.shields.io/badge/Cloudflare-KV-blue.svg)
-![Tests](https://img.shields.io/badge/Tests-4200%2B%20passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/Tests-Updated%20on%20verification-brightgreen.svg)
 ![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)
 ![Production Ready](https://img.shields.io/badge/Production-Ready-success.svg)
 
@@ -42,10 +42,10 @@
 
 ###  WebSocket + Durable Objects 即時通訊 (v4.0.0)
 - **即時雙向通訊** - SSE + WebSocket + Durable Objects 三層架構
-- **高併發支援** - 1000+ 同時連線零延遲
+- **高併發支援** - 針對高並發場景優化（實際上限以壓測結果為準）
 - **分散式狀態管理** - Cloudflare Durable Objects 全球一致性
-- **智慧延遲訊息** - 30 秒內精準排程
-- **企業級擴展** - 1000+ 並發連線
+- **智慧延遲訊息** - 已支援 1-120 秒可配置延遲
+- **企業級擴展** - 以 Durable Objects 與水平擴展為設計依據
 - **自動故障恢復** - 連線斷開自動重連
 - **全新 UI 體驗** - 即時狀態顯示與通知
 
@@ -64,16 +64,15 @@
 ###  Dashboard 全新設計 (v2.1.0)
 - **全新介面** - 現代化設計語言與互動體驗
 - **TypeScript 0 錯誤** - 完整類型安全
-- **4,200+ 測試** - 後端 1,700+ 前端 2,700+ 全通過
 - **優質 UI/UX** - 響應式設計與無障礙支援
 
 ###  即時通訊系統 (WebSocket + Durable Objects)
 - **雙向通訊**: WebSocket + Durable Objects 即時通訊
-- **超低延遲**: P95 < 500ms 支援 1000+ 併發
+- **超低延遲**: 系統設計目標為低延遲即時同步（需依環境量測）
 - **分散式鎖**: Durable Objects 分散式協調
 - **全局狀態**: Durable Objects 狀態持久化
 - **自動重連**: 斷線自動恢復
-- **延遲訊息**: 30 秒內精準排程
+- **延遲訊息**: 1-120 秒精準排程
 - **即時廣播**: 多用戶即時同步
 - **狀態同步**: 全域一致性保證
 
@@ -90,7 +89,7 @@
 - **高可用** - Durable Objects 確保可靠性
 
 ###  API 監控
-- **健康檢查** - 15+ API 端點即時監控
+- **健康檢查** - 主要 API 端點即時監控
 - **自動化測試** - 完整 API 測試套件
 - **效能追蹤** - 回應時間與錯誤率監控
 - **歷史記錄** - 完整監控資料保存
@@ -109,11 +108,11 @@
 - **雙重角色系統** - 系統角色 (Admin/Agent) + 團隊角色 (Member/Lead/Supervisor)
 - **團隊管理** - 多團隊協作與權限控制
 - **安全認證** - JWT 雙重令牌 RBAC 權限控制
-- **完整測試** - 4,200+ 自動化測試覆蓋
+- **完整測試** - 測試覆蓋以實際執行報告為準
 
 ### 核心功能 (Production Ready)
-- **WebSocket + Durable Objects 即時通訊** - 支援 1000+ 併發連線
-- **LINE OA 整合** - 完整 Webhook + WebSocket 即時同步
+- **WebSocket + Durable Objects 即時通訊** - 支援高併發的即時協作場景
+- **LINE OA 整合** - Webhook 接收與訊息轉發
 - **認證系統** - JWT 雙重令牌 + WebSocket 身份驗證
 - **對話管理** - 完整生命週期 + 即時同步
 - **客戶管理** - 多渠道客戶 + WebSocket 更新
@@ -128,16 +127,50 @@
 - **通知系統** - 多渠道通知 + WebSocket 即時推送
 - **報表系統** - 數據分析 + WebSocket 即時資料
 
+###  功能敘述精準對照（2026-05-21）
+以目前程式碼與可執行 API 為準：
+
+- **多渠道整合模組**
+  - LINE OA Webhook：✅ 已實作（`/api/webhooks/line`）
+  - Facebook Messenger Webhook：✅ 已實作（`/api/webhooks/facebook`）
+  - 統一訊息介面：⚠️ 部分完成（跨平台資料轉換有實作，但需以使用場景驗證一致性）
+- **對話管理系統**
+  - 即時接收與回覆：✅ 已實作
+  - 狀態追蹤：⚠️ 部分完成（`pending`/`in-progress` 等狀態可用；`closed`/已結束狀態已棄用，bulk 操作明確拒絕 close/reopen）
+  - 手動指派與轉移：✅ 已實作（`POST /:id/assign`、`POST /:id/transfer`，含跨團隊轉移歷史 `conversation_transfers`）
+  - 自動指派：❌ 未實作（`autoAssignment` 設定旗標存在但未被任何程式碼使用，無輪詢/負載/QR 自動派工邏輯）
+- **延遲訊息系統**
+  - 1-120 秒延遲：✅ 已實作（`ValidationService` 硬性驗證 1~120 秒）
+  - 解除預約（撤回）：✅ 已實作（`POST /recall/:messageId`）
+  - 狀態查詢：✅ 已實作（`GET /pending`，列出待發送排程）
+- **企業級認證與權限**
+  - JWT / 角色權限：✅ 已實作
+  - 會話控制：⚠️ 有 session 與多端機制，但未見單一「完整監控儀表」敘述
+- **即時協作功能**
+  - WebSocket 協作、打字狀態、線上狀態與 Presence：✅ 已實作
+  - 延遲 <50ms：⚠️ 目標值（需正式負載測試結果）
+- **檔案附件系統**
+  - 上傳/下載/刪除：✅ 已實作
+  - R2 儲存整合：✅ 已實作
+- **團隊管理模組**
+  - 成員 CRUD / 角色：✅ 已實作（成員以 `POST /:id/members` 直接加入，非邀請流程）
+  - QR 流程：✅ 已實作（QR 碼用於「客戶上線」掃描追蹤，非團隊成員邀請）
+  - 郵件邀請：❌ 未實作（`email-adapter` 預設 `enabled=false` 且 `sendEmail()` 為純模擬；無 `team_invitations` 資料表、無寄件 API、無邀請狀態追蹤）
+- **系統管理功能**
+  - 平台整合設定與測試：✅ 已實作
+  - 健康檢查 / 指標 / 設定 API：✅ 已實作（`GET /api/system/health`、`GET /api/system/metrics`）
+  - 備份 / 還原 / 快取清除 / 重啟：❌ 未對外提供（僅 service 層 stub，回傳模擬值且未掛載 HTTP handler；系統重啟在 Cloudflare Workers 無狀態環境本質上無法實作）
+
 ### 最新功能 (Latest Features - v4.0.0)
 - **WebSocket 架構** - 取代 SSE 舊系統
 - **Durable Objects 整合** - 分散式狀態管理
 - **即時廣播系統** - 多用戶即時同步
 - **狀態同步機制** - 連線/離線/忙碌追蹤
 - **延遲訊息排程** - 精準計時器
-- **高併發支援** - 1000+ 同時連線
+- **高併發支援** - 依佈署規模與測試結果而定
 - **延遲訊息** - 1-120 秒精準排程 + WebSocket 通知
 - **活動紀錄** - 完整操作追蹤 + WebSocket 即時推送
-- **API 標準化** - 15+ 端點統一格式
+- **API 標準化** - 主要端點統一格式
 - **自助部署工具** - Web Installer 視覺化部署
 
 ## 架構設計
@@ -145,7 +178,7 @@
 ```
 ┌─────────────────┐ ┌──────────────────────┐ ┌─────────────┐
 │ Vue 3 前端 │◄──►│  Cloudflare Workers │◄──►│  外部 API │
-│  (TypeScript) │    │  (Hono + 23 模組) │    │  (LINE/FB)  │
+│  (TypeScript) │    │  (Hono + 24 模組) │    │  (LINE/FB)  │
 └────────┬────────┘ └──────────┬───────────┘ └─────────────┘
          │ │
          │ ┌─────────┴──────────┐
@@ -154,7 +187,7 @@
          │ │  D1 KV R2 │
          │ │ (資料庫)(快取)(儲存) │
          │ ├────────────────────┤
-         │ │ Durable Objects ×8  │
+         │ │ Durable Objects ×10 │
          │ │ (即時通訊/狀態管理) │
          │ └────────────────────┘
          │
@@ -177,7 +210,7 @@
 - **框架**: Vue 3 + Composition API + TypeScript
 - **狀態管理**: Pinia + 響應式資料同步
 - **優質 UI/UX**: 響應式設計 + 無障礙支援
-- **完整測試**: Vitest + 2,700+ 測試
+- **完整測試**: Vitest + 以實際報告為準
 - **建置優化**: Vite + 代碼分割
 - **即時通訊**: WebSocket 客戶端
 
@@ -210,7 +243,7 @@
 **關鍵環境變數：**
 ```bash
 VITE_BACKEND_URL=https://your-api-domain.example.com
-VITE_FRONTEND_URL=http://localhost:3000
+VITE_FRONTEND_URL=http://localhost:5173
 VITE_WEBSOCKET_URL=wss://your-api-domain.example.com/ws
 VITE_STORAGE_PUBLIC_URL=https://your-storage-domain.example.com
 VITE_ENV=development
@@ -221,7 +254,7 @@ VITE_DEBUG=true
 配置檔案：`.dev.vars`（本地環境）
 ```bash
 BACKEND_URL=http://localhost:8787
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-secret-key
 ENCRYPTION_KEY=your-encryption-key
 ENVIRONMENT=development
@@ -338,7 +371,7 @@ bun run deploy:pages
 API 監控系統提供全面的服務監控能力：
 
 **監控功能：**
-- **健康檢查** - 15+ API 端點即時監控
+- **健康檢查** - 主要 API 端點即時監控
 - **錯誤追蹤** - 自動記錄與分類錯誤
 - **效能指標** - 回應時間與吞吐量監控
 - **告警系統** - API 異常自動通知
@@ -367,19 +400,19 @@ API 監控系統提供全面的服務監控能力：
 ### 當前版本: v4.0.0 (Enterprise-Ready WebSocket System)
 
 #### 已完成功能 (100% Ready)
--  **WebSocket + Durable Objects 即時通訊** - 支援 1000+ 併發
--  **超低延遲通訊** - P95 < 500ms
+-  **WebSocket + Durable Objects 即時通訊** - 核心能力已上線
+-  **超低延遲通訊** - 核心流程已上線（實測指標待量測）
 -  **分散式鎖定** - Durable Objects 協調
 -  **全局狀態管理** - Durable Objects 持久化
 -  **自動故障恢復** - 斷線自動重連
--  **延遲訊息排程** - 30 秒精準排程
+-  **延遲訊息排程** - 1-120 秒可設定
 -  **即時狀態廣播** - WebSocket 多用戶同步
 -  **完整監控系統** - 健康檢查與效能指標
--  **多渠道整合** - LINE OA + WebSocket（Facebook Messenger 支援中）
+-  **多渠道整合** - LINE OA 與 Facebook Messenger 雙向接入
 -  **認證系統** - 雙重角色 RBAC + WebSocket 安全認證
 -  **標籤系統** - 分類管理與對話統計
 -  **延遲訊息** - 1-120 秒精準排程 + WebSocket 通知
--  **前端應用** - Vue 3 + TypeScript + WebSocket 4,200+ 測試通過
+-  **前端應用** - Vue 3 + TypeScript + WebSocket
 -  **API 標準化** - 統一回應格式
 -  **活動紀錄** - 完整操作追蹤 + WebSocket 即時推送
 
@@ -389,21 +422,21 @@ API 監控系統提供全面的服務監控能力：
 -  **多語言支援** - 國際化（規劃中）
 
 ### 程式碼品質
-- **測試覆蓋**: 4,200+ 測試（後端 1,700+ 跨 71 檔案，前端 2,700+ 跨 149 檔案）
+- **測試覆蓋**: 依實際執行環境驗證（建議以 `bun run test:backend:ci` 與 `cd frontend && bun run test:run` 結果為準）
 - **TypeScript**: 嚴格模式 0 錯誤
 - **ESLint**: 所有規則通過
 - **類型安全**: 完整類型定義
 
 ### 效能指標 (WebSocket System)
-- **WebSocket 連線**: <100ms 建立
-- **訊息延遲**: <500ms (P95)、<200ms (P50)
-- **併發連線**: 1000+ 同時連線
-- **訊息吞吐**: 100+ 條/秒
-- **Worker 冷啟動**: <15ms
-- **API 回應**: <200ms (P95)
-- **前端載入**: <3s (首次)、<1s (快取)
-- **WebSocket 重連**: <3s (自動)
-- **故障恢復**: <60s (含 WebSocket 狀態恢復)
+- **WebSocket 連線**: 規格目標為低延遲（未綁定固定 SLA）
+- **訊息延遲**: 依量測結果維持
+- **併發連線**: 依壓測結果維持
+- **訊息吞吐**: 依壓測結果維持
+- **Worker 冷啟動**: 需以環境實測為準
+- **API 回應**: 以 API 監控結果為主
+- **前端載入**: 以正式環境量測為準
+- **WebSocket 重連**: 已支援自動重連（量測值待補）
+- **故障恢復**: 以監控與演練結果為主
 
 ## 專案結構
 
@@ -411,8 +444,9 @@ API 監控系統提供全面的服務監控能力：
 Multi_Channel_Integration_System/
 ├── src/ # 後端 (Cloudflare Workers)
 │ ├── index.ts # Worker 進入點
-│ ├── modules/ # 23 個領域模組
+│ ├── modules/ # 24 個領域模組
 │ │   ├── auth/handlers/ # 認證系統
+│ │   ├── auto-reply/ # 自動回覆
 │ │   ├── conversations/handlers/  # 對話管理
 │ │   ├── messaging/handlers/ # 訊息處理
 │ │   ├── teams/handlers/ # 團隊管理
@@ -435,7 +469,7 @@ Multi_Channel_Integration_System/
 │ │   ├── activities/ # 活動紀錄
 │ │   ├── customer-conversations/  # 客戶對話
 │ │   └── liff/ # LINE LIFF
-│ ├── durable-objects/ # 10 個 Durable Objects (含 LockCoordinator 在 services/)
+│ ├── durable-objects/ # 12 個 DO 相關檔案（含 LockCoordinator 在 services/）
 │ │   ├── ConversationRoom.ts
 │ │   ├── UserConnection.ts
 │ │   ├── MessageBroadcaster.ts
@@ -444,6 +478,9 @@ Multi_Channel_Integration_System/
 │ │   ├── CustomerConversationDO.ts
 │ │   ├── CustomerMessageDO.ts
 │ │   ├── RateLimiterDO.ts
+│ │   ├── user-connection-security.ts
+│ │   ├── user-connection-state.ts
+│ │   ├── user-subscription-manager.ts
 │ │   ├── MetricsCollectorDO.ts                       # 即時指標收集 (v4)
 │ │   └── (LockCoordinator → src/services/distributed-lock-service.ts)
 │ ├── services/ # 40+ 共用服務
@@ -455,12 +492,12 @@ Multi_Channel_Integration_System/
 │ └── src/
 │ ├── views/ # 21 個頁面元件
 │ ├── components/ # 可重用 UI 元件
-│ ├── stores/ # 10 個 Pinia stores
+│ ├── stores/ # 11 個 Pinia stores
 │ ├── services/ # WebSocket 客戶端、同步
 │ ├── api/ # API 客戶端函數
 │ └── config/runtime.ts # 前端執行時配置
-├── tests/ # 後端測試 (62 檔案, 1,700+ 測試)
-├── frontend/tests/ # 前端測試 (120 檔案, 2,700+ 測試)
+├── tests/ # 後端測試
+├── frontend/tests/ # 前端測試
 ├── web-installer/ # 自助部署工具
 ├── scripts/ # 120+ 自動化腳本
 ├── docs/ # 技術文件
@@ -479,7 +516,7 @@ Multi_Channel_Integration_System/
 
 ### API 監控系統
 API 監控系統提供完整的服務監控能力：
-- **自動監控** - 15+ API 端點即時監控
+- **自動監控** - 主要 API 端點即時監控
 - **狀態追蹤** - 健康/警告/錯誤三級狀態
 - **效能分析** - 回應時間追蹤
 - **歷史資料** - 完整監控記錄
