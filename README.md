@@ -78,7 +78,7 @@
 
 ##  核心功能
 
-###  WebSocket 即時通訊 (NEW! v4.0.0)
+###  WebSocket 即時通訊 (v4.0.0)
 - **即時訊息推送** - 新訊息即時送達
 - **打字狀態顯示** - 對方正在輸入提示
 - **線上狀態追蹤** - 在線/離線/忙碌狀態
@@ -160,6 +160,19 @@
   - 平台整合設定與測試：✅ 已實作
   - 健康檢查 / 指標 / 設定 API：✅ 已實作（`GET /api/system/health`、`GET /api/system/metrics`）
   - 備份 / 還原 / 快取清除 / 重啟：❌ 未對外提供（僅 service 層 stub，回傳模擬值且未掛載 HTTP handler；系統重啟在 Cloudflare Workers 無狀態環境本質上無法實作）
+- **自動回復系統**
+  - 規則引擎：✅ 已實作（`auto-reply-engine.ts` 的 `evaluate()`，依關鍵字/條件比對自動回覆）
+  - 觸發點：⚠️ 目前僅 LINE（一般訊息 `line-message-handler.ts`、加好友歡迎 `line-follow-handler.ts` 的 `evaluateWelcome()`）；Facebook event processor 尚未串接自動回復
+  - 規則管理 API：✅ 已實作（`/api/auto-reply/rules` CRUD）
+  - 營業時間排程：✅ 已實作（`/api/auto-reply/schedules`，控制規則生效時段）
+  - 稽核日誌：✅ 已實作（`/api/auto-reply/logs`，唯讀）
+  - 注意：此為「自動**回復**」，與上方未實作的「自動**指派** `autoAssignment`」是不同功能，請勿混淆
+- **資料匯出功能**
+  - 訊息匯出：✅ 已實作（`GET /api/messages/export`，支援 `json` / `csv` / `txt` 三種格式）
+  - 篩選條件：✅ 已實作（對話 ID、日期區間 `dateFrom`/`dateTo`、客戶、客服）
+  - 匯出前預覽：✅ 已實作（`GET /api/messages/export/count`，回傳符合筆數與是否超過上限）
+  - 篩選選項來源：✅ 已實作（`GET /api/messages/export/customers`、`/api/messages/export/agents`）
+  - 筆數上限：⚠️ 受 `BULK_OPERATION_LIMITS.EXPORT_MAX_RECORDS` 限制，超量會被截斷（`willBeTruncated` 旗標提示）
 
 ### 最新功能 (Latest Features - v4.0.0)
 - **WebSocket 架構** - 取代 SSE 舊系統
