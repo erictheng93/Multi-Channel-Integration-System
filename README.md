@@ -9,8 +9,8 @@
 ![Drizzle ORM](https://img.shields.io/badge/Drizzle-ORM-green.svg)
 ![Cloudflare KV](https://img.shields.io/badge/Cloudflare-KV-blue.svg)
 ![Tests](https://img.shields.io/badge/Tests-Updated%20on%20verification-brightgreen.svg)
-![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)
-![Production Ready](https://img.shields.io/badge/Production-Ready-success.svg)
+![Build Status](https://img.shields.io/badge/Build-Verify%20with%20CI-yellow.svg)
+![Readiness](https://img.shields.io/badge/Readiness-Code%20reviewed-yellow.svg)
 
  **開發者入口**
 - **快速部署** `bun run deploy`（後端）/ `bun run deploy:pages`（前端）
@@ -131,7 +131,7 @@
 以目前程式碼與可執行 API 為準：
 
 - **多渠道整合模組**
-  - LINE OA Webhook：✅ 已實作（`/api/webhooks/line`）
+  - LINE OA Webhook：✅ 已實作（`POST /api/webhook`）
   - Facebook Messenger Webhook：✅ 已實作（`/api/webhooks/facebook`）
   - 統一訊息介面：⚠️ 部分完成（跨平台資料轉換有實作，但需以使用場景驗證一致性）
 - **對話管理系統**
@@ -187,7 +187,7 @@
          │ │  D1 KV R2 │
          │ │ (資料庫)(快取)(儲存) │
          │ ├────────────────────┤
-         │ │ Durable Objects ×10 │
+         │ │ Durable Objects ×12 │
          │ │ (即時通訊/狀態管理) │
          │ └────────────────────┘
          │
@@ -399,7 +399,7 @@ API 監控系統提供全面的服務監控能力：
 
 ### 當前版本: v4.0.0 (Enterprise-Ready WebSocket System)
 
-#### 已完成功能 (100% Ready)
+#### 已完成功能（程式碼層級已完成，仍需以 CI / 部署驗證）
 -  **WebSocket + Durable Objects 即時通訊** - 核心能力已上線
 -  **超低延遲通訊** - 核心流程已上線（實測指標待量測）
 -  **分散式鎖定** - Durable Objects 協調
@@ -511,8 +511,9 @@ Multi_Channel_Integration_System/
 - `GET /api/system/api-status` - API 狀態監控（含歷史紀錄）
 - `POST /api/auth/login` - 用戶登入
 - `GET /api/conversations` - 對話列表
-- `GET /api/team/members` - 團隊成員
-- `POST /api/messages/delayed` - 延遲訊息
+- `GET /api/teams/members` - 團隊成員
+- `POST /api/delayed-messages/send` - 延遲訊息
+- `POST /api/delayed-messages-v2/send` - Durable Objects 延遲訊息
 
 ### API 監控系統
 API 監控系統提供完整的服務監控能力：
@@ -554,7 +555,7 @@ VITE_DEV_MODE=false
 
 ### LINE OA 設定
 1. 在 LINE Developers Console 建立 Messaging API 頻道
-2. 設定 Webhook URL: `https://your-domain.com/api/webhooks/line`
+2. 設定 Webhook URL: `https://your-domain.com/api/webhook`
 3. 取得 Channel Access Token 和 Channel Secret
 4. 在環境變數中設定對應值
 
