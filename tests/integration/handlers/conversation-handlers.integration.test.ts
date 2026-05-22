@@ -117,6 +117,9 @@ interface MockDbState {
   updateCalled: boolean;
   insertCalled: boolean;
   deleteCalled: boolean;
+  updateParamCounts: number[];
+  insertParamCounts: number[];
+  deleteParamCounts: number[];
   // Error simulation
   dbError: Error | null;
 }
@@ -130,6 +133,9 @@ function resetMockDbState(overrides: Partial<MockDbState> = {}) {
     updateCalled: false,
     insertCalled: false,
     deleteCalled: false,
+    updateParamCounts: [],
+    insertParamCounts: [],
+    deleteParamCounts: [],
     dbError: null,
     ...overrides,
   };
@@ -154,6 +160,40 @@ function countDrizzleParams(value: unknown): number {
   }
 
   return 0;
+}
+
+function countScalarParams(value: unknown): number {
+  if (value === undefined || value === null) {
+    return 0;
+  }
+
+  if (typeof value === 'object') {
+    return countDrizzleParams(value);
+  }
+
+  return 1;
+}
+
+function countSetParams(value: unknown): number {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return 0;
+  }
+
+  return Object.values(value as Record<string, unknown>)
+    .reduce((total, item) => total + countScalarParams(item), 0);
+}
+
+function countInsertParams(value: unknown): number {
+  const rows = Array.isArray(value) ? value : [value];
+
+  return rows.reduce((total, row) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) {
+      return total + countScalarParams(row);
+    }
+
+    return total + Object.values(row as Record<string, unknown>)
+      .reduce((rowTotal, item) => rowTotal + countScalarParams(item), 0);
+  }, 0);
 }
 
 /**
@@ -205,9 +245,19 @@ function createDrizzleMock() {
     writable: true,
   });
 
+  let updateSetParamCount = 0;
   const updateChain: any = {
-    set: vi.fn().mockReturnThis(),
-    where: vi.fn(() => {
+    set: vi.fn((values: unknown) => {
+      updateSetParamCount = countSetParams(values);
+      return updateChain;
+    }),
+    where: vi.fn((...conditions: unknown[]) => {
+      const whereParamCount = conditions.reduce((total, condition) => total + countDrizzleParams(condition), 0);
+      const paramCount = updateSetParamCount + whereParamCount;
+      mockDbState.updateParamCounts.push(paramCount);
+      if (paramCount > 100) {
+        throw new Error(`D1_ERROR: too many SQL variables (got ${paramCount}, max 100)`);
+      }
       mockDbState.updateCalled = true;
       if (mockDbState.dbError) return Promise.reject(mockDbState.dbError);
       return Promise.resolve();
@@ -215,7 +265,14 @@ function createDrizzleMock() {
   };
 
   const insertChain: any = {
-    values: vi.fn().mockReturnThis(),
+    values: vi.fn((values: unknown) => {
+      const paramCount = countInsertParams(values);
+      mockDbState.insertParamCounts.push(paramCount);
+      if (paramCount > 100) {
+        throw new Error(`D1_ERROR: too many SQL variables (got ${paramCount}, max 100)`);
+      }
+      return insertChain;
+    }),
     onConflictDoNothing: vi.fn(() => {
       mockDbState.insertCalled = true;
       if (mockDbState.dbError) return Promise.reject(mockDbState.dbError);
@@ -237,7 +294,12 @@ function createDrizzleMock() {
   });
 
   const deleteChain: any = {
-    where: vi.fn(() => {
+    where: vi.fn((...conditions: unknown[]) => {
+      const paramCount = conditions.reduce((total, condition) => total + countDrizzleParams(condition), 0);
+      mockDbState.deleteParamCounts.push(paramCount);
+      if (paramCount > 100) {
+        throw new Error(`D1_ERROR: too many SQL variables (got ${paramCount}, max 100)`);
+      }
       mockDbState.deleteCalled = true;
       if (mockDbState.dbError) return Promise.reject(mockDbState.dbError);
       return Promise.resolve();
@@ -791,9 +853,8 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(body.success).toBe(false);
     });
 
-    test('returns validation error when conversationIds exceeds 100', async () => {
+    test('chunks bulk assign when conversationIds exceeds D1 parameter budget', async () => {
       const largeIds = Array.from({ length: 101 }, (_, i) => `conv-${i}`);
-      // Make all 101 IDs "visible"
       visibleConversationIds = largeIds;
 
       const res = await makeRequest(app, '/api/conversations/bulk', {
@@ -807,8 +868,84 @@ describe('Conversation Handlers Integration Tests', () => {
       });
       const body = (await res.json()) as any;
 
-      expect(res.status).toBe(422);
-      expect(body.success).toBe(false);
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(body.data.affectedCount).toBe(101);
+      expect(mockDbState.updateParamCounts.length).toBeGreaterThan(1);
+      for (const paramCount of mockDbState.updateParamCounts) {
+        expect(paramCount).toBeLessThanOrEqual(100);
+      }
+    });
+
+    test('chunks bulk set_priority when conversationIds exceeds D1 parameter budget', async () => {
+      const largeIds = Array.from({ length: 101 }, (_, i) => `conv-${i}`);
+      visibleConversationIds = largeIds;
+
+      const res = await makeRequest(app, '/api/conversations/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'set_priority',
+          conversationIds: largeIds,
+          data: { priority: 'high' },
+        }),
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(body.data.affectedCount).toBe(101);
+      expect(mockDbState.updateParamCounts.length).toBeGreaterThan(1);
+      for (const paramCount of mockDbState.updateParamCounts) {
+        expect(paramCount).toBeLessThanOrEqual(100);
+      }
+    });
+
+    test('chunks bulk add_tags insert batches under D1 parameter budget', async () => {
+      const conversationIds = Array.from({ length: 40 }, (_, i) => `conv-${i}`);
+      visibleConversationIds = conversationIds;
+
+      const res = await makeRequest(app, '/api/conversations/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'add_tags',
+          conversationIds,
+          data: { tagIds: [1, 2] },
+        }),
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(mockDbState.insertParamCounts.length).toBeGreaterThan(1);
+      for (const paramCount of mockDbState.insertParamCounts) {
+        expect(paramCount).toBeLessThanOrEqual(100);
+      }
+    });
+
+    test('chunks bulk remove_tags across conversation and tag ids under D1 parameter budget', async () => {
+      const conversationIds = Array.from({ length: 80 }, (_, i) => `conv-${i}`);
+      const tagIds = Array.from({ length: 30 }, (_, i) => i + 1);
+      visibleConversationIds = conversationIds;
+
+      const res = await makeRequest(app, '/api/conversations/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: 'remove_tags',
+          conversationIds,
+          data: { tagIds },
+        }),
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(mockDbState.deleteParamCounts.length).toBeGreaterThan(1);
+      for (const paramCount of mockDbState.deleteParamCounts) {
+        expect(paramCount).toBeLessThanOrEqual(100);
+      }
     });
 
     test('returns validation error for invalid operation', async () => {

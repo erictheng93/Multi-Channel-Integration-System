@@ -15,6 +15,28 @@ import { nowISO } from '@/utils/timestamp'
 
 const log = createContextLogger('ConversationBulkHandler');
 
+const D1_MAX_BOUND_PARAMETERS = 100;
+const D1_SAFE_BOUND_PARAMETERS = 90;
+
+function getSafeIdChunkSize(extraBoundParams = 0): number {
+  return Math.max(
+    1,
+    Math.min(D1_SAFE_BOUND_PARAMETERS, D1_MAX_BOUND_PARAMETERS - extraBoundParams)
+  );
+}
+
+function getSafeInsertBatchSize(paramsPerRow: number): number {
+  return Math.max(1, Math.floor(D1_SAFE_BOUND_PARAMETERS / paramsPerRow));
+}
+
+function chunkItems<T>(items: T[], chunkSize = D1_SAFE_BOUND_PARAMETERS): T[][] {
+  const chunks: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += chunkSize) {
+    chunks.push(items.slice(offset, offset + chunkSize));
+  }
+  return chunks;
+}
+
 const conversationBulkHandler = new Hono<{ Bindings: Bindings }>();
 
 // 批量操作端點 - POST /bulk
@@ -35,12 +57,6 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
     }
 
     // 限制批量操作數量
-    if (conversationIds.length > 100) {
-      return validationErrorResponse(c, [
-        { field: 'conversationIds', message: 'Bulk operation limited to 100 conversations at a time' }
-      ]);
-    }
-
     const conversationIdsArray = conversationIds as string[];
 
     // P1 優化：添加權限檢查 - 驗證用戶是否有權訪問這些對話
@@ -65,13 +81,15 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
           ]);
         }
 
-        await drizzleDb.update(conversations)
-          .set({
-            assignedTeamId: data.teamId,
-            status: 'assigned',
-            updatedAt: sql`datetime('now')`
-          })
-          .where(inArray(conversations.id, conversationIdsArray));
+        for (const idChunk of chunkItems(conversationIdsArray, getSafeIdChunkSize(2))) {
+          await drizzleDb.update(conversations)
+            .set({
+              assignedTeamId: data.teamId,
+              status: 'assigned',
+              updatedAt: sql`datetime('now')`
+            })
+            .where(inArray(conversations.id, idChunk));
+        }
 
         log.debug('Bulk Assign completed', { teamId: data.teamId, conversationCount: conversationIdsArray.length });
         break;
@@ -91,12 +109,14 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
             { field: 'data.priority', message: 'Priority is required' }
           ]);
         }
-        await drizzleDb.update(conversations)
-          .set({
-            priority: data.priority,
-            updatedAt: sql`datetime('now')`
-          })
-          .where(inArray(conversations.id, conversationIdsArray));
+        for (const idChunk of chunkItems(conversationIdsArray, getSafeIdChunkSize(1))) {
+          await drizzleDb.update(conversations)
+            .set({
+              priority: data.priority,
+              updatedAt: sql`datetime('now')`
+            })
+            .where(inArray(conversations.id, idChunk));
+        }
 
         // Note: Individual agent notifications removed - only team-based assignment now
         // Priority change notifications can be handled via WebSocket broadcast to team members
@@ -116,7 +136,7 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
         // P2 優化：使用 Drizzle 批量插入（單條 SQL 語句）
         // 構建所有需要插入的值
         const tagInsertValues: { conversationId: string; tagId: number; assignedBy: string }[] = [];
-        const parsedTagIds = data.tagIds.map((id: string | number) => parseInt(String(id)));
+        const parsedTagIds: number[] = data.tagIds.map((id: string | number) => parseInt(String(id)));
 
         for (const convId of conversationIdsArray) {
           for (const tagId of parsedTagIds) {
@@ -129,7 +149,8 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
         }
 
         // 使用 Drizzle 批量插入（每批最多 100 條記錄以避免 SQL 語句過長）
-        const INSERT_BATCH_SIZE = 100;
+        const INSERT_PARAMS_PER_ROW = 3;
+        const INSERT_BATCH_SIZE = getSafeInsertBatchSize(INSERT_PARAMS_PER_ROW);
         for (let i = 0; i < tagInsertValues.length; i += INSERT_BATCH_SIZE) {
           const batch = tagInsertValues.slice(i, i + INSERT_BATCH_SIZE);
           if (batch.length > 0) {
@@ -155,17 +176,22 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
         }
 
         // P3 優化：使用單條 SQL 批量刪除（替代嵌套循環 + 順序 await）
-        const tagIdsToRemove = data.tagIds.map((id: string | number) => parseInt(String(id)));
+        const tagIdsToRemove: number[] = data.tagIds.map((id: string | number) => parseInt(String(id)));
 
-        await drizzleDb.delete(conversationTags)
-          .where(
-            and(
-              inArray(conversationTags.conversationId, conversationIdsArray),
-              inArray(conversationTags.tagId, tagIdsToRemove)
-            )
-          );
+        for (const tagChunk of chunkItems(tagIdsToRemove, D1_SAFE_BOUND_PARAMETERS)) {
+          const idChunkSize = getSafeIdChunkSize(tagChunk.length);
+          for (const idChunk of chunkItems(conversationIdsArray, idChunkSize)) {
+            await drizzleDb.delete(conversationTags)
+              .where(
+                and(
+                  inArray(conversationTags.conversationId, idChunk),
+                  inArray(conversationTags.tagId, tagChunk)
+                )
+              );
+          }
+        }
 
-        log.info(`Removed tags from ${conversationIdsArray.length} conversations using single SQL`);
+        log.info(`Removed tags from ${conversationIdsArray.length} conversations using chunked SQL`);
 
         // 記錄標籤操作以便 WebSocket 廣播
         tagOperation = 'remove';
