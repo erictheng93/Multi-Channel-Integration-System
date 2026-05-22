@@ -42,7 +42,7 @@ export interface PermissionContext {
 }
 
 export interface UserPermissionData {
-  id: number;
+  id: string | number;
   role: string;
   primaryTeamId?: number;  // From agent_teams WHERE isPrimary=true
   permissions?: string[];
