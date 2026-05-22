@@ -548,11 +548,10 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         });
         // Continue with empty map — unreadCount will default to 0
       }
+      }
     }
 
     // 結合數據并統一為camelCase格式
-      }
-
     const combinedData = conversationData.map(conv => {
       const lastMsg = lastMessagesMap.get(conv.id);
       const displayContent = lastMsg ? getDisplayContent(lastMsg.content, lastMsg.messageType) : null;
