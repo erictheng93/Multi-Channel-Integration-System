@@ -224,7 +224,7 @@ export class PermissionService {
       const primaryTeamId = await getPrimaryTeamId(drizzleDb, userIdStr);
 
       const userData = {
-        id: parseInt(user.id), // 轉換為數字以符合 UserPermissionData 類型
+        id: user.id,
         role: user.role as string,
         primaryTeamId: primaryTeamId || 0, // Default to 0 if null
         isActive: Boolean(user.isActive)
