@@ -36,6 +36,32 @@ interface ConversationUnreadCountRow extends UnreadCountRow {
   conversationId: string;
 }
 
+type ConversationJoinRow = {
+  conversations: typeof conversations.$inferSelect;
+  customers: typeof customers.$inferSelect | null;
+  teams: typeof teams.$inferSelect | null;
+};
+
+const D1_MAX_BOUND_PARAMETERS = 100;
+const D1_SAFE_ID_CHUNK_SIZE = 90;
+
+function getSafeIdChunkSize(extraBoundParams = 0): number {
+  return Math.max(1, Math.min(D1_SAFE_ID_CHUNK_SIZE, D1_MAX_BOUND_PARAMETERS - extraBoundParams));
+}
+
+function chunkItems<T>(items: T[], chunkSize = D1_SAFE_ID_CHUNK_SIZE): T[][] {
+  const chunks: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += chunkSize) {
+    chunks.push(items.slice(offset, offset + chunkSize));
+  }
+  return chunks;
+}
+
+function getUpdatedAtTimestamp(row: ConversationJoinRow): number {
+  const timestamp = Date.parse(row.conversations.updatedAt ?? '');
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 const conversationQueriesHandler = new Hono<{ Bindings: Bindings }>();
 
 // ==================== Priority 4: SINGLE PARAM routes ====================
@@ -229,27 +255,41 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     let filteredConversationIds = visibleConversationIds;
     if (tagIds.length > 0) {
       // 1. 直接在 conversation_tags 上有標籤的對話
-      const directTagged = await drizzleDb
-        .selectDistinct({ conversationId: conversationTags.conversationId })
-        .from(conversationTags)
-        .where(
-          and(
-            inArray(conversationTags.conversationId, visibleConversationIds),
-            inArray(conversationTags.tagId, tagIds)
-          )
-        );
+      const directTagged: Array<{ conversationId: string }> = [];
+      const customerTagged: Array<{ conversationId: string }> = [];
+      const tagChunks = chunkItems(tagIds, D1_SAFE_ID_CHUNK_SIZE);
+
+      for (const tagChunk of tagChunks) {
+        const idChunkSize = getSafeIdChunkSize(tagChunk.length);
+
+        for (const idChunk of chunkItems(visibleConversationIds, idChunkSize)) {
+          const directTaggedChunk = await drizzleDb
+            .selectDistinct({ conversationId: conversationTags.conversationId })
+            .from(conversationTags)
+            .where(
+              and(
+                inArray(conversationTags.conversationId, idChunk),
+                inArray(conversationTags.tagId, tagChunk)
+              )
+            );
+          directTagged.push(...directTaggedChunk);
+        }
 
       // 2. 透過客戶標籤關聯的對話（客戶被打標籤 → 該客戶的對話也應匹配）
-      const customerTagged = await drizzleDb
-        .selectDistinct({ conversationId: conversations.id })
-        .from(conversations)
-        .innerJoin(customerTags, eq(conversations.customerId, customerTags.customerId))
-        .where(
-          and(
-            inArray(conversations.id, visibleConversationIds),
-            inArray(customerTags.tagId, tagIds)
-          )
-        );
+        for (const idChunk of chunkItems(visibleConversationIds, idChunkSize)) {
+          const customerTaggedChunk = await drizzleDb
+            .selectDistinct({ conversationId: conversations.id })
+            .from(conversations)
+            .innerJoin(customerTags, eq(conversations.customerId, customerTags.customerId))
+            .where(
+              and(
+                inArray(conversations.id, idChunk),
+                inArray(customerTags.tagId, tagChunk)
+              )
+            );
+          customerTagged.push(...customerTaggedChunk);
+        }
+      }
 
       // 合併兩者（去重）
       const allMatchedIds = new Set([
@@ -279,16 +319,21 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     // 如果有搜尋關鍵字，篩選匹配客戶名稱的對話
     if (searchQuery) {
       const searchPattern = `%${searchQuery}%`;
-      const matchedConversations = await drizzleDb
-        .select({ id: conversations.id })
-        .from(conversations)
-        .leftJoin(customers, eq(conversations.customerId, customers.id))
-        .where(
-          and(
-            inArray(conversations.id, filteredConversationIds),
-            like(customers.displayName, searchPattern)
-          )
-        );
+      const matchedConversations: Array<{ id: string }> = [];
+
+      for (const idChunk of chunkItems(filteredConversationIds, getSafeIdChunkSize(1))) {
+        const matchedChunk = await drizzleDb
+          .select({ id: conversations.id })
+          .from(conversations)
+          .leftJoin(customers, eq(conversations.customerId, customers.id))
+          .where(
+            and(
+              inArray(conversations.id, idChunk),
+              like(customers.displayName, searchPattern)
+            )
+          );
+        matchedConversations.push(...matchedChunk);
+      }
       filteredConversationIds = matchedConversations.map(c => c.id);
 
       log.debug('Conversation Handler filtered by search', {
@@ -305,18 +350,31 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       }
     }
 
-    const conversationResults = await drizzleDb
-      .select()
-      .from(conversations)
-      .leftJoin(customers, eq(conversations.customerId, customers.id))
-      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
-      .where(and(
-        inArray(conversations.id, filteredConversationIds),
-        ...(customerNameQuery ? [sql`${customers.displayName} LIKE ${'%' + customerNameQuery + '%'}`] : []),
-        ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
-        ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : [])
-      ))
-      .orderBy(desc(conversations.updatedAt));
+    const extraListParams =
+      (customerNameQuery ? 1 : 0) +
+      (updatedAfter ? 1 : 0) +
+      (updatedBefore ? 1 : 0);
+    const conversationResultsById = new Map<string, ConversationJoinRow>();
+
+    for (const idChunk of chunkItems(filteredConversationIds, getSafeIdChunkSize(extraListParams))) {
+      const conversationChunk = await drizzleDb
+        .select()
+        .from(conversations)
+        .leftJoin(customers, eq(conversations.customerId, customers.id))
+        .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
+        .where(and(
+          inArray(conversations.id, idChunk),
+          ...(customerNameQuery ? [sql`${customers.displayName} LIKE ${'%' + customerNameQuery + '%'}`] : []),
+          ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
+          ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : [])
+        ))
+        .orderBy(desc(conversations.updatedAt));
+      for (const result of conversationChunk) {
+        conversationResultsById.set(result.conversations.id, result);
+      }
+    }
+    const conversationResults = Array.from(conversationResultsById.values())
+      .sort((a, b) => getUpdatedAtTimestamp(b) - getUpdatedAtTimestamp(a));
 
     // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象
     const conversationData = conversationResults.map(result => ({
@@ -372,12 +430,11 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       //   (B) Chunk the IDs so each query stays well under the 100 cap
       //       regardless of how many conversations the caller can see.
       //
-      // CHUNK_SIZE=90 leaves a safety margin under 100 while keeping the
+      // D1_SAFE_ID_CHUNK_SIZE=90 leaves a safety margin under 100 while keeping the
       // number of round trips minimal (e.g. 1 query for N=90, 2 for N=180).
-      const CHUNK_SIZE = 90;
 
-      for (let offset = 0; offset < conversationIds.length; offset += CHUNK_SIZE) {
-        const chunk = conversationIds.slice(offset, offset + CHUNK_SIZE);
+      for (let offset = 0; offset < conversationIds.length; offset += D1_SAFE_ID_CHUNK_SIZE) {
+        const chunk = conversationIds.slice(offset, offset + D1_SAFE_ID_CHUNK_SIZE);
         const placeholders = chunk.map(() => '?').join(',');
         const latestMessagesQuery = `
           SELECT
@@ -445,8 +502,10 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     let unreadCountMap = new Map<string, number>();
 
     if (conversationIds.length > 0) {
-      const unreadPlaceholders = conversationIds.map(() => '?').join(',');
-      const unreadCountQuery = `
+      for (let offset = 0; offset < conversationIds.length; offset += D1_SAFE_ID_CHUNK_SIZE) {
+        const chunk = conversationIds.slice(offset, offset + D1_SAFE_ID_CHUNK_SIZE);
+        const unreadPlaceholders = chunk.map(() => '?').join(',');
+        const unreadCountQuery = `
         SELECT
           m.conversation_id as conversationId,
           COUNT(*) as unreadCount
@@ -472,7 +531,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
 
       try {
         const unreadResult = await c.env.DB.prepare(unreadCountQuery)
-          .bind(...conversationIds)
+          .bind(...chunk)
           .all();
 
         if (unreadResult.results) {
@@ -482,6 +541,9 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         }
       } catch (unreadError) {
         log.warn('Failed to fetch unread counts', {
+          chunkStart: offset,
+          chunkSize: chunk.length,
+          totalCount: conversationIds.length,
           error: unreadError instanceof Error ? unreadError.message : String(unreadError)
         });
         // Continue with empty map — unreadCount will default to 0
@@ -489,6 +551,8 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     }
 
     // 結合數據并統一為camelCase格式
+      }
+
     const combinedData = conversationData.map(conv => {
       const lastMsg = lastMessagesMap.get(conv.id);
       const displayContent = lastMsg ? getDisplayContent(lastMsg.content, lastMsg.messageType) : null;
