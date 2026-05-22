@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join, relative } from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 interface TypeDebtCounts {
   any: number;
@@ -68,6 +69,31 @@ function collectFiles(dir: string): string[] {
   }
 
   return files;
+}
+
+function filterGitIgnored(files: string[]): string[] {
+  if (files.length === 0) {
+    return files;
+  }
+
+  const result = spawnSync('git', ['check-ignore', '--stdin'], {
+    cwd: process.cwd(),
+    input: `${files.join('\n')}\n`,
+    encoding: 'utf8',
+  });
+
+  if (result.status !== 0 && result.status !== 1) {
+    return files;
+  }
+
+  const ignoredFiles = new Set(
+    result.stdout
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((file) => file.replace(/\\/g, '/'))
+  );
+
+  return files.filter((file) => !ignoredFiles.has(file));
 }
 
 function countTypeDebt(file: string): TypeDebtCounts {
@@ -134,7 +160,7 @@ function hasDebt(counts: TypeDebtCounts): boolean {
 
 function buildCurrentDebt(): TypeDebtAllowlist {
   const result: TypeDebtAllowlist = {};
-  const files = roots.flatMap(collectFiles).sort();
+  const files = filterGitIgnored(roots.flatMap(collectFiles)).sort();
 
   for (const file of files) {
     const counts = countTypeDebt(file);

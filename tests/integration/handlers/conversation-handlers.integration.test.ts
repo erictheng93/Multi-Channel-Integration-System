@@ -135,6 +135,27 @@ function resetMockDbState(overrides: Partial<MockDbState> = {}) {
   };
 }
 
+function countDrizzleParams(value: unknown): number {
+  if (!value || typeof value !== 'object') {
+    return 0;
+  }
+
+  if ((value as { constructor?: { name?: string } }).constructor?.name === 'Param') {
+    return 1;
+  }
+
+  if (Array.isArray(value)) {
+    return value.reduce((total, item) => total + countDrizzleParams(item), 0);
+  }
+
+  const chunks = (value as { queryChunks?: unknown[] }).queryChunks;
+  if (Array.isArray(chunks)) {
+    return chunks.reduce((total, item) => total + countDrizzleParams(item), 0);
+  }
+
+  return 0;
+}
+
 /**
  * Create a chainable Drizzle-like mock.
  * Supports: select().from().where().leftJoin().innerJoin().limit().offset().orderBy().get()
@@ -146,7 +167,13 @@ function resetMockDbState(overrides: Partial<MockDbState> = {}) {
 function createDrizzleMock() {
   const selectChain: any = {
     from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
+    where: vi.fn((...conditions: unknown[]) => {
+      const paramCount = conditions.reduce((total, condition) => total + countDrizzleParams(condition), 0);
+      if (paramCount > 100) {
+        throw new Error(`D1_ERROR: too many SQL variables (got ${paramCount}, max 100)`);
+      }
+      return selectChain;
+    }),
     leftJoin: vi.fn().mockReturnThis(),
     innerJoin: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
@@ -1402,6 +1429,10 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(latestMsgCalls.length).toBeGreaterThanOrEqual(2);
 
       for (const call of latestMsgCalls) {
+        expect(call.bindArgs.length).toBeLessThanOrEqual(100);
+      }
+
+      for (const call of prepared) {
         expect(call.bindArgs.length).toBeLessThanOrEqual(100);
       }
 
