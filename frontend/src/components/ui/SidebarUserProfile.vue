@@ -75,7 +75,7 @@ const props = defineProps<{
   }>()
   const frontendLogger = createLogger('SidebarUserProfile')
   import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
   import { useAuthStore } from '@/stores/auth'
   import { useToast } from '@/composables/useToast'
   import { useConfirmDialog } from '@/composables/useConfirmDialog'
@@ -85,6 +85,7 @@ const props = defineProps<{
   import LogoutIcon from '@/components/icons/LogoutIcon.vue'
 
   const route = useRoute()
+  const router = useRouter()
   const authStore = useAuthStore()
   const { showError } = useToast()
   const { showInfo } = useConfirmDialog()
@@ -127,11 +128,13 @@ const props = defineProps<{
   const viewProfile = () => {
     showUserMenu.value = false
     frontendLogger.debug('查看個人資料')
+    router.push('/profile')
   }
 
   const changePassword = () => {
     showUserMenu.value = false
     frontendLogger.debug('修改密碼')
+    router.push({ path: '/profile', hash: '#security' })
   }
 
   const handleLogout = async () => {

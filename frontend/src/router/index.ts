@@ -31,6 +31,15 @@ const router = createRouter({
       }
     },
     {
+      path: '/profile',
+      name: 'Profile',
+      component: () => import('@/views/ProfileView.vue'),
+      meta: {
+        requiresAuth: true,
+        title: '個人設定'
+      }
+    },
+    {
       path: '/conversations',
       name: 'Conversations',
       component: () => import('@/views/ConversationsTable.vue'),  // 使用優化表格版本

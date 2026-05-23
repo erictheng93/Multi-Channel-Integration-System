@@ -11,6 +11,12 @@ interface RetryConfig {
   retryCondition?: (_error: unknown) => boolean;
 }
 
+interface RequestOptions {
+  retries?: number;
+  isRetry?: boolean;
+  redirectOnUnauthorized?: boolean;
+}
+
 export interface FileDownloadResponse {
   blob: Blob;
   filename: string;
@@ -219,9 +225,9 @@ class ApiClient {
     method: string,
     endpoint: string,
     data?: unknown,
-    options: { retries?: number; isRetry?: boolean } = {}
+    options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
-    const { retries = 0, isRetry = false } = options;
+    const { retries = 0, isRetry = false, redirectOnUnauthorized = true } = options;
 
     if (import.meta.env.DEV) {
       frontendLogger.debug(`API Request: ${method} ${this.baseURL}${endpoint}`);
@@ -249,7 +255,7 @@ class ApiClient {
 
       if (!response.ok) {
         // Handle 401 Unauthorized with token refresh
-        if (response.status === 401 && !isRetry && this.refreshToken) {
+        if (response.status === 401 && redirectOnUnauthorized && !isRetry && this.refreshToken) {
           const newToken = await this.refreshAuthToken();
           if (newToken) {
             // Retry the request with new token
@@ -258,7 +264,7 @@ class ApiClient {
         }
 
         // Handle 401 without refresh token — guarded redirect
-        if (response.status === 401) {
+        if (response.status === 401 && redirectOnUnauthorized) {
           this.redirectToLogin();
         }
 
@@ -325,20 +331,20 @@ class ApiClient {
     }
   }
 
-  get<T>(endpoint: string) {
-    return this.request<T>('GET', endpoint);
+  get<T>(endpoint: string, options?: RequestOptions) {
+    return this.request<T>('GET', endpoint, undefined, options);
   }
 
-  post<T>(endpoint: string, data?: unknown) {
-    return this.request<T>('POST', endpoint, data);
+  post<T>(endpoint: string, data?: unknown, options?: RequestOptions) {
+    return this.request<T>('POST', endpoint, data, options);
   }
 
-  put<T>(endpoint: string, data?: unknown) {
-    return this.request<T>('PUT', endpoint, data);
+  put<T>(endpoint: string, data?: unknown, options?: RequestOptions) {
+    return this.request<T>('PUT', endpoint, data, options);
   }
 
-  delete<T>(endpoint: string) {
-    return this.request<T>('DELETE', endpoint);
+  delete<T>(endpoint: string, options?: RequestOptions) {
+    return this.request<T>('DELETE', endpoint, undefined, options);
   }
 
   async downloadFile(
