@@ -9,7 +9,7 @@ import { ref } from 'vue'
 import type { Conversation, ConversationFilters } from '@/types'
 import type { WebSocketMessage } from '@/services/websocketClient'
 import { createRealtimeHandler, type RealtimeHandlerDeps } from '@/stores/conversations/realtimeHandler'
-import type { ConversationStats, TransferredConversationState } from '@/stores/conversations/types'
+import type { ConversationStats, TransferredConversationState, ReceivedConversationState } from '@/stores/conversations/types'
 
 // ===== Mock Setup =====
 
@@ -67,6 +67,7 @@ function makeDeps(overrides: Partial<RealtimeHandlerDeps> = {}): RealtimeHandler
     conversations: ref<Conversation[]>([]),
     currentConversation: ref<Conversation | null>(null),
     transferredConversation: ref<TransferredConversationState | null>(null),
+    receivedConversation: ref<ReceivedConversationState | null>(null),
     stats: ref<ConversationStats>({ total: 0, active: 0, assigned: 0, pending: 0, unreadCount: 0 }),
     lastUpdateTime: ref<Date | null>(null),
     activeFilters: ref<ConversationFilters>({}),
@@ -380,6 +381,34 @@ describe('createRealtimeHandler', () => {
         expect(deps.conversations.value[0].id).toBe('conv-new')
         expect(deps.conversations.value[0].assignedTeamId).toBe(1)
         expect(deps.updateStatsFromConversations).toHaveBeenCalled()
+      })
+
+      it('preserves LINE identity fields from transfer payload when adding conversation', () => {
+        const deps = makeDeps({ conversations: ref([]) })
+        const { handleRealtimeUpdate } = createRealtimeHandler(deps)
+
+        handleRealtimeUpdate(makeWsMessage('conversation_transferred', {
+          action: 'assigned',
+          toTeamId: 1,
+          toTeamName: 'Support Team',
+          conversation: {
+            customerName: 'Line Customer',
+            platform: 'line',
+            status: 'active',
+            customerId: 123,
+            platformUserId: 'U1234567890abcdef',
+            avatarUrl: 'https://profile.line-scdn.net/avatar.jpg'
+          }
+        }, 'conv-line-transfer'))
+
+        expect(deps.conversations.value).toHaveLength(1)
+        expect(deps.conversations.value[0].customer).toEqual(expect.objectContaining({
+          id: '123',
+          name: 'Line Customer',
+          platform: 'line',
+          platformUserId: 'U1234567890abcdef',
+          avatarUrl: 'https://profile.line-scdn.net/avatar.jpg'
+        }))
       })
 
       it('updates existing conversation team info instead of duplicating', () => {

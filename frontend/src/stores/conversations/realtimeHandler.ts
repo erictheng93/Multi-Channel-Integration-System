@@ -7,7 +7,7 @@ import { conversationCache } from '@/services/cacheManager'
 import { normalizeTeamId } from '@/utils/type-normalization'
 import { useAuthStore } from '../auth'
 import { computeStatsFromConversations } from './helpers'
-import type { LiffConversation, ConversationStats, TransferredConversationState } from './types'
+import type { LiffConversation, ConversationStats, TransferredConversationState, ReceivedConversationState } from './types'
 import type { Platform } from '@/types'
 import { nowISO } from '@/utils/timestamp'
 import { createLogger } from '@/utils/logger'
@@ -18,6 +18,7 @@ export interface RealtimeHandlerDeps {
   conversations: Ref<Conversation[]>
   currentConversation: Ref<Conversation | null>
   transferredConversation: Ref<TransferredConversationState | null>
+  receivedConversation: Ref<ReceivedConversationState | null>
   stats: Ref<ConversationStats>
   lastUpdateTime: Ref<Date | null>
   activeFilters: Ref<ConversationFilters>
@@ -52,6 +53,7 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
     conversations,
     currentConversation,
     transferredConversation,
+    receivedConversation,
     stats,
     lastUpdateTime,
     activeFilters,
@@ -352,6 +354,19 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             break // 忽略此事件
           }
 
+          // Phase 3: 若用戶正在查看這個被轉入本團隊的對話，顯示「已轉入」提示橫幅。
+          // 守衛：若該對話剛剛從本團隊「轉出」(transferredConversation)，不要再顯示轉入提示，避免矛盾。
+          if (
+            currentConversation.value?.id === conversationId &&
+            transferredConversation.value?.conversationId !== conversationId
+          ) {
+            receivedConversation.value = {
+              conversationId,
+              fromTeamName: (data?.fromTeamName as string) || '其他團隊',
+              receivedAt: nowISO()
+            }
+          }
+
           // 將對話添加到列表頂部
           const incomingConversation = data?.conversation as Record<string, unknown> | undefined
           if (conversationId && incomingConversation) {
@@ -405,6 +420,11 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
               const platform = (incomingConversation.platform as string) || 'line'
               const status = (incomingConversation.status as string) || 'active'
               const customerId = String(incomingConversation.customerId || conversationId)
+              // LINE 身份資訊：轉指派事件現在會帶上真實的 platformUserId / avatarUrl。
+              // 若 payload 缺少 platformUserId（LIFF pending / line-follow 流程），
+              // 才回退到 customerId，避免覆蓋成內部數字 ID。
+              const platformUserId = (incomingConversation.platformUserId as string) || customerId
+              const avatarUrl = incomingConversation.avatarUrl as string | undefined
 
               // 構建完整的 Conversation 對象
               // Note: Individual assignment (assignedAgentId) removed - only team assignment is supported now
@@ -424,7 +444,8 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
                   id: customerId,
                   name: customerName,
                   platform: platform as Platform,
-                  platformUserId: customerId,
+                  platformUserId,
+                  avatarUrl,
                   createdAt: Date.now()
                 },
                 lastMessage: incomingConversation.lastMessage as Conversation['lastMessage'],

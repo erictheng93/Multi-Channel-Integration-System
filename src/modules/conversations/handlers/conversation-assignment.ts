@@ -475,6 +475,8 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
           id: conversations.id,
           customerId: conversations.customerId,
           customerName: customers.displayName,
+          platformUserId: customers.platformUserId,  // LINE user id (U...) — needed for customer card
+          avatarUrl: customers.avatarUrl,             // avatar lost on transfer without this
           platform: customers.platform,  // platform is from customers table
           status: conversations.status,
           lastMessageAt: conversations.lastMessageAt
@@ -500,6 +502,8 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
           id: conversationId,
           customerId: conversationDetails?.customerId || undefined,
           customerName: conversationDetails?.customerName || '未知客戶',
+          platformUserId: conversationDetails?.platformUserId || undefined,
+          avatarUrl: conversationDetails?.avatarUrl || undefined,
           platform: conversationDetails?.platform || undefined,
           status: conversationDetails?.status || 'active',
           lastMessage: conversationDetails?.lastMessageAt ? {

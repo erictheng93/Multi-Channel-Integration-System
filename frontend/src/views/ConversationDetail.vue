@@ -22,12 +22,24 @@
         @export="showExportDialog = true"
       />
 
-      <!--  Transferred Conversation Banner Component -->
+      <!--  Transferred Conversation Banner Component (轉出本團隊) -->
       <TransferredConversationBanner
         :is-visible="isCurrentConversationTransferred"
         :team-name="transferredConversation?.toTeamName"
         :transferred-at="transferredConversation?.transferredAt"
         @back="handleTransferredBack"
+      />
+
+      <!--  Received Conversation Banner (轉入本團隊) -->
+      <TransferredConversationBanner
+        :is-visible="isCurrentConversationReceived"
+        variant="info"
+        title="此對話已轉入"
+        message="此對話由其他團隊轉入："
+        back-button-text="知道了"
+        :team-name="receivedConversation?.fromTeamName"
+        :transferred-at="receivedConversation?.receivedAt"
+        @back="handleReceivedDismiss"
       />
 
       <!-- Enhanced Search Panel (toggleable from header) -->
@@ -277,13 +289,18 @@ const showExportDialog = ref(false)
 // Transferred conversation state from store
 // FIX: 使用 storeToRefs 保持 ref 的響應性，避免解構後失去追蹤
 const conversationsStore = useConversationsStore()
-const { transferredConversation } = storeToRefs(conversationsStore)
-const { clearTransferredState, initializeRealtime } = conversationsStore
+const { transferredConversation, receivedConversation } = storeToRefs(conversationsStore)
+const { clearTransferredState, clearReceivedState, initializeRealtime } = conversationsStore
 
 // Check if current conversation is transferred
 // FIX: 現在 transferredConversation 是響應式的 ref，需要使用 .value
 const isCurrentConversationTransferred = computed(() => {
   return transferredConversation.value?.conversationId === conversationId.value
+})
+
+// Check if current conversation was just received (transferred into the user's team)
+const isCurrentConversationReceived = computed(() => {
+  return receivedConversation.value?.conversationId === conversationId.value
 })
 
 // Debug mode
@@ -447,6 +464,7 @@ onUnmounted(() => {
   isScrollReady.value = false
   // 清理轉移狀態
   clearTransferredState()
+  clearReceivedState()
 })
 
 function goBack() { router.push('/conversations') }
@@ -455,6 +473,11 @@ function goBack() { router.push('/conversations') }
 function handleTransferredBack() {
   clearTransferredState()
   goBack()
+}
+
+// Handler for received conversation - dismiss the banner and stay on the conversation
+function handleReceivedDismiss() {
+  clearReceivedState()
 }
 
 // Message event handlers (use controller methods directly)

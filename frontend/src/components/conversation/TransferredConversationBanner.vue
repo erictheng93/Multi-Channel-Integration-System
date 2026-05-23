@@ -3,6 +3,7 @@
     <div
       v-if="isVisible"
       class="transferred-conversation-banner"
+      :class="`variant-${variant}`"
     >
       <div class="banner-content">
         <div class="banner-icon">
@@ -124,6 +125,12 @@ interface Props {
    * @default '返回對話列表'
    */
   backButtonText?: string
+
+  /**
+   * Visual variant. 'warning' (amber) for transferred-away, 'info' (green) for received-in.
+   * @default 'warning'
+   */
+  variant?: 'warning' | 'info'
 }
 
 withDefaults(defineProps<Props>(), {
@@ -132,6 +139,7 @@ withDefaults(defineProps<Props>(), {
   title: '此對話已轉移',
   message: '此對話已轉移至其他團隊：',
   backButtonText: '返回對話列表',
+  variant: 'warning',
 })
 
 const emit = defineEmits<Emits>()
@@ -251,6 +259,44 @@ const formatTime = (isoTime: string): string => {
 .back-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+}
+
+/* ====== Info variant (green) — conversation received INTO your team ====== */
+.variant-info.transferred-conversation-banner {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border-left: 4px solid #34c759;
+  border-bottom: 1px solid #34c759;
+}
+
+.variant-info .banner-icon {
+  color: #15803d;
+  background: rgba(52, 199, 89, 0.15);
+}
+
+.variant-info .banner-text strong {
+  color: #14532d;
+}
+
+.variant-info .banner-hint,
+.variant-info .team-name {
+  color: #166534;
+}
+
+.variant-info .transfer-time {
+  color: #16a34a;
+}
+
+.variant-info .back-btn {
+  background: #34c759;
+}
+
+.variant-info .back-btn:hover {
+  background: #16a34a;
+  box-shadow: 0 4px 8px rgba(52, 199, 89, 0.3);
+}
+
+.variant-info .back-btn:active {
+  box-shadow: 0 2px 4px rgba(52, 199, 89, 0.2);
 }
 
 .back-btn svg {

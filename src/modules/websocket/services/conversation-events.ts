@@ -81,6 +81,10 @@ export class ConversationEventBroadcaster extends EventBroadcasterBase {
       id: string;
       customerId?: number;
       customerName?: string;
+      // LINE/platform identity — required by the receiving client to render the
+      // customer card after a cross-team transfer (avatar + platform user id).
+      platformUserId?: string;
+      avatarUrl?: string;
       platform?: string;
       status?: string;
       lastMessage?: {
