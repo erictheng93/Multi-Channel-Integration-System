@@ -83,6 +83,7 @@ tmp-*
 
 # Claude Code 個人本機設定（每位開發者獨立維護，不共享）
 .claude/settings.local.json
+.mcp.json
 
 # 生成的 QR Code 檔案
 team*_qr.svg
