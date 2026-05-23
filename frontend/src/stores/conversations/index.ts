@@ -7,7 +7,7 @@ export { createAssignmentActions } from './assignmentActions'
 export { createBackgroundSync } from './backgroundSync'
 export { createCacheStrategy } from './cacheStrategy'
 
-export type { SyncStatus, TransferredConversationState, ConversationStats, LiffConversation } from './types'
+export type { SyncStatus, TransferredConversationState, ReceivedConversationState, ConversationStats, LiffConversation } from './types'
 export type { RealtimeHandlerDeps } from './realtimeHandler'
 export type { AssignmentActionsDeps } from './assignmentActions'
 export type { BackgroundSyncDeps } from './backgroundSync'

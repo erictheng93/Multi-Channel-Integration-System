@@ -10,7 +10,7 @@ import { conversationCache } from '@/services/cacheManager'
 import { useWebSocketStore, type SubscriptionId } from './websocket'
 
 // Sub-module imports
-import type { SyncStatus, TransferredConversationState } from './conversations/types'
+import type { SyncStatus, TransferredConversationState, ReceivedConversationState } from './conversations/types'
 import { hasConversationChanged, computeStatsFromConversations } from './conversations/helpers'
 import { createRealtimeHandler } from './conversations/realtimeHandler'
 import { createAssignmentActions } from './conversations/assignmentActions'
@@ -28,8 +28,10 @@ export const useConversationsStore = defineStore('conversations', () => {
   const currentConversation = ref<Conversation | null>(null)
   const messages = ref<Message[]>([])
 
-  // Transferred conversation state - tracks when a conversation is transferred while viewing
+  // Transferred conversation state - tracks when a conversation is transferred AWAY while viewing
   const transferredConversation = ref<TransferredConversationState | null>(null)
+  // Received conversation state - tracks when a conversation is transferred INTO the user's team while viewing
+  const receivedConversation = ref<ReceivedConversationState | null>(null)
 
   // Enhanced loading states for smooth UX
   const loading = ref(false) // Initial load
@@ -111,6 +113,10 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   const clearTransferredState = () => {
     transferredConversation.value = null
+  }
+
+  const clearReceivedState = () => {
+    receivedConversation.value = null
   }
 
   const handleError = (err: unknown, defaultMessage: string) => {
@@ -333,6 +339,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     conversations,
     currentConversation,
     transferredConversation,
+    receivedConversation,
     stats,
     lastUpdateTime,
     activeFilters,
@@ -757,6 +764,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     stats,
     syncStatus,
     transferredConversation,
+    receivedConversation,
 
     // Computed
     allMessages,
@@ -787,6 +795,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     setConversations,
     clearError,
     clearTransferredState,
+    clearReceivedState,
 
     // Optimistic updates and cache strategies
     optimisticUpdateConversation,

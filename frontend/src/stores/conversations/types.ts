@@ -13,11 +13,18 @@ export interface LiffConversation extends Conversation {
 // Sync status type (backward compatible)
 export type SyncStatus = 'disconnected' | 'connecting' | 'connected' | 'polling' | 'error'
 
-/** Transferred conversation state - tracks when a conversation is transferred while viewing */
+/** Transferred conversation state - tracks when a conversation is transferred AWAY while viewing */
 export interface TransferredConversationState {
   conversationId: string
   toTeamName: string
   transferredAt: string
+}
+
+/** Received conversation state - tracks when a conversation is transferred INTO the user's team while viewing */
+export interface ReceivedConversationState {
+  conversationId: string
+  fromTeamName: string
+  receivedAt: string
 }
 
 /** Stats shape computed from conversations */
@@ -39,6 +46,7 @@ export interface ConversationStoreDeps {
   currentConversation: Ref<Conversation | null>
   messages: Ref<Message[]>
   transferredConversation: Ref<TransferredConversationState | null>
+  receivedConversation: Ref<ReceivedConversationState | null>
 
   // Loading states
   loading: Ref<boolean>
