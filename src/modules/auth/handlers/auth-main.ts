@@ -439,6 +439,153 @@ authHandler.get('/me', jwtAuth, async (c) => {
   }
 });
 
+// 客服自助修改個人資料 (僅允許 displayName + email，嚴格白名單防止越權)
+authHandler.put('/me', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const userId = String(user.id);
+    const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+    // 白名單：嚴禁透過 spread 將整個 body 寫入 DB
+    const updates: { displayName?: string; email?: string } = {};
+
+    if (typeof body.displayName === 'string') {
+      const trimmed = body.displayName.trim();
+      if (trimmed.length < 1 || trimmed.length > 50) {
+        return badRequestResponse(c, 'displayName must be 1-50 characters');
+      }
+      updates.displayName = trimmed;
+    }
+
+    if (typeof body.email === 'string') {
+      const trimmed = body.email.trim().toLowerCase();
+      // 基本 Email 格式驗證
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        return badRequestResponse(c, 'Invalid email format');
+      }
+      updates.email = trimmed;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return badRequestResponse(c, 'No updatable fields provided (allowed: displayName, email)');
+    }
+
+    const db = createDbClient(c.env.DB);
+
+    // 取當前資料 (用於 audit log 的 before / 比對是否真的有變更)
+    const [current] = await db
+      .select({
+        id: agents.id,
+        displayName: agents.displayName,
+        email: agents.email,
+      })
+      .from(agents)
+      .where(eq(agents.id, userId))
+      .limit(1);
+
+    if (!current) {
+      return c.json({ success: false, error: 'User not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // Email 唯一性檢查 (只在實際改動時)
+    if (updates.email && updates.email !== current.email) {
+      const [conflict] = await db
+        .select({ id: agents.id })
+        .from(agents)
+        .where(and(eq(agents.email, updates.email), sql`${agents.id} != ${userId}`))
+        .limit(1);
+
+      if (conflict) {
+        return c.json({
+          success: false,
+          error: 'Email already in use',
+        }, HTTP_STATUS.CONFLICT);
+      }
+    }
+
+    // 計算實際變動欄位 (相同值不寫入、不記錄)
+    const actualChanges: Array<{ field: string; old: string; new: string }> = [];
+    const setPayload: { displayName?: string; email?: string; updatedAt: string } = {
+      updatedAt: nowISO(),
+    };
+
+    if (updates.displayName !== undefined && updates.displayName !== current.displayName) {
+      setPayload.displayName = updates.displayName;
+      actualChanges.push({ field: 'displayName', old: current.displayName, new: updates.displayName });
+    }
+    if (updates.email !== undefined && updates.email !== current.email) {
+      setPayload.email = updates.email;
+      actualChanges.push({ field: 'email', old: current.email, new: updates.email });
+    }
+
+    // 沒有真正的變動，直接回傳
+    if (actualChanges.length === 0) {
+      return c.json({
+        success: true,
+        data: {
+          id: userId,
+          email: current.email,
+          name: current.displayName,
+          displayName: current.displayName,
+          role: user.role,
+          isActive: user.isActive,
+          createdAt: new Date(user.createdAt).getTime(),
+        },
+        message: 'No changes',
+        timestamp: nowISO(),
+      });
+    }
+
+    const [updated] = await db
+      .update(agents)
+      .set(setPayload)
+      .where(eq(agents.id, userId))
+      .returning();
+
+    if (!updated) {
+      return c.json({ success: false, error: 'Update failed' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+    }
+
+    // 寫稽核日誌 (非阻塞 — ActivityService 內部已捕捉錯誤)
+    const activityService = new ActivityService(c.env.DB);
+    await activityService.logActivity({
+      userId,
+      userName: updated.displayName,
+      userRole: user.role,
+      action: ACTIVITY_ACTIONS.USER_UPDATE,
+      resourceType: RESOURCE_TYPES.USER,
+      resourceId: userId,
+      details: {
+        selfService: true,
+        changes: actualChanges,
+      },
+      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+      userAgent: c.req.header('User-Agent'),
+    });
+
+    return c.json({
+      success: true,
+      data: {
+        id: updated.id,
+        email: updated.email,
+        name: updated.displayName,
+        displayName: updated.displayName,
+        role: updated.role,
+        isActive: updated.isActive,
+        createdAt: updated.createdAt ? new Date(updated.createdAt).getTime() : Date.now(),
+      },
+      message: 'Profile updated successfully',
+      timestamp: nowISO(),
+    });
+
+  } catch (error) {
+    authLogger.error('Self-service profile update failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return globalErrorHandler.handleError(c, error);
+  }
+});
+
 // 刷新 Token
 authHandler.post('/refresh', async (c) => {
   try {

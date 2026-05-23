@@ -42,7 +42,9 @@ export const authApi = {
       apiClient.setAuthHeader(tempToken)
       
       try {
-        return await apiClient.post('/auth/change-password', data)
+        return await apiClient.post('/auth/change-password', data, {
+          redirectOnUnauthorized: false,
+        })
       } finally {
         // 恢復原始token
         if (originalToken) {
@@ -52,7 +54,9 @@ export const authApi = {
         }
       }
     } else {
-      return apiClient.post('/auth/change-password', data)
+      return apiClient.post('/auth/change-password', data, {
+        redirectOnUnauthorized: false,
+      })
     }
   }
 }

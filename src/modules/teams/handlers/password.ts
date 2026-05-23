@@ -10,6 +10,7 @@ import { agents } from '@/db/schema';
 import { hashPassword, verifyPassword } from '@/modules/auth/services/auth';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
+import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import type {
   ResetPasswordRequest,
   ChangePasswordRequest
@@ -98,7 +99,11 @@ passwordHandler.post('/:memberId/reset', jwtAuth, requireManagerOrAdmin(), async
 passwordHandler.post('/change-password', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
+    const userId = String(user.id);
     const data: ChangePasswordRequest = await c.req.json();
+    const ipAddress = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For');
+    const userAgent = c.req.header('User-Agent');
+    const activityService = new ActivityService(c.env.DB);
 
     if (!data.currentPassword || !data.newPassword) {
       return c.json({
@@ -113,7 +118,7 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
     const [member] = await db
       .select()
       .from(agents)
-      .where(eq(agents.id, String(user.id)))
+      .where(eq(agents.id, userId))
       .limit(1);
 
     if (!member) {
@@ -126,6 +131,22 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
     // Verify current password using bcrypt
     const isCurrentPasswordValid = await verifyPassword(data.currentPassword, member.passwordHash);
     if (!isCurrentPasswordValid) {
+      // 記錄安全事件：舊密碼錯誤 (可能是被盜或誤輸入)
+      await activityService.logActivity({
+        userId,
+        userName: member.displayName,
+        userRole: user.role,
+        action: ACTIVITY_ACTIONS.USER_UPDATE,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: userId,
+        details: {
+          event: 'password_change_failed',
+          reason: 'wrong_current_password',
+          selfService: true,
+        },
+        ipAddress,
+        userAgent,
+      });
       return c.json({
         success: false,
         error: 'Current password is incorrect'
@@ -142,7 +163,23 @@ passwordHandler.post('/change-password', jwtAuth, async (c) => {
         passwordHash: hashedNewPassword,
         updatedAt: nowISO()
       })
-      .where(eq(agents.id, String(user.id)));
+      .where(eq(agents.id, userId));
+
+    // 記錄稽核日誌 (不記密碼本身)
+    await activityService.logActivity({
+      userId,
+      userName: member.displayName,
+      userRole: user.role,
+      action: ACTIVITY_ACTIONS.USER_UPDATE,
+      resourceType: RESOURCE_TYPES.USER,
+      resourceId: userId,
+      details: {
+        event: 'password_change',
+        selfService: true,
+      },
+      ipAddress,
+      userAgent,
+    });
 
     return c.json({
       success: true,
