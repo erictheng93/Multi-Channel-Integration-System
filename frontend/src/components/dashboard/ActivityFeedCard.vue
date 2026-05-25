@@ -85,8 +85,20 @@
             <div class="activity-description">
               {{ activity.description }}
             </div>
-            <div class="activity-time">
-              {{ formatTime(activity.createdAt) }}
+            <div
+              class="activity-time"
+              :title="formatFullTimestamp(activity.createdAt)"
+              :aria-label="formatFullTimestamp(activity.createdAt)"
+            >
+              <span
+                v-if="activity.priority === 'high'"
+                class="activity-time-absolute"
+              >{{ formatAbsoluteTime(activity.createdAt) }}</span>
+              <span
+                v-if="activity.priority === 'high'"
+                class="activity-time-separator"
+              > · </span>
+              <span class="activity-time-relative">{{ formatTime(activity.createdAt) }}</span>
             </div>
           </div>
         </div>
@@ -269,6 +281,40 @@ const connectionStatusText = computed(() => {
 const showReconnectButton = computed(() => {
   return props.connectionState === 'disconnected' || props.connectionState === 'error'
 })
+
+/**
+ * 高優先級活動的絕對時間顯示（時:分:秒）
+ *
+ * 為什麼僅高優先級顯示：高優先級事件（如連線失敗、緊急訊息）需要精確時間
+ * 戳供使用者診斷時間軸與跨系統比對；低優先級事件保持相對時間以維持視覺
+ * 簡潔，符合 Apple-Native Soft Minimalism。
+ */
+function formatAbsoluteTime(date: Date): string {
+  return date.toLocaleTimeString('zh-TW', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+}
+
+/**
+ * 完整時間戳（用於 title tooltip 與 aria-label）
+ *
+ * 所有活動項目都帶上完整時間戳，使用者只要懸停 (hover) 或螢幕閱讀器即可取
+ * 得精確時間，不增加視覺負擔。
+ */
+function formatFullTimestamp(date: Date): string {
+  return date.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+}
 
 /**
  * 延遲狀態的 CSS 類別
@@ -538,5 +584,16 @@ const latencyClass = computed(() => {
 .activity-time {
   font-size: 0.8125rem;
   color: var(--gray-500);
+  cursor: help;
+}
+
+.activity-time-absolute {
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-700);
+}
+
+.activity-time-separator {
+  color: var(--gray-400);
 }
 </style>

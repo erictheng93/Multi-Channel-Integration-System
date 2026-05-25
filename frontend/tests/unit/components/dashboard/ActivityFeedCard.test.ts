@@ -382,6 +382,104 @@ describe('ActivityFeedCard', () => {
     })
   })
 
+  describe('时间戳显示', () => {
+    it('高优先级活动应该显示绝对时间前缀（HH:MM:SS）', () => {
+      const wrapper = mount(ActivityFeedCard, {
+        props: {
+          ...defaultProps,
+          activities: [mockActivities[0]] // priority: 'high', 12:00:00
+        },
+        global: { stubs: defaultGlobalStubs }
+      })
+
+      const absolute = wrapper.find('.activity-time-absolute')
+      expect(absolute.exists()).toBe(true)
+      expect(absolute.text()).toMatch(/^\d{2}:\d{2}:\d{2}$/)
+      expect(absolute.text()).toBe('12:00:00')
+    })
+
+    it('中优先级活动不应该显示绝对时间前缀', () => {
+      const wrapper = mount(ActivityFeedCard, {
+        props: {
+          ...defaultProps,
+          activities: [mockActivities[1]] // priority: 'medium'
+        },
+        global: { stubs: defaultGlobalStubs }
+      })
+
+      expect(wrapper.find('.activity-time-absolute').exists()).toBe(false)
+      expect(wrapper.find('.activity-time-separator').exists()).toBe(false)
+      expect(wrapper.find('.activity-time-relative').exists()).toBe(true)
+    })
+
+    it('低优先级活动不应该显示绝对时间前缀', () => {
+      const wrapper = mount(ActivityFeedCard, {
+        props: {
+          ...defaultProps,
+          activities: [mockActivities[2]] // priority: 'low'
+        },
+        global: { stubs: defaultGlobalStubs }
+      })
+
+      expect(wrapper.find('.activity-time-absolute').exists()).toBe(false)
+      expect(wrapper.find('.activity-time-separator').exists()).toBe(false)
+    })
+
+    it('所有活动都应该在 .activity-time 上有完整时间戳 title 属性', () => {
+      const wrapper = mount(ActivityFeedCard, {
+        props: {
+          ...defaultProps,
+          activities: mockActivities
+        },
+        global: { stubs: defaultGlobalStubs }
+      })
+
+      const times = wrapper.findAll('.activity-time')
+      expect(times).toHaveLength(3)
+      times.forEach((time) => {
+        const title = time.attributes('title')
+        expect(title).toBeTruthy()
+        expect(title).toMatch(/2025/)
+      })
+    })
+
+    it('应该在 .activity-time 上设置 aria-label 以支持屏幕阅读器', () => {
+      const wrapper = mount(ActivityFeedCard, {
+        props: {
+          ...defaultProps,
+          activities: [mockActivities[0]]
+        },
+        global: { stubs: defaultGlobalStubs }
+      })
+
+      const time = wrapper.find('.activity-time')
+      const ariaLabel = time.attributes('aria-label')
+      expect(ariaLabel).toBeTruthy()
+      expect(ariaLabel).toBe(time.attributes('title'))
+    })
+
+    it('应该使用 24 小时制格式', () => {
+      const afternoonActivity: Activity = {
+        id: 'pm-1',
+        type: 'system-error',
+        title: '連線失敗',
+        description: '即時更新服務連線失敗',
+        priority: 'high',
+        createdAt: new Date('2025-01-01T23:45:30')
+      }
+
+      const wrapper = mount(ActivityFeedCard, {
+        props: {
+          ...defaultProps,
+          activities: [afternoonActivity]
+        },
+        global: { stubs: defaultGlobalStubs }
+      })
+
+      expect(wrapper.find('.activity-time-absolute').text()).toBe('23:45:30')
+    })
+  })
+
   describe('边界情况', () => {
     it('应该处理大量活动', () => {
       const manyActivities = Array.from({ length: 50 }, (_, i) => ({
