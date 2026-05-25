@@ -446,8 +446,9 @@ authHandler.put('/me', jwtAuth, async (c) => {
     const userId = String(user.id);
     const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
 
-    // 白名單：嚴禁透過 spread 將整個 body 寫入 DB
-    const updates: { displayName?: string; email?: string } = {};
+    // 白名單：客服自助僅能改 displayName
+    // Email 與角色由管理員透過 /api/teams/members/... 管理
+    const updates: { displayName?: string } = {};
 
     if (typeof body.displayName === 'string') {
       const trimmed = body.displayName.trim();
@@ -457,17 +458,8 @@ authHandler.put('/me', jwtAuth, async (c) => {
       updates.displayName = trimmed;
     }
 
-    if (typeof body.email === 'string') {
-      const trimmed = body.email.trim().toLowerCase();
-      // 基本 Email 格式驗證
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-        return badRequestResponse(c, 'Invalid email format');
-      }
-      updates.email = trimmed;
-    }
-
     if (Object.keys(updates).length === 0) {
-      return badRequestResponse(c, 'No updatable fields provided (allowed: displayName, email)');
+      return badRequestResponse(c, 'No updatable fields provided (allowed: displayName)');
     }
 
     const db = createDbClient(c.env.DB);
@@ -487,35 +479,15 @@ authHandler.put('/me', jwtAuth, async (c) => {
       return c.json({ success: false, error: 'User not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
-    // Email 唯一性檢查 (只在實際改動時)
-    if (updates.email && updates.email !== current.email) {
-      const [conflict] = await db
-        .select({ id: agents.id })
-        .from(agents)
-        .where(and(eq(agents.email, updates.email), sql`${agents.id} != ${userId}`))
-        .limit(1);
-
-      if (conflict) {
-        return c.json({
-          success: false,
-          error: 'Email already in use',
-        }, HTTP_STATUS.CONFLICT);
-      }
-    }
-
     // 計算實際變動欄位 (相同值不寫入、不記錄)
     const actualChanges: Array<{ field: string; old: string; new: string }> = [];
-    const setPayload: { displayName?: string; email?: string; updatedAt: string } = {
+    const setPayload: { displayName?: string; updatedAt: string } = {
       updatedAt: nowISO(),
     };
 
     if (updates.displayName !== undefined && updates.displayName !== current.displayName) {
       setPayload.displayName = updates.displayName;
       actualChanges.push({ field: 'displayName', old: current.displayName, new: updates.displayName });
-    }
-    if (updates.email !== undefined && updates.email !== current.email) {
-      setPayload.email = updates.email;
-      actualChanges.push({ field: 'email', old: current.email, new: updates.email });
     }
 
     // 沒有真正的變動，直接回傳
