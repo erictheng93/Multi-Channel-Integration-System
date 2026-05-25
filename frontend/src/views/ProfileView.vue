@@ -1,6 +1,6 @@
 <!--
   ProfileView.vue
-  個人設定頁面 — 客服自助修改 displayName、email、密碼
+  個人設定頁面 — 客服自助修改 displayName 與密碼（Email/角色由管理員管理）
   遵循 Apple-Native Soft Minimalism (docs/UIUX-Design-System.md)
 -->
 
@@ -33,7 +33,7 @@
               基本資料
             </h2>
             <p class="card-subtitle">
-              您可以修改顯示名稱與 Email；角色與團隊由管理員管理。
+              您可以修改顯示名稱；Email、角色與團隊由管理員管理。
             </p>
           </header>
 
@@ -67,27 +67,13 @@
             </div>
 
             <div class="form-field">
-              <label
-                for="profile-email"
-                class="form-label"
-              >
-                Email <span class="required">*</span>
+              <label class="form-label">
+                Email
               </label>
-              <input
-                id="profile-email"
-                v-model.trim="profile.email"
-                type="email"
-                class="form-input"
-                :class="{ 'is-invalid': profileErrors.email }"
-                autocomplete="email"
-                :disabled="profileSaving"
-              >
-              <span
-                v-if="profileErrors.email"
-                class="form-error"
-              >
-                {{ profileErrors.email }}
-              </span>
+              <div class="readonly-value">
+                {{ profile.email || '—' }}
+                <span class="readonly-hint">（由管理員管理）</span>
+              </div>
             </div>
 
             <div class="form-field">
@@ -259,16 +245,16 @@ const authStore = useAuthStore()
 const { showSuccess, showError } = useToast()
 
 // ============== 基本資料 ==============
+// Email 與角色由管理員管理，客服僅能修改 displayName
 const profile = reactive({
   displayName: '',
   email: '',
 })
 const originalProfile = reactive({
   displayName: '',
-  email: '',
 })
 const profileSaving = ref(false)
-const profileErrors = reactive<{ displayName?: string; email?: string }>({})
+const profileErrors = reactive<{ displayName?: string }>({})
 
 const roleLabel = computed(() => {
   const role = authStore.currentAgent?.role
@@ -278,10 +264,7 @@ const roleLabel = computed(() => {
 })
 
 const profileChanged = computed(() => {
-  return (
-    profile.displayName !== originalProfile.displayName ||
-    profile.email !== originalProfile.email
-  )
+  return profile.displayName !== originalProfile.displayName
 })
 
 function loadProfileFromStore(): void {
@@ -290,19 +273,15 @@ function loadProfileFromStore(): void {
   profile.displayName = agent.displayName ?? agent.name ?? ''
   profile.email = agent.email ?? ''
   originalProfile.displayName = profile.displayName
-  originalProfile.email = profile.email
 }
 
 function resetProfile(): void {
   profile.displayName = originalProfile.displayName
-  profile.email = originalProfile.email
   profileErrors.displayName = undefined
-  profileErrors.email = undefined
 }
 
 function validateProfile(): boolean {
   profileErrors.displayName = undefined
-  profileErrors.email = undefined
 
   if (!profile.displayName || profile.displayName.length < 1) {
     profileErrors.displayName = '請輸入顯示名稱'
@@ -310,14 +289,7 @@ function validateProfile(): boolean {
     profileErrors.displayName = '顯示名稱不可超過 50 字'
   }
 
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!profile.email) {
-    profileErrors.email = '請輸入 Email'
-  } else if (!emailPattern.test(profile.email)) {
-    profileErrors.email = 'Email 格式不正確'
-  }
-
-  return !profileErrors.displayName && !profileErrors.email
+  return !profileErrors.displayName
 }
 
 async function onSaveProfile(): Promise<void> {
@@ -326,12 +298,9 @@ async function onSaveProfile(): Promise<void> {
 
   profileSaving.value = true
   try {
-    const payload: { displayName?: string; email?: string } = {}
-    if (profile.displayName !== originalProfile.displayName) {
-      payload.displayName = profile.displayName
-    }
-    if (profile.email !== originalProfile.email) {
-      payload.email = profile.email
+    // 只送 displayName — Email 與角色由管理員管理
+    const payload: { displayName: string } = {
+      displayName: profile.displayName,
     }
 
     const body = await apiClient.put<Agent & { name?: string }>('/auth/me', payload)
@@ -344,7 +313,6 @@ async function onSaveProfile(): Promise<void> {
     if (authStore.currentAgent) {
       authStore.currentAgent.displayName = body.data.displayName
       authStore.currentAgent.name = body.data.displayName
-      authStore.currentAgent.email = body.data.email
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
           localStorage.setItem('currentAgent', JSON.stringify(authStore.currentAgent))
@@ -355,16 +323,10 @@ async function onSaveProfile(): Promise<void> {
     }
 
     originalProfile.displayName = profile.displayName
-    originalProfile.email = profile.email
-    showSuccess('已儲存', '個人資料已更新')
+    showSuccess('已儲存', '顯示名稱已更新')
   } catch (error: unknown) {
     const message = extractErrorMessage(error)
-    if (/email/i.test(message) && /(in use|already|exist|conflict)/i.test(message)) {
-      profileErrors.email = '此 Email 已被使用'
-      showError('儲存失敗', '此 Email 已被使用')
-    } else {
-      showError('儲存失敗', message)
-    }
+    showError('儲存失敗', message)
     logger.error('Profile update failed', { error: message })
   } finally {
     profileSaving.value = false
