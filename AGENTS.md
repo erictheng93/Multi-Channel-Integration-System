@@ -19,6 +19,9 @@ Use Bun, not npm/yarn/pnpm.
 ## Coding Style & Naming Conventions
 TypeScript is the default across backend and frontend. Follow the existing Prettier settings in `frontend/prettier.config.ts`: 2-space indentation, single quotes, no semicolons, 100-character line width. Use `PascalCase` for Vue component filenames, `camelCase` for variables/functions, and `snake_case` only when matching database or API fields. Prefer path aliases such as `@/` and `@modules/` where already configured.
 
+## Encoding Safety
+Preserve UTF-8 when editing files, especially Vue SFCs and files containing Chinese text. Avoid PowerShell write operations that can change encoding or corrupt non-ASCII content; prefer `apply_patch` for manual edits. If a scripted write is unavoidable, explicitly use UTF-8 and inspect for mojibake or literal escape artifacts such as `` `r`n `` before reporting completion. This prevents Vite compile failures caused by Windows encoding drift.
+
 ## Testing Guidelines
 Backend and frontend both use Vitest; the frontend also uses Playwright for browser flows. Name tests `*.test.ts` or `*.spec.ts` and colocate them near the feature when practical, otherwise place them under `tests/` or `frontend/tests/`. Before opening a PR, run the smallest relevant suite plus `bun run check`.
 
