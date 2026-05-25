@@ -45,14 +45,7 @@
         @click="viewProfile"
       >
         <UserIcon />
-        <span>個人資料</span>
-      </div>
-      <div
-        class="user-menu-item"
-        @click="changePassword"
-      >
-        <KeyIcon />
-        <span>修改密碼</span>
+        <span>個人設定</span>
       </div>
       <div class="user-menu-divider" />
       <div
@@ -81,7 +74,6 @@ const props = defineProps<{
   import { useConfirmDialog } from '@/composables/useConfirmDialog'
   import ChevronUpIcon from '@/components/icons/ChevronUpIcon.vue'
   import UserIcon from '@/components/icons/UserIcon.vue'
-  import KeyIcon from '@/components/icons/KeyIcon.vue'
   import LogoutIcon from '@/components/icons/LogoutIcon.vue'
 
   const route = useRoute()
@@ -127,14 +119,8 @@ const props = defineProps<{
 
   const viewProfile = () => {
     showUserMenu.value = false
-    frontendLogger.debug('查看個人資料')
+    frontendLogger.debug('查看個人設定')
     router.push('/profile')
-  }
-
-  const changePassword = () => {
-    showUserMenu.value = false
-    frontendLogger.debug('修改密碼')
-    router.push({ path: '/profile', hash: '#security' })
   }
 
   const handleLogout = async () => {
