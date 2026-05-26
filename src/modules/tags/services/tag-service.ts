@@ -16,7 +16,7 @@ import { tags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 // ── Raw SQL result type interfaces ──────────────────────────────────────────
 
@@ -48,6 +48,7 @@ interface TagRow {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 /** Shape returned by the tag list query with usage counts */
@@ -140,11 +141,14 @@ const normalizeHexColor = (color: string): string => {
 
 /** Extract user info from JWT payload for activity logging */
 const extractActivityMeta = (c: Context<{ Bindings: Bindings }>) => {
+  const user = c.get('user' as never) as
+    | { id?: string; displayName?: string; name?: string; role?: string }
+    | undefined;
   const payload = c.get('jwtPayload');
   return {
-    userId: payload?.userId?.toString() || 'system',
-    userName: payload?.displayName || payload?.username || 'System',
-    userRole: payload?.role || 'system',
+    userId: user?.id || payload?.userId?.toString() || 'system',
+    userName: user?.displayName || user?.name || payload?.displayName || payload?.username || 'System',
+    userRole: user?.role || payload?.role || 'system',
     ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
     userAgent: c.req.header('User-Agent')
   };
@@ -491,29 +495,62 @@ export const tagHandler = {
 
   // Delete tag (soft delete)
   async delete(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
+      const tagIdNum = Number(tagId);
+      if (!Number.isInteger(tagIdNum) || tagIdNum <= 0) {
+        return badRequestResponse(c, 'Invalid tag id');
+      }
 
-      const existingTag = await drizzleDb.get(sql`
-        SELECT id, name FROM tags WHERE id = ${tagId}
-      `);
+      const existingTag = await c.env.DB
+        .prepare('SELECT * FROM tags WHERE id = ?')
+        .bind(tagIdNum)
+        .first<TagRow>();
 
-      if (!existingTag) {
+      if (!existingTag || existingTag.deleted_at != null) {
         return notFoundResponse(c, 'Tag');
       }
 
-      const tagRow = existingTag as Pick<TagRow, 'id' | 'name'>;
-      const tagName = tagRow.name;
+      const meta = extractActivityMeta(c);
+      const now = nowISO();
 
-      // Soft delete tag
-      await drizzleDb.run(sql`
-        UPDATE tags
-        SET is_active = 0, deleted_at = datetime('now'), updated_at = datetime('now')
-        WHERE id = ${tagId}
-      `);
+      const mutationStmt = c.env.DB
+        .prepare(`
+          UPDATE tags
+             SET is_active = 0, deleted_at = ?, updated_at = ?
+           WHERE id = ?
+        `)
+        .bind(now, now, tagIdNum);
 
-      logTagActivity(c, ACTIVITY_ACTIONS.TAG_DELETE, tagId || '', { tagName });
+      const capture = new ActivityCapture(c.env.DB);
+      const logStmt = capture.buildReversibleLog({
+        request: {
+          userId: meta.userId,
+          userName: meta.userName,
+          userRole: meta.userRole,
+          action: ACTIVITY_ACTIONS.TAG_DELETE,
+          resourceType: RESOURCE_TYPES.TAG,
+          resourceId: String(tagIdNum),
+          ipAddress: meta.ipAddress ?? undefined,
+          userAgent: meta.userAgent ?? undefined,
+          details: { tagName: existingTag.name }
+        },
+        restoreHandler: 'tag.delete',
+        previousState: {
+          id: existingTag.id,
+          is_active: existingTag.is_active,
+          deleted_at: existingTag.deleted_at,
+          updated_at: existingTag.updated_at
+        },
+        newState: {
+          id: existingTag.id,
+          is_active: 0,
+          deleted_at: now,
+          updated_at: now
+        }
+      });
+
+      await c.env.DB.batch([logStmt, mutationStmt]);
 
       return successResponse(c, null, 'Tag deleted successfully');
 
