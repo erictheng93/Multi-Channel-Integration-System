@@ -9,7 +9,6 @@ const log = createContextLogger('TeamCrud')
 
 import { TeamService } from '@modules/teams/services/team-service';
 import { TeamQRService } from '@modules/teams/services/qr-service';
-import { TeamActivityService } from '@modules/teams/services/activity-service';
 import { generateTeamQRCode } from '@/services/liff-qrcode-service';
 import { HTTP_STATUS } from '@/constants/http-status';
 import type {
@@ -31,8 +30,32 @@ import {
 } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { nowISO } from '@/utils/timestamp';
+import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+function teamState(team: Record<string, any>) {
+  return {
+    id: team.id,
+    name: team.name,
+    description: team.description ?? null,
+    qr_code: team.qrCode ?? null,
+    is_active: team.isActive ? 1 : 0,
+    created_at: team.createdAt,
+    updated_at: team.updatedAt,
+    deleted_at: team.deletedAt ?? null
+  };
+}
+
+function activityMeta(c: any, user: any) {
+  return {
+    userId: String(user.id),
+    userName: user.displayName || user.email || user.username || String(user.id),
+    userRole: user.role,
+    ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+    userAgent: c.req.header('User-Agent')
+  };
+}
 
 // ==================== Priority 1: STATIC routes ====================
 
@@ -187,18 +210,31 @@ app.put('/:id', jwtAuth, requireTeamRole('supervisor'), requireIntId(), async (c
     const teamId = getValidatedParam<number>(c, 'id');
     const body = await c.req.json() as TeamUpdateRequest;
     const teamService = new TeamService(c.env.DB);
+    const existingTeam = await teamService.getTeam(teamId);
+    if (!existingTeam) {
+      return c.json({
+        success: false,
+        error: 'Team not found',
+        timestamp: nowISO()
+      }, HTTP_STATUS.NOT_FOUND);
+    }
     const team = await teamService.updateTeam(teamId, body);
 
-    // Log activity
-    const activityService = new TeamActivityService(c.env.DB);
-    await activityService.logTeamUpdate({
-      userId: user.id.toString(),
-      userName: user.displayName || user.email,
-      userRole: user.role,
-      teamId: teamId,
-      teamName: team.name,
-      updates: body
-    });
+    const capture = new ActivityCapture(c.env.DB);
+    await capture.logOnly(
+      capture.buildReversibleLog({
+        request: {
+          ...activityMeta(c, user),
+          action: ACTIVITY_ACTIONS.TEAM_UPDATE,
+          resourceType: RESOURCE_TYPES.TEAM,
+          resourceId: String(teamId),
+          details: { teamName: team.name, updates: body }
+        },
+        restoreHandler: 'team.update',
+        previousState: teamState(existingTeam),
+        newState: teamState(team)
+      })
+    );
 
     return c.json({
       success: true,
@@ -234,26 +270,37 @@ app.delete('/:id', jwtAuth, requireAdmin(), requireIntId(), async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    const success = await teamService.deleteTeam(teamId);
-
-    if (!success) {
-      return c.json({
-        success: false,
-        error: ERROR_MESSAGES.FAILED_TO_DELETE_TEAM,
-        timestamp: nowISO()
-      }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-    }
-
-    // Log activity
     const user = c.get('user');
-    const activityService = new TeamActivityService(c.env.DB);
-    await activityService.logTeamDelete({
-      userId: user.id.toString(),
-      userName: user.displayName || user.email,
-      userRole: user.role,
-      teamId: teamId,
-      teamName: teamInfo.name
-    });
+    const timestamp = nowISO();
+    const previousState = teamState(teamInfo);
+    const newState = {
+      ...previousState,
+      deleted_at: timestamp,
+      updated_at: timestamp
+    };
+    const capture = new ActivityCapture(c.env.DB);
+    await c.env.DB.batch([
+      capture.buildReversibleLog({
+        request: {
+          ...activityMeta(c, user),
+          action: ACTIVITY_ACTIONS.TEAM_DELETE,
+          resourceType: RESOURCE_TYPES.TEAM,
+          resourceId: String(teamId),
+          details: { teamName: teamInfo.name }
+        },
+        restoreHandler: 'team.delete',
+        previousState,
+        newState
+      }),
+      c.env.DB
+        .prepare(
+          `UPDATE teams
+           SET deleted_at = ?,
+               updated_at = ?
+           WHERE id = ?`
+        )
+        .bind(timestamp, timestamp, teamId)
+    ]);
 
     return c.json({
       success: true,
@@ -328,20 +375,29 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
     const team = await teamService.createTeam(body);
 
     const user = c.get('user');
-    const activityService = new TeamActivityService(c.env.DB);
+    const capture = new ActivityCapture(c.env.DB);
+    await capture.logOnly(
+      capture.buildReversibleLog({
+        request: {
+          ...activityMeta(c, user),
+          action: ACTIVITY_ACTIONS.TEAM_CREATE,
+          resourceType: RESOURCE_TYPES.TEAM,
+          resourceId: String(team.id),
+          details: { teamName: team.name, ...(team.description && { description: team.description }) }
+        },
+        restoreHandler: 'team.create',
+        previousState: {
+          id: team.id,
+          deleted_at: null
+        },
+        newState: teamState(team)
+      })
+    );
+
     const qrService = new TeamQRService(c.env.DB, c.env.CACHE, c.env.LINE_BOT_ID, c.env.FRONTEND_URL);
 
-    // Run activity logging and QR generation in parallel
-    const [, qrResult, liffQrResult] = await Promise.all([
-      // Task 1: Log activity
-      activityService.logTeamCreate({
-        userId: user.id.toString(),
-        userName: user.displayName || user.email,
-        userRole: user.role,
-        teamId: team.id,
-        teamName: team.name,
-        ...(team.description && { description: team.description })
-      }),
+    // Run QR generation in parallel
+    const [qrResult, liffQrResult] = await Promise.all([
       // Task 2: Pre-generate QR code
       qrService.generateTeamQRCode({
         teamId: team.id,
