@@ -6,6 +6,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { eq, desc, and, count, or, sql, inArray } from 'drizzle-orm';
 import { likeEscaped } from '@/utils/sql-like';
 import { teams, agents, agentTeams, conversations, messages, qrCodes, qrCodeScans, customers } from '@/db/schema';
+import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import type {
   Team,
   NewTeam,
@@ -31,8 +32,10 @@ const log = createContextLogger('TeamService');
 
 export class TeamService implements TeamServiceInterface {
   private db: DrizzleD1Database;
+  private dbRaw: D1Database;
 
   constructor(database: D1Database) {
+    this.dbRaw = database;
     this.db = drizzle(database);
   }
 
@@ -362,45 +365,87 @@ export class TeamService implements TeamServiceInterface {
   }
 
   // Remove member from team (via agent_teams junction table)
-  async removeMember(teamId: number, agentId: string): Promise<boolean> {
+  async removeMember(
+    teamId: number,
+    agentId: string,
+    caller: { id: string; displayName?: string; role: string; ipAddress?: string; userAgent?: string }
+  ): Promise<boolean> {
     try {
-      // Check if this is the agent's primary team
-      const [membership] = await this.db
-        .select({ isPrimary: agentTeams.isPrimary })
-        .from(agentTeams)
-        .where(and(
-          eq(agentTeams.agentId, agentId),
-          eq(agentTeams.teamId, teamId)
-        ))
-        .limit(1);
+      const membershipResult = await this.dbRaw
+        .prepare(
+          `SELECT agent_id, team_id, role_in_team, is_primary, joined_at
+             FROM agent_teams
+            WHERE agent_id = ? AND team_id = ?
+            LIMIT 1`
+        )
+        .bind(agentId, teamId)
+        .all<Record<string, unknown>>();
+      const membership = membershipResult.results?.[0];
 
-      // Delete the membership
-      await this.db
-        .delete(agentTeams)
-        .where(and(
-          eq(agentTeams.agentId, agentId),
-          eq(agentTeams.teamId, teamId)
-        ));
-
-      // If this was the primary team, promote next team as primary
-      if (membership?.isPrimary) {
-        const [nextTeam] = await this.db
-          .select({ teamId: agentTeams.teamId })
-          .from(agentTeams)
-          .where(eq(agentTeams.agentId, agentId))
-          .limit(1);
-
-        if (nextTeam) {
-          await this.db
-            .update(agentTeams)
-            .set({ isPrimary: true })
-            .where(and(
-              eq(agentTeams.agentId, agentId),
-              eq(agentTeams.teamId, nextTeam.teamId)
-            ));
-        }
+      if (!membership) {
+        return false;
       }
 
+      let promotedTeamId: number | null = null;
+      if (Number(membership.is_primary) === 1) {
+        const nextTeamResult = await this.dbRaw
+          .prepare(
+            `SELECT team_id
+               FROM agent_teams
+              WHERE agent_id = ? AND team_id != ?
+              LIMIT 1`
+          )
+          .bind(agentId, teamId)
+          .all<{ team_id: number }>();
+        promotedTeamId = nextTeamResult.results?.[0]?.team_id ?? null;
+      }
+
+      const previousState = {
+        agent_id: agentId,
+        team_id: teamId,
+        role_in_team: membership.role_in_team,
+        is_primary: Number(membership.is_primary) === 1 ? 1 : 0,
+        joined_at: membership.joined_at,
+        promoted_team_id: promotedTeamId
+      };
+      const newState = {
+        agent_id: agentId,
+        team_id: teamId,
+        removed_at: new Date().toISOString()
+      };
+
+      const capture = new ActivityCapture(this.dbRaw);
+      const stmts: D1PreparedStatement[] = [
+        capture.buildReversibleLog({
+          request: {
+            userId: caller.id,
+            userName: caller.displayName ?? caller.id,
+            userRole: caller.role,
+            action: ACTIVITY_ACTIONS.TEAM_MEMBER_REMOVE,
+            resourceType: RESOURCE_TYPES.TEAM_MEMBER,
+            resourceId: `${agentId}:${teamId}`,
+            ipAddress: caller.ipAddress,
+            userAgent: caller.userAgent,
+            details: { promotedTeamId }
+          },
+          restoreHandler: 'team_member.remove',
+          previousState,
+          newState
+        }),
+        this.dbRaw
+          .prepare('DELETE FROM agent_teams WHERE agent_id = ? AND team_id = ?')
+          .bind(agentId, teamId)
+      ];
+
+      if (Number(membership.is_primary) === 1 && promotedTeamId !== null) {
+        stmts.push(
+          this.dbRaw
+            .prepare('UPDATE agent_teams SET is_primary = 1 WHERE agent_id = ? AND team_id = ?')
+            .bind(agentId, promotedTeamId)
+        );
+      }
+
+      await this.dbRaw.batch(stmts);
       return true;
     } catch (error) {
       log.error('Remove team member error:', {}, error instanceof Error ? error : new Error(String(error)));
