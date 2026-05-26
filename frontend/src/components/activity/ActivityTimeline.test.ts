@@ -44,8 +44,15 @@ function makeActivity(overrides: Partial<ActivityLog> = {}): ActivityLog {
 
 // Stubs for child components — use plain objects to avoid vue/one-component-per-file
 const ActivityTimelineItemStub = {
-  template: '<div class="activity-timeline-item-stub" :data-id="String(activity.id)" />',
+  template: `
+    <button
+      class="activity-timeline-item-stub"
+      :data-id="String(activity.id)"
+      @click="$emit('restored', activity.id)"
+    />
+  `,
   props: { activity: { type: Object, required: true } },
+  emits: ['restored'],
 }
 
 const ActivityDetailPanelStub = {
@@ -132,5 +139,15 @@ describe('ActivityTimeline', () => {
     const wrapper = mountTimeline(activities)
     const dividers = wrapper.findAll('.timeline__divider')
     expect(dividers).toHaveLength(2)
+  })
+
+  it('forwards restored event from timeline items', async () => {
+    const wrapper = mountTimeline([
+      makeActivity({ id: 42, createdAt: '2026-03-20T10:00:00Z' }),
+    ])
+
+    await wrapper.find('.activity-timeline-item-stub').trigger('click')
+
+    expect(wrapper.emitted('restored')?.[0]).toEqual([42])
   })
 })

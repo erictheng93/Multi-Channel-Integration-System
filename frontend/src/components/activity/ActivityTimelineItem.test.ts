@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
-import { defineComponent, h } from 'vue'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { defineComponent, h, ref, nextTick } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import type { ActivityLog } from '@/api/activities'
+import { useAuthStore } from '@/stores/auth'
 
 // Mock all icons used by utils.ts and ActivityTimelineItem.vue
 vi.mock('@/components/icons', () => {
@@ -27,6 +29,25 @@ vi.mock('@/components/icons', () => {
   }
 })
 
+const restoreFlag = vi.hoisted(() => ({ enabled: true }))
+const restoreMock = vi.hoisted(() => ({
+  isRestoring: undefined as unknown as ReturnType<typeof ref<boolean>>,
+  isOptimisticallyRestored: vi.fn(() => false),
+  attemptRestore: vi.fn(),
+}))
+
+vi.mock('@/config/runtime', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  return {
+    ...actual,
+    isActivityRestoreEnabled: () => restoreFlag.enabled,
+  }
+})
+
+vi.mock('@/composables/useRestoreActivity', () => ({
+  useRestoreActivity: () => restoreMock,
+}))
+
 // Import after mocks are set up
 import ActivityTimelineItem from './ActivityTimelineItem.vue'
 
@@ -47,6 +68,44 @@ function makeActivity(overrides: Partial<ActivityLog> = {}): ActivityLog {
   }
 }
 
+function setCurrentAgent(id = 'user-1', role = 'agent') {
+  const auth = useAuthStore()
+  auth.currentAgent = {
+    id,
+    email: `${id}@example.test`,
+    name: id,
+    displayName: id,
+    role: role as 'admin' | 'agent',
+    isActive: true,
+    createdAt: Date.now(),
+  } as ReturnType<typeof useAuthStore>['currentAgent']
+}
+
+function makeReversibleActivity(overrides: Partial<ActivityLog> = {}): ActivityLog {
+  return makeActivity({
+    id: 5,
+    userId: 'agent-1',
+    userName: 'Alice',
+    userRole: 'agent',
+    action: 'tag_delete',
+    resourceType: 'tag',
+    resourceId: '42',
+    createdAt: '2026-03-20T11:55:00Z',
+    details: {
+      reversible: true,
+      restoreHandler: 'tag.delete',
+      previousState: { id: 42 },
+      newState: { id: 42, deleted_at: '2026-03-20T11:55:00Z' },
+      restorePolicy: {
+        expiresAt: '2026-03-20T13:00:00.000Z',
+        requiresAdmin: false,
+      },
+      restoredByActivityId: null,
+    },
+    ...overrides,
+  })
+}
+
 function mountItem(activity: ActivityLog) {
   return mount(ActivityTimelineItem, {
     props: { activity },
@@ -64,8 +123,19 @@ function mountItem(activity: ActivityLog) {
 
 describe('ActivityTimelineItem', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     vi.useFakeTimers()
     vi.setSystemTime('2026-03-20T12:00:00Z')
+    restoreFlag.enabled = true
+    restoreMock.isRestoring = ref(false)
+    restoreMock.isOptimisticallyRestored.mockReturnValue(false)
+    restoreMock.attemptRestore.mockReset()
+    setCurrentAgent('user-1', 'agent')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    document.body.innerHTML = ''
   })
 
   it('renders user name', () => {
@@ -137,5 +207,110 @@ describe('ActivityTimelineItem', () => {
     const wrapper = mountItem(makeActivity({ userRole: 'admin' }))
     const badge = wrapper.find('.timeline-item__role')
     expect(badge.attributes('aria-label')).toBeTruthy()
+  })
+
+  it('shows restore button when activity is reversible and caller is original actor', () => {
+    setCurrentAgent('agent-1', 'agent')
+
+    const wrapper = mountItem(makeReversibleActivity())
+
+    expect(wrapper.find('[data-test="restore-button"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="restore-button"]').text()).toContain('還原')
+  })
+
+  it('shows expired indicator when restorePolicy.expiresAt is in the past', () => {
+    setCurrentAgent('agent-1', 'agent')
+    const wrapper = mountItem(
+      makeReversibleActivity({
+        details: {
+          reversible: true,
+          restoreHandler: 'tag.delete',
+          previousState: {},
+          newState: {},
+          restorePolicy: { expiresAt: '2026-03-20T11:59:59.000Z', requiresAdmin: false },
+          restoredByActivityId: null,
+        },
+      }),
+    )
+
+    expect(wrapper.find('[data-test="restore-button"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="restore-expired"]').text()).toContain('已過期')
+  })
+
+  it('shows irreversible indicator when activity.details.reversible is false', () => {
+    const wrapper = mountItem(
+      makeReversibleActivity({
+        details: { reversible: false, irreversibleReason: 'message_sent' },
+      }),
+    )
+
+    expect(wrapper.find('[data-test="restore-irreversible"]').text()).toContain('不可還原')
+  })
+
+  it('hides button when caller is neither original actor nor admin', () => {
+    setCurrentAgent('agent-other', 'agent')
+
+    const wrapper = mountItem(makeReversibleActivity())
+
+    expect(wrapper.find('[data-test="restore-button"]').exists()).toBe(false)
+  })
+
+  it('shows button for admin even when not original actor', () => {
+    setCurrentAgent('admin-1', 'admin')
+
+    const wrapper = mountItem(makeReversibleActivity())
+
+    expect(wrapper.find('[data-test="restore-button"]').exists()).toBe(true)
+  })
+
+  it('hides restore status zone when feature flag is off', () => {
+    restoreFlag.enabled = false
+    setCurrentAgent('agent-1', 'agent')
+
+    const wrapper = mountItem(makeReversibleActivity())
+
+    expect(wrapper.find('[data-test="restore-button"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="restore-expired"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="restore-irreversible"]').exists()).toBe(false)
+  })
+
+  it('opens modal and emits restored on successful confirm', async () => {
+    setCurrentAgent('agent-1', 'agent')
+    restoreMock.attemptRestore.mockResolvedValueOnce({
+      kind: 'success',
+      restoredByActivityId: 99,
+    })
+    const wrapper = mountItem(makeReversibleActivity())
+
+    await wrapper.find('[data-test="restore-button"]').trigger('click')
+    await nextTick()
+    expect(wrapper.findComponent({ name: 'RestoreConfirmModal' }).props('open')).toBe(true)
+
+    await wrapper.findComponent({ name: 'RestoreConfirmModal' }).vm.$emit('confirm', { force: false })
+    await nextTick()
+    await flushPromises()
+
+    expect(restoreMock.attemptRestore).toHaveBeenCalledWith(5, false)
+    expect(wrapper.emitted('restored')?.[0]).toEqual([5])
+  })
+
+  it('keeps modal open with conflict changes when restore reports conflict', async () => {
+    setCurrentAgent('agent-1', 'agent')
+    restoreMock.attemptRestore.mockResolvedValueOnce({
+      kind: 'conflict',
+      midChanges: [
+        { field: 'name', valueAtOriginalAction: 'A', valueNow: 'B', valueAfterRestore: 'A' },
+      ],
+    })
+    const wrapper = mountItem(makeReversibleActivity())
+
+    await wrapper.find('[data-test="restore-button"]').trigger('click')
+    await nextTick()
+    await wrapper.findComponent({ name: 'RestoreConfirmModal' }).vm.$emit('confirm', { force: false })
+    await nextTick()
+
+    const modal = wrapper.findComponent({ name: 'RestoreConfirmModal' })
+    expect(modal.props('open')).toBe(true)
+    expect(modal.props('midChanges')).toHaveLength(1)
   })
 })
