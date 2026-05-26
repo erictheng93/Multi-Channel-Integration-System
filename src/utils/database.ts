@@ -24,7 +24,7 @@ import type {
   CustomerMetadata
 } from '../types';
 import { validateReplyToMessageId } from './validate-reply-to';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { nowISO } from '@/utils/timestamp'
 
 /**
  * 尋找或建立客戶 (增強版 - 收集更多客戶資訊)
@@ -163,69 +163,6 @@ export async function findOrCreateCustomer(
   const dbLogger = createContextLogger('Database');
   dbLogger.info('Created new customer', { customerId: newCustomer.id, platform, platformUserId });
   return convertCustomer(newCustomer);
-}
-
-/**
- * 尋找或建立對話
- */
-export async function findOrCreateConversation(
-  db: D1Database, 
-  customerId: number
-): Promise<DbConversation> {
-  const timestamp = nowISO();
-  const drizzleDb = createDbClient(db);
-
-  // 先嘗試找到現有的活躍對話
-  const existingConversation = await drizzleDb
-    .select()
-    .from(conversations)
-    .where(and(
-      eq(conversations.customerId, customerId),
-      eq(conversations.status, 'active')
-    ))
-    .get();
-
-  if (existingConversation) {
-    // 更新最後訊息時間
-    await drizzleDb
-      .update(conversations)
-      .set({
-        lastMessageAt: timestamp,
-        updatedAt: timestamp
-      })
-      .where(eq(conversations.id, existingConversation.id));
-
-    return convertConversation(existingConversation);
-  }
-
-  // 如果沒有活躍對話，建立新對話
-  const conversationId = `conv_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
-  
-  await drizzleDb
-    .insert(conversations)
-    .values({
-      id: conversationId,
-      customerId,
-      status: 'active',
-      lastMessageAt: timestamp,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    });
-
-  // 重新獲取剛建立的對話
-  const newConversation = await drizzleDb
-    .select()
-    .from(conversations)
-    .where(eq(conversations.customerId, customerId))
-    .orderBy(desc(conversations.createdAt))
-    .limit(1)
-    .get();
-
-  if (!newConversation) {
-    throw new Error('Failed to retrieve created conversation');
-  }
-
-  return convertConversation(newConversation);
 }
 
 /**
