@@ -62,6 +62,7 @@
     "test:installer:backend:ci": "cd web-installer/backend && bun install --frozen-lockfile && bun run test:ci",
     "db:view": "bun scripts/db-viewer.ts",
     "db:query": "wrangler d1 execute mcis-db --remote",
+    "db:audit:ghost": "bash scripts/check-ghost-conversations.sh",
     "db:test-config": "bun scripts/test-drizzle-config.ts",
     "test:api": "cd tests && bun run-api-tests.ts",
     "test:api:endpoints": "cd tests && bun api-endpoints-test.ts",
