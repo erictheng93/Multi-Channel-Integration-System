@@ -2,6 +2,7 @@
 import { Hono } from 'hono'
 import type { Bindings } from '@/types'
 import { activityHandler as moduleActivityHandler } from '@modules/activities'
+import activityRestoreHandler from '@modules/activities/handlers/activity-restore'
 import { jwtAuth } from '@/middleware/auth'
 import { requireIntId } from '@/middleware/param-validator'
 
@@ -24,6 +25,8 @@ router.get('/heatmap', jwtAuth, moduleActivityHandler.getHeatmap)
 router.get('/metrics', jwtAuth, moduleActivityHandler.getMetrics)
 
 // ==================== Priority 2: PARAMETERIZED routes ====================
+router.use('/:id/restore', jwtAuth, requireIntId())
+router.route('/:id/restore', activityRestoreHandler)
 router.get('/:id', jwtAuth, requireIntId(), moduleActivityHandler.getById)
 
 // ==================== Priority 3: WILDCARD routes (must be last) ====================

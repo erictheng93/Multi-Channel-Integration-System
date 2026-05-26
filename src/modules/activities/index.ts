@@ -5,6 +5,8 @@
 import { ActivityService } from '@modules/activities/services/ActivityService'
 import { TeamActivityService } from '@modules/activities/services/TeamActivityService'
 import { ActivityStatsService } from '@modules/activities/services/ActivityStatsService'
+import { ActivityCapture } from '@modules/activities/services/ActivityCapture'
+import { RestoreRegistry } from '@modules/activities/services/restore-registry'
 
 // Handlers
 import { ActivityHandler, createActivityHandler, activityHandler } from '@modules/activities/handlers/ActivityHandler'
@@ -17,6 +19,8 @@ import { ACTIVITY_ACTIONS } from '@modules/activities/constants/actions'
 import { RESOURCE_TYPES } from '@modules/activities/constants/resources'
 export type { ActivityAction } from './constants/actions'
 export type { ResourceType } from './constants/resources'
+export type { ReversibleCapture } from './services/ActivityCapture'
+export type { RestoreHandler } from './services/restore-registry'
 
 // Utilities
 import { ActivityValidator } from '@modules/activities/utils/validators'
@@ -28,6 +32,8 @@ export {
   ActivityService,
   TeamActivityService,
   ActivityStatsService,
+  ActivityCapture,
+  RestoreRegistry,
   ActivityHandler,
   createActivityHandler,
   activityHandler,
@@ -53,6 +59,8 @@ export default {
   ActivityService,
   TeamActivityService,
   ActivityStatsService,
+  ActivityCapture,
+  RestoreRegistry,
 
   // Handlers
   ActivityHandler,
