@@ -309,3 +309,17 @@ Restore metadata is stored in `activities.details`:
 ```
 
 The restore endpoint writes the restore mutation and RESTORE activity log in one D1 batch. It uses `restoredByActivityId` as a CAS slot: `-1` means restore in progress; a positive id means already restored.
+
+### Phase 2a (handler migrations)
+
+Three high-risk write handlers now emit reversible activity logs:
+
+| Action | File | Restore handler key |
+|--------|------|---------------------|
+| `tag_delete` | `src/modules/tags/services/tag-service.ts` | `tag.delete` |
+| `tag_update` | `src/modules/tags/services/tag-service.ts` | `tag.update` |
+| `team_member_remove` | `src/modules/teams/services/team-service.ts` | `team_member.remove` |
+
+`customer_delete` and `delayed_message_cancel` were deferred. See
+`docs/superpowers/plans/2026-05-26-activity-restore-phase-2a.md`
+section "Scope Adjustments" for the rationale.

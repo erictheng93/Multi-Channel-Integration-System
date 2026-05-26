@@ -97,3 +97,17 @@ RESTORE logs use the caller from the current JWT context, not the actor from the
 - `null`: not restored.
 - `-1`: restore currently in progress.
 - positive activity id: already restored by that RESTORE activity.
+
+### Phase 2a (handler migrations)
+
+Three high-risk write handlers now emit reversible activity logs:
+
+| Action | File | Restore handler key |
+|--------|------|---------------------|
+| `tag_delete` | `src/modules/tags/services/tag-service.ts` | `tag.delete` |
+| `tag_update` | `src/modules/tags/services/tag-service.ts` | `tag.update` |
+| `team_member_remove` | `src/modules/teams/services/team-service.ts` | `team_member.remove` |
+
+`customer_delete` and `delayed_message_cancel` were deferred. See
+`docs/superpowers/plans/2026-05-26-activity-restore-phase-2a.md`
+section "Scope Adjustments" for the rationale.
