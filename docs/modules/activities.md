@@ -79,3 +79,21 @@
 ---
 
 **相關模組**：[auth](./auth.md)（登入登出來源）、[notifications](./notifications.md)（部分動作觸發通知）
+
+## Activity Restore (Phase 1)
+
+The activities module now includes restore infrastructure for future undo support:
+
+- `ActivityCapture` creates reversible activity INSERT statements with `previousState`, `newState`, `restorePolicy`, `restoreHandler`, and `restoredByActivityId` metadata.
+- `RestoreRegistry` maps a `details.restoreHandler` key to a `RestoreHandler` with both `buildMutation()` and `getCurrentState()`.
+- `POST /api/activities/:id/restore` performs policy validation, permission checks, expiry checks, idempotency checks, mid-air conflict detection, CAS slot acquisition, D1 batch dispatch, and restore-event broadcast.
+
+Phase 1 does not migrate existing write handlers. Records become restorable only after Phase 2 starts writing `details.reversible: true` and a valid `restoreHandler`.
+
+RESTORE logs use the caller from the current JWT context, not the actor from the original activity. This keeps audit attribution clear: the original operation and the restore operation may be performed by different users.
+
+`details.restoredByActivityId` is the idempotency marker:
+
+- `null`: not restored.
+- `-1`: restore currently in progress.
+- positive activity id: already restored by that RESTORE activity.

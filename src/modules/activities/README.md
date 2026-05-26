@@ -281,3 +281,31 @@ console.error('[Activity Service] Failed to log activity:', error)
 -
 -
 - 
+
+## Restore (Phase 1)
+
+The activities module supports undo infrastructure via:
+
+- `ActivityCapture`: builds activity INSERT statements with reversible snapshot metadata for use in `db.batch()`.
+- `RestoreRegistry`: maps `details.restoreHandler` keys to restore handlers that can build reversal mutations and read current state for conflict checks.
+- `POST /api/activities/:id/restore`: restores one reversible activity when policy, permission, expiry, idempotency, and conflict checks pass.
+
+Phase 1 is infrastructure only. Existing write handlers do not yet emit `details.reversible: true`, so production behavior remains unchanged until Phase 2 migrates high-risk handlers.
+
+Restore metadata is stored in `activities.details`:
+
+```json
+{
+  "reversible": true,
+  "restoreHandler": "tag.delete",
+  "previousState": {},
+  "newState": {},
+  "restorePolicy": {
+    "expiresAt": "2026-05-27T00:00:00.000Z",
+    "requiresAdmin": false
+  },
+  "restoredByActivityId": null
+}
+```
+
+The restore endpoint writes the restore mutation and RESTORE activity log in one D1 batch. It uses `restoredByActivityId` as a CAS slot: `-1` means restore in progress; a positive id means already restored.
