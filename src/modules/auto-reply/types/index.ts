@@ -41,6 +41,7 @@ export interface AutoReplyRuleWithRelations {
   triggerType: TriggerType;
   priority: number;
   isActive: boolean;
+  allowPushFallback: boolean;
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -62,6 +63,7 @@ export interface AutoReplyEvaluateInput {
   replyToken: string | null;
   customerId: number;
   platformUserId: string;
+  platformMessageId?: string | null;
 }
 
 export interface AutoReplyEvaluateResult {
@@ -91,6 +93,7 @@ export interface CreateRuleRequest {
   triggerType: TriggerType;
   priority?: number;
   isActive?: boolean;
+  allowPushFallback?: boolean;
   conditions?: Array<{
     conditionType: ConditionType;
     value: string;
@@ -109,6 +112,7 @@ export interface UpdateRuleRequest {
   triggerType?: TriggerType;
   priority?: number;
   isActive?: boolean;
+  allowPushFallback?: boolean;
   conditions?: Array<{
     conditionType: ConditionType;
     value: string;

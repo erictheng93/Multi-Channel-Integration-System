@@ -18,6 +18,11 @@ vi.mock('@/db/schema', () => ({
   autoReplyConditions: { ruleId: {}, name: 'auto_reply_conditions' },
   autoReplyActions: { ruleId: {}, name: 'auto_reply_actions' },
   autoReplyLogs: { name: 'auto_reply_logs' },
+  autoReplyDeliveries: {
+    name: 'auto_reply_deliveries',
+    platform: {},
+    platformMessageId: {},
+  },
   messages: { name: 'messages' },
 }));
 
@@ -66,8 +71,12 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
 let mockRuleRows: any[] = [];
 let mockConditionRows: any[] = [];
 let mockActionRows: any[] = [];
+let mockDeliveryRow: any | undefined;
 const mockInsertValues = vi.fn().mockReturnThis();
 const mockInsert = vi.fn(() => ({ values: mockInsertValues }));
+const mockUpdateWhere = vi.fn().mockResolvedValue({ success: true });
+const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
+const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
 
 vi.mock('@/db/drizzle-factory', () => ({
   createDbClient: vi.fn(() => ({
@@ -75,12 +84,14 @@ vi.mock('@/db/drizzle-factory', () => ({
       from: vi.fn(() => ({
         where: vi.fn(() => ({
           orderBy: vi.fn().mockImplementation(() => Promise.resolve(mockRuleRows)),
+          get: vi.fn().mockResolvedValue(mockDeliveryRow),
         })),
         // For conditions and actions (no where/orderBy)
         then: undefined,
       })),
     })),
     insert: mockInsert,
+    update: mockUpdate,
   })),
 }));
 
@@ -122,6 +133,7 @@ function createRuleFixture(overrides: Record<string, any> = {}) {
     triggerType: 'keyword',
     priority: 100,
     isActive: true,
+    allowPushFallback: false,
     createdBy: 'admin-1',
     createdAt: '2026-03-13T00:00:00Z',
     updatedAt: '2026-03-13T00:00:00Z',
@@ -166,6 +178,7 @@ describe('auto-reply-engine', () => {
     mockRuleRows = [];
     mockConditionRows = [];
     mockActionRows = [];
+    mockDeliveryRow = undefined;
     mockExecuteActions.mockResolvedValue({
       success: true,
       replyMethod: 'reply_api',
@@ -341,7 +354,24 @@ describe('auto-reply-engine', () => {
         rule.actions,
         'reply-token-abc',
         'U1234567890',
-        env
+        env,
+        { allowPushFallback: false }
+      );
+    });
+
+    it('should propagate rule.allowPushFallback=true to executeActions', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture({ allowPushFallback: true });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      await evaluate(createInput(), env);
+
+      expect(mockExecuteActions).toHaveBeenCalledWith(
+        rule.actions,
+        'reply-token-abc',
+        'U1234567890',
+        env,
+        { allowPushFallback: true }
       );
     });
 
@@ -375,6 +405,67 @@ describe('auto-reply-engine', () => {
       const result = await evaluate(createInput(), env);
       expect(result.matched).toBe(true);
       expect(result.error).toBe('LINE API error');
+    });
+
+    it('should create and mark delivery success when platformMessageId is present', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      await evaluate(createInput({ platformMessageId: 'line-msg-1' }), env);
+
+      expect(mockInsertValues).toHaveBeenCalledWith(expect.objectContaining({
+        platform: 'line',
+        platformMessageId: 'line-msg-1',
+        ruleId: 1,
+        conversationId: 'conv-123',
+        customerId: 42,
+        status: 'pending',
+        attemptCount: 1,
+      }));
+      expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'success',
+        replyMethod: 'reply_api',
+        lastError: null,
+      }));
+    });
+
+    it('should mark delivery failed when action execution fails', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+      mockExecuteActions.mockResolvedValue({
+        success: false,
+        replyMethod: 'reply_api',
+        messageCount: 0,
+        error: 'Reply API failed',
+      });
+
+      await evaluate(createInput({ platformMessageId: 'line-msg-failed' }), env);
+
+      expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'failed',
+        replyMethod: 'reply_api',
+        lastError: 'Reply API failed',
+      }));
+    });
+
+    it('should not execute actions again when delivery already succeeded', async () => {
+      const env = createMockEnv();
+      const rule = createRuleFixture();
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+      mockDeliveryRow = {
+        status: 'success',
+        replyMethod: 'reply_api',
+        ruleId: 1,
+        attemptCount: 1,
+      };
+
+      const result = await evaluate(createInput({ platformMessageId: 'line-msg-1' }), env);
+
+      expect(result.matched).toBe(true);
+      expect(result.replyMethod).toBe('reply_api');
+      expect(mockExecuteActions).not.toHaveBeenCalled();
     });
   });
 
@@ -648,9 +739,9 @@ describe('auto-reply-engine', () => {
 
       const result = await evaluateWelcome(1, 'token', 'conv-1', 42, 'U123', env);
       expect(result.matched).toBe(true);
-      // evaluateWelcome doesn't include error in result currently (it only includes replyMethod)
-      // But the rule was matched
       expect(result.ruleId).toBe(1);
+      expect(result.replyMethod).toBe('reply_api');
+      expect(result.error).toBe('API down');
     });
   });
 

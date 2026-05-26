@@ -32,6 +32,7 @@ function makeMockRule(overrides: Partial<AutoReplyRule> = {}): AutoReplyRule {
     triggerType: 'keyword',
     priority: 100,
     isActive: true,
+    allowPushFallback: false,
     createdBy: null,
     createdAt: null,
     updatedAt: null,

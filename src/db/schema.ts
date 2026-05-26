@@ -632,6 +632,9 @@ export const autoReplyRules = sqliteTable('auto_reply_rules', {
   triggerType: text('trigger_type').notNull(), // 'welcome' | 'keyword' | 'off_hours' | 'fallback'
   priority: integer('priority').notNull().default(100), // Lower = higher priority
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  // Opt-in switch: when true, executeActions falls back to Push API if Reply API fails.
+  // Default false to preserve quota; enable per-rule for business-critical replies.
+  allowPushFallback: integer('allow_push_fallback', { mode: 'boolean' }).notNull().default(false),
   createdBy: text('created_by').references(() => agents.id, { onDelete: 'set null' }),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
@@ -688,6 +691,26 @@ export const autoReplyLogs = sqliteTable('auto_reply_logs', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Auto-Reply Deliveries table - idempotency ledger for webhook-triggered auto replies
+export const autoReplyDeliveries = sqliteTable('auto_reply_deliveries', {
+  id: integer('id').primaryKey(),
+  platform: text('platform').notNull().default('line'),
+  platformMessageId: text('platform_message_id').notNull(),
+  ruleId: integer('rule_id').references(() => autoReplyRules.id, { onDelete: 'set null' }),
+  conversationId: text('conversation_id').references(() => conversations.id, { onDelete: 'set null' }),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  status: text('status').notNull().default('pending'), // 'pending' | 'success' | 'failed'
+  replyMethod: text('reply_method'),
+  attemptCount: integer('attempt_count').notNull().default(0),
+  lastError: text('last_error'),
+  lastAttemptAt: text('last_attempt_at'),
+  sentAt: text('sent_at'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  platformMessageUnique: unique().on(table.platform, table.platformMessageId),
+}));
+
 // Export types for reports system
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
@@ -725,3 +748,5 @@ export type AutoReplySchedule = typeof autoReplySchedules.$inferSelect;
 export type NewAutoReplySchedule = typeof autoReplySchedules.$inferInsert;
 export type AutoReplyLog = typeof autoReplyLogs.$inferSelect;
 export type NewAutoReplyLog = typeof autoReplyLogs.$inferInsert;
+export type AutoReplyDelivery = typeof autoReplyDeliveries.$inferSelect;
+export type NewAutoReplyDelivery = typeof autoReplyDeliveries.$inferInsert;

@@ -60,9 +60,12 @@ vi.mock('@/utils/notification-trigger', () => ({
   triggerCustomerFollowedNotification: vi.fn().mockResolvedValue(undefined),
 }));
 
+const mockEvaluateAutoReply = vi.fn().mockResolvedValue({ matched: false });
+const mockRetryAutoReplyForPlatformMessage = vi.fn().mockResolvedValue({ matched: false });
 vi.mock('@modules/auto-reply/services/auto-reply-engine', () => ({
-  evaluate: vi.fn().mockResolvedValue({ matched: false }),
+  evaluate: (...args: unknown[]) => mockEvaluateAutoReply(...args),
   evaluateWelcome: vi.fn().mockResolvedValue({ matched: false }),
+  retryAutoReplyForPlatformMessage: (...args: unknown[]) => mockRetryAutoReplyForPlatformMessage(...args),
   invalidateRulesCache: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -205,6 +208,15 @@ describe('webhook handlers — dedupe runs BEFORE conversation timestamp update'
       await processLineMessage(createEnv(), lineTextEvent('dup-id'));
 
       expect(mockIsDuplicateMessage).toHaveBeenCalledWith(expect.anything(), 'dup-id', 'line');
+      expect(mockRetryAutoReplyForPlatformMessage).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          platform: 'line',
+          platformMessageId: 'dup-id',
+          replyToken: 'r',
+          platformUserId: 'U_test',
+        })
+      );
       expect(mockFindOrCreateConversation).not.toHaveBeenCalled();
       expect(mockSaveMessage).not.toHaveBeenCalled();
     });
@@ -217,6 +229,10 @@ describe('webhook handlers — dedupe runs BEFORE conversation timestamp update'
       expect(mockIsDuplicateMessage).toHaveBeenCalledTimes(1);
       expect(mockFindOrCreateConversation).toHaveBeenCalledTimes(1);
       expect(mockSaveMessage).toHaveBeenCalledTimes(1);
+      expect(mockEvaluateAutoReply).toHaveBeenCalledWith(
+        expect.objectContaining({ platformMessageId: 'new-id' }),
+        expect.anything()
+      );
 
       // Order assertion: dedupe must complete BEFORE conversation upsert.
       const dedupeOrder = mockIsDuplicateMessage.mock.invocationCallOrder[0];

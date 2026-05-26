@@ -147,6 +147,7 @@ autoReplyRulesHandler.post('/', async (c) => {
         triggerType: body.triggerType,
         priority: body.priority ?? 100,
         isActive: body.isActive ?? true,
+        allowPushFallback: body.allowPushFallback ?? false,
         createdBy: payload?.userId?.toString() || null,
         createdAt: now,
         updatedAt: now,
@@ -263,6 +264,7 @@ autoReplyRulesHandler.put('/:id', async (c) => {
     if (body.triggerType !== undefined) updateFields.triggerType = body.triggerType;
     if (body.priority !== undefined) updateFields.priority = body.priority;
     if (body.isActive !== undefined) updateFields.isActive = body.isActive;
+    if (body.allowPushFallback !== undefined) updateFields.allowPushFallback = body.allowPushFallback;
 
     await drizzleDb
       .update(autoReplyRules)
