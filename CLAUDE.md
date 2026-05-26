@@ -202,7 +202,7 @@ CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Multi-Channel-Integration-System** (55594 symbols, 89445 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Multi-Channel-Integration-System** (55578 symbols, 89424 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
