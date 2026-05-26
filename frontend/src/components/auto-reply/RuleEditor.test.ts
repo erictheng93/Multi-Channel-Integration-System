@@ -13,6 +13,7 @@ function makeFormData(overrides: Partial<RuleFormData> = {}): RuleFormData {
     triggerType: 'keyword',
     priority: 100,
     isActive: true,
+    allowPushFallback: false,
     conditions: [],
     actions: [],
     ...overrides,
@@ -94,6 +95,38 @@ describe('RuleEditor -- emitted events', () => {
     await deleteBtn.trigger('click')
     expect(wrapper.emitted('delete')).toBeTruthy()
     expect(wrapper.emitted('delete')).toHaveLength(1)
+  })
+
+  it('emits update-field with allowPushFallback=true when toggle is clicked from off', async () => {
+    const wrapper = mountEditor({ formData: makeFormData({ allowPushFallback: false }) })
+    const toggle = wrapper.find('.rule-editor__toggle')
+    await toggle.trigger('click')
+    const updates = wrapper.emitted('update-field') as unknown[][]
+    expect(updates).toBeTruthy()
+    expect(updates).toHaveLength(1)
+    expect(updates[0]).toEqual(['allowPushFallback', true])
+  })
+
+  it('emits update-field with allowPushFallback=false when toggle is clicked from on', async () => {
+    const wrapper = mountEditor({ formData: makeFormData({ allowPushFallback: true }) })
+    const toggle = wrapper.find('.rule-editor__toggle')
+    await toggle.trigger('click')
+    const updates = wrapper.emitted('update-field') as unknown[][]
+    expect(updates).toBeTruthy()
+    expect(updates[0]).toEqual(['allowPushFallback', false])
+  })
+
+  it('toggle has aria-pressed reflecting current state', () => {
+    const wrapperOff = mountEditor({ formData: makeFormData({ allowPushFallback: false }) })
+    expect(wrapperOff.find('.rule-editor__toggle').attributes('aria-pressed')).toBe('false')
+
+    const wrapperOn = mountEditor({ formData: makeFormData({ allowPushFallback: true }) })
+    expect(wrapperOn.find('.rule-editor__toggle').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('toggle gains --active modifier class when allowPushFallback=true', () => {
+    const wrapper = mountEditor({ formData: makeFormData({ allowPushFallback: true }) })
+    expect(wrapper.find('.rule-editor__toggle').classes()).toContain('rule-editor__toggle--active')
   })
 })
 

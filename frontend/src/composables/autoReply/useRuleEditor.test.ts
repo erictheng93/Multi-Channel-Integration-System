@@ -34,6 +34,7 @@ const mockRule = {
   triggerType: 'keyword' as const,
   priority: 100,
   isActive: true,
+  allowPushFallback: false,
   createdBy: null,
   createdAt: null,
   updatedAt: null,

@@ -16,15 +16,26 @@ export interface ActionExecuteResult {
   error?: string;
 }
 
+export interface ExecuteActionsOptions {
+  // Per-rule opt-in: when true, Reply API failures fall back to Push API
+  // (consumes monthly Push quota but guarantees delivery for business-critical
+  // rules). Default false to preserve quota for normal rules.
+  allowPushFallback?: boolean;
+}
+
 /**
  * Execute auto-reply actions: build LINE messages and send them.
- * Tries Reply API first (free), falls back to Push API on failure.
+ * Uses Reply API when a replyToken exists. Push API is used only when:
+ *   (a) there is no replyToken, or
+ *   (b) Reply API failed AND options.allowPushFallback is true (per-rule opt-in).
+ * Reply API failures without the opt-in flag are surfaced as errors to preserve quota.
  */
 export async function executeActions(
   actions: AutoReplyActionData[],
   replyToken: string | null,
   platformUserId: string,
-  env: Bindings
+  env: Bindings,
+  options: ExecuteActionsOptions = {}
 ): Promise<ActionExecuteResult> {
   if (actions.length === 0) {
     return { success: false, replyMethod: 'reply_api', messageCount: 0, error: 'No actions to execute' };
@@ -46,37 +57,58 @@ export async function executeActions(
   const messageBatch = messages.slice(0, 5);
 
   const accessToken = env.LINE_CHANNEL_ACCESS_TOKEN;
-  let replyMethod: ReplyMethod = 'reply_api';
+  const allowPushFallback = options.allowPushFallback === true;
 
-  // Try Reply API first (free)
   if (replyToken) {
-    log.info('Attempting Reply API', { replyToken: replyToken.slice(0, 10) + '...', messageCount: messageBatch.length, messageTypes: messageBatch.map(m => m.type) });
+    log.info('Attempting Reply API', { replyToken: replyToken.slice(0, 10) + '...', messageCount: messageBatch.length, messageTypes: messageBatch.map(m => m.type), allowPushFallback });
     const replySuccess = await sendLineReply(accessToken, replyToken, messageBatch);
     if (replySuccess) {
       log.info('Auto-reply sent via Reply API', { messageCount: messageBatch.length });
       return { success: true, replyMethod: 'reply_api', messageCount: messageBatch.length };
     }
-    log.warn('Reply API failed, falling back to Push API');
-  } else {
-    log.info('No replyToken, using Push API directly');
+
+    if (!allowPushFallback) {
+      log.error('Reply API failed; Push API fallback is disabled for this rule', { messageCount: messageBatch.length });
+      return {
+        success: false,
+        replyMethod: 'reply_api',
+        messageCount: 0,
+        error: 'Reply API failed',
+      };
+    }
+
+    log.warn('Reply API failed; falling back to Push API (rule opt-in)', { messageCount: messageBatch.length });
+    const fallbackSuccess = await pushLineMessage(accessToken, platformUserId, messageBatch);
+    if (fallbackSuccess) {
+      log.info('Auto-reply sent via Push API (Reply API fallback)', { messageCount: messageBatch.length });
+      return { success: true, replyMethod: 'push_api', messageCount: messageBatch.length };
+    }
+
+    log.error('Both Reply API and Push API fallback failed', { messageCount: messageBatch.length });
+    return {
+      success: false,
+      replyMethod: 'push_api',
+      messageCount: 0,
+      error: 'Reply API failed; Push API fallback also failed',
+    };
   }
 
-  // Fallback to Push API (costs quota)
-  replyMethod = 'push_api';
+  const replyMethod: ReplyMethod = 'push_api';
+  log.info('No replyToken, using Push API directly');
   log.info('Attempting Push API', { platformUserId: platformUserId.slice(0, 10) + '...', messageCount: messageBatch.length });
   const pushSuccess = await pushLineMessage(accessToken, platformUserId, messageBatch);
 
   if (pushSuccess) {
-    log.info('Auto-reply sent via Push API (fallback)', { messageCount: messageBatch.length });
+    log.info('Auto-reply sent via Push API', { messageCount: messageBatch.length });
     return { success: true, replyMethod, messageCount: messageBatch.length };
   }
 
-  log.error('Both Reply API and Push API failed', { messageCount: messageBatch.length });
+  log.error('Push API failed', { messageCount: messageBatch.length });
   return {
     success: false,
     replyMethod,
     messageCount: 0,
-    error: 'Both Reply API and Push API failed',
+    error: 'Push API failed',
   };
 }
 

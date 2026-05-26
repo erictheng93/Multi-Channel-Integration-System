@@ -11,7 +11,10 @@ import { createContextLogger } from '@/utils/logger';
 
 import { findOrCreateConversation, isDuplicateMessage, saveMessage } from '../services/webhook-conversation-service';
 import { nowMs } from '@/utils/timestamp';
-import { evaluate as autoReplyEvaluate } from '@modules/auto-reply/services/auto-reply-engine';
+import {
+  evaluate as autoReplyEvaluate,
+  retryAutoReplyForPlatformMessage,
+} from '@modules/auto-reply/services/auto-reply-engine';
 import { findOrCreateCustomer, triggerBackgroundSyncIfNeeded } from '../services/webhook-customer-service';
 import type { DeferFn } from './webhook';
 
@@ -50,6 +53,27 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
         platformMessageId: message.id,
         userIdPrefix: userId.substring(0, 10),
       });
+      try {
+        const retryResult = await retryAutoReplyForPlatformMessage(env, {
+          platform: 'line',
+          platformMessageId: message.id,
+          replyToken: event.replyToken || null,
+          platformUserId: userId,
+        });
+        if (retryResult.matched) {
+          log.info('LINE Webhook: Duplicate message auto-reply recovery evaluated', {
+            platformMessageId: message.id,
+            ruleId: retryResult.ruleId,
+            replyMethod: retryResult.replyMethod,
+            error: retryResult.error || 'none',
+          });
+        }
+      } catch (retryError) {
+        log.warn('LINE Webhook: Duplicate message auto-reply recovery failed', {
+          platformMessageId: message.id,
+          error: retryError instanceof Error ? retryError.message : String(retryError),
+        });
+      }
       return;
     }
 
@@ -217,6 +241,7 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
             replyToken: event.replyToken || null,
             customerId: user.id,
             platformUserId: userId,
+            platformMessageId: message.id || null,
           },
           env
         );

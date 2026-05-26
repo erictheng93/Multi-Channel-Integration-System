@@ -112,7 +112,7 @@ function createMockEnv() {
   } as any;
 }
 
-function createKeywordRule(opts: { value: string; reply: string; priority?: number; id?: number }) {
+function createKeywordRule(opts: { value: string; reply: string; priority?: number; id?: number; allowPushFallback?: boolean }) {
   return {
     id: opts.id || 1,
     teamId: 1,
@@ -120,6 +120,7 @@ function createKeywordRule(opts: { value: string; reply: string; priority?: numb
     triggerType: 'keyword',
     priority: opts.priority || 100,
     isActive: true,
+    allowPushFallback: opts.allowPushFallback ?? false,
     createdBy: 'admin-001',
     createdAt: '2026-03-13T00:00:00Z',
     updatedAt: '2026-03-13T00:00:00Z',
@@ -179,10 +180,10 @@ describe('Webhook → Auto-Reply Full Flow', () => {
     });
   });
 
-  // ───────────── Reply API Failure → Push API Fallback ─────────────
+  // ───────────── Reply API Failure ─────────────
 
-  describe('replyToken expiry → Push API fallback', () => {
-    it('should fall back to Push API when Reply API fails', async () => {
+  describe('replyToken expiry', () => {
+    it('should return an error and not fall back to Push API when Reply API fails', async () => {
       const env = createMockEnv();
       const rule = createKeywordRule({ value: 'hello', reply: 'Hi there!' });
       kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
@@ -200,16 +201,12 @@ describe('Webhook → Auto-Reply Full Flow', () => {
       }, env);
 
       expect(result.matched).toBe(true);
-      expect(result.replyMethod).toBe('push_api');
+      expect(result.replyMethod).toBe('reply_api');
+      expect(result.error).toBe('Reply API failed');
 
       // Reply API was tried first
       expect(mockSendLineReply).toHaveBeenCalledOnce();
-      // Then Push API was used as fallback
-      expect(mockPushLineMessage).toHaveBeenCalledWith(
-        'test-access-token',
-        'U1234567890',
-        [{ type: 'text', text: 'Hi there!' }]
-      );
+      expect(mockPushLineMessage).not.toHaveBeenCalled();
     });
 
     it('should use Push API directly when replyToken is null', async () => {
@@ -462,10 +459,10 @@ describe('Webhook → Auto-Reply Full Flow', () => {
     });
   });
 
-  // ───────────── Both APIs Fail ─────────────
+  // ───────────── Reply API Fails (default rule, no fallback) ─────────────
 
-  describe('both APIs fail', () => {
-    it('should return matched:true with error when both Reply and Push APIs fail', async () => {
+  describe('Reply API fails on default rule', () => {
+    it('should return matched:true with error when Reply API fails (no opt-in)', async () => {
       const env = createMockEnv();
       const rule = createKeywordRule({ value: 'hello', reply: 'Hi!' });
       kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
@@ -485,6 +482,62 @@ describe('Webhook → Auto-Reply Full Flow', () => {
       expect(result.matched).toBe(true);
       expect(result.error).toBeDefined();
       expect(result.error).toContain('failed');
+      expect(mockPushLineMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  // ───────────── Per-Rule Opt-In Push Fallback ─────────────
+
+  describe('per-rule allowPushFallback opt-in', () => {
+    it('should fall back to Push API on rule with allowPushFallback=true when Reply API fails', async () => {
+      const env = createMockEnv();
+      const rule = createKeywordRule({ value: 'hello', reply: 'Hi!', allowPushFallback: true });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      mockSendLineReply.mockResolvedValue(false);
+      mockPushLineMessage.mockResolvedValue(true);
+
+      const result = await evaluate({
+        message: { content: 'hello', messageType: 'text', platform: 'line' },
+        conversationId: 'conv-001',
+        teamId: 1,
+        replyToken: 'token',
+        customerId: 42,
+        platformUserId: 'U123',
+      }, env);
+
+      expect(result.matched).toBe(true);
+      expect(result.replyMethod).toBe('push_api');
+      expect(mockSendLineReply).toHaveBeenCalledOnce();
+      expect(mockPushLineMessage).toHaveBeenCalledWith(
+        'test-access-token',
+        'U123',
+        [{ type: 'text', text: 'Hi!' }]
+      );
+    });
+
+    it('should surface error when both Reply API and opt-in Push fallback fail', async () => {
+      const env = createMockEnv();
+      const rule = createKeywordRule({ value: 'hello', reply: 'Hi!', allowPushFallback: true });
+      kvStore.set('auto-reply:rules:1', JSON.stringify([rule]));
+
+      mockSendLineReply.mockResolvedValue(false);
+      mockPushLineMessage.mockResolvedValue(false);
+
+      const result = await evaluate({
+        message: { content: 'hello', messageType: 'text', platform: 'line' },
+        conversationId: 'conv-001',
+        teamId: 1,
+        replyToken: 'token',
+        customerId: 42,
+        platformUserId: 'U123',
+      }, env);
+
+      expect(result.matched).toBe(true);
+      expect(result.replyMethod).toBe('push_api');
+      expect(result.error).toBe('Reply API failed; Push API fallback also failed');
+      expect(mockSendLineReply).toHaveBeenCalledOnce();
+      expect(mockPushLineMessage).toHaveBeenCalledOnce();
     });
   });
 

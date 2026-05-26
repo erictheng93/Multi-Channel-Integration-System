@@ -46,6 +46,9 @@ export interface AutoReplyRule {
   triggerType: TriggerType
   priority: number
   isActive: boolean
+  // Per-rule opt-in: when true, Reply API failures fall back to Push API
+  // (consumes monthly quota). Default false — see ADR 0001.
+  allowPushFallback: boolean
   createdBy: string | null
   createdAt: string | null
   updatedAt: string | null
@@ -87,6 +90,7 @@ export interface CreateRuleRequest {
   triggerType: TriggerType
   priority?: number
   isActive?: boolean
+  allowPushFallback?: boolean
   conditions?: Array<{
     conditionType: ConditionType
     value: string

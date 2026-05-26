@@ -170,17 +170,50 @@ describe('action-executor', () => {
     });
   });
 
-  // ───────────── executeActions: Push API fallback ─────────────
+  // ───────────── executeActions: Reply API failure ─────────────
 
-  describe('executeActions — Push API fallback', () => {
-    it('should fall back to Push API when Reply API fails', async () => {
+  describe('executeActions — Reply API failure', () => {
+    it('should return an error and not fall back to Push API when Reply API fails', async () => {
       const env = createMockEnv();
       mockSendLineReply.mockResolvedValue(false);
 
       const result = await executeActions([createTextAction('Hi')], 'expired-token', 'U123', env);
 
+      expect(result.success).toBe(false);
+      expect(result.replyMethod).toBe('reply_api');
+      expect(result.messageCount).toBe(0);
+      expect(result.error).toBe('Reply API failed');
+      expect(mockSendLineReply).toHaveBeenCalledOnce();
+      expect(mockPushLineMessage).not.toHaveBeenCalled();
+    });
+
+    it('should return reply_api as replyMethod on Reply API failure', async () => {
+      const env = createMockEnv();
+      mockSendLineReply.mockResolvedValue(false);
+
+      const result = await executeActions([createTextAction('Hi')], 'token', 'U123', env);
+      expect(result.replyMethod).toBe('reply_api');
+    });
+  });
+
+  // ───────────── executeActions: Reply API failure with opt-in fallback ─────────────
+
+  describe('executeActions — Reply API failure with allowPushFallback opt-in', () => {
+    it('should fall back to Push API when Reply API fails AND allowPushFallback=true', async () => {
+      const env = createMockEnv();
+      mockSendLineReply.mockResolvedValue(false);
+
+      const result = await executeActions(
+        [createTextAction('Hi')],
+        'expired-token',
+        'U123',
+        env,
+        { allowPushFallback: true }
+      );
+
       expect(result.success).toBe(true);
       expect(result.replyMethod).toBe('push_api');
+      expect(result.messageCount).toBe(1);
       expect(mockSendLineReply).toHaveBeenCalledOnce();
       expect(mockPushLineMessage).toHaveBeenCalledWith(
         'test-channel-token',
@@ -189,12 +222,42 @@ describe('action-executor', () => {
       );
     });
 
-    it('should return push_api as replyMethod on fallback success', async () => {
+    it('should return error when both Reply API and Push fallback fail (opt-in)', async () => {
+      const env = createMockEnv();
+      mockSendLineReply.mockResolvedValue(false);
+      mockPushLineMessage.mockResolvedValue(false);
+
+      const result = await executeActions(
+        [createTextAction('Hi')],
+        'expired-token',
+        'U123',
+        env,
+        { allowPushFallback: true }
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.replyMethod).toBe('push_api');
+      expect(result.error).toBe('Reply API failed; Push API fallback also failed');
+      expect(mockSendLineReply).toHaveBeenCalledOnce();
+      expect(mockPushLineMessage).toHaveBeenCalledOnce();
+    });
+
+    it('should NOT fall back to Push API when allowPushFallback=false (default)', async () => {
       const env = createMockEnv();
       mockSendLineReply.mockResolvedValue(false);
 
-      const result = await executeActions([createTextAction('Hi')], 'token', 'U123', env);
-      expect(result.replyMethod).toBe('push_api');
+      const result = await executeActions(
+        [createTextAction('Hi')],
+        'expired-token',
+        'U123',
+        env,
+        { allowPushFallback: false }
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.replyMethod).toBe('reply_api');
+      expect(result.error).toBe('Reply API failed');
+      expect(mockPushLineMessage).not.toHaveBeenCalled();
     });
   });
 
@@ -216,20 +279,21 @@ describe('action-executor', () => {
     });
   });
 
-  // ───────────── executeActions: both APIs fail ─────────────
+  // ───────────── executeActions: Push API failure ─────────────
 
-  describe('executeActions — both APIs fail', () => {
-    it('should return error when both Reply and Push APIs fail', async () => {
+  describe('executeActions — Push API failure', () => {
+    it('should return error when direct Push API fails without a replyToken', async () => {
       const env = createMockEnv();
-      mockSendLineReply.mockResolvedValue(false);
       mockPushLineMessage.mockResolvedValue(false);
 
-      const result = await executeActions([createTextAction('Hi')], 'token', 'U123', env);
+      const result = await executeActions([createTextAction('Hi')], null, 'U123', env);
 
       expect(result.success).toBe(false);
       expect(result.replyMethod).toBe('push_api');
       expect(result.messageCount).toBe(0);
-      expect(result.error).toContain('failed');
+      expect(result.error).toBe('Push API failed');
+      expect(mockSendLineReply).not.toHaveBeenCalled();
+      expect(mockPushLineMessage).toHaveBeenCalledOnce();
     });
   });
 

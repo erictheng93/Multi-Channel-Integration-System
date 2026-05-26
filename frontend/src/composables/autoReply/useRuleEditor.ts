@@ -8,6 +8,7 @@ interface RuleFormData {
   triggerType: 'welcome' | 'keyword' | 'off_hours' | 'fallback'
   priority: number
   isActive: boolean
+  allowPushFallback: boolean
   conditions: Array<{
     conditionType: 'exact' | 'contains' | 'regex' | 'message_type'
     value: string
@@ -34,6 +35,7 @@ export function useRuleEditor() {
       triggerType: 'keyword',
       priority: 100,
       isActive: true,
+      allowPushFallback: false,
       conditions: [],
       actions: []
     }
@@ -55,6 +57,7 @@ export function useRuleEditor() {
     formData.triggerType = rule.triggerType
     formData.priority = rule.priority
     formData.isActive = rule.isActive
+    formData.allowPushFallback = rule.allowPushFallback ?? false
     formData.conditions = rule.conditions.map(c => ({
       conditionType: c.conditionType,
       value: c.value,
@@ -139,6 +142,7 @@ export function useRuleEditor() {
       triggerType: formData.triggerType,
       priority: formData.priority,
       isActive: formData.isActive,
+      allowPushFallback: formData.allowPushFallback,
       conditions: [...formData.conditions],
       actions: [...formData.actions]
     }
@@ -154,6 +158,7 @@ export function useRuleEditor() {
       triggerType: request.triggerType,
       priority: request.priority ?? 100,
       isActive: request.isActive ?? true,
+      allowPushFallback: request.allowPushFallback ?? false,
       createdBy: null,
       createdAt: now,
       updatedAt: now,
@@ -227,6 +232,7 @@ export function useRuleEditor() {
         triggerType: request.triggerType,
         priority: request.priority,
         isActive: request.isActive,
+        allowPushFallback: request.allowPushFallback,
         conditions: request.conditions,
         actions: request.actions
       })

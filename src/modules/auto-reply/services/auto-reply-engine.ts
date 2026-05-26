@@ -7,7 +7,7 @@ import { matchConditions } from './condition-matcher';
 import { isWithinBusinessHours } from './schedule-service';
 import { executeActions } from './action-executor';
 import { createDbClient } from '@/db/drizzle-factory';
-import { autoReplyRules, autoReplyConditions, autoReplyActions, autoReplyLogs, messages } from '@/db/schema';
+import { autoReplyRules, autoReplyConditions, autoReplyActions, autoReplyLogs, autoReplyDeliveries, messages, conversations } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { v4 as uuidv4 } from 'uuid';
@@ -67,7 +67,39 @@ export async function evaluate(
         isGlobalRule: rule.teamId === null,
       });
 
-      const execResult = await executeActions(rule.actions, replyToken, platformUserId, env);
+      const delivery = input.platformMessageId
+        ? await prepareAutoReplyDelivery(env, {
+          platform: message.platform,
+          platformMessageId: input.platformMessageId,
+          ruleId: rule.id,
+          conversationId,
+          customerId,
+        })
+        : { shouldExecute: true, attemptCount: 0 };
+
+      if (!delivery.shouldExecute) {
+        return {
+          matched: true,
+          ruleId: delivery.ruleId ?? rule.id,
+          ruleName: rule.name,
+          replyMethod: delivery.replyMethod,
+          error: delivery.error,
+        };
+      }
+
+      const execResult = await executeActions(rule.actions, replyToken, platformUserId, env, {
+        allowPushFallback: rule.allowPushFallback,
+      });
+
+      if (input.platformMessageId) {
+        await markAutoReplyDeliveryResult(env, {
+          platform: message.platform,
+          platformMessageId: input.platformMessageId,
+          status: execResult.success ? 'success' : 'failed',
+          replyMethod: execResult.replyMethod,
+          error: execResult.success ? null : (execResult.error || 'Unknown auto-reply delivery error'),
+        });
+      }
 
       if (execResult.success) {
         // Post-send operations are independent — run in parallel for ~100ms savings.
@@ -138,7 +170,9 @@ export async function evaluateWelcome(
     // Use highest priority welcome rule
     const rule = welcomeRules[0];
 
-    const execResult = await executeActions(rule.actions, replyToken, platformUserId, env);
+    const execResult = await executeActions(rule.actions, replyToken, platformUserId, env, {
+      allowPushFallback: rule.allowPushFallback,
+    });
 
     if (execResult.success) {
       const responseContentSummary = buildResponseSummary(rule.actions);
@@ -167,6 +201,7 @@ export async function evaluateWelcome(
       ruleId: rule.id,
       ruleName: rule.name,
       replyMethod: execResult.replyMethod,
+      error: execResult.success ? undefined : execResult.error,
     };
   } catch (error) {
     log.error('Auto-reply welcome evaluation error', {
@@ -177,7 +212,223 @@ export async function evaluateWelcome(
   }
 }
 
+/**
+ * Re-evaluate auto-reply for a redelivered platform message that was already
+ * saved. The delivery ledger prevents duplicate sends when the previous attempt
+ * already succeeded or is still pending.
+ */
+export async function retryAutoReplyForPlatformMessage(
+  env: Bindings,
+  input: {
+    platform: 'line';
+    platformMessageId: string;
+    replyToken: string | null;
+    platformUserId: string;
+  }
+): Promise<AutoReplyEvaluateResult> {
+  try {
+    const drizzleDb = createDbClient(env.DB);
+    const existingMessage = await drizzleDb
+      .select({
+        content: messages.content,
+        messageType: messages.messageType,
+        conversationId: messages.conversationId,
+        customerId: messages.customerSenderId,
+      })
+      .from(messages)
+      .where(eq(messages.platformMessageId, input.platformMessageId))
+      .get();
+
+    if (!existingMessage?.conversationId || !existingMessage.customerId) {
+      return { matched: false, error: 'Original message not found for auto-reply retry' };
+    }
+
+    const conversation = await drizzleDb
+      .select({ assignedTeamId: conversations.assignedTeamId })
+      .from(conversations)
+      .where(eq(conversations.id, existingMessage.conversationId))
+      .get();
+
+    return await evaluate(
+      {
+        message: {
+          content: existingMessage.content,
+          messageType: existingMessage.messageType,
+          platform: input.platform,
+        },
+        conversationId: existingMessage.conversationId,
+        teamId: conversation?.assignedTeamId ?? null,
+        replyToken: input.replyToken,
+        customerId: existingMessage.customerId,
+        platformUserId: input.platformUserId,
+        platformMessageId: input.platformMessageId,
+      },
+      env
+    );
+  } catch (error) {
+    log.error('Failed to retry auto-reply for platform message', {
+      platform: input.platform,
+      platformMessageId: input.platformMessageId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { matched: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
 // ==================== Internal Helpers ====================
+
+type DeliveryStatus = 'pending' | 'success' | 'failed';
+
+interface DeliveryPrepareResult {
+  shouldExecute: boolean;
+  ruleId?: number | null;
+  replyMethod?: 'reply_api' | 'push_api';
+  attemptCount: number;
+  error?: string;
+}
+
+async function prepareAutoReplyDelivery(
+  env: Bindings,
+  data: {
+    platform: string;
+    platformMessageId: string;
+    ruleId: number;
+    conversationId: string;
+    customerId: number;
+  }
+): Promise<DeliveryPrepareResult> {
+  const drizzleDb = createDbClient(env.DB);
+  const now = nowISO();
+
+  const existing = await drizzleDb
+    .select()
+    .from(autoReplyDeliveries)
+    .where(
+      and(
+        eq(autoReplyDeliveries.platform, data.platform),
+        eq(autoReplyDeliveries.platformMessageId, data.platformMessageId)
+      )
+    )
+    .get();
+
+  if (existing?.status === 'success') {
+    log.info('Auto-reply delivery already succeeded; skipping duplicate execution', {
+      platform: data.platform,
+      platformMessageId: data.platformMessageId,
+      ruleId: existing.ruleId,
+    });
+    return {
+      shouldExecute: false,
+      ruleId: existing.ruleId,
+      replyMethod: existing.replyMethod as 'reply_api' | 'push_api' | undefined,
+      attemptCount: existing.attemptCount ?? 0,
+    };
+  }
+
+  if (existing?.status === 'pending') {
+    log.info('Auto-reply delivery already pending; skipping concurrent duplicate execution', {
+      platform: data.platform,
+      platformMessageId: data.platformMessageId,
+      ruleId: existing.ruleId,
+    });
+    return {
+      shouldExecute: false,
+      ruleId: existing.ruleId,
+      replyMethod: existing.replyMethod as 'reply_api' | 'push_api' | undefined,
+      attemptCount: existing.attemptCount ?? 0,
+      error: 'Auto-reply delivery already pending',
+    };
+  }
+
+  const attemptCount = (existing?.attemptCount ?? 0) + 1;
+
+  if (existing) {
+    await drizzleDb
+      .update(autoReplyDeliveries)
+      .set({
+        ruleId: data.ruleId,
+        conversationId: data.conversationId,
+        customerId: data.customerId,
+        status: 'pending',
+        attemptCount,
+        lastError: null,
+        lastAttemptAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(autoReplyDeliveries.platform, data.platform),
+          eq(autoReplyDeliveries.platformMessageId, data.platformMessageId)
+        )
+      );
+  } else {
+    try {
+      await drizzleDb.insert(autoReplyDeliveries).values({
+        platform: data.platform,
+        platformMessageId: data.platformMessageId,
+        ruleId: data.ruleId,
+        conversationId: data.conversationId,
+        customerId: data.customerId,
+        status: 'pending',
+        attemptCount,
+        lastAttemptAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch (error) {
+      log.warn('Failed to create auto-reply delivery; duplicate execution is blocked', {
+        platform: data.platform,
+        platformMessageId: data.platformMessageId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return {
+        shouldExecute: false,
+        attemptCount,
+        error: 'Auto-reply delivery could not be reserved',
+      };
+    }
+  }
+
+  return { shouldExecute: true, attemptCount };
+}
+
+async function markAutoReplyDeliveryResult(
+  env: Bindings,
+  data: {
+    platform: string;
+    platformMessageId: string;
+    status: DeliveryStatus;
+    replyMethod: string;
+    error: string | null;
+  }
+): Promise<void> {
+  try {
+    const drizzleDb = createDbClient(env.DB);
+    const now = nowISO();
+    await drizzleDb
+      .update(autoReplyDeliveries)
+      .set({
+        status: data.status,
+        replyMethod: data.replyMethod,
+        lastError: data.error,
+        sentAt: data.status === 'success' ? now : null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(autoReplyDeliveries.platform, data.platform),
+          eq(autoReplyDeliveries.platformMessageId, data.platformMessageId)
+        )
+      );
+  } catch (error) {
+    log.error('Failed to update auto-reply delivery result', {
+      platform: data.platform,
+      platformMessageId: data.platformMessageId,
+      status: data.status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 /**
  * Check if a trigger type is eligible based on the current context.
@@ -377,6 +628,7 @@ async function hydrateRulesWithRelations(
     triggerType: rule.triggerType as TriggerType,
     priority: rule.priority,
     isActive: rule.isActive ?? true,
+    allowPushFallback: rule.allowPushFallback ?? false,
     createdBy: rule.createdBy,
     createdAt: rule.createdAt,
     updatedAt: rule.updatedAt,
