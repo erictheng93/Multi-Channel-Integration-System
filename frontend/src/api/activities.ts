@@ -2,6 +2,7 @@
 import { apiClient } from './base'
 import { getBackendUrl } from '@/config/runtime'
 import type { ApiResponse, PaginatedResponse } from '@/types'
+import type { IrreversibleDetails, MidChange, RestoreDetails } from '@/components/activity/types'
 
 export interface ActivityLog {
   id: number
@@ -50,6 +51,27 @@ export interface ActivityOverview {
     startDate: string
     endDate: string
   }
+}
+
+export interface RestoreResult {
+  success: boolean
+  status: number
+  code?: string
+  data?: {
+    restoredByActivityId?: number
+    restoredActivityId?: number
+    midChanges?: MidChange[]
+    retryAfterMs?: number
+  }
+  error?: string
+}
+
+export function isReversibleDetails(d: unknown): d is RestoreDetails {
+  return !!d && typeof d === 'object' && (d as { reversible?: boolean }).reversible === true
+}
+
+export function isIrreversibleDetails(d: unknown): d is IrreversibleDetails {
+  return !!d && typeof d === 'object' && (d as { reversible?: boolean }).reversible === false
 }
 
 // Input validation helper
@@ -193,6 +215,42 @@ export const activitiesApi = {
         success: false, 
         error: 'Export request failed' // Generic error message
       }
+    }
+  },
+
+  restore: async (activityId: number, options: { force?: boolean } = {}): Promise<RestoreResult> => {
+    if (!Number.isInteger(activityId) || activityId <= 0) {
+      return { success: false, status: 400, error: 'Invalid activity id' }
+    }
+
+    try {
+      const response = await fetch(`${getBackendUrl()}/api/activities/${activityId}/restore`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ force: options.force === true }),
+      })
+
+      const body = (await response.json().catch(() => ({}))) as Record<string, unknown>
+      const bodyData = body.data as RestoreResult['data'] | undefined
+      const fallbackData: RestoreResult['data'] = {
+        restoredByActivityId: body.restoredByActivityId as number | undefined,
+        retryAfterMs: body.retryAfterMs as number | undefined,
+      }
+      const hasFallbackData =
+        fallbackData.restoredByActivityId !== undefined || fallbackData.retryAfterMs !== undefined
+
+      return {
+        success: response.ok,
+        status: response.status,
+        code: body.code as string | undefined,
+        data: bodyData ?? (hasFallbackData ? fallbackData : undefined),
+        error: body.error as string | undefined,
+      }
+    } catch {
+      return { success: false, status: 0, error: 'Network error' }
     }
   }
 }

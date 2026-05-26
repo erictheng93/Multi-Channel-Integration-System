@@ -74,6 +74,7 @@ export interface RuntimeConfig {
     searchCache: boolean;
     performanceMonitoring: boolean;
     experimentalFeatures: boolean;
+    activityRestore: boolean;
   };
 }
 
@@ -273,6 +274,13 @@ export function isDebugEnabled(): boolean {
   return getBooleanEnv('VITE_DEBUG', isDevelopment());
 }
 
+/**
+ * Whether the activity-restore UI is enabled.
+ */
+export function isActivityRestoreEnabled(): boolean {
+  return getBooleanEnv('VITE_ENABLE_ACTIVITY_RESTORE', false);
+}
+
 // ============================================================================
 // API 端點構建函數
 // ============================================================================
@@ -408,6 +416,7 @@ export function getRuntimeConfig(): RuntimeConfig {
       searchCache: getBooleanEnv('VITE_ENABLE_SEARCH_CACHE', true),
       performanceMonitoring: getBooleanEnv('VITE_ENABLE_PERFORMANCE_MONITORING', true),
       experimentalFeatures: getBooleanEnv('VITE_ENABLE_EXPERIMENTAL_FEATURES', isDev),
+      activityRestore: getBooleanEnv('VITE_ENABLE_ACTIVITY_RESTORE', false),
     },
   };
 }
