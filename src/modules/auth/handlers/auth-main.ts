@@ -15,7 +15,7 @@ import {
   requireRole,
 } from '@/middleware/auth';
 import { loginRateLimiter } from '@/middleware/rate-limiter';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents, agentTeams } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
@@ -29,6 +29,22 @@ import { nowISO } from '@/utils/timestamp'
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
+
+function agentState(agent: Record<string, any>) {
+  return {
+    id: agent.id,
+    email: agent.email,
+    display_name: agent.displayName,
+    role: agent.role,
+    is_active: agent.isActive ? 1 : 0,
+    password_policy: agent.passwordPolicy ?? null,
+    last_active: agent.lastActive ?? null,
+    last_login_at: agent.lastLoginAt ?? null,
+    created_at: agent.createdAt,
+    updated_at: agent.updatedAt,
+    deleted_at: agent.deletedAt ?? null
+  };
+}
 
 type RefreshUserRow = Pick<
   typeof agents.$inferSelect,
@@ -308,25 +324,35 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
 
     // 記錄用戶創建活動
     const currentUser = c.get('user');
-    const activityService = new ActivityService(c.env.DB);
-    await activityService.logActivity({
-      userId: currentUser.id.toString(),
-      userName: currentUser.displayName,
-      userRole: currentUser.role,
-      action: ACTIVITY_ACTIONS.USER_CREATE,
-      resourceType: RESOURCE_TYPES.USER,
-      resourceId: newUser.id.toString(),
-      details: {
-        createdUser: {
-          email: newUser.email,
-          displayName: newUser.displayName,
-          role: newUser.role,
-          teamId: newUser.primaryTeamId
-        }
-      },
-      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-      userAgent: c.req.header('User-Agent')
-    });
+    const capture = new ActivityCapture(c.env.DB);
+    await capture.logOnly(
+      capture.buildReversibleLog({
+        request: {
+          userId: currentUser.id.toString(),
+          userName: currentUser.displayName,
+          userRole: currentUser.role,
+          action: ACTIVITY_ACTIONS.USER_CREATE,
+          resourceType: RESOURCE_TYPES.USER,
+          resourceId: newUser.id.toString(),
+          details: {
+            createdUser: {
+              email: newUser.email,
+              displayName: newUser.displayName,
+              role: newUser.role,
+              teamId: newUser.primaryTeamId
+            }
+          },
+          ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+          userAgent: c.req.header('User-Agent')
+        },
+        restoreHandler: 'agent.create',
+        previousState: {
+          id: newUser.id,
+          deleted_at: null
+        },
+        newState: agentState(newUser)
+      })
+    );
 
     return c.json({
       success: true,
@@ -470,6 +496,7 @@ authHandler.put('/me', jwtAuth, async (c) => {
         id: agents.id,
         displayName: agents.displayName,
         email: agents.email,
+        updatedAt: agents.updatedAt,
       })
       .from(agents)
       .where(eq(agents.id, userId))
@@ -518,22 +545,36 @@ authHandler.put('/me', jwtAuth, async (c) => {
       return c.json({ success: false, error: 'Update failed' }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    // 寫稽核日誌 (非阻塞 — ActivityService 內部已捕捉錯誤)
-    const activityService = new ActivityService(c.env.DB);
-    await activityService.logActivity({
-      userId,
-      userName: updated.displayName,
-      userRole: user.role,
-      action: ACTIVITY_ACTIONS.USER_UPDATE,
-      resourceType: RESOURCE_TYPES.USER,
-      resourceId: userId,
-      details: {
-        selfService: true,
-        changes: actualChanges,
-      },
-      ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-      userAgent: c.req.header('User-Agent'),
-    });
+    const capture = new ActivityCapture(c.env.DB);
+    await capture.logOnly(
+      capture.buildReversibleLog({
+        request: {
+          userId,
+          userName: updated.displayName,
+          userRole: user.role,
+          action: ACTIVITY_ACTIONS.USER_UPDATE,
+          resourceType: RESOURCE_TYPES.USER,
+          resourceId: userId,
+          details: {
+            selfService: true,
+            changes: actualChanges,
+          },
+          ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+          userAgent: c.req.header('User-Agent'),
+        },
+        restoreHandler: 'agent.update',
+        previousState: {
+          id: userId,
+          display_name: current.displayName,
+          updated_at: current.updatedAt
+        },
+        newState: {
+          id: userId,
+          display_name: updated.displayName,
+          updated_at: updated.updatedAt
+        }
+      })
+    );
 
     return c.json({
       success: true,
