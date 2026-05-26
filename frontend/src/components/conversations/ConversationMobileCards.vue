@@ -14,12 +14,15 @@
       >
         <div class="card-header">
           <div class="customer-info">
-            <div
-              v-if="conversation.unreadCount > 0"
-              class="unread-dot"
+            <span
+              class="read-badge"
+              :class="conversation.unreadCount > 0 ? 'unread' : 'read'"
+              :aria-label="conversation.unreadCount > 0 ? `未讀 ${conversation.unreadCount} 則訊息` : '已讀'"
             >
-              <span class="sr-only">未讀</span>
-            </div>
+              {{ conversation.unreadCount > 0
+                ? (conversation.unreadCount > 1 ? `未讀 ${conversation.unreadCount}` : '未讀')
+                : '已讀' }}
+            </span>
             <div>
               <div class="customer-name">
                 {{ getCustomerName(conversation) }}
@@ -237,13 +240,30 @@ const getAssignedTo = (conversation: Conversation) => {
   color: #666;
 }
 
-.unread-dot {
-  width: 9px;
-  height: 9px;
-  background: #34C759;
-  border-radius: 50%;
+.read-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 0 6px rgba(52, 199, 89, 0.4);
+  letter-spacing: 0.02em;
+}
+
+.read-badge.unread {
+  background: #FF3B30;
+  color: #FFFFFF;
+}
+
+.read-badge.read {
+  background: #F2F2F7;
+  color: #8E8E93;
+  font-weight: 500;
 }
 
 .conversation-card.has-unread {
