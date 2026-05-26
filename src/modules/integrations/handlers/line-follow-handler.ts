@@ -244,7 +244,7 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
             // Note: assignedUserId removed - only team assignment is supported now
             status: 'active',
             priority: 'normal',
-            lastMessageAt: timestamp,
+            lastMessageAt: null,
             createdAt: timestamp,
             updatedAt: timestamp
           });
@@ -330,10 +330,6 @@ export async function processLineFollowEvent(env: Bindings, event: LineEvent) {
               customerName: displayName,
               platform: 'line',
               status: 'active',
-              lastMessage: {
-                content: '已加入',
-                timestamp: nowMs()
-              },
               unreadCount: 0,
               assignedTeamId: assignedTeamId,
               assignedTeam: teamInfo ? {

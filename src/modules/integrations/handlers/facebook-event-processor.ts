@@ -32,9 +32,9 @@ export async function processFacebookMessage(env: Bindings, messaging: FacebookM
 
   try {
     // EARLY DEDUPE: Skip ALL processing for redelivered messages.
-    // Same rationale as LINE handler: findOrCreateConversation() unconditionally
-    // bumps conversations.last_message_at, so dedup MUST happen before any DB
-    // writes to prevent ghost timestamp updates without saved messages.
+    // Same rationale as LINE handler: redeliveries with the same platform
+    // message ID should not run customer/conversation side effects. The
+    // conversation timestamp is advanced only after saveMessage() inserts a row.
     // See line-message-handler.ts for the 2026-04-24 incident details.
     if (message.mid && await isDuplicateMessage(env, message.mid, 'facebook')) {
       log.info('Facebook Webhook: Duplicate message, skipping all processing', {
