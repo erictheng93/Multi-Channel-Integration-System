@@ -64,6 +64,7 @@
       <ActivityTimeline
         v-else-if="activities.length > 0"
         :activities="activities"
+        @restored="onActivityRestored"
       />
 
       <!-- Empty State -->
@@ -95,13 +96,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ROLES } from '@/constants/roles'
 import { apiClient } from '@/api'
 import { activitiesApi } from '@/api/activities'
 import type { ActivityLog, ActivityOverview } from '@/api/activities'
+import { useWebSocketStore } from '@/stores/websocket'
+import type { WebSocketMessage } from '@/services/websocketClient'
 
 import AppLayout from '@/components/ui/AppLayout.vue'
 import ActivityStatsCards from '@/components/activity/ActivityStatsCards.vue'
@@ -119,6 +122,7 @@ interface User {
 
 const route = useRoute()
 const authStore = useAuthStore()
+const wsStore = useWebSocketStore()
 
 // --- State ---
 const activities = ref<ActivityLog[]>([])
@@ -150,6 +154,7 @@ const pagination = ref({
   total: 0,
   totalPages: 0
 })
+const activitySubscriptionId = ref<string | null>(null)
 
 // --- Computed ---
 const isAdmin = computed(() => authStore.currentAgent?.role === ROLES.ADMIN)
@@ -312,6 +317,16 @@ const loadPage = (page: number) => {
   loadActivities(page)
 }
 
+const onActivityRestored = async (_restoredId: number) => {
+  await loadActivities(pagination.value.page)
+}
+
+const onActivitySocketMessage = (message: WebSocketMessage) => {
+  if (message.type === 'resource.restored') {
+    loadActivities(pagination.value.page)
+  }
+}
+
 const exportActivities = async () => {
   try {
     loading.value = true
@@ -363,6 +378,13 @@ onMounted(() => {
   loadActivities()
   loadUsers()
   loadOverview()
+  activitySubscriptionId.value = wsStore.subscribe('activity', onActivitySocketMessage)
+})
+
+onUnmounted(() => {
+  if (activitySubscriptionId.value) {
+    wsStore.unsubscribe(activitySubscriptionId.value)
+  }
 })
 </script>
 
