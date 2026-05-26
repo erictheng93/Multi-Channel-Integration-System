@@ -16,6 +16,7 @@
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { Hono } from 'hono';
+import { RestoreRegistry } from '@/modules/activities/services/restore-registry';
 
 // ---------------------------------------------------------------------------
 // Configurable JWT payload — can be switched per test
@@ -217,8 +218,36 @@ import type { Bindings } from '@/types';
 // ---------------------------------------------------------------------------
 
 function createMockEnv() {
+  const prepared: Array<{ sql: string; params: unknown[] }> = [];
+  const prepare = vi.fn((sql: string) => {
+    const entry = { sql, params: [] as unknown[] };
+    prepared.push(entry);
+    const stmt: any = {
+      sql,
+      bind: vi.fn((...params: unknown[]) => {
+        entry.params = params;
+        return stmt;
+      }),
+      first: vi.fn().mockResolvedValue(null),
+      all: vi.fn().mockResolvedValue({ results: [] }),
+      run: vi.fn().mockResolvedValue({ meta: { changes: 1, last_row_id: 1 } }),
+    };
+    return stmt;
+  });
   return {
-    DB: { prepare: vi.fn() },
+    DB: {
+      prepare,
+      batch: vi.fn(async (stmts: Array<{ sql?: string }>) => {
+        if (mockState.insertError && stmts.some(stmt => /INSERT INTO customer_tags/i.test(stmt.sql || ''))) {
+          throw mockState.insertError;
+        }
+        if (mockState.deleteError && stmts.some(stmt => /DELETE FROM customer_tags/i.test(stmt.sql || ''))) {
+          throw mockState.deleteError;
+        }
+        return stmts.map(() => ({ meta: { changes: 1 } }));
+      }),
+      prepared,
+    },
     SESSIONS: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
     CACHE: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
     JWT_SECRET: 'test-secret',
@@ -469,6 +498,42 @@ describe('Customer Tags Handler — Integration Tests', () => {
       expect(body.data.alreadyExists).toBe(0);
     });
 
+    test('should capture tag assignments and inserts in one D1 batch', async () => {
+      resetMockState({
+        customerExists: true,
+        validTags: [{ id: 1 }, { id: 2 }],
+        existingAssignments: [],
+      });
+
+      const res = await app.request(
+        '/api/customers/1/tags',
+        jsonBody({ tagIds: [1, 2] })
+      );
+
+      expect(res.status).toBe(200);
+      expect(env.DB.batch).toHaveBeenCalledTimes(1);
+      expect(env.DB.batch.mock.calls[0][0]).toHaveLength(4);
+
+      const insertActivity = env.DB.prepared.find(entry => /INSERT INTO activities/i.test(entry.sql));
+      expect(insertActivity).toBeDefined();
+      const detailsJson = insertActivity?.params.find(
+        param => typeof param === 'string' && param.includes('"restoreHandler":"customer.tag-assign"')
+      ) as string;
+      const details = JSON.parse(detailsJson);
+      expect(details.previousState).toMatchObject({
+        customerId: 1,
+        tagId: 1
+      });
+      expect(details.newState).toMatchObject({
+        customerId: 1,
+        tagId: 1,
+        assignedBy: 'admin-001'
+      });
+      expect(() => {
+        RestoreRegistry['customer.tag-assign'].buildMutation(env.DB as unknown as D1Database, details.previousState);
+      }).not.toThrow();
+    });
+
     test('should return 422 when tagIds is empty', async () => {
       const res = await app.request(
         '/api/customers/1/tags',
@@ -592,6 +657,55 @@ describe('Customer Tags Handler — Integration Tests', () => {
 
       const body = await res.json() as any;
       expect(body.success).toBe(true);
+    });
+
+    test('should capture tag unassignments and deletes in one D1 batch', async () => {
+      resetMockState({ customerExists: true });
+      env.DB.prepare.mockImplementation((sql: string) => {
+        const entry = { sql, params: [] as unknown[] };
+        env.DB.prepared.push(entry);
+        const stmt: any = {
+          bind: vi.fn((...params: unknown[]) => {
+            entry.params = params;
+            return stmt;
+          }),
+          first: vi.fn().mockResolvedValue(null),
+          all: vi.fn().mockResolvedValue({
+            results: [
+              {
+                customer_id: 1,
+                tag_id: 1,
+                assigned_by: 'admin-001',
+                assigned_at: '2026-05-25T00:00:00.000Z'
+              }
+            ]
+          }),
+          run: vi.fn().mockResolvedValue({ meta: { changes: 1, last_row_id: 1 } }),
+        };
+        return stmt;
+      });
+
+      const res = await app.request(
+        '/api/customers/1/tags',
+        jsonBody({ tagIds: [1] }, 'DELETE')
+      );
+
+      expect(res.status).toBe(200);
+      expect(env.DB.batch).toHaveBeenCalledTimes(1);
+      expect(env.DB.batch.mock.calls[0][0]).toHaveLength(2);
+
+      const insertActivity = env.DB.prepared.find(entry => /INSERT INTO activities/i.test(entry.sql));
+      expect(insertActivity).toBeDefined();
+      const detailsJson = insertActivity?.params.find(
+        param => typeof param === 'string' && param.includes('"restoreHandler":"customer.tag-unassign"')
+      ) as string;
+      const details = JSON.parse(detailsJson);
+      expect(details.previousState).toMatchObject({
+        customerId: 1,
+        tagId: 1,
+        assignedBy: 'admin-001'
+      });
+      expect(details.newState).toEqual({});
     });
 
     test('should return 422 when tagIds is empty', async () => {
