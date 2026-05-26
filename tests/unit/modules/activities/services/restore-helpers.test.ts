@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  addTeamMembership,
   addTagToCustomer,
   removeTagFromCustomer,
   restoreAssignedAgent,
@@ -58,6 +59,46 @@ describe('restoreSoftDeleted', () => {
     const handler = restoreSoftDeleted('tags')
 
     await expect(handler.getCurrentState(db, '42')).resolves.toBeNull()
+  })
+})
+
+describe('addTeamMembership', () => {
+  it('buildMutation INSERTs the agent_teams row using captured fields', () => {
+    const { db, prepare, bound } = makeDb()
+
+    addTeamMembership.buildMutation(db, {
+      agent_id: 'agent-7',
+      team_id: 3,
+      role_in_team: 'member',
+      is_primary: 1,
+      joined_at: '2026-05-20T10:00:00.000Z'
+    })
+
+    const sql = prepare.mock.calls[0]?.[0] as string
+    expect(sql).toMatch(/INSERT\s+INTO\s+agent_teams/i)
+    expect(sql).toMatch(/agent_id|team_id|role_in_team|is_primary|joined_at/)
+    expect(bound).toEqual(['agent-7', 3, 'member', 1, '2026-05-20T10:00:00.000Z'])
+  })
+
+  it('throws when required keys are missing', () => {
+    const { db } = makeDb()
+
+    expect(() => addTeamMembership.buildMutation(db, { agent_id: 'a-7' })).toThrow(/team_id/i)
+  })
+
+  it('getCurrentState reads the (agent_id, team_id) row from agent_teams', async () => {
+    const { db, stmt } = makeDb()
+    stmt.first = vi.fn().mockResolvedValue({ agent_id: 'a-7', team_id: 3, is_primary: 1 })
+
+    const result = await addTeamMembership.getCurrentState(db, 'a-7:3')
+
+    expect(result).toEqual({ agent_id: 'a-7', team_id: 3, is_primary: 1 })
+  })
+
+  it('getCurrentState returns null for malformed resourceId', async () => {
+    const { db } = makeDb()
+
+    await expect(addTeamMembership.getCurrentState(db, 'not-a-pair')).resolves.toBeNull()
   })
 })
 

@@ -33,6 +33,7 @@ const RESTORE_ACTION_BY_RESOURCE: Record<string, string> = {
   delayed_message: ACTIVITY_ACTIONS.DELAYED_MESSAGE_RESTORE,
   tag: ACTIVITY_ACTIONS.TAG_RESTORE,
   team: ACTIVITY_ACTIONS.TEAM_RESTORE,
+  team_member: ACTIVITY_ACTIONS.TEAM_MEMBER_RESTORE,
   user: ACTIVITY_ACTIONS.USER_RESTORE
 }
 
@@ -150,9 +151,13 @@ handler.post('/', async (c) => {
     return c.json({ success: false, error: 'Restore handler not found', code: 'RESTORE_HANDLER_NOT_FOUND' }, 422)
   }
 
-  const currentState = await restoreHandler.getCurrentState(c.env.DB, row.resource_id)
+  let currentState = await restoreHandler.getCurrentState(c.env.DB, row.resource_id)
   if (!currentState) {
-    return c.json({ success: false, error: 'Resource no longer exists', code: 'RESOURCE_NOT_FOUND' }, 422)
+    if (restoreHandler.allowMissingCurrentState) {
+      currentState = asRecord(details.newState)
+    } else {
+      return c.json({ success: false, error: 'Resource no longer exists', code: 'RESOURCE_NOT_FOUND' }, 422)
+    }
   }
 
   let force = false

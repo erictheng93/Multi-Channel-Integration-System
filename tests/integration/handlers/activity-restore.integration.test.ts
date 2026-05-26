@@ -49,7 +49,9 @@ function makeBindings(options: {
   const activityRow = Object.prototype.hasOwnProperty.call(options, 'activityRow')
     ? options.activityRow
     : makeActivity()
-  const currentState = options.currentState ?? { id: 42, name: 'VIP', deleted_at: '2026-05-26T14:32:00.000Z' }
+  const currentState = Object.prototype.hasOwnProperty.call(options, 'currentState')
+    ? options.currentState
+    : { id: 42, name: 'VIP', deleted_at: '2026-05-26T14:32:00.000Z' }
   const run = vi.fn().mockResolvedValue({ meta: { changes: options.casChanges ?? 1 } })
   const first = vi
     .fn()
@@ -313,6 +315,38 @@ describe('POST /api/activities/:id/restore', () => {
     expect(batch).toHaveBeenCalledOnce()
     const preparedSql = prepare.mock.calls.map(call => call[0]).join('\n')
     expect(preparedSql).toMatch(/json_set\(details,\s*'\$\.restoredByActivityId',\s*NULL\)/)
+  })
+
+  it('restores hard-deleted team membership without requiring current row to exist', async () => {
+    const activity = makeActivity({
+      action: 'team_member_remove',
+      resource_type: 'team_member',
+      resource_id: 'agent-7:3',
+      details: JSON.stringify(makeDetails({
+        restoreHandler: 'team_member.remove',
+        previousState: {
+          agent_id: 'agent-7',
+          team_id: 3,
+          role_in_team: 'member',
+          is_primary: 0,
+          joined_at: '2026-05-20T10:00:00.000Z'
+        },
+        newState: {
+          agent_id: 'agent-7',
+          team_id: 3,
+          removed_at: '2026-05-26T14:32:00.000Z'
+        }
+      }))
+    })
+    const { bindings, batch } = makeBindings({ activityRow: activity, currentState: null })
+
+    const res = await app.request('/api/activities/5/restore', {
+      method: 'POST',
+      headers: originalActorHeader
+    }, bindings)
+
+    expect(res.status).toBe(200)
+    expect(batch).toHaveBeenCalledOnce()
   })
 
   it('restores the resource, logs restore activity, finalizes slot, and broadcasts', async () => {

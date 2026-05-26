@@ -20,7 +20,8 @@ describe('RestoreRegistry', () => {
       'tag.update',
       'team.create',
       'team.delete',
-      'team.update'
+      'team.update',
+      'team_member.remove'
     ])
   })
 
