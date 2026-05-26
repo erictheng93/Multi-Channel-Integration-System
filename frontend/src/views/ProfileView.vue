@@ -323,7 +323,7 @@ async function onSaveProfile(): Promise<void> {
     }
 
     originalProfile.displayName = profile.displayName
-    showSuccess('已儲存', '顯示名稱已更新')
+    showSuccess('已儲存', '個人資料已更新')
   } catch (error: unknown) {
     const message = extractErrorMessage(error)
     showError('儲存失敗', message)
