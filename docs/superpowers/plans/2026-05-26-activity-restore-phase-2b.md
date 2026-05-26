@@ -14,6 +14,18 @@
 - `docs/superpowers/plans/2026-05-26-activity-restore-phase-1.md` (infrastructure — merged)
 - `docs/superpowers/plans/2026-05-26-activity-restore-phase-2a.md` (high-risk migration — merged)
 
+**Completion status (2026-05-26):** Implemented for the 10 existing Phase 2b HTTP handlers after route audit:
+`conversation_assign`, `conversation_unassign`, `tag_create`, `tag_assign`, `tag_unassign`,
+`team_create`, `team_update`, `team_delete`, `user_create`, and `user_update`.
+`conversation_close`, `conversation_reopen`, `conversation_delete`, and `user_delete` are documented as not present in the current routing surface.
+
+**Post-review fix (2026-05-26):** Create-style reversible captures must include the identifiers required by their reverse restore handlers. `tag.create`, `team.create`, and `agent.create` now capture `{ id, deleted_at: null }`; `customer.tag-assign` captures `{ customerId, tagId }`. This prevents restore-time failures in `softDelete(...)` and `removeTagFromCustomer`.
+
+**Verification run (2026-05-26):**
+- `rtk bunx vitest run tests/integration/handlers/conversation-restore.integration.test.ts tests/integration/handlers/customer-tags.integration.test.ts tests/integration/handlers/tag-create-restore.integration.test.ts tests/unit/modules/activities` - 11 files / 116 tests passed.
+- `rtk bun run build` - passed (`tsc --noEmit`).
+
+
 > **Note on plan format.** Each task in this plan provides the full final code, the captured snapshot shape, and the critical test assertions — but does NOT rewrite the generic TDD step structure (red → green → commit) since Phase 2a's plan already documents it in detail and the pattern is now established. Engineers should follow the same red-green-commit cadence per task.
 
 > **Note on Drizzle vs raw D1.** Several Phase 2b targets currently use Drizzle (`drizzleDb.run(sql\`...\`)`). The migration translates them into `c.env.DB.prepare(...).bind(...)` raw D1 statements so they can participate in a `db.batch([...])` together with the activity log INSERT.
@@ -35,19 +47,19 @@ Two targets advertised in Section 1's Phase 2b table do not exist as HTTP endpoi
 | `tag_unassign` | **In** | `customer-tags.ts:removeTagsFromCustomer` |
 | `conversation_assign` | **In** | `conversation-assignment.ts:POST /:id/assign` |
 | `conversation_unassign` | **In** | `conversation-assignment.ts:POST /:id/unassign` |
-| `conversation_close` | **In** | `conversation-bulk.ts:POST /:id/close` |
-| `conversation_reopen` | **In** | `conversation-bulk.ts:POST /:id/reopen` |
-| `conversation_delete` | **In** | `conversation-bulk.ts:DELETE /:id` |
+| `conversation_close` | **Deferred / not present** | Current `conversation-bulk.ts` explicitly rejects close/reopen; no `POST /:id/close` route exists. |
+| `conversation_reopen` | **Deferred / not present** | Current `conversation-bulk.ts` explicitly rejects close/reopen; no `POST /:id/reopen` route exists. |
+| `conversation_delete` | **Deferred / not present** | No `DELETE /:id` conversation route exists in current router. |
 | `team_create` | **In** | `team-crud.ts:POST /` |
 | `team_update` | **In** | `team-crud.ts:PUT /:id` |
 | `team_delete` | **In** | `team-crud.ts:DELETE /:id` |
 | `user_create` | **In** | `auth-main.ts` |
 | `user_update` | **In** | `auth-main.ts` |
-| `user_delete` | **In** | `auth-main.ts` |
+| `user_delete` | **Deferred / not present** | No auth-main user/agent delete HTTP endpoint exists. |
 
 `customer_create` and `customer_update` join `customer_delete` and `delayed_message_cancel` as deferred items pending separate design work (see the design notes plan at `docs/superpowers/plans/2026-05-26-activity-restore-deferred-design.md` once it lands).
 
-Net Phase 2b scope: **14 handler migrations** grouped into 4 waves.
+Net implemented Phase 2b scope after route audit: **10 handler migrations** grouped into 4 waves. The original 14 advertised targets remain documented above; 4 are excluded because the corresponding HTTP routes do not exist in the current codebase.
 
 ---
 
@@ -90,8 +102,8 @@ For complex operations (multiple mutation statements, side effects), append addi
 |-------------|---------|-------------------|
 | `customer.tag-assign` | `removeTagFromCustomer` | DELETE customer_tags row |
 | `customer.tag-unassign` | `addTagToCustomer` | INSERT customer_tags row |
-| `conversation.assign` | `restoreAssignedAgent` | UPDATE conversations.assigned_team_id |
-| `conversation.unassign` | `restoreAssignedAgent` | Same — null vs id captured in previousState |
+| `conversation.assign` | `restoreFields('conversations')` | Restore assigned_team_id, status, and updated_at together |
+| `conversation.unassign` | `restoreFields('conversations')` | Same — null vs id captured in previousState |
 | `conversation.status` | `restoreField('conversations', 'status')` | UPDATE conversations.status |
 | `conversation.delete` | `restoreSoftDeleted('conversations')` | UPDATE conversations.deleted_at = NULL |
 | `tag.create` | `softDelete('tags')` | UPDATE tags.deleted_at = NOW (reverse of create) |
