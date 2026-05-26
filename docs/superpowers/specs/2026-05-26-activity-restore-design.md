@@ -194,19 +194,21 @@ POST /api/activities/:id/restore
 Body: { force?: boolean }   // force=true bypasses conflict warning
 ```
 
-**Where the route lives.** Add a new handler file `src/modules/activities/handlers/activity-restore.ts` exporting a Hono sub-app. Mount it inside `src/modules/activities/handlers/ActivityHandler.ts` (the activities Hono app) **before** the existing parameterized route `router.get('/:id')` — otherwise Hono will treat `restore` as an activity id and fall through. Per CLAUDE.md "Route Registration Order" rules:
+**Where the route lives.** Add a new handler file `src/modules/activities/handlers/activity-restore.ts` exporting a Hono sub-app. Mount it inside `src/modules/activities/handlers/activity.ts` (the actual Hono router; `ActivityHandler.ts` is a class-method handler collection, not a route group). Place it **before** the existing parameterized route `router.get('/:id', ...)` on line 27 — otherwise Hono will treat `restore` as an activity id and fall through. Per CLAUDE.md "Route Registration Order" rules:
 
 ```typescript
-// in ActivityHandler.ts
-import activityRestoreHandler from './activity-restore';
+// src/modules/activities/handlers/activity.ts
+import activityRestoreHandler from './activity-restore'
 
-// P1: more specific multi-segment routes registered FIRST
-router.route('/:id/restore', activityRestoreHandler);   // POST /api/activities/:id/restore
-// ...
-router.get('/:id', existingGetHandler);                 // must come AFTER
+// ==================== Priority 2: PARAMETERIZED multi-segment routes ====================
+// Register BEFORE the bare /:id route below
+router.route('/:id/restore', activityRestoreHandler)    // POST /api/activities/:id/restore
+
+// ==================== Existing parameterized route ====================
+router.get('/:id', jwtAuth, requireIntId(), moduleActivityHandler.getById)
 ```
 
-JWT auth, time-window, permission, and CAS logic all live inside `activity-restore.ts`. The endpoint is gated by the existing global `jwtAuth` middleware applied to all `/api/activities/*` routes — no extra middleware wiring needed.
+JWT auth, permission, time-window, CAS, conflict detection, and batch dispatch all live inside `activity-restore.ts`. The endpoint inherits the JWT middleware already applied to other `/api/activities/*` routes — no extra wiring needed; the new sub-app should also apply `jwtAuth` to its own POST handler for clarity and parity with siblings on line 16-23.
 
 ### Section 2.1: New Activity Action Constants
 
