@@ -374,9 +374,16 @@ function createMockEnv() {
         bind: vi.fn().mockReturnValue({
           first: vi.fn().mockResolvedValue(null),
           all: vi.fn().mockResolvedValue({ success: true, results: [] }),
-          run: vi.fn().mockResolvedValue({ success: true }),
+          run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1, last_row_id: 1 } }),
         }),
       }),
+      // db.batch returns one result per statement so handlers using
+      // c.env.DB.batch([...]) (Phase 2b conversation_assign / unassign,
+      // tag delete/update, team_member_remove, etc.) can drive their
+      // post-batch logic without throwing.
+      batch: vi.fn().mockImplementation(async (statements: unknown[]) =>
+        statements.map(() => ({ success: true, meta: { changes: 1, last_row_id: 1 } }))
+      ),
     },
     SESSIONS: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
     CACHE: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -588,6 +595,22 @@ describe('Conversation Handlers Integration Tests', () => {
 
   describe('POST /api/conversations/:id/assign', () => {
     test('returns 200 on successful team assignment', async () => {
+      // Phase 2b: assign handler reads pre-state via raw D1 prepare/bind/first
+      // BEFORE running the Drizzle re-fetch and the db.batch mutation. We need
+      // to seed the raw D1 mock so the pre-state SELECT returns an existing row.
+      env.DB.prepare = vi.fn().mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue({
+            id: 'conv-001',
+            assigned_team_id: null,
+            status: 'open',
+            updated_at: '2026-01-01T00:00:00Z',
+          }),
+          all: vi.fn().mockResolvedValue({ success: true, results: [] }),
+          run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1, last_row_id: 1 } }),
+        }),
+      });
+
       // Mock: update succeeds, then re-fetch returns updated conversation
       const updatedJoinResult = {
         conversations: {

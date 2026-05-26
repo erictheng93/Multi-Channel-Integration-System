@@ -14,7 +14,7 @@ import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
@@ -24,6 +24,16 @@ type AssignedConversationResponse = typeof conversations.$inferSelect & {
 };
 
 const conversationAssignmentHandler = new Hono<{ Bindings: Bindings }>();
+
+function activityMeta(c: any, user: any) {
+  return {
+    userId: String(user.id),
+    userName: user.displayName || user.email || user.username || String(user.id),
+    userRole: user.role,
+    ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+    userAgent: c.req.header('User-Agent')
+  };
+}
 
 // 指派對話到團隊 (僅支援團隊指派，個人指派已移除)
 conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
@@ -54,6 +64,32 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
     // 更新對話指派
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = nowISO();
+    const previousState = await c.env.DB
+      .prepare(
+        `SELECT id, assigned_team_id, status, updated_at
+         FROM conversations
+         WHERE id = ?`
+      )
+      .bind(conversationId)
+      .first<Record<string, unknown>>();
+
+    if (!previousState) {
+      return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const teamInfoForLog = await drizzleDb
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .get();
+    const assignedTeamName = teamInfoForLog?.name || null;
+
+    const newState = {
+      ...previousState,
+      assigned_team_id: teamId,
+      status: 'assigned',
+      updated_at: timestamp
+    };
 
     log.info('Assign API updating conversation', {
       conversationId,
@@ -61,37 +97,56 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       status: 'assigned'
     });
 
-    await drizzleDb
-      .update(conversations)
-      .set({
-        assignedTeamId: teamId,
-        status: 'assigned',
-        updatedAt: timestamp
-      })
-      .where(eq(conversations.id, conversationId));
+    const capture = new ActivityCapture(c.env.DB);
+    const statements = [
+      capture.buildReversibleLog({
+        request: {
+          ...activityMeta(c, user),
+          action: ACTIVITY_ACTIONS.CONVERSATION_ASSIGN,
+          resourceType: RESOURCE_TYPES.CONVERSATION,
+          resourceId: conversationId,
+          details: { teamName: assignedTeamName || String(teamId), teamId, reason }
+        },
+        restoreHandler: 'conversation.assign',
+        previousState,
+        newState
+      }),
+      c.env.DB
+        .prepare(
+          `UPDATE conversations
+           SET assigned_team_id = ?,
+               status = ?,
+               updated_at = ?
+           WHERE id = ?`
+        )
+        .bind(teamId, 'assigned', timestamp, conversationId)
+    ];
 
-    log.debug('Assign API database UPDATE completed');
+    log.debug('Assign API database batch prepared');
 
     // 記錄轉移歷史 (使用 Drizzle ORM)
     if (reason) {
-      const transferRecord: NewConversationTransfer = {
-        conversationId,
-        toTeamId: teamId,
-        transferReason: reason,
-        transferredBy: String(user.id),
-        createdAt: timestamp
-      };
-
-      await drizzleDb.insert(conversationTransfers).values(transferRecord);
+      statements.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO conversation_transfers
+               (conversation_id, from_team_id, to_team_id, transfer_reason, transferred_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`
+          )
+          .bind(
+            conversationId,
+            previousState.assigned_team_id ?? null,
+            teamId,
+            reason,
+            String(user.id),
+            timestamp
+          )
+      );
     }
 
-    // Query team name for activity log and WebSocket broadcast
-    const teamInfoForLog = await drizzleDb
-      .select({ name: teams.name })
-      .from(teams)
-      .where(eq(teams.id, teamId))
-      .get();
-    const assignedTeamName = teamInfoForLog?.name || null;
+    await c.env.DB.batch(statements);
+
+    log.debug('Assign API database batch completed');
 
     // WebSocket Broadcasting: Conversation Assignment
     try {
@@ -121,22 +176,6 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
     }
 
     // Note: Individual agent notifications removed - only team assignment is supported now
-
-    // Activity logging: conversation assignment
-    try {
-      const activityService = new ActivityService(c.env.DB);
-      activityService.logActivity({
-        userId: user.id.toString(),
-        userName: user.displayName || user.email,
-        userRole: user.role,
-        action: ACTIVITY_ACTIONS.CONVERSATION_ASSIGN,
-        resourceType: RESOURCE_TYPES.CONVERSATION,
-        resourceId: conversationId,
-        details: { teamName: assignedTeamName || String(teamId), teamId, reason },
-        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-        userAgent: c.req.header('User-Agent')
-      }).catch(() => {});
-    } catch (_) { /* non-blocking */ }
 
     // FIX: 获取并返回完整的对话对象
     log.debug('Assign API fetching updated conversation with JOIN', {
@@ -261,17 +300,71 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
 
     // 取消指派：清除 teamId 和 userId，將狀態改回 'open'
     const timestamp = nowISO();
+    const previousState = {
+      id: conv.id,
+      assigned_team_id: conv.assignedTeamId,
+      status: conv.status,
+      updated_at: conv.updatedAt
+    };
+    const newState = {
+      ...previousState,
+      assigned_team_id: null,
+      status: 'active',
+      updated_at: timestamp
+    };
+
+    const capture = new ActivityCapture(c.env.DB);
+    const statements = [
+      capture.buildReversibleLog({
+        request: {
+          ...activityMeta(c, user),
+          action: ACTIVITY_ACTIONS.CONVERSATION_UNASSIGN,
+          resourceType: RESOURCE_TYPES.CONVERSATION,
+          resourceId: conversationId,
+          details: {
+            previousTeamId: previousAssignment?.teamId,
+            previousTeamName: previousAssignment?.teamName,
+            reason
+          }
+        },
+        restoreHandler: 'conversation.unassign',
+        previousState,
+        newState
+      }),
+      c.env.DB
+        .prepare(
+          `UPDATE conversations
+           SET assigned_team_id = NULL,
+               status = ?,
+               updated_at = ?
+           WHERE id = ?`
+        )
+        .bind('active', timestamp, conversationId)
+    ];
+
+    if (reason) {
+      statements.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO conversation_transfers
+               (conversation_id, from_team_id, to_team_id, transfer_reason, transferred_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`
+          )
+          .bind(
+            conversationId,
+            previousAssignment.teamId || null,
+            null,
+            reason || '取消指派',
+            String(user.id),
+            timestamp
+          )
+      );
+    }
 
     try {
       // 使用原始 SQL 执行 UPDATE（避免 Drizzle ORM 的 NULL 处理问题）
       // Note: assigned_user_id removed - only team assignment is supported now
-      await c.env.DB.prepare(
-        `UPDATE conversations
-         SET assigned_team_id = NULL,
-             status = ?,
-             updated_at = ?
-         WHERE id = ?`
-      ).bind('active', timestamp, conversationId).run();
+      await c.env.DB.batch(statements);
 
       log.debug('Unassign API database UPDATE completed');
     } catch (dbError) {
@@ -281,36 +374,6 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
       });
       throw dbError;
     }
-
-    // 記錄取消指派歷史 (只記錄團隊)
-    if (reason) {
-      const transferRecord: NewConversationTransfer = {
-        conversationId,
-        fromTeamId: previousAssignment.teamId || null,
-        toTeamId: null,
-        transferReason: reason || '取消指派',
-        transferredBy: String(user.id),
-        createdAt: timestamp
-      };
-
-      await drizzleDb.insert(conversationTransfers).values(transferRecord);
-    }
-
-    // Activity logging: conversation unassignment
-    try {
-      const activityService = new ActivityService(c.env.DB);
-      activityService.logActivity({
-        userId: user.id.toString(),
-        userName: user.displayName || user.email,
-        userRole: user.role,
-        action: ACTIVITY_ACTIONS.CONVERSATION_UNASSIGN,
-        resourceType: RESOURCE_TYPES.CONVERSATION,
-        resourceId: conversationId,
-        details: { previousTeamId: previousAssignment?.teamId, previousTeamName: previousAssignment?.teamName, reason },
-        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-        userAgent: c.req.header('User-Agent')
-      }).catch(() => {});
-    } catch (_) { /* non-blocking */ }
 
     // WebSocket Broadcasting: Conversation Unassignment
     try {
