@@ -37,11 +37,10 @@ export async function processLineMessage(env: Bindings, event: LineEvent, defer:
   try {
     // EARLY DEDUPE: Skip ALL processing for redelivered messages.
     //
-    // Why this MUST be first: findOrCreateConversation() unconditionally bumps
-    // conversations.last_message_at on existing conversations. Running dedup
-    // AFTER that would let a LINE redelivery (same platformMessageId) silently
-    // update the timestamp without storing a message, producing "ghost" updates:
-    // the conversation list re-orders but the detail view shows no new message.
+    // Why this MUST be first: a redelivery with the same platformMessageId
+    // should not run customer/conversation side effects. last_message_at is
+    // now advanced only after saveMessage() inserts a row, but duplicate events
+    // still need to avoid extra profile syncs, assignment lookups, and broadcasts.
     //
     // Incident: 2026-04-24 — 元隆企業社 redelivery bumped last_message_at to
     // 08:18:44Z but no message row was written; operator believed a new message

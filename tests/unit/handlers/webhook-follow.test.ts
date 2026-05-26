@@ -370,6 +370,7 @@ describe('processLineFollowEvent', () => {
         status: 'active',
         priority: 'normal'
       });
+      expect(convInsert?.values.lastMessageAt).toBeNull();
     });
 
     it('should broadcast WebSocket event with reconciliation metadata when conversation created', async () => {
@@ -395,7 +396,10 @@ describe('processLineFollowEvent', () => {
         expect(mockBroadcastConversationTransferred).toHaveBeenCalledWith(
           expect.objectContaining({
             toTeamId: 5,
-            reason: 'QR Code Follow - Auto Assignment'
+            reason: 'QR Code Follow - Auto Assignment',
+            conversation: expect.not.objectContaining({
+              lastMessage: expect.anything()
+            })
           })
         );
       }

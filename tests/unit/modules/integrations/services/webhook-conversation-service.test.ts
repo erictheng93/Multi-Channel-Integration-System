@@ -156,7 +156,7 @@ describe('webhook-conversation-service', () => {
       expect(mockDb.insert).not.toHaveBeenCalled();
     });
 
-    it('should update lastMessageAt on existing conversation', async () => {
+    it('should not update lastMessageAt before a message row is saved', async () => {
       const existingConversation = {
         id: 'conv-123',
         customerId: 1,
@@ -168,13 +168,7 @@ describe('webhook-conversation-service', () => {
 
       await findOrCreateConversation(mockEnv, 1, 'line');
 
-      expect(mockDb.update).toHaveBeenCalledTimes(1);
-      expect(mockUpdateSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          lastMessageAt: '2026-03-09T12:00:00.000Z',
-          updatedAt: '2026-03-09T12:00:00.000Z',
-        })
-      );
+      expect(mockDb.update).not.toHaveBeenCalled();
     });
 
     it('should backfill team assignment on existing conversation without team', async () => {
@@ -211,9 +205,7 @@ describe('webhook-conversation-service', () => {
         assignedTeamId: 7,
       });
 
-      expect(mockUpdateSet).toHaveBeenCalledWith(
-        expect.not.objectContaining({ assignedTeamId: expect.anything() })
-      );
+      expect(mockDb.update).not.toHaveBeenCalled();
     });
 
     it('should create new conversation when none exists', async () => {
@@ -239,6 +231,7 @@ describe('webhook-conversation-service', () => {
           customerId: 1,
           status: 'active',
           priority: 'normal',
+          lastMessageAt: null,
         })
       );
       expect(result).toEqual(expect.objectContaining({ converted: true }));
@@ -350,8 +343,8 @@ describe('webhook-conversation-service', () => {
 
       // Should NOT insert — another request created it
       expect(mockDb.insert).not.toHaveBeenCalled();
-      // Should update timestamps on the found conversation
-      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      // Should not update timestamps until saveMessage succeeds
+      expect(mockDb.update).not.toHaveBeenCalled();
       expect(result).toEqual({ ...existingConv, converted: true });
     });
 
@@ -503,6 +496,26 @@ describe('webhook-conversation-service', () => {
         '@/workers/latest-message-worker'
       );
       expect(LatestMessageJobQueue).toHaveBeenCalledWith(mockEnv);
+    });
+
+    it('should update conversation timestamps only after message insert succeeds', async () => {
+      await saveMessage(
+        mockEnv,
+        'conv-1',
+        1,
+        'Hello',
+        'text',
+        'msg-1',
+        null,
+        null,
+        'line'
+      );
+
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      expect(mockUpdateSet).toHaveBeenCalledWith({
+        lastMessageAt: '2026-03-09T12:00:00.000Z',
+        updatedAt: '2026-03-09T12:00:00.000Z',
+      });
     });
 
     it('should not fail when cache update throws', async () => {

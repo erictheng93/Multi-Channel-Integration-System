@@ -68,19 +68,20 @@ export async function findOrCreateConversation(
           .get();
 
         if (existing) {
-          // Another request created it while we waited for the lock — just update timestamps
+          // Another request created it while we waited for the lock. Only
+          // backfill assignment here; saveMessage owns lastMessageAt updates.
           const updateTimestamp = nowISO();
-          const updateFields: Record<string, unknown> = {
-            lastMessageAt: updateTimestamp,
-            updatedAt: updateTimestamp
-          };
+          const updateFields: Record<string, unknown> = {};
           if (!existing.assignedTeamId && opts?.assignedTeamId) {
             updateFields.assignedTeamId = opts.assignedTeamId;
+            updateFields.updatedAt = updateTimestamp;
           }
-          await drizzleDb
-            .update(conversations)
-            .set(updateFields)
-            .where(eq(conversations.id, existing.id));
+          if (Object.keys(updateFields).length > 0) {
+            await drizzleDb
+              .update(conversations)
+              .set(updateFields)
+              .where(eq(conversations.id, existing.id));
+          }
           if (!existing.assignedTeamId && opts?.assignedTeamId) {
             existing.assignedTeamId = opts.assignedTeamId;
           }
@@ -107,7 +108,7 @@ export async function findOrCreateConversation(
               priority: 'normal',
               firstResponseAt: null,
               closedAt: null,
-              lastMessageAt: timestamp,
+              lastMessageAt: null,
               createdAt: timestamp,
               updatedAt: timestamp
             });
@@ -207,13 +208,11 @@ export async function findOrCreateConversation(
     }
 
     // Fix: 如果現有對話沒有團隊指派，但呼叫方提供了 teamId，補上指派
-    const updateFields: Record<string, unknown> = {
-      lastMessageAt: timestamp,
-      updatedAt: timestamp
-    };
+    const updateFields: Record<string, unknown> = {};
 
     if (!conversation.assignedTeamId && opts?.assignedTeamId) {
       updateFields.assignedTeamId = opts.assignedTeamId;
+      updateFields.updatedAt = timestamp;
       log.debug(`Backfilling team assignment on existing conversation`, {
         platform: platformLabel,
         conversationId: conversation.id,
@@ -221,10 +220,12 @@ export async function findOrCreateConversation(
       });
     }
 
-    await drizzleDb
-      .update(conversations)
-      .set(updateFields)
-      .where(eq(conversations.id, conversation.id));
+    if (Object.keys(updateFields).length > 0) {
+      await drizzleDb
+        .update(conversations)
+        .set(updateFields)
+        .where(eq(conversations.id, conversation.id));
+    }
 
     // 更新本地 conversation 物件以反映最新狀態
     if (!conversation.assignedTeamId && opts?.assignedTeamId) {
@@ -316,6 +317,23 @@ export async function saveMessage(
         senderName: displayName || null,
         createdAt: timestamp
       });
+
+    try {
+      await drizzleDb
+        .update(conversations)
+        .set({
+          lastMessageAt: timestamp,
+          updatedAt: timestamp
+        })
+        .where(eq(conversations.id, conversationId));
+    } catch (timestampError) {
+      log.warn(`${platformLabel} Webhook: Message saved but conversation timestamp update failed`, {
+        error: timestampError instanceof Error ? timestampError.message : String(timestampError),
+        messageId,
+        conversationId,
+        platformMessageId
+      });
+    }
 
     // Trigger latest message cache update
     try {
