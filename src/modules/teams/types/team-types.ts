@@ -144,7 +144,11 @@ export interface TeamServiceInterface {
 
   // Member management
   addMember(teamId: number, request: TeamMemberAddRequest): Promise<TeamMember>;
-  removeMember(teamId: number, agentId: string): Promise<boolean>;
+  removeMember(
+    teamId: number,
+    agentId: string,
+    caller: { id: string; displayName?: string; role: string; ipAddress?: string; userAgent?: string }
+  ): Promise<boolean>;
   updateMember(teamId: number, agentId: string, request: TeamMemberUpdateRequest): Promise<TeamMember>;
   getMembers(teamId: number): Promise<TeamMember[]>;
 

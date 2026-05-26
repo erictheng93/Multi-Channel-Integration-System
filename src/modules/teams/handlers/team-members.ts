@@ -218,8 +218,15 @@ app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireInt
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
+    const user = c.get('user');
     const teamService = new TeamService(c.env.DB);
-    const success = await teamService.removeMember(teamId, agentId);
+    const success = await teamService.removeMember(teamId, agentId, {
+      id: String(user.id),
+      displayName: user.displayName,
+      role: user.role,
+      ipAddress: c.req.header('CF-Connecting-IP') ?? undefined,
+      userAgent: c.req.header('User-Agent') ?? undefined
+    });
 
     if (!success) {
       return c.json({
