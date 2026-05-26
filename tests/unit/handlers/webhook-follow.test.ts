@@ -390,19 +390,21 @@ describe('processLineFollowEvent', () => {
 
       await processLineFollowEvent(env as any, event);
 
-      // Verify broadcast was called (may not always be called depending on query results)
-      // The key assertion is that when it IS called, it has the right structure
-      if (mockBroadcastConversationTransferred.mock.calls.length > 0) {
-        expect(mockBroadcastConversationTransferred).toHaveBeenCalledWith(
-          expect.objectContaining({
-            toTeamId: 5,
-            reason: 'QR Code Follow - Auto Assignment',
-            conversation: expect.not.objectContaining({
-              lastMessage: expect.anything()
+      expect(mockBroadcastConversationTransferred).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toTeamId: 5,
+          reason: 'QR Code Follow - Auto Assignment',
+          conversation: expect.objectContaining({
+            id: 'mock-conversation-uuid',
+            assignedTeamId: 5,
+            _liffMetadata: expect.objectContaining({
+              isPending: false,
+              lineUserId: 'U1234567890abcdef',
+              isWebhookConfirmation: true
             })
           })
-        );
-      }
+        })
+      );
     });
 
     it('should send welcome message when replyToken is present and team assigned', async () => {
