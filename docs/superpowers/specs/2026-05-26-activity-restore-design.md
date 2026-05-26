@@ -33,8 +33,8 @@ Existing soft-delete infrastructure (`deletedAt` column on `teams/agents/custome
 | Time window | 24 hours default, configurable per-operation via `restorePolicy.expiresAt` | Per-record policy beats hard-coded global — `tag_delete` can be 24h while `settings_update` could be 7d if needed later |
 | Conflict handling | Detect mid-changes → show diff modal → user picks force/cancel | Avoids silent overwrite of others' work; respects user agency over hidden auto-merge |
 | Snapshot storage | Inline JSON in `activities.details` | Zero migration; survives existing 90-day cleanup; simpler than separate `snapshots` table |
-| **Log reliability** | **Snapshot + log written BEFORE mutation, not fire-and-forget after** | **Current `tag delete` etc. log after mutation. If log write fails, snapshot is lost and operation becomes permanently irrecoverable. This is the critical correctness requirement of v1.** |
-| Idempotency | Track `restoredByActivityId` to block double-restore | Repeated restore of the same activity would corrupt state |
+| **Log reliability** | **Snapshot + log + mutation issued in one D1 `batch()` transaction** | **Current `tag delete` etc. log after mutation. The earlier draft of this spec proposed "log first, then mutate, then `markFailed` on error" — but if `markFailed` itself fails, state is corrupt. D1 `batch()` is documented to roll back the entire sequence on any failure ([Cloudflare D1 docs](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch)). This is the only fully correct option. |
+| Idempotency | Conditional-update CAS on `restoredByActivityId`, must assert exactly 1 row changed | A simple `read-then-write` lets two concurrent restores both pass the read. Must use `UPDATE activities SET ... WHERE id = ? AND json_extract(details, '$.restoredByActivityId') IS NULL`. Endpoint asserts `meta.changes === 1`, otherwise returns 409 with link to the winning RESTORE entry. |
 | Restore is auditable | `RESTORE` action emitted with link to original `activityId` | Restoration is itself an operation; must appear in audit trail |
 | Irreversible actions | Marked `reversible: false` at log time; UI shows `ⓘ 不可還原` | Honest UX — users see why button is missing |
 | Non-existent recoverable types | Login/logout/view actions never get restore button | Nothing to undo |
@@ -88,7 +88,7 @@ With `restorePolicy` (per-operation tunable) and idempotency tracking:
 
 - `restorePolicy.expiresAt` — absolute timestamp; default `createdAt + 24h`. Stored explicitly so the policy travels with the record.
 - `restorePolicy.requiresAdmin` — if `true`, even the original actor must be Admin to restore (use for high-stakes operations).
-- `restoredByActivityId` — set to the `id` of the new `RESTORE` activity once this record is restored. Restoration endpoint rejects if non-null (idempotency).
+- `restoredByActivityId` — `null` if never restored, `-1` if restore is in progress (CAS-acquired slot, see Section 2 step 8), or the integer id of the completed RESTORE activity. Restoration endpoint refuses to start if non-null.
 
 For irreversible actions (LINE/FB message send, login, logout):
 ```json
@@ -100,10 +100,11 @@ For irreversible actions (LINE/FB message send, login, logout):
 
 ### `ActivityCapture` Helper Service
 
-A new service `src/modules/activities/services/ActivityCapture.ts` wraps `logActivity` for write operations:
+A new service `src/modules/activities/services/ActivityCapture.ts` wraps `logActivity` for write operations and exposes a batch-builder API so caller and log share a single D1 transaction:
 
 ```typescript
-interface ReversibleLogRequest extends CreateActivityRequest {
+interface ReversibleCapture {
+  request: CreateActivityRequest;
   restoreHandler: string;        // e.g., "tag.delete"
   previousState: Record<string, unknown>;
   newState: Record<string, unknown>;
@@ -113,21 +114,33 @@ interface ReversibleLogRequest extends CreateActivityRequest {
 
 class ActivityCapture {
   /**
-   * Captures pre-state snapshot AND writes log entry BEFORE
-   * the caller performs the mutation. Returns the activity id so the caller
-   * can record `restoredByActivityId` later or roll back the log on mutation failure.
+   * Builds the INSERT statement for the activity log entry. The caller
+   * concatenates this with their own mutation statement(s) and submits
+   * via db.batch([...]) so the whole thing is transactional.
    *
-   * Must be called in this order:
-   *   1. preState = await readCurrentState()
-   *   2. logId = await activityCapture.logReversible({ previousState: preState, ... })
-   *   3. await performMutation()
-   *   4. (on mutation failure) await activityCapture.markFailed(logId)
+   * Usage (canonical pattern):
+   *   const preState = await readCurrentState(id);
+   *   const newState = { ...preState, deletedAt: nowISO() };
+   *
+   *   const logStmt = activityCapture.buildReversibleLog({
+   *     request: { ... },
+   *     restoreHandler: "tag.delete",
+   *     previousState: preState,
+   *     newState,
+   *   });
+   *   const mutateStmt = db.prepare("UPDATE tags SET deleted_at = ? WHERE id = ?")
+   *                       .bind(nowISO(), id);
+   *
+   *   const [logResult, mutateResult] = await db.batch([logStmt, mutateStmt]);
+   *   // D1 rolls back BOTH if either fails — no partial state possible.
    */
-  async logReversible(req: ReversibleLogRequest): Promise<number | null>;
-  async logIrreversible(req: CreateActivityRequest & {reason: string}): Promise<number | null>;
+  buildReversibleLog(capture: ReversibleCapture): D1PreparedStatement;
 
-  /** Soft-marks a log entry as failed when its associated mutation rolled back. */
-  async markFailed(activityId: number, error: string): Promise<void>;
+  /** Same idea, for irreversible / informational actions (no snapshot). */
+  buildIrreversibleLog(req: CreateActivityRequest & {reason: string}): D1PreparedStatement;
+
+  /** Convenience: builds and submits a batch with only the log (use when caller has no mutation). */
+  async logOnly(stmt: D1PreparedStatement): Promise<number | null>;
 }
 ```
 
@@ -138,44 +151,37 @@ Current `tag delete`, `customer delete`, etc. perform the mutation first and the
 For all reversible operations, the new contract is:
 
 ```
-read snapshot  →  log first (with snapshot)  →  mutate  →  on mutation error: mark log failed
+read snapshot  →  build [log statement, mutation statement] →  db.batch([...])
 ```
 
-This is enforced via the `ActivityCapture` API. The existing fire-and-forget pattern remains valid for irreversible / informational actions only (login, view, etc.).
+Per [Cloudflare D1 batch documentation](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch), `batch()` runs all statements within an implicit transaction. If any statement fails, the entire sequence is rolled back. This eliminates the partial-state failure mode (mutation succeeded, log failed).
+
+This is enforced via the `ActivityCapture.buildReversibleLog()` API. The existing fire-and-forget pattern remains valid for irreversible / informational actions only (login, view, etc.).
 
 ### Write Handlers That Migrate (Phased Priority)
 
-Per user audit, high-risk operations migrate first. Each phase is independently shippable:
+Per user audit, high-risk operations migrate first. Each phase is independently shippable. File paths verified against repo at spec time:
 
 **Phase 2a — high-risk (week 1):**
 
 | Module | File | Action |
 |--------|------|--------|
-| tag | `tags/handlers/*.ts` | `tag_delete`, `tag_update` |
-| customer | `customer/handlers/customers-main.ts` | `customer_delete` |
-| team | `teams/handlers/team-main.ts` | `team_member_remove` |
-| delayed-message | `delayed-message/handlers/*.ts` | `delayed_message_cancel` |
-| system | `system/handlers/system-settings.ts` | `settings_update` |
+| tag | `src/modules/tags/handlers/tag-main.ts` + `src/modules/tags/services/tag-service.ts` | `tag_delete`, `tag_update` |
+| customer | `src/modules/customer/handlers/customer-main.ts` | `customer_delete` |
+| team | `src/modules/teams/handlers/team-members.ts` + `src/modules/teams/handlers/members.ts` | `team_member_remove` |
+| delayed-message | `src/modules/delayed-message/handlers/delayed-message-buffer.ts` | `delayed_message_cancel` |
+
+`settings_update` is **excluded from Phase 2a** (see Section 8 / Out of Scope). Settings keys are heterogeneous (some safe to restore, some — like integration credentials — never should be); cherry-picking per-key safety is its own design exercise.
 
 **Phase 2b — medium-risk (week 2):**
 
 | Module | File | Action |
 |--------|------|--------|
-| customer | `customer/handlers/*.ts` | `customer_create`, `customer_update`, `tag_assign`, `tag_unassign` |
-| tag | `tags/handlers/*.ts` | `tag_create` |
-| conversation | `conversations/handlers/*.ts` | `assign`, `unassign`, `status_change`, `delete` |
-| team | `teams/handlers/team-main.ts` | `team_create`, `team_update`, `team_delete` |
-| agent | `auth/handlers/*.ts` | `agent_create`, `agent_update`, `agent_delete` |
-
-### Write Handlers That Migrate
-
-| Module | File | Actions |
-|--------|------|---------|
-| customer | `customer-tags.ts`, `customers-main.ts` | create, update, delete, tag-assign, tag-unassign |
-| tag | `tags/handlers/*.ts` | create, update, delete |
-| conversation | `conversations/handlers/*.ts` | create, update, delete, status-change, assign, unassign |
-| team | `teams/handlers/team-main.ts` | create, update, delete |
-| agent | `auth/handlers/*.ts` | create, update, delete |
+| customer | `src/modules/customer/handlers/customer-main.ts`, `customer-tags.ts` | `customer_create`, `customer_update`, `tag_assign`, `tag_unassign` |
+| tag | `src/modules/tags/handlers/tag-main.ts` | `tag_create` |
+| conversation | `src/modules/conversations/handlers/*.ts` | `conversation_assign`, `conversation_unassign`, `conversation_close`, `conversation_reopen`, conversation delete |
+| team | `src/modules/teams/handlers/team-crud.ts` | `team_create`, `team_update`, `team_delete` |
+| agent | `src/modules/auth/handlers/*.ts` | user_create, user_update, user_delete (paired with existing `user_restore`) |
 
 ---
 
@@ -190,6 +196,26 @@ Body: { force?: boolean }   // force=true bypasses conflict warning
 
 Registered in `src/modules/activities/handlers/restore.ts`, wired into existing activities route group in `src/index.ts`.
 
+### Section 2.1: New Activity Action Constants
+
+`ActivityValidator.validateCreateRequest` (`src/modules/activities/utils/validators.ts:40`) strictly checks `action` against `ACTIVITY_ACTIONS`. Currently only `USER_RESTORE` and `SYSTEM_RESTORE` exist (`src/modules/activities/constants/actions.ts:23,80`); a generic `"RESTORE"` would be rejected.
+
+Add per-resource constants to `src/modules/activities/constants/actions.ts`:
+
+```typescript
+// Restore actions (added by activity-restore design)
+TAG_RESTORE: 'tag_restore',
+CUSTOMER_RESTORE: 'customer_restore',
+CONVERSATION_RESTORE: 'conversation_restore',
+TEAM_RESTORE: 'team_restore',
+TEAM_MEMBER_RESTORE: 'team_member_restore',
+DELAYED_MESSAGE_RESTORE: 'delayed_message_restore',
+// (USER_RESTORE already exists)
+// (SYSTEM_RESTORE already exists — reserved for system-level restore which is out of v1 scope)
+```
+
+The dispatcher in `restore.ts` maps `activity.resourceType` to the matching restore-action constant.
+
 ### Execution Flow
 
 ```
@@ -198,9 +224,11 @@ Registered in `src/modules/activities/handlers/restore.ts`, wired into existing 
 3. Reversibility check:
      activity.details.reversible === true
      → otherwise 422 Unprocessable
-4. Idempotency check:
+4. Idempotency early-check (optimization only, not authoritative):
      activity.details.restoredByActivityId === null
      → otherwise 409 Already Restored (with link to the restoration activity)
+     (Authoritative idempotency enforcement happens in step 10's CAS — this read
+      is a cheap early-out for the common single-caller case.)
 5. Permission check:
      (userId === activity.userId || userRole === 'admin')
      AND (!restorePolicy.requiresAdmin || userRole === 'admin')
@@ -212,26 +240,58 @@ Registered in `src/modules/activities/handlers/restore.ts`, wired into existing 
      a) Look up current state of activity.resourceType / activity.resourceId
      b) Diff currentState vs activity.details.newState
      c) If !equal AND !force → return 409 Conflict with diff payload
-8. Dispatch (transactional):
+8. Acquire the restore slot via CAS — placeholder value `-1` reserves the slot before any mutation:
+     stmt = db.prepare(`
+       UPDATE activities
+          SET details = json_set(details, '$.restoredByActivityId', -1)
+        WHERE id = ?
+          AND json_extract(details, '$.restoredByActivityId') IS NULL
+     `).bind(activity.id)
+     result = await stmt.run()
+     → if result.meta.changes !== 1, another caller won — return 409 with link to winner
+     → if result.meta.changes === 1, this caller owns the restore
+
+9. Build the mutation + RESTORE-log INSERT, run in one batch (atomic per Cloudflare D1 batch docs):
      handler = RestoreRegistry[activity.details.restoreHandler]
-     → handler(db, activity.details.previousState)
-9. Log RESTORE activity:
-     {
-       action: "RESTORE",
-       resourceType: activity.resourceType,
-       resourceId: activity.resourceId,
-       details: { restoredActivityId: activity.id, force }
-     }
-10. Mark original activity:
-     UPDATE activities SET details = json_set(details, '$.restoredByActivityId', <new id>)
-     WHERE id = activity.id
+     mutationStmt   = handler.buildMutation(db, activity.details.previousState)
+     restoreLogStmt = activityCapture.buildIrreversibleLog({
+                        action: <RESTORE_CONSTANT_FOR_RESOURCE>,
+                        resourceType: activity.resourceType,
+                        resourceId: activity.resourceId,
+                        details: {
+                          restoredActivityId: activity.id,
+                          force,
+                          reversible: false,                 // RESTORE itself is irreversible in v1
+                          irreversibleReason: "restore_action_v1_not_reversible"
+                        }
+                      })
+
+     [_, logResult] = await db.batch([mutationStmt, restoreLogStmt])
+     → if batch throws: BOTH statements rolled back; compensate by clearing the slot:
+         await db.prepare("UPDATE activities SET details = json_set(details, '$.restoredByActivityId', NULL) WHERE id = ?")
+                 .bind(activity.id).run()
+       → return 500 with the underlying error
+     → on success: newRestoreLogId = logResult.meta.last_row_id
+
+10. Finalize: update the placeholder slot with the actual RESTORE log id:
+     await db.prepare(`
+       UPDATE activities
+          SET details = json_set(details, '$.restoredByActivityId', ?)
+        WHERE id = ?
+     `).bind(newRestoreLogId, activity.id).run()
+
 11. WebSocket broadcast (use existing MessageBroadcaster DO):
      event: 'resource.restored'
      payload: { resourceType, resourceId, restoredBy }
+
 12. Return 200 with restored entity
 ```
 
-Steps 8-10 should run inside a single D1 batch where possible to maintain atomicity. If step 9 or 10 fail after step 8, the system enters an inconsistent state (data restored but not marked); the recovery is manual admin intervention — log the inconsistency with a known error code so it can be alerted on.
+The key correctness properties:
+- **Mutual exclusion** — step 8's CAS uses `WHERE ... IS NULL` so only one caller can acquire the slot
+- **Atomicity** — step 9's `db.batch()` ensures mutation and RESTORE log either both apply or both don't
+- **Compensation** — if step 9 fails, step 8's slot is explicitly cleared so retries can proceed
+- **No "data restored but unmarked"** — if step 10 fails after step 9 succeeds, the slot still holds `-1` (not `NULL`), so a second restore is still blocked. A periodic janitor can scan for `restoredByActivityId === -1` orphans and reconcile, or the v1 approach is to accept these as benign markers (data IS restored, just orphan markers exist).
 
 ### `RestoreRegistry`
 
@@ -284,14 +344,16 @@ const RestoreRegistry: Record<string, RestoreFn> = {
         "field": "name",
         "valueAtOriginalAction": "王小明",
         "valueNow": "王大明",
-        "valueAfterRestore": "王小明",
-        "modifiedBy": "Bob",
-        "modifiedAt": "2026-05-26T11:30:00.000Z"
+        "valueAfterRestore": "王小明"
       }
     ]
   }
 }
 ```
+
+`midChanges[]` only includes the three values the backend can always derive: `valueAtOriginalAction` (from `activity.details.newState`), `valueNow` (from current resource), `valueAfterRestore` (from `activity.details.previousState`).
+
+**Not included in v1:** `modifiedBy` and `modifiedAt`. These would require scanning all subsequent activity logs touching the same resource and field, which is approximate (skipped fields, gaps in coverage) and expensive (extra query per conflicting field). The conflict modal in v1 reads "此資料在原操作之後曾被修改" without naming the modifier. A future iteration can derive attribution by querying activity logs for the resource between `activity.createdAt` and now.
 
 Frontend uses this payload to render the diff modal.
 
@@ -310,9 +372,10 @@ Frontend uses this payload to render the diff modal.
 | User originally an admin but now an agent | Original-actor check is on ID, not current role — still allowed |
 | User originally an admin but now deleted | Still restorable (by another admin only — original-actor check fails on deleted user) |
 | Cross-team conflict (Team Lead permission upgrade in future) | Out of scope for v1 |
-| Repeated restore attempts | Blocked by `restoredByActivityId` idempotency check; user receives 409 with link to the existing RESTORE entry |
-| Restoration itself can be restored | Yes — the `RESTORE` activity is itself logged via `logReversible`. This means "undoing the undo" effectively re-applies the original operation. Tracked recursively, bounded by 24h window |
-| `logReversible` succeeds but mutation fails | `markFailed(logId)` is called; the log entry remains for forensics but `reversible` flips to `false` |
+| Repeated restore attempts (sequential) | Blocked by `restoredByActivityId` idempotency check; user receives 409 with link to the existing RESTORE entry |
+| Repeated restore attempts (concurrent) | Conditional-update CAS: `UPDATE activities SET ... WHERE id = ? AND json_extract(details, '$.restoredByActivityId') IS NULL`. Endpoint asserts exactly one row changed; loser receives 409 |
+| Restoration itself being restored | **Not supported in v1.** RESTORE activities are logged with `reversible: false` to avoid recursive state-machine complexity. To re-apply the original operation, perform it manually |
+| Mutation fails inside the D1 batch | `db.batch()` rolls back the entire batch including the log insert ([Cloudflare D1 docs](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch)). No partial state is possible. Caller receives the error and returns it to the user |
 
 ---
 
@@ -351,25 +414,27 @@ Triggered on `[還原]` click. Two states:
 **State B — conflict detected (3-column diff):**
 ```
 ╭─ 還原前警告 ────────────────────────────────╮
-│  ⚠ 此資料在原操作之後已被修改               │
+│  ⚠ 此資料在原操作之後曾被修改               │
 │                                             │
-│  ┌──────────┬───────────┬────────────────┐ │
-│  │ 欄位     │ 修改人    │ 三方對照       │ │
-│  ├──────────┼───────────┼────────────────┤ │
-│  │ name     │ Bob 11:30 │ 王小明         │ │
-│  │          │           │ → 王大明 (現)  │ │
-│  │          │           │ → 王小明 (還原)│ │
-│  ├──────────┼───────────┼────────────────┤ │
-│  │ tags     │ Bob 11:35 │ [VIP]          │ │
-│  │          │           │ → [VIP,新會員] │ │
-│  │          │           │ → [VIP]        │ │
-│  └──────────┴───────────┴────────────────┘ │
+│  ┌──────────┬──────────────────────────┐   │
+│  │ 欄位     │ 三方對照                 │   │
+│  ├──────────┼──────────────────────────┤   │
+│  │ name     │ 原操作時：王小明         │   │
+│  │          │ 目前    ：王大明         │   │
+│  │          │ 還原後  ：王小明         │   │
+│  ├──────────┼──────────────────────────┤   │
+│  │ tags     │ 原操作時：[VIP]          │   │
+│  │          │ 目前    ：[VIP, 新會員]  │   │
+│  │          │ 還原後  ：[VIP]          │   │
+│  └──────────┴──────────────────────────┘   │
 │                                             │
-│  強制還原會覆蓋上述變更。                   │
+│  強制還原會覆蓋上述目前值。                 │
 │                                             │
 │  [取消]                    [強制還原]       │
 ╰─────────────────────────────────────────────╯
 ```
+
+Note: v1 does not show *who* modified the field — that requires scanning subsequent activity logs and is deferred (see Section 2 conflict payload). The warning is field-level only.
 
 All styling per **Apple-Native Soft Minimalism** (Section 15 of `docs/UIUX-Design-System.md`): `rounded-2xl` modal, capsule buttons, no hard borders, `#FF3B30` for warning text, `#1C1C1E` primary text.
 
@@ -410,16 +475,19 @@ Optimistic UI is mandatory per project feedback memory `feedback_optimistic_ui.m
 
 ## Section 5: Frontend — Permission and Time Window in UI
 
+All checks read from the per-record `restorePolicy` written by `ActivityCapture` — never hard-coded 24h, never assume admin-only.
+
 | Check | Where computed | Source |
 |-------|---------------|--------|
 | `isOriginalActor` | `ActivityCard.vue` computed | `authStore.currentAgent.id === activity.userId` |
 | `isAdmin` | `ActivityCard.vue` computed | `authStore.currentAgent.role === ROLES.ADMIN` |
-| `withinTimeWindow` | `ActivityCard.vue` computed, refreshed every 60s | `Date.now() - new Date(activity.createdAt).getTime() < 24h` |
-| `canRestore` | `ActivityCard.vue` computed | `(isOriginalActor || isAdmin) && withinTimeWindow && activity.details?.reversible` |
+| `requiresAdmin` | `ActivityCard.vue` computed | `activity.details?.restorePolicy?.requiresAdmin === true` |
+| `withinTimeWindow` | `ActivityCard.vue` computed, refreshed every 60s | `Date.now() < new Date(activity.details.restorePolicy.expiresAt).getTime()` |
+| `canRestore` | `ActivityCard.vue` computed | `activity.details?.reversible && !activity.details?.restoredByActivityId && withinTimeWindow && ((isOriginalActor && !requiresAdmin) || isAdmin)` |
 
 The countdown updates client-side. When `withinTimeWindow` flips to false, the button auto-disables without a server round-trip.
 
-Backend still re-validates all three on `/restore` — frontend disable is UX, not security.
+Backend still re-validates all of these on `/restore` — frontend disable is UX, not security. A missing `restorePolicy` (legacy records) is treated as not-reversible.
 
 ---
 
@@ -427,10 +495,11 @@ Backend still re-validates all three on `/restore` — frontend disable is UX, n
 
 ### Unit tests (Vitest, root `tests/`)
 
-- `ActivityCapture.logReversible` writes correct JSON shape
+- `ActivityCapture.buildReversibleLog` produces a `D1PreparedStatement` whose generated JSON matches the schema in Section 1
 - `RestoreRegistry` entries each restore correctly given valid `previousState`
 - `restore.ts` returns 403 / 410 / 422 / 409 / 200 for matching scenarios
 - Conflict detection diff helper produces correct `midChanges[]`
+- CAS step 8 mock: simulate `meta.changes === 0` → endpoint returns 409 without invoking handler
 
 ### Integration tests (`tests/integration/handlers/`)
 
@@ -438,7 +507,9 @@ Backend still re-validates all three on `/restore` — frontend disable is UX, n
 - Cross-user: Alice deletes, Bob (non-admin) attempts restore → 403
 - Mid-modification: Alice deletes, Bob modifies (impossible — already deleted), so use update scenario: Alice updates name, Bob updates name, Alice restores without force → 409 with diff
 - Time-window: backdate `createdAt` to 25h ago → 410
-- Restore the restore: Alice deletes → Alice restores → Alice "restores the restoration" (soft-delete) → works
+- Restore-the-restore refused (v1): Alice deletes → Alice restores → Alice attempts to restore the RESTORE entry → 422 because `details.reversible` is `false`
+- Concurrent restore: two simultaneous POST /restore on the same activity → exactly one returns 200, the other returns 409 (CAS verification)
+- D1 batch atomicity: simulate mutation failure inside the batch → assert log INSERT also rolled back (no orphan log entry)
 
 ### Frontend tests (Vitest + Vue Test Utils, `frontend/`)
 
@@ -460,11 +531,11 @@ Listed in roadmap; not blocking initial merge.
 ```
 Phase 1 — Infrastructure (2-3 days, independently shippable)
 ─────────────────────────────────────────────────────────────
-  ├─ ActivityCapture service + markFailed
+  ├─ Add new action constants to ACTIVITY_ACTIONS (Section 2.1)
+  ├─ ActivityCapture.buildReversibleLog / buildIrreversibleLog (batch-builder API)
   ├─ RestoreRegistry framework + helpers (restoreSoftDeleted, etc.)
-  ├─ POST /api/activities/:id/restore handler
-  ├─ Permission + time window + idempotency middleware
-  ├─ Conflict detection diff helper
+  ├─ POST /api/activities/:id/restore handler with CAS + batch flow
+  ├─ Permission + time window checks + conflict detection diff helper
   └─ Unit tests for all of the above
 
 Phase 2a — High-risk handlers (4-5 days)
@@ -473,8 +544,8 @@ Phase 2a — High-risk handlers (4-5 days)
   ├─ customer_delete
   ├─ team_member_remove
   ├─ delayed_message_cancel
-  ├─ settings_update
-  └─ Each handler: migrate to logReversible, write integration test
+  └─ Each handler: migrate to db.batch([mutationStmt, logStmt]), write integration test
+  (settings_update intentionally excluded — see Section 8 / Out of Scope)
 
 Phase 2b — Medium-risk handlers (4-5 days)
 ─────────────────────────────────────────────────────────────
@@ -519,11 +590,12 @@ After implementation, update `docs/modules/activities.md` with the new restore s
 
 - Message send "undo" — sent to external LINE/FB API, irreversible
 - Bulk restore (select multiple activities → restore all)
-- Restore for system-level actions (settings changes, backups, etc.)
+- Restore for system-level actions including `settings_update`, `system_backup`, `integration_create`, etc. (heterogeneous keys, some have credentials, needs separate per-key safety design)
 - Team Lead permission tier (only original-actor + Admin in v1)
 - Restoring across hard-deleted FK parents (e.g., restore a customer whose team was hard-deleted)
 - Restore in mobile/embedded views (web only)
 - Email/notification on restore action (audit log entry is sufficient for v1)
+- **Restoring a RESTORE action** — RESTORE entries are logged as `reversible: false` in v1. To re-apply the original operation after restoring it, perform the operation manually. Re-enabling "undo the undo" doubles the state-machine surface area and is deferred
 
 ---
 
