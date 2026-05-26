@@ -15,7 +15,7 @@ import { customers, tags, customerTags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, or, inArray, isNull, isNotNull, asc, desc, count } from 'drizzle-orm';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
-import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createContextLogger } from '@/utils/logger';
 import { likeEscaped } from '@/utils/sql-like';
 
@@ -288,35 +288,51 @@ export const customerTagsHandler = {
         }
 
         // 優化：使用 Drizzle 批量插入（單條 SQL 語句）
-        const tagInsertValues = newTagIds.map(tagId => ({
-          customerId,
-          tagId,
-          assignedBy: typeof assignedBy === 'string' ? assignedBy : assignedBy.toString()
-        }));
-
-        await drizzleDb
-          .insert(customerTags)
-          .values(tagInsertValues);
-
-        log.info(`[Customer Tags] Added ${newTagIds.length} tags using batch insert`);
-
-        // Activity log (fire-and-forget)
-        const customerForLog = await drizzleDb.select({ displayName: customers.displayName }).from(customers).where(eq(customers.id, customerId)).limit(1);
-        const custName = customerForLog[0]?.displayName || String(customerId);
-        const tagsForLog = await drizzleDb.select({ name: tags.name }).from(tags).where(inArray(tags.id, newTagIds));
-        const tagNames = tagsForLog.map(t => t.name).join(', ');
-        const activityService = new ActivityService(c.env.DB);
-        activityService.logActivity({
+        const assignedByValue = typeof assignedBy === 'string' ? assignedBy : assignedBy.toString();
+        const assignedAt = new Date().toISOString();
+        const capture = new ActivityCapture(c.env.DB);
+        const meta = {
           userId: payload?.userId?.toString() || 'system',
           userName: payload?.displayName || payload?.username || 'System',
           userRole: payload?.role || 'system',
-          action: ACTIVITY_ACTIONS.TAG_ASSIGN,
-          resourceType: RESOURCE_TYPES.CUSTOMER,
-          resourceId: customerId.toString(),
-          details: { customerName: custName, tagName: tagNames, tagIds: newTagIds, operation: 'add' },
           ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
           userAgent: c.req.header('User-Agent')
-        }).catch(() => {});
+        };
+        const statements = newTagIds.flatMap(tagId => {
+          const newState = {
+            customerId,
+            tagId,
+            assignedBy: assignedByValue,
+            assignedAt
+          };
+
+          return [
+            capture.buildReversibleLog({
+              request: {
+                ...meta,
+                action: ACTIVITY_ACTIONS.TAG_ASSIGN,
+                resourceType: RESOURCE_TYPES.CUSTOMER,
+                resourceId: `${customerId}:${tagId}`,
+                details: { customerId, tagId, operation: 'add' }
+              },
+              restoreHandler: 'customer.tag-assign',
+              previousState: { customerId, tagId },
+              newState
+            }),
+            c.env.DB
+              .prepare(
+                `INSERT INTO customer_tags
+                   (customer_id, tag_id, assigned_by, assigned_at)
+                 VALUES (?, ?, ?, ?)`
+              )
+              .bind(customerId, tagId, assignedByValue, assignedAt)
+          ];
+        });
+
+        await c.env.DB.batch(statements);
+
+        log.info(`[Customer Tags] Added ${newTagIds.length} tags using batch insert`);
+
       }
 
       // Broadcast tag change event for real-time updates
@@ -376,34 +392,80 @@ export const customerTagsHandler = {
         return notFoundResponse(c, 'Customer');
       }
 
-      // 刪除標籤關聯
-      await drizzleDb
-        .delete(customerTags)
-        .where(
-          and(
-            eq(customerTags.customerId, customerId),
-            inArray(customerTags.tagId, tagIds)
-          )
-        );
-
-      // Activity log (fire-and-forget)
       const payload = c.get('jwtPayload');
-      const customerForLog = await drizzleDb.select({ displayName: customers.displayName }).from(customers).where(eq(customers.id, customerId)).limit(1);
-      const custName = customerForLog[0]?.displayName || String(customerId);
-      const tagsForLog = await drizzleDb.select({ name: tags.name }).from(tags).where(inArray(tags.id, tagIds));
-      const tagNames = tagsForLog.map(t => t.name).join(', ');
-      const activityService = new ActivityService(c.env.DB);
-      activityService.logActivity({
+      const placeholders = tagIds.map(() => '?').join(', ');
+      const existingAssignmentsResult = await c.env.DB
+        .prepare(
+          `SELECT customer_id, tag_id, assigned_by, assigned_at
+           FROM customer_tags
+           WHERE customer_id = ?
+             AND tag_id IN (${placeholders})`
+        )
+        .bind(customerId, ...tagIds)
+        .all<{
+          customer_id: number;
+          tag_id: number;
+          assigned_by: string | null;
+          assigned_at: string | null;
+        }>();
+      const existingAssignments = existingAssignmentsResult.results || [];
+      const capture = new ActivityCapture(c.env.DB);
+      const meta = {
         userId: payload?.userId?.toString() || 'system',
         userName: payload?.displayName || payload?.username || 'System',
         userRole: payload?.role || 'system',
-        action: ACTIVITY_ACTIONS.TAG_UNASSIGN,
-        resourceType: RESOURCE_TYPES.CUSTOMER,
-        resourceId: customerId.toString(),
-        details: { customerName: custName, tagName: tagNames, tagIds, operation: 'remove' },
         ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
         userAgent: c.req.header('User-Agent')
-      }).catch(() => {});
+      };
+      const statements = existingAssignments.flatMap(row => {
+        const tagId = Number(row.tag_id);
+        const previousState = {
+          customerId,
+          tagId,
+          assignedBy: row.assigned_by ?? meta.userId,
+          assignedAt: row.assigned_at ?? null
+        };
+
+        return [
+          capture.buildReversibleLog({
+            request: {
+              ...meta,
+              action: ACTIVITY_ACTIONS.TAG_UNASSIGN,
+              resourceType: RESOURCE_TYPES.CUSTOMER,
+              resourceId: `${customerId}:${tagId}`,
+              details: { customerId, tagId, operation: 'remove' }
+            },
+            restoreHandler: 'customer.tag-unassign',
+            previousState,
+            newState: {}
+          }),
+          c.env.DB
+            .prepare(
+              `DELETE FROM customer_tags
+               WHERE customer_id = ?
+                 AND tag_id = ?`
+            )
+            .bind(customerId, tagId)
+        ];
+      });
+
+      if (statements.length === 0) {
+        statements.push(
+          ...tagIds.map(tagId =>
+            c.env.DB
+              .prepare(
+                `DELETE FROM customer_tags
+                 WHERE customer_id = ?
+                   AND tag_id = ?`
+              )
+              .bind(customerId, tagId)
+          )
+        );
+      }
+
+      if (statements.length > 0) {
+        await c.env.DB.batch(statements);
+      }
 
       // Broadcast tag change event for real-time updates
       try {
