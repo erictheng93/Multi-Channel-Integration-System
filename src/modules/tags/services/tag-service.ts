@@ -390,16 +390,21 @@ export const tagHandler = {
 
   // Update tag
   async update(c: Context<{ Bindings: Bindings }>) {
-    const drizzleDb = createDbClient(c.env.DB);
     try {
       const tagId = c.req.param('id');
+      const tagIdNum = Number(tagId);
+      if (!Number.isInteger(tagIdNum) || tagIdNum <= 0) {
+        return badRequestResponse(c, 'Invalid tag id');
+      }
+
       const { name, color, description, isActive } = await c.req.json();
 
-      const existingTag = await drizzleDb.get(sql`
-        SELECT * FROM tags WHERE id = ${tagId}
-      `);
+      const existingTag = await c.env.DB
+        .prepare('SELECT * FROM tags WHERE id = ?')
+        .bind(tagIdNum)
+        .first<TagRow>();
 
-      if (!existingTag) {
+      if (!existingTag || existingTag.deleted_at != null) {
         return notFoundResponse(c, 'Tag');
       }
 
@@ -415,38 +420,88 @@ export const tagHandler = {
 
       const existingRow = existingTag as TagRow;
       if (name && name !== existingRow.name) {
-        const duplicateTag = await drizzleDb
-          .select({ id: tags.id })
-          .from(tags)
-          .where(
-            and(
-              eq(tags.name, name),
-              sql`${tags.id} != ${tagId}`,
-              eq(tags.isActive, true)
-            )
-          )
-          .limit(1);
+        const duplicateTag = await c.env.DB
+          .prepare('SELECT id FROM tags WHERE name = ? AND id != ? AND is_active = 1 LIMIT 1')
+          .bind(name, tagIdNum)
+          .all<{ id: number }>();
 
-        if (duplicateTag.length > 0) {
+        if ((duplicateTag.results ?? []).length > 0) {
           return validationErrorResponse(c, [
             { field: 'name', message: 'Tag name already exists' }
           ]);
         }
       }
 
-      // Update tag
-      await drizzleDb.run(sql`
-        UPDATE tags
-        SET name = COALESCE(${name || null}, name),
-            color = COALESCE(${normalizedColor || null}, color),
-            description = COALESCE(${description !== undefined ? description : null}, description),
-            is_active = COALESCE(${isActive !== undefined ? isActive : null}, is_active),
-            updated_at = datetime('now')
-        WHERE id = ${tagId}
-      `);
+      const captured: Record<string, unknown> = {};
+      const newValues: Record<string, unknown> = {};
+
+      if (name !== undefined && name !== existingRow.name) {
+        captured.name = existingRow.name;
+        newValues.name = name;
+      }
+      if (normalizedColor !== undefined && normalizedColor !== existingRow.color) {
+        captured.color = existingRow.color;
+        newValues.color = normalizedColor;
+      }
+      if (description !== undefined && description !== existingRow.description) {
+        captured.description = existingRow.description;
+        newValues.description = description;
+      }
+      if (isActive !== undefined && (isActive ? 1 : 0) !== existingRow.is_active) {
+        captured.is_active = existingRow.is_active;
+        newValues.is_active = isActive ? 1 : 0;
+      }
+
+      if (Object.keys(captured).length === 0) {
+        return successResponse(c, {
+          id: existingRow.id,
+          name: existingRow.name,
+          color: existingRow.color,
+          description: existingRow.description,
+          teamId: existingRow.team_id,
+          isActive: Boolean(existingRow.is_active),
+          createdBy: existingRow.created_by,
+          customerCount: 0,
+          conversationCount: 0,
+          createdAt: existingRow.created_at,
+          updatedAt: existingRow.updated_at
+        }, 'Tag is unchanged');
+      }
+
+      const now = nowISO();
+      captured.updated_at = existingRow.updated_at;
+      newValues.updated_at = now;
+
+      const setClause = Object.keys(newValues).map(key => `${key} = ?`).join(', ');
+      const setParams = Object.values(newValues);
+      const mutationStmt = c.env.DB
+        .prepare(`UPDATE tags SET ${setClause} WHERE id = ?`)
+        .bind(...setParams, tagIdNum);
+
+      const meta = extractActivityMeta(c);
+      const capture = new ActivityCapture(c.env.DB);
+      const logStmt = capture.buildReversibleLog({
+        request: {
+          userId: meta.userId,
+          userName: meta.userName,
+          userRole: meta.userRole,
+          action: ACTIVITY_ACTIONS.TAG_UPDATE,
+          resourceType: RESOURCE_TYPES.TAG,
+          resourceId: String(tagIdNum),
+          ipAddress: meta.ipAddress ?? undefined,
+          userAgent: meta.userAgent ?? undefined,
+          details: { tagName: existingRow.name, changedFields: Object.keys(captured) }
+        },
+        restoreHandler: 'tag.update',
+        previousState: { id: tagIdNum, ...captured },
+        newState: { id: tagIdNum, ...newValues }
+      });
+
+      await c.env.DB.batch([logStmt, mutationStmt]);
 
       // Query updated tag to return complete data
-      const updatedTag = await drizzleDb.get(sql`
+      const updatedTag = await c.env.DB
+        .prepare(`
         SELECT t.*,
                COALESCE(customer_count.count, 0) as customer_count,
                COALESCE(conversation_count.count, 0) as conversation_count
@@ -454,25 +509,25 @@ export const tagHandler = {
         LEFT JOIN (
           SELECT tag_id, COUNT(DISTINCT customer_id) as count
           FROM customer_tags
-          WHERE tag_id = ${tagId}
+          WHERE tag_id = ?
         ) customer_count ON t.id = customer_count.tag_id
         LEFT JOIN (
           SELECT ct3.tag_id, COUNT(DISTINCT cv2.id) as count
           FROM customer_tags ct3
           JOIN customers c3 ON ct3.customer_id = c3.id
           JOIN conversations cv2 ON cv2.customer_id = c3.id
-          WHERE ct3.tag_id = ${tagId} AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL
+          WHERE ct3.tag_id = ? AND c3.deleted_at IS NULL AND cv2.deleted_at IS NULL
         ) conversation_count ON t.id = conversation_count.tag_id
-        WHERE t.id = ${tagId}
-      `);
+        WHERE t.id = ?
+      `)
+        .bind(tagIdNum, tagIdNum, tagIdNum)
+        .first<TagWithCountsRow>();
 
       if (!updatedTag) {
         return errorResponse(c, 'Failed to retrieve updated tag', 500);
       }
 
       const updatedRow = updatedTag as TagWithCountsRow;
-
-      logTagActivity(c, ACTIVITY_ACTIONS.TAG_UPDATE, String(tagId ?? ''), { name, color, description, isActive });
 
       return successResponse(c, {
         id: updatedRow.id,

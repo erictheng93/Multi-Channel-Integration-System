@@ -9,6 +9,7 @@ function makeApp() {
     return next()
   })
   app.delete('/api/tags/:id', async c => tagHandler.delete(c))
+  app.put('/api/tags/:id', async c => tagHandler.update(c))
   return app
 }
 
@@ -89,6 +90,89 @@ describe('tag delete via batch', () => {
 
     expect(res.status).toBeGreaterThanOrEqual(500)
     expect(stmt.run).not.toHaveBeenCalled()
+  })
+})
+
+describe('tag update via batch', () => {
+  it('captures only the fields that actually change', async () => {
+    const existingTag = {
+      id: 42,
+      name: 'VIP',
+      color: '#FF9500',
+      description: 'Original',
+      team_id: null,
+      is_active: 1,
+      created_by: 'agent-1',
+      created_at: '2026-04-01T10:00:00.000Z',
+      updated_at: '2026-05-20T14:32:11.000Z',
+      deleted_at: null
+    }
+    const updatedTag = {
+      ...existingTag,
+      name: 'Premium',
+      updated_at: '2026-05-26T14:00:00.000Z',
+      customer_count: 0,
+      conversation_count: 0
+    }
+    const batched: unknown[][] = []
+    let firstCallCount = 0
+    const stmt = {
+      bind: vi.fn().mockReturnThis(),
+      first: vi.fn(async () => {
+        firstCallCount += 1
+        if (firstCallCount === 1) return existingTag
+        return updatedTag
+      }),
+      run: vi.fn(),
+      all: vi.fn().mockResolvedValue({ results: [] })
+    }
+    const batch = vi.fn(async (stmts: unknown[]) => {
+      batched.push(stmts)
+      return stmts.map(() => ({ meta: { changes: 1, last_row_id: 1 } }))
+    })
+    const env = { DB: { prepare: vi.fn(() => stmt), batch } as unknown as D1Database }
+
+    const res = await makeApp().request('/api/tags/42', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Premium' })
+    }, env)
+
+    expect(res.status).toBe(200)
+    expect(batch).toHaveBeenCalledOnce()
+    expect(batched[0]).toHaveLength(2)
+  })
+
+  it('skips the batch when no fields would change', async () => {
+    const existingTag = {
+      id: 42,
+      name: 'VIP',
+      color: '#FF9500',
+      description: null,
+      team_id: null,
+      is_active: 1,
+      created_by: 'agent-1',
+      created_at: '2026-04-01T10:00:00.000Z',
+      updated_at: '2026-05-20T14:32:11.000Z',
+      deleted_at: null
+    }
+    const stmt = {
+      bind: vi.fn().mockReturnThis(),
+      first: vi.fn().mockResolvedValue(existingTag),
+      run: vi.fn(),
+      all: vi.fn().mockResolvedValue({ results: [] })
+    }
+    const batch = vi.fn()
+    const env = { DB: { prepare: vi.fn(() => stmt), batch } as unknown as D1Database }
+
+    const res = await makeApp().request('/api/tags/42', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'VIP' })
+    }, env)
+
+    expect(res.status).toBe(200)
+    expect(batch).not.toHaveBeenCalled()
   })
 })
 
