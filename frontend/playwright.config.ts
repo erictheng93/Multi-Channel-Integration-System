@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const port = process.env.PLAYWRIGHT_PORT ?? '5173'
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`
+
 /**
  * Playwright E2E Test Configuration
  *
@@ -24,12 +27,13 @@ export default defineConfig({
   ],
 
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 10000,
     navigationTimeout: 15000,
+    serviceWorkers: 'block',
   },
 
   projects: [
@@ -40,10 +44,10 @@ export default defineConfig({
   ],
 
   // Expect the dev server to already be running
-  // Start with: cd frontend && npm run dev
+  // Start with: cd frontend && bun run dev
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: `bunx vite --mode development --host 127.0.0.1 --port ${port}`,
+    url: baseURL,
     reuseExistingServer: true,
     timeout: 30000,
   },
