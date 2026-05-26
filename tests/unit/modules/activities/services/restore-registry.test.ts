@@ -4,6 +4,7 @@ import { RestoreRegistry } from '@/modules/activities/services/restore-registry'
 describe('RestoreRegistry', () => {
   it('registers Phase 1 restore handler keys', () => {
     expect(Object.keys(RestoreRegistry).sort()).toEqual([
+      'agent.create',
       'agent.delete',
       'agent.update',
       'conversation.assign',

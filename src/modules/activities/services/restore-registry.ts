@@ -4,7 +4,6 @@ import {
   addTeamMembership,
   addTagToCustomer,
   removeTagFromCustomer,
-  restoreAssignedAgent,
   restoreField,
   restoreFields,
   restoreSoftDeleted,
@@ -26,12 +25,13 @@ export interface RestoreHandler {
 }
 
 export const RestoreRegistry: Record<string, RestoreHandler> = {
+  'agent.create': softDelete('agents'),
   'agent.delete': restoreSoftDeleted('agents'),
   'agent.update': restoreFields('agents'),
-  'conversation.assign': restoreAssignedAgent,
+  'conversation.assign': restoreFields('conversations'),
   'conversation.delete': restoreSoftDeleted('conversations'),
   'conversation.status': restoreField('conversations', 'status'),
-  'conversation.unassign': restoreAssignedAgent,
+  'conversation.unassign': restoreFields('conversations'),
   'customer.create': softDelete('customers'),
   'customer.delete': restoreSoftDeleted('customers'),
   'customer.tag-assign': removeTagFromCustomer,
