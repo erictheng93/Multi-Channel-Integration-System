@@ -1,6 +1,7 @@
 // Activities Module - Restore Handler Registry
 
 import {
+  addTeamMembership,
   addTagToCustomer,
   removeTagFromCustomer,
   restoreAssignedAgent,
@@ -11,6 +12,8 @@ import {
 } from './restore-helpers'
 
 export interface RestoreHandler {
+  allowMissingCurrentState?: boolean
+
   buildMutation(
     db: D1Database,
     previousState: Record<string, unknown>
@@ -35,9 +38,10 @@ export const RestoreRegistry: Record<string, RestoreHandler> = {
   'customer.tag-unassign': addTagToCustomer,
   'customer.update': restoreFields('customers'),
   'tag.create': softDelete('tags'),
-  'tag.delete': restoreSoftDeleted('tags'),
+  'tag.delete': restoreFields('tags'),
   'tag.update': restoreFields('tags'),
   'team.create': softDelete('teams'),
   'team.delete': restoreSoftDeleted('teams'),
-  'team.update': restoreFields('teams')
+  'team.update': restoreFields('teams'),
+  'team_member.remove': addTeamMembership
 }

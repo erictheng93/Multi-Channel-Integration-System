@@ -13,6 +13,7 @@ export const RESOURCE_TYPES = {
   WEBHOOK: 'webhook',
   INTEGRATION: 'integration',
   TAG: 'tag',
+  TEAM_MEMBER: 'team_member',
   DELAYED_MESSAGE: 'delayed_message'
 } as const
 

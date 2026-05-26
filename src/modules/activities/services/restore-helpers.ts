@@ -193,6 +193,37 @@ export const addTagToCustomer: RestoreHandler = {
   getCurrentState: removeTagFromCustomer.getCurrentState
 }
 
+export const addTeamMembership: RestoreHandler = {
+  allowMissingCurrentState: true,
+
+  buildMutation(db, previousState) {
+    const agentId = requireValue(previousState, 'agent_id')
+    const teamId = requireValue(previousState, 'team_id')
+    const roleInTeam = requireValue(previousState, 'role_in_team')
+    const isPrimary = previousState.is_primary
+    const joinedAt = previousState.joined_at ?? previousState.assigned_at ?? new Date().toISOString()
+    if (isPrimary === undefined || isPrimary === null) {
+      throw new Error('previousState.is_primary missing')
+    }
+    return db
+      .prepare(
+        `INSERT INTO agent_teams (agent_id, team_id, role_in_team, is_primary, joined_at)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .bind(agentId, teamId, roleInTeam, isPrimary, joinedAt)
+  },
+  async getCurrentState(db, resourceId) {
+    const [agentId, teamId] = resourceId.split(':')
+    const teamIdNum = Number(teamId)
+    if (!agentId || !Number.isInteger(teamIdNum)) return null
+    const row = await db
+      .prepare('SELECT * FROM agent_teams WHERE agent_id = ? AND team_id = ?')
+      .bind(agentId, teamIdNum)
+      .first()
+    return row ? (row as Record<string, unknown>) : null
+  }
+}
+
 export const restoreAssignedAgent: RestoreHandler = {
   buildMutation(db, previousState) {
     const id = requireValue(previousState, 'id')
