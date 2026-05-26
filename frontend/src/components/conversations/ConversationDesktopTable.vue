@@ -47,6 +47,17 @@
                   ? (conversation.unreadCount > 1 ? `未讀 ${conversation.unreadCount}` : '未讀')
                   : '已讀' }}
               </span>
+              <span
+                v-if="conversation.unreadCount > 0"
+                class="unread-dot"
+                aria-hidden="true"
+              />
+              <span
+                v-if="conversation.unreadCount > 0"
+                class="sr-only"
+              >
+                未讀 {{ conversation.unreadCount }} 則訊息
+              </span>
               <div>
                 <div class="customer-name">
                   {{ getCustomerName(conversation) }}
@@ -292,6 +303,14 @@ const getAssignedTo = (conversation: Conversation) => {
 .read-badge.unread {
   background: #FF3B30;
   color: #FFFFFF;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FF3B30;
+  flex-shrink: 0;
 }
 
 .read-badge.read {
