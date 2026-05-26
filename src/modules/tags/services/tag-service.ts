@@ -16,7 +16,7 @@ import { tags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
-import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 // ── Raw SQL result type interfaces ──────────────────────────────────────────
 
@@ -154,24 +154,6 @@ const extractActivityMeta = (c: Context<{ Bindings: Bindings }>) => {
   };
 };
 
-/** Fire-and-forget activity log for tag operations */
-const logTagActivity = (
-  c: Context<{ Bindings: Bindings }>,
-  action: string,
-  resourceId: string,
-  details: Record<string, unknown>
-) => {
-  const meta = extractActivityMeta(c);
-  const activityService = new ActivityService(c.env.DB);
-  activityService.logActivity({
-    ...meta,
-    action,
-    resourceType: RESOURCE_TYPES.TAG,
-    resourceId,
-    details
-  }).catch(() => {});
-};
-
 export const tagHandler = {
   // Get tag list (simplified model: all tags visible to all agents)
   async list(c: Context<{ Bindings: Bindings }>) {
@@ -307,7 +289,35 @@ export const tagHandler = {
         return errorResponse(c, 'Failed to create tag', 500);
       }
 
-      logTagActivity(c, ACTIVITY_ACTIONS.TAG_CREATE, insertedTag.id?.toString() || '', { name, color, description });
+      const capture = new ActivityCapture(c.env.DB);
+      await capture.logOnly(
+        capture.buildReversibleLog({
+          request: {
+            ...extractActivityMeta(c),
+            action: ACTIVITY_ACTIONS.TAG_CREATE,
+            resourceType: RESOURCE_TYPES.TAG,
+            resourceId: insertedTag.id?.toString() || '',
+            details: { name, color: normalizedColor, description }
+          },
+          restoreHandler: 'tag.create',
+          previousState: {
+            id: insertedTag.id,
+            deleted_at: null
+          },
+          newState: {
+            id: insertedTag.id,
+            name: insertedTag.name,
+            color: insertedTag.color,
+            description: insertedTag.description,
+            team_id: insertedTag.teamId ?? null,
+            is_active: insertedTag.isActive ? 1 : 0,
+            created_by: insertedTag.createdBy ?? null,
+            created_at: insertedTag.createdAt,
+            updated_at: insertedTag.updatedAt,
+            deleted_at: null
+          }
+        })
+      );
 
       return successResponse(c, {
         id: insertedTag.id,
