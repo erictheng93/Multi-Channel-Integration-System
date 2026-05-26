@@ -33,7 +33,9 @@ vi.mock('@/stores/conversations', () => ({
     updateConversationStatus: vi.fn(),
     addMessage: vi.fn(),
     transferredConversation: ref(null),
+    receivedConversation: ref(null),
     clearTransferredState: vi.fn(),
+    clearReceivedState: vi.fn(),
     initializeRealtime: vi.fn().mockResolvedValue(undefined)
   }))
 }))
