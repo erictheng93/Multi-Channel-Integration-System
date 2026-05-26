@@ -144,8 +144,32 @@ import type { Bindings } from '@/types';
 // ---------------------------------------------------------------------------
 
 function createMockEnv() {
+  let firstCallIndex = 0;
+  const stmt = {
+    bind: vi.fn().mockReturnThis(),
+    first: vi.fn(() => {
+      if (mockState.dbError) return Promise.reject(mockState.dbError);
+      const result = mockState.getResults[firstCallIndex] ?? null;
+      firstCallIndex++;
+      return Promise.resolve(result);
+    }),
+    all: vi.fn(() => {
+      if (mockState.dbError) return Promise.reject(mockState.dbError);
+      return Promise.resolve({ results: mockState.selectResult });
+    }),
+    run: vi.fn(() => {
+      if (mockState.dbError) return Promise.reject(mockState.dbError);
+      return Promise.resolve({ meta: { changes: 1 } });
+    })
+  };
   return {
-    DB: { prepare: vi.fn() },
+    DB: {
+      prepare: vi.fn(() => stmt),
+      batch: vi.fn((stmts: unknown[]) => {
+        if (mockState.dbError) return Promise.reject(mockState.dbError);
+        return Promise.resolve(stmts.map(() => ({ meta: { changes: 1, last_row_id: 1 } })));
+      })
+    },
     SESSIONS: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
     CACHE: { get: vi.fn(), put: vi.fn(), delete: vi.fn() },
     JWT_SECRET: 'test-secret',
