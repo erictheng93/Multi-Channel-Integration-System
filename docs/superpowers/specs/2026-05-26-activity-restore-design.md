@@ -166,7 +166,7 @@ Per user audit, high-risk operations migrate first. Each phase is independently 
 
 | Module | File | Action |
 |--------|------|--------|
-| tag | `src/modules/tags/handlers/tag-main.ts` + `src/modules/tags/services/tag-service.ts` | `tag_delete`, `tag_update` |
+| tag | `src/modules/tags/services/tag-service.ts` (CRUD logic; `tag-main.ts` is just routing) | `tag_delete`, `tag_update` |
 | customer | `src/modules/customer/handlers/customer-main.ts` | `customer_delete` |
 | team | `src/modules/teams/handlers/team-members.ts` + `src/modules/teams/handlers/members.ts` | `team_member_remove` |
 | delayed-message | `src/modules/delayed-message/handlers/delayed-message-buffer.ts` | `delayed_message_cancel` |
@@ -178,7 +178,7 @@ Per user audit, high-risk operations migrate first. Each phase is independently 
 | Module | File | Action |
 |--------|------|--------|
 | customer | `src/modules/customer/handlers/customer-main.ts`, `customer-tags.ts` | `customer_create`, `customer_update`, `tag_assign`, `tag_unassign` |
-| tag | `src/modules/tags/handlers/tag-main.ts` | `tag_create` |
+| tag | `src/modules/tags/services/tag-service.ts` | `tag_create` |
 | conversation | `src/modules/conversations/handlers/*.ts` | `conversation_assign`, `conversation_unassign`, `conversation_close`, `conversation_reopen`, conversation delete |
 | team | `src/modules/teams/handlers/team-crud.ts` | `team_create`, `team_update`, `team_delete` |
 | agent | `src/modules/auth/handlers/*.ts` | user_create, user_update, user_delete (paired with existing `user_restore`) |
@@ -194,7 +194,19 @@ POST /api/activities/:id/restore
 Body: { force?: boolean }   // force=true bypasses conflict warning
 ```
 
-Registered in `src/modules/activities/handlers/restore.ts`, wired into existing activities route group in `src/index.ts`.
+**Where the route lives.** Add a new handler file `src/modules/activities/handlers/activity-restore.ts` exporting a Hono sub-app. Mount it inside `src/modules/activities/handlers/ActivityHandler.ts` (the activities Hono app) **before** the existing parameterized route `router.get('/:id')` — otherwise Hono will treat `restore` as an activity id and fall through. Per CLAUDE.md "Route Registration Order" rules:
+
+```typescript
+// in ActivityHandler.ts
+import activityRestoreHandler from './activity-restore';
+
+// P1: more specific multi-segment routes registered FIRST
+router.route('/:id/restore', activityRestoreHandler);   // POST /api/activities/:id/restore
+// ...
+router.get('/:id', existingGetHandler);                 // must come AFTER
+```
+
+JWT auth, time-window, permission, and CAS logic all live inside `activity-restore.ts`. The endpoint is gated by the existing global `jwtAuth` middleware applied to all `/api/activities/*` routes — no extra middleware wiring needed.
 
 ### Section 2.1: New Activity Action Constants
 
@@ -237,9 +249,11 @@ The dispatcher in `restore.ts` maps `activity.resourceType` to the matching rest
      now < activity.details.restorePolicy.expiresAt
      → otherwise 410 Gone (expired)
 7. Conflict detection:
-     a) Look up current state of activity.resourceType / activity.resourceId
-     b) Diff currentState vs activity.details.newState
-     c) If !equal AND !force → return 409 Conflict with diff payload
+     a) handler = RestoreRegistry[activity.details.restoreHandler]
+     b) currentState = await handler.getCurrentState(db, activity.resourceId)
+     c) Diff currentState vs activity.details.newState (field-level)
+     d) If non-empty diff AND !force → return 409 Conflict with diff payload
+     (currentState === null means hard-deleted → 422 per Edge Cases table)
 8. Acquire the restore slot via CAS — placeholder value `-1` reserves the slot before any mutation:
      stmt = db.prepare(`
        UPDATE activities
@@ -248,16 +262,35 @@ The dispatcher in `restore.ts` maps `activity.resourceType` to the matching rest
           AND json_extract(details, '$.restoredByActivityId') IS NULL
      `).bind(activity.id)
      result = await stmt.run()
-     → if result.meta.changes !== 1, another caller won — return 409 with link to winner
+     → if result.meta.changes !== 1, another caller already owns the slot. Re-read
+       activity.details.restoredByActivityId:
+         - if value is -1: another restore is in progress, return:
+             HTTP 409
+             { code: "RESTORE_IN_PROGRESS", retryAfterMs: 2000 }
+           Client should retry after the delay; the winner will have completed
+           step 10 by then and the slot will hold the real RESTORE log id.
+         - if value is a positive integer: that's the winning RESTORE entry id, return:
+             HTTP 409
+             { code: "ALREADY_RESTORED", restoredByActivityId: <that id> }
      → if result.meta.changes === 1, this caller owns the restore
 
 9. Build the mutation + RESTORE-log INSERT, run in one batch (atomic per Cloudflare D1 batch docs):
      handler = RestoreRegistry[activity.details.restoreHandler]
      mutationStmt   = handler.buildMutation(db, activity.details.previousState)
      restoreLogStmt = activityCapture.buildIrreversibleLog({
-                        action: <RESTORE_CONSTANT_FOR_RESOURCE>,
+                        // Actor metadata required by ActivityValidator
+                        // (src/modules/activities/utils/validators.ts) — fetched from the
+                        // JWT context of the user performing the restore, NOT from the
+                        // original activity.
+                        userId:       currentUser.id,
+                        userName:     currentUser.displayName,
+                        userRole:     currentUser.role,
+                        ipAddress:    c.req.header('CF-Connecting-IP'),
+                        userAgent:    c.req.header('User-Agent'),
+
+                        action:       <RESTORE_CONSTANT_FOR_RESOURCE>,
                         resourceType: activity.resourceType,
-                        resourceId: activity.resourceId,
+                        resourceId:   activity.resourceId,
                         details: {
                           restoredActivityId: activity.id,
                           force,
@@ -295,10 +328,24 @@ The key correctness properties:
 
 ### `RestoreRegistry`
 
-```typescript
-type RestoreFn = (db: D1Database, previousState: Record<string, unknown>) => Promise<unknown>;
+`buildMutation` returns the reversal statement; `getCurrentState` is used by conflict detection (Section 2 step 7) so both belong in one interface.
 
-const RestoreRegistry: Record<string, RestoreFn> = {
+```typescript
+interface RestoreHandler {
+  /** Produce the D1 statement that reverses the original operation. */
+  buildMutation(
+    db: D1Database,
+    previousState: Record<string, unknown>
+  ): D1PreparedStatement;
+
+  /** Read the current persisted state of the resource, for conflict diffing. */
+  getCurrentState(
+    db: D1Database,
+    resourceId: string
+  ): Promise<Record<string, unknown> | null>;
+}
+
+const RestoreRegistry: Record<string, RestoreHandler> = {
   // Soft-delete reversal (clear deletedAt)
   "customer.delete":     restoreSoftDeleted("customers"),
   "tag.delete":          restoreSoftDeleted("tags"),
@@ -329,7 +376,9 @@ const RestoreRegistry: Record<string, RestoreFn> = {
 };
 ```
 
-`restoreSoftDeleted`, `softDelete`, `restoreFields`, `restoreField` are factory helpers in `src/modules/activities/services/restore-helpers.ts`.
+`restoreSoftDeleted`, `softDelete`, `restoreFields`, `restoreField` are factory helpers in `src/modules/activities/services/restore-helpers.ts`. Each factory returns an object satisfying `RestoreHandler` — both `buildMutation` and `getCurrentState` implementations.
+
+Section 2 step 7 (conflict detection) calls `handler.getCurrentState(db, activity.resourceId)`. Section 2 step 9 calls `handler.buildMutation(db, activity.details.previousState)`. Sharing one interface means the registry only needs one entry per operation.
 
 ### Conflict Payload (HTTP 409)
 
@@ -578,7 +627,26 @@ This is acceptable because:
 
 ### Feature flag
 
-Wrap the `[還原]` button visibility behind a runtime config flag `ENABLE_ACTIVITY_RESTORE` (read via `frontend/src/config/runtime.ts`). Default `false` until QA signs off. Backend endpoint always available (returns 422 if `reversible !== true`, which old records are).
+Wrap the `[還原]` button visibility behind a runtime config flag `ENABLE_ACTIVITY_RESTORE`. Default `false` until QA signs off. Backend endpoint always available (returns 422 if `reversible !== true`, which old records are).
+
+**Config shape changes required:**
+
+1. `frontend/src/config/runtime.ts` — add to the runtime config interface and reader:
+   ```typescript
+   interface RuntimeConfig {
+     // ... existing keys
+     enableActivityRestore: boolean;
+   }
+   function isActivityRestoreEnabled(): boolean { ... }
+   ```
+2. `frontend/.env.development` and `frontend/.env.production` — add:
+   ```
+   VITE_ENABLE_ACTIVITY_RESTORE=false
+   ```
+3. `frontend/src/vite-env.d.ts` — extend `ImportMetaEnv` with the new key
+4. `ActivityCard.vue` — call `isActivityRestoreEnabled()` and `&&` into `canRestore`
+
+Backend has no flag — endpoint exists permanently but is harmless because no records have `reversible: true` until Phase 2a handlers are deployed.
 
 ### Documentation update
 
