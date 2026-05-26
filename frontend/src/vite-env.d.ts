@@ -90,6 +90,9 @@ interface ImportMetaEnv {
   /** 啟用實驗性功能 */
   readonly VITE_ENABLE_EXPERIMENTAL_FEATURES: 'true' | 'false';
 
+  /** Enables the activity restore UI surface */
+  readonly VITE_ENABLE_ACTIVITY_RESTORE?: 'true' | 'false';
+
   // ============================================================================
   // 安全配置 (可選)
   // ============================================================================
