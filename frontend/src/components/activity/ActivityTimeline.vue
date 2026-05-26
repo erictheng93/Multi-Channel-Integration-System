@@ -11,7 +11,10 @@
         v-for="(activity, index) in group.activities"
         :key="activity.id"
       >
-        <ActivityTimelineItem :activity="activity" />
+        <ActivityTimelineItem
+          :activity="activity"
+          @restored="(id) => emit('restored', id)"
+        />
         <div
           v-if="index < group.activities.length - 1"
           class="timeline__divider"
@@ -29,6 +32,10 @@ import ActivityTimelineItem from './ActivityTimelineItem.vue'
 
 const props = defineProps<{
   activities: ActivityLog[]
+}>()
+
+const emit = defineEmits<{
+  (_e: 'restored', _activityId: number): void
 }>()
 
 const dateGroups = computed(() => groupActivitiesByDate(props.activities))

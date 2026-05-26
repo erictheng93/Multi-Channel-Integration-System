@@ -18,6 +18,38 @@
           :aria-label="getRoleLabel(activity.userRole)"
         >{{ getRoleLabel(activity.userRole) }}</span>
         <span class="timeline-item__time">{{ formatTime(activity.createdAt) }}</span>
+        <div class="timeline-item__restore-zone">
+          <button
+            v-if="restoreState.kind === 'eligible'"
+            class="btn btn-secondary btn-sm"
+            data-test="restore-button"
+            :disabled="restoring"
+            @click.stop="openRestoreModal"
+          >
+            還原
+          </button>
+          <span
+            v-else-if="restoreState.kind === 'expired'"
+            class="timeline-item__restore-hint"
+            data-test="restore-expired"
+          >
+            已過期
+          </span>
+          <span
+            v-else-if="restoreState.kind === 'irreversible'"
+            class="timeline-item__restore-hint"
+            data-test="restore-irreversible"
+          >
+            不可還原
+          </span>
+          <span
+            v-else-if="restoreState.kind === 'already-restored'"
+            class="timeline-item__restore-hint"
+            data-test="restore-done"
+          >
+            已還原
+          </span>
+        </div>
       </div>
       <div class="timeline-item__description">
         {{ getActivityDescription(activity) }}
@@ -35,26 +67,127 @@
         :show="detailsExpanded"
       />
     </div>
+    <RestoreConfirmModal
+      :open="modalOpen"
+      :activity="activity"
+      :mid-changes="conflictMidChanges"
+      :loading="restoring"
+      @confirm="onConfirmRestore"
+      @cancel="closeRestoreModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { ActivityLog } from '@/api/activities'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { isIrreversibleDetails, isReversibleDetails, type ActivityLog } from '@/api/activities'
+import { useAuthStore } from '@/stores/auth'
+import { ROLES } from '@/constants/roles'
+import { isActivityRestoreEnabled } from '@/config/runtime'
+import { useRestoreActivity } from '@/composables/useRestoreActivity'
+import type { MidChange, RestoreState } from './types'
 import { getActionIconStyle, formatActivityDetails, getActivityDescription, getRoleLabel, getRoleBadgeClasses } from './utils'
 import ActivityDetailPanel from './ActivityDetailPanel.vue'
+import RestoreConfirmModal from './RestoreConfirmModal.vue'
 
 const props = defineProps<{
   activity: ActivityLog
 }>()
 
+const emit = defineEmits<{
+  (_e: 'restored', _activityId: number): void
+}>()
+
 const detailsExpanded = ref(false)
+const modalOpen = ref(false)
+const conflictMidChanges = ref<MidChange[] | null>(null)
+const nowMs = ref(Date.now())
+let nowInterval: ReturnType<typeof setInterval> | null = null
+
+const auth = useAuthStore()
+const {
+  isRestoring: restoring,
+  isOptimisticallyRestored,
+  attemptRestore,
+} = useRestoreActivity()
 
 const iconStyle = computed(() => getActionIconStyle(props.activity.action))
 
 const formattedDetails = computed(() =>
   formatActivityDetails(props.activity.details ?? null, props.activity.action)
 )
+
+const restoreState = computed<RestoreState>(() => {
+  if (!isActivityRestoreEnabled()) {return { kind: 'hidden' }}
+
+  const details = props.activity.details
+  if (isIrreversibleDetails(details)) {
+    return { kind: 'irreversible', reason: details.irreversibleReason }
+  }
+  if (!isReversibleDetails(details)) {return { kind: 'hidden' }}
+
+  if (isOptimisticallyRestored(props.activity.id)) {
+    return { kind: 'already-restored', byActivityId: details.restoredByActivityId ?? props.activity.id }
+  }
+
+  if (typeof details.restoredByActivityId === 'number' && details.restoredByActivityId > 0) {
+    return { kind: 'already-restored', byActivityId: details.restoredByActivityId }
+  }
+
+  const expiresAt = new Date(details.restorePolicy.expiresAt).getTime()
+  if (!Number.isFinite(expiresAt) || nowMs.value >= expiresAt) {
+    return { kind: 'expired' }
+  }
+
+  const callerId = auth.currentAgent?.id
+  const callerRole = auth.currentAgent?.role
+  const isAdmin = callerRole === ROLES.ADMIN
+  const isOriginalActor = callerId === props.activity.userId
+  const requiresAdmin = details.restorePolicy.requiresAdmin
+
+  if (isAdmin || (isOriginalActor && !requiresAdmin)) {
+    return {
+      kind: 'eligible',
+      expiresAt: details.restorePolicy.expiresAt,
+      requiresAdmin,
+    }
+  }
+
+  return { kind: 'hidden' }
+})
+
+function openRestoreModal() {
+  conflictMidChanges.value = null
+  modalOpen.value = true
+}
+
+function closeRestoreModal() {
+  modalOpen.value = false
+}
+
+async function onConfirmRestore(payload: { force: boolean }) {
+  const outcome = await attemptRestore(props.activity.id, payload.force)
+
+  if (outcome.kind === 'success') {
+    modalOpen.value = false
+    emit('restored', props.activity.id)
+    return
+  }
+
+  if (outcome.kind === 'conflict') {
+    conflictMidChanges.value = outcome.midChanges
+    return
+  }
+
+  if (outcome.kind === 'in-progress') {
+    window.setTimeout(() => {
+      onConfirmRestore(payload)
+    }, outcome.retryAfterMs)
+    return
+  }
+
+  modalOpen.value = false
+}
 
 function formatTime(isoString: string): string {
   const now = new Date()
@@ -83,6 +216,18 @@ function formatTime(isoString: string): string {
     day: 'numeric',
   })
 }
+
+onMounted(() => {
+  nowInterval = setInterval(() => {
+    nowMs.value = Date.now()
+  }, 60_000)
+})
+
+onUnmounted(() => {
+  if (nowInterval !== null) {
+    clearInterval(nowInterval)
+  }
+})
 </script>
 
 <style scoped>
@@ -137,6 +282,17 @@ function formatTime(isoString: string): string {
   font-size: 12px;
   color: #8E8E93;
   margin-left: auto;
+}
+
+.timeline-item__restore-zone {
+  flex-shrink: 0;
+}
+
+.timeline-item__restore-hint {
+  padding: 2px 8px;
+  color: #8E8E93;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .timeline-item__description {
