@@ -77,7 +77,15 @@ export const ACTIVITY_ACTIONS = {
   // 系統監控 (System Monitoring)
   SYSTEM_HEALTH_CHECK: 'system_health_check',
   SYSTEM_BACKUP: 'system_backup',
-  SYSTEM_RESTORE: 'system_restore'
+  SYSTEM_RESTORE: 'system_restore',
+
+  // Restore actions (added by activity-restore design 2026-05-26)
+  TAG_RESTORE: 'tag_restore',
+  CUSTOMER_RESTORE: 'customer_restore',
+  CONVERSATION_RESTORE: 'conversation_restore',
+  TEAM_RESTORE: 'team_restore',
+  TEAM_MEMBER_RESTORE: 'team_member_restore',
+  DELAYED_MESSAGE_RESTORE: 'delayed_message_restore'
 } as const
 
 export type ActivityAction = typeof ACTIVITY_ACTIONS[keyof typeof ACTIVITY_ACTIONS]
