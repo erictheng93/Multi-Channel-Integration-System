@@ -393,15 +393,42 @@ crudRoutes.post('/', jwtAuth, async (c) => {
     // 創建資料庫連線
     const db = createDbClient(c.env.DB);
 
-    // 檢查對話是否存在
+    // 檢查對話是否存在 — also fetch assignedTeamId so we can enforce team scope.
+    // F5: filter soft-deleted conversations to match the soft-delete contract.
     const conversation = await db
-      .select({ id: conversations.id })
+      .select({
+        id: conversations.id,
+        assignedTeamId: conversations.assignedTeamId,
+      })
       .from(conversations)
-      .where(eq(conversations.id, conversationId))
+      .where(and(
+        eq(conversations.id, conversationId),
+        isNull(conversations.deletedAt)
+      ))
       .get();
 
     if (!conversation) {
       return notFoundResponse(c, 'Conversation not found');
+    }
+
+    // F5: enforce team scope on write. The sibling send endpoint at
+    // conversations/handlers/conversation-messages.ts calls
+    // PermissionService.checkPermission('message','send'), but this route
+    // bypassed it entirely — any agent could post into any conversation
+    // and have the message delivered to the customer on LINE/Messenger.
+    // Mirror the same rule as F4 GET: admin OK, unassigned shared pool OK,
+    // otherwise assignedTeamId must be in the JWT's allowedTeamIds.
+    const isAdmin = userPayload.role === 'admin';
+    const assignedTeamId = conversation.assignedTeamId;
+    const allowedTeams = userPayload.allowedTeamIds ?? [];
+    const teamAllowed =
+      isAdmin ||
+      assignedTeamId === null ||
+      assignedTeamId === undefined ||
+      allowedTeams.includes(assignedTeamId);
+
+    if (!teamAllowed) {
+      return forbiddenResponse(c, 'You do not have access to this conversation');
     }
 
     // Validate replyToMessageId exists (app-level FK enforcement)
