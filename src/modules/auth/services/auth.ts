@@ -165,6 +165,30 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
 }
 
+/**
+ * F3: constant-time string compare for legacy SHA-256 path.
+ * Mirrors constantTimeEqual in utils/auth-password.ts. Kept local to avoid
+ * crossing module boundaries — if you change one, change both.
+ */
+function constantTimeEqualLocal(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * F3: predicate used by authenticateUser to detect legacy SHA-256 hashes
+ * after a successful verify, so the row can be auto-upgraded to bcrypt.
+ */
+export function isLegacySha256Hash(hash: string): boolean {
+  if (hash.startsWith('sha256$')) return true;
+  if (hash.length === 64 && /^[a-f0-9]+$/.test(hash)) return true;
+  return false;
+}
+
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   // 檢查是否為 bcrypt 哈希 (以 $2a$, $2b$, $2x$, $2y$ 開頭)
   if (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2x$') || hash.startsWith('$2y$')) {
@@ -230,19 +254,20 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
 
   // 處理舊格式的hash (如SHA256) - 先檢查是否為SHA256格式
+  // F3: constant-time compare; authenticateUser auto-upgrades the row to
+  // bcrypt on successful match. See utils/auth-password.ts for canonical impl.
   if (hash.startsWith('sha256$')) {
     const actualHash = hash.substring(7); // 移除 'sha256$' 前綴
-    // 對於舊的 SHA256 哈希，我們需要使用舊的方法驗證
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const passwordHash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    return passwordHash === actualHash;
+    return constantTimeEqualLocal(passwordHash, actualHash);
   }
 
-  // 檢查純SHA256 hash (舊格式)
+  // 檢查純SHA256 hash (舊格式) — same constant-time treatment
   if (hash.length === 64 && /^[a-f0-9]+$/.test(hash)) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
@@ -250,7 +275,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     const passwordHash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    return passwordHash === hash;
+    return constantTimeEqualLocal(passwordHash, hash);
   }
 
   // 如果都不匹配，嘗試 bcrypt（可能是新格式但沒有正確前綴）
@@ -424,6 +449,24 @@ export async function authenticateUser(
   const isValidPassword = await verifyPassword(password, user.password_hash);
   if (!isValidPassword) {
     return { user: null, accountStatus: 'wrong_password', passwordPolicy: user.password_policy || 'changeable' };
+  }
+
+  // F3: auto-upgrade legacy unsalted SHA-256 hashes to bcrypt on successful
+  // login. We've already verified the password matches, so this is safe.
+  // Failure to upgrade is logged but does not block the login.
+  if (isLegacySha256Hash(user.password_hash)) {
+    try {
+      const newHash = await hashPassword(password);
+      await db.prepare('UPDATE agents SET password_hash = ?, updated_at = ? WHERE id = ?')
+        .bind(newHash, nowISO(), user.id)
+        .run();
+      log.info('Auto-upgraded legacy SHA-256 password hash to bcrypt', { userId: user.id });
+    } catch (err) {
+      log.error('Failed to auto-upgrade legacy password hash', {
+        userId: user.id,
+      }, err as Error);
+      // Continue with login — upgrade is best-effort.
+    }
   }
 
   // Query agent_teams for primary team and multi-team membership
