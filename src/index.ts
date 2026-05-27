@@ -1,5 +1,6 @@
 // 主要入口點 - Handler-based 架構 + 統一路由管理
 import { Hono } from 'hono';
+import { html } from 'hono/html';
 import { isOriginAllowed, createCorsPreflightResponse, createCorsBlockedResponse } from '@/config/cors';
 import { logger as honoLogger } from 'hono/logger';
 import type { Bindings } from './types';
@@ -684,7 +685,11 @@ app.get('/join', async (c) => {
       `);
     }
 
-    return c.html(`
+    // F16: use Hono's `html` tagged template so team.name / team.description
+    // (admin-controlled DB values) are HTML-escaped on interpolation. Without
+    // this, an admin who set name="<script>...</script>" could XSS every
+    // visitor of the /join QR invite in the worker's origin.
+    return c.html(html`
       <html>
         <head>
           <title>加入 ${team.name}</title>
@@ -701,7 +706,7 @@ app.get('/join', async (c) => {
           <h1>加入團隊邀請</h1>
           <div class="team-info">
             <h2>${team.name}</h2>
-            ${team.description ? `<p>${team.description}</p>` : ''}
+            ${team.description ? html`<p>${team.description}</p>` : ''}
             <p><strong>團隊 ID:</strong> ${team.id}</p>
           </div>
           <p>您被邀請加入此團隊。請聯繫系統管理員完成帳戶設置。</p>

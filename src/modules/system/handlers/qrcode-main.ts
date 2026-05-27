@@ -1,5 +1,6 @@
 // QR Code 處理器 - 主要實現
 import { Hono } from 'hono';
+import { html } from 'hono/html';
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('QrcodeMain')
@@ -63,7 +64,10 @@ qrcodeHandler.get('/join', async (c) => {
       `);
     }
 
-    return c.html(`
+    // F16: escape team.name / team.description via Hono's `html` tag. See
+    // src/index.ts:687 for the rationale — this duplicate handler is the
+    // route actually mounted in some deploys, so both must be patched.
+    return c.html(html`
       <html>
         <head>
           <title>加入 ${team.name}</title>
@@ -80,7 +84,7 @@ qrcodeHandler.get('/join', async (c) => {
           <h1>加入團隊邀請</h1>
           <div class="team-info">
             <h2>${team.name}</h2>
-            ${team.description ? `<p>${team.description}</p>` : ''}
+            ${team.description ? html`<p>${team.description}</p>` : ''}
             <p><strong>團隊 ID:</strong> ${team.id}</p>
           </div>
           <p>您被邀請加入此團隊。請聯繫系統管理員完成帳戶設置。</p>
