@@ -100,10 +100,21 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     }
 
     const token = authHeader.substring(7); // 移除 "Bearer " 前綴
-    
+
     // 驗證 JWT
     const payload = await verifyJWT(token, c.env.JWT_SECRET);
-    
+
+    // F12 fix: reject refresh tokens used as access tokens. Login mints
+    // both access (2h, type='access') and refresh (7d, type='refresh') JWTs
+    // with the same JWT_SECRET. Without this check, a stolen refresh token
+    // is usable directly against every protected API for its full 7-day
+    // lifetime. We only reject type='refresh' explicitly to avoid breaking
+    // the temp_password_change flow (separate token type used by forced
+    // password change) and any legacy tokens minted without a `type` claim.
+    if (payload.type === 'refresh') {
+      return c.json({ error: 'Refresh token cannot be used to access this resource' }, 401);
+    }
+
     // 獲取用戶信息
     const user = await getUserById(c.env.DB, payload.userId);
 
