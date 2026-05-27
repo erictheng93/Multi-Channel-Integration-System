@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { createContextLogger } from '../utils/logger';
 import type { Bindings } from '../types';
 import { nowISO } from '@/utils/timestamp'
+import { getSignedFileUrl } from '@/utils/file-url';
 
 const log = createContextLogger('QRCodeService');
 
@@ -58,14 +59,7 @@ export async function generateTeamQRCode(
       }
     });
 
-    // Support both STORAGE_PUBLIC_URL (primary) and R2_PUBLIC_URL (legacy) for compatibility
-    // This aligns with the pattern used in src/config/runtime.ts
-    const r2PublicUrl = env.STORAGE_PUBLIC_URL || env.R2_PUBLIC_URL;
-    if (!r2PublicUrl) {
-      return { success: false, error: 'STORAGE_PUBLIC_URL or R2_PUBLIC_URL not configured' };
-    }
-
-    const qrCodeUrl = r2PublicUrl + '/' + fileName;
+    const qrCodeUrl = await getSignedFileUrl(env, fileName);
     const db = createDbClient(env.DB);
     const qrCodeId = uuidv4();
 

@@ -457,13 +457,9 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
     filename?: string
     mimeType?: string
   }) => {
-    // Prefer the backend proxy endpoint: it sends Content-Disposition: attachment,
-    // which forces the browser to download regardless of cross-origin rules.
-    // Using the raw R2 URL (cross-origin + Content-Disposition: inline + target="_blank")
-    // makes Chrome open the image in a new tab instead of downloading it.
-    const href = attachment.id
-      ? getApiUrl(`/api/files/download/${attachment.id}`)
-      : attachment.fileUrl
+    // Prefer signed/ready URL first; keep legacy fallback to attachment id for
+    // older rows that may not include fileUrl.
+    const href = attachment.fileUrl || (attachment.id ? getApiUrl(`/api/files/download/${attachment.id}`) : '');
     if (!href) {return}
 
     const link = document.createElement('a')

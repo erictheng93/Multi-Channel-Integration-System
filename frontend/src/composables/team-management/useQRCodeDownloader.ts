@@ -67,9 +67,16 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
    */
   const convertToProxyUrl = (qrCodeUrl: string): string => {
     const storageUrl = getStoragePublicUrl()
-    const storageHostname = new URL(storageUrl).hostname
+    if (!storageUrl) {
+      return qrCodeUrl
+    }
 
-    if (qrCodeUrl.includes(storageHostname)) {
+    const storageHostname = new URL(storageUrl).hostname
+    const hasSignature = qrCodeUrl.includes('sig=') && qrCodeUrl.includes('exp=')
+
+    // 只對帶有簽名參數的 storage 連結走 r2-public 代理，避免 legacy
+    // unsigned storage URL 直接走 r2-public 時回 404。
+    if (qrCodeUrl.includes(storageHostname) && hasSignature) {
       // Convert Storage URL to Worker proxy URL
       return qrCodeUrl.replace(
         storageUrl,
