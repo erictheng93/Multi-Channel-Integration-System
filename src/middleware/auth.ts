@@ -5,6 +5,9 @@ import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAcc
 import type { TeamRoleInTeam } from '../types';
 import { ROLES, type Role } from '../constants/roles';
 import { createContextLogger } from '../utils/logger';
+import { eq } from 'drizzle-orm';
+import { createDbClient } from '../db/drizzle-factory';
+import { agentTeams } from '../db/schema';
 import { incrementRequestCounter, trackTheoreticalKVSavings } from '@modules/system/handlers/kv-optimization-monitoring';
 import type { SystemPermissions, SystemAccessScope } from '@modules/system/middleware/system-auth';
 import type { CustomerPermissions, CustomerAccessScope, CreateCustomerData, UpdateCustomerData, CustomerFilters, CustomerTagOperation, CustomerSearchQuery } from '@modules/customer/types/customer-types';
@@ -20,6 +23,80 @@ import type {
 
 // Context logger for auth middleware
 const log = createContextLogger('AuthMiddleware');
+
+/**
+ * F15: re-fetch the user's team membership from agent_teams so changes to
+ * team assignment (admin removes/adds) take effect within the cache TTL
+ * instead of waiting for the access token to expire (up to 2h). Previously
+ * jwtAuth trusted the JWT's cached allowedTeamIds/teamRoles, so a demoted
+ * agent retained team-data access for the full token lifetime.
+ *
+ * Result is cached in KV (CACHE binding) under `agent-teams:{userId}` with
+ * a 60-second TTL — long enough to absorb burst traffic, short enough that
+ * a membership change propagates within a minute. Cache writes are
+ * best-effort; failure to write does not block authentication.
+ */
+type FreshMembership = {
+  allowedTeamIds: number[];
+  teamRoles: Record<number, TeamRoleInTeam>;
+  primaryTeamId: number | null;
+};
+
+async function refreshTeamMembership(
+  db: D1Database,
+  cache: KVNamespace,
+  userId: string | number
+): Promise<FreshMembership> {
+  const cacheKey = `agent-teams:${userId}`;
+
+  try {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return JSON.parse(cached) as FreshMembership;
+    }
+  } catch (err) {
+    log.warn('agent-teams cache read failed; falling back to DB', {
+      userId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  const drizzleDb = createDbClient(db);
+  const rows = await drizzleDb
+    .select({
+      teamId: agentTeams.teamId,
+      roleInTeam: agentTeams.roleInTeam,
+      isPrimary: agentTeams.isPrimary,
+    })
+    .from(agentTeams)
+    .where(eq(agentTeams.agentId, String(userId)));
+
+  const allowedTeamIds: number[] = [];
+  const teamRoles: Record<number, TeamRoleInTeam> = {};
+  let primaryTeamId: number | null = null;
+
+  for (const row of rows) {
+    allowedTeamIds.push(row.teamId);
+    teamRoles[row.teamId] = (row.roleInTeam || 'member') as TeamRoleInTeam;
+    if (row.isPrimary) {
+      primaryTeamId = row.teamId;
+    }
+  }
+
+  const result: FreshMembership = { allowedTeamIds, teamRoles, primaryTeamId };
+
+  // Best-effort cache write; failure here doesn't break auth.
+  try {
+    await cache.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 });
+  } catch (err) {
+    log.warn('agent-teams cache write failed', {
+      userId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return result;
+}
 
 // ======================== Context 變數類型定義 ========================
 // P2-6: Improved type safety while maintaining backward compatibility
@@ -122,19 +199,21 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       return c.json({ error: 'User account is inactive' }, 401);
     }
 
-    // Fallback: use JWT payload teamId if database teamId is null (for admin users)
-    if (!user.primaryTeamId && payload.primaryTeamId) {
+    // F15: refresh team membership from DB (KV-cached 60s) so admin
+    // demotions / additions take effect within a minute instead of
+    // waiting for the access token to expire. Replaces the previous
+    // pattern of trusting whatever allowedTeamIds was cached in the JWT
+    // at signing time.
+    const fresh = await refreshTeamMembership(c.env.DB, c.env.CACHE, user.id);
+    user.allowedTeamIds = fresh.allowedTeamIds;
+    user.teamRoles = fresh.teamRoles;
+    if (fresh.primaryTeamId !== null) {
+      user.primaryTeamId = fresh.primaryTeamId;
+    } else if (!user.primaryTeamId && payload.primaryTeamId) {
+      // Last-resort fallback only when DB has no team rows AND the JWT
+      // carried a primaryTeamId (admin users may be teamless in DB).
       log.debug('Using JWT payload teamId as fallback', { teamId: payload.primaryTeamId });
       user.primaryTeamId = payload.primaryTeamId;
-    }
-
-    // Phase 1 Optimization: Fallback to JWT multi-team data if not populated
-    // This ensures cached allowedTeamIds are available even if getUserById fails to populate
-    if (payload.allowedTeamIds && (!user.allowedTeamIds || user.allowedTeamIds.length === 0)) {
-      user.allowedTeamIds = payload.allowedTeamIds;
-    }
-    if (payload.teamRoles && (!user.teamRoles || Object.keys(user.teamRoles).length === 0)) {
-      user.teamRoles = payload.teamRoles;
     }
 
     // Phase 1 Optimization: Parse and validate X-Context-Team-ID header
