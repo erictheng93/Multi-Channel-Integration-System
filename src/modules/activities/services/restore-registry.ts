@@ -31,6 +31,7 @@ export const RestoreRegistry: Record<string, RestoreHandler> = {
   'conversation.assign': restoreFields('conversations'),
   'conversation.delete': restoreSoftDeleted('conversations'),
   'conversation.status': restoreField('conversations', 'status'),
+  'conversation.transfer': restoreFields('conversations'),
   'conversation.unassign': restoreFields('conversations'),
   'customer.create': softDelete('customers'),
   'customer.delete': restoreSoftDeleted('customers'),
