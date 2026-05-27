@@ -197,20 +197,31 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     // life; a stolen token is invalidated within one KV-read of the user
     // calling logout. Tokens minted before F13 have no jti and skip this
     // check — the residual exposure is bounded by their natural exp.
+    //
+    // F13 hardening: fail-closed on KV outage for jti-bearing tokens.
+    // Previously we fell through and accepted the request on KV error,
+    // which means a sufficiently long KV brownout effectively disables
+    // logout-based revocation. We now return 503 so monitoring catches
+    // the outage and ops can intervene; the alternative — silently
+    // honouring potentially-revoked tokens — was the wrong tradeoff for
+    // a security-critical check. Tokens without a jti retain the
+    // legacy behaviour (no revocation check possible).
     if (payload.jti) {
+      let isRevoked: string | null;
       try {
-        const isRevoked = await c.env.CACHE.get(`revoked:${payload.jti}`);
-        if (isRevoked) {
-          return c.json({ error: 'Token has been revoked' }, 401);
-        }
+        isRevoked = await c.env.CACHE.get(`revoked:${payload.jti}`);
       } catch (err) {
-        // KV read failure: log and fail-open. The alternative (fail-closed)
-        // turns a KV outage into a fleet-wide auth outage; we prefer to
-        // accept the small window of risk for a transient KV blip.
-        log.warn('Revocation check failed; allowing request', {
+        log.error('Revocation KV read failed; denying request for safety', {
           jti: payload.jti,
           error: err instanceof Error ? err.message : String(err),
         });
+        return c.json(
+          { error: 'Service temporarily unavailable', code: 'REVOCATION_CHECK_FAILED' },
+          503,
+        );
+      }
+      if (isRevoked) {
+        return c.json({ error: 'Token has been revoked' }, 401);
       }
     }
 
