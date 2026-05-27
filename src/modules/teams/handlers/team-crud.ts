@@ -2,7 +2,7 @@
 // Handles: GET/POST /, GET/PUT/DELETE /:id, GET /:id/stats, GET /stats/all,
 // POST /transfer, GET /search/:query, GET /health, GET /info
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('TeamCrud')
@@ -18,6 +18,7 @@ import type {
   TeamTransferRequest,
   TeamStatsRequest
 } from '../types/team-types';
+import type { DbUser } from '@/types';
 import type { Bindings } from '@/types';
 import { ERROR_MESSAGES } from '@/utils/error-messages';
 import { globalErrorHandler } from '@/core/error-handler';
@@ -34,7 +35,18 @@ import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/acti
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-function teamState(team: Record<string, any>) {
+type TeamStateInput = {
+  id: number;
+  name?: string | null;
+  description?: string | null;
+  qrCode?: string | null;
+  isActive?: boolean | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  deletedAt?: string | null;
+};
+
+function teamState(team: TeamStateInput) {
   return {
     id: team.id,
     name: team.name,
@@ -47,7 +59,11 @@ function teamState(team: Record<string, any>) {
   };
 }
 
-function activityMeta(c: any, user: any) {
+type ActivityActor = Pick<DbUser, 'id' | 'displayName' | 'email' | 'role'> & {
+  username?: string;
+};
+
+function activityMeta(c: Context, user: ActivityActor) {
   return {
     userId: String(user.id),
     userName: user.displayName || user.email || user.username || String(user.id),
