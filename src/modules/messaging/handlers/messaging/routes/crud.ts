@@ -198,10 +198,18 @@ crudRoutes.put('/:id', jwtAuth, async (c) => {
       return notFoundResponse(c, 'Message not found');
     }
 
-    // 檢查權限：只有發送者或管理員可以編輯
-    if (existingMessage.senderType === 'agent' &&
-        existingMessage.agentSenderId !== userPayload.userId.toString() &&
-        userPayload.role !== 'admin') {
+    // F9: positive-check authorization. The previous form only ran the
+    // guard when senderType === 'agent', so customer/system messages fell
+    // through and were editable by any agent. Now we require ownership
+    // (agent message authored by the caller) OR admin role; everything
+    // else is rejected — customer and system messages are never editable
+    // via this endpoint.
+    const isAdmin = userPayload.role === 'admin';
+    const isOwnAgentMessage =
+      existingMessage.senderType === 'agent' &&
+      existingMessage.agentSenderId === userPayload.userId.toString();
+
+    if (!isAdmin && !isOwnAgentMessage) {
       return forbiddenResponse(c, 'Only the sender or admin can update this message');
     }
 
@@ -296,10 +304,17 @@ crudRoutes.delete('/:id', jwtAuth, async (c) => {
       return notFoundResponse(c, 'Message not found');
     }
 
-    // 檢查權限：只有發送者或管理員可以撤回
-    if (existingMessage.senderType === 'agent' &&
-        existingMessage.agentSenderId !== userPayload.userId.toString() &&
-        userPayload.role !== 'admin') {
+    // F9: positive-check authorization for recall, same pattern as PUT.
+    // Customer/system messages must never be recallable by an agent — the
+    // previous guard only fired when senderType==='agent', so customer
+    // messages fell through and an agent could overwrite transcript
+    // history with the "[recalled]" marker on someone else's words.
+    const isAdmin = userPayload.role === 'admin';
+    const isOwnAgentMessage =
+      existingMessage.senderType === 'agent' &&
+      existingMessage.agentSenderId === userPayload.userId.toString();
+
+    if (!isAdmin && !isOwnAgentMessage) {
       return forbiddenResponse(c, 'Only the sender or admin can recall this message');
     }
 
