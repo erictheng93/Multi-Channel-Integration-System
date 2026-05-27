@@ -135,12 +135,29 @@ describe('useQRCodeDownloader', () => {
     }, 0)
 
     await downloadQRCodeCard({
-      qrCodeUrl: 'http://storage.example.com/qr-codes/team-1.png',
+      qrCodeUrl: 'http://storage.example.com/qr-codes/team-1.png?sig=signature&exp=1735708800',
       teamName: 'Test Team'
     })
 
     // Verify proxy URL was used
-    expect(mockImage.src).toBe('http://localhost:8787/api/r2-public/qr-codes/team-1.png')
+    expect(mockImage.src).toBe('http://localhost:8787/api/r2-public/qr-codes/team-1.png?sig=signature&exp=1735708800')
+  })
+
+  it('should keep unsigned storage URL unchanged', async () => {
+    const { downloadQRCodeCard } = useQRCodeDownloader()
+
+    setTimeout(() => {
+      if (mockImage.onload) {
+        mockImage.onload(new Event('load'))
+      }
+    }, 0)
+
+    await downloadQRCodeCard({
+      qrCodeUrl: 'http://storage.example.com/qr-codes/team-1.png',
+      teamName: 'Test Team'
+    })
+
+    expect(mockImage.src).toBe('http://storage.example.com/qr-codes/team-1.png')
   })
 
   it('should not convert non-storage URLs', async () => {

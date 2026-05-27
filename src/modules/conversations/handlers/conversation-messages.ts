@@ -15,9 +15,29 @@ import { MessageRequestService, MessageService } from '@modules/conversations/se
 import { successResponse, errorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp';
-import { getPublicFileUrl } from '@/utils/file-url';
+import { getSignedFileUrl } from '@/utils/file-url';
 
 const log = createContextLogger('ConversationMessagesHandler');
+
+const resolveAttachmentUrl = async (
+  env: Bindings,
+  fileUrl: string | null,
+  r2Key: string | null
+): Promise<string> => {
+  if (!r2Key) {
+    return fileUrl || '';
+  }
+
+  try {
+    return await getSignedFileUrl(env, r2Key);
+  } catch (error) {
+    log.warn('Failed to sign attachment URL, fallback to stored value', {
+      r2Key,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return fileUrl || '';
+  }
+};
 
 const conversationMessagesHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -120,7 +140,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
     }
 
     // Generate public URL via unified utility
-    const fileUrl = getPublicFileUrl(c.env, r2Key);
+    const fileUrl = await getSignedFileUrl(c.env, r2Key);
     log.debug('Upload generated proxy URL', { fileUrl });
 
     // 保存附件記錄到資料庫（messageId 為 null，等待消息創建時關聯）
@@ -440,7 +460,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       filename: string;
       mimeType: string;
       fileSize: number;
-      fileUrl: string | null;
+      fileUrl: string;
     }>> = {};
     if (messageList.length > 0) {
       const messageIds = messageList.map(m => m.id);
@@ -452,12 +472,20 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
           mimeType: fileAttachments.mimeType,
           fileSize: fileAttachments.fileSize,
           fileUrl: fileAttachments.fileUrl,
+          r2Key: fileAttachments.r2Key,
         })
         .from(fileAttachments)
         .where(inArray(fileAttachments.messageId, messageIds))
         .all();
 
-      for (const attachment of allAttachments) {
+      const resolvedAttachments = await Promise.all(
+        allAttachments.map(async (attachment) => ({
+          ...attachment,
+          fileUrl: await resolveAttachmentUrl(c.env, attachment.fileUrl, attachment.r2Key)
+        }))
+      );
+
+      for (const attachment of resolvedAttachments) {
         const msgId = attachment.messageId;
         if (msgId) {
           if (!attachmentsByMessageId[msgId]) {

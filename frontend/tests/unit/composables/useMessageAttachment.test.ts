@@ -559,5 +559,41 @@ describe('useMessageAttachment', () => {
       appendChild.mockRestore()
       removeChild.mockRestore()
     })
+
+    it('should fallback to attachment id when fileUrl is missing', () => {
+      const props = ref({
+        message: createMessage()
+      })
+
+      const { downloadAttachment } = useMessageAttachment(props)
+
+      const createElement = vi.spyOn(document, 'createElement')
+      const appendChild = vi.spyOn(document.body, 'appendChild')
+      const removeChild = vi.spyOn(document.body, 'removeChild')
+
+      const mockLink = {
+        href: '',
+        download: '',
+        target: '',
+        click: vi.fn()
+      } as any
+
+      createElement.mockReturnValue(mockLink)
+      appendChild.mockImplementation(() => mockLink)
+      removeChild.mockImplementation(() => mockLink)
+
+      downloadAttachment({
+        id: 'att-123',
+        filename: 'specific.pdf'
+      })
+
+      expect(mockLink.href).toBe('/api/files/download/att-123')
+      expect(mockLink.download).toBe('specific.pdf')
+      expect(mockLink.click).toHaveBeenCalled()
+
+      createElement.mockRestore()
+      appendChild.mockRestore()
+      removeChild.mockRestore()
+    })
   })
 })

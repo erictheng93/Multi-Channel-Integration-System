@@ -22,8 +22,69 @@ import { teams, qrCodes, teamLiffQrCodes } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
+import { getSignedFileUrl } from '@/utils/file-url';
 
 const log = createContextLogger('TeamQR');
+const signLiffQrCodeUrl = async (env: Bindings, qrCodeUrl: string): Promise<string> => {
+  if (!qrCodeUrl) {
+    return qrCodeUrl;
+  }
+
+  if (qrCodeUrl.includes('/api/files/public/') && qrCodeUrl.includes('sig=')) {
+    return qrCodeUrl;
+  }
+
+  if (qrCodeUrl.includes('/api/r2-public/') && qrCodeUrl.includes('sig=')) {
+    return qrCodeUrl;
+  }
+
+  try {
+    const parsed = new URL(qrCodeUrl);
+    const storageCandidates = [
+      env.STORAGE_PUBLIC_URL,
+      env.R2_PUBLIC_URL,
+      env.R2_PUBLIC_DOMAIN,
+      env.R2_CUSTOM_DOMAIN
+    ]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .map((value) => value.includes('://') ? value.replace(/\/$/, '') : `https://${value.replace(/\/$/, '')}`);
+
+    const candidatePath = parsed.pathname.startsWith('/') ? parsed.pathname.replace(/\/+$/, '') : `/${parsed.pathname.replace(/\/+$/, '')}`;
+
+    for (const candidate of storageCandidates) {
+      try {
+        const base = new URL(candidate);
+        const basePath = base.pathname && base.pathname !== '/' ? base.pathname.replace(/\/+$/, '') : '';
+        if (parsed.host !== base.host) {
+          continue;
+        }
+        if (basePath && !candidatePath.startsWith(basePath)) {
+          continue;
+        }
+        const key = parsed.pathname.startsWith(basePath || '/') ? parsed.pathname.slice((basePath || '').length).replace(/^\/+/, '') : '';
+        if (key) {
+          return await getSignedFileUrl(env, key);
+        }
+      } catch {
+        // continue to next storage candidate
+      }
+    }
+
+    if (candidatePath.startsWith('/api/files/public/')) {
+      const key = candidatePath.replace('/api/files/public/', '');
+      return await getSignedFileUrl(env, key);
+    }
+
+    if (candidatePath.startsWith('/api/r2-public/')) {
+      const key = candidatePath.replace('/api/r2-public/', '');
+      return await getSignedFileUrl(env, key);
+    }
+  } catch {
+    // ignore parse errors and keep fallback
+  }
+
+  return qrCodeUrl;
+};
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -123,7 +184,7 @@ app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), requireIntId(), a
       data: {
         id: liffQrCode.id,
         liffUrl: liffQrCode.liffUrl,
-        qrCodeUrl: liffQrCode.qrCodeUrl,
+        qrCodeUrl: await signLiffQrCodeUrl(c.env, liffQrCode.qrCodeUrl),
         scanCount: liffQrCode.scanCount || 0,
         isActive: liffQrCode.isActive,
         createdAt: liffQrCode.createdAt,
@@ -169,7 +230,7 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), requireIntId(), 
       data: {
         id: result.qrCodeId,
         liffUrl: result.liffUrl,
-        qrCodeUrl: result.qrCodeUrl,
+        qrCodeUrl: await signLiffQrCodeUrl(c.env, result.qrCodeUrl || ''),
         scanCount: 0,
         isActive: true
       }

@@ -16,6 +16,7 @@ import type {
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { getSignedFileUrl } from '@/utils/file-url';
 
 const log = createContextLogger('MessageService');
 const requestLog = createContextLogger('MessageRequestService');
@@ -253,12 +254,23 @@ export class MessageService implements MessageServiceInterface {
             let processedCount = 0;
             let skippedCount = 0;
 
-            for (const attachment of attachmentsData) {
-              const fileUrl = attachment.fileUrl;
-              log.debug('Processing attachment', {
-                id: attachment.id,
-                filename: attachment.filename,
-                mimeType: attachment.mimeType,
+    for (const attachment of attachmentsData) {
+      let fileUrl = attachment.fileUrl;
+      if (attachment.r2Key) {
+        try {
+          fileUrl = await getSignedFileUrl(this.bindings, attachment.r2Key);
+        } catch (error) {
+          log.warn('Failed to sign attachment URL for send, fallback to stored value', {
+            attachmentId: attachment.id,
+            r2Key: attachment.r2Key,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+      log.debug('Processing attachment', {
+        id: attachment.id,
+        filename: attachment.filename,
+        mimeType: attachment.mimeType,
                 fileUrl: fileUrl ? fileUrl.substring(0, 80) + '...' : 'NULL',
                 hasFileUrl: !!fileUrl
               });
