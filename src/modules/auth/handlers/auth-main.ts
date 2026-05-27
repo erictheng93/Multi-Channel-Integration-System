@@ -60,6 +60,9 @@ interface RefreshTokenPayload {
   primaryTeamId?: number;
   allowedTeamIds?: number[];
   teamRoles?: Record<number, TeamRoleInTeam>;
+  // F20: jti from F13's revocation/rotation infrastructure
+  jti?: string;
+  exp?: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -79,7 +82,10 @@ function isRefreshTokenPayload(value: unknown): value is RefreshTokenPayload {
       Array.isArray(value.allowedTeamIds) &&
       value.allowedTeamIds.every(teamId => typeof teamId === 'number')
     )) &&
-    (value.teamRoles === undefined || isRecord(value.teamRoles))
+    (value.teamRoles === undefined || isRecord(value.teamRoles)) &&
+    // F20: jti + exp are standard JWT claims; allow but don't require
+    (value.jti === undefined || typeof value.jti === 'string') &&
+    (value.exp === undefined || typeof value.exp === 'number')
   );
 }
 
@@ -214,6 +220,9 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
     // 生成 Refresh Token (長期，7天)
     // Phase 1 Optimization: Include multi-team data in JWT
     // F13: independent jti for the refresh token; revoked separately.
+    // F20: register the jti in the active-refresh list so /refresh can
+    // detect token reuse during rotation.
+    const refreshJti = crypto.randomUUID();
     const refreshToken = await signJWT(
       {
         userId: user.id, // 保持原始 ID 格式
@@ -222,7 +231,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
         role: user.role,
         primaryTeamId: user.primaryTeamId || undefined,
         type: 'refresh',
-        jti: crypto.randomUUID(),
+        jti: refreshJti,
         // Multi-team support (Phase 1 optimization)
         allowedTeamIds: user.allowedTeamIds || [],
         teamRoles: user.teamRoles || {}
@@ -230,6 +239,22 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
       c.env.JWT_SECRET,
       7 * 24 * 60 * 60 // 7 天
     );
+
+    // F20: mark this refresh-token jti as the one active rotation slot for
+    // the user. Best-effort; failure here doesn't block login but disables
+    // reuse detection for this issuance.
+    try {
+      await c.env.CACHE.put(
+        `refresh-active:${refreshJti}`,
+        String(user.id),
+        { expirationTtl: 7 * 24 * 60 * 60 }
+      );
+    } catch (err) {
+      authLogger.warn('Failed to register refresh-token jti', {
+        userId: user.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     // 創建會話（存儲在 KV）
     const sessionId = await createSession(
@@ -699,6 +724,69 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
       }, HTTP_STATUS.UNAUTHORIZED);
     }
 
+    // F20: refresh-token rotation with reuse detection. Each refresh
+    // token's jti is registered in CACHE under `refresh-active:{jti}` at
+    // issue time. /refresh atomically reads + deletes that key:
+    //   - present  → legitimate rotation, consume and issue a new pair
+    //   - missing  → reuse detected (token was already redeemed OR was
+    //                issued before F20 and never registered). For safety
+    //                we blocklist this token and force a fresh login.
+    // Tokens minted before F13/F20 carry no jti — they fall through
+    // without rotation enforcement, matching pre-F13 behaviour. New
+    // tokens minted by this commit gain the protection on next login.
+    if (payload.jti) {
+      const activeKey = `refresh-active:${payload.jti}`;
+      let active: string | null = null;
+      try {
+        active = await c.env.CACHE.get(activeKey);
+      } catch (err) {
+        // KV read failure during rotation: fail-closed for this single
+        // refresh call. Better to ask the user to log in again than to
+        // miss a reuse attempt.
+        authLogger.error('refresh-active KV read failed; rejecting refresh', {
+          jti: payload.jti,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return unauthorizedResponse(c, 'Unable to validate refresh token');
+      }
+
+      if (!active) {
+        // Reuse detected (or token from a stale pre-registration window).
+        // Blocklist this jti to neutralise any concurrent attacker also
+        // holding the same token, and log loudly for ops/IR follow-up.
+        authLogger.warn('REFRESH TOKEN REUSE DETECTED', {
+          userId: payload.userId,
+          jti: payload.jti,
+          ip: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+          userAgent: c.req.header('User-Agent'),
+        });
+        try {
+          const tokenExp = payload.exp;
+          if (tokenExp) {
+            const now = Math.floor(Date.now() / 1000);
+            const ttl = Math.max(1, tokenExp - now);
+            await c.env.CACHE.put(`revoked:${payload.jti}`, '1', { expirationTtl: ttl });
+          }
+        } catch {
+          /* best-effort blocklist */
+        }
+        return unauthorizedResponse(c, 'Refresh token reuse detected — please log in again');
+      }
+
+      // Consume the old jti. Cloudflare KV doesn't have true atomic
+      // get-then-delete, so a racing duplicate /refresh could briefly
+      // both succeed; the next call after both will see the slot empty
+      // and trip reuse detection. Acceptable for this finding.
+      try {
+        await c.env.CACHE.delete(activeKey);
+      } catch (err) {
+        authLogger.warn('Failed to consume refresh-active jti', {
+          jti: payload.jti,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     // 驗證用戶是否仍然存在且活躍
     const drizzleDb = createDbClient(c.env.DB);
 
@@ -795,6 +883,9 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
     // 生成新的 refresh token (滾動刷新)
     // Phase 1 Optimization: Re-query multi-team data from DB on refresh
     // F13: independent jti for refresh token rotation.
+    // F20: register the new jti so the next /refresh call can verify it
+    // and any duplicate use (with the old token) trips reuse detection.
+    const newRefreshJti = crypto.randomUUID();
     const newRefreshToken = await signJWT(
       {
         userId: payload.userId,
@@ -803,7 +894,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         role: refreshedRole,
         primaryTeamId: payload.primaryTeamId,
         type: 'refresh',
-        jti: crypto.randomUUID(),
+        jti: newRefreshJti,
         // Multi-team support - freshly queried from DB
         allowedTeamIds: freshAllowedTeamIds,
         teamRoles: freshTeamRoles
@@ -811,6 +902,20 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
       c.env.JWT_SECRET,
       7 * 24 * 60 * 60 // 7 天
     );
+
+    // F20: register the rotated jti as the new active slot for this user.
+    try {
+      await c.env.CACHE.put(
+        `refresh-active:${newRefreshJti}`,
+        String(payload.userId),
+        { expirationTtl: 7 * 24 * 60 * 60 }
+      );
+    } catch (err) {
+      authLogger.warn('Failed to register rotated refresh-token jti', {
+        userId: payload.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     return c.json({
       success: true,
