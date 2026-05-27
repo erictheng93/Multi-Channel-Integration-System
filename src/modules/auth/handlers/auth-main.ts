@@ -142,6 +142,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
       // Password change required
 
       // 生成臨時token用於密碼更改
+      // F13: include jti so this token is also revocable on logout.
       const tempToken = await signJWT(
         {
           userId: user.id,
@@ -149,7 +150,8 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
           email: user.email,
           role: user.role,
           primaryTeamId: user.primaryTeamId || undefined,
-          type: 'temp_password_change'
+          type: 'temp_password_change',
+          jti: crypto.randomUUID()
         },
         c.env.JWT_SECRET,
         30 * 60 // 30 分鐘
@@ -191,6 +193,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
 
     // 生成 Access Token (短期，2小時)
     // Phase 1 Optimization: Include multi-team data in JWT
+    // F13: include jti so jwtAuth can blocklist this specific token on logout.
     const token = await signJWT(
       {
         userId: user.id, // 保持原始 ID 格式
@@ -199,6 +202,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
         role: user.role,
         primaryTeamId: user.primaryTeamId || undefined,
         type: 'access',
+        jti: crypto.randomUUID(),
         // Multi-team support (Phase 1 optimization)
         allowedTeamIds: user.allowedTeamIds || [],
         teamRoles: user.teamRoles || {}
@@ -209,6 +213,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
 
     // 生成 Refresh Token (長期，7天)
     // Phase 1 Optimization: Include multi-team data in JWT
+    // F13: independent jti for the refresh token; revoked separately.
     const refreshToken = await signJWT(
       {
         userId: user.id, // 保持原始 ID 格式
@@ -217,6 +222,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
         role: user.role,
         primaryTeamId: user.primaryTeamId || undefined,
         type: 'refresh',
+        jti: crypto.randomUUID(),
         // Multi-team support (Phase 1 optimization)
         allowedTeamIds: user.allowedTeamIds || [],
         teamRoles: user.teamRoles || {}
@@ -375,6 +381,55 @@ authHandler.post('/logout', sessionAuth, async (c) => {
 
     if (sessionId) {
       await c.env.SESSIONS.delete(`session:${sessionId}`);
+    }
+
+    // F13: revoke the JWT in addition to deleting the session. Previously
+    // logout only removed the KV session, but jwtAuth doesn't consult the
+    // session store — so the access token (2h) and refresh token (7d) on
+    // the client remained fully valid against every protected endpoint
+    // until natural expiry. Now we extract the Bearer token from the
+    // logout request, verify it (just to extract the jti+exp safely), and
+    // write `revoked:{jti}` to CACHE with TTL = remaining token life.
+    // Best-effort: a failure here logs but doesn't block logout.
+    const authHeader = c.req.header('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const accessToken = authHeader.substring(7);
+      try {
+        const { verifyJWT } = await import('@/utils/auth');
+        const payload = await verifyJWT(accessToken, c.env.JWT_SECRET);
+        if (payload.jti && payload.exp) {
+          const now = Math.floor(Date.now() / 1000);
+          const ttl = Math.max(1, payload.exp - now);
+          await c.env.CACHE.put(`revoked:${payload.jti}`, '1', { expirationTtl: ttl });
+        }
+      } catch (err) {
+        authLogger.warn('Failed to revoke access token on logout', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    // F13: also revoke the paired refresh token if the client supplies
+    // it. The client may include it in the JSON body so the long-lived
+    // refresh credential is invalidated alongside the access token.
+    try {
+      const body = await c.req.json().catch(() => null);
+      const refreshTokenToRevoke = body && typeof body === 'object' && 'refreshToken' in body
+        ? (body as { refreshToken?: unknown }).refreshToken
+        : null;
+      if (typeof refreshTokenToRevoke === 'string' && refreshTokenToRevoke.length > 0) {
+        const { verifyJWT } = await import('@/utils/auth');
+        const payload = await verifyJWT(refreshTokenToRevoke, c.env.JWT_SECRET);
+        if (payload.jti && payload.exp) {
+          const now = Math.floor(Date.now() / 1000);
+          const ttl = Math.max(1, payload.exp - now);
+          await c.env.CACHE.put(`revoked:${payload.jti}`, '1', { expirationTtl: ttl });
+        }
+      }
+    } catch (err) {
+      authLogger.warn('Failed to revoke refresh token on logout', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     // 記錄登出活動
@@ -719,6 +774,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
 
     // 生成新的 access token
     // Phase 1 Optimization: Re-query multi-team data from DB on refresh
+    // F13: include jti so jwtAuth can blocklist this token on logout.
     const newToken = await signJWT(
       {
         userId: payload.userId,
@@ -727,6 +783,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         role: refreshedRole,
         primaryTeamId: payload.primaryTeamId,
         type: 'access',
+        jti: crypto.randomUUID(),
         // Multi-team support - freshly queried from DB
         allowedTeamIds: freshAllowedTeamIds,
         teamRoles: freshTeamRoles
@@ -737,6 +794,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
 
     // 生成新的 refresh token (滾動刷新)
     // Phase 1 Optimization: Re-query multi-team data from DB on refresh
+    // F13: independent jti for refresh token rotation.
     const newRefreshToken = await signJWT(
       {
         userId: payload.userId,
@@ -745,6 +803,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         role: refreshedRole,
         primaryTeamId: payload.primaryTeamId,
         type: 'refresh',
+        jti: crypto.randomUUID(),
         // Multi-team support - freshly queried from DB
         allowedTeamIds: freshAllowedTeamIds,
         teamRoles: freshTeamRoles

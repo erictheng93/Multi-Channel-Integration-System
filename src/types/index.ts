@@ -269,6 +269,11 @@ export interface JWTPayload {
   iat: number;
   exp: number;
   iss?: string;
+  // F13: unique token id used by the KV revocation list. jwtAuth checks
+  // `revoked:{jti}` on every request; /logout writes the blocklist entry
+  // with TTL = remaining token life so a stolen token can't outlive the
+  // user's logout action.
+  jti?: string;
   type?: 'access' | 'refresh' | 'temp_password_change';
   isSystemToken?: boolean;
   // Multi-team support (Phase 1 optimization)
