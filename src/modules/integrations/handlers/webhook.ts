@@ -203,9 +203,41 @@ export const webhookHandler = {
         return errorResponse(c, 'Payload too large', 413);
       }
 
+      // P2-1 (F1 fix): Read raw body for HMAC verification BEFORE JSON.parse.
+      // The signature is computed over the exact byte sequence Facebook sent,
+      // so we must verify against the raw string, not the re-stringified object.
+      const rawBody = await c.req.text();
+
+      const fbHeaders = Object.fromEntries(
+        Array.from(c.req.raw.headers as unknown as Iterable<[string, string]>)
+          .map(([k, v]) => [k.toLowerCase(), v])
+      );
+
+      const fbSecret = c.env.FB_APP_SECRET || c.env.FACEBOOK_APP_SECRET;
+      if (!fbSecret) {
+        log.error('Facebook Webhook: missing FB_APP_SECRET binding');
+        return unauthorizedResponse(c, 'Webhook not configured');
+      }
+
+      const fbSignatureResult = await verifyWebhookSignature(
+        'facebook',
+        rawBody,
+        fbHeaders,
+        fbSecret
+      );
+
+      if (!fbSignatureResult.valid) {
+        log.error('Facebook Webhook: Signature verification failed', {
+          error: fbSignatureResult.error
+        });
+        return unauthorizedResponse(c, fbSignatureResult.error || 'Invalid signature');
+      }
+
+      log.info('Facebook signature verified successfully');
+
       let body: FacebookWebhookBody;
       try {
-        body = await c.req.json() as FacebookWebhookBody;
+        body = JSON.parse(rawBody) as FacebookWebhookBody;
       } catch (parseError) {
         return errorResponse(c, 'Invalid JSON payload');
       }
