@@ -173,6 +173,23 @@ export class UserConnection implements DurableObject {
       // Accept WebSocket
       server.accept();
 
+      // F14: schedule automatic close at JWT expiry. The DO stays alive as
+      // long as the socket is open (no hibernation here), so setTimeout
+      // is reliable. Code 4401 signals the client to refresh and reconnect.
+      const tokenExp = Number(url.searchParams.get('tokenExp'));
+      if (Number.isFinite(tokenExp) && tokenExp > 0) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const ttlMs = Math.max(0, (tokenExp - nowSec) * 1000);
+        setTimeout(() => {
+          try {
+            server.close(4401, 'Token expired');
+          } catch (closeErr) {
+            // Already closed or in error state — nothing to do.
+            console.warn('[UserConnection] close-at-exp failed', closeErr);
+          }
+        }, ttlMs);
+      }
+
       console.log(`[UserConnection] WebSocket connected: ${connectionId} for user ${this.userId}`);
       return new Response(null, { status: 101, webSocket: client as WebSocket });
 
