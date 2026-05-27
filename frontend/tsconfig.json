@@ -25,6 +25,8 @@
     
     // 輸出設定
     "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/vue-tsc.tsbuildinfo",
     "jsx": "preserve",
     
     // 嚴格模式

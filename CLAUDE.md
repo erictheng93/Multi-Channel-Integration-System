@@ -152,6 +152,31 @@ bash scripts/check.sh frontend # Frontend only
 
 Config: `.claude/hooks/health-check.sh`, `.claude/settings.local.json`
 
+### Git Hooks — Two-Stage Pipeline (pre-commit / pre-push)
+
+The repo splits safety checks into a **fast pre-commit** and a **full pre-push** so that atomic commits don't repeatedly pay for full-project type-check.
+
+**`.husky/pre-commit`** (~20s, parallel) — fail-fast structural guards that MUST block a bad commit:
+- `check-import-paths.ts` (no deep relative imports)
+- `check:routes:ci` (Hono route conflict detector)
+- `check:sql-raw:ci` (SQL injection regression guard)
+
+All three run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
+
+**`.husky/pre-push`** (~105s warm, ~340s cold) — full correctness gate, parallel:
+- `bunx tsc --noEmit` (backend, incremental via `tsBuildInfoFile`)
+- `cd frontend && bunx vue-tsc --noEmit` (frontend SFCs, incremental)
+- `cd frontend && bunx eslint . --cache` (ESLint with content-strategy cache)
+
+Caches live in `node_modules/.cache/` (already gitignored). First push after `bun install` is cold; subsequent pushes hit the incremental cache and run ~3× faster.
+
+**Why this design**:
+- Atomic commits stay cheap (20s × N) instead of paying full check on each commit (80-200s × N).
+- PostToolUse health-check hook already catches most type errors during the edit cycle, so a pre-commit type-check would be redundant.
+- pre-push is the last line of defence before code leaves the machine; CI is the absolute final gate.
+
+**Bypass** (NOT recommended): `git commit --no-verify` / `git push --no-verify`.
+
 ### Code Style
 - **TypeScript strict mode** — all code must be type-safe
 - **No `any` types** except in test files
@@ -202,9 +227,9 @@ CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Multi-Channel-Integration-System** (55652 symbols, 89490 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Multi-Channel-Integration-System** (56237 symbols, 90332 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> If any GitNexus tool warns the index is stale, run `rtk bunx gitnexus analyze` in terminal first. This repo uses Bun; `rtk npx gitnexus analyze` routes through npm and can fail with `Missing script: "gitnexus"`.
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
 ## Always Do
 

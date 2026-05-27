@@ -1,60 +1,78 @@
 # Ensure bun is in PATH
 export PATH="$HOME/.bun/bin:$PATH"
 
-echo "🔍 Running pre-commit checks..."
+echo "🔍 Running pre-commit checks (fast, parallel)..."
+echo "   (full TS/ESLint runs on git push)"
 
-# Check import paths (prevent deep relative paths)
-echo "Checking import paths..."
-bun scripts/check-import-paths.ts
-if [ $? -ne 0 ]; then
+# Temp files for parallel job output
+TMPDIR="${TMPDIR:-/tmp}"
+LOG_IMPORT="$TMPDIR/mcis-precommit-import.log"
+LOG_ROUTES="$TMPDIR/mcis-precommit-routes.log"
+LOG_SQL="$TMPDIR/mcis-precommit-sql.log"
+EXIT_IMPORT="$TMPDIR/mcis-precommit-import.exit"
+EXIT_ROUTES="$TMPDIR/mcis-precommit-routes.exit"
+EXIT_SQL="$TMPDIR/mcis-precommit-sql.exit"
+
+START=$(date +%s)
+
+# Job 1: Import path check (prevent deep relative paths)
+(
+  bun scripts/check-import-paths.ts > "$LOG_IMPORT" 2>&1
+  echo $? > "$EXIT_IMPORT"
+) &
+PID_IMPORT=$!
+
+# Job 2: Route conflict check (prevent route ordering issues)
+(
+  bun run check:routes:ci > "$LOG_ROUTES" 2>&1
+  echo $? > "$EXIT_ROUTES"
+) &
+PID_ROUTES=$!
+
+# Job 3: Unsafe sql.raw() check (prevent SQL injection regressions)
+(
+  bun run check:sql-raw:ci > "$LOG_SQL" 2>&1
+  echo $? > "$EXIT_SQL"
+) &
+PID_SQL=$!
+
+# Wait for all three to finish
+wait $PID_IMPORT $PID_ROUTES $PID_SQL
+
+END=$(date +%s)
+ELAPSED=$((END - START))
+
+# Collect results
+FAIL=0
+
+if [ "$(cat "$EXIT_IMPORT")" != "0" ]; then
+  echo ""
+  echo "── Import path check ──────────────────────────────"
+  cat "$LOG_IMPORT"
   echo "⚠️  Import path check failed (use --no-verify to bypass)"
-  exit 1
+  FAIL=1
 fi
 
-# Check route conflicts (prevent route ordering issues)
-echo "🛤️  Checking route conflicts..."
-bun run check:routes:ci
-if [ $? -ne 0 ]; then
+if [ "$(cat "$EXIT_ROUTES")" != "0" ]; then
+  echo ""
+  echo "── Route conflict check ───────────────────────────"
+  cat "$LOG_ROUTES"
   echo "❌ Route conflict detected! Please fix before committing."
   echo "💡 Run 'bun run check:routes' for detailed report"
-  exit 1
+  FAIL=1
 fi
 
-# Check for unsafe sql.raw() usage (prevent SQL injection regressions)
-echo "🛡️  Checking for unsafe sql.raw() usage..."
-bun run check:sql-raw:ci
-if [ $? -ne 0 ]; then
+if [ "$(cat "$EXIT_SQL")" != "0" ]; then
+  echo ""
+  echo "── sql.raw safety check ───────────────────────────"
+  cat "$LOG_SQL"
   echo "❌ Unsafe sql.raw() detected! See report above."
   echo "💡 Rewrite using Drizzle query builder or add a justified suppression comment"
+  FAIL=1
+fi
+
+if [ $FAIL -ne 0 ]; then
   exit 1
 fi
 
-# Backend TypeScript check
-echo "Checking backend TypeScript..."
-bunx tsc --noEmit
-if [ $? -ne 0 ]; then
-  echo "❌ Backend TypeScript compilation failed!"
-  exit 1
-fi
-
-# Frontend checks
-echo "Checking frontend TypeScript and ESLint..."
-cd frontend
-
-# Frontend TypeScript check
-bunx vue-tsc --noEmit
-if [ $? -ne 0 ]; then
-  echo "❌ Frontend TypeScript compilation failed!"
-  exit 1
-fi
-
-# ESLint check
-bun run lint:check
-if [ $? -ne 0 ]; then
-  echo "❌ ESLint check failed!"
-  exit 1
-fi
-
-cd ..
-
-echo "✅ All pre-commit checks passed!"
+echo "✅ Pre-commit checks passed in ${ELAPSED}s (full type-check/lint runs on push)"

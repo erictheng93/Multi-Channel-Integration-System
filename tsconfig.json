@@ -34,6 +34,8 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc-backend.tsbuildinfo",
     "paths": {
       "@/*": ["./src/*"],
       "@modules/*": ["./src/modules/*"],

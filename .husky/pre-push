@@ -1,0 +1,99 @@
+# Ensure bun is in PATH
+export PATH="$HOME/.bun/bin:$PATH"
+
+# Allow bypass with `git push --no-verify` (same as pre-commit).
+# Skip on delete-only pushes (no commits to check).
+ZERO="0000000000000000000000000000000000000000"
+ANY_NEW=0
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  if [ "$local_sha" != "$ZERO" ]; then
+    ANY_NEW=1
+    break
+  fi
+done
+
+if [ "$ANY_NEW" = "0" ]; then
+  echo "🔬 pre-push: only deletions, skipping checks"
+  exit 0
+fi
+
+echo "🔬 Running pre-push checks (full, parallel)..."
+echo "   (tsc + vue-tsc + eslint running concurrently)"
+
+# Ensure cache dirs exist for incremental tsc/vue-tsc/eslint
+mkdir -p node_modules/.cache frontend/node_modules/.cache
+
+TMPDIR="${TMPDIR:-/tmp}"
+LOG_TSC="$TMPDIR/mcis-prepush-tsc.log"
+LOG_VUETSC="$TMPDIR/mcis-prepush-vuetsc.log"
+LOG_ESLINT="$TMPDIR/mcis-prepush-eslint.log"
+EXIT_TSC="$TMPDIR/mcis-prepush-tsc.exit"
+EXIT_VUETSC="$TMPDIR/mcis-prepush-vuetsc.exit"
+EXIT_ESLINT="$TMPDIR/mcis-prepush-eslint.exit"
+
+START=$(date +%s)
+
+# Job 1: Backend TypeScript (incremental via tsBuildInfoFile)
+(
+  bunx tsc --noEmit > "$LOG_TSC" 2>&1
+  echo $? > "$EXIT_TSC"
+) &
+PID_TSC=$!
+
+# Job 2: Frontend TypeScript (vue-tsc, incremental)
+(
+  cd frontend && bunx vue-tsc --noEmit > "$LOG_VUETSC" 2>&1
+  echo $? > "$EXIT_VUETSC"
+) &
+PID_VUETSC=$!
+
+# Job 3: Frontend ESLint (with cache)
+(
+  cd frontend && bunx eslint . \
+    --cache \
+    --cache-location node_modules/.cache/eslint/ \
+    --cache-strategy content \
+    > "$LOG_ESLINT" 2>&1
+  echo $? > "$EXIT_ESLINT"
+) &
+PID_ESLINT=$!
+
+# Wait for all three
+wait $PID_TSC $PID_VUETSC $PID_ESLINT
+
+END=$(date +%s)
+ELAPSED=$((END - START))
+
+FAIL=0
+
+if [ "$(cat "$EXIT_TSC")" != "0" ]; then
+  echo ""
+  echo "── Backend TypeScript (tsc) ───────────────────────"
+  cat "$LOG_TSC"
+  echo "❌ Backend TypeScript compilation failed!"
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_VUETSC")" != "0" ]; then
+  echo ""
+  echo "── Frontend TypeScript (vue-tsc) ──────────────────"
+  cat "$LOG_VUETSC"
+  echo "❌ Frontend TypeScript compilation failed!"
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_ESLINT")" != "0" ]; then
+  echo ""
+  echo "── Frontend ESLint ────────────────────────────────"
+  cat "$LOG_ESLINT"
+  echo "❌ ESLint check failed!"
+  FAIL=1
+fi
+
+if [ $FAIL -ne 0 ]; then
+  echo ""
+  echo "💡 Bypass (NOT recommended): git push --no-verify"
+  exit 1
+fi
+
+echo "✅ Pre-push checks passed in ${ELAPSED}s"
