@@ -213,6 +213,9 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
     // Store user in context for handler access
     c.set('user', user);
+    // F14: expose the verified JWT payload so /connect can forward
+    // tokenExp / jti to the Durable Object that owns the socket.
+    c.set('jwtPayload', payload);
 
     // P2-3: Check conversation access permissions for agents
     if (conversationId && role === 'agent') {
