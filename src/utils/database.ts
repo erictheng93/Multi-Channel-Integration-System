@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, count } from 'drizzle-orm';
+import { eq, and, desc, asc, count, isNull } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import {
   customers,
@@ -464,16 +464,20 @@ export async function getConversationMessageTree(
 
 /**
  * 獲取所有客戶
+ * F10: filter out soft-deleted rows (deletedAt) so the project's
+ * soft-delete contract is honoured. Caller is responsible for further
+ * team-scope filtering in the handler.
  */
 export async function getAllCustomers(
   db: D1Database,
   limit: number = 100
 ): Promise<Customer[]> {
   const drizzleDb = createDbClient(db);
-  
+
   const customerList = await drizzleDb
     .select()
     .from(customers)
+    .where(isNull(customers.deletedAt))
     .orderBy(desc(customers.createdAt))
     .limit(limit);
 
@@ -482,17 +486,22 @@ export async function getAllCustomers(
 
 /**
  * 根據ID獲取客戶
+ * F10: filter soft-deleted rows. Treating tombstoned rows as
+ * non-existent matches the rest of the codebase's soft-delete semantics.
  */
 export async function getCustomerById(
   db: D1Database,
   customerId: number
 ): Promise<Customer | null> {
   const drizzleDb = createDbClient(db);
-  
+
   const customer = await drizzleDb
     .select()
     .from(customers)
-    .where(eq(customers.id, customerId))
+    .where(and(
+      eq(customers.id, customerId),
+      isNull(customers.deletedAt)
+    ))
     .get();
 
   return customer ? convertCustomer(customer) : null;
@@ -500,6 +509,8 @@ export async function getCustomerById(
 
 /**
  * 根據平台和平台用戶ID獲取客戶
+ * F10: filter soft-deleted rows. Also prevents the platform-lookup
+ * endpoint from leaking the existence of tombstoned customer records.
  */
 export async function getCustomerByPlatformId(
   db: D1Database,
@@ -507,13 +518,14 @@ export async function getCustomerByPlatformId(
   platformUserId: string
 ): Promise<Customer | null> {
   const drizzleDb = createDbClient(db);
-  
+
   const customer = await drizzleDb
     .select()
     .from(customers)
     .where(and(
       eq(customers.platform, platform),
-      eq(customers.platformUserId, platformUserId)
+      eq(customers.platformUserId, platformUserId),
+      isNull(customers.deletedAt)
     ))
     .get();
 
