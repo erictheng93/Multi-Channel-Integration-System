@@ -40,8 +40,17 @@ export class PermissionService {
       id: 'agent',
       name: '客服人員',
       permissions: [
-        // 普通 Agent 能查看所有對話（包括未指派的）
-        { resource: 'conversation', action: 'view' },
+        // F8 fix: previously `view` had no conditions, so checkPermission
+        // returned true for ANY conversation ID. Combined with handlers that
+        // delegate access decisions to PermissionService (conversation-queries,
+        // conversation-read, conversation-messages GET), an agent could read
+        // any conversation's full message history, customer PII, and bump
+        // last_read_at on any conversation system-wide — defeating the team
+        // filter applied by getVisibleConversations on the list endpoint.
+        // The `assigned` condition runs the same assignedTeamId check used by
+        // 'reply' and 'message.send' below, so view inherits the same team
+        // semantics (unassigned conversations remain visible — shared pool).
+        { resource: 'conversation', action: 'view', conditions: { assigned: true } },
         // 但只能回覆指派給自己的對話
         { resource: 'conversation', action: 'reply', conditions: { assigned: true } },
         // 只能在指派給自己的對話中發送訊息
