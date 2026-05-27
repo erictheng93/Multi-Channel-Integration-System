@@ -17,6 +17,7 @@
 
 import type { Bindings } from '@/types';
 import { getBackendUrl } from '@/config/runtime';
+import { signFileUrl } from '@/utils/file-signed-url';
 
 function isLocalhost(value: string): boolean {
   return value.includes('localhost') || value.includes('127.0.0.1');
@@ -52,6 +53,31 @@ export function getPublicFileUrl(env: Bindings, r2Key: string): string {
   // Priority 4: Worker proxy fallback (requires BACKEND_URL in production)
   const backendUrl = getBackendUrl(env);
   return `${backendUrl}/api/files/public/${normalizedKey}`;
+}
+
+/**
+ * F7: signed variant of getPublicFileUrl for callers that explicitly need
+ * a Worker-proxy URL with HMAC signature attached. Use this when minting
+ * download links that will hit /api/files/public/*, /api/files/download/*,
+ * or /api/r2-public/* — those endpoints now reject unsigned requests.
+ *
+ * Returns the Worker-proxy form (bypassing R2 custom domains) because
+ * signature verification lives in the Worker, not in R2 directly.
+ *
+ * @param env - Worker bindings (JWT_SECRET used for HMAC, BACKEND_URL for hostname)
+ * @param r2Key - The R2 object key
+ * @param ttlSeconds - Optional TTL, defaults to 24h (long enough for LINE caches)
+ */
+export async function getSignedFileUrl(
+  env: Bindings,
+  r2Key: string,
+  ttlSeconds?: number,
+): Promise<string> {
+  const normalizedKey = r2Key.replace(/^\//, '');
+  const backendUrl = getBackendUrl(env);
+  const { sig, exp } = await signFileUrl(normalizedKey, env.JWT_SECRET, ttlSeconds);
+  const params = new URLSearchParams({ sig, exp: String(exp) });
+  return `${backendUrl}/api/files/public/${normalizedKey}?${params.toString()}`;
 }
 
 /**
