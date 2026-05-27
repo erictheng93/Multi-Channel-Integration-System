@@ -85,6 +85,9 @@ tmp-*
 .claude/settings.local.json
 .mcp.json
 
+# Security reports / local audit artifacts (contains vulnerability details)
+.gstack/
+
 # 生成的 QR Code 檔案
 team*_qr.svg
 *_qr.svg
