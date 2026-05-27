@@ -330,12 +330,11 @@ describe('Role Transition and Permission Edge Cases', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 2,
         role: 'agent',
-        teamId: 1,
-        team_id: 1,
+        primaryTeamId: 1,
         isActive: true
       });
 
-      // Agent viewing conversation has NO conditions, so it always returns true
+      // Agent viewing conversation requires assigned-team match.
       const conflictingContext = {
         teamId: 1,
         targetTeamId: 2
@@ -348,7 +347,21 @@ describe('Role Transition and Permission Edge Cases', () => {
         conflictingContext
       );
 
-      expect(result).toBe(true); // conversation/view has no conditions for agent
+      expect(result).toBe(true); // allowed due teamId match
+
+      const conflictingContextMismatch = {
+        teamId: 2,
+        targetTeamId: 1
+      };
+
+      const mismatchResult = await PermissionService.checkPermission(
+        2,
+        'conversation',
+        'view',
+        conflictingContextMismatch
+      );
+
+      expect(mismatchResult).toBe(false); // team mismatch should fail
 
       (PermissionService as any).getUserWithTeam = originalGetUserWithTeam;
     });
@@ -358,21 +371,19 @@ describe('Role Transition and Permission Edge Cases', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 3,
         role: 'agent',
-        teamId: 0, // Edge case: team ID 0
-        team_id: 0,
+        primaryTeamId: 0, // Edge case: team ID 0
         isActive: true
       });
 
       const boundaryContexts = [
-        { teamId: 0 }, // Zero team ID
-        { teamId: -1 }, // Negative team ID
-        { assignedUserId: 0 }, // Zero user ID
-        { ownerId: 0 } // Zero owner ID
+        { context: { teamId: 0 }, expected: true }, // Zero team ID should pass with primary team ID 0
+        { context: { teamId: -1 }, expected: false }, // Negative team ID should fail
+        { context: { assignedUserId: 0 }, expected: false }, // Missing teamId fails condition check
+        { context: { ownerId: 0 }, expected: false } // Missing teamId fails condition check
       ];
 
-      for (const context of boundaryContexts) {
-        // Agent's conversation/view permission has NO conditions
-        // So all contexts return true regardless of values
+      for (const { context, expected } of boundaryContexts) {
+        // Agent's conversation/view permission now checks assigned-team match
         const result = await PermissionService.checkPermission(
           3,
           'conversation',
@@ -380,7 +391,7 @@ describe('Role Transition and Permission Edge Cases', () => {
           context
         );
 
-        expect(result).toBe(true);
+        expect(result).toBe(expected);
       }
 
       (PermissionService as any).getUserWithTeam = originalGetUserWithTeam;
@@ -402,10 +413,10 @@ describe('Role Transition and Permission Edge Cases', () => {
       // Simulate concurrent permission checks
       const concurrentChecks = [
         PermissionService.checkPermission(1, 'conversation', 'view'), // Admin: wildcard -> true
-        PermissionService.checkPermission(2, 'conversation', 'view'), // Agent: conversation/view (no conditions) -> true
+        PermissionService.checkPermission(2, 'conversation', 'view', { teamId: 1 }), // Agent: conversation/view assigned -> true
         PermissionService.checkPermission(3, 'message', 'send', { teamId: 1 }), // Agent: message/send has assigned condition, teamId matches -> true
         PermissionService.checkPermission(1, 'user', 'delete'), // Admin: wildcard -> true
-        PermissionService.checkPermission(2, 'conversation', 'view', { teamId: 1 }) // Agent: conversation/view (no conditions) -> true
+        PermissionService.checkPermission(2, 'conversation', 'view', { teamId: 1 }) // Agent: conversation/view assigned -> true
       ];
 
       const results = await Promise.all(concurrentChecks);
@@ -455,8 +466,7 @@ describe('Role Transition and Permission Edge Cases', () => {
       (PermissionService as any).getUserWithTeam = vi.fn().mockResolvedValue({
         id: 2,
         role: 'agent',
-        teamId: 1,
-        team_id: 1,
+        primaryTeamId: 1,
         isActive: true
       });
 
@@ -475,7 +485,7 @@ describe('Role Transition and Permission Edge Cases', () => {
         }
       };
 
-      // Agent viewing conversation has no conditions, so nested context is fine
+      // Agent viewing conversation requires assigned-team match, nested context structure is ignored for this check
       const result = await PermissionService.checkPermission(
         2,
         'conversation',

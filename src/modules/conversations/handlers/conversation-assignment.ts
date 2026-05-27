@@ -1,7 +1,7 @@
 // 對話指派處理器
 // Handles: POST /:id/assign, POST /:id/unassign, POST /:id/transfer
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { eq } from 'drizzle-orm';
@@ -15,6 +15,7 @@ import { WebSocketBroadcastService } from '@/services/websocket-broadcast-servic
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
 import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import type { DbUser } from '@/types';
 
 const log = createContextLogger('ConversationAssignmentHandler');
 
@@ -25,7 +26,11 @@ type AssignedConversationResponse = typeof conversations.$inferSelect & {
 
 const conversationAssignmentHandler = new Hono<{ Bindings: Bindings }>();
 
-function activityMeta(c: any, user: any) {
+type ActivityActor = Pick<DbUser, 'id' | 'displayName' | 'email' | 'role'> & {
+  username?: string;
+};
+
+function activityMeta(c: Context, user: ActivityActor) {
   return {
     userId: String(user.id),
     userName: user.displayName || user.email || user.username || String(user.id),

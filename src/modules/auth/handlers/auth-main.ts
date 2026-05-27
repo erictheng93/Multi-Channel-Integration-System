@@ -30,7 +30,21 @@ import { nowISO } from '@/utils/timestamp'
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
 
-function agentState(agent: Record<string, any>) {
+type AuthAgentState = Record<string, unknown> & {
+  id?: string | number;
+  email?: string;
+  displayName?: string;
+  role?: string;
+  isActive?: boolean;
+  lastActive?: string | null;
+  lastLoginAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  deletedAt?: string | null;
+  passwordPolicy?: string;
+};
+
+function agentState(agent: AuthAgentState) {
   return {
     id: agent.id,
     email: agent.email,
@@ -374,7 +388,7 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
           id: newUser.id,
           deleted_at: null
         },
-        newState: agentState(newUser)
+        newState: agentState(newUser as AuthAgentState)
       })
     );
 
