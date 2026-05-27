@@ -288,12 +288,21 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
 }
 
-// 生成隨機字符串
+// 生成隨機字符串 - 使用加密安全的隨機數生成器 (CSPRNG)
+// F11: previously used Math.random() which is NOT cryptographically secure —
+// V8's xorshift128+ state is recoverable after observing a handful of outputs.
+// Sessions IDs minted here go into KV under `session:{id}` (see createSession
+// below at line 605), so prediction would allow another user's session lookup.
+// Mirrors src/utils/auth-jwt.ts:146 — keep these two in sync until the wider
+// duplicate-auth-module consolidation lands.
 export function generateRandomString(length: number = 32): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charsLength = chars.length; // 62
+  const randomBytes = new Uint8Array(length);
+  crypto.getRandomValues(randomBytes);
   let result = '';
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(randomBytes[i] % charsLength);
   }
   return result;
 }
