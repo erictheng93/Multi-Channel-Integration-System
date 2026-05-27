@@ -1,13 +1,26 @@
 // 客戶管理處理器 - 主要實現
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
-import type { Bindings } from '@/types';
+import type { Bindings, JWTPayload } from '@/types';
 import { handleApiError } from '@/utils/api-response';
 import { customerTagsHandler } from './customer-tags';
 import { jwtAuth } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
+
+// F10: gate a customer record by the caller's team scope. Admins see all.
+// Other agents see customers whose sourceTeamId is in their allowedTeamIds
+// (or null, treated as a shared pool consistent with conversations).
+function canAccessCustomer(
+  customer: { sourceTeamId?: number | null | undefined },
+  user: JWTPayload
+): boolean {
+  if (user.role === 'admin') return true;
+  const sourceTeamId = customer.sourceTeamId;
+  if (sourceTeamId === null || sourceTeamId === undefined) return true;
+  return (user.allowedTeamIds ?? []).includes(sourceTeamId);
+}
 
 const log = createContextLogger('CustomerMain')
 
@@ -38,10 +51,21 @@ customerHandler.get('/platform/:platform/:platformUserId', async (c) => {
   try {
     const platform = c.req.param('platform');
     const platformUserId = c.req.param('platformUserId');
+    const userPayload = c.get('jwtPayload') as JWTPayload;
     const { getCustomerByPlatformId, getCustomerConversations } = await import('@/utils/database');
 
     const customer = await getCustomerByPlatformId(c.env.DB, platform, platformUserId);
     if (!customer) {
+      return c.json({
+        success: false,
+        error: 'Customer not found',
+        timestamp: nowISO()
+      }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // F10: gate by team. Return 404 (not 403) so the lookup doesn't leak
+    // whether a given LINE/FB user is in another team's customer book.
+    if (!canAccessCustomer(customer, userPayload)) {
       return c.json({
         success: false,
         error: 'Customer not found',
@@ -75,10 +99,21 @@ customerHandler.get('/:customerId/tags', requireIntId('customerId'), customerTag
 customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
   try {
     const customerId = getValidatedParam<number>(c, 'customerId');
+    const userPayload = c.get('jwtPayload') as JWTPayload;
     const { getCustomerById, getCustomerConversations } = await import('@/utils/database');
 
     const customer = await getCustomerById(c.env.DB, customerId);
     if (!customer) {
+      return c.json({
+        success: false,
+        error: 'Customer not found',
+        timestamp: nowISO()
+      }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // F10: same team-scope gate as the platform-lookup route. 404 hides
+    // existence to avoid enumeration of customers in other teams.
+    if (!canAccessCustomer(customer, userPayload)) {
       return c.json({
         success: false,
         error: 'Customer not found',
@@ -107,14 +142,25 @@ customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
 // 客戶資訊查詢端點 - 列表所有客戶 (moved from line 24 to after /:customerId)
 customerHandler.get('/', async (c) => {
   try {
+    const userPayload = c.get('jwtPayload') as JWTPayload;
     const { getAllCustomers } = await import('@/utils/database');
-    const customers = await getAllCustomers(c.env.DB);
+    const allCustomers = await getAllCustomers(c.env.DB);
+
+    // F10: filter to customers the caller can access. Admins see everything;
+    // other agents see customers whose sourceTeamId is in their
+    // allowedTeamIds (or null, the shared-pool convention). This is a
+    // post-fetch trim so the visible count may be lower than the underlying
+    // limit; a follow-up pagination redesign should push the filter into
+    // the SQL WHERE clause.
+    const visibleCustomers = allCustomers.filter((customer) =>
+      canAccessCustomer(customer, userPayload)
+    );
 
     return c.json({
       success: true,
       data: {
-        customers,
-        count: customers.length
+        customers: visibleCustomers,
+        count: visibleCustomers.length
       },
       timestamp: nowISO()
     });
