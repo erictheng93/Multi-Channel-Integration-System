@@ -10,6 +10,7 @@ describe('RestoreRegistry', () => {
       'conversation.assign',
       'conversation.delete',
       'conversation.status',
+      'conversation.transfer',
       'conversation.unassign',
       'customer.create',
       'customer.delete',
