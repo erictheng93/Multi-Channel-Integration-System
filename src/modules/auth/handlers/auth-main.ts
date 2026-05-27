@@ -14,7 +14,7 @@ import {
   sessionAuth,
   requireRole,
 } from '@/middleware/auth';
-import { loginRateLimiter } from '@/middleware/rate-limiter';
+import { loginRateLimiter, authRateLimiter } from '@/middleware/rate-limiter';
 import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
 import { agents, agentTeams } from '@/db/schema';
@@ -600,7 +600,8 @@ authHandler.put('/me', jwtAuth, async (c) => {
 });
 
 // 刷新 Token
-authHandler.post('/refresh', async (c) => {
+// F2 fix: apply authRateLimiter to defend against refresh-token brute force / DoS
+authHandler.post('/refresh', authRateLimiter, async (c) => {
   try {
     const { refreshToken } = await c.req.json();
 
@@ -617,7 +618,14 @@ authHandler.post('/refresh', async (c) => {
     let payload: RefreshTokenPayload;
 
     try {
-      const verified = jwt.verify(refreshToken, c.env.JWT_SECRET) as unknown;
+      // F2 fix: pin algorithm allowlist to HS256. Without this, jsonwebtoken
+      // accepts whatever `alg` the token declares — enabling alg confusion
+      // (RS256→HS256 if the secret ever becomes a public key) and `alg: none`
+      // attacks on misconfigured deployments. Login signs with HS256, so the
+      // verifier must also require HS256.
+      const verified = jwt.verify(refreshToken, c.env.JWT_SECRET, {
+        algorithms: ['HS256'],
+      }) as unknown;
       if (!isRefreshTokenPayload(verified)) {
         return c.json({
           success: false,
