@@ -34,7 +34,7 @@ export { hashPassword, verifyPassword } from './auth-password';
 
 // Import for local use by functions in this file
 import { generateRandomString } from './auth-jwt';
-import { hashPassword, verifyPassword } from './auth-password';
+import { hashPassword, verifyPassword, isLegacySha256Hash } from './auth-password';
 
 // 用戶認證相關的資料庫操作
 export async function createUser(
@@ -225,6 +225,25 @@ export async function authenticateUser(
   const isValidPassword = await verifyPassword(password, user.password_hash);
   if (!isValidPassword) {
     return { user: null, accountStatus: 'wrong_password', passwordPolicy: user.password_policy || 'changeable' };
+  }
+
+  // F3: auto-upgrade legacy unsalted SHA-256 hashes to bcrypt on successful
+  // login. We've already verified the password matches, so this is safe.
+  // Failure to upgrade is logged but does not block the login.
+  if (isLegacySha256Hash(user.password_hash)) {
+    try {
+      const newHash = await hashPassword(password);
+      await db.prepare('UPDATE agents SET password_hash = ?, updated_at = ? WHERE id = ?')
+        .bind(newHash, nowISO(), user.id)
+        .run();
+      console.info('[F3] Auto-upgraded legacy SHA-256 password hash to bcrypt', { userId: user.id });
+    } catch (err) {
+      console.error('[F3] Failed to auto-upgrade legacy password hash', {
+        userId: user.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Continue with login — upgrade is best-effort.
+    }
   }
 
   // Query agent_teams for multi-team membership (single source of truth)

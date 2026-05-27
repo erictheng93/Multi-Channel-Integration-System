@@ -4,7 +4,12 @@
  * Supports multiple hash formats:
  * - bcrypt ($2a$, $2b$, $2x$, $2y$ prefixes)
  * - PBKDF2 (pbkdf2: prefix, from Web Installer MigrationRunner)
- * - SHA256 (sha256$ prefix or raw 64-char hex)
+ * - SHA256 (sha256$ prefix or raw 64-char hex) — DEPRECATED, see F3 below
+ *
+ * F3 mitigation: unsalted single-iteration SHA-256 is trivially crackable.
+ * We keep the verification path for backward compatibility but (a) compare
+ * in constant time and (b) callers should auto-upgrade matched legacy hashes
+ * to bcrypt on next login using `isLegacySha256Hash` + `hashPassword`.
  *
  * CRITICAL: There is a dual verifyPassword in src/modules/auth/services/auth.ts
  * that must stay in sync with this one. Any logic changes here must be mirrored there.
@@ -14,6 +19,32 @@
 export async function hashPassword(password: string): Promise<string> {
   const bcrypt = await import('bcryptjs');
   return bcrypt.hash(password, 12);
+}
+
+/**
+ * Constant-time string equality. Both inputs must be the same length to
+ * avoid leaking length via early return; we length-check up front, then
+ * accumulate XOR diffs over the full length so timing depends only on the
+ * common length, not the position of the first mismatch.
+ */
+export function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * Returns true if `hash` is an unsalted SHA-256 hash (either the `sha256$`
+ * prefixed form or a bare 64-char hex string). Callers should use this after
+ * a successful verifyPassword to detect accounts that need upgrade to bcrypt.
+ */
+export function isLegacySha256Hash(hash: string): boolean {
+  if (hash.startsWith('sha256$')) return true;
+  if (hash.length === 64 && /^[a-f0-9]+$/.test(hash)) return true;
+  return false;
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
@@ -81,19 +112,20 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   }
 
   // 處理舊格式的hash (如SHA256) - 先檢查是否為SHA256格式
+  // F3: constant-time compare; legacy hash is kept verifiable but
+  // authenticateUser auto-upgrades the row to bcrypt on success.
   if (hash.startsWith('sha256$')) {
     const actualHash = hash.substring(7); // 移除 'sha256$' 前綴
-    // 對於舊的 SHA256 哈希，我們需要使用舊的方法驗證
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const passwordHash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    return passwordHash === actualHash;
+    return constantTimeEqual(passwordHash, actualHash);
   }
 
-  // 檢查純SHA256 hash (舊格式)
+  // 檢查純SHA256 hash (舊格式) — same constant-time treatment
   if (hash.length === 64 && /^[a-f0-9]+$/.test(hash)) {
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
@@ -101,7 +133,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
     const passwordHash = Array.from(new Uint8Array(hashBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
-    return passwordHash === hash;
+    return constantTimeEqual(passwordHash, hash);
   }
 
   // 如果都不匹配，嘗試 bcrypt（可能是新格式但沒有正確前綴）
