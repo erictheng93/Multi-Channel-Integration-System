@@ -437,6 +437,12 @@ authHandler.post('/logout', sessionAuth, async (c) => {
     // F13: also revoke the paired refresh token if the client supplies
     // it. The client may include it in the JSON body so the long-lived
     // refresh credential is invalidated alongside the access token.
+    //
+    // F13 hardening: assert ownership before writing to the blocklist.
+    // Without this check, an attacker who knows a victim's refresh
+    // token could call /logout with that token in the body and revoke
+    // the victim's session — a denial-of-service via revocation. We
+    // verify the refresh token's userId matches the session's user.
     try {
       const body = await c.req.json().catch(() => null);
       const refreshTokenToRevoke = body && typeof body === 'object' && 'refreshToken' in body
@@ -445,7 +451,18 @@ authHandler.post('/logout', sessionAuth, async (c) => {
       if (typeof refreshTokenToRevoke === 'string' && refreshTokenToRevoke.length > 0) {
         const { verifyJWT } = await import('@/utils/auth');
         const payload = await verifyJWT(refreshTokenToRevoke, c.env.JWT_SECRET);
-        if (payload.jti && payload.exp) {
+
+        // Ownership check: the refresh token must belong to the
+        // authenticated session user. String-compare to handle the
+        // mixed string/number userId types across the codebase.
+        const tokenUserId = String(payload.userId);
+        const sessionUserId = user ? String(user.id) : null;
+        if (sessionUserId === null || tokenUserId !== sessionUserId) {
+          authLogger.warn('Refresh token user mismatch on logout; skipping revocation', {
+            tokenUserId,
+            sessionUserId,
+          });
+        } else if (payload.jti && payload.exp) {
           const now = Math.floor(Date.now() / 1000);
           const ttl = Math.max(1, payload.exp - now);
           await c.env.CACHE.put(`revoked:${payload.jti}`, '1', { expirationTtl: ttl });
