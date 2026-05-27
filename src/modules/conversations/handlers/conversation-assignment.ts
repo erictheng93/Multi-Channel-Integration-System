@@ -6,15 +6,14 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, customers, teams, conversationTransfers } from '@/db/schema';
+import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
-import type { NewConversationTransfer } from '../types/conversation-types';
 import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp';
-import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import type { DbUser } from '@/types';
 
 const log = createContextLogger('ConversationAssignmentHandler');
@@ -477,60 +476,95 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
 
     // Admin 直接通過權限檢查
 
-    // 更新對話指派
     const drizzleDb = createDbClient(c.env.DB);
     const timestamp = nowISO();
 
-    await drizzleDb
-      .update(conversations)
-      .set({
-        assignedTeamId: toTeamId,
-        status: 'active',
-        updatedAt: timestamp
-      })
-      .where(eq(conversations.id, conversationId));
+    // 抓取轉移前狀態（給 reversible activity log 使用）
+    const previousState = await c.env.DB
+      .prepare(
+        `SELECT id, assigned_team_id, status, updated_at
+         FROM conversations
+         WHERE id = ?`
+      )
+      .bind(conversationId)
+      .first<Record<string, unknown>>();
 
-    // 記錄轉移歷史 (使用 Drizzle ORM) - 只記錄團隊
-    const transferRecord: NewConversationTransfer = {
-      conversationId,
-      fromTeamId: fromTeamId || null,
-      toTeamId: toTeamId,
-      transferReason: reason,
-      transferredBy: String(user.id),
-      createdAt: timestamp
-    };
+    if (!previousState) {
+      return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
+    }
 
-    await drizzleDb.insert(conversationTransfers).values(transferRecord);
-
-    // Fetch team names for activity log and WebSocket broadcast
-    const fromTeamForLog = fromTeamId ? await drizzleDb
-      .select({ name: teams.name })
-      .from(teams)
-      .where(eq(teams.id, fromTeamId))
-      .limit(1) : [];
-    const toTeamForLog = toTeamId ? await drizzleDb
-      .select({ name: teams.name })
-      .from(teams)
-      .where(eq(teams.id, toTeamId))
-      .limit(1) : [];
-    const fromTeamDisplayName = fromTeamForLog[0]?.name || String(fromTeamId);
+    // 預先抓取 from/to 團隊名稱（給 activity log details 與 WebSocket broadcast 共用）
+    const [fromTeamForLog, toTeamForLog] = await Promise.all([
+      fromTeamId
+        ? drizzleDb.select({ name: teams.name }).from(teams).where(eq(teams.id, fromTeamId)).limit(1)
+        : Promise.resolve([] as Array<{ name: string }>),
+      drizzleDb.select({ name: teams.name }).from(teams).where(eq(teams.id, toTeamId)).limit(1)
+    ]);
+    const fromTeamDisplayName = fromTeamForLog[0]?.name || (fromTeamId ? String(fromTeamId) : null);
     const toTeamDisplayName = toTeamForLog[0]?.name || String(toTeamId);
 
-    // Activity logging: conversation transfer
-    try {
-      const activityService = new ActivityService(c.env.DB);
-      activityService.logActivity({
-        userId: user.id.toString(),
-        userName: user.displayName || user.email,
-        userRole: user.role,
-        action: ACTIVITY_ACTIONS.CONVERSATION_TRANSFER,
-        resourceType: RESOURCE_TYPES.CONVERSATION,
-        resourceId: conversationId,
-        details: { fromTeamName: fromTeamDisplayName, toTeamName: toTeamDisplayName, fromTeamId, toTeamId, reason },
-        ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
-        userAgent: c.req.header('User-Agent')
-      }).catch(() => {});
-    } catch (_) { /* non-blocking */ }
+    const newState = {
+      ...previousState,
+      assigned_team_id: toTeamId,
+      status: 'active',
+      updated_at: timestamp
+    };
+
+    log.info('Transfer API updating conversation', {
+      conversationId,
+      fromTeamId,
+      toTeamId,
+      status: 'active'
+    });
+
+    const capture = new ActivityCapture(c.env.DB);
+    const statements = [
+      capture.buildReversibleLog({
+        request: {
+          ...activityMeta(c, user),
+          action: ACTIVITY_ACTIONS.CONVERSATION_TRANSFER,
+          resourceType: RESOURCE_TYPES.CONVERSATION,
+          resourceId: conversationId,
+          details: {
+            fromTeamName: fromTeamDisplayName,
+            toTeamName: toTeamDisplayName,
+            fromTeamId: fromTeamId ?? null,
+            toTeamId,
+            reason
+          }
+        },
+        restoreHandler: 'conversation.transfer',
+        previousState,
+        newState
+      }),
+      c.env.DB
+        .prepare(
+          `UPDATE conversations
+           SET assigned_team_id = ?,
+               status = ?,
+               updated_at = ?
+           WHERE id = ?`
+        )
+        .bind(toTeamId, 'active', timestamp, conversationId),
+      c.env.DB
+        .prepare(
+          `INSERT INTO conversation_transfers
+             (conversation_id, from_team_id, to_team_id, transfer_reason, transferred_by, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .bind(
+          conversationId,
+          fromTeamId ?? null,
+          toTeamId,
+          reason ?? null,
+          String(user.id),
+          timestamp
+        )
+    ];
+
+    await c.env.DB.batch(statements);
+
+    log.debug('Transfer API database batch completed', { conversationId });
 
     // WebSocket Broadcasting: Dual-Team Conversation Transfer
     // Uses new broadcastConversationTransferred() for proper team-scoped notifications
