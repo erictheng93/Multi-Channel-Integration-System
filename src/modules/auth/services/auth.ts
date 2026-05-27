@@ -10,6 +10,12 @@ import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('AuthService')
 
+// F18: precomputed bcrypt(12) of a random throwaway string. Used to
+// equalize timing on the not_found / disabled branches of authenticateUser
+// so attackers can't distinguish existing vs non-existent emails by
+// response latency. Mirrors DUMMY_BCRYPT_HASH in utils/auth.ts.
+const DUMMY_BCRYPT_HASH = '$2b$12$Z1qcG.uF3OdfP2EBxKNGu.4N1fPjPLkN2yWNg/.kV6N7AySgkbjci';
+
 type AgentRow = typeof agents.$inferSelect;
 
 interface AuthSqlUser {
@@ -445,12 +451,17 @@ export async function authenticateUser(
   const user = await db.prepare(query).bind(email).first<AuthSqlUser>();
 
   // 用戶不存在
+  // F18: dummy bcrypt verify equalizes timing so attackers can't enumerate
+  // valid emails by the ~100ms gap between existing and non-existent users.
   if (!user) {
+    await verifyPassword(password, DUMMY_BCRYPT_HASH);
     return { user: null, accountStatus: 'not_found' };
   }
 
-  // 帳戶未激活
+  // 帳戶未激活 — same dummy verify keeps disabled indistinguishable from
+  // wrong-password to the attacker.
   if (!user.is_active) {
+    await verifyPassword(password, DUMMY_BCRYPT_HASH);
     return { user: null, accountStatus: 'disabled', passwordPolicy: user.password_policy || 'changeable' };
   }
 
