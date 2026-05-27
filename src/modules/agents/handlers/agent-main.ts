@@ -358,6 +358,25 @@ export function createAgentRouter() {
         }
       }
 
+      // F6 fix: prevent self-team-transfer privilege escalation.
+      // checkAgentAccess permits agents to PUT their own record, and the
+      // underlying AgentService.updateAgent unconditionally rewrites
+      // agent_teams when teamId is present — so without this guard any
+      // agent could send {teamId: <any-team>} on their own update and
+      // gain Member access to that team's data on next token refresh.
+      // Team transfer must go through the admin-only batch endpoint.
+      if (
+        data.teamId !== undefined &&
+        agentId === currentUser.id &&
+        currentUser.role !== 'admin'
+      ) {
+        return c.json({
+          success: false,
+          error: 'Team transfer must be performed by an admin via the batch transfer endpoint',
+          timestamp: nowISO()
+        }, HTTP_STATUS.FORBIDDEN);
+      }
+
       const updatedAgent = await agentService.updateAgent(agentId, data);
 
       return c.json({
