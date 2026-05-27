@@ -7,7 +7,7 @@ import { globalErrorHandler } from '@/core/error-handler';
 import { eq, desc, and, count, inArray } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, messages, customers, agents, fileAttachments } from '@/db/schema';
-import type { Bindings } from '@/types';
+import type { Bindings, JWTPayload } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
@@ -25,6 +25,7 @@ const conversationMessagesHandler = new Hono<{ Bindings: Bindings }>();
 conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
   try {
     const conversationId = c.req.param('id')!;
+    const userPayload = c.get('jwtPayload') as JWTPayload;
 
     if (!conversationId) {
       return c.json({
@@ -35,9 +36,12 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
 
     const db = createDbClient(c.env.DB);
 
-    // 檢查對話是否存在
+    // 檢查對話是否存在 — fetch assignedTeamId for the F19 team-scope gate.
     const conversation = await db
-      .select()
+      .select({
+        id: conversations.id,
+        assignedTeamId: conversations.assignedTeamId,
+      })
       .from(conversations)
       .where(eq(conversations.id, conversationId))
       .get();
@@ -47,6 +51,28 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
         success: false,
         error: 'Conversation not found'
       }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // F19: enforce team scope on attachment upload, mirroring F5's POST
+    // /api/messages and the sibling /:id/messages send handler. The
+    // previous code only checked conversation existence — any agent could
+    // upload a file into any conversation's R2 prefix and insert a
+    // file_attachments row, enabling cross-team data injection when
+    // combined with a message-send IDOR.
+    const isAdmin = userPayload.role === 'admin';
+    const assignedTeamId = conversation.assignedTeamId;
+    const allowedTeams = userPayload.allowedTeamIds ?? [];
+    const teamAllowed =
+      isAdmin ||
+      assignedTeamId === null ||
+      assignedTeamId === undefined ||
+      allowedTeams.includes(assignedTeamId);
+
+    if (!teamAllowed) {
+      return c.json({
+        success: false,
+        error: 'You do not have access to this conversation'
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 解析 FormData
