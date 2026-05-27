@@ -39,9 +39,12 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
       return badRequestResponse(c, 'Message ID is required');
     }
 
+    const userPayload = c.get('jwtPayload') as JWTPayload;
     const db = createDbClient(c.env.DB);
 
     // 獲取訊息詳細資訊，包含相關的對話和發送者資訊
+    // F4: also select conversations.assignedTeamId so we can enforce team
+    // scope after fetch; soft-deleted messages must be hidden.
     const messageQuery = await db
       .select({
         // 訊息資訊
@@ -68,6 +71,7 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
         // 對話資訊
         conversationStatus: conversations.status,
         conversationPriority: conversations.priority,
+        conversationAssignedTeamId: conversations.assignedTeamId,
         // 代理人資訊
         agentName: agents.displayName,
         agentRole: agents.role,
@@ -79,10 +83,31 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
       .leftJoin(conversations, eq(messages.conversationId, conversations.id))
       .leftJoin(agents, eq(messages.agentSenderId, agents.id))
       .leftJoin(customers, eq(messages.customerSenderId, customers.id))
-      .where(eq(messages.id, messageId))
+      .where(and(
+        eq(messages.id, messageId),
+        isNull(messages.deletedAt)
+      ))
       .get();
 
     if (!messageQuery) {
+      return notFoundResponse(c, 'Message not found');
+    }
+
+    // F4: enforce team-scoped access. Admins see everything. Other agents
+    // can only read messages whose conversation is in one of their
+    // allowedTeamIds, or is unassigned (shared pool, matching the visibility
+    // rule used by getVisibleConversations).
+    const isAdmin = userPayload.role === 'admin';
+    const assignedTeamId = messageQuery.conversationAssignedTeamId;
+    const allowedTeams = userPayload.allowedTeamIds ?? [];
+    const teamAllowed =
+      isAdmin ||
+      assignedTeamId === null ||
+      assignedTeamId === undefined ||
+      allowedTeams.includes(assignedTeamId);
+
+    if (!teamAllowed) {
+      // Return 404 (not 403) to avoid leaking message existence to unauthorised agents.
       return notFoundResponse(c, 'Message not found');
     }
 
