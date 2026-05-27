@@ -192,6 +192,28 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       return c.json({ error: 'Refresh token cannot be used to access this resource' }, 401);
     }
 
+    // F13: check the per-token revocation list before trusting the JWT.
+    // /logout writes `revoked:{jti}` in CACHE with TTL = remaining token
+    // life; a stolen token is invalidated within one KV-read of the user
+    // calling logout. Tokens minted before F13 have no jti and skip this
+    // check — the residual exposure is bounded by their natural exp.
+    if (payload.jti) {
+      try {
+        const isRevoked = await c.env.CACHE.get(`revoked:${payload.jti}`);
+        if (isRevoked) {
+          return c.json({ error: 'Token has been revoked' }, 401);
+        }
+      } catch (err) {
+        // KV read failure: log and fail-open. The alternative (fail-closed)
+        // turns a KV outage into a fleet-wide auth outage; we prefer to
+        // accept the small window of risk for a transient KV blip.
+        log.warn('Revocation check failed; allowing request', {
+          jti: payload.jti,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     // 獲取用戶信息
     const user = await getUserById(c.env.DB, payload.userId);
 
