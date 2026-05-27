@@ -121,23 +121,16 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
     const authResult = await authenticateUser(c.env.DB, cleanEmail, cleanPassword);
     const { user, passwordPolicy, accountStatus } = authResult;
 
-    // 根據認證結果設定錯誤訊息
+    // F18: collapse all auth failure branches to a single generic message.
+    // Distinguishing 'User not found' / 'Wrong password' / 'Account disabled'
+    // is a textbook user-enumeration oracle — combined with the timing fix
+    // in authenticateUser, attackers can no longer determine whether an
+    // email belongs to a registered account. Real account status (e.g.
+    // disabled) should be surfaced via password-reset / admin-contact UX
+    // flows, not through the login response.
     if (accountStatus !== 'success') {
-      let errorMessage = '';
-      switch (accountStatus) {
-        case 'not_found':
-          errorMessage = 'User not found';
-          break;
-        case 'disabled':
-          errorMessage = 'Account disabled';
-          break;
-        case 'wrong_password':
-          errorMessage = 'Wrong password';
-          break;
-        default:
-          errorMessage = 'Authentication failed';
-      }
-      return unauthorizedResponse(c, errorMessage);
+      authLogger.info('Authentication failed', { reason: accountStatus });
+      return unauthorizedResponse(c, 'Invalid email or password');
     }
 
     if (!user) {
