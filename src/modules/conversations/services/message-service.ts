@@ -423,6 +423,35 @@ export class MessageService implements MessageServiceInterface {
         deliveryStatus: 'failed',
         metadata: JSON.stringify({ error: String(error) })
       }).where(eq(messages.id, messageId));
+
+      // Mirror the success-path broadcast so the FE can transition the message
+      // out of 'pending' on outer-catch failures (uncaught exceptions before
+      // the inline LINE block updates DB). Without this, message-input UI
+      // stays on "傳送中..." forever even though D1 already shows 'failed'.
+      // Wrapped in its own try/catch — we're already on the outer-catch path,
+      // any additional throw would surface in waitUntil as an unhandled error.
+      try {
+        const broadcastService = new WebSocketBroadcastService(this.bindings);
+        await broadcastService.broadcastMessageEvent({
+          type: 'message_updated',
+          conversationId: request.conversationId,
+          messageId,
+          agentId: request.senderId,
+          data: {
+            deliveryStatus: 'failed',
+            isSent: false,
+            platformMessageId: null,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: nowISO()
+          },
+          priority: 'normal'
+        });
+      } catch (broadcastError) {
+        log.warn('Failed to broadcast catch-path failure (non-fatal)', {
+          messageId,
+          error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
+        });
+      }
     }
   }
 
