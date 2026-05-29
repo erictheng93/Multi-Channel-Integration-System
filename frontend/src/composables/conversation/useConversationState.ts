@@ -427,6 +427,35 @@ export function useConversationState(
   }
 
   /**
+   * Update a message's delivery status (called from WebSocket message_updated events
+   * after background LINE push completes). Mutates in-place so the "傳送中..." badge
+   * and other status-driven UI react immediately without a refetch.
+   *
+   * Note: deliveryStatus is the only field declared on the FE Message type — isSent
+   * and platformMessageId are widened to (Message & Record<string, unknown>) because
+   * they're applied to the same in-memory object but live in the backend snapshot.
+   */
+  function updateMessageStatus(
+    messageId: string,
+    updates: { deliveryStatus?: string; isSent?: boolean; platformMessageId?: string | null }
+  ) {
+    const messageList = httpMessages.messages.value
+    const message = messageList.find((m: Message) => m.id === messageId)
+    if (!message) {return}
+    const target = message as Message & Record<string, unknown>
+    if (updates.deliveryStatus !== undefined) {
+      target.deliveryStatus = updates.deliveryStatus as Message['deliveryStatus']
+    }
+    if (updates.isSent !== undefined) {
+      target.isSent = updates.isSent
+    }
+    if (updates.platformMessageId !== undefined) {
+      target.platformMessageId = updates.platformMessageId
+    }
+    frontendLogger.debug('[useConversationState] Updated message status:', messageId, updates)
+  }
+
+  /**
    * 重置加載狀態
    */
   function resetLoadingState() {
@@ -481,6 +510,7 @@ export function useConversationState(
     loadMoreMessages,
     addMessage,
     updateMessageAttachments,
+    updateMessageStatus,
     resetLoadingState,
     debouncedUpdateMessages,  //  向後兼容（內部使用隊列）
     queueMessageUpdate, //  新增：新的隊列 API

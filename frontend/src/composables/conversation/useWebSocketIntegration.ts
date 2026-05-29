@@ -257,7 +257,14 @@ export function useWebSocketIntegration(
       log.debug('New message added to conversation')
     }
 
-    // Handle message_updated events (e.g., file_attachments added after media processing)
+    // Handle message_updated events. Two distinct payload shapes share this event:
+    // (A) Media processing completes: { messageId, file_attachments: [...] }
+    //     — fired by webhook-router-service after downloading LINE/Facebook media.
+    // (B) Agent send completes background LINE push: { messageId, deliveryStatus, isSent, platformMessageId }
+    //     — fired by message-service.processBackgroundSending after pushLineMessage.
+    // The previous handler only processed (A), silently dropping (B), which left
+    // the "傳送中..." badge stuck forever for agent-sent attachments and any other
+    // status-only update.
     if (eventType === WS_EVENTS.MESSAGE_UPDATED && msg.data) {
       const updateData = msg.data as {
         messageId?: string;
@@ -268,10 +275,26 @@ export function useWebSocketIntegration(
           fileSize: number;
           fileUrl: string;
         }>;
+        deliveryStatus?: string;
+        isSent?: boolean;
+        platformMessageId?: string | null;
       }
-      if (updateData.messageId && updateData.file_attachments) {
+      if (!updateData.messageId) {return}
+
+      if (updateData.file_attachments) {
         state.updateMessageAttachments(updateData.messageId, updateData.file_attachments)
         log.debug('Message attachments updated', { messageId: updateData.messageId })
+      }
+
+      if (updateData.deliveryStatus !== undefined ||
+          updateData.isSent !== undefined ||
+          updateData.platformMessageId !== undefined) {
+        state.updateMessageStatus(updateData.messageId, {
+          deliveryStatus: updateData.deliveryStatus,
+          isSent: updateData.isSent,
+          platformMessageId: updateData.platformMessageId,
+        })
+        log.debug('Message status updated', { messageId: updateData.messageId, deliveryStatus: updateData.deliveryStatus })
       }
     }
 
