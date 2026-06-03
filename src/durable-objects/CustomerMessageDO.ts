@@ -11,7 +11,7 @@ import { createDbClient } from '../db/drizzle-factory';
 import { messages, fileAttachments, conversations, customers } from '../db/schema';
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '../utils/line';
 import { nowISO, nowMs } from '@/utils/timestamp'
-import { getPublicFileUrl } from '@/utils/file-url';
+import { getPublicFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
 import type { LineReplyMessage } from '../types';
 
 type MessageInsert = typeof messages.$inferInsert;
@@ -188,14 +188,22 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             .where(inArray(fileAttachments.messageId, messageIds))
             .all();
 
-          // Group attachments by messageId
+          // Group attachments by messageId, attaching a signed force-download
+          // URL. fileUrl points at the raw R2 object (served `inline`, used as
+          // <img> src), so the explicit download button needs a separate
+          // attachment-disposition URL or it just opens the image in a new view.
+          // Minted only when r2Key exists; failures degrade to undefined and the
+          // frontend falls back to fileUrl.
           for (const attachment of allAttachments) {
             const msgId = attachment.messageId;
             if (msgId) {
               if (!attachmentsByMessageId[msgId]) {
                 attachmentsByMessageId[msgId] = [];
               }
-              attachmentsByMessageId[msgId].push(attachment);
+              const downloadUrl = attachment.r2Key
+                ? await getSignedDownloadUrl(this.env, attachment.id, attachment.r2Key).catch(() => undefined)
+                : undefined;
+              attachmentsByMessageId[msgId].push({ ...attachment, downloadUrl });
             }
           }
         }

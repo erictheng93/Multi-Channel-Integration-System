@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getPublicFileUrl, isPublicDomainConfigured } from '@/utils/file-url';
+import { getPublicFileUrl, isPublicDomainConfigured, getSignedDownloadUrl } from '@/utils/file-url';
 import type { Bindings } from '@/types';
 
 // Minimal mock env factory
@@ -80,6 +80,32 @@ describe('getPublicFileUrl', () => {
     expect(getPublicFileUrl(env, r2Key)).toBe(
       'http://localhost:8787/files/media/line/2026/3/abc123.jpg'
     );
+  });
+});
+
+describe('getSignedDownloadUrl', () => {
+  const attachmentId = 'att-205a05ca-1870';
+  const r2Key = 'media/line/2026/3/abc123.jpg';
+
+  it('points at the force-download proxy route with the attachment id', async () => {
+    const env = mockEnv({ JWT_SECRET: 'test-secret' });
+    const url = await getSignedDownloadUrl(env, attachmentId, r2Key);
+    expect(url.startsWith(
+      `https://mcis-backend.daiwandist.com/api/files/download/${attachmentId}?`
+    )).toBe(true);
+  });
+
+  it('attaches sig and exp query params', async () => {
+    const env = mockEnv({ JWT_SECRET: 'test-secret' });
+    const url = new URL(await getSignedDownloadUrl(env, attachmentId, r2Key));
+    expect(url.searchParams.get('sig')).toBeTruthy();
+    expect(Number(url.searchParams.get('exp'))).toBeGreaterThan(0);
+  });
+
+  it('url-encodes the attachment id in the path', async () => {
+    const env = mockEnv({ JWT_SECRET: 'test-secret' });
+    const url = await getSignedDownloadUrl(env, 'a/b c', r2Key);
+    expect(url).toContain('/api/files/download/a%2Fb%20c?');
   });
 });
 

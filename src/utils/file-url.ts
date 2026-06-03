@@ -81,6 +81,37 @@ export async function getSignedFileUrl(
 }
 
 /**
+ * Signed URL for the explicit "download" action on an attachment.
+ *
+ * Points at GET /api/files/download/:attachmentId, which (unlike the raw R2
+ * public URL or /api/files/public/*) forces `Content-Disposition: attachment`
+ * and sends `Access-Control-Allow-Origin: *`. That guarantees the browser
+ * saves the file instead of rendering it inline — the raw R2 object is stored
+ * with `inline` disposition so an <a download> to it just opens the image.
+ *
+ * The HMAC signature is computed over the r2Key (matching the verifier in
+ * file-proxy.ts), even though the URL path uses attachmentId — the handler
+ * resolves attachmentId -> r2Key before verifying.
+ *
+ * @param env - Worker bindings (JWT_SECRET for HMAC, BACKEND_URL for hostname)
+ * @param attachmentId - The fileAttachments row id (URL path segment)
+ * @param r2Key - The R2 object key the signature authorizes
+ * @param ttlSeconds - Optional TTL, defaults to 24h
+ */
+export async function getSignedDownloadUrl(
+  env: Bindings,
+  attachmentId: string,
+  r2Key: string,
+  ttlSeconds?: number,
+): Promise<string> {
+  const normalizedKey = r2Key.replace(/^\//, '');
+  const backendUrl = getBackendUrl(env);
+  const { sig, exp } = await signFileUrl(normalizedKey, env.JWT_SECRET, ttlSeconds);
+  const params = new URLSearchParams({ sig, exp: String(exp) });
+  return `${backendUrl}/api/files/download/${encodeURIComponent(attachmentId)}?${params.toString()}`;
+}
+
+/**
  * Check whether a real public R2 domain is configured (non-localhost).
  * Useful for deciding whether to set R2-level cacheControl headers.
  */
