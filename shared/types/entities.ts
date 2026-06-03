@@ -94,6 +94,11 @@ export interface FileAttachmentData {
   mimeType: string
   fileSize: number
   fileUrl: string
+  // Signed URL that forces Content-Disposition: attachment for the explicit
+  // "download" action. fileUrl points at the raw R2 object (served inline, for
+  // <img> rendering); downloadUrl routes through the Worker proxy so the
+  // browser saves the file instead of opening it in a new view.
+  downloadUrl?: string
 }
 
 export interface Message {

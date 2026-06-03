@@ -15,7 +15,7 @@ import { MessageRequestService, MessageService } from '@modules/conversations/se
 import { successResponse, errorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp';
-import { getSignedFileUrl } from '@/utils/file-url';
+import { getSignedFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
 
 const log = createContextLogger('ConversationMessagesHandler');
 
@@ -461,6 +461,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       mimeType: string;
       fileSize: number;
       fileUrl: string;
+      downloadUrl?: string;
     }>> = {};
     if (messageList.length > 0) {
       const messageIds = messageList.map(m => m.id);
@@ -481,7 +482,14 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
       const resolvedAttachments = await Promise.all(
         allAttachments.map(async (attachment) => ({
           ...attachment,
-          fileUrl: await resolveAttachmentUrl(c.env, attachment.fileUrl, attachment.r2Key)
+          fileUrl: await resolveAttachmentUrl(c.env, attachment.fileUrl, attachment.r2Key),
+          // Signed force-download URL. fileUrl is served inline (for <img>),
+          // so the explicit download button needs a separate attachment-disposition
+          // URL. Only minted when r2Key exists; failures degrade gracefully to
+          // undefined and the frontend falls back to fileUrl.
+          downloadUrl: attachment.r2Key
+            ? await getSignedDownloadUrl(c.env, attachment.id, attachment.r2Key).catch(() => undefined)
+            : undefined
         }))
       );
 
@@ -497,6 +505,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
             mimeType: attachment.mimeType,
             fileSize: attachment.fileSize,
             fileUrl: attachment.fileUrl,
+            downloadUrl: attachment.downloadUrl,
           });
         }
       }

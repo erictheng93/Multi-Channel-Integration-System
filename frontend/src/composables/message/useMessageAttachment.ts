@@ -32,6 +32,10 @@ export interface FileAttachment {
   mimeType: string
   fileSize: number
   fileUrl: string
+  // Signed force-download URL (Content-Disposition: attachment). Preferred by
+  // downloadAttachment over fileUrl, which is served inline and would open the
+  // file in a new view instead of downloading it.
+  downloadUrl?: string
   r2Key?: string
   isPending?: boolean // For optimistic UI during upload
 }
@@ -454,12 +458,18 @@ export function useMessageAttachment(props: Ref<MessageAttachmentProps>) {
   const downloadAttachment = (attachment: {
     id?: string
     fileUrl?: string
+    downloadUrl?: string
     filename?: string
     mimeType?: string
   }) => {
-    // Prefer signed/ready URL first; keep legacy fallback to attachment id for
-    // older rows that may not include fileUrl.
-    const href = attachment.fileUrl || (attachment.id ? getApiUrl(`/api/files/download/${attachment.id}`) : '');
+    // Prefer the signed force-download URL (Content-Disposition: attachment).
+    // fileUrl points at the raw R2 object served `inline`, so an <a download>
+    // to it just opens the image in a new view (the reported bug) — and the
+    // `download` attribute is ignored cross-origin anyway. Fall back to fileUrl,
+    // then to the attachment-id proxy route for legacy rows.
+    const href = attachment.downloadUrl
+      || attachment.fileUrl
+      || (attachment.id ? getApiUrl(`/api/files/download/${attachment.id}`) : '');
     if (!href) {return}
 
     const link = document.createElement('a')
