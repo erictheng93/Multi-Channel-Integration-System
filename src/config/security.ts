@@ -4,6 +4,7 @@
  */
 
 import { CACHE_TTL, RATE_LIMITS } from '../constants/limits';
+import { DEVELOPMENT_ORIGINS } from './development-origins';
 
 export interface SecurityConfig {
   cors: {
@@ -40,12 +41,7 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
       // 開發環境: 只允許 localhost
       // 生產環境: 從 FRONTEND_URL, BACKEND_URL 環境變量讀取 (使用 getAllowedOrigins)
       allowedOrigins: isDevelopment
-        ? [
-            'http://localhost:3000',
-            'https://localhost:3000',
-            'http://localhost:8787',
-            'http://127.0.0.1:3000',
-          ]
+        ? [...DEVELOPMENT_ORIGINS]
         : [], // Production origins are dynamically configured via getAllowedOrigins(env)
       allowCredentials: true,
       maxAge: CACHE_TTL.CORS_MAX_AGE,
@@ -53,7 +49,7 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
     headers: {
       csp: [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.line-scdn.net https://static.cloudflareinsights.com", // Allow LIFF SDK and Cloudflare Insights
+        "script-src 'self' 'unsafe-inline' https://static.line-scdn.net https://static.cloudflareinsights.com", // Allow LIFF SDK and Cloudflare Insights
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
         "connect-src 'self' https://api.line.me https://graph.facebook.com https://access.line.me", // Add LINE Access API for LIFF
@@ -61,6 +57,7 @@ export function getSecurityConfig(environment: string = 'production'): SecurityC
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
+        "frame-ancestors 'none'",
       ].join('; '),
       hsts: 'max-age=31536000; includeSubDomains; preload',
       frameOptions: 'DENY',
@@ -110,10 +107,13 @@ export function getSecurityHeaders(config: SecurityConfig, isHttps: boolean = fa
   const headers: Record<string, string> = {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': config.headers.frameOptions,
-    'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    'Content-Security-Policy': config.headers.csp,
+    'Content-Security-Policy': [
+      config.headers.csp,
+      "require-trusted-types-for 'script'",
+      "trusted-types default dompurify",
+    ].join('; '),
   };
 
   // Only set HSTS for HTTPS connections

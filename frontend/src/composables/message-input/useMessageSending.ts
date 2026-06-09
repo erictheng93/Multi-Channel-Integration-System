@@ -3,6 +3,7 @@ import type { MessageInputAttachment, FileAttachmentEmitData, UploadResult } fro
 import { useAuthStore } from '@/stores/auth'
 import { getApiUrl } from '@/config/runtime'
 import { createLogger } from '@/utils/logger'
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 
 const frontendLogger = createLogger('useMessageSending')
 
@@ -192,14 +193,12 @@ export function useMessageSending(options: MessageSendingOptions) {
       }
 
       // Send message via API
-      const token = localStorage.getItem('token') || localStorage.getItem('authToken')
-      const sendResponse = await fetch(
+      const sendResponse = await authenticatedFetch(
         getApiUrl(`/api/customer-conversations/${options.conversationId()}/messages`),
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
           },
           body: JSON.stringify({
             content,

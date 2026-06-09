@@ -9,6 +9,7 @@ describe('API Base Client', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    document.cookie = 'mcis_csrf=; Max-Age=0; Path=/'
   })
 
   it('should exist and have required methods', () => {
@@ -46,5 +47,45 @@ describe('API Base Client', () => {
       status: 401,
     })
     expect(window.location.href).not.toBe('/login')
+  })
+
+  it('includes credentials for cookie-authenticated requests', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: vi.fn().mockResolvedValue({ success: true, data: { ok: true } }),
+    } as unknown as Response)
+
+    await apiClient.get('/auth/me')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        credentials: 'include',
+      }),
+    )
+  })
+
+  it('sends CSRF header from readable cookie on unsafe requests', async () => {
+    document.cookie = 'mcis_csrf=csrf-token; Path=/'
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      json: vi.fn().mockResolvedValue({ success: true, data: { ok: true } }),
+    } as unknown as Response)
+
+    await apiClient.post('/auth/logout', {})
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        credentials: 'include',
+        headers: expect.objectContaining({
+          'X-CSRF-Token': 'csrf-token',
+        }),
+      }),
+    )
   })
 })

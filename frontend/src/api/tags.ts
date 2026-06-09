@@ -1,97 +1,34 @@
 // Tags API Client
 // 標籤系統 API 介面
 
-import { apiClient } from './base'
+import {
+  tagContracts,
+  type BulkOperationRequest,
+  type CreateTagRequest,
+  type PaginatedTagsResponse,
+  type Tag,
+  type TagConversationsResponse,
+  type TagCustomersResponse,
+  type TagResponse,
+  type TagStatsResponse,
+  type UpdateTagRequest
+} from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 
-export interface Tag {
-  id: number
-  name: string
-  color: string
-  description?: string | null
-  teamId?: number | null
-  teamName?: string | null
-  isActive: boolean
-  createdBy: string
-  createdByName?: string | null
-  customerCount?: number
-  conversationCount?: number
-  createdAt: string
-  updatedAt: string
-}
-
-export interface CreateTagRequest {
-  name: string
-  color?: string
-  description?: string
-  teamId?: number | null
-}
-
-export interface UpdateTagRequest {
-  name?: string
-  color?: string
-  description?: string
-  isActive?: boolean
-}
-
-export interface TagUsageStats {
-  tagInfo: {
-    id: number
-    name: string
-    color: string
-  }
-  customers: {
-    total: number
-    byPlatform: {
-      line: number
-      facebook: number
-    }
-  }
-  conversations: {
-    total: number
-    active: number
-    closed: number
-  }
-  usageTrend: Array<{
-    date: string
-    assignments: number
-  }>
-  topAssigners: Array<{
-    name: string
-    assignments: number
-  }>
-}
-
-export interface BulkOperationRequest {
-  operation: 'activate' | 'deactivate' | 'update_color'
-  tagIds: number[]
-  data?: {
-    color?: string
-  }
-}
-
-export interface PaginatedTagsResponse {
-  success: boolean
-  data: Tag[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
-  message: string
-}
-
-export interface TagResponse {
-  success: boolean
-  data: Tag
-  message: string
-}
-
-export interface TagStatsResponse {
-  success: boolean
-  data: TagUsageStats
-  message: string
-}
+export type {
+  BulkOperationRequest,
+  CreateTagRequest,
+  PaginatedTagsResponse,
+  Tag,
+  TagConversation,
+  TagConversationsResponse,
+  TagCustomer,
+  TagCustomersResponse,
+  TagResponse,
+  TagStatsResponse,
+  TagUsageStats,
+  UpdateTagRequest
+} from '@shared/api-contracts'
 
 /**
  * 獲取標籤列表
@@ -103,14 +40,7 @@ export const getTags = async (params?: {
   search?: string
   includeGlobal?: boolean
 }): Promise<PaginatedTagsResponse> => {
-  const queryString = params
-    ? `?${  new URLSearchParams(
-        Object.entries(params)
-          .filter(([, value]) => value !== undefined)
-          .map(([key, value]) => [key, String(value)])
-      ).toString()}`
-    : ''
-  const response = await apiClient.get<Tag[]>(`/customers/tags/available${queryString}`)
+  const response = await callApiContract(tagContracts.list, params)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tags')
   }
@@ -126,7 +56,7 @@ export const getTags = async (params?: {
  * 創建新標籤
  */
 export const createTag = async (data: CreateTagRequest): Promise<TagResponse> => {
-  const response = await apiClient.post<Tag>('/tags', data)
+  const response = await callApiContract(tagContracts.create, {}, data)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to create tag')
   }
@@ -141,7 +71,7 @@ export const createTag = async (data: CreateTagRequest): Promise<TagResponse> =>
  * 獲取單一標籤詳情
  */
 export const getTagById = async (id: number): Promise<TagResponse> => {
-  const response = await apiClient.get<Tag>(`/tags/${id}`)
+  const response = await callApiContract(tagContracts.getById, { id })
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag')
   }
@@ -156,7 +86,7 @@ export const getTagById = async (id: number): Promise<TagResponse> => {
  * 更新標籤
  */
 export const updateTag = async (id: number, data: UpdateTagRequest): Promise<TagResponse> => {
-  const response = await apiClient.put<Tag>(`/tags/${id}`, data)
+  const response = await callApiContract(tagContracts.update, { id }, data)
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to update tag')
   }
@@ -171,7 +101,7 @@ export const updateTag = async (id: number, data: UpdateTagRequest): Promise<Tag
  * 刪除標籤 (軟刪除)
  */
 export const deleteTag = async (id: number): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.delete<void>(`/tags/${id}`)
+  const response = await callApiContract(tagContracts.delete, { id })
   if (!response.success) {
     throw new Error(response.error || 'Failed to delete tag')
   }
@@ -182,7 +112,7 @@ export const deleteTag = async (id: number): Promise<{ success: boolean; message
  * 獲取標籤使用統計
  */
 export const getTagUsageStats = async (id: number): Promise<TagStatsResponse> => {
-  const response = await apiClient.get<TagUsageStats>(`/tags/${id}/stats`)
+  const response = await callApiContract(tagContracts.getUsageStats, { id })
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag stats')
   }
@@ -199,7 +129,7 @@ export const getTagUsageStats = async (id: number): Promise<TagStatsResponse> =>
 export const bulkOperateTags = async (
   data: BulkOperationRequest
 ): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.post<void>('/tags/bulk', data)
+  const response = await callApiContract(tagContracts.bulkOperate, {}, data)
   if (!response.success) {
     throw new Error(response.error || 'Failed to perform bulk operation')
   }
@@ -210,7 +140,7 @@ export const bulkOperateTags = async (
  * 獲取客戶的標籤
  */
 export const getCustomerTags = async (customerId: number): Promise<{ success: boolean; data: Tag[] }> => {
-  const response = await apiClient.get<Tag[]>(`/customers/${customerId}/tags`)
+  const response = await callApiContract(tagContracts.getCustomerTags, { customerId })
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch customer tags')
   }
@@ -224,7 +154,7 @@ export const addTagsToCustomer = async (
   customerId: number,
   tagIds: number[]
 ): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.post<void>(`/customers/${customerId}/tags`, { tagIds })
+  const response = await callApiContract(tagContracts.addTagsToCustomer, { customerId }, { tagIds })
   if (!response.success) {
     throw new Error(response.error || 'Failed to add tags to customer')
   }
@@ -238,11 +168,7 @@ export const removeTagsFromCustomer = async (
   customerId: number,
   tagIds: number[]
 ): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.request<void>(
-    'DELETE',
-    `/customers/${customerId}/tags`,
-    { tagIds }
-  )
+  const response = await callApiContract(tagContracts.removeTagsFromCustomer, { customerId }, { tagIds })
   if (!response.success) {
     throw new Error(response.error || 'Failed to remove tags from customer')
   }
@@ -256,7 +182,7 @@ export const setCustomerTags = async (
   customerId: number,
   tagIds: number[]
 ): Promise<{ success: boolean; message: string }> => {
-  const response = await apiClient.put<void>(`/customers/${customerId}/tags`, { tagIds })
+  const response = await callApiContract(tagContracts.setCustomerTags, { customerId }, { tagIds })
   if (!response.success) {
     throw new Error(response.error || 'Failed to set customer tags')
   }
@@ -266,61 +192,6 @@ export const setCustomerTags = async (
 /**
  * 獲取標籤的客戶列表
  */
-export interface TagCustomer {
-  id: number
-  platform: 'line' | 'facebook'
-  platform_user_id: string
-  display_name: string
-  avatar_url?: string | null
-  email?: string | null
-  phone?: string | null
-  created_at: string
-  assigned_at: string
-  assigned_by?: string | null
-  assigned_by_name?: string | null
-}
-
-export interface TagCustomersResponse {
-  success: boolean
-  data: {
-    customers: TagCustomer[]
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      totalPages: number
-    }
-  }
-  message: string
-}
-
-export interface TagConversation {
-  id: string
-  status: string
-  channel: string
-  created_at: string
-  updated_at: string
-  customer_name: string
-  customer_avatar: string | null
-  customer_platform: string
-  assigned_at: string
-  assigned_by: string | null
-}
-
-export interface TagConversationsResponse {
-  success: boolean
-  data: {
-    conversations: TagConversation[]
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      totalPages: number
-    }
-  }
-  message: string
-}
-
 export const getTagCustomers = async (
   tagId: number,
   params?: {
@@ -328,22 +199,7 @@ export const getTagCustomers = async (
     limit?: number
   }
 ): Promise<TagCustomersResponse> => {
-  const queryString = params
-    ? `?${new URLSearchParams(
-        Object.entries(params)
-          .filter(([, value]) => value !== undefined)
-          .map(([key, value]) => [key, String(value)])
-      ).toString()}`
-    : ''
-  const response = await apiClient.get<{
-    customers: TagCustomer[]
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      totalPages: number
-    }
-  }>(`/tags/${tagId}/customers${queryString}`)
+  const response = await callApiContract(tagContracts.getCustomers, { tagId, params })
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag customers')
   }
@@ -361,17 +217,7 @@ export const getTagConversations = async (
   tagId: number,
   params?: { page?: number; limit?: number }
 ): Promise<TagConversationsResponse> => {
-  const queryString = params
-    ? `?${new URLSearchParams(
-        Object.entries(params)
-          .filter(([, value]) => value !== undefined)
-          .map(([key, value]) => [key, String(value)])
-      ).toString()}`
-    : ''
-  const response = await apiClient.get<{
-    conversations: TagConversation[]
-    pagination: { page: number; limit: number; total: number; totalPages: number }
-  }>(`/tags/${tagId}/conversations${queryString}`)
+  const response = await callApiContract(tagContracts.getConversations, { tagId, params })
   if (!response.success || !response.data) {
     throw new Error(response.error || 'Failed to fetch tag conversations')
   }

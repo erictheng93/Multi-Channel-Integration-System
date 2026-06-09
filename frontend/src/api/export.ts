@@ -1,41 +1,24 @@
 // Export API Module
 // 對話記錄匯出 API 模組
 
-import { apiClient } from './base'
+import {
+  buildExportQuery,
+  exportContracts,
+  type ExportAgentOption,
+  type ExportCountResult,
+  type ExportCustomerOption,
+  type ExportFilters
+} from '@shared/api-contracts'
+import { authenticatedFetch } from './authenticatedFetch'
+import { callApiContract } from './contract-client'
 import type { ApiResponse } from '@/types'
-
-// ==================== 型別定義 ====================
-
-export type ExportFormat = 'json' | 'csv' | 'txt' | 'pdf'
-
-export interface ExportFilters {
-  format?: ExportFormat
-  conversationId?: string
-  dateFrom?: string
-  dateTo?: string
-  customerId?: string
-  agentId?: string
-  limit?: number
-}
-
-export interface ExportCustomerOption {
-  id: number
-  displayName: string | null
-  platform: string | null
-  platformUserId: string | null
-}
-
-export interface ExportAgentOption {
-  id: string
-  displayName: string | null
-  role: string | null
-}
-
-export interface ExportCountResult {
-  count: number
-  limit: number
-  willBeTruncated: boolean
-}
+export type {
+  ExportAgentOption,
+  ExportCountResult,
+  ExportCustomerOption,
+  ExportFilters,
+  ExportFormat
+} from '@shared/api-contracts'
 
 // ==================== API 函數 ====================
 
@@ -44,51 +27,12 @@ export interface ExportCountResult {
  * 使用 fetch 而非 apiClient，因為回傳的是檔案而非 JSON
  */
 export async function exportMessages(filters: ExportFilters = {}): Promise<ApiResponse<Blob>> {
-  // 驗證並清理篩選參數
-  const params = new URLSearchParams()
-
-  const format = filters.format || 'json'
-  if (['json', 'csv', 'txt', 'pdf'].includes(format)) {
-    // PDF 在前端產生，後端只需要 JSON 資料
-    params.append('format', format === 'pdf' ? 'json' : format)
-  }
-
-  if (filters.conversationId && /^[a-zA-Z0-9-_]+$/.test(filters.conversationId)) {
-    params.append('conversationId', filters.conversationId)
-  }
-
-  if (filters.dateFrom && !isNaN(Date.parse(filters.dateFrom))) {
-    params.append('dateFrom', filters.dateFrom)
-  }
-
-  if (filters.dateTo && !isNaN(Date.parse(filters.dateTo))) {
-    params.append('dateTo', filters.dateTo)
-  }
-
-  if (filters.customerId && /^\d+$/.test(filters.customerId)) {
-    params.append('customerId', filters.customerId)
-  }
-
-  if (filters.agentId && /^[a-zA-Z0-9-_]+$/.test(filters.agentId)) {
-    params.append('agentId', filters.agentId)
-  }
-
-  if (filters.limit && filters.limit > 0 && filters.limit <= 5000) {
-    params.append('limit', filters.limit.toString())
-  }
-
-  const queryString = params.toString()
+  const queryString = buildExportQuery(filters, { includeFormat: true })
 
   try {
-    const token = localStorage.getItem('token')
     const baseUrl = import.meta.env.DEV ? '/api' : `${(await import('@/config/runtime')).getBackendUrl()}/api`
 
-    const response = await fetch(`${baseUrl}/messages/export${queryString ? `?${queryString}` : ''}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    const response = await authenticatedFetch(`${baseUrl}/messages/export${queryString}`)
 
     if (!response.ok) {
       const sanitizedError = response.status === 403
@@ -114,31 +58,7 @@ export async function exportMessages(filters: ExportFilters = {}): Promise<ApiRe
  * 用於匯出前確認記錄數量
  */
 export async function getExportCount(filters: ExportFilters = {}): Promise<ApiResponse<ExportCountResult>> {
-  const params = new URLSearchParams()
-
-  if (filters.conversationId && /^[a-zA-Z0-9-_]+$/.test(filters.conversationId)) {
-    params.append('conversationId', filters.conversationId)
-  }
-
-  if (filters.dateFrom && !isNaN(Date.parse(filters.dateFrom))) {
-    params.append('dateFrom', filters.dateFrom)
-  }
-
-  if (filters.dateTo && !isNaN(Date.parse(filters.dateTo))) {
-    params.append('dateTo', filters.dateTo)
-  }
-
-  if (filters.customerId && /^\d+$/.test(filters.customerId)) {
-    params.append('customerId', filters.customerId)
-  }
-
-  if (filters.agentId && /^[a-zA-Z0-9-_]+$/.test(filters.agentId)) {
-    params.append('agentId', filters.agentId)
-  }
-
-  const queryString = params.toString()
-
-  return apiClient.get<ExportCountResult>(`/messages/export/count${queryString ? `?${queryString}` : ''}`)
+  return callApiContract(exportContracts.count, filters)
 }
 
 /**
@@ -148,15 +68,7 @@ export async function getExportCount(filters: ExportFilters = {}): Promise<ApiRe
  */
 export async function getExportCustomers(): Promise<ApiResponse<ExportCustomerOption[]>> {
   try {
-    const result = await apiClient.get<{
-      customers: Array<{
-        id: number
-        displayName: string | null
-        platform: string | null
-        platformUserId: string | null
-      }>
-      count: number
-    }>('/customers?pageSize=200')
+    const result = await callApiContract(exportContracts.customers, {})
 
     if (result.success && result.data?.customers) {
       return {
@@ -180,7 +92,7 @@ export async function getExportCustomers(): Promise<ApiResponse<ExportCustomerOp
  * 取得匯出篩選用的客服列表
  */
 export async function getExportAgents(): Promise<ApiResponse<ExportAgentOption[]>> {
-  return apiClient.get<ExportAgentOption[]>('/messages/export/agents')
+  return callApiContract(exportContracts.agents, {})
 }
 
 // ==================== PDF 匯出用 ====================
@@ -192,45 +104,12 @@ import type { PdfExportData } from '@/services/pdfExportService'
  * 使用 format=json 取得結構化資料，而非 blob
  */
 export async function fetchExportData(filters: ExportFilters = {}): Promise<ApiResponse<PdfExportData>> {
-  const params = new URLSearchParams()
-  params.append('format', 'json')
-
-  if (filters.conversationId && /^[a-zA-Z0-9-_]+$/.test(filters.conversationId)) {
-    params.append('conversationId', filters.conversationId)
-  }
-
-  if (filters.dateFrom && !isNaN(Date.parse(filters.dateFrom))) {
-    params.append('dateFrom', filters.dateFrom)
-  }
-
-  if (filters.dateTo && !isNaN(Date.parse(filters.dateTo))) {
-    params.append('dateTo', filters.dateTo)
-  }
-
-  if (filters.customerId && /^\d+$/.test(filters.customerId)) {
-    params.append('customerId', filters.customerId)
-  }
-
-  if (filters.agentId && /^[a-zA-Z0-9-_]+$/.test(filters.agentId)) {
-    params.append('agentId', filters.agentId)
-  }
-
-  if (filters.limit && filters.limit > 0 && filters.limit <= 5000) {
-    params.append('limit', filters.limit.toString())
-  }
-
-  const queryString = params.toString()
+  const queryString = buildExportQuery({ ...filters, format: 'json' }, { includeFormat: true })
 
   try {
-    const token = localStorage.getItem('token')
     const baseUrl = import.meta.env.DEV ? '/api' : `${(await import('@/config/runtime')).getBackendUrl()}/api`
 
-    const response = await fetch(`${baseUrl}/messages/export${queryString ? `?${queryString}` : ''}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
+    const response = await authenticatedFetch(`${baseUrl}/messages/export${queryString}`)
 
     if (!response.ok) {
       const sanitizedError = response.status === 403

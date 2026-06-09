@@ -2,6 +2,8 @@
 // 支持標準化響應格式和現代化錯誤處理
 
 import { getBackendUrl } from '@/config/runtime'
+import { buildAuthenticatedHeaders } from './authenticatedFetch'
+import { clearAuthStorageItems } from '@/utils/authStorage'
 import type {
   StandardApiResponse,
   PaginatedApiResponse,
@@ -23,8 +25,6 @@ class ModernApiClient {
   private timeout: number
   private retries: number
   private retryDelay: number
-  private token: string | null = null
-  private refreshToken: string | null = null
 
   constructor(options: ModernApiClientOptions = {}) {
     this.baseURL = options.baseURL || getBackendUrl()
@@ -32,37 +32,24 @@ class ModernApiClient {
     this.retries = options.retries || 3
     this.retryDelay = options.retryDelay || 1000
 
-    // 從 localStorage 初始化 tokens
-    if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('token')
-      this.refreshToken = localStorage.getItem('refreshToken')
-    }
   }
 
   // 設置認證 token
-  setAuthToken(token: string, refreshToken?: string) {
-    this.token = token
-    if (refreshToken) {
-      this.refreshToken = refreshToken
-    }
+  setAuthToken(_token: string, _refreshToken?: string) {
+    // Headers are built from shared auth storage/cookies by buildAuthenticatedHeaders.
   }
 
   // 移除認證 token
   removeAuthToken() {
-    this.token = null
-    this.refreshToken = null
+    // Auth state is cleared centrally by auth storage helpers.
   }
 
   // 獲取請求標頭
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
+  private getHeaders(method: string = 'GET'): globalThis.Headers {
+    const headers = buildAuthenticatedHeaders(method, {
       'Content-Type': 'application/json',
       'Accept': 'application/json'
-    }
-
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`
-    }
+    })
 
     return headers
   }
@@ -143,14 +130,15 @@ class ModernApiClient {
       const controller = new globalThis.AbortController()
       const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
-      const headers = isFileUpload ? 
-        (this.token ? { 'Authorization': `Bearer ${this.token}` } : {}) :
-        this.getHeaders()
+      const headers = isFileUpload
+        ? buildAuthenticatedHeaders(method)
+        : this.getHeaders(method)
 
       const body = isFileUpload ? (data as globalThis.BodyInit) : (data ? JSON.stringify(data) : undefined)
 
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         method,
+        credentials: 'include',
         headers,
         body,
         signal: controller.signal
@@ -159,7 +147,7 @@ class ModernApiClient {
       clearTimeout(timeoutId)
 
       // 處理 401 未授權錯誤
-      if (response.status === 401 && this.refreshToken && retryCount === 0) {
+      if (response.status === 401 && retryCount === 0) {
         const refreshResult = await this.refreshAuthToken()
         if (refreshResult) {
           // 重試請求
@@ -204,33 +192,19 @@ class ModernApiClient {
 
   // 刷新認證 token
   private async refreshAuthToken(): Promise<boolean> {
-    if (!this.refreshToken) {return false}
-
     try {
       const response = await fetch(`${this.baseURL}/auth/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshToken })
+        credentials: 'include',
+        headers: buildAuthenticatedHeaders('POST', { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({})
       })
 
       if (response.ok) {
-        const result: StandardApiResponse<{ token: string; refreshToken?: string }> = 
+        const result: StandardApiResponse<{ token?: string; refreshToken?: string }> = 
           await response.json()
         
         if (result.success && result.data) {
-          this.token = result.data.token
-          if (result.data.refreshToken) {
-            this.refreshToken = result.data.refreshToken
-          }
-
-          // 更新 localStorage
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('token', this.token)
-            if (this.refreshToken) {
-              localStorage.setItem('refreshToken', this.refreshToken)
-            }
-          }
-
           return true
         }
       }
@@ -241,8 +215,7 @@ class ModernApiClient {
     // 刷新失敗，清除認證信息
     this.removeAuthToken()
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
+      clearAuthStorageItems()
     }
 
     return false

@@ -3,32 +3,9 @@ import { ref, computed, watch } from 'vue'
 import type { Message, MessageFilters, Platform } from '@/types'
 import { messageApi } from '@/api/message'
 import { messageIndexService } from '@/services/messageIndexService'
-import { jwtDecode } from 'jwt-decode'
 import DOMPurify from 'dompurify'
 import { useDebounceFn } from '@vueuse/core'
-
-// SECURITY FIX: Properly validate JWT token with expiration check
-// Helper function to extract userId from JWT token
-function getUserIdFromToken(): string | null {
-  const token = localStorage.getItem('token')
-  if (!token) { return null }
-
-  try {
-    // Use jwt-decode library for proper JWT parsing
-    const payload = jwtDecode<{ userId?: string; id?: string; exp?: number }>(token)
-
-    // Check token expiration
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
-      console.warn('[Auth] Token expired')
-      return null
-    }
-
-    return payload.userId || payload.id || null
-  } catch (error) {
-    console.error('[Auth] Invalid token:', error)
-    return null
-  }
-}
+import { useAuthStore } from './auth'
 
 // INPUT VALIDATION: Validate and sanitize message content
 const MAX_MESSAGE_LENGTH = 10000
@@ -195,8 +172,7 @@ export const useMessagesStore = defineStore('messages', () => {
     error.value = null
 
     try {
-      // Get senderId from JWT token
-      const senderId = getUserIdFromToken()
+      const senderId = useAuthStore().currentAgent?.id
 
       const response = await messageApi.send?.(params.conversationId, {
         content: sanitizedContent,

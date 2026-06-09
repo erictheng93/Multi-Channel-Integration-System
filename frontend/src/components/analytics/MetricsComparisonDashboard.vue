@@ -214,6 +214,7 @@ import Modal from '@/components/ui/Modal.vue';
 import MetricComparison from './MetricComparison.vue';
 import type { MultiMetricComparison } from '../../types/analytics';
 import { getApiUrl } from '@/config/runtime';
+import { authenticatedFetch } from '@/api/authenticatedFetch';
 
 interface Props {
   title?: string;
@@ -378,9 +379,8 @@ async function loadDataFromAPI(isBackground: boolean) {
     }
 
     // 使用 getApiUrl: 開發環境透過 Vite Proxy，生產環境直接連接
-    const response = await fetch(getApiUrl(`${endpoint}?${params.toString()}`), {
+    const response = await authenticatedFetch(getApiUrl(`${endpoint}?${params.toString()}`), {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json'
       }
     });
@@ -420,11 +420,7 @@ async function loadDataFromAPI(isBackground: boolean) {
 async function loadCacheStats() {
   try {
     // 使用 getApiUrl: 開發環境透過 Vite Proxy，生產環境直接連接
-    const response = await fetch(getApiUrl('/api/analytics/comparison/cache/stats'), {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+    const response = await authenticatedFetch(getApiUrl('/api/analytics/comparison/cache/stats'));
 
     if (response.ok) {
       const result = await response.json();

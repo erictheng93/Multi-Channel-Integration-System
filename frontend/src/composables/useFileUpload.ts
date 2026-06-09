@@ -2,287 +2,16 @@
 import { ref, computed } from 'vue'
 import { filesApi } from '@/api/files'
 import { useError } from './useError'
-import { getApiUrl } from '@/config/runtime'
 import type { MediaFileInfo, FileStatsResponse } from '@/api/files'
 import { createLogger } from '@/utils/logger'
+import {
+  checkPresignedUrlServiceStatus,
+  clearPresignedStatusCache,
+  uploadFileWithXhr,
+  uploadWithPresignedUrl
+} from './file-upload/uploadTransport'
 
 const frontendLogger = createLogger('useFileUpload')
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Presigned URL Service Status Cache (Module-level singleton)
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface PresignedServiceStatus {
-  configured: boolean
-  maxFileSize: number
-  allowedMimeTypes: string[]
-  checkedAt: number
-}
-
-// 模組級別的緩存（跨組件共享）
-let _presignedServiceStatus: PresignedServiceStatus | null = null
-let _statusCheckPromise: Promise<PresignedServiceStatus | null> | null = null
-const STATUS_CACHE_TTL = 5 * 60 * 1000 // 5 分鐘緩存
-
-// ═══════════════════════════════════════════════════════════════════════════
-// API URL Helper - 使用統一的 getApiUrl (from @/config/runtime)
-// 開發環境使用相對路徑 (通過 Vite Proxy)，生產環境使用絕對路徑
-// ═══════════════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Presigned URL Upload Types
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface PresignedUploadResult {
-  success: boolean
-  fileId?: string
-  url?: string
-  error?: string
-}
-
-// XHR 上傳響應類型
-interface XhrUploadResponse {
-  success: boolean
-  data?: {
-    fileId: string
-    url: string
-    filename: string
-    mimeType: string
-    size: number
-  }
-  error?: string
-}
-
-/**
- * 使用 XMLHttpRequest 上傳檔案，支援真實進度追蹤
- * @param formData - 包含檔案的 FormData
- * @param onProgress - 進度回調 (0-100)
- * @returns Promise<XhrUploadResponse>
- */
-function uploadFileWithXhr(
-  formData: globalThis.FormData,
-  onProgress?: (_progress: number) => void
-): Promise<XhrUploadResponse> {
-  return new Promise((resolve) => {
-    const xhr = new globalThis.XMLHttpRequest()
-
-    // 獲取 API URL - 開發環境使用相對路徑 (Vite Proxy)，生產環境使用絕對路徑
-    const url = getApiUrl('/api/files/upload')
-
-    // 獲取認證 token
-    const token = localStorage.getItem('authToken')
-
-    // 真實上傳進度追蹤
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        const percentComplete = Math.round((event.loaded / event.total) * 100)
-        // 保留最後 5% 給伺服器處理時間
-        onProgress(Math.min(percentComplete, 95))
-      }
-    }
-
-    // 上傳完成
-    xhr.onload = () => {
-      if (onProgress) {
-        onProgress(100)
-      }
-
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const response = JSON.parse(xhr.responseText)
-          resolve({
-            success: true,
-            data: response.data || response
-          })
-        } catch {
-          resolve({
-            success: false,
-            error: '解析伺服器響應失敗'
-          })
-        }
-      } else {
-        try {
-          const errorResponse = JSON.parse(xhr.responseText)
-          resolve({
-            success: false,
-            error: errorResponse.error || errorResponse.message || `上傳失敗 (${xhr.status})`
-          })
-        } catch {
-          resolve({
-            success: false,
-            error: `上傳失敗 (${xhr.status})`
-          })
-        }
-      }
-    }
-
-    // 網路錯誤
-    xhr.onerror = () => {
-      resolve({
-        success: false,
-        error: '網路錯誤，請檢查網路連線'
-      })
-    }
-
-    // 上傳超時
-    xhr.ontimeout = () => {
-      resolve({
-        success: false,
-        error: '上傳超時，請稍後重試'
-      })
-    }
-
-    // 配置請求
-    xhr.open('POST', url, true)
-    xhr.timeout = 120000 // 2 分鐘超時
-
-    // 設置認證頭
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-    }
-
-    // 發送請求 (不要設置 Content-Type，讓瀏覽器自動設置 multipart/form-data)
-    xhr.send(formData)
-  })
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Presigned URL Direct Upload to R2
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * 直接上傳檔案到 R2 (使用 Presigned URL)
- * @param presignedUrl - 從後端獲取的 presigned URL
- * @param file - 要上傳的檔案
- * @param onProgress - 進度回調 (0-100)
- * @returns Promise<boolean> - 上傳是否成功
- */
-function uploadToR2Direct(
-  presignedUrl: string,
-  file: globalThis.File,
-  onProgress?: (_progress: number) => void
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    const xhr = new globalThis.XMLHttpRequest()
-
-    // 進度追蹤
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        const percentComplete = Math.round((event.loaded / event.total) * 100)
-        onProgress(percentComplete)
-      }
-    }
-
-    // 上傳完成
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        frontendLogger.debug('[uploadToR2Direct] Upload successful')
-        resolve(true)
-      } else {
-        console.error('[uploadToR2Direct] Upload failed:', xhr.status, xhr.responseText)
-        resolve(false)
-      }
-    }
-
-    // 錯誤處理
-    xhr.onerror = () => {
-      console.error('[uploadToR2Direct] Network error')
-      resolve(false)
-    }
-
-    xhr.ontimeout = () => {
-      console.error('[uploadToR2Direct] Upload timeout')
-      resolve(false)
-    }
-
-    // 配置請求 - PUT 到 presigned URL
-    xhr.open('PUT', presignedUrl, true)
-    xhr.timeout = 300000 // 5 分鐘超時
-    xhr.setRequestHeader('Content-Type', file.type)
-
-    // 發送檔案二進制數據
-    xhr.send(file)
-  })
-}
-
-/**
- * 使用 Presigned URL 完整上傳流程
- * 1. 獲取 presigned URL
- * 2. 直接上傳到 R2
- * 3. 確認上傳完成
- */
-async function uploadWithPresignedUrl(
-  file: globalThis.File,
-  _options?: { conversationId?: string; messageId?: string },
-  onProgress?: (_progress: number) => void
-): Promise<PresignedUploadResult> {
-  try {
-    // Step 1: 獲取 presigned URL (5%)
-    onProgress?.(5)
-    frontendLogger.debug('[Presigned] Step 1: Requesting presigned URL...')
-
-    const presignedResponse = await filesApi.generateSignedUrl(file.name, file.type, file.size)
-
-    if (!presignedResponse.success || !presignedResponse.data) {
-      return {
-        success: false,
-        error: presignedResponse.error || '無法獲取上傳 URL'
-      }
-    }
-
-    const { presignedUrl, fileId, publicUrl } = presignedResponse.data
-
-    // Step 2: 直接上傳到 R2 (10% - 90%)
-    onProgress?.(10)
-    frontendLogger.debug('[Presigned] Step 2: Uploading directly to R2...')
-
-    const uploadSuccess = await uploadToR2Direct(
-      presignedUrl,
-      file,
-      (progress) => {
-        // 將上傳進度映射到 10% - 90%
-        const mappedProgress = 10 + Math.round(progress * 0.8)
-        onProgress?.(mappedProgress)
-      }
-    )
-
-    if (!uploadSuccess) {
-      return {
-        success: false,
-        error: '上傳到儲存空間失敗'
-      }
-    }
-
-    // Step 3: 確認上傳 (95%)
-    onProgress?.(95)
-    frontendLogger.debug('[Presigned] Step 3: Confirming upload...')
-
-    const confirmResponse = await filesApi.confirmUpload(fileId, file.size)
-
-    if (!confirmResponse.success) {
-      return {
-        success: false,
-        error: confirmResponse.error || '確認上傳失敗'
-      }
-    }
-
-    // 完成 (100%)
-    onProgress?.(100)
-    frontendLogger.debug('[Presigned] Upload completed successfully!')
-
-    return {
-      success: true,
-      fileId,
-      url: publicUrl
-    }
-  } catch (error) {
-    console.error('[Presigned] Upload error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : '上傳過程中發生錯誤'
-    }
-  }
-}
 
 export interface UploadOptions {
   generateThumbnail?: boolean
@@ -632,7 +361,7 @@ export function useFileUpload() {
       }
     }
 
-    const result = await uploadWithPresignedUrl(file, undefined, (progress) => {
+    const result = await uploadWithPresignedUrl(file, (progress) => {
       uploadProgress.value = progress
       onProgress?.(progress)
     })
@@ -693,58 +422,6 @@ export function useFileUpload() {
     }
   }
 
-  /**
-   * 檢查 Presigned URL 服務狀態（使用模組級緩存）
-   */
-  const checkPresignedUrlServiceStatus = async (): Promise<PresignedServiceStatus | null> => {
-    // 檢查緩存是否有效
-    if (_presignedServiceStatus && (Date.now() - _presignedServiceStatus.checkedAt < STATUS_CACHE_TTL)) {
-      frontendLogger.debug('[PresignedStatus] Using cached status:', _presignedServiceStatus.configured)
-      return _presignedServiceStatus
-    }
-
-    // 如果已有正在進行的請求，等待它完成
-    if (_statusCheckPromise) {
-      frontendLogger.debug('[PresignedStatus] Waiting for pending status check...')
-      return _statusCheckPromise
-    }
-
-    // 發起新的狀態檢查
-    _statusCheckPromise = (async () => {
-      try {
-        frontendLogger.debug('[PresignedStatus] Fetching service status...')
-        const response = await filesApi.getPresignedUrlStatus()
-
-        if (response.success && response.data) {
-          _presignedServiceStatus = {
-            ...response.data,
-            checkedAt: Date.now()
-          }
-          frontendLogger.debug('[PresignedStatus] Service configured:', _presignedServiceStatus.configured)
-          return _presignedServiceStatus
-        }
-        return null
-      } catch (err) {
-        console.error('[PresignedStatus] Failed to check service status:', err)
-        return null
-      } finally {
-        _statusCheckPromise = null
-      }
-    })()
-
-    return _statusCheckPromise
-  }
-
-  /**
-   * 清除 Presigned URL 服務狀態緩存
-   * 當需要強制重新檢查時使用
-   */
-  const clearPresignedStatusCache = () => {
-    _presignedServiceStatus = null
-    _statusCheckPromise = null
-    frontendLogger.debug('[PresignedStatus] Cache cleared')
-  }
-
   // ═══════════════════════════════════════════════════════════════════════════
   // Smart Upload - 自動 Fallback 機制
   // ═══════════════════════════════════════════════════════════════════════════
@@ -787,7 +464,7 @@ export function useFileUpload() {
       frontendLogger.debug(`[SmartUpload] Using Presigned URL (direct to R2) for: ${file.name}`)
 
       // 使用 Presigned URL 直傳
-      const result = await uploadWithPresignedUrl(file, undefined, (progress) => {
+      const result = await uploadWithPresignedUrl(file, (progress) => {
         uploadProgress.value = progress
         onProgress?.(progress)
       })

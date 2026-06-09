@@ -6,7 +6,9 @@
 </template>
 
 <script setup lang="ts">
+import DOMPurify from 'dompurify'
 import { createLogger } from '@/utils/logger'
+import { setTrustedInnerHTML } from '@/utils/trustedHtml'
 
 const props = withDefaults(defineProps<Props>(), {
   html: '',
@@ -36,7 +38,11 @@ const containerRef = ref<HTMLElement>()
 const sanitizeHtml = (html: string): string => {
   // 创建一个临时DOM元素来解析HTML
   const temp = document.createElement('div')
-  temp.innerHTML = html
+  const sanitizedInput = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: props.allowedTags,
+    ALLOWED_ATTR: Object.values(props.allowedAttributes).flat()
+  })
+  setTrustedInnerHTML(temp, sanitizedInput)
   
   // 递归处理所有节点
   const processNode = (node: globalThis.Node): globalThis.Node | null => {
@@ -198,13 +204,13 @@ const setupImageErrorHandlers = () => {
 const renderSafeHtml = async () => {
   if (containerRef.value && props.html) {
     const safeHtml = sanitizeHtml(props.html)
-    containerRef.value.innerHTML = safeHtml
+    setTrustedInnerHTML(containerRef.value, safeHtml)
 
     // 等待 DOM 更新後設置事件處理器
     await nextTick()
     setupImageErrorHandlers()
   } else if (containerRef.value) {
-    containerRef.value.innerHTML = ''
+    setTrustedInnerHTML(containerRef.value, '')
   }
 }
 

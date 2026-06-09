@@ -1,6 +1,7 @@
 /**
  * Environment Validation and Configuration Utilities
  */
+import { DEVELOPMENT_ORIGINS } from '@/config/development-origins';
 
 export interface EnvironmentConfig {
   nodeEnv: string;
@@ -154,13 +155,7 @@ export function getCorsOrigins(env: Record<string, unknown>): string[] {
   const validation = validateEnvironment(env);
 
   if (validation.config.isDevelopment) {
-    return [
-      'http://localhost:3000',
-      'https://localhost:3000',
-      'http://localhost:8787',
-      'http://127.0.0.1:3000',
-      'https://127.0.0.1:3000',
-    ];
+    return [...DEVELOPMENT_ORIGINS];
   }
 
   // Production origins - 從環境變量讀取

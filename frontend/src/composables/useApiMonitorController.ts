@@ -7,8 +7,8 @@
  */
 
 import { ref, computed, onUnmounted, getCurrentInstance } from 'vue'
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 import { getBackendUrl } from '@/config/runtime'
-import { useAuthStore } from '@/stores/auth'
 import type {
   ApiEndpoint,
   FilterState,
@@ -106,13 +106,11 @@ export function useApiMonitorController() {
 
   // ===== Methods =====
   async function fetchApiStatus(): Promise<void> {
-    const authStore = useAuthStore()
     // Dev: use Vite proxy (/api) to avoid CORS; Prod: direct backend URL
     const baseUrl = import.meta.env.DEV ? '' : getBackendUrl()
 
-    const response = await fetch(`${baseUrl}/api/system/api-status`, {
+    const response = await authenticatedFetch(`${baseUrl}/api/system/api-status`, {
       headers: {
-        'Authorization': `Bearer ${authStore.token}`,
         'Content-Type': 'application/json'
       }
     })
