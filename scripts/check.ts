@@ -29,6 +29,10 @@ const bunExe = process.execPath
 
 const backendChecks: CheckDefinition[] = [
   {
+    label: 'Encoding/mojibake check',
+    args: ['scripts/check-encoding.ts'],
+  },
+  {
     label: 'tsc --noEmit (backend)',
     args: ['x', 'tsc', '--noEmit'],
     errorPattern: /error TS/gi,
