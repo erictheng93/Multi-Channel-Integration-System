@@ -22,7 +22,7 @@ description: "Use when the user is debugging a bug, tracing an error, or asking 
 4. gitnexus_cypher({query: "MATCH path..."})                 → Custom traces if needed
 ```
 
-> If "Index is stale" -> run `rtk bunx gitnexus analyze` in terminal. This repo uses Bun; `rtk npx gitnexus analyze` routes through npm and can fail with `Missing script: "gitnexus"`.
+> If "Index is stale" → run `rtk bunx gitnexus analyze` in terminal. This repo uses Bun; `rtk npx gitnexus analyze` routes through npm and can fail with `Missing script: "gitnexus"`.
 
 ## Checklist
 
