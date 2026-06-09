@@ -7,6 +7,7 @@ import type { Bindings, JWTPayload } from '../types';
 import { verifyJWT } from '../utils/auth';
 import { WebSocketAuthService } from '../services/websocket-auth-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { AUTH_COOKIE_NAMES, parseCookieHeader } from './auth';
 
 export interface WebSocketUser {
   id: number | string;
@@ -27,7 +28,8 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
   try {
     const url = new URL(c.req.url);
-    const token = url.searchParams.get('token');
+    const cookies = parseCookieHeader(c.req.header('Cookie'));
+    const token = url.searchParams.get('token') || cookies[AUTH_COOKIE_NAMES.access];
     const conversationId = url.searchParams.get('conversationId');
     const deviceId = url.searchParams.get('deviceId');
 
@@ -40,7 +42,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       return new Response(JSON.stringify({
         error: 'Authentication token required',
         code: 4401, // 自定義 WebSocket 關閉代碼
-        message: 'WebSocket connections require a valid JWT token as query parameter',
+        message: 'WebSocket connections require a valid JWT token or auth cookie',
         timestamp: nowMs(),
         suggestedAction: 'provide_token'
       }), {

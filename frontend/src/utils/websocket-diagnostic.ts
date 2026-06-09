@@ -1,4 +1,5 @@
 import { createLogger } from '@/utils/logger'
+import { useAuthStore } from '@/stores/auth'
 
 const frontendLogger = createLogger('websocketdiagnostic')
 /**
@@ -31,9 +32,9 @@ const diagWindow = window as unknown as DiagnosticWindowProps
 export function diagnoseWebSocket() {
   frontendLogger.debug(' ===== WebSocket 诊断开始 =====')
 
-  // 1. 检查 localStorage 中的 auth token
-  const token = localStorage.getItem('token')
-  frontendLogger.debug('1️ Auth Token:', token ? ' 存在' : ' 缺失')
+  // 1. 检查前端认证状态。HttpOnly cookie 无法从 JS 读取。
+  const authStore = useAuthStore()
+  frontendLogger.debug('1️ Auth State:', authStore.isAuthenticated ? ' 已认证' : ' 未认证')
 
   // 2. 检查全局 WebSocket 连接
   const ws = diagWindow.__ws_client

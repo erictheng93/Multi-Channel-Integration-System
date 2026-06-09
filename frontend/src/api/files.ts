@@ -1,134 +1,71 @@
 // 檔案相關 API
-import { apiClient } from './base'
+import {
+  fileContracts,
+  type FileListResponse,
+  type FileStatsResponse,
+  type FileUploadResponse,
+  type MediaFileInfo
+} from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 import type { ApiResponse } from '@/types'
 
-export interface FileUploadResponse {
-  fileId: string
-  filename: string
-  url: string
-  publicUrl?: string
-  thumbnailUrl?: string
-  size: number
-  mimeType: string
-  platform: string
-}
-
-export interface FileMetadata {
-  filename: string
-  originalFilename?: string
-  mimeType: string
-  size: number
-  extension: string
-  encoding?: string
-  lastModified?: Date
-}
-
-export interface MediaFileInfo {
-  id: string
-  filename: string
-  originalFilename?: string
-  mimeType: string
-  size: number
-  extension: string
-  url: string
-  publicUrl?: string
-  thumbnailUrl?: string
-  downloadUrl?: string
-  platform: 'line' | 'facebook' | 'system'
-  messageId?: string
-  conversationId?: string
-  uploadedBy?: string
-  metadata: FileMetadata
-  processingStatus: 'pending' | 'processing' | 'completed' | 'failed'
-  createdAt: string
-  updatedAt: string
-  expiresAt?: string
-}
-
-export interface FileListResponse {
-  items: MediaFileInfo[]
-  total: number
-  page: number
-  pageSize: number
-}
-
-export interface FileStatsResponse {
-  totalFiles: number
-  totalSize: number
-  averageFileSize: number
-  filesByType: Record<string, number>
-  filesByPlatform: Record<string, number>
-  storageUsage: {
-    used: number
-    available: number
-    percentage: number
-  }
-  recentActivity: {
-    uploaded: number
-    downloaded: number
-    deleted: number
-    period: string
-  }
-}
+export type {
+  FileListResponse,
+  FileMetadata,
+  FileStatsResponse,
+  FileUploadResponse,
+  MediaFileInfo
+} from '@shared/api-contracts'
 
 export const filesApi = {
   // 上傳檔案
   uploadFile: async (formData: globalThis.FormData): Promise<ApiResponse<FileUploadResponse>> => {
-    return apiClient.uploadFile('/files/upload', formData)
+    return callApiContract(fileContracts.uploadFile, {}, formData)
   },
 
   // 上傳多個檔案
   uploadMultipleFiles: async (formData: globalThis.FormData): Promise<ApiResponse<FileUploadResponse[]>> => {
-    return apiClient.uploadFile('/files/upload-multiple', formData)
+    return callApiContract(fileContracts.uploadMultipleFiles, {}, formData)
   },
 
   // 獲取檔案列表
   getFiles: async (page = 1, pageSize = 20, platform?: string): Promise<ApiResponse<FileListResponse>> => {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString()
-    })
-    
-    if (platform) {
-      params.append('platform', platform)
-    }
-    
-    return apiClient.get(`/files?${params.toString()}`)
+    return callApiContract(fileContracts.list, { page, pageSize, platform })
   },
 
   // 獲取檔案詳情
   getFileDetails: async (fileId: string): Promise<ApiResponse<MediaFileInfo>> => {
-    return apiClient.get(`/files/${fileId}`)
+    return callApiContract(fileContracts.getDetails, { fileId })
   },
 
   // 獲取檔案下載URL
   getDownloadUrl: async (fileId: string, expiresIn = 3600): Promise<ApiResponse<{ url: string; expiresAt: string }>> => {
-    return apiClient.get(`/files/${fileId}/download-url?expiresIn=${expiresIn}`)
+    return callApiContract(fileContracts.getDownloadUrl, { fileId, expiresIn })
   },
 
   // 刪除檔案
   deleteFile: async (fileId: string): Promise<ApiResponse<{ success: boolean }>> => {
-    return apiClient.delete(`/files/${fileId}`)
+    return callApiContract(fileContracts.delete, { fileId })
   },
 
   // 批量刪除檔案
   deleteMultipleFiles: async (fileIds: string[]): Promise<ApiResponse<{ successful: string[]; failed: string[] }>> => {
-    return apiClient.post('/files/delete-multiple', { fileIds })
+    return callApiContract(fileContracts.deleteMultiple, {}, { fileIds })
   },
 
   // 獲取檔案統計
   getFileStats: async (period = '30d'): Promise<ApiResponse<FileStatsResponse>> => {
-    return apiClient.get(`/files/stats?period=${period}`)
+    return callApiContract(fileContracts.stats, { period })
   },
 
   // 根據對話ID獲取檔案
   getFilesByConversation: async (conversationId: string, page = 1, pageSize = 20): Promise<ApiResponse<FileListResponse>> => {
-    return apiClient.get(`/conversations/${conversationId}/files?page=${page}&pageSize=${pageSize}`)
+    return callApiContract(fileContracts.byConversation, { conversationId, page, pageSize })
   },
 
   // 根據訊息ID獲取檔案
   getFilesByMessage: async (messageId: string): Promise<ApiResponse<MediaFileInfo[]>> => {
-    return apiClient.get(`/messages/${messageId}/files`)
+    return callApiContract(fileContracts.byMessage, { messageId })
   },
 
   // 生成簽名URL（用於直接上傳到R2）
@@ -138,10 +75,10 @@ export const filesApi = {
     fileId: string;
     publicUrl: string;
     expiresAt: string
-  }>> => {
+    }>> => {
     // 如果沒有提供 size，使用估計值（1MB），後端會在確認時驗證實際大小
     const estimatedSize = size || 1024 * 1024
-    return apiClient.post('/files/presigned-url', {
+    return callApiContract(fileContracts.generateSignedUrl, {}, {
       filename,
       mimeType: contentType,
       size: estimatedSize
@@ -150,7 +87,7 @@ export const filesApi = {
 
   // 確認檔案上傳完成（用於直接上傳到R2後的確認）
   confirmUpload: async (fileId: string, size: number): Promise<ApiResponse<MediaFileInfo>> => {
-    return apiClient.post(`/files/${fileId}/confirm`, { size })
+    return callApiContract(fileContracts.confirmUpload, { fileId }, { size })
   },
 
   // 搜索檔案
@@ -162,26 +99,7 @@ export const filesApi = {
     page?: number
     pageSize?: number
   }): Promise<ApiResponse<FileListResponse>> => {
-    const params = new URLSearchParams({
-      q: query,
-      page: (filters?.page || 1).toString(),
-      pageSize: (filters?.pageSize || 20).toString()
-    })
-
-    if (filters?.platform) {
-      params.append('platform', filters.platform)
-    }
-    if (filters?.type) {
-      params.append('type', filters.type)
-    }
-    if (filters?.dateFrom) {
-      params.append('dateFrom', filters.dateFrom)
-    }
-    if (filters?.dateTo) {
-      params.append('dateTo', filters.dateTo)
-    }
-
-    return apiClient.get(`/files/search?${params.toString()}`)
+    return callApiContract(fileContracts.search, { query, filters })
   },
 
   // 檢查 Presigned URL 服務狀態
@@ -190,7 +108,7 @@ export const filesApi = {
     maxFileSize: number
     allowedMimeTypes: string[]
   }>> => {
-    return apiClient.get('/files/presigned-url/status')
+    return callApiContract(fileContracts.presignedUrlStatus, {})
   }
 }
 

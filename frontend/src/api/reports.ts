@@ -17,19 +17,18 @@ import type {
   // ScheduledReportExecution
 } from '@/types/reports';
 
-import { apiClient } from './base';
+import { reportContracts } from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 
 /**
  * 報表 API 客戶端類
  */
 export class ReportsAPI {
-  private static readonly BASE_PATH = '/reports';
-
   /**
    * 健康檢查
    */
   static async healthCheck(): Promise<{ status: string; module: string; timestamp: string }> {
-    const response = await apiClient.get(`${this.BASE_PATH}/health`);
+    const response = await callApiContract(reportContracts.health, {});
     return response.data as { status: string; module: string; timestamp: string };
   }
 
@@ -45,7 +44,7 @@ export class ReportsAPI {
     endpoints: string[];
     permissions: Record<string, string>;
   }> {
-    const response = await apiClient.get(`${this.BASE_PATH}/info`);
+    const response = await callApiContract(reportContracts.info, {});
     return (response.data as { data: {
       module: string;
       version: string;
@@ -61,7 +60,7 @@ export class ReportsAPI {
    * 生成報表
    */
   static async generateReport(params: ReportGenerationParams): Promise<ReportBase> {
-    const response = await apiClient.post(`${this.BASE_PATH}`, params);
+    const response = await callApiContract(reportContracts.generate, {}, params);
     return (response.data as { data: ReportBase }).data;
   }
 
@@ -69,7 +68,7 @@ export class ReportsAPI {
    * 獲取報表列表
    */
   static async listReports(query: ReportListQuery = {}): Promise<ReportListResponse> {
-    const response = await apiClient.get(`${this.BASE_PATH}?${new URLSearchParams(query as Record<string, string>).toString()}`);
+    const response = await callApiContract(reportContracts.list, query);
     return (response.data as { data: ReportListResponse }).data;
   }
 
@@ -77,7 +76,7 @@ export class ReportsAPI {
    * 獲取單個報表詳情
    */
   static async getReportDetails(reportId: string): Promise<ReportDetails> {
-    const response = await apiClient.get(`${this.BASE_PATH}/${reportId}`);
+    const response = await callApiContract(reportContracts.details, { reportId });
     return (response.data as { data: ReportDetails }).data;
   }
 
@@ -92,7 +91,7 @@ export class ReportsAPI {
    * 下載報表
    */
   static async downloadReport(reportId: string): Promise<{ blob: Blob; filename: string; contentType: string }> {
-    return apiClient.downloadFile(`${this.BASE_PATH}/${reportId}/download`);
+    return callApiContract(reportContracts.download, { reportId });
   }
 
   /**
@@ -111,7 +110,7 @@ export class ReportsAPI {
    * 刪除報表
    */
   static async deleteReport(reportId: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.delete(`${this.BASE_PATH}/${reportId}`);
+    const response = await callApiContract(reportContracts.delete, { reportId });
     return response.data as { success: boolean; message: string };
   }
 
@@ -119,7 +118,7 @@ export class ReportsAPI {
    * 獲取報表統計
    */
   static async getReportStatistics(timeRange: ReportTimeRange = 'last_30_days'): Promise<ReportStatistics> {
-    const response = await apiClient.get(`${this.BASE_PATH}/stats?timeRange=${timeRange}`);
+    const response = await callApiContract(reportContracts.stats, { timeRange });
     return (response.data as { data: ReportStatistics }).data;
   }
 
@@ -127,7 +126,7 @@ export class ReportsAPI {
    * 批量操作
    */
   static async batchOperation(operation: BatchReportOperation): Promise<BatchOperationResult> {
-    const response = await apiClient.post(`${this.BASE_PATH}/batch`, operation);
+    const response = await callApiContract(reportContracts.batch, {}, operation);
     return (response.data as { data: BatchOperationResult }).data;
   }
 
@@ -139,7 +138,7 @@ export class ReportsAPI {
     description: string;
     options: Record<string, unknown>;
   }>> {
-    const response = await apiClient.get(`${this.BASE_PATH}/templates/${reportType}`);
+    const response = await callApiContract(reportContracts.templates, { reportType });
     return (response.data as { data: Array<{ name: string; description: string; options: Record<string, unknown> }> }).data;
   }
 
@@ -147,7 +146,7 @@ export class ReportsAPI {
    * 預覽報表
    */
   static async previewReport(params: ReportGenerationParams): Promise<Record<string, unknown>> {
-    const response = await apiClient.post(`${this.BASE_PATH}/preview`, params);
+    const response = await callApiContract(reportContracts.preview, {}, params);
     return (response.data as { data: Record<string, unknown> }).data;
   }
 
@@ -157,7 +156,7 @@ export class ReportsAPI {
    * 創建排程報表
    */
   static async createScheduledReport(config: Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>): Promise<ScheduledReport> {
-    const response = await apiClient.post(`${this.BASE_PATH}/scheduled`, config);
+    const response = await callApiContract(reportContracts.createScheduled, {}, config);
     return (response.data as { data: ScheduledReport }).data;
   }
 
@@ -165,7 +164,7 @@ export class ReportsAPI {
    * 獲取排程報表列表
    */
   static async listScheduledReports(): Promise<ScheduledReport[]> {
-    const response = await apiClient.get(`${this.BASE_PATH}/scheduled`);
+    const response = await callApiContract(reportContracts.listScheduled, {});
     return (response.data as { data: ScheduledReport[] }).data;
   }
 
@@ -173,7 +172,7 @@ export class ReportsAPI {
    * 更新排程報表
    */
   static async updateScheduledReport(id: string, updates: Partial<ScheduledReport>): Promise<ScheduledReport> {
-    const response = await apiClient.put(`${this.BASE_PATH}/scheduled/${id}`, updates);
+    const response = await callApiContract(reportContracts.updateScheduled, { id }, updates);
     return (response.data as { data: ScheduledReport }).data;
   }
 
@@ -181,7 +180,7 @@ export class ReportsAPI {
    * 刪除排程報表
    */
   static async deleteScheduledReport(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.delete(`${this.BASE_PATH}/scheduled/${id}`);
+    const response = await callApiContract(reportContracts.deleteScheduled, { id });
     return response.data as { success: boolean; message: string };
   }
 

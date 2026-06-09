@@ -1,5 +1,5 @@
 // 認證處理器 - 主要實現
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings, TeamRoleInTeam } from '@/types';
@@ -10,8 +10,9 @@ import {
   createSession
 } from '@/utils/auth';
 import {
+  AUTH_COOKIE_NAMES,
   jwtAuth,
-  sessionAuth,
+  parseCookieHeader,
   requireRole,
 } from '@/middleware/auth';
 import { loginRateLimiter, authRateLimiter } from '@/middleware/rate-limiter';
@@ -29,6 +30,78 @@ import { nowISO } from '@/utils/timestamp'
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
+type AuthContext = Context<{ Bindings: Bindings }>;
+const ACCESS_TOKEN_MAX_AGE_SECONDS = 2 * 60 * 60;
+const REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+const AUTH_COOKIE_PATH = '/api';
+
+function createCsrfToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function serializeCookie(
+  name: string,
+  value: string,
+  options: { maxAge: number; httpOnly?: boolean }
+): string {
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    `Max-Age=${options.maxAge}`,
+    `Path=${AUTH_COOKIE_PATH}`,
+    'SameSite=Strict',
+    'Secure',
+  ];
+
+  if (options.httpOnly) {
+    parts.push('HttpOnly');
+  }
+
+  return parts.join('; ');
+}
+
+function appendCookie(c: AuthContext, cookie: string): void {
+  c.header('Set-Cookie', cookie, { append: true });
+}
+
+function setAuthCookies(c: AuthContext, accessToken: string, refreshToken: string): void {
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, accessToken, {
+    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
+    httpOnly: true,
+  }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.refresh, refreshToken, {
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+    httpOnly: true,
+  }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, createCsrfToken(), {
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+  }));
+}
+
+function clearAuthCookies(c: AuthContext): void {
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, '', { maxAge: 0, httpOnly: true }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.refresh, '', { maxAge: 0, httpOnly: true }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0 }));
+}
+
+function getRequestCookies(c: AuthContext): Record<string, string> {
+  return parseCookieHeader(c.req.header('Cookie'));
+}
+
+function csrfCookieMatches(c: AuthContext, cookies: Record<string, string>): boolean {
+  const csrfCookie = cookies[AUTH_COOKIE_NAMES.csrf];
+  const csrfHeader = c.req.header('X-CSRF-Token');
+  return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
+}
+
+function getBearerToken(authHeader: string | undefined): string | null {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.substring(7).trim();
+  return token.length > 0 ? token : null;
+}
 
 type AuthAgentState = Record<string, unknown> & {
   id?: string | number;
@@ -300,6 +373,8 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
       userAgent: c.req.header('User-Agent')
     });
 
+    setAuthCookies(c, token, refreshToken);
+
     return c.json({
       success: true,
       data: {
@@ -413,10 +488,17 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
 });
 
 // 用戶登出
-authHandler.post('/logout', sessionAuth, async (c) => {
+authHandler.post('/logout', jwtAuth, async (c) => {
   try {
     const sessionId = c.req.header('X-Session-ID');
     const user = c.get('user');
+    const cookies = getRequestCookies(c);
+    const cookieAccessToken = cookies[AUTH_COOKIE_NAMES.access];
+    const cookieRefreshToken = cookies[AUTH_COOKIE_NAMES.refresh];
+
+    if ((cookieAccessToken || cookieRefreshToken) && !csrfCookieMatches(c, cookies)) {
+      return c.json({ error: 'Invalid CSRF token' }, HTTP_STATUS.FORBIDDEN);
+    }
 
     if (sessionId) {
       await c.env.SESSIONS.delete(`session:${sessionId}`);
@@ -430,12 +512,11 @@ authHandler.post('/logout', sessionAuth, async (c) => {
     // logout request, verify it (just to extract the jti+exp safely), and
     // write `revoked:{jti}` to CACHE with TTL = remaining token life.
     // Best-effort: a failure here logs but doesn't block logout.
-    const authHeader = c.req.header('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const accessToken = authHeader.substring(7);
+    const accessTokenToRevoke = getBearerToken(c.req.header('Authorization')) ?? cookieAccessToken;
+    if (accessTokenToRevoke) {
       try {
         const { verifyJWT } = await import('@/utils/auth');
-        const payload = await verifyJWT(accessToken, c.env.JWT_SECRET);
+        const payload = await verifyJWT(accessTokenToRevoke, c.env.JWT_SECRET);
         if (payload.jti && payload.exp) {
           const now = Math.floor(Date.now() / 1000);
           const ttl = Math.max(1, payload.exp - now);
@@ -461,7 +542,7 @@ authHandler.post('/logout', sessionAuth, async (c) => {
       const body = await c.req.json().catch(() => null);
       const refreshTokenToRevoke = body && typeof body === 'object' && 'refreshToken' in body
         ? (body as { refreshToken?: unknown }).refreshToken
-        : null;
+        : cookieRefreshToken;
       if (typeof refreshTokenToRevoke === 'string' && refreshTokenToRevoke.length > 0) {
         const { verifyJWT } = await import('@/utils/auth');
         const payload = await verifyJWT(refreshTokenToRevoke, c.env.JWT_SECRET);
@@ -505,6 +586,8 @@ authHandler.post('/logout', sessionAuth, async (c) => {
         userAgent: c.req.header('User-Agent')
       });
     }
+
+    clearAuthCookies(c);
 
     return c.json({
       success: true,
@@ -707,7 +790,12 @@ authHandler.put('/me', jwtAuth, async (c) => {
 // F2 fix: apply authRateLimiter to defend against refresh-token brute force / DoS
 authHandler.post('/refresh', authRateLimiter, async (c) => {
   try {
-    const { refreshToken } = await c.req.json();
+    const body = await c.req.json().catch(() => ({})) as { refreshToken?: unknown };
+    const cookies = getRequestCookies(c);
+    const refreshToken = typeof body.refreshToken === 'string' && body.refreshToken.length > 0
+      ? body.refreshToken
+      : cookies[AUTH_COOKIE_NAMES.refresh];
+    const usingCookieRefresh = refreshToken === cookies[AUTH_COOKIE_NAMES.refresh];
 
     if (!refreshToken) {
       return c.json({
@@ -715,6 +803,14 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         error: 'Refresh token is required',
         timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (usingCookieRefresh && !csrfCookieMatches(c, cookies)) {
+      return c.json({
+        success: false,
+        error: 'Invalid CSRF token',
+        timestamp: nowISO()
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 驗證 refresh token
@@ -947,6 +1043,8 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+
+    setAuthCookies(c, newToken, newRefreshToken);
 
     return c.json({
       success: true,

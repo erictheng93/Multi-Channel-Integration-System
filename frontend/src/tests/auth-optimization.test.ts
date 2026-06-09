@@ -36,8 +36,19 @@ const mockLocalStorage = {
   removeItem: vi.fn()
 }
 
+const mockSessionStorage = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn()
+}
+
 Object.defineProperty(global, 'localStorage', {
   value: mockLocalStorage,
+  writable: true
+})
+
+Object.defineProperty(global, 'sessionStorage', {
+  value: mockSessionStorage,
   writable: true
 })
 
@@ -90,10 +101,12 @@ describe('前端狀態管理優化測試', () => {
       expect(authStore.currentAgent).toEqual(mockAgent)
       expect(authStore.sessionStatus).toBe('authenticated')
 
-      // 驗證 localStorage 同步
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('token', validToken)
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('refreshToken', validRefreshToken)
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('currentAgent', JSON.stringify(mockAgent))
+      // 驗證 session-scoped auth storage 同步
+      expect(mockSessionStorage.setItem).toHaveBeenCalledWith('token', validToken)
+      expect(mockSessionStorage.setItem).toHaveBeenCalledWith('refreshToken', validRefreshToken)
+      expect(mockSessionStorage.setItem).toHaveBeenCalledWith('currentAgent', JSON.stringify(mockAgent))
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalledWith('token', validToken)
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token')
 
       // 驗證 API 客戶端認證標頭設定
       expect(authApi.setAuthHeader).toHaveBeenCalledWith(validToken, validRefreshToken)

@@ -1,111 +1,56 @@
 // 訊息相關 API
-import { apiClient } from './base'
+import { callApiContract } from './contract-client'
+import { messageContracts } from '@shared/api-contracts'
 import type { ApiResponse } from '@/types'
+import type {
+  BulkCreateMessagesRequest,
+  BulkDeleteMessagesRequest,
+  BulkOperationResult,
+  DelayedMessageRequest,
+  DelayedMessageResponse,
+  PendingMessage,
+  PendingMessagesResponse,
+  RecallMessageRequest,
+  RecallMessageResponse
+} from '@shared/api-contracts'
 
-export interface DelayedMessageRequest {
-  conversationId: string
-  content: string
-  delaySeconds: number
-  messageType?: 'text' | 'image' | 'video' | 'audio' | 'file'
-  mediaUrl?: string
-  senderId: string
-  recipientPlatformId: string
-  platform: 'line' | 'facebook'
-}
-
-export interface DelayedMessageResponse {
-  messageId: string
-  scheduledSendTime: string
-  recallDeadline: string
-}
-
-export interface RecallMessageRequest {
-  messageId: string
-  userId: string
-}
-
-export interface RecallMessageResponse {
-  success: boolean
-  messageId: string
-}
-
-export interface PendingMessage {
-  id: string
-  conversation_id: string
-  customer_name: string
-  content: string
-  platform: string
-  scheduled_send_time: string
-  recall_deadline: string
-  status: string
-  can_recall: boolean
-  message_type: string
-  created_at: string
-}
-
-export interface PendingMessagesResponse {
-  items: PendingMessage[]
-  total: number
-  page: number
-  pageSize: number
-}
-
-// ==================== 批量操作類型 ====================
-
-export interface BulkCreateMessageRequest {
-  conversationId: string
-  content: string
-  messageType?: 'text' | 'image' | 'file'
-  attachmentIds?: string[]
-}
-
-export interface BulkCreateMessagesRequest {
-  messages: BulkCreateMessageRequest[]
-}
-
-export interface BulkDeleteMessagesRequest {
-  messageIds: string[]
-  hardDelete?: boolean
-}
-
-export interface BulkOperationResult {
-  success: boolean
-  results: Array<{
-    id?: string
-    success: boolean
-    error?: string
-  }>
-  errors: Array<{
-    index: number
-    error: string
-  }>
-  message: string
-}
+export type {
+  BulkCreateMessageRequest,
+  BulkCreateMessagesRequest,
+  BulkDeleteMessagesRequest,
+  BulkOperationResult,
+  DelayedMessageRequest,
+  DelayedMessageResponse,
+  PendingMessage,
+  PendingMessagesResponse,
+  RecallMessageRequest,
+  RecallMessageResponse
+} from '@shared/api-contracts'
 
 export const messagesApi = {
   // 發送延遲訊息
   sendDelayedMessage: async (request: DelayedMessageRequest): Promise<ApiResponse<DelayedMessageResponse>> => {
-    return apiClient.post('/messages/delayed', request)
+    return callApiContract(messageContracts.sendDelayedMessage, {}, request)
   },
 
   // 撤回延遲訊息
   recallMessage: async (request: RecallMessageRequest): Promise<ApiResponse<RecallMessageResponse>> => {
-    return apiClient.post('/messages/recall', request)
+    return callApiContract(messageContracts.recallMessage, {}, request)
   },
 
   // 獲取待發送訊息列表
   getPendingMessages: async (page = 1, pageSize = 20): Promise<ApiResponse<PendingMessagesResponse>> => {
-    return apiClient.get(`/messages/pending?page=${page}&pageSize=${pageSize}`)
+    return callApiContract(messageContracts.getPendingMessages, { page, pageSize })
   },
 
   // 檢查訊息是否可撤回
   canRecallMessage: async (messageId: string, userId: string): Promise<ApiResponse<{ canRecall: boolean }>> => {
-    return apiClient.get(`/messages/${messageId}/can-recall?userId=${userId}`)
+    return callApiContract(messageContracts.canRecallMessage, { messageId, userId })
   },
 
   // 獲取訊息詳情
   getMessageDetails: async (messageId: string): Promise<ApiResponse<PendingMessage>> => {
-    return apiClient.get(`/messages/${messageId}`)
+    return callApiContract(messageContracts.getMessageDetails, { messageId })
   },
 
   // ==================== 批量操作 ====================
@@ -120,7 +65,7 @@ export const messagesApi = {
         error: 'Bulk operation limited to 100 messages at a time'
       }
     }
-    return apiClient.post('/messages/bulk-create', request)
+    return callApiContract(messageContracts.bulkCreate, {}, request)
   },
 
   /**
@@ -133,7 +78,7 @@ export const messagesApi = {
         error: 'Bulk operation limited to 100 messages at a time'
       }
     }
-    return apiClient.post('/messages/bulk-delete', request)
+    return callApiContract(messageContracts.bulkDelete, {}, request)
   },
 
   /**

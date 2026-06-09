@@ -15,133 +15,47 @@
  * @module composables/team-management/useMemberEditForm
  */
 
-import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, watch, type Ref } from 'vue'
 import type { TeamMember, AgentTeamMembership, Team } from '@/types'
 import { teamApi } from '@/api/team'
 import { useToast } from '@/composables/useToast'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useTeamStore } from '@/stores/team'
 import { createLogger } from '@/utils/logger'
+import {
+  addPendingTeam,
+  applyPendingTeamChanges,
+  removePendingTeam,
+  setPrimaryTeamPending as buildSetPrimaryTeamPending
+} from './memberEditTeamChanges'
+import {
+  getPasswordMatchStatus,
+  isMemberEditFormValid,
+  isMemberEditPasswordFormValid,
+  validateMemberEditForm,
+  validateMemberEditPasswordForm
+} from './memberEditValidation'
+import type {
+  MemberEditFormData,
+  MemberEditFormErrors,
+  MemberEditPasswordErrors,
+  MemberEditPasswordFormData,
+  MemberEditSnapshot,
+  PasswordMatchStatus,
+  PendingTeamChange,
+  UseMemberEditFormReturn
+} from './memberEditTypes'
+
+export type {
+  MemberEditFormData,
+  MemberEditFormErrors,
+  MemberEditPasswordErrors,
+  MemberEditPasswordFormData,
+  PendingTeamChange,
+  UseMemberEditFormReturn
+} from './memberEditTypes'
 
 const frontendLogger = createLogger('useMemberEditForm')
-
-/**
- * Form data for editing member profile
- */
-export interface MemberEditFormData {
-  /** Member display name (姓名) */
-  displayName: string
-  /** Member email (Email) */
-  email: string
-  /** Member role (角色) */
-  role: 'admin' | 'agent'
-}
-
-/**
- * Form data for password reset (named distinctly to avoid export conflicts)
- */
-export interface MemberEditPasswordFormData {
-  /** New password */
-  newPassword: string
-  /** Confirm password */
-  confirmPassword: string
-}
-
-/**
- * Validation errors for member edit form
- */
-export interface MemberEditFormErrors {
-  displayName?: string
-  email?: string
-  role?: string
-}
-
-/**
- * Validation errors for password reset form (named distinctly to avoid export conflicts)
- */
-export interface MemberEditPasswordErrors {
-  newPassword?: string
-  confirmPassword?: string
-}
-
-/**
- * Pending team change action
- */
-export interface PendingTeamChange {
-  type: 'add' | 'remove' | 'set-primary'
-  teamId: number
-  teamName?: string
-}
-
-/**
- * Snapshot for optimistic update rollback
- * Captures the state before changes are applied
- */
-export interface MemberEditSnapshot {
-  /** Original form data before changes */
-  originalData: MemberEditFormData
-  /** Current teams before changes */
-  currentTeams: AgentTeamMembership[]
-  /** Pending changes being applied */
-  pendingChanges: PendingTeamChange[]
-  /** Member ID for rollback */
-  memberId: string
-}
-
-/**
- * Password match status for real-time validation feedback
- */
-export type PasswordMatchStatus = 'idle' | 'mismatch' | 'match'
-
-/**
- * Return type for useMemberEditForm composable
- */
-export interface UseMemberEditFormReturn {
-  // Form data
-  formData: Ref<MemberEditFormData>
-  passwordForm: Ref<MemberEditPasswordFormData>
-
-  // Validation
-  formErrors: Ref<MemberEditFormErrors>
-  passwordErrors: Ref<MemberEditPasswordErrors>
-  isFormValid: ComputedRef<boolean>
-  isPasswordFormValid: ComputedRef<boolean>
-  passwordMatchStatus: ComputedRef<PasswordMatchStatus>
-
-  // State
-  isDirty: ComputedRef<boolean>
-  isSaving: Ref<boolean>
-  isResettingPassword: Ref<boolean>
-  showPasswordSection: Ref<boolean>
-
-  // System Admin protection
-  isSystemAdmin: ComputedRef<boolean>
-  canResetPassword: ComputedRef<boolean>
-
-  // Team changes (deferred mode)
-  pendingTeamChanges: Ref<PendingTeamChange[]>
-  currentTeams: Ref<AgentTeamMembership[]>
-  displayTeams: ComputedRef<AgentTeamMembership[]>
-  hasTeamChanges: ComputedRef<boolean>
-  addTeamToPending: (_teamId: number, _teamName: string) => void
-  removeTeamFromPending: (_teamId: number) => void
-  setPrimaryTeamPending: (_teamId: number) => void
-  initTeams: (_teams: AgentTeamMembership[]) => void
-
-  // Methods
-  initForm: (_member: TeamMember) => void
-  validateForm: () => boolean
-  validatePasswordForm: () => boolean
-  saveChanges: () => Promise<boolean>
-  resetPassword: () => Promise<boolean>
-  resetForm: () => void
-  togglePasswordSection: () => void
-}
-
-/**
- * Email validation regex
- */
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
  * Member Edit Form Composable
@@ -205,34 +119,9 @@ export function useMemberEditForm(
   /**
    * Computed display teams - applies pending changes to current teams
    */
-  const displayTeams = computed<AgentTeamMembership[]>(() => {
-    let teams = [...currentTeams.value]
-
-    for (const change of pendingTeamChanges.value) {
-      if (change.type === 'add') {
-        // Add team if not already present
-        if (!teams.some(t => t.teamId === change.teamId)) {
-          teams.push({
-            teamId: change.teamId,
-            teamName: change.teamName,
-            roleInTeam: 'member',
-            isPrimary: teams.length === 0 // First team becomes primary
-          })
-        }
-      } else if (change.type === 'remove') {
-        // Remove team
-        teams = teams.filter(t => t.teamId !== change.teamId)
-      } else if (change.type === 'set-primary') {
-        // Update primary status
-        teams = teams.map(t => ({
-          ...t,
-          isPrimary: t.teamId === change.teamId
-        }))
-      }
-    }
-
-    return teams
-  })
+  const displayTeams = computed<AgentTeamMembership[]>(() =>
+    applyPendingTeamChanges(currentTeams.value, pendingTeamChanges.value)
+  )
 
   /**
    * Check if there are pending team changes
@@ -251,78 +140,34 @@ export function useMemberEditForm(
    * Add a team to pending changes
    */
   const addTeamToPending = (teamId: number, teamName: string) => {
-    // Check if there's already a remove pending for this team - cancel it instead
-    const existingRemoveIndex = pendingTeamChanges.value.findIndex(
-      c => c.type === 'remove' && c.teamId === teamId
-    )
-    if (existingRemoveIndex !== -1) {
-      pendingTeamChanges.value.splice(existingRemoveIndex, 1)
-      return
-    }
-
-    // Check if team is already in current teams
-    if (currentTeams.value.some(t => t.teamId === teamId)) {
-      return
-    }
-
-    // Check if already pending add
-    if (pendingTeamChanges.value.some(c => c.type === 'add' && c.teamId === teamId)) {
-      return
-    }
-
-    pendingTeamChanges.value.push({
-      type: 'add',
+    pendingTeamChanges.value = addPendingTeam(
+      currentTeams.value,
+      pendingTeamChanges.value,
       teamId,
       teamName
-    })
+    )
   }
 
   /**
    * Remove a team from pending changes
    */
   const removeTeamFromPending = (teamId: number) => {
-    // Check if there's a pending add for this team - cancel it instead
-    const existingAddIndex = pendingTeamChanges.value.findIndex(
-      c => c.type === 'add' && c.teamId === teamId
-    )
-    if (existingAddIndex !== -1) {
-      pendingTeamChanges.value.splice(existingAddIndex, 1)
-      return
-    }
-
-    // Check if team is in current teams
-    if (!currentTeams.value.some(t => t.teamId === teamId)) {
-      return
-    }
-
-    // Check if already pending remove
-    if (pendingTeamChanges.value.some(c => c.type === 'remove' && c.teamId === teamId)) {
-      return
-    }
-
-    pendingTeamChanges.value.push({
-      type: 'remove',
+    pendingTeamChanges.value = removePendingTeam(
+      currentTeams.value,
+      pendingTeamChanges.value,
       teamId
-    })
+    )
   }
 
   /**
    * Set a team as primary (pending)
    */
   const setPrimaryTeamPending = (teamId: number) => {
-    // Remove any existing set-primary changes
-    pendingTeamChanges.value = pendingTeamChanges.value.filter(c => c.type !== 'set-primary')
-
-    // Check if team is already primary in current state
-    const currentPrimary = currentTeams.value.find(t => t.isPrimary)
-    if (currentPrimary?.teamId === teamId) {
-      return
-    }
-
-    pendingTeamChanges.value.push({
-      type: 'set-primary',
+    pendingTeamChanges.value = buildSetPrimaryTeamPending(
+      currentTeams.value,
+      pendingTeamChanges.value,
       teamId
-    })
+    )
   }
 
   // ==================== Validation Errors ====================
@@ -369,33 +214,12 @@ export function useMemberEditForm(
   /**
    * Check if the profile form is valid
    */
-  const isFormValid = computed(() => {
-    // Display name is required and 1-100 chars
-    if (!formData.value.displayName.trim()) {return false}
-    if (formData.value.displayName.length > 100) {return false}
-
-    // Email is required and must be valid format
-    if (!formData.value.email.trim()) {return false}
-    if (!EMAIL_REGEX.test(formData.value.email)) {return false}
-
-    // Role must be valid
-    if (!['admin', 'agent'].includes(formData.value.role)) {return false}
-
-    return true
-  })
+  const isFormValid = computed(() => isMemberEditFormValid(formData.value))
 
   /**
    * Check if password form is valid
    */
-  const isPasswordFormValid = computed(() => {
-    // Password must be at least 6 characters
-    if (passwordForm.value.newPassword.length < 6) {return false}
-
-    // Passwords must match
-    if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {return false}
-
-    return true
-  })
+  const isPasswordFormValid = computed(() => isMemberEditPasswordFormValid(passwordForm.value))
 
   /**
    * Real-time password match status for immediate user feedback
@@ -403,23 +227,9 @@ export function useMemberEditForm(
    * - 'mismatch': Password entered but doesn't match confirm (show error)
    * - 'match': Passwords match (show success)
    */
-  const passwordMatchStatus = computed<PasswordMatchStatus>(() => {
-    const newPwd = passwordForm.value.newPassword
-    const confirmPwd = passwordForm.value.confirmPassword
-
-    // No password entered yet - don't show any status
-    if (newPwd.length === 0) {
-      return 'idle'
-    }
-
-    // Password entered - check if it matches confirm
-    if (newPwd === confirmPwd) {
-      return 'match'
-    }
-
-    // Passwords don't match
-    return 'mismatch'
-  })
+  const passwordMatchStatus = computed<PasswordMatchStatus>(() =>
+    getPasswordMatchStatus(passwordForm.value)
+  )
 
   // ==================== Methods ====================
 
@@ -457,27 +267,7 @@ export function useMemberEditForm(
    * Validate profile form and set errors
    */
   const validateForm = (): boolean => {
-    const errors: MemberEditFormErrors = {}
-
-    // Display name validation
-    if (!formData.value.displayName.trim()) {
-      errors.displayName = '請輸入姓名'
-    } else if (formData.value.displayName.length > 100) {
-      errors.displayName = '姓名不能超過 100 個字元'
-    }
-
-    // Email validation
-    if (!formData.value.email.trim()) {
-      errors.email = '請輸入電子郵件'
-    } else if (!EMAIL_REGEX.test(formData.value.email)) {
-      errors.email = '請輸入有效的電子郵件格式'
-    }
-
-    // Role validation
-    if (!formData.value.role || !['admin', 'agent'].includes(formData.value.role)) {
-      errors.role = '請選擇角色'
-    }
-
+    const errors = validateMemberEditForm(formData.value)
     formErrors.value = errors
     return Object.keys(errors).length === 0
   }
@@ -486,22 +276,7 @@ export function useMemberEditForm(
    * Validate password form and set errors
    */
   const validatePasswordForm = (): boolean => {
-    const errors: MemberEditPasswordErrors = {}
-
-    // Password validation
-    if (!passwordForm.value.newPassword) {
-      errors.newPassword = '請輸入新密碼'
-    } else if (passwordForm.value.newPassword.length < 6) {
-      errors.newPassword = '密碼至少需要 6 個字元'
-    }
-
-    // Confirm password validation
-    if (!passwordForm.value.confirmPassword) {
-      errors.confirmPassword = '請確認密碼'
-    } else if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-      errors.confirmPassword = '密碼不一致'
-    }
-
+    const errors = validateMemberEditPasswordForm(passwordForm.value)
     passwordErrors.value = errors
     return Object.keys(errors).length === 0
   }

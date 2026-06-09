@@ -3,6 +3,7 @@
 // Created by: WebSocket Migration Developer
 
 import { ref, type Ref } from 'vue'
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 import { useAuthStore } from '@/stores/auth'
 import { getWebSocketUrl, getBackendUrl } from '@/config/runtime'
 import { createLogger } from '@/utils/logger'
@@ -303,11 +304,8 @@ export class WebSocketClient {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
 
-        const response = await fetch(healthUrl, {
+        const response = await authenticatedFetch(healthUrl, {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${authStore.token}`
-          },
           signal: controller.signal
         })
 
@@ -349,19 +347,12 @@ export class WebSocketClient {
   }
 
   private buildWebSocketUrl(): string {
-    const authStore = useAuthStore()
-
     // Layer 3: 使用運行時配置層
     // 不再硬編碼 URL，自動適配開發/生產環境
     const wsBaseUrl = getWebSocketUrl()
 
     // Build WebSocket URL matching backend Durable Objects architecture
     const url = new URL(`${wsBaseUrl}/api/websocket/connect`)
-
-    // Add authentication token
-    if (authStore.token) {
-      url.searchParams.set('token', authStore.token)
-    }
 
     // Add conversation context
     if (this.config.conversationId) {

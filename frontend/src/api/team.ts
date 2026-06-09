@@ -1,48 +1,51 @@
 // 團隊管理 API 客戶端
-import { apiClient } from './base'
+import { callApiContract } from './contract-client'
+import type {
+  AddTeamMemberRequest,
+  BatchAddMembersToTeamResponse,
+  BatchEditMemberRequest,
+  BatchEditMembersResponse,
+  BulkDeleteMembersResponse,
+  BulkRemoveMembersFromTeamResponse,
+  BulkUpdateMembersResponse,
+  CheckMemberEmailResponse,
+  CreateTeamRequest,
+  LiffQRResponse,
+  LiffQRResponseBase,
+  LiffQRStatsResponse,
+  MigratePasswordsResponse,
+  RemoveMemberResponse,
+  TeamResponse,
+  TeamScopedStatsResponse,
+  TeamStatsResponse,
+  TeamMemberWithTeamsResponse,
+  UndoBatchEditResponse,
+  UpdateTeamRequest
+} from './team-types'
 import { nowISO } from '@/utils/timestamp'
 import type {
   TeamMember,
   ApiResponse,
   AgentTeamMembership
 } from '@/types'
+import { teamContracts, teamMembershipContracts } from '@shared/api-contracts'
+import type { CreateTeamMemberRequest, TeamRoleInTeam } from '@shared/api-contracts'
 
 export const teamApi = {
   // 獲取團隊成員列表
   getMembers: async (): Promise<ApiResponse<TeamMember[]>> => {
-    return apiClient.get('/teams/members')
+    return callApiContract(teamContracts.getMembers, undefined) as Promise<ApiResponse<TeamMember[]>>
   },
 
   // Check if email already exists (for duplicate detection)
-  checkEmail: async (email: string): Promise<ApiResponse<{
-    exists: boolean;
-    status?: 'active' | 'deleted';
-    member?: {
-      id: string;
-      displayName: string;
-      email: string;
-      role: 'admin' | 'agent';
-      teamName: string | null;
-      lastLoginAt: string | null;
-      createdAt: string;
-      deletedAt: string | null;
-    };
-  }>> => {
-    return apiClient.get(`/teams/members/check-email?email=${encodeURIComponent(email)}`)
+  checkEmail: async (email: string): Promise<ApiResponse<CheckMemberEmailResponse>> => {
+    return callApiContract(teamContracts.checkEmail, { email })
   },
 
   // 直接新增成員
-  addMember: async (request: {
-    loginId: string;
-    name?: string;
-    email?: string;
-    password: string;
-    role: 'admin' | 'agent'; // Simplified from 3-tier to 2-tier role system
-    group?: string;
-    isActive: boolean;
-  }): Promise<ApiResponse<TeamMember>> => {
+  addMember: async (request: AddTeamMemberRequest): Promise<ApiResponse<TeamMember>> => {
     // 轉換前端數據格式為後端期望的格式
-    const backendRequest: Record<string, unknown> = {
+    const backendRequest: CreateTeamMemberRequest = {
       email: request.email || request.loginId, // email 是必填，如果沒有則使用 loginId
       password: request.password,
       displayName: request.name || request.loginId, // displayName 是必填，如果沒有則使用 loginId
@@ -55,14 +58,16 @@ export const teamApi = {
       backendRequest.teamId = Number(request.group);
     }
 
-    return apiClient.post('/teams/members', backendRequest)
+    return callApiContract(
+      teamContracts.addMember,
+      undefined,
+      backendRequest
+    ) as Promise<ApiResponse<TeamMember>>
   },
 
   // 永久刪除團隊成員 (Hard Delete，不可撤銷)
-  removeMember: async (memberId: string): Promise<ApiResponse<{
-    deletedMemberId: string;
-  }>> => {
-    return apiClient.delete(`/teams/members/${memberId}`)
+  removeMember: async (memberId: string): Promise<ApiResponse<RemoveMemberResponse>> => {
+    return callApiContract(teamContracts.removeMember, { memberId })
   },
 
   // ==================== Bulk Operations ====================
@@ -72,12 +77,11 @@ export const teamApi = {
    * @param memberIds 要刪除的成員 ID 列表 (最多 50 個)
    * @param reason 刪除原因 (可選)
    */
-  bulkDeleteMembers: async (memberIds: string[], reason?: string): Promise<ApiResponse<{
-    deleted: string[];
-    failed: { memberId: string; error: string }[];
-    deletedCount: number;
-  }>> => {
-    return apiClient.post('/teams/members/bulk-delete', {
+  bulkDeleteMembers: async (
+    memberIds: string[],
+    reason?: string
+  ): Promise<ApiResponse<BulkDeleteMembersResponse>> => {
+    return callApiContract(teamContracts.bulkDeleteMembers, undefined, {
       memberIds,
       reason
     })
@@ -94,13 +98,8 @@ export const teamApi = {
     memberIds: string[],
     updates: { role?: 'admin' | 'agent'; isActive?: boolean },
     reason?: string
-  ): Promise<ApiResponse<{
-    updated: string[];
-    failed: { memberId: string; error: string }[];
-    skipped: { memberId: string; reason: string }[];
-    updatedCount: number;
-  }>> => {
-    return apiClient.post('/teams/members/bulk-update', {
+  ): Promise<ApiResponse<BulkUpdateMembersResponse>> => {
+    return callApiContract(teamContracts.bulkUpdateMembers, undefined, {
       memberIds,
       updates,
       reason
@@ -112,35 +111,10 @@ export const teamApi = {
    * 每個成員可有不同的 profile 和團隊變更
    */
   batchEditMembers: async (
-    members: Array<{
-      memberId: string;
-      profile?: {
-        displayName?: string;
-        email?: string;
-        role?: 'admin' | 'agent';
-      };
-      teamChanges?: {
-        add?: number[];
-        remove?: number[];
-      };
-    }>,
+    members: BatchEditMemberRequest[],
     reason?: string
-  ): Promise<ApiResponse<{
-    results: Array<{
-      memberId: string;
-      success: boolean;
-      error?: string;
-      profileUpdated: boolean;
-      teamsAdded: number[];
-      teamsRemoved: number[];
-    }>;
-    successCount: number;
-    failedCount: number;
-    skipped: { memberId: string; reason: string }[];
-    undoToken?: string;
-    undoExpiresAt?: string;
-  }>> => {
-    return apiClient.post('/teams/members/batch-edit', {
+  ): Promise<ApiResponse<BatchEditMembersResponse>> => {
+    return callApiContract(teamContracts.batchEditMembers, undefined, {
       members,
       reason
     })
@@ -149,32 +123,27 @@ export const teamApi = {
   /**
    * 撤銷批量編輯
    */
-  undoBatchEdit: async (undoToken: string): Promise<ApiResponse<{
-    restoredCount: number;
-    results: Array<{
-      memberId: string;
-      success: boolean;
-      error?: string;
-    }>;
-  }>> => {
-    return apiClient.post('/teams/members/batch-edit/undo', { undoToken })
+  undoBatchEdit: async (undoToken: string): Promise<ApiResponse<UndoBatchEditResponse>> => {
+    return callApiContract(teamContracts.undoBatchEdit, undefined, { undoToken })
   },
 
   // NOTE: restoreMembers removed — hard delete is permanent
 
   // 更新成員角色
   updateMemberRole: async (memberId: string, role: 'admin' | 'agent'): Promise<ApiResponse<void>> => { // Simplified from 3-tier to 2-tier
-    return apiClient.put(`/teams/members/${memberId}/role`, { role })
+    return callApiContract(teamContracts.updateMemberRole, { memberId }, { role })
   },
 
   // 更新成員狀態
   updateMemberStatus: async (memberId: string, status: 'active' | 'inactive'): Promise<ApiResponse<void>> => {
-    return apiClient.put(`/teams/members/${memberId}/status`, { isActive: status === 'active' })
+    return callApiContract(teamContracts.updateMemberStatus, { memberId }, {
+      isActive: status === 'active'
+    })
   },
 
   // 重設成員密碼
   resetPassword: async (memberId: string): Promise<ApiResponse<void>> => {
-    return apiClient.post(`/teams/members/${memberId}/reset-password`)
+    return callApiContract(teamContracts.resetPassword, { memberId })
   },
 
   // 重設成員密碼帶政策
@@ -183,7 +152,7 @@ export const teamApi = {
     policy: 'changeable' | 'unchangeable' | 'must_change';
   }): Promise<ApiResponse<void>> => {
     // Fixed: Updated path from /team to /teams and endpoint from reset-password-policy to reset
-    return apiClient.post(`/teams/members/${memberId}/reset`, data)
+    return callApiContract(teamContracts.resetPasswordWithPolicy, { memberId }, data)
   },
 
   // 獲取成員密碼
@@ -192,160 +161,94 @@ export const teamApi = {
     username: string;  // 保留作為向後兼容，但實際上會使用 displayName 的值
     displayName: string;
   }>> => {
-    return apiClient.get(`/teams/members/${memberId}/password`)
+    return callApiContract(teamContracts.getMemberPassword, { memberId })
   },
 
   // 更新成員資訊
   updateMember: async (memberId: string, data: Partial<TeamMember>): Promise<ApiResponse<TeamMember>> => {
-    return apiClient.put(`/teams/members/${memberId}`, data)
+    return callApiContract(
+      teamContracts.updateMember,
+      { memberId },
+      data
+    ) as Promise<ApiResponse<TeamMember>>
   },
 
   // 獲取團隊統計資訊
-  getTeamStats: async (): Promise<ApiResponse<{
-    totalMembers: number;
-    activeMembers: number;
-    adminCount: number;
-  }>> => {
-    return apiClient.get('/teams/stats')
+  getTeamStats: async (): Promise<ApiResponse<TeamStatsResponse>> => {
+    return callApiContract(teamContracts.getTeamStats, undefined)
   },
 
   // 遷移明文密碼到加密存儲 (臨時管理功能)
-  migratePasswords: async (): Promise<ApiResponse<{
-    migrated: Array<{ username: string; status: string; error?: string }>;  // username 實際上是 displayName
-    total: number;
-  }>> => {
-    return apiClient.post('/teams/migrate-passwords')
+  migratePasswords: async (): Promise<ApiResponse<MigratePasswordsResponse>> => {
+    return callApiContract(teamContracts.migratePasswords, undefined)
   },
 
   // 團隊管理 API
   // 獲取所有團隊
-  getTeams: async (includeInactive?: boolean): Promise<ApiResponse<Array<{
-    id: number;
-    name: string;
-    description?: string;
-    qrCode?: string;
-    lineUrl?: string;  //  Phase 3: LINE 連結 URL
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-    memberCount?: number;
-  }>>> => {
-    const params = includeInactive ? '?includeInactive=true' : '';
-    return apiClient.get(`/teams${params}`)
+  getTeams: async (includeInactive?: boolean): Promise<ApiResponse<TeamResponse[]>> => {
+    return callApiContract(teamContracts.getTeams, { includeInactive })
   },
 
   // 創建團隊
   // Phase 3: 團隊創建時會並行生成 QR 碼，回應中包含 qrCode 和 lineUrl
-  createTeam: async (data: {
-    name: string;
-    description?: string;
-  }): Promise<ApiResponse<{
-    id: number;
-    name: string;
-    description?: string;
-    qrCode?: string;
-    lineUrl?: string;  //  Phase 3: LINE 連結 URL
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-  }>> => {
-    return apiClient.post('/teams', data)
+  createTeam: async (data: CreateTeamRequest): Promise<ApiResponse<TeamResponse>> => {
+    return callApiContract(teamContracts.createTeam, undefined, data)
   },
 
   // 更新團隊
-  updateTeam: async (teamId: number, data: {
-    name?: string;
-    description?: string;
-    isActive?: boolean;
-  }): Promise<ApiResponse<{
-    id: number;
-    name: string;
-    description?: string;
-    qrCode?: string;
-    lineUrl?: string;  //  Phase 3: LINE 連結 URL
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-  }>> => {
-    return apiClient.put(`/teams/${teamId}`, data)
+  updateTeam: async (
+    teamId: number,
+    data: UpdateTeamRequest
+  ): Promise<ApiResponse<TeamResponse>> => {
+    return callApiContract(teamContracts.updateTeam, { teamId }, data)
   },
 
   // 刪除團隊
   deleteTeam: async (teamId: number): Promise<ApiResponse<void>> => {
-    return apiClient.delete(`/teams/${teamId}`)
+    return callApiContract(teamContracts.deleteTeam, { teamId })
   },
 
   // 獲取團隊詳情
-  getTeamDetail: async (teamId: number): Promise<ApiResponse<{
-    id: number;
-    name: string;
-    description?: string;
-    qrCode?: string;
-    lineUrl?: string;  //  Phase 3: LINE 連結 URL
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-    memberCount?: number;
-  }>> => {
-    return apiClient.get(`/teams/${teamId}`)
+  getTeamDetail: async (teamId: number): Promise<ApiResponse<TeamResponse>> => {
+    return callApiContract(teamContracts.getTeamDetail, { teamId })
   },
 
   // 獲取團隊成員（特定團隊）
   getTeamMembersByTeam: async (teamId: number): Promise<ApiResponse<TeamMember[]>> => {
-    return apiClient.get(`/teams/${teamId}/members`)
+    return callApiContract(
+      teamContracts.getTeamMembersByTeam,
+      { teamId }
+    ) as Promise<ApiResponse<TeamMember[]>>
   },
 
   // 獲取團隊統計（特定團隊）
-  getTeamStatsByTeam: async (teamId: number): Promise<ApiResponse<{
-    totalMembers: number;
-    activeMembers: number;
-    pendingInvitations: number;
-    adminCount: number;
-  }>> => {
-    return apiClient.get(`/teams/${teamId}/stats`)
+  getTeamStatsByTeam: async (teamId: number): Promise<ApiResponse<TeamScopedStatsResponse>> => {
+    return callApiContract(teamContracts.getTeamStatsByTeam, { teamId })
   },
 
   // ==================== LIFF QR Code API ====================
   // 生成或重新生成團隊 LIFF QR 碼 (永久有效，每團隊一個)
-  generateLiffQR: async (teamId: number): Promise<ApiResponse<{
-    id: string;
-    liffUrl: string;
-    qrCodeUrl: string;
-    scanCount: number;
-    isActive: boolean;
-  }>> => {
-    return apiClient.post(`/teams/${teamId}/qr-code/liff`)
+  generateLiffQR: async (teamId: number): Promise<ApiResponse<LiffQRResponseBase>> => {
+    return callApiContract(teamContracts.generateLiffQR, { teamId })
   },
 
   // 獲取團隊 LIFF QR 碼
-  getLiffQRCode: async (teamId: number): Promise<ApiResponse<{
-    id: string;
-    liffUrl: string;
-    qrCodeUrl: string;
-    scanCount: number;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-  }>> => {
-    return apiClient.get(`/teams/${teamId}/qr-code/liff`)
+  getLiffQRCode: async (teamId: number): Promise<ApiResponse<LiffQRResponse>> => {
+    return callApiContract(teamContracts.getLiffQRCode, { teamId })
   },
 
   // 獲取 LIFF QR 碼統計
-  getLiffQRStats: async (teamId: number): Promise<ApiResponse<{
-    scanCount: number;
-    assignmentCount: number;
-    createdAt: string;
-    lastScannedAt: string;
-    isActive: boolean;
-  }>> => {
-    return apiClient.get(`/teams/${teamId}/qr-code/liff/stats`)
+  getLiffQRStats: async (teamId: number): Promise<ApiResponse<LiffQRStatsResponse>> => {
+    return callApiContract(teamContracts.getLiffQRStats, { teamId })
   },
 
   // 獲取團隊成員（用於指派功能）
   getTeamMembers: async (teamId?: number): Promise<ApiResponse<TeamMember[]>> => {
     try {
-      const url = teamId ? `/teams/${teamId}/members` : '/teams/members'
-      const response = await apiClient.get<TeamMember[]>(url)
+      const response = await callApiContract(
+        teamContracts.getTeamMembers,
+        { teamId }
+      ) as ApiResponse<TeamMember[]>
       
       if (response.success && response.data) {
         return {
@@ -364,7 +267,10 @@ export const teamApi = {
   // 獲取所有可用的指派對象（跨團隊，需要admin權限）
   getAvailableAssignees: async (): Promise<ApiResponse<TeamMember[]>> => {
     try {
-      const response = await apiClient.get<TeamMember[]>('/teams/assignees')
+      const response = await callApiContract(
+        teamContracts.getAvailableAssignees,
+        undefined
+      ) as ApiResponse<TeamMember[]>
       
       if (response.success && response.data) {
         // 過濾出活躍的agent和team角色成員
@@ -392,7 +298,10 @@ export const teamApi = {
         return { success: false, error: '成員 ID 不能為空' }
       }
 
-      const response = await apiClient.get<TeamMember>(`/teams/members/${memberId}`)
+      const response = await callApiContract(
+        teamContracts.getMember,
+        { memberId }
+      ) as ApiResponse<TeamMember>
 
       if (response.success && response.data) {
         return {
@@ -418,12 +327,11 @@ export const teamApi = {
         return { success: false, error: '成員 ID 不能為空' }
       }
 
-      // 使用新的多團隊 API: POST /api/teams/agent-teams/:agentId/join
-      const response = await apiClient.post<AgentTeamMembership>(`/teams/agent-teams/${agentId}/join`, {
+      const response = await callApiContract(teamMembershipContracts.joinTeam, { agentId }, {
         teamId,
         roleInTeam: 'member',
         isPrimary: false
-      })
+      }) as ApiResponse<AgentTeamMembership>
 
       if (response.success && response.data) {
         // 返回 TeamMember 格式以保持向後兼容
@@ -458,8 +366,7 @@ export const teamApi = {
         return { success: false, error: '成員 ID 不能為空' }
       }
 
-      // 使用新的多團隊 API: DELETE /api/teams/agent-teams/:agentId/leave/:teamId
-      const response = await apiClient.delete<void>(`/teams/agent-teams/${agentId}/leave/${teamId}`)
+      const response = await callApiContract(teamMembershipContracts.leaveTeam, { agentId, teamId })
 
       if (response.success) {
         return {
@@ -475,11 +382,10 @@ export const teamApi = {
   },
 
   // 批量從團隊移除成員
-  bulkRemoveMembersFromTeam: async (teamId: number, agentIds: string[]): Promise<ApiResponse<{
-    removed: string[];
-    failed: { agentId: string; error: string }[];
-    removedCount: number;
-  }>> => {
+  bulkRemoveMembersFromTeam: async (
+    teamId: number,
+    agentIds: string[]
+  ): Promise<ApiResponse<BulkRemoveMembersFromTeamResponse>> => {
     try {
       if (!teamId) {
         return { success: false, error: '團隊 ID 不能為空' }
@@ -491,11 +397,11 @@ export const teamApi = {
         return { success: false, error: '每次最多移除 50 位成員' }
       }
 
-      const response = await apiClient.post<{
-        removed: string[];
-        failed: { agentId: string; error: string }[];
-        removedCount: number;
-      }>(`/teams/${teamId}/members/bulk-remove`, { agentIds })
+      const response = await callApiContract(
+        teamContracts.bulkRemoveMembersFromTeam,
+        { teamId },
+        { agentIds }
+      )
 
       if (response.success) {
         return response
@@ -522,12 +428,7 @@ export const teamApi = {
     teamId: number,
     agentIds: string[],
     roleInTeam?: 'member' | 'lead' | 'supervisor'
-  ): Promise<ApiResponse<{
-    added: string[];
-    skipped: string[];
-    errors: { agentId: string; error: string }[];
-    addedCount: number;
-  }>> => {
+  ): Promise<ApiResponse<BatchAddMembersToTeamResponse>> => {
     try {
       if (!teamId) {
         return { success: false, error: '團隊 ID 不能為空' }
@@ -539,7 +440,7 @@ export const teamApi = {
         return { success: false, error: '每次最多新增 50 位成員' }
       }
 
-      return apiClient.post(`/teams/${teamId}/members/batch`, {
+      return callApiContract(teamContracts.batchAddMembersToTeam, { teamId }, {
         agentIds,
         roleInTeam: roleInTeam || 'member'
       })
@@ -563,7 +464,7 @@ export const teamApi = {
       if (!agentId?.trim()) {
         return { success: false, error: '客服 ID 不能為空' }
       }
-      return apiClient.get(`/teams/agent-teams/${agentId}`)
+      return callApiContract(teamMembershipContracts.getAgentTeams, { agentId })
     } catch (error) {
       console.error('Get agent teams failed:', error)
       return { success: false, error: '網路錯誤，無法獲取客服團隊' }
@@ -577,7 +478,7 @@ export const teamApi = {
    * @param options 可選參數 (角色、是否為主要團隊)
    */
   joinTeam: async (agentId: string, teamId: number, options?: {
-    roleInTeam?: 'member' | 'lead' | 'supervisor';
+    roleInTeam?: TeamRoleInTeam;
     isPrimary?: boolean;
   }): Promise<ApiResponse<AgentTeamMembership>> => {
     try {
@@ -587,7 +488,7 @@ export const teamApi = {
       if (!teamId) {
         return { success: false, error: '團隊 ID 不能為空' }
       }
-      return apiClient.post(`/teams/agent-teams/${agentId}/join`, {
+      return callApiContract(teamMembershipContracts.joinTeam, { agentId }, {
         teamId,
         ...options
       })
@@ -603,7 +504,7 @@ export const teamApi = {
    * @param teamIds 團隊 ID 陣列
    * @param roleInTeam 團隊內角色
    */
-  joinMultipleTeams: async (agentId: string, teamIds: number[], roleInTeam?: string): Promise<ApiResponse<{
+  joinMultipleTeams: async (agentId: string, teamIds: number[], roleInTeam?: TeamRoleInTeam): Promise<ApiResponse<{
     added: number[];
     skipped: number[];
     errors: { teamId: number; error: string }[];
@@ -615,7 +516,7 @@ export const teamApi = {
       if (!teamIds?.length) {
         return { success: false, error: '團隊 ID 列表不能為空' }
       }
-      return apiClient.post(`/teams/agent-teams/${agentId}/join-multiple`, {
+      return callApiContract(teamMembershipContracts.joinMultipleTeams, { agentId }, {
         teamIds,
         roleInTeam
       })
@@ -638,7 +539,7 @@ export const teamApi = {
       if (!teamId) {
         return { success: false, error: '團隊 ID 不能為空' }
       }
-      return apiClient.delete(`/teams/agent-teams/${agentId}/leave/${teamId}`)
+      return callApiContract(teamMembershipContracts.leaveTeam, { agentId, teamId })
     } catch (error) {
       console.error('Leave team failed:', error)
       return { success: false, error: '網路錯誤，無法離開團隊' }
@@ -652,7 +553,7 @@ export const teamApi = {
    * @param options 更新選項
    */
   updateAgentTeamRole: async (agentId: string, teamId: number, options: {
-    roleInTeam?: 'member' | 'lead' | 'supervisor';
+    roleInTeam?: TeamRoleInTeam;
     isPrimary?: boolean;
   }): Promise<ApiResponse<AgentTeamMembership>> => {
     try {
@@ -662,7 +563,11 @@ export const teamApi = {
       if (!teamId) {
         return { success: false, error: '團隊 ID 不能為空' }
       }
-      return apiClient.put(`/teams/agent-teams/${agentId}/role/${teamId}`, options)
+      return callApiContract(
+        teamMembershipContracts.updateAgentTeamRole,
+        { agentId, teamId },
+        options
+      )
     } catch (error) {
       console.error('Update agent team role failed:', error)
       return { success: false, error: '網路錯誤，無法更新角色' }
@@ -682,7 +587,7 @@ export const teamApi = {
       if (!teamId) {
         return { success: false, error: '團隊 ID 不能為空' }
       }
-      return apiClient.put(`/teams/agent-teams/${agentId}/primary/${teamId}`)
+      return callApiContract(teamMembershipContracts.setPrimaryTeam, { agentId, teamId })
     } catch (error) {
       console.error('Set primary team failed:', error)
       return { success: false, error: '網路錯誤，無法設定主要團隊' }
@@ -694,20 +599,14 @@ export const teamApi = {
    * @param teamId 團隊 ID
    * @returns 後端返回格式：{ id, email, displayName, role, isActive, teams, primaryTeamId }
    */
-  getTeamMembersWithTeams: async (teamId: number): Promise<ApiResponse<Array<{
-    id: string;
-    email: string;
-    displayName: string;
-    role: string;
-    isActive: boolean;
-    teams: AgentTeamMembership[];
-    primaryTeamId?: number;
-  }>>> => {
+  getTeamMembersWithTeams: async (
+    teamId: number
+  ): Promise<ApiResponse<TeamMemberWithTeamsResponse[]>> => {
     try {
       if (!teamId) {
         return { success: false, error: '團隊 ID 不能為空' }
       }
-      return apiClient.get(`/teams/agent-teams/team/${teamId}/members`)
+      return callApiContract(teamMembershipContracts.getTeamMembersWithTeams, { teamId })
     } catch (error) {
       console.error('Get team members with teams failed:', error)
       return { success: false, error: '網路錯誤，無法獲取團隊成員' }

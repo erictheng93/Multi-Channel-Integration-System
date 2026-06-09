@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { MessageInputAttachment, UploadResult } from '@/types/message-input'
 import { getApiUrl } from '@/config/runtime'
+import { applyAuthenticatedXhrHeaders } from '@/api/authenticatedFetch'
 
 /**
  * XHR-based file upload with real-time progress tracking.
@@ -22,7 +23,6 @@ export function useFileUploadProgress(conversationId: Ref<string>) {
       const xhr = new globalThis.XMLHttpRequest()
 
       const url = getApiUrl(`/api/conversations/${conversationId.value}/attachments`)
-      const token = localStorage.getItem('token') || localStorage.getItem('authToken')
 
       // Real-time upload progress
       xhr.upload.onprogress = (event) => {
@@ -70,10 +70,7 @@ export function useFileUploadProgress(conversationId: Ref<string>) {
       xhr.open('POST', url, true)
       xhr.timeout = 120000 // 2-minute timeout
 
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-        xhr.setRequestHeader('X-Session-Id', token)
-      }
+      applyAuthenticatedXhrHeaders(xhr, 'POST')
 
       const formData = new globalThis.FormData()
       formData.append('file', attachment.file)

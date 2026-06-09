@@ -63,10 +63,21 @@ describe('Integration: Authentication Flow', () => {
       },
       writable: true
     })
+
+    Object.defineProperty(global, 'sessionStorage', {
+      value: {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn()
+      },
+      writable: true
+    })
     
     Object.defineProperty(global, 'window', {
       value: {
         localStorage: global.localStorage,
+        sessionStorage: global.sessionStorage,
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
@@ -119,7 +130,9 @@ describe('Integration: Authentication Flow', () => {
       password: 'password123'
     })
     expect(mockSetAuthHeader).toHaveBeenCalled()
-    expect(global.localStorage.setItem).toHaveBeenCalledWith('token', authToken)
+    expect(global.sessionStorage.setItem).toHaveBeenCalledWith('token', authToken)
+    expect(global.localStorage.setItem).not.toHaveBeenCalledWith('token', authToken)
+    expect(global.localStorage.removeItem).toHaveBeenCalledWith('token')
   })
 
   it('should handle complete logout flow', async () => {

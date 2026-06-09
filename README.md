@@ -250,7 +250,7 @@
 ### 前端環境變數
 配置檔案位置：`frontend/`
 - `.env.development` - 開發環境配置
-- `.env.production` - 生產環境配置
+- `.env.production.example` - 生產環境變數範本；正式值由 CI / Cloudflare Pages 變數提供
 - `.env.example` - 環境變數範本（含完整說明）
 
 **關鍵環境變數：**
@@ -310,7 +310,7 @@ export default {
 3. 執行 `bun run dev`
 
 **切換到生產環境：**
-1. 複製 `frontend/.env.production` 為 `frontend/.env`
+1. 以 `frontend/.env.production.example` 為參考，在 CI / Cloudflare Pages 設定正式環境變數
 2. 執行 `bun run build` 後部署
 
 ### 優勢

@@ -23,6 +23,42 @@ import type {
 
 // Context logger for auth middleware
 const log = createContextLogger('AuthMiddleware');
+export const AUTH_COOKIE_NAMES = {
+  access: 'mcis_access',
+  refresh: 'mcis_refresh',
+  csrf: 'mcis_csrf',
+} as const;
+
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function getBearerToken(authHeader: string | undefined): string | null {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.substring(7).trim();
+  return token.length > 0 ? token : null;
+}
+
+export function parseCookieHeader(cookieHeader: string | undefined): Record<string, string> {
+  if (!cookieHeader) {
+    return {};
+  }
+
+  return cookieHeader.split(';').reduce<Record<string, string>>((cookies, part) => {
+    const [rawName, ...rawValueParts] = part.split('=');
+    const name = rawName?.trim();
+    if (!name) {
+      return cookies;
+    }
+    cookies[name] = decodeURIComponent(rawValueParts.join('=').trim());
+    return cookies;
+  }, {});
+}
+
+function csrfMatches(cookies: Record<string, string>, csrfHeader: string | undefined): boolean {
+  const csrfCookie = cookies[AUTH_COOKIE_NAMES.csrf];
+  return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
+}
 
 /**
  * F15: re-fetch the user's team membership from agent_teams so changes to
@@ -170,13 +206,23 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       return await next();
     }
 
-    const authHeader = c.req.header('Authorization');
+    const cookies = parseCookieHeader(c.req.header('Cookie'));
+    const bearerToken = getBearerToken(c.req.header('Authorization'));
+    const cookieToken = cookies[AUTH_COOKIE_NAMES.access] || null;
+    const token = bearerToken ?? cookieToken;
+    const usingCookieAuth = !bearerToken && Boolean(cookieToken);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return c.json({ error: 'Missing or invalid authorization header' }, 401);
     }
 
-    const token = authHeader.substring(7); // 移除 "Bearer " 前綴
+    if (
+      usingCookieAuth &&
+      UNSAFE_METHODS.has(c.req.method.toUpperCase()) &&
+      !csrfMatches(cookies, c.req.header('X-CSRF-Token'))
+    ) {
+      return c.json({ error: 'Invalid CSRF token' }, 403);
+    }
 
     // 驗證 JWT
     const payload = await verifyJWT(token, c.env.JWT_SECRET);

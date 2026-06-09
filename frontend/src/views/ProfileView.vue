@@ -236,6 +236,7 @@ import { useToast } from '@/composables/useToast'
 import { apiClient } from '@/api/base'
 import { authApi } from '@/api/auth'
 import { createLogger } from '@/utils/logger'
+import { setStoredAuthItem } from '@/utils/authStorage'
 import type { Agent } from '@/types'
 
 const logger = createLogger('ProfileView')
@@ -309,13 +310,13 @@ async function onSaveProfile(): Promise<void> {
       throw new Error(body?.error ?? '儲存失敗')
     }
 
-    // 同步更新 authStore.currentAgent (localStorage 也同步)
+    // 同步更新 authStore.currentAgent (session-scoped auth storage 也同步)
     if (authStore.currentAgent) {
       authStore.currentAgent.displayName = body.data.displayName
       authStore.currentAgent.name = body.data.displayName
       try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('currentAgent', JSON.stringify(authStore.currentAgent))
+        if (typeof window !== 'undefined') {
+          setStoredAuthItem('currentAgent', JSON.stringify(authStore.currentAgent))
         }
       } catch (err) {
         logger.warn('Failed to persist currentAgent to localStorage', { error: err })

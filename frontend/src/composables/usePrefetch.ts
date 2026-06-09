@@ -1,5 +1,6 @@
 // 第五階段：簡化版預載入 - 利用瀏覽器原生能力
 import { ref } from 'vue'
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('usePrefetch')
@@ -51,7 +52,7 @@ export function usePrefetch() {
     
     try {
       // 使用低優先級 fetch
-      const response = await fetch(endpoint, {
+      const response = await authenticatedFetch(endpoint, {
         priority: 'low' as globalThis.RequestPriority,
         cache: 'force-cache' // 利用瀏覽器快取
       })

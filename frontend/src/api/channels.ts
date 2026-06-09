@@ -2,190 +2,43 @@
 // 檔案路徑：/frontend/src/api/channels.ts
 // Created by: Channel Management Feature
 
-import { apiClient } from './base'
+import { callApiContract } from './contract-client'
+import { channelContracts } from '@shared/api-contracts'
 import type { ApiResponse } from '@/types'
+import type {
+  ChannelConfig,
+  ChannelHealthStatus,
+  ChannelIntegration,
+  ChannelPlatform,
+  ChannelStatistics,
+  ChannelStatsJson,
+  ChannelVerificationRequest,
+  ChannelVerificationResponse,
+  ChannelWebhookConfig,
+  CreateChannelRequest,
+  CreateChannelResponse,
+  ListChannelsResponse,
+  UpdateChannelRequest
+} from '@shared/api-contracts'
 
-/**
- * Channel Platform Types
- */
-export type ChannelPlatform = 'line' | 'facebook' | 'whatsapp'
-
-/**
- * LINE Channel Configuration
- */
-export interface LineChannelConfig {
-  channelId: string
-  channelAccessToken: string
-  channelSecret: string
-  webhookUrl?: string
-  webhookToken?: string
-}
-
-/**
- * Facebook Channel Configuration
- */
-export interface FacebookChannelConfig {
-  pageId: string
-  accessToken: string
-  appSecret: string
-  webhookUrl?: string
-  webhookToken?: string
-}
-
-/**
- * WhatsApp Channel Configuration
- */
-export interface WhatsAppChannelConfig {
-  phoneNumber: string
-  businessAccountId: string
-  accessToken: string
-  webhookUrl?: string
-  webhookToken?: string
-}
-
-/**
- * JSON-based channel configuration (non-sensitive)
- */
-export interface ChannelConfig {
-  channelId?: string
-  pageId?: string
-  phoneNumber?: string
-  businessAccountId?: string
-  [key: string]: string | number | boolean | undefined
-}
-
-/**
- * Webhook configuration
- */
-export interface ChannelWebhookConfig {
-  url?: string
-  token?: string
-  verifyToken?: string
-}
-
-/**
- * Channel usage statistics
- */
-export interface ChannelStatsJson {
-  totalSent: number
-  totalReceived: number
-  lastMessageAt?: string
-}
-
-/**
- * Channel Integration Entity
- */
-export interface ChannelIntegration {
-  id: number
-  teamId: number
-  platform: ChannelPlatform
-
-  // JSON-based configuration (primary)
-  config?: string | null
-  webhookConfig?: string | null
-  stats?: string | null
-  // NOTE: credentials field is stripped by the backend — never sent to the frontend
-
-  // Status
-  isActive: boolean
-  isVerified: boolean
-  lastVerifiedAt?: string | null
-
-  // Error tracking
-  lastError?: string | null
-  errorCount: number
-
-  // Metadata
-  configuredBy?: string | null
-  configMetadata?: Record<string, unknown> | null
-
-  // Timestamps
-  createdAt: string
-  updatedAt: string
-}
-
-/**
- * Create Channel Request
- */
-export interface CreateChannelRequest {
-  platform: ChannelPlatform
-  lineConfig?: LineChannelConfig
-  facebookConfig?: FacebookChannelConfig
-  whatsappConfig?: WhatsAppChannelConfig
-  configMetadata?: Record<string, unknown>
-}
-
-/**
- * Update Channel Request
- */
-export interface UpdateChannelRequest {
-  lineConfig?: Partial<LineChannelConfig>
-  facebookConfig?: Partial<FacebookChannelConfig>
-  whatsappConfig?: Partial<WhatsAppChannelConfig>
-  isActive?: boolean
-  configMetadata?: Record<string, unknown>
-}
-
-/**
- * Channel Verification Request
- */
-export interface ChannelVerificationRequest {
-  testMessage?: string
-}
-
-/**
- * Channel Verification Response
- */
-export interface ChannelVerificationResponse {
-  success: boolean
-  verified: boolean
-  message: string
-  details?: {
-    channelId?: string
-    webhookUrl?: string
-    lastVerifiedAt?: string
-  }
-}
-
-/**
- * Channel Statistics
- */
-export interface ChannelStatistics {
-  totalMessagesSent: number
-  totalMessagesReceived: number
-  successRate: number
-  lastMessageAt?: string
-  averageResponseTime?: number
-}
-
-/**
- * Channel Health Status
- */
-export interface ChannelHealthStatus {
-  status: 'healthy' | 'degraded' | 'unhealthy'
-  lastChecked: string
-  issues?: string[]
-  uptime?: number
-}
-
-/**
- * List Channels Response
- */
-export interface ListChannelsResponse {
-  success: boolean
-  data: ChannelIntegration[]
-  count: number
-}
-
-/**
- * Create Channel Response
- */
-export interface CreateChannelResponse {
-  success: boolean
-  data: ChannelIntegration
-  webhookUrl: string
-  message?: string
-}
+export type {
+  ChannelConfig,
+  ChannelHealthStatus,
+  ChannelIntegration,
+  ChannelPlatform,
+  ChannelStatistics,
+  ChannelStatsJson,
+  ChannelVerificationRequest,
+  ChannelVerificationResponse,
+  ChannelWebhookConfig,
+  CreateChannelRequest,
+  CreateChannelResponse,
+  FacebookChannelConfig,
+  LineChannelConfig,
+  ListChannelsResponse,
+  UpdateChannelRequest,
+  WhatsAppChannelConfig
+} from '@shared/api-contracts'
 
 /**
  * Channel API Client
@@ -196,8 +49,7 @@ export const channelsApi = {
    * @param platform - Optional platform filter
    */
   list: async (platform?: ChannelPlatform): Promise<ListChannelsResponse> => {
-    const query = platform ? `?platform=${platform}` : ''
-    return apiClient.get(`/channels${query}`) as Promise<ListChannelsResponse>
+    return callApiContract(channelContracts.list, { platform })
   },
 
   /**
@@ -205,7 +57,7 @@ export const channelsApi = {
    * @param data - Channel configuration data
    */
   create: async (data: CreateChannelRequest): Promise<CreateChannelResponse> => {
-    return apiClient.post('/channels', data) as Promise<CreateChannelResponse>
+    return callApiContract(channelContracts.create, {}, data)
   },
 
   /**
@@ -213,7 +65,7 @@ export const channelsApi = {
    * @param channelId - Channel ID
    */
   get: async (channelId: number): Promise<ApiResponse<ChannelIntegration>> => {
-    return apiClient.get(`/channels/${channelId}`)
+    return callApiContract(channelContracts.get, { channelId })
   },
 
   /**
@@ -225,7 +77,7 @@ export const channelsApi = {
     channelId: number,
     data: UpdateChannelRequest
   ): Promise<ApiResponse<ChannelIntegration>> => {
-    return apiClient.put(`/channels/${channelId}`, data)
+    return callApiContract(channelContracts.update, { channelId }, data)
   },
 
   /**
@@ -233,7 +85,7 @@ export const channelsApi = {
    * @param channelId - Channel ID
    */
   delete: async (channelId: number): Promise<ApiResponse<{ message: string }>> => {
-    return apiClient.delete(`/channels/${channelId}`)
+    return callApiContract(channelContracts.delete, { channelId })
   },
 
   /**
@@ -245,7 +97,7 @@ export const channelsApi = {
     channelId: number,
     data?: ChannelVerificationRequest
   ): Promise<ChannelVerificationResponse> => {
-    return apiClient.post(`/channels/${channelId}/verify`, data || {}) as Promise<ChannelVerificationResponse>
+    return callApiContract(channelContracts.verify, { channelId }, data || {})
   },
 
   /**
@@ -253,7 +105,7 @@ export const channelsApi = {
    * @param channelId - Channel ID
    */
   getStats: async (channelId: number): Promise<ApiResponse<ChannelStatistics>> => {
-    return apiClient.get(`/channels/${channelId}/stats`)
+    return callApiContract(channelContracts.getStats, { channelId })
   },
 
   /**
@@ -261,7 +113,7 @@ export const channelsApi = {
    * @param channelId - Channel ID
    */
   checkHealth: async (channelId: number): Promise<ApiResponse<ChannelHealthStatus>> => {
-    return apiClient.get(`/channels/${channelId}/health`)
+    return callApiContract(channelContracts.checkHealth, { channelId })
   }
 }
 

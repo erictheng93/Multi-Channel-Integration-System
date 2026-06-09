@@ -8,6 +8,12 @@ import type { Agent, LoginRequest, LoginResponse } from '@/types';
 import { authApi } from '@/api/auth';
 import { apiClient } from '@/api/base';
 import { createLogger } from '@/utils/logger'
+import {
+  clearAuthStorageItems,
+  clearLegacyAuthLocalStorage,
+  getStoredAuthItem,
+  setStoredAuthItem
+} from '@/utils/authStorage'
 
 const frontendLogger = createLogger('auth')
 
@@ -16,64 +22,15 @@ type TeamRoleInTeam = 'member' | 'lead' | 'supervisor';
 
 // 會話時間常量 - 統一管理
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 天
-const TOKEN_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 分鐘
+const SESSION_REFRESH_THRESHOLD = 30 * 60 * 1000; // 30 分鐘
 
 // 會話恢復狀態類型
 type SessionStatus = 'pending' | 'authenticated' | 'unauthenticated' | 'restored';
 
-/**
- * UTF-8 安全的 Base64 URL 解碼
- * 使用 TextDecoder 支持所有 Unicode 字符（包括中文、emoji 等）
- * 符合 RFC 7519 (JWT) 標準
- */
-function base64UrlDecode(str: string): string {
-  try {
-    // 將 URL 安全格式轉回標準 Base64
-    const base64 = str
-      .replace(/-/g, '+')
-      .replace(/_/g, '/')
-      .padEnd(str.length + (4 - str.length % 4) % 4, '=');
-
-    // Base64 解碼為二進制字符串
-    const binaryString = atob(base64);
-
-    // 轉為 Uint8Array
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    // UTF-8 解碼
-    const decoder = new TextDecoder();
-    return decoder.decode(bytes);
-  } catch (error) {
-    console.error('[base64UrlDecode] Decoding failed:', error);
-    throw error;
-  }
-}
-
-/**
- * Parse JWT exp claim and return expiry time in milliseconds.
- * Returns null if token is invalid or has no exp claim.
- */
-function getJwtExpiryMs(tokenStr: string): number | null {
-  try {
-    const parts = tokenStr.split('.');
-    if (parts.length !== 3 || !parts[1]) {return null;}
-    const payload = JSON.parse(base64UrlDecode(parts[1]));
-    if (typeof payload.exp !== 'number') {return null;}
-    return payload.exp * 1000;
-  } catch {
-    return null;
-  }
-}
-
 // Utility functions for auth management
 function clearAuthStorage() {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    ['token', 'refreshToken', 'sessionExpiry', 'currentAgent'].forEach(key =>
-      localStorage.removeItem(key)
-    );
+  if (typeof window !== 'undefined') {
+    clearAuthStorageItems();
   }
 }
 
@@ -83,15 +40,12 @@ function isValidAgent(agent: Agent | null): boolean {
 }
 
 function storeAuthData(loginData: LoginResponse, expiry: number) {
-  if (typeof window === 'undefined' || !window.localStorage) {return;}
+  if (typeof window === 'undefined') {return;}
 
-  localStorage.setItem('token', loginData.token);
-  localStorage.setItem('sessionExpiry', expiry.toString());
-  localStorage.setItem('currentAgent', JSON.stringify(loginData.agent));
+  setStoredAuthItem('sessionExpiry', expiry.toString());
+  setStoredAuthItem('currentAgent', JSON.stringify(loginData.agent));
 
-  if (loginData.refreshToken) {
-    localStorage.setItem('refreshToken', loginData.refreshToken);
-  }
+  clearLegacyAuthLocalStorage();
 }
 
 function handleLoginError(error: unknown): string {
@@ -133,31 +87,6 @@ export const useAuthStore = defineStore('auth', () => {
     apiClient.setContextTeam(null);
   }
 
-  // Phase 1 Optimization: Parse multi-team data from JWT token
-  function parseJwtTeamData(tokenStr: string): void {
-    try {
-      const parts = tokenStr.split('.');
-      if (parts.length === 3 && parts[1]) {
-        const payload = JSON.parse(base64UrlDecode(parts[1]));
-
-        // Extract multi-team data from JWT
-        if (payload.allowedTeamIds && Array.isArray(payload.allowedTeamIds)) {
-          allowedTeamIds.value = payload.allowedTeamIds;
-        }
-        if (payload.teamRoles && typeof payload.teamRoles === 'object') {
-          teamRoles.value = payload.teamRoles;
-        }
-
-        frontendLogger.debug('[Auth] Parsed JWT team data:', {
-          allowedTeamIds: allowedTeamIds.value,
-          teamRoles: teamRoles.value
-        });
-      }
-    } catch (e) {
-      console.error('[Auth] Failed to parse JWT team data:', e);
-    }
-  }
-
   // Phase 1 Optimization: Switch team context
   function switchTeam(teamId: number): boolean {
     // Validate: admin can switch to any team, agents must have access
@@ -194,74 +123,32 @@ export const useAuthStore = defineStore('auth', () => {
     return allowedTeamIds.value.includes(teamId);
   }
 
-  // Initialize from localStorage with JWT validation
-  // 修復無限刷新問題：檢查 JWT token 的有效性
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const storedToken = localStorage.getItem('token');
-    const expiry = localStorage.getItem('sessionExpiry');
+  // Initialize non-credential session metadata. HttpOnly auth cookies are
+  // verified later by initializeSession() through /auth/me.
+  if (typeof window !== 'undefined') {
+    const expiry = getStoredAuthItem('sessionExpiry');
+    const parsedExpiry = expiry ? parseInt(expiry, 10) : null;
+    const isSessionFresh = parsedExpiry !== null && Date.now() <= parsedExpiry;
 
-    // Check session validity first
-    const isSessionValid = expiry && Date.now() <= parseInt(expiry, 10);
+    if (isSessionFresh) {
+      sessionExpiry.value = parsedExpiry;
 
-    if (isSessionValid && storedToken) {
-      // 驗證 JWT token 是否有效（檢查格式和過期時間）
-      let isJwtValid = false;
-      try {
-        const parts = storedToken.split('.');
-        if (parts.length === 3 && parts[1]) {
-          const payload = JSON.parse(atob(parts[1]));
-          // 檢查必要字段
-          if (payload.userId && payload.role) {
-            // 檢查 JWT 是否過期
-            if (payload.exp) {
-              const currentTime = Math.floor(Date.now() / 1000);
-              isJwtValid = payload.exp > currentTime;
-              if (!isJwtValid) {
-                console.warn('[Auth Init] JWT token expired, clearing storage');
-              }
-            } else {
-              // 沒有 exp 字段，假設有效
-              isJwtValid = true;
-            }
-          }
+      const storedAgent = getStoredAuthItem('currentAgent');
+      if (storedAgent) {
+        try {
+          currentAgent.value = JSON.parse(storedAgent);
+        } catch {
+          clearAuthStorage();
         }
-      } catch (e) {
-        console.error('[Auth Init] JWT validation failed:', e);
-        isJwtValid = false;
       }
 
-      // 只有 JWT 有效時才恢復 token
-      if (isJwtValid) {
-        token.value = storedToken;
-        refreshToken.value = localStorage.getItem('refreshToken');
-        sessionExpiry.value = parseInt(expiry || '0', 10);
-
-        // Phase 1: Parse multi-team data from stored token
-        parseJwtTeamData(storedToken);
-
-        // Phase 1: Restore team context from localStorage
-        const storedContextTeamId = localStorage.getItem('contextTeamId');
-        if (storedContextTeamId) {
-          const parsed = parseInt(storedContextTeamId, 10);
-          if (!isNaN(parsed)) {
-            contextTeamId.value = parsed;
-            apiClient.setContextTeam(parsed);
-          }
+      const storedContextTeamId = localStorage.getItem('contextTeamId');
+      if (storedContextTeamId) {
+        const parsed = parseInt(storedContextTeamId, 10);
+        if (!isNaN(parsed)) {
+          contextTeamId.value = parsed;
+          apiClient.setContextTeam(parsed);
         }
-
-        // Restore agent data
-        const storedAgent = localStorage.getItem('currentAgent');
-        if (storedAgent) {
-          try {
-            currentAgent.value = JSON.parse(storedAgent);
-          } catch {
-            clearAuthStorage();
-          }
-        }
-      } else {
-        // JWT 已過期或無效，清除所有數據 + apiClient 記憶體中的 stale token
-        clearAuthStorage();
-        apiClient.removeAuthHeader();
       }
     } else {
       clearAuthStorage();
@@ -303,16 +190,14 @@ export const useAuthStore = defineStore('auth', () => {
         };
       }
 
-      // Set auth state
-      token.value = loginData.token;
-      refreshToken.value = loginData.refreshToken || null;
+      // Set auth state. Access and refresh credentials are issued as
+      // HttpOnly cookies by the backend; do not mirror them in JS storage.
+      token.value = null;
+      refreshToken.value = null;
       currentAgent.value = loginData.agent;
 
       const expiry = Date.now() + SESSION_DURATION;
       sessionExpiry.value = expiry;
-
-      // Phase 1: Parse multi-team data from new token
-      parseJwtTeamData(loginData.token);
 
       // Phase 1: Set initial team context to agent's primary team
       if (loginData.agent.primaryTeamId) {
@@ -321,7 +206,6 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Store auth data
       storeAuthData(loginData, expiry);
-      authApi.setAuthHeader(loginData.token, loginData.refreshToken);
       setSessionStatus('authenticated');
 
       return true;
@@ -341,7 +225,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout(callAPI = true) {
     // Call logout API if requested
-    if (callAPI && token.value) {
+    if (callAPI && (currentAgent.value || sessionStatus.value === 'authenticated')) {
       try {
         await authApi.logout();
       } catch (_err) {
@@ -357,10 +241,7 @@ export const useAuthStore = defineStore('auth', () => {
     
     // Clear localStorage (auth + conversation caches to prevent cross-user contamination)
     if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('sessionExpiry');
-      localStorage.removeItem('currentAgent');
+      clearAuthStorageItems();
 
       // Clear all caches to prevent cross-user data leakage
       const keysToRemove: string[] = [];
@@ -397,8 +278,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 智能獲取當前用戶 - 優先使用快取
   async function fetchCurrentAgent(forceRefresh = false) {
-    if (!token.value) {return;}
-
     // 優化：如果已有有效資料且非強制刷新，直接返回
     if (!forceRefresh && currentAgent.value && isValidAgent(currentAgent.value)) {
       if (import.meta.env.DEV) {
@@ -413,13 +292,13 @@ export const useAuthStore = defineStore('auth', () => {
       }
       
       const response = await authApi.me();
-      if (response.success && response.data) {
+      if (response?.success && response.data) {
         currentAgent.value = response.data;
         // 同步更新 localStorage
         if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('currentAgent', JSON.stringify(response.data));
+          setStoredAuthItem('currentAgent', JSON.stringify(response.data));
         }
-      } else if (response.status === 401) {
+      } else if (response?.status === 401) {
         await logout(false);
       }
     } catch (_err) {
@@ -429,17 +308,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 驗證會話是否有效 (PURE FUNCTION - No side effects)
   function validateSession(): boolean {
-    if (!token.value) {return false;}
-
-    // 增強：檢查 Token 格式和內容有效性
-    if (!isTokenValid()) {
-      console.warn('[Auth] Invalid token detected during session validation');
-      // Do NOT call logout here - validation functions must be pure
-      // Caller should handle logout based on validation result
-      return false;
-    }
-
-    if (!sessionExpiry.value) {return true;}
+    if (!sessionExpiry.value) {return false;}
 
     // 檢查是否過期
     const isValid = Date.now() < sessionExpiry.value;
@@ -452,16 +321,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 延長會話時間
   function extendSession() {
-    if (token.value && typeof window !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const newExpiry = Date.now() + SESSION_DURATION;
       sessionExpiry.value = newExpiry;
-      localStorage.setItem('sessionExpiry', newExpiry.toString());
+      setStoredAuthItem('sessionExpiry', newExpiry.toString());
     }
   }
 
   // 自動延長會話 - 在用戶活動時調用
   function autoExtendSession() {
-    if (token.value && validateSession()) {
+    if (validateSession()) {
       // 如果會話還有不到 1 天就過期，自動延長
       const oneDay = 24 * 60 * 60 * 1000;
       if (sessionExpiry.value && (sessionExpiry.value - Date.now()) < oneDay) {
@@ -472,65 +341,30 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Check if access token JWT has expired (uses JWT exp claim, not sessionExpiry)
   function isTokenExpired(): boolean {
-    if (!token.value) {return true;}
-    const expiryMs = getJwtExpiryMs(token.value);
-    if (expiryMs === null) {return true;}
-    return Date.now() >= expiryMs;
+    return !validateSession();
   }
 
   // 新增：驗證 Token 格式和內容
   function isTokenValid(): boolean {
-    if (!token.value) {return false;}
-
-    try {
-      // 檢查 Token 格式（JWT 應該有 3 部分）
-      const parts = token.value.split('.');
-      if (parts.length !== 3 || !parts[1]) {return false;}
-
-      // 使用 UTF-8 安全的解碼函數解析 payload
-      const payload = JSON.parse(base64UrlDecode(parts[1]));
-      if (!payload.userId || !payload.role) {return false;}
-
-      // 檢查 Token 是否過期
-      if (payload.exp) {
-        const currentTime = Math.floor(Date.now() / 1000);
-        if (payload.exp <= currentTime) {
-          console.warn('[Auth] Token has expired');
-          return false;
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('[Auth] Token validation failed:', error);
-      return false;
-    }
+    return validateSession();
   }
 
   // Check if token should be proactively refreshed (PURE FUNCTION - No side effects)
   // Uses JWT exp claim to determine proximity to expiry, not sessionExpiry
   function shouldRefreshToken(): boolean {
-    if (!token.value || !refreshToken.value) {return false;}
-
-    if (isTokenExpired()) {
-      console.warn('[Auth] Token has expired, cannot proactively refresh');
-      return false;
-    }
-
-    const expiryMs = getJwtExpiryMs(token.value);
-    if (expiryMs === null) {return false;}
-    return (expiryMs - Date.now()) < TOKEN_REFRESH_THRESHOLD;
+    if (!sessionExpiry.value || !validateSession()) {return false;}
+    return (sessionExpiry.value - Date.now()) < SESSION_REFRESH_THRESHOLD;
   }
 
   // 主動刷新 token
   async function proactiveTokenRefresh() {
-    if (shouldRefreshToken() && refreshToken.value) {
+    if (shouldRefreshToken()) {
       const result = await refreshAuthToken();
       if (result.success) {
         const newExpiry = Date.now() + SESSION_DURATION;
         sessionExpiry.value = newExpiry;
         if (typeof window !== 'undefined') {
-          localStorage.setItem('sessionExpiry', newExpiry.toString());
+          setStoredAuthItem('sessionExpiry', newExpiry.toString());
         }
       }
     }
@@ -551,41 +385,26 @@ export const useAuthStore = defineStore('auth', () => {
     setSessionStatus('pending');
     
     try {
-      if (!token.value) {
-        setSessionStatus('unauthenticated');
-        return;
-      }
-      
       if (!validateSession()) {
         await logout(false);
         setSessionStatus('unauthenticated');
         return;
       }
-      
-      // 優化：如果已有有效的 currentAgent，直接使用快取
-      if (currentAgent.value && isValidAgent(currentAgent.value)) {
-        setSessionStatus('authenticated');
-        if (import.meta.env.DEV) {
-          frontendLogger.debug(' Using cached agent data, skipping /auth/me request');
-        }
-        return;
-      }
-      
-      // 只有在沒有有效 currentAgent 時才發送 API 請求
+
       if (import.meta.env.DEV) {
-        frontendLogger.debug(' No cached agent data, fetching from server...');
+        frontendLogger.debug(' Verifying cookie-backed session with /auth/me...');
       }
       
       const response = await authApi.me();
       
-      if (response.success && response.data) {
+      if (response?.success && response.data) {
         currentAgent.value = response.data;
         // 同步更新 localStorage
         if (typeof window !== 'undefined' && window.localStorage) {
-          localStorage.setItem('currentAgent', JSON.stringify(response.data));
+          setStoredAuthItem('currentAgent', JSON.stringify(response.data));
         }
         setSessionStatus('authenticated');
-      } else if (response.status === 401) {
+      } else if (response?.status === 401) {
         await logout(false);
         setSessionStatus('unauthenticated');
       } else {
@@ -609,30 +428,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Unified token refresh — delegates to apiClient which has request queue + retry logic
   async function refreshAuthToken() {
-    if (!refreshToken.value) {
-      return { success: false, error: 'No refresh token available' };
-    }
-
     try {
       const newToken = await apiClient.refreshAuthToken();
       if (newToken) {
-        // apiClient already updated localStorage + dispatched event
-        // Sync our reactive refs
-        token.value = newToken;
-        const storedRefresh = localStorage.getItem('refreshToken');
-        if (storedRefresh) {
-          refreshToken.value = storedRefresh;
+        const newExpiry = Date.now() + SESSION_DURATION;
+        sessionExpiry.value = newExpiry;
+        if (typeof window !== 'undefined') {
+          setStoredAuthItem('sessionExpiry', newExpiry.toString());
         }
+        await fetchCurrentAgent(true);
 
-        // Parse updated team data from new token
-        parseJwtTeamData(newToken);
-
-        // Reconnect WebSocket with new token
         try {
-          const { useWebSocketStore } = await import('@/stores/websocket');
-          const wsStore = useWebSocketStore();
-          frontendLogger.debug('[Auth] Token refreshed, reconnecting WebSocket...');
-          wsStore.reconnect().catch((err: Error) => {
+          const { reconnectWebSocketStore } = await import('@/stores/websocketReconnect');
+          frontendLogger.debug('[Auth] Cookie session refreshed, reconnecting WebSocket...');
+          reconnectWebSocketStore().catch((err: Error) => {
             console.warn('[Auth] WebSocket reconnection failed after token refresh:', err);
           });
         } catch (wsError) {
@@ -647,30 +456,6 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (_err) {
       return { success: false, error: 'Token refresh error' };
     }
-  }
-
-  // 新的初始化邏輯 - 設定認證標頭但不立即恢復會話
-  // 會話恢復將由 main.ts 調用 initializeSession() 來處理
-  if (typeof window !== 'undefined' && token.value) {
-    authApi.setAuthHeader(token.value, refreshToken.value || undefined);
-  }
-
-  // Listen for token refresh events from apiClient (e.g., 401 interceptor path)
-  if (typeof window !== 'undefined') {
-    const handleTokenRefreshed = (event: Event) => {
-      const detail = (event as CustomEvent).detail;
-      const newToken = detail?.token as string | undefined;
-      const newRefresh = detail?.refreshToken as string | undefined;
-      if (newToken && newToken !== token.value) {
-        token.value = newToken;
-        if (newRefresh) {
-          refreshToken.value = newRefresh;
-        }
-        // Parse updated team data from new token
-        parseJwtTeamData(newToken);
-      }
-    };
-    window.addEventListener('auth:token-refreshed', handleTokenRefreshed);
   }
 
   return {
@@ -690,7 +475,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated: computed(() => {
       // Pure computation without any state mutations
       // Error clearing should be handled explicitly by caller, not automatically
-      return !!token.value && validateSession() && !!currentAgent.value;
+      return validateSession() && !!currentAgent.value;
     }),
     isAdmin,
     isAgent,
