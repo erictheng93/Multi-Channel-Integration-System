@@ -14,21 +14,13 @@ const log = createContextLogger('Main');
 import { RouteRegistry } from './core/route-registry';
 import { routeGroups, validateRouteConfig } from './core/route-config';
 
-// Monitoring dashboard
-import { createMonitoringHandlerMethods } from '@modules/monitoring/handlers/monitoring-dashboard';
-
 // Import handlers - consolidated imports
 
-
-// Import Analytics Module
-import { comparisonAPI } from '@modules/analytics/handlers/comparison-api';
 
 // Direct import for messaging handler (modular version)
 import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 
-// Phase 3: LINE Message Queue Consumer
-import { handleLineMessageQueue } from '@modules/queue/handlers/line-message-queue';
-import type { LineQueuePayload } from './types/bindings';
+import { queue, scheduled } from './runtime/worker-handlers';
 
 // Debug: Log messaging handler
 log.debug('messagingMainHandler imported', { type: typeof messagingMainHandler });
@@ -36,22 +28,16 @@ log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defi
 
 // Import additional handlers
 import { activityHandler } from '@modules/activities/handlers/activity';
-import websocketMainHandler from '@modules/websocket/handlers/websocket-main';
 import { feedbackHandler } from '@modules/system/handlers/feedback-main';
-
-// KV Optimization Monitoring (P0 - 2025-01-08)
-import kvOptimizationMonitoringHandler from '@modules/system/handlers/kv-optimization-monitoring';
-
-// Monitoring and Alerting API (2025-01-08)
-import monitoringMainHandler from '@modules/monitoring/handlers/monitoring-main';
 
 // System-legacy and credential functions now in extracted routers:
 //   src/handlers/system-settings-router.ts
 //   src/handlers/credentials-router.ts
 // Import middleware and utilities
-import { jwtAuth, requireAdmin } from './middleware/auth';
 import { getSecurityConfig, getSecurityHeaders } from './config/security';
 import { globalErrorHandler } from './middleware/error-handler';
+import { registerPreRegistryRoutes } from './routes/pre-registry-routes';
+import { registerProtectedAdminRoutes } from './routes/protected-admin-routes';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -113,428 +99,7 @@ if (!routeValidation.valid) {
   throw new Error('Invalid route configuration');
 }
 
-// Pre-register public WebSocket endpoints BEFORE unified route system
-// This ensures they are NOT covered by any auth middleware from the route system
-import websocketHealthApp from '@modules/websocket/handlers/websocket-health';
-import websocketDashboardApp from '@modules/websocket/handlers/websocket-dashboard';
-
-// Protect sensitive WebSocket endpoints (leave /health, /readiness, /liveness, /migration-status public)
-app.use('/api/websocket/metrics', jwtAuth);
-app.use('/api/websocket/health-detail', jwtAuth);
-
-// Register health endpoints
-app.route('/api/websocket', websocketHealthApp);
-log.info('Public WebSocket health endpoints registered', {
-  endpoints: [
-    'GET /api/websocket/health',
-    'GET /api/websocket/migration-status',
-    'GET /api/websocket/readiness',
-    'GET /api/websocket/liveness'
-  ]
-});
-
-// CRITICAL: Register WebSocket main handler AFTER health app to avoid route conflicts
-// websocketMainHandler provides /connect endpoint with websocketAuth middleware
-app.route('/api/websocket', websocketMainHandler);
-log.info('WebSocket connection endpoints registered', {
-  endpoints: [
-    'GET /api/websocket/connect (with websocketAuth)',
-    'POST /api/websocket/disconnect (with websocketAuth)'
-  ]
-});
-
-// Pre-register DelayedMessageScheduler health endpoint BEFORE unified route system
-// This ensures /health endpoint is public (no auth required)
-app.get('/api/delayed-messages-v2/health', async (c) => {
-  return c.json({
-    success: true,
-    service: 'delayed-message-buffer',
-    status: 'healthy',
-    features: {
-      instantCancel: true,
-      preciseScheduling: true,
-      durableObjects: true
-    },
-    timestamp: nowISO()
-  });
-});
-log.info('DelayedMessageScheduler public endpoint registered', {
-  endpoint: 'GET /api/delayed-messages-v2/health (public, no auth)'
-});
-
-// Pre-register Configuration Check endpoint (admin-only)
-// Exposes environment config — requires authentication
-import { getConfigCheck } from '@modules/system/handlers/health-main';
-app.get('/api/system/config-check', jwtAuth, requireAdmin(), getConfigCheck);
-log.info('Configuration check endpoint registered (admin only)', {
-  endpoint: 'GET /api/system/config-check (admin auth required)'
-});
-
-
-// Pre-register R2 Public Proxy Endpoint (QR Code Fix)
-// This endpoint proxies R2 requests and adds CORS headers
-// WHY: R2 Custom Domains don't apply CORS settings, causing download failures
-app.get('/api/r2-public/:folder/:filename', async (c) => {
-  try {
-    const { folder, filename } = c.req.param();
-    const objectKey = `${folder}/${filename}`;
-
-    // F7: require HMAC signature on the URL. Previously any caller could
-    // download any R2 object by guessing or harvesting the folder/filename
-    // combination. The signing helper produces URLs in the form
-    // `?sig=&exp=`; legitimate paths (QR code links generated by the
-    // backend) carry these params; bare-key probing fails with 404.
-    const { verifyFileSignature } = await import('@/utils/file-signed-url');
-    const sig = c.req.query('sig');
-    const exp = c.req.query('exp');
-    const sigValid = await verifyFileSignature(objectKey, sig, exp, c.env.JWT_SECRET);
-    if (!sigValid) {
-      return c.json({ error: 'File not found' }, 404);
-    }
-
-    // Fetch from R2
-    const object = await c.env.R2_BUCKET.get(objectKey);
-
-    if (!object) {
-      return c.json({ error: 'File not found' }, 404);
-    }
-
-    // Create response with CORS headers
-    const headers = new Headers();
-
-    // CORS headers for all origins (public files only)
-    const origin = c.req.header('Origin');
-    if (origin && isOriginAllowed(origin)) {
-      headers.set('Access-Control-Allow-Origin', origin);
-      headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-      headers.set('Access-Control-Allow-Headers', '*');
-      headers.set('Access-Control-Expose-Headers', 'ETag, Content-Length, Content-Type');
-      headers.set('Access-Control-Max-Age', '3600');
-    }
-
-    // Content headers
-    headers.set('Content-Type', object.httpMetadata?.contentType || 'application/octet-stream');
-    headers.set('ETag', object.httpEtag);
-    headers.set('Cache-Control', 'public, max-age=31536000'); // 1 year
-    headers.set('Content-Length', object.size.toString());
-
-    return new Response(object.body, { headers });
-  } catch (error) {
-    log.error('R2 proxy error', { error });
-    return c.json({ error: 'Failed to fetch file' }, 500);
-  }
-});
-
-// Handle OPTIONS for R2 proxy
-app.options('/api/r2-public/:folder/:filename', (c) => {
-  const origin = c.req.header('Origin');
-  const headers = new Headers();
-
-  if (origin && isOriginAllowed(origin)) {
-    headers.set('Access-Control-Allow-Origin', origin);
-    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', '*');
-    headers.set('Access-Control-Max-Age', '3600');
-  }
-
-  return new Response(null, { status: 204, headers });
-});
-
-log.info('R2 Public Proxy endpoint registered', {
-  endpoints: [
-    'GET /api/r2-public/:folder/:filename (public, CORS enabled)',
-    'OPTIONS /api/r2-public/:folder/:filename (CORS preflight)'
-  ]
-});
-
-// Pre-register Analytics Comparison API BEFORE unified route system
-// This prevents the /api/analytics/* catch-all from intercepting these routes
-app.use('/api/analytics/comparison/*', jwtAuth);
-app.route('/api/analytics/comparison', comparisonAPI);
-log.info('Analytics Comparison API registered', {
-  endpoints: ['/api/analytics/comparison/* (with internal OPTIONS handler)']
-});
-
-// Pre-register KV Optimization Monitoring BEFORE unified route system
-// P0 Priority: Real-time monitoring for KV write optimization
-app.route('/api/monitoring/kv', kvOptimizationMonitoringHandler);
-log.info('KV Optimization Monitoring registered', {
-  endpoints: [
-    'GET /api/monitoring/kv/activity-cache (admin only)',
-    'GET /api/monitoring/kv/request-frequency (admin only)',
-    'GET /api/monitoring/kv/savings (admin only)',
-    'GET /api/monitoring/kv/health (admin only)',
-    'POST /api/monitoring/kv/reset (admin only)'
-  ]
-});
-
-// Pre-register Monitoring & Alerting API BEFORE unified route system
-// Provides DO monitoring, Circuit Breaker status, and alerting
-app.route('/api/monitoring', monitoringMainHandler);
-log.info('Monitoring & Alerting API registered', {
-  endpoints: [
-    'GET /api/monitoring/health (public)',
-    'GET /api/monitoring/metrics (admin only)',
-    'GET /api/monitoring/alerts (auth)',
-    'GET /api/monitoring/alerts/history (admin only)',
-    'GET /api/monitoring/circuit-breaker/status (auth)',
-    'POST /api/monitoring/circuit-breaker/reset (admin only)',
-    'POST /api/monitoring/circuit-breaker/open (admin only)',
-    'GET /api/monitoring/instances/:type (admin only)',
-    'POST /api/monitoring/health-check (admin only)'
-  ]
-});
-
-// CRITICAL: CORS/Security endpoints BEFORE unified route system
-// Route priority in Hono: first-registered wins. Moving these after RouteRegistry
-// will cause 401 errors on public endpoints. See docs/architecture/ROUTE_REGISTRATION_ORDER.md
-
-import corsMonitoringHandler from '@modules/monitoring/handlers/cors-monitoring';
-import securityMonitoringHandler from '@modules/monitoring/handlers/security-monitoring';
-import securityDashboardHandler from '@modules/monitoring/handlers/security-dashboard';
-
-// Apply JWT auth to protected CORS monitoring endpoints (leave /health and /config public)
-app.use('/api/cors/stats', jwtAuth);
-app.use('/api/cors/events', jwtAuth);
-app.use('/api/cors/rejected-origins', jwtAuth);
-app.use('/api/cors/cleanup', jwtAuth);
-
-// Register CORS handler BEFORE unified route system
-app.route('/api/cors', corsMonitoringHandler);
-log.info('CORS monitoring endpoints PRE-REGISTERED (before unified route system)', {
-  endpoints: [
-    'GET /api/cors/stats (Admin only)',
-    'GET /api/cors/events (Admin only)',
-    'GET /api/cors/rejected-origins (Admin only)'
-  ]
-});
-
-// Register Security Monitoring handler (P2-4)
-app.route('/api/security', securityMonitoringHandler);
-log.info('Security monitoring endpoints registered (P2-4)', {
-  endpoints: [
-    'GET /api/security/health (Public)',
-    'GET /api/security/events/stats (Admin only)',
-    'GET /api/security/events (Admin only)',
-    'POST /api/cors/cleanup (Admin only)',
-    'GET /api/cors/health (Public)',
-    'GET /api/cors/config (Public)'
-  ]
-});
-
-// Register Security Dashboard handler (P2-7) - Real-time Analytics
-app.route('/api/security/dashboard', securityDashboardHandler);
-log.info('Security dashboard endpoints registered (P2-7)', {
-  endpoints: [
-    'GET /api/security/dashboard/health (Public)',
-    'GET /api/security/dashboard/metrics (Admin only)',
-    'GET /api/security/dashboard/events/stream (WebSocket)',
-    'GET /api/security/dashboard/events/recent (Admin only)',
-    'GET /api/security/dashboard/summary (Admin only)'
-  ]
-});
-
-// Register KV Management handler - KV Namespace management and cleanup
-import kvManagementHandler from '@modules/monitoring/handlers/kv-management-main';
-app.route('/api/kv', kvManagementHandler);
-log.info('KV Management endpoints registered', {
-  endpoints: [
-    'GET /api/kv/stats (Admin only)',
-    'GET /api/kv/health (Auth required)',
-    'POST /api/kv/cleanup (Admin only)',
-    'GET /api/kv/naming-convention (Public)'
-  ]
-});
-
-// =================================================================================
-// PUBLIC FILE PROXY - R2 文件代理下載 (無需認證)
-// =================================================================================
-// 用於代理 R2 文件下載，解決 R2 公開訪問未配置的問題
-// 客服和 LINE 消費者都可以通過此端點下載文件
-// =================================================================================
-
-import fileProxyHandler from '@modules/file-management/handlers/file-proxy';
-
-app.route('/api/files', fileProxyHandler);
-log.info('File proxy endpoints PRE-REGISTERED (public access)', {
-  endpoints: [
-    'GET /api/files/public/* (R2 path proxy)',
-    'GET /api/files/download/:attachmentId (attachment ID proxy)'
-  ]
-});
-
-// =================================================================================
-// ADMIN MIGRATIONS - PRE-REGISTERED (admin-only one-off data migrations)
-// =================================================================================
-// Must be registered BEFORE the unified route system so the /api/admin/migrations
-// namespace cannot be shadowed by catch-all routes. The handler itself enforces
-// jwtAuth + requireAdmin on every route.
-// =================================================================================
-
-import adminMigrationsHandler from '@modules/system/handlers/admin-migrations';
-
-app.route('/api/admin/migrations', adminMigrationsHandler);
-log.info('Admin migration endpoints PRE-REGISTERED (admin only)', {
-  endpoints: [
-    'POST /api/admin/migrations/backfill-legacy-filenames (dryRun, limit, cursor)'
-  ]
-});
-
-// =================================================================================
-// CRITICAL: WEBHOOK ROUTES - PRIORITY 1 (PRE-REGISTER BEFORE UNIFIED SYSTEM)
-// =================================================================================
-//
-// LINE and Facebook webhooks MUST be registered BEFORE the unified route system
-// to prevent 401 authentication errors from catch-all routes.
-//
-// Why this matters:
-// - Webhooks use signature verification (X-Line-Signature, X-Hub-Signature)
-// - They do NOT use JWT authentication
-// - If registered after unified system, catch-all routes intercept them
-// - Results in 401 "Missing or invalid authorization header" errors
-//
-// Reference: Same fix applied to CORS endpoints (see lines 218-260)
-// =================================================================================
-
-import { webhookHandler } from '@modules/integrations/handlers/webhook';
-
-// ==================== LINE Webhook (Single-Tenant) ====================
-// Route: POST /api/webhook — configured in LINE Developer Console
-// Uses global LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET from env
-app.post('/api/webhook', (c) => webhookHandler.line(c));
-
-// GET handler for webhook verification and browser access
-app.get('/api/webhook', (c) => {
-  return c.json({
-    success: true,
-    message: 'LINE Webhook endpoint is ready',
-    timestamp: nowISO(),
-    endpoint: '/api/webhook',
-    method: 'POST'
-  });
-});
-
-log.info('LINE Webhook endpoint PRE-REGISTERED', {
-  endpoint: 'POST /api/webhook'
-});
-
-// Facebook Webhook 路由
-app.all('/api/webhooks/facebook', webhookHandler.facebook);
-
-log.info('Facebook Webhook endpoint PRE-REGISTERED', {
-  endpoint: 'GET/POST /api/webhooks/facebook'
-});
-
-// Webhook event processing handled by handlers/webhook.ts
-
-// Register P1 Optimization: WebSocket Dashboard (requires auth)
-// 添加 JWT 認證中間件保護所有 Dashboard 端點
-app.use('/api/websocket/dashboard/*', jwtAuth);
-app.route('/api/websocket/dashboard', websocketDashboardApp);
-log.info('WebSocket Dashboard endpoints registered', {
-  endpoints: [
-    'GET /api/websocket/dashboard/metrics (Admin/Team)',
-    'GET /api/websocket/dashboard/connections (Admin/Team)',
-    'GET /api/websocket/dashboard/history (Admin/Team)',
-    'GET /api/websocket/dashboard/trends (Admin/Team)',
-    'GET /api/websocket/dashboard/durable-objects (Admin)',
-    'GET /api/websocket/dashboard/alerts (Admin/Team)'
-  ]
-});
-
-// ==================== Customer Conversation System (Chat-Style) ====================
-// WebSocket + Message CRUD + File Upload — extracted to @modules/customer-conversations
-// Registered BEFORE unified route system to prevent route conflicts
-import { customerWsHandler, customerMessagesHandler } from '@modules/customer-conversations/handlers';
-app.route('/api/customer-ws', customerWsHandler);
-app.route('/api/customer-conversations', customerMessagesHandler);
-
-log.info('Customer Conversation System (Chat-Style) endpoints registered', {
-  endpoints: [
-    'GET /api/customer-ws (WebSocket upgrade)',
-    'GET /api/customer-conversations/:id/messages',
-    'POST /api/customer-conversations/:id/messages',
-    'POST /api/customer-conversations/:id/upload'
-  ]
-});
-
-// ====================  CHANNEL INTEGRATION MANAGEMENT ====================
-//
-// Multi-tenant channel configuration system (LINE, Facebook, WhatsApp)
-// Allows customers to configure their own messaging platform credentials
-//
-// Registered BEFORE unified route system to prevent route conflicts
-// Routes require authentication (jwtAuth middleware)
-// Only Admin role can create/update/delete channels
-// =============================================================================
-
-import channelHandler from '@modules/integrations/handlers/channel-handler';
-
-// Apply JWT auth middleware to all channel routes
-// Note: Must apply to both base path and sub-paths for Hono pattern matching
-app.use('/api/channels', jwtAuth);
-app.use('/api/channels/*', jwtAuth);
-
-// Register channel management routes
-app.route('/api/channels', channelHandler);
-
-// ==================== LIFF Handler (QR Code Team Binding) ====================
-import liffHandler from '@modules/liff/handlers/liff';
-
-// LIFF endpoints are PUBLIC (no auth required) - used by LINE users
-app.route('/api/liff', liffHandler);
-
-log.info('LIFF endpoints registered (public)', {
-  endpoints: [
-    'GET  /api/liff/health',
-    'GET  /api/liff/config',
-    'GET  /api/liff/teams/:teamId',
-    'POST /api/liff/assign-team',
-    'POST /api/liff/welcome'
-  ]
-});
-
-// ==================== Admin LIFF QR Batch Generation ====================
-import adminLiffQRBatchHandler from '@modules/liff/handlers/admin-liff-qr-batch';
-app.route('/api/admin/liff-qr', adminLiffQRBatchHandler);
-
-log.info('Admin LIFF QR batch generation endpoints registered (admin only)', {
-  endpoints: [
-    'POST /api/admin/liff-qr/batch-generate - Batch generate LIFF QR Codes',
-    'GET  /api/admin/liff-qr/status - Check LIFF QR Code coverage'
-  ]
-});
-
-// ==================== Task Reminder System (Phase 4: Notification Integration) ====================
-import taskReminderHandler, { handleScheduledEvent } from '@modules/system/handlers/task-reminder-main';
-app.route('/api/reminders', taskReminderHandler);
-
-log.info('Task Reminder System registered', {
-  endpoints: [
-    'GET /api/reminders',
-    'GET /api/reminders/upcoming',
-    'GET /api/reminders/stats',
-    'POST /api/reminders',
-    'GET /api/reminders/:id',
-    'PUT /api/reminders/:id',
-    'PUT /api/reminders/:id/complete',
-    'DELETE /api/reminders/:id',
-    'POST /api/reminders/process (Admin)'
-  ]
-});
-
-log.info('Channel Integration Management endpoints registered', {
-  endpoints: [
-    'GET /api/channels',
-    'POST /api/channels (Admin only)',
-    'GET /api/channels/:id',
-    'PUT /api/channels/:id (Admin only)',
-    'DELETE /api/channels/:id (Admin only)',
-    'POST /api/channels/:id/verify',
-    'GET /api/channels/:id/stats',
-    'GET /api/channels/:id/health'
-  ]
-});
+registerPreRegistryRoutes(app);
 
 // 創建路由註冊器
 const routeRegistry = new RouteRegistry(app);
@@ -562,31 +127,7 @@ log.info('Initializing Modular Architecture System');
 // Lazy init for modular system, P1 optimizations, and collaboration
 import { createLazyInitMiddleware, errorHandlingMiddleware } from './core/module-initializer';
 
-// Modular system API handler (still needed for /api/modular/* routes)
-import { modularSystemApiHandler } from './core/modular-system-integration';
-// 註冊模組化系統管理API端點 (admin-only)
-app.use('/api/modular/*', jwtAuth, requireAdmin());
-app.get('/api/modular/status', modularSystemApiHandler.getSystemStatus.bind(modularSystemApiHandler));
-app.get('/api/modular/modules', modularSystemApiHandler.getModules.bind(modularSystemApiHandler));
-app.post('/api/modular/modules', modularSystemApiHandler.createModule.bind(modularSystemApiHandler));
-app.get('/api/modular/health', modularSystemApiHandler.getModuleHealth.bind(modularSystemApiHandler));
-
-// 添加全域錯誤處理中間件
-
-// ==================== 自動化健康監控系統啟動 ====================
-log.info('Initializing Automated Health Monitoring');
-
-// 創建監控處理器
-const monitoringHandlers = createMonitoringHandlerMethods();
-
-// 註冊監控API端點 (admin-only — dashboard, config, alerts, metrics)
-app.get('/api/monitoring/dashboard', jwtAuth, requireAdmin(), monitoringHandlers.getDashboard);
-app.get('/api/monitoring/health/history', jwtAuth, requireAdmin(), monitoringHandlers.getHealthHistory);
-app.get('/api/monitoring/alerts', jwtAuth, requireAdmin(), monitoringHandlers.getAlertHistory);
-app.put('/api/monitoring/config', jwtAuth, requireAdmin(), monitoringHandlers.updateConfig);
-app.post('/api/monitoring/health/check', jwtAuth, requireAdmin(), monitoringHandlers.triggerHealthCheck);
-app.get('/api/monitoring/metrics', jwtAuth, requireAdmin(), monitoringHandlers.getMetrics);
-app.get('/api/monitoring/stats', jwtAuth, requireAdmin(), monitoringHandlers.getStats);
+registerProtectedAdminRoutes(app);
 
 // ==================== Middleware + Config ====================
 
@@ -827,21 +368,6 @@ app.notFound((c) => {
 // CRITICAL: These exports are REQUIRED for Cloudflare Workers runtime
 // They must match the class_name values in wrangler.toml [[durable_objects.bindings]]
 
-// Import Durable Objects for WebSocket + Durable Objects Architecture
-import { ConversationRoom } from './durable-objects/ConversationRoom';
-import { UserConnection } from './durable-objects/UserConnection';
-import { MessageBroadcaster } from './durable-objects/MessageBroadcaster';
-import { DelayedMessageScheduler } from './durable-objects/DelayedMessageScheduler';
-import { LatestMessageCacheCoordinator } from './durable-objects/LatestMessageCacheCoordinator';
-import { LockCoordinator } from './services/distributed-lock-service';
-
-// Import Customer Conversation Durable Objects (Chat-Style Architecture)
-import { CustomerConversationDO } from './durable-objects/CustomerConversationDO';
-import { CustomerMessageDO } from './durable-objects/CustomerMessageDO';
-
-// Import RateLimiterDO for KV optimization (Phase 1: Rate Limiting Migration)
-import { RateLimiterDO } from './durable-objects/RateLimiterDO';
-import { MetricsCollectorDO } from './durable-objects/MetricsCollectorDO';
 import { nowISO } from '@/utils/timestamp'
 
 // Export Durable Objects (must match wrangler.toml class_name exactly)
@@ -858,11 +384,13 @@ export {
   RateLimiterDO,
   // Metrics: API request metrics accumulator
   MetricsCollectorDO
-};
+} from './runtime/durable-objects';
 
 // Export legacy Delayed Message DO names (kept for backward compatibility)
-export { DelayedMessageScheduler as DelayedMessageBuffer };
-export { DelayedMessageScheduler as DelayedMessageProcessor };
+export {
+  DelayedMessageScheduler as DelayedMessageBuffer,
+  DelayedMessageScheduler as DelayedMessageProcessor
+} from './runtime/durable-objects';
 
 // ==================== 導出 Worker 處理器 ====================
 // LINE Message Queue Consumer
@@ -874,32 +402,7 @@ export { DelayedMessageScheduler as DelayedMessageProcessor };
 export default {
   fetch: app.fetch,
 
-  // LINE Message Queue Consumer
-  async queue(
-    batch: MessageBatch<LineQueuePayload>,
-    env: Bindings
-  ): Promise<void> {
-    log.info('LINE Queue received batch', { messageCount: batch.messages.length });
-    await handleLineMessageQueue(batch, env);
-  },
+  queue,
 
-  // Scheduled Handler for Task Reminders (Phase 4)
-  async scheduled(
-    event: ScheduledEvent,
-    env: Bindings,
-    _ctx: ExecutionContext
-  ): Promise<void> {
-    log.info('Scheduled event triggered', { cron: event.cron, scheduledTime: event.scheduledTime });
-    const [, reportStats] = await Promise.allSettled([
-      handleScheduledEvent(env),
-      (async () => {
-        const { ReportSchedulerService } = await import('@modules/reports/services/report-scheduler-service');
-        const scheduler = new ReportSchedulerService(env);
-        return scheduler.processScheduledReports();
-      })(),
-    ]);
-    if (reportStats.status === 'fulfilled' && reportStats.value.processed > 0) {
-      log.info('Scheduled reports processed', { processed: reportStats.value.processed, succeeded: reportStats.value.succeeded, failed: reportStats.value.failed });
-    }
-  }
+  scheduled
 };

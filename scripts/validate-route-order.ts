@@ -36,6 +36,19 @@ interface ValidationIssue {
   suggestion?: string;
 }
 
+interface RoutePriorityEntry {
+  method: string;
+  route: string;
+  category: string;
+  access: string;
+  reason: string;
+}
+
+interface RoutePriorityManifest {
+  preRegistry: RoutePriorityEntry[];
+  postRegistry?: RoutePriorityEntry[];
+}
+
 const KNOWN_PUBLIC_ROUTES: RoutePattern[] = [
   {
     pattern: /\/api\/cors\/(health|config)/,
@@ -84,6 +97,34 @@ function readIndexFile(): string {
   return fs.readFileSync(indexPath, 'utf-8');
 }
 
+function readPreRegistryRoutesFile(): string {
+  const routeModulePath = path.join(process.cwd(), 'src', 'routes', 'pre-registry-routes.ts');
+
+  if (!fs.existsSync(routeModulePath)) {
+    throw new Error(`Pre-registry route module not found: ${routeModulePath}`);
+  }
+
+  return fs.readFileSync(routeModulePath, 'utf-8');
+}
+
+function readRoutePriorityManifest(): RoutePriorityManifest {
+  const manifestPath = path.join(process.cwd(), 'scripts', 'route-priority-manifest.json');
+
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`Route priority manifest not found: ${manifestPath}`);
+  }
+
+  const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as RoutePriorityManifest;
+  if (!Array.isArray(parsed.preRegistry)) {
+    throw new Error('Route priority manifest must contain a preRegistry array');
+  }
+  if (parsed.postRegistry !== undefined && !Array.isArray(parsed.postRegistry)) {
+    throw new Error('Route priority manifest postRegistry must be an array when present');
+  }
+
+  return parsed;
+}
+
 function findUnifiedRouteSystemLine(content: string): number {
   const lines = content.split('\n');
 
@@ -99,15 +140,28 @@ function findUnifiedRouteSystemLine(content: string): number {
   return -1; // Not found
 }
 
+function findPreRegistryCallLine(content: string): number {
+  const lines = content.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/registerPreRegistryRoutes\(app\)/.test(lines[i])) {
+      return i + 1;
+    }
+  }
+
+  return -1;
+}
+
 function extractRouteRegistrations(content: string): Array<{line: number, route: string, method: string, fullLine: string}> {
   const lines = content.split('\n');
   const registrations: Array<{line: number, route: string, method: string, fullLine: string}> = [];
 
   // Match patterns like:
+  // app.use('/api/cors/*', ...)
   // app.route('/api/cors', ...)
   // app.get('/api/system/health', ...)
   // app.post('/api/..., ...)
-  const routePattern = /app\.(route|get|post|put|delete|patch|options|all)\(['"]([^'"]+)['"]/;
+  const routePattern = /app\.(use|route|get|post|put|delete|patch|options|all)\(['"]([^'"]+)['"]/;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -133,7 +187,78 @@ function extractRouteRegistrations(content: string): Array<{line: number, route:
   return registrations;
 }
 
-function validateRouteOrder(content: string): ValidationIssue[] {
+function occurrenceKey(method: string, route: string): string {
+  return `${method} ${route}`;
+}
+
+function countByMethodAndRoute(
+  registrations: Array<{ route: string; method: string }>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  for (const registration of registrations) {
+    const key = occurrenceKey(registration.method, registration.route);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return counts;
+}
+
+function validatePreRegistryManifest(
+  registrations: Array<{ line: number; route: string; method: string }>,
+  unifiedSystemLine: number,
+  manifestEntries: RoutePriorityEntry[],
+  manifestName = 'route-priority-manifest.json',
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const preRegistryApiRegistrations = registrations.filter(
+    registration => registration.line < unifiedSystemLine && registration.route.startsWith('/api')
+  );
+  const actualCounts = countByMethodAndRoute(preRegistryApiRegistrations);
+  const manifestCounts = countByMethodAndRoute(manifestEntries);
+
+  for (const registration of preRegistryApiRegistrations) {
+    const key = occurrenceKey(registration.method, registration.route);
+    if (!manifestCounts.has(key)) {
+      issues.push({
+        level: 'error',
+        line: registration.line,
+        route: key,
+        message: `Route is not declared in ${manifestName}`,
+        suggestion: 'Add this route to scripts/route-priority-manifest.json with category, access, and reason before changing route order.'
+      });
+    }
+  }
+
+  for (const [key, expectedCount] of manifestCounts.entries()) {
+    const actualCount = actualCounts.get(key) ?? 0;
+    if (actualCount !== expectedCount) {
+      issues.push({
+        level: 'error',
+        line: 0,
+        route: key,
+        message: `${manifestName} count mismatch: expected ${expectedCount}, found ${actualCount}`,
+        suggestion: 'Update src/index.ts and scripts/route-priority-manifest.json together so the source-order contract stays accurate.'
+      });
+    }
+  }
+
+  return issues;
+}
+
+function validateManifestEntries(
+  registrations: Array<{ line: number; route: string; method: string }>,
+  manifestEntries: RoutePriorityEntry[],
+  manifestName: string,
+): ValidationIssue[] {
+  return validatePreRegistryManifest(registrations, Number.MAX_SAFE_INTEGER, manifestEntries, manifestName);
+}
+
+function validateRouteOrder(
+  content: string,
+  manifest = readRoutePriorityManifest(),
+  preRegistryContent = readPreRegistryRoutesFile(),
+): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const unifiedSystemLine = findUnifiedRouteSystemLine(content);
 
@@ -150,7 +275,52 @@ function validateRouteOrder(content: string): ValidationIssue[] {
 
   console.log(`  Unified Route System found at line ${unifiedSystemLine}\n`);
 
+  const preRegistryCallLine = findPreRegistryCallLine(content);
+  if (preRegistryCallLine === -1) {
+    issues.push({
+      level: 'error',
+      line: 0,
+      route: 'registerPreRegistryRoutes(app)',
+      message: 'Pre-registry route module is not registered in src/index.ts',
+      suggestion: 'Call registerPreRegistryRoutes(app) before RouteRegistry is created.'
+    });
+  } else if (preRegistryCallLine > unifiedSystemLine) {
+    issues.push({
+      level: 'error',
+      line: preRegistryCallLine,
+      route: 'registerPreRegistryRoutes(app)',
+      message: 'Pre-registry route module is registered AFTER Unified Route System',
+      suggestion: `Move registerPreRegistryRoutes(app) before line ${unifiedSystemLine}.`
+    });
+  }
+
   const registrations = extractRouteRegistrations(content);
+  const preRegistryIndexRegistrations = registrations.filter(
+    registration => registration.line < unifiedSystemLine && registration.route.startsWith('/api')
+  );
+  const preRegistryModuleRegistrations = extractRouteRegistrations(preRegistryContent);
+  issues.push(
+    ...validatePreRegistryManifest(
+      [...preRegistryIndexRegistrations, ...preRegistryModuleRegistrations],
+      Number.MAX_SAFE_INTEGER,
+      manifest.preRegistry,
+      'preRegistry',
+    )
+  );
+
+  const postRegistryIndexRegistrations = registrations.filter(
+    registration => registration.line > unifiedSystemLine && registration.route.startsWith('/api')
+  );
+  const protectedAdminRegistrations = extractRouteRegistrations(
+    fs.readFileSync(path.join(process.cwd(), 'src', 'routes', 'protected-admin-routes.ts'), 'utf-8')
+  );
+  issues.push(
+    ...validateManifestEntries(
+      [...postRegistryIndexRegistrations, ...protectedAdminRegistrations],
+      manifest.postRegistry ?? [],
+      'postRegistry',
+    )
+  );
 
   // Check each route registration
   for (const reg of registrations) {
@@ -207,7 +377,8 @@ function validateRouteOrder(content: string): ValidationIssue[] {
     for (const [method, lines] of methodMap.entries()) {
       // app.route() mounts a sub-application at a prefix. Multiple mounts at
       // the same prefix can be intentional when their inner routes are disjoint.
-      if (method === 'ROUTE') {
+      // app.use() stacks middleware and duplicate prefixes are expected.
+      if (method === 'ROUTE' || method === 'USE') {
         continue;
       }
 
