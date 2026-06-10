@@ -8,6 +8,7 @@
 process.env.TZ = 'UTC';
 console.log(' Timezone standardized to UTC for consistent test results');
 
+import { webcrypto } from 'node:crypto'
 import { beforeEach, afterEach, vi } from 'vitest'
 import { setActivePinia, type Pinia } from 'pinia'
 import { globalPinia } from './global-pinia-setup'
@@ -372,53 +373,10 @@ beforeEach(() => {
     configurable: true
   })
 
-  // Setup crypto mock
+  // Keep real WebCrypto available. Security-sensitive tests exercise AES-GCM,
+  // HMAC, PBKDF2, and digest behavior and must not run against fake buffers.
   Object.defineProperty(global, 'crypto', {
-    value: {
-      randomUUID: vi.fn(() => 'mock-uuid-12345'),
-      subtle: {
-        importKey: vi.fn().mockResolvedValue({}),
-        sign: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-        verify: vi.fn().mockResolvedValue(true),
-        digest: vi.fn().mockImplementation((algorithm: string, data: BufferSource) => {
-          // Simple mock implementation for password hashing
-          const encoder = new TextEncoder()
-          let hashInput: Uint8Array
-
-          if (typeof data === 'string') {
-            hashInput = encoder.encode(data)
-          } else if (data instanceof ArrayBuffer) {
-            hashInput = new Uint8Array(data)
-          } else if (ArrayBuffer.isView(data)) {
-            // Handle ArrayBufferView (like Uint8Array, DataView, etc.)
-            hashInput = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-          } else {
-            // Fallback
-            hashInput = new Uint8Array(0)
-          }
-
-          const mockHash = new Uint8Array(32) // SHA-256 produces 32 bytes
-
-          // Generate deterministic but pseudo-random hash
-          for (let i = 0; i < 32; i++) {
-            mockHash[i] = (hashInput.reduce((sum, byte, index) => sum + byte * (index + i + 1), 0) % 256)
-          }
-          return Promise.resolve(mockHash.buffer)
-        }),
-        encrypt: vi.fn().mockResolvedValue(new ArrayBuffer(16)),
-        decrypt: vi.fn().mockResolvedValue(new ArrayBuffer(16)),
-        generateKey: vi.fn().mockResolvedValue({}),
-        exportKey: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-        deriveBits: vi.fn().mockResolvedValue(new ArrayBuffer(32)),
-        deriveKey: vi.fn().mockResolvedValue({})
-      },
-      getRandomValues: vi.fn((arr: Uint8Array) => {
-        for (let i = 0; i < arr.length; i++) {
-          arr[i] = Math.floor(Math.random() * 256)
-        }
-        return arr
-      })
-    },
+    value: globalThis.crypto ?? webcrypto,
     writable: true,
     configurable: true
   })
@@ -436,33 +394,36 @@ beforeEach(() => {
     configurable: true
   })
 
-  // Setup window and history for Vue Router
-  Object.defineProperty(global, 'window', {
+  // Extend the existing JSDOM window instead of replacing it. Replacing window
+  // removes native Event constructors and breaks Vue Test Utils dispatch.
+  const testWindow = global.window ?? window
+  Object.assign(testWindow, {
+    localStorage: localStorageMock,
+    crypto: global.crypto,
+    btoa: global.btoa,
+    atob: global.atob
+  })
+  Object.defineProperty(testWindow, 'location', {
     value: {
-      localStorage: localStorageMock,
-      crypto: global.crypto,
-      btoa: global.btoa,
-      atob: global.atob,
-      location: {
-        href: 'http://localhost:3000',
-        origin: 'http://localhost:3000',
-        pathname: '/',
-        search: '',
-        hash: '',
-        reload: vi.fn(),
-      },
-      history: {
-        state: {},
-        pushState: vi.fn(),
-        replaceState: vi.fn(),
-        go: vi.fn(),
-        back: vi.fn(),
-        forward: vi.fn(),
-        length: 1
-      },
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
+      href: 'http://localhost:3000',
+      origin: 'http://localhost:3000',
+      pathname: '/',
+      search: '',
+      hash: '',
+      reload: vi.fn(),
+    },
+    writable: true,
+    configurable: true
+  })
+  Object.defineProperty(testWindow, 'history', {
+    value: {
+      state: {},
+      pushState: vi.fn(),
+      replaceState: vi.fn(),
+      go: vi.fn(),
+      back: vi.fn(),
+      forward: vi.fn(),
+      length: 1
     },
     writable: true,
     configurable: true
