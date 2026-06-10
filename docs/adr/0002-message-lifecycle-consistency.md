@@ -61,6 +61,12 @@ The operational drill endpoint is unavailable outside staging. In staging it
 requires `OPERATIONAL_DRILLS_ENABLED=true` and the `OPERATIONAL_DRILL_TOKEN`
 Cloudflare secret sent as `x-ops-drill-token`.
 
+> Note: per the deployment policy (REMOTE PRODUCTION ONLY), no staging
+> environment is provisioned in `wrangler.toml`, so drills 1-3 are
+> intentionally inert — the endpoint guard keeps them disabled everywhere
+> unless a staging environment is ever reintroduced by an explicit policy
+> change.
+
 ## Operational Checks
 
 - Use `bun run check:backend` before code changes are considered ready.
