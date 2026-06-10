@@ -54,9 +54,9 @@ vi.mock('@/db/drizzle-factory', () => ({
 
 vi.mock('@modules/activities', () => ({
   ActivityCapture: vi.fn(),
-  ActivityService: vi.fn(() => ({
-    logActivity: mocks.activityLog
-  })),
+  ActivityService: vi.fn(function () {
+    return { logActivity: mocks.activityLog }
+  }),
   ACTIVITY_ACTIONS: {
     USER_LOGIN: 'user_login',
     USER_LOGOUT: 'user_logout',
