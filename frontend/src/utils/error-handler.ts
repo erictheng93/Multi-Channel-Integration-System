@@ -42,8 +42,8 @@ export const ERROR_MESSAGE_MAP: Record<string, string> = {
 
 // 輔助函數：將英文錯誤訊息轉換為中文
 export const translateError = (error: unknown, defaultMessage?: string): string => {
-  let errorMessage = ''
-  
+  let errorMessage: string
+
   if (typeof error === 'string') {
     errorMessage = error
   } else if ((error as Error)?.message) {

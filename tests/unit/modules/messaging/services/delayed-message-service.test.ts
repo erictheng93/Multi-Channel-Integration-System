@@ -5,9 +5,11 @@ import type { DelayedMessage } from '@modules/messaging/types/message-types';
 const processQueueMessage = vi.hoisted(() => vi.fn());
 
 vi.mock('@modules/delayed-message/services/MessageProcessorService', () => ({
-  MessageProcessorService: vi.fn().mockImplementation(() => ({
-    processQueueMessage,
-  })),
+  MessageProcessorService: vi.fn(function () {
+    return {
+      processQueueMessage,
+    };
+  }),
 }));
 
 describe('legacy DelayedMessageService processing', () => {

@@ -24,17 +24,21 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // Mock WebSocket broadcast service
 const mockBroadcastConversationTransferred = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastConversationTransferred: mockBroadcastConversationTransferred
-  }))
+  WebSocketBroadcastService: vi.fn(function () {
+    return {
+      broadcastConversationTransferred: mockBroadcastConversationTransferred
+    };
+  })
 }));
 
 // Mock Activity Service
 const mockLogActivity = vi.fn().mockResolvedValue(undefined);
 vi.mock('@modules/activities', () => ({
-  ActivityService: vi.fn().mockImplementation(() => ({
-    logActivity: mockLogActivity
-  }))
+  ActivityService: vi.fn(function () {
+    return {
+      logActivity: mockLogActivity
+    };
+  })
 }));
 
 // Mock QRCodeServiceImpl
