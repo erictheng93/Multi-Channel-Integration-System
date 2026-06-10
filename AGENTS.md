@@ -44,7 +44,7 @@ PowerShell builtins and simple read-only inspection commands do not need the `rt
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Multi-Channel-Integration-System** (56458 symbols, 90779 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Multi-Channel-Integration-System** (56848 symbols, 91454 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `rtk bunx gitnexus analyze` in terminal first. This repo uses Bun; `rtk npx gitnexus analyze` routes through npm and can fail with `Missing script: "gitnexus"`.
 
