@@ -114,10 +114,11 @@ describe('Integration: Authentication Flow', () => {
       password: 'password123'
     })
 
-    // Verify login success
+    // Verify login success. Credentials live in HttpOnly cookies, so the
+    // store must not mirror the token into JS state or web storage.
     expect(loginResult).toBe(true)
     expect(authStore.isAuthenticated).toBe(true)
-    expect(authStore.token).toBe(authToken)
+    expect(authStore.token).toBe(null)
     expect(authStore.currentAgent).toEqual({
       id: '1',
       name: 'Test Agent',
@@ -129,8 +130,12 @@ describe('Integration: Authentication Flow', () => {
       email: 'test@example.com',
       password: 'password123'
     })
-    expect(mockSetAuthHeader).toHaveBeenCalled()
-    expect(global.sessionStorage.setItem).toHaveBeenCalledWith('token', authToken)
+    expect(mockSetAuthHeader).not.toHaveBeenCalled()
+    expect(global.sessionStorage.setItem).not.toHaveBeenCalledWith('token', authToken)
+    expect(global.sessionStorage.setItem).toHaveBeenCalledWith(
+      'currentAgent',
+      JSON.stringify({ id: '1', name: 'Test Agent', email: 'test@example.com' })
+    )
     expect(global.localStorage.setItem).not.toHaveBeenCalledWith('token', authToken)
     expect(global.localStorage.removeItem).toHaveBeenCalledWith('token')
   })
