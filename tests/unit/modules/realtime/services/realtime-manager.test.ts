@@ -8,7 +8,8 @@ import type { Bindings } from '@/types';
 // ======================== Mock EventQueueService ========================
 
 vi.mock('@modules/realtime/services/event-queue-service', () => {
-  const MockEventQueueService = vi.fn().mockImplementation(() => ({
+  const MockEventQueueService = vi.fn(function () {
+    return {
     createAndRouteEvent: vi.fn().mockResolvedValue({
       success: true,
       eventId: 'mock-event-id',
@@ -37,7 +38,8 @@ vi.mock('@modules/realtime/services/event-queue-service', () => {
       lastProcessedAt: new Date().toISOString()
     }),
     cleanup: vi.fn().mockResolvedValue(undefined)
-  }));
+    };
+  });
 
   return {
     EventQueueService: MockEventQueueService,
@@ -199,7 +201,7 @@ describe('RealtimeManager', () => {
 
     it('sets status to ERROR and rethrows when initialization fails', async () => {
       const { EventQueueService } = await import('@modules/realtime/services/event-queue-service');
-      (EventQueueService as any).mockImplementationOnce(() => {
+      (EventQueueService as any).mockImplementationOnce(function () {
         throw new Error('init failure');
       });
 

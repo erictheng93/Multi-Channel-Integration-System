@@ -132,7 +132,6 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     let changedCount = 0
     let addedCount = 0
-    let removedCount = 0
 
     const updatedList = newConversations.map(newConv => {
       const existing = existingMap.get(newConv.id)
@@ -148,7 +147,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       }
     })
 
-    removedCount = conversations.value.length - newConversations.length
+    const removedCount = conversations.value.length - newConversations.length
     conversations.value = updatedList
     lastUpdateTime.value = new Date()
     updateCount.value++

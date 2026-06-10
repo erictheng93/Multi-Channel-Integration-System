@@ -62,9 +62,11 @@ vi.mock('@modules/auto-reply/services/schedule-service', () => ({
 // ─── WebSocket Broadcast mock ───
 const mockBroadcastNewMessage = vi.fn().mockResolvedValue({ conversationBroadcast: true, globalBroadcast: true });
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastNewMessage: mockBroadcastNewMessage,
-  })),
+  WebSocketBroadcastService: vi.fn(function () {
+    return {
+      broadcastNewMessage: mockBroadcastNewMessage,
+    };
+  }),
 }));
 
 // ─── Drizzle DB mock ───

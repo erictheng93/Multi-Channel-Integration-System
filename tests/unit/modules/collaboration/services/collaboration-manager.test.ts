@@ -55,7 +55,9 @@ const mockWsAdapter = {
 };
 
 vi.mock('@modules/collaboration/adapters/websocket-adapter', () => ({
-  WebSocketCollaborationAdapter: vi.fn(() => mockWsAdapter),
+  WebSocketCollaborationAdapter: vi.fn(function () {
+    return mockWsAdapter;
+  }),
 }));
 
 // ---------------------------------------------------------------------------

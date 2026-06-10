@@ -98,9 +98,11 @@ vi.mock('@/utils/timestamp', () => ({
 // Mock distributed lock service
 const mockWithLock = vi.fn();
 vi.mock('@/services/distributed-lock-service', () => ({
-  DistributedLockService: vi.fn().mockImplementation(() => ({
-    withLock: mockWithLock,
-  })),
+  DistributedLockService: vi.fn(function () {
+    return {
+      withLock: mockWithLock,
+    };
+  }),
 }));
 
 // Mock user-sync service
@@ -119,9 +121,11 @@ vi.mock('@/services/user-sync', () => ({
 // Mock WebSocket broadcast service
 const mockBroadcastConversationEvent = vi.fn();
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastConversationEvent: mockBroadcastConversationEvent,
-  })),
+  WebSocketBroadcastService: vi.fn(function () {
+    return {
+      broadcastConversationEvent: mockBroadcastConversationEvent,
+    };
+  }),
 }));
 
 import {

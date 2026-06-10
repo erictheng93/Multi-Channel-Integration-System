@@ -27,9 +27,11 @@ import type { Bindings } from '@backend/types';
 // Mock WebSocket broadcast service
 const mockBroadcastConversationTransferred = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastConversationTransferred: mockBroadcastConversationTransferred
-  }))
+  WebSocketBroadcastService: vi.fn(function () {
+    return {
+      broadcastConversationTransferred: mockBroadcastConversationTransferred
+    };
+  })
 }));
 
 // Mock uuid

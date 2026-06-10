@@ -464,8 +464,6 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
     undoExpiresAt?: string
   }> {
     const errors: string[] = []
-    let updatedCount = 0
-
     isLoading.value = true
 
     try {
@@ -557,7 +555,7 @@ export function useBulkMemberEdit(): UseBulkMemberEditReturn {
         showError('批量編輯失敗', '回應資料異常')
         return { success: false, updatedCount: 0, errors: ['回應資料異常'], undoToken: undefined, undoExpiresAt: undefined }
       }
-      updatedCount = data.successCount
+      const updatedCount = data.successCount
 
       // Collect errors from failed results
       for (const result of data.results) {

@@ -123,7 +123,9 @@ describe('Session Main Handler', () => {
       analyzeSessionHealth: vi.fn()
     };
 
-    MockedSessionService.mockImplementation(() => mockSessionService);
+    MockedSessionService.mockImplementation(function () {
+      return mockSessionService;
+    });
 
     // 創建測試應用並設置環境
     app = new Hono();
@@ -186,8 +188,6 @@ describe('Session Main Handler', () => {
 
         const response = await app.request('/sessions', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer valid_token'
@@ -407,8 +407,6 @@ describe('Session Main Handler', () => {
 
         const response = await app.request('/sessions/session_test_001', {
           method: 'PUT',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer valid_token'
@@ -455,7 +453,6 @@ describe('Session Main Handler', () => {
 
         const response = await app.request('/sessions/session_test_001', {
           method: 'DELETE',
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -477,7 +474,6 @@ describe('Session Main Handler', () => {
 
         const response = await app.request('/sessions/nonexistent_session', {
           method: 'DELETE',
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -502,8 +498,6 @@ describe('Session Main Handler', () => {
 
         const response = await app.request('/sessions/session_test_001/close', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -545,7 +539,6 @@ describe('Session Main Handler', () => {
 
         const response = await app.request('/sessions/session_test_001/reopen', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Authorization': 'Bearer valid_token'
           }
@@ -732,8 +725,6 @@ describe('Session Main Handler', () => {
 
         const response = await app.request('/sessions/batch', {
           method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
-        headers: { 'Authorization': 'Bearer test-token' },
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer valid_token'
@@ -891,7 +882,6 @@ describe('Session Main Handler', () => {
       // 1. Create session
       let response = await app.request('/sessions', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer valid_token'
@@ -910,7 +900,6 @@ describe('Session Main Handler', () => {
       // 3. Update session
       response = await app.request(`/sessions/${mockSession.id}`, {
         method: 'PUT',
-        headers: { 'Authorization': 'Bearer test-token' },
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer valid_token'
@@ -922,7 +911,6 @@ describe('Session Main Handler', () => {
       // 4. Close session
       response = await app.request(`/sessions/${mockSession.id}/close`, {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Authorization': 'Bearer valid_token' }
       });
       expect(response.status).toBe(200);
@@ -930,7 +918,6 @@ describe('Session Main Handler', () => {
       // 5. Delete session
       response = await app.request(`/sessions/${mockSession.id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': 'Bearer test-token' },
         headers: { 'Authorization': 'Bearer valid_token' }
       });
       expect(response.status).toBe(200);

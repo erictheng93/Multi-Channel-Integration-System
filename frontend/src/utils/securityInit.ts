@@ -49,7 +49,9 @@ export const initializeSecurity = async (): Promise<void> => {
     
     // 在生產環境中，安全驗證失敗應該阻止應用程式啟動
     if (import.meta.env.PROD) {
-      throw new Error('Application cannot start due to security configuration errors')
+      throw new Error('Application cannot start due to security configuration errors', {
+        cause: error,
+      })
     }
     
     // 在開發環境中，顯示警告但允許繼續
