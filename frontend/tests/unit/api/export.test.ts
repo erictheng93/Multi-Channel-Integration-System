@@ -94,7 +94,7 @@ describe('Export API Module', () => {
       expect(url).toContain('limit=500')
     })
 
-    it('應該傳送 Authorization header', async () => {
+    it('應該以 HttpOnly cookie 驗證（credentials include、不帶 Authorization header）', async () => {
       const mockBlob = new Blob(['data'])
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -103,8 +103,9 @@ describe('Export API Module', () => {
 
       await exportMessages({ format: 'json' })
 
-      const headers = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].headers
-      expect(headers['Authorization']).toBe('Bearer test-token-123')
+      const requestInit = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit
+      expect(requestInit.credentials).toBe('include')
+      expect(new Headers(requestInit.headers).get('Authorization')).toBeNull()
     })
 
     it('應該支援 txt 格式', async () => {

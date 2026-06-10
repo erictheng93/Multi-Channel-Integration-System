@@ -46,13 +46,14 @@ describe('activitiesApi.restore', () => {
       'https://api.example.test/api/activities/5/restore',
       expect.objectContaining({
         method: 'POST',
-        headers: {
-          Authorization: 'Bearer test-token',
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
         body: JSON.stringify({ force: false }),
       }),
     )
+    const requestHeaders = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers)
+    expect(requestHeaders.get('Content-Type')).toBe('application/json')
+    // Auth now rides on HttpOnly cookies; no bearer token must be attached
+    expect(requestHeaders.get('Authorization')).toBeNull()
     expect(result).toEqual({
       success: true,
       status: 200,
