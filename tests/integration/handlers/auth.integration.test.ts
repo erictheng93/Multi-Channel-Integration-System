@@ -26,6 +26,22 @@ vi.mock('@/utils/auth', () => ({
 
 // Mock middleware to bypass authentication
 vi.mock('@/middleware/auth', () => ({
+  AUTH_COOKIE_NAMES: {
+    access: 'mcis_access',
+    refresh: 'mcis_refresh',
+    csrf: 'mcis_csrf',
+  },
+  parseCookieHeader: vi.fn((cookieHeader: string | undefined) => {
+    if (!cookieHeader) return {};
+
+    return Object.fromEntries(
+      cookieHeader
+        .split(';')
+        .map(cookie => cookie.trim().split('='))
+        .filter(([name]) => name)
+        .map(([name, ...value]) => [name, decodeURIComponent(value.join('='))])
+    );
+  }),
   jwtAuth: vi.fn((c, next) => {
     c.set('jwtPayload', { userId: 'user-123', username: 'testuser', role: 'admin', teamId: 1 });
     c.set('user', { id: 'user-123', username: 'testuser', role: 'admin', teamId: 1 });

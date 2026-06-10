@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const wranglerConfig = readFileSync('wrangler.toml', 'utf-8');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(__dirname, '../../..');
+const wranglerConfig = readFileSync(resolve(repoRoot, 'wrangler.toml'), 'utf-8');
 
 function envBlock(env: string): string {
   const start = wranglerConfig.search(new RegExp(`^\\[env\\.${env}\\]`, 'm'));

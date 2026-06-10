@@ -1,7 +1,7 @@
 // API 標準化測試
 // 驗證所有 API 端點都使用統一的響應格式和錯誤處理
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // 模擬 Cloudflare Workers 環境
 const mockEnv = {
@@ -282,8 +282,19 @@ describe('API 標準化測試', () => {
 })
 
 describe('API 客戶端標準化測試', () => {
+  async function importModernApiClient() {
+    vi.doMock('@/config/runtime', () => ({
+      getBackendUrl: () => 'http://localhost:8787'
+    }))
+    vi.doMock('@/utils/authStorage', () => ({
+      clearAuthStorageItems: vi.fn()
+    }))
+
+    return import('../frontend/src/api/modern-client')
+  }
+
   test('現代化 API 客戶端應該正確處理標準響應', async () => {
-    const { ModernApiClient } = await import('../frontend/src/api/modern-client')
+    const { ModernApiClient } = await importModernApiClient()
     
     // 模擬 fetch
     global.fetch = vi.fn().mockResolvedValue({
@@ -308,7 +319,7 @@ describe('API 客戶端標準化測試', () => {
   })
 
   test('現代化 API 客戶端應該正確處理錯誤響應', async () => {
-    const { ModernApiClient } = await import('../frontend/src/api/modern-client')
+    const { ModernApiClient } = await importModernApiClient()
     
     // 模擬 fetch 錯誤響應
     global.fetch = vi.fn().mockResolvedValue({

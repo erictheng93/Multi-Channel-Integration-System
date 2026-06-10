@@ -18,6 +18,11 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '..');
 
 // ==================== Configuration ====================
 
@@ -86,7 +91,7 @@ const UNIFIED_ROUTE_SYSTEM_MARKERS = [
 // ==================== Main Validation Logic ====================
 
 function readIndexFile(): string {
-  const indexPath = path.join(process.cwd(), 'src', 'index.ts');
+  const indexPath = path.join(repoRoot, 'src', 'index.ts');
 
   if (!fs.existsSync(indexPath)) {
     console.error(' Error: src/index.ts not found');
@@ -98,7 +103,7 @@ function readIndexFile(): string {
 }
 
 function readPreRegistryRoutesFile(): string {
-  const routeModulePath = path.join(process.cwd(), 'src', 'routes', 'pre-registry-routes.ts');
+  const routeModulePath = path.join(repoRoot, 'src', 'routes', 'pre-registry-routes.ts');
 
   if (!fs.existsSync(routeModulePath)) {
     throw new Error(`Pre-registry route module not found: ${routeModulePath}`);
@@ -108,7 +113,7 @@ function readPreRegistryRoutesFile(): string {
 }
 
 function readRoutePriorityManifest(): RoutePriorityManifest {
-  const manifestPath = path.join(process.cwd(), 'scripts', 'route-priority-manifest.json');
+  const manifestPath = path.join(repoRoot, 'scripts', 'route-priority-manifest.json');
 
   if (!fs.existsSync(manifestPath)) {
     throw new Error(`Route priority manifest not found: ${manifestPath}`);
@@ -312,7 +317,7 @@ function validateRouteOrder(
     registration => registration.line > unifiedSystemLine && registration.route.startsWith('/api')
   );
   const protectedAdminRegistrations = extractRouteRegistrations(
-    fs.readFileSync(path.join(process.cwd(), 'src', 'routes', 'protected-admin-routes.ts'), 'utf-8')
+    fs.readFileSync(path.join(repoRoot, 'src', 'routes', 'protected-admin-routes.ts'), 'utf-8')
   );
   issues.push(
     ...validateManifestEntries(
@@ -532,8 +537,6 @@ function main(): void {
 }
 
 // Run if executed directly (ES module compatible)
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
 const isMainModule = process.argv[1] === __filename;
 
 if (isMainModule) {
