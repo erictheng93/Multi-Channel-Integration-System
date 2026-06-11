@@ -33,6 +33,7 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2022',
       minify: true,
+      modulePreload: { polyfill: false },
       rollupOptions: {
         output: {
           manualChunks: {
