@@ -12,8 +12,44 @@ import type {
 } from '../types/dashboard-types';
 import { AnalyticsError } from '@modules/analytics/types/analytics-types';
 import { createContextLogger } from '@/utils/logger';
+import { nowMs } from '@/utils/timestamp';
 
 const log = createContextLogger('RealtimeDashboard');
+
+interface RealtimeDashboardOptions {
+  env?: Pick<Bindings, 'MESSAGE_BROADCASTER'>;
+}
+
+interface AnalyticsRealtimeEvent {
+  id: string;
+  type: 'analytics_widget_updated' | 'analytics_dashboard_updated';
+  source: 'analytics';
+  timestamp: number;
+  data: {
+    dashboardId: string;
+    widgetId?: string;
+    widgetData?: WidgetData;
+    config?: DashboardConfig;
+  };
+  priority: 'normal';
+  deliveryOptions: {
+    broadcast: true;
+    targets: Array<{
+      type: 'global';
+      targets: string[];
+      filters: {
+        eventTypes: string[];
+      };
+    }>;
+  };
+}
+
+export interface RealtimeBroadcastResult {
+  success: boolean;
+  eventId?: string;
+  status?: number;
+  skippedReason?: 'MESSAGE_BROADCASTER_UNAVAILABLE';
+}
 
 /**
  * 實時儀表板服務類
@@ -22,13 +58,15 @@ const log = createContextLogger('RealtimeDashboard');
  */
 export class RealtimeDashboardService {
   private dashboardService: DashboardService;
+  private env?: Pick<Bindings, 'MESSAGE_BROADCASTER'>;
 
   constructor(
     db: D1Database,
     kv: Bindings['KV'],
-    _options: Record<string, unknown> = {}
+    options: RealtimeDashboardOptions = {}
   ) {
     this.dashboardService = new DashboardService(db, kv);
+    this.env = options.env;
   }
 
   /**
@@ -52,17 +90,45 @@ export class RealtimeDashboardService {
   /**
    * Broadcast widget update event.
    */
-  async broadcastWidgetUpdate(dashboardId: string, widgetId: string, _data: WidgetData): Promise<void> {
-    // In the WebSocket architecture, broadcasting is handled by Durable Objects.
-    // This method is kept as a service-level abstraction for triggering updates.
-    log.info(`Widget update: ${dashboardId}/${widgetId}`);
+  async broadcastWidgetUpdate(dashboardId: string, widgetId: string, widgetData: WidgetData): Promise<RealtimeBroadcastResult> {
+    return this.publishGlobalEvent({
+      id: this.generateEventId('analytics-widget'),
+      type: 'analytics_widget_updated',
+      source: 'analytics',
+      timestamp: nowMs(),
+      data: { dashboardId, widgetId, widgetData },
+      priority: 'normal',
+      deliveryOptions: {
+        broadcast: true,
+        targets: [{
+          type: 'global',
+          targets: ['analytics'],
+          filters: { eventTypes: ['analytics_widget_updated'] }
+        }]
+      }
+    });
   }
 
   /**
    * Broadcast config change event.
    */
-  async broadcastConfigChange(dashboardId: string, _config: DashboardConfig): Promise<void> {
-    log.info(`Config change: ${dashboardId}`);
+  async broadcastConfigChange(dashboardId: string, config: DashboardConfig): Promise<RealtimeBroadcastResult> {
+    return this.publishGlobalEvent({
+      id: this.generateEventId('analytics-dashboard'),
+      type: 'analytics_dashboard_updated',
+      source: 'analytics',
+      timestamp: nowMs(),
+      data: { dashboardId, config },
+      priority: 'normal',
+      deliveryOptions: {
+        broadcast: true,
+        targets: [{
+          type: 'global',
+          targets: ['analytics'],
+          filters: { eventTypes: ['analytics_dashboard_updated'] }
+        }]
+      }
+    });
   }
 
   /**
@@ -104,6 +170,44 @@ export class RealtimeDashboardService {
   }
 
   // Private helpers
+
+  private async publishGlobalEvent(event: AnalyticsRealtimeEvent): Promise<RealtimeBroadcastResult> {
+    const broadcaster = this.env?.MESSAGE_BROADCASTER;
+    if (!broadcaster) {
+      log.warn('MESSAGE_BROADCASTER binding not available for analytics realtime event', {
+        eventId: event.id,
+        eventType: event.type
+      });
+      return {
+        success: false,
+        eventId: event.id,
+        skippedReason: 'MESSAGE_BROADCASTER_UNAVAILABLE'
+      };
+    }
+
+    const target = event.deliveryOptions.targets[0];
+    const id = broadcaster.idFromName('global');
+    const stub = broadcaster.get(id);
+    const response = await stub.fetch(new Request('https://message-broadcaster/broadcast-global', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, target })
+    }));
+
+    return {
+      success: response.ok,
+      eventId: event.id,
+      status: response.status
+    };
+  }
+
+  private generateEventId(prefix: string): string {
+    const randomId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${nowMs()}-${Math.random().toString(36).slice(2)}`;
+
+    return `${prefix}-${randomId}`;
+  }
 
   private async validateUserAccess(userId: string, dashboardId: string): Promise<void> {
     try {

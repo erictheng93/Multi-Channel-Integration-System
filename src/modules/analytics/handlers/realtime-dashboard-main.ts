@@ -36,6 +36,31 @@ const broadcastSchema = z.object({
   data: z.any()
 });
 
+const subscriptionSchema = z.object({
+  dashboardId: z.string(),
+  widgetIds: z.array(z.string()).optional().default([])
+});
+
+const ANALYTICS_REALTIME_EVENT_TYPES = [
+  'analytics_widget_updated',
+  'analytics_dashboard_updated'
+] as const;
+
+function buildAnalyticsSubscription(dashboardId: string, widgetIds: string[] = []) {
+  const channels = [
+    'analytics',
+    `analytics:dashboard:${dashboardId}`,
+    ...widgetIds.map(widgetId => `analytics:widget:${widgetId}`)
+  ];
+
+  return {
+    subscriptionId: `analytics:dashboard:${dashboardId}`,
+    transport: 'websocket',
+    channels: Array.from(new Set(channels)),
+    eventTypes: [...ANALYTICS_REALTIME_EVENT_TYPES]
+  };
+}
+
 const createRealtimeDashboardApp = (
   realtimeService: RealtimeDashboardService,
   dashboardService: DashboardService
@@ -44,6 +69,11 @@ const createRealtimeDashboardApp = (
 
   // Authentication middleware
   app.use('/broadcast/*', analyticsAuthMiddleware);
+  app.use('/subscription', analyticsAuthMiddleware);
+  app.use('/subscription/*', analyticsAuthMiddleware);
+  app.use('/trigger-update/*', analyticsAuthMiddleware);
+  app.use('/status', analyticsAuthMiddleware);
+  app.use('/cleanup', analyticsAuthMiddleware);
 
   /**
    * 廣播更新到所有連接
@@ -79,7 +109,41 @@ const createRealtimeDashboardApp = (
         success: true,
         message: `${type} broadcasted successfully`
       });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  });
 
+  /**
+   * 建立 WebSocket 訂閱描述
+   * POST /subscription
+   */
+  app.post('/subscription', zValidator('json', subscriptionSchema), async (c) => {
+    try {
+      const { dashboardId, widgetIds } = c.req.valid('json');
+
+      return c.json({
+        success: true,
+        data: buildAnalyticsSubscription(dashboardId, widgetIds)
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  });
+
+  /**
+   * 釋放 WebSocket 訂閱描述
+   * DELETE /subscription/:id
+   */
+  app.delete('/subscription/:id', async (c) => {
+    try {
+      return c.json({
+        success: true,
+        data: {
+          subscriptionId: decodeURIComponent(c.req.param('id')),
+          released: true
+        }
+      });
     } catch (error) {
       return globalErrorHandler.handleError(c, error);
     }
@@ -252,7 +316,7 @@ export const createRealtimeDashboardHandler = (
 // 為了向後兼容，也導出一個默認的處理器創建函數
 export const realtimeDashboardHandler = new Hono<{ Bindings: Bindings; Variables: { user: AnalyticsUser } }>()
   .use('*', async (c, _next) => {
-    const realtimeService = new RealtimeDashboardService(c.env.DB, c.env.KV);
+    const realtimeService = new RealtimeDashboardService(c.env.DB, c.env.KV, { env: c.env });
     const dashboardService = new DashboardService(c.env.DB, c.env.KV);
     const handler = createRealtimeDashboardHandler(realtimeService, dashboardService);
 
