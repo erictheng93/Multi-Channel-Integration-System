@@ -26,13 +26,16 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiBaseUrl,
           changeOrigin: true,
-          secure: true
+          secure: true,
+          ws: true,
+          rewriteWsOrigin: true
         }
       }
     },
     build: {
       target: 'es2022',
       minify: true,
+      modulePreload: { polyfill: false },
       rollupOptions: {
         output: {
           manualChunks: {

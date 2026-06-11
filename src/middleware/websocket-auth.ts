@@ -233,6 +233,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
     // Store user in context for handler access
     c.set('user', user);
+    c.set('websocketToken', token);
     // F14: expose the verified JWT payload so /connect can forward
     // tokenExp / jti to the Durable Object that owns the socket.
     c.set('jwtPayload', payload);

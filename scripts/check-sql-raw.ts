@@ -44,7 +44,6 @@
 
 import * as ts from 'typescript';
 import { readFileSync } from 'fs';
-import { glob } from 'glob';
 
 interface Violation {
   file: string;
@@ -127,9 +126,8 @@ async function main() {
     files = argFiles.filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
   } else {
     // Full-repo mode
-    files = await glob('src/**/*.ts', {
-      ignore: ['**/*.d.ts', '**/node_modules/**'],
-    });
+    files = (await Array.fromAsync(new Bun.Glob('src/**/*.ts').scan('.')))
+      .filter(f => !f.endsWith('.d.ts') && !f.includes('node_modules'));
   }
 
   if (files.length === 0) {
