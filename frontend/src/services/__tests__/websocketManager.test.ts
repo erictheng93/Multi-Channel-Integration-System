@@ -23,6 +23,8 @@ import type { Message, Conversation } from '@/types'
 vi.mock('@/stores/auth', () => ({
   useAuthStore: vi.fn(() => ({
     token: 'mock-token-123',
+    isAuthenticated: true,
+    validateSession: vi.fn(() => true),
     user: { id: 'user-1', name: 'Test User' }
   }))
 }))
@@ -115,10 +117,29 @@ describe('WebSocketManager', () => {
       expect(manager.connectionState.value).toBe('connected')
     })
 
-    it('應該在沒有 token 時拋出錯誤', async () => {
+    it('應該在 cookie session 沒有 JS token 時成功建立連接', async () => {
       const { useAuthStore } = await import('@/stores/auth')
       vi.mocked(useAuthStore).mockReturnValueOnce({
-        token: null
+        token: null,
+        isAuthenticated: true,
+        validateSession: vi.fn(() => true)
+      } as any)
+
+      const newManager = new WebSocketManager()
+
+      await newManager.connect()
+
+      expect(mockClient.connect).toHaveBeenCalled()
+
+      newManager.disconnect()
+    })
+
+    it('應該在未認證 session 時拋出錯誤', async () => {
+      const { useAuthStore } = await import('@/stores/auth')
+      vi.mocked(useAuthStore).mockReturnValueOnce({
+        token: null,
+        isAuthenticated: false,
+        validateSession: vi.fn(() => false)
       } as any)
 
       const newManager = new WebSocketManager()

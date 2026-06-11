@@ -56,6 +56,10 @@ Run these before changing queue, alarm, or broadcast code:
    with HTTP 200 from the broadcaster.
 4. Reconnect reconciliation drill: disconnect a WebSocket client during message
    creation and verify the client recovers missing state through HTTP fetch.
+   Automated as a Playwright E2E spec:
+   `frontend/tests/e2e/playwright/websocket/reconnect-reconciliation.spec.ts`
+   (run with `bunx playwright test` from `frontend/`; all API/WS traffic is
+   mocked in-page, so the drill never touches production).
 
 The operational drill endpoint is unavailable outside staging. In staging it
 requires `OPERATIONAL_DRILLS_ENABLED=true` and the `OPERATIONAL_DRILL_TOKEN`
@@ -89,5 +93,7 @@ Negative / accepted trade-offs:
 
 - WebSocket delivery is explicitly not exactly-once. This keeps the real-time
   path fast, but clients must continue to reconcile after reconnect.
-- Reconnect reconciliation still needs browser-level E2E automation. Until that
-  exists, it remains a manual acceptance check for risky WebSocket changes.
+- Reconnect reconciliation is automated as a browser-level Playwright E2E
+  drill (see drill 4 above). It covers conversation-list reconciliation after
+  an abnormal disconnect; message-level reconciliation inside an open
+  conversation view is still only covered by unit tests.

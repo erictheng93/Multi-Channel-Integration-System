@@ -200,98 +200,37 @@ export class WebSocketClient {
   }
 
   // Private methods
+  private hasAuthenticatedSession(authStore: ReturnType<typeof useAuthStore>): boolean {
+    return authStore.isAuthenticated || authStore.validateSession()
+  }
+
   private async performPreConnectionChecks(): Promise<{success: boolean, error?: string, details?: string}> {
     const checks = []
     const authStore = useAuthStore()
 
     try {
-      // 檢查 1: 令牌存在性
-      if (!authStore.token) {
-        return { success: false, error: 'No authentication token available' }
+      // 檢查 1: cookie-backed session metadata
+      if (!this.hasAuthenticatedSession(authStore)) {
+        return { success: false, error: 'No authenticated session available' }
       }
-      checks.push('Token present')
+      checks.push('Authenticated session present')
 
-      // 檢查 2: 令牌格式驗證
-      try {
-        const tokenParts = authStore.token.split('.')
-        if (tokenParts.length !== 3) {
-          return { success: false, error: `Invalid token format: expected 3 parts, got ${tokenParts.length}` }
-        }
-        checks.push('Token format valid')
+      // 檢查 2: cookie session 是否需要主動刷新
+      if (authStore.shouldRefreshToken()) {
+        this.log('Session is near expiry, attempting cookie refresh before connecting...')
 
-        // 檢查 3: 令牌載荷可解析性（不驗證簽名，只檢查格式）
-        const payloadPart = tokenParts[1]
-        if (!payloadPart) {
-          return { success: false, error: 'Token payload part missing' }
-        }
-        const payload = JSON.parse(atob(payloadPart))
-        if (!payload.userId || !payload.role) {
-          return { success: false, error: 'Token missing required fields (userId, role)' }
-        }
-        checks.push('Token structure valid')
-
-        // 檢查 4: 令牌過期時間
-        const currentTime = Math.floor(Date.now() / 1000)
-        if (payload.exp && payload.exp <= currentTime) {
-          return { success: false, error: `Token expired at ${new Date(payload.exp * 1000).toISOString()}` }
-        }
-        checks.push('Token not expired')
-
-        // 檢查 5: 令牌即將過期檢查與自動刷新
-        // FIX: Changed from blocking at 5 minutes to proactive refresh at 2 minutes
-        // Backend now allows tokens with >30 seconds remaining, so we refresh proactively
-        const proactiveRefreshBuffer = 120 // 2 minutes - refresh proactively if close to expiry
-        const minimumTokenLife = 30 // 30 seconds - matches backend expiryBuffer
-        const timeRemaining = payload.exp - currentTime
-
-        this.log(`Token time remaining: ${timeRemaining} seconds (${Math.floor(timeRemaining / 60)} minutes)`)
-
-        if (payload.exp && timeRemaining <= minimumTokenLife) {
-          // Token expires too soon - must refresh before connecting
-          this.log(`Token expires in ${timeRemaining} seconds, must refresh before connecting`)
-
-          if (authStore.refreshToken) {
-            const refreshResult = await authStore.refreshAuthToken()
-            if (refreshResult.success) {
-              this.log('Token refreshed successfully (required refresh)')
-              checks.push('Token refreshed (required)')
-            } else {
-              return { success: false, error: `Token expires in ${timeRemaining}s and refresh failed: ${refreshResult.error}` }
-            }
-          } else {
-            return { success: false, error: `Token expires in ${timeRemaining}s and no refresh token available` }
-          }
-        } else if (payload.exp && timeRemaining <= proactiveRefreshBuffer) {
-          // Token expires soon - try to refresh proactively but don't block if it fails
-          this.log(`Token expires in ${timeRemaining} seconds, attempting proactive refresh...`)
-
-          if (authStore.refreshToken) {
-            try {
-              const refreshResult = await authStore.refreshAuthToken()
-              if (refreshResult.success) {
-                this.log('Token refreshed successfully (proactive refresh)')
-                checks.push('Token refreshed (proactive)')
-              } else {
-                this.log(`Proactive refresh failed: ${refreshResult.error}, but connection will proceed with existing token`)
-                checks.push(`Token valid for ${timeRemaining}s (proactive refresh failed)`)
-              }
-            } catch (refreshError) {
-              this.log(`Proactive refresh error: ${refreshError}, proceeding with existing token`)
-              checks.push(`Token valid for ${timeRemaining}s (proactive refresh error)`)
-            }
-          } else {
-            this.log(`No refresh token available, proceeding with existing token (${timeRemaining}s remaining)`)
-            checks.push(`Token valid for ${timeRemaining}s (no refresh token)`)
-          }
+        const refreshResult = await authStore.refreshAuthToken()
+        if (refreshResult.success) {
+          this.log('Cookie session refreshed successfully')
+          checks.push('Session refreshed')
         } else {
-          checks.push(`Token has ${Math.floor(timeRemaining / 60)} minutes remaining`)
+          return { success: false, error: `Session refresh failed: ${refreshResult.error}` }
         }
-
-      } catch (parseError) {
-        return { success: false, error: `Token parsing failed: ${parseError}` }
+      } else {
+        checks.push('Session refresh not required')
       }
 
-      // 檢查 6: 網路連接性預檢（可選）
+      // 檢查 3: 網路連接性預檢（可選）
       try {
         // 使用 Vite proxy 在開發模式，避免 CORS 問題
         // 開發模式使用相對 URL (通過 Vite proxy)，生產模式使用完整 URL
@@ -585,29 +524,31 @@ export class WebSocketClient {
       try {
         const authStore = useAuthStore()
 
-        // 檢查令牌是否需要刷新
-        if (authStore.shouldRefreshToken() && authStore.refreshToken) {
-          this.log('Token needs refresh, attempting to refresh before reconnection...')
-          const refreshResult = await authStore.refreshAuthToken()
-
-          if (refreshResult.success) {
-            this.log('Token refreshed successfully, proceeding with reconnection')
-          } else {
-            this.log(`Token refresh failed: ${refreshResult.error}`)
-            // 如果令牌刷新失敗，停止重連並要求重新登入
-            this.updateConnectionState('error')
-            return
-          }
-        } else if (!authStore.token) {
-          this.log('No valid token available, cannot reconnect')
+        if (!this.hasAuthenticatedSession(authStore)) {
+          this.log('No authenticated session available, cannot reconnect')
           this.updateConnectionState('error')
           return
         }
 
-        // 令牌有效或刷新成功，繼續連接
+        // 檢查 cookie session 是否需要刷新
+        if (authStore.shouldRefreshToken()) {
+          this.log('Session needs refresh, attempting to refresh before reconnection...')
+          const refreshResult = await authStore.refreshAuthToken()
+
+          if (refreshResult.success) {
+            this.log('Session refreshed successfully, proceeding with reconnection')
+          } else {
+            this.log(`Session refresh failed: ${refreshResult.error}`)
+            // 如果 session 刷新失敗，停止重連並要求重新登入
+            this.updateConnectionState('error')
+            return
+          }
+        }
+
+        // session 有效或刷新成功，繼續連接
         this.connect()
       } catch (error) {
-        this.log(`Error during token refresh: ${error}`)
+        this.log(`Error during session refresh: ${error}`)
         this.updateConnectionState('error')
       }
     }, delay) as unknown as number
@@ -621,15 +562,15 @@ export class WebSocketClient {
 
     const authStore = useAuthStore()
 
-    // 嘗試令牌刷新（如果可能）
-    if (authStore.refreshToken && authStore.shouldRefreshToken()) {
-      this.log('Attempting to refresh expired/invalid token...')
+    // 嘗試 cookie session 刷新（如果本地 session metadata 仍有效）
+    if (authStore.validateSession()) {
+      this.log('Attempting to refresh expired/invalid cookie session...')
 
       try {
         const refreshResult = await authStore.refreshAuthToken()
 
         if (refreshResult.success) {
-          this.log('Token refreshed successfully after auth failure, retrying connection...')
+          this.log('Session refreshed successfully after auth failure, retrying connection...')
           // 重置重連計數器，因為這是認證問題，不是網絡問題
           this.reconnectAttempts = 0
           this.reconnectAttempt.value = 0
@@ -643,14 +584,14 @@ export class WebSocketClient {
 
           return
         } else {
-          this.log(`Token refresh failed: ${refreshResult.error}`)
+          this.log(`Session refresh failed: ${refreshResult.error}`)
         }
       } catch (refreshError) {
-        this.log(`Token refresh error: ${refreshError}`)
+        this.log(`Session refresh error: ${refreshError}`)
       }
     }
 
-    // 如果無法刷新令牌，或刷新失敗，停止重連
+    // 如果無法刷新 session，或刷新失敗，停止重連
     this.log('Cannot recover from authentication failure - user needs to re-login')
     this.updateConnectionState('error')
 

@@ -123,8 +123,8 @@ export class ConversationSyncService {
   // 啟動 WebSocket 連接
   private startWebSocket() {
     const authStore = useAuthStore()
-    if (!authStore.token) {
-      console.warn('[Sync Service] No auth token, falling back to polling')
+    if (!authStore.isAuthenticated && !authStore.validateSession()) {
+      console.warn('[Sync Service] No authenticated session, falling back to polling')
       this.setStatus('polling')
       return
     }
