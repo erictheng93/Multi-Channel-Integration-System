@@ -113,7 +113,9 @@ function createMockEnv() {
       put: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined)
     },
-    JWT_SECRET: 'test-jwt-secret'
+    JWT_SECRET: 'test-jwt-secret',
+    FRONTEND_URL: 'https://mcis.daiwandist.com',
+    BACKEND_URL: 'https://mcis-backend.daiwandist.com',
   };
 }
 
@@ -236,6 +238,7 @@ describe('Auth Handler - Integration Tests', () => {
 
       expect(csrfCookie).toBeDefined();
       expect(csrfCookieAttributes).toContain('path=/');
+      expect(csrfCookieAttributes).toContain('domain=.daiwandist.com');
       expect(csrfCookie).not.toContain('HttpOnly');
     });
   });
