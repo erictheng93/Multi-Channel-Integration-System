@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Hono } from 'hono'
 import { jwtAuth } from '@/middleware/auth'
 import type { Bindings, DbUser, JWTPayload } from '@/types'
@@ -33,7 +33,7 @@ const activeUser: DbUser = {
   updatedAt: new Date().toISOString()
 } as unknown as DbUser
 
-const accessPayload: JWTPayload = {
+let jwtPayload: JWTPayload = {
   userId: 'agent-1',
   displayName: 'Agent One',
   email: 'agent@example.com',
@@ -44,7 +44,7 @@ const accessPayload: JWTPayload = {
 }
 
 vi.mock('@/utils/auth', () => ({
-  verifyJWT: vi.fn(async () => accessPayload),
+  verifyJWT: vi.fn(async () => jwtPayload),
   getUserById: vi.fn(async () => activeUser),
   getSession: vi.fn(),
   updateUserActivityDebounced: vi.fn(async () => false),
@@ -79,7 +79,19 @@ function createApp(method: 'GET' | 'POST' = 'POST') {
 }
 
 describe('cookie auth CSRF protection', () => {
-  it('accepts bearer-authenticated unsafe requests without CSRF during migration', async () => {
+  beforeEach(() => {
+    jwtPayload = {
+      userId: 'agent-1',
+      displayName: 'Agent One',
+      email: 'agent@example.com',
+      role: 'agent',
+      type: 'access',
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600
+    }
+  })
+
+  it('rejects bearer-authenticated unsafe requests after migration', async () => {
     const response = await createApp().request('/protected', {
       method: 'POST',
       headers: {
@@ -87,7 +99,7 @@ describe('cookie auth CSRF protection', () => {
       }
     })
 
-    expect(response.status).toBe(200)
+    expect(response.status).toBe(401)
   })
 
   it('rejects cookie-authenticated unsafe requests without matching CSRF header', async () => {
@@ -122,5 +134,21 @@ describe('cookie auth CSRF protection', () => {
     })
 
     expect(response.status).toBe(200)
+  })
+
+  it('rejects temp password-change tokens on general protected routes', async () => {
+    jwtPayload = {
+      ...jwtPayload,
+      type: 'temp_password_change'
+    }
+
+    const response = await createApp('GET').request('/protected', {
+      method: 'GET',
+      headers: {
+        Cookie: 'mcis_access=temp-token; mcis_csrf=csrf-token'
+      }
+    })
+
+    expect(response.status).toBe(401)
   })
 })

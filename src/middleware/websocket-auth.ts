@@ -1,6 +1,5 @@
 // WebSocket Authentication Middleware
-// Handles JWT authentication for WebSocket connections via query parameters
-// Since WebSocket upgrade requests can't use custom headers in browsers
+// Handles JWT authentication for WebSocket connections via HttpOnly auth cookies.
 
 import type { Context, Next } from 'hono';
 import type { Bindings, JWTPayload } from '../types';
@@ -8,6 +7,7 @@ import { verifyJWT } from '../utils/auth';
 import { WebSocketAuthService } from '../services/websocket-auth-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { AUTH_COOKIE_NAMES, parseCookieHeader } from './auth';
+import { isOriginAllowed } from '@/config/cors';
 
 export interface WebSocketUser {
   id: number | string;
@@ -29,22 +29,40 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
   try {
     const url = new URL(c.req.url);
     const cookies = parseCookieHeader(c.req.header('Cookie'));
-    const token = url.searchParams.get('token') || cookies[AUTH_COOKIE_NAMES.access];
+    const token = cookies[AUTH_COOKIE_NAMES.access];
     const conversationId = url.searchParams.get('conversationId');
     const deviceId = url.searchParams.get('deviceId');
+    const origin = c.req.header('Origin');
 
     // 詳細日誌記錄 - 連接嘗試
     console.log(`[WebSocket Auth] Connection attempt from IP: ${clientIP}, ConversationID: ${conversationId || 'none'}, DeviceID: ${deviceId || 'none'}, Token: ${token ? 'present' : 'missing'}`);
 
-    // 檢查 1: 令牌是否存在
-    if (!token) {
-      console.log(`[WebSocket Auth] No token provided from ${clientIP}`);
+    if (origin && !isOriginAllowed(origin, c.env)) {
+      console.log(`[WebSocket Auth] Disallowed Origin from ${clientIP}: ${origin}`);
       return new Response(JSON.stringify({
-        error: 'Authentication token required',
+        error: 'Origin not allowed',
+        code: 4408,
+        message: 'WebSocket Origin is not allowed',
+        timestamp: nowMs()
+      }), {
+        status: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': 'ORIGIN_NOT_ALLOWED',
+          'X-WebSocket-Close-Code': '4408'
+        }
+      });
+    }
+
+    // 檢查 1: cookie access token 是否存在
+    if (!token) {
+      console.log(`[WebSocket Auth] No auth cookie provided from ${clientIP}`);
+      return new Response(JSON.stringify({
+        error: 'Authentication cookie required',
         code: 4401, // 自定義 WebSocket 關閉代碼
-        message: 'WebSocket connections require a valid JWT token or auth cookie',
+        message: 'WebSocket connections require a valid auth cookie',
         timestamp: nowMs(),
-        suggestedAction: 'provide_token'
+        suggestedAction: 'restore_session'
       }), {
         status: 401,
         headers: {

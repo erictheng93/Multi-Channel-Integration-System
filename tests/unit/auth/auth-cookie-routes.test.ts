@@ -191,9 +191,16 @@ describe('auth cookie route contract', () => {
     expect(cookieHeader).toContain('HttpOnly')
     expect(cookieHeader).toContain('Secure')
     expect(cookieHeader).toContain('SameSite=Strict')
+
+    const body = await response.json()
+    expect(body.success).toBe(true)
+    expect(body.data).not.toHaveProperty('token')
+    expect(body.data).not.toHaveProperty('refreshToken')
+    expect(body.data.agent.email).toBe('agent@example.com')
+    expect(body.data.sessionId).toBe('session-1')
   })
 
-  it('refreshes tokens from the HttpOnly refresh cookie when body is empty', async () => {
+  it('refreshes tokens through HttpOnly cookies without returning token JSON', async () => {
     const response = await createApp().request('/api/auth/refresh', {
       method: 'POST',
       headers: {
@@ -214,6 +221,22 @@ describe('auth cookie route contract', () => {
     const cookieHeader = setCookie.join('; ')
     expect(cookieHeader).toContain('mcis_access=access-token')
     expect(cookieHeader).toContain('mcis_refresh=refresh-token')
+
+    const body = await response.json()
+    expect(body.success).toBe(true)
+    expect(body.data).not.toHaveProperty('token')
+    expect(body.data).not.toHaveProperty('refreshToken')
+  })
+
+  it('rejects refresh token JSON without the HttpOnly refresh cookie', async () => {
+    const response = await createApp().request('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: 'refresh-token' })
+    })
+
+    expect(response.status).toBe(400)
+    expect(mocks.jwtVerify).not.toHaveBeenCalled()
   })
 
   it('clears auth cookies on logout', async () => {
@@ -233,5 +256,19 @@ describe('auth cookie route contract', () => {
     expect(cookieHeader).toContain('mcis_refresh=')
     expect(cookieHeader).toContain('mcis_csrf=')
     expect(cookieHeader).toContain('Max-Age=0')
+  })
+
+  it('revokes the cookie access token on logout instead of an Authorization bearer', async () => {
+    const response = await createApp().request('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer legacy-bearer-token',
+        Cookie: 'mcis_access=cookie-access-token; mcis_refresh=cookie-refresh-token; mcis_csrf=csrf-token',
+        'X-CSRF-Token': 'csrf-token'
+      }
+    })
+
+    expect(response.status).toBe(200)
+    expect(mocks.verifyJWT).toHaveBeenNthCalledWith(1, 'cookie-access-token', 'test-secret')
   })
 })
