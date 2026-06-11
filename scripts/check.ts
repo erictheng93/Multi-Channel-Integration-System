@@ -49,6 +49,10 @@ const backendChecks: CheckDefinition[] = [
     label: 'Type debt allowlist',
     args: ['run', 'check:type-debt'],
   },
+  {
+    label: 'Scoped TODO guard',
+    args: ['run', 'check:scoped-todos'],
+  },
 ]
 
 const frontendChecks: CheckDefinition[] = [
