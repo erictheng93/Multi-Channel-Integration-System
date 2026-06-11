@@ -199,12 +199,28 @@ export function getFrontendUrl(): string {
   return url.replace(/\/$/, '');
 }
 
+function getCurrentOriginWebSocketUrl(): string {
+  const currentOrigin =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : getFrontendUrl();
+
+  return currentOrigin
+    .replace(/^https:/, 'wss:')
+    .replace(/^http:/, 'ws:')
+    .replace(/\/$/, '');
+}
+
 /**
  * 獲取 WebSocket URL
  * 如果未設置 VITE_WEBSOCKET_URL，則自動從 BACKEND_URL 推導
  * @returns WebSocket URL
  */
 export function getWebSocketUrl(): string {
+  if (!import.meta.env.PROD && getCurrentEnvironment() === 'development') {
+    return getCurrentOriginWebSocketUrl();
+  }
+
   // 優先使用顯式設置的 WebSocket URL
   const explicitWsUrl = getEnv('VITE_WEBSOCKET_URL', '');
   if (explicitWsUrl) {

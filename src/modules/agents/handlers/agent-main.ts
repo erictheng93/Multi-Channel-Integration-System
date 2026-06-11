@@ -29,8 +29,10 @@ export function createAgentRouter() {
   const router = new Hono<{ Bindings: Bindings }>();
 
   // 套用全域中介層
-  router.use('*', agentErrorHandler());
-  router.use('*', agentAuthMiddleware());
+  router.use('/agents', agentErrorHandler());
+  router.use('/agents/*', agentErrorHandler());
+  router.use('/agents', agentAuthMiddleware());
+  router.use('/agents/*', agentAuthMiddleware());
 
   // ==================== ROUTE REGISTRATION (Proper Priority Order) ====================
   // Routes MUST be registered in this order to avoid conflicts:

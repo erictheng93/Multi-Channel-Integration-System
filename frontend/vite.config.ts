@@ -26,7 +26,9 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiBaseUrl,
           changeOrigin: true,
-          secure: true
+          secure: true,
+          ws: true,
+          rewriteWsOrigin: true
         }
       }
     },
