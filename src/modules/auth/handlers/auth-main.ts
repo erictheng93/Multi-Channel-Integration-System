@@ -36,6 +36,7 @@ type AuthContext = Context<{ Bindings: Bindings }>;
 const ACCESS_TOKEN_MAX_AGE_SECONDS = 2 * 60 * 60;
 const REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const AUTH_COOKIE_PATH = '/api';
+const CSRF_COOKIE_PATH = '/';
 
 function toContractRole(role: string): 'admin' | 'agent' {
   return role === 'admin' ? 'admin' : 'agent';
@@ -50,12 +51,12 @@ function createCsrfToken(): string {
 function serializeCookie(
   name: string,
   value: string,
-  options: { maxAge: number; httpOnly?: boolean }
+  options: { maxAge: number; httpOnly?: boolean; path?: string }
 ): string {
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
     `Max-Age=${options.maxAge}`,
-    `Path=${AUTH_COOKIE_PATH}`,
+    `Path=${options.path ?? AUTH_COOKIE_PATH}`,
     'SameSite=Strict',
     'Secure',
   ];
@@ -72,6 +73,7 @@ function appendCookie(c: AuthContext, cookie: string): void {
 }
 
 function setAuthCookies(c: AuthContext, accessToken: string, refreshToken: string): void {
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0 }));
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, accessToken, {
     maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
     httpOnly: true,
@@ -82,6 +84,7 @@ function setAuthCookies(c: AuthContext, accessToken: string, refreshToken: strin
   }));
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, createCsrfToken(), {
     maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+    path: CSRF_COOKIE_PATH,
   }));
 }
 
@@ -89,6 +92,7 @@ function clearAuthCookies(c: AuthContext): void {
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, '', { maxAge: 0, httpOnly: true }));
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.refresh, '', { maxAge: 0, httpOnly: true }));
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0 }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0, path: CSRF_COOKIE_PATH }));
 }
 
 function getRequestCookies(c: AuthContext): Record<string, string> {
