@@ -53,7 +53,7 @@ onMounted(() => {
   frontendLogger.debug(' App.vue mounted')
 
   // 優化：智能初始化認證狀態
-  if (authStore.token) {
+  if (authStore.validateSession()) {
     // 使用統一的會話初始化邏輯，避免重複 API 請求
     authStore.initializeSession()
   }

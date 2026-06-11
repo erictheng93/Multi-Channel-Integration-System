@@ -21,6 +21,8 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { agents, agentTeams } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
+import { authContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 // P2-5: Import standard response utilities
 import {
   unauthorizedResponse,
@@ -34,6 +36,10 @@ type AuthContext = Context<{ Bindings: Bindings }>;
 const ACCESS_TOKEN_MAX_AGE_SECONDS = 2 * 60 * 60;
 const REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const AUTH_COOKIE_PATH = '/api';
+
+function toContractRole(role: string): 'admin' | 'agent' {
+  return role === 'admin' ? 'admin' : 'agent';
+}
 
 function createCsrfToken(): string {
   const bytes = new Uint8Array(32);
@@ -93,14 +99,6 @@ function csrfCookieMatches(c: AuthContext, cookies: Record<string, string>): boo
   const csrfCookie = cookies[AUTH_COOKIE_NAMES.csrf];
   const csrfHeader = c.req.header('X-CSRF-Token');
   return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
-}
-
-function getBearerToken(authHeader: string | undefined): string | null {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
-  }
-  const token = authHeader.substring(7).trim();
-  return token.length > 0 ? token : null;
 }
 
 type AuthAgentState = Record<string, unknown> & {
@@ -250,7 +248,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
         30 * 60 // 30 分鐘
       );
 
-      return c.json({
+      return contractJson(c, authContracts.login, {
         success: true,
         data: {
           mustChangePassword: true,
@@ -260,7 +258,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
             email: user.email,
             name: user.displayName,
             displayName: user.displayName,
-            role: user.role,
+            role: toContractRole(user.role),
             isActive: user.isActive,
             createdAt: new Date(user.createdAt).getTime()
           }
@@ -375,17 +373,15 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
 
     setAuthCookies(c, token, refreshToken);
 
-    return c.json({
+    return contractJson(c, authContracts.login, {
       success: true,
       data: {
-        token,
-        refreshToken,
         agent: {
           id: user.id.toString(),
           email: user.email,
           name: user.displayName,
           displayName: user.displayName,
-          role: user.role,
+          role: toContractRole(user.role),
           isActive: user.isActive,
           createdAt: new Date(user.createdAt).getTime()
         },
@@ -508,11 +504,11 @@ authHandler.post('/logout', jwtAuth, async (c) => {
     // logout only removed the KV session, but jwtAuth doesn't consult the
     // session store — so the access token (2h) and refresh token (7d) on
     // the client remained fully valid against every protected endpoint
-    // until natural expiry. Now we extract the Bearer token from the
-    // logout request, verify it (just to extract the jti+exp safely), and
-    // write `revoked:{jti}` to CACHE with TTL = remaining token life.
+    // until natural expiry. Cookie-only auth revokes the HttpOnly access
+    // cookie token, verifies it (just to extract the jti+exp safely), and
+    // writes `revoked:{jti}` to CACHE with TTL = remaining token life.
     // Best-effort: a failure here logs but doesn't block logout.
-    const accessTokenToRevoke = getBearerToken(c.req.header('Authorization')) ?? cookieAccessToken;
+    const accessTokenToRevoke = cookieAccessToken;
     if (accessTokenToRevoke) {
       try {
         const { verifyJWT } = await import('@/utils/auth');
@@ -529,8 +525,7 @@ authHandler.post('/logout', jwtAuth, async (c) => {
       }
     }
 
-    // F13: also revoke the paired refresh token if the client supplies
-    // it. The client may include it in the JSON body so the long-lived
+    // F13: also revoke the paired refresh cookie so the long-lived
     // refresh credential is invalidated alongside the access token.
     //
     // F13 hardening: assert ownership before writing to the blocklist.
@@ -539,10 +534,7 @@ authHandler.post('/logout', jwtAuth, async (c) => {
     // the victim's session — a denial-of-service via revocation. We
     // verify the refresh token's userId matches the session's user.
     try {
-      const body = await c.req.json().catch(() => null);
-      const refreshTokenToRevoke = body && typeof body === 'object' && 'refreshToken' in body
-        ? (body as { refreshToken?: unknown }).refreshToken
-        : cookieRefreshToken;
+      const refreshTokenToRevoke = cookieRefreshToken;
       if (typeof refreshTokenToRevoke === 'string' && refreshTokenToRevoke.length > 0) {
         const { verifyJWT } = await import('@/utils/auth');
         const payload = await verifyJWT(refreshTokenToRevoke, c.env.JWT_SECRET);
@@ -589,7 +581,7 @@ authHandler.post('/logout', jwtAuth, async (c) => {
 
     clearAuthCookies(c);
 
-    return c.json({
+    return contractJson(c, authContracts.logout, {
       success: true,
       message: 'Logged out successfully',
       timestamp: nowISO()
@@ -633,14 +625,14 @@ authHandler.get('/me', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    return c.json({
+    return contractJson(c, authContracts.me, {
       success: true,
       data: {
         id: user.id.toString(),
         email: user.email,
         name: user.displayName,
         displayName: user.displayName,
-        role: user.role,
+        role: toContractRole(user.role),
         isActive: user.isActive,
         createdAt: new Date(user.createdAt).getTime()
       },
@@ -790,22 +782,18 @@ authHandler.put('/me', jwtAuth, async (c) => {
 // F2 fix: apply authRateLimiter to defend against refresh-token brute force / DoS
 authHandler.post('/refresh', authRateLimiter, async (c) => {
   try {
-    const body = await c.req.json().catch(() => ({})) as { refreshToken?: unknown };
     const cookies = getRequestCookies(c);
-    const refreshToken = typeof body.refreshToken === 'string' && body.refreshToken.length > 0
-      ? body.refreshToken
-      : cookies[AUTH_COOKIE_NAMES.refresh];
-    const usingCookieRefresh = refreshToken === cookies[AUTH_COOKIE_NAMES.refresh];
+    const refreshToken = cookies[AUTH_COOKIE_NAMES.refresh];
 
     if (!refreshToken) {
       return c.json({
         success: false,
-        error: 'Refresh token is required',
+        error: 'Refresh cookie is required',
         timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (usingCookieRefresh && !csrfCookieMatches(c, cookies)) {
+    if (!csrfCookieMatches(c, cookies)) {
       return c.json({
         success: false,
         error: 'Invalid CSRF token',
@@ -1049,8 +1037,7 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
     return c.json({
       success: true,
       data: {
-        token: newToken,
-        refreshToken: newRefreshToken
+        expiresIn: 2 * 60 * 60
       },
       timestamp: nowISO()
     });
