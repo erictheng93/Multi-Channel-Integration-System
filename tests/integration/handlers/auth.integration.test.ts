@@ -53,9 +53,9 @@ vi.mock('@/db/drizzle-factory', () => ({
 
 vi.mock('@modules/activities', () => ({
   ActivityCapture: {},
-  ActivityService: vi.fn().mockImplementation(() => ({
-    logActivity: vi.fn().mockResolvedValue(undefined)
-  })),
+  ActivityService: vi.fn(function() {
+    return { logActivity: vi.fn().mockResolvedValue(undefined) };
+  }),
   ACTIVITY_ACTIONS: { USER_LOGIN: 'user_login' },
   RESOURCE_TYPES: { USER: 'user' }
 }));
