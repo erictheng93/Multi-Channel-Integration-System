@@ -2,10 +2,20 @@
 // 檔案路徑：/frontend/src/conversations.ts
 // Created by: API Service Developer
 
-import { apiClient } from './base'
+import {
+  conversationContracts,
+  type AssignConversationOptions,
+  type ConversationBulkOperationRequest,
+  type ConversationFilters,
+  type ConversationListParams,
+  type ConversationSendMessageRequest,
+  type ConversationStats,
+  type ConversationTag,
+  type RawConversationData
+} from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 import type {
   Conversation,
-  ConversationFilters,
   Message,
   ApiResponse,
   PaginatedResponse,
@@ -13,65 +23,7 @@ import type {
 } from '@/types'
 import { CONVERSATION_STATUS, type ConversationStatus } from '@/constants/conversation-status'
 
-// API 返回的原始對話數據格式 (標準 camelCase 格式)
-interface RawConversationData {
-  id: string
-  customerId: number
-  customer_id?: number
-  assignedTeamId: number | null
-  assignedUserId: string | null
-  status: ConversationStatus | 'open' // Support legacy status values
-  lastMessageAt: string
-  createdAt: string
-  updatedAt: string
-
-  // FIX: 旧格式（扁平字段，向后兼容）
-  customerName?: string
-  platform?: Platform  // 改为可选，因为新格式中 platform 在 customer 对象内
-  platformUserId?: string  // 改为可选
-
-  // FIX: 新格式（嵌套 customer 对象）- 后端现在返回完整的 customer 对象
-  customer?: {
-    id: number | string
-    name?: string
-    displayName?: string
-    platform?: Platform
-    platformUserId?: string
-    avatarUrl?: string
-    email?: string
-    phone?: string
-    sourceTeamId?: number
-    metadata?: string
-    createdAt?: string
-    updatedAt?: string
-  }
-
-  // FIX: 新格式（嵌套 assignedTeam 对象）
-  assignedTeam?: {
-    id: number
-    name: string
-    description?: string
-  }
-
-  // FIX: 新格式（嵌套 assignedAgent 对象）
-  assignedAgent?: {
-    id: string
-    name: string
-    displayName?: string
-    email?: string
-  }
-
-  lastMessageContent?: string
-  lastMessageAtActual?: string
-  unreadCount?: number
-}
-
-// 指派對話選項
-// Note: Individual assignment (userId) removed - only team-based assignment is supported now
-export interface AssignConversationOptions {
-  teamId: number; // 團隊 ID (必填)
-  reason?: string; // 指派原因
-}
+export type { AssignConversationOptions } from '@shared/api-contracts'
 
 // 數據轉換適配器
 function adaptConversationData(rawData: RawConversationData): Conversation {
@@ -160,45 +112,13 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
   }
 }
 
-interface ConversationListParams {
-  page?: number;
-  pageSize?: number;
-  status?: 'active' | 'assigned' | 'pending';
-  platform?: Platform;
-  // Note: assignedTo removed - use teamId for team-based filtering
-  teamId?: number;
-  search?: string;
-  tagIds?: number[];  // 標籤篩選
-  customerName?: string; // 客戶名稱搜尋
-  updatedAfter?: string; // 更新時間起始
-  updatedBefore?: string; // 更新時間結束
-}
-
-interface SendMessageRequest {
-  content: string;
-  messageType?: 'text' | 'image' | 'file';
-  platform?: Platform;
-}
-
-interface ConversationStats {
-  total: number;
-  active: number;
-  assigned: number;
-  pending: number;
-  unreadCount: number;
-}
+type SendMessageRequest = ConversationSendMessageRequest & { platform?: Platform }
 
 export const conversationApi = {
   // 獲取對話列表（向後兼容）
   // Note: assignedTo filter removed - use teamId for team-based filtering
   getConversations: async (filters?: ConversationFilters): Promise<ApiResponse<Conversation[]>> => {
-    const queryParams = new URLSearchParams();
-    if (filters?.status) {queryParams.append('status', filters.status);}
-    if (filters?.platform) {queryParams.append('platform', filters.platform);}
-    if (filters?.teamId) {queryParams.append('teamId', filters.teamId.toString());}
-    
-    const queryString = queryParams.toString();
-    const response = await apiClient.get<RawConversationData[]>(`/conversations${queryString ? `?${queryString}` : ''}`);
+    const response = await callApiContract(conversationContracts.list, filters) as ApiResponse<RawConversationData[]>;
     
     // 轉換數據格式
     if (response.success && response.data && Array.isArray(response.data)) {
@@ -214,21 +134,7 @@ export const conversationApi = {
 
   // 獲取對話列表（分頁版本，強類型）
   list: async (params: ConversationListParams = {}): Promise<ApiResponse<PaginatedResponse<Conversation>>> => {
-    const queryParams = new URLSearchParams();
-    if (params.page !== undefined) {queryParams.append('page', params.page.toString());}
-    if (params.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString());}
-    if (params.status) {queryParams.append('status', params.status);}
-    if (params.platform) {queryParams.append('platform', params.platform);}
-    // Note: assignedTo removed - use teamId for team-based filtering
-    if (params.teamId) {queryParams.append('teamId', params.teamId.toString());}
-    if (params.search) {queryParams.append('search', params.search);}
-    if (params.tagIds && params.tagIds.length > 0) {queryParams.append('tagIds', params.tagIds.join(','));}
-    if (params.customerName) {queryParams.append('customerName', params.customerName);}
-    if (params.updatedAfter) {queryParams.append('updatedAfter', params.updatedAfter);}
-    if (params.updatedBefore) {queryParams.append('updatedBefore', params.updatedBefore);}
-
-    const queryString = queryParams.toString();
-    const response = await apiClient.get<RawConversationData[] | PaginatedResponse<RawConversationData>>(`/conversations${queryString ? `?${queryString}` : ''}`);
+    const response = await callApiContract(conversationContracts.listPaginated, params) as ApiResponse<RawConversationData[] | PaginatedResponse<RawConversationData>>;
     
     // 轉換數據格式
     if (response.success && response.data) {
@@ -267,7 +173,7 @@ export const conversationApi = {
 
   // 獲取對話統計
   getStats: async (): Promise<ApiResponse<ConversationStats>> => {
-    return apiClient.get('/conversations/stats');
+    return callApiContract(conversationContracts.stats, {});
   },
 
   // 獲取單一對話
@@ -275,7 +181,7 @@ export const conversationApi = {
     if (!id?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    const response = await apiClient.get<RawConversationData>(`/conversations/${id}`);
+    const response = await callApiContract(conversationContracts.get, { id });
     
     // 轉換數據格式
     if (response.success && response.data) {
@@ -299,13 +205,7 @@ export const conversationApi = {
       return { success: false, error: '對話 ID 不能為空' };
     }
     
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) {queryParams.append('page', params.page.toString());}
-    if (params?.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString());}
-    if (params?.since) {queryParams.append('since', params.since);}
-    
-    const queryString = queryParams.toString();
-    return apiClient.get(`/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`);
+    return callApiContract(conversationContracts.messages, { conversationId, params }) as Promise<ApiResponse<Message[]>>;
   },
 
   // 發送訊息
@@ -317,11 +217,11 @@ export const conversationApi = {
       return { success: false, error: '訊息內容不能為空' };
     }
     
-    return apiClient.post(`/conversations/${conversationId}/messages`, {
+    return callApiContract(conversationContracts.sendMessage, { conversationId }, {
       content: request.content.trim(),
       messageType: request.messageType || 'text',
       platform: request.platform
-    });
+    }) as Promise<ApiResponse<Message>>;
   },
 
   // 指派對話 (僅支援團隊指派)
@@ -341,7 +241,7 @@ export const conversationApi = {
 
     // 使用 POST 方法 (後端使用 POST)
     // Backend now returns complete conversation object with assignedTeam
-    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/assign`, {
+    const response = await callApiContract(conversationContracts.assign, { conversationId }, {
       teamId: options.teamId,
       reason: options.reason
     });
@@ -368,7 +268,7 @@ export const conversationApi = {
     }
 
     // 使用 POST 方法調用取消指派 API
-    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/unassign`, {
+    const response = await callApiContract(conversationContracts.unassign, { conversationId }, {
       reason: reason || undefined
     });
 
@@ -402,7 +302,7 @@ export const conversationApi = {
       return { success: false, error: '請指定目標團隊' };
     }
 
-    const response = await apiClient.post<RawConversationData>(`/conversations/${conversationId}/transfer`, options);
+    const response = await callApiContract(conversationContracts.transfer, { conversationId }, options);
 
     // Transfer API 返回 { success: true, message: '...' }，不一定有 data
     // 對話數據會通過 WebSocket 實時更新，所以只需要檢查 success
@@ -429,7 +329,7 @@ export const conversationApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.put(`/conversations/${conversationId}/read`);
+    return callApiContract(conversationContracts.markAsRead, { conversationId });
   },
 
   // 設置對話標籤
@@ -437,7 +337,7 @@ export const conversationApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.put(`/conversations/${conversationId}/tags`, { tags });
+    return callApiContract(conversationContracts.setTags, { conversationId }, { tags });
   },
 
   // 搜索對話
@@ -494,11 +394,11 @@ export const conversationApi = {
     if (conversationIds.length > 100) {
       return { success: false, error: '批量操作限制最多 100 個對話' };
     }
-    return apiClient.post('/conversations/bulk', {
+    return callApiContract(conversationContracts.bulk, {}, {
       operation,
       conversationIds,
       data
-    });
+    } satisfies ConversationBulkOperationRequest);
   },
 
   /**
@@ -582,7 +482,7 @@ export const conversationApi = {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
-    return apiClient.get(`/conversations/${conversationId}/tags`);
+    return callApiContract(conversationContracts.tags, { conversationId }) as Promise<ApiResponse<ConversationTag[]>>;
   },
 
   /**
@@ -598,7 +498,7 @@ export const conversationApi = {
     if (!tagIds || tagIds.length === 0) {
       return { success: false, error: '標籤 ID 不能為空' };
     }
-    return apiClient.post(`/conversations/${conversationId}/tags`, { tagIds });
+    return callApiContract(conversationContracts.addTags, { conversationId }, { tagIds });
   },
 
   /**
@@ -614,7 +514,6 @@ export const conversationApi = {
     if (!tagIds || tagIds.length === 0) {
       return { success: false, error: '標籤 ID 不能為空' };
     }
-    // 使用 request 方法直接發送 DELETE 請求並帶上 body
-    return apiClient.request('DELETE', `/conversations/${conversationId}/tags`, { tagIds });
+    return callApiContract(conversationContracts.removeTags, { conversationId }, { tagIds });
   }
 }

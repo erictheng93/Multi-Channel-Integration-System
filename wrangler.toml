@@ -206,25 +206,24 @@ new_classes = ["MetricsCollectorDO"]
 
 # =================== DEPLOYMENT ENVIRONMENT POLICY ===================
 #
-# ⚠️ THIS PROJECT USES PRODUCTION ENVIRONMENT ONLY (REMOTE RESOURCES)
-#
-# This project does NOT use local development resources.
-# All development and deployment connects to REMOTE production resources.
+# Production resources are configured in this file, but production access is
+# intentionally not the default developer workflow.
 #
 # Development:
-#   - Use `bun run dev` or `wrangler dev --remote`
-#   - Connects to REMOTE D1, KV, R2, and Durable Objects
-#   - All changes affect production data - use with caution
+#   - Use `bun run dev` for Wrangler development with REMOTE bindings.
+#   - There is no local or staging environment (REMOTE PRODUCTION ONLY).
 #
 # Production Deployment:
-#   - Use `wrangler deploy` or `bun run deploy`
-#   - Deploys to production resources defined above
+#   - Use `bun run deploy` with MCIS_CONFIRM_PRODUCTION=allow:predeploy,allow:deploy.
+#   - Deploys to production resources defined above.
 #   - Domain: mcis-backend.daiwandist.com (Worker), mcis.daiwandist.com (Pages)
 #
 # Database Operations:
-#   - `bun run db:migrate` - Apply migrations to REMOTE D1
-#   - `bun run db:query` - Query REMOTE D1 database
-#   - `bun run db:studio` - Open Drizzle Studio for REMOTE DB
+#   - Production D1 commands require MCIS_CONFIRM_PRODUCTION.
+#   - `bun run db:migrate` requires allow:d1:migrate.
+#   - `bun run db:query` requires allow:d1:query.
+#   - `bun run sync:db:*` requires allow:sync:db:from-prod or allow:sync:db:to-prod
+#     whenever production is the source or target.
 #
 # Health Checks:
 #   - `bun run health:check:all` - Check system and WebSocket health

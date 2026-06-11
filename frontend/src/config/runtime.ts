@@ -195,7 +195,7 @@ export function getFrontendUrl(): string {
   }
 
   // Development: use localhost default
-  const url = getEnv('VITE_FRONTEND_URL', 'http://localhost:3000');
+  const url = getEnv('VITE_FRONTEND_URL', 'http://localhost:5173');
   return url.replace(/\/$/, '');
 }
 
@@ -301,7 +301,7 @@ export function isActivityRestoreEnabled(): boolean {
  * const url = getApiUrl('/api/conversations');
  * const response = await fetch(url, { headers: { ... } });
  *
- * // 開發環境 (localhost:3000):
+ * // 開發環境 (localhost:5173):
  * // => '/api/conversations' (透過 Vite Proxy 代理到後端)
  *
  * // 生產環境:

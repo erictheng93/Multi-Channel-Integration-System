@@ -1,1 +1,206 @@
-{}
+{
+  "frontend/src/components/activity/ActivityStatsCards.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/activity/utils.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/auto-reply/ActionEditor.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/auto-reply/ConditionEditor.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/notification/NotificationCard.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 6,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/platform/PlatformStatus.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/reports/templates/templateHelpers.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/Dropdown.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/DropdownItem.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/FileUpload.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/Modal.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/PrimaryActionButton.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/RefreshButton.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/SmartVirtualScrollList.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/Tooltip.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/components/ui/VirtualScrollList.vue": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/composables/usePerformanceMonitor.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/config/features.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 0,
+    "tsExpectError": 1
+  },
+  "frontend/src/services/conversationSync.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/services/idleTimeProcessor.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 0,
+    "tsExpectError": 1
+  },
+  "frontend/src/services/incrementalUpdateManager.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/services/permissionService.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/services/qrPreloadService.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/services/webWorkerManager.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 0,
+    "tsExpectError": 2
+  },
+  "frontend/src/services/websocketClient.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/stores/messages.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 3,
+    "tsExpectError": 0
+  },
+  "frontend/src/types/file-upload.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/types/test-types.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 3,
+    "tsExpectError": 0
+  },
+  "frontend/src/utils/debounce.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "frontend/src/utils/logger.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "scripts/check-sql-raw.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 2,
+    "tsExpectError": 0
+  },
+  "src/enterprise/analytics-reports.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 1,
+    "tsExpectError": 0
+  },
+  "src/modules/analytics/services/analytics-core.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 5,
+    "tsExpectError": 0
+  },
+  "src/modules/analytics/services/analytics-queries.ts": {
+    "any": 0,
+    "asAny": 0,
+    "eslintDisable": 2,
+    "tsExpectError": 0
+  }
+}

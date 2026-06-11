@@ -114,9 +114,11 @@ vi.mock('@/utils/line', () => ({
 
 // Mock WebSocket broadcast service (references hoisted mock function)
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastMessageEvent: mockBroadcastMessageEvent
-  }))
+  WebSocketBroadcastService: vi.fn(function () {
+    return {
+      broadcastMessageEvent: mockBroadcastMessageEvent
+    };
+  })
 }));
 
 // Mock LINE integration service (imported by message-service but not actively used in these tests)

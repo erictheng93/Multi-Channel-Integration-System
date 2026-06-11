@@ -120,19 +120,32 @@ const startApp = async () => {
     })
     
     // 在生產環境中顯示用戶友好的錯誤消息
-    document.body.innerHTML = `
-      <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif;">
-        <div style="text-align: center; padding: 2rem; border: 1px solid #e0e0e0; border-radius: 8px; background: #f9f9f9; max-width: 500px;">
-          <h2 style="color: #d32f2f; margin-bottom: 1rem;">應用程式載入中...</h2>
-          <p style="color: #666; margin-bottom: 1rem;">
-            ${import.meta.env.PROD ? '請檢查您的網路連接並重新整理頁面' : `錯誤: ${errorMessage}`}
-          </p>
-          <button onclick="window.location.reload()" style="padding: 0.5rem 1rem; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-            重新整理
-          </button>
-        </div>
-      </div>
-    `
+    document.body.replaceChildren()
+
+    const outer = document.createElement('div')
+    outer.style.cssText = 'display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif;'
+
+    const panel = document.createElement('div')
+    panel.style.cssText = 'text-align: center; padding: 2rem; border: 1px solid #e0e0e0; border-radius: 8px; background: #f9f9f9; max-width: 500px;'
+
+    const title = document.createElement('h2')
+    title.style.cssText = 'color: #d32f2f; margin-bottom: 1rem;'
+    title.textContent = '應用程式載入中...'
+
+    const message = document.createElement('p')
+    message.style.cssText = 'color: #666; margin-bottom: 1rem;'
+    message.textContent = import.meta.env.PROD
+      ? '請檢查您的網路連接並重新整理頁面'
+      : `錯誤: ${errorMessage}`
+
+    const reloadButton = document.createElement('button')
+    reloadButton.style.cssText = 'padding: 0.5rem 1rem; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;'
+    reloadButton.textContent = '重新整理'
+    reloadButton.addEventListener('click', () => window.location.reload())
+
+    panel.append(title, message, reloadButton)
+    outer.append(panel)
+    document.body.append(outer)
   }
 }
 

@@ -23,6 +23,34 @@ import type {
 
 // Context logger for auth middleware
 const log = createContextLogger('AuthMiddleware');
+export const AUTH_COOKIE_NAMES = {
+  access: 'mcis_access',
+  refresh: 'mcis_refresh',
+  csrf: 'mcis_csrf',
+} as const;
+
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+export function parseCookieHeader(cookieHeader: string | undefined): Record<string, string> {
+  if (!cookieHeader) {
+    return {};
+  }
+
+  return cookieHeader.split(';').reduce<Record<string, string>>((cookies, part) => {
+    const [rawName, ...rawValueParts] = part.split('=');
+    const name = rawName?.trim();
+    if (!name) {
+      return cookies;
+    }
+    cookies[name] = decodeURIComponent(rawValueParts.join('=').trim());
+    return cookies;
+  }, {});
+}
+
+function csrfMatches(cookies: Record<string, string>, csrfHeader: string | undefined): boolean {
+  const csrfCookie = cookies[AUTH_COOKIE_NAMES.csrf];
+  return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
+}
 
 /**
  * F15: re-fetch the user's team membership from agent_teams so changes to
@@ -170,26 +198,32 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       return await next();
     }
 
-    const authHeader = c.req.header('Authorization');
+    const cookies = parseCookieHeader(c.req.header('Cookie'));
+    const cookieToken = cookies[AUTH_COOKIE_NAMES.access] || null;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ error: 'Missing or invalid authorization header' }, 401);
+    if (!cookieToken) {
+      return c.json({ error: 'Missing or invalid auth cookie' }, 401);
     }
 
-    const token = authHeader.substring(7); // 移除 "Bearer " 前綴
+    if (
+      UNSAFE_METHODS.has(c.req.method.toUpperCase()) &&
+      !csrfMatches(cookies, c.req.header('X-CSRF-Token'))
+    ) {
+      return c.json({ error: 'Invalid CSRF token' }, 403);
+    }
 
     // 驗證 JWT
-    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    const payload = await verifyJWT(cookieToken, c.env.JWT_SECRET);
 
-    // F12 fix: reject refresh tokens used as access tokens. Login mints
-    // both access (2h, type='access') and refresh (7d, type='refresh') JWTs
-    // with the same JWT_SECRET. Without this check, a stolen refresh token
-    // is usable directly against every protected API for its full 7-day
-    // lifetime. We only reject type='refresh' explicitly to avoid breaking
-    // the temp_password_change flow (separate token type used by forced
-    // password change) and any legacy tokens minted without a `type` claim.
+    // F12/F14 fix: reject non-access tokens used as access tokens. Login mints
+    // access, refresh, and forced-password-change temp JWTs with the same
+    // JWT_SECRET. Refresh tokens and temp password-change tokens must not be
+    // accepted by the general protected API middleware.
     if (payload.type === 'refresh') {
       return c.json({ error: 'Refresh token cannot be used to access this resource' }, 401);
+    }
+    if (payload.type === 'temp_password_change') {
+      return c.json({ error: 'Temporary password-change token cannot be used to access this resource' }, 401);
     }
 
     // F13: check the per-token revocation list before trusting the JWT.
@@ -597,11 +631,16 @@ export function requireTeamPermission(
  */
 export async function optionalAuth(c: Context<{ Bindings: Bindings }>, next: Next) {
   try {
-    const authHeader = c.req.header('Authorization');
+    const cookies = parseCookieHeader(c.req.header('Cookie'));
+    const token = cookies[AUTH_COOKIE_NAMES.access];
     
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7);
-      
+    if (
+      token &&
+      (
+        !UNSAFE_METHODS.has(c.req.method.toUpperCase()) ||
+        csrfMatches(cookies, c.req.header('X-CSRF-Token'))
+      )
+    ) {
       try {
         const payload = await verifyJWT(token, c.env.JWT_SECRET);
         const user = await getUserById(c.env.DB, payload.userId);

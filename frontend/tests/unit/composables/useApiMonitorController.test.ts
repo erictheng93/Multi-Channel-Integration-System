@@ -439,7 +439,7 @@ describe('useApiMonitorController', () => {
       expect(controller.error.value).toBe('Bad data')
     })
 
-    it('should send auth header in fetch request', async () => {
+    it('should authenticate with HttpOnly cookies in fetch request', async () => {
       mockSuccessfulFetch(buildMonitorData())
 
       await controller.initialize()
@@ -447,11 +447,11 @@ describe('useApiMonitorController', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/system/api-status'),
         expect.objectContaining({
-          headers: expect.objectContaining({
-            'Authorization': 'Bearer mock-jwt-token'
-          })
+          credentials: 'include'
         })
       )
+      const requestInit = mockFetch.mock.calls[0][1] as RequestInit
+      expect(new Headers(requestInit.headers).get('Authorization')).toBeNull()
     })
   })
 

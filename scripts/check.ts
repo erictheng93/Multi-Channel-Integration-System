@@ -29,6 +29,10 @@ const bunExe = process.execPath
 
 const backendChecks: CheckDefinition[] = [
   {
+    label: 'Encoding/mojibake check',
+    args: ['scripts/check-encoding.ts'],
+  },
+  {
     label: 'tsc --noEmit (backend)',
     args: ['x', 'tsc', '--noEmit'],
     errorPattern: /error TS/gi,
@@ -44,6 +48,10 @@ const backendChecks: CheckDefinition[] = [
   {
     label: 'Type debt allowlist',
     args: ['run', 'check:type-debt'],
+  },
+  {
+    label: 'Scoped TODO guard',
+    args: ['run', 'check:scoped-todos'],
   },
 ]
 

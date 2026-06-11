@@ -36,8 +36,19 @@ const mockLocalStorage = {
   removeItem: vi.fn()
 }
 
+const mockSessionStorage = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn()
+}
+
 Object.defineProperty(global, 'localStorage', {
   value: mockLocalStorage,
+  writable: true
+})
+
+Object.defineProperty(global, 'sessionStorage', {
+  value: mockSessionStorage,
   writable: true
 })
 
@@ -83,37 +94,39 @@ describe('前端狀態管理優化測試', () => {
         password: 'password'
       })
 
-      // 驗證狀態立即更新
+      // 驗證狀態立即更新。憑證改存 HttpOnly cookie，
+      // store 不得把 token 鏡像到 JS 狀態或 web storage。
       expect(result).toBe(true)
-      expect(authStore.token).toBe(validToken)
-      expect(authStore.refreshToken).toBe(validRefreshToken)
+      expect(authStore.token).toBeNull()
+      expect(authStore.refreshToken).toBeNull()
       expect(authStore.currentAgent).toEqual(mockAgent)
       expect(authStore.sessionStatus).toBe('authenticated')
 
-      // 驗證 localStorage 同步
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('token', validToken)
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('refreshToken', validRefreshToken)
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('currentAgent', JSON.stringify(mockAgent))
+      // 驗證 session-scoped auth storage 同步（不得寫入任何 token）
+      expect(mockSessionStorage.setItem).not.toHaveBeenCalledWith('token', expect.anything())
+      expect(mockSessionStorage.setItem).not.toHaveBeenCalledWith('refreshToken', expect.anything())
+      expect(mockSessionStorage.setItem).toHaveBeenCalledWith('currentAgent', JSON.stringify(mockAgent))
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalledWith('token', validToken)
+      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('token')
 
-      // 驗證 API 客戶端認證標頭設定
-      expect(authApi.setAuthHeader).toHaveBeenCalledWith(validToken, validRefreshToken)
+      // HttpOnly cookie 模式下不再設定 API 客戶端 Authorization 標頭
+      expect(authApi.setAuthHeader).not.toHaveBeenCalled()
     })
   })
 
   describe('智能會話初始化 - 避免額外 API 請求', () => {
-    it('當有有效快取資料時，應該跳過 /auth/me 請求', async () => {
-      const validToken = createValidJWT('test-agent-id', 'agent')
-
-      // 設定已有的認證狀態（模擬從 localStorage 恢復）
-      authStore.token = validToken
+    it('即使有快取資料，也必須呼叫一次 /auth/me 驗證 HttpOnly cookie session', async () => {
+      // 設定已有的認證狀態（模擬從 sessionStorage 恢復）
       authStore.currentAgent = mockAgent
       authStore.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天後過期
+
+      vi.mocked(authApi.me).mockResolvedValue({ success: true, data: mockAgent })
 
       // 執行會話初始化
       await authStore.initializeSession()
 
-      // 驗證：沒有調用 authApi.me
-      expect(authApi.me).not.toHaveBeenCalled()
+      // 驗證：HttpOnly cookie 無法由 JS 讀取，必須向後端驗證一次
+      expect(authApi.me).toHaveBeenCalledTimes(1)
       expect(authStore.sessionStatus).toBe('authenticated')
     })
 
@@ -244,6 +257,8 @@ describe('前端狀態管理優化測試', () => {
       newStore.currentAgent = mockAgent
       newStore.sessionExpiry = Date.now() + 7 * 24 * 60 * 60 * 1000
 
+      vi.mocked(authApi.me).mockResolvedValue({ success: true, data: mockAgent })
+
       await newStore.initializeSession()
 
       // 3. 模擬多次 fetchCurrentAgent 調用
@@ -251,8 +266,9 @@ describe('前端狀態管理優化測試', () => {
       await newStore.fetchCurrentAgent()
       await newStore.fetchCurrentAgent()
 
-      // 驗證：整個流程中 /auth/me 最多只被調用 0 次（因為登入時已經獲得用戶資料）
-      expect(authApi.me).toHaveBeenCalledTimes(0)
+      // 驗證：cookie session 驗證恰好打一次 /auth/me，
+      // 其後 fetchCurrentAgent 走快取不再重複請求
+      expect(authApi.me).toHaveBeenCalledTimes(1)
     })
   })
 })

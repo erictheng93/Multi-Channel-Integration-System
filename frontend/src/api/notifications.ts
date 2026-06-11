@@ -1,109 +1,36 @@
 // frontend/src/api/notifications.ts
 // 通知系統 API 客戶端
 
-import { apiClient } from './base'
+import {
+  notificationContracts,
+  type BulkCreateNotificationRequest,
+  type CreateNotificationRequest,
+  type Notification,
+  type NotificationListParams,
+  type NotificationSettings,
+  type NotificationStats,
+  type NotificationType
+} from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 import type { ApiResponse, PaginatedResponse } from '@/types'
 
-// ==================== 類型定義 ====================
-
-export type NotificationType =
-  | 'new_message'
-  | 'conversation_assigned'
-  | 'conversation_transferred'
-  | 'mention'
-  | 'system'
-  | 'priority_changed'
-  | 'customer_responded'
-  | 'task_reminder'
-  | 'agent_removed_from_team'  // Agent 被移出團隊通知
-  | 'customer_followed' //  新客戶加入通知
-  | 'new_conversation' //  新對話創建通知
-
-export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
-
-export interface Notification {
-  id: string
-  userId: number
-  type: NotificationType
-  title: string
-  content: string
-  data?: Record<string, unknown>
-  priority: NotificationPriority
-  isRead: boolean
-  readAt?: string
-  expiresAt?: string
-  createdAt: string
-  updatedAt?: string
-}
-
-export interface NotificationStats {
-  total: number
-  unread: number
-  byType: Record<NotificationType, { total: number; unread: number }>
-  byPriority: Record<NotificationPriority, { total: number; unread: number }>
-  timeRange: {
-    today: number
-    thisWeek: number
-    thisMonth: number
-  }
-}
-
-export interface NotificationSettings {
-  userId: number
-  emailEnabled: boolean
-  pushEnabled: boolean
-  soundEnabled: boolean
-  mentionEnabled: boolean
-  assignmentEnabled: boolean
-  messageEnabled: boolean
-  systemEnabled: boolean
-}
-
-// ==================== 請求參數類型 ====================
-
-export interface NotificationListParams {
-  page?: number
-  pageSize?: number
-  type?: NotificationType
-  priority?: NotificationPriority
-  isRead?: boolean
-  dateFrom?: string
-  dateTo?: string
-}
-
-export interface CreateNotificationRequest {
-  userId?: number
-  type: NotificationType
-  title: string
-  content: string
-  data?: Record<string, unknown>
-  priority?: NotificationPriority
-  channels?: string[]
-  expiresAt?: string
-}
-
-export interface BulkCreateNotificationRequest {
-  notifications: CreateNotificationRequest[]
-  batchId?: string
-}
+export type {
+  BulkCreateNotificationRequest,
+  CreateNotificationRequest,
+  Notification,
+  NotificationListParams,
+  NotificationPriority,
+  NotificationSettings,
+  NotificationStats,
+  NotificationType
+} from '@shared/api-contracts'
 
 // ==================== API 客戶端 ====================
 
 export const notificationApi = {
   // 獲取通知列表
   list: async (params: NotificationListParams = {}): Promise<ApiResponse<PaginatedResponse<Notification>>> => {
-    const queryParams = new URLSearchParams()
-    
-    if (params.page !== undefined) {queryParams.append('page', params.page.toString())}
-    if (params.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString())}
-    if (params.type) {queryParams.append('type', params.type)}
-    if (params.priority) {queryParams.append('priority', params.priority)}
-    if (params.isRead !== undefined) {queryParams.append('isRead', params.isRead.toString())}
-    if (params.dateFrom) {queryParams.append('dateFrom', params.dateFrom)}
-    if (params.dateTo) {queryParams.append('dateTo', params.dateTo)}
-    
-    const queryString = queryParams.toString()
-    return apiClient.get(`/notifications${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(notificationContracts.list, params) as Promise<ApiResponse<PaginatedResponse<Notification>>>
   },
 
   // 獲取單個通知
@@ -111,7 +38,7 @@ export const notificationApi = {
     if (!id?.trim()) {
       return { success: false, error: '通知 ID 不能為空' }
     }
-    return apiClient.get(`/notifications/${id}`)
+    return callApiContract(notificationContracts.getById, { id })
   },
 
   // 創建通知
@@ -125,7 +52,7 @@ export const notificationApi = {
     if (!request.type) {
       return { success: false, error: '通知類型不能為空' }
     }
-    return apiClient.post('/notifications', request)
+    return callApiContract(notificationContracts.create, {}, request)
   },
 
   // 批量創建通知 (僅管理員)
@@ -138,7 +65,7 @@ export const notificationApi = {
     if (!request.notifications || request.notifications.length === 0) {
       return { success: false, error: '至少需要一個通知' }
     }
-    return apiClient.post('/notifications/bulk', request)
+    return callApiContract(notificationContracts.createBulk, {}, request)
   },
 
   // 標記通知為已讀
@@ -146,12 +73,12 @@ export const notificationApi = {
     if (!id?.trim()) {
       return { success: false, error: '通知 ID 不能為空' }
     }
-    return apiClient.put(`/notifications/${id}/read`)
+    return callApiContract(notificationContracts.markAsRead, { id })
   },
 
   // 批量標記為已讀
   markAllAsRead: async (type?: NotificationType): Promise<ApiResponse<{ updated: number }>> => {
-    return apiClient.put('/notifications/mark-all-read', type ? { type } : {})
+    return callApiContract(notificationContracts.markAllAsRead, {}, type ? { type } : {})
   },
 
   // 刪除通知
@@ -159,18 +86,17 @@ export const notificationApi = {
     if (!id?.trim()) {
       return { success: false, error: '通知 ID 不能為空' }
     }
-    return apiClient.delete(`/notifications/${id}`)
+    return callApiContract(notificationContracts.delete, { id })
   },
 
   // 獲取通知統計
   getStats: async (): Promise<ApiResponse<NotificationStats>> => {
-    return apiClient.get('/notifications/stats')
+    return callApiContract(notificationContracts.stats, {})
   },
 
   // 獲取未讀數量
   getUnreadCount: async (type?: NotificationType): Promise<ApiResponse<{ count: number; type: string }>> => {
-    const queryParams = type ? `?type=${type}` : ''
-    return apiClient.get(`/notifications/unread-count${queryParams}`)
+    return callApiContract(notificationContracts.unreadCount, { type })
   },
 
   // 獲取最近通知
@@ -179,12 +105,12 @@ export const notificationApi = {
     count: number
     limit: number
   }>> => {
-    return apiClient.get(`/notifications/recent?limit=${limit}`)
+    return callApiContract(notificationContracts.recent, { limit })
   },
 
   // 清理過期通知 (僅管理員)
   cleanup: async (): Promise<ApiResponse<{ deleted: number }>> => {
-    return apiClient.delete('/notifications/cleanup')
+    return callApiContract(notificationContracts.cleanup, {})
   },
 
   // 獲取通道統計 (僅管理員)
@@ -193,7 +119,7 @@ export const notificationApi = {
     type: string
     stats?: unknown
   }>>> => {
-    return apiClient.get('/notifications/channels/stats')
+    return callApiContract(notificationContracts.channelStats, {})
   },
 
   // 測試通道
@@ -202,7 +128,7 @@ export const notificationApi = {
     messageId?: string
     errorMessage?: string
   }>> => {
-    return apiClient.post(`/notifications/channels/${channelType}/test`, { message })
+    return callApiContract(notificationContracts.testChannel, { channelType }, { message })
   },
 
   // ==================== 便利方法 ====================
@@ -215,7 +141,7 @@ export const notificationApi = {
     content: string
     channels?: string[]
   }): Promise<ApiResponse<{ id: string }>> => {
-    return apiClient.post('/notifications/new-message', params)
+    return callApiContract(notificationContracts.newMessage, {}, params)
   },
 
   // 創建對話指派通知
@@ -225,7 +151,7 @@ export const notificationApi = {
     customerName: string
     assignedBy: string
   }): Promise<ApiResponse<{ id: string }>> => {
-    return apiClient.post('/notifications/conversation-assigned', params)
+    return callApiContract(notificationContracts.conversationAssigned, {}, params)
   },
 
   // 創建系統通知 (僅管理員)
@@ -235,18 +161,18 @@ export const notificationApi = {
     content: string
     data?: Record<string, unknown>
   }): Promise<ApiResponse<{ ids: string[]; count: number }>> => {
-    return apiClient.post('/notifications/system', params)
+    return callApiContract(notificationContracts.system, {}, params)
   },
 
   // ==================== 設定管理 ====================
 
   // 獲取通知設定
   getSettings: async (): Promise<ApiResponse<NotificationSettings>> => {
-    return apiClient.get('/notifications/settings')
+    return callApiContract(notificationContracts.settings, {})
   },
 
   // 更新通知設定
   updateSettings: async (settings: Partial<Omit<NotificationSettings, 'userId'>>): Promise<ApiResponse<void>> => {
-    return apiClient.put('/notifications/settings', settings)
+    return callApiContract(notificationContracts.updateSettings, {}, settings)
   }
 }

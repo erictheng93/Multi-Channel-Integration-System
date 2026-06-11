@@ -16,7 +16,7 @@ import {
 describe('escapeHtml', () => {
   it('should escape HTML special characters', () => {
     expect(escapeHtml('<script>alert("xss")</script>'))
-      .toBe('&lt;script&gt;alert("xss")&lt;/script&gt;')
+      .toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
   })
 
   it('should escape ampersand', () => {
@@ -24,7 +24,7 @@ describe('escapeHtml', () => {
   })
 
   it('should escape quotes', () => {
-    expect(escapeHtml('"Hello"')).toBe('"Hello"')
+    expect(escapeHtml('"Hello"')).toBe('&quot;Hello&quot;')
   })
 
   it('should handle empty string', () => {

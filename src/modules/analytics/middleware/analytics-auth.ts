@@ -7,6 +7,7 @@ import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
+import { verifyJWT as verifySignedJWT } from '@/utils/auth'
 
 const log = createContextLogger('AnalyticsAuth')
 
@@ -151,31 +152,9 @@ async function verifyJWT(token: string, secret: string): Promise<{
   error?: string;
 }> {
   try {
-    // 這裡應該使用實際的 JWT 驗證邏輯
-    // 暫時使用簡化的實現
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      return { success: false, error: 'Invalid token format' };
-    }
-
-    // 解碼 payload (實際應用中需要驗證簽名)
-    if (!parts[1]) {
-      return { success: false, error: 'Invalid token format' };
-    }
-    const payload = JSON.parse(atob(parts[1])) as unknown;
+    const payload = await verifySignedJWT(token, secret) as unknown;
     if (!isJwtPayload(payload)) {
       return { success: false, error: 'Invalid token payload' };
-    }
-
-    // 檢查過期時間
-    if (payload.exp && payload.exp < Date.now() / 1000) {
-      return { success: false, error: 'Token expired' };
-    }
-
-    // 測試環境支持：如果 payload 有 iss 字段且為測試套件，則接受
-    // 這允許 E2E 測試使用測試 JWT
-    if (payload.iss === 'e2e-test-suite' && (!secret || secret === 'test-jwt-secret-for-e2e-testing-only-do-not-use-in-production')) {
-      return { success: true, decoded: payload };
     }
 
     return { success: true, decoded: payload };

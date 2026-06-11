@@ -42,14 +42,16 @@ const {
   const mockLogMemberRemove = vi.fn().mockResolvedValue({ id: 'act-5', action: 'member_remove' });
   const mockLogQRCodeGenerate = vi.fn().mockResolvedValue({ id: 'act-6', action: 'qr_code_generate' });
 
-  const MockTeamActivityService = vi.fn().mockImplementation(() => ({
-    logTeamCreate: mockLogTeamCreate,
-    logTeamUpdate: mockLogTeamUpdate,
-    logTeamDelete: mockLogTeamDelete,
-    logMemberAdd: mockLogMemberAdd,
-    logMemberRemove: mockLogMemberRemove,
-    logQRCodeGenerate: mockLogQRCodeGenerate,
-  }));
+  const MockTeamActivityService = vi.fn(function () {
+    return {
+      logTeamCreate: mockLogTeamCreate,
+      logTeamUpdate: mockLogTeamUpdate,
+      logTeamDelete: mockLogTeamDelete,
+      logMemberAdd: mockLogMemberAdd,
+      logMemberRemove: mockLogMemberRemove,
+      logQRCodeGenerate: mockLogQRCodeGenerate,
+    };
+  });
 
   // Attach static getters to the mock constructor
   Object.defineProperty(MockTeamActivityService, 'ACTIONS', {

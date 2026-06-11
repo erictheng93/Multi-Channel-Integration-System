@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '../frontend/src'),
+      '@/utils/authStorage': path.resolve(__dirname, '../frontend/src/utils/authStorage.ts'),
+      '@': path.resolve(__dirname, '../src'),
+      '@frontend': path.resolve(__dirname, '../frontend/src'),
       '~': path.resolve(__dirname, '../'),
       '@backend': path.resolve(__dirname, '../src'),
       '@modules': path.resolve(__dirname, '../src/modules'),

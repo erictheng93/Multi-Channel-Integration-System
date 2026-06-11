@@ -39,15 +39,21 @@ const mockPushAdapter = {
 };
 
 vi.mock('@modules/notifications/adapters/websocket-adapter', () => ({
-  WebSocketAdapter: vi.fn(() => mockWsAdapter),
+  WebSocketAdapter: vi.fn(function () {
+    return mockWsAdapter;
+  }),
 }));
 
 vi.mock('@modules/notifications/adapters/email-adapter', () => ({
-  EmailAdapter: vi.fn(() => mockEmailAdapter),
+  EmailAdapter: vi.fn(function () {
+    return mockEmailAdapter;
+  }),
 }));
 
 vi.mock('@modules/notifications/adapters/push-adapter', () => ({
-  PushAdapter: vi.fn(() => mockPushAdapter),
+  PushAdapter: vi.fn(function () {
+    return mockPushAdapter;
+  }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -217,7 +223,9 @@ describe('NotificationChannelService', () => {
       const adapterWithoutBulk = { ...mockWsAdapter, sendBulk: undefined };
       // Re-mock so the service gets adapter without sendBulk
       const { WebSocketAdapter } = await import('@modules/notifications/adapters/websocket-adapter');
-      (WebSocketAdapter as any).mockImplementation(() => adapterWithoutBulk);
+      (WebSocketAdapter as any).mockImplementation(function () {
+        return adapterWithoutBulk;
+      });
 
       const serviceNoBulk = new NotificationChannelService();
       const notifications = [

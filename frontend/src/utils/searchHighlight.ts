@@ -117,7 +117,6 @@ export function highlightText(
           }
           return match
         })
-        highlightCount = maxHighlights
         break
       } else {
         highlightedText = highlightedText.replace(

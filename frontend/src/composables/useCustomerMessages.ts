@@ -1,11 +1,11 @@
 // Customer Messages Composable - 連接到新的 Customer Conversation System
 // 提供與 useMessages 相同的接口，但使用 /api/customer-conversations/* 端點
 import { ref, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import type { Message } from '@/types'
 import { conversationCache } from '@/utils/conversationCache'
 import { getApiUrl } from '@/config/runtime'
 import { createLogger } from '@/utils/logger'
+import { authenticatedFetch, buildAuthenticatedHeaders } from '@/api/authenticatedFetch'
 
 const frontendLogger = createLogger('useCustomerMessages')
 
@@ -16,8 +16,6 @@ export interface CustomerMessagesOptions {
 }
 
 export function useCustomerMessages(conversationId: string, options?: CustomerMessagesOptions) {
-  const authStore = useAuthStore()
-
   // 配置
   const pageSize = options?.pageSize ?? 30
   // FIX: Disabled progressive loading by default to prevent flicker/shaking
@@ -43,13 +41,13 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
   // ═══════════════════════════════════════════════════════════════════════════
 
   // 獲取認證 token -  FIX: 同時支援兩種認證方式
-  const getAuthHeaders = () => {
-    const token = authStore.token || localStorage.getItem('token') || localStorage.getItem('authToken')
-    return {
-      'Authorization': token ? `Bearer ${token}` : '',
-      'X-Session-Id': token || '',
-      'X-Conversation-Id': conversationId
-    }
+  const getAuthHeaders = (
+    method = 'GET',
+    headers?: ConstructorParameters<typeof globalThis.Headers>[0]
+  ) => {
+    const nextHeaders = buildAuthenticatedHeaders(method, headers)
+    nextHeaders.set('X-Conversation-Id', conversationId)
+    return nextHeaders
   }
 
   /**
@@ -75,7 +73,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
       frontendLogger.debug('[Progressive] Phase 1: Loading recent messages...')
       const initialLimit = 10
 
-      const initialResponse = await fetch(
+      const initialResponse = await authenticatedFetch(
         getApiUrl(`/api/customer-conversations/${conversationId}/messages?limit=${initialLimit}`),
         {
           headers: getAuthHeaders()
@@ -146,7 +144,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         return
       }
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         getApiUrl(`/api/customer-conversations/${conversationId}/messages?before=${oldestMessage.id}&limit=${remainingLimit}`),
         {
           headers: getAuthHeaders()
@@ -196,7 +194,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     loading.value = true
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         getApiUrl(`/api/customer-conversations/${conversationId}/messages?limit=${pageSize}`),
         {
           headers: getAuthHeaders()
@@ -253,7 +251,7 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
         new Date(current.createdAt) < new Date(oldest.createdAt) ? current : oldest
       )
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         getApiUrl(`/api/customer-conversations/${conversationId}/messages?before=${oldestMessage.id}&limit=${pageSize}`),
         {
           headers: getAuthHeaders()
@@ -300,14 +298,13 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     }
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         getApiUrl(`/api/customer-conversations/${conversationId}/messages`),
         {
           method: 'POST',
-          headers: {
+          headers: getAuthHeaders('POST', {
             'Content-Type': 'application/json',
-            ...getAuthHeaders()
-          },
+          }),
           body: JSON.stringify({
             content,
             assets: [] // Note: File attachments can be added using useFileUpload composable
@@ -351,14 +348,13 @@ export function useCustomerMessages(conversationId: string, options?: CustomerMe
     }
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         getApiUrl(`/api/customer-conversations/${conversationId}/messages`),
         {
           method: 'POST',
-          headers: {
+          headers: getAuthHeaders('POST', {
             'Content-Type': 'application/json',
-            ...getAuthHeaders()
-          },
+          }),
           body: JSON.stringify({
             content: content?.trim() || '',
             attachmentIds,

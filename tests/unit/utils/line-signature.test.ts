@@ -13,6 +13,11 @@ describe('LINE Signature Verification - Advanced Tests', () => {
     }
   };
 
+  function expectByteView(value: unknown): void {
+    expect(ArrayBuffer.isView(value)).toBe(true);
+    expect((value as ArrayBufferView).byteLength).toBeGreaterThan(0);
+  }
+
   beforeEach(() => {
     vi.stubGlobal('crypto', mockCrypto);
     vi.stubGlobal('btoa', vi.fn());
@@ -60,13 +65,12 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       const result = await verifyLineSignature(realWebhookBody, signature, mockChannelSecret);
 
       expect(result).toBe(true);
-      expect(mockCrypto.subtle.importKey).toHaveBeenCalledWith(
-        'raw',
-        expect.any(Uint8Array),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-      );
+      const importKeyCall = mockCrypto.subtle.importKey.mock.calls[0];
+      expect(importKeyCall[0]).toBe('raw');
+      expectByteView(importKeyCall[1]);
+      expect(importKeyCall[2]).toEqual({ name: 'HMAC', hash: 'SHA-256' });
+      expect(importKeyCall[3]).toBe(false);
+      expect(importKeyCall[4]).toEqual(['sign']);
     });
 
     test('should handle empty webhook body', async () => {
@@ -173,13 +177,12 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       const result = await verifyLineSignature(body, signature, longChannelSecret);
 
       expect(result).toBe(true);
-      expect(mockCrypto.subtle.importKey).toHaveBeenCalledWith(
-        'raw',
-        expect.any(Uint8Array),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-      );
+      const importKeyCall = mockCrypto.subtle.importKey.mock.calls[0];
+      expect(importKeyCall[0]).toBe('raw');
+      expectByteView(importKeyCall[1]);
+      expect(importKeyCall[2]).toEqual({ name: 'HMAC', hash: 'SHA-256' });
+      expect(importKeyCall[3]).toBe(false);
+      expect(importKeyCall[4]).toEqual(['sign']);
     });
   });
 
@@ -245,11 +248,10 @@ describe('LINE Signature Verification - Advanced Tests', () => {
       const result = await verifyLineSignature(largeBody, signature, mockChannelSecret);
 
       expect(result).toBe(true);
-      expect(mockCrypto.subtle.sign).toHaveBeenCalledWith(
-        'HMAC',
-        'mock-key',
-        expect.any(Uint8Array)
-      );
+      const signCall = mockCrypto.subtle.sign.mock.calls[0];
+      expect(signCall[0]).toBe('HMAC');
+      expect(signCall[1]).toBe('mock-key');
+      expectByteView(signCall[2]);
     });
 
     test('should handle concurrent signature verifications', async () => {

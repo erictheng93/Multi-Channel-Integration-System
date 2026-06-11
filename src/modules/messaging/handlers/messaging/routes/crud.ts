@@ -23,6 +23,8 @@ import { getMentionedUserIds } from '@/utils/mention-parser';
 import { triggerMentionNotification } from '@/utils/notification-trigger';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { contractJson } from '@/utils/api-contract-response';
+import { messageContracts, type ContractResponse } from '@shared/api-contracts';
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
 type MessageUpdateValues = Partial<typeof messages.$inferInsert>;
@@ -146,7 +148,11 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
       }
     };
 
-    return successResponse(c, messageDetail);
+    return contractJson(c, messageContracts.getMessageDetails, {
+      success: true,
+      data: messageDetail,
+      timestamp: nowISO()
+    } as ContractResponse<typeof messageContracts.getMessageDetails>);
 
   } catch (error) {
     log.error('Get message error', {}, error as Error);

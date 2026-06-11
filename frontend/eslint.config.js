@@ -53,6 +53,8 @@ export default [
         location: 'readonly',
         history: 'readonly',
         fetch: 'readonly',
+        Headers: 'readonly',
+        RequestInit: 'readonly',
         URLSearchParams: 'readonly',
         URL: 'readonly',
         Event: 'readonly',

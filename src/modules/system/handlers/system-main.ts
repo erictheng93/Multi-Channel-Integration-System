@@ -8,6 +8,8 @@ import { agents, customers, conversations, messages, customerFeedback } from '@/
 // REMOVED: qrCodes - Old QR Code module migrated to new LIFF QR Code system
 import { count, sql, eq, and } from 'drizzle-orm';
 import { handleApiError } from '@/utils/api-response';
+import { systemContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 
@@ -329,7 +331,7 @@ systemHandler.get('/stats', jwtAuth, async (c) => {
       // 如果查詢失敗，使用默認值 0
     }
 
-    return c.json({
+    return contractJson(c, systemContracts.dashboardStats, {
       success: true,
       data: {
         totalMessages,

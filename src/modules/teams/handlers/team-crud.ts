@@ -32,6 +32,8 @@ import {
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { nowISO } from '@/utils/timestamp';
 import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { teamContracts, type ContractResponse, type TeamApiDto } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -56,6 +58,30 @@ function teamState(team: TeamStateInput) {
     created_at: team.createdAt,
     updated_at: team.updatedAt,
     deleted_at: team.deletedAt ?? null
+  };
+}
+
+function toTeamApiDto(team: {
+  id: number;
+  name?: string | null;
+  description?: string | null;
+  qrCode?: string | null;
+  lineUrl?: string | null;
+  isActive?: boolean | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  memberCount?: number;
+}): TeamApiDto {
+  return {
+    id: team.id,
+    name: team.name || '',
+    description: team.description ?? undefined,
+    qrCode: team.qrCode ?? undefined,
+    lineUrl: team.lineUrl ?? undefined,
+    isActive: Boolean(team.isActive),
+    createdAt: team.createdAt || nowISO(),
+    updatedAt: team.updatedAt || nowISO(),
+    memberCount: team.memberCount
   };
 }
 
@@ -130,6 +156,31 @@ app.get('/stats/all', jwtAuth, requireAdmin(), async (c) => {
   }
 });
 
+// Get aggregate team-member statistics expected by the frontend contract
+app.get('/stats', jwtAuth, requireAdmin(), async (c) => {
+  try {
+    const row = await c.env.DB.prepare(`
+      SELECT
+        COUNT(*) as totalMembers,
+        COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) as activeMembers,
+        COALESCE(SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END), 0) as adminCount
+      FROM agents
+      WHERE deleted_at IS NULL
+    `).first<{ totalMembers: number; activeMembers: number; adminCount: number }>();
+
+    return contractJson(c, teamContracts.getTeamStats, {
+      success: true,
+      data: {
+        totalMembers: row?.totalMembers ?? 0,
+        activeMembers: row?.activeMembers ?? 0,
+        adminCount: row?.adminCount ?? 0
+      }
+    });
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+});
+
 // Transfer members between teams - admin only
 app.post('/transfer', jwtAuth, requireAdmin(), async (c) => {
   try {
@@ -191,7 +242,10 @@ app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c
     const teamService = new TeamService(c.env.DB);
     const stats = await teamService.getTeamStats(teamId, params);
 
-    return c.json({ success: true, data: stats });
+    return contractJson(c, teamContracts.getTeamStatsByTeam, {
+      success: true,
+      data: stats
+    } satisfies ContractResponse<typeof teamContracts.getTeamStatsByTeam>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -213,7 +267,10 @@ app.get('/:id', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    return c.json({ success: true, data: team });
+    return contractJson(c, teamContracts.getTeamDetail, {
+      success: true,
+      data: team
+    } as ContractResponse<typeof teamContracts.getTeamDetail>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -252,11 +309,11 @@ app.put('/:id', jwtAuth, requireTeamRole('supervisor'), requireIntId(), async (c
       })
     );
 
-    return c.json({
+    return contractJson(c, teamContracts.updateTeam, {
       success: true,
       data: team,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.updateTeam>);
   } catch (error) {
     // Handle team not found
     if (error instanceof Error && error.message === 'Team not found after update') {
@@ -318,11 +375,11 @@ app.delete('/:id', jwtAuth, requireAdmin(), requireIntId(), async (c) => {
         .bind(timestamp, timestamp, teamId)
     ]);
 
-    return c.json({
+    return contractJson(c, teamContracts.deleteTeam, {
       success: true,
       message: 'Team deleted successfully',
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.deleteTeam>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -339,11 +396,11 @@ app.get('/', jwtAuth, async (c) => {
     if (user.role === 'agent' && user.primaryTeamId) {
       const teamService = new TeamService(c.env.DB);
       const team = await teamService.getTeam(user.primaryTeamId);
-      return c.json({
+      return contractJson(c, teamContracts.getTeams, {
         success: true,
-        data: [team],
+        data: team ? [toTeamApiDto(team)] : [],
         timestamp: nowISO()
-      });
+      } satisfies ContractResponse<typeof teamContracts.getTeams>);
     }
 
     const teamService = new TeamService(c.env.DB);
@@ -364,12 +421,16 @@ app.get('/', jwtAuth, async (c) => {
       user: { id: user.id, role: user.role, teamId: user.primaryTeamId }
     });
 
-    return c.json({
+    return contractJson(c, teamContracts.getTeams, {
       success: true,
-      data: result.teams,
-      pagination: result.pagination,
+      data: result.teams.map(toTeamApiDto),
+      pagination: {
+        ...result.pagination,
+        hasNext: result.pagination.page < result.pagination.totalPages,
+        hasPrev: result.pagination.page > 1
+      },
       timestamp: nowISO()
-    });
+    } satisfies ContractResponse<typeof teamContracts.getTeams>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -446,11 +507,11 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       } : {})
     };
 
-    return c.json({
+    return contractJson(c, teamContracts.createTeam, {
       success: true,
       data: teamWithQR,
       timestamp: nowISO()
-    }, HTTP_STATUS.CREATED);
+    } as ContractResponse<typeof teamContracts.createTeam>, HTTP_STATUS.CREATED);
   } catch (error) {
     if (error instanceof Error && error.message === 'DUPLICATE_QR_CODE') {
       return c.json({

@@ -11,7 +11,7 @@ describe('Message Formatting Utilities', () => {
   describe('escapeHtml', () => {
     it('should escape HTML special characters', () => {
       expect(escapeHtml('<script>alert("xss")</script>'))
-        .toBe('&lt;script&gt;alert("xss")&lt;/script&gt;')
+        .toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')
     })
 
     it('should escape ampersands', () => {
@@ -19,7 +19,7 @@ describe('Message Formatting Utilities', () => {
     })
 
     it('should escape quotes', () => {
-      expect(escapeHtml('He said "Hello"')).toBe('He said "Hello"')
+      expect(escapeHtml('He said "Hello"')).toBe('He said &quot;Hello&quot;')
     })
 
     it('should handle empty strings', () => {
@@ -32,7 +32,7 @@ describe('Message Formatting Utilities', () => {
 
     it('should escape multiple special characters', () => {
       expect(escapeHtml('<div class="test">A & B</div>'))
-        .toBe('&lt;div class="test"&gt;A &amp; B&lt;/div&gt;')
+        .toBe('&lt;div class=&quot;test&quot;&gt;A &amp; B&lt;/div&gt;')
     })
 
     it('should handle Unicode characters', () => {

@@ -1,7 +1,6 @@
 // Customer WebSocket Manager - 連接到新的 Customer Conversation System
 // 提供與 realtimeConnectionManager 兼容的接口
 import { ref, computed, type Ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import type { Message } from '@/types'
 import { getBackendUrl } from '@/config/runtime'
 import { WS_EVENTS, normalizeEventType } from '@/constants/websocket-events'
@@ -40,7 +39,6 @@ export interface CustomerRealtimeConnection {
 export function createCustomerWebSocketConnection(
   config: CustomerWebSocketConfig
 ): CustomerRealtimeConnection {
-  const authStore = useAuthStore()
   const log = createLogger('CustomerWebSocket')
 
   // 狀態
@@ -69,11 +67,8 @@ export function createCustomerWebSocketConnection(
     const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws'
     const wsHost = apiUrl.replace(/^https?:\/\//, '')
 
-    const sessionId = authStore.token || localStorage.getItem('token')
-
     const url = new URL(`${wsProtocol}://${wsHost}/api/customer-ws`)
     url.searchParams.set('conversationId', config.conversationId)
-    url.searchParams.set('sessionId', sessionId || '')
 
     return url.toString()
   }

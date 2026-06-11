@@ -4,6 +4,11 @@
 // Created by: API Client Developer
 
 import type { ApiResponse } from '@/types';
+import { buildAuthenticatedHeaders } from './authenticatedFetch'
+import { clearAuthStorageItems, removeStoredAuthItem } from '@/utils/authStorage'
+
+const CSRF_COOKIE_NAME = 'mcis_csrf'
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 interface RetryConfig {
   maxRetries: number;
@@ -11,10 +16,11 @@ interface RetryConfig {
   retryCondition?: (_error: unknown) => boolean;
 }
 
-interface RequestOptions {
+export interface RequestOptions {
   retries?: number;
   isRetry?: boolean;
   redirectOnUnauthorized?: boolean;
+  headers?: Record<string, string>;
 }
 
 export interface FileDownloadResponse {
@@ -25,8 +31,6 @@ export interface FileDownloadResponse {
 
 class ApiClient {
   private baseURL: string;
-  private token: string | null = null;
-  private refreshToken: string | null = null;
   private contextTeamId: number | null = null;  //  Phase 1: Multi-team context
   private isRefreshing = false;
   private isRedirecting = false;
@@ -47,12 +51,9 @@ class ApiClient {
   constructor(baseURL: string) {
     this.baseURL = baseURL;
 
-    // Initialize tokens from localStorage
-    if (typeof window !== 'undefined' && window.localStorage) {
-      this.token = localStorage.getItem('token');
-      this.refreshToken = localStorage.getItem('refreshToken');
+    if (typeof window !== 'undefined') {
       // Phase 1: Restore team context from localStorage
-      const storedTeamId = localStorage.getItem('contextTeamId');
+      const storedTeamId = window.localStorage?.getItem('contextTeamId');
       if (storedTeamId) {
         const parsed = parseInt(storedTeamId, 10);
         if (!isNaN(parsed)) {
@@ -62,21 +63,13 @@ class ApiClient {
     }
   }
 
-  setAuthHeader(token: string, refreshToken?: string) {
-    this.token = token;
-    if (refreshToken) {
-      this.refreshToken = refreshToken;
-      if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
-    }
+  setAuthHeader(_token: string, _refreshToken?: string) {
+    // Deprecated for session auth. Kept as a compatibility no-op.
   }
 
   removeAuthHeader() {
-    this.token = null;
-    this.refreshToken = null;
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.removeItem('refreshToken');
+    if (typeof window !== 'undefined') {
+      removeStoredAuthItem('refreshToken');
     }
   }
 
@@ -90,17 +83,14 @@ class ApiClient {
       return;
     }
     this.isRedirecting = true;
-    this.token = null;
-    this.refreshToken = null;
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
+      clearAuthStorageItems();
       window.location.href = '/login';
     }
   }
 
   getCurrentToken(): string | null {
-    return this.token;
+    return null;
   }
 
   // Phase 1 Optimization: Team context management
@@ -139,8 +129,6 @@ class ApiClient {
   }
 
   async refreshAuthToken(): Promise<string | null> {
-    if (!this.refreshToken) {return null;}
-
     if (this.isRefreshing) {
       return new Promise((resolve, reject) => {
         this.failedQueue.push({ resolve, reject });
@@ -152,40 +140,20 @@ class ApiClient {
     try {
       const response = await fetch(`${this.baseURL}/auth/refresh`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ refreshToken: this.refreshToken })
+        credentials: 'include',
+        headers: this.getHeaders('POST'),
+        body: JSON.stringify({})
       });
 
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          this.token = result.data.token;
-          if (result.data.refreshToken) {
-            this.refreshToken = result.data.refreshToken;
-          }
-          
-          // Update localStorage
-          if (typeof window !== 'undefined' && window.localStorage && this.token) {
-            localStorage.setItem('token', this.token);
-            if (this.refreshToken) {
-              localStorage.setItem('refreshToken', this.refreshToken);
-            }
-          }
-
-          // Dispatch event for auth store to sync
           if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('auth:token-refreshed', {
-              detail: {
-                token: this.token,
-                refreshToken: this.refreshToken
-              }
-            }));
+            window.dispatchEvent(new CustomEvent('auth:token-refreshed'));
           }
 
-          this.processQueue(null, this.token);
-          return this.token;
+          this.processQueue(null, 'cookie-refreshed');
+          return 'cookie-refreshed';
         }
       }
     } catch (error) {
@@ -200,18 +168,35 @@ class ApiClient {
     return null;
   }
 
-  private getHeaders(): Record<string, string> {
+  private getCookieValue(name: string): string | null {
+    if (typeof document === 'undefined') {
+      return null
+    }
+
+    const encodedName = `${name}=`
+    const cookie = document.cookie
+      .split(';')
+      .map(part => part.trim())
+      .find(part => part.startsWith(encodedName))
+
+    return cookie ? decodeURIComponent(cookie.slice(encodedName.length)) : null
+  }
+
+  private getHeaders(method: string = 'GET'): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     };
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
-    }
-
     // Phase 1 Optimization: Include team context header
     if (this.contextTeamId !== null) {
       headers['X-Context-Team-ID'] = this.contextTeamId.toString();
+    }
+
+    if (UNSAFE_METHODS.has(method.toUpperCase())) {
+      const csrfToken = this.getCookieValue(CSRF_COOKIE_NAME)
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken
+      }
     }
 
     return headers;
@@ -235,9 +220,15 @@ class ApiClient {
     }
 
     try {
+      const requestHeaders = {
+        ...this.getHeaders(method),
+        ...options.headers
+      };
+
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         method,
-        headers: this.getHeaders(),
+        credentials: 'include',
+        headers: requestHeaders,
         body: data ? JSON.stringify(data) : undefined
       });
 
@@ -255,7 +246,7 @@ class ApiClient {
 
       if (!response.ok) {
         // Handle 401 Unauthorized with token refresh
-        if (response.status === 401 && redirectOnUnauthorized && !isRetry && this.refreshToken) {
+        if (response.status === 401 && redirectOnUnauthorized && !isRetry) {
           const newToken = await this.refreshAuthToken();
           if (newToken) {
             // Retry the request with new token
@@ -355,10 +346,11 @@ class ApiClient {
 
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'GET',
-      headers: this.getHeaders()
+      credentials: 'include',
+      headers: this.getHeaders('GET')
     });
 
-    if (response.status === 401 && !isRetry && this.refreshToken) {
+    if (response.status === 401 && !isRetry) {
       const newToken = await this.refreshAuthToken();
       if (newToken) {
         return this.downloadFile(endpoint, { isRetry: true });
@@ -410,20 +402,17 @@ class ApiClient {
     const { isRetry = false } = options;
 
     try {
-      const headers: Record<string, string> = {};
-
-      if (this.token) {
-        headers['Authorization'] = `Bearer ${this.token}`;
-      }
+      const headers = buildAuthenticatedHeaders('POST');
 
       // Phase 1 Optimization: Include team context header
       if (this.contextTeamId !== null) {
-        headers['X-Context-Team-ID'] = this.contextTeamId.toString();
+        headers.set('X-Context-Team-ID', this.contextTeamId.toString());
       }
 
       // 不設定 Content-Type，讓瀏覽器自動設定 multipart/form-data 邊界
       const response = await fetch(`${this.baseURL}${endpoint}`, {
         method: 'POST',
+        credentials: 'include',
         headers,
         body: formData
       });
@@ -437,7 +426,7 @@ class ApiClient {
 
       if (!response.ok) {
         // Handle 401 Unauthorized with token refresh (same pattern as request())
-        if (response.status === 401 && !isRetry && this.refreshToken) {
+        if (response.status === 401 && !isRetry) {
           const newToken = await this.refreshAuthToken();
           if (newToken) {
             return this.uploadFile<T>(endpoint, formData, { isRetry: true });

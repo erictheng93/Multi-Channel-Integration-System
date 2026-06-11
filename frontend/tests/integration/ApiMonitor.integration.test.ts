@@ -207,9 +207,7 @@ describe('ApiMonitor Integration Tests', () => {
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/system/api-status'),
       expect.objectContaining({
-        headers: expect.objectContaining({
-          'Authorization': 'Bearer test'
-        })
+        credentials: 'include'
       })
     )
   })

@@ -10,6 +10,8 @@ import conversationMessagesHandler from './conversation-messages';
 import conversationReadHandler from './conversation-read';
 import conversationQueriesHandler from './conversation-queries';
 import { nowISO } from '@/utils/timestamp'
+import { conversationContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 // 創建對話主路由器
 const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
@@ -29,7 +31,7 @@ const conversationsMainHandler = new Hono<{ Bindings: Bindings }>();
 
 // 健康檢查端點（不需要認證）
 conversationsMainHandler.get('/health', (c) => {
-  return c.json({
+  return contractJson(c, conversationContracts.health, {
     status: 'healthy',
     timestamp: nowISO(),
     module: 'conversations',
@@ -39,7 +41,7 @@ conversationsMainHandler.get('/health', (c) => {
 
 // 模組資訊端點（不需要認證）
 conversationsMainHandler.get('/info', (c) => {
-  return c.json({
+  return contractJson(c, conversationContracts.info, {
     success: true,
     data: {
       module: 'conversations',

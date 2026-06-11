@@ -165,6 +165,7 @@
 import { ref, reactive, computed } from 'vue'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { setStoredAuthItem } from '@/utils/authStorage'
 
 interface Props {
   tempToken: string
@@ -224,23 +225,15 @@ const submitPasswordChange = async () => {
       
       if (loginResponse.success && loginResponse.data) {
         // 手動設置認證狀態（模仿 authStore.login 的邏輯）
-        authStore.token = loginResponse.data.token
-        authStore.refreshToken = loginResponse.data.refreshToken || null
+        authStore.token = null
+        authStore.refreshToken = null
         authStore.currentAgent = loginResponse.data.agent
         
         // 設定會話過期時間
         const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 天
         authStore.sessionExpiry = expiry
-        
-        // 儲存到 localStorage
-        localStorage.setItem('token', loginResponse.data.token)
-        if (loginResponse.data.refreshToken) {
-          localStorage.setItem('refreshToken', loginResponse.data.refreshToken)
-        }
-        localStorage.setItem('sessionExpiry', expiry.toString())
-        
-        // 設定 API 認證標頭
-        authApi.setAuthHeader(loginResponse.data.token, loginResponse.data.refreshToken)
+        setStoredAuthItem('sessionExpiry', expiry.toString())
+        setStoredAuthItem('currentAgent', JSON.stringify(loginResponse.data.agent))
         
         // 設定會話狀態
         authStore.setSessionStatus('authenticated')

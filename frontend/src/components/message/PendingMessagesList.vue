@@ -220,7 +220,7 @@ import HamsterLoader from '@/components/ui/HamsterLoader.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import PlatformBadge from '@/components/ui/PlatformBadge.vue'
 import Modal from '@/components/ui/Modal.vue'
-import { apiClient } from '@/api/base'
+import { messagesApi } from '@/api/messages'
 
 interface PendingMessage {
   id: string
@@ -303,7 +303,7 @@ const loadPendingMessages = async (page = 1) => {
   loading.value = true
   
   try {
-    const response = await apiClient.get(`/messages/pending?page=${page}&pageSize=${pageSize.value}`)
+    const response = await messagesApi.getPendingMessages(page, pageSize.value)
     
     if (response.success) {
       interface PendingMessagesResponse {
@@ -346,7 +346,7 @@ const confirmRecall = async () => {
   recallingMessageId.value = selectedMessage.value.id
   
   try {
-    const response = await apiClient.post('/messages/recall', {
+    const response = await messagesApi.recallMessage({
       messageId: selectedMessage.value.id,
       userId: currentAgent.value.id
     })

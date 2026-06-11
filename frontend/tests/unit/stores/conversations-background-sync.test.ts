@@ -59,15 +59,20 @@ const mockWsIsConnected = ref(false)
 const mockWsSubscribe = vi.fn().mockReturnValue('sub-123')
 const mockWsUnsubscribe = vi.fn()
 const mockWsConnect = vi.fn()
+const mockWsStore = {
+  get connectionState() {
+    return mockWsConnectionState.value
+  },
+  get isConnected() {
+    return mockWsIsConnected.value
+  },
+  subscribe: mockWsSubscribe,
+  unsubscribe: mockWsUnsubscribe,
+  connect: mockWsConnect
+}
 
 vi.mock('@/stores/websocket', () => ({
-  useWebSocketStore: vi.fn(() => ({
-    connectionState: mockWsConnectionState.value,
-    isConnected: mockWsIsConnected.value,
-    subscribe: mockWsSubscribe,
-    unsubscribe: mockWsUnsubscribe,
-    connect: mockWsConnect
-  }))
+  useWebSocketStore: vi.fn(() => mockWsStore)
 }))
 
 // Mock cache manager
@@ -162,10 +167,7 @@ describe('Conversations Store - Background Sync Feature', () => {
   })
 
   describe('WebSocket Reconnection Sync', () => {
-    it('should trigger immediate sync when WebSocket reconnects', async () => {
-      // This test verifies that when connectionState changes from
-      // 'reconnecting' to 'connected', an immediate sync is triggered
-
+    it('should trigger immediate sync when WebSocket state changes from reconnecting to connected', async () => {
       // Arrange
       const { useConversationsStore } = await import('@/stores/conversations')
       const store = useConversationsStore()
@@ -176,15 +178,15 @@ describe('Conversations Store - Background Sync Feature', () => {
       await store.initializeRealtime()
       const callCountBeforeReconnect = mockConversationApi.list.mock.calls.length
 
-      // Act - Simulate reconnection by triggering the sync manually
-      // In the actual implementation, this would be triggered by watching connectionState
-      await store.triggerReconnectionSync?.()
+      // Act - Simulate a WebSocket reconnect cycle.
+      mockWsConnectionState.value = 'reconnecting'
+      await nextTick()
+      mockWsConnectionState.value = 'connected'
+      await nextTick()
+      await Promise.resolve()
 
-      // Assert - If triggerReconnectionSync exists, it should call the API
-      // If not, this test will help us verify the feature needs to be implemented
-      if (store.triggerReconnectionSync) {
-        expect(mockConversationApi.list.mock.calls.length).toBeGreaterThan(callCountBeforeReconnect)
-      }
+      // Assert - Reconnection reconciliation should fetch from HTTP/D1-backed API.
+      expect(mockConversationApi.list.mock.calls.length).toBeGreaterThan(callCountBeforeReconnect)
     })
   })
 

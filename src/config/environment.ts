@@ -6,6 +6,7 @@
  *
  * @module config/environment
  */
+import { DEVELOPMENT_ORIGINS } from './development-origins';
 
 /**
  * Environment types
@@ -76,7 +77,7 @@ export interface EnvironmentConfig {
 export const DEVELOPMENT_CONFIG: EnvironmentConfig = {
   name: 'development',
   frontend: {
-    url: 'http://localhost:3000',
+    url: 'http://localhost:5173',
     port: 3000,
     wsUrl: 'ws://localhost:8787'
   },
@@ -158,11 +159,7 @@ export const ALTERNATIVE_PRODUCTION_URLS = [
  * Development localhost variants (for CORS and security)
  */
 export const DEVELOPMENT_LOCALHOST_URLS = [
-  'http://localhost:3000',
-  'https://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:8787',
-  'http://127.0.0.1:8787'
+  ...DEVELOPMENT_ORIGINS
 ] as const;
 
 /**

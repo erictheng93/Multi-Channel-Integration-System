@@ -5,13 +5,14 @@ import { Context } from 'hono';
 import type { Bindings } from '@/types';
 import {
   successResponse,
-  paginatedResponse,
   errorResponse,
   validationErrorResponse,
   unauthorizedResponse,
   notFoundResponse,
   handleApiError
 } from '@/utils/api-response';
+import { notificationContracts, type NotificationSettings as SharedNotificationSettings } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 // 導入通知模組服務
 import { NotificationService } from '@modules/notifications/services/notification-service';
@@ -31,6 +32,8 @@ import { agents } from '@/db/schema';
 import { isNull } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp'
 
+type NotificationSettingsPatch = Partial<Omit<SharedNotificationSettings, 'userId'>>;
+
 function isChannelType(value: string): value is ChannelType {
   return value === 'database'
     || value === 'websocket'
@@ -38,6 +41,56 @@ function isChannelType(value: string): value is ChannelType {
     || value === 'push'
     || value === 'webhook'
     || value === 'sms';
+}
+
+function notificationSettingsKey(userId: string | number): string {
+  return `notification_settings:${userId}`;
+}
+
+function normalizeSettingsUserId(userId: string | number): string | number {
+  if (typeof userId === 'number') {
+    return userId;
+  }
+
+  const parsed = Number(userId);
+  return Number.isFinite(parsed) && String(parsed) === userId ? parsed : userId;
+}
+
+function defaultNotificationSettings(userId: string | number): SharedNotificationSettings {
+  return {
+    userId: normalizeSettingsUserId(userId),
+    emailEnabled: false,
+    pushEnabled: true,
+    soundEnabled: true,
+    mentionEnabled: true,
+    assignmentEnabled: true,
+    messageEnabled: true,
+    systemEnabled: true
+  };
+}
+
+function toNotificationSettingsPatch(value: unknown): NotificationSettingsPatch {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const input = value as Record<string, unknown>;
+  const patch: NotificationSettingsPatch = {};
+  for (const key of [
+    'emailEnabled',
+    'pushEnabled',
+    'soundEnabled',
+    'mentionEnabled',
+    'assignmentEnabled',
+    'messageEnabled',
+    'systemEnabled'
+  ] as const) {
+    if (typeof input[key] === 'boolean') {
+      patch[key] = input[key];
+    }
+  }
+
+  return patch;
 }
 
 export class NotificationHandler {
@@ -49,6 +102,27 @@ export class NotificationHandler {
     this.channelService = new NotificationChannelService();
     this.notificationService = new NotificationService(database, kvNamespace, this.channelService);
     this.validator = new NotificationValidator();
+  }
+
+  private async loadSettings(
+    kvNamespace: KVNamespace,
+    userId: string | number
+  ): Promise<SharedNotificationSettings> {
+    const stored = await kvNamespace.get(notificationSettingsKey(userId));
+    if (!stored) {
+      return defaultNotificationSettings(userId);
+    }
+
+    try {
+      const parsed = JSON.parse(stored) as Partial<SharedNotificationSettings>;
+      return {
+        ...defaultNotificationSettings(userId),
+        ...parsed,
+        userId: parsed.userId ?? normalizeSettingsUserId(userId)
+      };
+    } catch {
+      return defaultNotificationSettings(userId);
+    }
   }
 
   // 獲取通知列表
@@ -81,12 +155,23 @@ export class NotificationHandler {
       // 獲取通知列表
       const result = await this.notificationService.getByQuery(sanitizedQuery);
 
-      const pagination = {
-        page: result.pagination.page,
-        limit: result.pagination.pageSize,
-        total: result.pagination.total
-      };
-      return paginatedResponse(c, result.notifications, pagination, 'Notifications retrieved successfully');
+      const limit = result.pagination.pageSize;
+      const totalPages = result.pagination.totalPages ?? Math.ceil(result.pagination.total / limit);
+      return contractJson(c, notificationContracts.list, {
+        success: true,
+        data: {
+          items: result.notifications,
+          page: result.pagination.page,
+          pageSize: limit,
+          limit,
+          total: result.pagination.total,
+          totalPages,
+          hasNext: result.pagination.page < totalPages,
+          hasPrev: result.pagination.page > 1
+        },
+        message: 'Notifications retrieved successfully',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       if (error instanceof NotificationValidationError) {
@@ -130,9 +215,14 @@ export class NotificationHandler {
       // 創建通知
       const notificationId = await this.notificationService.create(sanitizedRequest);
 
-      return successResponse(c, {
-        id: notificationId
-      }, 'Notification created successfully');
+      return contractJson(c, notificationContracts.create, {
+        success: true,
+        data: {
+          id: notificationId
+        },
+        message: 'Notification created successfully',
+        timestamp: nowISO()
+      }, 201);
 
     } catch (error) {
       if (error instanceof NotificationValidationError) {
@@ -163,12 +253,17 @@ export class NotificationHandler {
       // 批量創建通知
       const result = await this.notificationService.createBulk(request);
 
-      return successResponse(c, {
-        successful: result.successful.length,
-        failed: result.failed.length,
-        successfulIds: result.successful,
-        failures: result.failed
-      }, `Bulk operation completed: ${result.successful.length} successful, ${result.failed.length} failed`);
+      return contractJson(c, notificationContracts.createBulk, {
+        success: true,
+        data: {
+          successful: result.successful.length,
+          failed: result.failed.length,
+          successfulIds: result.successful,
+          failures: result.failed
+        },
+        message: `Bulk operation completed: ${result.successful.length} successful, ${result.failed.length} failed`,
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       if (error instanceof NotificationValidationError) {
@@ -194,7 +289,12 @@ export class NotificationHandler {
         return notFoundResponse(c, 'Notification');
       }
 
-      return successResponse(c, notification, 'Notification retrieved successfully');
+      return contractJson(c, notificationContracts.getById, {
+        success: true,
+        data: notification,
+        message: 'Notification retrieved successfully',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -217,7 +317,11 @@ export class NotificationHandler {
         return notFoundResponse(c, 'Notification');
       }
 
-      return successResponse(c, null, 'Notification marked as read');
+      return contractJson(c, notificationContracts.markAsRead, {
+        success: true,
+        message: 'Notification marked as read',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -236,9 +340,14 @@ export class NotificationHandler {
       const { type } = await c.req.json().catch(() => ({}));
       const count = await this.notificationService.markAllAsRead(payload.userId, type);
 
-      return successResponse(c, {
-        updated: count
-      }, `${count} notifications marked as read`);
+      return contractJson(c, notificationContracts.markAllAsRead, {
+        success: true,
+        data: {
+          updated: count
+        },
+        message: `${count} notifications marked as read`,
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -261,7 +370,11 @@ export class NotificationHandler {
         return notFoundResponse(c, 'Notification');
       }
 
-      return successResponse(c, null, 'Notification deleted successfully');
+      return contractJson(c, notificationContracts.delete, {
+        success: true,
+        message: 'Notification deleted successfully',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -279,7 +392,12 @@ export class NotificationHandler {
 
       const stats = await this.notificationService.getStats(payload.userId);
 
-      return successResponse(c, stats, 'Notification statistics retrieved successfully');
+      return contractJson(c, notificationContracts.stats, {
+        success: true,
+        data: stats,
+        message: 'Notification statistics retrieved successfully',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -301,10 +419,15 @@ export class NotificationHandler {
         type as NotificationType
       );
 
-      return successResponse(c, {
-        count,
-        type: type || 'all'
-      }, 'Unread count retrieved successfully');
+      return contractJson(c, notificationContracts.unreadCount, {
+        success: true,
+        data: {
+          count,
+          type: type || 'all'
+        },
+        message: 'Unread count retrieved successfully',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -328,11 +451,16 @@ export class NotificationHandler {
         limitNum
       );
 
-      return successResponse(c, {
-        notifications,
-        count: notifications.length,
-        limit: limitNum
-      }, 'Recent notifications retrieved successfully');
+      return contractJson(c, notificationContracts.recent, {
+        success: true,
+        data: {
+          notifications,
+          count: notifications.length,
+          limit: limitNum
+        },
+        message: 'Recent notifications retrieved successfully',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -350,9 +478,14 @@ export class NotificationHandler {
 
       const deletedCount = await this.notificationService.cleanupExpired();
 
-      return successResponse(c, {
-        deleted: deletedCount
-      }, `${deletedCount} expired notifications deleted`);
+      return contractJson(c, notificationContracts.cleanup, {
+        success: true,
+        data: {
+          deleted: deletedCount
+        },
+        message: `${deletedCount} expired notifications deleted`,
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -372,7 +505,12 @@ export class NotificationHandler {
 
       const stats = this.channelService.getChannelStats();
 
-      return successResponse(c, stats, 'Channel statistics retrieved successfully');
+      return contractJson(c, notificationContracts.channelStats, {
+        success: true,
+        data: stats,
+        message: 'Channel statistics retrieved successfully',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -401,7 +539,12 @@ export class NotificationHandler {
         message
       );
 
-      return successResponse(c, result, `Test message sent to ${channelType} channel`);
+      return contractJson(c, notificationContracts.testChannel, {
+        success: true,
+        data: result,
+        message: `Test message sent to ${channelType} channel`,
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -423,9 +566,14 @@ export class NotificationHandler {
         channels
       );
 
-      return successResponse(c, {
-        id: notificationId
-      }, 'New message notification created');
+      return contractJson(c, notificationContracts.newMessage, {
+        success: true,
+        data: {
+          id: notificationId
+        },
+        message: 'New message notification created',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -444,9 +592,14 @@ export class NotificationHandler {
         assignedBy
       );
 
-      return successResponse(c, {
-        id: notificationId
-      }, 'Conversation assignment notification created');
+      return contractJson(c, notificationContracts.conversationAssigned, {
+        success: true,
+        data: {
+          id: notificationId
+        },
+        message: 'Conversation assignment notification created',
+        timestamp: nowISO()
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -494,12 +647,66 @@ export class NotificationHandler {
         data
       });
 
-      return successResponse(c, {
-        ids: notificationIds,
-        count: notificationIds.length,
-        broadcastedToAll: broadcastToAll || (!userIds || userIds.length === 0)
-      }, `${notificationIds.length} system notifications created and broadcasted`);
+      return contractJson(c, notificationContracts.system, {
+        success: true,
+        data: {
+          ids: notificationIds,
+          count: notificationIds.length,
+          broadcastedToAll: broadcastToAll || (!userIds || userIds.length === 0)
+        },
+        message: `${notificationIds.length} system notifications created and broadcasted`,
+        timestamp: nowISO()
+      });
 
+    } catch (error) {
+      return handleApiError(error, c);
+    }
+  };
+
+  getSettings = async (c: Context<{ Bindings: Bindings }>) => {
+    try {
+      const payload = c.get('jwtPayload');
+
+      if (!payload?.userId) {
+        return unauthorizedResponse(c, 'Authentication required');
+      }
+
+      const settings = await this.loadSettings(c.env.CACHE, payload.userId);
+
+      return contractJson(c, notificationContracts.settings, {
+        success: true,
+        data: settings,
+        message: 'Notification settings retrieved successfully',
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return handleApiError(error, c);
+    }
+  };
+
+  updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
+    try {
+      const payload = c.get('jwtPayload');
+
+      if (!payload?.userId) {
+        return unauthorizedResponse(c, 'Authentication required');
+      }
+
+      const requestBody = await c.req.json().catch(() => ({}));
+      const currentSettings = await this.loadSettings(c.env.CACHE, payload.userId);
+      const nextSettings = {
+        ...currentSettings,
+        ...toNotificationSettingsPatch(requestBody),
+        userId: currentSettings.userId
+      };
+
+      await c.env.CACHE.put(notificationSettingsKey(payload.userId), JSON.stringify(nextSettings));
+
+      return contractJson(c, notificationContracts.updateSettings, {
+        success: true,
+        message: 'Notification settings updated successfully',
+        timestamp: nowISO()
+      });
     } catch (error) {
       return handleApiError(error, c);
     }
@@ -582,6 +789,8 @@ export function createNotificationHandlerMethods(database: D1Database, kvNamespa
     notifyNewMessage: handler.notifyNewMessage,
     notifyConversationAssigned: handler.notifyConversationAssigned,
     notifySystem: handler.notifySystem,
+    getSettings: handler.getSettings,
+    updateSettings: handler.updateSettings,
     broadcast: handler.broadcast  //  系統公告廣播
   };
 }

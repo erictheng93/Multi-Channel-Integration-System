@@ -49,6 +49,22 @@ function checkPackageJson(): void {
       'validate:config': 'bun scripts/validate-configuration.ts',
       'validate:routes': 'bun scripts/validate-route-order.ts',
       'validate:all': 'bun run validate:config && bun run validate:routes',
+      'dev': 'wrangler dev --remote',
+      'dev:remote': 'wrangler dev --remote',
+      'predeploy':
+        'bun scripts/guard-production-command.ts predeploy -- bun scripts/check-schema-drift.ts',
+      'deploy': 'bun scripts/guard-production-command.ts deploy -- wrangler deploy --minify',
+      'db:migrate':
+        'bun scripts/guard-production-command.ts d1:migrate -- wrangler d1 migrations apply DB --remote',
+      'db:seed':
+        'bun scripts/guard-production-command.ts d1:seed -- wrangler d1 execute mcis-db --remote --file=./seed.sql',
+      'db:push': 'bun scripts/guard-production-command.ts drizzle:push -- drizzle-kit push',
+      'db:studio': 'bun scripts/guard-production-command.ts drizzle:studio -- drizzle-kit studio',
+      'db:introspect':
+        'bun scripts/guard-production-command.ts drizzle:introspect -- drizzle-kit introspect',
+      'db:query':
+        'bun scripts/guard-production-command.ts d1:query -- wrangler d1 execute mcis-db --remote',
+      'sync:db:structure': 'bun scripts/sync-database.ts --schema-only',
     };
 
     for (const [scriptName, expectedCommand] of Object.entries(expectedScripts)) {
