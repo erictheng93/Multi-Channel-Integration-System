@@ -14,11 +14,13 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { PermissionService } from '@/services/permission-service';
-import { successResponse, badRequestResponse, forbiddenResponse, internalErrorResponse, handleApiError } from '@/utils/api-response';
+import { badRequestResponse, forbiddenResponse, internalErrorResponse, handleApiError } from '@/utils/api-response';
 import { errorResponse } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import { delayedMessagesV2Contracts, type MessageStatus } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const log = createContextLogger('DelayedMessageBuffer');
 
@@ -135,12 +137,18 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
       userAgent: c.req.header('User-Agent')
     }).catch(() => {});
 
-    return successResponse(c, {
-      messageId: result.messageId,
-      scheduledAt: result.scheduledAt,
-      canCancelUntil: result.canCancelUntil,
-      delaySeconds: result.delaySeconds,
-      conversationId
+    return contractJson(c, delayedMessagesV2Contracts.send, {
+      success: true,
+      data: {
+        id: result.messageId ?? messageId,
+        conversationId,
+        content,
+        messageType,
+        platform,
+        scheduledAt: result.scheduledAt ?? Date.now() + delaySeconds * 1000,
+        canCancelUntil: result.canCancelUntil ?? Date.now() + delaySeconds * 1000,
+        delaySeconds: result.delaySeconds ?? delaySeconds
+      }
     });
 
   } catch (error) {
@@ -219,10 +227,9 @@ delayedMessageBufferHandler.delete('/cancel/:messageId', jwtAuth, async (c) => {
       userAgent: c.req.header('User-Agent')
     }).catch(() => {});
 
-    return successResponse(c, {
-      messageId,
-      cancelledAt: result.cancelledAt,
-      cancelledBy: user.displayName
+    return contractJson(c, delayedMessagesV2Contracts.cancel, {
+      success: true,
+      message: 'Message cancelled successfully'
     });
 
   } catch (error) {
@@ -266,7 +273,15 @@ delayedMessageBufferHandler.get('/status/:messageId', jwtAuth, async (c) => {
       scheduledAt?: number;
     };
 
-    return successResponse(c, result);
+    const status: MessageStatus = {
+      ...result,
+      status: result.status as MessageStatus['status']
+    };
+
+    return contractJson(c, delayedMessagesV2Contracts.status, {
+      success: true,
+      data: status
+    });
 
   } catch (error) {
     log.error('Status query error', { error: error instanceof Error ? error.message : String(error) });
@@ -311,10 +326,12 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
       }>;
     };
 
-    return successResponse(c, {
-      conversationId,
+    return contractJson(c, delayedMessagesV2Contracts.pending, {
+      success: true,
+      data: {
       count: result.count,
       messages: result.messages
+      }
     });
 
   } catch (error) {
@@ -329,13 +346,16 @@ delayedMessageBufferHandler.get('/pending', jwtAuth, async (c) => {
  * GET /api/delayed-messages-v2/health
  */
 delayedMessageBufferHandler.get('/health', async (c) => {
-  return successResponse(c, {
-    service: 'delayed-message-buffer',
-    status: 'healthy',
-    features: {
-      instantCancel: true,
-      preciseScheduling: true,
-      durableObjects: true
+  return contractJson(c, delayedMessagesV2Contracts.health, {
+    success: true,
+    data: {
+      success: true,
+      status: 'healthy',
+      features: {
+        instantCancel: true,
+        preciseScheduling: true,
+        durableObjects: true
+      }
     }
   });
 });

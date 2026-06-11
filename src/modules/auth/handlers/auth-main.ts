@@ -1,5 +1,5 @@
 // 認證處理器 - 主要實現
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings, TeamRoleInTeam } from '@/types';
@@ -10,8 +10,9 @@ import {
   createSession
 } from '@/utils/auth';
 import {
+  AUTH_COOKIE_NAMES,
   jwtAuth,
-  sessionAuth,
+  parseCookieHeader,
   requireRole,
 } from '@/middleware/auth';
 import { loginRateLimiter, authRateLimiter } from '@/middleware/rate-limiter';
@@ -20,6 +21,8 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { agents, agentTeams } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
+import { authContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 // P2-5: Import standard response utilities
 import {
   unauthorizedResponse,
@@ -29,6 +32,74 @@ import { nowISO } from '@/utils/timestamp'
 
 const authHandler = new Hono<{ Bindings: Bindings }>();
 const authLogger = createContextLogger('Authentication');
+type AuthContext = Context<{ Bindings: Bindings }>;
+const ACCESS_TOKEN_MAX_AGE_SECONDS = 2 * 60 * 60;
+const REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
+const AUTH_COOKIE_PATH = '/api';
+
+function toContractRole(role: string): 'admin' | 'agent' {
+  return role === 'admin' ? 'admin' : 'agent';
+}
+
+function createCsrfToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function serializeCookie(
+  name: string,
+  value: string,
+  options: { maxAge: number; httpOnly?: boolean }
+): string {
+  const parts = [
+    `${name}=${encodeURIComponent(value)}`,
+    `Max-Age=${options.maxAge}`,
+    `Path=${AUTH_COOKIE_PATH}`,
+    'SameSite=Strict',
+    'Secure',
+  ];
+
+  if (options.httpOnly) {
+    parts.push('HttpOnly');
+  }
+
+  return parts.join('; ');
+}
+
+function appendCookie(c: AuthContext, cookie: string): void {
+  c.header('Set-Cookie', cookie, { append: true });
+}
+
+function setAuthCookies(c: AuthContext, accessToken: string, refreshToken: string): void {
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, accessToken, {
+    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
+    httpOnly: true,
+  }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.refresh, refreshToken, {
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+    httpOnly: true,
+  }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, createCsrfToken(), {
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+  }));
+}
+
+function clearAuthCookies(c: AuthContext): void {
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, '', { maxAge: 0, httpOnly: true }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.refresh, '', { maxAge: 0, httpOnly: true }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0 }));
+}
+
+function getRequestCookies(c: AuthContext): Record<string, string> {
+  return parseCookieHeader(c.req.header('Cookie'));
+}
+
+function csrfCookieMatches(c: AuthContext, cookies: Record<string, string>): boolean {
+  const csrfCookie = cookies[AUTH_COOKIE_NAMES.csrf];
+  const csrfHeader = c.req.header('X-CSRF-Token');
+  return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
+}
 
 type AuthAgentState = Record<string, unknown> & {
   id?: string | number;
@@ -177,7 +248,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
         30 * 60 // 30 分鐘
       );
 
-      return c.json({
+      return contractJson(c, authContracts.login, {
         success: true,
         data: {
           mustChangePassword: true,
@@ -187,7 +258,7 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
             email: user.email,
             name: user.displayName,
             displayName: user.displayName,
-            role: user.role,
+            role: toContractRole(user.role),
             isActive: user.isActive,
             createdAt: new Date(user.createdAt).getTime()
           }
@@ -300,17 +371,17 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
       userAgent: c.req.header('User-Agent')
     });
 
-    return c.json({
+    setAuthCookies(c, token, refreshToken);
+
+    return contractJson(c, authContracts.login, {
       success: true,
       data: {
-        token,
-        refreshToken,
         agent: {
           id: user.id.toString(),
           email: user.email,
           name: user.displayName,
           displayName: user.displayName,
-          role: user.role,
+          role: toContractRole(user.role),
           isActive: user.isActive,
           createdAt: new Date(user.createdAt).getTime()
         },
@@ -413,10 +484,17 @@ authHandler.post('/register', jwtAuth, requireRole('admin'), async (c) => {
 });
 
 // 用戶登出
-authHandler.post('/logout', sessionAuth, async (c) => {
+authHandler.post('/logout', jwtAuth, async (c) => {
   try {
     const sessionId = c.req.header('X-Session-ID');
     const user = c.get('user');
+    const cookies = getRequestCookies(c);
+    const cookieAccessToken = cookies[AUTH_COOKIE_NAMES.access];
+    const cookieRefreshToken = cookies[AUTH_COOKIE_NAMES.refresh];
+
+    if ((cookieAccessToken || cookieRefreshToken) && !csrfCookieMatches(c, cookies)) {
+      return c.json({ error: 'Invalid CSRF token' }, HTTP_STATUS.FORBIDDEN);
+    }
 
     if (sessionId) {
       await c.env.SESSIONS.delete(`session:${sessionId}`);
@@ -426,16 +504,15 @@ authHandler.post('/logout', sessionAuth, async (c) => {
     // logout only removed the KV session, but jwtAuth doesn't consult the
     // session store — so the access token (2h) and refresh token (7d) on
     // the client remained fully valid against every protected endpoint
-    // until natural expiry. Now we extract the Bearer token from the
-    // logout request, verify it (just to extract the jti+exp safely), and
-    // write `revoked:{jti}` to CACHE with TTL = remaining token life.
+    // until natural expiry. Cookie-only auth revokes the HttpOnly access
+    // cookie token, verifies it (just to extract the jti+exp safely), and
+    // writes `revoked:{jti}` to CACHE with TTL = remaining token life.
     // Best-effort: a failure here logs but doesn't block logout.
-    const authHeader = c.req.header('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const accessToken = authHeader.substring(7);
+    const accessTokenToRevoke = cookieAccessToken;
+    if (accessTokenToRevoke) {
       try {
         const { verifyJWT } = await import('@/utils/auth');
-        const payload = await verifyJWT(accessToken, c.env.JWT_SECRET);
+        const payload = await verifyJWT(accessTokenToRevoke, c.env.JWT_SECRET);
         if (payload.jti && payload.exp) {
           const now = Math.floor(Date.now() / 1000);
           const ttl = Math.max(1, payload.exp - now);
@@ -448,8 +525,7 @@ authHandler.post('/logout', sessionAuth, async (c) => {
       }
     }
 
-    // F13: also revoke the paired refresh token if the client supplies
-    // it. The client may include it in the JSON body so the long-lived
+    // F13: also revoke the paired refresh cookie so the long-lived
     // refresh credential is invalidated alongside the access token.
     //
     // F13 hardening: assert ownership before writing to the blocklist.
@@ -458,10 +534,7 @@ authHandler.post('/logout', sessionAuth, async (c) => {
     // the victim's session — a denial-of-service via revocation. We
     // verify the refresh token's userId matches the session's user.
     try {
-      const body = await c.req.json().catch(() => null);
-      const refreshTokenToRevoke = body && typeof body === 'object' && 'refreshToken' in body
-        ? (body as { refreshToken?: unknown }).refreshToken
-        : null;
+      const refreshTokenToRevoke = cookieRefreshToken;
       if (typeof refreshTokenToRevoke === 'string' && refreshTokenToRevoke.length > 0) {
         const { verifyJWT } = await import('@/utils/auth');
         const payload = await verifyJWT(refreshTokenToRevoke, c.env.JWT_SECRET);
@@ -506,7 +579,9 @@ authHandler.post('/logout', sessionAuth, async (c) => {
       });
     }
 
-    return c.json({
+    clearAuthCookies(c);
+
+    return contractJson(c, authContracts.logout, {
       success: true,
       message: 'Logged out successfully',
       timestamp: nowISO()
@@ -550,14 +625,14 @@ authHandler.get('/me', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
 
-    return c.json({
+    return contractJson(c, authContracts.me, {
       success: true,
       data: {
         id: user.id.toString(),
         email: user.email,
         name: user.displayName,
         displayName: user.displayName,
-        role: user.role,
+        role: toContractRole(user.role),
         isActive: user.isActive,
         createdAt: new Date(user.createdAt).getTime()
       },
@@ -707,14 +782,23 @@ authHandler.put('/me', jwtAuth, async (c) => {
 // F2 fix: apply authRateLimiter to defend against refresh-token brute force / DoS
 authHandler.post('/refresh', authRateLimiter, async (c) => {
   try {
-    const { refreshToken } = await c.req.json();
+    const cookies = getRequestCookies(c);
+    const refreshToken = cookies[AUTH_COOKIE_NAMES.refresh];
 
     if (!refreshToken) {
       return c.json({
         success: false,
-        error: 'Refresh token is required',
+        error: 'Refresh cookie is required',
         timestamp: nowISO()
       }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    if (!csrfCookieMatches(c, cookies)) {
+      return c.json({
+        success: false,
+        error: 'Invalid CSRF token',
+        timestamp: nowISO()
+      }, HTTP_STATUS.FORBIDDEN);
     }
 
     // 驗證 refresh token
@@ -948,11 +1032,12 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
       });
     }
 
+    setAuthCookies(c, newToken, newRefreshToken);
+
     return c.json({
       success: true,
       data: {
-        token: newToken,
-        refreshToken: newRefreshToken
+        expiresIn: 2 * 60 * 60
       },
       timestamp: nowISO()
     });

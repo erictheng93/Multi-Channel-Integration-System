@@ -306,24 +306,6 @@ export const useTeamStore = defineStore('team', () => {
     }
   }
 
-  const resetPassword = async (memberId: string) => {
-    try {
-      loading.value = true
-      error.value = null
-      const response = await teamApi.resetPassword(memberId)
-      if (!response.success) {
-        error.value = '重設密碼失敗'
-        throw new Error('重設密碼失敗')
-      }
-    } catch (err: unknown) {
-      error.value = (err as Error)?.message || '重設密碼失敗'
-      console.error('重設密碼失敗:', err)
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
   const resetPasswordWithPolicy = async (memberId: string, data: {
     newPassword: string;
     policy: 'changeable' | 'unchangeable' | 'must_change';
@@ -469,7 +451,7 @@ export const useTeamStore = defineStore('team', () => {
 
     loadMembers, loadTeams, loadAll,
     addMember, updateMemberRole, updateMemberStatus, updateMember, removeMember,
-    resetPassword, resetPasswordWithPolicy,
+    resetPasswordWithPolicy,
     clearError, $reset,
 
     toggleSelectionMode, toggleMemberSelection, selectAllMembers, deselectAllMembers,

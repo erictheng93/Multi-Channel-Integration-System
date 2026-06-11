@@ -217,7 +217,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
         setConnectionState('connected')
         break
       case 'connecting':
-        setConnectionState('connecting')
+        if (connectionState.value !== 'reconnecting') {
+          setConnectionState('connecting')
+        }
         break
       case 'reconnecting':
         setConnectionState('reconnecting')
@@ -291,19 +293,23 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const connect = async (): Promise<void> => {
     const authStore = useAuthStore()
 
-    if (!authStore.token) {
-      console.warn('[WebSocketStore] No auth token, cannot connect')
+    if (!authStore.isAuthenticated && !authStore.validateSession()) {
+      console.warn('[WebSocketStore] No authenticated session, cannot connect')
       return
     }
 
-    if (isConnected.value || isConnecting.value) {
+    const isReconnectAttempt = connectionState.value === 'reconnecting'
+
+    if (isConnected.value || (isConnecting.value && !isReconnectAttempt)) {
       frontendLogger.debug('[WebSocketStore] Already connected or connecting')
       return
     }
 
     try {
       frontendLogger.debug('[WebSocketStore] Connecting to WebSocket...')
-      setConnectionState('connecting')
+      if (!isReconnectAttempt) {
+        setConnectionState('connecting')
+      }
 
       // 创建 WebSocket 客户端
       wsClient = createWebSocketClient({
@@ -339,10 +345,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   /**
    * 断开连接
    */
-  const disconnect = (): void => {
-    frontendLogger.debug('[WebSocketStore] Disconnecting...')
-
-    // 清理重连定时器
+  const closeClient = (): void => {
     if (reconnectTimer) {
       clearTimeout(reconnectTimer)
       reconnectTimer = null
@@ -350,13 +353,21 @@ export const useWebSocketStore = defineStore('websocket', () => {
 
     // 断开 WebSocket
     if (wsClient) {
-      wsClient.disconnect()
+      const client = wsClient
       wsClient = null
+      client.clearEventHandlers()
+      client.disconnect()
     }
 
+    connectedAt = 0
+  }
+
+  const disconnect = (): void => {
+    frontendLogger.debug('[WebSocketStore] Disconnecting...')
+
+    closeClient()
     setConnectionState('disconnected')
     reconnectAttempts.value = 0
-    connectedAt = 0
   }
 
   /**
@@ -365,7 +376,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const reconnect = async (): Promise<void> => {
     frontendLogger.debug('[WebSocketStore] Reconnecting...')
 
-    disconnect()
+    closeClient()
+    setConnectionState('reconnecting')
 
     // 短暂延迟后重连
     await new Promise(resolve => setTimeout(resolve, 1000))

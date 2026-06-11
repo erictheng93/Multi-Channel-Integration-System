@@ -9,16 +9,63 @@ import { autoReplyRules, autoReplyConditions, autoReplyActions } from '@/db/sche
 import { eq, and, isNull, inArray } from 'drizzle-orm';
 import { invalidateRulesCache } from '../services/auto-reply-engine';
 import {
-  successResponse,
   badRequestResponse,
   notFoundResponse,
   handleApiError,
-  paginatedResponse,
 } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp';
 import type { CreateRuleRequest, UpdateRuleRequest, TriggerType, ConditionType, ActionType, MatchMode } from '../types';
+import {
+  autoReplyContracts,
+  type ActionType as SharedActionType,
+  type AutoReplyAction as SharedAutoReplyAction,
+  type AutoReplyCondition as SharedAutoReplyCondition,
+  type AutoReplyRule as SharedAutoReplyRule,
+  type ConditionType as SharedConditionType,
+  type MatchMode as SharedMatchMode,
+  type TriggerType as SharedTriggerType,
+} from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const autoReplyRulesHandler = new Hono<{ Bindings: Bindings }>();
+
+type AutoReplyRuleRow = typeof autoReplyRules.$inferSelect;
+type AutoReplyConditionRow = typeof autoReplyConditions.$inferSelect;
+type AutoReplyActionRow = typeof autoReplyActions.$inferSelect;
+
+function toContractCondition(condition: AutoReplyConditionRow): SharedAutoReplyCondition {
+  return {
+    id: condition.id,
+    conditionType: condition.conditionType as SharedConditionType,
+    value: condition.value,
+    caseSensitive: condition.caseSensitive ?? false,
+    matchMode: (condition.matchMode || 'any') as SharedMatchMode,
+  };
+}
+
+function toContractAction(action: AutoReplyActionRow): SharedAutoReplyAction {
+  return {
+    id: action.id,
+    actionType: action.actionType as SharedActionType,
+    content: action.content,
+    sortOrder: action.sortOrder ?? 0,
+  };
+}
+
+function toContractRule(
+  rule: AutoReplyRuleRow,
+  conditions: AutoReplyConditionRow[],
+  actions: AutoReplyActionRow[]
+): SharedAutoReplyRule {
+  return {
+    ...rule,
+    triggerType: rule.triggerType as SharedTriggerType,
+    isActive: rule.isActive ?? true,
+    allowPushFallback: rule.allowPushFallback ?? false,
+    conditions: conditions.map(toContractCondition),
+    actions: actions.map(toContractAction),
+  };
+}
 
 // Apply JWT auth to all endpoints
 autoReplyRulesHandler.use('/*', jwtAuth);
@@ -82,30 +129,24 @@ autoReplyRulesHandler.get('/', async (c) => {
         ])
       : [[], []];
 
-    const result = rules.map((rule) => ({
-      ...rule,
-      isActive: rule.isActive ?? true,
-      conditions: conditions
-        .filter((c) => c.ruleId === rule.id)
-        .map((c) => ({
-          id: c.id,
-          conditionType: c.conditionType,
-          value: c.value,
-          caseSensitive: c.caseSensitive ?? false,
-          matchMode: c.matchMode || 'any',
-        })),
-      actions: actions
+    const result = rules.map((rule) => toContractRule(
+      rule,
+      conditions.filter((c) => c.ruleId === rule.id),
+      actions
         .filter((a) => a.ruleId === rule.id)
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-        .map((a) => ({
-          id: a.id,
-          actionType: a.actionType,
-          content: a.content,
-          sortOrder: a.sortOrder ?? 0,
-        })),
-    }));
+    ));
 
-    return paginatedResponse(c, result, { page, limit: pageSize, total }, 'Rules retrieved successfully');
+    return contractJson(c, autoReplyContracts.getRules, {
+      success: true,
+      data: {
+        items: result,
+        page,
+        limit: pageSize,
+        total,
+      },
+      message: 'Rules retrieved successfully',
+    });
   } catch (error) {
     return handleApiError(error, c);
   }
@@ -204,26 +245,14 @@ autoReplyRulesHandler.post('/', async (c) => {
       drizzleDb.select().from(autoReplyActions).where(eq(autoReplyActions.ruleId, rule.id)),
     ]);
 
-    return successResponse(
+    return contractJson(
       c,
+      autoReplyContracts.createRule,
       {
-        ...rule,
-        isActive: rule.isActive ?? true,
-        conditions: conditions.map((co) => ({
-          id: co.id,
-          conditionType: co.conditionType,
-          value: co.value,
-          caseSensitive: co.caseSensitive ?? false,
-          matchMode: co.matchMode || 'any',
-        })),
-        actions: actions.map((a) => ({
-          id: a.id,
-          actionType: a.actionType,
-          content: a.content,
-          sortOrder: a.sortOrder ?? 0,
-        })),
+        success: true,
+        data: toContractRule(rule, conditions, actions),
+        message: 'Rule created successfully',
       },
-      'Rule created successfully',
       201
     );
   } catch (error) {
@@ -319,23 +348,15 @@ autoReplyRulesHandler.put('/:id', async (c) => {
       drizzleDb.select().from(autoReplyActions).where(eq(autoReplyActions.ruleId, ruleId)),
     ]);
 
-    return successResponse(c, {
-      ...updated,
-      isActive: updated?.isActive ?? true,
-      conditions: conditions.map((co) => ({
-        id: co.id,
-        conditionType: co.conditionType,
-        value: co.value,
-        caseSensitive: co.caseSensitive ?? false,
-        matchMode: co.matchMode || 'any',
-      })),
-      actions: actions.map((a) => ({
-        id: a.id,
-        actionType: a.actionType,
-        content: a.content,
-        sortOrder: a.sortOrder ?? 0,
-      })),
-    }, 'Rule updated successfully');
+    if (!updated) {
+      return notFoundResponse(c, 'Rule');
+    }
+
+    return contractJson(c, autoReplyContracts.updateRule, {
+      success: true,
+      data: toContractRule(updated, conditions, actions),
+      message: 'Rule updated successfully',
+    });
   } catch (error) {
     if (error instanceof SyntaxError) {
       return badRequestResponse(c, 'Invalid JSON');
@@ -373,7 +394,10 @@ autoReplyRulesHandler.delete('/:id', async (c) => {
     // Invalidate KV cache
     await invalidateRulesCache(existing.teamId, c.env);
 
-    return successResponse(c, { id: ruleId }, 'Rule deleted successfully');
+    return contractJson(c, autoReplyContracts.deleteRule, {
+      success: true,
+      message: 'Rule deleted successfully',
+    });
   } catch (error) {
     return handleApiError(error, c);
   }

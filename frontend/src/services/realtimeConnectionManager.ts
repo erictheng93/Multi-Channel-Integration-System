@@ -4,6 +4,7 @@
 // Project: Multi-Channel Support MVP
 
 import { getBackendUrl } from '@/config/runtime'
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 import { ref, computed, type Ref } from 'vue'
 import { createWebSocketClient, type WebSocketMessage, type WebSocketConnectionState as WsConnectionState } from './websocketClient'
 import type { Message } from '@/types'
@@ -69,7 +70,7 @@ export async function fetchMigrationConfig(): Promise<MigrationConfig> {
   try {
     // REMOTE-ONLY: Always use remote API
     const baseUrl = getBackendUrl()
-    const response = await fetch(`${baseUrl}/api/websocket/migration-status`, {
+    const response = await authenticatedFetch(`${baseUrl}/api/websocket/migration-status`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
@@ -272,4 +273,3 @@ export default {
   isUserInWebSocketRollout,
   getMigrationStats
 }
-

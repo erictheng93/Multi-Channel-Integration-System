@@ -20,9 +20,9 @@ export interface AuthResponse {
 }
 
 export interface LoginResponse {
-  token: string;
-  refreshToken: string;
   agent: Agent;
+  sessionId?: string;
+  expiresIn?: number;
 }
 
 export interface SessionData {

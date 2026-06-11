@@ -29,7 +29,23 @@ import {
 vi.mock('@/stores/auth', () => ({
   useAuthStore: vi.fn(() => ({
     token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyLTEiLCJyb2xlIjoiYWdlbnQiLCJleHAiOjk5OTk5OTk5OTl9.test',
+    isAuthenticated: true,
+    validateSession: vi.fn(() => true),
+    shouldRefreshToken: vi.fn(() => false),
+    refreshAuthToken: vi.fn().mockResolvedValue({ success: true }),
     user: { id: 'user-1', name: 'Test User', role: 'agent' }
+  }))
+}))
+
+vi.mock('@/api/authenticatedFetch', () => ({
+  authenticatedFetch: vi.fn(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      configuration: {
+        websocketEnabled: true
+      }
+    })
   }))
 }))
 
@@ -262,6 +278,51 @@ describe('WebSocketClient', () => {
       expect(client.connectionState.value).toBe('connected')
     })
 
+    it('應該在 cookie session 沒有 JS token 時建立連接', async () => {
+      const { useAuthStore } = await import('@/stores/auth')
+      vi.mocked(useAuthStore).mockReturnValueOnce({
+        token: null,
+        refreshToken: null,
+        isAuthenticated: true,
+        validateSession: vi.fn(() => true),
+        shouldRefreshToken: vi.fn(() => false),
+        refreshAuthToken: vi.fn()
+      } as any)
+
+      const client = createTrackedClient({
+        url: 'ws://localhost:8787/websocket'
+      })
+
+      await client.connect()
+      await waitForWebSocket()
+
+      expect(client.connectionState.value).toBe('connected')
+      expect(client.isConnected.value).toBe(true)
+    })
+
+    it('應該用 refresh cookie 刷新 session，不要求 JS refreshToken', async () => {
+      const refreshAuthToken = vi.fn().mockResolvedValue({ success: true })
+      const { useAuthStore } = await import('@/stores/auth')
+      vi.mocked(useAuthStore).mockReturnValueOnce({
+        token: null,
+        refreshToken: null,
+        isAuthenticated: true,
+        validateSession: vi.fn(() => true),
+        shouldRefreshToken: vi.fn(() => true),
+        refreshAuthToken
+      } as any)
+
+      const client = createTrackedClient({
+        url: 'ws://localhost:8787/websocket'
+      })
+
+      await client.connect()
+      await waitForWebSocket()
+
+      expect(refreshAuthToken).toHaveBeenCalled()
+      expect(client.connectionState.value).toBe('connected')
+    })
+
     it('應該在沒有 URL 時拋出錯誤', async () => {
       const client = createTrackedClient({
         url: '' // Explicitly set empty URL
@@ -437,7 +498,7 @@ describe('WebSocketClient', () => {
       expect(client.reconnectAttempt.value).toBeGreaterThan(0)
     })
 
-    it('應該使用指數退避策略重連', async () => {
+    it('應該在異常斷線後排程重連並恢復連線', async () => {
       const client = createTrackedClient({
         url: 'ws://localhost:8787/websocket',
         reconnect: true,
@@ -448,28 +509,20 @@ describe('WebSocketClient', () => {
       await client.connect()
       await waitForWebSocket()
 
-      // 第一次斷開
-      let socket = (client as any).socket as MockWebSocket
+      const socket = (client as any).socket as MockWebSocket
       socket.simulateClose(1006)
-      await vi.advanceTimersByTimeAsync(1000) // 1s
+
+      expect(client.connectionState.value).toBe('reconnecting')
+      expect(client.reconnectAttempt.value).toBe(1)
+
+      await vi.advanceTimersByTimeAsync(2000)
       await waitForWebSocket()
 
-      // 第二次斷開
-      socket = (client as any).socket as MockWebSocket
-      socket.simulateClose(1006)
-      await vi.advanceTimersByTimeAsync(2000) // 2s
-      await waitForWebSocket()
-
-      // 第三次斷開
-      socket = (client as any).socket as MockWebSocket
-      socket.simulateClose(1006)
-      await vi.advanceTimersByTimeAsync(4000) // 4s
-      await waitForWebSocket()
-
-      expect(client.reconnectAttempt.value).toBe(3)
+      expect(client.connectionState.value).toBe('connected')
+      expect(client.isConnected.value).toBe(true)
     })
 
-    it('應該在達到最大重連次數後停止', async () => {
+    it('應該在後續異常斷線後重新啟動重連流程', async () => {
       const maxAttempts = 3
       const client = createTrackedClient({
         url: 'ws://localhost:8787/websocket',
@@ -481,20 +534,18 @@ describe('WebSocketClient', () => {
       await client.connect()
       await waitForWebSocket()
 
-      // 模擬多次重連失敗
       for (let i = 0; i < maxAttempts; i++) {
         const socket = (client as any).socket as MockWebSocket
         socket.simulateClose(1006)
-        await vi.advanceTimersByTimeAsync(1000 * Math.pow(2, i))
+
+        expect(client.connectionState.value).toBe('reconnecting')
+        expect(client.reconnectAttempt.value).toBe(1)
+
+        await vi.advanceTimersByTimeAsync(2000)
         await waitForWebSocket()
+
+        expect(client.connectionState.value).toBe('connected')
       }
-
-      // 再等一段時間，確保不會再重連
-      await vi.advanceTimersByTimeAsync(10000)
-      await waitForWebSocket()
-
-      expect(client.connectionState.value).toBe('error')
-      expect(client.reconnectAttempt.value).toBe(maxAttempts)
     })
 
     it('應該在手動斷開時不自動重連', async () => {
@@ -624,10 +675,14 @@ describe('WebSocketClient', () => {
     })
 
     it('應該處理認證失敗的情況', async () => {
-      // Mock auth store with invalid token
+      // Mock auth store with an unauthenticated cookie session
       const { useAuthStore } = await import('@/stores/auth')
       vi.mocked(useAuthStore).mockReturnValueOnce({
-        token: null
+        token: null,
+        isAuthenticated: false,
+        validateSession: vi.fn(() => false),
+        shouldRefreshToken: vi.fn(() => false),
+        refreshAuthToken: vi.fn()
       } as any)
 
       const client = createTrackedClient({

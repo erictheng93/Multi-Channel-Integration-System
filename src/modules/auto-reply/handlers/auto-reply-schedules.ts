@@ -9,14 +9,29 @@ import { autoReplySchedules } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateScheduleCache } from '../services/schedule-service';
 import {
-  successResponse,
   badRequestResponse,
   handleApiError,
 } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp';
 import type { BulkUpsertScheduleRequest } from '../types';
+import { autoReplyContracts, type AutoReplySchedule } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const autoReplySchedulesHandler = new Hono<{ Bindings: Bindings }>();
+
+type AutoReplyScheduleRow = typeof autoReplySchedules.$inferSelect;
+
+function toContractSchedule(schedule: AutoReplyScheduleRow): AutoReplySchedule {
+  return {
+    id: schedule.id,
+    teamId: schedule.teamId,
+    dayOfWeek: schedule.dayOfWeek,
+    startTime: schedule.startTime,
+    endTime: schedule.endTime,
+    timezone: schedule.timezone ?? 'Asia/Taipei',
+    isActive: schedule.isActive ?? true,
+  };
+}
 
 autoReplySchedulesHandler.use('/*', jwtAuth);
 
@@ -46,7 +61,11 @@ autoReplySchedulesHandler.get('/', async (c) => {
       .where(eq(autoReplySchedules.teamId, teamId))
       .orderBy(autoReplySchedules.dayOfWeek);
 
-    return successResponse(c, schedules, 'Schedules retrieved successfully');
+    return contractJson(c, autoReplyContracts.getSchedules, {
+      success: true,
+      data: schedules.map(toContractSchedule),
+      message: 'Schedules retrieved successfully',
+    });
   } catch (error) {
     return handleApiError(error, c);
   }
@@ -106,7 +125,11 @@ autoReplySchedulesHandler.post('/', async (c) => {
     // Invalidate KV cache
     await invalidateScheduleCache(teamId, c.env);
 
-    return successResponse(c, inserted, 'Schedules updated successfully');
+    return contractJson(c, autoReplyContracts.saveSchedules, {
+      success: true,
+      data: inserted.map(toContractSchedule),
+      message: 'Schedules updated successfully',
+    });
   } catch (error) {
     if (error instanceof SyntaxError) {
       return badRequestResponse(c, 'Invalid JSON');

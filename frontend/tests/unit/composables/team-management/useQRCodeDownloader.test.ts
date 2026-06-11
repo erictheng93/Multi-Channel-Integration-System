@@ -84,7 +84,9 @@ describe('useQRCodeDownloader', () => {
       onerror: null
     } as unknown as HTMLImageElement
 
-    global.Image = vi.fn(() => mockImage) as any
+    global.Image = vi.fn(function () {
+      return mockImage
+    }) as any
 
     // Mock document.body methods
     vi.spyOn(document.body, 'appendChild').mockImplementation(() => null as any)

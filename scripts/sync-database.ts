@@ -56,12 +56,36 @@ const DEFAULT_CONFIG: SyncConfig = {
   backupBeforeSync: true
 };
 
+function requireProductionConfirmation(target: string): void {
+  const expectedConfirmation = `allow:${target}`;
+  const confirmations = new Set((process.env.MCIS_CONFIRM_PRODUCTION ?? '').split(',').map(value => value.trim()).filter(Boolean));
+  if (!confirmations.has(expectedConfirmation)) {
+    throw new Error(
+      `Refusing production operation: ${target}. ` +
+      `Set MCIS_CONFIRM_PRODUCTION=${expectedConfirmation} to run this command intentionally.`
+    );
+  }
+}
+
 class DatabaseSyncTool {
   private config: SyncConfig;
   private dbName = 'mcis-db';
 
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  private getProductionSyncTarget(): string | null {
+    if (this.config.source === 'production' && this.config.target === 'production') {
+      return 'sync:db:prod-to-prod';
+    }
+    if (this.config.source === 'production') {
+      return 'sync:db:from-prod';
+    }
+    if (this.config.target === 'production') {
+      return 'sync:db:to-prod';
+    }
+    return null;
   }
 
   /**
@@ -72,6 +96,11 @@ class DatabaseSyncTool {
     console.log(' 同步配置:', this.config);
 
     try {
+      const productionTarget = this.getProductionSyncTarget();
+      if (productionTarget) {
+        requireProductionConfirmation(productionTarget);
+      }
+
       // 1. 預檢查
       await this.preCheck();
 
@@ -114,9 +143,11 @@ class DatabaseSyncTool {
       throw new Error('Wrangler CLI 不可用，請先安裝 Wrangler');
     }
 
-    // 檢查數據庫連接
-    await this.checkDatabaseConnection('local');
-    await this.checkDatabaseConnection('production');
+    // 檢查本次同步涉及的數據庫連接
+    await this.checkDatabaseConnection(this.config.source);
+    if (this.config.target !== this.config.source) {
+      await this.checkDatabaseConnection(this.config.target);
+    }
 
     console.log(' 預檢查通過');
   }
@@ -157,13 +188,15 @@ class DatabaseSyncTool {
     fs.mkdirSync(backupDir, { recursive: true });
 
     try {
-      // 備份本地數據庫
-      const localBackupPath = path.join(backupDir, 'local-backup.sql');
-      runSync(['wrangler', 'd1', 'export', this.dbName, '--output', localBackupPath]);
-
-      // 備份生產數據庫
-      const prodBackupPath = path.join(backupDir, 'production-backup.sql');
-      runSync(['wrangler', 'd1', 'export', this.dbName, '--remote', '--output', prodBackupPath]);
+      const envs = new Set([this.config.source, this.config.target]);
+      for (const env of envs) {
+        const backupPath = path.join(backupDir, `${env}-backup.sql`);
+        const args = ['wrangler', 'd1', 'export', this.dbName, '--output', backupPath];
+        if (env === 'production') {
+          args.splice(4, 0, '--remote');
+        }
+        runSync(args);
+      }
 
       console.log(` 備份已保存到: ${backupDir}`);
     } catch (error) {
@@ -354,25 +387,25 @@ class DatabaseSyncTool {
     console.log(' 驗證表結構一致性...');
 
     try {
-      const localTables = await this.getTableList('local');
-      const prodTables = await this.getTableList('production');
+      const sourceTables = await this.getTableList(this.config.source);
+      const targetTables = await this.getTableList(this.config.target);
 
-      const localSet = new Set(localTables);
-      const prodSet = new Set(prodTables);
+      const sourceSet = new Set(sourceTables);
+      const targetSet = new Set(targetTables);
 
       // 檢查缺失表
-      const missingInLocal = [...prodSet].filter(table => !localSet.has(table));
-      const missingInProd = [...localSet].filter(table => !prodSet.has(table));
+      const missingInTarget = [...sourceSet].filter(table => !targetSet.has(table));
+      const missingInSource = [...targetSet].filter(table => !sourceSet.has(table));
 
-      if (missingInLocal.length > 0) {
-        console.warn(' 本地環境缺失表:', missingInLocal);
+      if (missingInTarget.length > 0) {
+        console.warn(` ${this.config.target} 環境缺失表:`, missingInTarget);
       }
 
-      if (missingInProd.length > 0) {
-        console.warn(' 生產環境缺失表:', missingInProd);
+      if (missingInSource.length > 0) {
+        console.warn(` ${this.config.source} 環境缺失表:`, missingInSource);
       }
 
-      if (missingInLocal.length === 0 && missingInProd.length === 0) {
+      if (missingInTarget.length === 0 && missingInSource.length === 0) {
         console.log(' 表結構一致');
       }
 
@@ -414,10 +447,10 @@ class DatabaseSyncTool {
     console.log(' 驗證數據完整性...');
 
     for (const table of this.config.tables) {
-      const localCount = await this.getTableCount(table, 'local');
-      const prodCount = await this.getTableCount(table, 'production');
+      const sourceCount = await this.getTableCount(table, this.config.source);
+      const targetCount = await this.getTableCount(table, this.config.target);
 
-      console.log(` ${table}: local(${localCount}) vs prod(${prodCount})`);
+      console.log(` ${table}: ${this.config.source}(${sourceCount}) vs ${this.config.target}(${targetCount})`);
     }
   }
 

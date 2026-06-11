@@ -17,20 +17,19 @@ import type {
   // ScheduledReportExecution
 } from '@/types/reports';
 
-import { apiClient } from './base';
+import { reportContracts, type ReportHealthResponse } from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 
 /**
  * 報表 API 客戶端類
  */
 export class ReportsAPI {
-  private static readonly BASE_PATH = '/reports';
-
   /**
    * 健康檢查
    */
-  static async healthCheck(): Promise<{ status: string; module: string; timestamp: string }> {
-    const response = await apiClient.get(`${this.BASE_PATH}/health`);
-    return response.data as { status: string; module: string; timestamp: string };
+  static async healthCheck(): Promise<ReportHealthResponse> {
+    const response = await callApiContract(reportContracts.health, {});
+    return response;
   }
 
   /**
@@ -45,8 +44,8 @@ export class ReportsAPI {
     endpoints: string[];
     permissions: Record<string, string>;
   }> {
-    const response = await apiClient.get(`${this.BASE_PATH}/info`);
-    return (response.data as { data: {
+    const response = await callApiContract(reportContracts.info, {});
+    return response.data as {
       module: string;
       version: string;
       description: string;
@@ -54,31 +53,31 @@ export class ReportsAPI {
       reportTypes: string[];
       endpoints: string[];
       permissions: Record<string, string>;
-    } }).data;
+    };
   }
 
   /**
    * 生成報表
    */
   static async generateReport(params: ReportGenerationParams): Promise<ReportBase> {
-    const response = await apiClient.post(`${this.BASE_PATH}`, params);
-    return (response.data as { data: ReportBase }).data;
+    const response = await callApiContract(reportContracts.generate, {}, params);
+    return response.data as ReportBase;
   }
 
   /**
    * 獲取報表列表
    */
   static async listReports(query: ReportListQuery = {}): Promise<ReportListResponse> {
-    const response = await apiClient.get(`${this.BASE_PATH}?${new URLSearchParams(query as Record<string, string>).toString()}`);
-    return (response.data as { data: ReportListResponse }).data;
+    const response = await callApiContract(reportContracts.list, query);
+    return response.data as ReportListResponse;
   }
 
   /**
    * 獲取單個報表詳情
    */
   static async getReportDetails(reportId: string): Promise<ReportDetails> {
-    const response = await apiClient.get(`${this.BASE_PATH}/${reportId}`);
-    return (response.data as { data: ReportDetails }).data;
+    const response = await callApiContract(reportContracts.details, { reportId });
+    return response.data as ReportDetails;
   }
 
   /**
@@ -92,7 +91,7 @@ export class ReportsAPI {
    * 下載報表
    */
   static async downloadReport(reportId: string): Promise<{ blob: Blob; filename: string; contentType: string }> {
-    return apiClient.downloadFile(`${this.BASE_PATH}/${reportId}/download`);
+    return callApiContract(reportContracts.download, { reportId });
   }
 
   /**
@@ -111,24 +110,27 @@ export class ReportsAPI {
    * 刪除報表
    */
   static async deleteReport(reportId: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.delete(`${this.BASE_PATH}/${reportId}`);
-    return response.data as { success: boolean; message: string };
+    const response = await callApiContract(reportContracts.delete, { reportId });
+    return {
+      success: response.success,
+      message: response.message || 'Report deleted successfully'
+    };
   }
 
   /**
    * 獲取報表統計
    */
   static async getReportStatistics(timeRange: ReportTimeRange = 'last_30_days'): Promise<ReportStatistics> {
-    const response = await apiClient.get(`${this.BASE_PATH}/stats?timeRange=${timeRange}`);
-    return (response.data as { data: ReportStatistics }).data;
+    const response = await callApiContract(reportContracts.stats, { timeRange });
+    return response.data as ReportStatistics;
   }
 
   /**
    * 批量操作
    */
   static async batchOperation(operation: BatchReportOperation): Promise<BatchOperationResult> {
-    const response = await apiClient.post(`${this.BASE_PATH}/batch`, operation);
-    return (response.data as { data: BatchOperationResult }).data;
+    const response = await callApiContract(reportContracts.batch, {}, operation);
+    return response.data as BatchOperationResult;
   }
 
   /**
@@ -139,16 +141,16 @@ export class ReportsAPI {
     description: string;
     options: Record<string, unknown>;
   }>> {
-    const response = await apiClient.get(`${this.BASE_PATH}/templates/${reportType}`);
-    return (response.data as { data: Array<{ name: string; description: string; options: Record<string, unknown> }> }).data;
+    const response = await callApiContract(reportContracts.templates, { reportType });
+    return response.data as Array<{ name: string; description: string; options: Record<string, unknown> }>;
   }
 
   /**
    * 預覽報表
    */
   static async previewReport(params: ReportGenerationParams): Promise<Record<string, unknown>> {
-    const response = await apiClient.post(`${this.BASE_PATH}/preview`, params);
-    return (response.data as { data: Record<string, unknown> }).data;
+    const response = await callApiContract(reportContracts.preview, {}, params);
+    return response.data as Record<string, unknown>;
   }
 
   // ====================== 排程報表管理 ======================
@@ -157,32 +159,35 @@ export class ReportsAPI {
    * 創建排程報表
    */
   static async createScheduledReport(config: Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>): Promise<ScheduledReport> {
-    const response = await apiClient.post(`${this.BASE_PATH}/scheduled`, config);
-    return (response.data as { data: ScheduledReport }).data;
+    const response = await callApiContract(reportContracts.createScheduled, {}, config);
+    return response.data as ScheduledReport;
   }
 
   /**
    * 獲取排程報表列表
    */
   static async listScheduledReports(): Promise<ScheduledReport[]> {
-    const response = await apiClient.get(`${this.BASE_PATH}/scheduled`);
-    return (response.data as { data: ScheduledReport[] }).data;
+    const response = await callApiContract(reportContracts.listScheduled, {});
+    return response.data as ScheduledReport[];
   }
 
   /**
    * 更新排程報表
    */
   static async updateScheduledReport(id: string, updates: Partial<ScheduledReport>): Promise<ScheduledReport> {
-    const response = await apiClient.put(`${this.BASE_PATH}/scheduled/${id}`, updates);
-    return (response.data as { data: ScheduledReport }).data;
+    const response = await callApiContract(reportContracts.updateScheduled, { id }, updates);
+    return response.data as ScheduledReport;
   }
 
   /**
    * 刪除排程報表
    */
   static async deleteScheduledReport(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.delete(`${this.BASE_PATH}/scheduled/${id}`);
-    return response.data as { success: boolean; message: string };
+    const response = await callApiContract(reportContracts.deleteScheduled, { id });
+    return {
+      success: response.success,
+      message: response.message || 'Scheduled report deleted successfully'
+    };
   }
 
   // ====================== 輔助方法 ======================

@@ -1,16 +1,18 @@
 // Customer conversation message operations handler
 // Extracted from src/index.ts — handles message CRUD, file upload, and debug
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Bindings } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
+import { AUTH_COOKIE_NAMES, parseCookieHeader } from '@/middleware/auth';
 import { verifyConversationAccess } from '../utils/conversation-auth';
 import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('CustomerMessages');
 
 const router = new Hono<{ Bindings: Bindings }>();
+type CustomerMessageContext = Context<{ Bindings: Bindings }>;
 
 function getAuthErrorResponse(error: unknown): { status: ContentfulStatusCode; message: string } {
   if (typeof error === 'object' && error !== null) {
@@ -22,6 +24,30 @@ function getAuthErrorResponse(error: unknown): { status: ContentfulStatusCode; m
   }
 
   return { status: 401, message: 'Authentication failed' };
+}
+
+function getSessionToken(c: CustomerMessageContext): {
+  token: string | undefined;
+  usedCookie: boolean;
+} {
+  const headerToken =
+    c.req.header('x-session-id') ||
+    c.req.header('X-Session-Id') ||
+    c.req.header('Authorization')?.replace('Bearer ', '');
+
+  if (headerToken) {
+    return { token: headerToken, usedCookie: false };
+  }
+
+  const cookies = parseCookieHeader(c.req.header('Cookie'));
+  return { token: cookies[AUTH_COOKIE_NAMES.access], usedCookie: true };
+}
+
+function hasValidCsrf(c: CustomerMessageContext): boolean {
+  const cookies = parseCookieHeader(c.req.header('Cookie'));
+  const csrfCookie = cookies[AUTH_COOKIE_NAMES.csrf];
+  const csrfHeader = c.req.header('X-CSRF-Token');
+  return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
 }
 
 // Message operations endpoint (GET messages, POST new message)
@@ -40,11 +66,14 @@ router.all('/:id/messages', async (c) => {
     }, 400);
   }
 
-  // Extract session token from header
-  const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id') || c.req.header('Authorization')?.replace('Bearer ', '');
+  const { token: sessionId, usedCookie } = getSessionToken(c);
 
   if (!sessionId) {
     return c.json({ success: false, error: 'Authentication required' }, 401);
+  }
+
+  if (usedCookie && requestMethod !== 'GET' && !hasValidCsrf(c)) {
+    return c.json({ success: false, error: 'Invalid CSRF token' }, 403);
   }
 
   try {
@@ -98,11 +127,14 @@ router.post('/:id/upload', async (c) => {
     }, 400);
   }
 
-  // Extract session token from header
-  const sessionId = c.req.header('x-session-id') || c.req.header('X-Session-Id') || c.req.header('Authorization')?.replace('Bearer ', '');
+  const { token: sessionId, usedCookie } = getSessionToken(c);
 
   if (!sessionId) {
     return c.json({ success: false, error: 'Authentication required' }, 401);
+  }
+
+  if (usedCookie && !hasValidCsrf(c)) {
+    return c.json({ success: false, error: 'Invalid CSRF token' }, 403);
   }
 
   try {

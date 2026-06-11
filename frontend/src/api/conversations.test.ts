@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Use vi.hoisted to ensure mocks are available
-const { mockGet, mockPost, mockPut } = vi.hoisted(() => ({
+const { mockGet, mockPost, mockPut, mockDelete, mockRequest } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPost: vi.fn(),
-  mockPut: vi.fn()
+  mockPut: vi.fn(),
+  mockDelete: vi.fn(),
+  mockRequest: vi.fn()
 }))
 
 // Mock base API client
@@ -12,7 +14,9 @@ vi.mock('./base', () => ({
   apiClient: {
     get: mockGet,
     post: mockPost,
-    put: mockPut
+    put: mockPut,
+    delete: mockDelete,
+    request: mockRequest
   }
 }))
 
@@ -367,6 +371,28 @@ describe('Conversations API', () => {
         { tags }
       )
       expect(result).toEqual(mockResponse)
+    })
+
+    it('should add conversation tags', async () => {
+      const conversationId = 'conv-123'
+      mockPost.mockResolvedValue({ success: true })
+
+      const result = await conversationApi.addConversationTags(conversationId, [1, 2])
+
+      expect(mockPost).toHaveBeenCalledWith(`/conversations/${conversationId}/tags`, { tagIds: [1, 2] })
+      expect(result.success).toBe(true)
+    })
+
+    it('should remove conversation tags with DELETE body', async () => {
+      const conversationId = 'conv-123'
+      mockRequest.mockResolvedValue({ success: true })
+
+      const result = await conversationApi.removeConversationTags(conversationId, [1, 2])
+
+      expect(mockRequest).toHaveBeenCalledWith('DELETE', `/conversations/${conversationId}/tags`, {
+        tagIds: [1, 2]
+      })
+      expect(result.success).toBe(true)
     })
   })
 

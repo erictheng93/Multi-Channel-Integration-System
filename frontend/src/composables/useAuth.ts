@@ -10,7 +10,7 @@ export function useAuth() {
   const { handleError } = useError()
 
   // 計算屬性
-  const isAuthenticated = computed(() => !!authStore.token)
+  const isAuthenticated = computed(() => authStore.isAuthenticated)
   const currentAgent = computed(() => authStore.currentAgent)
   const isAdmin = computed(() => authStore.currentAgent?.role === 'admin')
   const isAgent = computed(() => authStore.currentAgent?.role === 'agent')

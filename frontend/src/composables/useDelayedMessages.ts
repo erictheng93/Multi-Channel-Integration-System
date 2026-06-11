@@ -3,7 +3,12 @@ import { ref, computed } from 'vue'
 import { messagesApi } from '@/api/messages'
 import { useAuth } from './useAuth'
 import { useError } from './useError'
-import type { DelayedMessageRequest, PendingMessage, DelayedMessageResponse } from '@/api/messages'
+import type {
+  DelayedMessageRequest,
+  DelayedMessageResponse,
+  MessageDetail,
+  PendingMessage
+} from '@/api/messages'
 
 export function useDelayedMessages() {
   const { currentAgent } = useAuth()
@@ -133,7 +138,7 @@ export function useDelayedMessages() {
   }
 
   // 獲取訊息詳情
-  const getMessageDetails = async (messageId: string): Promise<PendingMessage | null> => {
+  const getMessageDetails = async (messageId: string): Promise<MessageDetail | null> => {
     try {
       const response = await messagesApi.getMessageDetails(messageId)
       return response.success ? (response.data || null) : null

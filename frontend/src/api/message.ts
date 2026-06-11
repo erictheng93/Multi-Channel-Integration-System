@@ -2,36 +2,25 @@
 // 檔案路徑：/frontend/src/api/message.ts
 // Created by: API Service Developer
 
-import { apiClient } from './base'
+import {
+  conversationMessageContracts,
+  type ConversationMessageListParams,
+  type ConversationMessageRecallRequest,
+  type SendConversationMessageRequest
+} from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 import type { Message, ApiResponse, Platform, PaginatedResponse } from '@/types'
 
-export interface SendMessageRequest {
-  content: string;
-  messageType?: 'text' | 'image' | 'file';
-  platform?: Platform;
-  senderId?: string;
-  replyToId?: string;
-  metadata?: Record<string, unknown>;
-  attachmentIds?: string[];
-}
+export type SendMessageRequest = SendConversationMessageRequest & { platform?: Platform }
 
-export interface MessageListParams {
-  page?: number;
-  pageSize?: number;
-  since?: string;
-  before?: string;
-  messageType?: 'text' | 'image' | 'file';
-}
+export type MessageListParams = ConversationMessageListParams
 
 export interface UploadAttachmentRequest {
   file: globalThis.File;
   messageType: 'image' | 'file';
 }
 
-export interface MessageRecallRequest {
-  messageId: string;
-  reason?: string;
-}
+export type MessageRecallRequest = ConversationMessageRecallRequest
 
 export const messageApi = {
   // 獲取對話訊息列表
@@ -40,15 +29,7 @@ export const messageApi = {
       return { success: false, error: '對話 ID 不能為空' };
     }
     
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) {queryParams.append('page', params.page.toString());}
-    if (params?.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString());}
-    if (params?.since) {queryParams.append('since', params.since);}
-    if (params?.before) {queryParams.append('before', params.before);}
-    if (params?.messageType) {queryParams.append('messageType', params.messageType);}
-    
-    const queryString = queryParams.toString();
-    return apiClient.get(`/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ''}`);
+    return callApiContract(conversationMessageContracts.list, { conversationId, params }) as Promise<ApiResponse<Message[]>>;
   },
 
   // 獲取分頁訊息列表
@@ -57,14 +38,7 @@ export const messageApi = {
       return { success: false, error: '對話 ID 不能為空' };
     }
     
-    const queryParams = new URLSearchParams();
-    if (params?.page !== undefined) {queryParams.append('page', params.page.toString());}
-    if (params?.pageSize !== undefined) {queryParams.append('pageSize', params.pageSize.toString());}
-    if (params?.since) {queryParams.append('since', params.since);}
-    if (params?.before) {queryParams.append('before', params.before);}
-    if (params?.messageType) {queryParams.append('messageType', params.messageType);}
-    
-    return apiClient.get(`/conversations/${conversationId}/messages?${queryParams.toString()}`);
+    return callApiContract(conversationMessageContracts.listPaginated, { conversationId, params }) as Promise<ApiResponse<PaginatedResponse<Message>>>;
   },
 
   // 發送訊息
@@ -96,7 +70,7 @@ export const messageApi = {
     // 使用 /api/conversations/ 端點：
     // 1. 發送訊息到 LINE (via Queue)
     // 2. 通知 CustomerConversationDO 進行 WebSocket 廣播
-    return apiClient.post(`/conversations/${conversationId}/messages`, payload);
+    return callApiContract(conversationMessageContracts.send, { conversationId }, payload) as Promise<ApiResponse<Message>>;
   },
 
   // 發送快速回覆
@@ -124,7 +98,7 @@ export const messageApi = {
     formData.append('messageType', request.messageType);
 
     // 修復：使用正確的對話附件端點 (POST /conversations/:id/attachments)
-    return apiClient.uploadFile(`/conversations/${conversationId}/attachments`, formData);
+    return callApiContract(conversationMessageContracts.uploadAttachment, { conversationId }, formData);
   },
 
   // 標記訊息為已讀
@@ -133,11 +107,9 @@ export const messageApi = {
       return { success: false, error: '對話 ID 不能為空' };
     }
     
-    const endpoint = messageId 
-      ? `/conversations/${conversationId}/messages/${messageId}/read`
-      : `/conversations/${conversationId}/messages/read`;
-      
-    return apiClient.put(endpoint);
+    return messageId
+      ? callApiContract(conversationMessageContracts.markMessageAsRead, { conversationId, messageId })
+      : callApiContract(conversationMessageContracts.markAllAsRead, { conversationId });
   },
 
   // 撤回訊息
@@ -146,9 +118,11 @@ export const messageApi = {
       return { success: false, error: '對話 ID 和訊息 ID 不能為空' };
     }
     
-    return apiClient.request('DELETE', `/conversations/${conversationId}/messages/${request.messageId}`, {
-      reason: request.reason
-    });
+    return callApiContract(
+      conversationMessageContracts.recall,
+      { conversationId, messageId: request.messageId },
+      { reason: request.reason }
+    );
   },
 
   // 獲取單一訊息
@@ -157,7 +131,7 @@ export const messageApi = {
       return { success: false, error: '對話 ID 和訊息 ID 不能為空' };
     }
     
-    return apiClient.get(`/conversations/${conversationId}/messages/${messageId}`);
+    return callApiContract(conversationMessageContracts.get, { conversationId, messageId }) as Promise<ApiResponse<Message>>;
   },
 
   // 編輯訊息
@@ -170,9 +144,9 @@ export const messageApi = {
       return { success: false, error: '新的訊息內容不能為空' };
     }
     
-    return apiClient.put(`/conversations/${conversationId}/messages/${messageId}`, {
+    return callApiContract(conversationMessageContracts.edit, { conversationId, messageId }, {
       content: newContent.trim()
-    });
+    }) as Promise<ApiResponse<Message>>;
   },
 
   // 搜索訊息
@@ -185,10 +159,9 @@ export const messageApi = {
       return { success: false, error: '搜索關鍵字不能為空' };
     }
     
-    const queryParams = new URLSearchParams();
-    queryParams.append('q', query.trim());
-    if (messageType) {queryParams.append('messageType', messageType);}
-    
-    return apiClient.get(`/conversations/${conversationId}/messages/search?${queryParams.toString()}`);
+    return callApiContract(
+      conversationMessageContracts.search,
+      { conversationId, query, messageType }
+    ) as Promise<ApiResponse<Message[]>>;
   }
 }

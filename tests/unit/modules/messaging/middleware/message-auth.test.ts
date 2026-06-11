@@ -17,9 +17,11 @@ vi.mock('drizzle-orm/d1', () => ({
 }));
 
 vi.mock('@modules/messaging/services/message-crud', () => ({
-  MessageCrudService: vi.fn().mockImplementation(() => ({
-    findById: mocks.findById,
-  })),
+  MessageCrudService: vi.fn(function () {
+    return {
+      findById: mocks.findById,
+    };
+  }),
 }));
 
 type TestUser = Partial<DbUser> & Partial<JWTPayload> & {

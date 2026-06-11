@@ -1,8 +1,8 @@
-// 統�?路由?�置 - ?�?�路?��??��?來�?實現
+// Unified route configuration - all route modules are declared here
 import { createRouteGroup, createRouteModule } from './route-registry';
 import type { RouteGroup } from './route-registry';
 
-// 導入?��??��???
+// Import core handlers
 import {
   authMainHandler,
   teamMainHandler,
@@ -23,7 +23,7 @@ import messagingMainHandler from '@modules/messaging/handlers/messaging/index';
 import fileMainHandler from '@modules/file-management/handlers/file-main';
 import { autoReplyRulesHandler, autoReplySchedulesHandler, autoReplyLogsHandler } from '../modules/auto-reply/handlers';
 
-// 導入額�??��???
+// Import additional handlers
 import { analyticsHandler } from '@modules/analytics/handlers/analytics-main';
 import { dashboardHandler } from '@modules/analytics/handlers/dashboard-main';
 import { realtimeDashboardHandler } from '@modules/analytics/handlers/realtime-dashboard-main';
@@ -39,7 +39,7 @@ import modularSystemRouter from './modular-system-integration';
 import collaborationMainHandler from '@modules/collaboration/handlers/collaboration-main';
 
 /**
- * ?��?API路由�?- ?��??�能
+ * Core API route group
  */
 const coreApiGroup = createRouteGroup({
   name: 'Core API',
@@ -75,7 +75,7 @@ const coreApiGroup = createRouteGroup({
 });
 
 /**
- * 業�??�輯路由�?- ?��?業�??�能
+ * Business logic route group
  */
 const businessLogicGroup = createRouteGroup({
   name: 'Business Logic',
@@ -167,7 +167,7 @@ const businessLogicGroup = createRouteGroup({
 });
 
 /**
- * ?��??��?路由�?- ?��?管�??�能
+ * Team collaboration route group
  */
 const collaborationGroup = createRouteGroup({
   name: 'Team Collaboration',
@@ -205,7 +205,7 @@ const collaborationGroup = createRouteGroup({
 });
 
 /**
- * 平台?��?路由�?- 外部平台?��?
+ * Platform integration route group
  */
 const integrationGroup = createRouteGroup({
   name: 'Platform Integration',
@@ -235,7 +235,7 @@ const integrationGroup = createRouteGroup({
 });
 
 /**
- * ??��?��?路由�?- 系統??��?��???
+ * Monitoring and analytics route group
  */
 const monitoringGroup = createRouteGroup({
   name: 'Monitoring & Analytics',
@@ -246,7 +246,7 @@ const monitoringGroup = createRouteGroup({
       name: 'analytics',
       path: '/analytics',
       handler: analyticsHandler,
-      description: '統�??��?模�??��?',
+      description: 'Analytics Module',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
@@ -255,7 +255,7 @@ const monitoringGroup = createRouteGroup({
       name: 'analytics-dashboard',
       path: '/analytics/dashboard',
       handler: dashboardHandler,
-      description: '?�表?�系�?��?',
+      description: 'Analytics Dashboard',
       version: '1.0.0',
       dependencies: ['auth', 'analytics'],
       healthCheck: '/health'
@@ -264,7 +264,7 @@ const monitoringGroup = createRouteGroup({
       name: 'analytics-realtime',
       path: '/analytics/realtime',
       handler: realtimeDashboardHandler,
-      description: '實�??�表??��?',
+      description: 'Realtime Analytics Dashboard',
       version: '1.0.0',
       dependencies: ['auth', 'analytics'],
       healthCheck: '/health'
@@ -273,7 +273,7 @@ const monitoringGroup = createRouteGroup({
       name: 'reports',
       path: '/reports',
       handler: reportsHandler,
-      description: '?�表系統?��?',
+      description: 'Reporting System',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
@@ -282,11 +282,12 @@ const monitoringGroup = createRouteGroup({
 });
 
 /**
- * WebSocket?�即?�通�?路由�? */
+ * WebSocket real-time communication route group
+ */
 const realtimeGroup = createRouteGroup({
   name: 'Real-time Communication',
   prefix: '/api',
-  description: 'WebSocket ?�即?�通�??�能',
+  description: 'WebSocket Real-time Communication',
   modules: [
     // DISABLED: websocket is manually registered in index.ts to avoid route conflicts with websocketHealthApp
     // createRouteModule({
@@ -322,12 +323,12 @@ const realtimeGroup = createRouteGroup({
 });
 
 /**
- * ?��??�能路由�?- Phase 2/3 ?�能
+ * Advanced features route group - Phase 2/3 features
  */
 const advancedFeaturesGroup = createRouteGroup({
   name: 'Advanced Features',
   prefix: '/api',
-  description: 'Phase 2/3 ?��??�能',
+  description: 'Phase 2/3 Advanced Features',
   modules: [
     createRouteModule({
       name: 'delayed-messages-v2',
@@ -342,7 +343,7 @@ const advancedFeaturesGroup = createRouteGroup({
       name: 'user-experience',
       path: '/user-experience',
       handler: userExperienceHandler,
-      description: '?�戶體�???��?��?',
+      description: 'User Experience Management',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
@@ -351,7 +352,7 @@ const advancedFeaturesGroup = createRouteGroup({
       name: 'phase2-auth',
       path: '/phase2-auth',
       handler: phase2AuthHandler,
-      description: 'Phase 2 認�?管�??��?',
+      description: 'Phase 2 Authentication Management',
       version: '2.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
@@ -360,7 +361,7 @@ const advancedFeaturesGroup = createRouteGroup({
       name: 'alert-config',
       path: '/alert-config',
       handler: alertConfigHandler,
-      description: '?�警?�知?�置管�?',
+      description: 'Alert Notification Configuration',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
@@ -369,7 +370,7 @@ const advancedFeaturesGroup = createRouteGroup({
       name: 'data-optimization',
       path: '/data-optimization',
       handler: dataOptimizationHandler,
-      description: '?��??��?管�??��?',
+      description: 'Data Optimization Management',
       version: '1.0.0',
       dependencies: ['auth'],
       healthCheck: '/health'
@@ -380,7 +381,8 @@ const advancedFeaturesGroup = createRouteGroup({
 });
 
 /**
- * Webhook ?��?路由�? */
+ * Webhook integration route group
+ */
 const webhookGroup = createRouteGroup({
   name: 'Webhook Integration',
   prefix: '/api',
@@ -390,7 +392,7 @@ const webhookGroup = createRouteGroup({
       name: 'webhooks',
       path: '/webhook',
       handler: webhookRouter,
-      description: 'Webhook ?��??��?',
+      description: 'Webhook Processing',
       version: '1.0.0',
       dependencies: [],
       healthCheck: '/health'
@@ -399,12 +401,12 @@ const webhookGroup = createRouteGroup({
 });
 
 /**
- * 系統管�?路由�?- ?�部系統管�?
+ * System management route group
  */
 const systemManagementGroup = createRouteGroup({
   name: 'System Management',
   prefix: '/api',
-  description: '系統?�部管�??�能',
+  description: 'Internal System Management',
   modules: [
     createRouteModule({
       name: 'modular-system',
@@ -419,7 +421,7 @@ const systemManagementGroup = createRouteGroup({
 });
 
 /**
- * 導出?�?�路?��??�置
+ * Export all route groups
  */
 export const routeGroups: RouteGroup[] = [
   coreApiGroup,
@@ -434,7 +436,7 @@ export const routeGroups: RouteGroup[] = [
 ];
 
 /**
- * 路由?�置統�?信息
+ * Route configuration summary
  */
 export const routeConfigStats = {
   totalGroups: routeGroups.length,
@@ -447,7 +449,8 @@ export const routeConfigStats = {
 };
 
 /**
- * ?��?模�?依賴?? */
+ * Build module dependency graph
+ */
 export function getModuleDependencyGraph(): { [key: string]: string[] } {
   const graph: { [key: string]: string[] } = {};
 
@@ -461,7 +464,8 @@ export function getModuleDependencyGraph(): { [key: string]: string[] } {
 }
 
 /**
- * 驗�?路由?�置完整?? */
+ * Validate route configuration completeness
+ */
 export function validateRouteConfig(): { valid: boolean; issues: string[] } {
   const issues: string[] = [];
   const allModules = new Set<string>();
@@ -475,7 +479,7 @@ export function validateRouteConfig(): { valid: boolean; issues: string[] } {
     }
   }
 
-  // 檢查依賴?��?
+  // Check dependency references
   for (const group of routeGroups) {
     for (const module of group.modules) {
       if (module.dependencies) {
@@ -494,11 +498,10 @@ export function validateRouteConfig(): { valid: boolean; issues: string[] } {
   };
 }
 
-// ?��??�置驗�?
+// Validate configuration at module load
 const validation = validateRouteConfig();
 if (!validation.valid) {
-  console.warn('?��? Route configuration issues detected:', validation.issues);
+  console.warn('Route configuration issues detected:', validation.issues);
 } else {
-  console.log('??Route configuration validated successfully');
+  console.log('Route configuration validated successfully');
 }
-

@@ -41,6 +41,15 @@ let currentJwtPayload = {
   primaryTeamId: 1,
 };
 
+const handlerSpies = vi.hoisted(() => ({
+  broadcastConversationEvent: vi.fn(),
+  broadcastMessageEvent: vi.fn(),
+  broadcastNewMessage: vi.fn(),
+  broadcastConversationTransferred: vi.fn(),
+  logActivity: vi.fn(),
+  recallMessage: vi.fn(),
+}));
+
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn(async (c: any, next: any) => {
     c.set('user', { ...currentUser });
@@ -67,12 +76,38 @@ vi.mock('@/services/permission-service', () => ({
 // WebSocket broadcast service mock
 // ---------------------------------------------------------------------------
 vi.mock('@/services/websocket-broadcast-service', () => ({
-  WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
-    broadcastConversationEvent: vi.fn().mockResolvedValue(undefined),
-    broadcastMessageEvent: vi.fn().mockResolvedValue(undefined),
-    broadcastNewMessage: vi.fn().mockResolvedValue({ conversationBroadcast: true, globalBroadcast: true }),
-    broadcastConversationTransferred: vi.fn().mockResolvedValue(undefined),
-  })),
+  WebSocketBroadcastService: vi.fn().mockImplementation(function () {
+    return {
+    broadcastConversationEvent: handlerSpies.broadcastConversationEvent,
+    broadcastMessageEvent: handlerSpies.broadcastMessageEvent,
+    broadcastNewMessage: handlerSpies.broadcastNewMessage,
+    broadcastConversationTransferred: handlerSpies.broadcastConversationTransferred,
+    };
+  }),
+}));
+
+vi.mock('@modules/activities', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@modules/activities')>();
+  return {
+    ...actual,
+    ActivityService: vi.fn().mockImplementation(function () {
+      return {
+        logActivity: handlerSpies.logActivity,
+      };
+    }),
+    ACTIVITY_ACTIONS: {
+      ...actual.ACTIVITY_ACTIONS,
+      MESSAGE_UPDATE: 'message_update',
+    },
+  };
+});
+
+vi.mock('@modules/messaging/services/message-recall-service', () => ({
+  MessageRecallService: vi.fn().mockImplementation(function () {
+    return {
+      recallMessage: handlerSpies.recallMessage,
+    };
+  }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -432,6 +467,17 @@ describe('Conversation Handlers Integration Tests', () => {
     app = createTestApp(env);
     drizzleMock = createDrizzleMock();
     resetMockDbState();
+    handlerSpies.broadcastConversationEvent.mockResolvedValue(undefined);
+    handlerSpies.broadcastMessageEvent.mockResolvedValue(undefined);
+    handlerSpies.broadcastNewMessage.mockResolvedValue({ conversationBroadcast: true, globalBroadcast: true });
+    handlerSpies.broadcastConversationTransferred.mockResolvedValue(undefined);
+    handlerSpies.logActivity.mockResolvedValue(null);
+    handlerSpies.recallMessage.mockResolvedValue({
+      success: true,
+      messageId: 'msg-001',
+      recalledAt: '2026-01-15T12:00:00Z',
+      canRecall: true,
+    });
 
     // Reset user/permission defaults
     currentUser = {
@@ -519,6 +565,73 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
       expect(body.data).toEqual([]);
+    });
+  });
+
+  // =========================================================================
+  // GET /api/conversations/stats — Conversation statistics
+  // =========================================================================
+
+  describe('GET /api/conversations/stats', () => {
+    test('returns conversation stats instead of treating stats as an ID', async () => {
+      visibleConversationIds = ['conv-001', 'conv-002', 'conv-003'];
+
+      env.DB.prepare = vi.fn((query: string) => ({
+        bind: vi.fn(() => ({
+          first: vi.fn().mockImplementation(async () => {
+            if (query.includes('COUNT(*) as total')) {
+              return {
+                total: 3,
+                active: 1,
+                assigned: 1,
+                pending: 1,
+              };
+            }
+
+            if (query.includes('COUNT(*) as unreadCount')) {
+              return { unreadCount: 5 };
+            }
+
+            return null;
+          }),
+          all: vi.fn().mockResolvedValue({ success: true, results: [] }),
+          run: vi.fn().mockResolvedValue({ success: true }),
+        })),
+      })) as any;
+
+      const res = await makeRequest(app, '/api/conversations/stats');
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body).toEqual({
+        success: true,
+        data: {
+          total: 3,
+          active: 1,
+          assigned: 1,
+          pending: 1,
+          unreadCount: 5,
+        },
+        timestamp: '2026-01-15T12:00:00Z',
+      });
+    });
+
+    test('returns zero stats when user has no visible conversations', async () => {
+      visibleConversationIds = [];
+
+      const res = await makeRequest(app, '/api/conversations/stats');
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(body.data).toEqual({
+        total: 0,
+        active: 0,
+        assigned: 0,
+        pending: 0,
+        unreadCount: 0,
+      });
+      expect(env.DB.prepare).not.toHaveBeenCalled();
     });
   });
 
@@ -1162,6 +1275,161 @@ describe('Conversation Handlers Integration Tests', () => {
 
       expect(res.status).toBe(422);
       expect(body.success).toBe(false);
+    });
+  });
+
+  // =========================================================================
+  // PUT /api/conversations/:id/messages/read
+  // =========================================================================
+
+  describe('PUT /api/conversations/:id/messages/read', () => {
+    test('returns 403 and does not update messages when permission denied', async () => {
+      permissionCheckResult = false;
+
+      const res = await makeRequest(app, '/api/conversations/conv-001/messages/read', {
+        method: 'PUT',
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(403);
+      expect(body.error).toContain('Permission denied');
+      expect(env.DB.prepare).not.toHaveBeenCalled();
+      expect(env.DB.batch).not.toHaveBeenCalled();
+      expect(mockDbState.updateCalled).toBe(false);
+    });
+
+    test('processes long conversations with bounded read/update batches', async () => {
+      const rows = Array.from({ length: 105 }, (_, index) => ({
+        id: `msg-${index + 1}`,
+        read_by: index % 10 === 0 ? JSON.stringify(['1']) : JSON.stringify(['2']),
+      }));
+      const pageSize = 50;
+
+      env.DB.prepare = vi.fn((sql: string) => ({
+        bind: vi.fn((...params: unknown[]) => ({
+          all: vi.fn(async () => {
+            const offset = Number(params[2] ?? 0);
+            return {
+              success: true,
+              results: rows.slice(offset, offset + pageSize),
+            };
+          }),
+          run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } }),
+          first: vi.fn().mockResolvedValue(null),
+        })),
+        sql,
+      } as any));
+
+      env.DB.batch = vi.fn(async (statements: unknown[]) =>
+        statements.map(() => ({ success: true, meta: { changes: 1 } }))
+      );
+
+      const res = await makeRequest(app, '/api/conversations/conv-001/messages/read', {
+        method: 'PUT',
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(env.DB.batch).toHaveBeenCalledTimes(3);
+      expect(env.DB.batch.mock.calls.map(call => call[0].length)).toEqual([45, 45, 4]);
+      expect(Math.max(...env.DB.batch.mock.calls.map(call => call[0].length))).toBeLessThanOrEqual(50);
+      expect(mockDbState.updateCalled).toBe(true);
+    });
+  });
+
+  // =========================================================================
+  // PUT /api/conversations/:id/messages/:messageId
+  // =========================================================================
+
+  describe('PUT /api/conversations/:id/messages/:messageId', () => {
+    test('broadcasts and audits message edits', async () => {
+      drizzleMock._selectChain.get
+        .mockResolvedValueOnce({
+          id: 'msg-001',
+          senderType: 'agent',
+          agentSenderId: '1',
+          isRecalled: false,
+        })
+        .mockResolvedValueOnce({
+          id: 'msg-001',
+          conversationId: 'conv-001',
+          senderType: 'agent',
+          customerSenderId: null,
+          agentSenderId: '1',
+          content: 'Updated content',
+          messageType: 'text',
+          platformMessageId: null,
+          isSent: true,
+          deliveryStatus: 'sent',
+          metadata: null,
+          sentAt: '2026-01-15T10:00:00Z',
+          recallDeadline: null,
+          recalledAt: null,
+          isRecalled: false,
+          createdAt: '2026-01-15T10:00:00Z',
+          customerName: null,
+          customerPlatform: null,
+          agentName: 'Test Admin',
+        });
+
+      const res = await makeRequest(app, '/api/conversations/conv-001/messages/msg-001', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: 'Updated content' }),
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(mockDbState.updateCalled).toBe(true);
+      expect(handlerSpies.broadcastMessageEvent).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'message_updated',
+        conversationId: 'conv-001',
+        messageId: 'msg-001',
+        data: expect.objectContaining({ content: 'Updated content' }),
+      }));
+      expect(handlerSpies.logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'message_update',
+        resourceType: 'message',
+        resourceId: 'msg-001',
+      }));
+    });
+  });
+
+  // =========================================================================
+  // DELETE /api/conversations/:id/messages/:messageId
+  // =========================================================================
+
+  describe('DELETE /api/conversations/:id/messages/:messageId', () => {
+    test('uses recall service, broadcasts, and audits message recalls', async () => {
+      drizzleMock._selectChain.get.mockResolvedValueOnce({
+        id: 'msg-001',
+        senderType: 'agent',
+        agentSenderId: '1',
+        isRecalled: false,
+        recallDeadline: null,
+      });
+
+      const res = await makeRequest(app, '/api/conversations/conv-001/messages/msg-001', {
+        method: 'DELETE',
+      });
+      const body = (await res.json()) as any;
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(handlerSpies.recallMessage).toHaveBeenCalledWith('msg-001', '1');
+      expect(mockDbState.updateCalled).toBe(true);
+      expect(handlerSpies.broadcastMessageEvent).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'message_recall_success',
+        conversationId: 'conv-001',
+        messageId: 'msg-001',
+      }));
+      expect(handlerSpies.logActivity).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'message_recall',
+        resourceType: 'message',
+        resourceId: 'msg-001',
+      }));
     });
   });
 

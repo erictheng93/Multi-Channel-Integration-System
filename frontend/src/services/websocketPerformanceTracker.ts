@@ -17,6 +17,7 @@
  */
 
 import { getBackendUrl } from '@/config/runtime'
+import { authenticatedFetch } from '@/api/authenticatedFetch'
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('websocketPerformanceTracker')
@@ -437,15 +438,12 @@ export class WebSocketPerformanceTracker {
     const report = this.generatePerformanceReport()
 
     try {
-      const authStore = await import('@/stores/auth').then(m => m.useAuthStore())
-
-      await fetch(
+      await authenticatedFetch(
         `${this.apiBaseUrl}${CONFIG.reportingEndpoint}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authStore.token}`
           },
           body: JSON.stringify(report)
         }

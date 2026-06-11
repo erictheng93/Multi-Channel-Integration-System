@@ -1,57 +1,13 @@
 // 活動記錄 API 客戶端
-import { apiClient } from './base'
+import { callApiContract } from './contract-client'
+import { authenticatedFetch } from './authenticatedFetch'
+import { activityContracts } from '@shared/api-contracts'
 import { getBackendUrl } from '@/config/runtime'
 import type { ApiResponse, PaginatedResponse } from '@/types'
 import type { IrreversibleDetails, MidChange, RestoreDetails } from '@/components/activity/types'
+import type { ActivityFilters, ActivityLog, ActivityOverview, ActivityStats } from '@shared/api-contracts'
 
-export interface ActivityLog {
-  id: number
-  userId: string
-  userName: string
-  userRole: string
-  action: string
-  resourceType: string
-  resourceId?: string
-  details?: Record<string, unknown>
-  ipAddress?: string
-  userAgent?: string
-  createdAt: string
-}
-
-export interface ActivityFilters {
-  userId?: string
-  action?: string
-  resourceType?: string
-  startDate?: string
-  endDate?: string
-  page?: number
-  pageSize?: number
-}
-
-export interface ActivityStats {
-  totalActions: number
-  actionsByType: Record<string, number>
-  recentActions: ActivityLog[]
-}
-
-export interface ActivityOverview {
-  totalActivities: number
-  actionStats: Record<string, number>
-  topUsers: Array<{
-    user_name: string
-    user_role: string
-    count: number
-  }>
-  dailyStats: Array<{
-    date: string
-    count: number
-  }>
-  period: {
-    days: number
-    startDate: string
-    endDate: string
-  }
-}
+export type { ActivityFilters, ActivityLog, ActivityOverview, ActivityStats } from '@shared/api-contracts'
 
 export interface RestoreResult {
   success: boolean
@@ -107,16 +63,7 @@ export const activitiesApi = {
   // 獲取活動記錄列表
   list: async (filters: ActivityFilters = {}): Promise<ApiResponse<PaginatedResponse<ActivityLog>>> => {
     const validatedFilters = validateActivityFilters(filters)
-    const params = new URLSearchParams()
-    
-    Object.entries(validatedFilters).forEach(([key, value]) => {
-      if (value !== undefined) {
-        params.append(key, value.toString())
-      }
-    })
-
-    const queryString = params.toString()
-    return apiClient.get(`/activities${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(activityContracts.list, validatedFilters)
   },
 
   // 獲取用戶活動統計
@@ -129,11 +76,10 @@ export const activitiesApi = {
     // Validate days parameter
     const validDays = Math.max(1, Math.min(365, Math.floor(days)))
     
-    const params = new URLSearchParams()
-    if (validDays !== 30) { params.append('days', validDays.toString()) }
-    
-    const queryString = params.toString()
-    return apiClient.get(`/activities/users/${encodeURIComponent(userId)}/stats${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(activityContracts.getUserStats, {
+      userId,
+      days: validDays !== 30 ? validDays : undefined
+    })
   },
 
   // 獲取活動統計概覽（僅限管理員）
@@ -141,11 +87,9 @@ export const activitiesApi = {
     // Validate days parameter
     const validDays = Math.max(1, Math.min(365, Math.floor(days)))
     
-    const params = new URLSearchParams()
-    if (validDays !== 7) { params.append('days', validDays.toString()) }
-    
-    const queryString = params.toString()
-    return apiClient.get(`/activities/overview${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(activityContracts.getOverview, {
+      days: validDays !== 7 ? validDays : undefined
+    })
   },
 
   // 清理舊的活動記錄（僅限管理員）
@@ -153,11 +97,9 @@ export const activitiesApi = {
     // Validate daysToKeep parameter (minimum 30 days for safety)
     const validDays = Math.max(30, Math.min(3650, Math.floor(daysToKeep)))
     
-    const params = new URLSearchParams()
-    if (validDays !== 90) { params.append('days', validDays.toString()) }
-    
-    const queryString = params.toString()
-    return apiClient.delete(`/activities/cleanup${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(activityContracts.cleanup, {
+      days: validDays !== 90 ? validDays : undefined
+    })
   },
 
   // 匯出活動記錄
@@ -190,10 +132,9 @@ export const activitiesApi = {
     
     try {
       // Use apiClient for consistent authentication
-      const response = await fetch(`${getBackendUrl()}/api/activities/export${queryString ? `?${queryString}` : ''}`, {
+      const response = await authenticatedFetch(`${getBackendUrl()}/api/activities/export${queryString ? `?${queryString}` : ''}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Accept': 'text/csv'
         }
       })
@@ -224,10 +165,9 @@ export const activitiesApi = {
     }
 
     try {
-      const response = await fetch(`${getBackendUrl()}/api/activities/${activityId}/restore`, {
+      const response = await authenticatedFetch(`${getBackendUrl()}/api/activities/${activityId}/restore`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ force: options.force === true }),

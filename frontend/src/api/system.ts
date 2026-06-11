@@ -1,5 +1,7 @@
 // 系統管理 API 客戶端
-import { apiClient } from './base'
+import { authenticatedFetch } from './authenticatedFetch'
+import { credentialContracts, feedbackContracts, systemContracts } from '@shared/api-contracts'
+import { callApiContract } from './contract-client'
 import type { ApiResponse } from '@/types'
 
 interface SystemInfo {
@@ -95,17 +97,17 @@ interface SystemMetrics {
 export const systemApi = {
   // 獲取系統資訊
   getSystemInfo: async (): Promise<ApiResponse<SystemInfo>> => {
-    return apiClient.get('/system/info')
+    return callApiContract(systemContracts.info, {}) as Promise<ApiResponse<SystemInfo>>
   },
 
   // 獲取系統設定
   getSettings: async (): Promise<ApiResponse<SystemSettings>> => {
-    return apiClient.get('/system/settings')
+    return callApiContract(systemContracts.settings, {}) as Promise<ApiResponse<SystemSettings>>
   },
 
   // 更新系統設定
   updateSettings: async (settings: SystemSettingsUpdate): Promise<ApiResponse<void>> => {
-    return apiClient.put('/system/settings', settings)
+    return callApiContract(systemContracts.updateSettings, {}, settings)
   },
 
   // 測試平台集成
@@ -113,12 +115,12 @@ export const systemApi = {
     platform: 'line' | 'facebook', 
     config: IntegrationTestRequest
   ): Promise<ApiResponse<{ status: string; message?: string }>> => {
-    return apiClient.post(`/system/integrations/${platform}/test`, config)
+    return callApiContract(systemContracts.testIntegration, { platform }, config)
   },
 
   // 獲取系統指標
   getMetrics: async (): Promise<ApiResponse<SystemMetrics>> => {
-    return apiClient.get('/system/metrics')
+    return callApiContract(systemContracts.metrics, {}) as Promise<ApiResponse<SystemMetrics>>
   },
 
   // 獲取系統日誌
@@ -138,24 +140,27 @@ export const systemApi = {
     }>;
     total: number;
   }>> => {
-    const queryParams = new URLSearchParams()
-    if (params?.level) {queryParams.append('level', params.level)}
-    if (params?.startDate) {queryParams.append('startDate', params.startDate)}
-    if (params?.endDate) {queryParams.append('endDate', params.endDate)}
-    if (params?.limit) {queryParams.append('limit', params.limit.toString())}
-    
-    const queryString = queryParams.toString()
-    return apiClient.get(`/system/logs${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(systemContracts.logs, params) as Promise<ApiResponse<{
+      logs: Array<{
+        id: string;
+        level: string;
+        message: string;
+        timestamp: Date | string;
+        source?: string;
+        metadata?: Record<string, unknown>;
+      }>;
+      total: number;
+    }>>
   },
 
   // 匯出系統配置
   exportConfig: async (): Promise<ApiResponse<SystemSettings>> => {
-    return apiClient.get('/system/config/export')
+    return callApiContract(systemContracts.exportConfig, {}) as Promise<ApiResponse<SystemSettings>>
   },
 
   // 導入系統配置
   importConfig: async (config: SystemSettings): Promise<ApiResponse<void>> => {
-    return apiClient.post('/system/config/import', config)
+    return callApiContract(systemContracts.importConfig, {}, config)
   },
 
   // 完整健康檢查 (使用統一健康檢查系統)
@@ -180,10 +185,8 @@ export const systemApi = {
     try {
       const { getBackendUrl } = await import('@/config/runtime')
       const baseUrl = import.meta.env.DEV ? '/api' : `${getBackendUrl()}/api`
-      const token = localStorage.getItem('token')
-      const response = await fetch(`${baseUrl}/health/system`, {
+      const response = await authenticatedFetch(`${baseUrl}/health/system`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })
@@ -220,7 +223,31 @@ export const systemApi = {
       responseTime: number;
     }>;
   }>> => {
-    return apiClient.get(`/system/stats${period ? `?period=${period}` : ''}`)
+    return callApiContract(systemContracts.stats, { period }) as Promise<ApiResponse<{
+      period: string;
+      stats: {
+        requests: number;
+        errors: number;
+        averageResponseTime: number;
+        activeUsers: number;
+        conversations: {
+          total: number;
+          new: number;
+          closed: number;
+        };
+        messages: {
+          total: number;
+          sent: number;
+          received: number;
+        };
+      };
+      timeline: Array<{
+        timestamp: Date | string;
+        requests: number;
+        errors: number;
+        responseTime: number;
+      }>;
+    }>>
   },
 
   // 獲取 Dashboard 統計數據
@@ -235,7 +262,17 @@ export const systemApi = {
     resolvedToday: number;
     timestamp: string;
   }>> => {
-    return apiClient.get('/system/stats')
+    return callApiContract(systemContracts.dashboardStats, {}) as Promise<ApiResponse<{
+      totalMessages: number;
+      totalCustomers: number;
+      totalConversations: number;
+      todayMessages: number;
+      onlineAgents: number;
+      responseTime: string;
+      satisfactionRate: number;
+      resolvedToday: number;
+      timestamp: string;
+    }>>
   },
 
   // 更新 Webhook URL
@@ -243,7 +280,7 @@ export const systemApi = {
     platform: 'line' | 'facebook',
     url: string
   ): Promise<ApiResponse<void>> => {
-    return apiClient.put(`/system/webhooks/${platform}`, { url })
+    return callApiContract(systemContracts.updateWebhookUrl, { platform }, { url })
   },
 
   // 測試 Webhook
@@ -254,7 +291,11 @@ export const systemApi = {
     responseTime: number;
     error?: string;
   }>> => {
-    return apiClient.post(`/system/webhooks/${platform}/test`)
+    return callApiContract(systemContracts.testWebhook, { platform }) as Promise<ApiResponse<{
+      success: boolean;
+      responseTime: number;
+      error?: string;
+    }>>
   },
 
   // 獲取系統事件日誌
@@ -275,19 +316,23 @@ export const systemApi = {
     }>;
     total: number;
   }>> => {
-    const queryParams = new URLSearchParams()
-    if (params?.type) {queryParams.append('type', params.type)}
-    if (params?.startDate) {queryParams.append('startDate', params.startDate)}
-    if (params?.endDate) {queryParams.append('endDate', params.endDate)}
-    if (params?.limit) {queryParams.append('limit', params.limit.toString())}
-    
-    const queryString = queryParams.toString()
-    return apiClient.get(`/system/events${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(systemContracts.events, params) as Promise<ApiResponse<{
+      events: Array<{
+        id: string;
+        type: string;
+        title: string;
+        description: string;
+        severity: 'info' | 'warning' | 'error';
+        timestamp: Date | string;
+        metadata?: Record<string, unknown>;
+      }>;
+      total: number;
+    }>>
   },
 
   // 系統維護模式
   setMaintenanceMode: async (enabled: boolean, message?: string): Promise<ApiResponse<void>> => {
-    return apiClient.post('/system/maintenance', { enabled, message })
+    return callApiContract(systemContracts.setMaintenance, {}, { enabled, message })
   },
 
   // 獲取維護狀態
@@ -296,7 +341,11 @@ export const systemApi = {
     message?: string;
     scheduledAt?: Date | string;
   }>> => {
-    return apiClient.get('/system/maintenance')
+    return callApiContract(systemContracts.maintenanceStatus, {}) as Promise<ApiResponse<{
+      enabled: boolean;
+      message?: string;
+      scheduledAt?: Date | string;
+    }>>
   }
 }
 
@@ -308,7 +357,7 @@ export const credentialsApi = {
     type: string,
     value: string
   ): Promise<ApiResponse<void>> => {
-    return apiClient.post('/credentials', { platform, type, value })
+    return callApiContract(credentialContracts.store, {}, { platform, type, value })
   },
 
   // 獲取單個憑證
@@ -316,7 +365,7 @@ export const credentialsApi = {
     platform: 'line' | 'facebook',
     type: string
   ): Promise<ApiResponse<{ value: string }>> => {
-    return apiClient.get(`/credentials/${platform}/${type}`)
+    return callApiContract(credentialContracts.get, { platform, type })
   },
 
   // 獲取所有憑證
@@ -333,14 +382,26 @@ export const credentialsApi = {
       pageToken: string;
     };
   }>> => {
-    return apiClient.get('/credentials')
+    return callApiContract(credentialContracts.all, {}) as Promise<ApiResponse<{
+      line: {
+        channelId: string;
+        channelSecret: string;
+        accessToken: string;
+      };
+      facebook: {
+        appId: string;
+        appSecret: string;
+        pageId: string;
+        pageToken: string;
+      };
+    }>>
   },
 
   // 清除平台憑證
   clearPlatformCredentials: async (
     platform: 'line' | 'facebook'
   ): Promise<ApiResponse<void>> => {
-    return apiClient.delete(`/credentials/${platform}`)
+    return callApiContract(credentialContracts.clearPlatform, { platform })
   },
 
 }
@@ -362,7 +423,12 @@ export const feedbackApi = {
     rating: number;
     createdAt: string;
   }>> => {
-    return apiClient.post('/feedback', feedback)
+    return callApiContract(feedbackContracts.submit, {}, feedback) as Promise<ApiResponse<{
+      id: string;
+      conversationId: string;
+      rating: number;
+      createdAt: string;
+    }>>
   },
 
   // 获取满意度统计
@@ -380,8 +446,20 @@ export const feedbackApi = {
     timeRange: string;
     timestamp: string;
   }>> => {
-    const queryString = timeRange ? `?timeRange=${timeRange}` : ''
-    return apiClient.get(`/feedback/stats${queryString}`)
+    return callApiContract(feedbackContracts.stats, { timeRange }) as Promise<ApiResponse<{
+      satisfactionRate: number;
+      totalFeedback: number;
+      averageRating: number;
+      ratingDistribution: {
+        1: number;
+        2: number;
+        3: number;
+        4: number;
+        5: number;
+      };
+      timeRange: string;
+      timestamp: string;
+    }>>
   },
 
   // 获取特定对话的反馈
@@ -398,7 +476,19 @@ export const feedbackApi = {
     }>;
     count: number;
   }>> => {
-    return apiClient.get(`/feedback/conversation/${conversationId}`)
+    return callApiContract(feedbackContracts.byConversation, { conversationId }) as Promise<ApiResponse<{
+      conversationId: string;
+      feedback: Array<{
+        id: string;
+        rating: number;
+        comment?: string;
+        feedbackType: string;
+        customerName: string;
+        agentName?: string;
+        createdAt: string;
+      }>;
+      count: number;
+    }>>
   },
 
   // 获取反馈列表（带分页）
@@ -423,11 +513,23 @@ export const feedbackApi = {
       totalPages: number;
     };
   }>> => {
-    const queryParams = new URLSearchParams()
-    if (params?.page) {queryParams.append('page', params.page.toString())}
-    if (params?.pageSize) {queryParams.append('pageSize', params.pageSize.toString())}
-
-    const queryString = queryParams.toString()
-    return apiClient.get(`/feedback${queryString ? `?${queryString}` : ''}`)
+    return callApiContract(feedbackContracts.list, params) as Promise<ApiResponse<{
+      feedback: Array<{
+        id: string;
+        conversationId: string;
+        rating: number;
+        comment?: string;
+        feedbackType: string;
+        customerName: string;
+        agentName?: string;
+        createdAt: string;
+      }>;
+      pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    }>>
   }
 }

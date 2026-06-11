@@ -5,6 +5,7 @@ import { Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { Bindings } from '@/types';
 import { globalErrorHandler } from '@/core/error-handler';
+import { AUTH_COOKIE_NAMES, parseCookieHeader } from '@/middleware/auth';
 import { verifyConversationAccess } from '../utils/conversation-auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -27,12 +28,13 @@ function getAuthErrorResponse(error: unknown): { status: ContentfulStatusCode; m
 // WebSocket upgrade endpoint for customer conversations
 router.get('/', async (c) => {
   const conversationId = c.req.query('conversationId');
-  const sessionId = c.req.query('sessionId');
+  const cookies = parseCookieHeader(c.req.header('Cookie'));
+  const sessionId = c.req.query('sessionId') || cookies[AUTH_COOKIE_NAMES.access];
 
   if (!conversationId || !sessionId) {
     return c.json({
       success: false,
-      error: 'Missing required parameters: conversationId and sessionId'
+      error: 'Missing required parameters: conversationId and authenticated session'
     }, 400);
   }
 

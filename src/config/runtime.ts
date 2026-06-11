@@ -200,7 +200,7 @@ export function getFrontendUrl(env: WorkerEnv): string {
   }
 
   // Development/staging: use localhost default
-  const url = getEnv(env, 'FRONTEND_URL', 'http://localhost:3000');
+  const url = getEnv(env, 'FRONTEND_URL', 'http://localhost:5173');
   return url.replace(/\/$/, '');
 }
 

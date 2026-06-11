@@ -13,22 +13,9 @@
  */
 
 import { getCurrentEnvironment, type WorkerEnv } from './runtime';
+export { DEVELOPMENT_ORIGINS } from './development-origins';
+import { DEVELOPMENT_ORIGINS } from './development-origins';
 import { nowISO } from '@/utils/timestamp'
-
-/**
- * 開發環境專用 origins 列表
- * 這些域名僅在非生產環境自動包含
- */
-export const DEVELOPMENT_ORIGINS = [
-  'http://localhost:3000', // Vite dev server
-  'http://localhost:3001', // Vite dev server (alt port)
-  'https://localhost:3000', // Vite dev server (SSL)
-  'https://localhost:3001', // Vite dev server (SSL, alt port)
-  'http://127.0.0.1:3000', // Local IP
-  'http://127.0.0.1:3001', // Local IP (alt port)
-  'http://localhost:8787', // Wrangler dev server
-] as const;
-
 
 /**
  * 動態獲取允許的 origins (推薦)

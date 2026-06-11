@@ -13,6 +13,8 @@ import { jwtAuth } from '@/middleware/auth';
 import { createContextLogger } from '@/utils/logger';
 import { getDisplayContent } from '../utils/message-helpers';
 import { nowISO } from '@/utils/timestamp'
+import { conversationContracts, type ConversationStats } from '@shared/api-contracts/conversations';
+import { contractJson } from '@/utils/api-contract-response';
 
 const log = createContextLogger('ConversationQueriesHandler');
 
@@ -34,6 +36,17 @@ interface ConversationListLatestMessageRow extends LatestConversationMessageRow 
 
 interface ConversationUnreadCountRow extends UnreadCountRow {
   conversationId: string;
+}
+
+interface ConversationStatsAggregateRow {
+  total: number | string | null;
+  active: number | string | null;
+  assigned: number | string | null;
+  pending: number | string | null;
+}
+
+interface ConversationUnreadAggregateRow {
+  unreadCount: number | string | null;
 }
 
 type ConversationJoinRow = {
@@ -62,7 +75,92 @@ function getUpdatedAtTimestamp(row: ConversationJoinRow): number {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+function createEmptyConversationStats(): ConversationStats {
+  return {
+    total: 0,
+    active: 0,
+    assigned: 0,
+    pending: 0,
+    unreadCount: 0
+  };
+}
+
+function toCount(value: unknown): number {
+  const count = Number(value ?? 0);
+  return Number.isFinite(count) ? count : 0;
+}
+
 const conversationQueriesHandler = new Hono<{ Bindings: Bindings }>();
+
+// ==================== Priority 3: STATIC routes ====================
+
+// 獲取用戶可見對話統計
+conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
+  try {
+    const user = c.get('user');
+    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
+    const stats = createEmptyConversationStats();
+
+    if (visibleConversationIds.length === 0) {
+      return contractJson(c, conversationContracts.stats, {
+        success: true,
+        data: stats,
+        timestamp: nowISO()
+      });
+    }
+
+    for (const idChunk of chunkItems(visibleConversationIds)) {
+      const placeholders = idChunk.map(() => '?').join(',');
+
+      const aggregateRow = await c.env.DB.prepare(`
+        SELECT
+          COUNT(*) as total,
+          COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active,
+          COALESCE(SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END), 0) as assigned,
+          COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending
+        FROM conversations
+        WHERE id IN (${placeholders})
+      `).bind(...idChunk).first<ConversationStatsAggregateRow>();
+
+      stats.total += toCount(aggregateRow?.total);
+      stats.active += toCount(aggregateRow?.active);
+      stats.assigned += toCount(aggregateRow?.assigned);
+      stats.pending += toCount(aggregateRow?.pending);
+
+      const unreadRow = await c.env.DB.prepare(`
+        SELECT COUNT(*) as unreadCount
+        FROM messages m
+        WHERE m.conversation_id IN (${placeholders})
+          AND m.sender_type = 'customer'
+          AND m.deleted_at IS NULL
+          AND m.created_at > MAX(
+            COALESCE(
+              (SELECT MAX(m2.created_at) FROM messages m2
+               WHERE m2.conversation_id = m.conversation_id
+               AND m2.sender_type IN ('agent', 'system')
+               AND m2.deleted_at IS NULL),
+              '1970-01-01'
+            ),
+            COALESCE(
+              (SELECT last_read_at FROM conversations WHERE id = m.conversation_id),
+              '1970-01-01'
+            )
+          )
+      `).bind(...idChunk).first<ConversationUnreadAggregateRow>();
+
+      stats.unreadCount += toCount(unreadRow?.unreadCount);
+    }
+
+    return contractJson(c, conversationContracts.stats, {
+      success: true,
+      data: stats,
+      timestamp: nowISO()
+    });
+
+  } catch (error) {
+    return globalErrorHandler.handleError(c, error);
+  }
+});
 
 // ==================== Priority 4: SINGLE PARAM routes ====================
 

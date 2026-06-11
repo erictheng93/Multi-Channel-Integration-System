@@ -3,7 +3,6 @@
 
 import { getBackendUrl } from '@/config/runtime'
 import { ref, type Ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
 
@@ -109,17 +108,12 @@ export class SimplifiedWebSocketClient {
   }
 
   private buildWebSocketUrl(): string {
-    const authStore = useAuthStore()
     // REMOTE-ONLY: Always use remote API
     const baseUrl = getBackendUrl()
     const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws'
     const wsBaseUrl = baseUrl.replace(/^https?/, wsProtocol)
 
     const url = new URL(`${wsBaseUrl}/api/websocket/connect`)
-
-    if (authStore.token) {
-      url.searchParams.set('token', authStore.token)
-    }
 
     if (this.config.conversationId) {
       url.searchParams.set('conversationId', this.config.conversationId)

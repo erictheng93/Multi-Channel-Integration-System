@@ -23,6 +23,8 @@ import { eq, and, desc } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
 import { getSignedFileUrl } from '@/utils/file-url';
+import { teamContracts, type ContractResponse } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const log = createContextLogger('TeamQR');
 const signLiffQrCodeUrl = async (env: Bindings, qrCodeUrl: string): Promise<string> => {
@@ -117,7 +119,7 @@ app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), requireIntI
       .where(eq(customerTeamAssignments.teamId, teamId))
       .all();
 
-    return c.json({
+    return contractJson(c, teamContracts.getLiffQRStats, {
       success: true,
       data: {
         scanCount: liffQrCode.scanCount || 0,
@@ -126,7 +128,7 @@ app.get('/:id/qr-code/liff/stats', jwtAuth, requireTeamAccess('id'), requireIntI
         lastScannedAt: liffQrCode.updatedAt,
         isActive: liffQrCode.isActive
       }
-    });
+    } as ContractResponse<typeof teamContracts.getLiffQRStats>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -179,7 +181,7 @@ app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), requireIntId(), a
       }, HTTP_STATUS.NOT_FOUND);
     }
 
-    return c.json({
+    return contractJson(c, teamContracts.getLiffQRCode, {
       success: true,
       data: {
         id: liffQrCode.id,
@@ -190,7 +192,7 @@ app.get('/:id/qr-code/liff', jwtAuth, requireTeamAccess('id'), requireIntId(), a
         createdAt: liffQrCode.createdAt,
         updatedAt: liffQrCode.updatedAt
       }
-    });
+    } as ContractResponse<typeof teamContracts.getLiffQRCode>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -225,7 +227,7 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), requireIntId(), 
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    return c.json({
+    return contractJson(c, teamContracts.generateLiffQR, {
       success: true,
       data: {
         id: result.qrCodeId,
@@ -234,7 +236,7 @@ app.post('/:id/qr-code/liff', jwtAuth, requireManagerOrAdmin(), requireIntId(), 
         scanCount: 0,
         isActive: true
       }
-    });
+    } as ContractResponse<typeof teamContracts.generateLiffQR>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }

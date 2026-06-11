@@ -88,9 +88,9 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
-  refreshToken?: string;
   agent: Agent;
+  sessionId?: string;
+  expiresIn?: number;
 }
 
 // Webhook 資料

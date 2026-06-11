@@ -14,6 +14,8 @@ import { spawnSync } from 'node:child_process';
 interface TypeDebtCounts {
   any: number;
   asAny: number;
+  eslintDisable: number;
+  tsExpectError: number;
 }
 
 type TypeDebtAllowlist = Record<string, TypeDebtCounts>;
@@ -26,6 +28,13 @@ interface Violation {
 }
 
 const allowlistPath = 'scripts/type-debt-allowlist.json';
+const metrics = ['any', 'asAny', 'eslintDisable', 'tsExpectError'] as const;
+const emptyCounts: TypeDebtCounts = {
+  any: 0,
+  asAny: 0,
+  eslintDisable: 0,
+  tsExpectError: 0,
+};
 const roots = [
   'src',
   'frontend/src',
@@ -96,9 +105,28 @@ function filterGitIgnored(files: string[]): string[] {
   return files.filter((file) => !ignoredFiles.has(file));
 }
 
+function countCommentDirectives(sourceText: string): Pick<TypeDebtCounts, 'eslintDisable' | 'tsExpectError'> {
+  const counts = {
+    eslintDisable: 0,
+    tsExpectError: 0,
+  };
+  const commentPattern = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->/g;
+  const comments = sourceText.match(commentPattern) ?? [];
+
+  for (const comment of comments) {
+    counts.eslintDisable += comment.match(/eslint-disable(?:-next-line)?/g)?.length ?? 0;
+    counts.tsExpectError += comment.match(/@ts-expect-error/g)?.length ?? 0;
+  }
+
+  return counts;
+}
+
 function countTypeDebt(file: string): TypeDebtCounts {
   const sourceText = readFileSync(file, 'utf8');
-  const counts: TypeDebtCounts = { any: 0, asAny: 0 };
+  const counts: TypeDebtCounts = { ...emptyCounts };
+  const commentDirectives = countCommentDirectives(sourceText);
+  counts.eslintDisable += commentDirectives.eslintDisable;
+  counts.tsExpectError += commentDirectives.tsExpectError;
 
   function countSource(source: string, fileName: string, scriptKind: ts.ScriptKind) {
     const sourceFile = ts.createSourceFile(
@@ -155,7 +183,7 @@ function countTypeDebt(file: string): TypeDebtCounts {
 }
 
 function hasDebt(counts: TypeDebtCounts): boolean {
-  return counts.any > 0 || counts.asAny > 0;
+  return metrics.some((metric) => counts[metric] > 0);
 }
 
 function buildCurrentDebt(): TypeDebtAllowlist {
@@ -191,9 +219,9 @@ function compareAgainstAllowlist(
   const violations: Violation[] = [];
 
   for (const [file, counts] of Object.entries(current)) {
-    const allowed = allowlist[file] ?? { any: 0, asAny: 0 };
+    const allowed = { ...emptyCounts, ...allowlist[file] };
 
-    for (const metric of ['any', 'asAny'] as const) {
+    for (const metric of metrics) {
       if (counts[metric] > allowed[metric]) {
         violations.push({
           file,
@@ -227,14 +255,22 @@ if (violations.length > 0) {
     );
   }
   console.error('');
-  console.error('Fix the new explicit any/as any usage, or run this only after intentionally');
+  console.error('Fix the new explicit any/as any/suppression usage, or run this only after intentionally');
   console.error('reviewing and updating scripts/type-debt-allowlist.json.');
   process.exit(1);
 }
 
 const totalAny = Object.values(current).reduce((sum, counts) => sum + counts.any, 0);
 const totalAsAny = Object.values(current).reduce((sum, counts) => sum + counts.asAny, 0);
+const totalEslintDisable = Object.values(current).reduce(
+  (sum, counts) => sum + counts.eslintDisable,
+  0
+);
+const totalTsExpectError = Object.values(current).reduce(
+  (sum, counts) => sum + counts.tsExpectError,
+  0
+);
 
 console.log(
-  `check-type-debt: ${Object.keys(current).length} file(s), ${totalAny} any keyword(s), ${totalAsAny} as any assertion(s); no increases.`
+  `check-type-debt: ${Object.keys(current).length} file(s), ${totalAny} any keyword(s), ${totalAsAny} as any assertion(s), ${totalEslintDisable} eslint-disable comment(s), ${totalTsExpectError} @ts-expect-error comment(s); no increases.`
 );

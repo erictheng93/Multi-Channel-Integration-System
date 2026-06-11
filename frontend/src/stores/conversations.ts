@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch, type WatchStopHandle } from 'vue'
 import type { Conversation, ConversationFilters, Message, Platform, PaginatedResponse } from '@/types'
 import { conversationApi } from '@/api/conversations'
 import { messageApi } from '@/api/message'
@@ -51,6 +51,7 @@ export const useConversationsStore = defineStore('conversations', () => {
   // WebSocket subscription
   const wsStore = useWebSocketStore()
   let conversationsSubscriptionId: SubscriptionId | null = null
+  let stopReconnectionWatcher: WatchStopHandle | null = null
 
   const syncStatus = computed<SyncStatus>(() => {
     const globalState = wsStore.connectionState
@@ -132,7 +133,6 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     let changedCount = 0
     let addedCount = 0
-    let removedCount = 0
 
     const updatedList = newConversations.map(newConv => {
       const existing = existingMap.get(newConv.id)
@@ -148,7 +148,7 @@ export const useConversationsStore = defineStore('conversations', () => {
       }
     })
 
-    removedCount = conversations.value.length - newConversations.length
+    const removedCount = conversations.value.length - newConversations.length
     conversations.value = updatedList
     lastUpdateTime.value = new Date()
     updateCount.value++
@@ -711,6 +711,19 @@ export const useConversationsStore = defineStore('conversations', () => {
       handleRealtimeUpdate(message)
     })
 
+    if (!stopReconnectionWatcher) {
+      stopReconnectionWatcher = watch(
+        () => wsStore.connectionState,
+        async (newState, oldState) => {
+          if (oldState === 'reconnecting' && newState === 'connected') {
+            frontendLogger.debug('[ConversationsStore] WebSocket reconnected; triggering reconciliation sync')
+            await triggerReconnectionSync()
+          }
+        }
+      )
+      frontendLogger.debug('[ConversationsStore] Added WebSocket reconnection watcher')
+    }
+
     // Start LIFF pending cleanup timer
     startPendingCleanup()
 
@@ -733,6 +746,12 @@ export const useConversationsStore = defineStore('conversations', () => {
       wsStore.unsubscribe(conversationsSubscriptionId)
       conversationsSubscriptionId = null
       frontendLogger.debug('[ConversationsStore] Unsubscribed from conversations')
+    }
+
+    if (stopReconnectionWatcher) {
+      stopReconnectionWatcher()
+      stopReconnectionWatcher = null
+      frontendLogger.debug('[ConversationsStore] Removed WebSocket reconnection watcher')
     }
 
     stopPendingCleanup()
