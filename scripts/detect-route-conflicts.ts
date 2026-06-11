@@ -2,7 +2,6 @@
 // Route Conflict Detector - 路由衝突檢測工具
 // 在開發時自動檢測並報告路由衝突
 
-import { glob } from 'glob';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -193,9 +192,16 @@ async function detectConflicts() {
   // 1. 文件名包含 handler 的文件: *handler*.ts
   // 2. handlers 目錄下的所有 .ts 文件: **/handlers/*.ts
   // 3. handler 目錄下的所有 .ts 文件: **/handler/*.ts
-  const handlerFiles = await glob('src/**/{*handler*.ts,handlers/*.ts,handler/*.ts}', {
-    ignore: ['**/*.test.ts', '**/*.spec.ts', '**/node_modules/**', '**/*.d.ts']
-  });
+  const ignorePatterns = ['.test.ts', '.spec.ts', 'node_modules', '.d.ts'];
+  const scanPattern = async (pattern: string) =>
+    Array.fromAsync(new Bun.Glob(pattern).scan('.'));
+  const [a, b, c] = await Promise.all([
+    scanPattern('src/**/*handler*.ts'),
+    scanPattern('src/**/handlers/*.ts'),
+    scanPattern('src/**/handler/*.ts'),
+  ]);
+  const handlerFiles = [...new Set([...a, ...b, ...c])]
+    .filter(f => !ignorePatterns.some(p => f.includes(p)));
 
   console.log(`Found ${handlerFiles.length} handler files\n`);
 

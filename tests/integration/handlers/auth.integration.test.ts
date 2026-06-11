@@ -12,6 +12,23 @@ import { Hono } from 'hono';
 
 // Mock auth utilities
 vi.mock('@/utils/auth', () => ({
+  signJWT: vi.fn().mockResolvedValue('mock-jwt-token'),
+  authenticateUser: vi.fn().mockResolvedValue({
+    accountStatus: 'success',
+    passwordPolicy: 'changeable',
+    user: {
+      id: 'user-123',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      role: 'admin',
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      primaryTeamId: null,
+      allowedTeamIds: [],
+      teamRoles: {},
+    }
+  }),
+  createSession: vi.fn().mockResolvedValue('session-123'),
   createJWT: vi.fn().mockResolvedValue('mock-jwt-token'),
   verifyJWT: vi.fn().mockResolvedValue({
     userId: 'user-123',
@@ -22,6 +39,25 @@ vi.mock('@/utils/auth', () => ({
   hashPassword: vi.fn().mockResolvedValue('hashed-password'),
   verifyPassword: vi.fn().mockResolvedValue(true),
   generateSecureToken: vi.fn().mockReturnValue('mock-refresh-token')
+}));
+
+vi.mock('@/db/drizzle-factory', () => ({
+  createDbClient: vi.fn(() => ({
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn().mockResolvedValue(undefined)
+      }))
+    }))
+  }))
+}));
+
+vi.mock('@modules/activities', () => ({
+  ActivityCapture: {},
+  ActivityService: vi.fn(function() {
+    return { logActivity: vi.fn().mockResolvedValue(undefined) };
+  }),
+  ACTIVITY_ACTIONS: { USER_LOGIN: 'user_login' },
+  RESOURCE_TYPES: { USER: 'user' }
 }));
 
 // Mock middleware to bypass authentication
@@ -77,7 +113,9 @@ function createMockEnv() {
       put: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined)
     },
-    JWT_SECRET: 'test-jwt-secret'
+    JWT_SECRET: 'test-jwt-secret',
+    FRONTEND_URL: 'https://mcis.daiwandist.com',
+    BACKEND_URL: 'https://mcis-backend.daiwandist.com',
   };
 }
 
@@ -166,6 +204,42 @@ describe('Auth Handler - Integration Tests', () => {
       expect([400, 401]).toContain(response.status);
       const result = await response.json();
       expect(result.success).toBe(false);
+    });
+
+    test('should issue a frontend-readable CSRF cookie for subsequent unsafe requests', async () => {
+      const mockStatement = env.DB.prepare({} as any);
+      (mockStatement.first as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        id: 'user-123',
+        email: 'test@example.com',
+        display_name: 'Test User',
+        password_hash: 'hashed',
+        role: 'admin',
+        is_active: 1,
+        created_at: '2026-01-01T00:00:00.000Z',
+        updated_at: '2026-01-01T00:00:00.000Z',
+        primary_team_id: null,
+      });
+
+      const response = await app.request('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'test@example.com', password: 'password123' })
+      });
+
+      expect(response.status).toBe(200);
+
+      const setCookie = response.headers.getSetCookie();
+      const csrfCookie = setCookie.find(cookie =>
+        cookie.startsWith('mcis_csrf=') && !cookie.startsWith('mcis_csrf=;')
+      );
+      const csrfCookieAttributes = csrfCookie
+        ?.split(';')
+        .map(part => part.trim().toLowerCase()) ?? [];
+
+      expect(csrfCookie).toBeDefined();
+      expect(csrfCookieAttributes).toContain('path=/');
+      expect(csrfCookieAttributes).toContain('domain=.daiwandist.com');
+      expect(csrfCookie).not.toContain('HttpOnly');
     });
   });
 

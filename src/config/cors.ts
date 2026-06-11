@@ -119,7 +119,7 @@ export function isOriginAllowed(origin: string | undefined, env?: WorkerEnv): bo
  */
 export const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, X-Session-Id, X-Conversation-Id, X-Context-Team-ID',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, X-Session-Id, X-Conversation-Id, X-Context-Team-ID, X-CSRF-Token',
   'Access-Control-Max-Age': '86400', // 24 hours
   'Access-Control-Allow-Credentials': 'true',
 } as const;

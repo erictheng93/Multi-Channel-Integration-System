@@ -137,6 +137,7 @@ declare module 'hono' {
     agent: DbUser; // Added for database.ts authMiddleware compatibility
     session: Record<string, unknown>;
     jwtPayload: JWTPayload;
+    websocketToken: string;
     // 客戶模組變數 (P2-6: Type-safe customer data)
     createCustomerData: CreateCustomerData;
     customerId: string;

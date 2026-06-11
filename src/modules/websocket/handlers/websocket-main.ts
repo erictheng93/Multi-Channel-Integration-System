@@ -76,6 +76,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
   try {
     const user = c.get('user');
     const jwtPayload = c.get('jwtPayload');
+    const websocketToken = c.get('websocketToken');
     const url = new URL(c.req.url);
 
     // Extract connection parameters
@@ -124,6 +125,9 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
       // Ensure ConversationRoom has all necessary parameters
       forwardUrl.searchParams.set('userId', String(user.id));
       forwardUrl.searchParams.set('role', user.role as string);
+      if (websocketToken) {
+        forwardUrl.searchParams.set('token', websocketToken);
+      }
       // F14: forward token expiry so the DO can schedule close-at-exp.
       // Pass jti too so a future enhancement can also honor revocation.
       if (jwtPayload?.exp) {
@@ -132,7 +136,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
       if (jwtPayload?.jti) {
         forwardUrl.searchParams.set('tokenJti', jwtPayload.jti);
       }
-      // token already exists in original URL
+      // token is supplied from the verified HttpOnly auth cookie.
 
       // Forward complete WebSocket upgrade request to ConversationRoom
       return roomStub.fetch(new Request(forwardUrl.toString(), {
@@ -159,6 +163,9 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
       // Ensure UserConnection has all necessary parameters
       forwardUrl.searchParams.set('userId', String(user.id));
       forwardUrl.searchParams.set('role', user.role as string);
+      if (websocketToken) {
+        forwardUrl.searchParams.set('token', websocketToken);
+      }
       // F14: forward token expiry and jti for DO-side close-at-exp scheduling.
       if (jwtPayload?.exp) {
         forwardUrl.searchParams.set('tokenExp', String(jwtPayload.exp));
@@ -166,7 +173,7 @@ websocketHandler.get('/connect', websocketAuth, async (c) => {
       if (jwtPayload?.jti) {
         forwardUrl.searchParams.set('tokenJti', jwtPayload.jti);
       }
-      // token already exists in original URL
+      // token is supplied from the verified HttpOnly auth cookie.
 
       // Forward complete WebSocket upgrade request to UserConnection
       return userConnectionStub.fetch(new Request(forwardUrl.toString(), {

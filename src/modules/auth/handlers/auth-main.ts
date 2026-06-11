@@ -36,6 +36,7 @@ type AuthContext = Context<{ Bindings: Bindings }>;
 const ACCESS_TOKEN_MAX_AGE_SECONDS = 2 * 60 * 60;
 const REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 const AUTH_COOKIE_PATH = '/api';
+const CSRF_COOKIE_PATH = '/';
 
 function toContractRole(role: string): 'admin' | 'agent' {
   return role === 'admin' ? 'admin' : 'agent';
@@ -50,18 +51,22 @@ function createCsrfToken(): string {
 function serializeCookie(
   name: string,
   value: string,
-  options: { maxAge: number; httpOnly?: boolean }
+  options: { maxAge: number; httpOnly?: boolean; path?: string; domain?: string }
 ): string {
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
     `Max-Age=${options.maxAge}`,
-    `Path=${AUTH_COOKIE_PATH}`,
+    `Path=${options.path ?? AUTH_COOKIE_PATH}`,
     'SameSite=Strict',
     'Secure',
   ];
 
   if (options.httpOnly) {
     parts.push('HttpOnly');
+  }
+
+  if (options.domain) {
+    parts.push(`Domain=${options.domain}`);
   }
 
   return parts.join('; ');
@@ -71,7 +76,55 @@ function appendCookie(c: AuthContext, cookie: string): void {
   c.header('Set-Cookie', cookie, { append: true });
 }
 
+function getSharedCookieDomain(c: AuthContext): string | undefined {
+  const explicitDomain =
+    (c.env as Bindings & { AUTH_COOKIE_DOMAIN?: string; COOKIE_DOMAIN?: string }).AUTH_COOKIE_DOMAIN ||
+    (c.env as Bindings & { AUTH_COOKIE_DOMAIN?: string; COOKIE_DOMAIN?: string }).COOKIE_DOMAIN;
+
+  if (explicitDomain) {
+    return explicitDomain.startsWith('.') ? explicitDomain : `.${explicitDomain}`;
+  }
+
+  const frontendUrl = c.env.FRONTEND_URL;
+  const backendUrl = c.env.BACKEND_URL;
+  if (!frontendUrl || !backendUrl) {
+    return undefined;
+  }
+
+  try {
+    const frontendHost = new URL(frontendUrl).hostname;
+    const backendHost = new URL(backendUrl).hostname;
+    const frontendParts = frontendHost.split('.');
+    const backendParts = backendHost.split('.');
+    const frontendBaseDomain = frontendParts.slice(-2).join('.');
+    const backendBaseDomain = backendParts.slice(-2).join('.');
+
+    if (
+      frontendParts.length >= 3 &&
+      backendParts.length >= 3 &&
+      frontendBaseDomain === backendBaseDomain &&
+      !frontendBaseDomain.includes('localhost')
+    ) {
+      return `.${frontendBaseDomain}`;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
 function setAuthCookies(c: AuthContext, accessToken: string, refreshToken: string): void {
+  const sharedCookieDomain = getSharedCookieDomain(c);
+
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0 }));
+  if (sharedCookieDomain) {
+    appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', {
+      maxAge: 0,
+      path: CSRF_COOKIE_PATH,
+      domain: sharedCookieDomain
+    }));
+  }
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, accessToken, {
     maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
     httpOnly: true,
@@ -82,13 +135,25 @@ function setAuthCookies(c: AuthContext, accessToken: string, refreshToken: strin
   }));
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, createCsrfToken(), {
     maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+    path: CSRF_COOKIE_PATH,
+    domain: sharedCookieDomain,
   }));
 }
 
 function clearAuthCookies(c: AuthContext): void {
+  const sharedCookieDomain = getSharedCookieDomain(c);
+
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.access, '', { maxAge: 0, httpOnly: true }));
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.refresh, '', { maxAge: 0, httpOnly: true }));
   appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0 }));
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', { maxAge: 0, path: CSRF_COOKIE_PATH }));
+  if (sharedCookieDomain) {
+    appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, '', {
+      maxAge: 0,
+      path: CSRF_COOKIE_PATH,
+      domain: sharedCookieDomain
+    }));
+  }
 }
 
 function getRequestCookies(c: AuthContext): Record<string, string> {
