@@ -151,7 +151,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useConversations } from '@/composables'
 import { ClockIcon, CheckIcon, XCircleIcon } from '@/components/icons'
 import HamsterLoader from '@/components/ui/HamsterLoader.vue'
-import { apiClient } from '@/api/base'
+import { messagesApi, type DelayedMessageResponse } from '@/api/messages'
 
 interface DelayedMessageForm {
   conversationId: string
@@ -230,7 +230,15 @@ const sendDelayedMessage = async () => {
       throw new Error('找不到選擇的對話')
     }
 
-    const response = await apiClient.post('/messages/delayed', {
+    if (selectedConversation.platform !== 'line' && selectedConversation.platform !== 'facebook') {
+      throw new Error('不支援的訊息平台')
+    }
+
+    if (!selectedConversation.customer?.platformId) {
+      throw new Error('找不到客戶平台識別碼')
+    }
+
+    const response = await messagesApi.sendDelayedMessage({
       conversationId: formData.value.conversationId,
       content: formData.value.content.trim(),
       delaySeconds: formData.value.delaySeconds,
@@ -241,19 +249,13 @@ const sendDelayedMessage = async () => {
     })
 
     if (response.success) {
-      interface DelayedMessageResponse {
-        messageId?: string
-        scheduledSendTime?: string
-        recallDeadline?: number
-      }
-      
       const data = response.data as DelayedMessageResponse
       result.value = {
         success: true,
         message: `訊息將在 ${formData.value.delaySeconds} 秒後發送，撤回截止時間：${new Date(data?.recallDeadline || Date.now()).toLocaleTimeString()}`,
         messageId: data?.messageId,
         scheduledSendTime: data?.scheduledSendTime,
-        recallDeadline: data?.recallDeadline?.toString()
+        recallDeadline: data?.recallDeadline
       }
       
       if (result.value) {

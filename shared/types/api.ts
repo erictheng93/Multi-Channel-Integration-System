@@ -69,11 +69,11 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string
-  refreshToken?: string
   agent: Agent
   mustChangePassword?: boolean
   tempToken?: string
+  sessionId?: string
+  expiresIn?: number
 }
 
 // 對話相關 API

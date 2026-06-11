@@ -48,6 +48,39 @@ export interface PendingMessagesResponse {
   pageSize: number
 }
 
+export interface MessageSenderInfo {
+  id: string | number | null
+  name?: string | null
+  role?: string | null
+  platform?: string | null
+}
+
+export interface MessageDetail {
+  id: string
+  conversationId: string
+  senderType: string
+  senderInfo: MessageSenderInfo | null
+  content: string
+  messageType: string
+  platformMessageId?: string | null
+  isRecalled: boolean
+  recallDeadline?: string | null
+  recalledAt?: string | null
+  isSent: boolean
+  sentAt?: string | null
+  deliveryStatus?: string | null
+  replyToMessageId?: string | null
+  threadId?: string | null
+  sessionId?: string | null
+  sessionSequence?: number | null
+  metadata?: Record<string, unknown> | null
+  createdAt?: string | null
+  conversationInfo?: {
+    status?: string | null
+    priority?: string | null
+  }
+}
+
 export interface BulkCreateMessageRequest {
   conversationId: string
   content: string
@@ -99,7 +132,7 @@ export const messageContracts = {
     path: ({ messageId, userId }) => `/messages/${messageId}/can-recall?userId=${userId}`
   }),
 
-  getMessageDetails: defineApiContract<{ messageId: string }, void, PendingMessage>({
+  getMessageDetails: defineApiContract<{ messageId: string }, void, MessageDetail>({
     method: 'GET',
     path: ({ messageId }) => `/messages/${messageId}`
   }),

@@ -7,13 +7,15 @@ export interface Tag {
   description?: string | null
   teamId?: number | null
   teamName?: string | null
-  isActive: boolean
-  createdBy: string
+  isActive?: boolean | null
+  createdBy?: string | null
   createdByName?: string | null
   customerCount?: number
   conversationCount?: number
-  createdAt: string
-  updatedAt: string
+  assignedAt?: string | null
+  assignedBy?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 export interface CreateTagRequest {
@@ -162,6 +164,15 @@ export interface CustomerTagsRequest {
   tagIds: number[]
 }
 
+export interface AddTagsToCustomerResponse {
+  added: number
+  alreadyExists: number
+}
+
+export interface SetCustomerTagsResponse {
+  totalTags: number
+}
+
 export function buildTagQuery<TParams extends object>(params?: TParams): string {
   if (!params) {
     return ''
@@ -217,7 +228,7 @@ export const tagContracts = {
     path: ({ customerId }) => `/customers/${customerId}/tags`
   }),
 
-  addTagsToCustomer: defineApiContract<{ customerId: number }, CustomerTagsRequest, void>({
+  addTagsToCustomer: defineApiContract<{ customerId: number }, CustomerTagsRequest, AddTagsToCustomerResponse>({
     method: 'POST',
     path: ({ customerId }) => `/customers/${customerId}/tags`
   }),
@@ -228,7 +239,7 @@ export const tagContracts = {
     hasRequestBody: true
   }),
 
-  setCustomerTags: defineApiContract<{ customerId: number }, CustomerTagsRequest, void>({
+  setCustomerTags: defineApiContract<{ customerId: number }, CustomerTagsRequest, SetCustomerTagsResponse>({
     method: 'PUT',
     path: ({ customerId }) => `/customers/${customerId}/tags`
   }),

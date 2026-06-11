@@ -45,6 +45,8 @@ import {
   logReportsOperation
 } from '../middleware/index';
 import { nowISO } from '@/utils/timestamp'
+import { reportContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 // 創建報告路由實例
 const reportsHandler = new Hono<{ Bindings: Bindings }>();
@@ -56,7 +58,7 @@ const reportsHandler = new Hono<{ Bindings: Bindings }>();
  * GET /api/reports/health
  */
 reportsHandler.get('/health', (c) => {
-  return c.json({
+  return contractJson(c, reportContracts.health, {
     status: 'healthy',
     module: 'reports',
     timestamp: nowISO(),
@@ -69,7 +71,7 @@ reportsHandler.get('/health', (c) => {
  * GET /api/reports/info
  */
 reportsHandler.get('/info', (c) => {
-  return c.json({
+  return contractJson(c, reportContracts.info, {
     success: true,
     data: {
       module: 'reports',
@@ -138,7 +140,7 @@ reportsHandler.post(
 
       const report = await reportsService.generateReport(reportParams as unknown as ReportGenerationParams, String(String(payload.userId)));
 
-      return c.json({
+      return contractJson(c, reportContracts.generate, {
         success: true,
         data: report,
         message: 'Report generation started successfully',
@@ -167,7 +169,7 @@ reportsHandler.get(
 
       const result = await reportsService.listReports(query);
 
-      return c.json({
+      return contractJson(c, reportContracts.list, {
         success: true,
         data: result,
         timestamp: nowISO()
@@ -195,14 +197,14 @@ reportsHandler.get(
       const report = await reportsService.getReportDetails(String(reportId));
 
       if (!report) {
-        return c.json({
+        return contractJson(c, reportContracts.details, {
           success: false,
           error: 'Report not found',
           timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
-      return c.json({
+      return contractJson(c, reportContracts.details, {
         success: true,
         data: report,
         timestamp: nowISO()
@@ -280,14 +282,14 @@ reportsHandler.delete(
       const success = await reportsService.deleteReport(String(reportId), String(payload.userId));
 
       if (!success) {
-        return c.json({
+        return contractJson(c, reportContracts.delete, {
           success: false,
           error: 'Report not found or could not be deleted',
           timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
-      return c.json({
+      return contractJson(c, reportContracts.delete, {
         success: true,
         message: 'Report deleted successfully',
         timestamp: nowISO()
@@ -318,7 +320,7 @@ reportsHandler.get(
 
       const stats = await reportsService.getReportStatistics(timeRange);
 
-      return c.json({
+      return contractJson(c, reportContracts.stats, {
         success: true,
         data: stats,
         timestamp: nowISO()
@@ -351,7 +353,7 @@ reportsHandler.post(
 
       const result = await reportsService.batchOperation(batchOperation as unknown as BatchReportOperation, String(payload.userId));
 
-      return c.json({
+      return contractJson(c, reportContracts.batch, {
         success: true,
         data: result,
         message: `Batch operation ${batchOperation.action} completed`,
@@ -381,7 +383,7 @@ reportsHandler.get(
       // Type-safe check for valid report type
       const isValidReportType = reportType && (reportType in REPORT_TYPE_CONFIG);
       if (!isValidReportType) {
-        return c.json({
+        return contractJson(c, reportContracts.templates, {
           success: false,
           error: 'Invalid report type',
           timestamp: nowISO()
@@ -390,7 +392,7 @@ reportsHandler.get(
 
       const templates = await reportsService.getAvailableTemplates(reportType as ReportType);
 
-      return c.json({
+      return contractJson(c, reportContracts.templates, {
         success: true,
         data: templates,
         reportType,
@@ -419,7 +421,7 @@ reportsHandler.post(
 
       const previewData = await reportsService.previewReport(previewParams as unknown as ReportGenerationParams);
 
-      return c.json({
+      return contractJson(c, reportContracts.preview, {
         success: true,
         data: previewData,
         message: 'Report preview generated successfully',
@@ -456,7 +458,7 @@ reportsHandler.post(
         String(String(payload.userId))
       );
 
-      return c.json({
+      return contractJson(c, reportContracts.createScheduled, {
         success: true,
         data: scheduledReport,
         message: 'Scheduled report created successfully',
@@ -485,7 +487,7 @@ reportsHandler.get(
       const userId = payload.role === 'admin' ? undefined : String(payload.userId);
       const scheduledReports = await reportsService.listScheduledReports(userId ? String(userId) : undefined);
 
-      return c.json({
+      return contractJson(c, reportContracts.listScheduled, {
         success: true,
         data: scheduledReports,
         count: scheduledReports.length,
@@ -523,7 +525,7 @@ reportsHandler.put(
         String(String(payload.userId))
       );
 
-      return c.json({
+      return contractJson(c, reportContracts.updateScheduled, {
         success: true,
         data: updatedReport,
         message: 'Scheduled report updated successfully',
@@ -555,14 +557,14 @@ reportsHandler.delete(
       const success = await reportsService.deleteScheduledReport(String(scheduledReportId), String(String(payload.userId)));
 
       if (!success) {
-        return c.json({
+        return contractJson(c, reportContracts.deleteScheduled, {
           success: false,
           error: 'Scheduled report not found or could not be deleted',
           timestamp: nowISO()
         }, HTTP_STATUS.NOT_FOUND);
       }
 
-      return c.json({
+      return contractJson(c, reportContracts.deleteScheduled, {
         success: true,
         message: 'Scheduled report deleted successfully',
         timestamp: nowISO()

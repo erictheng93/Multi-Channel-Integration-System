@@ -1,4 +1,5 @@
 import { defineApiContract } from './core'
+import type { ApiResponse } from '../types/api'
 
 export type ReportType =
   | 'conversation_summary'
@@ -231,32 +232,71 @@ export interface ReportDownloadResponse {
   contentType: string
 }
 
+export interface ReportHealthResponse {
+  status: string
+  module: string
+  timestamp: string
+  version: string
+}
+
+export interface ReportGenerationResponse extends ApiResponse<ReportBase> {
+  estimatedTime: string
+}
+
+export interface ReportDeleteResponse extends ApiResponse<void> {
+  message?: string
+}
+
+export interface ReportTemplate {
+  name: string
+  description: string
+  options: ReportOptions
+}
+
+export interface ReportTemplatesResponse extends ApiResponse<ReportTemplate[]> {
+  reportType?: string
+}
+
+export interface ScheduledReportListResponse extends ApiResponse<ScheduledReport[]> {
+  count?: number
+}
+
 export function buildReportQuery(query: ReportListQuery = {}): string {
   return new URLSearchParams(query as Record<string, string>).toString()
 }
 
 export const reportContracts = {
-  health: defineApiContract<Record<string, never>, void, { status: string; module: string; timestamp: string }>({
+  health: defineApiContract<
+    Record<string, never>,
+    void,
+    ReportHealthResponse,
+    ReportHealthResponse
+  >({
     method: 'GET',
     path: () => '/reports/health'
   }),
 
-  info: defineApiContract<Record<string, never>, void, { data: ReportModuleInfo }>({
+  info: defineApiContract<Record<string, never>, void, ReportModuleInfo>({
     method: 'GET',
     path: () => '/reports/info'
   }),
 
-  generate: defineApiContract<Record<string, never>, ReportGenerationParams, { data: ReportBase }>({
+  generate: defineApiContract<
+    Record<string, never>,
+    ReportGenerationParams,
+    ReportBase,
+    ReportGenerationResponse
+  >({
     method: 'POST',
     path: () => '/reports'
   }),
 
-  list: defineApiContract<ReportListQuery, void, { data: ReportListResponse }>({
+  list: defineApiContract<ReportListQuery, void, ReportListResponse>({
     method: 'GET',
     path: query => `/reports?${buildReportQuery(query)}`
   }),
 
-  details: defineApiContract<{ reportId: string }, void, { data: ReportDetails }>({
+  details: defineApiContract<{ reportId: string }, void, ReportDetails>({
     method: 'GET',
     path: ({ reportId }) => `/reports/${reportId}`
   }),
@@ -267,17 +307,17 @@ export const reportContracts = {
     path: ({ reportId }) => `/reports/${reportId}/download`
   }),
 
-  delete: defineApiContract<{ reportId: string }, void, { success: boolean; message: string }>({
+  delete: defineApiContract<{ reportId: string }, void, void, ReportDeleteResponse>({
     method: 'DELETE',
     path: ({ reportId }) => `/reports/${reportId}`
   }),
 
-  stats: defineApiContract<{ timeRange: ReportTimeRange }, void, { data: ReportStatistics }>({
+  stats: defineApiContract<{ timeRange: ReportTimeRange }, void, ReportStatistics>({
     method: 'GET',
     path: ({ timeRange }) => `/reports/stats?timeRange=${timeRange}`
   }),
 
-  batch: defineApiContract<Record<string, never>, BatchReportOperation, { data: BatchOperationResult }>({
+  batch: defineApiContract<Record<string, never>, BatchReportOperation, BatchOperationResult>({
     method: 'POST',
     path: () => '/reports/batch'
   }),
@@ -285,13 +325,14 @@ export const reportContracts = {
   templates: defineApiContract<
     { reportType: ReportType },
     void,
-    { data: Array<{ name: string; description: string; options: Record<string, unknown> }> }
+    ReportTemplate[],
+    ReportTemplatesResponse
   >({
     method: 'GET',
     path: ({ reportType }) => `/reports/templates/${reportType}`
   }),
 
-  preview: defineApiContract<Record<string, never>, ReportGenerationParams, { data: Record<string, unknown> }>({
+  preview: defineApiContract<Record<string, never>, ReportGenerationParams, unknown>({
     method: 'POST',
     path: () => '/reports/preview'
   }),
@@ -299,23 +340,28 @@ export const reportContracts = {
   createScheduled: defineApiContract<
     Record<string, never>,
     Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>,
-    { data: ScheduledReport }
+    ScheduledReport
   >({
     method: 'POST',
     path: () => '/reports/scheduled'
   }),
 
-  listScheduled: defineApiContract<Record<string, never>, void, { data: ScheduledReport[] }>({
+  listScheduled: defineApiContract<
+    Record<string, never>,
+    void,
+    ScheduledReport[],
+    ScheduledReportListResponse
+  >({
     method: 'GET',
     path: () => '/reports/scheduled'
   }),
 
-  updateScheduled: defineApiContract<{ id: string }, Partial<ScheduledReport>, { data: ScheduledReport }>({
+  updateScheduled: defineApiContract<{ id: string }, Partial<ScheduledReport>, ScheduledReport>({
     method: 'PUT',
     path: ({ id }) => `/reports/scheduled/${id}`
   }),
 
-  deleteScheduled: defineApiContract<{ id: string }, void, { success: boolean; message: string }>({
+  deleteScheduled: defineApiContract<{ id: string }, void, void, ReportDeleteResponse>({
     method: 'DELETE',
     path: ({ id }) => `/reports/scheduled/${id}`
   })

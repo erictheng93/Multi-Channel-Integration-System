@@ -32,7 +32,7 @@ export interface MediaFileInfo {
   publicUrl?: string
   thumbnailUrl?: string
   downloadUrl?: string
-  platform: 'line' | 'facebook' | 'system'
+  platform: 'line' | 'facebook' | 'system' | 'admin'
   messageId?: string
   conversationId?: string
   uploadedBy?: string

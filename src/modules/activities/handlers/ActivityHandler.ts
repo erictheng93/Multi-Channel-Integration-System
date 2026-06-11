@@ -7,13 +7,14 @@ import { ActivityService } from '@modules/activities/services/ActivityService'
 import { ActivityStatsService } from '@modules/activities/services/ActivityStatsService'
 import {
   successResponse,
-  paginatedResponse,
   errorResponse,
   validationErrorResponse
 } from '@/utils/api-response'
 import { HTTP_STATUS } from '@/constants/http-status'
 import { getValidatedParam } from '@/middleware/param-validator'
 import { createContextLogger } from '@/utils/logger'
+import { activityContracts } from '@shared/api-contracts'
+import { contractJson } from '@/utils/api-contract-response'
 
 const log = createContextLogger('ActivityHandler')
 
@@ -71,10 +72,16 @@ export class ActivityHandler {
 
       const result = await this.activityService.getActivities(params)
 
-      return paginatedResponse(c, result.items, {
-        page: result.page,
-        limit: result.pageSize,
-        total: result.total
+      return contractJson(c, activityContracts.list, {
+        success: true,
+        data: {
+          items: result.items,
+          page: result.page,
+          pageSize: result.pageSize,
+          total: result.total,
+          totalPages: result.totalPages,
+          hasMore: result.page < result.totalPages
+        }
       })
     } catch (error) {
       log.error('Failed to get activities', {}, error instanceof Error ? error : String(error))
@@ -107,7 +114,10 @@ export class ActivityHandler {
 
       const stats = await this.activityService.getUserActivityStats(targetUserId, days)
 
-      return successResponse(c, stats)
+      return contractJson(c, activityContracts.getUserStats, {
+        success: true,
+        data: stats
+      })
     } catch (error) {
       log.error('Failed to get user activity stats', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get user activity stats', HTTP_STATUS.INTERNAL_SERVER_ERROR)
@@ -128,11 +138,11 @@ export class ActivityHandler {
 
       const deletedCount = await this.activityService.cleanupOldActivities(daysToKeep)
 
-      return successResponse(
-        c,
-        { deletedCount },
-        `Cleaned up ${deletedCount} old activity records`
-      )
+      return contractJson(c, activityContracts.cleanup, {
+        success: true,
+        data: { deletedCount },
+        message: `Cleaned up ${deletedCount} old activity records`
+      })
     } catch (error) {
       log.error('Failed to cleanup activities', {}, error instanceof Error ? error : String(error))
       if (error instanceof Error && error.message.includes('Invalid cleanup parameters')) {
@@ -157,7 +167,17 @@ export class ActivityHandler {
       const days = parseInt(c.req.query('days') || '7')
       const overview = await this.statsService.getOverview(days)
 
-      return successResponse(c, overview)
+      return contractJson(c, activityContracts.getOverview, {
+        success: true,
+        data: {
+          ...overview,
+          topUsers: overview.topUsers.map((user) => ({
+            user_name: user.userName,
+            user_role: user.userRole,
+            count: user.count
+          }))
+        }
+      })
     } catch (error) {
       log.error('Failed to get activity overview', {}, error instanceof Error ? error : String(error))
       return errorResponse(c, 'Failed to get activity overview', HTTP_STATUS.INTERNAL_SERVER_ERROR)

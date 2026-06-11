@@ -19,6 +19,8 @@ import { teams, conversations, agents } from '@/db/schema';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { nowISO } from '@/utils/timestamp'
+import { teamMembershipContracts, type ContractResponse } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -39,11 +41,11 @@ agentTeamsHandler.get('/team/:teamId/members', jwtAuth, requireIntId('teamId'), 
     const service = new AgentTeamsService(c.env.DB);
     const members = await service.getTeamMembers(teamId);
 
-    return c.json({
+    return contractJson(c, teamMembershipContracts.getTeamMembersWithTeams, {
       success: true,
       data: members,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamMembershipContracts.getTeamMembersWithTeams>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -69,11 +71,11 @@ agentTeamsHandler.get('/:agentId', jwtAuth, async (c) => {
     const service = new AgentTeamsService(c.env.DB);
     const teams = await service.getAgentTeams(agentId);
 
-    return c.json({
+    return contractJson(c, teamMembershipContracts.getAgentTeams, {
       success: true,
       data: teams,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamMembershipContracts.getAgentTeams>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -175,12 +177,12 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       memberCount
     });
 
-    return c.json({
+    return contractJson(c, teamMembershipContracts.joinTeam, {
       success: true,
       data: membership,
       message: 'Agent added to team successfully',
       timestamp: nowISO()
-    }, HTTP_STATUS.CREATED);
+    } as ContractResponse<typeof teamMembershipContracts.joinTeam>, HTTP_STATUS.CREATED);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -289,12 +291,12 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
       errors: results.errors.length
     });
 
-    return c.json({
+    return contractJson(c, teamMembershipContracts.joinMultipleTeams, {
       success: true,
       data: results,
       message: `Agent added to ${results.added.length} teams`,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamMembershipContracts.joinMultipleTeams>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -399,15 +401,11 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
       affectedConversationCount: affectedConversationIds.length
     });
 
-    return c.json({
+    return contractJson(c, teamMembershipContracts.leaveTeam, {
       success: true,
       message: 'Agent removed from team successfully',
-      data: {
-        teamName,
-        affectedConversationCount: affectedConversationIds.length
-      },
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamMembershipContracts.leaveTeam>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -452,12 +450,12 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
       }
     });
 
-    return c.json({
+    return contractJson(c, teamMembershipContracts.updateAgentTeamRole, {
       success: true,
       data: updated,
       message: 'Agent team role updated successfully',
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamMembershipContracts.updateAgentTeamRole>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -497,11 +495,11 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lea
       }
     });
 
-    return c.json({
+    return contractJson(c, teamMembershipContracts.setPrimaryTeam, {
       success: true,
       message: 'Primary team set successfully',
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamMembershipContracts.setPrimaryTeam>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }

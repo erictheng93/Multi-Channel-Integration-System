@@ -15,6 +15,8 @@ import { messages, conversations, agents, customers } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import { BULK_OPERATION_LIMITS } from '@/constants/limits';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { exportContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const EXPORT_LIMIT = BULK_OPERATION_LIMITS.EXPORT_MAX_RECORDS;
 
@@ -74,7 +76,7 @@ exportRoutes.get('/export/agents', jwtAuth, async (c) => {
       .orderBy(agents.displayName)
       .limit(200);
 
-    return c.json({
+    return contractJson(c, exportContracts.agents, {
       success: true,
       data: agentList,
       timestamp: nowISO()
@@ -136,7 +138,7 @@ exportRoutes.get('/export/count', jwtAuth, async (c) => {
     const totalCount = result[0]?.value ?? 0;
     const limit = EXPORT_LIMIT;
 
-    return c.json({
+    return contractJson(c, exportContracts.count, {
       success: true,
       data: {
         count: totalCount,

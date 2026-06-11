@@ -8,7 +8,7 @@ import type {
   BulkOperationResult,
   DelayedMessageRequest,
   DelayedMessageResponse,
-  PendingMessage,
+  MessageDetail,
   PendingMessagesResponse,
   RecallMessageRequest,
   RecallMessageResponse
@@ -21,6 +21,7 @@ export type {
   BulkOperationResult,
   DelayedMessageRequest,
   DelayedMessageResponse,
+  MessageDetail,
   PendingMessage,
   PendingMessagesResponse,
   RecallMessageRequest,
@@ -49,7 +50,7 @@ export const messagesApi = {
   },
 
   // 獲取訊息詳情
-  getMessageDetails: async (messageId: string): Promise<ApiResponse<PendingMessage>> => {
+  getMessageDetails: async (messageId: string): Promise<ApiResponse<MessageDetail>> => {
     return callApiContract(messageContracts.getMessageDetails, { messageId })
   },
 

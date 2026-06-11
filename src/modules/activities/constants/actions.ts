@@ -10,6 +10,7 @@ export const ACTIVITY_ACTIONS = {
 
   // 訊息相關 (Message)
   MESSAGE_SEND: 'message_send',
+  MESSAGE_UPDATE: 'message_update',
   MESSAGE_RECALL: 'message_recall',
 
   // 用戶管理 (User Management)

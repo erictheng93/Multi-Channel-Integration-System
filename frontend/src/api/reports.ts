@@ -17,7 +17,7 @@ import type {
   // ScheduledReportExecution
 } from '@/types/reports';
 
-import { reportContracts } from '@shared/api-contracts'
+import { reportContracts, type ReportHealthResponse } from '@shared/api-contracts'
 import { callApiContract } from './contract-client'
 
 /**
@@ -27,9 +27,9 @@ export class ReportsAPI {
   /**
    * 健康檢查
    */
-  static async healthCheck(): Promise<{ status: string; module: string; timestamp: string }> {
+  static async healthCheck(): Promise<ReportHealthResponse> {
     const response = await callApiContract(reportContracts.health, {});
-    return response.data as { status: string; module: string; timestamp: string };
+    return response;
   }
 
   /**
@@ -45,7 +45,7 @@ export class ReportsAPI {
     permissions: Record<string, string>;
   }> {
     const response = await callApiContract(reportContracts.info, {});
-    return (response.data as { data: {
+    return response.data as {
       module: string;
       version: string;
       description: string;
@@ -53,7 +53,7 @@ export class ReportsAPI {
       reportTypes: string[];
       endpoints: string[];
       permissions: Record<string, string>;
-    } }).data;
+    };
   }
 
   /**
@@ -61,7 +61,7 @@ export class ReportsAPI {
    */
   static async generateReport(params: ReportGenerationParams): Promise<ReportBase> {
     const response = await callApiContract(reportContracts.generate, {}, params);
-    return (response.data as { data: ReportBase }).data;
+    return response.data as ReportBase;
   }
 
   /**
@@ -69,7 +69,7 @@ export class ReportsAPI {
    */
   static async listReports(query: ReportListQuery = {}): Promise<ReportListResponse> {
     const response = await callApiContract(reportContracts.list, query);
-    return (response.data as { data: ReportListResponse }).data;
+    return response.data as ReportListResponse;
   }
 
   /**
@@ -77,7 +77,7 @@ export class ReportsAPI {
    */
   static async getReportDetails(reportId: string): Promise<ReportDetails> {
     const response = await callApiContract(reportContracts.details, { reportId });
-    return (response.data as { data: ReportDetails }).data;
+    return response.data as ReportDetails;
   }
 
   /**
@@ -111,7 +111,10 @@ export class ReportsAPI {
    */
   static async deleteReport(reportId: string): Promise<{ success: boolean; message: string }> {
     const response = await callApiContract(reportContracts.delete, { reportId });
-    return response.data as { success: boolean; message: string };
+    return {
+      success: response.success,
+      message: response.message || 'Report deleted successfully'
+    };
   }
 
   /**
@@ -119,7 +122,7 @@ export class ReportsAPI {
    */
   static async getReportStatistics(timeRange: ReportTimeRange = 'last_30_days'): Promise<ReportStatistics> {
     const response = await callApiContract(reportContracts.stats, { timeRange });
-    return (response.data as { data: ReportStatistics }).data;
+    return response.data as ReportStatistics;
   }
 
   /**
@@ -127,7 +130,7 @@ export class ReportsAPI {
    */
   static async batchOperation(operation: BatchReportOperation): Promise<BatchOperationResult> {
     const response = await callApiContract(reportContracts.batch, {}, operation);
-    return (response.data as { data: BatchOperationResult }).data;
+    return response.data as BatchOperationResult;
   }
 
   /**
@@ -139,7 +142,7 @@ export class ReportsAPI {
     options: Record<string, unknown>;
   }>> {
     const response = await callApiContract(reportContracts.templates, { reportType });
-    return (response.data as { data: Array<{ name: string; description: string; options: Record<string, unknown> }> }).data;
+    return response.data as Array<{ name: string; description: string; options: Record<string, unknown> }>;
   }
 
   /**
@@ -147,7 +150,7 @@ export class ReportsAPI {
    */
   static async previewReport(params: ReportGenerationParams): Promise<Record<string, unknown>> {
     const response = await callApiContract(reportContracts.preview, {}, params);
-    return (response.data as { data: Record<string, unknown> }).data;
+    return response.data as Record<string, unknown>;
   }
 
   // ====================== 排程報表管理 ======================
@@ -157,7 +160,7 @@ export class ReportsAPI {
    */
   static async createScheduledReport(config: Omit<ScheduledReport, 'id' | 'createdAt' | 'nextRun'>): Promise<ScheduledReport> {
     const response = await callApiContract(reportContracts.createScheduled, {}, config);
-    return (response.data as { data: ScheduledReport }).data;
+    return response.data as ScheduledReport;
   }
 
   /**
@@ -165,7 +168,7 @@ export class ReportsAPI {
    */
   static async listScheduledReports(): Promise<ScheduledReport[]> {
     const response = await callApiContract(reportContracts.listScheduled, {});
-    return (response.data as { data: ScheduledReport[] }).data;
+    return response.data as ScheduledReport[];
   }
 
   /**
@@ -173,7 +176,7 @@ export class ReportsAPI {
    */
   static async updateScheduledReport(id: string, updates: Partial<ScheduledReport>): Promise<ScheduledReport> {
     const response = await callApiContract(reportContracts.updateScheduled, { id }, updates);
-    return (response.data as { data: ScheduledReport }).data;
+    return response.data as ScheduledReport;
   }
 
   /**
@@ -181,7 +184,10 @@ export class ReportsAPI {
    */
   static async deleteScheduledReport(id: string): Promise<{ success: boolean; message: string }> {
     const response = await callApiContract(reportContracts.deleteScheduled, { id });
-    return response.data as { success: boolean; message: string };
+    return {
+      success: response.success,
+      message: response.message || 'Scheduled report deleted successfully'
+    };
   }
 
   // ====================== 輔助方法 ======================

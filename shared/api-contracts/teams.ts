@@ -139,9 +139,27 @@ export interface TeamScopedStatsApiDto extends TeamStatsApiDto {
   pendingInvitations: number
 }
 
-export interface MigratePasswordsResponse {
-  migrated: Array<{ username: string; status: string; error?: string }>
-  total: number
+export interface TeamDetailedStatsApiDto {
+  teamId: number
+  teamName: string
+  totalMembers: number
+  activeMembers: number
+  conversationsHandled: number
+  messagesCount: number
+  avgResponseTime: number
+  memberStats?: Array<{
+    agentId: string
+    displayName: string
+    conversationsHandled: number
+    messagesCount: number
+    avgResponseTime: number
+    lastActive: string | null
+  }>
+  qrCodeScans: number
+  period: {
+    from: string
+    to: string
+  }
 }
 
 export interface LiffQRCodeCreatedDto {
@@ -250,11 +268,6 @@ export const teamContracts = {
     path: ({ memberId }) => `/teams/members/${memberId}/status`
   }),
 
-  resetPassword: defineApiContract<{ memberId: string }, void, void>({
-    method: 'POST',
-    path: ({ memberId }) => `/teams/members/${memberId}/reset-password`
-  }),
-
   resetPasswordWithPolicy: defineApiContract<
     { memberId: string },
     { newPassword: string; policy: 'changeable' | 'unchangeable' | 'must_change' },
@@ -262,15 +275,6 @@ export const teamContracts = {
   >({
     method: 'POST',
     path: ({ memberId }) => `/teams/members/${memberId}/reset`
-  }),
-
-  getMemberPassword: defineApiContract<
-    { memberId: string },
-    void,
-    { password: string; username: string; displayName: string }
-  >({
-    method: 'GET',
-    path: ({ memberId }) => `/teams/members/${memberId}/password`
   }),
 
   getMember: defineApiContract<{ memberId: string }, void, TeamMemberApiDto>({
@@ -286,11 +290,6 @@ export const teamContracts = {
   getTeamStats: defineApiContract<void, void, TeamStatsApiDto>({
     method: 'GET',
     path: () => '/teams/stats'
-  }),
-
-  migratePasswords: defineApiContract<void, void, MigratePasswordsResponse>({
-    method: 'POST',
-    path: () => '/teams/migrate-passwords'
   }),
 
   getTeams: defineApiContract<{ includeInactive?: boolean }, void, TeamApiDto[]>({
@@ -327,7 +326,7 @@ export const teamContracts = {
     path: ({ teamId }) => `/teams/${teamId}/members`
   }),
 
-  getTeamStatsByTeam: defineApiContract<{ teamId: number }, void, TeamScopedStatsApiDto>({
+  getTeamStatsByTeam: defineApiContract<{ teamId: number }, void, TeamDetailedStatsApiDto>({
     method: 'GET',
     path: ({ teamId }) => `/teams/${teamId}/stats`
   }),

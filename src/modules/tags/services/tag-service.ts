@@ -4,7 +4,6 @@
 import { Context } from 'hono';
 import type { Bindings } from '@/types';
 import {
-  successResponse,
   paginatedResponse,
   errorResponse,
   validationErrorResponse,
@@ -12,6 +11,8 @@ import {
   notFoundResponse,
   handleApiError
 } from '@/utils/api-response';
+import { tagContracts, type TagConversation, type TagCustomer } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 import { tags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, inArray } from 'drizzle-orm';
@@ -319,10 +320,12 @@ export const tagHandler = {
         })
       );
 
-      return successResponse(c, {
+      return contractJson(c, tagContracts.create, {
+        success: true,
+        data: {
         id: insertedTag.id,
         name: insertedTag.name,
-        color: insertedTag.color,
+        color: insertedTag.color || '#3B82F6',
         description: insertedTag.description,
         teamId: insertedTag.teamId,
         isActive: insertedTag.isActive,
@@ -331,7 +334,9 @@ export const tagHandler = {
         conversationCount: 0,
         createdAt: insertedTag.createdAt,
         updatedAt: insertedTag.updatedAt
-      }, 'Tag created successfully', 201);
+        },
+        message: 'Tag created successfully'
+      }, 201);
 
     } catch (error) {
       // Handle JSON parsing errors
@@ -377,10 +382,12 @@ export const tagHandler = {
       }
 
       const row = tag as TagDetailRow;
-      return successResponse(c, {
+      return contractJson(c, tagContracts.getById, {
+        success: true,
+        data: {
         id: row.id,
         name: row.name,
-        color: row.color,
+        color: row.color || '#3B82F6',
         description: row.description,
         teamId: row.team_id,
         teamName: row.team_name,
@@ -391,7 +398,9 @@ export const tagHandler = {
         conversationCount: row.conversation_count,
         createdAt: row.created_at,
         updatedAt: row.updated_at
-      }, 'Tag retrieved successfully');
+        },
+        message: 'Tag retrieved successfully'
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -463,10 +472,12 @@ export const tagHandler = {
       }
 
       if (Object.keys(captured).length === 0) {
-        return successResponse(c, {
+        return contractJson(c, tagContracts.update, {
+          success: true,
+          data: {
           id: existingRow.id,
           name: existingRow.name,
-          color: existingRow.color,
+          color: existingRow.color || '#3B82F6',
           description: existingRow.description,
           teamId: existingRow.team_id,
           isActive: Boolean(existingRow.is_active),
@@ -475,7 +486,9 @@ export const tagHandler = {
           conversationCount: 0,
           createdAt: existingRow.created_at,
           updatedAt: existingRow.updated_at
-        }, 'Tag is unchanged');
+          },
+          message: 'Tag is unchanged'
+        });
       }
 
       const now = nowISO();
@@ -539,10 +552,12 @@ export const tagHandler = {
 
       const updatedRow = updatedTag as TagWithCountsRow;
 
-      return successResponse(c, {
+      return contractJson(c, tagContracts.update, {
+        success: true,
+        data: {
         id: updatedRow.id,
         name: updatedRow.name,
-        color: updatedRow.color,
+        color: updatedRow.color || '#3B82F6',
         description: updatedRow.description,
         teamId: updatedRow.team_id,
         isActive: Boolean(updatedRow.is_active),
@@ -551,7 +566,9 @@ export const tagHandler = {
         conversationCount: updatedRow.conversation_count,
         createdAt: updatedRow.created_at,
         updatedAt: updatedRow.updated_at
-      }, 'Tag updated successfully');
+        },
+        message: 'Tag updated successfully'
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -617,7 +634,10 @@ export const tagHandler = {
 
       await c.env.DB.batch([logStmt, mutationStmt]);
 
-      return successResponse(c, null, 'Tag deleted successfully');
+      return contractJson(c, tagContracts.delete, {
+        success: true,
+        message: 'Tag deleted successfully'
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -692,11 +712,13 @@ export const tagHandler = {
       const trendRows = (usageTrendResults || []) as UsageTrendRow[];
       const assignerRows = (topAssignersResults || []) as TopAssignerRow[];
 
-      return successResponse(c, {
+      return contractJson(c, tagContracts.getUsageStats, {
+        success: true,
+        data: {
         tagInfo: {
           id: tagRow.id,
           name: tagRow.name,
-          color: tagRow.color
+          color: tagRow.color || '#3B82F6'
         },
         customers: {
           total: custStats?.total_customers || 0,
@@ -718,7 +740,9 @@ export const tagHandler = {
           name: row.display_name,
           assignments: row.assignments
         }))
-      }, 'Tag usage statistics retrieved successfully');
+        },
+        message: 'Tag usage statistics retrieved successfully'
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -794,7 +818,10 @@ export const tagHandler = {
           ]);
       }
 
-      return successResponse(c, null, `Bulk ${operation} completed successfully`);
+      return contractJson(c, tagContracts.bulkOperate, {
+        success: true,
+        message: `Bulk ${operation} completed successfully`
+      });
 
     } catch (error) {
       // Handle JSON parsing errors
@@ -857,15 +884,19 @@ export const tagHandler = {
       const total = (countResult as CountRow | null)?.total || 0;
       const totalPages = Math.ceil(total / limit);
 
-      return successResponse(c, {
-        customers: customers || [],
-        pagination: {
+      return contractJson(c, tagContracts.getCustomers, {
+        success: true,
+        data: {
+          customers: (customers || []) as TagCustomer[],
+          pagination: {
           page,
           limit,
           total,
           totalPages
-        }
-      }, 'Tag customers retrieved successfully');
+          }
+        },
+        message: 'Tag customers retrieved successfully'
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -928,15 +959,19 @@ export const tagHandler = {
       const total = (countResult as CountRow | null)?.total || 0;
       const totalPages = Math.ceil(total / limit);
 
-      return successResponse(c, {
-        conversations: conversations || [],
-        pagination: {
+      return contractJson(c, tagContracts.getConversations, {
+        success: true,
+        data: {
+          conversations: (conversations || []) as TagConversation[],
+          pagination: {
           page,
           limit,
           total,
           totalPages
-        }
-      }, 'Tag conversations retrieved successfully');
+          }
+        },
+        message: 'Tag conversations retrieved successfully'
+      });
 
     } catch (error) {
       return handleApiError(error, c);

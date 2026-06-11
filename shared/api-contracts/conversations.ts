@@ -115,6 +115,23 @@ export interface ConversationBulkOperationResponse {
   conversationIds: string[]
 }
 
+export interface ConversationHealthResponse {
+  status: string
+  timestamp: string
+  module: string
+  version: string
+}
+
+export interface ConversationInfoResponse {
+  success: true
+  data: {
+    module: string
+    version: string
+    endpoints: string[]
+  }
+  timestamp: string
+}
+
 export function buildConversationQuery(params: ConversationListParams | ConversationFilters = {}): string {
   const queryParams = new URLSearchParams()
   const listParams = params as ConversationListParams
@@ -170,6 +187,26 @@ export function buildConversationMessagesQuery(params?: { page?: number; pageSiz
 }
 
 export const conversationContracts = {
+  health: defineApiContract<
+    Record<string, never>,
+    void,
+    ConversationHealthResponse,
+    ConversationHealthResponse
+  >({
+    method: 'GET',
+    path: () => '/conversations/health'
+  }),
+
+  info: defineApiContract<
+    Record<string, never>,
+    void,
+    ConversationInfoResponse,
+    ConversationInfoResponse
+  >({
+    method: 'GET',
+    path: () => '/conversations/info'
+  }),
+
   list: defineApiContract<ConversationListParams | ConversationFilters | undefined, void, RawConversationData[]>({
     method: 'GET',
     path: params => `/conversations${buildConversationQuery(params)}`

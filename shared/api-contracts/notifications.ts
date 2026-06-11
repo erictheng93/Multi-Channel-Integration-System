@@ -17,7 +17,7 @@ export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
 
 export interface Notification {
   id: string
-  userId: number
+  userId: string | number
   type: NotificationType
   title: string
   content: string
@@ -43,7 +43,7 @@ export interface NotificationStats {
 }
 
 export interface NotificationSettings {
-  userId: number
+  userId: string | number
   emailEnabled: boolean
   pushEnabled: boolean
   soundEnabled: boolean
@@ -118,6 +118,12 @@ export interface SystemNotificationParams {
   title: string
   content: string
   data?: Record<string, unknown>
+}
+
+export interface SystemNotificationResponse {
+  ids: string[]
+  count: number
+  broadcastedToAll?: boolean
 }
 
 export function buildNotificationQuery(params: NotificationListParams = {}): string {
@@ -225,7 +231,7 @@ export const notificationContracts = {
     path: () => '/notifications/conversation-assigned'
   }),
 
-  system: defineApiContract<Record<string, never>, SystemNotificationParams, { ids: string[]; count: number }>({
+  system: defineApiContract<Record<string, never>, SystemNotificationParams, SystemNotificationResponse>({
     method: 'POST',
     path: () => '/notifications/system'
   }),

@@ -61,8 +61,6 @@ describe('callApiContract', () => {
     vi.mocked(apiClient.post).mockResolvedValueOnce({
       success: true,
       data: {
-        token: 'token-1',
-        refreshToken: 'refresh-1',
         agent: {
           id: 'agent-1',
           email: 'agent@example.com',
@@ -71,7 +69,9 @@ describe('callApiContract', () => {
           role: 'agent',
           isActive: true,
           createdAt: '2026-01-01T00:00:00.000Z'
-        }
+        },
+        sessionId: 'session-1',
+        expiresIn: 7200
       }
     })
 
