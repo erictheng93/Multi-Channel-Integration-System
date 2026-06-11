@@ -12,13 +12,25 @@ import type { Bindings, JWTPayload } from '@/types';
 import { messages, conversations } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import {
-  successResponse,
   errorResponse,
   badRequestResponse
 } from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp'
+import { contractJson } from '@/utils/api-contract-response';
+import { messageContracts, type ContractResponse } from '@shared/api-contracts';
 
 const bulkRoutes = new Hono<{ Bindings: Bindings }>();
+
+type BulkRouteResult = {
+  id?: string;
+  success: boolean;
+  error?: string;
+};
+
+type BulkRouteError = {
+  index: number;
+  error: string;
+};
 
 /**
  * 批量創建訊息
@@ -56,8 +68,8 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
     }
 
     const db = createDbClient(c.env.DB);
-    const results: unknown[] = [];
-    const errors: unknown[] = [];
+    const results: BulkRouteResult[] = [];
+    const errors: BulkRouteError[] = [];
 
     // Step 1: Validate input fields upfront
     const validatedMessages: { index: number; conversationId: string; content: string; messageType: string; metadata: string | null }[] = [];
@@ -66,7 +78,6 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
       if (!msgData.conversationId || !msgData.content || msgData.content.trim().length === 0) {
         errors.push({
           index: i,
-          conversationId: msgData.conversationId,
           error: 'Conversation ID and content are required'
         });
       } else {
@@ -94,7 +105,7 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
       const insertableMessages: typeof validatedMessages = [];
       for (const msg of validatedMessages) {
         if (!existingConvIdSet.has(msg.conversationId)) {
-          errors.push({ index: msg.index, conversationId: msg.conversationId, error: 'Conversation not found' });
+          errors.push({ index: msg.index, error: 'Conversation not found' });
         } else {
           insertableMessages.push(msg);
         }
@@ -105,7 +116,7 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
         const timestamp = nowISO();
         const messageRows = insertableMessages.map(msg => {
           const messageId = `msg_${nowMs()}_${Math.random().toString(36).substr(2, 9)}`;
-          results.push({ index: msg.index, id: messageId, conversationId: msg.conversationId, status: 'success' });
+          results.push({ id: messageId, success: true });
           return {
             id: messageId,
             conversationId: msg.conversationId,
@@ -133,13 +144,18 @@ bulkRoutes.post('/bulk-create', jwtAuth, async (c) => {
       }
     }
 
-    return successResponse(c, {
-      totalRequested: messagesToCreate.length,
-      successCount: results.length,
-      failureCount: errors.length,
-      results,
-      errors: errors.length > 0 ? errors : undefined
-    }, `Bulk operation completed: ${results.length} succeeded, ${errors.length} failed`, 201);
+    const message = `Bulk operation completed: ${results.length} succeeded, ${errors.length} failed`;
+    return contractJson(c, messageContracts.bulkCreate, {
+      success: true,
+      data: {
+        success: errors.length === 0,
+        results,
+        errors,
+        message
+      },
+      message,
+      timestamp: nowISO()
+    } as ContractResponse<typeof messageContracts.bulkCreate>, 201);
 
   } catch (error) {
     log.error('Bulk create messages error', {}, error as Error);
@@ -176,8 +192,8 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
     }
 
     const db = createDbClient(c.env.DB);
-    const results: unknown[] = [];
-    const errors: unknown[] = [];
+    const results: BulkRouteResult[] = [];
+    const errors: BulkRouteError[] = [];
 
     // Step 1: Batch-fetch all messages in one SELECT
     const existingMessages = await db
@@ -199,40 +215,38 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
     const recallableIds: string[] = [];
     const recalledAt = nowISO();
 
-    for (const messageId of messageIds) {
+    for (const [index, messageId] of messageIds.entries()) {
       const existing = messageMap.get(messageId);
 
       if (!existing) {
-        errors.push({ messageId, error: 'Message not found' });
+        errors.push({ index, error: 'Message not found' });
         continue;
       }
 
       if (existing.senderType === 'agent' &&
           existing.agentSenderId !== userPayload.userId.toString() &&
           userPayload.role !== 'admin') {
-        errors.push({ messageId, error: 'Permission denied' });
+        errors.push({ index, error: 'Permission denied' });
         continue;
       }
 
       if (existing.isRecalled) {
-        errors.push({ messageId, error: 'Message already recalled' });
+        errors.push({ index, error: 'Message already recalled' });
         continue;
       }
 
       if (existing.recallDeadline) {
         const deadline = new Date(existing.recallDeadline);
         if (new Date() > deadline) {
-          errors.push({ messageId, error: 'Recall deadline has passed' });
+          errors.push({ index, error: 'Recall deadline has passed' });
           continue;
         }
       }
 
       recallableIds.push(messageId);
       results.push({
-        messageId,
-        conversationId: existing.conversationId,
-        recalledAt,
-        status: 'success'
+        id: messageId,
+        success: true
       });
     }
 
@@ -248,13 +262,18 @@ bulkRoutes.post('/bulk-delete', jwtAuth, async (c) => {
         .where(inArray(messages.id, recallableIds));
     }
 
-    return successResponse(c, {
-      totalRequested: messageIds.length,
-      successCount: results.length,
-      failureCount: errors.length,
-      results,
-      errors: errors.length > 0 ? errors : undefined
-    }, `Bulk delete completed: ${results.length} succeeded, ${errors.length} failed`);
+    const message = `Bulk delete completed: ${results.length} succeeded, ${errors.length} failed`;
+    return contractJson(c, messageContracts.bulkDelete, {
+      success: true,
+      data: {
+        success: errors.length === 0,
+        results,
+        errors,
+        message
+      },
+      message,
+      timestamp: nowISO()
+    } as ContractResponse<typeof messageContracts.bulkDelete>);
 
   } catch (error) {
     log.error('Bulk delete messages error', {}, error as Error);

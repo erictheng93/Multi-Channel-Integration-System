@@ -55,7 +55,7 @@ export interface AutoReplyLog {
   trigger_content: string
   response_content: string
   matched_condition: string
-  platform: 'line' | 'facebook'
+  platform: 'line' | 'facebook' | 'whatsapp'
   reply_method: 'reply_api' | 'push_api'
   created_at: string
 }

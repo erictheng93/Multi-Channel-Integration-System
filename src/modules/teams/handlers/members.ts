@@ -19,6 +19,8 @@ import { agents } from '@/db/schema';
 import { desc, sql, isNull } from 'drizzle-orm';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
+import { teamContracts, type ContractResponse, type TeamMemberApiDto } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 import type {
   AddTeamMemberRequest,
   UpdateMemberStatusRequest,
@@ -32,9 +34,57 @@ import type {
   BatchEditMembersResponse,
   BatchEditUndoTokenData
 } from '../types/member-types';
+import type { TeamRoleInTeam } from '@/types';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
 const membersHandler = new Hono<{ Bindings: Bindings }>();
+
+function normalizeTeamRoleInTeam(role: string | null | undefined): TeamRoleInTeam {
+  switch (role) {
+    case 'lead':
+    case 'supervisor':
+      return role;
+    default:
+      return 'member';
+  }
+}
+
+function toTeamMemberApiDto(member: {
+  id: string;
+  loginId?: string | null;
+  name?: string | null;
+  displayName?: string | null;
+  email?: string | null;
+  role?: string | null;
+  status?: unknown;
+  group?: string | null;
+  isActive?: boolean | number | null;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+  lastActive?: string | Date | null;
+  lastLoginAt?: string | Date | null;
+  primaryTeamId?: number | null;
+}): TeamMemberApiDto {
+  const status = member.status === 'pending'
+    ? 'pending'
+    : member.status === 'inactive' || member.isActive === false || member.isActive === 0
+      ? 'inactive'
+      : 'active';
+
+  return {
+    id: member.id,
+    loginId: member.loginId || member.displayName || member.email || member.id,
+    name: member.name || member.displayName || undefined,
+    email: member.email || undefined,
+    role: member.role === 'admin' ? 'admin' : 'agent',
+    status,
+    group: member.group || undefined,
+    createdAt: member.createdAt || nowISO(),
+    updatedAt: member.updatedAt || member.createdAt || nowISO(),
+    lastLoginAt: member.lastLoginAt || member.lastActive || undefined,
+    primaryTeamId: member.primaryTeamId ?? undefined
+  };
+}
 
 /**
  * 獲取所有團隊成員列表 (僅限 Admin)
@@ -82,28 +132,29 @@ membersHandler.get('/', jwtAuth, async (c) => {
       const primaryTeam = agentTeamList.find(t => t.isPrimary);
 
       return {
-        ...member,
-        createdAt: member.createdAt ? new Date(member.createdAt) : new Date(),
-        lastActive: member.lastActive ? new Date(member.lastActive) : undefined,
+        ...toTeamMemberApiDto({
+          ...member,
+          group: typeof member.group === 'string' ? member.group : undefined
+        }),
         // New: multi-team support
         teams: agentTeamList.map(t => ({
           teamId: t.teamId,
           teamName: t.teamName,
-          roleInTeam: t.roleInTeam,
+          roleInTeam: normalizeTeamRoleInTeam(t.roleInTeam),
           isPrimary: t.isPrimary,
           joinedAt: t.joinedAt
         })),
         teamCount: agentTeamList.length,
-        primaryTeamId: primaryTeam?.teamId || null,
+        primaryTeamId: primaryTeam?.teamId,
         primaryTeamName: primaryTeam?.teamName
       };
     });
 
-    return c.json({
+    return contractJson(c, teamContracts.getMembers, {
       success: true,
       data: formattedMembers,
       timestamp: nowISO()
-    });
+    } satisfies ContractResponse<typeof teamContracts.getMembers>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -127,11 +178,11 @@ membersHandler.get('/check-email', jwtAuth, requireManagerOrAdmin(), async (c) =
     const memberService = new MemberService(c.env.DB);
     const result = await memberService.checkEmailExists(email);
 
-    return c.json({
+    return contractJson(c, teamContracts.checkEmail, {
       success: true,
       data: result,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.checkEmail>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -184,12 +235,12 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       }
     });
 
-    return c.json({
+    return contractJson(c, teamContracts.addMember, {
       success: true,
-      data: member,
+      data: toTeamMemberApiDto(member),
       message: 'Team member added successfully',
       timestamp: nowISO()
-    }, HTTP_STATUS.CREATED);
+    } satisfies ContractResponse<typeof teamContracts.addMember>, HTTP_STATUS.CREATED);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -223,7 +274,7 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
 
     const memberService = new MemberService(c.env.DB);
     const existingMember = await memberService.getMember(memberId);
-    const member = await memberService.updateMemberStatus(memberId, data, String(user.id));
+    await memberService.updateMemberStatus(memberId, data, String(user.id));
 
     // Log activity
     const activityService = new ActivityService(c.env.DB);
@@ -245,12 +296,11 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       }
     });
 
-    return c.json({
+    return contractJson(c, teamContracts.updateMemberStatus, {
       success: true,
-      data: member,
       message: `Member ${data.isActive ? 'activated' : 'deactivated'} successfully`,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.updateMemberStatus>);
 
   } catch (error) {
     if (error instanceof Error && error.message === 'Member not found') {
@@ -291,7 +341,7 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
 
     const memberService = new MemberService(c.env.DB);
     const existingMember = await memberService.getMember(memberId);
-    const member = await memberService.updateMemberRole(memberId, data, String(user.id));
+    await memberService.updateMemberRole(memberId, data, String(user.id));
 
     // Log activity
     const activityService = new ActivityService(c.env.DB);
@@ -313,12 +363,11 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       }
     });
 
-    return c.json({
+    return contractJson(c, teamContracts.updateMemberRole, {
       success: true,
-      data: member,
       message: 'Member role updated successfully',
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.updateMemberRole>);
 
   } catch (error) {
     if (error instanceof Error && error.message === 'Member not found') {
@@ -365,12 +414,12 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
       }
     });
 
-    return c.json({
+    return contractJson(c, teamContracts.updateMember, {
       success: true,
-      data: member,
+      data: toTeamMemberApiDto(member),
       message: 'Member updated successfully',
       timestamp: nowISO()
-    });
+    } satisfies ContractResponse<typeof teamContracts.updateMember>);
 
   } catch (error) {
     if (error instanceof Error && error.message === 'Member not found') {
@@ -437,14 +486,14 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
       log.error('Failed to log delete activity', {}, activityError as Error);
     }
 
-    return c.json({
+    return contractJson(c, teamContracts.removeMember, {
       success: true,
       message: 'Member permanently deleted',
       data: {
         deletedMemberId: memberId
       },
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.removeMember>);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -519,12 +568,12 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
       deletedCount: result.deleted.length
     };
 
-    return c.json({
+    return contractJson(c, teamContracts.bulkDeleteMembers, {
       success: true,
       data: response,
       message: `Successfully deleted ${result.deleted.length} member(s) permanently`,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.bulkDeleteMembers>);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -614,12 +663,12 @@ membersHandler.post('/bulk-update', jwtAuth, requireManagerOrAdmin(), async (c) 
       updatedCount: result.updated.length
     };
 
-    return c.json({
+    return contractJson(c, teamContracts.bulkUpdateMembers, {
       success: true,
       data: response,
       message: `Successfully updated ${result.updated.length} member(s)`,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.bulkUpdateMembers>);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -748,12 +797,12 @@ membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) =
       undoExpiresAt
     };
 
-    return c.json({
+    return contractJson(c, teamContracts.batchEditMembers, {
       success: true,
       data: response,
       message: `Successfully edited ${successCount} member(s)`,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.batchEditMembers>);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -826,7 +875,7 @@ membersHandler.post('/batch-edit/undo', jwtAuth, requireManagerOrAdmin(), async 
       });
     }
 
-    return c.json({
+    return contractJson(c, teamContracts.undoBatchEdit, {
       success: true,
       data: {
         restoredCount: successCount,
@@ -834,7 +883,7 @@ membersHandler.post('/batch-edit/undo', jwtAuth, requireManagerOrAdmin(), async 
       },
       message: `Successfully restored ${successCount} member(s)`,
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.undoBatchEdit>);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);

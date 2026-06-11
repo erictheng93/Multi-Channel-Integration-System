@@ -107,6 +107,17 @@ app.post('/system', jwtAuth, async (c) => {
   return handlers.notifySystem(c);
 });
 
+// 通知設定
+app.get('/settings', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.getSettings(c);
+});
+
+app.put('/settings', jwtAuth, async (c) => {
+  const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);
+  return handlers.updateSettings(c);
+});
+
 // 系統公告廣播 (Admin Only)
 app.post('/broadcast', jwtAuth, async (c) => {
   const handlers = createNotificationHandlerMethods(c.env.DB, c.env.CACHE);

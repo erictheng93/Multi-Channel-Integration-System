@@ -13,6 +13,8 @@ import { eq, desc, sql, gte } from 'drizzle-orm';
 import { jwtAuth } from '@/middleware/auth';
 import { globalErrorHandler } from '@/core/error-handler';
 import { nowISO } from '@/utils/timestamp'
+import { feedbackContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const feedbackHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -24,7 +26,7 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
 
     // 验证必填字段
     if (!body.conversationId || !body.customerId || !body.rating) {
-      return c.json({
+      return contractJson(c, feedbackContracts.submit, {
         success: false,
         error: 'Missing required fields: conversationId, customerId, rating'
       }, 400);
@@ -32,7 +34,7 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
 
     // 验证评分范围
     if (body.rating < 1 || body.rating > 5) {
-      return c.json({
+      return contractJson(c, feedbackContracts.submit, {
         success: false,
         error: 'Rating must be between 1 and 5'
       }, 400);
@@ -46,7 +48,7 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
       .get();
 
     if (!conversation) {
-      return c.json({
+      return contractJson(c, feedbackContracts.submit, {
         success: false,
         error: 'Conversation not found'
       }, 404);
@@ -72,7 +74,7 @@ feedbackHandler.post('/', jwtAuth, async (c) => {
 
     log.info(`Created feedback ${feedbackId} for conversation ${body.conversationId}`);
 
-    return c.json({
+    return contractJson(c, feedbackContracts.submit, {
       success: true,
       data: {
         id: feedbackId,
@@ -128,7 +130,7 @@ feedbackHandler.get('/stats', jwtAuth, async (c) => {
     const stats = await statsQuery.get();
 
     if (!stats || stats.totalCount === 0) {
-      return c.json({
+      return contractJson(c, feedbackContracts.stats, {
         success: true,
         data: {
           satisfactionRate: 0,
@@ -152,7 +154,7 @@ feedbackHandler.get('/stats', jwtAuth, async (c) => {
 
     log.info(`Stats retrieved: ${satisfactionRate}% satisfaction rate (${stats.totalCount} feedback)`);
 
-    return c.json({
+    return contractJson(c, feedbackContracts.stats, {
       success: true,
       data: {
         satisfactionRate,
@@ -201,7 +203,7 @@ feedbackHandler.get('/conversation/:conversationId', jwtAuth, async (c) => {
       .orderBy(desc(customerFeedback.createdAt))
       .all();
 
-    return c.json({
+    return contractJson(c, feedbackContracts.byConversation, {
       success: true,
       data: {
         conversationId,
@@ -252,7 +254,7 @@ feedbackHandler.get('/', jwtAuth, async (c) => {
 
     const total = totalResult?.count || 0;
 
-    return c.json({
+    return contractJson(c, feedbackContracts.list, {
       success: true,
       data: {
         feedback: feedbackList,

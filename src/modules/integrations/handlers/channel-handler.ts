@@ -7,6 +7,8 @@ import type { Bindings } from '@/types';
 import { ChannelService } from '@modules/integrations/services/channel-service';
 import type {
   ChannelConfigRequest,
+  ChannelHealthStatus,
+  ChannelStatistics,
   ChannelUpdateRequest,
   ChannelVerificationRequest
 } from '../types/channel-types';
@@ -15,16 +17,37 @@ import { globalErrorHandler } from '@/core/error-handler';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import type { ChannelIntegration } from '../types/channel-types';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
+import {
+  channelContracts,
+  type ChannelHealthStatus as ContractChannelHealthStatus,
+  type ChannelIntegration as ContractChannelIntegration,
+  type ChannelStatistics as ContractChannelStatistics,
+} from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 /**
  * Sanitize channel data for API responses — strip encrypted credentials JSON
  */
-function sanitizeChannelForResponse(channel: ChannelIntegration): Omit<ChannelIntegration, 'credentials'> & Record<string, unknown> {
+function sanitizeChannelForResponse(channel: ChannelIntegration): ContractChannelIntegration {
   const {
     credentials: _credentials,
     ...safe
   } = channel;
-  return safe;
+  return safe as unknown as ContractChannelIntegration;
+}
+
+function toContractChannelStatistics(stats: ChannelStatistics): ContractChannelStatistics {
+  return {
+    ...stats,
+    platform: stats.platform as ContractChannelStatistics['platform']
+  };
+}
+
+function toContractChannelHealth(health: ChannelHealthStatus): ContractChannelHealthStatus {
+  return {
+    ...health,
+    platform: health.platform as ContractChannelHealthStatus['platform']
+  };
 }
 
 const channelHandler = new Hono<{ Bindings: Bindings }>();
@@ -57,9 +80,9 @@ channelHandler.get('/:id/stats', requireIntId(), async (c: Context) => {
 
     const stats = await channelService.getChannelStatistics(channelId);
 
-    return c.json({
+    return contractJson(c, channelContracts.getStats, {
       success: true,
-      data: stats
+      data: toContractChannelStatistics(stats)
     });
 
   } catch (error) {
@@ -95,9 +118,9 @@ channelHandler.get('/:id/health', requireIntId(), async (c: Context) => {
 
     const health = await channelService.checkChannelHealth(channelId);
 
-    return c.json({
+    return contractJson(c, channelContracts.checkHealth, {
       success: true,
-      data: health
+      data: toContractChannelHealth(health)
     });
 
   } catch (error) {
@@ -141,7 +164,7 @@ channelHandler.post('/:id/verify', requireIntId(), async (c: Context) => {
     const result = await channelService.verifyChannel(request);
 
     const statusCode = result.success ? HTTP_STATUS.OK : HTTP_STATUS.BAD_REQUEST;
-    return c.json(result, statusCode);
+    return contractJson(c, channelContracts.verify, result, statusCode);
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -175,7 +198,7 @@ channelHandler.get('/:id', requireIntId(), async (c: Context) => {
       return c.json({ error: 'Access denied' }, HTTP_STATUS.FORBIDDEN);
     }
 
-    return c.json({
+    return contractJson(c, channelContracts.get, {
       success: true,
       data: sanitizeChannelForResponse(channel)
     });
@@ -234,7 +257,7 @@ channelHandler.put('/:id', requireIntId(), async (c: Context) => {
       return c.json(result, 400);
     }
 
-    return c.json({
+    return contractJson(c, channelContracts.update, {
       ...result,
       data: result.data ? sanitizeChannelForResponse(result.data) : undefined
     });
@@ -285,8 +308,9 @@ channelHandler.delete('/:id', requireIntId(), async (c: Context) => {
       }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
     }
 
-    return c.json({
+    return contractJson(c, channelContracts.delete, {
       success: true,
+      data: { message: 'Channel deactivated successfully' },
       message: 'Channel deactivated successfully'
     });
 
@@ -329,7 +353,7 @@ channelHandler.get('/', async (c: Context) => {
     const channelService = new ChannelService(c.env as Bindings);
     const channels = await channelService.getChannelsByTeam(teamId, platform);
 
-    return c.json({
+    return contractJson(c, channelContracts.list, {
       success: true,
       data: channels.map(sanitizeChannelForResponse),
       count: channels.length
@@ -447,9 +471,10 @@ channelHandler.post('/', async (c: Context) => {
       userAgent: c.req.header('User-Agent')
     });
 
-    return c.json({
-      ...result,
-      data: result.data ? sanitizeChannelForResponse(result.data) : undefined
+    return contractJson(c, channelContracts.create, {
+      success: true,
+      data: sanitizeChannelForResponse(result.data),
+      webhookUrl: result.webhookUrl ?? ''
     }, HTTP_STATUS.CREATED);
 
   } catch (error) {

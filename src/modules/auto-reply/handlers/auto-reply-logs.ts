@@ -21,6 +21,11 @@ import {
   handleApiError,
 } from '@/utils/api-response';
 import { nowISO } from '@/utils/timestamp';
+import {
+  autoReplyContracts,
+  type AutoReplyLog,
+} from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const autoReplyLogsHandler = new Hono<{ Bindings: Bindings }>();
 
@@ -31,6 +36,9 @@ autoReplyLogsHandler.use('/*', jwtAuth);
 // SQL even without this check — but returning 400 on typos beats silently
 // returning an empty page.
 const ALLOWED_PLATFORMS = new Set(['line', 'facebook', 'whatsapp']);
+
+type AutoReplyLogPlatform = AutoReplyLog['platform'];
+type AutoReplyReplyMethod = AutoReplyLog['reply_method'];
 
 /**
  * Parse an ISO 8601 date string. Returns null if the input is unparseable.
@@ -177,20 +185,28 @@ autoReplyLogsHandler.get('/', async (c) => {
 
     const total = countRows[0]?.total ?? 0;
     const todayTotal = todayCountRows[0]?.total ?? 0;
-    const totalPages = Math.ceil(total / pageSize);
+    const contractLogs: AutoReplyLog[] = logs.map((log) => ({
+      id: log.id,
+      rule_id: log.rule_id,
+      rule_name: log.rule_name ?? '',
+      conversation_id: log.conversation_id ?? '',
+      customer_id: log.customer_id ?? 0,
+      trigger_content: log.trigger_content ?? '',
+      response_content: log.response_content ?? '',
+      matched_condition: log.matched_condition ?? '',
+      platform: log.platform as AutoReplyLogPlatform,
+      reply_method: log.reply_method as AutoReplyReplyMethod,
+      created_at: log.created_at ?? nowISO(),
+    }));
 
-    return c.json({
+    return contractJson(c, autoReplyContracts.getLogs, {
       success: true,
       data: {
-        items: logs,
+        items: contractLogs,
         page,
-        pageSize,
         limit: pageSize,
         total,
         todayTotal,
-        totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1,
       },
       message: 'Logs retrieved successfully',
     });

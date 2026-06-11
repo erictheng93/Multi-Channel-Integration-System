@@ -354,7 +354,7 @@ describe('Auto-Reply Rules Handler — Integration', () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
-      expect(body.data.id).toBe(1);
+      expect(body.message).toContain('deleted');
 
       // Should call update to set deletedAt
       expect(mockDb.update).toHaveBeenCalled();

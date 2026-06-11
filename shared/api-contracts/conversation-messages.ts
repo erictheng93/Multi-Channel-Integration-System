@@ -24,6 +24,8 @@ export interface ConversationMessageUploadResponse {
   url: string
   filename: string
   attachmentId: string
+  mimeType?: string
+  size?: number
 }
 
 export interface ConversationMessageRecallRequest {

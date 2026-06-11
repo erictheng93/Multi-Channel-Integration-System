@@ -86,11 +86,6 @@ export interface TeamStatsResponse {
   adminCount: number
 }
 
-export interface MigratePasswordsResponse {
-  migrated: Array<{ username: string; status: string; error?: string }>
-  total: number
-}
-
 export interface TeamResponse {
   id: number
   name: string
@@ -116,6 +111,29 @@ export interface UpdateTeamRequest {
 
 export interface TeamScopedStatsResponse extends TeamStatsResponse {
   pendingInvitations: number
+}
+
+export interface TeamDetailedStatsResponse {
+  teamId: number
+  teamName: string
+  totalMembers: number
+  activeMembers: number
+  conversationsHandled: number
+  messagesCount: number
+  avgResponseTime: number
+  memberStats?: Array<{
+    agentId: string
+    displayName: string
+    conversationsHandled: number
+    messagesCount: number
+    avgResponseTime: number
+    lastActive: string | null
+  }>
+  qrCodeScans: number
+  period: {
+    from: string
+    to: string
+  }
 }
 
 export interface LiffQRResponseBase {

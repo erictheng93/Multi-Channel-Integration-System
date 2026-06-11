@@ -5,12 +5,13 @@ import { Context } from 'hono';
 import { getValidatedParam } from '@/middleware/param-validator';
 import type { Bindings } from '@/types';
 import {
-  successResponse,
   errorResponse,
   validationErrorResponse,
   notFoundResponse,
   handleApiError
 } from '@/utils/api-response';
+import { tagContracts } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 import { customers, tags, customerTags } from '@/db/schema';
 import { createDbClient } from '@/db/drizzle-factory';
 import { sql, eq, and, or, inArray, isNull, isNotNull, asc, desc, count } from 'drizzle-orm';
@@ -147,15 +148,21 @@ export const customerTagsHandler = {
 
       const totalCount = countRows[0]?.total ?? 0;
       const totalPages = Math.ceil(totalCount / limit);
+      const tagItems = tagsData.map(tag => ({
+        ...tag,
+        color: tag.color || '#3B82F6'
+      }));
 
-      return c.json({
+      return contractJson(c, tagContracts.list, {
         success: true,
-        data: tagsData,
+        data: tagItems,
         pagination: {
           page: pageNum,
           limit,
           total: totalCount,
-          totalPages
+          totalPages,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1
         },
         message: 'Available tags retrieved successfully'
       });
@@ -207,8 +214,16 @@ export const customerTagsHandler = {
           )
         )
         .orderBy(desc(customerTags.assignedAt));
+      const customerTagItems = tagsData.map(tag => ({
+        ...tag,
+        color: tag.color || '#3B82F6'
+      }));
 
-      return successResponse(c, tagsData, 'Customer tags retrieved successfully');
+      return contractJson(c, tagContracts.getCustomerTags, {
+        success: true,
+        data: customerTagItems,
+        message: 'Customer tags retrieved successfully'
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -350,14 +365,14 @@ export const customerTagsHandler = {
         }
       }
 
-      return successResponse(
-        c,
-        {
+      return contractJson(c, tagContracts.addTagsToCustomer, {
+        success: true,
+        data: {
           added: newTagIds.length,
           alreadyExists: tagIds.length - newTagIds.length
         },
-        `Successfully added ${newTagIds.length} tags to customer`
-      );
+        message: `Successfully added ${newTagIds.length} tags to customer`
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -480,7 +495,10 @@ export const customerTagsHandler = {
         log.warn('[Customer Tags] Broadcast failed (non-blocking):', { detail: broadcastError });
       }
 
-      return successResponse(c, null, `Successfully removed ${tagIds.length} tags from customer`);
+      return contractJson(c, tagContracts.removeTagsFromCustomer, {
+        success: true,
+        message: `Successfully removed ${tagIds.length} tags from customer`
+      });
 
     } catch (error) {
       return handleApiError(error, c);
@@ -594,11 +612,11 @@ export const customerTagsHandler = {
         log.warn('[Customer Tags] Broadcast failed (non-blocking):', { detail: broadcastError });
       }
 
-      return successResponse(
-        c,
-        { totalTags: tagIds.length },
-        `Successfully set ${tagIds.length} tags for customer`
-      );
+      return contractJson(c, tagContracts.setCustomerTags, {
+        success: true,
+        data: { totalTags: tagIds.length },
+        message: `Successfully set ${tagIds.length} tags for customer`
+      });
 
     } catch (error) {
       return handleApiError(error, c);

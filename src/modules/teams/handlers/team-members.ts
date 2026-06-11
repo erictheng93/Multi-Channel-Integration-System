@@ -27,6 +27,8 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { teams, agents } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { nowISO } from '@/utils/timestamp';
+import { teamContracts, type ContractResponse } from '@shared/api-contracts';
+import { contractJson } from '@/utils/api-contract-response';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -58,7 +60,7 @@ app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), requireIn
     const teamService = new TeamService(c.env.DB);
     const result = await teamService.bulkRemoveMembers(teamId, body.agentIds);
 
-    return c.json({
+    return contractJson(c, teamContracts.bulkRemoveMembersFromTeam, {
       success: true,
       data: {
         removed: result.removed,
@@ -66,7 +68,7 @@ app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), requireIn
         removedCount: result.removed.length
       },
       timestamp: nowISO()
-    });
+    } as ContractResponse<typeof teamContracts.bulkRemoveMembersFromTeam>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -167,7 +169,7 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
       )).catch(err => log.error('WebSocket broadcasts failed', {}, err as Error));
     }
 
-    return c.json({
+    return contractJson(c, teamContracts.batchAddMembersToTeam, {
       success: true,
       data: {
         added: result.added,
@@ -176,7 +178,7 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
         addedCount: result.added.length
       },
       timestamp: nowISO()
-    }, result.added.length > 0 ? HTTP_STATUS.CREATED : HTTP_STATUS.OK);
+    } as ContractResponse<typeof teamContracts.batchAddMembersToTeam>, result.added.length > 0 ? HTTP_STATUS.CREATED : HTTP_STATUS.OK);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
@@ -251,7 +253,10 @@ app.get('/:id/members', jwtAuth, requireTeamAccess('id'), requireIntId(), async 
     const teamService = new TeamService(c.env.DB);
     const members = await teamService.getMembers(teamId);
 
-    return c.json({ success: true, data: members });
+    return contractJson(c, teamContracts.getTeamMembersByTeam, {
+      success: true,
+      data: members
+    } as ContractResponse<typeof teamContracts.getTeamMembersByTeam>);
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }

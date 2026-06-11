@@ -13,10 +13,9 @@ import type {
   LiffQRResponse,
   LiffQRResponseBase,
   LiffQRStatsResponse,
-  MigratePasswordsResponse,
   RemoveMemberResponse,
+  TeamDetailedStatsResponse,
   TeamResponse,
-  TeamScopedStatsResponse,
   TeamStatsResponse,
   TeamMemberWithTeamsResponse,
   UndoBatchEditResponse,
@@ -141,11 +140,6 @@ export const teamApi = {
     })
   },
 
-  // 重設成員密碼
-  resetPassword: async (memberId: string): Promise<ApiResponse<void>> => {
-    return callApiContract(teamContracts.resetPassword, { memberId })
-  },
-
   // 重設成員密碼帶政策
   resetPasswordWithPolicy: async (memberId: string, data: {
     newPassword: string;
@@ -153,15 +147,6 @@ export const teamApi = {
   }): Promise<ApiResponse<void>> => {
     // Fixed: Updated path from /team to /teams and endpoint from reset-password-policy to reset
     return callApiContract(teamContracts.resetPasswordWithPolicy, { memberId }, data)
-  },
-
-  // 獲取成員密碼
-  getMemberPassword: async (memberId: string): Promise<ApiResponse<{
-    password: string;
-    username: string;  // 保留作為向後兼容，但實際上會使用 displayName 的值
-    displayName: string;
-  }>> => {
-    return callApiContract(teamContracts.getMemberPassword, { memberId })
   },
 
   // 更新成員資訊
@@ -176,11 +161,6 @@ export const teamApi = {
   // 獲取團隊統計資訊
   getTeamStats: async (): Promise<ApiResponse<TeamStatsResponse>> => {
     return callApiContract(teamContracts.getTeamStats, undefined)
-  },
-
-  // 遷移明文密碼到加密存儲 (臨時管理功能)
-  migratePasswords: async (): Promise<ApiResponse<MigratePasswordsResponse>> => {
-    return callApiContract(teamContracts.migratePasswords, undefined)
   },
 
   // 團隊管理 API
@@ -222,7 +202,7 @@ export const teamApi = {
   },
 
   // 獲取團隊統計（特定團隊）
-  getTeamStatsByTeam: async (teamId: number): Promise<ApiResponse<TeamScopedStatsResponse>> => {
+  getTeamStatsByTeam: async (teamId: number): Promise<ApiResponse<TeamDetailedStatsResponse>> => {
     return callApiContract(teamContracts.getTeamStatsByTeam, { teamId })
   },
 
