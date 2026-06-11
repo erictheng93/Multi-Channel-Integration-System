@@ -17,6 +17,19 @@ import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('websocketEventRouter')
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function getStringField(value: unknown, field: string): string | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+
+  const fieldValue = value[field]
+  return typeof fieldValue === 'string' ? fieldValue : undefined
+}
+
 /**
  * 路由规则函数类型
  */
@@ -169,7 +182,40 @@ export const ROUTING_RULES: Record<string, RoutingRule> = {
   /**
    * 客户标签更新 → tags channel（标签管理页面自动刷新）
    */
-  'customer_tags_updated': () => ['tags']
+  'customer_tags_updated': () => ['tags'],
+
+  /**
+   * Analytics widget update → analytics dashboard + widget channels
+   */
+  'analytics_widget_updated': (message) => {
+    const channels = ['analytics']
+    const dashboardId = getStringField(message.data, 'dashboardId')
+    const widgetId = getStringField(message.data, 'widgetId')
+
+    if (dashboardId) {
+      channels.push(`analytics:dashboard:${dashboardId}`)
+    }
+
+    if (widgetId) {
+      channels.push(`analytics:widget:${widgetId}`)
+    }
+
+    return channels
+  },
+
+  /**
+   * Analytics dashboard update → analytics dashboard channel
+   */
+  'analytics_dashboard_updated': (message) => {
+    const channels = ['analytics']
+    const dashboardId = getStringField(message.data, 'dashboardId')
+
+    if (dashboardId) {
+      channels.push(`analytics:dashboard:${dashboardId}`)
+    }
+
+    return channels
+  }
 }
 
 /**

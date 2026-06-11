@@ -121,7 +121,7 @@ export class WebSocketManager {
   // Public API
   public async connect(): Promise<void> {
     const authStore = useAuthStore()
-    if (!authStore.token) {
+    if (!authStore.isAuthenticated && !authStore.validateSession()) {
       throw new Error('Authentication required for WebSocket connection')
     }
 
