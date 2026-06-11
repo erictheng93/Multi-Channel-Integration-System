@@ -24,6 +24,7 @@ import type {
   UserAnalyticsQuery
 } from '../types/analytics-types';
 import { AnalyticsError, DataProcessingError } from '@modules/analytics/types/analytics-types';
+import { calculatePreviousPeriod } from '@modules/analytics/services/analytics-aggregation';
 import { AnalyticsService } from './analytics-core';
 import { createDbClient } from '@/db/drizzle-factory';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -57,6 +58,11 @@ type DashboardAnalyticsData =
   | MessageAnalytics
   | UserAnalytics
   | PerformanceAnalytics;
+
+interface AnalyticsTimeWindow {
+  startDate: string;
+  endDate: string;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -284,18 +290,23 @@ export class DashboardService {
    */
   private async getMetricWidgetData(widget: DashboardWidget, timeRange?: TimeRange): Promise<WidgetData> {
     const t0 = nowMs();
-    const data = await this.queryAnalytics(widget, timeRange);
+    const resolvedTimeRange = timeRange || widget.defaultTimeRange || '7d';
+    const data = await this.queryAnalytics(widget, resolvedTimeRange);
     const qt = nowMs() - t0;
     const key = widget.metric || 'totalConversations';
     const value = this.extractValue(data, key);
     let previousValue: number | undefined;
     let trend: WidgetData['trend'];
     try {
-      const prev = await this.queryAnalytics(widget, timeRange);
+      const { previousPeriod } = calculatePreviousPeriod(resolvedTimeRange);
+      const prev = await this.queryAnalytics(widget, 'custom', {
+        startDate: previousPeriod.start,
+        endDate: previousPeriod.end
+      });
       previousValue = this.extractValue(prev, key);
       if (previousValue && previousValue > 0) {
         const pct = Math.round(((value - previousValue) / previousValue) * 100);
-        trend = { direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'stable', value: value - previousValue, percentage: Math.abs(pct) };
+        trend = { direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'stable', value: value - previousValue, percentage: Math.abs(pct), period: 'previous' };
       }
     } catch { /* best-effort */ }
     return {
@@ -336,9 +347,14 @@ export class DashboardService {
   }
 
   /** Route widget config to the correct AnalyticsService query method */
-  private async queryAnalytics(widget: DashboardWidget, timeRange?: TimeRange): Promise<DashboardAnalyticsData | null> {
+  private async queryAnalytics(widget: DashboardWidget, timeRange?: TimeRange, window?: AnalyticsTimeWindow): Promise<DashboardAnalyticsData | null> {
     const filters = widget.filters as AnalyticsFilters | undefined;
-    const baseQuery = { timeRange: timeRange || widget.defaultTimeRange || '7d', filters };
+    const baseQuery = {
+      timeRange: timeRange || widget.defaultTimeRange || '7d',
+      startDate: window?.startDate,
+      endDate: window?.endDate,
+      filters
+    };
     const key = widget.metric || widget.dataSource.query || '';
     try {
       if (key.toLowerCase().includes('conversation')) { const r = await this.analytics.getConversationAnalytics(baseQuery as ConversationAnalyticsQuery); return r.success ? r.data || null : null; }
@@ -521,12 +537,17 @@ export class DashboardService {
   }
 
   /**
-   * 實時數據更新訂閱
+   * Legacy compatibility hook for callers that still expect an unsubscribe
+   * callback from DashboardService.
+   *
+   * @deprecated Use the realtime dashboard subscription endpoint and WebSocket
+   * channel subscription flow instead. This method does not attach a producer or
+   * client transport by itself.
    */
   async subscribeToRealTimeUpdates(
     userId: string,
     dashboardId: string,
-    callback: (data: Record<string, WidgetData>) => void
+    _callback: (data: Record<string, WidgetData>) => void
   ): Promise<() => void> {
     if (!this.options.realTimeEnabled) {
       throw new AnalyticsError('Real-time updates are disabled', 'REALTIME_DISABLED', 400);
@@ -539,18 +560,18 @@ export class DashboardService {
       throw new AnalyticsError('No real-time widgets found in dashboard', 'NO_REALTIME_WIDGETS', 400);
     }
 
-    // Phase 2: Real-time analytics via existing WebSocket infrastructure
-    // 這裡先返回一個模擬的取消函數
-    const intervalId = setInterval(async () => {
-      try {
-        const data = await this.getDashboardData(userId, dashboardId);
-        callback(data);
-      } catch (error) {
-        log.error('Failed to update real-time dashboard data', {}, error as Error);
-      }
-    }, this.options.refreshInterval);
+    log.info('Legacy realtime dashboard subscription compatibility hook invoked', {
+      userId,
+      dashboardId,
+      widgetCount: realTimeWidgets.length
+    });
 
-    return () => clearInterval(intervalId);
+    return () => {
+      log.info('Legacy realtime dashboard subscription compatibility hook released', {
+        userId,
+        dashboardId
+      });
+    };
   }
 
   // 私有輔助方法

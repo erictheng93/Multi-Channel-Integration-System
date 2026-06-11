@@ -215,6 +215,7 @@ import MetricComparison from './MetricComparison.vue';
 import type { MultiMetricComparison } from '../../types/analytics';
 import { getApiUrl } from '@/config/runtime';
 import { authenticatedFetch } from '@/api/authenticatedFetch';
+import { useWebSocketStore, type SubscriptionId } from '@/stores/websocket';
 
 interface Props {
   title?: string;
@@ -483,18 +484,37 @@ function getValueFormatter(metricKey: string): (_value: number) => string {
 }
 
 // LCP 優化：延遲加載數據
+let analyticsSubscriptionId: SubscriptionId | null = null;
 let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
+
+function subscribeToAnalyticsUpdates() {
+  if (!props.autoRefresh || analyticsSubscriptionId) {
+    return;
+  }
+
+  const wsStore = useWebSocketStore();
+  analyticsSubscriptionId = wsStore.subscribe('analytics', () => {
+    loadData();
+  });
+}
+
+function startAutoRefreshFallback() {
+  if (!props.autoRefresh || refreshIntervalId || props.refreshInterval <= 0) {
+    return;
+  }
+
+  refreshIntervalId = setInterval(() => {
+    loadData();
+  }, props.refreshInterval);
+}
 
 onMounted(() => {
   // LCP 優化：使用 requestIdleCallback 延遲加載，避免阻塞首次渲染
   // 這確保 Dashboard 主要內容先顯示，Analytics 數據在瀏覽器空閒時加載
   const scheduleDataLoad = () => {
     loadData();
-
-    // 自動刷新
-    if (props.autoRefresh) {
-      refreshIntervalId = setInterval(loadData, props.refreshInterval);
-    }
+    subscribeToAnalyticsUpdates();
+    startAutoRefreshFallback();
   };
 
   if ('requestIdleCallback' in window) {
@@ -505,8 +525,14 @@ onMounted(() => {
   }
 });
 
-// 清理定時器
+// 清理 WebSocket 訂閱
 onBeforeUnmount(() => {
+  if (analyticsSubscriptionId) {
+    const wsStore = useWebSocketStore();
+    wsStore.unsubscribe(analyticsSubscriptionId);
+    analyticsSubscriptionId = null;
+  }
+
   if (refreshIntervalId) {
     clearInterval(refreshIntervalId);
     refreshIntervalId = null;

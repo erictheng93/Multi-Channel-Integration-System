@@ -53,21 +53,20 @@ GET /api/analytics/dashboard/metrics # Dashboard metrics
 GET /api/analytics/dashboard/health # Dashboard health
 ```
 
-### Real-time Dashboard (10)
+### Real-time Dashboard
 
 ```
-GET /api/analytics/realtime/connections # Active connections
-POST /api/analytics/realtime/subscription # Subscribe to updates
-DELETE /api/analytics/realtime/subscription/:id # Unsubscribe
-POST /api/analytics/realtime/broadcast # Broadcast event
-GET /api/analytics/realtime/metrics # Real-time metrics
-GET /api/analytics/realtime/status # Connection status
-POST /api/analytics/realtime/ping # Ping connection
-GET /api/analytics/realtime/config # Get config
-PUT /api/analytics/realtime/config # Update config
+POST /api/analytics/realtime/subscription # Get WebSocket channels for dashboard updates
+DELETE /api/analytics/realtime/subscription/:id # Release client-side subscription
+POST /api/analytics/realtime/broadcast # Broadcast widget/config update via WebSocket
+POST /api/analytics/realtime/trigger-update/:dashboardId/:widgetId # Trigger widget refresh broadcast
+POST /api/analytics/realtime/trigger-update/:dashboardId # Trigger dashboard refresh broadcast
+GET /api/analytics/realtime/status # WebSocket connection status
+GET /api/analytics/realtime/health # Health check
+POST /api/analytics/realtime/cleanup # Cleanup hook for compatibility
 ```
 
-> **Note**: Real-time updates use WebSocket via Durable Objects. The SSE endpoint (`/realtime/sse/:id`) was removed in Feb 2026.
+> **Note**: Real-time updates use WebSocket via Durable Objects. Clients subscribe to the returned WebSocket channels; the legacy interval-polling transition path has been removed. The SSE endpoint (`/realtime/sse/:id`) was removed in Feb 2026.
 
 ## Structure
 
