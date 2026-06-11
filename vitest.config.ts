@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
       '@': path.resolve(__dirname, './src'),
       '@backend': path.resolve(__dirname, './src'), //  Added for test imports
       '@modules': path.resolve(__dirname, './src/modules'),
-      '@shared': path.resolve(__dirname, './src/shared'),
+      '@shared': path.resolve(__dirname, './shared'),
       '@infrastructure': path.resolve(__dirname, './src/infrastructure'),
       '@auth': path.resolve(__dirname, './src/modules/auth'),
       '@conversations': path.resolve(__dirname, './src/modules/conversations'),

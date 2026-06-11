@@ -106,6 +106,7 @@
     "check:routes:ci": "bun scripts/detect-route-conflicts.ts || (echo 'Route conflict detection failed! See report above.' && exit 1)",
     "check:sql-raw": "bun scripts/check-sql-raw.ts",
     "check:sql-raw:ci": "bun scripts/check-sql-raw.ts || (echo 'Unsafe sql.raw usage detected! See report above.' && exit 1)",
+    "check:scoped-todos": "bun scripts/check-scoped-todos.ts",
     "check:type-debt": "bun scripts/check-type-debt.ts",
     "precheck:all": "bun run check:routes && bun run validate:all",
     "build:worker-bundle": "bun scripts/build-worker-bundle.ts",

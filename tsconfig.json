@@ -53,6 +53,7 @@
       "@notifications/*": ["./src/modules/notifications/*"],
       "@qrcode/*": ["./src/modules/qrcode/*"],
       "@reports/*": ["./src/modules/reports/*"],
+      "@shared/*": ["./shared/*"],
       "@session/*": ["./src/modules/session/*"]
     },
     "lib": [
@@ -66,7 +67,8 @@
     "jsxImportSource": "hono/jsx"
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "shared/**/*"
   ],
   "exclude": [
     "node_modules",
