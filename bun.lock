@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "multi-channel-platform",
@@ -36,7 +35,7 @@
         "tsx": "^4.22.4",
         "typescript": "^6.0.3",
         "vitest": "^4.1.8",
-        "wrangler": "4.99.0",
+        "wrangler": "^4.99.0",
         "ws": "^8.21.0",
       },
     },
