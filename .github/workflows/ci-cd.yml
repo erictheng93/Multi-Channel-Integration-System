@@ -219,7 +219,7 @@ jobs:
   #
   # Order:
   #   1. Schema drift check against live D1 (defence in depth)
-  #   2. Capture current deployment id (for rollback)
+  #   2. Capture current worker version id (for rollback)
   #   3. Apply D1 migrations BEFORE worker deploy (forward-compatible only)
   #   4. Deploy worker
   #   5. Deploy Pages
@@ -265,7 +265,7 @@ jobs:
         run: bun scripts/check-schema-drift.ts
 
       # Capture must never abort the deploy. If we can't read the current
-      # deployment (network blip, first-ever deploy, wrangler CLI change),
+      # deployed version (network blip, first-ever deploy, wrangler CLI change),
       # we still want to proceed — we just lose the ability to auto-roll-back.
       # The rollback step guards against this by checking for 'none'/empty.
       - name: Capture current worker version for rollback
@@ -273,7 +273,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          PREV=$(bunx wrangler deployments list --name mcis-worker --json 2>/dev/null | jq -r '.[0].id // empty')
+          PREV=$(bunx wrangler deployments list --name mcis-worker --json 2>/dev/null | jq -r '(sort_by(.created_on) | last | .versions // [] | max_by(.percentage) | .version_id) // empty')
           if [ -z "$PREV" ]; then
             PREV="none"
           fi
@@ -284,6 +284,8 @@ jobs:
       # ASSUMPTION: every migration in drizzle/ is forward-compatible.
       # NO continue-on-error — a failed migration MUST abort the deploy.
       - name: Apply D1 migrations
+        env:
+          MCIS_CONFIRM_PRODUCTION: allow:d1:migrate
         run: bun run db:migrate
 
       - name: Deploy Worker (Cloudflare)
@@ -321,7 +323,7 @@ jobs:
       #   3. previous is not 'none'  — we have a real version id
       # If capture itself failed (output == '' or 'none'), we intentionally
       # skip rollback and let a human decide — auto-rollback with no target
-      # would just crash wrangler with an empty --version-id.
+      # would just crash wrangler with an empty rollback target.
       - name: Roll back worker on failure
         if: |
           failure() &&
@@ -329,7 +331,7 @@ jobs:
           steps.capture.outputs.previous != 'none'
         run: |
           echo "Health check or deploy failed. Rolling back worker to ${{ steps.capture.outputs.previous }}."
-          bunx wrangler rollback --name mcis-worker --version-id "${{ steps.capture.outputs.previous }}"
+          bunx wrangler rollback "${{ steps.capture.outputs.previous }}" --name mcis-worker --message "Automated rollback after failed GitHub Actions deploy" --yes
           echo "WARNING: D1 migrations are NOT rolled back. Manual intervention may be required."
 
       - name: Flag un-rollbackable failure
