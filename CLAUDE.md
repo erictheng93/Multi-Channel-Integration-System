@@ -214,7 +214,10 @@ CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse
 ### Deployment Policy
 - **REMOTE PRODUCTION ONLY** — no local D1/KV/R2, no staging
 - DO NOT add `[env.development]` or `[env.staging]` to `wrangler.toml`
-- Deploy: `bun run deploy` (Worker) / `bun run deploy:pages` (Frontend)
+- **MANUAL DEPLOY ONLY** — CI auto-deploy is disabled (`deploy-production: if: false` in `.github/workflows/ci-cd.yml`). Push to main runs validate/test/build but never ships.
+- Deploy: `bun run deploy` (Worker) / **`bun run deploy:pages` (Frontend — PREFER THIS)**
+- **Frontend deploy MUST go through `bun run deploy:pages`** (`scripts/deploy-pages.ts`), never a raw `wrangler pages deploy`. Vite bakes `VITE_*` into the bundle at build time, so a missing `VITE_BACKEND_URL` silently ships a bundle that crashes on load (page stuck at "載入中..."). The script reads the expected URL from `frontend/.env.production`, builds, then **guards**: it refuses to deploy unless that URL is actually baked into `dist/`.
+- `frontend/.env.production` is **required for local builds** but is gitignored (local-only). Mirror the Cloudflare Pages dashboard values; template in `frontend/.env.production.example`. Pages dashboard env vars do NOT reach the build — the build runs locally/in CI, not on Cloudflare.
 
 ---
 
