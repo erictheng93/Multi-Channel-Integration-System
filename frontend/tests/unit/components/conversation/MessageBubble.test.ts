@@ -76,6 +76,9 @@ vi.mock('@/composables/message', () => {
       recallMessage: vi.fn(() => emitters.recall?.({} as Message)),
       selectMessage: vi.fn(() => emitters.select?.({} as Message)),
       handleRetry: vi.fn(() => emitters.retry?.('msg-1')),
+      handleTouchStart: vi.fn(),
+      handleTouchEnd: vi.fn(),
+      handleTouchMove: vi.fn(),
     }),
     useMessageSticker: () => ({
       stickerMetadata: ref(null),
@@ -710,17 +713,19 @@ describe('MessageBubble.vue', () => {
       expect(copyBtn.exists()).toBe(true)
     })
 
-    it('shows reply button only for incoming messages', async () => {
-      const incomingWrapper = mountBubble({ senderType: 'customer' })
-      await incomingWrapper.trigger('mouseenter')
+    it('keeps the hover toolbar minimal: quick copy + a single more-actions entry', async () => {
+      // Reply (and the rest) moved into the popover menu; the hover toolbar
+      // now only exposes the one-click copy and the ⋯ entry, so it no longer
+      // crowds the bubble or intercepts clicks / text selection.
+      const wrapper = mountBubble({ senderType: 'customer' })
+      await wrapper.trigger('mouseenter')
       const { nextTick } = require('vue')
       await nextTick()
-      expect(incomingWrapper.find('.action-btn[title="回覆"]').exists()).toBe(true)
 
-      const outgoingWrapper = mountBubble({ senderType: 'agent' })
-      await outgoingWrapper.trigger('mouseenter')
-      await nextTick()
-      expect(outgoingWrapper.find('.action-btn[title="回覆"]').exists()).toBe(false)
+      expect(wrapper.find('.action-btn[title="複製"]').exists()).toBe(true)
+      expect(wrapper.find('.action-btn[title="更多操作"]').exists()).toBe(true)
+      // Reply is no longer a hover quick-button.
+      expect(wrapper.find('.action-btn[title="回覆"]').exists()).toBe(false)
     })
   })
 
