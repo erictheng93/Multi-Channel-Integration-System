@@ -197,6 +197,38 @@ export function useMessageActions(
     showActions.value = value
   }
 
+  /**
+   * Long-press (touch) support — mirrors the desktop right-click so touch
+   * users can open the full actions menu without a hover toolbar.
+   * A hold opens the menu; any move (scroll) or early release cancels it.
+   */
+  const LONG_PRESS_DURATION = 500
+  const longPressTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearLongPress = () => {
+    if (longPressTimer.value !== null) {
+      clearTimeout(longPressTimer.value)
+      longPressTimer.value = null
+    }
+  }
+
+  const handleTouchStart = () => {
+    clearLongPress()
+    longPressTimer.value = setTimeout(() => {
+      showActions.value = true
+      showActionsMenu.value = true
+      longPressTimer.value = null
+    }, LONG_PRESS_DURATION)
+  }
+
+  const handleTouchEnd = () => {
+    clearLongPress()
+  }
+
+  const handleTouchMove = () => {
+    clearLongPress()
+  }
+
   return {
     // State
     showActions,
@@ -211,9 +243,13 @@ export function useMessageActions(
     recallMessage,
     selectMessage,
     handleRetry,
+    handleTouchStart,
+    handleTouchEnd,
+    handleTouchMove,
 
     // Utility Methods
     closeActionsMenu,
-    setShowActions
+    setShowActions,
+    clearLongPress
   }
 }

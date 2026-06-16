@@ -87,6 +87,18 @@
   overflow: hidden;
 }
 
+/* Floating (teleported to <body>) variant: positioned as fixed via inline
+   top/left from JS. A high z-index at the document root keeps it above all
+   message rows, separators and the toolbar — escaping the virtualized row's
+   transform/contain stacking context and the scroll list's overflow clip. */
+.actions-dropdown-floating {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+  z-index: 2000;
+}
+
 .dropdown-item {
   display: flex;
   align-items: center;

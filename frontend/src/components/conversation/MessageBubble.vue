@@ -12,6 +12,9 @@
     @contextmenu="handleRightClick"
     @mouseenter="showActions = true"
     @mouseleave="showActions = false"
+    @touchstart.passive="handleTouchStart"
+    @touchend="handleTouchEnd"
+    @touchmove.passive="handleTouchMove"
   >
     <div class="message-content">
       <!-- Image Message (legacy fallback, only when no R2 image attachments) -->
@@ -358,68 +361,98 @@
         </div>
       </div>
 
-      <!-- Message Actions Menu -->
+      <!--
+        Message Actions: a minimal hover toolbar (one-click 複製 + a single
+        ⋯ entry) plus a popover menu. The menu opens via the ⋯ button, a
+        right-click (handleRightClick), or a long-press on touch — so the
+        toolbar no longer needs to crowd the bubble with every action.
+      -->
       <div
         v-if="showActions || showActionsMenu"
+        ref="actionsEl"
         class="message-actions"
         :class="{ 'actions-outgoing': isOutgoing }"
       >
+        <!-- Quick action: one-click copy (kept for frequency) -->
         <button
           class="action-btn"
           title="複製"
-          @click="copyMessage"
+          @click.stop="copyMessage"
         >
           <CopyIcon />
         </button>
 
-        <button
-          v-if="!isOutgoing"
-          class="action-btn"
-          title="回覆"
-          @click="replyToMessage"
-        >
-          <ReplyIcon />
-        </button>
-
+        <!-- Entry point: open the full actions menu -->
         <button
           class="action-btn"
           title="更多操作"
-          @click="toggleActionsMenu"
+          @click.stop="toggleActionsMenu"
         >
           <MoreVerticalIcon />
         </button>
 
-        <!-- Dropdown Menu -->
-        <div
-          v-if="showActionsMenu"
-          class="actions-dropdown"
-          @click.stop
-        >
-          <button
-            class="dropdown-item"
-            @click="forwardMessage"
+        <!--
+          Popover menu — teleported to <body> and positioned fixed. The bubble
+          lives inside nested stacking contexts (virtualized row uses
+          transform + contain; toolbar uses backdrop-filter) and an
+          overflow-clipped scroll list, so an in-bubble popover is both painted
+          behind sibling rows and clipped. Teleport escapes both.
+        -->
+        <Teleport to="body">
+          <div
+            v-if="showActionsMenu"
+            ref="menuEl"
+            class="actions-dropdown actions-dropdown-floating"
+            :style="{
+              top: menuTop + 'px',
+              left: menuLeft + 'px',
+              visibility: menuPositioned ? 'visible' : 'hidden',
+            }"
+            @click.stop
           >
-            <ForwardIcon />
-            <span>轉發</span>
-          </button>
+            <button
+              class="dropdown-item"
+              @click="copyMessage"
+            >
+              <CopyIcon />
+              <span>複製</span>
+            </button>
 
-          <button
-            v-if="isOutgoing"
-            class="dropdown-item danger"
-            @click="recallMessage"
-          >
-            <TrashIcon />
-            <span>撤回</span>
-          </button>
+            <button
+              v-if="!isOutgoing"
+              class="dropdown-item"
+              @click="replyToMessage"
+            >
+              <ReplyIcon />
+              <span>回覆</span>
+            </button>
 
-          <button
-            class="dropdown-item"
-            @click="selectMessage"
-          >
-            <CheckIcon />
-            <span>選擇</span>
-          </button>
-        </div>
+            <button
+              class="dropdown-item"
+              @click="forwardMessage"
+            >
+              <ForwardIcon />
+              <span>轉發</span>
+            </button>
+
+            <button
+              v-if="isOutgoing"
+              class="dropdown-item danger"
+              @click="recallMessage"
+            >
+              <TrashIcon />
+              <span>撤回</span>
+            </button>
+
+            <button
+              class="dropdown-item"
+              @click="selectMessage"
+            >
+              <CheckIcon />
+              <span>選擇</span>
+            </button>
+          </div>
+        </Teleport>
       </div>
     </div>
 
@@ -455,7 +488,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
+  import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
   import type { Message } from '@/types'
   import SafeHtmlRenderer from '@/components/ui/SafeHtmlRenderer.vue'
   import FileAttachmentCard from '@/components/file/FileAttachmentCard.vue'
@@ -584,7 +617,84 @@
     recallMessage,
     selectMessage,
     handleRetry,
+    handleTouchStart,
+    handleTouchEnd,
+    handleTouchMove,
   } = useMessageActions(actionsProps, actionsEmit)
+
+  // The actions menu is teleported to <body> and positioned as `fixed`, so it
+  // escapes the nested stacking contexts (the virtualized row uses
+  // transform + contain; the toolbar uses backdrop-filter) and the
+  // overflow-clipped scroll list that would otherwise hide / clip an
+  // in-bubble popover. actionsEl is the on-bubble toolbar used as the anchor.
+  const actionsEl = ref<HTMLElement | null>(null)
+  const menuEl = ref<HTMLElement | null>(null)
+  const menuTop = ref(0)
+  const menuLeft = ref(0)
+  const menuPositioned = ref(false)
+
+  // Place the floating menu next to its toolbar anchor: aligned to the inner
+  // side of the column, flipping above when there is no room below. Computed
+  // against the viewport because the menu is fixed-positioned at <body>.
+  const positionMenu = () => {
+    const anchor = actionsEl.value
+    const menu = menuEl.value
+    if (!anchor || !menu) {
+      return
+    }
+    const a = anchor.getBoundingClientRect()
+    const menuW = menu.offsetWidth
+    const menuH = menu.offsetHeight
+    const gap = 6
+    const margin = 8
+
+    const openUp = window.innerHeight - a.bottom < menuH + gap
+    let top = openUp ? a.top - menuH - gap : a.bottom + gap
+    let left = isOutgoing.value ? a.right - menuW : a.left
+
+    left = Math.max(margin, Math.min(left, window.innerWidth - menuW - margin))
+    top = Math.max(margin, Math.min(top, window.innerHeight - menuH - margin))
+
+    menuLeft.value = left
+    menuTop.value = top
+    menuPositioned.value = true
+  }
+
+  // While the menu is open: close on outside click, and on scroll/resize
+  // (a fixed menu would otherwise float detached from its bubble). The click
+  // listener is armed on a macrotask so the opening click/long-press does not
+  // immediately close it.
+  let teardownMenu: (() => void) | null = null
+
+  watch(showActionsMenu, (open) => {
+    if (open) {
+      menuPositioned.value = false
+      nextTick(positionMenu)
+
+      const close = () => {
+        showActionsMenu.value = false
+      }
+      const timerId = setTimeout(() => {
+        document.addEventListener('click', close)
+      }, 0)
+      window.addEventListener('scroll', close, true)
+      window.addEventListener('resize', close)
+      teardownMenu = () => {
+        clearTimeout(timerId)
+        document.removeEventListener('click', close)
+        window.removeEventListener('scroll', close, true)
+        window.removeEventListener('resize', close)
+      }
+    } else {
+      menuPositioned.value = false
+      teardownMenu?.()
+      teardownMenu = null
+    }
+  })
+
+  onUnmounted(() => {
+    teardownMenu?.()
+  })
 
   // Create reactive props for useMessageSticker
   const stickerProps = computed(() => ({
