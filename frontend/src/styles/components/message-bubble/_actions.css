@@ -6,11 +6,18 @@
 /* Message Actions Styles */
 .message-actions {
   position: absolute;
-  top: 50%;
+  /* Straddle the top edge of the bubble, anchored to the inner side.
+     Keeps the toolbar inside the conversation column and off the
+     message body, so text selection / copy is never intercepted. */
+  top: 0;
   transform: translateY(-50%);
   display: flex;
   gap: var(--space-1);
   opacity: 0;
+  /* Defensive guard: while invisible the toolbar must not capture
+     clicks or drag-to-select. pointer-events flips to auto only when
+     it is actually shown (hover rule below). */
+  pointer-events: none;
   transition: all var(--transition-fast);
   z-index: 10;
   background: rgba(255, 255, 255, 0.95);
@@ -21,16 +28,23 @@
 }
 
 .message-actions.actions-outgoing {
-  right: -80px;
+  right: 8px;
+  left: auto;
 }
 
 .message-actions:not(.actions-outgoing) {
-  left: -80px;
+  left: 8px;
+  right: auto;
 }
 
 .message-bubble:hover .message-actions,
 .message-actions:hover {
   opacity: 1;
+  pointer-events: auto;
+  /* Hover-intent: wait 150ms before revealing so merely passing the
+     cursor over a message does not flash the toolbar. Hiding stays
+     instant (uses the base transition with no delay). */
+  transition-delay: 150ms;
 }
 
 .action-btn {
@@ -115,6 +129,8 @@
     margin-top: var(--space-2);
     align-self: flex-end;
     opacity: 1;
+    /* Inline on mobile: always interactive. */
+    pointer-events: auto;
     background: rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(2px);
   }
@@ -145,6 +161,7 @@
 @media (pointer: coarse) {
   .message-actions {
     opacity: 1;
+    pointer-events: auto;
   }
 
   .action-btn {

@@ -7,6 +7,10 @@
   display: flex;
   margin-bottom: var(--space-3);
   max-width: 70%;
+  /* Anchor for .message-actions so the hover toolbar is positioned
+     relative to THIS bubble (not a distant ancestor) — prevents the
+     toolbar from overflowing the column / overlapping neighbours. */
+  position: relative;
 }
 
 .message-incoming {
