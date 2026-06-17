@@ -91,7 +91,7 @@
   const baseNavigationItems: NavItem[] = [
     { path: '/dashboard', label: '\u5100\u8868\u677F', icon: DashboardIcon },
     { path: '/conversations', label: '\u5C0D\u8A71\u7BA1\u7406', icon: ChatIcon },
-    { path: '/customers/tags', label: '\u6A19\u7C64\u7BA1\u7406', icon: TagIcon },
+    { path: '/tags', label: '\u6A19\u7C64\u7BA1\u7406', icon: TagIcon },
     {
       path: '/reports',
       label: '\u5831\u8868\u7CFB\u7D71',

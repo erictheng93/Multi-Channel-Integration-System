@@ -93,7 +93,7 @@
   const PAGE_TITLES: Record<string, string> = {
     '/dashboard': '\u5100\u8868\u677F',
     '/conversations': '\u5C0D\u8A71\u7BA1\u7406',
-    '/customers/tags': '\u6A19\u7C64\u7BA1\u7406',
+    '/tags': '\u6A19\u7C64\u7BA1\u7406',
     '/reports': '\u5831\u8868\u7CFB\u7D71',
     '/data': '\u8CC7\u6599\u7BA1\u7406',
     '/team': '\u5718\u968A\u7BA1\u7406',
