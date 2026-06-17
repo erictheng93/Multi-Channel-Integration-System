@@ -183,7 +183,7 @@ const router = createRouter({
     },
     // ==================== 客戶管理路由 ====================
     {
-      path: '/customers/tags',
+      path: '/tags',
       name: 'CustomerTags',
       component: () => import('@/views/CustomerTags.vue'),
       meta: {
