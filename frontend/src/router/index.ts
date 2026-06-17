@@ -222,6 +222,16 @@ const router = createRouter({
             requiresAuth: true,
             title: '匯出對話記錄'
           }
+        },
+        {
+          path: 'backup',
+          name: 'DataBackup',
+          component: () => import('@/components/data-management/DataBackup.vue'),
+          meta: {
+            requiresAuth: true,
+            requiresAdmin: true,
+            title: '資料備份'
+          }
         }
       ]
     },

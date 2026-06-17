@@ -48,6 +48,7 @@ window, not storage.
 | `members/` | 365 days | access-control snapshots for a year |
 | `tags/` | 365 days | tag config snapshots for a year |
 | `assignments/` | 365 days | conversation→team routing snapshots for a year |
+| `manual/` | 90 days | on-demand admin backups (in-app button) |
 | GitHub artifact | 90 days | off-Cloudflare safety net |
 
 ## Action required: set R2 lifecycle rules
@@ -65,9 +66,17 @@ Cloudflare dashboard → R2 → mcis-backups → Settings → Object lifecycle r
   Rule 3:  prefix "members/"      · Delete objects · 365 days
   Rule 4:  prefix "tags/"         · Delete objects · 365 days
   Rule 5:  prefix "assignments/"  · Delete objects · 365 days
+  Rule 6:  prefix "manual/"       · Delete objects · 90 days
 ```
 
-## Manual backup (on demand)
+## Manual backup — in-app (admin)
+
+Admins can take an on-demand backup from the app: **資料管理 → 資料備份** (`/data/backup`,
+admin-only). The page shows the last automatic backup, a "立即備份到雲端" button (full DB
+dump → R2 `manual/`), and a downloadable list of recent backups. Backend:
+`POST /api/data/backup/run`, `GET /api/data/backup`, `GET /api/data/backup/download`.
+
+## Manual backup — CLI (on demand)
 
 ```bash
 # Full database

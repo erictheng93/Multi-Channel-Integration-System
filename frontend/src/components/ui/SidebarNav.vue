@@ -135,7 +135,13 @@
 
   const navigationItems = computed(() => {
     const isAdmin = authStore.currentAgent?.role === 'admin'
-    return isAdmin ? adminNavigationItems : baseNavigationItems
+    if (!isAdmin) { return baseNavigationItems }
+    // 資料備份 is admin-only — inject it under 資料管理 for admins only
+    return adminNavigationItems.map((item) =>
+      item.path === '/data'
+        ? { ...item, submenu: [...(item.submenu ?? []), { path: '/data/backup', label: '資料備份' }] }
+        : item
+    )
   })
 
   // Auto-expand submenus when route matches their prefix
