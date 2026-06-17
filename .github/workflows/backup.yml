@@ -10,16 +10,20 @@ name: D1 Backup
 #                                agent_teams = Staff Management + Team Settings)
 #   • Customer tags only      -> R2 mcis-backups/tags/  (tags + customer_tags +
 #                                conversation_tags = /tags Customer Tag management)
+#   • Team assignments only   -> R2 mcis-backups/assignments/  (conversations +
+#                                customer_team_assignments + conversation_transfers
+#                                = which team each conversation/customer is assigned to)
 #   • Off-Cloudflare copy     -> GitHub Actions artifact (survives an account teardown)
-#   The focused members/ + tags/ dumps are also inside the full dump; kept
-#   separately for fast, targeted restore of small, critical config data.
+#   The focused dumps are also inside the full dump; kept separately for fast,
+#   targeted restore of small, critical config/routing data.
 #
 # RETENTION (Grandfather-Father-Son) — enforced by R2 lifecycle rules set in the
 # dashboard (R2 -> mcis-backups -> Settings -> Object lifecycle rules):
-#   • prefix "daily/"   -> delete after  30 days
-#   • prefix "monthly/" -> delete after 365 days
-#   • prefix "members/" -> delete after 365 days
-#   • prefix "tags/"    -> delete after 365 days
+#   • prefix "daily/"       -> delete after  30 days
+#   • prefix "monthly/"     -> delete after 365 days
+#   • prefix "members/"     -> delete after 365 days
+#   • prefix "tags/"        -> delete after 365 days
+#   • prefix "assignments/" -> delete after 365 days
 #   (GitHub artifacts: 90 days, set below.)
 #
 # Full runbook: docs/operations/BACKUP_AND_RESTORE.md
@@ -57,7 +61,7 @@ jobs:
       - name: Install dependencies (wrangler)
         run: bun install --frozen-lockfile
 
-      - name: Export D1 — full dump + members + tags
+      - name: Export D1 — full dump + focused snapshots
         run: |
           STAMP="$(date -u +%Y-%m-%d)"
           echo "STAMP=${STAMP}" >> "$GITHUB_ENV"
@@ -66,9 +70,11 @@ jobs:
           bunx wrangler d1 export mcis-db --remote --output "mcis-db-${STAMP}.sql"
           # platform members (Staff Management + Team Settings)
           bunx wrangler d1 export mcis-db --remote --table agents --table teams --table agent_teams --output "members-${STAMP}.sql"
-          # customer tags (may legitimately be empty — handled below, no abort)
+          # customer tags (may be empty)
           bunx wrangler d1 export mcis-db --remote --table tags --table customer_tags --table conversation_tags --output "tags-${STAMP}.sql"
-          echo "Sizes:"; ls -la "mcis-db-${STAMP}.sql" "members-${STAMP}.sql" "tags-${STAMP}.sql"
+          # conversation/customer team assignments (may be empty until teams exist)
+          bunx wrangler d1 export mcis-db --remote --table conversations --table customer_team_assignments --table conversation_transfers --output "assignments-${STAMP}.sql"
+          echo "Sizes:"; ls -la mcis-db-${STAMP}.sql members-${STAMP}.sql tags-${STAMP}.sql assignments-${STAMP}.sql
           # sanity: full + members must contain rows (agents always exist)
           if ! grep -qi 'INSERT INTO' "mcis-db-${STAMP}.sql"; then
             echo "::error::Full backup contains no INSERT statements — aborting."; exit 1
@@ -76,10 +82,9 @@ jobs:
           if ! grep -qi 'INSERT INTO' "members-${STAMP}.sql"; then
             echo "::error::Members backup contains no rows — aborting."; exit 1
           fi
-          # tags may have no rows yet; just warn so an empty result is not silent
-          if ! grep -qi 'INSERT INTO' "tags-${STAMP}.sql"; then
-            echo "::warning::Tags backup has no rows (no customer tags defined yet)."
-          fi
+          # tags / assignments may have no rows yet; warn (do not abort)
+          grep -qi 'INSERT INTO' "tags-${STAMP}.sql" || echo "::warning::Tags backup has no rows (no customer tags defined yet)."
+          grep -qi 'INSERT INTO' "assignments-${STAMP}.sql" || echo "::warning::Assignments backup has no team-assignment rows yet."
 
       - name: Upload full dump to R2 (daily)
         run: bunx wrangler r2 object put "mcis-backups/daily/mcis-db-${STAMP}.sql" --file="mcis-db-${STAMP}.sql" --remote
@@ -94,6 +99,9 @@ jobs:
       - name: Upload tags to R2
         run: bunx wrangler r2 object put "mcis-backups/tags/tags-${STAMP}.sql" --file="tags-${STAMP}.sql" --remote
 
+      - name: Upload assignments to R2
+        run: bunx wrangler r2 object put "mcis-backups/assignments/assignments-${STAMP}.sql" --file="assignments-${STAMP}.sql" --remote
+
       - name: Off-Cloudflare copy (GitHub artifact)
         uses: actions/upload-artifact@v4
         with:
@@ -102,4 +110,5 @@ jobs:
             mcis-db-*.sql
             members-*.sql
             tags-*.sql
+            assignments-*.sql
           retention-days: 90
