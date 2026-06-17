@@ -21,7 +21,8 @@ Each run produces:
 | Full DB dump | `daily/` (+ `monthly/` on the 1st) | Entire database, schema + all tables | everything |
 | Platform members | `members/` | `agents`, `teams`, `agent_teams` | Staff Management (人員管理) + Team Settings (團隊設置) |
 | Customer tags | `tags/` | `tags`, `customer_tags`, `conversation_tags` | Customer Tags (客戶標籤管理, `/tags`) |
-| Off-Cloudflare copy | GitHub artifact (90 days) | full dump + members + tags | — |
+| Team assignments | `assignments/` | `conversations` (`assigned_team_id`), `customer_team_assignments`, `conversation_transfers` | conversation→team routing |
+| Off-Cloudflare copy | GitHub artifact (90 days) | full dump + members + tags + assignments | — |
 
 The focused `members/` and `tags/` dumps are also inside the full dump; they are
 kept separately for **fast, targeted restore** of the small, critical config data.
@@ -46,6 +47,7 @@ window, not storage.
 | `monthly/` | 365 days | any month in the last year |
 | `members/` | 365 days | access-control snapshots for a year |
 | `tags/` | 365 days | tag config snapshots for a year |
+| `assignments/` | 365 days | conversation→team routing snapshots for a year |
 | GitHub artifact | 90 days | off-Cloudflare safety net |
 
 ## Action required: set R2 lifecycle rules
@@ -58,10 +60,11 @@ size); the rules only automate cleanup.
 Cloudflare dashboard → R2 → mcis-backups → Settings → Object lifecycle rules
 → Add rule (×4):
 
-  Rule 1:  prefix "daily/"    · Delete objects · 30 days
-  Rule 2:  prefix "monthly/"  · Delete objects · 365 days
-  Rule 3:  prefix "members/"  · Delete objects · 365 days
-  Rule 4:  prefix "tags/"     · Delete objects · 365 days
+  Rule 1:  prefix "daily/"        · Delete objects · 30 days
+  Rule 2:  prefix "monthly/"      · Delete objects · 365 days
+  Rule 3:  prefix "members/"      · Delete objects · 365 days
+  Rule 4:  prefix "tags/"         · Delete objects · 365 days
+  Rule 5:  prefix "assignments/"  · Delete objects · 365 days
 ```
 
 ## Manual backup (on demand)
@@ -77,6 +80,10 @@ bunx wrangler d1 export mcis-db --remote --table agents --table teams --table ag
 # Customer tags only
 bunx wrangler d1 export mcis-db --remote --table tags --table customer_tags --table conversation_tags \
   --output ./backups/tags-$(date +%F).sql
+
+# Team assignments only (conversation→team routing)
+bunx wrangler d1 export mcis-db --remote --table conversations --table customer_team_assignments --table conversation_transfers \
+  --output ./backups/assignments-$(date +%F).sql
 
 # Push a copy to R2
 bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql" \
