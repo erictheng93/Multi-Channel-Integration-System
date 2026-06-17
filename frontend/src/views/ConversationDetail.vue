@@ -60,6 +60,9 @@
         </div>
       </Transition>
 
+      <!-- LINE 6-month history retention notice (informational, no DB record) -->
+      <HistoryRetentionNotice :platform="conversation?.platform" />
+
       <!-- High Performance Virtual Message List with WebSocket -->
       <div class="messages-container-wrapper">
         <!--  優化的加載狀態：動態骨架屏 with Progressive Loading -->
@@ -260,6 +263,7 @@ import VirtualMessageList from '@/components/conversation/VirtualMessageList.vue
 import MessageInput from '@/components/conversation/MessageInput.vue'
 import ConversationHeader from '@/components/conversation/ConversationHeader.vue'
 import ExportDialog from '@/components/conversation/ExportDialog.vue'
+import HistoryRetentionNotice from '@/components/conversation/banners/HistoryRetentionNotice.vue'
 import { MessageCircleIcon } from '@/components/icons'
 
 // Extracted sub-components
