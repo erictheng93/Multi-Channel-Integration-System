@@ -58,6 +58,9 @@ tfplan
 crash.log
 crash.*.log
 create_admin.sql
+# DB rebuild seed files — contain credentials/seed data, never commit
+seed-admin.sql
+seed-settings.sql
 "frontend/nul"  
 frontend/nul 
 
