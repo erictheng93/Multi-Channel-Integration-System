@@ -75,6 +75,12 @@ binding = "R2_BUCKET"
 bucket_name = "mcis-files"
 preview_bucket_name = "mcis-files"
 
+# 資料庫備份 R2 存儲（與資料桶分離，供手動/自動備份使用）
+[[r2_buckets]]
+binding = "R2_BACKUP"
+bucket_name = "mcis-backups"
+preview_bucket_name = "mcis-backups"
+
 # ⚠️ REMOVED: AGENT_QUEUE has been fully deprecated and removed (2025-10-07)
 # Delayed messages are now handled by DelayedMessageBuffer Durable Object
 # Migration completed: 2025-09-30

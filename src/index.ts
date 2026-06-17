@@ -29,6 +29,7 @@ log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defi
 // Import additional handlers
 import { activityHandler } from '@modules/activities/handlers/activity';
 import { feedbackHandler } from '@modules/system/handlers/feedback-main';
+import backupHandler from '@modules/data/handlers/backup';
 
 // System-legacy and credential functions now in extracted routers:
 //   src/handlers/system-settings-router.ts
@@ -311,6 +312,9 @@ app.route('/api/activities', activityHandler);
 
 // 客户满意度反馈路由 - Customer Feedback (Migration 0032)
 app.route('/api/feedback', feedbackHandler);
+
+// 資料備份路由 - admin-only manual backups + visibility (R2 mcis-backups)
+app.route('/api/data/backup', backupHandler);
 
 app.route('/api/queues', queueMonitorRouter);
 

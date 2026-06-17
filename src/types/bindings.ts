@@ -44,6 +44,7 @@ export interface Bindings {
   SESSIONS: KVNamespace;
   CACHE: KVNamespace;
   R2_BUCKET: R2Bucket;
+  R2_BACKUP: R2Bucket; // Dedicated backups bucket (mcis-backups), separate from data
   KV: KVNamespace; // Alias for SESSIONS
   
   // Durable Objects - WebSocket + Durable Objects Architecture
