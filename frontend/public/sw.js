@@ -3,10 +3,15 @@
 // Note: ServiceWorker globals (self, clients, caches, importScripts) are
 // declared in frontend/eslint.config.js under `languageOptions.globals`.
 
-const CACHE_NAME = 'multi-channel-support-v1.2.0'
-const STATIC_CACHE = 'static-cache-v1.2.0'
-const DYNAMIC_CACHE = 'dynamic-cache-v1.2.0'
-const API_CACHE = 'api-cache-v1.2.0'
+// Bump this version on every deploy that needs to invalidate caches. The
+// activate handler deletes any cache whose name is not in the current set, so
+// bumping the version auto-purges stale/poisoned caches for ALL users on their
+// next navigation (no manual hard refresh required).
+const CACHE_VERSION = 'v1.3.0'
+const CACHE_NAME = `multi-channel-support-${CACHE_VERSION}`
+const STATIC_CACHE = `static-cache-${CACHE_VERSION}`
+const DYNAMIC_CACHE = `dynamic-cache-${CACHE_VERSION}`
+const API_CACHE = `api-cache-${CACHE_VERSION}`
 
 // 需要快取的靜態資源
 const STATIC_ASSETS = [
@@ -133,6 +138,26 @@ self.addEventListener('fetch', (event) => {
   )
 })
 
+// 來自頁面的訊息（由 serviceWorkerManager 發送）
+self.addEventListener('message', (event) => {
+  const data = event.data || {}
+
+  if (data.type === 'SKIP_WAITING') {
+    // Apply a pending update immediately when the user accepts it.
+    self.skipWaiting()
+    return
+  }
+
+  if (data.type === 'CLEAR_CACHE') {
+    event.waitUntil((async () => {
+      const names = Array.isArray(data.cacheNames) && data.cacheNames.length
+        ? data.cacheNames
+        : await caches.keys()
+      await Promise.all(names.map(name => caches.delete(name)))
+    })())
+  }
+})
+
 // 背景同步事件
 self.addEventListener('sync', (event) => {
   console.log('🔄 [SW] Background sync triggered:', event.tag)
@@ -215,6 +240,36 @@ self.addEventListener('notificationclick', (event) => {
   }
 })
 
+// 判斷請求是否預期非 HTML 的靜態資源（JS/CSS/字型等）
+// Used to detect the deploy-propagation poisoning case: a hashed asset request
+// (/assets/index-*.js) that gets answered with the SPA fallback HTML.
+function expectsNonHtmlAsset(request) {
+  const dest = request.destination
+  if (dest === 'script' || dest === 'style' || dest === 'font') {return true}
+  return /\.(js|mjs|css|json|woff2?|ttf|map)$/i.test(new URL(request.url).pathname)
+}
+
+function responseIsHtml(response) {
+  const contentType = response.headers.get('content-type') || ''
+  return contentType.includes('text/html')
+}
+
+// A poisoned asset response: an HTML body served for a JS/CSS/font request.
+// Never cache it, and never serve it from cache.
+function isPoisonedAssetResponse(request, response) {
+  return expectsNonHtmlAsset(request) && responseIsHtml(response)
+}
+
+// Decide whether a network response is safe to cache.
+function shouldCacheResponse(request, response) {
+  if (!response || !response.ok || response.status !== 200) {return false}
+  // Opaque / redirected responses must not be cached under an asset URL.
+  if (response.type === 'opaqueredirect' || response.redirected) {return false}
+  // Never cache the SPA fallback HTML under a hashed asset URL.
+  if (isPoisonedAssetResponse(request, response)) {return false}
+  return true
+}
+
 // 根據請求類型獲取快取策略
 function getRequestStrategy(request) {
   const url = new URL(request.url)
@@ -256,20 +311,26 @@ async function cacheFirst(request, cacheName, strategy) {
   try {
     const cache = await caches.open(cacheName)
     const cachedResponse = await cache.match(request)
-    
-    if (cachedResponse && !isExpired(cachedResponse, strategy.maxAge)) {
+
+    // Ignore a poisoned cached entry (HTML stored under a JS/CSS asset URL) so
+    // we fall through to the network and self-heal.
+    if (
+      cachedResponse &&
+      !isExpired(cachedResponse, strategy.maxAge) &&
+      !isPoisonedAssetResponse(request, cachedResponse)
+    ) {
       console.log('💾 [SW] Cache hit:', request.url)
       return cachedResponse
     }
-    
+
     const networkResponse = await fetch(request)
-    
-    if (networkResponse.ok) {
+
+    if (shouldCacheResponse(request, networkResponse)) {
       await cache.put(request, networkResponse.clone())
       await cleanupCache(cache, strategy.maxEntries)
       console.log('🌐 [SW] Network response cached:', request.url)
     }
-    
+
     return networkResponse
   } catch {
     console.log('💾 [SW] Serving from cache (network failed):', request.url)
@@ -288,23 +349,23 @@ async function networkFirst(request, cacheName, strategy) {
       )
     ])
     
-    if (networkResponse.ok) {
+    if (shouldCacheResponse(request, networkResponse)) {
       const cache = await caches.open(cacheName)
       await cache.put(request, networkResponse.clone())
       await cleanupCache(cache, strategy.maxEntries)
       console.log('🌐 [SW] Network response cached:', request.url)
     }
-    
+
     return networkResponse
   } catch {
     console.log('💾 [SW] Network failed, serving from cache:', request.url)
     const cache = await caches.open(cacheName)
     const cachedResponse = await cache.match(request)
-    
-    if (cachedResponse) {
+
+    if (cachedResponse && !isPoisonedAssetResponse(request, cachedResponse)) {
       return cachedResponse
     }
-    
+
     return createOfflineResponse(request)
   }
 }
@@ -316,7 +377,7 @@ async function staleWhileRevalidate(request, cacheName, strategy) {
   
   // 背景更新
   const fetchPromise = fetch(request).then(networkResponse => {
-    if (networkResponse.ok) {
+    if (shouldCacheResponse(request, networkResponse)) {
       cache.put(request, networkResponse.clone())
       cleanupCache(cache, strategy.maxEntries)
     }
@@ -326,8 +387,11 @@ async function staleWhileRevalidate(request, cacheName, strategy) {
     return null
   })
   
-  // 立即返回快取或等待網路
-  return cachedResponse || fetchPromise
+  // 立即返回快取或等待網路（poisoned 條目則忽略，改走網路）
+  if (cachedResponse && !isPoisonedAssetResponse(request, cachedResponse)) {
+    return cachedResponse
+  }
+  return fetchPromise
 }
 
 // 檢查回應是否過期
