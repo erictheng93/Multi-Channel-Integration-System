@@ -6,7 +6,9 @@
 ## Build, Test, and Development Commands
 Use Bun, not npm/yarn/pnpm.
 
-- `bun run dev`: run the backend Worker with Wrangler remote dev.
+- `bun run dev`: run the backend Worker with Wrangler remote dev (default; connects to production D1/KV/R2/DO).
+- `bun run dev:local`: run the backend Worker with Wrangler local bindings, using the local D1 mirror.
+- `bun run db:sync:local`: pull remote D1 down into the local miniflare D1 so it is a 1:1 data mirror (remote export is read-only). D1 only — KV/R2/DO are not mirrored locally.
 - `cd frontend && bun run dev`: run the Vite frontend on port `5173`.
 - `bun run build`: backend TypeScript check.
 - `cd frontend && bun run build`: frontend type-check and production build.
