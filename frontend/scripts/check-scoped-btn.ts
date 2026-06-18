@@ -1,22 +1,31 @@
 #!/usr/bin/env bun
 /**
  * ============================================================================
- * Scoped .btn Redefinition Guard
+ * Button Class System Guard (.btn)
  * ============================================================================
  *
- * Flags Vue components that redefine the global `.btn` button classes inside
- * their scoped `<style>` blocks. These redefinitions conflict with the
- * Apple-native button system defined in `src/style.css` and cause the
- * "flash of wrong styles" issue (scoped loads first, global loads second).
+ * Enforces correct usage of the Apple-native button system defined once in
+ * `src/style.css`. Two complementary rules:
  *
- * Rule: Do NOT redefine `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`,
- * `.btn-success`, `.btn-warning`, `.btn-ghost`, `.btn-sm`, or `.btn-lg` inside
- * component `<style>` blocks. These must only be defined once in the global
- * `src/style.css` file.
+ * RULE A — No scoped redefinition (definition site):
+ *   Flags Vue components that redefine the global `.btn` button classes inside
+ *   their scoped `<style>` blocks. These redefinitions conflict with the global
+ *   system and cause the "flash of wrong styles" issue (scoped loads first,
+ *   global loads second).
+ *   Do NOT redefine `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-danger`,
+ *   `.btn-success`, `.btn-warning`, `.btn-ghost`, `.btn-sm`, or `.btn-lg` inside
+ *   component `<style>` blocks.
+ *   Custom button classes (e.g., `.btn-close`, `.btn-icon`) are allowed.
+ *   Contextual/layout overrides like `.modal-footer .btn { margin: ... }` are
+ *   allowed because they compose rather than redefine.
  *
- * Custom button classes (e.g., `.btn-close`, `.btn-icon`) are allowed.
- * Contextual/layout overrides like `.modal-footer .btn { margin: ... }` are
- * allowed because they compose rather than redefine.
+ * RULE B — No modifier without base (usage site):
+ *   The button system is composition-based: the base `.btn` class carries all
+ *   structure (padding, radius, inline-flex, `border: none`, transition) while
+ *   `.btn-primary` etc. are color/size MODIFIERS that only paint. Using a
+ *   modifier in a static `class="..."` WITHOUT the base `btn` yields a button
+ *   with no structure — it renders as native browser chrome ("no CSS decoration").
+ *   Always write `class="btn btn-primary"`, never `class="btn-primary"`.
  *
  * Exits 0 on clean, 1 on violations.
  *
@@ -42,11 +51,27 @@ const RESERVED_CLASSES = [
   'btn-lg',
 ] as const
 
+// Modifier classes that only paint color/size and REQUIRE the base `btn` class
+// to render correctly. (Everything in RESERVED_CLASSES except `btn` itself.)
+const MODIFIER_CLASSES = [
+  'btn-primary',
+  'btn-secondary',
+  'btn-success',
+  'btn-warning',
+  'btn-danger',
+  'btn-ghost',
+  'btn-sm',
+  'btn-lg',
+] as const
+
+type ViolationKind = 'redefinition' | 'missing-base'
+
 interface Violation {
   file: string
   line: number
   selector: string
   snippet: string
+  kind: ViolationKind
 }
 
 function extractStyleBlocks(source: string): { content: string; startLine: number }[] {
@@ -59,6 +84,62 @@ function extractStyleBlocks(source: string): { content: string; startLine: numbe
     blocks.push({ content: match[1], startLine })
   }
   return blocks
+}
+
+function extractTemplateBlocks(source: string): { content: string; startLine: number }[] {
+  const blocks: { content: string; startLine: number }[] = []
+  const regex = /<template[^>]*>([\s\S]*?)<\/template>/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(source)) !== null) {
+    const before = source.slice(0, match.index)
+    const startLine = before.split('\n').length
+    blocks.push({ content: match[1], startLine })
+  }
+  return blocks
+}
+
+/**
+ * RULE B: find static `class="..."` (or single-quoted) attributes in template
+ * blocks that use a `.btn-*` MODIFIER without ANY structural base class.
+ *
+ * A valid base is either the global `btn` class OR a custom `btn-*` class
+ * (e.g. `btn-modern`, `btn-icon`) that a component defines locally to supply
+ * structure. Only a modifier used with NO base at all is the "no decoration"
+ * bug this rule guards against.
+ *
+ * Only static class attributes are scanned. Dynamic `:class` bindings are out
+ * of scope (too varied to parse safely) and are not reported.
+ */
+function scanTemplateMissingBase(filePath: string, source: string): Violation[] {
+  const violations: Violation[] = []
+  const blocks = extractTemplateBlocks(source)
+  const classAttr = /\bclass\s*=\s*(["'])([^"']*)\1/g
+  const modifierSet = new Set<string>(MODIFIER_CLASSES)
+
+  for (const block of blocks) {
+    let match: RegExpExecArray | null
+    while ((match = classAttr.exec(block.content)) !== null) {
+      const tokens = match[2].split(/\s+/).filter(Boolean)
+      const modifier = tokens.find((t) => modifierSet.has(t))
+      // A base is `btn` itself, or any custom `btn-*` class (not a modifier).
+      const hasBase = tokens.some(
+        (t) => t === 'btn' || (t.startsWith('btn-') && !modifierSet.has(t))
+      )
+      if (modifier && !hasBase) {
+        const before = block.content.slice(0, match.index)
+        const lineInBlock = before.split('\n').length - 1
+        violations.push({
+          file: filePath,
+          line: block.startLine + lineInBlock,
+          selector: modifier,
+          snippet: `class="${match[2]}"`,
+          kind: 'missing-base',
+        })
+      }
+    }
+  }
+
+  return violations
 }
 
 /**
@@ -107,6 +188,7 @@ function scanFile(filePath: string, source: string): Violation[] {
                   line: block.startLine + i,
                   selector: violation,
                   snippet: trimmed,
+                  kind: 'redefinition',
                 })
               }
             }
@@ -125,6 +207,9 @@ function scanFile(filePath: string, source: string): Violation[] {
       }
     }
   }
+
+  // RULE B: modifier-without-base usage in template class attributes
+  violations.push(...scanTemplateMissingBase(filePath, source))
 
   return violations
 }
@@ -193,18 +278,16 @@ async function main() {
   }
 
   if (allViolations.length === 0) {
-    console.log(`Scoped .btn guard: OK (${files.length} files scanned)`)
+    console.log(`Button class guard: OK (${files.length} files scanned)`)
     process.exit(0)
   }
 
-  console.error('Scoped .btn guard: FAILED')
+  console.error('Button class guard: FAILED')
   console.error('')
-  console.error(
-    'The following Vue components redefine global button classes inside their <style> blocks.'
-  )
-  console.error(
-    'Remove these redefinitions — the global button system lives in src/style.css.'
-  )
+  console.error('  [redefinition] = global .btn class redefined in a scoped <style> block')
+  console.error('                   Fix: remove it — the button system lives only in src/style.css.')
+  console.error('  [missing-base] = a .btn-* modifier used without the base `btn` class')
+  console.error('                   Fix: change class="btn-primary" to class="btn btn-primary".')
   console.error('')
 
   const byFile = new Map<string, Violation[]>()
@@ -218,7 +301,7 @@ async function main() {
     const rel = relative(process.cwd(), file)
     console.error(`  ${rel}`)
     for (const v of violations) {
-      console.error(`    line ${v.line}: .${v.selector}`)
+      console.error(`    line ${v.line}: [${v.kind}] .${v.selector}`)
       console.error(`      ${v.snippet}`)
     }
     console.error('')
