@@ -138,12 +138,21 @@ class ApiClient {
     this.isRefreshing = true;
 
     try {
-      const response = await fetch(`${this.baseURL}/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: this.getHeaders('POST'),
-        body: JSON.stringify({})
-      });
+      let response: globalThis.Response;
+      try {
+        response = await fetch(`${this.baseURL}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: this.getHeaders('POST'),
+          body: JSON.stringify({})
+        });
+      } catch (error) {
+        // Network error reaching the refresh endpoint is TRANSIENT. Do NOT
+        // destroy the session — keep the user where they are; the next
+        // request/activity will retry the refresh.
+        this.processQueue(error as Error, null);
+        return null;
+      }
 
       if (response.ok) {
         const result = await response.json();
@@ -155,17 +164,29 @@ class ApiClient {
           this.processQueue(null, 'cookie-refreshed');
           return 'cookie-refreshed';
         }
+
+        // 2xx but unsuccessful payload — treat as a genuine auth failure.
+        this.processQueue(new Error('Refresh response unsuccessful'), null);
+        this.redirectToLogin();
+        return null;
       }
-    } catch (error) {
-      this.processQueue(error as Error, null);
+
+      // Only a genuine auth rejection should log the user out. Anything else
+      // (5xx, 429, etc.) is transient — verified in prod, /auth/refresh
+      // intermittently 500s on a flaky D1 read. Logging the user out on those
+      // is the bug; preserve the session instead.
+      if (response.status === 401 || response.status === 403) {
+        this.processQueue(new Error('Unauthorized'), null);
+        this.redirectToLogin();
+        return null;
+      }
+
+      // Transient server error — keep the session, surface failure to caller.
+      this.processQueue(new Error(`Refresh failed transiently (${response.status})`), null);
+      return null;
     } finally {
       this.isRefreshing = false;
     }
-
-    // Refresh failed — redirect to login (guarded against concurrent calls)
-    this.redirectToLogin();
-
-    return null;
   }
 
   private getCookieValue(name: string): string | null {
@@ -246,17 +267,22 @@ class ApiClient {
 
       if (!response.ok) {
         // Handle 401 Unauthorized with token refresh
-        if (response.status === 401 && redirectOnUnauthorized && !isRetry) {
-          const newToken = await this.refreshAuthToken();
-          if (newToken) {
-            // Retry the request with new token
-            return this.request<T>(method, endpoint, data, { ...options, isRetry: true });
-          }
-        }
-
-        // Handle 401 without refresh token — guarded redirect
         if (response.status === 401 && redirectOnUnauthorized) {
-          this.redirectToLogin();
+          if (!isRetry) {
+            const newToken = await this.refreshAuthToken();
+            if (newToken) {
+              // Retry the request with the refreshed session.
+              return this.request<T>(method, endpoint, data, { ...options, isRetry: true });
+            }
+            // Refresh failed. refreshAuthToken() already redirected to /login
+            // IF this was a genuine auth failure (401/403). For transient
+            // failures (5xx/429/network) it deliberately did NOT redirect, so
+            // we preserve the session and just return the error below.
+          } else {
+            // Already retried with a freshly refreshed session and STILL 401
+            // — this is a genuine auth failure, force re-login.
+            this.redirectToLogin();
+          }
         }
 
         // Check if we should retry for server errors
@@ -357,7 +383,10 @@ class ApiClient {
       }
     }
 
-    if (response.status === 401) {
+    // Only redirect after a retried-still-401 (genuine). A transient refresh
+    // failure leaves the session intact; refreshAuthToken() owns the genuine
+    // auth-failure redirect.
+    if (response.status === 401 && isRetry) {
       this.redirectToLogin();
     }
 
@@ -433,8 +462,10 @@ class ApiClient {
           }
         }
 
-        // Handle 401 without refresh token — guarded redirect
-        if (response.status === 401) {
+        // Only redirect after a retried-still-401 (genuine). Transient refresh
+        // failures preserve the session; refreshAuthToken() owns the genuine
+        // auth-failure redirect.
+        if (response.status === 401 && isRetry) {
           this.redirectToLogin();
         }
 
