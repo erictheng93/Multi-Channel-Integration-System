@@ -104,7 +104,7 @@ export default {
       timezone: 'Timezone',
       language: 'Language',
       systemNamePlaceholder: 'Multi-Channel Support',
-      contactEmailPlaceholder: 'admin@example.com'
+      contactEmailPlaceholder: "admin{'@'}example.com"
     },
 
     // Platform integrations
