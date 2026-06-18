@@ -122,7 +122,7 @@
         </div>
 
         <button
-          class="btn-primary"
+          class="btn btn-primary"
           :disabled="saving"
           @click="saveConfig"
         >
@@ -169,7 +169,7 @@
         </div>
 
         <button
-          class="btn-secondary"
+          class="btn btn-secondary"
           :disabled="refreshing"
           @click="refreshHealth"
         >

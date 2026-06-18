@@ -172,7 +172,7 @@
       <div class="form-actions">
         <button
           type="submit"
-          class="btn-primary"
+          class="btn btn-primary"
           :disabled="saving"
         >
           <span
