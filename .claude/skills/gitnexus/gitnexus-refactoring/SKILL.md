@@ -22,7 +22,7 @@ description: "Use when the user wants to rename, extract, split, move, or restru
 4. Plan update order: interfaces → implementations → callers → tests
 ```
 
-> If "Index is stale" → run `rtk bunx gitnexus analyze` in terminal. This repo uses Bun; `rtk npx gitnexus analyze` routes through npm and can fail with `Missing script: "gitnexus"`.
+> If "Index is stale" → run `npx gitnexus analyze` in terminal.
 
 ## Checklists
 
