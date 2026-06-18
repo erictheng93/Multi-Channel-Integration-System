@@ -18,6 +18,7 @@ import {
 import { loginRateLimiter, authRateLimiter } from '@/middleware/rate-limiter';
 import { ActivityCapture, ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { createDbClient } from '@/db/drizzle-factory';
+import { withD1Retry } from '@/utils/db-retry';
 import { agents, agentTeams } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
@@ -971,14 +972,19 @@ authHandler.post('/refresh', authRateLimiter, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
 
     // 首先嘗試 agents 表（新的用戶表）
-    let userRow: RefreshUserRow | undefined = await drizzleDb
-      .select()
-      .from(agents)
-      .where(and(
-        eq(agents.id, payload.userId),
-        eq(agents.isActive, true)
-      ))
-      .get();
+    // Wrap in withD1Retry: this read intermittently 500s on a transient D1
+    // "Failed query" error. A short retry recovers it instead of failing the
+    // whole refresh (which would log the user out mid-session).
+    let userRow: RefreshUserRow | undefined = await withD1Retry(() =>
+      drizzleDb
+        .select()
+        .from(agents)
+        .where(and(
+          eq(agents.id, payload.userId),
+          eq(agents.isActive, true)
+        ))
+        .get()
+    );
 
     // 如果在 agents 表中沒找到，使用 Drizzle ORM 查詢 users 表（舊的用戶表）
     if (!userRow) {
