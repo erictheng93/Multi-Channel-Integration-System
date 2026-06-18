@@ -23,7 +23,7 @@ description: "Use when the user wants to know what will break if they change som
 4. Assess risk and report to user
 ```
 
-> If "Index is stale" → run `rtk bunx gitnexus analyze` in terminal. This repo uses Bun; `rtk npx gitnexus analyze` routes through npm and can fail with `Missing script: "gitnexus"`.
+> If "Index is stale" → run `npx gitnexus analyze` in terminal.
 
 ## Checklist
 
