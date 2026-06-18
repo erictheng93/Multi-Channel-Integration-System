@@ -19,7 +19,7 @@ interface RateLimitConfig {
   maxRequests: number;
   windowMs: number;
   keyPrefix?: string;
-  identifier?: (c: Context) => string;
+  identifier?: (c: Context) => string | Promise<string>;
   skipFailOpen?: boolean;
   onLimitReached?: (c: Context, data: RateLimitInfo) => void;
 }
@@ -77,13 +77,44 @@ export const RATE_LIMIT_PRESETS = {
 /**
  * Get client IP from request
  */
-function getClientIP(c: Context): string {
+export function getClientIP(c: Context): string {
   return (
     c.req.header('CF-Connecting-IP') ||
     c.req.header('X-Forwarded-For')?.split(',')[0]?.trim() ||
     c.req.header('X-Real-IP') ||
     'unknown'
   );
+}
+
+/**
+ * Identifier for the login endpoint.
+ *
+ * Login is rate-limited PER ACCOUNT (by email), not per IP. Keying by IP
+ * collapses every user behind a shared corporate NAT into one bucket, so a
+ * handful of colleagues logging in within the window locks out the whole
+ * office (even with correct credentials). Per-account keying preserves
+ * brute-force protection for each account while isolating one user's attempts
+ * from another's.
+ *
+ * The email is read from the (cached) JSON body; Hono caches the parsed body,
+ * so the login handler can still read it afterwards. Falls back to the client
+ * IP when the body has no email or is not valid JSON (malformed requests still
+ * get a bounded budget).
+ */
+export async function getLoginIdentifier(c: Context): Promise<string> {
+  try {
+    const body = await c.req.json<{ email?: unknown }>();
+    const rawEmail = body?.email;
+    if (typeof rawEmail === 'string') {
+      const email = rawEmail.trim().toLowerCase();
+      if (email) {
+        return `account:${email}`;
+      }
+    }
+  } catch {
+    // Malformed / missing body — fall through to IP-based limiting.
+  }
+  return getClientIP(c);
 }
 
 /**
@@ -146,7 +177,7 @@ export function createRateLimiter(config: RateLimitConfig) {
       }
 
       // Get client identifier
-      const clientId = identifier(c);
+      const clientId = await identifier(c);
 
       // Generate DO ID (sharding by endpoint + IP prefix)
       const doId = generateDOId(keyPrefix, clientId);
@@ -240,6 +271,9 @@ export const authRateLimiter = createRateLimiter({
 export const loginRateLimiter = createRateLimiter({
   ...RATE_LIMIT_PRESETS.login,
   keyPrefix: 'login',
+  // Per-account keying: isolate each account so a shared office IP does not
+  // collapse all colleagues into one bucket. See getLoginIdentifier.
+  identifier: getLoginIdentifier,
   onLimitReached: (c, info) => {
     console.warn(`[Security] Login rate limit reached - possible brute force`, {
       ip: getClientIP(c),
