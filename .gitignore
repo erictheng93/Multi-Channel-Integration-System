@@ -93,3 +93,24 @@ tmp-*
 # 生成的 QR Code 檔案
 team*_qr.svg
 *_qr.svg
+
+# Local staging rebuild artifacts (schema dump + seed w/ bootstrap creds)
+staging-schema.sql
+staging-seed.sql
+
+# Local D1 mirror dump (prod PII: sessions/IPs/customer data) — see scripts/sync-d1-local.ts
+d1-remote-dump.sql
+
+# LINE backfill artifacts (customer PII / conversation content)
+backfill-convos.json
+backfill.sql
+backfill-all.json
+backfill-delta.sql
+eric-msgs.json
+eric-rebuild.sql
+gen-eric.mjs
+
+# Local debug artifacts (user PII / login screenshots with credentials)
+User.xlsx
+*-login-success.png
+olivia-login-success.png
