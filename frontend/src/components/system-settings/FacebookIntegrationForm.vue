@@ -100,7 +100,7 @@
       <div class="form-actions">
         <button
           type="button"
-          class="btn-secondary"
+          class="btn btn-secondary"
           :disabled="testing || saving"
           @click="handleTest"
         >
@@ -113,7 +113,7 @@
 
         <button
           type="button"
-          class="btn-danger"
+          class="btn btn-danger"
           :disabled="saving || testing"
           @click="handleClear"
         >
@@ -122,7 +122,7 @@
 
         <button
           type="submit"
-          class="btn-primary"
+          class="btn btn-primary"
           :disabled="saving || testing"
         >
           <span

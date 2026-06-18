@@ -31,13 +31,13 @@
       </p>
       <div class="error-actions">
         <button
-          class="btn-primary"
+          class="btn btn-primary"
           @click="reload"
         >
           重新載入頁面
         </button>
         <button
-          class="btn-secondary"
+          class="btn btn-secondary"
           @click="goHome"
         >
           返回首頁
