@@ -27,11 +27,13 @@ Frontend: frontend/src/main.ts → Vue 3 + Pinia stores + Vue Router
 
 ## Development Commands
 
->  **REMOTE RESOURCES ONLY** — all dev connects to production D1, KV, R2, Durable Objects. No local environment.
+> **REMOTE-FIRST, with a LOCAL D1 MIRROR.** Default dev connects to production D1, KV, R2, Durable Objects. A **local D1 mirror** also exists and must be kept **1:1 with remote DATA** via `bun run db:sync:local`. Scope of local mirroring is **D1 only** — KV, R2, and Durable Objects remain remote-only (no local copies).
 
 ### Backend (root)
 ```bash
-bun run dev # Wrangler dev with REMOTE bindings
+bun run dev # Wrangler dev with REMOTE bindings (default)
+bun run dev:local # Wrangler dev with LOCAL bindings (uses the local D1 mirror)
+bun run db:sync:local # Pull REMOTE D1 -> LOCAL miniflare D1 (1:1 data mirror; remote read-only)
 bun run build # TypeScript compilation check
 bun run deploy # Deploy to production
 bun run db:migrate # Apply migrations to REMOTE D1
@@ -212,7 +214,8 @@ CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse
 - JWT caches `allowedTeamIds[]` and `teamRoles{}` for multi-team support
 
 ### Deployment Policy
-- **REMOTE PRODUCTION ONLY** — no local D1/KV/R2, no staging
+- **DEPLOY TARGET IS REMOTE PRODUCTION ONLY** — no staging. The local D1 mirror (below) is a dev/inspection convenience, never a deploy target.
+- **KV / R2 / Durable Objects remain remote-only** — no local copies. Only D1 has a local mirror.
 - DO NOT add `[env.development]` or `[env.staging]` to `wrangler.toml`
 - **MANUAL DEPLOY ONLY** — CI auto-deploy is disabled (`deploy-production: if: false` in `.github/workflows/ci-cd.yml`). Push to main runs validate/test/build but never ships.
 - Deploy: `bun run deploy` (Worker) / **`bun run deploy:pages` (Frontend — PREFER THIS)**
@@ -221,9 +224,9 @@ CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse
 
 ---
 
-- API 用 API 呼叫，不要用 local
+- 預設一律使用 remote 資源（D1/KV/R2/DO 都連 production）。
 - Always think hard.
-- local 環境不存在，一律使用 remote
+- 本地有一份 **D1 鏡像**，必須與 remote 資料保持 1:1：用 `bun run db:sync:local` 同步（remote 唯讀），用 `bun run dev:local` 以本地 D1 啟動。僅限 D1，KV/R2/DO 無本地副本。
 - Always check chrome-devtools docs to make sure it is up-to-date when needed for implementing new libraries or frameworks, or adding features using them.
 - If you find file content exceeds maximum allowed tokens (25000), please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.
 
