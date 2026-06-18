@@ -104,7 +104,7 @@ export default {
       timezone: '時區',
       language: '語言',
       systemNamePlaceholder: 'Multi-Channel Support',
-      contactEmailPlaceholder: 'admin@example.com'
+      contactEmailPlaceholder: "admin{'@'}example.com"
     },
 
     // 平台整合
