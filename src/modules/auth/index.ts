@@ -32,7 +32,10 @@ export interface AuthModuleConfig {
 }
 
 export const DEFAULT_AUTH_MODULE_CONFIG: AuthModuleConfig = {
-  jwtSecret: process.env.JWT_SECRET || 'default-secret',
+  // No hardcoded fallback secret. In the Workers runtime `process.env` is empty
+  // at module-eval time, so this resolves to '' — `initializeAuthModule` then
+  // fails loud rather than ever signing with a guessable shared key.
+  jwtSecret: process.env.JWT_SECRET ?? '',
   tokenExpiry: 3600, // 1 hour
   refreshTokenExpiry: 604800, // 7 days
   bcryptRounds: 12,
@@ -104,9 +107,10 @@ const log = createContextLogger('AuthModule');
 export function initializeAuthModule(config: Partial<AuthModuleConfig> = {}) {
   const finalConfig = { ...DEFAULT_AUTH_MODULE_CONFIG, ...config };
 
-  // 驗證必要配置
-  if (!finalConfig.jwtSecret || finalConfig.jwtSecret === 'default-secret') {
-    log.warn('Using default JWT secret. Please set JWT_SECRET environment variable.');
+  // 驗證必要配置：拒絕以空的簽章金鑰初始化（避免可預測的共用密鑰）
+  if (!finalConfig.jwtSecret) {
+    log.error('initializeAuthModule called without a JWT secret. Refusing to initialize the auth module with an empty signing key.');
+    throw new Error('JWT_SECRET is required to initialize the auth module.');
   }
 
   return {
