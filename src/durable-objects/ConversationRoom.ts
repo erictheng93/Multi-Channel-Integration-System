@@ -132,6 +132,7 @@ export class ConversationRoom implements DurableObject {
     this.messageService = new RoomMessageService(this.roomContext, this.helpers, this.storageService);
     this.connectionManager = new RoomConnectionManager(this.roomContext, this.helpers, this.messageService, this.storageService);
     this.shardingHandler = new RoomShardingHandler(this.roomContext, this.helpers, this.messageService);
+    this.roomContext.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
 
     this.connectionManager.restoreHibernatedConnections();
 

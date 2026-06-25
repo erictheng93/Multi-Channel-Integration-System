@@ -430,12 +430,18 @@ export class WebSocketClient {
   }
 
   private handleMessage(event: MessageEvent): void {
+    if (event.data === 'pong') {
+      this.lastHeartbeat = Date.now()
+      this.handlers.onHeartbeat?.()
+      return
+    }
+
     try {
       const message: WebSocketMessage = JSON.parse(event.data)
       this.lastMessage.value = message
 
       // Handle system messages
-      if (message.type === 'heartbeat') {
+      if (message.type === 'heartbeat' || message.type === 'pong') {
         this.lastHeartbeat = Date.now()
         this.handlers.onHeartbeat?.()
         return
@@ -611,8 +617,8 @@ export class WebSocketClient {
 
     // Send heartbeat
     this.heartbeatTimer = setInterval(() => {
-      if (this.isConnected.value) {
-        this.send({ type: 'ping', timestamp: Date.now() })
+      if (this.isConnected.value && this.socket?.readyState === globalThis.WebSocket.OPEN) {
+        this.socket.send('ping')
       }
     }, this.config.heartbeatInterval) as unknown as number
 

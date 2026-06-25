@@ -24,6 +24,7 @@ interface MockSocket {
 interface MockState extends DurableObjectState {
   acceptWebSocket: ReturnType<typeof vi.fn>
   getWebSockets: ReturnType<typeof vi.fn>
+  setWebSocketAutoResponse: ReturnType<typeof vi.fn>
   storage: DurableObjectStorage & {
     get: ReturnType<typeof vi.fn>
     put: ReturnType<typeof vi.fn>
@@ -51,6 +52,7 @@ function createState(sockets: MockSocket[] = []): MockState {
   return {
     acceptWebSocket: vi.fn(),
     getWebSockets: vi.fn(() => sockets),
+    setWebSocketAutoResponse: vi.fn(),
     storage: {
       get: vi.fn(async () => undefined),
       put: vi.fn(async () => undefined),
@@ -60,6 +62,26 @@ function createState(sockets: MockSocket[] = []): MockState {
       deleteAlarm: vi.fn(async () => undefined)
     }
   } as unknown as MockState
+}
+
+function installWebSocketRequestResponsePair(): void {
+  Object.defineProperty(globalThis, 'WebSocketRequestResponsePair', {
+    value: class WebSocketRequestResponsePair {
+      constructor(
+        private readonly request: string,
+        private readonly response: string
+      ) {}
+
+      getRequest(): string {
+        return this.request
+      }
+
+      getResponse(): string {
+        return this.response
+      }
+    },
+    configurable: true
+  })
 }
 
 function createEnv(extra: Record<string, unknown> = {}): Record<string, unknown> {
@@ -124,6 +146,21 @@ describe('UserConnection hibernation', () => {
       value: { OPEN: 1 },
       configurable: true
     })
+    installWebSocketRequestResponsePair()
+  })
+
+  it('configures ping/pong auto-response for hibernated sockets', () => {
+    const state = createState()
+
+    new UserConnection(state, createEnv())
+
+    expect(state.setWebSocketAutoResponse).toHaveBeenCalledTimes(1)
+    const pair = state.setWebSocketAutoResponse.mock.calls[0][0] as {
+      getRequest: () => string
+      getResponse: () => string
+    }
+    expect(pair.getRequest()).toBe('ping')
+    expect(pair.getResponse()).toBe('pong')
   })
 
   it('accepts user sockets with the hibernation API and stores attachment metadata', async () => {
