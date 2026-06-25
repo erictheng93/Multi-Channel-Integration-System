@@ -43,6 +43,16 @@ interface ConnectionInfo {
   userId: string;
   displayName: string;
   role: string;
+  conversationId: string;
+  connectedAt: number;
+}
+
+interface ConnectionAttachment {
+  connectionId: string;
+  userId: string;
+  displayName: string;
+  role: string;
+  conversationId: string;
   connectedAt: number;
 }
 
@@ -71,6 +81,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
 
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
+    this.restoreConnectionsFromHibernation();
     console.log('[CustomerConversationDO] Initialized');
   }
 
@@ -79,6 +90,75 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    */
   private generateConnectionId(): string {
     return crypto.randomUUID();
+  }
+
+  private isConnectionAttachment(value: unknown): value is ConnectionAttachment {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+
+    const attachment = value as Partial<ConnectionAttachment>;
+    return typeof attachment.connectionId === 'string'
+      && typeof attachment.userId === 'string'
+      && typeof attachment.displayName === 'string'
+      && typeof attachment.role === 'string'
+      && typeof attachment.conversationId === 'string'
+      && typeof attachment.connectedAt === 'number';
+  }
+
+  private restoreConnectionsFromHibernation(): void {
+    this.connections.clear();
+
+    for (const socket of this.ctx.getWebSockets()) {
+      const attachment = socket.deserializeAttachment();
+      if (!this.isConnectionAttachment(attachment)) {
+        continue;
+      }
+
+      this.connections.set(attachment.connectionId, {
+        socket,
+        userId: attachment.userId,
+        displayName: attachment.displayName,
+        role: attachment.role,
+        conversationId: attachment.conversationId,
+        connectedAt: attachment.connectedAt
+      });
+
+      if (!this.conversationId) {
+        this.conversationId = attachment.conversationId;
+      }
+    }
+  }
+
+  private createConnectionAttachment(
+    connectionId: string,
+    userId: string,
+    displayName: string,
+    role: string,
+    conversationId: string,
+    connectedAt: number
+  ): ConnectionAttachment {
+    return {
+      connectionId,
+      userId,
+      displayName,
+      role,
+      conversationId,
+      connectedAt
+    };
+  }
+
+  private addHibernatableConnection(socket: WebSocket, attachment: ConnectionAttachment): void {
+    this.ctx.acceptWebSocket(socket, [attachment.userId, attachment.conversationId]);
+    socket.serializeAttachment(attachment);
+    this.connections.set(attachment.connectionId, {
+      socket,
+      userId: attachment.userId,
+      displayName: attachment.displayName,
+      role: attachment.role,
+      conversationId: attachment.conversationId,
+      connectedAt: attachment.connectedAt
+    });
   }
 
   /**
@@ -263,49 +343,22 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       role
     });
 
-    // Accept the WebSocket FIRST before any operations
-    server.accept();
-
-    // FIX: Store with connectionId as key, allowing multiple connections per user
-    this.connections.set(connectionId, {
-      socket: server,
+    const connectedAt = nowMs();
+    const attachment = this.createConnectionAttachment(
+      connectionId,
       userId,
       displayName,
       role,
-      connectedAt: nowMs()
-    });
+      conversationId,
+      connectedAt
+    );
+
+    this.addHibernatableConnection(server, attachment);
 
     console.log(`[CustomerConversationDO] Client connected. Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
 
     // Notify other clients about the new connection (agent presence)
     await this.broadcastUserPresence(userId, true, connectionId);
-
-    // Set up event listeners
-    server.addEventListener('message', async (msg) => {
-      await this.webSocketMessage(server, msg.data);
-    });
-
-    // FIX: Use connectionId for cleanup
-    server.addEventListener('close', async () => {
-      console.log(`[CustomerConversationDO] Connection closed: ${connectionId} (user: ${userId})`);
-      this.connections.delete(connectionId);
-
-      // Only broadcast offline if user has no more connections
-      if (!this.isUserConnected(userId)) {
-        await this.broadcastUserPresence(userId, false, connectionId);
-      }
-      console.log(`[CustomerConversationDO] Remaining connections: ${this.connections.size}`);
-    });
-
-    server.addEventListener('error', async (err) => {
-      console.error(`[CustomerConversationDO] WebSocket error for connection ${connectionId}:`, err);
-      this.connections.delete(connectionId);
-
-      // Only broadcast offline if user has no more connections
-      if (!this.isUserConnected(userId)) {
-        await this.broadcastUserPresence(userId, false, connectionId);
-      }
-    });
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -335,49 +388,22 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
       displayName
     });
 
-    // Accept the WebSocket FIRST before any operations
-    server.accept();
-
-    // FIX: Store with connectionId as key, allowing multiple connections per user
-    this.connections.set(connectionId, {
-      socket: server,
+    const connectedAt = nowMs();
+    const attachment = this.createConnectionAttachment(
+      connectionId,
       userId,
       displayName,
       role,
-      connectedAt: nowMs()
-    });
+      conversationId,
+      connectedAt
+    );
+
+    this.addHibernatableConnection(server, attachment);
 
     console.log(`[CustomerConversationDO] Client connected (pre-validated). Total connections: ${this.connections.size}, Unique users: ${this.getUniqueUserCount()}`);
 
     // Notify other clients about the new connection (agent presence)
     await this.broadcastUserPresence(userId, true, connectionId);
-
-    // Set up event listeners
-    server.addEventListener('message', async (msg) => {
-      await this.webSocketMessage(server, msg.data);
-    });
-
-    // FIX: Use connectionId for cleanup
-    server.addEventListener('close', async () => {
-      console.log(`[CustomerConversationDO] Connection closed: ${connectionId} (user: ${userId})`);
-      this.connections.delete(connectionId);
-
-      // Only broadcast offline if user has no more connections
-      if (!this.isUserConnected(userId)) {
-        await this.broadcastUserPresence(userId, false, connectionId);
-      }
-      console.log(`[CustomerConversationDO] Remaining connections: ${this.connections.size}`);
-    });
-
-    server.addEventListener('error', async (err) => {
-      console.error(`[CustomerConversationDO] WebSocket error for connection ${connectionId}:`, err);
-      this.connections.delete(connectionId);
-
-      // Only broadcast offline if user has no more connections
-      if (!this.isUserConnected(userId)) {
-        await this.broadcastUserPresence(userId, false, connectionId);
-      }
-    });
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -390,6 +416,31 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
   override async webSocketMessage(_ws: WebSocket, message: unknown) {
     console.log('[CustomerConversationDO] Received WebSocket message:', message);
     // Future: Handle client-side events (typing indicators, read receipts, etc.)
+  }
+
+  override async webSocketClose(ws: WebSocket, _code: number, _reason: string, _wasClean: boolean): Promise<void> {
+    await this.removeConnectionForSocket(ws, 'closed');
+  }
+
+  override async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
+    console.error('[CustomerConversationDO] WebSocket error:', error);
+    await this.removeConnectionForSocket(ws, 'errored');
+  }
+
+  private async removeConnectionForSocket(ws: WebSocket, eventName: string): Promise<void> {
+    const attachment = ws.deserializeAttachment();
+    if (!this.isConnectionAttachment(attachment)) {
+      return;
+    }
+
+    console.log(`[CustomerConversationDO] Connection ${eventName}: ${attachment.connectionId} (user: ${attachment.userId})`);
+    this.connections.delete(attachment.connectionId);
+
+    if (!this.isUserConnected(attachment.userId)) {
+      await this.broadcastUserPresence(attachment.userId, false, attachment.connectionId);
+    }
+
+    console.log(`[CustomerConversationDO] Remaining connections: ${this.connections.size}`);
   }
 
   /**
