@@ -55,11 +55,10 @@ export class UserConnection implements DurableObject {
     this.env = env;
     this.userId = env.userId || 'unknown';
 
+    this.restoreConnectionsFromHibernation();
+
     // Initialize from storage
     this.initializeFromStorage();
-
-    // Set up periodic tasks
-    this.setupPeriodicTasks();
   }
 
   // =================== Main Request Handler ===================
@@ -149,6 +148,7 @@ export class UserConnection implements DurableObject {
       }
 
       const connectionId = this.stateManager.generateConnectionId();
+      const tokenExp = Number(url.searchParams.get('tokenExp'));
       const connection: WebSocketConnection = {
         websocket: server,
         userId: this.userId,
@@ -160,35 +160,17 @@ export class UserConnection implements DurableObject {
           deviceId,
           userAgent: request.headers.get('User-Agent'),
           ip: request.headers.get('CF-Connecting-IP'),
-          connectedAt: nowMs()
+          connectedAt: nowMs(),
+          tokenExp: Number.isFinite(tokenExp) && tokenExp > 0 ? tokenExp : undefined
         }
       };
 
-      // Set up WebSocket handlers
-      this.setupWebSocketHandlers(connection);
+      this.state.acceptWebSocket(server, [userId]);
+      this.stateManager.updateConnectionAttachment(connection);
 
-      // Add connection
       await this.addConnection(connection);
-
-      // Accept WebSocket
-      server.accept();
-
-      // F14: schedule automatic close at JWT expiry. The DO stays alive as
-      // long as the socket is open (no hibernation here), so setTimeout
-      // is reliable. Code 4401 signals the client to refresh and reconnect.
-      const tokenExp = Number(url.searchParams.get('tokenExp'));
-      if (Number.isFinite(tokenExp) && tokenExp > 0) {
-        const nowSec = Math.floor(Date.now() / 1000);
-        const ttlMs = Math.max(0, (tokenExp - nowSec) * 1000);
-        setTimeout(() => {
-          try {
-            server.close(4401, 'Token expired');
-          } catch (closeErr) {
-            // Already closed or in error state — nothing to do.
-            console.warn('[UserConnection] close-at-exp failed', closeErr);
-          }
-        }, ttlMs);
-      }
+      this.sendWelcomeMessage(connection);
+      await this.scheduleNextTokenExpiryAlarm();
 
       console.log(`[UserConnection] WebSocket connected: ${connectionId} for user ${this.userId}`);
       return new Response(null, { status: 101, webSocket: client as WebSocket });
@@ -199,30 +181,9 @@ export class UserConnection implements DurableObject {
     }
   }
 
-  private setupWebSocketHandlers(connection: WebSocketConnection): void {
-    const { websocket, connectionId } = connection;
+  private sendWelcomeMessage(connection: WebSocketConnection): void {
+    const { connectionId } = connection;
 
-    websocket.addEventListener('message', async (event) => {
-      try {
-        const message: WebSocketMessage = JSON.parse(event.data as string);
-        await this.handleWebSocketMessage(connection, message);
-      } catch (error) {
-        console.error(`[UserConnection] Message parsing error for ${connectionId}:`, error);
-        this.stateManager.sendError(connection, 'Invalid message format');
-      }
-    });
-
-    websocket.addEventListener('close', async (event) => {
-      console.log(`[UserConnection] Connection closed: ${connectionId}, code: ${event.code}`);
-      await this.removeConnection(connectionId);
-    });
-
-    websocket.addEventListener('error', async (event) => {
-      console.error(`[UserConnection] WebSocket error for ${connectionId}:`, event);
-      await this.removeConnection(connectionId);
-    });
-
-    // Send welcome message with user state
     this.stateManager.sendMessage(connection, {
       type: 'event',
       data: {
@@ -235,6 +196,41 @@ export class UserConnection implements DurableObject {
       },
       timestamp: nowMs()
     });
+  }
+
+  async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string): Promise<void> {
+    const connection = this.stateManager.findConnectionForSocket(ws);
+    if (!connection) {
+      console.warn('[UserConnection] Message received for unknown hibernated socket');
+      return;
+    }
+
+    try {
+      const messageText = typeof message === 'string' ? message : new TextDecoder().decode(message);
+      const parsedMessage: WebSocketMessage = JSON.parse(messageText);
+      await this.handleWebSocketMessage(connection, parsedMessage);
+    } catch (error) {
+      console.error(`[UserConnection] Message parsing error for ${connection.connectionId}:`, error);
+      this.stateManager.sendError(connection, 'Invalid message format');
+    }
+  }
+
+  async webSocketClose(ws: WebSocket, code: number, _reason: string, _wasClean: boolean): Promise<void> {
+    const connection = this.stateManager.findConnectionForSocket(ws);
+    if (!connection) return;
+
+    console.log(`[UserConnection] Connection closed: ${connection.connectionId}, code: ${code}`);
+    await this.removeConnection(connection.connectionId);
+    await this.scheduleNextTokenExpiryAlarm();
+  }
+
+  async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
+    const connection = this.stateManager.findConnectionForSocket(ws);
+    if (!connection) return;
+
+    console.error(`[UserConnection] WebSocket error for ${connection.connectionId}:`, error);
+    await this.removeConnection(connection.connectionId);
+    await this.scheduleNextTokenExpiryAlarm();
   }
 
   private async handleWebSocketMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
@@ -500,11 +496,52 @@ export class UserConnection implements DurableObject {
     console.log(`[UserConnection] State restored for user ${this.userId}: ${this.subscriptionManager.subscriptionCount} subscriptions`);
   }
 
-  private setupPeriodicTasks(): void {
-    // Clean up inactive connections only (simplified)
-    setInterval(() => {
-      this.stateManager.cleanupInactiveConnections((connectionId) => this.removeConnection(connectionId));
-    }, this.stateManager.CONNECTION_CLEANUP_INTERVAL);
+  private restoreConnectionsFromHibernation(): void {
+    this.stateManager.restoreConnectionsFromAttachments(this.state.getWebSockets());
+    const restoredConnection = this.stateManager.getAllConnections()[0];
+    if (restoredConnection && this.userId === 'unknown') {
+      this.userId = restoredConnection.userId;
+    }
+  }
+
+  async alarm(): Promise<void> {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expiredConnections = this.stateManager.getAllConnections().filter((connection) => {
+      const tokenExp = connection.metadata?.tokenExp;
+      return typeof tokenExp === 'number' && tokenExp <= nowSec;
+    });
+
+    for (const connection of expiredConnections) {
+      try {
+        connection.websocket.close(4401, 'Token expired');
+      } catch (error) {
+        console.warn('[UserConnection] token-expiry close failed', error);
+      }
+      await this.removeConnection(connection.connectionId);
+    }
+
+    await this.scheduleNextTokenExpiryAlarm();
+  }
+
+  private async scheduleNextTokenExpiryAlarm(): Promise<void> {
+    let nextTokenExp: number | undefined;
+
+    for (const connection of this.stateManager.getAllConnections()) {
+      const tokenExp = connection.metadata?.tokenExp;
+      if (typeof tokenExp !== 'number') {
+        continue;
+      }
+      if (nextTokenExp === undefined || tokenExp < nextTokenExp) {
+        nextTokenExp = tokenExp;
+      }
+    }
+
+    if (nextTokenExp === undefined) {
+      await this.state.storage.deleteAlarm();
+      return;
+    }
+
+    await this.state.storage.setAlarm(Math.max(Date.now(), nextTokenExp * 1000));
   }
 
   // =================== HTTP API Handlers ===================

@@ -7,6 +7,7 @@ import type {
   DurableObjectEvent
 } from '../../types/websocket-types';
 import type { RoomContext, RoomHelpers } from './room-helpers';
+import type { RoomConnectionAttachment } from './room-helpers';
 import type { RoomMessageService } from './room-message-service';
 import type { RoomStorageService } from './room-storage-service';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
@@ -26,31 +27,11 @@ export class RoomConnectionManager {
     private ctx: RoomContext,
     private helpers: RoomHelpers,
     private messageService: RoomMessageService,
-    private storageService: RoomStorageService
+    _storageService: RoomStorageService
   ) {}
 
   setupWebSocketHandlers(connection: WebSocketConnection): void {
-    const { websocket, connectionId } = connection;
-
-    websocket.addEventListener('message', async (event) => {
-      try {
-        const message: WebSocketMessage = JSON.parse(event.data as string);
-        await this.handleWebSocketMessage(connection, message);
-      } catch (error) {
-        testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Message parsing error for ${connectionId}:`, error);
-        this.helpers.sendError(connection, 'Invalid message format');
-      }
-    });
-
-    websocket.addEventListener('close', async (event) => {
-      testSafeLog(`[ConversationRoom] Connection closed: ${connectionId}, code: ${event.code}`);
-      await this.removeConnection(connectionId);
-    });
-
-    websocket.addEventListener('error', async (event) => {
-      testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] WebSocket error for ${connectionId}:`, event);
-      await this.removeConnection(connectionId);
-    });
+    const { connectionId } = connection;
 
     // Send welcome message with serverLastMessageAt for reconnection sync
     this.helpers.sendMessage(connection, {
@@ -65,6 +46,95 @@ export class RoomConnectionManager {
       },
       timestamp: nowMs()
     });
+  }
+
+  restoreHibernatedConnections(): void {
+    if (typeof this.ctx.state.getWebSockets !== 'function') {
+      return;
+    }
+
+    for (const websocket of this.ctx.state.getWebSockets()) {
+      const socketWithAttachment = websocket as WebSocket & {
+        deserializeAttachment?: () => RoomConnectionAttachment | null;
+      };
+      const attachment = typeof socketWithAttachment.deserializeAttachment === 'function'
+        ? socketWithAttachment.deserializeAttachment()
+        : null;
+
+      if (!attachment?.connectionId || !attachment.userId) {
+        continue;
+      }
+
+      const connection = this.helpers.connectionFromSocket(websocket, attachment);
+      this.ctx.connections.set(connection.connectionId, connection);
+      this.ctx.participants.add(connection.userId);
+      if (attachment.conversationId && this.ctx.conversationId === 'unknown') {
+        this.ctx.conversationId = attachment.conversationId;
+      }
+    }
+  }
+
+  getConnectionForSocket(websocket: WebSocket): WebSocketConnection | null {
+    const socketWithAttachment = websocket as WebSocket & {
+      deserializeAttachment?: () => RoomConnectionAttachment | null;
+    };
+    const attachment = typeof socketWithAttachment.deserializeAttachment === 'function'
+      ? socketWithAttachment.deserializeAttachment()
+      : null;
+
+    if (!attachment?.connectionId) {
+      return null;
+    }
+
+    const existingConnection = this.ctx.connections.get(attachment.connectionId);
+    if (existingConnection) {
+      existingConnection.websocket = websocket;
+      return existingConnection;
+    }
+
+    const connection = this.helpers.connectionFromSocket(websocket, attachment);
+    this.ctx.connections.set(connection.connectionId, connection);
+    this.ctx.participants.add(connection.userId);
+    if (connection.conversationId && this.ctx.conversationId === 'unknown') {
+      this.ctx.conversationId = connection.conversationId;
+    }
+    return connection;
+  }
+
+  async handleRawWebSocketMessage(websocket: WebSocket, rawMessage: string | ArrayBuffer): Promise<void> {
+    const connection = this.getConnectionForSocket(websocket);
+    if (!connection) {
+      websocket.close(1008, 'Missing connection state');
+      return;
+    }
+
+    try {
+      const messageText = typeof rawMessage === 'string'
+        ? rawMessage
+        : new TextDecoder().decode(rawMessage);
+      const message: WebSocketMessage = JSON.parse(messageText);
+      await this.handleWebSocketMessage(connection, message);
+      this.helpers.updateConnectionAttachment(connection);
+    } catch (error) {
+      testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Message parsing error for ${connection.connectionId}:`, error);
+      this.helpers.sendError(connection, 'Invalid message format');
+    }
+  }
+
+  async handleWebSocketClosed(websocket: WebSocket, code: number): Promise<void> {
+    const connection = this.getConnectionForSocket(websocket);
+    if (!connection) return;
+
+    testSafeLog(`[ConversationRoom] Connection closed: ${connection.connectionId}, code: ${code}`);
+    await this.removeConnection(connection.connectionId);
+  }
+
+  async handleWebSocketError(websocket: WebSocket, error: unknown): Promise<void> {
+    const connection = this.getConnectionForSocket(websocket);
+    if (!connection) return;
+
+    testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] WebSocket error for ${connection.connectionId}:`, error);
+    await this.removeConnection(connection.connectionId);
   }
 
   async handleWebSocketMessage(connection: WebSocketConnection, message: WebSocketMessage): Promise<void> {
@@ -135,6 +205,7 @@ export class RoomConnectionManager {
 
     // Update participant list
     await this.ctx.state.storage.put('participants', Array.from(this.ctx.participants));
+    this.helpers.updateConnectionAttachment(connection);
 
     // Broadcast user joined event
     await this.messageService.broadcastEvent({
@@ -201,19 +272,8 @@ export class RoomConnectionManager {
   // =================== Cleanup Tasks ===================
 
   setupCleanupTasks(): void {
-    // Clean up inactive connections every 5 minutes (full mode only)
-    setInterval(() => {
-      this.cleanupInactiveConnections();
-    }, 300000);
-
-    // Week 3-4: Periodic force storage write every 30 seconds
-    // This ensures messages are persisted even if debounce doesn't trigger
-    // (e.g., if message rate is very low or DO is idle for extended periods)
-    setInterval(async () => {
-      if (this.ctx.messageDirty) {
-        await this.storageService.forceStorageWrite();
-      }
-    }, 30000); // 30 seconds
+    // Hibernation migration: avoid periodic timers that keep the DO hot.
+    // Close/error handlers, token-expiry alarms, and explicit storage flush alarms keep state tidy.
   }
 
   async cleanupInactiveConnections(): Promise<void> {
@@ -223,6 +283,26 @@ export class RoomConnectionManager {
 
     for (const [connectionId, _connection] of inactiveConnections) {
       testSafeLog(`[ConversationRoom] Removing inactive connection: ${connectionId}`);
+      await this.removeConnection(connectionId);
+    }
+  }
+
+  async closeExpiredTokenConnections(now = Date.now()): Promise<void> {
+    const expiredConnectionIds: string[] = [];
+
+    for (const [connectionId, connection] of this.ctx.connections.entries()) {
+      const tokenExp = connection.metadata?.tokenExp;
+      if (typeof tokenExp === 'number' && Number.isFinite(tokenExp) && tokenExp > 0 && tokenExp * 1000 <= now) {
+        try {
+          connection.websocket.close(4401, 'Token expired');
+        } catch (error) {
+          testSafeError('[ConversationRoom] close-at-exp failed:', error);
+        }
+        expiredConnectionIds.push(connectionId);
+      }
+    }
+
+    for (const connectionId of expiredConnectionIds) {
       await this.removeConnection(connectionId);
     }
   }

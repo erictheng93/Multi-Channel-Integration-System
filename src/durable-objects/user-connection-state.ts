@@ -31,6 +31,16 @@ export interface UserStateSnapshot {
   stats: UserStats;
 }
 
+export interface UserConnectionAttachment {
+  connectionId: string;
+  userId: string;
+  role: 'admin' | 'agent';
+  deviceId?: string;
+  tokenExp?: number;
+  connectedAt: number;
+  lastActivity: number;
+}
+
 /**
  * Manages connection state, presence, preferences, and metrics for a user.
  * Delegates storage operations to the Durable Object's state.storage.
@@ -57,7 +67,6 @@ export class UserConnectionStateManager {
 
   // Configuration
   readonly MAX_CONNECTIONS_PER_USER = 5;
-  readonly CONNECTION_CLEANUP_INTERVAL = 300000; // 5 minutes
 
   get connectionCount(): number {
     return this.connections.size;
@@ -105,6 +114,11 @@ export class UserConnectionStateManager {
     this.stats.totalConnections++;
   }
 
+  restoreConnection(connection: WebSocketConnection): void {
+    this.connections.set(connection.connectionId, connection);
+    this.isOnline = true;
+  }
+
   removeConnection(connectionId: string): WebSocketConnection | undefined {
     const connection = this.connections.get(connectionId);
     if (!connection) return undefined;
@@ -121,6 +135,7 @@ export class UserConnectionStateManager {
     const now = nowMs();
     if (connection) {
       connection.lastActivity = now;
+      this.updateConnectionAttachment(connection);
     }
     this.lastSeen = now;
     this.stats.lastActivity = now;
@@ -154,7 +169,7 @@ export class UserConnectionStateManager {
     try {
       const userState = (await storage.get('userState')) as UserStateSnapshot | undefined;
       if (userState) {
-        this.isOnline = userState.isOnline || false;
+        this.isOnline = this.connections.size > 0 || userState.isOnline || false;
         this.lastSeen = userState.lastSeen || nowMs();
         this.preferences = { ...this.preferences, ...userState.preferences };
         this.stats = { ...this.stats, ...userState.stats };
@@ -162,6 +177,79 @@ export class UserConnectionStateManager {
     } catch (error) {
       console.error('[UserConnectionState] State restoration error:', error);
     }
+  }
+
+  restoreConnectionsFromAttachments(sockets: WebSocket[]): void {
+    for (const socket of sockets) {
+      const attachment = socket.deserializeAttachment();
+      if (!this.isConnectionAttachment(attachment)) {
+        continue;
+      }
+
+      this.restoreConnection({
+        websocket: socket,
+        userId: attachment.userId,
+        role: attachment.role,
+        connectionId: attachment.connectionId,
+        lastActivity: attachment.lastActivity,
+        isActive: true,
+        metadata: {
+          deviceId: attachment.deviceId,
+          connectedAt: attachment.connectedAt,
+          tokenExp: attachment.tokenExp,
+        },
+      });
+    }
+  }
+
+  findConnectionForSocket(socket: WebSocket): WebSocketConnection | undefined {
+    const attachment = socket.deserializeAttachment();
+    if (this.isConnectionAttachment(attachment)) {
+      return this.connections.get(attachment.connectionId);
+    }
+
+    for (const connection of this.connections.values()) {
+      if (connection.websocket === socket) {
+        return connection;
+      }
+    }
+
+    return undefined;
+  }
+
+  updateConnectionAttachment(connection: WebSocketConnection): void {
+    connection.websocket.serializeAttachment(this.createConnectionAttachment(connection));
+  }
+
+  createConnectionAttachment(connection: WebSocketConnection): UserConnectionAttachment {
+    return {
+      connectionId: connection.connectionId,
+      userId: connection.userId,
+      role: connection.role,
+      deviceId: typeof connection.metadata?.deviceId === 'string'
+        ? connection.metadata.deviceId
+        : undefined,
+      tokenExp: typeof connection.metadata?.tokenExp === 'number'
+        ? connection.metadata.tokenExp
+        : undefined,
+      connectedAt: typeof connection.metadata?.connectedAt === 'number'
+        ? connection.metadata.connectedAt
+        : nowMs(),
+      lastActivity: connection.lastActivity,
+    };
+  }
+
+  private isConnectionAttachment(value: unknown): value is UserConnectionAttachment {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+
+    const attachment = value as Partial<UserConnectionAttachment>;
+    return typeof attachment.connectionId === 'string'
+      && typeof attachment.userId === 'string'
+      && (attachment.role === 'admin' || attachment.role === 'agent')
+      && typeof attachment.connectedAt === 'number'
+      && typeof attachment.lastActivity === 'number';
   }
 
   async persistConnectionInfo(
@@ -204,6 +292,7 @@ export class UserConnectionStateManager {
           // WebSocket.OPEN = 1
           connection.websocket.send(JSON.stringify(message));
           connection.lastActivity = nowMs();
+          this.updateConnectionAttachment(connection);
         }
         resolve();
       } catch (error) {
