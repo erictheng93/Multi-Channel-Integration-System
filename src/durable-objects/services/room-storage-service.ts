@@ -22,7 +22,10 @@ export class RoomStorageService {
       // Restore participants
       const participants = await this.ctx.state.storage.get('participants') as string[];
       if (participants) {
-        this.ctx.participants = new Set(participants);
+        this.ctx.participants = new Set([
+          ...this.ctx.participants,
+          ...participants
+        ]);
       }
 
       // Restore message history (full mode only)
@@ -52,49 +55,69 @@ export class RoomStorageService {
   /**
    * Debounced storage write for message history
    *
-   * Schedules a write to DO storage after STORAGE_WRITE_DEBOUNCE_MS (5 seconds).
-   * If called multiple times within the debounce window, the timer is reset.
+   * Schedules an alarm-backed write to DO storage after STORAGE_WRITE_DEBOUNCE_MS (5 seconds).
+   * If called multiple times within the debounce window, the alarm deadline is reset.
    * This significantly reduces storage write frequency in high-message scenarios.
    */
   scheduleStorageWrite(): void {
-    // Clear existing timer if any
-    if (this.ctx.writeDebounceTimer) {
-      clearTimeout(this.ctx.writeDebounceTimer);
-    }
-
-    // Schedule write after debounce period
-    this.ctx.writeDebounceTimer = setTimeout(async () => {
-      if (this.ctx.messageDirty) {
-        try {
-          await this.ctx.state.storage.put('messageHistory', this.ctx.messageHistory);
-          this.ctx.messageDirty = false;
-          testSafeLog(`\uD83D\uDCBE [ConversationRoom] Message history persisted (${this.ctx.messageHistory.length} messages, debounced)`);
-        } catch (error) {
-          testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Storage write error:`, error);
-          // Retry after 1 second if write fails
-          setTimeout(() => this.scheduleStorageWrite(), 1000);
-        }
-      }
-    }, this.ctx.STORAGE_WRITE_DEBOUNCE_MS);
+    this.ctx.storageFlushDeadline = Date.now() + this.ctx.STORAGE_WRITE_DEBOUNCE_MS;
+    this.scheduleNextAlarm().catch((error) => {
+      testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Alarm scheduling error:`, error);
+    });
   }
 
   /**
    * Force immediate storage write (called on DO shutdown/cleanup)
    */
   async forceStorageWrite(): Promise<void> {
-    if (this.ctx.writeDebounceTimer) {
-      clearTimeout(this.ctx.writeDebounceTimer);
-      this.ctx.writeDebounceTimer = null;
-    }
-
     if (this.ctx.messageDirty) {
       try {
         await this.ctx.state.storage.put('messageHistory', this.ctx.messageHistory);
         this.ctx.messageDirty = false;
+        this.ctx.storageFlushDeadline = null;
         testSafeLog(`\uD83D\uDCBE [ConversationRoom] Message history force-saved (${this.ctx.messageHistory.length} messages)`);
       } catch (error) {
         testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Force storage write error:`, error);
+        this.ctx.storageFlushDeadline = Date.now() + 1000;
       }
     }
+  }
+
+  async flushDueMessageHistory(now = Date.now()): Promise<void> {
+    if (this.ctx.messageDirty && (!this.ctx.storageFlushDeadline || this.ctx.storageFlushDeadline <= now)) {
+      await this.forceStorageWrite();
+    }
+  }
+
+  getNextTokenExpiryDeadline(now = Date.now()): number | null {
+    let nextDeadline: number | null = null;
+    for (const connection of this.ctx.connections.values()) {
+      const tokenExp = connection.metadata?.tokenExp;
+      if (typeof tokenExp !== 'number' || !Number.isFinite(tokenExp) || tokenExp <= 0) {
+        continue;
+      }
+
+      const deadline = Math.max(now, tokenExp * 1000);
+      if (nextDeadline === null || deadline < nextDeadline) {
+        nextDeadline = deadline;
+      }
+    }
+    return nextDeadline;
+  }
+
+  async scheduleNextAlarm(): Promise<void> {
+    const deadlines = [
+      this.ctx.storageFlushDeadline,
+      this.getNextTokenExpiryDeadline()
+    ].filter((deadline): deadline is number => typeof deadline === 'number' && Number.isFinite(deadline));
+
+    if (deadlines.length === 0) {
+      if (typeof this.ctx.state.storage.deleteAlarm === 'function') {
+        await this.ctx.state.storage.deleteAlarm();
+      }
+      return;
+    }
+
+    await this.ctx.state.storage.setAlarm(Math.min(...deadlines));
   }
 }

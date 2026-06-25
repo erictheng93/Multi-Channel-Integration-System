@@ -19,7 +19,7 @@ import type { WebSocketAuthChallenge } from '../services/websocket-auth-service'
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../utils/test-logger';
 
 // Service imports
-import type { RoomContext } from './services/room-helpers';
+import type { RoomContext, RoomConnectionAttachment } from './services/room-helpers';
 import { RoomHelpers } from './services/room-helpers';
 import { RoomAuthService } from './services/room-auth-service';
 import { RoomStorageService } from './services/room-storage-service';
@@ -115,7 +115,7 @@ export class ConversationRoom implements DurableObject {
 
       // Storage optimization
       messageDirty: false,
-      writeDebounceTimer: null,
+      storageFlushDeadline: null,
 
       // Configuration constants
       MAX_CONNECTIONS: maxConnections,
@@ -133,13 +133,19 @@ export class ConversationRoom implements DurableObject {
     this.connectionManager = new RoomConnectionManager(this.roomContext, this.helpers, this.messageService, this.storageService);
     this.shardingHandler = new RoomShardingHandler(this.roomContext, this.helpers, this.messageService);
 
+    this.connectionManager.restoreHibernatedConnections();
+
     // Initialize state from storage
     this.storageService.initializeFromStorage();
 
-    // Set up periodic cleanup (full mode only)
+    // Set up cleanup hooks (full mode only)
     if (this.helpers.isFullMode()) {
       this.connectionManager.setupCleanupTasks();
     }
+
+    this.storageService.scheduleNextAlarm().catch((error) => {
+      testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Initial alarm scheduling error:`, error);
+    });
 
     testSafeLog(`${getEmojiPrefix('BUILD')}[ConversationRoom] Initialized in ${resolvedConfig.mode} mode (max connections: ${maxConnections})`);
   }
@@ -238,47 +244,48 @@ export class ConversationRoom implements DurableObject {
       }
 
       const connectionId = this.helpers.generateConnectionId();
+      const connectedAt = nowMs();
+      const tokenExp = Number(url.searchParams.get('tokenExp'));
+      const tokenExpiresAt = Number.isFinite(tokenExp) && tokenExp > 0 ? tokenExp : undefined;
+      const clientMetadata = this.helpers.isFullMode() ? {
+        userAgent: request.headers.get('User-Agent'),
+        ip: request.headers.get('CF-Connecting-IP')
+      } : undefined;
       const connection: WebSocketConnection = {
         websocket: server,
         userId,
         conversationId: this.roomContext.conversationId,
         role: role as 'admin' | 'agent',
         connectionId,
-        lastActivity: nowMs(),
+        lastActivity: connectedAt,
         isActive: true,
-        metadata: this.helpers.isFullMode() ? {
-          userAgent: request.headers.get('User-Agent'),
-          ip: request.headers.get('CF-Connecting-IP')
-        } : undefined
+        metadata: {
+          tokenExp: tokenExpiresAt,
+          connectedAt,
+          client: clientMetadata
+        }
       };
 
-      // Set up WebSocket event handlers
-      this.connectionManager.setupWebSocketHandlers(connection);
+      const attachment: RoomConnectionAttachment = {
+        connectionId,
+        userId,
+        role: role as 'admin' | 'agent',
+        conversationId: this.roomContext.conversationId,
+        tokenExp: tokenExpiresAt,
+        connectedAt,
+        lastActivity: connection.lastActivity,
+        metadata: clientMetadata
+      };
+
+      server.serializeAttachment(attachment);
+      this.roomContext.state.acceptWebSocket(server, [userId, this.roomContext.conversationId]);
 
       // Add connection to room
       await this.connectionManager.addConnection(connection);
 
-      // Accept the WebSocket connection
-      server.accept();
-
-      // F14: schedule automatic close at JWT expiry. Without this, an
-      // attacker who steals an access token can keep a WebSocket open
-      // indefinitely past the token's exp — the original auth check only
-      // runs once during the HTTP upgrade. setTimeout is reliable because
-      // this DO keeps a hot connection (no hibernation API used here).
-      const tokenExp = Number(url.searchParams.get('tokenExp'));
-      if (Number.isFinite(tokenExp) && tokenExp > 0) {
-        const nowSec = Math.floor(Date.now() / 1000);
-        const ttlMs = Math.max(0, (tokenExp - nowSec) * 1000);
-        setTimeout(() => {
-          try {
-            server.close(4401, 'Token expired');
-          } catch (closeErr) {
-            // Already closed; ignore.
-            testSafeError('[ConversationRoom] close-at-exp failed:', closeErr);
-          }
-        }, ttlMs);
-      }
+      // Send welcome message after the hibernation API accepts the server socket.
+      this.connectionManager.setupWebSocketHandlers(connection);
+      await this.storageService.scheduleNextAlarm();
 
       return new Response(null, { status: 101, webSocket: client as WebSocket });
 
@@ -286,5 +293,32 @@ export class ConversationRoom implements DurableObject {
       testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] WebSocket upgrade error:`, error);
       return new Response('WebSocket upgrade failed', { status: 500 });
     }
+  }
+
+  async webSocketMessage(websocket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    await this.connectionManager.handleRawWebSocketMessage(websocket, message);
+    await this.storageService.scheduleNextAlarm();
+  }
+
+  async webSocketClose(
+    websocket: WebSocket,
+    code: number,
+    _reason: string,
+    _wasClean: boolean
+  ): Promise<void> {
+    await this.connectionManager.handleWebSocketClosed(websocket, code);
+    await this.storageService.scheduleNextAlarm();
+  }
+
+  async webSocketError(websocket: WebSocket, error: unknown): Promise<void> {
+    await this.connectionManager.handleWebSocketError(websocket, error);
+    await this.storageService.scheduleNextAlarm();
+  }
+
+  async alarm(): Promise<void> {
+    const now = Date.now();
+    await this.connectionManager.closeExpiredTokenConnections(now);
+    await this.storageService.flushDueMessageHistory(now);
+    await this.storageService.scheduleNextAlarm();
   }
 }

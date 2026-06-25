@@ -24,6 +24,17 @@ export interface ShardMetadata {
   maxConnections: number;
 }
 
+export interface RoomConnectionAttachment {
+  connectionId: string;
+  userId: string;
+  role: 'admin' | 'agent';
+  conversationId: string;
+  tokenExp?: number;
+  connectedAt: number;
+  lastActivity: number;
+  metadata?: Record<string, unknown>;
+}
+
 /**
  * Shared context passed to all ConversationRoom sub-services by reference.
  * All collections (Maps, Sets) are mutable and shared.
@@ -51,7 +62,7 @@ export interface RoomContext {
 
   // Storage optimization
   messageDirty: boolean;
-  writeDebounceTimer: ReturnType<typeof setTimeout> | null;
+  storageFlushDeadline: number | null;
 
   // Configuration constants
   MAX_CONNECTIONS: number;
@@ -94,6 +105,7 @@ export class RoomHelpers {
         if (connection.websocket.readyState === 1) { // WebSocket.OPEN = 1
           connection.websocket.send(JSON.stringify(message));
           connection.lastActivity = nowMs();
+          this.updateConnectionAttachment(connection);
         }
         resolve();
       } catch (error) {
@@ -109,5 +121,48 @@ export class RoomHelpers {
       error,
       timestamp: nowMs()
     });
+  }
+
+  attachmentFromConnection(connection: WebSocketConnection, connectedAt?: number): RoomConnectionAttachment {
+    const metadata = connection.metadata || {};
+    const tokenExp = typeof metadata.tokenExp === 'number' ? metadata.tokenExp : undefined;
+    return {
+      connectionId: connection.connectionId,
+      userId: connection.userId,
+      role: connection.role,
+      conversationId: connection.conversationId || this.ctx.conversationId,
+      tokenExp,
+      connectedAt: typeof metadata.connectedAt === 'number' ? metadata.connectedAt : connectedAt || nowMs(),
+      lastActivity: connection.lastActivity,
+      metadata: typeof metadata.client === 'object' && metadata.client !== null
+        ? metadata.client as Record<string, unknown>
+        : undefined
+    };
+  }
+
+  connectionFromSocket(websocket: WebSocket, attachment: RoomConnectionAttachment): WebSocketConnection {
+    return {
+      websocket,
+      userId: attachment.userId,
+      conversationId: attachment.conversationId,
+      role: attachment.role,
+      connectionId: attachment.connectionId,
+      lastActivity: attachment.lastActivity,
+      isActive: true,
+      metadata: {
+        tokenExp: attachment.tokenExp,
+        connectedAt: attachment.connectedAt,
+        client: attachment.metadata
+      }
+    };
+  }
+
+  updateConnectionAttachment(connection: WebSocketConnection): void {
+    const socket = connection.websocket as WebSocket & {
+      serializeAttachment?: (value: RoomConnectionAttachment) => void;
+    };
+    if (typeof socket.serializeAttachment === 'function') {
+      socket.serializeAttachment(this.attachmentFromConnection(connection));
+    }
   }
 }
