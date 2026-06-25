@@ -81,6 +81,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
 
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
     this.restoreConnectionsFromHibernation();
     console.log('[CustomerConversationDO] Initialized');
   }

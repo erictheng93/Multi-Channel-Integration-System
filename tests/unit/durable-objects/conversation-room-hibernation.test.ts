@@ -31,6 +31,7 @@ function createState(sockets: MockSocket[] = []): DurableObjectState {
   return {
     acceptWebSocket: vi.fn(),
     getWebSockets: vi.fn(() => sockets),
+    setWebSocketAutoResponse: vi.fn(),
     storage: {
       get: vi.fn(),
       put: vi.fn(),
@@ -40,6 +41,26 @@ function createState(sockets: MockSocket[] = []): DurableObjectState {
       deleteAlarm: vi.fn()
     }
   } as unknown as DurableObjectState
+}
+
+function installWebSocketRequestResponsePair(): void {
+  Object.defineProperty(globalThis, 'WebSocketRequestResponsePair', {
+    value: class WebSocketRequestResponsePair {
+      constructor(
+        private readonly request: string,
+        private readonly response: string
+      ) {}
+
+      getRequest(): string {
+        return this.request
+      }
+
+      getResponse(): string {
+        return this.response
+      }
+    },
+    configurable: true
+  })
 }
 
 function installWebSocketPair(client: MockSocket, server: MockSocket): void {
@@ -59,6 +80,21 @@ describe('ConversationRoom hibernation', () => {
       value: { OPEN: 1 },
       configurable: true
     })
+    installWebSocketRequestResponsePair()
+  })
+
+  it('configures ping/pong auto-response for hibernated sockets', () => {
+    const state = createState()
+
+    new ConversationRoom(state, {}, { mode: 'simplified' })
+
+    expect(state.setWebSocketAutoResponse).toHaveBeenCalledTimes(1)
+    const pair = vi.mocked(state.setWebSocketAutoResponse).mock.calls[0][0] as {
+      getRequest: () => string
+      getResponse: () => string
+    }
+    expect(pair.getRequest()).toBe('ping')
+    expect(pair.getResponse()).toBe('pong')
   })
 
   it('accepts WebSocket upgrades with hibernation API and connection attachment', async () => {

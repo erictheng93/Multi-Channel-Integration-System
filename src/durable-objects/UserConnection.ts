@@ -54,6 +54,7 @@ export class UserConnection implements DurableObject {
     this.state = state;
     this.env = env;
     this.userId = env.userId || 'unknown';
+    this.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
 
     this.restoreConnectionsFromHibernation();
 

@@ -150,6 +150,12 @@ class MockWebSocket {
     }
   }
 
+  simulateRawMessage(data: string): void {
+    if (this._onmessage) {
+      this._onmessage(new MessageEvent('message', { data }))
+    }
+  }
+
   simulateError(): void {
     if (this._onerror) {
       this._onerror(new Event('error'))
@@ -587,15 +593,34 @@ describe('WebSocketClient', () => {
 
       expect(sendSpy).toHaveBeenCalled()
       const calls = sendSpy.mock.calls
-      const heartbeatCall = calls.find(call => {
-        try {
-          const data = JSON.parse(call[0] as string)
-          return data.type === 'ping'
-        } catch {
-          return false
-        }
-      })
+      const heartbeatCall = calls.find(call => call[0] === 'ping')
       expect(heartbeatCall).toBeDefined()
+    })
+
+    it('handles raw pong as heartbeat without routing it as an app message', async () => {
+      const client = createTrackedClient({
+        url: 'ws://localhost:8787/websocket',
+        heartbeatInterval: 1000,
+        heartbeatTimeout: 2000
+      })
+
+      const onHeartbeat = vi.fn()
+      const onMessage = vi.fn()
+      client.setEventHandlers({ onHeartbeat, onMessage })
+
+      await client.connect()
+      await waitForWebSocket()
+
+      const previousHeartbeat = (client as any).lastHeartbeat
+      await vi.advanceTimersByTimeAsync(10)
+
+      const socket = (client as any).socket as MockWebSocket
+      socket.simulateRawMessage('pong')
+
+      expect((client as any).lastHeartbeat).toBeGreaterThan(previousHeartbeat)
+      expect(onHeartbeat).toHaveBeenCalledTimes(1)
+      expect(onMessage).not.toHaveBeenCalled()
+      expect(client.lastMessage.value).toBeNull()
     })
 
     it('應該在收到 pong 後重置心跳計時器', async () => {
