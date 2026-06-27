@@ -31,8 +31,7 @@ export interface AuthModuleConfig {
   lockoutDuration: number;
 }
 
-export const DEFAULT_AUTH_MODULE_CONFIG: AuthModuleConfig = {
-  jwtSecret: process.env.JWT_SECRET || 'default-secret',
+export const DEFAULT_AUTH_MODULE_CONFIG: Omit<AuthModuleConfig, 'jwtSecret'> = {
   tokenExpiry: 3600, // 1 hour
   refreshTokenExpiry: 604800, // 7 days
   bcryptRounds: 12,
@@ -100,14 +99,44 @@ import { createContextLogger } from '@/utils/logger';
 
 const log = createContextLogger('AuthModule');
 
+const INSECURE_JWT_SECRETS = new Set(['default-secret', 'your-super-secret-jwt-key-here']);
+
+function validateJwtSecret(jwtSecret: string | undefined): string {
+  if (!jwtSecret || jwtSecret.trim() === '') {
+    log.error(
+      'initializeAuthModule called without a JWT secret. Refusing to initialize the auth module with an empty signing key.'
+    );
+    throw new Error('JWT_SECRET is required to initialize the auth module.');
+  }
+
+  const secret = jwtSecret.trim();
+
+  if (INSECURE_JWT_SECRETS.has(secret)) {
+    log.error(
+      'initializeAuthModule called with a default or example JWT secret. Refusing to initialize the auth module with a predictable signing key.'
+    );
+    throw new Error('JWT_SECRET must not use a default or example value.');
+  }
+
+  if (secret.length < 32) {
+    log.error(
+      'initializeAuthModule called with a weak JWT secret. Refusing to initialize the auth module with a short signing key.'
+    );
+    throw new Error('JWT_SECRET must be at least 32 characters long.');
+  }
+
+  return secret;
+}
+
 // ======================== 初始化函數 ========================
 export function initializeAuthModule(config: Partial<AuthModuleConfig> = {}) {
-  const finalConfig = { ...DEFAULT_AUTH_MODULE_CONFIG, ...config };
+  const jwtSecret = validateJwtSecret(config.jwtSecret);
 
-  // 驗證必要配置
-  if (!finalConfig.jwtSecret || finalConfig.jwtSecret === 'default-secret') {
-    log.warn('Using default JWT secret. Please set JWT_SECRET environment variable.');
-  }
+  const finalConfig: AuthModuleConfig = {
+    ...DEFAULT_AUTH_MODULE_CONFIG,
+    ...config,
+    jwtSecret
+  };
 
   return {
     config: finalConfig,
