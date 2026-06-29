@@ -207,7 +207,11 @@ export class FileService {
       const fileRecord = await this.db
         .select()
         .from(fileAttachments)
-        .where(eq(fileAttachments.id, fileId))
+        .where(
+          options.uploadedBy
+            ? and(eq(fileAttachments.id, fileId), eq(fileAttachments.uploadedBy, options.uploadedBy))
+            : eq(fileAttachments.id, fileId)
+        )
         .get();
 
       if (!fileRecord) {
@@ -323,12 +327,16 @@ export class FileService {
   /**
    * 獲取檔案詳情
    */
-  async getFileDetails(fileId: string): Promise<ManagedFile | null> {
+  async getFileDetails(fileId: string, options: { uploadedBy?: string } = {}): Promise<ManagedFile | null> {
     try {
       const fileRecord = await this.db
         .select()
         .from(fileAttachments)
-        .where(eq(fileAttachments.id, fileId))
+        .where(
+          options.uploadedBy
+            ? and(eq(fileAttachments.id, fileId), eq(fileAttachments.uploadedBy, options.uploadedBy))
+            : eq(fileAttachments.id, fileId)
+        )
         .get();
 
       if (!fileRecord) {
@@ -354,6 +362,7 @@ export class FileService {
         type,
         conversationId,
         messageId,
+        uploadedBy,
         dateFrom,
         dateTo,
       } = options;
@@ -364,12 +373,15 @@ export class FileService {
       const conditions = [];
 
       if (conversationId) {
-        // 注意：當前 schema 中沒有 conversationId 欄位
-        // 這需要在資料庫 schema 中添加
+        conditions.push(eq(fileAttachments.conversationId, conversationId));
       }
 
       if (messageId) {
         conditions.push(eq(fileAttachments.messageId, messageId));
+      }
+
+      if (uploadedBy) {
+        conditions.push(eq(fileAttachments.uploadedBy, uploadedBy));
       }
 
       if (type) {

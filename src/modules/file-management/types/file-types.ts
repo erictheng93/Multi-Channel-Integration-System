@@ -93,6 +93,7 @@ export interface FileDownloadOptions {
   generateDownloadUrl?: boolean;
   urlExpiresIn?: number; // seconds
   responseType?: 'stream' | 'buffer' | 'url';
+  uploadedBy?: string;
 }
 
 // File download result

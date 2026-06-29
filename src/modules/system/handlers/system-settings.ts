@@ -5,6 +5,7 @@ import { Context } from 'hono'
 import type { Bindings } from '@/types'
 import {
   successResponse,
+  forbiddenResponse,
   handleApiError
 } from '@/utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities'
@@ -164,6 +165,11 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
 // Update system settings
 export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
   try {
+    const payload = c.get('jwtPayload')
+    if (!payload || payload.role !== 'admin') {
+      return forbiddenResponse(c, 'Admin role required')
+    }
+
     const drizzleDb = createDbClient(c.env.DB)
     const settings = await c.req.json<SystemSettingsUpdate>()
 
@@ -212,7 +218,6 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     // Log settings update activity
-    const payload = c.get('jwtPayload');
     if (payload) {
       const activityService = new ActivityService(c.env.DB);
       await activityService.logActivity({

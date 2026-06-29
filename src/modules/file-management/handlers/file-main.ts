@@ -197,11 +197,17 @@ async function handleMultipleFileUpload(c: FileContext) {
 }
 
 async function handleFileDownloadUrl(c: FileContext, fileId: string, expiresIn: number) {
+  const payload = c.get('jwtPayload');
+  if (!payload || !payload.userId) {
+    return unauthorizedResponse(c, 'Authentication required');
+  }
+
   const options: FileDownloadOptions = {
     includeMetadata: true,
     responseType: 'url',
     generateDownloadUrl: true,
-    urlExpiresIn: expiresIn
+    urlExpiresIn: expiresIn,
+    uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
   };
 
   const fileService = new FileService(c.env);
@@ -226,6 +232,11 @@ async function handleFileDownloadUrl(c: FileContext, fileId: string, expiresIn: 
 }
 
 async function handleFileSearch(c: FileContext) {
+  const payload = c.get('jwtPayload');
+  if (!payload || !payload.userId) {
+    return unauthorizedResponse(c, 'Authentication required');
+  }
+
   const query = c.req.query('q') || '';
   const page = parseInt(c.req.query('page') || '1');
   const pageSize = parseInt(c.req.query('pageSize') || '20');
@@ -248,7 +259,8 @@ async function handleFileSearch(c: FileContext) {
     platform: parsePlatformType(platform),
     type: parseFileType(type),
     dateFrom,
-    dateTo
+    dateTo,
+    uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
   };
 
   const fileService = new FileService(c.env);
@@ -450,6 +462,11 @@ fileMainHandler.post('/delete-multiple', jwtAuth, async (c) => {
 // 檔案下載
 fileMainHandler.get('/:fileId', jwtAuth, async (c) => {
   try {
+    const payload = c.get('jwtPayload');
+    if (!payload || !payload.userId) {
+      return unauthorizedResponse(c, 'Authentication required');
+    }
+
     const fileId = c.req.param('fileId');
 
     if (!fileId) {
@@ -466,7 +483,9 @@ fileMainHandler.get('/:fileId', jwtAuth, async (c) => {
 
     if (!responseType) {
       const fileService = new FileService(c.env);
-      const file = await fileService.getFileDetails(fileId);
+      const file = await fileService.getFileDetails(fileId, {
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
+      });
 
       if (!file) {
         return contractJson(c, fileContracts.getDetails, {
@@ -487,7 +506,8 @@ fileMainHandler.get('/:fileId', jwtAuth, async (c) => {
       includeMetadata: true,
       responseType: responseType || 'stream',
       generateDownloadUrl: false,
-      urlExpiresIn: 3600 // 1 hour
+      urlExpiresIn: 3600, // 1 hour
+      uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
     };
 
     // 執行下載

@@ -144,6 +144,11 @@ export class FileHandler {
    */
   getDetails = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const fileId = c.req.param('fileId');
 
       if (!fileId) {
@@ -152,7 +157,9 @@ export class FileHandler {
         ]);
       }
 
-      const file = await this.fileService.getFileDetails(fileId);
+      const file = await this.fileService.getFileDetails(fileId, {
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
+      });
 
       if (!file) {
         return notFoundResponse(c, 'File');
@@ -170,6 +177,11 @@ export class FileHandler {
    */
   download = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const fileId = c.req.param('fileId');
       const inline = c.req.query('inline') === 'true';
 
@@ -181,7 +193,8 @@ export class FileHandler {
 
       const result = await this.fileService.downloadFile(fileId, {
         responseType: 'buffer',
-        includeMetadata: true
+        includeMetadata: true,
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
       });
 
       if (!result.success) {
@@ -215,6 +228,11 @@ export class FileHandler {
    */
   getDownloadUrl = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const fileId = c.req.param('fileId');
       const expiresIn = parseInt(c.req.query('expiresIn') || '3600');
 
@@ -227,7 +245,8 @@ export class FileHandler {
       const result = await this.fileService.downloadFile(fileId, {
         responseType: 'url',
         generateDownloadUrl: true,
-        urlExpiresIn: expiresIn
+        urlExpiresIn: expiresIn,
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
       });
 
       if (!result.success) {
@@ -279,13 +298,19 @@ export class FileHandler {
    */
   list = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const page = parseInt(c.req.query('page') || '1');
       const pageSize = parseInt(c.req.query('pageSize') || '20');
       const platform = c.req.query('platform');
       const type = c.req.query('type');
       const conversationId = c.req.query('conversationId');
       const messageId = c.req.query('messageId');
-      const uploadedBy = c.req.query('uploadedBy');
+      const requestedUploadedBy = c.req.query('uploadedBy');
+      const uploadedBy = payload.role === 'admin' ? requestedUploadedBy : payload.userId.toString();
       const dateFrom = c.req.query('dateFrom');
       const dateTo = c.req.query('dateTo');
       const sortBy = c.req.query('sortBy') || 'createdAt';
@@ -323,9 +348,16 @@ export class FileHandler {
    */
   getStatistics = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const period = c.req.query('period') || '30d';
 
-      const stats = await this.fileService.getFileStatistics(period);
+      const stats = await this.fileService.getFileStatistics(period, {
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
+      });
 
       return successResponse(c, stats, 'File statistics retrieved successfully');
 
@@ -374,6 +406,11 @@ export class FileHandler {
    */
   search = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const query = c.req.query('q') || '';
       const page = parseInt(c.req.query('page') || '1');
       const pageSize = parseInt(c.req.query('pageSize') || '20');
@@ -395,7 +432,8 @@ export class FileHandler {
         platform: parsePlatformType(platform),
         type: parseFileType(type),
         dateFrom,
-        dateTo
+        dateTo,
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
       };
 
       const result = await this.fileService.listFiles(options);
@@ -422,6 +460,11 @@ export class FileHandler {
    */
   getByConversation = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const conversationId = c.req.param('conversationId');
       const page = parseInt(c.req.query('page') || '1');
       const pageSize = parseInt(c.req.query('pageSize') || '20');
@@ -437,7 +480,8 @@ export class FileHandler {
         page,
         pageSize,
         conversationId,
-        type: parseFileType(type)
+        type: parseFileType(type),
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString()
       };
 
       const result = await this.fileService.listFiles(options);
@@ -458,6 +502,11 @@ export class FileHandler {
    */
   getByMessage = async (c: Context<{ Bindings: Bindings }>) => {
     try {
+      const payload = c.get('jwtPayload');
+      if (!payload || !payload.userId) {
+        return forbiddenResponse(c, 'Authentication required');
+      }
+
       const messageId = c.req.param('messageId');
 
       if (!messageId) {
@@ -468,6 +517,7 @@ export class FileHandler {
 
       const result = await this.fileService.listFiles({
         messageId,
+        uploadedBy: payload.role === 'admin' ? undefined : payload.userId.toString(),
         pageSize: 100 // 假設一個訊息不會有超過100個檔案
       });
 
