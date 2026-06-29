@@ -5,6 +5,7 @@ const mockUploadFile = vi.fn();
 const mockDownloadFile = vi.fn();
 const mockGetFileStatistics = vi.fn();
 const mockGetFileDetails = vi.fn();
+const mockListFiles = vi.fn();
 
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn(async (c: any, next: any) => {
@@ -20,7 +21,8 @@ vi.mock('@modules/file-management/services/file-service', () => ({
       uploadFile: mockUploadFile,
       downloadFile: mockDownloadFile,
       getFileStatistics: mockGetFileStatistics,
-      getFileDetails: mockGetFileDetails
+      getFileDetails: mockGetFileDetails,
+      listFiles: mockListFiles
     };
   })
 }));
@@ -210,7 +212,26 @@ describe('file-main shared contract routes', () => {
       page: 3,
       pageSize: 10,
       platform: 'system',
-      type: 'document'
+      type: 'document',
+      uploadedBy: 'agent-1'
+    }));
+  });
+
+  test('lists only files uploaded by the authenticated agent', async () => {
+    mockListFiles.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20
+    });
+
+    const res = await createTestApp().request('/api/files?page=1&pageSize=20');
+
+    expect(res.status).toBe(200);
+    expect(mockListFiles).toHaveBeenCalledWith(expect.objectContaining({
+      page: 1,
+      pageSize: 20,
+      uploadedBy: 'agent-1'
     }));
   });
 
@@ -231,7 +252,8 @@ describe('file-main shared contract routes', () => {
       includeMetadata: true,
       responseType: 'url',
       generateDownloadUrl: true,
-      urlExpiresIn: 600
+      urlExpiresIn: 600,
+      uploadedBy: 'agent-1'
     });
   });
 
@@ -262,7 +284,9 @@ describe('file-main shared contract routes', () => {
     expect(body.success).toBe(true);
     expect(body.data.id).toBe('file-1');
     expect(body.data.filename).toBe('hello.txt');
-    expect(mockGetFileDetails).toHaveBeenCalledWith('file-1');
+    expect(mockGetFileDetails).toHaveBeenCalledWith('file-1', {
+      uploadedBy: 'agent-1'
+    });
     expect(mockDownloadFile).not.toHaveBeenCalled();
   });
 
@@ -288,7 +312,8 @@ describe('file-main shared contract routes', () => {
       includeMetadata: true,
       responseType: 'stream',
       generateDownloadUrl: false,
-      urlExpiresIn: 3600
+      urlExpiresIn: 3600,
+      uploadedBy: 'agent-1'
     });
     expect(mockGetFileDetails).not.toHaveBeenCalled();
   });
