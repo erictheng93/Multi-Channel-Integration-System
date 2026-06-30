@@ -8,10 +8,12 @@ import { DurableObject } from 'cloudflare:workers';
 import type { Bindings } from '../types';
 import { eq, lt, desc, and, inArray } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { messages, fileAttachments, conversations, customers } from '../db/schema';
+import { messages, fileAttachments, conversations, customers, agents } from '../db/schema';
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '../utils/line';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { getPublicFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
+import { decodeJwtPayloadSegment } from '@/utils/jwt-payload';
+import { resolveDisplaySenderName } from '@/utils/sender-name-repair';
 import type { LineReplyMessage } from '../types';
 
 type MessageInsert = typeof messages.$inferInsert;
@@ -208,12 +210,40 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           }
         }
 
+        const agentIds = [...new Set(
+          fetchedMessages
+            .map(msg => msg.agentSenderId)
+            .filter((agentId): agentId is string => Boolean(agentId))
+        )];
+        const agentDisplayNamesById = new Map<string, string>();
+        if (agentIds.length > 0) {
+          const agentRows = await db
+            .select({
+              id: agents.id,
+              displayName: agents.displayName
+            })
+            .from(agents)
+            .where(inArray(agents.id, agentIds))
+            .all();
+
+          for (const agent of agentRows) {
+            agentDisplayNamesById.set(agent.id, agent.displayName);
+          }
+        }
+
         // FIX: Map agentSenderId/customerSenderId to senderId and include attachments
         return c.json({
           success: true,
           messages: fetchedMessages.map(msg => ({
             ...msg,
             senderId: msg.agentSenderId || msg.customerSenderId,
+            senderName: resolveDisplaySenderName({
+              senderType: msg.senderType,
+              senderName: msg.senderName,
+              agentDisplayName: msg.agentSenderId
+                ? agentDisplayNamesById.get(msg.agentSenderId)
+                : null
+            }),
             file_attachments: attachmentsByMessageId[msg.id] || []  //  FIX: Include attachments
           })),
           hasMore: fetchedMessages.length === limit
@@ -254,8 +284,10 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         try {
           const parts = sessionId.split('.');
           if (parts.length === 3) {
-            // Decode the payload (base64url)
-            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            const payload = decodeJwtPayloadSegment<{
+              userId?: string;
+              displayName?: string;
+            }>(parts[1]);
             agentId = payload.userId || sessionId;
             agentDisplayName = payload.displayName || null;
           } else {
