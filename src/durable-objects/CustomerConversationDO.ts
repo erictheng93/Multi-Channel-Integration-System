@@ -131,6 +131,10 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     }
   }
 
+  private refreshHibernatedConnections(): void {
+    this.restoreConnectionsFromHibernation();
+  }
+
   private createConnectionAttachment(
     connectionId: string,
     userId: string,
@@ -236,6 +240,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     // Notify about new message endpoint (called by CustomerMessageDO)
     if (url.pathname === '/notify-message' && request.method === 'POST') {
       try {
+        this.refreshHibernatedConnections();
+
         const { conversationId, message } = await request.json() as {
           conversationId: string;
           message: CustomerMessageNotification;
@@ -276,6 +282,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     // Notify about message update (called after media processing completes)
     if (url.pathname === '/notify-message-updated' && request.method === 'POST') {
       try {
+        this.refreshHibernatedConnections();
+
         const { conversationId, messageId, data } = await request.json() as {
           conversationId: string;
           messageId: string;
@@ -515,6 +523,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * FIX: Now broadcasts to ALL connections, including multiple tabs from same user
    */
   public async notifyNewMessage(conversationId: string, message: CustomerMessageNotification): Promise<void> {
+    this.refreshHibernatedConnections();
+
     // FIX: Use lowercase 'new_message' to match frontend WebSocketEventRouter
     // The frontend expects lowercase event types for routing to channels
     const notification = JSON.stringify({
@@ -592,6 +602,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
     messageId: string,
     data: { file_attachments?: unknown[] }
   ): Promise<void> {
+    this.refreshHibernatedConnections();
+
     const notification = JSON.stringify({
       type: 'message_updated',
       conversationId,
@@ -630,6 +642,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * Useful for monitoring and debugging
    */
   public getConnectionCount(): number {
+    this.refreshHibernatedConnections();
     return this.connections.size;
   }
 
@@ -638,6 +651,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * Useful for debugging
    */
   public getConnectedUsers(): string[] {
+    this.refreshHibernatedConnections();
+
     const userIds = new Set<string>();
     for (const conn of this.connections.values()) {
       userIds.add(conn.userId);
@@ -649,6 +664,8 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
    * Get detailed connection info for debugging
    */
   public getConnectionDetails(): Array<{ connectionId: string; userId: string; connectedAt: number }> {
+    this.refreshHibernatedConnections();
+
     const details: Array<{ connectionId: string; userId: string; connectedAt: number }> = [];
     for (const [connId, conn] of this.connections.entries()) {
       details.push({

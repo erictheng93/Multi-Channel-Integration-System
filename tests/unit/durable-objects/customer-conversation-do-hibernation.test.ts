@@ -176,4 +176,43 @@ describe('CustomerConversationDO hibernation', () => {
     expect(payload.conversationId).toBe('conversation-1')
     expect(payload.data.content).toBe('hello')
   })
+
+  it('refreshes hibernated connection details for HTTP-only notify requests after construction', async () => {
+    const socket = createSocket({
+      connectionId: 'connection-1',
+      userId: 'agent-1',
+      displayName: 'Agent One',
+      role: 'agent',
+      conversationId: 'conversation-1',
+      connectedAt: 1000
+    })
+    const state = createState()
+    const durableObject = new CustomerConversationDO(state, createEnv())
+
+    vi.mocked(state.getWebSockets).mockReturnValue([socket] as unknown as WebSocket[])
+
+    const response = await durableObject.fetch(new Request('https://conversation/notify-message', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversationId: 'conversation-1',
+        message: {
+          id: 'message-1',
+          content: 'hello',
+          messageType: 'text',
+          senderType: 'customer',
+          senderId: 'line-user-1',
+          platform: 'line'
+        }
+      })
+    }))
+    const body = await response.json() as {
+      success: boolean
+      debug: { totalConnections: number; connectedUsers: string[] }
+    }
+
+    expect(body.success).toBe(true)
+    expect(body.debug.totalConnections).toBe(1)
+    expect(body.debug.connectedUsers).toEqual(['agent-1'])
+    expect(socket.send).toHaveBeenCalledTimes(1)
+  })
 })

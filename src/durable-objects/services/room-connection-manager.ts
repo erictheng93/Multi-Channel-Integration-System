@@ -147,10 +147,6 @@ export class RoomConnectionManager {
     testSafeLog(`[ConversationRoom] Message from ${connectionId}:`, message.type);
 
     switch (message.type) {
-      case 'ping':
-        this.helpers.sendMessage(connection, { type: 'pong', timestamp: nowMs() });
-        break;
-
       case 'subscribe':
         if (this.helpers.isFullMode()) {
           await this.handleSubscribe(connection, message);
@@ -366,6 +362,8 @@ export class RoomConnectionManager {
   }
 
   async handleGetParticipants(_request: Request): Promise<Response> {
+    this.restoreHibernatedConnections();
+
     return new Response(JSON.stringify({
       participants: Array.from(this.ctx.participants),
       activeConnections: this.ctx.connections.size,
@@ -376,6 +374,8 @@ export class RoomConnectionManager {
   }
 
   async handleGetMetrics(_request: Request): Promise<Response> {
+    this.restoreHibernatedConnections();
+
     const baseMetrics = {
       conversationId: this.ctx.conversationId,
       mode: this.ctx.config.mode,
