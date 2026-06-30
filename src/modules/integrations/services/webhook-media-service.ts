@@ -1,6 +1,7 @@
 // src/modules/integrations/services/webhook-media-service.ts
 // LINE media download, Facebook attachment handling, R2 upload (Phase 4 refactoring)
 
+import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { fileAttachments } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -27,6 +28,22 @@ export async function processLineMedia(
   log.info('Processing media', { lineMessageId, lineMessageType, fileName });
 
   try {
+    // Idempotency guard: the queue is at-least-once, so a redelivery or a
+    // retry-after-partial-success must NOT re-download and re-upload to R2
+    // (the R2 key is a random UUID, so a retry creates a 2nd object) nor
+    // insert a 2nd file_attachments row. One LINE media event = exactly one
+    // attachment, so any existing row for this messageId means we are done.
+    const drizzleDb = createDbClient(env.DB);
+    const existing = await drizzleDb
+      .select()
+      .from(fileAttachments)
+      .where(eq(fileAttachments.messageId, messageId))
+      .get();
+    if (existing) {
+      log.info('Media already processed, skipping duplicate', { messageId, lineMessageId });
+      return [existing];
+    }
+
     const { processLineMediaMessage } = await import('@/utils/file-storage');
 
     const mediaFile = await processLineMediaMessage(
@@ -52,8 +69,7 @@ export async function processLineMedia(
       createdAt: nowISO()
     };
 
-    // Store to database
-    const drizzleDb = createDbClient(env.DB);
+    // Store to database (drizzleDb created above for the idempotency check)
     await drizzleDb.insert(fileAttachments).values(newFileAttachment);
 
     log.info('Media processed and stored', { filename: mediaFile.filename, messageId });
