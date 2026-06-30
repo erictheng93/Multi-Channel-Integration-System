@@ -299,13 +299,22 @@ export class LineMessageQueueConsumer {
     }
 
     // Step 2: Broadcast message_updated to global WebSocket (conversation list)
-    await this.broadcastService.broadcastMessageEvent({
-      type: 'message_updated',
-      conversationId,
-      messageId,
-      data: { file_attachments: fileAttachmentData },
-      priority: 'high'
-    });
+    // Non-critical: media is already persisted. A broadcast failure must NOT
+    // throw -- otherwise the queue retries the whole job and re-stores the media.
+    try {
+      await this.broadcastService.broadcastMessageEvent({
+        type: 'message_updated',
+        conversationId,
+        messageId,
+        data: { file_attachments: fileAttachmentData },
+        priority: 'high'
+      });
+    } catch (broadcastErr) {
+      log.warn('Media message_updated broadcast failed (non-critical)', {
+        messageId,
+        error: broadcastErr instanceof Error ? broadcastErr.message : String(broadcastErr)
+      });
+    }
 
     // Step 3: Notify CustomerConversationDO directly (conversation detail page)
     try {
