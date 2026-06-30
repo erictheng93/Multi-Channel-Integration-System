@@ -100,8 +100,9 @@ export class UserConnectionStateManager {
     return this.connections.has(connectionId);
   }
 
-  isAtConnectionLimit(): boolean {
-    return this.connections.size >= this.MAX_CONNECTIONS_PER_USER;
+  // activeConnectionCount should come from getWebSockets().length, not the in-memory Map.
+  isAtConnectionLimit(activeConnectionCount: number): boolean {
+    return activeConnectionCount >= this.MAX_CONNECTIONS_PER_USER;
   }
 
   wasOffline(): boolean {

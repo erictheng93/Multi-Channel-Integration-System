@@ -150,6 +150,27 @@ describe('ConversationRoom hibernation', () => {
     expect(body.participants).toEqual(['agent-1'])
   })
 
+  it('refreshes hibernated participants for HTTP-only reads after construction', async () => {
+    const socket = createSocket({
+      connectionId: 'connection-1',
+      userId: 'agent-1',
+      role: 'agent',
+      conversationId: 'conversation-1',
+      connectedAt: 1000,
+      lastActivity: 2000
+    })
+    const state = createState()
+    const durableObject = new ConversationRoom(state, {}, { mode: 'simplified' })
+
+    vi.mocked(state.getWebSockets).mockReturnValue([socket] as unknown as WebSocket[])
+
+    const response = await durableObject.fetch(new Request('https://room/metrics'))
+    const body = await response.json() as { activeConnections: number; participants: number }
+
+    expect(body.activeConnections).toBe(1)
+    expect(body.participants).toBe(1)
+  })
+
   it('merges stored participants without dropping hibernated active participants', async () => {
     const socket = createSocket({
       connectionId: 'connection-1',

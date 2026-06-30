@@ -230,7 +230,7 @@ describe('UserConnection hibernation', () => {
     })
   })
 
-  it('handles hibernated websocket messages through Durable Object webSocketMessage', async () => {
+  it('does not manually pong ping messages that bypass runtime auto-response', async () => {
     const socket = createSocket({
       connectionId: 'connection-1',
       userId: 'user-1',
@@ -247,7 +247,10 @@ describe('UserConnection hibernation', () => {
     }))
 
     expect(socket.send).toHaveBeenCalledTimes(1)
-    expect(JSON.parse(socket.send.mock.calls[0][0] as string)).toMatchObject({ type: 'pong' })
+    expect(JSON.parse(socket.send.mock.calls[0][0] as string)).toMatchObject({
+      type: 'error',
+      error: 'Unknown message type: ping'
+    })
   })
 
   it('uses alarms instead of timers to close sockets when token expiry passes', async () => {

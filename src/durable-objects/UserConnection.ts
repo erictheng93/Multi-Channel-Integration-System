@@ -136,7 +136,7 @@ export class UserConnection implements DurableObject {
       this.userId = userId;
 
       // Check connection limits
-      if (this.stateManager.isAtConnectionLimit()) {
+      if (this.stateManager.isAtConnectionLimit(this.state.getWebSockets().length)) {
         return new Response('Connection limit reached', { status: 429 });
       }
 
@@ -258,10 +258,6 @@ export class UserConnection implements DurableObject {
     console.log(`[UserConnection] Message from ${connectionId}:`, message.type);
 
     switch (message.type) {
-      case 'ping':
-        this.stateManager.sendMessage(connection, { type: 'pong', timestamp: nowMs() });
-        break;
-
       case 'subscribe':
         await this.handleSubscribeMessage(connection, message);
         break;

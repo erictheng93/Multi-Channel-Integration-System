@@ -1,6 +1,6 @@
 # WebSocket Hibernation 遷移指導文件
 
-> 狀態:**待實作**。本文件是遷移的唯一指導來源(single source of truth)。實作時逐節對照,完成一項勾一項。
+> 狀態:**已完成,待部署驗證**(2026-06-30)。三個 DO(CustomerConversationDO / UserConnection / ConversationRoom)、前端心跳、單元測試皆已落地;三大陷阱 A(auto-response 不喚醒)、B(單一 alarm 多工取代 setTimeout)、C(getWebSockets 重建)均處理完成。`tsc --noEmit` 乾淨、`tests/unit/durable-objects/` 35 tests 全過。剩餘僅 Dashboard 上 GB·s 趨勢的線上成效驗證(第 6 節)。本文件是遷移的唯一指導來源(single source of truth)。
 
 ## 0. 為什麼要做(帳單依據)
 
