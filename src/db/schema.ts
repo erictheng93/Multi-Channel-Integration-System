@@ -122,7 +122,7 @@ export const messages = sqliteTable('messages', {
   agentSenderId: text('agent_sender_id').references(() => agents.id, { onDelete: 'set null' }),
   content: text('content').notNull(),
   messageType: text('message_type').notNull().default('text'),
-  platformMessageId: text('platform_message_id'),
+  platformMessageId: text('platform_message_id').unique(),
   isRecalled: integer('is_recalled', { mode: 'boolean' }).default(false),
   recallDeadline: text('recall_deadline'),
   recalledAt: text('recalled_at'),
