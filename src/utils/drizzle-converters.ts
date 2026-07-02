@@ -74,7 +74,7 @@ export function convertMessage(drizzleMessage: DrizzleMessage): DbMessage {
     messageType: drizzleMessage.messageType as 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker',
     isRecalled: Boolean(drizzleMessage.isRecalled),
     isSent: Boolean(drizzleMessage.isSent),
-    deliveryStatus: (drizzleMessage.deliveryStatus as 'pending' | 'sent' | 'delivered' | 'failed') || MESSAGE_STATUS.PENDING,
+    deliveryStatus: (drizzleMessage.deliveryStatus as 'pending' | 'buffered' | 'sent' | 'delivered' | 'failed') || MESSAGE_STATUS.PENDING,
     createdAt: drizzleMessage.createdAt || nowISO()
   };
 
