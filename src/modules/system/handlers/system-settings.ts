@@ -6,6 +6,7 @@ import type { Bindings } from '@/types'
 import {
   successResponse,
   forbiddenResponse,
+  badRequestResponse,
   handleApiError
 } from '@/utils/api-response'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities'
@@ -13,6 +14,12 @@ import { createDbClient } from '@/db/drizzle-factory'
 import { gte, count } from 'drizzle-orm'
 import { systemSettings, agents, conversations, messages } from '@/db/schema'
 import { nowISO } from '@/utils/timestamp'
+import {
+  RECALL_WINDOW_ALLOWED_VALUES,
+  RECALL_WINDOW_SETTING_KEY,
+  isValidRecallWindow,
+  invalidateRecallWindowCache
+} from '@/services/recall-window-config'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -49,6 +56,7 @@ interface SystemSettingsUpdate extends Record<string, unknown> {
     enableRateLimit: boolean;
     enableLogging: boolean;
     enableMetrics: boolean;
+    recallWindowSeconds: number;
   }>;
 }
 
@@ -76,6 +84,7 @@ interface SystemSettingsResponse extends Record<string, unknown> {
     enableRateLimit: boolean;
     enableLogging: boolean;
     enableMetrics: boolean;
+    recallWindowSeconds: number;
   };
 }
 
@@ -131,7 +140,8 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
         sessionExpiry: 24,
         enableRateLimit: true,
         enableLogging: true,
-        enableMetrics: true
+        enableMetrics: true,
+        recallWindowSeconds: 0
       }
     }
 
@@ -172,6 +182,16 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
 
     const drizzleDb = createDbClient(c.env.DB)
     const settings = await c.req.json<SystemSettingsUpdate>()
+
+    // Recall window: only a fixed set of durations is allowed (0 = disabled)
+    if (settings.advanced && 'recallWindowSeconds' in settings.advanced) {
+      if (!isValidRecallWindow(settings.advanced.recallWindowSeconds)) {
+        return badRequestResponse(
+          c,
+          `recallWindowSeconds must be one of: ${RECALL_WINDOW_ALLOWED_VALUES.join(', ')}`
+        )
+      }
+    }
 
     // Flatten settings for database storage
     const flattenSettings = (obj: Record<string, unknown>, prefix = ''): Array<{ key: string; value: string }> => {
@@ -215,6 +235,11 @@ export const updateSettings = async (c: Context<{ Bindings: Bindings }>) => {
             updatedAt: nowISO()
           }
         })
+    }
+
+    // Bust the KV cache so the new recall window takes effect on the next send
+    if (flatSettings.some(({ key }) => key === RECALL_WINDOW_SETTING_KEY)) {
+      await invalidateRecallWindowCache(c.env)
     }
 
     // Log settings update activity

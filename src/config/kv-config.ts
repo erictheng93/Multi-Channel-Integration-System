@@ -78,6 +78,9 @@ export const KV_TTL = {
   /** Dashboard cache - 1 hour */
   CACHE_DASHBOARD: 60 * 60, // 3,600 seconds
 
+  /** System settings cache (e.g. recall window) - 1 minute for fast propagation */
+  CACHE_SETTINGS: 60, // 60 seconds
+
   /** Health check cache - 5 minutes (optimized from 60s on 2025-01-09) */
   CACHE_HEALTH: 300, // 300 seconds (was: 60)
 
@@ -231,6 +234,7 @@ export const KV_KEY_PATTERNS = {
     template: 'template:',
     generation: 'generation:',
     batch: 'batch:',
+    settingsRecallWindow: 'cache:settings:recall_window',
   },
 } as const;
 
