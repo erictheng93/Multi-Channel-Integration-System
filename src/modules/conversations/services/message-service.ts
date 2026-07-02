@@ -13,10 +13,9 @@ import type {
   MessageSendRequest,
   MessageSendResponse,
 } from '../types/conversation-types';
-import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { MessageDeliveryService } from './message-delivery-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
-import { getSignedFileUrl } from '@/utils/file-url';
 
 const log = createContextLogger('MessageService');
 const requestLog = createContextLogger('MessageRequestService');
@@ -123,7 +122,12 @@ export class MessageService implements MessageServiceInterface {
         metadata: JSON.stringify({
           ...request.metadata,
           platform: customer.platform,
-          platformUserId: customer.platformUserId
+          platformUserId: customer.platformUserId,
+          // Persisted so MessageDeliveryService can rebuild the send from D1
+          // alone (delayed delivery via DO alarm has no request object).
+          ...(request.attachmentIds && request.attachmentIds.length > 0 && {
+            attachmentIds: request.attachmentIds
+          })
         })
       };
 
@@ -167,292 +171,12 @@ export class MessageService implements MessageServiceInterface {
 
   /**
    * Process background sending (Step 2 of Async Sending)
-   * Sends to LINE and updates DB status.
+   * Delegates to the shared MessageDeliveryService, which reads the message
+   * and its attachments from D1 (also used by DelayedMessageScheduler DO).
    */
-  async processBackgroundSending(messageId: string, request: MessageSendRequest, _user: unknown): Promise<void> {
-    try {
-      log.info('Starting background sending', { messageId });
-
-      const [conversationData] = await this.db
-        .select({
-          conversation: conversations,
-          customer: customers
-        })
-        .from(conversations)
-        .leftJoin(customers, eq(conversations.customerId, customers.id))
-        .where(eq(conversations.id, request.conversationId))
-        .limit(1);
-
-      if (!conversationData?.customer) {
-        log.error('Customer not found for background sending', { messageId, conversationId: request.conversationId });
-        return;
-      }
-      const { customer } = conversationData;
-
-      let isSent = false;
-      let deliveryStatus: 'sent' | 'failed' | 'partial' = 'failed';
-      let platformMessageId: string | null = null;
-      let errorMessage: string | undefined;
-
-      // LINE Sending Logic
-      if (customer.platform === 'line' && customer.platformUserId) {
-        try {
-          const { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } = await import('@/utils/line');
-          const lineMessages: LineReplyMessage[] = [];
-
-          const hasAttachments = request.attachmentIds && request.attachmentIds.length > 0;
-          const isFileOnlyContent = request.content && (
-            /^Sent a file:\s*.+$/i.test(request.content) ||
-            /^Sent \d+ files$/i.test(request.content) ||
-            /^\[(?:檔案|圖片)\]\s*.+$/.test(request.content) ||
-            /^\s*.+$/.test(request.content)  // 匹配 " filename" 格式
-          );
-
-          // 詳細日誌：追蹤附件處理
-          log.debug('Attachment check', {
-            hasAttachments,
-            attachmentIds: request.attachmentIds,
-            attachmentCount: request.attachmentIds?.length || 0,
-            content: request.content?.substring(0, 50),
-            isFileOnlyContent
-          });
-
-          if (request.content && request.content.trim() && !isFileOnlyContent) {
-            lineMessages.push(createTextMessage(request.content));
-          } else if (request.content && isFileOnlyContent && !hasAttachments) {
-            lineMessages.push(createTextMessage(request.content));
-          }
-
-          // FIX: 改進附件處理邏輯，添加驗證和詳細錯誤報告
-          if (request.attachmentIds && request.attachmentIds.length > 0) {
-            log.debug('Querying attachments', { count: request.attachmentIds.length, attachmentIds: request.attachmentIds });
-
-            const attachmentsData = await this.db
-              .select()
-              .from(fileAttachments)
-              .where(inArray(fileAttachments.id, request.attachmentIds));
-
-            log.debug('Query result', { found: attachmentsData.length });
-
-            // 關鍵驗證：檢查是否找到所有附件
-            if (attachmentsData.length === 0) {
-              log.error('CRITICAL: No attachments found in database', {
-                requestedIds: request.attachmentIds,
-                conversationId: request.conversationId,
-                messageId
-              });
-              errorMessage = `附件未找到: 請求了 ${request.attachmentIds.length} 個附件但資料庫中未找到任何記錄`;
-            } else if (attachmentsData.length < request.attachmentIds.length) {
-              log.warn('Partial attachments found', {
-                requested: request.attachmentIds.length,
-                found: attachmentsData.length,
-                foundIds: attachmentsData.map(a => a.id),
-                missingIds: request.attachmentIds.filter(id => !attachmentsData.some(a => a.id === id))
-              });
-            }
-
-            let processedCount = 0;
-            let skippedCount = 0;
-
-    for (const attachment of attachmentsData) {
-      let fileUrl = attachment.fileUrl;
-      if (attachment.r2Key) {
-        try {
-          fileUrl = await getSignedFileUrl(this.bindings, attachment.r2Key);
-        } catch (error) {
-          log.warn('Failed to sign attachment URL for send, fallback to stored value', {
-            attachmentId: attachment.id,
-            r2Key: attachment.r2Key,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-      }
-      log.debug('Processing attachment', {
-        id: attachment.id,
-        filename: attachment.filename,
-        mimeType: attachment.mimeType,
-                fileUrl: fileUrl ? fileUrl.substring(0, 80) + '...' : 'NULL',
-                hasFileUrl: !!fileUrl
-              });
-
-              if (fileUrl) {
-                if (attachment.mimeType?.startsWith('image/')) {
-                  // Use native LINE image message (直接顯示圖片，可儲存/分享)
-                  lineMessages.push(createImageMessage(fileUrl));
-                  log.debug('Added image message', { filename: attachment.filename });
-                } else {
-                  // Use Flex Message card for files (PDF, Word, Excel, etc.)
-                  const flexMessage = createFileFlexMessage(
-                    fileUrl,
-                    attachment.filename || 'File',
-                    attachment.mimeType || '',
-                    attachment.fileSize || 0
-                  );
-                  lineMessages.push(flexMessage);
-                  log.debug('Added file flex message', { filename: attachment.filename });
-                }
-                processedCount++;
-              } else {
-                log.error('Skipping attachment with NULL fileUrl', {
-                  id: attachment.id,
-                  filename: attachment.filename,
-                  r2Key: attachment.r2Key
-                });
-                skippedCount++;
-              }
-            }
-
-            log.debug('Attachment processing summary', {
-              total: attachmentsData.length,
-              processed: processedCount,
-              skipped: skippedCount,
-              lineMessagesCount: lineMessages.length
-            });
-
-            // 如果有附件但都沒有有效的 fileUrl，記錄錯誤
-            if (attachmentsData.length > 0 && processedCount === 0) {
-              errorMessage = `所有附件都缺少有效的 fileUrl (${skippedCount} 個附件被跳過)`;
-              log.error('All attachments skipped due to missing fileUrl', { skippedCount });
-            }
-          }
-
-          log.debug('Final lineMessages count', { count: lineMessages.length });
-
-          if (lineMessages.length > 0) {
-            // FIX: LINE API 每次最多只能發送 5 則訊息，需要分批發送
-            const LINE_MESSAGE_LIMIT = 5;
-            const totalMessages = lineMessages.length;
-            const batches = Math.ceil(totalMessages / LINE_MESSAGE_LIMIT);
-
-            log.info('Sending messages in batches', { totalMessages, batches });
-
-            let allBatchesSuccessful = true;
-            let successfulBatches = 0;
-            let failedBatches = 0;
-
-            for (let i = 0; i < totalMessages; i += LINE_MESSAGE_LIMIT) {
-              const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
-              const batchNumber = Math.floor(i / LINE_MESSAGE_LIMIT) + 1;
-
-              log.debug('Sending batch', { batchNumber, batches, batchSize: batch.length });
-
-              const sendSuccess = await pushLineMessage(
-                this.bindings.LINE_CHANNEL_ACCESS_TOKEN,
-                customer.platformUserId,
-                batch
-              );
-
-              if (sendSuccess) {
-                successfulBatches++;
-                log.debug('Batch sent successfully', { batchNumber, batches });
-              } else {
-                allBatchesSuccessful = false;
-                failedBatches++;
-                log.error('Batch failed', { batchNumber, batches });
-              }
-
-              // 如果有多個批次，稍微延遲以避免 LINE API rate limiting
-              if (i + LINE_MESSAGE_LIMIT < totalMessages) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-              }
-            }
-
-            if (allBatchesSuccessful) {
-              platformMessageId = `line_${nowMs()}`;
-              isSent = true;
-              deliveryStatus = 'sent';
-              log.info('All batches sent successfully', { batches, totalMessages });
-            } else if (successfulBatches > 0) {
-              // 部分成功
-              platformMessageId = `line_${nowMs()}_partial`;
-              isSent = true;
-              deliveryStatus = 'partial';
-              errorMessage = `部分發送成功: ${successfulBatches}/${batches} 批次成功`;
-              log.warn('Partial success', { successfulBatches, batches });
-            } else {
-              errorMessage = 'LINE API returned failure for all batches';
-              log.error('All batches failed', { batches, failedBatches });
-            }
-          } else if (hasAttachments) {
-            // 有附件但最終沒有消息要發送 - 這是一個問題
-            errorMessage = errorMessage || '有附件但無法生成 LINE 消息（可能是附件查詢或 fileUrl 問題）';
-            log.error('Has attachments but no LINE messages generated', {
-              attachmentIds: request.attachmentIds,
-              errorMessage
-            });
-          }
-        } catch (lineError) {
-          errorMessage = lineError instanceof Error ? lineError.message : 'LINE API error';
-          log.error('LINE API error', {}, lineError instanceof Error ? lineError : String(lineError));
-        }
-      }
-
-      // Update Message Status
-      await this.db.update(messages).set({
-        isSent,
-        deliveryStatus,
-        platformMessageId,
-        metadata: JSON.stringify({
-          ...request.metadata,
-          platform: customer.platform,
-          platformUserId: customer.platformUserId,
-          ...(errorMessage && { error: errorMessage })
-        })
-      }).where(eq(messages.id, messageId));
-
-      // Broadcast Update
-      const broadcastService = new WebSocketBroadcastService(this.bindings);
-      await broadcastService.broadcastMessageEvent({
-        type: 'message_updated',
-        conversationId: request.conversationId,
-        messageId: messageId,
-        agentId: request.senderId,
-        data: {
-          deliveryStatus,
-          isSent,
-          platformMessageId,
-          timestamp: nowISO()
-        },
-        priority: 'normal'
-      });
-      log.info('Broadcasted message update', { deliveryStatus });
-
-    } catch (error) {
-      log.error('Background sending failed', { messageId }, error instanceof Error ? error : String(error));
-      await this.db.update(messages).set({
-        deliveryStatus: 'failed',
-        metadata: JSON.stringify({ error: String(error) })
-      }).where(eq(messages.id, messageId));
-
-      // Mirror the success-path broadcast so the FE can transition the message
-      // out of 'pending' on outer-catch failures (uncaught exceptions before
-      // the inline LINE block updates DB). Without this, message-input UI
-      // stays on "傳送中..." forever even though D1 already shows 'failed'.
-      // Wrapped in its own try/catch — we're already on the outer-catch path,
-      // any additional throw would surface in waitUntil as an unhandled error.
-      try {
-        const broadcastService = new WebSocketBroadcastService(this.bindings);
-        await broadcastService.broadcastMessageEvent({
-          type: 'message_updated',
-          conversationId: request.conversationId,
-          messageId,
-          agentId: request.senderId,
-          data: {
-            deliveryStatus: 'failed',
-            isSent: false,
-            platformMessageId: null,
-            error: error instanceof Error ? error.message : String(error),
-            timestamp: nowISO()
-          },
-          priority: 'normal'
-        });
-      } catch (broadcastError) {
-        log.warn('Failed to broadcast catch-path failure (non-fatal)', {
-          messageId,
-          error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
-        });
-      }
-    }
+  async processBackgroundSending(messageId: string, _request: MessageSendRequest, _user: unknown): Promise<void> {
+    const deliveryService = new MessageDeliveryService(this.bindings);
+    await deliveryService.deliver(messageId);
   }
 
   /**
