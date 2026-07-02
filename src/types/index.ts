@@ -158,7 +158,7 @@ export interface DbMessage {
   recalledAt?: string;
   isSent: boolean;
   sentAt?: string;
-  deliveryStatus: 'pending' | 'sent' | 'delivered' | 'failed';
+  deliveryStatus: 'pending' | 'buffered' | 'sent' | 'delivered' | 'failed';
   replyToMessageId?: string;
   threadId?: string;
   sessionId?: string;

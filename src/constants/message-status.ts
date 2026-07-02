@@ -12,6 +12,8 @@
  *
  * Represents the lifecycle states of a message:
  * - PENDING: Message created but not yet sent to external platform
+ * - BUFFERED: Message held in the recall window; the platform push happens
+ *   when the DelayedMessageScheduler alarm fires (see recallDeadline)
  * - SENT: Message successfully sent to external platform (LINE, Facebook, etc.)
  * - DELIVERED: Message confirmed delivered to recipient (if platform supports delivery receipts)
  * - FAILED: Message failed to send or deliver
@@ -21,6 +23,10 @@
 export const MESSAGE_STATUS = {
   /** Message created but not yet sent */
   PENDING: 'pending',
+
+  /** Message held in the recall window, platform push deferred until the
+   *  DelayedMessageScheduler alarm fires. Recallable until recallDeadline. */
+  BUFFERED: 'buffered',
 
   /** Message successfully sent to platform */
   SENT: 'sent',
@@ -62,6 +68,7 @@ export const MESSAGE_STATUS_VALUES = Object.values(MESSAGE_STATUS) as MessageSta
  */
 export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
   [MESSAGE_STATUS.PENDING]: 'Pending',
+  [MESSAGE_STATUS.BUFFERED]: 'Buffered',
   [MESSAGE_STATUS.SENT]: 'Sent',
   [MESSAGE_STATUS.DELIVERED]: 'Delivered',
   [MESSAGE_STATUS.FAILED]: 'Failed',
@@ -74,6 +81,7 @@ export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
  */
 export const MESSAGE_STATUS_DESCRIPTIONS: Record<MessageStatus, string> = {
   [MESSAGE_STATUS.PENDING]: 'Message is queued and waiting to be sent',
+  [MESSAGE_STATUS.BUFFERED]: 'Message is held in the recall window and will be sent when it expires',
   [MESSAGE_STATUS.SENT]: 'Message has been sent to the messaging platform',
   [MESSAGE_STATUS.DELIVERED]: 'Message has been delivered to the recipient',
   [MESSAGE_STATUS.FAILED]: 'Message failed to send or deliver',
@@ -86,6 +94,7 @@ export const MESSAGE_STATUS_DESCRIPTIONS: Record<MessageStatus, string> = {
  */
 export const MESSAGE_STATUS_COLORS: Record<MessageStatus, string> = {
   [MESSAGE_STATUS.PENDING]: 'text-yellow-600 bg-yellow-50',
+  [MESSAGE_STATUS.BUFFERED]: 'text-orange-600 bg-orange-50',
   [MESSAGE_STATUS.SENT]: 'text-blue-600 bg-blue-50',
   [MESSAGE_STATUS.DELIVERED]: 'text-green-600 bg-green-50',
   [MESSAGE_STATUS.FAILED]: 'text-red-600 bg-red-50',
@@ -98,6 +107,7 @@ export const MESSAGE_STATUS_COLORS: Record<MessageStatus, string> = {
  */
 export const MESSAGE_STATUS_ICONS: Record<MessageStatus, string> = {
   [MESSAGE_STATUS.PENDING]: '',
+  [MESSAGE_STATUS.BUFFERED]: '⏱',
   [MESSAGE_STATUS.SENT]: '',
   [MESSAGE_STATUS.DELIVERED]: '',
   [MESSAGE_STATUS.FAILED]: '',
@@ -120,6 +130,7 @@ export const TERMINAL_MESSAGE_STATUSES = [
  */
 export const ACTIVE_MESSAGE_STATUSES = [
   MESSAGE_STATUS.PENDING,
+  MESSAGE_STATUS.BUFFERED,
   MESSAGE_STATUS.SENT
 ] as const;
 

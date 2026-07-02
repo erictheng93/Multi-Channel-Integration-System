@@ -61,7 +61,7 @@ function isMessageRequestType(value: unknown): value is MessageRequestType {
 
 export interface MessageServiceInterface {
   sendMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
-  createPendingMessage(request: MessageSendRequest): Promise<MessageSendResponse>;
+  createPendingMessage(request: MessageSendRequest, recallWindowSeconds?: number): Promise<MessageSendResponse>;
   processBackgroundSending(messageId: string, request: MessageSendRequest, user: unknown): Promise<void>;
   getMessages(conversationId: string, limit?: number, offset?: number): Promise<Message[]>;
   recallMessage(messageId: string, userId: string): Promise<boolean>;
@@ -83,10 +83,15 @@ export class MessageService implements MessageServiceInterface {
   /**
    * Create a pending message (Step 1 of Async Sending)
    * Inserts message to DB with 'pending' status and returns immediately.
+   *
+   * With recallWindowSeconds > 0 the message is created as 'buffered' with a
+   * recallDeadline snapshot instead — it must NOT be delivered before the
+   * window expires (DelayedMessageScheduler owns the timing).
    */
-  async createPendingMessage(request: MessageSendRequest): Promise<MessageSendResponse> {
+  async createPendingMessage(request: MessageSendRequest, recallWindowSeconds: number = 0): Promise<MessageSendResponse> {
     const messageId = crypto.randomUUID();
     const timestamp = nowISO();
+    const buffered = recallWindowSeconds > 0;
 
     try {
       // Step 1: Get conversation with customer details
@@ -116,7 +121,10 @@ export class MessageService implements MessageServiceInterface {
         messageType: request.messageType || 'text',
         platformMessageId: null,
         isSent: false,
-        deliveryStatus: 'pending',
+        deliveryStatus: buffered ? 'buffered' : 'pending',
+        recallDeadline: buffered
+          ? new Date(nowMs() + recallWindowSeconds * 1000).toISOString()
+          : null,
         senderName: request.senderName || null,
         createdAt: timestamp,
         metadata: JSON.stringify({
