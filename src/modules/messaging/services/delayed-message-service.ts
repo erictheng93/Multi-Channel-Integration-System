@@ -21,6 +21,7 @@ import {
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import { DELAYED_MESSAGE_LIMITS } from '@/constants/limits';
 
 const log = createContextLogger('DelayedMessage');
 
@@ -49,9 +50,12 @@ export class DelayedMessageService {
   ): Promise<DelayedSendResponse> {
     try {
       // 驗證延遲時間範圍
-      if (request.delaySeconds < 1 || request.delaySeconds > 120) {
+      if (
+        request.delaySeconds < DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS ||
+        request.delaySeconds > DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS
+      ) {
         throw new InvalidMessageDataError(
-          'Delay seconds must be between 1 and 120',
+          `Delay seconds must be between ${DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS} and ${DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS}`,
           { delaySeconds: request.delaySeconds }
         );
       }

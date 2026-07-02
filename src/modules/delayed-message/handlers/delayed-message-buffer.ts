@@ -11,6 +11,7 @@
 
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
+import { DELAYED_MESSAGE_LIMITS } from '@/constants/limits';
 import type { Bindings } from '@/types';
 import { jwtAuth } from '@/middleware/auth';
 import { PermissionService } from '@/services/permission-service';
@@ -55,8 +56,8 @@ delayedMessageBufferHandler.post('/send', jwtAuth, async (c) => {
     }
 
     // 驗證延遲時間範圍
-    if (delaySeconds < 1 || delaySeconds > 120) {
-      return badRequestResponse(c, 'Delay seconds must be between 1 and 120');
+    if (delaySeconds < DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS || delaySeconds > DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS) {
+      return badRequestResponse(c, `Delay seconds must be between ${DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS} and ${DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS}`);
     }
 
     // 檢查權限
