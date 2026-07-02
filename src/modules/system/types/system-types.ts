@@ -86,6 +86,7 @@ export interface SystemSettingsResponse {
     enableRateLimit: boolean;
     enableLogging: boolean;
     enableMetrics: boolean;
+    recallWindowSeconds: number;
   };
 }
 
@@ -120,6 +121,7 @@ export interface SystemSettingsUpdate {
     enableRateLimit: boolean;
     enableLogging: boolean;
     enableMetrics: boolean;
+    recallWindowSeconds: number;
   }>;
 }
 

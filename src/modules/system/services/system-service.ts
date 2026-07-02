@@ -305,7 +305,8 @@ export class SystemService implements SystemServiceInterface {
           sessionExpiry: 86400,
           enableRateLimit: true,
           enableLogging: true,
-          enableMetrics: true
+          enableMetrics: true,
+          recallWindowSeconds: 0
         }
       };
 
