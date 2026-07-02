@@ -4,7 +4,7 @@
  * Unified delayed message scheduler (consolidates DelayedMessageBuffer + DelayedMessageProcessor)
  *
  * Core Features:
- * - Schedule messages with 1-120 second delays using Alarm API
+ * - Schedule messages with 1-300 second delays using Alarm API (DELAYED_MESSAGE_LIMITS)
  * - Instant cancellation capability (<100ms response time)
  * - Platform support: LINE OA, Facebook Messenger
  * - Automatic retry with exponential backoff (1s, 2s, 4s)
@@ -26,6 +26,7 @@
 
 import type { Bindings } from '../types';
 import { nowISO, nowMs } from '@/utils/timestamp';
+import { DELAYED_MESSAGE_LIMITS } from '@/constants/limits';
 
 import type {
   PendingMessage,
@@ -251,22 +252,35 @@ export class DelayedMessageScheduler implements DurableObject {
     const data = await request.json() as {
       messageId: string;
       conversationId: string;
-      agentId: string;
-      content: string;
+      agentId?: string;
+      content?: string;
       messageType?: string;
-      platform: string;
-      recipientPlatformId: string;
+      platform?: string;
+      recipientPlatformId?: string;
       delaySeconds: number;
       metadata?: Record<string, unknown>;
+      mode?: 'deliver-by-ref';
     };
 
-    if (!data.messageId || !data.conversationId || !data.content || !data.agentId) {
+    const isDeliverByRef = data.mode === 'deliver-by-ref';
+
+    if (!data.messageId || !data.conversationId) {
+      return this.badRequestResponse('Missing required fields');
+    }
+    // deliver-by-ref reads content/recipient from D1 at send time; the legacy
+    // self-contained payload must carry everything inline.
+    if (!isDeliverByRef && (!data.content || !data.agentId)) {
       return this.badRequestResponse('Missing required fields');
     }
 
     const delaySeconds = data.delaySeconds || 5;
-    if (delaySeconds < 1 || delaySeconds > 120) {
-      return this.badRequestResponse('Delay must be between 1-120 seconds');
+    if (
+      delaySeconds < DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS ||
+      delaySeconds > DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS
+    ) {
+      return this.badRequestResponse(
+        `Delay must be between ${DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS}-${DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS} seconds`
+      );
     }
 
     const now = nowMs();
@@ -275,15 +289,16 @@ export class DelayedMessageScheduler implements DurableObject {
     const message: PendingMessage = {
       id: data.messageId,
       conversationId: data.conversationId,
-      agentId: data.agentId,
-      content: data.content,
+      agentId: data.agentId || '',
+      content: data.content || '',
       messageType: (data.messageType as PendingMessage['messageType']) || 'text',
-      platform: data.platform as PendingMessage['platform'],
-      recipientPlatformId: data.recipientPlatformId,
+      platform: (data.platform as PendingMessage['platform']) || 'line',
+      recipientPlatformId: data.recipientPlatformId || '',
       scheduledAt,
       status: 'pending',
       metadata: data.metadata,
       createdAt: now,
+      ...(isDeliverByRef && { mode: 'deliver-by-ref' as const }),
     };
 
     // 1. Store in memory
@@ -543,7 +558,9 @@ export class DelayedMessageScheduler implements DurableObject {
 
     // 2. Send batch
     const deps = this.getRetryDeps();
-    const sendPromises = readyMessages.map((msg) => sendMessage(msg, deps));
+    const sendPromises = readyMessages.map((msg) =>
+      msg.mode === 'deliver-by-ref' ? this.deliverByRef(msg) : sendMessage(msg, deps)
+    );
     const results = await Promise.allSettled(sendPromises);
 
     // 3. Process batch results
@@ -554,6 +571,37 @@ export class DelayedMessageScheduler implements DurableObject {
 
     // 4. Update alarm
     await this.doUpdateAlarm();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Deliver-by-ref: recall-window buffered send
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Deliver a buffered message whose body lives in D1.
+   *
+   * MessageDeliveryService owns the platform push, D1 status update and the
+   * WebSocket broadcast (and skips recalled/already-sent messages), so the DO
+   * only releases its own scheduling state afterwards. deliver() swallows
+   * send failures (marks the row 'failed'); a throw escaping here is an
+   * infrastructure failure and lands in the DLQ via processBatchResults.
+   */
+  private async deliverByRef(message: PendingMessage): Promise<void> {
+    const { MessageDeliveryService } = await import(
+      '../modules/conversations/services/message-delivery-service'
+    );
+    const deliveryService = new MessageDeliveryService(this.env);
+    await deliveryService.deliver(message.id);
+
+    message.status = 'sent';
+    this.pendingMessages.delete(message.id);
+    await this.state.storage.delete(`msg:${message.id}`);
+    this.metrics.messagesSentTotal++;
+
+    this.logger.success('Deliver-by-ref completed', {
+      messageId: message.id,
+      conversationId: message.conversationId,
+    });
   }
 
   // ---------------------------------------------------------------------------

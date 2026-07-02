@@ -10,6 +10,7 @@ import { jwtAuth } from '@/middleware/auth';
 import { successResponse, badRequestResponse, internalErrorResponse } from '@/utils/api-response';
 import { errorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
+import { DELAYED_MESSAGE_LIMITS } from '@/constants/limits';
 
 const log = createContextLogger('DelayedMessageController');
 
@@ -181,8 +182,12 @@ export class DelayedMessageController {
       }
 
       const newDelaySeconds = requestBody.newDelaySeconds;
-      if (typeof newDelaySeconds !== 'number' || newDelaySeconds < 1 || newDelaySeconds > 120) {
-        return badRequestResponse(c, 'Invalid delay seconds (must be between 1 and 120)');
+      if (
+        typeof newDelaySeconds !== 'number' ||
+        newDelaySeconds < DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS ||
+        newDelaySeconds > DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS
+      ) {
+        return badRequestResponse(c, `Invalid delay seconds (must be between ${DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS} and ${DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS})`);
       }
 
       const result = await this.manager.rescheduleMessage(messageId, newDelaySeconds, user);
@@ -341,8 +346,11 @@ export class DelayedMessageController {
 
     if (typeof data.delaySeconds !== 'number') {
       errors.push('delaySeconds must be a number');
-    } else if (data.delaySeconds < 1 || data.delaySeconds > 120) {
-      errors.push('delaySeconds must be between 1 and 120');
+    } else if (
+      data.delaySeconds < DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS ||
+      data.delaySeconds > DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS
+    ) {
+      errors.push(`delaySeconds must be between ${DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS} and ${DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS}`);
     }
 
     return {

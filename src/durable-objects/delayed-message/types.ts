@@ -24,6 +24,13 @@ export interface PendingMessage {
   lastRetryAt?: number;
   failedAt?: number;
   failureReason?: string;
+  /**
+   * 'deliver-by-ref': the message body lives in D1 (messages table); on alarm
+   * the DO calls MessageDeliveryService.deliver(id) instead of pushing the
+   * inline content itself. Used by the recall-window buffered send path.
+   * Absent/undefined = legacy self-contained payload (v2 API).
+   */
+  mode?: 'deliver-by-ref';
 }
 
 /**

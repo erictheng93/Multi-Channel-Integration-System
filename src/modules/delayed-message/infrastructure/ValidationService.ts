@@ -9,6 +9,7 @@ import type {
   ValidationResult
 } from '../types';
 import { ValidationError } from '@modules/delayed-message/types';
+import { DELAYED_MESSAGE_LIMITS } from '@/constants/limits';
 
 /**
  * ValidationService - 統一驗證服務
@@ -94,17 +95,17 @@ export class ValidationService {
   }
 
   /**
-   * 驗證延遲秒數 (1-120秒)
+   * 驗證延遲秒數（範圍見 DELAYED_MESSAGE_LIMITS）
    */
   validateDelaySeconds(delaySeconds: number): ValidationResult {
     const errors: string[] = [];
 
     if (typeof delaySeconds !== 'number' || isNaN(delaySeconds)) {
       errors.push('Delay seconds must be a valid number');
-    } else if (delaySeconds < 1) {
-      errors.push('Delay seconds must be at least 1 second');
-    } else if (delaySeconds > 120) {
-      errors.push('Delay seconds cannot exceed 120 seconds');
+    } else if (delaySeconds < DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS) {
+      errors.push(`Delay seconds must be at least ${DELAYED_MESSAGE_LIMITS.MIN_DELAY_SECONDS} second`);
+    } else if (delaySeconds > DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS) {
+      errors.push(`Delay seconds cannot exceed ${DELAYED_MESSAGE_LIMITS.MAX_DELAY_SECONDS} seconds`);
     } else if (!Number.isInteger(delaySeconds)) {
       errors.push('Delay seconds must be an integer');
     }

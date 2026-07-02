@@ -4,7 +4,7 @@
 export interface DelayedMessageRequest {
   conversationId: string;
   content: string;
-  delaySeconds: number; // 1-120 seconds
+  delaySeconds: number; // range: DELAYED_MESSAGE_LIMITS (1-300 seconds)
   messageType?: 'text' | 'image' | 'video' | 'audio' | 'file';
   mediaUrl?: string;
   senderId: string;

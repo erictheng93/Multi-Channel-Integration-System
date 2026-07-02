@@ -292,6 +292,21 @@ export const RATE_LIMITS = {
 } as const;
 
 /**
+ * 延遲發送 / 撤回窗口限制（秒）
+ *
+ * 單一事實來源：所有 delaySeconds 邊界檢查都必須引用這裡，
+ * 不得散落硬編碼（DelayedMessageScheduler、ValidationService、
+ * delayed-message-buffer、DelayedMessageController、delayed-message-service）。
+ */
+export const DELAYED_MESSAGE_LIMITS = {
+  /** 最小延遲秒數 */
+  MIN_DELAY_SECONDS: 1,
+
+  /** 最大延遲秒數 = 最大可撤回窗口（5 分鐘） */
+  MAX_DELAY_SECONDS: 300,
+} as const;
+
+/**
  * 隊列和緩存限制
  */
 export const QUEUE_LIMITS = {
