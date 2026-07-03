@@ -317,9 +317,16 @@
           v-if="isOutgoing"
           class="message-status"
         >
+          <!-- 已撤回：訊息從未（或不再）送達客戶 -->
+          <span
+            v-if="isRecalledMessage"
+            class="status-recalled"
+            title="已撤回"
+          >↶ 已撤回</span>
+
           <!-- 撤回窗口倒數：訊息暫存中，尚未送出給客戶 -->
           <div
-            v-if="isRecallable"
+            v-else-if="isRecallable"
             class="status-buffered"
             :title="`可撤回，${countdownLabel} 後送出`"
           >
@@ -645,11 +652,17 @@
   const messageRef = computed(() => props.message)
   const { isRecallable, isAwaitingDelivery, countdownLabel } = useRecallCountdown(messageRef)
 
+  // 已撤回（markMessageRecalled / WS 撤回事件設定）
+  const isRecalledMessage = computed(() => props.message.metadata?.isRecalled === true)
+
   // 撤回選項顯示條件：
   // - buffered 且窗口內 → 真撤回（取消發送，客戶無感）
   // - Facebook 已送達 → Graph API 可真刪除
   // - LINE 已送達 → 隱藏（LINE 無 unsend API，避免給客服錯誤預期）
   const canRecall = computed(() => {
+    if (isRecalledMessage.value) {
+      return false
+    }
     if (isRecallable.value) {
       return true
     }

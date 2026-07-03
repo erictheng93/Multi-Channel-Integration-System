@@ -304,17 +304,19 @@ export const useMessagesStore = defineStore('messages', () => {
 
       const response = await messageApi.recallMessage?.(message.conversationId, { messageId })
       if (response?.success) {
-        const messageIndex = messages.value.findIndex(m => m.id === messageId)
-        if (messageIndex !== -1) {
-          messages.value.splice(messageIndex, 1)
-        }
+        // Mark in place instead of removing: the backend keeps the row and
+        // rewrites its content, so all clients converge on the same
+        // placeholder (removing it here made the recall look like deletion
+        // and resurrected the message on the next refetch).
+        message.content = '[This message has been recalled]'
+        message.metadata = { ...message.metadata, isRecalled: true }
         return true
       } else {
-        handleError(response?.error, '刪除訊息失敗')
+        handleError(response?.error, '撤回訊息失敗')
         return false
       }
     } catch (err) {
-      handleError(err, '網路錯誤，刪除訊息失敗')
+      handleError(err, '網路錯誤，撤回訊息失敗')
       return false
     }
   }

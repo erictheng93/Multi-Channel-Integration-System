@@ -49,6 +49,9 @@ export const WS_EVENTS = {
   /** Message was recalled */
   MESSAGE_RECALLED: 'message_recalled',
 
+  /** Recall confirmed by backend (broadcast from the recall endpoint) */
+  MESSAGE_RECALL_SUCCESS: 'message_recall_success',
+
   /** Connection state changed */
   CONNECTION_STATE: 'connection_state',
 
@@ -120,6 +123,7 @@ export const WS_EVENT_LABELS: Record<WebSocketEventType, string> = {
   [WS_EVENTS.MESSAGE_READ]: 'Message Read',
   [WS_EVENTS.MESSAGE_UPDATED]: 'Message Updated',
   [WS_EVENTS.MESSAGE_RECALLED]: 'Message Recalled',
+  [WS_EVENTS.MESSAGE_RECALL_SUCCESS]: 'Message Recall Confirmed',
   [WS_EVENTS.CONNECTION_STATE]: 'Connection State',
   [WS_EVENTS.HEARTBEAT]: 'Heartbeat',
   [WS_EVENTS.ERROR]: 'Error',
@@ -138,6 +142,7 @@ export const WS_EVENT_DESCRIPTIONS: Record<WebSocketEventType, string> = {
   [WS_EVENTS.MESSAGE_READ]: 'A message was marked as read',
   [WS_EVENTS.MESSAGE_UPDATED]: 'A message was updated (e.g., file attachments added after media processing)',
   [WS_EVENTS.MESSAGE_RECALLED]: 'A message was recalled by the sender',
+  [WS_EVENTS.MESSAGE_RECALL_SUCCESS]: 'Backend confirmed a message recall (buffered send cancelled or FB message deleted)',
   [WS_EVENTS.CONNECTION_STATE]: 'The WebSocket connection state changed',
   [WS_EVENTS.HEARTBEAT]: 'Heartbeat signal for connection health monitoring',
   [WS_EVENTS.ERROR]: 'An error occurred in the WebSocket connection',
@@ -179,7 +184,8 @@ export function getWsEventDescription(event: WebSocketEventType): string {
 export const UI_UPDATE_EVENTS = [
   WS_EVENTS.NEW_MESSAGE,
   WS_EVENTS.MESSAGE_READ,
-  WS_EVENTS.MESSAGE_RECALLED
+  WS_EVENTS.MESSAGE_RECALLED,
+  WS_EVENTS.MESSAGE_RECALL_SUCCESS
 ] as const;
 
 /**

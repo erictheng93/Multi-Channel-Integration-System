@@ -56,6 +56,11 @@ export function useRecallCountdown(message: ComputedRef<Message>): RecallCountdo
   onUnmounted(unsubscribe)
 
   const isBuffered = computed(() => {
+    // 已撤回的訊息不再倒數、不再可撤回（後端撤回後 deliveryStatus 仍為
+    // buffered，以 metadata.isRecalled 為準）
+    if (message.value.metadata?.isRecalled === true) {
+      return false
+    }
     const status = message.value.deliveryStatus ?? message.value.status
     return status === MESSAGE_STATUS.BUFFERED && !!message.value.recallDeadline
   })

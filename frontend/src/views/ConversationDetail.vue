@@ -545,8 +545,13 @@ async function handleMessageRecall(message: Message) {
     cancelText: '取消'
   })
   if (!confirmed) {return}
-  const success = await controller.recallMessage(message.id)
-  success ? showSuccess('訊息已撤回') : showError('撤回失敗')
+  const result = await controller.recallMessage(message.id)
+  if (result.success) {
+    showSuccess('訊息已撤回')
+  } else {
+    // 顯示後端具體原因（如「已超過可撤回時間」「LINE 已送達的訊息無法撤回」）
+    showError(result.error || '撤回失敗')
+  }
 }
 
 function handleMessageSelect(message: Message) {

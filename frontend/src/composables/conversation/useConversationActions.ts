@@ -39,21 +39,26 @@ export function useConversationActions(
 
   /**
    * 撤回消息
+   *
+   * @returns success 與後端錯誤訊息（如「已超過可撤回時間」），供 UI toast 顯示
    */
-  async function recallMessage(messageId: string): Promise<boolean> {
+  async function recallMessage(messageId: string): Promise<{ success: boolean; error?: string }> {
     try {
       frontendLogger.debug('[ConversationActions] Recalling message:', messageId)
       const response = await messageApi.recallMessage(conversationId, { messageId })
       if (!response.success) {
-        throw new Error(response.error || 'Recall request failed')
+        return { success: false, error: response.error || undefined }
       }
       await state.refreshMessages()
 
       frontendLogger.debug('[ConversationActions] Message recalled')
-      return true
+      return { success: true }
     } catch (error) {
       console.error('[ConversationActions] Failed to recall message:', error)
-      return false
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : undefined
+      }
     }
   }
 

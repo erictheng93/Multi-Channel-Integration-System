@@ -211,6 +211,7 @@ export function useWebSocketIntegration(
     const msg = message as {
       type?: string
       message?: Message & { correlationId?: string }  //  Phase 2/3: 後端可能包含 correlationId
+      messageId?: string  // recall / status events carry the id at the top level
       data?: {
         type?: string
         serverLastMessageAt?: string | null
@@ -296,6 +297,18 @@ export function useWebSocketIntegration(
         })
         log.debug('Message status updated', { messageId: updateData.messageId, deliveryStatus: updateData.deliveryStatus })
       }
+    }
+
+    // Handle recall confirmations: another agent (or this agent in another
+    // tab) recalled a message — converge the bubble to the recalled
+    // placeholder without a refetch.
+    if (
+      (eventType === WS_EVENTS.MESSAGE_RECALL_SUCCESS || eventType === WS_EVENTS.MESSAGE_RECALLED) &&
+      msg.messageId
+    ) {
+      const recallData = msg.data as { recalledAt?: string } | undefined
+      state.markMessageRecalled(msg.messageId, recallData?.recalledAt)
+      log.debug('Message recall applied', { messageId: msg.messageId })
     }
 
     // Handle TYPING events (Phase 2)
