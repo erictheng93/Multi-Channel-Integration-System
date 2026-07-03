@@ -12,13 +12,15 @@ const {
   mockCreateTextMessage,
   mockCreateImageMessage,
   mockCreateFileFlexMessage,
-  mockBroadcastMessageEvent
+  mockBroadcastMessageEvent,
+  mockDeliverMessage
 } = vi.hoisted(() => ({
   mockPushLineMessage: vi.fn(),
   mockCreateTextMessage: vi.fn((text: string) => ({ type: 'text', text })),
   mockCreateImageMessage: vi.fn((url: string) => ({ type: 'image', originalContentUrl: url })),
   mockCreateFileFlexMessage: vi.fn((_url: string, name: string) => ({ type: 'flex', altText: name })),
-  mockBroadcastMessageEvent: vi.fn().mockResolvedValue(undefined)
+  mockBroadcastMessageEvent: vi.fn().mockResolvedValue(undefined),
+  mockDeliverMessage: vi.fn().mockResolvedValue(undefined)
 }));
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -117,6 +119,14 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
   WebSocketBroadcastService: vi.fn(function () {
     return {
       broadcastMessageEvent: mockBroadcastMessageEvent
+    };
+  })
+}));
+
+vi.mock('@modules/conversations/services/message-delivery-service', () => ({
+  MessageDeliveryService: vi.fn(function () {
+    return {
+      deliver: mockDeliverMessage
     };
   })
 }));
@@ -324,212 +334,18 @@ describe('MessageService', () => {
     };
     const mockUser = { id: 'agent-456', displayName: 'Agent' };
 
-    it('should send LINE message and update status to sent', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      mockDb._queueResults([mockConvData]);
-      mockPushLineMessage.mockResolvedValue(true);
-
+    it('should delegate delivery to MessageDeliveryService', async () => {
       await service.processBackgroundSending('msg-123', baseRequest, mockUser);
 
-      expect(mockPushLineMessage).toHaveBeenCalledWith(
-        'test-line-token',
-        'U123',
-        expect.any(Array)
-      );
-      // update: message status + broadcast
-      expect(mockDb.update).toHaveBeenCalled();
-      expect(mockBroadcastMessageEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'message_updated',
-          conversationId: 'conv-123',
-          messageId: 'msg-123'
-        })
-      );
+      expect(mockDeliverMessage).toHaveBeenCalledWith('msg-123');
     });
 
-    it('should handle customer not found gracefully', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: null
-      };
-      mockDb._queueResults([mockConvData]);
+    it('should surface delivery errors from MessageDeliveryService', async () => {
+      mockDeliverMessage.mockRejectedValueOnce(new Error('delivery failed'));
 
-      // Should not throw — handles gracefully with early return
-      await service.processBackgroundSending('msg-123', baseRequest, mockUser);
-
-      expect(mockPushLineMessage).not.toHaveBeenCalled();
-    });
-
-    it('should handle LINE API failure and set status to failed', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      mockDb._queueResults([mockConvData]);
-      mockPushLineMessage.mockResolvedValue(false); // LINE API returns failure
-
-      await service.processBackgroundSending('msg-123', baseRequest, mockUser);
-
-      // Should still update DB and broadcast
-      expect(mockDb.update).toHaveBeenCalled();
-      expect(mockBroadcastMessageEvent).toHaveBeenCalled();
-    });
-
-    it('should process attachments with image type', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      const mockAttachments = [
-        { id: 'att-1', filename: 'photo.jpg', mimeType: 'image/jpeg', fileUrl: 'https://r2.example.com/photo.jpg', fileSize: 1024 }
-      ];
-      mockDb._queueResults([mockConvData], mockAttachments);
-      mockPushLineMessage.mockResolvedValue(true);
-
-      await service.processBackgroundSending('msg-123', {
-        ...baseRequest,
-        content: '',
-        attachmentIds: ['att-1']
-      }, mockUser);
-
-      expect(mockCreateImageMessage).toHaveBeenCalledWith('https://r2.example.com/photo.jpg');
-      expect(mockPushLineMessage).toHaveBeenCalled();
-    });
-
-    it('should process attachments with file type using flex message', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      const mockAttachments = [
-        { id: 'att-1', filename: 'doc.pdf', mimeType: 'application/pdf', fileUrl: 'https://r2.example.com/doc.pdf', fileSize: 2048 }
-      ];
-      mockDb._queueResults([mockConvData], mockAttachments);
-      mockPushLineMessage.mockResolvedValue(true);
-
-      await service.processBackgroundSending('msg-123', {
-        ...baseRequest,
-        content: '',
-        attachmentIds: ['att-1']
-      }, mockUser);
-
-      expect(mockCreateFileFlexMessage).toHaveBeenCalledWith(
-        'https://r2.example.com/doc.pdf',
-        'doc.pdf',
-        'application/pdf',
-        2048
-      );
-    });
-
-    it('should skip attachments with NULL fileUrl', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      const mockAttachments = [
-        { id: 'att-1', filename: 'broken.pdf', mimeType: 'application/pdf', fileUrl: null, fileSize: 0, r2Key: 'some-key' }
-      ];
-      mockDb._queueResults([mockConvData], mockAttachments);
-
-      await service.processBackgroundSending('msg-123', {
-        ...baseRequest,
-        content: 'Sent a file: broken.pdf',
-        attachmentIds: ['att-1']
-      }, mockUser);
-
-      expect(mockCreateFileFlexMessage).not.toHaveBeenCalled();
-      expect(mockCreateImageMessage).not.toHaveBeenCalled();
-    });
-
-    it('should batch-send when more than 5 LINE messages', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      // 6 image attachments → 2 batches (5 + 1)
-      const mockAttachments = Array.from({ length: 6 }, (_, i) => ({
-        id: `att-${i}`,
-        filename: `img${i}.jpg`,
-        mimeType: 'image/jpeg',
-        fileUrl: `https://r2.example.com/img${i}.jpg`,
-        fileSize: 1024
-      }));
-      mockDb._queueResults([mockConvData], mockAttachments);
-      mockPushLineMessage.mockResolvedValue(true);
-
-      await service.processBackgroundSending('msg-123', {
-        ...baseRequest,
-        content: '',
-        attachmentIds: mockAttachments.map(a => a.id)
-      }, mockUser);
-
-      // Should be called twice: batch 1 (5 messages) + batch 2 (1 message)
-      expect(mockPushLineMessage).toHaveBeenCalledTimes(2);
-    });
-
-    it('should handle partial batch failure with partial status', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      const mockAttachments = Array.from({ length: 6 }, (_, i) => ({
-        id: `att-${i}`,
-        filename: `img${i}.jpg`,
-        mimeType: 'image/jpeg',
-        fileUrl: `https://r2.example.com/img${i}.jpg`,
-        fileSize: 1024
-      }));
-      mockDb._queueResults([mockConvData], mockAttachments);
-      // First batch succeeds, second fails
-      mockPushLineMessage
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(false);
-
-      await service.processBackgroundSending('msg-123', {
-        ...baseRequest,
-        content: '',
-        attachmentIds: mockAttachments.map(a => a.id)
-      }, mockUser);
-
-      // DB update and broadcast still called
-      expect(mockDb.update).toHaveBeenCalled();
-      expect(mockBroadcastMessageEvent).toHaveBeenCalled();
-    });
-
-    it('should handle LINE API exception gracefully', async () => {
-      const mockConvData = {
-        conversation: { id: 'conv-123' },
-        customer: { id: 1, platform: 'line', platformUserId: 'U123' }
-      };
-      mockDb._queueResults([mockConvData]);
-      mockPushLineMessage.mockRejectedValue(new Error('Network timeout'));
-
-      // Should not throw — catches and updates status to failed
-      await service.processBackgroundSending('msg-123', baseRequest, mockUser);
-
-      expect(mockDb.update).toHaveBeenCalled();
-    });
-
-    it('should handle DB failure during status update', async () => {
-      // Empty conversation lookup → causes error in try block
-      mockDb._queueResults([]);
-
-      // Override update to throw
-      mockDb.update.mockImplementationOnce(() => ({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockImplementation(() => {
-            throw new Error('DB write failed');
-          })
-        })
-      }));
-
-      // Should not throw — outer catch handles it
       await expect(
         service.processBackgroundSending('msg-123', baseRequest, mockUser)
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow('delivery failed');
     });
   });
 

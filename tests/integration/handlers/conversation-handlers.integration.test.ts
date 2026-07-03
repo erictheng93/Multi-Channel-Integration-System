@@ -1409,6 +1409,9 @@ describe('Conversation Handlers Integration Tests', () => {
         agentSenderId: '1',
         isRecalled: false,
         recallDeadline: null,
+        isSent: true,
+        deliveryStatus: 'sent',
+        metadata: JSON.stringify({ platform: 'facebook' }),
       });
 
       const res = await makeRequest(app, '/api/conversations/conv-001/messages/msg-001', {
@@ -1418,7 +1421,12 @@ describe('Conversation Handlers Integration Tests', () => {
 
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(handlerSpies.recallMessage).toHaveBeenCalledWith('msg-001', '1');
+      expect(handlerSpies.recallMessage).toHaveBeenCalledWith(
+        'msg-001',
+        '1',
+        undefined,
+        { deadlineAlreadyEnforced: false }
+      );
       expect(mockDbState.updateCalled).toBe(true);
       expect(handlerSpies.broadcastMessageEvent).toHaveBeenCalledWith(expect.objectContaining({
         type: 'message_recall_success',
