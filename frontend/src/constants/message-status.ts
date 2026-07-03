@@ -12,6 +12,8 @@
  */
 export const MESSAGE_STATUS = {
   PENDING: 'pending',
+  /** 撤回窗口內暫存：尚未推送平台，recallDeadline 前可撤回 */
+  BUFFERED: 'buffered',
   SENT: 'sent',
   DELIVERED: 'delivered',
   FAILED: 'failed',
@@ -34,6 +36,7 @@ export const MESSAGE_STATUS_VALUES = Object.values(MESSAGE_STATUS) as MessageSta
  */
 export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
   [MESSAGE_STATUS.PENDING]: '待發送',
+  [MESSAGE_STATUS.BUFFERED]: '可撤回',
   [MESSAGE_STATUS.SENT]: '已發送',
   [MESSAGE_STATUS.DELIVERED]: '已送達',
   [MESSAGE_STATUS.FAILED]: '失敗',
@@ -46,6 +49,7 @@ export const MESSAGE_STATUS_LABELS: Record<MessageStatus, string> = {
  */
 export const MESSAGE_STATUS_COLORS: Record<MessageStatus, string> = {
   [MESSAGE_STATUS.PENDING]: 'text-yellow-600 bg-yellow-50',
+  [MESSAGE_STATUS.BUFFERED]: 'text-orange-600 bg-orange-50',
   [MESSAGE_STATUS.SENT]: 'text-blue-600 bg-blue-50',
   [MESSAGE_STATUS.DELIVERED]: 'text-green-600 bg-green-50',
   [MESSAGE_STATUS.FAILED]: 'text-red-600 bg-red-50',
@@ -58,6 +62,7 @@ export const MESSAGE_STATUS_COLORS: Record<MessageStatus, string> = {
  */
 export const MESSAGE_STATUS_ICONS: Record<MessageStatus, string> = {
   [MESSAGE_STATUS.PENDING]: '',
+  [MESSAGE_STATUS.BUFFERED]: '⏱',
   [MESSAGE_STATUS.SENT]: '',
   [MESSAGE_STATUS.DELIVERED]: '',
   [MESSAGE_STATUS.FAILED]: '',
