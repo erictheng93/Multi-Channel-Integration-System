@@ -129,6 +129,7 @@ function normalizeMessageType(value: string | null | undefined): MessageType {
 function normalizeDeliveryStatus(value: string | null | undefined): DeliveryStatus | undefined {
   switch (value) {
     case 'pending':
+    case 'buffered':
     case 'sending':
     case 'sent':
     case 'delivered':
