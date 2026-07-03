@@ -30,6 +30,7 @@ log.debug('messagingMainHandler object', { handler: messagingMainHandler ? 'defi
 import { activityHandler } from '@modules/activities/handlers/activity';
 import { feedbackHandler } from '@modules/system/handlers/feedback-main';
 import backupHandler from '@modules/data/handlers/backup';
+import { broadcastRouter } from '@modules/broadcast';
 
 // System-legacy and credential functions now in extracted routers:
 //   src/handlers/system-settings-router.ts
@@ -304,7 +305,6 @@ log.info('WebSocket routes managed by Unified Route Registry');
 // Realtime + Queue monitor — fine-grained routers
 import realtimeRouter from './handlers/realtime-router';
 import queueMonitorRouter from './handlers/queue-monitor-router';
-import { broadcastRouter } from '@modules/broadcast';
 app.route('/api/realtime', realtimeRouter);
 
 // 活動記錄路由
