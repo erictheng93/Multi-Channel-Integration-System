@@ -80,7 +80,19 @@ vi.mock('@/middleware/auth', () => ({
   }),
   jwtAuth: vi.fn((c, next) => {
     c.set('jwtPayload', { userId: 'user-123', username: 'testuser', role: 'admin', teamId: 1 });
-    c.set('user', { id: 'user-123', username: 'testuser', role: 'admin', teamId: 1 });
+    c.set('user', {
+      id: 'user-123',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      role: 'agent',
+      primaryTeamId: 1,
+      allowedTeamIds: [1, 2],
+      teamRoles: { 1: 'lead', 2: 'member' },
+      teamName: 'Team One',
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
     return next();
   }),
   sessionAuth: vi.fn((c, next) => {
@@ -274,6 +286,15 @@ describe('Auth Handler - Integration Tests', () => {
       expect(result.success).toBe(true);
       // Response data may be in result.data or result.data.user
       expect(result.data).toBeDefined();
+      expect(result.data).toMatchObject({
+        id: 'user-123',
+        email: 'test@example.com',
+        displayName: 'Test User',
+        role: 'agent',
+        primaryTeamId: 1,
+        allowedTeamIds: [1, 2],
+        teamRoles: { 1: 'lead', 2: 'member' },
+      });
     });
   });
 

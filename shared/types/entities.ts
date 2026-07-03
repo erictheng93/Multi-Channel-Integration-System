@@ -39,6 +39,8 @@ export interface Agent {
   displayName: string
   role: UserRole
   primaryTeamId?: number
+  allowedTeamIds?: number[]
+  teamRoles?: Record<number, 'member' | 'lead' | 'supervisor'>
   isActive: boolean
   isOnline?: boolean // 向後兼容字段
   platforms?: Platform[] // 向後兼容字段
