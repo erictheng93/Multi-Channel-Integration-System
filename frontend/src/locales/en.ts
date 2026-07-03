@@ -150,7 +150,16 @@ export default {
       sessionExpiry: 'Session Expiry (hours)',
       enableRateLimit: 'Enable Rate Limiting',
       enableLogging: 'Enable System Logging',
-      enableMetrics: 'Enable Performance Metrics'
+      enableMetrics: 'Enable Performance Metrics',
+      recallWindow: {
+        label: 'Message Recall Window',
+        hint: 'When enabled, messages are held for this duration before actually being sent to the customer; agents can recall within the window and the customer never receives the message',
+        off: 'Off (send immediately)',
+        s30: '30 seconds',
+        m1: '1 minute',
+        m2: '2 minutes',
+        m5: '5 minutes'
+      }
     },
 
     // System management

@@ -51,6 +51,7 @@ interface SystemSettings {
     enableRateLimit: boolean;
     enableLogging: boolean;
     enableMetrics: boolean;
+    recallWindowSeconds: number;
   };
 }
 

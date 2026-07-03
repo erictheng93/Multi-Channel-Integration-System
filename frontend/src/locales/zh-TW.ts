@@ -150,7 +150,16 @@ export default {
       sessionExpiry: '會話過期時間 (小時)',
       enableRateLimit: '啟用速率限制',
       enableLogging: '啟用系統日誌',
-      enableMetrics: '啟用效能監控'
+      enableMetrics: '啟用效能監控',
+      recallWindow: {
+        label: '訊息可撤回時間',
+        hint: '開啟後，訊息將延遲對應時間才實際發送給客戶；期間客服可撤回，客戶完全不會收到被撤回的訊息',
+        off: '關閉（立即發送）',
+        s30: '30 秒',
+        m1: '1 分鐘',
+        m2: '2 分鐘',
+        m5: '5 分鐘'
+      }
     },
 
     // 系統管理

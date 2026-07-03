@@ -15,6 +15,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { createLogger } from '@/utils/logger'
 import type {
   SystemSettings,
+  AdvancedSettings,
   SettingsTab,
   MessageType,
   TabConfig,
@@ -102,7 +103,8 @@ export function useSystemSettingsController() {
       sessionExpiry: 24,
       enableRateLimit: true,
       enableLogging: true,
-      enableMetrics: true
+      enableMetrics: true,
+      recallWindowSeconds: 0
     }
   })
 
@@ -354,10 +356,17 @@ export function useSystemSettingsController() {
 
   /**
    * Save advanced settings
+   *
+   * @param updated form-local edits; without this the form's changes never
+   *        reach the controller copy (the form clones props into local state)
    */
-  async function saveAdvancedSettings(): Promise<void> {
+  async function saveAdvancedSettings(updated?: AdvancedSettings): Promise<void> {
     try {
       saving.value = true
+
+      if (updated) {
+        Object.assign(settings.advanced, updated)
+      }
 
       const response = await systemApi.updateSettings({ advanced: settings.advanced })
 

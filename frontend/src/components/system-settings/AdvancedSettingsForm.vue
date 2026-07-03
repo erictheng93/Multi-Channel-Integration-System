@@ -66,6 +66,31 @@
             {{ t('systemSettings.advanced.messageTimeoutHint') }}
           </p>
         </div>
+
+        <div class="form-group">
+          <label
+            for="recallWindowSeconds"
+            class="form-label"
+          >
+            {{ t('systemSettings.advanced.recallWindow.label') }}
+          </label>
+          <select
+            id="recallWindowSeconds"
+            v-model.number="localSettings.recallWindowSeconds"
+            class="form-input"
+          >
+            <option
+              v-for="option in recallWindowOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <p class="form-hint">
+            {{ t('systemSettings.advanced.recallWindow.hint') }}
+          </p>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -187,7 +212,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AdvancedSettings } from '@/types/system-settings'
 
@@ -201,11 +226,20 @@ const props = defineProps<Props>()
 
 // Events
 const emit = defineEmits<{
-  save: []
+  save: [settings: AdvancedSettings]
 }>()
 
 // Composables
 const { t } = useI18n()
+
+// 撤回窗口選項（值需與後端 RECALL_WINDOW_ALLOWED_VALUES 一致）
+const recallWindowOptions = computed(() => [
+  { value: 0, label: t('systemSettings.advanced.recallWindow.off') },
+  { value: 30, label: t('systemSettings.advanced.recallWindow.s30') },
+  { value: 60, label: t('systemSettings.advanced.recallWindow.m1') },
+  { value: 120, label: t('systemSettings.advanced.recallWindow.m2') },
+  { value: 300, label: t('systemSettings.advanced.recallWindow.m5') }
+])
 
 // Local state
 const localSettings = reactive<AdvancedSettings>({
@@ -215,7 +249,8 @@ const localSettings = reactive<AdvancedSettings>({
   sessionExpiry: 7200,
   enableRateLimit: true,
   enableLogging: true,
-  enableMetrics: true
+  enableMetrics: true,
+  recallWindowSeconds: 0
 })
 
 // Watch for prop changes
@@ -229,7 +264,9 @@ watch(
 
 // Methods
 function handleSave() {
-  emit('save')
+  // Pass the local edits out — the parent controller merges them before
+  // persisting (the prop object is a clone; edits don't flow back on their own)
+  emit('save', { ...localSettings })
 }
 </script>
 

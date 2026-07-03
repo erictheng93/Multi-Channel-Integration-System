@@ -150,7 +150,16 @@ export default {
       sessionExpiry: '会话过期时间 (小时)',
       enableRateLimit: '启用速率限制',
       enableLogging: '启用系统日志',
-      enableMetrics: '启用性能监控'
+      enableMetrics: '启用性能监控',
+      recallWindow: {
+        label: '消息可撤回时间',
+        hint: '开启后，消息将延迟对应时间才实际发送给客户；期间客服可撤回，客户完全不会收到被撤回的消息',
+        off: '关闭（立即发送）',
+        s30: '30 秒',
+        m1: '1 分钟',
+        m2: '2 分钟',
+        m5: '5 分钟'
+      }
     },
 
     // 系统管理
