@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBroadcastsStore } from '@/stores/broadcasts'
 import { previewBroadcastAudience } from '@/api/broadcasts'
+import type * as BroadcastsApi from '@/api/broadcasts'
 
 vi.mock('@/api/broadcasts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/api/broadcasts')>()
+  const actual = await importOriginal<typeof BroadcastsApi>()
   return {
     ...actual,
     previewBroadcastAudience: vi.fn()
@@ -31,7 +32,7 @@ describe('useBroadcastsStore', () => {
       skipped: []
     }
 
-    let resolveFirst: (value: typeof firstPreview) => void = () => {}
+    let resolveFirst: (_value: typeof firstPreview) => void = () => {}
     vi.mocked(previewBroadcastAudience)
       .mockReturnValueOnce(new Promise((resolve) => {
         resolveFirst = resolve
