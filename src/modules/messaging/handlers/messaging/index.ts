@@ -9,7 +9,6 @@
 // - routes/search.ts - Search, stats, and tags endpoints
 // - routes/export.ts - Message export functionality (JSON/CSV)
 // - routes/bulk.ts - Bulk create/delete operations
-// - routes/legacy-delayed.ts - Legacy delayed message contract endpoints
 // - routes/conversation.ts - Conversation messages listing
 // - routes/attachments.ts  - Attachment management
 // - routes/forwarding.ts - Message forwarding
@@ -32,7 +31,6 @@ import healthRoutes from './routes/health';
 import searchRoutes from './routes/search';
 import exportRoutes from './routes/export';
 import bulkRoutes from './routes/bulk';
-import legacyDelayedRoutes from './routes/legacy-delayed';
 import conversationRoutes from './routes/conversation';
 import attachmentRoutes from './routes/attachments';
 import forwardingRoutes from './routes/forwarding';
@@ -57,18 +55,15 @@ messagingModule.route('/', exportRoutes);
 // Priority 4: Static bulk operation routes
 messagingModule.route('/', bulkRoutes);
 
-// Priority 5: Legacy delayed-message routes (/delayed, /pending, /recall, /:id/can-recall)
-messagingModule.route('/', legacyDelayedRoutes);
-
-// Priority 6: Specific multi-segment route (/conversation/:conversationId)
+// Priority 5: Specific multi-segment route (/conversation/:conversationId)
 messagingModule.route('/', conversationRoutes);
 
-// Priority 7: Multi-segment routes with /:id prefix
+// Priority 6: Multi-segment routes with /:id prefix
 messagingModule.route('/', attachmentRoutes); // /:id/attachments
 messagingModule.route('/', forwardingRoutes); // /:id/forward
 messagingModule.route('/', tagsRoutes); // /:id/tags
 
-// Priority 8 (LAST): CRUD routes - includes single param routes and POST wildcard
+// Priority 7 (LAST): CRUD routes - includes single param routes and POST wildcard
 messagingModule.route('/', crudRoutes); // GET/PUT/DELETE /:id, POST /
 
 // ======================== Module Exports ========================
@@ -81,7 +76,6 @@ export {
   searchRoutes,
   exportRoutes,
   bulkRoutes,
-  legacyDelayedRoutes,
   conversationRoutes,
   attachmentRoutes,
   forwardingRoutes,
@@ -103,10 +97,6 @@ export const MESSAGING_MODULE_INFO = {
     { path: '/export', method: 'GET', module: 'export' },
     { path: '/bulk-create', method: 'POST', module: 'bulk' },
     { path: '/bulk-delete', method: 'POST', module: 'bulk' },
-    { path: '/delayed', method: 'POST', module: 'legacy-delayed' },
-    { path: '/recall', method: 'POST', module: 'legacy-delayed' },
-    { path: '/pending', method: 'GET', module: 'legacy-delayed' },
-    { path: '/:id/can-recall', method: 'GET', module: 'legacy-delayed' },
     { path: '/conversation/:conversationId', method: 'GET', module: 'conversation' },
     { path: '/:id/attachments', method: 'GET', module: 'attachments' },
     { path: '/:id/attachments', method: 'POST', module: 'attachments' },

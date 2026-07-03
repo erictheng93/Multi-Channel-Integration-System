@@ -77,11 +77,6 @@ systemHandler.get('/api', (c) => {
       userDetail: 'GET /api/users/:id',
       updateUser: 'PUT /api/users/:id',
 
-      // 延遲訊息端點
-      sendDelayedMessage: 'POST /api/delayed-messages/send',
-      recallDelayedMessage: 'POST /api/delayed-messages/recall/:messageId',
-      listPendingMessages: 'GET /api/delayed-messages/pending',
-      processQueueMessage: 'POST /api/delayed-messages/process'
     },
     timestamp: nowISO()
   });

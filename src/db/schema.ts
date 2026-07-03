@@ -141,7 +141,10 @@ export const messages = sqliteTable('messages', {
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
 
-// Delayed messages table - 延遲訊息
+/**
+ * @deprecated Legacy delayed-message table retained for historical schema compatibility.
+ * Do not add new writes; recall-window delivery uses `messages` plus DelayedMessageBuffer DO.
+ */
 export const delayedMessages = sqliteTable('delayed_messages', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),

@@ -175,11 +175,6 @@ export class SystemService implements SystemServiceInterface {
         conversations: 'GET /api/conversations',
         conversationDetail: 'GET /api/conversations/:id',
 
-        // 延遲訊息端點
-        delayedMessages: 'GET /api/delayed-messages',
-        sendDelayedMessage: 'POST /api/delayed-messages/send',
-        recallDelayedMessage: 'POST /api/delayed-messages/:id/recall',
-
         // 系統管理端點
         settings: 'GET /api/system/settings',
         updateSettings: 'PUT /api/system/settings',

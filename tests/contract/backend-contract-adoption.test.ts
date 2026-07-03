@@ -68,7 +68,6 @@ const backendSourcePaths = [
   'src/modules/messaging/handlers/messaging/routes/export.ts',
   'src/modules/messaging/handlers/messaging/routes/bulk.ts',
   'src/modules/messaging/handlers/messaging/routes/crud.ts',
-  'src/modules/messaging/handlers/messaging/routes/legacy-delayed.ts',
   'src/modules/teams/handlers/members.ts',
   'src/modules/teams/handlers/agent-teams.ts',
   'src/modules/teams/handlers/team-crud.ts',
@@ -352,30 +351,19 @@ describe('backend shared/api-contracts adoption', () => {
   it('wires legacy messaging routes through messageContracts', () => {
     const bulkSource = read('src/modules/messaging/handlers/messaging/routes/bulk.ts')
     const crudSource = read('src/modules/messaging/handlers/messaging/routes/crud.ts')
-    const delayedSource = read('src/modules/messaging/handlers/messaging/routes/legacy-delayed.ts')
-    const indexSource = read('src/modules/messaging/handlers/messaging/index.ts')
 
-    for (const source of [bulkSource, crudSource, delayedSource]) {
+    for (const source of [bulkSource, crudSource]) {
       expect(source).toContain('messageContracts')
       expect(source).toContain('contractJson')
     }
 
     for (const contractKey of [
-      'sendDelayedMessage',
-      'recallMessage',
-      'getPendingMessages',
-      'canRecallMessage',
       'getMessageDetails',
       'bulkCreate',
       'bulkDelete'
     ]) {
-      expect([bulkSource, crudSource, delayedSource].join('\n')).toContain(
-        `messageContracts.${contractKey}`
-      )
+      expect([bulkSource, crudSource].join('\n')).toContain(`messageContracts.${contractKey}`)
     }
-
-    expect(indexSource).toContain('legacyDelayedRoutes')
-    expect(indexSource).toContain("messagingModule.route('/', legacyDelayedRoutes)")
   })
 
   it('keeps frontend delayed-message components on the shared message API client', () => {

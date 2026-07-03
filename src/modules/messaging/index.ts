@@ -6,7 +6,6 @@
 
 // ======================== Services 導出 ========================
 export { MessageCrudService } from './services/message-crud';
-export { DelayedMessageService } from './services/delayed-message-service';
 export { MessageRecallService } from './services/message-recall-service';
 export { createMessagingServices } from './services/index';
 export type { MessagingServices } from './services/index';
@@ -21,7 +20,7 @@ export * from './types/message-types';
 export const MESSAGING_MODULE_INFO = {
   name: 'messaging',
   version: '1.0.0',
-  description: 'Unified messaging module with delayed send, recall, and batch operations',
+  description: 'Unified messaging module with recall and batch operations',
   routes: {
     base: '/api/messages',
     endpoints: [
@@ -41,13 +40,6 @@ export const MESSAGING_MODULE_INFO = {
 
       // Statistics
       'GET /stats', // General message stats
-
-      // Delayed messaging
-      'POST /delayed', // Schedule delayed message
-      'GET /delayed', // List delayed messages
-      'GET /delayed/:id', // Get delayed message details
-      'PUT /delayed/:id', // Update delayed message
-      'DELETE /delayed/:id', // Cancel delayed message
 
       // Message recall
       'POST /:id/recall', // Recall message
@@ -72,7 +64,6 @@ export const MESSAGING_MODULE_INFO = {
   },
   features: [
     'Real-time messaging with multi-platform support',
-    'Delayed message sending (1-120 seconds)',
     'Advanced message recall functionality',
     'Batch operations for high-volume scenarios',
     'File attachments with R2 integration',
@@ -80,7 +71,6 @@ export const MESSAGING_MODULE_INFO = {
     'Message statistics and analytics',
     'Reactions and read receipts',
     'Multi-platform delivery (LINE, Facebook, WebChat)',
-    'Queue-based processing with Cloudflare Queues',
     'Enterprise-grade error handling and logging',
     'Role-based access control integration'
   ],
@@ -90,10 +80,6 @@ export const MESSAGING_MODULE_INFO = {
       maxLength: 5000,
       minLength: 1,
       allowedTypes: ['text', 'image', 'video', 'audio', 'file', 'sticker', 'location']
-    },
-    delayedSend: {
-      minDelaySeconds: 1,
-      maxDelaySeconds: 120
     },
     attachments: {
       maxSize: 10 * 1024 * 1024, // 10MB
@@ -111,7 +97,7 @@ export const MESSAGING_MODULE_INFO = {
     '../../shared/types',
     'drizzle-orm',
     'hono',
-    'cloudflare:queues'
+    'cloudflare:workers'
   ]
 } as const;
 
@@ -154,14 +140,6 @@ export function isValidSenderType(type: string): type is import('./types/message
  */
 export function isSupportedPlatform(platform: string): platform is import('./types/message-types').Platform {
   return ['line', 'facebook', 'webchat'].includes(platform);
-}
-
-/**
- * 驗證延遲發送秒數
- */
-export function isValidDelaySeconds(seconds: number): boolean {
-  const { minDelaySeconds, maxDelaySeconds } = MESSAGING_MODULE_INFO.validationRules.delayedSend;
-  return seconds >= minDelaySeconds && seconds <= maxDelaySeconds;
 }
 
 /**

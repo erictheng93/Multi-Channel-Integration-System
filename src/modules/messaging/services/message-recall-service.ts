@@ -6,7 +6,6 @@ import { eq, and, desc, count, sql } from 'drizzle-orm';
 import {
   messages,
   messageRecallLogs,
-  delayedMessages,
   conversations,
   customers,
   channelIntegrations
@@ -275,122 +274,6 @@ export class MessageRecallService {
   }
 
   /**
-   * 召回延遲訊息 (取消未發送的延遲訊息)
-   */
-  async recallDelayedMessage(
-    delayedMessageId: string,
-    requestedBy: string,
-    reason?: string
-  ): Promise<RecallResponse> {
-    try {
-      // 檢查延遲訊息是否存在
-      const delayedMessage = await this.drizzleDb
-        .select()
-        .from(delayedMessages)
-        .where(eq(delayedMessages.id, delayedMessageId))
-        .get();
-
-      if (!delayedMessage) {
-        return {
-          success: false,
-          messageId: delayedMessageId,
-          error: 'Delayed message not found',
-          canRecall: false
-        };
-      }
-
-      // 檢查是否還可以取消
-      if (delayedMessage.status !== 'pending') {
-        return {
-          success: false,
-          messageId: delayedMessageId,
-          error: `Cannot recall delayed message with status: ${delayedMessage.status}`,
-          canRecall: false
-        };
-      }
-
-      // 檢查是否還在可取消時間內
-      const now = new Date();
-      const scheduledTime = new Date(delayedMessage.scheduledAt);
-      if (now >= scheduledTime) {
-        return {
-          success: false,
-          messageId: delayedMessageId,
-          error: 'Cannot recall delayed message after scheduled send time',
-          canRecall: false,
-          recallDeadline: delayedMessage.scheduledAt
-        };
-      }
-
-      const recalledAt = now.toISOString();
-
-      // 更新延遲訊息狀態 - store failure reason in metadata
-      const existingMessage = await this.drizzleDb
-        .select()
-        .from(delayedMessages)
-        .where(eq(delayedMessages.id, delayedMessageId))
-        .get();
-
-      const existingMetadata = existingMessage?.metadata ? JSON.parse(existingMessage.metadata) : {};
-      const updatedMetadata = {
-        ...existingMetadata,
-        failureReason: reason || 'Recalled by user'
-      };
-
-      await this.drizzleDb
-        .update(delayedMessages)
-        .set({
-          status: 'cancelled',
-          metadata: JSON.stringify(updatedMetadata),
-          updatedAt: recalledAt,
-        })
-        .where(eq(delayedMessages.id, delayedMessageId));
-
-      // 清理 KV 標記
-      const kvKey = `recallable:${delayedMessageId}`;
-      await this.env.SESSIONS.delete(kvKey);
-
-      // 記錄召回日誌 - Map to actual schema fields
-      await this.drizzleDb.insert(messageRecallLogs).values({
-        // id is auto-generated (integer primaryKey)
-        messageId: delayedMessageId,
-        userId: requestedBy, // Map requestedBy to userId
-        action: 'successful', // Map status to action
-        createdAt: recalledAt,
-      });
-
-      return {
-        success: true,
-        messageId: delayedMessageId,
-        recalledAt,
-        canRecall: true
-      };
-    } catch (error) {
-      log.error('Error recalling delayed message', { delayedMessageId }, error instanceof Error ? error : String(error));
-
-      // 記錄失敗的召回嘗試
-      try {
-        await this.drizzleDb.insert(messageRecallLogs).values({
-          // id is auto-generated (integer primaryKey)
-          messageId: delayedMessageId,
-          userId: requestedBy, // Map requestedBy to userId
-          action: 'failed', // Map status to action
-          createdAt: nowISO(),
-        });
-      } catch (logError) {
-        log.error('Error logging failed delayed recall attempt', { delayedMessageId }, logError instanceof Error ? logError : String(logError));
-      }
-
-      return {
-        success: false,
-        messageId: delayedMessageId,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        canRecall: false
-      };
-    }
-  }
-
-  /**
    * 批量召回訊息
    */
   async batchRecallMessages(
@@ -443,38 +326,6 @@ export class MessageRecallService {
     recallDeadline?: string;
   }> {
     try {
-      // 先檢查是否為延遲訊息
-      const delayedMessage = await this.drizzleDb
-        .select()
-        .from(delayedMessages)
-        .where(eq(delayedMessages.id, messageId))
-        .get();
-
-      if (delayedMessage) {
-        if (delayedMessage.status !== 'pending') {
-          return {
-            canRecall: false,
-            reason: `Delayed message status is ${delayedMessage.status}`
-          };
-        }
-
-        const now = new Date();
-        const scheduledTime = new Date(delayedMessage.scheduledAt);
-        if (now >= scheduledTime) {
-          return {
-            canRecall: false,
-            reason: 'Delayed message has already been sent',
-            recallDeadline: delayedMessage.scheduledAt
-          };
-        }
-
-        return {
-          canRecall: true,
-          recallDeadline: delayedMessage.scheduledAt
-        };
-      }
-
-      // 檢查一般訊息
       const message = await this.drizzleDb
         .select()
         .from(messages)
