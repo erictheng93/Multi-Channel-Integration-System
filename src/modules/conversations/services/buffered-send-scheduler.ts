@@ -74,6 +74,56 @@ export async function scheduleBufferedDelivery(
 }
 
 /**
+ * Cancel a buffered message on the conversation's DelayedMessageScheduler DO.
+ *
+ * The DO is the single arbiter of the recall race: cancel succeeds only while
+ * the message is still pending there (it rejects once the send time has
+ * passed), and the per-conversation DO serializes cancel against the alarm.
+ *
+ * @returns true when the pending send was cancelled — the platform will never
+ *          receive the message; false when it is too late (or the DO call failed).
+ */
+export async function cancelBufferedDelivery(
+  env: Bindings,
+  params: { messageId: string; conversationId: string; reason?: string }
+): Promise<boolean> {
+  try {
+    if (!env.DELAYED_MESSAGE_SCHEDULER) {
+      log.error('DELAYED_MESSAGE_SCHEDULER binding missing', { messageId: params.messageId });
+      return false;
+    }
+
+    const doId = env.DELAYED_MESSAGE_SCHEDULER.idFromName(params.conversationId);
+    const doStub = env.DELAYED_MESSAGE_SCHEDULER.get(doId);
+
+    const response = await doStub.fetch('https://delayed-message-scheduler/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messageId: params.messageId,
+        reason: params.reason || 'agent-recall',
+      }),
+    });
+
+    const result = await response.json().catch(() => null) as { success?: boolean; reason?: string } | null;
+    const success = response.ok && result?.success === true;
+
+    log.info('Buffered delivery cancel attempted', {
+      messageId: params.messageId,
+      success,
+      reason: result?.reason,
+    });
+    return success;
+  } catch (error) {
+    log.error('DO cancel call failed', {
+      messageId: params.messageId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return false;
+  }
+}
+
+/**
  * Downgrade a buffered message back to the immediate-send shape
  * ('pending', no recall deadline) before falling back to direct delivery.
  */

@@ -18,7 +18,6 @@ import {
 import type { Bindings } from '@/types';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
-import { pushLineMessage, createTextMessage } from '@/utils/line';
 import { ChannelCredentialService } from '@/modules/integrations/services/channel-credential-service';
 const log = createContextLogger('MessageRecallService');
 
@@ -40,7 +39,16 @@ export class MessageRecallService {
   async recallMessage(
     messageId: string,
     requestedBy: string,
-    _reason?: string
+    _reason?: string,
+    options?: {
+      /**
+       * Set when the DelayedMessageScheduler DO already cancelled the pending
+       * send (buffered recall path): the DO is the deadline arbiter there, so
+       * re-checking recallDeadline here could wrongly reject a recall whose
+       * cancel squeaked in just before the deadline.
+       */
+      deadlineAlreadyEnforced?: boolean;
+    }
   ): Promise<RecallResponse> {
     try {
       // 檢查訊息是否存在
@@ -72,7 +80,7 @@ export class MessageRecallService {
 
       // 檢查召回截止時間
       const now = new Date();
-      if (message.recallDeadline && now > new Date(message.recallDeadline)) {
+      if (!options?.deadlineAlreadyEnforced && message.recallDeadline && now > new Date(message.recallDeadline)) {
         return {
           success: false,
           messageId,
@@ -214,18 +222,13 @@ export class MessageRecallService {
       // Dispatch based on platform
       switch (customer.platform) {
         case 'line': {
-          // LINE does not support unsending messages via API.
-          // Send a notification text to the customer instead.
-          const sent = await pushLineMessage(
-            creds.accessToken,
-            customer.platformUserId,
-            [createTextMessage('This message has been recalled')]
-          );
-          if (sent) {
-            log.info('LINE recall notification sent', { messageId: message.id });
-          } else {
-            log.warn('LINE recall notification failed', { messageId: message.id });
-          }
+          // LINE does not support unsending messages via API. Recall of an
+          // already-delivered LINE message is rejected upstream (handler);
+          // recall of a buffered message was cancelled on the DO before the
+          // push ever happened. Either way there is nothing to send here —
+          // notifying the customer with an extra "recalled" text only adds
+          // noise, so it was removed intentionally.
+          log.info('LINE recall: no platform action (no unsend API)', { messageId: message.id });
           break;
         }
 
