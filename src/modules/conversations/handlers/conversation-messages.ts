@@ -22,7 +22,21 @@ import { conversationMessageContracts, type ContractResponse } from '@shared/api
 import { contractJson } from '@/utils/api-contract-response';
 import type { DeliveryStatus, MessageType } from '@shared/types/core';
 import { getRecallWindowSeconds } from '@/services/recall-window-config';
-import { scheduleBufferedDelivery, downgradeBufferedMessage } from '../services/buffered-send-scheduler';
+import { scheduleBufferedDelivery, downgradeBufferedMessage, cancelBufferedDelivery } from '../services/buffered-send-scheduler';
+
+/**
+ * Resolve the customer platform of an outbound message from its stored
+ * metadata (written by createPendingMessage). Unknown → null.
+ */
+const resolveMessagePlatform = (metadata: string | null): string | null => {
+  if (!metadata) return null;
+  try {
+    const parsed = JSON.parse(metadata) as Record<string, unknown>;
+    return typeof parsed.platform === 'string' ? parsed.platform : null;
+  } catch {
+    return null;
+  }
+};
 
 const log = createContextLogger('ConversationMessagesHandler');
 
@@ -886,7 +900,10 @@ conversationMessagesHandler.delete('/:id/messages/:messageId', jwtAuth, async (c
         senderType: messages.senderType,
         agentSenderId: messages.agentSenderId,
         isRecalled: messages.isRecalled,
-        recallDeadline: messages.recallDeadline
+        recallDeadline: messages.recallDeadline,
+        isSent: messages.isSent,
+        deliveryStatus: messages.deliveryStatus,
+        metadata: messages.metadata
       })
       .from(messages)
       .where(and(eq(messages.id, messageId), eq(messages.conversationId, conversationId)))
@@ -909,12 +926,43 @@ conversationMessagesHandler.delete('/:id/messages/:messageId', jwtAuth, async (c
       return c.json({ success: false, error: 'Message has already been recalled' }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    if (existing.recallDeadline && new Date() > new Date(existing.recallDeadline)) {
-      return c.json({ success: false, error: 'Message recall deadline has passed' }, HTTP_STATUS.BAD_REQUEST);
+    const isBuffered = existing.deliveryStatus === 'buffered' && !existing.isSent;
+
+    if (isBuffered) {
+      // Real recall: the DO is the sole arbiter of the deadline race. Cancel
+      // succeeds only while the push is still pending — the customer will
+      // never receive the message. No separate date check here: a stale
+      // clock must not reject a cancel the DO would still accept.
+      const cancelled = await cancelBufferedDelivery(c.env, { messageId, conversationId });
+      if (!cancelled) {
+        return c.json(
+          { success: false, error: 'Message recall deadline has passed' },
+          HTTP_STATUS.BAD_REQUEST
+        );
+      }
+    } else {
+      // Already pushed (or legacy immediate path). LINE has no unsend API —
+      // be honest instead of pretending the customer's copy disappeared.
+      const platform = resolveMessagePlatform(existing.metadata);
+      if (platform !== 'facebook') {
+        return c.json(
+          { success: false, error: 'LINE 已送達的訊息無法撤回（LINE 不支援收回已發送的訊息）' },
+          HTTP_STATUS.BAD_REQUEST
+        );
+      }
+
+      if (existing.recallDeadline && new Date() > new Date(existing.recallDeadline)) {
+        return c.json({ success: false, error: 'Message recall deadline has passed' }, HTTP_STATUS.BAD_REQUEST);
+      }
     }
 
     const recallService = new MessageRecallService(c.env.DB, c.env);
-    const recallResult = await recallService.recallMessage(messageId, userPayload.userId.toString());
+    const recallResult = await recallService.recallMessage(
+      messageId,
+      userPayload.userId.toString(),
+      undefined,
+      { deadlineAlreadyEnforced: isBuffered }
+    );
 
     if (!recallResult.success) {
       return c.json(
