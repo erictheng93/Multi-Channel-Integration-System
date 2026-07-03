@@ -16,14 +16,6 @@ export interface TestComponentInstance extends ComponentPublicInstance {
   messageContent?: string
   isLoading?: boolean
   
-  // DelayedMessageSender 組件測試類型
-  delaySeconds?: number
-  customDelaySeconds?: number
-  formatScheduledTime?: (_date: Date) => string
-  getCountdown?: (_messageId: string) => string
-  countdownTimer?: NodeJS.Timeout | null
-  recallingMessages?: Set<string>
-  
   // FileUpload 組件測試類型
   uploadFile?: (_item: FileUploadItem) => Promise<void>
 }
@@ -35,16 +27,6 @@ export interface FileItem {
   progress?: number
   status?: 'pending' | 'uploading' | 'completed' | 'failed'
   error?: string
-}
-
-// 待發送訊息類型
-export interface PendingMessage {
-  id: string
-  conversationId?: string | number
-  content: string
-  scheduledSendTime: string
-  canRecall: boolean
-  status: 'pending' | 'sent' | 'cancelled'
 }
 
 // Mock API 響應類型
@@ -64,10 +46,6 @@ export interface MockMessageApi {
   search: MockedFunction<(conversationId: string, query: string, messageType?: string) => Promise<MockApiResponse<Message[]>>>
   delete: MockedFunction<(messageId: string) => Promise<MockApiResponse<void>>>
   recall: MockedFunction<(messageId: string) => Promise<MockApiResponse<void>>>
-  sendDelayed: MockedFunction<(request: DelayedMessageRequest) => Promise<MockApiResponse<DelayedMessageResponse>>>
-  getPendingMessages: MockedFunction<(page: number, pageSize: number) => Promise<MockApiResponse<{ items: PendingMessage[], total: number }>>>
-  canRecallMessage: MockedFunction<(messageId: string, userId: string) => Promise<MockApiResponse<{ canRecall: boolean }>>>
-  getMessageDetails: MockedFunction<(messageId: string) => Promise<MockApiResponse<PendingMessage>>>
 }
 /* eslint-enable no-unused-vars */
 
@@ -98,8 +76,6 @@ export interface TestEmits {
   'message-sent'?: (...args: unknown[]) => void
   'upload-complete'?: (...args: unknown[]) => void
   'upload-error'?: (...args: unknown[]) => void
-  'create-delayed'?: (...args: unknown[]) => void
-  'view-pending'?: (...args: unknown[]) => void
   [key: string]: ((...args: unknown[]) => void) | undefined
 }
 /* eslint-enable no-unused-vars */
@@ -115,21 +91,4 @@ export interface TestGlobalConfig {
   mocks?: Record<string, unknown>
   stubs?: Record<string, unknown>
   provide?: Record<string | symbol, unknown>
-}
-
-// 測試用的延遲訊息請求類型
-export interface DelayedMessageRequest {
-  conversationId: number | string
-  content: string
-  delaySeconds: number
-  platform?: string
-  messageType?: string
-}
-
-// 測試用的延遲訊息響應類型
-export interface DelayedMessageResponse {
-  messageId: string
-  scheduledSendTime: string
-  recallDeadline: string
-  status: 'pending' | 'sent' | 'cancelled'
 }

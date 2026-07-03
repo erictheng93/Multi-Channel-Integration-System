@@ -366,17 +366,6 @@ describe('backend shared/api-contracts adoption', () => {
     }
   })
 
-  it('keeps frontend delayed-message components on the shared message API client', () => {
-    const senderSource = read('frontend/src/components/message/DelayedMessageSender.vue')
-    const pendingSource = read('frontend/src/components/message/PendingMessagesList.vue')
-
-    for (const source of [senderSource, pendingSource]) {
-      expect(source).toContain("from '@/api/messages'")
-      expect(source).not.toContain("from '@/api/base'")
-      expect(source).not.toContain("apiClient.")
-    }
-  })
-
   it('wires team handlers through teamContracts and teamMembershipContracts', () => {
     const membersSource = read('src/modules/teams/handlers/members.ts')
     const agentTeamsSource = read('src/modules/teams/handlers/agent-teams.ts')

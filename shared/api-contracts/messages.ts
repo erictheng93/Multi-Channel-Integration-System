@@ -1,53 +1,5 @@
 import { defineApiContract } from './core'
 
-export interface DelayedMessageRequest {
-  conversationId: string
-  content: string
-  delaySeconds: number
-  messageType?: 'text' | 'image' | 'video' | 'audio' | 'file'
-  mediaUrl?: string
-  senderId: string
-  recipientPlatformId: string
-  platform: 'line' | 'facebook'
-}
-
-export interface DelayedMessageResponse {
-  messageId: string
-  scheduledSendTime: string
-  recallDeadline: string
-}
-
-export interface RecallMessageRequest {
-  messageId: string
-  userId: string
-}
-
-export interface RecallMessageResponse {
-  success: boolean
-  messageId: string
-}
-
-export interface PendingMessage {
-  id: string
-  conversation_id: string
-  customer_name: string
-  content: string
-  platform: string
-  scheduled_send_time: string
-  recall_deadline: string
-  status: string
-  can_recall: boolean
-  message_type: string
-  created_at: string
-}
-
-export interface PendingMessagesResponse {
-  items: PendingMessage[]
-  total: number
-  page: number
-  pageSize: number
-}
-
 export interface MessageSenderInfo {
   id: string | number | null
   name?: string | null
@@ -112,26 +64,6 @@ export interface BulkOperationResult {
 }
 
 export const messageContracts = {
-  sendDelayedMessage: defineApiContract<Record<string, never>, DelayedMessageRequest, DelayedMessageResponse>({
-    method: 'POST',
-    path: () => '/messages/delayed'
-  }),
-
-  recallMessage: defineApiContract<Record<string, never>, RecallMessageRequest, RecallMessageResponse>({
-    method: 'POST',
-    path: () => '/messages/recall'
-  }),
-
-  getPendingMessages: defineApiContract<{ page: number; pageSize: number }, void, PendingMessagesResponse>({
-    method: 'GET',
-    path: ({ page, pageSize }) => `/messages/pending?page=${page}&pageSize=${pageSize}`
-  }),
-
-  canRecallMessage: defineApiContract<{ messageId: string; userId: string }, void, { canRecall: boolean }>({
-    method: 'GET',
-    path: ({ messageId, userId }) => `/messages/${messageId}/can-recall?userId=${userId}`
-  }),
-
   getMessageDetails: defineApiContract<{ messageId: string }, void, MessageDetail>({
     method: 'GET',
     path: ({ messageId }) => `/messages/${messageId}`

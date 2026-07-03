@@ -6,12 +6,7 @@ import type {
   BulkCreateMessagesRequest,
   BulkDeleteMessagesRequest,
   BulkOperationResult,
-  DelayedMessageRequest,
-  DelayedMessageResponse,
   MessageDetail,
-  PendingMessagesResponse,
-  RecallMessageRequest,
-  RecallMessageResponse
 } from '@shared/api-contracts'
 
 export type {
@@ -19,36 +14,10 @@ export type {
   BulkCreateMessagesRequest,
   BulkDeleteMessagesRequest,
   BulkOperationResult,
-  DelayedMessageRequest,
-  DelayedMessageResponse,
   MessageDetail,
-  PendingMessage,
-  PendingMessagesResponse,
-  RecallMessageRequest,
-  RecallMessageResponse
 } from '@shared/api-contracts'
 
 export const messagesApi = {
-  // 發送延遲訊息
-  sendDelayedMessage: async (request: DelayedMessageRequest): Promise<ApiResponse<DelayedMessageResponse>> => {
-    return callApiContract(messageContracts.sendDelayedMessage, {}, request)
-  },
-
-  // 撤回延遲訊息
-  recallMessage: async (request: RecallMessageRequest): Promise<ApiResponse<RecallMessageResponse>> => {
-    return callApiContract(messageContracts.recallMessage, {}, request)
-  },
-
-  // 獲取待發送訊息列表
-  getPendingMessages: async (page = 1, pageSize = 20): Promise<ApiResponse<PendingMessagesResponse>> => {
-    return callApiContract(messageContracts.getPendingMessages, { page, pageSize })
-  },
-
-  // 檢查訊息是否可撤回
-  canRecallMessage: async (messageId: string, userId: string): Promise<ApiResponse<{ canRecall: boolean }>> => {
-    return callApiContract(messageContracts.canRecallMessage, { messageId, userId })
-  },
-
   // 獲取訊息詳情
   getMessageDetails: async (messageId: string): Promise<ApiResponse<MessageDetail>> => {
     return callApiContract(messageContracts.getMessageDetails, { messageId })

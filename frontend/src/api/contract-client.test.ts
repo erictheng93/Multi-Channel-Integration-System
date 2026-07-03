@@ -6,7 +6,6 @@ import {
   authContracts,
   channelContracts,
   defineApiContract,
-  messageContracts,
   tagContracts,
   teamMembershipContracts
 } from '@shared/api-contracts'
@@ -149,35 +148,6 @@ describe('callApiContract', () => {
     })
 
     expect(apiClient.get).toHaveBeenCalledWith('/activities?page=1&pageSize=20&action=LOGIN')
-  })
-
-  it('uses message contracts for delayed-message requests', async () => {
-    vi.mocked(apiClient.post).mockResolvedValueOnce({
-      success: true,
-      data: {
-        messageId: 'message-1',
-        scheduledSendTime: '2026-01-01T00:00:00.000Z',
-        recallDeadline: '2026-01-01T00:01:00.000Z'
-      }
-    })
-
-    await callApiContract(messageContracts.sendDelayedMessage, {}, {
-      conversationId: 'conversation-1',
-      content: 'Hello',
-      delaySeconds: 60,
-      senderId: 'agent-1',
-      recipientPlatformId: 'customer-1',
-      platform: 'line'
-    })
-
-    expect(apiClient.post).toHaveBeenCalledWith('/messages/delayed', {
-      conversationId: 'conversation-1',
-      content: 'Hello',
-      delaySeconds: 60,
-      senderId: 'agent-1',
-      recipientPlatformId: 'customer-1',
-      platform: 'line'
-    })
   })
 
   it('passes request options through to bodyless contracts', async () => {
