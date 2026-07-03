@@ -148,7 +148,7 @@
 - [ ] 送出後等 61s 再撤回 → 400，客戶正常收到原訊息。
 - [ ] 撤回請求與 Alarm 幾乎同時（送出後 59.5s 撤回）→ 二者只有一個生效，且 API 回應與實際結果一致。
 - [ ] FB 已送達訊息撤回 → Graph API 刪除仍運作（回歸）。
-- [ ] `gitnexus` 已停用 → 改跑 `mcp detect_changes` 確認變更範圍符合預期後才 commit。
+- [ ] 使用 codebase-memory MCP `detect_changes` 確認變更範圍符合預期後才 commit。
 - [ ] `bash scripts/check.sh` 全綠。
 
 ---

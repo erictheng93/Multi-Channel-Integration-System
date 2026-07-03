@@ -172,4 +172,4 @@ facade + 5 個 service,改動面最大。
 ### 附:實作前必讀
 - 官方範例:https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server/
 - 遷移順序硬性建議:`CustomerConversationDO` → `UserConnection` → `ConversationRoom`(由簡入繁)。
-- 每改一個 symbol 前,依專案規定先跑 `gitnexus_impact`,HIGH/CRITICAL 風險先回報。
+- 每改一個 symbol 前,依專案規定優先使用 codebase-memory MCP 做影響範圍檢查,高風險變更先回報。

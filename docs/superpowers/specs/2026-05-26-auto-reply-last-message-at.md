@@ -35,7 +35,7 @@ Update `saveAutoReplyMessage()` so the saved message timestamp is also written t
 
 ## Notes
 
-GitNexus impact for `saveAutoReplyMessage` on 2026-05-26 was LOW risk:
+Historical graph impact for `saveAutoReplyMessage` on 2026-05-26 was LOW risk:
 
 - Direct callers: `evaluate`, `evaluateWelcome`
 - Affected flows: `processLineMessage`, `processLineFollowEvent`
