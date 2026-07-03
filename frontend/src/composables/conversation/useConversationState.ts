@@ -456,6 +456,25 @@ export function useConversationState(
   }
 
   /**
+   * Mark a message recalled in place (from message_recall_success events or
+   * after a successful recall API call). Mirrors the backend content rewrite
+   * so every tab converges without a refetch; metadata.isRecalled drives the
+   * placeholder styling and hides further actions.
+   */
+  function markMessageRecalled(messageId: string, recalledAt?: string) {
+    const messageList = httpMessages.messages.value
+    const message = messageList.find((m: Message) => m.id === messageId)
+    if (!message) {return}
+    message.content = '[This message has been recalled]'
+    message.metadata = {
+      ...message.metadata,
+      isRecalled: true,
+      ...(recalledAt && { recalledAt })
+    }
+    frontendLogger.debug('[useConversationState] Marked message recalled:', messageId)
+  }
+
+  /**
    * 重置加載狀態
    */
   function resetLoadingState() {
@@ -511,6 +530,7 @@ export function useConversationState(
     addMessage,
     updateMessageAttachments,
     updateMessageStatus,
+    markMessageRecalled,
     resetLoadingState,
     debouncedUpdateMessages,  //  向後兼容（內部使用隊列）
     queueMessageUpdate, //  新增：新的隊列 API

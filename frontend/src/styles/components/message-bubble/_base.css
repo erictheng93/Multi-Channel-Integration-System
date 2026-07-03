@@ -133,6 +133,13 @@
   justify-content: center;
 }
 
+/* 已撤回標記：灰色靜態文字 */
+.status-recalled {
+  font-size: 11px;
+  color: #8E8E93;
+  white-space: nowrap;
+}
+
 /* 撤回窗口倒數標籤：pastel 橘 + 膠囊形（Apple-Native 設計系統） */
 .status-buffered {
   display: flex;
