@@ -6,6 +6,8 @@ import { MessageService, MessageRequestService } from '@modules/conversations/se
 
 // ======================== Mock External Dependencies ========================
 
+const mockDeliverMessage = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
 // Mock LINE utils
 vi.mock('@/utils/line', () => ({
   pushLineMessage: vi.fn(async () => true),
@@ -21,6 +23,14 @@ vi.mock('@/services/websocket-broadcast-service', () => ({
   WebSocketBroadcastService: vi.fn().mockImplementation(() => ({
     broadcastMessageEvent: vi.fn(async () => {})
   }))
+}));
+
+vi.mock('@modules/conversations/services/message-delivery-service', () => ({
+  MessageDeliveryService: vi.fn(function () {
+    return {
+      deliver: mockDeliverMessage
+    };
+  })
 }));
 
 // Mock drizzle-factory
@@ -560,97 +570,24 @@ describe('MessageService - processBackgroundSending', () => {
     vi.clearAllMocks();
   });
 
-  it('should process and send message via LINE API', async () => {
-    const { pushLineMessage } = await import('@/utils/line');
-
+  it('should delegate background sending to MessageDeliveryService', async () => {
     await service.processBackgroundSending('msg-bg-1', {
       conversationId: 'conv-1',
       content: 'Background message',
       senderId: 'agent-1'
     }, { id: 'agent-1' });
 
-    expect(pushLineMessage).toHaveBeenCalled();
+    expect(mockDeliverMessage).toHaveBeenCalledWith('msg-bg-1');
   });
 
-  it('should handle customer not found gracefully', async () => {
-    mockDb._conversations.clear();
-    mockDb._customers.clear();
+  it('should propagate delivery failures to the waitUntil caller', async () => {
+    mockDeliverMessage.mockRejectedValueOnce(new Error('delivery failed'));
 
-    // Should not throw - just returns early
-    await service.processBackgroundSending('msg-bg-1', {
-      conversationId: 'conv-missing',
-      content: 'Test',
-      senderId: 'agent-1'
-    }, { id: 'agent-1' });
-  });
-
-  it('should update message status after successful send', async () => {
-    const updateSetSpy = vi.fn(() => ({
-      where: vi.fn().mockResolvedValue(undefined)
-    }));
-    mockDb.update = () => ({ set: updateSetSpy });
-
-    await service.processBackgroundSending('msg-bg-1', {
+    await expect(service.processBackgroundSending('msg-bg-1', {
       conversationId: 'conv-1',
-      content: 'Sent',
+      content: 'Background message',
       senderId: 'agent-1'
-    }, { id: 'agent-1' });
-
-    // At least one update call for message status
-    expect(updateSetSpy).toHaveBeenCalled();
-  });
-
-  it('should update message to failed status on LINE API error', async () => {
-    const { pushLineMessage } = await import('@/utils/line');
-    (pushLineMessage as any).mockResolvedValueOnce(false);
-
-    const updateSetSpy = vi.fn(() => ({
-      where: vi.fn().mockResolvedValue(undefined)
-    }));
-    mockDb.update = () => ({ set: updateSetSpy });
-
-    await service.processBackgroundSending('msg-bg-1', {
-      conversationId: 'conv-1',
-      content: 'Will fail',
-      senderId: 'agent-1'
-    }, { id: 'agent-1' });
-
-    expect(updateSetSpy).toHaveBeenCalled();
-  });
-
-  it('should handle attachments in background sending', async () => {
-    // The attachment query uses db.select().from(fileAttachments).where(inArray(...))
-    // which is a plain select - our mock returns messages from messagesStore by default.
-    // For this test, we just verify no crash with attachmentIds.
-    await service.processBackgroundSending('msg-bg-1', {
-      conversationId: 'conv-1',
-      content: 'With attachment',
-      senderId: 'agent-1',
-      attachmentIds: ['file-1']
-    }, { id: 'agent-1' });
-  });
-
-  it('should set message to failed on unhandled error', async () => {
-    // Force select to always throw
-    mockDb.select = () => {
-      throw new Error('Unexpected error');
-    };
-
-    const updateSetSpy = vi.fn(() => ({
-      where: vi.fn().mockResolvedValue(undefined)
-    }));
-    mockDb.update = () => ({ set: updateSetSpy });
-
-    await service.processBackgroundSending('msg-bg-1', {
-      conversationId: 'conv-1',
-      content: 'Error message',
-      senderId: 'agent-1'
-    }, { id: 'agent-1' });
-
-    // Should have updated message to failed
-    expect(updateSetSpy).toHaveBeenCalled();
-    const lastCall = updateSetSpy.mock.calls[updateSetSpy.mock.calls.length - 1];
-    expect(lastCall[0].deliveryStatus).toBe('failed');
+    }, { id: 'agent-1' })).rejects.toThrow('delivery failed');
   });
 });
 
