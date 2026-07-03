@@ -191,6 +191,15 @@ const router = createRouter({
         title: '標籤管理'
       }
     },
+    {
+      path: '/broadcasts',
+      name: 'Broadcasts',
+      component: () => import('@/views/BroadcastView.vue'),
+      meta: {
+        requiresAuth: true,
+        title: '群發訊息'
+      }
+    },
     // ==================== 通知系統路由 ====================
     {
       path: '/notifications',
