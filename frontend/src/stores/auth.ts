@@ -48,6 +48,17 @@ function storeAuthData(loginData: LoginResponse, expiry: number) {
   clearLegacyAuthLocalStorage();
 }
 
+function extractTeamRoles(agent: Agent | null): Record<number, TeamRoleInTeam> {
+  const roles: Record<number, TeamRoleInTeam> = {};
+  for (const [teamId, role] of Object.entries(agent?.teamRoles ?? {})) {
+    const parsedTeamId = Number(teamId);
+    if (!Number.isNaN(parsedTeamId)) {
+      roles[parsedTeamId] = role;
+    }
+  }
+  return roles;
+}
+
 function handleLoginError(error: unknown): string {
   if (error && typeof error === 'object' && 'message' in error) {
     return (error as Error).message;
@@ -85,6 +96,31 @@ export const useAuthStore = defineStore('auth', () => {
     teamRoles.value = {};
     contextTeamId.value = null;
     apiClient.setContextTeam(null);
+  }
+
+  function syncTeamStateFromAgent(agent: Agent | null) {
+    if (!agent) {
+      allowedTeamIds.value = [];
+      teamRoles.value = {};
+      return;
+    }
+
+    if (agent.allowedTeamIds !== undefined) {
+      allowedTeamIds.value = agent.allowedTeamIds;
+    }
+
+    if (agent.teamRoles !== undefined) {
+      teamRoles.value = extractTeamRoles(agent);
+    }
+  }
+
+  function preserveTeamState(agent: Agent): Agent {
+    return {
+      ...agent,
+      primaryTeamId: agent.primaryTeamId ?? currentAgent.value?.primaryTeamId,
+      allowedTeamIds: agent.allowedTeamIds ?? allowedTeamIds.value,
+      teamRoles: agent.teamRoles ?? teamRoles.value
+    };
   }
 
   // Phase 1 Optimization: Switch team context
@@ -137,6 +173,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (storedAgent) {
         try {
           currentAgent.value = JSON.parse(storedAgent);
+          syncTeamStateFromAgent(currentAgent.value);
         } catch {
           clearAuthStorage();
         }
@@ -195,6 +232,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = null;
       refreshToken.value = null;
       currentAgent.value = loginData.agent;
+      syncTeamStateFromAgent(loginData.agent);
 
       const expiry = Date.now() + SESSION_DURATION;
       sessionExpiry.value = expiry;
@@ -293,10 +331,12 @@ export const useAuthStore = defineStore('auth', () => {
       
       const response = await authApi.me();
       if (response?.success && response.data) {
-        currentAgent.value = response.data;
+        const nextAgent = preserveTeamState(response.data);
+        currentAgent.value = nextAgent;
+        syncTeamStateFromAgent(nextAgent);
         // 同步更新 localStorage
         if (typeof window !== 'undefined' && window.localStorage) {
-          setStoredAuthItem('currentAgent', JSON.stringify(response.data));
+          setStoredAuthItem('currentAgent', JSON.stringify(nextAgent));
         }
       } else if (response?.status === 401) {
         await logout(false);
@@ -398,10 +438,12 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.me();
       
       if (response?.success && response.data) {
-        currentAgent.value = response.data;
+        const nextAgent = preserveTeamState(response.data);
+        currentAgent.value = nextAgent;
+        syncTeamStateFromAgent(nextAgent);
         // 同步更新 localStorage
         if (typeof window !== 'undefined' && window.localStorage) {
-          setStoredAuthItem('currentAgent', JSON.stringify(response.data));
+          setStoredAuthItem('currentAgent', JSON.stringify(nextAgent));
         }
         setSessionStatus('authenticated');
       } else if (response?.status === 401) {

@@ -61,6 +61,12 @@ describe('前端狀態管理優化測試', () => {
     displayName: 'Test Agent',
     role: 'agent' as const,
     teamId: 1,
+    primaryTeamId: 1,
+    allowedTeamIds: [1, 2],
+    teamRoles: {
+      1: 'lead' as const,
+      2: 'member' as const
+    },
     isActive: true,
     createdAt: Date.now()
   }
@@ -100,6 +106,8 @@ describe('前端狀態管理優化測試', () => {
       expect(authStore.token).toBeNull()
       expect(authStore.refreshToken).toBeNull()
       expect(authStore.currentAgent).toEqual(mockAgent)
+      expect(authStore.allowedTeamIds).toEqual([1, 2])
+      expect(authStore.teamRoles).toEqual({ 1: 'lead', 2: 'member' })
       expect(authStore.sessionStatus).toBe('authenticated')
 
       // 驗證 session-scoped auth storage 同步（不得寫入任何 token）
@@ -200,16 +208,33 @@ describe('前端狀態管理優化測試', () => {
 
     it('當強制刷新時，應該發送 API 請求', async () => {
       authStore.currentAgent = mockAgent
+      authStore.allowedTeamIds = [1, 2]
+      authStore.teamRoles = { 1: 'lead', 2: 'member' }
 
       vi.mocked(authApi.me).mockResolvedValue({
         success: true,
-        data: mockAgent
+        data: {
+          id: mockAgent.id,
+          email: mockAgent.email,
+          name: mockAgent.name,
+          displayName: mockAgent.displayName,
+          role: mockAgent.role,
+          isActive: mockAgent.isActive,
+          createdAt: mockAgent.createdAt
+        }
       })
 
       await authStore.fetchCurrentAgent(true) // forceRefresh = true
 
       // 驗證：應該調用 authApi.me
       expect(authApi.me).toHaveBeenCalledTimes(1)
+      expect(authStore.allowedTeamIds).toEqual([1, 2])
+      expect(authStore.teamRoles).toEqual({ 1: 'lead', 2: 'member' })
+      expect(authStore.currentAgent).toMatchObject({
+        primaryTeamId: 1,
+        allowedTeamIds: [1, 2],
+        teamRoles: { 1: 'lead', 2: 'member' }
+      })
     })
 
     it('當沒有資料時，應該發送 API 請求', async () => {

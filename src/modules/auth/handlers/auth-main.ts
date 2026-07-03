@@ -325,6 +325,9 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
             name: user.displayName,
             displayName: user.displayName,
             role: toContractRole(user.role),
+            primaryTeamId: user.primaryTeamId || undefined,
+            allowedTeamIds: user.allowedTeamIds || [],
+            teamRoles: user.teamRoles || {},
             isActive: user.isActive,
             createdAt: new Date(user.createdAt).getTime()
           }
@@ -448,6 +451,9 @@ authHandler.post('/login', loginRateLimiter, async (c) => {
           name: user.displayName,
           displayName: user.displayName,
           role: toContractRole(user.role),
+          primaryTeamId: user.primaryTeamId || undefined,
+          allowedTeamIds: user.allowedTeamIds || [],
+          teamRoles: user.teamRoles || {},
           isActive: user.isActive,
           createdAt: new Date(user.createdAt).getTime()
         },
@@ -699,6 +705,9 @@ authHandler.get('/me', jwtAuth, async (c) => {
         name: user.displayName,
         displayName: user.displayName,
         role: toContractRole(user.role),
+        primaryTeamId: user.primaryTeamId || undefined,
+        allowedTeamIds: user.allowedTeamIds || [],
+        teamRoles: user.teamRoles || {},
         isActive: user.isActive,
         createdAt: new Date(user.createdAt).getTime()
       },
