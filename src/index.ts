@@ -304,6 +304,7 @@ log.info('WebSocket routes managed by Unified Route Registry');
 // Realtime + Queue monitor — fine-grained routers
 import realtimeRouter from './handlers/realtime-router';
 import queueMonitorRouter from './handlers/queue-monitor-router';
+import { broadcastRouter } from '@modules/broadcast';
 app.route('/api/realtime', realtimeRouter);
 
 // 活動記錄路由
@@ -315,6 +316,8 @@ app.route('/api/feedback', feedbackHandler);
 
 // 資料備份路由 - admin-only manual backups + visibility (R2 mcis-backups)
 app.route('/api/data/backup', backupHandler);
+
+app.route('/api/broadcasts', broadcastRouter);
 
 app.route('/api/queues', queueMonitorRouter);
 
