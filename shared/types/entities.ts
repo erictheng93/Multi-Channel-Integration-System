@@ -115,6 +115,8 @@ export interface Message {
   updatedAt?: Timestamp | Date // 支援兩種格式
   deliveryStatus?: DeliveryStatus
   status?: DeliveryStatus // 別名，向後兼容
+  // 撤回截止時間（ISO 字串）；deliveryStatus='buffered' 時存在，前端據此倒數
+  recallDeadline?: string | null
   metadata?: MessageMetadata
   attachments?: MessageAttachment[] // 附件陣列 (legacy)
   file_attachments?: FileAttachmentData[] // 檔案附件陣列 (新格式，用於 Flex Message Card 顯示)

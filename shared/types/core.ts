@@ -9,7 +9,8 @@ export type UserRole = 'admin' | 'agent' // Simplified from 3-tier (admin/team/a
 export type ConversationStatus = 'active' | 'pending' | 'in-progress' | 'assigned' | 'waiting'
 export type MessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'sticker'
 export type SenderType = 'user' | 'agent' | 'system' | 'customer' // 保留 customer 以支援現有代碼
-export type DeliveryStatus = 'pending' | 'sending' | 'sent' | 'delivered' | 'failed'
+// 'buffered' = 撤回窗口內暫存，窗口到期才實際推送平台（可撤回）
+export type DeliveryStatus = 'pending' | 'buffered' | 'sending' | 'sent' | 'delivered' | 'failed'
 
 // 時間戳類型
 export type Timestamp = number // Unix timestamp in milliseconds

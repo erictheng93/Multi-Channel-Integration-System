@@ -21,6 +21,8 @@ import { getSignedFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
 import { conversationMessageContracts, type ContractResponse } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
 import type { DeliveryStatus, MessageType } from '@shared/types/core';
+import { getRecallWindowSeconds } from '@/services/recall-window-config';
+import { scheduleBufferedDelivery, downgradeBufferedMessage } from '../services/buffered-send-scheduler';
 
 const log = createContextLogger('ConversationMessagesHandler');
 
@@ -333,8 +335,12 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
     log.debug('SERVICE creating MessageService instance');
     const messageService = new MessageService(c.env);
 
-    log.debug('SERVICE creating pending message');
-    const result = await messageService.createPendingMessage(request);
+    // Recall window: >0 buffers the message on the DelayedMessageScheduler DO
+    // (recallable until the deadline); 0 keeps the legacy immediate path.
+    const recallWindowSeconds = await getRecallWindowSeconds(c.env);
+
+    log.debug('SERVICE creating pending message', { recallWindowSeconds });
+    const result = await messageService.createPendingMessage(request, recallWindowSeconds);
 
     // 確保訊息已成功創建
     if (!result.messageId || !result.message) {
@@ -342,6 +348,12 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
     }
 
     log.debug('SERVICE pending message created', { messageId: result.messageId });
+
+    // Effective initial state; downgraded back to 'pending' if DO scheduling
+    // fails below (broadcasts sent before that are corrected by the
+    // message_updated event from the immediate delivery).
+    let initialDeliveryStatus: DeliveryStatus = recallWindowSeconds > 0 ? 'buffered' : 'pending';
+    let initialRecallDeadline: string | null = result.message.recallDeadline ?? null;
 
     // 3.1 Broadcast Pending Message
     try {
@@ -359,7 +371,8 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
             name: user.displayName,
             role: user.role
           },
-          deliveryStatus: 'pending',
+          deliveryStatus: initialDeliveryStatus,
+          recallDeadline: initialRecallDeadline,
           timestamp: nowISO()
         },
         priority: 'normal'
@@ -398,7 +411,8 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
           senderName: user.displayName,
           platform: 'line',
           timestamp: nowMs(),
-          deliveryStatus: 'pending'
+          deliveryStatus: initialDeliveryStatus,
+          recallDeadline: initialRecallDeadline
         },
         source: 'api',
         // Security: Team-scoped broadcast (P1 fix - prevent cross-team data leakage)
@@ -415,11 +429,34 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
       // Non-critical - conversation list will still update on next poll
     }
 
-    // 4. Trigger background sending
-    log.debug('BACKGROUND scheduling background delivery');
-    c.executionCtx.waitUntil(
-      messageService.processBackgroundSending(result.messageId, request, user)
-    );
+    // 4. Trigger delivery: buffered (recall window) or immediate
+    if (recallWindowSeconds > 0) {
+      log.debug('BACKGROUND scheduling buffered delivery', { recallWindowSeconds });
+      const scheduled = await scheduleBufferedDelivery(c.env, {
+        messageId: result.messageId,
+        conversationId: request.conversationId,
+        delaySeconds: recallWindowSeconds
+      });
+
+      if (!scheduled) {
+        // Degrade to immediate send — a message must never be stranded in
+        // 'buffered' with no alarm to deliver it.
+        log.warn('BACKGROUND DO schedule failed, degrading to immediate send', {
+          messageId: result.messageId
+        });
+        await downgradeBufferedMessage(c.env, result.messageId);
+        initialDeliveryStatus = 'pending';
+        initialRecallDeadline = null;
+        c.executionCtx.waitUntil(
+          messageService.processBackgroundSending(result.messageId, request, user)
+        );
+      }
+    } else {
+      log.debug('BACKGROUND scheduling background delivery');
+      c.executionCtx.waitUntil(
+        messageService.processBackgroundSending(result.messageId, request, user)
+      );
+    }
 
     // 5. Return response immediately
     log.debug('RESPONSE returning early success response');
@@ -449,7 +486,8 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
       platform: 'line' as const,
       createdAt: result.message.createdAt ? new Date(result.message.createdAt).getTime() : nowMs(),
       timestamp: result.message.createdAt ? new Date(result.message.createdAt).getTime() : nowMs(),
-      deliveryStatus: 'pending' as const,
+      deliveryStatus: initialDeliveryStatus,
+      recallDeadline: initialRecallDeadline,
       isSent: false,
       platformMessageId: null as string | null,
       metadata: parsedMetadata
