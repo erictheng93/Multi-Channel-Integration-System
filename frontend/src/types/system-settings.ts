@@ -62,6 +62,8 @@ export interface AdvancedSettings {
   enableRateLimit: boolean
   enableLogging: boolean
   enableMetrics: boolean
+  /** 訊息可撤回窗口（秒）：0=關閉（立即發送），允許 0/30/60/120/300 */
+  recallWindowSeconds: number
 }
 
 /**
