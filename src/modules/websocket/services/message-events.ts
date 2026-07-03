@@ -186,6 +186,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
       platform: string;
       timestamp?: number;
       deliveryStatus?: string;
+      recallDeadline?: string | null; // 撤回窗口截止（buffered 訊息），前端倒數用
       metadata?: string; // JSON-serialized media metadata (URLs, fileName, fileSize)
       file_attachments?: Array<{
         id: string;
@@ -229,6 +230,7 @@ export class MessageEventBroadcaster extends EventBroadcasterBase {
           timestamp,
           createdAt: new Date(timestamp).toISOString(),
           deliveryStatus: message.deliveryStatus || 'delivered',
+          recallDeadline: message.recallDeadline ?? null,
           senderName: message.senderName,
           metadata: message.metadata,
           file_attachments: message.file_attachments || []
