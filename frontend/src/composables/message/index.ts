@@ -12,6 +12,7 @@ export { useMessageActions, type MessageActionEmitters, type MessageActionsProps
 export { useMessageSticker, type StickerMetadata, type MessageStickerProps } from './useMessageSticker'
 export { useMessageContent, type MessageContentProps, type MessageType } from './useMessageContent'
 export { useMessageBubble, type MessageBubbleProps } from './useMessageBubble'
+export { useRecallCountdown, type RecallCountdown } from './useRecallCountdown'
 export {
   useVideoPlayer,
   type VideoPlayerProps,

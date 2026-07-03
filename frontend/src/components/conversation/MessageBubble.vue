@@ -317,9 +317,27 @@
           v-if="isOutgoing"
           class="message-status"
         >
+          <!-- 撤回窗口倒數：訊息暫存中，尚未送出給客戶 -->
+          <div
+            v-if="isRecallable"
+            class="status-buffered"
+            :title="`可撤回，${countdownLabel} 後送出`"
+          >
+            <span class="buffered-chip">⏱ 可撤回 {{ countdownLabel }}</span>
+          </div>
+
+          <!-- 倒數歸零、等待送達確認（以 WS 事件為準，不假顯示已送達） -->
+          <div
+            v-else-if="isAwaitingDelivery"
+            class="status-sending"
+            title="傳送中..."
+          >
+            <div class="spinner-small" />
+          </div>
+
           <!--  Sending状态 -->
           <div
-            v-if="messageStatus === 'sending' || messageStatus === MESSAGE_STATUS.PENDING"
+            v-else-if="messageStatus === 'sending' || messageStatus === MESSAGE_STATUS.PENDING"
             class="status-sending"
             title="发送中..."
           >
@@ -436,7 +454,7 @@
             </button>
 
             <button
-              v-if="isOutgoing"
+              v-if="isOutgoing && canRecall"
               class="dropdown-item danger"
               @click="recallMessage"
             >
@@ -506,6 +524,7 @@
     useMessageSticker,
     useMessageContent,
     useVideoPlayer,
+    useRecallCountdown,
     type FileAttachment,
   } from '@/composables/message'
 
@@ -621,6 +640,25 @@
     handleTouchEnd,
     handleTouchMove,
   } = useMessageActions(actionsProps, actionsEmit)
+
+  // 撤回窗口倒數（全域共用 ticker，見 useRecallCountdown）
+  const messageRef = computed(() => props.message)
+  const { isRecallable, isAwaitingDelivery, countdownLabel } = useRecallCountdown(messageRef)
+
+  // 撤回選項顯示條件：
+  // - buffered 且窗口內 → 真撤回（取消發送，客戶無感）
+  // - Facebook 已送達 → Graph API 可真刪除
+  // - LINE 已送達 → 隱藏（LINE 無 unsend API，避免給客服錯誤預期）
+  const canRecall = computed(() => {
+    if (isRecallable.value) {
+      return true
+    }
+    const status = props.message.deliveryStatus ?? props.message.status
+    return (
+      props.message.platform === 'facebook' &&
+      (status === MESSAGE_STATUS.SENT || status === MESSAGE_STATUS.DELIVERED)
+    )
+  })
 
   // The actions menu is teleported to <body> and positioned as `fixed`, so it
   // escapes the nested stacking contexts (the virtualized row uses
