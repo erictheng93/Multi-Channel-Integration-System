@@ -105,6 +105,26 @@ vi.mock('@/composables/message', () => {
       openVideoPreview: vi.fn(),
       closeVideoPreview: vi.fn(),
     }),
+    useRecallCountdown: (message: { value: Message }) => {
+      const isBuffered = computed(() => {
+        const m = message.value
+        if (m?.metadata?.isRecalled === true) {return false}
+        return (m?.deliveryStatus ?? m?.status) === 'buffered' && !!m?.recallDeadline
+      })
+      const remainingSeconds = computed(() => {
+        if (!isBuffered.value || !message.value?.recallDeadline) {return 0}
+        return Math.max(0, Math.ceil((new Date(message.value.recallDeadline).getTime() - Date.now()) / 1000))
+      })
+      return {
+        isRecallable: computed(() => isBuffered.value && remainingSeconds.value > 0),
+        isAwaitingDelivery: computed(() => isBuffered.value && remainingSeconds.value <= 0),
+        remainingSeconds,
+        countdownLabel: computed(() => {
+          const total = remainingSeconds.value
+          return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
+        }),
+      }
+    },
   }
 })
 

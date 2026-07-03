@@ -687,9 +687,13 @@ describe('Messages Store', () => {
 
       await store.deleteMessage('msg-1')
 
-      expect(store.messages).toHaveLength(1)
-      expect(store.messages.find(m => m.id === 'msg-1')).toBeUndefined()
-      expect(store.messages.find(m => m.id === 'msg-2')).toBeDefined()
+      // 撤回改為就地標記（不移除）：後端保留該列並改寫內容，
+      // 移除會讓撤回看起來像刪除、且下次 refetch 會復活
+      expect(store.messages).toHaveLength(2)
+      const recalled = store.messages.find(m => m.id === 'msg-1')
+      expect(recalled?.content).toBe('[This message has been recalled]')
+      expect(recalled?.metadata?.isRecalled).toBe(true)
+      expect(store.messages.find(m => m.id === 'msg-2')?.content).toBe('To keep')
     })
   })
 

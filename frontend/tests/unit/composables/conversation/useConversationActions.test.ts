@@ -94,16 +94,16 @@ describe('useConversationActions', () => {
   })
 
   describe('recallMessage', () => {
-    it('should call state.refreshMessages and return true on success', async () => {
+    it('should call state.refreshMessages and return success on success', async () => {
       const actions = useConversationActions('conv-1', mockState, mockWebSocket)
 
       const result = await actions.recallMessage('msg-1')
 
       expect(mockState.refreshMessages).toHaveBeenCalled()
-      expect(result).toBe(true)
+      expect(result).toEqual({ success: true })
     })
 
-    it('should return false when refreshMessages fails', async () => {
+    it('should return failure with the error message when refreshMessages fails', async () => {
       mockState = createMockState({
         refreshMessages: vi.fn().mockRejectedValue(new Error('refresh error'))
       })
@@ -111,7 +111,7 @@ describe('useConversationActions', () => {
 
       const result = await actions.recallMessage('msg-1')
 
-      expect(result).toBe(false)
+      expect(result).toEqual({ success: false, error: 'refresh error' })
     })
   })
 
