@@ -1,6 +1,6 @@
 # SPEC — 延遲發送 + 真實撤回窗口（Recall Window）
 
-> 狀態：待審核 | 版本：v1.0 (2026-07-02)
+> 狀態：已實作（真機驗證待驗） | 版本：v1.0 (2026-07-02)
 > 任務拆解：[PHASE-1-BACKEND.md](./PHASE-1-BACKEND.md) / [PHASE-2-FRONTEND.md](./PHASE-2-FRONTEND.md) / [PHASE-3-CLEANUP.md](./PHASE-3-CLEANUP.md)
 
 ---
@@ -30,28 +30,28 @@
 ## 2. 核心功能與驗收標準（Acceptance Criteria）
 
 ### F1 管理員可設定撤回窗口
-- [ ] 系統設定新增 `recall_window_seconds`，合法值 `0 | 30 | 60 | 120 | 300`，預設 `0`（關閉，行為與現況完全相同）。
-- [ ] 持久化於既有 `system_settings` key-value 表（`src/db/schema.ts:281-286`）。**注意：現有 `updateSettings` 是不落庫的 stub（`system-service.ts:335-354`），必須補真實持久化。**
-- [ ] 僅 `admin` 角色可修改；非法值回 400。
-- [ ] 設定變更即時生效於**之後送出**的訊息；已在緩衝中的訊息維持送出當下快照的 deadline。
+- [x] 系統設定新增 `advanced.recallWindowSeconds`（前端/API 欄位 `recallWindowSeconds`），合法值 `0 | 30 | 60 | 120 | 300`，預設 `0`（關閉，行為與現況完全相同）。
+- [x] 持久化於既有 `system_settings` key-value 表（key: `advanced.recallWindowSeconds`，`src/db/schema.ts:281-286`）。
+- [x] 僅 `admin` 角色可修改；非法值回 400。
+- [x] 設定變更即時生效於**之後送出**的訊息；已在緩衝中的訊息維持送出當下快照的 deadline。
 
 ### F2 緩衝發送（窗口 > 0 時）
-- [ ] 客服送出 → 訊息立即入庫（`deliveryStatus='buffered'`、`isSent=false`、`recallDeadline=now+窗口`），並即時 WebSocket 廣播給所有客服（含緩衝截止時間）。
-- [ ] 同時向 `DelayedMessageScheduler` DO（`idFromName(conversationId)`）排程，delay = 窗口秒數。
-- [ ] Alarm 到期 → 執行與現行 `processBackgroundSending` **等價**的完整發送（含文字、圖片、附件 Flex、5 則分批），更新 `deliveryStatus='sent'/'failed'/'partial'`、`isSent`、`sentAt`，並廣播狀態更新事件。
-- [ ] DO 排程呼叫失敗 → **降級為立即發送**（走現行路徑）並記 error log；不得讓訊息卡死不發。
-- [ ] 窗口 = 0 → 完全走現行立即發送路徑，行為零變化。
+- [x] 客服送出 → 訊息立即入庫（`deliveryStatus='buffered'`、`isSent=false`、`recallDeadline=now+窗口`），並即時 WebSocket 廣播給所有客服（含緩衝截止時間）。
+- [x] 同時向 `DelayedMessageScheduler` DO（`idFromName(conversationId)`）排程，delay = 窗口秒數。
+- [x] Alarm 到期 → 執行與現行 `processBackgroundSending` **等價**的完整發送（含文字、圖片、附件 Flex、5 則分批），更新 `deliveryStatus='sent'/'failed'/'partial'`、`isSent`、`sentAt`，並廣播狀態更新事件。
+- [x] DO 排程呼叫失敗 → **降級為立即發送**（走現行路徑）並記 error log；不得讓訊息卡死不發。
+- [x] 窗口 = 0 → 完全走現行立即發送路徑，行為零變化。
 
 ### F3 真實撤回（窗口內）
-- [ ] 窗口內撤回：先呼叫 DO `/cancel`，成功後才標記 `isRecalled=true` 並廣播 —— 客戶端**零訊息**送達。
-- [ ] 撤回競態：撤回與 Alarm 派送同時發生時，以 DO 為唯一裁決者（同一 DO 實例單執行緒序列化；`cancel` 在 `now >= scheduledAt` 時已拒絕，見 `src/durable-objects/delayed-message/schedule-manager.ts:166-168`）。cancel 失敗 → 撤回請求回 400「已超過可撤回時間」。
-- [ ] 已送達（`isSent=true`）的 LINE 訊息：撤回一律拒絕，錯誤訊息明確告知「LINE 已送達的訊息無法撤回」。**不得再假裝成功。**
-- [ ] 移除 P3 行為：撤回時不再推送「This message has been recalled」給 LINE 客戶（FB 已送達訊息仍可走 Graph API 真刪除，該分支保留）。
+- [x] 窗口內撤回：先呼叫 DO `/cancel`，成功後才標記 `isRecalled=true` 並廣播 —— 客戶端**零訊息**送達。
+- [x] 撤回競態：撤回與 Alarm 派送同時發生時，以 DO 為唯一裁決者（同一 DO 實例單執行緒序列化；`cancel` 在 `now >= scheduledAt` 時已拒絕，見 `src/durable-objects/delayed-message/schedule-manager.ts:166-168`）。cancel 失敗 → 撤回請求回 400「已超過可撤回時間」。
+- [x] 已送達（`isSent=true`）的 LINE 訊息：撤回一律拒絕，錯誤訊息明確告知「LINE 已送達的訊息無法撤回」。**不得再假裝成功。**
+- [x] 移除 P3 行為：撤回時不再推送「This message has been recalled」給 LINE 客戶（FB 已送達訊息仍可走 Graph API 真刪除，該分支保留）。
 
 ### F4 前端體驗
-- [ ] 緩衝中的訊息氣泡顯示倒數標記（如「可撤回 0:28」）與「發送中」狀態；到期收到 WS 事件後轉為「已送達」。
-- [ ] 撤回選項只在可撤回時顯示（緩衝中 或 FB 已送達）；LINE 已送達訊息隱藏/停用撤回。
-- [ ] 管理員設定頁提供下拉選單：關閉 / 30 秒 / 1 分鐘 / 2 分鐘 / 5 分鐘。
+- [x] 緩衝中的訊息氣泡顯示倒數標記（如「可撤回 0:28」）與「發送中」狀態；到期收到 WS 事件後轉為「已送達」。（真機驗證：待驗）
+- [x] 撤回選項只在可撤回時顯示（緩衝中 或 FB 已送達）；LINE 已送達訊息隱藏/停用撤回。（真機驗證：待驗）
+- [x] 管理員設定頁提供下拉選單：關閉 / 30 秒 / 1 分鐘 / 2 分鐘 / 5 分鐘。（真機驗證：待驗）
 
 ---
 
