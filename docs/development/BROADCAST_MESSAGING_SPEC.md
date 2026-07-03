@@ -132,7 +132,7 @@ src/modules/broadcast/
 
 | 方法 | 路徑 | 用途 | 成功回應要點 |
 |------|------|------|-------------|
-| `POST` | `/api/broadcasts/preview` | 受眾預覽（不落庫） | `{ total, byPlatform: {line, facebook}, sendable, skipped: [{reason, count}] }` |
+| `POST` | `/api/broadcasts/preview` | 受眾預覽（不落庫）。**請求體僅需 `tagIds`**——不得要求 title/content，否則「選標籤→即時預覽」流程無法成立 | `{ total, byPlatform: {line, facebook}, sendable, skipped: [{reason, count}] }` |
 | `POST` | `/api/broadcasts` | 建立群發 + 展開受眾快照 | `201` + broadcast 物件（status=`draft`） |
 | `POST` | `/api/broadcasts/:id/send` | 執行發送（同步） | `200` + 最終 stats；配額不足 `409`；超過 5000 人 `422`；非 draft `409` |
 | `GET` | `/api/broadcasts` | 歷史列表（分頁，含 stats） | 仿 tags list 的分頁格式（`page`, `pageSize` ≤ 100） |
@@ -176,11 +176,14 @@ send(broadcastId)
 │     deliveryStatus='delivered', metadata=JSON {broadcastId}）
 │     （批次 insert；無對話者跳過，不建新對話）
 ├─ 7. 統計回寫 broadcasts：sentCount/failedCount/skippedCount/totalRecipients
-│     status = failed=0&&skipped不計 ? 'completed'
+│     status = sent>0 && failed=0 ? 'completed'
 │            : sent>0 ? 'partial_failed' : 'failed'
+│     （全數 skipped、零實發 → 'failed'，避免誤導性的 completed）
 │     sentAt = now
 └─ 8. 回傳最終 stats
 ```
+
+**D1 硬限制（審查時確認，所有批次 DB 操作必須分塊）**：Cloudflare D1 每個查詢最多 **100 個綁定參數**（官方 limits）。因此：recipients 快照 insert（7 欄/列 → 每批 ≤14 列）、`inArray(...)` 批次 UPDATE/SELECT（每批 ≤ ~90 個 id）、寫回 messages 的 insert（13 欄/列 → 每批 ≤7 列）都必須切塊執行，建議在 `src/utils/` 新增共用 `chunk()` helper 並以常數集中管理批量大小。
 
 **冪等防重**：步驟 1 的 draft→sending 轉換必須是**條件式 UPDATE**（`UPDATE broadcasts SET status='sending' WHERE id=? AND status='draft'`，檢查受影響列數），防止雙擊/併發重送。
 
