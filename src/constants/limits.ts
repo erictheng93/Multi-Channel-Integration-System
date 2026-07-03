@@ -295,8 +295,7 @@ export const RATE_LIMITS = {
  * 延遲發送 / 撤回窗口限制（秒）
  *
  * 單一事實來源：所有 delaySeconds 邊界檢查都必須引用這裡，
- * 不得散落硬編碼（DelayedMessageScheduler、ValidationService、
- * delayed-message-buffer、DelayedMessageController、delayed-message-service）。
+ * 不得散落硬編碼（DelayedMessageScheduler、delayed-message-buffer）。
  */
 export const DELAYED_MESSAGE_LIMITS = {
   /** 最小延遲秒數 */

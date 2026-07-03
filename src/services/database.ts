@@ -2,13 +2,11 @@ import { eq, desc, and, or, like, inArray, isNull } from 'drizzle-orm';
 import { Database, KVService } from '../db';
 import * as schema from '../db/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { MESSAGE_STATUS } from '../constants/message-status';
 import { nowISO } from '@/utils/timestamp'
 
 type AgentInsert = typeof schema.agents.$inferInsert;
 type MessageInsert = typeof schema.messages.$inferInsert;
 type FileAttachmentInsert = typeof schema.fileAttachments.$inferInsert;
-type DelayedMessageInsert = typeof schema.delayedMessages.$inferInsert;
 
 type EnrichedConversation = typeof schema.conversations.$inferSelect & {
   assignedTeam: {
@@ -476,30 +474,6 @@ export class DatabaseService {
   async getFileAttachmentsByMessageId(messageId: string) {
     return await this.db.select().from(schema.fileAttachments)
       .where(eq(schema.fileAttachments.messageId, messageId));
-  }
-
-  // Delayed message operations
-  async createDelayedMessage(messageData: Omit<DelayedMessageInsert, 'id'>) {
-    const id = uuidv4();
-    return await this.db.insert(schema.delayedMessages).values({
-      id,
-      ...messageData,
-    }).returning();
-  }
-
-  async getPendingDelayedMessages(beforeTime: string) {
-    return await this.db.select().from(schema.delayedMessages)
-      .where(and(
-        eq(schema.delayedMessages.status, MESSAGE_STATUS.PENDING),
-        eq(schema.delayedMessages.scheduledAt, beforeTime) // This should be <= comparison
-      ));
-  }
-
-  async updateDelayedMessageStatus(id: string, status: string) {
-    return await this.db.update(schema.delayedMessages)
-      .set({ status, updatedAt: nowISO() })
-      .where(eq(schema.delayedMessages.id, id))
-      .returning();
   }
 
   // Agent status management (keeping the more advanced version)

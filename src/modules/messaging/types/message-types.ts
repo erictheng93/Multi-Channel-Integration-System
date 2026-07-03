@@ -88,49 +88,6 @@ export interface MessageMetadata {
   };
 }
 
-// ======================== 延遲訊息類型 ========================
-
-export interface DelayedMessage {
-  id: string;
-  conversationId: string;
-  agentId: string;
-  recipientPlatformId?: string;
-  platform?: Platform;
-  content: string;
-  messageType: MessageType;
-  delaySeconds?: number;
-  scheduledAt: string;
-  sentAt?: string;
-  cancelledAt?: string;
-  status: 'pending' | 'sent' | 'failed' | 'cancelled';
-  failureReason?: string;
-  mediaUrl?: string;
-  metadata?: unknown;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-// 延遲發送請求
-export interface DelayedSendRequest {
-  conversationId: string;
-  content: string;
-  delaySeconds: number; // 1-120 秒
-  messageType?: MessageType;
-  mediaUrl?: string;
-  recipientPlatformId?: string;
-  platform?: Platform;
-  metadata?: Partial<MessageMetadata>;
-}
-
-// 延遲發送回應
-export interface DelayedSendResponse {
-  success: boolean;
-  delayedMessageId?: string;
-  scheduledSendTime?: string;
-  recallDeadline?: string;
-  error?: string;
-}
-
 // ======================== 訊息召回類型 ========================
 
 export interface MessageRecall {
@@ -191,7 +148,6 @@ export interface BatchSendRequest {
     conversationId: string;
     content: string;
     messageType?: MessageType;
-    delaySeconds?: number;
     metadata?: Partial<MessageMetadata>;
   }[];
 }
@@ -297,45 +253,12 @@ export interface MessageListResponse {
   };
 }
 
-export interface DelayedMessageListResponse {
-  delayedMessages: DelayedMessage[];
-  pagination: {
-    limit: number;
-    offset: number;
-    total: number;
-    hasMore: boolean;
-  };
-}
-
-// ======================== Queue 處理類型 ========================
-
-export interface QueueMessagePayload {
-  type: 'delayed_send' | 'batch_process' | 'cleanup';
-  data: {
-    delayedMessageId?: string;
-    batchOperationId?: string;
-    conversationId?: string;
-    [key: string]: unknown;
-  };
-  scheduledTime: string;
-  retryCount?: number;
-  maxRetries?: number;
-}
-
-export interface QueueProcessingResult {
-  success: boolean;
-  processedAt: string;
-  error?: string;
-  retryAfter?: string;
-}
-
 // ======================== 權限和驗證類型 ========================
 
 export interface MessagePermissions {
   canSend: boolean;
   canRecall: boolean;
   canViewHistory: boolean;
-  canSendDelayed: boolean;
   canBatchOperation: boolean;
   canAccessStats: boolean;
 }
@@ -354,10 +277,6 @@ export interface MessageValidationRules {
     maxLength: number;
     minLength: number;
     allowedTypes: MessageType[];
-  };
-  delayedSend: {
-    minDelaySeconds: number;
-    maxDelaySeconds: number;
   };
   attachments: {
     maxSize: number; // bytes
@@ -378,7 +297,6 @@ export interface MessageError extends Error {
     | 'INVALID_MESSAGE_DATA'
     | 'PERMISSION_DENIED'
     | 'RECALL_DEADLINE_EXCEEDED'
-    | 'DELAYED_SEND_FAILED'
     | 'BATCH_OPERATION_FAILED'
     | 'QUOTA_EXCEEDED';
   details?: unknown;
@@ -412,10 +330,6 @@ export const DEFAULT_MESSAGE_VALIDATION: MessageValidationRules = {
     maxLength: 5000,
     minLength: 1,
     allowedTypes: ['text', 'image', 'video', 'audio', 'file', 'sticker'],
-  },
-  delayedSend: {
-    minDelaySeconds: 1,
-    maxDelaySeconds: 120,
   },
   attachments: {
     maxSize: 10 * 1024 * 1024, // 10MB

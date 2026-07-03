@@ -919,11 +919,19 @@ conversationMessagesHandler.delete('/:id/messages/:messageId', jwtAuth, async (c
       existing.agentSenderId === userPayload.userId.toString();
 
     if (!isAdmin && !isOwnAgentMessage) {
-      return c.json({ success: false, error: 'Only the sender or admin can recall this message' }, HTTP_STATUS.FORBIDDEN);
+      return contractJson(c, conversationMessageContracts.recall, {
+        success: false,
+        error: 'Only the sender or admin can recall this message',
+        timestamp: nowISO()
+      } as ContractResponse<typeof conversationMessageContracts.recall>, HTTP_STATUS.FORBIDDEN);
     }
 
     if (existing.isRecalled) {
-      return c.json({ success: false, error: 'Message has already been recalled' }, HTTP_STATUS.BAD_REQUEST);
+      return contractJson(c, conversationMessageContracts.recall, {
+        success: false,
+        error: 'Message has already been recalled',
+        timestamp: nowISO()
+      } as ContractResponse<typeof conversationMessageContracts.recall>, HTTP_STATUS.BAD_REQUEST);
     }
 
     const isBuffered = existing.deliveryStatus === 'buffered' && !existing.isSent;
@@ -935,24 +943,40 @@ conversationMessagesHandler.delete('/:id/messages/:messageId', jwtAuth, async (c
       // clock must not reject a cancel the DO would still accept.
       const cancelled = await cancelBufferedDelivery(c.env, { messageId, conversationId });
       if (!cancelled) {
-        return c.json(
-          { success: false, error: 'Message recall deadline has passed' },
+        return contractJson(
+          c,
+          conversationMessageContracts.recall,
+          {
+            success: false,
+            error: 'Message recall deadline has passed',
+            timestamp: nowISO()
+          } as ContractResponse<typeof conversationMessageContracts.recall>,
           HTTP_STATUS.BAD_REQUEST
         );
       }
     } else {
       // Already pushed (or legacy immediate path). LINE has no unsend API —
-      // be honest instead of pretending the customer's copy disappeared.
+      // be honest instead of pretending the customer copy disappeared.
       const platform = resolveMessagePlatform(existing.metadata);
       if (platform !== 'facebook') {
-        return c.json(
-          { success: false, error: 'LINE 已送達的訊息無法撤回（LINE 不支援收回已發送的訊息）' },
+        return contractJson(
+          c,
+          conversationMessageContracts.recall,
+          {
+            success: false,
+            error: 'LINE 已送達的訊息無法撤回（LINE 不支援收回已發送的訊息）',
+            timestamp: nowISO()
+          } as ContractResponse<typeof conversationMessageContracts.recall>,
           HTTP_STATUS.BAD_REQUEST
         );
       }
 
       if (existing.recallDeadline && new Date() > new Date(existing.recallDeadline)) {
-        return c.json({ success: false, error: 'Message recall deadline has passed' }, HTTP_STATUS.BAD_REQUEST);
+        return contractJson(c, conversationMessageContracts.recall, {
+          success: false,
+          error: 'Message recall deadline has passed',
+          timestamp: nowISO()
+        } as ContractResponse<typeof conversationMessageContracts.recall>, HTTP_STATUS.BAD_REQUEST);
       }
     }
 
@@ -965,8 +989,14 @@ conversationMessagesHandler.delete('/:id/messages/:messageId', jwtAuth, async (c
     );
 
     if (!recallResult.success) {
-      return c.json(
-        { success: false, error: recallResult.error || 'Failed to recall message' },
+      return contractJson(
+        c,
+        conversationMessageContracts.recall,
+        {
+          success: false,
+          error: recallResult.error || 'Failed to recall message',
+          timestamp: nowISO()
+        } as ContractResponse<typeof conversationMessageContracts.recall>,
         HTTP_STATUS.BAD_REQUEST
       );
     }

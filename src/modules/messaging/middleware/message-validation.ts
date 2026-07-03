@@ -6,12 +6,10 @@ import type { Bindings } from '@/types';
 import {
   isValidMessageType,
   isValidSenderType,
-  isSupportedPlatform,
-  isValidDelaySeconds,
   isValidMessageContent,
   DEFAULT_MESSAGE_VALIDATION
 } from '../index';
-import type { DelayedSendRequest, RecallRequest, BatchSendRequest } from '@modules/messaging/types/message-types';
+import type { RecallRequest, BatchSendRequest } from '@modules/messaging/types/message-types';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { nowISO } from '@/utils/timestamp'
@@ -311,78 +309,6 @@ export async function validateUpdateMessageData(c: Context<{ Bindings: Bindings 
   }
 }
 
-// ======================== 延遲發送驗證 ========================
-
-/**
- * 驗證延遲發送請求
- */
-export async function validateDelayedSendData(c: Context<{ Bindings: Bindings }>, next: Next) {
-  try {
-    let requestData: DelayedSendRequest;
-
-    try {
-      requestData = await c.req.json();
-    } catch (error) {
-      return c.json({
-        success: false,
-        error: 'Invalid JSON data',
-        timestamp: nowISO()
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
-    const errors: string[] = [];
-
-    // 驗證 conversationId
-    if (!requestData.conversationId) {
-      errors.push('conversationId is required');
-    }
-
-    // 驗證 content
-    if (!requestData.content) {
-      errors.push('content is required');
-    } else if (!isValidMessageContent(requestData.content)) {
-      const { minLength, maxLength } = DEFAULT_MESSAGE_VALIDATION.content;
-      errors.push(`content length must be between ${minLength} and ${maxLength} characters`);
-    }
-
-    // 驗證 delaySeconds
-    if (requestData.delaySeconds === undefined) {
-      errors.push('delaySeconds is required');
-    } else if (!isValidDelaySeconds(requestData.delaySeconds)) {
-      const { minDelaySeconds, maxDelaySeconds } = DEFAULT_MESSAGE_VALIDATION.delayedSend;
-      errors.push(`delaySeconds must be between ${minDelaySeconds} and ${maxDelaySeconds}`);
-    }
-
-    // 驗證 messageType
-    if (requestData.messageType && !isValidMessageType(requestData.messageType)) {
-      errors.push('messageType must be one of: text, image, video, audio, file, sticker, location');
-    }
-
-    // 驗證 platform
-    if (requestData.platform && !isSupportedPlatform(requestData.platform)) {
-      errors.push('platform must be one of: line, facebook, webchat');
-    }
-
-    if (errors.length > 0) {
-      return c.json({
-        success: false,
-        error: 'Delayed send data validation failed',
-        details: errors,
-        timestamp: nowISO()
-      }, HTTP_STATUS.BAD_REQUEST);
-    }
-
-    return await next();
-  } catch (error) {
-    log.error('Error validating delayed send data:', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: 'Delayed send data validation failed',
-      timestamp: nowISO()
-    }, HTTP_STATUS.INTERNAL_SERVER_ERROR);
-  }
-}
-
 // ======================== 召回驗證 ========================
 
 /**
@@ -484,9 +410,6 @@ export async function validateBatchSendData(c: Context<{ Bindings: Bindings }>, 
             errors.push(`messages[${index}].messageType is invalid`);
           }
 
-          if (message.delaySeconds !== undefined && !isValidDelaySeconds(message.delaySeconds)) {
-            errors.push(`messages[${index}].delaySeconds is invalid`);
-          }
         });
       }
     }

@@ -7,7 +7,6 @@ export {
   checkSpecificMessageAccess,
   checkMessageSendPermission,
   checkMessageRecallPermission,
-  checkDelayedSendPermission,
   checkBatchOperationPermission,
   checkStatsViewPermission,
   applyMessageScopeFilter,
@@ -21,7 +20,6 @@ export {
   validatePaginationParams,
   validateCreateMessageData,
   validateUpdateMessageData,
-  validateDelayedSendData,
   validateRecallRequest,
   validateBatchSendData,
   validateSearchQuery
@@ -34,7 +32,6 @@ import {
   checkSpecificMessageAccess as _checkSpecificMessageAccess,
   checkMessageSendPermission as _checkMessageSendPermission,
   checkMessageRecallPermission as _checkMessageRecallPermission,
-  checkDelayedSendPermission as _checkDelayedSendPermission,
   checkBatchOperationPermission as _checkBatchOperationPermission,
   checkStatsViewPermission as _checkStatsViewPermission,
   applyMessageScopeFilter as _applyMessageScopeFilter,
@@ -44,7 +41,6 @@ import {
 import {
   validateMessageId as _validateMessageId,
   validateCreateMessageData as _validateCreateMessageData,
-  validateDelayedSendData as _validateDelayedSendData,
   validateRecallRequest as _validateRecallRequest,
   validateBatchSendData as _validateBatchSendData,
   validateSearchQuery as _validateSearchQuery
@@ -77,17 +73,6 @@ export const messageSendAccess = [
   _validateCreateMessageData,
   _checkMessageAccess,
   _checkMessageSendPermission,
-  _validateMessageSender
-];
-
-/**
- * 延遲發送中間件組合
- * 包含數據驗證、身份驗證和延遲發送權限檢查
- */
-export const delayedSendAccess = [
-  _validateDelayedSendData,
-  _checkMessageAccess,
-  _checkDelayedSendPermission,
   _validateMessageSender
 ];
 
@@ -176,7 +161,7 @@ export function createMessageMiddleware(config: Partial<MessageMiddlewareConfig>
  * 為特定操作類型創建中間件
  */
 export function createOperationMiddleware(
-  operation: 'send' | 'recall' | 'delayed' | 'batch' | 'search' | 'stats',
+  operation: 'send' | 'recall' | 'batch' | 'search' | 'stats',
   config: Partial<MessageMiddlewareConfig> = {}
 ) {
   const finalConfig = { ...DEFAULT_MIDDLEWARE_CONFIG, ...config };
@@ -190,11 +175,6 @@ export function createOperationMiddleware(
     case 'recall':
       return messageRecallAccess.filter(m =>
         finalConfig.enableDataValidation || m !== _validateRecallRequest
-      );
-
-    case 'delayed':
-      return delayedSendAccess.filter(m =>
-        finalConfig.enableDataValidation || m !== _validateDelayedSendData
       );
 
     case 'batch':

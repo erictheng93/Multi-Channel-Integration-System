@@ -187,28 +187,6 @@ export async function checkMessageRecallPermission(c: Context<{ Bindings: Bindin
 }
 
 /**
- * 檢查延遲發送權限
- */
-export async function checkDelayedSendPermission(c: Context<{ Bindings: Bindings }>, next: Next) {
-  try {
-    const permissions = authCtx(c).get('messagePermissions');
-
-    if (!permissions.canSendDelayed) {
-      return forbiddenResponse(c, 'No permission to send delayed messages');
-    }
-
-    return await next();
-  } catch (error) {
-    log.error('Error in delayed send permission check:', {}, error instanceof Error ? error : new Error(String(error)));
-    return c.json({
-      success: false,
-      error: 'Delayed send permission check failed',
-      timestamp: nowISO()
-    }, 500);
-  }
-}
-
-/**
  * 檢查批量操作權限
  */
 export async function checkBatchOperationPermission(c: Context<{ Bindings: Bindings }>, next: Next) {
@@ -296,7 +274,6 @@ async function getMessagePermissions(userPayload: MessageAuthUser): Promise<Mess
     canSend: false,
     canRecall: false,
     canViewHistory: false,
-    canSendDelayed: false,
     canBatchOperation: false,
     canAccessStats: false,
   };
@@ -307,7 +284,6 @@ async function getMessagePermissions(userPayload: MessageAuthUser): Promise<Mess
         canSend: true,
         canRecall: true,
         canViewHistory: true,
-        canSendDelayed: true,
         canBatchOperation: true,
         canAccessStats: true,
       };
@@ -317,7 +293,6 @@ async function getMessagePermissions(userPayload: MessageAuthUser): Promise<Mess
         canSend: true,
         canRecall: true,
         canViewHistory: true,
-        canSendDelayed: false,
         canBatchOperation: false,
         canAccessStats: false,
       };

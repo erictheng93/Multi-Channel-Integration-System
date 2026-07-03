@@ -6,7 +6,6 @@ import type { RouteGroup } from './route-registry';
 import {
   authMainHandler,
   teamMainHandler,
-  delayedMessageMainHandler,
   conversationMainHandler,
   systemMainHandler,
   customerMainHandler,
@@ -98,15 +97,6 @@ const businessLogicGroup = createRouteGroup({
       description: 'Message Processing',
       version: '1.2.0',
       dependencies: ['auth', 'conversations'],
-      healthCheck: '/health'
-    }),
-    createRouteModule({
-      name: 'delayed-messages',
-      path: '/delayed-messages',
-      handler: delayedMessageMainHandler,
-      description: 'Delayed Message Processing',
-      version: '1.1.0',
-      dependencies: ['auth', 'messages'],
       healthCheck: '/health'
     }),
     createRouteModule({

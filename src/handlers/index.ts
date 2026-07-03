@@ -8,7 +8,6 @@ export * from '../modules/system/handlers/system-legacy'
 // 新的主要處理器 (Handler-based approach)
 export { default as authMainHandler } from '../modules/auth/handlers/auth-main'
 export { default as teamMainHandler } from '../modules/teams/handlers/index' // Updated to use fully modular team handler (includes members, password)
-export { default as delayedMessageMainHandler } from '../modules/delayed-message/handlers/delayed-message-modular' // Updated to use modular implementation
 export { conversationsMainHandler as conversationMainHandler } from '../modules/conversations/handlers'
 export { default as messagingMainHandler } from '../modules/messaging/handlers/messaging/index'
 export { default as systemMainHandler } from '../modules/system/handlers/system-main'
