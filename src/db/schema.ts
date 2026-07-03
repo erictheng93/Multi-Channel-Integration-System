@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, primaryKey, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, primaryKey, unique, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // Teams table - 團隊
@@ -260,6 +260,46 @@ export const conversationTags = sqliteTable('conversation_tags', {
   assignedAt: text('assigned_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   pk: primaryKey({ columns: [table.conversationId, table.tagId] }),
+}));
+
+// Broadcasts table - 群發活動
+export const broadcasts = sqliteTable('broadcasts', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  contentType: text('content_type').notNull().default('text'),
+  content: text('content').notNull(),
+  tagIds: text('tag_ids').notNull(),
+  matchMode: text('match_mode').notNull().default('any'),
+  status: text('status').notNull().default('draft'),
+  totalRecipients: integer('total_recipients').default(0),
+  sentCount: integer('sent_count').default(0),
+  failedCount: integer('failed_count').default(0),
+  skippedCount: integer('skipped_count').default(0),
+  createdBy: text('created_by').notNull().references(() => agents.id, { onDelete: 'restrict' }),
+  sentAt: text('sent_at'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  deletedAt: text('deleted_at'),
+}, (table) => ({
+  broadcastsListIdx: index('idx_broadcasts_list').on(table.deletedAt, table.createdAt),
+}));
+
+// Broadcast recipients table - 群發收件人明細（受眾快照 + 逐人結果）
+export const broadcastRecipients = sqliteTable('broadcast_recipients', {
+  id: integer('id').primaryKey(),
+  broadcastId: text('broadcast_id').notNull().references(() => broadcasts.id, { onDelete: 'cascade' }),
+  customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  platform: text('platform').notNull(),
+  platformUserId: text('platform_user_id').notNull(),
+  // Snapshot at send time: intentionally no FK, so history survives team deletion.
+  resolvedTeamId: integer('resolved_team_id'),
+  status: text('status').notNull().default('pending'),
+  errorReason: text('error_reason'),
+  sentAt: text('sent_at'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  broadcastPlatformUserUnique: unique().on(table.broadcastId, table.platform, table.platformUserId),
+  broadcastStatusIdx: index('idx_broadcast_recipients_broadcast_status').on(table.broadcastId, table.status),
 }));
 
 // Activities table - 活動記錄表（審計追蹤）
