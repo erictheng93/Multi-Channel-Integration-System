@@ -226,8 +226,5 @@ export type {
   SetupTestFunction,
   CleanupTestFunction,
   TestGlobalConfig,
-  FileItem,
-  DelayedMessageRequest,
-  DelayedMessageResponse,
-  PendingMessage
+  FileItem
 } from './test-types'
