@@ -40,7 +40,7 @@ Verified:
 Completion notes:
 
 - Task 8 smoke coverage is satisfied by the automated Playwright browser smoke. It uses mocked API responses, so it validates the phase-3 frontend UI/composable/feature-flag behavior without depending on live backend seed data.
-- GitNexus `detect_changes(scope: all)` was run and reports CRITICAL across 26 dirty files / 56 changed symbols / 34 affected processes. The high-risk processes are from unrelated backend auth/customer/tag/team dirty files already present in the worktree, not from the phase-3 frontend restore surface. Those backend changes still need their own verification before a repository-wide clean merge decision.
+- Historical graph `detect_changes(scope: all)` was run and reported CRITICAL across 26 dirty files / 56 changed symbols / 34 affected processes. The high-risk processes were from unrelated backend auth/customer/tag/team dirty files already present in the worktree, not from the phase-3 frontend restore surface. Those backend changes still need their own verification before a repository-wide clean merge decision.
 
 > **Note on the existing component name.** The spec mentions `ActivityCard.vue` but the existing repo file is `ActivityTimelineItem.vue` (`frontend/src/components/activity/`). This plan modifies the existing file instead of creating a new one — no need for a parallel naming convention.
 
