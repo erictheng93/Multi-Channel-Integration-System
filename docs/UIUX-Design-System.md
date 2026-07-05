@@ -4,6 +4,8 @@
 
 **風格定義：** 一種高度遵循 Apple Human Interface Guidelines (HIG) 的現代 iOS 設計語言，以 Bento Box 模組化佈局為骨架、柔和光影與粉彩漸層為血肉，追求「乾淨、透氣、無壓力、年輕化」的使用者體驗。
 
+> **最後校對**: 2026-07-05 — 對照 `frontend/src/components/ui/{AppLayout,SidebarNav}.vue` 與 `frontend/src/views/` 修正第 2.2、7.1、12 節(原內容為行動裝置課表 App 範例,已改為本專案實際的側邊導覽桌面版佈局與頁面)。第 3-11、13-16 節的設計 token(色彩/圓角/陰影/字體/動效)為通用規範,持續適用,未變動。第 4.3/4.4 節的「課程色塊」為色彩用法示意,非本專案實際功能——本專案的標籤配色實作見 `frontend/src/components/customer/TagSelector.vue`。
+
 ---
 
 ## 1\. 核心設計理念 (Core Philosophy)
@@ -25,43 +27,31 @@
 
 ### 2.2 頁面結構模式
 
-┌─────────────────────────┐
+> **本專案為桌面優先的 Web 後台**（`AppLayout.vue` + `SidebarNav.vue`），採**側邊導覽**而非行動裝置底部導覽列；縮窄至行動寬度時側邊欄收合為漢堡選單抽屜（見 7.1）。以下為桌面版結構：
 
-│  Status Bar (系統)        │
+┌───────────┬─────────────────────────┐
 
-│  Large Title (大標題)     │  ← 頁面標題區域
+│           │  Large Title (大標題)     │  ← 頁面標題區域
 
-│  \[Filter / Segment\]      │  ← 可選的篩選控制列
+│  Sidebar  │  \[Filter / Segment\]      │  ← 可選的篩選控制列
 
-├─────────────────────────┤
+│  (可收合)  ├─────────────────────────┤
 
-│  ┌─────────────────┐    │
+│           │  ┌─────────────────┐    │
 
-│  │  Primary Card    │    │  ← 主要資訊卡片（醒目）
+│  Nav 項目  │  │  Primary Card    │    │  ← 主要資訊卡片（醒目）
 
-│  └─────────────────┘    │
+│  ...      │  └─────────────────┘    │
 
-│  Section Header          │  ← 區塊標題 \+ "查看全部" 連結
+│           │  Section Header          │  ← 區塊標題 \+ "查看全部" 連結
 
-│  ┌─────────────────┐    │
+│           │  ┌─────────────────┐    │
 
-│  │  Secondary Card  │    │  ← 次要資訊卡片
+│  User     │  │  Secondary Card  │    │  ← 次要資訊卡片
 
-│  └─────────────────┘    │
+│  Profile  │  └─────────────────┘    │
 
-│  Section Header          │
-
-│  ┌─────────────────┐    │
-
-│  │  List Card       │    │  ← 列表型卡片
-
-│  └─────────────────┘    │
-
-├─────────────────────────┤
-
-│  Bottom Tab Bar          │  ← 底部導覽列
-
-└─────────────────────────┘
+└───────────┴─────────────────────────┘
 
 ### 2.3 間距 Token 系統
 
@@ -83,7 +73,8 @@
 
 - **卡片容器**：`20px - 24px`（Tailwind: `rounded-2xl` 至 `rounded-3xl`）— 使用平滑 Squircle 曲線  
 - **嵌套內部卡片**：`12px - 16px`（Tailwind: `rounded-xl` 至 `rounded-2xl`）  
-- **按鈕 / 標籤 / 分頁切換器**：完全膠囊形（Tailwind: `rounded-full`）  
+- **按鈕**（全域 `.btn*` 系統）：`12px`（Tailwind: `rounded-xl`）——**非膠囊形**。這是本專案實際採用的決策，見 `frontend/src/style.css` 與根目錄 `CLAUDE.md`「Button System」章節；`.btn` 系列 class 只能在該檔案定義，元件內禁止重定義  
+- **標籤 / 分頁切換器 / 篩選膠囊**：完全膠囊形（Tailwind: `rounded-full`）——此規則僅適用於 badge/pill/segmented control，不適用於按鈕  
 - **進度條**：完全圓角（Tailwind: `rounded-full`）  
 - **輸入框**：`12px`（Tailwind: `rounded-xl`）
 
@@ -182,21 +173,43 @@
 
 ## 7\. 核心元件規範 (Component Patterns)
 
-### 7.1 底部導覽列 (Bottom Tab Bar)
+### 7.1 側邊導覽列 (Sidebar Navigation)
 
-┌──────┬──────┬──────┬──────┐
+> 實際元件：`frontend/src/components/ui/{AppLayout,SidebarNav,SidebarHeader,SidebarUserProfile}.vue`
 
-│ 🏠   │ 📋   │ 📅   │ 👤   │
+┌──────────────┐
 
-│ 今天  │ 課表  │ 行事曆│ 更多  │
+│  Logo / 收合鍵 │  ← SidebarHeader
 
-└──────┴──────┴──────┴──────┘
+├──────────────┤
 
-- 圖示使用 SF Symbols 風格（線條型，選中時填充型）  
-- 選中項：主要強調色（`#007AFF`）  
+│ 🏠 儀表板      │
+
+│ 💬 對話管理    │  ← 選中項：藍色文字/圖示 + 淺藍底
+
+│ 🏷️ 標籤管理    │
+
+│ 📊 報表系統 ▾  │  ← 可展開子選單（ExpandableNavGroup）
+
+│ 📤 群發訊息    │
+
+│ 📁 資料管理 ▾  │
+
+│ 👥 團隊管理    │  ← 僅 admin 可見項目
+
+│ ⚙️ 系統設定 ▾  │
+
+├──────────────┤
+
+│  使用者頭像/名稱│  ← SidebarUserProfile（固定底部）
+
+└──────────────┘
+
+- 圖示使用線條風格 SVG（`components/icons/*Icon.vue`），選中時圖示與文字轉為主要強調色（`#007AFF`）  
 - 未選中項：`#8E8E93`（灰色）  
-- 背景：白色 \+ 頂部極淡分隔線或毛玻璃效果  
-- Tailwind: `bg-white/80 backdrop-blur-xl border-t border-gray-200/50`
+- 側邊欄可收合為僅顯示圖示（`sidebar-collapsed`），節省桌面版寬度  
+- **行動裝置寬度**：側邊欄改為左側抽屜（`sidebar-mobile` + `sidebar-mobile-open`），由右上角漢堡選單按鈕觸發，開啟時搭配 `mobile-overlay` 遮罩  
+- 子選單使用 `ExpandableNavGroup.vue`，展開/收合狀態各自獨立記憶
 
 ### 7.2 分段控制器 (Segmented Control)
 
@@ -352,39 +365,43 @@
 
 ## 12\. 特殊頁面模式 (Page Patterns)
 
-### 12.1 今日總覽頁 (Dashboard)
+> 以下對應本專案 `frontend/src/views/` 實際存在的頁面，取代舊版（課表 App）範例。
 
-- 頂部大標題「今天」  
-- 首要卡片：當前課程（含進度條、狀態指示）  
-- 次要區塊：待辦事項、近期行程  
+### 12.1 儀表板 (Dashboard.vue)
+
+- 頂部大標題「儀表板」  
+- 首要卡片區：KPI 數字卡片（待處理對話數、今日訊息量等），大字號 \+ 語義色  
+- 次要區塊：近期活動、待辦提醒  
 - 每個區塊有標題 \+ 可選的「查看全部」連結
 
-### 12.2 週課表頁 (Timetable)
+### 12.2 對話管理 (ConversationList.vue + ConversationDetail.vue)
 
-- 分段控制器切換「週課表 / 今日課程」  
-- 網格佈局：左側時段，頂部星期  
-- 課程色塊使用粉彩漸層填充  
-- 色塊顯示課程名稱 \+ 教室地點
+- 左右分欄佈局：左側對話列表（`ConversationsTable.vue`，可篩選/搜尋），右側訊息詳情  
+- 列表項：客戶名稱 \+ 最新訊息預覽 \+ 未讀數 \+ 時間，未讀以強調色圓點標示  
+- 詳情面板：訊息串（氣泡樣式）+ 底部輸入框 \+ 標籤/客戶資訊側欄
 
-### 12.3 行事曆頁 (Calendar)
+### 12.3 標籤管理 (CustomerTags.vue)
 
-- 月曆視圖，顯示農曆日期  
-- 今日日期紅色圓圈標記  
-- 事件以彩色小標籤顯示在日期下方  
-- 底部 Sheet 用於行事曆訂閱管理
+- 頂部工具列：新增標籤、批次操作（`TagsToolbar.vue`）  
+- 卡片網格：`TagCard.vue` 顯示標籤名稱、顏色、使用統計  
+- 統計彈窗（`TagStatsModal.vue`）：圓形進度環或長條圖呈現指派趨勢
 
-### 12.4 成績查詢頁 (Grades)
+### 12.4 群發訊息 (BroadcastView.vue)
 
-- 頂部篩選膠囊（學期切換）  
-- GPA 圓形進度環（醒目核心數據）  
-- 排名區塊：進度條 \+ 百分比 \+ 排名數字  
-- 課程列表：課程名 \+ 分類標籤 \+ 分數
+- `BroadcastComposeCard.vue`：選標籤 → 即時預覽人數 → 輸入內容 → 送出前 confirm 對話框  
+- `BroadcastHistoryList.vue`：歷史列表，狀態徽章（draft/sending/completed/partial_failed/failed）使用語義色  
+- `BroadcastDetailModal.vue`：收件人明細，可依 sent/failed/skipped 篩選
 
-### 12.5 公告列表頁 (Announcements)
+### 12.5 報表系統 (Reports.vue + reports/dashboard/\*)
 
-- 頂部圖示篩選列（水平滾動）  
-- 列表項：分類標籤 \+ 標題 \+ 來源 \+ 日期 \+ 箭頭  
-- 分類標籤使用粉彩配色
+- 分段控制器切換不同報表類型/模板  
+- 圖表卡片：長條圖、折線圖搭配 KPI 數字卡片並列（Bento 佈局）  
+- 篩選膠囊：時間區間切換
+
+### 12.6 團隊管理 / 系統設定 (TeamManagement.vue, SystemSettings.vue)
+
+- 側邊次級導覽（`SettingsSidebar.vue`）切換設定分類  
+- 表單卡片：分組欄位 \+ 儲存按鈕固定於卡片底部或頁面浮動列
 
 ---
 
@@ -511,7 +528,7 @@ module.exports \= {
 - [ ] 頁面背景是否為 `#F2F2F7` 或類似極淺灰？  
 - [ ] 卡片是否為白色 \+ 大圓角（≥ 20px）+ 柔和陰影？  
 - [ ] 是否避免了生硬的實線邊框？  
-- [ ] 按鈕和標籤是否使用膠囊形（rounded-full）？  
+- [ ] 標籤/篩選膠囊是否使用膠囊形（rounded-full）？按鈕是否使用 `rounded-xl`（**非**膠囊形，且未在元件內重定義 `.btn*`）？  
 - [ ] 陰影是否足夠柔和（opacity ≤ 8%）？  
 - [ ] 文字是否避免了純黑色（使用 \#1C1C1E 代替）？  
 - [ ] 標題與正文是否有足夠的層級對比？  
@@ -542,7 +559,7 @@ module.exports \= {
 
 1\. 佈局：Bento Grid 模組化卡片佈局，頁面內邊距 20px，卡片間距 16px
 
-2\. 形狀：卡片 rounded-2xl\~3xl，按鈕/標籤 rounded-full，禁止生硬邊框
+2\. 形狀：卡片 rounded-2xl\~3xl，按鈕 rounded-xl（全域 `.btn*`，勿在元件內重定義），標籤/篩選膠囊 rounded-full，禁止生硬邊框
 
 3\. 陰影：柔和彌散陰影 shadow-\[0\_4px\_16px\_rgb(0,0,0,0.06)\]，禁止 opacity \> 8%
 

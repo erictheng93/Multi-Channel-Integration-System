@@ -1,7 +1,7 @@
 # Web Installer (Self-Hosted Deployment System)
 
 **Location:** `web-installer/`
-**Status:**  Production-Ready (Completed 2025-01-28)
+**Status:** Backend fully implemented and tested (verified 2026-07-05); see [Next Steps](#next-steps-for-web-installer) for what's still outstanding before a production rollout.
 **Purpose:** Enable customers to deploy the CRM system to their own Cloudflare accounts with zero technical knowledge
 
 ## Overview
@@ -19,11 +19,11 @@ The Web Installer is a complete self-service deployment system that transforms t
 - **Cost Transparent** - Starts at $0/month on Cloudflare Free tier
 
 ### For Developers
-- **Production-Ready** - 28 passing tests with 90.6% coverage
+- **Fully Implemented Backend** - 186 passing tests across 11 test files (unit + integration; verified via `bun run test:ci`, 2026-07-05)
 - **TypeScript Throughout** - Full type safety
-- **Durable Objects** - Stateful deployment orchestration
+- **Durable Objects** - Stateful deployment orchestration (`DeploymentOrchestrator`, ~980 lines)
 - **Comprehensive Documentation** - 4 complete guides (200+ pages equivalent)
-- **Well-Tested** - Unit, integration, and E2E test specifications
+- **Well-Tested** - Unit tests for utils, integration tests for every service, route, and the orchestrator DO
 
 ## Architecture
 
@@ -55,20 +55,23 @@ Cloudflare Platform API
 web-installer/
 ├── backend/
 │ ├── src/
-│ │   ├── utils/
-│ │   │ ├── validation.ts Implemented (13 tests)
-│ │   │ └── errors.ts Implemented (15 tests)
-│ │   ├── services/ Fully Specified
-│ │   ├── durable-objects/ Fully Specified
-│ │   └── routes/ Fully Specified
+│ │   ├── utils/            validation.ts + errors.ts — unit tested (28 tests)
+│ │   ├── services/         Implemented: CloudflareAPI, ConfigGenerator,
+│ │   │                     EmailService, MigrationRunner, RollbackService,
+│ │   │                     WorkerBundleService, FrontendBundleService
+│ │   │                     (integration-tested against mocked Cloudflare API)
+│ │   ├── durable-objects/  DeploymentOrchestrator — implemented, integration-tested
+│ │   └── routes/           auth.ts, deployment.ts, oauth.ts — implemented,
+│ │                         integration-tested
 │ ├── tests/
-│ │   └── unit/utils/ 28 tests, 90.6% coverage
+│ │   ├── unit/utils/               28 tests
+│ │   └── integration/              158 tests (routes, services, durable-objects)
 │ ├── package.json Complete
 │ ├── tsconfig.json Complete
 │ ├── vitest.config.ts Complete
 │ └── wrangler.toml Complete
 │
-├── frontend/ Fully Specified
+├── frontend/ Implemented
 │ ├── src/
 │ │   ├── views/ 6 components with full code
 │ │   ├── components/ 4 shared components
@@ -84,15 +87,29 @@ web-installer/
 └── PROJECT_SUMMARY.md Complete project summary
 ```
 
+> `services/generated/` also contains prebuilt `worker-bundle.ts` / `frontend-bundle.ts` (bundled artifacts injected into each new deployment) — not hand-written source, so not itemized above.
+
 ## Test Results
 
+Verified 2026-07-05 via `bun run test:ci` (`INCLUDE_DO_TESTS=true vitest run`) in `web-installer/backend/`:
+
 ```
- Test Files: 2 passed (2)
- Tests: 28 passed (28) - 100% pass rate
- Coverage: 90.6% overall
- Function Coverage: 100%
- Branch Coverage: 79.06%
+ Test Files: 11 passed (11)
+ Tests:      186 passed (186) - 100% pass rate
 ```
+
+Covers: `utils/validation.ts`, `utils/errors.ts` (unit), `routes/oauth.ts`,
+`routes/deployment.ts`, `durable-objects/DeploymentOrchestrator.ts`, and all
+seven services (`CloudflareAPI`, `ConfigGenerator`, `MigrationRunner`,
+`EmailService`, `WorkerBundleService`, `RollbackService`) via integration
+tests against a mocked Cloudflare API.
+
+> `bun run test:coverage` (v8 coverage) currently reports 0% statement
+> coverage across the board despite all 186 tests passing — this looks like
+> an instrumentation mismatch with the Workers runtime test environment
+> (Miniflare/workerd), not a real coverage regression. Treat coverage % from
+> that command as unreliable until investigated; use pass/fail test counts
+> as the trustworthy signal.
 
 ## Deployment Flow (15 Steps, ~2-3 minutes)
 
@@ -119,8 +136,8 @@ web-installer/
 cd web-installer/backend
 bun install
 bun run dev # Start Worker development server
-npm test # Run tests (28 tests, 90.6% coverage)
-bun run test:coverage # Generate coverage report
+bun run test:ci # Run full suite (186 tests, incl. DO integration tests)
+bun run test:coverage # Generate coverage report (currently unreliable — see Test Results)
 bun run deploy # Deploy to production
 
 # Frontend Development
@@ -231,6 +248,6 @@ When a customer deploys through the Web Installer, it automatically creates:
 ## Support
 
 - **Documentation:** All guides in `web-installer/`
-- **Tests:** Run `npm test` in backend directory
+- **Tests:** Run `bun run test:ci` in `web-installer/backend/` (Bun only — see root `CLAUDE.md`)
 - **Issues:** Track in GitHub Issues
 - **Questions:** Check DEVELOPER_DOCUMENTATION.md
