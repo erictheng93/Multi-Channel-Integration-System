@@ -1,8 +1,8 @@
 # 模組手冊索引 (Module Manuals Index)
 
-> 24 個後端模組的使用者導向手冊。每份手冊以「這個模組做什麼」「解決什麼問題」「主要功能」「UI 入口」「API 端點」「DO 觸點」「邊界案例」「常見疑難」八節撰寫。
+> 26 個後端模組的使用者導向手冊。每份手冊以「這個模組做什麼」「解決什麼問題」「主要功能」「UI 入口」「API 端點」「DO 觸點」「邊界案例」「常見疑難」八節撰寫。
 
-**最後更新**: 2026-05-04
+**最後更新**: 2026-07-05
 
 ---
 
@@ -23,6 +23,7 @@
 | [customer](./customer.md) | 客戶身分整合（跨平台聚合） |
 | [tags](./tags.md) | 對話與客戶分類標籤 |
 | [auto-reply](./auto-reply.md) | 規則型自動回覆（含營業時間） |
+| [broadcast](./broadcast.md) | 標籤精準群發（LINE，Phase 1） |
 
 ## 三、認證與團隊
 
@@ -59,6 +60,7 @@
 | [activities](./activities.md) | 全系統稽核日誌 |
 | [queue](./queue.md) | 非同步訊息傳遞與重試 |
 | [file-management](./file-management.md) | R2 檔案上傳與下載 |
+| [data](./data.md) | D1 手動備份與下載（admin-only） |
 
 ---
 
