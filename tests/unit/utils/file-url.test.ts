@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { getPublicFileUrl, isPublicDomainConfigured, getSignedDownloadUrl } from '@/utils/file-url';
 import type { Bindings } from '@/types';
 
@@ -106,6 +108,39 @@ describe('getSignedDownloadUrl', () => {
     const env = mockEnv({ JWT_SECRET: 'test-secret' });
     const url = await getSignedDownloadUrl(env, 'a/b c', r2Key);
     expect(url).toContain('/api/files/download/a%2Fb%20c?');
+  });
+});
+
+describe('persistent attachment file URLs', () => {
+  it('uses a long-lived signed URL when uploading pending conversation attachments', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/modules/conversations/handlers/conversation-messages.ts'),
+      'utf8',
+    );
+
+    expect(source).toContain(
+      'const fileUrl = await getSignedFileUrl(c.env, r2Key, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);',
+    );
+  });
+
+  it('uses a long-lived signed URL when uploading message attachments', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/modules/messaging/handlers/messaging/routes/attachments.ts'),
+      'utf8',
+    );
+
+    expect(source).toContain(
+      'const fileUrl = await getSignedFileUrl(c.env, r2Key, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);',
+    );
+  });
+
+  it('uses a long-lived signed URL when re-signing at LINE send time', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/modules/conversations/services/message-delivery-service.ts'),
+      'utf8',
+    );
+
+    expect(source).toContain('PERSISTENT_ATTACHMENT_URL_TTL_SECONDS');
   });
 });
 

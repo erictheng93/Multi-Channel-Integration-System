@@ -17,7 +17,11 @@ import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/acti
 import { errorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp';
-import { getSignedFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
+import {
+  getSignedFileUrl,
+  getSignedDownloadUrl,
+  PERSISTENT_ATTACHMENT_URL_TTL_SECONDS
+} from '@/utils/file-url';
 import { conversationMessageContracts, type ContractResponse } from '@shared/api-contracts';
 import { contractJson } from '@/utils/api-contract-response';
 import type { DeliveryStatus, MessageType } from '@shared/types/core';
@@ -269,7 +273,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
     }
 
     // Generate public URL via unified utility
-    const fileUrl = await getSignedFileUrl(c.env, r2Key);
+    const fileUrl = await getSignedFileUrl(c.env, r2Key, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);
     log.debug('Upload generated proxy URL', { fileUrl });
 
     // 保存附件記錄到資料庫（messageId 為 null，等待消息創建時關聯）
