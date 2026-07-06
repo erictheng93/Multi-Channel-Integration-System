@@ -242,7 +242,7 @@ This project uses codebase-memory-mcp as the canonical code intelligence graph.
 4. `index_status` — check whether the current project index is ready.
 5. `detect_changes` — detect code changes and graph-level impact.
 
-Use project name `Users-eric-Documents-Code-Multi-Channel-Integration-System`
+Use project name `D-Code-Multi_Channel_Integration_System`
 with codebase-memory MCP tools.
 
 ## When to fall back to grep/glob
