@@ -14,7 +14,7 @@ import type { LineReplyMessage } from '@/types';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { nowISO, nowMs } from '@/utils/timestamp';
 import { createContextLogger } from '@/utils/logger';
-import { getSignedFileUrl } from '@/utils/file-url';
+import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 
 const log = createContextLogger('MessageDeliveryService');
 
@@ -166,7 +166,13 @@ export class MessageDeliveryService {
               let fileUrl = attachment.fileUrl;
               if (attachment.r2Key) {
                 try {
-                  fileUrl = await getSignedFileUrl(this.bindings, attachment.r2Key);
+                  // LINE messages are immutable, so the baked-in URL must outlive
+                  // the 24h default or the Flex button dies after a day.
+                  fileUrl = await getSignedFileUrl(
+                    this.bindings,
+                    attachment.r2Key,
+                    PERSISTENT_ATTACHMENT_URL_TTL_SECONDS
+                  );
                 } catch (error) {
                   log.warn('Failed to sign attachment URL for send, fallback to stored value', {
                     attachmentId: attachment.id,

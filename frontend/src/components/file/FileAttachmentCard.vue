@@ -86,6 +86,7 @@ interface FileAttachment {
   mimeType: string
   fileSize: number
   fileUrl: string
+  downloadUrl?: string
   r2Key?: string
 }
 
@@ -106,7 +107,7 @@ const imageLoadError = ref(false)
 
 // Computed properties
 const filename = computed(() => props.attachment.filename || '未命名檔案')
-const fileUrl = computed(() => props.attachment.fileUrl || '')
+const fileUrl = computed(() => props.attachment.downloadUrl || props.attachment.fileUrl || '')
 const fileSize = computed(() => props.attachment.fileSize || 0)
 const mimeType = computed(() => props.attachment.mimeType || '')
 

@@ -19,7 +19,7 @@ import {
   forbiddenResponse
 } from '@/utils/api-response';
 import { nowISO, nowMs } from '@/utils/timestamp';
-import { getSignedFileUrl } from '@/utils/file-url';
+import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 
 const attachmentRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -166,7 +166,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
     }
 
     // Generate public URL via unified utility
-    const fileUrl = await getSignedFileUrl(c.env, r2Key);
+    const fileUrl = await getSignedFileUrl(c.env, r2Key, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);
 
     // 保存附件記錄到資料庫
     const attachmentId = `att_${timestamp}_${randomStr}`;

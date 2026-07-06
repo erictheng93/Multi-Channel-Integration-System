@@ -19,6 +19,8 @@ import type { Bindings } from '@/types';
 import { getBackendUrl } from '@/config/runtime';
 import { signFileUrl } from '@/utils/file-signed-url';
 
+export const PERSISTENT_ATTACHMENT_URL_TTL_SECONDS = 60 * 60 * 24 * 365 * 10;
+
 function isLocalhost(value: string): boolean {
   return value.includes('localhost') || value.includes('127.0.0.1');
 }
