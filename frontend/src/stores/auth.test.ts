@@ -220,7 +220,10 @@ describe('Auth Store', () => {
     store.token = createValidJWT('1', 'agent') // Set token so fetchCurrentAgent will execute
     await store.fetchCurrentAgent()
 
-    expect(store.currentAgent).toEqual(mockAgent)
+    // preserveTeamState() always injects multi-team defaults (primaryTeamId,
+    // allowedTeamIds, teamRoles) on top of the API payload, so only assert
+    // that the API-returned fields flow through.
+    expect(store.currentAgent).toMatchObject(mockAgent)
   })
 
   it('should handle token refresh via apiClient', async () => {
