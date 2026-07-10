@@ -18,6 +18,7 @@
           rows="1"
           @keydown="handleKeydown"
           @input="handleInput"
+          @paste="handlePaste"
         />
 
         <div class="input-actions">
@@ -174,6 +175,7 @@ const props = defineProps<Props>()
   import { useFileSelection } from '@/composables/message-input/useFileSelection'
   import { useFileUploadProgress } from '@/composables/message-input/useFileUploadProgress'
   import { useMessageSending } from '@/composables/message-input/useMessageSending'
+  import { extractClipboardImages } from '@/composables/useClipboardPaste'
 
   // Types (re-export for backward compat with tests that access internal types)
   import type { MessageInputAttachment, FileAttachmentEmitData } from '@/types/message-input'
@@ -281,6 +283,16 @@ const props = defineProps<Props>()
       event.preventDefault()
       frontendLogger.debug(`Message history navigation: ${event.key}`)
     }
+  }
+
+  const handlePaste = (event: globalThis.ClipboardEvent) => {
+    const images = extractClipboardImages(event.clipboardData)
+    if (images.length === 0) {
+      // 純文字貼上：放行瀏覽器預設行為
+      return
+    }
+    event.preventDefault()
+    fileSelection.addFiles(images)
   }
 
   // ═══════════════════════════════════════════════════════════════════

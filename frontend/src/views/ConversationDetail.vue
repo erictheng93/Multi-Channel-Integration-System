@@ -252,6 +252,7 @@ import { useSearchPanel } from '@/composables/useSearchPanel'
 
 import { useNewMessageNotification } from '@/composables/useNewMessageNotification'
 import { useDragAndDrop } from '@/composables/useDragAndDrop'
+import { useClipboardPaste } from '@/composables/useClipboardPaste'
 import { useQuickReplies } from '@/composables/useQuickReplies'
 import type { QuickReply } from '@/composables/useQuickReplies'
 
@@ -374,6 +375,22 @@ const dragDrop = useDragAndDrop({
   onFilesDropped: (files: File[]) => {
     if (messageInputRef.value) {
       messageInputRef.value.handleFilesDropped?.(files)
+    }
+  },
+  maxFiles: 10,
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  onError: (message: string) => {
+    showError(message)
+  },
+})
+
+// 視圖層級貼上：焦點不在輸入框時也能以 Ctrl/Cmd+V 附加剪貼簿圖片
+// （焦點在輸入框時由 MessageInput 自身的 @paste 處理，此處不會重複觸發）
+useClipboardPaste({
+  onFilesPasted: (files: File[]) => {
+    if (messageInputRef.value) {
+      messageInputRef.value.handleFilesDropped?.(files)
+      messageInputRef.value.focus?.()
     }
   },
   maxFiles: 10,

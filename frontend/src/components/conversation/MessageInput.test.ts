@@ -467,6 +467,113 @@ describe('MessageInput Component', () => {
     })
   })
 
+  describe('Clipboard Paste Functionality', () => {
+    beforeEach(() => {
+      // jsdom 未實作 createObjectURL/revokeObjectURL（圖片附件建立預覽時需要）
+      globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-url') as typeof globalThis.URL.createObjectURL
+      globalThis.URL.revokeObjectURL = vi.fn() as typeof globalThis.URL.revokeObjectURL
+    })
+
+    const createPasteEvent = (
+      files: globalThis.File[],
+      options: { textOnly?: boolean } = {}
+    ): Event => {
+      const event = new Event('paste', { bubbles: true, cancelable: true })
+      const items = options.textOnly
+        ? [{ kind: 'string', type: 'text/plain', getAsFile: () => null }]
+        : files.map(file => ({ kind: 'file', type: file.type, getAsFile: () => file }))
+      Object.defineProperty(event, 'clipboardData', {
+        value: { items, files }
+      })
+      return event
+    }
+
+    it('should add pasted screenshot as attachment with a recognizable name', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      // Chrome/Firefox 剪貼簿截圖的通用檔名固定是 image.png
+      const screenshot = new globalThis.File(['fake-image-data'], 'image.png', { type: 'image/png' })
+      const pasteEvent = createPasteEvent([screenshot])
+
+      textarea.element.dispatchEvent(pasteEvent)
+      await nextTick()
+
+      expect(pasteEvent.defaultPrevented).toBe(true)
+      expect(wrapper.find('.attachments-preview').exists()).toBe(true)
+      expect(wrapper.find('.attachment-name').text()).toMatch(/^pasted-\d{8}-\d{6}\.png$/)
+    })
+
+    it('should keep original filename when pasting a copied real file', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      const photo = new globalThis.File(['photo-data'], 'photo.jpg', { type: 'image/jpeg' })
+      textarea.element.dispatchEvent(createPasteEvent([photo]))
+      await nextTick()
+
+      expect(wrapper.find('.attachment-name').text()).toBe('photo.jpg')
+    })
+
+    it('should add multiple pasted images as separate attachments', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      const imageA = new globalThis.File(['aaa'], 'image.png', { type: 'image/png' })
+      const imageB = new globalThis.File(['bbbb'], 'image.png', { type: 'image/png' })
+      textarea.element.dispatchEvent(createPasteEvent([imageA, imageB]))
+      await nextTick()
+
+      const names = wrapper.findAll('.attachment-name')
+      expect(names).toHaveLength(2)
+      expect(names[0]?.text()).toMatch(/^pasted-\d{8}-\d{6}\.png$/)
+      expect(names[1]?.text()).toMatch(/^pasted-\d{8}-\d{6}-2\.png$/)
+    })
+
+    it('should not intercept text-only paste (browser default preserved)', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      const pasteEvent = createPasteEvent([], { textOnly: true })
+      textarea.element.dispatchEvent(pasteEvent)
+      await nextTick()
+
+      expect(pasteEvent.defaultPrevented).toBe(false)
+      expect(wrapper.find('.attachments-preview').exists()).toBe(false)
+    })
+
+    it('should emit attachment-upload for pasted image', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      const screenshot = new globalThis.File(['fake-image-data'], 'image.png', { type: 'image/png' })
+      textarea.element.dispatchEvent(createPasteEvent([screenshot]))
+      await nextTick()
+
+      const emittedEvents = wrapper.emitted('attachment-upload')
+      expect(emittedEvents).toBeTruthy()
+      expect(emittedEvents?.[0]?.[0]).toMatchObject({ isImage: true })
+    })
+
+    it('should reject pasted images larger than 10MB', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      const largeImage = new globalThis.File(
+        ['x'.repeat(11 * 1024 * 1024)],
+        'image.png',
+        { type: 'image/png' }
+      )
+      textarea.element.dispatchEvent(createPasteEvent([largeImage]))
+      await nextTick()
+
+      expect(wrapper.find('.attachments-preview').exists()).toBe(false)
+      const errorMessage = wrapper.find('.error-message')
+      expect(errorMessage.exists()).toBe(true)
+      expect(errorMessage.text()).toContain('exceeds 10MB limit')
+    })
+  })
+
   describe('Emoji Picker', () => {
     it('should show emoji picker when emoji button is clicked', async () => {
       const wrapper = createWrapper()
