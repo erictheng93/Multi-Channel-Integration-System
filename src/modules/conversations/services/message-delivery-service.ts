@@ -18,6 +18,15 @@ import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils
 
 const log = createContextLogger('MessageDeliveryService');
 
+type CustomerConversationMessageUpdate = {
+  file_attachments?: unknown[];
+  deliveryStatus?: 'sent' | 'failed' | 'partial';
+  isSent?: boolean;
+  platformMessageId?: string | null;
+  timestamp?: string;
+  error?: string;
+};
+
 export class MessageDeliveryService {
   private db: Database;
   private bindings: Bindings;
@@ -114,7 +123,7 @@ export class MessageDeliveryService {
             /^Sent a file:\s*.+$/i.test(content) ||
             /^Sent \d+ files$/i.test(content) ||
             /^\[(?:檔案|圖片)\]\s*.+$/.test(content) ||
-            /^\s*.+$/.test(content)  // 匹配 " filename" 格式
+            /^📎\s*.+$/.test(content)
           );
 
           // 詳細日誌：追蹤附件處理
@@ -328,14 +337,29 @@ export class MessageDeliveryService {
         },
         priority: 'normal'
       });
+      await this.notifyCustomerConversationMessageUpdated(msg.conversationId, messageId, {
+        deliveryStatus,
+        isSent,
+        platformMessageId,
+        timestamp: nowISO(),
+        ...(errorMessage && { error: errorMessage })
+      });
       log.info('Broadcasted message update', { deliveryStatus });
 
     } catch (error) {
       log.error('Delivery failed', { messageId }, error instanceof Error ? error : String(error));
-      await this.db.update(messages).set({
-        deliveryStatus: 'failed',
-        metadata: JSON.stringify({ error: String(error) })
-      }).where(eq(messages.id, messageId));
+      try {
+        await this.db.update(messages).set({
+          deliveryStatus: 'failed',
+          metadata: JSON.stringify({ error: String(error) })
+        }).where(eq(messages.id, messageId));
+      } catch (persistError) {
+        log.error(
+          'Failed to persist delivery failure status',
+          { messageId },
+          persistError instanceof Error ? persistError : String(persistError)
+        );
+      }
 
       // Mirror the success-path broadcast so the FE can transition the message
       // out of 'pending' on outer-catch failures. Wrapped in its own try/catch —
@@ -358,6 +382,13 @@ export class MessageDeliveryService {
             },
             priority: 'normal'
           });
+          await this.notifyCustomerConversationMessageUpdated(conversationId, messageId, {
+            deliveryStatus: 'failed',
+            isSent: false,
+            platformMessageId: null,
+            error: error instanceof Error ? error.message : String(error),
+            timestamp: nowISO()
+          });
         } catch (broadcastError) {
           log.warn('Failed to broadcast catch-path failure (non-fatal)', {
             messageId,
@@ -365,6 +396,42 @@ export class MessageDeliveryService {
           });
         }
       }
+    }
+  }
+
+  private async notifyCustomerConversationMessageUpdated(
+    conversationId: string,
+    messageId: string,
+    data: CustomerConversationMessageUpdate
+  ): Promise<void> {
+    try {
+      if (!this.bindings.CUSTOMER_CONVERSATION_DO) {
+        return;
+      }
+
+      const doId = this.bindings.CUSTOMER_CONVERSATION_DO.idFromName(conversationId);
+      const doStub = this.bindings.CUSTOMER_CONVERSATION_DO.get(doId);
+      const response = await doStub.fetch(new Request('https://customer-conversation-do/notify-message-updated', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId,
+          messageId,
+          data
+        })
+      }));
+
+      if (!response.ok) {
+        log.warn('CustomerConversationDO message_updated notify returned non-ok', {
+          messageId,
+          status: response.status
+        });
+      }
+    } catch (error) {
+      log.warn('CustomerConversationDO message_updated notify failed', {
+        messageId,
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 }

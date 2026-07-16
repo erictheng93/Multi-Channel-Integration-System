@@ -149,6 +149,10 @@ export function createCustomerWebSocketConnection(
             log.debug(`User ${eventType}: ${data.userId}`)
             const normalizedData = { ...data, type: eventType }
             messageCallback?.(normalizedData)
+          } else if (eventType === WS_EVENTS.MESSAGE_UPDATED && data.data) {
+            log.debug('Processing message_updated:', data.data.messageId)
+            const normalizedData = { ...data, type: eventType }
+            messageCallback?.(normalizedData)
           }
         } catch (_error) {
           log.error('Error parsing message:', _error)

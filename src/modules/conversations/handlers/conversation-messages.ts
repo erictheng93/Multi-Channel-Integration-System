@@ -26,7 +26,7 @@ import { conversationMessageContracts, type ContractResponse } from '@shared/api
 import { contractJson } from '@/utils/api-contract-response';
 import type { DeliveryStatus, MessageType } from '@shared/types/core';
 import { getRecallWindowSeconds } from '@/services/recall-window-config';
-import { scheduleBufferedDelivery, downgradeBufferedMessage, cancelBufferedDelivery } from '../services/buffered-send-scheduler';
+import { cancelBufferedDelivery, scheduleOrDeliverNow } from '../services/buffered-send-scheduler';
 
 /**
  * Resolve the customer platform of an outbound message from its stored
@@ -368,11 +368,20 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
 
     log.debug('SERVICE pending message created', { messageId: result.messageId });
 
-    // Effective initial state; downgraded back to 'pending' if DO scheduling
-    // fails below (broadcasts sent before that are corrected by the
-    // message_updated event from the immediate delivery).
-    let initialDeliveryStatus: DeliveryStatus = recallWindowSeconds > 0 ? 'buffered' : 'pending';
-    let initialRecallDeadline: string | null = result.message.recallDeadline ?? null;
+    const deliveryPlan = await scheduleOrDeliverNow(c.env, {
+      messageId: result.messageId,
+      conversationId: request.conversationId,
+      recallWindowSeconds,
+      canBuffer: result.message.deliveryStatus === 'buffered',
+      deliverNow: () => {
+        c.executionCtx.waitUntil(
+          messageService.processBackgroundSending(result.messageId!, request, user)
+        );
+      }
+    });
+
+    const initialDeliveryStatus: DeliveryStatus = deliveryPlan.deliveryStatus;
+    const initialRecallDeadline: string | null = deliveryPlan.recallDeadline;
 
     // 3.1 Broadcast Pending Message
     try {
@@ -446,35 +455,6 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
         error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError)
       });
       // Non-critical - conversation list will still update on next poll
-    }
-
-    // 4. Trigger delivery: buffered (recall window) or immediate
-    if (recallWindowSeconds > 0) {
-      log.debug('BACKGROUND scheduling buffered delivery', { recallWindowSeconds });
-      const scheduled = await scheduleBufferedDelivery(c.env, {
-        messageId: result.messageId,
-        conversationId: request.conversationId,
-        delaySeconds: recallWindowSeconds
-      });
-
-      if (!scheduled) {
-        // Degrade to immediate send — a message must never be stranded in
-        // 'buffered' with no alarm to deliver it.
-        log.warn('BACKGROUND DO schedule failed, degrading to immediate send', {
-          messageId: result.messageId
-        });
-        await downgradeBufferedMessage(c.env, result.messageId);
-        initialDeliveryStatus = 'pending';
-        initialRecallDeadline = null;
-        c.executionCtx.waitUntil(
-          messageService.processBackgroundSending(result.messageId, request, user)
-        );
-      }
-    } else {
-      log.debug('BACKGROUND scheduling background delivery');
-      c.executionCtx.waitUntil(
-        messageService.processBackgroundSending(result.messageId, request, user)
-      );
     }
 
     // 5. Return response immediately

@@ -34,6 +34,15 @@ interface CustomerMessageNotification {
   platform?: string;
 }
 
+interface CustomerMessageUpdateNotification {
+  file_attachments?: unknown[];
+  deliveryStatus?: 'sent' | 'failed' | 'partial';
+  isSent?: boolean;
+  platformMessageId?: string | null;
+  timestamp?: string;
+  error?: string;
+}
+
 /**
  * Connection info - stores WebSocket and associated user data
  * FIX: Now using connectionId as key to support multiple connections per user
@@ -287,7 +296,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
         const { conversationId, messageId, data } = await request.json() as {
           conversationId: string;
           messageId: string;
-          data: { file_attachments?: unknown[] };
+          data: CustomerMessageUpdateNotification;
         };
 
         console.log(`[CustomerConversationDO] Received notify-message-updated:`, {
@@ -600,7 +609,7 @@ export class CustomerConversationDO extends DurableObject<Bindings> {
   public async notifyMessageUpdated(
     conversationId: string,
     messageId: string,
-    data: { file_attachments?: unknown[] }
+    data: CustomerMessageUpdateNotification
   ): Promise<void> {
     this.refreshHibernatedConnections();
 

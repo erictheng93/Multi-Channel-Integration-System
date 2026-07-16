@@ -27,6 +27,9 @@ export interface MessageSendingEmit {
     tempId: string
     correlationId: string
     realId: string
+    // 撤回窗口：後端回傳 'buffered' + recallDeadline 時，氣泡需進入倒數狀態
+    deliveryStatus?: string
+    recallDeadline?: string | null
     file_attachments?: FileAttachmentEmitData[]
   }): void
   (_event: 'message-failed', _data: {
@@ -218,6 +221,8 @@ export function useMessageSending(options: MessageSendingOptions) {
           tempId,
           correlationId,
           realId: messageData.id || tempId,
+          deliveryStatus: messageData.deliveryStatus,
+          recallDeadline: messageData.recallDeadline ?? null,
           file_attachments: fileAttachmentsData,
         })
 

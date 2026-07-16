@@ -54,6 +54,9 @@ export interface MessageConfirmedData {
   tempId: string
   realId: string
   correlationId?: string  //  Phase 2: 新增 Correlation ID 支援
+  // 撤回窗口：後端回傳 'buffered' + recallDeadline 時，氣泡需進入倒數狀態
+  deliveryStatus?: string
+  recallDeadline?: string | null
   file_attachments?: FileAttachmentData[]
 }
 
@@ -249,6 +252,11 @@ export function useMessageHandlers(
   function handleMessageConfirmed(data: MessageConfirmedData) {
     frontendLogger.debug('[MessageHandlers] Message confirmed:', data.tempId, '->', data.realId)
 
+    // 撤回窗口（ADR-0003）：後端回傳 'buffered' 時訊息尚未推送平台，
+    // 必須保留 buffered + recallDeadline 讓氣泡進入可撤回倒數，不可標記為已送達
+    const isBufferedConfirm = data.deliveryStatus === 'buffered' && !!data.recallDeadline
+    const confirmedStatus: 'buffered' | 'sent' = isBufferedConfirm ? 'buffered' : 'sent'
+
     // FIX: 轉移標記從 tempId 到 realId
     pendingMessageIds.delete(data.tempId)
     sentMessageIds.add(data.realId)
@@ -315,9 +323,12 @@ export function useMessageHandlers(
         frontendLogger.debug(`[MessageHandlers] Updated file_attachments on existing message`)
       }
 
-      // 確保狀態正確
-      existingRealMessage.status = 'sent' as const
-      existingRealMessage.deliveryStatus = 'sent' as const
+      // 確保狀態正確（buffered 訊息保留倒數欄位）
+      existingRealMessage.status = confirmedStatus
+      existingRealMessage.deliveryStatus = confirmedStatus
+      if (isBufferedConfirm) {
+        existingRealMessage.recallDeadline = data.recallDeadline
+      }
 
       frontendLogger.debug('[MessageHandlers] Race condition resolved - duplicate removed')
     } else if (pendingMessage) {
@@ -326,9 +337,12 @@ export function useMessageHandlers(
       pendingMessage.id = data.realId
       frontendLogger.debug(`[MessageHandlers] Updated message ID: ${data.tempId} -> ${data.realId}`)
 
-      // 更新訊息狀態為已發送
-      pendingMessage.status = 'sent' as const
-      pendingMessage.deliveryStatus = 'sent' as const
+      // 更新訊息狀態（buffered 訊息保留倒數欄位，不可標記為已送達）
+      pendingMessage.status = confirmedStatus
+      pendingMessage.deliveryStatus = confirmedStatus
+      if (isBufferedConfirm) {
+        pendingMessage.recallDeadline = data.recallDeadline
+      }
 
       // 如果有真實的檔案附件資料，更新它
       if (data.file_attachments && data.file_attachments.length > 0) {
@@ -346,8 +360,11 @@ export function useMessageHandlers(
     } else if (existingRealMessage) {
       // 邊界情況：只有 realId 訊息存在（tempId 可能已被其他機制處理）
       frontendLogger.debug(`[MessageHandlers] Only realId exists, ensuring status is correct`)
-      existingRealMessage.status = 'sent' as const
-      existingRealMessage.deliveryStatus = 'sent' as const
+      existingRealMessage.status = confirmedStatus
+      existingRealMessage.deliveryStatus = confirmedStatus
+      if (isBufferedConfirm) {
+        existingRealMessage.recallDeadline = data.recallDeadline
+      }
 
       if (data.file_attachments && data.file_attachments.length > 0) {
          

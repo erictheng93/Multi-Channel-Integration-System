@@ -91,7 +91,7 @@ export class MessageService implements MessageServiceInterface {
   async createPendingMessage(request: MessageSendRequest, recallWindowSeconds: number = 0): Promise<MessageSendResponse> {
     const messageId = crypto.randomUUID();
     const timestamp = nowISO();
-    const buffered = recallWindowSeconds > 0;
+    let buffered = false;
 
     try {
       // Step 1: Get conversation with customer details
@@ -110,6 +110,7 @@ export class MessageService implements MessageServiceInterface {
       }
 
       const { customer } = conversationData;
+      buffered = recallWindowSeconds > 0 && customer.platform === 'line';
 
       // Step 2: Insert Message (Pending)
       const messageData: NewMessage = {
@@ -122,9 +123,7 @@ export class MessageService implements MessageServiceInterface {
         platformMessageId: null,
         isSent: false,
         deliveryStatus: buffered ? 'buffered' : 'pending',
-        recallDeadline: buffered
-          ? new Date(nowMs() + recallWindowSeconds * 1000).toISOString()
-          : null,
+        recallDeadline: null,
         senderName: request.senderName || null,
         createdAt: timestamp,
         metadata: JSON.stringify({

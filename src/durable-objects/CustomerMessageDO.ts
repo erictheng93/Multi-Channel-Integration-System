@@ -9,12 +9,11 @@ import type { Bindings } from '../types';
 import { eq, lt, desc, and, inArray } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
 import { messages, fileAttachments, conversations, customers, agents } from '../db/schema';
-import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '../utils/line';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { getPublicFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
-import { decodeJwtPayloadSegment } from '@/utils/jwt-payload';
 import { resolveDisplaySenderName } from '@/utils/sender-name-repair';
-import type { LineReplyMessage } from '../types';
+import { getRecallWindowSeconds } from '@/services/recall-window-config';
+import { scheduleOrDeliverNow } from '@modules/conversations/services/buffered-send-scheduler';
 
 type MessageInsert = typeof messages.$inferInsert;
 type FileAttachment = typeof fileAttachments.$inferSelect;
@@ -56,6 +55,7 @@ interface SessionValidationResult {
  */
 export class CustomerMessageDO extends DurableObject<Bindings> {
   private app: Hono = new Hono();
+  private recallWindowCache: { value: number; expiresAtMs: number } | null = null;
 
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
@@ -92,6 +92,20 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       console.error('[CustomerMessageDO] Session validation error:', error);
       return { valid: false, error: 'Invalid session format' };
     }
+  }
+
+  private async getCachedRecallWindowSeconds(): Promise<number> {
+    const now = nowMs();
+    if (this.recallWindowCache && this.recallWindowCache.expiresAtMs > now) {
+      return this.recallWindowCache.value;
+    }
+
+    const value = await getRecallWindowSeconds(this.env);
+    this.recallWindowCache = {
+      value,
+      expiresAtMs: now + 60_000
+    };
+    return value;
   }
 
   /**
@@ -266,6 +280,8 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
     this.app.post('/messages', async (c) => {
       const conversationId = c.req.header('X-Conversation-Id');
       const sessionId = c.req.header('X-Session-Id');
+      const authenticatedUserId = c.req.header('X-Authenticated-User-Id');
+      const authenticatedDisplayName = c.req.header('X-Authenticated-Display-Name');
 
       if (!conversationId) {
         return c.json({ success: false, error: 'Conversation ID is required' }, 400);
@@ -275,29 +291,13 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         return c.json({ success: false, error: 'Session ID is required' }, 401);
       }
 
+      if (!authenticatedUserId) {
+        return c.json({ success: false, error: 'Authenticated user is required' }, 401);
+      }
+
       try {
-        // Extract userId from JWT token
-        // JWT format: header.payload.signature
-        // Payload contains: { userId, displayName, email, role, ... }
-        let agentId: string;
-        let agentDisplayName: string | null = null;
-        try {
-          const parts = sessionId.split('.');
-          if (parts.length === 3) {
-            const payload = decodeJwtPayloadSegment<{
-              userId?: string;
-              displayName?: string;
-            }>(parts[1]);
-            agentId = payload.userId || sessionId;
-            agentDisplayName = payload.displayName || null;
-          } else {
-            // Not a JWT, use as-is (for backward compatibility with direct user ID)
-            agentId = sessionId;
-          }
-        } catch (decodeError) {
-          console.error('  [CustomerMessageDO] Failed to decode JWT, using sessionId as-is:', decodeError);
-          agentId = sessionId;
-        }
+        const agentId = authenticatedUserId;
+        const agentDisplayName = authenticatedDisplayName || null;
 
         const { content, assets, attachmentIds, messageType, platform, correlationId } = await c.req.json();
 
@@ -319,12 +319,43 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         const messageId = crypto.randomUUID();
         const createdAt = nowISO();
 
+        // Recall window (ADR-0003): when enabled, hold the outbound LINE push in
+        // the DelayedMessageScheduler DO so the agent can recall within the
+        // window. Only LINE messages are buffered — LINE is the only platform
+        // this DO pushes to; other platforms keep store-and-broadcast behavior.
+        const db = createDbClient(this.env.DB);
+        const recallWindowSeconds = await this.getCachedRecallWindowSeconds();
+        let shouldUseSharedDelivery = false;
+        let buffered = false;
+        let targetPlatform: string | null = null;
+        try {
+          const target = await db
+            .select({
+              customerId: customers.id,
+              platform: customers.platform,
+              platformUserId: customers.platformUserId
+            })
+            .from(conversations)
+            .innerJoin(customers, eq(conversations.customerId, customers.id))
+            .where(eq(conversations.id, conversationId))
+            .get();
+          targetPlatform = target?.platform ?? null;
+          shouldUseSharedDelivery = targetPlatform === 'line';
+          buffered = shouldUseSharedDelivery && recallWindowSeconds > 0;
+        } catch (error) {
+          // Recall-window platform detection is optional. If it fails, keep the
+          // message creation path available and fall back to immediate send.
+          console.warn('[CustomerMessageDO] Recall-window platform lookup failed; sending immediately', error);
+          shouldUseSharedDelivery = false;
+          buffered = false;
+        }
+
         // Store assets and attachmentIds in metadata field as JSON
         // Phase 3: Include correlationId for deduplication
         const metadata = JSON.stringify({
           assets: assets || [],
           attachmentIds: attachmentIds || [],
-          platform: platform || 'system',
+          platform: targetPlatform || platform || 'system',
           correlationId: correlationId || null  //  Phase 3: Track correlation for WebSocket dedup
         });
 
@@ -343,11 +374,15 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           messageType: effectiveMessageType as 'text' | 'file',
           platformMessageId: null as string | null,
           isRecalled: false,
-          recallDeadline: null as string | null,
+          recallDeadline: null,
           recalledAt: null as string | null,
-          isSent: true,
+          isSent: !shouldUseSharedDelivery,
           sentAt: null as string | null,
-          deliveryStatus: 'delivered' as const,
+          deliveryStatus: buffered
+            ? ('buffered' as const)
+            : shouldUseSharedDelivery
+              ? ('pending' as const)
+              : ('delivered' as const),
           replyToMessageId: null as string | null,
           threadId: null as string | null,
           sessionId: null as string | null,
@@ -358,8 +393,29 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         };
 
         // Store message in D1 database
-        const db = createDbClient(this.env.DB);
         await db.insert(messages).values(messageData);
+
+        // Recall window (ADR-0003): arm the scheduler immediately after insert,
+        // before any non-critical post-insert D1 work can fail and strand a
+        // buffered row without an alarm.
+        let deliverAfterInitialBroadcast = false;
+        if (buffered) {
+          const deliveryPlan = await scheduleOrDeliverNow(this.env, {
+            messageId,
+            conversationId,
+            recallWindowSeconds,
+            canBuffer: true,
+            deliverNow: async () => {
+              const { MessageDeliveryService } = await import('@modules/conversations/services/message-delivery-service');
+              await new MessageDeliveryService(this.env).deliver(messageId);
+            }
+          });
+          messageData.deliveryStatus = deliveryPlan.deliveryStatus;
+          messageData.recallDeadline = deliveryPlan.recallDeadline;
+          messageData.isSent = deliveryPlan.isSent;
+        } else if (shouldUseSharedDelivery) {
+          deliverAfterInitialBroadcast = true;
+        }
 
         // FIX: Link attachments to the message
         if (hasAttachments) {
@@ -407,109 +463,6 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
 
         console.log(`[CustomerMessageDO] Using direct message data for broadcast`);
 
-        // FIX: Send message to LINE user if platform is LINE
-        // Query conversation to get customerId, then customer to get platform info
-        try {
-          const conversationData = await db
-            .select({
-              customerId: conversations.customerId
-            })
-            .from(conversations)
-            .where(eq(conversations.id, conversationId))
-            .limit(1);
-
-          if (conversationData.length > 0 && conversationData[0].customerId) {
-            const customerData = await db
-              .select({
-                platform: customers.platform,
-                platformUserId: customers.platformUserId
-              })
-              .from(customers)
-              .where(eq(customers.id, conversationData[0].customerId))
-              .limit(1);
-
-            if (customerData.length > 0 && customerData[0].platform === 'line' && customerData[0].platformUserId) {
-              console.log(`[CustomerMessageDO] Sending message to LINE user: ${customerData[0].platformUserId}`);
-
-              const LINE_MESSAGE_LIMIT = 5;
-              const lineMessages: LineReplyMessage[] = [];
-
-              // Build LINE messages
-              // 1. Add text message if content exists
-              if (content?.trim()) {
-                lineMessages.push(createTextMessage(content));
-              }
-
-              // 2. Add attachment messages
-              if (linkedAttachments && linkedAttachments.length > 0) {
-                for (const attachment of linkedAttachments) {
-                  // FIX: Use correct field names from database schema
-                  // Schema uses: fileUrl (not url), fileSize (not size)
-                  const attachmentUrl = attachment.fileUrl;
-                  const attachmentSize = attachment.fileSize || 0;
-
-                  if (!attachmentUrl) {
-                    console.warn(`[CustomerMessageDO] Attachment ${attachment.id} has no URL, skipping`);
-                    continue;
-                  }
-
-                  const isImage = attachment.mimeType?.startsWith('image/');
-                  if (isImage) {
-                    // Use createImageMessage for images
-                    lineMessages.push(createImageMessage(attachmentUrl, attachmentUrl));
-                  } else {
-                    // Use createFileFlexMessage for other files
-                    lineMessages.push(createFileFlexMessage(
-                      attachmentUrl,
-                      attachment.filename || 'file',
-                      attachment.mimeType || '',
-                      attachmentSize
-                    ));
-                  }
-                }
-              }
-
-              // Send to LINE if there are messages to send
-              if (lineMessages.length > 0) {
-                let sendSuccess = true;
-
-                if (lineMessages.length <= LINE_MESSAGE_LIMIT) {
-                  // 5 messages or less - send in one call
-                  sendSuccess = await pushLineMessage(
-                    this.env.LINE_CHANNEL_ACCESS_TOKEN,
-                    customerData[0].platformUserId,
-                    lineMessages
-                  );
-                } else {
-                  // More than 5 messages - send in batches
-                  for (let i = 0; i < lineMessages.length; i += LINE_MESSAGE_LIMIT) {
-                    const batch = lineMessages.slice(i, i + LINE_MESSAGE_LIMIT);
-                    const batchSuccess = await pushLineMessage(
-                      this.env.LINE_CHANNEL_ACCESS_TOKEN,
-                      customerData[0].platformUserId,
-                      batch
-                    );
-                    if (!batchSuccess) {
-                      sendSuccess = false;
-                    }
-                  }
-                }
-
-                if (sendSuccess) {
-                  console.log(`[CustomerMessageDO] LINE message sent successfully`);
-                } else {
-                  console.error(`  [CustomerMessageDO] Failed to send LINE message`);
-                }
-              }
-            } else {
-              console.log(`  [CustomerMessageDO] Not a LINE customer or no platformUserId, skipping LINE send`);
-            }
-          }
-        } catch (lineError) {
-          console.error('  [CustomerMessageDO] Error sending LINE message:', lineError);
-          // Don't fail the request - message is still stored and will be broadcast via WebSocket
-        }
-
         // Notify CustomerConversationDO to broadcast the message
         // This triggers real-time delivery to all connected clients
         try {
@@ -546,6 +499,11 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
           console.error('  [CustomerMessageDO] Failed to notify CustomerConversationDO:', error);
           // Message is still stored, just not broadcasted in real-time
           // Clients will receive it on next fetch
+        }
+
+        if (deliverAfterInitialBroadcast) {
+          const { MessageDeliveryService } = await import('@modules/conversations/services/message-delivery-service');
+          await new MessageDeliveryService(this.env).deliver(messageId);
         }
 
         // Broadcast to MessageBroadcaster for global updates (conversation list page)

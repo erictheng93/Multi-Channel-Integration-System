@@ -142,6 +142,9 @@ const props = defineProps<Props>()
       tempId: string
       correlationId?: string
       realId: string
+      // 撤回窗口：後端回傳 'buffered' + recallDeadline 時，氣泡需進入倒數狀態
+      deliveryStatus?: string
+      recallDeadline?: string | null
       file_attachments?: FileAttachmentEmitData[]
     }]
     'message-failed': [data: {
