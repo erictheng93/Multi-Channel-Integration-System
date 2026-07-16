@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
 import type { Bindings } from '@/types'
@@ -39,5 +40,18 @@ describe('security audit regressions', () => {
     const moduleNames = routeGroups.flatMap(group => group.modules.map(module => module.name))
 
     expect(moduleNames).not.toContain('modular-system')
+  })
+
+  // CustomerMessageDO must trust only the X-Authenticated-User-Id /
+  // X-Authenticated-Display-Name headers injected by the Worker-side
+  // customer-messages.ts handler after full token validation. It must never
+  // regress to decoding the session JWT payload itself inside the DO, where
+  // the signature is not verified.
+  it('CustomerMessageDO trusts upstream-authenticated headers instead of decoding the session token itself', () => {
+    const source = readFileSync('src/durable-objects/CustomerMessageDO.ts', 'utf8')
+
+    expect(source).toContain("c.req.header('X-Authenticated-User-Id')")
+    expect(source).not.toContain('decodeJwtPayloadSegment')
+    expect(source).not.toContain('JSON.parse(atob')
   })
 })
