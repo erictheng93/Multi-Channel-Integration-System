@@ -23,13 +23,20 @@ export interface ScheduleOrDeliverNowParams {
   conversationId: string;
   recallWindowSeconds: number;
   canBuffer: boolean;
-  deliverNow: () => Promise<void> | void;
 }
 
 export interface ScheduleOrDeliverNowResult {
   deliveryStatus: 'buffered' | 'pending';
   isSent: false;
   recallDeadline: string | null;
+  /**
+   * True when buffering wasn't used (disabled/ineligible) or scheduling
+   * failed. The caller owns *when* to actually run delivery — this function
+   * only decides whether it's needed, so a caller that broadcasts a
+   * "message created" event first can trigger delivery after that broadcast,
+   * keeping the state-update event ordered behind the creation event.
+   */
+  needsImmediateDelivery: boolean;
 }
 
 /**
@@ -183,39 +190,28 @@ async function persistRecallDeadline(
   }
 }
 
-async function runImmediateDelivery(
-  messageId: string,
-  deliverNow: () => Promise<void> | void
-): Promise<void> {
-  try {
-    await deliverNow();
-  } catch (error) {
-    log.error('Immediate delivery fallback failed', {
-      messageId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-}
-
 /**
  * Owns the "never stranded in buffered" invariant for send paths.
  *
  * If the message is eligible for recall buffering, schedule it and stamp the
  * recall deadline from the actual scheduling attempt. If scheduling fails (or
- * the message is not eligible for buffering), downgrade/keep it as pending and
- * invoke the caller's immediate-delivery executor without letting delivery
- * failures escape back to the request path.
+ * the message is not eligible for buffering), downgrade/keep it as pending
+ * and report `needsImmediateDelivery: true` — this function never invokes
+ * delivery itself. Callers that broadcast a "message created" event must run
+ * delivery *after* that broadcast so a delivery-status update can never race
+ * ahead of the creation event on the wire (see ADR-0003 follow-up: the
+ * buffered-fallback ordering bug).
  */
 export async function scheduleOrDeliverNow(
   env: Bindings,
   params: ScheduleOrDeliverNowParams
 ): Promise<ScheduleOrDeliverNowResult> {
   if (params.recallWindowSeconds <= 0 || !params.canBuffer) {
-    await runImmediateDelivery(params.messageId, params.deliverNow);
     return {
       deliveryStatus: 'pending',
       isSent: false,
       recallDeadline: null,
+      needsImmediateDelivery: true,
     };
   }
 
@@ -232,14 +228,15 @@ export async function scheduleOrDeliverNow(
       deliveryStatus: 'buffered',
       isSent: false,
       recallDeadline,
+      needsImmediateDelivery: false,
     };
   }
 
   await downgradeBufferedMessage(env, params.messageId);
-  await runImmediateDelivery(params.messageId, params.deliverNow);
   return {
     deliveryStatus: 'pending',
     isSent: false,
     recallDeadline: null,
+    needsImmediateDelivery: true,
   };
 }

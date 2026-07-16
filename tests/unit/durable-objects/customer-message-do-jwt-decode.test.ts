@@ -54,10 +54,16 @@ describe('decodeJwtPayloadSegment', () => {
     ).toBe('c3a9c282c2b1c3a5c2bbc2bac3a7c2b6c2ad204a65727279')
   })
 
-  it('is wired into CustomerMessageDO instead of an inline atob JSON parse', () => {
+  // CustomerMessageDO no longer decodes the JWT itself — it now trusts
+  // X-Authenticated-User-Id / X-Authenticated-Display-Name headers set by
+  // the upstream customer-messages.ts proxy handler after verifying the
+  // session there. decodeJwtPayloadSegment is still a standalone utility
+  // (tested above); it's just not wired into this DO anymore.
+  it('CustomerMessageDO trusts upstream-authenticated headers instead of decoding the session token itself', () => {
     const source = readFileSync('src/durable-objects/CustomerMessageDO.ts', 'utf8')
 
-    expect(source).toContain('decodeJwtPayloadSegment')
+    expect(source).toContain("c.req.header('X-Authenticated-User-Id')")
+    expect(source).not.toContain('decodeJwtPayloadSegment')
     expect(source).not.toContain('JSON.parse(atob')
   })
 })

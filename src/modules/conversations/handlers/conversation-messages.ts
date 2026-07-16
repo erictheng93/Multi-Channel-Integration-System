@@ -372,12 +372,7 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
       messageId: result.messageId,
       conversationId: request.conversationId,
       recallWindowSeconds,
-      canBuffer: result.message.deliveryStatus === 'buffered',
-      deliverNow: () => {
-        c.executionCtx.waitUntil(
-          messageService.processBackgroundSending(result.messageId!, request, user)
-        );
-      }
+      canBuffer: result.message.deliveryStatus === 'buffered'
     });
 
     const initialDeliveryStatus: DeliveryStatus = deliveryPlan.deliveryStatus;
@@ -407,6 +402,15 @@ conversationMessagesHandler.post('/:id/messages', jwtAuth, async (c) => {
       });
     } catch (broadcastError) {
       log.warn('WEBSOCKET: Pending message broadcast failed', { error: broadcastError instanceof Error ? broadcastError.message : String(broadcastError) });
+    }
+
+    // Deliver only after the pending-message broadcast above so a
+    // message_updated event (from the background send) can never arrive
+    // ahead of the message_sent event for the same messageId.
+    if (deliveryPlan.needsImmediateDelivery) {
+      c.executionCtx.waitUntil(
+        messageService.processBackgroundSending(result.messageId!, request, user)
+      );
     }
 
     // Phase B4: Unified Broadcast for Conversation List & Detail Updates

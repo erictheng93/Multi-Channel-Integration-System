@@ -404,15 +404,18 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
             messageId,
             conversationId,
             recallWindowSeconds,
-            canBuffer: true,
-            deliverNow: async () => {
-              const { MessageDeliveryService } = await import('@modules/conversations/services/message-delivery-service');
-              await new MessageDeliveryService(this.env).deliver(messageId);
-            }
+            canBuffer: true
           });
           messageData.deliveryStatus = deliveryPlan.deliveryStatus;
           messageData.recallDeadline = deliveryPlan.recallDeadline;
           messageData.isSent = deliveryPlan.isSent;
+          // Scheduling can fail (DO unreachable, etc). Never deliver here —
+          // that would broadcast a message_updated event before the client
+          // has even received new_message for this id, and the FE silently
+          // drops updates for messages it doesn't know about yet. Defer to
+          // the same deliverAfterInitialBroadcast path the non-buffered
+          // case uses below, ordered after the initial broadcast.
+          deliverAfterInitialBroadcast = deliveryPlan.needsImmediateDelivery;
         } else if (shouldUseSharedDelivery) {
           deliverAfterInitialBroadcast = true;
         }

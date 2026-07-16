@@ -118,48 +118,60 @@ describe('buffered-send-scheduler', () => {
 
   it('schedules buffered delivery from the actual scheduling time and persists that deadline', async () => {
     const stub = { fetch: vi.fn().mockResolvedValue(new Response('', { status: 200 })) };
-    const deliverNow = vi.fn();
 
     const result = await scheduleOrDeliverNow(makeEnv(stub), {
       messageId: 'msg-1',
       conversationId: 'conv-1',
       recallWindowSeconds: 30,
       canBuffer: true,
-      deliverNow,
     });
 
     expect(result).toEqual({
       deliveryStatus: 'buffered',
       isSent: false,
       recallDeadline: '1970-01-01T00:00:32.000Z',
+      needsImmediateDelivery: false,
     });
     expect(dbMocks.set).toHaveBeenCalledWith({
       recallDeadline: '1970-01-01T00:00:32.000Z',
     });
-    expect(deliverNow).not.toHaveBeenCalled();
   });
 
-  it('downgrades, immediately delivers, and resolves when scheduling fails', async () => {
+  it('downgrades and reports needsImmediateDelivery when scheduling fails, without delivering itself', async () => {
     const stub = { fetch: vi.fn().mockResolvedValue(new Response('late', { status: 409 })) };
-    const deliverNow = vi.fn().mockRejectedValue(new Error('delivery failed'));
 
     const result = await scheduleOrDeliverNow(makeEnv(stub), {
       messageId: 'msg-1',
       conversationId: 'conv-1',
       recallWindowSeconds: 30,
       canBuffer: true,
-      deliverNow,
     });
 
     expect(result).toEqual({
       deliveryStatus: 'pending',
       isSent: false,
       recallDeadline: null,
+      needsImmediateDelivery: true,
     });
     expect(dbMocks.set).toHaveBeenCalledWith({
       deliveryStatus: 'pending',
       recallDeadline: null,
     });
-    expect(deliverNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports needsImmediateDelivery without scheduling when buffering is disabled or ineligible', async () => {
+    const result = await scheduleOrDeliverNow(makeEnv(), {
+      messageId: 'msg-1',
+      conversationId: 'conv-1',
+      recallWindowSeconds: 0,
+      canBuffer: true,
+    });
+
+    expect(result).toEqual({
+      deliveryStatus: 'pending',
+      isSent: false,
+      recallDeadline: null,
+      needsImmediateDelivery: true,
+    });
   });
 });
