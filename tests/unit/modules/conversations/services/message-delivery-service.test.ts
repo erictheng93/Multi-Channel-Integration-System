@@ -20,6 +20,9 @@ const dbMocks = vi.hoisted(() => ({
     contents: { type: 'bubble', hero: { type: 'image', url } },
   })),
   broadcastMessageEvent: vi.fn(),
+  customerConversationFetch: vi.fn(),
+  customerConversationGet: vi.fn(),
+  customerConversationIdFromName: vi.fn(),
 }));
 
 function nextSelectResult(): SelectResult {
@@ -89,6 +92,10 @@ function makeEnv(): Bindings {
   return {
     DB: {},
     LINE_CHANNEL_ACCESS_TOKEN: 'line-token',
+    CUSTOMER_CONVERSATION_DO: {
+      idFromName: dbMocks.customerConversationIdFromName,
+      get: dbMocks.customerConversationGet,
+    },
   } as unknown as Bindings;
 }
 
@@ -124,6 +131,9 @@ describe('MessageDeliveryService.deliver', () => {
     dbMocks.updateWhere.mockResolvedValue(undefined);
     dbMocks.pushLineMessage.mockResolvedValue(true);
     dbMocks.broadcastMessageEvent.mockResolvedValue(undefined);
+    dbMocks.customerConversationFetch.mockResolvedValue(new Response(JSON.stringify({ success: true })));
+    dbMocks.customerConversationGet.mockReturnValue({ fetch: dbMocks.customerConversationFetch });
+    dbMocks.customerConversationIdFromName.mockReturnValue('conversation-do-id');
   });
 
   it.each([
@@ -169,6 +179,73 @@ describe('MessageDeliveryService.deliver', () => {
     }));
   });
 
+  it('pushes both text and attachments for buffered LINE messages with mixed content', async () => {
+    dbMocks.selectResults = [
+      makeMessage({
+        content: 'Please review the attached contract',
+        deliveryStatus: 'buffered',
+        metadata: JSON.stringify({ attachmentIds: ['att-1'] }),
+      }),
+      makeConversationData(),
+      [{
+        id: 'att-1',
+        filename: 'contract.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 1024,
+        fileUrl: 'https://files.test/contract.pdf',
+        r2Key: null,
+      }],
+    ];
+
+    await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+    expect(dbMocks.pushLineMessage).toHaveBeenCalledWith(
+      'line-token',
+      'line-user-1',
+      [
+        { type: 'text', text: 'Please review the attached contract' },
+        {
+          type: 'flex',
+          altText: 'contract.pdf',
+          contents: {
+            type: 'bubble',
+            hero: { type: 'image', url: 'https://files.test/contract.pdf' },
+          },
+        },
+      ]
+    );
+    expect(dbMocks.updateSet).toHaveBeenCalledWith(expect.objectContaining({
+      isSent: true,
+      deliveryStatus: 'sent',
+    }));
+  });
+
+  it('notifies CustomerConversationDO when buffered LINE delivery status changes', async () => {
+    dbMocks.selectResults = [
+      makeMessage({ deliveryStatus: 'buffered' }),
+      makeConversationData(),
+    ];
+
+    await new MessageDeliveryService(makeEnv()).deliver('msg-1');
+
+    expect(dbMocks.customerConversationIdFromName).toHaveBeenCalledWith('conv-1');
+    expect(dbMocks.customerConversationFetch).toHaveBeenCalledTimes(1);
+
+    const request = dbMocks.customerConversationFetch.mock.calls[0][0] as Request;
+    expect(new URL(request.url).pathname).toBe('/notify-message-updated');
+    expect(request.method).toBe('POST');
+    await expect(request.json()).resolves.toEqual({
+      conversationId: 'conv-1',
+      messageId: 'msg-1',
+      data: expect.objectContaining({
+        deliveryStatus: 'sent',
+        isSent: true,
+        platformMessageId: 'line_1768483200000',
+        timestamp: '2026-01-15T12:00:00Z',
+      }),
+    });
+  });
+
   it('splits more than five LINE messages into multiple push batches', async () => {
     const attachmentIds = ['att-1', 'att-2', 'att-3', 'att-4', 'att-5', 'att-6'];
     const attachments = attachmentIds.map(id => ({
@@ -197,5 +274,16 @@ describe('MessageDeliveryService.deliver', () => {
       isSent: true,
       deliveryStatus: 'sent',
     }));
+  });
+
+  it('does not reject when catch-path failed-status persistence also fails', async () => {
+    dbMocks.selectResults = [
+      makeMessage({ deliveryStatus: 'buffered' }),
+      makeConversationData(),
+    ];
+    dbMocks.pushLineMessage.mockRejectedValueOnce(new Error('line unavailable'));
+    dbMocks.updateWhere.mockRejectedValue(new Error('d1 unavailable'));
+
+    await expect(new MessageDeliveryService(makeEnv()).deliver('msg-1')).resolves.toBeUndefined();
   });
 });

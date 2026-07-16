@@ -4,6 +4,7 @@ import type { Bindings } from '@/types';
 const dbMocks = vi.hoisted(() => ({
   set: vi.fn(),
   where: vi.fn(),
+  nowMs: vi.fn(),
 }));
 
 vi.mock('@/db/drizzle-factory', () => ({
@@ -22,8 +23,13 @@ vi.mock('@/utils/logger', () => ({
   })),
 }));
 
+vi.mock('@/utils/timestamp', () => ({
+  nowMs: dbMocks.nowMs,
+}));
+
 import {
   downgradeBufferedMessage,
+  scheduleOrDeliverNow,
   scheduleBufferedDelivery,
 } from '@/modules/conversations/services/buffered-send-scheduler';
 
@@ -48,6 +54,7 @@ describe('buffered-send-scheduler', () => {
     vi.clearAllMocks();
     dbMocks.set.mockReturnValue({ where: dbMocks.where });
     dbMocks.where.mockResolvedValue(undefined);
+    dbMocks.nowMs.mockReturnValue(2000);
   });
 
   it('returns true when the scheduler DO accepts the buffered send', async () => {
@@ -107,5 +114,52 @@ describe('buffered-send-scheduler', () => {
       recallDeadline: null,
     });
     expect(dbMocks.where).toHaveBeenCalledTimes(1);
+  });
+
+  it('schedules buffered delivery from the actual scheduling time and persists that deadline', async () => {
+    const stub = { fetch: vi.fn().mockResolvedValue(new Response('', { status: 200 })) };
+    const deliverNow = vi.fn();
+
+    const result = await scheduleOrDeliverNow(makeEnv(stub), {
+      messageId: 'msg-1',
+      conversationId: 'conv-1',
+      recallWindowSeconds: 30,
+      canBuffer: true,
+      deliverNow,
+    });
+
+    expect(result).toEqual({
+      deliveryStatus: 'buffered',
+      isSent: false,
+      recallDeadline: '1970-01-01T00:00:32.000Z',
+    });
+    expect(dbMocks.set).toHaveBeenCalledWith({
+      recallDeadline: '1970-01-01T00:00:32.000Z',
+    });
+    expect(deliverNow).not.toHaveBeenCalled();
+  });
+
+  it('downgrades, immediately delivers, and resolves when scheduling fails', async () => {
+    const stub = { fetch: vi.fn().mockResolvedValue(new Response('late', { status: 409 })) };
+    const deliverNow = vi.fn().mockRejectedValue(new Error('delivery failed'));
+
+    const result = await scheduleOrDeliverNow(makeEnv(stub), {
+      messageId: 'msg-1',
+      conversationId: 'conv-1',
+      recallWindowSeconds: 30,
+      canBuffer: true,
+      deliverNow,
+    });
+
+    expect(result).toEqual({
+      deliveryStatus: 'pending',
+      isSent: false,
+      recallDeadline: null,
+    });
+    expect(dbMocks.set).toHaveBeenCalledWith({
+      deliveryStatus: 'pending',
+      recallDeadline: null,
+    });
+    expect(deliverNow).toHaveBeenCalledTimes(1);
   });
 });
