@@ -70,7 +70,7 @@ type FreshMembership = {
   primaryTeamId: number | null;
 };
 
-async function refreshTeamMembership(
+export async function refreshTeamMembership(
   db: D1Database,
   cache: KVNamespace,
   userId: string | number
@@ -124,6 +124,79 @@ async function refreshTeamMembership(
   }
 
   return result;
+}
+
+export interface AccessTokenValidationResult {
+  payload: JWTPayload;
+  user: DbUser;
+}
+
+/**
+ * Shared access-token validator for non-Hono auth surfaces such as WebSocket
+ * upgrade checks and handler-level bearer-token checks. Keep this aligned with
+ * jwtAuth's security invariants: reject non-access token classes, check per-jti
+ * revocation, load current active user state, and refresh team membership from
+ * agent_teams instead of trusting stale JWT claims.
+ */
+export async function validateAccessToken(
+  env: Bindings,
+  token: string
+): Promise<AccessTokenValidationResult> {
+  const payload = await verifyJWT(token, env.JWT_SECRET);
+
+  if (payload.type === 'refresh') {
+    throw Object.assign(new Error('Refresh token cannot be used to access this resource'), {
+      status: 401,
+      code: 'REFRESH_TOKEN_NOT_ALLOWED'
+    });
+  }
+  if (payload.type === 'temp_password_change') {
+    throw Object.assign(new Error('Temporary password-change token cannot be used to access this resource'), {
+      status: 401,
+      code: 'TEMP_TOKEN_NOT_ALLOWED'
+    });
+  }
+
+  if (payload.jti) {
+    let isRevoked: string | null;
+    try {
+      isRevoked = await env.CACHE.get(`revoked:${payload.jti}`);
+    } catch (err) {
+      log.error('Revocation KV read failed; denying request for safety', {
+        jti: payload.jti,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw Object.assign(new Error('Service temporarily unavailable'), {
+        status: 503,
+        code: 'REVOCATION_CHECK_FAILED'
+      });
+    }
+    if (isRevoked) {
+      throw Object.assign(new Error('Token has been revoked'), {
+        status: 401,
+        code: 'TOKEN_REVOKED'
+      });
+    }
+  }
+
+  const user = await getUserById(env.DB, payload.userId);
+  if (!user.isActive) {
+    throw Object.assign(new Error('User account is inactive'), {
+      status: 401,
+      code: 'USER_INACTIVE'
+    });
+  }
+
+  const fresh = await refreshTeamMembership(env.DB, env.CACHE, user.id);
+  user.allowedTeamIds = fresh.allowedTeamIds;
+  user.teamRoles = fresh.teamRoles;
+  if (fresh.primaryTeamId !== null) {
+    user.primaryTeamId = fresh.primaryTeamId;
+  } else if (!user.primaryTeamId && payload.primaryTeamId) {
+    user.primaryTeamId = payload.primaryTeamId;
+  }
+
+  return { payload, user };
 }
 
 // ======================== Context 變數類型定義 ========================

@@ -76,8 +76,9 @@ router.all('/:id/messages', async (c) => {
     return c.json({ success: false, error: 'Invalid CSRF token' }, 403);
   }
 
+  let access;
   try {
-    await verifyConversationAccess(c.env, sessionId, conversationId, 'Customer Messages');
+    access = await verifyConversationAccess(c.env, sessionId, conversationId, 'Customer Messages');
     log.debug('Customer Messages: Authenticated request', { method: requestMethod, conversationId });
   } catch (authError: unknown) {
     const { status, message } = getAuthErrorResponse(authError);
@@ -92,6 +93,10 @@ router.all('/:id/messages', async (c) => {
     // Create a new request with conversation ID and session ID in headers
     const headers = new Headers(c.req.raw.headers);
     headers.set('X-Conversation-Id', conversationId);
+    headers.set('X-Authenticated-User-Id', String(access.payload.userId));
+    if (access.payload.displayName) {
+      headers.set('X-Authenticated-Display-Name', String(access.payload.displayName));
+    }
 
     // Pass through session ID (already validated)
     if (sessionId) {
@@ -137,8 +142,9 @@ router.post('/:id/upload', async (c) => {
     return c.json({ success: false, error: 'Invalid CSRF token' }, 403);
   }
 
+  let access;
   try {
-    await verifyConversationAccess(c.env, sessionId, conversationId, 'Customer Upload');
+    access = await verifyConversationAccess(c.env, sessionId, conversationId, 'Customer Upload');
     log.debug('Customer Upload: Authenticated', { conversationId });
   } catch (authError: unknown) {
     const { status, message } = getAuthErrorResponse(authError);
@@ -153,6 +159,10 @@ router.post('/:id/upload', async (c) => {
     // Create a new request with conversation ID and session ID in headers
     const headers = new Headers(c.req.raw.headers);
     headers.set('X-Conversation-Id', conversationId);
+    headers.set('X-Authenticated-User-Id', String(access.payload.userId));
+    if (access.payload.displayName) {
+      headers.set('X-Authenticated-Display-Name', String(access.payload.displayName));
+    }
 
     // Pass through session ID (already validated)
     if (sessionId) {

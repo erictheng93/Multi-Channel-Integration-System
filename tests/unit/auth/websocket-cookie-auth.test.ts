@@ -5,11 +5,13 @@ import { websocketAuth } from '@/middleware/websocket-auth'
 import websocketHandler from '@/modules/websocket/handlers/websocket-main'
 
 const mocks = vi.hoisted(() => ({
-  verifyJWT: vi.fn()
+  verifyJWT: vi.fn(),
+  getUserById: vi.fn()
 }))
 
 vi.mock('@/utils/auth', () => ({
-  verifyJWT: mocks.verifyJWT
+  verifyJWT: mocks.verifyJWT,
+  getUserById: mocks.getUserById
 }))
 
 vi.mock('@/services/websocket-auth-service', () => ({
@@ -21,7 +23,13 @@ function createEnv(): Bindings {
     JWT_SECRET: 'test-secret',
     DB: {} as D1Database,
     CACHE: {
-      get: vi.fn().mockResolvedValue(null),
+      get: vi.fn(async (key: string) => key === 'agent-teams:agent-1'
+        ? JSON.stringify({
+            allowedTeamIds: [1],
+            teamRoles: { 1: 'member' },
+            primaryTeamId: 1
+          })
+        : null),
       put: vi.fn().mockResolvedValue(undefined)
     } as unknown as KVNamespace,
     SESSIONS: {
@@ -55,6 +63,20 @@ describe('websocket cookie auth', () => {
       role: 'agent',
       type: 'access',
       exp: Math.floor(Date.now() / 1000) + 3600
+    })
+    mocks.getUserById.mockReset()
+    mocks.getUserById.mockResolvedValue({
+      id: 'agent-1',
+      email: 'agent@example.com',
+      displayName: 'Agent One',
+      role: 'agent',
+      primaryTeamId: 1,
+      teamName: 'Support',
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      allowedTeamIds: [1],
+      teamRoles: { 1: 'member' }
     })
   })
 

@@ -12,6 +12,8 @@ import { eq } from 'drizzle-orm';
 import { createContextLogger } from '@/utils/logger';
 import { ensureFilenameExtension } from '@/utils/mime-ext';
 import { verifyFileSignature } from '@/utils/file-signed-url';
+import { jwtAuth } from '@/middleware/auth';
+import { addCorsHeaders, createCorsPreflightResponse } from '@/config/cors';
 
 const log = createContextLogger('FileProxy');
 
@@ -184,7 +186,7 @@ fileProxyHandler.get('/download/:attachmentId', async (c) => {
  *
  * Route: GET /api/files/line-proxy/:lineMessageId
  */
-fileProxyHandler.get('/line-proxy/:lineMessageId', async (c) => {
+fileProxyHandler.get('/line-proxy/:lineMessageId', jwtAuth, async (c) => {
   try {
     const lineMessageId = c.req.param('lineMessageId');
 
@@ -211,16 +213,18 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', async (c) => {
         const r2Object = await c.env.R2_BUCKET.get(existingAttachment.r2Key);
         if (r2Object) {
           log.info('Serving from R2 (fast path)', { lineMessageId, r2Key: existingAttachment.r2Key });
+          const headers = new Headers({
+            'Content-Type': existingAttachment.mimeType || r2Object.httpMetadata?.contentType || 'image/jpeg',
+            'Content-Length': r2Object.size.toString(),
+            'Cache-Control': 'public, max-age=86400',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+          });
+          addCorsHeaders(c.req.header('Origin'), headers, c.env);
+
           return new Response(r2Object.body, {
             status: 200,
-            headers: {
-              'Content-Type': existingAttachment.mimeType || r2Object.httpMetadata?.contentType || 'image/jpeg',
-              'Content-Length': r2Object.size.toString(),
-              'Cache-Control': 'public, max-age=86400',
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'GET, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type'
-            }
+            headers
           });
         }
       }
@@ -307,32 +311,26 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', async (c) => {
     }
 
     // Return the image to the frontend
+    const headers = new Headers({
+      'Content-Type': contentType,
+      'Content-Length': body.byteLength.toString(),
+      'Cache-Control': 'public, max-age=86400',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    });
+    addCorsHeaders(c.req.header('Origin'), headers, c.env);
+
     return new Response(body, {
       status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': body.byteLength.toString(),
-        'Cache-Control': 'public, max-age=86400',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
+      headers
     });
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
   }
 });
 
-fileProxyHandler.options('/line-proxy/:lineMessageId', (_c) => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Max-Age': '86400'
-    }
-  });
+fileProxyHandler.options('/line-proxy/:lineMessageId', (c) => {
+  return createCorsPreflightResponse(c.req.header('Origin'), c.env);
 });
 
 /**
