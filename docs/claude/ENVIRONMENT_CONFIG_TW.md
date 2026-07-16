@@ -252,6 +252,17 @@ app.get('/api/example', async (c) => {
    - 使用 `.env.example` 作為模板
    - 將生產環境機密存儲在 Cloudflare Dashboard 中
 
+## Same-Site 部署約束（認證 Cookie）
+
+**前端與後端必須部署在同一個 registrable domain 之下**（例如 `mcis.daiwandist.com` + `mcis-backend.daiwandist.com`，同屬 `daiwandist.com`）。
+
+原因：認證是 **cookie-only**（`jwtAuth` 從 `SameSite=Strict; Secure` 的 cookie 讀取 access token，沒有 `Authorization: Bearer` 的後備路徑）。`SameSite=Strict` 的 cookie 只會在 same-site 請求中送出，帶來兩個後果：
+
+1. **跨 site 部署完全無法登入。** 從不同 site 提供的前端（例如原始的 `*.pages.dev` 別名）對自訂網域後端既收不到也送不出認證 cookie。`VITE_FRONTEND_PAGES_URL` 別名只用於 CORS/預覽，不是受支援的登入介面。
+2. **需認證的媒體用純 `<img src>` 載入。** 像 `/api/files/line-proxy/:id` 這類 endpoint 位於 `jwtAuth` 之後，且以直接圖片 URL 消費（不經 `authenticatedFetch`）。這能運作是因為 same-site 的 `<img>` GET 會攜帶 cookie，且 CSRF 只在不安全方法上強制檢查。在跨 site 部署下這些圖片會 401——但依第 1 點，該部署本來就無法運作。
+
+若未來真的需要跨 site 拓撲，正確做法是有意識地變更認證策略（例如 `SameSite=None` cookie 或如 `getSignedFileUrl` 的 HMAC 簽名媒體 URL），而不是逐 endpoint 繞路。
+
 ## 配置問題故障排除
 
 **問題：出現 "VITE_BACKEND_URL is not set" 錯誤**

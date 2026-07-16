@@ -252,6 +252,17 @@ See `frontend/.env.example` for complete list with detailed descriptions.
    - Use `.env.example` as template
    - Store production secrets in Cloudflare Dashboard
 
+## Same-Site Deployment Constraint (Auth Cookies)
+
+**The frontend and backend MUST be deployed under the same registrable domain** (e.g. `mcis.daiwandist.com` + `mcis-backend.daiwandist.com`, both under `daiwandist.com`).
+
+Why: authentication is **cookie-only** (`jwtAuth` reads the access token from a `SameSite=Strict; Secure` cookie — there is no `Authorization: Bearer` fallback). `SameSite=Strict` cookies are only sent on same-site requests, which has two consequences:
+
+1. **Cross-site deployments cannot log in at all.** A frontend served from a different site (e.g. the raw `*.pages.dev` alias) can neither receive nor send the auth cookie against the custom-domain backend. The `VITE_FRONTEND_PAGES_URL` alias exists for CORS/preview purposes, not as a supported login surface.
+2. **Authenticated media loads via plain `<img src>`.** Endpoints like `/api/files/line-proxy/:id` sit behind `jwtAuth` and are consumed as direct image URLs (no `authenticatedFetch`). This works because a same-site `<img>` GET carries the cookie, and CSRF is only enforced on unsafe methods. On a cross-site deployment these images would 401 — but per point 1, such a deployment is already non-functional.
+
+If a cross-site topology ever becomes a requirement, the fix is a deliberate auth-strategy change (e.g. `SameSite=None` cookies or HMAC-signed media URLs like `getSignedFileUrl`), not a per-endpoint workaround.
+
 ## Troubleshooting Configuration Issues
 
 **Problem: "VITE_BACKEND_URL is not set" error**
