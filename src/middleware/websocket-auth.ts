@@ -2,11 +2,10 @@
 // Handles JWT authentication for WebSocket connections via HttpOnly auth cookies.
 
 import type { Context, Next } from 'hono';
-import type { Bindings, JWTPayload } from '../types';
-import { verifyJWT } from '../utils/auth';
+import type { Bindings } from '../types';
 import { WebSocketAuthService } from '../services/websocket-auth-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
-import { AUTH_COOKIE_NAMES, parseCookieHeader } from './auth';
+import { AUTH_COOKIE_NAMES, parseCookieHeader, validateAccessToken } from './auth';
 import { isOriginAllowed } from '@/config/cors';
 
 export interface WebSocketUser {
@@ -95,7 +94,32 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
     // 檢查 3: JWT 驗證
     console.log(`[WebSocket Auth] Verifying JWT token for ${clientIP}...`);
-    const payload = await verifyJWT(token, c.env.JWT_SECRET) as JWTPayload | null;
+    let validatedToken: Awaited<ReturnType<typeof validateAccessToken>>;
+    try {
+      validatedToken = await validateAccessToken(c.env, token);
+    } catch (error) {
+      const status = typeof (error as { status?: unknown }).status === 'number'
+        ? (error as { status: number }).status
+        : 401;
+      const message = error instanceof Error ? error.message : 'The provided JWT token is invalid or expired';
+      console.log(`[WebSocket Auth] Invalid access token from ${clientIP}: ${message}`);
+      return new Response(JSON.stringify({
+        error: status === 503 ? 'Authentication temporarily unavailable' : 'Invalid token',
+        code: status === 503 ? 4503 : 4403,
+        message,
+        timestamp: nowMs(),
+        suggestedAction: status === 503 ? 'retry_later' : 'refresh_token'
+      }), {
+        status,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Error-Code': status === 503 ? 'REVOCATION_CHECK_FAILED' : 'INVALID_TOKEN',
+          'X-WebSocket-Close-Code': status === 503 ? '4503' : '4403'
+        }
+      });
+    }
+
+    const { payload, user: currentUser } = validatedToken;
 
     if (!payload) {
       console.log(`[WebSocket Auth] Invalid or expired token from ${clientIP}`);
@@ -174,10 +198,10 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
     }
 
     // 檢查 5: 使用者資料提取和驗證
-    const userId = payload.userId?.toString() || String(payload.userId) || '0';
-    const email = payload.email || `${userId}@example.com`;
-    const displayName = payload.displayName || payload.email?.split('@')[0] || userId;
-    const role = (payload.role as 'admin' | 'agent') || 'agent';
+    const userId = currentUser.id?.toString() || String(payload.userId) || '0';
+    const email = currentUser.email || payload.email || `${userId}@example.com`;
+    const displayName = currentUser.displayName || payload.displayName || payload.email?.split('@')[0] || userId;
+    const role = (currentUser.role as 'admin' | 'agent') || 'agent';
 
     // 驗證關鍵欄位
     if (!userId || userId === '0') {
@@ -224,11 +248,11 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
       email: email,
       displayName: displayName,
       role: role,
-      teamId: payload.primaryTeamId || null,
-      teamName: payload.teamName || null,
-      isActive: true,
-      createdAt: nowISO(),
-      updatedAt: nowISO()
+      teamId: currentUser.primaryTeamId || null,
+      teamName: currentUser.teamName || payload.teamName || null,
+      isActive: currentUser.isActive,
+      createdAt: currentUser.createdAt || nowISO(),
+      updatedAt: currentUser.updatedAt || nowISO()
     };
 
     // Store user in context for handler access
@@ -245,7 +269,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
         userId,
         role,
         conversationId,
-        user.teamId || undefined
+        currentUser.allowedTeamIds || []
       );
 
       if (!hasAccess) {

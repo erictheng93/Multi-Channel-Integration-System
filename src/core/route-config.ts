@@ -34,7 +34,6 @@ import phase2AuthHandler from '@modules/auth/handlers/phase2-auth-management';
 import alertConfigHandler from '@modules/system/handlers/alert-config-management';
 import dataOptimizationHandler from '@modules/system/handlers/data-optimization-main';
 import webhookRouter from '@modules/integrations/handlers/webhook';
-import modularSystemRouter from './modular-system-integration';
 import collaborationMainHandler from '@modules/collaboration/handlers/collaboration-main';
 
 /**
@@ -391,26 +390,6 @@ const webhookGroup = createRouteGroup({
 });
 
 /**
- * System management route group
- */
-const systemManagementGroup = createRouteGroup({
-  name: 'System Management',
-  prefix: '/api',
-  description: 'Internal System Management',
-  modules: [
-    createRouteModule({
-      name: 'modular-system',
-      path: '/modular',
-      handler: modularSystemRouter,
-      description: 'Modular System Management',
-      version: '1.0.0',
-      dependencies: ['auth'],
-      healthCheck: '/health'
-    })
-  ]
-});
-
-/**
  * Export all route groups
  */
 export const routeGroups: RouteGroup[] = [
@@ -421,8 +400,7 @@ export const routeGroups: RouteGroup[] = [
   monitoringGroup,
   realtimeGroup,
   advancedFeaturesGroup,
-  webhookGroup,
-  systemManagementGroup
+  webhookGroup
 ];
 
 /**

@@ -5,7 +5,7 @@ import type { Bindings } from '../types';
 import { verifyJWT } from '../utils/auth';
 import { createDbClient } from '../db/drizzle-factory';
 import { conversations } from '../db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { inArray, isNull } from 'drizzle-orm';
 import { nowMs } from '@/utils/timestamp'
 
 /**
@@ -47,7 +47,6 @@ export interface WebSocketAuthResponse {
 export class WebSocketAuthService {
   private challenges = new Map<string, WebSocketAuthChallenge>();
   private readonly CHALLENGE_TTL = 30000; // 30 seconds
-  private readonly CONVERSATION_CACHE_TTL = 300; // 5 minutes
 
   constructor(
     private env: Bindings,
@@ -226,7 +225,7 @@ export class WebSocketAuthService {
    */
   private async getAgentConversations(
     agentId: string,
-    teamId?: number
+    teamIds: number[] = []
   ): Promise<string[]> {
     if (!this.db) {
       console.warn('[WebSocketAuth] Database not available, returning empty conversation list');
@@ -237,14 +236,15 @@ export class WebSocketAuthService {
       const dbClient = createDbClient(this.db);
 
       // Note: Individual assignment (assignedUserId) removed - only team-based access control
-      // Query conversations assigned to agent's team
+      // Query conversations assigned to the agent's current DB-backed teams.
       let conversationIds: string[] = [];
 
-      if (teamId) {
+      const uniqueTeamIds = [...new Set(teamIds.filter(Number.isFinite))];
+      if (uniqueTeamIds.length > 0) {
         const teamAssigned = await dbClient
           .select({ id: conversations.id })
           .from(conversations)
-          .where(eq(conversations.assignedTeamId, teamId));
+          .where(inArray(conversations.assignedTeamId, uniqueTeamIds));
 
         conversationIds = teamAssigned.map(c => c.id);
       }
@@ -274,40 +274,9 @@ export class WebSocketAuthService {
    */
   async getAgentConversationsWithCache(
     agentId: string,
-    teamId?: number
+    teamIds: number[] = []
   ): Promise<string[]> {
-    if (!this.cache) {
-      // No cache available, query database directly
-      return this.getAgentConversations(agentId, teamId);
-    }
-
-    const cacheKey = `agent_conversations:${agentId}`;
-
-    try {
-      // Try cache first
-      const cached = await this.cache.get(cacheKey, 'json');
-      if (cached && Array.isArray(cached)) {
-        console.log(`[WebSocketAuth] Cache hit for agent ${agentId} conversations`);
-        return cached as string[];
-      }
-    } catch (cacheError) {
-      console.warn('[WebSocketAuth] Cache read error:', cacheError);
-    }
-
-    // Fetch from database
-    const conversationIds = await this.getAgentConversations(agentId, teamId);
-
-    // Cache for 5 minutes
-    try {
-      await this.cache.put(cacheKey, JSON.stringify(conversationIds), {
-        expirationTtl: this.CONVERSATION_CACHE_TTL
-      });
-      console.log(`[WebSocketAuth] Cached ${conversationIds.length} conversations for agent ${agentId}`);
-    } catch (cacheError) {
-      console.warn('[WebSocketAuth] Cache write error:', cacheError);
-    }
-
-    return conversationIds;
+    return this.getAgentConversations(agentId, teamIds);
   }
 
   /**
@@ -318,7 +287,7 @@ export class WebSocketAuthService {
     userId: string,
     userRole: string,
     conversationId: string,
-    teamId?: number
+    teamIds: number[] = []
   ): Promise<boolean> {
     // Admins have access to all conversations
     if (userRole === 'admin') {
@@ -327,7 +296,7 @@ export class WebSocketAuthService {
     }
 
     // For agents, check database (with caching)
-    const allowedConversations = await this.getAgentConversationsWithCache(userId, teamId);
+    const allowedConversations = await this.getAgentConversationsWithCache(userId, teamIds);
     const hasAccess = allowedConversations.includes(conversationId);
 
     if (hasAccess) {
@@ -348,6 +317,9 @@ export class WebSocketAuthService {
       return;
     }
 
+    // Legacy cleanup for entries written before WebSocket conversation
+    // authorization was changed to query current DB-backed membership on each
+    // check. KV cannot delete unknown team-key variants safely.
     const cacheKey = `agent_conversations:${agentId}`;
 
     try {

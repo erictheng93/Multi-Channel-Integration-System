@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
-import { jwtAuth } from '@/middleware/auth';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import {
   generateSystemToken,
   generateMonitoringToken,
@@ -189,7 +189,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
 });
 
 // 刷新即將過期的令牌
-phase2AuthHandler.post('/refresh-token', async (c) => {
+phase2AuthHandler.post('/refresh-token', jwtAuth, requireAdmin(), async (c) => {
   try {
     const { token } = await c.req.json();
 
@@ -207,6 +207,26 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
       return badRequestResponse(c, 'Cannot refresh invalid or expired token');
     }
 
+    if (payload.type === 'refresh' || payload.type === 'temp_password_change') {
+      return badRequestResponse(c, 'Only access or system monitoring tokens can be refreshed here');
+    }
+
+    if (payload.jti) {
+      let isRevoked: string | null;
+      try {
+        isRevoked = await c.env.CACHE.get(`revoked:${payload.jti}`);
+      } catch (error) {
+        log.error('Refresh token revocation check failed', {
+          jti: payload.jti,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        return c.json({ success: false, error: 'Service temporarily unavailable' }, 503);
+      }
+      if (isRevoked) {
+        return badRequestResponse(c, 'Cannot refresh revoked token');
+      }
+    }
+
     // 檢查是否為系統令牌
     if (payload.isSystemToken) {
       const newToken = await generateMonitoringToken(c.env.JWT_SECRET);
@@ -216,12 +236,17 @@ phase2AuthHandler.post('/refresh-token', async (c) => {
       }, 'Monitoring token refreshed');
     }
 
+    const currentUser = await getUserById(c.env.DB, payload.userId);
+    if (!currentUser.isActive) {
+      return forbiddenResponse(c, 'Cannot refresh token for inactive user');
+    }
+
     // 刷新用戶令牌
     const newToken = await generateSystemToken(
-      String(payload.userId),
-      payload.role as 'admin' | 'agent',
-      payload.displayName,
-      payload.primaryTeamId || 0,
+      String(currentUser.id),
+      currentUser.role as 'admin' | 'agent',
+      currentUser.displayName,
+      currentUser.primaryTeamId || 0,
       c.env.JWT_SECRET
     );
 

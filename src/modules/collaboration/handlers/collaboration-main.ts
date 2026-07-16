@@ -5,6 +5,10 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { collaboration } from '@modules/collaboration/services/collaboration-manager';
 import type { Bindings, JWTPayload } from '@/types';
+import { createDbClient } from '@/db/drizzle-factory';
+import { conversations } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { jwtAuth, requireAdmin } from '@/middleware/auth';
 import {
   successResponse,
   errorResponse,
@@ -15,13 +19,50 @@ import { nowISO } from '@/utils/timestamp'
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+async function requireConversationAccess(c: Context<{ Bindings: Bindings }>, conversationId: number) {
+  const user = c.get('user');
+  if (!user) {
+    return errorResponse(c, 'Authentication required', 401);
+  }
+  if (user.role === 'admin') {
+    return null;
+  }
+
+  const db = createDbClient(c.env.DB);
+  const conversation = await db
+    .select({
+      id: conversations.id,
+      assignedTeamId: conversations.assignedTeamId
+    })
+    .from(conversations)
+    .where(eq(conversations.id, String(conversationId)))
+    .get();
+
+  if (!conversation) {
+    return errorResponse(c, 'Conversation not found', 404);
+  }
+
+  if (!conversation.assignedTeamId) {
+    return null;
+  }
+
+  const assignedTeamId = Number(conversation.assignedTeamId);
+  if (user.allowedTeamIds?.includes(assignedTeamId)) {
+    return null;
+  }
+
+  return errorResponse(c, 'Access denied to this conversation', 403);
+}
+
 /**
  * 獲取對話的協作狀態
  * GET /api/collaboration/conversations/:id/state
  */
-app.get('/conversations/:id/state', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.get('/conversations/:id/state', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const conversationId = getValidatedParam<number>(c, 'id');
+    const denied = await requireConversationAccess(c, conversationId);
+    if (denied) return denied;
     const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
     const state = await collaboration.getConversationState(conversationId, protocol);
 
@@ -35,9 +76,11 @@ app.get('/conversations/:id/state', requireIntId(), async (c: Context<{ Bindings
  * 獲取對話的查看者列表
  * GET /api/collaboration/conversations/:id/viewers
  */
-app.get('/conversations/:id/viewers', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.get('/conversations/:id/viewers', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const conversationId = getValidatedParam<number>(c, 'id');
+    const denied = await requireConversationAccess(c, conversationId);
+    if (denied) return denied;
     const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
     const viewers = await collaboration.getConversationViewers(conversationId, protocol);
 
@@ -51,9 +94,11 @@ app.get('/conversations/:id/viewers', requireIntId(), async (c: Context<{ Bindin
  * 加入對話
  * POST /api/collaboration/conversations/:id/join
  */
-app.post('/conversations/:id/join', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/conversations/:id/join', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const conversationId = getValidatedParam<number>(c, 'id');
+    const denied = await requireConversationAccess(c, conversationId);
+    if (denied) return denied;
     const payload = c.get('jwtPayload') as JWTPayload;
     const body = await c.req.json().catch(() => ({}));
     const protocol = body.protocol as 'websocket' | 'http' | undefined;
@@ -79,9 +124,11 @@ app.post('/conversations/:id/join', requireIntId(), async (c: Context<{ Bindings
  * 離開對話
  * POST /api/collaboration/conversations/:id/leave
  */
-app.post('/conversations/:id/leave', requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/conversations/:id/leave', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const conversationId = getValidatedParam<number>(c, 'id');
+    const denied = await requireConversationAccess(c, conversationId);
+    if (denied) return denied;
     const payload = c.get('jwtPayload') as JWTPayload;
     await collaboration.leaveConversation({
       conversationId,
@@ -98,7 +145,7 @@ app.post('/conversations/:id/leave', requireIntId(), async (c: Context<{ Binding
  * 發送輸入狀態
  * POST /api/collaboration/typing
  */
-app.post('/typing', async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/typing', jwtAuth, async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
     const body = await c.req.json();
@@ -112,6 +159,9 @@ app.post('/typing', async (c: Context<{ Bindings: Bindings }>) => {
     if (status !== 'start' && status !== 'stop') {
       return errorResponse(c, 'Invalid status. Must be "start" or "stop"', 400);
     }
+
+    const denied = await requireConversationAccess(c, parseInt(conversationId));
+    if (denied) return denied;
 
     await collaboration.sendTyping({
       conversationId: parseInt(conversationId),
@@ -129,7 +179,7 @@ app.post('/typing', async (c: Context<{ Bindings: Bindings }>) => {
  * 更新在線狀態
  * POST /api/collaboration/presence
  */
-app.post('/presence', async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/presence', jwtAuth, async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
     const body = await c.req.json();
@@ -143,6 +193,11 @@ app.post('/presence', async (c: Context<{ Bindings: Bindings }>) => {
     const validStatuses = ['online', 'away', 'busy', 'offline'];
     if (!validStatuses.includes(status)) {
       return errorResponse(c, `Invalid status. Must be one of: ${validStatuses.join(', ')}`, 400);
+    }
+
+    if (currentConversation) {
+      const denied = await requireConversationAccess(c, parseInt(currentConversation));
+      if (denied) return denied;
     }
 
     await collaboration.updatePresence({
@@ -162,7 +217,7 @@ app.post('/presence', async (c: Context<{ Bindings: Bindings }>) => {
  * 獲取協作統計
  * GET /api/collaboration/stats
  */
-app.get('/stats', async (c: Context<{ Bindings: Bindings }>) => {
+app.get('/stats', jwtAuth, async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
     const stats = await collaboration.getStats(protocol);
@@ -177,7 +232,7 @@ app.get('/stats', async (c: Context<{ Bindings: Bindings }>) => {
  * 清理過期狀態
  * POST /api/collaboration/cleanup
  */
-app.post('/cleanup', async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/cleanup', jwtAuth, requireAdmin(), async (c: Context<{ Bindings: Bindings }>) => {
   try {
     const payload = c.get('jwtPayload') as JWTPayload;
 
