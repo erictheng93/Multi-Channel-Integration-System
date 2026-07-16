@@ -113,13 +113,11 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
     mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
     mocks.updateWhere.mockResolvedValue(undefined);
     mocks.getRecallWindowSeconds.mockResolvedValue(30);
-    mocks.scheduleOrDeliverNow.mockImplementation(async (_env, params) => {
-      await params.deliverNow();
-      return {
-        deliveryStatus: 'pending',
-        isSent: false,
-        recallDeadline: null,
-      };
+    mocks.scheduleOrDeliverNow.mockResolvedValue({
+      deliveryStatus: 'pending',
+      isSent: false,
+      recallDeadline: null,
+      needsImmediateDelivery: true,
     });
     mocks.deliver.mockResolvedValue(undefined);
     mocks.conversationFetch.mockResolvedValue(new Response(JSON.stringify({ success: true })));
@@ -138,6 +136,8 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
         'Content-Type': 'application/json',
         'X-Conversation-Id': 'conv-1',
         'X-Session-Id': 'agent-1',
+        'X-Authenticated-User-Id': 'agent-1',
+        'X-Authenticated-Display-Name': 'Agent One',
       },
       body: JSON.stringify({
         content: 'hello',
@@ -154,6 +154,13 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
       canBuffer: true,
     }));
     expect(mocks.deliver).toHaveBeenCalledWith('msg-1');
+
+    // Regression guard: when scheduling fails, delivery must run *after* the
+    // initial new_message broadcast, never before — otherwise deliver()'s
+    // message_updated event can race ahead of new_message on the wire and
+    // the FE silently drops the update for a message it doesn't know yet.
+    expect(mocks.conversationFetch.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.deliver.mock.invocationCallOrder[0]);
 
     const notifyRequest = mocks.conversationFetch.mock.calls[0][0] as Request;
     const notifyBody = await notifyRequest.json() as {
@@ -188,6 +195,8 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
         'Content-Type': 'application/json',
         'X-Conversation-Id': 'conv-1',
         'X-Session-Id': 'agent-1',
+        'X-Authenticated-User-Id': 'agent-1',
+        'X-Authenticated-Display-Name': 'Agent One',
       },
       body: JSON.stringify({
         content: 'hello',
@@ -220,6 +229,7 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
       deliveryStatus: 'buffered',
       isSent: false,
       recallDeadline: '2026-01-15T12:00:30Z',
+      needsImmediateDelivery: false,
     });
     mocks.updateWhere.mockRejectedValueOnce(new Error('attachment link failed'));
 
@@ -230,6 +240,8 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
         'Content-Type': 'application/json',
         'X-Conversation-Id': 'conv-1',
         'X-Session-Id': 'agent-1',
+        'X-Authenticated-User-Id': 'agent-1',
+        'X-Authenticated-Display-Name': 'Agent One',
       },
       body: JSON.stringify({
         content: 'hello',
@@ -263,6 +275,8 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
         'Content-Type': 'application/json',
         'X-Conversation-Id': 'conv-1',
         'X-Session-Id': 'agent-1',
+        'X-Authenticated-User-Id': 'agent-1',
+        'X-Authenticated-Display-Name': 'Agent One',
       },
       body: JSON.stringify({
         content: 'hello',
@@ -311,6 +325,8 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
         'Content-Type': 'application/json',
         'X-Conversation-Id': 'conv-1',
         'X-Session-Id': 'agent-1',
+        'X-Authenticated-User-Id': 'agent-1',
+        'X-Authenticated-Display-Name': 'Agent One',
       },
       body: JSON.stringify({
         content: 'hello',
