@@ -6,11 +6,13 @@ import type { Bindings } from '@/types';
 
 const mocks = vi.hoisted(() => ({
   verifyJWT: vi.fn(),
+  getUserById: vi.fn(),
   checkPermission: vi.fn()
 }));
 
 vi.mock('@/utils/auth', () => ({
-  verifyJWT: mocks.verifyJWT
+  verifyJWT: mocks.verifyJWT,
+  getUserById: mocks.getUserById
 }));
 
 vi.mock('@/services/permission-service', () => ({
@@ -31,7 +33,9 @@ const realtimeService = {
 const dashboardService = {} as unknown as DashboardService;
 const testEnv = {
   JWT_SECRET: 'test-secret',
-  DB: {} as D1Database
+  DB: {} as D1Database,
+  // Revocation-list read; null = token not revoked
+  CACHE: { get: async () => null } as unknown as KVNamespace
 } as Bindings;
 
 const requestDashboardApi = (
@@ -48,7 +52,22 @@ describe('Realtime dashboard subscription API', () => {
       email: 'admin@example.com',
       displayName: 'Admin One',
       role: 'admin',
-      primaryTeamId: 1
+      primaryTeamId: 1,
+      // validateAccessTokenPayload allowlists type === 'access' and requires
+      // a jti for the revocation list — mock the payload /login mints.
+      type: 'access',
+      jti: 'test-jti-dashboard-1'
+    });
+    mocks.getUserById.mockReset();
+    mocks.getUserById.mockResolvedValue({
+      id: 'admin-1',
+      email: 'admin@example.com',
+      displayName: 'Admin One',
+      role: 'admin',
+      primaryTeamId: 1,
+      isActive: true,
+      allowedTeamIds: [1],
+      teamRoles: { 1: 'member' }
     });
     mocks.checkPermission.mockResolvedValue(true);
   });

@@ -61,7 +61,10 @@ describe('websocket cookie auth', () => {
       email: 'agent@example.com',
       displayName: 'Agent One',
       role: 'agent',
+      // validateAccessTokenPayload allowlists type === 'access' and requires
+      // a jti for the revocation list — mock the payload /login mints.
       type: 'access',
+      jti: 'test-jti-ws-1',
       exp: Math.floor(Date.now() / 1000) + 3600
     })
     mocks.getUserById.mockReset()

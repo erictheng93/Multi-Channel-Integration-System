@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
-import { jwtAuth, requireAdmin } from '@/middleware/auth';
+import { jwtAuth, requireAdmin, validateAccessTokenPayload } from '@/middleware/auth';
 import {
   generateSystemToken,
   generateMonitoringToken,
@@ -156,9 +156,7 @@ phase2AuthHandler.post('/verify-token', async (c) => {
       return badRequestResponse(c, 'Token is required');
     }
 
-    // 動態導入以避免循環依賴
-    const { verifyJWT } = await import('@/utils/auth');
-    const payload = await verifyJWT(token, c.env.JWT_SECRET);
+    const payload = await validateAccessTokenPayload(c.env, token);
 
     // 檢查令牌是否即將過期 (剩餘時間少於1小時)
     const now = Math.floor(Date.now() / 1000);
@@ -197,34 +195,11 @@ phase2AuthHandler.post('/refresh-token', jwtAuth, requireAdmin(), async (c) => {
       return badRequestResponse(c, 'Token is required');
     }
 
-    // 動態導入以避免循環依賴
-    const { verifyJWT } = await import('@/utils/auth');
-
     let payload;
     try {
-      payload = await verifyJWT(token, c.env.JWT_SECRET);
+      payload = await validateAccessTokenPayload(c.env, token);
     } catch (_error) {
       return badRequestResponse(c, 'Cannot refresh invalid or expired token');
-    }
-
-    if (payload.type === 'refresh' || payload.type === 'temp_password_change') {
-      return badRequestResponse(c, 'Only access or system monitoring tokens can be refreshed here');
-    }
-
-    if (payload.jti) {
-      let isRevoked: string | null;
-      try {
-        isRevoked = await c.env.CACHE.get(`revoked:${payload.jti}`);
-      } catch (error) {
-        log.error('Refresh token revocation check failed', {
-          jti: payload.jti,
-          error: error instanceof Error ? error.message : String(error)
-        });
-        return c.json({ success: false, error: 'Service temporarily unavailable' }, 503);
-      }
-      if (isRevoked) {
-        return badRequestResponse(c, 'Cannot refresh revoked token');
-      }
     }
 
     // 檢查是否為系統令牌

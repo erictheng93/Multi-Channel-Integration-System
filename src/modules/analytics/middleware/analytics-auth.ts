@@ -7,7 +7,7 @@ import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
-import { verifyJWT as verifySignedJWT } from '@/utils/auth'
+import { validateAccessToken } from '@/middleware/auth'
 
 const log = createContextLogger('AnalyticsAuth')
 
@@ -84,11 +84,33 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
 
     const token = authHeader.slice(7);
 
-    // 驗證 JWT token
-    const { success, decoded, error } = await verifyJWT(token, c.env.JWT_SECRET);
-    if (!success || !decoded) {
+    // 驗證 JWT token — hardened validation (aligned with jwtAuth): rejects
+    // refresh/temp token classes, checks per-jti revocation, verifies the
+    // user is still active, and refreshes team membership from the DB.
+    let decoded: JwtPayload;
+    try {
+      const { payload } = await validateAccessToken(c.env, token);
+      if (!isJwtPayload(payload)) {
+        throw new HTTPException(401, {
+          message: 'Invalid token payload',
+          cause: 'INVALID_TOKEN_PAYLOAD'
+        });
+      }
+      decoded = payload;
+    } catch (validationError) {
+      if (validationError instanceof HTTPException) {
+        throw validationError;
+      }
+      const status = (validationError as { status?: number }).status;
+      if (status === 503) {
+        // Revocation-check KV outage fails closed as 503 (matches jwtAuth).
+        throw new HTTPException(503, {
+          message: 'Service temporarily unavailable',
+          cause: 'REVOCATION_CHECK_FAILED'
+        });
+      }
       throw new HTTPException(401, {
-        message: error || 'Invalid token',
+        message: validationError instanceof Error ? validationError.message : 'Invalid token',
         cause: 'INVALID_TOKEN'
       });
     }
@@ -139,31 +161,6 @@ export async function analyticsAuth(c: Context<{ Bindings: Bindings; Variables: 
       message: 'Authentication system error',
       cause: 'AUTH_SYSTEM_ERROR'
     });
-  }
-}
-
-/**
- * 驗證 JWT token
- * 支持測試環境和生產環境
- */
-async function verifyJWT(token: string, secret: string): Promise<{
-  success: boolean;
-  decoded?: JwtPayload;
-  error?: string;
-}> {
-  try {
-    const payload = await verifySignedJWT(token, secret) as unknown;
-    if (!isJwtPayload(payload)) {
-      return { success: false, error: 'Invalid token payload' };
-    }
-
-    return { success: true, decoded: payload };
-
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Token verification failed'
-    };
   }
 }
 

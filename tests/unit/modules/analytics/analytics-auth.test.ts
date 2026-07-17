@@ -4,8 +4,9 @@ import { analyticsAuth } from '@/modules/analytics/middleware/analytics-auth'
 import { signJWT } from '@/utils/auth'
 import type { Bindings } from '@/types'
 
-const { mockCheckPermission } = vi.hoisted(() => ({
-  mockCheckPermission: vi.fn()
+const { mockCheckPermission, mockGetUserById } = vi.hoisted(() => ({
+  mockCheckPermission: vi.fn(),
+  mockGetUserById: vi.fn()
 }))
 
 vi.mock('@/services/permission-service', () => ({
@@ -13,6 +14,16 @@ vi.mock('@/services/permission-service', () => ({
     checkPermission: mockCheckPermission
   }
 }))
+
+// validateAccessToken loads the agent row to enforce isActive; stub the DB
+// lookup so the positive-path test doesn't need a real D1 instance.
+vi.mock('@/utils/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/utils/auth')>()
+  return {
+    ...actual,
+    getUserById: mockGetUserById
+  }
+})
 
 function base64UrlEncode(value: unknown): string {
   return btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
@@ -37,8 +48,10 @@ function createTestApp() {
   app.use('*', async (c, next) => {
     c.env = {
       JWT_SECRET: 'test-secret',
-      DB: {}
-    } as Bindings
+      DB: {},
+      // Revocation-list read; null = token not revoked
+      CACHE: { get: async () => null }
+    } as unknown as Bindings
     await next()
   })
   app.use('/api/analytics/*', analyticsAuth)
@@ -50,6 +63,14 @@ describe('analyticsAuth JWT verification', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockCheckPermission.mockResolvedValue(true)
+    mockGetUserById.mockResolvedValue({
+      id: 'agent-1',
+      role: 'agent',
+      isActive: true,
+      primaryTeamId: 1,
+      allowedTeamIds: [1],
+      teamRoles: { 1: 'member' }
+    })
   })
 
   test('rejects a forged Bearer token with an unsigned admin payload', async () => {
@@ -64,13 +85,17 @@ describe('analyticsAuth JWT verification', () => {
   })
 
   test('accepts a Bearer token signed with JWT_SECRET', async () => {
+    // validateAccessTokenPayload allowlists type === 'access' and requires a
+    // jti for the revocation list — mint the token the way /login does.
     const token = await signJWT(
       {
         userId: 'agent-1',
         role: 'agent',
         email: 'agent@example.com',
         displayName: 'Agent',
-        primaryTeamId: 1
+        primaryTeamId: 1,
+        type: 'access',
+        jti: 'test-jti-1'
       },
       'test-secret'
     )

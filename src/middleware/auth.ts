@@ -1,13 +1,10 @@
 import { Context, Next } from 'hono';
 import type { Bindings, JWTPayload } from '../types';
 import type { DbUser } from '../types';
-import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAccessTeam, hasTeamRole, TEAM_PERMISSIONS } from '../utils/auth';
 import type { TeamRoleInTeam } from '../types';
+import { verifyJWT, getUserById, getSession, updateUserActivityDebounced, canAccessTeam, hasTeamRole, TEAM_PERMISSIONS } from '../utils/auth';
 import { ROLES, type Role } from '../constants/roles';
 import { createContextLogger } from '../utils/logger';
-import { eq } from 'drizzle-orm';
-import { createDbClient } from '../db/drizzle-factory';
-import { agentTeams } from '../db/schema';
 import { incrementRequestCounter, trackTheoreticalKVSavings } from '@modules/system/handlers/kv-optimization-monitoring';
 import type { SystemPermissions, SystemAccessScope } from '@modules/system/middleware/system-auth';
 import type { CustomerPermissions, CustomerAccessScope, CreateCustomerData, UpdateCustomerData, CustomerFilters, CustomerTagOperation, CustomerSearchQuery } from '@modules/customer/types/customer-types';
@@ -52,96 +49,20 @@ function csrfMatches(cookies: Record<string, string>, csrfHeader: string | undef
   return Boolean(csrfCookie && csrfHeader && csrfCookie === csrfHeader);
 }
 
-/**
- * F15: re-fetch the user's team membership from agent_teams so changes to
- * team assignment (admin removes/adds) take effect within the cache TTL
- * instead of waiting for the access token to expire (up to 2h). Previously
- * jwtAuth trusted the JWT's cached allowedTeamIds/teamRoles, so a demoted
- * agent retained team-data access for the full token lifetime.
- *
- * Result is cached in KV (CACHE binding) under `agent-teams:{userId}` with
- * a 60-second TTL — long enough to absorb burst traffic, short enough that
- * a membership change propagates within a minute. Cache writes are
- * best-effort; failure to write does not block authentication.
- */
-type FreshMembership = {
-  allowedTeamIds: number[];
-  teamRoles: Record<number, TeamRoleInTeam>;
-  primaryTeamId: number | null;
-};
-
-export async function refreshTeamMembership(
-  db: D1Database,
-  cache: KVNamespace,
-  userId: string | number
-): Promise<FreshMembership> {
-  const cacheKey = `agent-teams:${userId}`;
-
-  try {
-    const cached = await cache.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached) as FreshMembership;
-    }
-  } catch (err) {
-    log.warn('agent-teams cache read failed; falling back to DB', {
-      userId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  const drizzleDb = createDbClient(db);
-  const rows = await drizzleDb
-    .select({
-      teamId: agentTeams.teamId,
-      roleInTeam: agentTeams.roleInTeam,
-      isPrimary: agentTeams.isPrimary,
-    })
-    .from(agentTeams)
-    .where(eq(agentTeams.agentId, String(userId)));
-
-  const allowedTeamIds: number[] = [];
-  const teamRoles: Record<number, TeamRoleInTeam> = {};
-  let primaryTeamId: number | null = null;
-
-  for (const row of rows) {
-    allowedTeamIds.push(row.teamId);
-    teamRoles[row.teamId] = (row.roleInTeam || 'member') as TeamRoleInTeam;
-    if (row.isPrimary) {
-      primaryTeamId = row.teamId;
-    }
-  }
-
-  const result: FreshMembership = { allowedTeamIds, teamRoles, primaryTeamId };
-
-  // Best-effort cache write; failure here doesn't break auth.
-  try {
-    await cache.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 });
-  } catch (err) {
-    log.warn('agent-teams cache write failed', {
-      userId,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  return result;
-}
-
 export interface AccessTokenValidationResult {
   payload: JWTPayload;
   user: DbUser;
 }
 
 /**
- * Shared access-token validator for non-Hono auth surfaces such as WebSocket
- * upgrade checks and handler-level bearer-token checks. Keep this aligned with
- * jwtAuth's security invariants: reject non-access token classes, check per-jti
- * revocation, load current active user state, and refresh team membership from
- * agent_teams instead of trusting stale JWT claims.
+ * Shared access-token payload validator. It verifies token class and revocation
+ * without loading an agent row, so customer conversation endpoints can reuse the
+ * same token rules without being forced through agent-only getUserById.
  */
-export async function validateAccessToken(
+export async function validateAccessTokenPayload(
   env: Bindings,
   token: string
-): Promise<AccessTokenValidationResult> {
+): Promise<JWTPayload> {
   const payload = await verifyJWT(token, env.JWT_SECRET);
 
   if (payload.type === 'refresh') {
@@ -154,6 +75,22 @@ export async function validateAccessToken(
     throw Object.assign(new Error('Temporary password-change token cannot be used to access this resource'), {
       status: 401,
       code: 'TEMP_TOKEN_NOT_ALLOWED'
+    });
+  }
+  // Allowlist: only tokens explicitly minted as access tokens may pass, and
+  // every accepted token must carry a jti so the KV revocation list can kill
+  // it. Untyped or jti-less tokens (any legacy or ad-hoc mint) are rejected —
+  // a blocklist of known-bad classes lets unknown classes through.
+  if (payload.type !== 'access') {
+    throw Object.assign(new Error('Token class is not allowed to access this resource'), {
+      status: 401,
+      code: 'TOKEN_CLASS_NOT_ALLOWED'
+    });
+  }
+  if (!payload.jti) {
+    throw Object.assign(new Error('Token is missing a revocation id (jti)'), {
+      status: 401,
+      code: 'TOKEN_JTI_REQUIRED'
     });
   }
 
@@ -179,21 +116,25 @@ export async function validateAccessToken(
     }
   }
 
+  return payload;
+}
+
+/**
+ * Shared access-token validator for Hono and non-Hono agent auth surfaces.
+ * getUserById already returns current agent team membership from agent_teams,
+ * so this intentionally does not do a second KV/D1 membership refresh.
+ */
+export async function validateAccessToken(
+  env: Bindings,
+  token: string
+): Promise<AccessTokenValidationResult> {
+  const payload = await validateAccessTokenPayload(env, token);
   const user = await getUserById(env.DB, payload.userId);
   if (!user.isActive) {
     throw Object.assign(new Error('User account is inactive'), {
       status: 401,
       code: 'USER_INACTIVE'
     });
-  }
-
-  const fresh = await refreshTeamMembership(env.DB, env.CACHE, user.id);
-  user.allowedTeamIds = fresh.allowedTeamIds;
-  user.teamRoles = fresh.teamRoles;
-  if (fresh.primaryTeamId !== null) {
-    user.primaryTeamId = fresh.primaryTeamId;
-  } else if (!user.primaryTeamId && payload.primaryTeamId) {
-    user.primaryTeamId = payload.primaryTeamId;
   }
 
   return { payload, user };
@@ -286,76 +227,7 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
       return c.json({ error: 'Invalid CSRF token' }, 403);
     }
 
-    // 驗證 JWT
-    const payload = await verifyJWT(cookieToken, c.env.JWT_SECRET);
-
-    // F12/F14 fix: reject non-access tokens used as access tokens. Login mints
-    // access, refresh, and forced-password-change temp JWTs with the same
-    // JWT_SECRET. Refresh tokens and temp password-change tokens must not be
-    // accepted by the general protected API middleware.
-    if (payload.type === 'refresh') {
-      return c.json({ error: 'Refresh token cannot be used to access this resource' }, 401);
-    }
-    if (payload.type === 'temp_password_change') {
-      return c.json({ error: 'Temporary password-change token cannot be used to access this resource' }, 401);
-    }
-
-    // F13: check the per-token revocation list before trusting the JWT.
-    // /logout writes `revoked:{jti}` in CACHE with TTL = remaining token
-    // life; a stolen token is invalidated within one KV-read of the user
-    // calling logout. Tokens minted before F13 have no jti and skip this
-    // check — the residual exposure is bounded by their natural exp.
-    //
-    // F13 hardening: fail-closed on KV outage for jti-bearing tokens.
-    // Previously we fell through and accepted the request on KV error,
-    // which means a sufficiently long KV brownout effectively disables
-    // logout-based revocation. We now return 503 so monitoring catches
-    // the outage and ops can intervene; the alternative — silently
-    // honouring potentially-revoked tokens — was the wrong tradeoff for
-    // a security-critical check. Tokens without a jti retain the
-    // legacy behaviour (no revocation check possible).
-    if (payload.jti) {
-      let isRevoked: string | null;
-      try {
-        isRevoked = await c.env.CACHE.get(`revoked:${payload.jti}`);
-      } catch (err) {
-        log.error('Revocation KV read failed; denying request for safety', {
-          jti: payload.jti,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return c.json(
-          { error: 'Service temporarily unavailable', code: 'REVOCATION_CHECK_FAILED' },
-          503,
-        );
-      }
-      if (isRevoked) {
-        return c.json({ error: 'Token has been revoked' }, 401);
-      }
-    }
-
-    // 獲取用戶信息
-    const user = await getUserById(c.env.DB, payload.userId);
-
-    if (!user.isActive) {
-      return c.json({ error: 'User account is inactive' }, 401);
-    }
-
-    // F15: refresh team membership from DB (KV-cached 60s) so admin
-    // demotions / additions take effect within a minute instead of
-    // waiting for the access token to expire. Replaces the previous
-    // pattern of trusting whatever allowedTeamIds was cached in the JWT
-    // at signing time.
-    const fresh = await refreshTeamMembership(c.env.DB, c.env.CACHE, user.id);
-    user.allowedTeamIds = fresh.allowedTeamIds;
-    user.teamRoles = fresh.teamRoles;
-    if (fresh.primaryTeamId !== null) {
-      user.primaryTeamId = fresh.primaryTeamId;
-    } else if (!user.primaryTeamId && payload.primaryTeamId) {
-      // Last-resort fallback only when DB has no team rows AND the JWT
-      // carried a primaryTeamId (admin users may be teamless in DB).
-      log.debug('Using JWT payload teamId as fallback', { teamId: payload.primaryTeamId });
-      user.primaryTeamId = payload.primaryTeamId;
-    }
+    const { payload, user } = await validateAccessToken(c.env, cookieToken);
 
     // Phase 1 Optimization: Parse and validate X-Context-Team-ID header
     const contextTeamHeader = c.req.header('X-Context-Team-ID');
@@ -412,10 +284,17 @@ export async function jwtAuth(c: Context<{ Bindings: Bindings }>, next: Next): P
     await next();
   } catch (error) {
     log.error('JWT authentication failed', { error: error instanceof Error ? error.message : String(error) });
+    const status = typeof (error as { status?: unknown }).status === 'number'
+      ? (error as { status: number }).status
+      : 401;
+    const code = typeof (error as { code?: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : undefined;
     return c.json({
-      error: 'Invalid or expired token',
+      error: status === 503 ? 'Service temporarily unavailable' : 'Invalid or expired token',
+      ...(code ? { code } : {}),
       message: error instanceof Error ? error.message : 'Authentication failed'
-    }, 401);
+    }, status as 401 | 503);
   }
 }
 
@@ -716,12 +595,8 @@ export async function optionalAuth(c: Context<{ Bindings: Bindings }>, next: Nex
       )
     ) {
       try {
-        const payload = await verifyJWT(token, c.env.JWT_SECRET);
-        const user = await getUserById(c.env.DB, payload.userId);
-        
-        if (user.isActive) {
-          c.set('user', user);
-        }
+        const { user } = await validateAccessToken(c.env, token);
+        c.set('user', user);
       } catch (error) {
         // 忽略認證錯誤，繼續處理請求
         log.debug('Optional auth failed (non-blocking)', { error: error instanceof Error ? error.message : String(error) });
