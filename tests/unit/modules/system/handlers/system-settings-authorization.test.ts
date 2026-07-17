@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const insertMock = vi.fn();
+const selectMock = vi.fn();
+const fromMock = vi.fn();
 const valuesMock = vi.fn();
 const onConflictDoUpdateMock = vi.fn();
 const logActivityMock = vi.fn();
 
 vi.mock('@/db/drizzle-factory', () => ({
   createDbClient: vi.fn(() => ({
-    insert: insertMock
+    insert: insertMock,
+    select: selectMock
   }))
 }));
 
@@ -31,7 +34,7 @@ vi.mock('@/utils/timestamp', () => ({
 }));
 
 import { createDbClient } from '@/db/drizzle-factory';
-import { updateSettings } from '@modules/system/handlers/system-settings';
+import { getSettings, updateSettings } from '@modules/system/handlers/system-settings';
 import type { Bindings } from '@/types';
 
 function createContext(role: 'admin' | 'agent') {
@@ -59,6 +62,8 @@ function createContext(role: 'admin' | 'agent') {
 describe('system settings authorization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fromMock.mockResolvedValue([]);
+    selectMock.mockReturnValue({ from: fromMock });
     onConflictDoUpdateMock.mockResolvedValue(undefined);
     valuesMock.mockReturnValue({ onConflictDoUpdate: onConflictDoUpdateMock });
     insertMock.mockReturnValue({ values: valuesMock });
@@ -84,5 +89,18 @@ describe('system settings authorization', () => {
     expect(createDbClient).toHaveBeenCalledTimes(1);
     expect(insertMock).toHaveBeenCalledTimes(1);
     expect(logActivityMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns canonical backend units for advanced defaults', async () => {
+    const response = await getSettings(createContext('admin') as any);
+    const body = (await response.json()) as any;
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.advanced).toMatchObject({
+      messageTimeout: 30000,
+      cacheExpiry: 3600,
+      sessionExpiry: 86400
+    });
   });
 });

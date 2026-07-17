@@ -94,26 +94,24 @@ export async function validateAccessTokenPayload(
     });
   }
 
-  if (payload.jti) {
-    let isRevoked: string | null;
-    try {
-      isRevoked = await env.CACHE.get(`revoked:${payload.jti}`);
-    } catch (err) {
-      log.error('Revocation KV read failed; denying request for safety', {
-        jti: payload.jti,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      throw Object.assign(new Error('Service temporarily unavailable'), {
-        status: 503,
-        code: 'REVOCATION_CHECK_FAILED'
-      });
-    }
-    if (isRevoked) {
-      throw Object.assign(new Error('Token has been revoked'), {
-        status: 401,
-        code: 'TOKEN_REVOKED'
-      });
-    }
+  let isRevoked: string | null;
+  try {
+    isRevoked = await env.CACHE.get(`revoked:${payload.jti}`);
+  } catch (err) {
+    log.error('Revocation KV read failed; denying request for safety', {
+      jti: payload.jti,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw Object.assign(new Error('Service temporarily unavailable'), {
+      status: 503,
+      code: 'REVOCATION_CHECK_FAILED'
+    });
+  }
+  if (isRevoked) {
+    throw Object.assign(new Error('Token has been revoked'), {
+      status: 401,
+      code: 'TOKEN_REVOKED'
+    });
   }
 
   return payload;

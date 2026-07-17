@@ -57,13 +57,16 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
 
       // 1. 嘗試從現有的 JWT payload 獲取
       const existingPayload = c.get('jwtPayload');
-      if (existingPayload) {
+      const existingUser = c.get('user');
+      // The cached branch is valid only after jwtAuth, which sets both
+      // jwtPayload and user. Payload-only auth lacks current allowedTeamIds.
+      if (existingPayload && existingUser) {
         authPayload = {
           userId: Number(existingPayload.userId),
           displayName: existingPayload.displayName,
           role: existingPayload.role,
           primaryTeamId: existingPayload.primaryTeamId,
-          allowedTeamIds: c.get('user')?.allowedTeamIds,
+          allowedTeamIds: existingUser.allowedTeamIds ?? [],
           conversationAccess: getConversationAccess(existingPayload)
         };
       }
