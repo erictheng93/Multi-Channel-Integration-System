@@ -90,12 +90,19 @@ router.all('/:id/messages', async (c) => {
     const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
     const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
 
-    // Create a new request with conversation ID and session ID in headers
+    // Create a new request with conversation ID and session ID in headers.
+    // Strip any inbound X-Authenticated-* headers first — they are a trusted
+    // channel between this handler and the DO, and must only ever carry
+    // values derived from the validated token, never client input.
     const headers = new Headers(c.req.raw.headers);
+    headers.delete('X-Authenticated-User-Id');
+    headers.delete('X-Authenticated-Display-Name');
     headers.set('X-Conversation-Id', conversationId);
     headers.set('X-Authenticated-User-Id', String(access.payload.userId));
     if (access.payload.displayName) {
-      headers.set('X-Authenticated-Display-Name', String(access.payload.displayName));
+      // Header values must be Latin-1; CJK display names would make
+      // Headers.set() throw in Workers. URL-encode here, decode in the DO.
+      headers.set('X-Authenticated-Display-Name', encodeURIComponent(String(access.payload.displayName)));
     }
 
     // Pass through session ID (already validated)
@@ -156,12 +163,19 @@ router.post('/:id/upload', async (c) => {
     const doId = c.env.CUSTOMER_MESSAGE_DO.idFromName(`conversation-${conversationId}`);
     const doStub = c.env.CUSTOMER_MESSAGE_DO.get(doId);
 
-    // Create a new request with conversation ID and session ID in headers
+    // Create a new request with conversation ID and session ID in headers.
+    // Strip any inbound X-Authenticated-* headers first — they are a trusted
+    // channel between this handler and the DO, and must only ever carry
+    // values derived from the validated token, never client input.
     const headers = new Headers(c.req.raw.headers);
+    headers.delete('X-Authenticated-User-Id');
+    headers.delete('X-Authenticated-Display-Name');
     headers.set('X-Conversation-Id', conversationId);
     headers.set('X-Authenticated-User-Id', String(access.payload.userId));
     if (access.payload.displayName) {
-      headers.set('X-Authenticated-Display-Name', String(access.payload.displayName));
+      // Header values must be Latin-1; CJK display names would make
+      // Headers.set() throw in Workers. URL-encode here, decode in the DO.
+      headers.set('X-Authenticated-Display-Name', encodeURIComponent(String(access.payload.displayName)));
     }
 
     // Pass through session ID (already validated)

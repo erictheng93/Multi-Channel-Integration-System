@@ -281,7 +281,18 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
       const conversationId = c.req.header('X-Conversation-Id');
       const sessionId = c.req.header('X-Session-Id');
       const authenticatedUserId = c.req.header('X-Authenticated-User-Id');
-      const authenticatedDisplayName = c.req.header('X-Authenticated-Display-Name');
+      // The proxy URL-encodes this header (Latin-1 restriction on header
+      // values); decode it back. Guard against malformed sequences so a bad
+      // value degrades to the raw string instead of throwing.
+      const rawDisplayName = c.req.header('X-Authenticated-Display-Name');
+      let authenticatedDisplayName = rawDisplayName;
+      if (rawDisplayName) {
+        try {
+          authenticatedDisplayName = decodeURIComponent(rawDisplayName);
+        } catch {
+          authenticatedDisplayName = rawDisplayName;
+        }
+      }
 
       if (!conversationId) {
         return c.json({ success: false, error: 'Conversation ID is required' }, 400);
