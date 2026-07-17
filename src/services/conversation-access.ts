@@ -42,13 +42,17 @@ export async function canConversationBeAccessedBy(
 
   const isAdmin = principal.role === 'admin';
   const isCustomer = String(conversation.customerId) === String(principal.userId);
-  const isUnassigned = !conversation.assignedTeamId;
+  // The unassigned pool is an agent workflow concept: any agent may pick up a
+  // conversation no team owns yet. It must never grant a customer access to
+  // another customer's conversation — customers only ever match as the owner.
+  const isAgent = isAdmin || principal.role === 'agent';
+  const isUnassignedPoolAccess = isAgent && !conversation.assignedTeamId;
   const assignedTeamId = Number(conversation.assignedTeamId);
   const isTeamMember =
     Number.isFinite(assignedTeamId) && (principal.allowedTeamIds ?? []).includes(assignedTeamId);
 
   return {
-    allowed: isAdmin || isCustomer || isUnassigned || isTeamMember,
+    allowed: isAdmin || isCustomer || isUnassignedPoolAccess || isTeamMember,
     conversation,
   };
 }

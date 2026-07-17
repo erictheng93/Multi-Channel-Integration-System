@@ -28,7 +28,7 @@ export interface ConversationAccessResult {
  * given conversation. Implements the 4-way permission check:
  * 1. Admin — always allowed
  * 2. Customer — owner of the conversation
- * 3. Unassigned — no team assigned (public pool, everyone can access)
+ * 3. Unassigned — no team assigned (agent pool; agents/admins only)
  * 4. Team member — user belongs to the assigned team
  *
  * @throws Error with message suitable for client response
