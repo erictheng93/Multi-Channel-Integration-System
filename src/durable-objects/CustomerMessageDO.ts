@@ -411,57 +411,80 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         // buffered row without an alarm.
         let deliverAfterInitialBroadcast = false;
         if (buffered) {
-          const deliveryPlan = await scheduleOrDeliverNow(this.env, {
-            messageId,
-            conversationId,
-            recallWindowSeconds,
-            canBuffer: true
-          });
-          messageData.deliveryStatus = deliveryPlan.deliveryStatus;
-          messageData.recallDeadline = deliveryPlan.recallDeadline;
-          messageData.isSent = deliveryPlan.isSent;
-          // Scheduling can fail (DO unreachable, etc). Never deliver here —
-          // that would broadcast a message_updated event before the client
-          // has even received new_message for this id, and the FE silently
-          // drops updates for messages it doesn't know about yet. Defer to
-          // the same deliverAfterInitialBroadcast path the non-buffered
-          // case uses below, ordered after the initial broadcast.
-          deliverAfterInitialBroadcast = deliveryPlan.needsImmediateDelivery;
+          try {
+            const deliveryPlan = await scheduleOrDeliverNow(this.env, {
+              messageId,
+              conversationId,
+              recallWindowSeconds,
+              canBuffer: true
+            });
+            messageData.deliveryStatus = deliveryPlan.deliveryStatus;
+            messageData.recallDeadline = deliveryPlan.recallDeadline;
+            messageData.isSent = deliveryPlan.isSent;
+            // Scheduling can fail (DO unreachable, etc). Never deliver here —
+            // that would broadcast a message_updated event before the client
+            // has even received new_message for this id, and the FE silently
+            // drops updates for messages it doesn't know about yet. Defer to
+            // the same deliverAfterInitialBroadcast path the non-buffered
+            // case uses below, ordered after the initial broadcast.
+            deliverAfterInitialBroadcast = deliveryPlan.needsImmediateDelivery;
+          } catch (schedulingError) {
+            // A throw here (as opposed to the handled scheduled=false path)
+            // may leave the row 'buffered' with no alarm armed. Fall back to
+            // immediate delivery after the broadcast — deliver() is
+            // idempotent (skips sent/recalled rows), so this can never
+            // double-send even if an alarm did get armed before the throw.
+            console.error('[CustomerMessageDO] Recall-window scheduling threw; falling back to immediate delivery', schedulingError);
+            messageData.deliveryStatus = 'pending';
+            messageData.recallDeadline = null;
+            messageData.isSent = false;
+            deliverAfterInitialBroadcast = true;
+          }
         } else if (shouldUseSharedDelivery) {
           deliverAfterInitialBroadcast = true;
         }
 
-        // FIX: Link attachments to the message
-        if (hasAttachments) {
-          console.log(`[CustomerMessageDO] Linking ${attachmentIds.length} attachments to message ${messageId}`);
-          for (const attachmentId of attachmentIds) {
-            await db
-              .update(fileAttachments)
-              .set({ messageId: messageId })
-              .where(eq(fileAttachments.id, attachmentId));
-          }
-          console.log(`[CustomerMessageDO] Attachments linked successfully`);
-        }
-
-        console.log(`[CustomerMessageDO] Message created: ${messageId}`);
-
-        // FIX: Update conversation timestamps (updatedAt + lastMessageAt)
-        // This was missing, causing conversations to not re-sort after new messages
-        await db
-          .update(conversations)
-          .set({ lastMessageAt: createdAt, updatedAt: createdAt })
-          .where(eq(conversations.id, conversationId));
-        console.log(`[CustomerMessageDO] Conversation timestamps updated: ${createdAt}`);
-
-        // FIX: Fetch linked attachments for response
+        // Post-insert D1 writes are non-critical: the message row already
+        // exists and delivery has been armed above. A throw here must not
+        // escape to the outer catch — that would 500 a request whose message
+        // was created, skip the broadcast, and (on the scheduling-failed
+        // path, where no alarm exists) strand the row as pending forever
+        // because deliverAfterInitialBroadcast is never consumed.
         let linkedAttachments: FileAttachment[] = [];
-        if (hasAttachments) {
-          linkedAttachments = await db
-            .select()
-            .from(fileAttachments)
-            .where(eq(fileAttachments.messageId, messageId))
-            .all();
-          console.log(`[CustomerMessageDO] Fetched ${linkedAttachments.length} linked attachments`);
+        try {
+          // FIX: Link attachments to the message
+          if (hasAttachments) {
+            console.log(`[CustomerMessageDO] Linking ${attachmentIds.length} attachments to message ${messageId}`);
+            for (const attachmentId of attachmentIds) {
+              await db
+                .update(fileAttachments)
+                .set({ messageId: messageId })
+                .where(eq(fileAttachments.id, attachmentId));
+            }
+            console.log(`[CustomerMessageDO] Attachments linked successfully`);
+          }
+
+          console.log(`[CustomerMessageDO] Message created: ${messageId}`);
+
+          // FIX: Update conversation timestamps (updatedAt + lastMessageAt)
+          // This was missing, causing conversations to not re-sort after new messages
+          await db
+            .update(conversations)
+            .set({ lastMessageAt: createdAt, updatedAt: createdAt })
+            .where(eq(conversations.id, conversationId));
+          console.log(`[CustomerMessageDO] Conversation timestamps updated: ${createdAt}`);
+
+          // FIX: Fetch linked attachments for response
+          if (hasAttachments) {
+            linkedAttachments = await db
+              .select()
+              .from(fileAttachments)
+              .where(eq(fileAttachments.messageId, messageId))
+              .all();
+            console.log(`[CustomerMessageDO] Fetched ${linkedAttachments.length} linked attachments`);
+          }
+        } catch (postInsertError) {
+          console.error('[CustomerMessageDO] Post-insert writes failed (non-critical, continuing to broadcast/delivery):', postInsertError);
         }
 
         // Use the inserted data directly for broadcasting
@@ -516,8 +539,15 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         }
 
         if (deliverAfterInitialBroadcast) {
-          const { MessageDeliveryService } = await import('@modules/conversations/services/message-delivery-service');
-          await new MessageDeliveryService(this.env).deliver(messageId);
+          // deliver() swallows platform errors internally and marks the row
+          // failed, but an exceptional throw (import failure, D1 outage)
+          // must not turn an already-created message into a 500 response.
+          try {
+            const { MessageDeliveryService } = await import('@modules/conversations/services/message-delivery-service');
+            await new MessageDeliveryService(this.env).deliver(messageId);
+          } catch (deliveryError) {
+            console.error('[CustomerMessageDO] Immediate delivery failed (message stored, will show as pending):', deliveryError);
+          }
         }
 
         // Broadcast to MessageBroadcaster for global updates (conversation list page)
