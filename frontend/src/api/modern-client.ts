@@ -3,7 +3,7 @@
 
 import { getBackendUrl } from '@/config/runtime'
 import { buildAuthenticatedHeaders } from './authenticatedFetch'
-import { clearAuthStorageItems } from '@/utils/authStorage'
+import { clearAuthStorageItems } from '../utils/authStorage'
 import type {
   StandardApiResponse,
   PaginatedApiResponse,
