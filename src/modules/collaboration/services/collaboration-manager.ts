@@ -13,7 +13,8 @@ import type {
   UpdatePresenceRequest,
   BroadcastEventRequest,
   CollaborationStats,
-  CollaborationEvent
+  CollaborationEvent,
+  ConversationId
 } from '../types';
 
 import { WebSocketCollaborationAdapter } from '@modules/collaboration/adapters/websocket-adapter';
@@ -103,7 +104,7 @@ export class CollaborationManager {
    * 獲取對話的查看者列表
    */
   async getConversationViewers(
-    conversationId: number,
+    conversationId: ConversationId,
     protocol?: CollaborationProtocol
   ): Promise<Viewer[]> {
     const adapter = this.getAdapter(protocol);
@@ -114,7 +115,7 @@ export class CollaborationManager {
    * 獲取對話房間完整狀態
    */
   async getConversationState(
-    conversationId: number,
+    conversationId: ConversationId,
     protocol?: CollaborationProtocol
   ): Promise<ConversationRoomState> {
     const adapter = this.getAdapter(protocol);
@@ -169,7 +170,7 @@ export class CollaborationManager {
    * 廣播到對話 (簡化版)
    */
   async broadcastToConversation(
-    conversationId: number,
+    conversationId: ConversationId,
     event: CollaborationEvent,
     excludeUsers?: number[]
   ): Promise<void> {
@@ -288,7 +289,7 @@ export class CollaborationManager {
       topActiveConversations: []
     };
 
-    const conversationMap = new Map<number, number>();
+    const conversationMap = new Map<ConversationId, number>();
 
     for (const stats of statsList) {
       merged.totalViewers += stats.totalViewers;

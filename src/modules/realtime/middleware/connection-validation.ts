@@ -91,8 +91,8 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
       if (validationConfig.validateConversationId) {
         const conversationId = c.req.query('conversationId');
         if (conversationId) {
-          const convId = parseInt(conversationId);
-          if (isNaN(convId) || convId <= 0) {
+          const trimmedConversationId = conversationId.trim();
+          if (!trimmedConversationId) {
             return badRequestResponse(c, 'Invalid conversation ID format');
           }
 
@@ -101,7 +101,7 @@ export const connectionValidation = (config: Partial<ConnectionValidationConfig>
             try {
               const conversation = await c.env.DB.prepare(
                 'SELECT id FROM conversations WHERE id = ?'
-              ).bind(convId).first();
+              ).bind(trimmedConversationId).first();
 
               if (!conversation) {
                 return badRequestResponse(c, 'Conversation not found');

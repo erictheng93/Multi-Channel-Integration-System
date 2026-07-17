@@ -7,6 +7,7 @@
  * 協作協議類型
  */
 export type CollaborationProtocol = 'websocket' | 'http';
+export type ConversationId = string | number;
 
 /**
  * 用戶在線狀態
@@ -52,7 +53,7 @@ export interface Viewer {
 export interface PresenceInfo {
   userId: number;
   status: PresenceStatus;
-  currentConversation?: number;
+  currentConversation?: ConversationId;
   lastSeen: string;
   metadata?: Record<string, unknown>;
 }
@@ -64,7 +65,7 @@ export interface TypingInfo {
   userId: number;
   username: string;
   displayName: string;
-  conversationId: number;
+  conversationId: ConversationId;
   startedAt: string;
   expiresAt: string; // 輸入狀態過期時間
 }
@@ -73,7 +74,7 @@ export interface TypingInfo {
  * 對話房間狀態
  */
 export interface ConversationRoomState {
-  conversationId: number;
+  conversationId: ConversationId;
   viewers: Viewer[];
   typing: TypingInfo[];
   totalConnections: number;
@@ -87,7 +88,7 @@ export interface ConversationRoomState {
  */
 export interface CollaborationEvent {
   type: CollaborationEventType;
-  conversationId: number;
+  conversationId: ConversationId;
   userId: number;
   data: Record<string, unknown>;
   timestamp: string;
@@ -100,7 +101,7 @@ export interface CollaborationEvent {
  * 加入對話請求
  */
 export interface JoinConversationRequest {
-  conversationId: number;
+  conversationId: ConversationId;
   userId: number;
   protocol?: CollaborationProtocol;
   metadata?: Record<string, unknown>;
@@ -110,7 +111,7 @@ export interface JoinConversationRequest {
  * 離開對話請求
  */
 export interface LeaveConversationRequest {
-  conversationId: number;
+  conversationId: ConversationId;
   userId: number;
 }
 
@@ -118,7 +119,7 @@ export interface LeaveConversationRequest {
  * 發送輸入狀態請求
  */
 export interface SendTypingRequest {
-  conversationId: number;
+  conversationId: ConversationId;
   userId: number;
   status: TypingStatus;
 }
@@ -129,7 +130,7 @@ export interface SendTypingRequest {
 export interface UpdatePresenceRequest {
   userId: number;
   status: PresenceStatus;
-  currentConversation?: number;
+  currentConversation?: ConversationId;
   metadata?: Record<string, unknown>;
 }
 
@@ -137,7 +138,7 @@ export interface UpdatePresenceRequest {
  * 廣播事件請求
  */
 export interface BroadcastEventRequest {
-  conversationId: number;
+  conversationId: ConversationId;
   event: CollaborationEvent;
   excludeUsers?: number[];
 }
@@ -151,7 +152,7 @@ export interface CollaborationStats {
   totalRooms: number;
   connectionsByProtocol: Record<CollaborationProtocol, number>;
   topActiveConversations: Array<{
-    conversationId: number;
+    conversationId: ConversationId;
     viewerCount: number;
   }>;
 }
@@ -176,12 +177,12 @@ export interface CollaborationAdapter {
   /**
    * 獲取對話的查看者列表
    */
-  getConversationViewers(conversationId: number): Promise<Viewer[]>;
+  getConversationViewers(conversationId: ConversationId): Promise<Viewer[]>;
 
   /**
    * 獲取對話房間完整狀態
    */
-  getConversationState(conversationId: number): Promise<ConversationRoomState>;
+  getConversationState(conversationId: ConversationId): Promise<ConversationRoomState>;
 
   /**
    * 用戶加入對話
@@ -228,7 +229,7 @@ export interface IPresenceService {
   updatePresence(request: UpdatePresenceRequest): Promise<void>;
   getPresence(userId: number): Promise<PresenceInfo | null>;
   getBatchPresence(userIds: number[]): Promise<Map<number, PresenceInfo>>;
-  setOnline(userId: number, conversationId?: number): Promise<void>;
+  setOnline(userId: number, conversationId?: ConversationId): Promise<void>;
   setOffline(userId: number): Promise<void>;
 }
 
@@ -236,9 +237,9 @@ export interface IPresenceService {
  * Typing 服務接口
  */
 export interface ITypingService {
-  startTyping(conversationId: number, userId: number, username: string, displayName: string): Promise<void>;
-  stopTyping(conversationId: number, userId: number): Promise<void>;
-  getTypingUsers(conversationId: number): Promise<TypingInfo[]>;
+  startTyping(conversationId: ConversationId, userId: number, username: string, displayName: string): Promise<void>;
+  stopTyping(conversationId: ConversationId, userId: number): Promise<void>;
+  getTypingUsers(conversationId: ConversationId): Promise<TypingInfo[]>;
   cleanupExpired(): Promise<number>;
 }
 
@@ -248,9 +249,9 @@ export interface ITypingService {
 export interface IRoomService {
   joinRoom(request: JoinConversationRequest): Promise<void>;
   leaveRoom(request: LeaveConversationRequest): Promise<void>;
-  getRoomState(conversationId: number): Promise<ConversationRoomState>;
-  getActiveRooms(): Promise<number[]>;
-  getRoomViewers(conversationId: number): Promise<Viewer[]>;
+  getRoomState(conversationId: ConversationId): Promise<ConversationRoomState>;
+  getActiveRooms(): Promise<ConversationId[]>;
+  getRoomViewers(conversationId: ConversationId): Promise<Viewer[]>;
 }
 
 // =================== 配置類型 ===================
@@ -328,7 +329,7 @@ export class CollaborationError extends Error {
  * 房間已滿錯誤
  */
 export class RoomFullError extends CollaborationError {
-  constructor(conversationId: number, maxViewers: number) {
+  constructor(conversationId: ConversationId, maxViewers: number) {
     super(
       `Conversation ${conversationId} has reached maximum viewers (${maxViewers})`,
       'ROOM_FULL',
