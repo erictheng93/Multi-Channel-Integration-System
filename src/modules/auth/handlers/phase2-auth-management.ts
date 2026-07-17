@@ -2,7 +2,7 @@
 // 專門處理 Phase 2 監控系統的認證令牌管理
 
 import { Hono } from 'hono';
-import { globalErrorHandler } from '@/core/error-handler';
+import { ErrorType, globalErrorHandler } from '@/core/error-handler';
 import type { Bindings } from '@/types';
 import { jwtAuth, requireAdmin, validateAccessTokenPayload } from '@/middleware/auth';
 import {
@@ -198,7 +198,18 @@ phase2AuthHandler.post('/refresh-token', jwtAuth, requireAdmin(), async (c) => {
     let payload;
     try {
       payload = await validateAccessTokenPayload(c.env, token);
-    } catch (_error) {
+    } catch (error) {
+      const status = typeof (error as { status?: unknown }).status === 'number'
+        ? (error as { status: number }).status
+        : undefined;
+      if (status === 503) {
+        return globalErrorHandler.handleError(
+          c,
+          error,
+          ErrorType.SERVICE_UNAVAILABLE,
+          'Service temporarily unavailable'
+        );
+      }
       return badRequestResponse(c, 'Cannot refresh invalid or expired token');
     }
 
