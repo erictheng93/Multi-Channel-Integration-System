@@ -54,12 +54,12 @@
           </label>
           <input
             id="messageTimeout"
-            v-model.number="localSettings.messageTimeout"
+            v-model.number="messageTimeoutSeconds"
             type="number"
             class="form-input"
-            min="1000"
-            max="60000"
-            step="1000"
+            min="1"
+            max="300"
+            step="1"
             required
           >
           <p class="form-hint">
@@ -107,12 +107,12 @@
           </label>
           <input
             id="cacheExpiry"
-            v-model.number="localSettings.cacheExpiry"
+            v-model.number="cacheExpiryMinutes"
             type="number"
             class="form-input"
-            min="60"
-            max="86400"
-            step="60"
+            min="1"
+            max="1440"
+            step="1"
             required
           >
           <p class="form-hint">
@@ -129,12 +129,12 @@
           </label>
           <input
             id="sessionExpiry"
-            v-model.number="localSettings.sessionExpiry"
+            v-model.number="sessionExpiryHours"
             type="number"
             class="form-input"
-            min="300"
-            max="86400"
-            step="300"
+            min="1"
+            max="168"
+            step="1"
             required
           >
           <p class="form-hint">
@@ -244,13 +244,34 @@ const recallWindowOptions = computed(() => [
 // Local state
 const localSettings = reactive<AdvancedSettings>({
   messageQueueSize: 100,
-  messageTimeout: 5000,
+  messageTimeout: 30000,
   cacheExpiry: 3600,
-  sessionExpiry: 7200,
+  sessionExpiry: 86400,
   enableRateLimit: true,
   enableLogging: true,
   enableMetrics: true,
   recallWindowSeconds: 0
+})
+
+const messageTimeoutSeconds = computed({
+  get: () => localSettings.messageTimeout / 1000,
+  set: (value: number) => {
+    localSettings.messageTimeout = value * 1000
+  }
+})
+
+const cacheExpiryMinutes = computed({
+  get: () => localSettings.cacheExpiry / 60,
+  set: (value: number) => {
+    localSettings.cacheExpiry = value * 60
+  }
+})
+
+const sessionExpiryHours = computed({
+  get: () => localSettings.sessionExpiry / 3600,
+  set: (value: number) => {
+    localSettings.sessionExpiry = value * 3600
+  }
 })
 
 // Watch for prop changes
