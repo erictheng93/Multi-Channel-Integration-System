@@ -223,7 +223,7 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
     }));
   });
 
-  it('arms buffered delivery before post-insert attachment linking can fail', async () => {
+  it('survives post-insert attachment linking failure: alarm already armed, request still succeeds', async () => {
     mocks.selectResults = [{ platform: 'line' }];
     mocks.scheduleOrDeliverNow.mockResolvedValue({
       deliveryStatus: 'buffered',
@@ -250,7 +250,19 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
       }),
     }));
 
-    expect(response.status).toBe(500);
+    // The alarm was armed before the linking failure, and the failure is
+    // non-critical: the response must stay 200 (message row exists and the
+    // buffered alarm will deliver it) instead of the previous 500-after-insert.
+    const body = await response.json() as {
+      success: boolean;
+      message: { deliveryStatus: string; isSent: boolean };
+    };
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.message).toEqual(expect.objectContaining({
+      deliveryStatus: 'buffered',
+      isSent: false,
+    }));
     expect(mocks.scheduleOrDeliverNow).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       messageId: 'msg-1',
       conversationId: 'conv-1',
