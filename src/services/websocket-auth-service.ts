@@ -3,9 +3,7 @@
 
 import type { Bindings } from '../types';
 import { validateAccessTokenPayload } from '@/middleware/auth';
-import { createDbClient } from '../db/drizzle-factory';
-import { conversations } from '../db/schema';
-import { inArray, isNull } from 'drizzle-orm';
+import { canConversationBeAccessedBy } from './conversation-access';
 import { nowMs } from '@/utils/timestamp'
 
 /**
@@ -48,11 +46,7 @@ export class WebSocketAuthService {
   private challenges = new Map<string, WebSocketAuthChallenge>();
   private readonly CHALLENGE_TTL = 30000; // 30 seconds
 
-  constructor(
-    private env: Bindings,
-    private db?: D1Database,
-    private cache?: KVNamespace
-  ) {}
+  constructor(private env: Bindings) {}
 
   /**
    * Generate authentication challenge for WebSocket connection
@@ -217,71 +211,12 @@ export class WebSocketAuthService {
     }
   }
 
-  // =================== P2-3: Agent Conversation List from Database ===================
-
-  /**
-   * Get conversations assigned to an agent from database
-   * P2-3 IMPLEMENTED: Replace hardcoded conversation list with database query
-   */
-  private async getAgentConversations(
-    agentId: string,
-    teamIds: number[] = []
-  ): Promise<string[]> {
-    if (!this.db) {
-      console.warn('[WebSocketAuth] Database not available, returning empty conversation list');
-      return [];
-    }
-
-    try {
-      const dbClient = createDbClient(this.db);
-
-      // Note: Individual assignment (assignedUserId) removed - only team-based access control
-      // Query conversations assigned to the agent's current DB-backed teams.
-      let conversationIds: string[] = [];
-
-      const uniqueTeamIds = [...new Set(teamIds.filter(Number.isFinite))];
-      if (uniqueTeamIds.length > 0) {
-        const teamAssigned = await dbClient
-          .select({ id: conversations.id })
-          .from(conversations)
-          .where(inArray(conversations.assignedTeamId, uniqueTeamIds));
-
-        conversationIds = teamAssigned.map(c => c.id);
-      }
-
-      // Include unassigned conversations (available pool)
-      const unassigned = await dbClient
-        .select({ id: conversations.id })
-        .from(conversations)
-        .where(isNull(conversations.assignedTeamId));
-
-      conversationIds.push(...unassigned.map(c => c.id));
-
-      // Remove duplicates
-      const uniqueIds = [...new Set(conversationIds)];
-
-      console.log(`[WebSocketAuth] Agent ${agentId} has access to ${uniqueIds.length} conversations`);
-      return uniqueIds;
-    } catch (error) {
-      console.error('[WebSocketAuth] Error fetching agent conversations:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Get agent conversations with caching
-   * P2-3 IMPLEMENTED: 5-minute TTL cache for performance
-   */
-  async getAgentConversationsWithCache(
-    agentId: string,
-    teamIds: number[] = []
-  ): Promise<string[]> {
-    return this.getAgentConversations(agentId, teamIds);
-  }
-
   /**
    * Check if user has access to a conversation
-   * P2-3 IMPLEMENTED: Database-backed authorization
+   *
+   * Shares the same access predicate as the realtime path
+   * (canConversationBeAccessedBy): a single indexed lookup of the target
+   * conversation instead of scanning every conversation the agent could see.
    */
   async authorizeConversationAccess(
     userId: string,
@@ -295,38 +230,25 @@ export class WebSocketAuthService {
       return true;
     }
 
-    // For agents, check database (with caching)
-    const allowedConversations = await this.getAgentConversationsWithCache(userId, teamIds);
-    const hasAccess = allowedConversations.includes(conversationId);
-
-    if (hasAccess) {
-      console.log(`[WebSocketAuth] Agent ${userId} granted access to conversation ${conversationId}`);
-    } else {
-      console.log(`[WebSocketAuth] Agent ${userId} denied access to conversation ${conversationId}`);
-    }
-
-    return hasAccess;
-  }
-
-  /**
-   * Invalidate agent conversation cache
-   * P2-3 IMPLEMENTED: Call this when conversation assignments change
-   */
-  async invalidateAgentConversationCache(agentId: string): Promise<void> {
-    if (!this.cache) {
-      return;
-    }
-
-    // Legacy cleanup for entries written before WebSocket conversation
-    // authorization was changed to query current DB-backed membership on each
-    // check. KV cannot delete unknown team-key variants safely.
-    const cacheKey = `agent_conversations:${agentId}`;
-
     try {
-      await this.cache.delete(cacheKey);
-      console.log(`  [WebSocketAuth] Invalidated conversation cache for agent ${agentId}`);
+      const { allowed } = await canConversationBeAccessedBy(
+        this.env,
+        { userId, role: userRole, allowedTeamIds: teamIds },
+        conversationId
+      );
+
+      if (allowed) {
+        console.log(`[WebSocketAuth] Agent ${userId} granted access to conversation ${conversationId}`);
+      } else {
+        console.log(`[WebSocketAuth] Agent ${userId} denied access to conversation ${conversationId}`);
+      }
+
+      return allowed;
     } catch (error) {
-      console.error('[WebSocketAuth] Failed to invalidate cache:', error);
+      // Fail closed for this request only: a transient D1 error denies this
+      // single upgrade attempt instead of throwing out of the auth middleware.
+      console.error('[WebSocketAuth] Conversation access check failed:', error);
+      return false;
     }
   }
 }

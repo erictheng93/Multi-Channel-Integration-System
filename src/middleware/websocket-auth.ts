@@ -264,7 +264,7 @@ export const websocketAuth = async (c: Context<{ Bindings: Bindings }>, next: Ne
 
     // P2-3: Check conversation access permissions for agents
     if (conversationId && role === 'agent') {
-      const authService = new WebSocketAuthService(c.env, c.env.DB, c.env.CACHE);
+      const authService = new WebSocketAuthService(c.env);
       const hasAccess = await authService.authorizeConversationAccess(
         userId,
         role,
