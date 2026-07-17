@@ -36,6 +36,9 @@ router.post('/generate-token', jwtAuth, async (c) => {
       displayName,
       role,
       teamId: user.primaryTeamId || 1,
+      // Auth surfaces enforce a `type: 'access'` + jti allowlist.
+      type: 'access' as const,
+      jti: crypto.randomUUID(),
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + (30 * 60) // 30 minutes only
     };

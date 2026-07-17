@@ -3,7 +3,7 @@
 
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
-import { verifyJWT } from '@/utils/auth';
+import { validateAccessToken } from '@/middleware/auth';
 import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -30,9 +30,23 @@ export async function checkReportsAccess(c: Context<{ Bindings: Bindings }>, nex
     }
 
     const token = authHeader.substring(7);
-    const payload = await verifyJWT(token, c.env.JWT_SECRET);
 
-    if (!payload) {
+    // Hardened validation (aligned with jwtAuth): rejects refresh/temp token
+    // classes, checks per-jti revocation, verifies the user is still active,
+    // and refreshes team membership instead of trusting stale JWT claims.
+    let payload;
+    try {
+      ({ payload } = await validateAccessToken(c.env, token));
+    } catch (validationError) {
+      const status = (validationError as { status?: number }).status;
+      // Revocation-check KV outage fails closed as 503 (matches jwtAuth).
+      if (status === HTTP_STATUS.SERVICE_UNAVAILABLE) {
+        return c.json({
+          success: false,
+          error: 'Service temporarily unavailable',
+          timestamp: nowISO()
+        }, HTTP_STATUS.SERVICE_UNAVAILABLE);
+      }
       return c.json({
         success: false,
         error: 'Invalid or expired token',

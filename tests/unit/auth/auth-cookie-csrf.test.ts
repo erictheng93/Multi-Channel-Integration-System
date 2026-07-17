@@ -39,6 +39,7 @@ let jwtPayload: JWTPayload = {
   email: 'agent@example.com',
   role: 'agent',
   type: 'access',
+  jti: 'access-jti',
   iat: Math.floor(Date.now() / 1000),
   exp: Math.floor(Date.now() / 1000) + 3600
 }
@@ -86,6 +87,7 @@ describe('cookie auth CSRF protection', () => {
       email: 'agent@example.com',
       role: 'agent',
       type: 'access',
+      jti: 'access-jti',
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 3600
     }
@@ -146,6 +148,39 @@ describe('cookie auth CSRF protection', () => {
       method: 'GET',
       headers: {
         Cookie: 'mcis_access=temp-token; mcis_csrf=csrf-token'
+      }
+    })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('rejects untyped tokens on general protected routes', async () => {
+    jwtPayload = {
+      ...jwtPayload,
+      type: undefined
+    }
+
+    const response = await createApp('GET').request('/protected', {
+      method: 'GET',
+      headers: {
+        Cookie: 'mcis_access=legacy-token; mcis_csrf=csrf-token'
+      }
+    })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('rejects access tokens without jti on general protected routes', async () => {
+    jwtPayload = {
+      ...jwtPayload,
+      type: 'access',
+      jti: undefined
+    }
+
+    const response = await createApp('GET').request('/protected', {
+      method: 'GET',
+      headers: {
+        Cookie: 'mcis_access=jti-less-token; mcis_csrf=csrf-token'
       }
     })
 

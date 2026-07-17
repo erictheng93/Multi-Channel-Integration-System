@@ -2,7 +2,7 @@
 // Provides secure authentication without exposing JWT tokens in query parameters
 
 import type { Bindings } from '../types';
-import { verifyJWT } from '../utils/auth';
+import { validateAccessTokenPayload } from '@/middleware/auth';
 import { createDbClient } from '../db/drizzle-factory';
 import { conversations } from '../db/schema';
 import { inArray, isNull } from 'drizzle-orm';
@@ -101,7 +101,7 @@ export class WebSocketAuthService {
       }
 
       // Verify JWT token
-      const payload = await verifyJWT(token, this.env.JWT_SECRET);
+      const payload = await validateAccessTokenPayload(this.env, token);
       if (!payload) {
         console.log(`[WebSocketAuth] Invalid JWT token`);
         return { isValid: false };

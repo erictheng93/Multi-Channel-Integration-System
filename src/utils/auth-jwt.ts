@@ -176,7 +176,11 @@ export async function generateSystemToken(
     username: userId, // Use userId as username for system tokens
     displayName,
     role,
-    primaryTeamId: teamId
+    primaryTeamId: teamId,
+    // Auth surfaces enforce a `type: 'access'` + jti allowlist; system tokens
+    // must carry both to authenticate and to be revocable via `revoked:{jti}`.
+    type: 'access' as const,
+    jti: crypto.randomUUID()
   };
 
   return await signJWT(payload, secret, expiresIn);
@@ -193,7 +197,9 @@ export async function generateMonitoringToken(
     displayName: 'System Monitoring',
     role: 'admin' as const,
     primaryTeamId: 1,
-    isSystemToken: true
+    isSystemToken: true,
+    type: 'access' as const,
+    jti: crypto.randomUUID()
   };
 
   return await signJWT(payload, secret, _expiresIn);

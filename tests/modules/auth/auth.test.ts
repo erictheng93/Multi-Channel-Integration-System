@@ -2,7 +2,14 @@
 // 認證模組單元測試
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { signJWT, verifyJWT, hashPassword, verifyPassword, authenticateUser } from '@modules/auth/services/auth';
+import {
+  signJWT,
+  verifyJWT,
+  hashPassword,
+  verifyPassword,
+  authenticateUser,
+  generateSystemToken
+} from '@modules/auth/services/auth';
 
 import type { JWTPayload } from '@/types';
 
@@ -76,6 +83,26 @@ describe('Auth Module - JWT Functions', () => {
 
       await expect(verifyJWT(expiredToken, testSecret))
         .rejects.toThrow('JWT token expired');
+    });
+  });
+
+  describe('generateSystemToken', () => {
+    test('should mint revocable access-class user tokens', async () => {
+      const token = await generateSystemToken(
+        'agent-1',
+        'agent',
+        'Agent One',
+        1,
+        testSecret,
+        3600
+      );
+      const verified = await verifyJWT(token, testSecret);
+
+      expect(verified.userId).toBe('agent-1');
+      expect(verified.role).toBe('agent');
+      expect(verified.type).toBe('access');
+      expect(typeof verified.jti).toBe('string');
+      expect(verified.jti).not.toBe('');
     });
   });
 });
