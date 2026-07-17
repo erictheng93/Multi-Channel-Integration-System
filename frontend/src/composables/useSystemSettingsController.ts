@@ -25,6 +25,49 @@ import type {
 const frontendLogger = createLogger('useSystemSettingsController')
 
 /**
+ * 舊環境的 system_settings 可能以錯誤單位殘留數值（歷史 UI 曾把 messageTimeout
+ * 存成「秒」、sessionExpiry 存成「小時」），落在表單 min/max 之外時整張表單會
+ * 無法送出（HTML 驗證靜默擋下 submit）。載入時先按舊單位升級換算，再對齊表單
+ * step 粒度並夾擠進表單有效範圍，保證表單永遠可儲存。
+ */
+export function normalizeAdvancedSettings(
+  advanced: Partial<AdvancedSettings>
+): Partial<AdvancedSettings> {
+  const fit = (value: number, unit: number, min: number, max: number): number =>
+    Math.min(max, Math.max(min, Math.round(value / unit) * unit))
+
+  const normalized = { ...advanced }
+
+  if (typeof normalized.messageTimeout === 'number') {
+    // < 1000 → 歷史資料以「秒」儲存；正規單位為毫秒（表單以秒編輯，step 1s）
+    const ms =
+      normalized.messageTimeout < 1000
+        ? normalized.messageTimeout * 1000
+        : normalized.messageTimeout
+    normalized.messageTimeout = fit(ms, 1000, 1000, 300000)
+  }
+
+  if (typeof normalized.cacheExpiry === 'number') {
+    // < 60 → 歷史資料以「分鐘」儲存；正規單位為秒（表單以分鐘編輯，step 1min）
+    const seconds =
+      normalized.cacheExpiry < 60 ? normalized.cacheExpiry * 60 : normalized.cacheExpiry
+    normalized.cacheExpiry = fit(seconds, 60, 60, 86400)
+  }
+
+  if (typeof normalized.sessionExpiry === 'number') {
+    // < 300 → 歷史資料以「小時」儲存；正規單位為秒（表單以小時編輯，step 1h，
+    // 下限取表單的 1 小時而非後端的 300 秒，確保換算後的值可被表單接受）
+    const seconds =
+      normalized.sessionExpiry < 300
+        ? normalized.sessionExpiry * 3600
+        : normalized.sessionExpiry
+    normalized.sessionExpiry = fit(seconds, 3600, 3600, 604800)
+  }
+
+  return normalized
+}
+
+/**
  * System Settings Controller Composable
  *
  * @returns Controller object with state and methods
@@ -98,9 +141,9 @@ export function useSystemSettingsController() {
     },
     advanced: {
       messageQueueSize: 1000,
-      messageTimeout: 30,
-      cacheExpiry: 60,
-      sessionExpiry: 24,
+      messageTimeout: 30000,
+      cacheExpiry: 3600,
+      sessionExpiry: 86400,
       enableRateLimit: true,
       enableLogging: true,
       enableMetrics: true,
@@ -170,7 +213,10 @@ export function useSystemSettingsController() {
           Object.assign(settings.general, settingsResponse.data.general)
         }
         if (settingsResponse.data.advanced) {
-          Object.assign(settings.advanced, settingsResponse.data.advanced)
+          Object.assign(
+            settings.advanced,
+            normalizeAdvancedSettings(settingsResponse.data.advanced)
+          )
         }
         // Only merge status, not entire structure
         if (settingsResponse.data.integrations?.line?.status) {

@@ -32,6 +32,42 @@ function collectStrings(node: unknown, path: string, out: Array<{ path: string; 
   }
 }
 
+function getByPath(node: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((current, key) => {
+    if (!current || typeof current !== 'object') {return undefined}
+    return (current as Record<string, unknown>)[key]
+  }, node)
+}
+
+const advancedSettingsFormKeys = [
+  'systemSettings.advanced.title',
+  'systemSettings.advanced.description',
+  'systemSettings.advanced.messaging',
+  'systemSettings.advanced.messageQueueSize',
+  'systemSettings.advanced.messageQueueSizeHint',
+  'systemSettings.advanced.messageTimeout',
+  'systemSettings.advanced.messageTimeoutHint',
+  'systemSettings.advanced.recallWindow.label',
+  'systemSettings.advanced.recallWindow.hint',
+  'systemSettings.advanced.recallWindow.off',
+  'systemSettings.advanced.recallWindow.s30',
+  'systemSettings.advanced.recallWindow.m1',
+  'systemSettings.advanced.recallWindow.m2',
+  'systemSettings.advanced.recallWindow.m5',
+  'systemSettings.advanced.caching',
+  'systemSettings.advanced.cacheExpiry',
+  'systemSettings.advanced.cacheExpiryHint',
+  'systemSettings.advanced.sessionExpiry',
+  'systemSettings.advanced.sessionExpiryHint',
+  'systemSettings.advanced.features',
+  'systemSettings.advanced.enableRateLimit',
+  'systemSettings.advanced.enableRateLimitHint',
+  'systemSettings.advanced.enableLogging',
+  'systemSettings.advanced.enableLoggingHint',
+  'systemSettings.advanced.enableMetrics',
+  'systemSettings.advanced.enableMetricsHint',
+] as const
+
 describe('i18n locale message compilation', () => {
   it.each(Object.keys(locales) as Array<keyof typeof locales>)(
     'has every literal "@" escaped as {\'@\'} in %s (no INVALID_LINKED_FORMAT)',
@@ -60,6 +96,14 @@ describe('i18n locale message compilation', () => {
       })
       const t = i18n.global.t as (_key: string) => string
       expect(t('systemSettings.general.contactEmailPlaceholder')).toBe('admin@example.com')
+    }
+  )
+
+  it.each(Object.keys(locales) as Array<keyof typeof locales>)(
+    'defines every AdvancedSettingsForm translation key in %s',
+    (locale) => {
+      const missingKeys = advancedSettingsFormKeys.filter((key) => typeof getByPath(locales[locale], key) !== 'string')
+      expect(missingKeys).toEqual([])
     }
   )
 })

@@ -258,12 +258,13 @@ describe('System Settings Components', () => {
   describe('AdvancedSettingsForm', () => {
     const mockSettings = {
       messageQueueSize: 100,
-      messageTimeout: 5000,
+      messageTimeout: 30000,
       cacheExpiry: 3600,
-      sessionExpiry: 7200,
+      sessionExpiry: 86400,
       enableRateLimit: true,
       enableLogging: true,
-      enableMetrics: true
+      enableMetrics: true,
+      recallWindowSeconds: 0
     }
 
     it('should render all advanced settings fields', () => {
@@ -278,6 +279,49 @@ describe('System Settings Components', () => {
       expect(wrapper.find('#messageTimeout').exists()).toBe(true)
       expect(wrapper.find('#cacheExpiry').exists()).toBe(true)
       expect(wrapper.find('#sessionExpiry').exists()).toBe(true)
+    })
+
+    it('should display backend time values using the label units', () => {
+      const wrapper = mount(AdvancedSettingsForm, {
+        props: {
+          settings: mockSettings,
+          saving: false
+        }
+      })
+
+      const messageTimeoutInput = wrapper.find<HTMLInputElement>('#messageTimeout')
+      const cacheExpiryInput = wrapper.find<HTMLInputElement>('#cacheExpiry')
+      const sessionExpiryInput = wrapper.find<HTMLInputElement>('#sessionExpiry')
+
+      expect(messageTimeoutInput.element.value).toBe('30')
+      expect(messageTimeoutInput.attributes('min')).toBe('1')
+      expect(messageTimeoutInput.attributes('max')).toBe('300')
+      expect(cacheExpiryInput.element.value).toBe('60')
+      expect(cacheExpiryInput.attributes('min')).toBe('1')
+      expect(cacheExpiryInput.attributes('max')).toBe('1440')
+      expect(sessionExpiryInput.element.value).toBe('24')
+      expect(sessionExpiryInput.attributes('min')).toBe('1')
+      expect(sessionExpiryInput.attributes('max')).toBe('168')
+    })
+
+    it('should emit backend time values when saving user-facing units', async () => {
+      const wrapper = mount(AdvancedSettingsForm, {
+        props: {
+          settings: mockSettings,
+          saving: false
+        }
+      })
+
+      await wrapper.find<HTMLInputElement>('#messageTimeout').setValue(45)
+      await wrapper.find<HTMLInputElement>('#cacheExpiry').setValue(90)
+      await wrapper.find<HTMLInputElement>('#sessionExpiry').setValue(48)
+      await wrapper.find('form').trigger('submit.prevent')
+
+      expect(wrapper.emitted('save')![0][0]).toMatchObject({
+        messageTimeout: 45000,
+        cacheExpiry: 5400,
+        sessionExpiry: 172800
+      })
     })
 
     it('should emit save event on form submit', async () => {

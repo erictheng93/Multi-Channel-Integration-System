@@ -135,9 +135,9 @@ export const getSettings = async (c: Context<{ Bindings: Bindings }>) => {
       },
       advanced: {
         messageQueueSize: 1000,
-        messageTimeout: 30,
-        cacheExpiry: 60,
-        sessionExpiry: 24,
+        messageTimeout: 30000,
+        cacheExpiry: 3600,
+        sessionExpiry: 86400,
         enableRateLimit: true,
         enableLogging: true,
         enableMetrics: true,
