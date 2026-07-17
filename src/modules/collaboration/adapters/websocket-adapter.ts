@@ -12,7 +12,8 @@ import type {
   UpdatePresenceRequest,
   BroadcastEventRequest,
   CollaborationStats,
-  TypingInfo
+  TypingInfo,
+  ConversationId
 } from '../types';
 
 import type { Bindings } from '@/types';
@@ -66,7 +67,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
   /**
    * 獲取對話的查看者列表
    */
-  async getConversationViewers(conversationId: number): Promise<Viewer[]> {
+  async getConversationViewers(conversationId: ConversationId): Promise<Viewer[]> {
     const env = this.getEnv();
 
     try {
@@ -113,7 +114,7 @@ export class WebSocketCollaborationAdapter implements CollaborationAdapter {
   /**
    * 獲取對話房間完整狀態
    */
-  async getConversationState(conversationId: number): Promise<ConversationRoomState> {
+  async getConversationState(conversationId: ConversationId): Promise<ConversationRoomState> {
     const env = this.getEnv();
 
     try {

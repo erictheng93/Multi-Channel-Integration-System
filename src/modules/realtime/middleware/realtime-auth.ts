@@ -4,7 +4,8 @@ import { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
 // REMOVED: SSEAuthPayload (Phase 3 cleanup - replaced with RealtimeAuthPayload)
 // import type { SSEAuthPayload } from '@modules/realtime/types';
-import { verifyJWT } from '@/utils/auth';
+import { validateAccessToken } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import { unauthorizedResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 
@@ -25,6 +26,7 @@ export interface RealtimeAuthPayload {
   role: string;
   primaryTeamId?: number;
   conversationAccess?: number[];
+  allowedTeamIds?: number[];
 }
 
 // Real-time 認證配置
@@ -61,6 +63,7 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
           displayName: existingPayload.displayName,
           role: existingPayload.role,
           primaryTeamId: existingPayload.primaryTeamId,
+          allowedTeamIds: c.get('user')?.allowedTeamIds,
           conversationAccess: getConversationAccess(existingPayload)
         };
       }
@@ -85,12 +88,13 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
         // 驗證 token
         if (token) {
           try {
-            const jwtPayload = await verifyJWT(token, c.env.JWT_SECRET);
+            const { payload: jwtPayload, user } = await validateAccessToken(c.env, token);
             authPayload = {
               userId: Number(jwtPayload.userId),
               displayName: jwtPayload.displayName,
               role: jwtPayload.role,
               primaryTeamId: jwtPayload.primaryTeamId,
+              allowedTeamIds: user.allowedTeamIds,
               conversationAccess: getConversationAccess(jwtPayload)
             };
 
@@ -119,17 +123,11 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
       if (authConfig.requireConversationAccess) {
         const conversationId = c.req.query('conversationId') || c.req.param('conversationId');
         if (conversationId) {
-          const convId = parseInt(conversationId);
-          if (isNaN(convId)) {
-            return unauthorizedResponse(c, 'Invalid conversation ID');
-          }
-
-          // 檢查用戶是否有權訪問此對話
           const hasAccess = await checkConversationAccess(
             authPayload.userId,
-            convId,
+            conversationId,
             authPayload.role,
-            authPayload.primaryTeamId,
+            authPayload.allowedTeamIds,
             c.env
           );
 
@@ -157,71 +155,31 @@ export const realtimeAuth = (config: Partial<RealtimeAuthConfig> = {}) => {
 // 檢查對話訪問權限
 async function checkConversationAccess(
   userId: number,
-  conversationId: number,
+  conversationId: string,
   userRole: string,
-  teamId?: number,
+  allowedTeamIds: number[] = [],
   env?: Bindings
 ): Promise<boolean> {
   if (!env?.DB) {
-    log.warn('[Realtime Auth] 資料庫不可用，跳過權限檢查');
-    return true; // 如果資料庫不可用，允許訪問
+    log.warn('[Realtime Auth] 資料庫不可用，拒絕權限檢查');
+    return false;
   }
 
   try {
-    // Admin 可以訪問所有對話
-    if (userRole === 'admin') {
-      return true;
+    const decision = await canConversationBeAccessedBy(env, {
+      userId,
+      role: userRole,
+      allowedTeamIds,
+    }, conversationId);
+    if (!decision.allowed) {
+      log.warn('User has no access to conversation', {
+        userId,
+        conversationId,
+        userRole,
+        assignedTeamId: decision.conversation?.assignedTeamId,
+      });
     }
-
-    // 查詢對話信息
-    const conversation = await env.DB.prepare(`
-      SELECT
-        c.id,
-        c.assigned_user_id,
-        c.assigned_team_id,
-        c.customer_id,
-        cu.platform
-      FROM conversations c
-      JOIN customers cu ON c.customer_id = cu.id
-      WHERE c.id = ?
-    `).bind(conversationId).first();
-
-    if (!conversation) {
-      log.warn("Conversation not found", { conversationId });
-      return false;
-    }
-
-    // 檢查直接分配
-    if (conversation.assigned_user_id === userId) {
-      return true;
-    }
-
-    // 檢查團隊分配
-    if (teamId && conversation.assigned_team_id === teamId) {
-      return true;
-    }
-
-    // Team 角色可以訪問未分配的對話
-    if (userRole === 'team' && !conversation.assigned_user_id && !conversation.assigned_team_id) {
-      return true;
-    }
-
-    // 檢查是否是團隊成員
-    if (teamId) {
-      const teamMember = await env.DB.prepare(`
-        SELECT 1 FROM team_members
-        WHERE team_id = ? AND user_id = ? AND status = 'active'
-      `).bind(teamId, userId).first();
-
-      if (teamMember && conversation.assigned_team_id === teamId) {
-        return true;
-      }
-    }
-
-    // Note: Individual assignment (assignedUserId) removed - only team-based access control
-    log.warn('User has no access to conversation', { userId, conversationId, userRole, teamId, assignedTeamId: conversation.assigned_team_id });
-
-    return false;
+    return decision.allowed;
 
   } catch (error) {
     log.error('[Realtime Auth] 權限檢查失敗:', {}, error instanceof Error ? error : new Error(String(error)));

@@ -23,7 +23,8 @@ import type {
   JoinConversationRequest,
   LeaveConversationRequest,
   SendTypingRequest,
-  UpdatePresenceRequest
+  UpdatePresenceRequest,
+  ConversationId
 } from '@modules/collaboration/types';
 import type { Bindings } from '@/types';
 
@@ -48,11 +49,11 @@ export const Collaboration = {
     return await collaboration.initialize(env, config);
   },
 
-  async getConversationState(conversationId: number, protocol?: CollaborationProtocol) {
+  async getConversationState(conversationId: ConversationId, protocol?: CollaborationProtocol) {
     return await collaboration.getConversationState(conversationId, protocol);
   },
 
-  async getConversationViewers(conversationId: number, protocol?: CollaborationProtocol) {
+  async getConversationViewers(conversationId: ConversationId, protocol?: CollaborationProtocol) {
     return await collaboration.getConversationViewers(conversationId, protocol);
   },
 

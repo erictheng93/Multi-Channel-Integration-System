@@ -5,49 +5,33 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { collaboration } from '@modules/collaboration/services/collaboration-manager';
 import type { Bindings, JWTPayload } from '@/types';
-import { createDbClient } from '@/db/drizzle-factory';
-import { conversations } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 import { jwtAuth, requireAdmin } from '@/middleware/auth';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 import {
   successResponse,
   errorResponse,
   handleApiError
 } from '@/utils/api-response';
-import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
+import { requireStringParam, getValidatedParam } from '@/middleware/param-validator';
 import { nowISO } from '@/utils/timestamp'
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-async function requireConversationAccess(c: Context<{ Bindings: Bindings }>, conversationId: number) {
+async function requireConversationAccess(c: Context<{ Bindings: Bindings }>, conversationId: string) {
   const user = c.get('user');
   if (!user) {
     return errorResponse(c, 'Authentication required', 401);
   }
-  if (user.role === 'admin') {
-    return null;
-  }
 
-  const db = createDbClient(c.env.DB);
-  const conversation = await db
-    .select({
-      id: conversations.id,
-      assignedTeamId: conversations.assignedTeamId
-    })
-    .from(conversations)
-    .where(eq(conversations.id, String(conversationId)))
-    .get();
-
-  if (!conversation) {
+  const decision = await canConversationBeAccessedBy(c.env, {
+    userId: user.id,
+    role: user.role,
+    allowedTeamIds: user.allowedTeamIds,
+  }, conversationId);
+  if (!decision.conversation) {
     return errorResponse(c, 'Conversation not found', 404);
   }
-
-  if (!conversation.assignedTeamId) {
-    return null;
-  }
-
-  const assignedTeamId = Number(conversation.assignedTeamId);
-  if (user.allowedTeamIds?.includes(assignedTeamId)) {
+  if (decision.allowed) {
     return null;
   }
 
@@ -58,9 +42,9 @@ async function requireConversationAccess(c: Context<{ Bindings: Bindings }>, con
  * 獲取對話的協作狀態
  * GET /api/collaboration/conversations/:id/state
  */
-app.get('/conversations/:id/state', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.get('/conversations/:id/state', jwtAuth, requireStringParam('id'), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = getValidatedParam<number>(c, 'id');
+    const conversationId = getValidatedParam<string>(c, 'id');
     const denied = await requireConversationAccess(c, conversationId);
     if (denied) return denied;
     const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
@@ -76,9 +60,9 @@ app.get('/conversations/:id/state', jwtAuth, requireIntId(), async (c: Context<{
  * 獲取對話的查看者列表
  * GET /api/collaboration/conversations/:id/viewers
  */
-app.get('/conversations/:id/viewers', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.get('/conversations/:id/viewers', jwtAuth, requireStringParam('id'), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = getValidatedParam<number>(c, 'id');
+    const conversationId = getValidatedParam<string>(c, 'id');
     const denied = await requireConversationAccess(c, conversationId);
     if (denied) return denied;
     const protocol = c.req.query('protocol') as 'websocket' | 'http' | undefined;
@@ -94,9 +78,9 @@ app.get('/conversations/:id/viewers', jwtAuth, requireIntId(), async (c: Context
  * 加入對話
  * POST /api/collaboration/conversations/:id/join
  */
-app.post('/conversations/:id/join', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/conversations/:id/join', jwtAuth, requireStringParam('id'), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = getValidatedParam<number>(c, 'id');
+    const conversationId = getValidatedParam<string>(c, 'id');
     const denied = await requireConversationAccess(c, conversationId);
     if (denied) return denied;
     const payload = c.get('jwtPayload') as JWTPayload;
@@ -124,9 +108,9 @@ app.post('/conversations/:id/join', jwtAuth, requireIntId(), async (c: Context<{
  * 離開對話
  * POST /api/collaboration/conversations/:id/leave
  */
-app.post('/conversations/:id/leave', jwtAuth, requireIntId(), async (c: Context<{ Bindings: Bindings }>) => {
+app.post('/conversations/:id/leave', jwtAuth, requireStringParam('id'), async (c: Context<{ Bindings: Bindings }>) => {
   try {
-    const conversationId = getValidatedParam<number>(c, 'id');
+    const conversationId = getValidatedParam<string>(c, 'id');
     const denied = await requireConversationAccess(c, conversationId);
     if (denied) return denied;
     const payload = c.get('jwtPayload') as JWTPayload;
@@ -160,11 +144,11 @@ app.post('/typing', jwtAuth, async (c: Context<{ Bindings: Bindings }>) => {
       return errorResponse(c, 'Invalid status. Must be "start" or "stop"', 400);
     }
 
-    const denied = await requireConversationAccess(c, parseInt(conversationId));
+    const denied = await requireConversationAccess(c, String(conversationId));
     if (denied) return denied;
 
     await collaboration.sendTyping({
-      conversationId: parseInt(conversationId),
+      conversationId: String(conversationId),
       userId: Number(payload.userId),
       status
     });
@@ -196,14 +180,14 @@ app.post('/presence', jwtAuth, async (c: Context<{ Bindings: Bindings }>) => {
     }
 
     if (currentConversation) {
-      const denied = await requireConversationAccess(c, parseInt(currentConversation));
+      const denied = await requireConversationAccess(c, String(currentConversation));
       if (denied) return denied;
     }
 
     await collaboration.updatePresence({
       userId: Number(payload.userId),
       status,
-      currentConversation: currentConversation ? parseInt(currentConversation) : undefined,
+      currentConversation: currentConversation ? String(currentConversation) : undefined,
       metadata
     });
 
