@@ -208,5 +208,18 @@ describe('Message API', () => {
         '/conversations/conv-123/messages/search?q=hello&messageType=text'
       )
     })
+
+    it('should include sender type and from filters', async () => {
+      mockGet.mockResolvedValue({ success: true, data: [] })
+
+      await messageApi.search('conv-123', 'hello', 'text', {
+        senderType: 'customer',
+        from: '2026-07-01T00:00:00.000Z'
+      })
+
+      expect(mockGet).toHaveBeenCalledWith(
+        '/conversations/conv-123/messages/search?q=hello&messageType=text&senderType=customer&from=2026-07-01T00%3A00%3A00.000Z'
+      )
+    })
   })
 })

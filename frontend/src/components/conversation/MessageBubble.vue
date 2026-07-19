@@ -490,6 +490,12 @@
         {{ senderInitials }}
       </div>
       <span class="sender-name">{{ senderName }}</span>
+      <span
+        v-if="isRemoteHistoryResult"
+        class="history-badge"
+      >
+        歷史
+      </span>
     </div>
 
     <!-- Image Preview Modal Component -->
@@ -809,6 +815,10 @@
     return senderName.value[0]
   })
 
+  const isRemoteHistoryResult = computed(() => {
+    return props.message.metadata?.searchSource === 'remote-history'
+  })
+
   // Refactored: Attachment-related computed properties moved to useMessageAttachment composable
   // - attachmentUrl, attachmentName, attachmentSize
   // - fileAttachments, imageAttachments, nonImageAttachments
@@ -882,5 +892,17 @@
 <style scoped>
   /* Import extracted CSS modules */
   @import '@/styles/components/message-bubble/index.css';
-</style>
 
+  .history-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 18px;
+    padding: 0 var(--space-2);
+    border-radius: 999px;
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+</style>

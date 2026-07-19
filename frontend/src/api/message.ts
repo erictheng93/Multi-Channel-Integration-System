@@ -5,6 +5,7 @@
 import {
   conversationMessageContracts,
   type ConversationMessageListParams,
+  type MessageSearchParams,
   type ConversationMessageRecallRequest,
   type SendConversationMessageRequest
 } from '@shared/api-contracts'
@@ -14,6 +15,7 @@ import type { Message, ApiResponse, Platform, PaginatedResponse } from '@/types'
 export type SendMessageRequest = SendConversationMessageRequest & { platform?: Platform }
 
 export type MessageListParams = ConversationMessageListParams
+export type SearchMessageParams = MessageSearchParams
 
 export interface UploadAttachmentRequest {
   file: globalThis.File;
@@ -150,7 +152,12 @@ export const messageApi = {
   },
 
   // 搜索訊息
-  search: async (conversationId: string, query: string, messageType?: string): Promise<ApiResponse<Message[]>> => {
+  search: async (
+    conversationId: string,
+    query: string,
+    messageType?: string,
+    params: Omit<SearchMessageParams, 'messageType'> = {}
+  ): Promise<ApiResponse<Message[]>> => {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };
     }
@@ -161,7 +168,7 @@ export const messageApi = {
     
     return callApiContract(
       conversationMessageContracts.search,
-      { conversationId, query, messageType }
+      { conversationId, query, params: { ...params, messageType } }
     ) as Promise<ApiResponse<Message[]>>;
   }
 }

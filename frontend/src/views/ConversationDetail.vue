@@ -53,6 +53,7 @@
             <MessageSearch
               ref="searchPanel.searchRef.value"
               :messages="messages"
+              :conversation-id="conversationId"
               :auto-expand="true"
               @search-results="searchPanel.handleSearchResults"
               @search-clear="searchPanel.handleSearchClear"

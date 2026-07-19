@@ -231,6 +231,38 @@ function countInsertParams(value: unknown): number {
   }, 0);
 }
 
+function collectConditionText(value: unknown): string {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  if (typeof value !== 'object') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(collectConditionText).join(' ');
+  }
+
+  const record = value as Record<string, unknown>;
+  const parts: string[] = [];
+
+  for (const key of ['name', 'keyAsName', 'tableName', 'value']) {
+    const item = record[key];
+    if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
+      parts.push(String(item));
+    } else if (Array.isArray(item)) {
+      parts.push(item.map(collectConditionText).join(' '));
+    }
+  }
+
+  if (Array.isArray(record.queryChunks)) {
+    parts.push(record.queryChunks.map(collectConditionText).join(' '));
+  }
+
+  return parts.join(' ');
+}
+
 /**
  * Create a chainable Drizzle-like mock.
  * Supports: select().from().where().leftJoin().innerJoin().limit().offset().orderBy().get()
@@ -1561,6 +1593,98 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(body.success).toBe(true);
       // page is NaN in JS which becomes null in JSON
       expect(body.data.page).toBeNull();
+    });
+  });
+
+  // =========================================================================
+  // GET /api/conversations/:id/messages/search
+  // =========================================================================
+
+  describe('GET /api/conversations/:id/messages/search', () => {
+    type SearchResponseBody = {
+      success: boolean;
+      error?: string;
+      data?: unknown[];
+    };
+
+    const searchRow = {
+      id: 'msg-001',
+      conversationId: 'conv-001',
+      senderType: 'customer',
+      customerSenderId: 1,
+      agentSenderId: null,
+      content: '客戶詢問 100% 發票',
+      messageType: 'text',
+      platformMessageId: null,
+      isSent: true,
+      deliveryStatus: 'delivered',
+      metadata: null,
+      sentAt: '2026-07-01T10:00:00Z',
+      recallDeadline: null,
+      recalledAt: null,
+      isRecalled: false,
+      createdAt: '2026-07-01T10:00:00Z',
+      customerName: 'Alice',
+      customerPlatform: 'line',
+      agentName: null,
+    };
+
+    test('returns 403 when permission denied', async () => {
+      permissionCheckResult = false;
+
+      const res = await makeRequest(app, '/api/conversations/conv-001/messages/search?q=發票');
+      const body = (await res.json()) as SearchResponseBody;
+
+      expect(res.status).toBe(403);
+      expect(body.success).toBe(false);
+      expect(body.error).toContain('Permission denied');
+      expect(drizzleMock.select).not.toHaveBeenCalled();
+    });
+
+    test('excludes soft-deleted messages in the search query', async () => {
+      resetMockDbState({ selectResults: [searchRow] });
+
+      const res = await makeRequest(app, '/api/conversations/conv-001/messages/search?q=發票');
+      const body = (await res.json()) as SearchResponseBody;
+      const whereCondition = drizzleMock._selectChain.where.mock.calls.at(-1)?.[0];
+      const conditionText = collectConditionText(whereCondition);
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(body.data).toHaveLength(1);
+      expect(conditionText).toContain('deleted_at');
+    });
+
+    test('escapes LIKE wildcard characters as literal search text', async () => {
+      resetMockDbState({ selectResults: [searchRow] });
+
+      const res = await makeRequest(app, '/api/conversations/conv-001/messages/search?q=100%25_a%5Cb');
+      const whereCondition = drizzleMock._selectChain.where.mock.calls.at(-1)?.[0];
+      const conditionText = collectConditionText(whereCondition);
+
+      expect(res.status).toBe(200);
+      expect(conditionText).toContain('LIKE');
+      expect(conditionText).toContain("ESCAPE '\\'");
+      expect(conditionText).toContain('%100\\%\\_a\\\\b%');
+    });
+
+    test('filters by senderType and from when provided', async () => {
+      resetMockDbState({ selectResults: [searchRow] });
+
+      const res = await makeRequest(
+        app,
+        '/api/conversations/conv-001/messages/search?q=發票&senderType=customer&from=2026-07-01T00%3A00%3A00.000Z'
+      );
+      const body = (await res.json()) as SearchResponseBody;
+      const whereCondition = drizzleMock._selectChain.where.mock.calls.at(-1)?.[0];
+      const conditionText = collectConditionText(whereCondition);
+
+      expect(res.status).toBe(200);
+      expect(body.success).toBe(true);
+      expect(conditionText).toContain('sender_type');
+      expect(conditionText).toContain('customer');
+      expect(conditionText).toContain('created_at');
+      expect(conditionText).toContain('2026-07-01T00:00:00.000Z');
     });
   });
 

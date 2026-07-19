@@ -65,6 +65,14 @@
         </button>
 
         <button
+          class="remote-search-button"
+          :disabled="!canRemoteSearch || isRemoteSearching"
+          @click="searchRemoteHistory"
+        >
+          {{ isRemoteSearching ? '搜尋中...' : '搜尋完整歷史' }}
+        </button>
+
+        <button
           class="close-search"
           @click="closeSearch"
         >
@@ -150,6 +158,33 @@
         class="search-results-info"
       >
         找到 {{ searchResults.length }} 條消息
+        <span
+          v-if="remoteVisibleCount > 0"
+          class="history-badge"
+        >
+          歷史 {{ remoteVisibleCount }}
+        </span>
+      </div>
+
+      <div
+        v-else-if="searchQuery.trim() && !remoteSearched && !isRemoteSearching"
+        class="remote-search-hint"
+      >
+        本地無結果，按 Enter 搜尋完整歷史
+      </div>
+
+      <div
+        v-if="remoteLimitReached"
+        class="remote-search-hint"
+      >
+        僅顯示前 50 筆，請縮小關鍵字
+      </div>
+
+      <div
+        v-if="remoteSearchError"
+        class="remote-search-error"
+      >
+        {{ remoteSearchError }}
       </div>
     </div>
   </div>
@@ -159,6 +194,7 @@
 import { ref, computed, nextTick, watch, onUnmounted } from 'vue'
 import { SearchIcon, XIcon } from '@/components/icons'
 import type { Message } from '@/types'
+import { messageApi } from '@/api/message'
 import { messageIndexService } from '@/services/messageIndexService'
 import { searchHistoryService } from '@/services/searchHistoryService'
 import { searchPerformanceMonitor } from '@/services/searchPerformanceMonitor'
@@ -172,6 +208,7 @@ interface SearchFilters {
 
 interface Props {
   messages: Message[]
+  conversationId?: string
   autoExpand?: boolean
 }
 
@@ -191,6 +228,11 @@ const searchInputRef = ref<HTMLInputElement>()
 const isAdvancedMode = ref(false)
 const showSuggestions = ref(false)
 const searchSuggestions = ref<string[]>([])
+const remoteResults = ref<Message[]>([])
+const isRemoteSearching = ref(false)
+const remoteSearched = ref(false)
+const remoteSearchError = ref('')
+const remoteLimitReached = ref(false)
 
 // Watch autoExpand prop changes
 watch(() => props.autoExpand, (newVal) => {
@@ -213,17 +255,46 @@ const hasActiveFilters = computed(() => {
   return filters.value.messageType || filters.value.senderType || filters.value.dateRange
 })
 
-const searchResults = computed(() => {
+const canRemoteSearch = computed(() => {
+  return Boolean(props.conversationId?.trim() && searchQuery.value.trim())
+})
+
+const localSearchResults = computed(() => {
   if (!searchQuery.value.trim() && !hasActiveFilters.value) {
     return []
   }
 
   // 根據模式選擇搜索方法
-  let results = searchQuery.value.trim()
+  return searchQuery.value.trim()
     ? (isAdvancedMode.value
         ? messageIndexService.advancedSearch(searchQuery.value)
         : messageIndexService.search(searchQuery.value))
     : props.messages
+})
+
+const remoteOnlyResultIds = computed(() => {
+  const localIds = new Set(localSearchResults.value.map(message => message.id))
+  return new Set(remoteResults.value.filter(message => !localIds.has(message.id)).map(message => message.id))
+})
+
+const markRemoteResult = (message: Message): Message => ({
+  ...message,
+  metadata: {
+    ...message.metadata,
+    searchSource: 'remote-history'
+  }
+})
+
+const searchResults = computed(() => {
+  if (!searchQuery.value.trim() && !hasActiveFilters.value) {
+    return []
+  }
+
+  const localIds = new Set(localSearchResults.value.map(message => message.id))
+  let results = [
+    ...localSearchResults.value,
+    ...remoteResults.value.filter(message => !localIds.has(message.id)).map(markRemoteResult)
+  ]
 
   // 應用額外的過濾條件
   // 消息類型過濾
@@ -233,7 +304,7 @@ const searchResults = computed(() => {
 
   // 發送者類型過濾
   if (filters.value.senderType) {
-    results = results.filter(m => m.senderType === filters.value.senderType)
+    results = results.filter(m => matchesSenderType(m))
   }
 
   // 日期範圍過濾
@@ -241,7 +312,11 @@ const searchResults = computed(() => {
     results = results.filter(m => matchesDateRange(m))
   }
 
-  return results
+  return results.sort((a, b) => Number(new Date(b.createdAt)) - Number(new Date(a.createdAt)))
+})
+
+const remoteVisibleCount = computed(() => {
+  return searchResults.value.filter(message => remoteOnlyResultIds.value.has(message.id)).length
 })
 
 // 方法
@@ -267,6 +342,77 @@ const matchesDateRange = (message: Message): boolean => {
     }
     default:
       return true
+  }
+}
+
+const matchesSenderType = (message: Message): boolean => {
+  if (filters.value.senderType === 'customer') {
+    return message.senderType === 'customer' || message.senderType === 'user'
+  }
+  return message.senderType === filters.value.senderType
+}
+
+const getDateRangeFrom = (): string | undefined => {
+  if (!filters.value.dateRange) {
+    return undefined
+  }
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  switch (filters.value.dateRange) {
+    case 'today':
+      return today.toISOString()
+    case 'week':
+      return new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    case 'month':
+      return new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    default:
+      return undefined
+  }
+}
+
+const clearRemoteSearch = () => {
+  remoteResults.value = []
+  remoteSearched.value = false
+  remoteSearchError.value = ''
+  remoteLimitReached.value = false
+}
+
+const searchRemoteHistory = async () => {
+  const query = searchQuery.value.trim()
+  const conversationId = props.conversationId?.trim()
+
+  if (!query || !conversationId || isRemoteSearching.value) {
+    return
+  }
+
+  isRemoteSearching.value = true
+  remoteResults.value = []
+  remoteLimitReached.value = false
+  remoteSearched.value = false
+  remoteSearchError.value = ''
+
+  try {
+    const response = await messageApi.search(conversationId, query, filters.value.messageType || undefined, {
+      senderType: filters.value.senderType || undefined,
+      from: getDateRangeFrom()
+    })
+
+    remoteSearched.value = true
+
+    if (!response.success) {
+      remoteSearchError.value = response.error || '搜尋完整歷史失敗'
+      return
+    }
+
+    remoteResults.value = response.data || []
+    remoteLimitReached.value = remoteResults.value.length === 50
+  } catch (error) {
+    remoteSearched.value = true
+    remoteSearchError.value = error instanceof Error ? error.message : '搜尋完整歷史失敗'
+  } finally {
+    isRemoteSearching.value = false
   }
 }
 
@@ -341,11 +487,15 @@ const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     event.preventDefault()
     closeSearch()
+  } else if (event.key === 'Enter') {
+    event.preventDefault()
+    searchRemoteHistory()
   }
 }
 
 const clearSearch = () => {
   searchQuery.value = ''
+  clearRemoteSearch()
   handleSearch()
 }
 
@@ -361,9 +511,14 @@ const clearFilters = () => {
 const closeSearch = () => {
   isExpanded.value = false
   searchQuery.value = ''
+  clearRemoteSearch()
   clearFilters()
   emit('search-clear')
 }
+
+watch(searchQuery, () => {
+  clearRemoteSearch()
+})
 
 // 監聽搜索結果變化
 watch(searchResults, (newResults) => {
@@ -549,6 +704,34 @@ defineExpose({
   border-color: var(--primary-400);
 }
 
+.remote-search-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 112px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  background: var(--primary-50);
+  color: var(--primary-700);
+  cursor: pointer;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.remote-search-button:hover:not(:disabled) {
+  background: var(--primary-100);
+  color: var(--primary-800);
+}
+
+.remote-search-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .search-suggestions {
   position: absolute;
   top: 100%;
@@ -660,6 +843,37 @@ defineExpose({
   text-align: center;
 }
 
+.history-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: white;
+  color: var(--blue-700);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.remote-search-hint,
+.remote-search-error {
+  margin-top: var(--space-3);
+  padding: var(--space-2);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.remote-search-hint {
+  background: var(--gray-50);
+  color: var(--gray-600);
+}
+
+.remote-search-error {
+  background: var(--red-50);
+  color: var(--red-700);
+}
+
 /* 響應式設計 */
 @media (max-width: 768px) {
   .search-trigger {
@@ -687,6 +901,12 @@ defineExpose({
   .close-search {
     width: 28px;
     height: 28px;
+  }
+
+  .remote-search-button {
+    min-width: auto;
+    padding: 0 var(--space-2);
+    font-size: 0.75rem;
   }
 
   .search-filters {
