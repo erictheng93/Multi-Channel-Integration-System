@@ -65,5 +65,10 @@ with codebase-memory MCP tools.
 
 ## Required checks
 - Before broad code edits, use codebase-memory search/trace tools to understand the target.
-- Before committing, run `detect_changes` to verify the affected scope is expected.
+- Before committing, run MCP `detect_changes` to verify the affected scope is expected.
+  If the Codex MCP tool channel does not expose `detect_changes` or the transport fails, use the
+  CLI fallback instead and report that fallback explicitly:
+  `printf '%s' '{"project":"Users-eric-Documents-Code-Multi-Channel-Integration-System"}' | rtk /Users/eric/.local/bin/codebase-memory-mcp cli detect_changes`.
+- To verify the local codebase-memory installation and fallback path, run
+  `rtk bash scripts/check-codebase-memory.sh`.
 <!-- codebase-memory-mcp:end -->
