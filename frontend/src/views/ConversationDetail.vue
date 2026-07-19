@@ -20,6 +20,7 @@
         @refresh="handleRefreshMessages"
         @search="searchPanel.toggle"
         @export="showExportDialog = true"
+        @mark-unread="handleMarkUnread"
       />
 
       <!--  Transferred Conversation Banner Component (轉出本團隊) -->
@@ -513,6 +514,17 @@ const handleTypingStop = controller.onTypingStop
 // Forward controller methods to match template bindings
 const loadMoreMessages = controller.loadMoreMessages
 const retryFailedMessage = controller.retryMessage
+
+// 標示為未讀：成功後導回列表，避免停留在對話頁再次觸發自動已讀
+async function handleMarkUnread() {
+  const success = await conversationsStore.markAsUnread(conversationId.value)
+  if (success) {
+    showSuccess('已標示為未讀')
+    goBack()
+  } else {
+    showError('標記未讀失敗，請稍後再試')
+  }
+}
 
 async function handleRefreshMessages() {
   try {

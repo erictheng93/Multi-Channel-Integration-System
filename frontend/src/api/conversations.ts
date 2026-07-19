@@ -332,6 +332,14 @@ export const conversationApi = {
     return callApiContract(conversationContracts.markAsRead, { conversationId });
   },
 
+  // 標記對話為未讀（清除 lastReadAt，未讀數回復為最後客服回覆後的客戶訊息數）
+  markAsUnread: async (conversationId: string): Promise<ApiResponse<{ unreadCount: number }>> => {
+    if (!conversationId?.trim()) {
+      return { success: false, error: '對話 ID 不能為空' };
+    }
+    return callApiContract(conversationContracts.markAsUnread, { conversationId });
+  },
+
   // 設置對話標籤
   setTags: async (conversationId: string, tags: string[]): Promise<ApiResponse<void>> => {
     if (!conversationId?.trim()) {

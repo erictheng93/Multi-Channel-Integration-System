@@ -648,6 +648,38 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  // 標記為未讀：後端清除 lastReadAt 並回傳重算後的未讀數
+  const markAsUnread = async (conversationId: string) => {
+    if (!conversationId) { return false }
+
+    try {
+      const response = await conversationApi.markAsUnread(conversationId)
+      if (response.success) {
+        const unreadCount = response.data?.unreadCount ?? 0
+
+        const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
+        if (conversationIndex !== -1) {
+          const current = conversations.value[conversationIndex]
+          if (current) {
+            conversations.value[conversationIndex] = { ...current, unreadCount }
+          }
+        }
+
+        if (currentConversation.value && currentConversation.value.id === conversationId) {
+          currentConversation.value.unreadCount = unreadCount
+        }
+
+        return true
+      } else {
+        handleError(response.error, '標記未讀失敗')
+        return false
+      }
+    } catch (err) {
+      handleError(err, '網路錯誤，標記未讀失敗')
+      return false
+    }
+  }
+
   const loadMore = async () => {
     if (pagination.value.page >= pagination.value.totalPages) { return }
     await fetchConversations(filters.value, pagination.value.page + 1, true)
@@ -803,6 +835,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     transferConversationToTeam,
     unassignConversation,
     markAsRead,
+    markAsUnread,
     loadMore,
     loadMoreConversations,
     refresh,

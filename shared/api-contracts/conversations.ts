@@ -262,6 +262,11 @@ export const conversationContracts = {
     path: ({ conversationId }) => `/conversations/${conversationId}/read`
   }),
 
+  markAsUnread: defineApiContract<{ conversationId: string }, void, { unreadCount: number }>({
+    method: 'PUT',
+    path: ({ conversationId }) => `/conversations/${conversationId}/unread`
+  }),
+
   setTags: defineApiContract<{ conversationId: string }, { tags: string[] }, void>({
     method: 'PUT',
     path: ({ conversationId }) => `/conversations/${conversationId}/tags`
