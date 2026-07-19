@@ -77,6 +77,16 @@
     </div>
 
     <div class="header-actions">
+      <!-- 標示為未讀按鈕：清除已讀狀態，讓其他客服在列表看到未讀徽章 -->
+      <button
+        class="header-action-btn"
+        :disabled="!canMarkUnread"
+        :title="canMarkUnread ? '標示為未讀' : '最後一則訊息並非客戶傳送，無法標示為未讀'"
+        @click="$emit('markUnread')"
+      >
+        <MailIcon :size="18" />
+      </button>
+
       <!-- 搜索按鈕 -->
       <button
         class="header-action-btn"
@@ -190,10 +200,11 @@ defineEmits<{
   refresh: []
   search: []
   export: []
+  markUnread: []
 }>()
 const frontendLogger = createLogger('ConversationHeader')
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon } from '@/components/icons'
+import { ArrowLeftIcon, RefreshIcon, UserPlusIcon, ChevronDownIcon, SearchIcon, DownloadIcon, MailIcon } from '@/components/icons'
 import PlatformBadge from '../ui/PlatformBadge.vue'
 import StatusBadge from '../ui/StatusBadge.vue'
 import AssignmentBadge from '../ui/AssignmentBadge.vue'
@@ -224,6 +235,12 @@ let tagLoadRequestId = 0
 
 // Toast notifications
 const { showSuccess, showError } = useToast()
+
+// 只有最後一則訊息來自客戶時才能標示為未讀
+// （未讀數公式以「最後客服回覆之後的客戶訊息」計算，客服已回覆時清除已讀無效果）
+const canMarkUnread = computed(() => {
+  return props.conversation?.lastMessage?.senderType === 'customer'
+})
 
 const customerInitials = computed(() => {
   const name = props.conversation?.customer?.name
@@ -516,6 +533,17 @@ defineExpose({
   background: var(--hover-color, #f3f4f6);
   color: var(--primary-color, #6366f1);
   border-color: var(--primary-color, #6366f1);
+}
+
+.header-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.header-action-btn:disabled:hover {
+  background: var(--background-color, white);
+  color: var(--gray-600, #4b5563);
+  border-color: var(--border-color, #e5e7eb);
 }
 
 /* 結束對話按鈕樣式 - 暫時移除，未來有需求再加入 */

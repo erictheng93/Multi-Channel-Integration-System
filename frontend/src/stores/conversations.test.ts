@@ -8,6 +8,7 @@ const mockConversationApi = {
   getMessages: vi.fn(),
   assignConversation: vi.fn(),
   markAsRead: vi.fn(),
+  markAsUnread: vi.fn(),
   getStats: vi.fn()
 }
 
@@ -274,6 +275,49 @@ describe('Conversations Store', () => {
     })
 
     // Note: closeConversation test removed - status cleanup
+
+    it('should mark conversation as unread and apply the returned unread count', async () => {
+      mockConversationApi.markAsUnread.mockResolvedValue({
+        success: true,
+        data: { unreadCount: 3 }
+      })
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([
+        { id: 'conv-1', userId: '1', status: 'active', platform: 'line', unreadCount: 0, lastMessageAt: Date.now(), createdAt: Date.now(), updatedAt: Date.now() }
+      ] as never)
+
+      const result = await store.markAsUnread('conv-1')
+
+      expect(result).toBe(true)
+      expect(mockConversationApi.markAsUnread).toHaveBeenCalledWith('conv-1')
+      expect(store.conversations[0]?.unreadCount).toBe(3)
+    })
+
+    it('should return false when mark as unread fails', async () => {
+      mockConversationApi.markAsUnread.mockResolvedValue({
+        success: false,
+        error: 'Permission denied'
+      })
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      const result = await store.markAsUnread('conv-1')
+
+      expect(result).toBe(false)
+    })
+
+    it('should return false for an empty conversation id without calling the API', async () => {
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+
+      const result = await store.markAsUnread('')
+
+      expect(result).toBe(false)
+      expect(mockConversationApi.markAsUnread).not.toHaveBeenCalled()
+    })
   })
 
   describe('Statistics', () => {
