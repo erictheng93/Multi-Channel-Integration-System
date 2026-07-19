@@ -27,6 +27,14 @@ const mockSearch = vi.fn().mockReturnValue([])
 const mockAdvancedSearch = vi.fn().mockReturnValue([])
 const mockBuildIndex = vi.fn()
 
+const mockMessageApiSearch = vi.fn()
+
+vi.mock('@/api/message', () => ({
+  messageApi: {
+    search: (...args: unknown[]) => mockMessageApiSearch(...args)
+  }
+}))
+
 vi.mock('@/services/messageIndexService', () => ({
   messageIndexService: {
     search: (...args: unknown[]) => mockSearch(...args),
@@ -103,6 +111,7 @@ describe('MessageSearch.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    mockMessageApiSearch.mockResolvedValue({ success: true, data: [] })
   })
 
   afterEach(() => {
@@ -527,6 +536,179 @@ describe('MessageSearch.vue', () => {
       await input.trigger('keydown', { key: 'Escape' })
 
       expect(wrapper.emitted('search-clear')).toBeTruthy()
+    })
+
+    it('按 Enter 應搜尋完整歷史', async () => {
+      mockSearch.mockReturnValue([])
+      mockMessageApiSearch.mockResolvedValue({ success: true, data: [] })
+
+      wrapper = createWrapper({
+        messages: createMessages(3),
+        conversationId: 'conv-123',
+        autoExpand: true
+      })
+
+      const input = wrapper.find('.search-input')
+      await input.setValue('發票')
+      await input.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+
+      expect(mockMessageApiSearch).toHaveBeenCalledWith(
+        'conv-123',
+        '發票',
+        undefined,
+        { senderType: undefined, from: undefined }
+      )
+    })
+  })
+
+  // ==================== 完整歷史搜索 ====================
+
+  describe('完整歷史搜索', () => {
+    it('按鈕應觸發遠端搜索並合併本地結果', async () => {
+      const localMessage = createMessage({
+        id: 'local-1',
+        content: 'local 發票',
+        createdAt: '2026-07-19T10:00:00.000Z'
+      })
+      const remoteMessage = createMessage({
+        id: 'remote-1',
+        content: 'history 發票',
+        senderType: 'user',
+        createdAt: '2026-07-18T10:00:00.000Z'
+      })
+      mockSearch.mockReturnValue([localMessage])
+      mockMessageApiSearch.mockResolvedValue({ success: true, data: [remoteMessage] })
+
+      wrapper = createWrapper({
+        messages: [localMessage],
+        conversationId: 'conv-123',
+        autoExpand: true
+      })
+
+      const input = wrapper.find('.search-input')
+      await input.setValue('發票')
+      await input.trigger('input')
+      await wrapper.find('.remote-search-button').trigger('click')
+      await flushPromises()
+      await nextTick()
+
+      const latestResults = wrapper.emitted('search-results')?.at(-1)?.[0] as Message[]
+      expect(latestResults.map(message => message.id)).toEqual(['local-1', 'remote-1'])
+      expect(latestResults[1].metadata?.searchSource).toBe('remote-history')
+      expect(wrapper.find('.history-badge').text()).toContain('歷史 1')
+    })
+
+    it('遠端搜索應去重並依時間排序', async () => {
+      const localMessage = createMessage({
+        id: 'shared-1',
+        content: '發票',
+        createdAt: '2026-07-17T10:00:00.000Z'
+      })
+      const newerRemoteMessage = createMessage({
+        id: 'remote-1',
+        content: '發票',
+        createdAt: '2026-07-19T10:00:00.000Z'
+      })
+      mockSearch.mockReturnValue([localMessage])
+      mockMessageApiSearch.mockResolvedValue({
+        success: true,
+        data: [localMessage, newerRemoteMessage]
+      })
+
+      wrapper = createWrapper({
+        messages: [localMessage],
+        conversationId: 'conv-123',
+        autoExpand: true
+      })
+
+      const input = wrapper.find('.search-input')
+      await input.setValue('發票')
+      await input.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+      await nextTick()
+
+      const latestResults = wrapper.emitted('search-results')?.at(-1)?.[0] as Message[]
+      expect(latestResults.map(message => message.id)).toEqual(['remote-1', 'shared-1'])
+    })
+
+    it('遠端搜索失敗時顯示錯誤且保留本地結果', async () => {
+      const localMessage = createMessage({ id: 'local-1', content: '發票' })
+      mockSearch.mockReturnValue([localMessage])
+      mockMessageApiSearch.mockResolvedValue({ success: false, error: 'remote failed' })
+
+      wrapper = createWrapper({
+        messages: [localMessage],
+        conversationId: 'conv-123',
+        autoExpand: true
+      })
+
+      const input = wrapper.find('.search-input')
+      await input.setValue('發票')
+      await input.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+      await nextTick()
+
+      const latestResults = wrapper.emitted('search-results')?.at(-1)?.[0] as Message[]
+      expect(latestResults.map(message => message.id)).toEqual(['local-1'])
+      expect(wrapper.find('.remote-search-error').text()).toContain('remote failed')
+    })
+
+    it('遠端剛好 50 筆時顯示縮小關鍵字提示，查詢變更後清除', async () => {
+      mockSearch.mockReturnValue([])
+      mockMessageApiSearch.mockResolvedValue({
+        success: true,
+        data: createMessages(50)
+      })
+
+      wrapper = createWrapper({
+        messages: [],
+        conversationId: 'conv-123',
+        autoExpand: true
+      })
+
+      const input = wrapper.find('.search-input')
+      await input.setValue('發票')
+      await input.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+      await nextTick()
+
+      expect(wrapper.text()).toContain('僅顯示前 50 筆')
+
+      await input.setValue('發票號碼')
+      await nextTick()
+
+      expect(wrapper.text()).not.toContain('僅顯示前 50 筆')
+    })
+
+    it('發送者與日期篩選會傳給遠端搜索', async () => {
+      vi.setSystemTime(new Date('2026-07-19T12:00:00.000Z'))
+      mockSearch.mockReturnValue([])
+
+      wrapper = createWrapper({
+        messages: [],
+        conversationId: 'conv-123',
+        autoExpand: true
+      })
+
+      const input = wrapper.find('.search-input')
+      await input.setValue('發票')
+      const selects = wrapper.findAll('.filter-select')
+      await selects[0].setValue('text')
+      await selects[1].setValue('customer')
+      await selects[2].setValue('week')
+      await input.trigger('keydown', { key: 'Enter' })
+      await flushPromises()
+
+      expect(mockMessageApiSearch).toHaveBeenCalledWith(
+        'conv-123',
+        '發票',
+        'text',
+        {
+          senderType: 'customer',
+          from: '2026-07-12T00:00:00.000Z'
+        }
+      )
     })
   })
 

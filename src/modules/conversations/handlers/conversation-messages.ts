@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, count, inArray, like } from 'drizzle-orm';
+import { eq, desc, and, count, inArray, isNull, gte, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, messages, customers, agents, fileAttachments } from '@/db/schema';
 import type { Bindings, JWTPayload } from '@/types';
@@ -65,6 +65,8 @@ const resolveAttachmentUrl = async (
 };
 
 const conversationMessagesHandler = new Hono<{ Bindings: Bindings }>();
+
+const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, match => `\\${match}`);
 
 type ConversationMessageContractRow = {
   id: string;
@@ -628,6 +630,8 @@ conversationMessagesHandler.get('/:id/messages/search', jwtAuth, async (c) => {
     const conversationId = c.req.param('id')!;
     const query = (c.req.query('q') || '').trim();
     const messageType = c.req.query('messageType');
+    const senderType = c.req.query('senderType');
+    const from = c.req.query('from');
 
     if (!query) {
       return c.json({ success: false, error: 'Search query is required' }, HTTP_STATUS.BAD_REQUEST);
@@ -650,13 +654,21 @@ conversationMessagesHandler.get('/:id/messages/search', jwtAuth, async (c) => {
     }
 
     const db = createDbClient(c.env.DB);
+    const escapedQuery = `%${escapeLikePattern(query)}%`;
     const whereConditions = [
       eq(messages.conversationId, conversationId),
-      like(messages.content, `%${query}%`)
+      isNull(messages.deletedAt),
+      sql`${messages.content} LIKE ${escapedQuery} ESCAPE '\\'`
     ];
 
     if (messageType) {
       whereConditions.push(eq(messages.messageType, messageType));
+    }
+    if (senderType === 'customer' || senderType === 'agent') {
+      whereConditions.push(eq(messages.senderType, senderType));
+    }
+    if (from) {
+      whereConditions.push(gte(messages.createdAt, from));
     }
 
     const rows = await db

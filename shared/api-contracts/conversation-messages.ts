@@ -20,6 +20,12 @@ export interface ConversationMessageListParams {
   messageType?: 'text' | 'image' | 'file'
 }
 
+export interface MessageSearchParams {
+  messageType?: string
+  senderType?: string
+  from?: string
+}
+
 export interface ConversationMessageUploadResponse {
   url: string
   filename: string
@@ -65,11 +71,17 @@ export function buildConversationMessageQuery(params?: ConversationMessageListPa
   return query ? `?${query}` : ''
 }
 
-export function buildMessageSearchQuery(query: string, messageType?: string): string {
+export function buildMessageSearchQuery(query: string, params?: MessageSearchParams): string {
   const queryParams = new URLSearchParams()
   queryParams.append('q', query.trim())
-  if (messageType) {
-    queryParams.append('messageType', messageType)
+  if (params?.messageType) {
+    queryParams.append('messageType', params.messageType)
+  }
+  if (params?.senderType) {
+    queryParams.append('senderType', params.senderType)
+  }
+  if (params?.from) {
+    queryParams.append('from', params.from)
   }
   return queryParams.toString()
 }
@@ -141,12 +153,12 @@ export const conversationMessageContracts = {
   }),
 
   search: defineApiContract<
-    { conversationId: string; query: string; messageType?: string },
+    { conversationId: string; query: string; params?: MessageSearchParams },
     void,
     Message[]
   >({
     method: 'GET',
-    path: ({ conversationId, query, messageType }) =>
-      `/conversations/${conversationId}/messages/search?${buildMessageSearchQuery(query, messageType)}`
+    path: ({ conversationId, query, params }) =>
+      `/conversations/${conversationId}/messages/search?${buildMessageSearchQuery(query, params)}`
   })
 } as const

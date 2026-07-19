@@ -4,6 +4,7 @@
     <MessageSearch
       v-if="enableSearch"
       :messages="messages"
+      :conversation-id="conversationId"
       @search-results="handleSearchResults"
     />
 
@@ -108,6 +109,8 @@ const props = withDefaults(
   defineProps<{
     /** 消息列表 */
     messages: Message[]
+    /** 對話 ID，用於搜尋完整歷史 */
+    conversationId?: string
     /** 顯示的消息列表（搜索結果或平滑加載） */
     displayedMessages?: Message[]
     /** 是否正在加載 */
