@@ -57,8 +57,9 @@ export function useRecallCountdown(message: ComputedRef<Message>): RecallCountdo
 
   const isBuffered = computed(() => {
     // 已撤回的訊息不再倒數、不再可撤回（後端撤回後 deliveryStatus 仍為
-    // buffered，以 metadata.isRecalled 為準）
-    if (message.value.metadata?.isRecalled === true) {
+    // buffered）。isRecalled 有兩個來源：歷史載入回傳 DB 頂層欄位、
+    // WS 撤回事件寫 metadata.isRecalled — 兩者都要認。
+    if (message.value.isRecalled === true || message.value.metadata?.isRecalled === true) {
       return false
     }
     const status = message.value.deliveryStatus ?? message.value.status

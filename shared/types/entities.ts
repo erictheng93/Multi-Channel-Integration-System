@@ -119,6 +119,10 @@ export interface Message {
   status?: DeliveryStatus // 別名，向後兼容
   // 撤回截止時間（ISO 字串）；deliveryStatus='buffered' 時存在，前端據此倒數
   recallDeadline?: string | null
+  // 已撤回：後端 DB 頂層欄位（歷史載入時來源）；WS 撤回事件另寫 metadata.isRecalled，
+  // 前端判斷需同時檢查兩者（見 MessageBubble / useRecallCountdown）
+  isRecalled?: boolean
+  recalledAt?: string | null
   metadata?: MessageMetadata
   attachments?: MessageAttachment[] // 附件陣列 (legacy)
   file_attachments?: FileAttachmentData[] // 檔案附件陣列 (新格式，用於 Flex Message Card 顯示)

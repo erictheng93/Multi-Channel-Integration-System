@@ -140,6 +140,38 @@
   white-space: nowrap;
 }
 
+/* ─── 已撤回氣泡：灰色 ghost 樣式 ───
+   與正常已送出的藍色氣泡明確區隔（含 outgoing 的白字/白 meta 全部覆寫回灰階） */
+.message-recalled .message-content,
+.message-recalled.message-outgoing .message-content {
+  background: var(--gray-100);
+  border-color: transparent;
+  color: var(--gray-500);
+  box-shadow: none;
+}
+
+.message-recalled.message-outgoing .message-content::before {
+  border-left-color: var(--gray-100);
+}
+
+.message-recalled.message-incoming .message-content::before {
+  border-right-color: var(--gray-100);
+}
+
+.recalled-text {
+  font-style: italic;
+  color: #8E8E93;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: var(--space-2);
+}
+
+.message-recalled .message-time,
+.message-recalled.message-outgoing .message-time,
+.message-recalled .agent-attribution {
+  color: var(--gray-400);
+}
+
 /* 撤回窗口倒數標籤：pastel 橘 + 膠囊形（Apple-Native 設計系統） */
 .status-buffered {
   display: flex;
