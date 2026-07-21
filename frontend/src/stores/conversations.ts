@@ -657,6 +657,12 @@ export const useConversationsStore = defineStore('conversations', () => {
       if (response.success) {
         const unreadCount = response.data?.unreadCount ?? 0
 
+        // 未讀數重算為 0 = 客服已回覆後的 no-op：視為失敗，不要把 0 寫回列表
+        if (unreadCount === 0) {
+          handleError('客服已回覆，無法標示為未讀', '標記未讀失敗')
+          return false
+        }
+
         const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
         if (conversationIndex !== -1) {
           const current = conversations.value[conversationIndex]

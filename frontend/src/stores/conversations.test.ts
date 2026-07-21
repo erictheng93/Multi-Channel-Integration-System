@@ -318,6 +318,25 @@ describe('Conversations Store', () => {
       expect(result).toBe(false)
       expect(mockConversationApi.markAsUnread).not.toHaveBeenCalled()
     })
+
+    it('should treat a recomputed unread count of 0 as failure and keep the list row untouched', async () => {
+      mockConversationApi.markAsUnread.mockResolvedValue({
+        success: true,
+        data: { unreadCount: 0 }
+      })
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([
+        { id: 'conv-1', userId: '1', status: 'active', platform: 'line', unreadCount: 2, lastMessageAt: Date.now(), createdAt: Date.now(), updatedAt: Date.now() }
+      ] as never)
+
+      const result = await store.markAsUnread('conv-1')
+
+      expect(result).toBe(false)
+      expect(store.conversations[0]?.unreadCount).toBe(2)
+      expect(store.error).toBe('客服已回覆，無法標示為未讀')
+    })
   })
 
   describe('Statistics', () => {

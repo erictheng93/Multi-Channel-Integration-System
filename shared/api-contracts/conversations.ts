@@ -41,6 +41,13 @@ export interface RawConversationData {
     displayName?: string
     email?: string
   }
+  lastMessage?: {
+    id: string
+    content: string
+    createdAt: string
+    senderType: string
+    messageType: string
+  } | null
   lastMessageContent?: string
   lastMessageAtActual?: string
   unreadCount?: number

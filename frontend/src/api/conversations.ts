@@ -99,7 +99,8 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       id: `last-${rawData.id}`,
       conversationId: rawData.id,
       senderId: customerId ? customerId.toString() : '',
-      senderType: 'customer' as const,
+      // 後端回傳真實 senderType；缺漏時保守視為 customer（維持舊行為）
+      senderType: rawData.lastMessage?.senderType === 'agent' ? ('agent' as const) : ('customer' as const),
       content: rawData.lastMessageContent,
       messageType: 'text' as const,
       platform: customerPlatform,
