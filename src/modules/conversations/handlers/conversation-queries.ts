@@ -58,6 +58,48 @@ type ConversationJoinRow = {
 const D1_MAX_BOUND_PARAMETERS = 100;
 const D1_SAFE_ID_CHUNK_SIZE = 90;
 
+export function createConversationUnreadCountQuery(conversationIds: string[]): string {
+  const unreadValueTuples = conversationIds.map(() => '(?)').join(',');
+  return `
+        WITH ids(id) AS (VALUES ${unreadValueTuples})
+        SELECT
+          m.conversation_id as conversationId,
+          COUNT(*) as unreadCount
+        FROM messages m
+        INNER JOIN (
+          SELECT
+            c.id as id,
+            MAX(
+              COALESCE(la.last_agent_at, '1970-01-01'),
+              COALESCE(c.last_read_at, '1970-01-01')
+            ) as unread_threshold
+          FROM conversations c
+          LEFT JOIN (
+            SELECT conversation_id, MAX(created_at) as last_agent_at
+            FROM messages
+            WHERE conversation_id IN (SELECT id FROM ids)
+              AND sender_type IN ('agent', 'system')
+              AND deleted_at IS NULL
+            GROUP BY conversation_id
+          ) la ON la.conversation_id = c.id
+          WHERE c.id IN (SELECT id FROM ids)
+        ) t ON t.id = m.conversation_id
+        WHERE m.sender_type = 'customer'
+          AND m.deleted_at IS NULL
+          AND m.created_at > t.unread_threshold
+        GROUP BY m.conversation_id
+      `;
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function clampPageSize(pageSize: number): number {
+  return Math.min(Math.max(pageSize, 1), D1_SAFE_ID_CHUNK_SIZE);
+}
+
 function getSafeIdChunkSize(extraBoundParams = 0): number {
   return Math.max(1, Math.min(D1_SAFE_ID_CHUNK_SIZE, D1_MAX_BOUND_PARAMETERS - extraBoundParams));
 }
@@ -357,6 +399,13 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     const tagIdsParam = c.req.query('tagIds'); // e.g., "1,2,3"
     const tagIds = tagIdsParam ? tagIdsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
     const searchQuery = c.req.query('search')?.trim() || '';
+    const hasPaginationParams = c.req.query('page') !== undefined || c.req.query('pageSize') !== undefined;
+    const page = parsePositiveInt(c.req.query('page'), 1);
+    const pageSize = clampPageSize(parsePositiveInt(c.req.query('pageSize'), 20));
+    const statusQuery = c.req.query('status')?.trim() || '';
+    const platformQuery = c.req.query('platform')?.trim() || '';
+    const teamIdParam = c.req.query('teamId');
+    const teamIdQuery = teamIdParam ? Number.parseInt(teamIdParam, 10) : undefined;
 
     const customerNameQuery = c.req.query('customerName')?.trim() || '';
     const updatedAfter = c.req.query('updatedAfter')?.trim() || '';
@@ -485,7 +534,10 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     const extraListParams =
       (customerNameQuery ? 1 : 0) +
       (updatedAfter ? 1 : 0) +
-      (updatedBefore ? 1 : 0);
+      (updatedBefore ? 1 : 0) +
+      (statusQuery ? 1 : 0) +
+      (platformQuery ? 1 : 0) +
+      (teamIdQuery !== undefined && Number.isFinite(teamIdQuery) ? 1 : 0);
     const conversationResultsById = new Map<string, ConversationJoinRow>();
 
     for (const idChunk of chunkItems(filteredConversationIds, getSafeIdChunkSize(extraListParams))) {
@@ -498,7 +550,12 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
           inArray(conversations.id, idChunk),
           ...(customerNameQuery ? [sql`${customers.displayName} LIKE ${'%' + customerNameQuery + '%'}`] : []),
           ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
-          ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : [])
+          ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
+          ...(statusQuery ? [sql`${conversations.status} = ${statusQuery}`] : []),
+          ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
+          ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
+            ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
+            : [])
         ))
         .orderBy(desc(conversations.updatedAt));
       for (const result of conversationChunk) {
@@ -507,9 +564,13 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     }
     const conversationResults = Array.from(conversationResultsById.values())
       .sort((a, b) => getUpdatedAtTimestamp(b) - getUpdatedAtTimestamp(a));
+    const total = conversationResults.length;
+    const pagedConversationResults = hasPaginationParams
+      ? conversationResults.slice((page - 1) * pageSize, page * pageSize)
+      : conversationResults;
 
     // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象
-    const conversationData = conversationResults.map(result => ({
+    const conversationData = pagedConversationResults.map(result => ({
       ...result.conversations,
       // 完整的 customer 對象 (匹配前端類型定義)
       customer: result.customers ? {
@@ -642,36 +703,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         // ~2.2M rows scanned per run on a 3.7k-row table.
         // The ids CTE lets the chunk be referenced twice while binding each id
         // once — D1 caps bound parameters at 100 per query.
-        const unreadValueTuples = chunk.map(() => '(?)').join(',');
-        const unreadCountQuery = `
-        WITH ids(id) AS (VALUES ${unreadValueTuples})
-        SELECT
-          m.conversation_id as conversationId,
-          COUNT(*) as unreadCount
-        FROM messages m
-        INNER JOIN (
-          SELECT
-            c.id as id,
-            MAX(
-              COALESCE(la.last_agent_at, '1970-01-01'),
-              COALESCE(c.last_read_at, '1970-01-01')
-            ) as unread_threshold
-          FROM conversations c
-          LEFT JOIN (
-            SELECT conversation_id, MAX(created_at) as last_agent_at
-            FROM messages
-            WHERE conversation_id IN (SELECT id FROM ids)
-              AND sender_type IN ('agent', 'system')
-              AND deleted_at IS NULL
-            GROUP BY conversation_id
-          ) la ON la.conversation_id = c.id
-          WHERE c.id IN (SELECT id FROM ids)
-        ) t ON t.id = m.conversation_id
-        WHERE m.sender_type = 'customer'
-          AND m.deleted_at IS NULL
-          AND m.created_at > t.unread_threshold
-        GROUP BY m.conversation_id
-      `;
+        const unreadCountQuery = createConversationUnreadCountQuery(chunk);
 
       try {
         const unreadResult = await c.env.DB.prepare(unreadCountQuery)
@@ -723,9 +755,20 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       };
     });
 
+    const responseData = hasPaginationParams
+      ? {
+        items: combinedData,
+        total,
+        page,
+        pageSize,
+        totalPages: Math.ceil(total / pageSize),
+        hasMore: page * pageSize < total
+      }
+      : combinedData;
+
     return c.json({
       success: true,
-      data: combinedData,
+      data: responseData,
       timestamp: nowISO()
     });
 
