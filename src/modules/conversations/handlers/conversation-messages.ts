@@ -577,7 +577,7 @@ conversationMessagesHandler.put('/:id/messages/read', jwtAuth, async (c) => {
 
     await db
       .update(conversations)
-      .set({ lastReadAt: nowISO(), updatedAt: nowISO() })
+      .set({ lastReadAt: nowISO(), markedUnreadAt: null, updatedAt: nowISO() })
       .where(eq(conversations.id, conversationId));
 
     return contractJson(c, conversationMessageContracts.markAllAsRead, {

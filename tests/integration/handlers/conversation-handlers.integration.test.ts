@@ -620,7 +620,7 @@ describe('Conversation Handlers Integration Tests', () => {
               };
             }
 
-            if (query.includes('COUNT(*) as unreadCount')) {
+            if (query.includes('as unreadCount')) {
               return { unreadCount: 5 };
             }
 

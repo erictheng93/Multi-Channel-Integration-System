@@ -51,6 +51,9 @@ export interface RawConversationData {
   lastMessageContent?: string
   lastMessageAtActual?: string
   unreadCount?: number
+  // Manual unread override timestamp: when set, the backend floors
+  // unreadCount at 1 until the conversation is next marked as read
+  markedUnreadAt?: string | null
 }
 
 export interface ConversationListParams {

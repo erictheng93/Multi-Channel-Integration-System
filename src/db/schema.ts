@@ -106,6 +106,7 @@ export const conversations = sqliteTable('conversations', {
   closedAt: text('closed_at'),
   lastMessageAt: text('last_message_at'),
   lastReadAt: text('last_read_at'), // When an agent last viewed this conversation (Migration 0047)
+  markedUnreadAt: text('marked_unread_at'), // Manual unread override: floors unread count at 1 until next read (Migration 0054)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)

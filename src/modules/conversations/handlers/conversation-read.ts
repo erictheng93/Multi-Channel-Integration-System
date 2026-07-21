@@ -14,7 +14,8 @@ import { nowISO } from '@/utils/timestamp';
 
 const conversationReadHandler = new Hono<{ Bindings: Bindings }>();
 
-// Mark conversation as read — updates last_read_at timestamp
+// Mark conversation as read — updates last_read_at timestamp and clears the
+// manual unread override (marked_unread_at)
 conversationReadHandler.put('/:id/read', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -42,7 +43,7 @@ conversationReadHandler.put('/:id/read', jwtAuth, async (c) => {
 
     await drizzleDb
       .update(conversations)
-      .set({ lastReadAt: now })
+      .set({ lastReadAt: now, markedUnreadAt: null })
       .where(eq(conversations.id, conversationId));
 
     return c.json({
@@ -57,7 +58,10 @@ conversationReadHandler.put('/:id/read', jwtAuth, async (c) => {
 });
 
 // Mark conversation as unread — clears last_read_at so the derived unread count
-// reverts to "customer messages after the last agent reply" (the pre-read value)
+// reverts to "customer messages after the last agent reply", and sets the
+// manual override marked_unread_at so the effective count is floored at 1
+// even when the agent sent the last message (derived count 0). The override
+// persists until the next mark-as-read.
 conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -95,7 +99,7 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
 
     await drizzleDb
       .update(conversations)
-      .set({ lastReadAt: null, updatedAt: now })
+      .set({ lastReadAt: null, markedUnreadAt: now, updatedAt: now })
       .where(eq(conversations.id, conversationId));
 
     // Recompute the unread count with the same formula as conversation-queries.ts:
@@ -123,7 +127,10 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
         )
     `).bind(conversationId, conversationId, conversationId).first<{ unreadCount: number }>();
 
-    const unreadCount = Number(unreadResult?.unreadCount) || 0;
+    // Manual override just set above: floor the effective count at 1 so the
+    // conversation shows as unread even when the derived count is 0
+    // (agent sent the last message).
+    const unreadCount = Math.max(Number(unreadResult?.unreadCount) || 0, 1);
 
     return c.json({
       success: true,

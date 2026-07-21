@@ -31,6 +31,7 @@ const COLUMNS: Record<string, Set<string>> = {
     'closed_at',
     'last_message_at',
     'last_read_at',
+    'marked_unread_at',
     'updated_at',
     'deleted_at'
   ]),

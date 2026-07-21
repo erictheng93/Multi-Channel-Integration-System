@@ -96,7 +96,7 @@ describe('conversation unread handler', () => {
     handlerMocks.prepareFirst.mockResolvedValue({ unreadCount: 3 });
   });
 
-  it('clears lastReadAt and returns the recomputed unread count', async () => {
+  it('clears lastReadAt, sets the manual unread override and returns the recomputed unread count', async () => {
     const response = await markUnread();
     const body = await response.json() as {
       success: boolean;
@@ -108,6 +108,7 @@ describe('conversation unread handler', () => {
     expect(body.data.unreadCount).toBe(3);
     expect(handlerMocks.updateSet).toHaveBeenCalledWith({
       lastReadAt: null,
+      markedUnreadAt: '2026-07-19T12:00:00Z',
       updatedAt: '2026-07-19T12:00:00Z',
     });
   });
@@ -130,17 +131,36 @@ describe('conversation unread handler', () => {
     expect(handlerMocks.updateSet).not.toHaveBeenCalled();
   });
 
-  it('returns unreadCount 0 when the recount query yields no row', async () => {
+  it('floors unreadCount at 1 when the derived count is 0 (agent sent the last message)', async () => {
+    handlerMocks.prepareFirst.mockResolvedValueOnce({ unreadCount: 0 });
+
+    const response = await markUnread();
+    const body = await response.json() as {
+      success: boolean;
+      data: { unreadCount: number };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.unreadCount).toBe(1);
+    expect(handlerMocks.updateSet).toHaveBeenCalledWith({
+      lastReadAt: null,
+      markedUnreadAt: '2026-07-19T12:00:00Z',
+      updatedAt: '2026-07-19T12:00:00Z',
+    });
+  });
+
+  it('floors unreadCount at 1 when the recount query yields no row', async () => {
     handlerMocks.prepareFirst.mockResolvedValueOnce(null);
 
     const response = await markUnread();
     const body = await response.json() as { data: { unreadCount: number } };
 
     expect(response.status).toBe(200);
-    expect(body.data.unreadCount).toBe(0);
+    expect(body.data.unreadCount).toBe(1);
   });
 
-  it('keeps the existing mark-as-read endpoint working (regression)', async () => {
+  it('mark-as-read updates lastReadAt and clears the manual unread override', async () => {
     const response = await makeApp().request(
       '/api/conversations/conv-1/read',
       { method: 'PUT' },
@@ -156,6 +176,7 @@ describe('conversation unread handler', () => {
     expect(body.data.lastReadAt).toBe('2026-07-19T12:00:00Z');
     expect(handlerMocks.updateSet).toHaveBeenCalledWith({
       lastReadAt: '2026-07-19T12:00:00Z',
+      markedUnreadAt: null,
     });
   });
 });
