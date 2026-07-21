@@ -68,8 +68,8 @@ export async function fetchMigrationConfig(): Promise<MigrationConfig> {
   }
 
   try {
-    // REMOTE-ONLY: Always use remote API
-    const baseUrl = getBackendUrl()
+    // dev: 相對路徑走 Vite proxy（直連遠端會因 localhost Origin 被 preflight 403）
+    const baseUrl = import.meta.env.DEV ? '' : getBackendUrl()
     const response = await authenticatedFetch(`${baseUrl}/api/websocket/migration-status`, {
       method: 'GET',
       headers: {
