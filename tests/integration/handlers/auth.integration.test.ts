@@ -241,17 +241,23 @@ describe('Auth Handler - Integration Tests', () => {
       expect(response.status).toBe(200);
 
       const setCookie = response.headers.getSetCookie();
-      const csrfCookie = setCookie.find(cookie =>
+      // 同一 token 發兩份：host-only 版（Vite proxy 的 localhost 只收得下這份）
+      // 與跨子域版（production Pages 前端讀取用）
+      const csrfCookies = setCookie.filter(cookie =>
         cookie.startsWith('mcis_csrf=') && !cookie.startsWith('mcis_csrf=;')
       );
-      const csrfCookieAttributes = csrfCookie
-        ?.split(';')
-        .map(part => part.trim().toLowerCase()) ?? [];
+      const attributesOf = (cookie: string) =>
+        cookie.split(';').map(part => part.trim().toLowerCase());
+      const hostOnlyCookie = csrfCookies.find(cookie => !attributesOf(cookie).some(a => a.startsWith('domain=')));
+      const domainCookie = csrfCookies.find(cookie => attributesOf(cookie).includes('domain=.daiwandist.com'));
 
-      expect(csrfCookie).toBeDefined();
-      expect(csrfCookieAttributes).toContain('path=/');
-      expect(csrfCookieAttributes).toContain('domain=.daiwandist.com');
-      expect(csrfCookie).not.toContain('HttpOnly');
+      expect(hostOnlyCookie).toBeDefined();
+      expect(domainCookie).toBeDefined();
+      expect(attributesOf(hostOnlyCookie!)).toContain('path=/');
+      expect(attributesOf(domainCookie!)).toContain('path=/');
+      expect(hostOnlyCookie!.split(';')[0]).toBe(domainCookie!.split(';')[0]);
+      expect(hostOnlyCookie).not.toContain('HttpOnly');
+      expect(domainCookie).not.toContain('HttpOnly');
     });
   });
 
