@@ -8,7 +8,10 @@ const frontendLogger = createLogger('backgroundSync')
 // Constants
 const PENDING_CONVERSATION_TTL = 60000  // 60s before cleanup
 const PENDING_CLEANUP_INTERVAL = 30000  // check every 30s
-const BACKGROUND_SYNC_INTERVAL = 30000  // sync every 30s
+const BACKGROUND_SYNC_INTERVAL = 120000  // WebSocket is primary; poll as a fallback every 2 minutes
+const BACKGROUND_SYNC_MIN_GAP = 10000
+const BACKGROUND_SYNC_LOCK_KEY = 'mcis:conversations:background-sync-lock'
+const BACKGROUND_SYNC_LOCK_TTL = BACKGROUND_SYNC_INTERVAL + 30000
 
 export interface BackgroundSyncDeps {
   conversations: Ref<Conversation[]>
@@ -23,6 +26,69 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
   let backgroundSyncInterval: ReturnType<typeof setInterval> | null = null
   let pendingConversationCleanupInterval: ReturnType<typeof setInterval> | null = null
   let isPageVisible = true
+  let lastSyncStartedAt = 0
+  const tabId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+  const acquireBackgroundSyncLock = () => {
+    if (typeof localStorage === 'undefined') {
+      return true
+    }
+
+    const now = Date.now()
+    try {
+      const current = localStorage.getItem(BACKGROUND_SYNC_LOCK_KEY)
+      const lock = current ? JSON.parse(current) as { tabId?: string; updatedAt?: number } : null
+      const isExpired = !lock?.updatedAt || now - lock.updatedAt > BACKGROUND_SYNC_LOCK_TTL
+
+      if (!lock?.tabId || lock.tabId === tabId || isExpired) {
+        localStorage.setItem(BACKGROUND_SYNC_LOCK_KEY, JSON.stringify({ tabId, updatedAt: now }))
+        return true
+      }
+    } catch (error) {
+      frontendLogger.warn('[ConversationsStore] Failed to acquire background sync lock', { error })
+      return true
+    }
+
+    return false
+  }
+
+  const releaseBackgroundSyncLock = () => {
+    if (typeof localStorage === 'undefined') {
+      return
+    }
+
+    try {
+      const current = localStorage.getItem(BACKGROUND_SYNC_LOCK_KEY)
+      const lock = current ? JSON.parse(current) as { tabId?: string } : null
+      if (lock?.tabId === tabId) {
+        localStorage.removeItem(BACKGROUND_SYNC_LOCK_KEY)
+      }
+    } catch (error) {
+      frontendLogger.warn('[ConversationsStore] Failed to release background sync lock', { error })
+    }
+  }
+
+  const runBackgroundSync = async (reason: string) => {
+    if (!isPageVisible) {
+      frontendLogger.debug('[ConversationsStore] Page hidden, skipping background sync')
+      return
+    }
+
+    const now = Date.now()
+    if (now - lastSyncStartedAt < BACKGROUND_SYNC_MIN_GAP) {
+      frontendLogger.debug('[ConversationsStore] Background sync skipped by min-gap', { reason })
+      return
+    }
+
+    if (!acquireBackgroundSyncLock()) {
+      frontendLogger.debug('[ConversationsStore] Another tab owns background sync, skipping')
+      return
+    }
+
+    lastSyncStartedAt = now
+    frontendLogger.debug('[ConversationsStore] Background sync triggered', { reason })
+    await pollConversations()
+  }
 
   /**
    * LIFF: Cleanup stale pending conversations (60s TTL)
@@ -56,7 +122,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
   }
 
   /**
-   * Start the background sync timer (30s interval)
+   * Start the fallback background sync timer.
    */
   const startBackgroundSync = () => {
     if (backgroundSyncInterval) {
@@ -64,17 +130,13 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
       return
     }
 
-    backgroundSyncInterval = setInterval(async () => {
-      if (!isPageVisible) {
-        frontendLogger.debug('[ConversationsStore] Page hidden, skipping background sync')
-        return
-      }
-
-      frontendLogger.debug('[ConversationsStore] Background sync triggered (30s interval)')
-      await pollConversations()
+    backgroundSyncInterval = setInterval(() => {
+      void runBackgroundSync('interval')
     }, BACKGROUND_SYNC_INTERVAL)
 
-    frontendLogger.debug('[ConversationsStore] Started background sync timer (30s interval)')
+    frontendLogger.debug('[ConversationsStore] Started background sync timer', {
+      intervalMs: BACKGROUND_SYNC_INTERVAL
+    })
   }
 
   /**
@@ -84,6 +146,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
     if (backgroundSyncInterval) {
       clearInterval(backgroundSyncInterval)
       backgroundSyncInterval = null
+      releaseBackgroundSyncLock()
       frontendLogger.debug('[ConversationsStore] Stopped background sync timer')
     }
   }
@@ -97,8 +160,9 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
 
     if (isPageVisible && !wasVisible) {
       frontendLogger.debug('[ConversationsStore] Page became visible, triggering immediate sync')
-      pollConversations()
+      void runBackgroundSync('visible')
     } else if (!isPageVisible && wasVisible) {
+      releaseBackgroundSyncLock()
       frontendLogger.debug('[ConversationsStore] Page became hidden, pausing sync')
     }
   }
@@ -108,7 +172,7 @@ export function createBackgroundSync(deps: BackgroundSyncDeps) {
    */
   const triggerReconnectionSync = async () => {
     frontendLogger.debug('[ConversationsStore] Reconnection detected, triggering immediate sync')
-    await pollConversations()
+    await runBackgroundSync('reconnect')
   }
 
   /**
