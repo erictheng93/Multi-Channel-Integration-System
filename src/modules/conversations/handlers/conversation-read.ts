@@ -100,6 +100,8 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
 
     // Recompute the unread count with the same formula as conversation-queries.ts:
     // "Unread" = customer messages after MAX(last_agent_reply, last_read_at)
+    // Threshold subqueries reference the bound id (not m.conversation_id) so
+    // they are uncorrelated and evaluated once, not per message row.
     const unreadResult = await c.env.DB.prepare(`
       SELECT COUNT(*) as unreadCount
       FROM messages m
@@ -109,17 +111,17 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
         AND m.created_at > MAX(
           COALESCE(
             (SELECT MAX(m2.created_at) FROM messages m2
-             WHERE m2.conversation_id = m.conversation_id
+             WHERE m2.conversation_id = ?
              AND m2.sender_type IN ('agent', 'system')
              AND m2.deleted_at IS NULL),
             '1970-01-01'
           ),
           COALESCE(
-            (SELECT last_read_at FROM conversations WHERE id = m.conversation_id),
+            (SELECT last_read_at FROM conversations WHERE id = ?),
             '1970-01-01'
           )
         )
-    `).bind(conversationId).first<{ unreadCount: number }>();
+    `).bind(conversationId, conversationId, conversationId).first<{ unreadCount: number }>();
 
     const unreadCount = Number(unreadResult?.unreadCount) || 0;
 

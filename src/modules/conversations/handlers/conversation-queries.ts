@@ -127,25 +127,35 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
       stats.assigned += toCount(aggregateRow?.assigned);
       stats.pending += toCount(aggregateRow?.pending);
 
+      // Same derived-table shape as the list endpoint below: threshold is
+      // computed once per conversation, never per message row (D1 rows-read cost).
+      // The ids CTE lets the chunk be referenced twice while binding each id
+      // once — D1 caps bound parameters at 100 per query.
       const unreadRow = await c.env.DB.prepare(`
+        WITH ids(id) AS (VALUES ${idChunk.map(() => '(?)').join(',')})
         SELECT COUNT(*) as unreadCount
         FROM messages m
-        WHERE m.conversation_id IN (${placeholders})
-          AND m.sender_type = 'customer'
+        INNER JOIN (
+          SELECT
+            c2.id as id,
+            MAX(
+              COALESCE(la.last_agent_at, '1970-01-01'),
+              COALESCE(c2.last_read_at, '1970-01-01')
+            ) as unread_threshold
+          FROM conversations c2
+          LEFT JOIN (
+            SELECT conversation_id, MAX(created_at) as last_agent_at
+            FROM messages
+            WHERE conversation_id IN (SELECT id FROM ids)
+              AND sender_type IN ('agent', 'system')
+              AND deleted_at IS NULL
+            GROUP BY conversation_id
+          ) la ON la.conversation_id = c2.id
+          WHERE c2.id IN (SELECT id FROM ids)
+        ) t ON t.id = m.conversation_id
+        WHERE m.sender_type = 'customer'
           AND m.deleted_at IS NULL
-          AND m.created_at > MAX(
-            COALESCE(
-              (SELECT MAX(m2.created_at) FROM messages m2
-               WHERE m2.conversation_id = m.conversation_id
-               AND m2.sender_type IN ('agent', 'system')
-               AND m2.deleted_at IS NULL),
-              '1970-01-01'
-            ),
-            COALESCE(
-              (SELECT last_read_at FROM conversations WHERE id = m.conversation_id),
-              '1970-01-01'
-            )
-          )
+          AND m.created_at > t.unread_threshold
       `).bind(...idChunk).first<ConversationUnreadAggregateRow>();
 
       stats.unreadCount += toCount(unreadRow?.unreadCount);
@@ -235,6 +245,8 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     // "Unread" = customer messages after MAX(last_agent_reply, last_read_at)
     let unreadCount = 0;
     try {
+      // Threshold subqueries reference the bound id (not m.conversation_id) so
+      // they are uncorrelated and evaluated once, not per message row.
       const unreadResult = await c.env.DB.prepare(`
         SELECT COUNT(*) as unreadCount
         FROM messages m
@@ -244,17 +256,17 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
           AND m.created_at > MAX(
             COALESCE(
               (SELECT MAX(m2.created_at) FROM messages m2
-               WHERE m2.conversation_id = m.conversation_id
+               WHERE m2.conversation_id = ?
                AND m2.sender_type IN ('agent', 'system')
                AND m2.deleted_at IS NULL),
               '1970-01-01'
             ),
             COALESCE(
-              (SELECT last_read_at FROM conversations WHERE id = m.conversation_id),
+              (SELECT last_read_at FROM conversations WHERE id = ?),
               '1970-01-01'
             )
           )
-      `).bind(conversationId).first<UnreadCountRow>();
+      `).bind(conversationId, conversationId, conversationId).first<UnreadCountRow>();
 
       if (unreadResult) {
         unreadCount = Number(unreadResult.unreadCount) || 0;
@@ -602,28 +614,40 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     if (conversationIds.length > 0) {
       for (let offset = 0; offset < conversationIds.length; offset += D1_SAFE_ID_CHUNK_SIZE) {
         const chunk = conversationIds.slice(offset, offset + D1_SAFE_ID_CHUNK_SIZE);
-        const unreadPlaceholders = chunk.map(() => '?').join(',');
+        // Threshold MUST be computed once per conversation via the derived table.
+        // A correlated subquery in the WHERE clause is re-evaluated per candidate
+        // row (O(n^2) rows read) and caused a D1 billing incident (2026-07):
+        // ~2.2M rows scanned per run on a 3.7k-row table.
+        // The ids CTE lets the chunk be referenced twice while binding each id
+        // once — D1 caps bound parameters at 100 per query.
+        const unreadValueTuples = chunk.map(() => '(?)').join(',');
         const unreadCountQuery = `
+        WITH ids(id) AS (VALUES ${unreadValueTuples})
         SELECT
           m.conversation_id as conversationId,
           COUNT(*) as unreadCount
         FROM messages m
-        WHERE m.conversation_id IN (${unreadPlaceholders})
-          AND m.sender_type = 'customer'
+        INNER JOIN (
+          SELECT
+            c.id as id,
+            MAX(
+              COALESCE(la.last_agent_at, '1970-01-01'),
+              COALESCE(c.last_read_at, '1970-01-01')
+            ) as unread_threshold
+          FROM conversations c
+          LEFT JOIN (
+            SELECT conversation_id, MAX(created_at) as last_agent_at
+            FROM messages
+            WHERE conversation_id IN (SELECT id FROM ids)
+              AND sender_type IN ('agent', 'system')
+              AND deleted_at IS NULL
+            GROUP BY conversation_id
+          ) la ON la.conversation_id = c.id
+          WHERE c.id IN (SELECT id FROM ids)
+        ) t ON t.id = m.conversation_id
+        WHERE m.sender_type = 'customer'
           AND m.deleted_at IS NULL
-          AND m.created_at > MAX(
-            COALESCE(
-              (SELECT MAX(m2.created_at) FROM messages m2
-               WHERE m2.conversation_id = m.conversation_id
-               AND m2.sender_type IN ('agent', 'system')
-               AND m2.deleted_at IS NULL),
-              '1970-01-01'
-            ),
-            COALESCE(
-              (SELECT last_read_at FROM conversations WHERE id = m.conversation_id),
-              '1970-01-01'
-            )
-          )
+          AND m.created_at > t.unread_threshold
         GROUP BY m.conversation_id
       `;
 
