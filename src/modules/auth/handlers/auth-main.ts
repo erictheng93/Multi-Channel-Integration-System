@@ -134,11 +134,22 @@ function setAuthCookies(c: AuthContext, accessToken: string, refreshToken: strin
     maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
     httpOnly: true,
   }));
-  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, createCsrfToken(), {
+  // 同一 token 發兩份：host-only 版（無 Domain）+ 跨子域版。
+  // 帶 Domain=.base 的 Set-Cookie 在經 Vite proxy 的 localhost 會被瀏覽器拒收，
+  // 沒有 host-only 版時本地 dev 讀不到 csrf cookie，所有 unsafe method 一律 403。
+  // production 兩份同值共存，csrf 比對不受影響。
+  const csrfToken = createCsrfToken();
+  appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, csrfToken, {
     maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
     path: CSRF_COOKIE_PATH,
-    domain: sharedCookieDomain,
   }));
+  if (sharedCookieDomain) {
+    appendCookie(c, serializeCookie(AUTH_COOKIE_NAMES.csrf, csrfToken, {
+      maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+      path: CSRF_COOKIE_PATH,
+      domain: sharedCookieDomain,
+    }));
+  }
 }
 
 function clearAuthCookies(c: AuthContext): void {
