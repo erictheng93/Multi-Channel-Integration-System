@@ -163,9 +163,68 @@ describe('Conversations API', () => {
       }
     })
 
+    it('should carry the real lastMessage senderType through the adapter', async () => {
+      const mockConversation = {
+        id: 'conv-123',
+        customerId: 1,
+        assignedTeamId: null,
+        assignedUserId: null,
+        status: 'active' as const,
+        lastMessageAt: '2024-01-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        customerName: 'Test Customer',
+        platform: 'line' as const,
+        platformUserId: 'user123',
+        lastMessage: {
+          id: 'msg-1',
+          content: 'agent reply',
+          createdAt: '2024-01-01T00:00:00Z',
+          senderType: 'agent',
+          messageType: 'text'
+        },
+        lastMessageContent: 'agent reply',
+        unreadCount: 0
+      }
+      mockGet.mockResolvedValue({ success: true, data: mockConversation })
+
+      const result = await conversationApi.getConversation('conv-123')
+
+      expect(result.success).toBe(true)
+      if (result.success && result.data) {
+        expect(result.data.lastMessage?.senderType).toBe('agent')
+      }
+    })
+
+    it('should default lastMessage senderType to customer when the nested object is absent', async () => {
+      const mockConversation = {
+        id: 'conv-123',
+        customerId: 1,
+        assignedTeamId: null,
+        assignedUserId: null,
+        status: 'active' as const,
+        lastMessageAt: '2024-01-01T00:00:00Z',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+        customerName: 'Test Customer',
+        platform: 'line' as const,
+        platformUserId: 'user123',
+        lastMessageContent: 'Hello',
+        unreadCount: 0
+      }
+      mockGet.mockResolvedValue({ success: true, data: mockConversation })
+
+      const result = await conversationApi.getConversation('conv-123')
+
+      expect(result.success).toBe(true)
+      if (result.success && result.data) {
+        expect(result.data.lastMessage?.senderType).toBe('customer')
+      }
+    })
+
     it('should reject empty conversation ID', async () => {
       const result = await conversationApi.getConversation('')
-      
+
       expect(result).toEqual({ success: false, error: '對話 ID 不能為空' })
       expect(mockGet).not.toHaveBeenCalled()
     })

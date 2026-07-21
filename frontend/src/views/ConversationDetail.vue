@@ -523,7 +523,7 @@ async function handleMarkUnread() {
     showSuccess('已標示為未讀')
     goBack()
   } else {
-    showError('標記未讀失敗，請稍後再試')
+    showError(conversationsStore.error || '標記未讀失敗，請稍後再試')
   }
 }
 
