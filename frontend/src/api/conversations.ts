@@ -333,7 +333,8 @@ export const conversationApi = {
     return callApiContract(conversationContracts.markAsRead, { conversationId });
   },
 
-  // 標記對話為未讀（清除 lastReadAt，未讀數回復為最後客服回覆後的客戶訊息數）
+  // 標記對話為未讀（設定手動未讀標記；即使客服已回覆，未讀數也會下限為 1，
+  // 直到下次標記已讀才清除）
   markAsUnread: async (conversationId: string): Promise<ApiResponse<{ unreadCount: number }>> => {
     if (!conversationId?.trim()) {
       return { success: false, error: '對話 ID 不能為空' };

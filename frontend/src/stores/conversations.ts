@@ -648,20 +648,16 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
-  // 標記為未讀：後端清除 lastReadAt 並回傳重算後的未讀數
+  // 標記為未讀：後端設定手動未讀標記並回傳重算後的未讀數
+  // （即使客服已回覆最後一則訊息，後端也會將未讀數下限設為 1）
   const markAsUnread = async (conversationId: string) => {
     if (!conversationId) { return false }
 
     try {
       const response = await conversationApi.markAsUnread(conversationId)
       if (response.success) {
-        const unreadCount = response.data?.unreadCount ?? 0
-
-        // 未讀數重算為 0 = 客服已回覆後的 no-op：視為失敗，不要把 0 寫回列表
-        if (unreadCount === 0) {
-          handleError('客服已回覆，無法標示為未讀', '標記未讀失敗')
-          return false
-        }
+        // 後端保證回傳值 >= 1（手動未讀下限）；防禦性地在前端也套用同樣下限
+        const unreadCount = Math.max(response.data?.unreadCount ?? 1, 1)
 
         const conversationIndex = conversations.value.findIndex(c => c.id === conversationId)
         if (conversationIndex !== -1) {

@@ -319,7 +319,27 @@ describe('Conversations Store', () => {
       expect(mockConversationApi.markAsUnread).not.toHaveBeenCalled()
     })
 
-    it('should treat a recomputed unread count of 0 as failure and keep the list row untouched', async () => {
+    it('should mark as unread with a floored count of 1 when the agent sent the last message', async () => {
+      // Backend floors the manual unread override at 1 even when the derived
+      // count is 0 (agent replied last)
+      mockConversationApi.markAsUnread.mockResolvedValue({
+        success: true,
+        data: { unreadCount: 1 }
+      })
+
+      const { useConversationsStore } = await import('./conversations')
+      const store = useConversationsStore()
+      store.setConversations([
+        { id: 'conv-1', userId: '1', status: 'active', platform: 'line', unreadCount: 0, lastMessageAt: Date.now(), createdAt: Date.now(), updatedAt: Date.now() }
+      ] as never)
+
+      const result = await store.markAsUnread('conv-1')
+
+      expect(result).toBe(true)
+      expect(store.conversations[0]?.unreadCount).toBe(1)
+    })
+
+    it('should defensively floor a stale backend response of 0 to 1 instead of failing', async () => {
       mockConversationApi.markAsUnread.mockResolvedValue({
         success: true,
         data: { unreadCount: 0 }
@@ -328,14 +348,14 @@ describe('Conversations Store', () => {
       const { useConversationsStore } = await import('./conversations')
       const store = useConversationsStore()
       store.setConversations([
-        { id: 'conv-1', userId: '1', status: 'active', platform: 'line', unreadCount: 2, lastMessageAt: Date.now(), createdAt: Date.now(), updatedAt: Date.now() }
+        { id: 'conv-1', userId: '1', status: 'active', platform: 'line', unreadCount: 0, lastMessageAt: Date.now(), createdAt: Date.now(), updatedAt: Date.now() }
       ] as never)
 
       const result = await store.markAsUnread('conv-1')
 
-      expect(result).toBe(false)
-      expect(store.conversations[0]?.unreadCount).toBe(2)
-      expect(store.error).toBe('客服已回覆，無法標示為未讀')
+      expect(result).toBe(true)
+      expect(store.conversations[0]?.unreadCount).toBe(1)
+      expect(store.error).toBeNull()
     })
   })
 

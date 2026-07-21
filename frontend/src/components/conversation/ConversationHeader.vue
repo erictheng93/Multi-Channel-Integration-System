@@ -77,11 +77,12 @@
     </div>
 
     <div class="header-actions">
-      <!-- 標示為未讀按鈕：清除已讀狀態，讓其他客服在列表看到未讀徽章 -->
+      <!-- 標示為未讀按鈕：設定手動未讀標記，讓其他客服在列表看到未讀徽章
+           （即使最後一則訊息是客服傳送，後端也會將未讀數下限設為 1） -->
       <button
         class="header-action-btn"
-        :disabled="!canMarkUnread"
-        :title="canMarkUnread ? '標示為未讀' : '最後一則訊息並非客戶傳送，無法標示為未讀'"
+        :disabled="!conversation"
+        title="標示為未讀"
         @click="$emit('markUnread')"
       >
         <MailIcon :size="18" />
@@ -235,12 +236,6 @@ let tagLoadRequestId = 0
 
 // Toast notifications
 const { showSuccess, showError } = useToast()
-
-// 只有最後一則訊息來自客戶時才能標示為未讀
-// （未讀數公式以「最後客服回覆之後的客戶訊息」計算，客服已回覆時清除已讀無效果）
-const canMarkUnread = computed(() => {
-  return props.conversation?.lastMessage?.senderType === 'customer'
-})
 
 const customerInitials = computed(() => {
   const name = props.conversation?.customer?.name
