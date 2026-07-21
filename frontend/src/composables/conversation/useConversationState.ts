@@ -295,7 +295,10 @@ export function useConversationState(
     try {
       await conversationsStore.fetchConversation(conversationId)
       const currentConversation = conversation.value
-      if (currentConversation?.unreadCount) {
+      // 只有分頁實際可見時才自動標已讀：背景分頁（例如 WS 重連循環中重新掛載
+      // 的殘留分頁）不應清掉其他人剛設定的手動未讀（marked_unread_at）
+      const isPageVisible = typeof document === 'undefined' || document.visibilityState === 'visible'
+      if (currentConversation?.unreadCount && isPageVisible) {
         await conversationsStore.markAsRead(conversationId)
       }
 
