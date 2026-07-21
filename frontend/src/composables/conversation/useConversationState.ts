@@ -456,26 +456,62 @@ export function useConversationState(
   }
 
   /**
-   * Mark a message recalled in place (from message_recall_success events or
-   * after a successful recall API call). Mirrors the backend content rewrite
-   * so every tab converges without a refetch; metadata.isRecalled drives the
-   * placeholder styling and hides further actions.
+   * Mark a message recalled in place (optimistic apply from the recall action,
+   * or from message_recall_success WS events). Mirrors the backend content
+   * rewrite so every tab converges without a refetch.
+   *
+   * The same message id can live as DIFFERENT objects in three lists:
+   * httpMessages (HTTP history), unifiedMessages (WS live list — where a
+   * just-sent message lives), and smoothMessages (debounced display copy).
+   * The display merge prefers the unified object and the update queue skips
+   * same-length refreshes, so marking only the HTTP list never reaches the
+   * screen — all three must be marked in place.
+   *
+   * @returns undo closure for optimistic rollback (undefined if id not found)
    */
-  function markMessageRecalled(messageId: string, recalledAt?: string) {
-    const messageList = httpMessages.messages.value
-    const message = messageList.find((m: Message) => m.id === messageId)
-    if (!message) {return}
-    message.content = '[This message has been recalled]'
-    message.isRecalled = true
-    if (recalledAt) {
-      message.recalledAt = recalledAt
+  function markMessageRecalled(messageId: string, recalledAt?: string): (() => void) | undefined {
+    const lists = [httpMessages.messages.value, unifiedMessages.value, smoothMessages.value]
+    const touched = new Set<Message>()
+    for (const list of lists) {
+      const found = list.find((m: Message) => m.id === messageId)
+      if (found) {touched.add(found)}
     }
-    message.metadata = {
-      ...message.metadata,
-      isRecalled: true,
-      ...(recalledAt && { recalledAt })
+    if (touched.size === 0) {
+      frontendLogger.debug('[useConversationState] markMessageRecalled: message not found:', messageId)
+      return undefined
+    }
+
+    const prior = [...touched].map(msg => ({
+      msg,
+      content: msg.content,
+      isRecalled: msg.isRecalled,
+      recalledAt: msg.recalledAt,
+      metadata: msg.metadata
+    }))
+
+    for (const msg of touched) {
+      msg.content = '[This message has been recalled]'
+      msg.isRecalled = true
+      if (recalledAt) {
+        msg.recalledAt = recalledAt
+      }
+      msg.metadata = {
+        ...msg.metadata,
+        isRecalled: true,
+        ...(recalledAt && { recalledAt })
+      }
     }
     frontendLogger.debug('[useConversationState] Marked message recalled:', messageId)
+
+    return () => {
+      for (const p of prior) {
+        p.msg.content = p.content
+        p.msg.isRecalled = p.isRecalled
+        p.msg.recalledAt = p.recalledAt
+        p.msg.metadata = p.metadata
+      }
+      frontendLogger.debug('[useConversationState] Rolled back optimistic recall:', messageId)
+    }
   }
 
   /**

@@ -43,17 +43,22 @@ export function useConversationActions(
    * @returns success 與後端錯誤訊息（如「已超過可撤回時間」），供 UI toast 顯示
    */
   async function recallMessage(messageId: string): Promise<{ success: boolean; error?: string }> {
+    // 樂觀更新：確認撤回後立即顯示已撤回狀態（倒數即停），API 失敗時回滾。
+    // 不做 refetch — 顯示層 merge 偏好 unified WS 物件、更新隊列會跳過訊息數
+    // 不變的刷新，refetch 的結果到不了畫面；就地標記（三份清單）才可靠。
+    const undo = state.markMessageRecalled(messageId)
     try {
       frontendLogger.debug('[ConversationActions] Recalling message:', messageId)
       const response = await messageApi.recallMessage(conversationId, { messageId })
       if (!response.success) {
+        undo?.()
         return { success: false, error: response.error || undefined }
       }
-      await state.refreshMessages()
 
       frontendLogger.debug('[ConversationActions] Message recalled')
       return { success: true }
     } catch (error) {
+      undo?.()
       console.error('[ConversationActions] Failed to recall message:', error)
       return {
         success: false,
