@@ -6,8 +6,9 @@
       'message-incoming': !isOutgoing,
       'message-delivered': delivered && isOutgoing,
       'message-failed': !delivered && isOutgoing,
-      'message-image': actualMessageType === 'image',
+      'message-image': actualMessageType === 'image' && !isRecalledMessage,
       'message-file': actualMessageType === 'file',
+      'message-recalled': isRecalledMessage,
     }"
     @contextmenu="handleRightClick"
     @mouseenter="showActions = true"
@@ -17,9 +18,18 @@
     @touchmove.passive="handleTouchMove"
   >
     <div class="message-content">
+      <!-- 已撤回：不論原始類型，一律以灰色占位文字取代內容
+           （DB 端 content 可能已被改寫為英文占位字串，不直接顯示） -->
+      <div
+        v-if="isRecalledMessage"
+        class="message-text recalled-text"
+      >
+        此訊息已撤回
+      </div>
+
       <!-- Image Message (legacy fallback, only when no R2 image attachments) -->
       <div
-        v-if="actualMessageType === 'image' && resolvedAttachmentUrl && imageAttachments.length === 0"
+        v-else-if="actualMessageType === 'image' && resolvedAttachmentUrl && imageAttachments.length === 0"
         class="message-media"
       >
         <div
@@ -658,8 +668,11 @@
   const messageRef = computed(() => props.message)
   const { isRecallable, isAwaitingDelivery, countdownLabel } = useRecallCountdown(messageRef)
 
-  // 已撤回（markMessageRecalled / WS 撤回事件設定）
-  const isRecalledMessage = computed(() => props.message.metadata?.isRecalled === true)
+  // 已撤回：歷史載入回傳 DB 頂層 isRecalled；WS 撤回事件（markMessageRecalled）
+  // 寫 metadata.isRecalled — 兩個來源都要認，否則重新整理後撤回狀態消失
+  const isRecalledMessage = computed(
+    () => props.message.isRecalled === true || props.message.metadata?.isRecalled === true
+  )
 
   // 撤回選項顯示條件：
   // - buffered 且窗口內 → 真撤回（取消發送，客戶無感）

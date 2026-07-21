@@ -309,6 +309,7 @@ export const useMessagesStore = defineStore('messages', () => {
         // placeholder (removing it here made the recall look like deletion
         // and resurrected the message on the next refetch).
         message.content = '[This message has been recalled]'
+        message.isRecalled = true
         message.metadata = { ...message.metadata, isRecalled: true }
         return true
       } else {

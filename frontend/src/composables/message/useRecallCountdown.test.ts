@@ -58,6 +58,17 @@ describe('useRecallCountdown', () => {
     expect(countdown.remainingSeconds.value).toBe(0);
   });
 
+  it('excludes messages recalled via the DB top-level isRecalled flag (history reload path)', async () => {
+    const message = ref(makeMessage({
+      isRecalled: true,
+    }));
+    const countdown = await useCountdownFor(message);
+
+    expect(countdown.isRecallable.value).toBe(false);
+    expect(countdown.isAwaitingDelivery.value).toBe(false);
+    expect(countdown.remainingSeconds.value).toBe(0);
+  });
+
   it('switches to awaiting-delivery when a buffered countdown reaches zero', async () => {
     const message = ref(makeMessage());
     const countdown = await useCountdownFor(message);

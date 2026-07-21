@@ -466,6 +466,10 @@ export function useConversationState(
     const message = messageList.find((m: Message) => m.id === messageId)
     if (!message) {return}
     message.content = '[This message has been recalled]'
+    message.isRecalled = true
+    if (recalledAt) {
+      message.recalledAt = recalledAt
+    }
     message.metadata = {
       ...message.metadata,
       isRecalled: true,
