@@ -62,8 +62,10 @@ export function createCustomerWebSocketConnection(
    * 構建 WebSocket URL
    */
   const buildWebSocketUrl = (): string => {
-    // 永遠使用遠端後端
-    const apiUrl = getBackendUrl()
+    // dev: 走 Vite proxy（同源；vite.config 的 rewriteWsOrigin 會把 Origin 改寫
+    // 成後端域名）。直連遠端會被 websocket-auth 以 localhost Origin 拒絕（4408），
+    // 且跨域也帶不到 auth cookie。prod: 直連遠端後端。
+    const apiUrl = import.meta.env.DEV ? window.location.origin : getBackendUrl()
     const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws'
     const wsHost = apiUrl.replace(/^https?:\/\//, '')
 

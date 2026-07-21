@@ -130,8 +130,8 @@ export class WebSocketPerformanceTracker {
     this.userId = userId
     this.conversationId = conversationId
     this.connectionType = connectionType
-    // REMOTE-ONLY: Always use remote API
-    this.apiBaseUrl = getBackendUrl()
+    // dev: 相對路徑走 Vite proxy（直連遠端會因 localhost Origin 被 preflight 403）
+    this.apiBaseUrl = import.meta.env.DEV ? '' : getBackendUrl()
 
     this.log('Performance tracker initialized', {
       sessionId: this.sessionId,

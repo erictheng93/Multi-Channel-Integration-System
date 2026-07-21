@@ -80,7 +80,7 @@ export function useQRCodeDownloader(): UseQRCodeDownloaderReturn {
       // Convert Storage URL to Worker proxy URL
       return qrCodeUrl.replace(
         storageUrl,
-        `${getBackendUrl()}/api/r2-public`
+        `${import.meta.env.DEV ? window.location.origin : getBackendUrl()}/api/r2-public`
       )
     }
 

@@ -132,7 +132,7 @@ export const activitiesApi = {
     
     try {
       // Use apiClient for consistent authentication
-      const response = await authenticatedFetch(`${getBackendUrl()}/api/activities/export${queryString ? `?${queryString}` : ''}`, {
+      const response = await authenticatedFetch(`${import.meta.env.DEV ? '' : getBackendUrl()}/api/activities/export${queryString ? `?${queryString}` : ''}`, {
         method: 'GET',
         headers: {
           'Accept': 'text/csv'
@@ -165,7 +165,7 @@ export const activitiesApi = {
     }
 
     try {
-      const response = await authenticatedFetch(`${getBackendUrl()}/api/activities/${activityId}/restore`, {
+      const response = await authenticatedFetch(`${import.meta.env.DEV ? '' : getBackendUrl()}/api/activities/${activityId}/restore`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -42,8 +42,9 @@ describe('activitiesApi.restore', () => {
 
     const result = await activitiesApi.restore(5)
 
+    // Vitest 以 DEV 模式執行：restore 走相對路徑（Vite proxy），不使用 getBackendUrl
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/api/activities/5/restore',
+      '/api/activities/5/restore',
       expect.objectContaining({
         method: 'POST',
         credentials: 'include',

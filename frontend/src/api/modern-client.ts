@@ -27,7 +27,8 @@ class ModernApiClient {
   private retryDelay: number
 
   constructor(options: ModernApiClientOptions = {}) {
-    this.baseURL = options.baseURL || getBackendUrl()
+    // dev: 相對路徑走 Vite proxy（直連遠端會因 localhost Origin 被 preflight 403）
+    this.baseURL = options.baseURL || (import.meta.env.DEV ? '' : getBackendUrl())
     this.timeout = options.timeout || 30000
     this.retries = options.retries || 3
     this.retryDelay = options.retryDelay || 1000
