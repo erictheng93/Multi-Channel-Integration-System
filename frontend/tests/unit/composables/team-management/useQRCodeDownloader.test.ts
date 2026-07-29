@@ -141,8 +141,9 @@ describe('useQRCodeDownloader', () => {
       teamName: 'Test Team'
     })
 
-    // Verify proxy URL was used
-    expect(mockImage.src).toBe('http://localhost:8787/api/r2-public/qr-codes/team-1.png?sig=signature&exp=1735708800')
+    // Verify proxy URL was used. Under Vitest import.meta.env.DEV is true, so the
+    // composable proxies through the current origin (Vite dev proxy) instead of getBackendUrl().
+    expect(mockImage.src).toBe(`${window.location.origin}/api/r2-public/qr-codes/team-1.png?sig=signature&exp=1735708800`)
   })
 
   it('should keep unsigned storage URL unchanged', async () => {
