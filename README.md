@@ -40,158 +40,18 @@
 
 ##  功能特色
 
-###  WebSocket + Durable Objects 即時通訊 (v4.0.0)
-- **即時雙向通訊** - SSE + WebSocket + Durable Objects 三層架構
-- **高併發支援** - 針對高並發場景優化（實際上限以壓測結果為準）
-- **分散式狀態管理** - Cloudflare Durable Objects 全球一致性
-- **智慧延遲訊息** - 已支援 1-120 秒可配置延遲
-- **企業級擴展** - 以 Durable Objects 與水平擴展為設計依據
-- **自動故障恢復** - 連線斷開自動重連
-- **全新 UI 體驗** - 即時狀態顯示與通知
+企業級多渠道客服整合系統，統一管理 LINE OA、Facebook Messenger 等平台的客戶訊息，核心技術為 Cloudflare Workers (Hono) + Vue 3 + Durable Objects 全雲端即時架構。
 
-###  API 標準化 (v3.0.0)
-- **統一回應格式** - 所有 API 端點標準化回應
-- **完整錯誤處理** - 分層 API 錯誤處理機制
-- **自動化監控** - 內建健康檢查與狀態監控
-- **版本管理** - 完善的版本控制機制
+**功能範圍導覽**（多渠道整合、對話與訊息管理、WebSocket 即時協作、延遲訊息、通知系統、JWT 雙令牌認證與雙層角色權限、檔案附件、團隊與客戶管理、自動回覆、報表分析、系統管理與 Web Installer 自助部署）——**完整清單、每一項的實際完成度（✅/⚠️/❌）與對應程式碼路徑，一律以 [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md) 為單一事實來源**，本文件不重複維護一份平行的功能清單或精準對照表，避免兩處說法不一致。
 
-###  效能優化 (v3.0.0)
-- **前端優化** - 代碼分割 + 懶載入
-- **後端優化** - 查詢優化與快取策略
-- **全局快取** - 多層級快取架構
-- **壓縮傳輸** - 智慧資源壓縮
-
-###  Dashboard 全新設計 (v2.1.0)
-- **全新介面** - 現代化設計語言與互動體驗
-- **TypeScript 0 錯誤** - 完整類型安全
-- **優質 UI/UX** - 響應式設計與無障礙支援
-
-###  即時通訊系統 (WebSocket + Durable Objects)
-- **雙向通訊**: WebSocket + Durable Objects 即時通訊
-- **超低延遲**: 系統設計目標為低延遲即時同步（需依環境量測）
-- **分散式鎖**: Durable Objects 分散式協調
-- **全局狀態**: Durable Objects 狀態持久化
-- **自動重連**: 斷線自動恢復
-- **延遲訊息**: 1-120 秒精準排程
-- **即時廣播**: 多用戶即時同步
-- **狀態同步**: 全域一致性保證
-
-##  核心功能
-
-###  WebSocket 即時通訊 (v4.0.0)
-- **即時訊息推送** - 新訊息即時送達
-- **打字狀態顯示** - 對方正在輸入提示
-- **線上狀態追蹤** - 在線/離線/忙碌狀態
-- **對話狀態同步** - 多端即時同步
-- **通知系統整合** - 桌面/移動/瀏覽器通知
-- **協議自動升級** - SSE 到 WebSocket 平滑升級
-- **安全認證** - JWT + WebSocket 身份驗證
-- **高可用** - Durable Objects 確保可靠性
-
-###  API 監控
-- **健康檢查** - 主要 API 端點即時監控
-- **自動化測試** - 完整 API 測試套件
-- **效能追蹤** - 回應時間與錯誤率監控
-- **歷史記錄** - 完整監控資料保存
-- **告警通知** - 異常自動告警
-- **視覺化面板** - 即時數據儀表板
-
-###  部署系統
-- **後端部署** - `bun run deploy`（Cloudflare Workers）
-- **前端部署** - `bun run deploy:pages`（Cloudflare Pages）
-- **自助部署** - Web Installer 視覺化部署工具（`web-installer/`）
-
-##  系統概述
-
-- **多渠道整合** - 統一管理 LINE OA 與 Facebook Messenger
-- **即時客服** - 完整的客服對話管理系統
-- **雙重角色系統** - 系統角色 (Admin/Agent) + 團隊角色 (Member/Lead/Supervisor)
-- **團隊管理** - 多團隊協作與權限控制
-- **安全認證** - JWT 雙重令牌 RBAC 權限控制
-- **完整測試** - 測試覆蓋以實際執行報告為準
-
-### 核心功能 (Production Ready)
-- **WebSocket + Durable Objects 即時通訊** - 支援高併發的即時協作場景
-- **LINE OA 整合** - Webhook 接收與訊息轉發
-- **認證系統** - JWT 雙重令牌 + WebSocket 身份驗證
-- **對話管理** - 完整生命週期 + 即時同步
-- **客戶管理** - 多渠道客戶 + WebSocket 更新
-- **團隊管理** - 多角色權限 + 即時通知
-- **標籤系統** - 分類管理與統計
-- **檔案上傳** - Cloudflare R2 雲端儲存
-- **延遲訊息** - WebSocket 排程管理
-- **系統設定** - 全域配置 + WebSocket 同步
-- **活動紀錄** - 完整操作日誌 + WebSocket 即時推送
-- **全新 Dashboard** - Vue 3 + TypeScript 現代化 UI/UX + 即時更新
-- **API 監控** - 自動化監控與告警
-- **通知系統** - 多渠道通知 + WebSocket 即時推送
-- **報表系統** - 數據分析 + WebSocket 即時資料
-
-###  功能敘述精準對照（2026-05-21）
-以目前程式碼與可執行 API 為準：
-
-- **多渠道整合模組**
-  - LINE OA Webhook：✅ 已實作（`POST /api/webhook`）
-  - Facebook Messenger Webhook：✅ 已實作（`/api/webhooks/facebook`）
-  - 統一訊息介面：⚠️ 部分完成（跨平台資料轉換有實作，但需以使用場景驗證一致性）
-- **對話管理系統**
-  - 即時接收與回覆：✅ 已實作
-  - 狀態追蹤：⚠️ 部分完成（`pending`/`in-progress` 等狀態可用；`closed`/已結束狀態已棄用，bulk 操作明確拒絕 close/reopen）
-  - 手動指派與轉移：✅ 已實作（`POST /:id/assign`、`POST /:id/transfer`，含跨團隊轉移歷史 `conversation_transfers`）
-  - 自動指派：❌ 未實作（`autoAssignment` 設定旗標存在但未被任何程式碼使用，無輪詢/負載/QR 自動派工邏輯）
-- **延遲訊息系統**
-  - 1-120 秒延遲：✅ 已實作（`ValidationService` 硬性驗證 1~120 秒）
-  - 解除預約（撤回）：✅ 已實作（`POST /recall/:messageId`）
-  - 狀態查詢：✅ 已實作（`GET /pending`，列出待發送排程）
-- **企業級認證與權限**
-  - JWT / 角色權限：✅ 已實作
-  - 會話控制：⚠️ 有 session 與多端機制，但未見單一「完整監控儀表」敘述
-- **即時協作功能**
-  - WebSocket 協作、打字狀態、線上狀態與 Presence：✅ 已實作
-  - 延遲 <50ms：⚠️ 目標值（需正式負載測試結果）
-- **檔案附件系統**
-  - 上傳/下載/刪除：✅ 已實作
-  - R2 儲存整合：✅ 已實作
-- **團隊管理模組**
-  - 成員 CRUD / 角色：✅ 已實作（成員以 `POST /:id/members` 直接加入，非邀請流程）
-  - QR 流程：✅ 已實作（QR 碼用於「客戶上線」掃描追蹤，非團隊成員邀請）
-  - 郵件邀請：❌ 未實作（`email-adapter` 預設 `enabled=false` 且 `sendEmail()` 為純模擬；無 `team_invitations` 資料表、無寄件 API、無邀請狀態追蹤）
-- **系統管理功能**
-  - 平台整合設定與測試：✅ 已實作
-  - 健康檢查 / 指標 / 設定 API：✅ 已實作（`GET /api/system/health`、`GET /api/system/metrics`）
-  - 備份 / 還原 / 快取清除 / 重啟：❌ 未對外提供（僅 service 層 stub，回傳模擬值且未掛載 HTTP handler；系統重啟在 Cloudflare Workers 無狀態環境本質上無法實作）
-- **自動回復系統**
-  - 規則引擎：✅ 已實作（`auto-reply-engine.ts` 的 `evaluate()`，依關鍵字/條件比對自動回覆）
-  - 觸發點：⚠️ 目前僅 LINE（一般訊息 `line-message-handler.ts`、加好友歡迎 `line-follow-handler.ts` 的 `evaluateWelcome()`）；Facebook event processor 尚未串接自動回復
-  - 規則管理 API：✅ 已實作（`/api/auto-reply/rules` CRUD）
-  - 營業時間排程：✅ 已實作（`/api/auto-reply/schedules`，控制規則生效時段）
-  - 稽核日誌：✅ 已實作（`/api/auto-reply/logs`，唯讀）
-  - 注意：此為「自動**回復**」，與上方未實作的「自動**指派** `autoAssignment`」是不同功能，請勿混淆
-- **資料匯出功能**
-  - 訊息匯出：✅ 已實作（`GET /api/messages/export`，支援 `json` / `csv` / `txt` 三種格式）
-  - 篩選條件：✅ 已實作（對話 ID、日期區間 `dateFrom`/`dateTo`、客戶、客服）
-  - 匯出前預覽：✅ 已實作（`GET /api/messages/export/count`，回傳符合筆數與是否超過上限）
-  - 篩選選項來源：✅ 已實作（`GET /api/messages/export/customers`、`/api/messages/export/agents`）
-  - 筆數上限：⚠️ 受 `BULK_OPERATION_LIMITS.EXPORT_MAX_RECORDS` 限制，超量會被截斷（`willBeTruncated` 旗標提示）
-
-### 最新功能 (Latest Features - v4.0.0)
-- **WebSocket 架構** - 取代 SSE 舊系統
-- **Durable Objects 整合** - 分散式狀態管理
-- **即時廣播系統** - 多用戶即時同步
-- **狀態同步機制** - 連線/離線/忙碌追蹤
-- **延遲訊息排程** - 精準計時器
-- **高併發支援** - 依佈署規模與測試結果而定
-- **延遲訊息** - 1-120 秒精準排程 + WebSocket 通知
-- **活動紀錄** - 完整操作追蹤 + WebSocket 即時推送
-- **API 標準化** - 主要端點統一格式
-- **自助部署工具** - Web Installer 視覺化部署
+> 本文件曾經內建過一份「功能敘述精準對照」表（2026-05-21 稽核），現已併入並擴充為 `docs/PROJECT_OVERVIEW.md` 的逐項狀態標註（2026-07-29，81 項宣稱逐一對照程式碼核實）。若你手上還留著舊版 README 的複本，其中的完成度資訊已過時，請改看該文件。
 
 ## 架構設計
 
 ```
 ┌─────────────────┐ ┌──────────────────────┐ ┌─────────────┐
 │ Vue 3 前端 │◄──►│  Cloudflare Workers │◄──►│  外部 API │
-│  (TypeScript) │    │  (Hono + 24 模組) │    │  (LINE/FB)  │
+│  (TypeScript) │    │  (Hono + 26 模組) │    │  (LINE/FB)  │
 └────────┬────────┘ └──────────┬───────────┘ └─────────────┘
          │ │
          │ ┌─────────┴──────────┐
@@ -413,18 +273,17 @@ API 監控系統提供全面的服務監控能力：
 ### 當前版本: v4.0.0 (Enterprise-Ready WebSocket System)
 
 #### 已完成功能（程式碼層級已完成，仍需以 CI / 部署驗證）
+> 下方為粗略導覽；每一項的實際完成度、已知落差與程式碼佐證，請見 [`docs/PROJECT_OVERVIEW.md`](docs/PROJECT_OVERVIEW.md)。例如：延遲訊息實際是全域 5 檔設定（非逐則 1-120 秒可調）、Facebook 目前只有收訊沒有送訊——都已在該文件標註清楚，這裡不重複列出完成度。
 -  **WebSocket + Durable Objects 即時通訊** - 核心能力已上線
--  **超低延遲通訊** - 核心流程已上線（實測指標待量測）
 -  **分散式鎖定** - Durable Objects 協調
 -  **全局狀態管理** - Durable Objects 持久化
 -  **自動故障恢復** - 斷線自動重連
--  **延遲訊息排程** - 1-120 秒可設定
+-  **延遲訊息排程** - DO Alarm 精準排程（可調範圍見 PROJECT_OVERVIEW.md）
 -  **即時狀態廣播** - WebSocket 多用戶同步
 -  **完整監控系統** - 健康檢查與效能指標
--  **多渠道整合** - LINE OA 與 Facebook Messenger 雙向接入
+-  **多渠道整合** - LINE OA 完整雙向；Facebook Messenger 目前僅收訊（送訊路徑未接通，見 PROJECT_OVERVIEW.md §1）
 -  **認證系統** - 雙重角色 RBAC + WebSocket 安全認證
 -  **標籤系統** - 分類管理與對話統計
--  **延遲訊息** - 1-120 秒精準排程 + WebSocket 通知
 -  **前端應用** - Vue 3 + TypeScript + WebSocket
 -  **API 標準化** - 統一回應格式
 -  **活動紀錄** - 完整操作追蹤 + WebSocket 即時推送
@@ -441,8 +300,9 @@ API 監控系統提供全面的服務監控能力：
 - **類型安全**: 完整類型定義
 
 ### 效能指標 (WebSocket System)
+> ⚠️ 以下為設計目標，非已驗證的上線數據。專案內唯一一份壓測報告（`docs/history/reports/websocket/WEBSOCKET_LOAD_TEST_REPORT_2025-10-08.md`）測到 100 併發、P95 1795ms，尚未達到下方目標，也還沒有 1000+ 併發的測試紀錄。引用效能數字前請先看該報告。
 - **WebSocket 連線**: 規格目標為低延遲（未綁定固定 SLA）
-- **訊息延遲**: 依量測結果維持
+- **訊息延遲**: 目標 P95 < 500ms（實測未達，見上方壓測報告）
 - **併發連線**: 依壓測結果維持
 - **訊息吞吐**: 依壓測結果維持
 - **Worker 冷啟動**: 需以環境實測為準
@@ -457,7 +317,7 @@ API 監控系統提供全面的服務監控能力：
 Multi_Channel_Integration_System/
 ├── src/ # 後端 (Cloudflare Workers)
 │ ├── index.ts # Worker 進入點
-│ ├── modules/ # 24 個領域模組
+│ ├── modules/ # 26 個領域模組（含 broadcast/、data/，未列於下方樹狀圖，數字以 docs/PROJECT_OVERVIEW.md 為準）
 │ │   ├── auth/handlers/ # 認證系統
 │ │   ├── auto-reply/ # 自動回覆
 │ │   ├── conversations/handlers/  # 對話管理
@@ -638,6 +498,7 @@ A:
 ## 文件導航
 
 ### 基礎文件
+- [**專案總覽（功能單一事實來源）**](docs/PROJECT_OVERVIEW.md) - 14 大功能模組逐項標註 ✅/⚠️/❌ 完成度與程式碼佐證
 - [文件總索引](docs/reference/DOCUMENTATION_INDEX.md) - 完整文件檔案架構導覽
 - [Claude 開發指南](CLAUDE.md) - Claude Code 專用開發指引
 - [使用者指南](docs/guides/USER_GUIDE.md) - 完整使用與操作指南
