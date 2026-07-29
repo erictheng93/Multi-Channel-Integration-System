@@ -434,6 +434,8 @@ describe('MessageCrudService - Query Operations', () => {
   });
 
   describe('searchMessages', () => {
+    const visibleConversationIds = ['conv-1'];
+
     beforeEach(() => {
       mockDrizzle._store.clear();
       for (let i = 1; i <= 5; i++) {
@@ -451,7 +453,7 @@ describe('MessageCrudService - Query Operations', () => {
 
     it('should search messages with content filter', async () => {
       const query: MessageSearchQuery = { content: 'Hello' };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result).toBeDefined();
       expect(result.messages).toBeDefined();
@@ -464,7 +466,7 @@ describe('MessageCrudService - Query Operations', () => {
         limit: 2,
         offset: 0
       };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result.pagination.limit).toBe(2);
       expect(result.pagination.offset).toBe(0);
@@ -473,7 +475,7 @@ describe('MessageCrudService - Query Operations', () => {
 
     it('should default limit to 50 and offset to 0', async () => {
       const query: MessageSearchQuery = {};
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result.pagination.limit).toBe(50);
       expect(result.pagination.offset).toBe(0);
@@ -481,7 +483,7 @@ describe('MessageCrudService - Query Operations', () => {
 
     it('should support senderType filter', async () => {
       const query: MessageSearchQuery = { senderType: 'agent' };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result).toBeDefined();
       expect(result.total).toBeGreaterThan(0);
@@ -489,7 +491,7 @@ describe('MessageCrudService - Query Operations', () => {
 
     it('should support conversationId filter', async () => {
       const query: MessageSearchQuery = { conversationId: 'conv-1' };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result).toBeDefined();
     });
@@ -499,21 +501,21 @@ describe('MessageCrudService - Query Operations', () => {
         dateFrom: '2024-01-01',
         dateTo: '2024-12-31'
       };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result).toBeDefined();
     });
 
     it('should support isRecalled filter', async () => {
       const query: MessageSearchQuery = { isRecalled: false };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result).toBeDefined();
     });
 
     it('should support deliveryStatus filter', async () => {
       const query: MessageSearchQuery = { deliveryStatus: 'sent' };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result).toBeDefined();
     });
@@ -521,11 +523,25 @@ describe('MessageCrudService - Query Operations', () => {
     it('should return empty results for no matches', async () => {
       mockDrizzle._store.clear();
       const query: MessageSearchQuery = { content: 'nonexistent' };
-      const result = await service.searchMessages(query);
+      const result = await service.searchMessages(query, visibleConversationIds);
 
       expect(result.messages).toHaveLength(0);
       expect(result.total).toBe(0);
       expect(result.pagination.hasMore).toBe(false);
+    });
+
+    it('should fail closed when the caller has no visible conversations', async () => {
+      const result = await service.searchMessages({ content: 'Hello' }, []);
+
+      expect(result).toEqual({
+        messages: [],
+        total: 0,
+        pagination: {
+          limit: 50,
+          offset: 0,
+          hasMore: false
+        }
+      });
     });
   });
 });
@@ -909,7 +925,7 @@ describe('MessageCrudService - Error Handling', () => {
     (service as any).drizzleDb = errorDb;
 
     await expect(
-      service.searchMessages({ content: 'test' })
+      service.searchMessages({ content: 'test' }, ['conv-1'])
     ).rejects.toThrow('DB timeout');
   });
 });

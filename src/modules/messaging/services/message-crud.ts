@@ -186,9 +186,36 @@ export class MessageCrudService {
   /**
    * 搜尋訊息
    */
-  async searchMessages(query: MessageSearchQuery): Promise<MessageSearchResult> {
+  async searchMessages(
+    query: MessageSearchQuery,
+    visibleConversationIds: readonly string[]
+  ): Promise<MessageSearchResult> {
     try {
-      const conditions = [];
+      const limit = query.limit || 50;
+      const offset = query.offset || 0;
+
+      // Access control must fail closed. Keeping this required at the service
+      // boundary prevents callers from accidentally running a global search.
+      if (visibleConversationIds.length === 0) {
+        return {
+          messages: [],
+          total: 0,
+          pagination: {
+            limit,
+            offset,
+            hasMore: false
+          }
+        };
+      }
+
+      // D1 supports json_each() for IN queries. Binding the visible IDs as one
+      // JSON value avoids D1's bound-parameter limit for users with many
+      // visible conversations while preserving global ordering and pagination.
+      const conditions = [
+        sql`${messages.conversationId} IN (
+          SELECT value FROM json_each(${JSON.stringify(visibleConversationIds)})
+        )`
+      ];
 
       // 對話ID篩選
       if (query.conversationId) {
@@ -251,8 +278,8 @@ export class MessageCrudService {
         .leftJoin(agents, eq(messages.agentSenderId, agents.id))
         .where(whereCondition)
         .orderBy(desc(messages.createdAt))
-        .limit(query.limit || 50)
-        .offset(query.offset || 0);
+        .limit(limit)
+        .offset(offset);
 
       const messageDetails: MessageWithDetails[] = await Promise.all(results.map(async result => {
         const message = this.transformDbMessageToMessage(result.message);
@@ -273,9 +300,9 @@ export class MessageCrudService {
         messages: messageDetails,
         total,
         pagination: {
-          limit: query.limit || 50,
-          offset: query.offset || 0,
-          hasMore: (query.offset || 0) + (query.limit || 50) < total
+          limit,
+          offset,
+          hasMore: offset + limit < total
         }
       };
     } catch (error) {

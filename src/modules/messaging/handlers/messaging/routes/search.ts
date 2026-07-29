@@ -14,6 +14,7 @@ import { messages } from '@/db/schema';
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '@/middleware/auth';
+import { PermissionService } from '@/services/permission-service';
 import { nowISO } from '@/utils/timestamp'
 
 const searchRoutes = new Hono<{ Bindings: Bindings }>();
@@ -63,8 +64,17 @@ searchRoutes.get('/search', jwtAuth, async (c) => {
     }
 
     // 使用 MessageCrudService 進行搜尋
+    const user = c.get('user');
+    const visibleConversationIds = await PermissionService.getVisibleConversations(
+      user.id,
+      c.env.DB
+    );
+
     const messageCrudService = new MessageCrudService(c.env.DB);
-    const searchResult = await messageCrudService.searchMessages(searchQuery);
+    const searchResult = await messageCrudService.searchMessages(
+      searchQuery,
+      visibleConversationIds
+    );
 
     return c.json({
       success: true,
