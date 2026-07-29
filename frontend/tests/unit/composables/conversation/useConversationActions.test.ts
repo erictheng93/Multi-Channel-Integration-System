@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref, computed } from 'vue'
 import { useConversationActions } from '@/composables/conversation/useConversationActions'
+import { messageApi } from '@/api/message'
 import type { ConversationState } from '@/composables/conversation/useConversationState'
 import type { WebSocketIntegration } from '@/composables/conversation/useWebSocketIntegration'
 
@@ -22,6 +23,7 @@ function createMockState(overrides: Partial<ConversationState> = {}): Conversati
   return {
     refreshMessages: vi.fn().mockResolvedValue(undefined),
     loadMoreMessages: vi.fn().mockResolvedValue(undefined),
+    markMessageRecalled: vi.fn(() => undefined),
     // Provide minimal required properties
     conversationsStore: {} as any,
     httpMessages: {} as any,
@@ -94,24 +96,31 @@ describe('useConversationActions', () => {
   })
 
   describe('recallMessage', () => {
-    it('should call state.refreshMessages and return success on success', async () => {
+    it('should mark the message recalled optimistically and return success', async () => {
+      const undo = vi.fn()
+      mockState = createMockState({ markMessageRecalled: vi.fn(() => undo) })
       const actions = useConversationActions('conv-1', mockState, mockWebSocket)
 
       const result = await actions.recallMessage('msg-1')
 
-      expect(mockState.refreshMessages).toHaveBeenCalled()
+      expect(mockState.markMessageRecalled).toHaveBeenCalledWith('msg-1')
+      expect(undo).not.toHaveBeenCalled()
       expect(result).toEqual({ success: true })
     })
 
-    it('should return failure with the error message when refreshMessages fails', async () => {
-      mockState = createMockState({
-        refreshMessages: vi.fn().mockRejectedValue(new Error('refresh error'))
+    it('should roll back the optimistic mark and return the error when the API rejects the recall', async () => {
+      const undo = vi.fn()
+      mockState = createMockState({ markMessageRecalled: vi.fn(() => undo) })
+      vi.mocked(messageApi.recallMessage).mockResolvedValueOnce({
+        success: false,
+        error: '已超過可撤回時間'
       })
       const actions = useConversationActions('conv-1', mockState, mockWebSocket)
 
       const result = await actions.recallMessage('msg-1')
 
-      expect(result).toEqual({ success: false, error: 'refresh error' })
+      expect(undo).toHaveBeenCalled()
+      expect(result).toEqual({ success: false, error: '已超過可撤回時間' })
     })
   })
 
