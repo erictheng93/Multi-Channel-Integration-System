@@ -1,3 +1,17 @@
+/**
+ * Conversation visibility rules shared by every list-shaped query.
+ *
+ * Unassigned conversations (`assigned_team_id IS NULL`) are visible to every
+ * agent. That is intended, not a hole in team isolation: assignment is an
+ * admin-only action — the `agent` role carries no `conversation.assign`
+ * permission — so every inbound conversation starts unassigned and stays that
+ * way until an admin routes it. Narrowing this rule would hide new customer
+ * messages from all agents until that happens.
+ *
+ * Consequence worth keeping in mind: team scoping isolates only the assigned
+ * share of conversations. See issue #21 for the measurement and the decision.
+ */
+
 import { isNull, or, sql, type SQL } from 'drizzle-orm'
 import { conversations } from '@/db/schema'
 import type { DbUser } from '@/types'
