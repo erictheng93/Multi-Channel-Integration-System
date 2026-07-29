@@ -9,7 +9,7 @@ const log = createContextLogger('MsgTags')
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
-import { messages } from '@/db/schema';
+import { conversations, messages } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import {
   successResponse,
@@ -23,6 +23,24 @@ const tagsRoutes = new Hono<{ Bindings: Bindings }>();
 
 // 最大標籤數量
 const MAX_TAGS_PER_MESSAGE = 10;
+
+/**
+ * Mirrors the team-scoping rule in routes/crud.ts: admins reach everything,
+ * other agents only reach conversations assigned to one of their teams or left
+ * unassigned (shared pool, matching getVisibleConversations).
+ */
+function canAccessConversationTeam(
+  userPayload: JWTPayload,
+  assignedTeamId: number | null | undefined
+): boolean {
+  if (userPayload.role === 'admin') {
+    return true;
+  }
+  if (assignedTeamId === null || assignedTeamId === undefined) {
+    return true;
+  }
+  return (userPayload.allowedTeamIds ?? []).includes(assignedTeamId);
+}
 
 /**
  * 為訊息添加/更新標籤
@@ -72,13 +90,17 @@ tagsRoutes.put('/:id/tags', jwtAuth, async (c) => {
       .select({
         id: messages.id,
         conversationId: messages.conversationId,
-        metadata: messages.metadata
+        metadata: messages.metadata,
+        conversationAssignedTeamId: conversations.assignedTeamId
       })
       .from(messages)
+      .leftJoin(conversations, eq(messages.conversationId, conversations.id))
       .where(eq(messages.id, messageId))
       .get();
 
-    if (!message) {
+    // Return 404 (not 403) on a team mismatch so message existence is not
+    // leaked to unauthorised agents, matching routes/crud.ts.
+    if (!message || !canAccessConversationTeam(userPayload, message.conversationAssignedTeamId)) {
       return notFoundResponse(c, 'Message not found');
     }
 
@@ -143,13 +165,17 @@ tagsRoutes.delete('/:id/tags', jwtAuth, async (c) => {
       .select({
         id: messages.id,
         conversationId: messages.conversationId,
-        metadata: messages.metadata
+        metadata: messages.metadata,
+        conversationAssignedTeamId: conversations.assignedTeamId
       })
       .from(messages)
+      .leftJoin(conversations, eq(messages.conversationId, conversations.id))
       .where(eq(messages.id, messageId))
       .get();
 
-    if (!message) {
+    // Return 404 (not 403) on a team mismatch so message existence is not
+    // leaked to unauthorised agents, matching routes/crud.ts.
+    if (!message || !canAccessConversationTeam(userPayload, message.conversationAssignedTeamId)) {
       return notFoundResponse(c, 'Message not found');
     }
 
