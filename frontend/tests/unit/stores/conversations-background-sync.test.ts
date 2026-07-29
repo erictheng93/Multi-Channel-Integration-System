@@ -127,7 +127,7 @@ describe('Conversations Store - Background Sync Feature', () => {
       expect(store.syncStatus).toBeDefined()
     })
 
-    it('should call pollConversations every 30 seconds when background sync is active', async () => {
+    it('should call pollConversations every 2 minutes when background sync is active', async () => {
       // Arrange
       mockWsIsConnected.value = true
       const { useConversationsStore } = await import('@/stores/conversations')
@@ -139,8 +139,8 @@ describe('Conversations Store - Background Sync Feature', () => {
       // Initially, list should be called once (initial load may or may not happen)
       const initialCallCount = mockConversationApi.list.mock.calls.length
 
-      // Fast-forward 30 seconds
-      await vi.advanceTimersByTimeAsync(30000)
+      // Fast-forward one fallback interval (BACKGROUND_SYNC_INTERVAL = 120s)
+      await vi.advanceTimersByTimeAsync(120000)
 
       // Assert - API should be called for background sync
       expect(mockConversationApi.list.mock.calls.length).toBeGreaterThan(initialCallCount)
@@ -157,9 +157,9 @@ describe('Conversations Store - Background Sync Feature', () => {
       // Act
       store.cleanup()
 
-      // Fast-forward 60 seconds (2 sync cycles)
+      // Fast-forward 240 seconds (2 fallback sync cycles)
       const callCountAfterCleanup = mockConversationApi.list.mock.calls.length
-      await vi.advanceTimersByTimeAsync(60000)
+      await vi.advanceTimersByTimeAsync(240000)
 
       // Assert - No additional calls should be made after cleanup
       expect(mockConversationApi.list.mock.calls.length).toBe(callCountAfterCleanup)
@@ -208,8 +208,8 @@ describe('Conversations Store - Background Sync Feature', () => {
 
       const callCountWhenHidden = mockConversationApi.list.mock.calls.length
 
-      // Fast-forward 60 seconds
-      await vi.advanceTimersByTimeAsync(60000)
+      // Fast-forward 240 seconds (2 fallback sync cycles)
+      await vi.advanceTimersByTimeAsync(240000)
 
       // Assert - No additional sync calls when page is hidden
       // Note: This depends on implementation - may need adjustment
@@ -292,7 +292,7 @@ describe('Conversations Store - Background Sync Feature', () => {
       await store.initializeRealtime()
 
       // Act - Fast-forward to trigger background sync
-      await vi.advanceTimersByTimeAsync(30000)
+      await vi.advanceTimersByTimeAsync(120000)
 
       // Assert - Store should not crash, error should be handled
       expect(store.error).toBeDefined()
@@ -314,10 +314,10 @@ describe('Conversations Store - Background Sync Feature', () => {
       await store.initializeRealtime()
 
       // Act - First sync fails
-      await vi.advanceTimersByTimeAsync(30000)
+      await vi.advanceTimersByTimeAsync(120000)
 
       // Second sync should succeed
-      await vi.advanceTimersByTimeAsync(30000)
+      await vi.advanceTimersByTimeAsync(120000)
 
       // Assert - API should be called multiple times (retry mechanism)
       expect(mockConversationApi.list.mock.calls.length).toBeGreaterThanOrEqual(2)
