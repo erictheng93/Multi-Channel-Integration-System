@@ -27,7 +27,7 @@ const MAX_TAGS_PER_MESSAGE = 10;
 /**
  * Mirrors the team-scoping rule in routes/crud.ts: admins reach everything,
  * other agents only reach conversations assigned to one of their teams or left
- * unassigned (shared pool, matching getVisibleConversations).
+ * unassigned (the shared pool in the canonical conversation visibility rule).
  */
 function canAccessConversationTeam(
   userPayload: JWTPayload,

@@ -4,11 +4,15 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, inArray, desc, and, like, sql } from 'drizzle-orm';
+import { eq, desc, and, like, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, customers, teams, conversationTags, customerTags } from '@/db/schema';
+import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
+import {
+  getConversationVisibilityCondition,
+  getConversationVisibilitySql
+} from '@/services/conversation-visibility';
 import { jwtAuth } from '@/middleware/auth';
 import { createContextLogger } from '@/utils/logger';
 import { getDisplayContent } from '../utils/message-helpers';
@@ -49,13 +53,6 @@ interface ConversationUnreadAggregateRow {
   unreadCount: number | string | null;
 }
 
-type ConversationJoinRow = {
-  conversations: typeof conversations.$inferSelect;
-  customers: typeof customers.$inferSelect | null;
-  teams: typeof teams.$inferSelect | null;
-};
-
-const D1_MAX_BOUND_PARAMETERS = 100;
 const D1_SAFE_ID_CHUNK_SIZE = 90;
 
 export function createConversationUnreadCountQuery(conversationIds: string[]): string {
@@ -100,23 +97,6 @@ function clampPageSize(pageSize: number): number {
   return Math.min(Math.max(pageSize, 1), D1_SAFE_ID_CHUNK_SIZE);
 }
 
-function getSafeIdChunkSize(extraBoundParams = 0): number {
-  return Math.max(1, Math.min(D1_SAFE_ID_CHUNK_SIZE, D1_MAX_BOUND_PARAMETERS - extraBoundParams));
-}
-
-function chunkItems<T>(items: T[], chunkSize = D1_SAFE_ID_CHUNK_SIZE): T[][] {
-  const chunks: T[][] = [];
-  for (let offset = 0; offset < items.length; offset += chunkSize) {
-    chunks.push(items.slice(offset, offset + chunkSize));
-  }
-  return chunks;
-}
-
-function getUpdatedAtTimestamp(row: ConversationJoinRow): number {
-  const timestamp = Date.parse(row.conversations.updatedAt ?? '');
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
 function createEmptyConversationStats(): ConversationStats {
   return {
     total: 0,
@@ -140,89 +120,74 @@ const conversationQueriesHandler = new Hono<{ Bindings: Bindings }>();
 conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
+    const visibility = getConversationVisibilitySql(user, 'assigned_team_id');
     const stats = createEmptyConversationStats();
 
-    if (visibleConversationIds.length === 0) {
-      return contractJson(c, conversationContracts.stats, {
-        success: true,
-        data: stats,
-        timestamp: nowISO()
-      });
-    }
+    const aggregateRow = await c.env.DB.prepare(`
+      SELECT
+        COUNT(*) as total,
+        COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active,
+        COALESCE(SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END), 0) as assigned,
+        COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending
+      FROM conversations
+      WHERE ${visibility.clause}
+    `).bind(...visibility.params).first<ConversationStatsAggregateRow>();
 
-    for (const idChunk of chunkItems(visibleConversationIds)) {
-      const placeholders = idChunk.map(() => '?').join(',');
+    stats.total = toCount(aggregateRow?.total);
+    stats.active = toCount(aggregateRow?.active);
+    stats.assigned = toCount(aggregateRow?.assigned);
+    stats.pending = toCount(aggregateRow?.pending);
 
-      const aggregateRow = await c.env.DB.prepare(`
-        SELECT
-          COUNT(*) as total,
-          COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) as active,
-          COALESCE(SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END), 0) as assigned,
-          COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending
+    const unreadRow = await c.env.DB.prepare(`
+      WITH visible AS (
+        SELECT id, last_read_at, marked_unread_at
         FROM conversations
-        WHERE id IN (${placeholders})
-      `).bind(...idChunk).first<ConversationStatsAggregateRow>();
-
-      stats.total += toCount(aggregateRow?.total);
-      stats.active += toCount(aggregateRow?.active);
-      stats.assigned += toCount(aggregateRow?.assigned);
-      stats.pending += toCount(aggregateRow?.pending);
-
-      // Same derived-table shape as the list endpoint below: threshold is
-      // computed once per conversation, never per message row (D1 rows-read cost).
-      // The ids CTE lets the chunk be referenced twice while binding each id
-      // once — D1 caps bound parameters at 100 per query.
-      // Per-conversation counts are grouped first (LEFT JOIN keeps
-      // conversations with zero matches) so the manual unread override
-      // (marked_unread_at) can floor each conversation's contribution at 1.
-      const unreadRow = await c.env.DB.prepare(`
-        WITH ids(id) AS (VALUES ${idChunk.map(() => '(?)').join(',')})
-        SELECT COALESCE(SUM(
-          CASE WHEN per.manuallyUnread = 1 AND per.unreadCount = 0
-            THEN 1 ELSE per.unreadCount END
-        ), 0) as unreadCount
+        WHERE ${visibility.clause}
+      )
+      SELECT COALESCE(SUM(
+        CASE WHEN per.manuallyUnread = 1 AND per.unreadCount = 0
+          THEN 1 ELSE per.unreadCount END
+      ), 0) as unreadCount
+      FROM (
+        SELECT
+          threshold.id,
+          threshold.manuallyUnread,
+          COUNT(customer_message.id) as unreadCount
         FROM (
           SELECT
-            t.id,
-            t.manuallyUnread,
-            COUNT(m.id) as unreadCount
-          FROM (
-            SELECT
-              c2.id as id,
-              CASE WHEN c2.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
-              MAX(
-                COALESCE(la.last_agent_at, '1970-01-01'),
-                COALESCE(c2.last_read_at, '1970-01-01')
-              ) as unread_threshold
-            FROM conversations c2
-            LEFT JOIN (
-              SELECT conversation_id, MAX(created_at) as last_agent_at
-              FROM messages
-              WHERE conversation_id IN (SELECT id FROM ids)
-                AND sender_type IN ('agent', 'system')
-                AND deleted_at IS NULL
-              GROUP BY conversation_id
-            ) la ON la.conversation_id = c2.id
-            WHERE c2.id IN (SELECT id FROM ids)
-          ) t
-          LEFT JOIN messages m
-            ON m.conversation_id = t.id
-            AND m.sender_type = 'customer'
-            AND m.deleted_at IS NULL
-            AND m.created_at > t.unread_threshold
-          GROUP BY t.id, t.manuallyUnread
-        ) per
-      `).bind(...idChunk).first<ConversationUnreadAggregateRow>();
+            visible.id,
+            CASE WHEN visible.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
+            MAX(
+              COALESCE(last_agent.last_agent_at, '1970-01-01'),
+              COALESCE(visible.last_read_at, '1970-01-01')
+            ) as unread_threshold
+          FROM visible
+          LEFT JOIN (
+            SELECT message.conversation_id, MAX(message.created_at) as last_agent_at
+            FROM messages AS message
+            INNER JOIN visible ON visible.id = message.conversation_id
+            WHERE message.sender_type IN ('agent', 'system')
+              AND message.deleted_at IS NULL
+            GROUP BY message.conversation_id
+          ) AS last_agent ON last_agent.conversation_id = visible.id
+        ) AS threshold
+        LEFT JOIN messages AS customer_message
+          ON customer_message.conversation_id = threshold.id
+          AND customer_message.sender_type = 'customer'
+          AND customer_message.deleted_at IS NULL
+          AND customer_message.created_at > threshold.unread_threshold
+        GROUP BY threshold.id, threshold.manuallyUnread
+      ) AS per
+    `).bind(...visibility.params).first<ConversationUnreadAggregateRow>();
 
-      stats.unreadCount += toCount(unreadRow?.unreadCount);
-    }
+    stats.unreadCount = toCount(unreadRow?.unreadCount);
 
     return contractJson(c, conversationContracts.stats, {
       success: true,
       data: stats,
       timestamp: nowISO()
     });
+
 
   } catch (error) {
     return globalErrorHandler.handleError(c, error);
@@ -413,161 +378,60 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
 
     log.debug('Conversation Handler filter params', { tagIds, searchQuery });
 
-    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
-
-    log.debug('Conversation Handler visible conversations', { count: visibleConversationIds.length });
-
-    // 如果沒有可見對話，返回空列表
-    if (visibleConversationIds.length === 0) {
-      log.debug('Conversation Handler no visible conversations found');
-      return c.json({
-        success: true,
-        data: [],
-        timestamp: nowISO()
-      });
-    }
-
-    // FIX: 使用完整 JOIN 查詢，返回嵌套對象結構 (統一類型定義)
-    log.debug('Conversation Handler querying conversation data');
     const drizzleDb = createDbClient(c.env.DB);
-
-    // 如果有標籤篩選，先獲取有這些標籤的對話 ID
-    // 同時檢查 conversation_tags（對話標籤）和 customer_tags（客戶標籤）
-    let filteredConversationIds = visibleConversationIds;
-    if (tagIds.length > 0) {
-      // 1. 直接在 conversation_tags 上有標籤的對話
-      const directTagged: Array<{ conversationId: string }> = [];
-      const customerTagged: Array<{ conversationId: string }> = [];
-      const tagChunks = chunkItems(tagIds, D1_SAFE_ID_CHUNK_SIZE);
-
-      for (const tagChunk of tagChunks) {
-        const idChunkSize = getSafeIdChunkSize(tagChunk.length);
-
-        for (const idChunk of chunkItems(visibleConversationIds, idChunkSize)) {
-          const directTaggedChunk = await drizzleDb
-            .selectDistinct({ conversationId: conversationTags.conversationId })
-            .from(conversationTags)
-            .where(
-              and(
-                inArray(conversationTags.conversationId, idChunk),
-                inArray(conversationTags.tagId, tagChunk)
-              )
-            );
-          directTagged.push(...directTaggedChunk);
-        }
-
-      // 2. 透過客戶標籤關聯的對話（客戶被打標籤 → 該客戶的對話也應匹配）
-        for (const idChunk of chunkItems(visibleConversationIds, idChunkSize)) {
-          const customerTaggedChunk = await drizzleDb
-            .selectDistinct({ conversationId: conversations.id })
-            .from(conversations)
-            .innerJoin(customerTags, eq(conversations.customerId, customerTags.customerId))
-            .where(
-              and(
-                inArray(conversations.id, idChunk),
-                inArray(customerTags.tagId, tagChunk)
-              )
-            );
-          customerTagged.push(...customerTaggedChunk);
-        }
-      }
-
-      // 合併兩者（去重）
-      const allMatchedIds = new Set([
-        ...directTagged.map(tc => tc.conversationId),
-        ...customerTagged.map(tc => tc.conversationId)
-      ]);
-      filteredConversationIds = [...allMatchedIds];
-
-      log.debug('Conversation Handler filtered by tags', {
-        originalCount: visibleConversationIds.length,
-        directTaggedCount: directTagged.length,
-        customerTaggedCount: customerTagged.length,
-        filteredCount: filteredConversationIds.length,
-        tagIds
-      });
-
-      // 如果篩選後沒有對話，返回空列表
-      if (filteredConversationIds.length === 0) {
-        return c.json({
-          success: true,
-          data: [],
-          timestamp: nowISO()
-        });
-      }
-    }
-
-    // 如果有搜尋關鍵字，篩選匹配客戶名稱的對話
-    if (searchQuery) {
-      const searchPattern = `%${searchQuery}%`;
-      const matchedConversations: Array<{ id: string }> = [];
-
-      for (const idChunk of chunkItems(filteredConversationIds, getSafeIdChunkSize(1))) {
-        const matchedChunk = await drizzleDb
-          .select({ id: conversations.id })
-          .from(conversations)
-          .leftJoin(customers, eq(conversations.customerId, customers.id))
-          .where(
-            and(
-              inArray(conversations.id, idChunk),
-              like(customers.displayName, searchPattern)
+    const listConditions = [
+      getConversationVisibilityCondition(user),
+      ...(tagIds.length > 0
+        ? [sql`(
+            EXISTS (
+              SELECT 1
+              FROM conversation_tags AS direct_tag
+              WHERE direct_tag.conversation_id = ${conversations.id}
+                AND direct_tag.tag_id IN (
+                  SELECT value FROM json_each(${JSON.stringify(tagIds)})
+                )
             )
-          );
-        matchedConversations.push(...matchedChunk);
-      }
-      filteredConversationIds = matchedConversations.map(c => c.id);
+            OR EXISTS (
+              SELECT 1
+              FROM customer_tags AS customer_tag
+              WHERE customer_tag.customer_id = ${conversations.customerId}
+                AND customer_tag.tag_id IN (
+                  SELECT value FROM json_each(${JSON.stringify(tagIds)})
+                )
+            )
+          )`]
+        : []),
+      ...(searchQuery ? [like(customers.displayName, `%${searchQuery}%`)] : []),
+      ...(customerNameQuery
+        ? [sql`${customers.displayName} LIKE ${'%' + customerNameQuery + '%'}`]
+        : []),
+      ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
+      ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
+      ...(statusQuery ? [sql`${conversations.status} = ${statusQuery}`] : []),
+      ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
+      ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
+        ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
+        : [])
+    ];
 
-      log.debug('Conversation Handler filtered by search', {
-        searchQuery,
-        filteredCount: filteredConversationIds.length
-      });
+    const conversationResults = await drizzleDb
+      .select()
+      .from(conversations)
+      .leftJoin(customers, eq(conversations.customerId, customers.id))
+      .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
+      .where(and(...listConditions))
+      .orderBy(desc(conversations.updatedAt));
 
-      if (filteredConversationIds.length === 0) {
-        return c.json({
-          success: true,
-          data: [],
-          timestamp: nowISO()
-        });
-      }
-    }
-
-    const extraListParams =
-      (customerNameQuery ? 1 : 0) +
-      (updatedAfter ? 1 : 0) +
-      (updatedBefore ? 1 : 0) +
-      (statusQuery ? 1 : 0) +
-      (platformQuery ? 1 : 0) +
-      (teamIdQuery !== undefined && Number.isFinite(teamIdQuery) ? 1 : 0);
-    const conversationResultsById = new Map<string, ConversationJoinRow>();
-
-    for (const idChunk of chunkItems(filteredConversationIds, getSafeIdChunkSize(extraListParams))) {
-      const conversationChunk = await drizzleDb
-        .select()
-        .from(conversations)
-        .leftJoin(customers, eq(conversations.customerId, customers.id))
-        .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
-        .where(and(
-          inArray(conversations.id, idChunk),
-          ...(customerNameQuery ? [sql`${customers.displayName} LIKE ${'%' + customerNameQuery + '%'}`] : []),
-          ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
-          ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
-          ...(statusQuery ? [sql`${conversations.status} = ${statusQuery}`] : []),
-          ...(platformQuery ? [sql`${customers.platform} = ${platformQuery}`] : []),
-          ...(teamIdQuery !== undefined && Number.isFinite(teamIdQuery)
-            ? [sql`${conversations.assignedTeamId} = ${teamIdQuery}`]
-            : [])
-        ))
-        .orderBy(desc(conversations.updatedAt));
-      for (const result of conversationChunk) {
-        conversationResultsById.set(result.conversations.id, result);
-      }
-    }
-    const conversationResults = Array.from(conversationResultsById.values())
-      .sort((a, b) => getUpdatedAtTimestamp(b) - getUpdatedAtTimestamp(a));
     const total = conversationResults.length;
     const pagedConversationResults = hasPaginationParams
       ? conversationResults.slice((page - 1) * pageSize, page * pageSize)
       : conversationResults;
+
+    log.debug('Conversation Handler query completed', {
+      matchedCount: total,
+      returnedCount: pagedConversationResults.length
+    });
+
 
     // 構建完整的對話對象數組，包含嵌套的 customer 和 assignedTeam 對象
     const conversationData = pagedConversationResults.map(result => ({

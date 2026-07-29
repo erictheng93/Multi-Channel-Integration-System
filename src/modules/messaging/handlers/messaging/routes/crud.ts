@@ -98,7 +98,7 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
     // F4: enforce team-scoped access. Admins see everything. Other agents
     // can only read messages whose conversation is in one of their
     // allowedTeamIds, or is unassigned (shared pool, matching the visibility
-    // rule used by getVisibleConversations).
+    // canonical conversation visibility rule).
     const isAdmin = userPayload.role === 'admin';
     const assignedTeamId = messageQuery.conversationAssignedTeamId;
     const allowedTeams = userPayload.allowedTeamIds ?? [];
