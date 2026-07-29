@@ -7,7 +7,7 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('MsgSearch')
 
 import { HTTP_STATUS } from '@/constants/http-status';
-import { eq, count } from 'drizzle-orm';
+import { count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
 import { messages } from '@/db/schema';
@@ -16,6 +16,36 @@ import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '@/middleware/auth';
 import { PermissionService } from '@/services/permission-service';
 import { nowISO } from '@/utils/timestamp'
+
+interface MessageTagCountRow {
+  name: string;
+  count: number;
+}
+
+export const MESSAGE_TAG_STATS_SQL = `
+  SELECT
+    CAST(tag.value AS TEXT) AS name,
+    COUNT(*) AS count
+  FROM messages AS message
+  JOIN json_each(
+    CASE
+      WHEN json_valid(message.metadata) THEN
+        CASE
+          WHEN json_type(message.metadata, '$.tags') = 'array'
+          THEN json_extract(message.metadata, '$.tags')
+          ELSE '[]'
+        END
+      ELSE '[]'
+    END
+  ) AS tag
+  WHERE message.is_recalled = 0
+    AND message.conversation_id IN (
+      SELECT value FROM json_each(?)
+    )
+    AND tag.type = 'text'
+  GROUP BY tag.value
+  ORDER BY count DESC, name ASC
+`;
 
 const searchRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -150,38 +180,34 @@ searchRoutes.get('/stats', jwtAuth, async (c) => {
  */
 searchRoutes.get('/tags', jwtAuth, async (c) => {
   try {
-    const db = createDbClient(c.env.DB);
+    const user = c.get('user');
+    const visibleConversationIds = await PermissionService.getVisibleConversations(
+      user.id,
+      c.env.DB
+    );
 
-    // 從訊息元數據中提取所有唯一的標籤
-    const messagesWithTags = await db
-      .select({
-        metadata: messages.metadata
-      })
-      .from(messages)
-      .where(eq(messages.isRecalled, false));
-
-    // 提取並統計所有標籤
-    const tagStats: Record<string, number> = {};
-
-    for (const msg of messagesWithTags) {
-      if (msg.metadata) {
-        try {
-          const metadata = JSON.parse(msg.metadata);
-          if (metadata.tags && Array.isArray(metadata.tags)) {
-            for (const tag of metadata.tags) {
-              tagStats[tag] = (tagStats[tag] || 0) + 1;
-            }
-          }
-        } catch (e) {
-          // 忽略解析錯誤
-        }
-      }
+    if (visibleConversationIds.length === 0) {
+      return c.json({
+        success: true,
+        data: {
+          tags: [],
+          total: 0
+        },
+        timestamp: nowISO()
+      });
     }
 
-    // 轉換為數組並排序
-    const tagList = Object.entries(tagStats)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
+    // Aggregate inside D1 so the Worker never loads every message metadata
+    // value into memory. Invalid JSON and non-array tags retain the previous
+    // behavior of being ignored.
+    const tagRows = await c.env.DB.prepare(MESSAGE_TAG_STATS_SQL)
+      .bind(JSON.stringify(visibleConversationIds))
+      .all<MessageTagCountRow>();
+
+    const tagList = (tagRows.results || []).map(row => ({
+      name: row.name,
+      count: Number(row.count)
+    }));
 
     return c.json({
       success: true,
