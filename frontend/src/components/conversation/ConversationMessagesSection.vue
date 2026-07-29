@@ -133,6 +133,7 @@ const props = withDefaults(
     emptyStateMessage?: string
   }>(),
   {
+    conversationId: undefined,
     displayedMessages: undefined,
     loading: false,
     hasMore: false,

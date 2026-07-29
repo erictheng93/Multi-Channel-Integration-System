@@ -213,6 +213,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  conversationId: undefined,
   autoExpand: false
 })
 
