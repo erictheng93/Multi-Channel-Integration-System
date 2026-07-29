@@ -1,125 +1,130 @@
 # 企業級多渠道客服整合系統 — 專案總覽
 
 > 本文件取代你過去拿到的 8 段式「核心功能模組」描述，覆蓋現行 v4.0.0 的真實能力範圍。  
-> **最後更新**: 2026-05-04 · 對應版本 **v4.0.0 (Enterprise-Ready WebSocket System)**
+> **最後更新**: 2026-07-29 · 對應版本 **v4.0.0 (Enterprise-Ready WebSocket System)**
+> **狀態標記口徑**（本文件單一事實來源，README 不再重複列出）：✅ 已實作且為實際上線路徑 · ⚠️ 部分完成/有落差 · ❌ 宣稱存在但未實作或路徑未接通
+> 本次逐項核對日期 **2026-07-29**（81 項具體宣稱，81 項對應程式碼路徑逐一核實；60% 完全正確、21% 部分/過時、17% 錯誤，1% 無法驗證）
 
 ---
 
 ## 主要功能
 
-統一管理來自 **LINE OA、Facebook Messenger** 與未來擴充渠道（Instagram / WhatsApp / Telegram）的客戶訊息，讓客服人員可以在單一介面處理所有平台的對話。底層採 **Cloudflare Workers (Hono) + Vue 3 + TypeScript strict** + **Durable Objects + D1 + KV + R2 + Queues** 全雲端架構，支援 1000+ 併發連線、訊息延遲 P95 < 500ms。
+統一管理來自 **LINE OA、Facebook Messenger** 與未來擴充渠道（Instagram / WhatsApp / Telegram）的客戶訊息，讓客服人員可以在單一介面處理所有平台的對話（Facebook 目前僅收訊，送訊路徑未接通，見 §1）。底層採 **Cloudflare Workers (Hono) + Vue 3 + TypeScript strict** + **Durable Objects + D1 + KV + R2 + Queues** 全雲端架構；「1000+ 併發連線、P95 < 500ms」為設計目標，**非已驗證數據**，目前僅有的壓測紀錄是 100 併發、P95 1795ms（見 §8）。
 
 ---
 
 ## 14 大功能模組
 
 ### 1. 多渠道整合
-- **LINE OA 完整整合** — Webhook 處理、訊息收發、客戶資料自動收集
-- **Facebook Messenger** — API 架構就緒，等待最終整合驗收
-- **AES-256-GCM 憑證加密** — 渠道 token 加密儲存，含 timing-safe 簽章驗證
-- **JSON 設定欄位** — 加新平台不用改 schema
-- **平台能力矩陣** — 每平台支援的功能（文字、圖、檔、Rich Menu、廣播）一覽
+- ✅ **LINE OA 完整整合** — Webhook 處理、訊息收發、客戶資料自動收集
+- ⚠️ **Facebook Messenger** — 收訊（Webhook 接收、客戶建立、對話處理）已完成，與 LINE 同等級。**送訊路徑未接通**：實際送訊服務 `message-delivery-service.ts` 只處理 `platform === 'line'`，沒有 Facebook 分支，客服目前**無法回覆 Facebook 客戶**（有另一支可用的雙平台發送程式碼 `retry-handler.ts`，但目前排程流程沒有呼叫到它）。這不是「等待驗收」，是待修復的功能缺口。
+- ✅ **AES-256-GCM 憑證加密** — 渠道 token 加密儲存，含 timing-safe 簽章驗證
+- ✅ **JSON 設定欄位** — 加新平台不用改 schema
+- ✅ **平台能力矩陣** — 每平台支援的功能（文字、圖、檔、Rich Menu、廣播）一覽，程式碼層級已定義（`PLATFORM_CAPABILITIES`），目前未渲染成前端 UI
+- ⚠️ 未列入原文件但已存在：Webhook 重放攻擊偵測、Webhook 速率限制、Webhook 安全稽核日誌 — 這是一套相當完整的安全層，先前版本文件完全沒提到
 
 ### 2. LINE LIFF 團隊綁定
-- **QR Code 自動指派** — 客戶掃 QR → 自動進指定客服團隊
-- **WebSocket 預通知** — 客戶完成加好友前，客服已看到「準備中」對話（延遲從 2-8s 降到 < 500ms）
-- **歡迎訊息自動發** — 完成綁定後系統寄出
-- **重新綁定處理** — 已存在客戶掃新 QR 自動 transfer 團隊
+- ✅ **QR Code 自動指派** — 客戶掃 QR → 自動進指定客服團隊
+- ✅ **WebSocket 預通知** — 客戶完成加好友前，客服已看到「準備中」對話（延遲從 2-8s 降到 < 500ms）
+- ✅ **歡迎訊息自動發** — 完成綁定後系統寄出
+- ✅ **重新綁定處理** — 已存在客戶掃新 QR 自動 transfer 團隊（此邏輯實際位於 `/welcome` 端點；原始 `follow` webhook 不會覆蓋已存在的團隊指派）
 
 ### 3. 對話管理系統
-- **即時對話處理** — WebSocket 推送
-- **完整狀態流轉** — `active` / `pending` / `in-progress` / `waiting` / `assigned`
-- **團隊指派** — v4 起為團隊指派（個人指派已退場）
-- **跨團隊轉移** — 自動寫入 `conversationTransfers` 表保留歷史
-- **批次操作** — ≤ 100 筆 / 次
+- ✅ **即時對話處理** — WebSocket 推送
+- ⚠️ **完整狀態流轉** — 目前可寫入的狀態為 `active` / `pending` / `in-progress` / `waiting` / `assigned`。舊版 `closed` 狀態雖然已無法透過任何 API 寫入（bulk 操作明確拒絕 close/reopen），但仍是歷史資料的一部分，且**目前仍有 ≥8 個模組**（客戶服務、LIFF、分析、報表、標籤）在讀取/篩選這個值 — 並非完全死掉的狀態，遷移時需注意。
+- ✅ **團隊指派** — v4 起為團隊指派（個人指派已退場）
+- ✅ **跨團隊轉移** — 自動寫入 `conversationTransfers` 表保留歷史
+- ❌ **批次操作 ≤ 100 筆 / 次** — 此限制只存在於**訊息模組**的 bulk 端點（有確實 hard-reject）。**對話模組**的 `/conversations/bulk` 端點**沒有任何筆數上限**，100 這個數字只是內部 D1 參數安全邊界（每批 ≤90 筆），呼叫端可以送出上萬筆 ID，系統會全部處理完，只是拆成多次 D1 往返。
 
 ### 4. 訊息核心引擎
-- **完整訊息 CRUD** — 含巢狀回覆（`replyToMessageId` + `threadId`）
-- **訊息撤回** — 軟刪除，有 deadline 限制
-- **訊息轉發** — 一則訊息可轉到 ≤ 20 個對話
-- **全文搜尋** — 跨對話、可篩類型 / 寄件人 / 日期 / 撤回狀態
-- **匯出** — JSON / CSV
-- **附件** — 上傳到 R2、生 presigned URL
+- ✅ **完整訊息 CRUD** — 含巢狀回覆（`replyToMessageId` + `threadId`），兩欄位分別透過訊息模組與對話模組兩個建立入口寫入
+- ⚠️ **訊息撤回** — deadline 限制確實存在，但不是「軟刪除」：撤回會直接把 `content` 欄位覆寫成固定的撤回提示文字，原始內容不可回復，比較接近「內容抹除」而非軟刪除
+- ✅ **訊息轉發** — 一則訊息可轉到 ≤ 20 個對話（硬性限制）
+- ⚠️ **搜尋** — 跨對話、可篩類型 / 寄件人 / 日期 / 撤回狀態皆已實作，但「全文搜尋」用詞不準確：內容篩選是純 SQL `LIKE`，不是全文索引/排序相關性搜尋
+- ⚠️ **匯出** — 已支援 **JSON / CSV / TXT** 三種格式（TXT 為後續新增，原文件未列），有 5000 筆匯出上限（原文件未列）
+- ✅ **附件** — 上傳到 R2，並產生時效性簽章 URL（實作方式是自訂 HMAC 簽章的 Worker 代理網址，功能等效但不是原生 S3 風格 presigned URL）
 
 ### 5. 延遲訊息系統
-- **靈活延遲** — 1-120 秒可調，全域預設可覆蓋
-- **真撤回** — DO Alarm 排程，撤回時直接從佇列取消，不是假裝
-- **即時取消** — 撤回延遲 < 100ms
-- **重新排程** — deadline 前可改延遲
-- **企業級日誌** — 操作稽核 + 統計分析
+- ❌ **延遲秒數「1-120 秒可調」** — 實際上線路徑是**單一全域管理設定**，只能選固定的 5 檔（`0/30/60/120/300` 秒，最大 300 秒不是 120 秒），**沒有逐則訊息覆蓋**。DO 本身確實支援任意 1-300 秒，但只能透過一支已無前端在用的舊版 API（`/api/delayed-messages-v2/*`）呼叫，等於孤兒功能。
+- ✅ **真撤回** — DO Alarm 排程，撤回時直接從佇列取消，不是假裝（LINE 無 unsend API 時會明確拒絕撤回，Facebook 走 Graph API 刪除，處理方式誠實）
+- ❔ **即時取消 < 100ms** — 撤回流程架構上支撐得起（單次 DO fetch），但沒有量測數據佐證
+- ❌ **重新排程** — 目前**沒有任何**改期/PATCH 端點，DO 只支援 `/schedule /cancel /status /list /dlq /metrics`。要改時間只能取消後重新送一則新訊息。
+- ✅ **企業級日誌** — 操作稽核（`messageRecallLogs`）+ DO `/metrics` 統計分析（含百分位）
+- 補充：延遲緩衝機制目前**只對 LINE 客戶生效**（`platform === 'line'` 才會走 DO），Facebook 訊息完全跳過延遲系統，直接送出後靠 Graph API 事後刪除
 
 ### 6. 多渠道通知系統
-- **多通道遞送** — WebSocket / Email / Push 並行
-- **多種類型** — `new_message` / `conversation_assigned` / `mention` / `task_reminder` 等
-- **三級優先級** — low / normal / high（high 走快速通道）
-- **未讀計數** — 每類型獨立 badge
-- **批次與系統公告** — 管理員可全站廣播
-- **自動過期** — 可設 `expiresAt`
+- ❌ **多通道遞送「WebSocket / Email / Push 並行」** — Email、Push adapter 預設都是停用狀態，`sendEmail()`/`sendToPushService()` 都是純模擬（隨機成功率），不會真的送出。模組內建的 WebSocketAdapter 也從未被實際連線餵資料。**實際上唯一會送達的通道是應用內 WebSocket，而且是靠另一套完全獨立的 DO 廣播機制，不是這個「多通道 adapter」系統本身在運作。**
+- ✅ **多種類型** — 實際共 11 種類型（原文件僅列 4 種，範圍比描述的更廣）
+- ❌ **三級優先級「low / normal / high，high 走快速通道」** — 實際是**四級**：`low / normal / high / urgent`。且 high 並沒有任何「快速通道」邏輯，priority 目前只是儲存用的中繼資料。
+- ⚠️ **未讀計數，每類型獨立 badge** — 後端已支援分類型計數，但前端目前只顯示一個總計 badge，`byType` 統計有抓回來但沒有渲染成分類徽章
+- ✅ **批次與系統公告** — 管理員可全站廣播
+- ⚠️ **自動過期** — `expiresAt` 欄位可設定、可儲存，但**沒有自動清除機制**——沒有排程任務讀取這個欄位，只能靠管理員手動呼叫清除端點
 
 ### 7. 認證與權限
-- **JWT 雙令牌** — access 2h、refresh 7d，自動刷新
-- **多團隊 JWT 編碼** — `primaryTeamId` + `allowedTeamIds[]` + `teamRoles{}` 都在 token
-- **2 層系統角色** — `Admin` / `Agent`（v4 簡化，移除 `team` 系統角色）
-- **3 層團隊角色** — `Member` → `Lead` → `Supervisor`
-- **多種雜湊相容** — bcrypt / PBKDF2 / SHA256（漸進遷移）
-- **失敗鎖定** — 5 次失敗鎖 15 分鐘
-- **強制改密碼流程** — 含臨時 token
+- ✅ **JWT 雙令牌** — access 2h、refresh 7d，自動刷新
+- ✅ **多團隊 JWT 編碼** — `primaryTeamId` + `allowedTeamIds[]` + `teamRoles{}` 都在 token
+- ✅ **2 層系統角色** — `Admin` / `Agent`（v4 簡化，移除 `team` 系統角色）
+- ✅ **3 層團隊角色** — `Member` → `Lead` → `Supervisor`
+- ✅ **多種雜湊相容** — bcrypt / PBKDF2 / SHA256（漸進遷移，登入時自動升級舊雜湊）
+- ❌ **失敗鎖定「5 次失敗鎖 15 分鐘」** — 這個帳號鎖定機制**實際不存在**。程式碼裡確實有一個數值完全相符的設定物件（`maxLoginAttempts: 5, lockoutDuration: 900`），但從未被匯入使用，是死程式碼。實際生效的是另一套機制：**每個帳號（依 email）5 分鐘內限 5 次登入請求**的滑動視窗速率限制（不分成功失敗都計數，時窗也不是 15 分鐘）。
+- ✅ **強制改密碼流程** — 含臨時 token（30 分鐘效期，明確擋掉正常 API 存取）
 
 ### 8. 即時協作功能
-- **WebSocket + Durable Objects** — 1000+ 併發、P95 < 500ms
-- **打字狀態廣播** — 自動排除送出者
-- **線上狀態管理** — online / away / busy / offline + 自訂 metadata
-- **對話房間管理** — 每對話獨立 DO，含 viewers 名單
-- **多分頁同步** — 同帳號多分頁不衝突
-- **跨設備一致性** — DO 提供強一致狀態
+- ❌ **「1000+ 併發、P95 < 500ms」** — 這是設計目標，**不是已驗證的上線數據**，而且被專案自己僅有的一份壓測報告推翻：`docs/history/reports/websocket/WEBSOCKET_LOAD_TEST_REPORT_2025-10-08.md` 實測只測到 **100** 併發，P95 量到 **1795ms**（超出目標 3.5 倍）。目前沒有任何 1000 併發的測試紀錄。引用效能數字前請先看該份報告，不要直接引用本節目標值。
+- ✅ **打字狀態廣播** — 自動排除送出者
+- ❌ **線上狀態管理「online / away / busy / offline + 自訂 metadata」** — 型別定義與 API 介面都支援這 4 種狀態與 metadata，但 DO 端的實際處理函式**直接忽略**傳入的 status 與 metadata，只會維護「上線／離線」二元狀態，沒有 away/busy，也沒有 metadata 持久化。
+- ✅ **對話房間管理** — 每對話獨立 DO，含 viewers 名單
+- ✅ **多分頁同步** — 同帳號多分頁不衝突（WebSocket 為主要更新路徑，只有次要的 D1 輪詢備援才需要分頁互斥鎖）
+- ✅ **跨設備一致性** — DO 提供強一致狀態
 
 ### 9. 檔案附件系統
-- **多格式支援** — 圖 / 影音 / PDF / DOC，依類型不同上限（5-50 MB）
-- **R2 雲端儲存** — 自動 3 次重試
-- **Presigned URL** — 預設 1 小時，可調
-- **自動縮圖** — 圖片產 200×200 80% JPEG
-- **EXIF 自動清理** — 隱私保護
-- **JWT 存取控制 + 軟刪除**
+- ⚠️ **多格式支援，依類型不同上限（5-50 MB）** — 依類型的上限常數確實存在，但**實際生效的驗證路徑沒有用到它們**：真正檢查的是依「平台」而非「檔案類型」的統一 10MB 上限（Admin 為 50MB），依類型的預設集是沒被呼叫到的死程式碼。
+- ✅ **R2 雲端儲存** — 自動 3 次重試（`executeWithRetry`）
+- ❌ **Presigned URL「預設 1 小時，可調」** — 實際預設分別是**上傳 15 分鐘**、**下載連結 24 小時**，沒有任何路徑是 1 小時。
+- ❌ **自動縮圖「200×200 80% JPEG」** — **完全沒有實作**。相關設定確實存在，但 `generateThumbnail()` 直接回傳原始檔案網址，沒有任何影像處理程式碼。
+- ❌ **EXIF 自動清理** — **完全沒有實作**。只是把 EXIF 從內部 metadata 物件裡排除顯示，上傳到 R2 的原始位元組完全沒有處理，圖片裡的 EXIF（若有）原封不動存進雲端。
+- ⚠️ **JWT 存取控制 + 軟刪除** — JWT 權限檢查是真的，但**不是軟刪除**：`file_attachments` 資料表沒有 `deletedAt` 欄位，刪除是直接硬刪除 DB 紀錄 + R2 物件。
 
 ### 10. 團隊管理模組
-- **完整成員 CRUD**
-- **多團隊歸屬** — 一人多團隊，可在不同團隊有不同角色
-- **Email + QR Code 邀請** — 含 LIFF QR 綁定
-- **批次成員操作** — ≤ 50 / 次
-- **跨團隊轉移** — admin 可整批搬移
-- **密碼策略** — `changeable` / `unchangeable` / `must_change`
+- ✅ **完整成員 CRUD**（刪除為硬刪除，`/restore` 端點已移除，若其他文件仍寫軟刪除/還原成員，那份也是過時的）
+- ✅ **多團隊歸屬** — 一人多團隊，可在不同團隊有不同角色
+- ⚠️ **「Email + QR Code 邀請」** — QR Code / LIFF 綁定完整可用。**Email 邀請未啟用**：Email adapter 預設關閉，`sendEmail()` 是純模擬（隨機成功率），沒有 `team_invitations` 資料表。新增成員目前是直接透過 `POST /:id/members` 建立帳號並設密碼，不是邀請流程。
+- ✅ **批次成員操作** — ≤ 50 / 次
+- ✅ **跨團隊轉移** — admin 可整批搬移
+- ✅ **密碼策略** — `changeable` / `unchangeable` / `must_change`
 
 ### 11. 客戶管理
-- **跨平台身分** — `(platform, platformUserId)` 唯一識別
-- **完整客戶檔案** — 暱稱 / 頭像 / Email / 電話 / 自訂 metadata
-- **客戶標籤系統** — 可貼多個標籤
-- **歷史對話聚合** — 客戶詳情頁直接看所有對話
-- **多維度篩選** — 平台 / 團隊 / 標籤 / Email/ 電話有無
+- ✅ **跨平台身分** — `(platform, platformUserId)` 唯一識別
+- ✅ **完整客戶檔案** — 暱稱 / 頭像 / Email / 電話 / 自訂 metadata
+- ✅ **客戶標籤系統** — 可貼多個標籤
+- ✅ **歷史對話聚合** — 客戶詳情頁直接看所有對話
+- ✅ **多維度篩選** — 平台 / 團隊 / 標籤 / Email/ 電話有無
 
 ### 12. 自動回覆系統
-- **多種觸發** — 關鍵字 / regex / 訊息類型 / 非營業時間 / welcome
-- **AND / OR 條件邏輯** — `matchMode: any | all`
-- **動作鏈** — 文字 / 圖 / Flex Message 可串接，依 `sortOrder`
-- **營業時間排程** — 每週各日獨立、含時區
-- **全域 / 團隊範圍**
-- **觸發稽核日誌**
+- ❗**目前僅支援 LINE**（原文件完全沒提到平台限制）：引擎的送出路徑寫死 `platform: 'line'`，Facebook 的事件處理流程完全沒有串接自動回覆。若要對 Facebook 客戶啟用自動回覆，這是尚未開發的部分，不是設定問題。
+- ⚠️ **觸發類型** — 實際的 `TriggerType` 只有 4 種：`welcome / keyword / off_hours / fallback`（原文件多列的 regex、訊息類型其實是關鍵字規則「內部」的條件類型 `ConditionType`，不是獨立觸發器；且原文件漏列了真實存在的 `fallback` 觸發器）
+- ✅ **AND / OR 條件邏輯** — `matchMode: any | all`
+- ✅ **動作鏈** — 文字 / 圖 / Flex Message 可串接，依 `sortOrder`
+- ✅ **營業時間排程** — 每週各日獨立、含時區
+- ✅ **全域 / 團隊範圍**
+- ✅ **觸發稽核日誌** — 真實寫入 D1，非僅 console 輸出
 
 ### 13. 報表與分析系統
-- **業務分析** (analytics) — 對話 / 訊息 / 使用者 / 效能 4 大指標
-- **20+ 報表類型** (reports) — JSON / CSV / Excel / PDF / HTML
-- **報表排程** — daily / weekly / monthly + Email 寄送
-- **預覽** — 用 SampleDataGenerators 樣本
-- **自訂查詢與匯出**
-- **時區支援** — 台北 / UTC / 紐約 / 倫敦
-- **百分位計算** — P50 / P95 滾動視窗
+- ✅ **業務分析** (analytics) — 對話 / 訊息 / 使用者 / 效能 4 大指標
+- ❌ **「20+ 報表類型，JSON / CSV / Excel / PDF / HTML」** — 這是本文件中誤導程度最高的宣稱。程式碼裡確實**宣告**了 24 種報表類型，但**只有 3 種真的能產出結果**，其餘一律回傳「Unsupported report type」錯誤。而且能產出的 3 種裡，也**只有 JSON / CSV 真的序列化**——Excel / PDF / HTML 沒有任何對應函式庫（無 exceljs、無 puppeteer），要求這幾種格式會被靜默降級成 JSON。CURRENT_STATUS.md 寫的「16 種報表類型」其實是「預覽樣本產生器涵蓋 16 種」，不代表能真的產出報表。**目前實際可用的報表類型數量是 3，不是 16 也不是 20+。**
+- ❌ **報表排程「daily / weekly / monthly + Email 寄送」** — 排程頻率其實還有第 4 種 `quarterly`（原文件未列）。**Email 寄送完全不會動作**：排程執行流程從未呼叫任何 email adapter，而專案裡唯一的 EmailAdapter 是停用狀態的模擬實作（與團隊 Email 邀請、通知 Email 是同一套壞掉的依賴）。
+- ✅ **預覽** — 用 SampleDataGenerators 樣本，串接完整可用
+- ❌ **自訂查詢與匯出** — **完全是假的**：`executeCustomQuery` 直接回傳寫死的 `{}`；`generateExportFile` 回傳一個寫死的假網址 `https://example.com/export/file.csv`，兩者都是尚未實作的 stub。
+- ⚠️ **時區支援 台北/UTC/紐約/倫敦** — 設定常數裡的字串跟宣稱一致，但這是死程式碼——驗證邏輯從未強制檢查，排程資料表的 timezone 欄位也從未被讀寫。
+- ❌ **百分位計算「P50 / P95 滾動視窗」** — 百分位計算本身是真的（甚至有兩套實作），但是固定、不重疊的時間區間批次聚合，不是滾動視窗（rolling window），程式碼裡完全沒有滑動視窗的邏輯。
 
 ### 14. 系統管理與營運
-- **系統 KPI 儀表板** — 今日訊息、線上客服、回應時間、滿意率
-- **API 監控** — 每端點延遲 / 錯誤率 / 5xx 計數
-- **斷路器** — 過載時管理員可緊急斷流
-- **稽核日誌** — 所有動作完整可追溯（依角色可見性）
-- **資料庫管理** — 備份、還原、快取清除
-- **Web Installer** — 視覺化自助部署工具
+- ✅ **系統 KPI 儀表板** — 今日訊息、線上客服、回應時間、滿意率，皆為真實 D1 查詢
+- ✅ **API 監控** — 每端點延遲 / 錯誤率 / 5xx 計數（`MetricsCollectorDO`）
+- ⚠️ **斷路器** — 管理員緊急斷流機制是真的，但範圍只涵蓋 **WebSocket DO 的派送**，不是一般 HTTP/API 流量的斷路器，比原文件描述的範圍窄。
+- ⚠️ **稽核日誌「所有動作完整可追溯」** — 角色可見性是真的，但覆蓋範圍其實只有約 20 個特定的寫入操作點，不是「所有動作」（沒有讀取記錄、沒有系統設定變更、沒有備份/監控管理員操作）。另外程式碼裡有一套完整的 `EnterpriseAuditLogger`，寫好了但完全沒有被引用，是閒置程式碼。
+- ❌ **資料庫管理「備份、還原、快取清除」** — 這個宣稱裡的還原（restore）**在整個程式碼庫裡完全不存在**，不只是 stub。`SystemService` 的備份/還原/快取清除/重啟方法確實都是回傳假資料的模擬實作，而且從未被路由掛載過。真正能用的備份走的是另一條路徑（`/api/data/backup`，真的把 D1 dump 到 R2），但**沒有對應的還原端點**；快取清除也只有一個很窄的舊 KV key 清理功能，不是一般性的快取清空。重啟在 Cloudflare Workers 的無狀態環境本質上不可能實作。
+- ✅ **Web Installer** — 視覺化自助部署工具，後端有真實的 DO orchestration，前端是完整的部署精靈，不是空殼
 
 ---
 
@@ -144,12 +149,12 @@
 
 | 項目 | 數值 |
 |------|------|
-| 後端模組 | 24 個（`src/modules/`） |
-| Durable Objects | 10 個（綁定數） |
-| 前端 Vue Views | 25 個（`frontend/src/views/`） |
-| Pinia Stores | 10 個（`frontend/src/stores/`） |
-| 後端測試 | 98 檔、2,466 通過（CI 子集） |
-| 前端測試 | 154 檔、3,624 通過 |
+| 後端模組 | **26 個**（`src/modules/`，新增 `broadcast/`、`data/` 兩個模組，原文件的 24 已過時） |
+| Durable Objects | 10 個（綁定數，已核實正確） |
+| 前端 Vue Views | 23 個（`frontend/src/views/`，原文件 25 已過時，數字會隨開發變動，建議定期用 `ls`/`glob` 覆核而非長期沿用單一快照） |
+| Pinia Stores | 13 個（`frontend/src/stores/`，原文件 10 已過時） |
+| 後端測試 | 98 檔、2,466 通過（CI 子集，`bun run test:backend:ci`；`tests/` 目錄下實際檔案數更多，含非 CI 套件） |
+| 前端測試 | 154 檔、3,624 通過（`cd frontend && bun run test:run`） |
 
 ---
 
@@ -157,9 +162,17 @@
 
 - **快速上手** → `docs/guides/QUICK_START.md`
 - **使用者完整指南** → `docs/guides/USER_GUIDE.md`
-- **模組手冊（24 份）** → `docs/modules/INDEX.md`
+- **模組手冊** → `docs/modules/INDEX.md`
 - **系統現況快照** → `docs/CURRENT_STATUS.md`
 - **架構設計** → `docs/architecture/`
 - **API 規格** → `docs/reference/api/`
 - **部署** → `docs/guides/deployment/`
 - **Claude Code 開發指引** → `CLAUDE.md` + `docs/claude/`
+
+## 與 README.md 的分工
+
+本文件是功能狀態的**單一事實來源**，逐項標註 ✅/⚠️/❌。`README.md` 不再重複維護一份平行的功能清單或精準對照表——它只放專案簡介、安裝部署、常見問題，功能細節一律連結回這裡。若兩份文件的功能描述出現不一致，以本文件為準，並回報給維護者更新 README 的連結或摘要。
+
+## 已知問題（非文件問題，追蹤中）
+
+- `GET /api/messages/search` 目前沒有團隊/權限範圍檢查，任何已登入使用者可搜尋到未被授權查看的對話內容。這是程式碼層級的安全缺陷，不是文件不準確的問題，追蹤於 [#16](https://github.com/erictheng93/Multi-Channel-Integration-System/issues/16)，不在本次文件校正範圍內。
