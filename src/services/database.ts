@@ -583,21 +583,6 @@ export class DatabaseService {
       .limit(limit);
   }
 
-  async searchMessages(query: string, conversationId?: string, limit: number = 50) {
-    let whereCondition = like(schema.messages.content, `%${query}%`);
-    
-    if (conversationId) {
-      const conversationCondition = eq(schema.messages.conversationId, conversationId);
-      whereCondition = and(whereCondition, conversationCondition)!;
-    }
-
-    return await this.db.select()
-      .from(schema.messages)
-      .where(whereCondition)
-      .orderBy(desc(schema.messages.createdAt))
-      .limit(limit);
-  }
-
   // Advanced caching methods
   async incrementConversationCount(status: string) {
     const key = `stats:conversations:${status}`;
