@@ -897,7 +897,7 @@ All HTTP endpoints below are mounted under a common base path of `/api/messages`
 
 #### Message statistics — GET /api/messages/stats
 - Invocation: authenticated client request.
-- Behavior: returns a global statistics payload (total message count; several breakdown fields are reported as zero within the current behavioral boundary; and an averaged-per-day figure derived from the total).
+- Behavior: returns a role-scoped statistics payload. Administrators receive the global total message count; other authenticated users receive totals only from unassigned shared-pool conversations and conversations assigned to one of their teams. Several breakdown fields are reported as zero within the current behavioral boundary, and the averaged-per-day figure is derived from the scoped total.
 - Success Output: 200 with `success: true` and a `data` object containing an `overview` (totalMessages, todayMessages, activeConversations, averagePerDay, recalledMessages), a `breakdown` object, a scope label, a note, and generation timestamp.
 - Error Conditions: unexpected failure → 500.
 

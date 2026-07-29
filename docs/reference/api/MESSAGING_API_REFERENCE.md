@@ -535,6 +535,10 @@ GET /api/messages/search?q=urgent&conversationId=conv_123&limit=20
 
 ****: JWT
 
+Scope: administrators receive a global count. Other authenticated users receive
+counts only from unassigned shared-pool conversations and conversations assigned
+to one of their teams.
+
 ****:
 ```json
 {
@@ -551,7 +555,7 @@ GET /api/messages/search?q=urgent&conversationId=conv_123&limit=20
  "byMessageType": {},
  "bySenderType": {}
  },
- "scope": "global",
+ "scope": "visible_conversations",
  "generatedAt": "2025-09-30T10:00:00.000Z"
  }
 }

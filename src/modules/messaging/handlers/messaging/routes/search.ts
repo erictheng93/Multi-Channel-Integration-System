@@ -7,14 +7,12 @@ import { createContextLogger } from '@/utils/logger'
 const log = createContextLogger('MsgSearch')
 
 import { HTTP_STATUS } from '@/constants/http-status';
-import { count } from 'drizzle-orm';
-import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
-import { messages } from '@/db/schema';
 import type { MessageSearchQuery } from '@modules/messaging/types/message-types';
 import { MessageCrudService } from '@modules/messaging/services/message-crud';
 import { jwtAuth } from '@/middleware/auth';
-import { PermissionService } from '@/services/permission-service';
+import type { ConversationVisibilityUser } from '@/services/conversation-visibility';
+import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 import { nowISO } from '@/utils/timestamp'
 
 interface MessageTagCountRow {
@@ -22,30 +20,43 @@ interface MessageTagCountRow {
   count: number;
 }
 
-export const MESSAGE_TAG_STATS_SQL = `
-  SELECT
-    CAST(tag.value AS TEXT) AS name,
-    COUNT(*) AS count
-  FROM messages AS message
-  JOIN json_each(
-    CASE
-      WHEN json_valid(message.metadata) THEN
+export function buildMessageTagStatsQuery(
+  user: ConversationVisibilityUser
+): { sql: string; params: unknown[] } {
+  const visibility = getConversationVisibilitySql(user, 'conversations.assigned_team_id');
+
+  return {
+    sql: `
+      SELECT
+        CAST(tag.value AS TEXT) AS name,
+        COUNT(*) AS count
+      FROM messages AS message
+      JOIN json_each(
         CASE
-          WHEN json_type(message.metadata, '$.tags') = 'array'
-          THEN json_extract(message.metadata, '$.tags')
+          WHEN json_valid(message.metadata) THEN
+            CASE
+              WHEN json_type(message.metadata, '$.tags') = 'array'
+              THEN json_extract(message.metadata, '$.tags')
+              ELSE '[]'
+            END
           ELSE '[]'
         END
-      ELSE '[]'
-    END
-  ) AS tag
-  WHERE message.is_recalled = 0
-    AND message.conversation_id IN (
-      SELECT value FROM json_each(?)
-    )
-    AND tag.type = 'text'
-  GROUP BY tag.value
-  ORDER BY count DESC, name ASC
-`;
+      ) AS tag
+      WHERE message.is_recalled = 0
+        AND message.deleted_at IS NULL
+        AND EXISTS (
+          SELECT 1
+          FROM conversations
+          WHERE conversations.id = message.conversation_id
+            AND ${visibility.clause}
+        )
+        AND tag.type = 'text'
+      GROUP BY tag.value
+      ORDER BY count DESC, name ASC
+    `,
+    params: visibility.params
+  };
+}
 
 const searchRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -95,15 +106,10 @@ searchRoutes.get('/search', jwtAuth, async (c) => {
 
     // 使用 MessageCrudService 進行搜尋
     const user = c.get('user');
-    const visibleConversationIds = await PermissionService.getVisibleConversations(
-      user.id,
-      c.env.DB
-    );
-
     const messageCrudService = new MessageCrudService(c.env.DB);
     const searchResult = await messageCrudService.searchMessages(
       searchQuery,
-      visibleConversationIds
+      user
     );
 
     return c.json({
@@ -130,15 +136,28 @@ searchRoutes.get('/search', jwtAuth, async (c) => {
  */
 searchRoutes.get('/stats', jwtAuth, async (c) => {
   try {
-    const db = createDbClient(c.env.DB);
+    const user = c.get('user');
+    const visibility = getConversationVisibilitySql(
+      user,
+      'conversations.assigned_team_id'
+    );
 
     // 簡化版本：只提供基本統計
-    const basicStats = await db
-      .select({
-        total: count(),
-      })
-      .from(messages)
-      .get();
+    const statement = c.env.DB.prepare(`
+      SELECT COUNT(*) AS total
+      FROM messages AS message
+      WHERE message.deleted_at IS NULL
+        AND EXISTS (
+          SELECT 1
+          FROM conversations
+          WHERE conversations.id = message.conversation_id
+            AND ${visibility.clause}
+        )
+    `);
+    const scopedStatement = visibility.params.length > 0
+      ? statement.bind(...visibility.params)
+      : statement;
+    const basicStats = await scopedStatement.first<{ total: number }>();
 
     const totalMessages = basicStats?.total || 0;
 
@@ -156,8 +175,8 @@ searchRoutes.get('/stats', jwtAuth, async (c) => {
           byMessageType: {},
           bySenderType: {}
         },
-        scope: 'global',
-        note: 'Simplified version. Basic message count only.',
+        scope: user.role === 'admin' ? 'global' : 'visible_conversations',
+        note: 'Simplified version. Basic visible message count only.',
         generatedAt: nowISO()
       },
       timestamp: nowISO()
@@ -181,28 +200,15 @@ searchRoutes.get('/stats', jwtAuth, async (c) => {
 searchRoutes.get('/tags', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
-    const visibleConversationIds = await PermissionService.getVisibleConversations(
-      user.id,
-      c.env.DB
-    );
-
-    if (visibleConversationIds.length === 0) {
-      return c.json({
-        success: true,
-        data: {
-          tags: [],
-          total: 0
-        },
-        timestamp: nowISO()
-      });
-    }
-
     // Aggregate inside D1 so the Worker never loads every message metadata
     // value into memory. Invalid JSON and non-array tags retain the previous
     // behavior of being ignored.
-    const tagRows = await c.env.DB.prepare(MESSAGE_TAG_STATS_SQL)
-      .bind(JSON.stringify(visibleConversationIds))
-      .all<MessageTagCountRow>();
+    const tagStatsQuery = buildMessageTagStatsQuery(user);
+    const tagStatement = c.env.DB.prepare(tagStatsQuery.sql);
+    const scopedTagStatement = tagStatsQuery.params.length > 0
+      ? tagStatement.bind(...tagStatsQuery.params)
+      : tagStatement;
+    const tagRows = await scopedTagStatement.all<MessageTagCountRow>();
 
     const tagList = (tagRows.results || []).map(row => ({
       name: row.name,

@@ -434,7 +434,10 @@ describe('MessageCrudService - Query Operations', () => {
   });
 
   describe('searchMessages', () => {
-    const visibleConversationIds = ['conv-1'];
+    const visibleConversationIds = {
+      role: 'agent' as const,
+      allowedTeamIds: [1]
+    };
 
     beforeEach(() => {
       mockDrizzle._store.clear();
@@ -530,18 +533,14 @@ describe('MessageCrudService - Query Operations', () => {
       expect(result.pagination.hasMore).toBe(false);
     });
 
-    it('should fail closed when the caller has no visible conversations', async () => {
-      const result = await service.searchMessages({ content: 'Hello' }, []);
+    it('keeps shared-pool conversations visible when the caller has no teams', async () => {
+      const result = await service.searchMessages(
+        { content: 'Hello' },
+        { role: 'agent', allowedTeamIds: [] }
+      );
 
-      expect(result).toEqual({
-        messages: [],
-        total: 0,
-        pagination: {
-          limit: 50,
-          offset: 0,
-          hasMore: false
-        }
-      });
+      expect(result.total).toBe(5);
+      expect(result.messages).toHaveLength(5);
     });
   });
 });

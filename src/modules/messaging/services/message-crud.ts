@@ -2,10 +2,11 @@
 // 基礎訊息增刪改查服務
 
 import { drizzle } from 'drizzle-orm/d1';
-import { eq, and, desc, asc, count, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, count, inArray, isNull, sql } from 'drizzle-orm';
 import { likeEscaped } from '@/utils/sql-like';
 import {
   messages,
+  conversations,
   customers,
   agents,
   messageRecallLogs,
@@ -27,6 +28,8 @@ import {
   MessageReaction,
   MessageReadReceipt
 } from '../types/message-types';
+import type { ConversationVisibilityUser } from '@/services/conversation-visibility';
+import { getConversationVisibilityCondition } from '@/services/conversation-visibility';
 import { validateReplyToMessageId } from '@/utils/validate-reply-to';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
@@ -188,33 +191,23 @@ export class MessageCrudService {
    */
   async searchMessages(
     query: MessageSearchQuery,
-    visibleConversationIds: readonly string[]
+    user: ConversationVisibilityUser
   ): Promise<MessageSearchResult> {
     try {
       const limit = query.limit || 50;
       const offset = query.offset || 0;
 
-      // Access control must fail closed. Keeping this required at the service
-      // boundary prevents callers from accidentally running a global search.
-      if (visibleConversationIds.length === 0) {
-        return {
-          messages: [],
-          total: 0,
-          pagination: {
-            limit,
-            offset,
-            hasMore: false
-          }
-        };
-      }
+      // Keep access control at the service boundary, but push the visibility
+      // rule into D1 instead of materialising every visible conversation ID in
+      // the Worker first.
+      const visibleConversations = this.drizzleDb
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(getConversationVisibilityCondition(user));
 
-      // D1 supports json_each() for IN queries. Binding the visible IDs as one
-      // JSON value avoids D1's bound-parameter limit for users with many
-      // visible conversations while preserving global ordering and pagination.
       const conditions = [
-        sql`${messages.conversationId} IN (
-          SELECT value FROM json_each(${JSON.stringify(visibleConversationIds)})
-        )`
+        inArray(messages.conversationId, visibleConversations),
+        isNull(messages.deletedAt)
       ];
 
       // 對話ID篩選

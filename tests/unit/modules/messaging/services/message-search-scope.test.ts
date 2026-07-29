@@ -7,7 +7,7 @@ interface CapturedStatement {
 }
 
 describe('MessageCrudService search visibility scope', () => {
-  it('binds the same visible conversation scope into count and result queries', async () => {
+  it('scopes count and result queries to visible, non-deleted messages', async () => {
     const statements: CapturedStatement[] = []
     const fakeDb = {
       prepare(sql: string) {
@@ -35,14 +35,19 @@ describe('MessageCrudService search visibility scope', () => {
     } as unknown as D1Database
 
     const service = new MessageCrudService(fakeDb)
-    const visibleConversationIds = ['conv-a', 'conv-b']
+    const user = {
+      role: 'agent' as const,
+      allowedTeamIds: [7, 9]
+    }
 
-    await service.searchMessages({ content: 'sentinel' }, visibleConversationIds)
+    await service.searchMessages({ content: 'sentinel' }, user)
 
     expect(statements).toHaveLength(2)
     for (const statement of statements) {
-      expect(statement.sql).toContain('json_each(?)')
-      expect(statement.params).toContain(JSON.stringify(visibleConversationIds))
+      expect(statement.sql).toContain('from "conversations"')
+      expect(statement.sql).toContain('"conversations"."assigned_team_id"')
+      expect(statement.sql).toContain('"messages"."deleted_at" is null')
+      expect(statement.params).toContain(JSON.stringify([7, 9]))
     }
   })
 })
