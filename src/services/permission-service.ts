@@ -1,8 +1,9 @@
 // 權限管理服務
-import { eq, and, isNull, or, desc, inArray } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { createDbClient } from '../db/drizzle-factory';
-import { agents, conversations, agentTeams } from '../db/schema';
+import { agents, conversations } from '../db/schema';
 import { getPrimaryTeamId } from '../modules/teams/services/agent-teams-service';
+import { createContextLogger } from '../utils/logger';
 import type {
   // PermissionRule,
   PermissionContext,
@@ -20,6 +21,8 @@ export interface Role {
   name: string;
   permissions: Permission[];
 }
+
+const log = createContextLogger('PermissionService');
 
 export class PermissionService {
   // Role hierarchy: admin > agent (simplified from 3-tier to 2-tier)
@@ -46,7 +49,7 @@ export class PermissionService {
         // conversation-read, conversation-messages GET), an agent could read
         // any conversation's full message history, customer PII, and bump
         // last_read_at on any conversation system-wide — defeating the team
-        // filter applied by getVisibleConversations on the list endpoint.
+        // canonical team visibility rule used by conversation list queries.
         // The `assigned` condition runs the same assignedTeamId check used by
         // 'reply' and 'message.send' below, so view inherits the same team
         // semantics (unassigned conversations remain visible — shared pool).
@@ -140,7 +143,11 @@ export class PermissionService {
             .where(eq(conversations.id, String(context.resourceId)))
             .get();
 
-          console.log(` Conversation team assignment check - ConversationId: ${context.resourceId}, AssignedTeamId: ${conversation?.assignedTeamId}, UserTeamId: ${user.primaryTeamId}`);
+          log.debug('Conversation team assignment checked', {
+            conversationId: context.resourceId,
+            assignedTeamId: conversation?.assignedTeamId,
+            userTeamId: user.primaryTeamId
+          });
 
           // 如果對話未指派給任何團隊，允許訪問
           if (!conversation || !conversation.assignedTeamId) {
@@ -150,7 +157,11 @@ export class PermissionService {
           // 檢查是否指派給用戶的團隊
           return conversation.assignedTeamId === user.primaryTeamId;
         } catch (error) {
-          console.error('Failed to check conversation team assignment:', error);
+          log.error(
+            'Failed to check conversation team assignment',
+            { conversationId: context.resourceId },
+            error instanceof Error ? error : new Error(String(error))
+          );
           return false;
         }
       } else {
@@ -194,18 +205,14 @@ export class PermissionService {
   }
 
   private static async getUserWithTeam(userId: string | number, db?: D1Database): Promise<UserPermissionData | null> {
-    console.log(` getUserWithTeam called with userId: ${userId} (type: ${typeof userId}), db: ${db ? 'available' : 'not available'}`);
-    
     if (!db) {
-      console.error('[PermissionService] No database provided - denying access (fail-closed)');
+      log.warn('No database provided; denying access');
       return null;
     }
 
     try {
       const drizzleDb = createDbClient(db);
       const userIdStr = typeof userId === 'string' ? userId : userId.toString();
-      
-      console.log(` Querying agents table for id: "${userIdStr}"`);
       
       const user = await drizzleDb
         .select({
@@ -222,10 +229,8 @@ export class PermissionService {
         )
         .get();
 
-      console.log(` Database query result:`, user);
-
       if (!user) {
-        console.log(' No user found in database');
+        log.debug('Active user not found', { userId: userIdStr });
         return null;
       }
 
@@ -239,85 +244,14 @@ export class PermissionService {
         isActive: Boolean(user.isActive)
       };
       
-      console.log(` Returning user data:`, userData);
       return userData;
     } catch (error) {
-      console.error('Failed to get user:', error);
+      log.error(
+        'Failed to load user permission data',
+        { userId: String(userId) },
+        error instanceof Error ? error : new Error(String(error))
+      );
       return null;
-    }
-  }
-
-  // 獲取用戶可見的對話列表
-  static async getVisibleConversations(userId: string | number, db?: D1Database): Promise<string[]> {
-    console.log(` getVisibleConversations called with userId: ${userId} (type: ${typeof userId})`);
-    const user = await this.getUserWithTeam(userId, db);
-    console.log(` getUserWithTeam returned:`, user);
-    if (!user) {
-      console.log(' No user found, returning empty array');
-      return [];
-    }
-
-    try {
-      const database = db;
-      if (!database) {
-        console.error('Database not available in getVisibleConversations');
-        return [];
-      }
-
-      // Admin 可以看到所有對話
-      if (user.role === 'admin') {
-        const drizzleDb = createDbClient(database);
-        const result = await drizzleDb
-          .select({ id: conversations.id })
-          .from(conversations)
-          .orderBy(desc(conversations.updatedAt));
-        return result.map(row => row.id);
-      }
-
-      // Note: 'team' role has been removed from the system (simplified to 2-tier: admin/agent)
-
-      // Agent 可以看到：1) 搶單池 2) 指派給自己 3) 所屬團隊的對話（支援多團隊）
-      if (user.role === 'agent') {
-        const userIdStr = typeof userId === 'string' ? userId : userId.toString();
-        const drizzleDb = createDbClient(database);
-
-        // 從 agent_teams 表獲取用戶所屬的所有團隊 ID
-        const teamMemberships = await drizzleDb
-          .select({ teamId: agentTeams.teamId })
-          .from(agentTeams)
-          .where(eq(agentTeams.agentId, userIdStr));
-
-        const userTeamIds = teamMemberships.map(m => m.teamId);
-        console.log(` Agent ${userIdStr} belongs to teams: [${userTeamIds.join(', ')}]`);
-
-        // 建立查詢條件
-        // Note: Individual assignment (assignedUserId) removed - only team-based access control
-        const conditions = [
-          // 條件1: 未指派 (搶單池) - 所有客服都可見
-          isNull(conversations.assignedTeamId)
-        ];
-
-        // 條件2: 指派給我所屬的任一團隊（多團隊支援）
-        if (userTeamIds.length > 0) {
-          conditions.push(
-            inArray(conversations.assignedTeamId, userTeamIds)
-          );
-        }
-
-        const result = await drizzleDb
-          .select({ id: conversations.id })
-          .from(conversations)
-          .where(or(...conditions))
-          .orderBy(desc(conversations.updatedAt));
-
-        console.log(` Found ${result.length} conversations for agent ${userIdStr}`);
-        return result.map(row => row.id);
-      }
-
-      return [];
-    } catch (error) {
-      console.error('Error in getVisibleConversations:', error);
-      return [];
     }
   }
 }

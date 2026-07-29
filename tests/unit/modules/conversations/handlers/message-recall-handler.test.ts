@@ -116,7 +116,6 @@ vi.mock('@/core/error-handler', () => ({
 vi.mock('@/services/permission-service', () => ({
   PermissionService: {
     checkPermission: vi.fn(async () => true),
-    getVisibleConversations: vi.fn(async () => ['conv-1']),
   },
 }));
 
