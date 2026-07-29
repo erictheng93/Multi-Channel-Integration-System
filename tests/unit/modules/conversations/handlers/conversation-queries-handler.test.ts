@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bindings } from '@/types';
 
 const handlerMocks = vi.hoisted(() => ({
-  getVisibleConversations: vi.fn(),
   createDbClient: vi.fn(),
 }));
 
@@ -20,9 +19,7 @@ vi.mock('@/middleware/auth', () => ({
 }));
 
 vi.mock('@/services/permission-service', () => ({
-  PermissionService: {
-    getVisibleConversations: handlerMocks.getVisibleConversations,
-  },
+  PermissionService: {},
 }));
 
 vi.mock('@/db/drizzle-factory', () => ({
@@ -223,12 +220,8 @@ describe('conversation list pagination', () => {
   });
 
   it('enriches only the requested page of conversations', async () => {
-    const visibleIds = Array.from({ length: 120 }, (_, index) => `conv-${index + 1}`);
-    handlerMocks.getVisibleConversations.mockResolvedValue(visibleIds);
-
     const mockDrizzle = createMockDrizzle([
-      createConversationRows(90),
-      createConversationRows(30, 91),
+      createConversationRows(120),
     ]);
     handlerMocks.createDbClient.mockReturnValue(mockDrizzle);
 

@@ -68,7 +68,6 @@ let visibleConversationIds: string[] = ['conv-001', 'conv-002', 'conv-003'];
 vi.mock('@/services/permission-service', () => ({
   PermissionService: {
     checkPermission: vi.fn(() => Promise.resolve(permissionCheckResult)),
-    getVisibleConversations: vi.fn(() => Promise.resolve(visibleConversationIds)),
   },
 }));
 
@@ -437,13 +436,21 @@ import type { Bindings } from '@/types';
 function createMockEnv() {
   return {
     DB: {
-      prepare: vi.fn().mockReturnValue({
-        bind: vi.fn().mockReturnValue({
+      prepare: vi.fn((query: string) => ({
+        bind: vi.fn((...params: unknown[]) => ({
           first: vi.fn().mockResolvedValue(null),
-          all: vi.fn().mockResolvedValue({ success: true, results: [] }),
+          all: vi.fn().mockResolvedValue({
+            success: true,
+            results: query.includes('SELECT id') && query.includes('FROM conversations')
+              ? params
+                  .filter((param): param is string => typeof param === 'string')
+                  .filter(id => visibleConversationIds.includes(id))
+                  .map(id => ({ id }))
+              : [],
+          }),
           run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1, last_row_id: 1 } }),
-        }),
-      }),
+        })),
+      })),
       // db.batch returns one result per statement so handlers using
       // c.env.DB.batch([...]) (Phase 2b conversation_assign / unassign,
       // tag delete/update, team_member_remove, etc.) can drive their
@@ -663,7 +670,7 @@ describe('Conversation Handlers Integration Tests', () => {
         pending: 0,
         unreadCount: 0,
       });
-      expect(env.DB.prepare).not.toHaveBeenCalled();
+      expect(env.DB.prepare).toHaveBeenCalledTimes(2);
     });
   });
 

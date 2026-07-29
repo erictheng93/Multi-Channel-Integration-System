@@ -6,7 +6,7 @@ import { inArray, and, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, conversationTags } from '@/db/schema';
 import type { Bindings } from '@/types';
-import { PermissionService } from '@/services/permission-service';
+import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { successResponse, errorResponse, validationErrorResponse } from '@/utils/api-response';
@@ -60,8 +60,27 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
     const conversationIdsArray = conversationIds as string[];
 
     // P1 優化：添加權限檢查 - 驗證用戶是否有權訪問這些對話
-    const visibleConversationIds = await PermissionService.getVisibleConversations(user.id, c.env.DB);
-    const unauthorizedIds = conversationIdsArray.filter(id => !visibleConversationIds.includes(id));
+    const visibility = getConversationVisibilitySql(user, 'assigned_team_id');
+    const authorizedIds = new Set<string>();
+
+    for (const idChunk of chunkItems(
+      conversationIdsArray,
+      getSafeIdChunkSize(visibility.params.length)
+    )) {
+      const placeholders = idChunk.map(() => '?').join(',');
+      const result = await c.env.DB.prepare(`
+        SELECT id
+        FROM conversations
+        WHERE id IN (${placeholders})
+          AND ${visibility.clause}
+      `).bind(...idChunk, ...visibility.params).all<{ id: string }>();
+
+      for (const row of result.results ?? []) {
+        authorizedIds.add(row.id);
+      }
+    }
+
+    const unauthorizedIds = conversationIdsArray.filter(id => !authorizedIds.has(id));
 
     if (unauthorizedIds.length > 0) {
       log.warn('User attempted to access unauthorized conversations', { userId: user.id, unauthorizedIds });
