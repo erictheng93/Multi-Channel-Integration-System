@@ -49,7 +49,10 @@ PID_VUETSC=$!
 
 # Job 3: Frontend ESLint (with cache)
 (
+  # --max-warnings 0 mirrors CI's `bun run lint:check`; without it warnings
+  # pass locally and only fail in GitHub Actions.
   cd frontend && bunx eslint . \
+    --max-warnings 0 \
     --cache \
     --cache-location node_modules/.cache/eslint/ \
     --cache-strategy content \
