@@ -323,10 +323,17 @@
   /* Shared field surface.
      Written as a selector list rather than `.form-textarea { @apply form-input }`
      because tailwindcss 4's @apply only resolves *utilities*, not classes defined
-     in `@layer components`. Under v4 that indirection silently picked up
-     @tailwindcss/forms' own `.form-input` utility instead of this rule, dragging
-     in its `border-color: #6b7280` - a hard grey hairline, against the design
-     system - and changing the rendered height by 2px. */
+     in `@layer components`, so that indirection silently resolved to something
+     else entirely.
+
+     These rules are now the ONLY definition of the field surface.
+     @tailwindcss/forms was removed: under v4 its legacy-plugin output lands in
+     `layer=utilities` while these sit in `layer=components`, and layer
+     precedence is absolute - evaluated before specificity - so the plugin won
+     every conflicting property across all 167 .form-* call sites. Raising
+     specificity here cannot beat a higher layer; only unlayering could, and
+     unlayered-beats-layered is exactly the bug that broke variables.css.
+     The declarations below absorb everything the plugin actually contributed. */
   .form-input,
   .form-textarea,
   .form-select {
@@ -336,6 +343,47 @@
     @apply transition-all duration-150;
     @apply focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
     @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
+    /* Absorbed from @tailwindcss/forms. Load-bearing for .form-select, which
+       draws its own arrow via background-image - without this the native arrow
+       returns and every select renders two. */
+    appearance: none;
+  }
+
+  /* Absorbed from @tailwindcss/forms: placeholder normalisation. */
+  .form-input::placeholder,
+  .form-textarea::placeholder,
+  .form-select::placeholder {
+    color: #6b7280;
+    opacity: 1;
+  }
+
+  /* Absorbed from @tailwindcss/forms: Chromium date/time sub-field rendering.
+     Used by ScheduleGrid.vue and ReportParameterForm.vue, which pair date/time
+     inputs with .form-input / .form-select. */
+  .form-input::-webkit-date-and-time-value {
+    min-height: 1.5em;
+    text-align: inherit;
+  }
+
+  .form-input::-webkit-datetime-edit {
+    display: inline-flex;
+  }
+
+  .form-input::-webkit-datetime-edit,
+  .form-input::-webkit-datetime-edit-year-field,
+  .form-input::-webkit-datetime-edit-month-field,
+  .form-input::-webkit-datetime-edit-day-field,
+  .form-input::-webkit-datetime-edit-hour-field,
+  .form-input::-webkit-datetime-edit-minute-field,
+  .form-input::-webkit-datetime-edit-second-field,
+  .form-input::-webkit-datetime-edit-millisecond-field,
+  .form-input::-webkit-datetime-edit-meridiem-field {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .form-input::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
   }
 
   .form-textarea {

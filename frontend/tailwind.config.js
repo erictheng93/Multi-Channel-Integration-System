@@ -259,10 +259,20 @@ export default {
       },
     },
   },
-  plugins: [
-    // Form plugin for better form styling
-    require('@tailwindcss/forms')({
-      strategy: 'class', // Only apply to elements with .form-* classes
-    }),
-  ],
+  // @tailwindcss/forms was removed during the tailwindcss 4 migration.
+  //
+  // Under v4 its legacy-plugin output is emitted into `layer=utilities` while
+  // the app's own `.form-*` rules live in `layer=components`. Layer precedence
+  // is absolute and is evaluated before specificity, so the plugin silently won
+  // every conflicting property - square corners, a gray-500 hairline, and
+  // disabled inputs rendered identically to enabled ones - across 167 call
+  // sites. The app already fully restyled all three controls, so the plugin's
+  // entire contribution was being overridden by design; keeping a dependency in
+  // order to override it is what created the bug.
+  //
+  // Everything it actually provided (appearance, ::placeholder, the Chromium
+  // date/time sub-field rules) is absorbed into src/style.css. Nothing was lost:
+  // .form-checkbox, .form-radio and .form-multiselect have zero references in
+  // src/.
+  plugins: [],
 }
