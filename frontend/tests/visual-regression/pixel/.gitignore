@@ -1,0 +1,4 @@
+# Playwright run artifacts for the pixel VRT suite.
+# `__screenshots__/` is deliberately NOT ignored — the baselines are the asset.
+/.playwright-artifacts/
+/.playwright-report/
