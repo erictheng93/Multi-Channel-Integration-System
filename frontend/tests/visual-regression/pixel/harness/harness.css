@@ -64,6 +64,15 @@
   background: #ffffff;
 }
 
+/* Source-coverage probe (see Harness.vue). Kept visible but out of the way —
+   it must never be inside a screenshot target, and it is not, because
+   screenshots are taken per `[data-vrt-state]` stage. */
+.vrt-probe {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: #6a6a6e;
+}
+
 /* Inline row layout used by the multi-variant cases (badges, buttons). */
 .vrt-row {
   display: flex;

@@ -21,15 +21,24 @@
  * properties are substituted and colours / lengths / durations canonicalised, so
  * these tests fail only when the rendered result would actually change.
  *
- * The assertions that SHOULD fail on Tailwind 4 are the ones where appearance
- * genuinely changes, and they are marked as such:
- * - bare `ring` width 3px -> 1px
- * - preflight default border colour `gray-200` -> `currentColor`
- * - `outline-none` from a transparent visible outline -> `outline-style: none`
+ * THE RULE: an invariant may fail only when THIS APPLICATION'S rendered result
+ * would change. Not when the toolchain expresses the same result differently, and
+ * not when the app stops using a utility. Both of those are noise, and noise is
+ * how a suite dies.
+ *
+ * Applied one level further out than declaration text: where Tailwind 4 changed a
+ * default that the app then compensates for in `src/style.css`, the assertion is
+ * phrased against an element compiled through the real stylesheet, not against
+ * what preflight or a utility emits in isolation. Tailwind 4 changed three
+ * defaults here - default border colour, `outline-none` semantics, bare `ring`
+ * width - and all three are asserted as "what does the app end up with", so they
+ * pass on Tailwind 3 AND on the fixed Tailwind 4 branch, and fail if the
+ * compensation is removed.
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
   APP_STYLESHEET_PATH,
+  TAILWIND_MAJOR,
   TAILWIND_VERSION,
   classNamesDefinedIn,
   compileFull,
@@ -50,6 +59,7 @@ import {
   universalEffectiveValue,
 } from './helpers/effective-style'
 import { readTextFile } from './helpers/repo-files'
+import { extractClassVocabulary } from './helpers/class-vocabulary'
 
 /**
  * Design-system utilities compiled for this file. Listed explicitly rather than
@@ -128,16 +138,39 @@ const FORMS_CLASSES = [
   'form-radio',
 ]
 
+/**
+ * The utility names that mean "reset the focus outline", newest first.
+ *
+ * Tailwind 4 split Tailwind 3's `outline-none` into `outline-hidden` (keeps a
+ * forced-colours fallback) and `outline-none` (removes the outline outright).
+ * Which one this app uses is a fact about the app, so it is looked up rather
+ * than assumed.
+ */
+const OUTLINE_RESET_UTILITIES = ['outline-hidden', 'outline-none'] as const
+
 /** Theme + preflight + plugin components + utilities, for effective values. */
 let full: CompileResult
 /** The app's own stylesheet, compiled with its own class names as content. */
 let appStylesheet: CompileResult
+/** Every class name this app references anywhere in source. */
+let usedInSource: ReadonlySet<string>
 
 beforeAll(async () => {
-  full = await compileFull([...DESIGN_SYSTEM_CLASSES, ...FORMS_CLASSES])
+  full = await compileFull([...DESIGN_SYSTEM_CLASSES, ...FORMS_CLASSES, ...OUTLINE_RESET_UTILITIES])
 
+  // `border` is added to the candidate list so this compile can answer "what does
+  // an element with a colourless `border` end up with, given the real
+  // stylesheet". It is a separate compile from the one `css-snapshots.test.ts`
+  // baselines, so widening it here cannot churn a baseline.
   const styleCss = readTextFile(APP_STYLESHEET_PATH)
-  appStylesheet = await compileCss(styleCss, classNamesDefinedIn(styleCss), APP_STYLESHEET_PATH)
+  appStylesheet = await compileCss(
+    styleCss,
+    [...classNamesDefinedIn(styleCss), 'border'],
+    APP_STYLESHEET_PATH
+  )
+
+  const vocabulary = extractClassVocabulary()
+  usedInSource = new Set([...vocabulary.attributeTokens, ...vocabulary.looseTokens])
 }, 120_000)
 
 /** Assert the utility exists at all, with a message that names the failure mode. */
@@ -149,6 +182,26 @@ function present(result: CompileResult, className: string): ReadonlyMap<string, 
       'Either it was renamed or removed, or the design token it reads no longer exists.'
   ).not.toBeNull()
   return declarations ?? new Map()
+}
+
+/**
+ * True when the utility puts an outline back under `forced-colors: active`.
+ *
+ * Tailwind 4 nests that branch inside the utility's own rule, which is why
+ * `analyse` keeps nested at-rules attached to their parent selector.
+ */
+function hasForcedColoursOutline(result: CompileResult, className: string): boolean {
+  for (const rule of result.rulesByClass.get(className) ?? []) {
+    const forced = rule.context.some(entry => entry.includes('forced-colors'))
+    if (!forced) {
+      continue
+    }
+    const sets = rule.declarations.some(entry => /^outline(-style|-width)?:/.test(entry))
+    if (sets && !/^outline(-style)?: none$/.test(rule.declarations[0] ?? '')) {
+      return true
+    }
+  }
+  return false
 }
 
 describe('boxShadow scale', () => {
@@ -217,64 +270,115 @@ describe('borderRadius scale', () => {
   })
 })
 
-describe('ring, border and outline defaults', () => {
-  it('bare ring is 3px wide', () => {
-    // EXPECTED TO FAIL ON TAILWIND 4: v4 changed the bare `ring` width to 1px.
-    // Any focus ring in the app that relies on bare `ring` silently gets thinner,
-    // which is a real appearance change and needs a decision, not a re-baseline.
-    present(full, 'ring')
-    expect(
-      effectiveRingWidthPx(full, 'ring'),
-      'Bare `ring` width changed. Tailwind 4 made it 1px; this design system was ' +
-        'built on the 3px v3 default. Either pin it in the theme or switch the ' +
-        'affected call sites to an explicit `ring-<n>`.'
-    ).toBe(3)
+describe('ring, border and outline as the app actually renders them', () => {
+  // These three assertions are deliberately phrased against what an element ends
+  // up with GIVEN THIS APP'S FULL STYLESHEET, not against what a utility or
+  // preflight emits in isolation. Tailwind 4 changed all three defaults; the app
+  // compensates for two of them in `src/style.css` and consciously accepted the
+  // third. An invariant that measured the toolchain instead of the app would be a
+  // permanent false red on the Tailwind 4 branch, and noise is how a suite dies.
 
-    expect(effectiveRingWidthPx(full, 'ring-2')).toBe(2)
+  it('an element with a colourless border ends up with the gray-200 hairline', () => {
+    // The design system's "no hard 1px borders" rule depends on this. Tailwind 3
+    // gets it from preflight; Tailwind 4's preflight resets border-color to
+    // `currentColor` via the `border: 0 solid` shorthand, and `src/style.css`
+    // restores it in `@layer base`. Compiling through the real stylesheet is what
+    // lets one assertion cover both, and what makes it fail if the compensating
+    // reset is ever deleted.
+    present(appStylesheet, 'border')
+    expect(effectiveLengthPx(appStylesheet, 'border', 'border-width')).toBe(1)
+
+    // The `border` utility itself must not set a colour - otherwise this test
+    // would be measuring the utility rather than the inherited default.
+    expect(effectiveLonghand(appStylesheet, 'border', 'border-color')).toBeNull()
+
+    const inherited = universalEffectiveValue(appStylesheet, 'border-color')
+    expect(
+      inherited,
+      'src/style.css produces no universal border-color reset at all, so every ' +
+        'colourless `border` falls back to the browser default (currentColor).'
+    ).not.toBeNull()
+    expect(
+      canonicalColor(inherited ?? ''),
+      'An element with a colourless `border` no longer renders the gray-200 hairline ' +
+        'this design system is built on. Tailwind 4 resets border-color to ' +
+        'currentColor, which turns every such border into a hard dark line; ' +
+        'src/style.css carries a base-layer reset to restore it. Check that reset ' +
+        'still exists before changing this expectation.'
+    ).toBe('rgb(229, 231, 235, 1)')
   })
 
-  it('bare border is a 1px solid hairline', () => {
-    present(full, 'border')
-    expect(effectiveLengthPx(full, 'border', 'border-width')).toBe(1)
-
+  it('an element with a colourless border ends up solid', () => {
     // Where the style comes from differs by major and does not matter: v3 relies
     // on preflight's universal `border-style: solid`, v4 has the utility itself
     // set `border-style: var(--tw-border-style)`. What matters is that an element
     // with `border` ends up solid rather than invisible.
     const style =
-      effectiveLonghand(full, 'border', 'border-style') ??
-      universalEffectiveValue(full, 'border-style')
+      effectiveLonghand(appStylesheet, 'border', 'border-style') ??
+      universalEffectiveValue(appStylesheet, 'border-style')
     expect(style).toBe('solid')
   })
 
-  it('preflight still defaults the border colour to gray-200', () => {
-    // EXPECTED TO FAIL ON TAILWIND 4: v4's preflight writes `border: 0 solid`,
-    // whose omitted colour component resets border-color to `currentColor`. Every
-    // `border` without an explicit colour then becomes a visible dark hairline -
-    // a direct violation of the design system's "no hard 1px borders" rule.
-    const declared = universalEffectiveValue(full, 'border-color')
-    expect(declared, 'no universal border reset found in preflight').not.toBeNull()
+  it('the outline reset the app uses keeps an outline present under forced colours', () => {
+    // The accessibility behaviour, asserted on whichever utility the app actually
+    // uses rather than on a fixed utility name:
+    //   v3 `outline-none`   -> `outline: 2px solid transparent` unconditionally
+    //   v4 `outline-hidden` -> `outline-style: none`, plus a nested
+    //                          `@media (forced-colors: active)` branch that puts a
+    //                          transparent 2px outline back
+    //   v4 `outline-none`   -> `outline-style: none` and NOTHING else. This is the
+    //                          regression, and it is what this test catches.
+    const utility = OUTLINE_RESET_UTILITIES.find(name => usedInSource.has(name))
     expect(
-      canonicalColor(declared ?? ''),
-      'The default border colour changed. Tailwind 4 resets it to currentColor, so ' +
-        'every colourless `border` utility turns into a visible dark hairline. Set ' +
-        '`--default-border-color` (or an explicit border colour) before merging.'
-    ).toBe('rgb(229, 231, 235, 1)')
+      utility,
+      `The app uses none of ${OUTLINE_RESET_UTILITIES.join(' / ')}. If the focus-reset ` +
+        'utility was renamed again, teach this test the new name.'
+    ).toBeDefined()
+    if (utility === undefined) {
+      return
+    }
+
+    present(full, utility)
+    const unconditional = effectiveLonghand(full, utility, 'outline-style')
+    const forcedColours = hasForcedColoursOutline(full, utility)
+
+    expect(
+      unconditional !== 'none' || forcedColours,
+      `\`${utility}\` leaves an element with no outline at all, including under ` +
+        'forced-colours mode. Tailwind 3 kept a transparent 2px outline occupying ' +
+        'the outline slot; Tailwind 4 splits that into `outline-hidden` (keeps a ' +
+        'forced-colours fallback) and `outline-none` (removes it outright). Every ' +
+        'call site in this app is a focus style, so the fallback is the point.'
+    ).toBe(true)
   })
 
-  it('outline-none keeps a focusable outline box rather than removing the outline', () => {
-    // EXPECTED TO FAIL ON TAILWIND 4: v3's `outline-none` emits
-    // `outline: 2px solid transparent` - invisible but still occupying the outline
-    // slot, which is what keeps forced-colours and high-contrast modes usable.
-    // v4 renamed that behaviour to `outline-hidden` and made `outline-none` emit
-    // `outline-style: none`, which removes the outline outright.
-    present(full, 'outline-none')
+  it('the ring widths the app relies on are unchanged', () => {
+    // `ring-2` / `focus:ring-2` is what the app uses, on both majors.
+    present(full, 'ring-2')
+    expect(effectiveRingWidthPx(full, 'ring-2')).toBe(2)
+  })
+
+  it('records the accepted bare-ring width change, and the premise it rests on', () => {
+    // DECISION (accepted, not a bug): Tailwind 4 takes the bare `ring` width from
+    // 3px to 1px. It was accepted because this app has ZERO bare-`ring` call
+    // sites - it uses `ring-2` / `focus:ring-2` throughout - so pinning the old
+    // width would be config for something unused.
+    //
+    // The premise is the load-bearing part, so it is asserted: if bare `ring`
+    // ever appears in source, the 1px width becomes visible and the decision
+    // needs revisiting.
     expect(
-      effectiveLonghand(full, 'outline-none', 'outline-style'),
-      '`outline-none` now removes the outline entirely. In Tailwind 4 the ' +
-        'v3 behaviour is called `outline-hidden`; call sites that relied on a ' +
-        'transparent-but-present outline for accessibility need updating.'
-    ).not.toBe('none')
+      usedInSource.has('ring'),
+      'This app now uses bare `ring` somewhere. The bare-ring width change from ' +
+        '3px (Tailwind 3) to 1px (Tailwind 4) was accepted on the grounds that ' +
+        'there were no call sites, so that decision needs revisiting: either use ' +
+        'an explicit `ring-<n>` or pin the width in the theme.'
+    ).toBe(false)
+
+    // Version-aware expected value, so this documents the change instead of
+    // reading as an unresolved failure.
+    present(full, 'ring')
+    expect(effectiveRingWidthPx(full, 'ring')).toBe(TAILWIND_MAJOR >= 4 ? 1 : 3)
   })
 })
 

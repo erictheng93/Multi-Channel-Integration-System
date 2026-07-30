@@ -1,13 +1,19 @@
 /**
  * ============================================================================
- * Pixel VRT — Tailwind config for the harness only
+ * Pixel VRT — Tailwind config for the harness only  (TAILWIND 3 ONLY)
  * ============================================================================
+ *
+ * NOT USED ON TAILWIND 4. On v4 `src/style.css` reaches the app config itself
+ * via `@config "../tailwind.config.js"`, so a harness-side config object is
+ * bypassed entirely; the equivalent lever there is the `@source` directive,
+ * injected in memory by `vite.harness.config.ts`. `tailwind-runtime.ts` decides
+ * which path is taken from the installed major.
  *
  * The app's `tailwind.config.js` remains the single source of truth for theme,
  * plugins and everything else. This file changes EXACTLY ONE thing: it widens
  * `content` to also scan the harness fixtures.
  *
- * WHY THIS IS NECESSARY
+ * WHY THIS IS NECESSARY ON V3
  *
  *   Tailwind 3 tree-shakes rules authored inside `@layer components` /
  *   `@layer utilities` against the `content` globs, the same way it prunes
