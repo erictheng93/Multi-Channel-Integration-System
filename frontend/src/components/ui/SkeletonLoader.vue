@@ -83,6 +83,7 @@ const getRandomWidth = (min: number, max: number) => {
 </script>
 
 <style scoped>
+@reference "../../style.css";
 .skeleton-loader {
   @apply space-y-1;
 }

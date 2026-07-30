@@ -272,6 +272,7 @@ const handleCopyUrl = async () => {
 </script>
 
 <style scoped>
+@reference "../../../style.css";
 /* ============================================
    Complex Gradients (Cannot use Tailwind)
    ============================================ */
