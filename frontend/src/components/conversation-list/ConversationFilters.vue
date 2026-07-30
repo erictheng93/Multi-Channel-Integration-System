@@ -604,6 +604,7 @@ function clearAll() {
 </script>
 
 <style scoped>
+@reference "../../style.css";
 /* ─── Container ─── */
 .conversation-filters {
   @apply bg-white border-b border-gray-100;
