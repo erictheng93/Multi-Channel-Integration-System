@@ -25,7 +25,7 @@ real findings in noise. The tiers are explicit about what they are worth.
 
 | Tier | File | Scope | Catches |
 |---|---|---|---|
-| 1 | `silent-drop.test.ts` | **version-agnostic** | a utility this app uses stops emitting CSS at all (`flex-shrink-0`, `outline-none`, `shadow-sm`, bare `rounded` are all Tailwind 4 rename targets) |
+| 1 | `silent-drop.test.ts` | **version-agnostic** | a utility this app **still references** stops emitting CSS at all (`flex-shrink-0`, `outline-none`, `shadow-sm`, bare `rounded` are all Tailwind 4 rename targets) |
 | 2 | `css-snapshots.test.ts` | **same-major only** | same class name, different value - a shadow edited in the config, a colour scale shifted, an `@apply` that now resolves differently |
 | 3 | `design-system-invariants.test.ts` | **version-agnostic** | the design system's token values, asserted as EFFECTIVE values so representation changes do not fire but appearance changes do |
 | - | `sfc-apply-resolution.test.ts` | version-agnostic | `@apply` stops resolving in a Vue SFC `<style>` block (Tailwind 4's `@reference` trap) |
@@ -54,11 +54,38 @@ These pairs all render identically and none of them fires an alarm:
 | `text-sm` | `line-height: 1.25rem` | `line-height: var(--tw-leading, 1.25rem)` |
 | `shadow-sm` | `0 1px 2px 0 rgb(0 0 0 / 0.05)` | `0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05))` |
 
-Three tier-3 assertions are written to **fail on Tailwind 4 on purpose**, because
-appearance really does change: bare `ring` 3px -> 1px, preflight's default border
-colour `gray-200` -> `currentColor`, and `outline-none` going from a transparent
-but present outline to `outline-style: none`. Each carries a failure message that
-says what to do about it.
+### The rule every invariant follows
+
+**An invariant may fail only when THIS APPLICATION's rendered result would
+change.** Not when the toolchain expresses the same result differently, and not
+when the app stops using a utility. Both are noise, and noise is how a suite
+dies.
+
+That has two concrete consequences, both of which were false-positive bugs first:
+
+**1. The drop detector is gated on "still used in source".** A guarded entry that
+emits nothing is only a silent failure when the class is still referenced
+somewhere. When the app deliberately migrated `outline-none` -> `outline-hidden`,
+the ungated version reported two "silent failures" whose message claimed the class
+attributes still existed - they did not. Vocabulary shrinkage is reported
+separately, as a baseline-refresh request, symmetric with the "vocabulary grew"
+test.
+
+**2. Where Tailwind 4 changed a default that the app compensates for, the
+assertion measures the app, not the toolchain.** Tailwind 4 changed three defaults
+that matter here. Compiling preflight in isolation cannot see `src/style.css`'s
+`@layer base` override, so an isolated assertion is a permanent false red on the
+v4 branch even though the shipped CSS is correct:
+
+| Tailwind 4 change | asserted as | outcome |
+|---|---|---|
+| default border colour -> `currentColor` | an element with a colourless `border`, compiled through the real `src/style.css`, ends up `#e5e7eb` | passes on v3 (from preflight) and on v4 (from the app's base-layer reset); fails if that reset is deleted |
+| `outline-none` -> `outline-style: none`; old behaviour renamed `outline-hidden` | whichever outline reset the app actually uses keeps an outline present under `forced-colors: active` | passes on v3 `outline-none` and v4 `outline-hidden`; fails on v4 `outline-none`, which has no fallback |
+| bare `ring` 3px -> 1px | `ring-2` (what the app uses) is 2px, plus a version-aware bare-`ring` value AND an assertion that the app still has zero bare-`ring` call sites | records the accepted decision; fails if the premise stops holding |
+
+The third one is worth spelling out: the change was accepted because the app has
+no bare-`ring` call sites. That premise is the load-bearing part, so it is
+asserted rather than left in a commit message.
 
 ## Version awareness
 
@@ -86,6 +113,12 @@ Two Tailwind 4 details that are easy to get wrong and are commented in the code:
 - `@layer` is not treated as rule context. It orders the cascade but never
   conditions whether a rule applies, and v4 wraps its entire output in real
   cascade layers.
+- `analyse` is nesting-aware. v4 nests conditional branches inside the rule they
+  qualify (`.outline-hidden { ...; @media (forced-colors: active) { ... } }`)
+  where v3 emitted flat rules. Both nested at-rules and nested `&` rules stay
+  attached to their parent selector, otherwise a conditional branch detaches from
+  the class it belongs to and no assertion can reach it. This is a no-op on v3
+  output, which never nests.
 
 ## Layout
 

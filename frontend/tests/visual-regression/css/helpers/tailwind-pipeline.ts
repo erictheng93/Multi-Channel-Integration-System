@@ -327,35 +327,56 @@ export function classNamesDefinedIn(css: string): string[] {
 // Analysis
 // ---------------------------------------------------------------------------
 
-/** Flatten a stylesheet into rules and collect the class names it defines. */
+/**
+ * Flatten a stylesheet into rules and collect the class names it defines.
+ *
+ * Nesting-aware, which Tailwind 4 requires. It emits things like
+ *
+ *   .outline-hidden {
+ *     outline-style: none;
+ *     @media (forced-colors: active) { outline: 2px solid transparent; }
+ *     &:focus-visible { outline-width: 2px; }
+ *   }
+ *
+ * where Tailwind 3 emitted flat rules. Both the nested at-rule and the nested
+ * `&` rule have to stay attached to `.outline-hidden`, otherwise a conditional
+ * branch silently detaches from the class it belongs to and no assertion can
+ * reach it.
+ */
 export function analyse(css: string): CompileResult {
   const root = postcss.parse(css)
   const rules: EmittedRule[] = []
   const emittedClassNames = new Set<string>()
   const rulesByClass = new Map<string, EmittedRule[]>()
 
-  const visit = (container: Container<ChildNode>, context: readonly string[]): void => {
+  const record = (entry: EmittedRule): void => {
+    rules.push(entry)
+    for (const className of classNamesInSelector(entry.selector)) {
+      emittedClassNames.add(className)
+      const bucket = rulesByClass.get(className)
+      if (bucket === undefined) {
+        rulesByClass.set(className, [entry])
+      } else {
+        bucket.push(entry)
+      }
+    }
+  }
+
+  const visit = (
+    container: Container<ChildNode>,
+    context: readonly string[],
+    parentSelector: string
+  ): void => {
     for (const node of container.nodes ?? []) {
       if (node.type === 'rule') {
         const rule = node as Rule
+        const selector = resolveNesting(normaliseWhitespace(rule.selector), parentSelector)
         const declarations = ownDeclarations(rule)
-        const selector = normaliseWhitespace(rule.selector)
 
         if (declarations.length > 0) {
-          const entry: EmittedRule = { context, selector, declarations }
-          rules.push(entry)
-          for (const className of classNamesInSelector(selector)) {
-            emittedClassNames.add(className)
-            const bucket = rulesByClass.get(className)
-            if (bucket === undefined) {
-              rulesByClass.set(className, [entry])
-            } else {
-              bucket.push(entry)
-            }
-          }
+          record({ context, selector, declarations })
         }
-        // Rules never nest in Tailwind 3 output; Tailwind 4 does nest them.
-        visit(rule as unknown as Container<ChildNode>, context)
+        visit(rule as unknown as Container<ChildNode>, context, selector)
         continue
       }
 
@@ -367,8 +388,14 @@ export function analyse(css: string): CompileResult {
         const declarations = ownDeclarations(atRule)
 
         if (declarations.length > 0) {
-          // `@font-face`, `@property`: declarations hang off the at-rule itself.
-          rules.push({ context, selector: signature, declarations })
+          if (parentSelector.length > 0) {
+            // A conditional branch nested inside a rule: keep it attached to the
+            // selector it qualifies, with the condition in the context.
+            record({ context: [...context, signature], selector: parentSelector, declarations })
+          } else {
+            // `@font-face`, `@property`: declarations hang off the at-rule itself.
+            rules.push({ context, selector: signature, declarations })
+          }
         }
 
         // `@layer` is NOT part of the context. It only orders the cascade, never
@@ -377,14 +404,31 @@ export function analyse(css: string): CompileResult {
         // it as a condition would make every v4 rule look conditional and break
         // "is this the unconditional rule for this utility" everywhere.
         const nextContext = atRule.name === 'layer' ? context : [...context, signature]
-        visit(atRule as unknown as Container<ChildNode>, nextContext)
+        visit(atRule as unknown as Container<ChildNode>, nextContext, parentSelector)
       }
     }
   }
 
-  visit(root as unknown as Container<ChildNode>, [])
+  visit(root as unknown as Container<ChildNode>, [], '')
 
   return { css, rules, emittedClassNames, rulesByClass }
+}
+
+/**
+ * Resolve a nested selector against its parent, substituting `&`.
+ *
+ * A no-op at the top level, which is why Tailwind 3 output is unaffected.
+ */
+function resolveNesting(selector: string, parentSelector: string): string {
+  if (parentSelector.length === 0) {
+    return selector
+  }
+  return selector
+    .split(',')
+    .map(part => part.trim())
+    .filter(part => part.length > 0)
+    .map(part => (part.includes('&') ? part.split('&').join(parentSelector) : `${parentSelector} ${part}`))
+    .join(', ')
 }
 
 /** `prop: value` for the direct declaration children of `node`. */

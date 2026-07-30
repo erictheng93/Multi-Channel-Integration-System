@@ -113,8 +113,21 @@ describe('silent-drop detector', () => {
     ).toEqual([])
   })
 
-  it('every utility in the committed vocabulary still emits CSS', () => {
-    const dropped = guarded.filter(className => !compiled.emittedClassNames.has(className))
+  it('every guarded utility that is STILL USED in source still emits CSS', () => {
+    // The gate that makes this assertion honest.
+    //
+    // A guarded entry that emits nothing is only a silent failure when the class
+    // is still referenced somewhere in source. If the app deliberately stopped
+    // using it - a migration replacing `outline-none` with `outline-hidden`, say -
+    // then no markup says the class, nothing is unstyled, and calling it a
+    // regression is a false positive. That case is vocabulary shrinkage and is
+    // reported by the next test, which asks for a baseline refresh instead.
+    const stillUsedInSource = new Set([...vocabulary.attributeTokens, ...vocabulary.looseTokens])
+
+    const dropped = guarded.filter(
+      className => stillUsedInSource.has(className) && !compiled.emittedClassNames.has(className)
+    )
+
     const capturedUnder = baselineMajor(VOCABULARY_LIST)
     const crossMajor = capturedUnder !== null && capturedUnder !== TAILWIND_MAJOR
 
@@ -122,10 +135,10 @@ describe('silent-drop detector', () => {
       dropped.length === 0
         ? ''
         : [
-            `${dropped.length} utility class(es) used by this app no longer emit any CSS ` +
-              `under Tailwind ${TAILWIND_VERSION}.`,
-            'These are silent failures: the class attributes still exist, the build',
-            'still succeeds, and the styling is simply gone.',
+            `${dropped.length} utility class(es) that this app STILL REFERENCES no longer emit ` +
+              `any CSS under Tailwind ${TAILWIND_VERSION}.`,
+            'Verified still present in source, so these are silent failures: the class',
+            'attributes exist, the build succeeds, and the styling is simply gone.',
             crossMajor
               ? `The baseline was captured under Tailwind ${capturedUnder}, so each of these ` +
                 'is a migration task - find the replacement utility and update the markup.'
@@ -135,6 +148,39 @@ describe('silent-drop detector', () => {
           ].join('\n')
 
     expect(dropped, report).toEqual([])
+  })
+
+  it('reports vocabulary that shrank since the baseline was taken', ctx => {
+    // The mirror image of the "grew" test below, and a normal healthy change:
+    // the app stopped using a utility. Not a regression, but the baseline now
+    // guards classes that no longer exist in source, so it wants a refresh.
+    //
+    // Same-major only, for the same reason as "grew": across a major the baseline
+    // was captured on a different branch of the toolchain and comparing its
+    // membership to today's source mixes two independent changes. The
+    // still-used-in-source gate above is what keeps the real detector honest on
+    // the cross-major run.
+    if (!baselineIsComparable(VOCABULARY_LIST)) {
+      ctx.skip(incomparableReason(VOCABULARY_LIST))
+      return
+    }
+
+    const stillUsedInSource = new Set([...vocabulary.attributeTokens, ...vocabulary.looseTokens])
+    const retired = guarded.filter(className => !stillUsedInSource.has(className))
+
+    const report =
+      retired.length === 0
+        ? ''
+        : [
+            `${retired.length} guarded utility class(es) are no longer referenced anywhere in ` +
+              'source. This is not a regression - the vocabulary shrank.',
+            'The baseline is guarding classes the app does not use, so refresh it.',
+            REFRESH_HINT,
+            '',
+            ...retired.map(className => `  - ${className}`),
+          ].join('\n')
+
+    expect(retired, report).toEqual([])
   })
 
   it('reports vocabulary that grew since the baseline was taken', ctx => {
@@ -147,7 +193,7 @@ describe('silent-drop detector', () => {
     }
 
     // Not a regression, but an unguarded gap: newly used utilities are only
-    // protected by the assertion above once they are in the committed list.
+    // protected by the drop detector once they are in the committed list.
     const added = recognized.filter(className => !guarded.includes(className))
 
     const report =

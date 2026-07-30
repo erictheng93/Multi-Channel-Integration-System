@@ -22,6 +22,31 @@
         />
       </section>
     </article>
+
+    <!--
+      SOURCE-COVERAGE PROBE.
+
+      `tracking-[0.3125em]` is an arbitrary-value Tailwind utility that appears
+      nowhere in `src/`, so it can only be generated if the compiler is scanning
+      this harness directory for candidates:
+        v3 - via the widened `content` in `tailwind.harness.config.js`
+        v4 - via `@source`, injected into `src/style.css` in memory by
+             `vite.harness.config.ts` (and, today, also by v4's automatic
+             source detection)
+      If that coverage is ever lost, the utility is purged and the computed
+      `letter-spacing` falls back to `normal`, which the
+      `design system CSS is actually applied` guard asserts against.
+
+      Deliberately OUTSIDE every `[data-vrt-state]` container: screenshots
+      target those stages individually, so this element cannot appear in — or
+      invalidate — any baseline PNG.
+    -->
+    <div
+      class="vrt-probe"
+      data-vrt-source-probe
+    >
+      <span class="tracking-[0.3125em]">source probe</span>
+    </div>
   </div>
 </template>
 
