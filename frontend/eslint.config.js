@@ -16,7 +16,15 @@ export default [
       'coverage/**/*',
       '.vite/**/*',
       '**/*.timestamp-*',
-      'scripts/**/*.cjs'
+      'scripts/**/*.cjs',
+      // Playwright output. These hold a bundled HTML report with minified
+      // inline JS, so without this, running any Playwright suite makes
+      // `lint:check` (and therefore the pre-push hook) fail with thousands of
+      // no-var/eqeqeq/no-undef errors from generated code.
+      '**/.playwright-report/**',
+      '**/.playwright-artifacts/**',
+      '**/playwright-report/**',
+      '**/test-results/**'
     ]
   },
   
