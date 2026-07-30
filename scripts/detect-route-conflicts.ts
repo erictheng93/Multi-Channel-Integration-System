@@ -419,8 +419,20 @@ async function detectConflicts() {
   console.log('═'.repeat(100));
 
   // 返回退出碼
-  if (conflicts.filter(c => c.severity === 'high').length > 0) {
-    process.exit(1); // 高嚴重度衝突，失敗
+  //
+  // MEDIUM blocks as well as HIGH. A parameterised route shadowing a literal is
+  // not a "potential issue" - it makes the shadowed endpoint permanently
+  // unreachable, which is how GET /api/reports/stats and /scheduled sat broken
+  // in production while this script printed them and exited 0.
+  //
+  // LOW stays advisory.
+  const blocking = conflicts.filter(c => c.severity === 'high' || c.severity === 'medium');
+  if (blocking.length > 0) {
+    console.log('');
+    console.log(` ${blocking.length} blocking conflict(s). A parameterised route registered before a`);
+    console.log(' literal one makes the literal unreachable - reorder the registrations so the');
+    console.log(' more specific path comes first.');
+    process.exit(1);
   }
 }
 
