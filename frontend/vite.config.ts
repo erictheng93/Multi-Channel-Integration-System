@@ -36,11 +36,17 @@ export default defineConfig(({ mode }) => {
       target: 'es2022',
       minify: true,
       modulePreload: { polyfill: false },
-      rollupOptions: {
+      rolldownOptions: {
         output: {
-          manualChunks: {
-            'vue-vendor': ['vue', 'vue-router'],
-            'pinia-vendor': ['pinia']
+          // vite 8 bundles with rolldown, which dropped the object form of
+          // manualChunks. codeSplitting.groups is the replacement; `test`
+          // matches module ids, so @vue/* has to be listed explicitly to keep
+          // vue's runtime in the same chunk as before.
+          codeSplitting: {
+            groups: [
+              { name: 'vue-vendor', test: /node_modules[\\/](?:@vue[\\/]|vue[\\/]|vue-router[\\/])/ },
+              { name: 'pinia-vendor', test: /node_modules[\\/]pinia[\\/]/ }
+            ]
           }
         }
       }
