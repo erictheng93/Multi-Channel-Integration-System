@@ -1,0 +1,40 @@
+// ============================================================================
+// Visual-regression suites — local type-check project (both layers)
+// ============================================================================
+// `frontend/tsconfig.json` only includes `src/**`, so `bun run type-check`
+// (vue-tsc over the app) does NOT cover this directory. Widening the app's
+// tsconfig is the wrong fix: it is on the `bun run build` / deploy path and
+// would start type-checking test code during a production build. So the
+// visual-regression suites ship their own project instead.
+//
+// Covers BOTH layers, because neither is reachable from the app project:
+//   pixel/ — Playwright screenshot harness (imports .vue SFCs)
+//   css/   — compiled-CSS regression suite (pure TS)
+//
+// Check it with:
+//   bun run type-check:vrt
+//
+// vue-tsc rather than tsc: `pixel/harness/states.ts` imports `.vue` SFCs, and
+// plain tsc cannot read named type exports out of `<script setup>` blocks.
+// See CLAUDE.md "Type-Check Toolchain".
+// ============================================================================
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "../../node_modules/.cache/vue-tsc-vrt.tsbuildinfo",
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@/*": ["../../src/*"],
+      "@shared/*": ["../../../shared/*"]
+    }
+  },
+  "include": ["./**/*.ts", "./**/*.vue"],
+  "exclude": [
+    "./pixel/__screenshots__",
+    "./pixel/.playwright-artifacts",
+    "./pixel/.playwright-report"
+  ],
+  "references": []
+}

@@ -1,0 +1,123 @@
+/* ============================================================================
+   Pixel VRT — harness chrome + determinism overrides
+   ============================================================================
+
+   Loaded LAST, after the three real global stylesheets that src/main.ts loads
+   (styles/variables.css, style.css, styles/conversation-background.css), so the
+   components under test see exactly the cascade the real app gives them.
+
+   Two responsibilities, kept strictly separate below:
+     A. Harness chrome  — the `.vrt-*` classes. Never leaks into a component.
+     B. Freeze layer    — the minimum set of `!important` overrides needed to
+                          make a screenshot reproducible.
+
+   Nothing here restyles a component under test. If you find yourself wanting
+   to, the fixture is wrong, not the component.
+   ========================================================================= */
+
+/* --------------------------------------------------------------------------
+   A. Harness chrome
+   -------------------------------------------------------------------------- */
+
+/* `#app` is styled by the real app's inline critical CSS with
+   `height: 100vh; overflow: hidden`. The harness mounts on `#harness`
+   instead, precisely so the page can grow to fit every case. */
+#harness {
+  padding: 32px;
+  /* Neutral, deliberately NOT one of the design-system surfaces: the page
+     backdrop must never be mistaken for a component's own background. */
+  background: #d8d8dd;
+  min-height: 100vh;
+}
+
+.vrt-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+/* Label lives OUTSIDE the screenshot target on purpose — renaming a label must
+   not invalidate a baseline PNG. */
+.vrt-case-label {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #3a3a3c;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* The screenshot target. Fixed width per case; padding keeps soft shadows
+   (`0 4px 16px rgb(0 0 0 / 0.06)` and friends) inside the captured box instead
+   of being clipped at the edge, which is the whole point of covering them. */
+.vrt-stage {
+  box-sizing: border-box;
+  padding: 24px;
+  /* iOS system gray page background from docs/UIUX-Design-System.md. Cards are
+     white, so this is the only backdrop against which their soft shadows are
+     actually measurable. */
+  background: #f2f2f7;
+}
+
+.vrt-stage[data-vrt-surface='white'] {
+  background: #ffffff;
+}
+
+/* Inline row layout used by the multi-variant cases (badges, buttons). */
+.vrt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.vrt-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   B. Freeze layer
+   -------------------------------------------------------------------------- */
+
+/* Transitions are also disabled by Playwright's `animations: 'disabled'`;
+   doing it in CSS too means a screenshot taken by any other means (manual
+   debugging, `page.screenshot`) still matches.
+   `caret-color: transparent` kills the text cursor in the ConversationFilters
+   search inputs, which blinks on a ~1s cycle independent of CSS animation. */
+*,
+*::before,
+*::after {
+  transition: none !important;
+  animation-delay: 0s !important;
+  caret-color: transparent !important;
+}
+
+/* Scrollbars: the harness page itself scrolls, and a gutter appearing or not
+   would shift every fixed-width stage. Screenshots are per-element so this is
+   belt-and-braces, but it also stops the nested `overflow-y: auto` regions
+   inside components from rendering a platform-dependent scrollbar. */
+* {
+  scrollbar-width: none !important;
+}
+
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* SkeletonLoader rows start at `opacity: 0` and are revealed by a one-shot
+   `skeleton-fade-in ... forwards` animation. Playwright fast-forwards finite
+   animations to completion, which lands on opacity 1 — but if that behaviour
+   ever changes, or the CSS above cancels the animation instead, the whole
+   skeleton would screenshot as an empty box and the test would still "pass"
+   against a re-recorded empty baseline. Pin the end state explicitly.
+   This is the one place the harness knowingly reaches into a component's
+   class name; it is documented as a coupling in the suite notes. */
+.skeleton-conversation-item {
+  opacity: 1 !important;
+}
