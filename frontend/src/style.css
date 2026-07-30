@@ -320,7 +320,16 @@
     @apply block mb-2 text-sm font-medium text-gray-700;
   }
 
-  .form-input {
+  /* Shared field surface.
+     Written as a selector list rather than `.form-textarea { @apply form-input }`
+     because tailwindcss 4's @apply only resolves *utilities*, not classes defined
+     in `@layer components`. Under v4 that indirection silently picked up
+     @tailwindcss/forms' own `.form-input` utility instead of this rule, dragging
+     in its `border-color: #6b7280` - a hard grey hairline, against the design
+     system - and changing the rendered height by 2px. */
+  .form-input,
+  .form-textarea,
+  .form-select {
     @apply block w-full px-3 py-3;
     @apply text-sm text-gray-900 bg-white;
     @apply border border-gray-300 rounded-md;
@@ -330,11 +339,11 @@
   }
 
   .form-textarea {
-    @apply form-input resize-y min-h-[80px];
+    @apply resize-y min-h-[80px];
   }
 
   .form-select {
-    @apply form-input pr-10;
+    @apply pr-10;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
     background-repeat: no-repeat;
