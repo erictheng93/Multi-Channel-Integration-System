@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pixel VRT Harness</title>
+    <!-- Empty inline icon: stops the browser's implicit /favicon.ico request,
+         which would otherwise 404 and trip the "no console errors" guard. -->
+    <link rel="icon" href="data:," />
+    <!--
+      No inline critical CSS here, unlike the app's index.html. See the comment
+      block in main.ts: replicating that hand-rolled reset would hide changes to
+      Tailwind's own preflight, which is exactly what we want to detect.
+
+      No external fonts, scripts or preconnect hints either. The harness must be
+      able to render with the network fully blocked.
+    -->
+  </head>
+  <body>
+    <div id="harness"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
