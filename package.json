@@ -109,6 +109,9 @@
     "check:routes:ci": "bun scripts/detect-route-conflicts.ts || (echo 'Route conflict detection failed! See report above.' && exit 1)",
     "check:sql-raw": "bun scripts/check-sql-raw.ts",
     "check:sql-raw:ci": "bun scripts/check-sql-raw.ts || (echo 'Unsafe sql.raw usage detected! See report above.' && exit 1)",
+    "check:migrations": "bun scripts/check-migration-integrity.ts",
+    "check:migrations:remote": "bun scripts/check-migration-integrity.ts --remote",
+    "check:migrations:ci": "bun scripts/check-migration-integrity.ts || (echo 'Migration integrity audit failed! Objects declared by applied migrations are missing. See report above.' && exit 1)",
     "check:scoped-todos": "bun scripts/check-scoped-todos.ts",
     "check:type-debt": "bun scripts/check-type-debt.ts",
     "precheck:all": "bun run check:routes && bun run validate:all",
@@ -121,7 +124,7 @@
     "picomatch": "^4.0.4",
     "postcss": "^8.5.10",
     "rollup": "^4.59.0",
-    "vite": "^7.3.2",
+    "vite": "^8.1.5",
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.9"
     }
