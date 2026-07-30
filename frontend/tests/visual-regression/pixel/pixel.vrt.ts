@@ -124,6 +124,13 @@ test.describe('pixel visual regression', () => {
    *     otherwise purge — this is exactly the trap the harness Tailwind config
    *     exists to close
    *   - `@apply`-derived geometry on a component's scoped style (`.team-card`)
+   *   - SOURCE COVERAGE, via a utility that exists only in a harness fixture.
+   *     This is the check that fails if the fixture-widening mechanism is lost —
+   *     `content` widening on Tailwind 3, `@source` injection on Tailwind 4. The
+   *     `.btn-warning` assertion below cannot do that job on both majors:
+   *     Tailwind 3 purges it without widening, but Tailwind 4 keeps it even under
+   *     `source(none)`, because v4 treats hand-authored `@layer components` rules
+   *     as ordinary CSS rather than utility candidates.
    */
   test('design system CSS is actually applied', async ({ page }) => {
     await openHarness(page)
@@ -146,6 +153,8 @@ test.describe('pixel visual regression', () => {
         btnRadius: read(`${stage('buttons-variants')} .btn-primary`, 'border-radius'),
         // `@apply ... rounded-2xl ...` inside TeamCard's scoped style.
         teamCardRadius: read(`${stage('team-card-active')} .team-card`, 'border-radius'),
+        // Source-coverage probe: a utility used only by a harness fixture.
+        probeTracking: read('[data-vrt-source-probe] span', 'letter-spacing'),
       }
     })
 
@@ -155,6 +164,14 @@ test.describe('pixel visual regression', () => {
     expect(sample.warningBg, 'btn-warning must be iOS system orange').toBe('rgb(255, 149, 0)')
     expect(sample.btnRadius, '.btn radius must be 12px').toBe('12px')
     expect(sample.teamCardRadius, '.team-card @apply rounded-2xl must be 16px').toBe('16px')
+
+    // `normal` means `tracking-[0.3125em]` was never generated, i.e. the
+    // compiler is not scanning the harness fixtures for candidates. Every
+    // screenshot of a fixture-only class would then be of an unstyled element.
+    expect(
+      sample.probeTracking,
+      'fixture-only utility must be generated — harness source coverage is lost'
+    ).not.toBe('normal')
   })
 
   test('network is hermetic', async ({ page }) => {
