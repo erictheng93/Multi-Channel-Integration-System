@@ -297,6 +297,27 @@ export class NotificationRepository {
     return result.map((row) => this.mapToNotification(row));
   }
 
+  /**
+   * Aggregate notification counts for one user.
+   *
+   * This query used to select `priority`, which the `notifications` table does
+   * not have - not in production D1, and not in src/db/schema.ts either (the
+   * `priority` columns in that file belong to `conversations` and to the
+   * auto-reply rules). So SQLite rejected the whole statement:
+   *
+   *   SQLITE_ERROR 7500: no such column: priority
+   *   GET /api/notifications/stats -> 500
+   *
+   * The endpoint had therefore never worked. The two priority SUMs are removed
+   * rather than the column added, so the rest of the statistics - total, unread,
+   * per-type counts and the time ranges - start returning real values.
+   *
+   * Consequence for the response: `byPriority` is now uniformly zero. That is
+   * consistent with `low` and `normal`, which the service already hardcodes to
+   * zero, and nothing consumes it (`byPriority` has no references in frontend/).
+   * Restoring real per-priority counts needs a `priority` column on the table
+   * first, which is a schema change, not a query change.
+   */
   async getStatsByUserId(userId: string | number) {
     const result = await this.db.get(sql`
       SELECT
@@ -306,8 +327,6 @@ export class NotificationRepository {
         SUM(CASE WHEN type = 'conversation_assigned' THEN 1 ELSE 0 END) as assignments,
         SUM(CASE WHEN type = 'mention' THEN 1 ELSE 0 END) as mentions,
         SUM(CASE WHEN type = 'system' THEN 1 ELSE 0 END) as system,
-        SUM(CASE WHEN priority = 'urgent' AND is_read = FALSE THEN 1 ELSE 0 END) as urgent_unread,
-        SUM(CASE WHEN priority = 'high' AND is_read = FALSE THEN 1 ELSE 0 END) as high_unread,
         SUM(CASE WHEN created_at >= date('now', '-24 hours') THEN 1 ELSE 0 END) as today,
         SUM(CASE WHEN created_at >= date('now', '-7 days') THEN 1 ELSE 0 END) as this_week,
         SUM(CASE WHEN created_at >= date('now', '-30 days') THEN 1 ELSE 0 END) as this_month
