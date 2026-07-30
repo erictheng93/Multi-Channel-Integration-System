@@ -7,6 +7,22 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* v4 preflight resets the border colour to `currentColor` (its reset uses the
+   `border: 0 solid` shorthand, and the omitted colour component resets it).
+   v3 defaulted to gray-200. Any element with a colourless `border` would
+   otherwise inherit the text colour and render a hard dark hairline, which is
+   a direct violation of the design system's "no hard 1px borders" rule.
+   Restoring the v3 default keeps this a port rather than a redesign. */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb;
+  }
+}
+
 /* ============================================
    CSS Custom Properties (Design Tokens)
    ============================================ */
@@ -309,7 +325,7 @@
     @apply text-sm text-gray-900 bg-white;
     @apply border border-gray-300 rounded-md;
     @apply transition-all duration-150;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+    @apply focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
     @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
   }
 
@@ -450,7 +466,7 @@
 
   /* Focus Ring */
   .focus-ring {
-    @apply outline-none outline-offset-2;
+    @apply outline-hidden outline-offset-2;
     @apply focus-visible:outline-2 focus-visible:outline-primary-600;
   }
 }
