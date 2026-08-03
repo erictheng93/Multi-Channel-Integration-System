@@ -222,10 +222,21 @@ export const notifications = sqliteTable('notifications', {
   title: text('title').notNull(),
   content: text('content').notNull(),
   data: text('data'),
+  // 'low' | 'normal' | 'high' | 'urgent'. Added by migration 0058.
+  //
+  // The write path had been passing this since long before the column existed:
+  // notification-repository.ts sends `priority` on every insert, and Drizzle
+  // maps values by SCHEMA column, so anything not declared here is silently
+  // discarded. 99.5% of production notifications are created as 'high' and were
+  // all stored with no priority at all, while the WebSocket broadcast carried
+  // the real value - so a notification showed its priority badge on arrival and
+  // lost it on refresh. Same story for updatedAt below.
+  priority: text('priority').default('normal'),
   isRead: integer('is_read', { mode: 'boolean' }).default(false),
   readAt: text('read_at'),
   expiresAt: text('expires_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
 });
 
 // Tags table - 標籤系統
