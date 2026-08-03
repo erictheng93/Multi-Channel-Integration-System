@@ -81,15 +81,31 @@ function main() {
   log(`📂 Destination: ${distDir}`, 'blue');
   log('─'.repeat(60), 'blue');
 
-  // Copy _headers
-  const headersSource = path.join(rootDir, '_headers');
-  const headersDest = path.join(distDir, '_headers');
-  const headersSuccess = copyFile(headersSource, headersDest, '_headers');
+  // Source is public/, not the frontend root.
+  //
+  // These files moved into public/ so that Vite copies them to dist on EVERY
+  // build path. They used to sit at the frontend root and depend on this
+  // script, which `deploy:pages` never ran - so production shipped with no
+  // Content-Security-Policy, X-Frame-Options or Permissions-Policy from the
+  // first deploy until 2026-08-03.
+  //
+  // This script is therefore redundant now: by the time it runs, Vite has
+  // already placed identical files in dist. It is kept because `build:pages`,
+  // .pages.toml and several deploy scripts still call it, and re-copying the
+  // same bytes is harmless. Do not restore the frontend-root paths.
+  const publicDir = path.join(rootDir, 'public');
 
-  // Copy _redirects
-  const redirectsSource = path.join(rootDir, '_redirects');
-  const redirectsDest = path.join(distDir, '_redirects');
-  const redirectsSuccess = copyFile(redirectsSource, redirectsDest, '_redirects');
+  const headersSuccess = copyFile(
+    path.join(publicDir, '_headers'),
+    path.join(distDir, '_headers'),
+    '_headers'
+  );
+
+  const redirectsSuccess = copyFile(
+    path.join(publicDir, '_redirects'),
+    path.join(distDir, '_redirects'),
+    '_redirects'
+  );
 
   log('─'.repeat(60), 'blue');
 
