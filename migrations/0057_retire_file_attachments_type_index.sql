@@ -1,0 +1,49 @@
+-- ===============================================
+-- Migration 0057: Formally retire idx_file_attachments_type
+-- ===============================================
+-- Date: 2026-08-03
+-- Purpose: Record that `idx_file_attachments_type` is obsolete, so the
+--          migration integrity audit can reach zero instead of reporting one
+--          permanently unfixable object.
+--
+-- THIS IS BOOKKEEPING, NOT A SCHEMA CHANGE.
+--   The index does not exist in any environment. `DROP INDEX IF EXISTS` is a
+--   no-op everywhere; the point is that the auditor nets CREATE against DROP,
+--   so declaring the drop here retires the expectation that migration 0008
+--   created.
+--
+-- WHY IT CANNOT SIMPLY BE RE-CREATED:
+--   0008_final_schema_optimization.sql declared
+--     CREATE INDEX idx_file_attachments_type ON file_attachments(file_type)
+--   `file_attachments.file_type` came from 0000_charming_chimera.sql, and it no
+--   longer exists:
+--     - production PRAGMA table_info(file_attachments) ->
+--       conversation_id, created_at, file_size, file_url, filename, id,
+--       message_id, mime_type, r2_key, updated_at, upload_status, uploaded_by
+--     - src/db/schema.ts:166 declares mimeType -> 'mime_type' and no file_type
+--
+--   Note this is NOT the mimeType rename. 0025 and 0037 both renamed
+--   `mimeType` -> `mime_type`, which is a different column; `file_type` was a
+--   separate column that fell out of the schema without a migration ever
+--   dropping its index. 0056 therefore had to exclude it, because
+--   CREATE INDEX on a missing column aborts the whole migration.
+--
+-- WHY RETIRE RATHER THAN LEAVE IT RED:
+--   `bun run check:migrations` is a guard. A guard that always reports one
+--   known-unfixable item trains people to ignore its output, and the next real
+--   drift hides in that noise. Retiring the expectation keeps the audit at zero
+--   so any future non-zero result means something genuinely regressed.
+--
+--   If an index on the file type is ever wanted again, add it on `mime_type` in
+--   its own migration. That is a design decision, not a drift repair, and it
+--   does not belong here.
+--
+-- SAFETY: DROP INDEX IF EXISTS on an index that exists nowhere. No data is
+--         read, written or moved. Idempotent.
+--
+-- Rollback SQL:
+--   None required -- this migration changes nothing. To reinstate the
+--   expectation, revert this file.
+-- ===============================================
+
+DROP INDEX IF EXISTS idx_file_attachments_type;
