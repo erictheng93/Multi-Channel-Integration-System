@@ -231,22 +231,27 @@ export class NotificationService {
     const stats: NotificationStats = {
       total: Number(rawStats?.total) || 0,
       unread: Number(rawStats?.unread) || 0,
+      // Every bucket below is now backed by a real SUM. Seven of the eleven
+      // types and both of the low/normal priorities used to be hardcoded to
+      // zero - including customer_followed and new_conversation, which are the
+      // only two types production actually produces, so byType reported zero
+      // for 100% of the data.
       byType: {
         new_message: { total: Number(rawStats?.messages) || 0, unread: Number(rawStats?.messages_unread) || 0 },
         conversation_assigned: { total: Number(rawStats?.assignments) || 0, unread: Number(rawStats?.assignments_unread) || 0 },
         mention: { total: Number(rawStats?.mentions) || 0, unread: Number(rawStats?.mentions_unread) || 0 },
         system: { total: Number(rawStats?.system) || 0, unread: Number(rawStats?.system_unread) || 0 },
-        conversation_transferred: { total: 0, unread: 0 },
-        priority_changed: { total: 0, unread: 0 },
-        customer_responded: { total: 0, unread: 0 },
-        task_reminder: { total: 0, unread: 0 },
-        agent_removed_from_team: { total: 0, unread: 0 },
-        customer_followed: { total: 0, unread: 0 },  //  新客戶加入通知
-        new_conversation: { total: 0, unread: 0 } //  新對話創建通知
+        conversation_transferred: { total: Number(rawStats?.transferred) || 0, unread: Number(rawStats?.transferred_unread) || 0 },
+        priority_changed: { total: Number(rawStats?.priority_changed) || 0, unread: Number(rawStats?.priority_changed_unread) || 0 },
+        customer_responded: { total: Number(rawStats?.customer_responded) || 0, unread: Number(rawStats?.customer_responded_unread) || 0 },
+        task_reminder: { total: Number(rawStats?.task_reminder) || 0, unread: Number(rawStats?.task_reminder_unread) || 0 },
+        agent_removed_from_team: { total: Number(rawStats?.agent_removed) || 0, unread: Number(rawStats?.agent_removed_unread) || 0 },
+        customer_followed: { total: Number(rawStats?.customer_followed) || 0, unread: Number(rawStats?.customer_followed_unread) || 0 },
+        new_conversation: { total: Number(rawStats?.new_conversation) || 0, unread: Number(rawStats?.new_conversation_unread) || 0 }
       },
       byPriority: {
-        low: { total: 0, unread: 0 },
-        normal: { total: 0, unread: 0 },
+        low: { total: Number(rawStats?.low_total) || 0, unread: Number(rawStats?.low_unread) || 0 },
+        normal: { total: Number(rawStats?.normal_total) || 0, unread: Number(rawStats?.normal_unread) || 0 },
         high: { total: Number(rawStats?.high_total) || 0, unread: Number(rawStats?.high_unread) || 0 },
         urgent: { total: Number(rawStats?.urgent_total) || 0, unread: Number(rawStats?.urgent_unread) || 0 }
       },
