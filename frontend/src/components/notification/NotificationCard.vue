@@ -135,7 +135,6 @@ const iconMap: Record<NotificationType, typeof MessageIcon> = {
   conversation_transferred: ArrowRightIcon,
   mention: AtSignIcon,
   system: BellIcon,
-  priority_changed: AlertIcon,
   customer_responded: MessageIcon,
   task_reminder: ClockIcon,
   // eslint-disable-next-line camelcase
@@ -156,7 +155,6 @@ const typeLabelMap: Record<NotificationType, string> = {
   conversation_transferred: '對話轉移',
   mention: '提及',
   system: '系統',
-  priority_changed: '優先級變更',
   customer_responded: '客戶回覆',
   task_reminder: '任務提醒',
   // eslint-disable-next-line camelcase
@@ -304,11 +302,6 @@ const formattedTime = computed(() => {
 .icon-system {
   background: var(--gray-100);
   color: var(--gray-600);
-}
-
-.icon-priority_changed {
-  background: var(--yellow-100);
-  color: var(--yellow-600);
 }
 
 .icon-task_reminder {

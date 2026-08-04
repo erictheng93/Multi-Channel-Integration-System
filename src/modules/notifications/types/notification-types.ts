@@ -22,7 +22,8 @@ export type NotificationType =
   | 'conversation_transferred'
   | 'mention'
   | 'system'
-  | 'priority_changed'
+  // 'priority_changed' was removed on 2026-08-04: its trigger had zero callers
+  // and production held zero rows of it. See shared/api-contracts/notifications.ts.
   | 'customer_responded'
   | 'task_reminder'
   | 'agent_removed_from_team'  // Agent 被移出團隊通知
