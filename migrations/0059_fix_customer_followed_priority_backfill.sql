@@ -1,0 +1,50 @@
+-- ===============================================
+-- Migration 0059: Correct the customer_followed backfill from 0058
+-- ===============================================
+-- Date: 2026-08-04
+-- Purpose: Set the 32 pre-0058 `customer_followed` notifications to 'high'.
+--          0058 backfilled them to 'normal' on a misreading of the source.
+--
+-- WHAT WENT WRONG:
+--
+--   0058's backfill asserted intent per type, read off the call sites in
+--   src/utils/notification-trigger.ts. For customer_followed it recorded:
+--
+--     "the DB create() passes no priority at all; only its WebSocket broadcast
+--      sets 'high', and that never touched the DB"
+--
+--   That was wrong. triggerCustomerFollowedNotification passes
+--   `priority: 'high'` to service.create() directly (notification-trigger.ts
+--   line 495) AND to the WebSocket broadcast. The conclusion came from a
+--   truncated grep in which the create() call's priority line fell outside the
+--   printed window, so only the broadcast's priority was visible.
+--
+-- HOW IT SURFACED:
+--
+--   Once 0058 was live, three new customer_followed rows were written and all
+--   three landed as 'high' - contradicting the 32 backfilled rows sitting at
+--   'normal'. The split is clean in time:
+--
+--     'normal'  32 rows  2026-07-02 02:49:40 .. 2026-07-31 06:09:40  (backfilled)
+--     'high'     3 rows  2026-08-04 04:51:27 .. 2026-08-04 06:07:11  (real writes)
+--
+--   So the correction can target the backfilled rows precisely, and the real
+--   writes confirm what the value should have been.
+--
+-- SCOPE: 32 rows. new_conversation is untouched - 0058 got that one right, as
+--        the 7373 rows now sitting at 'high' (backfilled and freshly written
+--        alike) confirm.
+--
+-- SAFETY: One UPDATE against a type whose every row should be 'high'. Written
+--         without a date predicate on purpose: the goal is "all
+--         customer_followed are high", so re-running is a no-op rather than
+--         depending on a timestamp boundary staying accurate.
+--
+-- Rollback SQL:
+--   UPDATE notifications SET priority = 'normal'
+--   WHERE type = 'customer_followed' AND created_at < '2026-08-04';
+-- ===============================================
+
+UPDATE notifications
+SET priority = 'high'
+WHERE type = 'customer_followed' AND priority <> 'high';
