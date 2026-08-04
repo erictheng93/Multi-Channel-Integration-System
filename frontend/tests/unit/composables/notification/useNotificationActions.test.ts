@@ -245,7 +245,6 @@ describe('useNotificationActions', () => {
         'customer_responded',
         'conversation_assigned',
         'conversation_transferred',
-        'priority_changed',
         'mention',
         'task_reminder'
       ] as const

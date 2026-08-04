@@ -338,8 +338,6 @@ export class NotificationRepository {
         SUM(CASE WHEN type = 'system' AND is_read = FALSE THEN 1 ELSE 0 END) as system_unread,
         SUM(CASE WHEN type = 'conversation_transferred' THEN 1 ELSE 0 END) as transferred,
         SUM(CASE WHEN type = 'conversation_transferred' AND is_read = FALSE THEN 1 ELSE 0 END) as transferred_unread,
-        SUM(CASE WHEN type = 'priority_changed' THEN 1 ELSE 0 END) as priority_changed,
-        SUM(CASE WHEN type = 'priority_changed' AND is_read = FALSE THEN 1 ELSE 0 END) as priority_changed_unread,
         SUM(CASE WHEN type = 'customer_responded' THEN 1 ELSE 0 END) as customer_responded,
         SUM(CASE WHEN type = 'customer_responded' AND is_read = FALSE THEN 1 ELSE 0 END) as customer_responded_unread,
         SUM(CASE WHEN type = 'task_reminder' THEN 1 ELSE 0 END) as task_reminder,

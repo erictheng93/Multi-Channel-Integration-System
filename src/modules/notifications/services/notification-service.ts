@@ -242,7 +242,6 @@ export class NotificationService {
         mention: { total: Number(rawStats?.mentions) || 0, unread: Number(rawStats?.mentions_unread) || 0 },
         system: { total: Number(rawStats?.system) || 0, unread: Number(rawStats?.system_unread) || 0 },
         conversation_transferred: { total: Number(rawStats?.transferred) || 0, unread: Number(rawStats?.transferred_unread) || 0 },
-        priority_changed: { total: Number(rawStats?.priority_changed) || 0, unread: Number(rawStats?.priority_changed_unread) || 0 },
         customer_responded: { total: Number(rawStats?.customer_responded) || 0, unread: Number(rawStats?.customer_responded_unread) || 0 },
         task_reminder: { total: Number(rawStats?.task_reminder) || 0, unread: Number(rawStats?.task_reminder_unread) || 0 },
         agent_removed_from_team: { total: Number(rawStats?.agent_removed) || 0, unread: Number(rawStats?.agent_removed_unread) || 0 },

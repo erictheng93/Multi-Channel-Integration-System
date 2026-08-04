@@ -207,7 +207,6 @@ export class EmailAdapter implements ChannelAdapter {
       conversation_transferred: 'transfer_template',
       mention: 'mention_template',
       system: 'system_template',
-      priority_changed: 'priority_template',
       customer_responded: 'response_template',
       task_reminder: 'reminder_template'
     };

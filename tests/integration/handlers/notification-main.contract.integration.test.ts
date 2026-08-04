@@ -167,7 +167,6 @@ const stats = {
     conversation_transferred: { total: 0, unread: 0 },
     mention: { total: 0, unread: 0 },
     system: { total: 1, unread: 1 },
-    priority_changed: { total: 0, unread: 0 },
     customer_responded: { total: 0, unread: 0 },
     task_reminder: { total: 0, unread: 0 },
     agent_removed_from_team: { total: 0, unread: 0 },
