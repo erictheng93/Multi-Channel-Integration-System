@@ -52,7 +52,8 @@
           type="text"
           class="form-input"
           placeholder="輸入條件值..."
-          @keydown.enter.prevent="handleAdd"
+          @keydown.enter.prevent="handleEnterKey"
+          @compositionend="ime.onCompositionEnd"
         >
       </div>
 
@@ -70,6 +71,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useImeGuard } from '@/composables/useImeGuard'
 
 defineProps<{
   conditions: Array<{
@@ -85,6 +87,9 @@ const emit = defineEmits<{
   'remove': [index: number]
 }>()
 
+// IME (注音/拼音/日文) 組字守門 — 見 useImeGuard
+const ime = useImeGuard()
+
 const newConditionType = ref<string>('contains')
 const newValue = ref('')
 
@@ -98,6 +103,12 @@ function conditionTypeLabel(type: string): string {
   }
   /* eslint-enable camelcase */
   return labels[type] ?? type
+}
+
+// 組字中的 Enter 是確認選字，不是新增條件
+function handleEnterKey(event: KeyboardEvent): void {
+  if (ime.isImeKey(event)) {return}
+  handleAdd()
 }
 
 function handleAdd(): void {
