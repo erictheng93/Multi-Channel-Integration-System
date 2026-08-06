@@ -19,7 +19,7 @@
           @keydown="handleKeydown"
           @input="handleInput"
           @paste="handlePaste"
-          @compositionend="handleCompositionEnd"
+          @compositionend="ime.onCompositionEnd"
         />
 
         <div class="input-actions">
@@ -180,6 +180,7 @@ const props = defineProps<Props>()
   import { useFileUploadProgress } from '@/composables/message-input/useFileUploadProgress'
   import { useMessageSending } from '@/composables/message-input/useMessageSending'
   import { extractClipboardImages } from '@/composables/useClipboardPaste'
+  import { useImeGuard } from '@/composables/useImeGuard'
 
   // Types (re-export for backward compat with tests that access internal types)
   import type { MessageInputAttachment, FileAttachmentEmitData } from '@/types/message-input'
@@ -239,17 +240,8 @@ const props = defineProps<Props>()
     autoResize()
   }
 
-  // IME (注音/拼音/日文) composition guard.
-  // Safari 在「按 Enter 確認選字」時會先送 compositionend、再送一個
-  // isComposing=false 的 keydown，偽裝成一般的 Enter。用剛結束組字的時間戳
-  // 補上這個空窗，避免選字的 Enter 被當成送出。
-  // ponytail: 固定 60ms 空窗，若真有使用者反映「選完字馬上按 Enter 送不出去」再改成可調
-  const COMPOSITION_END_GRACE_MS = 60
-  let lastCompositionEnd = 0
-
-  const handleCompositionEnd = () => {
-    lastCompositionEnd = Date.now()
-  }
+  // IME (注音/拼音/日文) 組字守門 — 見 useImeGuard
+  const ime = useImeGuard()
 
   const autoResize = () => {
     if (textareaRef.value) {
@@ -259,8 +251,8 @@ const props = defineProps<Props>()
   }
 
   const handleKeydown = (event: KeyboardEvent) => {
-    // 組字中的按鍵屬於輸入法，不是給這個元件的快捷鍵（keyCode 229 為舊版瀏覽器回退）
-    if (event.isComposing || event.keyCode === 229) {
+    // 組字中的按鍵屬於輸入法，不是給這個元件的快捷鍵
+    if (ime.isImeKey(event)) {
       return
     }
 
@@ -280,10 +272,6 @@ const props = defineProps<Props>()
 
     // Enter handling
     if (event.key === 'Enter') {
-      // Safari：確認選字的 Enter 會在 compositionend 之後才送達，isComposing 已是 false
-      if (Date.now() - lastCompositionEnd < COMPOSITION_END_GRACE_MS) {
-        return
-      }
       // Shift+Enter = newline
       if (event.shiftKey) {
         return
