@@ -29,13 +29,13 @@ Implemented in the current worktree:
 Verified:
 
 - RED tests were observed before implementation for the new/changed frontend restore behavior.
-- `cd frontend && rtk bunx vitest run src/components/activity src/views/ActivityLog.test.ts src/composables/useRestoreActivity.test.ts src/api/activities.test.ts src/config/runtime.activity-restore.test.ts` - PASS, 13 files / 141 tests.
-- `cd frontend && rtk bunx vitest run src/views/ProfileView.test.ts tests/unit/views/ConversationDetailEmptyState.test.ts tests/unit/components/conversations/ConversationDesktopTable.test.ts tests/unit/components/conversations/ConversationMobileCards.test.ts` - PASS, 4 files / 69 tests after fixing pre-existing full-suite blockers outside activity-restore scope.
-- `cd frontend && rtk bun run test:run` - PASS.
-- `cd frontend && rtk bunx vue-tsc --noEmit` - PASS.
-- `cd frontend && rtk bun run lint` - PASS.
-- `cd frontend && rtk bun run build` - PASS.
-- `cd frontend && $env:PLAYWRIGHT_PORT='5174'; $env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:5174'; $env:VITE_ENABLE_ACTIVITY_RESTORE='true'; rtk bunx playwright test tests/e2e/playwright/activity/restore-smoke.spec.ts` - PASS, 2 tests.
+- `cd frontend && bunx vitest run src/components/activity src/views/ActivityLog.test.ts src/composables/useRestoreActivity.test.ts src/api/activities.test.ts src/config/runtime.activity-restore.test.ts` - PASS, 13 files / 141 tests.
+- `cd frontend && bunx vitest run src/views/ProfileView.test.ts tests/unit/views/ConversationDetailEmptyState.test.ts tests/unit/components/conversations/ConversationDesktopTable.test.ts tests/unit/components/conversations/ConversationMobileCards.test.ts` - PASS, 4 files / 69 tests after fixing pre-existing full-suite blockers outside activity-restore scope.
+- `cd frontend && bun run test:run` - PASS.
+- `cd frontend && bunx vue-tsc --noEmit` - PASS.
+- `cd frontend && bun run lint` - PASS.
+- `cd frontend && bun run build` - PASS.
+- `cd frontend && $env:PLAYWRIGHT_PORT='5174'; $env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:5174'; $env:VITE_ENABLE_ACTIVITY_RESTORE='true'; bunx playwright test tests/e2e/playwright/activity/restore-smoke.spec.ts` - PASS, 2 tests.
 
 Completion notes:
 
@@ -139,8 +139,8 @@ Expected: PASS (additive types).
 Commit:
 
 ```bash
-rtk git add frontend/src/components/activity/types.ts
-rtk git commit -m "feat(activity): add restore-related TypeScript types"
+git add frontend/src/components/activity/types.ts
+git commit -m "feat(activity): add restore-related TypeScript types"
 ```
 
 ---
@@ -217,8 +217,8 @@ restore: async (activityId: number, options: { force?: boolean } = {}): Promise<
 
 ```bash
 cd frontend && bunx vue-tsc --noEmit
-rtk git add frontend/src/api/activities.ts
-rtk git commit -m "feat(activity): add restore API client method + isReversibleDetails guard"
+git add frontend/src/api/activities.ts
+git commit -m "feat(activity): add restore API client method + isReversibleDetails guard"
 ```
 
 ---
@@ -287,8 +287,8 @@ VITE_ENABLE_ACTIVITY_RESTORE=false
 - [x] **Step 4: Commit**
 
 ```bash
-rtk git add frontend/src/config/runtime.ts frontend/src/vite-env.d.ts frontend/.env.development frontend/.env.production
-rtk git commit -m "feat(config): add VITE_ENABLE_ACTIVITY_RESTORE feature flag
+git add frontend/src/config/runtime.ts frontend/src/vite-env.d.ts frontend/.env.development frontend/.env.production
+git commit -m "feat(config): add VITE_ENABLE_ACTIVITY_RESTORE feature flag
 
 Dev defaults to true for testing; production defaults to false
 until QA signs off on the restore UI."
@@ -484,8 +484,8 @@ Expected: 7 PASS.
 - [x] **Step 5: Commit**
 
 ```bash
-rtk git add frontend/src/composables/useRestoreActivity.ts frontend/src/composables/useRestoreActivity.test.ts
-rtk git commit -m "feat(activity): add useRestoreActivity composable
+git add frontend/src/composables/useRestoreActivity.ts frontend/src/composables/useRestoreActivity.test.ts
+git commit -m "feat(activity): add useRestoreActivity composable
 
 Wraps activitiesApi.restore with a discriminated-union outcome so
 callers can switch on outcome.kind without inspecting HTTP status
@@ -865,8 +865,8 @@ Expected: 7 PASS.
 - [x] **Step 5: Commit**
 
 ```bash
-rtk git add frontend/src/components/activity/RestoreConfirmModal.vue frontend/src/components/activity/RestoreConfirmModal.test.ts
-rtk git commit -m "feat(activity): add RestoreConfirmModal with simple and conflict states
+git add frontend/src/components/activity/RestoreConfirmModal.vue frontend/src/components/activity/RestoreConfirmModal.test.ts
+git commit -m "feat(activity): add RestoreConfirmModal with simple and conflict states
 
 Renders 確認還原 in the simple state and a 3-column diff table in
 the conflict state, emitting confirm(force=true) when the user
@@ -1220,8 +1220,8 @@ Expected: all PASS.
 - [x] **Step 5: Commit**
 
 ```bash
-rtk git add frontend/src/components/activity/ActivityTimelineItem.vue frontend/src/components/activity/ActivityTimelineItem.test.ts
-rtk git commit -m "feat(activity): show 還原 button on eligible activity rows
+git add frontend/src/components/activity/ActivityTimelineItem.vue frontend/src/components/activity/ActivityTimelineItem.test.ts
+git commit -m "feat(activity): show 還原 button on eligible activity rows
 
 Reads restorePolicy.expiresAt / requiresAdmin and renders one of
 [還原] / 已過期 / 不可還原 / 已還原. Click opens
@@ -1309,8 +1309,8 @@ cd frontend && bunx vitest run src/components/activity src/views/ActivityLog.tes
 Expected: all PASS.
 
 ```bash
-rtk git add frontend/src/views/ActivityLog.vue frontend/src/components/activity/ActivityTimeline.vue
-rtk git commit -m "feat(activity): refresh timeline on restore + subscribe to WS event
+git add frontend/src/views/ActivityLog.vue frontend/src/components/activity/ActivityTimeline.vue
+git commit -m "feat(activity): refresh timeline on restore + subscribe to WS event
 
 Restores trigger a page reload via the @restored event chain so the
 restored entry flips to 已還原 and the new RESTORE activity log
@@ -1351,7 +1351,7 @@ Set `VITE_ENABLE_ACTIVITY_RESTORE=true` locally. Run the automated Playwright sm
 - [x] **Step 4: Final polish documented**
 
 ```bash
-cd frontend && $env:PLAYWRIGHT_PORT='5174'; $env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:5174'; $env:VITE_ENABLE_ACTIVITY_RESTORE='true'; rtk bunx playwright test tests/e2e/playwright/activity/restore-smoke.spec.ts
+cd frontend && $env:PLAYWRIGHT_PORT='5174'; $env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:5174'; $env:VITE_ENABLE_ACTIVITY_RESTORE='true'; bunx playwright test tests/e2e/playwright/activity/restore-smoke.spec.ts
 ```
 
 Commit is deferred until the phase-3 frontend files are isolated from unrelated dirty backend/docs changes in the shared worktree.
