@@ -31,17 +31,7 @@ Backend and frontend both use Vitest; the frontend also uses Playwright for brow
 Recent history follows Conventional Commit style, for example `fix(conversations): ...`, `refactor(files): ...`, and `chore(web-installer): ...`. Keep the scope specific to the module you changed. PRs should include a short summary, linked issue or task, affected areas, and screenshots for UI changes. Call out migration, env, or Cloudflare configuration impact explicitly.
 
 ## Security & Agent Notes
-Do not commit `.env*` secrets or production credentials. Validate route and config changes with `bun run validate:all` when touching routing or runtime config. For Codex shell usage in this repo, prefix commands with `rtk` per the local tooling guide.
-
-## RTK Command Preference
-When invoking external CLI commands from Codex for this repository, prefer the `rtk` prefix for tools such as `php`, `composer`, `npm`, `git`, and `bash`.
-
-Examples:
-- `rtk php artisan test`
-- `rtk composer install`
-- `rtk npm run build`
-
-PowerShell builtins and simple read-only inspection commands do not need the `rtk` prefix.
+Do not commit `.env*` secrets or production credentials. Validate route and config changes with `bun run validate:all` when touching routing or runtime config.
 
 <!-- codebase-memory-mcp:start -->
 # Codebase Knowledge Graph (codebase-memory-mcp)
@@ -68,7 +58,7 @@ with codebase-memory MCP tools.
 - Before committing, run MCP `detect_changes` to verify the affected scope is expected.
   If the Codex MCP tool channel does not expose `detect_changes` or the transport fails, use the
   CLI fallback instead and report that fallback explicitly:
-  `printf '%s' '{"project":"Users-eric-Documents-Code-Multi-Channel-Integration-System"}' | rtk /Users/eric/.local/bin/codebase-memory-mcp cli detect_changes`.
+  `printf '%s' '{"project":"Users-eric-Documents-Code-Multi-Channel-Integration-System"}' | /Users/eric/.local/bin/codebase-memory-mcp cli detect_changes`.
 - To verify the local codebase-memory installation and fallback path, run
-  `rtk bash scripts/check-codebase-memory.sh`.
+  `bash scripts/check-codebase-memory.sh`.
 <!-- codebase-memory-mcp:end -->

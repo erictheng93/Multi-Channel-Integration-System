@@ -22,8 +22,8 @@
 **Post-review fix (2026-05-26):** Create-style reversible captures must include the identifiers required by their reverse restore handlers. `tag.create`, `team.create`, and `agent.create` now capture `{ id, deleted_at: null }`; `customer.tag-assign` captures `{ customerId, tagId }`. This prevents restore-time failures in `softDelete(...)` and `removeTagFromCustomer`.
 
 **Verification run (2026-05-26):**
-- `rtk bunx vitest run tests/integration/handlers/conversation-restore.integration.test.ts tests/integration/handlers/customer-tags.integration.test.ts tests/integration/handlers/tag-create-restore.integration.test.ts tests/unit/modules/activities` - 11 files / 116 tests passed.
-- `rtk bun run build` - passed (`tsc --noEmit`).
+- `bunx vitest run tests/integration/handlers/conversation-restore.integration.test.ts tests/integration/handlers/customer-tags.integration.test.ts tests/integration/handlers/tag-create-restore.integration.test.ts tests/unit/modules/activities` - 11 files / 116 tests passed.
+- `bun run build` - passed (`tsc --noEmit`).
 
 
 > **Note on plan format.** Each task in this plan provides the full final code, the captured snapshot shape, and the critical test assertions — but does NOT rewrite the generic TDD step structure (red → green → commit) since Phase 2a's plan already documents it in detail and the pattern is now established. Engineers should follow the same red-green-commit cadence per task.

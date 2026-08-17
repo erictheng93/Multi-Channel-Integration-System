@@ -124,7 +124,7 @@ Evidence:
 
 - `package.json` declares `bun@1.3.9`.
 - Local Bun executable exists and reports `1.3.13`.
-- Direct `rtk bun ...` failed because `bun` was not resolved through PATH.
+- Direct `bun ...` failed because `bun` was not resolved through PATH.
 
 Impact:
 
@@ -451,8 +451,8 @@ Verification:
 Representative commands:
 
 ```powershell
-rtk rg -n "TODO|FIXME|HACK|XXX|DEPRECATED|@ts-ignore|@ts-expect-error|eslint-disable|console\.log|debugger|skip\(|\.only\(" src frontend/src tests frontend/tests scripts
-rtk rg -o --no-filename "\bany\b|unknown as|as any|Record<string, any>" src frontend/src tests frontend/tests
-rtk rg -n "npm run|npm |npx |yarn|pnpm" scripts docs README.md CLAUDE.md package.json frontend/package.json
-rtk powershell -NoProfile -Command "& ([System.IO.Path]::Combine($env:USERPROFILE, '.bun', 'bin', 'bun.exe')) --version"
+rg -n "TODO|FIXME|HACK|XXX|DEPRECATED|@ts-ignore|@ts-expect-error|eslint-disable|console\.log|debugger|skip\(|\.only\(" src frontend/src tests frontend/tests scripts
+rg -o --no-filename "\bany\b|unknown as|as any|Record<string, any>" src frontend/src tests frontend/tests
+rg -n "npm run|npm |npx |yarn|pnpm" scripts docs README.md CLAUDE.md package.json frontend/package.json
+powershell -NoProfile -Command "& ([System.IO.Path]::Combine($env:USERPROFILE, '.bun', 'bin', 'bun.exe')) --version"
 ```
