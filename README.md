@@ -15,6 +15,7 @@
  **開發者入口**
 - **快速部署** `bun run deploy`（後端）/ `bun run deploy:pages`（前端）
 - **工作區邊界** [Workspace Boundaries](docs/WORKSPACE_BOUNDARIES.md) - Root 與 frontend 的 Bun package 邊界
+- **系統總覽圖** [Master User Flow](docs/MASTER_USER_FLOW.html) - 四大角色（客戶端 / 客服 / 團隊主管 / Admin）一頁式流程圖，含共通服務與外部相依；瀏覽器直接開啟
 - **本文件** (README.md) - 完整技術文件與架構說明
 - **API 文件** [ API 參考](docs/reference/api/API_REFERENCE.md) - 完整 API 端點文件
 - **自動部署** Web Installer 自助部署工具（`web-installer/`）
