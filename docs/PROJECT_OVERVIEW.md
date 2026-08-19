@@ -198,6 +198,24 @@
 
 **若需要對外版本**（提案、客戶簡報）：另存一份拿掉 ⚠️ 標記的副本，不要就地改這份——這份的用途就是給內部看真實狀態。
 
+### 線上可分享版本
+
+同一份圖另有一個 Artifact 連結（預設私有，需在頁面上自行分享）：
+<https://claude.ai/code/artifact/03d45594-dcc7-4dbc-9a9f-c5859b279110>
+
+它**不是**另一份要手工維護的檔案，而是從 `docs/MASTER_USER_FLOW.html` 去掉外層 `<!doctype>` / `<html>` / `<head>` / `<body>` 後發佈的同一份內容（Artifact 執行環境會自己補外殼）。改完 HTML 要更新線上版時，重新產生 body-only 變體再以**同一個 URL** 發佈即可，網址不會變：
+
+```bash
+# 產生 body-only 變體（保留 <title> 與 <style>，去掉文件外殼）
+BODY=$(grep -n '^<body>' docs/MASTER_USER_FLOW.html | cut -d: -f1)
+END=$(grep -n '^</body>' docs/MASTER_USER_FLOW.html | cut -d: -f1)
+STYLE_END=$(grep -n '^</style>' docs/MASTER_USER_FLOW.html | cut -d: -f1)
+{ sed -n "6,${STYLE_END}p" docs/MASTER_USER_FLOW.html;
+  sed -n "$((BODY+1)),$((END-1))p" docs/MASTER_USER_FLOW.html; } > /tmp/master-user-flow.html
+```
+
+配色在 Artifact 內是三態的（明確亮色 / 明確暗色 / 跟隨系統），所有顏色都走 `:root` 的 token，暗色區塊只覆寫 token、不直接宣告元件顏色。新增顏色時請沿用這個規則，否則在「跟隨系統」狀態會出現一個主題的文字疊在另一個主題的底色上。
+
 ## 已知問題（非文件問題，追蹤中）
 
 - `GET /api/messages/search` 目前沒有團隊/權限範圍檢查，任何已登入使用者可搜尋到未被授權查看的對話內容。這是程式碼層級的安全缺陷，不是文件不準確的問題，追蹤於 [#16](https://github.com/erictheng93/Multi-Channel-Integration-System/issues/16)，不在本次文件校正範圍內。
