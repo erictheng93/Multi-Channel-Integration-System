@@ -172,8 +172,11 @@ All three run concurrently via background jobs (`&` + `wait`). Type-check and ES
 
 Caches live in `node_modules/.cache/` (already gitignored). First push after `bun install` is cold; subsequent pushes hit the incremental cache and run ~3× faster.
 
+**Docs-only fast path**: pre-push diffs the pushed range and skips all three checks when every changed file is documentation. The allowlist is `docs/**`, `*.md`, `*.txt`, `LICENSE` — and anything under `src/`, `shared/`, or `frontend/` forces the full run **even if it is a `.md`**, so a doc sitting next to code is never the reason a check is skipped. This is safe because the three checks cover exactly `src/** + shared/**` (tsc, per the root `tsconfig.json` include) and `frontend/**` (vue-tsc + eslint); nothing on the allowlist can change their result. Anything ambiguous — an unresolvable push range, an empty diff, a new remote branch whose base can't be determined — runs the full suite. Force it yourself with `FULL_CHECK=1 git push`.
+
 **Why this design**:
 - Atomic commits stay cheap (20s × N) instead of paying full check on each commit (80-200s × N).
+- Documentation pushes cost ~0s instead of 100-600s, which keeps doc updates from being batched or skipped.
 - PostToolUse health-check hook already catches most type errors during the edit cycle, so a pre-commit type-check would be redundant.
 - pre-push is the last line of defence before code leaves the machine; CI is the absolute final gate.
 
