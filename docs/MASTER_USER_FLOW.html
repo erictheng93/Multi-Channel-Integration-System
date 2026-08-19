@@ -8,42 +8,70 @@
 /* ============================================================
    Multi-Channel Customer Support System — Master User Flow
    Apple-Native Soft Minimalism · Fully Responsive
+
+   Theming contract: every colour is a token. The bare :root holds the
+   complete light palette; the two dark blocks below redefine ONLY
+   tokens. Nothing further down declares a colour inside a media or
+   [data-theme] block, so the page resolves as a set in all three
+   viewer states (explicit light, explicit dark, un-stamped system).
    ============================================================ */
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0}
 
 :root{
+  /* neutrals */
   --bg:#F2F2F7;
   --card:#FFFFFF;
+  --chip:#F2F2F7;
   --ink:#1C1C1E;
   --ink2:#6E6E73;
   --ink3:#8E8E93;
   --hair:#E5E5EA;
 
-  --blue:#007AFF;   --blue-bg:#EAF3FF;   --blue-soft:#F5F9FF;
-  --green:#34C759;  --green-bg:#E8F8ED;  --green-soft:#F4FCF7;
-  --purple:#AF52DE; --purple-bg:#F4EAFB; --purple-soft:#FAF5FD;
-  --orange:#FF9500; --orange-bg:#FFF2E0; --orange-soft:#FFF9F0;
-  --red:#FF3B30;
-  --teal:#00A0A8;
+  /* one accent set per portal: accent · icon chip · panel · ring · rule */
+  --p1:#007AFF; --p1-chip:#EAF3FF; --p1-soft:#F5F9FF; --p1-ring:#CFE4FF; --p1-rule:#D7E9FF;
+  --p2:#248A3D; --p2-chip:#E8F8ED; --p2-soft:#F4FCF7; --p2-ring:#CBEFD6; --p2-rule:#D3F0DC;
+  --p3:#8E37B8; --p3-chip:#F4EAFB; --p3-soft:#FAF5FD; --p3-ring:#E7D0F5; --p3-rule:#EBD9F7;
+  --p4:#C26B00; --p4-chip:#FFF2E0; --p4-soft:#FFF9F0; --p4-ring:#FFE0B8; --p4-rule:#FFE7C7;
 
-  --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px;
+  /* tech-stack dots + status words */
+  --dot1:#007AFF; --dot2:#34C759; --dot3:#AF52DE; --dot4:#FF9500; --dot5:#00A0A8;
+  --ok:#248A3D; --warn:#C26B00; --no:#FF3B30;
+
+  --r-md:14px; --r-lg:18px; --r-xl:24px;
   --sh:0 4px 16px rgb(0 0 0 / .06);
   --sh-sm:0 2px 8px rgb(0 0 0 / .05);
 }
 
+/* system dark — loses to an explicit light choice */
 @media (prefers-color-scheme: dark){
-  :root{
-    --bg:#000000; --card:#1C1C1E; --ink:#F5F5F7; --ink2:#AEAEB2; --ink3:#8E8E93;
-    --hair:#38383A;
-    --blue-bg:#0B2947;  --blue-soft:#12213A;
-    --green-bg:#0D2E19; --green-soft:#122A1C;
-    --purple-bg:#2A1236;--purple-soft:#241329;
-    --orange-bg:#3A2508;--orange-soft:#2E2113;
+  :root:not([data-theme="light"]){
+    --bg:#000000; --card:#1C1C1E; --chip:#2C2C2E;
+    --ink:#F5F5F7; --ink2:#AEAEB2; --ink3:#8E8E93; --hair:#38383A;
+    --p1:#4DA3FF; --p1-chip:#0B2947; --p1-soft:#12213A; --p1-ring:#1E3A5C; --p1-rule:#1E3A5C;
+    --p2:#5FD97C; --p2-chip:#0D2E19; --p2-soft:#122A1C; --p2-ring:#1C4429; --p2-rule:#1C4429;
+    --p3:#CB84EA; --p3-chip:#2A1236; --p3-soft:#241329; --p3-ring:#3D2049; --p3-rule:#3D2049;
+    --p4:#FFB44D; --p4-chip:#3A2508; --p4-soft:#2E2113; --p4-ring:#4A3312; --p4-rule:#4A3312;
+    --dot1:#4DA3FF; --dot2:#5FD97C; --dot3:#CB84EA; --dot4:#FFB44D; --dot5:#3FC7CF;
+    --ok:#5FD97C; --warn:#FFB44D; --no:#FF6961;
     --sh:0 4px 20px rgb(0 0 0 / .5);
     --sh-sm:0 2px 10px rgb(0 0 0 / .4);
   }
+}
+
+/* explicit dark choice — wins over a light OS */
+:root[data-theme="dark"]{
+  --bg:#000000; --card:#1C1C1E; --chip:#2C2C2E;
+  --ink:#F5F5F7; --ink2:#AEAEB2; --ink3:#8E8E93; --hair:#38383A;
+  --p1:#4DA3FF; --p1-chip:#0B2947; --p1-soft:#12213A; --p1-ring:#1E3A5C; --p1-rule:#1E3A5C;
+  --p2:#5FD97C; --p2-chip:#0D2E19; --p2-soft:#122A1C; --p2-ring:#1C4429; --p2-rule:#1C4429;
+  --p3:#CB84EA; --p3-chip:#2A1236; --p3-soft:#241329; --p3-ring:#3D2049; --p3-rule:#3D2049;
+  --p4:#FFB44D; --p4-chip:#3A2508; --p4-soft:#2E2113; --p4-ring:#4A3312; --p4-rule:#4A3312;
+  --dot1:#4DA3FF; --dot2:#5FD97C; --dot3:#CB84EA; --dot4:#FFB44D; --dot5:#3FC7CF;
+  --ok:#5FD97C; --warn:#FFB44D; --no:#FF6961;
+  --sh:0 4px 20px rgb(0 0 0 / .5);
+  --sh-sm:0 2px 10px rgb(0 0 0 / .4);
 }
 
 body{
@@ -68,23 +96,33 @@ body{
 .head .stack{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .pill{
   display:inline-flex;align-items:center;gap:5px;border-radius:999px;
-  padding:3px 11px;font-size:11.5px;font-weight:600;background:var(--bg);color:var(--ink2)
+  padding:3px 11px;font-size:11.5px;font-weight:600;background:var(--chip);color:var(--ink2)
 }
 .pill i{width:7px;height:7px;border-radius:50%;display:block}
+.pill.d1 i{background:var(--dot4)} .pill.d2 i{background:var(--dot2)}
+.pill.d3 i{background:var(--dot1)} .pill.d4 i{background:var(--dot3)}
+.pill.d5 i{background:var(--dot5)}
 
 .meta{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
 .legend{
-  background:var(--bg);border-radius:var(--r-md);padding:10px 14px;
+  background:var(--chip);border-radius:var(--r-md);padding:10px 14px;
   display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;max-width:640px
 }
 .legend .lt{font-size:11.5px;font-weight:700;color:var(--ink2);margin-right:2px}
 .legend .li{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);white-space:nowrap}
 .legend svg{flex:none}
 .vbox{
-  background:var(--bg);border-radius:var(--r-md);padding:8px 14px;
+  background:var(--chip);border-radius:var(--r-md);padding:8px 14px;
   font-size:11.5px;color:var(--ink2);text-align:right;line-height:1.7;white-space:nowrap
 }
 .vbox b{color:var(--ink);font-weight:600}
+
+/* line swatches follow the theme rather than a baked-in hex */
+.l-ink path{stroke:var(--ink)}
+.l-p1 path{stroke:var(--p1)}
+.l-p2 path{stroke:var(--p2)}
+.l-p3 path{stroke:var(--p3)}
+.l-p4 path{stroke:var(--p4)}
 
 /* ---------- Band ---------- */
 .band{
@@ -98,20 +136,17 @@ body{
 }
 .band-body{padding:16px 18px 18px}
 
-.band.b-entry .band-label{background:var(--blue-bg);color:var(--blue)}
-.band.b-roles .band-label{background:var(--blue-bg);color:var(--blue)}
-.band.b-shared .band-label{background:var(--orange-bg);color:#C26B00}
-.band.b-ext .band-label{background:var(--orange-bg);color:#C26B00}
+.band.b-entry .band-label,.band.b-roles .band-label{background:var(--p1-chip);color:var(--p1)}
+.band.b-shared .band-label,.band.b-ext .band-label{background:var(--p4-chip);color:var(--p4)}
 
 .band-note{
-  text-align:center;font-size:12px;color:var(--blue);font-weight:600;
-  background:var(--blue-soft);border-radius:999px;padding:6px 14px;margin:0 auto 14px;
+  text-align:center;font-size:12px;color:var(--p1);font-weight:600;
+  background:var(--p1-soft);border-radius:999px;padding:6px 14px;margin:0 auto 14px;
   width:fit-content;max-width:100%
 }
 
 /* ---------- Flow primitives ---------- */
 .flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap}
-.flow.center{justify-content:center}
 
 .node{
   background:var(--card);border-radius:var(--r-md);
@@ -122,7 +157,7 @@ body{
 }
 .node .ico{
   width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
-  background:var(--bg);color:var(--ink2);flex:none
+  background:var(--chip);color:var(--ink2);flex:none
 }
 .node .ico svg{width:18px;height:18px}
 .node .t{font-size:12px;font-weight:600;line-height:1.3;color:var(--ink)}
@@ -135,33 +170,48 @@ body{
 .flow.wide .node .t{font-size:13px}
 
 /* decision diamond */
+.node.dec{box-shadow:none;background:transparent}
 .node.dec .ico{
   transform:rotate(45deg);border-radius:7px;background:var(--card);
-  box-shadow:inset 0 0 0 1.5px var(--blue);color:var(--blue);
+  box-shadow:inset 0 0 0 1.5px var(--p1);color:var(--p1);
   width:34px;height:34px
 }
 .node.dec .ico svg{transform:rotate(-45deg);width:17px;height:17px}
-.node.dec{box-shadow:none;background:transparent}
+
+/* the portal-summary card that closes the entry band */
+.node.summary{
+  flex:1.6 1 190px;background:var(--p1-soft);
+  box-shadow:var(--sh-sm),inset 0 0 0 1.5px var(--p1-ring)
+}
+.node.summary .tx{width:100%}
+.node.summary .t{margin-bottom:6px}
+.node.summary ul{
+  margin:0;padding:0;list-style:none;
+  display:flex;flex-direction:column;gap:4px;font-size:10.5px;text-align:left
+}
+.node.summary li{display:flex;gap:6px;align-items:center}
+.node.summary li svg{width:14px;height:14px;flex:none}
+.node.summary li.s1{color:var(--p1)} .node.summary li.s2{color:var(--p2)}
+.node.summary li.s3{color:var(--p3)} .node.summary li.s4{color:var(--p4)}
 
 /* arrow between nodes */
 .arr{display:flex;align-items:center;justify-content:center;flex:none;width:16px;color:var(--ink3)}
 .arr svg{width:14px;height:14px}
-.arr.dash{color:var(--blue)}
 
 /* ---------- Portals (4 columns) ---------- */
 .portals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.portal{border-radius:var(--r-lg);padding:12px;background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px var(--blue-bg)}
-.portal.p1{background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px #CFE4FF}
-.portal.p2{background:var(--green-soft);box-shadow:inset 0 0 0 1.5px #CBEFD6}
-.portal.p3{background:var(--purple-soft);box-shadow:inset 0 0 0 1.5px #E7D0F5}
-.portal.p4{background:var(--orange-soft);box-shadow:inset 0 0 0 1.5px #FFE0B8}
+.portal{border-radius:var(--r-lg);padding:12px}
+.portal.p1{background:var(--p1-soft);box-shadow:inset 0 0 0 1.5px var(--p1-ring)}
+.portal.p2{background:var(--p2-soft);box-shadow:inset 0 0 0 1.5px var(--p2-ring)}
+.portal.p3{background:var(--p3-soft);box-shadow:inset 0 0 0 1.5px var(--p3-ring)}
+.portal.p4{background:var(--p4-soft);box-shadow:inset 0 0 0 1.5px var(--p4-ring)}
 
 .portal-head{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;text-align:center}
 .portal-head svg{width:22px;height:22px;flex:none}
 .portal-head .n{font-size:14.5px;font-weight:700;letter-spacing:-.01em}
 .portal-head .r{font-size:11.5px;font-weight:500;color:var(--ink3);display:block}
-.p1 .portal-head{color:var(--blue)} .p2 .portal-head{color:#248A3D}
-.p3 .portal-head{color:#8E37B8} .p4 .portal-head{color:#C26B00}
+.p1 .portal-head{color:var(--p1)} .p2 .portal-head{color:var(--p2)}
+.p3 .portal-head{color:var(--p3)} .p4 .portal-head{color:var(--p4)}
 
 .grp{
   background:var(--card);border-radius:var(--r-md);padding:9px 8px 10px;margin-top:9px;
@@ -171,10 +221,10 @@ body{
   font-size:11.5px;font-weight:700;text-align:center;margin-bottom:8px;
   padding-bottom:5px;border-bottom:1.5px dashed var(--hair);color:var(--ink2)
 }
-.p1 .grp > .gt{color:var(--blue);border-color:#D7E9FF}
-.p2 .grp > .gt{color:#248A3D;border-color:#D3F0DC}
-.p3 .grp > .gt{color:#8E37B8;border-color:#EBD9F7}
-.p4 .grp > .gt{color:#C26B00;border-color:#FFE7C7}
+.p1 .grp > .gt{color:var(--p1);border-color:var(--p1-rule)}
+.p2 .grp > .gt{color:var(--p2);border-color:var(--p2-rule)}
+.p3 .grp > .gt{color:var(--p3);border-color:var(--p3-rule)}
+.p4 .grp > .gt{color:var(--p4);border-color:var(--p4-rule)}
 
 .portal .node{box-shadow:none;background:transparent;padding:4px 2px;flex:1 1 62px;min-width:56px}
 .portal .node .ico{width:26px;height:26px;border-radius:8px}
@@ -183,19 +233,19 @@ body{
 .portal .arr{width:12px}
 .portal .arr svg{width:11px;height:11px}
 
-.p1 .node .ico{background:var(--blue-bg);color:var(--blue)}
-.p2 .node .ico{background:var(--green-bg);color:#248A3D}
-.p3 .node .ico{background:var(--purple-bg);color:#8E37B8}
-.p4 .node .ico{background:var(--orange-bg);color:#C26B00}
-.p1 .arr{color:var(--blue)} .p2 .arr{color:var(--green)}
-.p3 .arr{color:var(--purple)} .p4 .arr{color:var(--orange)}
+.p1 .node .ico{background:var(--p1-chip);color:var(--p1)}
+.p2 .node .ico{background:var(--p2-chip);color:var(--p2)}
+.p3 .node .ico{background:var(--p3-chip);color:var(--p3)}
+.p4 .node .ico{background:var(--p4-chip);color:var(--p4)}
+.p1 .arr{color:var(--p1)} .p2 .arr{color:var(--p2)}
+.p3 .arr{color:var(--p3)} .p4 .arr{color:var(--p4)}
 
 .flag{
-  display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
-  color:#B25C00;background:var(--orange-bg);border-radius:999px;padding:2px 8px;margin-top:7px
+  display:flex;width:fit-content;margin:7px auto 0;
+  align-items:center;gap:4px;font-size:10px;font-weight:600;
+  color:var(--p4);background:var(--p4-chip);border-radius:999px;padding:2px 8px
 }
 .flag svg{width:11px;height:11px}
-.grp .flag{display:flex;width:fit-content;margin-inline:auto}
 
 /* ---------- Shared / external service rows ---------- */
 .srv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
@@ -203,37 +253,36 @@ body{
   background:var(--card);border-radius:var(--r-md);padding:11px 12px;box-shadow:var(--sh-sm);
   display:flex;gap:10px;align-items:flex-start
 }
-.srv .item .ico{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none}
+.srv .item .ico{
+  width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;
+  background:var(--p4-chip);color:var(--p4)
+}
 .srv .item .ico svg{width:18px;height:18px}
 .srv .item .t{font-size:12.5px;font-weight:600;line-height:1.35}
 .srv .item .s{font-size:10.5px;color:var(--ink3);line-height:1.5;margin-top:2px}
 
-.band.b-shared .srv .item .ico{background:var(--orange-bg);color:#C26B00}
-.band.b-ext .srv .item{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #FFE0B8}
-.band.b-ext .srv .item .ico{background:var(--orange-bg);color:#C26B00}
-.band.b-ext .srv .item.cf .ico{background:var(--blue-bg);color:var(--blue)}
-.band.b-ext .srv .item.cf{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #CFE4FF}
+.band.b-ext .srv .item{box-shadow:var(--sh-sm),inset 0 0 0 1.5px var(--p4-ring)}
+.band.b-ext .srv .item.cf{box-shadow:var(--sh-sm),inset 0 0 0 1.5px var(--p1-ring)}
+.band.b-ext .srv .item.cf .ico{background:var(--p1-chip);color:var(--p1)}
 
 /* ---------- Footer notes ---------- */
 .notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .note{background:var(--card);border-radius:var(--r-xl);box-shadow:var(--sh);padding:18px 20px}
 .note h3{margin:0 0 12px;font-size:14px;font-weight:700}
-.note ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.note ul,.note ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.note ol{gap:9px}
 .note li{font-size:12px;color:var(--ink2);line-height:1.6;padding-left:14px;position:relative}
 .note li::before{
   content:"";position:absolute;left:0;top:.55em;width:5px;height:5px;border-radius:50%;background:var(--ink3)
 }
 .note li b{color:var(--ink);font-weight:600}
-.note .dl{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--ink2);line-height:1.6;padding-left:0}
+.note .dl{display:flex;align-items:flex-start;gap:8px;padding-left:0}
 .note .dl::before{display:none}
 .note .dl svg{flex:none;margin-top:5px}
-.note ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
-/* the "main flow" arrow must follow the theme, not a baked-in hex */
-.ink-line path{stroke:var(--ink)}
 
-.tag-ok{color:#248A3D;font-weight:600}
-.tag-warn{color:#C26B00;font-weight:600}
-.tag-no{color:var(--red);font-weight:600}
+.tag-ok{color:var(--ok);font-weight:600}
+.tag-warn{color:var(--warn);font-weight:600}
+.tag-no{color:var(--no);font-weight:600}
 
 .foot{
   text-align:center;color:var(--ink3);font-size:11.5px;padding:18px 0 6px;line-height:1.7
@@ -277,33 +326,6 @@ body{
   .portal .node .t{font-size:12px}
   .node.dec .ico{transform:rotate(45deg) scale(.9)}
 }
-/* dark-mode tuning for the hairline tints */
-@media (prefers-color-scheme: dark){
-  .portal.p1{box-shadow:inset 0 0 0 1.5px #1E3A5C}
-  .portal.p2{box-shadow:inset 0 0 0 1.5px #1C4429}
-  .portal.p3{box-shadow:inset 0 0 0 1.5px #3D2049}
-  .portal.p4{box-shadow:inset 0 0 0 1.5px #4A3312}
-  .p1 .grp > .gt{color:#4DA3FF;border-color:#1E3A5C}
-  .p2 .grp > .gt{color:#5FD97C;border-color:#1C4429}
-  .p3 .grp > .gt{color:#CB84EA;border-color:#3D2049}
-  .p4 .grp > .gt{color:#FFB44D;border-color:#4A3312}
-  .p1 .portal-head,.p1 .node .ico,.p1 .arr,.node.dec .ico{color:#4DA3FF}
-  .node.dec .ico{box-shadow:inset 0 0 0 1.5px #4DA3FF}
-  .p2 .portal-head,.p2 .node .ico{color:#5FD97C}
-  .p3 .portal-head,.p3 .node .ico{color:#CB84EA}
-  .p4 .portal-head,.p4 .node .ico{color:#FFB44D}
-  .band.b-shared .band-label,.band.b-ext .band-label{color:#FFB44D}
-  .band.b-shared .srv .item .ico,.band.b-ext .srv .item .ico{color:#FFB44D}
-  .band.b-ext .srv .item{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #4A3312}
-  .band.b-ext .srv .item.cf{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #1E3A5C}
-  .band.b-ext .srv .item.cf .ico{color:#4DA3FF}
-  .flag{color:#FFB44D}
-  .tag-ok{color:#5FD97C} .tag-warn{color:#FFB44D} .tag-no{color:#FF6961}
-  .head .stack .pill{background:#2C2C2E}
-  .legend,.vbox{background:#2C2C2E}
-  .node .ico{background:#2C2C2E}
-}
-
 @media print{
   body{background:#fff}
   .band,.head,.note{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
@@ -369,22 +391,22 @@ body{
     <h1>多渠道客服整合系統 Master User Flow</h1>
     <div class="sub">LINE OA + Facebook Messenger 統一客服平台 — 四大角色總覽流程圖</div>
     <div class="stack">
-      <span class="pill"><i style="background:var(--orange)"></i>Cloudflare Workers (Hono)</span>
-      <span class="pill"><i style="background:var(--green)"></i>Vue 3 + TypeScript</span>
-      <span class="pill"><i style="background:var(--blue)"></i>D1 · KV · R2 · Queues</span>
-      <span class="pill"><i style="background:var(--purple)"></i>Durable Objects × 10</span>
-      <span class="pill"><i style="background:var(--teal)"></i>WebSocket 即時同步</span>
+      <span class="pill d1"><i></i>Cloudflare Workers (Hono)</span>
+      <span class="pill d2"><i></i>Vue 3 + TypeScript</span>
+      <span class="pill d3"><i></i>D1 · KV · R2 · Queues</span>
+      <span class="pill d4"><i></i>Durable Objects × 10</span>
+      <span class="pill d5"><i></i>WebSocket 即時同步</span>
     </div>
   </div>
 
   <div class="meta">
     <div class="legend">
       <span class="lt">圖例：</span>
-      <span class="li"><svg class="ink-line" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>主要流程</span>
-      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>訊息 / 通知</span>
-      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#34C759" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#34C759" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>即時 WebSocket</span>
-      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>資料 / 事件流</span>
-      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>外部 API 互動</span>
+      <span class="li"><svg class="l-ink" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>主要流程</span>
+      <span class="li"><svg class="l-p1" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>訊息 / 通知</span>
+      <span class="li"><svg class="l-p2" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#34C759" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#34C759" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>即時 WebSocket</span>
+      <span class="li"><svg class="l-p3" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>資料 / 事件流</span>
+      <span class="li"><svg class="l-p4" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>外部 API 互動</span>
     </div>
     <div class="vbox">版本：<b>v1.0</b><br>日期：<b>2026/08/19</b></div>
   </div>
@@ -433,15 +455,15 @@ body{
       </div>
       <div class="arr"><svg><use href="#i-arrow"/></svg></div>
 
-      <div class="node" style="flex:1.6 1 190px;box-shadow:var(--sh-sm),inset 0 0 0 1.5px #CFE4FF;background:var(--blue-soft)">
-        <div class="tx" style="width:100%">
-          <div class="t" style="margin-bottom:6px">進入對應門戶</div>
-          <div style="display:flex;flex-direction:column;gap:4px;font-size:10.5px;color:var(--ink2);text-align:left">
-            <span style="display:flex;gap:6px;align-items:center;color:var(--blue)"><svg width="14" height="14"><use href="#i-chat"/></svg>客戶端（LINE / FB 使用者）</span>
-            <span style="display:flex;gap:6px;align-items:center;color:#248A3D"><svg width="14" height="14"><use href="#i-inbox"/></svg>客服 Portal（Agent）</span>
-            <span style="display:flex;gap:6px;align-items:center;color:#8E37B8"><svg width="14" height="14"><use href="#i-users"/></svg>團隊主管 Portal（Lead / Supervisor）</span>
-            <span style="display:flex;gap:6px;align-items:center;color:#C26B00"><svg width="14" height="14"><use href="#i-gear"/></svg>系統管理 Portal（Admin）</span>
-          </div>
+      <div class="node summary">
+        <div class="tx">
+          <div class="t">進入對應門戶</div>
+          <ul>
+            <li class="s1"><svg><use href="#i-chat"/></svg>客戶端（LINE / FB 使用者）</li>
+            <li class="s2"><svg><use href="#i-inbox"/></svg>客服 Portal（Agent）</li>
+            <li class="s3"><svg><use href="#i-users"/></svg>團隊主管 Portal（Lead / Supervisor）</li>
+            <li class="s4"><svg><use href="#i-gear"/></svg>系統管理 Portal（Admin）</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -782,11 +804,11 @@ body{
   <div class="note">
     <h3>主要資料流向（範例）</h3>
     <ol>
-      <li class="dl"><svg class="ink-line" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>客戶進站：</b>LINE Webhook → 簽章驗證 → 建立/更新客戶 → 建立或指派對話 → 寫入 D1 → 自動回覆評估</span></li>
-      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#34C759" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#34C759" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>即時推播：</b>訊息寫入 → MessageBroadcaster → ConversationRoom / UserConnection → 前端 Pinia store</span></li>
-      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>客服送訊：</b>寫入 D1 → DelayedMessageScheduler（DO Alarm）→ 撤回視窗 → 到期 → LINE Push API</span></li>
-      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>事件擴散：</b>對話事件 → 通知中心 / 活動記錄 / 稽核日誌 / 分析聚合</span></li>
-      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>非同步後處理：</b>LINE_MESSAGE_QUEUE → 消費者 → 重試 → 失敗進 line-message-dlq</span></li>
+      <li class="dl"><svg class="l-ink" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>客戶進站：</b>LINE Webhook → 簽章驗證 → 建立/更新客戶 → 建立或指派對話 → 寫入 D1 → 自動回覆評估</span></li>
+      <li class="dl"><svg class="l-p2" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#34C759" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#34C759" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>即時推播：</b>訊息寫入 → MessageBroadcaster → ConversationRoom / UserConnection → 前端 Pinia store</span></li>
+      <li class="dl"><svg class="l-p1" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>客服送訊：</b>寫入 D1 → DelayedMessageScheduler（DO Alarm）→ 撤回視窗 → 到期 → LINE Push API</span></li>
+      <li class="dl"><svg class="l-p3" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>事件擴散：</b>對話事件 → 通知中心 / 活動記錄 / 稽核日誌 / 分析聚合</span></li>
+      <li class="dl"><svg class="l-p4" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>非同步後處理：</b>LINE_MESSAGE_QUEUE → 消費者 → 重試 → 失敗進 line-message-dlq</span></li>
     </ol>
   </div>
 
