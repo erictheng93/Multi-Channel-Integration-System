@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>多渠道客服整合系統 Master User Flow</title>
+<style>
+/* ============================================================
+   Multi-Channel Customer Support System — Master User Flow
+   Apple-Native Soft Minimalism · Fully Responsive
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+
+:root{
+  --bg:#F2F2F7;
+  --card:#FFFFFF;
+  --ink:#1C1C1E;
+  --ink2:#6E6E73;
+  --ink3:#8E8E93;
+  --hair:#E5E5EA;
+
+  --blue:#007AFF;   --blue-bg:#EAF3FF;   --blue-soft:#F5F9FF;
+  --green:#34C759;  --green-bg:#E8F8ED;  --green-soft:#F4FCF7;
+  --purple:#AF52DE; --purple-bg:#F4EAFB; --purple-soft:#FAF5FD;
+  --orange:#FF9500; --orange-bg:#FFF2E0; --orange-soft:#FFF9F0;
+  --red:#FF3B30;
+  --teal:#00A0A8;
+
+  --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px;
+  --sh:0 4px 16px rgb(0 0 0 / .06);
+  --sh-sm:0 2px 8px rgb(0 0 0 / .05);
+}
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000000; --card:#1C1C1E; --ink:#F5F5F7; --ink2:#AEAEB2; --ink3:#8E8E93;
+    --hair:#38383A;
+    --blue-bg:#0B2947;  --blue-soft:#12213A;
+    --green-bg:#0D2E19; --green-soft:#122A1C;
+    --purple-bg:#2A1236;--purple-soft:#241329;
+    --orange-bg:#3A2508;--orange-soft:#2E2113;
+    --sh:0 4px 20px rgb(0 0 0 / .5);
+    --sh-sm:0 2px 10px rgb(0 0 0 / .4);
+  }
+}
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro TC","PingFang TC","Noto Sans TC","Helvetica Neue",
+    "Microsoft JhengHei",sans-serif;
+  font-size:14px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{max-width:1720px;margin:0 auto;padding:20px}
+
+/* ---------- Header ---------- */
+.head{
+  background:var(--card);border-radius:var(--r-xl);box-shadow:var(--sh);
+  padding:20px 24px;margin-bottom:16px;
+  display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;justify-content:space-between;
+}
+.head h1{margin:0;font-size:clamp(20px,2.4vw,30px);font-weight:700;letter-spacing:-.02em}
+.head .sub{margin-top:6px;color:var(--ink3);font-size:13px}
+.head .stack{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.pill{
+  display:inline-flex;align-items:center;gap:5px;border-radius:999px;
+  padding:3px 11px;font-size:11.5px;font-weight:600;background:var(--bg);color:var(--ink2)
+}
+.pill i{width:7px;height:7px;border-radius:50%;display:block}
+
+.meta{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.legend{
+  background:var(--bg);border-radius:var(--r-md);padding:10px 14px;
+  display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;max-width:640px
+}
+.legend .lt{font-size:11.5px;font-weight:700;color:var(--ink2);margin-right:2px}
+.legend .li{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);white-space:nowrap}
+.legend svg{flex:none}
+.vbox{
+  background:var(--bg);border-radius:var(--r-md);padding:8px 14px;
+  font-size:11.5px;color:var(--ink2);text-align:right;line-height:1.7;white-space:nowrap
+}
+.vbox b{color:var(--ink);font-weight:600}
+
+/* ---------- Band ---------- */
+.band{
+  background:var(--card);border-radius:var(--r-xl);box-shadow:var(--sh);
+  margin-bottom:16px;overflow:hidden;
+  display:grid;grid-template-columns:74px 1fr;
+}
+.band-label{
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:14px 6px;font-size:13px;font-weight:700;line-height:1.35;letter-spacing:.02em;
+}
+.band-body{padding:16px 18px 18px}
+
+.band.b-entry .band-label{background:var(--blue-bg);color:var(--blue)}
+.band.b-roles .band-label{background:var(--blue-bg);color:var(--blue)}
+.band.b-shared .band-label{background:var(--orange-bg);color:#C26B00}
+.band.b-ext .band-label{background:var(--orange-bg);color:#C26B00}
+
+.band-note{
+  text-align:center;font-size:12px;color:var(--blue);font-weight:600;
+  background:var(--blue-soft);border-radius:999px;padding:6px 14px;margin:0 auto 14px;
+  width:fit-content;max-width:100%
+}
+
+/* ---------- Flow primitives ---------- */
+.flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap}
+.flow.center{justify-content:center}
+
+.node{
+  background:var(--card);border-radius:var(--r-md);
+  box-shadow:var(--sh-sm);
+  padding:10px 8px;text-align:center;
+  flex:1 1 0;min-width:0;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+.node .ico{
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  background:var(--bg);color:var(--ink2);flex:none
+}
+.node .ico svg{width:18px;height:18px}
+.node .t{font-size:12px;font-weight:600;line-height:1.3;color:var(--ink)}
+.node .s{font-size:10.5px;color:var(--ink3);line-height:1.45}
+
+/* entry band nodes are roomier */
+.flow.wide .node{flex:1 1 138px;min-width:132px;padding:12px 10px}
+.flow.wide .node .ico{width:36px;height:36px;border-radius:11px}
+.flow.wide .node .ico svg{width:21px;height:21px}
+.flow.wide .node .t{font-size:13px}
+
+/* decision diamond */
+.node.dec .ico{
+  transform:rotate(45deg);border-radius:7px;background:var(--card);
+  box-shadow:inset 0 0 0 1.5px var(--blue);color:var(--blue);
+  width:34px;height:34px
+}
+.node.dec .ico svg{transform:rotate(-45deg);width:17px;height:17px}
+.node.dec{box-shadow:none;background:transparent}
+
+/* arrow between nodes */
+.arr{display:flex;align-items:center;justify-content:center;flex:none;width:16px;color:var(--ink3)}
+.arr svg{width:14px;height:14px}
+.arr.dash{color:var(--blue)}
+
+/* ---------- Portals (4 columns) ---------- */
+.portals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.portal{border-radius:var(--r-lg);padding:12px;background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px var(--blue-bg)}
+.portal.p1{background:var(--blue-soft);box-shadow:inset 0 0 0 1.5px #CFE4FF}
+.portal.p2{background:var(--green-soft);box-shadow:inset 0 0 0 1.5px #CBEFD6}
+.portal.p3{background:var(--purple-soft);box-shadow:inset 0 0 0 1.5px #E7D0F5}
+.portal.p4{background:var(--orange-soft);box-shadow:inset 0 0 0 1.5px #FFE0B8}
+
+.portal-head{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;text-align:center}
+.portal-head svg{width:22px;height:22px;flex:none}
+.portal-head .n{font-size:14.5px;font-weight:700;letter-spacing:-.01em}
+.portal-head .r{font-size:11.5px;font-weight:500;color:var(--ink3);display:block}
+.p1 .portal-head{color:var(--blue)} .p2 .portal-head{color:#248A3D}
+.p3 .portal-head{color:#8E37B8} .p4 .portal-head{color:#C26B00}
+
+.grp{
+  background:var(--card);border-radius:var(--r-md);padding:9px 8px 10px;margin-top:9px;
+  box-shadow:var(--sh-sm)
+}
+.grp > .gt{
+  font-size:11.5px;font-weight:700;text-align:center;margin-bottom:8px;
+  padding-bottom:5px;border-bottom:1.5px dashed var(--hair);color:var(--ink2)
+}
+.p1 .grp > .gt{color:var(--blue);border-color:#D7E9FF}
+.p2 .grp > .gt{color:#248A3D;border-color:#D3F0DC}
+.p3 .grp > .gt{color:#8E37B8;border-color:#EBD9F7}
+.p4 .grp > .gt{color:#C26B00;border-color:#FFE7C7}
+
+.portal .node{box-shadow:none;background:transparent;padding:4px 2px;flex:1 1 62px;min-width:56px}
+.portal .node .ico{width:26px;height:26px;border-radius:8px}
+.portal .node .ico svg{width:16px;height:16px}
+.portal .node .t{font-size:10.5px;font-weight:600}
+.portal .arr{width:12px}
+.portal .arr svg{width:11px;height:11px}
+
+.p1 .node .ico{background:var(--blue-bg);color:var(--blue)}
+.p2 .node .ico{background:var(--green-bg);color:#248A3D}
+.p3 .node .ico{background:var(--purple-bg);color:#8E37B8}
+.p4 .node .ico{background:var(--orange-bg);color:#C26B00}
+.p1 .arr{color:var(--blue)} .p2 .arr{color:var(--green)}
+.p3 .arr{color:var(--purple)} .p4 .arr{color:var(--orange)}
+
+.flag{
+  display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;
+  color:#B25C00;background:var(--orange-bg);border-radius:999px;padding:2px 8px;margin-top:7px
+}
+.flag svg{width:11px;height:11px}
+.grp .flag{display:flex;width:fit-content;margin-inline:auto}
+
+/* ---------- Shared / external service rows ---------- */
+.srv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.srv .item{
+  background:var(--card);border-radius:var(--r-md);padding:11px 12px;box-shadow:var(--sh-sm);
+  display:flex;gap:10px;align-items:flex-start
+}
+.srv .item .ico{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none}
+.srv .item .ico svg{width:18px;height:18px}
+.srv .item .t{font-size:12.5px;font-weight:600;line-height:1.35}
+.srv .item .s{font-size:10.5px;color:var(--ink3);line-height:1.5;margin-top:2px}
+
+.band.b-shared .srv .item .ico{background:var(--orange-bg);color:#C26B00}
+.band.b-ext .srv .item{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #FFE0B8}
+.band.b-ext .srv .item .ico{background:var(--orange-bg);color:#C26B00}
+.band.b-ext .srv .item.cf .ico{background:var(--blue-bg);color:var(--blue)}
+.band.b-ext .srv .item.cf{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #CFE4FF}
+
+/* ---------- Footer notes ---------- */
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.note{background:var(--card);border-radius:var(--r-xl);box-shadow:var(--sh);padding:18px 20px}
+.note h3{margin:0 0 12px;font-size:14px;font-weight:700}
+.note ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.note li{font-size:12px;color:var(--ink2);line-height:1.6;padding-left:14px;position:relative}
+.note li::before{
+  content:"";position:absolute;left:0;top:.55em;width:5px;height:5px;border-radius:50%;background:var(--ink3)
+}
+.note li b{color:var(--ink);font-weight:600}
+.note .dl{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--ink2);line-height:1.6;padding-left:0}
+.note .dl::before{display:none}
+.note .dl svg{flex:none;margin-top:5px}
+.note ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+/* the "main flow" arrow must follow the theme, not a baked-in hex */
+.ink-line path{stroke:var(--ink)}
+
+.tag-ok{color:#248A3D;font-weight:600}
+.tag-warn{color:#C26B00;font-weight:600}
+.tag-no{color:var(--red);font-weight:600}
+
+.foot{
+  text-align:center;color:var(--ink3);font-size:11.5px;padding:18px 0 6px;line-height:1.7
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1400px){
+  .portals{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .srv{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:1000px){
+  .wrap{padding:14px}
+  .band{grid-template-columns:60px 1fr}
+  .band-label{font-size:12px;padding:12px 4px}
+  .band-body{padding:14px 12px 16px}
+  .notes{grid-template-columns:1fr}
+  .meta{align-items:flex-start}
+  .vbox{text-align:left}
+  .head{padding:16px 18px}
+}
+@media (max-width:760px){
+  .band{grid-template-columns:1fr}
+  .band-label{
+    justify-content:flex-start;padding:10px 16px;text-align:left;
+    border-bottom:1px solid var(--hair)
+  }
+  .portals{grid-template-columns:1fr}
+  .srv{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .legend{max-width:none}
+}
+@media (max-width:560px){
+  .srv{grid-template-columns:1fr}
+  /* flows become vertical stacks */
+  .flow{flex-direction:column;align-items:stretch;gap:4px}
+  .flow.wide .node,.node{flex:1 1 auto;min-width:0;flex-direction:row;text-align:left;gap:10px;padding:9px 12px}
+  .node .ico{width:30px;height:30px}
+  .node .tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .arr{width:100%;height:16px}
+  .arr svg{transform:rotate(90deg)}
+  .portal .node{padding:7px 10px}
+  .portal .node .t{font-size:12px}
+  .node.dec .ico{transform:rotate(45deg) scale(.9)}
+}
+/* dark-mode tuning for the hairline tints */
+@media (prefers-color-scheme: dark){
+  .portal.p1{box-shadow:inset 0 0 0 1.5px #1E3A5C}
+  .portal.p2{box-shadow:inset 0 0 0 1.5px #1C4429}
+  .portal.p3{box-shadow:inset 0 0 0 1.5px #3D2049}
+  .portal.p4{box-shadow:inset 0 0 0 1.5px #4A3312}
+  .p1 .grp > .gt{color:#4DA3FF;border-color:#1E3A5C}
+  .p2 .grp > .gt{color:#5FD97C;border-color:#1C4429}
+  .p3 .grp > .gt{color:#CB84EA;border-color:#3D2049}
+  .p4 .grp > .gt{color:#FFB44D;border-color:#4A3312}
+  .p1 .portal-head,.p1 .node .ico,.p1 .arr,.node.dec .ico{color:#4DA3FF}
+  .node.dec .ico{box-shadow:inset 0 0 0 1.5px #4DA3FF}
+  .p2 .portal-head,.p2 .node .ico{color:#5FD97C}
+  .p3 .portal-head,.p3 .node .ico{color:#CB84EA}
+  .p4 .portal-head,.p4 .node .ico{color:#FFB44D}
+  .band.b-shared .band-label,.band.b-ext .band-label{color:#FFB44D}
+  .band.b-shared .srv .item .ico,.band.b-ext .srv .item .ico{color:#FFB44D}
+  .band.b-ext .srv .item{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #4A3312}
+  .band.b-ext .srv .item.cf{box-shadow:var(--sh-sm),inset 0 0 0 1.5px #1E3A5C}
+  .band.b-ext .srv .item.cf .ico{color:#4DA3FF}
+  .flag{color:#FFB44D}
+  .tag-ok{color:#5FD97C} .tag-warn{color:#FFB44D} .tag-no{color:#FF6961}
+  .head .stack .pill{background:#2C2C2E}
+  .legend,.vbox{background:#2C2C2E}
+  .node .ico{background:#2C2C2E}
+}
+
+@media print{
+  body{background:#fff}
+  .band,.head,.note{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
+  .wrap{max-width:none;padding:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ================= ICON SPRITE ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18"/></symbol>
+ <symbol id="i-qr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM19 19h2v2h-2zM14 20h2M20 14h1"/></symbol>
+ <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-6 7-6s7 2.1 7 6"/></symbol>
+ <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-5.6 6.5-5.6s6.5 2 6.5 5.6"/><path d="M16.2 5.6a3.2 3.2 0 0 1 0 6.3M17.6 14.7c2.4.6 3.9 2.4 3.9 5.3"/></symbol>
+ <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 3v5.6c0 4.4-3 8.3-7.5 9.6-4.5-1.3-7.5-5.2-7.5-9.6V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+ <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="12" r="3.5"/><path d="M11 12h10M18 12v3M15 12v2.4"/></symbol>
+ <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a2 2 0 0 1-2 2H8.5L4 20.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></symbol>
+ <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L3 10.4l7.6 3L13.6 21z"/><path d="M10.6 13.4L21 3"/></symbol>
+ <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.6 4h12.8l2.6 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/></symbol>
+ <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.4l3.4 2"/></symbol>
+ <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9H13a5.5 5.5 0 1 1 0 11H8.5"/><path d="M8.5 4.5L4 9l4.5 4.5"/></symbol>
+ <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3.5H4.5V10l9.5 9.5 6.5-6.5z"/><circle cx="7.8" cy="7.8" r="1.4"/></symbol>
+ <symbol id="i-mega" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M19 9.5a4 4 0 0 1 0 5"/></symbol>
+ <symbol id="i-clip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.4 9.6l-8.2 8.2a4 4 0 0 1-5.7-5.7l8.5-8.5a2.8 2.8 0 0 1 4 4l-8.4 8.4a1.45 1.45 0 0 1-2.1-2L15 6.4"/></symbol>
+ <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><rect x="5" y="11" width="3.6" height="7" rx="1"/><rect x="10.2" y="5.5" width="3.6" height="12.5" rx="1"/><rect x="15.4" y="14" width="3.6" height="4" rx="1"/></symbol>
+ <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5z"/><path d="M14 3v4.5h4.5"/><path d="M9 13h6M9 16.5h4"/></symbol>
+ <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></symbol>
+ <symbol id="i-db" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+ <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 19h10.5a4 4 0 0 0 .4-8A6 6 0 0 0 6.3 10.2 3.9 3.9 0 0 0 7 19z"/></symbol>
+ <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5L4.5 14H10l-1 7.5L19.5 10H13z"/></symbol>
+ <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.2" width="15" height="10.3" rx="2.4"/><path d="M8 10.2V7.4a4 4 0 0 1 8 0v2.8"/></symbol>
+ <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8L21 21"/></symbol>
+ <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.2V11a6 6 0 1 0-12 0v5.2L4.4 18.7h15.2z"/><path d="M9.9 21a2.3 2.3 0 0 0 4.2 0"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.8 2.8L16 9.6"/></symbol>
+ <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4L21.6 20H2.4z"/><path d="M12 10v4.4M12 17.3v.1"/></symbol>
+ <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.2 13.8a4.5 4.5 0 0 0 6.4 0l2.8-2.8a4.5 4.5 0 0 0-6.4-6.4l-1.5 1.5"/><path d="M13.8 10.2a4.5 4.5 0 0 0-6.4 0l-2.8 2.8a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5"/></symbol>
+ <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.8"/><rect x="13" y="3" width="8" height="5" rx="1.8"/><rect x="13" y="10" width="8" height="11" rx="1.8"/><rect x="3" y="13" width="8" height="8" rx="1.8"/></symbol>
+ <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 6H21M8.5 12H21M8.5 18H21"/><circle cx="4" cy="6" r="1.3"/><circle cx="4" cy="12" r="1.3"/><circle cx="4" cy="18" r="1.3"/></symbol>
+ <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13M14 5l3 3-3 3"/><path d="M20 16H7M10 13l-3 3 3 3"/></symbol>
+ <symbol id="i-hook" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5.5M15 3v5.5"/><path d="M6 8.5h12v3.2a6 6 0 0 1-12 0z"/><path d="M12 17.7V21"/></symbol>
+ <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 12S6 6.2 12 6.2 21.8 12 21.8 12 18 17.8 12 17.8 2.2 12 2.2 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+ <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4l2.7 5.5 6 .9-4.35 4.2 1.03 6-5.38-2.83L6.62 20l1.03-6L3.3 9.8l6-.9z"/></symbol>
+ <symbol id="i-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.8a10.5 10.5 0 0 1 15 0"/><path d="M7.8 15.3a6 6 0 0 1 8.4 0"/><circle cx="12" cy="19" r="1.5"/></symbol>
+ <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6l8.5 4.6v9.6L12 21.4 3.5 16.8V7.2z"/><path d="M3.5 7.2L12 11.9l8.5-4.7M12 11.9v9.5"/></symbol>
+ <symbol id="i-queue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="4.8" height="14" rx="1.6"/><rect x="9.6" y="5" width="4.8" height="14" rx="1.6"/><rect x="16.2" y="5" width="4.8" height="14" rx="1.6"/></symbol>
+ <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 12a8.4 8.4 0 1 1-2.5-6"/><path d="M20.4 3.6v4.6h-4.6"/></symbol>
+ <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7.5" width="17" height="12" rx="3.2"/><circle cx="9" cy="13.5" r="1.3"/><circle cx="15" cy="13.5" r="1.3"/><path d="M12 3.5v4"/><circle cx="12" cy="2.8" r="1.1"/></symbol>
+ <symbol id="i-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2.4"/><path d="M8 8h3M13 8h3M8 12h3M13 12h3"/><path d="M9.8 20.5v-3.7h4.4v3.7"/></symbol>
+ <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11"/><path d="M7.8 10.5L12 14.7l4.2-4.2"/><path d="M4 19.5h16"/></symbol>
+ <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5v-11"/><path d="M7.8 13.7L12 9.5l4.2 4.2"/><path d="M4 4.5h16"/></symbol>
+ <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.4"/><path d="M3.6 6.6L12 12.8l8.4-6.2"/></symbol>
+ <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.2S3.8 15 3.8 9.3a4.4 4.4 0 0 1 8.2-2.3 4.4 4.4 0 0 1 8.2 2.3c0 5.7-8.2 10.9-8.2 10.9z"/></symbol>
+ <symbol id="i-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8h10"/><path d="M9 4.5L12.5 8 9 11.5"/></symbol>
+ <symbol id="i-arrow-d" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2.6 2.4"><path d="M2.5 8h10"/><path stroke-dasharray="0" d="M9 4.5L12.5 8 9 11.5"/></symbol>
+</svg>
+
+<div class="wrap">
+
+<!-- ================= HEADER ================= -->
+<header class="head">
+  <div>
+    <h1>多渠道客服整合系統 Master User Flow</h1>
+    <div class="sub">LINE OA + Facebook Messenger 統一客服平台 — 四大角色總覽流程圖</div>
+    <div class="stack">
+      <span class="pill"><i style="background:var(--orange)"></i>Cloudflare Workers (Hono)</span>
+      <span class="pill"><i style="background:var(--green)"></i>Vue 3 + TypeScript</span>
+      <span class="pill"><i style="background:var(--blue)"></i>D1 · KV · R2 · Queues</span>
+      <span class="pill"><i style="background:var(--purple)"></i>Durable Objects × 10</span>
+      <span class="pill"><i style="background:var(--teal)"></i>WebSocket 即時同步</span>
+    </div>
+  </div>
+
+  <div class="meta">
+    <div class="legend">
+      <span class="lt">圖例：</span>
+      <span class="li"><svg class="ink-line" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>主要流程</span>
+      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>訊息 / 通知</span>
+      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#34C759" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#34C759" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>即時 WebSocket</span>
+      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>資料 / 事件流</span>
+      <span class="li"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>外部 API 互動</span>
+    </div>
+    <div class="vbox">版本：<b>v1.0</b><br>日期：<b>2026/08/19</b></div>
+  </div>
+</header>
+
+<!-- ================= BAND 1 — ENTRY ================= -->
+<section class="band b-entry">
+  <div class="band-label">入口 /<br>身分驗證</div>
+  <div class="band-body">
+    <div class="band-note">客戶從 LINE / FB 進入，客服從 Web 後台登入 — 驗證後依系統角色與團隊權限進入對應門戶</div>
+
+    <div class="flow wide">
+      <div class="node">
+        <div class="ico"><svg><use href="#i-globe"/></svg></div>
+        <div class="tx"><div class="t">進入系統</div><div class="s">客戶：LINE / FB<br>客服：Web 後台</div></div>
+      </div>
+      <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+
+      <div class="node">
+        <div class="ico"><svg><use href="#i-qr"/></svg></div>
+        <div class="tx"><div class="t">掃碼 / 加好友</div><div class="s">團隊 QR Code<br>LINE 加入好友</div></div>
+      </div>
+      <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+
+      <div class="node">
+        <div class="ico"><svg><use href="#i-link"/></svg></div>
+        <div class="tx"><div class="t">LIFF 團隊綁定</div><div class="s">自動指派團隊<br>WebSocket 預通知</div></div>
+      </div>
+      <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+
+      <div class="node">
+        <div class="ico"><svg><use href="#i-user"/></svg></div>
+        <div class="tx"><div class="t">客服登入</div><div class="s">帳號 / 密碼<br>強制改密流程</div></div>
+      </div>
+      <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+
+      <div class="node dec">
+        <div class="ico"><svg><use href="#i-key"/></svg></div>
+        <div class="tx"><div class="t">JWT 雙令牌</div><div class="s">access 2h · refresh 7d<br>Session 存於 KV</div></div>
+      </div>
+      <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+
+      <div class="node dec">
+        <div class="ico"><svg><use href="#i-shield"/></svg></div>
+        <div class="tx"><div class="t">角色 / 權限檢核</div><div class="s">Admin / Agent<br>allowedTeamIds · teamRoles</div></div>
+      </div>
+      <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+
+      <div class="node" style="flex:1.6 1 190px;box-shadow:var(--sh-sm),inset 0 0 0 1.5px #CFE4FF;background:var(--blue-soft)">
+        <div class="tx" style="width:100%">
+          <div class="t" style="margin-bottom:6px">進入對應門戶</div>
+          <div style="display:flex;flex-direction:column;gap:4px;font-size:10.5px;color:var(--ink2);text-align:left">
+            <span style="display:flex;gap:6px;align-items:center;color:var(--blue)"><svg width="14" height="14"><use href="#i-chat"/></svg>客戶端（LINE / FB 使用者）</span>
+            <span style="display:flex;gap:6px;align-items:center;color:#248A3D"><svg width="14" height="14"><use href="#i-inbox"/></svg>客服 Portal（Agent）</span>
+            <span style="display:flex;gap:6px;align-items:center;color:#8E37B8"><svg width="14" height="14"><use href="#i-users"/></svg>團隊主管 Portal（Lead / Supervisor）</span>
+            <span style="display:flex;gap:6px;align-items:center;color:#C26B00"><svg width="14" height="14"><use href="#i-gear"/></svg>系統管理 Portal（Admin）</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BAND 2 — FOUR PORTALS ================= -->
+<section class="band b-roles">
+  <div class="band-label">四大角色<br>主要流程</div>
+  <div class="band-body">
+    <div class="portals">
+
+      <!-- ---------- P1 客戶端 ---------- -->
+      <div class="portal p1">
+        <div class="portal-head">
+          <svg><use href="#i-chat"/></svg>
+          <div><span class="n">1. 客戶端</span><span class="r">LINE OA / FB Messenger 使用者</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">加入與綁定</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-qr"/></svg></div><div class="tx"><div class="t">掃 QR Code</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-user"/></svg></div><div class="tx"><div class="t">加入好友</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-link"/></svg></div><div class="tx"><div class="t">LIFF 綁定</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-mail"/></svg></div><div class="tx"><div class="t">歡迎訊息</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">訊息進站流程</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-send"/></svg></div><div class="tx"><div class="t">發送訊息</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-hook"/></svg></div><div class="tx"><div class="t">Webhook 接收</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-shield"/></svg></div><div class="tx"><div class="t">簽章驗證</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-db"/></svg></div><div class="tx"><div class="t">建客戶 / 對話</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">自動回覆流程</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-search"/></svg></div><div class="tx"><div class="t">關鍵字比對</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-clock"/></svg></div><div class="tx"><div class="t">營業時間判斷</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-bot"/></svg></div><div class="tx"><div class="t">動作鏈執行</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-check"/></svg></div><div class="tx"><div class="t">自動回覆送達</div></div></div>
+          </div>
+          <span class="flag"><svg><use href="#i-alert"/></svg>目前僅 LINE 生效</span>
+        </div>
+
+        <div class="grp">
+          <div class="gt">接收客服回覆</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-clock"/></svg></div><div class="tx"><div class="t">延遲緩衝</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-bolt"/></svg></div><div class="tx"><div class="t">到期派送</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-cloud"/></svg></div><div class="tx"><div class="t">LINE API 推送</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-check"/></svg></div><div class="tx"><div class="t">訊息送達</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- P2 客服 ---------- -->
+      <div class="portal p2">
+        <div class="portal-head">
+          <svg><use href="#i-inbox"/></svg>
+          <div><span class="n">2. 客服 Portal</span><span class="r">Agent · 團隊成員</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">日常入口</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-grid"/></svg></div><div class="tx"><div class="t">儀表板 KPI</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-list"/></svg></div><div class="tx"><div class="t">對話列表</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-chat"/></svg></div><div class="tx"><div class="t">對話詳情</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-wifi"/></svg></div><div class="tx"><div class="t">即時收訊</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">對話處理流程</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-user"/></svg></div><div class="tx"><div class="t">接手對話</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-eye"/></svg></div><div class="tx"><div class="t">客戶檔案 / 歷史</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-send"/></svg></div><div class="tx"><div class="t">送出回覆</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-refresh"/></svg></div><div class="tx"><div class="t">狀態更新</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">延遲訊息與撤回</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-clock"/></svg></div><div class="tx"><div class="t">排入緩衝 DO</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-undo"/></svg></div><div class="tx"><div class="t">撤回視窗</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-bolt"/></svg></div><div class="tx"><div class="t">取消 / 送達</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-file"/></svg></div><div class="tx"><div class="t">撤回稽核日誌</div></div></div>
+          </div>
+          <span class="flag"><svg><use href="#i-alert"/></svg>全域設定 0 / 30 / 60 / 120 / 300 秒</span>
+        </div>
+
+        <div class="grp">
+          <div class="gt">客戶經營與協作</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-tag"/></svg></div><div class="tx"><div class="t">客戶標籤</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-clip"/></svg></div><div class="tx"><div class="t">檔案附件</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-mega"/></svg></div><div class="tx"><div class="t">群發訊息</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-wifi"/></svg></div><div class="tx"><div class="t">打字 / 線上狀態</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- P3 團隊主管 ---------- -->
+      <div class="portal p3">
+        <div class="portal-head">
+          <svg><use href="#i-users"/></svg>
+          <div><span class="n">3. 團隊主管 Portal</span><span class="r">Lead / Supervisor</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">團隊入口</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-team"/></svg></div><div class="tx"><div class="t">團隊總覽</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-users"/></svg></div><div class="tx"><div class="t">成員管理</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-list"/></svg></div><div class="tx"><div class="t">對話指派</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-swap"/></svg></div><div class="tx"><div class="t">跨團隊轉移</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">團隊營運流程</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-qr"/></svg></div><div class="tx"><div class="t">產生團隊 QR</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-upload"/></svg></div><div class="tx"><div class="t">批次成員 ≤50</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-key"/></svg></div><div class="tx"><div class="t">角色 / 密碼策略</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-file"/></svg></div><div class="tx"><div class="t">轉移歷史紀錄</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">品質與分析</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-chart"/></svg></div><div class="tx"><div class="t">對話分析</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-clock"/></svg></div><div class="tx"><div class="t">回應時間</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-heart"/></svg></div><div class="tx"><div class="t">滿意度指標</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-download"/></svg></div><div class="tx"><div class="t">報表 JSON / CSV</div></div></div>
+          </div>
+          <span class="flag"><svg><use href="#i-alert"/></svg>報表實際可產出 3 種類型</span>
+        </div>
+
+        <div class="grp">
+          <div class="gt">通知與追蹤</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-bell"/></svg></div><div class="tx"><div class="t">通知中心</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-check"/></svg></div><div class="tx"><div class="t">未讀計數</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-list"/></svg></div><div class="tx"><div class="t">活動記錄</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-tag"/></svg></div><div class="tx"><div class="t">標籤治理</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- P4 系統管理 ---------- -->
+      <div class="portal p4">
+        <div class="portal-head">
+          <svg><use href="#i-gear"/></svg>
+          <div><span class="n">4. 系統管理 Portal</span><span class="r">Admin · 平台維運</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">管理入口</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-grid"/></svg></div><div class="tx"><div class="t">系統儀表板</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-link"/></svg></div><div class="tx"><div class="t">頻道管理</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-users"/></svg></div><div class="tx"><div class="t">使用者 / 團隊</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-gear"/></svg></div><div class="tx"><div class="t">系統設定</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">渠道與整合設定</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-chat"/></svg></div><div class="tx"><div class="t">LINE OA 整合</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-mega"/></svg></div><div class="tx"><div class="t">Facebook 整合</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-lock"/></svg></div><div class="tx"><div class="t">憑證加密儲存</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-hook"/></svg></div><div class="tx"><div class="t">Webhook 驗證</div></div></div>
+          </div>
+          <span class="flag"><svg><use href="#i-alert"/></svg>Facebook 送訊路徑尚未接通</span>
+        </div>
+
+        <div class="grp">
+          <div class="gt">監控與維運</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-chart"/></svg></div><div class="tx"><div class="t">API 監控</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-wifi"/></svg></div><div class="tx"><div class="t">WebSocket 監控</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-queue"/></svg></div><div class="tx"><div class="t">佇列 / DLQ</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-check"/></svg></div><div class="tx"><div class="t">健康檢查</div></div></div>
+          </div>
+        </div>
+
+        <div class="grp">
+          <div class="gt">資料與稽核</div>
+          <div class="flow">
+            <div class="node"><div class="ico"><svg><use href="#i-file"/></svg></div><div class="tx"><div class="t">稽核日誌</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-list"/></svg></div><div class="tx"><div class="t">活動記錄</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-download"/></svg></div><div class="tx"><div class="t">對話匯出</div></div></div>
+            <div class="arr"><svg><use href="#i-arrow"/></svg></div>
+            <div class="node"><div class="ico"><svg><use href="#i-box"/></svg></div><div class="tx"><div class="t">D1 備份至 R2</div></div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================= BAND 3 — SHARED SERVICES ================= -->
+<section class="band b-shared">
+  <div class="band-label">全平台<br>共通服務</div>
+  <div class="band-body">
+    <div class="srv">
+      <div class="item"><div class="ico"><svg><use href="#i-wifi"/></svg></div>
+        <div><div class="t">WebSocket 即時通訊</div><div class="s">ConversationRoom · UserConnection<br>打字狀態 · 線上狀態 · 多分頁同步</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-bell"/></svg></div>
+        <div><div class="t">通知中心</div><div class="s">11 種通知類型 · 4 級優先級<br>未讀計數 · 系統公告</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-clip"/></svg></div>
+        <div><div class="t">檔案附件系統</div><div class="s">R2 儲存 · HMAC 簽章網址<br>一般 10MB / Admin 50MB</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-tag"/></svg></div>
+        <div><div class="t">客戶與標籤</div><div class="s">跨平台身分 (platform + userId)<br>多標籤 · 多維度篩選</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-search"/></svg></div>
+        <div><div class="t">搜尋與篩選</div><div class="s">跨對話訊息搜尋<br>類型 / 寄件人 / 日期 / 撤回狀態</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-chart"/></svg></div>
+        <div><div class="t">分析與報表</div><div class="s">對話 / 訊息 / 使用者 / 效能<br>P50 · P95 批次聚合</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-file"/></svg></div>
+        <div><div class="t">稽核與活動記錄</div><div class="s">關鍵寫入操作追蹤<br>依角色可見性分級</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-lock"/></svg></div>
+        <div><div class="t">安全與權限</div><div class="s">JWT 雙令牌 · AES-256-GCM<br>速率限制 · 重放攻擊偵測</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BAND 4 — EXTERNAL ================= -->
+<section class="band b-ext">
+  <div class="band-label">第三方 /<br>平台服務</div>
+  <div class="band-body">
+    <div class="srv">
+      <div class="item"><div class="ico"><svg><use href="#i-chat"/></svg></div>
+        <div><div class="t">LINE Messaging API</div><div class="s">Webhook 收訊 · Reply / Push 送訊<br>簽章驗證 · Rich Menu</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-link"/></svg></div>
+        <div><div class="t">LINE LIFF / Login</div><div class="s">團隊綁定 · 身分取得<br>QR Code 導流</div></div></div>
+
+      <div class="item"><div class="ico"><svg><use href="#i-mega"/></svg></div>
+        <div><div class="t">Facebook Graph API</div><div class="s">Messenger Webhook 收訊<br><span class="tag-warn">送訊路徑未接通</span></div></div></div>
+
+      <div class="item cf"><div class="ico"><svg><use href="#i-db"/></svg></div>
+        <div><div class="t">Cloudflare D1 + Drizzle</div><div class="s">主資料庫（SQLite）<br>軟刪除 deletedAt</div></div></div>
+
+      <div class="item cf"><div class="ico"><svg><use href="#i-bolt"/></svg></div>
+        <div><div class="t">Cloudflare KV</div><div class="s">Session 持久化<br>分散式快取</div></div></div>
+
+      <div class="item cf"><div class="ico"><svg><use href="#i-box"/></svg></div>
+        <div><div class="t">Cloudflare R2</div><div class="s">mcis-files（附件）<br>mcis-backups（備份）</div></div></div>
+
+      <div class="item cf"><div class="ico"><svg><use href="#i-queue"/></svg></div>
+        <div><div class="t">Cloudflare Queues</div><div class="s">line-message-queue<br>+ line-message-dlq</div></div></div>
+
+      <div class="item cf"><div class="ico"><svg><use href="#i-cloud"/></svg></div>
+        <div><div class="t">Durable Objects × 10</div><div class="s">即時房間 · 延遲排程 · 分散式鎖<br>速率限制 · 指標收集</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER NOTES ================= -->
+<section class="notes">
+  <div class="note">
+    <h3>流程說明</h3>
+    <ul>
+      <li>客戶端<b>不需登入本系統</b>，身分由 LINE / Facebook 平台提供，以 <b>(platform, platformUserId)</b> 唯一識別。</li>
+      <li>客服端一律經 <b>JWT 雙令牌</b>驗證；token 內已快取 <b>allowedTeamIds[]</b> 與 <b>teamRoles{}</b>，支援一人多團隊、不同團隊不同角色。</li>
+      <li>對話指派自 v4 起為<b>團隊指派</b>（個人指派已退場），跨團隊轉移會寫入 <b>conversationTransfers</b> 保留歷史。</li>
+      <li>四個門戶共用同一套資料層，差別在<b>權限範圍</b>而非獨立系統；Admin 為全域，其餘受團隊範圍限制。</li>
+      <li>所有 UI 更新的主要路徑是 <b>WebSocket 廣播</b>，D1 輪詢僅作為次要備援。</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <h3>主要資料流向（範例）</h3>
+    <ol>
+      <li class="dl"><svg class="ink-line" width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>客戶進站：</b>LINE Webhook → 簽章驗證 → 建立/更新客戶 → 建立或指派對話 → 寫入 D1 → 自動回覆評估</span></li>
+      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#34C759" stroke-width="1.8" stroke-linecap="round"/><path d="M24 2l4 3-4 3" fill="none" stroke="#34C759" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>即時推播：</b>訊息寫入 → MessageBroadcaster → ConversationRoom / UserConnection → 前端 Pinia store</span></li>
+      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#007AFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>客服送訊：</b>寫入 D1 → DelayedMessageScheduler（DO Alarm）→ 撤回視窗 → 到期 → LINE Push API</span></li>
+      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>事件擴散：</b>對話事件 → 通知中心 / 活動記錄 / 稽核日誌 / 分析聚合</span></li>
+      <li class="dl"><svg width="34" height="10" viewBox="0 0 34 10"><path d="M1 5h26" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="4 3"/><path d="M24 2l4 3-4 3" fill="none" stroke="#FF9500" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>非同步後處理：</b>LINE_MESSAGE_QUEUE → 消費者 → 重試 → 失敗進 line-message-dlq</span></li>
+    </ol>
+  </div>
+
+  <div class="note">
+    <h3>備註 — 現況與已知落差</h3>
+    <ul>
+      <li><span class="tag-warn">部分完成</span> <b>Facebook Messenger</b>：收訊與 LINE 同級，<b>送訊尚未接通</b>（delivery service 只處理 line 分支），客服目前無法回覆 FB 客戶。</li>
+      <li><span class="tag-warn">僅 LINE</span> <b>自動回覆</b>與<b>延遲訊息緩衝</b>目前只對 LINE 客戶生效；FB 訊息直接送出，事後靠 Graph API 刪除。</li>
+      <li><span class="tag-warn">受限</span> <b>延遲秒數</b>為單一全域設定的 5 檔（0 / 30 / 60 / 120 / 300 秒），無逐則覆蓋、無改期端點。</li>
+      <li><span class="tag-no">未啟用</span> <b>Email / Push 通道</b>為停用的模擬實作；實際唯一送達通道是應用內 WebSocket。</li>
+      <li><span class="tag-warn">縮水</span> <b>報表系統</b>宣告 24 種類型，實際可產出 <b>3 種</b>，且只有 JSON / CSV 真正序列化。</li>
+      <li><span class="tag-ok">單一事實來源</span> 各項完成度以 <b>docs/PROJECT_OVERVIEW.md</b> 為準，本圖僅為流程總覽。</li>
+    </ul>
+  </div>
+</section>
+
+<div class="foot">
+  Multi-Channel Customer Support System · Master User Flow v1.0 · 2026/08/19<br>
+  Cloudflare Workers (Hono) + Vue 3 + TypeScript strict · 26 後端模組 · 10 Durable Objects · 23 前端 Views
+</div>
+
+</div>
+</body>
+</html>
