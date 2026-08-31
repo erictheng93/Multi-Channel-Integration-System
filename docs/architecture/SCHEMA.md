@@ -1,7 +1,17 @@
 # D1 Database Schema
 
 > **Version:** v2.6
-> **Last Updated:** 2025-01-29
+> **Last Updated:** 2026-08-31 (partial — see coverage warning)
+
+> **Coverage warning.** The bulk of this document was last reconciled with the
+> schema on 2025-01-29, around Migration 0027. The database is now at Migration
+> 0060, and migrations 0028-0059 are **not** reflected below. Several fields
+> documented here are stale — `conversations.assigned_user_id`, for example, was
+> removed when personal assignment was retired.
+>
+> Treat `src/db/schema.ts` and `migrations/` as authoritative; run
+> `bun run check:migrations` to compare declared objects against production.
+> Sections updated after 2025-01-29 carry their own date.
 > **Status:** Production-Ready
 > **Database Engine:** Cloudflare D1 (SQLite)
 > **Total Tables:** 30 张表
@@ -50,6 +60,7 @@
 2. [agents](#2-agents---客服人员) - 客服人员
 3. [customers](#3-customers---客户资料) - 客户资料
 4. [conversations](#4-conversations---对话记录) - 对话记录
+4a. [conversation_read_states](#4a-conversation_read_states---每位客服的已讀狀態) - 每位客服的已讀狀態 (Migration 0060)
 5. [messages](#5-messages---消息内容) - 消息内容
 6. [delayed_messages](#6-delayed_messages---延迟消息) - 延迟消息
 7. [conversation_sessions](#7-conversation_sessions---对话会话) - 对话会话
@@ -200,13 +211,20 @@
 | closed_at | TEXT | - | - | 关闭时间 |
 | internal_notes | TEXT | - | - | 内部备注 |
 | last_message_at | TEXT | - | - | 最后消息时间 |
+| last_read_at | TEXT | - | - | **已停用** (Migration 0060) — 原全域已讀時間，改由 `conversation_read_states` 記錄 |
+| marked_unread_at | TEXT | - | - | **已停用** (Migration 0060) — 原全域手動未讀旗標，改由 `conversation_read_states` 記錄 |
 | created_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 创建时间 |
 | updated_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 更新时间 |
+| deleted_at | TEXT | - | - | 软删除 (Migration 0027) |
+
+> `last_read_at` / `marked_unread_at` 兩欄自 Migration 0060 起**不再被讀取或寫入**，
+> 保留僅為了維持一鍵回滾能力，預計觀察期後移除。詳見
+> [ADR 0004](../adr/0004-per-agent-conversation-read-state.md)。
 
 **外键**:
 - `customer_id` → `customers.id`
 - `assigned_team_id` → `teams.id`
-- `assigned_user_id` → `agents.id`
+- `assigned_user_id` → `agents.id` （**已移除** — 個人指派已退場，僅保留團隊指派）
 
 **索引**:
 - PRIMARY KEY on `id`
@@ -223,6 +241,49 @@ active → assigned → pending → closed
   ↑ ↓
   └─────────┘ (可重新打开)
 ```
+
+---
+
+#### 4a. conversation_read_states - 每位客服的已讀狀態
+
+> 新增於 Migration 0060 (2026-08-31)
+
+**用途**: 讓每位客服擁有各自獨立的已讀 / 未讀狀態，取代 `conversations` 上的
+兩個全域欄位。稀疏儲存 — 只有該客服實際讀取或標記過的對話才有列，沒有列即代表
+「從未讀取」。
+
+| 字段名 | 类型 | 约束 | 默认值 | 说明 |
+|--------|------|------|--------|------|
+| agent_id | TEXT | NOT NULL, PK, FOREIGN KEY | - | 客服 ID |
+| conversation_id | TEXT | NOT NULL, PK, FOREIGN KEY | - | 对话 ID |
+| last_read_at | TEXT | - | - | 該客服最後一次檢視此對話的時間 |
+| marked_unread_at | TEXT | - | - | 該客服的手動未讀旗標；有值時未讀數下限為 1 |
+| updated_at | TEXT | NOT NULL | CURRENT_TIMESTAMP | 更新时间 |
+
+**主键**: 複合主鍵 (`agent_id`, `conversation_id`)
+
+**外键**:
+- `agent_id` → `agents.id` (ON DELETE CASCADE)
+- `conversation_id` → `conversations.id` (ON DELETE CASCADE)
+
+**索引**:
+- PRIMARY KEY on (`agent_id`, `conversation_id`) — 每次未讀查詢的 index seek 依據
+- INDEX `idx_conversation_read_states_conversation` on `conversation_id` — 反向查詢
+
+**未讀計算公式**:
+```
+未讀 = 客戶訊息中，created_at > MAX(
+         全域最後一則 agent/system 回覆時間,   ← 全團隊共用（決策 A-1）
+         該客服的 last_read_at                 ← 個人獨立
+       ) 的則數
+若該客服的 marked_unread_at 有值 → 下限為 1
+```
+
+**寫入方式**: 一律經由 `src/modules/conversations/services/conversation-read-state.ts`
+的 UPSERT（複合主鍵天然免除競態，不需分散式鎖）。
+
+完整設計理由、替代方案與上線驗證見
+[ADR 0004](../adr/0004-per-agent-conversation-read-state.md)。
 
 ---
 
