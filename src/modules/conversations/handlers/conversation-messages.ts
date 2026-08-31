@@ -12,6 +12,7 @@ import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
 import { MessageRequestService, MessageService } from '@modules/conversations/services/message-service';
+import { upsertReadState } from '@modules/conversations/services/conversation-read-state';
 import { MessageRecallService } from '@modules/messaging/services/message-recall-service';
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { errorResponse } from '@/utils/api-response';
@@ -575,10 +576,16 @@ conversationMessagesHandler.put('/:id/messages/read', jwtAuth, async (c) => {
       offset += rows.length;
     }
 
-    await db
-      .update(conversations)
-      .set({ lastReadAt: nowISO(), markedUnreadAt: null, updatedAt: nowISO() })
-      .where(eq(conversations.id, conversationId));
+    // Read state is per-agent (Migration 0060): marking every message read only
+    // clears the badge for the agent who did it, not for the whole team.
+    const readAt = nowISO();
+    await upsertReadState(
+      db,
+      agentId,
+      conversationId,
+      { lastReadAt: readAt, markedUnreadAt: null },
+      readAt
+    );
 
     return contractJson(c, conversationMessageContracts.markAllAsRead, {
       success: true,

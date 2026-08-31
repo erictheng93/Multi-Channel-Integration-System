@@ -40,6 +40,23 @@ interface ConversationListLatestMessageRow extends LatestConversationMessageRow 
 
 interface ConversationUnreadCountRow extends UnreadCountRow {
   conversationId: string;
+  // 1 when this agent has manually flagged the conversation unread
+  // (conversation_read_states.marked_unread_at IS NOT NULL).
+  manuallyUnread: number | string | null;
+}
+
+// Per-agent unread state for one conversation, as returned by the batch query.
+interface ConversationUnreadState {
+  unreadCount: number;
+  manuallyUnread: boolean;
+}
+
+// Applies the manual unread override: a conversation an agent flagged unread
+// stays unread even when the derived count is 0 (the agent sent the last
+// message). Shared by the list, detail and stats paths so the three cannot
+// drift apart.
+function applyManualUnreadFloor(derivedUnreadCount: number, manuallyUnread: boolean): number {
+  return manuallyUnread ? Math.max(derivedUnreadCount, 1) : derivedUnreadCount;
 }
 
 interface ConversationStatsAggregateRow {
@@ -55,22 +72,41 @@ interface ConversationUnreadAggregateRow {
 
 const D1_SAFE_ID_CHUNK_SIZE = 90;
 
+// Per-agent unread counts for a chunk of conversations.
+//
+// Read state is scoped to one agent via conversation_read_states, so the same
+// conversation can be unread for one agent and read for another. The
+// last-agent-reply half of the threshold stays global on purpose (decision
+// A-1, Migration 0060): a customer message answered by anyone counts as
+// handled for everyone.
+//
+// Binding order is positional: every conversation id first, then the agent id.
+// Use `bind(...conversationIds, agentId)`. D1 caps bound parameters at 100 and
+// callers chunk ids at D1_SAFE_ID_CHUNK_SIZE (90), leaving room for the agent.
+//
+// Returns one row per conversation in the chunk — including conversations with
+// no unread messages — because `manuallyUnread` has to reach the caller even
+// when the derived count is 0.
 export function createConversationUnreadCountQuery(conversationIds: string[]): string {
   const unreadValueTuples = conversationIds.map(() => '(?)').join(',');
   return `
         WITH ids(id) AS (VALUES ${unreadValueTuples})
         SELECT
-          m.conversation_id as conversationId,
-          COUNT(*) as unreadCount
-        FROM messages m
-        INNER JOIN (
+          threshold.id as conversationId,
+          threshold.manuallyUnread as manuallyUnread,
+          COUNT(customer_message.id) as unreadCount
+        FROM (
           SELECT
             c.id as id,
+            CASE WHEN rs.marked_unread_at IS NOT NULL THEN 1 ELSE 0 END as manuallyUnread,
             MAX(
               COALESCE(la.last_agent_at, '1970-01-01'),
-              COALESCE(c.last_read_at, '1970-01-01')
+              COALESCE(rs.last_read_at, '1970-01-01')
             ) as unread_threshold
           FROM conversations c
+          LEFT JOIN conversation_read_states rs
+            ON rs.conversation_id = c.id
+            AND rs.agent_id = ?
           LEFT JOIN (
             SELECT conversation_id, MAX(created_at) as last_agent_at
             FROM messages
@@ -80,11 +116,13 @@ export function createConversationUnreadCountQuery(conversationIds: string[]): s
             GROUP BY conversation_id
           ) la ON la.conversation_id = c.id
           WHERE c.id IN (SELECT id FROM ids)
-        ) t ON t.id = m.conversation_id
-        WHERE m.sender_type = 'customer'
-          AND m.deleted_at IS NULL
-          AND m.created_at > t.unread_threshold
-        GROUP BY m.conversation_id
+        ) AS threshold
+        LEFT JOIN messages AS customer_message
+          ON customer_message.conversation_id = threshold.id
+          AND customer_message.sender_type = 'customer'
+          AND customer_message.deleted_at IS NULL
+          AND customer_message.created_at > threshold.unread_threshold
+        GROUP BY threshold.id, threshold.manuallyUnread
       `;
 }
 
@@ -138,10 +176,19 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
     stats.assigned = toCount(aggregateRow?.assigned);
     stats.pending = toCount(aggregateRow?.pending);
 
+    // Read state is per-agent (Migration 0060): join this agent's row so the
+    // badge total reflects what THIS agent has yet to read. The
+    // last-agent-reply term below stays global by design (decision A-1).
     const unreadRow = await c.env.DB.prepare(`
       WITH visible AS (
-        SELECT id, last_read_at, marked_unread_at
-        FROM conversations
+        SELECT
+          conversation.id AS id,
+          read_state.last_read_at AS last_read_at,
+          read_state.marked_unread_at AS marked_unread_at
+        FROM conversations AS conversation
+        LEFT JOIN conversation_read_states AS read_state
+          ON read_state.conversation_id = conversation.id
+          AND read_state.agent_id = ?
         WHERE ${visibility.clause}
       )
       SELECT COALESCE(SUM(
@@ -178,7 +225,7 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
           AND customer_message.created_at > threshold.unread_threshold
         GROUP BY threshold.id, threshold.manuallyUnread
       ) AS per
-    `).bind(...visibility.params).first<ConversationUnreadAggregateRow>();
+    `).bind(user.id, ...visibility.params).first<ConversationUnreadAggregateRow>();
 
     stats.unreadCount = toCount(unreadRow?.unreadCount);
 
@@ -263,9 +310,25 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       log.warn('Failed to fetch latest message for conversation', { conversationId, error: msgError });
     }
 
-    // Query unread count for this conversation
-    // "Unread" = customer messages after MAX(last_agent_reply, last_read_at)
+    // Query unread count for this conversation, for the requesting agent only.
+    // "Unread" = customer messages after
+    // MAX(last_agent_reply, this agent's last_read_at).
     let unreadCount = 0;
+    // Per-agent manual unread override (Migration 0060). Read separately from
+    // the count so a failure in either query cannot silently zero the other.
+    let manuallyUnread = false;
+    try {
+      const readStateRow = await c.env.DB.prepare(`
+        SELECT marked_unread_at
+        FROM conversation_read_states
+        WHERE conversation_id = ? AND agent_id = ?
+      `).bind(conversationId, user.id).first<{ marked_unread_at: string | null }>();
+
+      manuallyUnread = Boolean(readStateRow?.marked_unread_at);
+    } catch (readStateError) {
+      log.warn('Failed to fetch per-agent read state', { conversationId, error: readStateError });
+    }
+
     try {
       // Threshold subqueries reference the bound id (not m.conversation_id) so
       // they are uncorrelated and evaluated once, not per message row.
@@ -284,11 +347,12 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
               '1970-01-01'
             ),
             COALESCE(
-              (SELECT last_read_at FROM conversations WHERE id = ?),
+              (SELECT last_read_at FROM conversation_read_states
+               WHERE conversation_id = ? AND agent_id = ?),
               '1970-01-01'
             )
           )
-      `).bind(conversationId, conversationId, conversationId).first<UnreadCountRow>();
+      `).bind(conversationId, conversationId, conversationId, user.id).first<UnreadCountRow>();
 
       if (unreadResult) {
         unreadCount = Number(unreadResult.unreadCount) || 0;
@@ -298,11 +362,9 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
     }
 
     // Manual unread override: floor the effective count at 1 so a conversation
-    // marked unread stays unread even when the agent sent the last message
-    // (derived count 0). Cleared by mark-as-read.
-    if (result.conversations.markedUnreadAt) {
-      unreadCount = Math.max(unreadCount, 1);
-    }
+    // this agent marked unread stays unread even when an agent sent the last
+    // message (derived count 0). Cleared by mark-as-read.
+    unreadCount = applyManualUnreadFloor(unreadCount, manuallyUnread);
 
     const displayContent = lastMessageData ? getDisplayContent(lastMessageData.content, lastMessageData.messageType) : null;
 
@@ -554,9 +616,10 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       });
     }
 
-    // Batch query: count unread customer messages per conversation
-    // "Unread" = customer messages after MAX(last_agent_reply, last_read_at)
-    let unreadCountMap = new Map<string, number>();
+    // Batch query: count unread customer messages per conversation, for THIS
+    // agent. "Unread" = customer messages after
+    // MAX(last_agent_reply, this agent's last_read_at).
+    let unreadStateMap = new Map<string, ConversationUnreadState>();
 
     if (conversationIds.length > 0) {
       for (let offset = 0; offset < conversationIds.length; offset += D1_SAFE_ID_CHUNK_SIZE) {
@@ -570,13 +633,18 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         const unreadCountQuery = createConversationUnreadCountQuery(chunk);
 
       try {
+        // Binding order matches the query: chunk ids first, then the agent id
+        // that scopes conversation_read_states.
         const unreadResult = await c.env.DB.prepare(unreadCountQuery)
-          .bind(...chunk)
+          .bind(...chunk, user.id)
           .all();
 
         if (unreadResult.results) {
           for (const row of unreadResult.results as unknown as ConversationUnreadCountRow[]) {
-            unreadCountMap.set(row.conversationId, Number(row.unreadCount));
+            unreadStateMap.set(row.conversationId, {
+              unreadCount: Number(row.unreadCount) || 0,
+              manuallyUnread: Number(row.manuallyUnread) === 1
+            });
           }
         }
       } catch (unreadError) {
@@ -595,7 +663,7 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
     const combinedData = conversationData.map(conv => {
       const lastMsg = lastMessagesMap.get(conv.id);
       const displayContent = lastMsg ? getDisplayContent(lastMsg.content, lastMsg.messageType) : null;
-      const derivedUnreadCount = unreadCountMap.get(conv.id) || 0;
+      const unreadState = unreadStateMap.get(conv.id);
       return {
         ...conv,
         // 構建lastMessage對象以匹配前端期望的結構
@@ -612,10 +680,14 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         lastMessageAtActual: lastMsg?.createdAt || null,
         // 新增: 原始消息類型，供前端判斷顯示樣式
         lastMessageType: lastMsg?.messageType || null,
-        // Unread count: customer messages awaiting agent response.
-        // The manual unread override (marked_unread_at) floors the count at 1
-        // so mark-as-unread persists even after the agent replied last.
-        unreadCount: conv.markedUnreadAt ? Math.max(derivedUnreadCount, 1) : derivedUnreadCount
+        // Unread count for the requesting agent only: customer messages
+        // awaiting a reply that this agent has not read. The manual unread
+        // override floors the count at 1 so mark-as-unread persists even after
+        // an agent replied last.
+        unreadCount: applyManualUnreadFloor(
+          unreadState?.unreadCount ?? 0,
+          unreadState?.manuallyUnread ?? false
+        )
       };
     });
 
