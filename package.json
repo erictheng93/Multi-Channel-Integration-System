@@ -112,6 +112,8 @@
     "check:migrations": "bun scripts/check-migration-integrity.ts",
     "check:migrations:remote": "bun scripts/check-migration-integrity.ts --remote",
     "check:migrations:ci": "bun scripts/check-migration-integrity.ts || (echo 'Migration integrity audit failed! Objects declared by applied migrations are missing. See report above.' && exit 1)",
+    "db:doc:schema": "bun scripts/generate-schema-doc.ts --remote",
+    "db:doc:schema:check": "bun scripts/generate-schema-doc.ts --remote --check",
     "check:scoped-todos": "bun scripts/check-scoped-todos.ts",
     "check:type-debt": "bun scripts/check-type-debt.ts",
     "precheck:all": "bun run check:routes && bun run validate:all",
