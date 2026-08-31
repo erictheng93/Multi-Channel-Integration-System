@@ -37,6 +37,7 @@ bun run db:sync:local # Pull REMOTE D1 -> LOCAL miniflare D1 (1:1 data mirror; r
 bun run build # TypeScript compilation check
 bun run deploy # Deploy to production
 bun run db:migrate # Apply migrations to REMOTE D1
+bun run db:doc:schema # Regenerate docs/architecture/SCHEMA.md — REQUIRED after db:migrate
 bun run db:generate # Generate Drizzle migrations
 bun run db:studio # Open Drizzle Studio for REMOTE DB
 bun run health:check:all # Check system + WebSocket health
@@ -208,6 +209,25 @@ CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse
 - **Credentials**: encrypted via AES-256-GCM in `encryption-service.ts`
 - Use **distributed locks** (Durable Objects) for race condition prevention
 - Integrate DB writes with **WebSocket event broadcasting**
+
+#### After applying a migration: regenerate the schema doc
+
+`docs/architecture/SCHEMA.md` is **generated from production**, never hand-written. Any time
+`bun run db:migrate` changes the live schema, run this and commit the result **in the same commit
+as the migration**:
+
+```bash
+bun run db:doc:schema        # regenerate from production
+bun run db:doc:schema:check  # verify — exits 1 if the committed doc is stale
+```
+
+The `schema-doc` CI job runs `db:doc:schema:check` on every push to main, so forgetting turns the
+build red. That guard exists because the previous hand-maintained SCHEMA.md drifted 33 migrations
+behind and documented columns that had been removed.
+
+Do not edit `docs/architecture/SCHEMA.md` by hand — the next run overwrites it. Ground truth is the
+database's own `sqlite_master`, deliberately not `src/db/schema.ts` and not `migrations/`, because
+the 2026-06-17 rebuild proved those can disagree with production.
 
 ### Authentication
 - JWT managed in `src/utils/auth.ts`
