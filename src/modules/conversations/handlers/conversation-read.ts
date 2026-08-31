@@ -7,6 +7,7 @@ import { globalErrorHandler } from '@/core/error-handler';
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations } from '@/db/schema';
+import { agentIdOf, upsertReadState } from '../services/conversation-read-state';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
@@ -14,8 +15,8 @@ import { nowISO } from '@/utils/timestamp';
 
 const conversationReadHandler = new Hono<{ Bindings: Bindings }>();
 
-// Mark conversation as read — updates last_read_at timestamp and clears the
-// manual unread override (marked_unread_at)
+// Mark conversation as read — records last_read_at for THIS agent and clears
+// this agent's manual unread override. Other agents are unaffected.
 conversationReadHandler.put('/:id/read', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -41,10 +42,13 @@ conversationReadHandler.put('/:id/read', jwtAuth, async (c) => {
     const drizzleDb = createDbClient(c.env.DB);
     const now = nowISO();
 
-    await drizzleDb
-      .update(conversations)
-      .set({ lastReadAt: now, markedUnreadAt: null })
-      .where(eq(conversations.id, conversationId));
+    await upsertReadState(
+      drizzleDb,
+      agentIdOf(user),
+      conversationId,
+      { lastReadAt: now, markedUnreadAt: null },
+      now
+    );
 
     return c.json({
       success: true,
@@ -57,11 +61,12 @@ conversationReadHandler.put('/:id/read', jwtAuth, async (c) => {
   }
 });
 
-// Mark conversation as unread — clears last_read_at so the derived unread count
-// reverts to "customer messages after the last agent reply", and sets the
-// manual override marked_unread_at so the effective count is floored at 1
-// even when the agent sent the last message (derived count 0). The override
-// persists until the next mark-as-read.
+// Mark conversation as unread — for THIS agent only. Clears this agent's
+// last_read_at so the derived count reverts to "customer messages after the
+// last agent reply", and sets this agent's marked_unread_at so the effective
+// count is floored at 1 even when an agent sent the last message (derived
+// count 0). Other agents' read state is untouched. The override persists until
+// this agent next marks the conversation read.
 conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
   try {
     const user = c.get('user');
@@ -97,13 +102,18 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
       return c.json({ error: 'Conversation not found' }, HTTP_STATUS.NOT_FOUND);
     }
 
-    await drizzleDb
-      .update(conversations)
-      .set({ lastReadAt: null, markedUnreadAt: now, updatedAt: now })
-      .where(eq(conversations.id, conversationId));
+    await upsertReadState(
+      drizzleDb,
+      agentIdOf(user),
+      conversationId,
+      { lastReadAt: null, markedUnreadAt: now },
+      now
+    );
 
     // Recompute the unread count with the same formula as conversation-queries.ts:
-    // "Unread" = customer messages after MAX(last_agent_reply, last_read_at)
+    // "Unread" = customer messages after MAX(last_agent_reply, last_read_at).
+    // last_read_at was just cleared for this agent, so the threshold collapses
+    // to the last agent reply — which stays global by design (decision A-1).
     // Threshold subqueries reference the bound id (not m.conversation_id) so
     // they are uncorrelated and evaluated once, not per message row.
     const unreadResult = await c.env.DB.prepare(`
@@ -112,20 +122,14 @@ conversationReadHandler.put('/:id/unread', jwtAuth, async (c) => {
       WHERE m.conversation_id = ?
         AND m.sender_type = 'customer'
         AND m.deleted_at IS NULL
-        AND m.created_at > MAX(
-          COALESCE(
-            (SELECT MAX(m2.created_at) FROM messages m2
-             WHERE m2.conversation_id = ?
-             AND m2.sender_type IN ('agent', 'system')
-             AND m2.deleted_at IS NULL),
-            '1970-01-01'
-          ),
-          COALESCE(
-            (SELECT last_read_at FROM conversations WHERE id = ?),
-            '1970-01-01'
-          )
+        AND m.created_at > COALESCE(
+          (SELECT MAX(m2.created_at) FROM messages m2
+           WHERE m2.conversation_id = ?
+           AND m2.sender_type IN ('agent', 'system')
+           AND m2.deleted_at IS NULL),
+          '1970-01-01'
         )
-    `).bind(conversationId, conversationId, conversationId).first<{ unreadCount: number }>();
+    `).bind(conversationId, conversationId).first<{ unreadCount: number }>();
 
     // Manual override just set above: floor the effective count at 1 so the
     // conversation shows as unread even when the derived count is 0
