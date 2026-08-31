@@ -270,14 +270,22 @@ deliberate — the only D1 is production.
    An additive migration is invisible to the running Worker; deploying first
    means the new code queries a table that does not exist yet.
 
-4. **Verify after applying**
+4. **Regenerate the schema doc in the same commit as the migration**
+   ```bash
+   bun run db:doc:schema        # rebuild docs/architecture/SCHEMA.md from production
+   bun run db:doc:schema:check  # exits 1 if the committed doc is stale
+   ```
+   SCHEMA.md is generated, never hand-written. The `schema-doc` CI job runs the
+   check on every push to main, so skipping this turns the build red.
+
+5. **Verify after applying**
    ```bash
    bun run check:migrations   # 0 phantom-applied, 0 pending objects
    ```
    The `d1_migrations` journal has been observed to mark a migration applied when
    the DDL never landed (2026-06-30). Trust `check:migrations`, not the journal.
 
-5. **Prefer a deprecate-then-drop window over an immediate destructive change**
+6. **Prefer a deprecate-then-drop window over an immediate destructive change**
    Leaving a superseded column in place keeps rollback to one command. See
    Migration 0060 for a worked example.
 
