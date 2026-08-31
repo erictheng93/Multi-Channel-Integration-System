@@ -70,6 +70,53 @@ jobs:
         run: bun run check:sql-raw:ci
 
   # ===========================================================================
+  # 1b. Schema doc freshness
+  # ===========================================================================
+  # docs/architecture/SCHEMA.md is generated from production's own sqlite_master
+  # by scripts/generate-schema-doc.ts. Before it was generated it drifted 33
+  # migrations behind reality and documented columns that no longer existed.
+  # This job is what stops that happening again.
+  #
+  # Deliberately NOT folded into `validate`: that job is documented as
+  # credential-free and safe to run anywhere, and this check needs a read-only
+  # production D1 token. Keeping them separate preserves that property.
+  #
+  # `if: github.event_name == 'push'` means it never runs on a pull_request, so
+  # the D1 token is never exposed to a fork PR. Branch protection covers main.
+  #
+  # The script issues three read-only SELECTs against sqlite_master and the
+  # pragma table-valued functions. It never writes.
+  #
+  # A red result here means one of:
+  #   - a migration was applied to production but the doc was not regenerated
+  #   - SCHEMA.md was hand-edited (it says not to at the top)
+  #   - production schema changed outside the migration pipeline
+  # Fix with `bun run db:doc:schema` and commit the result.
+  # ---------------------------------------------------------------------------
+  schema-doc:
+    name: Schema doc matches production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install root dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify SCHEMA.md is up to date
+        run: bun run db:doc:schema:check
+
+  # ===========================================================================
   # 2. Backend tests
   # ===========================================================================
   # Uses the curated `test:backend:ci` script in package.json. This excludes

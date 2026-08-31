@@ -6,6 +6,17 @@ const workflow = readFileSync(
   'utf8'
 )
 
+/** Slice out one job block, from its `  <name>:` line to the next job at the same indent. */
+function getJobBlock(jobName: string): string {
+  const marker = `\n  ${jobName}:\n`
+  const start = workflow.indexOf(marker)
+  expect(start).toBeGreaterThanOrEqual(0)
+
+  const rest = workflow.slice(start + marker.length)
+  const next = rest.search(/\n {2}[a-z][a-z0-9-]*:\n/)
+  return next === -1 ? workflow.slice(start) : workflow.slice(start, start + marker.length + next)
+}
+
 function getStepBlock(stepName: string): string {
   const marker = `      - name: ${stepName}`
   const start = workflow.indexOf(marker)
@@ -40,5 +51,31 @@ describe('CI/CD workflow production deploy safeguards', () => {
     )
     expect(rollbackStep).toContain('--message')
     expect(rollbackStep).not.toContain('--version-id')
+  })
+})
+
+describe('CI/CD workflow schema doc guard', () => {
+  // The token this job carries can read production D1. A `pull_request` run can
+  // originate from a fork, so the job must never run on that event.
+  it('runs the schema doc check only on push, never on a pull request', () => {
+    const job = getJobBlock('schema-doc')
+
+    expect(job).toContain("if: github.event_name == 'push'")
+    expect(job).toContain('run: bun run db:doc:schema:check')
+  })
+
+  // `validate` is documented as credential-free and safe to run anywhere.
+  // Folding a production-D1 check into it would quietly break that promise.
+  it('keeps the production credentials out of the validate job', () => {
+    // Comments are stripped: a job block runs up to the next job's header, which
+    // includes that job's explanatory comments, and those legitimately name the
+    // very things this test forbids as executable YAML.
+    const validate = getJobBlock('validate')
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n')
+
+    expect(validate).not.toContain('CLOUDFLARE_API_TOKEN')
+    expect(validate).not.toContain('db:doc:schema')
   })
 })
