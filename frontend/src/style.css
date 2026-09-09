@@ -400,19 +400,19 @@
 
   /* Alert Component */
   .alert {
-    @apply p-4 rounded-md border mb-4;
+    @apply p-4 rounded-md mb-4;
   }
 
   .alert-success {
-    @apply text-success-700 bg-success-50 border-success-200;
+    @apply text-success-700 bg-success-50;
   }
 
   .alert-warning {
-    @apply text-warning-700 bg-warning-50 border-warning-200;
+    @apply text-warning-700 bg-warning-50;
   }
 
   .alert-danger {
-    @apply text-danger-700 bg-danger-50 border-danger-200;
+    @apply text-danger-700 bg-danger-50;
   }
 
   /* Loading States */
