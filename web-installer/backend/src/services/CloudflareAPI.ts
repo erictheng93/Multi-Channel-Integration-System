@@ -71,7 +71,7 @@ export class CloudflareAPI {
       throw new Error(`Cloudflare API Error: ${error.errors[0]?.message || response.statusText}`);
     }
 
-    return response.json();
+    return await response.json();
   }
 
   /**

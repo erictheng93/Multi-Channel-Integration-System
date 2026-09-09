@@ -58,25 +58,6 @@ declare module 'cloudflare:test' {
   export function waitOnExecutionContext(
     ctx: ExecutionContext
   ): Promise<void>;
-
-  /**
-   * Fetch mock utilities for mocking external HTTP requests
-   */
-  export const fetchMock: {
-    activate(): void;
-    deactivate(): void;
-    disableNetConnect(): void;
-    enableNetConnect(pattern?: string | RegExp): void;
-    get(origin: string): {
-      intercept(options: { path: string | RegExp; method?: string }): {
-        reply(
-          statusCode: number,
-          body?: unknown,
-          headers?: Record<string, string>
-        ): void;
-      };
-    };
-  };
 }
 
 /**

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { env, fetchMock } from 'cloudflare:test';
+import { env } from 'cloudflare:test';
 import type { DeploymentConfig } from '@/types/deployment';
 
 // Valid test configuration
@@ -18,129 +18,103 @@ const validConfig: DeploymentConfig = {
   oauthToken: 'test-oauth-token-456'
 };
 
+/**
+ * Outbound request stubs for the Cloudflare and Resend APIs.
+ *
+ * vitest-pool-workers 0.13+ removed `fetchMock` from `cloudflare:test`, so the
+ * undici interceptors this suite used are expressed as a plain route table
+ * matched against globalThis.fetch. Order matters: the first match wins, so
+ * the more specific paths (D1 query, Pages deployments) precede the prefixes
+ * they extend.
+ */
+const MOCK_ROUTES: Array<{ method: string; pattern: RegExp; body: unknown }> = [
+  // D1 query (migrations) — must precede the D1 database route it extends.
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/d1\/database\/.*\/query/,
+    body: { success: true, result: [{ results: [], success: true }] }
+  },
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/d1\/database/,
+    body: { success: true, result: { uuid: 'test-d1-uuid-123', name: 'test-crm-system-db' } }
+  },
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/storage\/kv\/namespaces/,
+    body: { success: true, result: { id: 'test-kv-uuid-456' } }
+  },
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/r2\/buckets/,
+    body: { success: true, result: { name: 'test-crm-system-files' } }
+  },
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/queues/,
+    body: { success: true, result: { queue_id: 'test-queue-id', queue_name: 'test-crm-system-queue' } }
+  },
+  {
+    method: 'PUT',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/workers\/scripts\/.*/,
+    body: { success: true, result: { etag: 'test-etag-789' } }
+  },
+  // Pages deployments — must precede the Pages projects route it extends.
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/pages\/projects\/.*\/deployments/,
+    body: { success: true, result: { id: 'test-deployment-id', url: 'https://test-crm-system.pages.dev' } }
+  },
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/pages\/projects/,
+    body: {
+      success: true,
+      result: { id: 'test-pages-id', name: 'test-crm-system', subdomain: 'test-crm-system' }
+    }
+  },
+  {
+    method: 'PATCH',
+    pattern: /^https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/.*\/pages\/projects\/.*\/env/,
+    body: { success: true, result: {} }
+  },
+  {
+    method: 'GET',
+    pattern: /^https:\/\/api\.cloudflare\.com\/api\/system\/health/,
+    body: { status: 'ok' }
+  },
+  {
+    method: 'POST',
+    pattern: /^https:\/\/api\.resend\.com\/emails/,
+    body: { id: 'test-email-id' }
+  }
+];
+
 describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
   let deploymentId: string;
+  let realFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
-    // Enable fetch mock for external API calls
-    fetchMock.activate();
-    fetchMock.disableNetConnect();
-
-    // Mock Cloudflare API endpoints
-    setupCloudflareAPIMocks();
+    realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      const route = MOCK_ROUTES.find(
+        (candidate) => candidate.method === request.method && candidate.pattern.test(request.url)
+      );
+      if (!route) {
+        // Stands in for the old fetchMock.disableNetConnect(): a test must
+        // never reach the real network, and an unlisted call is a test bug.
+        throw new Error(`Unmocked outbound request: ${request.method} ${request.url}`);
+      }
+      return Response.json(route.body);
+    }) as typeof globalThis.fetch;
   });
 
   afterEach(() => {
-    fetchMock.deactivate();
+    globalThis.fetch = realFetch;
     vi.clearAllMocks();
   });
 
-  /**
-   * Setup mocks for Cloudflare API calls
-   */
-  function setupCloudflareAPIMocks() {
-    const cfApi = fetchMock.get('https://api.cloudflare.com');
-
-    // D1 Database creation
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/d1\/database/,
-      method: 'POST'
-    }).reply(200, {
-      success: true,
-      result: { uuid: 'test-d1-uuid-123', name: 'test-crm-system-db' }
-    });
-
-    // KV Namespace creation
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/storage\/kv\/namespaces/,
-      method: 'POST'
-    }).reply(200, {
-      success: true,
-      result: { id: 'test-kv-uuid-456' }
-    });
-
-    // R2 Bucket creation
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/r2\/buckets/,
-      method: 'POST'
-    }).reply(200, {
-      success: true,
-      result: { name: 'test-crm-system-files' }
-    });
-
-    // Queue creation
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/queues/,
-      method: 'POST'
-    }).reply(200, {
-      success: true,
-      result: { queue_id: 'test-queue-id', queue_name: 'test-crm-system-queue' }
-    });
-
-    // D1 Query (for migrations)
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/d1\/database\/.*\/query/,
-      method: 'POST'
-    }).reply(200, {
-      success: true,
-      result: [{ results: [], success: true }]
-    });
-
-    // Worker deployment
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/workers\/scripts\/.*/,
-      method: 'PUT'
-    }).reply(200, {
-      success: true,
-      result: { etag: 'test-etag-789' }
-    });
-
-    // Pages project creation
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/pages\/projects/,
-      method: 'POST'
-    }).reply(200, {
-      success: true,
-      result: {
-        id: 'test-pages-id',
-        name: 'test-crm-system',
-        subdomain: 'test-crm-system'
-      }
-    });
-
-    // Pages deployment
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/pages\/projects\/.*\/deployments/,
-      method: 'POST'
-    }).reply(200, {
-      success: true,
-      result: { id: 'test-deployment-id', url: 'https://test-crm-system.pages.dev' }
-    });
-
-    // Pages environment variables
-    cfApi.intercept({
-      path: /\/client\/v4\/accounts\/.*\/pages\/projects\/.*\/env/,
-      method: 'PATCH'
-    }).reply(200, {
-      success: true,
-      result: {}
-    });
-
-    // Health check
-    cfApi.intercept({
-      path: /\/api\/system\/health/,
-      method: 'GET'
-    }).reply(200, { status: 'ok' });
-
-    // Mock Resend API for email
-    const resendApi = fetchMock.get('https://api.resend.com');
-    resendApi.intercept({
-      path: '/emails',
-      method: 'POST'
-    }).reply(200, {
-      id: 'test-email-id'
-    });
-  }
 
   describe('Deployment Initialization', () => {
     it('should initialize deployment with valid configuration', async () => {

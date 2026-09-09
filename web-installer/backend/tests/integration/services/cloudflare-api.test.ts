@@ -25,7 +25,10 @@ describe('CloudflareAPI Service - Integration Tests', () => {
 
     // Mock global fetch
     fetchMock = vi.fn();
-    global.fetch = fetchMock;
+    // vitest 4 narrowed vi.fn()'s default generic, so the bare mock no longer
+    // matches the workerd fetch overloads. The mock bodies here are deliberately
+    // partial Responses, so cast rather than widen every literal.
+    global.fetch = fetchMock as unknown as typeof globalThis.fetch;
   });
 
   afterEach(() => {
