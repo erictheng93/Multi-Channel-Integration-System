@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+// Line endings are normalised because .gitattributes marks the repo `text=auto`,
+// so this file checks out CRLF on Windows and LF on CI. Every matcher below
+// anchors on "\n", which made the whole suite pass on Linux and fail on every
+// Windows machine — a permanently red guard nobody can act on.
 const workflow = readFileSync(
   new URL('../../../.github/workflows/ci-cd.yml', import.meta.url),
   'utf8'
-)
+).replace(/\r\n/g, '\n')
 
 /** Slice out one job block, from its `  <name>:` line to the next job at the same indent. */
 function getJobBlock(jobName: string): string {
