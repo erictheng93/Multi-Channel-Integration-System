@@ -287,7 +287,6 @@ describe('useNotificationFilters', () => {
         'conversation_transferred',
         'mention',
         'system',
-        'priority_changed',
         'customer_responded',
         'task_reminder'
       ]

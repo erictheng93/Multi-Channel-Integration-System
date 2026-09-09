@@ -1,5 +1,6 @@
 # Multi-Channel Customer Support System - Unified Configuration
-# Account: admin@dacit.net (account_id via CLOUDFLARE_ACCOUNT_ID env var)
+# Account: service@dacit.net ("Service@dacit.net's Account", c24c7b91fc0baef367dfc70083e11f4d)
+# Resolved from the wrangler OAuth session; CLOUDFLARE_ACCOUNT_ID may override it.
 name = "mcis-worker"
 main = "src/index.ts"
 compatibility_date = "2025-10-27"

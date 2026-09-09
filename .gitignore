@@ -114,3 +114,7 @@ gen-eric.mjs
 User.xlsx
 *-login-success.png
 olivia-login-success.png
+
+# Sync report artifacts (written at runtime by scripts/sync-database.ts)
+sync-reports/*
+!sync-reports/.gitkeep

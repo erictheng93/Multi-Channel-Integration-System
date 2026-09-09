@@ -28,6 +28,7 @@
             class="search-input"
             @input="handleSearch"
             @keydown="handleKeydown"
+            @compositionend="ime.onCompositionEnd"
             @focus="updateSuggestions"
           >
           <button
@@ -199,6 +200,7 @@ import { messageIndexService } from '@/services/messageIndexService'
 import { searchHistoryService } from '@/services/searchHistoryService'
 import { searchPerformanceMonitor } from '@/services/searchPerformanceMonitor'
 import { createDebouncedFunction } from '@/utils/debounce'
+import { useImeGuard } from '@/composables/useImeGuard'
 
 interface SearchFilters {
   messageType: string
@@ -224,6 +226,9 @@ const emit = defineEmits<{
 
 // 狀態
 const isExpanded = ref(props.autoExpand)
+// IME (注音/拼音/日文) 組字守門 — 見 useImeGuard
+const ime = useImeGuard()
+
 const searchQuery = ref('')
 const searchInputRef = ref<HTMLInputElement>()
 const isAdvancedMode = ref(false)
@@ -485,6 +490,11 @@ const toggleAdvancedMode = () => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
+  // 組字中的按鍵屬於輸入法：Enter 是確認選字，不是送出搜尋
+  if (ime.isImeKey(event)) {
+    return
+  }
+
   if (event.key === 'Escape') {
     event.preventDefault()
     closeSearch()

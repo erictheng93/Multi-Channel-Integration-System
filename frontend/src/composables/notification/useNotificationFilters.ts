@@ -30,7 +30,6 @@ export function useNotificationFilters(store: ReturnType<typeof useNotifications
     { value: 'conversation_transferred', label: '對話轉移' },
     { value: 'mention', label: '提及' },
     { value: 'system', label: '系統通知' },
-    { value: 'priority_changed', label: '優先級變更' },
     { value: 'customer_responded', label: '客戶回覆' },
     { value: 'task_reminder', label: '任務提醒' }
   ]

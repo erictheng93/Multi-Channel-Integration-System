@@ -4,7 +4,6 @@
 
 import { NotificationService, NotificationChannelService } from '@modules/notifications';
 import { WebSocketBroadcastService } from '../services/websocket-broadcast-service';
-import type { NotificationPriority } from '@modules/notifications/types';
 import type { Bindings } from '../types';
 import { nowISO } from '@/utils/timestamp'
 
@@ -82,78 +81,6 @@ async function broadcastNotificationViaWebSocket(
       notificationId: notification.id
     });
     return false;
-  }
-}
-
-/**
- * 優先級變更通知觸發器
- * 當對話優先級變更時通知負責的客服
- */
-export async function triggerPriorityChangedNotification(
-  env: NotificationTriggerEnv,
-  options: {
-    userId: string | number;
-    conversationIds: string[];
-    newPriority: string;
-    changedBy: string;
-  }
-): Promise<string | null> {
-  try {
-    const service = createNotificationService(env);
-    const parsedUserId = parseUserId(options.userId);
-
-    // 確定通知優先級
-    const notificationPriority: NotificationPriority =
-      options.newPriority === 'urgent' ? 'urgent' :
-      options.newPriority === 'high' ? 'high' : 'normal';
-
-    const content = options.conversationIds.length === 1
-      ? `對話優先級已變更為「${getPriorityLabel(options.newPriority)}」`
-      : `${options.conversationIds.length} 個對話的優先級已變更為「${getPriorityLabel(options.newPriority)}」`;
-
-    // 1. 建立通知記錄到資料庫
-    const notificationId = await service.create({
-      userId: parsedUserId,
-      type: 'priority_changed',
-      title: '對話優先級已變更',
-      content,
-      data: {
-        conversationIds: options.conversationIds,
-        newPriority: options.newPriority,
-        changedBy: options.changedBy
-      },
-      priority: notificationPriority,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天後過期
-    });
-
-    console.log('[Notification] Priority changed notification created:', {
-      notificationId,
-      userId: parsedUserId,
-      conversationCount: options.conversationIds.length,
-      newPriority: options.newPriority
-    });
-
-    // 2. 透過 WebSocket 即時推送通知
-    await broadcastNotificationViaWebSocket(env, options.userId, {
-      id: notificationId,
-      type: 'priority_changed',
-      title: '對話優先級已變更',
-      content,
-      priority: notificationPriority,
-      data: {
-        conversationIds: options.conversationIds,
-        newPriority: options.newPriority,
-        changedBy: options.changedBy
-      }
-    });
-
-    return notificationId;
-  } catch (error) {
-    console.warn('[Notification] Failed to send priority change notification:', {
-      error: error instanceof Error ? error.message : String(error),
-      ...options
-    });
-    return null;
   }
 }
 
@@ -816,17 +743,4 @@ async function getNotificationTargetUsers(
     console.error('[Notification Target] Error getting notification target users:', error);
     return [];
   }
-}
-
-/**
- * 輔助函數：獲取優先級的中文標籤
- */
-function getPriorityLabel(priority: string): string {
-  const labels: Record<string, string> = {
-    low: '低',
-    normal: '一般',
-    high: '高',
-    urgent: '緊急'
-  };
-  return labels[priority] || priority;
 }

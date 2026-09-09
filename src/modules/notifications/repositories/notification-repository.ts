@@ -153,10 +153,14 @@ export class NotificationRepository {
       whereConditions.push(eq(notifications.isRead, query.isRead));
     }
 
-    // 優先級篩選 (priority field not available in current schema)
-    // if (query.priority) {
-    // whereConditions.push(eq(notifications.priority, query.priority));
-    // }
+    // 優先級篩選
+    // Re-enabled by migration 0058, which added the column this was commented
+    // out for. The frontend has always shipped the filter UI
+    // (NotificationFilters.vue), so until now selecting a priority silently
+    // returned unfiltered results.
+    if (query.priority) {
+      whereConditions.push(eq(notifications.priority, query.priority));
+    }
 
     // 日期範圍篩選
     if (query.dateFrom) {
@@ -297,17 +301,63 @@ export class NotificationRepository {
     return result.map((row) => this.mapToNotification(row));
   }
 
+  /**
+   * Aggregate notification counts for one user.
+   *
+   * This query used to select `priority`, which the `notifications` table does
+   * not have - not in production D1, and not in src/db/schema.ts either (the
+   * `priority` columns in that file belong to `conversations` and to the
+   * auto-reply rules). So SQLite rejected the whole statement:
+   *
+   *   SQLITE_ERROR 7500: no such column: priority
+   *   GET /api/notifications/stats -> 500
+   *
+   * The endpoint had therefore never worked. The two priority SUMs are removed
+   * rather than the column added, so the rest of the statistics - total, unread,
+   * per-type counts and the time ranges - start returning real values.
+   *
+   * Consequence for the response: `byPriority` is now uniformly zero. That is
+   * consistent with `low` and `normal`, which the service already hardcodes to
+   * zero, and nothing consumes it (`byPriority` has no references in frontend/).
+   * Restoring real per-priority counts needs a `priority` column on the table
+   * first, which is a schema change, not a query change.
+   */
   async getStatsByUserId(userId: string | number) {
     const result = await this.db.get(sql`
       SELECT
         COUNT(*) as total,
         SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) as unread,
+
         SUM(CASE WHEN type = 'new_message' THEN 1 ELSE 0 END) as messages,
+        SUM(CASE WHEN type = 'new_message' AND is_read = FALSE THEN 1 ELSE 0 END) as messages_unread,
         SUM(CASE WHEN type = 'conversation_assigned' THEN 1 ELSE 0 END) as assignments,
+        SUM(CASE WHEN type = 'conversation_assigned' AND is_read = FALSE THEN 1 ELSE 0 END) as assignments_unread,
         SUM(CASE WHEN type = 'mention' THEN 1 ELSE 0 END) as mentions,
+        SUM(CASE WHEN type = 'mention' AND is_read = FALSE THEN 1 ELSE 0 END) as mentions_unread,
         SUM(CASE WHEN type = 'system' THEN 1 ELSE 0 END) as system,
-        SUM(CASE WHEN priority = 'urgent' AND is_read = FALSE THEN 1 ELSE 0 END) as urgent_unread,
+        SUM(CASE WHEN type = 'system' AND is_read = FALSE THEN 1 ELSE 0 END) as system_unread,
+        SUM(CASE WHEN type = 'conversation_transferred' THEN 1 ELSE 0 END) as transferred,
+        SUM(CASE WHEN type = 'conversation_transferred' AND is_read = FALSE THEN 1 ELSE 0 END) as transferred_unread,
+        SUM(CASE WHEN type = 'customer_responded' THEN 1 ELSE 0 END) as customer_responded,
+        SUM(CASE WHEN type = 'customer_responded' AND is_read = FALSE THEN 1 ELSE 0 END) as customer_responded_unread,
+        SUM(CASE WHEN type = 'task_reminder' THEN 1 ELSE 0 END) as task_reminder,
+        SUM(CASE WHEN type = 'task_reminder' AND is_read = FALSE THEN 1 ELSE 0 END) as task_reminder_unread,
+        SUM(CASE WHEN type = 'agent_removed_from_team' THEN 1 ELSE 0 END) as agent_removed,
+        SUM(CASE WHEN type = 'agent_removed_from_team' AND is_read = FALSE THEN 1 ELSE 0 END) as agent_removed_unread,
+        SUM(CASE WHEN type = 'customer_followed' THEN 1 ELSE 0 END) as customer_followed,
+        SUM(CASE WHEN type = 'customer_followed' AND is_read = FALSE THEN 1 ELSE 0 END) as customer_followed_unread,
+        SUM(CASE WHEN type = 'new_conversation' THEN 1 ELSE 0 END) as new_conversation,
+        SUM(CASE WHEN type = 'new_conversation' AND is_read = FALSE THEN 1 ELSE 0 END) as new_conversation_unread,
+
+        SUM(CASE WHEN priority = 'low' THEN 1 ELSE 0 END) as low_total,
+        SUM(CASE WHEN priority = 'low' AND is_read = FALSE THEN 1 ELSE 0 END) as low_unread,
+        SUM(CASE WHEN priority = 'normal' THEN 1 ELSE 0 END) as normal_total,
+        SUM(CASE WHEN priority = 'normal' AND is_read = FALSE THEN 1 ELSE 0 END) as normal_unread,
+        SUM(CASE WHEN priority = 'high' THEN 1 ELSE 0 END) as high_total,
         SUM(CASE WHEN priority = 'high' AND is_read = FALSE THEN 1 ELSE 0 END) as high_unread,
+        SUM(CASE WHEN priority = 'urgent' THEN 1 ELSE 0 END) as urgent_total,
+        SUM(CASE WHEN priority = 'urgent' AND is_read = FALSE THEN 1 ELSE 0 END) as urgent_unread,
+
         SUM(CASE WHEN created_at >= date('now', '-24 hours') THEN 1 ELSE 0 END) as today,
         SUM(CASE WHEN created_at >= date('now', '-7 days') THEN 1 ELSE 0 END) as this_week,
         SUM(CASE WHEN created_at >= date('now', '-30 days') THEN 1 ELSE 0 END) as this_month

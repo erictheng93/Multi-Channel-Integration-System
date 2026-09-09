@@ -1,88 +1,24 @@
+# `database/`
 
-Multi-Channel Support MVP
+Ad-hoc DB assets that are **not** part of the migration pipeline. The migration pipeline is
+`migrations/` + `migrations/meta/_journal.json`, applied with `bun run db:migrate`.
 
+## Live files
 
-- `schema.sql` - schema
-- `cleanup.sql` -
-- `init.sql` - + +
-- `init-database.ps1` - PowerShell
-- `verify-schema.js` - Node.js
+| File | Used by |
+|------|---------|
+| `migrate-file-attachments.ts` | `bun run db:migrate:attachments` / `:verify` |
+| `file-attachments-schema.sql` | `scripts/deploy-file-upload.ts`, `scripts/file-upload-status-check.ts` |
+| `schema.sql` | `scripts/file-upload-status-check.ts` |
+| `apply-enhancements.sql` | `scripts/` one-off |
+| `init-database.ps1` | first-time local bootstrap |
 
+## `legacy/`
 
-1. **users** -
- -
- - LINEFacebookInstagramWhatsApp
+Pre-drizzle bootstrap SQL and PowerShell helpers from Sep 2025 with **zero references** in the
+codebase. Kept for history only. They target the retired `omni-channel-platform` database name,
+not the current `mcis-db` — do not run them against production.
 
-2. **conversations** -
- -
- -
+## `legacy-migrations/`
 
-3. **messages** -
- -
- -
-
-4. **agents** -
- -
- -
-
-
-- `idx_conversations_user` -
-- `idx_conversations_status` -
-- `idx_conversations_assigned` -
-- `idx_messages_conversation` -
-- `idx_messages_created` -
-
-
-### 1.
-
- PowerShell
-```powershell
-.\database\init-database.ps1
-```
-
-
--
--
--
--
-
-### 2.
-
-```powershell
-.\database\status.ps1
-```
-
-### 3.
-
-```bash
-node database/verify-schema.js
-```
-
-### 4.
-
-
-```bash
-
-wrangler d1 execute omni-channel-platform --local --file=database/cleanup-remote.sql
-
-wrangler d1 execute omni-channel-platform --remote --file=database/cleanup-remote.sql
-```
-
-
-```bash
-
-wrangler d1 execute omni-channel-platform --local --file=database/schema.sql
-
-wrangler d1 execute omni-channel-platform --remote --file=database/schema.sql
-```
-
-
-- **Admin**: admin@dacit.net (admin-001)
-- **Agent 1**: dacagent@dacit.net (agent-001)
-
-
-1.
-2. `IF NOT EXISTS`
-3. Unix timestamp (INTEGER)
-4.
-5. 
+Historical DDL rescued from two orphan drizzle-kit output directories. See its own README.

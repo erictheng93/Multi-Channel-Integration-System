@@ -213,7 +213,7 @@ describe('tag delete -> reversible log + UPDATE in one batch', () => {
 
 - [ ] **Step 3: Run the placeholder test to confirm the file compiles**
 
-Run: `rtk bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
+Run: `bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
 Expected: 1 PASS (placeholder).
 
 - [ ] **Step 4: Apply the migration shown in the Target code section above**
@@ -321,19 +321,19 @@ describe('tag delete via batch', () => {
 
 - [ ] **Step 6: Run the integration test**
 
-Run: `rtk bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
+Run: `bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
 Expected: 3 PASS.
 
 - [ ] **Step 7: Run the full activities + tags suite to confirm no regression**
 
-Run: `rtk bunx vitest run tests/unit/modules/activities tests/integration/handlers/activity-restore.integration.test.ts tests/integration/handlers/tag-restore.integration.test.ts`
+Run: `bunx vitest run tests/unit/modules/activities tests/integration/handlers/activity-restore.integration.test.ts tests/integration/handlers/tag-restore.integration.test.ts`
 Expected: all PASS.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-rtk git add src/modules/tags/services/tag-service.ts tests/integration/handlers/tag-restore.integration.test.ts
-rtk git commit -m "feat(tags): make tag_delete reversible via ActivityCapture + db.batch
+git add src/modules/tags/services/tag-service.ts tests/integration/handlers/tag-restore.integration.test.ts
+git commit -m "feat(tags): make tag_delete reversible via ActivityCapture + db.batch
 
 Pre-existing fire-and-forget pattern is replaced by:
   read snapshot -> build [log, mutation] -> c.env.DB.batch([...])
@@ -527,7 +527,7 @@ describe('tag update via batch', () => {
 
 - [ ] **Step 3: Run the test — expect failure**
 
-Run: `rtk bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
+Run: `bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
 Expected: 2 NEW tests FAIL (no batch call yet; old path runs through).
 
 - [ ] **Step 4: Apply the migration shown in the Target code section above**
@@ -536,19 +536,19 @@ Use `Edit` on `tag-service.ts` to replace the UPDATE + activity-logging tail of 
 
 - [ ] **Step 5: Run the test — expect pass**
 
-Run: `rtk bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
+Run: `bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts`
 Expected: 5 PASS (3 from Task 1 + 2 new).
 
 - [ ] **Step 6: Type-check**
 
-Run: `rtk tsc --noEmit`
+Run: `tsc --noEmit`
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-rtk git add src/modules/tags/services/tag-service.ts tests/integration/handlers/tag-restore.integration.test.ts
-rtk git commit -m "feat(tags): make tag_update reversible via ActivityCapture + db.batch
+git add src/modules/tags/services/tag-service.ts tests/integration/handlers/tag-restore.integration.test.ts
+git commit -m "feat(tags): make tag_update reversible via ActivityCapture + db.batch
 
 Only the fields that actually change are captured into
 previousState — restoring a name-only edit will not also rewrite
@@ -629,7 +629,7 @@ describe('addTeamMembership', () => {
 
 - [ ] **Step 2: Run the test — expect failure**
 
-Run: `rtk bunx vitest run tests/unit/modules/activities/services/restore-helpers.test.ts`
+Run: `bunx vitest run tests/unit/modules/activities/services/restore-helpers.test.ts`
 Expected: FAIL importing `addTeamMembership`.
 
 - [ ] **Step 3: Implement the factory**
@@ -717,14 +717,14 @@ In `tests/unit/modules/activities/services/restore-registry.test.ts`, add `'team
 
 - [ ] **Step 6: Run all Phase 1 + new tests**
 
-Run: `rtk bunx vitest run tests/unit/modules/activities tests/integration/handlers/activity-restore.integration.test.ts tests/integration/handlers/tag-restore.integration.test.ts`
+Run: `bunx vitest run tests/unit/modules/activities tests/integration/handlers/activity-restore.integration.test.ts tests/integration/handlers/tag-restore.integration.test.ts`
 Expected: all PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-rtk git add src/modules/activities/services/restore-helpers.ts src/modules/activities/services/restore-registry.ts tests/unit/modules/activities/services/restore-helpers.test.ts tests/unit/modules/activities/services/restore-registry.test.ts
-rtk git commit -m "feat(activities): add addTeamMembership restore handler
+git add src/modules/activities/services/restore-helpers.ts src/modules/activities/services/restore-registry.ts tests/unit/modules/activities/services/restore-helpers.test.ts tests/unit/modules/activities/services/restore-registry.test.ts
+git commit -m "feat(activities): add addTeamMembership restore handler
 
 agent_teams is a hard-delete junction table — no deleted_at to
 clear — so reversing team_member_remove requires an INSERT.
@@ -977,7 +977,7 @@ describe('team_member_remove via batch', () => {
 
 - [ ] **Step 3: Run the test — expect failure**
 
-Run: `rtk bunx vitest run tests/integration/handlers/team-member-restore.integration.test.ts`
+Run: `bunx vitest run tests/integration/handlers/team-member-restore.integration.test.ts`
 Expected: All FAIL (removeMember signature mismatch and behavior mismatch).
 
 - [ ] **Step 4: Apply the migration**
@@ -986,25 +986,25 @@ Use `Edit` on `team-service.ts` and `team-members.ts` per the Target code sectio
 
 - [ ] **Step 5: Run the test — expect pass**
 
-Run: `rtk bunx vitest run tests/integration/handlers/team-member-restore.integration.test.ts`
+Run: `bunx vitest run tests/integration/handlers/team-member-restore.integration.test.ts`
 Expected: 3 PASS.
 
 - [ ] **Step 6: Run any pre-existing tests touching `removeMember` to confirm no regression**
 
-Run: `rtk bunx vitest run tests/unit/modules/teams tests/integration/handlers/team-member-restore.integration.test.ts`
+Run: `bunx vitest run tests/unit/modules/teams tests/integration/handlers/team-member-restore.integration.test.ts`
 Expected: all PASS. If any unit test asserts the old 2-arg signature of `removeMember`, update the call site in the test.
 
 - [ ] **Step 7: Type-check + full backend run**
 
-Run: `rtk tsc --noEmit`
-Run: `rtk bun run test:backend:ci`
+Run: `tsc --noEmit`
+Run: `bun run test:backend:ci`
 Expected: PASS.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-rtk git add src/modules/teams/services/team-service.ts src/modules/teams/handlers/team-members.ts tests/integration/handlers/team-member-restore.integration.test.ts
-rtk git commit -m "feat(teams): make team_member_remove reversible via ActivityCapture + db.batch
+git add src/modules/teams/services/team-service.ts src/modules/teams/handlers/team-members.ts tests/integration/handlers/team-member-restore.integration.test.ts
+git commit -m "feat(teams): make team_member_remove reversible via ActivityCapture + db.batch
 
 removeMember now accepts a caller context (id, displayName, role,
 ipAddress, userAgent) and builds an atomic batch:
@@ -1130,14 +1130,14 @@ describe('team_member_remove then restore — details shape', () => {
 
 - [ ] **Step 3: Run both tests**
 
-Run: `rtk bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts tests/integration/handlers/team-member-restore.integration.test.ts`
+Run: `bunx vitest run tests/integration/handlers/tag-restore.integration.test.ts tests/integration/handlers/team-member-restore.integration.test.ts`
 Expected: all PASS.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-rtk git add tests/integration/handlers/tag-restore.integration.test.ts tests/integration/handlers/team-member-restore.integration.test.ts
-rtk git commit -m "test(activities): close the loop on Phase 2a reversible logs
+git add tests/integration/handlers/tag-restore.integration.test.ts tests/integration/handlers/team-member-restore.integration.test.ts
+git commit -m "test(activities): close the loop on Phase 2a reversible logs
 
 Confirms the details JSON each migrated handler writes carries
 exactly the previousState shape the matching RestoreHandler
@@ -1155,7 +1155,7 @@ handler) and reverse-side schema (RestoreRegistry) early."
 
 - [ ] **Step 1: Full backend CI suite**
 
-Run: `rtk bun run test:backend:ci`
+Run: `bun run test:backend:ci`
 Expected: all PASS (Phase 1's 2570 + Phase 2a additions).
 
 - [ ] **Step 2: Update module README**
@@ -1185,8 +1185,8 @@ Open `docs/modules/activities.md` and add the same section.
 - [ ] **Step 4: Commit**
 
 ```bash
-rtk git add src/modules/activities/README.md docs/modules/activities.md
-rtk git commit -m "docs(activities): record Phase 2a handler migrations
+git add src/modules/activities/README.md docs/modules/activities.md
+git commit -m "docs(activities): record Phase 2a handler migrations
 
 Lists the three migrated handlers (tag_delete, tag_update,
 team_member_remove) and the restore handler keys they emit.

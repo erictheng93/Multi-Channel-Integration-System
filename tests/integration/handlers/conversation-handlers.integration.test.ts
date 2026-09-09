@@ -344,6 +344,12 @@ function createDrizzleMock() {
       if (mockDbState.dbError) return Promise.reject(mockDbState.dbError);
       return Promise.resolve();
     }),
+    // Used by the per-agent read-state upsert (Migration 0060).
+    onConflictDoUpdate: vi.fn(() => {
+      mockDbState.insertCalled = true;
+      if (mockDbState.dbError) return Promise.reject(mockDbState.dbError);
+      return Promise.resolve();
+    }),
     then: function (resolve: any, reject?: any) {
       mockDbState.insertCalled = true;
       if (mockDbState.dbError) {
@@ -1335,6 +1341,7 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(env.DB.prepare).not.toHaveBeenCalled();
       expect(env.DB.batch).not.toHaveBeenCalled();
       expect(mockDbState.updateCalled).toBe(false);
+      expect(mockDbState.insertCalled).toBe(false);
     });
 
     test('processes long conversations with bounded read/update batches', async () => {
@@ -1373,7 +1380,18 @@ describe('Conversation Handlers Integration Tests', () => {
       expect(env.DB.batch).toHaveBeenCalledTimes(3);
       expect(env.DB.batch.mock.calls.map(call => call[0].length)).toEqual([45, 45, 4]);
       expect(Math.max(...env.DB.batch.mock.calls.map(call => call[0].length))).toBeLessThanOrEqual(50);
-      expect(mockDbState.updateCalled).toBe(true);
+      // Read state is per-agent (Migration 0060): marking every message read
+      // upserts one conversation_read_states row for the acting agent instead
+      // of updating the conversation row for everyone.
+      expect(mockDbState.insertCalled).toBe(true);
+      expect(mockDbState.updateCalled).toBe(false);
+      expect(drizzleMock._insertChain.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentId: expect.any(String),
+          conversationId: 'conv-001',
+          markedUnreadAt: null,
+        })
+      );
     });
   });
 

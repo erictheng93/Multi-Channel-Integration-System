@@ -116,40 +116,6 @@ export class NotificationFactory {
     };
   }
 
-  // 優先級變更通知
-  static createPriorityChangedNotification(
-    userId: number,
-    conversationId: number,
-    customerName: string,
-    newPriority: string,
-    changedBy: string,
-    changedByUserId: number,
-    oldPriority?: string
-  ): CreateNotificationRequest {
-    const priorityText = oldPriority
-      ? `從 ${oldPriority} 變更為 ${newPriority}`
-      : `設為 ${newPriority}`;
-
-    return {
-      userId,
-      type: 'priority_changed',
-      title: '對話優先級已變更',
-      content: `${changedBy} 將與 ${customerName} 的對話優先級${priorityText}`,
-      data: {
-        conversationId,
-        customerName,
-        newPriority,
-        oldPriority,
-        changedBy,
-        changedByUserId,
-        actionType: 'priority_change'
-      },
-      priority: newPriority === 'urgent' ? 'high' : 'normal',
-      channels: ['websocket'],
-      expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-    };
-  }
-
   // 客戶回覆通知
   static createCustomerResponseNotification(
     userId: number,

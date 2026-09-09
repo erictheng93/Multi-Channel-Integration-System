@@ -5,6 +5,55 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
 並且本專案遵守 [語義化版本](https://semver.org/lang/zh-TW/)。
 
+## [2026-08-31]
+
+### 新增 (Added)
+
+#### 每位客服獨立的已讀 / 未讀狀態
+- **問題**：`conversations.last_read_at` 與 `marked_unread_at` 是對話列上的單一欄位，
+  沒有 `agent_id` 維度。任何一位客服點開對話，30 位客服的未讀徽章會一起消失；
+  任何一位標示未讀，也會在其他 29 位身上跳出紅點。
+- **解法**：新增 `conversation_read_states` 表，複合主鍵 `(agent_id, conversation_id)`，
+  稀疏儲存（該客服讀過才有列）。
+- **範圍（決策 A-1）**：只有「我看過了」變成個人的；未讀公式中「最後一則客服回覆」
+  維持全域 — 任何人回覆即代表該則客訴已被處理，所有人的未讀一起降。
+  完整理由見 [ADR 0004](docs/adr/0004-per-agent-conversation-read-state.md)。
+- **資料庫遷移**：`migrations/0060_add_conversation_read_states.sql`
+  （回填 3,570 列 = 30 客服 × 119 則帶狀態的對話，確保上線當天行為與原本完全一致）
+- **影響範圍**：
+  - `src/modules/conversations/services/conversation-read-state.ts`（新增，唯一寫入點）
+  - `src/modules/conversations/handlers/conversation-queries.ts`（3 個讀取端）
+  - `src/modules/conversations/handlers/conversation-read.ts`（2 個寫入端）
+  - `src/modules/conversations/handlers/conversation-messages.ts`（1 個寫入端）
+  - `src/db/schema.ts`
+  - **前端無需變更** — API 形狀不變，僅計算範圍改變
+- **已停用但保留**：`conversations.last_read_at` / `marked_unread_at` 不再讀寫，
+  保留以維持一鍵回滾能力；移除與否於 2026-09-14 後評估。
+
+### 變更 (Changed)
+
+- **wrangler 升級**：4.115.0 → 4.127.1
+  （連帶 miniflare 4.x stable → 5.20260828.0-alpha、workerd 1.20260828.1）
+  - `@cloudflare/workers-types` 刻意維持 `^5.20260730.1`：升到 wrangler 要求的
+    peer 範圍會讓 `tsc --noEmit` 出現 5 個錯誤（metrics-middleware.ts、test-logger.ts）
+- **根目錄整理**：
+  - 移除孤兒 migration 目錄 `drizzle/`（11 個與 `migrations/` 完全相同的重複檔案刪除；
+    10 個 repo 中別無他處的 DDL 移至 `database/legacy-migrations/`）
+  - `database/` 中 12 個零引用的 Sep-2025 bootstrap 腳本移至 `database/legacy/`
+  - `sync-reports/` 的執行期產物改為 gitignore
+  - 移除已套用的 `patches/`（git history 才是 diff 的正典）
+
+### 修復 (Fixed)
+
+- **`wrangler.toml` 帳號註解**：原標示 `admin@dacit.net`，實際使用的是
+  `service@dacit.net`（account `c24c7b91...`，持有 `mcis-db`）
+- **文件真實性**：`docs/architecture/SCHEMA.md` 與
+  `docs/architecture/database/MIGRATION_CHANGELOG.md` 加註涵蓋範圍警語
+  （兩者主體停留在 Migration 0027，0028–0059 未記錄），並修正 3 個不存在的指令
+  （`db:migrate:prod`、`db:studio:local`、已被 `time-travel` 取代的 `wrangler d1 backup`）
+
+---
+
 ## [未發布] - 2025-10-20
 
 ### 重大變更 (Breaking Changes)

@@ -6,7 +6,11 @@ export type NotificationType =
   | 'conversation_transferred'
   | 'mention'
   | 'system'
-  | 'priority_changed'
+  // 'priority_changed' removed 2026-08-04. Its trigger
+  // (triggerPriorityChangedNotification) had zero call sites anywhere in the
+  // codebase and production held zero rows of this type, so nothing produced it
+  // and nothing consumed it. This is a breaking change to the `byType` shape of
+  // GET /api/notifications/stats: the key is gone rather than reporting zero.
   | 'customer_responded'
   | 'task_reminder'
   | 'agent_removed_from_team'

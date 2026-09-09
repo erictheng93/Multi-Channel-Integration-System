@@ -21,7 +21,8 @@
 ## 3. 主要功能
 
 - **多渠道遞送**：WebSocket（即時）+ Email + Push 通知（行動裝置）
-- **通知類型**：`new_message` / `conversation_assigned` / `conversation_transferred` / `mention` / `system` / `priority_changed` / `customer_responded` / `task_reminder` 等
+- **通知類型**：`new_message` / `conversation_assigned` / `conversation_transferred` / `mention` / `system` / `customer_responded` / `task_reminder` / `agent_removed_from_team` / `customer_followed` / `new_conversation`
+  - 註：`priority_changed` 已於 2026-08-04 移除——其觸發器沒有任何呼叫點，生產環境也沒有任何一筆該類型的資料
 - **優先級**：low / normal / high — high 在 WebSocket 通道會優先處理
 - **未讀計數**：每種類型獨立計數，紅點 badge 直接綁定
 - **批次操作**：一次建立多筆、一次標記同類全已讀

@@ -4,9 +4,9 @@
 Reduce frontend token exposure by moving refresh credentials into HttpOnly cookies, adding CSRF protection for cookie-authenticated writes, and keeping legacy Bearer-token clients working during the migration.
 
 ## Commands
-- Backend focused tests: `rtk bunx vitest run tests/unit/auth/auth-cookie-csrf.test.ts`
-- Frontend focused tests: `cd frontend && rtk bun run test:run src/api/base.test.ts src/utils/authStorage.test.ts`
-- Project health: `rtk bun run check`
+- Backend focused tests: `bunx vitest run tests/unit/auth/auth-cookie-csrf.test.ts`
+- Frontend focused tests: `cd frontend && bun run test:run src/api/base.test.ts src/utils/authStorage.test.ts`
+- Project health: `bun run check`
 
 ## Project Structure
 - Backend auth routes and cookie issuance: `src/modules/auth/handlers/auth-main.ts`

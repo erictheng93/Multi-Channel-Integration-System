@@ -161,6 +161,7 @@
 ## 文件導引
 
 - **快速上手** → `docs/guides/QUICK_START.md`
+- **系統總覽圖（視覺版）** → `docs/MASTER_USER_FLOW.html` — 本文件的一頁式流程圖對照版，見下方〈與 MASTER_USER_FLOW.html 的同步規則〉
 - **使用者完整指南** → `docs/guides/USER_GUIDE.md`
 - **模組手冊** → `docs/modules/INDEX.md`
 - **系統現況快照** → `docs/CURRENT_STATUS.md`
@@ -172,6 +173,48 @@
 ## 與 README.md 的分工
 
 本文件是功能狀態的**單一事實來源**，逐項標註 ✅/⚠️/❌。`README.md` 不再重複維護一份平行的功能清單或精準對照表——它只放專案簡介、安裝部署、常見問題，功能細節一律連結回這裡。若兩份文件的功能描述出現不一致，以本文件為準，並回報給維護者更新 README 的連結或摘要。
+
+## 與 MASTER_USER_FLOW.html 的同步規則
+
+`docs/MASTER_USER_FLOW.html` 是本文件的**下游衍生視圖**，不是第二個事實來源。它把本文件的 14 模組狀態壓成一張四角色（客戶端 / 客服 / 團隊主管 / Admin）流程圖，並且**刻意把 ⚠️ / ❌ 落差直接畫進圖裡**——一張畫得比實際完整的流程圖，對內會誤導開發、對外會變成過度承諾。
+
+**何時要同步**：本文件任一項的 ✅ / ⚠️ / ❌ 標記變動，且該項已出現在圖上時。純文字補充（新增說明、修錯字）不需要動圖。
+
+**圖上目前硬編了這些落差標記**，改狀態時直接 grep 字串定位：
+
+| 對應章節 | HTML 內的字串 | 位置 |
+|---------|--------------|------|
+| §1 多渠道整合 | `Facebook 送訊路徑尚未接通` | 系統管理 Portal › 渠道與整合設定 |
+| §1 多渠道整合 | `送訊路徑未接通` | 第三方服務 › Facebook Graph API |
+| §5 延遲訊息 | `全域設定 0 / 30 / 60 / 120 / 300 秒` | 客服 Portal › 延遲訊息與撤回 |
+| §12 自動回覆 | `目前僅 LINE 生效` | 客戶端 › 自動回覆流程 |
+| §13 報表分析 | `報表實際可產出 3 種類型` | 團隊主管 Portal › 品質與分析 |
+| §1 / §5 / §6 / §13 | 頁尾「備註 — 現況與已知落差」六條 | `<section class="notes">` 第三張卡 |
+
+**同步時一併做的兩件事**：
+
+1. 更新頁首版本框（`class="vbox"`）的版本號與日期，以及頁尾 `class="foot"` 的同一組數字——兩處要一致。
+2. 若動到的是**流程結構**（新增模組、角色權限改動、新渠道上線）而不只是狀態標記，改完用瀏覽器在 1680px / 900px / 390px 三個寬度各看一次；版面是 flex/grid 重排，新增節點可能撐破所在的流程列。檔案零外部相依，直接 `open docs/MASTER_USER_FLOW.html` 即可。
+
+**若需要對外版本**（提案、客戶簡報）：另存一份拿掉 ⚠️ 標記的副本，不要就地改這份——這份的用途就是給內部看真實狀態。
+
+### 線上可分享版本
+
+同一份圖另有一個 Artifact 連結（預設私有，需在頁面上自行分享）：
+<https://claude.ai/code/artifact/03d45594-dcc7-4dbc-9a9f-c5859b279110>
+
+它**不是**另一份要手工維護的檔案，而是從 `docs/MASTER_USER_FLOW.html` 去掉外層 `<!doctype>` / `<html>` / `<head>` / `<body>` 後發佈的同一份內容（Artifact 執行環境會自己補外殼）。改完 HTML 要更新線上版時，重新產生 body-only 變體再以**同一個 URL** 發佈即可，網址不會變：
+
+```bash
+# 產生 body-only 變體（保留 <title> 與 <style>，去掉文件外殼）
+BODY=$(grep -n '^<body>' docs/MASTER_USER_FLOW.html | cut -d: -f1)
+END=$(grep -n '^</body>' docs/MASTER_USER_FLOW.html | cut -d: -f1)
+STYLE_END=$(grep -n '^</style>' docs/MASTER_USER_FLOW.html | cut -d: -f1)
+{ sed -n "6,${STYLE_END}p" docs/MASTER_USER_FLOW.html;
+  sed -n "$((BODY+1)),$((END-1))p" docs/MASTER_USER_FLOW.html; } > /tmp/master-user-flow.html
+```
+
+配色在 Artifact 內是三態的（明確亮色 / 明確暗色 / 跟隨系統），所有顏色都走 `:root` 的 token，暗色區塊只覆寫 token、不直接宣告元件顏色。新增顏色時請沿用這個規則，否則在「跟隨系統」狀態會出現一個主題的文字疊在另一個主題的底色上。
 
 ## 已知問題（非文件問題，追蹤中）
 

@@ -110,12 +110,22 @@ function createMockD1() {
   };
 }
 
+// The conversations table deliberately has NO last_read_at column here: read
+// state moved to conversation_read_states in Migration 0060, so if the query
+// ever reaches for the retired global column again this fixture fails loudly
+// instead of silently returning everyone the same counts.
 function createSqliteDb() {
   const db = new Database(':memory:');
   db.exec(`
     CREATE TABLE conversations (
-      id TEXT PRIMARY KEY,
-      last_read_at TEXT
+      id TEXT PRIMARY KEY
+    );
+    CREATE TABLE conversation_read_states (
+      agent_id TEXT NOT NULL,
+      conversation_id TEXT NOT NULL,
+      last_read_at TEXT,
+      marked_unread_at TEXT,
+      PRIMARY KEY (agent_id, conversation_id)
     );
     CREATE TABLE messages (
       id TEXT PRIMARY KEY,
@@ -128,8 +138,21 @@ function createSqliteDb() {
   return db;
 }
 
-function insertConversation(db: Database.Database, id: string, lastReadAt: string | null = null) {
-  db.prepare('INSERT INTO conversations (id, last_read_at) VALUES (?, ?)').run(id, lastReadAt);
+function insertConversation(db: Database.Database, id: string) {
+  db.prepare('INSERT INTO conversations (id) VALUES (?)').run(id);
+}
+
+function insertReadState(
+  db: Database.Database,
+  agentId: string,
+  conversationId: string,
+  lastReadAt: string | null = null,
+  markedUnreadAt: string | null = null
+) {
+  db.prepare(`
+    INSERT INTO conversation_read_states (agent_id, conversation_id, last_read_at, marked_unread_at)
+    VALUES (?, ?, ?, ?)
+  `).run(agentId, conversationId, lastReadAt, markedUnreadAt);
 }
 
 function insertMessage(
@@ -146,9 +169,14 @@ function insertMessage(
   `).run(id, conversationId, senderType, createdAt, deletedAt);
 }
 
-function unreadRows(db: Database.Database, ids: string[]) {
+// Binding order mirrors production: every conversation id, then the agent id.
+function unreadRows(db: Database.Database, ids: string[], agentId = 'agent-1') {
   const query = createConversationUnreadCountQuery(ids);
-  return db.prepare(query).all(...ids) as Array<{ conversationId: string; unreadCount: number }>;
+  return db.prepare(query).all(...ids, agentId) as Array<{
+    conversationId: string;
+    unreadCount: number;
+    manuallyUnread: number;
+  }>;
 }
 
 describe('conversation unread count SQL', () => {
@@ -163,11 +191,13 @@ describe('conversation unread count SQL', () => {
     insertMessage(db, 'm3', 'no-last-read', 'agent', '2026-07-21T10:00:00Z');
     insertMessage(db, 'm4', 'no-last-read', 'customer', '2026-07-21T11:00:00Z');
 
-    insertConversation(db, 'agent-later', '2026-07-21T09:00:00Z');
+    insertConversation(db, 'agent-later');
+    insertReadState(db, 'agent-1', 'agent-later', '2026-07-21T09:00:00Z');
     insertMessage(db, 'm5', 'agent-later', 'agent', '2026-07-21T10:00:00Z');
     insertMessage(db, 'm6', 'agent-later', 'customer', '2026-07-21T10:30:00Z');
 
-    insertConversation(db, 'read-later', '2026-07-21T11:00:00Z');
+    insertConversation(db, 'read-later');
+    insertReadState(db, 'agent-1', 'read-later', '2026-07-21T11:00:00Z');
     insertMessage(db, 'm7', 'read-later', 'agent', '2026-07-21T10:00:00Z');
     insertMessage(db, 'm8', 'read-later', 'customer', '2026-07-21T10:30:00Z');
     insertMessage(db, 'm9', 'read-later', 'customer', '2026-07-21T11:30:00Z');
@@ -210,7 +240,66 @@ describe('conversation unread count SQL', () => {
     expect(counts.get('deleted-customer')).toBe(1);
     expect(counts.get('system-threshold')).toBe(1);
     expect(counts.get('same-timestamp')).toBe(1);
-    expect(rows.some(row => row.conversationId.startsWith('filler-'))).toBe(false);
+    // Every conversation in the chunk comes back now — manuallyUnread has to
+    // reach the caller even when the derived count is 0 — so fillers are
+    // present but must all count zero.
+    const fillerRows = rows.filter(row => row.conversationId.startsWith('filler-'));
+    expect(fillerRows).toHaveLength(91);
+    expect(fillerRows.every(row => Number(row.unreadCount) === 0)).toBe(true);
+  });
+
+  // The whole point of Migration 0060: two agents looking at the same
+  // conversation must get their own answer.
+  it('gives each agent an independent unread count for the same conversation', () => {
+    const db = createSqliteDb();
+
+    insertConversation(db, 'shared');
+    insertMessage(db, 'c1', 'shared', 'customer', '2026-07-21T10:00:00Z');
+    insertMessage(db, 'c2', 'shared', 'customer', '2026-07-21T11:00:00Z');
+
+    // agent-1 has read up to 10:30, agent-2 has never opened it.
+    insertReadState(db, 'agent-1', 'shared', '2026-07-21T10:30:00Z');
+
+    const forAgent1 = unreadRows(db, ['shared'], 'agent-1');
+    const forAgent2 = unreadRows(db, ['shared'], 'agent-2');
+
+    expect(Number(forAgent1[0]?.unreadCount)).toBe(1);
+    expect(Number(forAgent2[0]?.unreadCount)).toBe(2);
+  });
+
+  // Decision A-1: the last-agent-reply half of the threshold stays global, so
+  // one agent answering the customer clears the badge for everyone. Only the
+  // "have I personally seen it" half is per-agent.
+  it('lets any agent reply clear the derived count for every agent', () => {
+    const db = createSqliteDb();
+
+    insertConversation(db, 'answered');
+    insertMessage(db, 'c3', 'answered', 'customer', '2026-07-21T10:00:00Z');
+    insertMessage(db, 'a1', 'answered', 'agent', '2026-07-21T10:05:00Z');
+
+    // Neither agent has a read-state row at all.
+    expect(Number(unreadRows(db, ['answered'], 'agent-1')[0]?.unreadCount)).toBe(0);
+    expect(Number(unreadRows(db, ['answered'], 'agent-2')[0]?.unreadCount)).toBe(0);
+  });
+
+  // The manual override is per-agent too: one agent flagging a conversation
+  // unread must not raise a badge on anyone else.
+  it('reports the manual unread override only for the agent that set it', () => {
+    const db = createSqliteDb();
+
+    insertConversation(db, 'flagged');
+    insertMessage(db, 'c4', 'flagged', 'customer', '2026-07-21T10:00:00Z');
+    insertMessage(db, 'a2', 'flagged', 'agent', '2026-07-21T10:05:00Z');
+
+    insertReadState(db, 'agent-1', 'flagged', null, '2026-07-21T12:00:00Z');
+
+    const forAgent1 = unreadRows(db, ['flagged'], 'agent-1');
+    const forAgent2 = unreadRows(db, ['flagged'], 'agent-2');
+
+    expect(Number(forAgent1[0]?.manuallyUnread)).toBe(1);
+    expect(Number(forAgent2[0]?.manuallyUnread)).toBe(0);
+    // Derived count is 0 for both — the floor to 1 is applied by the handler.
+    expect(Number(forAgent1[0]?.unreadCount)).toBe(0);
   });
 });
 
@@ -244,6 +333,7 @@ describe('conversation list pagination', () => {
     const unreadCall = d1.calls.find(call => call.query.includes('WITH ids(id) AS'));
 
     expect(latestMessageCall?.params).toHaveLength(50);
-    expect(unreadCall?.params).toHaveLength(50);
+    // 50 conversation ids + the agent id that scopes conversation_read_states
+    expect(unreadCall?.params).toHaveLength(51);
   });
 });

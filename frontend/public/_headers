@@ -1,0 +1,43 @@
+# Cloudflare Pages response headers.
+#
+# THIS FILE LIVES IN public/ ON PURPOSE.
+#   Vite copies everything in publicDir into dist on every build path, so these
+#   headers ship no matter which script builds. They previously sat in
+#   frontend/ and relied on `copy-pages-config` running, which `deploy:pages`
+#   never did - so from the first deploy until 2026-08-03 the production site
+#   shipped with NO Content-Security-Policy, NO X-Frame-Options and NO
+#   Permissions-Policy. Do not move this back out of public/.
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+  # REPORT-ONLY, deliberately. Do not switch to the enforcing
+  # `Content-Security-Policy` header until the two known violations below are
+  # resolved, because both were MEASURED to break working features:
+  #
+  #   1. Google Tag Manager stops entirely.
+  #      Cloudflare injects two inline bootstrap scripts at the edge (container
+  #      GTM-PFBVL9QN, configured in the Cloudflare dashboard, NOT in this
+  #      repo). script-src has no 'unsafe-inline', so they are blocked and
+  #      window.dataLayer is never created. Measured: dataLayer 4 entries
+  #      without the policy, undefined with it; the first-party GTM proxy at
+  #      /0vqz/ never loads. Fix = drop GTM, or allow those two inline scripts.
+  #
+  #   2. HTML report preview stops rendering.
+  #      frame-src 'none' blocks the <iframe :src="report.downloadUrl"> in
+  #      src/components/reports/ReportViewerContent.vue. `html` is one of five
+  #      supported ReportFormat values and downloadUrl is same-origin
+  #      (/api/reports/:id/download), so frame-src 'self' is the fix.
+  #
+  # Verified NOT to break anything: the app renders byte-identically with the
+  # policy applied, every asset loads, there are zero connect-src violations,
+  # and the Cloudflare Insights beacon still works.
+  #
+  # NOTE: there is no report-uri/report-to, so violations surface only in each
+  # browser's DevTools console - nothing is collected centrally. Browse the
+  # authenticated app with the console open to gather the paths that could not
+  # be tested from a logged-out session (WebSocket, R2 attachments, LIFF).
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com https://static.line-scdn.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.workers.dev https://*.pages.dev https://cloudflareinsights.com https://api.line.me https://access.line.me https://liffsdk.line-scdn.net https://*.line-scdn.net wss://*.workers.dev https://mcis-backend.daiwandist.com wss://mcis-backend.daiwandist.com https://s3.daiwandist.com https://*.daiwandist.com wss://*.daiwandist.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';

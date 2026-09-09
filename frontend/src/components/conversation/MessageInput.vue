@@ -19,6 +19,7 @@
           @keydown="handleKeydown"
           @input="handleInput"
           @paste="handlePaste"
+          @compositionend="ime.onCompositionEnd"
         />
 
         <div class="input-actions">
@@ -179,6 +180,7 @@ const props = defineProps<Props>()
   import { useFileUploadProgress } from '@/composables/message-input/useFileUploadProgress'
   import { useMessageSending } from '@/composables/message-input/useMessageSending'
   import { extractClipboardImages } from '@/composables/useClipboardPaste'
+  import { useImeGuard } from '@/composables/useImeGuard'
 
   // Types (re-export for backward compat with tests that access internal types)
   import type { MessageInputAttachment, FileAttachmentEmitData } from '@/types/message-input'
@@ -238,6 +240,9 @@ const props = defineProps<Props>()
     autoResize()
   }
 
+  // IME (注音/拼音/日文) 組字守門 — 見 useImeGuard
+  const ime = useImeGuard()
+
   const autoResize = () => {
     if (textareaRef.value) {
       textareaRef.value.style.height = 'auto'
@@ -246,6 +251,11 @@ const props = defineProps<Props>()
   }
 
   const handleKeydown = (event: KeyboardEvent) => {
+    // 組字中的按鍵屬於輸入法，不是給這個元件的快捷鍵
+    if (ime.isImeKey(event)) {
+      return
+    }
+
     // Esc — close emoji / clear reply / clear text
     if (event.key === 'Escape') {
       event.preventDefault()

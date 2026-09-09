@@ -58,7 +58,7 @@ export function useNotificationActions(
     // Navigate based on type
     const { type, data } = notification
 
-    if (['new_message', 'customer_responded', 'conversation_assigned', 'conversation_transferred', 'priority_changed', 'mention', 'task_reminder'].includes(type)) {
+    if (['new_message', 'customer_responded', 'conversation_assigned', 'conversation_transferred', 'mention', 'task_reminder'].includes(type)) {
       if (data?.conversationId) {
         router.push(`/conversations/${data.conversationId}`)
       }

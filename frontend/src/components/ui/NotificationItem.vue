@@ -102,7 +102,6 @@ const iconMap: Record<NotificationType, typeof MessageIcon> = {
   conversation_transferred: ArrowRightIcon,
   mention: AtSignIcon,
   system: BellIcon,
-  priority_changed: AlertIcon,
   customer_responded: MessageIcon,
   task_reminder: ClockIcon,
   'agent_removed_from_team': AlertIcon,  //  使用 AlertIcon 表示團隊變更警告
@@ -217,11 +216,6 @@ const formattedTime = computed(() => {
 .notification-icon-system {
   background: var(--gray-100);
   color: var(--gray-600);
-}
-
-.notification-icon-priority_changed {
-  background: var(--yellow-100);
-  color: var(--yellow-600);
 }
 
 .notification-icon-task_reminder {

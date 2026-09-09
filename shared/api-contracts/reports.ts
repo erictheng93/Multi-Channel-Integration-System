@@ -261,8 +261,32 @@ export interface ScheduledReportListResponse extends ApiResponse<ScheduledReport
   count?: number
 }
 
+/**
+ * Serialise a report list query, dropping absent values.
+ *
+ * `new URLSearchParams({ type: undefined })` stringifies the value, producing
+ * the literal `type=undefined`. That is not a missing parameter as far as the
+ * backend is concerned - it is the six-character string "undefined", which fails
+ * validation:
+ *
+ *   GET /api/reports?...&type=undefined&status=undefined&format=undefined
+ *   400 Bad Request
+ *
+ * Observed live during post-deploy QA. Sibling contracts (system.ts,
+ * notifications.ts) guard each field with an explicit `if`; this one passed the
+ * whole object straight through.
+ */
 export function buildReportQuery(query: ReportListQuery = {}): string {
-  return new URLSearchParams(query as Record<string, string>).toString()
+  const params = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null || value === '') {
+      continue
+    }
+    params.append(key, String(value))
+  }
+
+  return params.toString()
 }
 
 export const reportContracts = {

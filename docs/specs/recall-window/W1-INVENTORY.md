@@ -38,7 +38,7 @@ Production traffic evidence is not complete.
 Wrangler account check:
 
 ```text
-$ rtk bunx wrangler whoami
+$ bunx wrangler whoami
 Account Name: Minimaro93@gmail.com's Account
 Account ID: bdddc08c066a9abc285d75fe5947a468
 Token includes: workers_tail (read), d1 (write), account (read), workers (write)
@@ -54,7 +54,7 @@ wrangler.toml:3:name = "mcis-worker"
 Worker lookup from the current account failed:
 
 ```text
-$ rtk bunx wrangler deployments list
+$ bunx wrangler deployments list
 ERROR: A request to the Cloudflare API
 (/accounts/bdddc08c066a9abc285d75fe5947a468/workers/scripts/mcis-worker/deployments)
 failed.
@@ -211,21 +211,21 @@ wrangler.toml:58:database_id = "f58a1c9f-a739-4873-944e-39038e1008c2"
 Remote query attempts:
 
 ```text
-$ rtk bunx wrangler d1 execute mcis-db --remote --command="SELECT status, COUNT(*) AS count FROM delayed_messages GROUP BY status ORDER BY status;"
+$ bunx wrangler d1 execute mcis-db --remote --command="SELECT status, COUNT(*) AS count FROM delayed_messages GROUP BY status ORDER BY status;"
 ERROR: A request to the Cloudflare API
 (/accounts/bdddc08c066a9abc285d75fe5947a468/d1/database/f58a1c9f-a739-4873-944e-39038e1008c2/query)
 failed.
 
 The database f58a1c9f-a739-4873-944e-39038e1008c2 could not be found [code: 7404]
 
-$ rtk bunx wrangler d1 execute mcis-db --remote --command="SELECT id, conversation_id, status, scheduled_at, created_at, sender_id FROM delayed_messages WHERE status='pending' ORDER BY scheduled_at ASC LIMIT 50;"
+$ bunx wrangler d1 execute mcis-db --remote --command="SELECT id, conversation_id, status, scheduled_at, created_at, sender_id FROM delayed_messages WHERE status='pending' ORDER BY scheduled_at ASC LIMIT 50;"
 ERROR: The database f58a1c9f-a739-4873-944e-39038e1008c2 could not be found [code: 7404]
 ```
 
 Current-account D1 list confirms `mcis-db` is not visible:
 
 ```text
-$ rtk bunx wrangler d1 list
+$ bunx wrangler d1 list
 Visible databases: lottery-db, makanmasak-management-prod, makanmasak-prod,
 makanmasak-management-staging, makanmasak-staging
 ```
@@ -233,7 +233,7 @@ makanmasak-management-staging, makanmasak-staging
 Local D1 is not a usable substitute for production pending-row evidence:
 
 ```text
-$ rtk bunx wrangler d1 execute mcis-db --local --command="SELECT status, COUNT(*) AS count FROM delayed_messages GROUP BY status ORDER BY status;"
+$ bunx wrangler d1 execute mcis-db --local --command="SELECT status, COUNT(*) AS count FROM delayed_messages GROUP BY status ORDER BY status;"
 ERROR: no such table: delayed_messages: SQLITE_ERROR
 ```
 
