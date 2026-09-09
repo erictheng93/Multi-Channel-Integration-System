@@ -308,19 +308,16 @@
   .alert-danger {
     background-color: var(--error-50);
     color: var(--error-600);
-    border: 1px solid var(--error-200);
   }
 
   .alert-success {
     background-color: var(--success-50);
     color: var(--success-600);
-    border: 1px solid var(--success-200);
   }
 
   .alert-warning {
     background-color: var(--warning-50);
     color: var(--warning-600);
-    border: 1px solid var(--warning-200);
   }
 
   /* ?踵?撘極?琿? */
