@@ -181,41 +181,6 @@ reportsHandler.get(
 );
 
 /**
- * 獲取單個報告詳情
- * GET /api/reports/:id
- */
-reportsHandler.get(
-  '/:id',
-  validateReportId,
-  checkReportsAccess,
-  checkReportsViewPermission,
-  async (c) => {
-    try {
-      const reportId = c.get('reportId');
-      const reportsService = new ReportsService(c.env);
-
-      const report = await reportsService.getReportDetails(String(reportId));
-
-      if (!report) {
-        return contractJson(c, reportContracts.details, {
-          success: false,
-          error: 'Report not found',
-          timestamp: nowISO()
-        }, HTTP_STATUS.NOT_FOUND);
-      }
-
-      return contractJson(c, reportContracts.details, {
-        success: true,
-        data: report,
-        timestamp: nowISO()
-      });
-    } catch (error) {
-      return globalErrorHandler.handleError(c, error);
-    }
-  }
-);
-
-/**
  * 下載報告
  * GET /api/reports/:id/download
  */
@@ -491,6 +456,48 @@ reportsHandler.get(
         success: true,
         data: scheduledReports,
         count: scheduledReports.length,
+        timestamp: nowISO()
+      });
+    } catch (error) {
+      return globalErrorHandler.handleError(c, error);
+    }
+  }
+);
+
+/**
+ * 獲取單個報告詳情
+ * GET /api/reports/:id
+ *
+ * MUST stay below every single-segment literal GET route in this file
+ * (`/stats`, `/scheduled`). In Hono, registration order is matching priority, so
+ * when this sat above them `GET /api/reports/stats` matched here with
+ * id="stats" and `validateReportId` answered 400 "Invalid report ID format" -
+ * both endpoints were dead in production. `bun run check:routes` now fails on
+ * this shape; do not move this back up.
+ */
+reportsHandler.get(
+  '/:id',
+  validateReportId,
+  checkReportsAccess,
+  checkReportsViewPermission,
+  async (c) => {
+    try {
+      const reportId = c.get('reportId');
+      const reportsService = new ReportsService(c.env);
+
+      const report = await reportsService.getReportDetails(String(reportId));
+
+      if (!report) {
+        return contractJson(c, reportContracts.details, {
+          success: false,
+          error: 'Report not found',
+          timestamp: nowISO()
+        }, HTTP_STATUS.NOT_FOUND);
+      }
+
+      return contractJson(c, reportContracts.details, {
+        success: true,
+        data: report,
         timestamp: nowISO()
       });
     } catch (error) {

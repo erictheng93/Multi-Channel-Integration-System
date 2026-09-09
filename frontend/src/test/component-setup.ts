@@ -97,7 +97,10 @@ beforeEach(() => {
       ctrlKey: boolean = false
       altKey: boolean = false
       metaKey: boolean = false
-      
+      // IME composition state — required to test CJK input guards
+      isComposing: boolean = false
+      keyCode: number = 0
+
       constructor(type: string, options: globalThis.KeyboardEventInit = {}) {
         super(type, options)
         this.key = options.key ?? ''
@@ -106,6 +109,8 @@ beforeEach(() => {
         this.ctrlKey = options.ctrlKey ?? false
         this.altKey = options.altKey ?? false
         this.metaKey = options.metaKey ?? false
+        this.isComposing = (options as globalThis.KeyboardEventInit & { isComposing?: boolean }).isComposing ?? false
+        this.keyCode = (options as globalThis.KeyboardEventInit & { keyCode?: number }).keyCode ?? 0
       }
       
       static readonly DOM_KEY_LOCATION_STANDARD = 0

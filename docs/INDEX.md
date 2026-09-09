@@ -192,6 +192,15 @@ docs/
 
 - **入口**: [`modules/INDEX.md`](modules/INDEX.md)
 
+## Architecture Decision Records (`adr/`)
+
+不可逆或有取捨的架構決策紀錄，含當時的脈絡、被否決的替代方案與後續追蹤項。
+
+- [`adr/0001-per-rule-push-fallback.md`](adr/0001-per-rule-push-fallback.md) — 自動回覆的 Push API 逐規則選用性 fallback
+- [`adr/0002-message-lifecycle-consistency.md`](adr/0002-message-lifecycle-consistency.md) — 訊息生命週期一致性
+- [`adr/0003-recall-window-delivery-architecture.md`](adr/0003-recall-window-delivery-architecture.md) — 撤回時間窗與投遞架構
+- [`adr/0004-per-agent-conversation-read-state.md`](adr/0004-per-agent-conversation-read-state.md) — 每位客服獨立的已讀 / 未讀狀態（決策 A-1）
+
 ## Project Overview
 
 - [`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md) — 14 大功能模組對外完整描述（取代舊版 8 模組描述）

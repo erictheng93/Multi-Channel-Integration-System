@@ -1,8 +1,16 @@
 # Database Migration Changelog
 
-> **Last Updated:** 2025-01-29
-> **Current Version:** 0027
+> **Last Updated:** 2026-08-31
+> **Current Version:** 0060
 > **Status:** Production-Ready
+
+> **Coverage warning.** This file has detailed entries for 0024-0027 and 0060 only.
+> Migrations **0028-0059 were never written up here**. Do not treat this file as a
+> complete history. The authoritative record is `migrations/` plus
+> `migrations/meta/_journal.json`; run `bun run check:migrations` to compare what
+> the applied migrations declare against what production actually contains.
+> Historical DDL rescued from two orphan drizzle-kit directories lives in
+> `database/legacy-migrations/`.
 
 ---
 
@@ -10,6 +18,8 @@
 
 | Version | Date | Description | Breaking |
 |---------|------|-------------|----------|
+| 0060 | 2026-08-31 | Per-agent conversation read state (`conversation_read_states`) | No |
+| 0028-0059 | 2025-12 – 2026-08 | Not documented here — see `migrations/` | — |
 | 0027 | 2025-01-29 | Schema optimizations (indexes, soft delete, encryption docs) | No |
 | 0026 | 2025-01-29 | Refactor channel_integrations to JSON configuration | No |
 | 0025 | 2025-01-29 | Fix file_attachments column naming (snake_case) | No |
@@ -20,6 +30,51 @@
 ---
 
 ## Detailed Changelog
+
+### Migration 0060 - Per-Agent Conversation Read State (2026-08-31)
+
+**Why:** `conversations.last_read_at` (0047) and `conversations.marked_unread_at`
+(0054) carry no `agent_id`, so read/unread was a single shared cell — one agent
+opening a conversation cleared the unread badge for all 30 agents.
+
+**Added:**
+
+```sql
+CREATE TABLE conversation_read_states (
+  agent_id         TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  conversation_id  TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  last_read_at     TEXT,
+  marked_unread_at TEXT,
+  updated_at       TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (agent_id, conversation_id)
+);
+CREATE INDEX idx_conversation_read_states_conversation
+  ON conversation_read_states(conversation_id);
+```
+
+The composite primary key is the index the per-agent join uses; the second index
+covers the reverse direction (all agents' state for one conversation).
+
+**Backfill:** seeds every active agent from the current global values, so day-one
+behaviour is identical to the old behaviour. Applied to production as 3 570 rows
+(30 agents x the 119 conversations that carried state). Storage stays sparse
+afterwards — one row per (agent, conversation) only once that agent reads it.
+
+**Scope:** only `last_read_at` / `marked_unread_at` become per-agent. The
+`last_agent_reply` half of the unread formula stays global (decision A-1). Full
+rationale, alternatives and the live verification are in
+[ADR 0004](../../adr/0004-per-agent-conversation-read-state.md).
+
+**Breaking:** No. Additive table only; the previously deployed Worker ignores it.
+Apply this migration **before** deploying the code that reads it.
+
+**Deprecated but NOT dropped:** `conversations.last_read_at` and
+`conversations.marked_unread_at` are no longer read or written. They are kept so
+that `wrangler rollback` remains a single command during the observation window.
+Drop decision deferred to on/after 2026-09-14 — see the Follow-ups section of
+ADR 0004 for the required prerequisites.
+
+---
 
 ### Migration 0027 - Schema Optimizations (2025-01-29)
 
@@ -172,41 +227,70 @@ DROP INDEX idx_agents_role_active;
 # Apply all pending migrations
 bun run db:migrate
 
-# View database in Drizzle Studio
-bun run db:studio:local
+# View database in Drizzle Studio (remote DB — there is no local-only variant)
+bun run db:studio
 ```
 
 ### Production
 ```bash
-# Apply migrations to production
-bun run db:migrate:prod
+# Apply migrations to production (guarded — see below)
+MCIS_CONFIRM_PRODUCTION=allow:d1:migrate bun run db:migrate
 
-# Verify migration success
+# Verify the applied migrations match what production actually contains
+bun run check:migrations
+
+# Verify system health
 bun run health:check:all
 ```
+
+`bun run db:migrate` is wrapped by `scripts/guard-production-command.ts` and
+refuses to run without `MCIS_CONFIRM_PRODUCTION=allow:d1:migrate`. This is
+deliberate — the only D1 is production.
 
 ---
 
 ## Migration Best Practices
 
-1. **Always backup before migration**
+1. **Always back up before migration**
    ```bash
-   wrangler d1 backup create DB_NAME
+   # `wrangler d1 backup` no longer exists — D1 uses Time Travel
+   node node_modules/wrangler/bin/wrangler.js d1 export mcis-db --remote --output backup.sql
+   ```
+   Point-in-time restore is `wrangler d1 time-travel`. A nightly full export also
+   runs in `.github/workflows/backup.yml`.
+
+2. **Test on the local D1 mirror first**
+   ```bash
+   bun run db:sync:local                                    # pull remote data down
+   node node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --local
+   bun run test:backend:ci
    ```
 
-2. **Test locally first**
-   ```bash
-   bun run db:migrate
-   bun run test:handlers
-   ```
+3. **Apply the migration BEFORE deploying code that depends on it**
+   An additive migration is invisible to the running Worker; deploying first
+   means the new code queries a table that does not exist yet.
 
-3. **Monitor after deployment**
+4. **Regenerate the schema doc in the same commit as the migration**
    ```bash
-   bun run monitor:deployment
+   bun run db:doc:schema        # rebuild docs/architecture/SCHEMA.md from production
+   bun run db:doc:schema:check  # exits 1 if the committed doc is stale
    ```
+   SCHEMA.md is generated, never hand-written. The `schema-doc` CI job runs the
+   check on every push to main, so skipping this turns the build red.
 
-4. **Keep rollback scripts ready**
-   - Each migration file includes rollback SQL in comments
+5. **Verify after applying**
+   ```bash
+   bun run check:migrations   # 0 phantom-applied, 0 pending objects
+   ```
+   The `d1_migrations` journal has been observed to mark a migration applied when
+   the DDL never landed (2026-06-30). Trust `check:migrations`, not the journal.
+
+6. **Prefer a deprecate-then-drop window over an immediate destructive change**
+   Leaving a superseded column in place keeps rollback to one command. See
+   Migration 0060 for a worked example.
+
+> **Windows:** run wrangler as `node node_modules/wrangler/bin/wrangler.js`. The
+> `.cmd` shim strips the quotes around `--command`, silently truncating SQL.
 
 ---
 
@@ -220,4 +304,4 @@ bun run health:check:all
 ---
 
 **Maintained by:** Development Team
-**Last Updated:** 2025-01-29
+**Last Updated:** 2026-08-31

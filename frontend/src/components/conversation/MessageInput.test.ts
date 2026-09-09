@@ -167,6 +167,51 @@ describe('MessageInput Component', () => {
       expect(emittedEvents).toBeFalsy()
     })
 
+    // IME (注音/拼音/日文) 組字中的 Enter 是「確認選字」，不是「送出訊息」
+    it('should not send message on Enter while the IME is composing', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      await textarea.setValue('今天的訂單')
+      await textarea.trigger('keydown', { key: 'Enter', isComposing: true })
+
+      expect(wrapper.emitted('message-pending')).toBeFalsy()
+    })
+
+    it('should not send message on Enter with legacy IME keyCode 229', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      await textarea.setValue('今天的訂單')
+      await textarea.trigger('keydown', { key: 'Enter', keyCode: 229 })
+
+      expect(wrapper.emitted('message-pending')).toBeFalsy()
+    })
+
+    // Safari 先送 compositionend、再送 isComposing=false 的 Enter keydown
+    it('should not send message on Enter right after compositionend (Safari)', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      await textarea.setValue('今天的訂單')
+      await textarea.trigger('compositionend')
+      await textarea.trigger('keydown', { key: 'Enter' })
+
+      expect(wrapper.emitted('message-pending')).toBeFalsy()
+    })
+
+    it('should send message on Enter once the composition grace window has passed', async () => {
+      const wrapper = createWrapper()
+      const textarea = wrapper.find('.message-textarea')
+
+      await textarea.setValue('今天的訂單')
+      await textarea.trigger('compositionend')
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      await textarea.trigger('keydown', { key: 'Enter' })
+
+      expect(wrapper.emitted('message-pending')).toBeTruthy()
+    })
+
     it('should auto-resize textarea based on content', async () => {
       const wrapper = createWrapper()
       const textarea = wrapper.find('.message-textarea')

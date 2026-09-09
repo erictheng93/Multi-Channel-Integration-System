@@ -14,18 +14,41 @@ function parseCsp(csp: string): Record<string, string[]> {
   }, {})
 }
 
+/**
+ * The CSP from the static `_headers` file.
+ *
+ * Two things about this moved on 2026-08-03 and both are deliberate:
+ *
+ *   - the file lives in public/ now, so Vite copies it to dist on every build.
+ *     It used to sit at the frontend root and depend on `copy-pages-config`,
+ *     which `deploy:pages` never ran - so the headers had never actually
+ *     shipped to production.
+ *
+ *   - the header is Content-Security-Policy-REPORT-ONLY. Enforcing it was
+ *     measured to break Google Tag Manager (two Cloudflare-injected inline
+ *     bootstrap scripts) and the HTML report preview (frame-src 'none' vs the
+ *     iframe in ReportViewerContent.vue).
+ *
+ * Both names are accepted so this test keeps working when the policy is
+ * eventually switched to enforcing.
+ */
 function readStaticHeadersCsp(): string {
-  const headers = readFileSync(join(process.cwd(), '_headers'), 'utf8')
-  const cspLine = headers
-    .split('\n')
-    .map(line => line.trim())
-    .find(line => line.startsWith('Content-Security-Policy:'))
+  const path = join(process.cwd(), 'public', '_headers')
+  const headers = readFileSync(path, 'utf8')
 
-  if (!cspLine) {
-    throw new Error('Content-Security-Policy header not found in frontend/_headers')
+  const prefixes = ['Content-Security-Policy-Report-Only:', 'Content-Security-Policy:']
+  for (const prefix of prefixes) {
+    const line = headers
+      .split('\n')
+      .map(entry => entry.trim())
+      .find(entry => entry.startsWith(prefix))
+
+    if (line) {
+      return line.slice(prefix.length).trim()
+    }
   }
 
-  return cspLine.replace('Content-Security-Policy:', '').trim()
+  throw new Error(`No CSP header (enforcing or report-only) found in ${path}`)
 }
 
 function expectLiffSources(csp: string): void {

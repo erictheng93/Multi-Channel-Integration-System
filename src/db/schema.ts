@@ -105,12 +105,32 @@ export const conversations = sqliteTable('conversations', {
   firstResponseAt: text('first_response_at'),
   closedAt: text('closed_at'),
   lastMessageAt: text('last_message_at'),
+  // DEPRECATED (Migration 0060): read state is now per-agent in
+  // conversation_read_states. These two columns are no longer read by the
+  // unread queries and are kept only as a revert path.
   lastReadAt: text('last_read_at'), // When an agent last viewed this conversation (Migration 0047)
   markedUnreadAt: text('marked_unread_at'), // Manual unread override: floors unread count at 1 until next read (Migration 0054)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
 });
+
+// Conversation read states - 每位客服各自的已讀/未讀狀態 (Migration 0060)
+// One row per (agent, conversation) pair, created lazily the first time that
+// agent reads or manually flags the conversation. Replaces the global
+// conversations.last_read_at / .marked_unread_at columns so that one agent
+// reading a conversation no longer clears every other agent's unread badge.
+// The last-agent-reply half of the unread formula stays global by design.
+export const conversationReadStates = sqliteTable('conversation_read_states', {
+  agentId: text('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
+  conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
+  lastReadAt: text('last_read_at'),
+  markedUnreadAt: text('marked_unread_at'),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.agentId, table.conversationId] }),
+  conversationIdx: index('idx_conversation_read_states_conversation').on(table.conversationId),
+}));
 
 // Messages table - 訊息
 // NOTE: replyToMessageId is a self-reference to messages.id
@@ -222,10 +242,21 @@ export const notifications = sqliteTable('notifications', {
   title: text('title').notNull(),
   content: text('content').notNull(),
   data: text('data'),
+  // 'low' | 'normal' | 'high' | 'urgent'. Added by migration 0058.
+  //
+  // The write path had been passing this since long before the column existed:
+  // notification-repository.ts sends `priority` on every insert, and Drizzle
+  // maps values by SCHEMA column, so anything not declared here is silently
+  // discarded. 99.5% of production notifications are created as 'high' and were
+  // all stored with no priority at all, while the WebSocket broadcast carried
+  // the real value - so a notification showed its priority badge on arrival and
+  // lost it on refresh. Same story for updatedAt below.
+  priority: text('priority').default('normal'),
   isRead: integer('is_read', { mode: 'boolean' }).default(false),
   readAt: text('read_at'),
   expiresAt: text('expires_at'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at'),
 });
 
 // Tags table - 標籤系統

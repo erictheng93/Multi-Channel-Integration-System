@@ -124,4 +124,26 @@ describe('ConditionEditor -- emitted events', () => {
     expect(wrapper.emitted('add')).toBeTruthy()
     expect(wrapper.emitted('add')![0]).toEqual(['contains', 'enter-test'])
   })
+
+  // IME (注音/拼音/日文) 組字中的 Enter 是確認選字，不是新增條件
+  it('does not emit add on Enter while the IME is composing', async () => {
+    const wrapper = mountEditor()
+
+    const input = wrapper.find('.condition-input-group input')
+    await input.setValue('問候')
+    await input.trigger('keydown.enter', { isComposing: true })
+
+    expect(wrapper.emitted('add')).toBeFalsy()
+  })
+
+  it('does not emit add on Enter right after compositionend (Safari)', async () => {
+    const wrapper = mountEditor()
+
+    const input = wrapper.find('.condition-input-group input')
+    await input.setValue('問候')
+    await input.trigger('compositionend')
+    await input.trigger('keydown.enter')
+
+    expect(wrapper.emitted('add')).toBeFalsy()
+  })
 })

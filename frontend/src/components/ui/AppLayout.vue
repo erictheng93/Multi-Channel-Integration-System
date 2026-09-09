@@ -129,7 +129,6 @@
         break
       case 'conversation_assigned':
       case 'conversation_transferred':
-      case 'priority_changed':
         if (data?.conversationId) {
           router.push(`/conversations/${data.conversationId}`)
         }

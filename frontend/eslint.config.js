@@ -196,7 +196,6 @@ export default [
           'new_message',
           'conversation_assigned',
           'conversation_transferred',
-          'priority_changed',
           'customer_responded',
           'task_reminder',
           // 允許 ReportType 使用 snake_case (與後端 API 保持一致)

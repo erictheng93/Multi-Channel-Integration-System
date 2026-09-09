@@ -55,42 +55,95 @@ function getModuleIdentifier(filePath: string): string {
 /**
  * 從文件中提取路由定義
  */
+/** Context accessors that look like route registrations but are not. */
+const NON_ROUTE_RECEIVERS = new Set(['c', 'ctx', 'context', 'env', 'req', 'request', 'headers', 'params', 'map', 'cache', 'storage']);
+
 function extractRoutes(filePath: string): RouteInfo[] {
   const content = readFileSync(filePath, 'utf-8');
   const routes: RouteInfo[] = [];
-  const lines = content.split('\n');
 
   // 匹配 handler.get(), handler.post(), app.route() 等
   // 支持任何變數名稱: app, membersHandler, teamHandlers, router 等
-  // 排除 c.get(), env.get() 等上下文方法調用 - 通過檢查後面是否有逗號
   // 匹配模式: variableName.method('path', ...
-  const routeRegex = /(?!c\.|env\.|ctx\.)(\w+)\.(get|post|put|delete|patch|route)\s*\(\s*['"`]([/][^'"`]*)['"`]\s*,/g;
+  //
+  // Scanned over the WHOLE file, not line by line. `\s` matches newlines, so a
+  // multi-line registration is matched too:
+  //
+  //   reportsApp.get(
+  //     '/:id',
+  //     middleware,
+  //     handler
+  //   )
+  //
+  // The previous line-by-line scan required the path literal to sit on the same
+  // line as `.get(` and therefore missed 37 routes across 3 files - including a
+  // real `/stats` vs `/:id` shadowing that was live in production.
+  //
+  // The lookbehind pins the match to an identifier boundary and rejects a
+  // receiver reached through a property access, so `c.req.get('/x',` cannot
+  // masquerade as a route on `req`.
+  const routeRegex = /(?<![\w$.])([\w$]+)\.(get|post|put|delete|patch|route)\s*\(\s*['"`]([/][^'"`]*)['"`]\s*,/g;
 
   const moduleId = getModuleIdentifier(filePath);
 
-  lines.forEach((line, index) => {
-    let match;
-    // Reset regex state for each line
-    routeRegex.lastIndex = 0;
-
-    while ((match = routeRegex.exec(line)) !== null) {
-      // match[1] = variable name, match[2] = method, match[3] = path
-      const method = match[2]?.toUpperCase() || 'UNKNOWN';
-      const path = match[3];
-
-      if (method && path) {
-        routes.push({
-          method,
-          path,
-          file: filePath,
-          line: index + 1,
-          module: moduleId
-        });
+  // Line starts, so a match offset can be turned into a line number without
+  // rescanning the file for every match.
+  const lineStarts: number[] = [0];
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === '\n') {
+      lineStarts.push(i + 1);
+    }
+  }
+  const lineOf = (offset: number): number => {
+    let low = 0;
+    let high = lineStarts.length - 1;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if ((lineStarts[mid] ?? 0) <= offset) {
+        low = mid;
+      } else {
+        high = mid - 1;
       }
     }
-  });
+    return low + 1;
+  };
+
+  let match;
+  while ((match = routeRegex.exec(content)) !== null) {
+    const receiver = match[1];
+    const method = match[2]?.toUpperCase() || 'UNKNOWN';
+    const path = match[3];
+
+    if (receiver && NON_ROUTE_RECEIVERS.has(receiver)) {
+      continue;
+    }
+
+    if (method && path) {
+      routes.push({
+        method,
+        path,
+        file: filePath,
+        line: lineOf(match.index),
+        module: moduleId
+      });
+    }
+  }
 
   return routes;
+}
+
+/**
+ * Was `a` registered before `b`?
+ *
+ * Within one file, source order is registration order. Across files in the same
+ * module the order depends on import/mount order, which this script cannot see,
+ * so an overlap there is reported too - a human has to confirm which one wins.
+ */
+function registeredBefore(a: RouteInfo, b: RouteInfo): boolean {
+  if (a.file === b.file) {
+    return a.line < b.line;
+  }
+  return true;
 }
 
 /**
@@ -129,6 +182,46 @@ function checkConflict(route1: RouteInfo, route2: RouteInfo): boolean {
     const isRoute = route1.method === 'ROUTE' || route2.method === 'ROUTE';
     if (!hasWildcard && !isRoute) {
       return false; // Different segment counts = no conflict in Hono exact matching
+    }
+  }
+
+  // 同段數：先註冊的參數段會吃掉後註冊的具體段
+  //
+  // This is the single most common Hono trap, and the check below could not see
+  // it: it only reported a conflict when route1 was strictly SHORTER than
+  // route2, so `/:id` vs `/stats` (both one segment) always passed. That exact
+  // pair was live in production - GET /api/reports/stats matched `/:id` with
+  // id="stats" and returned 400 "Invalid report ID format".
+  //
+  // Only the harmful direction is flagged: route1 holding a parameter where
+  // route2 holds a literal. The reverse (literal first, parameter later) is the
+  // correct ordering and must stay quiet, or the guard becomes noise.
+  if (segments1.length === segments2.length) {
+    let shadows = false;
+    for (let i = 0; i < segments1.length; i++) {
+      const seg1 = segments1[i] ?? '';
+      const seg2 = segments2[i] ?? '';
+
+      if (seg1 === seg2) {
+        continue;
+      }
+
+      const seg1IsParam = seg1.startsWith(':') || seg1 === '*';
+      const seg2IsParam = seg2.startsWith(':') || seg2 === '*';
+
+      if (seg1IsParam && !seg2IsParam) {
+        shadows = true;
+        continue;
+      }
+
+      // Literal-vs-different-literal, or literal shadowed by a later parameter:
+      // the paths either do not overlap or already resolve in the right order.
+      shadows = false;
+      break;
+    }
+
+    if (shadows && registeredBefore(route1, route2)) {
+      return true;
     }
   }
 
@@ -326,8 +419,20 @@ async function detectConflicts() {
   console.log('═'.repeat(100));
 
   // 返回退出碼
-  if (conflicts.filter(c => c.severity === 'high').length > 0) {
-    process.exit(1); // 高嚴重度衝突，失敗
+  //
+  // MEDIUM blocks as well as HIGH. A parameterised route shadowing a literal is
+  // not a "potential issue" - it makes the shadowed endpoint permanently
+  // unreachable, which is how GET /api/reports/stats and /scheduled sat broken
+  // in production while this script printed them and exited 0.
+  //
+  // LOW stays advisory.
+  const blocking = conflicts.filter(c => c.severity === 'high' || c.severity === 'medium');
+  if (blocking.length > 0) {
+    console.log('');
+    console.log(` ${blocking.length} blocking conflict(s). A parameterised route registered before a`);
+    console.log(' literal one makes the literal unreachable - reorder the registrations so the');
+    console.log(' more specific path comes first.');
+    process.exit(1);
   }
 }
 
