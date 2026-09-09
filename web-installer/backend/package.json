@@ -25,12 +25,12 @@
     "hono": "^4.12.32"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.21",
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
     "@cloudflare/workers-types": "^4.20260702.1",
     "@types/node": "^20.19.43",
-    "@vitest/coverage-v8": "~3.2.7",
+    "@vitest/coverage-v8": "^4.1.11",
     "typescript": "^5.9.3",
-    "vitest": "~3.2.7",
+    "vitest": "^4.1.11",
     "wrangler": "4.67.0"
   },
   "overrides": {

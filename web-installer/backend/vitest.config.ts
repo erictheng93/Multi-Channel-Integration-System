@@ -1,7 +1,24 @@
-import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
+import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+import { defineConfig } from 'vitest/config';
 import path from 'path';
 
-export default defineWorkersConfig({
+export default defineConfig({
+  plugins: [
+    // Workers runtime for all tests. Options that used to live under
+    // test.poolOptions.workers move here (vitest-pool-workers 0.13+).
+    cloudflareTest({
+      wrangler: {
+        configPath: './wrangler.test.toml'
+      },
+      main: './src/index.ts',
+      // isolatedStorage removed in 0.13+: storage is now isolated per test
+      // file by Vitest's own model, which is what these tests relied on.
+      miniflare: {
+        verbose: false,
+        compatibilityFlags: ['nodejs_compat']
+      }
+    })
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
@@ -9,39 +26,17 @@ export default defineWorkersConfig({
   },
   test: {
     globals: true,
-    // Use Workers runtime for all tests
-    poolOptions: {
-      workers: {
-        wrangler: {
-          configPath: './wrangler.test.toml'
-        },
-        main: './src/index.ts',
-        // Enable isolated storage for test isolation
-        // Note: Some DO tests may need to be skipped on Windows due to file locking
-        isolatedStorage: true,
-        // Miniflare options for additional configuration
-        miniflare: {
-          // Enable verbose logging for debugging
-          verbose: false,
-          // Compatibility flags
-          compatibilityFlags: ['nodejs_compat']
-        }
-      }
-    },
-    // Test configuration
     include: ['tests/**/*.test.ts'],
     // Exclude DO tests on Windows due to file locking issues with Miniflare SQLite
     // These tests run successfully on Linux/macOS CI
-    // Use INCLUDE_DO_TESTS=true to include them (e.g., npm run test:ci)
+    // Use INCLUDE_DO_TESTS=true to include them (e.g., bun run test:ci)
     exclude: [
       'node_modules',
       'dist',
-      // DO tests excluded unless INCLUDE_DO_TESTS=true (for CI)
       ...(process.env.INCLUDE_DO_TESTS !== 'true' && process.platform === 'win32'
         ? ['tests/integration/durable-objects/**/*.test.ts']
         : [])
     ],
-    // Coverage configuration
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -53,9 +48,7 @@ export default defineWorkersConfig({
         '**/dist/**'
       ]
     },
-    // Timeout for tests (DO operations may take longer)
     testTimeout: 30000,
-    // Hook timeout
     hookTimeout: 30000
   }
 });
