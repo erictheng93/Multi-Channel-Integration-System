@@ -249,6 +249,7 @@ const formatDate = (date: string | Date) => {
 </script>
 
 <style scoped>
+@reference "../../style.css";
 /* ============================================
    Complex CSS (Cannot use Tailwind)
    ============================================ */

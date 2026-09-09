@@ -28,6 +28,7 @@ withDefaults(defineProps<CacheStatusIndicatorProps>(), {
 </script>
 
 <style scoped>
+@reference "../../style.css";
 /* Cache Status Indicator - Gradient and effects */
 .cache-status-indicator {
   @apply flex items-center gap-1 py-1 px-2 text-white rounded-full text-xs font-semibold;

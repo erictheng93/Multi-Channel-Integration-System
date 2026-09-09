@@ -61,7 +61,7 @@
         :value="filters.search"
         type="text"
         placeholder="Search endpoints..."
-        class="w-full rounded-full pl-9 pr-3.5 py-1.5 text-xs bg-[#F2F2F7] text-[#1C1C1E] border-none outline-none placeholder-[#8E8E93] focus:ring-2 focus:ring-[#007AFF]/30"
+        class="w-full rounded-full pl-9 pr-3.5 py-1.5 text-xs bg-[#F2F2F7] text-[#1C1C1E] border-none outline-hidden placeholder-[#8E8E93] focus:ring-2 focus:ring-[#007AFF]/30"
         @input="updateSearch"
       >
     </div>

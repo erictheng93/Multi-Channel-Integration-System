@@ -1,9 +1,27 @@
 /* ============================================
    Tailwind CSS Directives
    ============================================ */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* tailwindcss v4: one @import replaces the three @tailwind directives.
+   @config keeps the existing JS config (theme tokens, @tailwindcss/forms)
+   authoritative instead of porting it to CSS-first @theme. */
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* v4 preflight resets the border colour to `currentColor` (its reset uses the
+   `border: 0 solid` shorthand, and the omitted colour component resets it).
+   v3 defaulted to gray-200. Any element with a colourless `border` would
+   otherwise inherit the text colour and render a hard dark hairline, which is
+   a direct violation of the design system's "no hard 1px borders" rule.
+   Restoring the v3 default keeps this a port rather than a redesign. */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb;
+  }
+}
 
 /* ============================================
    CSS Custom Properties (Design Tokens)
@@ -302,21 +320,78 @@
     @apply block mb-2 text-sm font-medium text-gray-700;
   }
 
-  .form-input {
+  /* Shared field surface.
+     Written as a selector list rather than `.form-textarea { @apply form-input }`
+     because tailwindcss 4's @apply only resolves *utilities*, not classes defined
+     in `@layer components`, so that indirection silently resolved to something
+     else entirely.
+
+     These rules are now the ONLY definition of the field surface.
+     @tailwindcss/forms was removed: under v4 its legacy-plugin output lands in
+     `layer=utilities` while these sit in `layer=components`, and layer
+     precedence is absolute - evaluated before specificity - so the plugin won
+     every conflicting property across all 167 .form-* call sites. Raising
+     specificity here cannot beat a higher layer; only unlayering could, and
+     unlayered-beats-layered is exactly the bug that broke variables.css.
+     The declarations below absorb everything the plugin actually contributed. */
+  .form-input,
+  .form-textarea,
+  .form-select {
     @apply block w-full px-3 py-3;
     @apply text-sm text-gray-900 bg-white;
     @apply border border-gray-300 rounded-md;
     @apply transition-all duration-150;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+    @apply focus:outline-hidden focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
     @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
+    /* Absorbed from @tailwindcss/forms. Load-bearing for .form-select, which
+       draws its own arrow via background-image - without this the native arrow
+       returns and every select renders two. */
+    appearance: none;
+  }
+
+  /* Absorbed from @tailwindcss/forms: placeholder normalisation. */
+  .form-input::placeholder,
+  .form-textarea::placeholder,
+  .form-select::placeholder {
+    color: #6b7280;
+    opacity: 1;
+  }
+
+  /* Absorbed from @tailwindcss/forms: Chromium date/time sub-field rendering.
+     Used by ScheduleGrid.vue and ReportParameterForm.vue, which pair date/time
+     inputs with .form-input / .form-select. */
+  .form-input::-webkit-date-and-time-value {
+    min-height: 1.5em;
+    text-align: inherit;
+  }
+
+  .form-input::-webkit-datetime-edit {
+    display: inline-flex;
+  }
+
+  .form-input::-webkit-datetime-edit,
+  .form-input::-webkit-datetime-edit-year-field,
+  .form-input::-webkit-datetime-edit-month-field,
+  .form-input::-webkit-datetime-edit-day-field,
+  .form-input::-webkit-datetime-edit-hour-field,
+  .form-input::-webkit-datetime-edit-minute-field,
+  .form-input::-webkit-datetime-edit-second-field,
+  .form-input::-webkit-datetime-edit-millisecond-field,
+  .form-input::-webkit-datetime-edit-meridiem-field {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .form-input::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
   }
 
   .form-textarea {
-    @apply form-input resize-y min-h-[80px];
+    @apply resize-y min-h-[80px];
   }
 
   .form-select {
-    @apply form-input pr-10;
+    @apply pr-10;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
     background-repeat: no-repeat;
@@ -325,19 +400,19 @@
 
   /* Alert Component */
   .alert {
-    @apply p-4 rounded-md border mb-4;
+    @apply p-4 rounded-md mb-4;
   }
 
   .alert-success {
-    @apply text-success-700 bg-success-50 border-success-200;
+    @apply text-success-700 bg-success-50;
   }
 
   .alert-warning {
-    @apply text-warning-700 bg-warning-50 border-warning-200;
+    @apply text-warning-700 bg-warning-50;
   }
 
   .alert-danger {
-    @apply text-danger-700 bg-danger-50 border-danger-200;
+    @apply text-danger-700 bg-danger-50;
   }
 
   /* Loading States */
@@ -448,7 +523,7 @@
 
   /* Focus Ring */
   .focus-ring {
-    @apply outline-none outline-offset-2;
+    @apply outline-hidden outline-offset-2;
     @apply focus-visible:outline-2 focus-visible:outline-primary-600;
   }
 }

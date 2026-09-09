@@ -396,6 +396,7 @@ import { createLogger } from '@/utils/logger'
 </script>
 
 <style scoped>
+@reference "../../style.css";
   /* ============================================
    Complex CSS (Cannot use Tailwind)
    ============================================ */
