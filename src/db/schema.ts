@@ -113,7 +113,13 @@ export const conversations = sqliteTable('conversations', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
   deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
-});
+}, (table) => ({
+  // Sort order of the conversation list (Migration 0061, issue #23). SQLite
+  // reverse-scans this for ORDER BY updated_at DESC, id DESC and stops at the
+  // LIMIT; without it the planner sorts every visible row in a temp b-tree and
+  // the pagination pushdown reads just as much as the old Array.slice() did.
+  updatedAtIdx: index('idx_conversations_updated_at').on(table.updatedAt, table.id),
+}));
 
 // Conversation read states - 每位客服各自的已讀/未讀狀態 (Migration 0060)
 // One row per (agent, conversation) pair, created lazily the first time that

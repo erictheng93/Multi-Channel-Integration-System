@@ -44,7 +44,7 @@ function makeApp(env: Bindings) {
 
 function createSelectChain(result: unknown[]) {
   const chain: Record<string, unknown> = {};
-  for (const method of ['from', 'leftJoin', 'innerJoin', 'where', 'orderBy']) {
+  for (const method of ['from', 'leftJoin', 'innerJoin', 'where', 'orderBy', 'limit', 'offset']) {
     chain[method] = vi.fn(() => chain);
   }
   chain.then = (resolve: (value: unknown[]) => void, reject?: (error: unknown) => void) =>
@@ -86,8 +86,14 @@ function createConversationRows(count: number, startIndex = 1) {
 }
 
 function createMockDrizzle(selectResults: unknown[][]) {
+  const chains: Record<string, unknown>[] = [];
   return {
-    select: vi.fn(() => createSelectChain(selectResults.shift() ?? [])),
+    chains,
+    select: vi.fn(() => {
+      const chain = createSelectChain(selectResults.shift() ?? []);
+      chains.push(chain);
+      return chain;
+    }),
     selectDistinct: vi.fn(() => createSelectChain([])),
   };
 }
@@ -309,8 +315,12 @@ describe('conversation list pagination', () => {
   });
 
   it('enriches only the requested page of conversations', async () => {
+    // Two selects now, in the order the handler builds them: the page query,
+    // then the COUNT over the same predicate. The page returns only pageSize
+    // rows because LIMIT/OFFSET are in the SQL, not an Array.slice() after it.
     const mockDrizzle = createMockDrizzle([
-      createConversationRows(120),
+      createConversationRows(50),
+      [{ value: 120 }],
     ]);
     handlerMocks.createDbClient.mockReturnValue(mockDrizzle);
 
@@ -335,5 +345,44 @@ describe('conversation list pagination', () => {
     expect(latestMessageCall?.params).toHaveLength(50);
     // 50 conversation ids + the agent id that scopes conversation_read_states
     expect(unreadCall?.params).toHaveLength(51);
+  });
+
+  it('asks the database for the page instead of slicing a full fetch', async () => {
+    const mockDrizzle = createMockDrizzle([
+      createConversationRows(20, 41),
+      [{ value: 120 }],
+    ]);
+    handlerMocks.createDbClient.mockReturnValue(mockDrizzle);
+
+    const d1 = createMockD1();
+    const response = await makeApp({ DB: d1.db } as unknown as Bindings)
+      .request('/api/conversations?page=3&pageSize=20');
+
+    expect(response.status).toBe(200);
+
+    // Chain 0 is the page query, chain 1 the COUNT. Regression guard for issue
+    // #23: revert the pushdown to Array.slice() and no chain carries these.
+    const pageChain = mockDrizzle.chains[0];
+    expect(pageChain?.limit).toHaveBeenCalledWith(20);
+    expect(pageChain?.offset).toHaveBeenCalledWith(40);
+  });
+
+  it('does not limit the query when the caller sends no pagination params', async () => {
+    const mockDrizzle = createMockDrizzle([
+      createConversationRows(7),
+    ]);
+    handlerMocks.createDbClient.mockReturnValue(mockDrizzle);
+
+    const d1 = createMockD1();
+    const response = await makeApp({ DB: d1.db } as unknown as Bindings)
+      .request('/api/conversations');
+    const body = await response.json() as { data: unknown[] };
+
+    expect(response.status).toBe(200);
+    // Unpaginated callers still get a bare array of every visible conversation.
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data).toHaveLength(7);
+    expect(mockDrizzle.select).toHaveBeenCalledTimes(1);
+    expect(mockDrizzle.chains[0]?.limit).not.toHaveBeenCalled();
   });
 });

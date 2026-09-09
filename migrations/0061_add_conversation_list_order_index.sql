@@ -1,0 +1,52 @@
+-- ===============================================
+-- Migration 0061: index the conversation list's sort order
+-- ===============================================
+-- Date: 2026-09-09
+-- Issue: #23 -- GET /api/conversations read every visible conversation and
+--        then paginated in the Worker with Array.slice().
+--
+-- WHY THE INDEX IS PART OF THAT FIX, NOT A SEPARATE OPTIMISATION:
+--   Pushing LIMIT/OFFSET into the query does nothing on its own. The list is
+--   ordered by updated_at, which had no index, so SQLite planned:
+--
+--     SCAN c
+--     SEARCH cu USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN
+--     SEARCH t  USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN
+--     USE TEMP B-TREE FOR ORDER BY          <-- reads and sorts every row
+--
+--   The sort has to see the whole result set before the LIMIT can discard
+--   anything, so both joins still run for every visible conversation. With
+--   this index the temp b-tree disappears:
+--
+--     SCAN c USING INDEX idx_conversations_updated_at
+--     SEARCH cu USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN
+--     SEARCH t  USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN
+--
+--   SQLite now walks the index in order and stops after OFFSET+LIMIT entries,
+--   which is what makes the pushdown pay. Verified against the local D1 mirror
+--   (253 conversations, 1:1 with remote) for both the admin predicate (1 = 1)
+--   and the agent visibility predicate.
+--
+-- WHY ASCENDING, WHEN THE QUERY SORTS DESCENDING:
+--   The handler orders by (updated_at DESC, id DESC). Both terms are reversed
+--   together, so SQLite reverse-scans an ascending index; a DESC index would
+--   buy nothing and cannot be expressed in src/db/schema.ts.
+--
+-- WHY id IS IN THE INDEX:
+--   It is the ORDER BY tiebreaker. Without it, conversations sharing an
+--   updated_at have no defined order between them, and a row can repeat on one
+--   page and vanish from the next as the client walks the offsets.
+--
+-- ALSO DECLARED IN src/db/schema.ts (conversations.updatedAtIdx).
+--   The 2026-06-17 rebuild dropped every index that existed only in migration
+--   SQL and kept every object schema.ts could express. Declaring it in both
+--   places is what keeps it alive through the next rebuild.
+--
+-- SAFETY: additive. CREATE INDEX takes no data and is a no-op on re-run.
+--
+-- Rollback SQL:
+--   DROP INDEX IF EXISTS idx_conversations_updated_at;
+-- ===============================================
+
+CREATE INDEX IF NOT EXISTS idx_conversations_updated_at
+ON conversations(updated_at, id);
