@@ -204,7 +204,8 @@ CI (`bun run lint:check`), pre-commit (`.husky/pre-commit`), and the PostToolUse
 
 ### Database Operations
 - Use **Drizzle ORM** for all DB operations
-- **Soft Delete**: use `deletedAt` column instead of hard delete (teams, agents, customers, conversations, messages, tags)
+- **Soft Delete**: use `deletedAt` column instead of hard delete (teams, agents, customers, messages, tags)
+- **Conversations are NOT soft-deletable** (issue #24) — there is no delete handler, bulk action or UI, so `conversations.deleted_at` is NULL for every row. The column still exists and many queries filter it defensively; do not read that as a working delete path. If conversation deletion is ever wanted, it is a new feature, not a missing filter.
 - **Channel Integrations**: JSON columns (`config`, `credentials`, `webhookConfig`, `stats`) — no schema changes for new platforms
 - **Credentials**: encrypted via AES-256-GCM in `encryption-service.ts`
 - Use **distributed locks** (Durable Objects) for race condition prevention

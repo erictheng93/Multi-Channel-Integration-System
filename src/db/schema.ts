@@ -112,7 +112,14 @@ export const conversations = sqliteTable('conversations', {
   markedUnreadAt: text('marked_unread_at'), // Manual unread override: floors unread count at 1 until next read (Migration 0054)
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
-  deletedAt: text('deleted_at'), // Soft delete (Migration 0027)
+  // VESTIGIAL (issue #24). Conversations are NOT soft-deletable: no handler,
+  // bulk action or UI deletes one, so this column is NULL for every row and
+  // always will be. It is kept rather than dropped because ~15 queries across
+  // 8 modules already filter `conversations.deleted_at IS NULL` defensively --
+  // dropping the column means editing all of them first, and a single miss is
+  // a runtime SQL error in production. Queued for the column-drop review
+  // alongside last_read_at / marked_unread_at rather than rebuilt on its own.
+  deletedAt: text('deleted_at'), // Migration 0027
 }, (table) => ({
   // Sort order of the conversation list (Migration 0061, issue #23). SQLite
   // reverse-scans this for ORDER BY updated_at DESC, id DESC and stops at the

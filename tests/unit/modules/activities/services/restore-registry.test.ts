@@ -8,7 +8,9 @@ describe('RestoreRegistry', () => {
       'agent.delete',
       'agent.update',
       'conversation.assign',
-      'conversation.delete',
+      // No 'conversation.delete': conversations are not soft-deletable. Nothing
+      // emits that activity and nothing can set conversations.deleted_at, so the
+      // handler was an un-delete for a state that cannot be reached.
       'conversation.status',
       'conversation.transfer',
       'conversation.unassign',
