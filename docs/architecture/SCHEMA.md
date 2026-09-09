@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-08-31T04:36:48.310Z
+> **產生時間**: 2026-09-09T08:08:58.253Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -18,7 +18,7 @@
 | 項目 | 數量 |
 |---|---|
 | 資料表 | 41 |
-| 索引 | 123 |
+| 索引 | 124 |
 | 視圖 | 3 |
 | 外鍵關係 | 69 |
 | CHECK 約束 | 0 |
@@ -867,6 +867,7 @@ CREATE TABLE `conversation_transfers` (
 - `idx_conversations_customer_status` — (customer_id, status)
 - `idx_conversations_deleted_at` *(partial)* — (deleted_at)
 - `idx_conversations_last_message` — (last_message_at)
+- `idx_conversations_updated_at` — (updated_at, id)
 
 <details><summary>CREATE TABLE</summary>
 

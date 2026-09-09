@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, like, sql } from 'drizzle-orm';
+import { eq, desc, and, like, sql, count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -476,18 +476,45 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
         : [])
     ];
 
-    const conversationResults = await drizzleDb
+    const listFilter = and(...listConditions);
+
+    // Pagination is pushed into SQL rather than applied with Array.slice() on a
+    // full fetch (issue #23). The LIMIT only pays off because
+    // idx_conversations_updated_at (migration 0061) lets SQLite satisfy the
+    // ORDER BY by walking the index: without it the planner adds
+    // "USE TEMP B-TREE FOR ORDER BY", which reads and sorts every visible row
+    // before the LIMIT can discard any of them.
+    const listQuery = drizzleDb
       .select()
       .from(conversations)
       .leftJoin(customers, eq(conversations.customerId, customers.id))
       .leftJoin(teams, eq(conversations.assignedTeamId, teams.id))
-      .where(and(...listConditions))
-      .orderBy(desc(conversations.updatedAt));
+      .where(listFilter)
+      // id breaks ties so a row cannot repeat or vanish across page boundaries
+      // when several conversations share an updatedAt.
+      .orderBy(desc(conversations.updatedAt), desc(conversations.id));
 
-    const total = conversationResults.length;
-    const pagedConversationResults = hasPaginationParams
-      ? conversationResults.slice((page - 1) * pageSize, page * pageSize)
-      : conversationResults;
+    let total: number;
+    let pagedConversationResults: Awaited<typeof listQuery>;
+
+    if (hasPaginationParams) {
+      // total can no longer come from .length, so it is its own COUNT over the
+      // same predicate. customers is joined only when a filter actually reads
+      // it — teams never is — so the common unfiltered count stays a single
+      // index scan instead of 253 join lookups.
+      const countNeedsCustomers = Boolean(searchQuery || customerNameQuery || platformQuery);
+      const countBase = drizzleDb.select({ value: count() }).from(conversations);
+      const countQuery = countNeedsCustomers
+        ? countBase.leftJoin(customers, eq(conversations.customerId, customers.id))
+        : countBase;
+      const [countRow] = await countQuery.where(listFilter);
+
+      total = Number(countRow?.value ?? 0);
+      pagedConversationResults = await listQuery.limit(pageSize).offset((page - 1) * pageSize);
+    } else {
+      pagedConversationResults = await listQuery;
+      total = pagedConversationResults.length;
+    }
 
     log.debug('Conversation Handler query completed', {
       matchedCount: total,
