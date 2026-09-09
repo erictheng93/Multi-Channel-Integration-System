@@ -34,6 +34,7 @@
 - ⚠️ **完整狀態流轉** — 目前可寫入的狀態為 `active` / `pending` / `in-progress` / `waiting` / `assigned`。舊版 `closed` 狀態雖然已無法透過任何 API 寫入（bulk 操作明確拒絕 close/reopen），但仍是歷史資料的一部分，且**目前仍有 ≥8 個模組**（客戶服務、LIFF、分析、報表、標籤）在讀取/篩選這個值 — 並非完全死掉的狀態，遷移時需注意。
 - ✅ **團隊指派** — v4 起為團隊指派（個人指派已退場）
 - ✅ **跨團隊轉移** — 自動寫入 `conversationTransfers` 表保留歷史
+- ✅ **已讀 / 未讀為每位客服獨立** — 2026-08-31 起由 `conversation_read_states` 表承載（migration 0060、[ADR 0004](adr/0004-per-agent-conversation-read-state.md)）。此前 `conversations.last_read_at` / `marked_unread_at` 是整列共用的單一儲存格，一位客服開啟對話就清掉所有人的未讀徽章，手動標記未讀則會在其他所有人身上點亮徽章；現在未讀徽章是個人工作佇列。舊欄位保留未 DROP 以維持單指令回滾，是否移除的決策排在 2026-09-14 之後。
 - ❌ **批次操作 ≤ 100 筆 / 次** — 此限制只存在於**訊息模組**的 bulk 端點（有確實 hard-reject）。**對話模組**的 `/conversations/bulk` 端點**沒有任何筆數上限**，100 這個數字只是內部 D1 參數安全邊界（每批 ≤90 筆），呼叫端可以送出上萬筆 ID，系統會全部處理完，只是拆成多次 D1 往返。
 
 ### 4. 訊息核心引擎
