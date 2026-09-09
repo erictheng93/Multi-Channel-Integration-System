@@ -77,6 +77,7 @@ const typingText = computed(() => {
 </script>
 
 <style scoped>
+@reference "../../style.css";
 /* Typing Indicator - Fade-in transition */
 .typing-indicator {
   @apply flex items-center opacity-0 pointer-events-none;

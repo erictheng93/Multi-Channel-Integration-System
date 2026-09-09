@@ -86,9 +86,23 @@ describe('real Tailwind config', () => {
     }
   })
 
-  it('still registers @tailwindcss/forms with the class strategy', () => {
-    expect(source).toContain('@tailwindcss/forms')
-    expect(source).toMatch(/strategy:\s*['"]class['"]/)
+  it('registers no plugin that could redefine the form controls', () => {
+    // @tailwindcss/forms was removed during the tailwindcss 4 migration: its
+    // legacy-plugin output lands in `layer=utilities` while the app's own
+    // `.form-*` rules sit in `layer=components`, and layer precedence is
+    // absolute, so it silently won every conflicting property. Re-adding it (or
+    // any plugin using addComponents for `.form-*`) brings the bug straight
+    // back, and no amount of specificity in src/style.css can push back.
+    // Matched on actual registration, not a bare mention - the config carries a
+    // comment explaining why the plugin was removed, and a substring check would
+    // fire on that comment.
+    expect(
+      source,
+      '@tailwindcss/forms is registered again. On tailwindcss 4 it outranks ' +
+        "src/style.css's own .form-* rules by cascade layer, which reintroduces " +
+        'square corners, a gray-500 hairline and disabled inputs that look enabled.'
+    ).not.toMatch(/require\(\s*['"]@tailwindcss\/forms['"]\s*\)|from\s+['"]@tailwindcss\/forms['"]/)
+    expect(source).toMatch(/plugins:\s*\[\s*\]/)
   })
 
   it('still points content at index.html and the src tree', () => {

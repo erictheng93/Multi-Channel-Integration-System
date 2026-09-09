@@ -101,6 +101,33 @@ export default {
         border: 'rgb(var(--border) / <alpha-value>)',
         input: 'rgb(var(--input) / <alpha-value>)',
         ring: 'rgb(var(--ring) / <alpha-value>)',
+
+        // Raw Tailwind scales pinned to their v3 values.
+        //
+        // The scales above (primary/gray/success/warning/danger/platform) are
+        // explicitly defined, so they are unaffected by a Tailwind upgrade. These
+        // ten are NOT, and components reach for them directly - so they fell
+        // through to the default palette, which Tailwind 4 re-authored in OKLCH
+        // with numerically different values (green-800 #166534 -> #016630,
+        // yellow-400 #facc15 -> #fdc700, blue-700 #1d4ed8 -> #1447e6, ...).
+        //
+        // Pinned so the v4 migration is a pure port with no intended visual
+        // change. Only the shades this app actually uses are listed; values were
+        // extracted from the Tailwind 3 output captured in
+        // tests/visual-regression/css/baseline/utility-vocabulary.css rather than
+        // transcribed by hand.
+        //
+        // These components arguably ought to use the semantic success/warning/
+        // primary scales instead of raw colours; that is a separate design change.
+        blue: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af' },
+        cyan: { 50: '#ecfeff', 200: '#a5f3fc', 600: '#0891b2' },
+        green: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534' },
+        indigo: { 50: '#eef2ff', 300: '#a5b4fc', 500: '#6366f1' },
+        orange: { 50: '#fff7ed', 200: '#fed7aa', 500: '#f97316', 600: '#ea580c' },
+        purple: { 50: '#faf5ff', 100: '#f3e8ff', 300: '#d8b4fe', 600: '#9333ea', 700: '#7e22ce' },
+        red: { 50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5', 500: '#ef4444', 600: '#dc2626', 700: '#b91c1c', 800: '#991b1b' },
+        sky: { 200: '#bae6fd' },
+        yellow: { 50: '#fefce8', 100: '#fef9c3', 200: '#fef08a', 400: '#facc15', 500: '#eab308', 600: '#ca8a04', 700: '#a16207', 800: '#854d0e' },
       },
       borderRadius: {
         sm: '0.125rem',
@@ -232,10 +259,20 @@ export default {
       },
     },
   },
-  plugins: [
-    // Form plugin for better form styling
-    require('@tailwindcss/forms')({
-      strategy: 'class', // Only apply to elements with .form-* classes
-    }),
-  ],
+  // @tailwindcss/forms was removed during the tailwindcss 4 migration.
+  //
+  // Under v4 its legacy-plugin output is emitted into `layer=utilities` while
+  // the app's own `.form-*` rules live in `layer=components`. Layer precedence
+  // is absolute and is evaluated before specificity, so the plugin silently won
+  // every conflicting property - square corners, a gray-500 hairline, and
+  // disabled inputs rendered identically to enabled ones - across 167 call
+  // sites. The app already fully restyled all three controls, so the plugin's
+  // entire contribution was being overridden by design; keeping a dependency in
+  // order to override it is what created the bug.
+  //
+  // Everything it actually provided (appearance, ::placeholder, the Chromium
+  // date/time sub-field rules) is absorbed into src/style.css. Nothing was lost:
+  // .form-checkbox, .form-radio and .form-multiselect have zero references in
+  // src/.
+  plugins: [],
 }

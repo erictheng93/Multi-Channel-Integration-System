@@ -44,9 +44,10 @@ import {
   compileFull,
   compileCss,
 } from './helpers/tailwind-pipeline'
-import type { CompileResult, EmittedRule } from './helpers/tailwind-pipeline'
+import type { CompileResult } from './helpers/tailwind-pipeline'
 import {
   canonicalColor,
+  canonicalLengthPx,
   canonicalShadow,
   effectiveColor,
   effectiveDeclarations,
@@ -501,61 +502,121 @@ describe('type and spacing scales', () => {
   })
 })
 
-describe('@tailwindcss/forms plugin', () => {
+describe('form controls', () => {
+  // @tailwindcss/forms was removed during the tailwindcss 4 migration. Under v4
+  // its legacy-plugin output landed in `layer=utilities` while the app's own
+  // rules sit in `layer=components`, and layer precedence is absolute, so the
+  // plugin won every conflicting property across 167 call sites. src/style.css
+  // is now the sole definition of the field surface. These assertions guard
+  // that surface and the absence of any competitor.
+
   /**
-   * The plugin's reset rule for a given `.form-*` class, located by behaviour
-   * rather than by selector text.
+   * The field-surface declarations for a `.form-*` class.
    *
-   * Tailwind 3 emits one grouped rule
-   * (`.form-input,.form-textarea,.form-select,.form-multiselect`); Tailwind 4
-   * emits a rule per class. Same styling either way, so the assertion asks per
-   * class instead of matching the selector list.
+   * These live on a grouped selector (`.form-input, .form-textarea,
+   * .form-select`), and the shared per-utility accessors prefer a selector that
+   * is exactly one class - correct for utilities, wrong for a component rule
+   * written as a selector list. Pseudo-element rules are excluded because
+   * `::placeholder` styles a different box, not this element.
    */
-  function formsResetRule(className: string): EmittedRule | null {
-    const candidates = full.rulesByClass.get(className) ?? []
-    return (
-      candidates.find(rule => rule.declarations.some(entry => entry === 'appearance: none')) ?? null
-    )
+  function fieldSurface(className: string): Map<string, string> {
+    const merged = new Map<string, string>()
+    for (const rule of appStylesheet.rulesByClass.get(className) ?? []) {
+      if (rule.context.length > 0 || rule.selector.includes('::') || rule.selector.includes(':')) {
+        continue
+      }
+      for (const entry of rule.declarations) {
+        const separator = entry.indexOf(':')
+        merged.set(entry.slice(0, separator).trim(), entry.slice(separator + 1).trim())
+      }
+    }
+    return merged
   }
 
-  it('still contributes its class-strategy rules', () => {
-    for (const className of ['form-input', 'form-textarea', 'form-select', 'form-multiselect']) {
+  it('keeps the design-system field surface, not a plugin reset', () => {
+    // The exact values the plugin used to override, and why it mattered: a
+    // gray-500 hairline and square corners are design-system violations.
+    // Border colour and radius are the load-bearing pair: the plugin's reset used
+    // gray-500 and 0px against the design system's gray-300 and 6px, so either
+    // alone is enough to detect it coming back. Padding and font-size are
+    // deliberately not asserted here - v4 emits them as `padding-block` with a
+    // calc(var(--spacing) * n) value where v3 emitted resolved longhands, so
+    // pinning them would assert representation rather than rendering. The pixel
+    // layer covers the resulting geometry.
+    const surface = fieldSurface('form-input')
+    expect(canonicalColor(surface.get('border-color') ?? '')).toBe('rgb(209, 213, 219, 1)')
+    expect(canonicalLengthPx(surface.get('border-radius') ?? '')).toBe(6)
+    expect(canonicalLengthPx(surface.get('border-width') ?? '')).toBe(1)
+  })
+
+  it('applies that same surface to textarea and select', () => {
+    for (const className of ['form-textarea', 'form-select']) {
+      const surface = fieldSurface(className)
       expect(
-        formsResetRule(className),
-        `The @tailwindcss/forms reset for .${className} is gone. Either the plugin stopped ` +
-          'loading (on Tailwind 4 it is reached through @config), or it stopped using ' +
-          'addComponents for strategy: "class".'
-      ).not.toBeNull()
+        canonicalColor(surface.get('border-color') ?? ''),
+        `.${className} no longer shares the field surface. It used to reach it via ` +
+          '`@apply form-input`, which tailwindcss 4 silently resolved to something else ' +
+          'because @apply only resolves utilities, not @layer components classes.'
+      ).toBe('rgb(209, 213, 219, 1)')
+      expect(canonicalLengthPx(surface.get('border-radius') ?? '')).toBe(6)
     }
   })
 
-  it('gives its inputs the expected reset geometry and colours', () => {
-    const declarations = new Map<string, string>()
-    for (const entry of formsResetRule('form-input')?.declarations ?? []) {
-      const separator = entry.indexOf(':')
-      declarations.set(entry.slice(0, separator).trim(), entry.slice(separator + 1).trim())
-    }
-
-    expect(canonicalColor(declarations.get('background-color') ?? '')).toBe('rgb(255, 255, 255, 1)')
-    expect(canonicalColor(declarations.get('border-color') ?? '')).toBe('rgb(107, 114, 128, 1)')
-    expect(declarations.get('border-width')).toBe('1px')
-    expect(declarations.get('border-radius')).toBe('0px')
-    expect(declarations.get('padding-top')).toBe('0.5rem')
-    expect(declarations.get('padding-left')).toBe('0.75rem')
-    expect(declarations.get('font-size')).toBe('1rem')
+  it('keeps appearance:none, which .form-select depends on for its arrow', () => {
+    // .form-select draws its own chevron via background-image. Without this the
+    // native arrow returns and every select in the app renders two.
+    expect(
+      fieldSurface('form-select').get('appearance'),
+      '.form-select lost `appearance: none`. This was absorbed from ' +
+        '@tailwindcss/forms when that plugin was dropped; without it every select ' +
+        'renders both the native arrow and the background-image chevron.'
+    ).toBe('none')
   })
 
-  it('gives checkbox and radio their distinguishing radii', () => {
-    expect(effectiveLengthPx(full, 'form-checkbox', 'border-radius')).toBe(0)
-    expect(effectiveValue(full, 'form-radio', 'border-radius')).toBe('100%')
+  it('keeps disabled inputs visually distinct from enabled ones', () => {
+    // Under v4 the plugin's unconditional `background-color: #fff` outranked the
+    // app's `disabled:bg-gray-50`, so disabled inputs rendered as enabled - a
+    // usability regression, not a cosmetic one.
+    // v4 can split one `disabled:` variant group across several rules, so merge
+    // them rather than trusting the first match.
+    const disabled = appStylesheet.rules
+      .filter(rule => rule.selector.includes('form-input') && rule.selector.includes(':disabled'))
+      .flatMap(rule => rule.declarations)
+
+    expect(
+      disabled.length,
+      'No :disabled rule for .form-input survives in the compiled stylesheet.'
+    ).toBeGreaterThan(0)
+
+    const background = disabled
+      .map(entry => /^background-color:(.*)$/.exec(entry)?.[1])
+      .find(value => value !== undefined)
+    expect(
+      canonicalColor(background ?? ''),
+      'Disabled inputs no longer get their grey fill, so they look identical to ' +
+        'enabled ones. That is what @tailwindcss/forms caused by outranking ' +
+        "src/style.css's `disabled:bg-gray-50` on cascade layer."
+    ).toBe('rgb(249, 250, 251, 1)')
   })
 
-  it('uses the class strategy, so it does not restyle bare form elements', () => {
-    // `strategy: 'class'` is what keeps the plugin from fighting the app's own
-    // `.form-*` component classes in src/style.css. Under the global strategy the
-    // plugin emits a bare `[type='text'],[type='email'],...` selector list.
-    // (Tailwind's own preflight contributes an unrelated `[type='search']` rule,
-    // so the probe has to be narrower than "any [type= selector".)
+  it('has no competing definition of the field surface', () => {
+    // The regression this whole block exists for: a second source of .form-input
+    // styling. Re-adding @tailwindcss/forms (or any plugin using addComponents
+    // for .form-*) would reintroduce it, and on v4 the competitor wins on layer
+    // precedence no matter what specificity src/style.css uses.
+    const competitors = (appStylesheet.rulesByClass.get('form-input') ?? []).filter(rule =>
+      rule.declarations.some(entry => entry.startsWith('appearance:'))
+    )
+    expect(
+      competitors.length,
+      'More than one rule sets `appearance` on .form-input, which means something ' +
+        'other than src/style.css is defining the field surface again.'
+    ).toBeLessThanOrEqual(1)
+  })
+
+  it('does not restyle bare form elements', () => {
+    // Nothing should be emitting a global `[type='text']` reset. The removed
+    // plugin only avoided this because it ran with strategy: 'class'.
     const globalSelectors = full.rules
       .map(rule => rule.selector)
       .filter(selector => selector.includes("[type='text']") || selector.includes('[type="text"]'))
