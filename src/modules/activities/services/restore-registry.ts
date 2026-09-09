@@ -29,7 +29,10 @@ export const RestoreRegistry: Record<string, RestoreHandler> = {
   'agent.delete': restoreSoftDeleted('agents'),
   'agent.update': restoreFields('agents'),
   'conversation.assign': restoreFields('conversations'),
-  'conversation.delete': restoreSoftDeleted('conversations'),
+  // No 'conversation.delete'. Conversations are not soft-deletable: no handler,
+  // bulk action or UI deletes one, so nothing ever emits that activity and
+  // conversations.deleted_at cannot become non-NULL. The entry was an un-delete
+  // for an unreachable state.
   'conversation.status': restoreField('conversations', 'status'),
   'conversation.transfer': restoreFields('conversations'),
   'conversation.unassign': restoreFields('conversations'),
