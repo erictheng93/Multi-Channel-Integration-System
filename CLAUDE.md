@@ -163,8 +163,9 @@ The repo splits safety checks into a **fast pre-commit** and a **full pre-push**
 - `check-import-paths.ts` (no deep relative imports)
 - `check:routes:ci` (Hono route conflict detector)
 - `check:sql-raw:ci` (SQL injection regression guard)
+- `gitleaks git --pre-commit --staged` (secret scan; rules in `.gitleaks.toml`, which adds a `hardcoded-password` rule because the default entropy-gated rules missed the 2025-08 admin password leak). Requires `gitleaks` on PATH (`winget install Gitleaks.Gitleaks`) — the hook fails closed without it.
 
-All three run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
+All four run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
 
 **`.husky/pre-push`** (~105s warm, ~340s cold) — full correctness gate, parallel:
 - `bunx tsc --noEmit` (backend, incremental via `tsBuildInfoFile`)

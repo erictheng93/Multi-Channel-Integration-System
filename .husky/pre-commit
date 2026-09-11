@@ -12,6 +12,8 @@ LOG_SQL="$TMPDIR/mcis-precommit-sql.log"
 EXIT_IMPORT="$TMPDIR/mcis-precommit-import.exit"
 EXIT_ROUTES="$TMPDIR/mcis-precommit-routes.exit"
 EXIT_SQL="$TMPDIR/mcis-precommit-sql.exit"
+LOG_SECRETS="$TMPDIR/mcis-precommit-secrets.log"
+EXIT_SECRETS="$TMPDIR/mcis-precommit-secrets.exit"
 
 START=$(date +%s)
 
@@ -36,8 +38,20 @@ PID_ROUTES=$!
 ) &
 PID_SQL=$!
 
-# Wait for all three to finish
-wait $PID_IMPORT $PID_ROUTES $PID_SQL
+# Job 4: Secret scan of staged changes (rules in .gitleaks.toml)
+(
+  if command -v gitleaks > /dev/null 2>&1; then
+    gitleaks git --pre-commit --staged --redact --no-banner -c .gitleaks.toml > "$LOG_SECRETS" 2>&1
+  else
+    echo "gitleaks is not installed: winget install Gitleaks.Gitleaks (Windows) / brew install gitleaks (macOS)" > "$LOG_SECRETS"
+    false
+  fi
+  echo $? > "$EXIT_SECRETS"
+) &
+PID_SECRETS=$!
+
+# Wait for all four to finish
+wait $PID_IMPORT $PID_ROUTES $PID_SQL $PID_SECRETS
 
 END=$(date +%s)
 ELAPSED=$((END - START))
@@ -68,6 +82,15 @@ if [ "$(cat "$EXIT_SQL")" != "0" ]; then
   cat "$LOG_SQL"
   echo "❌ Unsafe sql.raw() detected! See report above."
   echo "💡 Rewrite using Drizzle query builder or add a justified suppression comment"
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_SECRETS")" != "0" ]; then
+  echo ""
+  echo "── Secret scan (gitleaks) ─────────────────────────"
+  cat "$LOG_SECRETS"
+  echo "Possible secret in staged changes. Move it to an env var or wrangler secret."
+  echo "False positive? Add an allowlist entry to .gitleaks.toml"
   FAIL=1
 fi
 
