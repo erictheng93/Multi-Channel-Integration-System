@@ -1,0 +1,33 @@
+# Secret scan config, used by `gitleaks git --pre-commit --staged` in .husky/pre-commit.
+#
+# The default rules gate on entropy, so they miss short human-chosen passwords:
+# the admin password leaked via test-login.ts (2025-08) was never flagged by
+# generic-api-key. hardcoded-password closes that gap.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "hardcoded-password"
+description = "Password assigned a string literal"
+regex = '''(?i)(?:password|passwd|pwd)["']?\s*[:=]\s*["']([^"'\s]{8,})["']'''
+secretGroup = 1
+keywords = ["password", "passwd", "pwd"]
+
+    [[rules.allowlists]]
+    description = "Test fixtures and i18n strings"
+    paths = [
+      '''(^|/)(tests?|__tests__|e2e)/''',
+      '''\.(test|spec)\.[cm]?[jt]sx?$''',
+      '''(^|/)locales/''',
+    ]
+
+    [[rules.allowlists]]
+    description = "Placeholders, env/template references, Vue bindings, UI copy"
+    regexes = [
+      '''^<.*>$''',
+      '''(?i)^(your|example|changeme|placeholder)''',
+      '''^\$''',
+      '''^[A-Za-z_]\w*(\.\w+)+$''',
+      '''[^\x00-\x7F]''',
+    ]
