@@ -50,8 +50,8 @@ wrangler d1 execute mcis-db --remote --file=./update-passwords-simple.sql
 
 
 ### bcrypt
-- ****: admin@example.com / 16011587DaC
-- ****: dacagent@example.com / agent16011587
+- ****: admin@example.com / <ADMIN_PASSWORD>
+- ****: dacagent@example.com / <AGENT_PASSWORD>
 
 ### bcrypt
 - ****: admin@example.com / admin123
@@ -71,8 +71,8 @@ wrangler d1 execute mcis-db --remote --file=./update-passwords-simple.sql
  4
 
 3. ****
- - admin@example.com / 16011587DaC -
- - dacagent@example.com / agent16011587 -
+ - admin@example.com / <ADMIN_PASSWORD> -
+ - dacagent@example.com / <AGENT_PASSWORD> -
 
 
 - bcrypt (12 rounds) -

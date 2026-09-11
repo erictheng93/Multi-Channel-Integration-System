@@ -44,7 +44,7 @@ param(
     [string]$AdminEmail = "admin@example.com",
 
     [Parameter(Mandatory=$false)]
-    [string]$AdminPassword = "16011587DaC"
+    [string]$AdminPassword = $env:ADMIN_PASSWORD
 )
 
 # Error handling

@@ -23,7 +23,7 @@
 
 #### 2.1 Admin
 ```
-admin@example.com / 16011587DaC
+admin@example.com / <ADMIN_PASSWORD>
 ```
 - [ ]
 - [ ]
@@ -32,7 +32,7 @@ admin@example.com / 16011587DaC
 
 #### 2.2 Agent
 ```
-dacagent@example.com / agent16011587
+dacagent@example.com / <AGENT_PASSWORD>
 ```
 - [ ]
 - [ ]
