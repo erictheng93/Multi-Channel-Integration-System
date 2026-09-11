@@ -9,17 +9,19 @@ interface AdminDetails {
 
 // 創建管理員用戶的腳本
 async function createAdmin(): Promise<void> {
+  const password = process.env.ADMIN_PASSWORD
+  if (!password) throw new Error('ADMIN_PASSWORD env var is required')
+
   const adminDetails: AdminDetails = {
     email: 'admin@dacit.net',
-    password: '16011587DaC',
+    password,
     displayName: 'System Administrator'
   }
-  
+
   try {
     // 生成正確的密碼哈希
     const passwordHash: string = await bcrypt.hash(adminDetails.password, 12)
-    
-    console.log('Password:', adminDetails.password)
+
     console.log('Hash:', passwordHash)
     
     // 驗證哈希

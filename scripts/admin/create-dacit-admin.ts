@@ -5,6 +5,9 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import Database from 'better-sqlite3';
 
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
+if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD env var is required');
+
 async function createDacitAdmin() {
   // Connect to the local development database
   const dbPath = path.join('.wrangler', 'state', 'v3', 'd1', 'miniflare-D1DatabaseObject', 'dc23354e195c301b4778615a1d18f9e116936b7ddbf1fa5ed62c6ac8bb6640a8.sqlite');
@@ -28,7 +31,7 @@ async function createDacitAdmin() {
       console.log('Admin user admin@dacit.net already exists. Updating...');
       
       // Hash the password
-      const passwordHash = await bcrypt.hash('16011587DaC', 12);
+      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
       
       // Update existing user
       const updateResult = await db.update(agents)
@@ -46,7 +49,7 @@ async function createDacitAdmin() {
       console.log('Creating new admin user admin@dacit.net...');
       
       // Hash the password
-      const passwordHash = await bcrypt.hash('16011587DaC', 12);
+      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
       const userId = 'admin-dacit-' + Date.now();
       const now = new Date().toISOString();
       
@@ -85,7 +88,7 @@ async function createDacitAdmin() {
       console.log(` Active: ${adminUser.isActive}`);
       
       // Test password
-      const passwordValid = await bcrypt.compare('16011587DaC', adminUser.passwordHash);
+      const passwordValid = await bcrypt.compare(ADMIN_PASSWORD, adminUser.passwordHash);
       console.log(` Password test: ${passwordValid ? ' VALID' : ' INVALID'}`);
     } else {
       console.log(' Failed to create/find user');

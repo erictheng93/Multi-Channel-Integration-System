@@ -93,8 +93,8 @@ const handleLogout = async () => {
 4.
 
 
-- ****admin@dacit.net / 16011587DaC
-- ****dacagent@dacit.net / agent16011587
+- ****admin@dacit.net / <ADMIN_PASSWORD>
+- ****dacagent@dacit.net / <AGENT_PASSWORD>
 
 
 ### 1.

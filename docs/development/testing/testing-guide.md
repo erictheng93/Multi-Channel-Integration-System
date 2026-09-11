@@ -23,7 +23,7 @@
 
 #### 2.1 Admin
 ```
-admin@dacit.net / 16011587DaC
+admin@dacit.net / <ADMIN_PASSWORD>
 ```
 - [ ]
 - [ ]
@@ -32,7 +32,7 @@ admin@dacit.net / 16011587DaC
 
 #### 2.2 Agent
 ```
-dacagent@dacit.net / agent16011587
+dacagent@dacit.net / <AGENT_PASSWORD>
 ```
 - [ ]
 - [ ]

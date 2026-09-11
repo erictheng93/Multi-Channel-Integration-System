@@ -3,7 +3,7 @@
 
 param(
     [string]$Email = "admin@dacit.net",
-    [string]$Password = "16011587DaC",
+    [string]$Password = $env:ADMIN_PASSWORD,
     [string]$ApiUrl = "https://your-api-domain.example.com"
 )
 

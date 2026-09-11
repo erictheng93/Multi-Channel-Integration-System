@@ -3,7 +3,7 @@ import { type Page, expect } from '@playwright/test'
 /** Admin account credentials for E2E tests */
 export const ADMIN_CREDENTIALS = {
   email: 'admin@dacit.net',
-  password: '16011587DaC',
+  password: process.env.ADMIN_PASSWORD ?? '',
   displayName: 'System Administrator',
   role: 'admin',
   id: 'admin-001',

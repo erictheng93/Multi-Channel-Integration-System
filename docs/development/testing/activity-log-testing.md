@@ -1,8 +1,8 @@
 
 
 
-- ****: `admin@dacit.net` / `16011587DaC`
-- ****: `dacagent@dacit.net` / `agent16011587`
+- ****: `admin@dacit.net` / `<ADMIN_PASSWORD>`
+- ****: `dacagent@dacit.net` / `<AGENT_PASSWORD>`
 
 
 - : `http://localhost:8787`

@@ -220,7 +220,7 @@ bash scripts/emergency-rollback.sh safe --dry-run
 TOKEN=$(curl -s -X POST \
  https://your-api-domain.example.com/api/auth/login \
  -H "Content-Type: application/json" \
- -d '{"email":"admin@dacit.net","password":"16011587DaC"}' \
+ -d '{"email":"admin@dacit.net","password":"<ADMIN_PASSWORD>"}' \
  | grep -o '"token":"[^"]*' | sed 's/"token":"//')
 
 # Rollout 75%

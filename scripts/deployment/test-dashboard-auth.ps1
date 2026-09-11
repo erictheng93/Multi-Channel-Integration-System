@@ -3,7 +3,7 @@ Write-Host "Getting authentication token..." -ForegroundColor Cyan
 
 $loginBody = @{
     email = "admin@dacit.net"
-    password = "16011587DaC"
+    password = $env:ADMIN_PASSWORD
 } | ConvertTo-Json
 
 try {

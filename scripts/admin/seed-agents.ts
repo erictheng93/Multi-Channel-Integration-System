@@ -9,12 +9,15 @@ interface AgentSeed {
   passwordPolicy: 'changeable' | 'unchangeable' | 'must_change'
 }
 
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD env var is required')
+
 // 生成密碼哈希
 const agents: AgentSeed[] = [
   {
     id: 'admin-001',
     email: 'admin@dacit.net',
-    password: '16011587DaC',
+    password: ADMIN_PASSWORD,
     displayName: 'System Administrator',
     role: 'admin',
     passwordPolicy: 'changeable'

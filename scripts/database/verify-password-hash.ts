@@ -1,12 +1,12 @@
 import bcrypt from 'bcryptjs';
 
 async function verifyPasswordHash() {
-  const password = '16011587DaC';
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) throw new Error('ADMIN_PASSWORD env var is required');
   const storedHash = '$2a$12$UIsYL7dO1fVE.ydLNXe.GuxSW7loLKNtzJgY8cZM5mPHKYywE7m0y';
-  
+
   console.log(' Verifying Password Hash');
   console.log('=' .repeat(50));
-  console.log('Password:', password);
   console.log('Stored Hash:', storedHash);
   console.log('');
   
@@ -35,7 +35,7 @@ async function verifyPasswordHash() {
       },
       body: JSON.stringify({
         email: 'admin@dacit.net',
-        password: '16011587DaC'
+        password: password
       })
     });
     

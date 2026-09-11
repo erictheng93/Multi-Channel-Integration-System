@@ -42,8 +42,8 @@
 
 
 ```
- Admin admin@dacit.net / 16011587DaC
- Agent dacagent@dacit.net / agent16011587
+ Admin admin@dacit.net / <ADMIN_PASSWORD>
+ Agent dacagent@dacit.net / <AGENT_PASSWORD>
  Admin
  Agent
 
@@ -164,14 +164,14 @@ CREATE TABLE activities (
 - [x]
 
 
-1. `admin@dacit.net` / `16011587DaC`
+1. `admin@dacit.net` / `<ADMIN_PASSWORD>`
 2.
 3.
 4.
 5.
 
 
-1. `dacagent@dacit.net` / `agent16011587`
+1. `dacagent@dacit.net` / `<AGENT_PASSWORD>`
 2.
 3.
 4.
