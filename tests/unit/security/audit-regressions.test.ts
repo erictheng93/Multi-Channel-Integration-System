@@ -16,6 +16,35 @@ function appFor(handler: Hono<{ Bindings: Bindings }>) {
 }
 
 describe('security audit regressions', () => {
+  it('keeps operational scripts free of literal account credentials and secret fallbacks', () => {
+    const operationalFiles = [
+      'scripts/test-user-login.ps1',
+      'scripts/admin/get-test-token.ts',
+      'scripts/admin/generate-test-token.ts',
+      'scripts/admin/login-and-test.ts',
+      'scripts/admin/seed-agents.ts',
+      'scripts/create-test-users.ps1',
+      'scripts/database/verify-password-hash.ts',
+      'scripts/migrate-to-drizzle.ts',
+      'src/utils/password-hash.ts'
+    ]
+
+    const forbiddenPatterns = [
+      /\b(?:username|email|password)\s*[:=]\s*['\x22][^'\x22]+['\x22]/i,
+      /\b(?:LINE_CHANNEL_SECRET|LINE_CHANNEL_ACCESS_TOKEN)\s*=\s*['\x22][^'\x22]+['\x22]/i,
+      /process\.env\.[A-Z0-9_]*(?:PASSWORD|TOKEN|SECRET|KEY|EMAIL|USERNAME)[A-Z0-9_]*\s*\|\|\s*['\x22][^'\x22]*['\x22]/,
+      /bcrypt\.hash\(\s*['\x22][^'\x22]+['\x22]/,
+      /(?:\bpassword\s*\|\||hashPassword\()\s*['\x22][^'\x22]+['\x22]/i,
+      /\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}/
+    ]
+
+    for (const file of operationalFiles) {
+      const source = readFileSync(file, 'utf8')
+
+      const matchedPattern = forbiddenPatterns.find(pattern => pattern.test(source))
+      expect(matchedPattern ? file + ' matched ' + matchedPattern : null).toBeNull()
+    }
+  })
   it('requires auth before phase2 token refresh can mint replacement tokens', async () => {
     const response = await appFor(phase2AuthHandler).request('/refresh-token', {
       method: 'POST',

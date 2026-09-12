@@ -68,21 +68,31 @@ async function migrateAgents(ctx: MigrationContext) {
   `).first();
 
   if ((existingAgents?.count as number) === 0) {
+    const migrationAdminPassword = process.env.MIGRATION_ADMIN_PASSWORD;
+    const migrationAdminUsername = process.env.MIGRATION_ADMIN_USERNAME;
+    const migrationAdminEmail = process.env.MIGRATION_ADMIN_EMAIL;
+
+    if (!migrationAdminPassword || !migrationAdminUsername || !migrationAdminEmail) {
+      throw new Error(
+        'MIGRATION_ADMIN_EMAIL, MIGRATION_ADMIN_USERNAME, and MIGRATION_ADMIN_PASSWORD are required'
+      );
+    }
+
     // 建立預設管理員帳號
     const bcrypt = await import('bcryptjs');
-    const defaultPasswordHash = await bcrypt.hash('admin123', 12);
+    const defaultPasswordHash = await bcrypt.hash(migrationAdminPassword, 12);
     
     await ctx.drizzleDb.insert(schema.agents).values({
       id: 'admin-001',
-      username: 'admin',
-      email: 'admin@example.com',
+      username: migrationAdminUsername,
+      email: migrationAdminEmail,
       passwordHash: defaultPasswordHash,
       displayName: 'System Administrator',
       role: 'admin',
       isActive: true,
     });
 
-    console.log('Created default admin account (username: admin, password: admin123)');
+    console.log('Created the migration admin account from environment variables');
   }
 }
 
