@@ -1,4 +1,4 @@
 UPDATE agents 
-SET password_hash = '$2a$12$UIsYL7dO1fVE.ydLNXe.GuxSW7loLKNtzJgY8cZM5mPHKYywE7m0y', 
+SET password_hash = '<ADMIN_PASSWORD_HASH>', 
     updated_at = datetime('now') 
-WHERE email = 'admin@dacit.net';
+WHERE email = '<ADMIN_EMAIL>';

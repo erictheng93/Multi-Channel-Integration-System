@@ -10,13 +10,21 @@ interface AgentSeed {
 }
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
-if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD env var is required')
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL
+const AGENT_PASSWORD = process.env.AGENT_PASSWORD
+const AGENT_EMAIL = process.env.AGENT_EMAIL
+
+if (!ADMIN_PASSWORD || !ADMIN_EMAIL || !AGENT_PASSWORD || !AGENT_EMAIL) {
+  throw new Error(
+    'ADMIN_EMAIL, ADMIN_PASSWORD, AGENT_EMAIL, and AGENT_PASSWORD env vars are required'
+  )
+}
 
 // 生成密碼哈希
 const agents: AgentSeed[] = [
   {
     id: 'admin-001',
-    email: 'admin@dacit.net',
+    email: ADMIN_EMAIL,
     password: ADMIN_PASSWORD,
     displayName: 'System Administrator',
     role: 'admin',
@@ -24,8 +32,8 @@ const agents: AgentSeed[] = [
   },
   {
     id: 'test-agent-001',
-    email: 'test@dacit.net',
-    password: 'test123',
+    email: AGENT_EMAIL,
+    password: AGENT_PASSWORD,
     displayName: 'Test User',
     role: 'agent',
     passwordPolicy: 'must_change'

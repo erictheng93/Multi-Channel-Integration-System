@@ -17,11 +17,14 @@ async function getTestToken(environment: 'local' | 'remote' = 'local') {
   // ?��? 2: ?�試使用默�?管�??�帳?�登??
   console.log('?��? 2: ?�試使用管�??�帳?�登??..');
 
-  const possibleCredentials = [
-    { email: 'admin@example.com', password: 'admin123' },
-    { email: 'admin@test.com', password: 'admin123' },
-    { email: 'testadmin@example.com', password: 'password123' },
-  ];
+  const email = process.env.TEST_ADMIN_EMAIL;
+  const password = process.env.TEST_ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    throw new Error('TEST_ADMIN_EMAIL and TEST_ADMIN_PASSWORD environment variables are required');
+  }
+
+  const possibleCredentials = [{ email, password }];
 
   for (const cred of possibleCredentials) {
     try {

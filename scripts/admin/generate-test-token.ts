@@ -2,11 +2,16 @@
 import { signJWT } from './src/utils/auth';
 
 async function generateTestToken() {
-  const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-for-development-only';
+  const JWT_SECRET = process.env.JWT_SECRET;
+  const TEST_USERNAME = process.env.TEST_USERNAME;
+
+  if (!JWT_SECRET || !TEST_USERNAME) {
+    throw new Error('JWT_SECRET and TEST_USERNAME environment variables are required');
+  }
 
   const payload = {
     userId: 1,
-    username: 'test-admin',
+    username: TEST_USERNAME,
     displayName: 'Test Administrator',
     role: 'admin',
     teamId: 1,

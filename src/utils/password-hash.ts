@@ -71,7 +71,11 @@ export async function generateHashCLI(password?: string): Promise<void> {
     throw new Error('generateHashCLI should not be used in production');
   }
   
-  const targetPassword = password || 'admin123';
+  if (!password) {
+    throw new Error('A password argument is required');
+  }
+
+  const targetPassword = password;
   
   try {
     const hash = await generatePasswordHash(targetPassword);

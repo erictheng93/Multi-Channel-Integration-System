@@ -8,8 +8,8 @@
 const REMOTE_URL = process.env.TEST_API_URL || 'https://your-api-domain.example.com';
 
 const credentials = {
-  email: process.env.TEST_ADMIN_EMAIL || 'admin@dacit.net',
-  password: process.env.TEST_ADMIN_PASSWORD || ''
+  email: process.env.TEST_ADMIN_EMAIL,
+  password: process.env.TEST_ADMIN_PASSWORD
 };
 
 type LoginResponse = {
@@ -28,8 +28,8 @@ async function login(): Promise<string | null> {
   console.log('Logging in...');
   console.log(`Email: ${credentials.email}`);
 
-  if (!credentials.password) {
-    console.error('Missing TEST_ADMIN_PASSWORD. Set it before running this script.');
+  if (!credentials.email || !credentials.password) {
+    console.error('Set TEST_ADMIN_EMAIL and TEST_ADMIN_PASSWORD before running this script.');
     return null;
   }
 

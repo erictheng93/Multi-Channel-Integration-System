@@ -123,7 +123,5 @@ CREATE INDEX IF NOT EXISTS idx_activities_resource ON activities(resource_type, 
 CREATE INDEX IF NOT EXISTS idx_activities_created ON activities(created_at);
 
 -- 插入測試資料
-INSERT OR REPLACE INTO agents (id, email, password_hash, name, role, created_at)
-VALUES 
-    ('admin-001', 'admin@dacit.net', '$2a$12$AVSzHYOJseo6vVDzX.XFCuuvWMrzImwARka/3AjPbO7VO9lKtwnRG', 'Admin', 'admin', 1704088800000),
-    ('agent-001', 'dacagent@dacit.net', '$2a$12$N3XyZSTj.MGEnudWYHdBielDsW7YB5wGssKdab3Po0PrelPBtGqB6', 'Agent 1', 'agent', 1704088800000);
+-- Accounts are not seeded by the schema. Use scripts/admin/seed-agents.ts
+-- with operator-supplied environment variables.

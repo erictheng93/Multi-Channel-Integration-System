@@ -36,7 +36,7 @@ CREATE TABLE `agents` (
   FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE no action
 );
 INSERT INTO agents VALUES('admin-001','admin@dacit.net','5696d7c7164c65fbd041278e11d134122a50bcacf7d95e0d50300857cb40556c','System Administration','admin',NULL,1,'changeable','2025-09-02T08:29:27.945Z','2024-01-01 14:00:00','2025-08-28 13:18:55');
-INSERT INTO agents VALUES('agent-001','dacagent@dacit.net','$2a$10$PaXU0LpRHUbrs33zdox7XeVJIf.uIiVwCkqzRfMhjKHLOASn7D3U2','dacagent','agent',NULL,1,'changeable',NULL,'2024-01-01 14:00:00','2025-08-28 14:17:15');
+-- Agent rows removed from the repository backup because they contain authentication material.
 INSERT INTO agents VALUES('test-agent-001','test@dacit.net','\a\0\.8C9W3P8bWzKpTGFJ.I.HO','Test User','agent',NULL,1,'changeable','2025-08-29T10:31:28.825Z','2024-08-21 14:11:18','2025-08-28 14:17:04');
 CREATE TABLE `file_attachments` (
   `id` text PRIMARY KEY NOT NULL,
