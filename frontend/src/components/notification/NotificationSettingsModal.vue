@@ -40,6 +40,7 @@
         桌面通知已被瀏覽器封鎖，無法由系統重新開啟。請點擊網址列左側的鎖頭（或設定）圖示 → 網站設定 → 通知 → 改為「允許」，再重新整理頁面。若仍未跳出通知，請檢查 Windows「設定 → 系統 → 通知」已允許瀏覽器，且未開啟「專注助理」。
       </p>
 
+      <!-- granted -->
       <template v-else>
         <label class="settings-toggle">
           <span class="toggle-label">
