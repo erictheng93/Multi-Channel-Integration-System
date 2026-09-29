@@ -53,7 +53,7 @@ function ensureInitialized(): void {
     return
   }
   Object.assign(prefs, readStoredPrefs())
-  permission.value = isNotificationSupported() ? Notification.permission : 'unsupported'
+  permission.value = isNotificationSupported() ? window.Notification.permission : 'unsupported'
   initialized = true
 }
 
@@ -74,7 +74,7 @@ export function useDesktopNotificationPrefs() {
 
   /** 重新讀取瀏覽器權限(使用者可能在瀏覽器設定中變更) */
   const refreshPermission = (): void => {
-    permission.value = isNotificationSupported() ? Notification.permission : 'unsupported'
+    permission.value = isNotificationSupported() ? window.Notification.permission : 'unsupported'
   }
 
   /** 必須在使用者手勢(點擊)中呼叫 */
@@ -83,7 +83,7 @@ export function useDesktopNotificationPrefs() {
       return 'unsupported'
     }
     try {
-      const result = await Notification.requestPermission()
+      const result = await window.Notification.requestPermission()
       permission.value = result
       return result
     } catch (error) {
