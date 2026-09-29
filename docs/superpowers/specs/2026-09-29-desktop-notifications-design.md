@@ -32,7 +32,7 @@
 | 標題未讀數 | `frontend/src/composables/notification/usePageTitleUnread.ts`(新) | 監看 conversations store 總未讀數,將 `(N) ` 前綴進 `document.title` |
 | 設定 UI | `frontend/src/components/notification/NotificationSettingsModal.vue`(改) | 新增「桌面通知(此裝置)」區塊:權限狀態機 UI + 三個開關 |
 | 掛載點 | `frontend/src/App.vue`(改) | 認證後掛載一次 `useDesktopNotifications` 與 `usePageTitleUnread` |
-| 音效資產 | `frontend/public/sounds/notification.mp3`(新) | 提示音播放來源(短音、≤ 50 KB) |
+| 音效資產 | `frontend/public/sounds/notification.wav`(新) | 提示音播放來源(短音、≤ 50 KB) |
 
 訂閱走 `wsStore.subscribe('conversations', handler)`(`new_message` 事件已由 `websocketEventRouter.ts` 一律路由到 `conversations` channel),登出/卸載時 unsubscribe。與 conversations store 解耦——只讀 `currentConversation` 與未讀數,不修改該 store。
 
