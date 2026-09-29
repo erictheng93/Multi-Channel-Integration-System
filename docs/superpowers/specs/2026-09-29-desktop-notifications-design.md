@@ -9,6 +9,8 @@
 
 客服開著系統分頁(前景或背景)時,客戶傳來新訊息即彈出瀏覽器桌面通知,點擊直達該對話。正在看該對話時不打擾,同對話短時間內合併,附提示音與頁面標題未讀數。
 
+**主要目標平台:Windows + Chrome/Edge**(客服端一律 Windows;開發機為 macOS 但驗收以 Windows 為準)。通知經 Windows 通知中心呈現,會自動收合進通知中心屬預期行為;「專注助理」開啟時 Windows 會隱藏通知,這是系統層行為,設定 UI 的說明文字需提及。
+
 ## 決策記錄
 
 | 決策 | 結論 | 理由 |
@@ -60,7 +62,7 @@ Modal 的「桌面通知(此裝置)」區塊依 `Notification.permission` 呈現
 | unsupported(無 `window.Notification` 或非 secure context) | 不支援說明,無按鈕 |
 | default | 「啟用桌面通知」按鈕;由該次點擊觸發 `requestPermission()`(瀏覽器要求 user gesture)。成功 → granted;拒絕 → denied |
 | granted | 三個開關:啟用 / 範圍(全部・我所屬團隊)/ 音效 |
-| denied | 「已被瀏覽器封鎖」與手動解除步驟說明(程式無法再喚起) |
+| denied | 「已被瀏覽器封鎖」與手動解除步驟說明(程式無法再喚起)。步驟以 Windows 的 Chrome/Edge 為準:網址列左側鎖頭/設定圖示 → 網站設定 → 通知 → 允許 → 重新整理;另提醒檢查 Windows「設定 → 系統 → 通知」與「專注助理」 |
 
 既有的 `pushEnabled` 等後端同步開關原樣保留不動;新區塊明確標示「此裝置」以區隔語意。UI 遵循 `docs/UIUX-Design-System.md`(Apple-Native Soft Minimalism)。
 
