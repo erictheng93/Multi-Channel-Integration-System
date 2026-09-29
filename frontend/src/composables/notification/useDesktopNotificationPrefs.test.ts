@@ -107,6 +107,22 @@ describe('useDesktopNotificationPrefs', () => {
     expect(permission.value).toBe('granted')
   })
 
+  it('權限:refreshPermission 重新讀取瀏覽器目前的權限狀態', () => {
+    const notificationStub: { permission: NotificationPermission; requestPermission: ReturnType<typeof vi.fn> } = {
+      permission: 'default',
+      requestPermission: vi.fn().mockResolvedValue('granted')
+    }
+    vi.stubGlobal('Notification', notificationStub)
+    __resetDesktopNotificationPrefsForTest()
+
+    const { permission, refreshPermission } = useDesktopNotificationPrefs()
+    expect(permission.value).toBe('default')
+
+    notificationStub.permission = 'granted'
+    refreshPermission()
+    expect(permission.value).toBe('granted')
+  })
+
   it('權限:環境不支援 Notification → unsupported,requestDesktopPermission 回傳 unsupported', async () => {
     vi.stubGlobal('Notification', undefined)
     __resetDesktopNotificationPrefsForTest()
