@@ -2,12 +2,12 @@
  * Page Title Unread Count
  *
  * 將 conversations store 的總未讀數以 "(N) " 前綴顯示在 document.title。
- * router/index.ts 的 afterEach 會依路由 meta.title 重設 document.title,
+ * router/index.ts 的 beforeEach(router/index.ts:347-348)會依路由 meta.title 重設 document.title,
  * 本 composable 的 afterEach 註冊在其後,於 nextTick 重新套用前綴,不修改 router 本身。
  * Spec: docs/superpowers/specs/2026-09-29-desktop-notifications-design.md
  */
 
-import { computed, watch, nextTick } from 'vue'
+import { computed, watch, nextTick, getCurrentScope, onScopeDispose } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversationsStore } from '@/stores/conversations'
 import type { Conversation } from '@/types'
@@ -25,6 +25,9 @@ export function formatTitleWithUnread(currentTitle: string, unread: number): str
   return `(${display}) ${base}`
 }
 
+/**
+ * 應只在 App 根層呼叫一次(module-level 無單例保護,重複呼叫會重複註冊 router.afterEach)。
+ */
 export function usePageTitleUnread() {
   const conversationsStore = useConversationsStore()
   const router = useRouter()
@@ -40,12 +43,16 @@ export function usePageTitleUnread() {
     document.title = formatTitleWithUnread(document.title, totalUnread.value)
   }
 
-  watch(totalUnread, applyTitle)
+  watch(totalUnread, applyTitle, { immediate: true })
 
   // 路由切換後 router 自身的 afterEach 已重設 title,等 nextTick 再補前綴
-  router.afterEach(() => {
+  const unregisterAfterEach = router.afterEach(() => {
     void nextTick(applyTitle)
   })
+
+  if (getCurrentScope()) {
+    onScopeDispose(unregisterAfterEach)
+  }
 
   return { totalUnread, applyTitle }
 }
