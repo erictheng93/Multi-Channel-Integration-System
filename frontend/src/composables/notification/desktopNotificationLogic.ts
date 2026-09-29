@@ -21,10 +21,15 @@ export interface NotificationDecisionInput {
   conversationId?: string
   prefsEnabled: boolean
   permission: DesktopPermission
+  /** 通知範圍:'all' 一律不限團隊;'my-teams' 需搭配 assignedTeamId/allowedTeamIds 判斷 */
   scope: DesktopNotificationScope
+  /** 該對話目前指派的團隊 ID;undefined 表示未指派。僅在 scope 為 'my-teams' 時參與判斷 */
   assignedTeamId?: number
+  /** 目前使用者所屬(有權限)的團隊 ID 清單。scope 為 'all' 時完全不檢查此欄位 */
   allowedTeamIds: number[]
+  /** 分頁是否在前景(可視)。與 currentConversationId 搭配決定「使用者是否正在看這個對話」 */
   isTabVisible: boolean
+  /** 使用者目前開啟中的對話 ID;僅當 isTabVisible 為 true 且等於本次事件的 conversationId 時才抑制通知 */
   currentConversationId: string | null
   lastNotifiedAt?: number
   now: number
@@ -90,7 +95,8 @@ export function buildNotificationContent(input: NotificationContentInput): Notif
   const title = input.senderName || input.conversation?.customer?.name || '新訊息'
 
   const mediaBody = input.messageType ? MEDIA_BODY[input.messageType] : undefined
-  const body = mediaBody ?? ((input.content ?? '').slice(0, BODY_MAX_LENGTH) || '傳送了新訊息')
+  const truncated = Array.from(input.content ?? '').slice(0, BODY_MAX_LENGTH).join('')
+  const body = mediaBody ?? (truncated || '傳送了新訊息')
 
   return { title, body }
 }
