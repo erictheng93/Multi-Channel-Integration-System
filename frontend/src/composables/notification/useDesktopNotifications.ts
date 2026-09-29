@@ -110,14 +110,16 @@ export function useDesktopNotifications() {
 
   const showNotification = (args: { conversationId: string; title: string; body: string }): void => {
     // 不帶 icon:frontend/public 目前沒有 icon 資產
-    const notification = new Notification(args.title, {
+    const notification = new window.Notification(args.title, {
       body: args.body,
       tag: `conversation-${args.conversationId}` // 同對話新通知自動取代舊通知
     })
     notification.onclick = () => {
       try {
         window.focus()
-        void router.push({ name: 'ConversationDetail', params: { id: args.conversationId } })
+        router.push({ name: 'ConversationDetail', params: { id: args.conversationId } }).catch((error: unknown) => {
+          logger.debug('Notification click navigation failed', error)
+        })
         notification.close()
       } catch (error) {
         logger.debug('Notification click navigation failed', error)
