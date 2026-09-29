@@ -53,6 +53,10 @@ describe('shouldNotify', () => {
     expect(shouldNotify(baseInput({ scope: 'my-teams', assignedTeamId: 2 }))).toBe(true)
   })
 
+  it('scope 為 all 時不檢查團隊歸屬,即使 assignedTeamId 不在 allowedTeamIds 仍彈', () => {
+    expect(shouldNotify(baseInput({ scope: 'all', assignedTeamId: 99 }))).toBe(true)
+  })
+
   it('分頁前景且正在看該對話 → 抑制;分頁背景即使看該對話 → 彈', () => {
     expect(shouldNotify(baseInput({ isTabVisible: true, currentConversationId: 'conv-1' }))).toBe(false)
     expect(shouldNotify(baseInput({ isTabVisible: false, currentConversationId: 'conv-1' }))).toBe(true)
@@ -72,6 +76,12 @@ describe('buildNotificationContent', () => {
     expect(buildNotificationContent({ senderName: '陳大文', conversation: conv, content: 'hi', messageType: 'text' }).title).toBe('陳大文')
     expect(buildNotificationContent({ conversation: conv, content: 'hi', messageType: 'text' }).title).toBe('王小明')
     expect(buildNotificationContent({ content: 'hi', messageType: 'text' }).title).toBe('新訊息')
+  })
+
+  it('senderName 為空字串時視為未提供,回退至 store 客戶名', () => {
+    expect(
+      buildNotificationContent({ senderName: '', conversation: conv, content: 'hi', messageType: 'text' }).title
+    ).toBe('王小明')
   })
 
   it('文字訊息取前 60 字', () => {
