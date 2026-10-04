@@ -89,6 +89,7 @@ export interface DurableObjectMigration {
 }
 
 export interface DeployWorkerRequest {
+  keep_bindings?: string[];
   name: string;
   script: string;
   bindings: WorkerBinding[];
@@ -98,8 +99,9 @@ export interface DeployWorkerRequest {
 }
 
 export interface WorkerBinding {
-  type: 'kv_namespace' | 'd1' | 'r2_bucket' | 'queue' | 'durable_object_namespace';
+  type: 'kv_namespace' | 'd1' | 'r2_bucket' | 'queue' | 'durable_object_namespace' | 'plain_text' | 'secret_text';
   name: string;
+  text?: string;
   id?: string;
   namespace_id?: string;  // KV namespace bindings require namespace_id
   bucket_name?: string;

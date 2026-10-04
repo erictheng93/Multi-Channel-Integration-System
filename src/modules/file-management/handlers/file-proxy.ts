@@ -14,6 +14,7 @@ import { ensureFilenameExtension } from '@/utils/mime-ext';
 import { verifyFileSignature } from '@/utils/file-signed-url';
 import { jwtAuth } from '@/middleware/auth';
 import { addCorsHeaders, createCorsPreflightResponse } from '@/config/cors';
+import { canConversationBeAccessedBy } from '@/services/conversation-access';
 
 const log = createContextLogger('FileProxy');
 
@@ -196,8 +197,21 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', jwtAuth, async (c) => {
 
     log.info('Proxying LINE content', { lineMessageId });
 
-    // Step 1: Check if we already have this file in R2 (fast path, avoids LINE API expiry)
     const db = createDbClient(c.env.DB);
+    const message = await db.select({ id: messagesTable.id, conversationId: messagesTable.conversationId })
+      .from(messagesTable)
+      .where(eq(messagesTable.platformMessageId, lineMessageId))
+      .get();
+    const user = c.get('user');
+    if (!message || !(await canConversationBeAccessedBy(c.env, {
+      userId: user.id,
+      role: user.role,
+      allowedTeamIds: user.allowedTeamIds,
+    }, message.conversationId)).allowed) {
+      return c.json({ success: false, error: 'File not found' }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    // Step 1: Check if we already have this file in R2 (fast path, avoids LINE API expiry)
     try {
       const existingAttachment = await db.select({
         fileUrl: fileAttachments.fileUrl,
@@ -216,7 +230,7 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', jwtAuth, async (c) => {
           const headers = new Headers({
             'Content-Type': existingAttachment.mimeType || r2Object.httpMetadata?.contentType || 'image/jpeg',
             'Content-Length': r2Object.size.toString(),
-            'Cache-Control': 'public, max-age=86400',
+            'Cache-Control': 'private, no-store',
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type'
           });
@@ -268,13 +282,8 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', jwtAuth, async (c) => {
         try {
           const { processLineMediaMessage } = await import('@/utils/file-storage');
 
-          // Find the DB message that references this LINE message ID
           const db = createDbClient(c.env.DB);
-          const { messages: messagesTable } = await import('@/db/schema');
-          const msg = await db.select({ id: messagesTable.id })
-            .from(messagesTable)
-            .where(eq(messagesTable.platformMessageId, lineMessageId))
-            .get();
+          const msg = message;
 
           if (msg) {
             // Check if file_attachment already exists
@@ -314,7 +323,7 @@ fileProxyHandler.get('/line-proxy/:lineMessageId', jwtAuth, async (c) => {
     const headers = new Headers({
       'Content-Type': contentType,
       'Content-Length': body.byteLength.toString(),
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': 'private, no-store',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
     });

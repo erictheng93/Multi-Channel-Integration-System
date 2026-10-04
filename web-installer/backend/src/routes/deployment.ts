@@ -11,6 +11,11 @@ import type { Env, StartDeploymentRequest, DeploymentConfig, DeploymentIndexItem
 
 const deployment = new Hono<{ Bindings: Env }>();
 
+async function hashOwnerToken(token: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 interface DeploymentIndexResponse {
   deployments?: DeploymentIndexItem[];
 }
@@ -97,23 +102,17 @@ deployment.post(
       const doStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(doId);
 
       // Prepare deployment config
-      const config: DeploymentConfig = {
-        projectName: body.projectName,
-        adminEmail: body.adminEmail,
-        adminPassword: body.adminPassword,
-        customDomain: body.customDomain,
-        oauthToken: body.oauthToken,
-        accountId: body.accountId
-      };
+      const config: DeploymentConfig = { ...body };
 
       // Start deployment
       const response = await doStub.fetch('http://do/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: c.req.header('Authorization') || '' },
         body: JSON.stringify(config)
       });
 
       const result = await response.json();
+      if (!response.ok) return new Response(JSON.stringify(result), { status: response.status, headers: { 'Content-Type': 'application/json' } });
       const resultRecord = result && typeof result === 'object' ? result as { deploymentId?: string } : {};
 
       const indexId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName('__deployment-index__');
@@ -123,6 +122,7 @@ deployment.post(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectName: body.projectName,
+          ownerTokenHash: await hashOwnerToken(body.oauthToken),
           deploymentId: resultRecord.deploymentId,
           adminEmail: body.adminEmail,
           accountId: body.accountId,
@@ -157,15 +157,10 @@ deployment.get('/deployment/:projectName/status', async (c) => {
 
     // Get status
     const response = await doStub.fetch('http://do/status', {
-      method: 'GET'
+      method: 'GET',
+      headers: { Authorization: c.req.header('Authorization') || '' }
     });
-
-    if (!response.ok) {
-      return c.json({ error: 'Deployment not found' }, 404);
-    }
-
-    const status = await response.json();
-    return c.json(status);
+    return response;
 
   } catch (error) {
     console.error('Get status error:', error);
@@ -189,11 +184,10 @@ deployment.post('/deployment/:projectName/cancel', async (c) => {
 
     // Cancel deployment
     const response = await doStub.fetch('http://do/cancel', {
-      method: 'POST'
+      method: 'POST',
+      headers: { Authorization: c.req.header('Authorization') || '' }
     });
-
-    const result = await response.json();
-    return c.json(result);
+    return response;
 
   } catch (error) {
     console.error('Cancel deployment error:', error);
@@ -203,12 +197,29 @@ deployment.post('/deployment/:projectName/cancel', async (c) => {
   }
 });
 
+deployment.post('/deployment/:projectName/credentials', async (c) => {
+  const doId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName(c.req.param('projectName'));
+  return c.env.DEPLOYMENT_ORCHESTRATOR.get(doId).fetch('http://do/credentials', {
+    method: 'POST',
+    headers: { Authorization: c.req.header('Authorization') || '' }
+  });
+});
+
 /**
  * List all deployments (for admin)
  * GET /deployments
  */
 deployment.get('/deployments', async (c) => {
   try {
+    const authorization = c.req.header('Authorization');
+    if (!authorization?.match(/^Bearer (\S+)$/i)) return c.json({ error: 'Deployment token required' }, 401);
+    const requestedLimit = Number(c.req.query('limit') ?? 20);
+    const offset = Number(c.req.query('offset') ?? 0);
+    if (!Number.isSafeInteger(requestedLimit) || requestedLimit < 1 || !Number.isSafeInteger(offset) || offset < 0) {
+      return c.json({ error: 'Invalid pagination' }, 400);
+    }
+    const limit = Math.min(requestedLimit, 50);
+    const ownerTokenHash = await hashOwnerToken(authorization.match(/^Bearer (\S+)$/i)![1]);
     const indexId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName('__deployment-index__');
     const indexStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(indexId);
     const indexResponse = await indexStub.fetch('http://do/index/list', { method: 'GET' });
@@ -218,21 +229,20 @@ deployment.get('/deployments', async (c) => {
     }
 
     const index = await indexResponse.json<DeploymentIndexResponse>();
-    const deployments = await Promise.all((index.deployments || []).map(async (item): Promise<DeploymentSummary> => {
+    const ownedItems = (index.deployments || []).filter(item => item.ownerTokenHash === ownerTokenHash);
+    const results = await Promise.all(ownedItems.slice(offset, offset + limit).map(async (item): Promise<DeploymentSummary | null> => {
       const doId = c.env.DEPLOYMENT_ORCHESTRATOR.idFromName(item.projectName);
       const doStub = c.env.DEPLOYMENT_ORCHESTRATOR.get(doId);
-      const statusResponse = await doStub.fetch('http://do/status', { method: 'GET' });
+      const statusResponse = await doStub.fetch('http://do/status', { method: 'GET', headers: { Authorization: authorization } });
 
       if (!statusResponse.ok) {
-        return {
-          ...item,
-          status: 'unknown'
-        };
+        return null;
       }
 
       const status = await statusResponse.json<Partial<DeploymentState> & { urls?: DeploymentSummary['urls'] }>();
+      const { ownerTokenHash: _ownerTokenHash, ...publicItem } = item;
       return {
-        ...item,
+        ...publicItem,
         deploymentId: status.deploymentId || item.deploymentId,
         status: status.status || 'unknown',
         currentStep: status.currentStep,
@@ -243,10 +253,14 @@ deployment.get('/deployments', async (c) => {
         error: status.error
       };
     }));
+    const deployments = results.filter((item): item is DeploymentSummary => item !== null);
 
     return c.json({
       deployments,
-      count: deployments.length
+      count: deployments.length,
+      offset,
+      limit,
+      total: ownedItems.length
     });
   } catch (error) {
     console.error('List deployments error:', error);

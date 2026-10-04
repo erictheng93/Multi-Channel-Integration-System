@@ -14,6 +14,7 @@ import { getPublicFileUrl, getSignedDownloadUrl } from '@/utils/file-url';
 import { resolveDisplaySenderName } from '@/utils/sender-name-repair';
 import { getRecallWindowSeconds } from '@/services/recall-window-config';
 import { scheduleOrDeliverNow } from '@modules/conversations/services/buffered-send-scheduler';
+import { insertMessageWithAttachments } from '@/services/message-attachments';
 
 type MessageInsert = typeof messages.$inferInsert;
 type FileAttachment = typeof fileAttachments.$inferSelect;
@@ -404,7 +405,7 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         };
 
         // Store message in D1 database
-        await db.insert(messages).values(messageData);
+        await insertMessageWithAttachments(this.env.DB, db, messageData, attachmentIds, agentId);
 
         // Recall window (ADR-0003): arm the scheduler immediately after insert,
         // before any non-critical post-insert D1 work can fail and strand a
@@ -452,18 +453,6 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         // because deliverAfterInitialBroadcast is never consumed.
         let linkedAttachments: FileAttachment[] = [];
         try {
-          // FIX: Link attachments to the message
-          if (hasAttachments) {
-            console.log(`[CustomerMessageDO] Linking ${attachmentIds.length} attachments to message ${messageId}`);
-            for (const attachmentId of attachmentIds) {
-              await db
-                .update(fileAttachments)
-                .set({ messageId: messageId })
-                .where(eq(fileAttachments.id, attachmentId));
-            }
-            console.log(`[CustomerMessageDO] Attachments linked successfully`);
-          }
-
           console.log(`[CustomerMessageDO] Message created: ${messageId}`);
 
           // FIX: Update conversation timestamps (updatedAt + lastMessageAt)
@@ -603,6 +592,9 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         });
       } catch (error) {
         console.error('[CustomerMessageDO] Error creating message:', error);
+        if ((error as { status?: number }).status === 400) {
+          return c.json({ success: false, error: (error as Error).message }, 400);
+        }
         return c.json({
           success: false,
           error: 'Failed to create message'

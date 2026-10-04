@@ -57,6 +57,8 @@ export interface Env {
 
   // Variables
   ENVIRONMENT?: string;
+  FRONTEND_URL?: string;
+  ALLOWED_ORIGINS?: string;
   SUPPORT_EMAIL?: string;
 
   // Durable Object bindings
@@ -64,6 +66,7 @@ export interface Env {
 }
 
 export interface DeploymentIndexItem {
+  ownerTokenHash?: string;
   projectName: string;
   deploymentId?: string;
   adminEmail: string;
@@ -99,14 +102,7 @@ export interface CloudflareUserInfo {
 }
 
 // Request/Response Types
-export interface StartDeploymentRequest {
-  projectName: string;
-  adminEmail: string;
-  adminPassword?: string;
-  customDomain?: string;
-  accountId: string;
-  oauthToken: string;
-}
+export type StartDeploymentRequest = import('./deployment').DeploymentConfig;
 
 export interface StartDeploymentResponse {
   success: boolean;
