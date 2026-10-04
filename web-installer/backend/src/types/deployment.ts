@@ -81,6 +81,8 @@ export interface DeploymentState {
   currentStepProgress: number; // 0-100
   totalProgress: number; // 0-100
   resources: CloudflareResources;
+  createdResources?: (keyof CloudflareResources)[];
+  generatedSecrets?: { jwtSecret: string; encryptionKey: string };
   logs: DeploymentLog[];
   error?: DeploymentError;
   adminCredentials?: AdminCredentials;
