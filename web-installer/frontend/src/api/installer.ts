@@ -28,7 +28,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     const error = await response.json().catch(() => ({
       error: response.statusText
     }));
-    throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
+    throw Object.assign(new Error(error.error || `HTTP ${response.status}: ${response.statusText}`), { status: response.status });
   }
   return response.json();
 }
@@ -101,6 +101,14 @@ export const oauthAPI = {
 // ========================================
 
 export const deploymentAPI = {
+  async takeCredentials(projectName: string): Promise<import('@/types').AdminCredentials> {
+    const response = await fetch(`${API_BASE_URL}/deployment/${projectName}/credentials`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${sessionStorage.getItem('oauth_token') || ''}` }
+    });
+    const result = await handleResponse<{ credentials: import('@/types').AdminCredentials }>(response);
+    return result.credentials;
+  },
   /**
    * Start a new deployment
    * POST /deployment/start
@@ -109,7 +117,8 @@ export const deploymentAPI = {
     const response = await fetch(`${API_BASE_URL}/deployment/start`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${request.oauthToken}`
       },
       body: JSON.stringify(request)
     });
@@ -125,7 +134,8 @@ export const deploymentAPI = {
     const response = await fetch(`${API_BASE_URL}/deployment/${projectName}/status`, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionStorage.getItem('oauth_token') || ''}`
       }
     });
 
@@ -140,7 +150,8 @@ export const deploymentAPI = {
     const response = await fetch(`${API_BASE_URL}/deployment/${projectName}/cancel`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionStorage.getItem('oauth_token') || ''}`
       }
     });
 

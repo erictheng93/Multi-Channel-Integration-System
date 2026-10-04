@@ -223,15 +223,14 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
     }));
   });
 
-  it('survives post-insert attachment linking failure: alarm already armed, request still succeeds', async () => {
-    mocks.selectResults = [{ platform: 'line' }];
+  it('rejects unavailable attachments before inserting or scheduling the message', async () => {
+    mocks.selectResults = [{ platform: 'line' }, []];
     mocks.scheduleOrDeliverNow.mockResolvedValue({
       deliveryStatus: 'buffered',
       isSent: false,
       recallDeadline: '2026-01-15T12:00:30Z',
       needsImmediateDelivery: false,
     });
-    mocks.updateWhere.mockRejectedValueOnce(new Error('attachment link failed'));
 
     const durableObject = new CustomerMessageDO({} as DurableObjectState, makeEnv());
     const response = await durableObject.fetch(new Request('https://customer-message-do/messages', {
@@ -250,25 +249,14 @@ describe('CustomerMessageDO buffered delivery fallback', () => {
       }),
     }));
 
-    // The alarm was armed before the linking failure, and the failure is
-    // non-critical: the response must stay 200 (message row exists and the
-    // buffered alarm will deliver it) instead of the previous 500-after-insert.
     const body = await response.json() as {
       success: boolean;
       message: { deliveryStatus: string; isSent: boolean };
     };
-    expect(response.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(body.message).toEqual(expect.objectContaining({
-      deliveryStatus: 'buffered',
-      isSent: false,
-    }));
-    expect(mocks.scheduleOrDeliverNow).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-      messageId: 'msg-1',
-      conversationId: 'conv-1',
-      recallWindowSeconds: 30,
-      canBuffer: true,
-    }));
+    expect(response.status).toBe(400);
+    expect(body.success).toBe(false);
+    expect(mocks.insertValues).not.toHaveBeenCalled();
+    expect(mocks.scheduleOrDeliverNow).not.toHaveBeenCalled();
     expect(mocks.deliver).not.toHaveBeenCalled();
   });
 

@@ -35,6 +35,8 @@ export const useDeploymentStore = defineStore('deployment', () => {
   const completedAt = ref<number | null>(null);
 
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let pollInFlight = false;
+  let credentialsUnavailable = false;
 
   // ========================================
   // COMPUTED
@@ -109,7 +111,7 @@ export const useDeploymentStore = defineStore('deployment', () => {
     fetchDeploymentStatus(name);
 
     pollTimer = setInterval(() => {
-      if (status.value === 'in_progress') {
+      if (status.value === 'in_progress' || (status.value === 'completed' && !credentials.value && !credentialsUnavailable)) {
         fetchDeploymentStatus(name);
       } else {
         stopPolling();
@@ -125,6 +127,8 @@ export const useDeploymentStore = defineStore('deployment', () => {
   }
 
   async function fetchDeploymentStatus(name: string): Promise<void> {
+    if (pollInFlight) return;
+    pollInFlight = true;
     try {
       const response = await deploymentAPI.getDeploymentStatus(name);
 
@@ -145,8 +149,15 @@ export const useDeploymentStore = defineStore('deployment', () => {
         error.value = response.error;
       }
 
-      if (response.credentials) {
-        credentials.value = response.credentials;
+      if (response.status === 'completed' && !credentials.value && !credentialsUnavailable) {
+        try {
+          credentials.value = await deploymentAPI.takeCredentials(name);
+        } catch (err) {
+          if ((err as { status?: number }).status !== 410) throw err;
+          credentialsUnavailable = true;
+          error.value = 'Credentials already retrieved. Use your saved credentials to sign in.';
+          addLog('warning', error.value);
+        }
       }
 
       // Terminal state — stop polling
@@ -160,6 +171,8 @@ export const useDeploymentStore = defineStore('deployment', () => {
       }
     } catch (err) {
       console.warn('Poll failed:', err);
+    } finally {
+      pollInFlight = false;
     }
   }
 
@@ -218,6 +231,7 @@ export const useDeploymentStore = defineStore('deployment', () => {
     logs.value = [];
     knownMessages.clear();
     credentials.value = null;
+    credentialsUnavailable = false;
     startedAt.value = 0;
     completedAt.value = null;
     stopPolling();
