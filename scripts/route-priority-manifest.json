@@ -59,6 +59,8 @@
     { "method": "ROUTE", "route": "/api/activities", "category": "fine-grained", "access": "auth", "reason": "Activity handler remains direct." },
     { "method": "ROUTE", "route": "/api/feedback", "category": "fine-grained", "access": "mixed", "reason": "Customer feedback handler remains direct." },
     { "method": "ROUTE", "route": "/api/queues", "category": "fine-grained", "access": "admin", "reason": "Queue monitor router remains direct." },
+    { "method": "ROUTE", "route": "/api/data/backup", "category": "admin", "access": "admin", "reason": "Admin backup router remains mounted after unified routes." },
+    { "method": "ROUTE", "route": "/api/broadcasts", "category": "fine-grained", "access": "auth", "reason": "Authenticated broadcast management router remains mounted after unified routes." },
     { "method": "ROUTE", "route": "/api/debug", "category": "debug", "access": "debug-only", "reason": "Debug token endpoint is conditional on securityConfig.debug.enabled." }
   ]
 }
