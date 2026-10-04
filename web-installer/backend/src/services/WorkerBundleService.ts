@@ -104,9 +104,12 @@ export class WorkerBundleService {
   generateEnvVars(config: WorkerBundleConfig): Record<string, string> {
     const env: Record<string, string> = {
       ENVIRONMENT: 'production',
+      FRONTEND_URL: config.config.frontendUrl || (config.config.customDomain ? `https://${config.config.customDomain}` : `https://${config.projectName}.pages.dev`),
       JWT_SECRET: config.jwtSecret,
       ENCRYPTION_KEY: config.encryptionKey
     };
+    const backendUrl = config.config.backendUrl || (config.config.customDomain ? `https://api.${config.config.customDomain}` : config.resources.workerUrl);
+    if (backendUrl) env.BACKEND_URL = backendUrl;
 
     // Add LINE integration if configured
     if (config.config.lineChannelAccessToken) {
