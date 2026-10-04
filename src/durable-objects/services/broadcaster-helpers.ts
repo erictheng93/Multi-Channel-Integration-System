@@ -84,12 +84,12 @@ export class BroadcasterHelpers {
         return [];
       }
 
-      // Includes both primary team (teamId) and multi-team membership (agent_teams)
+      // Team membership lives exclusively in agent_teams.
       const result = await this.ctx.env.DB.prepare(`
         SELECT DISTINCT a.id
         FROM agents a
-        LEFT JOIN agent_teams at ON a.id = at.agent_id
-        WHERE (a.team_id = ?1 OR at.team_id = ?1)
+        INNER JOIN agent_teams at ON a.id = at.agent_id
+        WHERE at.team_id = ?
           AND a.is_active = 1
           AND a.deleted_at IS NULL
       `).bind(teamId).all<{ id: string }>();
@@ -99,6 +99,23 @@ export class BroadcasterHelpers {
       log.error(' [MessageBroadcaster] Error getting team members:', { error: error instanceof Error ? error.message : String(error) });
       return [];
     }
+  }
+
+  async getConversationRecipients(conversationId: string): Promise<Set<string> | null> {
+    if (!this.ctx.env.DB) return null;
+    const result = await this.ctx.env.DB.prepare(`
+      SELECT a.id
+      FROM conversations c
+      LEFT JOIN agents a ON a.is_active = 1 AND a.deleted_at IS NULL
+        AND a.role IN ('agent', 'admin')
+        AND (a.role = 'admin' OR c.assigned_team_id IS NULL OR EXISTS (
+          SELECT 1 FROM agent_teams at
+          WHERE at.agent_id = a.id AND at.team_id = c.assigned_team_id
+        ))
+      WHERE c.id = ?
+    `).bind(conversationId).all<{ id: string | null }>();
+    if (!result.results?.length) return null;
+    return new Set(result.results.flatMap(row => row.id === null ? [] : [String(row.id)]));
   }
 
   /**

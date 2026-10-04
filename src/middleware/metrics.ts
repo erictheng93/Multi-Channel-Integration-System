@@ -65,7 +65,10 @@ export async function metricsMiddleware(
     const responseTimeMs = Date.now() - startTime;
     const statusCode = c.res.status;
     const method = c.req.method;
-    const normalizedPath = normalizePath(requestPath);
+    // Only registered templates may create endpoint keys; raw paths are attacker-controlled.
+    const normalizedPath = c.req.matchedRoutes
+      .filter(route => !route.path.includes('*'))
+      .at(-1)?.path ?? '/api/:unknown';
     const timestamp = Date.now();
 
     // Send metrics to MetricsCollectorDO non-blocking
