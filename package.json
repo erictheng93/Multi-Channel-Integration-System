@@ -153,7 +153,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.1.2",
     "@types/qrcode": "^1.5.6",
-    "@types/ws": "^8.18.1",
+    "@types/ws": "^8.18.2",
     "@vitest/coverage-v8": "^4.1.11",
     "better-sqlite3": "^13.0.2",
     "drizzle-kit": "^0.31.11",
@@ -163,6 +163,6 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.11",
     "wrangler": "4.147.0",
-    "ws": "^8.21.1"
+    "ws": "^8.22.0"
   }
 }
