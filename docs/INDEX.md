@@ -12,6 +12,7 @@ docs/
 ├── guides/ # 用戶指南、部署指南、故障排除
 ├── architecture/ # 系統架構設計、WebSocket、資料庫
 ├── development/ # 開發者文檔、測試、組件
+├── superpowers/ # 功能設計與實作計畫
 ├── claude/ # Claude Code 專用參考文檔
 └── history/ # 歷史記錄、實現報告、遷移記錄
 ```
@@ -106,6 +107,13 @@ docs/
 
 ### Monitoring (`development/monitoring/`)
 - API monitoring and observability
+
+---
+
+## 功能設計與實作計畫 (`superpowers/`)
+
+- [新訊息桌面提醒設計](superpowers/specs/2026-09-29-desktop-notifications-design.md) - 通知範圍、權限、資料流與驗收規格
+- [新訊息桌面提醒實作計畫](superpowers/plans/2026-09-29-desktop-notifications.md) - 前端實作步驟與測試計畫
 
 ---
 

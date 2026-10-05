@@ -1,7 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { createNewMessageHandler, type DesktopNotificationDeps } from './useDesktopNotifications'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import { createNewMessageHandler, useDesktopNotifications, type DesktopNotificationDeps } from './useDesktopNotifications'
+import { __resetDesktopNotificationPrefsForTest, useDesktopNotificationPrefs } from './useDesktopNotificationPrefs'
 import type { WebSocketMessage } from '@/services/websocketClient'
 import type { Conversation } from '@/types'
+
+const stores = vi.hoisted(() => ({
+  websocket: { subscribe: vi.fn(), unsubscribe: vi.fn() },
+  conversations: {
+    conversations: [] as Conversation[],
+    currentConversation: null as Conversation | null
+  },
+  auth: { allowedTeamIds: [1] }
+}))
+
+vi.mock('@/stores/websocket', () => ({ useWebSocketStore: () => stores.websocket }))
+vi.mock('@/stores/conversations', () => ({ useConversationsStore: () => stores.conversations }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => stores.auth }))
 
 function makeConversation(id: string, teamId?: number): Conversation {
   return { id, assignedTeamId: teamId, customer: { name: '王小明' } } as unknown as Conversation
@@ -110,5 +126,95 @@ describe('createNewMessageHandler', () => {
     handler(makeMessage({ data: { senderType: 'customer', content: '你好', messageType: 'text', senderName: '陳大文' } }))
     expect(shown.length).toBe(1)
     expect(shown[0]?.title).toBe('陳大文')
+  })
+})
+
+describe('useDesktopNotifications route and conversation integration', () => {
+  let router: ReturnType<typeof createRouter>
+  let wrapper: VueWrapper | undefined
+  let showNotification: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    stores.websocket.subscribe.mockReset().mockReturnValue('desktop-subscription')
+    stores.websocket.unsubscribe.mockReset()
+    stores.conversations.conversations = []
+    stores.conversations.currentConversation = null
+    localStorage.clear()
+    __resetDesktopNotificationPrefsForTest()
+    showNotification = vi.fn(class { close = vi.fn() })
+    Object.assign(showNotification, { permission: 'granted' })
+    vi.stubGlobal('Notification', showNotification)
+    useDesktopNotificationPrefs().setPrefs({ soundEnabled: false })
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    const page = { render: () => null }
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/conversations/:id', name: 'ConversationDetail', component: page },
+        { path: '/dashboard', name: 'Dashboard', component: page },
+        { path: '/other/:id', name: 'OtherDetail', component: page }
+      ]
+    })
+  })
+
+  afterEach(() => {
+    wrapper?.unmount()
+    wrapper = undefined
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  async function startNotifications(path: string) {
+    await router.push(path)
+    wrapper = mount({
+      setup() {
+        useDesktopNotifications().start()
+        return () => null
+      }
+    }, { global: { plugins: [router] } })
+    return stores.websocket.subscribe.mock.calls[0]?.[1] as (_message: WebSocketMessage) => void
+  }
+
+  it('離開對話到儀表板後，即使 currentConversation 仍保留也恢復通知', async () => {
+    stores.conversations.currentConversation = makeConversation('conv-1', 1)
+    const handleMessage = await startNotifications('/conversations/conv-1')
+    handleMessage(makeMessage())
+    expect(showNotification).not.toHaveBeenCalled()
+
+    await router.push('/dashboard')
+    handleMessage(makeMessage())
+    expect(showNotification).toHaveBeenCalledTimes(1)
+  })
+
+  it('對話路由仍在前景時，即使 store 尚未載入也抑制通知', async () => {
+    const handleMessage = await startNotifications('/conversations/conv-1')
+    handleMessage(makeMessage())
+    expect(showNotification).not.toHaveBeenCalled()
+  })
+
+  it.each(['/conversations/conv-2', '/other/conv-1'])(
+    '停在 %s 時不因殘留的 currentConversation 抑制其他對話通知', async (path) => {
+      stores.conversations.currentConversation = makeConversation('conv-1', 1)
+      const handleMessage = await startNotifications(path)
+      handleMessage(makeMessage())
+      expect(showNotification).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it('my-teams 模式在背景以相同 id 的 currentConversation 補足空列表', async () => {
+    useDesktopNotificationPrefs().setPrefs({ scope: 'my-teams' })
+    stores.conversations.currentConversation = makeConversation('conv-1', 1)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    const handleMessage = await startNotifications('/conversations/conv-1')
+    handleMessage(makeMessage())
+    expect(showNotification).toHaveBeenCalledTimes(1)
+  })
+
+  it('my-teams 模式不借用其他 currentConversation 的團隊資料', async () => {
+    useDesktopNotificationPrefs().setPrefs({ scope: 'my-teams' })
+    stores.conversations.currentConversation = makeConversation('conv-other', 1)
+    const handleMessage = await startNotifications('/dashboard')
+    handleMessage(makeMessage())
+    expect(showNotification).not.toHaveBeenCalled()
   })
 })

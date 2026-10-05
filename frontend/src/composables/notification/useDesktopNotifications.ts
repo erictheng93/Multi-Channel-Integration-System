@@ -131,8 +131,15 @@ export function useDesktopNotifications() {
   const handler = createNewMessageHandler({
     prefs,
     getPermission: () => permission.value,
-    getConversation: (id) => conversationsStore.conversations.find((c: Conversation) => c.id === id),
-    getCurrentConversationId: () => conversationsStore.currentConversation?.id ?? null,
+    getConversation: (id) =>
+      conversationsStore.conversations.find((c: Conversation) => c.id === id) ??
+      (conversationsStore.currentConversation?.id === id
+        ? conversationsStore.currentConversation
+        : undefined),
+    getCurrentConversationId: () => {
+      const { name, params } = router.currentRoute.value
+      return name === 'ConversationDetail' && typeof params.id === 'string' ? params.id : null
+    },
     getAllowedTeamIds: () => authStore.allowedTeamIds,
     isTabVisible: () => document.visibilityState === 'visible',
     showNotification,
