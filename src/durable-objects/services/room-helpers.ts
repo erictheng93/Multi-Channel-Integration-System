@@ -63,6 +63,7 @@ export interface RoomContext {
   // Storage optimization
   messageDirty: boolean;
   storageFlushDeadline: number | null;
+  accessCheckDeadline?: number | null;
 
   // Configuration constants
   MAX_CONNECTIONS: number;

@@ -369,6 +369,23 @@ export class BroadcasterDeliveryService {
     try {
       let totalDelivered = 0;
 
+      // Resolve visibility once per conversation, using current assignment and
+      // membership rather than the producer's target or a socket's old team.
+      const recipients = new Map<string, Set<string> | null>();
+      const contexts = new Map<QueuedEvent, string | null>();
+      for (const event of events) {
+        const dataId = isRecord(event.data) ? event.data.conversationId : undefined;
+        const conversationId = event.conversationId ?? dataId;
+        const requiresConversation = /^(new_message$|batch_message$|message_|delayed_message_|conversation_|typing_|participant_)/.test(event.type);
+        if ((event.conversationId && dataId && event.conversationId !== dataId) ||
+            (conversationId !== undefined && (typeof conversationId !== 'string' || !conversationId)) ||
+            (requiresConversation && !conversationId)) continue;
+        contexts.set(event, typeof conversationId === 'string' ? conversationId : null);
+        if (typeof conversationId === 'string' && !recipients.has(conversationId)) {
+          recipients.set(conversationId, await this.helpers.getConversationRecipients(conversationId));
+        }
+      }
+
       // DEBUG: Log registered connections before broadcast
       const registeredUsers = Array.from(this.ctx.userConnections.keys());
       const registeredConversations = Array.from(this.ctx.conversationRooms.keys());
@@ -383,7 +400,9 @@ export class BroadcasterDeliveryService {
       // Broadcast to all active conversation rooms
       const conversationPromises = Array.from(this.ctx.conversationRooms.entries()).map(async ([conversationId, _stub]) => {
         try {
-          return await this.deliverToConversation(conversationId, events);
+          const visible = events.filter(event => contexts.has(event) &&
+            (contexts.get(event) === null || (contexts.get(event) === conversationId && recipients.get(conversationId) !== null)));
+          return visible.length ? await this.deliverToConversation(conversationId, visible) : 0;
         } catch (error) {
           log.error('Global conversation delivery error', { conversationId, error: error instanceof Error ? error.message : String(error) });
           return 0;
@@ -394,7 +413,9 @@ export class BroadcasterDeliveryService {
       const userPromises = Array.from(this.ctx.userConnections.entries()).map(async ([userId, _stub]) => {
         try {
           console.log(`[MessageBroadcaster] Delivering to user: ${userId}`);
-          const result = await this.deliverToUser(userId, events);
+          const visible = events.filter(event => contexts.has(event) &&
+            (contexts.get(event) === null || recipients.get(contexts.get(event)!)?.has(String(userId))));
+          const result = visible.length ? await this.deliverToUser(userId, visible) : 0;
           console.log(`[MessageBroadcaster] Delivered to user ${userId}: ${result} events`);
           return result;
         } catch (error) {

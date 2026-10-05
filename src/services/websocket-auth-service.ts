@@ -4,6 +4,7 @@
 import type { Bindings } from '../types';
 import { validateAccessTokenPayload } from '@/middleware/auth';
 import { canConversationBeAccessedBy } from './conversation-access';
+import { getUserById, UserNotFoundError } from '@/utils/auth';
 import { nowMs } from '@/utils/timestamp'
 
 /**
@@ -250,5 +251,28 @@ export class WebSocketAuthService {
       console.error('[WebSocketAuth] Conversation access check failed:', error);
       return false;
     }
+  }
+
+  /**
+   * Live check against current D1 account and team membership, for revoking
+   * already-open sockets. Returns false only for a definite denial (missing,
+   * inactive or deleted account, or no matching rule); throws when D1 cannot
+   * answer so callers keep the socket and retry instead of mass-evicting.
+   */
+  async hasLiveConversationAccess(userId: string, conversationId: string): Promise<boolean> {
+    let user: Awaited<ReturnType<typeof getUserById>>;
+    try {
+      user = await getUserById(this.env.DB, userId);
+    } catch (error) {
+      if (error instanceof UserNotFoundError) return false;
+      throw error;
+    }
+    if (user.role === 'admin') return true;
+    const { allowed } = await canConversationBeAccessedBy(
+      this.env,
+      { userId, role: user.role, allowedTeamIds: user.allowedTeamIds || [] },
+      conversationId
+    );
+    return allowed;
   }
 }

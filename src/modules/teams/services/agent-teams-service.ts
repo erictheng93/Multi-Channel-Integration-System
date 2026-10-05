@@ -12,6 +12,8 @@ import { eq, and, sql, inArray } from 'drizzle-orm';
 import { agentTeams, agents, teams } from '@/db/schema';
 import type { D1Database } from '@cloudflare/workers-types';
 import { nowISO } from '@/utils/timestamp'
+import type { Bindings } from '@/types';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 
 export interface AgentTeamMembership {
   id: number;
@@ -69,7 +71,7 @@ export interface BatchAddMembersResult {
 export class AgentTeamsService {
   private db: ReturnType<typeof drizzle>;
 
-  constructor(database: D1Database) {
+  constructor(database: D1Database, private env?: Bindings) {
     this.db = drizzle(database);
   }
 
@@ -408,6 +410,8 @@ export class AgentTeamsService {
         eq(agentTeams.agentId, agentId),
         eq(agentTeams.teamId, teamId)
       ));
+
+    await revalidateWebSocketAccess(this.env, 'user', agentId);
 
     // If this was the primary team, promote next remaining team
     if (membership?.isPrimary) {

@@ -44,6 +44,7 @@ export class DeploymentOrchestrator implements DurableObject {
   private state: DurableObjectState;
   private env: Env;
   private deploymentState: DeploymentState | null = null;
+  private deploymentTask?: Promise<void>;
 
   // Services
   private api!: CloudflareAPI;
@@ -81,6 +82,16 @@ export class DeploymentOrchestrator implements DurableObject {
     const path = url.pathname;
 
     try {
+      // The original Cloudflare token is the deployment ownership capability.
+      // Check persisted state too: an evicted object must enforce the same owner.
+      if (['/deploy', '/status', '/events', '/cancel', '/credentials'].includes(path)) {
+        this.deploymentState ||= await this.state.storage.get<DeploymentState>('deploymentState') || null;
+        const token = request.headers.get('Authorization')?.match(/^Bearer (\S+)$/i)?.[1];
+        if (!token) return Response.json({ error: 'Deployment token required' }, { status: 401 });
+        if (this.deploymentState && !await this.tokensMatch(token, this.deploymentState.config.oauthToken)) {
+          return Response.json({ error: 'Deployment access denied' }, { status: 403 });
+        }
+      }
       // Register deployment metadata in the global deployment index
       if (path === '/index/register' && request.method === 'POST') {
         const item: DeploymentIndexItem = await request.json();
@@ -95,7 +106,20 @@ export class DeploymentOrchestrator implements DurableObject {
       // Start deployment
       if (path === '/deploy' && request.method === 'POST') {
         const config: DeploymentConfig = await request.json();
-        return await this.startDeployment(config);
+        const token = request.headers.get('Authorization')!.match(/^Bearer (\S+)$/i)![1];
+        return await this.state.blockConcurrencyWhile(async () => {
+          this.deploymentState ||= await this.state.storage.get<DeploymentState>('deploymentState') || null;
+          if (this.deploymentState && !await this.tokensMatch(token, this.deploymentState.config.oauthToken)) {
+            return Response.json({ error: 'Deployment access denied' }, { status: 403 });
+          }
+          if (!config.oauthToken || !await this.tokensMatch(token, config.oauthToken)) {
+            return Response.json({ error: 'Deployment access denied' }, { status: 403 });
+          }
+          if (this.deploymentState && ['pending', 'in_progress', 'rolling_back'].includes(this.deploymentState.status)) {
+            return Response.json({ error: 'Deployment already active' }, { status: 409 });
+          }
+          return await this.startDeployment(config);
+        });
       }
 
       // Get deployment status
@@ -109,6 +133,19 @@ export class DeploymentOrchestrator implements DurableObject {
       }
 
       // Cancel deployment
+      if (path === '/credentials' && request.method === 'POST') {
+        return await this.state.blockConcurrencyWhile(async () => {
+          const state = this.deploymentState;
+          if (!state || state.status !== 'completed') return Response.json({ error: 'Deployment is not completed' }, { status: 409 });
+          const credentials = state.adminCredentials;
+          if (!credentials) return Response.json({ error: 'Credentials already retrieved' }, { status: 410 });
+          delete state.adminCredentials;
+          delete state.config.adminPassword;
+          await this.updateState();
+          return Response.json({ credentials }, { headers: { 'Cache-Control': 'private, no-store' } });
+        });
+      }
+
       if (path === '/cancel' && request.method === 'POST') {
         return await this.cancelDeployment();
       }
@@ -120,6 +157,19 @@ export class DeploymentOrchestrator implements DurableObject {
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
+  }
+
+  private async tokensMatch(provided: string, expected: string): Promise<boolean> {
+    const encoder = new TextEncoder();
+    const [providedHash, expectedHash] = await Promise.all([
+      crypto.subtle.digest('SHA-256', encoder.encode(provided)),
+      crypto.subtle.digest('SHA-256', encoder.encode(expected))
+    ]);
+    const left = new Uint8Array(providedHash);
+    const right = new Uint8Array(expectedHash);
+    let difference = 0;
+    for (let index = 0; index < left.length; index++) difference |= left[index] ^ right[index];
+    return difference === 0;
   }
 
   private async registerDeploymentIndexItem(item: DeploymentIndexItem): Promise<Response> {
@@ -171,7 +221,7 @@ export class DeploymentOrchestrator implements DurableObject {
     this.frontendBundleService = new FrontendBundleService();
 
     // Generate secure secrets for the deployment
-    this.generatedSecrets = this.workerBundleService.generateSecrets();
+    this.generatedSecrets = this.deploymentState?.generatedSecrets || this.workerBundleService.generateSecrets();
 
     // Initialize deployment state
     const deploymentId = crypto.randomUUID();
@@ -183,6 +233,8 @@ export class DeploymentOrchestrator implements DurableObject {
       currentStepProgress: 0,
       totalProgress: 0,
       resources: {},
+      createdResources: [],
+      generatedSecrets: this.generatedSecrets,
       logs: [],
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -194,6 +246,7 @@ export class DeploymentOrchestrator implements DurableObject {
     const deploymentTask = this.executeDeployment().catch(async (error) => {
       await this.handleDeploymentError(error);
     });
+    this.deploymentTask = deploymentTask;
 
     if (this.isTestEnvironment()) {
       await deploymentTask;
@@ -250,6 +303,7 @@ export class DeploymentOrchestrator implements DurableObject {
     }
 
     // === VERIFICATION PHASE (no rollback — resources are fully deployed) ===
+    if (this.deploymentState.status !== 'in_progress') return;
     try {
       await this.runStep('verify_health', () => this.stepVerifyHealth());
     } catch {
@@ -264,6 +318,7 @@ export class DeploymentOrchestrator implements DurableObject {
     }
 
     // Deployment successful regardless of health check
+    if (this.deploymentState.status !== 'in_progress') return;
     this.deploymentState.status = 'completed';
     this.deploymentState.completedAt = Date.now();
     await this.updateState();
@@ -277,6 +332,7 @@ export class DeploymentOrchestrator implements DurableObject {
     stepFunction: () => Promise<void>
   ): Promise<void> {
     if (!this.deploymentState) return;
+    if (this.deploymentState.status !== 'in_progress') throw new Error('Deployment cancelled');
 
     const stepConfig = DEPLOYMENT_STEPS[stepName];
     let retryCount = 0;
@@ -292,6 +348,7 @@ export class DeploymentOrchestrator implements DurableObject {
       try {
         // Execute step with timeout
         await this.withTimeout(stepFunction(), stepConfig.timeout);
+        if (this.deploymentState.status !== 'in_progress') throw new Error('Deployment cancelled');
 
         // Step completed successfully
         this.deploymentState.currentStepProgress = 100;
@@ -303,6 +360,7 @@ export class DeploymentOrchestrator implements DurableObject {
         return; // Success - exit function
 
       } catch (error) {
+        if (this.deploymentState.status !== 'in_progress') throw error;
         lastError = error as Error;
         retryCount++;
 
@@ -342,6 +400,7 @@ export class DeploymentOrchestrator implements DurableObject {
    */
   private async handleDeploymentError(error: unknown): Promise<void> {
     if (!this.deploymentState) return;
+    if (['rolling_back', 'failed'].includes(this.deploymentState.status)) return;
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const deploymentError: DeploymentError = {
@@ -359,7 +418,7 @@ export class DeploymentOrchestrator implements DurableObject {
 
     // Execute rollback
     try {
-      await this.rollbackService.rollback(this.deploymentState.resources);
+      await this.rollbackService.rollback(this.createdResourcesForRollback());
       this.log('success', 'Rollback completed successfully');
     } catch (rollbackError) {
       this.log('error', `Rollback failed: ${rollbackError instanceof Error ? rollbackError.message : 'Unknown'}`);
@@ -373,8 +432,7 @@ export class DeploymentOrchestrator implements DurableObject {
   /**
    * Get deployment status
    *
-   * Maps internal state to the API response contract expected by the frontend.
-   * Notably, adminCredentials → credentials (frontend DeploymentStatusResponse type).
+   * Public progress never includes configuration or administrator credentials.
    */
   private async getStatus(): Promise<Response> {
     const state = this.deploymentState || await this.state.storage.get<DeploymentState>('deploymentState');
@@ -386,21 +444,11 @@ export class DeploymentOrchestrator implements DurableObject {
       );
     }
 
-    // Build response matching frontend DeploymentStatusResponse contract.
-    // Omit sensitive fields to avoid credential leakage on every 3s poll.
-    // - config: contains oauthToken, adminPassword
-    // - adminCredentials: contains admin password (mapped to 'credentials' key below)
-    const { config: _config, adminCredentials: _creds, ...safeState } = state;
-    const response = {
-      ...safeState,
-      // Map internal adminCredentials → credentials (frontend expects this key)
-      // Only include credentials when deployment is completed
-      credentials: state.status === 'completed' ? state.adminCredentials ?? undefined : undefined
-    };
+    const { config: _config, adminCredentials: _creds, generatedSecrets: _secrets, ...safeState } = state;
 
     return new Response(
-      JSON.stringify(response),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify(safeState),
+      { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } }
     );
   }
 
@@ -439,19 +487,16 @@ export class DeploymentOrchestrator implements DurableObject {
       status: 200,
       headers: {
         'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
+        'Cache-Control': 'private, no-store',
         'Connection': 'keep-alive'
       }
     });
   }
 
   private toStatusEventPayload(state: DeploymentState): Record<string, unknown> {
-    const { config: _config, adminCredentials: _creds, ...safeState } = state;
+    const { config: _config, adminCredentials: _creds, generatedSecrets: _secrets, ...safeState } = state;
 
-    return {
-      ...safeState,
-      credentials: state.status === 'completed' ? state.adminCredentials ?? undefined : undefined
-    };
+    return safeState;
   }
 
   /**
@@ -465,11 +510,25 @@ export class DeploymentOrchestrator implements DurableObject {
       );
     }
 
+    if (!['pending', 'in_progress'].includes(this.deploymentState.status)) {
+      return Response.json({ error: 'Deployment is not active' }, { status: 409 });
+    }
+
+    // Services are not retained across object eviction.
+    this.rollbackService ||= new RollbackService(new CloudflareAPI({
+      accountId: this.deploymentState.config.accountId,
+      apiToken: this.deploymentState.config.oauthToken
+    }));
+
     // Initiate rollback
     this.deploymentState.status = 'rolling_back';
     await this.updateState();
 
-    await this.rollbackService.rollback(this.deploymentState.resources);
+    // Let a creation already in flight record its resource before rollback.
+    // runStep stops before starting the next step once status is rolling_back.
+    await this.deploymentTask;
+
+    await this.rollbackService.rollback(this.createdResourcesForRollback());
 
     this.deploymentState.status = 'failed';
     await this.updateState();
@@ -483,6 +542,12 @@ export class DeploymentOrchestrator implements DurableObject {
   /**
    * Log a message
    */
+  private createdResourcesForRollback(): CloudflareResources {
+    const deployment = this.deploymentState!;
+    // Legacy deployments have no reliable provenance; preserve their resources.
+    return Object.fromEntries((deployment.createdResources || []).map(key => [key, deployment.resources[key]]));
+  }
+
   private log(level: DeploymentLog['level'], message: string, details?: Record<string, unknown>): void {
     if (!this.deploymentState) return;
 
@@ -544,7 +609,6 @@ export class DeploymentOrchestrator implements DurableObject {
   private async stepInitialize(): Promise<void> {
     if (!this.deploymentState) return;
     this.log('info', 'Initializing deployment...');
-    await this.sleep(1000); // Simulate initialization
   }
 
   private async stepCreateD1(): Promise<void> {
@@ -553,6 +617,7 @@ export class DeploymentOrchestrator implements DurableObject {
     try {
       const db = await this.api.createD1Database(dbName);
       this.deploymentState.resources.d1DatabaseId = db.uuid;
+      this.deploymentState.createdResources!.push('d1DatabaseId');
       this.log('success', `Created D1 database: ${db.uuid}`);
     } catch (error) {
       if (isAlreadyExistsError(error)) {
@@ -575,6 +640,7 @@ export class DeploymentOrchestrator implements DurableObject {
     try {
       const kv = await this.api.createKVNamespace(kvName);
       this.deploymentState.resources.kvSessionNamespaceId = kv.id;
+      this.deploymentState.createdResources!.push('kvSessionNamespaceId');
       this.log('success', `Created KV namespace (session): ${kv.id}`);
     } catch (error) {
       if (isAlreadyExistsError(error)) {
@@ -597,6 +663,7 @@ export class DeploymentOrchestrator implements DurableObject {
     try {
       const kv = await this.api.createKVNamespace(kvName);
       this.deploymentState.resources.kvCacheNamespaceId = kv.id;
+      this.deploymentState.createdResources!.push('kvCacheNamespaceId');
       this.log('success', `Created KV namespace (cache): ${kv.id}`);
     } catch (error) {
       if (isAlreadyExistsError(error)) {
@@ -619,6 +686,7 @@ export class DeploymentOrchestrator implements DurableObject {
     try {
       const bucket = await this.api.createR2Bucket(bucketName);
       this.deploymentState.resources.r2BucketName = bucket.name;
+      this.deploymentState.createdResources!.push('r2BucketName');
       this.log('success', `Created R2 bucket: ${bucket.name}`);
     } catch (error) {
       if (isAlreadyExistsError(error)) {
@@ -637,6 +705,7 @@ export class DeploymentOrchestrator implements DurableObject {
     try {
       const queue = await this.api.createQueue(queueName);
       this.deploymentState.resources.queueId = queue.queue_id;
+      this.deploymentState.createdResources!.push('queueId');
       this.deploymentState.resources.queueName = queue.queue_name;
       this.log('success', `Created queue: ${queue.queue_name} (ID: ${queue.queue_id})`);
     } catch (error) {
@@ -689,11 +758,21 @@ export class DeploymentOrchestrator implements DurableObject {
       this.deploymentState.resources,
       projectName
     );
-
-    this.log('info', `Deploying Worker with ${bindings.length} bindings...`);
-
+    const envVars = this.workerBundleService.generateEnvVars({
+      projectName,
+      resources: this.deploymentState.resources,
+      config: this.deploymentState.config,
+      ...this.generatedSecrets
+    });
     // Check if Worker already exists to determine if we need migrations
     const existingWorker = await this.api.workerExists(workerName);
+    const existingSecrets = existingWorker ? await this.api.listWorkerSecrets(workerName) : [];
+    for (const [name, text] of Object.entries(envVars)) {
+      if (['JWT_SECRET', 'ENCRYPTION_KEY'].includes(name) && existingSecrets.includes(name)) continue;
+      bindings.push({ type: ['ENVIRONMENT', 'FRONTEND_URL', 'BACKEND_URL'].includes(name) ? 'plain_text' : 'secret_text', name, text });
+    }
+    const keep_bindings = existingWorker ? ['secret_text'] : undefined;
+    this.log('info', `Deploying Worker with ${bindings.length} bindings...`);
 
     // Durable Object migrations — only include on FRESH deployment
     // Re-deployments must omit migrations to avoid "Cannot apply migration" conflict
@@ -722,6 +801,7 @@ export class DeploymentOrchestrator implements DurableObject {
         name: workerName,
         script: workerScript,
         bindings,
+        keep_bindings,
         compatibility_date: '2024-01-01',
         compatibility_flags: ['nodejs_compat'],
         migrations
@@ -734,6 +814,7 @@ export class DeploymentOrchestrator implements DurableObject {
           name: workerName,
           script: workerScript,
           bindings,
+          keep_bindings,
           compatibility_date: '2024-01-01',
           compatibility_flags: ['nodejs_compat'],
           migrations: undefined
@@ -744,6 +825,7 @@ export class DeploymentOrchestrator implements DurableObject {
     }
 
     this.deploymentState.resources.workerId = workerName;
+    if (!existingWorker) this.deploymentState.createdResources!.push('workerId');
 
     // Fetch actual workers subdomain (not accountId) for correct URL
     try {
@@ -803,6 +885,9 @@ export class DeploymentOrchestrator implements DurableObject {
     let pages: { id: string; name: string; subdomain: string };
     try {
       pages = await this.api.createPagesProject(projectName);
+      this.deploymentState.resources.pagesProjectId = pages.id;
+      this.deploymentState.resources.pagesProjectName = pages.name;
+      this.deploymentState.createdResources!.push('pagesProjectName');
       this.log('info', `Pages project created: ${pages.name}`);
     } catch (error) {
       if (isAlreadyExistsError(error)) {
@@ -928,6 +1013,7 @@ export class DeploymentOrchestrator implements DurableObject {
       };
 
       this.deploymentState.adminCredentials = credentials;
+      delete this.deploymentState.config.adminPassword;
       this.log('success', `Created admin user: ${result.username} (ID: ${result.userId})`);
     } catch (error) {
       // Handle duplicate admin user on re-deployment (UNIQUE constraint on email)
@@ -942,6 +1028,7 @@ export class DeploymentOrchestrator implements DurableObject {
         };
 
         this.deploymentState.adminCredentials = credentials;
+        delete this.deploymentState.config.adminPassword;
         this.log('success', `Reusing existing admin user: ${adminEmail}`);
         return;
       }

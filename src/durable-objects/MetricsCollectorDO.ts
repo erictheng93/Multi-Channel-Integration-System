@@ -71,8 +71,10 @@ const MAX_RECENT_RESPONSE_TIMES = 200;
 // How often to flush to KV (ms)
 const FLUSH_INTERVAL_MS = 60_000;
 
-// Persist to DO storage every N ingests for crash recovery
-const PERSIST_EVERY_N_INGESTS = 10;
+const MAX_ENDPOINTS = 512;
+const ENDPOINT_RETENTION_MS = 86_400_000;
+const OVERFLOW_KEY = 'OTHER:/api/:overflow';
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']);
 
 /**
  * MetricsCollectorDO - Aggregates API request metrics in memory
@@ -82,7 +84,6 @@ export class MetricsCollectorDO {
   private env: Bindings;
   private metrics: Map<string, EndpointMetrics> = new Map();
   private startedAt: number = Date.now();
-  private ingestCountSinceLastPersist: number = 0;
 
   constructor(state: DurableObjectState, env: Bindings) {
     this.state = state;
@@ -104,7 +105,17 @@ export class MetricsCollectorDO {
       }>('metricsState');
 
       if (stored) {
-        this.metrics = new Map(stored.metrics);
+        this.metrics = new Map(stored.metrics.slice(-MAX_ENDPOINTS));
+        for (const endpoint of this.metrics.values()) {
+          endpoint.lastRequestAt = Math.min(endpoint.lastRequestAt, Date.now());
+          endpoint.recentResponseTimes = endpoint.recentResponseTimes.slice(-MAX_RECENT_RESPONSE_TIMES);
+          endpoint.statusCodes = Object.fromEntries(Object.entries(endpoint.statusCodes)
+            .filter(([status]) => /^\d{3}$/.test(status) && Number(status) >= 100 && Number(status) <= 599));
+        }
+        this.pruneExpiredEndpoints();
+        if (this.metrics.size === MAX_ENDPOINTS && !this.metrics.has(OVERFLOW_KEY)) {
+          this.metrics.delete(this.metrics.keys().next().value!);
+        }
         this.startedAt = stored.startedAt;
         console.log(`[MetricsCollectorDO] Restored ${this.metrics.size} endpoint metrics from storage`);
       }
@@ -121,6 +132,15 @@ export class MetricsCollectorDO {
       });
     } catch (error) {
       console.error('[MetricsCollectorDO] Failed to persist to storage:', error);
+    }
+  }
+
+  private pruneExpiredEndpoints(): void {
+    const cutoff = Date.now() - ENDPOINT_RETENTION_MS;
+    for (const [key, endpoint] of this.metrics) {
+      if (!Number.isFinite(endpoint.lastRequestAt) || endpoint.lastRequestAt <= cutoff) {
+        this.metrics.delete(key);
+      }
     }
   }
 
@@ -172,15 +192,24 @@ export class MetricsCollectorDO {
   private async handleIngest(request: Request): Promise<Response> {
     const payload = (await request.json()) as IngestPayload;
 
-    const { method, path, statusCode, responseTimeMs, timestamp } = payload;
-    if (!method || !path || statusCode === undefined || responseTimeMs === undefined) {
+    const { method, path, statusCode, responseTimeMs } = payload ?? {};
+    if (typeof method !== 'string' || !method || method.length > 16 ||
+        typeof path !== 'string' || !path.startsWith('/api/') || path.length > 512 ||
+        !Number.isInteger(statusCode) || statusCode < 100 || statusCode > 599 ||
+        typeof responseTimeMs !== 'number' || !Number.isFinite(responseTimeMs) || responseTimeMs < 0) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Missing required fields' }),
+        JSON.stringify({ success: false, error: 'Invalid metric fields' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const key = `${method.toUpperCase()}:${path}`;
+    const normalizedMethod = method.toUpperCase();
+    let key = `${HTTP_METHODS.has(normalizedMethod) ? normalizedMethod : 'OTHER'}:${path}`;
+    if (!this.metrics.has(key)) {
+      this.pruneExpiredEndpoints();
+      // Reserve one slot for overflow so every accepted request still contributes to totals.
+      if (this.metrics.size >= MAX_ENDPOINTS - 1) key = OVERFLOW_KEY;
+    }
 
     let endpoint = this.metrics.get(key);
     if (!endpoint) {
@@ -200,7 +229,7 @@ export class MetricsCollectorDO {
     endpoint.requestCount++;
     endpoint.totalResponseTime += responseTimeMs;
     endpoint.maxResponseTime = Math.max(endpoint.maxResponseTime, responseTimeMs);
-    endpoint.lastRequestAt = timestamp || Date.now();
+    endpoint.lastRequestAt = Date.now();
 
     // Track status codes
     endpoint.statusCodes[statusCode] = (endpoint.statusCodes[statusCode] || 0) + 1;
@@ -216,13 +245,7 @@ export class MetricsCollectorDO {
       endpoint.recentResponseTimes.shift();
     }
 
-    // Periodic persistence
-    this.ingestCountSinceLastPersist++;
-    if (this.ingestCountSinceLastPersist >= PERSIST_EVERY_N_INGESTS) {
-      this.ingestCountSinceLastPersist = 0;
-      await this.persistToStorage();
-    }
-
+    // The existing minute alarm persists the bounded snapshot, independent of request volume.
     return new Response(
       JSON.stringify({ success: true, key, requestCount: endpoint.requestCount }),
       { headers: { 'Content-Type': 'application/json' } }
@@ -239,7 +262,6 @@ export class MetricsCollectorDO {
   private async handleReset(): Promise<Response> {
     this.metrics.clear();
     this.startedAt = Date.now();
-    this.ingestCountSinceLastPersist = 0;
     await this.state.storage.deleteAll();
     await this.ensureAlarm();
 
@@ -264,6 +286,7 @@ export class MetricsCollectorDO {
   // =================== Snapshot Building ===================
 
   private buildSnapshot(): MetricsSnapshot {
+    this.pruneExpiredEndpoints();
     const now = Date.now();
     const allResponseTimes: number[] = [];
     let totalRequests = 0;

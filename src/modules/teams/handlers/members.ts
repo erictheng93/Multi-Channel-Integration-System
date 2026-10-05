@@ -124,7 +124,7 @@ membersHandler.get('/', jwtAuth, async (c) => {
       .orderBy(desc(agents.createdAt));
 
     // Fetch multi-team membership information
-    const agentTeamsService = new AgentTeamsService(c.env.DB);
+    const agentTeamsService = new AgentTeamsService(c.env.DB, c.env);
     const allAgentTeams = await agentTeamsService.getAllAgentsWithTeams();
 
     const formattedMembers = members.map((member) => {
@@ -175,7 +175,7 @@ membersHandler.get('/check-email', jwtAuth, requireManagerOrAdmin(), async (c) =
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
     const result = await memberService.checkEmailExists(email);
 
     return contractJson(c, teamContracts.checkEmail, {
@@ -205,7 +205,7 @@ membersHandler.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
 
     // Check if member already exists
     const exists = await memberService.memberExists(data.email);
@@ -272,7 +272,7 @@ membersHandler.put('/:memberId/status', jwtAuth, requireManagerOrAdmin(), async 
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
     const existingMember = await memberService.getMember(memberId);
     await memberService.updateMemberStatus(memberId, data, String(user.id));
 
@@ -339,7 +339,7 @@ membersHandler.put('/:memberId/role', jwtAuth, requireManagerOrAdmin(), async (c
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
     const existingMember = await memberService.getMember(memberId);
     await memberService.updateMemberRole(memberId, data, String(user.id));
 
@@ -391,7 +391,7 @@ membersHandler.put('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) => 
     const memberId = c.req.param('memberId')!;
     const data: UpdateMemberRequest = await c.req.json();
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
     const existingMember = await memberService.getMember(memberId);
     const member = await memberService.updateMember(memberId, data, String(user.id));
 
@@ -452,7 +452,7 @@ membersHandler.delete('/:memberId', jwtAuth, requireManagerOrAdmin(), async (c) 
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
 
     // Check if member exists
     const member = await memberService.getMember(memberId);
@@ -536,7 +536,7 @@ membersHandler.post('/bulk-delete', jwtAuth, requireManagerOrAdmin(), async (c) 
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
 
     // Execute bulk hard delete
     const result = await memberService.bulkHardDeleteMembers(
@@ -628,7 +628,7 @@ membersHandler.post('/bulk-update', jwtAuth, requireManagerOrAdmin(), async (c) 
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
 
     // Execute bulk update
     const result = await memberService.bulkUpdateMembers(
@@ -732,7 +732,7 @@ membersHandler.post('/batch-edit', jwtAuth, requireManagerOrAdmin(), async (c) =
       }
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
 
     // Execute batch edit
     const result = await memberService.batchEditMembers(
@@ -844,7 +844,7 @@ membersHandler.post('/batch-edit/undo', jwtAuth, requireManagerOrAdmin(), async 
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const memberService = new MemberService(c.env.DB);
+    const memberService = new MemberService(c.env.DB, c.env);
 
     // Restore original data
     const result = await memberService.batchEditMembers(
