@@ -12,7 +12,9 @@ import { nowISO, nowMs } from '@/utils/timestamp';
 import { UserConnectionStateManager } from './user-connection-state';
 import { UserSubscriptionManager } from './user-subscription-manager';
 import { UserConnectionSecurity } from './user-connection-security';
-import { getUserById } from '@/utils/auth';
+import { getUserById, UserNotFoundError } from '@/utils/auth';
+import { WebSocketAuthService } from '@/services/websocket-auth-service';
+import type { Bindings } from '@/types';
 
 type UserConnectionEnv = Record<string, unknown> & {
   userId?: string;
@@ -530,8 +532,9 @@ export class UserConnection implements DurableObject {
     }
 
     if (this.accessCheckDeadline && this.accessCheckDeadline <= Date.now()) {
-      await this.revalidateGlobalAccess(false);
+      // Cleared first: revalidation sets a short retry deadline when D1 is unavailable.
       this.accessCheckDeadline = null;
+      await this.revalidateGlobalAccess(false);
     }
 
     await this.scheduleNextTokenExpiryAlarm();
@@ -585,10 +588,17 @@ export class UserConnection implements DurableObject {
     return Response.json({ success: true });
   }
 
-  private async revalidateGlobalAccess(closeAgents: boolean): Promise<void> {
+  /**
+   * Returns true when D1 could not answer. Sockets and subscriptions are then
+   * kept and the check retried in 30s: only a definite answer revokes access.
+   */
+  private async revalidateGlobalAccess(closeAgents: boolean): Promise<boolean> {
     let currentRole: string | undefined;
     try { currentRole = (await getUserById(this.env.DB as D1Database, this.userId)).role; }
-    catch (error) { console.warn('[UserConnection] Account access revoked:', error); }
+    catch (error) {
+      if (!(error instanceof UserNotFoundError)) return this.deferAccessCheck(error);
+      console.warn('[UserConnection] Account access revoked:', error);
+    }
     for (const connection of this.stateManager.getAllConnections()) {
       if (!currentRole || connection.role !== currentRole || (closeAgents && currentRole !== 'admin')) {
         try { connection.websocket.serializeAttachment(null); }
@@ -598,12 +608,26 @@ export class UserConnection implements DurableObject {
         await this.removeConnection(connection.connectionId);
       }
     }
+    const auth = new WebSocketAuthService(this.env as unknown as Bindings);
+    let deferred = false;
     for (const conversationId of this.subscriptionManager.subscribedConversations) {
-      if (!await this.subscriptionManager.checkConversationPermission(this.env, this.userId, conversationId, 'view')) {
-        this.subscriptionManager.removeSubscription(conversationId);
+      try {
+        if (!await auth.hasLiveConversationAccess(this.userId, conversationId)) {
+          this.subscriptionManager.removeSubscription(conversationId);
+        }
+      } catch (error) {
+        deferred = await this.deferAccessCheck(error);
       }
     }
     await this.subscriptionManager.persistSubscriptions(this.state.storage);
+    return deferred;
+  }
+
+  private async deferAccessCheck(error: unknown): Promise<true> {
+    console.error('[UserConnection] Access check unavailable, retrying later:', error);
+    this.accessCheckDeadline = Date.now() + 30000;
+    await this.state.storage.put('accessCheckDeadline', this.accessCheckDeadline);
+    return true;
   }
 
   private async handleEvict(request: Request): Promise<Response> {
@@ -615,7 +639,7 @@ export class UserConnection implements DurableObject {
     }
     this.userId = body.userId;
     this.restoreConnectionsFromHibernation();
-    await this.revalidateGlobalAccess(true);
+    const deferred = await this.revalidateGlobalAccess(true);
     await this.scheduleNextTokenExpiryAlarm();
     const rooms = await this.state.storage.list<string>({ prefix: 'room:' });
     const namespace = this.env.CONVERSATION_ROOM as DurableObjectNamespace | undefined;
@@ -628,8 +652,16 @@ export class UserConnection implements DurableObject {
         })
       );
       if (!response.ok) throw new Error(`Room eviction returned ${response.status}`);
+      // Prune registrations the room no longer holds (sockets lost without a close
+      // event). Only keys listed before the call, so a concurrent join is never pruned.
+      const { connectionIds } = await response.json() as { connectionIds?: string[] };
+      if (!Array.isArray(connectionIds)) return;
+      const stale = Array.from(rooms.entries())
+        .filter(([key, id]) => id === conversationId && !connectionIds.includes(key.slice('room:'.length)))
+        .map(([key]) => key);
+      if (stale.length) await this.state.storage.delete(stale);
     }));
-    if (results.some(result => result.status === 'rejected')) {
+    if (deferred || results.some(result => result.status === 'rejected')) {
       console.error('[UserConnection] Room eviction failed:', results);
       return new Response('Room eviction failed', { status: 503 });
     }

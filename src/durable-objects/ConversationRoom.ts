@@ -334,8 +334,9 @@ export class ConversationRoom implements DurableObject {
     const now = Date.now();
     await this.connectionManager.closeExpiredTokenConnections(now);
     if (this.roomContext.accessCheckDeadline && this.roomContext.accessCheckDeadline <= now) {
-      await this.connectionManager.evictUnauthorizedConnections();
+      // Cleared first: eviction sets a short retry deadline when D1 is unavailable.
       this.roomContext.accessCheckDeadline = null;
+      await this.connectionManager.evictUnauthorizedConnections();
     }
     await this.storageService.flushDueMessageHistory(now);
     await this.storageService.scheduleNextAlarm();

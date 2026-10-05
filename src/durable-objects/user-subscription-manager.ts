@@ -69,7 +69,7 @@ export class UserSubscriptionManager {
   ): Promise<boolean> {
     try {
       return await new WebSocketAuthService(env as unknown as Bindings)
-        .authorizeConversationAccess(userId, 'agent', conversationId);
+        .hasLiveConversationAccess(userId, conversationId);
     } catch (error) {
       console.error(`[UserSubscriptionManager] Permission check failed:`, error);
       return false; // Fail secure - deny access on error
