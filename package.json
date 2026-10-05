@@ -156,7 +156,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.11",
     "better-sqlite3": "^13.0.2",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.5",
     "drizzle-kit": "^0.31.10",
     "husky": "^9.1.7",
     "jsdom": "^30.0.1",
