@@ -19,6 +19,7 @@ export class RoomStorageService {
 
   async initializeFromStorage(): Promise<void> {
     try {
+      this.ctx.accessCheckDeadline = await this.ctx.state.storage.get<number>('accessCheckDeadline') ?? null;
       // Restore participants
       const participants = await this.ctx.state.storage.get('participants') as string[];
       if (participants) {
@@ -106,9 +107,17 @@ export class RoomStorageService {
   }
 
   async scheduleNextAlarm(): Promise<void> {
+    if (this.ctx.connections.size > 0 && !this.ctx.accessCheckDeadline) {
+      this.ctx.accessCheckDeadline = Date.now() + 300000;
+      await this.ctx.state.storage.put('accessCheckDeadline', this.ctx.accessCheckDeadline);
+    } else if (this.ctx.connections.size === 0 && this.ctx.accessCheckDeadline) {
+      this.ctx.accessCheckDeadline = null;
+      await this.ctx.state.storage.delete('accessCheckDeadline');
+    }
     const deadlines = [
       this.ctx.storageFlushDeadline,
-      this.getNextTokenExpiryDeadline()
+      this.getNextTokenExpiryDeadline(),
+      this.ctx.accessCheckDeadline
     ].filter((deadline): deadline is number => typeof deadline === 'number' && Number.isFinite(deadline));
 
     if (deadlines.length === 0) {

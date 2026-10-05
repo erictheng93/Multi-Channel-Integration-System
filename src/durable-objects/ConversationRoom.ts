@@ -65,6 +65,7 @@ export class ConversationRoom implements DurableObject {
   private messageService: RoomMessageService;
   private connectionManager: RoomConnectionManager;
   private shardingHandler: RoomShardingHandler;
+  private ready: Promise<void>;
 
   constructor(state: DurableObjectState, env: unknown, config?: ConversationRoomConfig) {
     const resolvedConfig = config || { mode: 'full' };
@@ -137,14 +138,14 @@ export class ConversationRoom implements DurableObject {
     this.connectionManager.restoreHibernatedConnections();
 
     // Initialize state from storage
-    this.storageService.initializeFromStorage();
+    this.ready = this.storageService.initializeFromStorage();
 
     // Set up cleanup hooks (full mode only)
     if (this.helpers.isFullMode()) {
       this.connectionManager.setupCleanupTasks();
     }
 
-    this.storageService.scheduleNextAlarm().catch((error) => {
+    this.ready.then(() => this.storageService.scheduleNextAlarm()).catch((error) => {
       testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Initial alarm scheduling error:`, error);
     });
 
@@ -155,6 +156,7 @@ export class ConversationRoom implements DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     try {
+      await this.ready;
       const url = new URL(request.url);
       const pathname = url.pathname;
 
@@ -186,6 +188,11 @@ export class ConversationRoom implements DurableObject {
           return this.connectionManager.handleConnect(request);
         case '/disconnect':
           return this.connectionManager.handleDisconnect(request);
+        case '/evict': {
+          const response = await this.connectionManager.handleEvict(request);
+          await this.storageService.scheduleNextAlarm();
+          return response;
+        }
         case '/broadcast':
           return this.connectionManager.handleBroadcast(request);
         case '/participants':
@@ -282,7 +289,13 @@ export class ConversationRoom implements DurableObject {
       this.roomContext.state.acceptWebSocket(server, [userId, this.roomContext.conversationId]);
 
       // Add connection to room
-      await this.connectionManager.addConnection(connection);
+      try {
+        await this.connectionManager.addConnection(connection);
+      } catch (error) {
+        server.close(1011, 'Connection registration failed');
+        await this.connectionManager.removeConnection(connectionId);
+        throw error;
+      }
 
       // Send welcome message after the hibernation API accepts the server socket.
       this.connectionManager.setupWebSocketHandlers(connection);
@@ -317,8 +330,13 @@ export class ConversationRoom implements DurableObject {
   }
 
   async alarm(): Promise<void> {
+    await this.ready;
     const now = Date.now();
     await this.connectionManager.closeExpiredTokenConnections(now);
+    if (this.roomContext.accessCheckDeadline && this.roomContext.accessCheckDeadline <= now) {
+      await this.connectionManager.evictUnauthorizedConnections();
+      this.roomContext.accessCheckDeadline = null;
+    }
     await this.storageService.flushDueMessageHistory(now);
     await this.storageService.scheduleNextAlarm();
   }

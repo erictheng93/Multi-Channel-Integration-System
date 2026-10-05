@@ -57,7 +57,7 @@ app.post('/:id/members/bulk-remove', jwtAuth, requireTeamRole('lead'), requireIn
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const result = await teamService.bulkRemoveMembers(teamId, body.agentIds);
 
     return contractJson(c, teamContracts.bulkRemoveMembersFromTeam, {
@@ -107,7 +107,7 @@ app.post('/:id/members/batch', jwtAuth, requireTeamRole('lead'), requireIntId(),
     }
 
     const db = createDbClient(c.env.DB);
-    const agentTeamsService = new AgentTeamsService(c.env.DB);
+    const agentTeamsService = new AgentTeamsService(c.env.DB, c.env);
 
     // Get team name for response and activity logging
     const teamInfo = await db
@@ -198,7 +198,7 @@ app.put('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireIntId(
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const member = await teamService.updateMember(teamId, agentId, body);
 
     return c.json({ success: true, data: member });
@@ -221,7 +221,7 @@ app.delete('/:id/members/:agentId', jwtAuth, requireTeamRole('lead'), requireInt
     }
 
     const user = c.get('user');
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const success = await teamService.removeMember(teamId, agentId, {
       id: String(user.id),
       displayName: user.displayName,
@@ -250,7 +250,7 @@ app.get('/:id/members', jwtAuth, requireTeamAccess('id'), requireIntId(), async 
   try {
     const teamId = getValidatedParam<number>(c, 'id');
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const members = await teamService.getMembers(teamId);
 
     return contractJson(c, teamContracts.getTeamMembersByTeam, {
@@ -275,7 +275,7 @@ app.post('/:id/members', jwtAuth, requireTeamRole('lead'), requireIntId(), async
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const member = await teamService.addMember(teamId, body);
 
     return c.json({
