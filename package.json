@@ -138,7 +138,7 @@
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.32",
-    "ipaddr.js": "^2.4.0",
+    "ipaddr.js": "^2.5.0",
     "jsonwebtoken": "^9.0.3",
     "node-fetch": "^3.3.2",
     "qrcode": "^1.5.4",
