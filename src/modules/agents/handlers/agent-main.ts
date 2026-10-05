@@ -50,7 +50,7 @@ export function createAgentRouter() {
     agentValidationMiddleware.batchOperation,
     async (c) => {
       const db = createDb(c.env.DB);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
 
       const request = await c.req.json();
       const result = await agentService.batchTransferAgents(request);
@@ -71,7 +71,7 @@ export function createAgentRouter() {
     async (c) => {
       const db = createDb(c.env.DB);
       const statusService = new AgentStatusService(c.env.KV);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
 
       // 取得所有代理 ID
       const allAgentsResult = await agentService.listAgents({ page: 1, limit: 1000 });
@@ -94,7 +94,7 @@ export function createAgentRouter() {
     agentValidationMiddleware.batchOperation,
     async (c) => {
       const db = createDb(c.env.DB);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
 
       const request = await c.req.json();
       const updatedAgents = await agentService.batchUpdateAgents(request);
@@ -112,7 +112,7 @@ export function createAgentRouter() {
     requireTeamLeaderOrAdmin(),
     async (c) => {
       const db = createDb(c.env.DB);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
 
       const query = await c.req.json();
       const agents = await agentService.searchAgents(query);
@@ -294,7 +294,7 @@ export function createAgentRouter() {
     checkAgentAccess(),
     async (c) => {
       const db = createDb(c.env.DB);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
       const skillsService = new AgentSkillsService(c.env.KV);
       const statusService = new AgentStatusService(c.env.KV);
 
@@ -333,7 +333,7 @@ export function createAgentRouter() {
     agentValidationMiddleware.updateAgent,
     async (c) => {
       const db = createDb(c.env.DB);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
       const currentUser = c.get('user');
 
       const agentId = c.req.param('agentId')!;
@@ -395,7 +395,7 @@ export function createAgentRouter() {
     requireAdminRole(),
     async (c) => {
       const db = createDb(c.env.DB);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
 
       const agentId = c.req.param('agentId')!;
       const deleted = await agentService.deleteAgent(agentId);
@@ -418,7 +418,7 @@ export function createAgentRouter() {
     agentValidationMiddleware.pagination,
     async (c) => {
       const db = createDb(c.env.DB);
-      const agentService = new AgentService(db);
+      const agentService = new AgentService(db, c.env);
 
       const params = {
         page: parseInt(c.req.query('page') || '1'),

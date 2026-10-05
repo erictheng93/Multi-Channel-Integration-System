@@ -147,7 +147,7 @@ app.get('/stats/all', jwtAuth, requireAdmin(), async (c) => {
       includeMembers: c.req.query('includeMembers') === 'true'
     };
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const stats = await teamService.getAllTeamsStats(params);
 
     return c.json({ success: true, data: stats });
@@ -193,7 +193,7 @@ app.post('/transfer', jwtAuth, requireAdmin(), async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const result = await teamService.transferMembers(body);
 
     return c.json({ success: true, data: result });
@@ -216,7 +216,7 @@ app.get('/search/:query', jwtAuth, async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const teams = await teamService.searchTeams(query);
 
     return c.json({ success: true, data: teams });
@@ -239,7 +239,7 @@ app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c
       includeMembers: c.req.query('includeMembers') === 'true'
     };
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const stats = await teamService.getTeamStats(teamId, params);
 
     return contractJson(c, teamContracts.getTeamStatsByTeam, {
@@ -257,7 +257,7 @@ app.get('/:id/stats', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c
 app.get('/:id', jwtAuth, requireTeamAccess('id'), requireIntId(), async (c) => {
   try {
     const teamId = getValidatedParam<number>(c, 'id');
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const team = await teamService.getTeam(teamId);
 
     if (!team) {
@@ -282,7 +282,7 @@ app.put('/:id', jwtAuth, requireTeamRole('supervisor'), requireIntId(), async (c
     const user = c.get('user');
     const teamId = getValidatedParam<number>(c, 'id');
     const body = await c.req.json() as TeamUpdateRequest;
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const existingTeam = await teamService.getTeam(teamId);
     if (!existingTeam) {
       return c.json({
@@ -332,7 +332,7 @@ app.put('/:id', jwtAuth, requireTeamRole('supervisor'), requireIntId(), async (c
 app.delete('/:id', jwtAuth, requireAdmin(), requireIntId(), async (c) => {
   try {
     const teamId = getValidatedParam<number>(c, 'id');
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
 
     const teamInfo = await teamService.getTeam(teamId);
     if (!teamInfo) {
@@ -394,7 +394,7 @@ app.get('/', jwtAuth, async (c) => {
     const includeInactive = c.req.query('includeInactive') === 'true';
 
     if (user.role === 'agent' && user.primaryTeamId) {
-      const teamService = new TeamService(c.env.DB);
+      const teamService = new TeamService(c.env.DB, c.env);
       const team = await teamService.getTeam(user.primaryTeamId);
       return contractJson(c, teamContracts.getTeams, {
         success: true,
@@ -403,7 +403,7 @@ app.get('/', jwtAuth, async (c) => {
       } satisfies ContractResponse<typeof teamContracts.getTeams>);
     }
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const searchParam = c.req.query('search');
     const params: TeamListRequest = {
       page: parseInt(c.req.query('page') || '1'),
@@ -448,7 +448,7 @@ app.post('/', jwtAuth, requireManagerOrAdmin(), async (c) => {
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const teamService = new TeamService(c.env.DB);
+    const teamService = new TeamService(c.env.DB, c.env);
     const team = await teamService.createTeam(body);
 
     const user = c.get('user');

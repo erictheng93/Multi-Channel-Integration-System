@@ -9,6 +9,7 @@ import type { Bindings } from '@/types';
 import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 import { successResponse, errorResponse, validationErrorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp'
@@ -110,6 +111,8 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
             .where(inArray(conversations.id, idChunk));
         }
 
+        await Promise.all(conversationIdsArray.map(id =>
+          revalidateWebSocketAccess(c.env, 'conversation', id)));
         log.debug('Bulk Assign completed', { teamId: data.teamId, conversationCount: conversationIdsArray.length });
         break;
       }
