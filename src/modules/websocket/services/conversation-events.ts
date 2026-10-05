@@ -5,6 +5,7 @@
 import type { DurableObjectEvent } from '@/types/websocket-types';
 import { nowMs } from '@/utils/timestamp';
 import { EventBroadcasterBase } from './event-broadcaster-deps';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 
 /**
  * Handles conversation lifecycle and assignment event broadcasts:
@@ -25,6 +26,9 @@ export class ConversationEventBroadcaster extends EventBroadcasterBase {
     priority?: 'low' | 'normal' | 'high' | 'urgent';
   }): Promise<boolean> {
     try {
+      if (['conversation_assigned', 'conversation_unassigned', 'conversation_transferred'].includes(event.type)) {
+        await revalidateWebSocketAccess(this.env, 'conversation', event.conversationId);
+      }
       const wsEvent: DurableObjectEvent = {
         id: crypto.randomUUID(),
         type: event.type,
@@ -105,6 +109,7 @@ export class ConversationEventBroadcaster extends EventBroadcasterBase {
     };
     reason?: string;
   }): Promise<{ oldTeamNotified: boolean; newTeamNotified: boolean; conversationRoomNotified: boolean }> {
+    await revalidateWebSocketAccess(this.env, 'conversation', event.conversationId);
     const {
       conversationId,
       fromTeamId,

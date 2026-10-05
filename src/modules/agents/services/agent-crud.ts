@@ -46,11 +46,13 @@ import { generateId } from '@/utils/id-generator';
 import { hashPassword } from '@/utils/auth';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import type { Bindings } from '@/types';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 
 const log = createContextLogger('AgentCrudService');
 
 export class AgentService implements AgentServiceInterface {
-  constructor(private db: DrizzleD1Database<Record<string, unknown>>) {}
+  constructor(private db: DrizzleD1Database<Record<string, unknown>>, private env?: Bindings) {}
 
   // CRUD 操作
   async createAgent(data: CreateAgentRequest): Promise<Agent> {
@@ -227,6 +229,10 @@ export class AgentService implements AgentServiceInterface {
         .returning()
         .get();
 
+      if (teamId || data.role || data.isActive === false) {
+        await revalidateWebSocketAccess(this.env, 'user', id);
+      }
+
       return result;
     } catch (error) {
       if (error instanceof AgentNotFoundError || error instanceof AgentAlreadyExistsError || error instanceof InvalidAgentDataError) {
@@ -279,6 +285,7 @@ export class AgentService implements AgentServiceInterface {
         .returning()
         .get();
 
+      if (result) await revalidateWebSocketAccess(this.env, 'user', id);
       return !!result;
     } catch (error) {
       throw new Error(`Failed to delete agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -497,6 +504,7 @@ export class AgentService implements AgentServiceInterface {
             isPrimary: true,
             joinedAt: now
           });
+          await revalidateWebSocketAccess(this.env, 'user', agentId);
         } catch (error) {
           errors.push({
             agentId,

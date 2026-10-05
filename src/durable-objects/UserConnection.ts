@@ -12,6 +12,9 @@ import { nowISO, nowMs } from '@/utils/timestamp';
 import { UserConnectionStateManager } from './user-connection-state';
 import { UserSubscriptionManager } from './user-subscription-manager';
 import { UserConnectionSecurity } from './user-connection-security';
+import { getUserById, UserNotFoundError } from '@/utils/auth';
+import { WebSocketAuthService } from '@/services/websocket-auth-service';
+import type { Bindings } from '@/types';
 
 type UserConnectionEnv = Record<string, unknown> & {
   userId?: string;
@@ -44,6 +47,8 @@ export class UserConnection implements DurableObject {
   private state: DurableObjectState;
   private env: UserConnectionEnv;
   private userId: string;
+  private ready: Promise<void>;
+  private accessCheckDeadline: number | null = null;
 
   // Sub-module delegates
   private readonly stateManager = new UserConnectionStateManager();
@@ -59,13 +64,16 @@ export class UserConnection implements DurableObject {
     this.restoreConnectionsFromHibernation();
 
     // Initialize from storage
-    this.initializeFromStorage();
+    this.ready = this.initializeFromStorage();
+    this.ready.then(() => this.scheduleNextTokenExpiryAlarm()).catch(error =>
+      console.error('[UserConnection] Initial alarm scheduling failed:', error));
   }
 
   // =================== Main Request Handler ===================
 
   async fetch(request: Request): Promise<Response> {
     try {
+      await this.ready;
       const url = new URL(request.url);
       const pathname = url.pathname;
 
@@ -76,6 +84,10 @@ export class UserConnection implements DurableObject {
 
       // Handle HTTP API requests
       switch (pathname) {
+        case '/rooms':
+          return this.handleTrackRoom(request);
+        case '/evict':
+          return this.handleEvict(request);
         case '/connect':
           return this.handleConnectToConversation(request);
         case '/disconnect':
@@ -488,6 +500,7 @@ export class UserConnection implements DurableObject {
   // =================== Helper Methods ===================
 
   private async initializeFromStorage(): Promise<void> {
+    this.accessCheckDeadline = await this.state.storage.get<number>('accessCheckDeadline') ?? null;
     await this.stateManager.initializeFromStorage(this.state.storage);
     await this.subscriptionManager.initializeFromStorage(this.state.storage);
     console.log(`[UserConnection] State restored for user ${this.userId}: ${this.subscriptionManager.subscriptionCount} subscriptions`);
@@ -502,6 +515,7 @@ export class UserConnection implements DurableObject {
   }
 
   async alarm(): Promise<void> {
+    await this.ready;
     const nowSec = Math.floor(Date.now() / 1000);
     const expiredConnections = this.stateManager.getAllConnections().filter((connection) => {
       const tokenExp = connection.metadata?.tokenExp;
@@ -515,6 +529,12 @@ export class UserConnection implements DurableObject {
         console.warn('[UserConnection] token-expiry close failed', error);
       }
       await this.removeConnection(connection.connectionId);
+    }
+
+    if (this.accessCheckDeadline && this.accessCheckDeadline <= Date.now()) {
+      // Cleared first: revalidation sets a short retry deadline when D1 is unavailable.
+      this.accessCheckDeadline = null;
+      await this.revalidateGlobalAccess(false);
     }
 
     await this.scheduleNextTokenExpiryAlarm();
@@ -533,12 +553,119 @@ export class UserConnection implements DurableObject {
       }
     }
 
-    if (nextTokenExp === undefined) {
+    if (this.stateManager.connectionCount > 0 && !this.accessCheckDeadline) {
+      this.accessCheckDeadline = Date.now() + 300000;
+      await this.state.storage.put('accessCheckDeadline', this.accessCheckDeadline);
+    } else if (this.stateManager.connectionCount === 0 && this.accessCheckDeadline) {
+      this.accessCheckDeadline = null;
+      await this.state.storage.delete('accessCheckDeadline');
+    }
+    if (nextTokenExp === undefined && !this.accessCheckDeadline) {
       await this.state.storage.deleteAlarm();
       return;
     }
 
-    await this.state.storage.setAlarm(Math.max(Date.now(), nextTokenExp * 1000));
+    await this.state.storage.setAlarm(Math.max(Date.now(), Math.min(
+      nextTokenExp === undefined ? Infinity : nextTokenExp * 1000,
+      this.accessCheckDeadline ?? Infinity
+    )));
+  }
+
+  private async handleTrackRoom(request: Request): Promise<Response> {
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+    const body: unknown = await request.json().catch(() => null);
+    if (!isRecord(body) || typeof body.userId !== 'string' || !body.userId ||
+        typeof body.conversationId !== 'string' || !body.conversationId ||
+        typeof body.connectionId !== 'string' || !body.connectionId ||
+        typeof body.connected !== 'boolean' ||
+        (this.userId !== 'unknown' && this.userId !== body.userId)) {
+      return new Response('Invalid room registration', { status: 400 });
+    }
+    this.userId = body.userId;
+    const key = `room:${body.connectionId}`;
+    if (body.connected) await this.state.storage.put(key, body.conversationId);
+    else await this.state.storage.delete(key);
+    return Response.json({ success: true });
+  }
+
+  /**
+   * Returns true when D1 could not answer. Sockets and subscriptions are then
+   * kept and the check retried in 30s: only a definite answer revokes access.
+   */
+  private async revalidateGlobalAccess(closeAgents: boolean): Promise<boolean> {
+    let currentRole: string | undefined;
+    try { currentRole = (await getUserById(this.env.DB as D1Database, this.userId)).role; }
+    catch (error) {
+      if (!(error instanceof UserNotFoundError)) return this.deferAccessCheck(error);
+      console.warn('[UserConnection] Account access revoked:', error);
+    }
+    for (const connection of this.stateManager.getAllConnections()) {
+      if (!currentRole || connection.role !== currentRole || (closeAgents && currentRole !== 'admin')) {
+        try { connection.websocket.serializeAttachment(null); }
+        catch (error) { console.warn('[UserConnection] Clearing revoked attachment failed:', error); }
+        try { connection.websocket.close(4403, 'Access revoked'); }
+        catch (error) { console.warn('[UserConnection] Access-revocation close failed:', error); }
+        await this.removeConnection(connection.connectionId);
+      }
+    }
+    const auth = new WebSocketAuthService(this.env as unknown as Bindings);
+    let deferred = false;
+    for (const conversationId of this.subscriptionManager.subscribedConversations) {
+      try {
+        if (!await auth.hasLiveConversationAccess(this.userId, conversationId)) {
+          this.subscriptionManager.removeSubscription(conversationId);
+        }
+      } catch (error) {
+        deferred = await this.deferAccessCheck(error);
+      }
+    }
+    await this.subscriptionManager.persistSubscriptions(this.state.storage);
+    return deferred;
+  }
+
+  private async deferAccessCheck(error: unknown): Promise<true> {
+    console.error('[UserConnection] Access check unavailable, retrying later:', error);
+    this.accessCheckDeadline = Date.now() + 30000;
+    await this.state.storage.put('accessCheckDeadline', this.accessCheckDeadline);
+    return true;
+  }
+
+  private async handleEvict(request: Request): Promise<Response> {
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+    const body: unknown = await request.json().catch(() => null);
+    if (!isRecord(body) || typeof body.userId !== 'string' || !body.userId ||
+        (this.userId !== 'unknown' && this.userId !== body.userId)) {
+      return new Response('Invalid userId', { status: 400 });
+    }
+    this.userId = body.userId;
+    this.restoreConnectionsFromHibernation();
+    const deferred = await this.revalidateGlobalAccess(true);
+    await this.scheduleNextTokenExpiryAlarm();
+    const rooms = await this.state.storage.list<string>({ prefix: 'room:' });
+    const namespace = this.env.CONVERSATION_ROOM as DurableObjectNamespace | undefined;
+    if (rooms.size && !namespace) throw new Error('CONVERSATION_ROOM binding is missing');
+    const results = await Promise.allSettled(Array.from(new Set(rooms.values())).map(async conversationId => {
+      const response = await namespace!.get(namespace!.idFromName(conversationId)).fetch(
+        new Request('https://internal/evict', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userIds: [this.userId] })
+        })
+      );
+      if (!response.ok) throw new Error(`Room eviction returned ${response.status}`);
+      // Prune registrations the room no longer holds (sockets lost without a close
+      // event). Only keys listed before the call, so a concurrent join is never pruned.
+      const { connectionIds } = await response.json() as { connectionIds?: string[] };
+      if (!Array.isArray(connectionIds)) return;
+      const stale = Array.from(rooms.entries())
+        .filter(([key, id]) => id === conversationId && !connectionIds.includes(key.slice('room:'.length)))
+        .map(([key]) => key);
+      if (stale.length) await this.state.storage.delete(stale);
+    }));
+    if (deferred || results.some(result => result.status === 'rejected')) {
+      console.error('[UserConnection] Room eviction failed:', results);
+      return new Response('Room eviction failed', { status: 503 });
+    }
+    return Response.json({ success: true });
   }
 
   // =================== HTTP API Handlers ===================
