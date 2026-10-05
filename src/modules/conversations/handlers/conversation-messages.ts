@@ -292,6 +292,7 @@ conversationMessagesHandler.post('/:id/attachments', jwtAuth, async (c) => {
       fileUrl,
       r2Key,
       uploadStatus: 'completed', // Direct upload completed
+      uploadedBy: userPayload.userId.toString(),
       createdAt: nowISO()
     });
 

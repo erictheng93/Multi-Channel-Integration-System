@@ -45,6 +45,7 @@
       <!-- Credentials Box -->
       <div v-if="credentials" class="credentials-section">
         <CredentialsBox :credentials="credentials" />
+        <p>Save these credentials before leaving or reloading this page. They can only be retrieved once.</p>
       </div>
 
       <!-- Quick Start Guide -->
@@ -258,7 +259,7 @@ async function loadDeploymentData(): Promise<void> {
 
     // Validate required data
     if (!credentials.value || !resources.value.pagesUrl) {
-      loadError.value = 'Deployment data could not be loaded. The deployment session may have expired. You can try refreshing or return to the home page.';
+      loadError.value = deploymentStore.error || 'Deployment data could not be loaded. Retry to retrieve your credentials.';
     }
   } catch (error) {
     console.error('Failed to load deployment data:', error);

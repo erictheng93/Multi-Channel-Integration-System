@@ -1,4 +1,5 @@
-import type { Team, DbUser, DatabaseRow } from '../types';
+import type { Team, DbUser, DatabaseRow, Bindings } from '../types';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 import { createDbClient } from '../db/drizzle-factory';
 import { teams, agents, agentTeams, conversations, messages, conversationTransfers, customers } from '../db/schema';
 import { eq, and, count, inArray, sql, desc } from 'drizzle-orm';
@@ -459,7 +460,8 @@ export async function transferConversationToTeam(
   fromTeamId: number | null,
   targetTeamId: number,
   transferredBy: string,
-  reason?: string
+  reason?: string,
+  env?: Bindings
 ): Promise<void> {
   const drizzleDb = createDbClient(db);
   const now = nowISO();
@@ -490,4 +492,5 @@ export async function transferConversationToTeam(
   };
 
   await drizzleDb.insert(conversationTransfers).values(transferRecord);
+  await revalidateWebSocketAccess(env, 'conversation', conversationId);
 }

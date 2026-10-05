@@ -3,6 +3,8 @@
 
 import type { WebSocketMessage, WebSocketSubscription } from '../types/websocket-types';
 import { nowMs } from '@/utils/timestamp';
+import { WebSocketAuthService } from '@/services/websocket-auth-service';
+import type { Bindings } from '@/types';
 
 /**
  * Manages conversation subscriptions and permission checks for a user.
@@ -63,74 +65,11 @@ export class UserSubscriptionManager {
     env: Record<string, unknown>,
     userId: string,
     conversationId: string,
-    action: string
+    _action: string
   ): Promise<boolean> {
     try {
-      const { drizzle } = await import('drizzle-orm/d1');
-      const { eq, and } = await import('drizzle-orm');
-      const schema = await import('../db/schema');
-
-      const db = drizzle(env.DB as D1Database, { schema });
-
-      // Get the conversation
-      const conversation = await db
-        .select({
-          id: schema.conversations.id,
-          assignedTeamId: schema.conversations.assignedTeamId,
-        })
-        .from(schema.conversations)
-        .where(eq(schema.conversations.id, conversationId))
-        .get();
-
-      if (!conversation) {
-        console.warn(`[UserSubscriptionManager] Conversation ${conversationId} not found`);
-        return false;
-      }
-
-      // Get the user's role
-      const user = await db
-        .select({
-          id: schema.agents.id,
-          role: schema.agents.role,
-        })
-        .from(schema.agents)
-        .where(eq(schema.agents.id, userId))
-        .get();
-
-      if (!user) {
-        console.warn(`[UserSubscriptionManager] User ${userId} not found`);
-        return false;
-      }
-
-      // Admin has full access
-      if (user.role === 'admin') {
-        return true;
-      }
-
-      // For unassigned conversations, allow access (queue management)
-      if (!conversation.assignedTeamId) {
-        return action === 'read';
-      }
-
-      // Check if user is in the assigned team (via agent_teams)
-      if (conversation.assignedTeamId) {
-        const membership = await db
-          .select({ id: schema.agentTeams.id })
-          .from(schema.agentTeams)
-          .where(
-            and(eq(schema.agentTeams.agentId, userId), eq(schema.agentTeams.teamId, conversation.assignedTeamId))
-          )
-          .limit(1);
-
-        if (membership.length > 0) {
-          return true;
-        }
-      }
-
-      console.warn(
-        `[UserSubscriptionManager] User ${userId} denied ${action} access to conversation ${conversationId}`
-      );
-      return false;
+      return await new WebSocketAuthService(env as unknown as Bindings)
+        .hasLiveConversationAccess(userId, conversationId);
     } catch (error) {
       console.error(`[UserSubscriptionManager] Permission check failed:`, error);
       return false; // Fail secure - deny access on error

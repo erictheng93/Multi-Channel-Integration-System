@@ -249,15 +249,20 @@ export class CloudflareAPI {
    * Returns true if the worker exists, false otherwise
    */
   async workerExists(name: string): Promise<boolean> {
-    try {
-      await this.request({
-        method: 'GET',
-        path: `/accounts/${this.accountId}/workers/scripts/${name}`
-      });
-      return true;
-    } catch {
-      return false;
-    }
+    const response = await fetch(`${this.baseUrl}/accounts/${this.accountId}/workers/scripts/${name}`, {
+      headers: { Authorization: `Bearer ${this.apiToken}` }
+    });
+    if (response.status === 404) return false;
+    if (!response.ok) throw new Error(`Unable to check Worker existence: HTTP ${response.status}`);
+    return true;
+  }
+
+  async listWorkerSecrets(name: string): Promise<string[]> {
+    const response = await this.request<{ name: string; type: string }[]>({
+      method: 'GET', path: `/accounts/${this.accountId}/workers/scripts/${name}/secrets`
+    });
+    if (!response.success) throw new Error('Unable to read existing Worker secret names');
+    return response.result.map(secret => secret.name);
   }
 
   async deployWorker(config: DeployWorkerRequest): Promise<Worker> {
@@ -268,6 +273,7 @@ export class CloudflareAPI {
       compatibility_date: config.compatibility_date,
       compatibility_flags: config.compatibility_flags
     };
+    if (config.keep_bindings) metadata.keep_bindings = config.keep_bindings;
 
     // Include DO migrations if present
     if (config.migrations) {

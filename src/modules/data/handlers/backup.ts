@@ -23,22 +23,22 @@ function escapeSqlValue(v: unknown): string {
 }
 
 /**
- * Produce a full SQL dump (schema + data) of the D1 database.
+ * Yield a full SQL dump (schema + data) of the D1 database, one statement at a time.
  * Schema is blob-free (text/int/real/null), so value serialization is exact.
  * Paginated per table to stay within D1 response limits.
  */
-async function dumpDatabase(db: Bindings['DB']): Promise<string> {
+async function* dumpStatements(db: Bindings['DB']): AsyncGenerator<string> {
   const tables = await db
     .prepare(
       "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND sql IS NOT NULL ORDER BY name"
     )
     .all<{ name: string; sql: string }>();
 
-  const parts: string[] = ['PRAGMA defer_foreign_keys=TRUE;'];
+  yield 'PRAGMA defer_foreign_keys=TRUE;\n';
   const PAGE = 1000;
 
   for (const t of tables.results) {
-    parts.push(`${t.sql};`);
+    yield `${t.sql};\n`;
     let offset = 0;
     for (;;) {
       const page = await db
@@ -50,15 +50,58 @@ async function dumpDatabase(db: Bindings['DB']): Promise<string> {
       for (const row of rows) {
         const cols = Object.keys(row);
         const vals = cols.map((col) => escapeSqlValue(row[col]));
-        parts.push(
-          `INSERT INTO "${t.name}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${vals.join(', ')});`
-        );
+        yield `INSERT INTO "${t.name}" (${cols.map((c) => `"${c}"`).join(', ')}) VALUES (${vals.join(', ')});\n`;
       }
       if (rows.length < PAGE) break;
       offset += PAGE;
     }
   }
-  return parts.join('\n') + '\n';
+}
+
+// R2 multipart parts must be >= 5 MiB (except the last), which also bounds memory.
+const PART_SIZE = 5 * 1024 * 1024;
+
+/** Stream the dump into R2 via multipart upload; returns the size in bytes. */
+export async function putDump(
+  bucket: R2Bucket,
+  key: string,
+  statements: AsyncIterable<string>,
+  options: R2PutOptions
+): Promise<number> {
+  const upload = await bucket.createMultipartUpload(key, options);
+  const encoder = new TextEncoder();
+  const parts: R2UploadedPart[] = [];
+  let chunks: Uint8Array[] = [];
+  let buffered = 0;
+  let total = 0;
+
+  const flush = async () => {
+    const body = new Uint8Array(buffered);
+    let at = 0;
+    for (const chunk of chunks) {
+      body.set(chunk, at);
+      at += chunk.length;
+    }
+    parts.push(await upload.uploadPart(parts.length + 1, body));
+    chunks = [];
+    buffered = 0;
+  };
+
+  try {
+    for await (const statement of statements) {
+      const bytes = encoder.encode(statement);
+      chunks.push(bytes);
+      buffered += bytes.length;
+      total += bytes.length;
+      if (buffered >= PART_SIZE) await flush();
+    }
+    if (buffered > 0) await flush();
+    await upload.complete(parts);
+    return total;
+  } catch (error) {
+    await upload.abort().catch(() => undefined);
+    throw error;
+  }
 }
 
 // GET /api/data/backup — list backups + last automatic backup
@@ -95,8 +138,7 @@ backupHandler.post('/run', async (c) => {
   const stamp = nowISO().replace(/[:.]/g, '-');
   const key = `manual/mcis-db-${stamp}.sql`;
 
-  const sql = await dumpDatabase(c.env.DB);
-  await bucket.put(key, sql, {
+  const size = await putDump(bucket, key, dumpStatements(c.env.DB), {
     httpMetadata: { contentType: 'application/sql' },
     customMetadata: {
       triggeredBy: String(user?.email || user?.id || 'admin'),
@@ -106,7 +148,7 @@ backupHandler.post('/run', async (c) => {
 
   return c.json({
     success: true,
-    data: { key, size: sql.length },
+    data: { key, size },
     message: '備份已建立並上傳至雲端',
     timestamp: nowISO(),
   });

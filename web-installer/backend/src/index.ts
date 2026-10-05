@@ -30,17 +30,11 @@ app.use('*', async (c, next) => {
 
 // CORS middleware
 app.use('*', cors({
-  origin: (origin) => {
-    // Allow localhost for development
-    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
-      return origin;
-    }
-    // Allow Cloudflare Pages domains
-    if (origin.includes('.pages.dev')) {
-      return origin;
-    }
-    // Allow custom domains (in production, you'd have a whitelist)
-    return origin;
+  origin: (origin, c) => {
+    const allowed = (c.env.ALLOWED_ORIGINS || c.env.FRONTEND_URL || '').split(',').map((value: string) => value.trim());
+    if (allowed.includes(origin)) return origin;
+    if (c.env.ENVIRONMENT !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return origin;
+    return undefined;
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],

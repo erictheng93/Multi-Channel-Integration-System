@@ -25,6 +25,7 @@ import { nowISO, nowMs } from '@/utils/timestamp'
 import { ActivityService, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 import { contractJson } from '@/utils/api-contract-response';
 import { messageContracts, type ContractResponse } from '@shared/api-contracts';
+import { insertMessageWithAttachments } from '@/services/message-attachments';
 
 const crudRoutes = new Hono<{ Bindings: Bindings }>();
 type MessageUpdateValues = Partial<typeof messages.$inferInsert>;
@@ -481,7 +482,7 @@ crudRoutes.post('/', jwtAuth, async (c) => {
     };
 
     // 插入訊息
-    await db.insert(messages).values(messageData);
+    await insertMessageWithAttachments(c.env.DB, db, messageData, attachmentIds, userPayload.userId.toString());
 
     // 更新對話的最後訊息時間
     await db
@@ -491,21 +492,6 @@ crudRoutes.post('/', jwtAuth, async (c) => {
         updatedAt: nowISO()
       })
       .where(eq(conversations.id, conversationId));
-
-    // 處理附件關聯
-    if (attachmentIds && attachmentIds.length > 0) {
-      for (const attachmentId of attachmentIds) {
-        await db
-          .update(fileAttachments)
-          .set({ messageId: messageId })
-          .where(
-            and(
-              eq(fileAttachments.id, attachmentId),
-              isNull(fileAttachments.messageId)
-            )
-          );
-      }
-    }
 
     // 查詢關聯的附件
     let attachments: unknown[] = [];
@@ -568,6 +554,9 @@ crudRoutes.post('/', jwtAuth, async (c) => {
 
   } catch (error) {
     log.error('Create message error', {}, error as Error);
+    if ((error as { status?: number }).status === 400) {
+      return badRequestResponse(c, (error as Error).message);
+    }
     return errorResponse(c, error instanceof Error ? error.message : 'Failed to create message', 500);
   }
 });

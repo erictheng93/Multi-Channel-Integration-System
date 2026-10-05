@@ -93,11 +93,20 @@ const MOCK_ROUTES: Array<{ method: string; pattern: RegExp; body: unknown }> = [
 describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
   let deploymentId: string;
   let realFetch: typeof globalThis.fetch;
+  let deployedBindings: { name: string; type: string; text?: string }[];
 
   beforeEach(() => {
     realFetch = globalThis.fetch;
+    deployedBindings = [];
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const request = new Request(input, init);
+      if (request.method === 'GET' && /\/workers\/scripts\/[^/]+$/.test(new URL(request.url).pathname)) {
+        return new Response('Worker not found', { status: 404 });
+      }
+      if (request.method === 'PUT' && request.url.includes('/workers/scripts/')) {
+        const form = await request.formData();
+        deployedBindings = JSON.parse(form.get('metadata') as string).bindings;
+      }
       const route = MOCK_ROUTES.find(
         (candidate) => candidate.method === request.method && candidate.pattern.test(request.url)
       );
@@ -125,7 +134,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       // Send deploy request
       const response = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
 
@@ -135,6 +144,9 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       expect(result.success).toBe(true);
       expect(result.deploymentId).toBeTruthy();
       expect(result.message).toBe('Deployment started');
+      expect(deployedBindings).toContainEqual(expect.objectContaining({ name: 'ENVIRONMENT', type: 'plain_text', text: 'production' }));
+      expect(deployedBindings).toContainEqual(expect.objectContaining({ name: 'JWT_SECRET', type: 'secret_text', text: expect.any(String) }));
+      expect(deployedBindings).toContainEqual(expect.objectContaining({ name: 'ENCRYPTION_KEY', type: 'secret_text', text: expect.any(String) }));
 
       deploymentId = result.deploymentId;
     });
@@ -145,7 +157,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const response1 = await stub1.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
 
@@ -156,7 +168,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const response2 = await stub2.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
 
@@ -173,7 +185,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const response = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: 'invalid-json{{'
       });
 
@@ -190,7 +202,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       expect(response.status).toBe(404);
@@ -205,7 +218,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       // First start a deployment
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -215,7 +228,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       // Then get status
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       expect(response.status).toBe(200);
@@ -239,12 +253,13 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       const response = await stub.fetch('http://localhost/events', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       expect(response.status).toBe(200);
       expect(response.headers.get('Content-Type')).toBe('text/event-stream');
-      expect(response.headers.get('Cache-Control')).toBe('no-cache');
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
       expect(response.headers.get('Connection')).toBe('keep-alive');
 
       await response.text();
@@ -255,7 +270,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       const response = await stub.fetch('http://localhost/events', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       expect(response.body).toBeTruthy();
@@ -271,7 +287,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       const response = await stub.fetch('http://localhost/cancel', {
-        method: 'POST'
+        method: 'POST',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       expect(response.status).toBe(404);
@@ -279,14 +296,14 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       expect(result.error).toBe('No active deployment');
     });
 
-    it('should allow cancelling an in-progress deployment', async () => {
+    it('should reject cancellation after deployment has finished', async () => {
       const id = env.DEPLOYMENT_ORCHESTRATOR.idFromName('test-deployment-cancel-active');
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       // Start deployment
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -296,13 +313,12 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       // Cancel deployment
       const response = await stub.fetch('http://localhost/cancel', {
-        method: 'POST'
+        method: 'POST',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
-      expect(response.status).toBe(200);
-      const result = await response.json() as { success: boolean; message: string };
-      expect(result.success).toBe(true);
-      expect(result.message).toBe('Deployment cancelled');
+      expect(response.status).toBe(409);
+      await response.text();
     });
   });
 
@@ -312,7 +328,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       const response = await stub.fetch('http://localhost/unknown-route', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       expect(response.status).toBe(404);
@@ -326,7 +343,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       const stub = env.DEPLOYMENT_ORCHESTRATOR.get(id);
 
       const response = await stub.fetch('http://localhost/deploy', {
-        method: 'POST'
+        method: 'POST',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       // Should return 500 error when trying to parse empty body
@@ -345,7 +363,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       // Start deployment
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
 
@@ -357,7 +375,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       // Get status (should retrieve persisted state)
       const statusResponse = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await statusResponse.json() as { deploymentId: string };
@@ -375,7 +394,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       // Start deployment
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -385,7 +404,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       // Get status
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await response.json() as {
@@ -404,7 +424,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       // Start deployment
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -414,7 +434,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       // Get status
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await response.json() as { currentStep: string };
@@ -434,7 +455,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -445,7 +466,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await response.json() as { createdAt: number };
@@ -460,7 +482,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -469,7 +491,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await response.json() as { updatedAt: number };
@@ -486,7 +509,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -495,7 +518,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 200));
 
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await response.json() as { logs: Array<{ timestamp: number; message: string }> };
@@ -510,7 +534,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -519,7 +543,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 200));
 
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await response.json() as { logs: Array<{ timestamp: number }> };
@@ -538,7 +563,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
       const startResponse = await stub.fetch('http://localhost/deploy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
         body: JSON.stringify(validConfig)
       });
       await startResponse.text();
@@ -547,7 +572,8 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       const response = await stub.fetch('http://localhost/status', {
-        method: 'GET'
+        method: 'GET',
+        headers: { Authorization: `Bearer ${validConfig.oauthToken}` }
       });
 
       const status = await response.json() as { resources: Record<string, unknown> };
@@ -572,7 +598,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
         const response = await stub.fetch('http://localhost/deploy', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
           body: JSON.stringify(config)
         });
 
@@ -595,7 +621,7 @@ describe('DeploymentOrchestrator - Workers Runtime Tests', () => {
 
         const response = await stub.fetch('http://localhost/deploy', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${validConfig.oauthToken}` },
           body: JSON.stringify(config)
         });
 

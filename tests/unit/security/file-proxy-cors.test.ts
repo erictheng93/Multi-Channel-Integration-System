@@ -4,6 +4,11 @@ import type { Bindings } from '@/types'
 
 const mockR2Get = vi.fn()
 const mockDbGet = vi.fn()
+const mockConversationAccess = vi.fn()
+
+vi.mock('@/services/conversation-access', () => ({
+  canConversationBeAccessedBy: (...args: unknown[]) => mockConversationAccess(...args)
+}))
 
 vi.mock('@/middleware/auth', () => ({
   jwtAuth: vi.fn(async (c: any, next: any) => {
@@ -17,6 +22,7 @@ vi.mock('@/db/drizzle-factory', () => ({
   createDbClient: vi.fn(() => ({
     select: vi.fn(() => ({
       from: vi.fn(() => ({
+        where: vi.fn(() => ({ get: mockDbGet })),
         innerJoin: vi.fn(() => ({
           where: vi.fn(() => ({
             get: mockDbGet
@@ -59,15 +65,38 @@ describe('file proxy CORS', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDbGet.mockResolvedValue({
+      id: 'message-1',
+      conversationId: 'conversation-1',
       r2Key: 'line/1234567890.jpg',
       mimeType: 'image/jpeg',
       fileUrl: '/api/files/public/line/1234567890.jpg'
     })
+    mockConversationAccess.mockResolvedValue({ allowed: true })
     mockR2Get.mockResolvedValue({
       body: 'image',
       size: 5,
       httpMetadata: { contentType: 'image/jpeg' }
     })
+  })
+
+  it('hides LINE media from an agent outside the conversation', async () => {
+    mockConversationAccess.mockResolvedValue({ allowed: false })
+    const response = await createApp().request('/line-proxy/1234567890')
+    expect(response.status).toBe(404)
+    expect(mockR2Get).not.toHaveBeenCalled()
+  })
+
+  it('does not call LINE when the local message is missing', async () => {
+    mockDbGet.mockResolvedValue(undefined)
+    const upstream = vi.spyOn(globalThis, 'fetch')
+    try {
+      const response = await createApp().request('/line-proxy/1234567890')
+      expect(response.status).toBe(404)
+      expect(mockR2Get).not.toHaveBeenCalled()
+      expect(upstream).not.toHaveBeenCalled()
+    } finally {
+      upstream.mockRestore()
+    }
   })
 
   it('does not reflect disallowed origins on cookie-authenticated LINE media responses', async () => {
@@ -79,6 +108,7 @@ describe('file proxy CORS', () => {
     })
 
     expect(response.status).toBe(200)
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store')
     expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
     expect(response.headers.get('Access-Control-Allow-Credentials')).toBeNull()
   })

@@ -163,7 +163,13 @@ import crudRoutes from '@modules/messaging/handlers/messaging/routes/crud';
 function createTestApp() {
   const app = new Hono<{ Bindings: Bindings }>();
   app.use('*', async (c, next) => {
-    c.env = { DB: {} } as any;
+    c.env = { DB: {
+      prepare: () => ({ bind: () => ({}) }),
+      batch: async () => [
+        { meta: { changes: 1 } },
+        { meta: { changes: mockState.getAttachments.length } }
+      ]
+    } } as any;
     await next();
   });
   app.route('/api/messages', crudRoutes);
@@ -508,7 +514,8 @@ describe('Messaging CRUD Handler', () => {
     it('should link attachments when attachmentIds provided', async () => {
       mockState.getConversation = { id: 'conv-001' };
       mockState.getAttachments = [
-        { id: 'att-1', messageId: 'msg-001', filename: 'file.pdf' }
+        { id: 'att-1', uploadedBy: '1', conversationId: null, messageId: null, filename: 'file.pdf' },
+        { id: 'att-2', uploadedBy: '1', conversationId: 'conv-001', messageId: null, filename: 'other.pdf' }
       ];
 
       const res = await app.request('/api/messages', {
@@ -523,15 +530,25 @@ describe('Messaging CRUD Handler', () => {
       const body = await res.json();
 
       expect(body.success).toBe(true);
-      // Attachment linking produces update operations (one per attachment)
-      const attachmentUpdates = dbOperations.updates.filter(u => u.set.messageId);
-      expect(attachmentUpdates.length).toBeGreaterThanOrEqual(1);
+      expect(body.data.file_attachments).toHaveLength(2);
+    });
+
+    it('rejects foreign attachments before creating a message', async () => {
+      mockState.getConversation = { id: 'conv-001' };
+      mockState.getAttachments = [{ id: 'foreign', uploadedBy: 'another-agent', messageId: null }];
+      const res = await app.request('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: 'conv-001', content: 'hello', attachmentIds: ['foreign'] })
+      });
+      expect(res.status).toBe(400);
+      expect(dbOperations.inserts).toHaveLength(0);
     });
 
     it('should return file_attachments in response', async () => {
       mockState.getConversation = { id: 'conv-001' };
       mockState.getAttachments = [
-        { id: 'att-1', messageId: 'msg-new', filename: 'doc.pdf', mimeType: 'application/pdf' }
+        { id: 'att-1', uploadedBy: '1', conversationId: null, messageId: null, filename: 'doc.pdf', mimeType: 'application/pdf' }
       ];
 
       const res = await app.request('/api/messages', {
