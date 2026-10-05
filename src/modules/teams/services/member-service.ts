@@ -43,6 +43,8 @@ import type {
 import { AgentTeamsService } from './agent-teams-service';
 import { nowISO, nowMs } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import type { Bindings } from '@/types';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 
 const log = createContextLogger('MemberService');
 
@@ -52,7 +54,7 @@ type AgentUpdate = Partial<Pick<AgentRow, 'email' | 'displayName' | 'role' | 'is
 export class MemberService {
   private db: Database;
 
-  constructor(database: D1Database) {
+  constructor(database: D1Database, private env?: Bindings) {
     this.db = createDbClient(database);
   }
 
@@ -243,6 +245,8 @@ export class MemberService {
       throw new Error('Member not found');
     }
 
+    if (!data.isActive) await revalidateWebSocketAccess(this.env, 'user', memberId);
+
     return this.formatMember(updated);
   }
 
@@ -266,6 +270,8 @@ export class MemberService {
     if (!updated) {
       throw new Error('Member not found');
     }
+
+    await revalidateWebSocketAccess(this.env, 'user', memberId);
 
     return this.formatMember(updated);
   }
@@ -297,6 +303,10 @@ export class MemberService {
 
     if (!updated) {
       throw new Error('Member not found');
+    }
+
+    if (data.role || data.isActive === false) {
+      await revalidateWebSocketAccess(this.env, 'user', memberId);
     }
 
     return this.formatMember(updated);
@@ -508,6 +518,10 @@ export class MemberService {
         .set(updateData)
         .where(inArray(agents.id, idsToUpdate));
 
+      if (updates.role || updates.isActive === false) {
+        await Promise.all(idsToUpdate.map(id => revalidateWebSocketAccess(this.env, 'user', id)));
+      }
+
       // 記錄成功更新的成員並返回更新後的資料
       idsToUpdate.forEach(memberId => {
         updated.push(memberId);
@@ -581,7 +595,7 @@ export class MemberService {
     }
 
     // Create AgentTeamsService for team operations
-    const agentTeamsService = new AgentTeamsService(database);
+    const agentTeamsService = new AgentTeamsService(database, this.env);
 
     // 收集所有需要處理的成員 ID
     const memberIds = members.map(m => m.memberId);
@@ -674,6 +688,7 @@ export class MemberService {
                 .where(eq(agents.id, memberId));
 
               result.profileUpdated = true;
+              if (profile.role) await revalidateWebSocketAccess(this.env, 'user', memberId);
             }
           }
 
@@ -793,6 +808,8 @@ export class MemberService {
     // Phase 2: Delete the agent row after all FK references are cleared
     // (agent_teams, task_reminders cascade automatically)
     await this.db.delete(agents).where(eq(agents.id, memberId));
+
+    await revalidateWebSocketAccess(this.env, 'user', memberId);
 
     return true;
   }

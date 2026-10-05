@@ -27,6 +27,8 @@ import type {
 } from '../types/team-types';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger';
+import type { Bindings } from '@/types';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 
 const log = createContextLogger('TeamService');
 
@@ -34,7 +36,7 @@ export class TeamService implements TeamServiceInterface {
   private db: DrizzleD1Database;
   private dbRaw: D1Database;
 
-  constructor(database: D1Database) {
+  constructor(database: D1Database, private env?: Bindings) {
     this.dbRaw = database;
     this.db = drizzle(database);
   }
@@ -446,6 +448,7 @@ export class TeamService implements TeamServiceInterface {
       }
 
       await this.dbRaw.batch(stmts);
+      await revalidateWebSocketAccess(this.env, 'user', agentId);
       return true;
     } catch (error) {
       log.error('Remove team member error:', {}, error instanceof Error ? error : new Error(String(error)));
@@ -501,6 +504,7 @@ export class TeamService implements TeamServiceInterface {
           ));
 
         removed.push(...validAgentIds);
+        await Promise.all(validAgentIds.map(id => revalidateWebSocketAccess(this.env, 'user', id)));
         log.info(`[Team Bulk Remove] Removed ${validAgentIds.length} members from team ${teamId}`);
       }
 
@@ -533,6 +537,10 @@ export class TeamService implements TeamServiceInterface {
       .update(agents)
       .set(updateData)
       .where(eq(agents.id, agentId));
+
+    if (request.role || request.isActive === false) {
+      await revalidateWebSocketAccess(this.env, 'user', agentId);
+    }
 
     const result = await this.db
       .select()
@@ -715,6 +723,8 @@ export class TeamService implements TeamServiceInterface {
         await this.db
           .insert(agentTeams)
           .values(newMemberships);
+
+        await Promise.all(validAgentIds.map(id => revalidateWebSocketAccess(this.env, 'user', id)));
 
         log.info(`[Team Transfer] Transferred ${validAgentIds.length} agents via agent_teams`);
       }

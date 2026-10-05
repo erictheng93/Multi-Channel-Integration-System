@@ -4,6 +4,7 @@
 import type { Bindings } from '../types';
 import { validateAccessTokenPayload } from '@/middleware/auth';
 import { canConversationBeAccessedBy } from './conversation-access';
+import { getUserById } from '@/utils/auth';
 import { nowMs } from '@/utils/timestamp'
 
 /**
@@ -222,8 +223,19 @@ export class WebSocketAuthService {
     userId: string,
     userRole: string,
     conversationId: string,
-    teamIds: number[] = []
+    teamIds?: number[]
   ): Promise<boolean> {
+    // Omitted teams mean a live check, including account deletion and role changes.
+    if (teamIds === undefined) {
+      try {
+        const user = await getUserById(this.env.DB, userId);
+        userRole = user.role;
+        teamIds = user.allowedTeamIds || [];
+      } catch (error) {
+        console.error('[WebSocketAuth] Current account check failed:', error);
+        return false;
+      }
+    }
     // Admins have access to all conversations
     if (userRole === 'admin') {
       console.log(`[WebSocketAuth] Admin ${userId} granted access to conversation ${conversationId}`);

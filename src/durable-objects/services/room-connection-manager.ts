@@ -12,6 +12,8 @@ import type { RoomMessageService } from './room-message-service';
 import type { RoomStorageService } from './room-storage-service';
 import { testSafeLog, testSafeError, getEmojiPrefix } from '../../utils/test-logger';
 import { nowMs } from '@/utils/timestamp'
+import { WebSocketAuthService } from '@/services/websocket-auth-service';
+import type { Bindings } from '@/types';
 
 /**
  * Manages WebSocket connections for ConversationRoom:
@@ -54,6 +56,7 @@ export class RoomConnectionManager {
     }
 
     for (const websocket of this.ctx.state.getWebSockets()) {
+      if (websocket.readyState !== 1) continue;
       const socketWithAttachment = websocket as WebSocket & {
         deserializeAttachment?: () => RoomConnectionAttachment | null;
       };
@@ -91,6 +94,8 @@ export class RoomConnectionManager {
       existingConnection.websocket = websocket;
       return existingConnection;
     }
+
+    if (websocket.readyState !== 1) return null;
 
     const connection = this.helpers.connectionFromSocket(websocket, attachment);
     this.ctx.connections.set(connection.connectionId, connection);
@@ -203,6 +208,9 @@ export class RoomConnectionManager {
     await this.ctx.state.storage.put('participants', Array.from(this.ctx.participants));
     this.helpers.updateConnectionAttachment(connection);
 
+    // Track direct room sockets even if the user has no global socket/subscription.
+    await this.trackUserRoom(connection, true);
+
     // Broadcast user joined event
     await this.messageService.broadcastEvent({
       id: this.helpers.generateEventId(),
@@ -223,14 +231,21 @@ export class RoomConnectionManager {
     testSafeLog(`${getEmojiPrefix('CHECK')}[ConversationRoom] Connection added: ${connectionId} (User: ${userId})`);
   }
 
-  async removeConnection(connectionId: string): Promise<void> {
-    const connection = this.ctx.connections.get(connectionId);
+  async removeConnection(
+    connectionId: string,
+    connection = this.ctx.connections.get(connectionId)
+  ): Promise<void> {
     if (!connection) return;
 
     const { userId } = connection;
 
     // Remove connection
     this.ctx.connections.delete(connectionId);
+
+    // Avoid a UserConnection -> room eviction -> UserConnection RPC cycle.
+    const untrack = this.trackUserRoom(connection, false).catch(error =>
+      testSafeError('[ConversationRoom] Room unregistration failed:', error));
+    if (typeof this.ctx.state.waitUntil === 'function') this.ctx.state.waitUntil(untrack);
 
     // Check if user has other connections
     const hasOtherConnections = Array.from(this.ctx.connections.values())
@@ -266,6 +281,63 @@ export class RoomConnectionManager {
   }
 
   // =================== Cleanup Tasks ===================
+
+  private async trackUserRoom(connection: WebSocketConnection, connected: boolean): Promise<void> {
+    const { userId, connectionId } = connection;
+    const namespace = (this.ctx.env as Bindings).USER_CONNECTION;
+    if (!namespace) return;
+    const response = await namespace.get(namespace.idFromName(userId)).fetch(
+      new Request('https://internal/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, connectionId, conversationId: this.ctx.conversationId, connected })
+      })
+    );
+    if (!response.ok) throw new Error(`Room tracking returned ${response.status}`);
+  }
+
+  async evictUnauthorizedConnections(userIds?: string[]): Promise<number> {
+    this.restoreHibernatedConnections();
+    const auth = new WebSocketAuthService(this.ctx.env as Bindings);
+    const decisions = new Map<string, boolean>();
+    const revoked: WebSocketConnection[] = [];
+    for (const connection of this.ctx.connections.values()) {
+      if (userIds && !userIds.includes(connection.userId)) continue;
+      if (!decisions.has(connection.userId)) {
+        decisions.set(connection.userId, await auth.authorizeConversationAccess(
+          connection.userId, connection.role, this.ctx.conversationId
+        ));
+      }
+      if (!decisions.get(connection.userId)) revoked.push(connection);
+    }
+    // Close every revoked device before removeConnection emits any user_left events.
+    for (const connection of revoked) {
+      try { connection.websocket.serializeAttachment(null); }
+      catch (error) { testSafeError('[ConversationRoom] Clearing revoked attachment failed:', error); }
+      try { connection.websocket.close(4403, 'Access revoked'); }
+      catch (error) { testSafeError('[ConversationRoom] Access-revocation close failed:', error); }
+      this.ctx.connections.delete(connection.connectionId);
+    }
+    for (const connection of revoked) {
+      await this.removeConnection(connection.connectionId, connection);
+    }
+    return revoked.length;
+  }
+
+  async handleEvict(request: Request): Promise<Response> {
+    if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+    const body: unknown = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return new Response('Invalid eviction request', { status: 400 });
+    }
+    const { userIds } = body as { userIds?: unknown };
+    if (userIds !== undefined && (!Array.isArray(userIds) ||
+        !userIds.every(id => typeof id === 'string' && id.length > 0))) {
+      return new Response('Invalid userIds', { status: 400 });
+    }
+    const evicted = await this.evictUnauthorizedConnections(userIds as string[] | undefined);
+    return Response.json({ success: true, evicted });
+  }
 
   setupCleanupTasks(): void {
     // Hibernation migration: avoid periodic timers that keep the DO hot.

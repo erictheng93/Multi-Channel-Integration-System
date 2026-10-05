@@ -38,7 +38,7 @@ const agentTeamsHandler = new Hono<{ Bindings: Bindings }>();
 agentTeamsHandler.get('/team/:teamId/members', jwtAuth, requireIntId('teamId'), async (c) => {
   try {
     const teamId = getValidatedParam<number>(c, 'teamId');
-    const service = new AgentTeamsService(c.env.DB);
+    const service = new AgentTeamsService(c.env.DB, c.env);
     const members = await service.getTeamMembers(teamId);
 
     return contractJson(c, teamMembershipContracts.getTeamMembersWithTeams, {
@@ -68,7 +68,7 @@ agentTeamsHandler.get('/:agentId', jwtAuth, async (c) => {
       }, HTTP_STATUS.FORBIDDEN);
     }
 
-    const service = new AgentTeamsService(c.env.DB);
+    const service = new AgentTeamsService(c.env.DB, c.env);
     const teams = await service.getAgentTeams(agentId);
 
     return contractJson(c, teamMembershipContracts.getAgentTeams, {
@@ -98,7 +98,7 @@ agentTeamsHandler.post('/:agentId/join', jwtAuth, requireManagerOrAdmin(), async
       }, HTTP_STATUS.BAD_REQUEST);
     }
 
-    const service = new AgentTeamsService(c.env.DB);
+    const service = new AgentTeamsService(c.env.DB, c.env);
 
     // Check if already a member
     const existingMembership = await service.getAgentTeamMembership(agentId, teamId);
@@ -211,7 +211,7 @@ agentTeamsHandler.post('/:agentId/join-multiple', jwtAuth, requireManagerOrAdmin
     }
 
     const db = drizzle(c.env.DB);
-    const service = new AgentTeamsService(c.env.DB);
+    const service = new AgentTeamsService(c.env.DB, c.env);
 
     // Phase 3: 使用批量 DB 操作
     const results = await service.addAgentToMultipleTeams(agentId, teamIds, roleInTeam || 'member');
@@ -347,7 +347,7 @@ agentTeamsHandler.delete('/:agentId/leave/:teamId', jwtAuth, requireTeamRole('le
     const agentName = agentInfo?.displayName || agentId;
 
     // Step 3: Remove agent from team
-    const service = new AgentTeamsService(c.env.DB);
+    const service = new AgentTeamsService(c.env.DB, c.env);
     await service.removeAgentFromTeam(agentId, teamId);
 
     // Get updated member count for broadcasting
@@ -423,7 +423,7 @@ agentTeamsHandler.put('/:agentId/role/:teamId', jwtAuth, requireTeamRole('lead',
     const teamId = getValidatedParam<number>(c, 'teamId');
     const { roleInTeam, isPrimary } = await c.req.json();
     const db = drizzle(c.env.DB);
-    const service = new AgentTeamsService(c.env.DB);
+    const service = new AgentTeamsService(c.env.DB, c.env);
     const updated = await service.updateAgentTeamRole(agentId, teamId, { roleInTeam, isPrimary });
 
     // Fetch names for activity log
@@ -472,7 +472,7 @@ agentTeamsHandler.put('/:agentId/primary/:teamId', jwtAuth, requireTeamRole('lea
     const agentId = c.req.param('agentId')!;
     const teamId = getValidatedParam<number>(c, 'teamId');
     const db = drizzle(c.env.DB);
-    const service = new AgentTeamsService(c.env.DB);
+    const service = new AgentTeamsService(c.env.DB, c.env);
     await service.setPrimaryTeam(agentId, teamId);
 
     // Fetch names for activity log

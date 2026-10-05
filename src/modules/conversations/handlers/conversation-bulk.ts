@@ -1,3 +1,4 @@
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 // 對話批量操作處理器
 // Handles: POST /bulk (assign, close, reopen, set_priority, add_tags, remove_tags)
 
@@ -110,6 +111,8 @@ conversationBulkHandler.post('/bulk', jwtAuth, async (c) => {
             .where(inArray(conversations.id, idChunk));
         }
 
+        await Promise.all(conversationIdsArray.map(id =>
+          revalidateWebSocketAccess(c.env, 'conversation', id)));
         log.debug('Bulk Assign completed', { teamId: data.teamId, conversationCount: conversationIdsArray.length });
         break;
       }

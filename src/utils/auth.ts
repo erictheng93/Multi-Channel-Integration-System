@@ -146,7 +146,8 @@ export async function getUserById(db: D1Database, userId: number | string): Prom
     .leftJoin(teams, eq(agentTeams.teamId, teams.id))
     .where(and(
       eq(agents.id, userIdStr),
-      eq(agents.isActive, true)
+      eq(agents.isActive, true),
+      sql`${agents.deletedAt} IS NULL`
     ))
     .get();
 

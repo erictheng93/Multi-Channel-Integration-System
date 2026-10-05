@@ -182,6 +182,7 @@ export class UserConnectionStateManager {
 
   restoreConnectionsFromAttachments(sockets: WebSocket[]): void {
     for (const socket of sockets) {
+      if (socket.readyState !== 1) continue;
       const attachment = socket.deserializeAttachment();
       if (!this.isConnectionAttachment(attachment)) {
         continue;
