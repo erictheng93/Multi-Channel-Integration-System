@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Each sub-project has its own lockfile, so each needs its own entry.
+  # Dependabot opens PRs only; nothing is merged or deployed automatically.
+  - package-ecosystem: bun
+    directories: ["/", "/frontend", "/web-installer/backend", "/web-installer/frontend"]
+    schedule:
+      interval: weekly
+    groups:
+      wrangler:
+        patterns: ["wrangler"]
+    open-pull-requests-limit: 5
