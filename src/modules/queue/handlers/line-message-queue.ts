@@ -14,7 +14,8 @@
  * Queue Consumer -> LINE API -> WebSocket Status Update
  */
 
-import type { Bindings, LineMessageQueuePayload, LineMessageQueueResult, MediaProcessingPayload, LineQueuePayload } from '@/types/bindings';
+import type { Bindings, LineMessageQueuePayload, LineMessageQueueResult, MediaProcessingPayload, LineQueuePayload, LineWebhookEventPayload } from '@/types/bindings';
+import { processLineMessage, processLineFollowEvent, processLineUnfollowEvent } from '@/modules/integrations/handlers/line-event-processor';
 import type { LineReplyMessage } from '@/types';
 import { pushLineMessage, createTextMessage, createImageMessage, createFileFlexMessage } from '@/utils/line';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
@@ -51,8 +52,12 @@ export class LineMessageQueueConsumer {
       try {
         const payload = message.body;
 
-        // Route by type: media_processing vs outbound_message (default)
-        if (payload.type === 'media_processing') {
+        // Route by type: line_webhook_event / media_processing / outbound_message (default)
+        if (payload.type === 'line_webhook_event') {
+          await this.processWebhookEvent(payload);
+          message.ack();
+          log.info('LINE webhook event processed', { eventType: payload.event.type });
+        } else if (payload.type === 'media_processing') {
           await this.processMediaMessage(payload as MediaProcessingPayload);
           message.ack();
           log.info('Media processing completed', { messageId: payload.messageId });
@@ -68,11 +73,33 @@ export class LineMessageQueueConsumer {
           }
         }
       } catch (error) {
-        const messageId = message.body.messageId || 'unknown';
+        const messageId = ('messageId' in message.body && message.body.messageId) || 'unknown';
         log.error('Error processing queue message', { messageId }, error instanceof Error ? error : String(error));
         message.retry();
       }
     }
+  }
+
+  /**
+   * Run an inbound LINE webhook event (issue #43).
+   * Deferred work (WebSocket broadcast, profile sync) is awaited here rather than
+   * fire-and-forget, so it finishes before the message is acked. A throw retries
+   * the event; platformMessageId dedup keeps the retry idempotent.
+   */
+  private async processWebhookEvent(payload: LineWebhookEventPayload): Promise<void> {
+    const { event } = payload;
+    const deferred: Promise<unknown>[] = [];
+    const defer = (p: Promise<unknown>) => { deferred.push(p); };
+
+    if (event.type === 'message' && event.message) {
+      await processLineMessage(this.env, event, defer);
+    } else if (event.type === 'follow') {
+      await processLineFollowEvent(this.env, event);
+    } else if (event.type === 'unfollow') {
+      await processLineUnfollowEvent(this.env, event);
+    }
+
+    await Promise.allSettled(deferred);
   }
 
   /**

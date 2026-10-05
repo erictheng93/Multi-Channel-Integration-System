@@ -102,7 +102,9 @@ binding = "LINE_MESSAGE_QUEUE"
 [[queues.consumers]]
 queue = "line-message-queue"
 max_batch_size = 10
-max_batch_timeout = 5
+# 1s: inbound LINE webhook events flow through this queue (issue #43); a longer
+# wait delays every customer message reaching agents in real time.
+max_batch_timeout = 1
 max_retries = 3
 dead_letter_queue = "line-message-dlq"
 
