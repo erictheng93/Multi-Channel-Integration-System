@@ -10,3 +10,8 @@ updates:
       wrangler:
         patterns: ["wrangler"]
     open-pull-requests-limit: 5
+    ignore:
+      # TS 7 replaces the compiler API; vue-tsc 3.x and scripts/check-sql-raw break on it.
+      # Drop this once vue-tsc and typescript-eslint support TS 7.
+      - dependency-name: typescript
+        versions: [">=7"]
