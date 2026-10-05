@@ -31,6 +31,33 @@ function getStringField(value: unknown, field: string): string | undefined {
 }
 
 /**
+ * 解開後端 Durable Object 的 'event' 信封。
+ * 後端送 { type:'event', data:<innerEvent>, conversationId, timestamp },
+ * 內層 innerEvent 本身是 { type:'new_message', conversationId, data:{...}, ... }。
+ * 客服側全域 wsStore 需先解包,否則 route() 以頂層 'event' 查無規則而不 fan-out。
+ * 顧客側於下游解包;本處在路由前集中解包。
+ * 本函式僅保留路由所需欄位(type/data/conversationId/timestamp/messageId/userId),
+ * 丟棄內層 event 的 id/source/priority——目前下游皆從 .data 讀取,無人需要這些頂層欄位。
+ */
+export function unwrapEventEnvelope(message: WebSocketMessage): WebSocketMessage {
+  if (message.type !== 'event' || !isRecord(message.data)) {
+    return message
+  }
+  const inner = message.data
+  if (typeof inner.type !== 'string') {
+    return message
+  }
+  return {
+    type: inner.type,
+    data: inner.data,
+    conversationId: (typeof inner.conversationId === 'string' ? inner.conversationId : undefined) ?? message.conversationId,
+    timestamp: (typeof inner.timestamp === 'number' ? inner.timestamp : undefined) ?? message.timestamp,
+    messageId: typeof inner.messageId === 'string' ? inner.messageId : message.messageId,
+    userId: typeof inner.userId === 'string' ? inner.userId : message.userId
+  }
+}
+
+/**
  * 路由规则函数类型
  */
 export type RoutingRule = (_message: WebSocketMessage) => string[]

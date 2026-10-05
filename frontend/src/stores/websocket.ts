@@ -17,7 +17,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, type Ref } from 'vue'
 import { createWebSocketClient, type WebSocketClient, type WebSocketMessage } from '@/services/websocketClient'
-import { WebSocketEventRouter } from '@/services/websocketEventRouter'
+import { WebSocketEventRouter, unwrapEventEnvelope } from '@/services/websocketEventRouter'
 import { useAuthStore } from './auth'
 import { createLogger } from '@/utils/logger'
 
@@ -177,7 +177,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
   /**
    * 路由消息到订阅者（使用事件路由器）
    */
-  const routeMessage = (message: WebSocketMessage) => {
+  const routeMessage = (rawMessage: WebSocketMessage) => {
+    // 解開後端 DO 的 'event' 信封,取內層 event 作為頂層訊息再路由
+    const message = unwrapEventEnvelope(rawMessage)
+
     // 使用事件路由器确定目标 channels
     const channels = WebSocketEventRouter.route(message)
 

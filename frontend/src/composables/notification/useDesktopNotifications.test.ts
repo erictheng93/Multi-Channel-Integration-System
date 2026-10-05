@@ -104,4 +104,11 @@ describe('createNewMessageHandler', () => {
     const handler = createNewMessageHandler(deps)
     expect(() => handler(makeMessage())).not.toThrow()
   })
+
+  it('扁平 senderName(後端實際格式)→ 用於通知標題', () => {
+    const handler = createNewMessageHandler(deps)
+    handler(makeMessage({ data: { senderType: 'customer', content: '你好', messageType: 'text', senderName: '陳大文' } }))
+    expect(shown.length).toBe(1)
+    expect(shown[0]?.title).toBe('陳大文')
+  })
 })
