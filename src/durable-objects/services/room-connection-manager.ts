@@ -209,7 +209,10 @@ export class RoomConnectionManager {
     this.helpers.updateConnectionAttachment(connection);
 
     // Track direct room sockets even if the user has no global socket/subscription.
-    await this.trackUserRoom(connection, true);
+    // Best effort: a tracking outage must not block joins; the room's own
+    // five-minute access alarm still revokes untracked sockets.
+    await this.trackUserRoom(connection, true).catch(error =>
+      testSafeError('[ConversationRoom] Room registration failed:', error));
 
     // Broadcast user joined event
     await this.messageService.broadcastEvent({
@@ -296,19 +299,35 @@ export class RoomConnectionManager {
     if (!response.ok) throw new Error(`Room tracking returned ${response.status}`);
   }
 
-  async evictUnauthorizedConnections(userIds?: string[]): Promise<number> {
+  /**
+   * Closes sockets whose user definitely lost access. When D1 cannot answer
+   * for a user, that user's sockets stay open and the access check is retried
+   * in 30s, so a transient outage never mass-evicts the room.
+   */
+  async evictUnauthorizedConnections(userIds?: string[]): Promise<{ evicted: number; deferred: boolean }> {
     this.restoreHibernatedConnections();
     const auth = new WebSocketAuthService(this.ctx.env as Bindings);
     const decisions = new Map<string, boolean>();
     const revoked: WebSocketConnection[] = [];
+    let deferred = false;
     for (const connection of this.ctx.connections.values()) {
       if (userIds && !userIds.includes(connection.userId)) continue;
       if (!decisions.has(connection.userId)) {
-        decisions.set(connection.userId, await auth.authorizeConversationAccess(
-          connection.userId, connection.role, this.ctx.conversationId
-        ));
+        try {
+          decisions.set(connection.userId, await auth.hasLiveConversationAccess(
+            connection.userId, this.ctx.conversationId
+          ));
+        } catch (error) {
+          testSafeError('[ConversationRoom] Access check unavailable, retrying later:', error);
+          decisions.set(connection.userId, true);
+          deferred = true;
+        }
       }
       if (!decisions.get(connection.userId)) revoked.push(connection);
+    }
+    if (deferred) {
+      this.ctx.accessCheckDeadline = Date.now() + 30000;
+      await this.ctx.state.storage.put('accessCheckDeadline', this.ctx.accessCheckDeadline);
     }
     // Close every revoked device before removeConnection emits any user_left events.
     for (const connection of revoked) {
@@ -321,7 +340,7 @@ export class RoomConnectionManager {
     for (const connection of revoked) {
       await this.removeConnection(connection.connectionId, connection);
     }
-    return revoked.length;
+    return { evicted: revoked.length, deferred };
   }
 
   async handleEvict(request: Request): Promise<Response> {
@@ -335,8 +354,12 @@ export class RoomConnectionManager {
         !userIds.every(id => typeof id === 'string' && id.length > 0))) {
       return new Response('Invalid userIds', { status: 400 });
     }
-    const evicted = await this.evictUnauthorizedConnections(userIds as string[] | undefined);
-    return Response.json({ success: true, evicted });
+    const { evicted, deferred } = await this.evictUnauthorizedConnections(userIds as string[] | undefined);
+    // Report surviving sockets so UserConnection can prune stale room registrations.
+    const connectionIds = Array.from(this.ctx.connections.values())
+      .filter(connection => !userIds || (userIds as string[]).includes(connection.userId))
+      .map(connection => connection.connectionId);
+    return Response.json({ success: !deferred, evicted, connectionIds }, { status: deferred ? 503 : 200 });
   }
 
   setupCleanupTasks(): void {

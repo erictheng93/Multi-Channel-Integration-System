@@ -51,7 +51,7 @@ function state(sockets: ReturnType<typeof socket>[] = [], stored = new Map<strin
     storage: {
       get: vi.fn(async (key: string) => stored.get(key)),
       put: vi.fn(async (key: string, value: unknown) => { stored.set(key, value) }),
-      delete: vi.fn(async (key: string) => stored.delete(key)),
+      delete: vi.fn(async (key: string | string[]) => [key].flat().map(k => stored.delete(k)).every(Boolean)),
       list: vi.fn(async ({ prefix }: { prefix: string }) =>
         new Map([...stored].filter(([key]) => key.startsWith(prefix)))),
       getAlarm: vi.fn(async () => null), setAlarm: vi.fn(), deleteAlarm: vi.fn()
@@ -298,5 +298,71 @@ describe('WebSocket access revocation (#25)', () => {
     sqlite.exec("DELETE FROM agent_teams WHERE agent_id = 'old'")
     await user.fetch(post('/evict', { userId: 'old' }))
     expect(ws.close).toHaveBeenCalledWith(4403, 'Access revoked')
+  })
+
+  describe('when D1 cannot answer', () => {
+    const unavailable = { prepare() { throw new Error('D1 unavailable') } } as unknown as D1Database
+
+    it('keeps room sockets open and retries the check in 30 seconds', async () => {
+      const old = socket('old'), admin = socket('admin', 'admin')
+      const stored = new Map<string, unknown>(), ctx = state([old, admin], stored)
+      const room = new ConversationRoom(ctx, env, { mode: 'simplified' })
+      const db = env.DB
+      env.DB = unavailable
+      expect((await room.fetch(post('/evict'))).status).toBe(503)
+      expect(old.close).not.toHaveBeenCalled()
+      expect(admin.close).not.toHaveBeenCalled()
+      expect(stored.get('accessCheckDeadline')).toBe(Date.now() + 30000)
+      expect(ctx.storage.setAlarm).toHaveBeenLastCalledWith(Date.now() + 30000)
+
+      // The retry still revokes once D1 answers.
+      env.DB = db
+      sqlite.exec("DELETE FROM agent_teams WHERE agent_id = 'old'")
+      vi.setSystemTime(Date.now() + 30000)
+      await room.alarm()
+      expect(old.close).toHaveBeenCalledWith(4403, 'Access revoked')
+      expect(admin.close).not.toHaveBeenCalled()
+    })
+
+    it('keeps global sockets and persisted subscriptions, then retries', async () => {
+      const ws = socket('old'), stored = new Map<string, unknown>([['subscriptions', ['conv']]])
+      const user = new UserConnection(state([ws], stored), { ...env, DB: unavailable, userId: 'old' })
+      expect((await user.fetch(post('/evict', { userId: 'old' }))).status).toBe(503)
+      expect(ws.close).not.toHaveBeenCalled()
+      expect(stored.get('subscriptions')).toEqual(['conv'])
+      expect(stored.get('accessCheckDeadline')).toBe(Date.now() + 30000)
+    })
+  })
+
+  it('a room tracking outage does not block the join', async () => {
+    env.USER_CONNECTION = {
+      idFromName: (id: string) => id,
+      get: () => ({ fetch: async () => new Response('down', { status: 500 }) })
+    } as unknown as DurableObjectNamespace
+    const server = socket('old')
+    vi.stubGlobal('WebSocketPair', class { 0 = socket('old'); 1 = server })
+    const room = new ConversationRoom(state(), env, { mode: 'simplified' })
+    await room.fetch(new Request(
+      'https://room/ws?conversationId=conv&userId=old&role=agent&token=test',
+      { headers: { Upgrade: 'websocket' } }
+    ))
+    expect(server.close).not.toHaveBeenCalled()
+    const metrics = await (await room.fetch(new Request('https://room/metrics'))).json()
+    expect(metrics.activeConnections).toBe(1)
+  })
+
+  it('prunes room registrations whose socket the room no longer holds', async () => {
+    const ws = socket('old')
+    const room = new ConversationRoom(state([ws]), env, { mode: 'simplified' })
+    env.CONVERSATION_ROOM = {
+      idFromName: (id: string) => id,
+      get: () => ({ fetch: (req: Request) => room.fetch(req) })
+    } as unknown as DurableObjectNamespace
+    const stored = new Map<string, unknown>([['room:connection-old', 'conv'], ['room:lost-device', 'conv']])
+    const user = new UserConnection(state([], stored), { ...env, userId: 'old' })
+    expect((await user.fetch(post('/evict', { userId: 'old' }))).status).toBe(200)
+    expect(ws.close).not.toHaveBeenCalled()
+    expect(stored.has('room:connection-old')).toBe(true)
+    expect(stored.has('room:lost-device')).toBe(false)
   })
 })

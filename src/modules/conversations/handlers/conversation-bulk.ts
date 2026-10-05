@@ -1,4 +1,3 @@
-import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 // 對話批量操作處理器
 // Handles: POST /bulk (assign, close, reopen, set_priority, add_tags, remove_tags)
 
@@ -10,6 +9,7 @@ import type { Bindings } from '@/types';
 import { getConversationVisibilitySql } from '@/services/conversation-visibility';
 import { jwtAuth } from '@/middleware/auth';
 import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 import { successResponse, errorResponse, validationErrorResponse } from '@/utils/api-response';
 import { createContextLogger } from '@/utils/logger';
 import { nowISO } from '@/utils/timestamp'
