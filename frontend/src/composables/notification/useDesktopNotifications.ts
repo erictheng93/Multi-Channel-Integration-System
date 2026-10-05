@@ -73,8 +73,9 @@ export function createNewMessageHandler(deps: DesktopNotificationDeps): (_messag
       lastNotifiedAt.set(conversationId, deps.now())
 
       const sender = data?.sender as { name?: string } | undefined
+      const senderName = sender?.name ?? (data?.senderName as string | undefined)
       const { title, body } = buildNotificationContent({
-        senderName: sender?.name,
+        senderName,
         conversation,
         content: data?.content as string | undefined,
         messageType: data?.messageType as string | undefined
