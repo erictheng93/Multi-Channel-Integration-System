@@ -1,6 +1,7 @@
 // Cloudflare Worker bindings with Drizzle and KV integration
 import { Database, KVService } from '../db';
 import type { Agent } from '../db/schema';
+import type { LineEvent } from './index';
 
 // Runtime validation for required environment variables
 export function validateBindings(bindings: Partial<Bindings>): asserts bindings is Bindings {
@@ -279,11 +280,26 @@ export interface MediaProcessingPayload {
 }
 
 /**
+ * Inbound LINE Webhook Event Payload
+ * Enqueued by POST /api/webhook right after signature verification so LINE
+ * gets its 200 before its client gives up (issue #43). The consumer runs the
+ * full event pipeline (save, broadcast, auto-reply) and retries on failure.
+ */
+export interface LineWebhookEventPayload {
+  type: 'line_webhook_event';
+  event: LineEvent;
+  enqueuedAt: number;
+}
+
+/**
  * Union type for all queue message payloads.
  * The queue consumer uses the `type` field to route to the correct handler.
  * Messages without a `type` field are treated as outbound messages (backward compat).
  */
-export type LineQueuePayload = (LineMessageQueuePayload & { type?: 'outbound_message' }) | MediaProcessingPayload;
+export type LineQueuePayload =
+  | (LineMessageQueuePayload & { type?: 'outbound_message' })
+  | MediaProcessingPayload
+  | LineWebhookEventPayload;
 
 /**
  * LINE Message Queue Result

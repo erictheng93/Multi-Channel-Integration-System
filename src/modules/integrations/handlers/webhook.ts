@@ -116,70 +116,40 @@ export const webhookHandler = {
         firstEventType: data.events[0]?.type
       });
 
-      // Create defer function to run tasks after HTTP response via waitUntil
-      const defer: DeferFn = (p) => c.executionCtx.waitUntil(p);
+      // Issue #43: ack fast, process in the queue consumer. Processing inline took
+      // ~1.8s, LINE's client disconnected first, and the canceled request dropped
+      // the deferred WebSocket broadcast. The queue also gives retries + DLQ.
+      const handledEvents = data.events.filter(
+        (event) => (event.type === 'message' && event.message) || event.type === 'follow' || event.type === 'unfollow'
+      );
 
-      // 處理事件 — per-event try/catch to prevent one failure from blocking others
-      let failedEvents = 0;
-      let lastError: Error | null = null;
-
-      for (const event of data.events) {
-        log.debug('Processing event', {
-          type: event.type,
-          userId: event.source?.userId?.substring(0, 10) + '...',
-          messageType: event.message?.type
-        });
-
+      if (handledEvents.length > 0) {
         try {
-          if (event.type === 'message' && event.message) {
-            await processLineMessage(c.env, event, defer);
-          } else if (event.type === 'follow') {
-            // 處理 QR Code 加好友事件
-            await processLineFollowEvent(c.env, event);
-          } else if (event.type === 'unfollow') {
-            // 處理取消關注事件 - 更新好友狀態為 blocked
-            await processLineUnfollowEvent(c.env, event);
-          } else {
-            log.debug('Skipping event', { type: event.type });
-          }
-        } catch (eventError) {
-          failedEvents++;
-          lastError = eventError instanceof Error ? eventError : new Error(String(eventError));
-          log.error('Failed to process event, continuing with next', {
-            eventType: event.type,
-            messageType: event.message?.type,
-            userId: event.source?.userId?.substring(0, 10) + '...',
-            error: lastError.message,
-            failedEvents
-          });
-          // Continue processing remaining events instead of aborting
+          await c.env.LINE_MESSAGE_QUEUE.sendBatch(
+            handledEvents.map((event) => ({
+              body: { type: 'line_webhook_event' as const, event, enqueuedAt: Date.now() }
+            }))
+          );
+        } catch (queueError) {
+          const message = queueError instanceof Error ? queueError.message : String(queueError);
+          log.error('LINE Webhook: Failed to enqueue events', { eventCount: handledEvents.length, error: message });
+
+          c.executionCtx.waitUntil(
+            alertWebhookFailure(c.env, {
+              platform: 'line',
+              failedEvents: handledEvents.length,
+              totalEvents: data.events.length,
+              lastError: message,
+            })
+          );
+
+          // Not acked yet, so a 500 still makes LINE redeliver (dedup via platformMessageId)
+          return errorResponse(c, `Failed to enqueue ${handledEvents.length} events`, 500);
         }
       }
 
-      // If any events failed, alert + return 500 so LINE retries the entire batch
-      // (successfully processed events are idempotent via platformMessageId dedup)
-      if (failedEvents > 0) {
-        log.error('Some webhook events failed', {
-          failedEvents,
-          totalEvents: data.events.length,
-          lastError: lastError?.message
-        });
-
-        // Fire-and-forget alerting (KV audit + optional Slack/webhook)
-        c.executionCtx.waitUntil(
-          alertWebhookFailure(c.env, {
-            platform: 'line',
-            failedEvents,
-            totalEvents: data.events.length,
-            lastError: lastError?.message || 'Unknown error',
-          })
-        );
-
-        return errorResponse(c, `Failed to process ${failedEvents}/${data.events.length} events`, 500);
-      }
-
-      log.info('All events processed successfully');
-      return successResponse(c, null, 'LINE webhook processed successfully');
+      log.info('Events enqueued', { enqueued: handledEvents.length, total: data.events.length });
+      return successResponse(c, null, 'LINE webhook accepted');
     } catch (error) {
       return handleApiError(error, c);
     }
