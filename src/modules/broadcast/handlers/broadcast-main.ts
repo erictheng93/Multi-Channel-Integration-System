@@ -5,6 +5,7 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { jwtAuth } from '@/middleware/auth';
 import { errorResponse, forbiddenResponse, successResponse, validationErrorResponse } from '@/utils/api-response';
 import { BroadcastService } from '@modules/broadcast/services/broadcast-service';
+import { BROADCAST_MAX_IMAGES } from '@modules/broadcast/services/broadcast-content';
 import { BroadcastSenderService } from '@modules/broadcast/services/broadcast-sender-service';
 import {
   BroadcastServiceError,
@@ -172,6 +173,8 @@ async function parseCreateInput(
   }
   if (!parsedAttachments.ok) {
     errors.push({ field: 'attachments', message: 'attachments must be an array of { attachmentId, previewAttachmentId }' });
+  } else if (parsedAttachments.attachments.length > BROADCAST_MAX_IMAGES) {
+    errors.push({ field: 'attachments', message: `at most ${BROADCAST_MAX_IMAGES} images` });
   } else if (content.length === 0 && parsedAttachments.attachments.length === 0) {
     errors.push({ field: 'content', message: 'content or at least one image is required' });
   }
