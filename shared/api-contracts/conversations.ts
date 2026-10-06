@@ -99,7 +99,10 @@ export interface ConversationStats {
   active: number
   assigned: number
   pending: number
+  /** Unread customer messages (sum across visible conversations) */
   unreadCount: number
+  /** Number of visible conversations this agent still has to read */
+  unreadConversations: number
 }
 
 export interface ConversationTag {

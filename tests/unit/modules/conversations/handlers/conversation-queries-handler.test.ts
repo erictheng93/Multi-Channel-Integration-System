@@ -386,3 +386,49 @@ describe('conversation list pagination', () => {
     expect(mockDrizzle.chains[0]?.limit).not.toHaveBeenCalled();
   });
 });
+
+describe('GET /conversations/stats unreadConversations', () => {
+  // Runs the real /stats SQL against sqlite through a D1-shaped adapter.
+  function createStatsEnv(db: Database.Database) {
+    return {
+      DB: {
+        prepare: (query: string) => ({
+          bind: (...params: unknown[]) => ({
+            first: async () => db.prepare(query).get(...params) ?? null,
+          }),
+        }),
+      } as unknown as D1Database,
+    } as unknown as Bindings;
+  }
+
+  function createStatsDb() {
+    const db = createSqliteDb();
+    db.exec('ALTER TABLE conversations ADD COLUMN status TEXT; ALTER TABLE conversations ADD COLUMN assigned_team_id INTEGER;');
+    return db;
+  }
+
+  it('counts conversations, not messages, and honours the manual unread flag', async () => {
+    const db = createStatsDb();
+    for (const id of ['many', 'one', 'read', 'manual']) {
+      db.prepare("INSERT INTO conversations (id, status) VALUES (?, 'active')").run(id);
+    }
+    // 'many' has 3 unread customer messages, 'one' has 1, 'read' was answered by an agent
+    for (const [i, ts] of ['2026-07-01T01', '2026-07-01T02', '2026-07-01T03'].entries()) {
+      insertMessage(db, `many-${i}`, 'many', 'customer', ts);
+    }
+    insertMessage(db, 'one-0', 'one', 'customer', '2026-07-01T01');
+    insertMessage(db, 'read-0', 'read', 'customer', '2026-07-01T01');
+    insertMessage(db, 'read-1', 'read', 'agent', '2026-07-01T02');
+    insertMessage(db, 'manual-0', 'manual', 'customer', '2026-07-01T01');
+    insertMessage(db, 'manual-1', 'manual', 'agent', '2026-07-01T02');
+    insertReadState(db, 'agent-1', 'manual', null, '2026-07-01T03');
+
+    const response = await makeApp(createStatsEnv(db)).request('/api/conversations/stats');
+    const body = await response.json() as { data: { unreadCount: number; unreadConversations: number } };
+
+    expect(response.status).toBe(200);
+    // messages: many(3) + one(1) + manual floor(1) = 5; conversations: many, one, manual = 3
+    expect(body.data.unreadCount).toBe(5);
+    expect(body.data.unreadConversations).toBe(3);
+  });
+});
