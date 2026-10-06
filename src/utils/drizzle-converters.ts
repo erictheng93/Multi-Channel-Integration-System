@@ -36,6 +36,7 @@ export function convertCustomer(drizzleCustomer: DrizzleCustomer): Customer {
     platform: drizzleCustomer.platform,
     platformUserId: drizzleCustomer.platformUserId || '',
     displayName: drizzleCustomer.displayName || '',
+    customName: drizzleCustomer.customName,
     avatarUrl: drizzleCustomer.avatarUrl || '',
     phone: drizzleCustomer.phone || '',
     email: drizzleCustomer.email || '',

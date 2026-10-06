@@ -184,8 +184,10 @@ export class DatabaseService {
       } : null,
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName || 'Unknown',
-        displayName: result.customers.displayName,
+        name: (result.customers.customName ?? result.customers.displayName) || 'Unknown',
+        displayName: result.customers.customName ?? result.customers.displayName,
+        platformName: result.customers.displayName,
+        customName: result.customers.customName ?? null,
         platform: result.customers.platform,
         platformUserId: result.customers.platformUserId,
         avatarUrl: result.customers.avatarUrl,
@@ -238,8 +240,10 @@ export class DatabaseService {
       } : null,
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName || 'Unknown',
-        displayName: result.customers.displayName,
+        name: (result.customers.customName ?? result.customers.displayName) || 'Unknown',
+        displayName: result.customers.customName ?? result.customers.displayName,
+        platformName: result.customers.displayName,
+        customName: result.customers.customName ?? null,
         platform: result.customers.platform,
         platformUserId: result.customers.platformUserId,
         avatarUrl: result.customers.avatarUrl,
@@ -274,8 +278,10 @@ export class DatabaseService {
       } : null,
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName || 'Unknown',
-        displayName: result.customers.displayName,
+        name: (result.customers.customName ?? result.customers.displayName) || 'Unknown',
+        displayName: result.customers.customName ?? result.customers.displayName,
+        platformName: result.customers.displayName,
+        customName: result.customers.customName ?? null,
         platform: result.customers.platform,
         platformUserId: result.customers.platformUserId,
         avatarUrl: result.customers.avatarUrl,
@@ -355,8 +361,10 @@ export class DatabaseService {
       } : null,
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName || 'Unknown',
-        displayName: result.customers.displayName,
+        name: (result.customers.customName ?? result.customers.displayName) || 'Unknown',
+        displayName: result.customers.customName ?? result.customers.displayName,
+        platformName: result.customers.displayName,
+        customName: result.customers.customName ?? null,
         platform: result.customers.platform,
         platformUserId: result.customers.platformUserId,
         avatarUrl: result.customers.avatarUrl,
@@ -578,7 +586,7 @@ export class DatabaseService {
       .from(schema.conversations)
       .leftJoin(schema.customers, eq(schema.conversations.customerId, schema.customers.id))
       .where(
-        like(schema.customers.displayName, `%${query}%`)
+        or(like(schema.customers.customName, `%${query}%`), like(schema.customers.displayName, `%${query}%`))
       )
       .limit(limit);
   }

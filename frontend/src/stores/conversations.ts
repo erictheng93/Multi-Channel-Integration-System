@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch, type WatchStopHandle } from 'vue'
-import type { Conversation, ConversationFilters, Message, Platform, PaginatedResponse } from '@/types'
+import type { Conversation, ConversationFilters, Message, Platform, PaginatedResponse, CustomerUpdatedPayload } from '@/types'
 import { conversationApi } from '@/api/conversations'
 import { messageApi } from '@/api/message'
 import { useAuthStore } from './auth'
@@ -11,7 +11,7 @@ import { useWebSocketStore, type SubscriptionId } from './websocket'
 
 // Sub-module imports
 import type { SyncStatus, TransferredConversationState, ReceivedConversationState } from './conversations/types'
-import { hasConversationChanged, computeStatsFromConversations } from './conversations/helpers'
+import { applyCustomerUpdate, hasConversationChanged, computeStatsFromConversations } from './conversations/helpers'
 import { createRealtimeHandler } from './conversations/realtimeHandler'
 import { createAssignmentActions } from './conversations/assignmentActions'
 import { createBackgroundSync } from './conversations/backgroundSync'
@@ -864,6 +864,11 @@ export const useConversationsStore = defineStore('conversations', () => {
 
     // Utilities
     updateConversationInList,
+    applyCustomerUpdate: (payload: CustomerUpdatedPayload) => {
+      const n = applyCustomerUpdate(conversations.value, currentConversation.value, payload)
+      conversationCache.invalidateAll()
+      return n
+    },
 
     // Real-time sync (Phase B1)
     initializeRealtime,

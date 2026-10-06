@@ -301,4 +301,45 @@ export class SystemEventBroadcaster extends EventBroadcasterBase {
       return false;
     }
   }
+
+  /**
+   * Broadcast customer_updated (agent-set custom name changed). Same audience as customer tag events.
+   */
+  async broadcastCustomerUpdatedEvent(event: {
+    customerId: number;
+    customName: string | null;
+    platformName: string | null;
+  }): Promise<boolean> {
+    try {
+      const wsEvent: DurableObjectEvent = {
+        id: crypto.randomUUID(),
+        type: 'customer_updated',
+        source: 'api',
+        timestamp: nowMs(),
+        data: {
+          customerId: event.customerId,
+          customName: event.customName,
+          platformName: event.platformName,
+          name: event.customName ?? event.platformName
+        },
+        priority: 'normal',
+        deliveryOptions: {
+          broadcast: true,
+          targets: [
+            {
+              type: 'global' as const,
+              targets: ['admin', 'team'] as (string | number)[],
+              filters: { roles: ['admin', 'agent'] }
+            }
+          ],
+          persistent: false,
+          ttl: 60000
+        }
+      };
+      return await this.doClient.broadcast(wsEvent);
+    } catch (error) {
+      this.logger.error('Customer updated event error', undefined, { error: error instanceof Error ? error.message : String(error) });
+      return false;
+    }
+  }
 }

@@ -4,7 +4,8 @@ import {
   customers,
   conversations,
   messages,
-  systemSettings
+  systemSettings,
+  customerNameSql
 } from '../db/schema';
 import { createContextLogger } from './logger';
 import { SENDER_TYPES, type SenderType } from '../constants/sender-types';
@@ -354,7 +355,7 @@ export async function getMessageStats(
       createdAt: messages.createdAt,
       updatedAt: messages.updatedAt,
       deletedAt: messages.deletedAt,
-      customer_name: customers.displayName,
+      customer_name: customerNameSql,
       platform: customers.platform
     })
     .from(messages)

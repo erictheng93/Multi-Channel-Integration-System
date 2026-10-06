@@ -4,7 +4,7 @@
 import { Hono } from 'hono';
 import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
-import { eq, desc, and, like, sql, count } from 'drizzle-orm';
+import { eq, desc, and, or, like, sql, count } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import { conversations, customers, teams } from '@/db/schema';
 import type { Bindings } from '@/types';
@@ -376,8 +376,10 @@ conversationQueriesHandler.get('/:id', jwtAuth, async (c) => {
       // 包含完整的 customer 對象
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName, //  FIX: 添加 name 字段以匹配前端類型定義
-        displayName: result.customers.displayName, // 保留向後兼容
+        name: result.customers.customName ?? result.customers.displayName,
+        displayName: result.customers.customName ?? result.customers.displayName,
+        platformName: result.customers.displayName,
+        customName: result.customers.customName ?? null,
         platformUserId: result.customers.platformUserId,
         platform: result.customers.platform,
         avatarUrl: result.customers.avatarUrl,
@@ -463,9 +465,9 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
             )
           )`]
         : []),
-      ...(searchQuery ? [like(customers.displayName, `%${searchQuery}%`)] : []),
+      ...(searchQuery ? [or(like(customers.customName, `%${searchQuery}%`), like(customers.displayName, `%${searchQuery}%`))] : []),
       ...(customerNameQuery
-        ? [sql`${customers.displayName} LIKE ${'%' + customerNameQuery + '%'}`]
+        ? [sql`(${customers.customName} LIKE ${'%' + customerNameQuery + '%'} OR ${customers.displayName} LIKE ${'%' + customerNameQuery + '%'})`]
         : []),
       ...(updatedAfter ? [sql`${conversations.updatedAt} >= ${updatedAfter}`] : []),
       ...(updatedBefore ? [sql`${conversations.updatedAt} <= ${updatedBefore}`] : []),
@@ -528,8 +530,10 @@ conversationQueriesHandler.get('/', jwtAuth, async (c) => {
       // 完整的 customer 對象 (匹配前端類型定義)
       customer: result.customers ? {
         id: result.customers.id,
-        name: result.customers.displayName, //  映射到 name 字段
-        displayName: result.customers.displayName, // 保留向後兼容
+        name: result.customers.customName ?? result.customers.displayName,
+        displayName: result.customers.customName ?? result.customers.displayName,
+        platformName: result.customers.displayName,
+        customName: result.customers.customName ?? null,
         platform: result.customers.platform,
         platformUserId: result.customers.platformUserId,
         avatarUrl: result.customers.avatarUrl,

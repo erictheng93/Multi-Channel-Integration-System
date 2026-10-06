@@ -9,7 +9,7 @@ const log = createContextLogger('MsgCrud')
 import { eq, and, isNull } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
-import { messages, conversations, customers, agents, fileAttachments } from '@/db/schema';
+import { messages, conversations, customers, agents, fileAttachments, customerNameSql } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import {
   successResponse,
@@ -79,7 +79,7 @@ crudRoutes.get('/:id', jwtAuth, async (c) => {
         agentName: agents.displayName,
         agentRole: agents.role,
         // 客戶資訊
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         customerPlatform: customers.platform
       })
       .from(messages)

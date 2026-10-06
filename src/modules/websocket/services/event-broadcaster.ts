@@ -105,4 +105,10 @@ export class EventBroadcaster {
   ): ReturnType<SystemEventBroadcaster['broadcastCustomerTagEvent']> {
     return this.systemEvents.broadcastCustomerTagEvent(...args);
   }
+
+  broadcastCustomerUpdatedEvent(
+    ...args: Parameters<SystemEventBroadcaster['broadcastCustomerUpdatedEvent']>
+  ): ReturnType<SystemEventBroadcaster['broadcastCustomerUpdatedEvent']> {
+    return this.systemEvents.broadcastCustomerUpdatedEvent(...args);
+  }
 }

@@ -11,7 +11,7 @@ import { eq, and, desc, gte, lte, count, isNull } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
-import { messages, conversations, agents, customers } from '@/db/schema';
+import { messages, conversations, agents, customers, customerNameSql } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import { BULK_OPERATION_LIMITS } from '@/constants/limits';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -33,13 +33,13 @@ exportRoutes.get('/export/customers', jwtAuth, async (c) => {
     const customerList = await db
       .select({
         id: customers.id,
-        displayName: customers.displayName,
+        displayName: customerNameSql,
         platform: customers.platform,
         platformUserId: customers.platformUserId
       })
       .from(customers)
       .where(isNull(customers.deletedAt))
-      .orderBy(customers.displayName)
+      .orderBy(customerNameSql)
       .limit(200);
 
     return c.json({
@@ -226,7 +226,7 @@ exportRoutes.get('/export', jwtAuth, async (c) => {
         metadata: messages.metadata,
         createdAt: messages.createdAt,
         agentName: agents.displayName,
-        customerName: customers.displayName
+        customerName: customerNameSql
       })
       .from(messages)
       .innerJoin(conversations, eq(messages.conversationId, conversations.id))

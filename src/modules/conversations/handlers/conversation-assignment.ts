@@ -6,7 +6,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { eq } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, customers, teams } from '@/db/schema';
+import { conversations, customers, teams, customerNameSql } from '@/db/schema';
 import type { Bindings } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
@@ -222,7 +222,8 @@ conversationAssignmentHandler.post('/:id/assign', jwtAuth, async (c) => {
       assignedTeam: updatedConversation.teams || undefined,
       customer: updatedConversation.customers ? {
         ...updatedConversation.customers,
-        name: updatedConversation.customers.displayName
+        name: updatedConversation.customers.customName
+          ?? updatedConversation.customers.displayName
           ?? updatedConversation.customers.platformUserId
           ?? 'Unknown customer'  //  FIX: 添加 name 字段以匹配前端類型定義
       } : undefined
@@ -419,8 +420,10 @@ conversationAssignmentHandler.post('/:id/unassign', jwtAuth, async (c) => {
       assignedTeam: updatedConversation?.teams || undefined,
       customer: updatedConversation?.customers ? {
         id: updatedConversation.customers.id,
-        name: updatedConversation.customers.displayName, //  FIX: 添加 name 字段以匹配前端類型定義
-        displayName: updatedConversation.customers.displayName, // 保留向後兼容
+        name: updatedConversation.customers.customName ?? updatedConversation.customers.displayName,
+        displayName: updatedConversation.customers.customName ?? updatedConversation.customers.displayName,
+        platformName: updatedConversation.customers.displayName,
+        customName: updatedConversation.customers.customName ?? null,
         platformUserId: updatedConversation.customers.platformUserId,
         platform: updatedConversation.customers.platform,
         avatarUrl: updatedConversation.customers.avatarUrl,
@@ -576,7 +579,7 @@ conversationAssignmentHandler.post('/:id/transfer', jwtAuth, async (c) => {
         .select({
           id: conversations.id,
           customerId: conversations.customerId,
-          customerName: customers.displayName,
+          customerName: customerNameSql,
           platformUserId: customers.platformUserId,  // LINE user id (U...) — needed for customer card
           avatarUrl: customers.avatarUrl,             // avatar lost on transfer without this
           platform: customers.platform,  // platform is from customers table

@@ -8,6 +8,9 @@ import { jwtAuth } from '@/middleware/auth';
 import { requireIntId, getValidatedParam } from '@/middleware/param-validator';
 import { nowISO } from '@/utils/timestamp'
 import { createContextLogger } from '@/utils/logger'
+import { CustomerCrudService } from '../services/customer-crud';
+import { WebSocketBroadcastService } from '@/services/websocket-broadcast-service';
+import { ActivityCapture, ACTIVITY_ACTIONS, RESOURCE_TYPES } from '@modules/activities';
 
 // F10: gate a customer record by the caller's team scope. Admins see all.
 // Other agents see customers whose sourceTeamId is in their allowedTeamIds
@@ -23,6 +26,8 @@ function canAccessCustomer(
 }
 
 const log = createContextLogger('CustomerMain')
+
+export const MAX_CUSTOM_NAME_LENGTH = 50;
 
 
 const customerHandler = new Hono<{ Bindings: Bindings }>();
@@ -132,6 +137,82 @@ customerHandler.get('/:customerId', requireIntId('customerId'), async (c) => {
       },
       timestamp: nowISO()
     });
+  } catch (error) {
+    log.error('Operation failed', {}, error as Error);
+    return handleApiError(error, c);
+  }
+});
+
+// PATCH /api/customers/:customerId  body: { customName: string | null }
+// Sets the agent-defined nickname; display_name (platform name) is never touched.
+customerHandler.patch('/:customerId', requireIntId('customerId'), async (c) => {
+  try {
+    const customerId = getValidatedParam<number>(c, 'customerId');
+    const userPayload = c.get('jwtPayload') as JWTPayload;
+
+    const body: unknown = await c.req.json().catch(() => null);
+    const raw = typeof body === 'object' && body !== null ? (body as Record<string, unknown>).customName : undefined;
+    if (raw !== null && typeof raw !== 'string') {
+      return c.json({ success: false, error: 'customName must be a string or null', timestamp: nowISO() }, HTTP_STATUS.BAD_REQUEST);
+    }
+    const customName = raw === null ? null : raw.trim() || null;
+    if (customName !== null && customName.length > MAX_CUSTOM_NAME_LENGTH) {
+      return c.json({
+        success: false,
+        error: `customName must be at most ${MAX_CUSTOM_NAME_LENGTH} characters`,
+        timestamp: nowISO()
+      }, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    const service = new CustomerCrudService(c.env.DB);
+    const { getCustomerById } = await import('@/utils/database');
+    const existing = await getCustomerById(c.env.DB, customerId); // excludes soft-deleted
+    if (!existing || !canAccessCustomer(existing, userPayload)) {
+      return c.json({ success: false, error: 'Customer not found', timestamp: nowISO() }, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const oldName = existing.customName ?? null;
+    if (oldName === customName) {
+      return c.json({ success: true, data: { customer: existing }, timestamp: nowISO() });
+    }
+
+    const customer = await service.update(customerId, { customName });
+
+    try {
+      const capture = new ActivityCapture(c.env.DB);
+      await capture.logOnly(
+        capture.buildReversibleLog({
+          request: {
+            userId: String(userPayload.userId),
+            userName: userPayload.displayName || userPayload.username || 'Unknown',
+            userRole: userPayload.role,
+            action: ACTIVITY_ACTIONS.CUSTOMER_UPDATE,
+            resourceType: RESOURCE_TYPES.CUSTOMER,
+            resourceId: String(customerId),
+            details: { changes: [{ field: 'customName', old: oldName, new: customName }] },
+            ipAddress: c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For'),
+            userAgent: c.req.header('User-Agent')
+          },
+          restoreHandler: 'customer.update',
+          previousState: { id: customerId, custom_name: oldName, updated_at: existing.updatedAt },
+          newState: { id: customerId, custom_name: customer.customName ?? null, updated_at: customer.updatedAt }
+        })
+      );
+    } catch (logError) {
+      log.warn('Activity log failed (non-blocking)', { detail: logError });
+    }
+
+    try {
+      await new WebSocketBroadcastService(c.env).broadcastCustomerUpdatedEvent({
+        customerId,
+        customName: customer.customName ?? null,
+        platformName: customer.displayName
+      });
+    } catch (broadcastError) {
+      log.warn('customer_updated broadcast failed (non-blocking)', { detail: broadcastError });
+    }
+
+    return c.json({ success: true, data: { customer }, timestamp: nowISO() });
   } catch (error) {
     log.error('Operation failed', {}, error as Error);
     return handleApiError(error, c);

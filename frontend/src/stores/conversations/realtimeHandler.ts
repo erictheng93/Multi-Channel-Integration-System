@@ -6,9 +6,9 @@ import { conversationApi } from '@/api/conversations'
 import { conversationCache } from '@/services/cacheManager'
 import { normalizeTeamId } from '@/utils/type-normalization'
 import { useAuthStore } from '../auth'
-import { computeStatsFromConversations } from './helpers'
+import { applyCustomerUpdate, computeStatsFromConversations } from './helpers'
 import type { LiffConversation, ConversationStats, TransferredConversationState, ReceivedConversationState } from './types'
-import type { Platform } from '@/types'
+import type { Platform, CustomerUpdatedPayload } from '@/types'
 import { nowISO } from '@/utils/timestamp'
 import { createLogger } from '@/utils/logger'
 
@@ -640,6 +640,17 @@ export function createRealtimeHandler(deps: RealtimeHandlerDeps) {
             changedFields: Object.keys(profileData.changes),
             affectedConversations: affectedIds.length,
           })
+        }
+        break
+      }
+
+      case 'customer_updated': {
+        const payload = data as CustomerUpdatedPayload | undefined
+        if (payload && payload.customerId !== undefined && payload.customerId !== null) {
+          applyCustomerUpdate(conversations.value, currentConversation.value, payload)
+          // 避免快取回傳舊名稱
+          conversationCache.invalidateAll()
+          lastUpdateTime.value = new Date()
         }
         break
       }
