@@ -1705,4 +1705,4 @@ gh pr create --title "feat(broadcast): text + up to 4 images" --body "Implements
 
 - [ ] **Step 7: 追蹤 issue**
 
-`gh issue create`：「單發訊息 >1MB 圖片在 LINE 顯示破圖（previewImageUrl 直接用原圖）」，引用本 spec 第 10 節。
+單發 >1MB 破圖已開 issue #61（2026-10-06）。在 PR 描述中連結 #61，並說明 `broadcast-image-preview.ts` 可供其修正重用。
