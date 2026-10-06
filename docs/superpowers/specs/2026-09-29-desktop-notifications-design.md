@@ -43,7 +43,7 @@
 1. **訊息來源**:`senderType === 'customer'`(客服自己與同事的回覆不彈)
 2. **開關與權限**:偏好 `enabled === true` 且 `Notification.permission === 'granted'`
 3. **範圍**:`scope === 'my-teams'` 時要求 `assignedTeamId ∈ authStore.allowedTeamIds`;`scope === 'all'` 不過濾
-4. **打擾抑制**:分頁前景(`document.visibilityState === 'visible'`)**且**正在看該對話(`currentConversation.id === conversationId`)→ 不彈。分頁在背景時一律彈(即使停在該對話)
+4. **打擾抑制**:分頁前景(`document.visibilityState === 'visible'` **且** `document.hasFocus()`;只看 visibilityState 不夠，切到其他 App 時視窗常仍部分可見)**且**正在看該對話(`currentConversation.id === conversationId`)→ 不彈。分頁在背景時一律彈(即使停在該對話)
 5. **合併節流**:`Notification` 帶 `tag: conversationId`,同對話新通知自動取代舊通知;另加每對話 3 秒最小間隔,避免連發抖動
 
 ### 通知內容

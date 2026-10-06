@@ -145,7 +145,9 @@ export function useDesktopNotifications() {
       return name === 'ConversationDetail' && typeof params.id === 'string' ? params.id : null
     },
     getAllowedTeamIds: () => authStore.allowedTeamIds,
-    isTabVisible: () => document.visibilityState === 'visible',
+    // 只有 visibilityState 不夠：切到其他 App 時 Chrome 視窗常仍部分可見，仍為 'visible'，
+    // 停在該對話就會誤判為「正在看」而抑制。必須視窗也有焦點才算在看。
+    isTabVisible: () => document.visibilityState === 'visible' && document.hasFocus(),
     showNotification,
     playSound,
     now: () => Date.now()
