@@ -223,9 +223,10 @@ bun run dev
 
 ```bash
 # 1.
-cp frontend/.env.local.example frontend/.env.local
+# 用 .env.development.local：.env.local 會被 .env.development 覆蓋
+cp frontend/.env.local.example frontend/.env.development.local
 
-# 2. .env.local
+# 2. .env.development.local
 # VITE_API_BASE_URL=https://mcis-backend.daiwandist.com
 
 # 3.

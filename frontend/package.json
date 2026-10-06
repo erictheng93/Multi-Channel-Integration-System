@@ -11,7 +11,7 @@
   "scripts": {
     "preinstall": "bunx only-allow bun",
     "dev": "vite --mode development --host --port 5173",
-    "dev:local": "vite --mode local --host --port 5173",
+    "dev:local": "VITE_API_BASE_URL=http://localhost:8787 VITE_BACKEND_URL=http://localhost:8787 vite --mode development --host --port 5173",
     "dev:remote": "vite --mode development --host --port 5173",
     "dev:prod": "vite --mode production --host --port 5173",
     "switch:local": "node scripts/switch-environment.cjs local",
