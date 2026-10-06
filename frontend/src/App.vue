@@ -23,12 +23,26 @@ import { useAccountStatusMonitor } from '@/composables/useAccountStatusMonitor'
 import AccountDisabledModal from '@/components/ui/AccountDisabledModal.vue'
 import { preloadService } from '@/services/preloadService'
 import { tagCacheService } from '@/services/tagCacheService'
+import { useDesktopNotifications } from '@/composables/notification/useDesktopNotifications'
+import { usePageTitleUnread } from '@/composables/notification/usePageTitleUnread'
 
 const route = useRoute()
 const authStore = useAuthStore()
 const { startTracking } = useActivityTracker()
 const { startTokenRefreshCheck } = useTokenRefresh()
 const { showDisabledModal } = useAccountStatusMonitor()
+
+// 桌面通知:登入後啟動,登出停止(訂閱全域 WebSocket conversations channel)
+const { start: startDesktopNotifications, stop: stopDesktopNotifications } = useDesktopNotifications()
+usePageTitleUnread()
+
+watch(() => authStore.isAuthenticated, (authenticated) => {
+  if (authenticated) {
+    startDesktopNotifications()
+  } else {
+    stopDesktopNotifications()
+  }
+}, { immediate: true })
 
 // 添加一個計數器來強制重新渲染
 const routeChangeCounter = ref(0)
