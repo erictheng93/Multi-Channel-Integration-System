@@ -354,6 +354,19 @@ export const broadcastRecipients = sqliteTable('broadcast_recipients', {
   broadcastStatusIdx: index('idx_broadcast_recipients_broadcast_status').on(table.broadcastId, table.status),
 }));
 
+// Broadcast attachments - 群發圖片（原圖 + LINE 預覽圖，position 0..3）
+export const broadcastAttachments = sqliteTable('broadcast_attachments', {
+  id: integer('id').primaryKey(),
+  broadcastId: text('broadcast_id').notNull().references(() => broadcasts.id, { onDelete: 'cascade' }),
+  attachmentId: text('attachment_id').notNull().references(() => fileAttachments.id, { onDelete: 'restrict' }),
+  previewAttachmentId: text('preview_attachment_id').notNull().references(() => fileAttachments.id, { onDelete: 'restrict' }),
+  position: integer('position').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  broadcastPositionUnique: unique().on(table.broadcastId, table.position),
+  broadcastAttachmentUnique: unique().on(table.broadcastId, table.attachmentId),
+}));
+
 // Activities table - 活動記錄表（審計追蹤）
 export const activities = sqliteTable('activities', {
   id: integer('id').primaryKey(),

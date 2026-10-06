@@ -17,6 +17,10 @@ describe('broadcast table migrations', () => {
       CREATE TABLE customers (
         id INTEGER PRIMARY KEY
       );
+
+      CREATE TABLE file_attachments (
+        id TEXT PRIMARY KEY NOT NULL
+      );
     `);
   });
 
@@ -66,6 +70,36 @@ describe('broadcast table migrations', () => {
       'idx_broadcast_recipients_broadcast_status',
     ]));
     expect(indexNames('broadcasts')).toContain('idx_broadcasts_list');
+  });
+
+  it('enforces broadcast attachment position uniqueness, cascade and restrict', () => {
+    applyMigration('0051_add_broadcast_tables.sql');
+    applyMigration('0052_add_broadcast_identity_indexes.sql');
+    applyMigration('0063_add_broadcast_attachments.sql');
+
+    db.prepare('INSERT INTO agents (id) VALUES (?)').run('agent-1');
+    db.prepare(`
+      INSERT INTO broadcasts (id, title, content, tag_ids, created_by)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('broadcast-1', 'Launch', '', '[1]', 'agent-1');
+    for (const id of ['img-1', 'prev-1', 'img-2', 'prev-2']) {
+      db.prepare('INSERT INTO file_attachments (id) VALUES (?)').run(id);
+    }
+
+    const insert = db.prepare(`
+      INSERT INTO broadcast_attachments (broadcast_id, attachment_id, preview_attachment_id, position)
+      VALUES (?, ?, ?, ?)
+    `);
+    insert.run('broadcast-1', 'img-1', 'prev-1', 0);
+
+    expect(() => insert.run('broadcast-1', 'img-2', 'prev-2', 0)).toThrow(/UNIQUE constraint failed/);
+    expect(() => insert.run('broadcast-1', 'img-1', 'prev-2', 1)).toThrow(/UNIQUE constraint failed/);
+    expect(() => db.prepare('DELETE FROM file_attachments WHERE id = ?').run('img-1'))
+      .toThrow(/FOREIGN KEY constraint failed/);
+
+    db.prepare('DELETE FROM broadcasts WHERE id = ?').run('broadcast-1');
+    const remaining = db.prepare('SELECT COUNT(*) AS n FROM broadcast_attachments').get() as { n: number };
+    expect(remaining.n).toBe(0);
   });
 
   function applyMigration(fileName: string): void {
