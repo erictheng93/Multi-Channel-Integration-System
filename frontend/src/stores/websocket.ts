@@ -73,8 +73,9 @@ interface WebSocketStats {
  * 重连配置
  */
 const RECONNECT_CONFIG = {
-  maxAttempts: 3, // 最大重连次数
+  maxAttempts: 3, // 傳給 client 的設定值；Store 自己的重連不設上限 (issue #53)
   baseDelay: 5000, // 基础延迟 (5 秒)
+  maxDelay: 60000, // 重連延遲上限 (60 秒)
   heartbeatInterval: 30000, // 心跳间隔 (30 秒)
   heartbeatTimeout: 35000 // 心跳超时 (35 秒)
 }
@@ -225,14 +226,46 @@ export const useWebSocketStore = defineStore('websocket', () => {
         setConnectionState('reconnecting')
         stats.value.reconnectAttempts++
         break
+      // Client 以 reconnect:false 建立，斷線一律由 Store 重連。
+      // Store 主動關閉時已先清掉 handlers，不會走到這裡。
       case 'disconnected':
       case 'closed':
         setConnectionState('disconnected')
+        scheduleReconnect()
         break
       case 'error':
         setConnectionState('error')
+        scheduleReconnect()
         break
     }
+  }
+
+  /**
+   * 排程重連 (issue #53)
+   * Session 仍有效就持續重試（延遲上限 60 秒），不再於 3 次後永久放棄：
+   * 原本 token 過期被伺服器關閉 (4401) 或網路中斷後，全域連線會整晚都斷著，
+   * 即時事件與桌面通知無聲失效。
+   */
+  const scheduleReconnect = (): void => {
+    if (reconnectTimer || isConnected.value) {
+      return
+    }
+
+    const authStore = useAuthStore()
+    if (!authStore.isAuthenticated && !authStore.validateSession()) {
+      return
+    }
+
+    reconnectAttempts.value++
+    const delay = Math.min(RECONNECT_CONFIG.baseDelay * reconnectAttempts.value, RECONNECT_CONFIG.maxDelay)
+    frontendLogger.debug(`[WebSocketStore] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.value})...`)
+
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      if (!isConnected.value) {
+        void reconnect()
+      }
+    }, delay)
   }
 
   /**
@@ -242,20 +275,33 @@ export const useWebSocketStore = defineStore('websocket', () => {
     console.error('[WebSocketStore] WebSocket error:', error)
     lastError.value = error
     setConnectionState('error')
+    scheduleReconnect()
+  }
 
-    // 尝试重连
-    if (reconnectAttempts.value < RECONNECT_CONFIG.maxAttempts) {
-      reconnectAttempts.value++
-      const delay = RECONNECT_CONFIG.baseDelay * reconnectAttempts.value
-
-      frontendLogger.debug(`[WebSocketStore] Reconnecting in ${delay}ms (${reconnectAttempts.value}/${RECONNECT_CONFIG.maxAttempts})...`)
-
-      reconnectTimer = setTimeout(() => {
-        reconnect()
-      }, delay)
-    } else {
-      console.error(`[WebSocketStore] Max reconnect attempts (${RECONNECT_CONFIG.maxAttempts}) reached`)
+  /**
+   * 立即恢復連線：token 刷新成功、網路恢復、分頁回到前景時觸發，
+   * 不必等退避計時器。從未連線或已主動斷線 (wsClient 為 null) 時不動作。
+   */
+  const recoverNow = (): void => {
+    if (!wsClient || isConnected.value || isConnecting.value) {
+      return
     }
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    reconnectAttempts.value = 0
+    void reconnect()
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('auth:token-refreshed', recoverNow)
+    window.addEventListener('online', recoverNow)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        recoverNow()
+      }
+    })
   }
 
   /**
@@ -373,16 +419,30 @@ export const useWebSocketStore = defineStore('websocket', () => {
   /**
    * 重连
    */
-  const reconnect = async (): Promise<void> => {
-    frontendLogger.debug('[WebSocketStore] Reconnecting...')
+  // 多個觸發來源（退避計時器、token 刷新、auth store）可能同時呼叫，共用同一次重連，
+  // 避免建立兩個 client 而遺留一條沒有 handler 的連線
+  let reconnectInFlight: Promise<void> | null = null
 
-    closeClient()
-    setConnectionState('reconnecting')
+  const reconnect = (): Promise<void> => {
+    if (reconnectInFlight) {
+      return reconnectInFlight
+    }
 
-    // 短暂延迟后重连
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    reconnectInFlight = (async () => {
+      frontendLogger.debug('[WebSocketStore] Reconnecting...')
 
-    await connect()
+      closeClient()
+      setConnectionState('reconnecting')
+
+      // 短暂延迟后重连
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      await connect()
+    })().finally(() => {
+      reconnectInFlight = null
+    })
+
+    return reconnectInFlight
   }
 
   /**
