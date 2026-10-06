@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import NotificationSettingsModal from '@/components/notification/NotificationSettingsModal.vue'
 import { __resetDesktopNotificationPrefsForTest, useDesktopNotificationPrefs } from '@/composables/notification/useDesktopNotificationPrefs'
 
@@ -65,6 +65,33 @@ describe('NotificationSettingsModal desktop section', () => {
 
     expect(NotificationMock).toHaveBeenCalledWith('測試通知', expect.objectContaining({ tag: 'desktop-notification-test' }))
     expect(wrapper.find('[data-testid="desktop-test-sent"]').exists()).toBe(true)
+  })
+
+  it('點啟用按鈕取得 granted → 自動送出測試通知', async () => {
+    const NotificationMock = vi.fn()
+    Object.assign(NotificationMock, { permission: 'default', requestPermission: vi.fn().mockResolvedValue('granted') })
+    vi.stubGlobal('Notification', NotificationMock)
+    const wrapper = mountModal()
+
+    await wrapper.find('[data-testid="desktop-enable-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(NotificationMock).toHaveBeenCalledWith('測試通知', expect.objectContaining({ tag: 'desktop-notification-test' }))
+    expect(wrapper.find('[data-testid="desktop-test-sent"]').exists()).toBe(true)
+  })
+
+  it('重新打開桌面通知開關 → 自動送出測試通知；關閉時不送', async () => {
+    const NotificationMock = vi.fn()
+    Object.assign(NotificationMock, { permission: 'granted', requestPermission: vi.fn() })
+    vi.stubGlobal('Notification', NotificationMock)
+    const wrapper = mountModal()
+    const toggle = wrapper.find('[data-testid="desktop-enabled-toggle"]')
+
+    await toggle.setValue(false)
+    expect(NotificationMock).not.toHaveBeenCalled()
+
+    await toggle.setValue(true)
+    expect(NotificationMock).toHaveBeenCalledTimes(1)
   })
 
   it('permission=denied → 顯示封鎖說明', () => {
