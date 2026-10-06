@@ -95,6 +95,31 @@
           >
           <span class="toggle-switch" />
         </label>
+
+        <!-- 瀏覽器權限為 granted 時，作業系統仍可能擋下通知（例如 Windows 關閉了 Chrome 的通知），
+             頁面偵測不到，只能讓使用者自己驗證 -->
+        <div class="desktop-test">
+          <p
+            data-testid="desktop-os-hint"
+            class="desktop-hint"
+          >
+            看不到通知？請到 Windows「設定 → 系統 → 通知」，確認 Google Chrome（或 Microsoft Edge）已開啟，且未開啟「勿擾／專注助理」。
+          </p>
+          <button
+            data-testid="desktop-test-btn"
+            class="btn btn-secondary"
+            @click="sendTestNotification"
+          >
+            發送測試通知
+          </button>
+          <p
+            v-if="testSent"
+            data-testid="desktop-test-sent"
+            class="desktop-hint desktop-test-sent"
+          >
+            已送出。若右下角沒有出現，代表通知被 Windows 擋下，請依上方說明調整。
+          </p>
+        </div>
       </template>
     </div>
 
@@ -226,7 +251,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
 import {
   BellIcon,
@@ -280,6 +305,20 @@ const onEnableDesktop = async (): Promise<void> => {
   if (result === 'granted') {
     setDesktopPrefs({ enabled: true })
   }
+}
+
+const testSent = ref(false)
+
+const sendTestNotification = (): void => {
+  try {
+    new window.Notification('測試通知', {
+      body: '看到這則代表此裝置的桌面通知正常',
+      tag: 'desktop-notification-test'
+    })
+  } catch {
+    // 建構失敗與被系統擋下的處理相同：提示使用者檢查系統設定
+  }
+  testSent.value = true
 }
 </script>
 
@@ -390,6 +429,16 @@ const onEnableDesktop = async (): Promise<void> => {
   color: var(--gray-500);
   margin: 0 0 var(--space-3);
   line-height: 1.6;
+}
+
+.desktop-test {
+  padding: var(--space-4);
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+}
+
+.desktop-test-sent {
+  margin: var(--space-3) 0 0;
 }
 
 </style>
