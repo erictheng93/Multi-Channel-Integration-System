@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Bindings } from '@/types';
 import type { Database } from '@/db/drizzle-factory';
 import { BroadcastService } from '@/modules/broadcast/services/broadcast-service';
 
@@ -10,7 +11,7 @@ describe('BroadcastService pagination ordering', () => {
       })),
     }));
     const db = createBroadcastListDb(orderBy);
-    const service = new BroadcastService(db);
+    const service = new BroadcastService(db, {} as Bindings);
 
     await service.list(1, 20);
 
@@ -25,7 +26,7 @@ describe('BroadcastService pagination ordering', () => {
       })),
     }));
     const db = createRecipientListDb(orderBy);
-    const service = new BroadcastService(db);
+    const service = new BroadcastService(db, {} as Bindings);
 
     await service.listRecipients('broadcast-1', 1, 20);
 

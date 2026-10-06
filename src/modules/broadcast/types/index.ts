@@ -45,7 +45,7 @@ export interface CreateBroadcastInput {
   title: string;
   content: string;
   tagIds: number[];
-  attachments?: BroadcastAttachmentInput[];
+  attachments: BroadcastAttachmentInput[];
 }
 
 export interface BroadcastRecord {
