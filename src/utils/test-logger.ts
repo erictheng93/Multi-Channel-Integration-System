@@ -96,8 +96,8 @@ export const testSafeError = (message: string, error?: unknown, ...args: unknown
   } else {
     // In test environment, store for potential inspection but don't output
     // This allows tests to verify error handling without cluttering output
-    if (global.__TEST_ERRORS__) {
-      global.__TEST_ERRORS__.push({ message, error, args });
+    if (globalThis.__TEST_ERRORS__) {
+      globalThis.__TEST_ERRORS__.push({ message, error, args });
     }
   }
 };
