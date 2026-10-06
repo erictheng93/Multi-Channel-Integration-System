@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref } from 'vue'
+import { mount, flushPromises } from '@vue/test-utils'
 import { useDashboardData } from '@/composables/dashboard/useDashboardData'
 import { useConversations } from '@/composables/useConversations'
 import type { Conversation } from '@/types'
@@ -20,6 +21,12 @@ vi.mock('vue-router', () => ({
 
 // Mock useConversations
 vi.mock('@/composables/useConversations')
+
+// Mock conversations store (realtime sync lifecycle)
+const mockStore = { initializeRealtime: vi.fn().mockResolvedValue(undefined), cleanup: vi.fn() }
+vi.mock('@/stores/conversations', () => ({
+  useConversationsStore: () => mockStore
+}))
 
 describe('useDashboardData', () => {
   const mockConversations: Conversation[] = [
@@ -202,6 +209,28 @@ describe('useDashboardData', () => {
 
       goToConversation(mockConversations[2])
       expect(mockPush).toHaveBeenCalledWith('/conversations/3')
+    })
+  })
+
+  describe('實時同步', () => {
+    // 「最近對話」由 store 推導；儀表板要自己啟動 store 的實時同步，否則新訊息要 F5 才出現
+    it('掛載時啟動、卸載時清理', async () => {
+      vi.mocked(useConversations).mockReturnValue({
+        conversations: ref(mockConversations),
+        openConversations: ref([]),
+        assignedConversations: ref([]),
+        loading: ref(false),
+        fetchConversations: vi.fn().mockResolvedValue(undefined),
+        refreshConversations: vi.fn()
+      } as any)
+
+      const wrapper = mount({ setup() { useDashboardData(); return () => null } })
+      await flushPromises()
+      expect(mockStore.initializeRealtime).toHaveBeenCalledTimes(1)
+      expect(mockStore.cleanup).not.toHaveBeenCalled()
+
+      wrapper.unmount()
+      expect(mockStore.cleanup).toHaveBeenCalledTimes(1)
     })
   })
 
