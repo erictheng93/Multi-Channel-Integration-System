@@ -1,22 +1,36 @@
-import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Database } from '@/db/drizzle-factory';
-import { broadcastRecipients, broadcasts, customers, customerNameSql } from '@/db/schema';
+import {
+  broadcastAttachments,
+  broadcastRecipients,
+  broadcasts,
+  customers,
+  customerNameSql,
+  fileAttachments,
+} from '@/db/schema';
+import type { Bindings } from '@/types';
+import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 import { nowISO } from '@/utils/timestamp';
 import { BroadcastAudienceService } from '@modules/broadcast/services/audience-service';
 import {
   BroadcastServiceError,
+  type BroadcastAttachmentView,
   type BroadcastListResult,
   type BroadcastRecord,
   type BroadcastRecipientListResult,
   type BroadcastRecipientStatus,
   type CreateBroadcastInput,
 } from '@modules/broadcast/types';
+import { assertBroadcastAttachments } from './broadcast-content';
 import { BROADCAST_RECIPIENT_INSERT_CHUNK_SIZE, chunkItems } from './d1-chunks';
 
 export class BroadcastService {
   private readonly audienceService: BroadcastAudienceService;
 
-  constructor(private readonly db: Database) {
+  constructor(
+    private readonly db: Database,
+    private readonly env: Bindings
+  ) {
     this.audienceService = new BroadcastAudienceService(db);
   }
 
@@ -26,6 +40,7 @@ export class BroadcastService {
 
   async create(input: CreateBroadcastInput, createdBy: string): Promise<BroadcastRecord> {
     validateCreateInput(input);
+    await this.assertAttachments(input, createdBy);
 
     const [tagId] = input.tagIds;
     const audience = await this.audienceService.resolveSingleTagAudience(tagId);
@@ -38,7 +53,7 @@ export class BroadcastService {
     const record = {
       id: broadcastId,
       title: input.title.trim(),
-      contentType: 'text',
+      contentType: input.attachments.length > 0 ? 'mixed' : 'text',
       content: input.content.trim(),
       tagIds: JSON.stringify(input.tagIds),
       matchMode: 'any',
@@ -67,6 +82,18 @@ export class BroadcastService {
 
       for (const recipientChunk of chunkItems(recipientRows, BROADCAST_RECIPIENT_INSERT_CHUNK_SIZE)) {
         await this.db.insert(broadcastRecipients).values(recipientChunk);
+      }
+
+      if (input.attachments.length > 0) {
+        await this.db.insert(broadcastAttachments).values(
+          input.attachments.map((item, position) => ({
+            broadcastId,
+            attachmentId: item.attachmentId,
+            previewAttachmentId: item.previewAttachmentId,
+            position,
+            createdAt: now,
+          }) satisfies typeof broadcastAttachments.$inferInsert)
+        );
       }
     } catch (error) {
       await this.db.delete(broadcasts).where(eq(broadcasts.id, broadcastId));
@@ -108,7 +135,58 @@ export class BroadcastService {
     const row = await this.db.query.broadcasts.findFirst({
       where: and(eq(broadcasts.id, id), isNull(broadcasts.deletedAt)),
     });
-    return row ? mapBroadcastRecord(row) : null;
+    if (!row) {
+      return null;
+    }
+    return { ...mapBroadcastRecord(row), attachments: await this.loadAttachments(id) };
+  }
+
+  private async assertAttachments(input: CreateBroadcastInput, actorId: string): Promise<void> {
+    if (input.attachments.length === 0) {
+      return;
+    }
+    const ids = input.attachments.flatMap((item) => [item.attachmentId, item.previewAttachmentId]);
+    const rows = await this.db
+      .select({
+        id: fileAttachments.id,
+        mimeType: fileAttachments.mimeType,
+        fileSize: fileAttachments.fileSize,
+        uploadedBy: fileAttachments.uploadedBy,
+        messageId: fileAttachments.messageId,
+      })
+      .from(fileAttachments)
+      .where(inArray(fileAttachments.id, ids));
+    assertBroadcastAttachments(input.attachments, rows, actorId);
+  }
+
+  private async loadAttachments(broadcastId: string): Promise<BroadcastAttachmentView[]> {
+    const rows = await this.db
+      .select({
+        position: broadcastAttachments.position,
+        attachmentId: broadcastAttachments.attachmentId,
+        previewAttachmentId: broadcastAttachments.previewAttachmentId,
+      })
+      .from(broadcastAttachments)
+      .where(eq(broadcastAttachments.broadcastId, broadcastId))
+      .orderBy(asc(broadcastAttachments.position));
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const files = await this.db
+      .select({ id: fileAttachments.id, r2Key: fileAttachments.r2Key })
+      .from(fileAttachments)
+      .where(inArray(fileAttachments.id, rows.flatMap((r) => [r.attachmentId, r.previewAttachmentId])));
+    const keyById = new Map(files.map((file) => [file.id, file.r2Key]));
+    const sign = (fileId: string) =>
+      getSignedFileUrl(this.env, keyById.get(fileId) ?? '', PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);
+
+    return Promise.all(rows.map(async (r) => ({
+      position: r.position,
+      attachmentId: r.attachmentId,
+      fileUrl: await sign(r.attachmentId),
+      previewUrl: await sign(r.previewAttachmentId),
+    })));
   }
 
   async listRecipients(
@@ -169,8 +247,11 @@ function validateCreateInput(input: CreateBroadcastInput): void {
   if (title.length < 1 || title.length > 100) {
     throw new BroadcastServiceError('INVALID_BROADCAST_INPUT', 'Broadcast title must be 1-100 characters', 422);
   }
-  if (content.length < 1 || content.length > 2000) {
-    throw new BroadcastServiceError('INVALID_BROADCAST_INPUT', 'Broadcast content must be 1-2000 characters', 422);
+  if (content.length > 2000) {
+    throw new BroadcastServiceError('INVALID_BROADCAST_INPUT', 'Broadcast content must be at most 2000 characters', 422);
+  }
+  if (content.length === 0 && input.attachments.length === 0) {
+    throw new BroadcastServiceError('INVALID_BROADCAST_INPUT', 'Broadcast needs text or at least one image', 422);
   }
   if (input.tagIds.length !== 1) {
     throw new BroadcastServiceError(
