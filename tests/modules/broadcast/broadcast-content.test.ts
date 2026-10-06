@@ -3,6 +3,7 @@ import {
   assertBroadcastAttachments,
   buildBroadcastLineMessages,
   buildWriteBackAttachmentRows,
+  groupWriteBackUnits,
   type AttachmentCandidate,
 } from '@/modules/broadcast/services/broadcast-content';
 
@@ -103,5 +104,30 @@ describe('buildWriteBackAttachmentRows', () => {
     });
     expect(rows[1].r2Key).toBe('k/b.png');
     expect(new Set(rows.map((r) => r.id)).size).toBe(2);
+  });
+});
+
+describe('groupWriteBackUnits', () => {
+  const images = [
+    { filename: 'a.jpg', mimeType: 'image/jpeg', fileSize: 10, r2Key: 'k/a.jpg', url: 'https://x/a' },
+    { filename: 'b.png', mimeType: 'image/png', fileSize: 20, r2Key: 'k/b.png', url: 'https://x/b' },
+  ];
+  const messageRows = Array.from({ length: 15 }, (_, i) => ({ id: `m${i}`, conversationId: `c${i}` }));
+
+  it('keeps each message chunk together with exactly its own attachments', () => {
+    const units = groupWriteBackUnits(messageRows, images, 'agent-1', '2026-10-06T00:00:00.000Z');
+
+    expect(units.map((u) => u.messages.length)).toEqual([7, 7, 1]);
+    for (const unit of units) {
+      const ids = new Set(unit.messages.map((m) => m.id));
+      expect(unit.attachments).toHaveLength(unit.messages.length * 2);
+      expect(unit.attachments.every((a) => ids.has(a.messageId as string))).toBe(true);
+    }
+  });
+
+  it('produces units with no attachments for text-only broadcasts', () => {
+    const units = groupWriteBackUnits(messageRows, [], 'agent-1', '2026-10-06T00:00:00.000Z');
+    expect(units).toHaveLength(3);
+    expect(units.every((u) => u.attachments.length === 0)).toBe(true);
   });
 });

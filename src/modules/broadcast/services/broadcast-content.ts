@@ -1,5 +1,6 @@
 import type { fileAttachments } from '@/db/schema';
 import type { LineReplyMessage } from '@/types';
+import { BROADCAST_MESSAGE_INSERT_CHUNK_SIZE, chunkItems } from './d1-chunks';
 import { createImageMessage, createTextMessage } from '@/utils/line';
 import { BroadcastServiceError, type BroadcastAttachmentInput } from '@modules/broadcast/types';
 
@@ -76,6 +77,27 @@ export function buildWriteBackAttachmentRows(
     uploadStatus: 'completed',
     uploadedBy,
     createdAt,
+  }));
+}
+
+export interface WriteBackUnit<M> {
+  messages: M[];
+  attachments: Array<typeof fileAttachments.$inferInsert>;
+}
+
+// A unit = one messages chunk + the attachments of exactly those messages.
+// Units must never be split across D1 batches (each batch is one transaction).
+export function groupWriteBackUnits<M extends { id: string; conversationId: string }>(
+  messageRows: M[],
+  images: BroadcastImageFile[],
+  uploadedBy: string,
+  createdAt: string
+): Array<WriteBackUnit<M>> {
+  return chunkItems(messageRows, BROADCAST_MESSAGE_INSERT_CHUNK_SIZE).map((messages) => ({
+    messages,
+    attachments: messages.flatMap((message) =>
+      buildWriteBackAttachmentRows(message.id, message.conversationId, images, uploadedBy, createdAt)
+    ),
   }));
 }
 

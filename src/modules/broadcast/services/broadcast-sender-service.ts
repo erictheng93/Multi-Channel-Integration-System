@@ -27,14 +27,13 @@ import {
 import {
   BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE,
   BROADCAST_IN_ARRAY_CHUNK_SIZE,
-  BROADCAST_MESSAGE_INSERT_CHUNK_SIZE,
-  BROADCAST_WRITE_BATCH_SIZE,
+  BROADCAST_WRITE_UNITS_PER_BATCH,
   chunkItems,
   runInBatches,
 } from './d1-chunks';
 import {
   buildBroadcastLineMessages,
-  buildWriteBackAttachmentRows,
+  groupWriteBackUnits,
   type BroadcastImageFile,
 } from './broadcast-content';
 
@@ -139,7 +138,15 @@ export class BroadcastSenderService {
         sentRecipients.push(...groupSent);
       }
 
-      await this.writeBackConversationMessages(broadcastId, broadcast.content, images, actor, sentRecipients);
+      try {
+        await this.writeBackConversationMessages(broadcastId, broadcast.content, images, actor, sentRecipients);
+      } catch (error) {
+        log.error(
+          'Broadcast write-back failed',
+          { broadcastId, sentCount: sentRecipients.length },
+          error instanceof Error ? error : String(error)
+        );
+      }
 
       return this.finalizeBroadcast(broadcastId);
     } catch (error) {
@@ -354,17 +361,16 @@ export class BroadcastSenderService {
       } satisfies typeof messages.$inferInsert];
     });
 
-    const attachmentRows = messageRows.flatMap((message) =>
-      buildWriteBackAttachmentRows(message.id, message.conversationId, images, String(actor.id), timestamp)
-    );
-    // messages first: file_attachments.message_id has an FK to them.
-    const inserts = [
-      ...chunkItems(messageRows, BROADCAST_MESSAGE_INSERT_CHUNK_SIZE)
-        .map((chunk) => this.db.insert(messages).values(chunk)),
-      ...chunkItems(attachmentRows, BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE)
+    const units = groupWriteBackUnits(messageRows, images, String(actor.id), timestamp).map((unit) => [
+      this.db.insert(messages).values(unit.messages),
+      ...chunkItems(unit.attachments, BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE)
         .map((chunk) => this.db.insert(fileAttachments).values(chunk)),
-    ];
-    await runInBatches(inserts, BROADCAST_WRITE_BATCH_SIZE, (batch) => this.db.batch(batch));
+    ] as const);
+    // Whole units per batch: a message and its images commit in the same transaction.
+    await runInBatches(units, BROADCAST_WRITE_UNITS_PER_BATCH, (batch) => {
+      const [first, ...rest] = batch.flat();
+      return this.db.batch([first, ...rest]);
+    });
   }
 
   private async markRecipients(
