@@ -281,8 +281,8 @@ async function collectSystemMetrics(
     ];
 
     // 如果有記憶體使用資訊
-    if (globalThis.process && globalThis.process.memoryUsage) {
-      const memUsage = globalThis.process.memoryUsage();
+    if (typeof process !== 'undefined' && process && process.memoryUsage) {
+      const memUsage = process.memoryUsage();
       systemMetrics.push({
         id: `system_${now}_memory`,
         name: METRIC_NAMES.SYSTEM.MEMORY_USAGE,
