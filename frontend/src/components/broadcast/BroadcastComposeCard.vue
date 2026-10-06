@@ -82,6 +82,15 @@
             >{{ image.error }}</span>
             <div class="tile-actions">
               <button
+                v-if="image.status === 'error'"
+                type="button"
+                class="btn btn-ghost btn-sm"
+                :aria-label="`重試上傳圖片 ${index + 1}`"
+                @click="retry(image)"
+              >
+                重試
+              </button>
+              <button
                 type="button"
                 class="btn btn-ghost btn-sm"
                 :disabled="index === 0"
@@ -190,6 +199,7 @@ const ACCEPTED_TYPES = ['image/jpeg', 'image/png']
 interface PickedImage {
   key: string
   objectUrl: string
+  file: File
   status: 'uploading' | 'done' | 'error'
   attachment?: BroadcastAttachmentInput
   error?: string
@@ -213,17 +223,34 @@ async function onPick(event: Event) {
     imageNotice.value = '最多 4 張圖片，超出的已略過'
   }
 
-  await Promise.all(valid.slice(0, room).map(async (file) => {
-    const image: PickedImage = { key: crypto.randomUUID(), objectUrl: URL.createObjectURL(file), status: 'uploading' }
-    images.value.push(image)
-    const target = () => images.value.find((item) => item.key === image.key)
-    try {
-      const attachment = await uploadBroadcastImage(file)
-      Object.assign(target() ?? {}, { status: 'done', attachment })
-    } catch (err) {
-      Object.assign(target() ?? {}, { status: 'error', error: err instanceof Error ? err.message : '上傳失敗' })
+  await Promise.all(valid.slice(0, room).map((file) => {
+    const image: PickedImage = {
+      key: crypto.randomUUID(),
+      objectUrl: URL.createObjectURL(file),
+      file,
+      status: 'uploading'
     }
+    images.value.push(image)
+    return uploadImage(image.key, file)
   }))
+}
+
+async function uploadImage(key: string, file: File) {
+  // Look up by key so remove/reorder while the upload is in flight stays safe.
+  const target = () => images.value.find((item) => item.key === key)
+  try {
+    const attachment = await uploadBroadcastImage(file)
+    Object.assign(target() ?? {}, { status: 'done', attachment, error: undefined })
+  } catch (err) {
+    Object.assign(target() ?? {}, { status: 'error', error: err instanceof Error ? err.message : '上傳失敗' })
+  }
+}
+
+async function retry(image: PickedImage) {
+  const current = images.value.find((item) => item.key === image.key)
+  if (!current || current.status !== 'error') {return}
+  Object.assign(current, { status: 'uploading', error: undefined })
+  await uploadImage(current.key, current.file)
 }
 
 function remove(index: number) {
