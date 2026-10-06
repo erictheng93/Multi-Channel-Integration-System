@@ -634,7 +634,7 @@ describe('Conversation Handlers Integration Tests', () => {
             }
 
             if (query.includes('as unreadCount')) {
-              return { unreadCount: 5 };
+              return { unreadCount: 5, unreadConversations: 2 };
             }
 
             return null;
@@ -656,6 +656,7 @@ describe('Conversation Handlers Integration Tests', () => {
           assigned: 1,
           pending: 1,
           unreadCount: 5,
+          unreadConversations: 2,
         },
         timestamp: '2026-01-15T12:00:00Z',
       });
@@ -675,6 +676,7 @@ describe('Conversation Handlers Integration Tests', () => {
         assigned: 0,
         pending: 0,
         unreadCount: 0,
+        unreadConversations: 0,
       });
       expect(env.DB.prepare).toHaveBeenCalledTimes(2);
     });
