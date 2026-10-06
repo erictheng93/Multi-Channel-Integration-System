@@ -5,7 +5,8 @@ export const BROADCAST_IN_ARRAY_CHUNK_SIZE = 90;
 export const BROADCAST_MESSAGE_INSERT_CHUNK_SIZE = 7;
 // file_attachments insert: 11 columns x 9 rows = 99 <= 100 bound parameters.
 export const BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE = 9;
-export const BROADCAST_WRITE_BATCH_SIZE = 50;
+// A unit is at most 1 message insert + 4 attachment inserts (7 msgs x 4 images = 28 rows / 9) = 5 statements; 10 units <= 50 statements per batch.
+export const BROADCAST_WRITE_UNITS_PER_BATCH = 10;
 
 export function chunkItems<T>(items: readonly T[], size: number): T[][] {
   if (size <= 0) {
