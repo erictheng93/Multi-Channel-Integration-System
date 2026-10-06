@@ -12,9 +12,10 @@
  * - 多数据源协调
  */
 
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useConversations } from '@/composables/useConversations'
+import { useConversationsStore } from '@/stores/conversations'
 import type { Conversation } from '@/types'
 import { createLogger } from '@/utils/logger'
 
@@ -49,6 +50,8 @@ export function useDashboardData(options: UseDashboardDataOptions = {}) {
     refreshConversations
   } = conversationsData
 
+  const conversationsStore = useConversationsStore()
+
   // 初始化時自動載入對話數據
   onMounted(async () => {
     // 只在沒有數據時載入，避免重複請求
@@ -56,6 +59,14 @@ export function useDashboardData(options: UseDashboardDataOptions = {}) {
       frontendLogger.debug('[useDashboardData] 自動載入對話數據...')
       await fetchConversations()
     }
+
+    // 「最近對話」由 store 的對話列表推導；實時同步只在對話頁啟動的話，
+    // 儀表板上的新訊息要 F5 才看得到。和對話頁一樣：掛載時訂閱、卸載時清理。
+    await conversationsStore.initializeRealtime()
+  })
+
+  onUnmounted(() => {
+    conversationsStore.cleanup()
   })
 
   /**
