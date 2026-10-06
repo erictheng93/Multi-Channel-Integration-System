@@ -581,6 +581,12 @@ export class WebSocketClient {
           this.reconnectAttempts = 0
           this.reconnectAttempt.value = 0
 
+          // reconnect:false 代表由擁有者（如 websocket store）負責重連；
+          // 刷新成功的事件已會觸發它重連，這裡再連一次會多開一條連線 (issue #53)
+          if (!this.config.reconnect) {
+            return
+          }
+
           // 立即嘗試重新連接
           setTimeout(() => {
             this.connect().catch(error => {
