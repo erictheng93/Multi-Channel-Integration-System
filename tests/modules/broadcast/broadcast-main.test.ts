@@ -139,4 +139,11 @@ describe('broadcast create route', () => {
     expect(response.status).toBe(422);
     expect(mocks.create).not.toHaveBeenCalled();
   });
+
+  it('rejects more than four attachments before create is called', async () => {
+    const attachments = [1, 2, 3, 4, 5].map((n) => ({ attachmentId: `img-${n}`, previewAttachmentId: `prev-${n}` }));
+    const response = await post({ title: 'Promo', content: 'Hi', tagIds: [1], attachments });
+    expect(response.status).toBe(422);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
 });
