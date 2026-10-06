@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-10-06T07:39:32.726Z
+> **產生時間**: 2026-10-06T09:46:06.925Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -17,10 +17,10 @@
 
 | 項目 | 數量 |
 |---|---|
-| 資料表 | 41 |
+| 資料表 | 42 |
 | 索引 | 124 |
 | 視圖 | 3 |
-| 外鍵關係 | 69 |
+| 外鍵關係 | 72 |
 | CHECK 約束 | 0 |
 
 > **注意：資料庫中沒有任何 CHECK 約束。** 至少 9 個 migration 的 SQL 有宣告
@@ -34,7 +34,7 @@
 
 ## 與 `src/db/schema.ts` 的一致性
 
-資料庫中的 41 張表與 `src/db/schema.ts` 宣告的表**完全一致**。
+資料庫中的 42 張表與 `src/db/schema.ts` 宣告的表**完全一致**。
 相關檢查：`bun run check:migrations` 會比對「已套用的 migration 宣告了什麼」與
 「資料庫實際有什麼」，涵蓋 table / index / trigger / view 四種物件，比本文件的
 表級比對更細。**但它不檢查 CHECK 約束、欄位型別與外鍵**。
@@ -52,6 +52,7 @@
 - [`auto_reply_logs`](#auto-reply-logs) — 10 欄；Auto-Reply Logs table - 自動回覆審計日誌 (append-only, no soft delete)
 - [`auto_reply_rules`](#auto-reply-rules) — 11 欄；Auto-Reply Rules table - 自動回覆規則
 - [`auto_reply_schedules`](#auto-reply-schedules) — 9 欄；Auto-Reply Schedules table - 營業時間設定 (per team, per day of week)
+- [`broadcast_attachments`](#broadcast-attachments) — 6 欄；Broadcast attachments - 群發圖片（原圖 + LINE 預覽圖，position 0..3）
 - [`broadcast_recipients`](#broadcast-recipients) — 10 欄；Broadcast recipients table - 群發收件人明細（受眾快照 + 逐人結果）
 - [`broadcasts`](#broadcasts) — 16 欄；Broadcasts table - 群發活動
 - [`channel_integrations`](#channel-integrations) — 16 欄；Channel Integrations table - 渠道集成配置（多租户支持） NOTE: Migration 0026 introduced JSON-based configuration for extensibility Legacy platform-specific columns are preserved for backward compatibility
@@ -503,6 +504,42 @@ CREATE TABLE `auto_reply_schedules` (
 	`created_at` text DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` text DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade
+)
+```
+
+</details>
+
+### `broadcast_attachments`
+
+> Broadcast attachments - 群發圖片（原圖 + LINE 預覽圖，position 0..3）
+
+| 欄位 | 型別 | 約束 | 預設值 |
+|---|---|---|---|
+| `id` | INTEGER | PK | - |
+| `broadcast_id` | TEXT | NOT NULL | - |
+| `attachment_id` | TEXT | NOT NULL | - |
+| `preview_attachment_id` | TEXT | NOT NULL | - |
+| `position` | INTEGER | NOT NULL | - |
+| `created_at` | TEXT | - | `CURRENT_TIMESTAMP` |
+
+**外鍵**:
+
+- `preview_attachment_id` → `file_attachments.id` (ON DELETE RESTRICT)
+- `attachment_id` → `file_attachments.id` (ON DELETE RESTRICT)
+- `broadcast_id` → `broadcasts.id` (ON DELETE CASCADE)
+
+<details><summary>CREATE TABLE</summary>
+
+```sql
+CREATE TABLE broadcast_attachments (
+  id INTEGER PRIMARY KEY,
+  broadcast_id TEXT NOT NULL REFERENCES broadcasts(id) ON DELETE CASCADE,
+  attachment_id TEXT NOT NULL REFERENCES file_attachments(id) ON DELETE RESTRICT,
+  preview_attachment_id TEXT NOT NULL REFERENCES file_attachments(id) ON DELETE RESTRICT,
+  position INTEGER NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (broadcast_id, position),
+  UNIQUE (broadcast_id, attachment_id)
 )
 ```
 
