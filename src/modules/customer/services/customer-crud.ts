@@ -53,6 +53,7 @@ export class CustomerCrudService {
         platform: customer.platform,
         platformUserId: customer.platformUserId,
         displayName: customer.displayName,
+        customName: customer.customName,
         avatarUrl: customer.avatarUrl,
         email: customer.email,
         phone: customer.phone,
@@ -79,6 +80,7 @@ export class CustomerCrudService {
           platform: customers.platform,
           platformUserId: customers.platformUserId,
           displayName: customers.displayName,
+          customName: customers.customName,
           avatarUrl: customers.avatarUrl,
           phone: customers.phone,
           email: customers.email,
@@ -120,6 +122,7 @@ export class CustomerCrudService {
         platform: customer.platform,
         platformUserId: customer.platformUserId,
         displayName: customer.displayName,
+        customName: customer.customName,
         avatarUrl: customer.avatarUrl,
         phone: customer.phone,
         email: customer.email,
@@ -165,6 +168,7 @@ export class CustomerCrudService {
         platform: customer.platform,
         platformUserId: customer.platformUserId,
         displayName: customer.displayName,
+        customName: customer.customName,
         avatarUrl: customer.avatarUrl,
         email: customer.email,
         phone: customer.phone,
@@ -320,6 +324,10 @@ export class CustomerCrudService {
 
       if (updateData.displayName !== undefined) {
         updateFields.displayName = updateData.displayName;
+      }
+
+      if (updateData.customName !== undefined) {
+        updateFields.customName = updateData.customName;
       }
 
       if (updateData.avatarUrl !== undefined) {

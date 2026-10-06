@@ -16,9 +16,13 @@
             {{ customerInitials }}
           </div>
           <div class="customer-meta">
-            <h1 class="customer-name">
-              {{ conversation?.customer?.name || '載入中...' }}
-            </h1>
+            <CustomerNameEditor
+              :customer-id="customerIdNumber"
+              :display-name="conversation?.customer?.name"
+              :custom-name="conversation?.customer?.customName"
+              :platform-name="conversation?.customer?.platformName"
+              :platform="conversation?.platform || conversation?.customer?.platform"
+            />
             <div class="customer-badges">
               <PlatformBadge
                 v-if="conversation"
@@ -213,6 +217,7 @@ import AssignmentBadge from '../ui/AssignmentBadge.vue'
 import NewCustomerBadge from '../ui/NewCustomerBadge.vue'
 import TagSelector from '@/components/customer/TagSelector.vue'
 import AdvancedAssignActions from './AdvancedAssignActions.vue'
+import CustomerNameEditor from './CustomerNameEditor.vue'
 import type { Conversation } from '@/types'
 import { getCustomerTags, setCustomerTags, type Tag } from '@/api/tags'
 import { useToast } from '@/composables/useToast'
@@ -488,13 +493,6 @@ defineExpose({
   justify-content: center;
   color: white;
   font-weight: 600;
-}
-
-.customer-name {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827; /* Force dark text for contrast with light background */
 }
 
 .customer-badges {

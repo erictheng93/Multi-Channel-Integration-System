@@ -6,7 +6,7 @@ import { HTTP_STATUS } from '@/constants/http-status';
 import { globalErrorHandler } from '@/core/error-handler';
 import { eq, desc, and, count, inArray, isNull, gte, sql } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
-import { conversations, messages, customers, agents, fileAttachments } from '@/db/schema';
+import { conversations, messages, customers, agents, fileAttachments, customerNameSql } from '@/db/schema';
 import type { Bindings, JWTPayload } from '@/types';
 import { PermissionService } from '@/services/permission-service';
 import { jwtAuth } from '@/middleware/auth';
@@ -697,7 +697,7 @@ conversationMessagesHandler.get('/:id/messages/search', jwtAuth, async (c) => {
         recalledAt: messages.recalledAt,
         isRecalled: messages.isRecalled,
         createdAt: messages.createdAt,
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         customerPlatform: customers.platform,
         agentName: agents.displayName
       })
@@ -760,7 +760,7 @@ conversationMessagesHandler.get('/:id/messages/:messageId', jwtAuth, async (c) =
         recalledAt: messages.recalledAt,
         isRecalled: messages.isRecalled,
         createdAt: messages.createdAt,
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         customerPlatform: customers.platform,
         agentName: agents.displayName
       })
@@ -848,7 +848,7 @@ conversationMessagesHandler.put('/:id/messages/:messageId', jwtAuth, async (c) =
         recalledAt: messages.recalledAt,
         isRecalled: messages.isRecalled,
         createdAt: messages.createdAt,
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         customerPlatform: customers.platform,
         agentName: agents.displayName
       })
@@ -1141,7 +1141,7 @@ conversationMessagesHandler.get('/:id/messages', jwtAuth, async (c) => {
         isRecalled: messages.isRecalled,
         createdAt: messages.createdAt,
         // Customer info for customer messages
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         // Agent info for agent messages
         agentName: agents.displayName
       })

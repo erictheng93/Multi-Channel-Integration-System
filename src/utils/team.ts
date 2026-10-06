@@ -1,7 +1,7 @@
 import type { Team, DbUser, DatabaseRow, Bindings } from '../types';
 import { revalidateWebSocketAccess } from '@/services/websocket-access-revocation';
 import { createDbClient } from '../db/drizzle-factory';
-import { teams, agents, agentTeams, conversations, messages, conversationTransfers, customers } from '../db/schema';
+import { teams, agents, agentTeams, conversations, messages, conversationTransfers, customers, customerNameSql } from '../db/schema';
 import { eq, and, count, inArray, sql, desc } from 'drizzle-orm';
 import type { NewTeam, NewConversationTransfer } from '../db/schema';
 import { nowISO, nowMs } from '@/utils/timestamp'
@@ -425,7 +425,7 @@ export async function getTeamConversations(
       createdAt: conversations.createdAt,
       updatedAt: conversations.updatedAt,
       // joined fields
-      customer_name: customers.displayName,
+      customer_name: customerNameSql,
       platform: customers.platform,
       platform_user_id: customers.platformUserId,
       // Note: assigned_agent_name removed - only team assignment is supported now

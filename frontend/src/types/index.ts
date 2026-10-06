@@ -228,3 +228,11 @@ export type {
   TestGlobalConfig,
   FileItem
 } from './test-types'
+
+// WebSocket `customer_updated` 事件 payload（name = 已解析名稱）
+export interface CustomerUpdatedPayload {
+  customerId: number
+  customName: string | null
+  platformName: string | null
+  name: string | null
+}

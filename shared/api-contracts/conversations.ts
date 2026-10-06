@@ -20,6 +20,8 @@ export interface RawConversationData {
     id: number | string
     name?: string
     displayName?: string
+    customName?: string | null
+    platformName?: string | null
     platform?: Platform
     platformUserId?: string
     avatarUrl?: string

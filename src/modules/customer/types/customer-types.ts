@@ -7,6 +7,7 @@ export interface Customer {
   platform: string;
   platformUserId: string;
   displayName: string | null;
+  customName: string | null;
   avatarUrl: string | null;
   email: string | null;
   phone: string | null;
@@ -90,6 +91,7 @@ export interface CustomerSearchResult {
   platform: string;
   platformUserId: string;
   displayName: string | null;
+  customName: string | null;
   avatarUrl: string | null;
   email: string | null;
   phone: string | null;
@@ -109,6 +111,7 @@ export interface CreateCustomerData {
 
 export interface UpdateCustomerData {
   displayName?: string | null;
+  customName?: string | null;
   avatarUrl?: string | null;
   email?: string | null;
   phone?: string | null;
@@ -183,6 +186,7 @@ export interface DbCustomer {
   platform: string;
   platform_user_id: string;
   display_name: string | null;
+  custom_name?: string | null;
   avatar_url: string | null;
   email: string | null;
   phone: string | null;

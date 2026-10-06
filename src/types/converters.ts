@@ -20,7 +20,7 @@ export function customerToUser(customer: Customer): User {
     id: customer.id.toString(),
     platform: customer.platform as Platform,
     platformUserId: customer.platformUserId,
-    name: customer.displayName || 'Unknown User',
+    name: (customer.customName ?? customer.displayName) || 'Unknown User',
     avatarUrl: customer.avatarUrl || '',
     createdAt: new Date(customer.createdAt).getTime()
   };

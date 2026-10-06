@@ -124,6 +124,7 @@ export interface Customer {
   platform: string;
   platformUserId: string;
   displayName?: string;
+  customName?: string | null;
   avatarUrl?: string;
   phone?: string;
   email?: string;

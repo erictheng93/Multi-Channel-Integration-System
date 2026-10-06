@@ -360,6 +360,10 @@ class ApiClient {
     return this.request<T>('PUT', endpoint, data, options);
   }
 
+  patch<T>(endpoint: string, data?: unknown, options?: RequestOptions) {
+    return this.request<T>('PATCH', endpoint, data, options);
+  }
+
   delete<T>(endpoint: string, options?: RequestOptions) {
     return this.request<T>('DELETE', endpoint, undefined, options);
   }
