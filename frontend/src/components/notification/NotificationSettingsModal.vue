@@ -55,7 +55,7 @@
             type="checkbox"
             class="toggle-input"
             :checked="desktopPrefs.enabled"
-            @change="setDesktopPrefs({ enabled: ($event.target as HTMLInputElement).checked })"
+            @change="onToggleDesktopEnabled(($event.target as HTMLInputElement).checked)"
           >
           <span class="toggle-switch" />
         </label>
@@ -300,14 +300,23 @@ watch(() => props.visible, (visible) => {
   }
 })
 
+const testSent = ref(false)
+
+// 開啟當下自動送一則測試通知：瀏覽器權限 granted 不代表系統會顯示，只能讓使用者親眼確認
 const onEnableDesktop = async (): Promise<void> => {
   const result = await requestDesktopPermission()
   if (result === 'granted') {
     setDesktopPrefs({ enabled: true })
+    sendTestNotification()
   }
 }
 
-const testSent = ref(false)
+const onToggleDesktopEnabled = (enabled: boolean): void => {
+  setDesktopPrefs({ enabled })
+  if (enabled) {
+    sendTestNotification()
+  }
+}
 
 const sendTestNotification = (): void => {
   try {
