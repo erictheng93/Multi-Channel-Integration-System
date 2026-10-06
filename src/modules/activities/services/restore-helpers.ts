@@ -40,6 +40,7 @@ const COLUMNS: Record<string, Set<string>> = {
     'platform',
     'platform_user_id',
     'display_name',
+    'custom_name',
     'avatar_url',
     'email',
     'phone',

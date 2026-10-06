@@ -10,7 +10,7 @@ import { eq, and, desc, count } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '@/types';
-import { messages, conversations, customers, agents } from '@/db/schema';
+import { messages, conversations, customers, agents, customerNameSql } from '@/db/schema';
 import { jwtAuth } from '@/middleware/auth';
 import {
   successResponse,
@@ -104,7 +104,7 @@ conversationRoutes.get('/conversation/:conversationId', jwtAuth, async (c) => {
         storedSenderName: messages.senderName, // 持久化的發送者名稱快照
         createdAt: messages.createdAt,
         // 發送者資訊 (fallback for old messages)
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         customerPlatform: customers.platform,
         agentName: agents.displayName,
         agentRole: agents.role

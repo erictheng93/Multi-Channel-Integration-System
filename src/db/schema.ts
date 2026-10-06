@@ -53,7 +53,8 @@ export const customers = sqliteTable('customers', {
   id: integer('id').primaryKey(),
   platform: text('platform').notNull(), // 'line', 'facebook', etc.
   platformUserId: text('platform_user_id').notNull(),
-  displayName: text('display_name'),
+  displayName: text('display_name'), // platform profile name — overwritten by webhook sync
+  customName: text('custom_name'), // agent-set nickname (Migration 0062); read via customerNameSql
   avatarUrl: text('avatar_url'),
   email: text('email'), //  Consider encryption for PII
   phone: text('phone'), //  Consider encryption for PII
@@ -65,6 +66,9 @@ export const customers = sqliteTable('customers', {
 }, (table) => ({
   platformUserUnique: unique().on(table.platform, table.platformUserId),
 }));
+
+// Name agents see: nickname if set, else platform name. Use this in selects/search instead of customers.displayName.
+export const customerNameSql = sql<string | null>`COALESCE(${customers.customName}, ${customers.displayName})`;
 
 // QR Codes table - QR碼管理
 export const qrCodes = sqliteTable('qr_codes', {

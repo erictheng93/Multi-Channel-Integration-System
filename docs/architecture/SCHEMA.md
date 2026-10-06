@@ -3,7 +3,7 @@
 > **此文件由程式產生，請勿手動編輯。**
 > 重新產生：`bun run db:doc:schema`（正式庫）或 `bun scripts/generate-schema-doc.ts`（本地鏡像）
 >
-> **產生時間**: 2026-09-09T08:08:58.253Z
+> **產生時間**: 2026-10-06T07:39:32.726Z
 > **資料來源**: REMOTE production D1 (mcis-db)
 >
 > 內容直接讀自資料庫的 `sqlite_master` 與 pragma 函式，**不是**讀 `src/db/schema.ts`
@@ -64,7 +64,7 @@
 - [`customer_feedback`](#customer-feedback) — 10 欄；Customer Feedback table - 客户满意度反馈 (Migration 0032)
 - [`customer_tags`](#customer-tags) — 4 欄；Customer tags junction table - 客戶標籤關聯
 - [`customer_team_assignments`](#customer-team-assignments) — 8 欄；Customer Team Assignments table - 客戶團隊分配記錄 (Migration 0031) Tracks customer team assignments from LIFF QR Code scans (recorded BEFORE friend status)
-- [`customers`](#customers) — 12 欄；Customers table - 平台客戶資訊表 ENCRYPTION NOTE: Consider encrypting email, phone, metadata for PII protection
+- [`customers`](#customers) — 13 欄；Customers table - 平台客戶資訊表 ENCRYPTION NOTE: Consider encrypting email, phone, metadata for PII protection
 - [`delayed_messages`](#delayed-messages) — 12 欄
 - [`file_attachments`](#file-attachments) — 12 欄；File attachments table - 檔案附件表 All columns now use consistent snake_case naming (Migration 0037 applied 2026-02-14)
 - [`message_recall_logs`](#message-recall-logs) — 5 欄；Message recall logs table - 訊息撤回日誌
@@ -1098,6 +1098,7 @@ CREATE TABLE `customer_team_assignments` (
 | `created_at` | TEXT | - | `CURRENT_TIMESTAMP` |
 | `updated_at` | TEXT | - | `CURRENT_TIMESTAMP` |
 | `deleted_at` | TEXT | - | - |
+| `custom_name` | TEXT | - | - |
 
 **外鍵**:
 
@@ -1126,7 +1127,7 @@ CREATE TABLE `customers` (
 	`metadata` text,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` text DEFAULT CURRENT_TIMESTAMP,
-	`deleted_at` text,
+	`deleted_at` text, custom_name TEXT,
 	FOREIGN KEY (`source_team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE set null
 )
 ```

@@ -73,6 +73,8 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       platform: customerPlatform,
       platformUserId,
       avatarUrl: rawData.customer?.avatarUrl,
+      customName: rawData.customer?.customName ?? null,
+      platformName: rawData.customer?.platformName ?? null,
       createdAt: customerCreatedAt
     },
     customer: {
@@ -81,6 +83,8 @@ function adaptConversationData(rawData: RawConversationData): Conversation {
       platform: customerPlatform,
       platformUserId,
       avatarUrl: rawData.customer?.avatarUrl,
+      customName: rawData.customer?.customName ?? null,
+      platformName: rawData.customer?.platformName ?? null,
       createdAt: customerCreatedAt
     },
     // FIX: 处理嵌套的 assignedTeam 对象

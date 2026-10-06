@@ -157,6 +157,7 @@ export type DurableObjectEventType =
   | 'team_member_removed' //  Agent removed from team - triggers memberCount update
   | 'team_updated' //  Team info updated (name, status, etc.)
   | 'customer_tags_updated' //  Customer tags changed - triggers tag list refetch
+  | 'customer_updated' // Agent-set customer nickname changed - { customerId, customName, platformName, name }
   | 'customer_profile_updated'; // Customer profile changed - triggers conversation cache update
 
 export interface DurableObjectEvent {
