@@ -1,4 +1,4 @@
-export type BroadcastContentType = 'text';
+export type BroadcastContentType = 'text' | 'mixed';
 export type BroadcastMatchMode = 'any' | 'all';
 export type BroadcastStatus = 'draft' | 'sending' | 'completed' | 'partial_failed' | 'failed';
 export type BroadcastRecipientStatus = 'pending' | 'sent' | 'failed' | 'skipped';
@@ -29,10 +29,23 @@ export interface BroadcastAudiencePreview {
   }>;
 }
 
+export interface BroadcastAttachmentInput {
+  attachmentId: string;
+  previewAttachmentId: string;
+}
+
+export interface BroadcastAttachmentView {
+  position: number;
+  attachmentId: string;
+  fileUrl: string;
+  previewUrl: string;
+}
+
 export interface CreateBroadcastInput {
   title: string;
   content: string;
   tagIds: number[];
+  attachments?: BroadcastAttachmentInput[];
 }
 
 export interface BroadcastRecord {
@@ -52,6 +65,7 @@ export interface BroadcastRecord {
   createdAt: string | null;
   updatedAt: string | null;
   deletedAt: string | null;
+  attachments?: BroadcastAttachmentView[];
 }
 
 export interface BroadcastListResult {
