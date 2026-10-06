@@ -68,6 +68,7 @@ interface ConversationStatsAggregateRow {
 
 interface ConversationUnreadAggregateRow {
   unreadCount: number | string | null;
+  unreadConversations: number | string | null;
 }
 
 const D1_SAFE_ID_CHUNK_SIZE = 90;
@@ -141,7 +142,8 @@ function createEmptyConversationStats(): ConversationStats {
     active: 0,
     assigned: 0,
     pending: 0,
-    unreadCount: 0
+    unreadCount: 0,
+    unreadConversations: 0
   };
 }
 
@@ -194,7 +196,10 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
       SELECT COALESCE(SUM(
         CASE WHEN per.manuallyUnread = 1 AND per.unreadCount = 0
           THEN 1 ELSE per.unreadCount END
-      ), 0) as unreadCount
+      ), 0) as unreadCount,
+      COALESCE(SUM(
+        CASE WHEN per.manuallyUnread = 1 OR per.unreadCount > 0 THEN 1 ELSE 0 END
+      ), 0) as unreadConversations
       FROM (
         SELECT
           threshold.id,
@@ -228,6 +233,7 @@ conversationQueriesHandler.get('/stats', jwtAuth, async (c) => {
     `).bind(user.id, ...visibility.params).first<ConversationUnreadAggregateRow>();
 
     stats.unreadCount = toCount(unreadRow?.unreadCount);
+    stats.unreadConversations = toCount(unreadRow?.unreadConversations);
 
     return contractJson(c, conversationContracts.stats, {
       success: true,
