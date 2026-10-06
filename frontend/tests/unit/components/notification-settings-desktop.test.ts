@@ -47,6 +47,26 @@ describe('NotificationSettingsModal desktop section', () => {
     expect(wrapper.find('[data-testid="desktop-sound-toggle"]').exists()).toBe(true)
   })
 
+  it('permission=granted → 顯示 Windows 設定提示與測試按鈕', () => {
+    vi.stubGlobal('Notification', { permission: 'granted', requestPermission: vi.fn() })
+    const wrapper = mountModal()
+    expect(wrapper.find('[data-testid="desktop-os-hint"]').text()).toContain('Windows')
+    expect(wrapper.find('[data-testid="desktop-test-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="desktop-test-sent"]').exists()).toBe(false)
+  })
+
+  it('點測試按鈕 → 送出測試通知並顯示已送出提示', async () => {
+    const NotificationMock = vi.fn()
+    Object.assign(NotificationMock, { permission: 'granted', requestPermission: vi.fn() })
+    vi.stubGlobal('Notification', NotificationMock)
+    const wrapper = mountModal()
+
+    await wrapper.find('[data-testid="desktop-test-btn"]').trigger('click')
+
+    expect(NotificationMock).toHaveBeenCalledWith('測試通知', expect.objectContaining({ tag: 'desktop-notification-test' }))
+    expect(wrapper.find('[data-testid="desktop-test-sent"]').exists()).toBe(true)
+  })
+
   it('permission=denied → 顯示封鎖說明', () => {
     vi.stubGlobal('Notification', { permission: 'denied', requestPermission: vi.fn() })
     const wrapper = mountModal()
