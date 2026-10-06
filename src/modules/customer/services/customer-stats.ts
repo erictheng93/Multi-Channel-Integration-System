@@ -13,7 +13,8 @@ import {
   customerTags,
   teams,
   conversations,
-  messages
+  messages,
+  customerNameSql
 } from '@/db/schema';
 import {
   CustomerStats
@@ -179,7 +180,7 @@ export class CustomerStatsService {
       const topActiveResult = await this.drizzleDb
         .select({
           customerId: customers.id,
-          displayName: customers.displayName,
+          displayName: customerNameSql,
           messageCount: sql<number>`COUNT(${messages.id})`
         })
         .from(customers)

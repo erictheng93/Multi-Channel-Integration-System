@@ -12,7 +12,8 @@ import {
   customerTags,
   tags,
   teams,
-  conversations
+  conversations,
+  customerNameSql
 } from '@/db/schema';
 import {
   CustomerListItem,
@@ -75,6 +76,7 @@ export class CustomerSearchService {
         platform: customers.platform,
         platformUserId: customers.platformUserId,
         displayName: customers.displayName,
+        customName: customers.customName,
         avatarUrl: customers.avatarUrl,
         phone: customers.phone,
         email: customers.email,
@@ -112,6 +114,7 @@ export class CustomerSearchService {
         platform: row.platform,
         platformUserId: row.platformUserId,
         displayName: row.displayName,
+        customName: row.customName,
         avatarUrl: row.avatarUrl,
         phone: row.phone,
         email: row.email,
@@ -166,6 +169,7 @@ export class CustomerSearchService {
       // 建立搜索條件
       const searchConditions = [
         like(customers.displayName, searchTerm),
+        like(customers.customName, searchTerm),
         like(customers.email, searchTerm),
         like(customers.phone, searchTerm),
         like(customers.platformUserId, searchTerm)
@@ -180,7 +184,7 @@ export class CustomerSearchService {
       // 使用優先級排序
       const orderByPriority = sql`
         CASE
-          WHEN ${customers.displayName} LIKE ${searchTerm} THEN 1
+          WHEN ${customers.displayName} LIKE ${searchTerm} OR ${customers.customName} LIKE ${searchTerm} THEN 1
           WHEN ${customers.email} LIKE ${searchTerm} THEN 2
           WHEN ${customers.phone} LIKE ${searchTerm} THEN 3
           WHEN ${customers.platformUserId} LIKE ${searchTerm} THEN 4
@@ -194,6 +198,7 @@ export class CustomerSearchService {
           platform: customers.platform,
           platformUserId: customers.platformUserId,
           displayName: customers.displayName,
+          customName: customers.customName,
           avatarUrl: customers.avatarUrl,
           email: customers.email,
           phone: customers.phone
@@ -209,6 +214,7 @@ export class CustomerSearchService {
         platform: row.platform,
         platformUserId: row.platformUserId,
         displayName: row.displayName,
+        customName: row.customName,
         avatarUrl: row.avatarUrl,
         email: row.email,
         phone: row.phone
@@ -274,6 +280,7 @@ export class CustomerSearchService {
       const searchTerm = `%${filters.search}%`;
       conditions.push(or(
         like(customers.displayName, searchTerm),
+        like(customers.customName, searchTerm),
         like(customers.email, searchTerm),
         like(customers.phone, searchTerm),
         like(customers.platformUserId, searchTerm)
@@ -348,12 +355,12 @@ export class CustomerSearchService {
 
       // 從顯示名稱獲取建議
       const namesSuggestions = await this.drizzleDb
-        .select({ displayName: customers.displayName })
+        .select({ displayName: customerNameSql })
         .from(customers)
         .where(
           and(
-            like(customers.displayName, searchTerm),
-            sql`${customers.displayName} IS NOT NULL`
+            or(like(customers.customName, searchTerm), like(customers.displayName, searchTerm)),
+            sql`${customerNameSql} IS NOT NULL`
           )
         )
         .limit(limit)

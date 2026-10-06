@@ -23,6 +23,8 @@ import type {
 export interface User {
   id: EntityId
   name: string
+  customName?: string | null // agent-set nickname; name already resolves to it
+  platformName?: string | null // original LINE/FB profile name
   platform: Platform
   platformUserId: string
   avatarUrl?: string

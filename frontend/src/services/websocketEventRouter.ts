@@ -212,6 +212,11 @@ export const ROUTING_RULES: Record<string, RoutingRule> = {
   'customer_tags_updated': () => ['tags'],
 
   /**
+   * 客戶暱稱更新 → conversations channel（列表/詳情即時刷新）
+   */
+  'customer_updated': () => ['conversations'],
+
+  /**
    * Analytics widget update → analytics dashboard + widget channels
    */
   'analytics_widget_updated': (message) => {

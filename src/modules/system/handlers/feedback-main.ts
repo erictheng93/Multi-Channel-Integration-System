@@ -8,7 +8,7 @@ const log = createContextLogger('FeedbackMain')
 
 import type { Bindings } from '@/types';
 import { createDbClient } from '@/db/drizzle-factory';
-import { customerFeedback, conversations, customers, agents } from '@/db/schema';
+import { customerFeedback, conversations, customers, agents, customerNameSql } from '@/db/schema';
 import { eq, desc, sql, gte } from 'drizzle-orm';
 import { jwtAuth } from '@/middleware/auth';
 import { globalErrorHandler } from '@/core/error-handler';
@@ -188,7 +188,7 @@ feedbackHandler.get('/conversation/:conversationId', jwtAuth, async (c) => {
         id: customerFeedback.id,
         conversationId: customerFeedback.conversationId,
         customerId: customerFeedback.customerId,
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         agentId: customerFeedback.agentId,
         agentName: agents.displayName,
         rating: customerFeedback.rating,
@@ -230,7 +230,7 @@ feedbackHandler.get('/', jwtAuth, async (c) => {
         id: customerFeedback.id,
         conversationId: customerFeedback.conversationId,
         customerId: customerFeedback.customerId,
-        customerName: customers.displayName,
+        customerName: customerNameSql,
         agentId: customerFeedback.agentId,
         agentName: agents.displayName,
         rating: customerFeedback.rating,

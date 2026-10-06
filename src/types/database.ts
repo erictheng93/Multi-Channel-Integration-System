@@ -43,6 +43,7 @@ export interface CustomerDbRecord {
   platform: string;
   platform_user_id: string;
   display_name: string | null;
+  custom_name: string | null;
   avatar_url: string | null;
   phone: string | null;
   email: string | null;

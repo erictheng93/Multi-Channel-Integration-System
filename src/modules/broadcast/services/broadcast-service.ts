@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, isNull } from 'drizzle-orm';
 import type { Database } from '@/db/drizzle-factory';
-import { broadcastRecipients, broadcasts, customers } from '@/db/schema';
+import { broadcastRecipients, broadcasts, customers, customerNameSql } from '@/db/schema';
 import { nowISO } from '@/utils/timestamp';
 import { BroadcastAudienceService } from '@modules/broadcast/services/audience-service';
 import {
@@ -139,7 +139,7 @@ export class BroadcastService {
         errorReason: broadcastRecipients.errorReason,
         sentAt: broadcastRecipients.sentAt,
         createdAt: broadcastRecipients.createdAt,
-        customerDisplayName: customers.displayName,
+        customerDisplayName: customerNameSql,
         customerAvatarUrl: customers.avatarUrl,
       })
       .from(broadcastRecipients)

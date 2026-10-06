@@ -1,4 +1,4 @@
-import type { Conversation } from '@/types'
+import type { Conversation, CustomerUpdatedPayload } from '@/types'
 import { CONVERSATION_STATUS } from '@/constants/conversation-status'
 import type { ConversationStats } from './types'
 
@@ -42,4 +42,38 @@ export function computeStatsFromConversations(conversationList: Conversation[]):
     ).length,
     unreadCount: conversationList.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
   }
+}
+
+type NamedCustomer = NonNullable<Conversation['customer']> & { displayName?: string }
+
+/**
+ * Patch every conversation (list + current) whose customer matches the payload.
+ * Mutates in place; returns the number of conversations touched.
+ */
+export function applyCustomerUpdate(
+  list: Conversation[],
+  current: Conversation | null,
+  p: CustomerUpdatedPayload
+): number {
+  const id = String(p.customerId)
+  let count = 0
+  const patch = (conv: Conversation) => {
+    let hit = false
+    for (const c of [conv.customer, conv.user] as (NamedCustomer | undefined)[]) {
+      if (!c || String(c.id) !== id) { continue }
+      hit = true
+      c.customName = p.customName
+      c.platformName = p.platformName
+      if (p.name) {
+        c.name = p.name
+        if ('displayName' in c) { c.displayName = p.name }
+      }
+    }
+    const flat = conv as Conversation & { customerName?: string }
+    if (hit && p.name && 'customerName' in flat) { flat.customerName = p.name }
+    return hit
+  }
+  for (const conv of list) { if (patch(conv)) { count++ } }
+  if (current && !list.includes(current) && patch(current)) { count++ }
+  return count
 }
