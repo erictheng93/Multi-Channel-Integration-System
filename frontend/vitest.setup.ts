@@ -11,6 +11,10 @@ import { vi } from 'vitest'
 import { createI18n } from 'vue-i18n'
 import { messages, defaultLocale } from './src/locales'
 
+// Keep browser blob allocation outside unit tests (Vitest's shim assumes legacy jsdom Blobs).
+URL.createObjectURL = vi.fn(() => 'blob:http://localhost/mock-blob')
+URL.revokeObjectURL = vi.fn()
+
 // CRITICAL: Setup window and DOM mocks FIRST before any other imports
 // Enhanced window.location mock - must be first before any imports
 const mockLocation = {
