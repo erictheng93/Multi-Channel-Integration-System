@@ -59,6 +59,7 @@
   import ChannelIcon from '@/components/icons/ChannelIcon.vue'
   import AutoReplyIcon from '@/components/icons/AutoReplyIcon.vue'
   import SendIcon from '@/components/icons/SendIcon.vue'
+  import BellIcon from '@/components/icons/BellIcon.vue'
 
   interface SubmenuItem {
     path: string
@@ -92,6 +93,8 @@
   const baseNavigationItems: NavItem[] = [
     { path: '/dashboard', label: '\u5100\u8868\u677F', icon: DashboardIcon },
     { path: '/conversations', label: '\u5C0D\u8A71\u7BA1\u7406', icon: ChatIcon },
+    // Personal inbox + per-device desktop notification settings: visible to everyone, not under admin-only settings
+    { path: '/notifications', label: '\u901A\u77E5\u4E2D\u5FC3', icon: BellIcon },
     { path: '/tags', label: '\u6A19\u7C64\u7BA1\u7406', icon: TagIcon },
     {
       path: '/reports',
@@ -139,25 +142,18 @@
     const canBroadcast = isAdmin || Object.values(authStore.teamRoles).some(
       (role) => role === 'lead' || role === 'supervisor'
     )
-    const visibleBaseItems = canBroadcast
-      ? [
-          ...baseNavigationItems.slice(0, 3),
-          { path: '/broadcasts', label: '\u7FA4\u767C\u8A0A\u606F', icon: SendIcon },
-          ...baseNavigationItems.slice(3),
-        ]
-      : baseNavigationItems
-    if (!isAdmin) { return visibleBaseItems }
+    // Broadcast goes right after the tags item; insert by path, not index, so items added above it stay safe
+    const withBroadcast = (items: NavItem[]) => items.flatMap((item) => item.path === '/tags'
+      ? [item, { path: '/broadcasts', label: '\u7FA4\u767C\u8A0A\u606F', icon: SendIcon }]
+      : [item]
+    )
+    if (!isAdmin) { return canBroadcast ? withBroadcast(baseNavigationItems) : baseNavigationItems }
     // 資料備份 is admin-only — inject it under 資料管理 for admins only
-    return adminNavigationItems
-      .map((item) =>
+    return withBroadcast(adminNavigationItems.map((item) =>
       item.path === '/data'
         ? { ...item, submenu: [...(item.submenu ?? []), { path: '/data/backup', label: '資料備份' }] }
         : item
-      )
-      .flatMap((item) => item.path === '/tags'
-        ? [item, { path: '/broadcasts', label: '\u7FA4\u767C\u8A0A\u606F', icon: SendIcon }]
-        : [item]
-      )
+    ))
   })
 
   // Auto-expand submenus when route matches their prefix
