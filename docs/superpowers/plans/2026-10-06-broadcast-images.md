@@ -739,6 +739,7 @@ git commit -m "feat(broadcast): accept up to 4 images when creating a broadcast"
 - Modify: `src/modules/broadcast/services/d1-chunks.ts`
 - Modify: `src/modules/broadcast/services/broadcast-content.ts`（新增回寫列組裝函式）
 - Test: `tests/modules/broadcast/broadcast-content.test.ts`
+- Test: `tests/modules/broadcast/d1-chunks.test.ts`
 
 **Interfaces:**
 - Consumes: `buildBroadcastLineMessages`、`broadcastAttachments`。
@@ -746,6 +747,67 @@ git commit -m "feat(broadcast): accept up to 4 images when creating a broadcast"
   - `interface BroadcastImageFile { filename: string; mimeType: string; fileSize: number; r2Key: string; url: string }`
   - `buildWriteBackAttachmentRows(messageId: string, conversationId: string, images: BroadcastImageFile[], uploadedBy: string, createdAt: string): Array<typeof fileAttachments.$inferInsert>`
   - `BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE = 9`（11 欄 × 9 = 99 ≤ 100 參數）
+  - `BROADCAST_WRITE_BATCH_SIZE = 50`
+  - `runInBatches<T>(statements: T[], size: number, execute: (batch: [T, ...T[]]) => Promise<unknown>): Promise<void>`（`d1-chunks.ts`）
+
+**為什麼要 batch（2026-10-06 查證）：** Workers Paid 每次請求上限 10,000 個 subrequest（Cloudflare 2026-02-11 調整，D1 查詢計入）。5,000 人 × 4 圖逐條寫入約 3,070 次查詢：沒超過上限，但會依序跑數十秒，客戶端斷線時未完成的工作可能被取消，導致回寫只完成一半。改用 `db.batch`（一包算 1 次 subrequest，並在同一個 transaction 內依序執行），寫回只需約 60 次呼叫。
+
+**Drizzle batch 陷阱：** `message-service.ts:155` 記錄過「動態陣列 + `as any` 傳給 `db.batch()` 會靜默丟掉操作」。所以這裡必須用型別安全的非空 tuple `[first, ...rest]` 呼叫，不得使用 `as any`。
+
+- [ ] **Step 0: 寫 runInBatches 的失敗測試並實作**
+
+`tests/modules/broadcast/d1-chunks.test.ts`（若檔案已存在則附加 describe）：
+
+```ts
+import { describe, expect, it, vi } from 'vitest';
+import { runInBatches } from '@/modules/broadcast/services/d1-chunks';
+
+describe('runInBatches', () => {
+  it('executes every statement exactly once, in order, in batches of the given size', async () => {
+    const execute = vi.fn(async () => undefined);
+    await runInBatches(['a', 'b', 'c', 'd', 'e'], 2, execute);
+    expect(execute.mock.calls.map(([batch]) => batch)).toEqual([['a', 'b'], ['c', 'd'], ['e']]);
+  });
+
+  it('does nothing for an empty list', async () => {
+    const execute = vi.fn(async () => undefined);
+    await runInBatches([], 50, execute);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('waits for each batch before starting the next', async () => {
+    const order: string[] = [];
+    await runInBatches(['a', 'b'], 1, async ([item]) => {
+      order.push(`start-${item}`);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      order.push(`end-${item}`);
+    });
+    expect(order).toEqual(['start-a', 'end-a', 'start-b', 'end-b']);
+  });
+});
+```
+
+Run: `bunx vitest run tests/modules/broadcast/d1-chunks.test.ts` → FAIL（`runInBatches` 不存在）
+
+`d1-chunks.ts` 加入：
+
+```ts
+export const BROADCAST_WRITE_BATCH_SIZE = 50;
+
+// Sequential on purpose: each batch is one D1 transaction, and later batches
+// (file_attachments) depend on rows written by earlier ones (messages FK).
+export async function runInBatches<T>(
+  statements: T[],
+  size: number,
+  execute: (batch: [T, ...T[]]) => Promise<unknown>
+): Promise<void> {
+  for (const [first, ...rest] of chunkItems(statements, size)) {
+    await execute([first, ...rest]);
+  }
+}
+```
+
+Run: `bunx vitest run tests/modules/broadcast/d1-chunks.test.ts` → PASS
 
 - [ ] **Step 1: 寫失敗測試**
 
@@ -907,18 +969,31 @@ import {
 ```ts
         messageType: images.length > 0 ? 'file' : 'text',
 ```
-（其餘欄位、含 `metadata: JSON.stringify({ broadcastId })`，皆不變；渲染端以 `file_attachments.messageId` JOIN，不讀 metadata。）在 messages 插入迴圈之後加入：
+（其餘欄位、含 `metadata: JSON.stringify({ broadcastId })`，皆不變；渲染端以 `file_attachments.messageId` JOIN，不讀 metadata。）
+
+把現有的 messages 插入迴圈：
 ```ts
-    if (images.length > 0 && messageRows.length > 0) {
-      const attachmentRows = messageRows.flatMap((message) =>
-        buildWriteBackAttachmentRows(message.id, message.conversationId, images, String(actor.id), timestamp)
-      );
-      for (const attachmentChunk of chunkItems(attachmentRows, BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE)) {
-        await this.db.insert(fileAttachments).values(attachmentChunk);
+    if (messageRows.length > 0) {
+      for (const messageChunk of chunkItems(messageRows, BROADCAST_MESSAGE_INSERT_CHUNK_SIZE)) {
+        await this.db.insert(messages).values(messageChunk);
       }
     }
 ```
-（必須在 messages 插入之後：`file_attachments.message_id` 有 FK。）
+整段替換為：
+```ts
+    const attachmentRows = messageRows.flatMap((message) =>
+      buildWriteBackAttachmentRows(message.id, message.conversationId, images, String(actor.id), timestamp)
+    );
+    // messages first: file_attachments.message_id has an FK to them.
+    const inserts = [
+      ...chunkItems(messageRows, BROADCAST_MESSAGE_INSERT_CHUNK_SIZE)
+        .map((chunk) => this.db.insert(messages).values(chunk)),
+      ...chunkItems(attachmentRows, BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE)
+        .map((chunk) => this.db.insert(fileAttachments).values(chunk)),
+    ];
+    await runInBatches(inserts, BROADCAST_WRITE_BATCH_SIZE, (batch) => this.db.batch(batch));
+```
+（`images` 為空時 `attachmentRows` 為空陣列，不產生附件插入；`messageRows` 為空時不呼叫 batch。`d1-chunks` import 加入 `BROADCAST_WRITE_BATCH_SIZE, runInBatches`。若 `this.db.batch(batch)` 出現型別錯誤，**不得**用 `as any`；改為回報 BLOCKED 並附上錯誤訊息。）
 
 - [ ] **Step 6: 型別檢查與測試**
 
@@ -929,7 +1004,7 @@ Run: `bunx vitest run tests/modules/broadcast` → PASS
 
 ```bash
 git add src/modules/broadcast tests/modules/broadcast
-git commit -m "feat(broadcast): send images via LINE multicast and write them back to conversations"
+git commit -m "feat(broadcast): send images via LINE multicast and write them back in D1 batches"
 ```
 
 ---
