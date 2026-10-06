@@ -76,6 +76,7 @@ export default [
         DragEvent: 'readonly',
         // File API
         File: 'readonly',
+        FormData: 'readonly',
         FileList: 'readonly',
         FileReader: 'readonly',
         EventTarget: 'readonly',

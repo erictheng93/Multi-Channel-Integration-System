@@ -52,11 +52,70 @@
           v-model.trim="content"
           maxlength="2000"
           rows="6"
-          required
-          placeholder="輸入要推送給 LINE 客戶的文字訊息"
+          placeholder="輸入文字（選填，可只發圖片）"
         />
         <small>{{ content.length }} / 2000</small>
       </label>
+
+      <div class="field">
+        <span>圖片（選填，最多 4 張，JPEG / PNG，每張 10MB 以內）</span>
+        <ul
+          v-if="images.length"
+          class="image-grid"
+        >
+          <li
+            v-for="(image, index) in images"
+            :key="image.key"
+            class="image-tile"
+          >
+            <img
+              :src="image.objectUrl"
+              :alt="`圖片 ${index + 1}`"
+            >
+            <span
+              v-if="image.status === 'uploading'"
+              class="tile-state"
+            >上傳中...</span>
+            <span
+              v-else-if="image.status === 'error'"
+              class="tile-state is-error"
+            >{{ image.error }}</span>
+            <div class="tile-actions">
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                :disabled="index === 0"
+                :aria-label="`將圖片 ${index + 1} 往前移`"
+                @click="move(index, -1)"
+              >
+                前移
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                :aria-label="`移除圖片 ${index + 1}`"
+                @click="remove(index)"
+              >
+                移除
+              </button>
+            </div>
+          </li>
+        </ul>
+        <label
+          v-if="images.length < MAX_IMAGES"
+          class="btn btn-secondary btn-sm image-picker"
+        >
+          加入圖片
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            multiple
+            class="visually-hidden"
+            @change="onPick"
+          >
+        </label>
+        <small v-if="imageNotice">{{ imageNotice }}</small>
+      </div>
 
       <div
         v-if="currentPreview"
@@ -97,8 +156,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import type { Tag } from '@/api/tags'
+import { uploadBroadcastImage, type BroadcastAttachmentInput } from '@/api/broadcasts'
 import type {
   BroadcastAudiencePreview,
   BroadcastPreviewRequest,
@@ -123,10 +183,70 @@ const title = ref('')
 const content = ref('')
 const selectedTagId = ref(0)
 
+const MAX_IMAGES = 4
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png']
+
+interface PickedImage {
+  key: string
+  objectUrl: string
+  status: 'uploading' | 'done' | 'error'
+  attachment?: BroadcastAttachmentInput
+  error?: string
+}
+
+const images = ref<PickedImage[]>([])
+const imageNotice = ref('')
+
+async function onPick(event: Event) {
+  const fileInput = event.target as HTMLInputElement
+  const picked = Array.from(fileInput.files ?? [])
+  fileInput.value = ''
+  imageNotice.value = ''
+
+  const valid = picked.filter((file) => ACCEPTED_TYPES.includes(file.type) && file.size <= MAX_IMAGE_BYTES)
+  if (valid.length < picked.length) {
+    imageNotice.value = '僅接受 10MB 以內的 JPEG / PNG 圖片'
+  }
+  const room = MAX_IMAGES - images.value.length
+  if (valid.length > room) {
+    imageNotice.value = '最多 4 張圖片，超出的已略過'
+  }
+
+  await Promise.all(valid.slice(0, room).map(async (file) => {
+    const image: PickedImage = { key: crypto.randomUUID(), objectUrl: URL.createObjectURL(file), status: 'uploading' }
+    images.value.push(image)
+    const target = () => images.value.find((item) => item.key === image.key)
+    try {
+      const attachment = await uploadBroadcastImage(file)
+      Object.assign(target() ?? {}, { status: 'done', attachment })
+    } catch (err) {
+      Object.assign(target() ?? {}, { status: 'error', error: err instanceof Error ? err.message : '上傳失敗' })
+    }
+  }))
+}
+
+function remove(index: number) {
+  const [removed] = images.value.splice(index, 1)
+  if (removed) {URL.revokeObjectURL(removed.objectUrl)}
+}
+
+function move(index: number, delta: number) {
+  const next = index + delta
+  if (next < 0 || next >= images.value.length) {return}
+  const [moved] = images.value.splice(index, 1)
+  if (moved) {images.value.splice(next, 0, moved)}
+}
+
+onBeforeUnmount(() => images.value.forEach((image) => URL.revokeObjectURL(image.objectUrl)))
+
+const imagesReady = computed(() => images.value.every((image) => image.status === 'done'))
+
 const input = computed<CreateBroadcastRequest>(() => ({
   title: title.value,
   content: content.value,
-  tagIds: selectedTagId.value ? [selectedTagId.value] : []
+  tagIds: selectedTagId.value ? [selectedTagId.value] : [],
+  attachments: images.value.flatMap((image) => (image.attachment ? [image.attachment] : []))
 }))
 
 const previewInput = computed<BroadcastPreviewRequest>(() => ({
@@ -139,7 +259,8 @@ const currentPreview = computed(() =>
 
 const canSubmit = computed(() =>
   title.value.length > 0 &&
-  content.value.length > 0 &&
+  (content.value.length > 0 || images.value.length > 0) &&
+  imagesReady.value &&
   selectedTagId.value > 0 &&
   currentPreview.value?.sendable &&
   currentPreview.value.sendable > 0
@@ -157,7 +278,10 @@ function handleSubmit() {
     return
   }
   if (!canSubmit.value) {return}
-  const confirmed = window.confirm(`即將發送給 ${currentPreview.value?.sendable ?? 0} 位 LINE 客戶，送出後無法復原。`)
+  const parts = [content.value ? '文字' : '', images.value.length ? `${images.value.length} 張圖片` : ''].filter(Boolean)
+  const confirmed = window.confirm(
+    `即將發送「${parts.join(' + ')}」給 ${currentPreview.value?.sendable ?? 0} 位 LINE 客戶，送出後無法復原。`
+  )
   if (confirmed) {
     emit('send', input.value)
   }
@@ -228,5 +352,58 @@ function handleSubmit() {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.image-tile {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: 14px;
+  background: #f2f2f7;
+}
+
+.image-tile img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.tile-state {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: #8e8e93;
+}
+
+.tile-state.is-error {
+  color: #ff3b30;
+}
+
+.tile-actions {
+  display: flex;
+  justify-content: space-between;
+}
+
+.image-picker {
+  justify-self: start;
+  cursor: pointer;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 </style>
