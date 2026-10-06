@@ -23,9 +23,8 @@ export async function encodeUnderLimit(encode: JpegEncoder, maxBytes = PREVIEW_M
   throw new Error('預覽圖無法壓縮到 1MB 以下')
 }
 
- 
 export async function createBroadcastPreview(file: File): Promise<File> {
-  const bitmap = await (globalThis as any).createImageBitmap(file)
+  const bitmap = await createImageBitmap(file)
   const { width, height } = scaleToFit(bitmap.width, bitmap.height)
   const canvas = document.createElement('canvas')
   canvas.width = width
