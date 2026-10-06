@@ -32,6 +32,7 @@ import {
   runInBatches,
 } from './d1-chunks';
 import {
+  assertObjectsExist,
   buildBroadcastLineMessages,
   groupWriteBackUnits,
   type BroadcastImageFile,
@@ -178,6 +179,17 @@ export class BroadcastSenderService {
       .from(fileAttachments)
       .where(inArray(fileAttachments.id, links.flatMap((l) => [l.attachmentId, l.previewAttachmentId])));
     const byId = new Map(files.map((file) => [file.id, file]));
+    const keys = links.flatMap((link) => {
+      const original = byId.get(link.attachmentId);
+      const preview = byId.get(link.previewAttachmentId);
+      return [original?.r2Key, preview?.r2Key].filter((key): key is string => Boolean(key));
+    });
+    try {
+      await assertObjectsExist(keys, (key) => this.env.R2_BUCKET.head(key));
+    } catch (error) {
+      const detail = error instanceof Error ? error.message.replace('Image object missing in storage: ', '') : String(error);
+      throw new Error(`Broadcast ${broadcastId} image object missing in storage: ${detail}`);
+    }
     const sign = (r2Key: string) => getSignedFileUrl(this.env, r2Key, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);
 
     return Promise.all(links.map(async (link) => {

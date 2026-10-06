@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   assertBroadcastAttachments,
+  assertObjectsExist,
   buildBroadcastLineMessages,
   buildWriteBackAttachmentRows,
   groupWriteBackUnits,
@@ -129,5 +130,19 @@ describe('groupWriteBackUnits', () => {
     const units = groupWriteBackUnits(messageRows, [], 'agent-1', '2026-10-06T00:00:00.000Z');
     expect(units).toHaveLength(3);
     expect(units.every((u) => u.attachments.length === 0)).toBe(true);
+  });
+});
+
+describe('assertObjectsExist', () => {
+  it('resolves when every key exists and checks each one', async () => {
+    const head = vi.fn(async () => ({}));
+    await expect(assertObjectsExist(['a', 'b', 'c'], head)).resolves.toBeUndefined();
+    expect(head.mock.calls.map((c) => (c as unknown[])[0])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('rejects naming the missing key', async () => {
+    const head = vi.fn(async (key: string) => (key === 'b' ? null : {}));
+    await expect(assertObjectsExist(['a', 'b', 'c'], head)).rejects.toThrow(/b/);
+    expect(head).toHaveBeenCalledTimes(3);
   });
 });
