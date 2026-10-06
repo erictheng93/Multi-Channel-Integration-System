@@ -63,7 +63,7 @@ describe('NotificationSettingsModal desktop section', () => {
 
     await wrapper.find('[data-testid="desktop-test-btn"]').trigger('click')
 
-    expect(NotificationMock).toHaveBeenCalledWith('測試通知', expect.objectContaining({ tag: 'desktop-notification-test' }))
+    expect(NotificationMock).toHaveBeenCalledWith('測試通知', expect.objectContaining({ tag: 'desktop-notification-test', renotify: true }))
     expect(wrapper.find('[data-testid="desktop-test-sent"]').exists()).toBe(true)
   })
 
@@ -76,7 +76,7 @@ describe('NotificationSettingsModal desktop section', () => {
     await wrapper.find('[data-testid="desktop-enable-btn"]').trigger('click')
     await flushPromises()
 
-    expect(NotificationMock).toHaveBeenCalledWith('測試通知', expect.objectContaining({ tag: 'desktop-notification-test' }))
+    expect(NotificationMock).toHaveBeenCalledWith('測試通知', expect.objectContaining({ tag: 'desktop-notification-test', renotify: true }))
     expect(wrapper.find('[data-testid="desktop-test-sent"]').exists()).toBe(true)
   })
 

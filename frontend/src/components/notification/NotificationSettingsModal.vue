@@ -320,10 +320,13 @@ const onToggleDesktopEnabled = (enabled: boolean): void => {
 
 const sendTestNotification = (): void => {
   try {
-    new window.Notification('測試通知', {
+    // renotify: 否則上一則測試通知還在通知中心時，同 tag 會被默默取代而不跳出
+    const options: NotificationOptions & { renotify: boolean } = {
       body: '看到這則代表此裝置的桌面通知正常',
-      tag: 'desktop-notification-test'
-    })
+      tag: 'desktop-notification-test',
+      renotify: true
+    }
+    new window.Notification('測試通知', options)
   } catch {
     // 建構失敗與被系統擋下的處理相同：提示使用者檢查系統設定
   }
