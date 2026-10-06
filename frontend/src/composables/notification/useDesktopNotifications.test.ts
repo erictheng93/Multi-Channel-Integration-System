@@ -146,6 +146,7 @@ describe('useDesktopNotifications route and conversation integration', () => {
     vi.stubGlobal('Notification', showNotification)
     useDesktopNotificationPrefs().setPrefs({ soundEnabled: false })
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true)
     const page = { render: () => null }
     router = createRouter({
       history: createMemoryHistory(),
@@ -182,6 +183,13 @@ describe('useDesktopNotifications route and conversation integration', () => {
     expect(showNotification).not.toHaveBeenCalled()
 
     await router.push('/dashboard')
+    handleMessage(makeMessage())
+    expect(showNotification).toHaveBeenCalledTimes(1)
+  })
+
+  it('切到其他 App（分頁仍 visible 但視窗失焦）時，停在該對話也要通知', async () => {
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false)
+    const handleMessage = await startNotifications('/conversations/conv-1')
     handleMessage(makeMessage())
     expect(showNotification).toHaveBeenCalledTimes(1)
   })
