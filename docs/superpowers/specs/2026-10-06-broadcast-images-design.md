@@ -69,8 +69,8 @@ attachments?: Array<{ attachmentId: string; previewAttachmentId: string }>   // 
 4. 原圖 `fileSize <= 10MB`；預覽圖 `fileSize <= 1MB`。
 5. 違反時回 422 `INVALID_BROADCAST_INPUT`，附欄位錯誤。
 
-`BroadcastRecord` 回傳新增 `attachments: Array<{ position, attachmentId, previewUrl, fileUrl }>`
-供歷史與詳情顯示。權限沿用 admin / lead / supervisor。
+`BroadcastRecord` 新增選填 `attachments?: Array<{ position, attachmentId, previewUrl, fileUrl }>`，
+僅 `getById` / `create` 回傳（列表不載入，避免每列都簽 URL）。權限沿用 admin / lead / supervisor。
 
 ## 5. 送出流程（`BroadcastSenderService`）
 
@@ -85,7 +85,7 @@ attachments?: Array<{ attachmentId: string; previewAttachmentId: string }>   // 
 見 `CustomerMessageDO.ts:198-226`、`MessageBubble.vue:97-107`）：
 
 - 每位收件人一則 `messages`：`content = 文字`、`messageType = 有圖 ? 'file' : 'text'`、
-  `metadata = { broadcastId, attachmentIds }`。
+  `metadata = { broadcastId }`（不變；渲染不讀 metadata）。
 - 每張圖為該訊息新增一列 `file_attachments`：複製原圖列的 `filename / mimeType / fileSize / r2Key`，
   `messageId`、`conversationId` 指向該訊息，`fileUrl` 為 10 年簽名 URL。
 - 最多 5,000 人 × 4 張 = 20,000 列，沿用 `chunkItems` 分批寫入。
@@ -95,8 +95,11 @@ attachments?: Array<{ attachmentId: string; previewAttachmentId: string }>   // 
 `FileService.deleteFile`（`file-service.ts:285-316`）刪 DB 列時會一併刪除 R2 物件，且不檢查其他列是否共用
 同一 `r2Key`。上述複製列會讓「刪一則對話裡的圖」毀掉所有收件人的圖。
 
-修正：`deleteFile` 刪 R2 前查詢 `file_attachments` 中是否仍有其他列使用同一 `r2Key`；有則只刪 DB 列。
-此修正獨立成一個 commit，附測試。
+另一個問題：`deleteFile` 目前**先刪 R2 再刪 DB 列**。被群發引用的圖片（FK RESTRICT）刪除時，
+DB 刪除會失敗，但 R2 物件已經被刪掉了。
+
+修正：改為先刪 DB 列（FK RESTRICT 會在碰 R2 之前中止），再查是否仍有其他列使用同一 `r2Key`；
+沒有才刪 R2。此修正獨立成一個 commit，附測試。
 
 ## 7. 前端
 
@@ -108,7 +111,8 @@ attachments?: Array<{ attachmentId: string; previewAttachmentId: string }>   // 
 - 選圖後立即以 canvas 產生預覽圖（長邊 1024px、JPEG，品質由 0.85 起遞減直到 ≤1MB），
   原圖與預覽圖並行上傳，顯示進度；上傳中禁止送出。
 - 確認對話框文案帶出「文字 + N 張圖片」。
-- `BroadcastDetailModal` / `BroadcastHistoryList`：顯示圖片縮圖（用 previewUrl）。
+- `BroadcastDetailModal`：顯示圖片縮圖（用 previewUrl，點擊開原圖）。
+- `BroadcastHistoryList`：`contentType === 'mixed'` 顯示「圖文」標記；純圖片顯示「（僅圖片）」。
 - 遵循 Apple-Native Soft Minimalism 設計系統；不在 scoped style 重定義 `.btn*`。
 
 ## 8. 錯誤處理
