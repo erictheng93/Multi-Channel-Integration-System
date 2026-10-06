@@ -86,4 +86,26 @@ describe('BroadcastComposeCard images', () => {
     await wrapper.find('select').setValue(7)
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
   })
+
+  it('retries a failed upload from the error tile and then allows submit', async () => {
+    upload.mockRejectedValueOnce(new Error('boom'))
+    const wrapper = mountCard()
+    await wrapper.find('input[type="text"]').setValue('Promo')
+    await wrapper.find('select').setValue(7)
+    await pick(wrapper, [image('1.jpg')])
+
+    expect(wrapper.text()).toContain('boom')
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.find('button[aria-label="重試上傳圖片 1"]').trigger('click')
+    await flushPromises()
+
+    expect(upload).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('button[aria-label="重試上傳圖片 1"]').exists()).toBe(false)
+    expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('send')?.[0]?.[0]).toMatchObject({
+      attachments: [{ attachmentId: 'a-1.jpg', previewAttachmentId: 'p-1.jpg' }]
+    })
+  })
 })
