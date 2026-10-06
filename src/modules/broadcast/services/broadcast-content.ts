@@ -40,6 +40,19 @@ export function assertBroadcastAttachments(
   }
 }
 
+// LINE accepts a multicast without fetching image URLs, so a missing R2 object
+// would be delivered as a broken image to every recipient. Check before sending.
+export async function assertObjectsExist(
+  keys: string[],
+  head: (key: string) => Promise<unknown | null>
+): Promise<void> {
+  const results = await Promise.all(keys.map(async (key) => ({ key, found: (await head(key)) !== null })));
+  const missing = results.find((result) => !result.found);
+  if (missing) {
+    throw new Error(`Image object missing in storage: ${missing.key}`);
+  }
+}
+
 export function buildBroadcastLineMessages(
   content: string,
   images: Array<{ url: string; previewUrl: string }>

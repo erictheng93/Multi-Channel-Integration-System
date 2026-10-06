@@ -111,7 +111,7 @@ DB 刪除會失敗，但 R2 物件已經被刪掉了。
 - 選圖後立即以 canvas 產生預覽圖（長邊 1024px、JPEG，品質由 0.85 起遞減直到 ≤1MB），
   原圖與預覽圖並行上傳，顯示進度；上傳中禁止送出。
 - 確認對話框文案帶出「文字 + N 張圖片」。
-- `BroadcastDetailModal`：顯示圖片縮圖（用 previewUrl，點擊開原圖）。
+- `BroadcastDetailModal`：顯示圖片縮圖（用 previewUrl，點擊下載原圖）。
 - `BroadcastHistoryList`：`contentType === 'mixed'` 顯示「圖文」標記；純圖片顯示「（僅圖片）」。
 - 遵循 Apple-Native Soft Minimalism 設計系統；不在 scoped style 重定義 `.btn*`。
 
@@ -121,7 +121,7 @@ DB 刪除會失敗，但 R2 物件已經被刪掉了。
 |---|---|
 | 上傳失敗 | 該格顯示錯誤與重試；不可送出 |
 | 建立時附件驗證失敗 | 422 + 欄位錯誤，前端顯示 |
-| LINE 抓圖失敗（URL 不可達） | LINE 拒絕整個請求 → 該群組標記 `line_api_failed`（既有邏輯） |
+| LINE 抓圖失敗（URL 不可達） | LINE 不在送出時抓圖（API 照樣成功）-> 送出前以 R2 head 逐張確認原圖與預覽圖存在；任一缺失則整則群發不送出、收件人標記 failed |
 | 回寫對話失敗 | 既有行為：外層 catch 記錄；LINE 已送出，不影響收件人狀態 |
 
 ## 9. 測試
