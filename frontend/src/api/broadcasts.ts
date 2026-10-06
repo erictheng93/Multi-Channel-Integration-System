@@ -1,4 +1,6 @@
 import { apiClient } from './base'
+import { filesApi } from './files'
+import { createBroadcastPreview } from '@/utils/broadcast-image-preview'
 
 export type BroadcastStatus = 'draft' | 'sending' | 'completed' | 'partial_failed' | 'failed'
 export type BroadcastRecipientStatus = 'pending' | 'sent' | 'failed' | 'skipped'
@@ -21,10 +23,22 @@ export interface BroadcastAudiencePreview {
   }>
 }
 
+export interface BroadcastAttachmentInput {
+  attachmentId: string
+  previewAttachmentId: string
+}
+
+export interface BroadcastAttachmentView {
+  position: number
+  attachmentId: string
+  fileUrl: string
+  previewUrl: string
+}
+
 export interface BroadcastRecord {
   id: string
   title: string
-  contentType: 'text'
+  contentType: 'text' | 'mixed'
   content: string
   tagIds: number[]
   matchMode: 'any' | 'all'
@@ -38,6 +52,7 @@ export interface BroadcastRecord {
   createdAt: string | null
   updatedAt: string | null
   deletedAt: string | null
+  attachments?: BroadcastAttachmentView[]
 }
 
 export interface BroadcastSendStats {
@@ -84,6 +99,7 @@ export interface CreateBroadcastRequest {
   title: string
   content: string
   tagIds: number[]
+  attachments: BroadcastAttachmentInput[]
 }
 
 export interface BroadcastPreviewRequest {
@@ -129,4 +145,20 @@ export const listBroadcastRecipients = (
   return unwrap<BroadcastRecipientListResult>(
     apiClient.get(`/broadcasts/${id}/recipients${query ? `?${query}` : ''}`)
   )
+}
+
+async function uploadOne(file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await filesApi.uploadFile(formData)
+  if (!response.success || !response.data) {
+    throw new Error(response.error || '圖片上傳失敗')
+  }
+  return response.data.fileId
+}
+
+export async function uploadBroadcastImage(file: File): Promise<BroadcastAttachmentInput> {
+  const preview = await createBroadcastPreview(file)
+  const [attachmentId, previewAttachmentId] = await Promise.all([uploadOne(file), uploadOne(preview)])
+  return { attachmentId, previewAttachmentId }
 }

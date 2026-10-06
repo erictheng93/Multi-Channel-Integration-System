@@ -301,17 +301,24 @@ export class FileService {
       // 權限檢查（如果提供了使用者 ID）
       // 這裡可以添加更複雜的權限邏輯
 
-      // 從儲存服務刪除檔案
-      const deleteSuccess = await this.storageService.deleteFile(fileRecord.r2Key);
-
-      if (!deleteSuccess) {
-        log.warn('Failed to delete file from storage, continuing with database deletion');
-      }
-
-      // 從資料庫刪除記錄
+      // DB first: a FK RESTRICT (e.g. broadcast_attachments) must abort before R2 is touched.
       await this.db
         .delete(fileAttachments)
         .where(eq(fileAttachments.id, fileId));
+
+      // Broadcast write-back rows share one r2Key across recipients; only the last reference deletes the object.
+      const stillReferenced = await this.db
+        .select({ n: sql<number>`count(*)` })
+        .from(fileAttachments)
+        .where(eq(fileAttachments.r2Key, fileRecord.r2Key))
+        .get();
+
+      if ((stillReferenced?.n ?? 0) === 0) {
+        const deleteSuccess = await this.storageService.deleteFile(fileRecord.r2Key);
+        if (!deleteSuccess) {
+          log.warn('Failed to delete file from storage after removing its last reference');
+        }
+      }
 
       return { success: true };
 

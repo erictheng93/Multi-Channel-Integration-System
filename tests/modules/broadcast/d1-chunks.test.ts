@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   BROADCAST_IN_ARRAY_CHUNK_SIZE,
   BROADCAST_MESSAGE_INSERT_CHUNK_SIZE,
   BROADCAST_RECIPIENT_INSERT_CHUNK_SIZE,
   D1_MAX_BOUND_PARAMETERS,
   chunkItems,
+  runInBatches,
 } from '@/modules/broadcast/services/d1-chunks';
 
 describe('broadcast D1 chunking limits', () => {
@@ -30,5 +31,29 @@ describe('broadcast D1 chunking limits', () => {
     const chunks = chunkItems(Array.from({ length: 8 }, (_, index) => index), BROADCAST_MESSAGE_INSERT_CHUNK_SIZE);
 
     expect(chunks.map((chunk) => chunk.length)).toEqual([7, 1]);
+  });
+});
+
+describe('runInBatches', () => {
+  it('executes every statement exactly once, in order, in batches of the given size', async () => {
+    const execute = vi.fn(async () => undefined);
+    await runInBatches(['a', 'b', 'c', 'd', 'e'], 2, execute);
+    expect(execute.mock.calls.map(([batch]) => batch)).toEqual([['a', 'b'], ['c', 'd'], ['e']]);
+  });
+
+  it('does nothing for an empty list', async () => {
+    const execute = vi.fn(async () => undefined);
+    await runInBatches([], 50, execute);
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('waits for each batch before starting the next', async () => {
+    const order: string[] = [];
+    await runInBatches(['a', 'b'], 1, async ([item]) => {
+      order.push(`start-${item}`);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      order.push(`end-${item}`);
+    });
+    expect(order).toEqual(['start-a', 'end-a', 'start-b', 'end-b']);
   });
 });

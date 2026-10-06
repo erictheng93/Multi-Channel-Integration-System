@@ -5,9 +5,11 @@ import { createDbClient } from '@/db/drizzle-factory';
 import { jwtAuth } from '@/middleware/auth';
 import { errorResponse, forbiddenResponse, successResponse, validationErrorResponse } from '@/utils/api-response';
 import { BroadcastService } from '@modules/broadcast/services/broadcast-service';
+import { BROADCAST_MAX_IMAGES } from '@modules/broadcast/services/broadcast-content';
 import { BroadcastSenderService } from '@modules/broadcast/services/broadcast-sender-service';
 import {
   BroadcastServiceError,
+  type BroadcastAttachmentInput,
   type BroadcastRecipientStatus,
   type CreateBroadcastInput,
 } from '@modules/broadcast/types';
@@ -34,7 +36,7 @@ broadcastRouter.post('/preview', async (c) => {
     }, 422);
   }
 
-  const service = new BroadcastService(createDbClient(c.env.DB));
+  const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   try {
     const preview = await service.preview(parsed.tagIds[0]);
     return successResponse(c, preview, 'Broadcast audience preview retrieved');
@@ -55,7 +57,7 @@ broadcastRouter.post('/', async (c) => {
     return validationErrorResponse(c, parsed.errors);
   }
 
-  const service = new BroadcastService(createDbClient(c.env.DB));
+  const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   try {
     const broadcast = await service.create(parsed.input, String(user.id));
     return successResponse(c, broadcast, 'Broadcast created', 201);
@@ -70,7 +72,7 @@ broadcastRouter.get('/', async (c) => {
     return forbiddenResponse(c, permission.message);
   }
 
-  const service = new BroadcastService(createDbClient(c.env.DB));
+  const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   const page = parsePositiveInt(c.req.query('page'), 1);
   const pageSize = parsePositiveInt(c.req.query('pageSize') ?? c.req.query('limit'), 20);
   const result = await service.list(page, pageSize);
@@ -90,7 +92,7 @@ broadcastRouter.get('/:id/recipients', async (c) => {
     ]);
   }
 
-  const service = new BroadcastService(createDbClient(c.env.DB));
+  const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   const broadcast = await service.getById(c.req.param('id'));
   if (!broadcast) {
     return errorResponse(c, { code: 'NOT_FOUND', message: 'Broadcast not found' }, 404);
@@ -124,7 +126,7 @@ broadcastRouter.get('/:id', async (c) => {
     return forbiddenResponse(c, permission.message);
   }
 
-  const service = new BroadcastService(createDbClient(c.env.DB));
+  const service = new BroadcastService(createDbClient(c.env.DB), c.env);
   const broadcast = await service.getById(c.req.param('id'));
   if (!broadcast) {
     return errorResponse(c, { code: 'NOT_FOUND', message: 'Broadcast not found' }, 404);
@@ -158,22 +160,51 @@ async function parseCreateInput(
   const title = typeof record.title === 'string' ? record.title.trim() : '';
   const content = typeof record.content === 'string' ? record.content.trim() : '';
   const parsedTagIds = parseTagIds(record);
+  const parsedAttachments = parseAttachments(record.attachments);
 
   if (title.length < 1 || title.length > 100) {
     errors.push({ field: 'title', message: 'title must be 1-100 characters', value: record.title });
   }
-  if (content.length < 1 || content.length > 2000) {
-    errors.push({ field: 'content', message: 'content must be 1-2000 characters', value: record.content });
+  if (content.length > 2000) {
+    errors.push({ field: 'content', message: 'content must be at most 2000 characters', value: record.content });
   }
   if (!parsedTagIds.ok) {
     errors.push({ field: 'tagIds', message: 'tagIds must be a non-empty array of positive integers' });
   }
+  if (!parsedAttachments.ok) {
+    errors.push({ field: 'attachments', message: 'attachments must be an array of { attachmentId, previewAttachmentId }' });
+  } else if (parsedAttachments.attachments.length > BROADCAST_MAX_IMAGES) {
+    errors.push({ field: 'attachments', message: `at most ${BROADCAST_MAX_IMAGES} images` });
+  } else if (content.length === 0 && parsedAttachments.attachments.length === 0) {
+    errors.push({ field: 'content', message: 'content or at least one image is required' });
+  }
 
-  if (errors.length > 0 || !parsedTagIds.ok) {
+  if (errors.length > 0 || !parsedTagIds.ok || !parsedAttachments.ok) {
     return { ok: false, errors };
   }
 
-  return { ok: true, input: { title, content, tagIds: parsedTagIds.tagIds } };
+  return {
+    ok: true,
+    input: { title, content, tagIds: parsedTagIds.tagIds, attachments: parsedAttachments.attachments },
+  };
+}
+
+function parseAttachments(
+  value: unknown
+): { ok: true; attachments: BroadcastAttachmentInput[] } | { ok: false } {
+  if (value === undefined) {
+    return { ok: true, attachments: [] };
+  }
+  if (!Array.isArray(value)) {
+    return { ok: false };
+  }
+  const attachments = value.filter(
+    (item): item is BroadcastAttachmentInput =>
+      isRecord(item) &&
+      typeof item.attachmentId === 'string' && item.attachmentId.length > 0 &&
+      typeof item.previewAttachmentId === 'string' && item.previewAttachmentId.length > 0
+  ).map(({ attachmentId, previewAttachmentId }) => ({ attachmentId, previewAttachmentId }));
+  return attachments.length === value.length ? { ok: true, attachments } : { ok: false };
 }
 
 async function parsePreviewInput(

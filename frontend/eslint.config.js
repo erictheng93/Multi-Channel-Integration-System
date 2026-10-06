@@ -76,6 +76,7 @@ export default [
         DragEvent: 'readonly',
         // File API
         File: 'readonly',
+        FormData: 'readonly',
         FileList: 'readonly',
         FileReader: 'readonly',
         EventTarget: 'readonly',
@@ -90,6 +91,8 @@ export default [
         HTMLSpanElement: 'readonly',
         HTMLCanvasElement: 'readonly',
         CanvasRenderingContext2D: 'readonly',
+        createImageBitmap: 'readonly',
+        ImageBitmap: 'readonly',
         Element: 'readonly',
         TextDecoder: 'readonly',
         HTMLSelectElement: 'readonly',
