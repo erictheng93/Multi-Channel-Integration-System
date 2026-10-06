@@ -82,14 +82,6 @@ describe('ExportDialog.vue', () => {
     mockGetExportCustomers.mockResolvedValue({ success: true, data: defaultCustomers })
     mockGetExportCount.mockResolvedValue({ success: true, data: { count: 50, limit: 5000, willBeTruncated: false } })
     mockShowWarning.mockResolvedValue(true)
-
-    // Mock URL.createObjectURL / revokeObjectURL (not available in JSDOM)
-    if (!window.URL.createObjectURL) {
-      window.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/mock-blob')
-    }
-    if (!window.URL.revokeObjectURL) {
-      window.URL.revokeObjectURL = vi.fn()
-    }
   })
 
   afterEach(async () => {
