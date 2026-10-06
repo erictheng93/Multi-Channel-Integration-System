@@ -1685,9 +1685,16 @@ Run（於 `frontend/`）: `bun run test` → PASS
 
 `bun run dev`（root）+ `bun run dev`（frontend），以 Playwright 開啟群發頁：選 1 張 >1MB 的 PNG + 1 張 JPEG，確認縮圖、上傳狀態、前移/移除、送出按鈕停用條件、桌機與手機寬度版面。**不要按送出**（remote 綁定會真的發給客戶）。
 
-- [ ] **Step 4: 【需使用者同意】部署**
+- [ ] **Step 4: 【需使用者同意】先建表，再部署（順序不可顛倒）**
 
-詢問使用者後，依 `reference_production_deploy_guard` 設定 `MCIS_CONFIRM_PRODUCTION`，執行 `bun run deploy`（Worker）與 `bun run deploy:pages`（Frontend）。
+新程式在**每次**送出群發（含純文字）與開啟群發詳情時都會查詢 `broadcast_attachments`。表不存在時，所有群發都會失敗。依序執行：
+
+1. 若 migration 0063 尚未套用：`bun run db:migrate`。
+2. 確認遠端已有此表（必須回傳一列；Windows 用 node 執行 wrangler，避免 .cmd shim 吃掉引號）：
+   `node node_modules/wrangler/bin/wrangler.js d1 execute mcis-db --remote --command "SELECT name FROM sqlite_master WHERE type='table' AND name='broadcast_attachments'"`
+   沒有回傳該列就**停止，不得部署**。
+3. `bun run db:doc:schema` → `bun run db:doc:schema:check`（exit 0）→ commit `docs/architecture/SCHEMA.md`。
+4. 依 `reference_production_deploy_guard` 設定 `MCIS_CONFIRM_PRODUCTION`，執行 `bun run deploy`（Worker），再執行 `bun run deploy:pages`（Frontend）。
 
 - [ ] **Step 5: 【需使用者配合】真機驗收**
 
