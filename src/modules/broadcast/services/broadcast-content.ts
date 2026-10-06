@@ -1,3 +1,4 @@
+import type { fileAttachments } from '@/db/schema';
 import type { LineReplyMessage } from '@/types';
 import { createImageMessage, createTextMessage } from '@/utils/line';
 import { BroadcastServiceError, type BroadcastAttachmentInput } from '@modules/broadcast/types';
@@ -44,6 +45,38 @@ export function buildBroadcastLineMessages(
 ): LineReplyMessage[] {
   const text = content ? [createTextMessage(content)] : [];
   return [...text, ...images.map((image) => createImageMessage(image.url, image.previewUrl))];
+}
+
+export interface BroadcastImageFile {
+  filename: string;
+  mimeType: string;
+  fileSize: number;
+  r2Key: string;
+  url: string;
+}
+
+// ponytail: rows share the original r2Key; FileService.deleteFile only removes
+// the R2 object once no row references it.
+export function buildWriteBackAttachmentRows(
+  messageId: string,
+  conversationId: string,
+  images: BroadcastImageFile[],
+  uploadedBy: string,
+  createdAt: string
+): Array<typeof fileAttachments.$inferInsert> {
+  return images.map((image) => ({
+    id: crypto.randomUUID(),
+    messageId,
+    conversationId,
+    filename: image.filename,
+    mimeType: image.mimeType,
+    fileSize: image.fileSize,
+    fileUrl: image.url,
+    r2Key: image.r2Key,
+    uploadStatus: 'completed',
+    uploadedBy,
+    createdAt,
+  }));
 }
 
 function checkImage(

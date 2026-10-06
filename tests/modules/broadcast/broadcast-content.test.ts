@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertBroadcastAttachments,
   buildBroadcastLineMessages,
+  buildWriteBackAttachmentRows,
   type AttachmentCandidate,
 } from '@/modules/broadcast/services/broadcast-content';
 
@@ -77,5 +78,30 @@ describe('buildBroadcastLineMessages', () => {
 
   it('returns a single text message for text-only broadcasts', () => {
     expect(buildBroadcastLineMessages('Hi', [])).toEqual([{ type: 'text', text: 'Hi' }]);
+  });
+});
+
+describe('buildWriteBackAttachmentRows', () => {
+  it('creates one attachment row per image bound to the recipient message, sharing the r2Key', () => {
+    const images = [
+      { filename: 'a.jpg', mimeType: 'image/jpeg', fileSize: 10, r2Key: 'k/a.jpg', url: 'https://x/a' },
+      { filename: 'b.png', mimeType: 'image/png', fileSize: 20, r2Key: 'k/b.png', url: 'https://x/b' },
+    ];
+    const rows = buildWriteBackAttachmentRows('msg-1', 'conv-1', images, 'agent-1', '2026-10-06T00:00:00.000Z');
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      messageId: 'msg-1',
+      conversationId: 'conv-1',
+      filename: 'a.jpg',
+      mimeType: 'image/jpeg',
+      fileSize: 10,
+      r2Key: 'k/a.jpg',
+      fileUrl: 'https://x/a',
+      uploadedBy: 'agent-1',
+      uploadStatus: 'completed',
+    });
+    expect(rows[1].r2Key).toBe('k/b.png');
+    expect(new Set(rows.map((r) => r.id)).size).toBe(2);
   });
 });

@@ -1,20 +1,22 @@
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
-import type { Bindings, DbUser } from '@/types';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import type { Bindings, DbUser, LineReplyMessage } from '@/types';
 import type { Database } from '@/db/drizzle-factory';
 import {
+  broadcastAttachments,
   broadcastRecipients,
   broadcasts,
   channelIntegrations,
   conversations,
+  fileAttachments,
   messages,
 } from '@/db/schema';
 import { nowISO } from '@/utils/timestamp';
 import {
-  createTextMessage,
   getLineMessageQuota,
   getLineMessageUsage,
   multicastLineMessage,
 } from '@/utils/line';
+import { getSignedFileUrl, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS } from '@/utils/file-url';
 import { createContextLogger } from '@/utils/logger';
 import { ChannelCredentialService } from '@modules/integrations/services/channel-credential-service';
 import {
@@ -23,10 +25,18 @@ import {
   type BroadcastSendStats,
 } from '@modules/broadcast/types';
 import {
+  BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE,
   BROADCAST_IN_ARRAY_CHUNK_SIZE,
   BROADCAST_MESSAGE_INSERT_CHUNK_SIZE,
+  BROADCAST_WRITE_BATCH_SIZE,
   chunkItems,
+  runInBatches,
 } from './d1-chunks';
+import {
+  buildBroadcastLineMessages,
+  buildWriteBackAttachmentRows,
+  type BroadcastImageFile,
+} from './broadcast-content';
 
 const log = createContextLogger('BroadcastSender');
 const PHASE1_LINE_RECIPIENT_LIMIT = 5000;
@@ -72,6 +82,9 @@ export class BroadcastSenderService {
     }
 
     try {
+      const images = await this.loadImages(broadcastId);
+      const lineMessages = buildBroadcastLineMessages(broadcast.content, images);
+
       const pendingRecipients = await this.db
         .select()
         .from(broadcastRecipients)
@@ -122,11 +135,11 @@ export class BroadcastSenderService {
 
       const sentRecipients: PendingRecipient[] = [];
       for (const group of quotaPassedGroups) {
-        const groupSent = await this.sendLineGroup(group, broadcast.content);
+        const groupSent = await this.sendLineGroup(group, lineMessages);
         sentRecipients.push(...groupSent);
       }
 
-      await this.writeBackConversationMessages(broadcastId, broadcast.content, actor, sentRecipients);
+      await this.writeBackConversationMessages(broadcastId, broadcast.content, images, actor, sentRecipients);
 
       return this.finalizeBroadcast(broadcastId);
     } catch (error) {
@@ -138,6 +151,43 @@ export class BroadcastSenderService {
       await this.failRemainingPendingRecipients(broadcastId);
       return this.finalizeBroadcast(broadcastId);
     }
+  }
+
+  private async loadImages(broadcastId: string): Promise<Array<BroadcastImageFile & { previewUrl: string }>> {
+    const links = await this.db
+      .select({
+        attachmentId: broadcastAttachments.attachmentId,
+        previewAttachmentId: broadcastAttachments.previewAttachmentId,
+      })
+      .from(broadcastAttachments)
+      .where(eq(broadcastAttachments.broadcastId, broadcastId))
+      .orderBy(asc(broadcastAttachments.position));
+    if (links.length === 0) {
+      return [];
+    }
+
+    const files = await this.db
+      .select()
+      .from(fileAttachments)
+      .where(inArray(fileAttachments.id, links.flatMap((l) => [l.attachmentId, l.previewAttachmentId])));
+    const byId = new Map(files.map((file) => [file.id, file]));
+    const sign = (r2Key: string) => getSignedFileUrl(this.env, r2Key, PERSISTENT_ATTACHMENT_URL_TTL_SECONDS);
+
+    return Promise.all(links.map(async (link) => {
+      const original = byId.get(link.attachmentId);
+      const preview = byId.get(link.previewAttachmentId);
+      if (!original || !preview) {
+        throw new Error(`Broadcast ${broadcastId} references a missing attachment`);
+      }
+      return {
+        filename: original.filename,
+        mimeType: original.mimeType,
+        fileSize: original.fileSize,
+        r2Key: original.r2Key,
+        url: await sign(original.r2Key),
+        previewUrl: await sign(preview.r2Key),
+      };
+    }));
   }
 
   private async resolveTokenGroups(recipients: PendingRecipient[]): Promise<{
@@ -214,12 +264,12 @@ export class BroadcastSenderService {
     return remaining >= recipientCount;
   }
 
-  private async sendLineGroup(group: TokenGroup, content: string): Promise<PendingRecipient[]> {
+  private async sendLineGroup(group: TokenGroup, lineMessages: LineReplyMessage[]): Promise<PendingRecipient[]> {
     try {
       const result = await multicastLineMessage(
         group.token,
         group.recipients.map((recipient) => recipient.platformUserId),
-        [createTextMessage(content)]
+        lineMessages
       );
       const failedUserIds = new Set(result.failedUserIds ?? []);
       const failed = group.recipients.filter((recipient) => failedUserIds.has(recipient.platformUserId));
@@ -238,6 +288,7 @@ export class BroadcastSenderService {
   private async writeBackConversationMessages(
     broadcastId: string,
     content: string,
+    images: BroadcastImageFile[],
     actor: DbUser,
     sentRecipients: PendingRecipient[]
   ): Promise<void> {
@@ -293,7 +344,7 @@ export class BroadcastSenderService {
         senderType: 'agent',
         agentSenderId: String(actor.id),
         content,
-        messageType: 'text',
+        messageType: images.length > 0 ? 'file' : 'text',
         isSent: true,
         sentAt: timestamp,
         deliveryStatus: 'delivered',
@@ -303,11 +354,17 @@ export class BroadcastSenderService {
       } satisfies typeof messages.$inferInsert];
     });
 
-    if (messageRows.length > 0) {
-      for (const messageChunk of chunkItems(messageRows, BROADCAST_MESSAGE_INSERT_CHUNK_SIZE)) {
-        await this.db.insert(messages).values(messageChunk);
-      }
-    }
+    const attachmentRows = messageRows.flatMap((message) =>
+      buildWriteBackAttachmentRows(message.id, message.conversationId, images, String(actor.id), timestamp)
+    );
+    // messages first: file_attachments.message_id has an FK to them.
+    const inserts = [
+      ...chunkItems(messageRows, BROADCAST_MESSAGE_INSERT_CHUNK_SIZE)
+        .map((chunk) => this.db.insert(messages).values(chunk)),
+      ...chunkItems(attachmentRows, BROADCAST_ATTACHMENT_INSERT_CHUNK_SIZE)
+        .map((chunk) => this.db.insert(fileAttachments).values(chunk)),
+    ];
+    await runInBatches(inserts, BROADCAST_WRITE_BATCH_SIZE, (batch) => this.db.batch(batch));
   }
 
   private async markRecipients(
