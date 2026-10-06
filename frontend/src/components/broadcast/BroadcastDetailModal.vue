@@ -30,6 +30,26 @@
       </header>
 
       <div
+        v-if="broadcast?.attachments?.length"
+        class="attachment-strip"
+        aria-label="群發圖片"
+      >
+        <a
+          v-for="item in broadcast.attachments"
+          :key="item.attachmentId"
+          :href="item.fileUrl"
+          target="_blank"
+          rel="noopener"
+        >
+          <img
+            :src="item.previewUrl"
+            :alt="`群發圖片 ${item.position + 1}`"
+            loading="lazy"
+          >
+        </a>
+      </div>
+
+      <div
         class="filters"
         aria-label="狀態篩選"
       >
@@ -265,5 +285,18 @@ function reasonLabel(reason: BroadcastRecipientErrorReason): string {
   gap: var(--space-3);
   color: var(--gray-500);
   font-size: var(--text-sm);
+}
+
+.attachment-strip {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.attachment-strip img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 12px;
 }
 </style>

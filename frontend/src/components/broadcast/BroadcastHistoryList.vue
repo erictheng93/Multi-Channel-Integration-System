@@ -52,7 +52,13 @@
           >
             <td>
               <strong>{{ broadcast.title }}</strong>
-              <small>{{ broadcast.content }}</small>
+              <small>
+                <span
+                  v-if="broadcast.contentType === 'mixed'"
+                  class="mixed-pill"
+                >圖文</span>
+                {{ broadcast.content || '（僅圖片）' }}
+              </small>
             </td>
             <td>
               <span
@@ -238,5 +244,15 @@ td small {
   margin-top: var(--space-4);
   color: var(--gray-500);
   font-size: var(--text-sm);
+}
+
+.mixed-pill {
+  display: inline-block;
+  margin-right: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: #e5f1ff;
+  color: #007aff;
+  font-weight: 600;
 }
 </style>
