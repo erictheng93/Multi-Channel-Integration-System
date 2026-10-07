@@ -34,21 +34,19 @@ Recent history follows Conventional Commit style, for example `fix(conversations
 Do not commit `.env*` secrets or production credentials. Validate route and config changes with `bun run validate:all` when touching routing or runtime config.
 
 ## Durable Object Alarms
-Alarms persist and wake the object with no incoming request. Each wake bills a request plus
-active duration, and `setAlarm` is a storage write. There is no account-level spend cap, so a
-self-renewing chain multiplied across many objects bills indefinitely.
+Alarms persist and wake the object with no incoming request. Each wake bills a request plus active duration, and `setAlarm` is a storage write. There is no account-level spend cap, so a self-renewing chain multiplied across many objects bills indefinitely.
 
-- Each DO has ONE alarm; `setAlarm` overwrites. With several deadlines, compute the earliest from
-  storage and set that (see `src/durable-objects/services/room-storage-service.ts`).
-- Never `setAlarm` unconditionally in the constructor — the alarm wake runs the constructor too.
-  Guard with `getAlarm() === null`.
-- In `alarm()`, re-arm only when storage still holds pending work; otherwise return. Don't re-arm
-  in `catch` — a throwing `alarm()` is retried by the platform.
+- No `setInterval` / `setTimeout` loops in a DO. Timers block hibernation (duration keeps billing) and die silently on eviction. Arm an alarm from incoming work instead.
+- Each DO has ONE alarm; `setAlarm` overwrites. With several deadlines, compute the earliest from storage and set that (see `src/durable-objects/services/room-storage-service.ts`).
+- The constructor runs on every wake, including the alarm's own. It may only re-derive the alarm from pending work saved in storage (and delete it when there is none). Never arm it unconditionally, and a `getAlarm() === null` guard alone is not enough — that is exactly how an idle DO re-arms itself forever.
+- In `alarm()`, re-arm only while stored work remains; otherwise return. Short intervals are fine only while draining stored work. Never re-arm without pending work, and never use a "refresh before expiry" chain.
+- Failed work: retry with backoff and a maximum attempt count. Never re-arm at or before `Date.now()` for a failure that can persist — that is a hot loop.
+- Don't re-arm in `catch`. A throwing `alarm()` is retried by the platform at most 6 times, then dropped; work that must not be lost needs a stored record plus a bounded re-arm.
+- Clear any in-memory "alarm already set" cache at the top of `alarm()` — the alarm that fired is consumed.
 - When work is cancelled, `deleteAlarm()`.
-- No "refresh before expiry" chains, and no self-renewal under 60s unless the user asks and a cap
-  is written down.
 - Next to every re-arming `setAlarm`, comment the stop condition (count, deadline, or storage flag).
-- Tests must cover: no pending work → no alarm scheduled.
+- Tests must cover: idle → no alarm; drained → no alarm; persistent failure → stops after N attempts.
+- The commit or PR description says how each alarm chain stops.
 
 <!-- codebase-memory-mcp:start -->
 # Codebase Knowledge Graph (codebase-memory-mcp)
