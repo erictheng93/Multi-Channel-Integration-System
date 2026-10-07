@@ -593,12 +593,13 @@ export class UserConnection implements DurableObject {
    * kept and the check retried in 30s: only a definite answer revokes access.
    */
   private async revalidateGlobalAccess(closeAgents: boolean): Promise<boolean> {
-    let currentRole: string | undefined;
-    try { currentRole = (await getUserById(this.env.DB as D1Database, this.userId)).role; }
+    let user: Awaited<ReturnType<typeof getUserById>> | undefined;
+    try { user = await getUserById(this.env.DB as D1Database, this.userId); }
     catch (error) {
       if (!(error instanceof UserNotFoundError)) return this.deferAccessCheck(error);
       console.warn('[UserConnection] Account access revoked:', error);
     }
+    const currentRole = user?.role;
     for (const connection of this.stateManager.getAllConnections()) {
       if (!currentRole || connection.role !== currentRole || (closeAgents && currentRole !== 'admin')) {
         try { connection.websocket.serializeAttachment(null); }
@@ -612,7 +613,7 @@ export class UserConnection implements DurableObject {
     let deferred = false;
     for (const conversationId of this.subscriptionManager.subscribedConversations) {
       try {
-        if (!await auth.hasLiveConversationAccess(this.userId, conversationId)) {
+        if (!await auth.hasLiveConversationAccess(this.userId, conversationId, user)) {
           this.subscriptionManager.removeSubscription(conversationId);
         }
       } catch (error) {

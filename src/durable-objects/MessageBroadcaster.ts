@@ -13,7 +13,6 @@ import {
   type BroadcasterContext,
   type DistributionStats
 } from './services/broadcaster-helpers';
-import { BroadcasterLockService } from './services/broadcaster-lock-service';
 import { BroadcasterDeliveryService } from './services/broadcaster-delivery-service';
 import { BroadcasterConnectionRegistry } from './services/broadcaster-connection-registry';
 import { BroadcasterHttpHandlers } from './handlers/broadcaster-http-handlers';
@@ -70,7 +69,6 @@ export class MessageBroadcaster implements DurableObject {
 
   // Sub-services
   private helpers: BroadcasterHelpers;
-  private lockService: BroadcasterLockService;
   private delivery: BroadcasterDeliveryService;
   private connections: BroadcasterConnectionRegistry;
   private httpHandlers: BroadcasterHttpHandlers;
@@ -95,14 +93,17 @@ export class MessageBroadcaster implements DurableObject {
 
     // Initialize sub-services (order matters: helpers/locks first, then delivery, then registry/handlers)
     this.helpers = new BroadcasterHelpers(ctx);
-    this.lockService = new BroadcasterLockService(ctx);
-    this.delivery = new BroadcasterDeliveryService(ctx, this.helpers, this.lockService);
+    this.delivery = new BroadcasterDeliveryService(ctx, this.helpers);
     this.connections = new BroadcasterConnectionRegistry(ctx, this.helpers);
     this.httpHandlers = new BroadcasterHttpHandlers(ctx, this.delivery, this.helpers);
 
-    // Restore persisted state and start processing loops
-    this.helpers.initializeFromStorage();
-    this.setupProcessingLoops();
+    // No timers: they block hibernation. Queues drain via alarm() (see drainQueues).
+    this.state.blockConcurrencyWhile(() => this.helpers.initializeFromStorage());
+  }
+
+  // Chain stops when both queues are empty; queueEvent re-arms it.
+  async alarm(): Promise<void> {
+    await this.delivery.drainQueues();
   }
 
   // =================== Main Request Router ===================
@@ -172,29 +173,5 @@ export class MessageBroadcaster implements DurableObject {
       log.error(' [MessageBroadcaster] Request handling error:', { error: error instanceof Error ? error.message : String(error) });
       return new Response('Internal Server Error', { status: 500 });
     }
-  }
-
-  // =================== Processing Loop Setup ===================
-
-  private setupProcessingLoops(): void {
-    // High priority queue processor (fast)
-    setInterval(async () => {
-      await this.delivery.processHighPriorityQueue();
-    }, MessageBroadcaster.CONFIG.HIGH_PRIORITY_TIMEOUT);
-
-    // Normal priority queue processor
-    setInterval(async () => {
-      await this.delivery.processEventQueue();
-    }, MessageBroadcaster.CONFIG.PROCESSING_INTERVAL);
-
-    // Metrics and health monitoring
-    setInterval(async () => {
-      await this.helpers.updateMetrics();
-    }, MessageBroadcaster.CONFIG.METRICS_INTERVAL);
-
-    // Cleanup expired locks
-    setInterval(async () => {
-      await this.lockService.cleanupExpiredLocks();
-    }, 60000);
   }
 }

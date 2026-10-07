@@ -9,6 +9,8 @@
 import { nowMs } from '@/utils/timestamp';
 import type { PendingMessage, CancelResult, SchedulerLogger, SchedulerMetrics } from './types';
 
+export const DLQ_RETENTION_MS = 30 * 86_400_000;
+
 // ---------------------------------------------------------------------------
 // Alarm management
 // ---------------------------------------------------------------------------
@@ -88,7 +90,7 @@ export function collectReadyMessages(
 
 export interface BatchResultsDeps {
   logger: SchedulerLogger;
-  addToDeadLetterQueue: (message: PendingMessage, reason: unknown) => Promise<void>;
+  addToDeadLetterQueue: (message: PendingMessage, reason: unknown) => Promise<unknown>;
 }
 
 /**
@@ -104,7 +106,7 @@ export async function processBatchResults(
 ): Promise<void> {
   let successCount = 0;
   let failureCount = 0;
-  const dlqPromises: Promise<void>[] = [];
+  const dlqPromises: Promise<unknown>[] = [];
 
   results.forEach((result, index) => {
     const message = messages[index];
@@ -209,11 +211,25 @@ export async function restoreState(
 ): Promise<number | null> {
   try {
     const allMessages = await storage.list<PendingMessage>({ prefix: 'msg:' });
+    const dlq = await storage.list<{ failedAt?: number }>({ prefix: 'dlq:' });
+    const staleKeys: string[] = [];
 
-    for (const [_key, message] of allMessages) {
+    for (const [key, message] of allMessages) {
       if (message.status === 'pending') {
         pendingMessages.set(message.id, message);
+      } else if (dlq.has(`dlq:${message.id}`)) {
+        staleKeys.push(key); // failed copy; the DLQ entry is the durable record
       }
+    }
+
+    // Cold start is the cleanup point, so cleanup never needs its own alarm.
+    // ponytail: a DO that never wakes again keeps its last entries; storage cost is negligible.
+    const cutoff = nowMs() - DLQ_RETENTION_MS;
+    for (const [key, entry] of dlq) {
+      if ((entry.failedAt ?? 0) < cutoff) staleKeys.push(key);
+    }
+    for (let i = 0; i < staleKeys.length; i += 128) {
+      await storage.delete(staleKeys.slice(i, i + 128));
     }
 
     const currentAlarm = await storage.getAlarm();
