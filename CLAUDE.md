@@ -231,6 +231,23 @@ Do not edit `docs/architecture/SCHEMA.md` by hand — the next run overwrites it
 database's own `sqlite_master`, deliberately not `src/db/schema.ts` and not `migrations/`, because
 the 2026-06-17 rebuild proved those can disagree with production.
 
+### Durable Object Alarms
+Alarms persist and wake the object with no incoming request. Each wake bills a request plus
+active duration, and `setAlarm` is a storage write. There is no account-level spend cap, so a
+self-renewing chain multiplied across many objects bills indefinitely.
+
+- Each DO has ONE alarm; `setAlarm` overwrites. With several deadlines, compute the earliest from
+  storage and set that (see `src/durable-objects/services/room-storage-service.ts`).
+- Never `setAlarm` unconditionally in the constructor — the alarm wake runs the constructor too.
+  Guard with `getAlarm() === null`.
+- In `alarm()`, re-arm only when storage still holds pending work; otherwise return. Don't re-arm
+  in `catch` — a throwing `alarm()` is retried by the platform.
+- When work is cancelled, `deleteAlarm()`.
+- No "refresh before expiry" chains, and no self-renewal under 60s unless the user asks and a cap
+  is written down.
+- Next to every re-arming `setAlarm`, comment the stop condition (count, deadline, or storage flag).
+- Tests must cover: no pending work → no alarm scheduled.
+
 ### Authentication
 - JWT managed in `src/utils/auth.ts`
 - Session persistence via KV
