@@ -46,8 +46,11 @@ import {
 import {
   sendMessage,
   addToDeadLetterQueue,
+  MAX_RETRY_ATTEMPTS,
   type RetryHandlerDeps,
 } from './delayed-message/retry-handler';
+
+const BY_REF_RETRY_DELAY_MS = 30_000;
 
 interface SchedulerMetricsSnapshot extends SchedulerMetrics {
   startTime?: number;
@@ -539,8 +542,12 @@ export class DelayedMessageScheduler implements DurableObject {
   // Alarm handler
   // ---------------------------------------------------------------------------
 
+  // Chain stops when no 'pending' message remains: doUpdateAlarm deletes the alarm.
   async alarm(): Promise<void> {
     this.metrics.alarmTriggersTotal++;
+    // The alarm that just fired is consumed; a stale value would make
+    // doUpdateAlarm skip re-arming for a message still due at that time.
+    this.nextAlarmTime = null;
 
     this.logger.info('Alarm triggered', {
       pendingCount: this.pendingMessages.size,
@@ -569,7 +576,21 @@ export class DelayedMessageScheduler implements DurableObject {
       addToDeadLetterQueue: (msg, reason) => addToDeadLetterQueue(msg, reason, deps),
     });
 
-    // 4. Update alarm
+    // 4. A deliver-by-ref throw leaves the message pending and already due.
+    // Push it out with a bounded retry so it can neither stall nor hot-loop.
+    for (const msg of readyMessages) {
+      if (this.pendingMessages.get(msg.id)?.status !== 'pending') continue;
+      msg.retryCount = (msg.retryCount ?? 0) + 1;
+      if (msg.retryCount > MAX_RETRY_ATTEMPTS) {
+        this.pendingMessages.delete(msg.id); // already recorded in the DLQ
+        await this.state.storage.delete(`msg:${msg.id}`);
+      } else {
+        msg.scheduledAt = Date.now() + BY_REF_RETRY_DELAY_MS * msg.retryCount;
+        await this.state.storage.put(`msg:${msg.id}`, msg);
+      }
+    }
+
+    // 5. Update alarm
     await this.doUpdateAlarm();
   }
 

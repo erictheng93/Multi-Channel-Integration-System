@@ -398,14 +398,8 @@ export class BroadcasterHttpHandlers {
     return this.handleBroadcast(request);
   }
 
-  async handleFlushQueue(request: Request): Promise<Response> {
-    const { priority } = await request.json() as { priority?: string };
-
-    if (priority === 'high') {
-      await this.delivery.processHighPriorityQueue();
-    } else {
-      await this.delivery.processEventQueue();
-    }
+  async handleFlushQueue(_request: Request): Promise<Response> {
+    await this.delivery.drainQueues();
 
     return new Response(JSON.stringify({
       success: true,
@@ -451,6 +445,7 @@ export class BroadcasterHttpHandlers {
   }
 
   async handleGetMetrics(_request: Request): Promise<Response> {
+    this.helpers.updateMetrics();
     const metrics = {
       totalEvents: this.ctx.stats.totalEvents,
       successfulBroadcasts: this.ctx.stats.successfulDeliveries,
@@ -475,6 +470,7 @@ export class BroadcasterHttpHandlers {
   }
 
   async handleGetStatus(_request: Request): Promise<Response> {
+    this.helpers.updateMetrics();
     const isHealthy = this.ctx.eventQueue.length < this.ctx.config.MAX_QUEUE_SIZE * 0.8;
     const errorRate = this.ctx.stats.totalEvents > 0
       ? this.ctx.stats.failedDeliveries / this.ctx.stats.totalEvents

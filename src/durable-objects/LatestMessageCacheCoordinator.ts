@@ -41,6 +41,7 @@ export class LatestMessageCacheCoordinator {
   private cache: LatestMessageCache;
   private stats: ProcessingStats;
   private alarmScheduled: boolean = false;
+  private scheduledAlarmAt: number | null = null;
 
   // Configuration
   private readonly BATCH_DELAY_MS = 5000; // 5 seconds batch window
@@ -332,22 +333,23 @@ export class LatestMessageCacheCoordinator {
    * Schedule alarm if needed
    */
   private async scheduleAlarmIfNeeded(): Promise<void> {
-    if (this.alarmScheduled) {
-      // Alarm already scheduled
+    const alarmTime = Date.now() + this.BATCH_DELAY_MS;
+    // An alarm due within the batch window already covers this update.
+    if (this.scheduledAlarmAt !== null && this.scheduledAlarmAt <= alarmTime) {
       return;
     }
 
     const currentAlarm = await this.state.storage.getAlarm();
-    if (currentAlarm) {
-      // Alarm already exists
+    if (currentAlarm !== null && currentAlarm <= alarmTime) {
       this.alarmScheduled = true;
+      this.scheduledAlarmAt = currentAlarm;
       return;
     }
 
-    // Schedule new alarm
-    const alarmTime = Date.now() + this.BATCH_DELAY_MS;
+    // No alarm, or only a 60s retry alarm: pull it in so fresh updates are not held back.
     await this.state.storage.setAlarm(alarmTime);
     this.alarmScheduled = true;
+    this.scheduledAlarmAt = alarmTime;
 
     console.log(`[LatestMessageCacheCoordinator] Alarm scheduled for ${new Date(alarmTime).toISOString()}`);
   }
@@ -360,6 +362,7 @@ export class LatestMessageCacheCoordinator {
     console.log(`[LatestMessageCacheCoordinator] Alarm triggered - processing ${this.updateQueue.size} updates`);
 
     this.alarmScheduled = false;
+    this.scheduledAlarmAt = null;
 
     if (this.updateQueue.size === 0) {
       console.log('[LatestMessageCacheCoordinator] Queue is empty, nothing to process');
@@ -422,7 +425,9 @@ export class LatestMessageCacheCoordinator {
     // Reschedule alarm if there are remaining updates
     if (this.updateQueue.size > 0) {
       console.log(`[LatestMessageCacheCoordinator] Rescheduling alarm for ${this.updateQueue.size} remaining updates`);
-      await this.state.storage.setAlarm(Date.now() + this.ALARM_RETRY_DELAY_MS);
+      // Stops: each entry is dropped after MAX_RETRY_COUNT failures.
+      this.scheduledAlarmAt = Date.now() + this.ALARM_RETRY_DELAY_MS;
+      await this.state.storage.setAlarm(this.scheduledAlarmAt);
       this.alarmScheduled = true;
     }
   }

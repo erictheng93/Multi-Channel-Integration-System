@@ -20,7 +20,8 @@ function storageState(initial: Record<string, unknown> = {}) {
       async deleteAll() { values.clear(); alarm = null },
     },
   }
-  return { state: state as any, ready: () => ready, writes: () => writes, values }
+  return { state: state as any, ready: () => ready, writes: () => writes, values,
+    alarm: () => alarm, consumeAlarm() { alarm = null } }
 }
 
 async function ingest(collector: MetricsCollectorDO, path: string, extra = {}) {
@@ -94,6 +95,32 @@ describe('metrics resource boundary', () => {
     const collector = new MetricsCollectorDO(state.state, {} as any)
     await state.ready()
     expect(Object.keys((await snapshot(collector)).endpoints).length).toBeLessThanOrEqual(512)
+  })
+
+  it('arms the flush alarm only on ingest and never re-arms it when idle', async () => {
+    const state = storageState()
+    const collector = new MetricsCollectorDO(state.state, { CACHE: { put: async () => {} } } as any)
+    await state.ready()
+    expect(state.alarm()).toBeNull()
+    await ingest(collector, '/api/test')
+    expect(state.alarm()).not.toBeNull()
+    state.consumeAlarm()
+    await collector.alarm()
+    expect(state.alarm()).toBeNull()
+    await ingest(collector, '/api/test')
+    expect(state.alarm()).not.toBeNull()
+  })
+
+  it('keeps the persisted snapshot under the 128 KiB storage value limit at the endpoint cap', async () => {
+    const { serialize } = await import('node:v8')
+    const state = storageState()
+    const collector = new MetricsCollectorDO(state.state, { CACHE: { put: async () => {} } } as any)
+    await state.ready()
+    for (let i = 0; i < 511; i++) {
+      for (let j = 0; j < 200; j++) await ingest(collector, `/api/route-${i}`, { responseTimeMs: j * 7 })
+    }
+    await collector.alarm()
+    expect(serialize(state.values.get('metricsState')).length).toBeLessThan(128 * 1024)
   })
 
   it('rejects invalid status values instead of creating unbounded nested counters', async () => {

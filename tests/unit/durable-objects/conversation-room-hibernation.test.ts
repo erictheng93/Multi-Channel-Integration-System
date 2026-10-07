@@ -231,4 +231,16 @@ describe('ConversationRoom hibernation', () => {
     expect(socket.close).toHaveBeenCalledWith(4401, 'Token expired')
     expect(state.storage.put).toHaveBeenCalledWith('messageHistory', durableObject.roomContext.messageHistory)
   })
+
+  it('sets the flush alarm once per window instead of once per message', async () => {
+    const state = createState()
+    const room = new ConversationRoom(state, {}, { mode: 'full' }) as unknown as {
+      ready: Promise<void>
+      storageService: { scheduleStorageWrite(): void }
+    }
+    await room.ready
+    for (let i = 0; i < 5; i++) room.storageService.scheduleStorageWrite()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(state.storage.setAlarm).toHaveBeenCalledTimes(1)
+  })
 })
