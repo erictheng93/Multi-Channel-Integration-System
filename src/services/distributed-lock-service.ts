@@ -533,15 +533,17 @@ export class LockCoordinator implements DurableObject {
   constructor(state: DurableObjectState, _env: unknown) {
     this.state = state;
 
-    // Initialize from storage
-    this.initializeFromStorage();
-
-    // Set up cleanup tasks
-    this.setupCleanupTasks();
+    this.state.blockConcurrencyWhile(() => this.initializeFromStorage());
   }
 
   async fetch(request: Request): Promise<Response> {
     try {
+      // Lazy GC instead of setInterval (timers block hibernation). Acquire
+      // already treats expired locks as free, so this only bounds memory.
+      if (nowMs() - this.metrics.lastCleanup > 60000) {
+        await this.cleanupExpiredLocks();
+      }
+
       const url = new URL(request.url);
       const pathname = url.pathname;
 
@@ -851,13 +853,6 @@ export class LockCoordinator implements DurableObject {
 
     this.metrics.lastCleanup = now;
     return cleanedCount;
-  }
-
-  private setupCleanupTasks(): void {
-    // Clean up expired locks every minute
-    setInterval(async () => {
-      await this.cleanupExpiredLocks();
-    }, 60000);
   }
 
   private async persistLockState(): Promise<void> {

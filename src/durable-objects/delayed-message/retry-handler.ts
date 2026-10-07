@@ -321,9 +321,7 @@ export async function handlePermanentFailure(
   message.failureReason = error instanceof Error ? error.message : String(error);
 
   deps.pendingMessages.delete(message.id);
-  await deps.storage.put(`msg:${message.id}`, message);
-
-  await addToDeadLetterQueue(message, error, deps);
+  await releaseFailedMessage(message, await addToDeadLetterQueue(message, error, deps), deps);
 
   deps.metrics.messagesFailedTotal++;
   deps.metrics.platformFailures[message.platform]++;
@@ -352,9 +350,19 @@ export async function handleCatastrophicError(
   message.status = 'failed';
   message.failureReason = error instanceof Error ? error.message : String(error);
 
-  await addToDeadLetterQueue(message, error, deps);
+  const recorded = await addToDeadLetterQueue(message, error, deps);
   deps.pendingMessages.delete(message.id);
-  await deps.storage.put(`msg:${message.id}`, message);
+  await releaseFailedMessage(message, recorded, deps);
+}
+
+/** The DLQ entry is the durable record; keep the failed `msg:` copy only if that write failed. */
+async function releaseFailedMessage(
+  message: PendingMessage,
+  recordedInDlq: boolean,
+  deps: RetryHandlerDeps
+): Promise<void> {
+  if (recordedInDlq) await deps.storage.delete(`msg:${message.id}`);
+  else await deps.storage.put(`msg:${message.id}`, message);
 }
 
 /**
@@ -398,7 +406,7 @@ export async function addToDeadLetterQueue(
   message: PendingMessage,
   reason: unknown,
   deps: RetryHandlerDeps
-): Promise<void> {
+): Promise<boolean> {
   const maxAttempts = 3;
   let lastError: Error | null = null;
 
@@ -428,7 +436,7 @@ export async function addToDeadLetterQueue(
         retryCount: message.retryCount,
         failureReason: dlqEntry.failureReason,
       });
-      return; // Success
+      return true;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       deps.logger.error('DLQ write attempt failed', error, {
@@ -452,6 +460,7 @@ export async function addToDeadLetterQueue(
     platform: message.platform,
     conversationId: message.conversationId,
   });
+  return false;
 }
 
 // ---------------------------------------------------------------------------

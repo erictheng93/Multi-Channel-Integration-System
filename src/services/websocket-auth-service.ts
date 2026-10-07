@@ -259,10 +259,15 @@ export class WebSocketAuthService {
    * inactive or deleted account, or no matching rule); throws when D1 cannot
    * answer so callers keep the socket and retry instead of mass-evicting.
    */
-  async hasLiveConversationAccess(userId: string, conversationId: string): Promise<boolean> {
+  /** Pass `knownUser` when checking many conversations for one user, to skip the per-call user lookup. */
+  async hasLiveConversationAccess(
+    userId: string,
+    conversationId: string,
+    knownUser?: Awaited<ReturnType<typeof getUserById>>
+  ): Promise<boolean> {
     let user: Awaited<ReturnType<typeof getUserById>>;
     try {
-      user = await getUserById(this.env.DB, userId);
+      user = knownUser ?? await getUserById(this.env.DB, userId);
     } catch (error) {
       if (error instanceof UserNotFoundError) return false;
       throw error;

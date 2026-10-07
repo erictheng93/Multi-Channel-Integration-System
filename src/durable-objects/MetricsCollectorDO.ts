@@ -84,6 +84,7 @@ export class MetricsCollectorDO {
   private env: Bindings;
   private metrics: Map<string, EndpointMetrics> = new Map();
   private startedAt: number = Date.now();
+  private flushScheduled = false;
 
   constructor(state: DurableObjectState, env: Bindings) {
     this.state = state;
@@ -91,7 +92,6 @@ export class MetricsCollectorDO {
 
     this.state.blockConcurrencyWhile(async () => {
       await this.loadFromStorage();
-      await this.ensureAlarm();
     });
   }
 
@@ -126,8 +126,11 @@ export class MetricsCollectorDO {
 
   private async persistToStorage(): Promise<void> {
     try {
+      // Samples are left out: 512 endpoints x 200 samples serialize to ~400 KiB, over the
+      // 128 KiB value limit of this KV-backed DO. Counters alone stay under it; the
+      // percentile windows refill from live traffic after a restart.
       await this.state.storage.put('metricsState', {
-        metrics: Array.from(this.metrics.entries()),
+        metrics: Array.from(this.metrics, ([key, endpoint]) => [key, { ...endpoint, recentResponseTimes: [] }]),
         startedAt: this.startedAt,
       });
     } catch (error) {
@@ -144,9 +147,11 @@ export class MetricsCollectorDO {
     }
   }
 
-  private async ensureAlarm(): Promise<void> {
-    const currentAlarm = await this.state.storage.getAlarm();
-    if (!currentAlarm) {
+  // Armed only by ingest, so an idle collector never wakes.
+  private async scheduleFlush(): Promise<void> {
+    if (this.flushScheduled) return;
+    this.flushScheduled = true;
+    if (await this.state.storage.getAlarm() === null) {
       await this.state.storage.setAlarm(Date.now() + FLUSH_INTERVAL_MS);
     }
   }
@@ -245,7 +250,8 @@ export class MetricsCollectorDO {
       endpoint.recentResponseTimes.shift();
     }
 
-    // The existing minute alarm persists the bounded snapshot, independent of request volume.
+    // One flush per minute of activity persists the bounded snapshot, independent of request volume.
+    await this.scheduleFlush();
     return new Response(
       JSON.stringify({ success: true, key, requestCount: endpoint.requestCount }),
       { headers: { 'Content-Type': 'application/json' } }
@@ -263,7 +269,8 @@ export class MetricsCollectorDO {
     this.metrics.clear();
     this.startedAt = Date.now();
     await this.state.storage.deleteAll();
-    await this.ensureAlarm();
+    // deleteAll may drop the alarm; let the next ingest re-check it.
+    this.flushScheduled = false;
 
     return new Response(
       JSON.stringify({ success: true, message: 'Metrics reset' }),
@@ -337,7 +344,9 @@ export class MetricsCollectorDO {
 
   // =================== Alarm Handler ===================
 
+  // Chain stops by itself: no re-arm here; the next ingest arms the next flush.
   async alarm(): Promise<void> {
+    this.flushScheduled = false;
     try {
       const snapshot = this.buildSnapshot();
       const hourBucket = Math.floor(Date.now() / 3_600_000);
@@ -356,8 +365,5 @@ export class MetricsCollectorDO {
     } catch (error) {
       console.error('[MetricsCollectorDO] Alarm flush error:', error);
     }
-
-    // Re-schedule next alarm
-    await this.state.storage.setAlarm(Date.now() + FLUSH_INTERVAL_MS);
   }
 }

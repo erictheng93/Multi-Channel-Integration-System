@@ -4,7 +4,6 @@
 import type { DurableObjectEvent, BroadcastTarget } from '../../types/websocket-types';
 import type { BroadcasterContext } from './broadcaster-helpers';
 import type { BroadcasterHelpers } from './broadcaster-helpers';
-import type { BroadcasterLockService } from './broadcaster-lock-service';
 import { createContextLogger } from '../../utils/logger';
 import { nowISO, nowMs } from '@/utils/timestamp'
 
@@ -37,8 +36,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export class BroadcasterDeliveryService {
   constructor(
     private ctx: BroadcasterContext,
-    private helpers: BroadcasterHelpers,
-    private lockService: BroadcasterLockService
+    private helpers: BroadcasterHelpers
   ) {}
 
   private get eventQueue(): QueuedEvent[] {
@@ -120,7 +118,36 @@ export class BroadcasterDeliveryService {
     this.ctx.stats.queueDepth = this.eventQueue.length + this.highPriorityQueue.length;
 
     await this.helpers.persistQueueState();
+    await this.scheduleProcessing();
     console.log(`[MessageBroadcaster] Event queued: ${event.id} (Priority: ${event.priority})`);
+  }
+
+  /** Arms the drain alarm only while a queue holds events; never re-arms on an empty queue. */
+  async scheduleProcessing(): Promise<void> {
+    if (this.highPriorityQueue.length === 0 && this.eventQueue.length === 0) return;
+    const due = Date.now() + (this.highPriorityQueue.length > 0 ? 0 : this.ctx.config.PROCESSING_INTERVAL);
+    const current = await this.ctx.state.storage.getAlarm();
+    if (current === null || current > due) {
+      await this.ctx.state.storage.setAlarm(due);
+    }
+  }
+
+  /**
+   * Alarm body. Terminates: each run removes events from the queues, failed
+   * events are re-queued at most 3 times (retryFailedEvents), and the alarm is
+   * re-armed only while events remain.
+   */
+  async drainQueues(): Promise<void> {
+    try {
+      while (this.highPriorityQueue.length > 0) {
+        await this.processHighPriorityQueue();
+      }
+      await this.processEventQueue();
+    } finally {
+      this.ctx.stats.queueDepth = this.eventQueue.length + this.highPriorityQueue.length;
+      await this.helpers.persistQueueState();
+      await this.scheduleProcessing();
+    }
   }
 
   // =================== Queue Processing ===================
@@ -128,27 +155,16 @@ export class BroadcasterDeliveryService {
   async processHighPriorityQueue(): Promise<void> {
     if (this.highPriorityQueue.length === 0) return;
 
-    const lockId = await this.lockService.acquireLock('high_priority_processing', { ttl: 5000 });
-
-    try {
-      const batch = this.highPriorityQueue.splice(0, this.ctx.config.HIGH_PRIORITY_BATCH_SIZE);
-      await this.processBatch(batch, 'high_priority');
-    } finally {
-      await this.lockService.releaseLock(lockId);
-    }
+    // splice is synchronous, so a single-threaded DO never hands one event to two batches.
+    const batch = this.highPriorityQueue.splice(0, this.ctx.config.HIGH_PRIORITY_BATCH_SIZE);
+    await this.processBatch(batch, 'high_priority');
   }
 
   async processEventQueue(): Promise<void> {
     if (this.eventQueue.length === 0) return;
 
-    const lockId = await this.lockService.acquireLock('normal_processing', { ttl: 10000 });
-
-    try {
-      const batch = this.eventQueue.splice(0, this.ctx.config.BATCH_SIZE);
-      await this.processBatch(batch, 'normal');
-    } finally {
-      await this.lockService.releaseLock(lockId);
-    }
+    const batch = this.eventQueue.splice(0, this.ctx.config.BATCH_SIZE);
+    await this.processBatch(batch, 'normal');
   }
 
   private async processBatch(events: QueuedEvent[], batchType: string): Promise<void> {

@@ -64,6 +64,8 @@ export interface RoomContext {
   messageDirty: boolean;
   storageFlushDeadline: number | null;
   accessCheckDeadline?: number | null;
+  /** Alarm time last set by this instance; undefined = unknown (cold start). */
+  alarmAt?: number | null;
 
   // Configuration constants
   MAX_CONNECTIONS: number;
