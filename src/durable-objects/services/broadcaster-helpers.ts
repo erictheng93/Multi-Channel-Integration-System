@@ -73,8 +73,8 @@ export interface BroadcasterContext {
 export class BroadcasterHelpers {
   constructor(private ctx: BroadcasterContext) {}
 
-  validateEvent(event: DurableObjectEvent): boolean {
-    return !!(event.id && event.type && event.timestamp && event.data);
+  validateEvent(event: DurableObjectEvent | undefined): boolean {
+    return !!(event?.id && event.type && event.timestamp && event.data);
   }
 
   async getTeamMembers(teamId: string): Promise<string[]> {

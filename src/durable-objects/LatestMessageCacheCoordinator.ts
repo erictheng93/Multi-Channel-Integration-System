@@ -6,8 +6,8 @@
 
 import type { DurableObjectState } from '@cloudflare/workers-types';
 import type { Bindings } from '../types';
-import { LatestMessageCache, type CachedLatestMessage } from '../services/latest-message-cache';
-import { nowISO, nowMs } from '@/utils/timestamp'
+import { LatestMessageCache } from '../services/latest-message-cache';
+import { nowMs } from '@/utils/timestamp'
 
 /**
  * Update request stored in queue
@@ -36,7 +36,6 @@ interface ProcessingStats {
  */
 export class LatestMessageCacheCoordinator {
   private state: DurableObjectState;
-  private env: Bindings;
   private updateQueue: Map<string, UpdateRequest> = new Map();
   private cache: LatestMessageCache;
   private stats: ProcessingStats;
@@ -50,7 +49,6 @@ export class LatestMessageCacheCoordinator {
 
   constructor(state: DurableObjectState, env: Bindings) {
     this.state = state;
-    this.env = env;
     this.cache = new LatestMessageCache(env);
     this.stats = {
       totalProcessed: 0,
@@ -445,58 +443,12 @@ export class LatestMessageCacheCoordinator {
 
       if (latestMessage) {
         console.log(`[LatestMessageCacheCoordinator] Updated cache for conversation ${conversationId}`);
-
-        // Broadcast update via WebSocket
-        await this.broadcastLatestMessageUpdate(conversationId, latestMessage);
       } else {
         console.warn(`[LatestMessageCacheCoordinator] No latest message found for conversation ${conversationId}`);
       }
     } catch (error) {
       console.error(`[LatestMessageCacheCoordinator] Failed to process update for ${conversationId}:`, error);
       throw error; // Re-throw to mark as failed
-    }
-  }
-
-  /**
-   * Broadcast latest message update via WebSocket
-   */
-  private async broadcastLatestMessageUpdate(conversationId: string, latestMessage: CachedLatestMessage): Promise<void> {
-    try {
-      const event = {
-        type: 'latest_message_updated',
-        conversationId,
-        data: {
-          content: latestMessage.content,
-          createdAt: latestMessage.createdAt,
-          senderType: latestMessage.senderType
-        },
-        timestamp: nowISO()
-      };
-
-      // Get the MessageBroadcaster Durable Object
-      const broadcasterId = this.env.MESSAGE_BROADCASTER?.idFromName('global');
-      const broadcaster = broadcasterId ? this.env.MESSAGE_BROADCASTER?.get(broadcasterId) : null;
-
-      if (broadcaster) {
-        await broadcaster.fetch('http://localhost/broadcast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            events: [event],
-            targets: [
-              {
-                type: 'conversation',
-                targets: [conversationId]
-              }
-            ]
-          })
-        });
-
-        console.log(`[LatestMessageCacheCoordinator] Broadcasted update for conversation ${conversationId}`);
-      }
-    } catch (error) {
-      console.warn(`[LatestMessageCacheCoordinator] Failed to broadcast update:`, error);
-      // Don't fail the entire update for broadcast failures
     }
   }
 }
