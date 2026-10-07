@@ -330,6 +330,7 @@ export class ConversationRoom implements DurableObject {
   }
 
   async alarm(): Promise<void> {
+    this.roomContext.alarmAt = null; // the alarm that fired is consumed
     await this.ready;
     const now = Date.now();
     await this.connectionManager.closeExpiredTokenConnections(now);

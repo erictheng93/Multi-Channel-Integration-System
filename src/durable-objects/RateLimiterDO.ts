@@ -83,8 +83,8 @@ export class RateLimiterDO implements DurableObject {
   };
 
   // Configuration
-  private readonly PERSIST_INTERVAL_MS = 60000; // Persist every 60 seconds
-  private readonly CLEANUP_INTERVAL_MS = 300000; // Cleanup every 5 minutes
+  private readonly PERSIST_INTERVAL_MS = 60000; // Persist + cleanup at most once a minute, only after activity
+  private persistScheduled = false;
   private readonly MAX_ENTRIES = 10000; // Maximum entries before forced cleanup
   private readonly ENTRY_TTL_MS = 600000; // 10 minutes TTL for inactive entries
 
@@ -95,7 +95,6 @@ export class RateLimiterDO implements DurableObject {
     // Initialize from storage on first request
     this.state.blockConcurrencyWhile(async () => {
       await this.loadFromStorage();
-      this.setupTimers();
     });
   }
 
@@ -106,7 +105,9 @@ export class RateLimiterDO implements DurableObject {
       // Handle HTTP API
       if (request.method === 'POST') {
         const body = await request.json() as RateLimitRequest;
-        return this.handleRequest(body);
+        const response = this.handleRequest(body);
+        await this.schedulePersist();
+        return response;
       }
 
       // Handle GET requests for stats
@@ -319,9 +320,10 @@ export class RateLimiterDO implements DurableObject {
 
   private async persistToStorage(): Promise<void> {
     try {
-      // Only persist if we have entries
       if (this.rateLimits.size > 0) {
         await this.state.storage.put('rateLimits', this.rateLimits);
+      } else {
+        await this.state.storage.delete('rateLimits');
       }
       await this.state.storage.put('stats', this.stats);
 
@@ -363,21 +365,19 @@ export class RateLimiterDO implements DurableObject {
     }
   }
 
-  private setupTimers(): void {
-    // Periodic persist
-    setInterval(() => {
-      this.persistToStorage();
-    }, this.PERSIST_INTERVAL_MS);
-
-    // Periodic cleanup
-    setInterval(() => {
-      this.cleanupExpiredEntries();
-    }, this.CLEANUP_INTERVAL_MS);
+  // Timers would block hibernation; activity arms one alarm instead.
+  private async schedulePersist(): Promise<void> {
+    if (this.persistScheduled) return;
+    this.persistScheduled = true;
+    if (await this.state.storage.getAlarm() === null) {
+      await this.state.storage.setAlarm(Date.now() + this.PERSIST_INTERVAL_MS);
+    }
   }
 
-  // Called when the DO is about to be evicted
+  // Chain stops by itself: no re-arm here; the next request arms the next persist.
   async alarm(): Promise<void> {
-    // Persist before eviction
+    this.persistScheduled = false;
+    this.cleanupExpiredEntries();
     await this.persistToStorage();
   }
 }

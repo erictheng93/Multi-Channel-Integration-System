@@ -242,7 +242,7 @@ export class BroadcasterHelpers {
     }
   }
 
-  async updateMetrics(): Promise<void> {
+  updateMetrics(): void {
     const now = nowMs();
     const timeSinceLastUpdate = now - this.ctx.stats.lastProcessed;
 
@@ -253,8 +253,6 @@ export class BroadcasterHelpers {
 
     this.ctx.stats.queueDepth =
       this.ctx.eventQueue.length + this.ctx.highPriorityQueue.length;
-
-    await this.ctx.state.storage.put('distributionStats', this.ctx.stats);
   }
 
   generateEventId(): string {

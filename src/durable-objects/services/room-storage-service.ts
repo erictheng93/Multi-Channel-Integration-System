@@ -61,7 +61,8 @@ export class RoomStorageService {
    * This significantly reduces storage write frequency in high-message scenarios.
    */
   scheduleStorageWrite(): void {
-    this.ctx.storageFlushDeadline = Date.now() + this.ctx.STORAGE_WRITE_DEBOUNCE_MS;
+    // Fixed window, not sliding: steady traffic flushes every 5s and leaves the alarm untouched.
+    this.ctx.storageFlushDeadline ??= Date.now() + this.ctx.STORAGE_WRITE_DEBOUNCE_MS;
     this.scheduleNextAlarm().catch((error) => {
       testSafeError(`${getEmojiPrefix('ERROR')}[ConversationRoom] Alarm scheduling error:`, error);
     });
@@ -120,13 +121,26 @@ export class RoomStorageService {
       this.ctx.accessCheckDeadline
     ].filter((deadline): deadline is number => typeof deadline === 'number' && Number.isFinite(deadline));
 
+    // Skip the storage write when the alarm is already where it needs to be.
     if (deadlines.length === 0) {
-      if (typeof this.ctx.state.storage.deleteAlarm === 'function') {
+      if (this.ctx.alarmAt !== null && typeof this.ctx.state.storage.deleteAlarm === 'function') {
+        this.ctx.alarmAt = null;
         await this.ctx.state.storage.deleteAlarm();
       }
+      this.ctx.alarmAt = null;
       return;
     }
 
-    await this.ctx.state.storage.setAlarm(Math.min(...deadlines));
+    const next = Math.min(...deadlines);
+    if (next !== this.ctx.alarmAt) {
+      // Claimed before the await so concurrent callers (un-awaited per-message calls) see it.
+      this.ctx.alarmAt = next;
+      try {
+        await this.ctx.state.storage.setAlarm(next);
+      } catch (error) {
+        this.ctx.alarmAt = undefined;
+        throw error;
+      }
+    }
   }
 }
