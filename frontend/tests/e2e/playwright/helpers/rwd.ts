@@ -107,6 +107,12 @@ export function auditLayoutInPage(): LayoutAudit {
       !inClosedDrawer(el) &&
       !hiddenInput.test(String(el.className))
     ) {
+      // scrollWidth also counts decorative pseudo-elements (a loading shimmer that slides
+      // across an overflow:hidden button). Only the real content - text and child elements -
+      // is measured by a Range, so only content that does not fit is reported.
+      const content = document.createRange()
+      content.selectNodeContents(el)
+      if (content.getBoundingClientRect().width <= el.clientWidth + 8) { continue }
       clipped.push(`${label(el)} ${el.scrollWidth}>${el.clientWidth}`)
     }
   }
