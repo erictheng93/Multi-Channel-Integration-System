@@ -123,6 +123,7 @@
     { path: '/auto-reply', label: '\u81EA\u52D5\u56DE\u8986', icon: AutoReplyIcon },
     { path: '/activities', label: '\u6D3B\u52D5\u8A18\u9304', icon: ActivityIcon },
     { path: '/monitoring/api', label: 'API\u76E3\u63A7', icon: MonitorIcon },
+    { path: '/monitoring/websocket', label: 'WebSocket\u76E3\u63A7', icon: MonitorIcon },
     {
       path: '/settings',
       label: '\u7CFB\u7D71\u8A2D\u5B9A',

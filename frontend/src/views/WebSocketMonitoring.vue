@@ -1,237 +1,220 @@
 <template>
-  <div class="websocket-monitoring">
-    <h1>WebSocket 即時監控</h1>
+  <AppLayout>
+    <div class="websocket-monitoring">
+      <h1>WebSocket 即時監控</h1>
 
-    <!-- 即時指標 -->
-    <section class="realtime-metrics">
-      <h2>即時指標</h2>
-      <div class="metrics-grid">
-        <!-- 連線數 -->
-        <div class="metric-card primary">
-          <div class="metric-icon" />
-          <div class="metric-content">
-            <h3>活躍連線</h3>
-            <div class="metric-value">
-              {{ metrics?.activeConnections || 0 }}
+      <!-- 即時指標 -->
+      <section class="realtime-metrics">
+        <h2>即時指標</h2>
+        <div class="metrics-grid">
+          <!-- 連線數 -->
+          <div class="metric-card primary">
+            <div class="metric-icon" />
+            <div class="metric-content">
+              <h3>活躍連線</h3>
+              <div class="metric-value">
+                {{ metrics?.activeConnections || 0 }}
+              </div>
+              <div
+                class="metric-trend"
+                :class="getTrendClass(connectionTrend)"
+              >
+                {{ formatTrend(connectionTrend) }}
+              </div>
             </div>
-            <div
-              class="metric-trend"
-              :class="getTrendClass(connectionTrend)"
-            >
-              {{ formatTrend(connectionTrend) }}
+          </div>
+
+          <!-- 訊息吞吐量 -->
+          <div class="metric-card success">
+            <div class="metric-icon" />
+            <div class="metric-content">
+              <h3>訊息/秒</h3>
+              <div class="metric-value">
+                {{ fmt(metrics?.messagesPerSecond, 2) }}
+              </div>
+              <div class="metric-subtitle">
+                入站: {{ fmt(metrics?.messagesThroughput?.inbound, 2) }} /
+                出站: {{ fmt(metrics?.messagesThroughput?.outbound, 2) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 平均延遲 -->
+          <div class="metric-card warning">
+            <div class="metric-icon" />
+            <div class="metric-content">
+              <h3>平均延遲</h3>
+              <div class="metric-value">
+                {{ fmt(metrics?.averageLatency, 0) }}ms
+              </div>
+              <div
+                class="metric-status"
+                :class="getLatencyStatus(metrics?.averageLatency)"
+              >
+                {{ getLatencyLabel(metrics?.averageLatency) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 錯誤率 -->
+          <div class="metric-card danger">
+            <div class="metric-icon" />
+            <div class="metric-content">
+              <h3>錯誤率</h3>
+              <div class="metric-value">
+                {{ ((metrics?.errorRate || 0) * 100).toFixed(2) }}%
+              </div>
+              <div
+                class="metric-status"
+                :class="getErrorRateStatus(metrics?.errorRate)"
+              >
+                {{ getErrorRateLabel(metrics?.errorRate) }}
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
-        <!-- 訊息吞吐量 -->
-        <div class="metric-card success">
-          <div class="metric-icon" />
-          <div class="metric-content">
-            <h3>訊息/秒</h3>
-            <div class="metric-value">
-              {{ metrics?.messagesPerSecond || 0 }}
+      <!-- 連線類型分佈 -->
+      <section class="connection-distribution">
+        <h2>連線類型分佈</h2>
+        <div class="distribution-chart">
+          <div class="chart-item">
+            <div class="chart-label">
+              WebSocket
             </div>
-            <div class="metric-subtitle">
-              入站: {{ metrics?.messagesThroughput?.inbound || 0 }} /
-              出站: {{ metrics?.messagesThroughput?.outbound || 0 }}
+            <div class="chart-bar">
+              <div
+                class="chart-bar-fill websocket"
+                :style="{ width: getPercentage(metrics?.connectionsByType?.websocket) + '%' }"
+              />
+            </div>
+            <div class="chart-value">
+              {{ metrics?.connectionsByType?.websocket || 0 }}
             </div>
           </div>
-        </div>
 
-        <!-- 平均延遲 -->
-        <div class="metric-card warning">
-          <div class="metric-icon" />
-          <div class="metric-content">
-            <h3>平均延遲</h3>
-            <div class="metric-value">
-              {{ metrics?.averageLatency || 0 }}ms
+          <div class="chart-item">
+            <div class="chart-label">
+              SSE
             </div>
-            <div
-              class="metric-status"
-              :class="getLatencyStatus(metrics?.averageLatency)"
-            >
-              {{ getLatencyLabel(metrics?.averageLatency) }}
+            <div class="chart-bar">
+              <div
+                class="chart-bar-fill sse"
+                :style="{ width: getPercentage(metrics?.connectionsByType?.sse) + '%' }"
+              />
             </div>
-          </div>
-        </div>
-
-        <!-- 錯誤率 -->
-        <div class="metric-card danger">
-          <div class="metric-icon" />
-          <div class="metric-content">
-            <h3>錯誤率</h3>
-            <div class="metric-value">
-              {{ ((metrics?.errorRate || 0) * 100).toFixed(2) }}%
-            </div>
-            <div
-              class="metric-status"
-              :class="getErrorRateStatus(metrics?.errorRate)"
-            >
-              {{ getErrorRateLabel(metrics?.errorRate) }}
+            <div class="chart-value">
+              {{ metrics?.connectionsByType?.sse || 0 }}
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 連線類型分佈 -->
-    <section class="connection-distribution">
-      <h2>連線類型分佈</h2>
-      <div class="distribution-chart">
-        <div class="chart-item">
-          <div class="chart-label">
-            WebSocket
-          </div>
-          <div class="chart-bar">
-            <div
-              class="chart-bar-fill websocket"
-              :style="{ width: getPercentage(metrics?.connectionsByType?.websocket) + '%' }"
-            />
-          </div>
-          <div class="chart-value">
-            {{ metrics?.connectionsByType?.websocket || 0 }}
-          </div>
+      <!-- 歷史趨勢 -->
+      <section class="historical-trends">
+        <h2>歷史趨勢</h2>
+        <div class="trend-chart">
+          <canvas
+            ref="trendCanvas"
+            width="800"
+            height="300"
+          />
         </div>
-
-        <div class="chart-item">
-          <div class="chart-label">
-            SSE
-          </div>
-          <div class="chart-bar">
-            <div
-              class="chart-bar-fill sse"
-              :style="{ width: getPercentage(metrics?.connectionsByType?.sse) + '%' }"
-            />
-          </div>
-          <div class="chart-value">
-            {{ metrics?.connectionsByType?.sse || 0 }}
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Durable Objects 狀態 -->
-    <section class="durable-objects">
-      <h2>Durable Objects 狀態</h2>
-      <div class="do-grid">
-        <div
-          v-for="(count, name) in durableObjects"
-          :key="name"
-          class="do-card"
-        >
-          <h4>{{ formatDOName(name) }}</h4>
-          <div class="do-count">
-            {{ count }}
-          </div>
-          <div class="do-status active">
-            運行中
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 歷史趨勢 -->
-    <section class="historical-trends">
-      <h2>歷史趨勢</h2>
-      <div class="trend-chart">
-        <canvas
-          ref="trendCanvas"
-          width="800"
-          height="300"
-        />
-      </div>
-      <div class="trend-controls">
-        <button
-          :class="{ active: period === '1h' }"
-          @click="changePeriod('1h')"
-        >
-          1小時
-        </button>
-        <button
-          :class="{ active: period === '6h' }"
-          @click="changePeriod('6h')"
-        >
-          6小時
-        </button>
-        <button
-          :class="{ active: period === '24h' }"
-          @click="changePeriod('24h')"
-        >
-          24小時
-        </button>
-        <button
-          :class="{ active: period === '7d' }"
-          @click="changePeriod('7d')"
-        >
-          7天
-        </button>
-      </div>
-    </section>
-
-    <!-- 告警 -->
-    <section
-      v-if="alerts.length > 0"
-      class="alerts"
-    >
-      <h2>系統告警</h2>
-      <div class="alert-list">
-        <div
-          v-for="alert in alerts"
-          :key="alert.id"
-          class="alert-item"
-          :class="alert.severity"
-        >
-          <div class="alert-icon">
-            {{ getAlertIcon(alert.severity) }}
-          </div>
-          <div class="alert-content">
-            <h4>{{ alert.title }}</h4>
-            <p>{{ alert.message }}</p>
-            <div class="alert-time">
-              {{ formatTime(alert.timestamp) }}
-            </div>
-          </div>
+        <div class="trend-controls">
           <button
-            class="alert-dismiss"
-            @click="dismissAlert(alert.id)"
+            :class="{ active: period === '1h' }"
+            @click="changePeriod('1h')"
           >
-            ×
+            1小時
+          </button>
+          <button
+            :class="{ active: period === '6h' }"
+            @click="changePeriod('6h')"
+          >
+            6小時
+          </button>
+          <button
+            :class="{ active: period === '24h' }"
+            @click="changePeriod('24h')"
+          >
+            24小時
+          </button>
+          <button
+            :class="{ active: period === '7d' }"
+            @click="changePeriod('7d')"
+          >
+            7天
           </button>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 刷新控制 -->
-    <div class="controls">
-      <button
-        class="btn-refresh"
-        :disabled="isRefreshing"
-        @click="refreshData"
+      <!-- 告警 -->
+      <section
+        v-if="alerts.length > 0"
+        class="alerts"
       >
-        {{ isRefreshing ? '刷新中...' : ' 刷新資料' }}
-      </button>
-      <label class="auto-refresh">
-        <input
-          v-model="autoRefresh"
-          type="checkbox"
-        >
-        自動刷新 (每 5 秒)
-      </label>
-    </div>
+        <h2>系統告警</h2>
+        <div class="alert-list">
+          <div
+            v-for="alert in alerts"
+            :key="alert.id"
+            class="alert-item"
+            :class="alert.severity"
+          >
+            <div class="alert-icon">
+              {{ getAlertIcon(alert.severity) }}
+            </div>
+            <div class="alert-content">
+              <h4>{{ alert.title }}</h4>
+              <p>{{ alert.message }}</p>
+              <div class="alert-time">
+                {{ formatTime(alert.timestamp) }}
+              </div>
+            </div>
+            <button
+              class="alert-dismiss"
+              @click="dismissAlert(alert.id)"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      </section>
 
-    <!-- 錯誤訊息 -->
-    <div
-      v-if="error"
-      class="error-message"
-    >
-      {{ error }}
+      <!-- 刷新控制 -->
+      <div class="controls">
+        <button
+          class="btn-refresh"
+          :disabled="isRefreshing"
+          @click="refreshData"
+        >
+          {{ isRefreshing ? '刷新中...' : ' 刷新資料' }}
+        </button>
+        <label class="auto-refresh">
+          <input
+            v-model="autoRefresh"
+            type="checkbox"
+          >
+          自動刷新 (每 5 秒)
+        </label>
+      </div>
+
+      <!-- 錯誤訊息 -->
+      <div
+        v-if="error"
+        class="error-message"
+      >
+        {{ error }}
+      </div>
     </div>
-  </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { apiClient } from '@/api'
+import AppLayout from '@/components/ui/AppLayout.vue'
 
 interface Metrics {
   totalConnections: number
@@ -259,12 +242,6 @@ interface Alert {
 }
 
 const metrics = ref<Metrics | null>(null)
-const durableObjects = ref<Record<string, number>>({
-  ConversationRoom: 0,
-  UserConnection: 0,
-  MessageBroadcaster: 0,
-  DelayedMessageProcessor: 0
-})
 const connectionTrend = ref(0)
 const alerts = ref<Alert[]>([])
 const error = ref<string | null>(null)
@@ -306,19 +283,17 @@ async function refreshData() {
       apiClient.get('/websocket/health')
     ])
 
-    metrics.value = metricsRes.data as Metrics
-
-    // 模擬 Durable Objects 計數 (實際應該從 API 獲取)
-    durableObjects.value = {
-      ConversationRoom: Math.floor(Math.random() * 100),
-      UserConnection: metrics.value?.activeConnections || 0,
-      MessageBroadcaster: 1,
-      DelayedMessageProcessor: Math.floor(Math.random() * 10)
-    }
+    // GET /websocket/metrics -> { status, data: { connections, locks, ... } }. The page's flat
+    // Metrics shape is data.connections; the backend reports one rate for both directions.
+    const connections = (metricsRes.data as { connections?: Omit<Metrics, 'messagesPerSecond'> } | undefined)
+      ?.connections
+    metrics.value = connections
+      ? { ...connections, messagesPerSecond: connections.messagesThroughput?.inbound ?? 0 }
+      : null
 
     // 檢查告警條件
     if (metrics.value) {
-      checkAlerts(metrics.value, healthRes.data)
+      checkAlerts(metrics.value, healthRes)
     }
   } catch (err: unknown) {
     error.value = (err as {response?: {data?: {error?: string}}}).response?.data?.error || '無法載入監控資料'
@@ -397,6 +372,11 @@ function getPercentage(value?: number): number {
   return (value / total) * 100
 }
 
+/** The backend reports raw floats (0.0001414..., 451.79...): fixed digits keep cards from overflowing. */
+function fmt(value: number | undefined, digits = 0): string {
+  return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '0'
+}
+
 function getTrendClass(trend: number) {
   if (trend > 0) {return 'up'}
   if (trend < 0) {return 'down'}
@@ -437,10 +417,6 @@ function getErrorRateLabel(errorRate?: number) {
   return '警告'
 }
 
-function formatDOName(name: string) {
-  return name.replace(/([A-Z])/g, ' $1').trim()
-}
-
 function getAlertIcon(severity: string) {
   switch (severity) {
     case 'error': return ''
@@ -462,9 +438,11 @@ defineExpose({
 
 <style scoped>
 .websocket-monitoring {
+  /* AppLayout's .page-content is a flex column and already pads: max-width + auto margins alone
+     would size to content */
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
 }
 
 h1 {
@@ -514,6 +492,7 @@ section {
 
 .metric-content {
   flex: 1;
+  min-width: 0;
 }
 
 .metric-content h3 {
@@ -526,6 +505,7 @@ section {
   font-size: 2rem;
   font-weight: bold;
   color: #333;
+  overflow-wrap: anywhere;
 }
 
 .metric-trend {
@@ -747,6 +727,7 @@ section {
 /* 控制按鈕 */
 .controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   align-items: center;
   margin-top: 2rem;
