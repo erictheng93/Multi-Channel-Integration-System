@@ -240,6 +240,14 @@ defineExpose({
   transition: all var(--transition-fast);
 }
 
+/* Touch: the 32px close button is below the 44px finger target. */
+@media (pointer: coarse) {
+  .modal-close-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
 .modal-close-btn:hover {
   background-color: var(--gray-100);
   color: var(--gray-700);
