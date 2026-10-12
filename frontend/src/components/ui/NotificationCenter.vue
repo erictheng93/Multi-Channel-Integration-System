@@ -388,8 +388,9 @@ defineExpose({ open, close, toggle, isOpen })
   gap: 4px;
   padding: 4px 10px;
   border-radius: 9999px;
-  background: var(--warning-50, #FFF4E5);
-  color: var(--warning-600, #C93400);
+  /* iOS 系統橘 #FF9500 淡底:暫停是需要被注意到的狀態,--warning-50 在白色頂部列上幾乎看不見 */
+  background: rgb(255 149 0 / 0.14);
+  color: #A64B00;
   font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
