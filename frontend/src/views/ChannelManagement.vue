@@ -295,6 +295,7 @@ const {
 <style scoped>
 .channel-management {
   padding: var(--space-6);
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
 }

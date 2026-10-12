@@ -357,6 +357,7 @@ onMounted(() => {
 
 <style scoped>
 .report-generator {
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;

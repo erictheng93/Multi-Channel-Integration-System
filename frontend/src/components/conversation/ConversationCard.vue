@@ -516,8 +516,9 @@ const formatTime = (date: Date | string | number) => {
 /* Status Row */
 .status-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   margin-top: 4px;
 }
 
