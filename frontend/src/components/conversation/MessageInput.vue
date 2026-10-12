@@ -847,6 +847,13 @@ const props = defineProps<Props>()
       padding: var(--space-1) var(--space-2);
     }
 
+    /* a textarea keeps its intrinsic (cols) width as min-content: let the row shrink so the
+       send button stays on screen at 320px */
+    .input-wrapper,
+    .message-textarea {
+      min-width: 0;
+    }
+
     .input-actions {
       gap: 2px;
     }
