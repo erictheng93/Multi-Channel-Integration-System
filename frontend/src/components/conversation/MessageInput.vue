@@ -820,12 +820,17 @@ const props = defineProps<Props>()
       height: 18px;
     }
 
+    /* Bottom sheet pinned to the viewport edge: no dependence on the input bar height,
+       which changes with multi-line text, attachments and the on-screen keyboard. */
     .emoji-picker-popup {
       position: fixed;
-      bottom: 60px;
+      bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
       left: var(--space-2);
       right: var(--space-2);
       margin-bottom: 0;
+      max-height: 50vh;
+      max-height: 50dvh;
+      overflow-y: auto;
       z-index: 9999;
     }
 
@@ -875,7 +880,6 @@ const props = defineProps<Props>()
     }
 
     .emoji-picker-popup {
-      bottom: 50px;
       left: var(--space-1);
       right: var(--space-1);
     }
