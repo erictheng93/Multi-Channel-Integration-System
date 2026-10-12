@@ -217,6 +217,7 @@ import ForcedPasswordChange from '@/components/auth/ForcedPasswordChange.vue'
 import FormField from '@/components/auth/FormField.vue'
 import ThemeToggle from '@/components/auth/ThemeToggle.vue'
 import { ROLES } from '@/constants/roles'
+import { validateLoginEmail, validateLoginPassword } from '@/utils/login-validation'
 
 // ===== Composables =====
 const { login, loading, error, clearError } = useAuth()
@@ -258,25 +259,11 @@ const passwordTouched = ref(false)
 const formSubmitted = ref(false)
 
 // ===== Form Validators =====
-setValidator('email', (value) => {
-  if (!value || value === '') {
-    return '請輸入電子郵件'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-    return '請輸入有效的電子郵件格式'
-  }
-  return null
-})
+setValidator('email', (value) => validateLoginEmail(value))
 
-setValidator('password', (value) => {
-  if (!value || value === '') {
-    return '請輸入密碼'
-  } else if (value.length < 8) {
-    return '密碼至少需要 8 個字元'
-  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
-    return '密碼必須包含大小寫字母和數字'
-  }
-  return null
-})
+// Only "required": password composition rules apply when a password is created or changed,
+// not when logging in with an existing one (see utils/login-validation.ts).
+setValidator('password', (value) => validateLoginPassword(value))
 
 // ===== Password Change Modal =====
 const showForcedPasswordChange = ref(false)
