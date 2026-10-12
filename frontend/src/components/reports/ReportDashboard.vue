@@ -304,7 +304,7 @@ function handleFilterByType(type: string) {
 
 .main-content {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 2rem;
 }
 
@@ -322,7 +322,7 @@ function handleFilterByType(type: string) {
 /* 響應式設計 */
 @media (max-width: 1280px) {
   .main-content {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .content-right {
