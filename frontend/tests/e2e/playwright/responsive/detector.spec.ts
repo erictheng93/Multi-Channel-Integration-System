@@ -55,6 +55,25 @@ test.describe('layout detector', () => {
     expect(audit.rawValues).toEqual(['0.0001414069537075366', 'NaN'])
   })
 
+  test('does not flag a decorative pseudo-element clipped inside an overflow:hidden button', async ({ page }) => {
+    // the loading shimmer on RefreshButton: ::before slides across, the label itself fits
+    await page.setContent(`${RESET}
+      <style>
+        .shimmer { position: relative; overflow: hidden; }
+        .shimmer::before { content: ''; position: absolute; left: 0; top: 0; width: 400px; height: 100%; transform: translateX(100%); }
+      </style>
+      <button class="shimmer" style="width:128px">refreshing</button>`)
+    const audit = await page.evaluate(auditLayoutInPage)
+    expect(audit.clipped).toEqual([])
+  })
+
+  test('still flags real content cut by overflow:hidden without an ellipsis', async ({ page }) => {
+    await page.setContent(`${RESET}
+      <div class="cut" style="width:60px;overflow:hidden;white-space:nowrap">a label that does not fit and is silently cut</div>`)
+    const audit = await page.evaluate(auditLayoutInPage)
+    expect(audit.clipped.join()).toContain('cut')
+  })
+
   test('passes a layout that wraps, scrolls or truncates on purpose', async ({ page }) => {
     await page.setContent(`${RESET}
       <div style="display:flex;flex-wrap:wrap;gap:8px"><button>A</button><button>B</button><button>C</button></div>
