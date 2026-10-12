@@ -64,6 +64,7 @@
           :get-activity-icon="getActivityIcon"
           :format-time="formatTime"
           :loading="loading"
+          :show-view-all-link="isAdmin"
           @reconnect="reconnectActivityStream"
         />
       </div>
@@ -155,7 +156,7 @@ import {
 import { ChatIcon, UserIcon, MessageCircleIcon } from '@/components/icons'
 
 const router = useRouter()
-const { currentAgent } = useAuth()
+const { currentAgent, isAdmin } = useAuth()
 
 // LCP 優化：初始載入狀態 - 用於顯示骨架屏
 const isInitialLoading = ref(true)
