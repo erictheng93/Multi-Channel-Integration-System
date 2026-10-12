@@ -198,6 +198,7 @@ onUnmounted(() => {
 <style scoped>
 /* ==================== Page Layout ==================== */
 .customer-tags {
+  width: 100%;
   max-width: clamp(1200px, 85vw, 1650px);
   margin: 0 auto;
   padding: clamp(1rem, 2vw, 2rem) clamp(0.5rem, 2vw, 1.5rem);
