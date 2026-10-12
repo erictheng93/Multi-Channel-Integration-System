@@ -126,6 +126,7 @@ onMounted(() => {
 <style>
 #app {
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background-color: #f9fafb !important; /* 固定背景顏色，不受主題影響 */
 }

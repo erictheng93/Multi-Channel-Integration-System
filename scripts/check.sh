@@ -126,6 +126,18 @@ run_frontend_checks() {
     TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
   fi
 
+  # 4. Breakpoint scale guard
+  echo -e "
+  Checking breakpoint scale..."
+  BP_OUT=$("$BUN_CMD" run lint:breakpoints 2>&1)
+  if [ $? -eq 0 ]; then
+    print_pass "Breakpoint scale guard"
+  else
+    print_fail "Breakpoint scale guard"
+    echo "$BP_OUT" | head -20 | sed 's/^/    /'
+    TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+  fi
+
   cd ..
 }
 

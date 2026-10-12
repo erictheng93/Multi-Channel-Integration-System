@@ -360,18 +360,6 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-/* 低解析度筆電特殊優化 (1080x720等) */
-@media (min-width: 1025px) and (max-width: 1119px) {
-  .dashboard {
-    padding: 1rem 0;
-  }
-
-  .content-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-}
-
 /* Responsive Design */
 @media (max-width: 1024px) {
   .dashboard {
@@ -390,7 +378,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media (max-width: 320px) {
+@media (max-width: 480px) {
   .dashboard {
     padding: var(--space-2) 0;
   }

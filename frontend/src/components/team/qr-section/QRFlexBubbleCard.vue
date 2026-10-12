@@ -243,7 +243,7 @@ const handleImageError = () => {
 }
 
 /* Small Mobile */
-@media (max-width: 375px) {
+@media (max-width: 480px) {
   .flex-bubble {
     max-width: 100%;
     border-radius: 14px;

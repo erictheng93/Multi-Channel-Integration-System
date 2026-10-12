@@ -363,7 +363,7 @@ const canDelete = computed(() => {
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
   .report-row {
     grid-template-columns: 60px 1fr 120px 90px 120px 90px 90px;
     gap: 0.75rem;

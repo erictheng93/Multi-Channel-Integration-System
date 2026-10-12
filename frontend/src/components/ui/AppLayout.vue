@@ -175,6 +175,7 @@
   .app-layout {
     display: flex;
     height: 100vh;
+    height: 100dvh;
     background-color: #f9fafb !important;
   }
 
@@ -243,11 +244,11 @@
   /* Mobile Menu Button */
   .mobile-menu-btn {
     position: fixed;
-    top: 20px;
-    left: 20px;
+    top: calc(8px + env(safe-area-inset-top));
+    left: calc(12px + env(safe-area-inset-left));
     z-index: 25;
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border: none;
     background: white;
     border-radius: var(--radius-xl);
@@ -328,11 +329,11 @@
   @media (max-width: 768px) {
     .main-content {
       margin-left: 0;
-      padding-top: 80px;
     }
 
     .page-content {
       padding: var(--space-4);
+      padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
     }
 
     .sidebar {
@@ -341,6 +342,8 @@
       left: -240px;
       bottom: 0;
       width: 240px;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
       z-index: 20;
       transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 0 0 0 rgba(0, 0, 0, 0);

@@ -150,12 +150,24 @@ const handleSelect = (reply: QuickReply) => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  /* One swipeable row instead of up to 3 wrapped rows eating the chat area */
   .quick-replies {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
     gap: 0.375rem;
     padding: 0.375rem 0;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .quick-replies::-webkit-scrollbar {
+    display: none;
   }
 
   .quick-reply-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
     padding: 0.375rem 0.75rem;
     font-size: 0.75rem;
   }

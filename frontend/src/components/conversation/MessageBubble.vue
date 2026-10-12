@@ -38,7 +38,7 @@
         >
           <div
             class="image-placeholder"
-            style="width: 300px; max-height: 400px"
+            style="width: min(300px, 100%); max-height: 400px"
           >
             <img
               :src="resolvedAttachmentUrl"

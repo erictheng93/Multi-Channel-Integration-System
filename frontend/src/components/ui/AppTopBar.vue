@@ -76,9 +76,13 @@
     color: var(--gray-600);
   }
 
+  /* The fixed hamburger (44px at left 12px) sits inside the bar, so reserve its width
+     and make the bar tall enough to center it. */
   @media (max-width: 768px) {
     .top-bar {
-      padding-left: 80px;
+      min-height: 60px;
+      padding: var(--space-2) var(--space-4) var(--space-2) 68px;
+      padding-top: calc(var(--space-2) + env(safe-area-inset-top));
     }
   }
 </style>
