@@ -551,6 +551,7 @@ watch(
 }
 
 .form-label {
+  margin-bottom: 0; /* spacing comes from the field gap; the global .form-label margin would double it */
   font-size: 13px;
   font-weight: 500;
   color: #1c1c1e;
