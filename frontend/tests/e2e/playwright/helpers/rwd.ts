@@ -30,6 +30,8 @@ export const ROUTES = [
   '/reports/templates',
   '/reports/generate',
   '/auto-reply',
+  '/monitoring/api',
+  '/monitoring/websocket',
   '/profile',
 ] as const
 
