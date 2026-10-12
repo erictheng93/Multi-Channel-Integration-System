@@ -464,6 +464,8 @@ defineExpose({
 .back-button {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border: 1px solid var(--border-color);
