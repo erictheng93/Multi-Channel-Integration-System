@@ -167,8 +167,9 @@ The repo splits safety checks into a **fast pre-commit** and a **full pre-push**
 
 - `lint:breakpoints` (every `@media` width must be on the scale in `frontend/src/config/breakpoints.ts`; also a CI step)
 - `lint:scoped-btn` (global `.btn` system guard; also a CI step)
+- `lint:page-roots` (a routed page root with `max-width` + auto margins needs `width: 100%`; also a CI step)
 
-All six run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
+All seven run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
 
 **`.husky/pre-push`** (~105s warm, ~340s cold) — full correctness gate, parallel:
 - `bunx tsc --noEmit` (backend, incremental via `tsBuildInfoFile`)
