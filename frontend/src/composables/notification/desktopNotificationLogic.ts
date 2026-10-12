@@ -32,7 +32,38 @@ export interface NotificationDecisionInput {
   /** 使用者目前開啟中的對話 ID;僅當 isTabVisible 為 true 且等於本次事件的 conversationId 時才抑制通知 */
   currentConversationId: string | null
   lastNotifiedAt?: number
+  /** 暫停通知到此時間戳(含音效);null/undefined 或已過期代表未暫停 */
+  pausedUntil?: number | null
   now: number
+}
+
+export function isPaused(pausedUntil: number | null | undefined, now: number): boolean {
+  return typeof pausedUntil === 'number' && now < pausedUntil
+}
+
+/** 「至 09:00」:下一個本地時間 09:00(凌晨 2 點按下 → 當天 09:00,不是隔天) */
+export function nextNineAm(now: number): number {
+  const target = new Date(now)
+  target.setHours(9, 0, 0, 0)
+  if (target.getTime() <= now) {
+    target.setDate(target.getDate() + 1)
+  }
+  return target.getTime()
+}
+
+/** 暫停到期時間的顯示文字:今天只顯示 HH:mm,其他日子加「明天」/日期 */
+export function formatPausedUntil(pausedUntil: number, now: number): string {
+  const until = new Date(pausedUntil)
+  const time = `${String(until.getHours()).padStart(2, '0')}:${String(until.getMinutes()).padStart(2, '0')}`
+  const today = new Date(now)
+  if (until.toDateString() === today.toDateString()) {
+    return time
+  }
+  today.setDate(today.getDate() + 1)
+  if (until.toDateString() === today.toDateString()) {
+    return `明天 ${time}`
+  }
+  return `${until.getMonth() + 1}/${until.getDate()} ${time}`
 }
 
 export function shouldNotify(input: NotificationDecisionInput): boolean {
@@ -49,6 +80,10 @@ export function shouldNotify(input: NotificationDecisionInput): boolean {
     return false
   }
   if (input.permission !== 'granted') {
+    return false
+  }
+  // 每則訊息到達時才比較時間,到期即自動恢復,不需計時器
+  if (isPaused(input.pausedUntil, input.now)) {
     return false
   }
 

@@ -64,6 +64,7 @@ export function createNewMessageHandler(deps: DesktopNotificationDeps): (_messag
         isTabVisible: deps.isTabVisible(),
         currentConversationId: deps.getCurrentConversationId(),
         lastNotifiedAt: lastNotifiedAt.get(conversationId),
+        pausedUntil: deps.prefs.pausedUntil,
         now: deps.now()
       })
       if (!notify) {
