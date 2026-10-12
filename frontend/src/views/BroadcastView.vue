@@ -144,7 +144,7 @@ async function fetchCurrentRecipients() {
   gap: var(--space-6);
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 1280px) {
   .page-grid {
     grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
     align-items: start;

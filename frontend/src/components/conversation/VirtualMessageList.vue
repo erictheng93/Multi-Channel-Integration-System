@@ -736,7 +736,7 @@ defineExpose({
 }
 
 /* Large Screens */
-@media (min-width: 1440px) {
+@media (min-width: 1280px) {
   .message-item {
     padding: 0.625rem 2rem;
     max-width: 1200px;

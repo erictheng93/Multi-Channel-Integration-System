@@ -5,6 +5,7 @@
  * Pattern matches useConfirmDialog.ts singleton approach.
  */
 import { shallowRef, ref } from 'vue'
+import { isPhoneWidth, isTabletWidth } from '@/config/breakpoints'
 
 // ── Module-level singleton state (shared across all callers) ──
 const sidebarCollapsed = shallowRef(false)
@@ -24,7 +25,7 @@ function handleResize() {
 
   resizeTimeout = setTimeout(() => {
     const width = window.innerWidth
-    const newIsMobile = width <= 768
+    const newIsMobile = isPhoneWidth(width)
 
     if (isMobile.value !== newIsMobile) {
       isMobile.value = newIsMobile
@@ -35,14 +36,14 @@ function handleResize() {
       sidebarCollapsed.value = false
       isAutoCollapsed.value = false
     } else {
-      if (width >= 1025) {
+      if (!isTabletWidth(width)) {
         // Large screens: restore from auto-collapse
         if (isAutoCollapsed.value) {
           sidebarCollapsed.value = false
           isAutoCollapsed.value = false
         }
       } else {
-        // Medium screens (769-1024): auto-collapse
+        // Tablet screens (769-1024): auto-collapse
         if (!sidebarCollapsed.value || isAutoCollapsed.value) {
           sidebarCollapsed.value = true
           isAutoCollapsed.value = true
