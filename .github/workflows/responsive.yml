@@ -85,6 +85,11 @@ jobs:
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "::notice::E2E_EMAIL / E2E_PASSWORD are not set: the route sweep is skipped."
+            # A nightly or manual run that silently does nothing is worse than a red one.
+            if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error::The scheduled route sweep has no test account (E2E_EMAIL / E2E_PASSWORD secrets)."
+              exit 1
+            fi
           fi
 
       - name: Checkout repository
