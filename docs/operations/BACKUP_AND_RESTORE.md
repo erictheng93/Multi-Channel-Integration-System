@@ -7,10 +7,12 @@
 
 - **Automated daily backups** run via GitHub Actions (`.github/workflows/backup.yml`),
   03:00 Asia/Taipei, **off the production worker** (zero risk to the live app).
-- Backups land in **R2 bucket `mcis-backups`** and as **GitHub artifacts** (an
-  off-Cloudflare copy that survives an account-level teardown).
-- **One manual setup step remains**: add the R2 lifecycle (retention) rules in the
-  dashboard — see [Action required](#action-required-set-r2-lifecycle-rules).
+- Backups are gzip-compressed (`.sql.gz`) and land in **R2 bucket `mcis-backups`**.
+- **There is no off-Cloudflare copy yet.** GitHub artifacts were removed on
+  2026-10-12 because this repo is public and the dumps contain customer data and
+  agent credentials. An account-level teardown would take every copy with it until
+  a private external store is added (see [Known gaps](#known-gaps)).
+- R2 lifecycle (retention) rules are set on the bucket — see [Retention](#retention--grandfather-father-son-gfs).
 
 ## What is backed up
 
@@ -22,7 +24,9 @@ Each run produces:
 | Platform members | `members/` | `agents`, `teams`, `agent_teams` | Staff Management (人員管理) + Team Settings (團隊設置) |
 | Customer tags | `tags/` | `tags`, `customer_tags`, `conversation_tags` | Customer Tags (客戶標籤管理, `/tags`) |
 | Team assignments | `assignments/` | `conversations` (`assigned_team_id`), `customer_team_assignments`, `conversation_transfers` | conversation→team routing |
-| Off-Cloudflare copy | GitHub artifact (90 days) | full dump + members + tags + assignments | — |
+
+Objects written by the workflow are `*.sql.gz`. Objects under `manual/` (in-app
+button) and any dump taken before 2026-10-12 are plain `.sql`.
 
 The focused `members/` and `tags/` dumps are also inside the full dump; they are
 kept separately for **fast, targeted restore** of the small, critical config data.
@@ -32,7 +36,8 @@ kept separately for **fast, targeted restore** of the small, critical config dat
 - **When:** daily `cron: '0 19 * * *'` (19:00 UTC = 03:00 Asia/Taipei). Manual run
   via GitHub → Actions → "D1 Backup" → "Run workflow".
 - **How:** `wrangler d1 export` (the same proven tool used for the recovery), then
-  `wrangler r2 object put` to `mcis-backups`, plus a GitHub artifact upload.
+  `gzip -9` + `gzip -t`, then `wrangler r2 object put` to `mcis-backups`. Every run
+  is a **full** snapshot, not incremental, so any single file restores on its own.
 - **Auth:** repo secrets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (shared
   with `ci-cd.yml`). The token must have **D1:read** (export) and **R2:write**.
 
@@ -49,25 +54,33 @@ window, not storage.
 | `tags/` | 365 days | tag config snapshots for a year |
 | `assignments/` | 365 days | conversation→team routing snapshots for a year |
 | `manual/` | 90 days | on-demand admin backups (in-app button) |
-| GitHub artifact | 90 days | off-Cloudflare safety net |
 
-## Action required: set R2 lifecycle rules
+### R2 lifecycle rules (applied 2026-10-12)
 
-The backup CI token cannot manage R2 lifecycle, so these are set once in the
-dashboard. **Until added, nothing breaks** — backups just accumulate (trivial
-size); the rules only automate cleanup.
+Rules are **per prefix** — never one rule over the whole bucket, or `monthly/`
+would be deleted at 30 days too. The backup CI token cannot manage lifecycle;
+use an interactive `wrangler` login:
 
+```bash
+bunx wrangler r2 bucket lifecycle list mcis-backups     # verify
+bunx wrangler r2 bucket lifecycle add mcis-backups daily-30d       daily/       --expire-days 30
+bunx wrangler r2 bucket lifecycle add mcis-backups monthly-365d    monthly/     --expire-days 365
+bunx wrangler r2 bucket lifecycle add mcis-backups members-365d    members/     --expire-days 365
+bunx wrangler r2 bucket lifecycle add mcis-backups tags-365d       tags/        --expire-days 365
+bunx wrangler r2 bucket lifecycle add mcis-backups assignments-365d assignments/ --expire-days 365
+bunx wrangler r2 bucket lifecycle add mcis-backups manual-90d      manual/      --expire-days 90
 ```
-Cloudflare dashboard → R2 → mcis-backups → Settings → Object lifecycle rules
-→ Add rule (×4):
 
-  Rule 1:  prefix "daily/"        · Delete objects · 30 days
-  Rule 2:  prefix "monthly/"      · Delete objects · 365 days
-  Rule 3:  prefix "members/"      · Delete objects · 365 days
-  Rule 4:  prefix "tags/"         · Delete objects · 365 days
-  Rule 5:  prefix "assignments/"  · Delete objects · 365 days
-  Rule 6:  prefix "manual/"       · Delete objects · 90 days
-```
+A new rule applies to objects that already exist, by age, so adding `daily-30d`
+deletes every `daily/` object older than 30 days at once.
+
+## Known gaps
+
+- **No off-Cloudflare copy.** R2 in the same account shares the failure domain of
+  the 2026-06-17 incident. Add a private S3-compatible store (rclone from a
+  scheduled workflow). Never use a public-repo GitHub artifact for these files.
+- **Media bucket `mcis-files` is not backed up.**
+- No automated restore drill and no failure notification on the workflow.
 
 ## Manual backup — in-app (admin)
 
@@ -94,9 +107,10 @@ bunx wrangler d1 export mcis-db --remote --table tags --table customer_tags --ta
 bunx wrangler d1 export mcis-db --remote --table conversations --table customer_team_assignments --table conversation_transfers \
   --output ./backups/assignments-$(date +%F).sql
 
-# Push a copy to R2
-bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql" \
-  --file=./backups/mcis-db-$(date +%F).sql --remote
+# Push a copy to R2 (compress first, matching the workflow)
+gzip -9 ./backups/mcis-db-$(date +%F).sql
+bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql.gz" \
+  --file=./backups/mcis-db-$(date +%F).sql.gz --content-type=application/gzip --remote
 ```
 
 > Local dumps live in `backups/` (gitignored — they contain customer PII). Keep at
@@ -108,8 +122,9 @@ bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql" \
 
 1. Download the chosen backup from R2:
    ```bash
-   bunx wrangler r2 object get "mcis-backups/daily/mcis-db-YYYY-MM-DD.sql" \
-     --file=./restore.sql --remote
+   bunx wrangler r2 object get "mcis-backups/daily/mcis-db-YYYY-MM-DD.sql.gz" \
+     --file=./restore.sql.gz --remote
+   gunzip ./restore.sql.gz        # skip for plain .sql objects (manual/, pre-2026-10-12)
    ```
 2. If the database no longer exists, recreate and re-point:
    ```bash
@@ -128,5 +143,8 @@ bunx wrangler r2 object put "mcis-backups/daily/mcis-db-$(date +%F).sql" \
 
 - The R2 data bucket `mcis-files` (uploaded media) is **separate** from
   `mcis-backups`. Never store backups in the data bucket.
-- R2-in-the-same-account shares the failure domain that caused the incident — the
-  GitHub artifact (and any copy you keep off-machine) is the real isolation tier.
+- R2-in-the-same-account shares the failure domain that caused the incident. Until
+  a private external copy exists, keep at least one recent dump off this machine
+  and off Cloudflare yourself.
+- This repo is **public**. Anything uploaded as a workflow artifact or committed
+  is world-readable; the dumps contain PII and must stay out of both.
