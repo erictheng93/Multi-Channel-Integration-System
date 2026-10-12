@@ -319,7 +319,7 @@ function handleFilterByType(type: string) {
 }
 
 /* 響應式設計 */
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
   .main-content {
     grid-template-columns: 1fr;
   }
