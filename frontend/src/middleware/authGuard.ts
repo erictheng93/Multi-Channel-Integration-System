@@ -62,6 +62,19 @@ export function guestGuard(
 }
 
 /**
+ * Whether the router's short-lived auth cache may admit a navigation without running the full
+ * guard. Admin routes never take the shortcut: the cache only remembers "authenticated", so
+ * using it there let any logged-in agent open an admin page by URL (meta.requiresAdmin was
+ * declared on 14 routes but read nowhere).
+ */
+export function authCacheCanAdmit(
+  cache: { isAuthenticated: boolean; requiresAuth: boolean },
+  meta: Readonly<Record<PropertyKey, unknown>>
+): boolean {
+  return cache.isAuthenticated && cache.requiresAuth && meta.requiresAdmin !== true
+}
+
+/**
  * 組合認證守衛 - 結合多個守衛的邏輯
  * 修復無限刷新問題：等待 initializeSession 完成後再判斷
  *
@@ -112,6 +125,15 @@ export async function combinedAuthGuard(
       next('/login')
       return false
     }
+
+    // Role gate: routes declared with meta.requiresAdmin are for administrators only.
+    // Agents are sent to the dashboard (what adminGuard documents).
+    if (to.meta.requiresAdmin && !authStore.isAdmin) {
+      frontendLogger.debug(' Admin route requested by a non-admin, redirecting to dashboard')
+      next('/dashboard')
+      return true
+    }
+
     frontendLogger.debug(' Authenticated, allowing access')
     next()
     return true

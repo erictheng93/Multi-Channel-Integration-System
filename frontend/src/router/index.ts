@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { combinedAuthGuard } from '@/middleware/authGuard'
+import { combinedAuthGuard, authCacheCanAdmit } from '@/middleware/authGuard'
 import { createLogger } from '@/utils/logger'
 
 const frontendLogger = createLogger('index')
@@ -361,7 +361,7 @@ router.beforeEach(async (to, from, next) => {
       return
     }
 
-    if (authStateCache.isAuthenticated && authStateCache.requiresAuth) {
+    if (authCacheCanAdmit(authStateCache, to.meta)) {
       // User was authenticated recently - allow immediately
       frontendLogger.debug('[Router Cache] Using cached auth state, allowing...')
       next()
