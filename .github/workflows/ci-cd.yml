@@ -69,6 +69,16 @@ jobs:
       - name: Check for unsafe sql.raw usage
         run: bun run check:sql-raw:ci
 
+      # Every @media width must come from frontend/src/config/breakpoints.ts so
+      # layouts switch at one shared set of widths instead of ad-hoc numbers.
+      - name: Check responsive breakpoint scale
+        run: cd frontend && bun run lint:breakpoints
+
+      # The global .btn system must not be redefined in component styles, and a
+      # modifier (.btn-primary) must always ship with the base .btn class.
+      - name: Check button class system
+        run: cd frontend && bun run lint:scoped-btn
+
   # ===========================================================================
   # 1b. Schema doc freshness
   # ===========================================================================

@@ -247,6 +247,20 @@
     border-radius: 0.875rem;
   }
 
+  /* Touch: a finger needs a 44px target (Apple HIG). Gated on coarse pointers so the dense
+     desktop layouts keep their compact size; component rules may still go higher. */
+  @media (pointer: coarse) {
+    .btn {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    .form-input,
+    .form-select {
+      min-height: 44px;
+    }
+  }
+
   /* Card Component */
   .card {
     @apply bg-white rounded-lg shadow-sm border border-gray-200;

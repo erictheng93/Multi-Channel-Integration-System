@@ -56,7 +56,8 @@
     "test:e2e:headed": "bunx playwright test --headed",
     "test:e2e:ui": "bunx playwright test --ui",
     "test:e2e:auth": "bunx playwright test tests/e2e/playwright/auth",
-    "test:e2e:routing": "bunx playwright test tests/e2e/playwright/routing"
+    "test:e2e:routing": "bunx playwright test tests/e2e/playwright/routing",
+    "test:e2e:responsive": "bunx playwright test tests/e2e/playwright/responsive"
   },
   "overrides": {
     "brace-expansion": "^5.0.6",
