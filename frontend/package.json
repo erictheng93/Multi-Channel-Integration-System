@@ -31,6 +31,7 @@
     "lint:production": "bun scripts/lint-production.ts",
     "lint:scoped-btn": "bun scripts/check-scoped-btn.ts",
     "lint:breakpoints": "bun scripts/check-breakpoints.ts",
+    "lint:page-roots": "bun scripts/check-page-roots.ts",
     "build:analyze": "ANALYZE=true bun run build",
     "build:report": "bunx tsx scripts/build-analysis.ts",
     "build:perf": "vite build --config vite.config.performance.ts",

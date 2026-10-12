@@ -79,6 +79,11 @@ jobs:
       - name: Check button class system
         run: cd frontend && bun run lint:scoped-btn
 
+      # A routed page root with max-width + auto margins and no width shrink-wraps its
+      # content inside the flex-column page container (found on 10 pages).
+      - name: Check page root sizing
+        run: cd frontend && bun run lint:page-roots
+
   # ===========================================================================
   # 1b. Schema doc freshness
   # ===========================================================================

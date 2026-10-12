@@ -18,6 +18,8 @@ LOG_BP="$TMPDIR/mcis-precommit-breakpoints.log"
 EXIT_BP="$TMPDIR/mcis-precommit-breakpoints.exit"
 LOG_BTN="$TMPDIR/mcis-precommit-scoped-btn.log"
 EXIT_BTN="$TMPDIR/mcis-precommit-scoped-btn.exit"
+LOG_ROOTS="$TMPDIR/mcis-precommit-page-roots.log"
+EXIT_ROOTS="$TMPDIR/mcis-precommit-page-roots.exit"
 
 START=$(date +%s)
 
@@ -68,8 +70,15 @@ PID_BP=$!
 ) &
 PID_BTN=$!
 
-# Wait for all six to finish
-wait $PID_IMPORT $PID_ROUTES $PID_SQL $PID_SECRETS $PID_BP $PID_BTN
+# Job 7: Page roots must not shrink-wrap inside the flex-column page container
+(
+  (cd frontend && bun run lint:page-roots) > "$LOG_ROOTS" 2>&1
+  echo $? > "$EXIT_ROOTS"
+) &
+PID_ROOTS=$!
+
+# Wait for all seven to finish
+wait $PID_IMPORT $PID_ROUTES $PID_SQL $PID_SECRETS $PID_BP $PID_BTN $PID_ROOTS
 
 END=$(date +%s)
 ELAPSED=$((END - START))
@@ -125,6 +134,14 @@ if [ "$(cat "$EXIT_BTN")" != "0" ]; then
   echo "── Button system check ────────────────────────────"
   cat "$LOG_BTN"
   echo "The .btn system lives only in frontend/src/style.css; see CLAUDE.md 'Button System'."
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_ROOTS")" != "0" ]; then
+  echo ""
+  echo "── Page root sizing check ─────────────────────────"
+  cat "$LOG_ROOTS"
+  echo "A routed page root with max-width + auto margins needs width: 100% (flex-column .page-content)."
   FAIL=1
 fi
 
