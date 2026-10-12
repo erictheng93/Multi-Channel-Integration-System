@@ -14,6 +14,8 @@ EXIT_ROUTES="$TMPDIR/mcis-precommit-routes.exit"
 EXIT_SQL="$TMPDIR/mcis-precommit-sql.exit"
 LOG_SECRETS="$TMPDIR/mcis-precommit-secrets.log"
 EXIT_SECRETS="$TMPDIR/mcis-precommit-secrets.exit"
+LOG_BP="$TMPDIR/mcis-precommit-breakpoints.log"
+EXIT_BP="$TMPDIR/mcis-precommit-breakpoints.exit"
 
 START=$(date +%s)
 
@@ -50,8 +52,15 @@ PID_SQL=$!
 ) &
 PID_SECRETS=$!
 
-# Wait for all four to finish
-wait $PID_IMPORT $PID_ROUTES $PID_SQL $PID_SECRETS
+# Job 5: Responsive breakpoint scale (frontend/src/config/breakpoints.ts)
+(
+  (cd frontend && bun run lint:breakpoints) > "$LOG_BP" 2>&1
+  echo $? > "$EXIT_BP"
+) &
+PID_BP=$!
+
+# Wait for all five to finish
+wait $PID_IMPORT $PID_ROUTES $PID_SQL $PID_SECRETS $PID_BP
 
 END=$(date +%s)
 ELAPSED=$((END - START))
@@ -91,6 +100,14 @@ if [ "$(cat "$EXIT_SECRETS")" != "0" ]; then
   cat "$LOG_SECRETS"
   echo "Possible secret in staged changes. Move it to an env var or wrangler secret."
   echo "False positive? Add an allowlist entry to .gitleaks.toml"
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_BP")" != "0" ]; then
+  echo ""
+  echo "── Breakpoint scale check ─────────────────────────"
+  cat "$LOG_BP"
+  echo "Use a width from frontend/src/config/breakpoints.ts (480/640/768/1024/1280)."
   FAIL=1
 fi
 
