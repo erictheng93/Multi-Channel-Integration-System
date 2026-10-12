@@ -3,7 +3,7 @@
 
 import type { Context, Next } from 'hono';
 import type { Bindings } from '@/types';
-import { validateAccessToken } from '@/middleware/auth';
+import { jwtAuth } from '@/middleware/auth';
 import { PermissionService } from '@/services/permission-service';
 import type { PermissionContext } from '@/types/services';
 import { HTTP_STATUS } from '@/constants/http-status';
@@ -16,55 +16,14 @@ const log = createContextLogger('ReportsAuth')
 
 /**
  * 檢查基本報告系統存取權限
+ *
+ * Delegates to jwtAuth so reports use the same httpOnly-cookie auth (plus CSRF on unsafe
+ * methods) as every other module. This used to read only an `Authorization: Bearer` header,
+ * which the frontend no longer sends, so every reports request was 401 and the frontend
+ * logged the user out on opening the reports pages (#68).
  */
 export async function checkReportsAccess(c: Context<{ Bindings: Bindings }>, next: Next) {
-  try {
-    const authHeader = c.req.header('Authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({
-        success: false,
-        error: 'Missing or invalid authorization header',
-        timestamp: nowISO()
-      }, HTTP_STATUS.UNAUTHORIZED);
-    }
-
-    const token = authHeader.substring(7);
-
-    // Hardened validation (aligned with jwtAuth): rejects refresh/temp token
-    // classes, checks per-jti revocation, verifies the user is still active,
-    // and refreshes team membership instead of trusting stale JWT claims.
-    let payload;
-    try {
-      ({ payload } = await validateAccessToken(c.env, token));
-    } catch (validationError) {
-      const status = (validationError as { status?: number }).status;
-      // Revocation-check KV outage fails closed as 503 (matches jwtAuth).
-      if (status === HTTP_STATUS.SERVICE_UNAVAILABLE) {
-        return c.json({
-          success: false,
-          error: 'Service temporarily unavailable',
-          timestamp: nowISO()
-        }, HTTP_STATUS.SERVICE_UNAVAILABLE);
-      }
-      return c.json({
-        success: false,
-        error: 'Invalid or expired token',
-        timestamp: nowISO()
-      }, HTTP_STATUS.UNAUTHORIZED);
-    }
-
-    // 將 JWT payload 存储到 context 中
-    c.set('jwtPayload', payload);
-    return await next();
-  } catch (error) {
-    log.error('Reports access check error', {}, error instanceof Error ? error : String(error));
-    return c.json({
-      success: false,
-      error: 'Authentication failed',
-      timestamp: nowISO()
-    }, HTTP_STATUS.UNAUTHORIZED);
-  }
+  return jwtAuth(c, next);
 }
 
 // ======================== 報告權限檢查 ========================
