@@ -49,7 +49,7 @@ describe('createNewMessageHandler', () => {
     soundPlayed = 0
     now = 100_000
     deps = {
-      prefs: { enabled: true, scope: 'all', soundEnabled: true },
+      prefs: { enabled: true, scope: 'all', soundEnabled: true, pausedUntil: null },
       getPermission: () => 'granted',
       getConversation: (id) => (id === 'conv-1' ? makeConversation('conv-1', 1) : undefined),
       getCurrentConversationId: () => null,
@@ -74,6 +74,19 @@ describe('createNewMessageHandler', () => {
     handler(makeMessage())
     expect(shown.length).toBe(1)
     expect(soundPlayed).toBe(0)
+  })
+
+  it('暫停中 → 不彈通知也不播音效;到期後(讀取當下的 prefs)恢復', () => {
+    deps.prefs.pausedUntil = now + 1000
+    const handler = createNewMessageHandler(deps)
+    handler(makeMessage())
+    expect(shown.length).toBe(0)
+    expect(soundPlayed).toBe(0)
+
+    now += 1000
+    handler(makeMessage())
+    expect(shown.length).toBe(1)
+    expect(soundPlayed).toBe(1)
   })
 
   it('agent 訊息 / 非 new_message 事件 → 忽略', () => {

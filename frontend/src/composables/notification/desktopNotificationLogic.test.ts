@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   shouldNotify,
   buildNotificationContent,
+  nextNineAm,
+  formatPausedUntil,
   NOTIFY_MIN_INTERVAL_MS,
   type NotificationDecisionInput
 } from './desktopNotificationLogic'
@@ -26,6 +28,13 @@ function baseInput(overrides: Partial<NotificationDecisionInput> = {}): Notifica
 }
 
 describe('shouldNotify', () => {
+  it('暫停中 → 不彈;剛好到期或已過期 → 彈;null → 彈', () => {
+    expect(shouldNotify(baseInput({ pausedUntil: 100_001 }))).toBe(false)
+    expect(shouldNotify(baseInput({ pausedUntil: 100_000 }))).toBe(true)
+    expect(shouldNotify(baseInput({ pausedUntil: 50_000 }))).toBe(true)
+    expect(shouldNotify(baseInput({ pausedUntil: null }))).toBe(true)
+  })
+
   it('客戶新訊息、全部條件通過 → 彈', () => {
     expect(shouldNotify(baseInput())).toBe(true)
   })
@@ -97,5 +106,23 @@ describe('buildNotificationContent', () => {
     expect(buildNotificationContent({ messageType: 'video' }).body).toBe('傳送了影片')
     expect(buildNotificationContent({ messageType: 'audio' }).body).toBe('傳送了語音')
     expect(buildNotificationContent({ messageType: 'text' }).body).toBe('傳送了新訊息')
+  })
+})
+
+describe('nextNineAm', () => {
+  it('09:00 前 → 當天 09:00;09:00 當下或之後 → 隔天 09:00', () => {
+    const at = (h: number, m = 0) => new Date(2026, 9, 12, h, m).getTime()
+    expect(nextNineAm(at(2))).toBe(at(9))
+    expect(nextNineAm(at(9))).toBe(new Date(2026, 9, 13, 9).getTime())
+    expect(nextNineAm(at(14, 30))).toBe(new Date(2026, 9, 13, 9).getTime())
+  })
+})
+
+describe('formatPausedUntil', () => {
+  const now = new Date(2026, 9, 12, 13, 0).getTime()
+  it('今天 / 明天 / 更晚', () => {
+    expect(formatPausedUntil(new Date(2026, 9, 12, 14, 5).getTime(), now)).toBe('14:05')
+    expect(formatPausedUntil(new Date(2026, 9, 13, 9, 0).getTime(), now)).toBe('明天 09:00')
+    expect(formatPausedUntil(new Date(2026, 9, 15, 9, 0).getTime(), now)).toBe('10/15 09:00')
   })
 })
