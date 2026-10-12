@@ -1,0 +1,121 @@
+name: Responsive
+
+# Layout regression gates for phones, tablets and laptops.
+#
+#   hermetic  no login, no backend: the layout detector proves it can fail, and the touch
+#             target rule is checked on a real page. Runs on every relevant PR / push.
+#   sweep     logs in as a dedicated LEAST-PRIVILEGE test account and walks every route it
+#             can open at 320 / 375 / 768 / 1280. Needs the E2E_EMAIL / E2E_PASSWORD secrets;
+#             without them it is skipped with a notice. It is read-only (navigation only).
+#
+# Admin-only pages are covered statically by `lint:page-roots` (pre-commit + CI), which needs
+# no account at all; a full admin sweep stays a manual `ADMIN_PASSWORD=... bun run test:e2e:responsive`.
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/**'
+      - 'frontend/tests/e2e/playwright/**'
+      - 'frontend/playwright.config.ts'
+      - '.github/workflows/responsive.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/src/**'
+      - 'frontend/tests/e2e/playwright/**'
+      - 'frontend/playwright.config.ts'
+      - '.github/workflows/responsive.yml'
+  schedule:
+    # 04:00 Asia/Taipei: catches regressions in what is actually deployed (deploys are manual)
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: responsive-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hermetic:
+    name: Responsive (hermetic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install frontend dependencies
+        run: cd frontend && bun install --frozen-lockfile
+
+      - name: Install Chromium
+        run: cd frontend && bunx playwright install --with-deps chromium
+
+      # detector.spec: planted regressions; touch-targets.spec: 44px rule on /login
+      - name: Layout detector and touch targets
+        run: >
+          cd frontend && bunx playwright test
+          tests/e2e/playwright/responsive/detector.spec.ts
+          tests/e2e/playwright/responsive/touch-targets.spec.ts
+          --reporter=list
+
+  sweep:
+    name: Responsive (route sweep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Secrets are not available to PRs from forks. On PRs a failure is reported but does not
+    # block until the sweep has proven stable; scheduled / manual runs fail loudly.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    env:
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+    steps:
+      - name: Check the test account is configured
+        id: account
+        run: |
+          if [ -n "$E2E_EMAIL" ] && [ -n "$E2E_PASSWORD" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::E2E_EMAIL / E2E_PASSWORD are not set: the route sweep is skipped."
+            # A nightly or manual run that silently does nothing is worse than a red one.
+            if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "::error::The scheduled route sweep has no test account (E2E_EMAIL / E2E_PASSWORD secrets)."
+              exit 1
+            fi
+          fi
+
+      - name: Checkout repository
+        if: steps.account.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        if: steps.account.outputs.configured == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install frontend dependencies
+        if: steps.account.outputs.configured == 'true'
+        run: cd frontend && bun install --frozen-lockfile
+
+      - name: Install Chromium
+        if: steps.account.outputs.configured == 'true'
+        run: cd frontend && bunx playwright install --with-deps chromium
+
+      # PR / push: the code under test is served by the Vite dev server of this checkout
+      # (it proxies /api to the real backend). Scheduled / manual: the deployed site.
+      - name: Sweep every route the account can open
+        if: steps.account.outputs.configured == 'true'
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            export PLAYWRIGHT_BASE_URL="https://mcis.daiwandist.com"
+          fi
+          cd frontend && bunx playwright test tests/e2e/playwright/responsive/layout.spec.ts --reporter=list
