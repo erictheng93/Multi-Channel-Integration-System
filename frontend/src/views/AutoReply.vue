@@ -224,6 +224,7 @@ onUnmounted(() => cleanup())
 <style scoped>
 .auto-reply-page {
   padding: var(--space-6);
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
 }

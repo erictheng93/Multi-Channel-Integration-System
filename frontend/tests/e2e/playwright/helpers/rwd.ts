@@ -1,10 +1,13 @@
 import type { Page } from '@playwright/test'
 
 /**
- * Viewports the responsive suite checks: phone, tablet, laptop.
+ * Viewports the responsive suite checks: narrow phone, phone, tablet, laptop.
  * Heights are typical device heights; the widths are the ones that matter.
+ * 320 is the stress width: anything whose layout depends on its content width
+ * (a select's longest option, an intrinsic textarea width) shows up there first.
  */
 export const VIEWPORTS = [
+  { name: 'narrow phone', width: 320, height: 640 },
   { name: 'phone', width: 375, height: 812 },
   { name: 'tablet', width: 768, height: 1024 },
   { name: 'laptop', width: 1280, height: 800 },
@@ -42,6 +45,14 @@ export interface LayoutAudit {
   unreachable: string[]
   /** overflow:hidden boxes whose content is wider than the box (content is cut). */
   clipped: string[]
+  /**
+   * Page roots that shrink-wrap their content inside a flex column: they have a
+   * max-width and auto margins but no width, so they are narrower than the space
+   * they are allowed (and grow past it as soon as the content gets wide).
+   */
+  shrinkWrapped: string[]
+  /** Values that leaked to the UI unformatted: 0.00014140695, NaN, undefined, [object Object]. */
+  rawValues: string[]
 }
 
 /**
@@ -99,10 +110,36 @@ export function auditLayoutInPage(): LayoutAudit {
       clipped.push(`${label(el)} ${el.scrollWidth}>${el.clientWidth}`)
     }
   }
+  // Page roots: the children (and grandchildren) of the flex-column page container, or of
+  // <body> when there is none. Their max-width + auto margins need an explicit width.
+  const shrinkWrapped: string[] = []
+  const container = document.querySelector('.page-content') ?? document.body
+  for (const child of container.children) {
+    for (const el of [child, ...child.children]) {
+      const cs = window.getComputedStyle(el)
+      const box = el.getBoundingClientRect()
+      const parent = el.parentElement
+      if (cs.display === 'none' || !box.width || !parent || el.closest('.sidebar')) { continue }
+      const ps = window.getComputedStyle(parent)
+      if (!ps.display.includes('flex') || ps.flexDirection !== 'column') { continue }
+      const maxWidth = cs.maxWidth === 'none' ? Infinity : parseFloat(cs.maxWidth)
+      const available = parent.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight)
+      if (Number.isFinite(maxWidth) && box.width < Math.min(maxWidth, available) - 2) {
+        shrinkWrapped.push(`${label(el)} width=${Math.round(box.width)} available=${Math.round(Math.min(maxWidth, available))}`)
+      }
+    }
+  }
+
+  const rawValues = [
+    ...(container as HTMLElement).innerText.matchAll(/\b\d+\.\d{5,}\b|\bNaN\b|\bundefined\b|\[object Object\]|\bInfinity\b/g),
+  ].map((m) => m[0].slice(0, 30))
+
   return {
     documentOverflow: document.documentElement.scrollWidth - vw,
     unreachable,
     clipped,
+    shrinkWrapped,
+    rawValues,
   }
 }
 

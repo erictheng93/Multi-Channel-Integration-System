@@ -51,6 +51,8 @@ test.describe('responsive layout sweep', () => {
         }
         for (const u of a.unreachable) { problems.push(`${route}: unreachable ${u}`) }
         for (const c of a.clipped) { problems.push(`${route}: clipped ${c}`) }
+        for (const s of a.shrinkWrapped) { problems.push(`${route}: page root shrink-wraps its content (needs width: 100%) ${s}`) }
+        for (const v of a.rawValues) { problems.push(`${route}: unformatted value in the UI: ${v}`) }
       }
       expect(problems, problems.join('\n')).toEqual([])
     })
