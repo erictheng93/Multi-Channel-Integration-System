@@ -47,7 +47,7 @@ describe('useDesktopNotificationPrefs', () => {
     setPrefs({ scope: 'my-teams', soundEnabled: false })
     expect(prefs.scope).toBe('my-teams')
     const stored = JSON.parse(localStorage.getItem(DESKTOP_NOTIFICATION_PREFS_KEY) as string)
-    expect(stored).toEqual({ enabled: true, scope: 'my-teams', soundEnabled: false })
+    expect(stored).toEqual({ enabled: true, scope: 'my-teams', soundEnabled: false, pausedUntil: null })
   })
 
   it('從 localStorage 載入既有偏好,缺欄位補預設值', () => {
@@ -84,7 +84,8 @@ describe('useDesktopNotificationPrefs', () => {
     expect(JSON.parse(storedAfterFirstWrite as string)).toEqual({
       enabled: true,
       scope: 'all',
-      soundEnabled: false
+      soundEnabled: false,
+      pausedUntil: null
     })
   })
 
@@ -93,6 +94,54 @@ describe('useDesktopNotificationPrefs', () => {
     const b = useDesktopNotificationPrefs()
     a.setPrefs({ enabled: false })
     expect(b.prefs.enabled).toBe(false)
+  })
+
+  it('其他分頁寫入偏好(storage 事件)→ 同步到此分頁記憶體,之後 setPrefs 不會蓋回舊值', () => {
+    const { prefs, setPrefs } = useDesktopNotificationPrefs()
+    localStorage.setItem(DESKTOP_NOTIFICATION_PREFS_KEY, JSON.stringify({ enabled: false, scope: 'all', soundEnabled: true }))
+    window.dispatchEvent(new window.StorageEvent('storage', { key: DESKTOP_NOTIFICATION_PREFS_KEY }))
+    expect(prefs.enabled).toBe(false)
+
+    setPrefs({ soundEnabled: false })
+    expect(JSON.parse(localStorage.getItem(DESKTOP_NOTIFICATION_PREFS_KEY) as string).enabled).toBe(false)
+  })
+
+  it('無關 key 的 storage 事件 → 不影響偏好', () => {
+    const { prefs } = useDesktopNotificationPrefs()
+    localStorage.setItem(DESKTOP_NOTIFICATION_PREFS_KEY, JSON.stringify({ enabled: false }))
+    window.dispatchEvent(new window.StorageEvent('storage', { key: 'other-key' }))
+    expect(prefs.enabled).toBe(true)
+  })
+
+  it('暫停:pauseUntil → isPaused 為真且持久化;到期自動變回 false(不需重新整理);resume 立即恢復', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date(2026, 9, 12, 13, 0))
+      __resetDesktopNotificationPrefsForTest()
+      const { isPaused, pauseUntil, resume } = useDesktopNotificationPrefs()
+      expect(isPaused.value).toBe(false)
+
+      pauseUntil(Date.now() + 30 * 60_000)
+      expect(isPaused.value).toBe(true)
+      expect(JSON.parse(localStorage.getItem(DESKTOP_NOTIFICATION_PREFS_KEY) as string).pausedUntil).toBe(Date.now() + 30 * 60_000)
+
+      vi.advanceTimersByTime(30 * 60_000)
+      expect(isPaused.value).toBe(false)
+      expect(vi.getTimerCount()).toBe(0)
+
+      pauseUntil(Date.now() + 60_000)
+      resume()
+      expect(isPaused.value).toBe(false)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('暫停:重新載入時讀回未到期的 pausedUntil', () => {
+    localStorage.setItem(DESKTOP_NOTIFICATION_PREFS_KEY, JSON.stringify({ pausedUntil: Date.now() + 60_000 }))
+    const { isPaused } = useDesktopNotificationPrefs()
+    expect(isPaused.value).toBe(true)
   })
 
   it('權限:支援時反映 Notification.permission;requestPermission 更新狀態', async () => {

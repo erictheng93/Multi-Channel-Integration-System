@@ -1,5 +1,16 @@
 <template>
   <div class="notification-center">
+    <!-- 桌面通知暫停中:一直顯示在頂部列,避免忘記恢復而漏接客戶訊息 -->
+    <span
+      v-if="desktopPaused && desktopPrefs.enabled"
+      data-testid="desktop-paused-pill"
+      class="notification-paused-pill"
+      role="status"
+      :title="`桌面通知與音效已暫停，至 ${pausedUntilText} 自動恢復（可在通知設定立即恢復）`"
+    >
+      <BellOffIcon class="notification-paused-icon" />
+      已暫停 · 至 {{ pausedUntilText }}
+    </span>
     <!-- 觸發按鈕 -->
     <button
       ref="triggerRef"
@@ -175,8 +186,15 @@ import NotificationBadge from './NotificationBadge.vue'
 import NotificationItem from './NotificationItem.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { BellIcon, BellOffIcon, CheckAllIcon, RefreshIcon } from '@/components/icons'
+import { useDesktopNotificationPrefs } from '@/composables/notification/useDesktopNotificationPrefs'
+import { formatPausedUntil } from '@/composables/notification/desktopNotificationLogic'
 
 const store = useNotificationsStore()
+
+const { prefs: desktopPrefs, isPaused: desktopPaused } = useDesktopNotificationPrefs()
+const pausedUntilText = computed(() =>
+  desktopPrefs.pausedUntil === null ? '' : formatPausedUntil(desktopPrefs.pausedUntil, Date.now())
+)
 
 // Refs
 const triggerRef = ref<HTMLElement>()
@@ -359,6 +377,28 @@ defineExpose({ open, close, toggle, isOpen })
 <style scoped>
 .notification-center {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.notification-paused-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  /* iOS 系統橘 #FF9500 淡底:暫停是需要被注意到的狀態,--warning-50 在白色頂部列上幾乎看不見 */
+  background: rgb(255 149 0 / 0.14);
+  color: #A64B00;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.notification-paused-icon {
+  width: 14px;
+  height: 14px;
 }
 
 /* 觸發按鈕 */
