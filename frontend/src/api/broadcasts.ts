@@ -106,6 +106,28 @@ export interface BroadcastPreviewRequest {
   tagIds: number[]
 }
 
+export interface LineQuotaChannel {
+  channelKey: string
+  label: string
+  /** false = no monthly target limit; only `used` is meaningful */
+  limited: boolean
+  limit: number | null
+  used: number | null
+  remaining: number | null
+  /** last successful fetch (kept across failures) */
+  fetchedAt: string | null
+  /** set when the latest attempt failed */
+  error: string | null
+}
+
+export interface LineQuotaSnapshot {
+  items: LineQuotaChannel[]
+  updatedAt: string | null
+  source: 'cron' | 'manual' | null
+  /** manual refresh answered from the stored snapshot (server throttle) */
+  throttled: boolean
+}
+
 async function unwrap<T>(promise: ReturnType<typeof apiClient.get<T>>): Promise<T> {
   const response = await promise
   if (!response.success || !response.data) {
@@ -130,6 +152,11 @@ export const listBroadcasts = (params?: { page?: number; pageSize?: number }) =>
   const query = search.toString()
   return unwrap<BroadcastListResult>(apiClient.get(`/broadcasts${query ? `?${query}` : ''}`))
 }
+
+export const getLineQuota = () => unwrap<LineQuotaSnapshot>(apiClient.get('/broadcasts/line-quota'))
+
+export const refreshLineQuota = () =>
+  unwrap<LineQuotaSnapshot>(apiClient.post('/broadcasts/line-quota/refresh'))
 
 export const getBroadcast = (id: string) => unwrap<BroadcastRecord>(apiClient.get(`/broadcasts/${id}`))
 

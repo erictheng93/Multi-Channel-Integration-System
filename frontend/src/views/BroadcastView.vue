@@ -11,6 +11,8 @@
         </div>
       </header>
 
+      <LineQuotaCard class="quota-row" />
+
       <div class="page-grid">
         <BroadcastComposeCard
           :tags="tagsStore.tags"
@@ -51,6 +53,7 @@ import AppLayout from '@/components/ui/AppLayout.vue'
 import BroadcastComposeCard from '@/components/broadcast/BroadcastComposeCard.vue'
 import BroadcastHistoryList from '@/components/broadcast/BroadcastHistoryList.vue'
 import BroadcastDetailModal from '@/components/broadcast/BroadcastDetailModal.vue'
+import LineQuotaCard from '@/components/broadcast/LineQuotaCard.vue'
 import { useTagsStore } from '@/stores/tags'
 import { useBroadcastsStore } from '@/stores/broadcasts'
 import type {
@@ -137,6 +140,10 @@ async function fetchCurrentRecipients() {
 .page-header p {
   margin: var(--space-2) 0 0;
   color: var(--gray-500);
+}
+
+.quota-row {
+  margin-bottom: var(--space-6);
 }
 
 .page-grid {
