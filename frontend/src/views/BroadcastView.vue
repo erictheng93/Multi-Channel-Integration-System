@@ -141,6 +141,8 @@ async function fetchCurrentRecipients() {
 
 .page-grid {
   display: grid;
+  /* minmax(0, ...) so the compose card's min-content cannot widen the track past the page */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
 }
 
