@@ -166,8 +166,9 @@ The repo splits safety checks into a **fast pre-commit** and a **full pre-push**
 - `gitleaks git --pre-commit --staged` (secret scan; rules in `.gitleaks.toml`, which adds a `hardcoded-password` rule because the default entropy-gated rules missed the 2025-08 admin password leak). Requires `gitleaks` on PATH (`winget install Gitleaks.Gitleaks`) — the hook fails closed without it.
 
 - `lint:breakpoints` (every `@media` width must be on the scale in `frontend/src/config/breakpoints.ts`; also a CI step)
+- `lint:scoped-btn` (global `.btn` system guard; also a CI step)
 
-All five run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
+All six run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
 
 **`.husky/pre-push`** (~105s warm, ~340s cold) — full correctness gate, parallel:
 - `bunx tsc --noEmit` (backend, incremental via `tsBuildInfoFile`)
