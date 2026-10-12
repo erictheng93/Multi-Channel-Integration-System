@@ -6293,7 +6293,7 @@ This area is the operator-facing single-page web application for a multi-channel
 - Error Conditions: Per-field validation messages for invalid display name, missing current password, weak new password, or mismatched confirmation.
 
 #### Monitoring & Admin Utility Screens
-- Invocation: Administrator-only authenticated screens (except where noted): API Monitoring (/monitoring/api), WebSocket migration administration (/admin/websocket), and a component test page (/test/components). A WebSocket performance monitoring screen (/monitoring/websocket) requires authentication but not administrator role.
+- Invocation: Administrator-only authenticated screens (except where noted): API Monitoring (/monitoring/api), WebSocket performance monitoring (/monitoring/websocket), and a component test page (/test/components). The WebSocket migration administration screen (/admin/websocket) was removed; the migration flag remains readable at GET /api/websocket/migration-status.
 - Behavior: These present operational dashboards/utilities for system observability and administration. They follow the same shell, authentication, and (where applicable) administrator-role gating as other admin screens.
 
 #### Not-Found Screen
