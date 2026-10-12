@@ -7,6 +7,7 @@ import { errorResponse, forbiddenResponse, successResponse, validationErrorRespo
 import { BroadcastService } from '@modules/broadcast/services/broadcast-service';
 import { BROADCAST_MAX_IMAGES } from '@modules/broadcast/services/broadcast-content';
 import { BroadcastSenderService } from '@modules/broadcast/services/broadcast-sender-service';
+import { LineQuotaMonitorService } from '@modules/broadcast/services/line-quota-monitor-service';
 import {
   BroadcastServiceError,
   type BroadcastAttachmentInput,
@@ -77,6 +78,27 @@ broadcastRouter.get('/', async (c) => {
   const pageSize = parsePositiveInt(c.req.query('pageSize') ?? c.req.query('limit'), 20);
   const result = await service.list(page, pageSize);
   return successResponse(c, result, 'Broadcasts retrieved');
+});
+
+// Registered before '/:id' so 'line-quota' is not captured as a broadcast id.
+broadcastRouter.get('/line-quota', async (c) => {
+  const permission = requireBroadcastPermission(c.get('user'));
+  if (!permission.allowed) {
+    return forbiddenResponse(c, permission.message);
+  }
+
+  const service = new LineQuotaMonitorService(createDbClient(c.env.DB), c.env);
+  return successResponse(c, await service.getSnapshot(), 'LINE quota snapshot retrieved');
+});
+
+broadcastRouter.post('/line-quota/refresh', async (c) => {
+  const permission = requireBroadcastPermission(c.get('user'));
+  if (!permission.allowed) {
+    return forbiddenResponse(c, permission.message);
+  }
+
+  const service = new LineQuotaMonitorService(createDbClient(c.env.DB), c.env);
+  return successResponse(c, await service.refresh('manual'), 'LINE quota refreshed');
 });
 
 broadcastRouter.get('/:id/recipients', async (c) => {

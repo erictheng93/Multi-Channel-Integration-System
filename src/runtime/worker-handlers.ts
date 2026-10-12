@@ -1,6 +1,11 @@
 import { handleLineMessageQueue } from '@modules/queue/handlers/line-message-queue';
 import { handleScheduledEvent } from '@modules/system/handlers/task-reminder-main';
 import { ReportSchedulerService } from '@modules/reports/services/report-scheduler-service';
+import {
+  LINE_QUOTA_CRON,
+  LineQuotaMonitorService,
+} from '@modules/broadcast/services/line-quota-monitor-service';
+import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings } from '../types';
 import type { LineQueuePayload } from '../types/bindings';
 import { createContextLogger } from '../utils/logger';
@@ -21,6 +26,18 @@ export async function scheduled(
   _ctx: ExecutionContext
 ): Promise<void> {
   log.info('Scheduled event triggered', { cron: event.cron, scheduledTime: event.scheduledTime });
+
+  // The daily quota cron must not also run the 5-minute reminder/report work (it would run twice).
+  if (event.cron === LINE_QUOTA_CRON) {
+    try {
+      const snapshot = await new LineQuotaMonitorService(createDbClient(env.DB), env).refresh('cron');
+      log.info('LINE quota snapshot refreshed', { channels: snapshot.items.length });
+    } catch (error) {
+      log.error('LINE quota poll failed', {}, error instanceof Error ? error : new Error(String(error)));
+    }
+    return;
+  }
+
   const [, reportStats] = await Promise.allSettled([
     handleScheduledEvent(env),
     (async () => {
