@@ -545,6 +545,7 @@ onBeforeUnmount(() => {
   padding: 24px;
   background: #f9fafb;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* 標題與選擇器 */

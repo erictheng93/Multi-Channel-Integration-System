@@ -136,6 +136,7 @@ function formatValue(value: unknown): string {
 .restore-modal__panel {
   width: min(720px, 100%);
   max-height: min(720px, calc(100vh - 48px));
+  max-height: min(720px, calc(100dvh - 48px));
   overflow: auto;
   background: #FFFFFF;
   border-radius: 8px;

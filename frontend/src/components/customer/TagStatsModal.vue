@@ -416,6 +416,7 @@ watch(() => props.show, (newValue) => {
 @media (max-width: 640px) {
   .modal-content {
     max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0;
   }
 }
