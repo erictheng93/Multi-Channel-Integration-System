@@ -96,6 +96,45 @@
           <span class="toggle-switch" />
         </label>
 
+        <div
+          v-if="desktopPrefs.enabled"
+          data-testid="desktop-pause"
+          class="desktop-pause"
+        >
+          <span class="toggle-label">
+            <BellOffIcon class="toggle-icon" />
+            <span>
+              <strong>暫停通知</strong>
+              <small
+                v-if="desktopPaused"
+                data-testid="desktop-paused-status"
+              >通知已暫停，至 {{ pausedUntilText }}（期間不彈通知、不播音效，時間到自動恢復）</small>
+              <small v-else>開會、午休時暫時關閉，時間到自動恢復</small>
+            </span>
+          </span>
+          <div class="desktop-pause-actions">
+            <button
+              v-if="desktopPaused"
+              data-testid="desktop-resume-btn"
+              class="btn btn-primary btn-sm"
+              @click="resumeDesktop"
+            >
+              立即恢復
+            </button>
+            <template v-else>
+              <button
+                v-for="option in pauseOptions"
+                :key="option.key"
+                :data-testid="`desktop-pause-${option.key}`"
+                class="btn btn-secondary btn-sm"
+                @click="pauseDesktopUntil(option.until())"
+              >
+                {{ option.label }}
+              </button>
+            </template>
+          </div>
+        </div>
+
         <!-- 瀏覽器權限為 granted 時，作業系統仍可能擋下通知（例如 Windows 關閉了 Chrome 的通知），
              頁面偵測不到，只能讓使用者自己驗證 -->
         <div class="desktop-test">
@@ -255,6 +294,7 @@ import { computed, ref, watch } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
 import {
   BellIcon,
+  BellOffIcon,
   VolumeIcon,
   MailIcon,
   MessageIcon,
@@ -265,6 +305,7 @@ import {
 // import it directly, matching the existing pattern in SidebarNav.vue.
 import MonitorIcon from '@/components/icons/MonitorIcon.vue'
 import { useDesktopNotificationPrefs } from '@/composables/notification/useDesktopNotificationPrefs'
+import { formatPausedUntil, nextNineAm } from '@/composables/notification/desktopNotificationLogic'
 
 const props = defineProps<{
   visible: boolean
@@ -290,8 +331,23 @@ const {
   setPrefs: setDesktopPrefs,
   permission: desktopPermission,
   refreshPermission,
-  requestDesktopPermission
+  requestDesktopPermission,
+  isPaused: desktopPaused,
+  pauseUntil: pauseDesktopUntil,
+  resume: resumeDesktop
 } = useDesktopNotificationPrefs()
+
+const MINUTE_MS = 60_000
+
+const pauseOptions = [
+  { key: '30m', label: '30 分鐘', until: () => Date.now() + 30 * MINUTE_MS },
+  { key: '1h', label: '1 小時', until: () => Date.now() + 60 * MINUTE_MS },
+  { key: 'until-9', label: '至 09:00', until: () => nextNineAm(Date.now()) }
+]
+
+const pausedUntilText = computed(() =>
+  desktopPrefs.pausedUntil === null ? '' : formatPausedUntil(desktopPrefs.pausedUntil, Date.now())
+)
 
 // 開啟 Modal 時重新讀取權限(使用者可能已在瀏覽器設定變更)
 watch(() => props.visible, (visible) => {
@@ -364,6 +420,24 @@ const sendTestNotification = (): void => {
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background var(--transition-fast);
+}
+
+.desktop-pause {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-2);
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+}
+
+.desktop-pause-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .settings-toggle:hover {
