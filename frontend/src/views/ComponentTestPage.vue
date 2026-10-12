@@ -117,12 +117,6 @@
         <h2> 集成测试</h2>
         <div class="test-grid">
           <button
-            class="test-btn success-btn"
-            @click="testWebSocketAdminScenario"
-          >
-            模拟 WebSocketAdmin 保存
-          </button>
-          <button
             class="test-btn error-btn"
             @click="testConversationHeaderScenario"
           >
@@ -293,12 +287,6 @@ const testWithMessage = async () => {
 }
 
 // 集成测试场景
-const testWebSocketAdminScenario = () => {
-  // 模拟 WebSocketAdmin.vue 保存成功场景
-  showSuccess('配置已保存成功！')
-  addResult(' WebSocketAdmin 保存场景测试完成', 'success')
-}
-
 const testConversationHeaderScenario = () => {
   // 模拟 ConversationHeader.vue 错误场景
   showError('指派失敗', '指派过程中发生错误')
