@@ -10,6 +10,7 @@ import type {
   ConnectionMetrics
 } from '@/types/websocket-types';
 import { websocketAuth } from '@/middleware/websocket-auth';
+import { checkMigrationConfigUpdate } from '@modules/websocket/services/migration-config-guard';
 import { globalErrorHandler } from '@/core/error-handler';
 import { DistributedLockService } from '@/services/distributed-lock-service';
 import { successResponse, badRequestResponse, forbiddenResponse, errorResponse } from '@/utils/api-response';
@@ -394,7 +395,25 @@ websocketHandler.post('/migration-config', websocketAuth, async (c) => {
       return forbiddenResponse(c, 'Admin access required');
     }
 
-    const newConfig = await c.req.json() as Partial<MigrationConfig>;
+    // `confirmDisable` is a request flag, not config: never persist it
+    const { confirmDisable, ...newConfig } = await c.req.json() as Partial<MigrationConfig> & {
+      confirmDisable?: boolean;
+    };
+
+    const guardError = checkMigrationConfigUpdate(
+      await getMigrationConfig(c.env),
+      newConfig,
+      confirmDisable === true
+    );
+    if (guardError) {
+      log.warn('Migration config update rejected', { userId: user.id, reason: 'disable-not-confirmed' });
+      return badRequestResponse(c, guardError);
+    }
+
+    if (newConfig.enableWebSocket === false) {
+      log.warn('WebSocket disabled via migration config', { updatedBy: user.id });
+    }
+
     await updateMigrationConfig(newConfig, c.env);
 
     log.info('Migration config updated', { updatedBy: user.id, newConfig });
