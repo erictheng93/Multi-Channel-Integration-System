@@ -617,7 +617,8 @@ defineExpose({
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin: -24px;
+  /* cancels .page-content padding: 24px vertical, 20px (--space-5) horizontal */
+  margin: -24px -20px;
 }
 
 /* Closed Conversation Banner Styles */
