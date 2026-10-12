@@ -100,7 +100,7 @@
       </div>
 
       <!-- 日期範圍篩選 -->
-      <div class="filter-group">
+      <div class="filter-group filter-group--date">
         <label class="filter-label">建立時間</label>
         <div class="date-filters">
           <input
@@ -274,6 +274,16 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
 .search-input:focus {
   outline: none;
   border-color: #3b82f6;
+}
+
+.date-filters .filter-date {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-group--date {
+  /* a date range needs two inputs side by side; a single grid column is too narrow for it */
+  grid-column: 1 / -1;
 }
 
 .date-filters {
