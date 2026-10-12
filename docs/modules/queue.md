@@ -34,7 +34,6 @@
 | 介面 | 用途 |
 |---|---|
 | QueueMonitor.vue（規劃中） | 管理員儀表板 |
-| `WebSocketAdmin.vue` | 連線監控（與佇列相關） |
 
 ## 5. 主要 API 端點
 

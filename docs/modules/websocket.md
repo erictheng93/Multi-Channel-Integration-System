@@ -34,7 +34,6 @@ WebSocket 模組負責建立並維護「客服人員瀏覽器 ↔ Cloudflare Wor
 
 | 介面 | 用途 |
 |---|---|
-| `WebSocketAdmin.vue` | 管理員後台（連線數、強制斷線、設定） |
 | `WebSocketMonitoring.vue` | 即時監控儀表板 |
 | 所有對話頁面 | 隱式使用，透過 `useWebSocket()` composable |
 

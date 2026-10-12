@@ -161,23 +161,14 @@ const router = createRouter({
         title: '组件测试'
       }
     },
-    // ==================== WebSocket 管理路由 ====================
-    {
-      path: '/admin/websocket',
-      name: 'WebSocketAdmin',
-      component: () => import('@/views/WebSocketAdmin.vue'),
-      meta: {
-        requiresAuth: true,
-        requiresAdmin: true,
-        title: 'WebSocket 遷移管理'
-      }
-    },
+    // ==================== WebSocket 監控路由 ====================
     {
       path: '/monitoring/websocket',
       name: 'WebSocketMonitoring',
       component: () => import('@/views/WebSocketMonitoring.vue'),
       meta: {
         requiresAuth: true,
+        requiresAdmin: true,
         title: 'WebSocket 性能監控'
       }
     },
