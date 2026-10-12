@@ -2,9 +2,9 @@ name: D1 Backup
 
 # Automated recurring backup of the production D1 database (mcis-db).
 # Runs OFF the production worker (zero risk to the live app) using wrangler's
-# proven `d1 export`, then stores copies in independent places.
+# proven `d1 export`, then stores gzip-compressed copies in R2.
 #
-# WHAT IS BACKED UP each run:
+# WHAT IS BACKED UP each run (all gzip -9, key suffix .sql.gz):
 #   • Full DB dump            -> R2 mcis-backups/daily/  (and monthly/ on the 1st)
 #   • Platform members only   -> R2 mcis-backups/members/  (agents + teams +
 #                                agent_teams = Staff Management + Team Settings)
@@ -13,18 +13,24 @@ name: D1 Backup
 #   • Team assignments only   -> R2 mcis-backups/assignments/  (conversations +
 #                                customer_team_assignments + conversation_transfers
 #                                = which team each conversation/customer is assigned to)
-#   • Off-Cloudflare copy     -> GitHub Actions artifact (survives an account teardown)
 #   The focused dumps are also inside the full dump; kept separately for fast,
 #   targeted restore of small, critical config/routing data.
 #
-# RETENTION (Grandfather-Father-Son) — enforced by R2 lifecycle rules set in the
-# dashboard (R2 -> mcis-backups -> Settings -> Object lifecycle rules):
+# NO GITHUB ARTIFACT (removed 2026-10-12): this repo is PUBLIC, and artifacts of
+# a public repo are downloadable by any GitHub user. The dumps contain customer
+# conversations and agent credentials, so they must never be uploaded there.
+# Consequence: until an off-Cloudflare copy is added (private S3-compatible
+# storage), every copy lives in the same Cloudflare account. Do not re-add
+# actions/upload-artifact for these files.
+#
+# RETENTION (Grandfather-Father-Son) — enforced by R2 lifecycle rules on the
+# mcis-backups bucket (`wrangler r2 bucket lifecycle list mcis-backups`):
 #   • prefix "daily/"       -> delete after  30 days
 #   • prefix "monthly/"     -> delete after 365 days
 #   • prefix "members/"     -> delete after 365 days
 #   • prefix "tags/"        -> delete after 365 days
 #   • prefix "assignments/" -> delete after 365 days
-#   (GitHub artifacts: 90 days, set below.)
+#   • prefix "manual/"      -> delete after  90 days (in-app button, plain .sql)
 #
 # Full runbook: docs/operations/BACKUP_AND_RESTORE.md
 # Context: created after the 2026-06-17 incident where production D1 was deleted
@@ -86,29 +92,26 @@ jobs:
           grep -qi 'INSERT INTO' "tags-${STAMP}.sql" || echo "::warning::Tags backup has no rows (no customer tags defined yet)."
           grep -qi 'INSERT INTO' "assignments-${STAMP}.sql" || echo "::warning::Assignments backup has no team-assignment rows yet."
 
+      - name: Compress dumps (gzip -9) and verify
+        run: |
+          gzip -9 -f "mcis-db-${STAMP}.sql" "members-${STAMP}.sql" "tags-${STAMP}.sql" "assignments-${STAMP}.sql"
+          for f in mcis-db-${STAMP}.sql.gz members-${STAMP}.sql.gz tags-${STAMP}.sql.gz assignments-${STAMP}.sql.gz; do
+            gzip -t "$f"
+          done
+          ls -la *-${STAMP}.sql.gz
+
       - name: Upload full dump to R2 (daily)
-        run: bunx wrangler r2 object put "mcis-backups/daily/mcis-db-${STAMP}.sql" --file="mcis-db-${STAMP}.sql" --remote
+        run: bunx wrangler r2 object put "mcis-backups/daily/mcis-db-${STAMP}.sql.gz" --file="mcis-db-${STAMP}.sql.gz" --content-type=application/gzip --remote
 
       - name: Upload full dump to R2 (monthly snapshot)
         if: env.DOM == '01'
-        run: bunx wrangler r2 object put "mcis-backups/monthly/mcis-db-${STAMP}.sql" --file="mcis-db-${STAMP}.sql" --remote
+        run: bunx wrangler r2 object put "mcis-backups/monthly/mcis-db-${STAMP}.sql.gz" --file="mcis-db-${STAMP}.sql.gz" --content-type=application/gzip --remote
 
       - name: Upload members to R2
-        run: bunx wrangler r2 object put "mcis-backups/members/members-${STAMP}.sql" --file="members-${STAMP}.sql" --remote
+        run: bunx wrangler r2 object put "mcis-backups/members/members-${STAMP}.sql.gz" --file="members-${STAMP}.sql.gz" --content-type=application/gzip --remote
 
       - name: Upload tags to R2
-        run: bunx wrangler r2 object put "mcis-backups/tags/tags-${STAMP}.sql" --file="tags-${STAMP}.sql" --remote
+        run: bunx wrangler r2 object put "mcis-backups/tags/tags-${STAMP}.sql.gz" --file="tags-${STAMP}.sql.gz" --content-type=application/gzip --remote
 
       - name: Upload assignments to R2
-        run: bunx wrangler r2 object put "mcis-backups/assignments/assignments-${STAMP}.sql" --file="assignments-${STAMP}.sql" --remote
-
-      - name: Off-Cloudflare copy (GitHub artifact)
-        uses: actions/upload-artifact@v4
-        with:
-          name: mcis-db-backup-${{ env.STAMP }}
-          path: |
-            mcis-db-*.sql
-            members-*.sql
-            tags-*.sql
-            assignments-*.sql
-          retention-days: 90
+        run: bunx wrangler r2 object put "mcis-backups/assignments/assignments-${STAMP}.sql.gz" --file="assignments-${STAMP}.sql.gz" --content-type=application/gzip --remote
