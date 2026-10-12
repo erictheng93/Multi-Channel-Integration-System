@@ -4,7 +4,7 @@
     :class="{ 'has-changes': isDirty, 'has-errors': hasErrors }"
   >
     <!-- Card Header -->
-    <div class="card-header">
+    <div class="member-edit-card-header">
       <div class="member-avatar">
         <img
           v-if="member.avatar"
@@ -48,7 +48,7 @@
 
     <!-- Form Fields -->
     <div
-      class="card-body"
+      class="member-edit-card-body"
       :class="{ 'is-disabled': isCurrentUser }"
     >
       <!-- Row 1: Name and Email -->
@@ -281,7 +281,7 @@ function handleTeamsLoaded(teams: AgentTeamMembership[]) {
 }
 
 /* Card Header */
-.card-header {
+.member-edit-card-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -389,13 +389,13 @@ function handleTeamsLoaded(teams: AgentTeamMembership[]) {
 }
 
 /* Card Body */
-.card-body {
+.member-edit-card-body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-.card-body.is-disabled {
+.member-edit-card-body.is-disabled {
   opacity: 0.5;
   pointer-events: none;
 }

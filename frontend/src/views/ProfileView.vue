@@ -25,7 +25,7 @@
           class="profile-card"
           aria-labelledby="basic-title"
         >
-          <header class="card-header">
+          <header class="profile-card-header">
             <h2
               id="basic-title"
               class="card-title"
@@ -112,7 +112,7 @@
           class="profile-card"
           aria-labelledby="security-title"
         >
-          <header class="card-header">
+          <header class="profile-card-header">
             <h2
               id="security-title"
               class="card-title"
@@ -521,7 +521,7 @@ watch(
   scroll-margin-top: 80px;
 }
 
-.card-header {
+.profile-card-header {
   margin-bottom: 20px;
 }
 
