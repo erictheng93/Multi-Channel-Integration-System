@@ -643,6 +643,13 @@ section {
   margin-bottom: 1rem;
 }
 
+/* The canvas keeps its 800x300 drawing buffer; CSS scales it to the card. */
+.trend-chart canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .trend-controls {
   display: flex;
   gap: 0.5rem;

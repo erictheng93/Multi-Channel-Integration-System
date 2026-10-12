@@ -374,7 +374,7 @@ const formatDate = (dateString: string | Date | undefined): string => {
 }
 
 /* Small Mobile */
-@media (max-width: 375px) {
+@media (max-width: 480px) {
   .qr-stats-mini {
     grid-template-columns: 1fr;
   }

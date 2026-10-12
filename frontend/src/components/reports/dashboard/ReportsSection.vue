@@ -494,7 +494,7 @@ defineEmits<{
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
   .reports-grid {
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }

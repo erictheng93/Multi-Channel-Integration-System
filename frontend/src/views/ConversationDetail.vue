@@ -613,6 +613,7 @@ defineExpose({
 .conversation-detail {
   position: relative;
   height: calc(100vh - 48px);
+  height: calc(100dvh - 48px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -777,6 +778,7 @@ defineExpose({
 
   .input-section {
     padding: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
 
   .closed-state {

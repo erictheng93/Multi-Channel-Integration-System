@@ -323,6 +323,7 @@ const testAdvancedAssignScenario = async () => {
   margin: 0 auto;
   padding: 40px 20px;
   min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 

@@ -4,10 +4,11 @@
     <div class="header-left">
       <button
         class="back-button"
+        aria-label="返回列表"
         @click="$emit('back')"
       >
         <ArrowLeftIcon />
-        返回列表
+        <span class="back-label">返回列表</span>
       </button>
 
       <div class="conversation-info">
@@ -448,6 +449,8 @@ defineExpose({
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
   background: var(--background-color);
@@ -459,6 +462,7 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 1rem;
+  min-width: 0;
 }
 
 .back-button {
@@ -864,6 +868,53 @@ defineExpose({
    RESPONSIVE DESIGN
    ============================================ */
 @media (max-width: 768px) {
+  /* Phone: two rows. Identity on top, the action buttons on their own row so none
+     of them are pushed past the right edge (they were unreachable at 375px). */
+  .conversation-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .header-left {
+    flex: 1 1 100%;
+    min-width: 0;
+    gap: 0.5rem;
+  }
+
+  .back-label {
+    display: none;
+  }
+
+  .back-button {
+    padding: 0.5rem;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .conversation-info,
+  .customer-details,
+  .customer-meta {
+    min-width: 0;
+  }
+
+  .customer-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+  }
+
+  .customer-badges {
+    flex-wrap: wrap;
+  }
+
+  .header-actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
   .assign-action-btn {
     padding: 0.5rem 0.875rem;
     gap: 0.5rem;
@@ -924,6 +975,15 @@ defineExpose({
 
   .assign-action-btn .action-icon {
     margin-right: 0;
+  }
+}
+
+
+/* Touch: header action buttons are 36px; bring them to the 44px target size. */
+@media (pointer: coarse) {
+  .header-action-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 </style>
