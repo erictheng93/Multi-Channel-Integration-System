@@ -14,6 +14,10 @@ EXIT_ROUTES="$TMPDIR/mcis-precommit-routes.exit"
 EXIT_SQL="$TMPDIR/mcis-precommit-sql.exit"
 LOG_SECRETS="$TMPDIR/mcis-precommit-secrets.log"
 EXIT_SECRETS="$TMPDIR/mcis-precommit-secrets.exit"
+LOG_BP="$TMPDIR/mcis-precommit-breakpoints.log"
+EXIT_BP="$TMPDIR/mcis-precommit-breakpoints.exit"
+LOG_BTN="$TMPDIR/mcis-precommit-scoped-btn.log"
+EXIT_BTN="$TMPDIR/mcis-precommit-scoped-btn.exit"
 
 START=$(date +%s)
 
@@ -50,8 +54,22 @@ PID_SQL=$!
 ) &
 PID_SECRETS=$!
 
-# Wait for all four to finish
-wait $PID_IMPORT $PID_ROUTES $PID_SQL $PID_SECRETS
+# Job 5: Responsive breakpoint scale (frontend/src/config/breakpoints.ts)
+(
+  (cd frontend && bun run lint:breakpoints) > "$LOG_BP" 2>&1
+  echo $? > "$EXIT_BP"
+) &
+PID_BP=$!
+
+# Job 6: Global .btn system guard (no scoped redefinitions, no modifier without base)
+(
+  (cd frontend && bun run lint:scoped-btn) > "$LOG_BTN" 2>&1
+  echo $? > "$EXIT_BTN"
+) &
+PID_BTN=$!
+
+# Wait for all six to finish
+wait $PID_IMPORT $PID_ROUTES $PID_SQL $PID_SECRETS $PID_BP $PID_BTN
 
 END=$(date +%s)
 ELAPSED=$((END - START))
@@ -91,6 +109,22 @@ if [ "$(cat "$EXIT_SECRETS")" != "0" ]; then
   cat "$LOG_SECRETS"
   echo "Possible secret in staged changes. Move it to an env var or wrangler secret."
   echo "False positive? Add an allowlist entry to .gitleaks.toml"
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_BP")" != "0" ]; then
+  echo ""
+  echo "── Breakpoint scale check ─────────────────────────"
+  cat "$LOG_BP"
+  echo "Use a width from frontend/src/config/breakpoints.ts (480/640/768/1024/1280)."
+  FAIL=1
+fi
+
+if [ "$(cat "$EXIT_BTN")" != "0" ]; then
+  echo ""
+  echo "── Button system check ────────────────────────────"
+  cat "$LOG_BTN"
+  echo "The .btn system lives only in frontend/src/style.css; see CLAUDE.md 'Button System'."
   FAIL=1
 fi
 

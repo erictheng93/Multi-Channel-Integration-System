@@ -165,7 +165,10 @@ The repo splits safety checks into a **fast pre-commit** and a **full pre-push**
 - `check:sql-raw:ci` (SQL injection regression guard)
 - `gitleaks git --pre-commit --staged` (secret scan; rules in `.gitleaks.toml`, which adds a `hardcoded-password` rule because the default entropy-gated rules missed the 2025-08 admin password leak). Requires `gitleaks` on PATH (`winget install Gitleaks.Gitleaks`) — the hook fails closed without it.
 
-All four run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
+- `lint:breakpoints` (every `@media` width must be on the scale in `frontend/src/config/breakpoints.ts`; also a CI step)
+- `lint:scoped-btn` (global `.btn` system guard; also a CI step)
+
+All six run concurrently via background jobs (`&` + `wait`). Type-check and ESLint are intentionally NOT here — they live in pre-push.
 
 **`.husky/pre-push`** (~105s warm, ~340s cold) — full correctness gate, parallel:
 - `bunx tsc --noEmit` (backend, incremental via `tsBuildInfoFile`)
@@ -183,6 +186,13 @@ Caches live in `node_modules/.cache/` (already gitignored). First push after `bu
 - pre-push is the last line of defence before code leaves the machine; CI is the absolute final gate.
 
 **Bypass** (NOT recommended): `git commit --no-verify` / `git push --no-verify`.
+
+### Responsive Breakpoints
+
+One scale, defined once in `frontend/src/config/breakpoints.ts`: **480 / 640 / 768 / 1024 / 1280** (Tailwind defaults plus `xs`).
+Desktop-first: phone is `max-width: 768px`, tablet is 769-1024px. CSS cannot read the constants, so
+`bun run lint:breakpoints` (pre-commit + CI) rejects any `@media` width off the scale (`N` or `N+1`). Pair every
+`100vh` height with a `100dvh` twin, and use `env(safe-area-inset-*)` for anything pinned to a screen edge.
 
 ### Code Style
 - **TypeScript strict mode** — all code must be type-safe

@@ -251,6 +251,8 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  /* a grid item defaults to min-width:auto, so a select's longest option would set the track */
+  min-width: 0;
 }
 
 .filter-label {
@@ -262,6 +264,8 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
 .filter-select,
 .filter-date,
 .search-input {
+  min-width: 0;
+  max-width: 100%;
   padding: 0.75rem;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
@@ -317,7 +321,7 @@ function handleFilterChange(key: keyof ReportListQuery, value: string) {
 
 @media (max-width: 768px) {
   .filter-controls {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
