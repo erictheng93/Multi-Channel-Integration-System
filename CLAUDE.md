@@ -263,6 +263,9 @@ Alarms persist and wake the object with no incoming request. Each wake bills a r
 - Route protection: `frontend/src/middleware/authGuard.ts`
 - **Dual roles**: System (Admin/Agent) + Team (Member→Lead→Supervisor)
 - JWT caches `allowedTeamIds[]` and `teamRoles{}` for multi-team support
+- **Admin routes**: `meta.requiresAdmin` is enforced in `combinedAuthGuard` (`frontend/src/middleware/authGuard.ts`); the router's 5 s auth cache never admits an admin route (`authCacheCanAdmit`). A non-admin is redirected to `/dashboard`, so do not link agents to admin pages
+- **Conversation visibility**: agents see conversations assigned to their teams plus the unassigned shared pool (`src/services/conversation-visibility.ts`); another team's conversation returns 403 on detail and messages. An agent with no teams therefore sees only the pool. Verified against production on 2026-10-12
+- **Login form** only requires the fields to be filled; password composition rules belong to create/change-password (`frontend/src/utils/login-validation.ts`)
 
 ### Deployment Policy
 - **DEPLOY TARGET IS REMOTE PRODUCTION ONLY** — no staging. The local D1 mirror (below) is a dev/inspection convenience, never a deploy target.
