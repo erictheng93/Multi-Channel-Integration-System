@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="max-w-[1400px] mx-auto px-5 pb-8">
+    <div class="w-full max-w-[1400px] mx-auto px-5 pb-8">
       <!-- Header -->
       <ApiHeader
         :loading="controller.loading.value"

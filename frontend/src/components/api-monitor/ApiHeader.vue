@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
     <div>
       <h1 class="text-3xl font-bold text-[#1C1C1E] m-0">
         System Status

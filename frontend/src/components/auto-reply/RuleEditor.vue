@@ -159,6 +159,12 @@ const emit = defineEmits<{
 </script>
 
 <style scoped>
+/* Spacing comes from the flex gaps below; the global .form-group/.form-label margins would double it */
+.rule-editor .form-group,
+.rule-editor .form-label {
+  margin-bottom: 0;
+}
+
 .rule-editor {
   padding: var(--space-4);
   display: flex;

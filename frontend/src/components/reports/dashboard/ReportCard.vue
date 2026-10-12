@@ -3,7 +3,7 @@
     class="report-card"
     @click="$emit('view-report', report.id)"
   >
-    <div class="card-header">
+    <div class="report-card-header">
       <div
         class="report-type-badge"
         :class="typeBadgeClass"
@@ -184,7 +184,7 @@ const canDelete = computed(() => {
   transform: translateY(-2px);
 }
 
-.card-header {
+.report-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
