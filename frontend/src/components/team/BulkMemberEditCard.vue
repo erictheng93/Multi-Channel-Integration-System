@@ -408,12 +408,15 @@ function handleTeamsLoaded(teams: AgentTeamMembership[]) {
 }
 
 .form-group {
+  /* spacing comes from gap; the global .form-group margin would double it */
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
 }
 
 .form-label {
+  margin-bottom: 0;
   font-size: 0.8125rem;
   font-weight: 500;
   color: #6b7280;
