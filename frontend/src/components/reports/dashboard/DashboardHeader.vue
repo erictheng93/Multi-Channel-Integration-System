@@ -92,8 +92,13 @@ defineEmits<{
     gap: 1rem;
   }
 
+  .dashboard-title {
+    font-size: 1.75rem;
+  }
+
   .header-actions {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 }

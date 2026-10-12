@@ -296,6 +296,7 @@ function handleFilterByType(type: string) {
 
 <style scoped>
 .report-dashboard {
+  width: 100%;
   max-width: 1600px;
   margin: 0 auto;
   padding: 2rem;
