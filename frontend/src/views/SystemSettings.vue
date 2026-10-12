@@ -48,6 +48,9 @@ onUnmounted(() => controller.cleanup())
 
 <style scoped>
 .system-settings {
+  /* .page-content is a flex column: max-width + auto margins alone size to the content, so a long
+     (e.g. English) header pushed the page wider than the phone viewport */
+  width: 100%;
   max-width: 900px;
   margin: 0 auto;
 }

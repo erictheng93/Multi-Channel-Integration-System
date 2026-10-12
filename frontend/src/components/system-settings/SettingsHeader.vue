@@ -93,7 +93,13 @@ const messageIcon = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.header-text {
+  min-width: 0;
 }
 
 .header-text {
