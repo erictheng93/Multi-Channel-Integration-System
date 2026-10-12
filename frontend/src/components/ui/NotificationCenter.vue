@@ -2,7 +2,7 @@
   <div class="notification-center">
     <!-- 桌面通知暫停中:一直顯示在頂部列,避免忘記恢復而漏接客戶訊息 -->
     <span
-      v-if="desktopPaused"
+      v-if="desktopPaused && desktopPrefs.enabled"
       data-testid="desktop-paused-pill"
       class="notification-paused-pill"
       role="status"
