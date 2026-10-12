@@ -74,6 +74,7 @@ const tabs = [
 <style scoped>
 .comparison-dashboard-example {
   min-height: 100vh;
+  min-height: 100dvh;
   background: #f9fafb;
 }
 

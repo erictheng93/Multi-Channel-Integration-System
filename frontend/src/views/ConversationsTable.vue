@@ -236,6 +236,7 @@ onUnmounted(() => {
 .conversations {
   background-color: #f8f9fa;
   min-height: calc(100vh - 120px);
+  min-height: calc(100dvh - 120px);
   position: relative;
 }
 

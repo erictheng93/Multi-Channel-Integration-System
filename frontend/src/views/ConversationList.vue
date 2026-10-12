@@ -395,6 +395,7 @@ onUnmounted(() => {
 /* Virtual scrolling - exact height calculation */
 .smart-virtual-conversations {
   height: calc(100vh - 300px);
+  height: calc(100dvh - 300px);
   min-height: 400px;
 }
 

@@ -204,6 +204,7 @@ defineExpose({
   max-width: none;
   max-height: none;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   border-radius: 0;
   margin: 0;

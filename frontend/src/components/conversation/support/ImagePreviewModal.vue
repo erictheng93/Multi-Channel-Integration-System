@@ -376,6 +376,7 @@ onUnmounted(() => {
   .image-preview-modal {
     max-width: 100vw;
     max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0;
   }
 
