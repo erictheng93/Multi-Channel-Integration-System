@@ -95,6 +95,23 @@ describe('useDesktopNotificationPrefs', () => {
     expect(b.prefs.enabled).toBe(false)
   })
 
+  it('其他分頁寫入偏好(storage 事件)→ 同步到此分頁記憶體,之後 setPrefs 不會蓋回舊值', () => {
+    const { prefs, setPrefs } = useDesktopNotificationPrefs()
+    localStorage.setItem(DESKTOP_NOTIFICATION_PREFS_KEY, JSON.stringify({ enabled: false, scope: 'all', soundEnabled: true }))
+    window.dispatchEvent(new window.StorageEvent('storage', { key: DESKTOP_NOTIFICATION_PREFS_KEY }))
+    expect(prefs.enabled).toBe(false)
+
+    setPrefs({ soundEnabled: false })
+    expect(JSON.parse(localStorage.getItem(DESKTOP_NOTIFICATION_PREFS_KEY) as string).enabled).toBe(false)
+  })
+
+  it('無關 key 的 storage 事件 → 不影響偏好', () => {
+    const { prefs } = useDesktopNotificationPrefs()
+    localStorage.setItem(DESKTOP_NOTIFICATION_PREFS_KEY, JSON.stringify({ enabled: false }))
+    window.dispatchEvent(new window.StorageEvent('storage', { key: 'other-key' }))
+    expect(prefs.enabled).toBe(true)
+  })
+
   it('權限:支援時反映 Notification.permission;requestPermission 更新狀態', async () => {
     const requestPermission = vi.fn().mockResolvedValue('granted')
     vi.stubGlobal('Notification', { permission: 'default', requestPermission })

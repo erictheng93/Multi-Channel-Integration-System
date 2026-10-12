@@ -57,6 +57,16 @@ function ensureInitialized(): void {
   initialized = true
 }
 
+// 其他分頁改了偏好時同步記憶體:否則此分頁照舊彈通知,且下次 setPrefs 會把舊值整包寫回、蓋掉對方的變更。
+// storage 事件只在「其他」分頁寫入時觸發;key 為 null 代表 localStorage.clear()。
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (initialized && (event.key === DESKTOP_NOTIFICATION_PREFS_KEY || event.key === null)) {
+      Object.assign(prefs, readStoredPrefs())
+    }
+  })
+}
+
 // ==================== Composable ====================
 
 export function useDesktopNotificationPrefs() {
