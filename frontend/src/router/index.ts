@@ -168,6 +168,7 @@ const router = createRouter({
       component: () => import('@/views/WebSocketMonitoring.vue'),
       meta: {
         requiresAuth: true,
+        requiresAdmin: true,
         title: 'WebSocket 性能監控'
       }
     },
