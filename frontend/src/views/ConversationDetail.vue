@@ -778,7 +778,6 @@ defineExpose({
 
   .input-section {
     padding: 8px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
   }
 
   .closed-state {

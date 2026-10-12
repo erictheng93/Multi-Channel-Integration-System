@@ -176,6 +176,9 @@
     display: flex;
     height: 100vh;
     height: 100dvh;
+    /* landscape phones: the notch sits at the left/right edge (viewport-fit=cover) */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
     background-color: #f9fafb !important;
   }
 
