@@ -185,6 +185,9 @@ onMounted(load)
 
 <style scoped>
 .data-backup {
+  /* width: 100% — .page-content is a flex column, so with margin: 0 auto this would size to
+     its content and overflow (clipped) on narrow screens */
+  width: 100%;
   padding: 20px;
   display: flex;
   flex-direction: column;
