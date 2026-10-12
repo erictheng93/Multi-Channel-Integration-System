@@ -979,6 +979,29 @@ defineExpose({
 }
 
 
+/* Short phone viewport (the on-screen keyboard is open): the header would take ~40% of the
+   height and leave the message list ~100px. Keep name, badges and every action; drop the
+   decorative avatar and the tag row (tags stay editable from the tag button). */
+@media (max-width: 768px) and (max-height: 600px) {
+  .conversation-header {
+    padding: 0.5rem 0.75rem;
+    gap: 0.25rem;
+  }
+
+  .header-left {
+    gap: 0.25rem;
+  }
+
+  .customer-avatar,
+  .customer-tags {
+    display: none;
+  }
+
+  .customer-badges {
+    margin-top: 0;
+  }
+}
+
 /* Touch: header action buttons are 36px; bring them to the 44px target size. */
 @media (pointer: coarse) {
   .header-action-btn {
