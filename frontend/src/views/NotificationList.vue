@@ -160,6 +160,7 @@ onUnmounted(() => {
 <style scoped>
 /* ==================== Page Layout ==================== */
 .notification-page {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-6);
