@@ -74,6 +74,8 @@ const handleClick = () => {
 .status-badge {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: var(--space-1);
   padding: 4px 8px;
   border-radius: var(--radius-full);

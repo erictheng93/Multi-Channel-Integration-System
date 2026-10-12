@@ -260,8 +260,9 @@ onUnmounted(() => {
 
 .timeline-item__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   margin-bottom: 4px;
 }
 
@@ -272,6 +273,8 @@ onUnmounted(() => {
 }
 
 .timeline-item__role {
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 2px 8px;
   border-radius: 9999px;
   font-size: 11px;
@@ -279,6 +282,7 @@ onUnmounted(() => {
 }
 
 .timeline-item__time {
+  white-space: nowrap;
   font-size: 12px;
   color: #8E8E93;
   margin-left: auto;
