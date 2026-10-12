@@ -12,7 +12,7 @@
         :style="{ animationDelay: `${index * 50}ms` }"
         @click="$emit('select', conversation.id)"
       >
-        <div class="card-header">
+        <div class="conv-card-header">
           <div class="customer-info">
             <span
               class="read-badge"
@@ -58,12 +58,12 @@
             </div>
           </div>
         </div>
-        <div class="card-body">
+        <div class="conv-card-body">
           <div class="last-message">
             {{ getLastMessageText(conversation) }}
           </div>
         </div>
-        <div class="card-footer">
+        <div class="conv-card-footer">
           <div class="assigned-agent">
             負責人: {{ getAssignedTo(conversation) }}
           </div>
@@ -224,14 +224,14 @@ const getAssignedTo = (conversation: Conversation) => {
   transition: transform 0.3s ease;
 }
 
-.card-header {
+.conv-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 0.75rem;
 }
 
-.card-header .customer-info {
+.conv-card-header .customer-info {
   flex: 1;
 }
 
@@ -373,11 +373,11 @@ const getAssignedTo = (conversation: Conversation) => {
   background-color: #e67e22;
 }
 
-.card-body {
+.conv-card-body {
   margin-bottom: 0.75rem;
 }
 
-.card-body .last-message {
+.conv-card-body .last-message {
   max-width: none;
   -webkit-line-clamp: 3;
 }
@@ -391,7 +391,7 @@ const getAssignedTo = (conversation: Conversation) => {
   overflow: hidden;
 }
 
-.card-footer {
+.conv-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -441,7 +441,7 @@ const getAssignedTo = (conversation: Conversation) => {
     padding: 0.75rem;
   }
 
-  .card-header {
+  .conv-card-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
@@ -452,7 +452,7 @@ const getAssignedTo = (conversation: Conversation) => {
     justify-content: flex-start;
   }
 
-  .card-footer {
+  .conv-card-footer {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;

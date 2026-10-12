@@ -83,15 +83,15 @@ describe('ConversationMobileCards.vue', () => {
     it('should have header, body, and footer sections', () => {
       const conv = createConversation()
       const wrapper = mountCards([conv])
-      expect(wrapper.find('.card-header').exists()).toBe(true)
-      expect(wrapper.find('.card-body').exists()).toBe(true)
-      expect(wrapper.find('.card-footer').exists()).toBe(true)
+      expect(wrapper.find('.conv-card-header').exists()).toBe(true)
+      expect(wrapper.find('.conv-card-body').exists()).toBe(true)
+      expect(wrapper.find('.conv-card-footer').exists()).toBe(true)
     })
 
     it('should have badges container in header', () => {
       const conv = createConversation()
       const wrapper = mountCards([conv])
-      expect(wrapper.find('.card-header .badges').exists()).toBe(true)
+      expect(wrapper.find('.conv-card-header .badges').exists()).toBe(true)
     })
   })
 
@@ -229,7 +229,7 @@ describe('ConversationMobileCards.vue', () => {
     it('should render timestamp in card footer', () => {
       const conv = createConversation({ updatedAt: now.toISOString() })
       const wrapper = mountCards([conv])
-      const timestamp = wrapper.find('.card-footer .timestamp')
+      const timestamp = wrapper.find('.conv-card-footer .timestamp')
       expect(timestamp.exists()).toBe(true)
       expect(timestamp.text()).toBeTruthy()
     })

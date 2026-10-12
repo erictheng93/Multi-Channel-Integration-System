@@ -137,7 +137,7 @@
       </form>
 
       <!-- Footer Links -->
-      <div class="card-footer">
+      <div class="login-footer">
         <router-link
           to="/register"
           class="footer-link"
