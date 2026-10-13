@@ -2,7 +2,7 @@
 
 基準：`fbfb9805a093eedda582c33ccb2d1d6f973bd78b`。修復日期：2026-10-13。
 依據：[issue #62](https://github.com/erictheng93/Multi-Channel-Integration-System/issues/62)、[審視留言](https://github.com/erictheng93/Multi-Channel-Integration-System/issues/62#issuecomment-6136186924)。
-所有變更僅做本機 atomic commits；未開 PR、未 push、未部署、未修改正式資料。
+所有變更以 atomic commits 直接推送至 main（`a6f2ba97` 至 `3dea85b8` 已於 2026-10-13 推上 origin/main），未開 PR；未部署、未修改正式資料。其中 `43224121`（單發圖片改存 `image`）與 `3dea85b8`（#61 的 warn log）不屬於 #62，前者部署前須完成真實單發路徑驗證。
 
 ## 11 項對照
 
