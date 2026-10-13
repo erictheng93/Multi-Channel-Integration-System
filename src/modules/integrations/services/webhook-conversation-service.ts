@@ -335,16 +335,9 @@ export async function saveMessage(
       });
     }
 
-    // Trigger latest message cache update
-    try {
-      const { LatestMessageJobQueue } = await import('@/workers/latest-message-worker');
-      const jobQueue = new LatestMessageJobQueue(env);
-      await jobQueue.updateLatestMessage(conversationId, messageId, 'high');
-      log.debug(`Triggered cache update for ${platform} message`, { conversationId });
-    } catch (error) {
-      log.warn('Failed to trigger cache update', { error: error instanceof Error ? error.message : String(error) });
-      // Don't fail the webhook for cache update failures
-    }
+    // The latest-message KV cache is no longer updated here: nothing reads `latest_msg:*`
+    // (conversation lists come from D1), and every inbound message used to cost a
+    // LatestMessageCacheCoordinator request, two storage writes and a 5 s alarm wake.
 
     if (platform === 'line') {
       log.debug(`Message created successfully`, {
