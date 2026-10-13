@@ -157,6 +157,34 @@ describe('BroadcastComposeCard images', () => {
     })
   })
 
+  it('keeps focus on the same after button across consecutive backward moves', async () => {
+    const wrapper = mountCard()
+    await wrapper.find('input[type="text"]').setValue('通知')
+    await wrapper.find('select').setValue(7)
+    await pick(wrapper, ['1', '2', '3', '4'].map(n => image(`${n}.jpg`)))
+    const after = wrapper.find('button[aria-label="將圖片 1 往後移"]')
+    const movedKey = wrapper.findAll('.image-tile')[0]!.attributes('data-image-key')
+    ;(after.element as HTMLButtonElement).focus()
+
+    for (const position of [2, 3]) {
+      await after.trigger('click')
+      expect(after.attributes('aria-label')).toBe(`將圖片 ${position} 往後移`)
+      expect(after.attributes('disabled')).toBeUndefined()
+      expect(document.activeElement).toBe(after.element)
+      expect(wrapper.findAll('.image-tile')[position - 1]!.attributes('data-image-key')).toBe(
+        movedKey
+      )
+    }
+
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('send')?.[0]?.[0]).toMatchObject({
+      attachments: ['2', '3', '1', '4'].map(n => ({
+        attachmentId: `a-${n}.jpg`,
+        previewAttachmentId: `p-${n}.jpg`,
+      })),
+    })
+  })
+
   it('removes images, revokes URLs, and moves focus to the next tile or picker', async () => {
     const wrapper = mountCard()
     await pick(wrapper, [image('1.jpg'), image('2.jpg')])

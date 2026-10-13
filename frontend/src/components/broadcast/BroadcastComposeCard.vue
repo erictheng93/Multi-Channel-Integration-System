@@ -336,7 +336,7 @@
     }
     await nextTick()
     if (moved) {
-      focusTile(moved.key, next === 0 ? 'move-after' : 'move-before')
+      focusTile(moved.key, delta > 0 ? 'move-after' : 'move-before')
     }
   }
 
