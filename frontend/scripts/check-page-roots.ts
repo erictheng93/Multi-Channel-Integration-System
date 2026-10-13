@@ -35,18 +35,18 @@ async function routedComponents(): Promise<string[]> {
   return [...found]
 }
 
-/** Class of the component's root element; looks through an <AppLayout> wrapper. */
-function rootClass(source: string): string | null {
+/** Static classes of the component's root element; looks through an <AppLayout> wrapper. */
+function rootClasses(source: string): string[] {
   const tpl = source.match(/<template>([\s\S]*?)<\/template>\s*(?:<script|<style|$)/)
-  if (!tpl) { return null }
+  if (!tpl) { return [] }
   const html = tpl[1].replace(/<!--[\s\S]*?-->/g, '')
   const tags = [...html.matchAll(/<([A-Za-z][\w-]*)\b([^>]*)>/g)]
   for (const t of tags) {
     if (/^(AppLayout|app-layout|ErrorBoundary|error-boundary)$/.test(t[1])) { continue }
-    const cls = t[2].match(/(?:^|\s)class="([^"]+)"/)
-    return cls ? cls[1].trim().split(/\s+/)[0] : null
+    const cls = t[2].match(/(?:^|\s)class=(?:"([^"]*)"|'([^']*)')/)
+    return cls ? (cls[1] ?? cls[2]).trim().split(/\s+/).filter(Boolean) : []
   }
-  return null
+  return []
 }
 
 /** Declaration blocks of top-level rules only (media queries and other at-rules are skipped). */
@@ -83,18 +83,19 @@ let violations = 0
 for (const file of await routedComponents()) {
   let source: string
   try { source = await readFile(file, 'utf8') } catch { continue }
-  const cls = rootClass(source)
-  if (!cls) { continue }
+  const classes = rootClasses(source)
+  if (!classes.length) { continue }
 
   for (const style of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) {
     for (const rule of topLevelRules(style[1])) {
       const selectors = rule.selector.split(',').map((s) => s.trim())
-      if (!selectors.includes(`.${cls}`)) { continue }
+      const matchingClasses = classes.filter((cls) => selectors.includes(`.${cls}`))
+      if (!matchingClasses.length) { continue }
       if (hasProp(rule.body, 'max-width') && autoMargins(rule.body) && !hasProp(rule.body, 'width')) {
         const line = source.slice(0, source.indexOf(style[1]) + rule.index).split('\n').length
         violations++
         console.error(
-          `${relative(ROOT, file).replace(/\\/g, '/')}:${line}  .${cls} sets max-width with auto margins but no width: ` +
+          `${relative(ROOT, file).replace(/\\/g, '/')}:${line}  ${matchingClasses.map((cls) => `.${cls}`).join(', ')} sets max-width with auto margins but no width: ` +
             'inside the flex-column page container it shrink-wraps its content (add width: 100%)'
         )
       }
