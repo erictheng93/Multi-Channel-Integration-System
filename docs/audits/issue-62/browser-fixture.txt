@@ -1,0 +1,33 @@
+import { createApp, h } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import '@/styles/variables.css'
+import '@/style.css'
+import '@/styles/conversation-background.css'
+import type { Message } from '@/types'
+
+const pinia = createPinia()
+setActivePinia(pinia)
+const { seedStores } = await import('../../tests/visual-regression/pixel/harness/mocks/stores')
+seedStores(pinia)
+const { default: Bubble } = await import('@/components/conversation/MessageBubble.vue')
+const { default: Compose } = await import('@/components/broadcast/BroadcastComposeCard.vue')
+const canvas = document.createElement('canvas')
+canvas.width = 240; canvas.height = 160
+const ctx = canvas.getContext('2d')!
+ctx.fillStyle = '#007aff'; ctx.fillRect(0, 0, 240, 160)
+ctx.fillStyle = '#fff'; ctx.font = '24px sans-serif'; ctx.fillText('Broadcast image', 20, 85)
+const blob = await new Promise<Blob>((resolve) => canvas.toBlob((value) => resolve(value!), 'image/png'))
+const url = URL.createObjectURL(blob)
+const message = (id: string, content: string): Message => ({
+  id, conversationId: 'customer-conversation-1', senderType: 'agent', senderName: '客服',
+  messageType: 'image', content, createdAt: Date.now(), deliveryStatus: 'delivered',
+  metadata: { broadcastId: 'broadcast-1' },
+  file_attachments: [{ id: 'attachment-1', filename: 'broadcast.png', mimeType: 'image/png', fileSize: blob.size, fileUrl: url }]
+} as Message)
+createApp({ render: () => h('main', { style: 'padding:32px;max-width:900px;margin:auto' }, [
+  h('h1', '客服群發圖片渲染驗證'),
+  h('h2', '純圖片'), h('div', { id: 'image-only' }, [h(Bubble, { message: message('m-1', '') })]),
+  h('h2', '文字與圖片'), h('div', { id: 'mixed' }, [h(Bubble, { message: message('m-2', '群發文字不可消失') })]),
+  h(Compose, { tags: [{ id: 7, name: 'VIP' }], preview: null, previewTagId: null, previewLoading: false, sending: false, error: null })
+]) }).use(pinia).use(createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }] })).mount('#app')
