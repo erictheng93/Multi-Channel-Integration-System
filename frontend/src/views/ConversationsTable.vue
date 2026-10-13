@@ -35,6 +35,28 @@
             <HamsterLoader message="載入對話列表中..." />
           </div>
           <div
+            v-else-if="loadError && conversations.length === 0"
+            class="conversations-error"
+            role="alert"
+          >
+            <div class="conversations-error-content">
+              <div class="conversations-error-title">
+                無法載入對話列表
+              </div>
+              <div class="conversations-error-text">
+                {{ loadError }}
+              </div>
+              <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="isUpdating"
+                @click="refreshConversations"
+              >
+                重試
+              </button>
+            </div>
+          </div>
+          <div
             v-else-if="displayedConversations.length === 0"
             class="no-data"
           >
@@ -116,6 +138,7 @@ const animationDelay = ref(0)
 
 // 直接使用 Store 數據，避免 useAsyncData 的複雜性
 const loading = computed(() => conversationsStore.loading)
+const loadError = computed(() => conversationsStore.loadError)
 const conversations = computed(() => conversationsStore.conversations)
 
 // 平滑載入系統：顯示的對話列表（僅 lastMessageSearch 為 client-side 篩選）
@@ -316,6 +339,37 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
+/* Load failure state */
+.conversations-error {
+  background: #FFFFFF;
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgb(0, 0, 0, 0.06);
+  padding: 4rem 2rem;
+  text-align: center;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.conversations-error-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.conversations-error-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #FF3B30;
+}
+
+.conversations-error-text {
+  font-size: 0.95rem;
+  color: #8E8E93;
+  margin-bottom: 0.5rem;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -417,7 +471,8 @@ onUnmounted(() => {
     border-radius: 0;
   }
 
-  .no-data {
+  .no-data,
+  .conversations-error {
     padding: 3rem 1rem;
   }
 

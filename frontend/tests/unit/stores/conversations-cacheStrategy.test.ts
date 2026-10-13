@@ -71,6 +71,7 @@ function makeDeps(overrides: Partial<CacheStrategyDeps> = {}): CacheStrategyDeps
     loading: ref(false),
     updating: ref(false),
     error: ref<string | null>(null),
+    loadError: ref<string | null>(null),
     filters: ref<ConversationFilters>({}),
     pagination: ref({ page: 1, pageSize: 20, total: 0, totalPages: 0 }),
     handleError: vi.fn(),
@@ -270,7 +271,44 @@ describe('createCacheStrategy', () => {
       expect(result.fresh).toBe(false)
       expect(result.error).toBeDefined()
       expect(deps.handleError).toHaveBeenCalled()
+      expect(deps.loadError.value).not.toBeNull()
       expect(deps.loading.value).toBe(false)
+    })
+
+    it('reports an unsuccessful API response (no throw) through handleError', async () => {
+      mockConversationCache.getConversationList.mockReturnValue({ data: null, needsUpdate: true })
+      mockConversationList.mockResolvedValue({ success: false, error: 'server down' })
+
+      const deps = makeDeps()
+      const strategy = createCacheStrategy(deps)
+
+      const result = await strategy.loadWithCache({})
+
+      expect(result.fresh).toBe(false)
+      expect(result.error).toBe('server down')
+      expect(deps.handleError).toHaveBeenCalledWith('server down', expect.any(String))
+      expect(deps.loadError.value).toEqual(expect.any(String))
+      expect(deps.loadError.value).not.toBeNull()
+      expect(deps.loading.value).toBe(false)
+    })
+
+    it('clears a previous error when a fresh load starts', async () => {
+      mockConversationCache.getConversationList.mockReturnValue({ data: null, needsUpdate: true })
+      mockConversationList.mockResolvedValue({
+        success: true,
+        data: { items: [], page: 1, pageSize: 20, total: 0, totalPages: 0 }
+      })
+
+      const deps = makeDeps({
+        error: ref<string | null>('old failure'),
+        loadError: ref<string | null>('old failure')
+      })
+      const strategy = createCacheStrategy(deps)
+
+      await strategy.loadWithCache({})
+
+      expect(deps.error.value).toBeNull()
+      expect(deps.loadError.value).toBeNull()
     })
 
     it('does not call handleError when API fails but cache exists', async () => {
@@ -288,6 +326,7 @@ describe('createCacheStrategy', () => {
       expect(result.fromCache).toBe(true)
       expect(result.fresh).toBe(false)
       expect(deps.handleError).not.toHaveBeenCalled()
+      expect(deps.loadError.value).toBeNull()
     })
 
     it('passes clean filters to API', async () => {
