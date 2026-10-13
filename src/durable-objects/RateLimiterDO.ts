@@ -2,13 +2,14 @@ import { nowMs } from '@/utils/timestamp'
 /**
  * RateLimiterDO - Durable Object for Rate Limiting
  *
- * Replaces KV-based rate limiting with in-memory counting and batch persistence.
- * This dramatically reduces KV write operations (from ~100% to ~5% of requests).
+ * Uses an in-memory cache backed by durable storage for every counted request.
  *
  * Architecture:
  * - In-memory sliding window counters for fast access
- * - Periodic batch persistence to DO storage
- * - Automatic cleanup of expired windows
+ * - Each counted request writes ONLY its own entry (`rl:<clientId>`) before the
+ *   response is returned, so eviction can never roll a client's quota back and no
+ *   write ever grows with the number of tracked clients
+ * - A single alarm removes expired entries; it never re-arms itself
  * - Per-client rate limiting within a shard
  *
  * DO ID Strategy: `ratelimit:${endpoint}:${ipPrefix}`
@@ -68,13 +69,19 @@ interface RateLimitStats {
   uptime: number;
 }
 
+const ENTRY_PREFIX = 'rl:';
+/** Whole-map snapshot written by the previous alarm-based design; migrated once on load. */
+const LEGACY_SNAPSHOT_KEY = 'rateLimits';
+/** DurableObjectStorage.delete() accepts at most 128 keys per call. */
+const STORAGE_BATCH = 128;
+
 export class RateLimiterDO implements DurableObject {
   private state: DurableObjectState;
 
   // In-memory rate limit state (fast access)
   private rateLimits = new Map<string, RateLimitEntry>();
 
-  // Statistics
+  // Statistics (informational; persisted by the cleanup alarm, not per request)
   private stats = {
     totalRequests: 0,
     blockedRequests: 0,
@@ -83,10 +90,10 @@ export class RateLimiterDO implements DurableObject {
   };
 
   // Configuration
-  private readonly PERSIST_INTERVAL_MS = 60000; // Persist + cleanup at most once a minute, only after activity
-  private persistScheduled = false;
-  private readonly MAX_ENTRIES = 10000; // Maximum entries before forced cleanup
   private readonly ENTRY_TTL_MS = 600000; // 10 minutes TTL for inactive entries
+  private readonly CLEANUP_DELAY_MS = 600000; // one cleanup per TTL, armed only by activity
+  private cleanupScheduled = false;
+  private readonly MAX_ENTRIES = 10000; // Maximum entries before forced cleanup
 
 
   constructor(state: DurableObjectState, _env: unknown) {
@@ -105,9 +112,7 @@ export class RateLimiterDO implements DurableObject {
       // Handle HTTP API
       if (request.method === 'POST') {
         const body = await request.json() as RateLimitRequest;
-        const response = this.handleRequest(body);
-        await this.schedulePersist();
-        return response;
+        return await this.handleRequest(body);
       }
 
       // Handle GET requests for stats
@@ -128,10 +133,17 @@ export class RateLimiterDO implements DurableObject {
     }
   }
 
-  private handleRequest(body: RateLimitRequest): Response {
+  private async handleRequest(body: RateLimitRequest): Promise<Response> {
     switch (body.action) {
-      case 'check':
-        return this.handleCheckRateLimit(body);
+      case 'check': {
+        const response = this.handleCheckRateLimit(body);
+        // A 429 changes no counter, so only counted (allowed) requests are written.
+        if (response.status !== 429) {
+          await this.state.storage.put(ENTRY_PREFIX + body.clientId, this.rateLimits.get(body.clientId));
+          await this.scheduleCleanup();
+        }
+        return response;
+      }
       case 'stats':
         return this.handleStats();
       case 'cleanup':
@@ -255,9 +267,9 @@ export class RateLimiterDO implements DurableObject {
     });
   }
 
-  private handleCleanup(): Response {
+  private async handleCleanup(): Promise<Response> {
     const before = this.rateLimits.size;
-    this.cleanupExpiredEntries();
+    await this.removeFromStorage(this.cleanupExpiredEntries());
     const after = this.rateLimits.size;
 
     return new Response(JSON.stringify({
@@ -270,10 +282,11 @@ export class RateLimiterDO implements DurableObject {
     });
   }
 
-  private handleReset(clientId?: string): Response {
+  private async handleReset(clientId?: string): Promise<Response> {
     if (clientId) {
       // Reset specific client
       const existed = this.rateLimits.delete(clientId);
+      await this.state.storage.delete([ENTRY_PREFIX + clientId]);
       return new Response(JSON.stringify({
         success: true,
         clientId,
@@ -281,73 +294,87 @@ export class RateLimiterDO implements DurableObject {
       }), {
         headers: { 'Content-Type': 'application/json' }
       });
-    } else {
-      // Reset all
-      const count = this.rateLimits.size;
-      this.rateLimits.clear();
-      this.stats.totalRequests = 0;
-      this.stats.blockedRequests = 0;
-
-      return new Response(JSON.stringify({
-        success: true,
-        entriesCleared: count
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
     }
+
+    // Reset all
+    const count = this.rateLimits.size;
+    const ids = [...this.rateLimits.keys()];
+    this.rateLimits.clear();
+    this.stats.totalRequests = 0;
+    this.stats.blockedRequests = 0;
+    await this.removeFromStorage(ids);
+    // Nothing is left to clean up, so no alarm should stay pending.
+    await this.state.storage.deleteAlarm();
+    this.cleanupScheduled = false;
+
+    return new Response(JSON.stringify({
+      success: true,
+      entriesCleared: count
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   // =================== Storage Management ===================
 
   private async loadFromStorage(): Promise<void> {
     try {
-      // Load persisted rate limits
-      const stored = await this.state.storage.get<Map<string, RateLimitEntry>>('rateLimits');
-      if (stored) {
-        this.rateLimits = new Map(stored);
-        console.log(`[RateLimiterDO] Loaded ${this.rateLimits.size} entries from storage`);
+      const stored = await this.state.storage.list<RateLimitEntry>({ prefix: ENTRY_PREFIX });
+      for (const [key, entry] of stored) {
+        this.rateLimits.set(key.slice(ENTRY_PREFIX.length), entry);
       }
 
-      // Load stats
+      // One-time migration of the previous whole-map snapshot.
+      const legacy = await this.state.storage.get<Iterable<[string, RateLimitEntry]>>(LEGACY_SNAPSHOT_KEY);
+      if (legacy) {
+        const migrated: Array<[string, RateLimitEntry]> = [];
+        for (const [clientId, entry] of legacy) {
+          if (!this.rateLimits.has(clientId)) {
+            this.rateLimits.set(clientId, entry);
+            migrated.push([clientId, entry]);
+          }
+        }
+        for (let i = 0; i < migrated.length; i += STORAGE_BATCH) {
+          await Promise.all(migrated.slice(i, i + STORAGE_BATCH)
+            .map(([clientId, entry]) => this.state.storage.put(ENTRY_PREFIX + clientId, entry)));
+        }
+        await this.state.storage.delete([LEGACY_SNAPSHOT_KEY]);
+      }
+
       const storedStats = await this.state.storage.get<typeof this.stats>('stats');
       if (storedStats) {
         this.stats = { ...this.stats, ...storedStats, startTime: nowMs() };
       }
+
+      // Cold start is a cleanup point for entries that expired while the object was evicted.
+      await this.removeFromStorage(this.cleanupExpiredEntries());
+      console.log(`[RateLimiterDO] Loaded ${this.rateLimits.size} entries from storage`);
     } catch (error) {
       console.error('[RateLimiterDO] Error loading from storage:', error);
     }
   }
 
-  private async persistToStorage(): Promise<void> {
-    try {
-      if (this.rateLimits.size > 0) {
-        await this.state.storage.put('rateLimits', this.rateLimits);
-      } else {
-        await this.state.storage.delete('rateLimits');
-      }
-      await this.state.storage.put('stats', this.stats);
-
-      this.stats.lastPersist = nowMs();
-      console.log(`[RateLimiterDO] Persisted ${this.rateLimits.size} entries to storage`);
-    } catch (error) {
-      console.error('[RateLimiterDO] Error persisting to storage:', error);
+  private async removeFromStorage(clientIds: string[]): Promise<void> {
+    for (let i = 0; i < clientIds.length; i += STORAGE_BATCH) {
+      await this.state.storage.delete(clientIds.slice(i, i + STORAGE_BATCH).map((id) => ENTRY_PREFIX + id));
     }
   }
 
-  private cleanupExpiredEntries(): void {
+  /** Drops expired and excess entries from memory; returns the ids so storage can follow. */
+  private cleanupExpiredEntries(): string[] {
     const now = nowMs();
-    let removed = 0;
+    const removedIds: string[] = [];
 
     for (const [clientId, entry] of this.rateLimits.entries()) {
       // Remove entries that haven't been accessed recently
       if (now - entry.lastAccess > this.ENTRY_TTL_MS) {
         this.rateLimits.delete(clientId);
-        removed++;
+        removedIds.push(clientId);
       }
     }
 
-    if (removed > 0) {
-      console.log(`[RateLimiterDO] Cleaned up ${removed} expired entries`);
+    if (removedIds.length > 0) {
+      console.log(`[RateLimiterDO] Cleaned up ${removedIds.length} expired entries`);
     }
 
     // Force cleanup if we have too many entries
@@ -359,25 +386,30 @@ export class RateLimiterDO implements DurableObject {
 
       for (const [clientId] of entries) {
         this.rateLimits.delete(clientId);
+        removedIds.push(clientId);
       }
 
       console.log(`[RateLimiterDO] Force cleaned ${toRemove} oldest entries`);
     }
+
+    return removedIds;
   }
 
-  // Timers would block hibernation; activity arms one alarm instead.
-  private async schedulePersist(): Promise<void> {
-    if (this.persistScheduled) return;
-    this.persistScheduled = true;
+  // Timers would block hibernation; activity arms one cleanup alarm instead.
+  private async scheduleCleanup(): Promise<void> {
+    if (this.cleanupScheduled) return;
     if (await this.state.storage.getAlarm() === null) {
-      await this.state.storage.setAlarm(Date.now() + this.PERSIST_INTERVAL_MS);
+      // Stop condition: alarm() never re-arms; the next counted request arms the next cleanup.
+      await this.state.storage.setAlarm(Date.now() + this.CLEANUP_DELAY_MS);
     }
+    this.cleanupScheduled = true;
   }
 
-  // Chain stops by itself: no re-arm here; the next request arms the next persist.
   async alarm(): Promise<void> {
-    this.persistScheduled = false;
-    this.cleanupExpiredEntries();
-    await this.persistToStorage();
+    this.cleanupScheduled = false; // the alarm that fired is consumed
+    await this.removeFromStorage(this.cleanupExpiredEntries());
+    const persistedAt = nowMs();
+    await this.state.storage.put('stats', { ...this.stats, lastPersist: persistedAt });
+    this.stats.lastPersist = persistedAt;
   }
 }
