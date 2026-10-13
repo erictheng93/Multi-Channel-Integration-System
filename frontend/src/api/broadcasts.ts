@@ -252,9 +252,23 @@ async function uploadOne(file: File): Promise<string> {
 
 export async function uploadBroadcastImage(file: File): Promise<BroadcastAttachmentInput> {
   const preview = await createBroadcastPreview(file)
-  const [attachmentId, previewAttachmentId] = await Promise.all([
-    uploadOne(file),
-    uploadOne(preview),
-  ])
-  return { attachmentId, previewAttachmentId }
+  const results = await Promise.allSettled([uploadOne(file), uploadOne(preview)])
+  const [original, thumbnail] = results
+  if (original.status === 'fulfilled' && thumbnail.status === 'fulfilled') {
+    return { attachmentId: original.value, previewAttachmentId: thumbnail.value }
+  }
+  // Wait for both uploads so a late success can be reclaimed after its partner fails.
+  await deleteUploadedFiles(
+    results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []))
+  )
+  const failure = results.find(result => result.status === 'rejected')
+  throw failure?.status === 'rejected' ? failure.reason : new Error('圖片上傳失敗')
+}
+
+async function deleteUploadedFiles(ids: string[]): Promise<void> {
+  await Promise.allSettled(ids.map(id => filesApi.deleteFile(id)))
+}
+
+export function cleanupBroadcastImage(attachment: BroadcastAttachmentInput): Promise<void> {
+  return deleteUploadedFiles([attachment.attachmentId, attachment.previewAttachmentId])
 }

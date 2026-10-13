@@ -194,7 +194,7 @@
 <script setup lang="ts">
   import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
   import type { Tag } from '@/api/tags'
-  import { uploadBroadcastImage, type BroadcastAttachmentInput } from '@/api/broadcasts'
+  import { cleanupBroadcastImage, uploadBroadcastImage, type BroadcastAttachmentInput } from '@/api/broadcasts'
   import type {
     BroadcastAudiencePreview,
     BroadcastPreviewRequest,
@@ -238,6 +238,7 @@
     () => images.value.filter(image => image.status === 'uploading').length
   )
   const composeRoot = ref<HTMLElement | null>(null)
+  let disposed = false
 
   async function onPick(event: Event) {
     const fileInput = event.target as HTMLInputElement
@@ -277,7 +278,12 @@
     const target = () => images.value.find(item => item.key === key)
     try {
       const attachment = await uploadBroadcastImage(file)
-      Object.assign(target() ?? {}, { status: 'done', attachment, error: undefined })
+      const current = target()
+      if (!current || disposed) {
+        void cleanupBroadcastImage(attachment)
+        return
+      }
+      Object.assign(current, { status: 'done', attachment, error: undefined })
     } catch (err) {
       Object.assign(target() ?? {}, {
         status: 'error',
@@ -299,6 +305,7 @@
     const [removed] = images.value.splice(index, 1)
     if (removed) {
       URL.revokeObjectURL(removed.objectUrl)
+      if (removed.attachment) {void cleanupBroadcastImage(removed.attachment)}
     }
     await nextTick()
     const nextImage = images.value[Math.min(index, images.value.length - 1)]
@@ -333,7 +340,10 @@
     }
   }
 
-  onBeforeUnmount(() => images.value.forEach(image => URL.revokeObjectURL(image.objectUrl)))
+  onBeforeUnmount(() => {
+    disposed = true
+    images.value.forEach(image => URL.revokeObjectURL(image.objectUrl))
+  })
 
   const imagesReady = computed(() => images.value.every(image => image.status === 'done'))
 
