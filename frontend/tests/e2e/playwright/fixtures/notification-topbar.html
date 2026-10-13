@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <div id="fixture"></div>
+    <script type="module">
+      import { createApp, h } from 'vue'
+      import { createPinia, setActivePinia } from 'pinia'
+      import { createRouter, createMemoryHistory } from 'vue-router'
+      import AppTopBar from '/src/components/ui/AppTopBar.vue'
+      import { useNotificationsStore } from '/src/stores/notifications.ts'
+      import { useDesktopNotificationPrefs } from '/src/composables/notification/useDesktopNotificationPrefs.ts'
+      import { nextNineAm } from '/src/composables/notification/desktopNotificationLogic.ts'
+      import '/src/style.css'
+
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      const store = useNotificationsStore()
+      store.fetchUnreadCount = async () => {}
+      store.fetchRecentNotifications = async () => {}
+      store.startPolling = () => {}
+      store.stopPolling = () => {}
+      const { pauseUntil, setPrefs } = useDesktopNotificationPrefs()
+      setPrefs({ enabled: true })
+      pauseUntil(nextNineAm(Date.now()))
+      createApp({ render: () => h(AppTopBar, { pageTitle: 'WebSocket 性能監控與通知設定' }) })
+        .use(pinia)
+        .use(
+          createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: {} }] })
+        )
+        .mount('#fixture')
+    </script>
+  </body>
+</html>
