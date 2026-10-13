@@ -639,17 +639,20 @@ export class UserConnection implements DurableObject {
     const auth = new WebSocketAuthService(this.env as unknown as Bindings);
     let deferredError: unknown;
     let deferred = false;
+    let subscriptionsChanged = false;
     for (const conversationId of this.subscriptionManager.subscribedConversations) {
       try {
         if (!await auth.hasLiveConversationAccess(this.userId, conversationId, user)) {
           this.subscriptionManager.removeSubscription(conversationId);
+          subscriptionsChanged = true;
         }
       } catch (error) {
         deferred = true;
         deferredError = error;
       }
     }
-    await this.subscriptionManager.persistSubscriptions(this.state.storage);
+    // Every other mutation persists immediately, so storage already matches memory unless a subscription was revoked here.
+    if (subscriptionsChanged) await this.subscriptionManager.persistSubscriptions(this.state.storage);
     if (deferred) return this.deferAccessCheck(deferredError); // once per run: one failure, one backoff step
     this.accessCheckFailures = 0;
     return false;

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const authMock = vi.hoisted(() => ({
-  getUserById: async (_db: unknown, _id: string): Promise<{ role: string }> => ({ role: 'agent' })
+  getUserById: async (_db: unknown, _id: string): Promise<{ role: string }> => ({ role: 'agent' }),
+  hasAccess: async (_conversationId: string): Promise<boolean> => true
 }))
 
 vi.mock('@/utils/auth', () => ({
@@ -12,7 +13,7 @@ vi.mock('@/utils/auth', () => ({
 
 vi.mock('@/services/websocket-auth-service', () => ({
   WebSocketAuthService: class {
-    async hasLiveConversationAccess(): Promise<boolean> { return true }
+    async hasLiveConversationAccess(_u: string, conversationId: string): Promise<boolean> { return authMock.hasAccess(conversationId) }
   }
 }))
 
@@ -34,9 +35,9 @@ function socket(id: string, tokenExp?: number) {
   }
 }
 
-function harness(sockets: ReturnType<typeof socket>[], initialAlarm: number | null = null) {
+function harness(sockets: ReturnType<typeof socket>[], initialAlarm: number | null = null, seed: Record<string, unknown> = {}) {
   let alarm = initialAlarm
-  const values = new Map<string, unknown>()
+  const values = new Map<string, unknown>(Object.entries(seed))
   const setAlarm = vi.fn(async (v: number) => { alarm = v })
   const deleteAlarm = vi.fn(async () => { alarm = null })
   const getAlarm = vi.fn(async () => alarm)
@@ -82,6 +83,7 @@ describe('UserConnection alarm chain', () => {
       configurable: true
     })
     authMock.getUserById = async () => ({ role: 'agent' })
+    authMock.hasAccess = async () => true
   })
   afterEach(() => { vi.useRealTimers() })
 
@@ -167,5 +169,30 @@ describe('UserConnection alarm chain', () => {
     authMock.getUserById = async () => { throw new Error('D1 down') }
     await h.fire()
     expect((h.alarm() as number) - Date.now()).toBe(30000)
+  })
+
+  describe('access revalidation writes', () => {
+    const subscriptionPuts = (h: ReturnType<typeof harness>) =>
+      (h.instance as unknown as { state: { storage: { put: ReturnType<typeof vi.fn> } } }).state.storage.put.mock.calls
+        .filter(([key]) => key === 'subscriptions')
+
+    it('unchanged subscriptions are not written back', async () => {
+      const h = harness([socket('c1', T0 / 1000 + 86400)], null, { subscriptions: ['a', 'b'] })
+      await settle()
+      await h.fire()
+      expect(subscriptionPuts(h)).toHaveLength(0)
+      // The chain still continues: the next revalidation is armed 5 min out.
+      expect((h.alarm() as number) - Date.now()).toBe(300000)
+    })
+
+    it('a revoked conversation writes the reduced set once', async () => {
+      authMock.hasAccess = async (id) => id !== 'b'
+      const h = harness([socket('c1', T0 / 1000 + 86400)], null, { subscriptions: ['a', 'b'] })
+      await settle()
+      await h.fire()
+      expect(subscriptionPuts(h)).toEqual([['subscriptions', ['a']]])
+      await h.fire()
+      expect(subscriptionPuts(h)).toHaveLength(1)
+    })
   })
 })
