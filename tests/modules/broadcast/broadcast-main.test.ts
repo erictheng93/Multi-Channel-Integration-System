@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Bindings } from '@/types';
+import { BroadcastServiceError } from '@/modules/broadcast/types';
 
 const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
@@ -46,6 +47,19 @@ describe('broadcast preview route', () => {
       sendable: 10,
       skipped: [{ reason: 'platform_not_supported_phase1', count: 2 }],
     });
+  });
+
+  it('exposes attachment error codes in the response envelope', async () => {
+    mocks.create.mockRejectedValueOnce(new BroadcastServiceError(
+      'ATTACHMENT_NOT_OWNED', 'image was not uploaded by you', 422
+    ));
+    const response = await broadcastRouter.request('/', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '通知', content: '', tagIds: [1],
+        attachments: [{ attachmentId: 'original', previewAttachmentId: 'preview' }] }),
+    }, { DB: {} } as Bindings);
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({ success: false, code: 'ATTACHMENT_NOT_OWNED' });
   });
 
   it('accepts tagIds without title or content', async () => {

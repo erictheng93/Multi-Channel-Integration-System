@@ -299,6 +299,8 @@ class ApiClient {
         return {
           success: false,
           error: errorMessage,
+          ...(result.data !== undefined ? { data: result.data } : {}),
+          ...(typeof result.code === 'string' ? { code: result.code } : {}),
           status: response.status
         };
       }

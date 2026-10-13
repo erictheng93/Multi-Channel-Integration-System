@@ -131,7 +131,62 @@ export interface LineQuotaSnapshot {
 async function unwrap<T>(promise: ReturnType<typeof apiClient.get<T>>): Promise<T> {
   const response = await promise
   if (!response.success || !response.data) {
-    throw new Error(response.error || 'Broadcast API request failed')
+    const data: unknown = response.data
+    if (
+      !response.success &&
+      data &&
+      typeof data === 'object' &&
+      'errors' in data &&
+      Array.isArray(data.errors)
+    ) {
+      const fields: Record<string, string> = {
+        title: '標題',
+        content: '訊息內容',
+        tagIds: '目標標籤',
+        attachments: '圖片',
+        status: '狀態',
+      }
+      const errors = data.errors.flatMap((item: unknown) => {
+        if (
+          !item ||
+          typeof item !== 'object' ||
+          !('field' in item) ||
+          !('message' in item) ||
+          typeof item.field !== 'string' ||
+          typeof item.message !== 'string'
+        ) {
+          return []
+        }
+        return [`${fields[item.field] || item.field}：${item.message}`]
+      })
+      if (errors.length) {
+        throw new Error(errors.join('；'))
+      }
+    }
+    const messages: Record<string, string> = {
+      ATTACHMENT_NOT_FOUND: '圖片或預覽圖不存在，請重新上傳',
+      ATTACHMENT_NOT_OWNED: '只能使用您自己上傳的圖片',
+      ATTACHMENT_ALREADY_BOUND: '圖片已用於其他訊息，請重新上傳',
+      ATTACHMENT_BAD_MIME: '圖片與預覽圖僅接受 JPEG / PNG 格式',
+      ATTACHMENT_TOO_LARGE: '原圖不得超過 10MB，預覽圖不得超過 1MB',
+      INVALID_BROADCAST_INPUT: '請求內容有誤，請檢查標題、文字與圖片',
+      PHASE1_SINGLE_TAG_ONLY: '目前一次只能選擇一個目標標籤',
+      TAG_NOT_FOUND: '目標標籤不存在，請重新選擇',
+      EMPTY_AUDIENCE: '此標籤沒有可發送的客戶',
+      BROADCAST_NOT_FOUND: '找不到此群發紀錄',
+      INVALID_BROADCAST_STATUS: '此群發已開始發送，無法再次送出',
+      LINE_RECIPIENT_LIMIT_EXCEEDED: '一次最多可發送給 5000 位 LINE 客戶',
+      QUOTA_INSUFFICIENT: 'LINE 訊息額度不足，請確認額度後再試',
+      FORBIDDEN: '您沒有群發訊息的權限',
+      NOT_FOUND: '找不到此群發紀錄',
+    }
+    throw new Error(
+      response.code
+        ? messages[response.code] || '請求內容有誤，請檢查後再試'
+        : response.status === 422
+          ? '請求內容有誤，請檢查後再試'
+          : response.error || '群發請求失敗，請稍後再試'
+    )
   }
   return response.data
 }
@@ -147,8 +202,12 @@ export const sendBroadcast = (id: string) =>
 
 export const listBroadcasts = (params?: { page?: number; pageSize?: number }) => {
   const search = new URLSearchParams()
-  if (params?.page) {search.set('page', String(params.page))}
-  if (params?.pageSize) {search.set('pageSize', String(params.pageSize))}
+  if (params?.page) {
+    search.set('page', String(params.page))
+  }
+  if (params?.pageSize) {
+    search.set('pageSize', String(params.pageSize))
+  }
   const query = search.toString()
   return unwrap<BroadcastListResult>(apiClient.get(`/broadcasts${query ? `?${query}` : ''}`))
 }
@@ -158,16 +217,23 @@ export const getLineQuota = () => unwrap<LineQuotaSnapshot>(apiClient.get('/broa
 export const refreshLineQuota = () =>
   unwrap<LineQuotaSnapshot>(apiClient.post('/broadcasts/line-quota/refresh'))
 
-export const getBroadcast = (id: string) => unwrap<BroadcastRecord>(apiClient.get(`/broadcasts/${id}`))
+export const getBroadcast = (id: string) =>
+  unwrap<BroadcastRecord>(apiClient.get(`/broadcasts/${id}`))
 
 export const listBroadcastRecipients = (
   id: string,
   params?: { page?: number; pageSize?: number; status?: BroadcastRecipientStatus }
 ) => {
   const search = new URLSearchParams()
-  if (params?.page) {search.set('page', String(params.page))}
-  if (params?.pageSize) {search.set('pageSize', String(params.pageSize))}
-  if (params?.status) {search.set('status', params.status)}
+  if (params?.page) {
+    search.set('page', String(params.page))
+  }
+  if (params?.pageSize) {
+    search.set('pageSize', String(params.pageSize))
+  }
+  if (params?.status) {
+    search.set('status', params.status)
+  }
   const query = search.toString()
   return unwrap<BroadcastRecipientListResult>(
     apiClient.get(`/broadcasts/${id}/recipients${query ? `?${query}` : ''}`)
@@ -186,6 +252,9 @@ async function uploadOne(file: File): Promise<string> {
 
 export async function uploadBroadcastImage(file: File): Promise<BroadcastAttachmentInput> {
   const preview = await createBroadcastPreview(file)
-  const [attachmentId, previewAttachmentId] = await Promise.all([uploadOne(file), uploadOne(preview)])
+  const [attachmentId, previewAttachmentId] = await Promise.all([
+    uploadOne(file),
+    uploadOne(preview),
+  ])
   return { attachmentId, previewAttachmentId }
 }
