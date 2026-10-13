@@ -405,7 +405,10 @@ export class CustomerMessageDO extends DurableObject<Bindings> {
         };
 
         // Store message in D1 database
-        await insertMessageWithAttachments(this.env.DB, db, messageData, attachmentIds, agentId);
+        const storedType = await insertMessageWithAttachments(this.env.DB, db, messageData, attachmentIds, agentId);
+        if (storedType) {
+          messageData.messageType = storedType as MessageInsert['messageType'];
+        }
 
         // Recall window (ADR-0003): arm the scheduler immediately after insert,
         // before any non-critical post-insert D1 work can fail and strand a
