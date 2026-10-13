@@ -1,0 +1,12 @@
+async (page) => {
+  return await page.evaluate(() => {
+    const images = Array.from(document.querySelectorAll('.attachment-image-content'))
+    const picker = document.querySelector('input[type=file]')
+    picker.focus()
+    return {
+      imagesLoaded: images.map(i => ({ loaded: i.complete && i.naturalWidth > 0, width: i.naturalWidth })),
+      mixedText: document.querySelector('#mixed').textContent.includes('群發文字不可消失'),
+      focusRing: getComputedStyle(document.querySelector('.image-picker')).boxShadow
+    }
+  })
+}
