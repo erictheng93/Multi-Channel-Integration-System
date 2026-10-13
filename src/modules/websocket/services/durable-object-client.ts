@@ -25,7 +25,7 @@ const log = createContextLogger('DOClient')
  * Integrates circuit breaker for automatic degradation when errors exceed threshold.
  *
  * Routing logic:
- * - conversation targets → ConversationRoom DO
+ * - conversation targets → no-op (ConversationRoom has no sockets, audit W5)
  * - user targets → UserConnection DO
  * - team targets → MessageBroadcaster DO
  * - global targets → MessageBroadcaster DO
@@ -185,37 +185,18 @@ export class DurableObjectClient {
   }
 
   /**
-   * Broadcast to ConversationRoom Durable Objects
+   * Deliberate no-op: ConversationRoom has no live sockets.
+   *
+   * No frontend code joins a ConversationRoom (conversation pages connect through
+   * /api/customer-ws to CustomerConversationDO, the global socket carries no
+   * conversationId), so every /broadcast here cost a DO cold start plus storage
+   * reads and was delivered to nobody (docs/audits/DO_COST_AUDIT_2026-10-13, W5).
+   * Returns true because there is nothing to deliver, not a failure. The class and
+   * binding stay (deleted_classes is irreversible); restore the fetch below only if
+   * a client is ever wired to ConversationRoom again.
    */
-  async broadcastToConversationRooms(event: DurableObjectEvent, conversationIds: string[]): Promise<boolean> {
-    try {
-      const promises = conversationIds.map(async (conversationId) => {
-        if (!this.env.CONVERSATION_ROOM) {
-          log.warn('CONVERSATION_ROOM binding not available');
-          return false;
-        }
-
-        const roomId = this.env.CONVERSATION_ROOM.idFromName(conversationId);
-        const roomStub = this.env.CONVERSATION_ROOM.get(roomId);
-
-        if (roomStub) {
-          const response = await roomStub.fetch(new Request('https://conversation-room/broadcast', {
-            method: 'POST',
-            body: JSON.stringify(event),
-            headers: { 'Content-Type': 'application/json' }
-          }));
-
-          return response.ok;
-        }
-        return false;
-      });
-
-      const results = await Promise.allSettled(promises);
-      return results.some(r => r.status === 'fulfilled' && r.value);
-    } catch (error) {
-      log.error('ConversationRoom broadcast error', {}, error instanceof Error ? error : String(error));
-      return false;
-    }
+  async broadcastToConversationRooms(_event: DurableObjectEvent, _conversationIds: string[]): Promise<boolean> {
+    return true;
   }
 
   /**
