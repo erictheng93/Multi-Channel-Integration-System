@@ -172,7 +172,7 @@ export class LatestMessageCache {
         FROM messages
         WHERE conversation_id = ${conversationId}
           AND deleted_at IS NULL
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT 1
       `);
 
