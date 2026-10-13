@@ -171,6 +171,7 @@ export class LatestMessageCache {
           message_type as messageType
         FROM messages
         WHERE conversation_id = ${conversationId}
+          AND deleted_at IS NULL
         ORDER BY created_at DESC
         LIMIT 1
       `);
@@ -231,6 +232,7 @@ export class LatestMessageCache {
       const recentConversations = await this.db.all(sql`
         SELECT DISTINCT conversation_id
         FROM messages
+        WHERE deleted_at IS NULL
         ORDER BY created_at DESC
         LIMIT ${limit}
       `);

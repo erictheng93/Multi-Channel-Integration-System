@@ -6,7 +6,8 @@ import { createContextLogger } from '@/utils/logger'
 
 const log = createContextLogger('MsgAttachments')
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { notDeletedMessage } from '@/db/message-conditions';
 import { createDbClient } from '@/db/drizzle-factory';
 import type { Bindings, JWTPayload } from '@/types';
 import { messages, fileAttachments } from '@/db/schema';
@@ -54,7 +55,7 @@ attachmentRoutes.get('/:id/attachments', jwtAuth, async (c) => {
     const message = await db
       .select({ id: messages.id, conversationId: messages.conversationId })
       .from(messages)
-      .where(eq(messages.id, messageId))
+      .where(and(eq(messages.id, messageId), notDeletedMessage))
       .get();
 
     if (!message) {
@@ -113,7 +114,7 @@ attachmentRoutes.post('/:id/attachments', jwtAuth, async (c) => {
         senderType: messages.senderType
       })
       .from(messages)
-      .where(eq(messages.id, messageId))
+      .where(and(eq(messages.id, messageId), notDeletedMessage))
       .get();
 
     if (!message) {
